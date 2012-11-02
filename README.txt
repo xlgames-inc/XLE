@@ -49,6 +49,7 @@ History
 -------
 
 v1.2 - ????.??.??
+  - Added atomic<T> class.
   - Added atomic_flag class.
 
 v1.1 - 2012.05.07

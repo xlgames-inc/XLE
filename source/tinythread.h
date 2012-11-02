@@ -47,6 +47,7 @@ freely, subject to the following restrictions:
 /// @li tthread::condition_variable
 /// @li tthread::lock_guard
 /// @li tthread::fast_mutex
+/// @li tthread::atomic
 /// @li tthread::atomic_flag
 ///
 /// @section misc_sec Miscellaneous
@@ -578,6 +579,165 @@ class atomic_flag {
 #endif // _TTHREAD_HAS_ATOMIC_BUILTINS_
     volatile int mFlag;
 };
+
+
+/// Atomic template class.
+/// An atomic object provides atomic access to an underlying data element of
+/// the template type T.
+template<class T>
+struct atomic {
+  public:
+    atomic() : mValue(0)
+    {
+    }
+
+    atomic(T desired) : mValue(desired)
+    {
+    }
+
+    /// Checks whether the atomic operations on the object are lock-free.
+    inline bool is_lock_free() const
+    {
+#ifdef _TTHREAD_HAS_ATOMIC_BUILTINS_
+      return true;
+#else
+      return false;
+#endif
+    }
+
+    /// Atomically replaces the current value.
+    /// @param desired The new value.
+    /// @param order The memory sycnhronization ordering for this operation.
+    inline void store(T desired, memory_order order = memory_order_seq_cst)
+    {
+#ifdef _TTHREAD_HAS_ATOMIC_BUILTINS_
+      // FIXME: Use something more suitable here
+      __sync_lock_test_and_set(&mValue, desired);
+#else
+      lock_guard<mutex> guard(mLock);
+      mValue = desired;
+#endif
+    }
+
+    /// Atomically loads the current value.
+    /// @param order The memory sycnhronization ordering for this operation.
+    inline T load(memory_order order = memory_order_seq_cst) const
+    {
+#ifdef _TTHREAD_HAS_ATOMIC_BUILTINS_
+      // FIXME: Use something more suitable here
+      return __sync_add_and_fetch((volatile T*)&mValue, 0);
+#else
+      lock_guard<mutex> guard((mutex&)mLock);
+      return mValue;
+#endif
+    }
+
+    /// Atomically increments the current value.
+    /// Atomically replaces the current value with the result of arithmetic
+    /// addition of the value and arg. The operation is a read-modify-write
+    /// operation.
+    /// @param arg The value to be added to the current value.
+    /// @param order The memory sycnhronization ordering for this operation.
+    inline T fetch_add(T arg, memory_order order = memory_order_seq_cst)
+    {
+#ifdef _TTHREAD_HAS_ATOMIC_BUILTINS_
+      return __sync_fetch_and_add(&mValue, arg);
+#else
+      lock_guard<mutex> guard(mLock);
+      T result = mValue;
+      mValue += arg;
+      return result;
+#endif
+    }
+
+    /// Atomically decrements the current value.
+    /// Atomically replaces the current value with the result of arithmetic
+    /// subtraction of the value and arg. The operation is a read-modify-write
+    /// operation.
+    /// @param arg The value to be subtracted from the current value.
+    /// @param order The memory sycnhronization ordering for this operation.
+    inline T fetch_sub(T arg, memory_order order = memory_order_seq_cst)
+    {
+#ifdef _TTHREAD_HAS_ATOMIC_BUILTINS_
+      return __sync_fetch_and_sub(&mValue, arg);
+#else
+      lock_guard<mutex> guard(mLock);
+      T result = mValue;
+      mValue -= arg;
+      return result;
+#endif
+    }
+
+    /// Atomically replaces the current value.
+    /// Equivalent to store(desired).
+    /// @param desired The new value.
+    /// @return The new value.
+    inline T operator=(T desired)
+    {
+      store(desired);
+      return desired;
+    }
+
+    /// Atomically loads the current value.
+    /// Equivalent to load().
+    /// @return The current value.
+    inline operator T() const
+    {
+      return load();
+    }
+
+    /// Atomic post-increment.
+    /// Equivalent to fetch_add(1) + 1.
+    /// @return The value after the increment operation.
+    inline T operator++()
+    {
+      return fetch_add(1) + 1;
+    }
+
+    /// Atomic pre-increment.
+    /// Equivalent to fetch_add(1).
+    /// @return The value before the increment operation.
+    inline T operator++(int)
+    {
+      return fetch_add(1);
+    }
+
+    /// Atomic post-decrement.
+    /// Equivalent to fetch_sub(1) - 1.
+    /// @return The value a the decrement operation.
+    inline T operator--()
+    {
+      return fetch_sub(1) - 1;
+    }
+
+    /// Atomic pre-decrement.
+    /// Equivalent to fetch_sub(1).
+    /// @return The value before the decrement operation.
+    inline T operator--(int)
+    {
+      return fetch_sub(1);
+    }
+
+    _TTHREAD_DISABLE_ASSIGNMENT(atomic<T>)
+
+  private:
+#ifndef _TTHREAD_HAS_ATOMIC_BUILTINS_
+    mutex mLock;
+#endif // _TTHREAD_HAS_ATOMIC_BUILTINS_
+    volatile T mValue;
+};
+
+typedef atomic<char>               atomic_char;   ///< Specialized atomic for type char.
+typedef atomic<signed char>        atomic_schar;  ///< Specialized atomic for type signed char.
+typedef atomic<unsigned char>      atomic_uchar;  ///< Specialized atomic for type unsigned char.
+typedef atomic<short>              atomic_short;  ///< Specialized atomic for type short.
+typedef atomic<unsigned short>     atomic_ushort; ///< Specialized atomic for type unsigned short.
+typedef atomic<int>                atomic_int;    ///< Specialized atomic for type int.
+typedef atomic<unsigned int>       atomic_uint;   ///< Specialized atomic for type unsigned int.
+typedef atomic<long>               atomic_long;   ///< Specialized atomic for type long.
+typedef atomic<unsigned long>      atomic_ulong;  ///< Specialized atomic for type unsigned long.
+typedef atomic<long long>          atomic_llong;  ///< Specialized atomic for type long long.
+typedef atomic<unsigned long long> atomic_ullong; ///< Specialized atomic for type unsigned long long.
 
 /// Thread class.
 class thread {
