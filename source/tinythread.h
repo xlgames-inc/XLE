@@ -47,6 +47,7 @@ freely, subject to the following restrictions:
 /// @li tthread::condition_variable
 /// @li tthread::lock_guard
 /// @li tthread::fast_mutex
+/// @li tthread::atomic_flag
 ///
 /// @section misc_sec Miscellaneous
 /// The following special keywords are available: #thread_local.
@@ -89,7 +90,7 @@ freely, subject to the following restrictions:
 /// TinyThread++ version (major number).
 #define TINYTHREAD_VERSION_MAJOR 1
 /// TinyThread++ version (minor number).
-#define TINYTHREAD_VERSION_MINOR 1
+#define TINYTHREAD_VERSION_MINOR 2
 /// TinyThread++ version (full version).
 #define TINYTHREAD_VERSION (TINYTHREAD_VERSION_MAJOR * 100 + TINYTHREAD_VERSION_MINOR)
 
@@ -101,6 +102,11 @@ freely, subject to the following restrictions:
 // ...at least partial C++11?
 #if defined(_TTHREAD_CPP11_) || defined(__GXX_EXPERIMENTAL_CXX0X__) || defined(__GXX_EXPERIMENTAL_CPP0X__)
   #define _TTHREAD_CPP11_PARTIAL_
+#endif
+
+// Do we have atomic builtins?
+#if defined(__GNUC__) && defined(__GNUC_MINOR__) && (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 1))
+  #define _TTHREAD_HAS_ATOMIC_BUILTINS_
 #endif
 
 // Macro for disabling assignments of objects.
@@ -476,6 +482,102 @@ class condition_variable {
 #endif
 };
 
+/// Memory access order.
+/// Specifies how non-atomic memory accesses are to be ordered around an atomic
+/// operation.
+enum memory_order {
+  memory_order_relaxed, ///< Relaxed ordering: there are no constraints on
+                        ///  reordering of memory accesses around the atomic
+                        ///  variable.
+  memory_order_consume, ///< Consume operation: no reads in the current thread
+                        ///  dependent on the value currently loaded can be
+                        ///  reordered before this load. This ensures that
+                        ///  writes to dependent variables in other threads
+                        ///  that release the same atomic variable are visible
+                        ///  in the current thread. On most platforms, this
+                        ///  affects compiler optimization only.
+  memory_order_acquire, ///< Acquire operation: no reads in the current thread
+                        ///  can be reordered before this load. This ensures
+                        ///  that all writes in other threads that release the
+                        ///  same atomic variable are visible in the current
+                        ///  thread.
+  memory_order_release, ///< Release operation: no writes in the current thread
+                        ///  can be reordered after this store. This ensures
+                        ///  that all writes in the current thread are visible
+                        ///  in other threads that acquire the same atomic
+                        ///  variable.
+  memory_order_acq_rel, ///< Acquire-release operation: no reads in the current
+                        ///  thread can be reordered before this load as well
+                        ///  as no writes in the current thread can be
+                        ///  reordered after this store. The operation is
+                        ///  read-modify-write operation. It is ensured that
+                        ///  all writes in another threads that release the
+                        ///  same atomic variable are visible before the
+                        ///  modification and the modification is visible in
+                        ///  other threads that acquire the same atomic
+                        ///  variable.
+  memory_order_seq_cst  ///< Sequential ordering: The operation has the same
+                        ///  semantics as acquire-release operation, and
+                        ///  additionally has sequentially-consistent operation
+                        ///  ordering.
+};
+
+/// Expression which can be used to initialize atomic_flag to clear state.
+/// Example usage:
+/// \code{.cpp}
+/// tthread::atomic_flag myFlag(ATOMIC_FLAG_INIT);
+/// \endcode
+#define ATOMIC_FLAG_INIT 0
+
+/// Atomic flag class.
+/// This is an atomic boolean object that provides methods for atmically
+/// testing, setting and clearing the state of the object. It can be used
+/// for implementing user space spin-locks, for instance.
+class atomic_flag {
+  public:
+    atomic_flag() : mFlag(0)
+    {
+    }
+
+    atomic_flag(int value) : mFlag(value)
+    {
+    }
+
+    /// Atomically test and set the value.
+    /// @param order The memory sycnhronization ordering for this operation.
+    /// @return The value held before this operation.
+    inline bool test_and_set(memory_order order = memory_order_seq_cst)
+    {
+#ifdef _TTHREAD_HAS_ATOMIC_BUILTINS_
+      return static_cast<bool>(__sync_lock_test_and_set(&mFlag, 1));
+#else
+      lock_guard<mutex> guard(mLock);
+      int result = mFlag;
+      mFlag = 1;
+      return static_cast<bool>(result);
+#endif
+    }
+
+    /// Atomically changes the state to cleared (false).
+    /// @param order The memory sycnhronization ordering for this operation.
+    inline void clear(memory_order order = memory_order_seq_cst)
+    {
+#ifdef _TTHREAD_HAS_ATOMIC_BUILTINS_
+      __sync_lock_release(&mFlag);
+#else
+      lock_guard<mutex> guard(mLock);
+      mFlag = 0;
+#endif
+    }
+
+    _TTHREAD_DISABLE_ASSIGNMENT(atomic_flag)
+
+  private:
+#ifndef _TTHREAD_HAS_ATOMIC_BUILTINS_
+    mutex mLock;
+#endif // _TTHREAD_HAS_ATOMIC_BUILTINS_
+    volatile int mFlag;
+};
 
 /// Thread class.
 class thread {

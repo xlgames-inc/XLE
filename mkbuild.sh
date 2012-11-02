@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ----------------------------------------------------------------------------------------
-# Copyright (c) 2010-2011 Marcus Geelnard
+# Copyright (c) 2010-2012 Marcus Geelnard
 #
 # This software is provided 'as-is', without any express or implied
 # warranty. In no event will the authors be held liable for any damages
@@ -24,7 +24,7 @@
 # ----------------------------------------------------------------------------------------
 
 # Name of the distribution
-distname=TinyThread++-1.1
+distname=TinyThread++-1.2
 
 # Build all the necessary files
 echo Building documentation...

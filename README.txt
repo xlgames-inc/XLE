@@ -1,4 +1,4 @@
-TinyThread++ v1.1
+TinyThread++ v1.2
 =================
 
 http://tinythreadpp.bitsnbites.eu
@@ -47,6 +47,9 @@ Windows/MS Visual Studio:
 
 History
 -------
+
+v1.2 - ????.??.??
+  - Added atomic_flag class.
 
 v1.1 - 2012.05.07
   - Added thread::detach().
