@@ -110,6 +110,13 @@ freely, subject to the following restrictions:
   #define _TTHREAD_HAS_ATOMIC_BUILTINS_
 #endif
 
+// Check if we can support the assembly language atomic operations?
+#if (defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))) || \
+    (defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))) || \
+    (defined(__GNUC__) && (defined(__ppc__)))
+  #define _TTHREAD_HAS_ASM_ATOMICS_
+#endif
+
 // Macro for disabling assignments of objects.
 #ifdef _TTHREAD_CPP11_PARTIAL_
   #define _TTHREAD_DISABLE_ASSIGNMENT(name) \
@@ -549,8 +556,44 @@ class atomic_flag {
     /// @return The value held before this operation.
     inline bool test_and_set(memory_order order = memory_order_seq_cst)
     {
-#ifdef _TTHREAD_HAS_ATOMIC_BUILTINS_
+#if defined(_TTHREAD_HAS_ATOMIC_BUILTINS_)
       return static_cast<bool>(__sync_lock_test_and_set(&mFlag, 1));
+#elif defined(_TTHREAD_HAS_ASM_ATOMICS_)
+      int result;
+  #if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
+      asm volatile (
+        "movl $1,%%eax\n\t"
+        "xchg %%eax,%0\n\t"
+        "movl %%eax,%1\n\t"
+        : "=m" (mFlag), "=m" (result)
+        :
+        : "%eax", "memory"
+      );
+  #elif defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))
+      int *ptrFlag = &mFlag;
+      __asm {
+        mov eax,1
+        mov ecx,ptrFlag
+        xchg eax,[ecx]
+        mov result,eax
+      }
+  #elif defined(__GNUC__) && (defined(__ppc__))
+      int newFlag = 1;
+      asm volatile (
+        "\n1:\n\t"
+        "lwarx  %0,0,%1\n\t"
+        "cmpwi  0,%0,0\n\t"
+        "bne-   2f\n\t"
+        "stwcx. %2,0,%1\n\t"
+        "bne-   1b\n\t"
+        "isync\n"
+        "2:\n\t"
+        : "=&r" (result)
+        : "r" (&mFlag), "r" (newFlag)
+        : "cr0", "memory"
+      );
+  #endif
+      return static_cast<bool>(result);
 #else
       lock_guard<mutex> guard(mLock);
       int result = mFlag;
@@ -563,8 +606,31 @@ class atomic_flag {
     /// @param order The memory sycnhronization ordering for this operation.
     inline void clear(memory_order order = memory_order_seq_cst)
     {
-#ifdef _TTHREAD_HAS_ATOMIC_BUILTINS_
+#if defined(_TTHREAD_HAS_ATOMIC_BUILTINS_)
       __sync_lock_release(&mFlag);
+#elif defined(_TTHREAD_HAS_ASM_ATOMICS_)
+  #if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
+      asm volatile (
+        "movl $0,%%eax\n\t"
+        "xchg %%eax,%0\n\t"
+        : "=m" (mFlag)
+        :
+        : "%eax", "memory"
+      );
+  #elif defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))
+      int *ptrFlag = &mFlag;
+      __asm {
+        mov eax,0
+        mov ecx,ptrFlag
+        xchg eax,[ecx]
+      }
+  #elif defined(__GNUC__) && (defined(__ppc__))
+      asm volatile (
+        "sync\n\t"  // Replace with lwsync where possible?
+        : : : "memory"
+      );
+      mFlag = 0;
+  #endif
 #else
       lock_guard<mutex> guard(mLock);
       mFlag = 0;
@@ -574,9 +640,9 @@ class atomic_flag {
     _TTHREAD_DISABLE_ASSIGNMENT(atomic_flag)
 
   private:
-#ifndef _TTHREAD_HAS_ATOMIC_BUILTINS_
+#if !(defined(_TTHREAD_HAS_ATOMIC_BUILTINS_) || defined(_TTHREAD_HAS_ASM_ATOMICS_))
     mutex mLock;
-#endif // _TTHREAD_HAS_ATOMIC_BUILTINS_
+#endif // !(_TTHREAD_HAS_ATOMIC_BUILTINS_ || _TTHREAD_HAS_ASM_ATOMICS_)
     volatile int mFlag;
 };
 
