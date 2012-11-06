@@ -143,6 +143,7 @@ void ThreadDetach(void * aArg)
 {
   // We don't do anything much, just sleep a little...
   this_thread::sleep_for(chrono::milliseconds(100));
+  cout << " Detached thread finished." << endl;
 }
 
 
@@ -357,5 +358,10 @@ int main()
     thread t(ThreadDetach, 0);
     t.detach();
     cout << " Detached from thread." << endl;
+
+    // Give the thread a chanse to finish too...
+    this_thread::sleep_for(chrono::milliseconds(400));
   }
+
+  cout << endl << "Tests done!" << endl;
 }

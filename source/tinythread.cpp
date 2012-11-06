@@ -146,11 +146,36 @@ static thread::id _pthread_t_to_ID(const pthread_t &aHandle)
 // thread
 //------------------------------------------------------------------------------
 
-/// Information to pass to the new thread (what to run).
-struct _thread_start_info {
-  void (*mFunction)(void *); ///< Pointer to the function to be executed.
-  void * mArg;               ///< Function argument for the thread function.
-  thread * mThread;          ///< Pointer to the thread object.
+/// Information shared between the thread wrapper and the thread object.
+class _thread_wrapper {
+  public:
+    _thread_wrapper(void (*aFunction)(void *), void * aArg) :
+      mFunction(aFunction),
+      mArg(aArg),
+      mRefCount(2)      // Upon creation the object is referenced by two
+                        // instances: the thread object and the thread wrapper
+    {
+    }
+
+    inline void run()
+    {
+      mFunction(mArg);
+    }
+
+    inline bool joinable() const
+    {
+      return mRefCount > 1;
+    }
+
+    inline bool release()
+    {
+      return !(--mRefCount);
+    }
+
+  private:
+    void (*mFunction)(void *);  // Pointer to the function to be executed
+    void * mArg;                // Function argument for the thread function
+    atomic_int mRefCount;       // Reference count
 };
 
 // Thread wrapper function.
@@ -160,13 +185,13 @@ unsigned WINAPI thread::wrapper_function(void * aArg)
 void * thread::wrapper_function(void * aArg)
 #endif
 {
-  // Get thread startup information
-  _thread_start_info * ti = (_thread_start_info *) aArg;
+  // Get thread wrapper information
+  _thread_wrapper * tw = (_thread_wrapper *) aArg;
 
   try
   {
     // Call the actual client thread function
-    ti->mFunction(ti->mArg);
+    tw->run();
   }
   catch(...)
   {
@@ -176,55 +201,63 @@ void * thread::wrapper_function(void * aArg)
   }
 
   // The thread is no longer executing
-  lock_guard<mutex> guard(ti->mThread->mDataMutex);
-  ti->mThread->mNotAThread = true;
-
-  // The thread is responsible for freeing the startup information
-  delete ti;
+  if(tw->release())
+  {
+    delete tw;
+  }
 
   return 0;
 }
 
 thread::thread(void (*aFunction)(void *), void * aArg)
 {
-  // Serialize access to this thread structure
-  lock_guard<mutex> guard(mDataMutex);
-
-  // Fill out the thread startup information (passed to the thread wrapper,
-  // which will eventually free it)
-  _thread_start_info * ti = new _thread_start_info;
-  ti->mFunction = aFunction;
-  ti->mArg = aArg;
-  ti->mThread = this;
-
-  // The thread is now alive
-  mNotAThread = false;
+  // Fill out the thread startup information (passed to the thread wrapper)
+  _thread_wrapper * tw = new _thread_wrapper(aFunction, aArg);
 
   // Create the thread
 #if defined(_TTHREAD_WIN32_)
-  mHandle = (HANDLE) _beginthreadex(0, 0, wrapper_function, (void *) ti, 0, &mWin32ThreadID);
+  mHandle = (HANDLE) _beginthreadex(0, 0, wrapper_function, (void *) tw, 0, &mWin32ThreadID);
 #elif defined(_TTHREAD_POSIX_)
-  if(pthread_create(&mHandle, NULL, wrapper_function, (void *) ti) != 0)
+  if(pthread_create(&mHandle, NULL, wrapper_function, (void *) tw) != 0)
     mHandle = 0;
 #endif
 
   // Did we fail to create the thread?
   if(!mHandle)
   {
-    mNotAThread = true;
-    delete ti;
+    delete tw;
+    tw = 0;
   }
+
+  mWrapper = (void *) tw;
 }
 
 thread::~thread()
 {
-  if(joinable())
+  _thread_wrapper * tw = static_cast<_thread_wrapper*>(mWrapper);
+  if(!tw)
+    return;
+
+  if(tw->release())
+  {
+    delete tw;
+  }
+  else
+  {
+    // If the thread wrapper was not released, the thread is still joinable,
+    // which should result in std::terminate() upon destruction according to
+    // spec.
     std::terminate();
+  }
 }
 
 void thread::join()
 {
-  if(joinable())
+  _thread_wrapper * tw = static_cast<_thread_wrapper*>(mWrapper);
+  if(!tw)
+    return;
+
+  if(tw->joinable())
   {
 #if defined(_TTHREAD_WIN32_)
     WaitForSingleObject(mHandle, INFINITE);
@@ -233,29 +266,43 @@ void thread::join()
     pthread_join(mHandle, NULL);
 #endif
   }
+
+  // Note: At this point release() should always return true, since the
+  // wrapper object should already have been released in the thread before
+  // joining.
+  if(tw->release())
+  {
+    delete tw;
+  }
+  mWrapper = 0;
 }
 
 bool thread::joinable() const
 {
-  mDataMutex.lock();
-  bool result = !mNotAThread;
-  mDataMutex.unlock();
-  return result;
+  _thread_wrapper * tw = static_cast<_thread_wrapper*>(mWrapper);
+  if(!tw)
+    return false;
+
+  return tw->joinable();
 }
 
 void thread::detach()
 {
-  mDataMutex.lock();
-  if(!mNotAThread)
-  {
+  _thread_wrapper * tw = static_cast<_thread_wrapper*>(mWrapper);
+  if(!tw)
+    return;
+
 #if defined(_TTHREAD_WIN32_)
-    CloseHandle(mHandle);
+  CloseHandle(mHandle);
 #elif defined(_TTHREAD_POSIX_)
-    pthread_detach(mHandle);
+  pthread_detach(mHandle);
 #endif
-    mNotAThread = true;
+
+  if(tw->release())
+  {
+    delete tw;
   }
-  mDataMutex.unlock();
+  mWrapper = 0;
 }
 
 thread::id thread::get_id() const

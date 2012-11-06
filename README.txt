@@ -49,6 +49,7 @@ History
 -------
 
 v1.2 - ????.??.??
+  - Fixed dangling references bug in thread::detach() mechanism.
   - Added atomic<T> class.
   - Added atomic_flag class.
 

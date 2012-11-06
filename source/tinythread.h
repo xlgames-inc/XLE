@@ -627,7 +627,7 @@ struct atomic {
       // FIXME: Use something more suitable here
       return __sync_add_and_fetch((volatile T*)&mValue, 0);
 #else
-      lock_guard<mutex> guard((mutex&)mLock);
+      lock_guard<mutex> guard(mLock);
       return mValue;
 #endif
     }
@@ -722,7 +722,7 @@ struct atomic {
 
   private:
 #ifndef _TTHREAD_HAS_ATOMIC_BUILTINS_
-    mutex mLock;
+    mutable mutex mLock;
 #endif // _TTHREAD_HAS_ATOMIC_BUILTINS_
     volatile T mValue;
 };
@@ -753,7 +753,7 @@ class thread {
     /// Default constructor.
     /// Construct a @c thread object without an associated thread of execution
     /// (i.e. non-joinable).
-    thread() : mHandle(0), mNotAThread(true)
+    thread() : mHandle(0), mWrapper(0)
 #if defined(_TTHREAD_WIN32_)
     , mWin32ThreadID(0)
 #endif
@@ -814,8 +814,7 @@ class thread {
 
   private:
     native_handle_type mHandle;   ///< Thread handle.
-    mutable mutex mDataMutex;     ///< Serializer for access to the thread private data.
-    bool mNotAThread;             ///< True if this object is not a thread of execution.
+    void * mWrapper;              ///< Thread wrapper info.
 #if defined(_TTHREAD_WIN32_)
     unsigned int mWin32ThreadID;  ///< Unique thread ID (filled out by _beginthreadex).
 #endif
