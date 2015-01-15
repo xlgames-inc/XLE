@@ -1,0 +1,138 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="NsightTegraProject">
+    <NsightTegraProjectRevisionNumber>4</NsightTegraProjectRevisionNumber>
+  </PropertyGroup>
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Tegra-Android">
+      <Configuration>Debug</Configuration>
+      <Platform>Tegra-Android</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Profile|Tegra-Android">
+      <Configuration>Profile</Configuration>
+      <Platform>Tegra-Android</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Profile|Win32">
+      <Configuration>Profile</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Profile|x64">
+      <Configuration>Profile</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Tegra-Android">
+      <Configuration>Release</Configuration>
+      <Platform>Tegra-Android</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{2E51AA64-7E29-CD4A-FB7F-BAC486A3575C}</ProjectGuid>
+    <RootNamespace>Math</RootNamespace>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <AndroidAPILevel Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">android-18</AndroidAPILevel>
+    <AndroidAPILevel Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'">android-18</AndroidAPILevel>
+    <AndroidAPILevel Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'">android-18</AndroidAPILevel>
+    <PlatformToolset Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">x86-4.8</PlatformToolset>
+    <PlatformToolset Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'">x86-4.8</PlatformToolset>
+    <PlatformToolset Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'">x86-4.8</PlatformToolset>
+    <AndroidMinAPI Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">android-17</AndroidMinAPI>
+    <AndroidTargetAPI Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">android-17</AndroidTargetAPI>
+    <AndroidMaxAPI Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'" />
+    <AndroidMinAPI Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'">android-17</AndroidMinAPI>
+    <AndroidTargetAPI Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'">android-17</AndroidTargetAPI>
+    <AndroidMaxAPI Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'" />
+    <AndroidMinAPI Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'">android-17</AndroidMinAPI>
+    <AndroidTargetAPI Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'">android-17</AndroidTargetAPI>
+    <AndroidMaxAPI Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'" />
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <Import Project="..\..\Solutions\Main.props" />
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">
+    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'">
+    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">
+    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">
+    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'">
+    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup />
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">
+    <ClCompile>
+      <AdditionalOptions>-std=c++11 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'">
+    <ClCompile>
+      <AdditionalOptions>-std=c++11 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'">
+    <ClCompile>
+      <AdditionalOptions>-std=c++11 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Geometry.h" />
+    <ClInclude Include="..\Interpolation.h" />
+    <ClInclude Include="..\Math.h" />
+    <ClInclude Include="..\Matrix.h" />
+    <ClInclude Include="..\Noise.h" />
+    <ClInclude Include="..\ProjectionMath.h" />
+    <ClInclude Include="..\Quaternion.h" />
+    <ClInclude Include="..\Transformations.h" />
+    <ClInclude Include="..\Vector.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\Geometry.cpp" />
+    <ClCompile Include="..\Interpolation.cpp" />
+    <ClCompile Include="..\Matrix.cpp" />
+    <ClCompile Include="..\Noise.cpp" />
+    <ClCompile Include="..\ProjectionMath.cpp" />
+    <ClCompile Include="..\Transformations.cpp" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

@@ -1,0 +1,82 @@
+// Copyright 2015 XLGAMES Inc.
+//
+// Distributed under the MIT License (See
+// accompanying file "LICENSE" or the website
+// http://www.opensource.org/licenses/mit-license.php)
+
+#pragma once
+
+#include "../../Resource.h"
+#include "../../../Utility/Mixins.h"
+#include "IndexedGLType.h"
+
+namespace RenderCore { namespace Metal_OpenGLES
+{
+        ////////////////////////////////////////////////////////////////////////////////////////////////
+    
+    class CompiledShaderByteCode : noncopyable
+    {
+    public:
+            //
+            //          Resource interface
+            //
+        CompiledShaderByteCode(const ResChar initializer[]);
+        ~CompiledShaderByteCode();
+
+        typedef OpenGL::Shader*    UnderlyingType;
+        UnderlyingType                  GetUnderlying() const { return _underlying.get(); }
+        
+    private:
+        intrusive_ptr<OpenGL::Shader>            _underlying;
+    };
+    
+        ////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class ShaderProgram : noncopyable
+    {
+    public:
+        ShaderProgram(  const ResChar vertexShaderInitializer[], 
+                        const ResChar fragmentShaderInitializer[]);
+        ~ShaderProgram();
+        
+        typedef OpenGL::ShaderProgram*    UnderlyingType;
+        UnderlyingType                          GetUnderlying() const { return _underlying.get(); }
+
+    private:
+        intrusive_ptr<OpenGL::ShaderProgram>     _underlying;
+    };
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////
+
+//     class VertexShader : noncopyable
+//     {
+//     public:
+//             //
+//             //          Resource interface
+//             //
+//         VertexShader(const ResChar initializer[]);
+// 
+//         typedef ID3D::VertexShader  UnderlyingType;
+//         UnderlyingType*             GetUnderlying() const { return _underlying.get(); }
+//         
+//     private:
+//         intrusive_ptr<UnderlyingType>      _underlying;
+//     };
+// 
+//         ////////////////////////////////////////////////////////////////////////////////////////////////
+// 
+//     class PixelShader : noncopyable
+//     {
+//     public:
+//             //
+//             //          Resource interface
+//             //
+//         PixelShader(const ResChar initializer[]);
+// 
+//         typedef ID3D::PixelShader   UnderlyingType;
+//         UnderlyingType*             GetUnderlying() const { return _underlying.get(); }
+//         
+//     private:
+//         intrusive_ptr<UnderlyingType>      _underlying;
+//     };
+}}

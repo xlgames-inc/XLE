@@ -1,0 +1,318 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="NsightTegraProject">
+    <NsightTegraProjectRevisionNumber>4</NsightTegraProjectRevisionNumber>
+  </PropertyGroup>
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug-DX11|x64">
+      <Configuration>Debug-DX11</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug-OpenGL|Win32">
+      <Configuration>Debug-OpenGL</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug-DX11|Win32">
+      <Configuration>Debug-DX11</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug-OpenGL|x64">
+      <Configuration>Debug-OpenGL</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Profile-DX11|x64">
+      <Configuration>Profile-DX11</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Profile-OpenGL|Win32">
+      <Configuration>Profile-OpenGL</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Profile-DX11|Win32">
+      <Configuration>Profile-DX11</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Profile-OpenGL|x64">
+      <Configuration>Profile-OpenGL</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release-DX11|x64">
+      <Configuration>Release-DX11</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release-OpenGL|Win32">
+      <Configuration>Release-OpenGL</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release-DX11|Win32">
+      <Configuration>Release-DX11</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|Tegra-Android">
+      <Configuration>Debug</Configuration>
+      <Platform>Tegra-Android</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Profile|Tegra-Android">
+      <Configuration>Profile</Configuration>
+      <Platform>Tegra-Android</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release-OpenGL|x64">
+      <Configuration>Release-OpenGL</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Tegra-Android">
+      <Configuration>Release</Configuration>
+      <Platform>Tegra-Android</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Dummy1|Tegra-Android">
+      <Configuration>Dummy1</Configuration>
+      <Platform>Tegra-Android</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Dummy2|Tegra-Android">
+      <Configuration>Dummy2</Configuration>
+      <Platform>Tegra-Android</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Dummy3|Tegra-Android">
+      <Configuration>Dummy3</Configuration>
+      <Platform>Tegra-Android</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{0A40E6ED-47CC-A08E-71C5-8A3515D81EAF}</ProjectGuid>
+    <RootNamespace>SceneEngine</RootNamespace>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <AndroidAPILevel Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">android-18</AndroidAPILevel>
+    <AndroidAPILevel Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'">android-18</AndroidAPILevel>
+    <AndroidAPILevel Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'">android-18</AndroidAPILevel>
+    <PlatformToolset Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">x86-4.8</PlatformToolset>
+    <PlatformToolset Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'">x86-4.8</PlatformToolset>
+    <PlatformToolset Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'">x86-4.8</PlatformToolset>
+    <AndroidMinAPI Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">android-17</AndroidMinAPI>
+    <AndroidMinAPI Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'">android-17</AndroidMinAPI>
+    <AndroidMinAPI Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'">android-17</AndroidMinAPI>
+    <AndroidTargetAPI Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">android-17</AndroidTargetAPI>
+    <AndroidTargetAPI Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'">android-17</AndroidTargetAPI>
+    <AndroidTargetAPI Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'">android-17</AndroidTargetAPI>
+    <AndroidMaxAPI Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'" />
+    <AndroidMaxAPI Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'" />
+    <AndroidMaxAPI Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'" />
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <Import Project="..\..\Solutions\Main.props" />
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="..\..\Foreign\freetype-2.5.0.1\FTForClients.props" />
+    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug-DX11|x64'">
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug-OpenGL|Win32'">
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug-DX11|Win32'">
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug-OpenGL|x64'">
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile-DX11|x64'">
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile-OpenGL|Win32'">
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile-DX11|Win32'">
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile-OpenGL|x64'">
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release-DX11|x64'">
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release-OpenGL|Win32'">
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release-DX11|Win32'">
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'">
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release-OpenGL|x64'">
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'">
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Dummy1|Tegra-Android'">
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Dummy2|Tegra-Android'">
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Dummy3|Tegra-Android'">
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup />
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">
+    <ClCompile>
+      <AdditionalOptions>-std=c++11 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'">
+    <ClCompile>
+      <AdditionalOptions>-std=c++11 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'">
+    <ClCompile>
+      <AdditionalOptions>-std=c++11 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile-DX11|Win32'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>..\..\Foreign\nvidia\nvao;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Lib>
+      <AdditionalDependencies>..\..\Foreign\DirectXTex\DirectXTex\Bin\Desktop_2010\Win32\Release\DirectXTex.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug-DX11|Win32'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>..\..\Foreign\nvidia\nvao;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Lib>
+      <AdditionalDependencies>..\..\Foreign\DirectXTex\DirectXTex\Bin\Desktop_2010\Win32\Debug\DirectXTex.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug-DX11|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>..\..\Foreign\nvidia\nvao;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile-DX11|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>..\..\Foreign\nvidia\nvao;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release-DX11|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>..\..\Foreign\nvidia\nvao;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\BufferUploads\Project\BufferUploads.vcxproj">
+      <Project>{e4d5cfa9-07d2-5a61-9991-2186eb30f680}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Foreign\freetype-2.5.0.1\builds\win32\vc2010\freetype.vcxproj">
+      <Project>{78b079bd-9fc7-4b9e-b4a6-96da0f00248b}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Foreign\Project\Foreign.vcxproj">
+      <Project>{9f01282b-6297-4f87-a309-287c2c574b76}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\RenderCore\Project\RenderCore_DX11.vcxproj">
+      <Project>{e43e10b8-7cd4-a5d0-6270-17c50cb74adf}</Project>
+      <Private>true</Private>
+      <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
+      <CopyLocalSatelliteAssemblies>false</CopyLocalSatelliteAssemblies>
+      <LinkLibraryDependencies>true</LinkLibraryDependencies>
+      <UseLibraryDependencyInputs>false</UseLibraryDependencyInputs>
+    </ProjectReference>
+    <ProjectReference Include="..\..\RenderCore\Project\RenderCore_OpenGLES.vcxproj">
+      <Project>{13d648df-8842-9ef7-46c5-910550130776}</Project>
+      <Private>true</Private>
+      <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
+      <CopyLocalSatelliteAssemblies>false</CopyLocalSatelliteAssemblies>
+      <LinkLibraryDependencies>true</LinkLibraryDependencies>
+      <UseLibraryDependencyInputs>false</UseLibraryDependencyInputs>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Utility\Project\Utility.vcxproj">
+      <Project>{6b8011c1-2d1f-1ebb-b0ef-377b2e8e87ae}</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\AmbientOcclusion.cpp" />
+    <ClCompile Include="..\CommonResources.cpp" />
+    <ClCompile Include="..\DualContour.cpp" />
+    <ClCompile Include="..\DualContourRender.cpp" />
+    <ClCompile Include="..\LightingTargets.cpp" />
+    <ClCompile Include="..\LightingParserResolve.cpp" />
+    <ClCompile Include="..\LightingParserStandardPlugin.cpp" />
+    <ClCompile Include="..\MetricsBox.cpp" />
+    <ClCompile Include="..\Noise.cpp" />
+    <ClCompile Include="..\Ocean.cpp" />
+    <ClCompile Include="..\OrderIndependentTransparency.cpp" />
+    <ClCompile Include="..\PlacementsManager.cpp" />
+    <ClCompile Include="..\Rain.cpp" />
+    <ClCompile Include="..\RefractionsBuffer.cpp" />
+    <ClCompile Include="..\LightingParser.cpp" />
+    <ClCompile Include="..\RenderingUtils.cpp" />
+    <ClCompile Include="..\SceneEngineUtility.cpp" />
+    <ClCompile Include="..\ScreenspaceReflections.cpp" />
+    <ClCompile Include="..\Shadows.cpp" />
+    <ClCompile Include="..\ShallowWater.cpp" />
+    <ClCompile Include="..\Sky.cpp" />
+    <ClCompile Include="..\Techniques.cpp" />
+    <ClCompile Include="..\Terrain.cpp" />
+    <ClCompile Include="..\TerrainCollisions.cpp" />
+    <ClCompile Include="..\TerrainRender.cpp" />
+    <ClCompile Include="..\TerrainUberSurface.cpp" />
+    <ClCompile Include="..\TiledLighting.cpp" />
+    <ClCompile Include="..\Tonemap.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\AmbientOcclusion.h" />
+    <ClInclude Include="..\CommonResources.h" />
+    <ClInclude Include="..\DualContour.h" />
+    <ClInclude Include="..\DualContourRender.h" />
+    <ClInclude Include="..\LightingTargets.h" />
+    <ClInclude Include="..\LightingParserContext.h" />
+    <ClInclude Include="..\LightingParserStandardPlugin.h" />
+    <ClInclude Include="..\MetricsBox.h" />
+    <ClInclude Include="..\Noise.h" />
+    <ClInclude Include="..\Ocean.h" />
+    <ClInclude Include="..\OITInternal.h" />
+    <ClInclude Include="..\OrderIndependentTransparency.h" />
+    <ClInclude Include="..\PlacementsManager.h" />
+    <ClInclude Include="..\Rain.h" />
+    <ClInclude Include="..\RefractionsBuffer.h" />
+    <ClInclude Include="..\RenderingUtils.h" />
+    <ClInclude Include="..\ResourceBox.h" />
+    <ClInclude Include="..\LightingParser.h" />
+    <ClInclude Include="..\SceneEngineUtility.h" />
+    <ClInclude Include="..\SceneParser.h" />
+    <ClInclude Include="..\ScreenspaceReflections.h" />
+    <ClInclude Include="..\LightDesc.h" />
+    <ClInclude Include="..\Shadows.h" />
+    <ClInclude Include="..\ShallowWater.h" />
+    <ClInclude Include="..\SimplePatchBox.h" />
+    <ClInclude Include="..\Sky.h" />
+    <ClInclude Include="..\SurfaceHeightsProvider.h" />
+    <ClInclude Include="..\Terrain.h" />
+    <ClInclude Include="..\TerrainInternal.h" />
+    <ClInclude Include="..\TerrainUberSurface.h" />
+    <ClInclude Include="..\TiledLighting.h" />
+    <ClInclude Include="..\Tonemap.h" />
+    <ClInclude Include="..\VegetationSpawn.h" />
+    <ClInclude Include="..\VolumetricFog.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\Techniques.h" />
+    <ClCompile Include="..\VegetationSpawn.cpp" />
+    <ClCompile Include="..\VolumetricFog.cpp">
+      <FileType>Document</FileType>
+    </ClCompile>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

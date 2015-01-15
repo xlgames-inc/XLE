@@ -1,0 +1,60 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="..\DebuggingDisplay.cpp" />
+    <ClCompile Include="..\Font.cpp" />
+    <ClCompile Include="..\FontPrimitives.cpp" />
+    <ClCompile Include="..\FT_Font.cpp" />
+    <ClCompile Include="..\FT_FontTexture.cpp" />
+    <ClCompile Include="..\OverlayContext.cpp" />
+    <ClCompile Include="..\TextStyle.cpp" />
+    <ClCompile Include="..\Overlays\OceanSettings.cpp">
+      <Filter>Overlays</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Overlays\ToneMapSettings.cpp">
+      <Filter>Overlays</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Overlays\TestMaterialSettings.cpp">
+      <Filter>Overlays</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Overlays\Browser.cpp">
+      <Filter>Overlays</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Overlays\VolFogSettings.cpp">
+      <Filter>Overlays</Filter>
+    </ClCompile>
+    <ClCompile Include="..\DebugHotKeys.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\DebuggingDisplay.h" />
+    <ClInclude Include="..\IOverlayContext.h" />
+    <ClInclude Include="..\Font.h" />
+    <ClInclude Include="..\FontPrimitives.h" />
+    <ClInclude Include="..\FontRendering.h" />
+    <ClInclude Include="..\FT_Font.h" />
+    <ClInclude Include="..\FT_FontTexture.h" />
+    <ClInclude Include="..\IOverlayContext_Forward.h" />
+    <ClInclude Include="..\OverlayContext.h" />
+    <ClInclude Include="..\Overlays\OceanSettings.h">
+      <Filter>Overlays</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Overlays\ToneMapSettings.h">
+      <Filter>Overlays</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Overlays\TestMaterialSettings.h">
+      <Filter>Overlays</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Overlays\Browser.h">
+      <Filter>Overlays</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Overlays\VolFogSettings.h">
+      <Filter>Overlays</Filter>
+    </ClInclude>
+    <ClInclude Include="..\DebugHotKeys.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Overlays">
+      <UniqueIdentifier>{f5982d11-784b-41c6-9bbf-eb6ce785e524}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

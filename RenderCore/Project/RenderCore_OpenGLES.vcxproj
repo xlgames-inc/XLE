@@ -1,0 +1,155 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="NsightTegraProject">
+    <NsightTegraProjectRevisionNumber>4</NsightTegraProjectRevisionNumber>
+  </PropertyGroup>
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug-OpenGL|Tegra-Android">
+      <Configuration>Debug-OpenGL</Configuration>
+      <Platform>Tegra-Android</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug-OpenGL|Win32">
+      <Configuration>Debug-OpenGL</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug-OpenGL|x64">
+      <Configuration>Debug-OpenGL</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Profile-OpenGL|Tegra-Android">
+      <Configuration>Profile-OpenGL</Configuration>
+      <Platform>Tegra-Android</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Profile-OpenGL|Win32">
+      <Configuration>Profile-OpenGL</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Profile-OpenGL|x64">
+      <Configuration>Profile-OpenGL</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release-OpenGL|Tegra-Android">
+      <Configuration>Release-OpenGL</Configuration>
+      <Platform>Tegra-Android</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release-OpenGL|Win32">
+      <Configuration>Release-OpenGL</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release-OpenGL|x64">
+      <Configuration>Release-OpenGL</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{13D648DF-8842-9EF7-46C5-910550130776}</ProjectGuid>
+    <RootNamespace>RenderCore_OpenGLES</RootNamespace>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <AndroidAPILevel Condition="'$(Configuration)|$(Platform)'=='Debug-OpenGL|Tegra-Android'">android-18</AndroidAPILevel>
+    <AndroidAPILevel Condition="'$(Configuration)|$(Platform)'=='Profile-OpenGL|Tegra-Android'">android-18</AndroidAPILevel>
+    <AndroidAPILevel Condition="'$(Configuration)|$(Platform)'=='Release-OpenGL|Tegra-Android'">android-18</AndroidAPILevel>
+    <PlatformToolset Condition="'$(Configuration)|$(Platform)'=='Debug-OpenGL|Tegra-Android'">x86-4.8</PlatformToolset>
+    <PlatformToolset Condition="'$(Configuration)|$(Platform)'=='Profile-OpenGL|Tegra-Android'">x86-4.8</PlatformToolset>
+    <PlatformToolset Condition="'$(Configuration)|$(Platform)'=='Release-OpenGL|Tegra-Android'">x86-4.8</PlatformToolset>
+    <AndroidMinAPI Condition="'$(Configuration)|$(Platform)'=='Debug-OpenGL|Tegra-Android'">android-17</AndroidMinAPI>
+    <AndroidTargetAPI Condition="'$(Configuration)|$(Platform)'=='Debug-OpenGL|Tegra-Android'">android-17</AndroidTargetAPI>
+    <AndroidMaxAPI Condition="'$(Configuration)|$(Platform)'=='Debug-OpenGL|Tegra-Android'" />
+    <AndroidMinAPI Condition="'$(Configuration)|$(Platform)'=='Profile-OpenGL|Tegra-Android'">android-17</AndroidMinAPI>
+    <AndroidTargetAPI Condition="'$(Configuration)|$(Platform)'=='Profile-OpenGL|Tegra-Android'">android-17</AndroidTargetAPI>
+    <AndroidMaxAPI Condition="'$(Configuration)|$(Platform)'=='Profile-OpenGL|Tegra-Android'" />
+    <AndroidMinAPI Condition="'$(Configuration)|$(Platform)'=='Release-OpenGL|Tegra-Android'">android-17</AndroidMinAPI>
+    <AndroidTargetAPI Condition="'$(Configuration)|$(Platform)'=='Release-OpenGL|Tegra-Android'">android-17</AndroidTargetAPI>
+    <AndroidMaxAPI Condition="'$(Configuration)|$(Platform)'=='Release-OpenGL|Tegra-Android'" />
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <Import Project="..\..\Solutions\Main.props" />
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug-OpenGL|Win32'">
+    <Import Project="..\..\Foreign\angleproject\AngleForClients.props" />
+    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug-OpenGL|x64'" Label="PropertySheets">
+    <Import Project="..\..\Foreign\angleproject\AngleForClients.props" />
+    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile-OpenGL|Win32'">
+    <Import Project="..\..\Foreign\angleproject\AngleForClients.props" />
+    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Profile-OpenGL|x64'" Label="PropertySheets">
+    <Import Project="..\..\Foreign\angleproject\AngleForClients.props" />
+    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release-OpenGL|Win32'">
+    <Import Project="..\..\Foreign\angleproject\AngleForClients.props" />
+    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release-OpenGL|x64'" Label="PropertySheets">
+    <Import Project="..\..\Foreign\angleproject\AngleForClients.props" />
+    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug-OpenGL|Tegra-Android'">
+    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile-OpenGL|Tegra-Android'">
+    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release-OpenGL|Tegra-Android'">
+    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup />
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug-OpenGL|Tegra-Android'">
+    <ClCompile>
+      <AdditionalOptions>-std=c++11 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile-OpenGL|Tegra-Android'">
+    <ClCompile>
+      <AdditionalOptions>-std=c++11 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release-OpenGL|Tegra-Android'">
+    <ClCompile>
+      <AdditionalOptions>-std=c++11 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Foreign\Project\Foreign.vcxproj">
+      <Project>{9f01282b-6297-4f87-a309-287c2c574b76}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Utility\Project\Utility.vcxproj">
+      <Project>{6b8011c1-2d1f-1ebb-b0ef-377b2e8e87ae}</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\OpenGLES\Metal\Buffer.h" />
+    <ClInclude Include="..\OpenGLES\Metal\DeviceContext.h" />
+    <ClInclude Include="..\OpenGLES\Metal\Format.h" />
+    <ClInclude Include="..\OpenGLES\Metal\IndexedGLType.h" />
+    <ClInclude Include="..\OpenGLES\Metal\InputLayout.h" />
+    <ClInclude Include="..\OpenGLES\Metal\Resource.h" />
+    <ClInclude Include="..\OpenGLES\Metal\Shader.h" />
+    <ClInclude Include="..\OpenGLES\Metal\ShaderResource.h" />
+    <ClInclude Include="..\OpenGLES\Metal\State.h" />
+    <ClInclude Include="..\OpenGLES\Metal\Types.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\OpenGLES\Metal\Buffer.cpp" />
+    <ClCompile Include="..\OpenGLES\Metal\DeviceContext.cpp" />
+    <ClCompile Include="..\OpenGLES\Metal\Format.cpp" />
+    <ClCompile Include="..\OpenGLES\Metal\IndexedGLType.cpp" />
+    <ClCompile Include="..\OpenGLES\Metal\InputLayout.cpp" />
+    <ClCompile Include="..\OpenGLES\Metal\Shader.cpp" />
+    <ClCompile Include="..\OpenGLES\Metal\ShaderResource.cpp" />
+    <ClCompile Include="..\OpenGLES\Metal\State.cpp" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

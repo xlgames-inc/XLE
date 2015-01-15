@@ -1,0 +1,119 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClInclude Include="..\IDevice.h" />
+    <ClInclude Include="..\FlexBegin.h">
+      <Filter>Util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\FlexUtil.h">
+      <Filter>Util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\FlexEnd.h">
+      <Filter>Util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Metal\Buffer.h">
+      <Filter>Metal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Metal\DeviceContext.h">
+      <Filter>Metal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Metal\Format.h">
+      <Filter>Metal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Metal\InputLayout.h">
+      <Filter>Metal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Metal\Metal.h">
+      <Filter>Metal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Metal\Resource.h">
+      <Filter>Metal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Metal\Shader.h">
+      <Filter>Metal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Metal\ShaderResource.h">
+      <Filter>Metal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Metal\State.h">
+      <Filter>Metal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Metal\Types.h">
+      <Filter>Metal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Metal\Detail\DXGICompatibleFormats.h">
+      <Filter>Metal\Detail</Filter>
+    </ClInclude>
+    <ClInclude Include="..\OpenGLES\IDeviceOpenGLES.h">
+      <Filter>OpenGL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\OpenGLES\Device.h">
+      <Filter>OpenGL</Filter>
+    </ClInclude>
+    <ClInclude Include="..\DX11\IDeviceDX11.h">
+      <Filter>DX11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\DX11\Device.h">
+      <Filter>DX11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\IDevice_Forward.h" />
+    <ClInclude Include="..\Resource.h" />
+    <ClInclude Include="..\Metal\GPUProfiler.h">
+      <Filter>Metal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Documentation.h" />
+    <ClInclude Include="..\Assets\TransformationCommands.h">
+      <Filter>Assets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Assets\RawAnimationCurve.h">
+      <Filter>Assets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\RenderUtils.h" />
+    <ClInclude Include="..\FlexForward.h">
+      <Filter>Util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Metal\DeviceContextImpl.h">
+      <Filter>Metal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Metal\Forward.h">
+      <Filter>Metal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Metal\RenderTargetView.h">
+      <Filter>Metal</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Util">
+      <UniqueIdentifier>{5f155892-f1c2-4102-b583-3426992e62da}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="OpenGL">
+      <UniqueIdentifier>{24373ea3-cf47-4bb9-8a4b-f40bdd60c1c5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="DX11">
+      <UniqueIdentifier>{4e702656-778c-4255-9120-fcc8001bd006}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Metal">
+      <UniqueIdentifier>{54aa57dc-39a3-45ec-a541-8dc67cc6527f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Metal\Detail">
+      <UniqueIdentifier>{6b339f69-4f39-44fe-9925-0689009f20ed}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Assets">
+      <UniqueIdentifier>{992bd163-d560-4a3d-9a70-99471bcefb24}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\OpenGLES\Device.cpp">
+      <Filter>OpenGL</Filter>
+    </ClCompile>
+    <ClCompile Include="..\DX11\Device.cpp">
+      <Filter>DX11</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Resource.cpp" />
+    <ClCompile Include="..\Assets\RawAnimationCurve.cpp">
+      <Filter>Assets</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Version.cpp" />
+    <ClCompile Include="..\RenderUtils.cpp" />
+  </ItemGroup>
+</Project>

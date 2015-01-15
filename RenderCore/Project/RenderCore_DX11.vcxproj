@@ -1,0 +1,147 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug-DX11|Win32">
+      <Configuration>Debug-DX11</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug-DX11|x64">
+      <Configuration>Debug-DX11</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Profile-DX11|Win32">
+      <Configuration>Profile-DX11</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Profile-DX11|x64">
+      <Configuration>Profile-DX11</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release-DX11|Win32">
+      <Configuration>Release-DX11</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release-DX11|x64">
+      <Configuration>Release-DX11</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{E43E10B8-7CD4-A5D0-6270-17C50CB74ADF}</ProjectGuid>
+    <RootNamespace>RenderCore_DX11</RootNamespace>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <Import Project="..\..\Solutions\Main.props" />
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug-DX11|Win32'">
+    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug-DX11|x64'">
+    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile-DX11|Win32'">
+    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile-DX11|x64'">
+    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release-DX11|Win32'">
+    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release-DX11|x64'">
+    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup />
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug-DX11|Win32'">
+    <Lib>
+      <AdditionalDependencies>d3d11.lib;d3dx11.lib;dxerr.lib;dxguid.lib;d3dcompiler.lib</AdditionalDependencies>
+    </Lib>
+    <Link>
+      <AdditionalDependencies>d3d11.lib;d3dx11.lib;dxerr.lib%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <ClCompile />
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile-DX11|Win32'">
+    <Lib>
+      <AdditionalDependencies>d3d11.lib;d3dx11.lib;dxerr.lib;dxguid.lib;d3dcompiler.lib</AdditionalDependencies>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release-DX11|Win32'">
+    <Lib>
+      <AdditionalDependencies>d3d11.lib;d3dx11.lib;dxerr.lib;dxguid.lib;d3dcompiler.lib</AdditionalDependencies>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug-DX11|x64'">
+    <Lib>
+      <AdditionalDependencies>d3d11.lib;d3dx11.lib;dxerr.lib;dxguid.lib;d3dcompiler.lib</AdditionalDependencies>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile-DX11|x64'">
+    <Lib>
+      <AdditionalDependencies>d3d11.lib;d3dx11.lib;dxerr.lib;dxguid.lib;d3dcompiler.lib</AdditionalDependencies>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release-DX11|x64'">
+    <Lib>
+      <AdditionalDependencies>d3dx11.lib;dxerr.lib</AdditionalDependencies>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Assets\Project\Assets.vcxproj">
+      <Project>{fff83be8-5136-7370-2ee8-298176bea610}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Foreign\Project\Foreign.vcxproj">
+      <Project>{9f01282b-6297-4f87-a309-287c2c574b76}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Utility\Project\Utility.vcxproj">
+      <Project>{6b8011c1-2d1f-1ebb-b0ef-377b2e8e87ae}</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\DX11\Metal\Buffer.h" />
+    <ClInclude Include="..\DX11\Metal\DeviceContext.h" />
+    <ClInclude Include="..\DX11\Metal\DeviceContextImpl.h" />
+    <ClInclude Include="..\DX11\Metal\DX11.h" />
+    <ClInclude Include="..\DX11\Metal\DX11Utils.h" />
+    <ClInclude Include="..\DX11\Metal\Format.h" />
+    <ClInclude Include="..\DX11\Metal\Forward.h" />
+    <ClInclude Include="..\DX11\Metal\GPUProfiler.h" />
+    <ClInclude Include="..\DX11\Metal\IncludeDX11.h" />
+    <ClInclude Include="..\DX11\Metal\InputLayout.h" />
+    <ClInclude Include="..\DX11\Metal\RenderTargetView.h" />
+    <ClInclude Include="..\DX11\Metal\Resource.h" />
+    <ClInclude Include="..\DX11\Metal\Shader.h" />
+    <ClInclude Include="..\DX11\Metal\ShaderResource.h" />
+    <ClInclude Include="..\DX11\Metal\State.h" />
+    <ClInclude Include="..\DX11\Metal\Types.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\DX11\Metal\Buffer.cpp" />
+    <ClCompile Include="..\DX11\Metal\CompiledShaderByteCode.cpp" />
+    <ClCompile Include="..\DX11\Metal\DeviceContext.cpp" />
+    <ClCompile Include="..\DX11\Metal\DX11Utils.cpp" />
+    <ClCompile Include="..\DX11\Metal\Format.cpp" />
+    <ClCompile Include="..\DX11\Metal\GPUProfiler.cpp" />
+    <ClCompile Include="..\DX11\Metal\InputLayout.cpp" />
+    <ClCompile Include="..\DX11\Metal\RenderTargetView.cpp" />
+    <ClCompile Include="..\DX11\Metal\Shader.cpp" />
+    <ClCompile Include="..\DX11\Metal\ShaderResource.cpp" />
+    <ClCompile Include="..\DX11\Metal\State.cpp" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

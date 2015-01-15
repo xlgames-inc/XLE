@@ -1,0 +1,32 @@
+﻿<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="dogfood">
+
+  <Import Project="$(_NTDRIVE)$(_NTROOT)\wpf\src\Microsoft.WPF.Product.Settings.targets" />
+
+  <PropertyGroup> 
+    <TargetType>COPY</TargetType>
+    <PreprocessPLPath>$(_NTDRIVE)$(_NTROOT)\wpfoob\Ribbon\RibbonControlsLibrary\Themes\Generator\PreprocessXAML.pl</PreprocessPLPath>
+    <WorkingDirectory>$(_NTDRIVE)$(_NTROOT)\wpfoob\Ribbon\SamplesCommon</WorkingDirectory>
+  </PropertyGroup>
+    
+  <Import Project="$(_NTDRIVE)$(_NTROOT)\tools\Microsoft.DevDiv.Native.targets" />
+
+  <PropertyGroup>
+    <BuildGeneratedDependsOn>
+      GenerateThemes;
+      $(BuildGeneratedDependsOn)
+    </BuildGeneratedDependsOn>
+  </PropertyGroup>
+
+  <Target Name="GenerateThemes" 
+       Inputs="UserControlMvvm.xaml;UserControlWord.xaml"
+       Outputs="v3.5\UserControlMvvm.xaml;v3.5\UserControlWord.xaml;v4.0\UserControlMvvm.xaml;v4.0\UserControlWord.xaml">
+
+     <Exec Command="perl $(PreprocessPLPath) $(WorkingDirectory)\UserControlMvvm.xaml $(WorkingDirectory)\v3.5\UserControlMvvm.xaml Net35" />
+     <Exec Command="perl $(PreprocessPLPath) $(WorkingDirectory)\UserControlMvvm.xaml $(WorkingDirectory)\v4.0\UserControlMvvm.xaml Net40" />
+
+     <Exec Command="perl $(PreprocessPLPath) $(WorkingDirectory)\UserControlWord.xaml $(WorkingDirectory)\v3.5\UserControlWord.xaml Net35" />
+     <Exec Command="perl $(PreprocessPLPath) $(WorkingDirectory)\UserControlWord.xaml $(WorkingDirectory)\v4.0\UserControlWord.xaml Net40" />
+
+  </Target>
+
+</Project>

@@ -1,0 +1,618 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <ItemGroup>
+    <Compile Include="AssemblyAttrs.cs">
+        <Visible>True</Visible>
+        <Link>AssemblyAttrs.cs</Link>
+    </Compile>
+    <Compile Include="..\GlobalSuppressions.cs">
+        <Visible>True</Visible>
+        <Link>GlobalSuppressions.cs</Link>
+    </Compile>
+    <Compile Include="..\Resources\SR.cs">
+        <Visible>True</Visible>
+        <Link>Resources\SR.cs</Link>
+    </Compile>
+    <Compile Include="..\Resources\SRID.cs">
+        <Visible>True</Visible>
+        <Link>Resources\SRID.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Automation\Peers\RibbonApplicationMenuAutomationPeer.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Automation\Peers\RibbonApplicationMenuAutomationPeer.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Automation\Peers\RibbonButtonAutomationPeer.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Automation\Peers\RibbonButtonAutomationPeer.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Automation\Peers\RibbonCheckBoxAutomationPeer.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Automation\Peers\RibbonCheckBoxAutomationPeer.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Automation\Peers\RibbonControlAutomationPeer.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Automation\Peers\RibbonControlAutomationPeer.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Automation\Peers\RibbonControlDataAutomationPeer.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Automation\Peers\RibbonControlDataAutomationPeer.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Automation\Peers\RibbonControlGroupAutomationPeer.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Automation\Peers\RibbonControlGroupAutomationPeer.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Automation\Peers\RibbonRadioButtonAutomationPeer.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Automation\Peers\RibbonRadioButtonAutomationPeer.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Automation\Peers\RibbonTextBoxAutomationPeer.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Automation\Peers\RibbonTextBoxAutomationPeer.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Automation\Peers\RibbonToggleButtonAutomationPeer.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Automation\Peers\RibbonToggleButtonAutomationPeer.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Automation\Peers\RibbonToolTipAutomationPeer.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Automation\Peers\RibbonToolTipAutomationPeer.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Automation\Peers\RibbonAutomationPeer.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Automation\Peers\RibbonAutomationPeer.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Automation\Peers\RibbonComboBoxAutomationPeer.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Automation\Peers\RibbonComboBoxAutomationPeer.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Automation\Peers\RibbonContextMenuAutomationPeer.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Automation\Peers\RibbonContextMenuAutomationPeer.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Automation\Peers\RibbonContextualTabGroupAutomationPeer.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Automation\Peers\RibbonContextualTabGroupAutomationPeer.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Automation\Peers\RibbonContextualTabGroupDataAutomationPeer.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Automation\Peers\RibbonContextualTabGroupDataAutomationPeer.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Automation\Peers\RibbonContextualTabGroupItemsControlAutomationPeer.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Automation\Peers\RibbonContextualTabGroupItemsControlAutomationPeer.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Automation\Peers\RibbonGalleryAutomationPeer.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Automation\Peers\RibbonGalleryAutomationPeer.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Automation\Peers\RibbonGalleryCategoryAutomationPeer.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Automation\Peers\RibbonGalleryCategoryAutomationPeer.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Automation\Peers\RibbonGalleryCategoryDataAutomationPeer.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Automation\Peers\RibbonGalleryCategoryDataAutomationPeer.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Automation\Peers\RibbonGalleryItemAutomationPeer.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Automation\Peers\RibbonGalleryItemAutomationPeer.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Automation\Peers\RibbonGalleryItemDataAutomationPeer.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Automation\Peers\RibbonGalleryItemDataAutomationPeer.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Automation\Peers\RibbonGroupAutomationPeer.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Automation\Peers\RibbonGroupAutomationPeer.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Automation\Peers\RibbonGroupDataAutomationPeer.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Automation\Peers\RibbonGroupDataAutomationPeer.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Automation\Peers\RibbonGroupHeaderAutomationPeer.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Automation\Peers\RibbonGroupHeaderAutomationPeer.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Automation\Peers\RibbonMenuButtonAutomationPeer.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Automation\Peers\RibbonMenuButtonAutomationPeer.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Automation\Peers\RibbonMenuItemDataAutomationPeer.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Automation\Peers\RibbonMenuItemDataAutomationPeer.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Automation\Peers\RibbonMenuItemAutomationPeer.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Automation\Peers\RibbonMenuItemAutomationPeer.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Automation\Peers\RibbonQuickAccessToolBarAutomationPeer.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Automation\Peers\RibbonQuickAccessToolBarAutomationPeer.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Automation\Peers\RibbonSeparatorAutomationPeer.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Automation\Peers\RibbonSeparatorAutomationPeer.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Automation\Peers\RibbonSplitButtonAutomationPeer.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Automation\Peers\RibbonSplitButtonAutomationPeer.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Automation\Peers\RibbonTabAutomationPeer.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Automation\Peers\RibbonTabAutomationPeer.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Automation\Peers\RibbonTabDataAutomationPeer.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Automation\Peers\RibbonTabDataAutomationPeer.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Automation\Peers\RibbonTabHeaderAutomationPeer.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Automation\Peers\RibbonTabHeaderAutomationPeer.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Automation\Peers\RibbonTabHeaderDataAutomationPeer.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Automation\Peers\RibbonTabHeaderDataAutomationPeer.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Automation\Peers\RibbonTabHeaderItemsControlAutomationPeer.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Automation\Peers\RibbonTabHeaderItemsControlAutomationPeer.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Automation\Peers\RibbonTitleAutomationPeer.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Automation\Peers\RibbonTitleAutomationPeer.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Automation\Peers\RibbonTwoLineTextAutomationPeer.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Automation\Peers\RibbonTwoLineTextAutomationPeer.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\ActivatingKeyTipEventArgs.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\ActivatingKeyTipEventArgs.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\GenericValueConverters.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\GenericValueConverters.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Generated\PropertyHelper.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Generated\PropertyHelper.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Generated\TreeHelper.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Generated\TreeHelper.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Generated\WeakDictionary.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Generated\WeakDictionary.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Generated\WeakHashSet.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Generated\WeakHashSet.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Generated\WeakHashTable.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Generated\WeakHashTable.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\ItemContainerTemplate.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\ItemContainerTemplate.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\ItemContainerTemplateKey.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\ItemContainerTemplateKey.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\ItemContainerTemplateSelector.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\ItemContainerTemplateSelector.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\KeyTipAccessedEventArgs.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\KeyTipAccessedEventArgs.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\KeyTipAdorner.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\KeyTipAdorner.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\KeyTipControl.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\KeyTipControl.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\KeyTipHorizontalPlacement.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\KeyTipHorizontalPlacement.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\KeyTipService.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\KeyTipService.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\KeyTipVerticalPlacement.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\KeyTipVerticalPlacement.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\TextSearchInternal.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\TextSearchInternal.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\NativeMethods.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\NativeMethods.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\Primitives\IContainsStarLayoutManager.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\Primitives\IContainsStarLayoutManager.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\Primitives\IProvideStarLayoutInfo.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\Primitives\IProvideStarLayoutInfo.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\Primitives\IProvideStarLayoutInfoBase.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\Primitives\IProvideStarLayoutInfoBase.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\Primitives\ISupportStarLayout.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\Primitives\ISupportStarLayout.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\Primitives\RibbonContextualTabGroupsPanel.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\Primitives\RibbonContextualTabGroupsPanel.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\Primitives\RibbonGalleryCategoriesPanel.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\Primitives\RibbonGalleryCategoriesPanel.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\Primitives\RibbonGalleryItemsPanel.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\Primitives\RibbonGalleryItemsPanel.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\Primitives\RibbonGroupItemsPanel.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\Primitives\RibbonGroupItemsPanel.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\Primitives\RibbonGroupsPanel.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\Primitives\RibbonGroupsPanel.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\Primitives\RibbonMenuItemsPanel.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\Primitives\RibbonMenuItemsPanel.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\Primitives\RibbonQuickAccessToolBarOverflowPanel.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\Primitives\RibbonQuickAccessToolBarOverflowPanel.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\Primitives\RibbonQuickAccessToolBarPanel.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\Primitives\RibbonQuickAccessToolBarPanel.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\Primitives\RibbonScrollButtonVisibilityConverter.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\Primitives\RibbonScrollButtonVisibilityConverter.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\Primitives\RibbonTabHeadersPanel.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\Primitives\RibbonTabHeadersPanel.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\Primitives\RibbonTabsPanel.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\Primitives\RibbonTabsPanel.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\Primitives\RibbonTitlePanel.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\Primitives\RibbonTitlePanel.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\Primitives\RibbonWindowSmallIconConverter.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\Primitives\RibbonWindowSmallIconConverter.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\Primitives\StarLayoutInfo.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\Primitives\StarLayoutInfo.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\Ribbon.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\Ribbon.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonApplicationMenu.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonApplicationMenu.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonApplicationMenuItem.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonApplicationMenuItem.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonApplicationMenuItemLevel.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonApplicationMenuItemLevel.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonApplicationSplitMenuItem.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonApplicationSplitMenuItem.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonButton.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonButton.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonCheckBox.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonCheckBox.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonComboBox.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonComboBox.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonCommands.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonCommands.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonContextMenu.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonContextMenu.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonContextualTabGroup.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonContextualTabGroup.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonContextualTabGroupItemsControl.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonContextualTabGroupItemsControl.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonControl.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonControl.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonContentPresenter.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonContentPresenter.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonControlGroup.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonControlGroup.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonControlLength.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonControlLength.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonControlLengthConverter.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonControlLengthConverter.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonControlLengthUnitType.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonControlLengthUnitType.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonControlService.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonControlService.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonControlSizeDefinition.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonControlSizeDefinition.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonControlSizeDefinitionCollection.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonControlSizeDefinitionCollection.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonDismissPopupEventArgs.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonDismissPopupEventArgs.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonDismissPopupEventHandler.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonDismissPopupEventHandler.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonDismissPopupMode.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonDismissPopupMode.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonDropDownHelper.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonDropDownHelper.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonFilterMenuButton.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonFilterMenuButton.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonGallery.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonGallery.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonGalleryCategory.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonGalleryCategory.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonGalleryItem.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonGalleryItem.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonGroup.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonGroup.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonGroupSizeDefinition.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonGroupSizeDefinition.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonGroupSizeDefinitionBase.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonGroupSizeDefinitionBase.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonGroupSizeDefinitionBaseCollection.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonGroupSizeDefinitionBaseCollection.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonGroupTemplateSizeDefinition.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonGroupTemplateSizeDefinition.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonHelper.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonHelper.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonImageSize.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonImageSize.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonKeyTipAndContentSyncHelper.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonKeyTipAndContentSyncHelper.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonMenuButton.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonMenuButton.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonMenuItem.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonMenuItem.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonQuickAccessToolBar.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonQuickAccessToolBar.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonQuickAccessToolBarCloneEventArgs.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonQuickAccessToolBarCloneEventArgs.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonQuickAccessToolBarCloneEventHandler.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonQuickAccessToolBarCloneEventHandler.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonRadioButton.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonRadioButton.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonSeparator.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonSeparator.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonSplitButton.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonSplitButton.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonSplitButtonLabelPosition.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonSplitButtonLabelPosition.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonSplitMenuItem.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonSplitMenuItem.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonTab.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonTab.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonTabHeader.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonTabHeader.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonTabHeaderItemsControl.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonTabHeaderItemsControl.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonTextBox.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonTextBox.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonToggleButton.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonToggleButton.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonToolTip.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonToolTip.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonToolTipService.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonToolTipService.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonTwoLineText.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonTwoLineText.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\RibbonWindow.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\RibbonWindow.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Controls\Ribbon\StringCollectionConverter.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Controls\Ribbon\StringCollectionConverter.cs</Link>
+    </Compile>
+    <Compile Include="..\MS\Internal\Generated\DoubleUtil.cs">
+        <Visible>True</Visible>
+        <Link>MS\Internal\Generated\DoubleUtil.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Input\CommandHelpers.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Input\CommandHelpers.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Input\IPreviewCommand.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Input\IPreviewCommand.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft\Windows\Input\IPreviewCommandSource.cs">
+        <Visible>True</Visible>
+        <Link>Microsoft\Windows\Input\IPreviewCommandSource.cs</Link>
+    </Compile>
+    <EmbeddedResource Include="..\Resources\ExceptionStringTable.txt">
+      <Type>Resx</Type>
+      <WithCulture>false</WithCulture>
+      <ManifestResourceName>ExceptionStringTable</ManifestResourceName>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Page Include="Themes\Aero.NormalColor.xaml">
+        <Visible>True</Visible>
+    </Page>
+    <Page Include="Themes\Generic.xaml">
+        <Visible>True</Visible>
+    </Page>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="WindowsBase" />
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="PresentationFramework.Classic" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+    <Reference Include="UIAutomationProvider"/>
+    <Reference Include="UIAutomationTypes"/>
+    <Reference Include="Microsoft.Windows.Shell">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\WindowChrome\Microsoft.Windows.Shell.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Images\DefaultSystemIcon.png"/>
+    <Resource Include="Images\GlassyDefaultSystemIcon.png"/>
+  </ItemGroup>
+
+  <PropertyGroup>
+    <!-- OutputPath controls where *.dll.lce files are dropped to and must be backslash-terminated.
+         BinplaceRoot controls where *.dll files are dropped to and does not need to be backslash-terminated.
+         It is necessary to define these properties here after importing targets to override imported values. -->
+    <OutputPath>$(OutputPath)\$(TargetFrameworkVersion)\</OutputPath>
+    <BinplaceRoot>$(OutputPath)</BinplaceRoot>
+  </PropertyGroup>
+
+  <!-- The 3.5 and 4.0 SxS builds stomp over the copy of RibbonControlsLibrary.pdb under Symbols.pri.
+       Caching the PDBs in a SxS subfolder allows them to both exist after the build, which is what setup needs. -->
+  <Target Name="_SxSPlaceSymbols"
+          AfterTargets="PlaceSymbols">
+    <PropertyGroup>
+      <Origin>$(IntermediateOutputPath)$(TargetName).pdb</Origin>
+      <Destination>$(_NTTREE)\wpf\$(TargetFrameworkVersion)\$(TargetName).pdb</Destination>
+    </PropertyGroup>
+
+    <Copy SourceFiles="$(Origin)"
+          DestinationFiles="$(Destination)"/>
+
+    <Message Text="Successfully copied $(Origin) to $(Destination)."/>
+  </Target>
+
+</Project>

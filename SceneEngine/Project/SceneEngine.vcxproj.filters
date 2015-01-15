@@ -1,0 +1,210 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="..\AmbientOcclusion.cpp">
+      <Filter>Lighting And Processing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Tonemap.cpp">
+      <Filter>Lighting And Processing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Techniques.cpp">
+      <Filter>Fundamentals</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ScreenspaceReflections.cpp">
+      <Filter>Lighting And Processing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\TiledLighting.cpp">
+      <Filter>Lighting And Processing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\VolumetricFog.cpp">
+      <Filter>Objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Noise.cpp">
+      <Filter>Fundamentals</Filter>
+    </ClCompile>
+    <ClCompile Include="..\MetricsBox.cpp">
+      <Filter>Fundamentals</Filter>
+    </ClCompile>
+    <ClCompile Include="..\OrderIndependentTransparency.cpp">
+      <Filter>Lighting And Processing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Shadows.cpp">
+      <Filter>Lighting And Processing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RefractionsBuffer.cpp">
+      <Filter>Fundamentals</Filter>
+    </ClCompile>
+    <ClCompile Include="..\LightingParser.cpp" />
+    <ClCompile Include="..\Rain.cpp">
+      <Filter>Objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\LightingParserStandardPlugin.cpp" />
+    <ClCompile Include="..\LightingParserResolve.cpp" />
+    <ClCompile Include="..\LightingTargets.cpp">
+      <Filter>Lighting And Processing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\DualContour.cpp">
+      <Filter>Objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\DualContourRender.cpp">
+      <Filter>Objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ShallowWater.cpp">
+      <Filter>Objects\Water</Filter>
+    </ClCompile>
+    <ClCompile Include="..\VegetationSpawn.cpp">
+      <Filter>Objects\Terrain</Filter>
+    </ClCompile>
+    <ClCompile Include="..\TerrainCollisions.cpp">
+      <Filter>Objects\Terrain</Filter>
+    </ClCompile>
+    <ClCompile Include="..\TerrainRender.cpp">
+      <Filter>Objects\Terrain</Filter>
+    </ClCompile>
+    <ClCompile Include="..\TerrainUberSurface.cpp">
+      <Filter>Objects\Terrain</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Sky.cpp">
+      <Filter>Objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\CommonResources.cpp">
+      <Filter>Fundamentals</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Ocean.cpp">
+      <Filter>Objects\Water</Filter>
+    </ClCompile>
+    <ClCompile Include="..\SceneEngineUtility.cpp">
+      <Filter>Fundamentals</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Terrain.cpp">
+      <Filter>Objects\Terrain</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RenderingUtils.cpp">
+      <Filter>Objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\PlacementsManager.cpp">
+      <Filter>Objects\Placements</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\AmbientOcclusion.h">
+      <Filter>Lighting And Processing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Tonemap.h">
+      <Filter>Lighting And Processing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ScreenspaceReflections.h">
+      <Filter>Lighting And Processing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\TiledLighting.h">
+      <Filter>Lighting And Processing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\VolumetricFog.h">
+      <Filter>Objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Noise.h">
+      <Filter>Fundamentals</Filter>
+    </ClInclude>
+    <ClInclude Include="..\LightingParserContext.h" />
+    <ClInclude Include="..\MetricsBox.h">
+      <Filter>Fundamentals</Filter>
+    </ClInclude>
+    <ClInclude Include="..\OrderIndependentTransparency.h">
+      <Filter>Lighting And Processing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Shadows.h">
+      <Filter>Lighting And Processing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\RefractionsBuffer.h">
+      <Filter>Fundamentals</Filter>
+    </ClInclude>
+    <ClInclude Include="..\LightingParser.h" />
+    <ClInclude Include="..\Rain.h">
+      <Filter>Objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\LightingParserStandardPlugin.h" />
+    <ClInclude Include="..\SceneParser.h" />
+    <ClInclude Include="..\LightingTargets.h">
+      <Filter>Lighting And Processing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\LightDesc.h">
+      <Filter>Fundamentals</Filter>
+    </ClInclude>
+    <ClInclude Include="..\DualContourRender.h">
+      <Filter>Objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\DualContour.h">
+      <Filter>Objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ShallowWater.h">
+      <Filter>Objects\Water</Filter>
+    </ClInclude>
+    <ClInclude Include="..\VegetationSpawn.h">
+      <Filter>Objects\Terrain</Filter>
+    </ClInclude>
+    <ClInclude Include="..\TerrainUberSurface.h">
+      <Filter>Objects\Terrain</Filter>
+    </ClInclude>
+    <ClInclude Include="..\TerrainInternal.h">
+      <Filter>Objects\Terrain</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Sky.h">
+      <Filter>Objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\CommonResources.h">
+      <Filter>Fundamentals</Filter>
+    </ClInclude>
+    <ClInclude Include="..\SimplePatchBox.h">
+      <Filter>Objects\Water</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Ocean.h">
+      <Filter>Objects\Water</Filter>
+    </ClInclude>
+    <ClInclude Include="..\SurfaceHeightsProvider.h">
+      <Filter>Objects\Terrain</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ResourceBox.h">
+      <Filter>Fundamentals</Filter>
+    </ClInclude>
+    <ClInclude Include="..\SceneEngineUtility.h">
+      <Filter>Fundamentals</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Terrain.h">
+      <Filter>Objects\Terrain</Filter>
+    </ClInclude>
+    <ClInclude Include="..\OITInternal.h">
+      <Filter>Lighting And Processing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\RenderingUtils.h">
+      <Filter>Objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\PlacementsManager.h">
+      <Filter>Objects\Placements</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Lighting And Processing">
+      <UniqueIdentifier>{b1a29e5d-ca8e-41a4-ba6b-550720bff25d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Objects">
+      <UniqueIdentifier>{d28acf54-204a-44b7-a004-91333fdd2d12}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Fundamentals">
+      <UniqueIdentifier>{4257b9f7-4cc9-48fb-989c-fb66c9ddfe5c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Objects\Terrain">
+      <UniqueIdentifier>{04f4d0ac-cba0-42a9-b3b9-0d697301592e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Objects\Water">
+      <UniqueIdentifier>{cc12c877-d536-48a8-9a52-c4d2510d9859}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Objects\Placements">
+      <UniqueIdentifier>{b9e4b894-412f-424d-aaf9-39412fdfbc62}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\Techniques.h">
+      <Filter>Fundamentals</Filter>
+    </None>
+  </ItemGroup>
+</Project>

@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClInclude Include="..\Assets.h" />
+    <ClInclude Include="..\AssetUtils.h" />
+    <ClInclude Include="..\BlockSerializer.h" />
+    <ClInclude Include="..\ChunkFile.h" />
+    <ClInclude Include="..\CompileAndAsyncManager.h" />
+    <ClInclude Include="..\IntermediateResources.h" />
+    <ClInclude Include="..\ArchiveCache.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\Assets.cpp" />
+    <ClCompile Include="..\AssetUtils.cpp" />
+    <ClCompile Include="..\BlockSerializer.cpp" />
+    <ClCompile Include="..\ChunkFile.cpp" />
+    <ClCompile Include="..\CompileAndAsyncManager.cpp" />
+    <ClCompile Include="..\IntermediateResources.cpp" />
+    <ClCompile Include="..\ArchiveCache.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+  </ItemGroup>
+</Project>

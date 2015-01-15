@@ -1,0 +1,34 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="..\DX11\Metal\DX11Utils.cpp" />
+    <ClCompile Include="..\DX11\Metal\Buffer.cpp" />
+    <ClCompile Include="..\DX11\Metal\DeviceContext.cpp" />
+    <ClCompile Include="..\DX11\Metal\Format.cpp" />
+    <ClCompile Include="..\DX11\Metal\InputLayout.cpp" />
+    <ClCompile Include="..\DX11\Metal\Shader.cpp" />
+    <ClCompile Include="..\DX11\Metal\ShaderResource.cpp" />
+    <ClCompile Include="..\DX11\Metal\State.cpp" />
+    <ClCompile Include="..\DX11\Metal\GPUProfiler.cpp" />
+    <ClCompile Include="..\DX11\Metal\RenderTargetView.cpp" />
+    <ClCompile Include="..\DX11\Metal\CompiledShaderByteCode.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\DX11\Metal\DX11.h" />
+    <ClInclude Include="..\DX11\Metal\DX11Utils.h" />
+    <ClInclude Include="..\DX11\Metal\IncludeDX11.h" />
+    <ClInclude Include="..\DX11\Metal\Types.h" />
+    <ClInclude Include="..\DX11\Metal\Buffer.h" />
+    <ClInclude Include="..\DX11\Metal\DeviceContext.h" />
+    <ClInclude Include="..\DX11\Metal\Format.h" />
+    <ClInclude Include="..\DX11\Metal\InputLayout.h" />
+    <ClInclude Include="..\DX11\Metal\Resource.h" />
+    <ClInclude Include="..\DX11\Metal\Shader.h" />
+    <ClInclude Include="..\DX11\Metal\ShaderResource.h" />
+    <ClInclude Include="..\DX11\Metal\State.h" />
+    <ClInclude Include="..\DX11\Metal\GPUProfiler.h" />
+    <ClInclude Include="..\DX11\Metal\RenderTargetView.h" />
+    <ClInclude Include="..\DX11\Metal\Forward.h" />
+    <ClInclude Include="..\DX11\Metal\DeviceContextImpl.h" />
+  </ItemGroup>
+</Project>

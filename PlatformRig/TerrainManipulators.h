@@ -1,0 +1,86 @@
+// Copyright 2015 XLGAMES Inc.
+//
+// Distributed under the MIT License (See
+// accompanying file "LICENSE" or the website
+// http://www.opensource.org/licenses/mit-license.php)
+
+#pragma once
+
+#include "ManipulatorsUtil.h"
+#include "../RenderCore/Metal/Forward.h"
+#include "../RenderOverlays/DebuggingDisplay.h"
+#include "../Utility/IntrusivePtr.h"
+#include <memory>
+
+namespace RenderOverlays { class IOverlayContext; namespace DebuggingDisplay { class InputSnapshot; class IInputListener; class InterfaceState; struct Layout; class Interactables; class DebugScreensSystem; }; class Font; }
+namespace SceneEngine { class LightingParserContext; class TerrainManager; class ISceneParser; class TechniqueContext; }
+
+namespace Tools
+{
+    class TerrainHitTestContext
+    {
+    public:
+        SceneEngine::TerrainManager* _terrainManager;
+        SceneEngine::ISceneParser* _sceneParser;
+        SceneEngine::TechniqueContext* _techniqueContext;
+        Int2 _viewportSize;
+
+        TerrainHitTestContext(
+            SceneEngine::TerrainManager& terrainManager,
+            SceneEngine::ISceneParser& sceneParser,
+            SceneEngine::TechniqueContext& techniqueContext,
+            const Int2& viewportSize)
+        : _terrainManager(&terrainManager)
+        , _sceneParser(&sceneParser)
+        , _techniqueContext(&techniqueContext)
+        , _viewportSize(viewportSize) {}
+    };
+
+    std::pair<Float3, bool> FindTerrainIntersection(TerrainHitTestContext& context, Int2 screenCoord);
+
+    class ManipulatorsInterface : public std::enable_shared_from_this<ManipulatorsInterface>
+    {
+    public:
+        void    Render( RenderCore::Metal::DeviceContext* context, 
+                        SceneEngine::LightingParserContext& parserContext);
+        void    Update();
+
+        void SelectManipulator(signed relativeIndex);
+        IManipulator* GetActiveManipulator() const { return _manipulators[_activeManipulatorIndex].get(); }
+
+        std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener>   CreateInputListener(
+            std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem> debugScreensSystem = nullptr);
+
+        ManipulatorsInterface(
+            std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
+            std::shared_ptr<SceneEngine::ISceneParser> sceneParser,
+            std::shared_ptr<SceneEngine::TechniqueContext> techniqueContext);
+        ~ManipulatorsInterface();
+    private:
+        std::vector<std::unique_ptr<IManipulator>> _manipulators;
+        unsigned _activeManipulatorIndex;
+
+        std::shared_ptr<SceneEngine::TerrainManager>    _terrainManager;
+        std::shared_ptr<SceneEngine::ISceneParser>      _sceneParser;
+        std::shared_ptr<SceneEngine::TechniqueContext>  _techniqueContext;
+
+        class InputListener;
+    };
+
+    class ManipulatorsDisplay : public RenderOverlays::DebuggingDisplay::IWidget
+    {
+    public:
+        void    Render( RenderOverlays::IOverlayContext* context, RenderOverlays::DebuggingDisplay::Layout& layout, 
+                        RenderOverlays::DebuggingDisplay::Interactables&interactables, 
+                        RenderOverlays::DebuggingDisplay::InterfaceState& interfaceState);
+        bool    ProcessInput(RenderOverlays::DebuggingDisplay::InterfaceState& interfaceState, const RenderOverlays::DebuggingDisplay::InputSnapshot& input);
+
+        ManipulatorsDisplay(std::shared_ptr<ManipulatorsInterface> interf);
+        ~ManipulatorsDisplay();
+
+    private:
+        std::shared_ptr<ManipulatorsInterface> _manipulatorsInterface;
+    };
+}
+
+

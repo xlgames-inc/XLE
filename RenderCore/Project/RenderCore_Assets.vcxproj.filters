@@ -1,0 +1,61 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Assets">
+      <UniqueIdentifier>{80580aee-0551-47f0-bee7-55b8c97df241}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\Assets\ModelRunTime.cpp">
+      <Filter>Assets</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Assets\NascentTransformationMachine.cpp">
+      <Filter>Assets</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Assets\ModelSimple.cpp">
+      <Filter>Assets</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Assets\ModelSimpleRenderer.cpp">
+      <Filter>Assets</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Assets\SharedStateSet.cpp" />
+    <ClCompile Include="..\Assets\SkinningRunTime.cpp">
+      <Filter>Assets</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Assets\AssetUtils.cpp" />
+    <ClCompile Include="..\Assets\ColladaCompilerInterface.cpp">
+      <Filter>Assets</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Assets\TerrainFormat.cpp">
+      <Filter>Assets</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Assets\ModelRunTime.h">
+      <Filter>Assets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Assets\TransformationCommands.h">
+      <Filter>Assets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Assets\NascentTransformationMachine.h">
+      <Filter>Assets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Assets\ModelSimple.h">
+      <Filter>Assets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Assets\SharedStateSet.h" />
+    <ClInclude Include="..\Assets\ModelRunTimeInternal.h">
+      <Filter>Assets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Assets\AssetUtils.h" />
+    <ClInclude Include="..\Assets\ColladaCompilerInterface.h">
+      <Filter>Assets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Assets\TerrainFormat.h">
+      <Filter>Assets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Assets\AnimationRunTime.h">
+      <Filter>Assets</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

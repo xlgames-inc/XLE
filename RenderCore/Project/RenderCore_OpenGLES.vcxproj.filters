@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClInclude Include="..\OpenGLES\Metal\Types.h" />
+    <ClInclude Include="..\OpenGLES\Metal\Buffer.h" />
+    <ClInclude Include="..\OpenGLES\Metal\DeviceContext.h" />
+    <ClInclude Include="..\OpenGLES\Metal\Format.h" />
+    <ClInclude Include="..\OpenGLES\Metal\IndexedGLType.h" />
+    <ClInclude Include="..\OpenGLES\Metal\InputLayout.h" />
+    <ClInclude Include="..\OpenGLES\Metal\Resource.h" />
+    <ClInclude Include="..\OpenGLES\Metal\Shader.h" />
+    <ClInclude Include="..\OpenGLES\Metal\ShaderResource.h" />
+    <ClInclude Include="..\OpenGLES\Metal\State.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\OpenGLES\Metal\Buffer.cpp" />
+    <ClCompile Include="..\OpenGLES\Metal\DeviceContext.cpp" />
+    <ClCompile Include="..\OpenGLES\Metal\Format.cpp" />
+    <ClCompile Include="..\OpenGLES\Metal\IndexedGLType.cpp" />
+    <ClCompile Include="..\OpenGLES\Metal\InputLayout.cpp" />
+    <ClCompile Include="..\OpenGLES\Metal\Shader.cpp" />
+    <ClCompile Include="..\OpenGLES\Metal\ShaderResource.cpp" />
+    <ClCompile Include="..\OpenGLES\Metal\State.cpp" />
+  </ItemGroup>
+</Project>

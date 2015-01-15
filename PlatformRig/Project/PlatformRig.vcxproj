@@ -1,0 +1,299 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="NsightTegraProject">
+    <NsightTegraProjectRevisionNumber>4</NsightTegraProjectRevisionNumber>
+  </PropertyGroup>
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Tegra-Android">
+      <Configuration>Debug</Configuration>
+      <Platform>Tegra-Android</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Profile|Tegra-Android">
+      <Configuration>Profile</Configuration>
+      <Platform>Tegra-Android</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Profile|Win32">
+      <Configuration>Profile</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Profile|x64">
+      <Configuration>Profile</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Tegra-Android">
+      <Configuration>Release</Configuration>
+      <Platform>Tegra-Android</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{E3BE4078-FC62-469C-B9F7-2447C6F88A50}</ProjectGuid>
+    <RootNamespace>PlatformRig</RootNamespace>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">
+    <AndroidAPILevel>android-18</AndroidAPILevel>
+    <PlatformToolset>x86-4.8</PlatformToolset>
+    <AndroidMinAPI>android-17</AndroidMinAPI>
+    <AndroidTargetAPI>android-17</AndroidTargetAPI>
+    <AndroidMaxAPI />
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'">
+    <AndroidAPILevel>android-18</AndroidAPILevel>
+    <PlatformToolset>x86-4.8</PlatformToolset>
+    <AndroidMinAPI>android-17</AndroidMinAPI>
+    <AndroidTargetAPI>android-17</AndroidTargetAPI>
+    <AndroidMaxAPI />
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'">
+    <AndroidAPILevel>android-18</AndroidAPILevel>
+    <PlatformToolset>x86-4.8</PlatformToolset>
+    <AndroidMinAPI>android-17</AndroidMinAPI>
+    <AndroidTargetAPI>android-17</AndroidTargetAPI>
+    <AndroidMaxAPI />
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <Import Project="..\..\Solutions\Main.props" />
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">
+    <Import Project="..\..\Foreign\LuaBridge-1.0.2\LuaBridgeForClients.props" />
+    <Import Project="..\..\Foreign\lua-5.2.2\LuaForClients.props" />
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="..\..\Foreign\LuaBridge-1.0.2\LuaBridgeForClients.props" />
+    <Import Project="..\..\Foreign\lua-5.2.2\LuaForClients.props" />
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="..\..\Foreign\LuaBridge-1.0.2\LuaBridgeForClients.props" />
+    <Import Project="..\..\Foreign\lua-5.2.2\LuaForClients.props" />
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'">
+    <Import Project="..\..\Foreign\LuaBridge-1.0.2\LuaBridgeForClients.props" />
+    <Import Project="..\..\Foreign\lua-5.2.2\LuaForClients.props" />
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">
+    <Import Project="..\..\Foreign\LuaBridge-1.0.2\LuaBridgeForClients.props" />
+    <Import Project="..\..\Foreign\lua-5.2.2\LuaForClients.props" />
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">
+    <Import Project="..\..\Foreign\LuaBridge-1.0.2\LuaBridgeForClients.props" />
+    <Import Project="..\..\Foreign\lua-5.2.2\LuaForClients.props" />
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'">
+    <Import Project="..\..\Foreign\LuaBridge-1.0.2\LuaBridgeForClients.props" />
+    <Import Project="..\..\Foreign\lua-5.2.2\LuaForClients.props" />
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="..\..\Foreign\LuaBridge-1.0.2\LuaBridgeForClients.props" />
+    <Import Project="..\..\Foreign\lua-5.2.2\LuaForClients.props" />
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="..\..\Foreign\LuaBridge-1.0.2\LuaBridgeForClients.props" />
+    <Import Project="..\..\Foreign\lua-5.2.2\LuaForClients.props" />
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup />
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">
+    <Link>
+      <EchoCommandLines>true</EchoCommandLines>
+      <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
+      <AndroidSystemLibs>c;m;log;gcc;android;egl;GLESv1_CM</AndroidSystemLibs>
+    </Link>
+    <ClCompile>
+      <AdditionalOptions>-std=c++11 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'">
+    <ClCompile>
+      <AdditionalOptions>-std=c++11 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'">
+    <ClCompile>
+      <AdditionalOptions>-std=c++11 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Link>
+      <DelayLoadDLLs>RenderCoreDX11.dll;RenderCoreOpenGL.dll;BufferUploadsOpenGL.dll;TestDll.dll;libEGL.dll;libGLESv2.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
+      <AdditionalDependencies>ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <ClCompile />
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">
+    <Link>
+      <AdditionalDependencies>ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Link>
+      <AdditionalDependencies>ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Link>
+      <AdditionalDependencies>ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">
+    <Link>
+      <AdditionalDependencies>ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="..\Android\AndroidStartup.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\Android\android_native_app_glue.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\CameraManager.cpp" />
+    <ClCompile Include="..\DebuggingDisplays\BufferUploadDisplay.cpp" />
+    <ClCompile Include="..\DebuggingDisplays\ConsoleDisplay.cpp" />
+    <ClCompile Include="..\DebuggingDisplays\GPUProfileDisplay.cpp" />
+    <ClCompile Include="..\DebuggingDisplays\PlacementsDisplay.cpp" />
+    <ClCompile Include="..\DebuggingDisplays\TestDisplays.cpp" />
+    <ClCompile Include="..\FrameRig.cpp" />
+    <ClCompile Include="..\InitDebugDisplays.cpp" />
+    <ClCompile Include="..\InputTranslator.cpp" />
+    <ClCompile Include="..\MainInputHandler.cpp" />
+    <ClCompile Include="..\MeshNode.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\PlacementsManipulators.cpp" />
+    <ClCompile Include="..\PlatformRigUtil.cpp" />
+    <ClCompile Include="..\StatePropagation.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\TerrainManipulators.cpp" />
+    <ClCompile Include="..\UnitCamera.cpp" />
+    <ClCompile Include="..\WinAPI\AllocationProfiler.cpp" />
+    <ClCompile Include="..\WinAPI\OverlappedWindow.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Assets\Project\Assets.vcxproj">
+      <Project>{fff83be8-5136-7370-2ee8-298176bea610}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\BufferUploads\Project\BufferUploads.vcxproj">
+      <Project>{e4d5cfa9-07d2-5a61-9991-2186eb30f680}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\ConsoleRig\Project\ConsoleRig.vcxproj">
+      <Project>{587a5b72-36e9-ff50-36f4-c0e96bbfa841}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\CryCompat\Project\CryCompat.vcxproj">
+      <Project>{793dece6-3319-78d7-b1f0-4ae3e5651b9d}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Foreign\Project\Foreign.vcxproj">
+      <Project>{9f01282b-6297-4f87-a309-287c2c574b76}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Math\Project\Math.vcxproj">
+      <Project>{2e51aa64-7e29-cd4a-fb7f-bac486a3575c}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\RenderCore\Project\RenderCore.vcxproj">
+      <Project>{116fe083-50bc-1393-470f-f834ef6e02ff}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\RenderCore\Project\RenderCore_Assets.vcxproj">
+      <Project>{e767b944-6637-78fc-a32d-a7a82dc83385}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\RenderOverlays\Project\RenderOverlays.vcxproj">
+      <Project>{726e12f1-b69b-188d-390b-3a1e1889126d}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\SceneEngine\Project\SceneEngine.vcxproj">
+      <Project>{0a40e6ed-47cc-a08e-71c5-8a3515d81eaf}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Utility\Project\Utility.vcxproj">
+      <Project>{6b8011c1-2d1f-1ebb-b0ef-377b2e8e87ae}</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\AllocationProfiler.h" />
+    <ClInclude Include="..\Android\android_native_app_glue.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="..\CameraManager.h" />
+    <ClInclude Include="..\DebuggingDisplays\BufferUploadDisplay.h" />
+    <ClInclude Include="..\DebuggingDisplays\ConsoleDisplay.h" />
+    <ClInclude Include="..\DebuggingDisplays\GPUProfileDisplay.h" />
+    <ClInclude Include="..\DebuggingDisplays\PlacementsDisplay.h" />
+    <ClInclude Include="..\DebuggingDisplays\TestDisplays.h" />
+    <ClInclude Include="..\FrameRig.h" />
+    <ClInclude Include="..\InputTranslator.h" />
+    <ClInclude Include="..\MainInputHandler.h" />
+    <ClInclude Include="..\ManipulatorsUtil.h" />
+    <ClInclude Include="..\MeshNode.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="..\OverlappedWindow.h" />
+    <ClInclude Include="..\PlacementsManipulators.h" />
+    <ClInclude Include="..\PlatformRigUtil.h" />
+    <ClInclude Include="..\StatePropagation.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="..\TerrainManipulators.h" />
+    <ClInclude Include="..\UnitCamera.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

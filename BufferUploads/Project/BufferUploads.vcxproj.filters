@@ -1,0 +1,37 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClInclude Include="..\BufferUploads_Manager.h" />
+    <ClInclude Include="..\MemoryManagement.h" />
+    <ClInclude Include="..\ResourceSource.h" />
+    <ClInclude Include="..\ThreadContext.h" />
+    <ClInclude Include="..\PlatformInterface.h" />
+    <ClInclude Include="..\IBufferUploads.h" />
+    <ClInclude Include="..\IBufferUploads_Forward.h" />
+    <ClInclude Include="..\Documentation.h" />
+    <ClInclude Include="..\DataPacket.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\BufferUploads_Manager.cpp" />
+    <ClCompile Include="..\MemoryManagement.cpp" />
+    <ClCompile Include="..\ResourceSource.cpp" />
+    <ClCompile Include="..\ThreadContext.cpp" />
+    <ClCompile Include="..\BufferUploads.cpp" />
+    <ClCompile Include="..\PlatformInterface.cpp" />
+    <ClCompile Include="..\DX11\PlatformInterfaceDX11.cpp">
+      <Filter>DX11</Filter>
+    </ClCompile>
+    <ClCompile Include="..\OpenGL\PlatformInterfaceOpenGL.cpp">
+      <Filter>OpenGL</Filter>
+    </ClCompile>
+    <ClCompile Include="..\DataPacket.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="DX11">
+      <UniqueIdentifier>{267ff5ff-c06d-49a4-9daa-d83f67d066d0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="OpenGL">
+      <UniqueIdentifier>{6434b243-2d74-4f67-bcaf-7a325d4ab405}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

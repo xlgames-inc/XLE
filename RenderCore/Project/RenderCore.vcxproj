@@ -1,0 +1,335 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="NsightTegraProject">
+    <NsightTegraProjectRevisionNumber>4</NsightTegraProjectRevisionNumber>
+  </PropertyGroup>
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug-DX11|x64">
+      <Configuration>Debug-DX11</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug-OpenGL|Win32">
+      <Configuration>Debug-OpenGL</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug-DX11|Win32">
+      <Configuration>Debug-DX11</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug-OpenGL|x64">
+      <Configuration>Debug-OpenGL</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Profile-DX11|x64">
+      <Configuration>Profile-DX11</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Profile-OpenGL|Win32">
+      <Configuration>Profile-OpenGL</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Profile-DX11|Win32">
+      <Configuration>Profile-DX11</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Profile-OpenGL|x64">
+      <Configuration>Profile-OpenGL</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release-DX11|x64">
+      <Configuration>Release-DX11</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release-OpenGL|Win32">
+      <Configuration>Release-OpenGL</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release-DX11|Win32">
+      <Configuration>Release-DX11</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|Tegra-Android">
+      <Configuration>Debug</Configuration>
+      <Platform>Tegra-Android</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Profile|Tegra-Android">
+      <Configuration>Profile</Configuration>
+      <Platform>Tegra-Android</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release-OpenGL|x64">
+      <Configuration>Release-OpenGL</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Tegra-Android">
+      <Configuration>Release</Configuration>
+      <Platform>Tegra-Android</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Dummy1|Tegra-Android">
+      <Configuration>Dummy1</Configuration>
+      <Platform>Tegra-Android</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Dummy2|Tegra-Android">
+      <Configuration>Dummy2</Configuration>
+      <Platform>Tegra-Android</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Dummy3|Tegra-Android">
+      <Configuration>Dummy3</Configuration>
+      <Platform>Tegra-Android</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{116FE083-50BC-1393-470F-F834EF6E02FF}</ProjectGuid>
+    <RootNamespace>RenderCore</RootNamespace>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration">
+    <ConfigurationType Condition="'$(Configuration)|$(Platform)'=='Debug-OpenGL|Win32'">StaticLibrary</ConfigurationType>
+    <ConfigurationType Condition="'$(Configuration)|$(Platform)'=='Debug-OpenGL|x64'">StaticLibrary</ConfigurationType>
+    <ConfigurationType Condition="'$(Configuration)|$(Platform)'=='Debug-DX11|Win32'">StaticLibrary</ConfigurationType>
+    <ConfigurationType Condition="'$(Configuration)|$(Platform)'=='Debug-DX11|x64'">StaticLibrary</ConfigurationType>
+    <AndroidAPILevel Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">android-18</AndroidAPILevel>
+    <AndroidAPILevel Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'">android-18</AndroidAPILevel>
+    <AndroidAPILevel Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'">android-18</AndroidAPILevel>
+    <PlatformToolset Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">x86-4.8</PlatformToolset>
+    <PlatformToolset Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'">x86-4.8</PlatformToolset>
+    <PlatformToolset Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'">x86-4.8</PlatformToolset>
+    <AndroidMinAPI Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">android-17</AndroidMinAPI>
+    <AndroidTargetAPI Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">android-17</AndroidTargetAPI>
+    <AndroidMaxAPI Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'" />
+    <AndroidMinAPI Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'">android-17</AndroidMinAPI>
+    <AndroidTargetAPI Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'">android-17</AndroidTargetAPI>
+    <AndroidMaxAPI Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'" />
+    <AndroidMinAPI Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'">android-17</AndroidMinAPI>
+    <AndroidTargetAPI Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'">android-17</AndroidTargetAPI>
+    <AndroidMaxAPI Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'" />
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <Import Project="..\..\Solutions\Main.props" />
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug-OpenGL|Win32'">
+    <Import Project="..\..\Foreign\angleproject\AngleForClients.props" />
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+    <Import Project="..\..\Solutions\Arch_WinAPI\VersionNumbering.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug-OpenGL|x64'" Label="PropertySheets">
+    <Import Project="..\..\Foreign\angleproject\AngleForClients.props" />
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+    <Import Project="..\..\Solutions\Arch_WinAPI\VersionNumbering.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile-OpenGL|Win32'">
+    <Import Project="..\..\Foreign\angleproject\AngleForClients.props" />
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+    <Import Project="..\..\Solutions\Arch_WinAPI\VersionNumbering.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Profile-OpenGL|x64'" Label="PropertySheets">
+    <Import Project="..\..\Foreign\angleproject\AngleForClients.props" />
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+    <Import Project="..\..\Solutions\Arch_WinAPI\VersionNumbering.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release-OpenGL|Win32'">
+    <Import Project="..\..\Foreign\angleproject\AngleForClients.props" />
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+    <Import Project="..\..\Solutions\Arch_WinAPI\VersionNumbering.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release-OpenGL|x64'" Label="PropertySheets">
+    <Import Project="..\..\Foreign\angleproject\AngleForClients.props" />
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+    <Import Project="..\..\Solutions\Arch_WinAPI\VersionNumbering.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug-DX11|Win32'">
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+    <Import Project="..\..\Solutions\Arch_WinAPI\VersionNumbering.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug-DX11|x64'" Label="PropertySheets">
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+    <Import Project="..\..\Solutions\Arch_WinAPI\VersionNumbering.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile-DX11|Win32'">
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+    <Import Project="..\..\Solutions\Arch_WinAPI\VersionNumbering.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Profile-DX11|x64'" Label="PropertySheets">
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+    <Import Project="..\..\Solutions\Arch_WinAPI\VersionNumbering.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release-DX11|Win32'">
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+    <Import Project="..\..\Solutions\Arch_WinAPI\VersionNumbering.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release-DX11|x64'" Label="PropertySheets">
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+    <Import Project="..\..\Solutions\Arch_WinAPI\VersionNumbering.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+    <Import Project="..\..\Solutions\Arch_WinAPI\VersionNumbering.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'">
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+    <Import Project="..\..\Solutions\Arch_WinAPI\VersionNumbering.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'">
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+    <Import Project="..\..\Solutions\Arch_WinAPI\VersionNumbering.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Dummy1|Tegra-Android'">
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+    <Import Project="..\..\Solutions\Arch_WinAPI\VersionNumbering.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Dummy2|Tegra-Android'">
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+    <Import Project="..\..\Solutions\Arch_WinAPI\VersionNumbering.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Dummy3|Tegra-Android'">
+    <Import Project="..\..\Foreign\CommonForClients.props" />
+    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+    <Import Project="..\..\Solutions\Arch_WinAPI\VersionNumbering.props" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup />
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">
+    <ClCompile>
+      <AdditionalOptions>-std=c++11 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'">
+    <ClCompile>
+      <AdditionalOptions>-std=c++11 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'">
+    <ClCompile>
+      <AdditionalOptions>-std=c++11 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug-DX11|Win32'">
+    <PreLinkEvent />
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Assets\RawAnimationCurve.h" />
+    <ClInclude Include="..\Assets\TransformationCommands.h" />
+    <ClInclude Include="..\Documentation.h" />
+    <ClInclude Include="..\DX11\Device.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-OpenGL|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-OpenGL|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile-OpenGL|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile-OpenGL|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release-OpenGL|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release-OpenGL|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="..\DX11\IDeviceDX11.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-OpenGL|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-OpenGL|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile-OpenGL|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile-OpenGL|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release-OpenGL|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release-OpenGL|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="..\FlexForward.h" />
+    <ClInclude Include="..\IDevice.h" />
+    <ClInclude Include="..\FlexBegin.h" />
+    <ClInclude Include="..\FlexEnd.h" />
+    <ClInclude Include="..\FlexUtil.h" />
+    <ClInclude Include="..\IDevice_Forward.h" />
+    <ClInclude Include="..\Metal\Buffer.h" />
+    <ClInclude Include="..\Metal\Detail\DXGICompatibleFormats.h" />
+    <ClInclude Include="..\Metal\DeviceContext.h" />
+    <ClInclude Include="..\Metal\DeviceContextImpl.h" />
+    <ClInclude Include="..\Metal\Format.h" />
+    <ClInclude Include="..\Metal\Forward.h" />
+    <ClInclude Include="..\Metal\GPUProfiler.h" />
+    <ClInclude Include="..\Metal\InputLayout.h" />
+    <ClInclude Include="..\Metal\Metal.h" />
+    <ClInclude Include="..\Metal\RenderTargetView.h" />
+    <ClInclude Include="..\Metal\Resource.h" />
+    <ClInclude Include="..\Metal\Shader.h" />
+    <ClInclude Include="..\Metal\ShaderResource.h" />
+    <ClInclude Include="..\Metal\State.h" />
+    <ClInclude Include="..\Metal\Types.h" />
+    <ClInclude Include="..\OpenGLES\Device.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-DX11|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-DX11|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile-DX11|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile-DX11|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release-DX11|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release-DX11|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="..\OpenGLES\IDeviceOpenGLES.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-DX11|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-DX11|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile-DX11|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile-DX11|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release-DX11|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release-DX11|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="..\RenderUtils.h" />
+    <ClInclude Include="..\Resource.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Utility\Project\Utility.vcxproj">
+      <Project>{6b8011c1-2d1f-1ebb-b0ef-377b2e8e87ae}</Project>
+    </ProjectReference>
+    <ProjectReference Include="RenderCore_DX11.vcxproj">
+      <Project>{e43e10b8-7cd4-a5d0-6270-17c50cb74adf}</Project>
+    </ProjectReference>
+    <ProjectReference Include="RenderCore_OpenGLES.vcxproj">
+      <Project>{13d648df-8842-9ef7-46c5-910550130776}</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\Assets\RawAnimationCurve.cpp" />
+    <ClCompile Include="..\DX11\Device.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-OpenGL|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-OpenGL|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile-OpenGL|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile-OpenGL|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release-OpenGL|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release-OpenGL|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\OpenGLES\Device.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-DX11|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-DX11|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile-DX11|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile-DX11|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release-DX11|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release-DX11|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\RenderUtils.cpp" />
+    <ClCompile Include="..\Resource.cpp" />
+    <ClCompile Include="..\Version.cpp" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

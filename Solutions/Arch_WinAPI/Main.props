@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+		<!--    
+		
+				Import the correct property sheets based on the configuration variables
+				
+		-->
+
+  <PropertyGroup Label="UserMacros">
+    <RawConfiguration Condition="$(Configuration.Contains('-'))">$(Configuration.Split("-")[0])</RawConfiguration>
+	<GfxConfiguration Condition="$(Configuration.Contains('-'))">$(Configuration.Split("-")[1])</GfxConfiguration>
+	<RawConfiguration Condition="! $(Configuration.Contains('-'))">$(Configuration)</RawConfiguration>
+	<GfxConfiguration Condition="! $(Configuration.Contains('-'))"></GfxConfiguration>
+  </PropertyGroup>
+  
+  <ImportGroup Label="PropertySheets">
+    <Import Project="allconfigurations.props" />
+  </ImportGroup>
+  
+  <ImportGroup Label="PropertySheets" Condition="'$(Platform)'=='Win32'" >
+    <Import Project="x86.props" />
+  </ImportGroup>
+  
+  <ImportGroup Label="PropertySheets" Condition="'$(Platform)'=='x64'" >
+    <Import Project="x64.props" />
+  </ImportGroup>
+  
+  <ImportGroup Label="PropertySheets" Condition="'$(RawConfiguration)'=='Debug'" >
+    <Import Project="debug.props" />
+  </ImportGroup>
+  
+  <ImportGroup Label="PropertySheets" Condition="'$(RawConfiguration)'=='Profile'" >
+    <Import Project="profile.props" />
+  </ImportGroup>
+  
+  <ImportGroup Label="PropertySheets" Condition="'$(RawConfiguration)'=='Release'" >
+    <Import Project="release.props" />
+  </ImportGroup>
+  
+  <ImportGroup Label="PropertySheets" >
+    <Import Condition="'$(GfxConfiguration)'==''" Project="gfx_Default.props" />
+	<Import Condition="'$(GfxConfiguration)'!=''" Project="gfx_$(GfxConfiguration).props" />
+  </ImportGroup>
+ 
+</Project>

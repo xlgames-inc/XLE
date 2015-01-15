@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <ItemGroup>
+    <Compile Include="..\GlobalSuppressions.cs">
+      <Visible>True</Visible>
+      <Link>GlobalSuppressions.cs</Link>
+    </Compile>
+    <Compile Include="..\ViewModel\ApplicationMenuItemData.cs">
+      <Visible>True</Visible>
+      <Link>ViewModel\ApplicationMenuItemData.cs</Link>
+    </Compile>
+    <Compile Include="..\ViewModel\ApplicationSplitMenuItemData.cs">
+      <Visible>True</Visible>
+      <Link>ViewModel\ApplicationSplitMenuItemData.cs</Link>
+    </Compile>
+    <Compile Include="..\ViewModel\ButtonData.cs">
+      <Visible>True</Visible>
+      <Link>ViewModel\ButtonData.cs</Link>
+    </Compile>
+    <Compile Include="..\ViewModel\CheckBoxData.cs">
+      <Visible>True</Visible>
+      <Link>ViewModel\CheckBoxData.cs</Link>
+    </Compile>
+    <Compile Include="..\ViewModel\ComboBoxData.cs">
+      <Visible>True</Visible>
+      <Link>ViewModel\ComboBoxData.cs</Link>
+    </Compile>
+    <Compile Include="..\ViewModel\ContextualTabGroupData.cs">
+      <Visible>True</Visible>
+      <Link>ViewModel\ContextualTabGroupData.cs</Link>
+    </Compile>
+    <Compile Include="..\ViewModel\ControlData.cs">
+      <Visible>True</Visible>
+      <Link>ViewModel\ControlData.cs</Link>
+    </Compile>
+    <Compile Include="..\ViewModel\GalleryCategoryData.cs">
+      <Visible>True</Visible>
+      <Link>ViewModel\GalleryCategoryData.cs</Link>
+    </Compile>
+    <Compile Include="..\ViewModel\GalleryData.cs">
+      <Visible>True</Visible>
+      <Link>ViewModel\GalleryData.cs</Link>
+    </Compile>
+    <Compile Include="..\ViewModel\GalleryItemData.cs">
+      <Visible>True</Visible>
+      <Link>ViewModel\GalleryItemData.cs</Link>
+    </Compile>
+    <Compile Include="..\ViewModel\GroupData.cs">
+      <Visible>True</Visible>
+      <Link>ViewModel\GroupData.cs</Link>
+    </Compile>
+    <Compile Include="..\ViewModel\MenuButtonData.cs">
+      <Visible>True</Visible>
+      <Link>ViewModel\MenuButtonData.cs</Link>
+    </Compile>
+    <Compile Include="..\ViewModel\MenuItemData.cs">
+      <Visible>True</Visible>
+      <Link>ViewModel\MenuItemData.cs</Link>
+    </Compile>
+    <Compile Include="..\ViewModel\QatItem.cs">
+      <Visible>True</Visible>
+      <Link>ViewModel\QatItem.cs</Link>
+    </Compile>
+    <Compile Include="..\ViewModel\QatItems.cs">
+      <Visible>True</Visible>
+      <Link>ViewModel\QatItems.cs</Link>
+    </Compile>
+    <Compile Include="..\ViewModel\RadioButtonData.cs">
+      <Visible>True</Visible>
+      <Link>ViewModel\RadioButtonData.cs</Link>
+    </Compile>
+    <Compile Include="..\ViewModel\RecentDocumentData.cs">
+      <Visible>True</Visible>
+      <Link>ViewModel\RecentDocumentData.cs</Link>
+    </Compile>
+    <Compile Include="..\ViewModel\RibbonData.cs">
+      <Visible>True</Visible>
+      <Link>ViewModel\RibbonData.cs</Link>
+    </Compile>
+    <Compile Include="..\ViewModel\SeparatorData.cs">
+      <Visible>True</Visible>
+      <Link>ViewModel\SeparatorData.cs</Link>
+    </Compile>
+    <Compile Include="..\ViewModel\SplitButtonData.cs">
+      <Visible>True</Visible>
+      <Link>ViewModel\SplitButtonData.cs</Link>
+    </Compile>
+    <Compile Include="..\ViewModel\SplitMenuItemData.cs">
+      <Visible>True</Visible>
+      <Link>ViewModel\SplitMenuItemData.cs</Link>
+    </Compile>
+    <Compile Include="..\ViewModel\TabData.cs">
+      <Visible>True</Visible>
+      <Link>ViewModel\TabData.cs</Link>
+    </Compile>
+    <Compile Include="..\ViewModel\TextBoxData.cs">
+      <Visible>True</Visible>
+      <Link>ViewModel\TextBoxData.cs</Link>
+    </Compile>
+    <Compile Include="..\ViewModel\ToggleButtonData.cs">
+      <Visible>True</Visible>
+      <Link>ViewModel\ToggleButtonData.cs</Link>
+    </Compile>
+    <Compile Include="..\ViewModel\ViewModel.cs">
+      <Visible>True</Visible>
+      <Link>ViewModel\ViewModel.cs</Link>
+    </Compile>
+    <Compile Include="..\ViewModel\ThemeFonts.cs">
+      <Visible>True</Visible>
+      <Link>ViewModel\ThemeFonts.cs</Link>
+    </Compile>
+    <Compile Include="..\ViewModel\StylesSet.cs">
+      <Visible>True</Visible>
+      <Link>ViewModel\StylesSet.cs</Link>
+    </Compile>
+    <Compile Include="..\ViewModel\RowColumnCount.cs">
+      <Visible>True</Visible>
+      <Link>ViewModel\RowColumnCount.cs</Link>
+    </Compile>
+    <Compile Include="..\ViewModel\WordModel.cs">
+      <Visible>True</Visible>
+      <Link>ViewModel\WordModel.cs</Link>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Images\AlignCenter_16x16.png" />
+    <Resource Include="Images\AlignLeft_16x16.png" />
+    <Resource Include="Images\AlignRight_16x16.png" />
+    <Resource Include="Images\Bold_16x16.png" />
+    <Resource Include="Images\Borders_16x16.png" />
+    <Resource Include="Images\BordersAndShading_16x16.png" />
+    <Resource Include="Images\BottomBorder_16x16.png" />
+    <Resource Include="Images\Bullets_16x16.png" />
+    <Resource Include="Images\ChooseColor_16x16.png" />
+    <Resource Include="Images\ClearFormatting_16x16.png" />
+    <Resource Include="Images\Close_16x16.png" />
+    <Resource Include="Images\Color_16x16.png" />
+    <Resource Include="Images\ColorPalette.png" />
+    <Resource Include="Images\ConnectionManager_48x48.png" />
+    <Resource Include="Images\Copy_16x16.png" />
+    <Resource Include="Images\Cut_16x16.png" />
+    <Resource Include="Images\DecreaseIndent_16x16.png" />
+    <Resource Include="Images\Default_16x16.png" />
+    <Resource Include="Images\DiagonalDownBorder_16x16.png" />
+    <Resource Include="Images\DiagonalUpBorder_16x16.png" />
+    <Resource Include="Images\Document_16x16.png" />
+    <Resource Include="Images\DownArrow_16x16.png" />
+    <Resource Include="Images\DownArrow_32x32.png" />
+    <Resource Include="Images\DrawTable_16x16.png" />
+    <Resource Include="Images\EditRedo_16x16.png" />
+    <Resource Include="Images\EditUndo_16x16.png" />
+    <Resource Include="Images\Erase_16x16.png" />
+    <Resource Include="Images\Find_16x16.png" />
+    <Resource Include="Images\Find_32x32.png" />
+    <Resource Include="Images\Font_16x16.png" />
+    <Resource Include="Images\Font_32x32.png" />
+    <Resource Include="Images\FolderClosed_48x48.png" />
+    <Resource Include="Images\FontColor_16x16.png" />
+    <Resource Include="Images\FontScript_16x16.png" />
+    <Resource Include="Images\Forecolor_16x16.png" />
+    <Resource Include="Images\FormatPainter_16x16.png" />
+    <Resource Include="Images\GoTo_16x16.png" />
+    <Resource Include="Images\Help_16x16.png" />
+    <Resource Include="Images\Highlight_16x16.png" />
+    <Resource Include="Images\IncreaseIndent_16x16.png" />
+    <Resource Include="Images\InsideBorders_16x16.png" />
+    <Resource Include="Images\InsideHorizontalBorder_16x16.png" />
+    <Resource Include="Images\InsideVerticalBorder_16x16.png" />
+    <Resource Include="Images\Italic_16x16.png" />
+    <Resource Include="Images\Justify_16x16.png" />
+    <Resource Include="Images\LeftArrow_32x32.png" />
+    <Resource Include="Images\LeftBorder_16x16.png" />
+    <Resource Include="Images\LineColor_16x16.png" />
+    <Resource Include="Images\LineSpacing_16x16.png" />
+    <Resource Include="Images\Minus_32x32.png" />
+    <Resource Include="Images\MultilevelList_16x16.png" />
+    <Resource Include="Images\NewDocument_16x16.png" />
+    <Resource Include="Images\NewPermission_32x32.png" />
+    <Resource Include="Images\NoBorder_16x16.png" />
+    <Resource Include="Images\Numbering_16x16.png" />
+    <Resource Include="Images\Open_16x16.png" />
+    <Resource Include="Images\Options_16x16.png" />
+    <Resource Include="Images\OuterBorders_16x16.png" />
+    <Resource Include="Images\Paragraph_16x16.png" />
+    <Resource Include="Images\Paragraph_32x32.png" />
+    <Resource Include="Images\ParagraphSpacing_16x16.png" />
+    <Resource Include="Images\Paste_16x16.png" />
+    <Resource Include="Images\Paste_32x32.png" />
+    <Resource Include="Images\Plus_32x32.png" />
+    <Resource Include="Images\Print_16x16.png" />
+    <Resource Include="Images\Printer_48x48.png" />
+    <Resource Include="Images\PrintPreview_16x16.png" />
+    <Resource Include="Images\PublishPlan_16x16.png" />
+    <Resource Include="Images\RefreshArrow_32x32.png" />
+    <Resource Include="Images\Replace_16x16.png" />
+    <Resource Include="Images\RightArrow_32x32.png" />
+    <Resource Include="Images\RightBorder_16x16.png" />
+    <Resource Include="Images\Save_16x16.png" />
+    <Resource Include="Images\SelectionPane_16x16.png" />
+    <Resource Include="Images\Select_16x16.png" />
+    <Resource Include="Images\SendLinkByEmail_32x32.png" />
+    <Resource Include="Images\Shading_16x16.png" />
+    <Resource Include="Images\ShowHide_16x16.png" />
+    <Resource Include="Images\ShowGridlines_16x16.png" />
+    <Resource Include="Images\Sort_16x16.png" />
+    <Resource Include="Images\StylesGroup.png" />
+    <Resource Include="Images\Styles_32x32.png" />
+    <Resource Include="Images\Tick_32x32.png" />
+    <Resource Include="Images\ThemeFonts.png" />
+    <Resource Include="Images\TopBorder_16x16.png" />
+    <Resource Include="Images\UpArrow_16x16.png" />
+    <Resource Include="Images\UpArrow_32x32.png" />
+    <Resource Include="Images\Table_32x32.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+    <Reference Include="WindowsBase" />
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="UIAutomationProvider" />
+    <Reference Include="Microsoft.Windows.Shell">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\WindowChrome\Microsoft.Windows.Shell.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Page Include="..\$(TargetFrameworkVersion)\UserControlWord.xaml">
+      <Visible>True</Visible>
+      <Link>UserControlWord.xaml</Link>
+    </Page>
+    <Compile Include="..\DelegateCommand.cs">
+      <Visible>True</Visible>
+      <Link>SamplesCommon\DelegateCommand.cs</Link>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\UserControlWord.xaml.cs">
+      <DependentUpon>UserControlWord.xaml</DependentUpon>
+      <Visible>True</Visible>
+      <Link>UserControlWord.xaml.cs</Link>
+    </Compile>
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,156 @@
+// Copyright 2015 XLGAMES Inc.
+//
+// Distributed under the MIT License (See
+// accompanying file "LICENSE" or the website
+// http://www.opensource.org/licenses/mit-license.php)
+
+#pragma once
+
+#include "SelectConfiguration.h"
+
+#if COMPILER_ACTIVE == COMPILER_TYPE_MSVC
+
+    #define never_throws    throw()
+    #define force_inline    __forceinline
+    #define dll_export      __declspec(dllexport)
+    #define dll_import      __declspec(dllimport)
+    #define thread_local    __declspec(thread)
+
+#elif COMPILER_ACTIVE == COMPILER_TYPE_GCC
+
+    #define never_throws    noexcept
+    #define force_inline    __attribute__(( always_inline ))
+
+    #if PLATFORMOS_ACTIVE == PLATFORMOS_ANDROID 
+            // no dll export/import on android?
+        #define dll_export      
+        #define dll_import      
+    #else
+        #define dll_export      __attribute__(( dllexport ))
+        #define dll_import      __attribute__(( dllimport ))
+    #endif
+
+#endif
+
+#pragma warning(disable:4481)   //  warning C4481: nonstandard extension used: override specifier 'override'
+
+#if !defined(dimof)
+    #define dimof(x) (sizeof(x)/sizeof(*x))
+#endif
+
+    //
+    //      See similar values in stdlib.h & in the windows headers
+    //      Let's just use the same maximums for all platforms!
+    //      There's also PATH_MAX (in limits.h) but this can be
+    //      defined to a higher value for some platforms. That may
+    //      not be exactly what we want -- ideally path sizes should
+    //      be similar on all platforms.
+    //
+static const unsigned MaxPath         = 260;    /* max. length of full pathname */
+static const unsigned MaxDrive        =   3;    /* max. length of drive component */
+static const unsigned MaxDir          = 256;    /* max. length of path component */
+static const unsigned MaxFilename     = 256;    /* max. length of file name component */
+static const unsigned MaxExtension    = 256;    /* max. length of extension component */
+
+// #ifndef c_assert
+//     #define c_assert(expr)  typedef char __assertarray__[(expr) ? 1 : -1]; 
+// #endif
+
+typedef void* XlHandle;
+
+#if COMPILER_ACTIVE == COMPILER_TYPE_GCC
+
+        // useful!
+    // #pragma GCC poison printf sprintf fprintf
+
+#endif
+
+#if CLIBRARIES_ACTIVE == CLIBRARIES_MSVC && defined(_DEBUG)
+
+    #include <crtdbg.h>
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+        //
+        //      DavidJ --   After including some of the standard headers, we
+        //                  can redefined new to add some debugging information
+        //                  in the call.
+        //
+        //                  This is incompatible with certain uses of the "new"
+        //                  keyword. For example, when defining an operator new
+        //                  override, or when using the placement new. In these
+        //                  cases, we just temporarily undefine new using the
+        //                  following pattern:
+        //
+        //                  #undef new
+        //                      ....
+        //                  #if defined(DEBUG_NEW)
+        //                      #define new DEBUG_NEW
+        //                  #endif
+        //
+        //                  In C++11, we shouldn't be using new directly as often,
+        //                  so maybe there's a better way to do this kind of tracking?
+        //
+    #if defined(_CRTDBG_MAP_ALLOC)
+        #define DEBUG_NEW new(_NORMAL_BLOCK, __FILE__, __LINE__)
+        #define new DEBUG_NEW
+    #endif
+
+#endif
+
+#if defined(_DEBUG)
+    #define DEBUG_ONLY(x)       x
+#else
+    #define DEBUG_ONLY(x)       
+#endif
+
+template<typename Type>
+    inline void DeleteAndClear(Type*& ptr)
+    {
+        delete ptr;
+        ptr = nullptr;
+    }
+
+template<typename Type>
+    inline void ReleaseAndClear(Type*& ptr)
+    {
+        if (ptr) {
+            ptr->Release();
+            ptr = nullptr;
+        }
+    }
+
+template<typename Type>
+    inline void DeleteArrayAndClear(Type*& ptr)
+    {
+        delete ptr;
+        ptr = nullptr;
+    }
+
+#if !defined(foreach)
+    #define foreach(iteratorName, ContainerType, container)                                         \
+        for (auto iteratorName=container.begin(); iteratorName!=container.end(); ++iteratorName)    \
+        /**/
+#endif
+
+#if !defined(foreach_const)
+    #define foreach_const(iteratorName, ContainerType, container)                                   \
+        for (auto iteratorName=container.cbegin(); iteratorName!=container.cend(); ++iteratorName)  \
+        /**/
+#endif
+
+    /// <summary>Wraps a compile condition for a if() statement<summary>
+    /// Visual Studio produces "Conditional Expression is Constant" warnings
+    /// when a static boolean value is used in a condition. This is a simple
+    /// way to explicitly specify that the condition is a static/compile time
+    /// condition and avoid any warnings.
+    /// eg:
+    ///     <example>
+    ///         <code>\code
+    ///             if (constant_expression<sizeof(void*) == 4>::result()) {
+    ///                 ...
+    ///             }
+    ///         \endcode</code>
+    ///     </example>
+
+template<bool B> struct constant_expression    { static bool result() { return true; } };
+template<> struct constant_expression<false>   { static bool result() { return false; } };

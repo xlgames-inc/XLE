@@ -1,0 +1,87 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="..\Android\AndroidStartup.cpp">
+      <Filter>Android</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Android\android_native_app_glue.cpp">
+      <Filter>Android</Filter>
+    </ClCompile>
+    <ClCompile Include="..\DebuggingDisplays\BufferUploadDisplay.cpp">
+      <Filter>DebuggingDisplays</Filter>
+    </ClCompile>
+    <ClCompile Include="..\DebuggingDisplays\ConsoleDisplay.cpp">
+      <Filter>DebuggingDisplays</Filter>
+    </ClCompile>
+    <ClCompile Include="..\UnitCamera.cpp" />
+    <ClCompile Include="..\MeshNode.cpp" />
+    <ClCompile Include="..\StatePropagation.cpp" />
+    <ClCompile Include="..\DebuggingDisplays\GPUProfileDisplay.cpp">
+      <Filter>DebuggingDisplays</Filter>
+    </ClCompile>
+    <ClCompile Include="..\TerrainManipulators.cpp" />
+    <ClCompile Include="..\DebuggingDisplays\TestDisplays.cpp">
+      <Filter>DebuggingDisplays</Filter>
+    </ClCompile>
+    <ClCompile Include="..\DebuggingDisplays\PlacementsDisplay.cpp">
+      <Filter>DebuggingDisplays</Filter>
+    </ClCompile>
+    <ClCompile Include="..\WinAPI\OverlappedWindow.cpp">
+      <Filter>WinAPI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\InputTranslator.cpp" />
+    <ClCompile Include="..\CameraManager.cpp" />
+    <ClCompile Include="..\FrameRig.cpp" />
+    <ClCompile Include="..\WinAPI\AllocationProfiler.cpp">
+      <Filter>WinAPI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\MainInputHandler.cpp" />
+    <ClCompile Include="..\InitDebugDisplays.cpp" />
+    <ClCompile Include="..\PlatformRigUtil.cpp" />
+    <ClCompile Include="..\PlacementsManipulators.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="WinAPI">
+      <UniqueIdentifier>{39caec9c-78ac-4a06-bb00-baa7925243e9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Android">
+      <UniqueIdentifier>{3854a6ac-c366-4f20-bdf9-dab7ae2e0bba}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="DebuggingDisplays">
+      <UniqueIdentifier>{098c1dee-3664-4b79-8185-90241d5cb3ee}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Android\android_native_app_glue.h">
+      <Filter>Android</Filter>
+    </ClInclude>
+    <ClInclude Include="..\DebuggingDisplays\BufferUploadDisplay.h">
+      <Filter>DebuggingDisplays</Filter>
+    </ClInclude>
+    <ClInclude Include="..\DebuggingDisplays\ConsoleDisplay.h">
+      <Filter>DebuggingDisplays</Filter>
+    </ClInclude>
+    <ClInclude Include="..\UnitCamera.h" />
+    <ClInclude Include="..\MeshNode.h" />
+    <ClInclude Include="..\StatePropagation.h" />
+    <ClInclude Include="..\DebuggingDisplays\GPUProfileDisplay.h">
+      <Filter>DebuggingDisplays</Filter>
+    </ClInclude>
+    <ClInclude Include="..\TerrainManipulators.h" />
+    <ClInclude Include="..\DebuggingDisplays\TestDisplays.h">
+      <Filter>DebuggingDisplays</Filter>
+    </ClInclude>
+    <ClInclude Include="..\DebuggingDisplays\PlacementsDisplay.h">
+      <Filter>DebuggingDisplays</Filter>
+    </ClInclude>
+    <ClInclude Include="..\OverlappedWindow.h" />
+    <ClInclude Include="..\InputTranslator.h" />
+    <ClInclude Include="..\CameraManager.h" />
+    <ClInclude Include="..\FrameRig.h" />
+    <ClInclude Include="..\AllocationProfiler.h" />
+    <ClInclude Include="..\MainInputHandler.h" />
+    <ClInclude Include="..\PlatformRigUtil.h" />
+    <ClInclude Include="..\ManipulatorsUtil.h" />
+    <ClInclude Include="..\PlacementsManipulators.h" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,117 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Threading">
+      <UniqueIdentifier>{36b28b53-fa90-488a-89f1-71eac6498dee}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="WinAPI">
+      <UniqueIdentifier>{0019eb24-3eca-4500-b8a6-6ff3cd4efdd3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Streams">
+      <UniqueIdentifier>{6e7234cd-6279-4638-805a-4bf03f09a533}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Threading\WinAPI">
+      <UniqueIdentifier>{6ebfb316-ea82-4873-a54c-e29c8a732bae}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Streams\WinAPI">
+      <UniqueIdentifier>{2f6757b0-3ec8-4973-9f6d-a72e1ed52906}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\BitUtils.h" />
+    <ClInclude Include="..\MemoryUtils.h" />
+    <ClInclude Include="..\Mixins.h" />
+    <ClInclude Include="..\PtrUtils.h" />
+    <ClInclude Include="..\StringFormat.h" />
+    <ClInclude Include="..\StringUtils.h" />
+    <ClInclude Include="..\UTFUtils.h" />
+    <ClInclude Include="..\Threading\ThreadingUtils.h">
+      <Filter>Threading</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Threading\ThreadObject.h">
+      <Filter>Threading</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Threading\LockFree.h">
+      <Filter>Threading</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Threading\Mutex.h">
+      <Filter>Threading</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Streams\PathUtils.h">
+      <Filter>Streams</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Streams\Stream.h">
+      <Filter>Streams</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Streams\StreamTypes.h">
+      <Filter>Streams</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Streams\Data.h">
+      <Filter>Streams</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Streams\FileUtils.h">
+      <Filter>Streams</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ArithmeticUtils.h" />
+    <ClInclude Include="..\SystemUtils.h" />
+    <ClInclude Include="..\TimeUtils.h" />
+    <ClInclude Include="..\BitHeap.h" />
+    <ClInclude Include="..\HeapUtils.h" />
+    <ClInclude Include="..\IntrusivePtr.h" />
+    <ClInclude Include="..\IteratorUtils.h" />
+    <ClInclude Include="..\MiniHeap.h" />
+    <ClInclude Include="..\Threading\ThreadLibrary.h">
+      <Filter>Threading</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Conversion.h" />
+    <ClInclude Include="..\Streams\DataSerialize.h">
+      <Filter>Streams</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Streams\FileSystemMonitor.h">
+      <Filter>Streams</Filter>
+    </ClInclude>
+    <ClInclude Include="..\WinAPI\WinAPIWrapper.h">
+      <Filter>WinAPI</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\StringFormat.cpp" />
+    <ClCompile Include="..\StringUtils.cpp" />
+    <ClCompile Include="..\UTFUtils.cpp" />
+    <ClCompile Include="..\xl_snprintf.cpp" />
+    <ClCompile Include="..\WinAPI\System_WinAPI.cpp">
+      <Filter>WinAPI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Streams\PathUtils.cpp">
+      <Filter>Streams</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Streams\Stream.cpp">
+      <Filter>Streams</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Streams\Data.cpp">
+      <Filter>Streams</Filter>
+    </ClCompile>
+    <ClCompile Include="..\WinAPI\StringUtils_WinAPI.cpp">
+      <Filter>WinAPI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Threading\WinAPI\ThreadObject_WinAPI.cpp">
+      <Filter>Threading\WinAPI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\StringFormatTime.cpp" />
+    <ClCompile Include="..\ArithmeticUtils.cpp" />
+    <ClCompile Include="..\ExceptionUtils.cpp" />
+    <ClCompile Include="..\HashUtils.cpp" />
+    <ClCompile Include="..\Streams\WinAPI\FileSystemMonitor_WinAPI.cpp">
+      <Filter>Streams\WinAPI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Streams\FileUtils.cpp">
+      <Filter>Streams</Filter>
+    </ClCompile>
+    <ClCompile Include="..\BitUtils.cpp" />
+    <ClCompile Include="..\HeapUtils.cpp" />
+    <ClCompile Include="..\MiniHeap.cpp" />
+    <ClCompile Include="..\Streams\WinAPI\FileUtils_WinAPI.cpp">
+      <Filter>Streams\WinAPI</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

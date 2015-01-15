@@ -1,0 +1,1061 @@
+// Copyright 2015 XLGAMES Inc.
+//
+// Distributed under the MIT License (See
+// accompanying file "LICENSE" or the website
+// http://www.opensource.org/licenses/mit-license.php)
+
+#include "ModelRunTime.h"
+#include "ModelRunTimeInternal.h"
+#include "RawAnimationCurve.h"
+#include "AssetUtils.h"     // actually just needed for chunk id
+#include "../RenderUtils.h"
+
+#include "../Metal/Shader.h"
+#include "../Metal/InputLayout.h"
+#include "../Metal/DeviceContext.h"
+#include "../Metal/DeviceContextImpl.h"
+
+#include "../../SceneEngine/ResourceBox.h"
+#include "../../SceneEngine/Techniques.h"
+#include "../../ConsoleRig/Console.h"
+#include "../../ConsoleRig/Log.h"
+#include "../../Assets/ChunkFile.h"
+#include "../../Utility/Streams/FileUtils.h"
+
+#include "../../SceneEngine/LightingParserContext.h"       // (for debugging rendering)
+
+#include "../DX11/Metal/IncludeDX11.h"
+
+#pragma warning(disable:4127)       // conditional expression is constant
+
+namespace RenderCore { namespace Assets
+{
+    using namespace SceneEngine;
+
+    class HashedInputAssemblies
+    {
+    public:
+        class Desc
+        {
+        public:
+            uint64 _hash;
+            Desc(uint64 hash) : _hash(hash) {}
+        };
+
+        std::vector<Metal::InputElementDesc> _elements;
+        HashedInputAssemblies(const Desc& ) {}
+    };
+
+    class SkinningBindingBox
+    {
+    public:
+        struct BindingType { enum Enum { tbuffer, cbuffer }; };
+        class Desc
+        {
+        public:
+            BindingType::Enum _bindingType;
+            uint64 _iaHash;
+            unsigned _vertexStride;
+            Desc(BindingType::Enum bindingType, uint64 iaHash, unsigned vertexStride) : _bindingType(bindingType), _iaHash(iaHash), _vertexStride(vertexStride) {}
+        };
+
+        void    Start(  Metal::DeviceContext& context, 
+                        Metal::VertexBuffer& destinationVertexBuffer,
+                        std::shared_ptr<std::vector<uint8>> constantBufferPackets[], 
+                        size_t constantBufferPacketsCount,
+                        Metal::ShaderResourceView* tbufferResource);
+        void    End(Metal::DeviceContext& context);
+        void    Apply(Metal::DeviceContext& context, unsigned materialIndexValue);
+
+        SkinningBindingBox(const Desc& desc);
+
+        Metal::GeometryShader       _geometryShader;
+        Metal::BoundUniforms        _boundUniforms;
+        Metal::BoundInputLayout     _boundInputLayout;
+        BindingType::Enum           _bindingType;
+
+        Metal::VertexShader*        _skinningVertexShaderP4;
+        Metal::VertexShader*        _skinningVertexShaderP2;
+        Metal::VertexShader*        _skinningVertexShaderP1;
+        Metal::VertexShader*        _skinningVertexShaderP0;
+
+        Metal::CompiledShaderByteCode* _vbByteCode;
+
+        const ::Assets::DependencyValidation& GetDependancyValidation() const   { return *_validationCallback; }
+        std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
+    };
+
+    static bool HasElement(     const Metal::InputElementDesc* begin,
+                                const Metal::InputElementDesc* end,
+                                const char elementSemantic[])
+    {
+        return std::find_if
+            (
+                begin, end, 
+                [=](const Metal::InputElementDesc& element)
+                    { return !XlCompareStringI(element._semanticName.c_str(), elementSemantic); }
+            ) != end;
+    }
+
+    SkinningBindingBox::SkinningBindingBox(const Desc& desc)
+    {
+        auto& ai = FindCachedBox<HashedInputAssemblies>(HashedInputAssemblies::Desc(desc._iaHash));
+        const auto& skinningInputLayout = ai._elements;
+
+        std::vector<Metal::InputElementDesc> skinningOutputLayout;
+        for (auto i=skinningInputLayout.cbegin(); i!=skinningInputLayout.cend(); ++i) {
+            if (i->_inputSlot == 0) skinningOutputLayout.push_back(*i);
+        }
+
+            ///////////////////////////////////////////////
+
+        const char* skinningVertexShaderSourceP4    = (desc._bindingType==BindingType::cbuffer) ? ("game/xleres/animation/skinning.vsh:P4:" VS_DefShaderModel) : ("game/xleres/animation/skinning_viatbuffer.vsh:P4:" VS_DefShaderModel);
+        const char* skinningVertexShaderSourceP2    = (desc._bindingType==BindingType::cbuffer) ? ("game/xleres/animation/skinning.vsh:P2:" VS_DefShaderModel) : ("game/xleres/animation/skinning_viatbuffer.vsh:P2:" VS_DefShaderModel);
+        const char* skinningVertexShaderSourceP1    = (desc._bindingType==BindingType::cbuffer) ? ("game/xleres/animation/skinning.vsh:P1:" VS_DefShaderModel) : ("game/xleres/animation/skinning_viatbuffer.vsh:P1:" VS_DefShaderModel);
+        const char* skinningVertexShaderSourceP0    = (desc._bindingType==BindingType::cbuffer) ? ("game/xleres/animation/skinning.vsh:P0:" VS_DefShaderModel) : ("game/xleres/animation/skinning_viatbuffer.vsh:P0:" VS_DefShaderModel);
+        const char* geometryShaderSourceP           = "game/xleres/animation/skinning.gsh:P:" GS_DefShaderModel;
+
+        const char* skinningVertexShaderSourcePN4   = (desc._bindingType==BindingType::cbuffer) ? ("game/xleres/animation/skinning.vsh:PN4:" VS_DefShaderModel) : ("game/xleres/animation/skinning_viatbuffer.vsh:PN4:" VS_DefShaderModel);
+        const char* skinningVertexShaderSourcePN2   = (desc._bindingType==BindingType::cbuffer) ? ("game/xleres/animation/skinning.vsh:PN2:" VS_DefShaderModel) : ("game/xleres/animation/skinning_viatbuffer.vsh:PN2:" VS_DefShaderModel);
+        const char* skinningVertexShaderSourcePN1   = (desc._bindingType==BindingType::cbuffer) ? ("game/xleres/animation/skinning.vsh:PN1:" VS_DefShaderModel) : ("game/xleres/animation/skinning_viatbuffer.vsh:PN1:" VS_DefShaderModel);
+        const char* skinningVertexShaderSourcePN0   = (desc._bindingType==BindingType::cbuffer) ? ("game/xleres/animation/skinning.vsh:PN0:" VS_DefShaderModel) : ("game/xleres/animation/skinning_viatbuffer.vsh:PN0:" VS_DefShaderModel);
+        const char* geometryShaderSourcePN          = "game/xleres/animation/skinning.gsh:PN:" GS_DefShaderModel;
+
+        const bool hasNormals = HasElement(AsPointer(skinningOutputLayout.cbegin()), AsPointer(skinningOutputLayout.cend()), "NORMAL");
+
+        using namespace Metal;
+        _geometryShader = GeometryShader(
+            hasNormals ? geometryShaderSourcePN : geometryShaderSourceP, 
+            GeometryShader::StreamOutputInitializers(
+                AsPointer(skinningOutputLayout.begin()), unsigned(skinningOutputLayout.size()),
+                &desc._vertexStride, 1));
+
+        _skinningVertexShaderP4 =  &::Assets::GetAsset<VertexShader>   (hasNormals ? skinningVertexShaderSourcePN4 : skinningVertexShaderSourceP4);
+        _skinningVertexShaderP2 =  &::Assets::GetAsset<VertexShader>   (hasNormals ? skinningVertexShaderSourcePN2 : skinningVertexShaderSourceP2);
+        _skinningVertexShaderP1 =  &::Assets::GetAsset<VertexShader>   (hasNormals ? skinningVertexShaderSourcePN1 : skinningVertexShaderSourceP1);
+        _skinningVertexShaderP0 =  &::Assets::GetAsset<VertexShader>   (hasNormals ? skinningVertexShaderSourcePN0 : skinningVertexShaderSourceP0);
+
+        _vbByteCode = &::Assets::GetAsset<CompiledShaderByteCode>     (hasNormals ? skinningVertexShaderSourcePN4 : skinningVertexShaderSourceP4);
+
+        BoundUniforms boundUniforms(*_vbByteCode);
+        const auto jointTransformsHash = Hash64("JointTransforms");
+        if (desc._bindingType == BindingType::cbuffer) {
+            boundUniforms.BindConstantBuffer(jointTransformsHash, 0, 1);
+        } else {
+            boundUniforms.BindShaderResource(jointTransformsHash, 0, 1);
+        }
+
+        _boundInputLayout = BoundInputLayout(
+            std::make_pair(AsPointer(skinningInputLayout.cbegin()), skinningInputLayout.size()),
+            *_vbByteCode);
+
+        /////////////////////////////////////////////////////////////////////////////
+
+        auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
+        // RegisterResourceDependency(validationCallback, &_skinningVertexShaderP4->GetDependancyValidation());
+        // RegisterResourceDependency(validationCallback, &_skinningVertexShaderP2->GetDependancyValidation());
+        // RegisterResourceDependency(validationCallback, &_skinningVertexShaderP1->GetDependancyValidation());
+        // RegisterResourceDependency(validationCallback, &_skinningVertexShaderP0->GetDependancyValidation());
+        ::Assets::RegisterAssetDependency(validationCallback, &_vbByteCode->GetDependancyValidation());
+
+        _validationCallback = std::move(validationCallback);
+        _boundUniforms = std::move(boundUniforms);
+    }
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    AnimationSetBinding::AnimationSetBinding(
+            const AnimationSet::OutputInterface&            output,
+            const TransformationMachine::InputInterface&    input)
+    {
+            //
+            //      for each animation set output value, match it with a 
+            //      value in the transformation machine interface
+            //      The interfaces are not sorted, we we just have to 
+            //      do brute force searches. But there shouldn't be many
+            //      parameters (so it should be fairly quick)
+            //
+        std::vector<unsigned> result;
+        result.resize(output._parameterInterfaceCount);
+        for (size_t c=0; c<output._parameterInterfaceCount; ++c) {
+            uint64 parameterName = output._parameterInterfaceDefinition[c];
+            result[c] = ~unsigned(0x0);
+
+            for (size_t c2=0; c2<input._parameterCount; ++c2) {
+                if (input._parameters[c2]._name == parameterName) {
+                    result[c] = unsigned(c2);
+                    break;
+                }
+            }
+
+            #if defined(_DEBUG)
+                if (result[c] == ~unsigned(0x0)) {
+                    LogWarning << "Animation driver output cannot be bound to transformation machine input";
+                }
+            #endif
+        }
+
+        _animDriverToMachineParameter = std::move(result);
+    }
+
+    SkeletonBinding::SkeletonBinding(   const TransformationMachine::OutputInterface&   output,
+                                        const ModelCommandStream::InputInterface&       input)
+    {
+        std::vector<unsigned> result;
+        std::vector<Float4x4> inverseBindMatrices;
+        result.resize(input._jointCount);
+        inverseBindMatrices.resize(input._jointCount);
+
+        for (size_t c=0; c<input._jointCount; ++c) {
+            uint64 name = input._jointNames[c];
+            result[c] = ~unsigned(0x0);
+            inverseBindMatrices[c] = Identity<Float4x4>();
+
+            for (size_t c2=0; c2<output._outputMatrixNameCount; ++c2) {
+                if (output._outputMatrixNames[c2] == name) {
+                    result[c] = unsigned(c2);
+                    inverseBindMatrices[c] = output._skeletonInverseBindMatrices[c2];
+                    break;
+                }
+            }
+
+            #if defined(_DEBUG)
+                if (result[c] == ~unsigned(0x0)) {
+                    LogWarning << "Couldn't bind skin matrix to transformation machine output.";
+                }
+            #endif
+        }
+            
+        _modelJointIndexToMachineOutput = std::move(result);
+        _modelJointIndexToInverseBindMatrix = std::move(inverseBindMatrices);
+    }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    template<typename IteratorType>
+        void TransformationMachine::GenerateOutputTransformsInternal(   
+            Float4x4 output[], unsigned outputCount,
+            const TransformationParameterSet*   parameterSet,
+            IteratorType    debugIterator,
+            const void*     iteratorUserData) const
+    {
+            //
+            //      Follow the commands in our command list, and output
+            //      the resulting transformations.
+            //
+
+        if (outputCount < _outputMatrixCount) {
+            throw Exceptions::GenericFailure("Output buffer to TransformationMachine::GenerateOutputTransforms is too small");
+        }
+        GenerateOutputTransformsFree(
+            output, outputCount, parameterSet, 
+            _commandStream, _commandStream + _commandStreamSize, 
+            debugIterator, iteratorUserData);
+    }
+
+    static void NullTransformIterator(const Float4x4& parent, const Float4x4& child, const void* userData) {}
+
+    void TransformationMachine::GenerateOutputTransforms(   
+            Float4x4 output[], unsigned outputCount,
+            const TransformationParameterSet*   parameterSet) const
+    {
+        GenerateOutputTransformsInternal(
+            output, outputCount, parameterSet, NullTransformIterator, nullptr);
+    }
+
+    void TransformationMachine::GenerateOutputTransforms(   
+            Float4x4 output[], unsigned outputCount,
+            const TransformationParameterSet*   parameterSet,
+            DebugIterator*  debugIterator,
+            const void*     iteratorUserData) const
+    {
+        return GenerateOutputTransformsInternal(
+            output, outputCount, parameterSet, debugIterator, iteratorUserData);
+    }
+
+    TransformationMachine::TransformationMachine()
+    {
+        _commandStream = nullptr;
+        _commandStreamSize = 0;
+        _outputMatrixCount = 0;
+    }
+
+    TransformationMachine::~TransformationMachine()
+    {
+    }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    void ModelRenderer::Pimpl::StartBuildingSkinning(
+        Metal::DeviceContext& context, SkinningBindingBox& bindingBox) const
+    {
+        context.Bind(bindingBox._boundInputLayout);
+        context.Bind(bindingBox._geometryShader);
+
+        context.Unbind<Metal::PixelShader>();
+        context.Bind(Metal::Topology::PointList);
+    }
+
+    void ModelRenderer::Pimpl::EndBuildingSkinning(Metal::DeviceContext& context) const
+    {
+        context.GetUnderlying()->SOSetTargets(0, nullptr, nullptr);
+        context.Unbind<Metal::GeometryShader>();
+    }
+
+    static void SetSkinningShader(Metal::DeviceContext& context, SkinningBindingBox& bindingBox, unsigned materialIndexValue)
+    {
+        if (materialIndexValue == 4)         context.Bind(*bindingBox._skinningVertexShaderP4);
+        else if (materialIndexValue == 2)    context.Bind(*bindingBox._skinningVertexShaderP2);
+        else if (materialIndexValue == 1)    context.Bind(*bindingBox._skinningVertexShaderP1);
+        else {
+            assert(materialIndexValue == 0);
+            context.Bind(*bindingBox._skinningVertexShaderP0);
+        }
+    }
+
+    static void WriteJointTransforms(   Float3x4 destination[], size_t destinationCount,
+                                        const BoundSkinnedGeometry& controller,
+                                        const Float4x4              transformationMachineResult[],
+                                        const SkeletonBinding&      skeletonBinding)
+    {
+        for (unsigned c=0; c<std::min(controller._jointMatrixCount, destinationCount); ++c) {
+            unsigned jointMatrixIndex = controller._jointMatrices[c];
+            unsigned transMachineOutput = skeletonBinding._modelJointIndexToMachineOutput[jointMatrixIndex];
+            if (transMachineOutput != ~unsigned(0x0)) {
+                Float4x4 inverseBindByBindShapeMatrix = controller._inverseBindByBindShapeMatrices[c];
+                Float4x4 finalMatrix = 
+                    Combine(    inverseBindByBindShapeMatrix, 
+                                transformationMachineResult[transMachineOutput]);
+                destination[c] = Truncate(finalMatrix);
+            } else {
+                destination[c] = Identity<Float3x4>();
+            }
+        }
+    }
+
+        //
+        //      Simple method for managing tbuffer textures...
+        //      Keep multiple textures for each frame. Use a single
+        //      texture for each
+        //
+        //      Also consider using a single large circular buffer
+        //      and using the discard/no-overwrite pattern
+        //
+    class TBufferTemporaryTexture
+    {
+    public:
+        intrusive_ptr<ID3D::Resource>      _resource;
+        intrusive_ptr<ID3D::Resource>      _stagingResource;
+        Metal::ShaderResourceView       _view;
+        size_t                          _size;
+        unsigned                        _lastAllocatedFrame;
+        unsigned                        _shaderOffsetValue;
+
+        TBufferTemporaryTexture();
+        TBufferTemporaryTexture(const void* sourceData, size_t bufferSize, bool dynamicResource=false);
+        TBufferTemporaryTexture(const TBufferTemporaryTexture& cloneFrom);
+        TBufferTemporaryTexture(TBufferTemporaryTexture&& moveFrom);
+        TBufferTemporaryTexture& operator=(const TBufferTemporaryTexture& cloneFrom);
+        TBufferTemporaryTexture& operator=(TBufferTemporaryTexture&& moveFrom);
+    };
+
+    static unsigned globalCircularBuffer_Size = 200 * sizeof(Float3x4);
+    static unsigned globalCircularBuffer_WritingPosition = 0;
+    TBufferTemporaryTexture globalCircularBuffer;
+
+    static TBufferTemporaryTexture AllocateExistingTBufferTemporaryTexture(size_t bufferSize);
+    static TBufferTemporaryTexture AllocateNewTBufferTemporaryTexture(const void* bufferData, size_t bufferSize);
+    static void PushTBufferTemporaryTexture(Metal::DeviceContext* context, TBufferTemporaryTexture& tex);
+
+    void ModelRenderer::Pimpl::BuildSkinnedBuffer(  
+                Metal::DeviceContext*       context,
+                const SkinnedMesh&          mesh,
+                const Float4x4              transformationMachineResult[],
+                const SkeletonBinding&      skeletonBinding,
+                Metal::VertexBuffer&        outputResult,
+                unsigned                    outputOffset) const
+    {
+        using namespace Metal;
+        const auto bindingType = Tweakable("SkeletonUpload_ViaTBuffer", false)
+            ?SkinningBindingBox::BindingType::tbuffer:SkinningBindingBox::BindingType::cbuffer;
+
+            // fill in the "HashedInputAssemblies" box if necessary
+        const auto& scaffold = *mesh._scaffold;
+        auto& iaBox = FindCachedBox<HashedInputAssemblies>(HashedInputAssemblies::Desc(mesh._animatedAIHash));
+        if (iaBox._elements.empty()) {
+
+                //  this hashed input assembly will contain both the full input assembly for preparing
+                //  skinning (with the animated elements in slot 0, and the skeleton binding info in slot 1)
+            Metal::InputElementDesc inputDesc[12];
+            unsigned vertexElementCount = BuildLowLevelInputAssembly(
+                inputDesc, scaffold._animatedVertexElements._ia._elements, scaffold._animatedVertexElements._ia._elementCount);
+            vertexElementCount = BuildLowLevelInputAssembly(
+                inputDesc, scaffold._skeletonBinding._ia._elements, scaffold._skeletonBinding._ia._elementCount, vertexElementCount, 1);
+            iaBox._elements.insert(iaBox._elements.begin(), inputDesc, &inputDesc[vertexElementCount]);
+
+        }
+
+        auto& bindingBox = FindCachedBoxDep<SkinningBindingBox>(
+            SkinningBindingBox::Desc(bindingType, mesh._animatedAIHash, mesh._extraVbStride[SkinnedMesh::VertexStreams::AnimatedGeo]));
+
+            ///////////////////////////////////////////////
+
+        #if defined(_DEBUG) ///////////////////////////////////////////////////////////////////
+                    //
+                    //  we get warning messages from D3D11 if the device debug flag is on, 
+                    //  and the buffer size is not right
+                    //
+            const size_t packetCount = (bindingType==SkinningBindingBox::BindingType::cbuffer)?200:scaffold._jointMatrixCount;     
+        #else /////////////////////////////////////////////////////////////////////////////////
+            const size_t packetCount = scaffold._jointMatrixCount;
+        #endif ////////////////////////////////////////////////////////////////////////////////
+
+        ConstantBufferPacket constantBufferPackets[1];
+
+        TBufferTemporaryTexture tbufferTexture;
+        if (bindingType == SkinningBindingBox::BindingType::cbuffer) {
+
+            constantBufferPackets[0] = RenderCore::MakeSharedPkt(sizeof(Float3x4) * packetCount);
+            Float3x4* jointTransforms = (Float3x4*)constantBufferPackets[0].begin();
+            WriteJointTransforms(jointTransforms, packetCount, scaffold, transformationMachineResult, skeletonBinding);
+
+        } else {
+
+                //
+                //      Write via tbuffer. We need to allocate a texture,
+                //      write in the new transform data, and bind it to
+                //      the pipeline.
+                //
+                //      The way in which we create and upload to the texture
+                //      may have some effect on this... We probably want to avoid 
+                //      copying via the command buffer -- and instead just write
+                //      to reserved GPU space.
+                //
+
+            const bool useCircularBuffer = true;
+            if (useCircularBuffer) {
+
+                    //
+                    //  Use a single buffer with many discard maps... This
+                    //  seems to be producing more efficient GPU side results!
+                    //
+                if (!globalCircularBuffer._size) {
+                    globalCircularBuffer = TBufferTemporaryTexture(nullptr, globalCircularBuffer_Size, true);
+                }
+
+                unsigned currentWritingPosition = globalCircularBuffer_WritingPosition;
+                D3D11_MAP mapType = D3D11_MAP_WRITE_DISCARD; // D3D11_MAP_WRITE_NO_OVERWRITE;
+                globalCircularBuffer_WritingPosition += unsigned(packetCount * sizeof(Float3x4));
+                if (1) { // globalCircularBuffer_WritingPosition > globalCircularBuffer_Size) {
+                        // Wrap around moment... discard and start writing from top
+                    currentWritingPosition = 0;
+                    mapType = D3D11_MAP_WRITE_DISCARD;
+                    globalCircularBuffer_WritingPosition = unsigned(packetCount * sizeof(Float3x4));
+                }
+
+                    //
+                    //      Note we always have to map the entire buffer here... But most of the time
+                    //      we're only writing to a small subset of the buffer. The means extra redundant
+                    //      dirty data will be copied to the GPU... Is there any way to do this better?
+                    //      We can't use NO_OVERWRITE maps here, because that is only allows for
+                    //      index and vertex buffers.
+                    //
+                D3D11_MAPPED_SUBRESOURCE mapping;
+                HRESULT hresult = context->GetUnderlying()->Map(globalCircularBuffer._resource.get(), 0, mapType, 0, &mapping);
+                if (SUCCEEDED(hresult) && mapping.pData) {
+                    WriteJointTransforms(
+                        (Float3x4*)PtrAdd(mapping.pData, currentWritingPosition), packetCount, 
+                        scaffold, transformationMachineResult, skeletonBinding);
+                    context->GetUnderlying()->Unmap(globalCircularBuffer._resource.get(), 0);
+                }
+
+                tbufferTexture = globalCircularBuffer;
+                tbufferTexture._shaderOffsetValue = currentWritingPosition / sizeof(Float3x4);
+
+                // unsigned* shaderOffsetValue = (unsigned*)AsPointer(constantBufferPackets[0]->begin());
+                // *shaderOffsetValue = tbufferTexture._shaderOffsetValue;
+
+            } else {
+                tbufferTexture = AllocateExistingTBufferTemporaryTexture(packetCount * sizeof(Float3x4));
+                if (tbufferTexture._stagingResource) {
+
+                    D3D11_MAPPED_SUBRESOURCE mapping;
+                        //
+                        //      Also consider "no-overwrite" map access. This can only be used for
+                        //      vertex buffers, however... which means binding a vertex buffer to a tbuffer
+                        //      shader input.
+                        //
+                    HRESULT hresult = context->GetUnderlying()->Map(tbufferTexture._stagingResource.get(), 0, D3D11_MAP_WRITE, 0, &mapping);
+                    if (SUCCEEDED(hresult) && mapping.pData) {
+                        WriteJointTransforms((Float3x4*)mapping.pData, packetCount, scaffold, transformationMachineResult, skeletonBinding);
+                        context->GetUnderlying()->Unmap(tbufferTexture._stagingResource.get(), 0);
+                    }
+                    PushTBufferTemporaryTexture(context, tbufferTexture);
+
+                } else {
+
+                    auto buffer = std::make_unique<Float3x4[]>(packetCount);
+                    WriteJointTransforms(buffer.get(), packetCount, scaffold, transformationMachineResult, skeletonBinding);
+                    tbufferTexture = AllocateNewTBufferTemporaryTexture(buffer.get(), packetCount * sizeof(Float3x4));
+
+                }
+            }
+
+        }
+
+            ///////////////////////////////////////////////
+
+        ID3D::Buffer* soOutputBuffer = outputResult.GetUnderlying();
+        context->GetUnderlying()->SOSetTargets(1, &soOutputBuffer, &outputOffset);
+        {
+            const Metal::ShaderResourceView* temp[] = { tbufferTexture._view.GetUnderlying() ? &tbufferTexture._view : nullptr };
+            bindingBox._boundUniforms.Apply(
+                *context, 
+                Metal::UniformsStream(),
+                Metal::UniformsStream(constantBufferPackets, nullptr, dimof(constantBufferPackets), temp, 1));
+        }
+        StartBuildingSkinning(*context, bindingBox);
+
+            // bind the mesh streams -- we need animated geometry and skeleton binding
+        auto animGeo = SkinnedMesh::VertexStreams::AnimatedGeo;
+        auto skelBind = SkinnedMesh::VertexStreams::SkeletonBinding;
+
+        const VertexBuffer* vbs [2] = { &_vertexBuffer, &_vertexBuffer };
+        const unsigned strides  [2] = { mesh._extraVbStride[animGeo], mesh._extraVbStride[skelBind] };
+        unsigned offsets        [2] = { mesh._extraVbOffset[animGeo], mesh._extraVbOffset[skelBind] };
+        context->Bind(0, 2, vbs, strides, offsets);
+
+
+            //
+            //      (   vertex shader signatures are all the same -- so we can keep the 
+            //          same input layout and constant buffer assignments   )
+            //
+
+        for (unsigned di=0; di<scaffold._preskinningDrawCallCount; ++di) {
+            auto& d = scaffold._preskinningDrawCalls[di];
+            SetSkinningShader(*context, bindingBox, d._subMaterialIndex);
+            context->Draw(d._indexCount, d._firstVertex);
+        }
+    }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    auto ModelRenderer::PreallocateState() const -> PreparedAnimation
+    {
+            //  We need to allocate a vertex buffer that can contain the animated vertex data
+            //  for this whole mesh
+        unsigned vbSize = 0;
+        for (auto m=_pimpl->_skinnedMeshes.cbegin(); m!=_pimpl->_skinnedMeshes.cend(); ++m) {
+            vbSize += m->_sourceFileExtraVBSize[Pimpl::SkinnedMesh::VertexStreams::AnimatedGeo];
+        }
+
+        PreparedAnimation result;
+        result._skinningBuffer = Metal::VertexBuffer(nullptr, vbSize);
+        return result;
+    }
+
+    void ModelRenderer::PrepareAnimation(Metal::DeviceContext* context, PreparedAnimation& result, const SkeletonBinding& skeletonBinding) const
+    {
+        // result._finalMatrices = GenerateOutputTransforms(animState);
+
+        unsigned vbOffset = 0;
+        for (auto m=_pimpl->_skinnedMeshes.cbegin(); m!=_pimpl->_skinnedMeshes.cend(); ++m) {
+            _pimpl->BuildSkinnedBuffer(context, *m, result._finalMatrices.get(), skeletonBinding, result._skinningBuffer, vbOffset);
+            vbOffset += m->_sourceFileExtraVBSize[Pimpl::SkinnedMesh::VertexStreams::AnimatedGeo];
+        }
+
+        _pimpl->EndBuildingSkinning(*context);
+    }
+
+    ModelRenderer::PreparedAnimation::PreparedAnimation() {}
+    ModelRenderer::PreparedAnimation::PreparedAnimation(PreparedAnimation&& moveFrom)
+    : _finalMatrices(std::move(moveFrom._finalMatrices))
+    , _skinningBuffer(std::move(moveFrom._skinningBuffer))
+    , _animState(moveFrom._animState) {}
+
+    ModelRenderer::PreparedAnimation& ModelRenderer::PreparedAnimation::operator=(PreparedAnimation&& moveFrom)
+    {
+        _finalMatrices = std::move(moveFrom._finalMatrices);
+        _skinningBuffer = std::move(moveFrom._skinningBuffer);
+        _animState = moveFrom._animState;
+        return *this;
+    }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    struct CompareAnimationName
+    {
+        bool operator()(const AnimationSet::Animation& lhs, const AnimationSet::Animation& rhs) const { return lhs._name < rhs._name; }
+        bool operator()(const AnimationSet::Animation& lhs, uint64 rhs) const { return lhs._name < rhs; }
+        bool operator()(uint64 lhs, const AnimationSet::Animation& rhs) const { return lhs < rhs._name; }
+    };
+
+    TransformationParameterSet      AnimationSet::BuildTransformationParameterSet(
+        const AnimationState&           animState__,
+        const TransformationMachine&    transformationMachine,
+        const AnimationSetBinding&      binding,
+        const RawAnimationCurve*        curves,
+        size_t                          curvesCount) const
+    {
+        TransformationParameterSet result(transformationMachine.GetDefaultParameters());
+        float* float1s      = result.GetFloat1Parameters();
+        Float3* float3s     = result.GetFloat3Parameters();
+        Float4* float4s     = result.GetFloat4Parameters();
+        Float4x4* float4x4s = result.GetFloat4x4Parameters();
+
+        AnimationState animState = animState__;
+
+        size_t driverStart = 0, driverEnd = GetAnimationDriverCount();
+        size_t constantDriverStartIndex = 0, constantDriverEndIndex = _constantDriverCount;
+        if (animState._animation!=0x0) {
+            auto end = &_animations[_animationCount];
+            auto i = std::lower_bound(_animations, end, animState._animation, CompareAnimationName());
+            if (i!=end && i->_name == animState._animation) {
+                driverStart = i->_beginDriver;
+                driverEnd = i->_endDriver;
+                constantDriverStartIndex = i->_beginConstantDriver;
+                constantDriverEndIndex = i->_endConstantDriver;
+                animState._time += i->_beginTime;
+            }
+        }
+
+        const TransformationMachine::InputInterface& inputInterface 
+            = transformationMachine.GetInputInterface();
+        for (size_t c=driverStart; c<driverEnd; ++c) {
+            const AnimationDriver& driver = _animationDrivers[c];
+            unsigned transInputIndex = binding._animDriverToMachineParameter[driver._parameterIndex];
+            if (transInputIndex == ~unsigned(0x0)) {
+                continue;   // (unbound output)
+            }
+
+            assert(transInputIndex < inputInterface._parameterCount);
+            const TransformationMachine::InputInterface::Parameter& p 
+                = inputInterface._parameters[transInputIndex];
+
+            if (driver._samplerType == TransformationParameterSet::Type::Float4x4) {
+                if (driver._curveId < curvesCount) {
+                    const RawAnimationCurve& curve = curves[driver._curveId];
+                    assert(p._type == TransformationParameterSet::Type::Float4x4);
+                    // assert(i->_index < float4x4s.size());
+                    float4x4s[p._index] = curve.Calculate<Float4x4>(animState._time);
+                }
+            } else if (driver._samplerType == TransformationParameterSet::Type::Float4) {
+                if (driver._curveId < curvesCount) {
+                    const RawAnimationCurve& curve = curves[driver._curveId];
+                    if (p._type == TransformationParameterSet::Type::Float4) {
+                        float4s[p._index] = curve.Calculate<Float4>(animState._time);
+                    } else if (p._type == TransformationParameterSet::Type::Float3) {
+                        float3s[p._index] = Truncate(curve.Calculate<Float4>(animState._time));
+                    } else {
+                        assert(p._type == TransformationParameterSet::Type::Float1);
+                        float1s[p._index] = curve.Calculate<Float4>(animState._time)[0];
+                    }
+                }
+            } else if (driver._samplerType == TransformationParameterSet::Type::Float3) {
+                if (driver._curveId < curvesCount) {
+                    const RawAnimationCurve& curve = curves[driver._curveId];
+                    if (p._type == TransformationParameterSet::Type::Float3) {
+                        float3s[p._index] = curve.Calculate<Float3>(animState._time);
+                    } else {
+                        assert(p._type == TransformationParameterSet::Type::Float1);
+                        float1s[p._index] = curve.Calculate<Float3>(animState._time)[0];
+                    }
+                }
+            } else if (driver._samplerType == TransformationParameterSet::Type::Float1) {
+                if (driver._curveId < curvesCount) {
+                    const RawAnimationCurve& curve = curves[driver._curveId];
+                    float result = curve.Calculate<float>(animState._time);
+                    if (p._type == TransformationParameterSet::Type::Float1) {
+                        float1s[p._index] = result;
+                    } else if (p._type == TransformationParameterSet::Type::Float3) {
+                        assert(driver._samplerOffset < 3);
+                        float3s[p._index][driver._samplerOffset] = result;
+                    } else if (p._type == TransformationParameterSet::Type::Float4) {
+                        assert(driver._samplerOffset < 4);
+                        float4s[p._index][driver._samplerOffset] = result;
+                    }
+                }
+            }
+        }
+
+        for (   size_t c=constantDriverStartIndex; c<constantDriverEndIndex; ++c) {
+            const ConstantDriver& driver = _constantDrivers[c];
+            unsigned transInputIndex = binding._animDriverToMachineParameter[driver._parameterIndex];
+            if (transInputIndex == ~unsigned(0x0)) {
+                continue;   // (unbound output)
+            }
+
+            assert(transInputIndex < inputInterface._parameterCount);
+            const TransformationMachine::InputInterface::Parameter& p 
+                = inputInterface._parameters[transInputIndex];
+
+            const void* data    = PtrAdd(_constantData, driver._dataOffset);
+            if (driver._samplerType == TransformationParameterSet::Type::Float4x4) {
+                assert(p._type == TransformationParameterSet::Type::Float4x4);
+                float4x4s[p._index] = *(const Float4x4*)data;
+            } else if (driver._samplerType == TransformationParameterSet::Type::Float4) {
+                if (p._type == TransformationParameterSet::Type::Float4) {
+                    float4s[p._index] = *(const Float4*)data;
+                } else if (p._type == TransformationParameterSet::Type::Float3) {
+                    float3s[p._index] = Truncate(*(const Float4*)data);
+                }
+            } else if (driver._samplerType == TransformationParameterSet::Type::Float3) {
+                assert(p._type == TransformationParameterSet::Type::Float3);
+                float3s[p._index] = *(Float3*)data;
+            } else if (driver._samplerType == TransformationParameterSet::Type::Float1) {
+                if (p._type == TransformationParameterSet::Type::Float1) {
+                    float1s[p._index] = *(float*)data;
+                } else if (p._type == TransformationParameterSet::Type::Float3) {
+                    assert(driver._samplerOffset < 3);
+                    float3s[p._index][driver._samplerOffset] = *(const float*)data;
+                } else if (p._type == TransformationParameterSet::Type::Float4) {
+                    assert(driver._samplerOffset < 4);
+                    float4s[p._index][driver._samplerOffset] = *(const float*)data;
+                }
+            }
+        }
+
+        return result;
+    }
+
+    AnimationSet::Animation AnimationSet::FindAnimation(uint64 animation) const
+    {
+        for (size_t c=0; c<_animationCount; ++c) {
+            if (_animations[c]._name == animation) {
+                return _animations[c];
+            }
+        }
+        Animation result;
+        result._name = 0ull;
+        result._beginDriver = result._endDriver = 0;
+        result._beginTime = result._endTime = 0.f;
+        return result;
+    }
+
+    unsigned                AnimationSet::FindParameter(uint64 parameterName) const
+    {
+        for (size_t c=0; c<_outputInterface._parameterInterfaceCount; ++c) {
+            if (_outputInterface._parameterInterfaceDefinition[c] == parameterName) {
+                return unsigned(c);
+            }
+        }
+        return ~unsigned(0x0);
+    }
+
+    AnimationSet::~AnimationSet()
+    {
+        DestroyArray(_animationDrivers,         &_animationDrivers[_animationDriverCount]);
+    }
+
+    AnimationImmutableData::~AnimationImmutableData()
+    {
+        DestroyArray(_curves, &_curves[_curvesCount]);
+    }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class SkinPrepareMachine::Pimpl
+    {
+    public:
+        std::unique_ptr<AnimationSetBinding> _animationSetBinding;
+        std::unique_ptr<SkeletonBinding> _skeletonBinding;
+        AnimationSetScaffold* _animationSetScaffold;
+        SkeletonScaffold* _skeletonScaffold;
+    };
+
+    void SkinPrepareMachine::PrepareAnimation(   
+            Metal::DeviceContext* context, 
+            ModelRenderer::PreparedAnimation& state) const
+    {
+        auto& skeleton = _pimpl->_skeletonScaffold->GetTransformationMachine();
+        auto& animSet = _pimpl->_animationSetScaffold->ImmutableData();
+            
+        auto finalMatCount = skeleton.GetOutputMatrixCount();
+        state._finalMatrices = std::make_unique<Float4x4[]>(finalMatCount);
+        if (!Tweakable("AnimBasePose", false)) {
+            auto params = animSet._animationSet.BuildTransformationParameterSet(
+                state._animState, 
+                skeleton, *_pimpl->_animationSetBinding, 
+                animSet._curves, animSet._curvesCount);
+
+            
+            skeleton.GenerateOutputTransforms(state._finalMatrices.get(), finalMatCount, &params);
+        } else {
+            skeleton.GenerateOutputTransforms(state._finalMatrices.get(), finalMatCount, &skeleton.GetDefaultParameters());
+        }
+    }
+
+    const SkeletonBinding& SkinPrepareMachine::GetSkeletonBinding() const
+    {
+        return *_pimpl->_skeletonBinding;
+    }
+
+    unsigned SkinPrepareMachine::GetSkeletonOutputCount() const
+    {
+        return _pimpl->_skeletonScaffold->GetTransformationMachine().GetOutputMatrixCount();
+    }
+
+    SkinPrepareMachine::SkinPrepareMachine(ModelScaffold& skinScaffold, AnimationSetScaffold& animationScaffold, SkeletonScaffold& skeletonScaffold)
+    {
+        auto pimpl = std::make_unique<Pimpl>();
+        pimpl->_animationSetBinding = std::make_unique<AnimationSetBinding>(
+            animationScaffold.ImmutableData()._animationSet.GetOutputInterface(), 
+            skeletonScaffold.GetTransformationMachine().GetInputInterface());
+        pimpl->_skeletonBinding = std::make_unique<SkeletonBinding>(
+            skeletonScaffold.GetTransformationMachine().GetOutputInterface(), 
+            skinScaffold.CommandStream().GetInputInterface());
+        pimpl->_animationSetScaffold = &animationScaffold;
+        pimpl->_skeletonScaffold = &skeletonScaffold;
+        _pimpl = std::move(pimpl);
+    }
+
+    SkinPrepareMachine::~SkinPrepareMachine()
+    {}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    SkeletonScaffold::SkeletonScaffold(const ResChar filename[])
+    {
+        auto memBlock = Serialization::ChunkFile::RawChunkAsMemoryBlock(filename, ChunkType_Skeleton, 0);
+        Serialization::Block_Initialize(memBlock.get());        
+        _data = (const TransformationMachine*)Serialization::Block_GetFirstObject(memBlock.get());
+        _filename = filename;
+        _rawMemoryBlock = std::move(memBlock);
+    }
+
+    SkeletonScaffold::SkeletonScaffold(SkeletonScaffold&& moveFrom)
+    : _rawMemoryBlock(std::move(moveFrom._rawMemoryBlock))
+    , _filename(std::move(moveFrom._filename))
+    {
+        _data = moveFrom._data;
+        moveFrom._data = nullptr;
+    }
+
+    SkeletonScaffold& SkeletonScaffold::operator=(SkeletonScaffold&& moveFrom)
+    {
+        _rawMemoryBlock = std::move(moveFrom._rawMemoryBlock);
+        _data = moveFrom._data;
+        moveFrom._data = nullptr;
+        _filename = std::move(moveFrom._filename);
+        return *this;
+    }
+
+    SkeletonScaffold::~SkeletonScaffold()
+    {
+        _data->~TransformationMachine();
+    }
+
+    AnimationSetScaffold::AnimationSetScaffold(const ResChar filename[])
+    {
+        auto memBlock = Serialization::ChunkFile::RawChunkAsMemoryBlock(filename, ChunkType_AnimationSet, 0);
+        Serialization::Block_Initialize(memBlock.get());        
+        _data = (const AnimationImmutableData*)Serialization::Block_GetFirstObject(memBlock.get());
+        _filename = filename;
+        _rawMemoryBlock = std::move(memBlock);
+    }
+
+    AnimationSetScaffold::AnimationSetScaffold(AnimationSetScaffold&& moveFrom)
+    : _rawMemoryBlock(std::move(moveFrom._rawMemoryBlock))
+    , _filename(std::move(moveFrom._filename))
+    {
+        _data = moveFrom._data;
+        moveFrom._data = nullptr;
+    }
+
+    AnimationSetScaffold& AnimationSetScaffold::operator=(AnimationSetScaffold&& moveFrom)
+    {
+        _rawMemoryBlock = std::move(moveFrom._rawMemoryBlock);
+        _data = moveFrom._data;
+        moveFrom._data = nullptr;
+        _filename = std::move(moveFrom._filename);
+        return *this;
+    }
+
+    AnimationSetScaffold::~AnimationSetScaffold()
+    {
+        _data->~AnimationImmutableData();
+    }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class Vertex_PC
+    {
+    public:
+        Float3      _position;
+        unsigned    _color;
+    };
+
+    static void RenderSkeleton_DebugIterator(const Float4x4& parent, const Float4x4& child, const void* userData)
+    {
+        Vertex_PC start;   start._position   = ExtractTranslation(parent);   start._color = 0xffff7f7f;
+        Vertex_PC end;       end._position   = ExtractTranslation(child);      end._color = 0xffffffff;
+        ((std::vector<Vertex_PC>*)userData)->push_back(start);
+        ((std::vector<Vertex_PC>*)userData)->push_back(end);
+    }
+
+    void    SkinPrepareMachine::RenderSkeleton( 
+                Metal::DeviceContext* context, 
+                SceneEngine::LightingParserContext& parserContext, 
+                const AnimationState& animState, const Float4x4& localToWorld)
+    {
+        using namespace RenderCore::Metal;
+
+        InputElementDesc vertexInputLayout[] = {
+            InputElementDesc( "POSITION",   0, NativeFormat::R32G32B32_FLOAT ),
+            InputElementDesc( "COLOR",      0, NativeFormat::R8G8B8A8_UNORM )
+        };
+
+            //      Setup basic state --- blah, blah, blah..., 
+
+        RenderCore::Metal::ConstantBufferPacket constantBufferPackets[1];
+        constantBufferPackets[0] = MakeLocalTransformPacket(
+            localToWorld, 
+            ExtractTranslation(parserContext.GetProjectionDesc()._viewToWorld));
+
+        ShaderProgram& shaderProgram = ::Assets::GetAsset<ShaderProgram>(  
+            "game/xleres/forward/illum.vsh:main:" VS_DefShaderModel, 
+            "game/xleres/forward/illum.psh:main", "GEO_HAS_COLOUR=1");
+        BoundInputLayout boundVertexInputLayout(std::make_pair(vertexInputLayout, dimof(vertexInputLayout)), shaderProgram);
+        context->Bind(boundVertexInputLayout);
+        context->Bind(shaderProgram);
+
+        BoundUniforms boundLayout(shaderProgram);
+        static const auto HashLocalTransform = Hash64("LocalTransform");
+        boundLayout.BindConstantBuffer( HashLocalTransform, 0, 1, Assets::LocalTransform_Elements, Assets::LocalTransform_ElementsCount);
+        SceneEngine::TechniqueContext::BindGlobalUniforms(boundLayout);
+        boundLayout.Apply(*context, 
+            parserContext.GetGlobalUniformsStream(),
+            UniformsStream(constantBufferPackets, nullptr, dimof(constantBufferPackets)));
+
+            //      Construct the lines for while iterating through the transformation machine
+
+        std::vector<Vertex_PC> workingVertices;
+        auto& skeleton = _pimpl->_skeletonScaffold->GetTransformationMachine();
+        auto& animData = _pimpl->_animationSetScaffold->ImmutableData();
+        auto params = animData._animationSet.BuildTransformationParameterSet(
+                animState, skeleton, *_pimpl->_animationSetBinding.get(), 
+                animData._curves, animData._curvesCount);
+        auto temp = std::make_unique<Float4x4[]>(skeleton.GetOutputMatrixCount());
+        skeleton.GenerateOutputTransforms(
+            temp.get(), skeleton.GetOutputMatrixCount(),
+            &params, &RenderSkeleton_DebugIterator, &workingVertices);
+
+        VertexBuffer vertexBuffer(AsPointer(workingVertices.begin()), workingVertices.size()*sizeof(Vertex_PC));
+        context->Bind(     ResourceList<VertexBuffer, 1>(std::make_tuple(std::ref(vertexBuffer))), 
+                            sizeof(Vertex_PC), 0);
+        context->Bind(Topology::LineList);
+        context->Draw((unsigned)workingVertices.size());
+    }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    static unsigned currentFrameIndex = 0;
+    void IncreaseTBufferTemporaryTextureFrameIndex() { ++currentFrameIndex; }       // should be more or less synced with Present()
+
+    TBufferTemporaryTexture::TBufferTemporaryTexture() { _size = 0; }
+    TBufferTemporaryTexture::TBufferTemporaryTexture(const void* sourceData, size_t bufferSize, bool dynamicResource)
+    {
+        _lastAllocatedFrame = currentFrameIndex;
+        _size = bufferSize;
+        _shaderOffsetValue = 0;
+
+        using namespace Metal;
+        D3D11_BUFFER_DESC bufferDesc;
+        bufferDesc.ByteWidth = (UINT)bufferSize;
+        bufferDesc.Usage = dynamicResource?D3D11_USAGE_DYNAMIC:D3D11_USAGE_DEFAULT;
+        bufferDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+        bufferDesc.CPUAccessFlags = dynamicResource?D3D11_CPU_ACCESS_WRITE:0;
+        bufferDesc.MiscFlags = 0;
+        bufferDesc.StructureByteStride = 0;
+
+        ObjectFactory objFactory;
+
+        D3D11_SUBRESOURCE_DATA subData;
+        subData.pSysMem = sourceData;
+        subData.SysMemPitch = subData.SysMemSlicePitch = (UINT)bufferSize;
+        _resource = objFactory.CreateBuffer(&bufferDesc, sourceData?(&subData):nullptr);
+
+        bufferDesc.Usage = D3D11_USAGE_STAGING;
+        bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+        bufferDesc.BindFlags = 0;
+        _stagingResource = objFactory.CreateBuffer(&bufferDesc);
+
+        D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
+        srvDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+        srvDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER ;
+        srvDesc.Buffer.ElementOffset = 0;
+        srvDesc.Buffer.ElementWidth = (UINT)(bufferSize / (4*sizeof(float)));
+        auto srv = objFactory.CreateShaderResourceView(_resource.get(), &srvDesc);
+        _view = ShaderResourceView(srv.get());
+    }
+
+    TBufferTemporaryTexture::TBufferTemporaryTexture(const TBufferTemporaryTexture& cloneFrom)
+    :       _resource(cloneFrom._resource)
+    ,       _stagingResource(cloneFrom._stagingResource)
+    ,       _view(cloneFrom._view)
+    ,       _size(cloneFrom._size)
+    ,       _shaderOffsetValue(cloneFrom._shaderOffsetValue)
+    ,       _lastAllocatedFrame(cloneFrom._lastAllocatedFrame)
+    {}
+
+    TBufferTemporaryTexture::TBufferTemporaryTexture(TBufferTemporaryTexture&& moveFrom)
+    :       _resource(std::move(moveFrom._resource))
+    ,       _stagingResource(std::move(moveFrom._stagingResource))
+    ,       _view(std::move(moveFrom._view))
+    ,       _size(moveFrom._size)
+    ,       _shaderOffsetValue(moveFrom._shaderOffsetValue)
+    ,       _lastAllocatedFrame(moveFrom._lastAllocatedFrame)
+    {}
+
+    TBufferTemporaryTexture& TBufferTemporaryTexture::operator=(const TBufferTemporaryTexture& cloneFrom)
+    {
+        _resource = cloneFrom._resource;
+        _stagingResource = cloneFrom._stagingResource;
+        _view = cloneFrom._view;
+        _size = cloneFrom._size;
+        _shaderOffsetValue = cloneFrom._shaderOffsetValue;
+        _lastAllocatedFrame = cloneFrom._lastAllocatedFrame;
+        return *this;
+    }
+
+    TBufferTemporaryTexture& TBufferTemporaryTexture::operator=(TBufferTemporaryTexture&& moveFrom)
+    {
+        _resource = std::move(moveFrom._resource);
+        _stagingResource = std::move(moveFrom._stagingResource);
+        _view = std::move(moveFrom._view);
+        _size = std::move(moveFrom._size);
+        _shaderOffsetValue = std::move(moveFrom._shaderOffsetValue);
+        _lastAllocatedFrame = std::move(moveFrom._lastAllocatedFrame);
+        return *this;
+    }
+
+    static const unsigned FrameBufferCount = 4;
+    static std::vector<TBufferTemporaryTexture> textures[FrameBufferCount];
+
+    static TBufferTemporaryTexture AllocateExistingTBufferTemporaryTexture(size_t bufferSize)
+    {
+        auto& thisFrameTextures = textures[currentFrameIndex%FrameBufferCount];
+        for (auto i=thisFrameTextures.begin(); i!=thisFrameTextures.end(); ++i) {
+            if (i->_size == bufferSize && i->_lastAllocatedFrame < currentFrameIndex) {
+                i->_lastAllocatedFrame = currentFrameIndex;
+                return *i;
+            }
+        }
+
+        return TBufferTemporaryTexture();
+    }
+
+    static TBufferTemporaryTexture AllocateNewTBufferTemporaryTexture(const void* bufferData, size_t bufferSize)
+    {
+        auto& thisFrameTextures = textures[currentFrameIndex%FrameBufferCount];
+        thisFrameTextures.push_back(std::move(TBufferTemporaryTexture(bufferData, bufferSize)));
+        return thisFrameTextures[thisFrameTextures.size()-1];
+    }
+
+    static void PushTBufferTemporaryTexture(Metal::DeviceContext* context, TBufferTemporaryTexture& tex)
+    {
+        context->GetUnderlying()->CopyResource(tex._resource.get(), tex._stagingResource.get());
+    }
+}}
+

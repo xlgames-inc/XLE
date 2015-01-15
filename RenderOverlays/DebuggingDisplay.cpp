@@ -1,0 +1,1625 @@
+// Copyright 2015 XLGAMES Inc.
+//
+// Distributed under the MIT License (See
+// accompanying file "LICENSE" or the website
+// http://www.opensource.org/licenses/mit-license.php)
+
+#include "DebuggingDisplay.h"
+#include "OverlayContext.h"
+#include "../RenderCore/IDevice.h"
+#include "../RenderCore/Metal/DeviceContext.h"
+#include "../RenderCore/Metal/State.h"
+#include "../ConsoleRig/Console.h"
+#include "../Math/Transformations.h"
+#include "../Utility/PtrUtils.h"
+#include "../Utility/MemoryUtils.h"
+#include "../Utility/StringUtils.h"
+#include "../Utility/StringFormat.h"
+#include <stdarg.h>
+#include <assert.h>
+
+#include "../ConsoleRig/IncludeLUA.h"
+
+#pragma warning(disable:4244)   // conversion from 'int' to 'float', possible loss of data
+
+namespace RenderOverlays { namespace DebuggingDisplay
+{
+    const ColorB            RoundedRectOutlineColour(255,255,255,128);
+    const ColorB            RoundedRectBackgroundColour(180,200,255,128);
+    static const ColorB     HistoryGraphAxisColour(64,64,64,128);
+    static const ColorB     HistoryGraphLineColor(255,255,255,255);
+    static const ColorB     HistoryGraphExtraLineColor(255,128,128,255);
+    static const ColorB     HistoryGraphTopOfGraphBackground(200,255,200,196);
+    static const ColorB     HistoryGraphBottomOfGraphBackground(200,255,200,0);
+    static const ColorB     HistoryGraphTopOfGraphBackground_Peak(128,200,255,196);
+    static const ColorB     HistoryGraphBottomOfGraphBackground_Peak(128,200,255,64);
+    static const ColorB     GraphLabel(255, 255, 255, 128);
+
+    ///////////////////////////////////////////////////////////////////////////////////
+    ScrollBar::Coordinates::Coordinates(const Rect& rect, float minValue, float maxValue, float visibleWindowSize, Flags::BitField flags)
+    {
+        const Coord buttonHeight = (flags&Flags::NoUpDown)?0:std::min(Coord(rect.Width()*.75f), rect.Height()/3);
+        _interactableRect    = rect;
+        if (!(flags&Flags::Horizontal)) {
+            _upArrowRect         = Rect(rect._topLeft, Coord2(rect._bottomRight[0], rect._topLeft[1]+buttonHeight));
+            _downArrowRect       = Rect(Coord2(rect._topLeft[0], rect._bottomRight[1]-buttonHeight), Coord2(rect._bottomRight[0], rect._bottomRight[1]));
+            _scrollAreaRect      = Rect(Coord2(LinearInterpolate(rect._topLeft[0], rect._bottomRight[0], 0.2f), rect._topLeft[1]+buttonHeight), 
+                                        Coord2(LinearInterpolate(rect._topLeft[0], rect._bottomRight[0], 0.8f), rect._bottomRight[1]-buttonHeight));
+        } else {
+            _upArrowRect         = Rect(rect._topLeft, Coord2(rect._topLeft[0]+buttonHeight, rect._bottomRight[1]));
+            _downArrowRect       = Rect(Coord2(rect._bottomRight[0]-buttonHeight, rect._topLeft[1]), rect._bottomRight);
+            _scrollAreaRect      = Rect(Coord2(rect._topLeft[0]+buttonHeight, rect._topLeft[1]), 
+                                        Coord2(rect._bottomRight[0]-buttonHeight, rect._bottomRight[1]));
+        }
+
+        _flags = flags;
+
+        if (maxValue > minValue) {
+            if (!(flags&Flags::Horizontal)) {
+                _thumbHeight = Coord(_scrollAreaRect.Height() * visibleWindowSize / (maxValue-minValue));
+                _valueToPixels = float(_scrollAreaRect._bottomRight[1]-_scrollAreaRect._topLeft[1]-_thumbHeight) / (maxValue-minValue);
+                _pixelsBase = _scrollAreaRect._topLeft[1] + _thumbHeight/2;
+                _windowHeight = _scrollAreaRect.Height();
+            } else {
+                _thumbHeight = Coord(_scrollAreaRect.Width() * visibleWindowSize / (maxValue-minValue));
+                _valueToPixels = float(_scrollAreaRect._bottomRight[0]-_scrollAreaRect._topLeft[0]-_thumbHeight) / (maxValue-minValue);
+                _pixelsBase = _scrollAreaRect._topLeft[0] + _thumbHeight/2;
+                _windowHeight = _scrollAreaRect.Width();
+            }
+
+            _valueBase = minValue;
+            _maxValue = maxValue;
+        } else {
+            _valueToPixels = 0;
+            _valueBase = minValue;
+            _maxValue = minValue;
+            _pixelsBase = _scrollAreaRect._topLeft[1] + _scrollAreaRect.Height()/2;
+            _thumbHeight = _windowHeight = _scrollAreaRect.Height();
+        }
+    }
+
+    Coord   ScrollBar::Coordinates::ValueToPixels(float value) const      { return Coord(_pixelsBase + ((value-_valueBase)*_valueToPixels)); }
+    float   ScrollBar::Coordinates::PixelsToValue(Coord pixels) const     { return ((pixels-_pixelsBase) / _valueToPixels) + _valueBase; }
+    bool    ScrollBar::Coordinates::Collapse() const                      { return _thumbHeight>=_windowHeight; }
+    Rect    ScrollBar::Coordinates::Thumb(float value) const
+    {
+        const Coord thumbCentre    = ValueToPixels(value);
+        if (!(_flags&Flags::Horizontal)) {
+            const Coord thumbTop       = std::max(_scrollAreaRect._topLeft[1], thumbCentre-_thumbHeight/2);
+            const Coord thumbBottom    = std::min(_scrollAreaRect._bottomRight[1], thumbCentre+_thumbHeight/2);
+            return Rect( Coord2(_scrollAreaRect._topLeft[0], thumbTop), Coord2(_scrollAreaRect._bottomRight[0], thumbBottom) );
+        } else {
+            const Coord thumbTop       = std::max(_scrollAreaRect._topLeft[1], thumbCentre-_thumbHeight/2);
+            const Coord thumbBottom    = std::min(_scrollAreaRect._bottomRight[1], thumbCentre+_thumbHeight/2);
+            return Rect( Coord2(thumbTop, _scrollAreaRect._topLeft[1]), Coord2(thumbBottom, _scrollAreaRect._bottomRight[1]) );
+        }
+    }
+
+    bool            ScrollBar::ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input)
+    {
+        const bool overScrollBar = (interfaceState.TopMostId() == _id);
+        _draggingScrollBar = (_draggingScrollBar || overScrollBar) && (input._mouseButtonsDown&1);
+        if (_draggingScrollBar) {
+            _scrollOffsetPixels = (_flags&Coordinates::Flags::Horizontal)?interfaceState.MousePosition()[0]:interfaceState.MousePosition()[1];
+            if (!(input._mouseButtonsDown&1)) {
+                _draggingScrollBar = false;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    float           ScrollBar::CalculateCurrentOffset(const Coordinates& coordinates) const
+    {
+        if (coordinates.Collapse()) {
+            _scrollOffsetPixels = ~Coord(0x0);
+            _resolvedScrollOffset = 0.f;
+            _pendingDelta = 0.f;
+        }
+        if (_scrollOffsetPixels != ~Coord(0x0)) {
+            _resolvedScrollOffset = coordinates.PixelsToValue(_scrollOffsetPixels);
+            _scrollOffsetPixels = ~Coord(0x0);
+        }
+        _resolvedScrollOffset = std::max(coordinates.MinValue(), std::min(coordinates.MaxValue(), _resolvedScrollOffset+_pendingDelta));
+        _pendingDelta = 0.f;
+        return _resolvedScrollOffset; 
+    }
+
+    float           ScrollBar::CalculateCurrentOffset(const Coordinates& coordinates, float oldValue) const
+    {
+        if (coordinates.Collapse()) {
+            _scrollOffsetPixels = ~Coord(0x0);
+            _resolvedScrollOffset = 0.f;
+            _pendingDelta = 0.f;
+        }
+        if (_scrollOffsetPixels != ~Coord(0x0)) {
+            _resolvedScrollOffset = coordinates.PixelsToValue(_scrollOffsetPixels);
+            _scrollOffsetPixels = ~Coord(0x0);
+        } else {
+            _resolvedScrollOffset = oldValue;
+        }
+        _resolvedScrollOffset = std::max(coordinates.MinValue(), std::min(coordinates.MaxValue(), _resolvedScrollOffset+_pendingDelta));
+        _pendingDelta = 0.f;
+        return _resolvedScrollOffset; 
+    }
+
+    InteractableId  ScrollBar::GetID() const { return _id; }
+
+    void ScrollBar::ProcessDelta(float delta) const { _pendingDelta+=delta; }
+
+    ScrollBar::ScrollBar(InteractableId id, Coordinates::Flags::BitField flags)
+    :       _id(id)
+    ,       _flags(flags)
+    {
+        _scrollOffsetPixels = ~Coord(0x0);
+        _resolvedScrollOffset = 0;
+        _draggingScrollBar = false;
+        _pendingDelta = 0.f;
+    }
+
+    void DrawScrollBar_Old(IOverlayContext* context, const ScrollBar::Coordinates& coordinates, float thumbPosition, ColorB scrollBarColour, ColorB thumbColour)
+    {
+        const Rect rect = coordinates.ScrollArea();
+        const Rect thumbRect = coordinates.Thumb(thumbPosition);
+        
+        DrawRoundedRectangleOutline(context, rect, 2, scrollBarColour, rect.Width()/2);
+        DrawRectangle(context, thumbRect, thumbColour);
+        DrawRoundedRectangleOutline(
+            context, 
+            Rect(   Coord2(thumbRect._topLeft[0]+1, thumbRect._topLeft[1]+1), 
+                    Coord2(thumbRect._bottomRight[0]-1, thumbRect._bottomRight[1]-1)), 
+            1, scrollBarColour);
+    }
+
+    void DrawScrollBar(IOverlayContext* context, const ScrollBar::Coordinates& coordinates, float thumbPosition, ColorB fillColour, ColorB outlineColour)
+    {
+
+            //
+            //        Divide the rectangle into 3 parts
+            //      
+            //            Up button
+            //            Scroll area
+            //            Down button
+            //
+
+        const Rect upButton = coordinates.UpArrow();
+        const Rect downButton = coordinates.DownArrow();
+        const Rect scrollArea = coordinates.ScrollArea();
+
+        DrawFilledElipse(context, upButton, fillColour);
+        DrawFilledElipse(context, downButton, fillColour);
+        DrawElipse(context, upButton, outlineColour);
+        DrawElipse(context, downButton, outlineColour);
+
+        const float W = 7.f;
+        const float Q = W - 1.f;
+        const Coord2 upA    (upButton._topLeft[0]*(1.f/2.f)+upButton._bottomRight[0]*(1.f/2.f), upButton._topLeft[1]*1.f+upButton._bottomRight[1]*0.f-5);
+        const Coord2 upB    (upButton._topLeft[0]*(Q/W)+upButton._bottomRight[0]*(1.f/W), upButton._topLeft[1]*0.f+upButton._bottomRight[1]*1.f);
+        const Coord2 upC    (upButton._topLeft[0]*(1.f/W)+upButton._bottomRight[0]*(Q/W), upButton._topLeft[1]*0.f+upButton._bottomRight[1]*1.f);
+        const Coord2 downA  (downButton._topLeft[0]*(1.f/2.f)+downButton._bottomRight[0]*(1.f/2.f), downButton._topLeft[1]*0.f+downButton._bottomRight[1]*1.f+5);
+        const Coord2 downB  (downButton._topLeft[0]*(Q/W)+downButton._bottomRight[0]*(1.f/W), downButton._topLeft[1]*1.f+downButton._bottomRight[1]*0.f);
+        const Coord2 downC  (downButton._topLeft[0]*(1.f/W)+downButton._bottomRight[0]*(Q/W), downButton._topLeft[1]*1.f+downButton._bottomRight[1]*0.f);
+
+        const Coord2 leftA   (upButton._topLeft[0]*(3.f/5.f)+upButton._bottomRight[0]*(2.f/5.f), upButton._bottomRight[1]);
+        const Coord2 leftB   (upButton._topLeft[0]*(3.f/5.f)+upButton._bottomRight[0]*(2.f/5.f), downButton._topLeft[1]);
+        const Coord2 rightA  (upButton._topLeft[0]*(2.f/5.f)+upButton._bottomRight[0]*(3.f/5.f), upButton._bottomRight[1]);
+        const Coord2 rightB  (upButton._topLeft[0]*(2.f/5.f)+upButton._bottomRight[0]*(3.f/5.f), downButton._topLeft[1]);
+        const Coord2 midA    (upButton._topLeft[0]*(1.f/2.f)+upButton._bottomRight[0]*(1.f/2.f), upButton._bottomRight[1]);
+        const Coord2 midB    (upButton._topLeft[0]*(1.f/2.f)+upButton._bottomRight[0]*(1.f/2.f), downButton._topLeft[1]);
+
+        const Coord2 triangles[]         = {upA, upB, upC, downA, downB, downC};
+        const ColorB triangleColours[]   = {fillColour, fillColour, fillColour, fillColour, fillColour, fillColour};
+        DrawTriangles(context, triangles, triangleColours, dimof(triangles)/3);
+        DrawRectangle(context, Rect(leftA, rightB), 0.f, fillColour);
+
+        const Coord2 lines[] = { upA, upB, upA, upC, upB, upC, 
+                                 downA, downB, downA, downC, downB, downC, 
+                                 leftA, leftB, rightA, rightB };
+        const ColorB lineColours[] = {  outlineColour, outlineColour, outlineColour, outlineColour, 
+                                        outlineColour, outlineColour, outlineColour, outlineColour, 
+                                        outlineColour, outlineColour, outlineColour, outlineColour,
+                                        outlineColour, outlineColour, outlineColour, outlineColour };
+        DrawLines(context, lines, lineColours, dimof(lines)/2);
+        
+        const Rect thumbRect = coordinates.Thumb(thumbPosition);
+        DrawRoundedRectangle(context, thumbRect, scrollArea.Width()/2.7f, fillColour, outlineColour);
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////
+
+    Float3 AsPixelCoords(Coord2 input)              { return Float3(float(input[0]), float(input[1]), 0.f); }
+    Float3 AsPixelCoords(Coord2 input, float depth) { return Float3(float(input[0]), float(input[1]), depth); }
+    Float3 AsPixelCoords(Float2 input)              { return Expand(input, 0.f); }
+    Float3 AsPixelCoords(Float3 input)              { return input; }
+    unsigned GetFrameID() { return 0; }
+
+    ///////////////////////////////////////////////////////////////////////////////////
+
+    void DrawElipse(IOverlayContext* context, const Rect& rect, ColorB colour)
+    {
+        Coord2 center( LinearInterpolate(rect._topLeft[0], rect._bottomRight[0], 0.5f), LinearInterpolate(rect._topLeft[1], rect._bottomRight[1], 0.5f) );
+
+        //  we should also take into account the pixel aspect ratio, so that circles appear
+        //  as a circles on screen
+        Float3 pixelCenter = AsPixelCoords(center);
+        Float2 pixelRadius(rect.Width()/2, rect.Height()/2);
+
+        const unsigned segmentCount = 64;
+        Float3 lines[segmentCount*2];
+        float sinA = 0.f, cosA = 1.f;
+        const float beta = (2.f*gPI)/float(segmentCount-1);
+        float cosB, sinB;
+        std::tie(sinB, cosB) = XlSinCos(beta);
+        for (unsigned s=0; s<segmentCount; ++s) {
+            //  using trigonometric addition formulae (avoid sin/cos in the loop)
+            float nextSinA = sinA * cosB + sinB * cosA;
+            float nextCosA = cosA * cosB - sinA * sinB;
+            lines[s*2]   = Float3(pixelCenter[0]+pixelRadius[0]*cosA,       pixelCenter[1]+pixelRadius[1]*sinA,         pixelCenter[2]);
+            lines[s*2+1] = Float3(pixelCenter[0]+pixelRadius[0]*nextCosA,   pixelCenter[1]+pixelRadius[1]*nextSinA,     pixelCenter[2]);
+            sinA = nextSinA; cosA = nextCosA;
+        }
+
+        context->DrawLines(ProjectionMode::P2D, lines, dimof(lines), colour);
+    }
+
+    void DrawFilledElipse(IOverlayContext* context, const Rect& rect, ColorB colour)
+    {
+        Coord2 center( LinearInterpolate(rect._topLeft[0], rect._bottomRight[0], 0.5f), LinearInterpolate(rect._topLeft[1], rect._bottomRight[1], 0.5f) );
+        Float3 pixelCenter = AsPixelCoords(center);
+        Float2 pixelRadius(rect.Width()/2, rect.Height()/2);
+
+        const unsigned segmentCount = 64;
+        Float3 pts[segmentCount];
+        float sinA = 0.f, cosA = 1.f;
+        const float beta = (2.f*gPI)/float(segmentCount-1);
+        float cosB, sinB;
+        std::tie(sinB, cosB) = XlSinCos(beta);
+        for (unsigned s=0; s<segmentCount; ++s) {
+            pts[s]   = Float3(pixelCenter[0]+pixelRadius[0]*cosA, pixelCenter[1]+pixelRadius[1]*sinA, pixelCenter[2]);
+            float nextSinA = sinA * cosB + sinB * cosA;
+            float nextCosA = cosA * cosB - sinA * sinB;
+            sinA = nextSinA; cosA = nextCosA;
+        }
+
+        Float3 triangles[(segmentCount-2)*3];
+        Float3* t = triangles;
+        *t++ = pts[0];
+        *t++ = pts[1];
+        *t++ = pts[segmentCount-1];
+        unsigned lastA = segmentCount-1;
+        unsigned lastB = 1;
+        unsigned q = 0;
+        while (t < &triangles[dimof(triangles)]) {
+            unsigned C = (q&1)?(segmentCount-2-q/2):(q/2+2);
+            ++q;
+            *t++ = pts[lastA];
+            *t++ = pts[lastB];
+            *t++ = pts[C];
+            lastA = lastB;
+            lastB = C;
+        }
+
+        context->DrawTriangles(ProjectionMode::P2D, triangles, dimof(triangles), colour);
+    }
+
+    unsigned DefaultCornerSize(const Rect& rect)
+    {
+        int minDimension = std::min( rect._bottomRight[0] - rect._topLeft[0], rect._bottomRight[1] - rect._topLeft[1] );
+        int cornerSize = minDimension/8;
+        return cornerSize;
+    }
+
+    static void DrawCornerOutline(IOverlayContext* context, const Rect& rect, unsigned width, ColorB colour)
+    {
+        const unsigned quadCount = 32;
+        Float3 positions[quadCount*2*3];
+        const float innerRadius = 1.f - width / float(std::min(abs(rect._bottomRight[0]-rect._topLeft[0]), abs(rect._bottomRight[1]-rect._topLeft[1])));
+        for (unsigned c=0; c<quadCount; ++c) {
+            const float angle0   =     c/float(quadCount) * gPI / 2.f;
+            const float angle1   = (c+1)/float(quadCount) * gPI / 2.f;
+            float sin0, cos0, sin1, cos1;
+            std::tie(sin0, cos0) = XlSinCos(angle0);
+            std::tie(sin1, cos1) = XlSinCos(angle1);
+            const float ox0      = LinearInterpolate(float(rect._bottomRight[0]), float(rect._topLeft[0]), cos0);
+            const float ox1      = LinearInterpolate(float(rect._bottomRight[0]), float(rect._topLeft[0]), cos1);
+            const float ix0      = LinearInterpolate(float(rect._bottomRight[0]), float(ox0), innerRadius);
+            const float ix1      = LinearInterpolate(float(rect._bottomRight[0]), float(ox1), innerRadius);
+            const float oy0      = LinearInterpolate(float(rect._bottomRight[1]), float(rect._topLeft[1]), sin0);
+            const float oy1      = LinearInterpolate(float(rect._bottomRight[1]), float(rect._topLeft[1]), sin1);
+            const float iy0      = LinearInterpolate(float(rect._bottomRight[1]), float(oy0), innerRadius);
+            const float iy1      = LinearInterpolate(float(rect._bottomRight[1]), float(oy1), innerRadius);
+
+            positions[c*2*3 + 0] = AsPixelCoords(Float2(ox0, oy0));
+            positions[c*2*3 + 1] = AsPixelCoords(Float2(ox1, oy1));
+            positions[c*2*3 + 2] = AsPixelCoords(Float2(ix0, iy0));
+
+            positions[c*2*3 + 3] = AsPixelCoords(Float2(ix0, iy0));
+            positions[c*2*3 + 4] = AsPixelCoords(Float2(ox1, oy1));
+            positions[c*2*3 + 5] = AsPixelCoords(Float2(ix1, iy1));
+        }
+
+        context->DrawTriangles(ProjectionMode::P2D, positions, dimof(positions), colour);
+    }
+
+    void DrawRoundedRectangleOutline(IOverlayContext* context, const Rect & rect, unsigned width, ColorB colour, unsigned cornerSize)
+    {
+        if (rect._bottomRight[0] <= rect._topLeft[0] || rect._bottomRight[1] <= rect._topLeft[1]) {
+            return;
+        }
+
+        if (cornerSize == ~unsigned(0x0)) {
+            cornerSize = DefaultCornerSize(rect);
+        }
+
+        const Rect topLeft    (Coord2(rect._topLeft[0], rect._topLeft[1]),           Coord2(rect._topLeft[0]+cornerSize, rect._topLeft[1]+cornerSize)        );
+        const Rect topRight   (Coord2(rect._bottomRight[0], rect._topLeft[1]),       Coord2(rect._bottomRight[0]-cornerSize, rect._topLeft[1]+cornerSize)    );
+        const Rect bottomLeft (Coord2(rect._topLeft[0], rect._bottomRight[1]),       Coord2(rect._topLeft[0]+cornerSize, rect._bottomRight[1]-cornerSize)    );
+        const Rect bottomRight(Coord2(rect._bottomRight[0], rect._bottomRight[1]),   Coord2(rect._bottomRight[0]-cornerSize, rect._bottomRight[1]-cornerSize));
+        DrawCornerOutline(context, topLeft, width, colour);
+        DrawCornerOutline(context, topRight, width, colour);
+        DrawCornerOutline(context, bottomLeft, width, colour);
+        DrawCornerOutline(context, bottomRight, width, colour);
+
+        if (rect._topLeft[0]+cornerSize < rect._bottomRight[0]-cornerSize) {
+            context->DrawTriangle(  ProjectionMode::P2D, 
+                                    AsPixelCoords(Coord2(rect._topLeft[0]+cornerSize,         rect._topLeft[1]          )), colour,
+                                    AsPixelCoords(Coord2(rect._bottomRight[0]-cornerSize,     rect._topLeft[1]          )), colour,
+                                    AsPixelCoords(Coord2(rect._topLeft[0]+cornerSize,         rect._topLeft[1]+width    )), colour);
+            context->DrawTriangle(  ProjectionMode::P2D, 
+                                    AsPixelCoords(Coord2(rect._bottomRight[0]-cornerSize,     rect._topLeft[1]          )), colour,
+                                    AsPixelCoords(Coord2(rect._bottomRight[0]-cornerSize,     rect._topLeft[1]+width    )), colour,
+                                    AsPixelCoords(Coord2(rect._topLeft[0]+cornerSize,         rect._topLeft[1]+width    )), colour);
+
+            context->DrawTriangle(  ProjectionMode::P2D, 
+                                    AsPixelCoords(Coord2(rect._topLeft[0]+cornerSize,         rect._bottomRight[1]      )), colour,
+                                    AsPixelCoords(Coord2(rect._bottomRight[0]-cornerSize,     rect._bottomRight[1]      )), colour,
+                                    AsPixelCoords(Coord2(rect._topLeft[0]+cornerSize,         rect._bottomRight[1]-width)), colour);
+            context->DrawTriangle(  ProjectionMode::P2D, 
+                                    AsPixelCoords(Coord2(rect._bottomRight[0]-cornerSize,     rect._bottomRight[1]      )), colour,
+                                    AsPixelCoords(Coord2(rect._bottomRight[0]-cornerSize,     rect._bottomRight[1]-width)), colour,
+                                    AsPixelCoords(Coord2(rect._topLeft[0]+cornerSize,         rect._bottomRight[1]-width)), colour);
+        }
+
+        if (rect._topLeft[1]+cornerSize < rect._bottomRight[1]-cornerSize) {
+            context->DrawTriangle(  ProjectionMode::P2D, 
+                                    AsPixelCoords(Coord2(rect._topLeft[0],                 rect._topLeft[1]+cornerSize      )), colour,
+                                    AsPixelCoords(Coord2(rect._topLeft[0],                 rect._bottomRight[1]-cornerSize  )), colour,
+                                    AsPixelCoords(Coord2(rect._topLeft[0]+width,           rect._topLeft[1]+cornerSize      )), colour);
+            context->DrawTriangle(  ProjectionMode::P2D, 
+                                    AsPixelCoords(Coord2(rect._topLeft[0],                 rect._bottomRight[1]-cornerSize  )), colour,
+                                    AsPixelCoords(Coord2(rect._topLeft[0]+width,           rect._bottomRight[1]-cornerSize  )), colour,
+                                    AsPixelCoords(Coord2(rect._topLeft[0]+width,           rect._topLeft[1]+cornerSize      )), colour);
+
+            context->DrawTriangle(  ProjectionMode::P2D, 
+                                    AsPixelCoords(Coord2(rect._bottomRight[0],             rect._topLeft[1]+cornerSize     )), colour,
+                                    AsPixelCoords(Coord2(rect._bottomRight[0],             rect._bottomRight[1]-cornerSize )), colour,
+                                    AsPixelCoords(Coord2(rect._bottomRight[0]-width,       rect._topLeft[1]+cornerSize     )), colour);
+            context->DrawTriangle(  ProjectionMode::P2D, 
+                                    AsPixelCoords(Coord2(rect._bottomRight[0],             rect._bottomRight[1]-cornerSize )), colour,
+                                    AsPixelCoords(Coord2(rect._bottomRight[0]-width,       rect._bottomRight[1]-cornerSize )), colour,
+                                    AsPixelCoords(Coord2(rect._bottomRight[0]-width,       rect._topLeft[1]+cornerSize     )), colour);
+        }
+    }
+
+    void DrawRoundedRectangle(IOverlayContext* context, const Rect & rect, Coord cornerSize, ColorB backgroundColour, ColorB outlineColour)
+    {
+        if (rect._bottomRight[0] <= rect._topLeft[0] || rect._bottomRight[1] <= rect._topLeft[1]) {
+            return;
+        }
+
+        if (cornerSize == ~Coord(0x0)) {
+            cornerSize = DefaultCornerSize(rect);
+        }
+
+            ///////
+            //  Render basic left, right, top, bottom lines first...
+        Float3 baseLines[] = 
+        {
+            AsPixelCoords(Coord2(rect._topLeft[0] + cornerSize, rect._topLeft[1])),
+            AsPixelCoords(Coord2(rect._bottomRight[0] - cornerSize, rect._topLeft[1])),
+
+            AsPixelCoords(Coord2(rect._topLeft[0] + cornerSize, rect._bottomRight[1])),
+            AsPixelCoords(Coord2(rect._bottomRight[0] - cornerSize, rect._bottomRight[1])),
+
+            AsPixelCoords(Coord2(rect._topLeft[0], rect._topLeft[1] + cornerSize)),
+            AsPixelCoords(Coord2(rect._topLeft[0], rect._bottomRight[1] - cornerSize)),
+
+            AsPixelCoords(Coord2(rect._bottomRight[0], rect._topLeft[1] + cornerSize)),
+            AsPixelCoords(Coord2(rect._bottomRight[0], rect._bottomRight[1] - cornerSize))
+        };
+        context->DrawLines(ProjectionMode::P2D, baseLines, dimof(baseLines), outlineColour);
+
+            ///////
+            //  Render the main internal area..
+        context->DrawTriangle(
+            ProjectionMode::P2D, 
+            AsPixelCoords(Coord2(rect._topLeft[0], rect._topLeft[1] + cornerSize)), backgroundColour,
+            AsPixelCoords(Coord2(rect._topLeft[0], rect._bottomRight[1] - cornerSize-1)), backgroundColour,
+            AsPixelCoords(Coord2(rect._bottomRight[0] - 1, rect._topLeft[1] + cornerSize)), backgroundColour );
+
+        context->DrawTriangle(
+            ProjectionMode::P2D, 
+            AsPixelCoords(Coord2(rect._bottomRight[0] - 1, rect._topLeft[1] + cornerSize)), backgroundColour,
+            AsPixelCoords(Coord2(rect._topLeft[0], rect._bottomRight[1] - cornerSize-1)), backgroundColour,
+            AsPixelCoords(Coord2(rect._bottomRight[0] - 1, rect._bottomRight[1] - cornerSize-1)), backgroundColour );
+
+            ///////
+            //  Render each corner as a set of dots
+            //      (and also render lines for the background in the curved part of the rectangle)
+            //      Note that this isn't a perfect circle drawing method, and might miss some cases
+            //      where we should draw 2 pixels on a single line
+        for (unsigned c=1; c<=unsigned(cornerSize); ++c) {
+            float y = 1.f - c/float(cornerSize);
+            float x = sqrt(1.0f-y*y);
+            Coord xCoord = Coord(x * cornerSize + 0.5f);
+            context->DrawLine(
+                ProjectionMode::P2D, 
+                AsPixelCoords(Coord2(rect._topLeft[0] + cornerSize - xCoord,         rect._topLeft[1] + c)), backgroundColour,
+                AsPixelCoords(Coord2(rect._bottomRight[0] - cornerSize + xCoord - 1, rect._topLeft[1] + c)), backgroundColour );
+            context->DrawLine(
+                ProjectionMode::P2D, 
+                AsPixelCoords(Coord2(rect._topLeft[0] + cornerSize - xCoord,         rect._bottomRight[1] - c)), backgroundColour,
+                AsPixelCoords(Coord2(rect._bottomRight[0] - cornerSize + xCoord - 1, rect._bottomRight[1] - c)), backgroundColour );
+        }
+
+        for (unsigned c=1; c<=unsigned(cornerSize); ++c) {
+            float y = 1.f - c/float(cornerSize);
+            float x = sqrt(1.0f-y*y);
+            Coord xCoord = Coord(x * cornerSize + 0.5f);
+
+            //  Outline is drawn as points around the curve
+            context->DrawPoint( ProjectionMode::P2D, AsPixelCoords(Coord2(rect._topLeft[0] + cornerSize - xCoord,      rect._topLeft[1] + c       )), outlineColour );
+            context->DrawPoint( ProjectionMode::P2D, AsPixelCoords(Coord2(rect._bottomRight[0] - cornerSize + xCoord,  rect._topLeft[1] + c       )), outlineColour );
+            context->DrawPoint( ProjectionMode::P2D, AsPixelCoords(Coord2(rect._topLeft[0] + cornerSize - xCoord,      rect._bottomRight[1] - c   )), outlineColour );
+            context->DrawPoint( ProjectionMode::P2D, AsPixelCoords(Coord2(rect._bottomRight[0] - cornerSize + xCoord,  rect._bottomRight[1] - c   )), outlineColour );
+        }
+    }
+
+    void DrawRectangle(IOverlayContext* context, const Rect& rect, ColorB colour)
+    {
+        if (rect._bottomRight[0] <= rect._topLeft[0] || rect._bottomRight[1] <= rect._topLeft[1]) {
+            return;
+        }
+
+        context->DrawTriangle(
+            ProjectionMode::P2D, 
+            AsPixelCoords(Coord2(rect._topLeft[0], rect._topLeft[1])), colour,
+            AsPixelCoords(Coord2(rect._topLeft[0], rect._bottomRight[1]-1)), colour,
+            AsPixelCoords(Coord2(rect._bottomRight[0]-1, rect._topLeft[1])), colour);
+
+        context->DrawTriangle(
+            ProjectionMode::P2D, 
+            AsPixelCoords(Coord2(rect._bottomRight[0]-1, rect._topLeft[1])), colour,
+            AsPixelCoords(Coord2(rect._topLeft[0], rect._bottomRight[1]-1)), colour,
+            AsPixelCoords(Coord2(rect._bottomRight[0]-1, rect._bottomRight[1]-1)), colour);
+    }
+
+    void DrawRectangle(IOverlayContext* context, const Rect& rect, float depth, ColorB colour)
+    {
+        if (rect._bottomRight[0] <= rect._topLeft[0] || rect._bottomRight[1] <= rect._topLeft[1]) {
+            return;
+        }
+
+        context->DrawTriangle(
+            ProjectionMode::P2D, 
+            AsPixelCoords(Float3(rect._topLeft[0], rect._topLeft[1], depth)), colour,
+            AsPixelCoords(Float3(rect._topLeft[0], rect._bottomRight[1]-1, depth)), colour,
+            AsPixelCoords(Float3(rect._bottomRight[0]-1, rect._topLeft[1], depth)), colour);
+
+        context->DrawTriangle(
+            ProjectionMode::P2D, 
+            AsPixelCoords(Float3(rect._bottomRight[0]-1, rect._topLeft[1], depth)), colour,
+            AsPixelCoords(Float3(rect._topLeft[0], rect._bottomRight[1]-1, depth)), colour,
+            AsPixelCoords(Float3(rect._bottomRight[0]-1, rect._bottomRight[1]-1, depth)), colour);
+    }
+
+    void DrawRectangleOutline(IOverlayContext* context, const Rect& rect, float depth, ColorB colour)
+    {
+        if (rect._bottomRight[0] <= rect._topLeft[0] || rect._bottomRight[1] <= rect._topLeft[1]) {
+            return;
+        }
+
+        Float3 lines[8];
+        lines[0] = AsPixelCoords(Float3(rect._topLeft[0],         rect._topLeft[1],        depth));
+        lines[1] = AsPixelCoords(Float3(rect._bottomRight[0]-1,   rect._topLeft[1],        depth));
+        lines[2] = AsPixelCoords(Float3(rect._bottomRight[0]-1,   rect._topLeft[1],        depth));
+        lines[3] = AsPixelCoords(Float3(rect._bottomRight[0]-1,   rect._bottomRight[1]-1,  depth));
+        lines[4] = AsPixelCoords(Float3(rect._bottomRight[0]-1,   rect._bottomRight[1]-1,  depth));
+        lines[5] = AsPixelCoords(Float3(rect._topLeft[0],         rect._bottomRight[1]-1,  depth));
+        lines[6] = AsPixelCoords(Float3(rect._topLeft[0],         rect._bottomRight[1]-1,  depth));
+        lines[7] = AsPixelCoords(Float3(rect._topLeft[0],         rect._topLeft[1],        depth));
+        context->DrawLines(ProjectionMode::P2D, lines, dimof(lines), colour);
+    }
+
+    Coord DrawText(IOverlayContext* context, const Rect& rect, float scale, TextStyle* textStyle, ColorB colour, const char text[])
+    {
+        auto r = std::make_tuple(AsPixelCoords(rect._topLeft), AsPixelCoords(rect._bottomRight));
+        return (Coord)context->DrawText(r, 1.f, textStyle, colour, TextAlignment::Left, text, nullptr);
+    }
+
+    Coord DrawText(IOverlayContext* context, const Rect& rect, float depth, float scale, TextStyle* textStyle, ColorB colour, const char text[])
+    {
+        auto r = std::make_tuple(AsPixelCoords(rect._topLeft, depth), AsPixelCoords(rect._bottomRight, depth));
+        return (Coord)context->DrawText(r, 1.f, textStyle, colour, TextAlignment::Left, text, nullptr);
+    }
+
+    Coord DrawText(IOverlayContext* context, const Rect& rect, float depth, float scale, TextStyle* textStyle, ColorB colour, TextAlignment::Enum alignment, const char text[])
+    {
+        auto r = std::make_tuple(AsPixelCoords(rect._topLeft, depth), AsPixelCoords(rect._bottomRight, depth));
+        return (Coord)context->DrawText(r, 1.f, textStyle, colour, alignment, text, nullptr);
+    }
+
+    Coord DrawFormatText(IOverlayContext* context, const Rect& rect, float depth, float scale, TextStyle* textStyle, ColorB colour, TextAlignment::Enum alignment, const char text[], va_list args)
+    {
+        auto r = std::make_tuple(AsPixelCoords(rect._topLeft), AsPixelCoords(rect._bottomRight));
+        return (Coord)context->DrawText(r, 1.f, textStyle, colour, alignment, text, args);
+    }
+
+    Coord DrawFormatText(IOverlayContext* context, const Rect & rect, float scale, TextStyle* textStyle, ColorB colour, const char text[], ...)
+    {
+        va_list args;
+        va_start(args, text);
+        auto result = DrawFormatText(context, rect, 0.f, scale, textStyle, colour, TextAlignment::Left, text, args);
+        va_end(args);
+        return result;
+    }
+
+    Coord DrawFormatText(IOverlayContext* context, const Rect & rect, float depth, float scale, TextStyle* textStyle, ColorB colour, const char text[], ...)
+    {
+        va_list args;
+        va_start(args, text);
+        auto result = DrawFormatText(context, rect, depth, scale, textStyle, colour, TextAlignment::Left, text, args);
+        va_end(args);
+        return result;
+    }
+
+    Coord DrawFormatText(IOverlayContext* context, const Rect & rect, float depth, float scale, TextStyle* textStyle, ColorB colour, TextAlignment::Enum alignment, const char text[], ...)
+    {
+        va_list args;
+        va_start(args, text);
+        auto result = DrawFormatText(context, rect, depth, scale, textStyle, colour, alignment, text, args);
+        va_end(args);
+        return result;
+    }
+
+    void DrawHistoryGraph(IOverlayContext* context, const Rect & rect, float values[], unsigned valuesCount, unsigned maxValuesCount, float& minValueHistory, float& maxValueHistory)
+    {
+            //      Within the rectangle, draw a histogram graph showing the history of these values
+            //      see also IRenderer::Graph().. it's a graph drawing function built right into the renderer
+            //      object itself!
+        context->DrawLine(
+            ProjectionMode::P2D, 
+            AsPixelCoords(Coord2(rect._topLeft[0],     rect._bottomRight[1])), HistoryGraphAxisColour,
+            AsPixelCoords(Coord2(rect._bottomRight[0], rect._bottomRight[1])), HistoryGraphAxisColour );
+        context->DrawLine(
+            ProjectionMode::P2D, 
+            AsPixelCoords(Coord2(rect._topLeft[0],       rect._topLeft[1])), HistoryGraphAxisColour,
+            AsPixelCoords(Coord2(rect._topLeft[0],       rect._bottomRight[1])), HistoryGraphAxisColour );
+
+        Rect graphArea( Coord2( rect._topLeft[0]+1, rect._topLeft[1] ),
+                        Coord2( rect._bottomRight[0], rect._bottomRight[1]-1 ) );
+
+        context->DrawLine(
+            ProjectionMode::P2D, 
+            AsPixelCoords(Coord2(rect._topLeft[0],     LinearInterpolate(rect._topLeft[1], rect._bottomRight[1], 0.25f))), HistoryGraphAxisColour,
+            AsPixelCoords(Coord2(rect._bottomRight[0], LinearInterpolate(rect._topLeft[1], rect._bottomRight[1], 0.25f))), HistoryGraphAxisColour );
+        context->DrawLine(
+            ProjectionMode::P2D, 
+            AsPixelCoords(Coord2(rect._topLeft[0],     LinearInterpolate(rect._topLeft[1], rect._bottomRight[1], 0.5f))), HistoryGraphAxisColour,
+            AsPixelCoords(Coord2(rect._bottomRight[0], LinearInterpolate(rect._topLeft[1], rect._bottomRight[1], 0.5f))), HistoryGraphAxisColour );
+        context->DrawLine(
+            ProjectionMode::P2D, 
+            AsPixelCoords(Coord2(rect._topLeft[0],     LinearInterpolate(rect._topLeft[1], rect._bottomRight[1], 0.75f))), HistoryGraphAxisColour,
+            AsPixelCoords(Coord2(rect._bottomRight[0], LinearInterpolate(rect._topLeft[1], rect._bottomRight[1], 0.75f))), HistoryGraphAxisColour );
+
+        if (valuesCount) {
+                // find the max and min values in our data set...
+            float maxValue = -MAX_FLOAT32, minValue = MAX_FLOAT32;
+            unsigned peakIndex = 0;
+            for (unsigned c=0; c<valuesCount; ++c) {
+                maxValue = std::max(values[c], maxValue);
+                minValue = std::min(values[c], minValue);
+                if (values[c] > values[peakIndex]) {peakIndex = c;}
+            }
+
+            minValue = std::min(minValue, maxValue*.75f);
+
+            minValue = minValueHistory = std::min(LinearInterpolate(minValueHistory, minValue, 0.15f), minValue);
+            maxValue = maxValueHistory = std::max(LinearInterpolate(maxValueHistory, maxValue, 0.15f), maxValue);
+
+            Float3 graphLinePoints[1024];
+            assert(dimof(graphLinePoints)>=(valuesCount*2));
+
+            //  figure out y axis coordination conversion...
+            float yB = -(graphArea._bottomRight[1]-graphArea._topLeft[1]-20)/float(maxValue-minValue);
+            float yA = float(graphArea._bottomRight[1]-10) - yB * minValue; 
+            float xB = (graphArea._bottomRight[0]-graphArea._topLeft[0])/float(maxValuesCount-1);
+            float yZ = float(graphArea._bottomRight[1]);
+
+            for (unsigned c=0; c<(valuesCount-1); ++c) {
+                float x0 = graphArea._topLeft[0] + xB*c;
+                float x1 = graphArea._topLeft[0] + xB*(c+1);
+                float y0 = yA + yB * values[c];
+                float y1 = yA + yB * values[c+1];
+
+                graphLinePoints[c*2]    = AsPixelCoords(Coord2(x0+.5f, y0+.5f));
+                graphLinePoints[c*2+1]  = AsPixelCoords(Coord2(x1+.5f, y1+.5f));
+                    
+                bool peak = (c == peakIndex || (c+1) == peakIndex);
+                ColorB colorTop      = peak?HistoryGraphTopOfGraphBackground_Peak:HistoryGraphTopOfGraphBackground;
+                ColorB colorBottom   = peak?HistoryGraphBottomOfGraphBackground_Peak:HistoryGraphBottomOfGraphBackground;
+                context->DrawTriangle(  ProjectionMode::P2D, 
+                                        AsPixelCoords(Coord2(x0+.5f, y0+.5f)), colorTop,
+                                        AsPixelCoords(Coord2(x0+.5f, yZ+.5f)), colorBottom,
+                                        AsPixelCoords(Coord2(x1+.5f, y1+.5f)), colorTop );
+                context->DrawTriangle(  ProjectionMode::P2D, 
+                                        AsPixelCoords(Coord2(x1+.5f, y1+.5f)), colorTop,
+                                        AsPixelCoords(Coord2(x0+.5f, yZ+.5f)), colorBottom,
+                                        AsPixelCoords(Coord2(x1+.5f, yZ+.5f)), colorBottom );
+            }
+
+            context->DrawLines(ProjectionMode::P2D, graphLinePoints, (valuesCount-1)*2, HistoryGraphLineColor);
+
+            {
+                    // label the peak & write min and max values
+                Coord2 peakPos(graphArea._topLeft[0] + xB*peakIndex, yA + yB * values[peakIndex] - 14);
+                Coord2 maxPos(graphArea._topLeft[0] + 14, graphArea._topLeft[1] + 8);
+                Coord2 minPos(graphArea._topLeft[0] + 14, graphArea._bottomRight[1] - 18);
+
+                DrawFormatText(context, Rect(peakPos, peakPos),  1.f, nullptr, GraphLabel, "%6.2f", values[peakIndex]);
+                DrawFormatText(context, Rect(minPos, minPos),    1.f, nullptr, GraphLabel, "%6.2f", minValue);
+                DrawFormatText(context, Rect(maxPos, maxPos),    1.f, nullptr, GraphLabel, "%6.2f", maxValue);
+            }
+        }
+    }
+
+    void DrawHistoryGraph_ExtraLine(IOverlayContext* context, const Rect & rect, float values[], unsigned valuesCount, unsigned maxValuesCount, float minValue, float maxValue)
+    {
+        Rect graphArea( Coord2( rect._topLeft[0]+1, rect._topLeft[1] ),
+                        Coord2( rect._bottomRight[0], rect._bottomRight[1]-1 ));
+
+        if (valuesCount) {
+            Float3 graphLinePoints[1024];
+            assert(dimof(graphLinePoints)>=(valuesCount*2));
+
+                //  figure out y axis coordination conversion...
+            float yB = -(graphArea._bottomRight[1]-graphArea._topLeft[1]-20)/float(maxValue-minValue);
+            float yA = float(graphArea._bottomRight[1]-10) - yB * minValue; 
+            float xB = (graphArea._bottomRight[0]-graphArea._topLeft[0])/float(maxValuesCount-1);
+
+            for (unsigned c=0; c<(valuesCount-1); ++c) {
+                float x0 = graphArea._topLeft[0] + xB*c;
+                float x1 = graphArea._topLeft[0] + xB*(c+1);
+                float y0 = yA + yB * values[c];
+                float y1 = yA + yB * values[c+1];
+
+                graphLinePoints[c*2]    = AsPixelCoords(Float2(x0+.5f, y0+.5f));
+                graphLinePoints[c*2+1]  = AsPixelCoords(Float2(x1+.5f, y1+.5f));
+            }
+
+            context->DrawLines(ProjectionMode::P2D, graphLinePoints, (valuesCount-1)*2, HistoryGraphExtraLineColor);
+        }
+    }
+
+    void        DrawTriangles(IOverlayContext* context, const Coord2 triangleCoordinates[], const ColorB triangleColours[], unsigned triangleCount)
+    {
+        std::vector<Float3> pixelCoords;
+        pixelCoords.resize(triangleCount*3);
+        for (unsigned c=0; c<triangleCount*3; ++c) {
+            pixelCoords[c] = AsPixelCoords(Coord2(triangleCoordinates[c][0], triangleCoordinates[c][1]));
+        }
+
+        context->DrawTriangles(ProjectionMode::P2D, AsPointer(pixelCoords.begin()), triangleCount*3, triangleColours);
+    }
+
+    void        DrawLines(IOverlayContext* context, const Coord2 lineCoordinates[], const ColorB lineColours[], unsigned lineCount)
+    {
+        std::vector<Float3> pixelCoords;
+        pixelCoords.resize(lineCount*2);
+        for (unsigned c=0; c<lineCount*2; ++c) {
+            pixelCoords[c] = AsPixelCoords(Coord2(lineCoordinates[c][0], lineCoordinates[c][1]));
+        }
+
+        context->DrawLines(ProjectionMode::P2D, AsPointer(pixelCoords.begin()), lineCount*2, lineColours);
+    }
+
+
+    ///////////////////////////////////////////////////////////////////////////////////
+    void DrawTableHeaders(IOverlayContext* context, const Rect& rect, const std::vector<std::pair<std::string, unsigned>>& fieldHeaders, ColorB bkColor, Interactables* interactables)
+    {
+        const ColorB HeaderTextColor  ( 255, 255, 255, 255 );
+        Layout tempLayout(rect);
+        tempLayout._paddingInternalBorder = 0;
+        for (std::vector<std::pair<std::string, unsigned>>::const_iterator i=fieldHeaders.begin(); i!=fieldHeaders.end(); ++i) {
+            const Rect r = tempLayout.AllocateFullHeight(i->second);
+            if (!i->first.empty() && i->second) {
+                const float scale        = 2.f;
+                const ColorB colour      = HeaderTextColor;
+                DrawRectangle(context, r, bkColor);
+                DrawText(context, r, scale, nullptr, colour, i->first.c_str());
+
+                if (interactables) {
+                    interactables->Register(Interactables::Widget(r, InteractableId_Make(i->first.c_str())));
+                }
+            }
+        }
+    }
+
+    void DrawTableEntry(        IOverlayContext* context,
+                                const Rect& rect, 
+                                const std::vector<std::pair<std::string, unsigned>>& fieldHeaders, 
+                                std::map<std::string, TableElement>& entry)
+    {
+        const ColorB TextColor        ( 255, 255, 255, 255 );
+        Layout tempLayout(rect);
+        tempLayout._paddingInternalBorder = 0;
+        for (std::vector<std::pair<std::string, unsigned>>::const_iterator i=fieldHeaders.begin(); i!=fieldHeaders.end(); ++i) {
+            if (i->second) {
+                const TableElement& s    = entry[i->first];
+                const Rect r = tempLayout.AllocateFullHeight(i->second);
+                if (!s._label.empty()) {
+                    const float scale        = 2.f;
+                    const ColorB colour      = TextColor;
+                    DrawRectangle(context, r, s._bkColour);
+                    DrawText(context, r, scale, nullptr, colour, s._label.c_str());
+                }
+            }
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////
+    void DrawGenericButton(IOverlayContext* context, const char text[], const Rect& rect, Interactables& interactables, InterfaceState& interfaceState)
+    {
+        const ColorB BkNormal            = RandomPaletteColorTable[5];
+        const ColorB BkMouseOver         = RandomPaletteColorTable[6];
+        const ColorB TextNormal          = ColorB(0xffffffff);
+        const ColorB OutlineMouseDown    = RandomPaletteColorTable[7];
+
+        InteractableId id = InteractableId_Make(text);
+        DrawRectangle(context, rect, 0.f, interfaceState.HasMouseOver(id)?BkMouseOver:BkNormal);
+        if (interfaceState.IsMouseButtonHeld()) {
+            DrawRectangleOutline(context, rect, 0.f, OutlineMouseDown);
+        }
+        DrawFormatText(context, rect, 0.f, 1.f, nullptr, TextNormal, "%s", text);
+        interactables.Register(Interactables::Widget(rect, id));
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////
+    static void SetQuadPts(Float3 destination[], const Float3& A, const Float3& B, const Float3& C, const Float3& D)
+    {
+        destination[0] = A; destination[1] = B; destination[2] = C;
+        destination[3] = A; destination[4] = C; destination[5] = D;
+    }
+
+    BoundingBoxCorners::BoundingBoxCorners(const AABoundingBox& box, const Float3x4& localToWorld)
+    {
+        const Float3 bbpts[] = 
+        {
+            Float3(0.f, 0.f, 0.f), Float3(0.f, 1.f, 0.f),
+            Float3(1.f, 1.f, 0.f), Float3(1.f, 0.f, 0.f),
+            Float3(0.f, 0.f, 1.f), Float3(0.f, 1.f, 1.f),
+            Float3(1.f, 1.f, 1.f), Float3(1.f, 0.f, 1.f)
+        };
+
+        for (unsigned c=0; c<dimof(bbpts); ++c) {
+            _worldSpacePts[c] = Float3(     LinearInterpolate(std::get<0>(box)[0], std::get<1>(box)[0], bbpts[c][0]),
+                                            LinearInterpolate(std::get<0>(box)[1], std::get<1>(box)[1], bbpts[c][1]),
+                                            LinearInterpolate(std::get<0>(box)[2], std::get<1>(box)[2], bbpts[c][2]));
+            _worldSpacePts[c] = TransformPoint(localToWorld, _worldSpacePts[c]);
+        }
+    }
+
+    static const float          BoundingBoxLineThickness = 3.f;
+    static const unsigned char  BoundingBoxTriangleAlpha = 0x3f;
+    static const unsigned char  BoundingBoxLineAlpha     = 0xff;
+
+    void DrawBoundingBox(IOverlayContext* context, const AABoundingBox& box, const Float3x4& localToWorld, ColorB entryColour, unsigned partMask)
+    {
+        BoundingBoxCorners corners(box, localToWorld);
+
+        if (partMask & 0x2) {
+            Float3 lines[12*2];
+            lines[ 0*2+0] = corners._worldSpacePts[0]; lines[ 0*2+1] = corners._worldSpacePts[1];
+            lines[ 1*2+0] = corners._worldSpacePts[1]; lines[ 1*2+1] = corners._worldSpacePts[2];
+            lines[ 2*2+0] = corners._worldSpacePts[2]; lines[ 2*2+1] = corners._worldSpacePts[3];
+            lines[ 3*2+0] = corners._worldSpacePts[3]; lines[ 3*2+1] = corners._worldSpacePts[0];
+
+            lines[ 4*2+0] = corners._worldSpacePts[4]; lines[ 4*2+1] = corners._worldSpacePts[5];
+            lines[ 5*2+0] = corners._worldSpacePts[5]; lines[ 5*2+1] = corners._worldSpacePts[6];
+            lines[ 6*2+0] = corners._worldSpacePts[6]; lines[ 6*2+1] = corners._worldSpacePts[7];
+            lines[ 7*2+0] = corners._worldSpacePts[7]; lines[ 7*2+1] = corners._worldSpacePts[4];
+
+            lines[ 8*2+0] = corners._worldSpacePts[0]; lines[ 8*2+1] = corners._worldSpacePts[4];
+            lines[ 9*2+0] = corners._worldSpacePts[1]; lines[ 9*2+1] = corners._worldSpacePts[5];
+            lines[10*2+0] = corners._worldSpacePts[2]; lines[10*2+1] = corners._worldSpacePts[6];
+            lines[11*2+0] = corners._worldSpacePts[3]; lines[11*2+1] = corners._worldSpacePts[7];
+
+            context->DrawLines( 
+                ProjectionMode::P3D, 
+                lines, dimof(lines), 
+                ColorB(entryColour.r, entryColour.g, entryColour.b, BoundingBoxLineAlpha), 
+                BoundingBoxLineThickness);
+        }
+
+        if (partMask & 0x1) {
+            Float3 triangles[6*2*3];
+            SetQuadPts(&triangles[0*2*3], corners._worldSpacePts[0], corners._worldSpacePts[1], corners._worldSpacePts[2], corners._worldSpacePts[3]);
+            SetQuadPts(&triangles[1*2*3], corners._worldSpacePts[1], corners._worldSpacePts[5], corners._worldSpacePts[6], corners._worldSpacePts[2]);
+            SetQuadPts(&triangles[2*2*3], corners._worldSpacePts[5], corners._worldSpacePts[4], corners._worldSpacePts[7], corners._worldSpacePts[6]);
+            SetQuadPts(&triangles[3*2*3], corners._worldSpacePts[4], corners._worldSpacePts[0], corners._worldSpacePts[3], corners._worldSpacePts[7]);
+
+            SetQuadPts(&triangles[4*2*3], corners._worldSpacePts[4], corners._worldSpacePts[5], corners._worldSpacePts[1], corners._worldSpacePts[0]);
+            SetQuadPts(&triangles[5*2*3], corners._worldSpacePts[3], corners._worldSpacePts[2], corners._worldSpacePts[6], corners._worldSpacePts[7]);
+
+            context->DrawTriangles(
+                ProjectionMode::P3D, 
+                triangles, dimof(triangles),
+                ColorB(entryColour.r, entryColour.g, entryColour.b, BoundingBoxTriangleAlpha));
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////
+    IInputListener::~IInputListener() {}
+
+    IWidget::~IWidget() {}
+
+    InteractableId  InteractableId_Make(const char name[])
+    {
+        return Hash64(name, PtrAdd(name, strlen(name)));
+    }
+
+    KeyId           KeyId_Make(const char name[])
+    {
+        return Hash32(name, PtrAdd(name, strlen(name)));
+    }
+
+    bool DebugScreensSystem::OnInputEvent(const InputSnapshot& evnt)
+    {
+        bool consumedEvent      = false;
+        _currentMouseHeld       = evnt._mouseButtonsDown;
+        if (_currentMouse[0] != evnt._mousePosition[0] || _currentMouse[1] != evnt._mousePosition[1]) {
+            _currentMouse = evnt._mousePosition;
+            _currentInterfaceState  = _currentInteractables.BuildInterfaceState(_currentMouse, _currentMouseHeld);
+        }
+
+        for (auto i=_systemWidgets.begin(); i!=_systemWidgets.end() && !consumedEvent; ++i) {
+            consumedEvent |= i->_widget->ProcessInput(_currentInterfaceState, evnt);
+        }
+
+        for (auto i=_panels.begin(); i!=_panels.end() && !consumedEvent; ++i) {
+            if (i->_widgetIndex < _widgets.size()) {
+
+                bool alreadySeen = false;
+                for (auto i2=_panels.begin(); i2!=i; ++i2) {
+                    alreadySeen |= i2->_widgetIndex == i->_widgetIndex;
+                }
+                
+                if (!alreadySeen) {
+                    consumedEvent |= _widgets[i->_widgetIndex]._widget->ProcessInput(_currentInterfaceState, evnt);
+                }
+            }
+        }
+
+        // if (!(evnt._mouseButtonsDown & (1<<0)) && (evnt._mouseButtonsTransition & (1<<0)) && !consumedEvent) {
+        if (!consumedEvent) {
+            consumedEvent |= ProcessInputPanelControls(_currentInterfaceState, evnt);
+        }
+
+        _consumedInputEvent |= consumedEvent;
+        return consumedEvent;
+    }
+
+    static const char* s_PanelControlsButtons[] = {"<", ">", "H", "V", "X"};
+    
+    void DebugScreensSystem::RenderPanelControls(   IOverlayContext* context,
+                                                    unsigned panelIndex, const std::string& name, Layout&layout, bool allowDestroy,
+                                                    Interactables& interactables, InterfaceState& interfaceState)
+    {
+        const unsigned buttonCount   = dimof(s_PanelControlsButtons) - 1 + unsigned(allowDestroy);
+        const unsigned buttonSize    = 20;
+        const unsigned buttonPadding = 4;
+        const unsigned nameSize      = 250;
+        const unsigned buttonsRectWidth = buttonCount * buttonSize + nameSize + (buttonCount+2) * buttonPadding;
+        Rect buttonsRect(
+            Coord2(LinearInterpolate(layout._maximumSize._topLeft[0], layout._maximumSize._bottomRight[0], .5f) - buttonsRectWidth/2,    layout._maximumSize._topLeft[1] + layout._paddingInternalBorder ),
+            Coord2(LinearInterpolate(layout._maximumSize._topLeft[0], layout._maximumSize._bottomRight[0], .5f) + buttonsRectWidth/2,    layout._maximumSize._topLeft[1] + layout._paddingInternalBorder + buttonSize + 2*buttonPadding));
+
+        const InteractableId panelControlsId          = InteractableId_Make("PanelControls")                + panelIndex;
+        const InteractableId nameRectId               = InteractableId_Make("PanelControls_NameRect")       + panelIndex;
+        const InteractableId nameDropDownId           = InteractableId_Make("PanelControls_NameDropDown")   + panelIndex;
+        const InteractableId nameDropDownWidgetId     = InteractableId_Make("PanelControls_NameDropDownWidget");
+        const InteractableId backButtonId             = InteractableId_Make("PanelControls_BackButton")     + panelIndex;
+        interactables.Register(Interactables::Widget(buttonsRect, panelControlsId));
+
+            //      panel controls are only visible when we've got a mouse over...
+        if (interfaceState.HasMouseOver(panelControlsId) || interfaceState.HasMouseOver(nameDropDownId)) {
+            DrawRoundedRectangle(context, buttonsRect);
+
+            Layout buttonsLayout(buttonsRect);
+            buttonsLayout._paddingBetweenAllocations = buttonsLayout._paddingInternalBorder = buttonPadding;
+            for (unsigned c=0; c<buttonCount; ++c) {
+                Rect buttonRect = buttonsLayout.Allocate(Coord2(buttonSize, buttonSize));
+                InteractableId id = InteractableId_Make(s_PanelControlsButtons[c])+panelIndex;
+                if (interfaceState.HasMouseOver(id)) {
+                    DrawElipse(context, buttonRect, ColorB(0xff000000u));
+                    DrawText(context, buttonRect, (interfaceState.IsMouseButtonHeld())?2.f:1.25f, nullptr, ColorB(0xff000000u), s_PanelControlsButtons[c]);
+                } else {
+                    DrawElipse(context, buttonRect, ColorB(0xffffffffu));
+                    DrawText(context, buttonRect, 1.25f, nullptr, ColorB(0xffffffffu), s_PanelControlsButtons[c]);
+                }
+                interactables.Register(Interactables::Widget(buttonRect, id));
+            }
+
+            Rect nameRect = buttonsLayout.Allocate(Coord2(nameSize, buttonSize));
+            DrawText(context, nameRect, 1.75f, nullptr, ColorB(0xffffffffu), name.c_str());
+
+                //
+                //      If the mouse is over the name rect, we get a drop list list
+                //      of the screens available...
+                //
+            interactables.Register(Interactables::Widget(nameRect, nameRectId));
+            if (interfaceState.HasMouseOver(nameRectId) || interfaceState.HasMouseOver(nameDropDownId)) {
+                    /////////////////////////////
+                const Coord dropDownSize = Coord(_widgets.size() * buttonSize + (_widgets.size()+1) * buttonPadding);
+                const Rect dropDownRect(    Coord2(nameRect._topLeft[0], nameRect._bottomRight[1]-3),
+                                            Coord2(nameRect._topLeft[0]+nameSize, nameRect._bottomRight[1]-3+dropDownSize));
+                DrawRectangle(context, dropDownRect, RoundedRectBackgroundColour);
+                const Rect dropDownInteractableRect(Coord2(dropDownRect._topLeft[0], dropDownRect._topLeft[1]-8), Coord2(dropDownRect._bottomRight[0], dropDownRect._bottomRight[1]));
+                interactables.Register(Interactables::Widget(dropDownInteractableRect, nameDropDownId));
+
+                    /////////////////////////////
+                unsigned y = dropDownRect._topLeft[1] + buttonPadding;
+                for (std::vector<WidgetAndName>::const_iterator i=_widgets.begin(); i!=_widgets.end(); ++i) {
+                    Rect partRect(Coord2(dropDownRect._topLeft[0], y), Coord2(dropDownRect._topLeft[0]+nameSize, y+buttonSize));
+                    const InteractableId thisId = nameDropDownWidgetId 
+                                                + std::distance(_widgets.cbegin(), i) 
+                                                + panelIndex * _widgets.size();
+                    const bool mouseOver = interfaceState.HasMouseOver(thisId);
+                    if (mouseOver) {
+                        DrawRectangle(context, partRect, ColorB(180, 200, 255, 64));
+                    }
+                    DrawText(context, partRect, 1.5f, nullptr, ColorB(0xffffffffu), i->_name.c_str());
+                    y += buttonSize + buttonPadding;
+                    interactables.Register(Interactables::Widget(partRect, thisId));
+                }
+                    /////////////////////////////
+            }
+        }
+
+            //  If we've got a back button render it in the top left
+        if (panelIndex < _panels.size() && !_panels[panelIndex]._backButton.empty()) {
+            Rect backButtonRect(    Coord2(layout._maximumSize._topLeft[0] + 8, layout._maximumSize._topLeft[1] + 4),
+                                    Coord2(layout._maximumSize._topLeft[0] + 8 + 100, layout._maximumSize._topLeft[1] + 4 + buttonSize));
+            interactables.Register(Interactables::Widget(backButtonRect, backButtonId));
+            const bool mouseOver = interfaceState.HasMouseOver(backButtonId);
+            if (mouseOver) {
+                DrawRoundedRectangle(context, backButtonRect, ~unsigned(0x0), RoundedRectBackgroundColour, RoundedRectOutlineColour);
+                ColorB colour = ColorB(0x7fffffffu);
+                if (interfaceState.IsMouseButtonHeld()) {
+                    colour = ColorB(0xffffffffu);
+                }
+                DrawFormatText(context, backButtonRect, 1.5f, nullptr, colour, "%s", "Back");
+            }
+        }
+    }
+
+    bool    DebugScreensSystem::ProcessInputPanelControls(  InterfaceState& interfaceState, 
+                                                            const InputSnapshot& evnt)
+    {
+        if (interfaceState.TopMostId() && evnt.IsRelease_LButton()) {
+            InteractableId topMostWidget = interfaceState.TopMostId();
+            for (unsigned buttonIndex=0; buttonIndex<dimof(s_PanelControlsButtons); ++buttonIndex) {
+
+                    //      Handle the behaviour for the various buttons in the panel control...
+                InteractableId id = InteractableId_Make(s_PanelControlsButtons[buttonIndex]);
+                if (topMostWidget >= id && topMostWidget < id+_panels.size()) {
+                    const unsigned panelIndex = unsigned(topMostWidget - id);
+                    if (buttonIndex == 0) { // left
+                        _panels[panelIndex]._widgetIndex = (_panels[panelIndex]._widgetIndex + _widgets.size() - 1)%_widgets.size();
+                        return true;
+                    } else if (buttonIndex == 1) { // right
+                        _panels[panelIndex]._widgetIndex = (_panels[panelIndex]._widgetIndex + 1)%_widgets.size();
+                        return true;
+                    } else if (buttonIndex == 2||buttonIndex == 3) { // horizontal or vertical division
+                        Panel newPanel = _panels[panelIndex];
+                        newPanel._horizontalDivider = buttonIndex == 2;
+                        _panels.insert(_panels.begin()+panelIndex+1, newPanel);
+                        return true;
+                    } else if (buttonIndex == 4) { // destroy (make sure to never destroy the last panel)
+                        if (_panels.size() > 1) {
+                            _panels.erase(_panels.begin()+panelIndex);
+                        }
+                        return true;
+                    }
+                }
+
+            }
+
+            const InteractableId backButtonId = InteractableId_Make("PanelControls_BackButton");
+            if (topMostWidget >= backButtonId && topMostWidget < backButtonId + _panels.size()) {
+                if (!_panels[topMostWidget-backButtonId]._backButton.empty()) {
+                    SwitchToScreen(topMostWidget-backButtonId, _panels[topMostWidget-backButtonId]._backButton.c_str());
+                    _panels[topMostWidget-backButtonId]._backButton = std::string();
+                    return true;
+                }
+            }
+
+            const InteractableId nameDropDownWidgetId = InteractableId_Make("PanelControls_NameDropDownWidget");
+            if (topMostWidget >= nameDropDownWidgetId && topMostWidget < (nameDropDownWidgetId + _panels.size() * _widgets.size())) {
+                unsigned panelId = unsigned((topMostWidget-nameDropDownWidgetId)/_widgets.size());
+                unsigned widgetId = unsigned((topMostWidget-nameDropDownWidgetId)%_widgets.size());
+                assert(panelId < _panels.size() && widgetId < _widgets.size());
+                _panels[panelId]._widgetIndex = widgetId;
+                _panels[panelId]._backButton = std::string();
+                return true;
+            }
+        }
+
+        const KeyId ctrl    = KeyId_Make("control");
+        const KeyId left    = KeyId_Make("left");
+        const KeyId right   = KeyId_Make("right");
+        if (evnt.IsHeld(ctrl)) {
+            if (evnt.IsPress(left)) {
+                const unsigned panelIndex = 0;
+                _panels[panelIndex]._widgetIndex = (_panels[panelIndex]._widgetIndex + _widgets.size() - 1)%_widgets.size();
+                return true;
+            } else if (evnt.IsPress(right)) {
+                const unsigned panelIndex = 0;
+                _panels[panelIndex]._widgetIndex = (_panels[panelIndex]._widgetIndex + 1)%_widgets.size();
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    void DebugScreensSystem::Render(RenderCore::IDevice* device, const Float4x4& viewProjTransform)
+    {
+        _currentInteractables = Interactables();
+        
+        intrusive_ptr<RenderCore::Metal::DeviceContext> devContext = RenderCore::Metal::DeviceContext::GetImmediateContext(device);
+        RenderCore::Metal::ViewportDesc viewport(*devContext);
+
+        Coord2  maxCoords(viewport.Width, viewport.Height);
+        Rect    rect(Coord2(0,0), maxCoords);
+        Layout  completeLayout(rect);
+        
+        auto overlayContext = std::make_unique<ImmediateOverlayContext>(devContext.get(), viewProjTransform);
+        overlayContext->CaptureState();
+
+        TRY {
+
+                //
+                //      Either we're rendering a single child widget over the complete screen, or we've
+                //      separated the screen into multiple panels. When we only have a single panel, don't
+                //      bother allocating panel space from the completeLayout, because that will just add
+                //      extra borders
+                //
+            for (std::vector<Panel>::iterator i=_panels.begin(); i!=_panels.end(); ++i) {
+                if (i->_widgetIndex < _widgets.size()) {
+                    Rect widgetRect, nextWidgetRect;
+                    if (i+1 >= _panels.end()) {
+                        widgetRect = completeLayout._maximumSize;
+                    } else {
+                        if (i->_horizontalDivider) {
+                            widgetRect = completeLayout.AllocateFullWidthFraction(i->_size);
+                            nextWidgetRect = completeLayout.AllocateFullWidthFraction(1.f-i->_size);
+                        } else {
+                            widgetRect = completeLayout.AllocateFullHeightFraction(i->_size);
+                            nextWidgetRect = completeLayout.AllocateFullHeightFraction(1.f-i->_size);
+                        }
+                    }
+                    if (IsGood(widgetRect)) {
+                        Layout widgetLayout(widgetRect);
+                        _widgets[i->_widgetIndex]._widget->Render(overlayContext.get(), widgetLayout, _currentInteractables, _currentInterfaceState);
+
+                            //  if we don't have any system widgets registered, we 
+                            //  get some basic default gui elements...
+                        if (_systemWidgets.empty()) {
+                            RenderPanelControls(
+                                overlayContext.get(), std::distance(_panels.begin(), i), 
+                                _widgets[i->_widgetIndex]._name, widgetLayout, _panels.size()!=1, _currentInteractables, _currentInterfaceState);
+                        }
+                    }
+                    completeLayout = Layout(nextWidgetRect);
+                    completeLayout._paddingInternalBorder = 0;
+                }
+            }
+
+                // render the system widgets last (they will render over the top of anything else that is visible)
+            for (auto i=_systemWidgets.cbegin(); i!=_systemWidgets.cend(); ++i) {
+                Layout systemLayout(rect);
+                i->_widget->Render(overlayContext.get(), systemLayout, _currentInteractables, _currentInterfaceState);
+            }
+
+        } CATCH(const std::exception&) {
+            // suppress exception
+        } CATCH_END
+
+        overlayContext->ReleaseState();
+
+        //      Redo the current interface state, in case any of the interactables have moved during the render...
+        _currentInterfaceState = _currentInteractables.BuildInterfaceState(_currentMouse, _currentMouseHeld);
+    }
+
+    void DebugScreensSystem::Register(std::shared_ptr<IWidget> widget, const char name[], Type type)
+    {
+        WidgetAndName wAndN;
+        wAndN._widget = std::move(widget);
+        wAndN._name = name;
+        wAndN._hashCode = Hash64(wAndN._name);
+        
+        if (type == InPanel) {
+            _widgets.push_back(wAndN); 
+        } else if (type == SystemDisplay) {
+            _systemWidgets.push_back(wAndN);
+        }
+    }
+
+    void DebugScreensSystem::SwitchToScreen(unsigned panelIndex, const char name[])
+    {
+        if (panelIndex < _panels.size()) {
+            if (!name) {
+                _panels[panelIndex]._widgetIndex = size_t(-1);
+                _panels[panelIndex]._backButton = std::string();
+                return;
+            }
+
+                // look for exact match first...
+            for (std::vector<WidgetAndName>::const_iterator i=_widgets.begin(); i!=_widgets.end(); ++i) {
+                if (!XlCompareStringI(i->_name.c_str(), name)) {
+                    _panels[panelIndex]._widgetIndex = std::distance(_widgets.cbegin(), i);
+                    _panels[panelIndex]._backButton = std::string();  // clear out the back button
+                    return;
+                }
+            }
+
+                // If we don't have an exact match, just find a substring...
+            for (std::vector<WidgetAndName>::const_iterator i=_widgets.begin(); i!=_widgets.end(); ++i) {
+                if (XlFindStringI(i->_name.c_str(), name)) {
+                    _panels[panelIndex]._widgetIndex = std::distance(_widgets.cbegin(), i);
+                    _panels[panelIndex]._backButton = std::string();  // clear out the back button
+                    return;
+                }
+            }
+        }
+    }
+
+    void DebugScreensSystem::SwitchToScreen(const char name[])
+    {
+        SwitchToScreen(0, name);
+    }
+
+    bool DebugScreensSystem::SwitchToScreen(unsigned panelIndex, uint64 hashCode)
+    {
+        if (panelIndex < _panels.size()) {
+            for (std::vector<WidgetAndName>::const_iterator i=_widgets.begin(); i!=_widgets.end(); ++i) {
+                if (i->_hashCode == hashCode) {
+                    _panels[panelIndex]._widgetIndex = std::distance(_widgets.cbegin(), i);
+                    _panels[panelIndex]._backButton = std::string();  // clear out the back button
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    const char*     DebugScreensSystem::CurrentScreen(unsigned panelIndex)
+    {
+        if (panelIndex < _panels.size()) {
+            if (_panels[panelIndex]._widgetIndex < _widgets.size()) {
+                return _widgets[_panels[panelIndex]._widgetIndex]._name.c_str();        // a bit dangerous...
+            }
+        }
+        return nullptr;
+    }
+
+    // template<typename Type> void Delete(Type* type) { delete type; }
+
+    #pragma warning(disable:4355)      // warning C4355: 'this' : used in base member initializer list
+
+    DebugScreensSystem::DebugScreensSystem() 
+    {
+        _currentMouse = Coord2(0,0);
+        _currentMouseHeld = 0;
+
+        Panel p;
+        p._widgetIndex = 0;
+        p._size = .5f;
+        p._horizontalDivider = false;
+        _panels.push_back(p);
+
+//        {
+//            using namespace luabridge;
+//            auto* luaState = ConsoleRig::Console::GetInstance().GetLuaState();
+//            void (DebugScreensSystem::*switchToScreen)(const char[]) = &DebugScreensSystem::SwitchToScreen;
+//            getGlobalNamespace(luaState)
+//                .beginClass<DebugScreensSystem>("DebugScreensSystem")
+//                    .addFunction("SwitchToScreen", switchToScreen)
+//                .endClass();
+//            
+//            setglobal(luaState, this, "MainDebug");
+//        }
+    }
+
+    DebugScreensSystem::~DebugScreensSystem()
+    {
+//        auto* luaState = ConsoleRig::Console::GetInstance().GetLuaState();
+//        lua_pushnil(luaState);
+//        lua_setglobal(luaState, "MainDebug");
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////
+    InterfaceState::InterfaceState()
+    {
+        _mousePosition = Coord2(-MAX_FLOAT32, -MAX_FLOAT32);
+        _mouseButtonsHeld = 0;
+    }
+
+    InterfaceState::InterfaceState(const Coord2& mousePosition, unsigned mouseButtonsHeld, const std::vector<Interactables::Widget>& mouseStack)
+    :   _mousePosition(mousePosition)
+    ,   _mouseButtonsHeld(mouseButtonsHeld)
+    ,   _mouseOverStack(mouseStack)
+    {}
+
+    bool InterfaceState::HasMouseOver(InteractableId id) 
+    { 
+        // return std::find(_mouseOverStack.begin(), _mouseOverStack.end(), id) != _mouseOverStack.end(); 
+        for(std::vector<Interactables::Widget>::iterator i=_mouseOverStack.begin(); i!=_mouseOverStack.end(); ++i) {
+            if (i->_id == id) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////
+
+    static void AddOrChangeButton(std::vector<InputSnapshot::ActiveButton>& container, const InputSnapshot::ActiveButton& newButton)
+    {
+        for (auto i=container.begin(); i!=container.end(); ++i) {
+            if (i->_name == newButton._name) {
+                *i = newButton;
+                return;
+            }
+        }
+        container.push_back(newButton);
+    }
+
+    void    InputSnapshot::Accumulate(const InputSnapshot& newEvnts, const InputSnapshot& lastFrameState)
+    {
+        for (unsigned c=0; c<32; ++c) {
+            if (newEvnts._mouseButtonsTransition & (1<<c)) {
+                _mouseButtonsDown = (_mouseButtonsDown & ~(1<<c)) | (newEvnts._mouseButtonsDown & (1<<c));
+                if ((newEvnts._mouseButtonsDown & (1<<c)) != (lastFrameState._mouseButtonsDown & (1<<c))) {
+                    _mouseButtonsTransition |= (1<<c);
+                } else {
+                    _mouseButtonsTransition &= ~(1<<c);
+                }
+            }
+        }
+        for (auto a=newEvnts._activeButtons.begin(); a!=newEvnts._activeButtons.end(); ++a) {
+            if (a->_transition) {
+                bool lastFrameKeyState = false;
+                for (auto i=lastFrameState._activeButtons.begin(); i!=lastFrameState._activeButtons.end(); ++i) {
+                    if (i->_name == a->_name) {
+                        lastFrameKeyState = i->_state;
+                        break;
+                    }
+                }
+
+                AddOrChangeButton(
+                    _activeButtons,
+                    ActiveButton(a->_name, a->_state != lastFrameKeyState, a->_state));
+            }
+        }
+
+        _mousePosition = newEvnts._mousePosition;
+        _mouseDelta += newEvnts._mouseDelta;
+        _wheelDelta += newEvnts._wheelDelta;
+        _pressedChar = newEvnts._pressedChar;
+    }
+
+    void    InputSnapshot::Reset()
+    {
+            // clear "transition" flags (and remove any buttons that transitioned up)
+        _mouseButtonsTransition = 0;
+        _pressedChar = 0;
+        _wheelDelta = 0;
+        _mouseDelta = Int2(0,0);
+        for (auto a = _activeButtons.begin(); a!=_activeButtons.end();) {
+            if (a->_state) {
+                a->_transition = false;
+                ++a;
+            } else {
+                a = _activeButtons.erase(a);
+            }
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////
+    Interactables::Interactables()
+    {
+    }
+
+    void Interactables::Register(const Widget& widget)
+    {
+        _widgets.push_back( widget );
+    }
+
+    static bool Intersection(const Rect& rect, const Coord2& position)
+    {
+        return rect._topLeft[0] <= position[0] && position[0] < rect._bottomRight[0]
+            && rect._topLeft[1] <= position[1] && position[1] < rect._bottomRight[1]
+            ;
+    }
+
+    std::vector<Interactables::Widget> Interactables::Intersect(const Coord2& position) const
+    {
+        std::vector<Widget> result;
+        for (std::vector<Widget>::const_iterator i=_widgets.begin(); i!=_widgets.end(); ++i) {
+            if (Intersection(i->_rect, position)) {
+                result.push_back(*i);
+            }
+        }
+        return result;
+    }
+
+    InterfaceState Interactables::BuildInterfaceState(const Coord2& mousePosition, unsigned mouseButtonsHeld)
+    {
+        return InterfaceState(mousePosition, mouseButtonsHeld, Intersect(mousePosition));
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////
+    Layout::Layout(const Rect& maximumSize)
+    {
+        _maximumSize = maximumSize;
+        _maxRowWidth = 0;
+        _caretX = _caretY = 0;
+        _currentRowMaxHeight = 0;
+        _paddingInternalBorder = 8;
+        _paddingBetweenAllocations = 4;
+    }
+
+    Rect Layout::Allocate(Coord2 dimensions)
+    {
+        Rect rect;
+        unsigned paddedCaretX = _caretX;
+        if (!paddedCaretX) { paddedCaretX += _paddingInternalBorder; } else { paddedCaretX += _paddingBetweenAllocations; }
+        rect._topLeft[0] = _maximumSize._topLeft[0] + paddedCaretX;
+        rect._bottomRight[0] = rect._topLeft[0] + dimensions[0];
+        if (_caretX && rect._bottomRight[0] > (_maximumSize._bottomRight[0] - _paddingInternalBorder)) {
+                // restart row
+             _caretY += _currentRowMaxHeight+_paddingBetweenAllocations;
+            _maxRowWidth = std::max(_maxRowWidth, _currentRowMaxHeight);
+            _currentRowMaxHeight = 0;
+
+            paddedCaretX = _paddingInternalBorder;
+            rect._topLeft[0] = _maximumSize._topLeft[0] + paddedCaretX;
+            rect._bottomRight[0] = rect._topLeft[0] + dimensions[0];
+        }
+
+        _currentRowMaxHeight = std::max(_currentRowMaxHeight, dimensions[1]);
+        if (!_caretY) { _caretY += _paddingInternalBorder; }
+        rect._topLeft[1] = _maximumSize._topLeft[1] + _caretY;
+        rect._bottomRight[1] = rect._topLeft[1] + dimensions[1];
+        _caretX = paddedCaretX + dimensions[0];
+        return rect;
+    }
+
+    Rect Layout::AllocateFullWidth(Coord height)
+    {
+            // restart row
+        if (_currentRowMaxHeight) {
+            _caretY += _currentRowMaxHeight+_paddingBetweenAllocations;
+            _maxRowWidth = std::max( _maxRowWidth, _currentRowMaxHeight );
+            _currentRowMaxHeight = 0;
+            _caretX = 0;
+        }
+
+        if (!_caretY) { _caretY += _paddingInternalBorder; }
+
+        Rect result;
+        result._topLeft[0]        = _maximumSize._topLeft[0] + _paddingInternalBorder;
+        result._bottomRight[0]    = _maximumSize._bottomRight[0] - _paddingInternalBorder;
+        result._topLeft[1]        = _maximumSize._topLeft[1] + _caretY;
+        result._bottomRight[1]    = std::min(result._topLeft[1]+height, _maximumSize._bottomRight[1]-_paddingInternalBorder);
+        _caretY = result._bottomRight[1] - _maximumSize._topLeft[1] + _paddingBetweenAllocations;
+        return result;
+    }
+
+    Rect Layout::AllocateFullHeight(Coord width)
+    {
+        // restart row, unless we're already in the middle of an allocateFullHeight
+        bool currentlyAllocatingFullHeight = (_caretY + _currentRowMaxHeight) >= (_maximumSize._bottomRight[1]-_maximumSize._topLeft[1]-2*_paddingInternalBorder);
+        if (!currentlyAllocatingFullHeight && _currentRowMaxHeight) {
+            _caretY += _currentRowMaxHeight+_paddingBetweenAllocations;
+            _maxRowWidth = std::max( _maxRowWidth, _currentRowMaxHeight );
+            _currentRowMaxHeight = 0;
+            _caretX = 0;
+        }
+
+        if (!_caretY) { _caretY += _paddingInternalBorder; }
+        if (!_caretX) { _caretX += _paddingInternalBorder; } else { _caretX += _paddingBetweenAllocations; }
+
+        Rect result;
+        result._topLeft[1]        = _maximumSize._topLeft[1] + _caretY;
+        result._bottomRight[1]    = _maximumSize._bottomRight[1] - _paddingInternalBorder;
+
+        result._topLeft[0]        = _maximumSize._topLeft[0] + _caretX;
+        result._bottomRight[0]    = std::min( result._topLeft[0]+width, _maximumSize._bottomRight[0] - _paddingInternalBorder );
+
+        _currentRowMaxHeight = std::max(_currentRowMaxHeight, result._bottomRight[1]-result._topLeft[1]);
+        _caretX = result._bottomRight[0] - _maximumSize._topLeft[0];
+        return result;
+    }
+    
+    Rect Layout::AllocateFullHeightFraction(float proportionOfWidth)
+    {
+        signed widthAvailable = _maximumSize._bottomRight[0] - _maximumSize._topLeft[0] - 2*_paddingInternalBorder;
+        signed width = unsigned(widthAvailable*proportionOfWidth);
+        return AllocateFullHeight(width);
+    }
+
+    Rect Layout::AllocateFullWidthFraction(float proportionOfHeight)
+    {
+            // restart row
+        if (_currentRowMaxHeight) {
+            _caretY += _currentRowMaxHeight+_paddingBetweenAllocations;
+            _maxRowWidth = std::max( _maxRowWidth, _currentRowMaxHeight );
+            _currentRowMaxHeight = 0;
+            _caretX = 0;
+        }
+
+        signed heightAvailable = _maximumSize._bottomRight[1] - _maximumSize._topLeft[1] - _caretY - _paddingInternalBorder;
+        signed maxHeight = (_maximumSize._bottomRight[1] - _maximumSize._topLeft[1] - _paddingInternalBorder*2);
+        return AllocateFullWidth(std::min(heightAvailable, Coord(maxHeight * proportionOfHeight)));
+    }
+
+    const ColorB RandomPaletteColorTable[] = 
+    {
+        ColorB( 205,74,74   ),
+        ColorB( 204,102,102 ),
+        ColorB( 188,93,88   ),
+        ColorB( 255,83,73   ),
+        ColorB( 253,94,83   ),
+        ColorB( 253,124,110 ),
+        ColorB( 253,188,180 ),
+        ColorB( 255,110,74  ),
+        ColorB( 255,160,137 ),
+        ColorB( 234,126,93  ),
+        ColorB( 180,103,77  ),
+        ColorB( 165,105,79  ),
+        ColorB( 255,117,56  ),
+        ColorB( 255,127,73  ),
+        ColorB( 221,148,117 ),
+        ColorB( 255,130,67  ),
+        ColorB( 255,164,116 ),
+        ColorB( 159,129,112 ),
+        ColorB( 205,149,117 ),
+        ColorB( 239,205,184 ),
+        ColorB( 214,138,89  ),
+        ColorB( 222,170,136 ),
+        ColorB( 250,167,108 ),
+        ColorB( 255,207,171 ),
+        ColorB( 255,189,136 ),
+        ColorB( 253,217,181 ),
+        ColorB( 255,163,67  ),
+        ColorB( 239,219,197 ),
+        ColorB( 255,182,83  ),
+        ColorB( 231,198,151 ),
+        ColorB( 138,121,93  ),
+        ColorB( 250,231,181 ),
+        ColorB( 255,207,72  ),
+        ColorB( 252,217,117 ),
+        ColorB( 253,219,109 ),
+        ColorB( 252,232,131 ),
+        ColorB( 240,232,145 ),
+        ColorB( 236,234,190 ),
+        ColorB( 186,184,108 ),
+        ColorB( 253,252,116 ),
+        ColorB( 253,252,116 ),
+        ColorB( 255,255,153 ),
+        ColorB( 197,227,132 ),
+        ColorB( 178,236,93  ),
+        ColorB( 135,169,107 ),
+        ColorB( 168,228,160 ),
+        ColorB( 29,249,20   ),
+        ColorB( 118,255,122 ),
+        ColorB( 113,188,120 ),
+        ColorB( 109,174,129 ),
+        ColorB( 159,226,191 ),
+        ColorB( 28,172,120  ),
+        ColorB( 48,186,143  ),
+        ColorB( 69,206,162  ),
+        ColorB( 59,176,143  ),
+        ColorB( 28,211,162  ),
+        ColorB( 23,128,109  ),
+        ColorB( 21,128,120  ),
+        ColorB( 31,206,203  ),
+        ColorB( 120,219,226 ),
+        ColorB( 119,221,231 ),
+        ColorB( 128,218,235 ),
+        ColorB( 65,74,76    ),
+        ColorB( 25,158,189  ),
+        ColorB( 28,169,201  ),
+        ColorB( 29,172,214  ),
+        ColorB( 154,206,235 ),
+        ColorB( 26,72,118   ),
+        ColorB( 25,116,210  ),
+        ColorB( 43,108,196  ),
+        ColorB( 31,117,254  ),
+        ColorB( 197,208,230 ),
+        ColorB( 176,183,198 ),
+        ColorB( 93,118,203  ),
+        ColorB( 162,173,208 ),
+        ColorB( 151,154,170 ),
+        ColorB( 173,173,214 ),
+        ColorB( 115,102,189 ),
+        ColorB( 116,66,200  ),
+        ColorB( 120,81,169  ),
+        ColorB( 157,129,186 ),
+        ColorB( 146,110,174 ),
+        ColorB( 205,164,222 ),
+        ColorB( 143,80,157  ),
+        ColorB( 195,100,197 ),
+        ColorB( 251,126,253 ),
+        ColorB( 252,116,253 ),
+        ColorB( 142,69,133  ),
+        ColorB( 255,29,206  ),
+        ColorB( 255,29,206  ),
+        ColorB( 255,72,208  ),
+        ColorB( 230,168,215 ),
+        ColorB( 192,68,143  ),
+        ColorB( 110,81,96   ),
+        ColorB( 221,68,146  ),
+        ColorB( 255,67,164  ),
+        ColorB( 246,100,175 ),
+        ColorB( 252,180,213 ),
+        ColorB( 255,188,217 ),
+        ColorB( 247,83,148  ),
+        ColorB( 255,170,204 ),
+        ColorB( 227,37,107  ),
+        ColorB( 253,215,228 ),
+        ColorB( 202,55,103  ),
+        ColorB( 222,93,131  ),
+        ColorB( 252,137,172 ),
+        ColorB( 247,128,161 ),
+        ColorB( 200,56,90   ),
+        ColorB( 238,32,77   ),
+        ColorB( 255,73,108  ),
+        ColorB( 239,152,170 ),
+        ColorB( 252,108,133 ),
+        ColorB( 252,40,71   ),
+        ColorB( 255,155,170 ),
+        ColorB( 203,65,84   ),
+        ColorB( 237,237,237 ),
+        ColorB( 219,215,210 ),
+        ColorB( 205,197,194 ),
+        ColorB( 149,145,140 ),
+        ColorB( 35,35,35    )
+    };
+
+    const size_t RandomPaletteColorTable_Size = dimof(RandomPaletteColorTable);
+}}
+
+std::string ShortBytesString(unsigned byteCount)
+{
+    if (byteCount < 1024*1024) {
+        return XlDynFormatString("$3%.1f$oKB", byteCount/1024.f);
+    } else {
+        return XlDynFormatString("$6%.1f$oMB", byteCount/(1024.f*1024.f));
+    }
+}
+
+std::string ShortNumberString(unsigned number)
+{
+    if (number < 1024) {
+        return XlDynFormatString("%i", number);
+    } else if (number < 1024*1024) {
+        return XlDynFormatString("$3%i$oK", number/1024);
+    } else {
+        return XlDynFormatString("$6%i$oM", number/(1024*1024));
+    }
+}
+

@@ -1,0 +1,179 @@
+// Copyright 2015 XLGAMES Inc.
+//
+// Distributed under the MIT License (See
+// accompanying file "LICENSE" or the website
+// http://www.opensource.org/licenses/mit-license.php)
+
+#pragma once
+
+#include "../Core/Types.h"
+#include "Threading/Mutex.h"
+#include <vector>
+#include <algorithm>
+
+namespace Utility
+{
+    class LRUQueue
+    {
+    public:
+        unsigned GetOldestValue() const;
+        void BringToFront(unsigned value);
+
+        LRUQueue(unsigned maxValues);
+        LRUQueue();
+        ~LRUQueue();
+    protected:
+        std::vector<std::pair<unsigned, unsigned>>  _lruQueue;
+        unsigned    _oldestBlock;
+        unsigned    _newestBlock;
+    };
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    template<typename Type> class LRUCache
+    {
+    public:
+        void Insert(uint64 hashName, std::shared_ptr<Type> object);
+        std::shared_ptr<Type> Get(uint64 hashName);
+
+        LRUCache(unsigned cacheSize);
+        ~LRUCache();
+    protected:
+        std::vector<std::shared_ptr<Type>>   _objects;
+        std::vector<std::pair<uint64, unsigned>> _lookupTable;
+        LRUQueue _queue;
+        unsigned _cacheSize;
+    };
+
+    template<typename Type>
+        void LRUCache<Type>::Insert(uint64 hashName, std::shared_ptr<Type> object)
+    {
+            // try to insert this object into the cache (if it's not already here)
+        auto i = std::lower_bound(_lookupTable.cbegin(), _lookupTable.cend(), hashName, CompareFirst<uint64, unsigned>());
+        if (i != _lookupTable.cend() && i->first == hashName)
+            return;     // already here
+
+        if (_objects.size() < _cacheSize) {
+            _objects.push_back(object);
+            _lookupTable.insert(i, std::make_pair(hashName, _objects.size()-1));
+            _queue.BringToFront(_objects.size()-1);
+            return;
+        }
+
+            // we need to evict an existing object.
+        // SelectedModel = nullptr;
+
+        unsigned eviction = _queue.GetOldestValue();
+        if (eviction == ~unsigned(0x0)) {
+            assert(0); return;
+        }
+
+        _objects[eviction] = object;
+        auto oldLookup = std::find_if(_lookupTable.cbegin(), _lookupTable.cend(), 
+            [=](const std::pair<uint64, unsigned>& p) { return p.second == eviction; });
+        assert(oldLookup != _lookupTable.cend());
+        _lookupTable.erase(oldLookup);
+
+            // have to search again after the erase above
+        i = std::lower_bound(_lookupTable.cbegin(), _lookupTable.cend(), hashName, CompareFirst<uint64, unsigned>());
+        _lookupTable.insert(i, std::make_pair(hashName, eviction));
+
+        _queue.BringToFront(eviction);
+    }
+
+    template<typename Type>
+        std::shared_ptr<Type> LRUCache<Type>::Get(uint64 hashName)
+    {
+            // find the given object, and move it to the front of the queue
+        auto i = std::lower_bound(_lookupTable.cbegin(), _lookupTable.cend(), hashName, CompareFirst<uint64, unsigned>());
+        if (i != _lookupTable.cend() && i->first == hashName) {
+            _queue.BringToFront(i->second);
+            return _objects[i->second];
+        }
+        return nullptr;
+    }
+
+    template<typename Type>
+        LRUCache<Type>::LRUCache(unsigned cacheSize)
+    : _queue(cacheSize) 
+    , _cacheSize(cacheSize)
+    {
+        _lookupTable.reserve(cacheSize);
+        _objects.reserve(cacheSize);
+    }
+
+    template<typename Type>
+        LRUCache<Type>::~LRUCache()
+    {}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class MarkerHeap
+    {
+    public:
+        typedef uint16 Marker;
+        static Marker      ToInternalSize(unsigned size);
+        static unsigned    ToExternalSize(Marker size);
+        static unsigned    AlignSize(unsigned size);
+    };
+
+    class DefragStep
+    {
+    public:
+        unsigned _sourceStart, _sourceEnd;
+        unsigned _destination;
+    };
+
+    class SimpleSpanningHeap : public MarkerHeap
+    {
+    public:
+
+            //
+            //      It's a simple heap that deals only in spans. It doesn't record the 
+            //      size of the blocks allocated from within it. It just knows what space
+            //      is allocated, and what is unallocated. The client must deallocate the
+            //      correct space from the buffer when it's done.
+            //
+
+        unsigned            Allocate(unsigned size);
+        bool                Allocate(unsigned ptr, unsigned size);
+        bool                Deallocate(unsigned ptr, unsigned size);
+        
+        unsigned            CalculateAvailableSpace() const;
+        unsigned            CalculateLargestFreeBlock() const;
+        unsigned            CalculateAllocatedSpace() const;
+        unsigned            CalculateHeapSize() const;
+        uint64              CalculateHash() const;
+        bool                IsEmpty() const;
+
+        unsigned            AppendNewBlock(unsigned size);
+
+        std::vector<unsigned>       CalculateMetrics() const;
+        std::vector<DefragStep>     CalculateDefragSteps() const;
+        void                        PerformDefrag(const std::vector<DefragStep>& defrag);
+
+        std::pair<std::unique_ptr<uint8[]>, size_t> Flatten() const;
+
+        SimpleSpanningHeap(unsigned size);
+        SimpleSpanningHeap(const SimpleSpanningHeap& cloneFrom);
+        SimpleSpanningHeap(const uint8 flattened[], size_t flattenedSize);
+        ~SimpleSpanningHeap();
+        const SimpleSpanningHeap& operator=(const SimpleSpanningHeap& cloneFrom);
+    protected:
+        std::vector<Marker>         _markers;
+        mutable Threading::Mutex    _lock;
+        mutable bool    _largestFreeBlockValid;
+        mutable Marker  _largestFreeBlock;
+
+        Marker      CalculateLargestFreeBlock_Internal() const;
+        bool        BlockAdjust_Internal(unsigned ptr, unsigned size, bool allocateOperation);
+    };
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    inline MarkerHeap::Marker   MarkerHeap::ToInternalSize(unsigned size)    { return MarkerHeap::Marker(size>>4); }
+    inline unsigned             MarkerHeap::ToExternalSize(Marker size)      { return unsigned(size)<<4; }
+    inline unsigned             MarkerHeap::AlignSize(unsigned size)         { return (size&(~((1<<4)-1)))+((size&((1<<4)-1))?(1<<4):0); }
+}
+
+using namespace Utility;
