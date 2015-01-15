@@ -104,7 +104,7 @@
   <Import Project="..\..\Solutions\Main.props" />
   <ImportGroup Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="..\..\Foreign\freetype-2.5.0.1\FTForClients.props" />
+    <Import Project="..\..\Foreign\freetype\FTForClients.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug-OpenGL|Win32'">
     <Import Project="..\..\Foreign\angleproject\AngleForClients.props" />
@@ -208,7 +208,7 @@
     <ProjectReference Include="..\..\BufferUploads\Project\BufferUploads.vcxproj">
       <Project>{e4d5cfa9-07d2-5a61-9991-2186eb30f680}</Project>
     </ProjectReference>
-    <ProjectReference Include="..\..\Foreign\freetype-2.5.0.1\builds\win32\vc2010\freetype.vcxproj">
+    <ProjectReference Include="..\..\Foreign\freetype\builds\win32\vc2010\freetype.vcxproj">
       <Project>{78b079bd-9fc7-4b9e-b4a6-96da0f00248b}</Project>
     </ProjectReference>
     <ProjectReference Include="..\..\Foreign\Project\Foreign.vcxproj">

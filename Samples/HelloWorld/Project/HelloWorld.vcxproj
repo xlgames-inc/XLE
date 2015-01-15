@@ -141,9 +141,6 @@
     <ProjectReference Include="..\..\..\ConsoleRig\Project\ConsoleRig.vcxproj">
       <Project>{587a5b72-36e9-ff50-36f4-c0e96bbfa841}</Project>
     </ProjectReference>
-    <ProjectReference Include="..\..\..\CryCompat\Project\CryCompat.vcxproj">
-      <Project>{793dece6-3319-78d7-b1f0-4ae3e5651b9d}</Project>
-    </ProjectReference>
     <ProjectReference Include="..\..\..\Foreign\Project\Foreign.vcxproj">
       <Project>{9f01282b-6297-4f87-a309-287c2c574b76}</Project>
     </ProjectReference>

@@ -58,7 +58,7 @@ condition_variable::condition_variable() : mWaitersCount(0)
 {
   mEvents[_CONDITION_EVENT_ONE] = CreateEvent(NULL, FALSE, FALSE, NULL);
   mEvents[_CONDITION_EVENT_ALL] = CreateEvent(NULL, TRUE, FALSE, NULL);
-  InitializeCriticalSection(&mWaitersCountLock);
+  InitializeCriticalSection((CRITICAL_SECTION*)&mWaitersCountLock);
 }
 #endif
 
@@ -67,7 +67,7 @@ condition_variable::~condition_variable()
 {
   CloseHandle(mEvents[_CONDITION_EVENT_ONE]);
   CloseHandle(mEvents[_CONDITION_EVENT_ALL]);
-  DeleteCriticalSection(&mWaitersCountLock);
+  DeleteCriticalSection((CRITICAL_SECTION*)&mWaitersCountLock);
 }
 #endif
 
@@ -79,11 +79,11 @@ void condition_variable::_wait()
   int result = WaitForMultipleObjects(2, mEvents, FALSE, INFINITE);
 
   // Check if we are the last waiter
-  EnterCriticalSection(&mWaitersCountLock);
+  EnterCriticalSection((CRITICAL_SECTION*)&mWaitersCountLock);
   -- mWaitersCount;
   bool lastWaiter = (result == (WAIT_OBJECT_0 + _CONDITION_EVENT_ALL)) &&
                     (mWaitersCount == 0);
-  LeaveCriticalSection(&mWaitersCountLock);
+  LeaveCriticalSection((CRITICAL_SECTION*)&mWaitersCountLock);
 
   // If we are the last waiter to be notified to stop waiting, reset the event
   if(lastWaiter)
@@ -95,9 +95,9 @@ void condition_variable::_wait()
 void condition_variable::notify_one()
 {
   // Are there any waiters?
-  EnterCriticalSection(&mWaitersCountLock);
+  EnterCriticalSection((CRITICAL_SECTION*)&mWaitersCountLock);
   bool haveWaiters = (mWaitersCount > 0);
-  LeaveCriticalSection(&mWaitersCountLock);
+  LeaveCriticalSection((CRITICAL_SECTION*)&mWaitersCountLock);
 
   // If we have any waiting threads, send them a signal
   if(haveWaiters)
@@ -109,9 +109,9 @@ void condition_variable::notify_one()
 void condition_variable::notify_all()
 {
   // Are there any waiters?
-  EnterCriticalSection(&mWaitersCountLock);
+  EnterCriticalSection((CRITICAL_SECTION*)&mWaitersCountLock);
   bool haveWaiters = (mWaitersCount > 0);
-  LeaveCriticalSection(&mWaitersCountLock);
+  LeaveCriticalSection((CRITICAL_SECTION*)&mWaitersCountLock);
 
   // If we have any waiting threads, send them a signal
   if(haveWaiters)

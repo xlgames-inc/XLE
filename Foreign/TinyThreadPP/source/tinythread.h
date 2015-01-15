@@ -22,7 +22,8 @@ freely, subject to the following restrictions:
 
     << DavidJ   -- I made a small modification for XLE
                 -- these modifications only prevent #include <windows.h> when used
-                    with XLE >>
+                    with XLE 
+                -- there are also some minor compile error fixes >>
 */
 
 #ifndef _TINYTHREAD_H_
@@ -611,7 +612,7 @@ class atomic_flag {
         : "%eax", "memory"
       );
   #elif defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))
-      int *ptrFlag = &mFlag;
+      volatile int *ptrFlag = &mFlag;
       __asm {
         mov eax,1
         mov ecx,ptrFlag
@@ -634,7 +635,7 @@ class atomic_flag {
         : "cr0", "memory"
       );
   #endif
-      return static_cast<bool>(result);
+      return static_cast<bool>(!!result);
 #else
       lock_guard<mutex> guard(mLock);
       int result = mFlag;
@@ -659,7 +660,7 @@ class atomic_flag {
         : "%eax", "memory"
       );
   #elif defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))
-      int *ptrFlag = &mFlag;
+      volatile int *ptrFlag = &mFlag;
       __asm {
         mov eax,0
         mov ecx,ptrFlag

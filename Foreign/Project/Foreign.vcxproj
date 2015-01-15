@@ -153,7 +153,7 @@
     <ClCompile Include="..\lua-5.2.2\src\lundump.c" />
     <ClCompile Include="..\lua-5.2.2\src\lvm.c" />
     <ClCompile Include="..\lua-5.2.2\src\lzio.c" />
-    <ClCompile Include="..\TinyThread++-1.1\source\tinythread.cpp" />
+    <ClCompile Include="..\TinyThreadPP\source\tinythread.cpp" />
     <ClCompile Include="..\tinyxml2-master\tinyxml2.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -184,6 +184,8 @@
     <ClInclude Include="..\lua-5.2.2\src\lundump.h" />
     <ClInclude Include="..\lua-5.2.2\src\lvm.h" />
     <ClInclude Include="..\lua-5.2.2\src\lzio.h" />
+    <ClInclude Include="..\TinyThreadPP\source\fast_mutex.h" />
+    <ClInclude Include="..\TinyThreadPP\source\tinythread.h" />
     <ClInclude Include="..\tinyxml2-master\tinyxml2.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

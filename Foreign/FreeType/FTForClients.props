@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ImportGroup Label="PropertySheets" />
+  <PropertyGroup Label="UserMacros">
+    <FTPlatform Condition="'$(Platform)' == 'x64'">x64</FTPlatform>
+    <FTPlatform Condition="'$(Platform)' == 'Win32'">Win32</FTPlatform>
+    <FTLibrary Condition="$(Configuration.Contains('Debug'))">freetype250MT_D</FTLibrary>
+    <FTLibrary Condition="!$(Configuration.Contains('Debug'))">freetype250MT</FTLibrary>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(SolutionDir)\..\Foreign\freetype\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>$(SolutionDir)\..\Foreign\freetype\objs\$(FTPlatform)\vc2010\$(FTLibrary).lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <Lib>
+      <AdditionalDependencies>$(SolutionDir)\..\Foreign\freetype\objs\$(FTPlatform)\vc2010\$(FTLibrary).lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemGroup />
+</Project>

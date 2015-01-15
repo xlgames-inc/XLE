@@ -397,7 +397,7 @@ void FontTexture2D::UpdateGlyphToTexture(FT_GlyphSlot glyph, int offX, int offY,
         for (int i = 0; i < width; ++i) {
             if (glyph->bitmap.pixel_mode == FT_PIXEL_MODE_GRAY) {
                 uint8 pixel = 0;
-                if (i < glyph->bitmap.width && j < glyph->bitmap.rows)
+                if (i < int(glyph->bitmap.width) && j < int(glyph->bitmap.rows))
                     pixel = glyph->bitmap.buffer[i + glyph->bitmap.width * j];
 
                 data[i + widthCursor] = pixel;

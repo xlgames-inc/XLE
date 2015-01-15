@@ -126,7 +126,7 @@
     <ClCompile Include="..\tinyxml2-master\tinyxml2.cpp">
       <Filter>TinyXML</Filter>
     </ClCompile>
-    <ClCompile Include="..\TinyThread++-1.1\source\tinythread.cpp">
+    <ClCompile Include="..\TinyThreadPP\source\tinythread.cpp">
       <Filter>TinyThread</Filter>
     </ClCompile>
   </ItemGroup>
@@ -214,6 +214,12 @@
     </ClInclude>
     <ClInclude Include="..\tinyxml2-master\tinyxml2.h">
       <Filter>TinyXML</Filter>
+    </ClInclude>
+    <ClInclude Include="..\TinyThreadPP\source\tinythread.h">
+      <Filter>TinyThread</Filter>
+    </ClInclude>
+    <ClInclude Include="..\TinyThreadPP\source\fast_mutex.h">
+      <Filter>TinyThread</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
