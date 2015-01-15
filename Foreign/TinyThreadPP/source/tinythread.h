@@ -19,6 +19,10 @@ freely, subject to the following restrictions:
 
     3. This notice may not be removed or altered from any source
     distribution.
+
+    << DavidJ   -- I made a small modification for XLE
+                -- these modifications only prevent #include <windows.h> when used
+                    with XLE >>
 */
 
 #ifndef _TINYTHREAD_H_
@@ -69,20 +73,57 @@ freely, subject to the following restrictions:
 
 // Platform specific includes
 #if defined(_TTHREAD_WIN32_)
-  #ifndef WIN32_LEAN_AND_MEAN
-    #define WIN32_LEAN_AND_MEAN
-    #define __UNDEF_LEAN_AND_MEAN
-  #endif
-  #include <windows.h>
-  #ifdef __UNDEF_LEAN_AND_MEAN
-    #undef WIN32_LEAN_AND_MEAN
-    #undef __UNDEF_LEAN_AND_MEAN
+  #if !defined(XLE_WORKAROUND_WINDOWS_H)
+    #ifndef WIN32_LEAN_AND_MEAN
+      #define WIN32_LEAN_AND_MEAN
+      #define __UNDEF_LEAN_AND_MEAN
+    #endif
+    #include <windows.h>
+    #ifdef __UNDEF_LEAN_AND_MEAN
+      #undef WIN32_LEAN_AND_MEAN
+      #undef __UNDEF_LEAN_AND_MEAN
+    #endif
   #endif
 #else
   #include <pthread.h>
   #include <signal.h>
   #include <sched.h>
   #include <unistd.h>
+#endif
+
+
+        //  << DavidJ  -- modifications for XLE
+        //      these help prevent #include <windows.h> (which would overwise
+        //      be included widely, because these are commonly used functions)
+#if defined(_TTHREAD_WIN32_)
+    struct CriticalSectionPlaceholder { char _buffer[256]; }; // todo -- plug in correct size!
+
+    #pragma push_macro("WINAPI")
+    #pragma push_macro("DECLSPEC_IMPORT")
+    #pragma push_macro("WINBASEAPI")
+
+    #if defined(XLE_WORKAROUND_WINDOWS_H) && !defined(_WINNT_)
+        typedef void* HANDLE;
+
+        typedef struct _RTL_CRITICAL_SECTION RTL_CRITICAL_SECTION, *PRTL_CRITICAL_SECTION;
+        typedef RTL_CRITICAL_SECTION CRITICAL_SECTION;
+        typedef PRTL_CRITICAL_SECTION LPCRITICAL_SECTION;
+
+        #if !defined(WINAPI)
+            #define WINAPI      __stdcall
+        #endif
+        #if !defined(WINBASEAPI)
+            #define DECLSPEC_IMPORT __declspec(dllimport)
+            #define WINBASEAPI DECLSPEC_IMPORT
+        #endif
+
+        extern "C" WINBASEAPI void WINAPI InitializeCriticalSection(LPCRITICAL_SECTION);
+        extern "C" WINBASEAPI void WINAPI EnterCriticalSection(LPCRITICAL_SECTION);
+        extern "C" WINBASEAPI void WINAPI LeaveCriticalSection(LPCRITICAL_SECTION);
+        extern "C" WINBASEAPI int WINAPI TryEnterCriticalSection(LPCRITICAL_SECTION);
+        extern "C" WINBASEAPI void WINAPI DeleteCriticalSection(LPCRITICAL_SECTION);
+        extern "C" WINBASEAPI void WINAPI Sleep(unsigned long milliseconds);
+    #endif
 #endif
 
 // Generic includes
@@ -179,7 +220,7 @@ class mutex {
 #endif
     {
 #if defined(_TTHREAD_WIN32_)
-      InitializeCriticalSection(&mHandle);
+      InitializeCriticalSection((CRITICAL_SECTION*)&mHandle);
 #else
       pthread_mutex_init(&mHandle, NULL);
 #endif
@@ -189,7 +230,7 @@ class mutex {
     ~mutex()
     {
 #if defined(_TTHREAD_WIN32_)
-      DeleteCriticalSection(&mHandle);
+      DeleteCriticalSection((CRITICAL_SECTION*)&mHandle);
 #else
       pthread_mutex_destroy(&mHandle);
 #endif
@@ -202,7 +243,7 @@ class mutex {
     inline void lock()
     {
 #if defined(_TTHREAD_WIN32_)
-      EnterCriticalSection(&mHandle);
+      EnterCriticalSection((CRITICAL_SECTION*)&mHandle);
       while(mAlreadyLocked) Sleep(1000); // Simulate deadlock...
       mAlreadyLocked = true;
 #else
@@ -218,10 +259,10 @@ class mutex {
     inline bool try_lock()
     {
 #if defined(_TTHREAD_WIN32_)
-      bool ret = (TryEnterCriticalSection(&mHandle) ? true : false);
+      bool ret = (TryEnterCriticalSection((CRITICAL_SECTION*)&mHandle) ? true : false);
       if(ret && mAlreadyLocked)
       {
-        LeaveCriticalSection(&mHandle);
+        LeaveCriticalSection((CRITICAL_SECTION*)&mHandle);
         ret = false;
       }
       return ret;
@@ -237,7 +278,7 @@ class mutex {
     {
 #if defined(_TTHREAD_WIN32_)
       mAlreadyLocked = false;
-      LeaveCriticalSection(&mHandle);
+      LeaveCriticalSection((CRITICAL_SECTION*)&mHandle);
 #else
       pthread_mutex_unlock(&mHandle);
 #endif
@@ -247,7 +288,7 @@ class mutex {
 
   private:
 #if defined(_TTHREAD_WIN32_)
-    CRITICAL_SECTION mHandle;
+    CriticalSectionPlaceholder mHandle;
     bool mAlreadyLocked;
 #else
     pthread_mutex_t mHandle;
@@ -268,7 +309,7 @@ class recursive_mutex {
     recursive_mutex()
     {
 #if defined(_TTHREAD_WIN32_)
-      InitializeCriticalSection(&mHandle);
+      InitializeCriticalSection((CRITICAL_SECTION*)&mHandle);
 #else
       pthread_mutexattr_t attr;
       pthread_mutexattr_init(&attr);
@@ -281,7 +322,7 @@ class recursive_mutex {
     ~recursive_mutex()
     {
 #if defined(_TTHREAD_WIN32_)
-      DeleteCriticalSection(&mHandle);
+      DeleteCriticalSection((CRITICAL_SECTION*)&mHandle);
 #else
       pthread_mutex_destroy(&mHandle);
 #endif
@@ -294,7 +335,7 @@ class recursive_mutex {
     inline void lock()
     {
 #if defined(_TTHREAD_WIN32_)
-      EnterCriticalSection(&mHandle);
+      EnterCriticalSection((CRITICAL_SECTION*)&mHandle);
 #else
       pthread_mutex_lock(&mHandle);
 #endif
@@ -308,7 +349,7 @@ class recursive_mutex {
     inline bool try_lock()
     {
 #if defined(_TTHREAD_WIN32_)
-      return TryEnterCriticalSection(&mHandle) ? true : false;
+      return TryEnterCriticalSection((CRITICAL_SECTION*)&mHandle) ? true : false;
 #else
       return (pthread_mutex_trylock(&mHandle) == 0) ? true : false;
 #endif
@@ -320,7 +361,7 @@ class recursive_mutex {
     inline void unlock()
     {
 #if defined(_TTHREAD_WIN32_)
-      LeaveCriticalSection(&mHandle);
+      LeaveCriticalSection((CRITICAL_SECTION*)&mHandle);
 #else
       pthread_mutex_unlock(&mHandle);
 #endif
@@ -330,7 +371,7 @@ class recursive_mutex {
 
   private:
 #if defined(_TTHREAD_WIN32_)
-    CRITICAL_SECTION mHandle;
+    CriticalSectionPlaceholder mHandle;
 #else
     pthread_mutex_t mHandle;
 #endif
@@ -435,9 +476,9 @@ class condition_variable {
     {
 #if defined(_TTHREAD_WIN32_)
       // Increment number of waiters
-      EnterCriticalSection(&mWaitersCountLock);
+      EnterCriticalSection((CRITICAL_SECTION*)&mWaitersCountLock);
       ++ mWaitersCount;
-      LeaveCriticalSection(&mWaitersCountLock);
+      LeaveCriticalSection((CRITICAL_SECTION*)&mWaitersCountLock);
 
       // Release the mutex while waiting for the condition (will decrease
       // the number of waiters when done)...
@@ -484,7 +525,7 @@ class condition_variable {
     void _wait();
     HANDLE mEvents[2];                  ///< Signal and broadcast event HANDLEs.
     unsigned int mWaitersCount;         ///< Count of the number of waiters.
-    CRITICAL_SECTION mWaitersCountLock; ///< Serialize access to mWaitersCount.
+    CriticalSectionPlaceholder mWaitersCountLock; ///< Serialize access to mWaitersCount.
 #else
     pthread_cond_t mHandle;
 #endif
@@ -1037,5 +1078,13 @@ namespace this_thread {
 
 // Define/macro cleanup
 #undef _TTHREAD_DISABLE_ASSIGNMENT
+
+#if defined(_TTHREAD_WIN32_)
+        // < DavidJ -- modifications to help avoid #include <windows.h>
+        //          -- undo our macro polution >
+    #pragma pop_macro("WINBASEAPI")
+    #pragma pop_macro("DECLSPEC_IMPORT")
+    #pragma pop_macro("WINAPI")
+#endif
 
 #endif // _TINYTHREAD_H_

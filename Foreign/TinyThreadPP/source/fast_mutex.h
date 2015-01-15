@@ -19,6 +19,11 @@ freely, subject to the following restrictions:
 
     3. This notice may not be removed or altered from any source
     distribution.
+
+
+    << DavidJ   -- I made a small modification for XLE
+                -- these modifications only prevent #include <windows.h> when used
+                    with XLE >>
 */
 
 #ifndef _FAST_MUTEX_H_
@@ -47,14 +52,16 @@ freely, subject to the following restrictions:
 #endif
 
 #if defined(_TTHREAD_WIN32_)
-  #ifndef WIN32_LEAN_AND_MEAN
-    #define WIN32_LEAN_AND_MEAN
-    #define __UNDEF_LEAN_AND_MEAN
-  #endif
-  #include <windows.h>
-  #ifdef __UNDEF_LEAN_AND_MEAN
-    #undef WIN32_LEAN_AND_MEAN
-    #undef __UNDEF_LEAN_AND_MEAN
+  #if !defined(XLE_WORKAROUND_WINDOWS_H)
+    #ifndef WIN32_LEAN_AND_MEAN
+      #define WIN32_LEAN_AND_MEAN
+      #define __UNDEF_LEAN_AND_MEAN
+    #endif
+    #include <windows.h>
+    #ifdef __UNDEF_LEAN_AND_MEAN
+      #undef WIN32_LEAN_AND_MEAN
+      #undef __UNDEF_LEAN_AND_MEAN
+    #endif
   #endif
 #else
   #ifdef _FAST_MUTEX_ASM_
