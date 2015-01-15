@@ -1,0 +1,12 @@
+BuildProcessTemplates/*
+*.vssscc
+*.user
+*.vspscc
+Ribbon/obj/*
+Ribbon/bin/*
+RibbonGenerator/RibbonGenerator.Console/obj/*
+RibbonGenerator/RibbonGenerator.Test/obj/*
+RibbonGenerator/RibbonGenerator/obj/*
+RibbonGenerator/RibbonGenerator.Console/bin/*
+RibbonGenerator/RibbonGenerator.Test/bin/*
+RibbonGenerator/RibbonGenerator/bin/*

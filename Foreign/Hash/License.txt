@@ -1,0 +1,4 @@
+MurmurHash2.cpp, MurmurHash2.h, MurmurHash3.cpp & MurmurHash3.h come from https://code.google.com/p/smhasher/.
+They are released on a MIT license (basically public domain, but we should include license text if we redistribute the source code)
+
+

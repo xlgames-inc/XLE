@@ -1,0 +1,101 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <PropertyPageSchema
+      Include="$(MSBuildThisFileDirectory)$(MSBuildThisFileName).xml" />
+    <AvailableItemName
+      Include="Antlr3Parser">
+      <Targets>_Antlr3Parser</Targets>
+    </AvailableItemName>
+  </ItemGroup>
+  <UsingTask
+    TaskName="Antlr3Parser"
+    TaskFactory="XamlTaskFactory"
+    AssemblyName="Microsoft.Build.Tasks.v4.0">
+    <Task>$(MSBuildThisFileDirectory)$(MSBuildThisFileName).xml</Task>
+  </UsingTask>
+  <Target
+    Name="_Antlr3Parser"
+    BeforeTargets="$(Antlr3ParserBeforeTargets)"
+    AfterTargets="$(Antlr3ParserAfterTargets)"
+    Condition="'@(Antlr3Parser)' != ''"
+    DependsOnTargets="$(Antlr3ParserDependsOn);ComputeAntlr3ParserOutput"
+    Outputs="@(Antlr3Parser-&gt;'%(Outputs)')"
+    Inputs="@(Antlr3Parser);%(Antlr3Parser.AdditionalDependencies);$(MSBuildProjectFile)">
+    <ItemGroup
+      Condition="'@(SelectedFiles)' != ''">
+      <Antlr3Parser
+        Remove="@(Antlr3Parser)"
+        Condition="'%(Identity)' != '@(SelectedFiles)'" />
+    </ItemGroup>
+    <ItemGroup>
+      <Antlr3Parser_tlog
+        Include="%(Antlr3Parser.Outputs)"
+        Condition="'%(Antlr3Parser.Outputs)' != '' and '%(Antlr3Parser.ExcludedFromBuild)' != 'true'">
+        <Source>@(Antlr3Parser, '|')</Source>
+      </Antlr3Parser_tlog>
+    </ItemGroup>
+    <Message
+      Importance="High"
+      Text="%(Antlr3Parser.ExecutionDescription)" />
+    <WriteLinesToFile
+      Condition="'@(Antlr3Parser_tlog)' != '' and '%(Antlr3Parser_tlog.ExcludedFromBuild)' != 'true'"
+      File="$(IntDir)$(ProjectName).write.1.tlog"
+      Lines="^%(Antlr3Parser_tlog.Source);@(Antlr3Parser_tlog-&gt;'%(Fullpath)')" />
+    <Antlr3Parser
+      Condition="'@(Antlr3Parser)' != '' and '%(Antlr3Parser.ExcludedFromBuild)' != 'true'"
+      CommandLineTemplate="%(Antlr3Parser.CommandLineTemplate)"
+      DFA="%(Antlr3Parser.DFA)"
+      NFA="%(Antlr3Parser.NFA)"
+      Report="%(Antlr3Parser.Report)"
+      Print="%(Antlr3Parser.Print)"
+      Debug="%(Antlr3Parser.Debug)"
+      Profile="%(Antlr3Parser.Profile)"
+      AST="%(Antlr3Parser.AST)"
+      TextDFA="%(Antlr3Parser.TextDFA)"
+      EBNFExits="%(Antlr3Parser.EBNFExits)"
+      CollapseEdges="%(Antlr3Parser.CollapseEdges)"
+      DebugNFA="%(Antlr3Parser.DebugNFA)"
+      Absolute="%(Antlr3Parser.Absolute)"
+      JavaOptions="%(Antlr3Parser.JavaOptions)"
+      LibDir="%(Antlr3Parser.LibDir)"
+      OutputDirectory="%(Antlr3Parser.OutputDirectory)"
+      ANTLR3Jar="%(Antlr3Parser.ANTLR3Jar)"
+      Java="%(Antlr3Parser.Java)"
+      MaxRules="%(Antlr3Parser.MaxRules)"
+      MaxDFAEdges="%(Antlr3Parser.MaxDFAEdges)"
+      DFATimeout="%(Antlr3Parser.DFATimeout)"
+      AdditionalOptions="%(Antlr3Parser.AdditionalOptions)"
+      Inputs="@(Antlr3Parser)" />
+  </Target>
+  <PropertyGroup>
+    <ComputeLinkInputsTargets>
+            $(ComputeLinkInputsTargets);
+            ComputeAntlr3ParserOutput;
+          </ComputeLinkInputsTargets>
+    <ComputeLibInputsTargets>
+            $(ComputeLibInputsTargets);
+            ComputeAntlr3ParserOutput;
+          </ComputeLibInputsTargets>
+  </PropertyGroup>
+  <Target
+    Name="ComputeAntlr3ParserOutput"
+    Condition="'@(Antlr3Parser)' != ''">
+    <ItemGroup>
+      <Antlr3ParserDirsToMake
+        Condition="'@(Antlr3Parser)' != '' and '%(Antlr3Parser.ExcludedFromBuild)' != 'true'"
+        Include="%(Antlr3Parser.Outputs)" />
+      <Link
+        Include="%(Antlr3ParserDirsToMake.Identity)"
+        Condition="'%(Extension)'=='.obj' or '%(Extension)'=='.res' or '%(Extension)'=='.rsc' or '%(Extension)'=='.lib'" />
+      <Lib
+        Include="%(Antlr3ParserDirsToMake.Identity)"
+        Condition="'%(Extension)'=='.obj' or '%(Extension)'=='.res' or '%(Extension)'=='.rsc' or '%(Extension)'=='.lib'" />
+      <ImpLib
+        Include="%(Antlr3ParserDirsToMake.Identity)"
+        Condition="'%(Extension)'=='.obj' or '%(Extension)'=='.res' or '%(Extension)'=='.rsc' or '%(Extension)'=='.lib'" />
+    </ItemGroup>
+    <MakeDir
+      Directories="@(Antlr3ParserDirsToMake-&gt;'%(RootDir)%(Directory)')" />
+  </Target>
+</Project>

@@ -1,0 +1,87 @@
+CML_ENABLE_MATRIX_BRACES
+- Allow matrices to be accessed as A[row][col] in addition to A(row,col).
+  This is primarily for testing, and is not used anywhere in the library
+  proper since the proxy object mechanism that's used is not guaranteed to
+  produce optimal code.
+
+CML_NO_DEFAULT_EXPR_TRAITS
+- Don't use default expression traits for built-in types.  This is handy
+  for debugging, since no classes or built-in types will have an expression
+  traits class by default (i.e. the expression traits class must be created
+  explicitly).
+
+CML_DEFAULT_BASIS_ORIENTATION
+- Either cml::row_basis or cml::col_basis.  This determines the basis
+  vector orientation for the matrix result of a vector outer product.  The
+  default is cml::col_basis.
+
+CML_DEFAULT_ARRAY_LAYOUT
+- Either cml::row_major or cml::col_major.  This determines the layout of the
+  resulting matrix when promoting matrices with different layouts.  If the
+  matrices have the same layout, the promoted type will also have that layout,
+  unless CML_ALWAYS_PROMOTE_TO_DEFAULT_LAYOUT is defined.  This parameter also
+  determines the default 2D array memory layout.
+
+CML_DEFAULT_ARRAY_ALLOC
+- Defines the default allocator for arrays generated at run-time by the type
+  deduction system.  The default value is std::allocator<void>.
+
+CML_ALWAYS_PROMOTE_TO_DEFAULT_LAYOUT
+- If this is defined, 2D arrays will always be promoted to the default layout.
+  This is useful if matrix expressions should always be handled in
+  a particular orientation for efficiency.
+
+CML_VECTOR_UNROLL_LIMIT=<N>
+- <N> is the maximum vector length that should be automatically unrolled by
+  the expression template engine.  If the vector (expression) is longer,
+  the normal for loop is used.  Note also that unrolling is available only
+  for fixed-size vectors.
+
+CML_2D_UNROLLER
+- Use a 2D unroller for matrix expressions.  This causes very poor code for
+  most of the supported compilers, but with GCC4/G5, it's required for
+  optimal code.  Note that unrolling is available only for fixed-size
+  matrices.
+
+CML_MATRIX_UNROLL_LIMIT=<N>
+- <N> is the maximum number of matrix elements (#rows x #cols) that
+  a matrix (expression) can have before being unrolled.  A 2D loop is used
+  for matrices with more than <N> elements.  When either CML_2D_UNROLLER or
+  CML_2D_TO_1D_UNROLLER is defined, this must also be defined.
+
+CML_NO_2D_UNROLLER
+- Don't unroll at all, just use a loop.  This seems to generate the best
+  code on at least GCC4/x86 and Intel 9/Linux/x86.
+
+CML_RECIPROCAL_OPTIMIZATION
+- Use "*= 1./x" instead of "/= x" for per-element division.  This may generate
+  better code for certain systems, but isn't yet tested for any configuration.
+
+CML_AUTOMATIC_VECTOR_RESIZE_ON_ASSIGNMENT
+- Enable automatic resizing of dynamic vectors on assignment and copy from
+  other vectors and expressions.  This guarantees that vectors have the right
+  size on assignment, but imposes a significant performance penalty when
+  vectors already have the correct size.  Without this option, however,
+  assigned-to vectors must be constructed with the correct size, or must be
+  explicitly resized with the resize() method.  Note that this has no
+  effect when assigning using a scalar operator, since the vector must already
+  have the proper size.  Also note that temporaries will be automatically
+  resized as necessary regardless of the setting of this option.
+
+CML_CHECK_VECTOR_EXPR_SIZES
+- Verify that all arguments in a vector expression have the proper size.  This
+  is particularly handy for debugging when CML_AUTOMATIC_VECTOR_RESIZE is
+  undefined.  Note that the performance penalty for defining this option is
+  dependent upon the number of binary expressions and the compiler.  Also,
+  this has no effect for expressions composed of entirely fixed-size vectors,
+  since the sizes are automatically checked at compile time.
+
+CML_AUTOMATIC_MATRIX_RESIZE_ON_ASSIGNMENT
+CML_CHECK_MATRIX_EXPR_SIZES
+CML_CHECK_MATVEC_EXPR_SIZES
+- Same as CML_AUTOMATIC_VECTOR_RESIZE and CML_CHECK_VECTOR_EXPR_SIZES, but for
+  matrices.
+
+CML_USE_GENERATED_MATRIX_ASSIGN_OP
+- Allow the compiler to generate its own matrix assignment code.  This yields
+  better performance at least on Intel C++ 9/x86 Linux.

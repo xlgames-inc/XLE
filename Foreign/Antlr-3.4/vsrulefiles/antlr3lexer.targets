@@ -1,0 +1,101 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <PropertyPageSchema
+      Include="$(MSBuildThisFileDirectory)$(MSBuildThisFileName).xml" />
+    <AvailableItemName
+      Include="Antlr3Lexer">
+      <Targets>_Antlr3Lexer</Targets>
+    </AvailableItemName>
+  </ItemGroup>
+  <UsingTask
+    TaskName="Antlr3Lexer"
+    TaskFactory="XamlTaskFactory"
+    AssemblyName="Microsoft.Build.Tasks.v4.0">
+    <Task>$(MSBuildThisFileDirectory)$(MSBuildThisFileName).xml</Task>
+  </UsingTask>
+  <Target
+    Name="_Antlr3Lexer"
+    BeforeTargets="$(Antlr3LexerBeforeTargets)"
+    AfterTargets="$(Antlr3LexerAfterTargets)"
+    Condition="'@(Antlr3Lexer)' != ''"
+    DependsOnTargets="$(Antlr3LexerDependsOn);ComputeAntlr3LexerOutput"
+    Outputs="@(Antlr3Lexer-&gt;'%(Outputs)')"
+    Inputs="@(Antlr3Lexer);%(Antlr3Lexer.AdditionalDependencies);$(MSBuildProjectFile)">
+    <ItemGroup
+      Condition="'@(SelectedFiles)' != ''">
+      <Antlr3Lexer
+        Remove="@(Antlr3Lexer)"
+        Condition="'%(Identity)' != '@(SelectedFiles)'" />
+    </ItemGroup>
+    <ItemGroup>
+      <Antlr3Lexer_tlog
+        Include="%(Antlr3Lexer.Outputs)"
+        Condition="'%(Antlr3Lexer.Outputs)' != '' and '%(Antlr3Lexer.ExcludedFromBuild)' != 'true'">
+        <Source>@(Antlr3Lexer, '|')</Source>
+      </Antlr3Lexer_tlog>
+    </ItemGroup>
+    <Message
+      Importance="High"
+      Text="%(Antlr3Lexer.ExecutionDescription)" />
+    <WriteLinesToFile
+      Condition="'@(Antlr3Lexer_tlog)' != '' and '%(Antlr3Lexer_tlog.ExcludedFromBuild)' != 'true'"
+      File="$(IntDir)$(ProjectName).write.1.tlog"
+      Lines="^%(Antlr3Lexer_tlog.Source);@(Antlr3Lexer_tlog-&gt;'%(Fullpath)')" />
+    <Antlr3Lexer
+      Condition="'@(Antlr3Lexer)' != '' and '%(Antlr3Lexer.ExcludedFromBuild)' != 'true'"
+      CommandLineTemplate="%(Antlr3Lexer.CommandLineTemplate)"
+      DFA="%(Antlr3Lexer.DFA)"
+      NFA="%(Antlr3Lexer.NFA)"
+      Report="%(Antlr3Lexer.Report)"
+      Print="%(Antlr3Lexer.Print)"
+      Debug="%(Antlr3Lexer.Debug)"
+      Profile="%(Antlr3Lexer.Profile)"
+      AST="%(Antlr3Lexer.AST)"
+      TextDFA="%(Antlr3Lexer.TextDFA)"
+      EBNFExits="%(Antlr3Lexer.EBNFExits)"
+      CollapseEdges="%(Antlr3Lexer.CollapseEdges)"
+      DebugNFA="%(Antlr3Lexer.DebugNFA)"
+      Absolute="%(Antlr3Lexer.Absolute)"
+      JavaOptions="%(Antlr3Lexer.JavaOptions)"
+      LibDir="%(Antlr3Lexer.LibDir)"
+      OutputDirectory="%(Antlr3Lexer.OutputDirectory)"
+      ANTLR3Jar="%(Antlr3Lexer.ANTLR3Jar)"
+      Java="%(Antlr3Lexer.Java)"
+      MaxRules="%(Antlr3Lexer.MaxRules)"
+      MaxDFAEdges="%(Antlr3Lexer.MaxDFAEdges)"
+      DFATimeout="%(Antlr3Lexer.DFATimeout)"
+      AdditionalOptions="%(Antlr3Lexer.AdditionalOptions)"
+      Inputs="@(Antlr3Lexer)" />
+  </Target>
+  <PropertyGroup>
+    <ComputeLinkInputsTargets>
+            $(ComputeLinkInputsTargets);
+            ComputeAntlr3LexerOutput;
+          </ComputeLinkInputsTargets>
+    <ComputeLibInputsTargets>
+            $(ComputeLibInputsTargets);
+            ComputeAntlr3LexerOutput;
+          </ComputeLibInputsTargets>
+  </PropertyGroup>
+  <Target
+    Name="ComputeAntlr3LexerOutput"
+    Condition="'@(Antlr3Lexer)' != ''">
+    <ItemGroup>
+      <Antlr3LexerDirsToMake
+        Condition="'@(Antlr3Lexer)' != '' and '%(Antlr3Lexer.ExcludedFromBuild)' != 'true'"
+        Include="%(Antlr3Lexer.Outputs)" />
+      <Link
+        Include="%(Antlr3LexerDirsToMake.Identity)"
+        Condition="'%(Extension)'=='.obj' or '%(Extension)'=='.res' or '%(Extension)'=='.rsc' or '%(Extension)'=='.lib'" />
+      <Lib
+        Include="%(Antlr3LexerDirsToMake.Identity)"
+        Condition="'%(Extension)'=='.obj' or '%(Extension)'=='.res' or '%(Extension)'=='.rsc' or '%(Extension)'=='.lib'" />
+      <ImpLib
+        Include="%(Antlr3LexerDirsToMake.Identity)"
+        Condition="'%(Extension)'=='.obj' or '%(Extension)'=='.res' or '%(Extension)'=='.rsc' or '%(Extension)'=='.lib'" />
+    </ItemGroup>
+    <MakeDir
+      Directories="@(Antlr3LexerDirsToMake-&gt;'%(RootDir)%(Directory)')" />
+  </Target>
+</Project>

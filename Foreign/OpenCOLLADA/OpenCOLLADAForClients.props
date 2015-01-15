@@ -1,0 +1,52 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ImportGroup Label="PropertySheets" />
+  <PropertyGroup Label="UserMacros">
+    <ColladaConfiguration Condition="$(Configuration.Contains('Debug'))">Debug</ColladaConfiguration>
+    <ColladaConfiguration Condition="!$(Configuration.Contains('Debug'))">Release_static</ColladaConfiguration>
+    <SaxFrameworkLoaderConfiguration Condition="$(Configuration.Contains('Debug'))">Debug_Expat</SaxFrameworkLoaderConfiguration>
+    <SaxFrameworkLoaderConfiguration Condition="!$(Configuration.Contains('Debug'))">Release_Expat_NoValidation_static</SaxFrameworkLoaderConfiguration>
+	<GeneratedSaxParserConfiguration Condition="$(Configuration.Contains('Debug'))">Debug_Expat</GeneratedSaxParserConfiguration>
+    <GeneratedSaxParserConfiguration Condition="!$(Configuration.Contains('Debug'))">Release_Expat_static</GeneratedSaxParserConfiguration>
+	<PCREConfiguration Condition="$(Configuration.Contains('Debug'))">Debug</PCREConfiguration>
+    <PCREConfiguration Condition="!$(Configuration.Contains('Debug'))">Release_static</PCREConfiguration>
+	<ExpatLib Condition="$(Configuration.Contains('Debug'))">Debug/libexpatMT</ExpatLib>
+    <ExpatLib Condition="!$(Configuration.Contains('Debug'))">Release/libexpatMT</ExpatLib>
+	<OCBase>$(SolutionDir)/../Foreign/OpenCollada</OCBase>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>
+		$(OCBase)\COLLADABaseUtils\include;
+		$(OCBase)\COLLADAFramework\include;
+		$(OCBase)\COLLADASaxFrameworkLoader\include;
+		$(OCBase)\Externals\expat\lib;
+		$(OCBase)\Externals\MathMLSolver\include;
+		$(OCBase)\GeneratedSaxParser\include;
+		%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Lib>
+      <AdditionalDependencies>
+		$(OCBase)/COLLADAFramework/lib/win/$(Platform)/$(ColladaConfiguration)/COLLADAFramework.lib;
+		$(OCBase)/COLLADABaseUtils/lib/win/$(Platform)/$(ColladaConfiguration)/COLLADABaseUtils.lib;
+		$(OCBase)/COLLADASaxFrameworkLoader/lib/win/$(Platform)/$(SaxFrameworkLoaderConfiguration)/COLLADASaxFrameworkLoader.lib;
+		$(OCBase)/Externals/MathMLSolver/lib/win/$(Platform)/$(ColladaConfiguration)/MathMLSolver.lib;
+		$(OCBase)/Externals/expat/$(Platform)/bin/$(ExpatLib).lib;
+		$(OCBase)/Externals/pcre/lib/win/$(Platform)/$(PCREConfiguration)/pcre.lib;
+		$(OCBase)/GeneratedSaxParser/lib/win/$(Platform)/$(GeneratedSaxParserConfiguration)/GeneratedSaxParser.lib;
+		%(AdditionalDependencies)</AdditionalDependencies>
+    </Lib>
+    <Link>
+      <AdditionalDependencies>
+		$(OCBase)/COLLADAFramework/lib/win/$(Platform)/$(ColladaConfiguration)/COLLADAFramework.lib;
+		$(OCBase)/COLLADABaseUtils/lib/win/$(Platform)/$(ColladaConfiguration)/COLLADABaseUtils.lib;
+		$(OCBase)/COLLADASaxFrameworkLoader/lib/win/$(Platform)/$(SaxFrameworkLoaderConfiguration)/COLLADASaxFrameworkLoader.lib;
+		$(OCBase)/Externals/MathMLSolver/lib/win/$(Platform)/$(ColladaConfiguration)/MathMLSolver.lib;
+		$(OCBase)/Externals/expat/$(Platform)/bin/$(ExpatLib).lib;
+		$(OCBase)/Externals/pcre/lib/win/$(Platform)/$(PCREConfiguration)/pcre.lib;
+		$(OCBase)/GeneratedSaxParser/lib/win/$(Platform)/$(GeneratedSaxParserConfiguration)/GeneratedSaxParser.lib;
+		%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup />
+</Project>

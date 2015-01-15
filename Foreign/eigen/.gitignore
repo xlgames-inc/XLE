@@ -1,0 +1,8 @@
+test/
+doc/
+failtest/
+unsupported/
+demos/
+cmake/
+debug/
+bench/

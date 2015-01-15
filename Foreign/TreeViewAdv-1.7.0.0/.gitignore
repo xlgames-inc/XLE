@@ -1,0 +1,5 @@
+*.vssscc
+*.user
+*.vspscc
+Aga.Controls/obj/*
+Aga.Controls/bin/*

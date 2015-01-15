@@ -1,0 +1,240 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Templates">
+      <UniqueIdentifier>{724f4039-ede6-4a8f-86d7-a77f7b61429f}</UniqueIdentifier>
+      <Extensions>.stg</Extensions>
+    </Filter>
+    <Filter Include="Java">
+      <UniqueIdentifier>{ab332b3e-b1c7-4d0e-82fe-d05aec15b199}</UniqueIdentifier>
+      <Extensions>*.java</Extensions>
+    </Filter>
+    <Filter Include="Doxygen">
+      <UniqueIdentifier>{7f2e000c-8754-4401-b517-4d28f48e1239}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\antlr3baserecognizer.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\antlr3basetree.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\antlr3basetreeadaptor.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\antlr3bitset.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\antlr3collections.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\antlr3commontoken.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\antlr3commontree.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\antlr3commontreeadaptor.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\antlr3commontreenodestream.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\antlr3convertutf.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\antlr3cyclicdfa.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\antlr3debughandlers.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\antlr3encodings.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\antlr3exception.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\antlr3filestream.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\antlr3inputstream.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\antlr3intstream.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\antlr3lexer.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\antlr3parser.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\antlr3rewritestreams.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\antlr3string.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\antlr3tokenstream.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\antlr3treeparser.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\antlr3.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\antlr3baserecognizer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\antlr3basetree.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\antlr3basetreeadaptor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\antlr3bitset.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\antlr3collections.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\antlr3commontoken.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\antlr3commontree.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\antlr3commontreeadaptor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\antlr3commontreenodestream.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\antlr3convertutf.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\antlr3cyclicdfa.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\antlr3debugeventlistener.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\antlr3defs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\antlr3encodings.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\antlr3errors.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\antlr3exception.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\antlr3filestream.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\antlr3input.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\antlr3interfaces.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\antlr3intstream.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\antlr3lexer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\antlr3memory.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\antlr3parser.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\antlr3parsetree.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\antlr3recognizersharedstate.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\antlr3rewritestreams.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\antlr3string.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\antlr3tokenstream.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\antlr3treeparser.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\tool\src\main\resources\org\antlr\codegen\templates\C\AST.stg">
+      <Filter>Templates</Filter>
+    </None>
+    <None Include="..\..\tool\src\main\resources\org\antlr\codegen\templates\C\ASTDbg.stg">
+      <Filter>Templates</Filter>
+    </None>
+    <None Include="..\..\tool\src\main\resources\org\antlr\codegen\templates\C\ASTParser.stg">
+      <Filter>Templates</Filter>
+    </None>
+    <None Include="..\..\tool\src\main\resources\org\antlr\codegen\templates\C\ASTTreeParser.stg">
+      <Filter>Templates</Filter>
+    </None>
+    <None Include="..\..\tool\src\main\resources\org\antlr\codegen\templates\C\C.stg">
+      <Filter>Templates</Filter>
+    </None>
+    <None Include="..\..\tool\src\main\resources\org\antlr\codegen\templates\C\Dbg.stg">
+      <Filter>Templates</Filter>
+    </None>
+    <None Include="..\..\tool\src\main\java\org\antlr\codegen\CTarget.java">
+      <Filter>Java</Filter>
+    </None>
+    <None Include="doxygen\atsections.dox">
+      <Filter>Doxygen</Filter>
+    </None>
+    <None Include="doxygen\build.dox">
+      <Filter>Doxygen</Filter>
+    </None>
+    <None Include="doxygen\buildrec.dox">
+      <Filter>Doxygen</Filter>
+    </None>
+    <None Include="doxygen\changes31.dox">
+      <Filter>Doxygen</Filter>
+    </None>
+    <None Include="doxygen\doxygengroups.dox">
+      <Filter>Doxygen</Filter>
+    </None>
+    <None Include="doxygen\generate.dox">
+      <Filter>Doxygen</Filter>
+    </None>
+    <None Include="doxygen\interop.dox">
+      <Filter>Doxygen</Filter>
+    </None>
+    <None Include="doxygen\mainpage.dox">
+      <Filter>Doxygen</Filter>
+    </None>
+    <None Include="doxygen\runtime.dox">
+      <Filter>Doxygen</Filter>
+    </None>
+    <None Include="doxygen\using.dox">
+      <Filter>Doxygen</Filter>
+    </None>
+  </ItemGroup>
+</Project>

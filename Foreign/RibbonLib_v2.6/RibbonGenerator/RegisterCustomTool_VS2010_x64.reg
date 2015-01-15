@@ -1,0 +1,22 @@
+Windows Registry Editor Version 5.00
+[HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Microsoft\VisualStudio\10.0\CLSID\{B64582D9-A489-42F4-BA55-BB6039D82916}]
+@="RibbonGenerator"
+"InprocServer32"="C:\\WINDOWS\\system32\\mscoree.dll"
+"Class"="RibbonGenerator.CustomTool"
+"Assembly"="RibbonGenerator, Version=1.0.1.0, Culture=neutral, PublicKeyToken=3cf107c5d7e68b1c"
+"ThreadingModel"="Both"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Microsoft\VisualStudio\10.0\Generators\{164B10B9-B200-11D0-8C61-00A0C91E29D5}\RibbonGenerator]
+@="Ribbon Generator"
+"CLSID"="{B64582D9-A489-42F4-BA55-BB6039D82916}"
+"GeneratesDesignTimeSource"=dword:00000001
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Microsoft\VisualStudio\10.0\Generators\{E6FDF8B0-F3D1-11D4-8576-0002A516ECE8}\RibbonGenerator]
+@="Ribbon Generator"
+"CLSID"="{B64582D9-A489-42F4-BA55-BB6039D82916}"
+"GeneratesDesignTimeSource"=dword:00000001
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Microsoft\VisualStudio\10.0\Generators\{FAE04EC1-301F-11d3-BF4B-00C04F79EFBC}\RibbonGenerator]
+@="Ribbon Generator"
+"CLSID"="{B64582D9-A489-42F4-BA55-BB6039D82916}"
+"GeneratesDesignTimeSource"=dword:00000001

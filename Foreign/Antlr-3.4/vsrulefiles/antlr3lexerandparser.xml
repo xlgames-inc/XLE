@@ -1,0 +1,299 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ProjectSchemaDefinitions xmlns="clr-namespace:Microsoft.Build.Framework.XamlTypes;assembly=Microsoft.Build.Framework" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:sys="clr-namespace:System;assembly=mscorlib" xmlns:transformCallback="Microsoft.Cpp.Dev10.ConvertPropertyCallback">
+  <Rule
+    Name="Antlr3ParserLexer"
+    PageTemplate="tool"
+    DisplayName="ANTLR 3 Parser/Lexer Grammar Translation"
+    Order="200">
+    <Rule.DataSource>
+      <DataSource
+        Persistence="ProjectFile"
+        ItemType="Antlr3ParserLexer" />
+    </Rule.DataSource>
+    <Rule.Categories>
+      <Category
+        Name="General">
+        <Category.DisplayName>
+          <sys:String>General</sys:String>
+        </Category.DisplayName>
+      </Category>
+      <Category
+        Name="Command Line"
+        Subtype="CommandLine">
+        <Category.DisplayName>
+          <sys:String>Command Line</sys:String>
+        </Category.DisplayName>
+      </Category>
+    </Rule.Categories>
+    <StringListProperty
+      Name="Inputs"
+      Category="Command Line"
+      IsRequired="true"
+      Switch=" ">
+      <StringListProperty.DataSource>
+        <DataSource
+          Persistence="ProjectFile"
+          ItemType="Antlr3ParserLexer"
+          SourceType="Item" />
+      </StringListProperty.DataSource>
+    </StringListProperty>
+    <BoolProperty
+      Name="DFA"
+      Category="DOT"
+      Subcategory="DOT Ouputs"
+      HelpContext="0"
+      HelpUrl="http://www.antlr.org/wiki/display/ANTLR3/Command+line+options"
+      DisplayName="Generate DFA dots"
+      Description="When set to True ANTLR3 will produce a number of .dot files that can be used with dot/graphviz to genreate pictorial representations of the DFAs gnerated for this grammar."
+      Switch="-dfa" />
+    <BoolProperty
+      Name="NFA"
+      Subcategory="DOT Outputs"
+      HelpContext="0"
+      HelpUrl="http://www.antlr.org/wiki/display/ANTLR3/Command+line+options"
+      DisplayName="Generate NFA DOTs"
+      Description="When set to True ANTLR3 will produce a number of .dot files that can be used with dot/graphviz to genreate pictorial representations of the NFAs generated for this grammar."
+      Switch="-nfa" />
+    <BoolProperty
+      Name="Report"
+      Category="Reporting"
+      Subcategory="Reporting"
+      HelpContext="0"
+      HelpUrl="http://www.antlr.org/wiki/display/ANTLR3/Command+line+options"
+      DisplayName="Generate Report"
+      Description="If set to True then ANTLR3 will generate reports about the grammar file(s) it processes."
+      Switch="-report" />
+    <BoolProperty
+      Name="Print"
+      Category="Reporting"
+      Subcategory="Reporting"
+      HelpContext="0"
+      HelpUrl="http://www.antlr.org/wiki/display/ANTLR3/Command+line+options"
+      DisplayName="Print grammar"
+      Description="If set to True ANTLR3 will print out the grammar without the associated actions"
+      Switch="-print" />
+    <BoolProperty
+      Name="Debug"
+      Category="Code Generation"
+      Subcategory="Output"
+      HelpContext="0"
+      HelpUrl="http://www.antlr.org/wiki/display/ANTLR3/Command+line+options"
+      DisplayName="Debug mode"
+      Description="If set to True ANTLR3 will generate code that fires debugging events. [JI - Not yet implemented]"
+      Switch="-debug" />
+    <BoolProperty
+      Name="Profile"
+      Subcategory="Output"
+      HelpContext="0"
+      HelpUrl="http://www.antlr.org/wiki/display/ANTLR3/Command+line+options"
+      DisplayName="Generate profile"
+      Description="If set to True ANTLR3 will generate code that computes profiling information [JI - not yet implemented]"
+      Switch="-profile" />
+    <BoolProperty
+      Name="AST"
+      Category="Extended"
+      Subcategory="Extended"
+      HelpContext="0"
+      HelpUrl="http://www.antlr.org/wiki/display/ANTLR3/Command+line+options"
+      DisplayName="Show AST"
+      Description="If True ANTLR3 will print out the grammar AST"
+      Switch="-Xgrtree" />
+    <BoolProperty
+      Name="TextDFA"
+      Category="Extended"
+      Subcategory="Extended"
+      HelpContext="0"
+      HelpUrl="http://www.antlr.org/wiki/display/ANTLR3/Command+line+options"
+      DisplayName="Text DFA"
+      Description="If True ANTLR3 will generate a text version of the DFAsfor this grammar."
+      Switch="-Xdfa" />
+    <BoolProperty
+      Name="EBNFExits"
+      Category="Extended"
+      Subcategory="Extended"
+      HelpContext="0"
+      HelpUrl="http://www.antlr.org/wiki/display/ANTLR3/Command+line+options"
+      DisplayName="EBNF Exits"
+      Description="If True ANTLR3 will not test EBNF exit branches."
+      Switch="-Xnoprune" />
+    <BoolProperty
+      Name="CollapseEdges"
+      Category="Extended"
+      Subcategory="Extended"
+      HelpContext="0"
+      HelpUrl="http://www.antlr.org/wiki/display/ANTLR3/Command+line+options"
+      DisplayName="Collapse Edges"
+      Description="Collapse incident edges into DFA states"
+      Switch="-Xnocollapse" />
+    <BoolProperty
+      Name="DebugNFA"
+      Subcategory="Reporting"
+      HelpContext="0"
+      HelpUrl="http://www.antlr.org/wiki/display/ANTLR3/Command+line+options"
+      DisplayName="Debug NFA"
+      Description="If True, ANTLR3 will dump lots of information to the screen during NFA conversion."
+      Switch="-Xdbgconversion " />
+    <BoolProperty
+      Name="Absolute"
+      Category="Code Generation"
+      HelpContext="0"
+      DisplayName="Absolute Directories"
+      Description="If true, causes ANTLR to assume output directory is always the absolute output path and not to use relative paths as per the intput spec. For visual studio, this should usually be set to true."
+      Switch="f" />
+    <StringListProperty
+      Name="JavaOptions"
+      Category="Java"
+      HelpContext="0"
+      HelpUrl="http://www.antlr.org/wiki/display/ANTLR3/Command+line+options"
+      DisplayName="Java VM Options"
+      Description="Specify any options required to invoke the java VM on this grammar file. Sometimes larger grammars require more memory than the standard allocation and you can specify this here."
+      Separator=";"
+      Switch="[value]" />
+    <StringProperty
+      Name="LibDir"
+      Category="Code Generation"
+      Subcategory="General"
+      HelpContext="0"
+      HelpUrl="http://www.antlr.org/wiki/display/ANTLR3/Command+line+options"
+      DisplayName="Token directory"
+      Description="In which directory can ANTLR3 locate grammar token files if not in the same directory as the grammar file."
+      Switch="-lib [value]" />
+    <StringProperty
+      Name="OutputDirectory"
+      Category="Code Generation"
+      HelpContext="0"
+      HelpUrl="http://www.antlr.org/wiki/display/ANTLR3/Command+line+options"
+      DisplayName="Output Directory"
+      Description="Which directory the generated output files be sent to if not the same directory as the grammar file."
+      Switch="[value]" />
+    <StringProperty
+      Name="ANTLR3Jar"
+      Category="Java"
+      Subcategory="JavaVM"
+      HelpContext="0"
+      HelpUrl="http://www.antlr.org/wiki/display/ANTLR3/Command+line+options"
+      DisplayName="ANTLR3 Jar"
+      Description="Specifies the absolute location of the ANTLR3 jar file if it is not in a location covered by %CLASSPATH%. Specify using UNIX directory delimiters to minimize problems."
+      Switch="-jar &quot;[value]&quot;" />
+    <StringProperty
+      Name="Java"
+      HelpContext="0"
+      HelpUrl="http://www.antlr.org/wiki/display/ANTLR3/Command+line+options"
+      DisplayName="Java command"
+      Description="Specifies the command that invokes the java VM. Usually java, but could be something else such as jikes"
+      Switch="[value]" />
+    <IntProperty
+      Name="MaxRules"
+      Category="Extended"
+      Subcategory="Analysis"
+      HelpContext="0"
+      HelpUrl="http://www.antlr.org/wiki/display/ANTLR3/Command+line+options"
+      DisplayName="Max rule call"
+      Description="Maximum number of rule invocations during conversion"
+      Switch="-Xm [value]" />
+    <IntProperty
+      Name="MaxDFAEdges"
+      Category="Extended"
+      Subcategory="Extended"
+      HelpContext="0"
+      HelpUrl="http://www.antlr.org/wiki/display/ANTLR3/Command+line+options"
+      DisplayName="Max DFA Edges"
+      Description="Maximum &quot;comfortable&quot; number of edges for single DFA state"
+      Switch="-Xmaxdfaedges [value]" />
+    <IntProperty
+      Name="DFATimeout"
+      Category="Extended"
+      Subcategory="Extended"
+      HelpContext="0"
+      HelpUrl="http://www.antlr.org/wiki/display/ANTLR3/Command+line+options"
+      DisplayName="DFA Timeout"
+      Description="DFA conversion timeout period for each decision."
+      Switch="-Xconversiontimeout [value]" />
+    <StringProperty
+      Name="CommandLineTemplate"
+      DisplayName="Command Line"
+      Visible="False"
+      IncludeInCommandLine="False" />
+    <DynamicEnumProperty
+      Name="Antlr3ParserLexerBeforeTargets"
+      Category="General"
+      EnumProvider="Targets"
+      IncludeInCommandLine="False">
+      <DynamicEnumProperty.DisplayName>
+        <sys:String>Execute Before</sys:String>
+      </DynamicEnumProperty.DisplayName>
+      <DynamicEnumProperty.Description>
+        <sys:String>Specifies the targets for the build customization to run before.</sys:String>
+      </DynamicEnumProperty.Description>
+      <DynamicEnumProperty.ProviderSettings>
+        <NameValuePair
+          Name="Exclude"
+          Value="^Antlr3ParserLexerBeforeTargets|^Compute" />
+      </DynamicEnumProperty.ProviderSettings>
+      <DynamicEnumProperty.DataSource>
+        <DataSource
+          Persistence="ProjectFile"
+          HasConfigurationCondition="true" />
+      </DynamicEnumProperty.DataSource>
+    </DynamicEnumProperty>
+    <DynamicEnumProperty
+      Name="Antlr3ParserLexerAfterTargets"
+      Category="General"
+      EnumProvider="Targets"
+      IncludeInCommandLine="False">
+      <DynamicEnumProperty.DisplayName>
+        <sys:String>Execute After</sys:String>
+      </DynamicEnumProperty.DisplayName>
+      <DynamicEnumProperty.Description>
+        <sys:String>Specifies the targets for the build customization to run after.</sys:String>
+      </DynamicEnumProperty.Description>
+      <DynamicEnumProperty.ProviderSettings>
+        <NameValuePair
+          Name="Exclude"
+          Value="^Antlr3ParserLexerAfterTargets|^Compute" />
+      </DynamicEnumProperty.ProviderSettings>
+      <DynamicEnumProperty.DataSource>
+        <DataSource
+          Persistence="ProjectFile"
+          ItemType=""
+          HasConfigurationCondition="true" />
+      </DynamicEnumProperty.DataSource>
+    </DynamicEnumProperty>
+    <StringListProperty
+      Name="Outputs"
+      DisplayName="Outputs"
+      Visible="False"
+      IncludeInCommandLine="False" />
+    <StringProperty
+      Name="ExecutionDescription"
+      DisplayName="Execution Description"
+      Visible="False"
+      IncludeInCommandLine="False" />
+    <StringListProperty
+      Name="AdditionalDependencies"
+      DisplayName="Additional Dependencies"
+      IncludeInCommandLine="False"
+      Visible="true" />
+    <StringProperty
+      Subtype="AdditionalOptions"
+      Name="AdditionalOptions"
+      Category="Command Line">
+      <StringProperty.DisplayName>
+        <sys:String>Additional Options</sys:String>
+      </StringProperty.DisplayName>
+      <StringProperty.Description>
+        <sys:String>Additional Options</sys:String>
+      </StringProperty.Description>
+    </StringProperty>
+  </Rule>
+  <ItemType
+    Name="Antlr3ParserLexer"
+    DisplayName="ANTLR 3 Parser/Lexer Grammar Translation" />
+  <FileExtension
+    Name="*.g3pl;*.g3;*.g"
+    ContentType="Antlr3ParserLexer" />
+  <ContentType
+    Name="Antlr3ParserLexer"
+    DisplayName="ANTLR 3 Parser/Lexer Grammar Translation"
+    ItemType="Antlr3ParserLexer" />
+</ProjectSchemaDefinitions>

@@ -1,0 +1,37 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup
+    Condition="'$(Antlr3LexerBeforeTargets)' == '' and '$(Antlr3LexerAfterTargets)' == '' and '$(ConfigurationType)' != 'Makefile'">
+    <Antlr3LexerBeforeTargets>Midl</Antlr3LexerBeforeTargets>
+    <Antlr3LexerAfterTargets>CustomBuild</Antlr3LexerAfterTargets>
+  </PropertyGroup>
+  <PropertyGroup>
+    <Antlr3LexerDependsOn
+      Condition="'$(ConfigurationType)' != 'Makefile'">_SelectedFiles;$(Antlr3LexerDependsOn)</Antlr3LexerDependsOn>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <Antlr3Lexer>
+      <DFA>False</DFA>
+      <NFA>False</NFA>
+      <Report>False</Report>
+      <Print>False</Print>
+      <Debug>False</Debug>
+      <Profile>False</Profile>
+      <AST>False</AST>
+      <TextDFA>False</TextDFA>
+      <EBNFExits>False</EBNFExits>
+      <CollapseEdges>False</CollapseEdges>
+      <DebugNFA>False</DebugNFA>
+      <Absolute>true</Absolute>
+      <LibDir>%(RootDir)%(Directory)</LibDir>
+      <OutputDirectory>%(RootDir)%(Directory)</OutputDirectory>
+      <Java>java</Java>
+      <MaxRules>4</MaxRules>
+      <MaxDFAEdges>65534</MaxDFAEdges>
+      <DFATimeout>1000</DFATimeout>
+      <CommandLineTemplate>[java] [JavaOptions] [ANTLR3Jar] org.antlr.Tool [LibDir] -[Absolute]o [OutputDirectory] -message-format vs2005 [DFA] [NFA] [Report] [Print] [Debug] [Profile] [AST] [TextDFA] [EBNFExits] [CollapseEdges] [DebugNFA] [MaxRules] [MaxDFAEdges] [DFATimeout] [inputs]</CommandLineTemplate>
+      <Outputs>[OutputDirectory]\%(Filename).c;[OutputDirectory]\%(Filename).h</Outputs>
+      <ExecutionDescription>Translating to lexer.</ExecutionDescription>
+    </Antlr3Lexer>
+  </ItemDefinitionGroup>
+</Project>
