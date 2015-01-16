@@ -8,8 +8,11 @@
 #include "../RenderCore/Assets/ModelSimple.h"
 #include "../RenderCore/Assets/SharedStateSet.h"
 #include "../SceneEngine/LightingParserContext.h"
+#include "../SceneEngine/ModelFormat.h"
 #include "../Assets/Assets.h"
 #include "../Assets/ChunkFile.h"
+
+#include "../RenderCore/Assets/ModelRunTime.h"
 
 #include "../ConsoleRig/Log.h"
 #include "../Math/Matrix.h"
@@ -24,9 +27,6 @@
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/Streams/DataSerialize.h"
 #include "../Core/Types.h"
-
-#include "../CryCompat/CryModel.h"
-#include "../CryCompat/CryPlacements.h"
 
 #include <random>
 
@@ -232,7 +232,8 @@ namespace SceneEngine
         auto hash = Hash64(filename);
         auto model = _cache->_modelScaffolds.Get(hash);
         if (!model) {
-            model = std::make_shared<CryCompat::CryModelScaffold>(filename);
+            ModelFormat modelFormat;
+            model = modelFormat.CreateModel(filename);
             _cache->_modelScaffolds.Insert(hash, model);
         }
         return *model;
@@ -368,6 +369,7 @@ namespace SceneEngine
         auto cameraPosition = ExtractTranslation(parserContext.GetProjectionDesc()._viewToWorld);
         cameraPosition = TransformPoint(InvertOrthonormalTransform(cellToWorld), cameraPosition);
 
+        ModelFormat modelFormat;
         auto& placements = *renderInfo._placements;
         const auto* filenamesBuffer = placements.GetFilenamesBuffer();
         const auto* objRef = placements.GetObjectReferences();
@@ -396,14 +398,14 @@ namespace SceneEngine
 
             auto model = _cache->_modelScaffolds.Get(modelHash);
             if (!model) {
-                model = std::make_shared<CryCompat::CryModelScaffold>(modelFilename);
+                model = modelFormat.CreateModel(modelFilename);
                 _cache->_modelScaffolds.Insert(modelHash, model);
             }
 
             auto material = _cache->_materialScaffolds.Get(materialHash);
             if (!material) {
                 TRY {
-                    material = std::make_shared<CryCompat::CryMaterialScaffold>(materialFilename);
+                    material = modelFormat.CreateMaterial(materialFilename);
                 } CATCH (...) {    // sometimes get missing files
                     continue;
                 } CATCH_END
@@ -419,7 +421,7 @@ namespace SceneEngine
                 //  and separate the objects into their correct state set, as required...
             auto renderer = _cache->_modelRenderers.Get(hashedModel);
             if (!renderer) {
-                renderer = std::make_shared<ModelRenderer>(
+                renderer = modelFormat.CreateRenderer(
                     std::ref(*model), std::ref(*material), std::ref(_cache->_sharedStates), LOD);
                 _cache->_modelRenderers.Insert(hashedModel, renderer);
             }
@@ -671,7 +673,7 @@ namespace SceneEngine
         auto boundingBoxCentre = LinearInterpolate(model.GetBoundingBox().first, model.GetBoundingBox().second, 0.5f);
         auto worldSpaceCenter = TransformPoint(objectToWorld, boundingBoxCentre);
 
-        std::string defMatName = CryCompat::DefaultMaterialName(model);
+        std::string defMatName = ModelFormat().DefaultMaterialName(model);
         if (!materialFilename || !materialFilename[0]) {
             materialFilename = defMatName.c_str();
         }

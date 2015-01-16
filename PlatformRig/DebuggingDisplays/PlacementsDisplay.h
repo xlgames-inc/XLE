@@ -8,11 +8,6 @@
 
 #include "../../RenderOverlays/DebuggingDisplay.h"
 
-namespace CryCompat 
-{
-    class ScaffoldPlacements;
-}
-
 namespace PlatformRig { namespace Overlays
 {
     using namespace RenderOverlays;
@@ -24,10 +19,7 @@ namespace PlatformRig { namespace Overlays
         void    Render(IOverlayContext* context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
         bool    ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);
 
-        PlacementsDisplay(CryCompat::ScaffoldPlacements& placements);
+        PlacementsDisplay();
         ~PlacementsDisplay();
-
-    private:
-        CryCompat::ScaffoldPlacements* _placements;
     };
 }}

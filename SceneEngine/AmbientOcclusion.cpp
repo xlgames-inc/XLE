@@ -48,7 +48,7 @@
 #define AO_IMPLEMENTATION_NONE      0
 #define AO_IMPLEMENTATION_GFSDK     1
 
-#if defined(USER_djewsbury)
+#if 0 // defined(USER_djewsbury)
     #define AO_IMPLEMENTATION       AO_IMPLEMENTATION_GFSDK
 #else
     #define AO_IMPLEMENTATION       AO_IMPLEMENTATION_NONE

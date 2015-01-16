@@ -18,6 +18,7 @@
 #include "../../SceneEngine/LightingParserContext.h"
 #include "../../SceneEngine/SceneParser.h"
 #include "../../SceneEngine/Techniques.h"
+#include "../../SceneEngine/ModelFormat.h"
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../Math/Transformations.h"
 #include "../../Utility/StringUtils.h"
@@ -26,7 +27,6 @@
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/HeapUtils.h"
 #include "../../Utility/Streams/PathUtils.h"
-#include "../../CryCompat/CryModel.h"
 
 #include "../../Core/WinAPI/IncludeWindows.h"
 #include "../../RenderCore/DX11/Metal/IncludeDX11.h"
@@ -580,24 +580,26 @@ namespace Overlays
         utf8 utf8Filename[MaxPath];
         ucs2_2_utf8(AsPointer(filename.cbegin()), filename.size(), utf8Filename, dimof(utf8Filename));
 
+        SceneEngine::ModelFormat modelFormat;
+
         uint64 hashedName = Hash64(AsPointer(filename.cbegin()), AsPointer(filename.cend()));
         auto model = _pimpl->_modelScaffolds.Get(hashedName);
         if (!model) {
-            model = std::make_shared<CryCompat::CryModelScaffold>((const char*)utf8Filename);
+            model = modelFormat.CreateModel((const char*)utf8Filename);
             _pimpl->_modelScaffolds.Insert(hashedName, model);
         }
-        auto defMatName = CryCompat::DefaultMaterialName(*model);
+        auto defMatName = modelFormat.DefaultMaterialName(*model);
         uint64 hashedMaterial = Hash64(defMatName);
         auto material = _pimpl->_materialScaffolds.Get(hashedMaterial);
         if (!material) {
-            material = std::make_shared<CryCompat::CryMaterialScaffold>(defMatName.c_str());
+            material = modelFormat.CreateMaterial(defMatName.c_str());
             _pimpl->_materialScaffolds.Insert(hashedMaterial, material);
         }
 
         uint64 hashedModel = uint64(model.get()) | (uint64(material.get()) << 48);
         auto renderer = _pimpl->_modelRenderers.Get(hashedModel);
         if (!renderer) {
-            renderer = std::make_shared<ModelRenderer>(std::ref(*model), std::ref(*material), std::ref(_pimpl->_sharedStateSet), 0);
+            renderer = modelFormat.CreateRenderer(std::ref(*model), std::ref(*material), std::ref(_pimpl->_sharedStateSet), 0);
             _pimpl->_modelRenderers.Insert(hashedModel, renderer);
         }
 

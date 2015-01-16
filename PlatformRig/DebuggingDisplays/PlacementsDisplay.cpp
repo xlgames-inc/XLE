@@ -5,7 +5,6 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "PlacementsDisplay.h"
-#include "../../CryCompat/CryPlacements.h"
 #include "../../Math/Geometry.h"
 #include "../../Utility/PtrUtils.h"
 
@@ -14,6 +13,7 @@ namespace PlatformRig { namespace Overlays
 
     void    PlacementsDisplay::Render(IOverlayContext* context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState)
     {
+#if 0
         Float3x4 placementsToWorld = Truncate(Float4x4(
             0.f, 1.f, 0.f, 0.f,
             1.f, 0.f, 0.f, 0.f,
@@ -44,6 +44,7 @@ namespace PlatformRig { namespace Overlays
                 DrawBoundingBox(context, obj._worldSpaceBoundary, placementsToWorld, ColorB(0xffffff7f), 0x2);
             }
         }
+#endif
     }
 
     bool    PlacementsDisplay::ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input)
@@ -51,8 +52,7 @@ namespace PlatformRig { namespace Overlays
         return false;
     }
 
-    PlacementsDisplay::PlacementsDisplay(CryCompat::ScaffoldPlacements& placements)
-    : _placements(&placements)
+    PlacementsDisplay::PlacementsDisplay()
     {}
 
     PlacementsDisplay::~PlacementsDisplay()

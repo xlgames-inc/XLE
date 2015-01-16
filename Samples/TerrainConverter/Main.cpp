@@ -8,7 +8,6 @@
 
 #include "../../SceneEngine/Terrain.h"
 #include "../../RenderCore/Assets/TerrainFormat.h"
-#include "../../CryCompat/CryTerrain.h"
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/Streams/PathUtils.h"
