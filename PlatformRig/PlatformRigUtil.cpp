@@ -29,7 +29,7 @@ namespace PlatformRig
                 .addFunction("SetI", &GlobalTechniqueContext::SetInteger)
             .endClass();
             
-        setglobal(luaState, this, "TechContext");
+        setGlobal(luaState, this, "TechContext");
     }
 
     GlobalTechniqueContext::~GlobalTechniqueContext()

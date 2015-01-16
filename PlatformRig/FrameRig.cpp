@@ -225,14 +225,14 @@ namespace PlatformRig
                     .addFunction("SetFrameLimiter", &FrameRig::SetFrameLimiter)
                 .endClass();
             
-            setglobal(luaState, this, "MainFrameRig");
+            setGlobal(luaState, this, "MainFrameRig");
         }
     }
 
     FrameRig::~FrameRig() 
     {
         auto* luaState = ConsoleRig::Console::GetInstance().GetLuaState();
-        // luabridge::setglobal(luaState, nullptr, "MainFrameRig");
+        // luabridge::setGlobal(luaState, nullptr, "MainFrameRig");
         lua_pushnil(luaState);
         lua_setglobal(luaState, "MainFrameRig");
     }

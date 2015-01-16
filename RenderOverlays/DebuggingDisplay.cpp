@@ -1238,7 +1238,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
 //                    .addFunction("SwitchToScreen", switchToScreen)
 //                .endClass();
 //            
-//            setglobal(luaState, this, "MainDebug");
+//            setGlobal(luaState, this, "MainDebug");
 //        }
     }
 
