@@ -7,7 +7,7 @@
 #pragma once
 
 #undef new
-    #include <../../../Foreign/lua-5.2.2/src/lua.hpp>
+    #include <../../../Foreign/lua/src/lua.hpp>
     #include <../../../Foreign/LuaBridge/Source/LuaBridge/LuaBridge.h>
 #if defined(DEBUG_NEW)
     #define new DEBUG_NEW

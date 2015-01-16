@@ -73,55 +73,55 @@
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">
     <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
     <Import Project="..\..\Foreign\CommonForClients.props" />
-    <Import Project="..\..\Foreign\lua-5.2.2\LuaForClients.props" />
+    <Import Project="..\..\Foreign\lua\LuaForClients.props" />
     <Import Project="..\..\Solutions\Arch_WinAPI\VersionNumbering.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
     <Import Project="..\..\Foreign\CommonForClients.props" />
-    <Import Project="..\..\Foreign\lua-5.2.2\LuaForClients.props" />
+    <Import Project="..\..\Foreign\lua\LuaForClients.props" />
     <Import Project="..\..\Solutions\Arch_WinAPI\VersionNumbering.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
     <Import Project="..\..\Foreign\CommonForClients.props" />
-    <Import Project="..\..\Foreign\lua-5.2.2\LuaForClients.props" />
+    <Import Project="..\..\Foreign\lua\LuaForClients.props" />
     <Import Project="..\..\Solutions\Arch_WinAPI\VersionNumbering.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'">
     <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
     <Import Project="..\..\Foreign\CommonForClients.props" />
-    <Import Project="..\..\Foreign\lua-5.2.2\LuaForClients.props" />
+    <Import Project="..\..\Foreign\lua\LuaForClients.props" />
     <Import Project="..\..\Solutions\Arch_WinAPI\VersionNumbering.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">
     <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
     <Import Project="..\..\Foreign\CommonForClients.props" />
-    <Import Project="..\..\Foreign\lua-5.2.2\LuaForClients.props" />
+    <Import Project="..\..\Foreign\lua\LuaForClients.props" />
     <Import Project="..\..\Solutions\Arch_WinAPI\VersionNumbering.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">
     <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
     <Import Project="..\..\Foreign\CommonForClients.props" />
-    <Import Project="..\..\Foreign\lua-5.2.2\LuaForClients.props" />
+    <Import Project="..\..\Foreign\lua\LuaForClients.props" />
     <Import Project="..\..\Solutions\Arch_WinAPI\VersionNumbering.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'">
     <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
     <Import Project="..\..\Foreign\CommonForClients.props" />
-    <Import Project="..\..\Foreign\lua-5.2.2\LuaForClients.props" />
+    <Import Project="..\..\Foreign\lua\LuaForClients.props" />
     <Import Project="..\..\Solutions\Arch_WinAPI\VersionNumbering.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
     <Import Project="..\..\Foreign\CommonForClients.props" />
-    <Import Project="..\..\Foreign\lua-5.2.2\LuaForClients.props" />
+    <Import Project="..\..\Foreign\lua\LuaForClients.props" />
     <Import Project="..\..\Solutions\Arch_WinAPI\VersionNumbering.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
     <Import Project="..\..\Foreign\CommonForClients.props" />
-    <Import Project="..\..\Foreign\lua-5.2.2\LuaForClients.props" />
+    <Import Project="..\..\Foreign\lua\LuaForClients.props" />
     <Import Project="..\..\Solutions\Arch_WinAPI\VersionNumbering.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
