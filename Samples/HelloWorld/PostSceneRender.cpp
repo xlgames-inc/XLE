@@ -60,7 +60,7 @@ namespace Sample
 
     RenderPostSceneResources::RenderPostSceneResources(const Desc& desc)
     {
-        _font = RenderOverlays::GetX2Font("ui/font/yd_ygo540.ttf", desc._fontSize);
+        _font = RenderOverlays::GetX2Font("DosisExtraBold", desc._fontSize);
     }
 
     /// <summary>Renders some text to a device</summary>

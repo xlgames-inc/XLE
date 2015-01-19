@@ -93,20 +93,20 @@ namespace PlatformRig
 
         intrusive_ptr<RenderOverlays::Font> _frameRateFont;
         intrusive_ptr<RenderOverlays::Font> _smallFrameRateFont;
-        intrusive_ptr<RenderOverlays::Font> _smallDebugFont;
+        intrusive_ptr<RenderOverlays::Font> _tabHeadingFont;
 
         FrameRigResources(const Desc&);
     };
 
     FrameRigResources::FrameRigResources(const Desc&)
     {
-        auto frameRateFont = RenderOverlays::GetX2Font("ui/font/yoon_firedgothic_b.ttf", 32);
-        auto smallDebugFont = RenderOverlays::GetX2Font("ui/font/NanumGothicBold.ttf", 12);
-        auto smallFrameRateFont = RenderOverlays::GetX2Font("ui/font/yoon_firedgothic_b.ttf", 14);
+        auto frameRateFont = RenderOverlays::GetX2Font("Shojumaru", 32);
+        auto smallFrameRateFont = RenderOverlays::GetX2Font("PoiretOne", 14);
+        auto tabHeadingFont = RenderOverlays::GetX2Font("PoiretOne", 18);
 
         _frameRateFont = std::move(frameRateFont);
-        _smallDebugFont = std::move(smallDebugFont);
         _smallFrameRateFont = std::move(smallFrameRateFont);
+        _tabHeadingFont = std::move(tabHeadingFont);
     }
 
     
@@ -317,8 +317,8 @@ namespace PlatformRig
         static Coord margin = 8;
         const auto bigLineHeight = Coord(res._frameRateFont->LineHeight());
         const auto smallLineHeight = Coord(res._smallFrameRateFont->LineHeight());
-        const auto smallLineHeight2 = Coord(res._smallDebugFont->LineHeight());
-        const Coord rectHeight = bigLineHeight + 3 * margin + smallLineHeight2;
+        const auto tabHeadingLineHeight = Coord(res._tabHeadingFont->LineHeight());
+        const Coord rectHeight = bigLineHeight + 3 * margin + smallLineHeight;
         Rect displayRect(
             Coord2(outerRect._bottomRight[0] - rectWidth - padding, outerRect._topLeft[1] + padding),
             Coord2(outerRect._bottomRight[0] - padding, outerRect._topLeft[1] + padding + rectHeight));
@@ -348,13 +348,14 @@ namespace PlatformRig
         auto heapMetrics = AccumulatedAllocations::GetCurrentHeapMetrics();
         auto frameAllocations = _prevFrameAllocationCount->_allocationCount;
 
-        TextStyle smallStyle2(*res._smallDebugFont);
         DrawFormatText(
-            context, innerLayout.AllocateFullWidth(smallLineHeight2), 0.f, 1.f, 
-            &smallStyle2, ColorB(0xffffffff), TextAlignment::Center,
+            context, innerLayout.AllocateFullWidth(smallLineHeight), 0.f, 1.f, 
+            &smallStyle, ColorB(0xffffffff), TextAlignment::Center,
             "%.2fM (%i)", heapMetrics._usage / (1024.f*1024.f), frameAllocations);
 
         interactables.Register(Interactables::Widget(displayRect, Id_FrameRigDisplayMain));
+
+        TextStyle tabHeader(*res._tabHeadingFont);
 
         auto ds = _debugSystem.lock();
         if (ds) {
@@ -371,7 +372,7 @@ namespace PlatformRig
 
                     Rect rect;
                     if ((_subMenuOpen-1) == unsigned(c) || highlight) {
-                        Coord nameWidth = (Coord)context->StringWidth(1.f, &smallStyle2, categories[c], nullptr);
+                        Coord nameWidth = (Coord)context->StringWidth(1.f, &tabHeader, categories[c], nullptr);
                         rect = Rect(pt - Coord2(iconSize[0] + nameWidth + margin, 0), pt + Coord2(0, iconSize[1]));
                         Rect iconRect(rect._topLeft, rect._topLeft + iconSize);
                         Rect textRect(Coord2(iconRect._bottomRight[0] + margin, rect._topLeft[1]), rect._bottomRight);
@@ -382,7 +383,7 @@ namespace PlatformRig
                             String_IconBegin + categories[c] + String_IconEnd);
                         DrawText(
                             context, textRect, 0.f, 1.f, 
-                            &smallStyle2, ColorB(0xffffffff), TextAlignment::Center,
+                            &tabHeader, ColorB(0xffffffff), TextAlignment::Center,
                             categories[c]);
                     } else {
                         rect = Rect(pt - Coord2(iconSize[0], 0), pt + Coord2(0, iconSize[1]));
@@ -403,11 +404,11 @@ namespace PlatformRig
                 Layout screenListLayout(Rect(Coord2(0, pt[1] + iconSize[1] + margin), outerRect._bottomRight));
 
                 const Coord2 smallIconSize(93/4, 88/4);
-                auto lineHeight = std::max(smallIconSize[1], smallLineHeight2);
+                auto lineHeight = std::max(smallIconSize[1], tabHeadingLineHeight);
                 const auto screens = ds->GetWidgets();
                 for (auto i=screens.cbegin(); i!=screens.cend(); ++i) {
                     if (i->_name.find(categories[_subMenuOpen-1]) != std::string::npos) {
-                        unsigned width = (unsigned)context->StringWidth(1.f, &smallStyle2, i->_name.c_str(), nullptr);
+                        unsigned width = (unsigned)context->StringWidth(1.f, &tabHeader, i->_name.c_str(), nullptr);
                         auto rect = screenListLayout.AllocateFullWidth(lineHeight);
                         rect._topLeft[0] = rect._bottomRight[0] - width;
                         DrawRectangle(context, Rect(rect._topLeft - Coord2(2 + margin + smallIconSize[0],2), rect._bottomRight + Coord2(2,2)), ColorB(0xff000000));
@@ -418,7 +419,7 @@ namespace PlatformRig
                             String_IconBegin + categories[_subMenuOpen-1] + String_IconEnd);
                         DrawText(
                             context, rect, 0.f, 1.f, 
-                            &smallStyle2, ColorB(0xffffffff), TextAlignment::Left,
+                            &tabHeader, ColorB(0xffffffff), TextAlignment::Left,
                             i->_name.c_str());
 
                         interactables.Register(Interactables::Widget(rect, i->_hashCode));

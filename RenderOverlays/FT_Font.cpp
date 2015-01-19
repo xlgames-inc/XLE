@@ -868,7 +868,7 @@ static bool LoadDataFromPak(const char* path, Data* out)
 bool LoadFontConfigFile()
 {
     Data config;    
-    if (!LoadDataFromPak("game/fonts/fonts.g", &config)) {
+    if (!LoadDataFromPak("game/xleres/DefaultResources/fonts/fonts.g", &config)) {
         return false;
     }
     

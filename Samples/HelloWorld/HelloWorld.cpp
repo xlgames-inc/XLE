@@ -114,8 +114,8 @@ namespace Sample
         
         {
                 // currently we need to maintain a reference on these two fonts -- 
-            auto defaultFont0 = RenderOverlays::GetX2Font("ui/font/yd_ygo540.ttf",      16);
-            auto defaultFont1 = RenderOverlays::GetX2Font("ui/font/yoon_snail_b.ttf",   16);
+            auto defaultFont0 = RenderOverlays::GetX2Font("Raleway", 16);
+            auto defaultFont1 = RenderOverlays::GetX2Font("Vera", 16);
 
                 //  Create the debugging system, and add any "displays"
                 //  If we have any custom displays to add, we can add them here. Often it's 
@@ -146,7 +146,6 @@ namespace Sample
                 //  settings (maybe for quality settings or different rendering modes). In
                 //  these cases, plugins can provide a way to customize the pipeline at run-time.
             auto stdPlugin = std::make_shared<SceneEngine::LightingParserStandardPlugin>();
-            SceneEngine::SetBufferUploads(bufferUploads.get());
 
                 //  We can log the active assets at any time using this method.
                 //  At this point during startup, we should only have a few assets loaded.
@@ -246,7 +245,7 @@ namespace Sample
             //  The lighting parser will tell us if there where any pending resources
             //  during the render. Here, we can render them as a short list...
         bool hasPendingResources = !lightingParserContext._pendingResources.empty();
-        auto defaultFont0 = RenderOverlays::GetX2Font("ui/font/yd_ygo540.ttf", 16);
+        auto defaultFont0 = RenderOverlays::GetX2Font("Raleway", 16);
         SceneEngine::DrawPendingResources(context, lightingParserContext, defaultFont0.get());
 
         debugSystem->Render(renderDevice, lightingParserContext.GetProjectionDesc()._worldToProjection);

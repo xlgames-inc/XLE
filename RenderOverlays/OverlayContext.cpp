@@ -507,7 +507,7 @@ namespace RenderOverlays
 
     ImmediateOverlayContext::ImmediateOverlayContext(RenderCore::Metal::DeviceContext* deviceContext, const Float4x4& viewProjectionTransform)
     : _deviceContext(deviceContext)
-    , _font(GetX2Font("ui/font/yoon_snail_b.ttf", 16))
+    , _font(GetX2Font("Raleway", 16))
     , _defaultTextStyle(*_font.get())
     {
         _writePointer = 0;

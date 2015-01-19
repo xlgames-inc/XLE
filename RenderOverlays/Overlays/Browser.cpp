@@ -426,7 +426,7 @@ namespace Overlays
     {
         auto pimpl = std::make_unique<Pimpl>();
         pimpl->_baseDirectory = pimpl->_currentDirectory = baseDirectory;
-        pimpl->_headingFont = GetX2Font("ui/font/FrizQuadrataC.ttf", 20);
+        pimpl->_headingFont = GetX2Font("Raleway", 20);
         pimpl->_itemDimensions = itemDimensions;
         pimpl->_fileFilter = fileFilter;
         pimpl->_headerName = headerName;
