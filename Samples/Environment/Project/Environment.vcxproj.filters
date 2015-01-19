@@ -1,0 +1,48 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="..\EnvironmentSample.cpp" />
+    <ClCompile Include="..\EnvironmentScene.cpp" />
+    <ClCompile Include="..\..\Shared\Character.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Shared\CharactersScene.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Shared\SampleInputHandler.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Shared\AnimationDecisionTree.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\WinAPI\WindowStartup.cpp">
+      <Filter>WinAPI</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\EnvironmentScene.h" />
+    <ClInclude Include="..\..\Shared\AnimationDecisionTree.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Shared\Character.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Shared\CharactersScene.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Shared\SampleInputHandler.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Shared\SampleGlobals.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Shared">
+      <UniqueIdentifier>{52c56fc1-6cc6-4772-833a-89cb4f4cd89e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="WinAPI">
+      <UniqueIdentifier>{5c5a0425-6653-4bfe-b5c9-d5de28fc4246}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

@@ -1,0 +1,186 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="NsightTegraProject">
+    <NsightTegraProjectRevisionNumber>4</NsightTegraProjectRevisionNumber>
+  </PropertyGroup>
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Tegra-Android">
+      <Configuration>Debug</Configuration>
+      <Platform>Tegra-Android</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Profile|Tegra-Android">
+      <Configuration>Profile</Configuration>
+      <Platform>Tegra-Android</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Profile|Win32">
+      <Configuration>Profile</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Profile|x64">
+      <Configuration>Profile</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Tegra-Android">
+      <Configuration>Release</Configuration>
+      <Platform>Tegra-Android</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <RootNamespace>Environment</RootNamespace>
+    <ProjectGuid>{C6F14090-65B3-A158-A259-80284609A288}</ProjectGuid>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <AndroidAPILevel Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">android-18</AndroidAPILevel>
+    <AndroidAPILevel Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'">android-18</AndroidAPILevel>
+    <AndroidAPILevel Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'">android-18</AndroidAPILevel>
+    <PlatformToolset Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">x86-4.8</PlatformToolset>
+    <PlatformToolset Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'">x86-4.8</PlatformToolset>
+    <PlatformToolset Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'">x86-4.8</PlatformToolset>
+    <AndroidMinAPI Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">android-17</AndroidMinAPI>
+    <AndroidTargetAPI Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">android-17</AndroidTargetAPI>
+    <AndroidMaxAPI Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'" />
+    <AndroidMinAPI Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'">android-17</AndroidMinAPI>
+    <AndroidTargetAPI Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'">android-17</AndroidTargetAPI>
+    <AndroidMaxAPI Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'" />
+    <AndroidMinAPI Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'">android-17</AndroidMinAPI>
+    <AndroidTargetAPI Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'">android-17</AndroidTargetAPI>
+    <AndroidMaxAPI Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'" />
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <Import Project="..\..\..\Solutions\Main.props" />
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">
+    <Import Project="..\..\..\Foreign\CommonForClients.props" />
+    <Import Project="..\..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="..\..\..\Foreign\CommonForClients.props" />
+    <Import Project="..\..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="..\..\..\Foreign\CommonForClients.props" />
+    <Import Project="..\..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'">
+    <Import Project="..\..\..\Foreign\CommonForClients.props" />
+    <Import Project="..\..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">
+    <Import Project="..\..\..\Foreign\CommonForClients.props" />
+    <Import Project="..\..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">
+    <Import Project="..\..\..\Foreign\CommonForClients.props" />
+    <Import Project="..\..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'">
+    <Import Project="..\..\..\Foreign\CommonForClients.props" />
+    <Import Project="..\..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="..\..\..\Foreign\CommonForClients.props" />
+    <Import Project="..\..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="..\..\..\Foreign\CommonForClients.props" />
+    <Import Project="..\..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup />
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">
+    <ClCompile>
+      <AdditionalOptions>-std=c++11 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'">
+    <ClCompile>
+      <AdditionalOptions>-std=c++11 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'">
+    <ClCompile>
+      <AdditionalOptions>-std=c++11 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\Shared\AnimationDecisionTree.cpp" />
+    <ClCompile Include="..\..\Shared\Character.cpp" />
+    <ClCompile Include="..\..\Shared\CharactersScene.cpp" />
+    <ClCompile Include="..\..\Shared\SampleInputHandler.cpp" />
+    <ClCompile Include="..\EnvironmentSample.cpp" />
+    <ClCompile Include="..\EnvironmentScene.cpp" />
+    <ClCompile Include="..\WinAPI\WindowStartup.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\Shared\AnimationDecisionTree.h" />
+    <ClInclude Include="..\..\Shared\Character.h" />
+    <ClInclude Include="..\..\Shared\CharactersScene.h" />
+    <ClInclude Include="..\..\Shared\SampleGlobals.h" />
+    <ClInclude Include="..\..\Shared\SampleInputHandler.h" />
+    <ClInclude Include="..\EnvironmentScene.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Assets\Project\Assets.vcxproj">
+      <Project>{fff83be8-5136-7370-2ee8-298176bea610}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\BufferUploads\Project\BufferUploads.vcxproj">
+      <Project>{e4d5cfa9-07d2-5a61-9991-2186eb30f680}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\ConsoleRig\Project\ConsoleRig.vcxproj">
+      <Project>{587a5b72-36e9-ff50-36f4-c0e96bbfa841}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\Foreign\FreeType\builds\windows\vc2010\freetype.vcxproj">
+      <Project>{78b079bd-9fc7-4b9e-b4a6-96da0f00248b}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\Foreign\Project\Foreign.vcxproj">
+      <Project>{9f01282b-6297-4f87-a309-287c2c574b76}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\Math\Project\Math.vcxproj">
+      <Project>{2e51aa64-7e29-cd4a-fb7f-bac486a3575c}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\PlatformRig\Project\PlatformRig.vcxproj">
+      <Project>{e3be4078-fc62-469c-b9f7-2447c6f88a50}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\RenderCore\Project\RenderCore.vcxproj">
+      <Project>{116fe083-50bc-1393-470f-f834ef6e02ff}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\RenderCore\Project\RenderCore_Assets.vcxproj">
+      <Project>{e767b944-6637-78fc-a32d-a7a82dc83385}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\RenderCore\Project\RenderCore_DX11.vcxproj">
+      <Project>{e43e10b8-7cd4-a5d0-6270-17c50cb74adf}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\RenderOverlays\Project\RenderOverlays.vcxproj">
+      <Project>{726e12f1-b69b-188d-390b-3a1e1889126d}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\SceneEngine\Project\SceneEngine.vcxproj">
+      <Project>{0a40e6ed-47cc-a08e-71c5-8a3515d81eaf}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\Utility\Project\Utility.vcxproj">
+      <Project>{6b8011c1-2d1f-1ebb-b0ef-377b2e8e87ae}</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
