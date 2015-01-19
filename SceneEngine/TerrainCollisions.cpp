@@ -7,6 +7,7 @@
 #include "Terrain.h"
 #include "TerrainInternal.h"
 #include "../RenderCore/Resource.h"
+#include "../ConsoleRig/Log.h"
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/HeapUtils.h"
 #include <memory>
@@ -154,6 +155,9 @@ namespace SceneEngine
             return collisionObject->GetHeight(cellFrac);
 
         } CATCH(const ::Assets::Exceptions::PendingResource&) {
+        } CATCH(const std::exception&) {
+            // we can sometimes get missing files. Just return a default height
+            LogWarning << "Error when querying terrain height at " << queryPosition[0] << ", " << queryPosition[1];
         } CATCH_END
 
         return 0.f;

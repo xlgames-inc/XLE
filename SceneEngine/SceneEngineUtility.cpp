@@ -131,6 +131,22 @@ namespace SceneEngine
     }
 
 
+    template<int Count>
+        class UCS4Buffer
+        {
+        public:
+            ucs4 _buffer[Count];
+            UCS4Buffer(const char input[])
+            {
+                utf8_2_ucs4((const utf8*)input, XlStringLen(input), _buffer, dimof(_buffer));
+            }
+            UCS4Buffer(const std::string& input)
+            {
+                utf8_2_ucs4((const utf8*)input.c_str(), input.size(), _buffer, dimof(_buffer));
+            }
+
+            operator const ucs4*() const { return _buffer; }
+        };
 
     void DrawPendingResources(   
         RenderCore::Metal::DeviceContext* context, 
@@ -148,45 +164,51 @@ namespace SceneEngine
         TextStyle   style(*font); 
         Float2 textPosition(8.f, 8.f);
         float lineHeight = font->LineHeight();
+        const UiAlign alignment = UIALIGN_TOP_LEFT;
+        const unsigned colour = 0xff7f7f7fu;
 
         if (!parserContext._pendingResources.empty()) {
+            UCS4Buffer<64> text("Pending resources:");
+            Float2 alignedPosition = style.AlignText(Quad::MinMax(textPosition, Float2(1024.f, 1024.f)), alignment, text);
             style.Draw(
-                context, textPosition[0], textPosition[1], (ucs4*)L"Pending resources:", -1,
+                context, alignedPosition[0], alignedPosition[1], text, -1,
                 0.f, 1.f, 0.f, 0.f, 0xffff7f7f, UI_TEXT_STATE_NORMAL, true, nullptr);
             textPosition[1] += lineHeight;
 
             for (auto i=parserContext._pendingResources.cbegin(); i!=parserContext._pendingResources.cend(); ++i) {
-                ucs4     destination[64];
-                XlMultiToWide(destination, dimof(destination), (const utf8*)i->c_str());
+                UCS4Buffer<256> text(*i);
+                Float2 alignedPosition = style.AlignText(Quad::MinMax(textPosition + Float2(32.f, 0.f), Float2(1024.f, 1024.f)), alignment, text);
                 style.Draw(
-                    context, textPosition[0], textPosition[1], destination, -1,
-                    0.f, 1.f, 0.f, 0.f, 0xffff7f7f, UI_TEXT_STATE_NORMAL, true, nullptr);
+                    context, alignedPosition[0], alignedPosition[1], text, -1,
+                    0.f, 1.f, 0.f, 0.f, colour, UI_TEXT_STATE_NORMAL, true, nullptr);
                 textPosition[1] += lineHeight;
             }
         }
 
         if (!parserContext._invalidResources.empty()) {
+            UCS4Buffer<64> text("Invalid resources:");
+            Float2 alignedPosition = style.AlignText(Quad::MinMax(textPosition, Float2(1024.f, 1024.f)), alignment, text);
             style.Draw(
-                context, textPosition[0], textPosition[1], (ucs4*)L"Invalid resources:", -1,
-                0.f, 1.f, 0.f, 0.f, 0xffff7f7f, UI_TEXT_STATE_NORMAL, true, nullptr);
+                context, alignedPosition[0], alignedPosition[1], text, -1,
+                0.f, 1.f, 0.f, 0.f, colour, UI_TEXT_STATE_NORMAL, true, nullptr);
             textPosition[1] += lineHeight;
 
             for (auto i=parserContext._invalidResources.cbegin(); i!=parserContext._invalidResources.cend(); ++i) {
-                ucs4     destination[64];
-                XlMultiToWide(destination, dimof(destination), (const utf8*)i->c_str());
+                UCS4Buffer<256> text(*i);
+                Float2 alignedPosition = style.AlignText(Quad::MinMax(textPosition + Float2(32.f, 0.f), Float2(1024.f, 1024.f)), alignment, text);
                 style.Draw(
-                    context, textPosition[0] - 32, textPosition[1], destination, -1,
-                    0.f, 1.f, 0.f, 0.f, 0xffff7f7f, UI_TEXT_STATE_NORMAL, true, nullptr);
+                    context, alignedPosition[0], alignedPosition[1], text, -1,
+                    0.f, 1.f, 0.f, 0.f, colour, UI_TEXT_STATE_NORMAL, true, nullptr);
                 textPosition[1] += lineHeight;
             }
         }
 
         if (!parserContext._errorString.empty()) {
-            ucs4     destination[256];
-            XlMultiToWide(destination, dimof(destination), (const utf8*)parserContext._errorString.c_str());
+            UCS4Buffer<512> text(parserContext._errorString);
+            Float2 alignedPosition = style.AlignText(Quad::MinMax(textPosition, Float2(1024.f, 1024.f)), alignment, text);
             style.Draw(
-                context, textPosition[0] - 32, textPosition[1], destination, -1,
-                0.f, 1.f, 0.f, 0.f, 0xffff7f7f, UI_TEXT_STATE_NORMAL, true, nullptr);
+                context, alignedPosition[0], alignedPosition[1], text, -1,
+                0.f, 1.f, 0.f, 0.f, colour, UI_TEXT_STATE_NORMAL, true, nullptr);
             textPosition[1] += lineHeight;
         }
     }
