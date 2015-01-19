@@ -194,8 +194,8 @@ namespace SceneEngine
             }
 
             TRY {
-                context->BindPS(MakeResourceList(10, Assets::GetAssetDep<Metal::DeferredShaderResource>("game/xleres/balanced_noise.dds").GetShaderResource()));
-                context->BindPS(MakeResourceList(16, Assets::GetAssetDep<Metal::DeferredShaderResource>("game/xleres/ggx-helper-dfv.dds").GetShaderResource()));
+                context->BindPS(MakeResourceList(10, Assets::GetAssetDep<Metal::DeferredShaderResource>("game/xleres/DefaultResources/balanced_noise.dds").GetShaderResource()));
+                context->BindPS(MakeResourceList(16, Assets::GetAssetDep<Metal::DeferredShaderResource>("game/xleres/DefaultResources/GGXTable.dds").GetShaderResource()));
             }
             CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
             CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }

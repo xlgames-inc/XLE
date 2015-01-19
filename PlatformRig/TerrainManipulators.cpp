@@ -227,7 +227,7 @@ namespace Tools
             ConstantBufferPacket constantBufferPackets[2];
             constantBufferPackets[0] = RenderCore::MakeSharedPkt(highlightParameters);
 
-            auto& circleHighlight = Assets::GetAssetDep<DeferredShaderResource>("game/xleres/circlehighlight.png");
+            auto& circleHighlight = Assets::GetAssetDep<DeferredShaderResource>("game/xleres/DefaultResources/circlehighlight.png");
             const ShaderResourceView* resources[] = { &depthSrv, &circleHighlight.GetShaderResource() };
 
             BoundUniforms boundLayout(shaderProgram);
@@ -595,7 +595,7 @@ namespace Tools
                 ConstantBufferPacket constantBufferPackets[2];
                 constantBufferPackets[0] = RenderCore::MakeSharedPkt(highlightParameters);
 
-                auto& circleHighlight = Assets::GetAssetDep<DeferredShaderResource>("game/xleres/circlehighlight.png");
+                auto& circleHighlight = Assets::GetAssetDep<DeferredShaderResource>("game/xleres/DefaultResources/circlehighlight.png");
                 const ShaderResourceView* resources[] = { &depthSrv, &circleHighlight.GetShaderResource() };
 
                 BoundUniforms boundLayout(shaderProgram);
@@ -973,7 +973,7 @@ namespace Tools
 
     WidgetResources::WidgetResources(const Desc&)
     {
-        _headingFont = GetX2Font("ui/font/FrizQuadrataC.ttf", 20);
+        _headingFont = GetX2Font("Raleway", 20);
     }
 
     Rect DrawManipulatorControls(

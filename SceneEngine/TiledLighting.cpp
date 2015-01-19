@@ -135,7 +135,7 @@ namespace SceneEngine
         TRY {
             context->BindPS(MakeResourceList(tileLightingResources._lightOutputTextureSRV));
             context->BindPS(MakeResourceList(1, tileLightingResources._debuggingTextureSRV[0], tileLightingResources._debuggingTextureSRV[1], tileLightingResources._debuggingTextureSRV[2]));
-            context->BindPS(MakeResourceList(4, Assets::GetAssetDep<Metal::DeferredShaderResource>("game/xleres/digits.dds").GetShaderResource()));
+            context->BindPS(MakeResourceList(4, Assets::GetAssetDep<Metal::DeferredShaderResource>("game/xleres/DefaultResources/digits.dds").GetShaderResource()));
             auto& debuggingShader = Assets::GetAssetDep<Metal::ShaderProgram>(
                 "game/xleres/basic2D.vsh:fullscreen:vs_*", 
                 "game/xleres/deferred/debugging.psh:DepthsDebuggingTexture:ps_*");
@@ -298,7 +298,7 @@ namespace SceneEngine
                         auto& airLight = FindCachedBox<AirLightResources>(AirLightResources::Desc());
                         
                         context->BindCS(MakeResourceList(3, fogRes._inscatterPointLightsValuesUnorderedAccess));
-                        context->BindCS(MakeResourceList(13, Assets::GetAssetDep<Metal::DeferredShaderResource>("game/xleres/balanced_noise.dds").GetShaderResource()));
+                        context->BindCS(MakeResourceList(13, Assets::GetAssetDep<Metal::DeferredShaderResource>("game/xleres/DefaultResources/balanced_noise.dds").GetShaderResource()));
                         context->BindCS(MakeResourceList(1, airLight._lookupShaderResource));
                         context->Bind(*fogShaders._injectPointLightSources);
                         context->Dispatch(160/10, 90/10, 128/8);
