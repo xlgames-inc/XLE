@@ -15,6 +15,7 @@
 #include "../../SceneEngine/LightDesc.h"
 #include "../../SceneEngine/LightingParserContext.h"
 #include "../../SceneEngine/Terrain.h"
+#include "../../SceneEngine/PlacementsManager.h"
 #include "../../SceneEngine/SceneEngineUtility.h"
 
 #include "../../PlatformRig/PlatformRigUtil.h"
@@ -38,6 +39,7 @@ namespace Sample
     public:
         std::unique_ptr<CharactersScene>                _characters;
         std::shared_ptr<SceneEngine::TerrainManager>    _terrainManager;
+        std::shared_ptr<SceneEngine::PlacementsManager> _placementsManager;
         std::shared_ptr<RenderCore::CameraDesc>         _cameraDesc;
 
         float _time;
@@ -82,6 +84,10 @@ namespace Sample
             
             if (parseSettings._toggles & SceneParseSettings::Toggles::NonTerrain) {
                 _pimpl->_characters->Render(context, parserContext, techniqueIndex);
+
+                if (_pimpl->_placementsManager) {
+                    _pimpl->_placementsManager->Render(context, parserContext, techniqueIndex);
+                }
             }
 
         }
@@ -202,6 +208,11 @@ namespace Sample
         return _pimpl->_terrainManager;
     }
 
+    std::shared_ptr<SceneEngine::PlacementsManager> EnvironmentSceneParser::GetPlacementManager()
+    {
+        return _pimpl->_placementsManager;
+    }
+
     std::shared_ptr<RenderCore::CameraDesc> EnvironmentSceneParser::GetCameraPtr()
     {
         return _pimpl->_cameraDesc;
@@ -222,6 +233,9 @@ namespace Sample
                 Float2(-11200.f - 7000.f, -11200.f + 700.f));
             MainTerrainCoords = pimpl->_terrainManager->GetCoords();
         #endif
+
+        pimpl->_placementsManager = std::make_shared<SceneEngine::PlacementsManager>(
+            SceneEngine::WorldPlacementsConfig(WorldDirectory));
 
         pimpl->_cameraDesc = std::make_shared<RenderCore::CameraDesc>();
         pimpl->_cameraDesc->_cameraToWorld = pimpl->_characters->DefaultCameraToWorld();

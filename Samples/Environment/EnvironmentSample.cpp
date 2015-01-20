@@ -17,6 +17,7 @@
 #include "../../PlatformRig/FrameRig.h"
 #include "../../PlatformRig/PlatformRigUtil.h"
 #include "../../PlatformRig/ManipulatorsUtil.h"
+#include "../../PlatformRig/PlacementsManipulators.h"
 #include "../../PlatformRig/CameraManager.h"
 
 #include "../../RenderCore/IDevice.h"
@@ -98,13 +99,6 @@ namespace Sample
         }
     };
 
-    static void SetupCompilers(::Assets::CompileAndAsyncManager& asyncMan);
-    static PlatformRig::FrameRig::RenderResult RenderFrame(
-        RenderCore::Metal::DeviceContext* context,
-        SceneEngine::LightingParserContext& lightingParserContext, EnvironmentSceneParser* scene,
-        RenderCore::IDevice* renderDevice, RenderCore::IPresentationChain* presentationChain,
-        RenderOverlays::DebuggingDisplay::DebugScreensSystem* debugSystem);
-
     class UsefulFonts
     {
     public:
@@ -142,6 +136,45 @@ namespace Sample
         return std::move(mainInputHandler);
     }
 
+    class Manipulators
+    {
+    public:
+        std::shared_ptr<::Tools::PlacementsManipulatorsManager> _placementsManipulators;
+
+        Manipulators(
+            std::shared_ptr<EnvironmentSceneParser> mainScene, 
+            PlatformRig::MainInputHandler* mainInputHandler,
+            std::shared_ptr<SceneEngine::TechniqueContext> globalTechContext)
+        {
+            _placementsManipulators = std::make_shared<::Tools::PlacementsManipulatorsManager>(
+                mainScene->GetPlacementManager(),
+                mainScene->GetTerrainManager(), mainScene, globalTechContext);
+            mainInputHandler->AddListener(_placementsManipulators->GetInputLister());
+        }
+
+        void RenderToScene(
+            RenderCore::Metal::DeviceContext* devContext, 
+            SceneEngine::LightingParserContext& parserContext)
+        {
+            _placementsManipulators->RenderToScene(devContext, parserContext);
+        }
+
+        void RenderWidgets(
+            RenderCore::IDevice* device, 
+            const Float4x4& worldToProjection)
+        {
+            _placementsManipulators->RenderWidgets(device, worldToProjection);
+        }
+    };
+
+    static void SetupCompilers(::Assets::CompileAndAsyncManager& asyncMan);
+    static PlatformRig::FrameRig::RenderResult RenderFrame(
+        RenderCore::Metal::DeviceContext* context,
+        SceneEngine::LightingParserContext& lightingParserContext, EnvironmentSceneParser* scene,
+        RenderCore::IDevice* renderDevice, RenderCore::IPresentationChain* presentationChain,
+        RenderOverlays::DebuggingDisplay::DebugScreensSystem* debugSystem,
+        Manipulators* manipulators);
+
     void ExecuteSample()
     {
         using namespace PlatformRig;
@@ -177,10 +210,12 @@ namespace Sample
 
             auto cameraInputHandler = std::make_shared<PlatformRig::Camera::CameraInputHandler>(
                 mainScene->GetCameraPtr(), mainScene->GetPlayerCharacter(), CharactersScale);
-            auto mainHandler = CreateInputHandler(mainScene, debugSystem, primMan._globalTechContext, cameraInputHandler);
-            primMan._window.GetInputTranslator().AddListener(mainHandler);
+            auto mainInputHandler = CreateInputHandler(mainScene, debugSystem, primMan._globalTechContext, cameraInputHandler);
+            primMan._window.GetInputTranslator().AddListener(mainInputHandler);
             auto stdPlugin = std::make_shared<SceneEngine::LightingParserStandardPlugin>();
             primMan._asyncMan->GetAssetSets().LogReport();
+
+            Manipulators manipulators(mainScene, mainInputHandler.get(), primMan._globalTechContext);
 
                 //  We need 2 final objects for rendering:
                 //      * the FrameRig schedules continuous rendering. It will take care
@@ -197,7 +232,8 @@ namespace Sample
                 }
 
                     // ------- Render ----------------------------------------
-                SceneEngine::LightingParserContext lightingParserContext(mainScene.get(), *primMan._globalTechContext);
+                SceneEngine::LightingParserContext lightingParserContext(
+                    mainScene.get(), *primMan._globalTechContext);
                 lightingParserContext._plugins.push_back(stdPlugin);
 
                 auto frameResult = frameRig.ExecuteFrame(
@@ -205,7 +241,8 @@ namespace Sample
                     std::bind(
                         RenderFrame, std::placeholders::_1,
                         std::ref(lightingParserContext), mainScene.get(), 
-                        primMan._rDevice.get(), primMan._presChain.get(), debugSystem.get()));
+                        primMan._rDevice.get(), primMan._presChain.get(), 
+                        debugSystem.get(), &manipulators));
 
                     // ------- Update ----------------------------------------
                 primMan._bufferUploads->Update();
@@ -248,7 +285,8 @@ namespace Sample
         SceneEngine::LightingParserContext& lightingParserContext,
         EnvironmentSceneParser* scene, RenderCore::IDevice* renderDevice,
         RenderCore::IPresentationChain* presentationChain,
-        RenderOverlays::DebuggingDisplay::DebugScreensSystem* debugSystem)
+        RenderOverlays::DebuggingDisplay::DebugScreensSystem* debugSystem,
+        Manipulators* manipulators)
     {
             //  some scene might need a "prepare" step to 
             //  build some resources before the main render occurs.
@@ -263,10 +301,17 @@ namespace Sample
         qualitySettings._samplingQuality = Tweakable("SamplingQuality", 0);
 
         SceneEngine::LightingParser_Execute(context, lightingParserContext, qualitySettings);
+        if (manipulators) {
+            manipulators->RenderToScene(context, lightingParserContext);
+        }
 
         auto& usefulFonts = SceneEngine::FindCachedBox<UsefulFonts>(UsefulFonts::Desc());
         SceneEngine::DrawPendingResources(context, lightingParserContext, usefulFonts._defaultFont0.get());
+        if (manipulators) {
+            manipulators->RenderWidgets(renderDevice, lightingParserContext.GetProjectionDesc()._worldToProjection);
+        }
         debugSystem->Render(renderDevice, lightingParserContext.GetProjectionDesc()._worldToProjection);
+        
 
         return PlatformRig::FrameRig::RenderResult(!lightingParserContext._pendingResources.empty());
     }

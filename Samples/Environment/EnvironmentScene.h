@@ -9,7 +9,7 @@
 #include "../../SceneEngine/SceneParser.h"
 #include <memory>
 
-namespace SceneEngine { class TerrainManager; }
+namespace SceneEngine { class TerrainManager; class PlacementsManager; }
 
 namespace Sample
 {
@@ -50,6 +50,7 @@ namespace Sample
 
         std::shared_ptr<PlayerCharacter> GetPlayerCharacter();
         std::shared_ptr<SceneEngine::TerrainManager> GetTerrainManager();
+        std::shared_ptr<SceneEngine::PlacementsManager> GetPlacementManager();
         std::shared_ptr<RenderCore::CameraDesc> GetCameraPtr();
 
         EnvironmentSceneParser();
