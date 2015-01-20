@@ -11,32 +11,159 @@
 #include "../../RenderCore/Metal/State.h"
 #include "../../RenderCore/RenderUtils.h"
 #include "../../RenderCore/Assets/SharedStateSet.h"
+#include "../../RenderCore/Assets/IModelFormat.h"
 #include "../../RenderCore/Metal/DeviceContextImpl.h"
+
 #include "../../SceneEngine/SceneEngineUtility.h"
 #include "../../SceneEngine/LightDesc.h"
 #include "../../SceneEngine/LightingParser.h"
 #include "../../SceneEngine/LightingParserContext.h"
 #include "../../SceneEngine/SceneParser.h"
 #include "../../SceneEngine/Techniques.h"
-#include "../../SceneEngine/ModelFormat.h"
+
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../Math/Transformations.h"
+
 #include "../../Utility/StringUtils.h"
 #include "../../Utility/UTFUtils.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/HeapUtils.h"
 #include "../../Utility/Streams/PathUtils.h"
+#include "../../Utility/Streams/FileUtils.h"
 
 #include "../../Core/WinAPI/IncludeWindows.h"
 #include "../../RenderCore/DX11/Metal/IncludeDX11.h"
+#include "../../Utility/WinApI/WinAPIWrapper.h"
 
-// RenderCore::Assets::Simple::ModelRenderer* SelectedModel = nullptr;
-// RenderCore::Assets::SharedStateSet* SelectedModelSharedStateSet = nullptr;
+namespace RenderCore { namespace Assets {
+
+    class PluggableModelFormat : public IModelFormat
+    {
+    public:
+        virtual std::shared_ptr<ModelScaffold>      CreateModel(const ::Assets::ResChar initializer[]);
+        virtual std::shared_ptr<MaterialScaffold>   CreateMaterial(const ::Assets::ResChar initializer[]);
+        virtual std::shared_ptr<ModelRenderer>      CreateRenderer(
+            ModelScaffold& scaffold, MaterialScaffold& material,
+            SharedStateSet& sharedStateSet, unsigned levelOfDetail);
+
+        virtual std::string DefaultMaterialName(const ModelScaffold&);
+
+        PluggableModelFormat();
+        ~PluggableModelFormat();
+
+    protected:
+        class Plugin
+        {
+        public:
+            std::pair<const char*, const char*> _versionInfo;
+            std::string _name;
+            std::unique_ptr<IModelFormat> _pluginInterface;
+
+            Plugin() {}
+            Plugin(Plugin&& moveFrom)
+                : _versionInfo(moveFrom._versionInfo), _name(moveFrom._name), _pluginInterface(std::move(moveFrom._pluginInterface)) {}
+            Plugin& operator=(Plugin&& moveFrom)
+            {
+                _versionInfo = moveFrom._versionInfo; _name = moveFrom._name; _pluginInterface = std::move(moveFrom._pluginInterface);
+                return *this;
+            }
+        private:
+            Plugin& operator=(const Plugin&);
+            Plugin(const Plugin&);
+        };
+
+        std::vector<Plugin> _plugins;
+
+    private:
+        PluggableModelFormat& operator=(const PluggableModelFormat&);
+        PluggableModelFormat(const PluggableModelFormat&);
+    };
+
+    auto PluggableModelFormat::CreateModel(const ::Assets::ResChar initializer[]) -> std::shared_ptr<ModelScaffold>
+    {
+        for (auto p=_plugins.begin(); p!=_plugins.end(); ++p) {
+            auto res = p->_pluginInterface->CreateModel(initializer);
+            if (res) return res;
+        }
+        return nullptr;
+    }
+
+    auto PluggableModelFormat::CreateMaterial(const ::Assets::ResChar initializer[]) -> std::shared_ptr<MaterialScaffold>
+    {
+        for (auto p=_plugins.begin(); p!=_plugins.end(); ++p) {
+            auto res = p->_pluginInterface->CreateMaterial(initializer);
+            if (res) return res;
+        }
+        return nullptr;
+    }
+
+    auto PluggableModelFormat::CreateRenderer(
+        ModelScaffold& scaffold, MaterialScaffold& material,
+        SharedStateSet& sharedStateSet, unsigned levelOfDetail) -> std::shared_ptr<ModelRenderer>
+    {
+        for (auto p=_plugins.begin(); p!=_plugins.end(); ++p) {
+            auto res = p->_pluginInterface->CreateRenderer(scaffold, material, sharedStateSet, levelOfDetail);
+            if (res) return res;
+        }
+        return std::make_shared<ModelRenderer>(scaffold, material, sharedStateSet, levelOfDetail);
+    }
+
+    std::string PluggableModelFormat::DefaultMaterialName(const ModelScaffold& model)
+    {
+        for (auto p=_plugins.begin(); p!=_plugins.end(); ++p) {
+            auto res = p->_pluginInterface->DefaultMaterialName(model);
+            if (!res.empty()) return res;
+        }
+        return std::string();
+    }
+
+    PluggableModelFormat::PluggableModelFormat()
+    {
+        std::vector<Plugin> plugins;
+
+        const char pluginSearch[] = "../PluginNonDist/*.dll";
+        auto files = FindFiles(pluginSearch, FindFilesFilter::File);
+        for (auto i=files.cbegin(); i!=files.cend(); ++i) {
+            auto lib = (*Windows::Fn_LoadLibrary)(i->c_str());
+            if (lib && lib != INVALID_HANDLE_VALUE) {
+                const char CreateInterfaceName[] = "?CreateModelFormatInterface@@YA?AV?$unique_ptr@VIModelFormat@Assets@RenderCore@@U?$default_delete@VIModelFormat@Assets@RenderCore@@@std@@@std@@XZ";
+                const char GetVersionName[] = "?GetVersionInformation@@YA?AU?$pair@PBDPBD@std@@XZ";
+
+                typedef std::pair<const char*, const char*> (GetVersionFn)();
+                typedef std::unique_ptr<RenderCore::Assets::IModelFormat> (CreateInterfaceFn)();
+                GetVersionFn* fn0 = (GetVersionFn*)(*Windows::Fn_GetProcAddress)(lib, GetVersionName);
+                CreateInterfaceFn* fn1 = (CreateInterfaceFn*)(*Windows::Fn_GetProcAddress)(lib, CreateInterfaceName);
+
+                if (fn0 && fn1) {
+                    Plugin newPlugin;
+                    newPlugin._pluginInterface = (*fn1)();
+                    newPlugin._versionInfo = (*fn0)();
+                    newPlugin._name = *i;
+                    if (newPlugin._pluginInterface) {
+                        plugins.push_back(std::move(newPlugin));
+                    }
+                }
+            }
+        }
+
+        _plugins = std::move(plugins);
+    }
+
+    PluggableModelFormat::~PluggableModelFormat()
+    {}
+
+}}
 
 namespace Overlays
 {
     typedef std::basic_string<ucs2> ucs2string;
+
+    static RenderCore::Assets::IModelFormat& GetModelFormat() 
+    {
+        static RenderCore::Assets::PluggableModelFormat format;
+        return format;
+    }
 
     class DirectoryQuery
     {
@@ -580,7 +707,7 @@ namespace Overlays
         utf8 utf8Filename[MaxPath];
         ucs2_2_utf8(AsPointer(filename.cbegin()), filename.size(), utf8Filename, dimof(utf8Filename));
 
-        SceneEngine::ModelFormat modelFormat;
+        auto& modelFormat = GetModelFormat();
 
         uint64 hashedName = Hash64(AsPointer(filename.cbegin()), AsPointer(filename.cend()));
         auto model = _pimpl->_modelScaffolds.Get(hashedName);

@@ -11,6 +11,7 @@
 GeneratedDocumentation/
 ArchivedStuff/
 Foreign/OpenCOLLADA/COLLADASaxFrameworkLoader/lib
+PluginNonDist/
 
 *.user
 !*.csproj.user
