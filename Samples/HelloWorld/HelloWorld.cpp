@@ -135,10 +135,10 @@ namespace Sample
                 //      * We can add secondary input handles to the main input handler as required
                 //      * The order in which we add handlers determines their priority in intercepting messages
             LogInfo << "Setup input";
-            auto mainInputHandler = std::make_unique<PlatformRig::MainInputHandler>();
+            auto mainInputHandler = std::make_shared<PlatformRig::MainInputHandler>();
             mainInputHandler->AddListener(RenderOverlays::MakeHotKeysHandler("game/xleres/hotkey.txt"));
             mainInputHandler->AddListener(std::make_shared<PlatformRig::DebugScreensInputHandler>(debugSystem));
-            window.GetInputTranslator().AddListener(mainInputHandler.get());
+            window.GetInputTranslator().AddListener(mainInputHandler);
 
                 //  The lighting parser allows plug ins for customizing the lighting process
                 //  To make large-scale changes to the lighting pipeline, you should modify

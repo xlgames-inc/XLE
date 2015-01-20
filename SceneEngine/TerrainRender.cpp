@@ -2366,6 +2366,8 @@ namespace SceneEngine
 
         size_t fileSize = 0;
         auto file = LoadFileAsMemoryBlock(definitionFile, &fileSize);
+        if (!fileSize)
+            ThrowException(RenderCore::Exceptions::GenericFailure("Parse error while loading terrain texture list"));
 
         Data data;
         bool loadResult = data.Load((const char*)file.get(), fileSize);
@@ -2491,6 +2493,7 @@ namespace SceneEngine
 
         std::vector<CellAndPosition> _cells;
         TerrainCoordinateSystem _coords;
+        TerrainConfig _cfg;
 
         void CullNodes(
             DeviceContext* context, LightingParserContext& parserContext, 
@@ -2560,11 +2563,16 @@ namespace SceneEngine
         }
     }
 
+    void TerrainConfig::GetTexturingCfgFilename(
+        char buffer[], unsigned bufferCount) const
+    {
+        XlConcatPath(buffer, bufferCount, _baseDir.c_str(), "terraintextures/textures.txt");
+    }
+
     //////////////////////////////////////////////////////////////////////////////////////////
     void ExecuteTerrainConversion(
         const TerrainConfig& outputConfig, 
         std::shared_ptr<ITerrainFormat> outputIOFormat,
-        unsigned outputOverlap,
         const TerrainConfig& inputConfig, 
         std::shared_ptr<ITerrainFormat> inputIOFormat)
     {
@@ -2632,7 +2640,7 @@ namespace SceneEngine
                         auto cellMaxs = outputConfig.CellBasedCoordsToTerrainCoords(Float2(float(x+1), float(y+1)));
                         outputIOFormat->WriteCell(
                             heightMapFile, *uberSurfaceInterface.GetUberSurface(), 
-                            AsUInt2(cellOrigin), AsUInt2(cellMaxs), outputConfig.CellTreeDepth(), outputOverlap);
+                            AsUInt2(cellOrigin), AsUInt2(cellMaxs), outputConfig.CellTreeDepth(), outputConfig.NodeOverlap());
                     } CATCH(...) { // sometimes throws (eg, if the directory doesn't exist)
                     } CATCH_END
                 }
@@ -2682,7 +2690,7 @@ namespace SceneEngine
         const TerrainConfig& cfg,
         std::shared_ptr<ITerrainFormat> ioFormat, 
         BufferUploads::IManager* bufferUploads,
-        Int2 cellMin, Int2 cellMax)
+        Int2 cellMin, Int2 cellMax, Float2 worldSpaceOrigin)
     {
         auto pimpl = std::make_unique<Pimpl>();
         
@@ -2711,12 +2719,11 @@ namespace SceneEngine
             //      how we break the uber surface down into separate cells. As a result, the cell data is almost
             //      just a cached version of the uber surface, with these configuration values.
         const auto cellSize = cfg.CellDimensionsInNodes()[0] * cfg.NodeDimensionsInElements()[0] * 10.f;
-        const unsigned overlap = 2u;
+        const unsigned overlap = cfg.NodeOverlap();
         const auto cellNodeSize = cellSize * std::pow(2.f, -float(cfg.CellTreeDepth()-1));      // size, in m, of a single node
         
         pimpl->_coords = TerrainCoordinateSystem(
-            -Float2(float(cellMin[0]), float(cellMin[1])) * cellSize,
-            cellNodeSize, cfg);
+            worldSpaceOrigin, cellNodeSize, cfg);
 
         char uberSurfaceFile[MaxPath];
         cfg.GetUberSurfaceFilename(uberSurfaceFile, dimof(uberSurfaceFile), TerrainConfig::FileType::Heightmap);
@@ -2765,6 +2772,7 @@ namespace SceneEngine
         pimpl->_renderer = std::make_shared<TerrainCellRenderer>(ioFormat, bufferUploads, heightMapElementSize);
         pimpl->_heightsProvider = std::make_unique<TerrainSurfaceHeightsProvider>(pimpl->_renderer, cfg, pimpl->_coords);
         pimpl->_ioFormat = std::move(ioFormat);
+        pimpl->_cfg = cfg;
         RegisterCircuitUpdate(
             cfg, overlap,
             pimpl->_uberSurfaceInterface.get(), pimpl->_renderer);
@@ -2812,7 +2820,9 @@ namespace SceneEngine
         renderer->CompletePendingUploads();
         renderer->QueueUploads(state);
 
-        auto& textures = Assets::GetAssetDep<TerrainMaterialTextures>("game/xleres/TerrainTextures/Textures.txt");
+        char textureCfg[MaxPath];
+        _pimpl->_cfg.GetTexturingCfgFilename(textureCfg, dimof(textureCfg));
+        auto& textures = Assets::GetAssetDep<TerrainMaterialTextures>(textureCfg);
         context->BindPS(MakeResourceList(8, 
             textures._srv[TerrainMaterialTextures::Diffuse], 
             textures._srv[TerrainMaterialTextures::Normal], 
@@ -2838,8 +2848,7 @@ namespace SceneEngine
     }
 
     unsigned TerrainManager::CalculateIntersections(
-        IntersectionResult intersections[],
-        unsigned maxIntersections,
+        IntersectionResult intersections[], unsigned maxIntersections,
         std::pair<Float3, Float3> ray,
         RenderCore::Metal::DeviceContext* context,
         LightingParserContext& parserContext)
@@ -3007,10 +3016,8 @@ namespace SceneEngine
     }
 
     TerrainConfig::TerrainConfig(const std::string& baseDir)
-    : _baseDir(baseDir)
-    , _filenamesMode(XLE)
-    , _cellCount(0,0)
-    , _nodeDimsInElements(0)
+    : _baseDir(baseDir), _filenamesMode(XLE)
+    , _cellCount(0,0), _nodeDimsInElements(0)
     , _cellTreeDepth(0)
     {
         size_t fileSize = 0;
@@ -3023,8 +3030,9 @@ namespace SceneEngine
             auto* filenames = c->StrAttribute("Filenames");
             if (!XlCompareStringI(filenames, "Legacy")) { _filenamesMode = Legacy; }
 
-            _nodeDimsInElements = c->IntAttribute("NodeDims");
-            _cellTreeDepth = c->IntAttribute("CellTreeDepth");
+            _nodeDimsInElements = c->IntAttribute("NodeDims", _nodeDimsInElements);
+            _cellTreeDepth = c->IntAttribute("CellTreeDepth", _cellTreeDepth);
+            _nodeOverlap = c->IntAttribute("NodeOverlap", _nodeOverlap);
 
             _cellCount = Deserialize(c, "CellCount", _cellCount);
         }
@@ -3039,6 +3047,7 @@ namespace SceneEngine
         else                            { terrainConfig->SetAttribute("Filenames", "XLE"); }
         terrainConfig->SetAttribute("NodeDims", _nodeDimsInElements);
         terrainConfig->SetAttribute("CellTreeDepth", _cellTreeDepth);
+        terrainConfig->SetAttribute("NodeOverlap", _nodeOverlap);
 
         auto cellCount = std::make_unique<Data>("CellCount");
         cellCount->Add(new Data(StringMeld<32>() << _cellCount[0]));

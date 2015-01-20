@@ -23,8 +23,7 @@ namespace PlatformRig
         void    OnChar              (ucs2 chr);
         void    OnMouseWheel        (signed wheelDelta);
 
-        void    AddListener         (RenderOverlays::DebuggingDisplay::IInputListener* listener);
-        void    RemoveListener      (RenderOverlays::DebuggingDisplay::IInputListener* listener);
+        void    AddListener         (std::weak_ptr<RenderOverlays::DebuggingDisplay::IInputListener> listener);
 
         Int2    GetMousePosition();
 

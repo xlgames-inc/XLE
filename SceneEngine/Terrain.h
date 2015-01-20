@@ -34,9 +34,9 @@ namespace SceneEngine
         TerrainConfig(
             const std::string& baseDir, UInt2 cellCount, 
             Filenames filenamesMode = XLE, 
-            unsigned nodeDimsInElements = 32u, unsigned cellTreeDepth = 5u)
+            unsigned nodeDimsInElements = 32u, unsigned cellTreeDepth = 5u, unsigned nodeOverlap = 2u)
             : _baseDir(baseDir), _cellCount(cellCount), _filenamesMode(filenamesMode)
-            , _nodeDimsInElements(nodeDimsInElements), _cellTreeDepth(cellTreeDepth) {}
+            , _nodeDimsInElements(nodeDimsInElements), _cellTreeDepth(cellTreeDepth), _nodeOverlap(nodeOverlap) {}
 
         TerrainConfig(const std::string& baseDir = std::string());
 
@@ -50,6 +50,7 @@ namespace SceneEngine
         };
         void        GetCellFilename(char buffer[], unsigned cnt, UInt2 cellIndex, FileType::Enum) const;
         void        GetUberSurfaceFilename(char buffer[], unsigned bufferCount, FileType::Enum) const;
+        void        GetTexturingCfgFilename(char buffer[], unsigned bufferCount) const;
 
         Float2      TerrainCoordsToCellBasedCoords(const Float2& terrainCoords) const;
         Float2      CellBasedCoordsToTerrainCoords(const Float2& cellBasedCoords) const;
@@ -57,12 +58,14 @@ namespace SceneEngine
         UInt2       CellDimensionsInNodes() const;
         UInt2       NodeDimensionsInElements() const;       // (ignoring overlap)
         unsigned    CellTreeDepth() const { return _cellTreeDepth; }
+        unsigned    NodeOverlap() const { return _nodeOverlap; }
 
         void Save();
 
     protected:
         unsigned    _nodeDimsInElements;
         unsigned    _cellTreeDepth;
+        unsigned    _nodeOverlap;
     };
 
     class TerrainCoordinateSystem
@@ -134,7 +137,8 @@ namespace SceneEngine
         TerrainManager( const TerrainConfig& cfg,
                         std::shared_ptr<ITerrainFormat> ioFormat, 
                         BufferUploads::IManager* bufferUploads,
-                        Int2 cellMin, Int2 cellMax);    // (not inclusive of cellMax)
+                        Int2 cellMin, Int2 cellMax, // (not inclusive of cellMax)
+                        Float2 worldSpaceOrigin = Float2(0.f, 0.f));
         ~TerrainManager();
 
     private:
@@ -173,7 +177,6 @@ namespace SceneEngine
     void ExecuteTerrainConversion(
         const TerrainConfig& outputConfig, 
         std::shared_ptr<ITerrainFormat> outputIOFormat,
-        unsigned outputOverlap,
         const TerrainConfig& inputConfig, 
         std::shared_ptr<ITerrainFormat> inputIOFormat);
 }

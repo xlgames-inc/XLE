@@ -164,8 +164,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
     using namespace SceneEngine;
     // ExecuteTerrainConversion(
-    //     TerrainConfig("game/mainworld/", UInt2(37, 34), TerrainConfig::XLE, 32, 5), std::make_shared<RenderCore::Assets::TerrainFormat>(),
-    //     2,
+    //     TerrainConfig("game/mainworld/", UInt2(37, 34), TerrainConfig::XLE, 32, 5, 2), std::make_shared<RenderCore::Assets::TerrainFormat>(),
     //     TerrainConfig("game/worlds/main_world", UInt2(37, 34), TerrainConfig::Legacy, 32, 5), std::make_shared<CryCompat::TerrainFormat>());
 
     const unsigned nodeDims = 32;
@@ -179,7 +178,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
     cfg.Save();
 
     ExecuteTerrainConversion(
-        cfg, std::make_shared<RenderCore::Assets::TerrainFormat>(), 2,
+        cfg, std::make_shared<RenderCore::Assets::TerrainFormat>(),
         TerrainConfig(), nullptr);
 
     return 0;

@@ -250,8 +250,8 @@ namespace SceneEngine
             } 
             settings = 
             {
-                Float3(0.08457f, 0.13964f, 0.17447f), 0.f,  // these come from pCloudShadingColorSky and pCloudShadingColorSun in Crytek
-                Float3(2.48619f, 2.38239f, 1.99694f), 0.f,
+                Float3(1.f, 1.f, 1.f), 0.f,
+                Float3(1.f, 1.f, 1.f), 0.f,
             };
             Metal::ConstantBuffer settingsConstants(&settings, sizeof(settings));
             const Metal::ConstantBuffer* constants[] = { &settingsConstants };

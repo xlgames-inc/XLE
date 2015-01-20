@@ -217,6 +217,7 @@ namespace Sample
         namespace GPUProfiler = RenderCore::Metal::GPUProfiler;
 
         GPUProfiler::TriggerEvent(*context, gpuProfiler.get(), "PrepareAnimation", GPUProfiler::Begin);
+        RenderCore::Metal::GPUProfiler::DebugAnnotation anno(*context, L"PrepareCharacters");
 
             //
             //      Separate state preparation from rendering, so we can profile

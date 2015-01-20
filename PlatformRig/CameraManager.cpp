@@ -238,23 +238,6 @@ namespace PlatformRig { namespace Camera
             }
         }
 
-#if 0
-            //  Rotate the light when alt is held down (todo -- move to better place)
-        if (_accumulatedState.IsHeld(shift) && _accumulatedState.IsHeld_MButton()) {
-            auto deltaMouse = _accumulatedState._mouseDelta;
-            // float deltaCameraYaw = deltaMouse[0]   * 1.f * gPI / 180.f;
-            // float deltaCameraPitch = deltaMouse[1] * 1.f * gPI / 180.f;
-            // 
-            // Float3x3 rotationPart;
-            // cml::matrix_rotation_euler(rotationPart, deltaCameraYaw, deltaCameraPitch, 0.f, cml::euler_order_yxz);
-            // RenderCore::Assets::NegativeLightDirection = 
-            //     TransformDirectionVector(rotationPart, RenderCore::Assets::NegativeLightDirection);
-            // RenderCore::Assets::NegativeLightDirection = Normalize(RenderCore::Assets::NegativeLightDirection);
-
-            SceneEngine::SunDirectionAngle = Clamp(SceneEngine::SunDirectionAngle + deltaMouse[0] * 1.0f * gPI / 180.f, -.5f * gPI, .5f * gPI);
-        }
-#endif
-
         _prevAccumulatedState = _accumulatedState;
         _accumulatedState.Reset();
     }

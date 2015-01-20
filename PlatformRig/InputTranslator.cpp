@@ -11,6 +11,8 @@
 
 namespace PlatformRig
 {
+    using RenderOverlays::DebuggingDisplay::IInputListener;
+
     class InputTranslator::Pimpl
     {
     public:
@@ -18,7 +20,7 @@ namespace PlatformRig
         
         Int2 _currentMousePosition;
         std::vector<ActiveButton> _passiveButtonState;
-        std::vector<RenderOverlays::DebuggingDisplay::IInputListener*> _listeners;
+        std::vector<std::weak_ptr<IInputListener>> _listeners;
     };
 
     InputTranslator::InputTranslator()
@@ -228,25 +230,33 @@ namespace PlatformRig
 
     void        InputTranslator::Publish(const RenderOverlays::DebuggingDisplay::InputSnapshot& snapShot)
     {
-        for (auto i=_pimpl->_listeners.begin(); i!=_pimpl->_listeners.end(); ++i) {
-            if ((*i)->OnInputEvent(snapShot)) {
-                break;
+        for (auto i=_pimpl->_listeners.begin(); i!=_pimpl->_listeners.end();) {
+            auto l = i->lock();
+            if (l) {
+                if (l->OnInputEvent(snapShot)) {
+                    break;
+                }
+                ++i;
+            } else {
+                i = _pimpl->_listeners.erase(i);
             }
         }
     }
 
-    void            InputTranslator::AddListener         (RenderOverlays::DebuggingDisplay::IInputListener* listener)
-    {
-        if (std::find(_pimpl->_listeners.begin(), _pimpl->_listeners.end(), listener) == _pimpl->_listeners.end()) {
-            _pimpl->_listeners.push_back(listener);
+    template<typename T>
+        static bool Equivalent(const std::weak_ptr<T>& lhs, const std::weak_ptr<T>& rhs)
+        {
+                //  "owner_before" should compare the control block of these pointers in
+                //  most cases. We want to check to see if both pointers have the same
+                //  control block (and then consider them equivalent)
+            return !lhs.owner_before(rhs) && !rhs.owner_before(lhs);
         }
-    }
 
-    void            InputTranslator::RemoveListener      (RenderOverlays::DebuggingDisplay::IInputListener* listener)
+    void            InputTranslator::AddListener(std::weak_ptr<IInputListener> listener)
     {
-        auto i = std::find(_pimpl->_listeners.begin(), _pimpl->_listeners.end(), listener);
-        if (i != _pimpl->_listeners.end()) {
-            _pimpl->_listeners.erase(i);
+        if (std::find_if(_pimpl->_listeners.begin(), _pimpl->_listeners.end(), 
+            [=](const std::weak_ptr<IInputListener>& test) { return Equivalent(listener, test); }) == _pimpl->_listeners.end()) {
+            _pimpl->_listeners.push_back(listener);
         }
     }
 

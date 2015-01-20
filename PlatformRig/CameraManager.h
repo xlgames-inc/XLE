@@ -27,6 +27,7 @@ namespace PlatformRig { namespace Camera
     public:
         bool    OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt);
         void    Commit(float dt);
+        
         CameraInputHandler(
             std::shared_ptr<RenderCore::CameraDesc> camera, 
             std::shared_ptr<ICameraAttach> playerCharacter,

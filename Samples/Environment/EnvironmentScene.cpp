@@ -72,6 +72,13 @@ namespace Sample
         if (    parseSettings._batchFilter == SceneParseSettings::BatchFilter::General
             ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::Depth) {
 
+            #if defined(ENABLE_TERRAIN)
+                if (parseSettings._toggles & SceneParseSettings::Toggles::Terrain) {
+                    if (Tweakable("DoTerrain", true)) {
+                        _pimpl->_terrainManager->Render(context, parserContext, techniqueIndex);
+                    }
+                }
+            #endif
             
             if (parseSettings._toggles & SceneParseSettings::Toggles::NonTerrain) {
                 _pimpl->_characters->Render(context, parserContext, techniqueIndex);
@@ -86,7 +93,9 @@ namespace Sample
         const SceneParseSettings& parseSettings,
         unsigned frustumIndex, unsigned techniqueIndex) const 
     {
-        ExecuteScene(context, parserContext, parseSettings, techniqueIndex);
+        SceneParseSettings settings = parseSettings;
+        settings._toggles &= ~SceneParseSettings::Toggles::Terrain;
+        ExecuteScene(context, parserContext, settings, techniqueIndex);
     }
 
     RenderCore::CameraDesc EnvironmentSceneParser::GetCameraDesc() const 
@@ -136,7 +145,7 @@ namespace Sample
         GlobalLightingDesc result;
         auto ambientScale = Tweakable("AmbientScale", 0.075f);
         result._ambientLight = Float3(.65f * ambientScale, .7f * ambientScale, 1.f * ambientScale);
-        result._skyTexture = "game/xleres/sky2.dds";
+        result._skyTexture = "game/xleres/DefaultResources/sky/desertsky.jpg";
         result._doToneMap = true;
         return result;
     }
@@ -209,7 +218,8 @@ namespace Sample
             MainTerrainConfig = SceneEngine::TerrainConfig(WorldDirectory);
             pimpl->_terrainManager = std::make_shared<SceneEngine::TerrainManager>(
                 MainTerrainConfig, MainTerrainFormat, 
-                SceneEngine::GetBufferUploads(), Int2(0, 0), MainTerrainConfig._cellCount);
+                SceneEngine::GetBufferUploads(), Int2(0, 0), MainTerrainConfig._cellCount,
+                Float2(-11200.f - 7000.f, -11200.f + 700.f));
             MainTerrainCoords = pimpl->_terrainManager->GetCoords();
         #endif
 

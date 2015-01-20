@@ -269,6 +269,15 @@ namespace PlatformRig { namespace Camera
         return result;
     }
 
+    static Float3 NormalizeWithZeroCheck(const Float3& input)
+    {
+        float magSq = MagnitudeSquared(input);
+        if (magSq < 1e-10f) {
+            return Float3(0.f, 0.f, 0.f);
+        }
+        return input * XlRSqrt(magSq);
+    }
+
     void UnitCamManager::ProcessUnitCamActualDist(ClientUnit* unit, float dt)
     {
         float cameraVolume = 0.1f;
@@ -350,11 +359,11 @@ namespace PlatformRig { namespace Camera
         
             _unitCam.actualBlockedDist -= dist;        
             _unitCam.actualDist = goalDist - _unitCam.actualBlockedDist;
-            _unitCam.camPosition = _unitCam.pivotPos + _unitCam.actualDist * Normalize(dir);
+            _unitCam.camPosition = _unitCam.pivotPos + _unitCam.actualDist * NormalizeWithZeroCheck(dir);
         } else {
             _unitCam.actualDist = 0.0f;
             _unitCam.hitDist = _unitCam.blockedDist = _unitCam.actualBlockedDist = _unitCam.actualWheelDist;
-            _unitCam.camPosition = capsuleCenter + hitDist * Normalize(dir);
+            _unitCam.camPosition = capsuleCenter + hitDist * NormalizeWithZeroCheck(dir);
         }
     }
 

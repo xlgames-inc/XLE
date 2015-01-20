@@ -120,6 +120,28 @@ namespace Sample
         }
     };
 
+    static std::shared_ptr<PlatformRig::MainInputHandler> CreateInputHandler(
+        std::shared_ptr<EnvironmentSceneParser> mainScene, 
+        std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem> debugScreens,
+        std::shared_ptr<PlatformRig::GlobalTechniqueContext> globalTechContext,
+        std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener> cameraInputHandler)
+    {
+        auto mainInputHandler = std::make_shared<PlatformRig::MainInputHandler>();
+        mainInputHandler->AddListener(RenderOverlays::MakeHotKeysHandler("game/xleres/hotkey.txt"));
+        mainInputHandler->AddListener(std::make_shared<PlatformRig::DebugScreensInputHandler>(std::move(debugScreens)));
+
+            // tie in input for player character & the camera
+        mainInputHandler->AddListener(std::move(cameraInputHandler));
+        mainInputHandler->AddListener(mainScene->GetPlayerCharacter());
+
+            // some special input options for samples
+        Tools::HitTestResolver hitTest(mainScene->GetTerrainManager(), mainScene, std::move(globalTechContext));
+        mainInputHandler->AddListener(std::make_shared<SampleInputHandler>(
+            mainScene->GetPlayerCharacter(), hitTest));
+
+        return std::move(mainInputHandler);
+    }
+
     void ExecuteSample()
     {
         using namespace PlatformRig;
@@ -143,9 +165,6 @@ namespace Sample
         auto mainScene = std::make_shared<EnvironmentSceneParser>();
         
         {
-            auto& usefulFonts = SceneEngine::FindCachedBox<UsefulFonts>(UsefulFonts::Desc());
-            (void)usefulFonts;
-
                 //  Create the debugging system, and add any "displays"
             LogInfo << "Setup tools and debugging";
             auto debugSystem = std::make_shared<RenderOverlays::DebuggingDisplay::DebugScreensSystem>();
@@ -156,30 +175,16 @@ namespace Sample
                 debugSystem->Register(gpuProfilerDisplay, "[Profiler] GPU Profiler");
             }
 
-            Tools::HitTestResolver hitTest(mainScene->GetTerrainManager(), mainScene, primMan._globalTechContext);
-
-                //  Setup input:
-            LogInfo << "Setup input";
-            auto mainInputHandler = std::make_unique<PlatformRig::MainInputHandler>();
-            mainInputHandler->AddListener(RenderOverlays::MakeHotKeysHandler("game/xleres/hotkey.txt"));
-            mainInputHandler->AddListener(std::make_shared<PlatformRig::DebugScreensInputHandler>(debugSystem));
-            mainInputHandler->AddListener(std::make_shared<SampleInputHandler>(
-                mainScene->GetPlayerCharacter(), hitTest));
-            primMan._window.GetInputTranslator().AddListener(mainInputHandler.get());
-
-                // tie in input for player character & the camera
             auto cameraInputHandler = std::make_shared<PlatformRig::Camera::CameraInputHandler>(
                 mainScene->GetCameraPtr(), mainScene->GetPlayerCharacter(), CharactersScale);
-            mainInputHandler->AddListener(cameraInputHandler);
-            mainInputHandler->AddListener(mainScene->GetPlayerCharacter());
-
+            auto mainHandler = CreateInputHandler(mainScene, debugSystem, primMan._globalTechContext, cameraInputHandler);
+            primMan._window.GetInputTranslator().AddListener(mainHandler);
             auto stdPlugin = std::make_shared<SceneEngine::LightingParserStandardPlugin>();
-
             primMan._asyncMan->GetAssetSets().LogReport();
 
                 //  We need 2 final objects for rendering:
                 //      * the FrameRig schedules continuous rendering. It will take care
-                //          of timing and some thread management taskes
+                //          of timing and some thread management tasks
                 //      * the DeviceContext provides the methods we need for rendering.
             LogInfo << "Setup frame rig and rendering context";
             FrameRig frameRig(debugSystem);
@@ -205,7 +210,7 @@ namespace Sample
                     // ------- Update ----------------------------------------
                 primMan._bufferUploads->Update();
                 mainScene->Update(frameResult._elapsedTime);
-                cameraInputHandler->Commit(frameResult._elapsedTime);
+                cameraInputHandler->Commit(frameResult._elapsedTime);   // we need to be careful to update the camera at the right time (relative to character update)
                 ++FrameRenderCount;
             }
         }
@@ -247,6 +252,7 @@ namespace Sample
     {
             //  some scene might need a "prepare" step to 
             //  build some resources before the main render occurs.
+        context->InvalidateCachedState();
         scene->PrepareFrame(context);
 
         auto presChainDesc = presentationChain->GetDesc();
