@@ -10,6 +10,8 @@
 #include "../../RenderCore/Metal/Forward.h"
 #include <memory>
 
+namespace RenderCore { namespace Assets { class IModelFormat; } }
+
 namespace Overlays
 {
     using namespace RenderOverlays;
@@ -35,7 +37,7 @@ namespace Overlays
     class ModelBrowser : public SharedBrowser
     {
     public:
-        ModelBrowser(const char baseDirectory[]);
+        ModelBrowser(const char baseDirectory[], std::shared_ptr<RenderCore::Assets::IModelFormat> format);
         ~ModelBrowser();
 
         class ProcessInputResult
@@ -46,7 +48,8 @@ namespace Overlays
             ProcessInputResult(bool consumed, const std::string& selected = std::string())
                 : _consumed(consumed), _selectedModel(selected) {}
         };
-        ProcessInputResult    SpecialProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);
+        ProcessInputResult SpecialProcessInput(
+            InterfaceState& interfaceState, const InputSnapshot& input);
 
     private:
         class Pimpl;

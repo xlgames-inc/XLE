@@ -7,8 +7,8 @@
 #include "PlacementsManager.h"
 #include "../RenderCore/Assets/ModelSimple.h"
 #include "../RenderCore/Assets/SharedStateSet.h"
+#include "../RenderCore/Assets/IModelFormat.h"
 #include "../SceneEngine/LightingParserContext.h"
-#include "../SceneEngine/ModelFormat.h"
 #include "../Assets/Assets.h"
 #include "../Assets/ChunkFile.h"
 
@@ -170,8 +170,9 @@ namespace SceneEngine
         auto GetCachedModel(const ResChar filename[]) -> const ModelScaffold&;
         auto GetCachedPlacements(const char filename[]) -> const Placements&;
         void SetOverride(uint64 guid, const Placements* placements);
+        auto GetModelFormat() -> std::shared_ptr<RenderCore::Assets::IModelFormat>& { return _modelFormat; }
 
-        PlacementsRenderer();
+        PlacementsRenderer(std::shared_ptr<RenderCore::Assets::IModelFormat> modelFormat);
         ~PlacementsRenderer();
     protected:
         class CellRenderInfo
@@ -204,6 +205,8 @@ namespace SceneEngine
         };
         std::unique_ptr<Cache> _cache;
 
+        std::shared_ptr<RenderCore::Assets::IModelFormat> _modelFormat;
+
         void Render(
             RenderCore::Metal::DeviceContext* context,
             LightingParserContext& parserContext, 
@@ -232,8 +235,7 @@ namespace SceneEngine
         auto hash = Hash64(filename);
         auto model = _cache->_modelScaffolds.Get(hash);
         if (!model) {
-            ModelFormat modelFormat;
-            model = modelFormat.CreateModel(filename);
+            model = _modelFormat->CreateModel(filename);
             _cache->_modelScaffolds.Insert(hash, model);
         }
         return *model;
@@ -369,7 +371,6 @@ namespace SceneEngine
         auto cameraPosition = ExtractTranslation(parserContext.GetProjectionDesc()._viewToWorld);
         cameraPosition = TransformPoint(InvertOrthonormalTransform(cellToWorld), cameraPosition);
 
-        ModelFormat modelFormat;
         auto& placements = *renderInfo._placements;
         const auto* filenamesBuffer = placements.GetFilenamesBuffer();
         const auto* objRef = placements.GetObjectReferences();
@@ -398,14 +399,14 @@ namespace SceneEngine
 
             auto model = _cache->_modelScaffolds.Get(modelHash);
             if (!model) {
-                model = modelFormat.CreateModel(modelFilename);
+                model = _modelFormat->CreateModel(modelFilename);
                 _cache->_modelScaffolds.Insert(modelHash, model);
             }
 
             auto material = _cache->_materialScaffolds.Get(materialHash);
             if (!material) {
                 TRY {
-                    material = modelFormat.CreateMaterial(materialFilename);
+                    material = _modelFormat->CreateMaterial(materialFilename);
                 } CATCH (...) {    // sometimes get missing files
                     continue;
                 } CATCH_END
@@ -421,7 +422,7 @@ namespace SceneEngine
                 //  and separate the objects into their correct state set, as required...
             auto renderer = _cache->_modelRenderers.Get(hashedModel);
             if (!renderer) {
-                renderer = modelFormat.CreateRenderer(
+                renderer = _modelFormat->CreateRenderer(
                     std::ref(*model), std::ref(*material), std::ref(_cache->_sharedStates), LOD);
                 _cache->_modelRenderers.Insert(hashedModel, renderer);
             }
@@ -435,10 +436,12 @@ namespace SceneEngine
             _cache->_preparedRenders, context, parserContext, techniqueIndex, _cache->_sharedStates);
     }
 
-    PlacementsRenderer::PlacementsRenderer()
+    PlacementsRenderer::PlacementsRenderer(std::shared_ptr<RenderCore::Assets::IModelFormat> modelFormat)
     {
+        assert(modelFormat);
         auto cache = std::make_unique<Cache>();
         _cache = std::move(cache);
+        _modelFormat = std::move(modelFormat);
     }
 
     PlacementsRenderer::~PlacementsRenderer() {}
@@ -475,7 +478,9 @@ namespace SceneEngine
         return editor;
     }
 
-    PlacementsManager::PlacementsManager(const WorldPlacementsConfig& cfg)
+    PlacementsManager::PlacementsManager(
+        const WorldPlacementsConfig& cfg,
+        std::shared_ptr<RenderCore::Assets::IModelFormat> modelFormat)
     {
             //  Using the given config file, let's construct the list of 
             //  placement cells
@@ -500,7 +505,8 @@ namespace SceneEngine
 
                 pimpl->_cells.push_back(cell);
             }
-        pimpl->_renderer = std::make_shared<PlacementsRenderer>();
+
+        pimpl->_renderer = std::make_shared<PlacementsRenderer>(std::move(modelFormat));
         _pimpl = std::move(pimpl);
     }
 
@@ -673,7 +679,7 @@ namespace SceneEngine
         auto boundingBoxCentre = LinearInterpolate(model.GetBoundingBox().first, model.GetBoundingBox().second, 0.5f);
         auto worldSpaceCenter = TransformPoint(objectToWorld, boundingBoxCentre);
 
-        std::string defMatName = ModelFormat().DefaultMaterialName(model);
+        std::string defMatName = _pimpl->_renderer->GetModelFormat()->DefaultMaterialName(model);
         if (!materialFilename || !materialFilename[0]) {
             materialFilename = defMatName.c_str();
         }
@@ -826,6 +832,11 @@ namespace SceneEngine
         cell._name = name;
         cell._cellToWorld = cellToWorld;
         _pimpl->_cells.insert(i, std::make_pair(guid, cell));
+    }
+
+    std::shared_ptr<RenderCore::Assets::IModelFormat> PlacementsEditor::GetModelFormat()
+    {
+        return _pimpl->_renderer->GetModelFormat();
     }
 
     PlacementsEditor::PlacementsEditor(std::shared_ptr<PlacementsRenderer> renderer)

@@ -30,140 +30,10 @@
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/HeapUtils.h"
 #include "../../Utility/Streams/PathUtils.h"
-#include "../../Utility/Streams/FileUtils.h"
-
-#include "../../Core/WinAPI/IncludeWindows.h"
-#include "../../RenderCore/DX11/Metal/IncludeDX11.h"
-#include "../../Utility/WinApI/WinAPIWrapper.h"
-
-namespace RenderCore { namespace Assets {
-
-    class PluggableModelFormat : public IModelFormat
-    {
-    public:
-        virtual std::shared_ptr<ModelScaffold>      CreateModel(const ::Assets::ResChar initializer[]);
-        virtual std::shared_ptr<MaterialScaffold>   CreateMaterial(const ::Assets::ResChar initializer[]);
-        virtual std::shared_ptr<ModelRenderer>      CreateRenderer(
-            ModelScaffold& scaffold, MaterialScaffold& material,
-            SharedStateSet& sharedStateSet, unsigned levelOfDetail);
-
-        virtual std::string DefaultMaterialName(const ModelScaffold&);
-
-        PluggableModelFormat();
-        ~PluggableModelFormat();
-
-    protected:
-        class Plugin
-        {
-        public:
-            std::pair<const char*, const char*> _versionInfo;
-            std::string _name;
-            std::unique_ptr<IModelFormat> _pluginInterface;
-
-            Plugin() {}
-            Plugin(Plugin&& moveFrom)
-                : _versionInfo(moveFrom._versionInfo), _name(moveFrom._name), _pluginInterface(std::move(moveFrom._pluginInterface)) {}
-            Plugin& operator=(Plugin&& moveFrom)
-            {
-                _versionInfo = moveFrom._versionInfo; _name = moveFrom._name; _pluginInterface = std::move(moveFrom._pluginInterface);
-                return *this;
-            }
-        private:
-            Plugin& operator=(const Plugin&);
-            Plugin(const Plugin&);
-        };
-
-        std::vector<Plugin> _plugins;
-
-    private:
-        PluggableModelFormat& operator=(const PluggableModelFormat&);
-        PluggableModelFormat(const PluggableModelFormat&);
-    };
-
-    auto PluggableModelFormat::CreateModel(const ::Assets::ResChar initializer[]) -> std::shared_ptr<ModelScaffold>
-    {
-        for (auto p=_plugins.begin(); p!=_plugins.end(); ++p) {
-            auto res = p->_pluginInterface->CreateModel(initializer);
-            if (res) return res;
-        }
-        return nullptr;
-    }
-
-    auto PluggableModelFormat::CreateMaterial(const ::Assets::ResChar initializer[]) -> std::shared_ptr<MaterialScaffold>
-    {
-        for (auto p=_plugins.begin(); p!=_plugins.end(); ++p) {
-            auto res = p->_pluginInterface->CreateMaterial(initializer);
-            if (res) return res;
-        }
-        return nullptr;
-    }
-
-    auto PluggableModelFormat::CreateRenderer(
-        ModelScaffold& scaffold, MaterialScaffold& material,
-        SharedStateSet& sharedStateSet, unsigned levelOfDetail) -> std::shared_ptr<ModelRenderer>
-    {
-        for (auto p=_plugins.begin(); p!=_plugins.end(); ++p) {
-            auto res = p->_pluginInterface->CreateRenderer(scaffold, material, sharedStateSet, levelOfDetail);
-            if (res) return res;
-        }
-        return std::make_shared<ModelRenderer>(scaffold, material, sharedStateSet, levelOfDetail);
-    }
-
-    std::string PluggableModelFormat::DefaultMaterialName(const ModelScaffold& model)
-    {
-        for (auto p=_plugins.begin(); p!=_plugins.end(); ++p) {
-            auto res = p->_pluginInterface->DefaultMaterialName(model);
-            if (!res.empty()) return res;
-        }
-        return std::string();
-    }
-
-    PluggableModelFormat::PluggableModelFormat()
-    {
-        std::vector<Plugin> plugins;
-
-        const char pluginSearch[] = "../PluginNonDist/*.dll";
-        auto files = FindFiles(pluginSearch, FindFilesFilter::File);
-        for (auto i=files.cbegin(); i!=files.cend(); ++i) {
-            auto lib = (*Windows::Fn_LoadLibrary)(i->c_str());
-            if (lib && lib != INVALID_HANDLE_VALUE) {
-                const char CreateInterfaceName[] = "?CreateModelFormatInterface@@YA?AV?$unique_ptr@VIModelFormat@Assets@RenderCore@@U?$default_delete@VIModelFormat@Assets@RenderCore@@@std@@@std@@XZ";
-                const char GetVersionName[] = "?GetVersionInformation@@YA?AU?$pair@PBDPBD@std@@XZ";
-
-                typedef std::pair<const char*, const char*> (GetVersionFn)();
-                typedef std::unique_ptr<RenderCore::Assets::IModelFormat> (CreateInterfaceFn)();
-                GetVersionFn* fn0 = (GetVersionFn*)(*Windows::Fn_GetProcAddress)(lib, GetVersionName);
-                CreateInterfaceFn* fn1 = (CreateInterfaceFn*)(*Windows::Fn_GetProcAddress)(lib, CreateInterfaceName);
-
-                if (fn0 && fn1) {
-                    Plugin newPlugin;
-                    newPlugin._pluginInterface = (*fn1)();
-                    newPlugin._versionInfo = (*fn0)();
-                    newPlugin._name = *i;
-                    if (newPlugin._pluginInterface) {
-                        plugins.push_back(std::move(newPlugin));
-                    }
-                }
-            }
-        }
-
-        _plugins = std::move(plugins);
-    }
-
-    PluggableModelFormat::~PluggableModelFormat()
-    {}
-
-}}
 
 namespace Overlays
 {
     typedef std::basic_string<ucs2> ucs2string;
-
-    static RenderCore::Assets::IModelFormat& GetModelFormat() 
-    {
-        static RenderCore::Assets::PluggableModelFormat format;
-        return format;
-    }
 
     class DirectoryQuery
     {
@@ -586,6 +456,8 @@ namespace Overlays
         RenderCore::Metal::DepthStencilView     _dsv;
         RenderCore::Metal::ShaderResourceView   _srv;
 
+        std::shared_ptr<RenderCore::Assets::IModelFormat> _format;
+
         Pimpl();
     };
 
@@ -677,7 +549,7 @@ namespace Overlays
         BoundingBox _boundingBox;
     };
 
-    static void RenderModel(RenderCore::Metal::DeviceContext* devContext, ModelRenderer& model, const BoundingBox& boundingBox, const SharedStateSet& sharedStates)
+    static void RenderModel(RenderCore::Metal::DeviceContext* devContext, ModelRenderer& model, const BoundingBox& boundingBox, SharedStateSet& sharedStates)
     {
             // Render the given model. Create a minimal version of the full rendering process:
             //      We need to create a LightingParserContext, and ISceneParser as well.
@@ -688,6 +560,10 @@ namespace Overlays
         qualitySettings._width = unsigned(viewport.Width);
         qualitySettings._height = unsigned(viewport.Height);
         qualitySettings._samplingCount = 1; qualitySettings._samplingQuality = 0;
+
+            //  Aggressively reset the shared state set, to try to invalidate
+            //  any cached states that have changed since the last render
+        sharedStates.Reset();
 
         ModelSceneParser sceneParser(model, boundingBox, sharedStates);
         SceneEngine::TechniqueContext techniqueContext;
@@ -707,26 +583,28 @@ namespace Overlays
         utf8 utf8Filename[MaxPath];
         ucs2_2_utf8(AsPointer(filename.cbegin()), filename.size(), utf8Filename, dimof(utf8Filename));
 
-        auto& modelFormat = GetModelFormat();
+        if (!_pimpl->_format) {
+            return std::make_pair(nullptr, 0);
+        }
 
         uint64 hashedName = Hash64(AsPointer(filename.cbegin()), AsPointer(filename.cend()));
         auto model = _pimpl->_modelScaffolds.Get(hashedName);
         if (!model) {
-            model = modelFormat.CreateModel((const char*)utf8Filename);
+            model = _pimpl->_format->CreateModel((const char*)utf8Filename);
             _pimpl->_modelScaffolds.Insert(hashedName, model);
         }
-        auto defMatName = modelFormat.DefaultMaterialName(*model);
+        auto defMatName = _pimpl->_format->DefaultMaterialName(*model);
         uint64 hashedMaterial = Hash64(defMatName);
         auto material = _pimpl->_materialScaffolds.Get(hashedMaterial);
         if (!material) {
-            material = modelFormat.CreateMaterial(defMatName.c_str());
+            material = _pimpl->_format->CreateMaterial(defMatName.c_str());
             _pimpl->_materialScaffolds.Insert(hashedMaterial, material);
         }
 
         uint64 hashedModel = uint64(model.get()) | (uint64(material.get()) << 48);
         auto renderer = _pimpl->_modelRenderers.Get(hashedModel);
         if (!renderer) {
-            renderer = modelFormat.CreateRenderer(std::ref(*model), std::ref(*material), std::ref(_pimpl->_sharedStateSet), 0);
+            renderer = _pimpl->_format->CreateRenderer(std::ref(*model), std::ref(*material), std::ref(_pimpl->_sharedStateSet), 0);
             _pimpl->_modelRenderers.Insert(hashedModel, renderer);
         }
 
@@ -773,8 +651,10 @@ namespace Overlays
         return true;
     }
 
-    ModelBrowser::ModelBrowser(const char baseDirectory[]) 
-        : SharedBrowser(baseDirectory, "Model Browser", ModelBrowserItemDimensions, "*.cgf")
+    ModelBrowser::ModelBrowser(
+        const char baseDirectory[], 
+        std::shared_ptr<RenderCore::Assets::IModelFormat> format)
+    : SharedBrowser(baseDirectory, "Model Browser", ModelBrowserItemDimensions, "*.cgf")
     {
         auto pimpl = std::make_unique<Pimpl>();
 
@@ -795,6 +675,7 @@ namespace Overlays
         pimpl->_rtv =RenderCore::Metal::RenderTargetView(offscreenResource.get());
         pimpl->_dsv = RenderCore::Metal::DepthStencilView(depthResource.get());
         pimpl->_srv = RenderCore::Metal::ShaderResourceView(offscreenResource.get());
+        pimpl->_format = std::move(format);
 
         _pimpl = std::move(pimpl);
     }

@@ -11,6 +11,7 @@
 #include "../../RenderCore/RenderUtils.h"
 #include "../../RenderCore/Metal/State.h"
 #include "../../RenderCore/Assets/TerrainFormat.h"
+#include "../../RenderCore/Assets/ModelFormatPlugins.h"
 
 #include "../../SceneEngine/LightDesc.h"
 #include "../../SceneEngine/LightingParserContext.h"
@@ -41,6 +42,7 @@ namespace Sample
         std::shared_ptr<SceneEngine::TerrainManager>    _terrainManager;
         std::shared_ptr<SceneEngine::PlacementsManager> _placementsManager;
         std::shared_ptr<RenderCore::CameraDesc>         _cameraDesc;
+        std::shared_ptr<RenderCore::Assets::IModelFormat> _modelFormat;
 
         float _time;
     };
@@ -234,8 +236,11 @@ namespace Sample
             MainTerrainCoords = pimpl->_terrainManager->GetCoords();
         #endif
 
+        pimpl->_modelFormat = std::make_shared<RenderCore::Assets::ModelFormat_Plugins>();
+
         pimpl->_placementsManager = std::make_shared<SceneEngine::PlacementsManager>(
-            SceneEngine::WorldPlacementsConfig(WorldDirectory));
+            SceneEngine::WorldPlacementsConfig(WorldDirectory),
+            pimpl->_modelFormat);
 
         pimpl->_cameraDesc = std::make_shared<RenderCore::CameraDesc>();
         pimpl->_cameraDesc->_cameraToWorld = pimpl->_characters->DefaultCameraToWorld();

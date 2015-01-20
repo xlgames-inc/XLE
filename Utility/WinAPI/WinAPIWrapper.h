@@ -5,6 +5,11 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #pragma once
+
+#include "../../Core/SelectConfiguration.h"
+
+#if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
+
 #include "../../Core/WinAPI/IncludeWindows.h"
 
 namespace Utility { namespace Windows
@@ -24,5 +29,6 @@ namespace Utility { namespace Windows
     static auto FreeLibrary =           &::FreeLibrary;
 }}
 
-using namespace Utility;
+#endif
 
+using namespace Utility;

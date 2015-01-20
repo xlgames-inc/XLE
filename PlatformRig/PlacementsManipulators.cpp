@@ -381,17 +381,17 @@ namespace Tools
         const float littleCircleRadius = sqrt(littleCircleArea / gPI);
         const float dRSq = 4*littleCircleRadius*littleCircleRadius;
 
-        Float2 initialPt = Radial2Cart2D(
-            rand() * (2.f * gPI / float(RAND_MAX)),
-            LinearInterpolate(.25f * radius, .5f * radius, rand() / float(RAND_MAX)));
-
         const unsigned k = 30;
         std::vector<Float2> workingSet;
         workingSet.reserve(count);
-        workingSet.push_back(initialPt);
+        workingSet.push_back(
+            Radial2Cart2D(
+                rand() * (2.f * gPI / float(RAND_MAX)),
+                LinearInterpolate(.125f * radius, .25f * radius, rand() / float(RAND_MAX))));
 
         const unsigned iterationCount = 2 * count - 1;
         for (unsigned c=0; c<iterationCount && workingSet.size() < count; ++c) {
+            assert(!workingSet.empty());
             unsigned index = rand() % unsigned(workingSet.size());
 
                 // look for a good random connector
@@ -418,6 +418,16 @@ namespace Tools
                 // if we couldn't find a good connector, we have to erase the original pt 
             if (!gotGoodPt) {
                 workingSet.erase(workingSet.begin() + index);
+
+                    //  Note; there can be weird cases where the original point is remove
+                    //  in these cases, we have to add back a new starter point. We can't
+                    //  let the working state get empty
+                if (workingSet.empty()) {
+                    workingSet.push_back(
+                        Radial2Cart2D(
+                            rand() * (2.f * gPI / float(RAND_MAX)),
+                            LinearInterpolate(.125f * radius, .25f * radius, rand() / float(RAND_MAX))));
+                }
             }
         }
 
@@ -508,7 +518,7 @@ namespace Tools
         static FloatParameter parameters[] = 
         {
             FloatParameter(ManipulatorParameterOffset(&ScatterPlacements::_radius), 1.f, 100.f, FloatParameter::Logarithmic, "Size"),
-            FloatParameter(ManipulatorParameterOffset(&ScatterPlacements::_density), 0.1f, 10.f, FloatParameter::Linear, "Density")
+            FloatParameter(ManipulatorParameterOffset(&ScatterPlacements::_density), 0.1f, 100.f, FloatParameter::Linear, "Density")
         };
         return std::make_pair(parameters, dimof(parameters));
     }
@@ -610,7 +620,8 @@ namespace Tools
             return true;
         }
 
-        if (_manipulators[_activeManipulatorIndex]->OnInputEvent(input, *_hitTestResolver)) {
+        if (interfaceState.GetMouseOverStack().empty()
+            && _manipulators[_activeManipulatorIndex]->OnInputEvent(input, *_hitTestResolver)) {
             return true;
         }
 
@@ -627,7 +638,7 @@ namespace Tools
         std::shared_ptr<SceneEngine::PlacementsEditor> editor, 
         std::shared_ptr<HitTestResolver> hitTestResolver)
     {
-        auto browser = std::make_shared<ModelBrowser>("game\\objects\\Env");
+        auto browser = std::make_shared<ModelBrowser>("game\\objects\\Env", editor->GetModelFormat());
         _browserActive = false;
         _activeManipulatorIndex = 0;
 

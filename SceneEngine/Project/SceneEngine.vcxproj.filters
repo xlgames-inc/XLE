@@ -181,7 +181,6 @@
     <ClInclude Include="..\PlacementsManager.h">
       <Filter>Objects\Placements</Filter>
     </ClInclude>
-    <ClInclude Include="..\ModelFormat.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Lighting And Processing">

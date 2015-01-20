@@ -29,6 +29,7 @@
     <ClCompile Include="..\Assets\TerrainFormat.cpp">
       <Filter>Assets</Filter>
     </ClCompile>
+    <ClCompile Include="..\Assets\ModelFormatPlugins.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Assets\ModelRunTime.h">
@@ -57,5 +58,6 @@
     <ClInclude Include="..\Assets\AnimationRunTime.h">
       <Filter>Assets</Filter>
     </ClInclude>
+    <ClInclude Include="..\Assets\ModelFormatPlugins.h" />
   </ItemGroup>
 </Project>

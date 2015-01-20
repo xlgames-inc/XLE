@@ -13,6 +13,8 @@
 #include <string>
 #include <functional>
 
+namespace RenderCore { namespace Assets { class IModelFormat; } }
+
 namespace SceneEngine
 {
     class LightingParserContext;
@@ -45,7 +47,9 @@ namespace SceneEngine
         std::shared_ptr<PlacementsRenderer> GetRenderer();
         std::shared_ptr<PlacementsEditor> CreateEditor();
 
-        PlacementsManager(const WorldPlacementsConfig& cfg);
+        PlacementsManager(
+            const WorldPlacementsConfig& cfg,
+            std::shared_ptr<RenderCore::Assets::IModelFormat> modelFormat);
         ~PlacementsManager();
     protected:
         class Pimpl;
@@ -82,6 +86,8 @@ namespace SceneEngine
             const Float2& mins, const Float2& maxs, 
             const Float4x4& cellToWorld,
             const char name[], uint64 guid);
+
+        std::shared_ptr<RenderCore::Assets::IModelFormat> GetModelFormat();
 
         PlacementsEditor(std::shared_ptr<PlacementsRenderer> renderer);
         ~PlacementsEditor();

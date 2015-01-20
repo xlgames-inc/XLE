@@ -8,6 +8,8 @@
 #include "DebuggingDisplays/ConsoleDisplay.h"
 #include "DebuggingDisplays/TestDisplays.h"
 
+#include "../RenderCore/Assets/IModelFormat.h"
+
 #include "../RenderOverlays/Overlays/Browser.h"
 #include "../RenderOverlays/Overlays/OceanSettings.h"
 #include "../RenderOverlays/Overlays/TestMaterialSettings.h"
@@ -32,7 +34,7 @@ namespace PlatformRig
         auto tonemapSettingsDisplay         = std::make_shared<::Overlays::ToneMapSettingsDisplay>(std::ref(SceneEngine::GlobalToneMapSettings));
         auto colorGradingSettingsDisplay    = std::make_shared<::Overlays::ColorGradingSettingsDisplay>(std::ref(SceneEngine::GlobalColorGradingSettings));
         auto testMaterialSettings           = std::make_shared<::Overlays::TestMaterialSettings>(std::ref(SceneEngine::GlobalMaterialOverride));
-        auto modelBrowser                   = std::make_shared<::Overlays::ModelBrowser>("game\\objects\\Env");
+        auto modelBrowser                   = std::make_shared<::Overlays::ModelBrowser>("game\\objects\\Env", nullptr);
         auto textureBrowser                 = std::make_shared<::Overlays::TextureBrowser>("Game\\textures\\aa_terrain");
         auto gridIteratorDisplay            = std::make_shared<PlatformRig::Overlays::GridIteratorDisplay>();
         auto volFogDisplay                  = std::make_shared<::Overlays::VolumetricFogSettings>(std::ref(SceneEngine::GlobalVolumetricFogMaterial));
