@@ -59,6 +59,7 @@ namespace Tools
         };
 
         Result DoHitTest(Int2 screenCoord) const;
+        std::pair<Float3, Float3> CalculateWorldSpaceRay(Int2 screenCoord) const;
         HitTestResolver(
             std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
             std::shared_ptr<SceneEngine::ISceneParser> sceneParser,

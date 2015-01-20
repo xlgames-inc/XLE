@@ -22,6 +22,11 @@
 #include "../Utility/TimeUtils.h"
 #include "../Math/Transformations.h"
 
+#include "../BufferUploads/IBufferUploads.h"
+#include "../SceneEngine/SceneEngineUtility.h"
+#include "../SceneEngine/ResourceBox.h"
+#include "../Math/ProjectionMath.h"
+
 #include "../Core/WinAPI/IncludeWindows.h"      // *hack* just needed for getting client rect coords!
 
 namespace Sample
@@ -87,6 +92,31 @@ namespace Tools
         }
 
         return result;
+    }
+
+    std::pair<Float3, Float3> HitTestResolver::CalculateWorldSpaceRay(Int2 screenCoord) const
+    {
+        RECT clientRect; GetClientRect(GetActiveWindow(), &clientRect);
+
+        auto sceneCamera = _sceneParser->GetCameraDesc();
+        auto projectionMatrix = RenderCore::PerspectiveProjection(
+            sceneCamera._verticalFieldOfView, (clientRect.right - clientRect.left) / float(clientRect.bottom - clientRect.top),
+            sceneCamera._nearClip, sceneCamera._farClip, RenderCore::GeometricCoordinateSpace::RightHanded, 
+            #if (GFXAPI_ACTIVE == GFXAPI_DX11) || (GFXAPI_ACTIVE == GFXAPI_DX9)
+                RenderCore::ClipSpaceType::Positive);
+            #else
+                RenderCore::ClipSpaceType::StraddlingZero);
+            #endif
+        auto worldToProjection = Combine(InvertOrthonormalTransform(sceneCamera._cameraToWorld), projectionMatrix);
+
+        Float3 frustumCorners[8];
+        CalculateAbsFrustumCorners(frustumCorners, worldToProjection);
+        Float3 cameraPosition = ExtractTranslation(sceneCamera._cameraToWorld);
+
+        return RenderCore::BuildRayUnderCursor(
+            screenCoord, frustumCorners, cameraPosition, 
+            sceneCamera._nearClip, sceneCamera._farClip,
+            std::make_pair(Float2(0.f, 0.f), Float2(float(clientRect.right - clientRect.left), float(clientRect.bottom - clientRect.top))));
     }
 
     HitTestResolver::HitTestResolver(
@@ -174,6 +204,140 @@ namespace Tools
     }
     
     PlaceSingle::~PlaceSingle() {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class SelectAndEdit : public IManipulator
+    {
+    public:
+        bool OnInputEvent(
+            const InputSnapshot& evnt,
+            const HitTestResolver& hitTestContext);
+        void Render(
+            RenderCore::Metal::DeviceContext* context,
+            SceneEngine::LightingParserContext& parserContext);
+
+        const char* GetName() const;
+        std::pair<FloatParameter*, size_t>  GetFloatParameters() const;
+        std::pair<BoolParameter*, size_t>   GetBoolParameters() const;
+
+        SelectAndEdit(
+            std::shared_ptr<SceneEngine::PlacementsEditor> editor);
+        ~SelectAndEdit();
+
+    protected:
+        std::shared_ptr<SceneEngine::PlacementsEditor> _editor;
+        std::vector<std::pair<uint64, uint64>> _activeSelection;
+    };
+
+    bool SelectAndEdit::OnInputEvent(
+        const InputSnapshot& evnt,
+        const HitTestResolver& hitTestContext)
+    {
+            //  On lbutton click, attempt to do hit detection
+            //  select everything that intersects with the given ray
+        if (evnt.IsRelease_LButton()) {
+            auto worldSpaceRay = hitTestContext.CalculateWorldSpaceRay(evnt._mousePosition);
+            auto selected = _editor->Find_RayIntersection(worldSpaceRay.first, worldSpaceRay.second);
+
+                // replace the currently active selection
+            _activeSelection = selected;
+            return true;
+        }
+
+        return false;
+    }
+
+    class CommonOffscreenTarget
+    {
+    public:
+        class Desc
+        {
+        public:
+            unsigned _width, _height;
+            RenderCore::Metal::NativeFormat::Enum _format;
+            Desc(unsigned width, unsigned height, RenderCore::Metal::NativeFormat::Enum format)
+                : _width(width), _height(height), _format(format) {}
+        };
+
+        RenderCore::Metal::RenderTargetView _rtv;
+        RenderCore::Metal::ShaderResourceView _srv;
+        intrusive_ptr<BufferUploads::ResourceLocator> _resource;
+
+        CommonOffscreenTarget(const Desc& desc);
+        ~CommonOffscreenTarget();
+    };
+
+    CommonOffscreenTarget::CommonOffscreenTarget(const Desc& desc)
+    {
+            //  Still some work involved to just create a texture
+            //  
+        using namespace BufferUploads;
+        auto bufferDesc = CreateDesc(
+            BindFlag::ShaderResource|BindFlag::RenderTarget, 0, GPUAccess::Write,
+            TextureDesc::Plain2D(desc._width, desc._height, desc._format),
+            "CommonOffscreen");
+
+        auto resource = SceneEngine::GetBufferUploads()->Transaction_Immediate(bufferDesc, nullptr);
+
+        RenderCore::Metal::RenderTargetView rtv(resource->GetUnderlying());
+        RenderCore::Metal::ShaderResourceView srv(resource->GetUnderlying());
+
+        _rtv = std::move(rtv);
+        _srv = std::move(srv);
+        _resource = std::move(resource);
+    }
+
+    CommonOffscreenTarget::~CommonOffscreenTarget() {}
+
+    void SelectAndEdit::Render(
+        RenderCore::Metal::DeviceContext* context,
+        SceneEngine::LightingParserContext& parserContext)
+    {
+        if (!_activeSelection.empty()) {
+                //  If we have some selection, we need to render it
+                //  to an offscreen buffer, and we can perform some
+                //  operation to highlight the objects in that buffer.
+                //
+                //  Note that we could get different results by doing
+                //  this one placement at a time -- but we will most
+                //  likely get the most efficient results by rendering
+                //  all of objects that require highlights in one go.
+
+            using namespace SceneEngine;
+            using namespace RenderCore;
+            SavedTargets savedTargets(context);
+            const auto& viewport = savedTargets.GetViewports()[0];
+
+            auto& offscreen = FindCachedBox<CommonOffscreenTarget>(
+                CommonOffscreenTarget::Desc(unsigned(viewport.Width), unsigned(viewport.Height), 
+                Metal::NativeFormat::R8G8B8A8_UNORM));
+
+            context->Bind(MakeResourceList(offscreen._rtv), nullptr);
+            context->Clear(offscreen._rtv, Float4(0.f, 0.f, 0.f, 0.f));
+            _editor->RenderFiltered(
+                context, parserContext, 0, 
+                AsPointer(_activeSelection.cbegin()), AsPointer(_activeSelection.cend()));
+
+            savedTargets.ResetToOldTargets(context);
+
+                //  now we can render these objects over the main image, 
+                //  using some filtering
+        }
+    }
+
+    const char* SelectAndEdit::GetName() const                                            { return "Select And Edit"; }
+    auto SelectAndEdit::GetFloatParameters() const -> std::pair<FloatParameter*, size_t>  { return std::make_pair(nullptr, 0); }
+    auto SelectAndEdit::GetBoolParameters() const -> std::pair<BoolParameter*, size_t>    { return std::make_pair(nullptr, 0); }
+
+    SelectAndEdit::SelectAndEdit(
+        std::shared_ptr<SceneEngine::PlacementsEditor> editor)
+    {
+        _editor = editor;
+    }
+
+    SelectAndEdit::~SelectAndEdit()
+    {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -456,7 +620,7 @@ namespace Tools
             // But it's very random. So the artist has only limited control.
 
         uint64 modelGuid = Hash64(modelName);
-        auto oldPlacements = _editor->FindPlacements(
+        auto oldPlacements = _editor->Find_BoxIntersection(
             centre - Float3(_radius, _radius, _radius),
             centre + Float3(_radius, _radius, _radius),
             [=](const SceneEngine::PlacementsEditor::ObjectDef& objectDef) -> bool
@@ -543,10 +707,9 @@ namespace Tools
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     static const auto Id_SelectedModel = InteractableId_Make("SelectedModel");
-
-    static ButtonFormatting ButtonNormalState       (ColorB(127, 192, 127,  64), ColorB(164, 192, 164, 255));
-    static ButtonFormatting ButtonMouseOverState    (ColorB(127, 192, 127,  64), ColorB(255, 255, 255, 160));
-    static ButtonFormatting ButtonPressedState      (ColorB(127, 192, 127,  64), ColorB(255, 255, 255,  96));
+    static ButtonFormatting ButtonNormalState    ( ColorB(127, 192, 127,  64), ColorB(164, 192, 164, 255) );
+    static ButtonFormatting ButtonMouseOverState ( ColorB(127, 192, 127,  64), ColorB(255, 255, 255, 160) );
+    static ButtonFormatting ButtonPressedState   ( ColorB(127, 192, 127,  64), ColorB(255, 255, 255,  96) );
 
     void PlacementsWidgets::Render(
         IOverlayContext* context, Layout& layout, 
@@ -563,16 +726,17 @@ namespace Tools
             //      the screen. If we click it, we should pop up the model browser
             //      so we can reselect.
 
-        const unsigned lineHeight   = 20;
-        const unsigned horizPadding = 75;
-        const unsigned vertPadding  = 50;
-        const unsigned selectedRectHeight = lineHeight + 20;
+        const auto lineHeight   = 20u;
+        const auto horizPadding = 75u;
+        const auto vertPadding  = 50u;
+        const auto selectedRectHeight = lineHeight + 20u;
         auto maxSize = layout.GetMaximumSize();
         Rect selectedRect(
             Coord2(maxSize._topLeft[0] + horizPadding, maxSize._bottomRight[1] - vertPadding - selectedRectHeight),
             Coord2(std::min(maxSize._bottomRight[0], controlsRect._bottomRight[1]) - horizPadding, maxSize._bottomRight[1] - vertPadding));
 
-        DrawButtonBasic(context, selectedRect, _selectedModel->_modelName.c_str(),
+        DrawButtonBasic(
+            context, selectedRect, _selectedModel->_modelName.c_str(),
             FormatButton(interfaceState, Id_SelectedModel, 
                 ButtonNormalState, ButtonMouseOverState, ButtonPressedState));
         interactables.Register(Interactables::Widget(selectedRect, Id_SelectedModel));
@@ -647,6 +811,7 @@ namespace Tools
         std::vector<std::unique_ptr<IManipulator>> manipulators;
         manipulators.push_back(std::make_unique<PlaceSingle>(selectedModel, editor));
         manipulators.push_back(std::make_unique<ScatterPlacements>(selectedModel, editor));
+        manipulators.push_back(std::make_unique<SelectAndEdit>(editor));
 
         _editor = std::move(editor);
         _hitTestResolver = std::move(hitTestResolver);        

@@ -226,13 +226,15 @@ namespace Sample
         pimpl->_time = 0.f;
         pimpl->_characters = std::make_unique<CharactersScene>();
 
+        Float2 worldOffset(-11200.f - 7000.f, -11200.f + 700.f);
+
         #if defined(ENABLE_TERRAIN)
             MainTerrainFormat = std::make_shared<RenderCore::Assets::TerrainFormat>();
             MainTerrainConfig = SceneEngine::TerrainConfig(WorldDirectory);
             pimpl->_terrainManager = std::make_shared<SceneEngine::TerrainManager>(
                 MainTerrainConfig, MainTerrainFormat, 
                 SceneEngine::GetBufferUploads(), Int2(0, 0), MainTerrainConfig._cellCount,
-                Float2(-11200.f - 7000.f, -11200.f + 700.f));
+                worldOffset);
             MainTerrainCoords = pimpl->_terrainManager->GetCoords();
         #endif
 
@@ -240,12 +242,12 @@ namespace Sample
 
         pimpl->_placementsManager = std::make_shared<SceneEngine::PlacementsManager>(
             SceneEngine::WorldPlacementsConfig(WorldDirectory),
-            pimpl->_modelFormat);
+            pimpl->_modelFormat, worldOffset);
 
         pimpl->_cameraDesc = std::make_shared<RenderCore::CameraDesc>();
         pimpl->_cameraDesc->_cameraToWorld = pimpl->_characters->DefaultCameraToWorld();
         pimpl->_cameraDesc->_nearClip = 0.5f;
-        pimpl->_cameraDesc->_farClip = 4000.f; // 32000.f;
+        pimpl->_cameraDesc->_farClip = 6000.f;
 
         _pimpl = std::move(pimpl);
     }

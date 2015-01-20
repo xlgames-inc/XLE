@@ -49,7 +49,8 @@ namespace SceneEngine
 
         PlacementsManager(
             const WorldPlacementsConfig& cfg,
-            std::shared_ptr<RenderCore::Assets::IModelFormat> modelFormat);
+            std::shared_ptr<RenderCore::Assets::IModelFormat> modelFormat,
+            const Float2& worldOffset);
         ~PlacementsManager();
     protected:
         class Pimpl;
@@ -57,6 +58,7 @@ namespace SceneEngine
     };
 
     typedef std::pair<uint64, uint64> PlacementGUID;
+    class PlacementCell;
 
     class PlacementsEditor
     {
@@ -76,16 +78,25 @@ namespace SceneEngine
             uint64 _material;
         };
 
-        std::vector<PlacementGUID> FindPlacements(
+        std::vector<PlacementGUID> Find_BoxIntersection(
             const Float3& worldSpaceMins, const Float3& worldSpaceMaxs,
+            const std::function<bool(const ObjectDef&)>& predicate = nullptr);
+
+        std::vector<PlacementGUID> Find_RayIntersection(
+            const Float3& rayStart, const Float3& rayEnd,
             const std::function<bool(const ObjectDef&)>& predicate = nullptr);
 
         void DeletePlacements(const std::vector<PlacementGUID>& placements);
 
-        void RegisterCell(  
-            const Float2& mins, const Float2& maxs, 
-            const Float4x4& cellToWorld,
-            const char name[], uint64 guid);
+        void RenderFiltered(
+            RenderCore::Metal::DeviceContext* context,
+            LightingParserContext& parserContext,
+            unsigned techniqueIndex,
+            const PlacementGUID* begin, const PlacementGUID* end);
+
+        void RegisterCell(
+            const PlacementCell& cell,
+            const Float2& mins, const Float2& maxs);
 
         std::shared_ptr<RenderCore::Assets::IModelFormat> GetModelFormat();
 

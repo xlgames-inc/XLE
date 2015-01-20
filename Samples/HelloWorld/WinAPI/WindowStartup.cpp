@@ -10,6 +10,7 @@
 #include "../../../Utility/SystemUtils.h"
 #include "../../../Core/Exceptions.h"
 #include <stdio.h>
+#include <random>
 
     // Note --  when you need to include <windows.h>, generally
     //          prefer to to use the following header ---
@@ -51,7 +52,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
         //  There maybe a few basic platform-specific initialisation steps we might need to
         //  perform. We can do these here, before calling into platform-specific code.
     SetWorkingDirectory();
-    srand((unsigned)time(nullptr));
+    srand(std::random_device().operator()());
 
         //  Initialize the "AccumulatedAllocations" profiler as soon as possible, to catch
         //  startup allocation counts.

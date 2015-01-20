@@ -10,6 +10,7 @@
 #include "../Utility/Threading/ThreadingUtils.h"     // for RefCountedObject
 #include "../Utility/IntrusivePtr.h"
 #include "../Utility/Mixins.h"
+#include "../Utility/StringUtils.h"
 #include "../RenderCore/IDevice_Forward.h"
 #include "../RenderCore/Metal/Resource.h"
 #include "IBufferUploads_Forward.h"
@@ -178,6 +179,42 @@ namespace BufferUploads
 
         buffer_upload_dll_export BufferDesc();
     };
+
+    inline BufferDesc CreateDesc(
+        BindFlag::BitField bindFlags,
+        CPUAccess::BitField cpuAccess, 
+        GPUAccess::BitField gpuAccess,
+        const TextureDesc& textureDesc,
+        const char name[])
+    {
+        BufferDesc desc;
+        desc._type = BufferDesc::Type::Texture;
+        desc._bindFlags = bindFlags;
+        desc._cpuAccess = cpuAccess;
+        desc._gpuAccess = gpuAccess;
+        desc._allocationRules = 0;
+        desc._textureDesc = textureDesc;
+        XlCopyString(desc._name, dimof(desc._name), name);
+        return desc;
+    }
+
+    inline BufferDesc CreateDesc(
+        BindFlag::BitField bindFlags,
+        CPUAccess::BitField cpuAccess, 
+        GPUAccess::BitField gpuAccess,
+        const BufferUploads::LinearBufferDesc& linearBufferDesc,
+        const char name[])
+    {
+        BufferDesc desc;
+        desc._type = BufferDesc::Type::LinearBuffer;
+        desc._bindFlags = bindFlags;
+        desc._cpuAccess = cpuAccess;
+        desc._gpuAccess = gpuAccess;
+        desc._allocationRules = 0;
+        desc._linearBufferDesc = linearBufferDesc;
+        XlCopyString(desc._name, dimof(desc._name), name);
+        return desc;
+    }
 
     struct BufferMetrics : public BufferDesc
     {

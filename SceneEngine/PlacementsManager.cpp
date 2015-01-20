@@ -160,7 +160,8 @@ namespace SceneEngine
             RenderCore::Metal::DeviceContext* context,
             LightingParserContext& parserContext, 
             unsigned techniqueIndex,
-            const PlacementCell& cell);
+            const PlacementCell& cell,
+            const uint64* filterStart = nullptr, const uint64* filterEnd = nullptr);
 
         typedef RenderCore::Assets::Simple::ModelScaffold ModelScaffold;
         typedef RenderCore::Assets::Simple::MaterialScaffold MaterialScaffold;
@@ -212,7 +213,8 @@ namespace SceneEngine
             LightingParserContext& parserContext, 
             unsigned techniqueIndex,
             const CellRenderInfo& renderInfo,
-            const Float4x4& cellToWorld);
+            const Float4x4& cellToWorld,
+            const uint64* filterStart, const uint64* filterEnd);
     };
 
     class PlacementsManager::Pimpl
@@ -276,7 +278,8 @@ namespace SceneEngine
         RenderCore::Metal::DeviceContext* context,
         LightingParserContext& parserContext, 
         unsigned techniqueIndex,
-        const PlacementCell& cell)
+        const PlacementCell& cell,
+        const uint64* filterStart, const uint64* filterEnd)
     {
         // Look for a "RenderInfo" for this cell.. and create it if it doesn't exist
         // Note that there's a bit of extra overhead here:
@@ -305,7 +308,7 @@ namespace SceneEngine
         {
             auto i = LowerBound(_cellOverrides, cell._filenameHash);
             if (i != _cellOverrides.end() && i->first == cell._filenameHash) {
-                Render(context, parserContext, techniqueIndex, i->second, cell._cellToWorld);
+                Render(context, parserContext, techniqueIndex, i->second, cell._cellToWorld, filterStart, filterEnd);
             } else {
                 auto i2 = LowerBound(_cells, cell._filenameHash);
                 if (i2 == _cells.end() || i2->first == cell._filenameHash) {
@@ -319,7 +322,7 @@ namespace SceneEngine
                 //         *i2->second._placements);
                 // }
 
-                Render(context, parserContext, techniqueIndex, i2->second, cell._cellToWorld);
+                Render(context, parserContext, techniqueIndex, i2->second, cell._cellToWorld, filterStart, filterEnd);
             }
         } 
         CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
@@ -333,7 +336,8 @@ namespace SceneEngine
         LightingParserContext& parserContext, 
         unsigned techniqueIndex,
         const CellRenderInfo& renderInfo,
-        const Float4x4& cellToWorld)
+        const Float4x4& cellToWorld,
+        const uint64* filterStart, const uint64* filterEnd)
     {
         assert(renderInfo._placements);
 
@@ -371,6 +375,9 @@ namespace SceneEngine
         auto cameraPosition = ExtractTranslation(parserContext.GetProjectionDesc()._viewToWorld);
         cameraPosition = TransformPoint(InvertOrthonormalTransform(cellToWorld), cameraPosition);
 
+        const uint64* filterIterator = filterStart;
+        const bool doFilter = filterStart != filterEnd;
+
         auto& placements = *renderInfo._placements;
         const auto* filenamesBuffer = placements.GetFilenamesBuffer();
         const auto* objRef = placements.GetObjectReferences();
@@ -380,6 +387,11 @@ namespace SceneEngine
             auto& obj = objRef[c];
             if (CullAABB(worldToCullSpace, obj._worldSpaceBoundary.first, obj._worldSpaceBoundary.second)) {
                 continue;
+            }
+
+            if (doFilter) {
+                while (filterIterator != filterEnd && *filterIterator < obj._guid) { ++filterIterator; }
+                if (filterIterator == filterEnd || *filterIterator != obj._guid) { continue; }
             }
 
                 // Basic draw distance calculation
@@ -472,15 +484,16 @@ namespace SceneEngine
         auto editor = std::make_shared<PlacementsEditor>(_pimpl->_renderer);
         for (auto i=_pimpl->_cells.begin(); i!=_pimpl->_cells.end(); ++i) {
             editor->RegisterCell(
-                Truncate(i->_aabbMin), Truncate(i->_aabbMax), 
-                i->_cellToWorld, i->_filename, i->_filenameHash);
+                *i,
+                Truncate(i->_aabbMin), Truncate(i->_aabbMax));
         }
         return editor;
     }
 
     PlacementsManager::PlacementsManager(
         const WorldPlacementsConfig& cfg,
-        std::shared_ptr<RenderCore::Assets::IModelFormat> modelFormat)
+        std::shared_ptr<RenderCore::Assets::IModelFormat> modelFormat,
+        const Float2& worldOffset)
     {
             //  Using the given config file, let's construct the list of 
             //  placement cells
@@ -492,7 +505,7 @@ namespace SceneEngine
                 _snprintf_s(cell._filename, dimof(cell._filename), "%s/placements/p%03i_%03i.plc", 
                     cfg._baseDir.c_str(), x, y);
                 cell._filenameHash = Hash64(cell._filename);
-                Float3 offset(cfg._cellSize * x, cfg._cellSize * y, 0.f);
+                Float3 offset(cfg._cellSize * x + worldOffset[0], cfg._cellSize * y + worldOffset[1], 0.f);
                 cell._cellToWorld = AsFloat4x4(offset);
 
                     // note -- we could shrink wrap this bounding box around th objects
@@ -530,8 +543,7 @@ namespace SceneEngine
 
     uint64 BuildGuid()
     {
-        std::random_device rd;
-        static std::mt19937_64 generator(rd());
+        static std::mt19937_64 generator(std::random_device().operator()());
         return generator();
     }
 
@@ -601,29 +613,35 @@ namespace SceneEngine
     class PlacementsEditor::Pimpl
     {
     public:
-        class RegisteredCell
+        class RegisteredCell : public PlacementCell
         {
         public:
             Float2 _mins;
             Float2 _maxs;
-            Float4x4 _cellToWorld;
-            std::string _name;
+
+            struct CompareHash
+            {
+            public:
+                bool operator()(const RegisteredCell& lhs, const RegisteredCell& rhs) const { return lhs._filenameHash < rhs._filenameHash; }
+                bool operator()(const RegisteredCell& lhs, uint64 rhs) const { return lhs._filenameHash < rhs; }
+                bool operator()(uint64 lhs, const RegisteredCell& rhs) const { return lhs < rhs._filenameHash; }
+            };
         };
-        std::vector<std::pair<uint64, RegisteredCell>> _cells;
+        std::vector<RegisteredCell> _cells;
         std::vector<std::pair<uint64, std::shared_ptr<DynamicPlacements>>> _dynPlacements;
 
         std::shared_ptr<PlacementsRenderer> _renderer;
         std::shared_ptr<DynamicPlacements> GetDynPlacements(uint64 cellGuid);
-        std::string GetCellName(uint64 cellGuid);
+        const char* GetCellName(uint64 cellGuid);
     };
 
-    std::string PlacementsEditor::Pimpl::GetCellName(uint64 cellGuid)
+    const char* PlacementsEditor::Pimpl::GetCellName(uint64 cellGuid)
     {
-        auto p = LowerBound(_cells, cellGuid);
-        if (p != _cells.end() && p->first == cellGuid) {
-            return p->second._name;
+        auto p = std::lower_bound(_cells.cbegin(), _cells.cend(), cellGuid, RegisteredCell::CompareHash());
+        if (p != _cells.end() && p->_filenameHash == cellGuid) {
+            return p->_filename;
         }
-        return std::string();
+        return nullptr;
     }
 
     std::shared_ptr<DynamicPlacements> PlacementsEditor::Pimpl::GetDynPlacements(uint64 cellGuid)
@@ -636,9 +654,9 @@ namespace SceneEngine
                 //  doesn't exist -- which can happen with an uninitialized data
                 //  directory.
             auto cellName = GetCellName(cellGuid);
-            assert(!cellName.empty());
+            assert(cellName && cellName[0]);
             TRY {
-                auto& sourcePlacements = Assets::GetAsset<Placements>(cellName.c_str());
+                auto& sourcePlacements = Assets::GetAsset<Placements>(cellName);
                 placements = std::make_shared<DynamicPlacements>(sourcePlacements);
             } CATCH (const Assets::Exceptions::PendingResource&) {
                 throw;
@@ -685,19 +703,18 @@ namespace SceneEngine
         }
 
         for (auto i=_pimpl->_cells.cbegin(); i!=_pimpl->_cells.cend(); ++i) {
-            auto& reg = i->second;
-            if (    worldSpaceCenter[0] >= reg._mins[0] && worldSpaceCenter[0] < reg._maxs[0]
-                &&  worldSpaceCenter[1] >= reg._mins[1] && worldSpaceCenter[1] < reg._maxs[1]) {
+            if (    worldSpaceCenter[0] >= i->_mins[0] && worldSpaceCenter[0] < i->_maxs[0]
+                &&  worldSpaceCenter[1] >= i->_mins[1] && worldSpaceCenter[1] < i->_maxs[1]) {
                 
                     // This is the correct cell. Look for a dynamic placement associated
-                auto dynPlacements = _pimpl->GetDynPlacements(i->first);
+                auto dynPlacements = _pimpl->GetDynPlacements(i->_filenameHash);
 
-                auto objectToCell = AsFloat3x4(Combine(AsFloat4x4(objectToWorld), InvertOrthonormalTransform(reg._cellToWorld)));
+                auto objectToCell = AsFloat3x4(Combine(AsFloat4x4(objectToWorld), InvertOrthonormalTransform(i->_cellToWorld)));
                 auto id = dynPlacements->AddPlacement(
                     objectToCell, TransformBoundingBox(objectToCell, model.GetBoundingBox()),
                     modelFilename, materialFilename);
 
-                return PlacementGUID(i->first, id);
+                return PlacementGUID(i->_filenameHash, id);
 
             }
         }
@@ -705,7 +722,68 @@ namespace SceneEngine
         return PlacementGUID(0, 0);   // could 0 be a valid hash value? Maybe, but very unlikely
     }
 
-    std::vector<PlacementGUID> PlacementsEditor::FindPlacements(
+    std::vector<PlacementGUID> PlacementsEditor::Find_RayIntersection(
+        const Float3& rayStart, const Float3& rayEnd,
+        const std::function<bool(const ObjectDef&)>& predicate)
+    {
+        std::vector<PlacementGUID> result;
+        const float placementAssumedMaxRadius = 100.f;
+        for (auto i=_pimpl->_cells.cbegin(); i!=_pimpl->_cells.cend(); ++i) {
+            Float3 cellMin = i->_aabbMin - Float3(placementAssumedMaxRadius, placementAssumedMaxRadius, placementAssumedMaxRadius);
+            Float3 cellMax = i->_aabbMax + Float3(placementAssumedMaxRadius, placementAssumedMaxRadius, placementAssumedMaxRadius);
+            if (!RayVsAABB(std::make_pair(rayStart, rayEnd), cellMin, cellMax)) {
+                continue;
+            }
+
+            auto worldToCell = InvertOrthonormalTransform(i->_cellToWorld);
+            auto cellSpaceRay = std::make_pair(
+                TransformPoint(worldToCell, rayStart),
+                TransformPoint(worldToCell, rayEnd));
+
+            TRY {
+                auto& p = _pimpl->_renderer->GetCachedPlacements(i->_filename);
+                for (unsigned c=0; c<p.GetObjectReferenceCount(); ++c) {
+                    auto& obj = p.GetObjectReferences()[c];
+                        //  We're only doing a very rough world space bounding box vs ray test here...
+                        //  Ideally, we should follow up with a more accurate test using the object loca
+                        //  space bounding box
+                    if (!RayVsAABB(cellSpaceRay, nullptr, obj._worldSpaceBoundary.first, obj._worldSpaceBoundary.second)) {
+                        continue;
+                    }
+
+                    auto& model = _pimpl->_renderer->GetCachedModel(
+                        (const char*)PtrAdd(p.GetFilenamesBuffer(), obj._modelFilenameOffset + sizeof(uint64)));
+                    const auto& localBoundingBox = model.GetBoundingBox();
+                    if (!RayVsAABB( cellSpaceRay, AsFloat4x4(obj._localToCell), 
+                                    localBoundingBox.first, localBoundingBox.second)) {
+                        continue;
+                    }
+
+                    if (predicate) {
+                        ObjectDef def;
+                        def._localToWorld = Combine(obj._localToCell, i->_cellToWorld);
+
+                            // note -- we have access to the cell space bounding box. But the local
+                            //          space box would be better.
+                        def._localSpaceBoundingBox = localBoundingBox;
+                        def._model = *(uint64*)PtrAdd(p.GetFilenamesBuffer(), obj._modelFilenameOffset);
+                        def._material = *(uint64*)PtrAdd(p.GetFilenamesBuffer(), obj._materialFilenameOffset);
+
+                            // allow the predicate to exclude this item
+                        if (!predicate(def)) { continue; }
+                    }
+
+                    result.push_back(std::make_pair(i->_filenameHash, obj._guid));
+                }
+
+            } CATCH (...) {
+            } CATCH_END
+        }
+
+        return std::move(result);
+    }
+
+    std::vector<PlacementGUID> PlacementsEditor::Find_BoxIntersection(
         const Float3& worldSpaceMins, const Float3& worldSpaceMaxs,
         const std::function<bool(const ObjectDef&)>& predicate)
     {
@@ -723,10 +801,10 @@ namespace SceneEngine
 
         const float placementAssumedMaxRadius = 100.f;
         for (auto i=_pimpl->_cells.cbegin(); i!=_pimpl->_cells.cend(); ++i) {
-            if (    worldSpaceMaxs[0] < (i->second._mins[0] - placementAssumedMaxRadius)
-                ||  worldSpaceMaxs[1] < (i->second._mins[1] - placementAssumedMaxRadius)
-                ||  worldSpaceMins[0] > (i->second._maxs[0] + placementAssumedMaxRadius)
-                ||  worldSpaceMins[1] > (i->second._maxs[1] + placementAssumedMaxRadius)) {
+            if (    worldSpaceMaxs[0] < (i->_aabbMin[0] - placementAssumedMaxRadius)
+                ||  worldSpaceMaxs[1] < (i->_aabbMin[1] - placementAssumedMaxRadius)
+                ||  worldSpaceMins[0] > (i->_aabbMax[0] + placementAssumedMaxRadius)
+                ||  worldSpaceMins[1] > (i->_aabbMax[1] + placementAssumedMaxRadius)) {
                 continue;
             }
 
@@ -734,14 +812,14 @@ namespace SceneEngine
                 //  We have to test all internal objects. First, transform the bounding
                 //  box into local cell space.
             auto cellSpaceBB = TransformBoundingBox(
-                AsFloat3x4(InvertOrthonormalTransform(i->second._cellToWorld)),
+                AsFloat3x4(InvertOrthonormalTransform(i->_cellToWorld)),
                 std::make_pair(worldSpaceMins, worldSpaceMaxs));
 
                 //  We need to use the renderer to get either the asset or the 
                 //  override placements associated with this cell. It's a little awkward
                 //  Note that we could use the quad tree to acceleration these tests.
             TRY {
-                auto& p = _pimpl->_renderer->GetCachedPlacements(i->second._name.c_str());
+                auto& p = _pimpl->_renderer->GetCachedPlacements(i->_filename);
                 for (unsigned c=0; c<p.GetObjectReferenceCount(); ++c) {
                     auto& obj = p.GetObjectReferences()[c];
                     if (   cellSpaceBB.second[0] < obj._worldSpaceBoundary.first[0]
@@ -755,7 +833,7 @@ namespace SceneEngine
 
                     if (predicate) {
                         ObjectDef def;
-                        def._localToWorld = Combine(obj._localToCell, i->second._cellToWorld);
+                        def._localToWorld = Combine(obj._localToCell, i->_cellToWorld);
 
                         auto& model = _pimpl->_renderer->GetCachedModel(
                             (const char*)PtrAdd(p.GetFilenamesBuffer(), obj._modelFilenameOffset + sizeof(uint64)));
@@ -770,7 +848,7 @@ namespace SceneEngine
                         if (!predicate(def)) { continue; }
                     }
 
-                    result.push_back(std::make_pair(i->first, obj._guid));
+                    result.push_back(std::make_pair(i->_filenameHash, obj._guid));
                 }
 
             } CATCH (...) {
@@ -819,19 +897,50 @@ namespace SceneEngine
     }
 
     void PlacementsEditor::RegisterCell(
-        const Float2& mins, const Float2& maxs, 
-        const Float4x4& cellToWorld,
-        const char name[], uint64 guid)
+        const PlacementCell& cell,
+        const Float2& mins, const Float2& maxs)
     {
-        auto i = LowerBound(_pimpl->_cells, guid);
-        assert(i == _pimpl->_cells.end() || i->first != guid);
+        auto i = std::lower_bound(_pimpl->_cells.begin(), _pimpl->_cells.end(), cell._filenameHash, Pimpl::RegisteredCell::CompareHash());
+        assert(i == _pimpl->_cells.end() || i->_filenameHash != cell._filenameHash);
 
-        Pimpl::RegisteredCell cell;
-        cell._mins = mins;
-        cell._maxs = maxs;
-        cell._name = name;
-        cell._cellToWorld = cellToWorld;
-        _pimpl->_cells.insert(i, std::make_pair(guid, cell));
+        Pimpl::RegisteredCell newCell;
+        *(PlacementCell*)&newCell = cell;
+        newCell._mins = mins;
+        newCell._maxs = maxs;
+        _pimpl->_cells.insert(i, newCell);
+    }
+
+    void PlacementsEditor::RenderFiltered(
+        RenderCore::Metal::DeviceContext* context,
+        LightingParserContext& parserContext,
+        unsigned techniqueIndex,
+        const PlacementGUID* begin, const PlacementGUID* end)
+    {
+        std::vector<PlacementGUID> copy(begin, end);
+        std::sort(copy.begin(), copy.end());
+
+        auto ci = _pimpl->_cells.begin();
+
+        for (auto i=copy.begin(); i!=copy.end();) {
+            auto i2 = i+1;
+            for (; i2!=copy.end() && i2->first == i->first; ++i2) {}
+
+            while (ci->_filenameHash < i->first && ci != _pimpl->_cells.end()) { ++ci; }
+
+            if (ci != _pimpl->_cells.end() && ci->_filenameHash == i->first) {
+
+                    // re-write the object guids for the renderer's convenience
+                uint64* tStart = &i->first;
+                uint64* t = tStart;
+                while (i < i2) { *t++ = i->second; i++; }
+
+                _pimpl->_renderer->Render(
+                    context, parserContext, techniqueIndex,
+                    *ci, tStart, t);
+            } else {
+                i = i2;
+            }
+        }
     }
 
     std::shared_ptr<RenderCore::Assets::IModelFormat> PlacementsEditor::GetModelFormat()

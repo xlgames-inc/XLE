@@ -17,8 +17,14 @@ namespace Math
             //  transform the ray back into aabb space, and do tests against the edge planes of the bounding box
 
         auto worldToAabb = Inverse(aabbToWorld);     // maybe not be orthonormal input. This is used for terrain, which has scale on aabbToWorld
-        auto ray = std::make_pair(TransformPoint(worldToAabb, worldSpaceRay.first), TransformPoint(worldToAabb, worldSpaceRay.second));
+        auto ray = std::make_pair(
+            TransformPoint(worldToAabb, worldSpaceRay.first), 
+            TransformPoint(worldToAabb, worldSpaceRay.second));
+        return RayVsAABB(ray, mins, maxs);
+    }
 
+    bool    RayVsAABB(const std::pair<Float3, Float3>& ray, const Float3& mins, const Float3& maxs)
+    {
             // if both points are rejected by the same plane, then it's an early out
         unsigned inside = 0;
         for (unsigned c=0; c<3; ++c) {
