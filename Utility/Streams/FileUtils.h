@@ -97,6 +97,21 @@ namespace Utility
         typedef unsigned BitField;
     }
     XL_UTILITY_API std::vector<std::string> FindFiles(const std::string& searchPath, FindFilesFilter::BitField filter = FindFilesFilter::All);
+
+    namespace Exceptions
+    {
+        class IOException : public ::Exceptions::BasicLabel
+        {
+        public:
+            IOException(const char format[], ...) never_throws
+            {
+                va_list args;
+                va_start(args, format);
+                _vsnprintf_s(_buffer, _TRUNCATE, format, args);
+                va_end(args);
+            }
+        };
+    }
 }
 
 using namespace Utility;

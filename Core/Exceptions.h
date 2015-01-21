@@ -40,6 +40,7 @@ namespace Exceptions
     {
     public:
         BasicLabel(const char format[], ...) never_throws;
+        BasicLabel(const char format[], va_list args) never_throws;
         BasicLabel(const BasicLabel& copyFrom) never_throws;
         BasicLabel& operator=(const BasicLabel& copyFrom) never_throws;
 
@@ -57,6 +58,11 @@ namespace Exceptions
         va_start(args, format);
         _vsnprintf_s(_buffer, _TRUNCATE, format, args);
         va_end(args);
+    }
+
+    inline BasicLabel::BasicLabel(const char format[], va_list args) never_throws
+    {
+        _vsnprintf_s(_buffer, _TRUNCATE, format, args);
     }
 
     inline BasicLabel::BasicLabel(const BasicLabel& copyFrom) never_throws

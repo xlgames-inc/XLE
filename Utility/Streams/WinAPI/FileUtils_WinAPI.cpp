@@ -33,7 +33,7 @@ namespace Utility
             creationDisposition = OPEN_EXISTING;
         } else if (XlFindString(openMode, "a+")) {
             assert(0); // not supported;
-            ThrowException(Exceptions::BasicLabel("Append file mode not supported"));
+            ThrowException(Exceptions::IOException("Append file mode not supported"));
         } else if (XlFindChar(openMode, 'w')) {
             underlyingAccessMode = FILE_GENERIC_WRITE;
             creationDisposition = CREATE_ALWAYS;
@@ -42,16 +42,16 @@ namespace Utility
             creationDisposition = OPEN_EXISTING;
         } else if (XlFindChar(openMode, 'a')) {
             assert(0); // not supported;
-            ThrowException(Exceptions::BasicLabel("Append file mode not supported"));
+            ThrowException(Exceptions::IOException("Append file mode not supported"));
         }
 
         if (XlFindChar(openMode, 't')) {
             assert(0); // not supported;
-            ThrowException(Exceptions::BasicLabel("Text oriented file modes not supported"));
+            ThrowException(Exceptions::IOException("Text oriented file modes not supported"));
         }
         if (XlFindString(openMode, "ccs=")) {
             assert(0); // not supported;
-            ThrowException(Exceptions::BasicLabel("Encoded text file modes supported"));
+            ThrowException(Exceptions::IOException("Encoded text file modes supported"));
         }
 
         if (XlFindChar(openMode, 'T') || XlFindChar(openMode, 'D')) {
@@ -83,7 +83,7 @@ namespace Utility
                 MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
                 (LPTSTR) &lpMsgBuf,
                 0, NULL );
-            Exceptions::BasicLabel except(
+            Exceptions::IOException except(
                 "Failure during file open. Probably missing file or bad privileges: (%s), openMode: (%s), error string: (%s)", 
                 filename, openMode, lpMsgBuf);
             LocalFree(lpMsgBuf);

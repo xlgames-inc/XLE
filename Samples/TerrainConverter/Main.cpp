@@ -92,7 +92,7 @@ static UInt2 ConvertDEMData(
 
     if (!(inCfg._dims[0]*inCfg._dims[1])) {
         ThrowException(
-            Exceptions::BasicLabel("Bad or missing input terrain config file (%s)", inputCfgFile));
+            ::Exceptions::BasicLabel("Bad or missing input terrain config file (%s)", inputCfgFile));
     }
 
         //  we have to make sure the width and height are multiples of the
@@ -113,7 +113,7 @@ static UInt2 ConvertDEMData(
     StringMeld<MaxPath> outputUberFileName; outputUberFileName << outputDir << "/ubersurface.dat";
     MemoryMappedFile outputUberFile(outputUberFileName, resultSize, MemoryMappedFile::Access::Write);
     if (!outputUberFile.IsValid())
-        ThrowException(Exceptions::BasicLabel("Couldn't open output file (%s)", outputUberFile));
+        ThrowException(::Exceptions::BasicLabel("Couldn't open output file (%s)", outputUberFile));
 
     auto& hdr   = *(TerrainUberHeader*)outputUberFile.GetData();
     hdr._magic  = TerrainUberHeader::Magic;
@@ -124,7 +124,7 @@ static UInt2 ConvertDEMData(
     StringMeld<MaxPath> inputFileName; inputFileName << input << ".flt";
     MemoryMappedFile inputFile((const char*)inputFileName, 0, MemoryMappedFile::Access::Read);
     if (!inputFile.IsValid())
-        ThrowException(Exceptions::BasicLabel("Couldn't open input file (%s)", inputFileName));
+        ThrowException(::Exceptions::BasicLabel("Couldn't open input file (%s)", inputFileName));
 
     float* outputArray = (float*)PtrAdd(outputUberFile.GetData(), sizeof(TerrainUberHeader));
     auto inputArray = (const float*)inputFile.GetData();

@@ -76,7 +76,7 @@ namespace SceneEngine
     {
         auto& cell = ioFormat.LoadHeights(cellFilename);
         if (nodeIndex >= cell._nodes.size()) {
-            throw Exceptions::BasicLabel("Bad node index in TerrainNodeHeightCollision");
+            throw ::Exceptions::BasicLabel("Bad node index in TerrainNodeHeightCollision");
         }
 
             //  We need to reopen the file, and a load the raw height map data 

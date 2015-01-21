@@ -65,11 +65,7 @@ namespace SceneEngine
     public:
         typedef Float3x4 PlacementsTransform;
 
-        PlacementGUID AddPlacement(
-            const PlacementsTransform& objectToWorld, 
-            const char modelFilename[], const char materialFilename[]);
-
-        class ObjectDef
+        class ObjIntersectionDef
         {
         public:
             Float4x4 _localToWorld;
@@ -78,15 +74,48 @@ namespace SceneEngine
             uint64 _material;
         };
 
+        class ObjTransDef
+        {
+        public:
+            Float4x4        _localToWorld;
+            std::string     _model;
+            std::string     _material;
+
+            ObjTransDef() {}
+            ObjTransDef(const Float4x4& localToWorld, const std::string& model, const std::string& material)
+                : _localToWorld(localToWorld), _model(model), _material(material), _transaction(Error) {}
+
+            enum TransactionType { Unchanged, Created, Deleted, Modified, Error };
+            TransactionType _transaction;
+        };
+
+            // -------------- transactions --------------
+        class ITransaction
+        {
+        public:
+            virtual const ObjTransDef&  GetObject(unsigned index) const = 0;
+            virtual const ObjTransDef&  GetObjectOriginalState(unsigned index) const = 0;
+            virtual PlacementGUID       GetGUID(unsigned index) const = 0;
+            virtual unsigned            GetObjectCount() const = 0;
+
+            virtual void    SetObject(unsigned index, const ObjTransDef& newState) = 0;
+            virtual bool    Create(const ObjTransDef& newState) = 0;
+            virtual void    Delete(unsigned index) = 0;
+
+            virtual void    Commit() = 0;
+            virtual void    Cancel() = 0;
+        };
+
+        std::shared_ptr<ITransaction> Transaction_Begin(const std::vector<PlacementGUID>& placements);
+
+            // -------------- intersections --------------
         std::vector<PlacementGUID> Find_BoxIntersection(
             const Float3& worldSpaceMins, const Float3& worldSpaceMaxs,
-            const std::function<bool(const ObjectDef&)>& predicate = nullptr);
+            const std::function<bool(const ObjIntersectionDef&)>& predicate = nullptr);
 
         std::vector<PlacementGUID> Find_RayIntersection(
             const Float3& rayStart, const Float3& rayEnd,
-            const std::function<bool(const ObjectDef&)>& predicate = nullptr);
-
-        void DeletePlacements(const std::vector<PlacementGUID>& placements);
+            const std::function<bool(const ObjIntersectionDef&)>& predicate = nullptr);
 
         void RenderFiltered(
             RenderCore::Metal::DeviceContext* context,
@@ -105,6 +134,8 @@ namespace SceneEngine
     protected:
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
+
+        friend class Transaction;
     };
 }
 

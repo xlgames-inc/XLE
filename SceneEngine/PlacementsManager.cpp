@@ -48,7 +48,7 @@ namespace SceneEngine
         {
         public:
             Float3x4    _localToCell;
-            BoundingBox _worldSpaceBoundary;
+            BoundingBox _cellSpaceBoundary;
             unsigned    _modelFilenameOffset;       // note -- hash values should be stored with the filenames
             unsigned    _materialFilenameOffset;
             uint64      _guid;
@@ -98,29 +98,33 @@ namespace SceneEngine
             //
 
         using namespace Serialization::ChunkFile;
-        BasicFile file(filename, "rb");
-        auto chunks = LoadChunkTable(file);
-        auto i = std::find_if(
-            chunks.begin(), chunks.end(), 
-            [](const ChunkHeader& hdr) { return hdr._type == ChunkType_Placements; });
-        if (i == chunks.end()) {
-            ThrowException(::Assets::Exceptions::InvalidResource(filename, "Missing correct chunks"));
-        }
-
-        file.Seek(i->_fileOffset, SEEK_SET);
-        PlacementsHeader hdr;
-        file.Read(&hdr, sizeof(hdr), 1);
-        if (hdr._version != 0) {
-            ThrowException(::Assets::Exceptions::InvalidResource(filename, 
-                StringMeld<128>() << "Unexpected version number (" << hdr._version << ")"));
-        }
-
         std::vector<ObjectReference> objects;
         std::vector<uint8> filenamesBuffer;
-        objects.resize(hdr._objectRefCount);
-        objects.resize(hdr._filenamesBufferSize);
-        file.Read(AsPointer(objects.begin()), sizeof(ObjectReference), hdr._objectRefCount);
-        file.Read(AsPointer(filenamesBuffer.begin()), 1, hdr._filenamesBufferSize);
+
+        TRY {
+            BasicFile file(filename, "rb");
+            auto chunks = LoadChunkTable(file);
+            auto i = std::find_if(
+                chunks.begin(), chunks.end(), 
+                [](const ChunkHeader& hdr) { return hdr._type == ChunkType_Placements; });
+            if (i == chunks.end()) {
+                ThrowException(::Assets::Exceptions::InvalidResource(filename, "Missing correct chunks"));
+            }
+
+            file.Seek(i->_fileOffset, SEEK_SET);
+            PlacementsHeader hdr;
+            file.Read(&hdr, sizeof(hdr), 1);
+            if (hdr._version != 0) {
+                ThrowException(::Assets::Exceptions::InvalidResource(filename, 
+                    StringMeld<128>() << "Unexpected version number (" << hdr._version << ")"));
+            }
+
+            objects.resize(hdr._objectRefCount);
+            objects.resize(hdr._filenamesBufferSize);
+            file.Read(AsPointer(objects.begin()), sizeof(ObjectReference), hdr._objectRefCount);
+            file.Read(AsPointer(filenamesBuffer.begin()), 1, hdr._filenamesBufferSize);
+        } CATCH (const Utility::Exceptions::IOException&) { // catch file errors
+        } CATCH_END
 
         auto depValidation = std::make_shared<Assets::DependencyValidation>();
         RegisterFileDependency(depValidation, filename);
@@ -169,7 +173,7 @@ namespace SceneEngine
         typedef ModelRenderer::SortedModelDrawCalls PreparedState;
         
         auto GetCachedModel(const ResChar filename[]) -> const ModelScaffold&;
-        auto GetCachedPlacements(const char filename[]) -> const Placements&;
+        auto GetCachedPlacements(uint64 hash, const ResChar filename[]) -> const Placements&;
         void SetOverride(uint64 guid, const Placements* placements);
         auto GetModelFormat() -> std::shared_ptr<RenderCore::Assets::IModelFormat>& { return _modelFormat; }
 
@@ -243,9 +247,8 @@ namespace SceneEngine
         return *model;
     }
 
-    auto PlacementsRenderer::GetCachedPlacements(const char filename[]) -> const Placements&
+    auto PlacementsRenderer::GetCachedPlacements(uint64 filenameHash, const ResChar filename[]) -> const Placements&
     {
-        auto filenameHash = Hash64(filename);
         auto i = LowerBound(_cellOverrides, filenameHash);
         if (i != _cellOverrides.end() && i->first == filenameHash) {
             return *i->second._placements;
@@ -385,7 +388,7 @@ namespace SceneEngine
         for (unsigned c=0; c<placementCount; ++c) {
 
             auto& obj = objRef[c];
-            if (CullAABB(worldToCullSpace, obj._worldSpaceBoundary.first, obj._worldSpaceBoundary.second)) {
+            if (CullAABB(worldToCullSpace, obj._cellSpaceBoundary.first, obj._cellSpaceBoundary.second)) {
                 continue;
             }
 
@@ -399,7 +402,7 @@ namespace SceneEngine
 
             const float maxDistanceSq = 1000.f * 1000.f;
             float distanceSq = MagnitudeSquared(
-                .5f * (obj._worldSpaceBoundary.first + obj._worldSpaceBoundary.second) - cameraPosition);
+                .5f * (obj._cellSpaceBoundary.first + obj._cellSpaceBoundary.second) - cameraPosition);
             if (distanceSq > maxDistanceSq) {
                 continue;
             }
@@ -531,11 +534,13 @@ namespace SceneEngine
     {
     public:
         uint64 AddPlacement(
-            const Float3x4& objectToWorld, 
-            const std::pair<Float3, Float3>& worldSpaceBoundary,
+            const Float3x4& objectToCell, 
+            const std::pair<Float3, Float3>& cellSpaceBoundary,
             const ResChar modelFilename[], const ResChar materialFilename[]);
 
         std::vector<ObjectReference>& GetObjects() { return _objects; }
+
+        unsigned AddString(const ResChar str[]);
 
         DynamicPlacements(const Placements& copyFrom);
         DynamicPlacements();
@@ -547,47 +552,41 @@ namespace SceneEngine
         return generator();
     }
 
-    uint64 DynamicPlacements::AddPlacement(
-        const Float3x4& objectToWorld,
-        const std::pair<Float3, Float3>& worldSpaceBoundary,
-        const ResChar modelFilename[], const ResChar materialFilename[])
+    unsigned DynamicPlacements::AddString(const ResChar str[])
     {
-        unsigned modelOffset = ~unsigned(0x0), materialOffset = ~unsigned(0x0);
-        auto modelHash = Hash64(modelFilename);
-        auto materialHash = Hash64(materialFilename);
+        unsigned result = ~unsigned(0x0);
+        auto stringHash = Hash64(str);
 
-        for (auto i=_filenamesBuffer.begin(); i!=_filenamesBuffer.end() && (modelOffset == ~unsigned(0x0) || materialOffset == ~unsigned(0x0)); ++i) {
+        for (auto i=_filenamesBuffer.begin(); i!=_filenamesBuffer.end() && result == ~unsigned(0x0); ++i) {
             auto h = *(uint64*)AsPointer(i);
-            if (h == modelHash)     { modelOffset = unsigned(std::distance(_filenamesBuffer.begin(), i)); }
-            if (h == materialHash)  { materialOffset = unsigned(std::distance(_filenamesBuffer.begin(), i)); }
+            if (h == stringHash) { result = unsigned(std::distance(_filenamesBuffer.begin(), i)); }
 
             i += sizeof(uint64);
             i = std::find(i, _filenamesBuffer.end(), '\0');
         }
 
-        if (modelOffset == ~unsigned(0x0)) {
-            modelOffset = _filenamesBuffer.size();
-            auto length = XlStringLen(modelFilename);
+        if (result == ~unsigned(0x0)) {
+            result = _filenamesBuffer.size();
+            auto length = XlStringLen(str);
             _filenamesBuffer.resize(_filenamesBuffer.size() + sizeof(uint64) + length + sizeof(ResChar));
-            auto* dest = &_filenamesBuffer[modelOffset];
-            *(uint64*)dest = modelHash;
-            XlCopyString((ResChar*)PtrAdd(dest, sizeof(uint64)), length+1, modelFilename);
+            auto* dest = &_filenamesBuffer[result];
+            *(uint64*)dest = stringHash;
+            XlCopyString((ResChar*)PtrAdd(dest, sizeof(uint64)), length+1, str);
         }
 
-        if (materialOffset == ~unsigned(0x0)) {
-            materialOffset = _filenamesBuffer.size();
-            auto length = XlStringLen(materialFilename);
-            _filenamesBuffer.resize(_filenamesBuffer.size() + sizeof(uint64) + length + sizeof(ResChar));
-            auto* dest = &_filenamesBuffer[materialOffset];
-            *(uint64*)dest = materialHash;
-            XlCopyString((ResChar*)PtrAdd(dest, sizeof(uint64)), length+1, materialFilename);
-        }
+        return result;
+    }
 
+    uint64 DynamicPlacements::AddPlacement(
+        const Float3x4& objectToCell,
+        const std::pair<Float3, Float3>& cellSpaceBoundary,
+        const ResChar modelFilename[], const ResChar materialFilename[])
+    {
         ObjectReference newReference;
-        newReference._localToCell = objectToWorld;
-        newReference._worldSpaceBoundary = worldSpaceBoundary;
-        newReference._modelFilenameOffset = modelOffset;
-        newReference._materialFilenameOffset = materialOffset;
+        newReference._localToCell = objectToCell;
+        newReference._cellSpaceBoundary = cellSpaceBoundary;
+        newReference._modelFilenameOffset = AddString(modelFilename);
+        newReference._materialFilenameOffset = AddString(materialFilename);
         newReference._guid = BuildGuid();
 
             // Insert the new object in sorted order
@@ -632,6 +631,7 @@ namespace SceneEngine
 
         std::shared_ptr<PlacementsRenderer> _renderer;
         std::shared_ptr<DynamicPlacements> GetDynPlacements(uint64 cellGuid);
+        Float4x4 GetCellToWorld(uint64 cellGuid);
         const char* GetCellName(uint64 cellGuid);
     };
 
@@ -642,6 +642,15 @@ namespace SceneEngine
             return p->_filename;
         }
         return nullptr;
+    }
+
+    Float4x4 PlacementsEditor::Pimpl::GetCellToWorld(uint64 cellGuid)
+    {
+        auto p = std::lower_bound(_cells.cbegin(), _cells.cend(), cellGuid, RegisteredCell::CompareHash());
+        if (p != _cells.end() && p->_filenameHash == cellGuid) {
+            return p->_cellToWorld;
+        }
+        return Identity<Float4x4>();
     }
 
     std::shared_ptr<DynamicPlacements> PlacementsEditor::Pimpl::GetDynPlacements(uint64 cellGuid)
@@ -674,57 +683,9 @@ namespace SceneEngine
         return p->second;
     }
 
-    PlacementGUID  PlacementsEditor::AddPlacement(
-        const PlacementsTransform& objectToWorld, 
-        const char modelFilename[], const char materialFilename[])
-    {
-        //  Add a new placement with the given transformation
-        //  * first, we need to look for the cell that is registered at this location
-        //  * if there is a dynamic placements object already created for that cell,
-        //      then we can just add it to the dynamic placements object.
-        //  * otherwise, we need to create a new dynamic placements object (which will
-        //      be initialized with the static placements)
-        //
-        //  Note that we're going to need to know the bounding box for this model,
-        //  whatever happens. So, if the first thing we can do is load the scaffold
-        //  to get at the bounding box and use the center point of that box to search
-        //  for the right cell.
-        //
-        //  Objects that straddle a cell boundary must be placed in only one of those
-        //  cells -- so sometimes objects will stick out the side of a cell.
-
-        auto& model = _pimpl->_renderer->GetCachedModel(modelFilename);
-        auto boundingBoxCentre = LinearInterpolate(model.GetBoundingBox().first, model.GetBoundingBox().second, 0.5f);
-        auto worldSpaceCenter = TransformPoint(objectToWorld, boundingBoxCentre);
-
-        std::string defMatName = _pimpl->_renderer->GetModelFormat()->DefaultMaterialName(model);
-        if (!materialFilename || !materialFilename[0]) {
-            materialFilename = defMatName.c_str();
-        }
-
-        for (auto i=_pimpl->_cells.cbegin(); i!=_pimpl->_cells.cend(); ++i) {
-            if (    worldSpaceCenter[0] >= i->_mins[0] && worldSpaceCenter[0] < i->_maxs[0]
-                &&  worldSpaceCenter[1] >= i->_mins[1] && worldSpaceCenter[1] < i->_maxs[1]) {
-                
-                    // This is the correct cell. Look for a dynamic placement associated
-                auto dynPlacements = _pimpl->GetDynPlacements(i->_filenameHash);
-
-                auto objectToCell = AsFloat3x4(Combine(AsFloat4x4(objectToWorld), InvertOrthonormalTransform(i->_cellToWorld)));
-                auto id = dynPlacements->AddPlacement(
-                    objectToCell, TransformBoundingBox(objectToCell, model.GetBoundingBox()),
-                    modelFilename, materialFilename);
-
-                return PlacementGUID(i->_filenameHash, id);
-
-            }
-        }
-
-        return PlacementGUID(0, 0);   // could 0 be a valid hash value? Maybe, but very unlikely
-    }
-
     std::vector<PlacementGUID> PlacementsEditor::Find_RayIntersection(
         const Float3& rayStart, const Float3& rayEnd,
-        const std::function<bool(const ObjectDef&)>& predicate)
+        const std::function<bool(const ObjIntersectionDef&)>& predicate)
     {
         std::vector<PlacementGUID> result;
         const float placementAssumedMaxRadius = 100.f;
@@ -741,13 +702,13 @@ namespace SceneEngine
                 TransformPoint(worldToCell, rayEnd));
 
             TRY {
-                auto& p = _pimpl->_renderer->GetCachedPlacements(i->_filename);
+                auto& p = _pimpl->_renderer->GetCachedPlacements(i->_filenameHash, i->_filename);
                 for (unsigned c=0; c<p.GetObjectReferenceCount(); ++c) {
                     auto& obj = p.GetObjectReferences()[c];
                         //  We're only doing a very rough world space bounding box vs ray test here...
                         //  Ideally, we should follow up with a more accurate test using the object loca
                         //  space bounding box
-                    if (!RayVsAABB(cellSpaceRay, nullptr, obj._worldSpaceBoundary.first, obj._worldSpaceBoundary.second)) {
+                    if (!RayVsAABB(cellSpaceRay, obj._cellSpaceBoundary.first, obj._cellSpaceBoundary.second)) {
                         continue;
                     }
 
@@ -760,7 +721,7 @@ namespace SceneEngine
                     }
 
                     if (predicate) {
-                        ObjectDef def;
+                        ObjIntersectionDef def;
                         def._localToWorld = Combine(obj._localToCell, i->_cellToWorld);
 
                             // note -- we have access to the cell space bounding box. But the local
@@ -785,7 +746,7 @@ namespace SceneEngine
 
     std::vector<PlacementGUID> PlacementsEditor::Find_BoxIntersection(
         const Float3& worldSpaceMins, const Float3& worldSpaceMaxs,
-        const std::function<bool(const ObjectDef&)>& predicate)
+        const std::function<bool(const ObjIntersectionDef&)>& predicate)
     {
             //  Look through all placements to find any that intersect with the given
             //  world space bounding box. 
@@ -819,20 +780,20 @@ namespace SceneEngine
                 //  override placements associated with this cell. It's a little awkward
                 //  Note that we could use the quad tree to acceleration these tests.
             TRY {
-                auto& p = _pimpl->_renderer->GetCachedPlacements(i->_filename);
+                auto& p = _pimpl->_renderer->GetCachedPlacements(i->_filenameHash, i->_filename);
                 for (unsigned c=0; c<p.GetObjectReferenceCount(); ++c) {
                     auto& obj = p.GetObjectReferences()[c];
-                    if (   cellSpaceBB.second[0] < obj._worldSpaceBoundary.first[0]
-                        || cellSpaceBB.second[1] < obj._worldSpaceBoundary.first[1]
-                        || cellSpaceBB.second[2] < obj._worldSpaceBoundary.first[2]
-                        || cellSpaceBB.first[0]  > obj._worldSpaceBoundary.second[0]
-                        || cellSpaceBB.first[1]  > obj._worldSpaceBoundary.second[1]
-                        || cellSpaceBB.first[2]  > obj._worldSpaceBoundary.second[2]) {
+                    if (   cellSpaceBB.second[0] < obj._cellSpaceBoundary.first[0]
+                        || cellSpaceBB.second[1] < obj._cellSpaceBoundary.first[1]
+                        || cellSpaceBB.second[2] < obj._cellSpaceBoundary.first[2]
+                        || cellSpaceBB.first[0]  > obj._cellSpaceBoundary.second[0]
+                        || cellSpaceBB.first[1]  > obj._cellSpaceBoundary.second[1]
+                        || cellSpaceBB.first[2]  > obj._cellSpaceBoundary.second[2]) {
                         continue;
                     }
 
                     if (predicate) {
-                        ObjectDef def;
+                        ObjIntersectionDef def;
                         def._localToWorld = Combine(obj._localToCell, i->_cellToWorld);
 
                         auto& model = _pimpl->_renderer->GetCachedModel(
@@ -866,33 +827,265 @@ namespace SceneEngine
         bool operator()(const Placements::ObjectReference& lhs, const Placements::ObjectReference& rhs) { return lhs._guid < rhs._guid; }
     };
 
-    void PlacementsEditor::DeletePlacements(const std::vector<PlacementGUID>& originalPlacements)
+    class Transaction : public PlacementsEditor::ITransaction
     {
-            //  We need to sort; because this method is mostly assuming we're working
+    public:
+        typedef PlacementsEditor::ObjTransDef ObjTransDef;
+        typedef PlacementsEditor::PlacementsTransform PlacementsTransform;
+
+        const ObjTransDef&  GetObject(unsigned index) const;
+        const ObjTransDef&  GetObjectOriginalState(unsigned index) const;
+        PlacementGUID       GetGUID(unsigned index) const;
+        unsigned            GetObjectCount() const;
+
+        virtual void        SetObject(unsigned index, const ObjTransDef& newState);
+
+        virtual bool        Create(const ObjTransDef& newState);
+        virtual void        Delete(unsigned index);
+
+        virtual void    Commit();
+        virtual void    Cancel();
+
+        Transaction(
+            PlacementsEditor::Pimpl*            editorPimpl,
+            const std::vector<PlacementGUID>&   starterObjects);
+        ~Transaction();
+
+    protected:
+        PlacementsEditor::Pimpl*        _editorPimpl;
+
+        std::vector<ObjTransDef>        _originalState;
+        std::vector<ObjTransDef>        _objects;
+        std::vector<PlacementGUID>      _guids;
+
+        void PushObj(unsigned index, const ObjTransDef& newState);
+
+        enum State { Active, Committed };
+        State _state;
+    };
+
+    auto            Transaction::GetObject(unsigned index) const -> const ObjTransDef& { return _objects[index]; }
+    auto            Transaction::GetObjectOriginalState(unsigned index) const -> const ObjTransDef& { return _originalState[index]; }
+    PlacementGUID   Transaction::GetGUID(unsigned index) const { return _guids[index]; }
+
+    unsigned        Transaction::GetObjectCount() const
+    {
+        assert(_guids.size() == _originalState.size());
+        assert(_guids.size() == _objects.size());
+        return _guids.size();
+    }
+
+    void        Transaction::SetObject(unsigned index, const ObjTransDef& newState)
+    {
+        auto& currentState = _objects[index];
+        auto currTrans = currentState._transaction;
+        if (currTrans != ObjTransDef::Error && currTrans != ObjTransDef::Deleted) {
+            currentState = newState;
+            currentState._transaction = (currTrans == ObjTransDef::Created) ? ObjTransDef::Created : ObjTransDef::Modified;
+            PushObj(index, currentState);
+        }
+    }
+
+    static bool CompareGUID(const PlacementGUID& lhs, const PlacementGUID& rhs)
+    {
+        if (lhs.first == rhs.first) { return lhs.second < rhs.second; }
+        return lhs.first < rhs.first;
+    }
+
+    bool    Transaction::Create(const ObjTransDef& newState)
+    {
+        //  Add a new placement with the given transformation
+        //  * first, we need to look for the cell that is registered at this location
+        //  * if there is a dynamic placements object already created for that cell,
+        //      then we can just add it to the dynamic placements object.
+        //  * otherwise, we need to create a new dynamic placements object (which will
+        //      be initialized with the static placements)
+        //
+        //  Note that we're going to need to know the bounding box for this model,
+        //  whatever happens. So, if the first thing we can do is load the scaffold
+        //  to get at the bounding box and use the center point of that box to search
+        //  for the right cell.
+        //
+        //  Objects that straddle a cell boundary must be placed in only one of those
+        //  cells -- so sometimes objects will stick out the side of a cell.
+
+        auto& model = _editorPimpl->_renderer->GetCachedModel(newState._model.c_str());
+        auto boundingBoxCentre = LinearInterpolate(model.GetBoundingBox().first, model.GetBoundingBox().second, 0.5f);
+        auto worldSpaceCenter = TransformPoint(newState._localToWorld, boundingBoxCentre);
+
+        std::string materialFilename = newState._material;
+        if (materialFilename.empty()) {
+            materialFilename = _editorPimpl->_renderer->GetModelFormat()->DefaultMaterialName(model);
+        }
+
+        PlacementGUID guid(0, 0);
+        PlacementsTransform localToCell = Identity<PlacementsTransform>();
+
+        for (auto i=_editorPimpl->_cells.cbegin(); i!=_editorPimpl->_cells.cend(); ++i) {
+            if (    worldSpaceCenter[0] >= i->_mins[0] && worldSpaceCenter[0] < i->_maxs[0]
+                &&  worldSpaceCenter[1] >= i->_mins[1] && worldSpaceCenter[1] < i->_maxs[1]) {
+                
+                    // This is the correct cell. Look for a dynamic placement associated
+                auto dynPlacements = _editorPimpl->GetDynPlacements(i->_filenameHash);
+
+                localToCell = AsFloat3x4(Combine(newState._localToWorld, InvertOrthonormalTransform(i->_cellToWorld)));
+                auto id = dynPlacements->AddPlacement(
+                    localToCell, TransformBoundingBox(localToCell, model.GetBoundingBox()),
+                    newState._model.c_str(), materialFilename.c_str());
+
+                guid = PlacementGUID(i->_filenameHash, id);
+                break;
+
+            }
+        }
+
+        if (guid.first == 0 && guid.second == 0) return false;    // couldn't find a way to create this object
+        
+        ObjTransDef newObj = newState;
+        newObj._transaction = ObjTransDef::Created;
+
+        ObjTransDef originalState;
+        originalState._localToWorld = Identity<Float4x4>();
+        originalState._transaction = ObjTransDef::Error;
+
+        auto insertLoc = std::lower_bound(_guids.begin(), _guids.end(), guid, CompareGUID);
+        auto insertIndex = std::distance(_guids.begin(), insertLoc);
+
+        _originalState.insert(_originalState.begin() + insertIndex, originalState);
+        _objects.insert(_objects.begin() + insertIndex, newObj);
+        _guids.insert(_guids.begin() + insertIndex, guid);
+
+        return true;
+    }
+
+    void    Transaction::Delete(unsigned index)
+    {
+        _objects[index]._transaction = ObjTransDef::Deleted;
+        PushObj(index, _objects[index]);
+    }
+
+    void Transaction::PushObj(unsigned index, const ObjTransDef& newState)
+    {
+            // update the DynPlacements object with the changes to the object at index "index"
+        if (newState._transaction == ObjTransDef::Unchanged || newState._transaction == ObjTransDef::Error) { return; }
+            
+        std::vector<ObjTransDef> originalState;
+        
+        auto guid = _guids[index];
+
+        auto cellToWorld = _editorPimpl->GetCellToWorld(guid.first);
+        auto& dynPlacements = *_editorPimpl->GetDynPlacements(guid.first);
+        auto& objects = dynPlacements.GetObjects();
+
+        auto dst = std::lower_bound(objects.begin(), objects.end(), guid.second, CompareObjectId());
+
+        std::pair<Float3, Float3> cellSpaceBoundary;
+        PlacementsTransform localToCell;
+        std::string materialFilename = newState._material;
+        if (newState._transaction != ObjTransDef::Deleted) {
+            localToCell = AsFloat3x4(Combine(newState._localToWorld, InvertOrthonormalTransform(cellToWorld)));
+
+            auto& model = _editorPimpl->_renderer->GetCachedModel(newState._model.c_str());
+            cellSpaceBoundary = TransformBoundingBox(localToCell, model.GetBoundingBox());
+
+            if (materialFilename.empty()) {
+                materialFilename = _editorPimpl->_renderer->GetModelFormat()->DefaultMaterialName(model);
+            }
+        }
+
+            // todo --  handle the case where an object should move to another cell!
+            //          this should actually change the first part of the GUID
+
+        if (dst != objects.end() && dst->_guid == guid.second) {
+                // we found the referenced object already existing
+            if (newState._transaction == ObjTransDef::Deleted) {
+                dst = objects.erase(dst);
+            } else {
+                dst->_localToCell = localToCell;
+                dst->_modelFilenameOffset = dynPlacements.AddString(newState._model.c_str());
+                dst->_materialFilenameOffset = dynPlacements.AddString(materialFilename.c_str());
+                dst->_cellSpaceBoundary = cellSpaceBoundary;
+            }
+        } else {
+                // the referenced object wasn't there. We may have to create it
+            if (newState._transaction == ObjTransDef::Created) {
+                dynPlacements.AddPlacement(
+                    localToCell, cellSpaceBoundary, 
+                    newState._model.c_str(), materialFilename.c_str());
+            }
+        }
+    }
+
+    void    Transaction::Commit()
+    {
+        _state = Committed;
+    }
+
+    void    Transaction::Cancel()
+    {
+        assert(0);
+        _state = Committed;
+    }
+
+    Transaction::Transaction(
+        PlacementsEditor::Pimpl*            editorPimpl,
+        const std::vector<PlacementGUID>&   starterObjects)
+    {
+        //  We need to sort; because this method is mostly assuming we're working
             //  with a sorted list. Most of the time originalPlacements will be close
             //  to sorted order (which, of course, means that quick sort isn't ideal, but, anyway...)
-        auto placements = originalPlacements;
-        std::sort(placements.begin(), placements.end(),
-            [](const PlacementGUID& lhs, const PlacementGUID& rhs) -> bool {
-                if (lhs.first == rhs.first) { return lhs.second < rhs.second; }
-                return lhs.first < rhs.first;
-            });
+        auto guids = starterObjects;
+        std::sort(guids.begin(), guids.end(), CompareGUID);
 
-        for (auto i=placements.begin(); i!=placements.end();) {
-            auto iend = std::find_if(i, placements.end(), [&](const PlacementGUID& guid) { return guid.first != i->first; });
-            auto dynPlacements = _pimpl->GetDynPlacements(i->first);
-            auto& placeObjects = dynPlacements->GetObjects();
-            auto pIterator = placeObjects.begin();
+        std::vector<ObjTransDef> originalState;
+        auto cellIterator = editorPimpl->_cells.begin();
+        for (auto i=guids.begin(); i!=guids.end();) {
+            auto iend = std::find_if(i, guids.end(), 
+                [&](const PlacementGUID& guid) { return guid.first != i->first; });
+
+            cellIterator = std::lower_bound(cellIterator, editorPimpl->_cells.end(), i->first, PlacementsEditor::Pimpl::RegisteredCell::CompareHash());
+            if (cellIterator == editorPimpl->_cells.end() || cellIterator->_filenameHash != i->first) {
+                continue;
+            }
+
+            auto cellToWorld = cellIterator->_cellToWorld;
+
+            auto& placements = editorPimpl->_renderer->GetCachedPlacements(cellIterator->_filenameHash, cellIterator->_filename);
+            auto pIterator = placements.GetObjectReferences();
+            auto pEnd = &placements.GetObjectReferences()[placements.GetObjectReferenceCount()];
             for (;i != iend; ++i) {
-                    //  here, we're assuming everything is sorted, so we can just march forward
+                    //  Here, we're assuming everything is sorted, so we can just march forward
                     //  through the destination placements list
-                pIterator = std::lower_bound(
-                    placeObjects.begin(), placeObjects.end(), i->second, CompareObjectId());
-                if (pIterator != placeObjects.end() && pIterator->_guid == i->second) {
-                        // note -- not removing unreferenced filenames
-                    pIterator = placeObjects.erase(pIterator);
+                pIterator = std::lower_bound(pIterator, pEnd, i->second, CompareObjectId());
+                if (pIterator != pEnd && pIterator->_guid == i->second) {
+                        // Build a ObjTransDef object from this object, and record it
+                    ObjTransDef def;
+                    def._localToWorld = Combine(pIterator->_localToCell, cellToWorld);
+                    def._model = (const char*)PtrAdd(placements.GetFilenamesBuffer(), sizeof(uint64) + pIterator->_modelFilenameOffset);
+                    def._material = (const char*)PtrAdd(placements.GetFilenamesBuffer(), sizeof(uint64) + pIterator->_materialFilenameOffset);
+                    def._transaction = ObjTransDef::Unchanged;
+                    originalState.push_back(def);
+                } else {
+                        // we couldn't find an original for this object. It's invalid
+                    ObjTransDef def;
+                    def._localToWorld = Identity<Float4x4>();
+                    def._transaction = ObjTransDef::Error;
+                    originalState.push_back(def);
                 }
             }
+        }
+
+        _objects = originalState;
+        _originalState = std::move(originalState);
+        _guids = std::move(guids);
+        _editorPimpl = editorPimpl;
+        _state = Active;
+    }
+
+    Transaction::~Transaction()
+    {
+        if (_state == Active) {
+            Cancel();
         }
     }
 
@@ -916,11 +1109,14 @@ namespace SceneEngine
         unsigned techniqueIndex,
         const PlacementGUID* begin, const PlacementGUID* end)
     {
+        _pimpl->_renderer->EnterState(context);
+
+            //  We need to take a copy, so we don't overwrite
+            //  and reorder the caller's version.
         std::vector<PlacementGUID> copy(begin, end);
         std::sort(copy.begin(), copy.end());
 
         auto ci = _pimpl->_cells.begin();
-
         for (auto i=copy.begin(); i!=copy.end();) {
             auto i2 = i+1;
             for (; i2!=copy.end() && i2->first == i->first; ++i2) {}
@@ -937,6 +1133,7 @@ namespace SceneEngine
                 _pimpl->_renderer->Render(
                     context, parserContext, techniqueIndex,
                     *ci, tStart, t);
+
             } else {
                 i = i2;
             }
@@ -946,6 +1143,11 @@ namespace SceneEngine
     std::shared_ptr<RenderCore::Assets::IModelFormat> PlacementsEditor::GetModelFormat()
     {
         return _pimpl->_renderer->GetModelFormat();
+    }
+
+    auto PlacementsEditor::Transaction_Begin(const std::vector<PlacementGUID>& placements) -> std::shared_ptr<ITransaction>
+    {
+        return std::make_shared<Transaction>(_pimpl.get(), placements);
     }
 
     PlacementsEditor::PlacementsEditor(std::shared_ptr<PlacementsRenderer> renderer)
@@ -971,7 +1173,7 @@ namespace SceneEngine
 
         Data data;
         data.Load((const char*)sourceFile.get(), int(fileSize));
-        auto* c = data.ChildWithValue("TerrainConfig");
+        auto* c = data.ChildWithValue("PlacementsConfig");
         if (c) {
             _cellCount = Deserialize(c, "CellCount", _cellCount);
             _cellSize = Deserialize(c, "CellSize", _cellSize);

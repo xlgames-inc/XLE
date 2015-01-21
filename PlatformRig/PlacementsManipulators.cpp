@@ -18,6 +18,8 @@
 #include "../SceneEngine/Terrain.h"
 #include "../SceneEngine/SceneParser.h"
 #include "../SceneEngine/Techniques.h"
+#include "../SceneEngine/LightingParserContext.h"
+#include "../SceneEngine/CommonResources.h"
 
 #include "../Utility/TimeUtils.h"
 #include "../Math/Transformations.h"
@@ -153,7 +155,31 @@ namespace Tools
         Millisecond                     _spawnTimer;
         std::shared_ptr<SelectedModel>  _selectedModel;
         std::shared_ptr<SceneEngine::PlacementsEditor> _editor;
+        unsigned                        _rendersSinceHitTest;
+
+        std::shared_ptr<SceneEngine::PlacementsEditor::ITransaction> _transaction;
+
+        void MoveObject(const Float3& newLocation);
     };
+
+    void PlaceSingle::MoveObject(const Float3& newLocation)
+    {
+        if (!_transaction) {
+            _transaction = _editor->Transaction_Begin(std::vector<SceneEngine::PlacementGUID>());
+        }
+
+        SceneEngine::PlacementsEditor::ObjTransDef newState(
+            AsFloat4x4(newLocation), _selectedModel->_modelName, std::string());
+
+        TRY {
+            if (!_transaction->GetObjectCount()) {
+                _transaction->Create(newState);
+            } else {
+                _transaction->SetObject(0, newState);
+            }
+        } CATCH (...) {
+        } CATCH_END
+    }
 
     bool PlaceSingle::OnInputEvent(
         const InputSnapshot& evnt,
@@ -161,23 +187,30 @@ namespace Tools
     {
         //  If we get a click on the terrain, then we should perform 
             //  whatever placement operation is required (eg, creating new placements)
-        const Millisecond spawnTimeOut = 200;
-        auto now = Millisecond_Now();
-        if (evnt.IsHeld_LButton() && now >= (_spawnTimer + spawnTimeOut) && !_selectedModel->_modelName.empty()) {
+        if (_selectedModel->_modelName.empty()) {
+            if (_transaction) {
+                _transaction->Cancel();
+                _transaction.reset();
+            }
+            return false;
+        }
+
+        if (_rendersSinceHitTest > 0) {
+            _rendersSinceHitTest = 0;
+
             auto test = hitTestContext.DoHitTest(evnt._mousePosition);
             if (test._type == HitTestResolver::Result::Terrain) {
 
                     //  This is a spawn event. We should add a new item of the selected model
                     //  at the point clicked.
-                TRY {
-                    _editor->AddPlacement(
-                        AsFloat3x4(test._worldSpaceCollision), 
-                        _selectedModel->_modelName.c_str(), "");
-                } CATCH (...) {
-                } CATCH_END
+                MoveObject(test._worldSpaceCollision);
+            }
+        }
 
-                _spawnTimer = now;
-                return true;
+        if (evnt.IsRelease_LButton()) {
+            if (_transaction) {
+                _transaction->Commit();
+                _transaction.reset();
             }
         }
 
@@ -188,6 +221,7 @@ namespace Tools
         RenderCore::Metal::DeviceContext* context,
         SceneEngine::LightingParserContext& parserContext)
     {
+        ++_rendersSinceHitTest;
     }
 
     const char* PlaceSingle::GetName() const                                            { return "Place single"; }
@@ -201,6 +235,7 @@ namespace Tools
         _spawnTimer = 0;
         _selectedModel = std::move(selectedModel);
         _editor = std::move(editor);
+        _rendersSinceHitTest = 0;
     }
     
     PlaceSingle::~PlaceSingle() {}
@@ -290,6 +325,38 @@ namespace Tools
 
     CommonOffscreenTarget::~CommonOffscreenTarget() {}
 
+    class HighlightShaders
+    {
+    public:
+        class Desc {};
+
+        RenderCore::Metal::ShaderProgram* _drawHighlight;
+        RenderCore::Metal::BoundUniforms _drawHighlightUniforms;
+
+        const Assets::DependencyValidation& GetDependancyValidation() const   { return *_validationCallback; }
+
+        HighlightShaders(const Desc&);
+    protected:
+        std::shared_ptr<Assets::DependencyValidation>  _validationCallback;
+    };
+
+    HighlightShaders::HighlightShaders(const Desc&)
+    {
+        auto* drawHighlight = &::Assets::GetAssetDep<RenderCore::Metal::ShaderProgram>(
+            "game/xleres/basic2D.vsh:fullscreen:vs_*", 
+            "game/xleres/effects/outlinehighlight.psh:main:ps_*");
+
+        RenderCore::Metal::BoundUniforms uniforms(*drawHighlight);
+        SceneEngine::TechniqueContext::BindGlobalUniforms(uniforms);
+
+        auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
+        ::Assets::RegisterAssetDependency(validationCallback, &drawHighlight->GetDependancyValidation());
+
+        _validationCallback = std::move(validationCallback);
+        _drawHighlight = std::move(drawHighlight);
+        _drawHighlightUniforms = std::move(uniforms);
+    }
+
     void SelectAndEdit::Render(
         RenderCore::Metal::DeviceContext* context,
         SceneEngine::LightingParserContext& parserContext)
@@ -304,25 +371,41 @@ namespace Tools
                 //  likely get the most efficient results by rendering
                 //  all of objects that require highlights in one go.
 
-            using namespace SceneEngine;
-            using namespace RenderCore;
-            SavedTargets savedTargets(context);
-            const auto& viewport = savedTargets.GetViewports()[0];
+            TRY {
+                using namespace SceneEngine;
+                using namespace RenderCore;
+                SavedTargets savedTargets(context);
+                const auto& viewport = savedTargets.GetViewports()[0];
 
-            auto& offscreen = FindCachedBox<CommonOffscreenTarget>(
-                CommonOffscreenTarget::Desc(unsigned(viewport.Width), unsigned(viewport.Height), 
-                Metal::NativeFormat::R8G8B8A8_UNORM));
+                auto& offscreen = FindCachedBox<CommonOffscreenTarget>(
+                    CommonOffscreenTarget::Desc(unsigned(viewport.Width), unsigned(viewport.Height), 
+                    Metal::NativeFormat::R8G8B8A8_UNORM));
 
-            context->Bind(MakeResourceList(offscreen._rtv), nullptr);
-            context->Clear(offscreen._rtv, Float4(0.f, 0.f, 0.f, 0.f));
-            _editor->RenderFiltered(
-                context, parserContext, 0, 
-                AsPointer(_activeSelection.cbegin()), AsPointer(_activeSelection.cend()));
+                context->Bind(MakeResourceList(offscreen._rtv), nullptr);
+                context->Clear(offscreen._rtv, Float4(0.f, 0.f, 0.f, 0.f));
+                _editor->RenderFiltered(
+                    context, parserContext, 0, 
+                    AsPointer(_activeSelection.cbegin()), AsPointer(_activeSelection.cend()));
 
-            savedTargets.ResetToOldTargets(context);
+                savedTargets.ResetToOldTargets(context);
 
-                //  now we can render these objects over the main image, 
-                //  using some filtering
+                    //  now we can render these objects over the main image, 
+                    //  using some filtering
+
+                context->BindPS(MakeResourceList(offscreen._srv));
+
+                auto& shaders = FindCachedBoxDep<HighlightShaders>(HighlightShaders::Desc());
+                shaders._drawHighlightUniforms.Apply(
+                    *context, 
+                    parserContext.GetGlobalUniformsStream(), RenderCore::Metal::UniformsStream());
+                context->Bind(*shaders._drawHighlight);
+                context->Bind(SceneEngine::CommonResources()._blendAlphaPremultiplied);
+                context->Bind(SceneEngine::CommonResources()._dssDisable);
+                context->Draw(4);
+            } 
+            CATCH (const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); } 
+            CATCH (const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); } 
+            CATCH_END
         }
     }
 
@@ -623,7 +706,7 @@ namespace Tools
         auto oldPlacements = _editor->Find_BoxIntersection(
             centre - Float3(_radius, _radius, _radius),
             centre + Float3(_radius, _radius, _radius),
-            [=](const SceneEngine::PlacementsEditor::ObjectDef& objectDef) -> bool
+            [=](const SceneEngine::PlacementsEditor::ObjIntersectionDef& objectDef) -> bool
             {
                 if (objectDef._model == modelGuid) {
                         // Make sure the object bounding box intersects with a cylinder around "centre"
@@ -642,7 +725,10 @@ namespace Tools
             //  We have a list of placements using the same model, and within the placement area.
             //  We want to either add or remove one.
 
-        _editor->DeletePlacements(oldPlacements);
+        auto trans = _editor->Transaction_Begin(oldPlacements);
+        for (unsigned c=0; c<trans->GetObjectCount(); ++c) {
+            trans->Delete(c);
+        }
             
             //  Note that the blur noise method we're using will probably not work 
             //  well with very small numbers of placements. So we're going to limit 
@@ -662,8 +748,11 @@ namespace Tools
 
             auto objectToWorld = AsFloat4x4(Expand(pt, height));
             Combine_InPlace(RotationZ(rand() * 2.f * gPI / float(RAND_MAX)), objectToWorld);
-            _editor->AddPlacement(AsFloat3x4(objectToWorld), modelName, materialName);
+            trans->Create(SceneEngine::PlacementsEditor::ObjTransDef(
+                objectToWorld, modelName, materialName));
         }
+
+        trans->Commit();
     }
 
     void ScatterPlacements::Render(
