@@ -11,6 +11,7 @@
 #include "../RenderCore/Metal/Forward.h"
 
 namespace SceneEngine { class LightingParserContext; class TerrainManager; class ISceneParser; class TechniqueContext; }
+namespace RenderCore { class CameraDesc; }
 
 namespace Tools
 {
@@ -60,6 +61,8 @@ namespace Tools
 
         Result DoHitTest(Int2 screenCoord) const;
         std::pair<Float3, Float3> CalculateWorldSpaceRay(Int2 screenCoord) const;
+        Float2 ProjectToScreenSpace(const Float3& worldSpaceCoord) const;
+        RenderCore::CameraDesc GetCameraDesc() const;
         HitTestResolver(
             std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
             std::shared_ptr<SceneEngine::ISceneParser> sceneParser,
@@ -119,6 +122,7 @@ namespace Tools
             // (warning -- result will probably contain pointers to internal memory within this manipulator)
         virtual std::pair<FloatParameter*, size_t>  GetFloatParameters() const = 0;     
         virtual std::pair<BoolParameter*, size_t>   GetBoolParameters() const = 0;
+        virtual void SetActivationState(bool newState) = 0;
 
         virtual ~IManipulator();
     };

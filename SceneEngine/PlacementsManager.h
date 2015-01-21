@@ -95,8 +95,10 @@ namespace SceneEngine
         public:
             virtual const ObjTransDef&  GetObject(unsigned index) const = 0;
             virtual const ObjTransDef&  GetObjectOriginalState(unsigned index) const = 0;
-            virtual PlacementGUID       GetGUID(unsigned index) const = 0;
+            virtual PlacementGUID       GetGuid(unsigned index) const = 0;
+            virtual PlacementGUID       GetOriginalGuid(unsigned index) const = 0;
             virtual unsigned            GetObjectCount() const = 0;
+            virtual auto                GetLocalBoundingBox(unsigned index) const -> std::pair<Float3, Float3> = 0;
 
             virtual void    SetObject(unsigned index, const ObjTransDef& newState) = 0;
             virtual bool    Create(const ObjTransDef& newState) = 0;
@@ -104,9 +106,11 @@ namespace SceneEngine
 
             virtual void    Commit() = 0;
             virtual void    Cancel() = 0;
+            virtual void    UndoAndRestart() = 0;
         };
 
-        std::shared_ptr<ITransaction> Transaction_Begin(const std::vector<PlacementGUID>& placements);
+        std::shared_ptr<ITransaction> Transaction_Begin(
+            const PlacementGUID* placementsBegin, const PlacementGUID* placementsEnd);
 
             // -------------- intersections --------------
         std::vector<PlacementGUID> Find_BoxIntersection(

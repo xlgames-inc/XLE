@@ -23,6 +23,7 @@
 
 #include "../Utility/TimeUtils.h"
 #include "../Math/Transformations.h"
+#include "../Math/Geometry.h"
 
 #include "../BufferUploads/IBufferUploads.h"
 #include "../SceneEngine/SceneEngineUtility.h"
@@ -61,6 +62,8 @@ namespace Tools
 
         PlacementsWidgets(  std::shared_ptr<SceneEngine::PlacementsEditor> editor, 
                             std::shared_ptr<HitTestResolver> hitTestResolver);
+        ~PlacementsWidgets();
+
     private:
         typedef Overlays::ModelBrowser ModelBrowser;
 
@@ -96,20 +99,25 @@ namespace Tools
         return result;
     }
 
-    std::pair<Float3, Float3> HitTestResolver::CalculateWorldSpaceRay(Int2 screenCoord) const
+    static Float4x4 CalculateWorldToProjection(const RenderCore::CameraDesc& sceneCamera, float viewportAspect)
     {
-        RECT clientRect; GetClientRect(GetActiveWindow(), &clientRect);
-
-        auto sceneCamera = _sceneParser->GetCameraDesc();
         auto projectionMatrix = RenderCore::PerspectiveProjection(
-            sceneCamera._verticalFieldOfView, (clientRect.right - clientRect.left) / float(clientRect.bottom - clientRect.top),
+            sceneCamera._verticalFieldOfView, viewportAspect,
             sceneCamera._nearClip, sceneCamera._farClip, RenderCore::GeometricCoordinateSpace::RightHanded, 
             #if (GFXAPI_ACTIVE == GFXAPI_DX11) || (GFXAPI_ACTIVE == GFXAPI_DX9)
                 RenderCore::ClipSpaceType::Positive);
             #else
                 RenderCore::ClipSpaceType::StraddlingZero);
             #endif
-        auto worldToProjection = Combine(InvertOrthonormalTransform(sceneCamera._cameraToWorld), projectionMatrix);
+        return Combine(InvertOrthonormalTransform(sceneCamera._cameraToWorld), projectionMatrix);
+    }
+
+    std::pair<Float3, Float3> HitTestResolver::CalculateWorldSpaceRay(Int2 screenCoord) const
+    {
+        RECT clientRect; GetClientRect(GetActiveWindow(), &clientRect);
+        float aspect = (clientRect.right - clientRect.left) / float(clientRect.bottom - clientRect.top);
+        auto sceneCamera = _sceneParser->GetCameraDesc();
+        auto worldToProjection = CalculateWorldToProjection(sceneCamera, aspect);
 
         Float3 frustumCorners[8];
         CalculateAbsFrustumCorners(frustumCorners, worldToProjection);
@@ -121,6 +129,24 @@ namespace Tools
             std::make_pair(Float2(0.f, 0.f), Float2(float(clientRect.right - clientRect.left), float(clientRect.bottom - clientRect.top))));
     }
 
+    Float2 HitTestResolver::ProjectToScreenSpace(const Float3& worldSpaceCoord) const
+    {
+        RECT clientRect; GetClientRect(GetActiveWindow(), &clientRect);
+        float vWidth = float(clientRect.right - clientRect.left);
+        float vHeight = float(clientRect.bottom - clientRect.top);
+        auto worldToProjection = CalculateWorldToProjection(_sceneParser->GetCameraDesc(), vWidth / vHeight);
+        auto projCoords = worldToProjection * Expand(worldSpaceCoord, 1.f);
+
+        return Float2(
+            (projCoords[0] / projCoords[3] * 0.5f + 0.5f) * vWidth,
+            (projCoords[1] / projCoords[3] * -0.5f + 0.5f) * vHeight);
+    }
+
+    RenderCore::CameraDesc HitTestResolver::GetCameraDesc() const 
+    { 
+        return _sceneParser->GetCameraDesc();
+    }
+
     HitTestResolver::HitTestResolver(
         std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
         std::shared_ptr<SceneEngine::ISceneParser> sceneParser,
@@ -129,116 +155,6 @@ namespace Tools
     , _sceneParser(std::move(sceneParser))
     , _techniqueContext(std::move(techniqueContext))
     {}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-    class PlaceSingle : public IManipulator
-    {
-    public:
-        bool OnInputEvent(
-            const InputSnapshot& evnt,
-            const HitTestResolver& hitTestContext);
-        void Render(
-            RenderCore::Metal::DeviceContext* context,
-            SceneEngine::LightingParserContext& parserContext);
-
-        const char* GetName() const;
-        std::pair<FloatParameter*, size_t>  GetFloatParameters() const;
-        std::pair<BoolParameter*, size_t>   GetBoolParameters() const;
-
-        PlaceSingle(
-            std::shared_ptr<SelectedModel> selectedModel,
-            std::shared_ptr<SceneEngine::PlacementsEditor> editor);
-        ~PlaceSingle();
-
-    protected:
-        Millisecond                     _spawnTimer;
-        std::shared_ptr<SelectedModel>  _selectedModel;
-        std::shared_ptr<SceneEngine::PlacementsEditor> _editor;
-        unsigned                        _rendersSinceHitTest;
-
-        std::shared_ptr<SceneEngine::PlacementsEditor::ITransaction> _transaction;
-
-        void MoveObject(const Float3& newLocation);
-    };
-
-    void PlaceSingle::MoveObject(const Float3& newLocation)
-    {
-        if (!_transaction) {
-            _transaction = _editor->Transaction_Begin(std::vector<SceneEngine::PlacementGUID>());
-        }
-
-        SceneEngine::PlacementsEditor::ObjTransDef newState(
-            AsFloat4x4(newLocation), _selectedModel->_modelName, std::string());
-
-        TRY {
-            if (!_transaction->GetObjectCount()) {
-                _transaction->Create(newState);
-            } else {
-                _transaction->SetObject(0, newState);
-            }
-        } CATCH (...) {
-        } CATCH_END
-    }
-
-    bool PlaceSingle::OnInputEvent(
-        const InputSnapshot& evnt,
-        const HitTestResolver& hitTestContext)
-    {
-        //  If we get a click on the terrain, then we should perform 
-            //  whatever placement operation is required (eg, creating new placements)
-        if (_selectedModel->_modelName.empty()) {
-            if (_transaction) {
-                _transaction->Cancel();
-                _transaction.reset();
-            }
-            return false;
-        }
-
-        if (_rendersSinceHitTest > 0) {
-            _rendersSinceHitTest = 0;
-
-            auto test = hitTestContext.DoHitTest(evnt._mousePosition);
-            if (test._type == HitTestResolver::Result::Terrain) {
-
-                    //  This is a spawn event. We should add a new item of the selected model
-                    //  at the point clicked.
-                MoveObject(test._worldSpaceCollision);
-            }
-        }
-
-        if (evnt.IsRelease_LButton()) {
-            if (_transaction) {
-                _transaction->Commit();
-                _transaction.reset();
-            }
-        }
-
-        return false;
-    }
-
-    void PlaceSingle::Render(
-        RenderCore::Metal::DeviceContext* context,
-        SceneEngine::LightingParserContext& parserContext)
-    {
-        ++_rendersSinceHitTest;
-    }
-
-    const char* PlaceSingle::GetName() const                                            { return "Place single"; }
-    auto PlaceSingle::GetFloatParameters() const -> std::pair<FloatParameter*, size_t>  { return std::make_pair(nullptr, 0); }
-    auto PlaceSingle::GetBoolParameters() const -> std::pair<BoolParameter*, size_t>    { return std::make_pair(nullptr, 0); }
-
-    PlaceSingle::PlaceSingle(
-        std::shared_ptr<SelectedModel> selectedModel,
-        std::shared_ptr<SceneEngine::PlacementsEditor> editor)
-    {
-        _spawnTimer = 0;
-        _selectedModel = std::move(selectedModel);
-        _editor = std::move(editor);
-        _rendersSinceHitTest = 0;
-    }
-    
-    PlaceSingle::~PlaceSingle() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -255,32 +171,294 @@ namespace Tools
         const char* GetName() const;
         std::pair<FloatParameter*, size_t>  GetFloatParameters() const;
         std::pair<BoolParameter*, size_t>   GetBoolParameters() const;
+        void SetActivationState(bool);
 
         SelectAndEdit(
             std::shared_ptr<SceneEngine::PlacementsEditor> editor);
         ~SelectAndEdit();
 
     protected:
-        std::shared_ptr<SceneEngine::PlacementsEditor> _editor;
-        std::vector<std::pair<uint64, uint64>> _activeSelection;
+        std::shared_ptr<SceneEngine::PlacementsEditor>  _editor;
+                  
+        class SubOperation
+        {
+        public:
+            enum Type { None, Translate, Scale, Rotate, MoveAcrossTerrainSurface };
+            enum Axis { NoAxis, X, Y, Z };
+
+            Type    _type;
+            Float3  _parameter;
+            Axis    _axisRestriction;
+            Coord2  _cursorStart;
+            HitTestResolver::Result _anchorTerrainIntersection;
+
+            SubOperation() : _type(None), _parameter(0.f, 0.f, 0.f), _axisRestriction(NoAxis), _cursorStart(0, 0) {}
+        };
+        SubOperation _activeSubop;
+
+        std::shared_ptr<SceneEngine::PlacementsEditor::ITransaction> _transaction;
+        Float3 _anchorPoint;
+
+        SceneEngine::PlacementsEditor::ObjTransDef TransformObject(
+            const SceneEngine::PlacementsEditor::ObjTransDef& inputObj);
     };
+
+    SceneEngine::PlacementsEditor::ObjTransDef SelectAndEdit::TransformObject(
+        const SceneEngine::PlacementsEditor::ObjTransDef& inputObj)
+    {
+        Float4x4 transform;
+        if (_activeSubop._type == SubOperation::Rotate) {
+            transform = AsFloat4x4(-_anchorPoint);
+
+            if (XlAbs(_activeSubop._parameter[0]) > 0.f) {
+                Combine_InPlace(transform, RotationX(_activeSubop._parameter[0]));
+            }
+
+            if (XlAbs(_activeSubop._parameter[1]) > 0.f) {
+                Combine_InPlace(transform, RotationY(_activeSubop._parameter[1]));
+            }
+
+            if (XlAbs(_activeSubop._parameter[2]) > 0.f) {
+                Combine_InPlace(transform, RotationZ(_activeSubop._parameter[2]));
+            }
+
+            Combine_InPlace(transform, _anchorPoint);
+        } else if (_activeSubop._type == SubOperation::Scale) {
+            transform = AsFloat4x4(-_anchorPoint);
+            Combine_InPlace(transform, ArbitraryScale(_activeSubop._parameter));
+            Combine_InPlace(transform, _anchorPoint);
+        } else if (_activeSubop._type == SubOperation::Translate) {
+            transform = AsFloat4x4(_activeSubop._parameter);
+        } else if (_activeSubop._type == SubOperation::MoveAcrossTerrainSurface) {
+                //  move across terrain surface is a little different... 
+                //  we have a 2d translation in XY. But then the Z values should be calculated
+                //  from the terrain height.
+            Float2 finalXY = Truncate(ExtractTranslation(inputObj._localToWorld)) + Truncate(_activeSubop._parameter);
+            float terrainHeight = GetTerrainHeight(
+                *Sample::MainTerrainFormat.get(), Sample::MainTerrainConfig, Sample::MainTerrainCoords, 
+                finalXY);
+            transform = AsFloat4x4(-ExtractTranslation(inputObj._localToWorld) + Expand(finalXY, terrainHeight));
+        } else {
+            return inputObj;
+        }
+
+        auto res = inputObj;
+        res._localToWorld = Combine(res._localToWorld, transform);
+        return res;
+    }
 
     bool SelectAndEdit::OnInputEvent(
         const InputSnapshot& evnt,
         const HitTestResolver& hitTestContext)
     {
+        bool consume = false;
+        if (_transaction) {
+            static const auto keyG = KeyId_Make("g");
+            static const auto keyS = KeyId_Make("s");
+            static const auto keyR = KeyId_Make("r");
+            static const auto keyM = KeyId_Make("m");
+
+            static const auto keyX = KeyId_Make("x");
+            static const auto keyY = KeyId_Make("y");
+            static const auto keyZ = KeyId_Make("z");
+
+            SubOperation::Type newSubOp = SubOperation::None;
+            if (evnt.IsPress(keyG)) { newSubOp = SubOperation::Translate; consume = true; }
+            if (evnt.IsPress(keyS)) { newSubOp = SubOperation::Scale; consume = true; }
+            if (evnt.IsPress(keyR)) { newSubOp = SubOperation::Rotate; consume = true; }
+            if (evnt.IsPress(keyM)) { newSubOp = SubOperation::MoveAcrossTerrainSurface; consume = true; }
+
+            if (newSubOp != SubOperation::None && newSubOp != _activeSubop._type) {
+                    //  we have to "restart" the transaction. This returns everything
+                    //  to it's original place
+                _transaction->UndoAndRestart();
+                _activeSubop._type = newSubOp;
+                _activeSubop._parameter = Float3(0.f, 0.f, 0.f);
+                _activeSubop._axisRestriction = SubOperation::NoAxis;
+                _activeSubop._cursorStart = evnt._mousePosition;
+                _activeSubop._anchorTerrainIntersection = HitTestResolver::Result();
+
+                if (newSubOp == SubOperation::MoveAcrossTerrainSurface) {
+                    _activeSubop._anchorTerrainIntersection = hitTestContext.DoHitTest(evnt._mousePosition);
+                }
+            }
+
+            if (_activeSubop._type != SubOperation::None) {
+                Float3 oldParameter = _activeSubop._parameter;
+
+                if (evnt.IsPress(keyX)) { _activeSubop._axisRestriction = SubOperation::X; _activeSubop._parameter = Float3(0.f, 0.f, 0.f); consume = true; }
+                if (evnt.IsPress(keyY)) { _activeSubop._axisRestriction = SubOperation::Y; _activeSubop._parameter = Float3(0.f, 0.f, 0.f); consume = true; }
+                if (evnt.IsPress(keyZ)) { _activeSubop._axisRestriction = SubOperation::Z; _activeSubop._parameter = Float3(0.f, 0.f, 0.f); consume = true; }
+
+                if (evnt._mouseDelta[0] || evnt._mouseDelta[1]) {
+                        //  we always perform a manipulator's action in response to a mouse movement.
+                    if (_activeSubop._type == SubOperation::Rotate) {
+
+                            //  rotate by checking the angle of the mouse cursor relative to the 
+                            //  anchor point (in screen space)
+                        auto ssAnchor = hitTestContext.ProjectToScreenSpace(_anchorPoint);
+                        float ssAngle1 = XlATan2(evnt._mousePosition[1] - ssAnchor[1], evnt._mousePosition[0] - ssAnchor[0]);
+                        float ssAngle0 = XlATan2(_activeSubop._cursorStart[1] - ssAnchor[1], _activeSubop._cursorStart[0] - ssAnchor[0]);
+
+                        unsigned axisIndex = 2;
+                        switch (_activeSubop._axisRestriction) {
+                        case SubOperation::X: axisIndex = 0; break;
+                        case SubOperation::Y: axisIndex = 1; break;
+                        case SubOperation::NoAxis:
+                        case SubOperation::Z: axisIndex = 2; break;
+                        }
+
+                        _activeSubop._parameter = Float3(0.f, 0.f, 0.f);
+                        _activeSubop._parameter[axisIndex] = ssAngle0 - ssAngle1;
+
+                    } else if (_activeSubop._type == SubOperation::Scale) {
+
+                            //  Scale based on the distance (in screen space) between the cursor
+                            //  and the anchor point, and compare that to the distance when we
+                            //  first started this operation
+
+                        auto ssAnchor = hitTestContext.ProjectToScreenSpace(_anchorPoint);
+                        float ssDist1 = Magnitude(evnt._mousePosition - ssAnchor);
+                        float ssDist0 = Magnitude(_activeSubop._cursorStart - ssAnchor);
+                        float scaleFactor = 1.f;
+                        if (ssDist0 > 0.f) {
+                            scaleFactor = ssDist1 / ssDist0;
+                        }
+
+                        switch (_activeSubop._axisRestriction) {
+                        case SubOperation::X: _activeSubop._parameter = Float3(scaleFactor, 0.f, 0.f); break;
+                        case SubOperation::Y: _activeSubop._parameter = Float3(0.f, scaleFactor, 0.f); break;
+                        case SubOperation::Z: _activeSubop._parameter = Float3(0.f, 0.f, scaleFactor); break;
+                        case SubOperation::NoAxis: _activeSubop._parameter = Float3(scaleFactor, scaleFactor, scaleFactor); break;
+                        }
+
+                    } else if (_activeSubop._type == SubOperation::Translate) {
+
+                            //  We always translate across a 2d plane. So we need to define a plane 
+                            //  based on the camera position and the anchor position.
+                            //  We will calculate an intersection between a world space ray under the
+                            //  cursor and that plane. That point (in 3d) will be the basis of the 
+                            //  translation we apply.
+                            //
+                            //  The current "up" translation axis should lie flat on the plane. We
+                            //  also want the camera "right" to lie close to the plane.
+
+                        auto currentCamera = hitTestContext.GetCameraDesc();
+                        Float3 upAxis = ExtractUp_Cam(currentCamera._cameraToWorld);
+                        Float3 rightAxis = ExtractRight_Cam(currentCamera._cameraToWorld);
+                        assert(Equivalent(MagnitudeSquared(upAxis), 1.f, 1e-6f));
+                        assert(Equivalent(MagnitudeSquared(rightAxis), 1.f, 1e-6f));
+
+                        switch (_activeSubop._axisRestriction) {
+                        case SubOperation::X: upAxis = Float3(1.f, 0.f, 0.f); break;
+                        case SubOperation::Y: upAxis = Float3(0.f, 1.f, 0.f); break;
+                        case SubOperation::Z: upAxis = Float3(0.f, 0.f, 1.f); break;
+                        }
+
+                        rightAxis = rightAxis - upAxis * Dot(upAxis, rightAxis);
+                        if (MagnitudeSquared(rightAxis) < 1e-6f) {
+                            rightAxis = ExtractUp_Cam(currentCamera._cameraToWorld);
+                            rightAxis = rightAxis - upAxis * Dot(upAxis, rightAxis);
+                        }
+
+                        Float3 planeNormal = Cross(upAxis, rightAxis);
+                        Float4 plane = Expand(planeNormal, -Dot(planeNormal, _anchorPoint));
+
+                        auto ray = hitTestContext.CalculateWorldSpaceRay(evnt._mousePosition);
+                        float dst = RayVsPlane(ray.first, ray.second, plane);
+                        if (dst >= 0.f && dst <= 1.f) {
+                            auto intersectionPt = LinearInterpolate(ray.first, ray.second, dst);
+                            float transRight = Dot(intersectionPt - _anchorPoint, rightAxis);
+                            float transUp = Dot(intersectionPt - _anchorPoint, upAxis);
+
+                            switch (_activeSubop._axisRestriction) {
+                            case SubOperation::X: _activeSubop._parameter = Float3(transUp, 0.f, 0.f); break;
+                            case SubOperation::Y: _activeSubop._parameter = Float3(0.f, transUp, 0.f); break;
+                            case SubOperation::Z: _activeSubop._parameter = Float3(0.f, 0.f, transUp); break;
+                            case SubOperation::NoAxis:
+                                _activeSubop._parameter = transRight * rightAxis + transUp * upAxis;
+                                break;
+                            }
+                        }
+
+                    } else if (_activeSubop._type == SubOperation::MoveAcrossTerrainSurface) {
+
+                            //  We want to find an intersection point with the terrain, and then 
+                            //  compare the XY coordinates of that to the anchor point
+
+                        auto collision = hitTestContext.DoHitTest(evnt._mousePosition);
+                        if (collision._type == HitTestResolver::Result::Terrain
+                            && _activeSubop._anchorTerrainIntersection._type == HitTestResolver::Result::Terrain) {
+                            _activeSubop._parameter = Float3(
+                                collision._worldSpaceCollision[0] - _anchorPoint[0],
+                                collision._worldSpaceCollision[1] - _anchorPoint[1],
+                                0.f);
+                        }
+
+                    }
+                }
+
+                if (_activeSubop._parameter != oldParameter) {
+                        // push these changes onto the transaction
+                    unsigned count = _transaction->GetObjectCount();
+                    for (unsigned c=0; c<count; ++c) {
+                        auto& originalState = _transaction->GetObjectOriginalState(c);
+                        auto newState = TransformObject(originalState);
+                        _transaction->SetObject(c, newState);
+                    }
+                }
+            }
+        }
+        
+
             //  On lbutton click, attempt to do hit detection
             //  select everything that intersects with the given ray
         if (evnt.IsRelease_LButton()) {
-            auto worldSpaceRay = hitTestContext.CalculateWorldSpaceRay(evnt._mousePosition);
-            auto selected = _editor->Find_RayIntersection(worldSpaceRay.first, worldSpaceRay.second);
 
-                // replace the currently active selection
-            _activeSelection = selected;
+            if (_activeSubop._type != SubOperation::None) {
+
+                if (_transaction) { 
+                    _transaction->Commit();  
+                    _transaction.reset();
+                }
+                _activeSubop._type = SubOperation::None;
+
+            } else {
+
+                auto worldSpaceRay = hitTestContext.CalculateWorldSpaceRay(evnt._mousePosition);
+                auto selected = _editor->Find_RayIntersection(worldSpaceRay.first, worldSpaceRay.second);
+
+                    // replace the currently active selection
+                if (_transaction) {
+                    _transaction->Commit();
+                }
+                _transaction = _editor->Transaction_Begin(AsPointer(selected.cbegin()), AsPointer(selected.cend()));
+
+                    //  Reset the anchor point
+                    //  There are a number of different possible ways we could calculate
+                    //      the anchor point... But let's find the world space bounding box
+                    //      that encloses all of the objects and get the centre of that box.
+                Float3 totalMins(FLT_MAX, FLT_MAX, FLT_MAX), totalMaxs(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+                unsigned objCount = _transaction->GetObjectCount();
+                for (unsigned c=0; c<objCount; ++c) {
+                    auto obj = _transaction->GetObject(c);
+                    auto localBoundingBox = _transaction->GetLocalBoundingBox(c);
+                    auto worldSpaceBounding = TransformBoundingBox(AsFloat3x4(obj._localToWorld), localBoundingBox);
+                    totalMins[0] = std::min(worldSpaceBounding.first[0], totalMins[0]);
+                    totalMins[1] = std::min(worldSpaceBounding.first[1], totalMins[1]);
+                    totalMins[2] = std::min(worldSpaceBounding.first[2], totalMins[2]);
+                    totalMaxs[0] = std::max(worldSpaceBounding.second[0], totalMaxs[0]);
+                    totalMaxs[1] = std::max(worldSpaceBounding.second[1], totalMaxs[1]);
+                    totalMaxs[2] = std::max(worldSpaceBounding.second[2], totalMaxs[2]);
+                }
+                _anchorPoint = LinearInterpolate(totalMins, totalMaxs, 0.5f);
+
+            }
+
             return true;
         }
 
-        return false;
+        return consume;
     }
 
     class CommonOffscreenTarget
@@ -357,11 +535,64 @@ namespace Tools
         _drawHighlightUniforms = std::move(uniforms);
     }
 
+    static void RenderHighlight(
+        RenderCore::Metal::DeviceContext* context,
+        SceneEngine::LightingParserContext& parserContext,
+        SceneEngine::PlacementsEditor* editor,
+        const SceneEngine::PlacementGUID* filterBegin,
+        const SceneEngine::PlacementGUID* filterEnd)
+    {
+        TRY {
+            using namespace SceneEngine;
+            using namespace RenderCore;
+            SavedTargets savedTargets(context);
+            const auto& viewport = savedTargets.GetViewports()[0];
+
+            auto& offscreen = FindCachedBox<CommonOffscreenTarget>(
+                CommonOffscreenTarget::Desc(unsigned(viewport.Width), unsigned(viewport.Height), 
+                Metal::NativeFormat::R8G8B8A8_UNORM));
+
+            context->Bind(MakeResourceList(offscreen._rtv), nullptr);
+            context->Clear(offscreen._rtv, Float4(0.f, 0.f, 0.f, 0.f));
+            context->Bind(RenderCore::Metal::Topology::TriangleList);
+            editor->RenderFiltered(context, parserContext, 0, filterBegin, filterEnd);
+
+            savedTargets.ResetToOldTargets(context);
+
+                //  now we can render these objects over the main image, 
+                //  using some filtering
+
+            context->BindPS(MakeResourceList(offscreen._srv));
+
+            auto& shaders = FindCachedBoxDep<HighlightShaders>(HighlightShaders::Desc());
+            shaders._drawHighlightUniforms.Apply(
+                *context, 
+                parserContext.GetGlobalUniformsStream(), RenderCore::Metal::UniformsStream());
+            context->Bind(*shaders._drawHighlight);
+            context->Bind(SceneEngine::CommonResources()._blendAlphaPremultiplied);
+            context->Bind(SceneEngine::CommonResources()._dssDisable);
+            context->Bind(RenderCore::Metal::Topology::TriangleStrip);
+            context->Draw(4);
+        } 
+        CATCH (const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); } 
+        CATCH (const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); } 
+        CATCH_END
+    }
+
     void SelectAndEdit::Render(
         RenderCore::Metal::DeviceContext* context,
         SceneEngine::LightingParserContext& parserContext)
     {
-        if (!_activeSelection.empty()) {
+        std::vector<std::pair<uint64, uint64>> activeSelection;
+
+        if (_transaction) {
+            activeSelection.reserve(_transaction->GetObjectCount());
+            for (unsigned c=0; c<_transaction->GetObjectCount(); ++c) {
+                activeSelection.push_back(_transaction->GetGuid(c));
+            }
+        }
+
+        if (!activeSelection.empty()) {
                 //  If we have some selection, we need to render it
                 //  to an offscreen buffer, and we can perform some
                 //  operation to highlight the objects in that buffer.
@@ -370,57 +601,163 @@ namespace Tools
                 //  this one placement at a time -- but we will most
                 //  likely get the most efficient results by rendering
                 //  all of objects that require highlights in one go.
-
-            TRY {
-                using namespace SceneEngine;
-                using namespace RenderCore;
-                SavedTargets savedTargets(context);
-                const auto& viewport = savedTargets.GetViewports()[0];
-
-                auto& offscreen = FindCachedBox<CommonOffscreenTarget>(
-                    CommonOffscreenTarget::Desc(unsigned(viewport.Width), unsigned(viewport.Height), 
-                    Metal::NativeFormat::R8G8B8A8_UNORM));
-
-                context->Bind(MakeResourceList(offscreen._rtv), nullptr);
-                context->Clear(offscreen._rtv, Float4(0.f, 0.f, 0.f, 0.f));
-                _editor->RenderFiltered(
-                    context, parserContext, 0, 
-                    AsPointer(_activeSelection.cbegin()), AsPointer(_activeSelection.cend()));
-
-                savedTargets.ResetToOldTargets(context);
-
-                    //  now we can render these objects over the main image, 
-                    //  using some filtering
-
-                context->BindPS(MakeResourceList(offscreen._srv));
-
-                auto& shaders = FindCachedBoxDep<HighlightShaders>(HighlightShaders::Desc());
-                shaders._drawHighlightUniforms.Apply(
-                    *context, 
-                    parserContext.GetGlobalUniformsStream(), RenderCore::Metal::UniformsStream());
-                context->Bind(*shaders._drawHighlight);
-                context->Bind(SceneEngine::CommonResources()._blendAlphaPremultiplied);
-                context->Bind(SceneEngine::CommonResources()._dssDisable);
-                context->Draw(4);
-            } 
-            CATCH (const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); } 
-            CATCH (const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); } 
-            CATCH_END
+            RenderHighlight(
+                context, parserContext, _editor.get(),
+                AsPointer(activeSelection.begin()), AsPointer(activeSelection.end()));
         }
     }
 
     const char* SelectAndEdit::GetName() const                                            { return "Select And Edit"; }
     auto SelectAndEdit::GetFloatParameters() const -> std::pair<FloatParameter*, size_t>  { return std::make_pair(nullptr, 0); }
     auto SelectAndEdit::GetBoolParameters() const -> std::pair<BoolParameter*, size_t>    { return std::make_pair(nullptr, 0); }
+    void SelectAndEdit::SetActivationState(bool) 
+    {
+        if (_transaction) {
+            _transaction->Cancel();
+            _transaction.reset();
+        }
+        _activeSubop._type = SubOperation::None;
+        _anchorPoint = Float3(0.f, 0.f, 0.f);
+    }
 
     SelectAndEdit::SelectAndEdit(
         std::shared_ptr<SceneEngine::PlacementsEditor> editor)
     {
         _editor = editor;
+        _anchorPoint = Float3(0.f, 0.f, 0.f);
     }
 
     SelectAndEdit::~SelectAndEdit()
     {}
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class PlaceSingle : public IManipulator
+    {
+    public:
+        bool OnInputEvent(
+            const InputSnapshot& evnt,
+            const HitTestResolver& hitTestContext);
+        void Render(
+            RenderCore::Metal::DeviceContext* context,
+            SceneEngine::LightingParserContext& parserContext);
+
+        const char* GetName() const;
+        std::pair<FloatParameter*, size_t>  GetFloatParameters() const;
+        std::pair<BoolParameter*, size_t>   GetBoolParameters() const;
+        void SetActivationState(bool);
+
+        PlaceSingle(
+            std::shared_ptr<SelectedModel> selectedModel,
+            std::shared_ptr<SceneEngine::PlacementsEditor> editor);
+        ~PlaceSingle();
+
+    protected:
+        Millisecond                     _spawnTimer;
+        std::shared_ptr<SelectedModel>  _selectedModel;
+        std::shared_ptr<SceneEngine::PlacementsEditor> _editor;
+        unsigned                        _rendersSinceHitTest;
+
+        std::shared_ptr<SceneEngine::PlacementsEditor::ITransaction> _transaction;
+
+        void MoveObject(const Float3& newLocation);
+    };
+
+    void PlaceSingle::MoveObject(const Float3& newLocation)
+    {
+        if (!_transaction) {
+            _transaction = _editor->Transaction_Begin(nullptr, nullptr);
+        }
+
+        SceneEngine::PlacementsEditor::ObjTransDef newState(
+            AsFloat4x4(newLocation), _selectedModel->_modelName, std::string());
+
+        TRY {
+            if (!_transaction->GetObjectCount()) {
+                _transaction->Create(newState);
+            } else {
+                _transaction->SetObject(0, newState);
+            }
+        } CATCH (...) {
+        } CATCH_END
+    }
+
+    bool PlaceSingle::OnInputEvent(
+        const InputSnapshot& evnt,
+        const HitTestResolver& hitTestContext)
+    {
+        //  If we get a click on the terrain, then we should perform 
+            //  whatever placement operation is required (eg, creating new placements)
+        if (_selectedModel->_modelName.empty()) {
+            if (_transaction) {
+                _transaction->Cancel();
+                _transaction.reset();
+            }
+            return false;
+        }
+
+        if (_rendersSinceHitTest > 0) {
+            _rendersSinceHitTest = 0;
+
+            auto test = hitTestContext.DoHitTest(evnt._mousePosition);
+            if (test._type == HitTestResolver::Result::Terrain) {
+
+                    //  This is a spawn event. We should add a new item of the selected model
+                    //  at the point clicked.
+                MoveObject(test._worldSpaceCollision);
+            }
+        }
+
+        if (evnt.IsRelease_LButton()) {
+            if (_transaction) {
+                _transaction->Commit();
+                _transaction.reset();
+            }
+        }
+
+        return false;
+    }
+
+    void PlaceSingle::Render(
+        RenderCore::Metal::DeviceContext* context,
+        SceneEngine::LightingParserContext& parserContext)
+    {
+        ++_rendersSinceHitTest;
+        if (_transaction && _transaction->GetObjectCount()) {
+            std::vector<SceneEngine::PlacementGUID> objects;
+            objects.reserve(_transaction->GetObjectCount());
+            for (unsigned c=0; c<_transaction->GetObjectCount(); ++c) {
+                objects.push_back(_transaction->GetGuid(c));
+            }
+
+            RenderHighlight(
+                context, parserContext, _editor.get(),
+                AsPointer(objects.begin()), AsPointer(objects.end()));
+        }
+    }
+
+    const char* PlaceSingle::GetName() const                                            { return "Place single"; }
+    auto PlaceSingle::GetFloatParameters() const -> std::pair<FloatParameter*, size_t>  { return std::make_pair(nullptr, 0); }
+    auto PlaceSingle::GetBoolParameters() const -> std::pair<BoolParameter*, size_t>    { return std::make_pair(nullptr, 0); }
+    void PlaceSingle::SetActivationState(bool) 
+    {
+        if (_transaction) {
+            _transaction->Cancel();
+            _transaction.reset();
+        }
+    }
+
+    PlaceSingle::PlaceSingle(
+        std::shared_ptr<SelectedModel> selectedModel,
+        std::shared_ptr<SceneEngine::PlacementsEditor> editor)
+    {
+        _spawnTimer = 0;
+        _selectedModel = std::move(selectedModel);
+        _editor = std::move(editor);
+        _rendersSinceHitTest = 0;
+    }
+    
+    PlaceSingle::~PlaceSingle() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -437,6 +774,7 @@ namespace Tools
         const char* GetName() const;
         std::pair<FloatParameter*, size_t>  GetFloatParameters() const;
         std::pair<BoolParameter*, size_t>   GetBoolParameters() const;
+        void SetActivationState(bool);
 
         ScatterPlacements(
             std::shared_ptr<SelectedModel> selectedModel,
@@ -686,6 +1024,9 @@ namespace Tools
             workingSet.push_back(rndpt);
         }
 
+            // todo --  this could benefit from a "relax" phase that would just shift
+            //          things into a more evenly spaced arrangement
+
         return std::move(workingSet);
     }
 
@@ -725,7 +1066,7 @@ namespace Tools
             //  We have a list of placements using the same model, and within the placement area.
             //  We want to either add or remove one.
 
-        auto trans = _editor->Transaction_Begin(oldPlacements);
+        auto trans = _editor->Transaction_Begin(AsPointer(oldPlacements.cbegin()), AsPointer(oldPlacements.cend()));
         for (unsigned c=0; c<trans->GetObjectCount(); ++c) {
             trans->Delete(c);
         }
@@ -777,6 +1118,8 @@ namespace Tools
     }
 
     auto ScatterPlacements::GetBoolParameters() const -> std::pair<BoolParameter*, size_t>    { return std::make_pair(nullptr, 0); }
+
+    void ScatterPlacements::SetActivationState(bool) {}
 
     ScatterPlacements::ScatterPlacements(
         std::shared_ptr<SelectedModel> selectedModel,
@@ -858,13 +1201,18 @@ namespace Tools
             const auto Id_SelectedManipulatorLeft = InteractableId_Make("SelectedManipulatorLeft");
             const auto Id_SelectedManipulatorRight = InteractableId_Make("SelectedManipulatorRight");
             auto topMost = interfaceState.TopMostWidget();
+            auto newManipIndex = _activeManipulatorIndex;
             if (topMost._id == Id_SelectedManipulatorLeft) {
                     // go back one manipulator
-                _activeManipulatorIndex = (_activeManipulatorIndex + _manipulators.size() - 1) % _manipulators.size();
-                return true;
+                newManipIndex = (_activeManipulatorIndex + _manipulators.size() - 1) % _manipulators.size();
             } else if (topMost._id == Id_SelectedManipulatorRight) {
                     // go forward one manipulator
-                _activeManipulatorIndex = (_activeManipulatorIndex + 1) % _manipulators.size();
+                newManipIndex = (_activeManipulatorIndex + 1) % _manipulators.size();
+            }
+            if (newManipIndex != _activeManipulatorIndex) {
+                _manipulators[_activeManipulatorIndex]->SetActivationState(false);
+                _activeManipulatorIndex = newManipIndex;
+                _manipulators[_activeManipulatorIndex]->SetActivationState(true);
                 return true;
             }
         }
@@ -896,17 +1244,28 @@ namespace Tools
         _activeManipulatorIndex = 0;
 
         auto selectedModel = std::make_shared<SelectedModel>();
+        selectedModel->_modelName = "game\\objects\\Env\\02_harihara\\001_hdeco\\backpack_mockup.cgf";
 
         std::vector<std::unique_ptr<IManipulator>> manipulators;
         manipulators.push_back(std::make_unique<PlaceSingle>(selectedModel, editor));
         manipulators.push_back(std::make_unique<ScatterPlacements>(selectedModel, editor));
         manipulators.push_back(std::make_unique<SelectAndEdit>(editor));
 
+        manipulators[0]->SetActivationState(true);
+
         _editor = std::move(editor);
         _hitTestResolver = std::move(hitTestResolver);        
         _browser = std::move(browser);
         _manipulators = std::move(manipulators);
         _selectedModel = std::move(selectedModel);
+    }
+    
+    PlacementsWidgets::~PlacementsWidgets()
+    {
+        TRY { 
+            _manipulators[_activeManipulatorIndex]->SetActivationState(false);
+        } CATCH (...) {
+        } CATCH_END
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

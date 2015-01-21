@@ -835,8 +835,10 @@ namespace SceneEngine
 
         const ObjTransDef&  GetObject(unsigned index) const;
         const ObjTransDef&  GetObjectOriginalState(unsigned index) const;
-        PlacementGUID       GetGUID(unsigned index) const;
+        PlacementGUID       GetGuid(unsigned index) const;
+        PlacementGUID       GetOriginalGuid(unsigned index) const;
         unsigned            GetObjectCount() const;
+        std::pair<Float3, Float3>   GetLocalBoundingBox(unsigned index) const;
 
         virtual void        SetObject(unsigned index, const ObjTransDef& newState);
 
@@ -845,18 +847,20 @@ namespace SceneEngine
 
         virtual void    Commit();
         virtual void    Cancel();
+        virtual void    UndoAndRestart();
 
         Transaction(
-            PlacementsEditor::Pimpl*            editorPimpl,
-            const std::vector<PlacementGUID>&   starterObjects);
+            PlacementsEditor::Pimpl*    editorPimpl,
+            const PlacementGUID*        placementsBegin,
+            const PlacementGUID*        placementsEnd);
         ~Transaction();
 
     protected:
-        PlacementsEditor::Pimpl*        _editorPimpl;
+        PlacementsEditor::Pimpl*    _editorPimpl;
 
-        std::vector<ObjTransDef>        _originalState;
-        std::vector<ObjTransDef>        _objects;
-        std::vector<PlacementGUID>      _guids;
+        std::vector<ObjTransDef>    _originalState;
+        std::vector<ObjTransDef>    _objects;
+        std::vector<PlacementGUID>  _guids;
 
         void PushObj(unsigned index, const ObjTransDef& newState);
 
@@ -864,18 +868,25 @@ namespace SceneEngine
         State _state;
     };
 
-    auto            Transaction::GetObject(unsigned index) const -> const ObjTransDef& { return _objects[index]; }
-    auto            Transaction::GetObjectOriginalState(unsigned index) const -> const ObjTransDef& { return _originalState[index]; }
-    PlacementGUID   Transaction::GetGUID(unsigned index) const { return _guids[index]; }
+    auto    Transaction::GetObject(unsigned index) const -> const ObjTransDef& { return _objects[index]; }
+    auto    Transaction::GetObjectOriginalState(unsigned index) const -> const ObjTransDef& { return _originalState[index]; }
+    PlacementGUID   Transaction::GetGuid(unsigned index) const { return _guids[index]; }
+    PlacementGUID   Transaction::GetOriginalGuid(unsigned index) const { return _guids[index]; }
 
-    unsigned        Transaction::GetObjectCount() const
+    unsigned    Transaction::GetObjectCount() const
     {
         assert(_guids.size() == _originalState.size());
         assert(_guids.size() == _objects.size());
         return _guids.size();
     }
 
-    void        Transaction::SetObject(unsigned index, const ObjTransDef& newState)
+    std::pair<Float3, Float3>   Transaction::GetLocalBoundingBox(unsigned index) const
+    {
+        auto& model = _editorPimpl->_renderer->GetCachedModel(_objects[index]._model.c_str());
+        return model.GetBoundingBox();
+    }
+
+    void    Transaction::SetObject(unsigned index, const ObjTransDef& newState)
     {
         auto& currentState = _objects[index];
         auto currTrans = currentState._transaction;
@@ -967,8 +978,6 @@ namespace SceneEngine
     void Transaction::PushObj(unsigned index, const ObjTransDef& newState)
     {
             // update the DynPlacements object with the changes to the object at index "index"
-        if (newState._transaction == ObjTransDef::Unchanged || newState._transaction == ObjTransDef::Error) { return; }
-            
         std::vector<ObjTransDef> originalState;
         
         auto guid = _guids[index];
@@ -982,7 +991,7 @@ namespace SceneEngine
         std::pair<Float3, Float3> cellSpaceBoundary;
         PlacementsTransform localToCell;
         std::string materialFilename = newState._material;
-        if (newState._transaction != ObjTransDef::Deleted) {
+        if (newState._transaction != ObjTransDef::Deleted && newState._transaction != ObjTransDef::Error) {
             localToCell = AsFloat3x4(Combine(newState._localToWorld, InvertOrthonormalTransform(cellToWorld)));
 
             auto& model = _editorPimpl->_renderer->GetCachedModel(newState._model.c_str());
@@ -997,9 +1006,9 @@ namespace SceneEngine
             //          this should actually change the first part of the GUID
 
         if (dst != objects.end() && dst->_guid == guid.second) {
-                // we found the referenced object already existing
-            if (newState._transaction == ObjTransDef::Deleted) {
-                dst = objects.erase(dst);
+                // we found the referenced object already existing (we get "error" state when reverting a creation operation)
+            if (newState._transaction == ObjTransDef::Deleted || newState._transaction == ObjTransDef::Error) {
+                objects.erase(dst);
             } else {
                 dst->_localToCell = localToCell;
                 dst->_modelFilenameOffset = dynPlacements.AddString(newState._model.c_str());
@@ -1008,7 +1017,7 @@ namespace SceneEngine
             }
         } else {
                 // the referenced object wasn't there. We may have to create it
-            if (newState._transaction == ObjTransDef::Created) {
+            if (newState._transaction == ObjTransDef::Created || newState._transaction == ObjTransDef::Unchanged) {
                 dynPlacements.AddPlacement(
                     localToCell, cellSpaceBoundary, 
                     newState._model.c_str(), materialFilename.c_str());
@@ -1023,18 +1032,34 @@ namespace SceneEngine
 
     void    Transaction::Cancel()
     {
-        assert(0);
+        if (_state == Active) {
+                // we need to revert all of the objects to their original state
+            UndoAndRestart();
+        }
+
         _state = Committed;
     }
 
+    void    Transaction::UndoAndRestart()
+    {
+        if (_state != Active) return;
+
+            // we just have to reset all objects to their previous state
+        for (unsigned c=0; c<_objects.size(); ++c) {
+            _objects[c] = _originalState[c];
+            PushObj(c, _originalState[c]);
+        }
+    }
+    
     Transaction::Transaction(
-        PlacementsEditor::Pimpl*            editorPimpl,
-        const std::vector<PlacementGUID>&   starterObjects)
+        PlacementsEditor::Pimpl*    editorPimpl,
+        const PlacementGUID*        guidsBegin,
+        const PlacementGUID*        guidsEnd)
     {
         //  We need to sort; because this method is mostly assuming we're working
             //  with a sorted list. Most of the time originalPlacements will be close
             //  to sorted order (which, of course, means that quick sort isn't ideal, but, anyway...)
-        auto guids = starterObjects;
+        auto guids = std::vector<PlacementGUID>(guidsBegin, guidsEnd);
         std::sort(guids.begin(), guids.end(), CompareGUID);
 
         std::vector<ObjTransDef> originalState;
@@ -1145,9 +1170,9 @@ namespace SceneEngine
         return _pimpl->_renderer->GetModelFormat();
     }
 
-    auto PlacementsEditor::Transaction_Begin(const std::vector<PlacementGUID>& placements) -> std::shared_ptr<ITransaction>
+    auto PlacementsEditor::Transaction_Begin(const PlacementGUID* placementsBegin, const PlacementGUID* placementsEnd) -> std::shared_ptr<ITransaction>
     {
-        return std::make_shared<Transaction>(_pimpl.get(), placements);
+        return std::make_shared<Transaction>(_pimpl.get(), placementsBegin, placementsEnd);
     }
 
     PlacementsEditor::PlacementsEditor(std::shared_ptr<PlacementsRenderer> renderer)

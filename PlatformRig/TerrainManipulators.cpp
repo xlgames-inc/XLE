@@ -132,6 +132,7 @@ namespace Tools
         virtual void    Render(RenderCore::Metal::DeviceContext* context, SceneEngine::LightingParserContext& parserContext);
 
         virtual void    PerformAction(const Float3& worldSpacePosition, float size, float strength) = 0;
+        virtual void    SetActivationState(bool) {}
 
         CommonManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager);
 
@@ -493,6 +494,7 @@ namespace Tools
         
         virtual std::pair<FloatParameter*, size_t>  GetFloatParameters() const { return std::make_pair(nullptr, 0); }
         virtual std::pair<BoolParameter*, size_t>   GetBoolParameters() const { return std::make_pair(nullptr, 0); }
+        virtual void SetActivationState(bool) {}
 
         RectangleManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager);
 

@@ -108,9 +108,9 @@ namespace Math
 
     void Combine_InPlace(const ArbitraryScale& scale, Float4x4& transform)
     {
-        transform(0,0) *= scale._scale[0]; transform(0,1) *= scale._scale[1]; transform(0,2) *= scale._scale[2];
-        transform(1,0) *= scale._scale[0]; transform(1,1) *= scale._scale[1]; transform(1,2) *= scale._scale[2];
-        transform(2,0) *= scale._scale[0]; transform(2,1) *= scale._scale[1]; transform(2,2) *= scale._scale[2];
+        transform(0,0) *= scale._scale[0]; transform(0,1) *= scale._scale[0]; transform(0,2) *= scale._scale[0];
+        transform(1,0) *= scale._scale[1]; transform(1,1) *= scale._scale[1]; transform(1,2) *= scale._scale[1];
+        transform(2,0) *= scale._scale[2]; transform(2,1) *= scale._scale[2]; transform(2,2) *= scale._scale[2];
     }
 
     Float4x4 Combine(const RotationMatrix& rotation, const Float4x4& transform)
@@ -409,6 +409,21 @@ namespace Math
         rhs(3,1) = rhs(3,1);
         rhs(3,2) = rhs(3,2);
         rhs(3,3) = rhs(3,3);
+    }
+
+
+    void Combine_InPlace(Float4x4& transform, const UniformScale& scale)
+    {
+        transform(0,0) *= scale._scale; transform(0,1) *= scale._scale; transform(0,2) *= scale._scale; transform(0,3) *= scale._scale;
+        transform(1,0) *= scale._scale; transform(1,1) *= scale._scale; transform(1,2) *= scale._scale; transform(1,3) *= scale._scale;
+        transform(2,0) *= scale._scale; transform(2,1) *= scale._scale; transform(2,2) *= scale._scale; transform(2,3) *= scale._scale;
+    }
+
+    void Combine_InPlace(Float4x4& transform, const ArbitraryScale& scale)
+    {
+        transform(0,0) *= scale._scale[0]; transform(0,1) *= scale._scale[0]; transform(0,2) *= scale._scale[0]; transform(0,3) *= scale._scale[0];
+        transform(1,0) *= scale._scale[1]; transform(1,1) *= scale._scale[1]; transform(1,2) *= scale._scale[1]; transform(1,3) *= scale._scale[1];
+        transform(2,0) *= scale._scale[2]; transform(2,1) *= scale._scale[2]; transform(2,2) *= scale._scale[2]; transform(2,3) *= scale._scale[2];
     }
 
 

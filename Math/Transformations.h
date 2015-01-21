@@ -90,9 +90,12 @@ namespace Math
     void            Combine_InPlace(RotationZ rotation, Float4x4& transform);
 
     void            Combine_InPlace(Float4x4& transform, const Float3& translate);
+    void            Combine_InPlace(Float4x4& transform, const UniformScale& scale);
+    void            Combine_InPlace(Float4x4& transform, const ArbitraryScale& scale);
     void            Combine_InPlace(Float4x4& transform, RotationX rotation);
     void            Combine_InPlace(Float4x4& transform, RotationY rotation);
     void            Combine_InPlace(Float4x4& transform, RotationZ rotation);
+    
 
     Float4x4        Combine(const RotationMatrix& rotation, const Float4x4& transform);
     Float4x4        Combine(const Float4x4& transform, const RotationMatrix& rotation);

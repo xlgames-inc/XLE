@@ -18,6 +18,7 @@
 #undef max
 #undef min
 #undef DrawText
+#undef GetObject
 #endif
 
 
