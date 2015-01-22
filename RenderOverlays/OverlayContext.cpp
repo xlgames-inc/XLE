@@ -217,6 +217,27 @@ namespace RenderOverlays
         *(Vertex*)&_workingBuffer[_writePointer] = Vertex(Float3(maxs[0], maxs[1], mins[2]), col, Float2(maxTex0[0], maxTex0[1]), Float2(maxTex1[0], maxTex1[1])); _writePointer += sizeof(Vertex);
     }
 
+    void    ImmediateOverlayContext::DrawQuad(
+            ProjectionMode::Enum proj, 
+            const Float3& mins, const Float3& maxs, 
+            ColorB color,
+            const std::string& pixelShader = std::string())
+    {
+        typedef Vertex_PC Vertex;
+        if ((_writePointer + 6 * sizeof(Vertex)) > sizeof(_workingBuffer)) {
+            Flush();
+        }
+
+        PushDrawCall(DrawCall(unsigned(RenderCore::Metal::Topology::TriangleList), _writePointer, 6, AsVertexFormat<Vertex>(), proj, pixelShader));
+        auto col = color.AsUInt32();
+        *(Vertex*)&_workingBuffer[_writePointer] = Vertex(Float3(mins[0], mins[1], mins[2]), col); _writePointer += sizeof(Vertex);
+        *(Vertex*)&_workingBuffer[_writePointer] = Vertex(Float3(mins[0], maxs[1], mins[2]), col); _writePointer += sizeof(Vertex);
+        *(Vertex*)&_workingBuffer[_writePointer] = Vertex(Float3(maxs[0], mins[1], mins[2]), col); _writePointer += sizeof(Vertex);
+        *(Vertex*)&_workingBuffer[_writePointer] = Vertex(Float3(maxs[0], mins[1], mins[2]), col); _writePointer += sizeof(Vertex);
+        *(Vertex*)&_workingBuffer[_writePointer] = Vertex(Float3(mins[0], maxs[1], mins[2]), col); _writePointer += sizeof(Vertex);
+        *(Vertex*)&_workingBuffer[_writePointer] = Vertex(Float3(maxs[0], maxs[1], mins[2]), col); _writePointer += sizeof(Vertex);
+    }
+
     void ImmediateOverlayContext::DrawTexturedQuad(
         ProjectionMode::Enum proj, 
         const Float3& mins, const Float3& maxs, 

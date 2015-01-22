@@ -51,11 +51,13 @@ namespace Overlays
         ProcessInputResult SpecialProcessInput(
             InterfaceState& interfaceState, const InputSnapshot& input);
 
+        Coord2  GetPreviewSize() const;
+        auto    GetSRV(RenderCore::Metal::DeviceContext* devContext, const std::basic_string<ucs2>&) -> std::pair<const RenderCore::Metal::ShaderResourceView*, uint64>;
+
     private:
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
 
-        std::pair<const RenderCore::Metal::ShaderResourceView*, uint64> GetSRV(RenderCore::Metal::DeviceContext* devContext, const std::basic_string<ucs2>&);
         bool Filter(const std::basic_string<ucs2>&);
     };
 

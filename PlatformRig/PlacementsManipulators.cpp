@@ -1138,7 +1138,60 @@ namespace Tools
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    static void DrawQuadDirect(
+        RenderCore::Metal::DeviceContext* context, const RenderCore::Metal::ShaderResourceView& srv, 
+        Float2 screenMins, Float2 screenMaxs)
+    {
+        using namespace RenderCore;
+        using namespace RenderCore::Metal;
+        
+        class Vertex
+        {
+        public:
+            Float2  _position;
+            Float2  _texCoord;
+        } vertices[] = {
+            { Float2(screenMins[0], screenMins[1]), Float2(0.f, 0.f) },
+            { Float2(screenMins[0], screenMaxs[1]), Float2(0.f, 1.f) },
+            { Float2(screenMaxs[0], screenMins[1]), Float2(1.f, 0.f) },
+            { Float2(screenMaxs[0], screenMaxs[1]), Float2(1.f, 1.f) }
+        };
+
+        InputElementDesc vertexInputLayout[] = {
+            InputElementDesc( "POSITION", 0, NativeFormat::R32G32_FLOAT ),
+            InputElementDesc( "TEXCOORD", 0, NativeFormat::R32G32_FLOAT )
+        };
+
+        VertexBuffer vertexBuffer(vertices, sizeof(vertices));
+        context->Bind(ResourceList<VertexBuffer, 1>(std::make_tuple(std::ref(vertexBuffer))), sizeof(Vertex), 0);
+
+        ShaderProgram& shaderProgram = ::Assets::GetAssetDep<ShaderProgram>(
+            "game/xleres/basic2D.vsh:P2T:" VS_DefShaderModel, 
+            "game/xleres/basic.psh:copy_bilinear:" PS_DefShaderModel);
+        BoundInputLayout boundVertexInputLayout(std::make_pair(vertexInputLayout, dimof(vertexInputLayout)), shaderProgram);
+        context->Bind(boundVertexInputLayout);
+        context->Bind(shaderProgram);
+
+        ViewportDesc viewport(*context);
+        float constants[] = { 1.f / viewport.Width, 1.f / viewport.Height, 0.f, 0.f };
+        ConstantBuffer reciprocalViewportDimensions(constants, sizeof(constants));
+        const ShaderResourceView* resources[] = { &srv };
+        const ConstantBuffer* cnsts[] = { &reciprocalViewportDimensions };
+        BoundUniforms boundLayout(shaderProgram);
+        boundLayout.BindConstantBuffer(Hash64("ReciprocalViewportDimensions"), 0, 1);
+        boundLayout.BindShaderResource(Hash64("DiffuseTexture"), 0, 1);
+        boundLayout.Apply(*context, UniformsStream(), UniformsStream(nullptr, cnsts, dimof(cnsts), resources, dimof(resources)));
+
+        context->Bind(BlendState(BlendOp::Add, Blend::SrcAlpha, Blend::InvSrcAlpha));
+        context->Bind(Topology::TriangleStrip);
+        context->Draw(dimof(vertices));
+
+        context->UnbindPS<ShaderResourceView>(0, 1);
+    }
+
     static const auto Id_SelectedModel = InteractableId_Make("SelectedModel");
+    static const auto Id_PlacementsSave = InteractableId_Make("PlacementsSave");
+
     static ButtonFormatting ButtonNormalState    ( ColorB(127, 192, 127,  64), ColorB(164, 192, 164, 255) );
     static ButtonFormatting ButtonMouseOverState ( ColorB(127, 192, 127,  64), ColorB(255, 255, 255, 160) );
     static ButtonFormatting ButtonPressedState   ( ColorB(127, 192, 127,  64), ColorB(255, 255, 255,  96) );
@@ -1158,25 +1211,118 @@ namespace Tools
             //      the screen. If we click it, we should pop up the model browser
             //      so we can reselect.
 
-        const auto lineHeight   = 20u;
-        const auto horizPadding = 75u;
-        const auto vertPadding  = 50u;
-        const auto selectedRectHeight = lineHeight + 20u;
+        // const auto lineHeight   = 20u;
+        // const auto horizPadding = 75u;
+        // const auto vertPadding  = 50u;
+        // const auto selectedRectHeight = lineHeight + 20u;
+        // auto maxSize = layout.GetMaximumSize();
+        // Rect selectedRect(
+        //     Coord2(maxSize._topLeft[0] + horizPadding, maxSize._bottomRight[1] - vertPadding - selectedRectHeight),
+        //     Coord2(std::min(maxSize._bottomRight[0], controlsRect._bottomRight[1]) - horizPadding, maxSize._bottomRight[1] - vertPadding));
+        // 
+        // DrawButtonBasic(
+        //     context, selectedRect, _selectedModel->_modelName.c_str(),
+        //     FormatButton(interfaceState, Id_SelectedModel, 
+        //         ButtonNormalState, ButtonMouseOverState, ButtonPressedState));
+        // interactables.Register(Interactables::Widget(selectedRect, Id_SelectedModel));
+        
         auto maxSize = layout.GetMaximumSize();
-        Rect selectedRect(
-            Coord2(maxSize._topLeft[0] + horizPadding, maxSize._bottomRight[1] - vertPadding - selectedRectHeight),
-            Coord2(std::min(maxSize._bottomRight[0], controlsRect._bottomRight[1]) - horizPadding, maxSize._bottomRight[1] - vertPadding));
+        const auto previewSize = _browser ? _browser->GetPreviewSize()[1] : 196;
+        const auto margin = layout._paddingInternalBorder;
+        const Coord2 iconSize(93/2, 88/2);
+        const auto iconPadding = layout._paddingBetweenAllocations;
+        const auto buttonsRectPadding = 16;
+        const auto buttonsRectVertPad = 4;
 
-        DrawButtonBasic(
-            context, selectedRect, _selectedModel->_modelName.c_str(),
-            FormatButton(interfaceState, Id_SelectedModel, 
-                ButtonNormalState, ButtonMouseOverState, ButtonPressedState));
-        interactables.Register(Interactables::Widget(selectedRect, Id_SelectedModel));
+        const bool browserActive = _browser && _browserActive;
+        if (!browserActive) {
 
-        if (_browser && _browserActive) {
-            Rect browserRect(maxSize._topLeft, maxSize._bottomRight - Int2(0, vertPadding + selectedRectHeight));
+                ///////////////////////   I C O N S   ///////////////////////
+            const char* icons[] = 
+            {
+                "game/xleres/DefaultResources/icon_save.png",
+                "game/xleres/DefaultResources/icon_test.png",
+                "game/xleres/DefaultResources/icon_test.png",
+            };
+            const InteractableId iconIds[] = { Id_PlacementsSave, 0, 0 };
+            const auto iconCount = dimof(icons);
+            const auto toolAreaWidth = std::max(previewSize, int(iconCount * iconSize[0] + (iconCount-1) * iconPadding + 2 * buttonsRectPadding));
+
+            const Rect buttonsArea(
+                Coord2(margin, maxSize._bottomRight[1] - margin - iconSize[1] - 2 * buttonsRectVertPad),
+                Coord2(margin + toolAreaWidth, maxSize._bottomRight[1] - margin));
+
+            context->DrawQuad(
+                ProjectionMode::P2D, 
+                AsPixelCoords(Coord2(buttonsArea._topLeft[0], LinearInterpolate(buttonsArea._topLeft[1], buttonsArea._bottomRight[1], 0.5f))),
+                AsPixelCoords(buttonsArea._bottomRight), ColorB(0, 0, 0));
+
+            for (unsigned c=0; c<iconCount; ++c) {
+                Coord2 iconTopLeft(buttonsArea._topLeft + Coord2(buttonsRectPadding + c * (iconSize[0] + iconPadding), buttonsRectVertPad));
+                Rect iconRect(iconTopLeft, iconTopLeft + iconSize);
+
+                context->DrawTexturedQuad(
+                    ProjectionMode::P2D, 
+                    AsPixelCoords(iconRect._topLeft),
+                    AsPixelCoords(iconRect._bottomRight),
+                    icons[c]);
+                if (iconIds[c]) {
+                    interactables.Register(Interactables::Widget(iconRect, iconIds[c]));
+                }
+            }
+        
+                ///////////////////////   S E L E C T E D    I T E M   ///////////////////////
+            if (!_selectedModel->_modelName.empty()) {
+                const auto centre = buttonsArea._topLeft + Coord2(toolAreaWidth/2, -margin - previewSize/2);
+                const auto temp = centre - Coord2(previewSize/2, previewSize/2);
+                const Rect previewRect(temp, temp + Coord2(previewSize, previewSize));
+
+                if (_browser) {
+                    auto* devContext = context->GetDeviceContext();
+                    SceneEngine::SavedTargets oldTargets(devContext);
+                    const RenderCore::Metal::ShaderResourceView* srv = nullptr;
+                
+                    const char* errorMsg = nullptr;
+
+                    TRY {
+                        ucs2 ucs2Filename[MaxPath];
+                        utf8_2_ucs2(
+                            (const utf8*)AsPointer(_selectedModel->_modelName.cbegin()), _selectedModel->_modelName.size(), 
+                            ucs2Filename, dimof(ucs2Filename));
+
+                        auto browserSRV = _browser->GetSRV(devContext, ucs2Filename);
+                        srv = browserSRV.first;
+                    } 
+                    CATCH(const ::Assets::Exceptions::InvalidResource&) { errorMsg = "Invalid"; } 
+                    CATCH(const ::Assets::Exceptions::PendingResource&) { errorMsg = "Pending"; } 
+                    CATCH_END
+
+                    oldTargets.ResetToOldTargets(devContext);
+
+                    if (srv) {
+                        DrawQuadDirect(
+                            devContext, *srv,
+                            Float2(float(previewRect._topLeft[0]), float(previewRect._topLeft[1])), 
+                            Float2(float(previewRect._bottomRight[0]), float(previewRect._bottomRight[1])));
+                    } else if (errorMsg) {
+                        DrawButtonBasic(
+                            context, previewRect, errorMsg,
+                            FormatButton(interfaceState, Id_SelectedModel, 
+                                ButtonNormalState, ButtonMouseOverState, ButtonPressedState));
+                    }
+                }
+
+                interactables.Register(Interactables::Widget(previewRect, Id_SelectedModel));
+            }
+
+        } else {
+
+                ///////////////////////   B R O W S E R   ///////////////////////
+
+            Rect browserRect(maxSize._topLeft, maxSize._bottomRight);
             Layout browserLayout(browserRect);
             _browser->Render(context, browserLayout, interactables, interfaceState);
+
         }
     }
 
@@ -1202,17 +1348,22 @@ namespace Tools
             const auto Id_SelectedManipulatorRight = InteractableId_Make("SelectedManipulatorRight");
             auto topMost = interfaceState.TopMostWidget();
             auto newManipIndex = _activeManipulatorIndex;
-            if (topMost._id == Id_SelectedManipulatorLeft) {
-                    // go back one manipulator
+
+            if (topMost._id == Id_SelectedManipulatorLeft) {            // ---- go back one manipulator ----
                 newManipIndex = (_activeManipulatorIndex + _manipulators.size() - 1) % _manipulators.size();
-            } else if (topMost._id == Id_SelectedManipulatorRight) {
-                    // go forward one manipulator
+            } else if (topMost._id == Id_SelectedManipulatorRight) {    // ---- go forward one manipulator ----
                 newManipIndex = (_activeManipulatorIndex + 1) % _manipulators.size();
             }
+
             if (newManipIndex != _activeManipulatorIndex) {
                 _manipulators[_activeManipulatorIndex]->SetActivationState(false);
                 _activeManipulatorIndex = newManipIndex;
                 _manipulators[_activeManipulatorIndex]->SetActivationState(true);
+                return true;
+            }
+
+            if (topMost._id == Id_PlacementsSave) {
+                _editor->Save();
                 return true;
             }
         }

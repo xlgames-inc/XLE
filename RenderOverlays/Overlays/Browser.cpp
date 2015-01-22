@@ -155,8 +155,7 @@ namespace Overlays
         context->Bind(Topology::TriangleStrip);
         context->Draw(dimof(vertices));
 
-        ID3D::ShaderResourceView* nullsrv[] = { nullptr };
-        context->GetUnderlying()->PSSetShaderResources(0, dimof(nullsrv), nullsrv);
+        context->UnbindPS<ShaderResourceView>(0, 1);
     }
 
     class ButtonFormatting
@@ -481,7 +480,7 @@ namespace Overlays
             position[0] = _boundingBox.first[0] - (maxHalfDimension * (1.f + border)) / XlTan(0.5f * result._verticalFieldOfView);
             result._cameraToWorld = Float4x4(
                 0.f, 0.f, -1.f, position[0],
-                1.f, 0.f,  0.f, position[1],
+                -1.f, 0.f,  0.f, position[1],
                 0.f, 1.f,  0.f, position[2],
                 0.f, 0.f, 0.f, 1.f);
             Combine_InPlace(result._cameraToWorld, position);
@@ -649,6 +648,11 @@ namespace Overlays
     bool ModelBrowser::Filter(const std::basic_string<ucs2>&)
     {
         return true;
+    }
+
+    Coord2  ModelBrowser::GetPreviewSize() const
+    {
+        return Coord2(ModelBrowserItemDimensions, ModelBrowserItemDimensions);
     }
 
     ModelBrowser::ModelBrowser(

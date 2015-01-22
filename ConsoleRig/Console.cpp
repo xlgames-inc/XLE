@@ -176,7 +176,20 @@ namespace ConsoleRig
         return std::u16string(buffer);
     }
 
+    static std::u16string      AsUTF16(const char input[])
+    {
+        char16_t buffer[1024];
+        utf8_2_ucs2((utf8*)input, XlStringLen(input), buffer, dimof(buffer));
+        return std::u16string(buffer);
+    }
+
     void            Console::Print(const std::string& message)
+    {
+        if (!this) return;  // hack!
+        Print(AsUTF16(message));
+    }
+
+    void Console::Print(const char message[])
     {
         if (!this) return;  // hack!
         Print(AsUTF16(message));

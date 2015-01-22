@@ -17,6 +17,9 @@ namespace Utility
     BasicFile::BasicFile(   const char filename[], const char openMode[], 
                             ShareMode::BitField shareMode)
     {
+        assert(filename && filename[0]);
+        assert(openMode);
+
         unsigned underlyingAccessMode = 0;
         unsigned underlyingShareMode = 0;
         unsigned creationDisposition = 0;

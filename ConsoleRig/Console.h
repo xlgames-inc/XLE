@@ -18,8 +18,11 @@ namespace ConsoleRig
     public:
         void                            Execute(const std::string& str);
         std::vector<std::string>        AutoComplete(const std::string& input);
+
+        void                            Print(const char message[]);
         void                            Print(const std::string& message);
         void                            Print(const std::u16string& message);
+
         std::vector<std::u16string>     GetLines(unsigned lineCount, unsigned scrollback=0);
         unsigned                        GetLineCount() const;
         static Console&                 GetInstance() { return *s_instance; }

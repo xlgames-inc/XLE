@@ -131,6 +131,8 @@ namespace SceneEngine
             const PlacementCell& cell,
             const Float2& mins, const Float2& maxs);
 
+        void Save();
+
         std::shared_ptr<RenderCore::Assets::IModelFormat> GetModelFormat();
 
         PlacementsEditor(std::shared_ptr<PlacementsRenderer> renderer);

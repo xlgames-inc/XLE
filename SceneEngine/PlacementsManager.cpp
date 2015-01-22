@@ -15,6 +15,7 @@
 #include "../RenderCore/Assets/ModelRunTime.h"
 
 #include "../ConsoleRig/Log.h"
+#include "../ConsoleRig/Console.h"
 #include "../Math/Matrix.h"
 #include "../Math/Transformations.h"
 #include "../Math/ProjectionMath.h"
@@ -29,6 +30,11 @@
 #include "../Core/Types.h"
 
 #include <random>
+
+namespace RenderCore { 
+    extern char VersionString[];
+    extern char BuildDateString[];
+}
 
 namespace SceneEngine
 {
@@ -60,6 +66,8 @@ namespace SceneEngine
 
         const ::Assets::DependencyValidation& GetDependancyValidation() const { return *_dependencyValidation; }
 
+        void Save(const ResChar filename[]) const;
+
         Placements(const ResChar filename[]);
         Placements();
         ~Placements();
@@ -85,16 +93,33 @@ namespace SceneEngine
         unsigned _dummy;
     };
 
+    void Placements::Save(const ResChar filename[]) const
+    {
+        using namespace Serialization::ChunkFile;
+        SimpleChunkFileWriter fileWriter(1, filename, "wb", 0, 
+            RenderCore::VersionString, RenderCore::BuildDateString);
+        fileWriter.BeginChunk(ChunkType_Placements, 0, "Placements");
+
+        PlacementsHeader hdr;
+        hdr._version = 0;
+        hdr._objectRefCount = _objects.size();
+        hdr._filenamesBufferSize = _filenamesBuffer.size();
+        hdr._dummy = 0;
+        fileWriter.Write(&hdr, sizeof(hdr), 1);
+        fileWriter.Write(AsPointer(_objects.begin()), sizeof(ObjectReference), hdr._objectRefCount);
+        fileWriter.Write(AsPointer(_filenamesBuffer.begin()), 1, hdr._filenamesBufferSize);
+    }
+
     Placements::Placements(const ResChar filename[])
     {
             //
-            //  Extremely simple file format for placements
-            //  We just need 2 blocks:
-            //      * list of object references
-            //      * list of filenames / strings
-            //  The strings are kept separate from the object placements
-            //  because many of the string will be referenced multiple
-            //  times. It just helps reduce file size.
+            //      Extremely simple file format for placements
+            //      We just need 2 blocks:
+            //          * list of object references
+            //          * list of filenames / strings
+            //      The strings are kept separate from the object placements
+            //      because many of the string will be referenced multiple
+            //      times. It just helps reduce file size.
             //
 
         using namespace Serialization::ChunkFile;
@@ -120,7 +145,7 @@ namespace SceneEngine
             }
 
             objects.resize(hdr._objectRefCount);
-            objects.resize(hdr._filenamesBufferSize);
+            filenamesBuffer.resize(hdr._filenamesBufferSize);
             file.Read(AsPointer(objects.begin()), sizeof(ObjectReference), hdr._objectRefCount);
             file.Read(AsPointer(filenamesBuffer.begin()), 1, hdr._filenamesBufferSize);
         } CATCH (const Utility::Exceptions::IOException&) { // catch file errors
@@ -254,10 +279,15 @@ namespace SceneEngine
             return *i->second._placements;
         } else {
             auto i2 = LowerBound(_cells, filenameHash);
-            if (i2 == _cells.end() || i2->first == filenameHash) {
+            if (i2 == _cells.end() || i2->first != filenameHash) {
                 CellRenderInfo newRenderInfo;   // note; we really want GetAssetDepImmediate here, to prevent Pending resources
                 newRenderInfo._placements = &::Assets::GetAssetDep<Placements>(filename);
                 i2 = _cells.insert(i2, std::make_pair(filenameHash, std::move(newRenderInfo)));
+            } else {
+                    // check if we need to reload placements
+                if (i2->second._placements->GetDependancyValidation().GetValidationIndex() != 0) {
+                    i2->second._placements = &::Assets::GetAssetDep<Placements>(filename);
+                }
             }
 
             return *i2->second._placements;
@@ -271,9 +301,15 @@ namespace SceneEngine
 
         auto i = LowerBound(_cellOverrides, guid);
         if (i ==_cellOverrides.end() || i->first != guid) {
-            _cellOverrides.insert(i, std::make_pair(guid, newRenderInfo));
+            if (placements) {
+                _cellOverrides.insert(i, std::make_pair(guid, newRenderInfo));
+            }
         } else {
-            i->second = newRenderInfo; // override the previous one
+            if (placements) {
+                i->second = newRenderInfo; // override the previous one
+            } else {
+                _cellOverrides.erase(i);
+            }
         }
     }
 
@@ -314,10 +350,15 @@ namespace SceneEngine
                 Render(context, parserContext, techniqueIndex, i->second, cell._cellToWorld, filterStart, filterEnd);
             } else {
                 auto i2 = LowerBound(_cells, cell._filenameHash);
-                if (i2 == _cells.end() || i2->first == cell._filenameHash) {
+                if (i2 == _cells.end() || i2->first != cell._filenameHash) {
                     CellRenderInfo newRenderInfo;
                     newRenderInfo._placements = &::Assets::GetAssetDep<Placements>(cell._filename);
                     i2 = _cells.insert(i2, std::make_pair(cell._filenameHash, std::move(newRenderInfo)));
+                } else {
+                        // check if we need to reload placements
+                    if (i2->second._placements->GetDependancyValidation().GetValidationIndex() != 0) {
+                        i2->second._placements = &::Assets::GetAssetDep<Placements>(cell._filename);
+                    }
                 }
 
                 // if (!i2->second._quadTree) {
@@ -343,6 +384,9 @@ namespace SceneEngine
         const uint64* filterStart, const uint64* filterEnd)
     {
         assert(renderInfo._placements);
+        if (!renderInfo._placements->GetObjectReferenceCount()) {
+            return;
+        }
 
             //
             //  Here we render all of the placements defined by the placement
@@ -536,7 +580,8 @@ namespace SceneEngine
         uint64 AddPlacement(
             const Float3x4& objectToCell, 
             const std::pair<Float3, Float3>& cellSpaceBoundary,
-            const ResChar modelFilename[], const ResChar materialFilename[]);
+            const ResChar modelFilename[], const ResChar materialFilename[],
+            uint64 objectGuid);
 
         std::vector<ObjectReference>& GetObjects() { return _objects; }
 
@@ -580,14 +625,15 @@ namespace SceneEngine
     uint64 DynamicPlacements::AddPlacement(
         const Float3x4& objectToCell,
         const std::pair<Float3, Float3>& cellSpaceBoundary,
-        const ResChar modelFilename[], const ResChar materialFilename[])
+        const ResChar modelFilename[], const ResChar materialFilename[],
+        uint64 objectGuid)
     {
         ObjectReference newReference;
         newReference._localToCell = objectToCell;
         newReference._cellSpaceBoundary = cellSpaceBoundary;
         newReference._modelFilenameOffset = AddString(modelFilename);
         newReference._materialFilenameOffset = AddString(materialFilename);
-        newReference._guid = BuildGuid();
+        newReference._guid = objectGuid;
 
             // Insert the new object in sorted order
             //  We're sorting by GUID, which is an arbitrary random number. So the final
@@ -657,13 +703,14 @@ namespace SceneEngine
     {
         auto p = LowerBound(_dynPlacements, cellGuid);
         if (p == _dynPlacements.end() || p->first != cellGuid) {
-
             std::shared_ptr<DynamicPlacements> placements;
+
                 //  We can get an invalid resource here. It probably means the file
                 //  doesn't exist -- which can happen with an uninitialized data
                 //  directory.
             auto cellName = GetCellName(cellGuid);
             assert(cellName && cellName[0]);
+
             TRY {
                 auto& sourcePlacements = Assets::GetAsset<Placements>(cellName);
                 placements = std::make_shared<DynamicPlacements>(sourcePlacements);
@@ -940,9 +987,10 @@ namespace SceneEngine
                 auto dynPlacements = _editorPimpl->GetDynPlacements(i->_filenameHash);
 
                 localToCell = AsFloat3x4(Combine(newState._localToWorld, InvertOrthonormalTransform(i->_cellToWorld)));
-                auto id = dynPlacements->AddPlacement(
+                auto id = BuildGuid();
+                dynPlacements->AddPlacement(
                     localToCell, TransformBoundingBox(localToCell, model.GetBoundingBox()),
-                    newState._model.c_str(), materialFilename.c_str());
+                    newState._model.c_str(), materialFilename.c_str(), id);
 
                 guid = PlacementGUID(i->_filenameHash, id);
                 break;
@@ -1020,7 +1068,8 @@ namespace SceneEngine
             if (newState._transaction == ObjTransDef::Created || newState._transaction == ObjTransDef::Unchanged) {
                 dynPlacements.AddPlacement(
                     localToCell, cellSpaceBoundary, 
-                    newState._model.c_str(), materialFilename.c_str());
+                    newState._model.c_str(), materialFilename.c_str(), 
+                    guid.second);
             }
         }
     }
@@ -1165,12 +1214,46 @@ namespace SceneEngine
         }
     }
 
+    static void SavePlacements(const char outputFilename[], Placements& placements)
+    {
+        placements.Save(outputFilename);
+        ConsoleRig::Console::GetInstance().Print(StringMeld<256>() << "Writing placements to: " << outputFilename << std::endl);
+    }
+
+    void PlacementsEditor::Save()
+    {
+            //  Save all of the placement files that have changed. 
+            //
+            //  Changed placement cells will have a "dynamic" placements object associated.
+            //  These should get flushed to disk. Then we can delete the dynamic placements,
+            //  because the changed static placements should get automatically reloaded from
+            //  disk (making the dynamic placements cells now redundant)
+            //
+            //  We may need to commit or cancel any active transaction. How do we know
+            //  if we need to commit or cancel them?
+
+        for (auto i = _pimpl->_dynPlacements.begin(); i!=_pimpl->_dynPlacements.end(); ++i) {
+            auto cellGuid = i->first;
+            auto& placements = *i->second;
+
+            auto* cellName = _pimpl->GetCellName(cellGuid);
+            SavePlacements(cellName, placements);
+
+                // clear the renderer links
+            _pimpl->_renderer->SetOverride(cellGuid, nullptr);
+        }
+
+        _pimpl->_dynPlacements.clear();
+    }
+
     std::shared_ptr<RenderCore::Assets::IModelFormat> PlacementsEditor::GetModelFormat()
     {
         return _pimpl->_renderer->GetModelFormat();
     }
 
-    auto PlacementsEditor::Transaction_Begin(const PlacementGUID* placementsBegin, const PlacementGUID* placementsEnd) -> std::shared_ptr<ITransaction>
+    auto PlacementsEditor::Transaction_Begin(
+        const PlacementGUID* placementsBegin, 
+        const PlacementGUID* placementsEnd) -> std::shared_ptr<ITransaction>
     {
         return std::make_shared<Transaction>(_pimpl.get(), placementsBegin, placementsEnd);
     }

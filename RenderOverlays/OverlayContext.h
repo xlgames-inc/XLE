@@ -39,6 +39,12 @@ namespace RenderOverlays
                                 const Float2& minTex1, const Float2& maxTex1,
                                 const std::string& pixelShader);
 
+        void    DrawQuad(
+            ProjectionMode::Enum proj, 
+            const Float3& mins, const Float3& maxs, 
+            ColorB color,
+            const std::string& pixelShader);
+
         void    DrawTexturedQuad(
             ProjectionMode::Enum proj, 
             const Float3& mins, const Float3& maxs, 
