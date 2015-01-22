@@ -1251,6 +1251,12 @@ namespace SceneEngine
         return _pimpl->_renderer->GetModelFormat();
     }
 
+    std::pair<Float3, Float3> PlacementsEditor::GetModelBoundingBox(const ResChar modelName[]) const
+    {
+        auto& model = _pimpl->_renderer->GetCachedModel(modelName);
+        return model.GetBoundingBox();
+    }
+
     auto PlacementsEditor::Transaction_Begin(
         const PlacementGUID* placementsBegin, 
         const PlacementGUID* placementsEnd) -> std::shared_ptr<ITransaction>

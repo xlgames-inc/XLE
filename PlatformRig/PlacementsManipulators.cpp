@@ -276,6 +276,7 @@ namespace Tools
             static const auto keyS = KeyId_Make("s");
             static const auto keyR = KeyId_Make("r");
             static const auto keyM = KeyId_Make("m");
+            static const auto keyEscape = KeyId_Make("escape");
 
             static const auto keyX = KeyId_Make("x");
             static const auto keyY = KeyId_Make("y");
@@ -283,13 +284,14 @@ namespace Tools
 
             bool updateState = evnt._mouseDelta[0] || evnt._mouseDelta[1];
 
-            SubOperation::Type newSubOp = SubOperation::None;
-            if (evnt.IsPress(keyG)) { newSubOp = SubOperation::Translate; _activeSubop._typeInBuffer[0] = '\0'; updateState = true; consume = true; }
-            if (evnt.IsPress(keyS)) { newSubOp = SubOperation::Scale; _activeSubop._typeInBuffer[0] = '\0'; updateState = true; consume = true; }
-            if (evnt.IsPress(keyR)) { newSubOp = SubOperation::Rotate; _activeSubop._typeInBuffer[0] = '\0'; updateState = true; consume = true; }
-            if (evnt.IsPress(keyM)) { newSubOp = SubOperation::MoveAcrossTerrainSurface; _activeSubop._typeInBuffer[0] = '\0'; updateState = true; consume = true; }
+            SubOperation::Type newSubOp = (SubOperation::Type)~unsigned(0);
+            if (evnt.IsPress(keyG))         { newSubOp = SubOperation::Translate; _activeSubop._typeInBuffer[0] = '\0'; updateState = true; consume = true; }
+            if (evnt.IsPress(keyS))         { newSubOp = SubOperation::Scale; _activeSubop._typeInBuffer[0] = '\0'; updateState = true; consume = true; }
+            if (evnt.IsPress(keyR))         { newSubOp = SubOperation::Rotate; _activeSubop._typeInBuffer[0] = '\0'; updateState = true; consume = true; }
+            if (evnt.IsPress(keyM))         { newSubOp = SubOperation::MoveAcrossTerrainSurface; _activeSubop._typeInBuffer[0] = '\0'; updateState = true; consume = true; }
+            if (evnt.IsPress(keyEscape))    { newSubOp = SubOperation::None; _activeSubop._typeInBuffer[0] = '\0'; consume = true; }
 
-            if (newSubOp != SubOperation::None && newSubOp != _activeSubop._type) {
+            if (newSubOp != _activeSubop._type && newSubOp != ~unsigned(0x0)) {
                     //  we have to "restart" the transaction. This returns everything
                     //  to it's original place
                 _transaction->UndoAndRestart();
@@ -777,6 +779,9 @@ namespace Tools
         std::shared_ptr<SceneEngine::PlacementsEditor> _editor;
         unsigned                        _rendersSinceHitTest;
 
+        bool        _doRandomRotation;
+        float       _placementRotation;
+
         std::shared_ptr<SceneEngine::PlacementsEditor::ITransaction> _transaction;
 
         void MoveObject(
@@ -793,9 +798,18 @@ namespace Tools
 
         SceneEngine::PlacementsEditor::ObjTransDef newState(
             AsFloat4x4(newLocation), _manInterface->GetSelectedModel(), materialName);
+        if (_doRandomRotation) {
+            Combine_InPlace(RotationZ(_placementRotation), newState._localToWorld);
+        }
 
         TRY {
             if (!_transaction->GetObjectCount()) {
+                _placementRotation = rand() * 2.f * gPI / float(RAND_MAX);
+                newState._localToWorld = AsFloat4x4(newLocation);
+                if (_doRandomRotation) {
+                    Combine_InPlace(RotationZ(_placementRotation), newState._localToWorld);
+                }
+
                 _transaction->Create(newState);
                 _placeTimeout = Millisecond_Now();
             } else {
@@ -871,7 +885,15 @@ namespace Tools
 
     const char* PlaceSingle::GetName() const                                            { return "Place single"; }
     auto PlaceSingle::GetFloatParameters() const -> std::pair<FloatParameter*, size_t>  { return std::make_pair(nullptr, 0); }
-    auto PlaceSingle::GetBoolParameters() const -> std::pair<BoolParameter*, size_t>    { return std::make_pair(nullptr, 0); }
+    auto PlaceSingle::GetBoolParameters() const -> std::pair<BoolParameter*, size_t>    
+    {
+        static BoolParameter parameters[] = 
+        {
+            BoolParameter(ManipulatorParameterOffset(&PlaceSingle::_doRandomRotation), 0, "RandomRotation"),
+        };
+        return std::make_pair(parameters, dimof(parameters));
+    }
+
     void PlaceSingle::SetActivationState(bool newState)
     {
         if (_transaction) {
@@ -892,6 +914,8 @@ namespace Tools
         _manInterface = manInterface;
         _editor = std::move(editor);
         _rendersSinceHitTest = 0;
+        _doRandomRotation = true;
+        _placementRotation = 0.f;
     }
     
     PlaceSingle::~PlaceSingle() {}
@@ -1222,8 +1246,13 @@ namespace Tools
             //  well with very small numbers of placements. So we're going to limit 
             //  the bottom range.
 
+        auto modelBoundingBox = _editor->GetModelBoundingBox(modelName);
+        auto crossSectionArea = 
+              (modelBoundingBox.second[0] - modelBoundingBox.first[0]) 
+            * (modelBoundingBox.second[1] - modelBoundingBox.first[1]);
+
         float bigCircleArea = gPI * _radius * _radius;
-        auto noisyPts = GenerateBlueNoisePlacements(_radius, unsigned(bigCircleArea*_density/100.f));
+        auto noisyPts = GenerateBlueNoisePlacements(_radius, unsigned(bigCircleArea*_density/crossSectionArea));
 
             //  Now add new placements for all of these pts.
             //  We need to clamp them to the terrain surface as we do this
@@ -1259,7 +1288,7 @@ namespace Tools
         static FloatParameter parameters[] = 
         {
             FloatParameter(ManipulatorParameterOffset(&ScatterPlacements::_radius), 1.f, 100.f, FloatParameter::Logarithmic, "Size"),
-            FloatParameter(ManipulatorParameterOffset(&ScatterPlacements::_density), 0.1f, 100.f, FloatParameter::Linear, "Density")
+            FloatParameter(ManipulatorParameterOffset(&ScatterPlacements::_density), 0.01f, 1.f, FloatParameter::Linear, "Density")
         };
         return std::make_pair(parameters, dimof(parameters));
     }
@@ -1283,7 +1312,7 @@ namespace Tools
         _hasHoverPoint = false;
         _hoverPoint = Float3(0.f, 0.f, 0.f);
         _radius = 20.f;
-        _density = 1.f;
+        _density = .1f;
     }
     
     ScatterPlacements::~ScatterPlacements() {}

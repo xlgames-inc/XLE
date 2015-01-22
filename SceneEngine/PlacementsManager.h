@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../RenderCore/Metal/Forward.h"
+#include "../Assets/Assets.h"
 #include "../Math/Vector.h"
 #include "../Math/Matrix.h"
 #include "../Core/Types.h"
@@ -134,6 +135,7 @@ namespace SceneEngine
         void Save();
 
         std::shared_ptr<RenderCore::Assets::IModelFormat> GetModelFormat();
+        std::pair<Float3, Float3> GetModelBoundingBox(const Assets::ResChar modelName[]) const;
 
         PlacementsEditor(std::shared_ptr<PlacementsRenderer> renderer);
         ~PlacementsEditor();
