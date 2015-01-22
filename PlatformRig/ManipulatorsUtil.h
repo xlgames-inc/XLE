@@ -89,6 +89,7 @@ namespace Tools
             SceneEngine::LightingParserContext& parserContext) = 0;
 
         virtual const char* GetName() const = 0;
+        virtual std::string GetStatusText() const = 0;
 
         template<typename T> class Parameter
         {

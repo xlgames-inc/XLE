@@ -133,6 +133,7 @@ namespace Tools
 
         virtual void    PerformAction(const Float3& worldSpacePosition, float size, float strength) = 0;
         virtual void    SetActivationState(bool) {}
+        virtual std::string GetStatusText() const { return std::string(); }
 
         CommonManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager);
 
@@ -495,6 +496,7 @@ namespace Tools
         virtual std::pair<FloatParameter*, size_t>  GetFloatParameters() const { return std::make_pair(nullptr, 0); }
         virtual std::pair<BoolParameter*, size_t>   GetBoolParameters() const { return std::make_pair(nullptr, 0); }
         virtual void SetActivationState(bool) {}
+        virtual std::string GetStatusText() const { return std::string(); }
 
         RectangleManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager);
 
@@ -984,32 +986,34 @@ namespace Tools
     {
         auto mainLayoutSize = layout.GetMaximumSize();
         static float desiredWidthPercentage = 40.f/100.f;
-        static unsigned screenEdgePadding   = 16;
+        static unsigned screenEdgePadding = 16;
 
-        static ColorB backgroundRectangleColour(64, 96, 64, 127);
-        static ColorB backgroundOutlineColour(192, 192, 192, 0xff);
-        static ColorB headerColourNormal(192, 192, 192, 0xff);
-        static ColorB headerColourHighlight(0xff, 0xff, 0xff, 0xff);
+        static ColorB backgroundRectangleColour (  64,   96,   64,  127);
+        static ColorB backgroundOutlineColour   ( 192,  192,  192, 0xff);
+        static ColorB headerColourNormal        ( 192,  192,  192, 0xff);
+        static ColorB headerColourHighlight     (0xff, 0xff, 0xff, 0xff);
         static unsigned lineHeight = 20;
 
         auto floatParameters = manipulator.GetFloatParameters();
         auto boolParameters = manipulator.GetBoolParameters();
+        auto statusText = manipulator.GetStatusText();
 
         auto& res = SceneEngine::FindCachedBox<WidgetResources>(WidgetResources::Desc());
 
         unsigned parameterCount = unsigned(1 + floatParameters.second + boolParameters.second); // (+1 for the selector control)
+        if (!statusText.empty()) { ++parameterCount; }
         Coord desiredHeight = 
             parameterCount * lineHeight + (std::max(0u, parameterCount-1) * layout._paddingBetweenAllocations)
             + 25 + layout._paddingBetweenAllocations + 2 * layout._paddingInternalBorder;
 
-        static ButtonFormatting buttonNormalState(ColorB(127, 192, 127, 64), ColorB(164, 192, 164, 255));
-        static ButtonFormatting buttonMouseOverState(ColorB(127, 192, 127, 64), ColorB(255, 255, 255, 160));
-        static ButtonFormatting buttonPressedState(ColorB(127, 192, 127, 64), ColorB(255, 255, 255, 96));
+        static ButtonFormatting buttonNormalState   (ColorB(127, 192, 127,  64), ColorB(164, 192, 164, 255));
+        static ButtonFormatting buttonMouseOverState(ColorB(127, 192, 127,  64), ColorB(255, 255, 255, 160));
+        static ButtonFormatting buttonPressedState  (ColorB(127, 192, 127,  64), ColorB(255, 255, 255,  96));
         
         Coord width = unsigned(mainLayoutSize.Width() * desiredWidthPercentage);
         Rect controlsRect(
             Coord2(mainLayoutSize._bottomRight[0] - screenEdgePadding - width, mainLayoutSize._bottomRight[1] - screenEdgePadding - desiredHeight),
-            Coord2(mainLayoutSize._bottomRight[0] - screenEdgePadding , mainLayoutSize._bottomRight[1] - screenEdgePadding));
+            Coord2(mainLayoutSize._bottomRight[0] - screenEdgePadding, mainLayoutSize._bottomRight[1] - screenEdgePadding));
 
         Layout internalLayout(controlsRect);
         
@@ -1064,6 +1068,7 @@ namespace Tools
             //
             //      Also draw controls for the bool parameters
             //
+
         for (size_t c=0; c<boolParameters.second; ++c) {
             auto parameter = boolParameters.first[c];
             const auto rect = internalLayout.AllocateFullWidth(lineHeight);
@@ -1085,9 +1090,21 @@ namespace Tools
         }
 
             //
+            //      Also status text (if any set)
+            //
+
+        if (!statusText.empty()) {
+            const auto rect = internalLayout.AllocateFullWidth(lineHeight);
+            context->DrawText(
+                std::make_tuple(AsPixelCoords(rect._topLeft), AsPixelCoords(rect._bottomRight)), 1.f, 
+                nullptr, headerColourNormal, TextAlignment::Center, statusText.c_str(), nullptr);
+        }
+
+            //
             //      Draw manipulator left/right button
             //          (selects next or previous manipulator tool)
             //
+
         Rect selectedManipulatorRect = internalLayout.AllocateFullWidth(lineHeight);
         interactables.Register(Interactables::Widget(selectedManipulatorRect, Id_SelectedManipulator));
         DrawButtonBasic(

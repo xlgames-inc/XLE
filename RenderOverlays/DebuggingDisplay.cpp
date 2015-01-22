@@ -1298,6 +1298,9 @@ namespace RenderOverlays { namespace DebuggingDisplay
                 }
             }
         }
+
+        _mouseButtonsDblClk |= newEvnts._mouseButtonsDblClk;
+
         for (auto a=newEvnts._activeButtons.begin(); a!=newEvnts._activeButtons.end(); ++a) {
             if (a->_transition) {
                 bool lastFrameKeyState = false;
@@ -1324,6 +1327,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
     {
             // clear "transition" flags (and remove any buttons that transitioned up)
         _mouseButtonsTransition = 0;
+        _mouseButtonsDblClk = 0;
         _pressedChar = 0;
         _wheelDelta = 0;
         _mouseDelta = Int2(0,0);

@@ -22,6 +22,7 @@
 #include "../SceneEngine/CommonResources.h"
 
 #include "../Utility/TimeUtils.h"
+#include "../Utility/StringFormat.h"
 #include "../Math/Transformations.h"
 #include "../Math/Geometry.h"
 
@@ -29,6 +30,7 @@
 #include "../SceneEngine/SceneEngineUtility.h"
 #include "../SceneEngine/ResourceBox.h"
 #include "../Math/ProjectionMath.h"
+#include <iomanip>
 
 #include "../Core/WinAPI/IncludeWindows.h"      // *hack* just needed for getting client rect coords!
 
@@ -45,13 +47,18 @@ namespace Tools
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class SelectedModel
+    class IPlacementManipManagerInterface
     {
     public:
-        std::string _modelName;
+        virtual std::string GetSelectedModel() const = 0;
+        virtual void EnableSelectedModelDisplay(bool newState) = 0;
+        virtual void SelectModel(const char newModelName[]) = 0;
+
+        struct Mode { enum Enum { Select, PlaceSingle }; };
+        virtual void SwitchToMode(Mode::Enum newMode) = 0;
     };
 
-    class PlacementsWidgets : public IWidget
+    class PlacementsWidgets : public IWidget, public IPlacementManipManagerInterface
     {
     public:
         void    Render(         IOverlayContext* context, Layout& layout, 
@@ -70,11 +77,18 @@ namespace Tools
         std::shared_ptr<ModelBrowser>       _browser;
         std::shared_ptr<HitTestResolver>    _hitTestResolver;
         std::shared_ptr<SceneEngine::PlacementsEditor> _editor;
-        bool                                _browserActive;
-        std::shared_ptr<SelectedModel>      _selectedModel;
+        bool            _browserActive;
+        std::string     _selectedModel;
 
         std::vector<std::unique_ptr<IManipulator>> _manipulators;
-        unsigned _activeManipulatorIndex;
+        unsigned        _activeManipulatorIndex;
+        bool            _drawSelectedModel;
+
+            // "IPlacementManipManagerInterface" interface
+        virtual std::string GetSelectedModel() const;
+        virtual void EnableSelectedModelDisplay(bool newState);
+        virtual void SelectModel(const char newModelName[]);
+        virtual void SwitchToMode(Mode::Enum newMode);
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -169,11 +183,14 @@ namespace Tools
             SceneEngine::LightingParserContext& parserContext);
 
         const char* GetName() const;
+        std::string GetStatusText() const;
+
         std::pair<FloatParameter*, size_t>  GetFloatParameters() const;
         std::pair<BoolParameter*, size_t>   GetBoolParameters() const;
         void SetActivationState(bool);
 
         SelectAndEdit(
+            IPlacementManipManagerInterface* manInterface,
             std::shared_ptr<SceneEngine::PlacementsEditor> editor);
         ~SelectAndEdit();
 
@@ -191,12 +208,14 @@ namespace Tools
             Axis    _axisRestriction;
             Coord2  _cursorStart;
             HitTestResolver::Result _anchorTerrainIntersection;
+            char    _typeInBuffer[4];
 
-            SubOperation() : _type(None), _parameter(0.f, 0.f, 0.f), _axisRestriction(NoAxis), _cursorStart(0, 0) {}
+            SubOperation() : _type(None), _parameter(0.f, 0.f, 0.f), _axisRestriction(NoAxis), _cursorStart(0, 0) { _typeInBuffer[0] = '\0'; }
         };
         SubOperation _activeSubop;
 
         std::shared_ptr<SceneEngine::PlacementsEditor::ITransaction> _transaction;
+        IPlacementManipManagerInterface* _manInterface;
         Float3 _anchorPoint;
 
         SceneEngine::PlacementsEditor::ObjTransDef TransformObject(
@@ -262,21 +281,22 @@ namespace Tools
             static const auto keyY = KeyId_Make("y");
             static const auto keyZ = KeyId_Make("z");
 
+            bool updateState = evnt._mouseDelta[0] || evnt._mouseDelta[1];
+
             SubOperation::Type newSubOp = SubOperation::None;
-            if (evnt.IsPress(keyG)) { newSubOp = SubOperation::Translate; consume = true; }
-            if (evnt.IsPress(keyS)) { newSubOp = SubOperation::Scale; consume = true; }
-            if (evnt.IsPress(keyR)) { newSubOp = SubOperation::Rotate; consume = true; }
-            if (evnt.IsPress(keyM)) { newSubOp = SubOperation::MoveAcrossTerrainSurface; consume = true; }
+            if (evnt.IsPress(keyG)) { newSubOp = SubOperation::Translate; _activeSubop._typeInBuffer[0] = '\0'; updateState = true; consume = true; }
+            if (evnt.IsPress(keyS)) { newSubOp = SubOperation::Scale; _activeSubop._typeInBuffer[0] = '\0'; updateState = true; consume = true; }
+            if (evnt.IsPress(keyR)) { newSubOp = SubOperation::Rotate; _activeSubop._typeInBuffer[0] = '\0'; updateState = true; consume = true; }
+            if (evnt.IsPress(keyM)) { newSubOp = SubOperation::MoveAcrossTerrainSurface; _activeSubop._typeInBuffer[0] = '\0'; updateState = true; consume = true; }
 
             if (newSubOp != SubOperation::None && newSubOp != _activeSubop._type) {
                     //  we have to "restart" the transaction. This returns everything
                     //  to it's original place
                 _transaction->UndoAndRestart();
+                _activeSubop = SubOperation();
                 _activeSubop._type = newSubOp;
-                _activeSubop._parameter = Float3(0.f, 0.f, 0.f);
                 _activeSubop._axisRestriction = SubOperation::NoAxis;
                 _activeSubop._cursorStart = evnt._mousePosition;
-                _activeSubop._anchorTerrainIntersection = HitTestResolver::Result();
 
                 if (newSubOp == SubOperation::MoveAcrossTerrainSurface) {
                     _activeSubop._anchorTerrainIntersection = hitTestContext.DoHitTest(evnt._mousePosition);
@@ -286,11 +306,19 @@ namespace Tools
             if (_activeSubop._type != SubOperation::None) {
                 Float3 oldParameter = _activeSubop._parameter;
 
-                if (evnt.IsPress(keyX)) { _activeSubop._axisRestriction = SubOperation::X; _activeSubop._parameter = Float3(0.f, 0.f, 0.f); consume = true; }
-                if (evnt.IsPress(keyY)) { _activeSubop._axisRestriction = SubOperation::Y; _activeSubop._parameter = Float3(0.f, 0.f, 0.f); consume = true; }
-                if (evnt.IsPress(keyZ)) { _activeSubop._axisRestriction = SubOperation::Z; _activeSubop._parameter = Float3(0.f, 0.f, 0.f); consume = true; }
+                if (evnt.IsPress(keyX)) { _activeSubop._axisRestriction = SubOperation::X; _activeSubop._parameter = Float3(0.f, 0.f, 0.f); _activeSubop._typeInBuffer[0] = '\0'; updateState = true; consume = true; }
+                if (evnt.IsPress(keyY)) { _activeSubop._axisRestriction = SubOperation::Y; _activeSubop._parameter = Float3(0.f, 0.f, 0.f); _activeSubop._typeInBuffer[0] = '\0'; updateState = true; consume = true; }
+                if (evnt.IsPress(keyZ)) { _activeSubop._axisRestriction = SubOperation::Z; _activeSubop._parameter = Float3(0.f, 0.f, 0.f); _activeSubop._typeInBuffer[0] = '\0'; updateState = true; consume = true; }
 
-                if (evnt._mouseDelta[0] || evnt._mouseDelta[1]) {
+                    // allow some characters to enter into the "type in buffer"
+                    //      digits & '.' & '-'
+                if ((evnt._pressedChar >= (ucs2)'0' && evnt._pressedChar <= (ucs2)'9') || evnt._pressedChar == (ucs2)'.' || evnt._pressedChar == (ucs2)'-') {
+                    XlCatString(_activeSubop._typeInBuffer, dimof(_activeSubop._typeInBuffer), (char)evnt._pressedChar);
+                    consume = true;
+                    updateState = true;
+                }
+
+                if (updateState) {
                         //  we always perform a manipulator's action in response to a mouse movement.
                     if (_activeSubop._type == SubOperation::Rotate) {
 
@@ -299,6 +327,11 @@ namespace Tools
                         auto ssAnchor = hitTestContext.ProjectToScreenSpace(_anchorPoint);
                         float ssAngle1 = XlATan2(evnt._mousePosition[1] - ssAnchor[1], evnt._mousePosition[0] - ssAnchor[0]);
                         float ssAngle0 = XlATan2(_activeSubop._cursorStart[1] - ssAnchor[1], _activeSubop._cursorStart[0] - ssAnchor[0]);
+                        float value = ssAngle0 - ssAngle1;
+
+                        if (_activeSubop._typeInBuffer[0]) {
+                            value = XlAtoF32(_activeSubop._typeInBuffer) * gPI / 180.f;
+                        }
 
                         unsigned axisIndex = 2;
                         switch (_activeSubop._axisRestriction) {
@@ -309,7 +342,7 @@ namespace Tools
                         }
 
                         _activeSubop._parameter = Float3(0.f, 0.f, 0.f);
-                        _activeSubop._parameter[axisIndex] = ssAngle0 - ssAngle1;
+                        _activeSubop._parameter[axisIndex] = value;
 
                     } else if (_activeSubop._type == SubOperation::Scale) {
 
@@ -323,6 +356,10 @@ namespace Tools
                         float scaleFactor = 1.f;
                         if (ssDist0 > 0.f) {
                             scaleFactor = ssDist1 / ssDist0;
+                        }
+
+                        if (_activeSubop._typeInBuffer[0]) {
+                            scaleFactor = XlAtoF32(_activeSubop._typeInBuffer);
                         }
 
                         switch (_activeSubop._axisRestriction) {
@@ -370,6 +407,10 @@ namespace Tools
                             auto intersectionPt = LinearInterpolate(ray.first, ray.second, dst);
                             float transRight = Dot(intersectionPt - _anchorPoint, rightAxis);
                             float transUp = Dot(intersectionPt - _anchorPoint, upAxis);
+
+                            if (_activeSubop._axisRestriction != SubOperation::NoAxis && _activeSubop._typeInBuffer[0]) {
+                                transUp = XlAtoF32(_activeSubop._typeInBuffer);
+                            }
 
                             switch (_activeSubop._axisRestriction) {
                             case SubOperation::X: _activeSubop._parameter = Float3(transUp, 0.f, 0.f); break;
@@ -421,7 +462,7 @@ namespace Tools
                     _transaction->Commit();  
                     _transaction.reset();
                 }
-                _activeSubop._type = SubOperation::None;
+                _activeSubop = SubOperation();
 
             } else {
 
@@ -455,6 +496,37 @@ namespace Tools
 
             }
 
+            return true;
+        }
+
+        if (evnt.IsDblClk_LButton()) {
+
+                //  We want to select the name model that we dbl-clked on.
+                //  Actually, the model under the cursor is probably in
+                //  the selection now. But let's do another ray test.
+                //  Then, tell the manager to switch to placement mode
+
+            if (_manInterface) {
+                auto worldSpaceRay = hitTestContext.CalculateWorldSpaceRay(evnt._mousePosition);
+                auto selected = _editor->Find_RayIntersection(worldSpaceRay.first, worldSpaceRay.second);
+                if (!selected.empty()) {
+                    auto tempTrans = _editor->Transaction_Begin(&selected[0], &selected[0] + 1);
+                    if (tempTrans->GetObjectCount() == 1) {
+                        _manInterface->SelectModel(tempTrans->GetObject(0)._model.c_str());
+                        _manInterface->SwitchToMode(IPlacementManipManagerInterface::Mode::PlaceSingle);
+                    }
+                }
+            }
+
+            return true;
+        }
+
+        if (evnt.IsPress(KeyId_Make("delete"))) {
+            if (_transaction) {
+                auto count = _transaction->GetObjectCount();
+                for (unsigned c=0; c<count; ++c) { _transaction->Delete(c); }
+                _activeSubop = SubOperation();
+            }
             return true;
         }
 
@@ -607,6 +679,50 @@ namespace Tools
         }
     }
 
+    std::string SelectAndEdit::GetStatusText() const
+    {
+        if (_activeSubop._type == SubOperation::None) {
+            return std::string();
+        }
+
+        StringMeld<512> meld;
+        meld << std::fixed << std::setprecision(2);
+
+        switch (_activeSubop._type)
+        {
+        case SubOperation::Translate:
+            meld << "T: (" << _activeSubop._parameter[0] << ", " << _activeSubop._parameter[1] << "," << _activeSubop._parameter[1] << "). ";
+            break;
+
+        case SubOperation::Scale:
+            meld << "S: (" << _activeSubop._parameter[0] << ", " << _activeSubop._parameter[1] << "," << _activeSubop._parameter[1] << "). ";
+            break;
+
+        case SubOperation::Rotate:
+            switch (_activeSubop._axisRestriction) {
+            case SubOperation::X: meld << "R: (" << _activeSubop._parameter[0] * 180.f / gPI << ")"; break;
+            case SubOperation::Y: meld << "R: (" << _activeSubop._parameter[1] * 180.f / gPI << ")"; break;
+            case SubOperation::NoAxis:
+            case SubOperation::Z: meld << "R: (" << _activeSubop._parameter[2] * 180.f / gPI << ")"; break;
+            }
+            break;
+
+        case SubOperation::MoveAcrossTerrainSurface:
+            meld << "T <<terrain>>: (" << _activeSubop._parameter[0] << ", " << _activeSubop._parameter[1] << "). ";
+            break;
+        }
+
+        switch (_activeSubop._axisRestriction) 
+        {
+        case SubOperation::NoAxis: break;
+        case SubOperation::X: meld << " [ Global X ] "; break;
+        case SubOperation::Y: meld << " [ Global Y ] "; break;
+        case SubOperation::Z: meld << " [ Global Z ] "; break;
+        }
+
+        return std::string(meld);
+    }
+
     const char* SelectAndEdit::GetName() const                                            { return "Select And Edit"; }
     auto SelectAndEdit::GetFloatParameters() const -> std::pair<FloatParameter*, size_t>  { return std::make_pair(nullptr, 0); }
     auto SelectAndEdit::GetBoolParameters() const -> std::pair<BoolParameter*, size_t>    { return std::make_pair(nullptr, 0); }
@@ -616,13 +732,15 @@ namespace Tools
             _transaction->Cancel();
             _transaction.reset();
         }
-        _activeSubop._type = SubOperation::None;
+        _activeSubop = SubOperation();
         _anchorPoint = Float3(0.f, 0.f, 0.f);
     }
 
     SelectAndEdit::SelectAndEdit(
+        IPlacementManipManagerInterface* manInterface,
         std::shared_ptr<SceneEngine::PlacementsEditor> editor)
     {
+        _manInterface = manInterface;
         _editor = editor;
         _anchorPoint = Float3(0.f, 0.f, 0.f);
     }
@@ -646,35 +764,40 @@ namespace Tools
         std::pair<FloatParameter*, size_t>  GetFloatParameters() const;
         std::pair<BoolParameter*, size_t>   GetBoolParameters() const;
         void SetActivationState(bool);
+        std::string GetStatusText() const { return std::string(); }
 
         PlaceSingle(
-            std::shared_ptr<SelectedModel> selectedModel,
+            IPlacementManipManagerInterface* manInterface,
             std::shared_ptr<SceneEngine::PlacementsEditor> editor);
         ~PlaceSingle();
 
     protected:
-        Millisecond                     _spawnTimer;
-        std::shared_ptr<SelectedModel>  _selectedModel;
+        Millisecond                     _placeTimeout;
+        IPlacementManipManagerInterface* _manInterface;
         std::shared_ptr<SceneEngine::PlacementsEditor> _editor;
         unsigned                        _rendersSinceHitTest;
 
         std::shared_ptr<SceneEngine::PlacementsEditor::ITransaction> _transaction;
 
-        void MoveObject(const Float3& newLocation);
+        void MoveObject(
+            const Float3& newLocation,
+            const char modelName[], const char materialName[]);
     };
 
-    void PlaceSingle::MoveObject(const Float3& newLocation)
+    void PlaceSingle::MoveObject(const Float3& newLocation, 
+        const char modelName[], const char materialName[])
     {
         if (!_transaction) {
             _transaction = _editor->Transaction_Begin(nullptr, nullptr);
         }
 
         SceneEngine::PlacementsEditor::ObjTransDef newState(
-            AsFloat4x4(newLocation), _selectedModel->_modelName, std::string());
+            AsFloat4x4(newLocation), _manInterface->GetSelectedModel(), materialName);
 
         TRY {
             if (!_transaction->GetObjectCount()) {
                 _transaction->Create(newState);
+                _placeTimeout = Millisecond_Now();
             } else {
                 _transaction->SetObject(0, newState);
             }
@@ -688,7 +811,8 @@ namespace Tools
     {
         //  If we get a click on the terrain, then we should perform 
             //  whatever placement operation is required (eg, creating new placements)
-        if (_selectedModel->_modelName.empty()) {
+        auto selectedModel = _manInterface->GetSelectedModel();
+        if (selectedModel.empty()) {
             if (_transaction) {
                 _transaction->Cancel();
                 _transaction.reset();
@@ -704,14 +828,23 @@ namespace Tools
 
                     //  This is a spawn event. We should add a new item of the selected model
                     //  at the point clicked.
-                MoveObject(test._worldSpaceCollision);
+                MoveObject(test._worldSpaceCollision, selectedModel.c_str(), "");
             }
         }
 
-        if (evnt.IsRelease_LButton()) {
+            // We add a small timeout 
+        const unsigned safetyTimeout = 200;
+        if (evnt.IsRelease_LButton() && (_placeTimeout - Millisecond_Now()) > safetyTimeout) {
             if (_transaction) {
                 _transaction->Commit();
                 _transaction.reset();
+            }
+        }
+
+        if (evnt.IsRelease_RButton() || evnt.IsPress(KeyId_Make("escape"))) {
+            // cancel... tell the manager to change model
+            if (_manInterface) {
+                _manInterface->SwitchToMode(IPlacementManipManagerInterface::Mode::Select);
             }
         }
 
@@ -739,20 +872,24 @@ namespace Tools
     const char* PlaceSingle::GetName() const                                            { return "Place single"; }
     auto PlaceSingle::GetFloatParameters() const -> std::pair<FloatParameter*, size_t>  { return std::make_pair(nullptr, 0); }
     auto PlaceSingle::GetBoolParameters() const -> std::pair<BoolParameter*, size_t>    { return std::make_pair(nullptr, 0); }
-    void PlaceSingle::SetActivationState(bool) 
+    void PlaceSingle::SetActivationState(bool newState)
     {
         if (_transaction) {
             _transaction->Cancel();
             _transaction.reset();
         }
+        if (_manInterface) {
+            _manInterface->EnableSelectedModelDisplay(newState);
+        }
+        _placeTimeout = Millisecond_Now();
     }
 
     PlaceSingle::PlaceSingle(
-        std::shared_ptr<SelectedModel> selectedModel,
+        IPlacementManipManagerInterface* manInterface,
         std::shared_ptr<SceneEngine::PlacementsEditor> editor)
     {
-        _spawnTimer = 0;
-        _selectedModel = std::move(selectedModel);
+        _placeTimeout = 0;
+        _manInterface = manInterface;
         _editor = std::move(editor);
         _rendersSinceHitTest = 0;
     }
@@ -775,15 +912,16 @@ namespace Tools
         std::pair<FloatParameter*, size_t>  GetFloatParameters() const;
         std::pair<BoolParameter*, size_t>   GetBoolParameters() const;
         void SetActivationState(bool);
+        std::string GetStatusText() const { return std::string(); }
 
         ScatterPlacements(
-            std::shared_ptr<SelectedModel> selectedModel,
+            IPlacementManipManagerInterface* manInterface,
             std::shared_ptr<SceneEngine::PlacementsEditor> editor);
         ~ScatterPlacements();
 
     protected:
-        Millisecond                     _spawnTimer;
-        std::shared_ptr<SelectedModel>  _selectedModel;
+        Millisecond                         _spawnTimer;
+        IPlacementManipManagerInterface*    _manInterface;
         std::shared_ptr<SceneEngine::PlacementsEditor> _editor;
 
         float _radius;
@@ -813,8 +951,9 @@ namespace Tools
         auto now = Millisecond_Now();
         if (evnt.IsHeld_LButton()) {
             if (test._type == HitTestResolver::Result::Terrain) {
-                if (now >= (_spawnTimer + spawnTimeOut) && !_selectedModel->_modelName.empty()) {
-                    PerformScatter(test._worldSpaceCollision, _selectedModel->_modelName.c_str(), "");
+                auto selectedModel = _manInterface->GetSelectedModel();
+                if (now >= (_spawnTimer + spawnTimeOut) && !selectedModel.empty()) {
+                    PerformScatter(test._worldSpaceCollision, selectedModel.c_str(), "");
                     _spawnTimer = now;
                 }
                 return true;
@@ -823,6 +962,13 @@ namespace Tools
 
         if (evnt._wheelDelta) {
             _radius = std::max(1.f, _radius + 3.f * evnt._wheelDelta / 120.f);
+        }
+
+        if (evnt.IsRelease_RButton() || evnt.IsPress(KeyId_Make("escape"))) {
+            // cancel... tell the manager to change model
+            if (_manInterface) {
+                _manInterface->SwitchToMode(IPlacementManipManagerInterface::Mode::Select);
+            }
         }
 
         return false;
@@ -1066,7 +1212,8 @@ namespace Tools
             //  We have a list of placements using the same model, and within the placement area.
             //  We want to either add or remove one.
 
-        auto trans = _editor->Transaction_Begin(AsPointer(oldPlacements.cbegin()), AsPointer(oldPlacements.cend()));
+        auto trans = _editor->Transaction_Begin(
+            AsPointer(oldPlacements.cbegin()), AsPointer(oldPlacements.cend()));
         for (unsigned c=0; c<trans->GetObjectCount(); ++c) {
             trans->Delete(c);
         }
@@ -1119,14 +1266,19 @@ namespace Tools
 
     auto ScatterPlacements::GetBoolParameters() const -> std::pair<BoolParameter*, size_t>    { return std::make_pair(nullptr, 0); }
 
-    void ScatterPlacements::SetActivationState(bool) {}
+    void ScatterPlacements::SetActivationState(bool newState) 
+    {
+        if (_manInterface) {
+            _manInterface->EnableSelectedModelDisplay(newState);
+        }
+    }
 
     ScatterPlacements::ScatterPlacements(
-        std::shared_ptr<SelectedModel> selectedModel,
+        IPlacementManipManagerInterface* manInterface,
         std::shared_ptr<SceneEngine::PlacementsEditor> editor)
     {
         _spawnTimer = 0;
-        _selectedModel = std::move(selectedModel);
+        _manInterface = manInterface;
         _editor = std::move(editor);
         _hasHoverPoint = false;
         _hoverPoint = Float3(0.f, 0.f, 0.f);
@@ -1272,7 +1424,7 @@ namespace Tools
             }
         
                 ///////////////////////   S E L E C T E D    I T E M   ///////////////////////
-            if (!_selectedModel->_modelName.empty()) {
+            if (!_selectedModel.empty() && _drawSelectedModel) {
                 const auto centre = buttonsArea._topLeft + Coord2(toolAreaWidth/2, -margin - previewSize/2);
                 const auto temp = centre - Coord2(previewSize/2, previewSize/2);
                 const Rect previewRect(temp, temp + Coord2(previewSize, previewSize));
@@ -1287,7 +1439,7 @@ namespace Tools
                     TRY {
                         ucs2 ucs2Filename[MaxPath];
                         utf8_2_ucs2(
-                            (const utf8*)AsPointer(_selectedModel->_modelName.cbegin()), _selectedModel->_modelName.size(), 
+                            (const utf8*)AsPointer(_selectedModel.cbegin()), _selectedModel.size(), 
                             ucs2Filename, dimof(ucs2Filename));
 
                         auto browserSRV = _browser->GetSRV(devContext, ucs2Filename);
@@ -1336,7 +1488,7 @@ namespace Tools
         if (_browser && _browserActive) {
             auto result = _browser->SpecialProcessInput(interfaceState, input);
             if (!result._selectedModel.empty()) {
-                _selectedModel->_modelName = result._selectedModel;
+                _selectedModel = result._selectedModel;
                 _browserActive = false; // dismiss browser on select
             }
 
@@ -1386,6 +1538,32 @@ namespace Tools
         _manipulators[_activeManipulatorIndex]->Render(context, parserContext);
     }
 
+    std::string PlacementsWidgets::GetSelectedModel() const { return _selectedModel; }
+    void PlacementsWidgets::EnableSelectedModelDisplay(bool newState)
+    {
+        _drawSelectedModel = newState;
+    }
+
+    void PlacementsWidgets::SelectModel(const char newModelName[])
+    {
+        if (newModelName) {
+            _selectedModel = newModelName;
+        }
+    }
+
+    void PlacementsWidgets::SwitchToMode(Mode::Enum newMode)
+    {
+        auto newActiveManipIndex = _activeManipulatorIndex;
+        if (newMode == Mode::PlaceSingle) { newActiveManipIndex = 1; }
+        else if (newMode == Mode::Select) { newActiveManipIndex = 0; }
+
+        if (newActiveManipIndex != _activeManipulatorIndex) {
+            _manipulators[_activeManipulatorIndex]->SetActivationState(false);
+            _activeManipulatorIndex = newActiveManipIndex;
+            _manipulators[_activeManipulatorIndex]->SetActivationState(true);
+        }
+    }
+
     PlacementsWidgets::PlacementsWidgets(
         std::shared_ptr<SceneEngine::PlacementsEditor> editor, 
         std::shared_ptr<HitTestResolver> hitTestResolver)
@@ -1393,14 +1571,14 @@ namespace Tools
         auto browser = std::make_shared<ModelBrowser>("game\\objects\\Env", editor->GetModelFormat());
         _browserActive = false;
         _activeManipulatorIndex = 0;
+        _drawSelectedModel = false;
 
-        auto selectedModel = std::make_shared<SelectedModel>();
-        selectedModel->_modelName = "game\\objects\\Env\\02_harihara\\001_hdeco\\backpack_mockup.cgf";
+        std::string selectedModel = "game\\objects\\Env\\02_harihara\\001_hdeco\\backpack_mockup.cgf";
 
         std::vector<std::unique_ptr<IManipulator>> manipulators;
-        manipulators.push_back(std::make_unique<PlaceSingle>(selectedModel, editor));
-        manipulators.push_back(std::make_unique<ScatterPlacements>(selectedModel, editor));
-        manipulators.push_back(std::make_unique<SelectAndEdit>(editor));
+        manipulators.push_back(std::make_unique<SelectAndEdit>(this, editor));
+        manipulators.push_back(std::make_unique<PlaceSingle>(this, editor));
+        manipulators.push_back(std::make_unique<ScatterPlacements>(this, editor));
 
         manipulators[0]->SetActivationState(true);
 

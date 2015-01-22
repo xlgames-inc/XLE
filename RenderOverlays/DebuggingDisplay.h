@@ -110,6 +110,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
     public:
         unsigned        _mouseButtonsTransition;
         unsigned        _mouseButtonsDown;
+        unsigned        _mouseButtonsDblClk;
         Coord2          _mousePosition;
         Coord2          _mouseDelta;
         signed          _wheelDelta;
@@ -126,12 +127,12 @@ namespace RenderOverlays { namespace DebuggingDisplay
         };
         std::vector<ActiveButton>   _activeButtons;
 
-        InputSnapshot() : _mouseButtonsTransition(0), _mouseButtonsDown(0), _wheelDelta(0), _mousePosition(0,0), _mouseDelta(0,0), _pressedChar(0) {}
+        InputSnapshot() : _mouseButtonsTransition(0), _mouseButtonsDblClk(0), _mouseButtonsDown(0), _wheelDelta(0), _mousePosition(0,0), _mouseDelta(0,0), _pressedChar(0) {}
         InputSnapshot(  unsigned buttonsDown, unsigned buttonsTransition, signed wheelDelta, 
                         Coord2 mousePosition, Coord2 mouseDelta, Utility::ucs2 pressedChar=0) 
             : _mouseButtonsTransition(buttonsTransition), _mouseButtonsDown(buttonsDown)
             , _wheelDelta(wheelDelta), _mousePosition(mousePosition), _mouseDelta(mouseDelta)
-            , _pressedChar(pressedChar) {}
+            , _pressedChar(pressedChar), _mouseButtonsDblClk(0) {}
 
             //
             //      Each mouse button gets 2 bits, meaning 4 possible states:
@@ -141,16 +142,19 @@ namespace RenderOverlays { namespace DebuggingDisplay
         bool    IsPress_LButton() const      { return ((_mouseButtonsDown&1)==1) && ((_mouseButtonsTransition&1)==1); }
         bool    IsRelease_LButton() const    { return ((_mouseButtonsDown&1)==0) && ((_mouseButtonsTransition&1)==1); }
         bool    IsUp_LButton() const         { return ((_mouseButtonsDown&1)==0) && ((_mouseButtonsTransition&1)==0); }
+        bool    IsDblClk_LButton() const     { return !!(_mouseButtonsDblClk & 1); }
 
         bool    IsHeld_RButton() const       { return ((_mouseButtonsDown&(1<<1))==(1<<1)); }
         bool    IsPress_RButton() const      { return ((_mouseButtonsDown&(1<<1))==(1<<1))  && ((_mouseButtonsTransition&(1<<1))==(1<<1)); }
         bool    IsRelease_RButton() const    { return ((_mouseButtonsDown&(1<<1))==0)       && ((_mouseButtonsTransition&(1<<1))==(1<<1)); }
         bool    IsUp_RButton() const         { return ((_mouseButtonsDown&(1<<1))==0)       && ((_mouseButtonsTransition&(1<<1))==0); }
+        bool    IsDblClk_RButton() const     { return !!(_mouseButtonsDblClk & (1<<1)); }
 
         bool    IsHeld_MButton() const       { return ((_mouseButtonsDown&(1<<2))==(1<<2)); }
         bool    IsPress_MButton() const      { return ((_mouseButtonsDown&(1<<2))==(1<<2))  && ((_mouseButtonsTransition&(1<<2))==(1<<2)); }
         bool    IsRelease_MButton() const    { return ((_mouseButtonsDown&(1<<2))==0)       && ((_mouseButtonsTransition&(1<<2))==(1<<2)); }
         bool    IsUp_MButton() const         { return ((_mouseButtonsDown&(1<<2))==0)       && ((_mouseButtonsTransition&(1<<2))==0); }
+        bool    IsDblClk_MButton() const     { return !!(_mouseButtonsDblClk & (1<<2)); }
 
         template<typename Iterator> static bool IsHeld      (KeyId key, Iterator begin, Iterator end);
         template<typename Iterator> static bool IsPress     (KeyId key, Iterator begin, Iterator end);

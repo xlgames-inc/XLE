@@ -1217,7 +1217,7 @@ namespace SceneEngine
     static void SavePlacements(const char outputFilename[], Placements& placements)
     {
         placements.Save(outputFilename);
-        ConsoleRig::Console::GetInstance().Print(StringMeld<256>() << "Writing placements to: " << outputFilename << std::endl);
+        ConsoleRig::Console::GetInstance().Print(StringMeld<256>() << "Writing placements to: " << outputFilename << "\n");
     }
 
     void PlacementsEditor::Save()

@@ -48,9 +48,19 @@ namespace PlatformRig
 
     void    InputTranslator::OnMouseButtonChange (unsigned index,    bool newState)
     {
+        assert(index < 32);
         using namespace RenderOverlays::DebuggingDisplay;
         InputSnapshot snapShot(GetMouseButtonState(), 1<<index, 0, _pimpl->_currentMousePosition, Int2(0,0));
         snapShot._activeButtons = _pimpl->_passiveButtonState;
+        Publish(snapShot);
+    }
+
+    void    InputTranslator::OnMouseButtonDblClk (unsigned index)
+    {
+        assert(index < 32);
+        using namespace RenderOverlays::DebuggingDisplay;
+        InputSnapshot snapShot(GetMouseButtonState(), 0, 0, _pimpl->_currentMousePosition, Int2(0,0));
+        snapShot._mouseButtonsDblClk |= (1<<index);
         Publish(snapShot);
     }
 

@@ -82,6 +82,9 @@ namespace PlatformRig
         case WM_LBUTTONUP:
         case WM_RBUTTONUP:
         case WM_MBUTTONUP:
+        case WM_LBUTTONDBLCLK:
+        case WM_RBUTTONDBLCLK:
+        case WM_MBUTTONDBLCLK:
         case WM_MOUSEWHEEL:
         case WM_KEYDOWN:
         case WM_KEYUP:
@@ -115,6 +118,10 @@ namespace PlatformRig
                 case WM_LBUTTONUP:      if (inputTrans) { inputTrans->OnMouseButtonChange(0, false); }   break;
                 case WM_RBUTTONUP:      if (inputTrans) { inputTrans->OnMouseButtonChange(1, false); }   break;
                 case WM_MBUTTONUP:      if (inputTrans) { inputTrans->OnMouseButtonChange(2, false); }   break;
+
+                case WM_LBUTTONDBLCLK:  if (inputTrans) { inputTrans->OnMouseButtonDblClk(0); }   break;
+                case WM_RBUTTONDBLCLK:  if (inputTrans) { inputTrans->OnMouseButtonDblClk(1); }   break;
+                case WM_MBUTTONDBLCLK:  if (inputTrans) { inputTrans->OnMouseButtonDblClk(2); }   break;
 
                 case WM_MOUSEWHEEL:     if (inputTrans) { inputTrans->OnMouseWheel(GET_WHEEL_DELTA_WPARAM(wparam)); }    break;
 

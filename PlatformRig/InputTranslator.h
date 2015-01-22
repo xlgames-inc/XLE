@@ -19,6 +19,7 @@ namespace PlatformRig
     public:
         void    OnMouseMove         (signed newX,       signed newY);
         void    OnMouseButtonChange (unsigned index,    bool newState);
+        void    OnMouseButtonDblClk (unsigned index);
         void    OnKeyChange         (unsigned keyCode,  bool newState);
         void    OnChar              (ucs2 chr);
         void    OnMouseWheel        (signed wheelDelta);
