@@ -3,10 +3,10 @@
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
-    <IncludePath>$(DXSDK_DIR)\Include;$(IncludePath)</IncludePath>
+    <IncludePath>$(WINSDK_DIR)\Include\shared;$(WINSDK_DIR)\Include\um;$(DXSDK_DIR)\Include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup>
-    <LibraryPath>$(DXSDK_DIR)\Lib\x64;$(LibraryPath)</LibraryPath>
+    <LibraryPath>$(WINSDK_DIR)\Lib\winv6.3\um\x86;$(DXSDK_DIR)\Lib\x86;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup>
     <SourcePath>$(XTP_DIR)\Source;$(SourcePath)</SourcePath>

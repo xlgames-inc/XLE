@@ -176,6 +176,11 @@
     <ClInclude Include="..\ParameterSignature.h" />
     <ClInclude Include="..\ShaderPatcher.h" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Foreign\Antlr-3.4\libantlr3c-3.4\C.vcxproj">
+      <Project>{0f0fe03a-78f3-4b34-9dce-0cdff1fb5c40}</Project>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
     <Import Project="..\..\Foreign\Antlr-3.4\vsrulefiles\antlr3lexerandparser.targets" />
