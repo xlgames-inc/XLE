@@ -10,6 +10,7 @@
 #include "Threading/Mutex.h"
 #include <vector>
 #include <algorithm>
+#include <memory>
 
 namespace Utility
 {

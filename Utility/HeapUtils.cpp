@@ -321,7 +321,7 @@ namespace Utility
     uint64      SimpleSpanningHeap::CalculateHash() const
     {
         ScopedLock(_lock);
-        return Hash64(AsPointer<Marker>(_markers.begin()), AsPointer<Marker>(_markers.end()));
+        return Hash64(AsPointer(_markers.begin()), AsPointer(_markers.end()));
     }
 
     bool        SimpleSpanningHeap::IsEmpty() const

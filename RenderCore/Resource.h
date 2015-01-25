@@ -168,7 +168,7 @@ namespace RenderCore
 
     template <typename Type, int Count>
         template <int CountDown, int WriteTo, typename Tuple>
-            struct ResourceList<Type,Count>::Utility<CountDown,WriteTo,Tuple>
+            struct ResourceList<Type,Count>::Utility
             {
                 static void InitializeFrom(typename Type::UnderlyingType buffers[], const Tuple& initializers)
                 {

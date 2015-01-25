@@ -24,8 +24,8 @@ namespace SceneEngine
         TerrainNodeHeightCollision(const char cellFilename[], ITerrainFormat& ioFormat, unsigned nodeIndex);
         ~TerrainNodeHeightCollision();
     protected:
-        TerrainCell::Node       _scaffoldData;
-        std::unique_ptr<uint16> _heightData;
+        TerrainCell::Node			_scaffoldData;
+        std::unique_ptr<uint16[]>	_heightData;
         std::shared_ptr<Assets::DependencyValidation>  _validationCallback;
 
         float GetHeightSample(Int2 coord) const;

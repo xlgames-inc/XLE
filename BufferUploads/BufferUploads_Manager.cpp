@@ -1286,7 +1286,7 @@ namespace BufferUploads
 
                             PlatformInterface::UnderlyingDeviceContext::MapType::Enum mapType = PlatformInterface::UnderlyingDeviceContext::MapType::NoOverwrite;
                             PlatformInterface::UnderlyingDeviceContext::MappedBuffer mappedBuffer = context.GetDeviceContext().Map(*batchedResource->GetUnderlying(), mapType);
-                            CopyIntoBatchedBuffer(mappedBuffer.GetData(), AsPointer(batchingStart), AsPointer(batchingI), batchedResource->GetUnderlying(), batchedResource->Offset(), AsPointer<unsigned>(offsets.begin()), metricsUnderConstruction);
+                            CopyIntoBatchedBuffer(mappedBuffer.GetData(), AsPointer(batchingStart), AsPointer(batchingI), batchedResource->GetUnderlying(), batchedResource->Offset(), AsPointer(offsets.begin()), metricsUnderConstruction);
 
                         } else {
 
@@ -1315,7 +1315,7 @@ namespace BufferUploads
                             PtrAdd(midwayBuffer->GetData(),-ptrdiff_t(batchedResource->Offset())), 
                             AsPointer(batchingStart), AsPointer(batchingI), 
                             batchedResource->GetUnderlying(), batchedResource->Offset(), 
-                            AsPointer<unsigned>(offsets.begin()), metricsUnderConstruction);
+                            AsPointer(offsets.begin()), metricsUnderConstruction);
                         context.GetCommitStepUnderConstruction().Add(
                             CommitStep::DeferredCopy(batchedResource, currentBatchSize, std::move(midwayBuffer)));
 

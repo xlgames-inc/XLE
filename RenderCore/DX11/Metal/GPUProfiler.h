@@ -8,6 +8,7 @@
 
 #include "../../../Core/Types.h"
 #include <algorithm>
+#include <memory>
 
 #define GPUANNOTATIONS_ENABLE
 

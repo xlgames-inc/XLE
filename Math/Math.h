@@ -8,6 +8,7 @@
 
 #include "../Core/SelectConfiguration.h"
 #include <tuple>
+#include <cmath>
 
 #define MATHLIBRARY_CML         2
 #define MATHLIBRARY_ACTIVE      MATHLIBRARY_CML

@@ -10,6 +10,7 @@
 #include "../../RenderCore/Assets/ModelRunTime.h"
 #include "../../RenderCore/Assets/SharedStateSet.h"
 #include "../../RenderCore/Assets/AssetUtils.h"
+#include "../../RenderCore/Assets/AnimationRunTime.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/GPUProfiler.h"
 #include "../../SceneEngine/CommonResources.h"

@@ -8,6 +8,7 @@
 #include "SampleGlobals.h"
 #include "../../RenderCore/Assets/ModelRunTime.h"
 #include "../../RenderCore/Assets/AnimationRunTime.h"
+#include "../../RenderCore/Assets/SharedStateSet.h"
 #include "../../RenderCore/Assets/ColladaCompilerInterface.h"
 #include "../../Assets/Assets.h"
 #include "../../Assets/IntermediateResources.h"

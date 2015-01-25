@@ -14,7 +14,10 @@
     #define force_inline    __forceinline
     #define dll_export      __declspec(dllexport)
     #define dll_import      __declspec(dllimport)
-    #define thread_local    __declspec(thread)
+
+	#if _MSC_VER <= 1600
+		#define thread_local    __declspec(thread)
+	#endif
 
 #elif COMPILER_ACTIVE == COMPILER_TYPE_GCC
 

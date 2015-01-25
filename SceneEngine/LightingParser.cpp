@@ -650,13 +650,13 @@ namespace SceneEngine
                 //
             if (qualitySettings._samplingCount > 1) {
                 TextureDesc2D inputTextureDesc(postLightingResolveTexture);
-                auto& msaaResolveRes = FindCachedBox<FinalResolveResources>(
-                    FinalResolveResources::Desc(inputTextureDesc.Width, inputTextureDesc.Height, (NativeFormat::Enum)inputTextureDesc.Format));
+				auto& msaaResolveRes = FindCachedBox<FinalResolveResources>(
+					FinalResolveResources::Desc(inputTextureDesc.Width, inputTextureDesc.Height, (Metal::NativeFormat::Enum)inputTextureDesc.Format));
                 LightingParser_ResolveMSAA(
                     context, parserContext,
                     msaaResolveRes._postMsaaResolveTexture.get(),
                     postLightingResolveTexture,
-                    (NativeFormat::Enum)inputTextureDesc.Format);
+					(Metal::NativeFormat::Enum)inputTextureDesc.Format);
 
                     // todo -- also resolve the depth buffer...!
                     //      here; we switch the active textures to the msaa resolved textures

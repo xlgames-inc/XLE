@@ -7,6 +7,7 @@
 #include "IBufferUploads.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Core/Prefix.h"  // for dimof
+#include <algorithm>
 
 namespace BufferUploads
 {

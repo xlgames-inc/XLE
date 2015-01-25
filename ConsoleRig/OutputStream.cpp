@@ -12,6 +12,7 @@
 #include "../../Utility/StringUtils.h"
 #include "../../Utility/StringFormat.h"
 #include <assert.h>
+#include <algorithm>
 
 #if PLATFORMOS_ACTIVE == PLATFORMOS_WINDOWS
     extern "C" dll_import void __stdcall OutputDebugStringA(const char lpOutputString[]);
