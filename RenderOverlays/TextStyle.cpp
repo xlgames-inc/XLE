@@ -357,7 +357,7 @@ float   TextStyle::Draw(
 
                 ShaderResourceView::UnderlyingResource sourceTexture = (ShaderResourceView::UnderlyingResource)tex->GetUnderlying();
                 if (!sourceTexture) {
-                    throw RenderCore::Exceptions::GenericFailure("Pending background upload of font texture");
+                    throw ::Assets::Exceptions::PendingResource("", "Pending background upload of font texture");
                 }
 
                 ShaderResourceView shadRes(sourceTexture);

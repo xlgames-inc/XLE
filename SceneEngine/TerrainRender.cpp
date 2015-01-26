@@ -2367,12 +2367,12 @@ namespace SceneEngine
         size_t fileSize = 0;
         auto file = LoadFileAsMemoryBlock(definitionFile, &fileSize);
         if (!fileSize)
-            ThrowException(RenderCore::Exceptions::GenericFailure("Parse error while loading terrain texture list"));
+            ThrowException(::Exceptions::BasicLabel("Parse error while loading terrain texture list"));
 
         Data data;
         bool loadResult = data.Load((const char*)file.get(), fileSize);
         if (!loadResult)
-            ThrowException(RenderCore::Exceptions::GenericFailure("Parse error while loading terrain texture list"));
+            ThrowException(::Exceptions::BasicLabel("Parse error while loading terrain texture list"));
 
         auto* cfg = data.ChildWithValue("Config");
         auto diffuseDims = Deserialize(cfg, "DiffuseDims", UInt2(512, 512));

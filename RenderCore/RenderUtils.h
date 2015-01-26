@@ -16,19 +16,14 @@ namespace RenderCore
 {
     namespace Exceptions
     {
-        /// <summary>Hit a generic runtime error while rendering</summary>
-        /// This could be caused by an invalid or corrupt resource.
-        class RunTimeError : public ::Exceptions::BasicLabel
-        {
-        public:
-            RunTimeError(const char format[], ...) never_throws;
-        };
-
         /// <summary>Some unspecific failure during rendering</summary>
+        /// This exception should be used in cases that relate to an underlying
+        /// graphics API. It could mean there is a compatibility issue, or a
+        /// failure of the hardware.
         class GenericFailure : public ::Exceptions::BasicLabel
         {
         public: 
-            GenericFailure(const char what[]) : ::Exceptions::BasicLabel(what) {}
+            GenericFailure(const char what[]);
         };
 
         /// <summary>Failure creating object</summary>
@@ -43,7 +38,7 @@ namespace RenderCore
         ///     </list>
         /// These cases result in a "lost device" type state in DirectX11. While
         /// this is much more rare in DirectX11 than DirectX9, it can still happen.
-        class AllocationFailure : public ::Exceptions::BasicLabel
+        class AllocationFailure : public GenericFailure
         {
         public: 
             AllocationFailure(const char what[]);

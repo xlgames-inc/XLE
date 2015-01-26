@@ -18,16 +18,10 @@ namespace RenderCore
 
     namespace Exceptions
     {
-        RunTimeError::RunTimeError(const char format[], ...) never_throws
-        {
-            va_list args;
-            va_start(args, format);
-            XlFormatStringV(_buffer, dimof(_buffer), format, args);
-            va_end(args);
-        }
+        GenericFailure::GenericFailure(const char what[]) : ::Exceptions::BasicLabel(what) {}
 
         AllocationFailure::AllocationFailure(const char what[]) 
-        : ::Exceptions::BasicLabel(what) 
+        : GenericFailure(what) 
         {}
     }
 
