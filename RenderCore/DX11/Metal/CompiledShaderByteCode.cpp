@@ -16,6 +16,7 @@
 #include "../../../Utility/Streams/FileUtils.h"
 #include "../../../Utility/SystemUtils.h"
 #include "../../../Utility/IteratorUtils.h"
+#include "../../../Utility/WinAPI/WinAPIWrapper.h"
 #include "../../../ConsoleRig/Log.h"
 #include <functional>
 #include <deque>
@@ -603,12 +604,40 @@ namespace RenderCore { namespace Metal_DX11
         #endif
     };
 
+    static HRESULT D3DReflect_Wrapper(
+        const void* pSrcData, size_t SrcDataSize, 
+        const IID& pInterface, void** ppReflector)
+    {
+        // This is a wrapper for the D3DReflect(). See D3D11CreateDevice_Wrapper in Device.cpp
+        // for a similar function.
+        // Note that if we open the module successfully, we will never close it!
+
+        static HMODULE module = (HMODULE)INVALID_HANDLE_VALUE;
+        if (module == INVALID_HANDLE_VALUE) {
+            module = (*Windows::Fn_LoadLibrary)("d3dcompiler_47.dll");
+        }
+        if (!module || module == INVALID_HANDLE_VALUE) {
+            return E_NOINTERFACE;
+        }
+
+        typedef HRESULT WINAPI D3DReflect_Fn(LPCVOID, SIZE_T, REFIID, void**);
+
+        auto fn = (D3DReflect_Fn*)(*Windows::Fn_GetProcAddress)(module, "D3DReflect");
+        if (!fn) {
+            (*Windows::FreeLibrary)(module);
+            module = (HMODULE)INVALID_HANDLE_VALUE;
+            return E_NOINTERFACE;
+        }
+
+        return (*fn)(pSrcData, SrcDataSize, pInterface, ppReflector);
+    }
+
     static std::string MakeShaderMetricsString(const void* data, size_t dataSize)
     {
             // build some metrics information about the given shader, using the D3D
             //  reflections interface.
         ID3D::ShaderReflection* reflTemp = nullptr;
-        auto hresult = D3DReflect(data, dataSize, __uuidof(ID3D::ShaderReflection), (void**)&reflTemp);
+        auto hresult = D3DReflect_Wrapper(data, dataSize, __uuidof(ID3D::ShaderReflection), (void**)&reflTemp);
         intrusive_ptr<ID3D::ShaderReflection> refl = moveptr(reflTemp);
         if (!SUCCEEDED(hresult) || !refl) {
             return "<Failure in D3DReflect>";
@@ -1071,9 +1100,10 @@ namespace RenderCore { namespace Metal_DX11
         }
 
         ID3D::ShaderReflection* reflectionTemp = nullptr;
-        HRESULT hresult = D3DReflect(GetByteCode(), GetSize(), __uuidof(ID3D::ShaderReflection), (void**)&reflectionTemp);
+        HRESULT hresult = D3DReflect_Wrapper(GetByteCode(), GetSize(), __uuidof(ID3D::ShaderReflection), (void**)&reflectionTemp);
         if (!SUCCEEDED(hresult) || !reflectionTemp) {
-            ThrowException(Assets::Exceptions::InvalidResource(Initializer(), "Failure creating reflection"));
+            ThrowException(Assets::Exceptions::InvalidResource(Initializer(), 
+                (hresult == E_NOINTERFACE)?"Could not find d3dcompiler_47.dll":"Failure creating reflection"));
         }
         return moveptr(reflectionTemp);
     }

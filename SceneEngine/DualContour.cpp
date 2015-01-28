@@ -49,8 +49,10 @@ namespace SceneEngine
     static EdgeIntersection  TestEdge(  const Float3& e0, const Float3& e1, float d0, float d1, 
                                         const IVolumeDensityFunction& fn)
     {
-            //  test the edge between these points, and attempt to find the point where
-            //  the surface passes through. The call should have filtered out edges
+            //  Test the edge between these points, and attempt to find the point where
+            //  the surface passes through. 
+            //
+            //  The caller should have filtered out edges
             //  that don't pass through the surface.
         assert((d0 < 0.f) != (d1 < 0.f));
 
@@ -231,23 +233,29 @@ namespace SceneEngine
     static void CheckWindingOrder(DualContourMesh::Quad& q, const std::vector<DualContourMesh::Vertex>& vertices)
     {
             //  Check the winding order of the given quad, and correct if necessary
-            //  There are various ways we could attempt
-            //  to find the correct winding order. But they all have problems. It's even possible that we could
-            //  be generating a quad with a twist in it -- ie, possibly both sides are needed to complete the 
-            //  outside of some shape. 
-            //  We want to avoid more queries of the density field to generate more normals. So let's use the
-            //  normals we already have access to. We can take some kind of weighted mean of the vertex normals
-            //  and use this as an approximation of the face normal, Then we can test the vertex winding order
-            //  to see if it agrees with the face normal we've picked.
+            //  There are various ways we could attempt to find the correct winding order. 
+            //  But they all have problems. 
+            //
+            //  It's possible that that input quad could have a twist in it. We also have to
+            //  be careful about input quads that are near-degenerate.
+            //
+            //  We want to avoid more queries of the density field to generate more normals. 
+            //  So let's use the normals we already have access to. We can take some kind of 
+            //  weighted mean of the vertex normals and use this as an approximation of the 
+            //  face normal, Then we can test the vertex winding order to see if it agrees 
+            //  with the face normal we've picked.
+            //
             //  How do we weight the normals? We could use the interior angle of the corner.
 
-        unsigned prevVertices[] = { 2, 0, 3, 1 };       // "Z" ordering of faces... so prev and next vertex is not obvious
+            //  The vertices in our quads are arranged in a "Z" pattern... 
+            //  We can't just +1 or -1 to get "prev" and "next". Use the following table:
+        unsigned prevVertices[] = { 2, 0, 3, 1 };       
         unsigned nextVertices[] = { 1, 3, 0, 2 };
 
-        static bool useWeightedMean = false;
-        if (useWeightedMean) {
-            Float3 faceNormal(0.f, 0.f, 0.f);
+        const bool useWeightedMean = false;
+        if (constant_expression<useWeightedMean>::result()) {
 
+            Float3 faceNormal(0.f, 0.f, 0.f);
             for (unsigned c=0; c<4; ++c) {
                 unsigned prevVertex = q._verts[prevVertices[c]];
                 unsigned thisVertex = q._verts[c];
@@ -255,26 +263,33 @@ namespace SceneEngine
                 float dot = Dot(
                     vertices[prevVertex]._pt - vertices[thisVertex]._pt,
                     vertices[nextVertex]._pt - vertices[thisVertex]._pt);
-                float angle = XlACos(dot);  // because it's a quad, angle must be less than 180
+                float angle = XlACos(dot);  // because it's a quad, angle must be less than 180. An angle of 180 just gives a straight line
+                assert(angle < gPI);
                 faceNormal += angle * vertices[q._verts[c]]._normal;
             }
             faceNormal = Normalize(faceNormal);
 
-                //  we can use the cross product to check if the winding is going
-                //  in the correct direction
+                //  We can use the cross product to check if the winding is going
+                //  in the correct direction. The cross product gives us directional
+                //  information about the 2 input vectors. We can compare the result
+                //  of the cross product to the direction of the face normal to see
+                //  if the winding order is correct for this normal.
             unsigned correctCount = 0;
             for (unsigned c=0; c<4; ++c) {
                 unsigned prevVertex = q._verts[prevVertices[c]];
                 unsigned thisVertex = q._verts[c];
                 unsigned nextVertex = q._verts[nextVertices[c]];
 
-                bool correct = Dot(faceNormal, Cross(vertices[prevVertex]._pt - vertices[thisVertex]._pt, vertices[nextVertex]._pt - vertices[thisVertex]._pt)) <= 0.f;
+                auto crs = Cross(   
+                    vertices[prevVertex]._pt - vertices[thisVertex]._pt, 
+                    vertices[nextVertex]._pt - vertices[thisVertex]._pt);
+                bool correct = Dot(faceNormal, crs) <= 0.f;
                 correctCount += unsigned(correct);
             }
 
             if (correctCount < 2) {
                     //  Some tolerance if only one or two vertices are a problem.
-                    //  But, otherwise, we need to reverse the order. Quads are
+                    //  But, otherwise, we need to reverse the order. Quads verts are
                     //  in a "Z" pattern... so just swap 1 & 2
                 std::swap(q._verts[1], q._verts[2]);
             }
@@ -287,7 +302,9 @@ namespace SceneEngine
                 unsigned thisVertex = q._verts[c];
                 unsigned nextVertex = q._verts[nextVertices[c]];
 
-                auto testDirection = Cross(vertices[prevVertex]._pt - vertices[thisVertex]._pt, vertices[nextVertex]._pt - vertices[thisVertex]._pt);
+                auto testDirection = Cross(
+                    vertices[prevVertex]._pt - vertices[thisVertex]._pt, 
+                    vertices[nextVertex]._pt - vertices[thisVertex]._pt);
                 for (unsigned v=0; v<4; ++v) {
                     bool correct = Dot(vertices[q._verts[v]]._normal, testDirection) <= 0.f;
                     correctCount += unsigned(correct);

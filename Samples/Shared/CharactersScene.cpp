@@ -392,7 +392,11 @@ namespace Sample
         pimpl->_mainAnimDecisionTree = std::make_shared<AnimationDecisionTree>(
             std::ref(pimpl->_characterModel->GetAnimationData()), CharactersScale);
 
-        const unsigned npcCount = (_DEBUG) ? 5 : 2000;
+        #if defined(_DEBUG)
+            const unsigned npcCount = 5;
+        #else
+            const unsigned npcCount = 100;
+        #endif
         for (unsigned c=0; c<npcCount; ++c) {
             pimpl->_characters.push_back(NPCCharacter(*pimpl->_characterModel, pimpl->_mainAnimDecisionTree));
         }

@@ -65,45 +65,10 @@
     <AndroidMaxAPI Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'" />
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
-  <Import Project="..\..\..\Solutions\Main.props" />
   <ImportGroup Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">
+    <Import Project="..\..\..\Solutions\Main.props" />
     <Import Project="..\..\..\Foreign\CommonForClients.props" />
-    <Import Project="..\..\..\Foreign\cml-1_0_2\CMLForClients.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <Import Project="..\..\..\Foreign\CommonForClients.props" />
-    <Import Project="..\..\..\Foreign\cml-1_0_2\CMLForClients.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <Import Project="..\..\..\Foreign\CommonForClients.props" />
-    <Import Project="..\..\..\Foreign\cml-1_0_2\CMLForClients.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'">
-    <Import Project="..\..\..\Foreign\CommonForClients.props" />
-    <Import Project="..\..\..\Foreign\cml-1_0_2\CMLForClients.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">
-    <Import Project="..\..\..\Foreign\CommonForClients.props" />
-    <Import Project="..\..\..\Foreign\cml-1_0_2\CMLForClients.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">
-    <Import Project="..\..\..\Foreign\CommonForClients.props" />
-    <Import Project="..\..\..\Foreign\cml-1_0_2\CMLForClients.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'">
-    <Import Project="..\..\..\Foreign\CommonForClients.props" />
-    <Import Project="..\..\..\Foreign\cml-1_0_2\CMLForClients.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <Import Project="..\..\..\Foreign\CommonForClients.props" />
-    <Import Project="..\..\..\Foreign\cml-1_0_2\CMLForClients.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <Import Project="..\..\..\Foreign\CommonForClients.props" />
-    <Import Project="..\..\..\Foreign\cml-1_0_2\CMLForClients.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup />

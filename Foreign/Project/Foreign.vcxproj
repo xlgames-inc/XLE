@@ -149,7 +149,6 @@
     <ClCompile Include="..\Lua\src\ltable.c" />
     <ClCompile Include="..\Lua\src\ltablib.c" />
     <ClCompile Include="..\Lua\src\ltm.c" />
-    <ClCompile Include="..\Lua\src\lua.c" />
     <ClCompile Include="..\Lua\src\luac.c" />
     <ClCompile Include="..\Lua\src\lundump.c" />
     <ClCompile Include="..\Lua\src\lutf8lib.c" />

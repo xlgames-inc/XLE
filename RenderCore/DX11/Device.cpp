@@ -7,6 +7,7 @@
 #include "Device.h"
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Utility/PtrUtils.h"
+#include "../../Utility/WinAPI/WinAPIWrapper.h"
 #include "../../Core/Exceptions.h"
 #include <type_traits>
 #include <assert.h>
@@ -22,6 +23,52 @@ namespace RenderCore
     //////////////////////////////////////////////////////////////////////////////////////////////////
 
     intrusive_ptr<IDXGI::Adapter> SelectAdapter() { return intrusive_ptr<IDXGI::Adapter>(); };
+
+    static HRESULT D3D11CreateDevice_Wrapper(
+        IDXGI::Adapter* pAdapter,
+        D3D_DRIVER_TYPE DriverType,
+        HMODULE Software,
+        UINT Flags,
+        const D3D_FEATURE_LEVEL* pFeatureLevels,
+        UINT FeatureLevels,
+        UINT SDKVersion,
+        ID3D::Device** ppDevice,
+        D3D_FEATURE_LEVEL* pFeatureLevel,
+        ID3D::DeviceContext** ppImmediateContext )
+    {
+        // This is a wrapped for the D3DCreateDevice() call from the D3D DLL. It allows is to
+        // manually load the DLL. If we use the D3D library version directly, the OS will attempt
+        // to load the D3D dll as the executable is loading. We don't have any way to catch
+        // errors in the case. So if there are any problems (eg, DirectX isn't installed, or it's
+        // the wrong version), the user will just we the OS error dialog box. 
+        //
+        // But, if we bind the dll in this way, we have some control over what happens. We can
+        // pop up a more informative error box for the user.
+        //
+        // We could also do some verification here to check for cases where someone has injected
+        // a custom dll in place of the real dll here.
+        // Note that if the module is opened successfully, then we never close it.
+
+        static HMODULE module = (HMODULE)INVALID_HANDLE_VALUE;
+        if (module == INVALID_HANDLE_VALUE) {
+            module = (*Windows::Fn_LoadLibrary)("d3d11.dll");
+        }
+        if (!module || module == INVALID_HANDLE_VALUE) {
+            ThrowException(::Exceptions::BasicLabel("Could not load D3D11 library"));
+        }
+
+        auto fn = (PFN_D3D11_CREATE_DEVICE)(*Windows::Fn_GetProcAddress)(module, "D3D11CreateDevice");
+        if (!fn) {
+            (*Windows::FreeLibrary)(module);
+            module = (HMODULE)INVALID_HANDLE_VALUE;
+            ThrowException(::Exceptions::BasicLabel("D3D11 library appears corrupt"));
+        }
+
+        return (*fn)(
+            pAdapter, DriverType, Software, Flags, 
+            pFeatureLevels, FeatureLevels, 
+            SDKVersion, ppDevice, pFeatureLevel, ppImmediateContext);
+    }
 
     Device::Device() : _featureLevel(D3D_FEATURE_LEVEL(~unsigned(0x0)))
     {
@@ -53,14 +100,16 @@ namespace RenderCore
         {
             ID3D::Device* deviceTemp = 0;
             ID3D::DeviceContext* contextTemp = 0;
-            hresult = D3D11CreateDevice(
+
+            hresult = D3D11CreateDevice_Wrapper(
                 adapter.get(), D3D_DRIVER_TYPE_HARDWARE, NULL,
                 deviceCreationFlags, featureLevelsToTarget, dimof(featureLevelsToTarget),
                 D3D11_SDK_VERSION, &deviceTemp, &_featureLevel, &contextTemp);
 
                 //
                 //   Note --  std::move here avoids adding extra references.
-                //            intrusive_ptr::operator= should never throw (it invokes release, but destructors should suppress exceptions)
+                //            intrusive_ptr::operator= should never throw 
+                //              (it invokes release, but destructors should suppress exceptions)
                 //            So we should be safe to assign these 2 pointers.
                 //
             underlying = moveptr(deviceTemp);

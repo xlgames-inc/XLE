@@ -35,69 +35,21 @@
     <ConfigurationType>StaticLibrary</ConfigurationType>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
-  <Import Project="..\..\Solutions\Main.props" />
   <ImportGroup Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug-DX11|Win32'">
-    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
-    <Import Project="..\..\Foreign\CommonForClients.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug-DX11|x64'">
-    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
-    <Import Project="..\..\Foreign\CommonForClients.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile-DX11|Win32'">
-    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
-    <Import Project="..\..\Foreign\CommonForClients.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile-DX11|x64'">
-    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
-    <Import Project="..\..\Foreign\CommonForClients.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release-DX11|Win32'">
-    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
-    <Import Project="..\..\Foreign\CommonForClients.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release-DX11|x64'">
-    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
+    <Import Project="..\..\Solutions\Main.props" />
     <Import Project="..\..\Foreign\CommonForClients.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup />
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug-DX11|Win32'">
+  <ItemDefinitionGroup>
     <Lib>
-      <AdditionalDependencies>d3d11.lib;d3dx11.lib;dxerr.lib;dxguid.lib;d3dcompiler.lib</AdditionalDependencies>
+      <AdditionalDependencies>d3dx11.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Lib>
     <Link>
-      <AdditionalDependencies>d3d11.lib;d3dx11.lib;dxerr.lib%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d3dx11.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <ClCompile />
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile-DX11|Win32'">
-    <Lib>
-      <AdditionalDependencies>d3d11.lib;d3dx11.lib;dxerr.lib;dxguid.lib;d3dcompiler.lib</AdditionalDependencies>
-    </Lib>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release-DX11|Win32'">
-    <Lib>
-      <AdditionalDependencies>d3d11.lib;d3dx11.lib;dxerr.lib;dxguid.lib;d3dcompiler.lib</AdditionalDependencies>
-    </Lib>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug-DX11|x64'">
-    <Lib>
-      <AdditionalDependencies>d3d11.lib;d3dx11.lib;dxerr.lib;dxguid.lib;d3dcompiler.lib</AdditionalDependencies>
-    </Lib>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile-DX11|x64'">
-    <Lib>
-      <AdditionalDependencies>d3d11.lib;d3dx11.lib;dxerr.lib;dxguid.lib;d3dcompiler.lib</AdditionalDependencies>
-    </Lib>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release-DX11|x64'">
-    <Lib>
-      <AdditionalDependencies>d3dx11.lib;dxerr.lib</AdditionalDependencies>
-    </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Assets\Project\Assets.vcxproj">

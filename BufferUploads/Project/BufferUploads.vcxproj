@@ -131,111 +131,28 @@
     <AndroidMaxAPI Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'" />
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
-  <Import Project="..\..\Solutions\Main.props" />
   <ImportGroup Label="PropertySheets">
+    <Import Project="..\..\Solutions\Main.props" />
+    <Import Project="..\..\Foreign\CommonForClients.props" />
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">
-    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
-    <Import Project="..\..\Foreign\CommonForClients.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'">
-    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
-    <Import Project="..\..\Foreign\CommonForClients.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'">
-    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
-    <Import Project="..\..\Foreign\CommonForClients.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug-OpenGL|Win32'">
     <Import Project="..\..\Foreign\angleproject\AngleForClients.props" />
-    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
-    <Import Project="..\..\Foreign\CommonForClients.props" />
   </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug-OpenGL|x64'" Label="PropertySheets">
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug-OpenGL|x64'">
     <Import Project="..\..\Foreign\angleproject\AngleForClients.props" />
-    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
-    <Import Project="..\..\Foreign\CommonForClients.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile-OpenGL|Win32'">
     <Import Project="..\..\Foreign\angleproject\AngleForClients.props" />
-    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
-    <Import Project="..\..\Foreign\CommonForClients.props" />
   </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Profile-OpenGL|x64'" Label="PropertySheets">
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile-OpenGL|x64'">
     <Import Project="..\..\Foreign\angleproject\AngleForClients.props" />
-    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
-    <Import Project="..\..\Foreign\CommonForClients.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release-OpenGL|Win32'">
     <Import Project="..\..\Foreign\angleproject\AngleForClients.props" />
-    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
-    <Import Project="..\..\Foreign\CommonForClients.props" />
   </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release-OpenGL|x64'" Label="PropertySheets">
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release-OpenGL|x64'">
     <Import Project="..\..\Foreign\angleproject\AngleForClients.props" />
-    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
-    <Import Project="..\..\Foreign\CommonForClients.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug-DX11|x64'">
-    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
-    <Import Project="..\..\Foreign\CommonForClients.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug-DX11|Win32'">
-    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
-    <Import Project="..\..\Foreign\CommonForClients.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
-    <Import Project="..\..\Foreign\CommonForClients.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Dummy1|x64'">
-    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
-    <Import Project="..\..\Foreign\CommonForClients.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Dummy2|x64'">
-    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
-    <Import Project="..\..\Foreign\CommonForClients.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Dummy3|x64'">
-    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
-    <Import Project="..\..\Foreign\CommonForClients.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile-DX11|x64'">
-    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
-    <Import Project="..\..\Foreign\CommonForClients.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile-DX11|Win32'">
-    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
-    <Import Project="..\..\Foreign\CommonForClients.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">
-    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
-    <Import Project="..\..\Foreign\CommonForClients.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release-DX11|x64'">
-    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
-    <Import Project="..\..\Foreign\CommonForClients.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release-DX11|Win32'">
-    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
-    <Import Project="..\..\Foreign\CommonForClients.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Dummy1|Tegra-Android'">
-    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
-    <Import Project="..\..\Foreign\CommonForClients.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Dummy2|Tegra-Android'">
-    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
-    <Import Project="..\..\Foreign\CommonForClients.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Dummy3|Tegra-Android'">
-    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
-    <Import Project="..\..\Foreign\CommonForClients.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <Import Project="..\..\Foreign\cml-1_0_2\CMLForClients.props" />
-    <Import Project="..\..\Foreign\CommonForClients.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup />
@@ -253,6 +170,9 @@
     <ClCompile>
       <AdditionalOptions>-std=c++11 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug-DX11|Win32'">
+    <Link />
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\BufferUploads_Manager.h" />
@@ -294,14 +214,6 @@
     </ProjectReference>
     <ProjectReference Include="..\..\RenderCore\Project\RenderCore_DX11.vcxproj">
       <Project>{e43e10b8-7cd4-a5d0-6270-17c50cb74adf}</Project>
-      <Private>true</Private>
-      <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
-      <CopyLocalSatelliteAssemblies>false</CopyLocalSatelliteAssemblies>
-      <LinkLibraryDependencies>true</LinkLibraryDependencies>
-      <UseLibraryDependencyInputs>false</UseLibraryDependencyInputs>
-    </ProjectReference>
-    <ProjectReference Include="..\..\RenderCore\Project\RenderCore_OpenGLES.vcxproj">
-      <Project>{13d648df-8842-9ef7-46c5-910550130776}</Project>
       <Private>true</Private>
       <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
       <CopyLocalSatelliteAssemblies>false</CopyLocalSatelliteAssemblies>

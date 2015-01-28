@@ -75,9 +75,6 @@
     <ClCompile Include="..\Lua\src\ltm.c">
       <Filter>Lua</Filter>
     </ClCompile>
-    <ClCompile Include="..\Lua\src\lua.c">
-      <Filter>Lua</Filter>
-    </ClCompile>
     <ClCompile Include="..\Lua\src\luac.c">
       <Filter>Lua</Filter>
     </ClCompile>

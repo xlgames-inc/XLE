@@ -1624,7 +1624,7 @@ static bool IsValidDimForI32(size_t dim, int radix)
 {
     switch(radix) {
         case 10:
-            return dim > 11;
+            return dim > 11;        // "-2147483648" longest possible. need 11 chars + null terminator
         case 16:
             return dim > 8;
         //expand when need.
@@ -1637,7 +1637,7 @@ static bool IsValidDimForI64(size_t dim, int radix)
 {
     switch(radix) {
         case 10:
-            return dim > 64;
+            return dim > 20;    // "-9223372036854775808" or "18446744073709551615" longest possible. need 20 chars + null terminator
         case 16:
             return dim > 16;
         //expand when need.
