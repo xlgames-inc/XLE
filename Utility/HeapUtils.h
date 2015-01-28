@@ -35,7 +35,7 @@ namespace Utility
     {
     public:
         void Insert(uint64 hashName, std::shared_ptr<Type> object);
-        std::shared_ptr<Type> Get(uint64 hashName);
+        std::shared_ptr<Type>& Get(uint64 hashName);
 
         LRUCache(unsigned cacheSize);
         ~LRUCache();
@@ -83,7 +83,7 @@ namespace Utility
     }
 
     template<typename Type>
-        std::shared_ptr<Type> LRUCache<Type>::Get(uint64 hashName)
+        std::shared_ptr<Type>& LRUCache<Type>::Get(uint64 hashName)
     {
             // find the given object, and move it to the front of the queue
         auto i = std::lower_bound(_lookupTable.cbegin(), _lookupTable.cend(), hashName, CompareFirst<uint64, unsigned>());
@@ -91,7 +91,8 @@ namespace Utility
             _queue.BringToFront(i->second);
             return _objects[i->second];
         }
-        return nullptr;
+        static std::shared_ptr<Type> dummy;
+        return dummy;
     }
 
     template<typename Type>

@@ -85,6 +85,9 @@
     <ClCompile Include="..\PlacementsManager.cpp">
       <Filter>Objects\Placements</Filter>
     </ClCompile>
+    <ClCompile Include="..\PlacementsQuadTree.cpp">
+      <Filter>Objects\Placements</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\AmbientOcclusion.h">
@@ -179,6 +182,9 @@
       <Filter>Objects</Filter>
     </ClInclude>
     <ClInclude Include="..\PlacementsManager.h">
+      <Filter>Objects\Placements</Filter>
+    </ClInclude>
+    <ClInclude Include="..\PlacementsQuadTree.h">
       <Filter>Objects\Placements</Filter>
     </ClInclude>
   </ItemGroup>

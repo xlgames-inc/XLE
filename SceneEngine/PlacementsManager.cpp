@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "PlacementsManager.h"
+#include "PlacementsQuadTree.h"
 #include "../RenderCore/Assets/ModelSimple.h"
 #include "../RenderCore/Assets/SharedStateSet.h"
 #include "../RenderCore/Assets/IModelFormat.h"
@@ -184,11 +185,12 @@ namespace SceneEngine
     class PlacementsRenderer
     {
     public:
-        void EnterState(RenderCore::Metal::DeviceContext* context);
+        void BeginRender(RenderCore::Metal::DeviceContext* context);
+        void EndRender(RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, unsigned techniqueIndex);
+
         void Render(
             RenderCore::Metal::DeviceContext* context,
             LightingParserContext& parserContext, 
-            unsigned techniqueIndex,
             const PlacementCell& cell,
             const uint64* filterStart = nullptr, const uint64* filterEnd = nullptr);
 
@@ -202,19 +204,6 @@ namespace SceneEngine
         void SetOverride(uint64 guid, const Placements* placements);
         auto GetModelFormat() -> std::shared_ptr<RenderCore::Assets::IModelFormat>& { return _modelFormat; }
 
-        PlacementsRenderer(std::shared_ptr<RenderCore::Assets::IModelFormat> modelFormat);
-        ~PlacementsRenderer();
-    protected:
-        class CellRenderInfo
-        {
-        public:
-            const Placements* _placements;
-            // std::unique_ptr<PlacementsQuadTree> _quadTree;
-        };
-
-        std::vector<std::pair<uint64, CellRenderInfo>> _cellOverrides;
-        std::vector<std::pair<uint64, CellRenderInfo>> _cells;
-        
             //  We keep a single cache of model files for every cell
             //  This might mean that the SharedStateSet could grow
             //  very large. However, there is no way to remove states
@@ -233,6 +222,39 @@ namespace SceneEngine
             , _materialScaffolds(2000)
             , _modelRenderers(500) {}
         };
+
+        PlacementsRenderer(std::shared_ptr<RenderCore::Assets::IModelFormat> modelFormat);
+        ~PlacementsRenderer();
+    protected:
+        class CellRenderInfo
+        {
+        public:
+            const Placements* _placements;
+            std::unique_ptr<PlacementsQuadTree> _quadTree;
+
+            CellRenderInfo() {}
+            CellRenderInfo(CellRenderInfo&& moveFrom) never_throws
+            : _placements(moveFrom._placements)
+            , _quadTree(std::move(moveFrom._quadTree))
+            {
+                moveFrom._placements = nullptr;
+            }
+
+            CellRenderInfo& operator=(CellRenderInfo&& moveFrom) never_throws
+            {
+                _placements = moveFrom._placements;
+                moveFrom._placements = nullptr;
+                _quadTree = std::move(moveFrom._quadTree);
+                return *this;
+            }
+
+        private:
+            CellRenderInfo(const CellRenderInfo&);
+            CellRenderInfo& operator=(const CellRenderInfo&);
+        };
+
+        std::vector<std::pair<uint64, CellRenderInfo>> _cellOverrides;
+        std::vector<std::pair<uint64, CellRenderInfo>> _cells;
         std::unique_ptr<Cache> _cache;
 
         std::shared_ptr<RenderCore::Assets::IModelFormat> _modelFormat;
@@ -240,7 +262,6 @@ namespace SceneEngine
         void Render(
             RenderCore::Metal::DeviceContext* context,
             LightingParserContext& parserContext, 
-            unsigned techniqueIndex,
             const CellRenderInfo& renderInfo,
             const Float4x4& cellToWorld,
             const uint64* filterStart, const uint64* filterEnd);
@@ -255,10 +276,19 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    void PlacementsRenderer::EnterState(RenderCore::Metal::DeviceContext*)
+    void PlacementsRenderer::BeginRender(RenderCore::Metal::DeviceContext*)
     {
         _cache->_preparedRenders.Reset();
         _cache->_sharedStates.Reset();
+    }
+
+    void PlacementsRenderer::EndRender(
+        RenderCore::Metal::DeviceContext* context,
+        LightingParserContext& parserContext, 
+        unsigned techniqueIndex)
+    {
+        ModelRenderer::RenderPrepared(
+            _cache->_preparedRenders, context, parserContext, techniqueIndex, _cache->_sharedStates);
     }
 
     auto PlacementsRenderer::GetCachedModel(const ResChar filename[]) -> const ModelScaffold&
@@ -302,11 +332,11 @@ namespace SceneEngine
         auto i = LowerBound(_cellOverrides, guid);
         if (i ==_cellOverrides.end() || i->first != guid) {
             if (placements) {
-                _cellOverrides.insert(i, std::make_pair(guid, newRenderInfo));
+                _cellOverrides.insert(i, std::make_pair(guid, std::move(newRenderInfo)));
             }
         } else {
             if (placements) {
-                i->second = newRenderInfo; // override the previous one
+                i->second = std::move(newRenderInfo); // override the previous one
             } else {
                 _cellOverrides.erase(i);
             }
@@ -316,7 +346,6 @@ namespace SceneEngine
     void PlacementsRenderer::Render(
         RenderCore::Metal::DeviceContext* context,
         LightingParserContext& parserContext, 
-        unsigned techniqueIndex,
         const PlacementCell& cell,
         const uint64* filterStart, const uint64* filterEnd)
     {
@@ -347,7 +376,7 @@ namespace SceneEngine
         {
             auto i = LowerBound(_cellOverrides, cell._filenameHash);
             if (i != _cellOverrides.end() && i->first == cell._filenameHash) {
-                Render(context, parserContext, techniqueIndex, i->second, cell._cellToWorld, filterStart, filterEnd);
+                Render(context, parserContext, i->second, cell._cellToWorld, filterStart, filterEnd);
             } else {
                 auto i2 = LowerBound(_cells, cell._filenameHash);
                 if (i2 == _cells.end() || i2->first != cell._filenameHash) {
@@ -358,27 +387,138 @@ namespace SceneEngine
                         // check if we need to reload placements
                     if (i2->second._placements->GetDependancyValidation().GetValidationIndex() != 0) {
                         i2->second._placements = &::Assets::GetAssetDep<Placements>(cell._filename);
+                        i2->second._quadTree.reset();
                     }
                 }
 
-                // if (!i2->second._quadTree) {
-                //     i2->second._quadTree = std::make_unique<PlacementsQuadTree>(
-                //         *i2->second._placements);
-                // }
+                if (!i2->second._quadTree) {
+                    i2->second._quadTree = std::make_unique<PlacementsQuadTree>(
+                        &i2->second._placements->GetObjectReferences()->_cellSpaceBoundary,
+                        sizeof(Placements::ObjectReference), 
+                        i2->second._placements->GetObjectReferenceCount());
+                }
 
-                Render(context, parserContext, techniqueIndex, i2->second, cell._cellToWorld, filterStart, filterEnd);
+                Render(context, parserContext, i2->second, cell._cellToWorld, filterStart, filterEnd);
             }
         } 
         CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
         CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
-        CATCH (...) {
-        } CATCH_END
+        CATCH (...) {} CATCH_END
+    }
+
+    namespace Internal
+    {
+        using RenderCore::Assets::Simple::ModelRenderer;
+        using RenderCore::Assets::Simple::ModelScaffold;
+        using RenderCore::Assets::Simple::MaterialScaffold;
+            
+        class RendererHelper
+        {
+        public:
+            void Render(
+                PlacementsRenderer::Cache& cache,
+                RenderCore::Assets::IModelFormat& modelFormat,
+                const void* filenamesBuffer,
+                const Placements::ObjectReference& obj,
+                const Float4x4& cellToWorld,
+                const Float3& cameraPosition);
+
+            RendererHelper()
+            {
+                _currentModel = _currentMaterial = _currentRenderer = 0ull;
+                _model = nullptr;
+                _material = nullptr;
+                _renderer = nullptr;
+            }
+        protected:
+            uint64 _currentModel, _currentMaterial, _currentRenderer;
+            ModelScaffold* _model;
+            MaterialScaffold* _material;
+            ModelRenderer* _renderer;
+        };
+
+        void RendererHelper::Render(
+            PlacementsRenderer::Cache& cache,
+            RenderCore::Assets::IModelFormat& modelFormat,
+            const void* filenamesBuffer,
+            const Placements::ObjectReference& obj,
+            const Float4x4& cellToWorld,
+            const Float3& cameraPosition)
+        {
+                // Basic draw distance calculation
+                // many objects don't need to render out to the far clip
+
+            const float maxDistanceSq = 1000.f * 1000.f;
+            float distanceSq = MagnitudeSquared(
+                .5f * (obj._cellSpaceBoundary.first + obj._cellSpaceBoundary.second) - cameraPosition);
+            if (distanceSq > maxDistanceSq) {
+                return;
+            }
+
+                //  Objects should be sorted by model & material. This is important for
+                //  reducing the work load in "_cache". Typically cells will only refer
+                //  to a limited number of different types of objects, but the same object
+                //  may be repeated many times. In these cases, we want to minimize the
+                //  workload for every repeat.
+            auto modelHash = *(uint64*)PtrAdd(filenamesBuffer, obj._modelFilenameOffset);
+            auto materialHash = *(uint64*)PtrAdd(filenamesBuffer, obj._materialFilenameOffset);
+            if (modelHash != _currentModel) {
+                _model = cache._modelScaffolds.Get(modelHash).get();
+                if (!_model) {
+                    auto modelFilename = (const ResChar*)PtrAdd(filenamesBuffer, obj._modelFilenameOffset + sizeof(uint64));
+                    auto newModel = modelFormat.CreateModel(modelFilename);
+                    _model = newModel.get();
+                    cache._modelScaffolds.Insert(modelHash, std::move(newModel));
+                }
+                _currentModel = modelHash;
+            }
+
+            if (materialHash != _currentMaterial) {
+                _material = cache._materialScaffolds.Get(materialHash).get();
+                if (!_material) {
+                    std::shared_ptr<MaterialScaffold> newMaterial;
+                    TRY {
+                        auto materialFilename = (const ResChar*)PtrAdd(filenamesBuffer, obj._materialFilenameOffset + sizeof(uint64));
+                        newMaterial = modelFormat.CreateMaterial(materialFilename);
+                    } CATCH (...) {    // sometimes get missing files
+                        return;
+                    } CATCH_END
+                    _material = newMaterial.get();
+                    cache._materialScaffolds.Insert(materialHash, std::move(newMaterial));
+                }
+                _currentMaterial = materialHash;
+            }
+
+                // Simple LOD calculation based on distanceSq from camera...
+                //      Currently all models have only the single LOD. But this
+                //      may cause problems with models with multiple LOD, because
+                //      it may mean rapidly switching back and forth between 
+                //      renderers (which can be expensive)
+            unsigned LOD = std::min(_model->GetMaxLOD(), unsigned(distanceSq / (150.f*150.f)));
+            uint64 hashedRenderer = (uint64(_model) << 2) | (uint64(_material) << 48) | uint64(LOD);
+
+            if (hashedRenderer != _currentRenderer) {
+                    //  Here we have to choose a shared state set for this object.
+                    //  We could potentially have more than one shared state set for this renderer
+                    //  and separate the objects into their correct state set, as required...
+                _renderer = cache._modelRenderers.Get(hashedRenderer).get();
+                if (!_renderer) {
+                    auto newRenderer = modelFormat.CreateRenderer(
+                        std::ref(*_model), std::ref(*_material), std::ref(cache._sharedStates), LOD);
+                    _renderer = newRenderer.get();
+                    cache._modelRenderers.Insert(hashedRenderer, std::move(newRenderer));
+                }
+                _currentRenderer = hashedRenderer;
+            }
+
+            auto localToWorld = Combine(AsFloat4x4(obj._localToCell), cellToWorld);
+            _renderer->Prepare(cache._preparedRenders, cache._sharedStates, localToWorld);
+        }
     }
 
     void PlacementsRenderer::Render(
         RenderCore::Metal::DeviceContext* context,
         LightingParserContext& parserContext, 
-        unsigned techniqueIndex,
         const CellRenderInfo& renderInfo,
         const Float4x4& cellToWorld,
         const uint64* filterStart, const uint64* filterEnd)
@@ -418,81 +558,70 @@ namespace SceneEngine
             //  for rendering.
             //  
 
-        auto worldToCullSpace = Combine(cellToWorld, parserContext.GetProjectionDesc()._worldToProjection);
+        auto& placements = *renderInfo._placements;
+        auto placementCount = placements.GetObjectReferenceCount();
+        if (!placementCount) {
+            return;
+        }
+        
+        auto cellToCullSpace = Combine(cellToWorld, parserContext.GetProjectionDesc()._worldToProjection);
         auto cameraPosition = ExtractTranslation(parserContext.GetProjectionDesc()._viewToWorld);
         cameraPosition = TransformPoint(InvertOrthonormalTransform(cellToWorld), cameraPosition);
 
         const uint64* filterIterator = filterStart;
         const bool doFilter = filterStart != filterEnd;
-
-        auto& placements = *renderInfo._placements;
+        Internal::RendererHelper helper;
+        
         const auto* filenamesBuffer = placements.GetFilenamesBuffer();
         const auto* objRef = placements.GetObjectReferences();
-        auto placementCount = placements.GetObjectReferenceCount();
-        for (unsigned c=0; c<placementCount; ++c) {
+        
+        if (renderInfo._quadTree) {
 
-            auto& obj = objRef[c];
-            if (CullAABB(worldToCullSpace, obj._cellSpaceBoundary.first, obj._cellSpaceBoundary.second)) {
-                continue;
+            unsigned visibleObjs[10*1024];
+            unsigned visibleObjCount = 0;
+            renderInfo._quadTree->CalculateVisibleObjects(
+                cellToCullSpace, &objRef->_cellSpaceBoundary,
+                sizeof(Placements::ObjectReference),
+                visibleObjs, visibleObjCount, dimof(visibleObjs));
+
+                // we have to sort to return to our expected order
+            std::sort(visibleObjs, &visibleObjs[visibleObjCount]);
+
+            for (unsigned c=0; c<visibleObjCount; ++c) {
+                auto& obj = objRef[visibleObjs[c]];
+
+                if (doFilter) {
+                    while (filterIterator != filterEnd && *filterIterator < obj._guid) { ++filterIterator; }
+                    if (filterIterator == filterEnd || *filterIterator != obj._guid) { continue; }
+                }
+
+                helper.Render(
+                    *_cache, *_modelFormat, 
+                    filenamesBuffer, obj, cellToWorld, cameraPosition);
             }
 
-            if (doFilter) {
-                while (filterIterator != filterEnd && *filterIterator < obj._guid) { ++filterIterator; }
-                if (filterIterator == filterEnd || *filterIterator != obj._guid) { continue; }
-            }
-
-                // Basic draw distance calculation
-                // many objects don't need to render out to the far clip
-
-            const float maxDistanceSq = 1000.f * 1000.f;
-            float distanceSq = MagnitudeSquared(
-                .5f * (obj._cellSpaceBoundary.first + obj._cellSpaceBoundary.second) - cameraPosition);
-            if (distanceSq > maxDistanceSq) {
-                continue;
-            }
-
-            auto modelHash = *(uint64*)PtrAdd(filenamesBuffer, obj._modelFilenameOffset);
-            auto modelFilename = (const ResChar*)PtrAdd(filenamesBuffer, obj._modelFilenameOffset + sizeof(uint64));
-            auto materialHash = *(uint64*)PtrAdd(filenamesBuffer, obj._materialFilenameOffset);
-            auto materialFilename = (const ResChar*)PtrAdd(filenamesBuffer, obj._materialFilenameOffset + sizeof(uint64));
-
-            auto model = _cache->_modelScaffolds.Get(modelHash);
-            if (!model) {
-                model = _modelFormat->CreateModel(modelFilename);
-                _cache->_modelScaffolds.Insert(modelHash, model);
-            }
-
-            auto material = _cache->_materialScaffolds.Get(materialHash);
-            if (!material) {
-                TRY {
-                    material = _modelFormat->CreateMaterial(materialFilename);
-                } CATCH (...) {    // sometimes get missing files
+        } else {
+            for (unsigned c=0; c<placementCount; ++c) {
+                auto& obj = objRef[c];
+                if (CullAABB(cellToCullSpace, obj._cellSpaceBoundary.first, obj._cellSpaceBoundary.second)) {
                     continue;
-                } CATCH_END
-                _cache->_materialScaffolds.Insert(materialHash, material);
+                }
+
+                    // Filtering is required in some cases (for example, if we want to render only
+                    // a single object in highlighted state). Rendering only part of a cell isn't
+                    // ideal for this architecture. Mostly the cell is intended to work as a 
+                    // immutable atomic object. However, we really need filtering for some things.
+
+                if (doFilter) {
+                    while (filterIterator != filterEnd && *filterIterator < obj._guid) { ++filterIterator; }
+                    if (filterIterator == filterEnd || *filterIterator != obj._guid) { continue; }
+                }
+
+                helper.Render(
+                    *_cache, *_modelFormat, 
+                    filenamesBuffer, obj, cellToWorld, cameraPosition);
             }
-
-                // simple LOD calculation based on distanceSq from camera...
-            unsigned LOD = std::min(model->GetMaxLOD(), unsigned(distanceSq / (150.f*150.f)));
-            uint64 hashedModel = (uint64(model.get()) << 2) | (uint64(material.get()) << 48) | uint64(LOD);
-
-                //  Here we have to choose a shared state set for this object.
-                //  We could potentially have more than one shared state set for this renderer
-                //  and separate the objects into their correct state set, as required...
-            auto renderer = _cache->_modelRenderers.Get(hashedModel);
-            if (!renderer) {
-                renderer = _modelFormat->CreateRenderer(
-                    std::ref(*model), std::ref(*material), std::ref(_cache->_sharedStates), LOD);
-                _cache->_modelRenderers.Insert(hashedModel, renderer);
-            }
-
-            auto localToWorld = Combine(AsFloat4x4(obj._localToCell), cellToWorld);
-            renderer->Prepare(_cache->_preparedRenders, _cache->_sharedStates, localToWorld);
-
         }
-
-        ModelRenderer::RenderPrepared(
-            _cache->_preparedRenders, context, parserContext, techniqueIndex, _cache->_sharedStates);
     }
 
     PlacementsRenderer::PlacementsRenderer(std::shared_ptr<RenderCore::Assets::IModelFormat> modelFormat)
@@ -512,10 +641,11 @@ namespace SceneEngine
         unsigned techniqueIndex)
     {
             // render every registered cell
-        _pimpl->_renderer->EnterState(context);
+        _pimpl->_renderer->BeginRender(context);
         for (auto i=_pimpl->_cells.begin(); i!=_pimpl->_cells.end(); ++i) {
-            _pimpl->_renderer->Render(context, parserContext, techniqueIndex, *i);
+            _pimpl->_renderer->Render(context, parserContext, *i);
         }
+        _pimpl->_renderer->EndRender(context, parserContext, techniqueIndex);
     }
     
     std::shared_ptr<PlacementsRenderer> PlacementsManager::GetRenderer()
@@ -1183,7 +1313,7 @@ namespace SceneEngine
         unsigned techniqueIndex,
         const PlacementGUID* begin, const PlacementGUID* end)
     {
-        _pimpl->_renderer->EnterState(context);
+        _pimpl->_renderer->BeginRender(context);
 
             //  We need to take a copy, so we don't overwrite
             //  and reorder the caller's version.
@@ -1205,13 +1335,15 @@ namespace SceneEngine
                 while (i < i2) { *t++ = i->second; i++; }
 
                 _pimpl->_renderer->Render(
-                    context, parserContext, techniqueIndex,
+                    context, parserContext,
                     *ci, tStart, t);
 
             } else {
                 i = i2;
             }
         }
+
+        _pimpl->_renderer->EndRender(context, parserContext, techniqueIndex);
     }
 
     static void SavePlacements(const char outputFilename[], Placements& placements)

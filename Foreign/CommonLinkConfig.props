@@ -5,7 +5,7 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros">
     <FreeTypeLibName Condition="$(Configuration.Contains('Debug'))">freetype255d</FreeTypeLibName>
-    <FreeTypeLibName Condition="!$(Configuration.Contains('Debug'))">freetype255</FreeTypeLibName>
+    <FreeTypeLibName Condition="!$(Configuration.Contains('Debug'))">freetype255mt</FreeTypeLibName>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile />

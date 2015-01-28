@@ -195,6 +195,7 @@
     <ClCompile Include="..\Ocean.cpp" />
     <ClCompile Include="..\OrderIndependentTransparency.cpp" />
     <ClCompile Include="..\PlacementsManager.cpp" />
+    <ClCompile Include="..\PlacementsQuadTree.cpp" />
     <ClCompile Include="..\Rain.cpp" />
     <ClCompile Include="..\RefractionsBuffer.cpp" />
     <ClCompile Include="..\LightingParser.cpp" />
@@ -226,6 +227,7 @@
     <ClInclude Include="..\OITInternal.h" />
     <ClInclude Include="..\OrderIndependentTransparency.h" />
     <ClInclude Include="..\PlacementsManager.h" />
+    <ClInclude Include="..\PlacementsQuadTree.h" />
     <ClInclude Include="..\Rain.h" />
     <ClInclude Include="..\RefractionsBuffer.h" />
     <ClInclude Include="..\RenderingUtils.h" />

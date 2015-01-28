@@ -9,6 +9,7 @@
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/WinApI/WinAPIWrapper.h"
+#include "../../Core/SelectConfiguration.h"
 
 namespace RenderCore { namespace Assets 
 {
@@ -58,7 +59,21 @@ namespace RenderCore { namespace Assets
             // note --  this behaviour is Win32 specific currently!
             //          
         #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
-            const char pluginSearch[] = "../PluginNonDist/*.dll";
+
+            #if defined(_DEBUG)
+                #if TARGET_64BIT
+                    #define CONFIG_DIR "Debug64"
+                #else
+                    #define CONFIG_DIR "Debug32"
+                #endif
+            #else
+                #if TARGET_64BIT
+                    #define CONFIG_DIR "Release64"
+                #else
+                    #define CONFIG_DIR "Release32"
+                #endif
+            #endif
+            const char* pluginSearch = "../PluginNonDist/" CONFIG_DIR "/*.dll";
             auto files = FindFiles(pluginSearch, FindFilesFilter::File);
             for (auto i=files.cbegin(); i!=files.cend(); ++i) {
                 auto lib = (*Windows::Fn_LoadLibrary)(i->c_str());
