@@ -164,10 +164,6 @@
       <Project>{39EA3939-2098-42CF-8F3A-E3D13BDB546B}</Project>
       <Name>ShaderFragmentArchive</Name>
     </ProjectReference>
-    <ProjectReference Include="Ribbon\Project\NodeEditorRibbon.csproj">
-      <Project>{9AFF62FA-8C00-4D0C-A7A6-B5E49C3F684E}</Project>
-      <Name>NodeEditorRibbon</Name>
-    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include=".NETFramework,Version=v4.0,Profile=Client">
@@ -204,9 +200,15 @@
     <None Include="Resources\icon_square.png" />
     <None Include="Resources\icon_roundedrect.png" />
     <None Include="Resources\icon_paper.png" />
+    <Content Include="RibbonMarkup.log">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>RibbonMarkup.xml</DependentUpon>
+    </Content>
     <Content Include="RibbonMarkup.xml">
       <Generator>RibbonGenerator</Generator>
       <SubType>Designer</SubType>
+      <LastGenOutput>RibbonMarkup.log</LastGenOutput>
     </Content>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
