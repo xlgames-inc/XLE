@@ -62,35 +62,32 @@ namespace Math
 
     static const float* AsFloatArray(const Float4x4& m) { return &m(0,0); }
 
-    static void TestAABB_SSE_Pt(
+    static void TestAABB_SSE_Corner(
         __m128 pt, 
         __m128& A0, __m128& A1, __m128& A2, __m128& A3,
         __m128& andUpper, __m128& andLower,
-        __m128& orUpper, __m128& orLower,
+        __m128& orUpperLower,
         __m128& zeroZWComponents)
     {
-        auto x = _mm_dp_ps(A0, pt, (0xF<<4)|(1<<0));  // L: ~12, T: 0 (varies for different processors)
-        auto y = _mm_dp_ps(A1, pt, (0xF<<4)|(1<<1));  // L: ~12, T: 0 (varies for different processors)
-        auto z = _mm_dp_ps(A2, pt, (0xF<<4)|(1<<2));  // L: ~12, T: 0 (varies for different processors)
-        auto w = _mm_dp_ps(A3, pt, (0xF<<4)|( 0xF));  // L: ~12, T: 0 (varies for different processors)
+        auto x = _mm_dp_ps(A0, pt, (0xF<<4)|(1<<0));    // L: ~12, T: 0 (varies for different processors)
+        auto y = _mm_dp_ps(A1, pt, (0xF<<4)|(1<<1));    // L: ~12, T: 0 (varies for different processors)
+        auto z = _mm_dp_ps(A2, pt, (0xF<<4)|(1<<2));    // L: ~12, T: 0 (varies for different processors)
+        auto w = _mm_dp_ps(A3, pt, (0xF<<4)|( 0xF));    // L: ~12, T: 0 (varies for different processors)
 
         auto clipSpaceXYZ = _mm_add_ps(x, y);           // L: 3, T: 1
         clipSpaceXYZ = _mm_add_ps(z, clipSpaceXYZ);     // L: 3, T: 1
 
         const auto sign_mask = _mm_set1_ps(-0.f); // -0.f = 1 << 31
 
-        //      SSE absolute using bit mask --
-        // w = _mm_andnot_ps(sign_mask, w);
-
-        // clipSpaceXYZ = _mm_mul_ps(clipSpaceXYZ, w);     // L: 5, T: ~1
-        // const auto upperCompare = _mm_set1_ps(1.f);
-        // const auto lowerCompare = _mm_set_ps(-1.f, -1.f, 0.f, 0.f);   // (In DirectX clip space, z=0.f is the near plane)
+            // (SSE absolute using bit mask -- w = _mm_andnot_ps(sign_mask, w);)
 
         auto negW = _mm_xor_ps(w, sign_mask);           // L: 1, T: ~0.33 (this will flip the sign of w)
 
             // In DirectX clip space, z=0.f is the near plane
-            // we need to set negW.z to 0. It's easiest using a bitwise and...
-        negW = _mm_and_ps(negW, zeroZWComponents); // L: 1, T: 1
+            // we need to set negW.z to 0. It's easiest using a bitwise and..
+            // (note that if we're using an OpenGL style clip space, 
+            // we should skip this function)
+        negW = _mm_and_ps(negW, zeroZWComponents);      // L: 1, T: 1
 
         auto cmp0 = _mm_cmpgt_ps(clipSpaceXYZ, w);      // L: 3, T: -
         auto cmp1 = _mm_cmplt_ps(clipSpaceXYZ, negW);   // L: 3, T: -
@@ -98,8 +95,8 @@ namespace Math
         andUpper = _mm_and_ps(andUpper, cmp0);          // L: 1, T: ~1
         andLower = _mm_and_ps(andLower, cmp1);          // L: 1, T: ~1
 
-        orUpper = _mm_or_ps(orUpper, cmp0);             // L: 1, T: .33
-        orLower = _mm_or_ps(orLower, cmp1);             // L: 1, T: .33
+        orUpperLower = _mm_or_ps(orUpperLower, cmp0);   // L: 1, T: .33
+        orUpperLower = _mm_or_ps(orUpperLower, cmp1);   // L: 1, T: .33
     }
 
     AABBIntersection::Enum TestAABB_SSE(const Float4x4& localToProjection, const Float3& mins, const Float3& maxs)
@@ -139,7 +136,7 @@ namespace Math
         auto A2 = _mm_loadu_ps(AsFloatArray(localToProjection) +  8);
         auto A3 = _mm_loadu_ps(AsFloatArray(localToProjection) + 12);
 
-        __declspec(align(16)) unsigned andInitializer[] = { 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff };
+        __declspec(align(16)) unsigned andInitializer[] = { 0xffffffff, 0xffffffff, 0xffffffff, 0 };
         assert((size_t(andInitializer) & 0xf) == 0);
 
         __declspec(align(16)) unsigned zeroZWComponentsInit[] = { 0xffffffff, 0xffffffff, 0, 0 };
@@ -148,84 +145,128 @@ namespace Math
         auto zeroZWComponents = _mm_load_ps((const float*)zeroZWComponentsInit);
         auto andUpper = _mm_load_ps((const float*)andInitializer);
         auto andLower = _mm_load_ps((const float*)andInitializer);
-        auto orUpper = _mm_setzero_ps();
-        auto orLower = _mm_setzero_ps();
+        auto orUpperLower = _mm_setzero_ps();
 
             // Perform projection into culling space...
 
-            // We can perform the matrix * vector multiply in two ways:
+            // We can perform the matrix * vector multiply in three ways:
             //      1. using "SSE4.1" dot product instruction "_mm_dp_ps"
-            //      2. using "SSE" and "FMA" vector multiply and fused vector add
+            //      2. using SSE3 vector multiply and horizontal add instructions
+            //      2. using "FMA" vector multiply and fused vector add
             //
-            // The dot production instruction has low throughput by very
+            // FMA is not supported on Intel chips earlier than Haswell. That's a
+            // bit frustrating.
+            //
+            // The dot production instruction has low throughput but very
             // high latency. That means we need to interleave a number of 
             // transforms in order to get the best performance. Actually, compiler
             // generated optimization should be better for doing that. But 
             // I'm currently using a compiler that doesn't seem to generate that
             // instruction (so, doing it by hand).
+            //
+            // We can separate the test for each point into 2 parts;
+            //      1. the matrix * vector multiply
+            //      2. comparing the result against the edges of the frustum
+            //
+            // The 1st part has a high latency. But the latency values for the
+            // second part are much smaller. The second part is much more compact
+            // and easier to optimise. It makes sense to do 2 points in parallel,
+            // to cover the latency of the 1st part with the calculations from the
+            // 2nd part.
+            //
+            // However, we have a bit of problem with register counts! We need a lot
+            // of registers. Visual Studio 2010 is only using 8 xmm registers, which is
+            // not really enough. We need 16 registers to do this well. But it seems that
+            // we can only have 16 register in x64 mode.
+            //
+            //       0-3  : matrix
+            //       4xyz : clipSpaceXYZ
+            //       5xyz : clipSpaceWWW (then -clipSpaceWWW)
+            //       6    : utility
+            //       7xyz : andUpper
+            //       8xyz : andLower
+            //       9xyz : orUpperAndLower
+            //      10    : abuv
+            //      11    : cw11
+            //
+            // If we want to do multiple corners at the same time, it's just going to
+            // increase the registers we need.
+            //
+            //  What this means is the idea situation depends on the hardware we're
+            //  targeting!
+            //      1. x86 Haswell+ --> fused-multiply-add
+            //      2. x64 --> dot product with 16 xmm registers
+            //      3. otherwise, 2-step, transform corners and then clip test
+            //
+            // One solution is to do the transformation first, and write the result to
+            // memory. But this makes it more difficult to cover the latency in the
+            // dot product.
+            //
 
         ////////////////////////////////////////
-        TestAABB_SSE_Pt(
+        TestAABB_SSE_Corner(
             _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 0, 1, 0)),
             A0, A1, A2, A3,
-            andUpper, andLower, orUpper, orLower, zeroZWComponents);
+            andUpper, andLower, orUpperLower, zeroZWComponents);
 
-        TestAABB_SSE_Pt(
+        TestAABB_SSE_Corner(
             _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 0, 1, 2)),
             A0, A1, A2, A3,
-            andUpper, andLower, orUpper, orLower, zeroZWComponents);
+            andUpper, andLower, orUpperLower, zeroZWComponents);
 
-        TestAABB_SSE_Pt(
+        TestAABB_SSE_Corner(
             _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 0, 3, 0)),
             A0, A1, A2, A3,
-            andUpper, andLower, orUpper, orLower, zeroZWComponents);
+            andUpper, andLower, orUpperLower, zeroZWComponents);
 
-        TestAABB_SSE_Pt(
+        TestAABB_SSE_Corner(
             _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 0, 3, 2)),
             A0, A1, A2, A3,
-            andUpper, andLower, orUpper, orLower, zeroZWComponents);
+            andUpper, andLower, orUpperLower, zeroZWComponents);
 
-        TestAABB_SSE_Pt(
+        TestAABB_SSE_Corner(
             _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 1, 1, 0)),
             A0, A1, A2, A3,
-            andUpper, andLower, orUpper, orLower, zeroZWComponents);
+            andUpper, andLower, orUpperLower, zeroZWComponents);
 
-        TestAABB_SSE_Pt(
+        TestAABB_SSE_Corner(
             _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 1, 1, 2)),
             A0, A1, A2, A3,
-            andUpper, andLower, orUpper, orLower, zeroZWComponents);
+            andUpper, andLower, orUpperLower, zeroZWComponents);
 
-        TestAABB_SSE_Pt(
+        TestAABB_SSE_Corner(
             _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 1, 3, 0)),
             A0, A1, A2, A3,
-            andUpper, andLower, orUpper, orLower, zeroZWComponents);
+            andUpper, andLower, orUpperLower, zeroZWComponents);
 
-        TestAABB_SSE_Pt(
+        TestAABB_SSE_Corner(
             _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 1, 3, 2)),
             A0, A1, A2, A3,
-            andUpper, andLower, orUpper, orLower, zeroZWComponents);
+            andUpper, andLower, orUpperLower, zeroZWComponents);
         ////////////////////////////////////////
 
-        __declspec(align(16)) unsigned andUpperResult[4];
-        __declspec(align(16)) unsigned andLowerResult[4];
-        __declspec(align(16)) unsigned  orUpperResult[4];
-        __declspec(align(16)) unsigned  orLowerResult[4];
-        assert((size_t(andInitializer) & 0xf) == 0);
-        assert((size_t(andLowerResult) & 0xf) == 0);
-        assert((size_t( orUpperResult) & 0xf) == 0);
-        assert((size_t( orLowerResult) & 0xf) == 0);
+            //  We can use "horizontal add" in place of a "horizontal or"
+            //  elements of andLower, andUpper and orUpperLower will be
+            //  either 0x0 or 0xffffffff.
+            //  When we add them together, we will frequently get overflows.
+            //  But we should always be correctly left with either a 0
+            //  or non-zero number.
+        andUpper        = _mm_hadd_ps(andLower,     andUpper);
+        orUpperLower    = _mm_hadd_ps(orUpperLower, orUpperLower);
+        andUpper        = _mm_hadd_ps(andUpper,     andUpper);
+        orUpperLower    = _mm_hadd_ps(orUpperLower, orUpperLower);
+        andUpper        = _mm_hadd_ps(andUpper,     andUpper);
 
-        _mm_store_ps((float*)andUpperResult, andUpper);
-        _mm_store_ps((float*)andLowerResult, andLower);
-        _mm_store_ps((float*)orUpperResult, orUpper);
-        _mm_store_ps((float*)orLowerResult, orLower);
+        __declspec(align(16)) unsigned andResult[4];
+        __declspec(align(16)) unsigned  orUpperLowerResult[4];
+        assert((size_t(andResult) & 0xf) == 0);
+        assert((size_t(orUpperLowerResult) & 0xf) == 0);
 
-        if (andUpperResult[0] | andUpperResult[1] | andUpperResult[2] | andLowerResult[0] | andLowerResult[1] | andLowerResult[2]) {
-            return AABBIntersection::Culled;
-        }
-        if (orUpperResult[0] | orUpperResult[1] | orUpperResult[2] | orLowerResult[0] | orLowerResult[1] | orLowerResult[2]) {
-            return AABBIntersection::Boundary;
-        }
+        _mm_store_ps((float*)orUpperLowerResult, orUpperLower);
+        _mm_store_ps((float*)andResult, andUpper);
+
+        if (andResult[0])           { return AABBIntersection::Culled; }
+        if (orUpperLowerResult[0])  { return AABBIntersection::Boundary; }
         return AABBIntersection::Within;
     }
 
