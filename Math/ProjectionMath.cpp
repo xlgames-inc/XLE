@@ -77,7 +77,7 @@ namespace Math
         auto clipSpaceXYZ = _mm_add_ps(x, y);           // L: 3, T: 1
         clipSpaceXYZ = _mm_add_ps(z, clipSpaceXYZ);     // L: 3, T: 1
 
-        const auto sign_mask = _mm_set1_ps(-0.f); // -0.f = 1 << 31
+        const auto sign_mask = _mm_set1_ps(-0.f);       // -0.f = 1 << 31
 
             // (SSE absolute using bit mask -- w = _mm_andnot_ps(sign_mask, w);)
 
@@ -270,6 +270,416 @@ namespace Math
         return AABBIntersection::Within;
     }
 
+    static inline void TestAABB_SSE_TransCorner2(
+        __m128 corner0, __m128 corner1, 
+        __m128& A0, __m128& A1, __m128& A2,
+        float* dst)
+    {
+        // still need many registers --
+        // A0, A1, A2
+        // x0, y0, z2
+        // x1, y1, z1
+        // abuv, cz11
+        auto x0 = _mm_dp_ps(A0, corner0, (0xF<<4)|(1<<0));      // L: ~12, T: 0 (varies for different processors)
+        auto y0 = _mm_dp_ps(A1, corner0, (0xF<<4)|(1<<1));      // L: ~12, T: 0 (varies for different processors)
+        auto z0 = _mm_dp_ps(A2, corner0, (0xF<<4)|(1<<2));      // L: ~12, T: 0 (varies for different processors)
+
+        auto x1 = _mm_dp_ps(A0, corner1, (0xF<<4)|(1<<0));      // L: ~12, T: 0 (varies for different processors)
+        auto y1 = _mm_dp_ps(A1, corner1, (0xF<<4)|(1<<1));      // L: ~12, T: 0 (varies for different processors)
+        auto z1 = _mm_dp_ps(A2, corner1, (0xF<<4)|(1<<2));      // L: ~12, T: 0 (varies for different processors)
+
+        auto clipSpaceXYZ0 = _mm_add_ps(x0, y0);                // L: 3, T: 1
+        auto clipSpaceXYZ1 = _mm_add_ps(x1, y1);                // L: 3, T: 1
+        clipSpaceXYZ0 = _mm_add_ps(z0, clipSpaceXYZ0);          // L: 3, T: 1
+        clipSpaceXYZ1 = _mm_add_ps(z1, clipSpaceXYZ1);          // L: 3, T: 1
+        _mm_store_ps(dst, clipSpaceXYZ0);
+        _mm_store_ps(dst + 4, clipSpaceXYZ1);
+    }
+
+    static inline void TestAABB_SSE_TransCorner3(
+        __m128& corner0, __m128& corner1, 
+        __m128 A0, __m128 A1, __m128 A2,
+        float* dst)
+    {
+        auto x0 = _mm_mul_ps(A0, corner0);                  // L: 5, T: 1
+        auto y0 = _mm_mul_ps(A1, corner0);                  // L: 5, T: 1
+        auto z0 = _mm_mul_ps(A2, corner0);                  // L: 5, T: 1
+
+        auto clipSpaceXYZ0 = _mm_hadd_ps(x0, y0);           // L: 5, T: 2
+        z0 = _mm_hadd_ps(z0, z0);                           // L: 5, T: 2
+        clipSpaceXYZ0 = _mm_hadd_ps(clipSpaceXYZ0, z0);     // L: 5, T: 2
+        _mm_store_ps(dst, clipSpaceXYZ0);
+
+        auto x1 = _mm_mul_ps(A0, corner1);                  // L: 5, T: 1
+        auto y1 = _mm_mul_ps(A1, corner1);                  // L: 5, T: 1
+        auto z1 = _mm_mul_ps(A2, corner1);                  // L: 5, T: 1
+        
+        auto clipSpaceXYZ1 = _mm_hadd_ps(x1, y1);           // L: 5, T: 2
+        z1 = _mm_hadd_ps(z1, z1);                           // L: 5, T: 2
+        clipSpaceXYZ1 = _mm_hadd_ps(clipSpaceXYZ1, z1);     // L: 5, T: 2
+        _mm_store_ps(dst + 4, clipSpaceXYZ1);
+    }
+
+    __declspec(align(16)) static const unsigned zeroZWComponentsInit[] = { 0xffffffff, 0xffffffff, 0, 0 };
+    static const auto zeroZWComponents = _mm_load_ps((const float*)zeroZWComponentsInit);
+    static const auto sign_mask = _mm_set1_ps(-0.f);       // -0.f = 1 << 31
+        
+    static inline void TestAABB_SSE_CalcFlags(
+        const float* clipSpaceXYZMem, const float* clipSpaceWMem,
+        __m128& andUpper, __m128& andLower,
+        __m128& orUpperLower)
+    {
+        assert((size_t(clipSpaceXYZMem)&0xF) == 0);
+        assert((size_t(clipSpaceWMem)&0xF) == 0);
+
+        auto xyz = _mm_load_ps(clipSpaceXYZMem);
+        auto w = _mm_load_ps(clipSpaceWMem);
+
+        auto cmp0 = _mm_cmpgt_ps(xyz, w);               // L: 3, T: -
+
+        auto negW = _mm_xor_ps(w, sign_mask);           // L: 1, T: ~0.33 (this will flip the sign of w)
+        negW = _mm_and_ps(negW, zeroZWComponents);      // L: 1, T: 1
+
+        auto cmp1 = _mm_cmplt_ps(xyz, negW);            // L: 3, T: -
+
+            // apply bitwise "and" and "or" as required...
+        andUpper = _mm_and_ps(andUpper, cmp0);          // L: 1, T: ~1
+        andLower = _mm_and_ps(andLower, cmp1);          // L: 1, T: ~1
+
+        orUpperLower = _mm_or_ps(orUpperLower, cmp0);   // L: 1, T: .33
+        orUpperLower = _mm_or_ps(orUpperLower, cmp1);   // L: 1, T: .33
+    }
+
+    AABBIntersection::Enum TestAABB_SSE2(__declspec(align(16)) const float localToProjection[], const Float3& mins, const Float3& maxs)
+    {
+        assert((size_t(localToProjection) & 0xf) == 0);
+        auto abuv = _mm_set_ps(maxs[1], maxs[0], mins[1], mins[0]);   // (note; using WZYX order)
+        auto cw11 = _mm_set_ps(1.f, 1.f, maxs[2], mins[2]);
+
+        auto A0 = _mm_load_ps(localToProjection +  0);
+        auto A1 = _mm_load_ps(localToProjection +  4);
+        auto A2 = _mm_load_ps(localToProjection +  8);
+        auto A3 = _mm_load_ps(localToProjection + 12);
+
+        __declspec(align(16)) Float4 cornerClipSpaceXYZ[8];
+        __declspec(align(16)) Float4 cornerClipW[8];
+
+            //  We want to interleave projection calculations for multiple vectors in 8 registers
+            //  We have very few registers. So we need to separate the calculation of the "W" part
+            //  This will mean having to duplicate the "shuffle" instruction. But this is a very
+            //  cheap instruction.
+
+        TestAABB_SSE_TransCorner2(
+            _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 0, 1, 0)),
+            _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 0, 1, 2)),
+            A0, A1, A2, &cornerClipSpaceXYZ[0][0]);
+        TestAABB_SSE_TransCorner2(
+            _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 0, 3, 0)),
+            _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 0, 3, 2)),
+            A0, A1, A2, &cornerClipSpaceXYZ[2][0]);
+        TestAABB_SSE_TransCorner2(
+            _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 1, 1, 0)),
+            _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 1, 1, 2)),
+            A0, A1, A2, &cornerClipSpaceXYZ[4][0]);
+        TestAABB_SSE_TransCorner2(
+            _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 1, 3, 0)),
+            _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 1, 3, 2)),
+            A0, A1, A2, &cornerClipSpaceXYZ[6][0]);
+
+            //  Now do the "W" parts.. Do 4 at a time to try to cover latency
+        {
+            auto abc1 = _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 0, 1, 0));
+            auto w0 = _mm_dp_ps(A3, abc1, (0xF<<4)|( 0xF));
+            auto ubc1 = _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 0, 1, 2));
+            auto w1 = _mm_dp_ps(A3, ubc1, (0xF<<4)|( 0xF));
+            auto avc1 = _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 0, 3, 0));
+            auto w2 = _mm_dp_ps(A3, avc1, (0xF<<4)|( 0xF));
+            auto uvc1 = _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 0, 3, 2));
+            auto w3 = _mm_dp_ps(A3, uvc1, (0xF<<4)|( 0xF));
+
+            _mm_store_ps(&cornerClipW[0][0], w0);
+            _mm_store_ps(&cornerClipW[1][0], w1);
+            _mm_store_ps(&cornerClipW[2][0], w2);
+            _mm_store_ps(&cornerClipW[3][0], w3);
+
+            auto abw1 = _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 1, 1, 0));
+            auto w4 = _mm_dp_ps(A3, abw1, (0xF<<4)|( 0xF));
+            auto ubw1 = _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 1, 1, 2));
+            auto w5 = _mm_dp_ps(A3, ubw1, (0xF<<4)|( 0xF));
+            auto avw1 = _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 1, 3, 0));
+            auto w6 = _mm_dp_ps(A3, avw1, (0xF<<4)|( 0xF));
+            auto uvw1 = _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 1, 3, 2));
+            auto w7 = _mm_dp_ps(A3, uvw1, (0xF<<4)|( 0xF));
+
+            _mm_store_ps(&cornerClipW[4][0], w4);
+            _mm_store_ps(&cornerClipW[5][0], w5);
+            _mm_store_ps(&cornerClipW[6][0], w6);
+            _mm_store_ps(&cornerClipW[7][0], w7);
+        }
+
+            // Now compare with screen edges and calculate the bit masks
+
+        __declspec(align(16)) unsigned andInitializer[] = { 0xffffffff, 0xffffffff, 0xffffffff, 0 };
+        assert((size_t(andInitializer) & 0xf) == 0);
+
+        auto andUpper = _mm_load_ps((const float*)andInitializer);
+        auto andLower = _mm_load_ps((const float*)andInitializer);
+        auto orUpperLower = _mm_setzero_ps();
+
+        TestAABB_SSE_CalcFlags(&cornerClipSpaceXYZ[0][0], &cornerClipW[0][0], andUpper, andLower, orUpperLower);
+        TestAABB_SSE_CalcFlags(&cornerClipSpaceXYZ[1][0], &cornerClipW[1][0], andUpper, andLower, orUpperLower);
+        TestAABB_SSE_CalcFlags(&cornerClipSpaceXYZ[2][0], &cornerClipW[2][0], andUpper, andLower, orUpperLower);
+        TestAABB_SSE_CalcFlags(&cornerClipSpaceXYZ[3][0], &cornerClipW[3][0], andUpper, andLower, orUpperLower);
+        TestAABB_SSE_CalcFlags(&cornerClipSpaceXYZ[4][0], &cornerClipW[4][0], andUpper, andLower, orUpperLower);
+        TestAABB_SSE_CalcFlags(&cornerClipSpaceXYZ[5][0], &cornerClipW[5][0], andUpper, andLower, orUpperLower);
+        TestAABB_SSE_CalcFlags(&cornerClipSpaceXYZ[6][0], &cornerClipW[6][0], andUpper, andLower, orUpperLower);
+        TestAABB_SSE_CalcFlags(&cornerClipSpaceXYZ[7][0], &cornerClipW[7][0], andUpper, andLower, orUpperLower);
+
+            // Get the final result...
+
+        andUpper        = _mm_hadd_ps(andLower,     andUpper);
+        orUpperLower    = _mm_hadd_ps(orUpperLower, orUpperLower);
+        andUpper        = _mm_hadd_ps(andUpper,     andUpper);
+        orUpperLower    = _mm_hadd_ps(orUpperLower, orUpperLower);
+        andUpper        = _mm_hadd_ps(andUpper,     andUpper);
+
+        __declspec(align(16)) unsigned andResult[4];
+        __declspec(align(16)) unsigned  orUpperLowerResult[4];
+        assert((size_t(andResult) & 0xf) == 0);
+        assert((size_t(orUpperLowerResult) & 0xf) == 0);
+
+        _mm_store_ps((float*)orUpperLowerResult, orUpperLower);
+        _mm_store_ps((float*)andResult, andUpper);
+
+        if (andResult[0])           { return AABBIntersection::Culled; }
+        if (orUpperLowerResult[0])  { return AABBIntersection::Boundary; }
+        return AABBIntersection::Within;
+    }
+
+    AABBIntersection::Enum TestAABB_SSE3(__declspec(align(16)) const float localToProjection[], const Float3& mins, const Float3& maxs)
+    {
+        assert((size_t(localToProjection) & 0xf) == 0);
+        auto abuv = _mm_set_ps(maxs[1], maxs[0], mins[1], mins[0]);   // (note; using WZYX order)
+        auto cw11 = _mm_set_ps(1.f, 1.f, maxs[2], mins[2]);
+
+        __m128 corners[8];
+        corners[0] = _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 0, 1, 0));
+        corners[1] = _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 0, 1, 2));
+        corners[2] = _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 0, 3, 0));
+        corners[3] = _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 0, 3, 2));
+        corners[4] = _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 1, 1, 0));
+        corners[5] = _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 1, 1, 2));
+        corners[6] = _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 1, 3, 0));
+        corners[7] = _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 1, 3, 2));
+
+        auto A0 = _mm_load_ps(localToProjection +  0);
+        auto A1 = _mm_load_ps(localToProjection +  4);
+        auto A2 = _mm_load_ps(localToProjection +  8);
+        auto A3 = _mm_load_ps(localToProjection + 12);
+
+        __declspec(align(16)) Float4 cornerClipSpaceXYZ[8];
+        __declspec(align(16)) Float4 cornerClipW[8];
+
+            //  We want to interleave projection calculations for multiple vectors in 8 registers
+            //  We have very few registers. So we need to separate the calculation of the "W" part
+            //  This will mean having to duplicate the "shuffle" instruction. But this is a very
+            //  cheap instruction.
+
+        TestAABB_SSE_TransCorner2(
+            corners[0], corners[1],
+            A0, A1, A2, &cornerClipSpaceXYZ[0][0]);
+        TestAABB_SSE_TransCorner2(
+            corners[2], corners[3],
+            A0, A1, A2, &cornerClipSpaceXYZ[2][0]);
+        TestAABB_SSE_TransCorner2(
+            corners[3], corners[4],
+            A0, A1, A2, &cornerClipSpaceXYZ[4][0]);
+        TestAABB_SSE_TransCorner2(
+            corners[5], corners[6],
+            A0, A1, A2, &cornerClipSpaceXYZ[6][0]);
+
+            //  Now do the "W" parts.. Do 4 at a time to try to cover latency
+        {
+            auto abc1 = _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 0, 1, 0));
+            auto w0 = _mm_dp_ps(A3, abc1, (0xF<<4)|( 0xF));
+            auto ubc1 = _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 0, 1, 2));
+            auto w1 = _mm_dp_ps(A3, ubc1, (0xF<<4)|( 0xF));
+            auto avc1 = _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 0, 3, 0));
+            auto w2 = _mm_dp_ps(A3, avc1, (0xF<<4)|( 0xF));
+            auto uvc1 = _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 0, 3, 2));
+            auto w3 = _mm_dp_ps(A3, uvc1, (0xF<<4)|( 0xF));
+
+            _mm_store_ps(&cornerClipW[0][0], w0);
+            _mm_store_ps(&cornerClipW[1][0], w1);
+            _mm_store_ps(&cornerClipW[2][0], w2);
+            _mm_store_ps(&cornerClipW[3][0], w3);
+
+            auto abw1 = _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 1, 1, 0));
+            auto w4 = _mm_dp_ps(A3, abw1, (0xF<<4)|( 0xF));
+            auto ubw1 = _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 1, 1, 2));
+            auto w5 = _mm_dp_ps(A3, ubw1, (0xF<<4)|( 0xF));
+            auto avw1 = _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 1, 3, 0));
+            auto w6 = _mm_dp_ps(A3, avw1, (0xF<<4)|( 0xF));
+            auto uvw1 = _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 1, 3, 2));
+            auto w7 = _mm_dp_ps(A3, uvw1, (0xF<<4)|( 0xF));
+
+            _mm_store_ps(&cornerClipW[4][0], w4);
+            _mm_store_ps(&cornerClipW[5][0], w5);
+            _mm_store_ps(&cornerClipW[6][0], w6);
+            _mm_store_ps(&cornerClipW[7][0], w7);
+        }
+
+            // Now compare with screen edges and calculate the bit masks
+
+        __declspec(align(16)) unsigned andInitializer[] = { 0xffffffff, 0xffffffff, 0xffffffff, 0 };
+        assert((size_t(andInitializer) & 0xf) == 0);
+
+        auto andUpper = _mm_load_ps((const float*)andInitializer);
+        auto andLower = _mm_load_ps((const float*)andInitializer);
+        auto orUpperLower = _mm_setzero_ps();
+
+        TestAABB_SSE_CalcFlags(&cornerClipSpaceXYZ[0][0], &cornerClipW[0][0], andUpper, andLower, orUpperLower);
+        TestAABB_SSE_CalcFlags(&cornerClipSpaceXYZ[1][0], &cornerClipW[1][0], andUpper, andLower, orUpperLower);
+        TestAABB_SSE_CalcFlags(&cornerClipSpaceXYZ[2][0], &cornerClipW[2][0], andUpper, andLower, orUpperLower);
+        TestAABB_SSE_CalcFlags(&cornerClipSpaceXYZ[3][0], &cornerClipW[3][0], andUpper, andLower, orUpperLower);
+        TestAABB_SSE_CalcFlags(&cornerClipSpaceXYZ[4][0], &cornerClipW[4][0], andUpper, andLower, orUpperLower);
+        TestAABB_SSE_CalcFlags(&cornerClipSpaceXYZ[5][0], &cornerClipW[5][0], andUpper, andLower, orUpperLower);
+        TestAABB_SSE_CalcFlags(&cornerClipSpaceXYZ[6][0], &cornerClipW[6][0], andUpper, andLower, orUpperLower);
+        TestAABB_SSE_CalcFlags(&cornerClipSpaceXYZ[7][0], &cornerClipW[7][0], andUpper, andLower, orUpperLower);
+
+            // Get the final result...
+
+        andUpper        = _mm_hadd_ps(andLower,     andUpper);
+        orUpperLower    = _mm_hadd_ps(orUpperLower, orUpperLower);
+        andUpper        = _mm_hadd_ps(andUpper,     andUpper);
+        orUpperLower    = _mm_hadd_ps(orUpperLower, orUpperLower);
+        andUpper        = _mm_hadd_ps(andUpper,     andUpper);
+
+        __declspec(align(16)) unsigned andResult[4];
+        __declspec(align(16)) unsigned  orUpperLowerResult[4];
+        assert((size_t(andResult) & 0xf) == 0);
+        assert((size_t(orUpperLowerResult) & 0xf) == 0);
+
+        _mm_store_ps((float*)orUpperLowerResult, orUpperLower);
+        _mm_store_ps((float*)andResult, andUpper);
+
+        if (andResult[0])           { return AABBIntersection::Culled; }
+        if (orUpperLowerResult[0])  { return AABBIntersection::Boundary; }
+        return AABBIntersection::Within;
+    }
+
+    AABBIntersection::Enum TestAABB_SSE4(__declspec(align(16)) const float localToProjection[], const Float3& mins, const Float3& maxs)
+    {
+        assert((size_t(localToProjection) & 0xf) == 0);
+        auto abuv = _mm_set_ps(maxs[1], maxs[0], mins[1], mins[0]);   // (note; using WZYX order)
+        auto cw11 = _mm_set_ps(1.f, 1.f, maxs[2], mins[2]);
+
+        __m128 corners[8];
+        corners[0] = _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 0, 1, 0));
+        corners[1] = _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 0, 1, 2));
+        corners[2] = _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 0, 3, 0));
+        corners[3] = _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 0, 3, 2));
+        corners[4] = _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 1, 1, 0));
+        corners[5] = _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 1, 1, 2));
+        corners[6] = _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 1, 3, 0));
+        corners[7] = _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 1, 3, 2));
+
+        auto A0 = _mm_load_ps(localToProjection +  0);
+        auto A1 = _mm_load_ps(localToProjection +  4);
+        auto A2 = _mm_load_ps(localToProjection +  8);
+        auto A3 = _mm_load_ps(localToProjection + 12);
+
+        __declspec(align(16)) Float4 cornerClipSpaceXYZ[8];
+        __declspec(align(16)) Float4 cornerClipW[8];
+
+            //  We want to interleave projection calculations for multiple vectors in 8 registers
+            //  We have very few registers. So we need to separate the calculation of the "W" part
+            //  This will mean having to duplicate the "shuffle" instruction. But this is a very
+            //  cheap instruction.
+
+        TestAABB_SSE_TransCorner3(
+            corners[0], corners[1],
+            A0, A1, A2, &cornerClipSpaceXYZ[0][0]);
+        TestAABB_SSE_TransCorner3(
+            corners[2], corners[3],
+            A0, A1, A2, &cornerClipSpaceXYZ[2][0]);
+        TestAABB_SSE_TransCorner3(
+            corners[3], corners[4],
+            A0, A1, A2, &cornerClipSpaceXYZ[4][0]);
+        TestAABB_SSE_TransCorner3(
+            corners[5], corners[6],
+            A0, A1, A2, &cornerClipSpaceXYZ[6][0]);
+
+            //  Now do the "W" parts.. Do 4 at a time to try to cover latency
+        {
+            auto abc1 = _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 0, 1, 0));
+            auto w0 = _mm_dp_ps(A3, abc1, (0xF<<4)|( 0xF));
+            auto ubc1 = _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 0, 1, 2));
+            auto w1 = _mm_dp_ps(A3, ubc1, (0xF<<4)|( 0xF));
+            auto avc1 = _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 0, 3, 0));
+            auto w2 = _mm_dp_ps(A3, avc1, (0xF<<4)|( 0xF));
+            auto uvc1 = _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 0, 3, 2));
+            auto w3 = _mm_dp_ps(A3, uvc1, (0xF<<4)|( 0xF));
+
+            _mm_store_ps(&cornerClipW[0][0], w0);
+            _mm_store_ps(&cornerClipW[1][0], w1);
+            _mm_store_ps(&cornerClipW[2][0], w2);
+            _mm_store_ps(&cornerClipW[3][0], w3);
+
+            auto abw1 = _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 1, 1, 0));
+            auto w4 = _mm_dp_ps(A3, abw1, (0xF<<4)|( 0xF));
+            auto ubw1 = _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 1, 1, 2));
+            auto w5 = _mm_dp_ps(A3, ubw1, (0xF<<4)|( 0xF));
+            auto avw1 = _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 1, 3, 0));
+            auto w6 = _mm_dp_ps(A3, avw1, (0xF<<4)|( 0xF));
+            auto uvw1 = _mm_shuffle_ps(abuv, cw11, _MM_SHUFFLE(2, 1, 3, 2));
+            auto w7 = _mm_dp_ps(A3, uvw1, (0xF<<4)|( 0xF));
+
+            _mm_store_ps(&cornerClipW[4][0], w4);
+            _mm_store_ps(&cornerClipW[5][0], w5);
+            _mm_store_ps(&cornerClipW[6][0], w6);
+            _mm_store_ps(&cornerClipW[7][0], w7);
+        }
+
+            // Now compare with screen edges and calculate the bit masks
+
+        __declspec(align(16)) unsigned andInitializer[] = { 0xffffffff, 0xffffffff, 0xffffffff, 0 };
+        assert((size_t(andInitializer) & 0xf) == 0);
+
+        auto andUpper = _mm_load_ps((const float*)andInitializer);
+        auto andLower = _mm_load_ps((const float*)andInitializer);
+        auto orUpperLower = _mm_setzero_ps();
+
+        TestAABB_SSE_CalcFlags(&cornerClipSpaceXYZ[0][0], &cornerClipW[0][0], andUpper, andLower, orUpperLower);
+        TestAABB_SSE_CalcFlags(&cornerClipSpaceXYZ[1][0], &cornerClipW[1][0], andUpper, andLower, orUpperLower);
+        TestAABB_SSE_CalcFlags(&cornerClipSpaceXYZ[2][0], &cornerClipW[2][0], andUpper, andLower, orUpperLower);
+        TestAABB_SSE_CalcFlags(&cornerClipSpaceXYZ[3][0], &cornerClipW[3][0], andUpper, andLower, orUpperLower);
+        TestAABB_SSE_CalcFlags(&cornerClipSpaceXYZ[4][0], &cornerClipW[4][0], andUpper, andLower, orUpperLower);
+        TestAABB_SSE_CalcFlags(&cornerClipSpaceXYZ[5][0], &cornerClipW[5][0], andUpper, andLower, orUpperLower);
+        TestAABB_SSE_CalcFlags(&cornerClipSpaceXYZ[6][0], &cornerClipW[6][0], andUpper, andLower, orUpperLower);
+        TestAABB_SSE_CalcFlags(&cornerClipSpaceXYZ[7][0], &cornerClipW[7][0], andUpper, andLower, orUpperLower);
+
+            // Get the final result...
+
+        andUpper        = _mm_hadd_ps(andLower,     andUpper);
+        orUpperLower    = _mm_hadd_ps(orUpperLower, orUpperLower);
+        andUpper        = _mm_hadd_ps(andUpper,     andUpper);
+        orUpperLower    = _mm_hadd_ps(orUpperLower, orUpperLower);
+        andUpper        = _mm_hadd_ps(andUpper,     andUpper);
+
+        __declspec(align(16)) unsigned andResult[4];
+        __declspec(align(16)) unsigned  orUpperLowerResult[4];
+        assert((size_t(andResult) & 0xf) == 0);
+        assert((size_t(orUpperLowerResult) & 0xf) == 0);
+
+        _mm_store_ps((float*)orUpperLowerResult, orUpperLower);
+        _mm_store_ps((float*)andResult, andUpper);
+
+        if (andResult[0])           { return AABBIntersection::Culled; }
+        if (orUpperLowerResult[0])  { return AABBIntersection::Boundary; }
+        return AABBIntersection::Within;
+    }
+
     static inline Float4 XYZProj(const Float4x4& localToProjection, const Float3 input)
     {
         Float4 p = localToProjection * Expand(input, 1.f);
@@ -277,11 +687,8 @@ namespace Math
         return p;
     }
 
-    AABBIntersection::Enum TestAABB(const Float4x4& localToProjection, const Float3& mins, const Float3& maxs)
+    AABBIntersection::Enum TestAABB_Basic(const Float4x4& localToProjection, const Float3& mins, const Float3& maxs)
     {
-        const auto compareResult = TestAABB_SSE(localToProjection, mins, maxs);
-        (void)compareResult;
-
             //  for the box to be culled, all points must be outside of the same bounding box
             //  plane... We can do this in clip space (assuming we can do a fast position transform on
             //  the CPU). We can also do this in world space by finding the planes of the frustum, and
@@ -328,15 +735,19 @@ namespace Math
         }
         
         if (leftAnd | rightAnd | topAnd | bottomAnd | nearAnd | farAnd) {
-            assert(compareResult == AABBIntersection::Culled);
             return AABBIntersection::Culled;
         }
         if (leftOr | rightOr | topOr | bottomOr | nearOr | farOr) {
-            assert(compareResult == AABBIntersection::Boundary);
             return AABBIntersection::Boundary;
         }
-        assert(compareResult == AABBIntersection::Within);
         return AABBIntersection::Within;
+    }
+
+    AABBIntersection::Enum TestAABB(
+        const Float4x4& localToProjection, 
+        const Float3& mins, const Float3& maxs)
+    {
+        return TestAABB_Basic(localToProjection, mins, maxs);
     }
 }
 

@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "PtrUtils.h"
 #include "../Core/Exceptions.h"
 #include "../Core/Types.h"
 #include "Detail/API.h"

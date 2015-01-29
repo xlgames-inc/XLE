@@ -19,6 +19,22 @@ namespace Math
         enum Enum { Culled, Within, Boundary };
     }
 
+    AABBIntersection::Enum TestAABB_Basic(
+        const Float4x4& localToProjection, 
+        const Float3& mins, const Float3& maxs);
+
+    AABBIntersection::Enum TestAABB_SSE2(
+        __declspec(align(16)) const float localToProjection[], 
+        const Float3& mins, const Float3& maxs);
+
+    AABBIntersection::Enum TestAABB_SSE3(
+        __declspec(align(16)) const float localToProjection[], 
+        const Float3& mins, const Float3& maxs);
+
+    AABBIntersection::Enum TestAABB_SSE4(
+        __declspec(align(16)) const float localToProjection[], 
+        const Float3& mins, const Float3& maxs);
+
     AABBIntersection::Enum TestAABB(
         const Float4x4& localToProjection, 
         const Float3& mins, const Float3& maxs);

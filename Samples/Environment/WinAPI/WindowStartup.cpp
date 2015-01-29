@@ -42,6 +42,86 @@ namespace Sample
     }
 }
 
+#include "../../Math/ProjectionMath.h"
+#include "../../Utility/TimeUtils.h"
+#include "../../Utility/StringFormat.h"
+#include <random>
+
+static const float* AsFloatArray(const Float4x4& m) { return &m(0,0); }
+
+unsigned g_TestValue;
+
+static void CullPerformanceTest()
+{
+    auto worldToProj = Identity<Float4x4>();
+    __declspec(align(16)) float alignedWorldToProj[16];
+    std::copy(AsFloatArray(worldToProj), AsFloatArray(worldToProj) + 16, alignedWorldToProj);
+
+    std::pair<Float3, Float3> boundingBoxes[10*1024];
+    std::mt19937 rng(std::random_device().operator ()());
+    float scale = 1000.f / float(rng.max());
+
+    for (unsigned c=0; c<dimof(boundingBoxes); ++c) {
+        float x0 = float(rng()) * scale;
+        float x1 = float(rng()) * scale;
+        float y0 = float(rng()) * scale;
+        float y1 = float(rng()) * scale;
+        float z0 = float(rng()) * scale;
+        float z1 = float(rng()) * scale;
+        boundingBoxes[c] = std::make_pair(
+            Float3(std::min(x0, x1), std::min(y0, y1), std::min(z0, z1)),
+            Float3(std::max(x0, x1), std::max(y0, y1), std::max(z0, z1)));
+    }
+
+    const unsigned iterations = 1000u;
+    auto frequency = GetPerformanceCounterFrequency();
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    auto basicStart = GetPerformanceCounter();
+    for (unsigned i=0; i<iterations; ++i) {
+        for (unsigned c=0; c<dimof(boundingBoxes); ++c) {
+            g_TestValue += unsigned(TestAABB_Basic(worldToProj, boundingBoxes[c].first, boundingBoxes[c].second));
+        }
+    }
+    auto basicEnd = GetPerformanceCounter();
+
+    OutputDebugString(StringMeld<256>() << "TestAABB_Basic result: " << (basicEnd - basicStart) / (frequency / 1000) << "\r\n");
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    auto sse2Start = GetPerformanceCounter();
+    for (unsigned i=0; i<iterations; ++i) {
+        for (unsigned c=0; c<dimof(boundingBoxes); ++c) {
+            g_TestValue += unsigned(TestAABB_SSE2(alignedWorldToProj, boundingBoxes[c].first, boundingBoxes[c].second));
+        }
+    }
+    auto sse2End = GetPerformanceCounter();
+
+    OutputDebugString(StringMeld<256>() << "TestAABB_SSE2 result: " << (sse2End - sse2Start) / (frequency / 1000) << "\r\n");
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    auto sse3Start = GetPerformanceCounter();
+    for (unsigned i=0; i<iterations; ++i) {
+        for (unsigned c=0; c<dimof(boundingBoxes); ++c) {
+            g_TestValue += unsigned(TestAABB_SSE3(alignedWorldToProj, boundingBoxes[c].first, boundingBoxes[c].second));
+        }
+    }
+    auto sse3End = GetPerformanceCounter();
+
+    OutputDebugString(StringMeld<256>() << "TestAABB_SSE3 result: " << (sse3End - sse3Start) / (frequency / 1000) << "\r\n");
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    auto sse4Start = GetPerformanceCounter();
+    for (unsigned i=0; i<iterations; ++i) {
+        for (unsigned c=0; c<dimof(boundingBoxes); ++c) {
+            g_TestValue += unsigned(TestAABB_SSE4(alignedWorldToProj, boundingBoxes[c].first, boundingBoxes[c].second));
+        }
+    }
+    auto sse4End = GetPerformanceCounter();
+
+    OutputDebugString(StringMeld<256>() << "TestAABB_SSE4 result: " << (sse4End - sse4Start) / (frequency / 1000) << "\r\n");
+
+}
+
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
     #if CLIBRARIES_ACTIVE == CLIBRARIES_MSVC && defined(_DEBUG)
@@ -55,6 +135,8 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
         //  perform. We can do these here, before calling into platform-specific code.
     SetWorkingDirectory();
     srand(std::random_device().operator()());
+
+    CullPerformanceTest();
 
         //  Initialize the "AccumulatedAllocations" profiler as soon as possible, to catch
         //  startup allocation counts.
