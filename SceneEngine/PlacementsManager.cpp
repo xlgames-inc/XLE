@@ -365,7 +365,7 @@ namespace SceneEngine
         // It seems useful to me. But if the overhead becomes too great, we can just change
         // to a basic 2d addressing model.
 
-        if (CullAABB(parserContext.GetProjectionDesc()._worldToProjection, cell._aabbMin, cell._aabbMax)) {
+        if (CullAABB_Aligned(AsFloatArray(parserContext.GetProjectionDesc()._worldToProjection), cell._aabbMin, cell._aabbMax)) {
             return;
         }
 
@@ -564,7 +564,7 @@ namespace SceneEngine
             return;
         }
         
-        auto cellToCullSpace = Combine(cellToWorld, parserContext.GetProjectionDesc()._worldToProjection);
+        __declspec(align(16)) auto cellToCullSpace = Combine(cellToWorld, parserContext.GetProjectionDesc()._worldToProjection);
         auto cameraPosition = ExtractTranslation(parserContext.GetProjectionDesc()._viewToWorld);
         cameraPosition = TransformPoint(InvertOrthonormalTransform(cellToWorld), cameraPosition);
 
@@ -580,7 +580,7 @@ namespace SceneEngine
             unsigned visibleObjs[10*1024];
             unsigned visibleObjCount = 0;
             renderInfo._quadTree->CalculateVisibleObjects(
-                cellToCullSpace, &objRef->_cellSpaceBoundary,
+                AsFloatArray(cellToCullSpace), &objRef->_cellSpaceBoundary,
                 sizeof(Placements::ObjectReference),
                 visibleObjs, visibleObjCount, dimof(visibleObjs));
 
@@ -603,7 +603,7 @@ namespace SceneEngine
         } else {
             for (unsigned c=0; c<placementCount; ++c) {
                 auto& obj = objRef[c];
-                if (CullAABB(cellToCullSpace, obj._cellSpaceBoundary.first, obj._cellSpaceBoundary.second)) {
+                if (CullAABB_Aligned(AsFloatArray(cellToCullSpace), obj._cellSpaceBoundary.first, obj._cellSpaceBoundary.second)) {
                     continue;
                 }
 

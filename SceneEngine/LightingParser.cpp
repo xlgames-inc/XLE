@@ -961,6 +961,12 @@ namespace SceneEngine
         _metricsBox = nullptr;
         _techniqueContext = std::make_unique<TechniqueContext>(techniqueContext);
 
+        _projectionDesc.reset((ProjectionDesc*)XlMemAlign(sizeof(ProjectionDesc), 16));
+        #pragma push_macro("new")
+        #undef new
+            new(_projectionDesc.get()) ProjectionDesc();
+        #pragma pop_macro("new")
+
         _globalUniformsConstantBuffers.push_back(&_globalCBs[0]);
         _globalUniformsConstantBuffers.push_back(&_globalCBs[1]);
         _globalUniformsConstantBuffers.push_back(&_globalCBs[2]);

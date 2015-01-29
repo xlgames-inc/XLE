@@ -9,6 +9,7 @@
 #include "../RenderCore/Metal/Forward.h"
 #include "../RenderCore/Metal/Buffer.h"
 #include "../Math/Matrix.h"
+#include "../Utility/MemoryUtils.h"
 #include <functional>
 
 namespace RenderCore { class CameraDesc; }
@@ -24,7 +25,7 @@ namespace SceneEngine
     class ShadowProjectionConstants;
     class ILightingParserPlugin;
 
-    class ProjectionDesc
+    __declspec(align(16)) class ProjectionDesc
     {
     public:
         Float4x4        _worldToProjection;
@@ -46,8 +47,8 @@ namespace SceneEngine
         ISceneParser*   GetSceneParser()                    { return _sceneParser; }
 
             //  ----------------- Active projection context -----------------
-        ProjectionDesc&         GetProjectionDesc()         { return _projectionDesc; }
-        const ProjectionDesc&   GetProjectionDesc() const   { return _projectionDesc; }
+        ProjectionDesc&         GetProjectionDesc()         { return *_projectionDesc; }
+        const ProjectionDesc&   GetProjectionDesc() const   { return *_projectionDesc; }
 
             //  ----------------- Working technique context -----------------
         TechniqueContext&                           GetTechniqueContext()               { return *_techniqueContext.get(); }
@@ -81,7 +82,7 @@ namespace SceneEngine
         MetricsBox*                         _metricsBox;
         ISceneParser*                       _sceneParser;
         std::unique_ptr<TechniqueContext>   _techniqueContext;
-        ProjectionDesc                      _projectionDesc;
+        std::unique_ptr<ProjectionDesc, AlignedDeletor>     _projectionDesc;
 
         std::unique_ptr<RenderCore::Metal::UniformsStream>      _globalUniformsStream;
         std::vector<const RenderCore::Metal::ConstantBuffer*>   _globalUniformsConstantBuffers;

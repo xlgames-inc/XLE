@@ -65,6 +65,8 @@ namespace Utility
 
     #endif
 
+    struct AlignedDeletor { void operator()(void* p); };
+
         ////////////   H A S H I N G   ////////////
 
     static const uint64 DefaultSeed64 = 0xE49B0E3F5C27F17Eull;

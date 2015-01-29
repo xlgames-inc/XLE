@@ -34,7 +34,7 @@ namespace SceneEngine
         typedef std::pair<Float3, Float3> BoundingBox;
 
         bool CalculateVisibleObjects(
-            const Float4x4& cellToClip, 
+            const float cellToClipAligned[],
             const BoundingBox objCellSpaceBoundingBoxes[], size_t objStride,
             unsigned visObjs[], unsigned& visObjsCount, unsigned visObjMaxCount) const;
 

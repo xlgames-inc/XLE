@@ -62,7 +62,7 @@ namespace SceneEngine
                         Float3 mins(boxCentreXY[0], boxCentreXY[1], boxTopZ - rainBoxVerticalHeight);
                         Float3 maxs(boxCentreXY[0] + rainBoxXYWidth, boxCentreXY[1] + rainBoxXYWidth, boxTopZ);
 
-                        if (skipCull || !CullAABB(parserContext.GetProjectionDesc()._worldToProjection, mins, maxs)) {
+                        if (skipCull || !CullAABB_Aligned(AsFloatArray(parserContext.GetProjectionDesc()._worldToProjection), mins, maxs)) {
                             boxCentrePts[culledBoxCount++] = Float3(boxCentreXY[0], boxCentreXY[1], boxTopZ);
                         }
                     }

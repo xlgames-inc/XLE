@@ -7,11 +7,10 @@
 #pragma once
 
 #include "IBufferUploads.h"
+#include "../Utility/MemoryUtils.h"
 
 namespace BufferUploads
 {
-    struct AlignedDeletor { void operator()(void* p); };
-
     class BasicRawDataPacket : public RawDataPacket
     {
     public:

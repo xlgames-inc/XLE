@@ -151,6 +151,7 @@
     <ClCompile Include="..\HashUtils.cpp" />
     <ClCompile Include="..\HeapUtils.cpp" />
     <ClCompile Include="..\MiniHeap.cpp" />
+    <ClCompile Include="..\MiscImplementation.cpp" />
     <ClCompile Include="..\Streams\Data.cpp" />
     <ClCompile Include="..\Streams\FileUtils.cpp" />
     <ClCompile Include="..\Streams\PathUtils.cpp" />

@@ -113,5 +113,6 @@
     <ClCompile Include="..\Streams\WinAPI\FileUtils_WinAPI.cpp">
       <Filter>Streams\WinAPI</Filter>
     </ClCompile>
+    <ClCompile Include="..\MiscImplementation.cpp" />
   </ItemGroup>
 </Project>

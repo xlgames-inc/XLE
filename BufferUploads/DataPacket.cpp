@@ -6,7 +6,6 @@
 
 #include "DataPacket.h"
 #include "PlatformInterface.h"
-#include "../Utility/MemoryUtils.h"
 
 namespace BufferUploads
 {
@@ -45,11 +44,6 @@ namespace BufferUploads
     {
         assert(mipIndex == 0 && arrayIndex == 0);
         return _rowAndSlicePitch; 
-    }
-
-    void AlignedDeletor::operator()(void* ptr) 
-    { 
-        XlMemAlignFree(ptr); 
     }
 
     intrusive_ptr<BasicRawDataPacket> CreateBasicPacket(

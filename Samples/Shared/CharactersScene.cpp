@@ -279,8 +279,8 @@ namespace Sample
                         Combine_InPlace(i2->_animState._motionCompensation * newState._time, final);
                         Combine_InPlace(UniformScale(1.f/CharactersScale), final);
 
-                        auto localToCulling = Combine(i2->_localToWorld, worldToProjection);
-                        if (!CullAABB(localToCulling, roughBoundingBox.first, roughBoundingBox.second)) {
+                        __declspec(align(16)) auto localToCulling = Combine(i2->_localToWorld, worldToProjection);
+                        if (!CullAABB_Aligned(AsFloatArray(localToCulling), roughBoundingBox.first, roughBoundingBox.second)) {
                             newState._instances.push_back(final);
                         }
                     }
@@ -306,8 +306,8 @@ namespace Sample
             Combine_InPlace(i->_animState._motionCompensation * i->_animState._time, final);
             Combine_InPlace(UniformScale(1.0f/CharactersScale), final);
 
-            auto localToCulling = Combine(i->_localToWorld, worldToProjection);
-            if (!CullAABB(localToCulling, roughBoundingBox.first, roughBoundingBox.second)) {
+            __declspec(align(16)) auto localToCulling = Combine(i->_localToWorld, worldToProjection);
+            if (!CullAABB_Aligned(AsFloatArray(localToCulling), roughBoundingBox.first, roughBoundingBox.second)) {
                 newState._instances.push_back(final);
                 _pimpl->_stateCache.push_back(std::move(newState));
             }
@@ -322,8 +322,8 @@ namespace Sample
         Combine_InPlace(_pimpl->_playerCharacter->_animState._motionCompensation * _pimpl->_playerCharacter->_animState._time, final);
         Combine_InPlace(UniformScale(1.0f/CharactersScale), final);
     
-        auto localToCulling = Combine(_pimpl->_playerCharacter->_localToWorld, worldToProjection);
-        if (!CullAABB(localToCulling, roughBoundingBox.first, roughBoundingBox.second)) {
+        __declspec(align(16)) auto localToCulling = Combine(_pimpl->_playerCharacter->_localToWorld, worldToProjection);
+        if (!CullAABB_Aligned(AsFloatArray(localToCulling), roughBoundingBox.first, roughBoundingBox.second)) {
             newState._instances.push_back(final);
             _pimpl->_stateCache.push_back(std::move(newState));
         }

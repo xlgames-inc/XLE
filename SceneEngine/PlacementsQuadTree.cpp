@@ -278,11 +278,12 @@ namespace SceneEngine
     }
 
     bool PlacementsQuadTree::CalculateVisibleObjects(
-        const Float4x4& cellToClip, 
+        const float cellToClipAligned[], 
         const BoundingBox objCellSpaceBoundingBoxes[], size_t objStride,
         unsigned visObjs[], unsigned& visObjsCount, unsigned visObjMaxCount) const
     {
         visObjsCount = 0;
+        assert((size_t(cellToClipAligned) & 0xf) == 0);
 
         unsigned nodeAabbTestCount = 0, payloadAabbTestCount = 0;
 
@@ -296,7 +297,7 @@ namespace SceneEngine
             workingStack.pop();
             
             auto& node = _pimpl->_nodes[nodeIndex];
-            auto test = TestAABB(cellToClip, node._boundary.first, node._boundary.second);
+            auto test = TestAABB_Aligned(cellToClipAligned, node._boundary.first, node._boundary.second);
             ++nodeAabbTestCount;
             if (test == AABBIntersection::Culled) {
                 continue;
@@ -330,7 +331,7 @@ namespace SceneEngine
 
                         const auto& boundary = *PtrAdd(objCellSpaceBoundingBoxes, (*i) * objStride);
                         ++payloadAabbTestCount;
-                        if (!CullAABB(cellToClip, boundary.first, boundary.second)) {
+                        if (!CullAABB_Aligned(cellToClipAligned, boundary.first, boundary.second)) {
                             if ((visObjsCount+1) > visObjMaxCount) {
                                 return false;
                             }

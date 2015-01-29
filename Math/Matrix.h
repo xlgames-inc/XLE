@@ -62,5 +62,8 @@ namespace Math
         return result;
     }
 
+    inline const float* AsFloatArray(const Float4x4& m)    { return &m(0,0); }
+    inline float* AsFloatArray(Float4x4& m)                { return &m(0,0); }
+
 }
 

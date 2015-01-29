@@ -262,7 +262,7 @@ namespace SceneEngine
     {
         Float3 mins( gridX    * gridPhysicalDimension,  gridY    * gridPhysicalDimension, baseWaterHeight - 3.f);
         Float3 maxs((gridX+1) * gridPhysicalDimension, (gridY+1) * gridPhysicalDimension, baseWaterHeight + 3.f);
-        return !CullAABB(parserContext.GetProjectionDesc()._worldToProjection, mins, maxs);
+        return !CullAABB_Aligned(AsFloatArray(parserContext.GetProjectionDesc()._worldToProjection), mins, maxs);
     }
 
     struct PrioritisedActiveElement
