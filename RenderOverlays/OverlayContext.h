@@ -64,6 +64,8 @@ namespace RenderOverlays
         ImmediateOverlayContext(RenderCore::Metal::DeviceContext* deviceContext, const Float4x4& viewProjectionTransform = Identity<Float4x4>());
         ~ImmediateOverlayContext();
 
+        class ShaderBox;
+
     private:
         intrusive_ptr<RenderCore::Metal::DeviceContext>    _deviceContext;
         uint8               _workingBuffer[64*1024];

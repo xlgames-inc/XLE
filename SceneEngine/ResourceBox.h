@@ -57,9 +57,14 @@ namespace SceneEngine
         return *i2->second;
     }
 
+    template <typename Desc> uint64 CalculateCachedBoxHash(const Desc& desc)
+    {
+        return Hash64(&desc, PtrAdd(&desc, sizeof(Desc)));
+    }
+
     template <typename Box> Box& FindCachedBoxDep(const typename Box::Desc& desc)
     {
-        uint64 hashValue = Hash64(&desc, PtrAdd(&desc, sizeof(typename Box::Desc)));
+        auto hashValue = CalculateCachedBoxHash(desc);
         auto& boxTable = GetBoxTable<Box>();
         auto i = std::lower_bound(boxTable.begin(), boxTable.end(), hashValue, CompareFirst<uint64, std::unique_ptr<Box>>());
         if (i!=boxTable.end() && i->first==hashValue) {

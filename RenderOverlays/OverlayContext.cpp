@@ -13,6 +13,7 @@
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/RenderUtils.h"
 #include "../SceneEngine/CommonResources.h"
+#include "../SceneEngine/ResourceBox.h"
 #include "../Utility/StringFormat.h"
 
 #include "../RenderCore/DX11/Metal/IncludeDX11.h"
@@ -444,78 +445,126 @@ namespace RenderOverlays
         _drawCalls.push_back(drawCall);
     }
 
-    void            ImmediateOverlayContext::SetShader(unsigned topology, VertexFormat format, ProjectionMode::Enum projMode, const std::string& pixelShaderName)
+    class ImmediateOverlayContext::ShaderBox
     {
-                // \todo --     we should cache the input layout result
-                //              (since it's just the same every time)
+    public:
+        class Desc
+        {
+        public:
+            unsigned _topology;
+            VertexFormat _format;
+            ProjectionMode::Enum _projMode;
+            std::string _pixelShaderName;
+
+            Desc(unsigned topology, VertexFormat format, ProjectionMode::Enum projMode, const std::string& pixelShaderName)
+                : _topology(topology), _format(format), _projMode(projMode), _pixelShaderName(pixelShaderName) {}
+        };
+
+        RenderCore::Metal::ShaderProgram* _shaderProgram;
+        RenderCore::Metal::BoundInputLayout _boundInputLayout;
+        RenderCore::Metal::BoundUniforms _boundUniforms;
+
+        const Assets::DependencyValidation&     GetDependancyValidation() const     
+            { return *_validationCallback; }
+        
+        ShaderBox(const Desc&);
+
+    private:
+        std::shared_ptr<Assets::DependencyValidation>   _validationCallback;
+    };
+
+    ImmediateOverlayContext::ShaderBox::ShaderBox(const Desc& desc)
+    {
         using namespace RenderCore::Metal;
 
+        auto validationCallback = std::make_shared<Assets::DependencyValidation>();
         InputLayout inputLayout;
-        ShaderProgram* shaderProgram = nullptr;
-        if (topology == Topology::PointList) {
+        _shaderProgram = nullptr;
 
-            if (format == PCR) {
-                const char* vertexShaderSource      = (projMode==ProjectionMode::P2D)?"game/xleres/basic2D.vsh:P2CR:vs_*":"game/xleres/basic3D.vsh:PCR:vs_*";
+        if (desc._topology == Topology::PointList) {
+
+            if (desc._format == PCR) {
+                const char* vertexShaderSource      = (desc._projMode==ProjectionMode::P2D)?"game/xleres/basic2D.vsh:P2CR:vs_*":"game/xleres/basic3D.vsh:PCR:vs_*";
                 const char geometryShaderSource[]   = "game/xleres/basic.gsh:PCR:gs_*";
-                if (pixelShaderName.empty()) {
+                if (desc._pixelShaderName.empty()) {
                     const char pixelShaderSource[]  = "game/xleres/basic.psh:PC:ps_*";
-                    shaderProgram = &Assets::GetAssetDep<ShaderProgram>(vertexShaderSource, geometryShaderSource, pixelShaderSource, "");
+                    _shaderProgram = &Assets::GetAssetDep<ShaderProgram>(vertexShaderSource, geometryShaderSource, pixelShaderSource, "");
                 } else {
-                    shaderProgram = &Assets::GetAssetDep<ShaderProgram>(vertexShaderSource, geometryShaderSource, 
-                        (std::string("game/xleres/") + pixelShaderName + ":ps_*").c_str(), "");
+                    _shaderProgram = &Assets::GetAssetDep<ShaderProgram>(vertexShaderSource, geometryShaderSource, 
+                        (std::string("game/xleres/") + desc._pixelShaderName + ":ps_*").c_str(), "");
                 }
                 inputLayout = std::make_pair(Vertex_PCR::inputElements, dimof(Vertex_PCR::inputElements));
             }
 
         } else {
 
-            if (format == PC) {
-                const char* vertexShaderSource     = (projMode==ProjectionMode::P2D)?"game/xleres/basic2D.vsh:P2C:vs_*":"game/xleres/basic3D.vsh:PC:vs_*";
-                if (pixelShaderName.empty()) {
+            if (desc._format == PC) {
+                const char* vertexShaderSource     = (desc._projMode==ProjectionMode::P2D)?"game/xleres/basic2D.vsh:P2C:vs_*":"game/xleres/basic3D.vsh:PC:vs_*";
+                if (desc._pixelShaderName.empty()) {
                     const char pixelShaderSource[]  = "game/xleres/basic.psh:PC:ps_*";
-                    shaderProgram = &Assets::GetAssetDep<ShaderProgram>(vertexShaderSource, pixelShaderSource);
+                    _shaderProgram = &Assets::GetAssetDep<ShaderProgram>(vertexShaderSource, pixelShaderSource);
                 } else {
-                    shaderProgram = &Assets::GetAssetDep<ShaderProgram>(vertexShaderSource, 
-                        (std::string("game/xleres/") + pixelShaderName + ":ps_*").c_str());
+                    _shaderProgram = &Assets::GetAssetDep<ShaderProgram>(vertexShaderSource, 
+                        (std::string("game/xleres/") + desc._pixelShaderName + ":ps_*").c_str());
                 }
                 inputLayout = std::make_pair(Vertex_PC::inputElements, dimof(Vertex_PC::inputElements));
-            } else if (format == PCT) {
-                const char* vertexShaderSource     = (projMode==ProjectionMode::P2D)?"game/xleres/basic2D.vsh:P2CT:vs_*":"game/xleres/basic3D.vsh:PCT:vs_*";
-                if (pixelShaderName.empty()) {
+            } else if (desc._format == PCT) {
+                const char* vertexShaderSource     = (desc._projMode==ProjectionMode::P2D)?"game/xleres/basic2D.vsh:P2CT:vs_*":"game/xleres/basic3D.vsh:PCT:vs_*";
+                if (desc._pixelShaderName.empty()) {
                     const char pixelShaderSource[]  = "game/xleres/basic.psh:PCT:ps_*";
-                    shaderProgram = &Assets::GetAssetDep<ShaderProgram>(vertexShaderSource, pixelShaderSource);
+                    _shaderProgram = &Assets::GetAssetDep<ShaderProgram>(vertexShaderSource, pixelShaderSource);
                 } else {
-                    shaderProgram = &Assets::GetAssetDep<ShaderProgram>(vertexShaderSource, 
-                        (std::string("game/xleres/") + pixelShaderName + ":ps_*").c_str());
+                    _shaderProgram = &Assets::GetAssetDep<ShaderProgram>(vertexShaderSource, 
+                        (std::string("game/xleres/") + desc._pixelShaderName + ":ps_*").c_str());
                 }
                 inputLayout = std::make_pair(Vertex_PCT::inputElements, dimof(Vertex_PCT::inputElements));
-            } else if (format == PCTT) {
-                const char* vertexShaderSource     = (projMode==ProjectionMode::P2D)?"game/xleres/basic2D.vsh:P2CTT:vs_*":"game/xleres/basic3D.vsh:PCTT:vs_*";
-                if (pixelShaderName.empty()) {
+            } else if (desc._format == PCTT) {
+                const char* vertexShaderSource     = (desc._projMode==ProjectionMode::P2D)?"game/xleres/basic2D.vsh:P2CTT:vs_*":"game/xleres/basic3D.vsh:PCTT:vs_*";
+                if (desc._pixelShaderName.empty()) {
                     const char pixelShaderSource[]  = "game/xleres/basic.psh:PCT:ps_*";
-                    shaderProgram = &Assets::GetAssetDep<ShaderProgram>(vertexShaderSource, pixelShaderSource);
+                    _shaderProgram = &Assets::GetAssetDep<ShaderProgram>(vertexShaderSource, pixelShaderSource);
                 } else {
-                    shaderProgram = &Assets::GetAssetDep<ShaderProgram>(vertexShaderSource, 
-                        (std::string("game/xleres/") + pixelShaderName + ":ps_*").c_str());
+                    _shaderProgram = &Assets::GetAssetDep<ShaderProgram>(vertexShaderSource, 
+                        (std::string("game/xleres/") + desc._pixelShaderName + ":ps_*").c_str());
                 }
                 inputLayout = std::make_pair(Vertex_PCTT::inputElements, dimof(Vertex_PCTT::inputElements));
             }
 
         }
 
-        if (shaderProgram) {
-            BoundInputLayout boundInputLayout(inputLayout, *shaderProgram);
-            _deviceContext->Bind(*shaderProgram);
-            _deviceContext->Bind(boundInputLayout);
-
-            BoundUniforms boundLayout(*shaderProgram);
-            boundLayout.BindConstantBuffer(
+        if (_shaderProgram) {
+            BoundInputLayout boundInputLayout(inputLayout, *_shaderProgram);
+            BoundUniforms boundUniforms(*_shaderProgram);
+            boundUniforms.BindConstantBuffer(
                 Hash64("ReciprocalViewportDimensions"), 0, 1,
                 ReciprocalViewportDimensions_Elements, dimof(ReciprocalViewportDimensions_Elements));
-            boundLayout.BindConstantBuffer(Hash64("GlobalTransform"), 1, 1);
+            boundUniforms.BindConstantBuffer(Hash64("GlobalTransform"), 1, 1);
+
+            Assets::RegisterAssetDependency(validationCallback, &_shaderProgram->GetDependancyValidation());
+
+            _boundInputLayout = std::move(boundInputLayout);
+            _boundUniforms = std::move(boundUniforms);
+        }
+
+        _validationCallback = std::move(validationCallback);
+    }
+
+    void            ImmediateOverlayContext::SetShader(unsigned topology, VertexFormat format, ProjectionMode::Enum projMode, const std::string& pixelShaderName)
+    {
+                // \todo --     we should cache the input layout result
+                //              (since it's just the same every time)
+        using namespace RenderCore::Metal;
+
+        auto& box = SceneEngine::FindCachedBoxDep<ShaderBox>(
+            ShaderBox::Desc(topology, format, projMode, pixelShaderName));
+
+        if (box._shaderProgram) {
+            _deviceContext->Bind(*box._shaderProgram);
+            _deviceContext->Bind(box._boundInputLayout);
 
             ConstantBufferPacket constants[] = { _viewportConstantBuffer, _globalTransformConstantBuffer };
-            boundLayout.Apply(*_deviceContext.get(), UniformsStream(), UniformsStream(constants, nullptr, dimof(constants)));
+            box._boundUniforms.Apply(
+                *_deviceContext.get(), UniformsStream(), UniformsStream(constants, nullptr, dimof(constants)));
         } else {
             assert(0);
         }
@@ -557,4 +606,12 @@ namespace RenderOverlays
 
     IOverlayContext::~IOverlayContext() {}
 
+}
+
+namespace SceneEngine
+{
+    template<> uint64 CalculateCachedBoxHash(const RenderOverlays::ImmediateOverlayContext::ShaderBox::Desc& desc)
+    {
+        return (uint64(desc._format) << 32) ^ (uint64(desc._projMode) << 16) ^ uint64(desc._topology) ^ Hash64(desc._pixelShaderName);
+    }
 }
