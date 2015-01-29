@@ -1,0 +1,56 @@
+Illum
+    Parameters
+        Geometry
+            GEO_HAS_NORMAL
+            RES_HAS_NORMAL_MAP
+            RES_HAS_NORMAL_MAP_DXT
+        GlobalEnvironment
+            AUTO_COTANGENT
+            PREFER_ANISOTROPIC
+                1
+            TANGENT_PROCESS_IN_PS
+                1
+        Material
+            MAT_BLEND_FOG
+                1
+    VertexShader
+        game/xleres/forward/illum.vsh:main
+    PixelShader
+        game/xleres/forward/illum.psh:main
+DepthOnly
+Deferred
+    Parameters
+        Geometry
+            GEO_HAS_NORMAL
+            RES_HAS_NORMAL_MAP
+            RES_HAS_NORMAL_MAP_DXT
+        GlobalEnvironment
+            AUTO_COTANGENT
+            PREFER_ANISOTROPIC
+                1
+            TANGENT_PROCESS_IN_PS
+                1
+    VertexShader
+        game/xleres/deferred/basic.vsh:main
+    PixelShader
+        game/xleres/deferred/basic.psh:main
+ShadowGen
+    Parameters
+        Geometry
+        Runtime
+            FRUSTUM_FILTER
+                63
+            SPAWNED_INSTANCE
+    VertexShader
+        game/xleres/shadowgen/depthonly.vsh:main
+    GeometryShader
+        game/xleres/shadowgen/depthonly.gsh:main
+    PixelShader
+        game/xleres/shadowgen/depthonly.psh:main
+OrderIndependentTransparency
+    Parameters
+    VertexShader
+        game/xleres/forward/illum.vsh:main
+    PixelShader
+        game/xleres/forward/transparency/cloudvolume.psh:main
+

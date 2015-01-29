@@ -1,0 +1,47 @@
+g
+    "cv.DoGenerativeGrass = not cv.DoGenerativeGrass;"
+l
+    "cv.DoTileRenderingTest = not cv.DoTileRenderingTest;"
+x
+    "if (cv.SamplingCount > 1) then cv.SamplingCount=1; cv.SamplingQuality=0; else cv.SamplingCount=8; cv.SamplingQuality=16; end"
+f
+    "cv.DoVolumetricFog = not cv.DoVolumetricFog;"
+p
+    "cv.Pause = not cv.Pause;"
+b
+    "cv.TiledBeams = not cv.TiledBeams;"
+c
+    "cv.TileClustering = not cv.TileClustering;"
+r
+    "cv.TiledLightingDebugging = not cv.TiledLightingDebugging;"
+q
+    "cv.DeferredDebugging = not cv.DeferredDebugging;"
+t
+    "cv.UseOrderIndependantTransparency = not cv.UseOrderIndependantTransparency;"
+n
+    "cv.ReflectionDoBlur = not cv.ReflectionDoBlur;"
+m
+    "cv.MetricsRender = not cv.MetricsRender;"
+0
+    "SetI('OCEAN_SEPARATE', 0);"
+1
+    "SetI('OCEAN_SEPARATE', 1);"
+2
+    "SetI('OCEAN_SEPARATE', 2);"
+3
+    "SetI('OCEAN_SEPARATE', 3);"
+4
+    "SetI('OCEAN_SEPARATE', 4);"
+5
+    "SetI('OCEAN_SEPARATE', 5);"
+6
+    "SetI('OCEAN_SEPARATE', 6);"
+7
+    "SetI('OCEAN_SEPARATE', 7);"
+8
+    "SetI('OCEAN_SEPARATE', 8);"
+9
+    "SetI('OCEAN_SEPARATE', 9);"
+k
+    "cv.TerrainWireframe = not cv.TerrainWireframe;"
+

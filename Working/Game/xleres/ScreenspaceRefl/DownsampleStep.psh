@@ -1,0 +1,121 @@
+// Copyright 2015 XLGAMES Inc.
+//
+// Distributed under the MIT License (See
+// accompanying file "LICENSE" or the website
+// http://www.opensource.org/licenses/mit-license.php)
+
+#include "../TransformAlgorithm.h"
+#include "../TextureAlgorithm.h"
+#include "../gbuffer.h"
+
+// #define USE_UINT_DBUFFER
+
+#if defined(USE_UINT_DBUFFER)
+	Texture2D_MaybeMS<uint>			DepthTexture;
+#else
+	Texture2D_MaybeMS<float>			DepthTexture;
+#endif
+Texture2D_MaybeMS<float4>		GBuffer_Normals : register(t1);
+
+// #define DEPTH_IN_LINEAR_COORDS
+
+void main(	
+			#if defined(USE_UINT_DBUFFER)
+				out uint outputDepth	: SV_Target0,
+			#else
+				out float outputDepth	: SV_Target0,
+			#endif
+			out float3 outputNormal : SV_Target1,
+			float4 position			: SV_Position,
+			float2 oTexCoord		: TEXCOORD0)
+{
+	const uint sampleIndex = 0;
+
+		//			If there's too much discontinuity of the normal, then we
+		//			shouldn't do reflections from here.
+		//			Normals will be bent to wierd angles for pixels with lots
+		//			of discontinuity -- in theses cases, just skip reflections
+
+		//	note -- we could also use the texture sampler for this blend...?
+#if DOWNSAMPLE_SCALE == 4
+
+	float3 normal0 = DecompressGBufferNormal(LoadFloat4(GBuffer_Normals, uint2(position.xy)*4 + uint2(0,0), sampleIndex));
+	float3 normal1 = DecompressGBufferNormal(LoadFloat4(GBuffer_Normals, uint2(position.xy)*4 + uint2(2,0), sampleIndex));
+	float3 normal2 = DecompressGBufferNormal(LoadFloat4(GBuffer_Normals, uint2(position.xy)*4 + uint2(0,2), sampleIndex));
+	float3 normal3 = DecompressGBufferNormal(LoadFloat4(GBuffer_Normals, uint2(position.xy)*4 + uint2(2,2), sampleIndex));
+
+	if (	dot(normal0, normal1) <  0.5f
+		||	dot(normal0, normal2) <  0.5f
+		||	dot(normal0, normal3) <  0.5f) {
+		outputNormal = 0.0.xxx;
+	} else {
+		outputNormal = normalize(normal0+normal1+normal2+normal3);
+	}
+
+	#if defined(DEPTH_IN_LINEAR_COORDS)
+			//	convert depth values to linear values before blending
+		outputDepth = 
+			  NDCDepthToLinearDepth(LoadFloat1(DepthTexture, uint2(position.xy)*4 + uint2(0,0), sampleIndex))
+			+ NDCDepthToLinearDepth(LoadFloat1(DepthTexture, uint2(position.xy)*4 + uint2(2,0), sampleIndex))
+			+ NDCDepthToLinearDepth(LoadFloat1(DepthTexture, uint2(position.xy)*4 + uint2(0,2), sampleIndex))
+			+ NDCDepthToLinearDepth(LoadFloat1(DepthTexture, uint2(position.xy)*4 + uint2(2,2), sampleIndex))
+			;
+	#else
+		outputDepth = 
+			  LoadFloat1(DepthTexture, uint2(position.xy)*4 + uint2(0,0), sampleIndex)
+			+ LoadFloat1(DepthTexture, uint2(position.xy)*4 + uint2(2,0), sampleIndex)
+			+ LoadFloat1(DepthTexture, uint2(position.xy)*4 + uint2(0,2), sampleIndex)
+			+ LoadFloat1(DepthTexture, uint2(position.xy)*4 + uint2(2,2), sampleIndex)
+			;
+	#endif
+	outputDepth *= 0.25f;
+
+#elif DOWNSAMPLE_SCALE == 2
+
+	float3 normal0 = DecompressGBufferNormal(LoadFloat4(GBuffer_Normals, uint2(position.xy)*2 + uint2(0,0), sampleIndex));
+	float3 normal1 = DecompressGBufferNormal(LoadFloat4(GBuffer_Normals, uint2(position.xy)*2 + uint2(1,0), sampleIndex));
+	float3 normal2 = DecompressGBufferNormal(LoadFloat4(GBuffer_Normals, uint2(position.xy)*2 + uint2(0,1), sampleIndex));
+	float3 normal3 = DecompressGBufferNormal(LoadFloat4(GBuffer_Normals, uint2(position.xy)*2 + uint2(1,1), sampleIndex));
+
+	if (	dot(normal0, normal1) <  0.5f
+		||	dot(normal0, normal2) <  0.5f
+		||	dot(normal0, normal3) <  0.5f) {
+		outputNormal = 0.0.xxx;
+	} else {
+		outputNormal = normalize(normal0+normal1+normal2+normal3);
+	}
+
+	#if defined(DEPTH_IN_LINEAR_COORDS)
+			//	convert depth values to linear values before blending
+		outputDepth = 
+			  NDCDepthToLinearDepth(LoadFloat1(DepthTexture, uint2(position.xy)*2 + uint2(0,0), sampleIndex))
+			+ NDCDepthToLinearDepth(LoadFloat1(DepthTexture, uint2(position.xy)*2 + uint2(1,0), sampleIndex))
+			+ NDCDepthToLinearDepth(LoadFloat1(DepthTexture, uint2(position.xy)*2 + uint2(0,1), sampleIndex))
+			+ NDCDepthToLinearDepth(LoadFloat1(DepthTexture, uint2(position.xy)*2 + uint2(1,1), sampleIndex))
+			;
+		outputDepth *= 0.25f;
+	#else
+		#if !defined(USE_UINT_DBUFFER)
+			float d0 = LoadFloat1(DepthTexture, uint2(position.xy)*2 + uint2(0,0), sampleIndex);
+			float d1 = LoadFloat1(DepthTexture, uint2(position.xy)*2 + uint2(1,0), sampleIndex);
+			float d2 = LoadFloat1(DepthTexture, uint2(position.xy)*2 + uint2(0,1), sampleIndex);
+			float d3 = LoadFloat1(DepthTexture, uint2(position.xy)*2 + uint2(1,1), sampleIndex);
+			// outputDepth = (d0+d1+d2+d3)*0.25f;
+			outputDepth = min(min(d0, d1), min(d2, d3));
+		#else
+			uint d0 = LoadUInt1(DepthTexture, uint2(position.xy)*2 + uint2(0,0), sampleIndex);
+			uint d1 = LoadUInt1(DepthTexture, uint2(position.xy)*2 + uint2(1,0), sampleIndex);
+			uint d2 = LoadUInt1(DepthTexture, uint2(position.xy)*2 + uint2(0,1), sampleIndex);
+			uint d3 = LoadUInt1(DepthTexture, uint2(position.xy)*2 + uint2(1,1), sampleIndex);
+			outputDepth = min(min(d0, d1), min(d2, d3));
+		#endif
+	#endif
+
+#else
+
+	outputNormal = DecompressGBufferNormal(LoadFloat4(GBuffer_Normals, uint2(position.xy), sampleIndex));
+	outputDepth = LoadFloat1(DepthTexture, uint2(position.xy), sampleIndex);
+
+#endif
+}
+

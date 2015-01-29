@@ -1,0 +1,77 @@
+// Copyright 2015 XLGAMES Inc.
+//
+// Distributed under the MIT License (See
+// accompanying file "LICENSE" or the website
+// http://www.opensource.org/licenses/mit-license.php)
+
+#include "../TransformAlgorithm.h"
+#include "../CommonResources.h"
+#include "VolumetricFog.h"
+
+#if MSAA_SAMPLERS != 0
+	#define Texture2D_MaybeMS	Texture2DMS
+#else
+ 	#define Texture2D_MaybeMS	Texture2D
+#endif
+
+float4 LoadFloat4(Texture2DMS<float4> textureObject, int2 pixelCoords, int sampleIndex)
+{
+	return textureObject.Load(pixelCoords, sampleIndex);
+}
+
+float LoadFloat1(Texture2DMS<float> textureObject, int2 pixelCoords, int sampleIndex)
+{
+	return textureObject.Load(pixelCoords, sampleIndex);
+}
+
+float4 LoadFloat4(Texture2D<float4> textureObject, int2 pixelCoords, int sampleIndex)
+{
+	return textureObject.Load(int3(pixelCoords, 0));
+}
+
+float LoadFloat1(Texture2D<float> textureObject, int2 pixelCoords, int sampleIndex)
+{
+	return textureObject.Load(int3(pixelCoords, 0));
+}
+
+struct SystemInputs
+{
+	#if MSAA_SAMPLES > 1
+		uint sampleIndex : SV_SampleIndex;
+	#endif
+};
+
+#if MSAA_SAMPLES > 1
+	uint GetSampleIndex(SystemInputs inputs) { return inputs.sampleIndex; }
+#else
+	uint GetSampleIndex(SystemInputs inputs) { return 0; }
+#endif
+
+Texture3D<float4>			InscatterTexture	: register(t7);
+Texture3D<float>			TransmissionTexture	: register(t8);
+Texture2D_MaybeMS<float>	DepthTexture	 	: register(t4);
+
+float4 ResolveFog(			float4 position : SV_Position,
+							float2 texCoord : TEXCOORD0,
+							SystemInputs sys) : SV_Target0
+{
+	// return float4(0.0.xxx, 1);
+
+	int2 pixelCoords		= position.xy;
+	float depth				= LoadFloat1(DepthTexture, pixelCoords.xy, GetSampleIndex(sys));
+	float worldSpaceDepth	= NDCDepthToLinearDepth(depth) * FarClip;
+	
+	const float gridDepth		= 150.f;
+	float3 volumeTextureCoord   = float3(texCoord.xy, lerp(1.f/255.f, 254.f/255.f, saturate(worldSpaceDepth / gridDepth)));
+	// volumeTextureCoord.z = sqrt(volumeTextureCoord.z);
+	float transmissionValue		= TransmissionTexture.SampleLevel(DefaultSampler, volumeTextureCoord, 0.f);
+	float3 inscatterAmount		= InscatterTexture.SampleLevel(DefaultSampler, volumeTextureCoord, 0.f).rgb;
+
+	// float alpha = 1.f - inputFog;
+	// float alpha = saturate(0.075f * inputFog);
+	// float alpha = saturate(0.01f * inputFog);
+	return float4(inscatterAmount, transmissionValue);
+}
+
+
+

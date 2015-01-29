@@ -1,0 +1,45 @@
+Illum
+    Parameters
+        GlobalEnvironment
+            Lighting
+                1
+            Quality
+                2
+            PREFER_ANISOTROPIC
+                1
+        Material
+            MaterialDiffuse
+                1
+            MAT_BLEND_FOG
+                1
+        Geometry
+            GEO_HAS_COLOUR
+            GEO_HAS_TEXCOORD
+            GEO_HAS_NORMAL
+            GEO_HAS_TANGENT_FRAME
+            RES_HAS_NORMAL_MAP
+            GEO_V_NORMAL_UNSIGNED
+                1
+    VertexShader
+        game/xleres/forward/terrainlayer.vsh:main
+    PixelShader
+        game/xleres/forward/terrainlayer.psh:main
+DepthOnly
+    Parameters
+Deferred
+    Parameters
+        Geometry
+            GEO_HAS_COLOUR
+            GEO_HAS_TEXCOORD
+            GEO_HAS_NORMAL
+            GEO_HAS_TANGENT_FRAME
+            RES_HAS_NORMAL_MAP
+            GEO_V_NORMAL_UNSIGNED
+                1
+        GlobalEnvironment
+            PREFER_ANISOTROPIC
+                1
+    VertexShader
+        game/xleres/deferred/terrainlayer.vsh:main
+    PixelShader
+        game/xleres/deferred/terrainlayer.psh:main

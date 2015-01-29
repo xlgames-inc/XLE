@@ -1,0 +1,73 @@
+Illum
+    Parameters
+        Geometry
+            GEO_HAS_COLOUR
+            GEO_HAS_TEXCOORD
+                1
+            GEO_HAS_NORMAL
+                1
+            GEO_V_NORMAL_UNSIGNED
+                1
+        Material
+            MAT_BLEND_FOG
+                1
+        GlobalEnvironment
+            PREFER_ANISOTROPIC
+                1
+    VertexShader
+        game/xleres/forward/terrain.vsh:main
+    PixelShader
+        game/xleres/forward/terrain.psh:main
+DepthOnly
+    Parameters
+    VertexShader
+        game/xleres/forward/terrain.vsh:main
+    PixelShader
+        game/xleres/forward/depthonly.psh:main
+Deferred
+    Parameters
+        Geometry
+            GEO_HAS_COLOUR
+            GEO_HAS_TEXCOORD
+                1
+            GEO_HAS_NORMAL
+                1
+            GEO_V_NORMAL_UNSIGNED
+                1
+        GlobalEnvironment
+            PREFER_ANISOTROPIC
+                1
+    VertexShader
+        game/xleres/deferred/terrain.vsh:main
+    PixelShader
+        game/xleres/deferred/terrain.psh:main
+ShadowGen
+OrderIndependentTransparency
+PrepareVegetationSpawn
+    Parameters
+        Geometry
+            GEO_HAS_TEXCOORD
+                1
+        Runtime
+            OUTPUT_WORLDSPACE
+                1
+    VertexShader
+        game/xleres/deferred/terrain.vsh:main
+    GeometryShader
+        game/xleres/vegetation/instancespawn.gsh:main
+    PixelShader
+        null
+
+ShadowGen_DisabledTechnique
+    Parameters
+        Geometry
+            GEO_HAS_TEXCOORD
+                1
+        Material
+    VertexShader
+        game/xleres/shadowgen/terrain.vsh:main
+    GeometryShader
+        game/xleres/shadowgen/depthonly.gsh:main
+    PixelShader
+        null
+

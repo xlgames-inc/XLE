@@ -1,0 +1,192 @@
+// Copyright 2015 XLGAMES Inc.
+//
+// Distributed under the MIT License (See
+// accompanying file "LICENSE" or the website
+// http://www.opensource.org/licenses/mit-license.php)
+
+#include "../CommonResources.h"
+#include "../MainGeometry.h"
+#include "../Surface.h"
+#include "../gbuffer.h"
+#include "../BasicMaterial.h"
+#include "../Lighting/LightingAlgorithm.h"
+#include "../Utility/perlinnoise.h"
+
+static const float RefractiveIndex = 1.5f;
+
+Texture2D<float>	CustomTexture;
+Texture2D<float2>	ScratchMap : register(t17);		// high res procedural scratches
+Texture2D<float>	ScratchOccl : register(t18);
+
+float BlinnWyvillCosineApproximation(float x)
+{
+	float x2 =  x *  x;
+	float x4 = x2 * x2;
+	float x6 = x4 * x2;
+
+	float fa =  4.f / 9.f;
+	float fb = 17.f / 9.f;
+	float fc = 22.f / 9.f;
+
+	float y = fa*x6 - fb*x4 + fc*x2;
+	return y;
+}
+
+float DoubleCubicSeatWithLinearBlend(float x, float a, float b)
+{
+	float epsilon = 0.00001f;
+	float min_param_a = 0.f + epsilon;
+	float max_param_a = 1.f - epsilon;
+	float min_param_b = 0.f;
+	float max_param_b = 1.f;
+	a = min(max_param_a, max(min_param_a, a));  
+	b = min(max_param_b, max(min_param_b, b)); 
+	b = 1.f - b; //reverse for intelligibility.
+
+	float y = 0.f;
+	if (x<=a) {
+		y = b*x + (1-b)*a*(1-pow(1-x/a, 3.f));
+	} else {
+		y = b*x + (1-b)*(a + (1-a)*pow((x-a)/(1-a), 3.f));
+	}
+	return y;
+}
+
+#if !((OUTPUT_TEXCOORD==1) && (MAT_ALPHA_TEST==1))
+	[earlydepthstencil]
+#endif
+GBufferEncoded main(VSOutput geo)
+{
+	DoAlphaTest(geo);
+
+	GBufferValues result = GBufferValues_Default();
+	#if (OUTPUT_TEXCOORD==1)
+		#if (USE_CLAMPING_SAMPLER_FOR_DIFFUSE==1)
+			float4 diffuseTextureSample = DiffuseTexture.Sample(ClampingSampler, geo.texCoord);
+		#else
+			float4 diffuseTextureSample = DiffuseTexture.Sample(MaybeAnisotropicSampler, geo.texCoord);
+		#endif
+		result.diffuseAlbedo = diffuseTextureSample.rgb;
+		result.blendingAlpha = diffuseTextureSample.a;
+
+		#if (SKIP_MATERIAL_DIFFUSE!=1)
+			result.diffuseAlbedo *= MaterialDiffuse;
+		#endif
+	#endif
+	#if (OUTPUT_COLOUR==1)
+		result.diffuseAlbedo.rgb *= geo.colour.rgb;
+	#endif
+
+	#if (MAT_ALPHA_TEST==1)
+		if (result.blendingAlpha < AlphaThreshold) discard;
+	#endif
+
+	#if (SKIP_MATERIAL_DIFFUSE!=1)
+		result.blendingAlpha *= Opacity;
+	#endif
+
+	result.reflectivity = 1.f;
+
+	#if (RES_HAS_CUSTOM_MAP==1)
+			// use the "custom map" slot for a parameters texture (ambient occlusion, gloss, etc)
+		result.cookedAmbientOcclusion = CustomTexture.Sample(MaybeAnisotropicSampler, geo.texCoord).r;
+		
+			// use perlin noise to generate a random gloss pattern (for debugging)
+		// float3 worldPosition = WorldSpaceView - geo.worldViewVector;
+		// float gloss = fbmNoise3D(worldPosition, 1.f/9.23f, .5f, 2.1042, 3);
+		// const int method = 0;
+		// if (method == 0) {
+		// 	result.reflectivity = .5f + .5f * gloss;
+		// 	result.reflectivity = BlinnWyvillCosineApproximation(result.reflectivity);
+		// } else {
+		// 	result.reflectivity = abs(gloss);
+		// 	result.reflectivity = DoubleCubicSeatWithLinearBlend(result.reflectivity, 0.347f, 0.887f);
+		// 	if (gloss < 0.f)
+		// 		result.reflectivity *= 0.25f;
+		// 	result.reflectivity *= 5.f;
+		// }
+	#endif
+
+	#if (OUTPUT_PER_VERTEX_AO==1)
+		result.cookedAmbientOcclusion *= geo.ambientOcclusion;
+	#endif
+
+	#if (OUTPUT_TANGENT_FRAME==1) && (OUTPUT_WORLD_VIEW_VECTOR==1)
+		const bool scratchMapTest = false;
+		if (scratchMapTest) {
+
+			float3 worldPosition = WorldSpaceView - geo.worldViewVector;
+			float noiseSample = fbmNoise3D(worldPosition, 1.f/11.63f, .5f, 2.1042, 1);
+			float scratchiness = saturate(noiseSample + .25f); // saturate(lerp(0.0f, 1.f, noiseSample));
+
+				// blend the normal map with a high res scratches map
+				// use the anisotropic sampler, because we want to emphasize detail
+				//
+				//		blending normal maps is tricky... But let's just take the average of the xy components
+				//		of each normal map. Then the z component can be extrapolated from the others
+			float2 mainNormals = NormalsTexture.Sample(MaybeAnisotropicSampler, geo.texCoord).xy * 2.f - 1.0.xx;
+			float2 scratchTexCoords = 6.13f * geo.texCoord;
+			float2 scratchNormals = ScratchMap.Sample(MaybeAnisotropicSampler, scratchTexCoords).xy * 2.f - 1.0.xx;
+			float2 blendedNormals = mainNormals + (scratchiness) * scratchNormals;
+			float3 finalNormal = float3(blendedNormals, sqrt(saturate(1.f + dot(blendedNormals.xy, -blendedNormals.xy))));
+
+			TangentFrameStruct tangentFrame = BuildTangentFrameFromGeo(geo);
+			float3x3 normalsTextureToWorld = float3x3(tangentFrame.tangent, tangentFrame.bitangent, tangentFrame.normal);
+			result.worldSpaceNormal = mul(finalNormal, normalsTextureToWorld);
+
+			result.reflectivity = 1.f - scratchiness;
+
+			float scratchOcc = ScratchOccl.Sample(MaybeAnisotropicSampler, scratchTexCoords).r;
+			result.cookedAmbientOcclusion *= lerp(1.f, scratchOcc, .5f * scratchiness);
+
+		} else 
+	#endif
+	{
+		result.worldSpaceNormal = GetNormal(geo);
+
+		#if (MAT_DOUBLE_SIDED==1) && (OUTPUT_WORLD_VIEW_VECTOR==1)
+			if (dot(result.worldSpaceNormal, geo.worldViewVector) < 0.f) {
+				result.worldSpaceNormal *= -1.f;
+			}
+		#endif
+	}
+	
+//	#if MAT_REFLECTIVENESS		// this is used by the ScreenSpace reflection debugging (but isn't really needed otherwise)
+//		float3 viewDirection = normalize(geo.worldViewVector);
+//		float3 worldSpaceReflection = reflect(-viewDirection, result.worldSpaceNormal);
+//		float3 halfVector = normalize(worldSpaceReflection + viewDirection);
+//		float fresnel = SchlickFresnel(viewDirection, halfVector, RefractiveIndex);
+//
+//		result.reflectivity = fresnel;
+//	#endif
+
+	#if RES_HAS_NORMAL_MAP && CLASSIFY_NORMAL_MAP
+		#if (RES_HAS_NORMAL_MAP_DXT==1)
+			result.diffuseAlbedo = float3(1,0,0);
+		#else
+			result.diffuseAlbedo = float3(0,1,0);
+		#endif
+	#endif
+
+		//
+		//		The length of the normal from the normal map can be used as 
+		//		an approximation of the variation in the normals used to
+		//		generate each mipmap cell.
+		//
+	#if (RES_HAS_NORMAL_MAP_DXT==1)		// only really valid when using DXT textures (3DX format normals are always unit length)
+		result.normalMapAccuracy = dot(result.worldSpaceNormal, result.worldSpaceNormal);
+	#endif
+	return Encode(result);
+}
+
+
+
+GBufferEncoded invalid(VSOutput geo)
+{
+	float3 color0 = float3(1.0f, 0.f, 0.f);
+	float3 color1 = float3(0.0f, 0.f, 1.f);
+	uint flag = (uint(geo.position.x/4.f) + uint(geo.position.y/4.f))&1;
+	GBufferValues result = GBufferValues_Default();	
+	result.diffuseAlbedo = flag?color0:color1;
+	return Encode(result);
+}

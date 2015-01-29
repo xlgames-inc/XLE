@@ -1,0 +1,79 @@
+// Copyright 2015 XLGAMES Inc.
+//
+// Distributed under the MIT License (See
+// accompanying file "LICENSE" or the website
+// http://www.opensource.org/licenses/mit-license.php)
+
+#define OUTPUT_TEXCOORD 1
+#define OUTPUT_NORMAL 1
+#define OUTPUT_COLOUR 0
+#define DO_TERRAIN_COLOUR_MASSAGE
+// #define USE_CLAMPING_SAMPLER_FOR_DIFFUSE 1
+
+#if !defined(DO_TERRAIN_COLOUR_MASSAGE)
+
+#include "basic.psh"
+
+#else
+
+#include "../CommonResources.h"
+#include "../MainGeometry.h"
+#include "../Surface.h"
+#include "../gbuffer.h"
+#include "../Lighting/LightingAlgorithm.h"
+#include "../Terrain.h"
+#include "../TerrainSurface.h"
+
+Texture2D		TerrainBaseTexture : register(t3);
+
+static const float RefractiveIndex = 1.5f;
+
+#if !((OUTPUT_TEXCOORD==1) && (MAT_ALPHA_TEST==1))
+	[earlydepthstencil]
+#endif
+GBufferEncoded main(VSOutput geo)
+{
+	DoAlphaTest(geo);
+
+	GBufferValues result = GBufferValues_Default();
+	#if OUTPUT_TEXCOORD==1
+		#if USE_CLAMPING_SAMPLER_FOR_DIFFUSE==1
+			float4 diffuseTextureSample = TerrainBaseTexture.Sample(ClampingSampler, geo.texCoord);
+		#else
+			float4 diffuseTextureSample = TerrainBaseTexture.Sample(MaybeAnisotropicSampler, geo.texCoord);
+		#endif
+		diffuseTextureSample = MassageTerrainBaseColour_Linear(diffuseTextureSample);
+		result.diffuseAlbedo = diffuseTextureSample.rgb;
+		result.blendingAlpha = diffuseTextureSample.a;
+	#endif
+
+//			color.g is used for terrain layer strength in terrain. Don't multiply here
+//	#if OUTPUT_COLOUR==1
+//		result.diffuseAlbedo.rgb *= geo.colour.rgb;
+//	#endif
+
+	result.worldSpaceNormal = GetNormal(geo);
+	
+	#if MAT_REFLECTIVENESS
+		float3 viewDirection = normalize(geo.worldViewVector);
+		float3 worldSpaceReflection = reflect(-viewDirection, result.worldSpaceNormal);
+		float3 halfVector = normalize(worldSpaceReflection + viewDirection);
+		float fresnel = SchlickFresnel(viewDirection, halfVector, RefractiveIndex);
+
+		result.reflectivity = fresnel;
+	#endif
+
+		//
+		//		The length of the normal from the normal map can be used as 
+		//		an approximation of the variation in the normals used to
+		//		generate each mipmap cell.
+		//
+	#if RES_HAS_NORMAL_MAP_DXT==1		// only really valid when using DXT textures (3DX format normals are always unit length)
+		result.normalMapAccuracy = dot(result.worldSpaceNormal, result.worldSpaceNormal);
+	#endif
+	return Encode(result);
+}
+
+
+
+#endif

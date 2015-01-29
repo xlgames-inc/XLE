@@ -1,0 +1,22 @@
+// Copyright 2015 XLGAMES Inc.
+//
+// Distributed under the MIT License (See
+// accompanying file "LICENSE" or the website
+// http://www.opensource.org/licenses/mit-license.php)
+
+#include "../CommonResources.h"
+#include "../TransformAlgorithm.h"
+
+Texture2D			BlurredBufferInput;
+Texture2D<float>	DepthsInput;
+
+float4 integrate(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
+{
+	float linearDepth = NDCDepthToLinearDepth(DepthsInput.Load(int3(position.xy, 0)));
+	float blurStart = .1f;
+	float blurEnd = .45f;
+	float blurring = saturate((linearDepth - blurStart) / (blurEnd - blurStart));
+	blurring = blurring*blurring;
+	return float4(BlurredBufferInput.Sample(DefaultSampler, texCoord).rgb, blurring);
+}
+

@@ -1,0 +1,128 @@
+// Copyright 2015 XLGAMES Inc.
+//
+// Distributed under the MIT License (See
+// accompanying file "LICENSE" or the website
+// http://www.opensource.org/licenses/mit-license.php)
+
+#include "../Transform.h"
+#include "../CommonResources.h"
+#include "../Lighting/LightingAlgorithm.h"
+#include "../MainGeometry.h"
+#include "../Surface.h"
+#include "../Colour.h"
+
+#if MAT_SKY_PROJECTION==1
+	Texture2D ReflectionBox[3]	: register(t0);
+#endif
+
+float3 CalculateBaseSkyColor(float2 texCoord, float3 viewFrustumVector)
+{
+	#if MAT_SKY_PROJECTION==1
+
+		uint2 reflectionTextureDims;
+		ReflectionBox[0].GetDimensions(
+			reflectionTextureDims.x, 
+			reflectionTextureDims.y);
+	
+		float4 result = ReadReflectionHemiBox(
+			normalize(viewFrustumVector), 
+			ReflectionBox[0], ReflectionBox[1], ReflectionBox[2], 
+			reflectionTextureDims, 0);
+		result.rgb = SRGBToLinear(result.rgb);
+		return result;
+
+	#elif MAT_SKY_PROJECTION == 2
+
+			// projection is already in the texture coordinates. Just sample
+			// from the texture coordinate position
+		float4 result = DiffuseTexture.Sample(ClampingSampler, texCoord);
+		result.rgb = SRGBToLinear(result.rgb);
+		return result;
+
+	#elif MAT_SKY_PROJECTION == 3
+
+			//	this is "panoramic projection." 
+		float2 t = HemisphericalMappingCoord(viewFrustumVector);
+		if (t.y < 1.f) {
+			// return float4(2.5f * DiffuseTexture.Sample(ClampingSampler, t).rgb, 1.f);
+			int2 dimensions;
+			DiffuseTexture.GetDimensions(dimensions.x, dimensions.y);
+			float3 result = DiffuseTexture.Load(int3(t.xy * float2(dimensions.x, dimensions.y), 0)).rgb;
+			result.rgb = SRGBToLinear(result.rgb);
+			return result;
+		}
+
+		return 0.0.xxxx;
+
+	#else
+
+		return 0.0.xxxx;
+
+	#endif
+}
+
+
+float4 CalculateColour0(	float2 texCoord, 
+							float3 viewFrustumVector, float3 worldSpacePosition)
+{
+	float3 color = CalculateBaseSkyColor(texCoord, viewFrustumVector);
+
+	#if (BLEND_FOG==1)
+		float4 fog = CalculateDistantFog(worldSpacePosition, NegativeDominantLightDirection);
+		color = lerp(fog.rgb, color, fog.a);
+	#endif
+
+	return float4(LightingScale * color, 1.f);
+}
+
+	//////////////////////////////////
+
+float4 main(float4 position : SV_Position, float2 oTexCoord : TEXCOORD0, float3 viewFrustumVector : VIEWFRUSTUMVECTOR) : SV_Target0
+{
+	return CalculateColour0(oTexCoord, viewFrustumVector, WorldSpaceView + 10000.f * viewFrustumVector);
+}
+
+
+#if OUTPUT_TEXCOORD==1
+	float2 GetTexCoord(VSOutput input) { return input.texCoord; }
+#else
+	float2 GetTexCoord(VSOutput input) { return 1.0.xx; }
+#endif
+
+#if OUTPUT_WORLD_POSITION==1
+	float3 GetWorldPosition(VSOutput input) { return input.worldPosition; }
+#else
+	float3 GetWorldPosition(VSOutput input) { return 0.0.xxx; }
+#endif
+
+float4 ps_HalfCube(VSOutput geo) : SV_Target0
+{
+	return CalculateColour0(GetTexCoord(geo), normalize(GetWorldPosition(geo) - WorldSpaceView), GetWorldPosition(geo));
+}
+
+	//////////////////////////////////
+
+VSOutput vs_main(VSInput input)
+{
+	VSOutput output;
+	float3 localPosition = GetLocalPosition(input);
+	float3 worldPosition = float3(50.f * localPosition.xy + WorldSpaceView.xy, 2.f * 50.f * localPosition.z);
+	output.position		 = mul(WorldToClip, float4(worldPosition,1));
+
+	output.position.z	 = 1.0f * output.position.w;		// push to infinity
+	
+	#if OUTPUT_TEXCOORD==1
+		output.texCoord = GetTexCoord(input);
+	#endif
+
+	#if OUTPUT_WORLD_POSITION==1
+		output.worldPosition = worldPosition.xyz;
+	#endif
+
+	#if OUTPUT_FOG_COLOR == 1
+		output.fogColor = CalculateFog(worldPosition.z, WorldSpaceView - worldPosition, NegativeDominantLightDirection);
+	#endif
+	
+	return output;
+}
+

@@ -1,0 +1,44 @@
+Illum
+    Parameters
+        Material
+            MAT_USE_DERIVATIVES_MAP
+            MAT_USE_SHALLOW_WATER
+            MAT_DO_REFRACTION
+            MAT_SKY_PROJECTION
+            MAT_DYNAMIC_REFLECTION
+            SHALLOW_WATER_TILE_DIMENSION
+                32
+        GlobalEnvironment
+            OCEAN_SEPARATE
+                0
+    VertexShader
+        game/xleres/ocean/oceanpatch.vsh:main
+    PixelShader
+        game/xleres/ocean/ocean.psh:Illum
+DepthOnly
+Deferred
+    Parameters
+        Material
+            MAT_USE_DERIVATIVES_MAP
+            MAT_USE_SHALLOW_WATER
+            MAT_DO_REFRACTION
+            MAT_SKY_PROJECTION
+            MAT_DYNAMIC_REFLECTION
+            SHALLOW_WATER_TILE_DIMENSION
+                32
+        GlobalEnvironment
+            OCEAN_SEPARATE
+                0
+    VertexShader
+        game/xleres/ocean/oceanpatch.vsh:main
+    PixelShader
+        game/xleres/ocean/ocean.psh:Deferred
+ShadowGen
+    Parameters
+    VertexShader
+        game/xleres/ocean/oceanpatch.vsh:main
+    GeometryShader
+        game/xleres/shadowgen/depthonly.gsh:main
+    PixelShader
+        game/xleres/shadowgen/depthonly.psh:main
+OrderIndependentTransparency

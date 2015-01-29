@@ -1,0 +1,18 @@
+Illum
+    Parameters
+    VertexShader
+        game/xleres/forward/illum.vsh:main
+    PixelShader
+        game/xleres/forward/illum.psh:invalid
+DepthOnly
+    Parameters
+    VertexShader
+        game/xleres/forward/depthonly.vsh:main
+    PixelShader
+        game/xleres/forward/depthonly.psh:main
+Deferred
+    Parameters
+    VertexShader
+        game/xleres/deferred/basic.vsh:main
+    PixelShader
+        game/xleres/deferred/basic.psh:invalid

@@ -1,0 +1,231 @@
+// Copyright 2015 XLGAMES Inc.
+//
+// Distributed under the MIT License (See
+// accompanying file "LICENSE" or the website
+// http://www.opensource.org/licenses/mit-license.php)
+
+#include "../TransformAlgorithm.h"
+#include "../Colour.h"
+#include "VolumetricFog.h"
+
+Texture2DArray<float> InputShadowTextures : register(t2);
+
+int		WorkingSlice;
+float2	ShadowDepthProjRatio;
+
+cbuffer Filtering
+{
+	float4	FilteringWeights0;		// weights for gaussian filter
+	float3	FilteringWeights1;
+}
+
+float BuildExponentialShadowMap(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
+{
+	float accumulativeLinearDepth = 0.f;
+
+		//		load 16 samples from the source texture
+		//		and find the average
+		//		Should it just be the average? Or should it
+		//		be weighted towards the centre.
+
+		//		todo -- use "GatherRed" to improve performance
+
+	const bool shadowsPerspectiveProj = ShadowsPerspectiveProjection;
+	const float shadowsFarClip = 1000.f;	// todo --  better way to do this
+	const float shadowsNearClip = 1.f;
+
+	const bool useAverage = false;
+	
+	if (useAverage) {
+		int c=0;
+		const int DownsampleCount = 4;
+		[unroll] for (int y=0; y<DownsampleCount; ++y) {
+			[unroll] for (int x=0; x<DownsampleCount; ++x) {
+				int2 coords = int2(position.xy)*DownsampleCount + int2(x, y);
+				float shadowBufferDepth  = InputShadowTextures.Load(int4(coords.xy, WorkingSlice, 0));
+
+				if (shadowsPerspectiveProj) {
+					accumulativeLinearDepth += NDCDepthToLinearDepth(shadowBufferDepth, ShadowDepthProjRatio);
+				} else {
+					accumulativeLinearDepth += (NDCDepthToLinearDepth_Ortho(shadowBufferDepth, ShadowDepthProjRatio) - shadowsNearClip) / shadowsFarClip;
+				}
+			}
+		}
+
+		#if ESM_SHADOW_MAPS==1
+			return exp((ESM_C / float(DownsampleCount*DownsampleCount)) * accumulativeLinearDepth);
+		#else
+			return accumulativeLinearDepth / float(DownsampleCount*DownsampleCount);
+		#endif
+	} else {
+			//	Collect the maximum depth here. This might make the shadows slightly smaller,
+			//	but that's probably better than making the shadows slightly larger
+
+		float maxDepth = 0.f;
+		const int DownsampleCount = 4;
+		[unroll] for (int y=0; y<DownsampleCount; ++y) {
+			[unroll] for (int x=0; x<DownsampleCount; ++x) {
+				int2 coords = int2(position.xy)*DownsampleCount + int2(x, y);
+				float shadowBufferDepth  = InputShadowTextures.Load(int4(coords.xy, WorkingSlice, 0));
+
+				if (shadowsPerspectiveProj) {
+					maxDepth = max(maxDepth, NDCDepthToLinearDepth(shadowBufferDepth, ShadowDepthProjRatio));
+				} else {
+					maxDepth = max(maxDepth, (NDCDepthToLinearDepth_Ortho(shadowBufferDepth, ShadowDepthProjRatio) - shadowsNearClip) / shadowsFarClip);
+				}
+			}
+		}
+
+		#if ESM_SHADOW_MAPS==1
+			return exp(ESM_C * maxDepth);
+		#else
+			return maxDepth;
+		#endif
+	}
+}
+
+Texture2DArray<float> FilteringSource : register(t0);
+
+		//
+		//		Separable gaussian filter 
+		//			(quick blurring of the shadow values)
+		//
+
+float HorizontalFilter5(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
+{
+	int2 midpointCoords = int2(position.xy);
+
+		//	Take 5 horizontal samples weighted
+		//	by gaussian weighting function
+		//		(what about edges?)
+	float accumulatedValue = 0.f;		// note -- assuming 256 width texture
+	accumulatedValue += FilteringWeights0.x * FilteringSource.Load(int4(max(midpointCoords.x - 2, 0), midpointCoords.y, WorkingSlice, 0));
+	accumulatedValue += FilteringWeights0.y * FilteringSource.Load(int4(max(midpointCoords.x - 1, 0), midpointCoords.y, WorkingSlice, 0));
+	accumulatedValue += FilteringWeights0.z * FilteringSource.Load(int4(midpointCoords.x    , midpointCoords.y, WorkingSlice, 0));
+	accumulatedValue += FilteringWeights0.w * FilteringSource.Load(int4(min(midpointCoords.x + 1, 255), midpointCoords.y, WorkingSlice, 0));
+	accumulatedValue += FilteringWeights1.x * FilteringSource.Load(int4(min(midpointCoords.x + 2, 255), midpointCoords.y, WorkingSlice, 0));
+	return accumulatedValue;
+}
+
+float VerticalFilter5(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
+{
+	int2 midpointCoords = int2(position.xy);
+
+	float accumulatedValue = 0.f;		// note -- assuming 256 height texture
+	accumulatedValue += FilteringWeights0.x * FilteringSource.Load(int4(midpointCoords.x, max(midpointCoords.y - 2, 0), WorkingSlice, 0));
+	accumulatedValue += FilteringWeights0.y * FilteringSource.Load(int4(midpointCoords.x, max(midpointCoords.y - 1, 0), WorkingSlice, 0));
+	accumulatedValue += FilteringWeights0.z * FilteringSource.Load(int4(midpointCoords.x, midpointCoords.y    , WorkingSlice, 0));
+	accumulatedValue += FilteringWeights0.w * FilteringSource.Load(int4(midpointCoords.x, min(midpointCoords.y + 1, 255), WorkingSlice, 0));
+	accumulatedValue += FilteringWeights1.x * FilteringSource.Load(int4(midpointCoords.x, min(midpointCoords.y + 2, 255), WorkingSlice, 0));
+	return accumulatedValue;
+}
+
+float HorizontalFilter7(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
+{
+	int2 midpointCoords = int2(position.xy);
+	// return FilteringSource.Load(int4(midpointCoords.x, midpointCoords.y, WorkingSlice, 0));
+
+	float accumulatedValue = 0.f;		// note -- assuming 256 width texture
+	accumulatedValue += FilteringWeights0.x * FilteringSource.Load(int4(max(midpointCoords.x - 3, 0), midpointCoords.y, WorkingSlice, 0));
+	accumulatedValue += FilteringWeights0.y * FilteringSource.Load(int4(max(midpointCoords.x - 2, 0), midpointCoords.y, WorkingSlice, 0));
+	accumulatedValue += FilteringWeights0.z * FilteringSource.Load(int4(max(midpointCoords.x - 1, 0), midpointCoords.y, WorkingSlice, 0));
+	accumulatedValue += FilteringWeights0.w * FilteringSource.Load(int4(midpointCoords.x, midpointCoords.y, WorkingSlice, 0));
+	accumulatedValue += FilteringWeights1.x * FilteringSource.Load(int4(min(midpointCoords.x + 1, 255), midpointCoords.y, WorkingSlice, 0));
+	accumulatedValue += FilteringWeights1.y * FilteringSource.Load(int4(min(midpointCoords.x + 2, 255), midpointCoords.y, WorkingSlice, 0));
+	accumulatedValue += FilteringWeights1.z * FilteringSource.Load(int4(min(midpointCoords.x + 3, 255), midpointCoords.y, WorkingSlice, 0));
+	return accumulatedValue;
+}
+
+float VerticalFilter7(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
+{
+	int2 midpointCoords = int2(position.xy);
+	// return FilteringSource.Load(int4(midpointCoords.x, midpointCoords.y, WorkingSlice, 0));
+
+	float accumulatedValue = 0.f;		// note -- assuming 256 height texture
+	accumulatedValue += FilteringWeights0.x * FilteringSource.Load(int4(midpointCoords.x, max(midpointCoords.y - 3, 0), WorkingSlice, 0));
+	accumulatedValue += FilteringWeights0.y * FilteringSource.Load(int4(midpointCoords.x, max(midpointCoords.y - 2, 0), WorkingSlice, 0));
+	accumulatedValue += FilteringWeights0.z * FilteringSource.Load(int4(midpointCoords.x, max(midpointCoords.y - 1, 0), WorkingSlice, 0));
+	accumulatedValue += FilteringWeights0.w * FilteringSource.Load(int4(midpointCoords.x, midpointCoords.y, WorkingSlice, 0));
+	accumulatedValue += FilteringWeights1.x * FilteringSource.Load(int4(midpointCoords.x, min(midpointCoords.y + 1, 255), WorkingSlice, 0));
+	accumulatedValue += FilteringWeights1.y * FilteringSource.Load(int4(midpointCoords.x, min(midpointCoords.y + 2, 255), WorkingSlice, 0));
+	accumulatedValue += FilteringWeights1.z * FilteringSource.Load(int4(midpointCoords.x, min(midpointCoords.y + 3, 255), WorkingSlice, 0));
+	return accumulatedValue;
+}
+
+static const bool DontBlurDistantSamples = true;
+
+float HorizontalBoxFilter11(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
+{
+	int2 midpointCoords = int2(position.xy);
+	float accumulatedValue = 0.f;		// note -- assuming 256 width texture
+
+	if (!DontBlurDistantSamples) {
+		accumulatedValue += FilteringSource.Load(int4(max(midpointCoords.x - 5, 0), midpointCoords.y, WorkingSlice, 0));
+		accumulatedValue += FilteringSource.Load(int4(max(midpointCoords.x - 4, 0), midpointCoords.y, WorkingSlice, 0));
+		accumulatedValue += FilteringSource.Load(int4(max(midpointCoords.x - 3, 0), midpointCoords.y, WorkingSlice, 0));
+		accumulatedValue += FilteringSource.Load(int4(max(midpointCoords.x - 2, 0), midpointCoords.y, WorkingSlice, 0));
+		accumulatedValue += FilteringSource.Load(int4(max(midpointCoords.x - 1, 0), midpointCoords.y, WorkingSlice, 0));
+		accumulatedValue += FilteringSource.Load(int4(midpointCoords.x, midpointCoords.y, WorkingSlice, 0));
+		accumulatedValue += FilteringSource.Load(int4(min(midpointCoords.x + 1, 255), midpointCoords.y, WorkingSlice, 0));
+		accumulatedValue += FilteringSource.Load(int4(min(midpointCoords.x + 2, 255), midpointCoords.y, WorkingSlice, 0));
+		accumulatedValue += FilteringSource.Load(int4(min(midpointCoords.x + 3, 255), midpointCoords.y, WorkingSlice, 0));
+		accumulatedValue += FilteringSource.Load(int4(min(midpointCoords.x + 4, 255), midpointCoords.y, WorkingSlice, 0));
+		accumulatedValue += FilteringSource.Load(int4(min(midpointCoords.x + 5, 255), midpointCoords.y, WorkingSlice, 0));
+		accumulatedValue /= float(11.f);
+	} else {
+		float maxV = exp(.95f * ESM_C);
+		float accWeight = 0.f;
+		uint offsets[11] = { -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5 };
+		[unroll] for (uint c=0; c<11; ++c) {
+			float value = FilteringSource.Load(int4(max(midpointCoords.x + offsets[c], 0), midpointCoords.y, WorkingSlice, 0));
+			if (value < maxV) {
+				accumulatedValue += value;
+				accWeight += 1.f;
+			}
+		}
+		if (!accWeight) {
+			accumulatedValue = maxV;
+		} else
+			accumulatedValue /= accWeight;
+	}
+
+	return accumulatedValue;
+}
+
+float VerticalBoxFilter11(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
+{
+	int2 midpointCoords = int2(position.xy);
+	float accumulatedValue = 0.f;		// note -- assuming 256 height texture
+	if (!DontBlurDistantSamples) {
+		accumulatedValue += FilteringSource.Load(int4(midpointCoords.x, max(midpointCoords.y - 5, 0), WorkingSlice, 0));
+		accumulatedValue += FilteringSource.Load(int4(midpointCoords.x, max(midpointCoords.y - 4, 0), WorkingSlice, 0));
+		accumulatedValue += FilteringSource.Load(int4(midpointCoords.x, max(midpointCoords.y - 3, 0), WorkingSlice, 0));
+		accumulatedValue += FilteringSource.Load(int4(midpointCoords.x, max(midpointCoords.y - 2, 0), WorkingSlice, 0));
+		accumulatedValue += FilteringSource.Load(int4(midpointCoords.x, max(midpointCoords.y - 1, 0), WorkingSlice, 0));
+		accumulatedValue += FilteringSource.Load(int4(midpointCoords.x, midpointCoords.y, WorkingSlice, 0));
+		accumulatedValue += FilteringSource.Load(int4(midpointCoords.x, min(midpointCoords.y + 1, 255), WorkingSlice, 0));
+		accumulatedValue += FilteringSource.Load(int4(midpointCoords.x, min(midpointCoords.y + 2, 255), WorkingSlice, 0));
+		accumulatedValue += FilteringSource.Load(int4(midpointCoords.x, min(midpointCoords.y + 3, 255), WorkingSlice, 0));
+		accumulatedValue += FilteringSource.Load(int4(midpointCoords.x, min(midpointCoords.y + 4, 255), WorkingSlice, 0));
+		accumulatedValue += FilteringSource.Load(int4(midpointCoords.x, min(midpointCoords.y + 5, 255), WorkingSlice, 0));
+		accumulatedValue /= float(11.f);
+	} else {
+		float maxV = exp(.95f * ESM_C);
+		float accWeight = 0.f;
+		uint offsets[11] = { -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5 };
+		[unroll] for (uint c=0; c<11; ++c) {
+			float value = FilteringSource.Load(int4(midpointCoords.x, max(midpointCoords.y + offsets[c], 0), WorkingSlice, 0));
+			if (value < maxV) {
+				accumulatedValue += value;
+				accWeight += 1.f;
+			}
+		}
+		if (!accWeight) {
+			accumulatedValue = maxV;
+		} else 
+			accumulatedValue /= accWeight;
+	}
+
+	return accumulatedValue;
+}
+

@@ -1,0 +1,211 @@
+// Copyright 2015 XLGAMES Inc.
+//
+// Distributed under the MIT License (See
+// accompanying file "LICENSE" or the website
+// http://www.opensource.org/licenses/mit-license.php)
+
+#include "../CommonResources.h"
+#include "../TransformAlgorithm.h"
+#include "../TextureAlgorithm.h"
+#include "../Lighting/LightingAlgorithm.h"
+#include "../System/LoadGBuffer.h"
+
+Texture2D_MaybeMS<float>	DepthTexture		: register(t4);
+
+Texture2D			SkyReflectionTexture[3]		: register(t7);
+
+Texture2D<float>	MaskTexture					: register(t5);
+Texture2D<float3>	DownsampledNormalsTexture	: register(t6);
+Texture2D<float>	DownsampledDepthTexture		: register(t10);
+Texture2D<float4>	ReflectionsTexture			: register(t11);
+
+
+float3 CalculateReflectionVector(uint2 pixelCoord, float3 viewFrustumVector, float3 worldSpaceNormal)
+{
+	const uint msaaSampleIndex = 0;
+	const float linearDepth = NDCDepthToLinearDepth(LoadFloat1(DepthTexture, pixelCoord, msaaSampleIndex));
+	float3 worldSpacePosition = 
+		CalculateWorldPosition(viewFrustumVector, linearDepth, NearClip, FarClip, WorldSpaceView);
+
+	float3 worldSpaceReflection = reflect(normalize(worldSpacePosition - WorldSpaceView), worldSpaceNormal);
+	return worldSpaceReflection;
+}
+
+float4 TilesDebugging(	float4 position				: SV_Position,
+						float2 texCoord				: TEXCOORD0,
+						float3 viewFrustumVector	: VIEWFRUSTUMVECTOR) : SV_Target0
+{
+	// return float4(.5.xxx, MaskTexture.SampleLevel(DefaultSampler, texCoord, 0));
+	// return float4(MaskTexture.SampleLevel(DefaultSampler, texCoord, 0).rrr, 1.f);
+
+	// float2 t	= min(texCoord.xy, 1.f-texCoord.xy);
+	// t = saturate(15.f*t);
+	// float d = t.x*t.y;
+	// return d.xxxx;
+
+#if 1
+	float4 reflectionColour = ReflectionsTexture.SampleLevel(ClampingSampler, texCoord, 0);
+
+	uint3 normalDim; 
+	#if defined(MSAA_SAMPLERS) && (MSAA_SAMPLERS != 0)
+		GBuffer_Normals.GetDimensions(normalDim.x, normalDim.y, normalDim.z);
+	#else
+		GBuffer_Normals.GetDimensions(normalDim.x, normalDim.y);
+	#endif
+
+	GBufferValues gbuffer = LoadGBuffer(float4(texCoord.xy*normalDim.xy, 0.f, 1.f), SystemInputs_Default());
+	float reflectivity = gbuffer.reflectivity;
+
+	float3 reflectionVector = CalculateReflectionVector(
+		uint2(texCoord.xy*normalDim.xy), viewFrustumVector, gbuffer.worldSpaceNormal);
+	float2 skyReflectionCoord = HemisphericalMappingCoord(reflectionVector);
+	float3 skyReflection = SkyReflectionTexture[0].Sample(DefaultSampler, skyReflectionCoord).rgb;
+	// return float4(skyReflection, 1.f);
+	// reflectivity = 1;
+	// return float4(skyReflection, reflectivity);
+
+	#if INTERPOLATE_SAMPLES != 0
+		const bool interpolateSamples = true;
+	#else
+		const bool interpolateSamples = false;
+	#endif
+	if (!interpolateSamples) {
+		// return float4(reflectionColour.rgb, 16.f * reflectionMask);
+		return float4(reflectionColour.rgb, 4.f*reflectionColour.a*reflectivity);
+	} else {
+
+		float intersectionQuality = reflectionColour.z;
+		float pixelReflectivity = reflectionColour.a;
+
+		return float4(pixelReflectivity * intersectionQuality.xxx, 1.f);
+
+		float3 diffuseSample = SampleFloat4(GBuffer_Diffuse, ClampingSampler, reflectionColour.xy, 0);
+		// float3 diffuseSample = float3(reflectionColour.xy, 0.f);
+
+		// if (skyReflectionCoord.y > 0.64f) {
+		// 	reflectivity *= lerp(0.f, 1.f, reflectionColour.a);	// ignore bottom half of sky reflection hemisphere
+		// }
+
+		return float4(diffuseSample.rgb, pixelReflectivity * intersectionQuality);
+
+		//return float4(
+		//	lerp(0.33f * skyReflection, 
+		//		lerp(0.0.xxx, diffuseSample.rgb, reflectionColour.z), 
+		//		reflectionColour.a), 
+		//	2.f * reflectivity);
+	}
+#endif
+
+	// return float4(reflectionColour.rgb*reflectionColour.a, 1);
+
+	if (texCoord.y < 0.5f) {
+		if (texCoord.x < 0.5f) {
+			return float4(
+				MaskTexture.SampleLevel(DefaultSampler, texCoord * 2.f, 0).xxx, 1.f);
+		} else {
+			return float4(
+				DownsampledNormalsTexture.SampleLevel(DefaultSampler, 
+					float2((texCoord.x - 0.5f) * 2.f, texCoord.y * 2.f), 0), 1.f);
+		}
+	} else {
+		if (texCoord.x < 0.5f) {
+			return float4(
+				DownsampledDepthTexture.SampleLevel(DefaultSampler,
+					float2(texCoord.x * 2.f, (texCoord.y - 0.5f) * 2.f), 0).xxx, 1.f);
+		} else {
+			return float4(
+				ReflectionsTexture.SampleLevel(
+					DefaultSampler,
+					float2((texCoord.x - 0.5f) * 2.f, (texCoord.y - 0.5f) * 2.f), 0).rgb, 1.f);
+		}
+	}
+}
+
+static const uint SamplesPerBlock = 64;
+static const uint BlockDimension = 64;
+
+cbuffer BasicGlobals
+{
+	const uint2 ViewportDimensions;
+	const int2 MousePosition;
+}
+
+cbuffer SamplingPattern
+{
+	uint2 SamplePoint[SamplesPerBlock];
+	uint4 ClosestSamples[BlockDimension][BlockDimension/4];
+	uint4 ClosestSamples2[BlockDimension][BlockDimension/4];
+}
+
+float4 MaskSamplePattern(	float4 position		: SV_Position, 
+							float2 texCoord		: TEXCOORD0) : SV_Target0
+{
+//	uint2 pixelCoords = uint2(	ViewportDimensions.x * (-0.5f + 0.5f * position.x),
+//								ViewportDimensions.y * ( 0.5f - 0.5f * position.y));
+	int2 pixelCoords = int2(position.xy);
+
+	int2 gridMin = int2(32, 32);
+	int2 gridCellSize = int2(10, 10);
+	int2 gridMax = gridMin + int2(BlockDimension, BlockDimension) * gridCellSize;
+
+	float4 result = 0.0.xxxx;
+
+	int2 hoveringCellIndex = (MousePosition - gridMin) / gridCellSize;
+	uint closestSamples = 0, closestSamples2 = 0;
+	if (	hoveringCellIndex.x >= 0 && hoveringCellIndex.x < BlockDimension
+		&&	hoveringCellIndex.y >= 0 && hoveringCellIndex.y < BlockDimension) {
+		closestSamples = ClosestSamples[hoveringCellIndex.y][hoveringCellIndex.x/4][hoveringCellIndex.x%4];
+		closestSamples2 = ClosestSamples2[hoveringCellIndex.y][hoveringCellIndex.x/4][hoveringCellIndex.x%4];
+	}
+
+	if (	pixelCoords.x >= gridMin.x && pixelCoords.y >= gridMin.y
+		&&	pixelCoords.x <= gridMax.x && pixelCoords.y <= gridMax.y) {
+		if (	((pixelCoords.x - gridMin.x) % gridCellSize.x) == 0
+			||	((pixelCoords.y - gridMin.y) % gridCellSize.y) == 0) {
+			result = float4(0.125.xxx, 1.f);
+		} else {
+			result = float4(0.25.xxx, .5f);
+		}
+
+		int2 cellIndex = (pixelCoords - gridMin) / gridCellSize;
+		if (cellIndex.x == hoveringCellIndex.x && cellIndex.y == hoveringCellIndex.y) {
+			result = float4(0.25f, 0, 0, .5f);
+		}
+	}
+
+	float2 cellCoords = int2(BlockDimension, BlockDimension) * (pixelCoords - gridMin) / float2(gridMax - gridMin);
+	for (uint c=0; c<SamplesPerBlock; ++c) {
+		float2 diff = int2(SamplePoint[c]) - cellCoords;
+		float circleDistance = dot(diff, diff);
+
+		if (circleDistance < 35.f) {
+
+			if (	c == (closestSamples & 0xff)
+				||	c == ((closestSamples >> 8) & 0xff)
+				||	c == ((closestSamples >> 16) & 0xff)
+				||	c == ((closestSamples >> 24) & 0xff)
+				||	c == (closestSamples2 & 0xff)
+				||	c == ((closestSamples2 >> 8) & 0xff)
+				||	c == ((closestSamples2 >> 16) & 0xff)
+				||	c == ((closestSamples2 >> 24) & 0xff)) {
+				result += float4(.25f, 0, 0, .5f);
+			} else {
+				if (circleDistance > 32.f) {
+					result += float4(0.75.xxx, .5f);
+				}
+			}
+		}
+	}
+
+	return result;
+}
+
+
+float4 main(	float4 position		: SV_Position,
+				float2 texCoord		: TEXCOORD0,
+				float3 viewFrustumVector : VIEWFRUSTUMVECTOR) : SV_Target0
+{
+	return TilesDebugging(position, texCoord, viewFrustumVector);
+	// return MaskSamplePattern(position, texCoord);
+}
+

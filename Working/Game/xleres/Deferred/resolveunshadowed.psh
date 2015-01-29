@@ -1,0 +1,54 @@
+// Copyright 2015 XLGAMES Inc.
+//
+// Distributed under the MIT License (See
+// accompanying file "LICENSE" or the website
+// http://www.opensource.org/licenses/mit-license.php)
+
+#if !defined(RESOLVE_UNSHADOWED_PSH)
+#define RESOLVE_UNSHADOWED_PSH
+
+#include "resolveutil.h"
+
+float4 ResolveLightUnshadowed(	float4 position : SV_Position,
+								float2 texCoord : TEXCOORD0, 
+								float3 viewFrustumVector : VIEWFRUSTUMVECTOR,
+								SystemInputs sys) : SV_Target0
+{
+	int2 pixelCoords = position.xy;
+	float3 worldPosition = CalculateWorldPosition(pixelCoords, GetSampleIndex(sys), viewFrustumVector);
+
+	GBufferValues sample = LoadGBuffer(position, sys);
+	float3 diffuse = (1.0f - MO_Metallic) * CalculateDiffuse(sample, NegativeLightDirection, LightColour);
+	float3 specular = CalculateSpecular(sample, normalize(-viewFrustumVector), NegativeLightDirection, LightColour);
+
+	const float lightScale = LightingScale;
+	return float4((lightScale*sample.cookedAmbientOcclusion)*(diffuse + specular), 1.f);
+}
+
+
+float4 ResolvePointLightUnshadowed(	float4 position : SV_Position,
+									float2 texCoord : TEXCOORD0, 
+									float3 viewFrustumVector : VIEWFRUSTUMVECTOR,
+									SystemInputs sys) : SV_Target0
+{
+	// return float4(0.0.xxx,1);
+
+	int2 pixelCoords = position.xy;
+	float3 worldPosition = CalculateWorldPosition(pixelCoords, GetSampleIndex(sys), viewFrustumVector);
+	GBufferValues sample = LoadGBuffer(position, sys);
+	
+	float3 lightVector = (NegativeLightDirection - worldPosition);
+	float distanceSq = dot(lightVector, lightVector);
+	float attenuation = DistanceAttenuation(distanceSq, LightPower);
+	float directionalAttenuation = lerp(0.25f, 1.f, saturate(dot(lightVector, sample.worldSpaceNormal.xyz) / sqrt(distanceSq)));
+
+	float D = distanceSq; D *= D; D *= D;
+	float R = LightRadius; R *= R; R *= R; R *= R;
+	float radiusDropOff = 1.f - saturate(3.f * D / R);
+	
+	float3 light	 = LightColour * directionalAttenuation;
+	return float4((attenuation*radiusDropOff)*sample.diffuseAlbedo.rgb*light, 1.f);
+}
+
+#endif
+

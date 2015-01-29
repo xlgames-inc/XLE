@@ -1,0 +1,224 @@
+// Copyright 2015 XLGAMES Inc.
+//
+// Distributed under the MIT License (See
+// accompanying file "LICENSE" or the website
+// http://www.opensource.org/licenses/mit-license.php)
+
+#define OUTPUT_TEXCOORD 1
+#define OUTPUT_WORLD_VIEW_VECTOR 1
+#define DO_REFLECTION_IN_VS 1
+
+#if (MAT_DYNAMIC_REFLECTION==1) && (DO_REFLECTION_IN_VS==1)
+	#define VSOUTPUT_EXTRA float4 dynamicReflectionTexCoord : DYNREFLTC; float2 specularityTC : SPECTC;
+#elif MAT_USE_SHALLOW_WATER==1
+	#define VSOUTPUT_EXTRA float4 shallowWaterTexCoord : SHALLOWWATER; float2 specularityTC : SPECTC;
+#else
+	#define VSOUTPUT_EXTRA float2 specularityTC : SPECTC;
+#endif
+
+#include "../MainGeometry.h"
+#include "../Transform.h"
+#include "../CommonResources.h"
+#include "Ocean.h"
+#include "OceanShallow.h"
+#include "../Utility/perlinnoise.h"
+
+#if !defined(SHALLOW_WATER_TILE_DIMENSION)
+	#define SHALLOW_WATER_TILE_DIMENSION 32
+#endif
+
+Texture2D<float>		HeightsTexture			: register(t0);
+Texture2D<float>		XTexture				: register(t1);
+Texture2D<float>		YTexture				: register(t2);
+Texture2DArray<float>	ShallowWaterHeights		: register(t3);
+Texture2D<uint>			ShallowGridsLookupTable : register(t4);
+
+cbuffer GridConstants : register(b7)
+{
+	float4x4	GridProjection;
+	float3		GridFrustumCorners[4];
+	float3		GridProjectionOrigin;
+	uint		GridPatchWidth;
+	uint		GridPatchHeight;
+}
+
+	////////////////////////////   G R I D   P R O J E C T I O N   ////////////////////////////
+
+void CalculateWorldPosition(uint2 gridCoords, out float2 texCoords, out float3 outBaseWorldCoords, out float3 outDisplacement)
+{
+		//
+		//		CPU side calculated a projection matrix, which we want to use to project
+		//		our grid vertices on the ocean surface. This will mean that grid elements are
+		//		evenly distributed in screen space.
+		//			-- but it can cause swimming.
+		//
+	float3 baseWorldPosition;
+	const bool useScreenSpaceGrid = UseScreenSpaceGrid!=0;
+	[branch] if (useScreenSpaceGrid) {
+		float2 frustumCoords = float2(gridCoords.x/float(GridPatchWidth-1), gridCoords.y/float(GridPatchHeight-1));
+
+		float topLeftWeight		= (1.f - frustumCoords.x) * frustumCoords.y;
+		float bottomLeftWeight	= (1.f - frustumCoords.x) * (1.f - frustumCoords.y);
+		float topRightWeight	= frustumCoords.x * frustumCoords.y;
+		float bottomRightWeight = frustumCoords.x * (1.f - frustumCoords.y);
+
+		float3 viewFrustumVector = 
+			  topLeftWeight		* GridFrustumCorners[0].xyz
+			+ bottomLeftWeight	* GridFrustumCorners[1].xyz
+			+ topRightWeight	* GridFrustumCorners[2].xyz
+			+ bottomRightWeight * GridFrustumCorners[3].xyz
+			;
+
+		viewFrustumVector.z = min(0.0, viewFrustumVector.z);
+		float distanceToPlaneIntersection = (GridProjectionOrigin.z - WaterBaseHeight) / -viewFrustumVector.z;
+
+		baseWorldPosition = GridProjectionOrigin + distanceToPlaneIntersection * viewFrustumVector;
+	} else {
+		baseWorldPosition = float3(
+			gridCoords.x / float(GridPatchWidth) * PhysicalWidth,
+			gridCoords.y / float(GridPatchHeight) * PhysicalHeight,
+			WaterBaseHeight);
+	}
+
+		//	Load the displacement from the input textures
+		//		if our grid is not aligned with the input texture, we have to do
+		//		interpolation between samples.
+		//	It would be ideal if we had a 1:1 mapping between grid elements and
+		//	texels... But that's difficult to get lod working well.
+
+	float3 displacement;
+	const bool interpolateBetweenSamples = useScreenSpaceGrid;
+	[branch] if (interpolateBetweenSamples) {
+		texCoords = float2(
+			baseWorldPosition.x / PhysicalWidth,
+			baseWorldPosition.y / PhysicalHeight);
+
+		texCoords += GridShift;
+
+		uint2 texDim;
+		XTexture.GetDimensions(texDim.x, texDim.y);
+
+		displacement.x = OceanTextureCustomInterpolate(XTexture, texDim, texCoords);
+		displacement.y = OceanTextureCustomInterpolate(YTexture, texDim, texCoords);
+		displacement.z = OceanTextureCustomInterpolate(HeightsTexture, texDim, texCoords);
+	} else {
+		displacement.x = XTexture[gridCoords];
+		displacement.y = YTexture[gridCoords];
+		displacement.z = HeightsTexture[gridCoords];
+
+			//	Have to multiply the height value by -1^(gridCoords.x+gridCoords.y)
+			//		-- each height value flips in direction every grid cell
+		float powNeg1 = 1.f;
+		if (((gridCoords.x + gridCoords.y)&1)==1) powNeg1 = -1.f;
+		displacement *= powNeg1;
+
+		texCoords = float2(gridCoords.x/float(GridPatchWidth), gridCoords.y/float(GridPatchHeight));
+	}
+
+		//	we need to flatten the ocean in the distance. It's a bit wierd, really, but it's
+		//	necessary, because the ocean might not go all the way to horizon. It will get
+		//	clipped out at the far draw distance, and at that point, there are still visible
+		//	waves.
+	float3 viewOffsetVector = baseWorldPosition - WorldSpaceView;
+	float distanceFromCameraSq = dot(viewOffsetVector, viewOffsetVector);
+	float distanceAttenuation = saturate(1.f - distanceFromCameraSq / (1000.f * 1000.f));
+
+	displacement.xy *= distanceAttenuation * StrengthConstantXY * StrengthConstantMultiplier;
+	displacement.z *= distanceAttenuation * StrengthConstantZ * StrengthConstantMultiplier;
+
+	outBaseWorldCoords = baseWorldPosition;
+	outDisplacement = displacement;
+}
+
+float CalcShallowWaterHeight(float2 worldCoords, out float3 shallowWaterTexCoord, out float shallowWaterWeight)
+{
+		//	get the height from the shallow water sim
+	shallowWaterTexCoord = 0.0.xxx;
+	shallowWaterWeight = 0.f;
+	float result = WaterBaseHeight;
+	
+	int2 tileCoord = int2(floor(worldCoords / ShallowGridPhysicalDimension));
+	uint arrayIndex = CalculateShallowWaterArrayIndex(ShallowGridsLookupTable, tileCoord);
+	[branch] if (arrayIndex < 128) {
+
+		shallowWaterTexCoord = float3(
+			worldCoords.xy / float(ShallowGridPhysicalDimension), float(arrayIndex));
+
+		uint3 coords = uint3(uint2((shallowWaterTexCoord.xy - float2(tileCoord)) * SHALLOW_WATER_TILE_DIMENSION), arrayIndex);
+
+			// todo -- incorrect interpolation from from tile to the next... (maybe clamping as a rough
+			//			approximation is enough?)
+		result = ShallowWaterHeights.SampleLevel(ClampingSampler, float3(shallowWaterTexCoord.xy - float2(tileCoord), arrayIndex), 0);
+		shallowWaterWeight = 1.f;		// weight could fade off towards the edges (particularly since we've already calculated the neighbouring tiles)
+
+	}
+
+	return result;
+}
+
+	////////////////////////////   M A I N   ////////////////////////////
+
+VSOutput main(uint vertexId : SV_VertexId)
+{
+	VSOutput output;
+	uint2 gridCoords = uint2(vertexId%GridPatchWidth, vertexId/GridPatchWidth);
+
+	float3 baseWorldPosition, displacement;
+	CalculateWorldPosition(gridCoords, output.texCoord, baseWorldPosition, displacement);
+
+	#if MAT_USE_SHALLOW_WATER==1
+		float shallowWaterWeight;
+		float3 shallowWaterTexCoord;
+		float shallowWaterHeight = CalcShallowWaterHeight(
+			baseWorldPosition.xy, shallowWaterTexCoord, shallowWaterWeight);
+		displacement = lerp(displacement, float3(0.f, 0.f, shallowWaterHeight - WaterBaseHeight), shallowWaterWeight);
+	#endif
+
+	float3 finalWorldPosition = baseWorldPosition + displacement;
+
+	output.position = mul(WorldToClip, float4(finalWorldPosition,1));
+
+	#if OUTPUT_WORLD_VIEW_VECTOR==1
+		output.worldViewVector = WorldSpaceView.xyz - finalWorldPosition.xyz;
+	#endif
+
+	#if MAT_USE_SHALLOW_WATER==1
+		output.shallowWaterTexCoord = float4(shallowWaterTexCoord, shallowWaterWeight);
+	#endif
+
+	#if (MAT_DYNAMIC_REFLECTION==1) && (DO_REFLECTION_IN_VS==1)
+		output.dynamicReflectionTexCoord = mul(
+			WorldToReflection, float4(finalWorldPosition, 1.f));
+	#endif
+
+	float specularityOffsetX = PerlinNoise3D(float3(15.f * output.texCoord,				0.47f * Time));
+	float specularityOffsetY = PerlinNoise3D(float3(15.f * (1.0f - output.texCoord),	0.53f * Time));
+	output.specularityTC	 =	output.texCoord * SpecularityFrequency 
+								+	0.15f * float2(specularityOffsetX, specularityOffsetY);
+
+	return output;
+}
+
+cbuffer ShallowWaterGridConstants
+{
+	int2	GridIndex;
+	uint	ArrayIndex;
+	float2	Offset;
+}
+
+VSOutput ShallowWater(uint vertexId : SV_VertexId)
+{
+	const int TileDimension = SHALLOW_WATER_TILE_DIMENSION;
+	uint2 gridCoords	 = uint2(vertexId%TileDimension, vertexId/TileDimension);
+	float waterHeight	 = ShallowWaterHeights.Load(uint4(gridCoords, ArrayIndex, 0));
+
+	float3 worldPosition = float3(
+		Offset.x + (GridIndex.x + gridCoords.x / float(TileDimension)) * ShallowGridPhysicalDimension,
+		Offset.y + (GridIndex.y + gridCoords.y / float(TileDimension)) * ShallowGridPhysicalDimension,
+		waterHeight);
+	VSOutput output;
+	output.position = mul(WorldToClip, float4(worldPosition,1));
+	return output;
+}
+
+

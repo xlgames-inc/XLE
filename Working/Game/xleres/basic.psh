@@ -1,0 +1,60 @@
+// Copyright 2015 XLGAMES Inc.
+//
+// Distributed under the MIT License (See
+// accompanying file "LICENSE" or the website
+// http://www.opensource.org/licenses/mit-license.php)
+
+#include "CommonResources.h"
+#include "Colour.h"
+
+float4 copy(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
+{
+	return DiffuseTexture.Load(int3(position.xy, 0));
+}
+
+float4 fake_tonemap(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
+{
+	return float4(DiffuseTexture.Load(int3(position.xy, 0)).rgb / LightingScale, 1.f);
+}
+
+float4 copy_bilinear(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
+{
+	return DiffuseTexture.SampleLevel(ClampingSampler, texCoord, 0);
+}
+
+float4 copy_point(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
+{
+	return DiffuseTexture.SampleLevel(PointClampSampler, texCoord, 0);
+}
+
+float4 PCT_Text( float4 input : SV_Position, float4 color : COLOR0, float2 texCoord : TEXCOORD0 ) : SV_Target0
+{
+	return float4(	color.rgb, 
+					color.a * DiffuseTexture.Sample(DefaultSampler, texCoord).r);
+}
+
+float4 P( float4 input : SV_Position ) : SV_Target0
+{
+	return float4(1,1,1,1);
+}
+
+float4 PC( float4 input : SV_Position, float4 color : COLOR0 ) : SV_Target0
+{
+	return color;
+}
+
+float4 PCT( float4 input : SV_Position, float4 color : COLOR0, float2 texCoord : TEXCOORD0 ) : SV_Target0
+{
+	return DiffuseTexture.Sample(DefaultSampler, texCoord) * color;
+}
+
+cbuffer ScrollConstants
+{
+	float ScrollAreaMin, ScrollAreaMax;
+}
+
+float4 copy_point_scrolllimit(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
+{
+	float alpha = saturate((position.y - ScrollAreaMin) / 12.f) * saturate((ScrollAreaMax - position.y) / 12.f);
+	return float4(DiffuseTexture.SampleLevel(PointClampSampler, texCoord, 0).rgb, alpha);
+}
