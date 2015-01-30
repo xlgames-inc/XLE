@@ -48,6 +48,29 @@ namespace Math
         //          result(0,3) = lhs(0) * rhs(0,3) + lhs(1) * rhs(1,3) + lhs(2) * rhs(2,3) + lhs(3) * rhs(3,3);
         //
 
+    Float3x4    Combine(const Float3x4& firstTransform, const Float3x4& secondTransform)
+    {
+        const Float3x4& lhs = secondTransform;
+        const Float3x4& rhs = firstTransform;
+
+        Float3x4 result;
+        result(0,0) = lhs(0,0) * rhs(0,0) + lhs(0,1) * rhs(1,0) + lhs(0,2) * rhs(2,0);
+        result(0,1) = lhs(0,0) * rhs(0,1) + lhs(0,1) * rhs(1,1) + lhs(0,2) * rhs(2,1);
+        result(0,2) = lhs(0,0) * rhs(0,2) + lhs(0,1) * rhs(1,2) + lhs(0,2) * rhs(2,2);
+        result(0,3) = lhs(0,0) * rhs(0,3) + lhs(0,1) * rhs(1,3) + lhs(0,2) * rhs(2,3) + lhs(0,3);
+        
+        result(1,0) = lhs(1,0) * rhs(0,0) + lhs(1,1) * rhs(1,0) + lhs(1,2) * rhs(2,0);
+        result(1,1) = lhs(1,0) * rhs(0,1) + lhs(1,1) * rhs(1,1) + lhs(1,2) * rhs(2,1);
+        result(1,2) = lhs(1,0) * rhs(0,2) + lhs(1,1) * rhs(1,2) + lhs(1,2) * rhs(2,2);
+        result(1,3) = lhs(1,0) * rhs(0,3) + lhs(1,1) * rhs(1,3) + lhs(1,2) * rhs(2,3) + lhs(1,3);
+        
+        result(2,0) = lhs(2,0) * rhs(0,0) + lhs(2,1) * rhs(1,0) + lhs(2,2) * rhs(2,0);
+        result(2,1) = lhs(2,0) * rhs(0,1) + lhs(2,1) * rhs(1,1) + lhs(2,2) * rhs(2,1);
+        result(2,2) = lhs(2,0) * rhs(0,2) + lhs(2,1) * rhs(1,2) + lhs(2,2) * rhs(2,2);
+        result(2,3) = lhs(2,0) * rhs(0,3) + lhs(2,1) * rhs(1,3) + lhs(2,2) * rhs(2,3) + lhs(2,3);
+        return result;
+    }
+
     void Combine_InPlace(const Float3& translate, Float4x4& transform)
     {
         Float4x4& lhs = transform;
@@ -453,7 +476,7 @@ namespace Math
     }
 
 
-    bool IsOrthonormal(const Float3x3& rotationMatrix, float tolerance = 0.01f)
+    bool IsOrthonormal(const Float3x3& rotationMatrix, float tolerance)
     {
         Float3 A(rotationMatrix(0,0), rotationMatrix(0,1), rotationMatrix(0,2));
         Float3 B(rotationMatrix(1,0), rotationMatrix(1,1), rotationMatrix(1,2));
@@ -483,6 +506,19 @@ namespace Math
         result(1,0) = input(0,1);   result(1,1) = input(1,1);   result(1,2) = input(2,1);   result(1,3) = t[1];
         result(2,0) = input(0,2);   result(2,1) = input(1,2);   result(2,2) = input(2,2);   result(2,3) = t[2];
         result(3,0) = 0.f; result(3,1) = 0.f; result(3,2) = 0.f; result(3,3) = 1.f;
+        return result;
+    }
+
+    Float3x4 InvertOrthonormalTransform(const Float3x4& input)
+    {
+        float t[3];
+        t[0] = input(0,0) * -input(0,3) + input(1,0) * -input(1,3) + input(2,0) * -input(2,3);
+        t[1] = input(0,1) * -input(0,3) + input(1,1) * -input(1,3) + input(2,1) * -input(2,3);
+        t[2] = input(0,2) * -input(0,3) + input(1,2) * -input(1,3) + input(2,2) * -input(2,3);
+        Float3x4 result;
+        result(0,0) = input(0,0);   result(0,1) = input(1,0);   result(0,2) = input(2,0);   result(0,3) = t[0];
+        result(1,0) = input(0,1);   result(1,1) = input(1,1);   result(1,2) = input(2,1);   result(1,3) = t[1];
+        result(2,0) = input(0,2);   result(2,1) = input(1,2);   result(2,2) = input(2,2);   result(2,3) = t[2];
         return result;
     }
 

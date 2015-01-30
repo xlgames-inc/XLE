@@ -4,6 +4,12 @@
 #include "../Core/Prefix.h"
 #include <stack>
 
+#include "PlacementsQuadTreeDebugger.h"
+#include "PlacementsManager.h"
+#include "../RenderOverlays/IOverlayContext.h"
+#include "../RenderCore/Metal/DeviceContext.h"
+#include "CommonResources.h"
+
 namespace SceneEngine
 {
 
@@ -423,6 +429,57 @@ namespace SceneEngine
     }
 
     PlacementsQuadTree::~PlacementsQuadTree() {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    void    PlacementsQuadTreeDebugger::Render(
+        RenderOverlays::IOverlayContext* context, Layout& layout, 
+        Interactables& interactables, InterfaceState& interfaceState)
+    {
+        using namespace RenderOverlays;
+        using namespace RenderOverlays::DebuggingDisplay;
+
+        context->GetDeviceContext()->Bind(CommonResources()._dssDisable);
+
+            // Find all of the quad trees that are used by the manager for
+            // the current camera position. For each quad-tree we find, let's
+            // render some debugging information (including bounding boxes for
+            // the nodes in the quad tree).
+            // This is helpful for developing the algorithm for 
+        auto quadTrees = _placementsManager->GetVisibleQuadTrees(
+            context->GetWorldToProjection());
+        for (auto i=quadTrees.cbegin(); i!=quadTrees.cend(); ++i) {
+            auto cellToWorld = i->first;
+            auto quadTree = i->second;
+            if (!quadTree) continue;
+
+            ColorB col(196, 230, 230);
+            auto& nodes = quadTree->_pimpl->_nodes;
+            for (auto n=nodes.cbegin(); n!=nodes.cend(); ++n) {
+                DrawBoundingBox(
+                    context, n->_boundary, cellToWorld,
+                    col, 0x1);
+            }
+            for (auto n=nodes.cbegin(); n!=nodes.cend(); ++n) {
+                DrawBoundingBox(
+                    context, n->_boundary, cellToWorld,
+                    col, 0x2);
+            }
+        }
+    }
+
+    bool    PlacementsQuadTreeDebugger::ProcessInput(
+        InterfaceState& interfaceState, const InputSnapshot& input)
+    {
+        return false;
+    }
+
+    PlacementsQuadTreeDebugger::PlacementsQuadTreeDebugger(std::shared_ptr<PlacementsManager> placementsManager)
+    : _placementsManager(placementsManager)
+    {}
+
+    PlacementsQuadTreeDebugger::~PlacementsQuadTreeDebugger()
+    {}
 
 
 }

@@ -36,6 +36,7 @@
 #include "../../SceneEngine/ResourceBox.h"
 #include "../../SceneEngine/SceneParser.h"
 #include "../../SceneEngine/LightDesc.h"
+#include "../../SceneEngine/PlacementsQuadTreeDebugger.h"
 
 #include "../../ConsoleRig/Console.h"
 #include "../../ConsoleRig/Log.h"
@@ -207,6 +208,10 @@ namespace Sample
                 auto gpuProfilerDisplay = std::make_shared<PlatformRig::Overlays::GPUProfileDisplay>(gpuProfiler.get());
                 debugSystem->Register(gpuProfilerDisplay, "[Profiler] GPU Profiler");
             }
+
+            debugSystem->Register(
+                std::make_shared<SceneEngine::PlacementsQuadTreeDebugger>(mainScene->GetPlacementManager()),
+                "PlacementsCulling");
 
             auto cameraInputHandler = std::make_shared<PlatformRig::Camera::CameraInputHandler>(
                 mainScene->GetCameraPtr(), mainScene->GetPlayerCharacter(), CharactersScale);

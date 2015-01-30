@@ -33,14 +33,14 @@ namespace Utility
         #endif
     }
 
-    uint64 Hash64(const char str[])
+    uint64 Hash64(const char str[], uint64 seed)
     {
-        return Hash64(str, &str[XlStringLen(str)]);
+        return Hash64(str, &str[XlStringLen(str)], seed);
     }
 
-    uint64 Hash64(const std::string& str)
+    uint64 Hash64(const std::string& str, uint64 seed)
     {
-        return Hash64(AsPointer(str.begin()), AsPointer(str.end()));
+        return Hash64(AsPointer(str.begin()), AsPointer(str.end()), seed);
     }
 
     uint32 Hash32(const void* begin, const void* end, uint32 seed)

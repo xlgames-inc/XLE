@@ -810,7 +810,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
     }
 
     static const float          BoundingBoxLineThickness = 3.f;
-    static const unsigned char  BoundingBoxTriangleAlpha = 0x3f;
+    static const unsigned char  BoundingBoxTriangleAlpha = 0x1f;
     static const unsigned char  BoundingBoxLineAlpha     = 0xff;
 
     void DrawBoundingBox(IOverlayContext* context, const AABoundingBox& box, const Float3x4& localToWorld, ColorB entryColour, unsigned partMask)

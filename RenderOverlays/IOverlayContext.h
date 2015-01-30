@@ -10,6 +10,7 @@
 #include "../RenderCore/Metal/Forward.h"        // just for DeviceContext
 #include "../Core/Types.h"
 #include "../Math/Vector.h"
+#include "../Math/Matrix.h"
 
 namespace RenderOverlays
 {
@@ -127,6 +128,8 @@ namespace RenderOverlays
         virtual void    CaptureState    () = 0;
         virtual void    ReleaseState    () = 0;
         virtual void    SetState        (const OverlayState& state) = 0;
+
+        virtual Float4x4    GetWorldToProjection() = 0;
 
         virtual RenderCore::Metal::DeviceContext*   GetDeviceContext() = 0;
 

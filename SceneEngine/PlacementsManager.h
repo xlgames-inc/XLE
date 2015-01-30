@@ -32,6 +32,7 @@ namespace SceneEngine
 
     class PlacementsRenderer;
     class PlacementsEditor;
+    class PlacementsQuadTree;
 
     /// <summmary>Manages stream and organization of object placements</summary>
     /// In this context, placements are static objects placed in the world. Most
@@ -44,6 +45,9 @@ namespace SceneEngine
             RenderCore::Metal::DeviceContext* context,
             LightingParserContext& parserContext,
             unsigned techniqueIndex);
+
+        auto GetVisibleQuadTrees(const Float4x4& worldToClip) const
+            -> std::vector<std::pair<Float3x4, const PlacementsQuadTree*>>;
 
         std::shared_ptr<PlacementsRenderer> GetRenderer();
         std::shared_ptr<PlacementsEditor> CreateEditor();
@@ -69,7 +73,7 @@ namespace SceneEngine
         class ObjIntersectionDef
         {
         public:
-            Float4x4 _localToWorld;
+            Float3x4 _localToWorld;
             std::pair<Float3, Float3> _localSpaceBoundingBox;
             uint64 _model;
             uint64 _material;
@@ -78,12 +82,12 @@ namespace SceneEngine
         class ObjTransDef
         {
         public:
-            Float4x4        _localToWorld;
+            Float3x4        _localToWorld;
             std::string     _model;
             std::string     _material;
 
             ObjTransDef() {}
-            ObjTransDef(const Float4x4& localToWorld, const std::string& model, const std::string& material)
+            ObjTransDef(const Float3x4& localToWorld, const std::string& model, const std::string& material)
                 : _localToWorld(localToWorld), _model(model), _material(material), _transaction(Error) {}
 
             enum TransactionType { Unchanged, Created, Deleted, Modified, Error };

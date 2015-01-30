@@ -46,5 +46,7 @@ namespace SceneEngine
     protected:
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
+        
+        friend class PlacementsQuadTreeDebugger;
     };
 }

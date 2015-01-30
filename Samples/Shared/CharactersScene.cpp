@@ -395,7 +395,7 @@ namespace Sample
         #if defined(_DEBUG)
             const unsigned npcCount = 5;
         #else
-            const unsigned npcCount = 100;
+            const unsigned npcCount = 5;
         #endif
         for (unsigned c=0; c<npcCount; ++c) {
             pimpl->_characters.push_back(NPCCharacter(*pimpl->_characterModel, pimpl->_mainAnimDecisionTree));

@@ -228,6 +228,7 @@
     <ClInclude Include="..\OrderIndependentTransparency.h" />
     <ClInclude Include="..\PlacementsManager.h" />
     <ClInclude Include="..\PlacementsQuadTree.h" />
+    <ClInclude Include="..\PlacementsQuadTreeDebugger.h" />
     <ClInclude Include="..\Rain.h" />
     <ClInclude Include="..\RefractionsBuffer.h" />
     <ClInclude Include="..\RenderingUtils.h" />

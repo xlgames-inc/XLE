@@ -187,6 +187,9 @@
     <ClInclude Include="..\PlacementsQuadTree.h">
       <Filter>Objects\Placements</Filter>
     </ClInclude>
+    <ClInclude Include="..\PlacementsQuadTreeDebugger.h">
+      <Filter>Objects\Placements</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Lighting And Processing">

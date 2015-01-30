@@ -176,7 +176,7 @@ namespace SceneEngine
     public:
         char        _filename[256];
         uint64      _filenameHash;
-        Float4x4    _cellToWorld;
+        Float3x4    _cellToWorld;
         Float3      _aabbMin, _aabbMax;
     };
 
@@ -203,6 +203,7 @@ namespace SceneEngine
         auto GetCachedPlacements(uint64 hash, const ResChar filename[]) -> const Placements&;
         void SetOverride(uint64 guid, const Placements* placements);
         auto GetModelFormat() -> std::shared_ptr<RenderCore::Assets::IModelFormat>& { return _modelFormat; }
+        auto GetCachedQuadTree(uint64 cellFilenameHash) const -> const PlacementsQuadTree*;
 
             //  We keep a single cache of model files for every cell
             //  This might mean that the SharedStateSet could grow
@@ -263,7 +264,7 @@ namespace SceneEngine
             RenderCore::Metal::DeviceContext* context,
             LightingParserContext& parserContext, 
             const CellRenderInfo& renderInfo,
-            const Float4x4& cellToWorld,
+            const Float3x4& cellToWorld,
             const uint64* filterStart, const uint64* filterEnd);
     };
 
@@ -324,6 +325,15 @@ namespace SceneEngine
         }
     }
 
+    auto PlacementsRenderer::GetCachedQuadTree(uint64 cellFilenameHash) const -> const PlacementsQuadTree*
+    {
+        auto i2 = LowerBound(_cells, cellFilenameHash);
+        if (i2!=_cells.end() && i2->first == cellFilenameHash) {
+            return i2->second._quadTree.get();
+        }
+        return nullptr;
+    }
+
     void PlacementsRenderer::SetOverride(uint64 guid, const Placements* placements)
     {
         CellRenderInfo newRenderInfo;
@@ -365,7 +375,9 @@ namespace SceneEngine
         // It seems useful to me. But if the overhead becomes too great, we can just change
         // to a basic 2d addressing model.
 
-        if (CullAABB_Aligned(AsFloatArray(parserContext.GetProjectionDesc()._worldToProjection), cell._aabbMin, cell._aabbMax)) {
+        if (CullAABB_Aligned(
+                AsFloatArray(parserContext.GetProjectionDesc()._worldToProjection), 
+                cell._aabbMin, cell._aabbMax)) {
             return;
         }
 
@@ -420,7 +432,7 @@ namespace SceneEngine
                 RenderCore::Assets::IModelFormat& modelFormat,
                 const void* filenamesBuffer,
                 const Placements::ObjectReference& obj,
-                const Float4x4& cellToWorld,
+                const Float3x4& cellToWorld,
                 const Float3& cameraPosition);
 
             RendererHelper()
@@ -442,7 +454,7 @@ namespace SceneEngine
             RenderCore::Assets::IModelFormat& modelFormat,
             const void* filenamesBuffer,
             const Placements::ObjectReference& obj,
-            const Float4x4& cellToWorld,
+            const Float3x4& cellToWorld,
             const Float3& cameraPosition)
         {
                 // Basic draw distance calculation
@@ -511,8 +523,8 @@ namespace SceneEngine
                 _currentRenderer = hashedRenderer;
             }
 
-            auto localToWorld = Combine(AsFloat4x4(obj._localToCell), cellToWorld);
-            _renderer->Prepare(cache._preparedRenders, cache._sharedStates, localToWorld);
+            auto localToWorld = Combine(obj._localToCell, cellToWorld);
+            _renderer->Prepare(cache._preparedRenders, cache._sharedStates, AsFloat4x4(localToWorld));
         }
     }
 
@@ -520,7 +532,7 @@ namespace SceneEngine
         RenderCore::Metal::DeviceContext* context,
         LightingParserContext& parserContext, 
         const CellRenderInfo& renderInfo,
-        const Float4x4& cellToWorld,
+        const Float3x4& cellToWorld,
         const uint64* filterStart, const uint64* filterEnd)
     {
         assert(renderInfo._placements);
@@ -647,6 +659,19 @@ namespace SceneEngine
         }
         _pimpl->_renderer->EndRender(context, parserContext, techniqueIndex);
     }
+
+    auto PlacementsManager::GetVisibleQuadTrees(const Float4x4& worldToClip) const
+            -> std::vector<std::pair<Float3x4, const PlacementsQuadTree*>>
+    {
+        std::vector<std::pair<Float3x4, const PlacementsQuadTree*>> result;
+        for (auto i=_pimpl->_cells.begin(); i!=_pimpl->_cells.end(); ++i) {
+            if (!CullAABB(worldToClip, i->_aabbMin, i->_aabbMax)) {
+                auto* tree = _pimpl->_renderer->GetCachedQuadTree(i->_filenameHash);
+                result.push_back(std::make_pair(i->_cellToWorld, tree));
+            }
+        }
+        return std::move(result);
+    }
     
     std::shared_ptr<PlacementsRenderer> PlacementsManager::GetRenderer()
     {
@@ -683,7 +708,7 @@ namespace SceneEngine
                     cfg._baseDir.c_str(), x, y);
                 cell._filenameHash = Hash64(cell._filename);
                 Float3 offset(cfg._cellSize * x + worldOffset[0], cfg._cellSize * y + worldOffset[1], 0.f);
-                cell._cellToWorld = AsFloat4x4(offset);
+                cell._cellToWorld = AsFloat3x4(offset);
 
                     // note -- we could shrink wrap this bounding box around th objects
                     //      inside. This might be necessary, actually, because some objects
@@ -714,6 +739,7 @@ namespace SceneEngine
             uint64 objectGuid);
 
         std::vector<ObjectReference>& GetObjects() { return _objects; }
+        bool HasObject(uint64 guid);
 
         unsigned AddString(const ResChar str[]);
 
@@ -721,9 +747,15 @@ namespace SceneEngine
         DynamicPlacements();
     };
 
-    uint64 BuildGuid()
+    uint64 BuildGuid64()
     {
         static std::mt19937_64 generator(std::random_device().operator()());
+        return generator();
+    }
+
+    static uint32 BuildGuid32()
+    {
+        static std::mt19937 generator(std::random_device().operator()());
         return generator();
     }
 
@@ -777,6 +809,16 @@ namespace SceneEngine
         return newReference._guid;
     }
 
+    bool DynamicPlacements::HasObject(uint64 guid)
+    {
+        ObjectReference dummy;
+        XlZeroMemory(dummy);
+        dummy._guid = guid;
+        auto i = std::lower_bound(_objects.begin(), _objects.end(), dummy, 
+            [](const ObjectReference& lhs, const ObjectReference& rhs) { return lhs._guid < rhs._guid; });
+        return (i != _objects.end() && i->_guid == guid);
+    }
+
     DynamicPlacements::DynamicPlacements(const Placements& copyFrom)
         : Placements(copyFrom)
     {}
@@ -807,7 +849,7 @@ namespace SceneEngine
 
         std::shared_ptr<PlacementsRenderer> _renderer;
         std::shared_ptr<DynamicPlacements> GetDynPlacements(uint64 cellGuid);
-        Float4x4 GetCellToWorld(uint64 cellGuid);
+        Float3x4 GetCellToWorld(uint64 cellGuid);
         const char* GetCellName(uint64 cellGuid);
     };
 
@@ -820,13 +862,13 @@ namespace SceneEngine
         return nullptr;
     }
 
-    Float4x4 PlacementsEditor::Pimpl::GetCellToWorld(uint64 cellGuid)
+    Float3x4 PlacementsEditor::Pimpl::GetCellToWorld(uint64 cellGuid)
     {
         auto p = std::lower_bound(_cells.cbegin(), _cells.cend(), cellGuid, RegisteredCell::CompareHash());
         if (p != _cells.end() && p->_filenameHash == cellGuid) {
             return p->_cellToWorld;
         }
-        return Identity<Float4x4>();
+        return Identity<Float3x4>();
     }
 
     std::shared_ptr<DynamicPlacements> PlacementsEditor::Pimpl::GetDynPlacements(uint64 cellGuid)
@@ -950,7 +992,7 @@ namespace SceneEngine
                 //  We have to test all internal objects. First, transform the bounding
                 //  box into local cell space.
             auto cellSpaceBB = TransformBoundingBox(
-                AsFloat3x4(InvertOrthonormalTransform(i->_cellToWorld)),
+                InvertOrthonormalTransform(i->_cellToWorld),
                 std::make_pair(worldSpaceMins, worldSpaceMaxs));
 
                 //  We need to use the renderer to get either the asset or the 
@@ -1116,8 +1158,24 @@ namespace SceneEngine
                     // This is the correct cell. Look for a dynamic placement associated
                 auto dynPlacements = _editorPimpl->GetDynPlacements(i->_filenameHash);
 
-                localToCell = AsFloat3x4(Combine(newState._localToWorld, InvertOrthonormalTransform(i->_cellToWorld)));
-                auto id = BuildGuid();
+                localToCell = Combine(newState._localToWorld, InvertOrthonormalTransform(i->_cellToWorld));
+                
+                    //  Build a GUID for this object. We're going to sort by GUID, and we want
+                    //  objects with the name model and material to appear together. So let's
+                    //  build the top 32 bits from the model and material hash. The bottom 
+                    //  32 bits can be a random number.
+                    //  Note that it's possible that the bottom 32 bits could collide with an
+                    //  existing object. It's unlikely, but possible. So let's make sure we
+                    //  have a unique GUID before we add it.
+                auto modelAndMaterialHash = Hash64(materialFilename, Hash64(newState._model));
+                unsigned idTopPart = unsigned((modelAndMaterialHash >> 32ull) ^ modelAndMaterialHash);
+                uint64 id;
+                for (;;) {
+                    auto id32 = BuildGuid32();
+                    id = (uint64(idTopPart) << 32ull) | uint64(id32);
+                    if (!dynPlacements->HasObject(id)) { break; }
+                }
+
                 dynPlacements->AddPlacement(
                     localToCell, TransformBoundingBox(localToCell, model.GetBoundingBox()),
                     newState._model.c_str(), materialFilename.c_str(), id);
@@ -1134,7 +1192,7 @@ namespace SceneEngine
         newObj._transaction = ObjTransDef::Created;
 
         ObjTransDef originalState;
-        originalState._localToWorld = Identity<Float4x4>();
+        originalState._localToWorld = Identity<Float3x4>();
         originalState._transaction = ObjTransDef::Error;
 
         auto insertLoc = std::lower_bound(_guids.begin(), _guids.end(), guid, CompareGUID);
@@ -1170,7 +1228,7 @@ namespace SceneEngine
         PlacementsTransform localToCell;
         std::string materialFilename = newState._material;
         if (newState._transaction != ObjTransDef::Deleted && newState._transaction != ObjTransDef::Error) {
-            localToCell = AsFloat3x4(Combine(newState._localToWorld, InvertOrthonormalTransform(cellToWorld)));
+            localToCell = Combine(newState._localToWorld, InvertOrthonormalTransform(cellToWorld));
 
             auto& model = _editorPimpl->_renderer->GetCachedModel(newState._model.c_str());
             cellSpaceBoundary = TransformBoundingBox(localToCell, model.GetBoundingBox());
@@ -1272,7 +1330,7 @@ namespace SceneEngine
                 } else {
                         // we couldn't find an original for this object. It's invalid
                     ObjTransDef def;
-                    def._localToWorld = Identity<Float4x4>();
+                    def._localToWorld = Identity<Float3x4>();
                     def._transaction = ObjTransDef::Error;
                     originalState.push_back(def);
                 }

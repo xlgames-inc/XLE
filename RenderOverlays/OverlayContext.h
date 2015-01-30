@@ -61,6 +61,8 @@ namespace RenderOverlays
 
         RenderCore::Metal::DeviceContext*   GetDeviceContext();
 
+        Float4x4    GetWorldToProjection();
+
         ImmediateOverlayContext(RenderCore::Metal::DeviceContext* deviceContext, const Float4x4& viewProjectionTransform = Identity<Float4x4>());
         ~ImmediateOverlayContext();
 
@@ -76,6 +78,8 @@ namespace RenderOverlays
 
         RenderCore::Metal::ConstantBufferPacket _viewportConstantBuffer;
         RenderCore::Metal::ConstantBufferPacket _globalTransformConstantBuffer;
+
+        Float4x4 _worldToProjection;
 
         enum VertexFormat { PC, PCT, PCR, PCTT };
         class DrawCall

@@ -262,7 +262,7 @@ namespace Tools
         }
 
         auto res = inputObj;
-        res._localToWorld = Combine(res._localToWorld, transform);
+        res._localToWorld = AsFloat3x4(Combine(res._localToWorld, transform));
         return res;
     }
 
@@ -486,7 +486,7 @@ namespace Tools
                 for (unsigned c=0; c<objCount; ++c) {
                     auto obj = _transaction->GetObject(c);
                     auto localBoundingBox = _transaction->GetLocalBoundingBox(c);
-                    auto worldSpaceBounding = TransformBoundingBox(AsFloat3x4(obj._localToWorld), localBoundingBox);
+                    auto worldSpaceBounding = TransformBoundingBox(obj._localToWorld, localBoundingBox);
                     totalMins[0] = std::min(worldSpaceBounding.first[0], totalMins[0]);
                     totalMins[1] = std::min(worldSpaceBounding.first[1], totalMins[1]);
                     totalMins[2] = std::min(worldSpaceBounding.first[2], totalMins[2]);
@@ -789,6 +789,13 @@ namespace Tools
             const char modelName[], const char materialName[]);
     };
 
+    static void Combine_InPlace_(RotationZ rotation, Float3x4& transform)
+    {
+        auto temp = AsFloat4x4(transform);
+        Combine_InPlace(rotation, temp);
+        transform = AsFloat3x4(temp);
+    }
+
     void PlaceSingle::MoveObject(const Float3& newLocation, 
         const char modelName[], const char materialName[])
     {
@@ -797,17 +804,17 @@ namespace Tools
         }
 
         SceneEngine::PlacementsEditor::ObjTransDef newState(
-            AsFloat4x4(newLocation), _manInterface->GetSelectedModel(), materialName);
+            AsFloat3x4(newLocation), _manInterface->GetSelectedModel(), materialName);
         if (_doRandomRotation) {
-            Combine_InPlace(RotationZ(_placementRotation), newState._localToWorld);
+            Combine_InPlace_(RotationZ(_placementRotation), newState._localToWorld);
         }
 
         TRY {
             if (!_transaction->GetObjectCount()) {
                 _placementRotation = rand() * 2.f * gPI / float(RAND_MAX);
-                newState._localToWorld = AsFloat4x4(newLocation);
+                newState._localToWorld = AsFloat3x4(newLocation);
                 if (_doRandomRotation) {
-                    Combine_InPlace(RotationZ(_placementRotation), newState._localToWorld);
+                    Combine_InPlace_(RotationZ(_placementRotation), newState._localToWorld);
                 }
 
                 _transaction->Create(newState);
@@ -1039,7 +1046,7 @@ namespace Tools
     /// <summary>Compare an axially aligned bounding box to a circle (in 2d, on the XY plane)</summary>
     /// This is a cheap alternative to box vs cylinder
     static bool AABBVsCircleInXY(
-        float circleRadius, const std::pair<Float3, Float3>& boundingBox, const Float4x4& localToCircleSpace)
+        float circleRadius, const std::pair<Float3, Float3>& boundingBox, const Float3x4& localToCircleSpace)
     {
         Float3 pts[] = 
         {
@@ -1226,7 +1233,7 @@ namespace Tools
                         //
                         // This won't produce the same result as cylinder vs box for the caps of the cylinder
                         //      -- but we don't really care in this case.
-                    Float4x4 localToCircle = Combine(objectDef._localToWorld, AsFloat4x4(-centre));
+                    auto localToCircle = Combine(objectDef._localToWorld, AsFloat3x4(-centre));
                     return AABBVsCircleInXY(_radius, objectDef._localSpaceBoundingBox, localToCircle);
                 }
 
@@ -1266,7 +1273,7 @@ namespace Tools
             auto objectToWorld = AsFloat4x4(Expand(pt, height));
             Combine_InPlace(RotationZ(rand() * 2.f * gPI / float(RAND_MAX)), objectToWorld);
             trans->Create(SceneEngine::PlacementsEditor::ObjTransDef(
-                objectToWorld, modelName, materialName));
+                AsFloat3x4(objectToWorld), modelName, materialName));
         }
 
         trans->Commit();

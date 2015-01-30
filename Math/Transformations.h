@@ -114,7 +114,8 @@ namespace Math
         //      of more general operations.
         //
     Float4x4        InvertOrthonormalTransform(const Float4x4& input);
-    bool            IsOrthonormal(const Float4x4& input);
+    Float3x4        InvertOrthonormalTransform(const Float3x4& input);
+    bool            IsOrthonormal(const Float3x3& input, float tolerance = 0.01f);
     Float4x4        Expand(const Float3x3& rotationScalePart, const Float3& translationPart);
 
         //
@@ -137,6 +138,11 @@ namespace Math
     inline Float3   ExtractRight(const Float4x4& matrix)            { return  Float3(matrix(0,0), matrix(1,0), matrix(2,0)); }
     inline Float3   ExtractForward(const Float4x4& matrix)          { return  Float3(matrix(0,1), matrix(1,1), matrix(2,1)); }
     inline Float3   ExtractUp(const Float4x4& matrix)               { return  Float3(matrix(0,2), matrix(1,2), matrix(2,2)); }
+
+    inline Float3   ExtractTranslation(const Float3x4& matrix)      { return  Float3(matrix(0,3), matrix(1,3), matrix(2,3)); }
+    inline Float3   ExtractRight(const Float3x4& matrix)            { return  Float3(matrix(0,0), matrix(1,0), matrix(2,0)); }
+    inline Float3   ExtractForward(const Float3x4& matrix)          { return  Float3(matrix(0,1), matrix(1,1), matrix(2,1)); }
+    inline Float3   ExtractUp(const Float3x4& matrix)               { return  Float3(matrix(0,2), matrix(1,2), matrix(2,2)); }
 
     inline Float3   ExtractRight_Cam(const Float4x4& matrix)        { return  Float3(matrix(0,0), matrix(1,0), matrix(2,0)); }
     inline Float3   ExtractForward_Cam(const Float4x4& matrix)      { return -Float3(matrix(0,2), matrix(1,2), matrix(2,2)); }
@@ -167,6 +173,8 @@ namespace Math
             // placeholder for better implementation!
         return AsFloat4x4(secondTransform) * firstTransform;
     }
+
+    Float3x4    Combine(const Float3x4& firstTransform, const Float3x4& secondTransform);
 
     Float4x4    MakeCameraToWorld(const Float3& forward, const Float3& up, const Float3& position);
     

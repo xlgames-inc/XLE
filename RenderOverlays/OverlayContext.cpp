@@ -575,10 +575,16 @@ namespace RenderOverlays
         return _deviceContext.get();
     }
 
+    Float4x4    ImmediateOverlayContext::GetWorldToProjection()
+    {
+        return _worldToProjection;
+    }
+
     ImmediateOverlayContext::ImmediateOverlayContext(RenderCore::Metal::DeviceContext* deviceContext, const Float4x4& viewProjectionTransform)
     : _deviceContext(deviceContext)
     , _font(GetX2Font("Raleway", 16))
     , _defaultTextStyle(*_font.get())
+    , _worldToProjection(viewProjectionTransform)
     {
         _writePointer = 0;
         _drawCalls.reserve(64);
