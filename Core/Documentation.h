@@ -33,9 +33,9 @@
         Most projects are self-explanatory. But these may not be clear:
             \li **Foreign** This contains some small foreign libraries that don't have their own project file
             \li **ConsoleRig** This contains the behaviour for the debugging console, debugging output and cvars.
-            \li **PlatformRig** Platform initialisation and event handling should be in a high-level library called "PlatformRig".
-                Currently, this is the startup project, and contains some code for demoing the engine.
+            \li **PlatformRig** Platform initialisation and OS event handling.
             \li **RenderOverlays** Contains code for rendering debugging and profiling tools over the normal game scene.
+            \li **BufferUploads** manages some streaming tasks and background uploads of data to the GPU
 
         In Visual Studio, add dependencies to the projects you want to use. In some cases you must select which
         compilation configuration to use. In particular, for the following projects, you must select either OpenGL
@@ -76,8 +76,8 @@
             //  We need a window, even in fullscreen modes. In DirectX11, there is no "exclusive
             //  mode" any more. So, the easiest way to go fullscreen is to just make a window that
             //  covers the entire screen.
-        PlatformRig::WindowsSupport::VanillaWindow window;
-        RECT clientRect; GetClientRect((HWND)window.GetHWND(), &clientRect);
+        PlatformRig::OverlappedWindow window;
+        auto clientRect = window.GetRect();
 
             //  Construct the "Console" object from ConsoleRig. This is a standard debugging
             //  tool that many system use.
@@ -104,7 +104,9 @@
             //  To solve this, it's recommended to do presentation chain management in the same thread
             //  as the main windows API thread. Windows handles this case in a way that will not cause
             //  deadlocks.
-        auto presentationChain   = renderDevice->CreatePresentationChain(window.GetHWND(), clientRect.right - clientRect.left, clientRect.bottom - clientRect.top);
+        auto presentationChain   = renderDevice->CreatePresentationChain(
+            window.GetUnderlyingHandle(), 
+            clientRect.second[0] - clientRect.first[0], clientRect.second[1] - clientRect.first[1]);
 
             //  Create the buffer uploads manager. This will be required by SceneEngine code for creating
             //  and managing device resources.

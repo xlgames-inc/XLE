@@ -32,33 +32,33 @@ DOXYFILE_ENCODING      = UTF-8
 # title of most generated pages and in a few other places.
 # The default value is: My Project.
 
-PROJECT_NAME           = XLE
+PROJECT_NAME           = 
 
 # The PROJECT_NUMBER tag can be used to enter a project or revision number. This
 # could be handy for archiving the generated documentation or if some version
 # control system is used.
 
-PROJECT_NUMBER         = 
+PROJECT_NUMBER         = v0.02.0
 
 # Using the PROJECT_BRIEF tag one can provide an optional one line description
 # for a project that appears at the top of each page and should give viewer a
 # quick idea about the purpose of the project. Keep the description short.
 
-PROJECT_BRIEF          = "XLE prototype engine"
+PROJECT_BRIEF          = 
 
 # With the PROJECT_LOGO tag one can specify an logo or icon that is included in
 # the documentation. The maximum height of the logo should not exceed 55 pixels
 # and the maximum width should not exceed 200 pixels. Doxygen will copy the logo
 # to the output directory.
 
-PROJECT_LOGO           = 
+PROJECT_LOGO           = ./doxyconf/xlelogo3.svg
 
 # The OUTPUT_DIRECTORY tag is used to specify the (relative or absolute) path
 # into which the generated documentation will be written. If a relative path is
 # entered, it will be relative to the location where doxygen was started. If
 # left blank the current directory will be used.
 
-OUTPUT_DIRECTORY       = E:/work/xle/GeneratedDocumentation
+OUTPUT_DIRECTORY       = ../../xledoc
 
 # If the CREATE_SUBDIRS tag is set to YES, then doxygen will create 4096 sub-
 # directories (in 2 levels) under the output directory of each output format and
@@ -862,7 +862,6 @@ EXCLUDE_PATTERNS       = */foreign/* \
                          "*/My Amplifier XE*/*" \
                          */tools/hypergraph/* \
                          */tools/nodeeditor/* \
-                         */CryCommon_X*/* \
                          */OpenGLES/* \
                          *nvapi.h \
                          */ShaderParser.h \
@@ -888,10 +887,7 @@ EXCLUDE_SYMBOLS        = Detail \
                          COLLADAFW \
                          boost \
                          clix \
-                         CImageExtensionHelper \
-                         stdext \
-                         XlStlElemAllocHelper \
-                         WaterVolumeStaticData
+                         stdext
 
 # The EXAMPLE_PATH tag can be used to specify one or more files or directories
 # that contain example code fragments that are included (see the \include
@@ -2044,7 +2040,6 @@ PREDEFINED             = XLE \
                          FLEX_USE_VTABLE(X)=1 \
                          DOXYGEN \
                          IDESTRUCTOR= \
-                         UNIQUE_VIRTUAL_WRAPPER(X)=<NoIfaceWrapper.h> \
                          _MSC_VER \
                          _CPPUNWIND \
                          _CPPRTTI \
@@ -2225,14 +2220,14 @@ CLASS_GRAPH            = YES
 # The default value is: YES.
 # This tag requires that the tag HAVE_DOT is set to YES.
 
-COLLABORATION_GRAPH    = YES
+COLLABORATION_GRAPH    = NO
 
 # If the GROUP_GRAPHS tag is set to YES then doxygen will generate a graph for
 # groups, showing the direct groups dependencies.
 # The default value is: YES.
 # This tag requires that the tag HAVE_DOT is set to YES.
 
-GROUP_GRAPHS           = YES
+GROUP_GRAPHS           = NO
 
 # If the UML_LOOK tag is set to YES doxygen will generate inheritance and
 # collaboration diagrams in a style similar to the OMG's Unified Modeling
@@ -2290,7 +2285,7 @@ INCLUDED_BY_GRAPH      = YES
 # The default value is: NO.
 # This tag requires that the tag HAVE_DOT is set to YES.
 
-CALL_GRAPH             = YES
+CALL_GRAPH             = NO
 
 # If the CALLER_GRAPH tag is set to YES then doxygen will generate a caller
 # dependency graph for every global function or class method.
@@ -2301,7 +2296,7 @@ CALL_GRAPH             = YES
 # The default value is: NO.
 # This tag requires that the tag HAVE_DOT is set to YES.
 
-CALLER_GRAPH           = YES
+CALLER_GRAPH           = NO
 
 # If the GRAPHICAL_HIERARCHY tag is set to YES then doxygen will graphical
 # hierarchy of all classes instead of a textual one.
