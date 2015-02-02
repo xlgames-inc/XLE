@@ -101,9 +101,11 @@ namespace Sample
         const SceneParseSettings& parseSettings,
         unsigned frustumIndex, unsigned techniqueIndex) const 
     {
-        SceneParseSettings settings = parseSettings;
-        settings._toggles &= ~SceneParseSettings::Toggles::Terrain;
-        ExecuteScene(context, parserContext, settings, techniqueIndex);
+        if (Tweakable("DoShadows", true)) {
+            SceneParseSettings settings = parseSettings;
+            settings._toggles &= ~SceneParseSettings::Toggles::Terrain;
+            ExecuteScene(context, parserContext, settings, techniqueIndex);
+        }
     }
 
     RenderCore::CameraDesc EnvironmentSceneParser::GetCameraDesc() const 

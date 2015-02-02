@@ -1058,7 +1058,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
         const KeyId ctrl    = KeyId_Make("control");
         const KeyId left    = KeyId_Make("left");
         const KeyId right   = KeyId_Make("right");
-        if (evnt.IsHeld(ctrl)) {
+        if (evnt.IsHeld(ctrl) && !_widgets.empty()) {
             if (evnt.IsPress(left)) {
                 const unsigned panelIndex = 0;
                 _panels[panelIndex]._widgetIndex = (_panels[panelIndex]._widgetIndex + _widgets.size() - 1)%_widgets.size();
@@ -1224,7 +1224,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
         _currentMouseHeld = 0;
 
         Panel p;
-        p._widgetIndex = 0;
+        p._widgetIndex = size_t(-1);
         p._size = .5f;
         p._horizontalDivider = false;
         _panels.push_back(p);

@@ -28,7 +28,6 @@ namespace PlatformRig
 
     void InitDebugDisplays(RenderOverlays::DebuggingDisplay::DebugScreensSystem& debugSystem)
     {
-        auto consoleDisplay                 = std::make_shared<PlatformRig::Overlays::ConsoleDisplay>(std::ref(ConsoleRig::Console::GetInstance()));
         auto oceanSettingsDisplay           = std::make_shared<::Overlays::OceanSettingsDisplay>(std::ref(SceneEngine::GlobalOceanSettings));
         auto oceanLightingSettingsDisplay   = std::make_shared<::Overlays::OceanLightingSettingsDisplay>(std::ref(SceneEngine::GlobalOceanLightingSettings));
         auto tonemapSettingsDisplay         = std::make_shared<::Overlays::ToneMapSettingsDisplay>(std::ref(SceneEngine::GlobalToneMapSettings));
@@ -39,8 +38,6 @@ namespace PlatformRig
         auto gridIteratorDisplay            = std::make_shared<PlatformRig::Overlays::GridIteratorDisplay>();
         auto volFogDisplay                  = std::make_shared<::Overlays::VolumetricFogSettings>(std::ref(SceneEngine::GlobalVolumetricFogMaterial));
         auto dualContouringTest             = std::make_shared<PlatformRig::Overlays::DualContouringTest>();
-        debugSystem.Register(consoleDisplay, "[Console] Console");
-
         debugSystem.Register(modelBrowser, "[Browser] Model browser");
         debugSystem.Register(textureBrowser, "[Browser] Texture browser");
 
