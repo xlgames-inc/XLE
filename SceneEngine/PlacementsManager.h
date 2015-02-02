@@ -49,6 +49,10 @@ namespace SceneEngine
         auto GetVisibleQuadTrees(const Float4x4& worldToClip) const
             -> std::vector<std::pair<Float3x4, const PlacementsQuadTree*>>;
 
+        struct ObjectBoundingBoxes { const std::pair<Float3, Float3> * _boundingBox; unsigned _stride; unsigned _count; };
+        auto GetObjectBoundingBoxes(const Float4x4& worldToClip) const
+            -> std::vector<std::pair<Float3x4, ObjectBoundingBoxes>>;
+
         std::shared_ptr<PlacementsRenderer> GetRenderer();
         std::shared_ptr<PlacementsEditor> CreateEditor();
 

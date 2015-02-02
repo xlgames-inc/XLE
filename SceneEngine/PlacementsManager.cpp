@@ -672,6 +672,23 @@ namespace SceneEngine
         }
         return std::move(result);
     }
+
+    auto PlacementsManager::GetObjectBoundingBoxes(const Float4x4& worldToClip) const
+            -> std::vector<std::pair<Float3x4, ObjectBoundingBoxes>>
+    {
+        std::vector<std::pair<Float3x4, ObjectBoundingBoxes>> result;
+        for (auto i=_pimpl->_cells.begin(); i!=_pimpl->_cells.end(); ++i) {
+            if (!CullAABB(worldToClip, i->_aabbMin, i->_aabbMax)) {
+                auto& placements = Assets::GetAsset<Placements>(i->_filename);
+                ObjectBoundingBoxes obb;
+                obb._boundingBox = &placements.GetObjectReferences()->_cellSpaceBoundary;
+                obb._stride = sizeof(Placements::ObjectReference);
+                obb._count = placements.GetObjectReferenceCount();
+                result.push_back(std::make_pair(i->_cellToWorld, obb));
+            }
+        }
+        return std::move(result);
+    }
     
     std::shared_ptr<PlacementsRenderer> PlacementsManager::GetRenderer()
     {

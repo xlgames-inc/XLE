@@ -236,10 +236,10 @@ namespace Math
             corners[2], corners[3],
             A0, A1, A2, &cornerClipSpaceXYZ[2][0]);
         TestAABB_SSE_TransCorner(
-            corners[3], corners[4],
+            corners[4], corners[5],
             A0, A1, A2, &cornerClipSpaceXYZ[4][0]);
         TestAABB_SSE_TransCorner(
-            corners[5], corners[6],
+            corners[6], corners[7],
             A0, A1, A2, &cornerClipSpaceXYZ[6][0]);
 
             //  Now do the "W" parts.. Do 4 at a time to try to cover latency
