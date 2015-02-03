@@ -151,7 +151,7 @@ namespace Sample
                 context->Bind(CommonResources()._dssReadWrite);
                 context->Bind(CommonResources()._blendOpaque);
 
-                GPUProfiler::TriggerEvent(*context, gpuProfiler.get(), "RenderCharacters", GPUProfiler::Begin);
+                GPUProfiler::TriggerEvent(*context, g_gpuProfiler.get(), "RenderCharacters", GPUProfiler::Begin);
 
                 auto si = _pimpl->_preallocatedState.begin();
                 for (auto i=_pimpl->_stateCache.begin(); i!=_pimpl->_stateCache.end(); ++i, ++si) {
@@ -168,7 +168,7 @@ namespace Sample
                     } CATCH_END
                 }
 
-                GPUProfiler::TriggerEvent(*context, gpuProfiler.get(), "RenderCharacters", GPUProfiler::End);
+                GPUProfiler::TriggerEvent(*context, g_gpuProfiler.get(), "RenderCharacters", GPUProfiler::End);
 
             }
 
@@ -217,7 +217,7 @@ namespace Sample
 
         namespace GPUProfiler = RenderCore::Metal::GPUProfiler;
 
-        GPUProfiler::TriggerEvent(*context, gpuProfiler.get(), "PrepareAnimation", GPUProfiler::Begin);
+        GPUProfiler::TriggerEvent(*context, g_gpuProfiler.get(), "PrepareAnimation", GPUProfiler::Begin);
         RenderCore::Metal::GPUProfiler::DebugAnnotation anno(*context, L"PrepareCharacters");
 
             //
@@ -238,7 +238,7 @@ namespace Sample
             } CATCH_END
         }
 
-        GPUProfiler::TriggerEvent(*context, gpuProfiler.get(), "PrepareAnimation", GPUProfiler::End);
+        GPUProfiler::TriggerEvent(*context, g_gpuProfiler.get(), "PrepareAnimation", GPUProfiler::End);
     }
 
     void CharactersScene::Cull(const Float4x4& worldToProjection)

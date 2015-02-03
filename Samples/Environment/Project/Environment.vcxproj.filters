@@ -18,6 +18,12 @@
     <ClCompile Include="..\WinAPI\WindowStartup.cpp">
       <Filter>WinAPI</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\Shared\OverlaySystem.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Shared\PlacementsOverlaySystem.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\EnvironmentScene.h" />
@@ -34,6 +40,12 @@
       <Filter>Shared</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Shared\SampleGlobals.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Shared\OverlaySystem.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Shared\PlacementsOverlaySystem.h">
       <Filter>Shared</Filter>
     </ClInclude>
   </ItemGroup>

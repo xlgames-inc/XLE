@@ -9,6 +9,8 @@
 #include "../Shared/SampleInputHandler.h"
 #include "../Shared/SampleGlobals.h"
 #include "../Shared/Character.h"
+#include "../Shared/OverlaySystem.h"
+#include "../Shared/PlacementsOverlaySystem.h"
 
 #include "../../PlatformRig/OverlappedWindow.h"
 #include "../../PlatformRig/MainInputHandler.h"
@@ -16,17 +18,6 @@
 #include "../../PlatformRig/DebuggingDisplays/GPUProfileDisplay.h"
 #include "../../PlatformRig/FrameRig.h"
 #include "../../PlatformRig/PlatformRigUtil.h"
-#include "../../PlatformRig/ManipulatorsUtil.h"
-#include "../../PlatformRig/PlacementsManipulators.h"
-#include "../../PlatformRig/CameraManager.h"
-
-#include "../../RenderCore/IDevice.h"
-#include "../../RenderCore/Assets/ColladaCompilerInterface.h"
-#include "../../RenderCore/Metal/GPUProfiler.h"
-#include "../../RenderCore/Metal/State.h"
-#include "../../RenderOverlays/Font.h"
-#include "../../RenderOverlays/DebugHotKeys.h"
-#include "../../BufferUploads/IBufferUploads.h"
 
 #include "../../SceneEngine/Techniques.h"
 #include "../../SceneEngine/SceneEngineUtility.h"
@@ -34,19 +25,22 @@
 #include "../../SceneEngine/LightingParserStandardPlugin.h"
 #include "../../SceneEngine/LightingParserContext.h"
 #include "../../SceneEngine/ResourceBox.h"
-#include "../../SceneEngine/SceneParser.h"
-#include "../../SceneEngine/LightDesc.h"
 #include "../../SceneEngine/PlacementsQuadTreeDebugger.h"
 #include "../../SceneEngine/IntersectionTest.h"
 
-#include "../../ConsoleRig/Console.h"
+#include "../../RenderCore/IDevice.h"
+#include "../../RenderCore/Assets/ColladaCompilerInterface.h"
+#include "../../RenderCore/Metal/GPUProfiler.h"
+#include "../../RenderOverlays/Font.h"
+#include "../../RenderOverlays/DebugHotKeys.h"
+#include "../../BufferUploads/IBufferUploads.h"
+#include "../../Assets/CompileAndAsyncManager.h"
+
 #include "../../ConsoleRig/Log.h"
-#include "../../ConsoleRig/IncludeLUA.h"
+#include "../../ConsoleRig/Console.h"
 #include "../../Utility/StringFormat.h"
 
 #include <functional>
-
-#include "../../PlatformRig/DebuggingDisplays/ConsoleDisplay.h"
 
 unsigned FrameRenderCount = 0;
 
@@ -56,7 +50,7 @@ namespace Sample
 
         // "GPU profiler" doesn't have a place to live yet. We just manage it here, at 
         //  the top level
-    RenderCore::Metal::GPUProfiler::Ptr gpuProfiler;
+    RenderCore::Metal::GPUProfiler::Ptr g_gpuProfiler;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -118,217 +112,11 @@ namespace Sample
         }
     };    
 
-    class IOverlaySystem
-    {
-    public:
-        typedef RenderOverlays::DebuggingDisplay::IInputListener IInputListener;
-
-        virtual std::shared_ptr<IInputListener> GetInputListener() = 0;
-
-        virtual void RenderToScene(
-            RenderCore::Metal::DeviceContext* devContext, 
-            SceneEngine::LightingParserContext& parserContext) = 0; 
-        virtual void RenderWidgets(RenderCore::IDevice* device, const Float4x4& worldToProjection) = 0;
-        virtual void SetActivationState(bool newState) = 0;
-
-        virtual ~IOverlaySystem();
-    };
-
-    IOverlaySystem::~IOverlaySystem() {}
-
-    class Manipulators : public IOverlaySystem
-    {
-    public:
-        Manipulators(
-            std::shared_ptr<EnvironmentSceneParser> mainScene, 
-            std::shared_ptr<SceneEngine::TechniqueContext> globalTechContext)
-        {
-            _placementsManipulators = std::make_shared<::Tools::PlacementsManipulatorsManager>(
-                mainScene->GetPlacementManager(),
-                mainScene->GetTerrainManager(), 
-                std::make_shared<SceneEngine::IntersectionTestContext>(mainScene, std::move(globalTechContext)));
-        }
-
-        std::shared_ptr<IInputListener> GetInputListener()
-        {
-            return _placementsManipulators->GetInputLister();
-        }
-
-        void RenderToScene(
-            RenderCore::Metal::DeviceContext* devContext, 
-            SceneEngine::LightingParserContext& parserContext)
-        {
-            _placementsManipulators->RenderToScene(devContext, parserContext);
-        }
-
-        void RenderWidgets(
-            RenderCore::IDevice* device, 
-            const Float4x4& worldToProjection)
-        {
-            _placementsManipulators->RenderWidgets(device, worldToProjection);
-        }
-
-        void SetActivationState(bool) {}
-
-    private:
-        std::shared_ptr<::Tools::PlacementsManipulatorsManager> _placementsManipulators;
-    };
-
-    class ConsoleOverlaySystem : public IOverlaySystem
-    {
-    public:
-        std::shared_ptr<IInputListener> GetInputListener()
-        {
-            return _screens;
-        }
-
-        void RenderWidgets(RenderCore::IDevice* device, const Float4x4& worldToProjection)
-        {
-            _screens->Render(device, worldToProjection);
-        }
-
-        void RenderToScene(
-            RenderCore::Metal::DeviceContext* devContext, 
-            SceneEngine::LightingParserContext& parserContext) {}
-        void SetActivationState(bool) {}
-
-        ConsoleOverlaySystem()
-        {
-            _screens = std::make_shared<DebugScreensSystem>();
-
-            auto consoleDisplay = std::make_shared<PlatformRig::Overlays::ConsoleDisplay>(
-                std::ref(ConsoleRig::Console::GetInstance()));
-            _screens->Register(consoleDisplay, "[Console] Console", DebugScreensSystem::SystemDisplay);
-        }
-
-    private:
-        typedef RenderOverlays::DebuggingDisplay::DebugScreensSystem DebugScreensSystem;
-        std::shared_ptr<DebugScreensSystem>     _screens;
-    };
-
-    class CameraOverlaySystem : public IOverlaySystem
-    {
-    public:
-        std::shared_ptr<IInputListener> GetInputListener()
-        {
-            return _inputListener;
-        }
-
-        void RenderWidgets(RenderCore::IDevice* device, const Float4x4& worldToProjection) {}
-        void RenderToScene(
-            RenderCore::Metal::DeviceContext* devContext, 
-            SceneEngine::LightingParserContext& parserContext) {}
-        void SetActivationState(bool) {}
-
-        CameraOverlaySystem(std::shared_ptr<IInputListener> inputListener)
-            : _inputListener(std::move(inputListener))
-        {}
-
-    private:
-        std::shared_ptr<IInputListener> _inputListener;
-    };
-
-    class OverlaySystemManager : public IOverlaySystem
-    {
-    public:
-        std::shared_ptr<IInputListener> GetInputListener()
-        {
-            return _inputListener;
-        }
-
-        void RenderWidgets(RenderCore::IDevice* device, const Float4x4& worldToProjection) 
-        {
-            if (_activeChildIndex >= 0 && _activeChildIndex < signed(_childSystems.size())) {
-                _childSystems[_activeChildIndex].second->RenderWidgets(device, worldToProjection);
-            }
-        }
-
-        void RenderToScene(
-            RenderCore::Metal::DeviceContext* devContext, 
-            SceneEngine::LightingParserContext& parserContext) 
-        {
-            if (_activeChildIndex >= 0 && _activeChildIndex < signed(_childSystems.size())) {
-                _childSystems[_activeChildIndex].second->RenderToScene(devContext, parserContext);
-            }
-        }
-
-        void SetActivationState(bool newState) 
-        {
-            if (!newState) {
-                if (_activeChildIndex >= 0 && _activeChildIndex < signed(_childSystems.size())) {
-                    _childSystems[_activeChildIndex].second->SetActivationState(false);
-                }
-                _activeChildIndex = -1;
-            }
-        }
-
-        typedef RenderOverlays::DebuggingDisplay::KeyId KeyId;
-        void AddSystem(KeyId activator, std::shared_ptr<IOverlaySystem> system)
-        {
-            _childSystems.push_back(std::make_pair(activator, std::move(system)));
-        }
-
-        OverlaySystemManager() : _activeChildIndex(-1)
-        {
-            _inputListener = std::make_shared<InputListener>(this);
-        }
-
-    private:
-        class InputListener : public IInputListener
-        {
-        public:
-            virtual bool    OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
-            {
-                using namespace RenderOverlays::DebuggingDisplay;
-                static const KeyId shiftKey = KeyId_Make("shift");
-                if (evnt.IsHeld(shiftKey)) {
-                    for (auto i=_parent->_childSystems.cbegin(); i!=_parent->_childSystems.cend(); ++i) {
-                        if (evnt.IsPress(i->first)) {
-                            auto newIndex = std::distance(_parent->_childSystems.cbegin(), i);
-
-                            if (_parent->_activeChildIndex >= 0 && _parent->_activeChildIndex < signed(_parent->_childSystems.size())) {
-                                _parent->_childSystems[_parent->_activeChildIndex].second->SetActivationState(false);
-                            }
-                            
-                            if (signed(newIndex) != _parent->_activeChildIndex) {
-                                _parent->_activeChildIndex = signed(newIndex);
-                                if (_parent->_activeChildIndex >= 0 && _parent->_activeChildIndex < signed(_parent->_childSystems.size())) {
-                                    _parent->_childSystems[_parent->_activeChildIndex].second->SetActivationState(true);
-                                }
-                            } else {
-                                _parent->_activeChildIndex = -1;
-                            }
-
-                            return true;
-                        }
-                    }
-                }
-
-                if (_parent->_activeChildIndex >= 0 && _parent->_activeChildIndex < signed(_parent->_childSystems.size())) {
-
-                        //  if we have an active overlay system, we always consume all input!
-                        //  Nothing gets through to the next level
-                    _parent->_childSystems[_parent->_activeChildIndex].second->GetInputListener()->OnInputEvent(evnt);
-                    return true;
-                }
-
-                return false;
-            }
-
-            InputListener(OverlaySystemManager* parent) : _parent(parent) {}
-        protected:
-            OverlaySystemManager* _parent;
-        };
-
-        signed _activeChildIndex;
-        std::vector<std::pair<KeyId,std::shared_ptr<IOverlaySystem>>> _childSystems;
-        std::shared_ptr<InputListener> _inputListener;
-    };
-
     static std::shared_ptr<PlatformRig::MainInputHandler> CreateInputHandler(
         std::shared_ptr<EnvironmentSceneParser> mainScene, 
         std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem> debugScreens,
-        std::shared_ptr<PlatformRig::GlobalTechniqueContext> globalTechContext,
+        std::shared_ptr<SceneEngine::IntersectionTestContext> intersectionTestContext,
+        std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener> cameraInputListener,
         IOverlaySystem* overlaySystem)
     {
         auto mainInputHandler = std::make_shared<PlatformRig::MainInputHandler>();
@@ -338,15 +126,14 @@ namespace Sample
         }
         mainInputHandler->AddListener(std::make_shared<PlatformRig::DebugScreensInputHandler>(std::move(debugScreens)));
 
-            // tie in input for player character
+            // tie in input for player character & camera
+        mainInputHandler->AddListener(std::move(cameraInputListener));
         mainInputHandler->AddListener(mainScene->GetPlayerCharacter());
 
             // some special input options for samples
-        auto intersectionContext = std::make_shared<SceneEngine::IntersectionTestContext>(
-            mainScene, std::move(globalTechContext));
         mainInputHandler->AddListener(
             std::make_shared<SampleInputHandler>(
-                mainScene->GetPlayerCharacter(), mainScene->GetTerrainManager(), std::move(intersectionContext)));
+                mainScene->GetPlayerCharacter(), mainScene->GetTerrainManager(), std::move(intersectionTestContext)));
 
         return std::move(mainInputHandler);
     }
@@ -374,7 +161,7 @@ namespace Sample
 
             // Some secondary initalisation:
         SetupCompilers(*primMan._asyncMan);
-        gpuProfiler = RenderCore::Metal::GPUProfiler::CreateProfiler();
+        g_gpuProfiler = RenderCore::Metal::GPUProfiler::CreateProfiler();
         RenderOverlays::InitFontSystem(primMan._rDevice.get(), primMan._bufferUploads.get());
 
             // main scene
@@ -387,26 +174,32 @@ namespace Sample
             auto debugSystem = std::make_shared<RenderOverlays::DebuggingDisplay::DebugScreensSystem>();
             InitDebugDisplays(*debugSystem);
 
-            if (gpuProfiler) {
-                auto gpuProfilerDisplay = std::make_shared<PlatformRig::Overlays::GPUProfileDisplay>(gpuProfiler.get());
+            if (g_gpuProfiler) {
+                auto gpuProfilerDisplay = std::make_shared<PlatformRig::Overlays::GPUProfileDisplay>(g_gpuProfiler.get());
                 debugSystem->Register(gpuProfilerDisplay, "[Profiler] GPU Profiler");
             }
 
             debugSystem->Register(
                 std::make_shared<SceneEngine::PlacementsQuadTreeDebugger>(mainScene->GetPlacementManager()),
                 "PlacementsCulling");
+            auto intersectionContext = std::make_shared<SceneEngine::IntersectionTestContext>(
+                mainScene, primMan._globalTechContext);
 
-            auto overlaySys = std::make_shared<OverlaySystemManager>();
-            auto cameraInputHandler = std::make_shared<PlatformRig::Camera::CameraInputHandler>(
-                mainScene->GetCameraPtr(), mainScene->GetPlayerCharacter(), CharactersScale);
+            auto overlaySys = std::make_shared<Sample::OverlaySystemManager>();
             {
-                using namespace RenderOverlays::DebuggingDisplay;
-                overlaySys->AddSystem(KeyId_Make("~"), std::make_shared<ConsoleOverlaySystem>());
-                overlaySys->AddSystem(KeyId_Make("1"), std::make_shared<CameraOverlaySystem>(cameraInputHandler));
-                overlaySys->AddSystem(KeyId_Make("2"), std::make_shared<Manipulators>(mainScene, primMan._globalTechContext));
+                using RenderOverlays::DebuggingDisplay::KeyId_Make;
+                overlaySys->AddSystem(KeyId_Make("~"), Sample::CreateConsoleOverlaySystem());
+                overlaySys->AddSystem(KeyId_Make("1"), 
+                    Sample::CreatePlacementsEditorOverlaySystem(
+                        mainScene->GetPlacementManager(), mainScene->GetTerrainManager(), 
+                        intersectionContext));
             }
 
-            auto mainInputHandler = CreateInputHandler(mainScene, debugSystem, primMan._globalTechContext, overlaySys.get());
+            auto cameraInputHandler = std::make_shared<PlatformRig::Camera::CameraInputHandler>(
+                mainScene->GetCameraPtr(), mainScene->GetPlayerCharacter(), CharactersScale);
+
+            auto mainInputHandler = CreateInputHandler(
+                mainScene, debugSystem, intersectionContext, cameraInputHandler, overlaySys.get());
             primMan._window.GetInputTranslator().AddListener(mainInputHandler);
             auto stdPlugin = std::make_shared<SceneEngine::LightingParserStandardPlugin>();
             primMan._asyncMan->GetAssetSets().LogReport();
@@ -431,7 +224,7 @@ namespace Sample
                 lightingParserContext._plugins.push_back(stdPlugin);
 
                 auto frameResult = frameRig.ExecuteFrame(
-                    context.get(), primMan._rDevice.get(), primMan._presChain.get(), gpuProfiler.get(),
+                    context.get(), primMan._rDevice.get(), primMan._presChain.get(), g_gpuProfiler.get(),
                     std::bind(
                         RenderFrame, std::placeholders::_1,
                         std::ref(lightingParserContext), mainScene.get(), 
@@ -451,7 +244,7 @@ namespace Sample
         RenderCore::Metal::DeviceContext::PrepareForDestruction(primMan._rDevice.get(), primMan._presChain.get());
 
         mainScene.reset();
-        gpuProfiler.reset();
+        g_gpuProfiler.reset();
         SceneEngine::ResourceBoxes_Shutdown();
         RenderOverlays::CleanupFontSystem();
         primMan._asyncMan->GetAssetSets().Clear();

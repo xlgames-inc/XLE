@@ -45,7 +45,7 @@ namespace Sample
 
         // "GPU profiler" doesn't have a place to live yet. We just manage it here, at 
         //  the top level
-    RenderCore::Metal::GPUProfiler::Ptr gpuProfiler;
+    RenderCore::Metal::GPUProfiler::Ptr g_gpuProfiler;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -95,7 +95,7 @@ namespace Sample
             //  * the global technique context contains some global rendering settings
         SetupCompilers(*asyncMan);
         SceneEngine::SetBufferUploads(bufferUploads.get());
-        gpuProfiler = RenderCore::Metal::GPUProfiler::CreateProfiler();
+        g_gpuProfiler = RenderCore::Metal::GPUProfiler::CreateProfiler();
         RenderOverlays::InitFontSystem(renderDevice.get(), bufferUploads.get());
         auto globalTechniqueContext = std::make_shared<PlatformRig::GlobalTechniqueContext>();
 
@@ -125,8 +125,8 @@ namespace Sample
             auto debugSystem = std::make_shared<RenderOverlays::DebuggingDisplay::DebugScreensSystem>();
             InitDebugDisplays(*debugSystem);
 
-            if (gpuProfiler) {
-                auto gpuProfilerDisplay = std::make_shared<PlatformRig::Overlays::GPUProfileDisplay>(gpuProfiler.get());
+            if (g_gpuProfiler) {
+                auto gpuProfilerDisplay = std::make_shared<PlatformRig::Overlays::GPUProfileDisplay>(g_gpuProfiler.get());
                 debugSystem->Register(gpuProfilerDisplay, "[Profiler] GPU Profiler");
             }
 
@@ -170,7 +170,7 @@ namespace Sample
                 lightingParserContext._plugins.push_back(stdPlugin);
 
                 auto frameResult = frameRig.ExecuteFrame(
-                    context.get(), renderDevice.get(), presentationChain.get(), gpuProfiler.get(),
+                    context.get(), renderDevice.get(), presentationChain.get(), g_gpuProfiler.get(),
                     std::bind(
                         RenderFrame, std::placeholders::_1,
                         std::ref(lightingParserContext), mainScene.get(), 
@@ -192,7 +192,7 @@ namespace Sample
         RenderCore::Metal::DeviceContext::PrepareForDestruction(renderDevice.get(), presentationChain.get());
 
         mainScene.reset();
-        gpuProfiler.reset();
+        g_gpuProfiler.reset();
         SceneEngine::ResourceBoxes_Shutdown();
         RenderOverlays::CleanupFontSystem();
         asyncMan->GetAssetSets().Clear();

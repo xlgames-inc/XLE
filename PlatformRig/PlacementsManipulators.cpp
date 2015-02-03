@@ -328,12 +328,17 @@ namespace Tools
                         Float3 planeNormal = Cross(upAxis, rightAxis);
                         Float4 plane = Expand(planeNormal, -Dot(planeNormal, _anchorPoint));
 
-                        auto ray = hitTestContext.CalculateWorldSpaceRay(evnt._mousePosition);
-                        float dst = RayVsPlane(ray.first, ray.second, plane);
-                        if (dst >= 0.f && dst <= 1.f) {
-                            auto intersectionPt = LinearInterpolate(ray.first, ray.second, dst);
-                            float transRight = Dot(intersectionPt - _anchorPoint, rightAxis);
-                            float transUp = Dot(intersectionPt - _anchorPoint, upAxis);
+                        auto initialRay = hitTestContext.CalculateWorldSpaceRay(_activeSubop._cursorStart);
+                        float initialDst = RayVsPlane(initialRay.first, initialRay.second, plane);
+
+                        auto newRay = hitTestContext.CalculateWorldSpaceRay(evnt._mousePosition);
+                        float newDst = RayVsPlane(newRay.first, newRay.second, plane);
+                        if (newDst >= 0.f && newDst <= 1.f && initialDst >= 0.f && initialDst <= 1.f) {
+                            auto startPt = LinearInterpolate(initialRay.first, initialRay.second, initialDst);
+                            auto intersectionPt = LinearInterpolate(newRay.first, newRay.second, newDst);
+
+                            float transRight = Dot(intersectionPt - startPt, rightAxis);
+                            float transUp = Dot(intersectionPt - startPt, upAxis);
 
                             if (_activeSubop._axisRestriction != SubOperation::NoAxis && _activeSubop._typeInBuffer[0]) {
                                 transUp = XlAtoF32(_activeSubop._typeInBuffer);
@@ -415,20 +420,33 @@ namespace Tools
                         //  There are a number of different possible ways we could calculate
                         //      the anchor point... But let's find the world space bounding box
                         //      that encloses all of the objects and get the centre of that box.
-                    Float3 totalMins(FLT_MAX, FLT_MAX, FLT_MAX), totalMaxs(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+                    enum AnchorMethod { Centre, Origin };
+                    const AnchorMethod anchorMethod = Origin;
+
+                    _anchorPoint = Float3(0.f, 0.f, 0.f);
                     unsigned objCount = _transaction->GetObjectCount();
-                    for (unsigned c=0; c<objCount; ++c) {
-                        auto obj = _transaction->GetObject(c);
-                        auto localBoundingBox = _transaction->GetLocalBoundingBox(c);
-                        auto worldSpaceBounding = TransformBoundingBox(obj._localToWorld, localBoundingBox);
-                        totalMins[0] = std::min(worldSpaceBounding.first[0], totalMins[0]);
-                        totalMins[1] = std::min(worldSpaceBounding.first[1], totalMins[1]);
-                        totalMins[2] = std::min(worldSpaceBounding.first[2], totalMins[2]);
-                        totalMaxs[0] = std::max(worldSpaceBounding.second[0], totalMaxs[0]);
-                        totalMaxs[1] = std::max(worldSpaceBounding.second[1], totalMaxs[1]);
-                        totalMaxs[2] = std::max(worldSpaceBounding.second[2], totalMaxs[2]);
+                    if (objCount) {
+                        if (constant_expression<anchorMethod == Centre>::result()) {
+                            Float3 totalMins(FLT_MAX, FLT_MAX, FLT_MAX), totalMaxs(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+                            for (unsigned c=0; c<objCount; ++c) {
+                                auto obj = _transaction->GetObject(c);
+                                auto localBoundingBox = _transaction->GetLocalBoundingBox(c);
+                                auto worldSpaceBounding = TransformBoundingBox(obj._localToWorld, localBoundingBox);
+                                totalMins[0] = std::min(worldSpaceBounding.first[0], totalMins[0]);
+                                totalMins[1] = std::min(worldSpaceBounding.first[1], totalMins[1]);
+                                totalMins[2] = std::min(worldSpaceBounding.first[2], totalMins[2]);
+                                totalMaxs[0] = std::max(worldSpaceBounding.second[0], totalMaxs[0]);
+                                totalMaxs[1] = std::max(worldSpaceBounding.second[1], totalMaxs[1]);
+                                totalMaxs[2] = std::max(worldSpaceBounding.second[2], totalMaxs[2]);
+                            }
+                            _anchorPoint = LinearInterpolate(totalMins, totalMaxs, 0.5f);
+                        } else if (constant_expression<anchorMethod == Origin>::result()) {
+                            for (unsigned c=0; c<objCount; ++c) {
+                                _anchorPoint += ExtractTranslation(_transaction->GetObject(c)._localToWorld);
+                            }
+                            _anchorPoint /= float(objCount);
+                        }
                     }
-                    _anchorPoint = LinearInterpolate(totalMins, totalMaxs, 0.5f);
                 }
             }
 
