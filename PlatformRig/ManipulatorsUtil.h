@@ -63,6 +63,7 @@ namespace Tools
         std::pair<Float3, Float3> CalculateWorldSpaceRay(Int2 screenCoord) const;
         Float2 ProjectToScreenSpace(const Float3& worldSpaceCoord) const;
         RenderCore::CameraDesc GetCameraDesc() const;
+        const SceneEngine::TechniqueContext& GetTechniqueContext() const { return *_techniqueContext.get(); }
         HitTestResolver(
             std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
             std::shared_ptr<SceneEngine::ISceneParser> sceneParser,

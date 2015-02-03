@@ -34,6 +34,12 @@
 
 #include "../Core/WinAPI/IncludeWindows.h"      // *hack* just needed for getting client rect coords!
 
+#include "../BufferUploads/DataPacket.h"
+#include "../RenderCore/Metal/DeviceContext.h"
+#include "../RenderCore/DX11/Metal/IncludeDX11.h"
+#include "../RenderCore/DX11/Metal/DX11Utils.h"
+#include "../SceneEngine/LightingParser.h"
+
 namespace Sample
 {
     extern std::shared_ptr<SceneEngine::ITerrainFormat> MainTerrainFormat;
@@ -266,6 +272,205 @@ namespace Tools
         return res;
     }
 
+    class RayVsModelResult
+    {
+    public:
+        unsigned _count;
+        float _distance;
+    };
+
+    class RayVsModelResources
+    {
+    public:
+        class Desc 
+        {
+        public:
+            unsigned _elementSize;
+            unsigned _elementCount;
+            Desc(unsigned elementSize, unsigned elementCount) : _elementSize(elementSize), _elementCount(elementCount) {}
+        };
+        intrusive_ptr<ID3D::Buffer> _streamOutputBuffer;
+        intrusive_ptr<ID3D::Resource> _clearedBuffer;
+        intrusive_ptr<ID3D::Resource> _cpuAccessBuffer;
+        RayVsModelResources(const Desc&);
+    };
+
+    RayVsModelResources::RayVsModelResources(const Desc& desc)
+    {
+        using namespace BufferUploads;
+        using namespace RenderCore::Metal;
+        auto& uploads = *SceneEngine::GetBufferUploads();
+
+        LinearBufferDesc lbDesc;
+        lbDesc._structureByteSize = desc._elementSize;
+        lbDesc._sizeInBytes = desc._elementSize * desc._elementCount;
+
+        BufferDesc bufferDesc = CreateDesc(
+            BindFlag::StreamOutput, 0, GPUAccess::Read | GPUAccess::Write,
+            lbDesc, "RayVsModelBuffer");
+        
+        auto soRes = uploads.Transaction_Immediate(bufferDesc, nullptr)->AdoptUnderlying();
+        _streamOutputBuffer = QueryInterfaceCast<ID3D::Buffer>(soRes);
+
+        _cpuAccessBuffer = uploads.Transaction_Immediate(
+            CreateDesc(0, CPUAccess::Read, 0, lbDesc, "RayVsModelCopyBuffer"), nullptr)->AdoptUnderlying();
+
+        auto pkt = CreateEmptyPacket(bufferDesc);
+        XlSetMemory(pkt->GetData(), 0, pkt->GetDataSize());
+        _clearedBuffer = uploads.Transaction_Immediate(
+            CreateDesc(
+                BindFlag::StreamOutput, 0, GPUAccess::Read | GPUAccess::Write,
+                lbDesc, "RayVsModelClearingBuffer"), 
+            pkt.get())->AdoptUnderlying();
+    }
+
+    static RayVsModelResult RayVsModel(
+        std::pair<Float3, Float3> worldSpaceRay,
+        SceneEngine::PlacementsEditor& placementsEditor, SceneEngine::PlacementGUID object,
+        const SceneEngine::TechniqueContext& techniqueContext,
+        const RenderCore::CameraDesc* cameraForLOD = nullptr)
+    {
+            // Using the GPU, look for intersections between the ray
+            // and the given model. Since we're using the GPU, we need to
+            // get a device context. 
+            //
+            // We'll have to use the immediate context
+            // because we want to get the result get right. But that means the
+            // immediate context can't be doing anything else in another thread.
+            //
+            // This will require more complex threading support in the future!
+        ID3D::DeviceContext* immContextTemp = nullptr;
+        RenderCore::Metal::ObjectFactory().GetUnderlying()->GetImmediateContext(&immContextTemp);
+        RenderCore::Metal::DeviceContext devContext(
+            intrusive_ptr<ID3D::DeviceContext>(moveptr(immContextTemp)));
+
+            // We're doing the intersection test in the geometry shader. This means
+            // we have to setup a projection transform to avoid removing any potential
+            // intersection results during screen-edge clipping.
+            // Also, if we want to know the triangle pts and barycentric coordinates,
+            // we need to make sure that no clipping occurs.
+            // The easiest way to prevent clipping would be use a projection matrix that
+            // would transform all points into a single point in the center of the view
+            // frustum.
+        RenderCore::Metal::ViewportDesc newViewport(0.f, 0.f, float(255.f), float(255.f), 0.f, 1.f);
+        devContext.Bind(newViewport);
+
+        SceneEngine::LightingParserContext parserContext(nullptr, techniqueContext);
+        SceneEngine::RenderingQualitySettings qualitySettings;
+        qualitySettings._width = qualitySettings._height = 255;
+        qualitySettings._samplingCount = 1;
+        qualitySettings._samplingQuality = 0;
+
+        Float4x4 specialProjMatrix = MakeFloat4x4(
+            0.f, 0.f, 0.f, 0.5f,
+            0.f, 0.f, 0.f, 0.5f,
+            0.f, 0.f, 0.f, 0.5f,
+            0.f, 0.f, 0.f, 1.f);
+
+            // The camera settings can affect the LOD that objects a rendered with.
+            // So, in some cases we need to initialise the camera to the same state
+            // used in rendering. This will ensure that we get the right LOD behaviour.
+        RenderCore::CameraDesc camera;
+        if (cameraForLOD) { camera = *cameraForLOD; }
+
+        SceneEngine::LightingParser_SetupScene(
+            &devContext, parserContext, camera, qualitySettings);
+        SceneEngine::LightingParser_SetGlobalTransform(
+            &devContext, parserContext, camera, qualitySettings._width, qualitySettings._height,
+            &specialProjMatrix);
+
+        RayVsModelResult fnResult;
+        fnResult._count = 0;
+        fnResult._distance = FLT_MAX;
+
+        auto oldSO = RenderCore::Metal::GeometryShader::GetDefaultStreamOutputInitializers();
+
+        TRY {
+
+            using namespace RenderCore::Metal;
+            static const InputElementDesc eles[] = {
+                InputElementDesc("INTERSECTIONDEPTH",   0, NativeFormat::R32_FLOAT),
+                InputElementDesc("POINT",               0, NativeFormat::R32G32B32A32_FLOAT),
+                InputElementDesc("POINT",               1, NativeFormat::R32G32B32A32_FLOAT),
+                InputElementDesc("POINT",               2, NativeFormat::R32G32B32A32_FLOAT)
+            };
+            struct ResultEntry
+            {
+            public:
+                union { unsigned _depthAsInt; float _intersectionDepth; };
+                Float4 _pt[3];
+            };
+
+            unsigned strides[] = { sizeof(ResultEntry) };
+            unsigned offsets[] = { 0 };
+            GeometryShader::SetDefaultStreamOutputInitializers(
+                GeometryShader::StreamOutputInitializers(eles, dimof(eles), strides, dimof(strides)));
+
+            const unsigned maxResultCount = 256;
+            auto& res = SceneEngine::FindCachedBox<RayVsModelResources>(RayVsModelResources::Desc(sizeof(ResultEntry), maxResultCount));
+
+                // the only way to clear these things is copy from another buffer...
+            devContext.GetUnderlying()->CopyResource(res._streamOutputBuffer.get(), res._clearedBuffer.get());
+
+            ID3D::Buffer* targets[] = { res._streamOutputBuffer.get() };
+            devContext.GetUnderlying()->SOSetTargets(dimof(targets), targets, offsets);
+
+            float rayLength = Magnitude(worldSpaceRay.second - worldSpaceRay.first);
+            struct RayDefinitionCBuffer
+            {
+                Float3 _rayStart;
+                float _rayLength;
+                Float3 _rayDirection;
+                unsigned _dummy;
+            } rayDefinitionCBuffer = 
+            {
+                worldSpaceRay.first, rayLength,
+                (worldSpaceRay.second - worldSpaceRay.first) / rayLength, 0
+            };
+
+            devContext.BindGS(RenderCore::MakeResourceList(ConstantBuffer(&rayDefinitionCBuffer, sizeof(rayDefinitionCBuffer))));
+
+                //  We need to invoke the render for the given object
+                //  now. Afterwards we can query the buffers for the result
+            const unsigned techniqueIndex = 6;
+            placementsEditor.RenderFiltered(
+                &devContext, parserContext, techniqueIndex,
+                &object, &object+1);
+
+                // We must lock the stream output buffer, and look for results within it
+                // it seems that this kind of thing wasn't part of the original intentions
+                // for stream output. So the results can appear anywhere within the buffer.
+                // We have to search for non-zero entries. Results that haven't been written
+                // to will appear zeroed out.
+            devContext.GetUnderlying()->CopyResource(res._cpuAccessBuffer.get(), res._streamOutputBuffer.get());
+
+            D3D11_MAPPED_SUBRESOURCE mappedSub;
+            auto hresult = devContext.GetUnderlying()->Map(
+                res._cpuAccessBuffer.get(), 0, D3D11_MAP_READ, 0, &mappedSub);
+            if (SUCCEEDED(hresult)) {
+
+                const auto* results = (const ResultEntry*)mappedSub.pData;
+                for (unsigned c=0; c<maxResultCount; ++c) {
+                    if (results[c]._depthAsInt) {
+                        ++fnResult._count;
+                        if (results[c]._intersectionDepth < fnResult._distance) {
+                            fnResult._distance = results[c]._intersectionDepth;
+                        }
+                    }
+                }
+
+                devContext.GetUnderlying()->Unmap(res._cpuAccessBuffer.get(), 0);
+            }
+
+        } CATCH (...) {
+        } CATCH_END
+
+        devContext.GetUnderlying()->SOSetTargets(0, nullptr, nullptr);
+        RenderCore::Metal::GeometryShader::SetDefaultStreamOutputInitializers(oldSO);
+
+        return fnResult;
+    }
+
     bool SelectAndEdit::OnInputEvent(
         const InputSnapshot& evnt,
         const HitTestResolver& hitTestContext)
@@ -469,13 +674,43 @@ namespace Tools
             } else {
 
                 auto worldSpaceRay = hitTestContext.CalculateWorldSpaceRay(evnt._mousePosition);
-                auto selected = _editor->Find_RayIntersection(worldSpaceRay.first, worldSpaceRay.second);
+                auto intersection = _editor->Find_RayIntersection(worldSpaceRay.first, worldSpaceRay.second);
+
+                    // we can improve the intersection by do ray-vs-triangle tests
+                    // on the roughIntersection geometry
+                const bool improveIntersection = true;
+                if (constant_expression<improveIntersection>::result()) {
+                        //  we need to create a temporary transaction to get
+                        //  at the information for these objects.
+                    auto trans = _editor->Transaction_Begin(
+                        AsPointer(intersection.cbegin()), AsPointer(intersection.cend()));
+                    
+                    float bestDistance = Magnitude(worldSpaceRay.second - worldSpaceRay.first);
+                    auto bestResult = std::make_pair(0ull, 0ull);
+
+                    auto count = trans->GetObjectCount();
+                    for (unsigned c=0; c<count; ++c) {
+                        auto cam = hitTestContext.GetCameraDesc();
+                        auto r = RayVsModel(worldSpaceRay, *_editor, trans->GetGuid(c), hitTestContext.GetTechniqueContext(), &cam);
+                        if (r._count && r._distance < bestDistance) {
+                            bestResult = trans->GetOriginalGuid(c);
+                        }
+                    }
+
+                    intersection.clear();
+                    if (bestResult.first && bestResult.second) {
+                        intersection.push_back(bestResult);
+                    }
+
+                    trans->Cancel();
+                }
 
                     // replace the currently active selection
                 if (_transaction) {
                     _transaction->Commit();
                 }
-                _transaction = _editor->Transaction_Begin(AsPointer(selected.cbegin()), AsPointer(selected.cend()));
+                _transaction = _editor->Transaction_Begin(
+                    AsPointer(intersection.cbegin()), AsPointer(intersection.cend()));
 
                     //  Reset the anchor point
                     //  There are a number of different possible ways we could calculate

@@ -65,5 +65,11 @@ namespace Math
     inline const float* AsFloatArray(const Float4x4& m)    { return &m(0,0); }
     inline float* AsFloatArray(Float4x4& m)                { return &m(0,0); }
 
+    Float4x4 MakeFloat4x4(
+        float m00, float m01, float m02, float m03,
+        float m10, float m11, float m12, float m13,
+        float m20, float m21, float m22, float m23,
+        float m30, float m31, float m32, float m33);
+
 }
 

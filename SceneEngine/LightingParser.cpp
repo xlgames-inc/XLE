@@ -815,12 +815,13 @@ namespace SceneEngine
             ReturnToSteadyState(context);
 
             Float4 time(0.f, 0.f, 0.f, 0.f);
-            time[0] = time[1] = time[2] = 0.f;
-            time[3] = parserContext.GetSceneParser()->GetTimeValue();
-            if (parserContext.GetSceneParser()->GetLightCount() > 0) {
-                time[0] = parserContext.GetSceneParser()->GetLightDesc(0)._negativeLightDirection[0];
-                time[1] = parserContext.GetSceneParser()->GetLightDesc(0)._negativeLightDirection[1];
-                time[2] = parserContext.GetSceneParser()->GetLightDesc(0)._negativeLightDirection[2];
+            if (parserContext.GetSceneParser()) {
+                time[3] = parserContext.GetSceneParser()->GetTimeValue();
+                if (parserContext.GetSceneParser()->GetLightCount() > 0) {
+                    time[0] = parserContext.GetSceneParser()->GetLightDesc(0)._negativeLightDirection[0];
+                    time[1] = parserContext.GetSceneParser()->GetLightDesc(0)._negativeLightDirection[1];
+                    time[2] = parserContext.GetSceneParser()->GetLightDesc(0)._negativeLightDirection[2];
+                }
             }
             parserContext.SetGlobalCB(1, context, &time, sizeof(time));
 

@@ -202,7 +202,7 @@ namespace BufferUploads
         BindFlag::BitField bindFlags,
         CPUAccess::BitField cpuAccess, 
         GPUAccess::BitField gpuAccess,
-        const BufferUploads::LinearBufferDesc& linearBufferDesc,
+        const LinearBufferDesc& linearBufferDesc,
         const char name[])
     {
         BufferDesc desc;

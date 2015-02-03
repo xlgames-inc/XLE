@@ -460,12 +460,10 @@ namespace SceneEngine
                 // Basic draw distance calculation
                 // many objects don't need to render out to the far clip
 
-            const float maxDistanceSq = 1000.f * 1000.f;
             float distanceSq = MagnitudeSquared(
                 .5f * (obj._cellSpaceBoundary.first + obj._cellSpaceBoundary.second) - cameraPosition);
-            if (distanceSq > maxDistanceSq) {
-                return;
-            }
+            const float maxDistanceSq = 1000.f * 1000.f;
+            if (distanceSq > maxDistanceSq) { return; }
 
                 //  Objects should be sorted by model & material. This is important for
                 //  reducing the work load in "_cache". Typically cells will only refer
