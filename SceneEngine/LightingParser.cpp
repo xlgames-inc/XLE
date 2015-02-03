@@ -128,14 +128,7 @@ namespace SceneEngine
             //  texture matters... The scene parser doesn't know what we're rendering
             //  do, so can't know the complete rendering output.
         const float aspectRatio = viewportWidth / float(viewportHeight);
-        auto projectionMatrix = PerspectiveProjection(
-            sceneCamera._verticalFieldOfView, aspectRatio,
-            sceneCamera._nearClip, sceneCamera._farClip, GeometricCoordinateSpace::RightHanded, 
-            #if (GFXAPI_ACTIVE == GFXAPI_DX11) || (GFXAPI_ACTIVE == GFXAPI_DX9)         // (todo -- this condition could be a runtime test)
-                ClipSpaceType::Positive);
-            #else
-                ClipSpaceType::StraddlingZero);
-            #endif
+        auto projectionMatrix = PerspectiveProjection(sceneCamera, aspectRatio);
 
         GlobalTransform globalTransform;
         if (specialProjectionMatrix) {

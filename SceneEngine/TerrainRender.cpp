@@ -2853,6 +2853,10 @@ namespace SceneEngine
         RenderCore::Metal::DeviceContext* context,
         LightingParserContext& parserContext)
     {
+            // we can only do this on the immediate context (because we need to execute
+            // and readback GPU data)
+        assert(context->GetUnderlying()->GetType() == D3D11_DEVICE_CONTEXT_IMMEDIATE);
+
             //  we can use the same culling as the rendering part. But ideally we want to cull nodes
             //  that are outside of the camera frustum, or that don't intersect the ray
             //      first pass -- normal culling

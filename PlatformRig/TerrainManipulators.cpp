@@ -18,6 +18,7 @@
 #include "../SceneEngine/SceneEngineUtility.h"
 #include "../SceneEngine/CommonResources.h"
 #include "../SceneEngine/ResourceBox.h"
+#include "../SceneEngine/IntersectionTest.h"
 
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/State.h"
@@ -25,6 +26,7 @@
 
 #include "../Math/ProjectionMath.h"
 #include "../Math/Transformations.h"
+#include "../Utility/TimeUtils.h"
 
 #include "../RenderCore/DX11/Metal/DX11Utils.h"
 
@@ -32,80 +34,6 @@ extern unsigned FrameRenderCount;
 
 namespace Tools
 {
-    static std::pair<Float3, Float3> BuildRayUnderCursor(
-        Int2 mousePosition, 
-        SceneEngine::ProjectionDesc& projectionDesc, 
-        const std::pair<Float2, Float2>& viewport)
-    {
-            // calculate proper worldToProjection for this cameraDesc and viewport
-            //      -- then get the frustum corners. We can use these to find the
-            //          correct direction from the view position under the given 
-            //          mouse position
-        Float3 frustumCorners[8];
-        CalculateAbsFrustumCorners(frustumCorners, projectionDesc._worldToProjection);
-
-        Float3 cameraPosition = ExtractTranslation(projectionDesc._viewToWorld);
-        return RenderCore::BuildRayUnderCursor(
-            mousePosition, frustumCorners, cameraPosition, 
-            projectionDesc._nearClip, projectionDesc._farClip,
-            viewport);
-    }
-
-    static std::pair<Float3, bool> FindTerrainIntersection(
-        RenderCore::Metal::DeviceContext* context,
-        SceneEngine::LightingParserContext& parserContext,
-        SceneEngine::TerrainManager& terrainManager,
-        Int2 screenCoord)
-    {
-        TRY {
-                // (do a terrain ray to find the world space coordinate under the cursor)
-            RenderCore::Metal::ViewportDesc currentViewport(*context);
-            auto ray = BuildRayUnderCursor(screenCoord, parserContext.GetProjectionDesc(), currentViewport.ViewportMinMax());
-
-            SceneEngine::TerrainManager::IntersectionResult intersections[8];
-            unsigned intersectionCount = terrainManager.CalculateIntersections(
-                intersections, dimof(intersections), ray, context, parserContext);
-
-            if (intersectionCount > 0) {
-                return std::make_pair(intersections[0]._intersectionPoint, true);
-            }
-        } CATCH (...) {
-        } CATCH_END
-
-        return std::make_pair(Float3(0,0,0), false);
-    }
-
-    std::pair<Float3, bool> FindTerrainIntersection(TerrainHitTestContext& context, Int2 screenCoord)
-    {
-            //  create a new device context and lighting parser context, and use
-            //  this to find an accurate terrain collision.
-        ID3D::DeviceContext* immContextTemp = nullptr;
-        RenderCore::Metal::ObjectFactory().GetUnderlying()->GetImmediateContext(&immContextTemp);
-        intrusive_ptr<ID3D::DeviceContext> immContext = moveptr(immContextTemp);
-        RenderCore::Metal::DeviceContext devContext(std::move(immContext));
-
-        RenderCore::Metal::ViewportDesc newViewport(0.f, 0.f, float(context._viewportSize[0]), float(context._viewportSize[1]), 0.f, 1.f);
-        devContext.Bind(newViewport);
-
-        SceneEngine::LightingParserContext parserContext(context._sceneParser, *context._techniqueContext);
-        SceneEngine::RenderingQualitySettings qualitySettings;
-        qualitySettings._width = context._viewportSize[0];
-        qualitySettings._height = context._viewportSize[1];
-        qualitySettings._samplingCount = 1;
-        qualitySettings._samplingQuality = 0;
-        LightingParser_SetupScene(
-            &devContext, parserContext, 
-            context._sceneParser->GetCameraDesc(), qualitySettings);
-
-        return FindTerrainIntersection(&devContext, parserContext, *context._terrainManager, screenCoord);
-    }
-
-    std::pair<Float3, bool> FindTerrainIntersection(const HitTestResolver& context, Int2 screenCoord)
-    {
-        auto res = context.DoHitTest(screenCoord);
-        return std::make_pair(res._worldSpaceCollision, res._type == HitTestResolver::Result::Terrain);
-    }
-
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //      M A N I P U L A T O R S             //
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -120,6 +48,19 @@ namespace Tools
         return Float2(XlCeil(input[0] - 0.5f), XlCeil(input[1] - 0.5f));
     }
 
+    using SceneEngine::IntersectionTestContext;
+    using SceneEngine::IntersectionTestScene;
+    static std::pair<Float3, bool> FindTerrainIntersection(
+        const IntersectionTestContext& context, const IntersectionTestScene& scene,
+        const Int2 screenCoords)
+    {
+        auto result = scene.UnderCursor(context, screenCoords, IntersectionTestScene::Type::Terrain);
+        if (result._type == IntersectionTestScene::Type::Terrain) {
+            return std::make_pair(result._worldSpaceCollision, true);
+        }
+        return std::make_pair(Float3(0.f, 0.f, 0.f), false);
+    }
+
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     IManipulator::~IManipulator() {}
@@ -128,7 +69,10 @@ namespace Tools
     {
     public:
             // IManipulator interface
-        virtual bool    OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt, const HitTestResolver& hitTestContext);
+        virtual bool    OnInputEvent(
+            const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt, 
+            const IntersectionTestContext& hitTestContext,
+            const IntersectionTestScene& hitTestScene);
         virtual void    Render(RenderCore::Metal::DeviceContext* context, SceneEngine::LightingParserContext& parserContext);
 
         virtual void    PerformAction(const Float3& worldSpacePosition, float size, float strength) = 0;
@@ -150,7 +94,10 @@ namespace Tools
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    bool    CommonManipulator::OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt, const HitTestResolver& hitTestContext)
+    bool    CommonManipulator::OnInputEvent(
+        const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt, 
+        const IntersectionTestContext& hitTestContext,
+        const IntersectionTestScene& hitTestScene)
     {
         const bool shiftHeld = evnt.IsHeld(RenderOverlays::DebuggingDisplay::KeyId_Make("shift"));
         if (evnt._wheelDelta) {
@@ -170,7 +117,7 @@ namespace Tools
         if (((XlAbs(_mouseCoords[0] - newMouseCoords[0]) > 1 || XlAbs(_mouseCoords[1] - newMouseCoords[1]) > 1)
             && (FrameRenderCount > _lastRenderCount0)) || evnt.IsPress_LButton()) {
 
-            _currentWorldSpaceTarget = FindTerrainIntersection(hitTestContext, newMouseCoords);
+            _currentWorldSpaceTarget = FindTerrainIntersection(hitTestContext, hitTestScene, newMouseCoords);
             _lastPerform = 0;
             _mouseCoords = newMouseCoords;
             _lastRenderCount0 = FrameRenderCount;
@@ -182,14 +129,14 @@ namespace Tools
 
         if (evnt.IsHeld_LButton()) {
                 // perform action -- (like raising or lowering the terrain)
-            if (_currentWorldSpaceTarget.second && (GetTickCount() - _lastPerform) > 33 && (FrameRenderCount > _lastRenderCount1)) {
+            if (_currentWorldSpaceTarget.second && (Millisecond_Now() - _lastPerform) > 33 && (FrameRenderCount > _lastRenderCount1)) {
 
                 TRY {
                     PerformAction(_currentWorldSpaceTarget.first, _size, shiftHeld?(-_strength):_strength);
                 } CATCH (...) {
                 } CATCH_END
                 
-                _lastPerform = GetTickCount();
+                _lastPerform = Millisecond_Now();
                 _lastRenderCount1 = FrameRenderCount;
             }
             return true;
@@ -488,7 +435,10 @@ namespace Tools
     {
     public:
             // IManipulator interface
-        virtual bool    OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt, const HitTestResolver& hitTestContext);
+        virtual bool    OnInputEvent(
+            const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt, 
+            const IntersectionTestContext& hitTestContext,
+            const IntersectionTestScene& hitTestScene);
         virtual void    Render(RenderCore::Metal::DeviceContext* context, SceneEngine::LightingParserContext& parserContext);
 
         virtual void    PerformAction(const Float3& anchor0, const Float3& anchor1) = 0;
@@ -507,13 +457,16 @@ namespace Tools
         std::shared_ptr<SceneEngine::TerrainManager> _terrainManager;
     };
 
-    bool    RectangleManipulator::OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt, const HitTestResolver& hitTestContext)
+    bool    RectangleManipulator::OnInputEvent(
+        const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt, 
+        const IntersectionTestContext& hitTestContext,
+        const IntersectionTestScene& hitTestScene)
     {
         Int2 mousePosition(evnt._mousePosition[0], evnt._mousePosition[1]);
 
         if (evnt.IsPress_LButton()) {
                 // on lbutton press, we should place a new anchor
-            auto intersection = FindTerrainIntersection(hitTestContext, mousePosition);
+            auto intersection = FindTerrainIntersection(hitTestContext, hitTestScene, mousePosition);
             _isDragging = intersection.second;
             if (intersection.second) {
                 _firstAnchor = intersection.first;
@@ -525,7 +478,7 @@ namespace Tools
 
             if (evnt.IsHeld_LButton() || evnt.IsRelease_LButton()) {
                     // update the second anchor as we drag
-                _secondAnchor = FindTerrainIntersection(hitTestContext, mousePosition);
+                _secondAnchor = FindTerrainIntersection(hitTestContext, hitTestScene, mousePosition);
             }
 
             if (evnt.IsRelease_LButton()) {
@@ -854,7 +807,7 @@ namespace Tools
             auto dss = _debugScreensSystem.lock();
             if (!dss || (dss->CurrentScreen(0) && XlFindStringI(dss->CurrentScreen(0), "terrain"))) {
                 if (auto a = p->GetActiveManipulator()) {
-                    return a->OnInputEvent(evnt, HitTestResolver(p->_terrainManager, p->_sceneParser, p->_techniqueContext));
+                    return a->OnInputEvent(evnt, *p->_intersectionTestContext, *p->_intersectionTestScene);
                 }
             }
         }
@@ -888,8 +841,7 @@ namespace Tools
 
     ManipulatorsInterface::ManipulatorsInterface(
         std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
-        std::shared_ptr<SceneEngine::ISceneParser> sceneParser,
-        std::shared_ptr<SceneEngine::TechniqueContext> techniqueContext)
+        std::shared_ptr<SceneEngine::IntersectionTestContext> intersectionTestContext)
     {
         _activeManipulatorIndex = 0;
         _manipulators.emplace_back(std::make_unique<RaiseLowerManipulator>(terrainManager));
@@ -900,9 +852,11 @@ namespace Tools
         _manipulators.emplace_back(std::make_unique<RotateManipulator>(terrainManager));
         _manipulators.emplace_back(std::make_unique<ErosionManipulator>(terrainManager));
 
+        auto intersectionTestScene = std::make_shared<SceneEngine::IntersectionTestScene>(terrainManager);
+
         _terrainManager = std::move(terrainManager);
-        _sceneParser = std::move(sceneParser);
-        _techniqueContext = std::move(techniqueContext);
+        _intersectionTestContext = std::move(intersectionTestContext);
+        _intersectionTestScene = std::move(intersectionTestScene);
     }
 
     ManipulatorsInterface::~ManipulatorsInterface()

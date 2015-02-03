@@ -471,13 +471,7 @@ namespace PreviewRender
         ViewportDesc viewportDesc(*context);
         Float4x4 worldToCamera = InvertOrthonormalTransform(camera._cameraToWorld);
         Float4x4 projectionMatrix = PerspectiveProjection(
-            camera._verticalFieldOfView, viewportDesc.Width / float(viewportDesc.Height),
-            camera._nearClip, camera._farClip, GeometricCoordinateSpace::RightHanded, 
-            #if (GFXAPI_ACTIVE == GFXAPI_DX11) || (GFXAPI_ACTIVE == GFXAPI_DX9)         // (todo -- this condition could be a runtime test)
-                ClipSpaceType::Positive);
-            #else
-                ClipSpaceType::StraddlingZero);
-            #endif
+            camera, viewportDesc.Width / float(viewportDesc.Height));
 
         GlobalTransform transformConstants;
         transformConstants._worldToClip = Combine(worldToCamera, projectionMatrix);

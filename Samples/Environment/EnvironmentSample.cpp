@@ -37,6 +37,7 @@
 #include "../../SceneEngine/SceneParser.h"
 #include "../../SceneEngine/LightDesc.h"
 #include "../../SceneEngine/PlacementsQuadTreeDebugger.h"
+#include "../../SceneEngine/IntersectionTest.h"
 
 #include "../../ConsoleRig/Console.h"
 #include "../../ConsoleRig/Log.h"
@@ -144,7 +145,8 @@ namespace Sample
         {
             _placementsManipulators = std::make_shared<::Tools::PlacementsManipulatorsManager>(
                 mainScene->GetPlacementManager(),
-                mainScene->GetTerrainManager(), mainScene, globalTechContext);
+                mainScene->GetTerrainManager(), 
+                std::make_shared<SceneEngine::IntersectionTestContext>(mainScene, std::move(globalTechContext)));
         }
 
         std::shared_ptr<IInputListener> GetInputListener()
@@ -340,9 +342,11 @@ namespace Sample
         mainInputHandler->AddListener(mainScene->GetPlayerCharacter());
 
             // some special input options for samples
-        Tools::HitTestResolver hitTest(mainScene->GetTerrainManager(), mainScene, std::move(globalTechContext));
-        mainInputHandler->AddListener(std::make_shared<SampleInputHandler>(
-            mainScene->GetPlayerCharacter(), hitTest));
+        auto intersectionContext = std::make_shared<SceneEngine::IntersectionTestContext>(
+            mainScene, std::move(globalTechContext));
+        mainInputHandler->AddListener(
+            std::make_shared<SampleInputHandler>(
+                mainScene->GetPlayerCharacter(), mainScene->GetTerrainManager(), std::move(intersectionContext)));
 
         return std::move(mainInputHandler);
     }

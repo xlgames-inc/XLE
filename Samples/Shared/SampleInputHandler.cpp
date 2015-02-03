@@ -6,6 +6,7 @@
 
 #include "SampleInputHandler.h"
 #include "Character.h"
+#include "../../SceneEngine/IntersectionTest.h"
 #include "../../PlatformRig/ManipulatorsUtil.h"
 #include "../../Math/Transformations.h"
 #include "../../Utility/PtrUtils.h"
@@ -24,8 +25,10 @@ namespace Sample
         const KeyId shift = KeyId_Make("shift");
 
         if (evnt.IsRelease_LButton() && evnt.IsHeld(ctrl)) {
-            auto intersection = _hitTestResolver->DoHitTest(evnt._mousePosition);
-            if (intersection._type == Tools::HitTestResolver::Result::Terrain) {
+            SceneEngine::IntersectionTestScene intersectionTestScene(_terrain);
+            auto intersection = intersectionTestScene.UnderCursor(
+                *_intersectionTestContext.get(), evnt._mousePosition);
+            if (intersection._type == SceneEngine::IntersectionTestScene::Type::Terrain) {
                 _playerCharacter->SetLocalToWorld(AsFloat4x4(intersection._worldSpaceCollision));
                 return true;
             }
@@ -42,12 +45,15 @@ namespace Sample
     }
 
     SampleInputHandler::SampleInputHandler(
-        std::shared_ptr<Character> playerCharacter, 
-        const Tools::HitTestResolver& hitTestResolverI)
+        std::shared_ptr<Character> playerCharacter,
+        std::shared_ptr<SceneEngine::TerrainManager> terrain,
+        std::shared_ptr<SceneEngine::IntersectionTestContext> intersectionTestContext)
     {
-        auto hitTestResolver = std::make_unique<Tools::HitTestResolver>(hitTestResolverI);
         _playerCharacter = std::move(playerCharacter);
-        _hitTestResolver = std::move(hitTestResolver);
+        _terrain = std::move(terrain);
+        _intersectionTestContext = std::move(intersectionTestContext);
     }
+
+    SampleInputHandler::~SampleInputHandler() {}
 }
 

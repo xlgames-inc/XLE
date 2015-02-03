@@ -187,6 +187,7 @@
     <ClCompile Include="..\CommonResources.cpp" />
     <ClCompile Include="..\DualContour.cpp" />
     <ClCompile Include="..\DualContourRender.cpp" />
+    <ClCompile Include="..\IntersectionTest.cpp" />
     <ClCompile Include="..\LightingTargets.cpp" />
     <ClCompile Include="..\LightingParserResolve.cpp" />
     <ClCompile Include="..\LightingParserStandardPlugin.cpp" />
@@ -197,6 +198,7 @@
     <ClCompile Include="..\PlacementsManager.cpp" />
     <ClCompile Include="..\PlacementsQuadTree.cpp" />
     <ClCompile Include="..\Rain.cpp" />
+    <ClCompile Include="..\RayVsModel.cpp" />
     <ClCompile Include="..\RefractionsBuffer.cpp" />
     <ClCompile Include="..\LightingParser.cpp" />
     <ClCompile Include="..\RenderingUtils.cpp" />
@@ -218,6 +220,7 @@
     <ClInclude Include="..\CommonResources.h" />
     <ClInclude Include="..\DualContour.h" />
     <ClInclude Include="..\DualContourRender.h" />
+    <ClInclude Include="..\IntersectionTest.h" />
     <ClInclude Include="..\LightingTargets.h" />
     <ClInclude Include="..\LightingParserContext.h" />
     <ClInclude Include="..\LightingParserStandardPlugin.h" />
@@ -230,6 +233,7 @@
     <ClInclude Include="..\PlacementsQuadTree.h" />
     <ClInclude Include="..\PlacementsQuadTreeDebugger.h" />
     <ClInclude Include="..\Rain.h" />
+    <ClInclude Include="..\RayVsModel.h" />
     <ClInclude Include="..\RefractionsBuffer.h" />
     <ClInclude Include="..\RenderingUtils.h" />
     <ClInclude Include="..\ResourceBox.h" />

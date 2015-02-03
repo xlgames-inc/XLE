@@ -88,6 +88,12 @@
     <ClCompile Include="..\PlacementsQuadTree.cpp">
       <Filter>Objects\Placements</Filter>
     </ClCompile>
+    <ClCompile Include="..\IntersectionTest.cpp">
+      <Filter>Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RayVsModel.cpp">
+      <Filter>Utilities</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\AmbientOcclusion.h">
@@ -190,6 +196,12 @@
     <ClInclude Include="..\PlacementsQuadTreeDebugger.h">
       <Filter>Objects\Placements</Filter>
     </ClInclude>
+    <ClInclude Include="..\IntersectionTest.h">
+      <Filter>Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="..\RayVsModel.h">
+      <Filter>Utilities</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Lighting And Processing">
@@ -209,6 +221,9 @@
     </Filter>
     <Filter Include="Objects\Placements">
       <UniqueIdentifier>{b9e4b894-412f-424d-aaf9-39412fdfbc62}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Utilities">
+      <UniqueIdentifier>{2f4d3dbd-a37a-44be-94d0-e9443ed47c1d}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

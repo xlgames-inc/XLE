@@ -8,18 +8,19 @@
 #include "ManipulatorsUtil.h"
 #include "TerrainManipulators.h"        // needed for hit tests
 
-#include "../RenderOverlays/DebuggingDisplay.h"
-#include "../RenderCore/Metal/DeviceContext.h"
-#include "../RenderCore/Metal/State.h"
-#include "../RenderOverlays/OverlayContext.h"
-#include "../RenderOverlays/Overlays/Browser.h"
-
 #include "../SceneEngine/PlacementsManager.h"
 #include "../SceneEngine/Terrain.h"
 #include "../SceneEngine/SceneParser.h"
 #include "../SceneEngine/Techniques.h"
 #include "../SceneEngine/LightingParserContext.h"
 #include "../SceneEngine/CommonResources.h"
+#include "../SceneEngine/IntersectionTest.h"
+
+#include "../RenderOverlays/DebuggingDisplay.h"
+#include "../RenderCore/Metal/DeviceContext.h"
+#include "../RenderCore/Metal/State.h"
+#include "../RenderOverlays/OverlayContext.h"
+#include "../RenderOverlays/Overlays/Browser.h"
 
 #include "../Utility/TimeUtils.h"
 #include "../Utility/StringFormat.h"
@@ -31,14 +32,6 @@
 #include "../SceneEngine/ResourceBox.h"
 #include "../Math/ProjectionMath.h"
 #include <iomanip>
-
-#include "../Core/WinAPI/IncludeWindows.h"      // *hack* just needed for getting client rect coords!
-
-#include "../BufferUploads/DataPacket.h"
-#include "../RenderCore/Metal/DeviceContext.h"
-#include "../RenderCore/DX11/Metal/IncludeDX11.h"
-#include "../RenderCore/DX11/Metal/DX11Utils.h"
-#include "../SceneEngine/LightingParser.h"
 
 namespace Sample
 {
@@ -74,14 +67,16 @@ namespace Tools
         bool    ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);
 
         PlacementsWidgets(  std::shared_ptr<SceneEngine::PlacementsEditor> editor, 
-                            std::shared_ptr<HitTestResolver> hitTestResolver);
+                            std::shared_ptr<SceneEngine::IntersectionTestContext> intersectionTestContext,
+                            std::shared_ptr<SceneEngine::IntersectionTestScene> intersectionTestScene);
         ~PlacementsWidgets();
 
     private:
         typedef Overlays::ModelBrowser ModelBrowser;
 
         std::shared_ptr<ModelBrowser>       _browser;
-        std::shared_ptr<HitTestResolver>    _hitTestResolver;
+        std::shared_ptr<SceneEngine::IntersectionTestContext> _intersectionTestContext;
+        std::shared_ptr<SceneEngine::IntersectionTestScene> _intersectionTestScene;
         std::shared_ptr<SceneEngine::PlacementsEditor> _editor;
         bool            _browserActive;
         std::string     _selectedModel;
@@ -99,91 +94,13 @@ namespace Tools
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    auto HitTestResolver::DoHitTest(Int2 screenCoord) const -> Result
-    {
-            // currently there's no good way to get the viewport size
-            //  we have to do a hack via windows...!
-        RECT clientRect; GetClientRect(GetActiveWindow(), &clientRect);
-
-        TerrainHitTestContext hitTestContext(
-            *_terrainManager, *_sceneParser, *_techniqueContext,
-            Int2(clientRect.right - clientRect.left, clientRect.bottom - clientRect.top));
-        auto intersection = Tools::FindTerrainIntersection(hitTestContext, screenCoord);
-
-        Result result;
-        if (intersection.second) {
-            result._type = Result::Terrain;
-            result._worldSpaceCollision = intersection.first;
-        }
-
-        return result;
-    }
-
-    static Float4x4 CalculateWorldToProjection(const RenderCore::CameraDesc& sceneCamera, float viewportAspect)
-    {
-        auto projectionMatrix = RenderCore::PerspectiveProjection(
-            sceneCamera._verticalFieldOfView, viewportAspect,
-            sceneCamera._nearClip, sceneCamera._farClip, RenderCore::GeometricCoordinateSpace::RightHanded, 
-            #if (GFXAPI_ACTIVE == GFXAPI_DX11) || (GFXAPI_ACTIVE == GFXAPI_DX9)
-                RenderCore::ClipSpaceType::Positive);
-            #else
-                RenderCore::ClipSpaceType::StraddlingZero);
-            #endif
-        return Combine(InvertOrthonormalTransform(sceneCamera._cameraToWorld), projectionMatrix);
-    }
-
-    std::pair<Float3, Float3> HitTestResolver::CalculateWorldSpaceRay(Int2 screenCoord) const
-    {
-        RECT clientRect; GetClientRect(GetActiveWindow(), &clientRect);
-        float aspect = (clientRect.right - clientRect.left) / float(clientRect.bottom - clientRect.top);
-        auto sceneCamera = _sceneParser->GetCameraDesc();
-        auto worldToProjection = CalculateWorldToProjection(sceneCamera, aspect);
-
-        Float3 frustumCorners[8];
-        CalculateAbsFrustumCorners(frustumCorners, worldToProjection);
-        Float3 cameraPosition = ExtractTranslation(sceneCamera._cameraToWorld);
-
-        return RenderCore::BuildRayUnderCursor(
-            screenCoord, frustumCorners, cameraPosition, 
-            sceneCamera._nearClip, sceneCamera._farClip,
-            std::make_pair(Float2(0.f, 0.f), Float2(float(clientRect.right - clientRect.left), float(clientRect.bottom - clientRect.top))));
-    }
-
-    Float2 HitTestResolver::ProjectToScreenSpace(const Float3& worldSpaceCoord) const
-    {
-        RECT clientRect; GetClientRect(GetActiveWindow(), &clientRect);
-        float vWidth = float(clientRect.right - clientRect.left);
-        float vHeight = float(clientRect.bottom - clientRect.top);
-        auto worldToProjection = CalculateWorldToProjection(_sceneParser->GetCameraDesc(), vWidth / vHeight);
-        auto projCoords = worldToProjection * Expand(worldSpaceCoord, 1.f);
-
-        return Float2(
-            (projCoords[0] / projCoords[3] * 0.5f + 0.5f) * vWidth,
-            (projCoords[1] / projCoords[3] * -0.5f + 0.5f) * vHeight);
-    }
-
-    RenderCore::CameraDesc HitTestResolver::GetCameraDesc() const 
-    { 
-        return _sceneParser->GetCameraDesc();
-    }
-
-    HitTestResolver::HitTestResolver(
-        std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
-        std::shared_ptr<SceneEngine::ISceneParser> sceneParser,
-        std::shared_ptr<SceneEngine::TechniqueContext> techniqueContext)
-    : _terrainManager(std::move(terrainManager))
-    , _sceneParser(std::move(sceneParser))
-    , _techniqueContext(std::move(techniqueContext))
-    {}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
     class SelectAndEdit : public IManipulator
     {
     public:
         bool OnInputEvent(
             const InputSnapshot& evnt,
-            const HitTestResolver& hitTestContext);
+            const SceneEngine::IntersectionTestContext& hitTestContext,
+            const SceneEngine::IntersectionTestScene& hitTestScene);
         void Render(
             RenderCore::Metal::DeviceContext* context,
             SceneEngine::LightingParserContext& parserContext);
@@ -213,7 +130,7 @@ namespace Tools
             Float3  _parameter;
             Axis    _axisRestriction;
             Coord2  _cursorStart;
-            HitTestResolver::Result _anchorTerrainIntersection;
+            SceneEngine::IntersectionTestScene::Result _anchorTerrainIntersection;
             char    _typeInBuffer[4];
 
             SubOperation() : _type(None), _parameter(0.f, 0.f, 0.f), _axisRestriction(NoAxis), _cursorStart(0, 0) { _typeInBuffer[0] = '\0'; }
@@ -272,209 +189,10 @@ namespace Tools
         return res;
     }
 
-    class RayVsModelResult
-    {
-    public:
-        unsigned _count;
-        float _distance;
-    };
-
-    class RayVsModelResources
-    {
-    public:
-        class Desc 
-        {
-        public:
-            unsigned _elementSize;
-            unsigned _elementCount;
-            Desc(unsigned elementSize, unsigned elementCount) : _elementSize(elementSize), _elementCount(elementCount) {}
-        };
-        intrusive_ptr<ID3D::Buffer> _streamOutputBuffer;
-        intrusive_ptr<ID3D::Resource> _clearedBuffer;
-        intrusive_ptr<ID3D::Resource> _cpuAccessBuffer;
-        RayVsModelResources(const Desc&);
-    };
-
-    RayVsModelResources::RayVsModelResources(const Desc& desc)
-    {
-        using namespace BufferUploads;
-        using namespace RenderCore::Metal;
-        auto& uploads = *SceneEngine::GetBufferUploads();
-
-        LinearBufferDesc lbDesc;
-        lbDesc._structureByteSize = desc._elementSize;
-        lbDesc._sizeInBytes = desc._elementSize * desc._elementCount;
-
-        BufferDesc bufferDesc = CreateDesc(
-            BindFlag::StreamOutput, 0, GPUAccess::Read | GPUAccess::Write,
-            lbDesc, "RayVsModelBuffer");
-        
-        auto soRes = uploads.Transaction_Immediate(bufferDesc, nullptr)->AdoptUnderlying();
-        _streamOutputBuffer = QueryInterfaceCast<ID3D::Buffer>(soRes);
-
-        _cpuAccessBuffer = uploads.Transaction_Immediate(
-            CreateDesc(0, CPUAccess::Read, 0, lbDesc, "RayVsModelCopyBuffer"), nullptr)->AdoptUnderlying();
-
-        auto pkt = CreateEmptyPacket(bufferDesc);
-        XlSetMemory(pkt->GetData(), 0, pkt->GetDataSize());
-        _clearedBuffer = uploads.Transaction_Immediate(
-            CreateDesc(
-                BindFlag::StreamOutput, 0, GPUAccess::Read | GPUAccess::Write,
-                lbDesc, "RayVsModelClearingBuffer"), 
-            pkt.get())->AdoptUnderlying();
-    }
-
-    static RayVsModelResult RayVsModel(
-        std::pair<Float3, Float3> worldSpaceRay,
-        SceneEngine::PlacementsEditor& placementsEditor, SceneEngine::PlacementGUID object,
-        const SceneEngine::TechniqueContext& techniqueContext,
-        const RenderCore::CameraDesc* cameraForLOD = nullptr)
-    {
-            // Using the GPU, look for intersections between the ray
-            // and the given model. Since we're using the GPU, we need to
-            // get a device context. 
-            //
-            // We'll have to use the immediate context
-            // because we want to get the result get right. But that means the
-            // immediate context can't be doing anything else in another thread.
-            //
-            // This will require more complex threading support in the future!
-        ID3D::DeviceContext* immContextTemp = nullptr;
-        RenderCore::Metal::ObjectFactory().GetUnderlying()->GetImmediateContext(&immContextTemp);
-        RenderCore::Metal::DeviceContext devContext(
-            intrusive_ptr<ID3D::DeviceContext>(moveptr(immContextTemp)));
-
-            // We're doing the intersection test in the geometry shader. This means
-            // we have to setup a projection transform to avoid removing any potential
-            // intersection results during screen-edge clipping.
-            // Also, if we want to know the triangle pts and barycentric coordinates,
-            // we need to make sure that no clipping occurs.
-            // The easiest way to prevent clipping would be use a projection matrix that
-            // would transform all points into a single point in the center of the view
-            // frustum.
-        RenderCore::Metal::ViewportDesc newViewport(0.f, 0.f, float(255.f), float(255.f), 0.f, 1.f);
-        devContext.Bind(newViewport);
-
-        SceneEngine::LightingParserContext parserContext(nullptr, techniqueContext);
-        SceneEngine::RenderingQualitySettings qualitySettings;
-        qualitySettings._width = qualitySettings._height = 255;
-        qualitySettings._samplingCount = 1;
-        qualitySettings._samplingQuality = 0;
-
-        Float4x4 specialProjMatrix = MakeFloat4x4(
-            0.f, 0.f, 0.f, 0.5f,
-            0.f, 0.f, 0.f, 0.5f,
-            0.f, 0.f, 0.f, 0.5f,
-            0.f, 0.f, 0.f, 1.f);
-
-            // The camera settings can affect the LOD that objects a rendered with.
-            // So, in some cases we need to initialise the camera to the same state
-            // used in rendering. This will ensure that we get the right LOD behaviour.
-        RenderCore::CameraDesc camera;
-        if (cameraForLOD) { camera = *cameraForLOD; }
-
-        SceneEngine::LightingParser_SetupScene(
-            &devContext, parserContext, camera, qualitySettings);
-        SceneEngine::LightingParser_SetGlobalTransform(
-            &devContext, parserContext, camera, qualitySettings._width, qualitySettings._height,
-            &specialProjMatrix);
-
-        RayVsModelResult fnResult;
-        fnResult._count = 0;
-        fnResult._distance = FLT_MAX;
-
-        auto oldSO = RenderCore::Metal::GeometryShader::GetDefaultStreamOutputInitializers();
-
-        TRY {
-
-            using namespace RenderCore::Metal;
-            static const InputElementDesc eles[] = {
-                InputElementDesc("INTERSECTIONDEPTH",   0, NativeFormat::R32_FLOAT),
-                InputElementDesc("POINT",               0, NativeFormat::R32G32B32A32_FLOAT),
-                InputElementDesc("POINT",               1, NativeFormat::R32G32B32A32_FLOAT),
-                InputElementDesc("POINT",               2, NativeFormat::R32G32B32A32_FLOAT)
-            };
-            struct ResultEntry
-            {
-            public:
-                union { unsigned _depthAsInt; float _intersectionDepth; };
-                Float4 _pt[3];
-            };
-
-            unsigned strides[] = { sizeof(ResultEntry) };
-            unsigned offsets[] = { 0 };
-            GeometryShader::SetDefaultStreamOutputInitializers(
-                GeometryShader::StreamOutputInitializers(eles, dimof(eles), strides, dimof(strides)));
-
-            const unsigned maxResultCount = 256;
-            auto& res = SceneEngine::FindCachedBox<RayVsModelResources>(RayVsModelResources::Desc(sizeof(ResultEntry), maxResultCount));
-
-                // the only way to clear these things is copy from another buffer...
-            devContext.GetUnderlying()->CopyResource(res._streamOutputBuffer.get(), res._clearedBuffer.get());
-
-            ID3D::Buffer* targets[] = { res._streamOutputBuffer.get() };
-            devContext.GetUnderlying()->SOSetTargets(dimof(targets), targets, offsets);
-
-            float rayLength = Magnitude(worldSpaceRay.second - worldSpaceRay.first);
-            struct RayDefinitionCBuffer
-            {
-                Float3 _rayStart;
-                float _rayLength;
-                Float3 _rayDirection;
-                unsigned _dummy;
-            } rayDefinitionCBuffer = 
-            {
-                worldSpaceRay.first, rayLength,
-                (worldSpaceRay.second - worldSpaceRay.first) / rayLength, 0
-            };
-
-            devContext.BindGS(RenderCore::MakeResourceList(ConstantBuffer(&rayDefinitionCBuffer, sizeof(rayDefinitionCBuffer))));
-            devContext.BindGS(RenderCore::MakeResourceList(SceneEngine::CommonResources()._defaultSampler));
-
-                //  We need to invoke the render for the given object
-                //  now. Afterwards we can query the buffers for the result
-            const unsigned techniqueIndex = 6;
-            placementsEditor.RenderFiltered(
-                &devContext, parserContext, techniqueIndex,
-                &object, &object+1);
-
-                // We must lock the stream output buffer, and look for results within it
-                // it seems that this kind of thing wasn't part of the original intentions
-                // for stream output. So the results can appear anywhere within the buffer.
-                // We have to search for non-zero entries. Results that haven't been written
-                // to will appear zeroed out.
-            devContext.GetUnderlying()->CopyResource(res._cpuAccessBuffer.get(), res._streamOutputBuffer.get());
-
-            D3D11_MAPPED_SUBRESOURCE mappedSub;
-            auto hresult = devContext.GetUnderlying()->Map(
-                res._cpuAccessBuffer.get(), 0, D3D11_MAP_READ, 0, &mappedSub);
-            if (SUCCEEDED(hresult)) {
-
-                const auto* results = (const ResultEntry*)mappedSub.pData;
-                for (unsigned c=0; c<maxResultCount; ++c) {
-                    if (results[c]._depthAsInt) {
-                        ++fnResult._count;
-                        if (results[c]._intersectionDepth < fnResult._distance) {
-                            fnResult._distance = results[c]._intersectionDepth;
-                        }
-                    }
-                }
-
-                devContext.GetUnderlying()->Unmap(res._cpuAccessBuffer.get(), 0);
-            }
-
-        } CATCH (...) {
-        } CATCH_END
-
-        devContext.GetUnderlying()->SOSetTargets(0, nullptr, nullptr);
-        RenderCore::Metal::GeometryShader::SetDefaultStreamOutputInitializers(oldSO);
-
-        return fnResult;
-    }
-
     bool SelectAndEdit::OnInputEvent(
         const InputSnapshot& evnt,
-        const HitTestResolver& hitTestContext)
+        const SceneEngine::IntersectionTestContext& hitTestContext,
+        const SceneEngine::IntersectionTestScene& hitTestScene)
     {
         bool consume = false;
         if (_transaction) {
@@ -507,7 +225,8 @@ namespace Tools
                 _activeSubop._cursorStart = evnt._mousePosition;
 
                 if (newSubOp == SubOperation::MoveAcrossTerrainSurface) {
-                    _activeSubop._anchorTerrainIntersection = hitTestContext.DoHitTest(evnt._mousePosition);
+                    _activeSubop._anchorTerrainIntersection = hitTestScene.UnderCursor(
+                        hitTestContext, evnt._mousePosition, SceneEngine::IntersectionTestScene::Type::Terrain);
                 }
             }
 
@@ -635,9 +354,9 @@ namespace Tools
                             //  We want to find an intersection point with the terrain, and then 
                             //  compare the XY coordinates of that to the anchor point
 
-                        auto collision = hitTestContext.DoHitTest(evnt._mousePosition);
-                        if (collision._type == HitTestResolver::Result::Terrain
-                            && _activeSubop._anchorTerrainIntersection._type == HitTestResolver::Result::Terrain) {
+                        auto collision = hitTestScene.UnderCursor(hitTestContext, evnt._mousePosition, SceneEngine::IntersectionTestScene::Type::Terrain);
+                        if (collision._type == SceneEngine::IntersectionTestScene::Type::Terrain
+                            && _activeSubop._anchorTerrainIntersection._type == SceneEngine::IntersectionTestScene::Type::Terrain) {
                             _activeSubop._parameter = Float3(
                                 collision._worldSpaceCollision[0] - _anchorPoint[0],
                                 collision._worldSpaceCollision[1] - _anchorPoint[1],
@@ -675,64 +394,42 @@ namespace Tools
             } else {
 
                 auto worldSpaceRay = hitTestContext.CalculateWorldSpaceRay(evnt._mousePosition);
-                auto intersection = _editor->Find_RayIntersection(worldSpaceRay.first, worldSpaceRay.second);
-
-                    // we can improve the intersection by do ray-vs-triangle tests
-                    // on the roughIntersection geometry
-                const bool improveIntersection = true;
-                if (constant_expression<improveIntersection>::result()) {
-                        //  we need to create a temporary transaction to get
-                        //  at the information for these objects.
-                    auto trans = _editor->Transaction_Begin(
-                        AsPointer(intersection.cbegin()), AsPointer(intersection.cend()));
-                    
-                    float bestDistance = Magnitude(worldSpaceRay.second - worldSpaceRay.first);
-                    auto bestResult = std::make_pair(0ull, 0ull);
-
-                    auto count = trans->GetObjectCount();
-                    for (unsigned c=0; c<count; ++c) {
-                        auto cam = hitTestContext.GetCameraDesc();
-                        auto r = RayVsModel(worldSpaceRay, *_editor, trans->GetGuid(c), hitTestContext.GetTechniqueContext(), &cam);
-                        if (r._count && r._distance < bestDistance) {
-                            bestResult = trans->GetOriginalGuid(c);
-                            bestDistance = r._distance;
-                        }
-                    }
-
-                    intersection.clear();
-                    if (bestResult.first && bestResult.second) {
-                        intersection.push_back(bestResult);
-                    }
-
-                    trans->Cancel();
+                
+                SceneEngine::PlacementGUID firstHit(0,0);
+                auto hitTestResult = hitTestScene.FirstRayIntersection(
+                    hitTestContext.GetImmediateContext().get(), hitTestContext, worldSpaceRay);
+                if (hitTestResult._type == SceneEngine::IntersectionTestScene::Type::Placement) {
+                    firstHit = hitTestResult._objectGuid;
                 }
 
                     // replace the currently active selection
                 if (_transaction) {
                     _transaction->Commit();
+                    _transaction.reset();
                 }
-                _transaction = _editor->Transaction_Begin(
-                    AsPointer(intersection.cbegin()), AsPointer(intersection.cend()));
 
-                    //  Reset the anchor point
-                    //  There are a number of different possible ways we could calculate
-                    //      the anchor point... But let's find the world space bounding box
-                    //      that encloses all of the objects and get the centre of that box.
-                Float3 totalMins(FLT_MAX, FLT_MAX, FLT_MAX), totalMaxs(-FLT_MAX, -FLT_MAX, -FLT_MAX);
-                unsigned objCount = _transaction->GetObjectCount();
-                for (unsigned c=0; c<objCount; ++c) {
-                    auto obj = _transaction->GetObject(c);
-                    auto localBoundingBox = _transaction->GetLocalBoundingBox(c);
-                    auto worldSpaceBounding = TransformBoundingBox(obj._localToWorld, localBoundingBox);
-                    totalMins[0] = std::min(worldSpaceBounding.first[0], totalMins[0]);
-                    totalMins[1] = std::min(worldSpaceBounding.first[1], totalMins[1]);
-                    totalMins[2] = std::min(worldSpaceBounding.first[2], totalMins[2]);
-                    totalMaxs[0] = std::max(worldSpaceBounding.second[0], totalMaxs[0]);
-                    totalMaxs[1] = std::max(worldSpaceBounding.second[1], totalMaxs[1]);
-                    totalMaxs[2] = std::max(worldSpaceBounding.second[2], totalMaxs[2]);
+                if (firstHit.first && firstHit.second) {
+                    _transaction = _editor->Transaction_Begin(&firstHit, &firstHit + 1);
+                
+                        //  Reset the anchor point
+                        //  There are a number of different possible ways we could calculate
+                        //      the anchor point... But let's find the world space bounding box
+                        //      that encloses all of the objects and get the centre of that box.
+                    Float3 totalMins(FLT_MAX, FLT_MAX, FLT_MAX), totalMaxs(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+                    unsigned objCount = _transaction->GetObjectCount();
+                    for (unsigned c=0; c<objCount; ++c) {
+                        auto obj = _transaction->GetObject(c);
+                        auto localBoundingBox = _transaction->GetLocalBoundingBox(c);
+                        auto worldSpaceBounding = TransformBoundingBox(obj._localToWorld, localBoundingBox);
+                        totalMins[0] = std::min(worldSpaceBounding.first[0], totalMins[0]);
+                        totalMins[1] = std::min(worldSpaceBounding.first[1], totalMins[1]);
+                        totalMins[2] = std::min(worldSpaceBounding.first[2], totalMins[2]);
+                        totalMaxs[0] = std::max(worldSpaceBounding.second[0], totalMaxs[0]);
+                        totalMaxs[1] = std::max(worldSpaceBounding.second[1], totalMaxs[1]);
+                        totalMaxs[2] = std::max(worldSpaceBounding.second[2], totalMaxs[2]);
+                    }
+                    _anchorPoint = LinearInterpolate(totalMins, totalMaxs, 0.5f);
                 }
-                _anchorPoint = LinearInterpolate(totalMins, totalMaxs, 0.5f);
-
             }
 
             return true;
@@ -747,9 +444,12 @@ namespace Tools
 
             if (_manInterface) {
                 auto worldSpaceRay = hitTestContext.CalculateWorldSpaceRay(evnt._mousePosition);
-                auto selected = _editor->Find_RayIntersection(worldSpaceRay.first, worldSpaceRay.second);
-                if (!selected.empty()) {
-                    auto tempTrans = _editor->Transaction_Begin(&selected[0], &selected[0] + 1);
+                
+                SceneEngine::PlacementGUID firstHit(0,0);
+                auto hitTestResult = hitTestScene.FirstRayIntersection(
+                    hitTestContext.GetImmediateContext().get(), hitTestContext, worldSpaceRay);
+                if (hitTestResult._type == SceneEngine::IntersectionTestScene::Type::Placement) {
+                    auto tempTrans = _editor->Transaction_Begin(&hitTestResult._objectGuid, &hitTestResult._objectGuid + 1);
                     if (tempTrans->GetObjectCount() == 1) {
                         _manInterface->SelectModel(tempTrans->GetObject(0)._model.c_str());
                         _manInterface->SwitchToMode(IPlacementManipManagerInterface::Mode::PlaceSingle);
@@ -994,7 +694,8 @@ namespace Tools
     public:
         bool OnInputEvent(
             const InputSnapshot& evnt,
-            const HitTestResolver& hitTestContext);
+            const SceneEngine::IntersectionTestContext& hitTestContext,
+            const SceneEngine::IntersectionTestScene& hitTestScene);
         void Render(
             RenderCore::Metal::DeviceContext* context,
             SceneEngine::LightingParserContext& parserContext);
@@ -1065,7 +766,8 @@ namespace Tools
 
     bool PlaceSingle::OnInputEvent(
         const InputSnapshot& evnt,
-        const HitTestResolver& hitTestContext)
+        const SceneEngine::IntersectionTestContext& hitTestContext,
+        const SceneEngine::IntersectionTestScene& hitTestScene)
     {
         //  If we get a click on the terrain, then we should perform 
             //  whatever placement operation is required (eg, creating new placements)
@@ -1081,8 +783,8 @@ namespace Tools
         if (_rendersSinceHitTest > 0) {
             _rendersSinceHitTest = 0;
 
-            auto test = hitTestContext.DoHitTest(evnt._mousePosition);
-            if (test._type == HitTestResolver::Result::Terrain) {
+            auto test = hitTestScene.UnderCursor(hitTestContext, evnt._mousePosition, SceneEngine::IntersectionTestScene::Type::Terrain);
+            if (test._type == SceneEngine::IntersectionTestScene::Type::Terrain) {
 
                     //  This is a spawn event. We should add a new item of the selected model
                     //  at the point clicked.
@@ -1171,7 +873,8 @@ namespace Tools
     public:
         bool OnInputEvent(
             const InputSnapshot& evnt,
-            const HitTestResolver& hitTestContext);
+            const SceneEngine::IntersectionTestContext& hitTestContext,
+            const SceneEngine::IntersectionTestScene& hitTestScene);
         void Render(
             RenderCore::Metal::DeviceContext* context,
             SceneEngine::LightingParserContext& parserContext);
@@ -1203,7 +906,8 @@ namespace Tools
 
     bool ScatterPlacements::OnInputEvent(
         const InputSnapshot& evnt,
-        const HitTestResolver& hitTestContext)
+        const SceneEngine::IntersectionTestContext& hitTestContext,
+        const SceneEngine::IntersectionTestScene& hitTestScene)
     {
             //  If we get a click on the terrain, then we should perform 
             //  whatever placement operation is required (eg, creating new placements)
@@ -1211,14 +915,14 @@ namespace Tools
             //  However, we need to do terrain collisions every time (because we want to
             //  move the highlight/preview position
 
-        auto test = hitTestContext.DoHitTest(evnt._mousePosition);
+        auto test = hitTestScene.UnderCursor(hitTestContext, evnt._mousePosition, SceneEngine::IntersectionTestScene::Type::Terrain);
         _hoverPoint = test._worldSpaceCollision;
-        _hasHoverPoint = test._type == HitTestResolver::Result::Terrain;
+        _hasHoverPoint = test._type == SceneEngine::IntersectionTestScene::Type::Terrain;
 
         const Millisecond spawnTimeOut = 200;
         auto now = Millisecond_Now();
         if (evnt.IsHeld_LButton()) {
-            if (test._type == HitTestResolver::Result::Terrain) {
+            if (test._type == SceneEngine::IntersectionTestScene::Type::Terrain) {
                 auto selectedModel = _manInterface->GetSelectedModel();
                 if (now >= (_spawnTimer + spawnTimeOut) && !selectedModel.empty()) {
                     PerformScatter(test._worldSpaceCollision, selectedModel.c_str(), "");
@@ -1798,7 +1502,7 @@ namespace Tools
         }
 
         if (interfaceState.GetMouseOverStack().empty()
-            && _manipulators[_activeManipulatorIndex]->OnInputEvent(input, *_hitTestResolver)) {
+            && _manipulators[_activeManipulatorIndex]->OnInputEvent(input, *_intersectionTestContext, *_intersectionTestScene)) {
             return true;
         }
 
@@ -1839,7 +1543,8 @@ namespace Tools
 
     PlacementsWidgets::PlacementsWidgets(
         std::shared_ptr<SceneEngine::PlacementsEditor> editor, 
-        std::shared_ptr<HitTestResolver> hitTestResolver)
+        std::shared_ptr<SceneEngine::IntersectionTestContext> intersectionTestContext,
+        std::shared_ptr<SceneEngine::IntersectionTestScene> intersectionTestScene)
     {
         auto browser = std::make_shared<ModelBrowser>("game\\objects\\Env", editor->GetModelFormat());
         _browserActive = false;
@@ -1856,7 +1561,8 @@ namespace Tools
         manipulators[0]->SetActivationState(true);
 
         _editor = std::move(editor);
-        _hitTestResolver = std::move(hitTestResolver);        
+        _intersectionTestContext = std::move(intersectionTestContext);        
+        _intersectionTestScene = std::move(intersectionTestScene);        
         _browser = std::move(browser);
         _manipulators = std::move(manipulators);
         _selectedModel = std::move(selectedModel);
@@ -1879,7 +1585,8 @@ namespace Tools
         std::shared_ptr<SceneEngine::PlacementsEditor>      _editor;
         std::shared_ptr<DebugScreensSystem>     _screens;
         std::shared_ptr<PlacementsWidgets>      _placementsDispl;
-        std::shared_ptr<HitTestResolver>        _hitTestResolver;
+        std::shared_ptr<SceneEngine::IntersectionTestContext> _intersectionTestContext;
+        std::shared_ptr<SceneEngine::IntersectionTestScene> _intersectionTestScene;
     };
 
     void PlacementsManipulatorsManager::RenderWidgets(RenderCore::IDevice* device, const Float4x4& viewProjTransform)
@@ -1901,15 +1608,17 @@ namespace Tools
     PlacementsManipulatorsManager::PlacementsManipulatorsManager(
         std::shared_ptr<SceneEngine::PlacementsManager> placementsManager,
         std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
-        std::shared_ptr<SceneEngine::ISceneParser> sceneParser,
-        std::shared_ptr<SceneEngine::TechniqueContext> techniqueContext)
+        std::shared_ptr<SceneEngine::IntersectionTestContext> intersectionContext)
     {
         auto pimpl = std::make_unique<Pimpl>();
         pimpl->_screens = std::make_shared<DebugScreensSystem>();
         pimpl->_placementsManager = std::move(placementsManager);
         pimpl->_editor = pimpl->_placementsManager->CreateEditor();
-        pimpl->_hitTestResolver = std::make_shared<HitTestResolver>(terrainManager, sceneParser, techniqueContext);
-        pimpl->_placementsDispl = std::make_shared<PlacementsWidgets>(pimpl->_editor, pimpl->_hitTestResolver);
+        pimpl->_intersectionTestContext = std::move(intersectionContext);
+        pimpl->_intersectionTestScene = std::make_shared<SceneEngine::IntersectionTestScene>(
+            terrainManager, pimpl->_editor);
+        pimpl->_placementsDispl = std::make_shared<PlacementsWidgets>(
+            pimpl->_editor, pimpl->_intersectionTestContext, pimpl->_intersectionTestScene);
         pimpl->_screens->Register(pimpl->_placementsDispl, "Placements", DebugScreensSystem::SystemDisplay);
         _pimpl = std::move(pimpl);
     }

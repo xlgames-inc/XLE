@@ -17,9 +17,8 @@ namespace RenderOverlays { namespace DebuggingDisplay { class IInputListener; } 
 namespace SceneEngine
 {
     class TerrainManager;
-    class ISceneParser;
-    class TechniqueContext;
     class PlacementsManager;
+    class IntersectionTestContext;
     class LightingParserContext;
 }
 
@@ -43,8 +42,7 @@ namespace Tools
         PlacementsManipulatorsManager(
             std::shared_ptr<SceneEngine::PlacementsManager> placementsManager,
             std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
-            std::shared_ptr<SceneEngine::ISceneParser> sceneParser,
-            std::shared_ptr<SceneEngine::TechniqueContext> techniqueContext);
+            std::shared_ptr<SceneEngine::IntersectionTestContext> intersectionContext);
         ~PlacementsManipulatorsManager();
     protected:
         class Pimpl;

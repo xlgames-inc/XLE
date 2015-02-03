@@ -92,6 +92,9 @@ namespace RenderCore
         float nearClipPlane, float farClipPlane,
         ClipSpaceType::Enum clipSpaceType);
 
+    Float4x4 PerspectiveProjection(
+        const RenderCore::CameraDesc& sceneCamera, float viewportAspect);
+
     Float4x4 OrthogonalProjection(
         float l, float t, float r, float b,
         float nearClipPlane, float farClipPlane,

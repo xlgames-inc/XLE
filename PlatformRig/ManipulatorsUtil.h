@@ -10,7 +10,15 @@
 #include "../RenderOverlays/IOverlayContext.h"
 #include "../RenderCore/Metal/Forward.h"
 
-namespace SceneEngine { class LightingParserContext; class TerrainManager; class ISceneParser; class TechniqueContext; }
+namespace SceneEngine 
+{ 
+    class LightingParserContext; 
+    class TerrainManager; 
+    class ISceneParser; 
+    class TechniqueContext; 
+    class IntersectionTestContext;
+    class IntersectionTestScene;
+}
 namespace RenderCore { class CameraDesc; }
 
 namespace Tools
@@ -45,46 +53,13 @@ namespace Tools
             1.f, nullptr, formatting._foreground, TextAlignment::Center, label, nullptr);
     }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-    class HitTestResolver
-    {
-    public:
-        class Result
-        {
-        public:
-            enum CollisionType { None, Terrain };
-            CollisionType   _type;
-            Float3          _worldSpaceCollision;
-            Result() : _type(None), _worldSpaceCollision(0.f, 0.f, 0.f) {}
-        };
-
-        Result DoHitTest(Int2 screenCoord) const;
-        std::pair<Float3, Float3> CalculateWorldSpaceRay(Int2 screenCoord) const;
-        Float2 ProjectToScreenSpace(const Float3& worldSpaceCoord) const;
-        RenderCore::CameraDesc GetCameraDesc() const;
-        const SceneEngine::TechniqueContext& GetTechniqueContext() const { return *_techniqueContext.get(); }
-        HitTestResolver(
-            std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
-            std::shared_ptr<SceneEngine::ISceneParser> sceneParser,
-            std::shared_ptr<SceneEngine::TechniqueContext> techniqueContext);
-
-    protected:
-        std::shared_ptr<SceneEngine::TerrainManager>    _terrainManager;
-        std::shared_ptr<SceneEngine::ISceneParser>      _sceneParser;
-        std::shared_ptr<SceneEngine::TechniqueContext>  _techniqueContext;
-    };
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-    class TerrainHitTestContext;
-
     class IManipulator
     {
     public:
         virtual bool OnInputEvent(
             const InputSnapshot& evnt, 
-            const HitTestResolver& hitTestContext) = 0;
+            const SceneEngine::IntersectionTestContext& hitTestContext,
+            const SceneEngine::IntersectionTestScene& hitTestScene) = 0;
         virtual void Render(
             RenderCore::Metal::DeviceContext* context, 
             SceneEngine::LightingParserContext& parserContext) = 0;

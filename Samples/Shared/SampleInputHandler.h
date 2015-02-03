@@ -9,7 +9,7 @@
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include <memory>
 
-namespace Tools { class HitTestResolver; }
+namespace SceneEngine { class IntersectionTestContext; class TerrainManager; }
 
 namespace Sample
 {
@@ -21,10 +21,13 @@ namespace Sample
 
         SampleInputHandler(
             std::shared_ptr<Character> playerCharacter, 
-            const Tools::HitTestResolver& hitTestResolver);
+            std::shared_ptr<SceneEngine::TerrainManager> terrain,
+            std::shared_ptr<SceneEngine::IntersectionTestContext> intersectionTestContext);
+        ~SampleInputHandler();
     protected:
         std::shared_ptr<Character> _playerCharacter;
-        std::unique_ptr<Tools::HitTestResolver> _hitTestResolver;
+        std::shared_ptr<SceneEngine::TerrainManager> _terrain;
+        std::shared_ptr<SceneEngine::IntersectionTestContext> _intersectionTestContext;
     };
 }
 

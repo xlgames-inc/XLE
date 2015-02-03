@@ -8,10 +8,7 @@
 #include "../Shared/CharactersScene.h"
 #include "../Shared/SampleGlobals.h"
 
-#include "../../RenderCore/RenderUtils.h"
-#include "../../RenderCore/Metal/State.h"
-#include "../../RenderCore/Assets/TerrainFormat.h"
-#include "../../RenderCore/Assets/ModelFormatPlugins.h"
+#include "../../PlatformRig/PlatformRigUtil.h"
 
 #include "../../SceneEngine/LightDesc.h"
 #include "../../SceneEngine/LightingParserContext.h"
@@ -19,7 +16,10 @@
 #include "../../SceneEngine/PlacementsManager.h"
 #include "../../SceneEngine/SceneEngineUtility.h"
 
-#include "../../PlatformRig/PlatformRigUtil.h"
+#include "../../RenderCore/RenderUtils.h"
+#include "../../RenderCore/Metal/State.h"
+#include "../../RenderCore/Assets/TerrainFormat.h"
+#include "../../RenderCore/Assets/ModelFormatPlugins.h"
 
 #include "../../ConsoleRig/Console.h"
 #include "../../Math/Transformations.h"
@@ -54,13 +54,7 @@ namespace Sample
         RenderCore::Metal::ViewportDesc viewport(*context);
         auto sceneCamera = GetCameraDesc();
         auto projectionMatrix = RenderCore::PerspectiveProjection(
-            sceneCamera._verticalFieldOfView, viewport.Width / float(viewport.Height),
-            sceneCamera._nearClip, sceneCamera._farClip, RenderCore::GeometricCoordinateSpace::RightHanded, 
-            #if (GFXAPI_ACTIVE == GFXAPI_DX11) || (GFXAPI_ACTIVE == GFXAPI_DX9)
-                RenderCore::ClipSpaceType::Positive);
-            #else
-                RenderCore::ClipSpaceType::StraddlingZero);
-            #endif
+            sceneCamera, viewport.Width / float(viewport.Height));
         auto worldToProjection = Combine(InvertOrthonormalTransform(sceneCamera._cameraToWorld), projectionMatrix);
 
         _pimpl->_characters->Cull(worldToProjection);

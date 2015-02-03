@@ -13,7 +13,7 @@
 #include <memory>
 
 namespace RenderOverlays { class IOverlayContext; namespace DebuggingDisplay { class InputSnapshot; class IInputListener; class InterfaceState; struct Layout; class Interactables; class DebugScreensSystem; }; class Font; }
-namespace SceneEngine { class LightingParserContext; class TerrainManager; class ISceneParser; class TechniqueContext; }
+namespace SceneEngine { class LightingParserContext; class TerrainManager; class IntersectionTestContext; class IntersectionTestScene; }
 
 namespace Tools
 {
@@ -36,8 +36,6 @@ namespace Tools
         , _viewportSize(viewportSize) {}
     };
 
-    std::pair<Float3, bool> FindTerrainIntersection(TerrainHitTestContext& context, Int2 screenCoord);
-
     class ManipulatorsInterface : public std::enable_shared_from_this<ManipulatorsInterface>
     {
     public:
@@ -53,16 +51,15 @@ namespace Tools
 
         ManipulatorsInterface(
             std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
-            std::shared_ptr<SceneEngine::ISceneParser> sceneParser,
-            std::shared_ptr<SceneEngine::TechniqueContext> techniqueContext);
+            std::shared_ptr<SceneEngine::IntersectionTestContext> intersectionTestContext);
         ~ManipulatorsInterface();
     private:
         std::vector<std::unique_ptr<IManipulator>> _manipulators;
         unsigned _activeManipulatorIndex;
 
-        std::shared_ptr<SceneEngine::TerrainManager>    _terrainManager;
-        std::shared_ptr<SceneEngine::ISceneParser>      _sceneParser;
-        std::shared_ptr<SceneEngine::TechniqueContext>  _techniqueContext;
+        std::shared_ptr<SceneEngine::TerrainManager>            _terrainManager;
+        std::shared_ptr<SceneEngine::IntersectionTestContext>   _intersectionTestContext;
+        std::shared_ptr<SceneEngine::IntersectionTestScene>     _intersectionTestScene;
 
         class InputListener;
     };

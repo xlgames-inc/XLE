@@ -134,6 +134,19 @@ namespace RenderCore
         return result;
     }
 
+    Float4x4 PerspectiveProjection(
+        const RenderCore::CameraDesc& sceneCamera, float viewportAspect)
+    {
+        return PerspectiveProjection(
+            sceneCamera._verticalFieldOfView, viewportAspect,
+            sceneCamera._nearClip, sceneCamera._farClip, GeometricCoordinateSpace::RightHanded, 
+            #if (GFXAPI_ACTIVE == GFXAPI_DX11) || (GFXAPI_ACTIVE == GFXAPI_DX9)         // (todo -- this condition could be a runtime test)
+                ClipSpaceType::Positive);
+            #else
+                ClipSpaceType::StraddlingZero);
+            #endif
+    }
+
     Float4x4 OrthogonalProjection(
         float l, float t, float r, float b,
         float nearClipPlane, float farClipPlane,
@@ -204,16 +217,8 @@ namespace RenderCore
             //          correct direction from the view position under the given 
             //          mouse position
         Float3 frustumCorners[8];
-        const float aspectRatio = (viewport.second[0] - viewport.first[0]) / float(viewport.second[1] - viewport.first[1]);
-        using namespace RenderCore;
-        auto projectionMatrix = PerspectiveProjection(
-            sceneCamera._verticalFieldOfView, aspectRatio,
-            sceneCamera._nearClip, sceneCamera._farClip, GeometricCoordinateSpace::RightHanded, 
-            #if (GFXAPI_ACTIVE == GFXAPI_DX11) || (GFXAPI_ACTIVE == GFXAPI_DX9)         // (todo -- this condition could be a runtime test)
-                ClipSpaceType::Positive);
-            #else
-                ClipSpaceType::StraddlingZero);
-            #endif
+        const float viewportAspect = (viewport.second[0] - viewport.first[0]) / float(viewport.second[1] - viewport.first[1]);
+        auto projectionMatrix = PerspectiveProjection(sceneCamera, viewportAspect);
 
         auto worldToProjection = Combine(InvertOrthonormalTransform(sceneCamera._cameraToWorld), projectionMatrix);
         CalculateAbsFrustumCorners(frustumCorners, worldToProjection);
