@@ -16,6 +16,9 @@
     <Filter Include="Streams\WinAPI">
       <UniqueIdentifier>{2f6757b0-3ec8-4973-9f6d-a72e1ed52906}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Profiling">
+      <UniqueIdentifier>{d771d502-7b44-4238-814d-86282c25af42}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\BitUtils.h" />
@@ -73,6 +76,9 @@
     <ClInclude Include="..\WinAPI\WinAPIWrapper.h">
       <Filter>WinAPI</Filter>
     </ClInclude>
+    <ClInclude Include="..\Profiling\CPUProfiler.h">
+      <Filter>Profiling</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\StringFormat.cpp" />
@@ -114,5 +120,8 @@
       <Filter>Streams\WinAPI</Filter>
     </ClCompile>
     <ClCompile Include="..\MiscImplementation.cpp" />
+    <ClCompile Include="..\Profiling\CPUProfiler.cpp">
+      <Filter>Profiling</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
