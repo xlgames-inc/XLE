@@ -429,6 +429,7 @@ namespace Tools
             };
 
             devContext.BindGS(RenderCore::MakeResourceList(ConstantBuffer(&rayDefinitionCBuffer, sizeof(rayDefinitionCBuffer))));
+            devContext.BindGS(RenderCore::MakeResourceList(SceneEngine::CommonResources()._defaultSampler));
 
                 //  We need to invoke the render for the given object
                 //  now. Afterwards we can query the buffers for the result
@@ -694,6 +695,7 @@ namespace Tools
                         auto r = RayVsModel(worldSpaceRay, *_editor, trans->GetGuid(c), hitTestContext.GetTechniqueContext(), &cam);
                         if (r._count && r._distance < bestDistance) {
                             bestResult = trans->GetOriginalGuid(c);
+                            bestDistance = r._distance;
                         }
                     }
 

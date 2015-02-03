@@ -138,9 +138,12 @@ PrepareVegetationSpawn
 RayTest
     Parameters
         Geometry
+            GEO_HAS_TEXCOORD
             GEO_HAS_SKIN_WEIGHTS
             OUTPUT_WORLD_POSITION
                 1
+        Material
+            MAT_ALPHA_TEST
         Runtime
             SPAWNED_INSTANCE
     VertexShader

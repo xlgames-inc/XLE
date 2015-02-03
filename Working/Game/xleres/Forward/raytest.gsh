@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "../MainGeometry.h"
+#include "../CommonResources.h"
 
 struct GSOutput
 {
@@ -59,6 +60,12 @@ float3 RayTriangleIntersection(float3 p, float3 d, float3 v0, float3 v1, float3 
 		return 0.0.xxx;
 }
 
+#if OUTPUT_TEXCOORD==1
+	float2 GetTexCoord(VSOutput input) { return input.texCoord; }
+#else
+	float2 GetTexCoord(VSOutput input) { return 1.0.xx; }
+#endif
+
 [maxvertexcount(1)]
 	void triangles(triangle VSOutput input[3], inout PointStream<GSOutput> outputStream)
 {
@@ -79,10 +86,30 @@ float3 RayTriangleIntersection(float3 p, float3 d, float3 v0, float3 v1, float3 
 		GSOutput result;
 		result.intersectionDepth = intersectionResult.x;
 		float3 barycentric = float3(1.f - intersectionResult.y - intersectionResult.z, intersectionResult.yz);
-		result.triangleA = float4(input[0].worldPosition, barycentric.x);
-		result.triangleB = float4(input[1].worldPosition, barycentric.y);
-		result.triangleC = float4(input[2].worldPosition, barycentric.z);
-		outputStream.Append(result);
+
+		bool isOpaquePart = true;
+
+		// If this is alpha test geometry, we need to check the texture 
+		// to see if this  is a transparent pixel. This method is sometimes
+		// used for "picking" tests in tools. Without this alpha test check,
+		// the alpha tested triangles will behave like opaque triangles, which
+		// will give a confusing result for the user.
+		#if (OUTPUT_TEXCOORD==1) && (MAT_ALPHA_TEST==1)
+			const float alphaThreshold = 0.5f;
+			float2 texCoord = 
+				  barycentric.x * GetTexCoord(input[0])
+				+ barycentric.y * GetTexCoord(input[1])
+				+ barycentric.z * GetTexCoord(input[2])
+				;
+			isOpaquePart = DiffuseTexture.SampleLevel(DefaultSampler, texCoord, 0).a > alphaThreshold;
+		#endif
+
+		if (isOpaquePart) {
+			result.triangleA = float4(input[0].worldPosition, barycentric.x);
+			result.triangleB = float4(input[1].worldPosition, barycentric.y);
+			result.triangleC = float4(input[2].worldPosition, barycentric.z);
+			outputStream.Append(result);
+		}
 	}
 }
 
