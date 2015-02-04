@@ -8,6 +8,7 @@
 #include "../MemoryUtils.h"
 #include "../PtrUtils.h"
 #include <algorithm>
+#include <stack>
 
 namespace Utility
 {
@@ -48,6 +49,17 @@ namespace Utility
             return lhs._label < rhs._label;
         }
         return lhs._parent < rhs._parent;
+    }
+
+    static HierarchicalCPUProfiler::ResolvedEvent BlankEvent(const char label[])
+    {
+        HierarchicalCPUProfiler::ResolvedEvent evnt;
+        evnt._label = label;
+        evnt._inclusiveTime = evnt._exclusiveTime =0 ;
+        evnt._eventCount = 0;
+        evnt._firstChild = HierarchicalCPUProfiler::ResolvedEvent::s_id_Invalid;
+        evnt._sibling = HierarchicalCPUProfiler::ResolvedEvent::s_id_Invalid;
+        return evnt;
     }
     
     auto HierarchicalCPUProfiler::CalculateResolvedEvents() const -> std::vector<ResolvedEvent>
@@ -123,45 +135,113 @@ namespace Utility
         std::vector<ResolvedEvent> result;
         result.reserve(parentsAndChildren.size());
 
-        std::queue<std::pair<unsigned, unsigned>> finalResolveQueue;
+        class PreResolveEvent
+        {
+        public:
+            ResolvedEvent::Id _parentOutput;
+            const ParentAndChildLink* _childrenStart;
+            const ParentAndChildLink* _childrenEnd;
+        };
+
+        std::stack<PreResolveEvent> finalResolveQueue;
+        // finalResolveQueue.reserve(s_maxStackDepth);
+
+        auto inputI = parentsAndChildren.cbegin();
 
         {
-            auto i = parentsAndChildren.begin();
-            auto firstChildI = i+1;
             ResolvedEvent rootEvent;
-            rootEvent._name = i->_label;
-            rootEvent._inclusiveTime = i->_resolvedInclusiveTime;
-            rootEvent._exclusiveTime = i->_resolvedInclusiveTime - i->_resolvedChildrenTime;
+            rootEvent._label = inputI->_label;
+            rootEvent._inclusiveTime = inputI->_resolvedInclusiveTime;
+            rootEvent._exclusiveTime = inputI->_resolvedInclusiveTime - inputI->_resolvedChildrenTime;
             rootEvent._eventCount = 1;
+            rootEvent._firstChild = ResolvedEvent::s_id_Invalid;
+            rootEvent._sibling = ResolvedEvent::s_id_Invalid;
+            result.push_back(rootEvent);
 
-            auto childEnd = firstChildI;
-            while (childEnd < parentsAndChildren.cend() && childEnd->_parent == i->_child) { ++childEnd; }
-            rootEvent._childCount = childEnd = firstChildI;
+            auto parentLinkSearch = inputI->_parent;
+            ++inputI;
 
-            finalResolveQueue.push_back(std::make_pair(0,1));
+            PreResolveEvent queuedEvent;
+            queuedEvent._parentOutput = 0;
+            queuedEvent._childrenStart = AsPointer(inputI);
+            
+            while (inputI < parentsAndChildren.cend() && inputI->_parent == parentLinkSearch) { ++inputI; }
+            queuedEvent._childrenEnd = AsPointer(inputI);
+
+            finalResolveQueue.push(queuedEvent);
         }
 
+            //  While we have children in our "finalResolveQueue", we need to go 
+            //  through and turn them into ResolveEvents.
+            //
+            //  During this phase, we also need to do mergers. When we encounter 
+            //  multiple siblings with the same label, they must be merged into 
+            //  a single ResolvedEvent.
+            //
+            //  We must also merge children of events in the same way. The entire
+            //  hierarchy of the merge labels will be collapsed together, and where
+            //  identical labels occur at the same tree depth, they get merged to 
+            //  become a single event.
         while (!finalResolveQueue.empty()) {
-            unsigned parentIndex = finalResolveQueue.front()->first;
-            unsigned firstChildIndex = finalResolveQueue.front()->second;
+            const auto w = finalResolveQueue.top();
             finalResolveQueue.pop();
+            auto& parentOutput = result[w._parentOutput];
 
+            auto childIterator = w._childrenStart;
+            while (childIterator < w._childrenEnd) {
+                auto mergedChildStart = childIterator;
+                auto mergedChildEnd = mergedChildStart+1;
+                while (mergedChildEnd->_label == mergedChildStart->_label) { ++mergedChildEnd; }
 
-        }
+                    //  All of these children will be collapsed into a single
+                    //  resolved event. But first we need to check if there
+                    //  is already a ResolvedEvent attached to the same parent,
+                    //  with the same label;
+                auto existingChildIterator = parentOutput._firstChild;
+                auto lastSibling = ResolvedEvent::s_id_Invalid;
+                while (existingChildIterator != ResolvedEvent::s_id_Invalid) {
+                    lastSibling = existingChildIterator;
+                    if (result[existingChildIterator]._label == mergedChildStart->_label) {
+                        break;
+                    }
+                    existingChildIterator = result[existingChildIterator]._sibling;
+                }
 
-        for (auto i=parentsAndChildren.cbegin(); i!=parentsAndChildren.cend();) {
+                if (existingChildIterator == ResolvedEvent::s_id_Invalid) {
+                        //  It doesn't exist. Create a new event, and attach it to the last sibling 
+                        //  of the parent
+                    ResolvedEvent newEvent = BlankEvent(mergedChildStart->_label);
+                    existingChildIterator = result.size();
+                    result.push_back(newEvent);
+                    if (lastSibling != ResolvedEvent::s_id_Invalid) {
+                        result[lastSibling]._sibling = existingChildIterator;
+                    } else {
+                        parentOutput._firstChild = existingChildIterator;
+                    }
+                }
 
-            auto childStart = i+1;
-            auto childEnd = childStart;
-            while (childEnd < parentsAndChildren.cend() && childEnd->_parent == i->_child) { ++childEnd; }
+                    //  Now either we've created a new event, or we're merging into an existing one.
+                auto& dstEvent = result[existingChildIterator];
+                dstEvent._eventCount += mergedChildEnd - mergedChildStart;
+                for (auto c = mergedChildStart; c<mergedChildEnd; ++c) {
+                    dstEvent._inclusiveTime += c->_resolvedInclusiveTime;
+                    dstEvent._exclusiveTime += c->_resolvedInclusiveTime - c->_resolvedChildrenTime;
 
-            ResolvedEvent evnt;
-            evnt._childCount = childEnd - childStart;
-            evnt._exclusiveTime = i->_resolvedInclusiveTime - i->_resolvedChildrenTime;
-            evnt._inclusiveTime = i->_resolvedInclusiveTime;
-            evnt._name = i->_label;
-            evnt._eventCount = 1;
+                        //  This item becomes a new parent. We need to push in the
+                        //  resolve operations for all of the children
+                    PreResolveEvent queuedEvent;
+                    queuedEvent._parentOutput = existingChildIterator;
+                    queuedEvent._childrenStart = AsPointer(inputI);
+            
+                    auto parentLinkSearch = c->_child;
+                    while (inputI < parentsAndChildren.cend() && inputI->_parent == parentLinkSearch) { ++inputI; }
+                    queuedEvent._childrenEnd = AsPointer(inputI);
 
+                    finalResolveQueue.push(queuedEvent);
+                }
+
+                childIterator = mergedChildEnd;
+            }
         }
         
         return result;

@@ -9,6 +9,7 @@
 #include "../TimeUtils.h"
 #include "../../Core/Types.h"
 #include <vector>
+#include <assert.h>
 
 namespace Utility
 {
@@ -86,11 +87,15 @@ namespace Utility
         class ResolvedEvent
         {
         public:
-            const char* _name;
+            const char* _label;
             uint64      _inclusiveTime;
             uint64      _exclusiveTime;
             unsigned    _eventCount;
-            unsigned    _childCount;
+
+            typedef unsigned Id;
+            static const unsigned s_id_Invalid = ~Id(0x0);
+            Id          _firstChild;
+            Id          _sibling;
         };
         std::vector<ResolvedEvent> CalculateResolvedEvents() const;
 
