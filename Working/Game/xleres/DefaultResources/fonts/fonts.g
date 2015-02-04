@@ -7,6 +7,8 @@ ko
         game/xleres/DefaultResources/fonts/vera/veramono.ttf
     DosisExtraBold
         game/xleres/DefaultResources/fonts/dosis/Dosis-ExtraBold.ttf
+    DosisBook
+        game/xleres/DefaultResources/fonts/dosis/Dosis-Book.ttf
     PoiretOne
         game/xleres/DefaultResources/fonts/PoiretOne/PoiretOne-Regular.ttf
     Shojumaru
@@ -20,6 +22,8 @@ en_us
         game/xleres/DefaultResources/fonts/vera/veramono.ttf
     DosisExtraBold
         game/xleres/DefaultResources/fonts/dosis/Dosis-ExtraBold.ttf
+    DosisBook
+        game/xleres/DefaultResources/fonts/dosis/Dosis-Book.ttf
     PoiretOne
         game/xleres/DefaultResources/fonts/PoiretOne/PoiretOne-Regular.ttf
     Shojumaru

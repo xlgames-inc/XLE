@@ -53,6 +53,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
         Rect    AllocateFullWidthFraction(float proportionOfHeight);
         Rect    Allocate(Coord2 dimensions);
         Rect    GetMaximumSize() const { return _maximumSize; }
+        Coord   GetWidthRemaining() const;
     };
 
     typedef uint64 InteractableId;

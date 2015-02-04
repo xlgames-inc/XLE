@@ -41,6 +41,32 @@ float4 RoundedRectShader(
 	return lerp(nonBorderColor, borderColor, shape.x);
 }
 
+float4 CrossHatchRoundedRectShader(
+	float4 position	    : SV_Position,
+	float4 color		: COLOR0,
+	float2 texCoord0	: TEXCOORD0,
+	float2 texCoord1	: TEXCOORD1,
+    nointerpolation float2 outputDimensions : OUTPUTDIMENSIONS) : SV_Target0
+{
+	DebuggingShapesCoords coords = 
+		DebuggingShapesCoords_Make(position, texCoord0, outputDimensions);
+
+	float2 shape = RoundedRectShape2(
+		0.0.xx, 1.0.xx, coords, 
+		texCoord1.x, texCoord1.y);
+	if (shape.y <= 0.f && shape.x <= 0.f) { discard; }
+
+		// cross hatch pattern -- (bright:dark == 1:1)
+	uint p = uint(position.x) + uint(position.y);
+	if (((p/4) % 2) != 0) {
+		color.rgb *= 0.66f;
+	}
+
+	float4 borderColor = float4(1.0.xxx, 1.f);
+	float4 nonBorderColor = lerp(0.0.xxxx, color, shape.y);
+	return lerp(nonBorderColor, borderColor, shape.x);
+}
+
 float4 TagShader(		
 	float4 position	    : SV_Position,
 	float4 color		: COLOR0,

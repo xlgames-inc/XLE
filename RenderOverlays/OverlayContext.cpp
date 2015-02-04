@@ -209,7 +209,7 @@ namespace RenderOverlays
         }
 
         PushDrawCall(DrawCall(unsigned(RenderCore::Metal::Topology::TriangleList), _writePointer, 6, AsVertexFormat<Vertex>(), proj, pixelShader));
-        auto col = color.AsUInt32();
+        auto col = HardwareColor(color);
         *(Vertex*)&_workingBuffer[_writePointer] = Vertex(Float3(mins[0], mins[1], mins[2]), col, Float2(minTex0[0], minTex0[1]), Float2(minTex1[0], minTex1[1])); _writePointer += sizeof(Vertex);
         *(Vertex*)&_workingBuffer[_writePointer] = Vertex(Float3(mins[0], maxs[1], mins[2]), col, Float2(minTex0[0], maxTex0[1]), Float2(minTex1[0], maxTex1[1])); _writePointer += sizeof(Vertex);
         *(Vertex*)&_workingBuffer[_writePointer] = Vertex(Float3(maxs[0], mins[1], mins[2]), col, Float2(maxTex0[0], minTex0[1]), Float2(maxTex1[0], minTex1[1])); _writePointer += sizeof(Vertex);
@@ -230,7 +230,7 @@ namespace RenderOverlays
         }
 
         PushDrawCall(DrawCall(unsigned(RenderCore::Metal::Topology::TriangleList), _writePointer, 6, AsVertexFormat<Vertex>(), proj, pixelShader));
-        auto col = color.AsUInt32();
+        auto col = HardwareColor(color);
         *(Vertex*)&_workingBuffer[_writePointer] = Vertex(Float3(mins[0], mins[1], mins[2]), col); _writePointer += sizeof(Vertex);
         *(Vertex*)&_workingBuffer[_writePointer] = Vertex(Float3(mins[0], maxs[1], mins[2]), col); _writePointer += sizeof(Vertex);
         *(Vertex*)&_workingBuffer[_writePointer] = Vertex(Float3(maxs[0], mins[1], mins[2]), col); _writePointer += sizeof(Vertex);
@@ -251,7 +251,7 @@ namespace RenderOverlays
         }
 
         PushDrawCall(DrawCall(unsigned(RenderCore::Metal::Topology::TriangleList), _writePointer, 6, AsVertexFormat<Vertex>(), proj, std::string(), texture));
-        auto col = color.AsUInt32();
+        auto col = HardwareColor(color);
         *(Vertex*)&_workingBuffer[_writePointer] = Vertex(Float3(mins[0], mins[1], mins[2]), col, Float2(minTex0[0], minTex0[1]), Float2(0.f, 0.f)); _writePointer += sizeof(Vertex);
         *(Vertex*)&_workingBuffer[_writePointer] = Vertex(Float3(mins[0], maxs[1], mins[2]), col, Float2(minTex0[0], maxTex0[1]), Float2(0.f, 0.f)); _writePointer += sizeof(Vertex);
         *(Vertex*)&_workingBuffer[_writePointer] = Vertex(Float3(maxs[0], mins[1], mins[2]), col, Float2(maxTex0[0], minTex0[1]), Float2(0.f, 0.f)); _writePointer += sizeof(Vertex);

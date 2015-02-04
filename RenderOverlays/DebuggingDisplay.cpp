@@ -1411,6 +1411,18 @@ namespace RenderOverlays { namespace DebuggingDisplay
         return rect;
     }
 
+    Coord Layout::GetWidthRemaining() const
+    {
+        auto maxSizeWidth = _maximumSize._bottomRight[0] - _maximumSize._topLeft[0];
+
+            // get the remaining space on the current line
+        if (!_caretX) {
+            return maxSizeWidth - 2 * _paddingInternalBorder;
+        }
+
+        return maxSizeWidth - _caretX - _paddingInternalBorder - _paddingBetweenAllocations;
+    }
+
     Rect Layout::AllocateFullWidth(Coord height)
     {
             // restart row

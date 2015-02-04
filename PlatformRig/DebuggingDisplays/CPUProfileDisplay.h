@@ -29,6 +29,7 @@ namespace PlatformRig { namespace Overlays
         ~CPUProfileDisplay();
     private:
         HierarchicalCPUProfiler* _profiler;
+        std::vector<uint64> _toggledItems;
     };
 }}
 

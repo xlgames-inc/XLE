@@ -68,10 +68,10 @@ namespace Sample
         const SceneParseSettings& parseSettings,
         unsigned techniqueIndex) const
     {
+        CPUProfileEvent pEvnt("ExecuteScene", g_cpuProfiler);
+
         if (    parseSettings._batchFilter == SceneParseSettings::BatchFilter::General
             ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::Depth) {
-
-            CPUProfileEvent pEvnt("ExecuteScene", g_cpuProfiler);
 
             #if defined(ENABLE_TERRAIN)
                 if (parseSettings._toggles & SceneParseSettings::Toggles::Terrain) {

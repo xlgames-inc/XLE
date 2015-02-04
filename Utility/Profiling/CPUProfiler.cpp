@@ -8,6 +8,7 @@
 #include "../MemoryUtils.h"
 #include "../PtrUtils.h"
 #include <algorithm>
+#include <queue>
 #include <stack>
 
 namespace Utility
@@ -147,8 +148,7 @@ namespace Utility
         {
         public:
             ResolvedEvent::Id _parentOutput;
-            const ParentAndChildLink* _childrenStart;
-            const ParentAndChildLink* _childrenEnd;
+            const uint64* _parentLinkSearch;
         };
 
         std::stack<PreResolveEvent> finalResolveQueue;
@@ -180,15 +180,10 @@ namespace Utility
             rootEvent._sibling = ResolvedEvent::s_id_Invalid;
             result.push_back(rootEvent);
 
-            auto parentLinkSearch = root->_child;
-
             PreResolveEvent queuedEvent;
             queuedEvent._parentOutput = outputId;
-            queuedEvent._childrenStart = AsPointer(inputI);
+            queuedEvent._parentLinkSearch = root->_child;
             
-            while (inputI < parentsAndChildren.cend() && inputI->_parent == parentLinkSearch) { ++inputI; }
-            queuedEvent._childrenEnd = AsPointer(inputI);
-
             finalResolveQueue.push(queuedEvent);
             lastRootEventOutputId = outputId;
         }
@@ -209,11 +204,15 @@ namespace Utility
             finalResolveQueue.pop();
             auto& parentOutput = result[w._parentOutput];
 
-            auto childIterator = w._childrenStart;
-            while (childIterator < w._childrenEnd) {
+            auto childrenStart = inputI;
+            while (inputI < parentsAndChildren.cend() && inputI->_parent == w._parentLinkSearch) { ++inputI; }
+            auto childrenEnd = inputI;
+
+            auto childIterator = childrenStart;
+            while (childIterator < childrenEnd) {
                 auto mergedChildStart = childIterator;
                 auto mergedChildEnd = mergedChildStart+1;
-                while (mergedChildEnd->_label == mergedChildStart->_label) { ++mergedChildEnd; }
+                while (mergedChildEnd < parentsAndChildren.cend() && mergedChildEnd->_label == mergedChildStart->_label) { ++mergedChildEnd; }
 
                     //  All of these children will be collapsed into a single
                     //  resolved event. But first we need to check if there
@@ -253,15 +252,8 @@ namespace Utility
                         //  resolve operations for all of the children
                     PreResolveEvent queuedEvent;
                     queuedEvent._parentOutput = existingChildIterator;
-                    queuedEvent._childrenStart = AsPointer(inputI);
-            
-                    auto parentLinkSearch = c->_child;
-                    while (inputI < parentsAndChildren.cend() && inputI->_parent == parentLinkSearch) { ++inputI; }
-                    queuedEvent._childrenEnd = AsPointer(inputI);
-
-                    if (queuedEvent._childrenEnd != queuedEvent._childrenStart) {
-                        finalResolveQueue.push(queuedEvent);
-                    }
+                    queuedEvent._parentLinkSearch = c->_child;
+                    finalResolveQueue.push(queuedEvent);
                 }
 
                 childIterator = mergedChildEnd;
