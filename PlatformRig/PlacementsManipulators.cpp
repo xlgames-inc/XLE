@@ -1385,6 +1385,7 @@ namespace Tools
         if (!browserActive) {
 
                 ///////////////////////   I C O N S   ///////////////////////
+
             const char* icons[] = 
             {
                 "game/xleres/DefaultResources/icon_save.png",
@@ -1419,6 +1420,7 @@ namespace Tools
             }
         
                 ///////////////////////   S E L E C T E D    I T E M   ///////////////////////
+
             if (!_selectedModel.empty() && _drawSelectedModel) {
                 const auto centre = buttonsArea._topLeft + Coord2(toolAreaWidth/2, -margin - previewSize/2);
                 const auto temp = centre - Coord2(previewSize/2, previewSize/2);
@@ -1481,6 +1483,12 @@ namespace Tools
         }
 
         if (_browser && _browserActive) {
+                // disable the browser when pressing escape
+            if (input.IsPress(KeyId_Make("escape"))) {
+                _browserActive = false;
+                return true;
+            }
+
             auto result = _browser->SpecialProcessInput(interfaceState, input);
             if (!result._selectedModel.empty()) {
                 _selectedModel = result._selectedModel;

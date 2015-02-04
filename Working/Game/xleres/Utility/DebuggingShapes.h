@@ -203,9 +203,9 @@ float2 RoundedRectShape2(
 		float2 centre = float2(roundedWidth, roundedHeight);
 
         ////////////////
-            //  To get a anti-aliased look to the edges, we need
-            //  to make several samples. Lets just use a simple
-            //  pattern aligned to the pixel edges...
+            //  To get a anti-aliased look to the edges, we need to make 
+            //  several samples. Lets just use a simple pattern aligned 
+            //  to the pixel edges...
         float2 samplePts[4] = 
         {
             float2(.5f, .2f), float2(.5f, .8f),

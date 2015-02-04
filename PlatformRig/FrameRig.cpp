@@ -105,7 +105,7 @@ namespace PlatformRig
     {
         auto frameRateFont = RenderOverlays::GetX2Font("Shojumaru", 32);
         auto smallFrameRateFont = RenderOverlays::GetX2Font("PoiretOne", 14);
-        auto tabHeadingFont = RenderOverlays::GetX2Font("PoiretOne", 18);
+        auto tabHeadingFont = RenderOverlays::GetX2Font("Raleway", 20);
 
         _frameRateFont = std::move(frameRateFont);
         _smallFrameRateFont = std::move(smallFrameRateFont);
@@ -343,6 +343,10 @@ namespace PlatformRig
             FormatButton(interfaceState, Id_FrameRigDisplayMain, normalColor, mouseOverColor, pressed), 
             (interfaceState.HasMouseOver(Id_FrameRigDisplayMain))?4.f:2.f);
 
+        static ColorB menuBkgrnd(128, 96, 64, 64);
+        static ColorB menuBkgrndHigh(128, 96, 64, 192);
+        static ColorB tabHeaderColor(0xffffffff);
+
         auto f = _frameRate->GetPerformanceStats();
 
         TextStyle bigStyle(*res._frameRateFont);
@@ -366,6 +370,8 @@ namespace PlatformRig
         interactables.Register(Interactables::Widget(displayRect, Id_FrameRigDisplayMain));
 
         TextStyle tabHeader(*res._tabHeadingFont);
+        // tabHeader._options.shadow = 0;
+        // tabHeader._options.outline = 1;
 
         auto ds = _debugSystem.lock();
         if (ds) {
@@ -375,6 +381,7 @@ namespace PlatformRig
             if (_subMenuOpen && (_subMenuOpen-1) < dimof(categories)) {
                     // draw menu of available debug screens
                 const Coord2 iconSize(93/2, 88/2);
+                unsigned menuHeight = 0;
                 Coord2 pt = displayRect._bottomRight + Coord2(0, margin);
                 for (signed c=dimof(categories)-1; c>=0; --c) {
 
@@ -382,36 +389,49 @@ namespace PlatformRig
 
                     Rect rect;
                     if ((_subMenuOpen-1) == unsigned(c) || highlight) {
+
+                            //  Draw the text name for this icon under the icon
                         Coord nameWidth = (Coord)context->StringWidth(1.f, &tabHeader, categories[c], nullptr);
-                        rect = Rect(pt - Coord2(iconSize[0] + nameWidth + margin, 0), pt + Coord2(0, iconSize[1]));
-                        Rect iconRect(rect._topLeft, rect._topLeft + iconSize);
-                        Rect textRect(Coord2(iconRect._bottomRight[0] + margin, rect._topLeft[1]), rect._bottomRight);
+                        rect = Rect(
+                            pt - Coord2(std::max(iconSize[0], nameWidth), 0),
+                            pt + Coord2(0, Coord(iconSize[1] + tabHeader._font->LineHeight())));
+
+                        auto iconLeft = Coord((rect._topLeft[0] + rect._bottomRight[0] - iconSize[0]) / 2.f);
+                        Coord2 iconTopLeft(iconLeft, rect._topLeft[1]);
+                        Rect iconRect(iconTopLeft, iconTopLeft + iconSize);
+
+                        DrawRectangle(context, rect, menuBkgrnd);
+
                         context->DrawTexturedQuad(
                             ProjectionMode::P2D, 
                             AsPixelCoords(iconRect._topLeft),
                             AsPixelCoords(iconRect._bottomRight),
                             String_IconBegin + categories[c] + String_IconEnd);
                         DrawText(
-                            context, textRect, 0.f, 1.f, 
-                            &tabHeader, ColorB(0xffffffff), TextAlignment::Center,
+                            context, rect, 0.f, 1.f, 
+                            &tabHeader, tabHeaderColor, TextAlignment::Bottom,
                             categories[c]);
+
                     } else {
+
                         rect = Rect(pt - Coord2(iconSize[0], 0), pt + Coord2(0, iconSize[1]));
                         context->DrawTexturedQuad(
                             ProjectionMode::P2D, 
                             AsPixelCoords(rect._topLeft),
                             AsPixelCoords(rect._bottomRight),
                             String_IconBegin + categories[c] + String_IconEnd);
+
                     }
 
                     interactables.Register(Interactables::Widget(rect, Id_FrameRigDisplaySubMenu+c));
                     pt = rect._topLeft - Coord2(margin, 0);
+                    menuHeight = std::max(menuHeight, unsigned(rect._bottomRight[1] - rect._topLeft[1]));
                 }
 
                     //  List all of the screens that are part of this category. They become hot spots
                     //  to activate that screen
 
-                Layout screenListLayout(Rect(Coord2(0, pt[1] + iconSize[1] + margin), outerRect._bottomRight));
+                Layout screenListLayout(Rect(Coord2(0, pt[1] + menuHeight + margin), outerRect._bottomRight));
 
                 const Coord2 smallIconSize(93/4, 88/4);
                 auto lineHeight = std::max(smallIconSize[1], tabHeadingLineHeight);
@@ -421,7 +441,11 @@ namespace PlatformRig
                         unsigned width = (unsigned)context->StringWidth(1.f, &tabHeader, i->_name.c_str(), nullptr);
                         auto rect = screenListLayout.AllocateFullWidth(lineHeight);
                         rect._topLeft[0] = rect._bottomRight[0] - width;
-                        DrawRectangle(context, Rect(rect._topLeft - Coord2(2 + margin + smallIconSize[0],2), rect._bottomRight + Coord2(2,2)), ColorB(0xff000000));
+
+                        DrawRectangle(context, 
+                            Rect(rect._topLeft - Coord2(2 + margin + smallIconSize[0],2), rect._bottomRight + Coord2(2,2)), 
+                            interfaceState.HasMouseOver(i->_hashCode) ? menuBkgrndHigh : menuBkgrnd);
+
                         context->DrawTexturedQuad(
                             ProjectionMode::P2D, 
                             AsPixelCoords(Coord2(rect._topLeft - Coord2(smallIconSize[0] + margin, 0))),
@@ -429,7 +453,7 @@ namespace PlatformRig
                             String_IconBegin + categories[_subMenuOpen-1] + String_IconEnd);
                         DrawText(
                             context, rect, 0.f, 1.f, 
-                            &tabHeader, ColorB(0xffffffff), TextAlignment::Left,
+                            &tabHeader, tabHeaderColor, TextAlignment::Left,
                             i->_name.c_str());
 
                         interactables.Register(Interactables::Widget(rect, i->_hashCode));
