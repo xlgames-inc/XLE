@@ -16,6 +16,7 @@
 #include "../../PlatformRig/MainInputHandler.h"
 #include "../../PlatformRig/InputTranslator.h"
 #include "../../PlatformRig/DebuggingDisplays/GPUProfileDisplay.h"
+#include "../../PlatformRig/DebuggingDisplays/CPUProfileDisplay.h"
 #include "../../PlatformRig/FrameRig.h"
 #include "../../PlatformRig/PlatformRigUtil.h"
 
@@ -39,6 +40,7 @@
 #include "../../ConsoleRig/Log.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../Utility/StringFormat.h"
+#include "../../Utility/Profiling/CPUProfiler.h"
 
 #include <functional>
 
@@ -51,6 +53,7 @@ namespace Sample
         // "GPU profiler" doesn't have a place to live yet. We just manage it here, at 
         //  the top level
     RenderCore::Metal::GPUProfiler::Ptr g_gpuProfiler;
+    Utility::HierarchicalCPUProfiler g_cpuProfiler;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -179,6 +182,9 @@ namespace Sample
                 auto gpuProfilerDisplay = std::make_shared<PlatformRig::Overlays::GPUProfileDisplay>(g_gpuProfiler.get());
                 debugSystem->Register(gpuProfilerDisplay, "[Profiler] GPU Profiler");
             }
+            debugSystem->Register(
+                std::make_shared<PlatformRig::Overlays::CPUProfileDisplay>(&g_cpuProfiler), 
+                "[Profiler] CPU Profiler");
 
             debugSystem->Register(
                 std::make_shared<SceneEngine::PlacementsQuadTreeDebugger>(mainScene->GetPlacementManager()),
@@ -225,7 +231,7 @@ namespace Sample
                 //          of timing and some thread management tasks
                 //      * the DeviceContext provides the methods we need for rendering.
             LogInfo << "Setup frame rig and rendering context";
-            FrameRig frameRig(debugSystem);
+            FrameRig frameRig(&g_cpuProfiler, debugSystem);
             auto context = RenderCore::Metal::DeviceContext::GetImmediateContext(primMan._rDevice.get());
 
                 //  Finally, we execute the frame loop
@@ -251,6 +257,7 @@ namespace Sample
                 primMan._bufferUploads->Update();
                 mainScene->Update(frameResult._elapsedTime);
                 cameraInputHandler->Commit(frameResult._elapsedTime);   // we need to be careful to update the camera at the right time (relative to character update)
+                g_cpuProfiler.EndFrame();
                 ++FrameRenderCount;
             }
         }
@@ -291,6 +298,8 @@ namespace Sample
         RenderOverlays::DebuggingDisplay::DebugScreensSystem* debugSystem,
         IOverlaySystem* overlaySys)
     {
+        CPUProfileEvent pEvnt("RenderFrame", g_cpuProfiler);
+
             //  some scene might need a "prepare" step to 
             //  build some resources before the main render occurs.
         context->InvalidateCachedState();

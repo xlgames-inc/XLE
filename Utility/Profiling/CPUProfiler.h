@@ -82,7 +82,7 @@ namespace Utility
 
         EventId     BeginEvent(const char eventLiteral[]);
         void        EndEvent(EventId eventId);
-        void        BeginFrame();
+        void        EndFrame();
 
         class ResolvedEvent
         {
@@ -164,6 +164,58 @@ namespace Utility
         #endif
         _events[0].push_back((1ull << 63ull) | time);
     }
+
+    /// <summary>Begin and end a profiler event</summary>
+    /// Begin a CPU profiler event, and then end it after this object
+    /// leaves scope. Use this to manage CPU profiler events in a 
+    /// RAII-friendly way.
+    class CPUProfileEvent
+    {
+    public:
+        HierarchicalCPUProfiler::EventId GetId() { return _id; }
+
+        CPUProfileEvent(const char label[], HierarchicalCPUProfiler& profiler)
+        : _profiler(&profiler)
+        {
+            _id = _profiler->BeginEvent(label);
+        }
+
+        ~CPUProfileEvent()
+        {
+            _profiler->EndEvent(_id);
+        }
+
+    private:
+        HierarchicalCPUProfiler* _profiler;
+        HierarchicalCPUProfiler::EventId _id;
+    };
+
+    class CPUProfileEvent_Conditional
+    {
+    public:
+        HierarchicalCPUProfiler::EventId GetId() { return _id; }
+
+        CPUProfileEvent_Conditional(const char label[], HierarchicalCPUProfiler* profiler)
+        : _profiler(profiler)
+        {
+            if (_profiler) {
+                _id = _profiler->BeginEvent(label);
+            } else {
+                _id = ~HierarchicalCPUProfiler::EventId(0x0ull);
+            }
+        }
+
+        ~CPUProfileEvent_Conditional()
+        {
+            if (_profiler) {
+                _profiler->EndEvent(_id);
+            }
+        }
+
+    private:
+        HierarchicalCPUProfiler* _profiler;
+        HierarchicalCPUProfiler::EventId _id;
+    };
 }
 
 using namespace Utility;

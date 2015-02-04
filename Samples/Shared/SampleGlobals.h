@@ -17,12 +17,15 @@ namespace SceneEngine
     class TerrainConfig;
 }
 
+namespace Utility { class HierarchicalCPUProfiler; }
+
 namespace Sample
 {
         // Source character files are original built 100 times larger than other assets (for artists' convenience)
     static const float CharactersScale = 100.f;
 
     extern RenderCore::Metal::GPUProfiler::Ptr g_gpuProfiler;
+    extern Utility::HierarchicalCPUProfiler g_cpuProfiler;
 
     #if defined(ENABLE_TERRAIN)
         extern std::shared_ptr<SceneEngine::ITerrainFormat>     MainTerrainFormat;

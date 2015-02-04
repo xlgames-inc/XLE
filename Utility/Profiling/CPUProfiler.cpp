@@ -13,8 +13,10 @@
 namespace Utility
 {
 
-    void HierarchicalCPUProfiler::BeginFrame()
+    void HierarchicalCPUProfiler::EndFrame()
     {
+        assert(XlGetCurrentThreadId() == _threadId);
+        assert(_aeStackI==0);
         static_assert(s_bufferCount > 1, "Expecting at least 2 buffers");
         std::swap(_events[0], _events[1]);  // (actually only the first 2 would be used)
         std::swap(_idAtEventsStart[0], _idAtEventsStart[1]);
@@ -114,11 +116,17 @@ namespace Utility
                     // create a new parent and child link, and add to our list
                 ParentAndChildLink link;
                 link._parent = nullptr;
+                if (_workingStackIndex > 0) {
+                    link._parent = parentsAndChildren[workingStack[_workingStackIndex-1]]._child;
+                }
                 link._child = AsPointer(i);
                 link._label = (const char*)*(i+1);
                 link._id = workingId++;
                 link._resolvedChildrenTime = link._resolvedInclusiveTime = 0;
                 ++i;
+
+                workingStack[_workingStackIndex++] = parentsAndChildren.size();
+                parentsAndChildren.push_back(link);
 
             }
         }
@@ -147,28 +155,42 @@ namespace Utility
         // finalResolveQueue.reserve(s_maxStackDepth);
 
         auto inputI = parentsAndChildren.cbegin();
+        auto rootEventsStart = inputI++;
+        while (inputI->_parent == nullptr) { ++inputI; }
+        auto rootEventsEnd = inputI;
 
-        {
+        auto lastRootEventOutputId = ResolvedEvent::s_id_Invalid;
+
+            //  For each root event, we must start the tree, and queue the children
+            //  Note that we're not merging root events here! Merging occurs for every
+            //  other events, just not the root events
+        for (auto root = rootEventsStart; root < rootEventsEnd; ++root) {
+            auto outputId = result.size();
+            if (lastRootEventOutputId != ResolvedEvent::s_id_Invalid) {
+                    // attach the new root event as a sibling of the last one added
+                result[lastRootEventOutputId]._sibling = outputId;
+            }
+
             ResolvedEvent rootEvent;
-            rootEvent._label = inputI->_label;
-            rootEvent._inclusiveTime = inputI->_resolvedInclusiveTime;
-            rootEvent._exclusiveTime = inputI->_resolvedInclusiveTime - inputI->_resolvedChildrenTime;
+            rootEvent._label = root->_label;
+            rootEvent._inclusiveTime = root->_resolvedInclusiveTime;
+            rootEvent._exclusiveTime = root->_resolvedInclusiveTime - root->_resolvedChildrenTime;
             rootEvent._eventCount = 1;
             rootEvent._firstChild = ResolvedEvent::s_id_Invalid;
             rootEvent._sibling = ResolvedEvent::s_id_Invalid;
             result.push_back(rootEvent);
 
-            auto parentLinkSearch = inputI->_parent;
-            ++inputI;
+            auto parentLinkSearch = root->_child;
 
             PreResolveEvent queuedEvent;
-            queuedEvent._parentOutput = 0;
+            queuedEvent._parentOutput = outputId;
             queuedEvent._childrenStart = AsPointer(inputI);
             
             while (inputI < parentsAndChildren.cend() && inputI->_parent == parentLinkSearch) { ++inputI; }
             queuedEvent._childrenEnd = AsPointer(inputI);
 
             finalResolveQueue.push(queuedEvent);
+            lastRootEventOutputId = outputId;
         }
 
             //  While we have children in our "finalResolveQueue", we need to go 
@@ -237,12 +259,18 @@ namespace Utility
                     while (inputI < parentsAndChildren.cend() && inputI->_parent == parentLinkSearch) { ++inputI; }
                     queuedEvent._childrenEnd = AsPointer(inputI);
 
-                    finalResolveQueue.push(queuedEvent);
+                    if (queuedEvent._childrenEnd != queuedEvent._childrenStart) {
+                        finalResolveQueue.push(queuedEvent);
+                    }
                 }
 
                 childIterator = mergedChildEnd;
             }
         }
+
+            //  We should always get to the end of this array. If we don't get all the way through, it means that
+            //  the ordering must off. It means we're going to loose the results of some children
+        assert(inputI == parentsAndChildren.cend());
         
         return result;
     }

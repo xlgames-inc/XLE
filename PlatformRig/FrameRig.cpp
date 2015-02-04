@@ -17,6 +17,7 @@
 #include "../Utility/TimeUtils.h"
 #include "../Utility/IntrusivePtr.h"
 #include "../Utility/StringFormat.h"
+#include "../Utility/Profiling/CPUProfiler.h"
 
 #include "../ConsoleRig/Log.h"
 #include "../ConsoleRig/Console.h"
@@ -75,12 +76,14 @@ namespace PlatformRig
         uint64      _frameLimiter;
         uint64      _timerFrequency;
         std::shared_ptr<FrameRigDisplay> _display;
+        HierarchicalCPUProfiler* _profiler;
 
         Pimpl() 
         : _prevFrameStartTime(0) 
         , _timerFrequency(GetPerformanceCounterFrequency())
         , _frameRenderCount(0)
         , _frameLimiter(0)
+        , _profiler(nullptr)
         {
             _timerToSeconds = 1.0f / float(_timerFrequency);
         }
@@ -119,10 +122,13 @@ namespace PlatformRig
         RenderCore::Metal::GPUProfiler::Profiler* gpuProfiler,
         const FrameRenderFunction& renderFunction) -> FrameResult
     {
+        CPUProfileEvent_Conditional pEvnt("FrameRig::ExecuteFrame", _pimpl->_profiler);
+
         assert(context && device && presChain);
 
         uint64 startTime = GetPerformanceCounter();
         if (_pimpl->_frameLimiter) {
+            CPUProfileEvent_Conditional pEvnt("FrameLimiter", _pimpl->_profiler);
             while (startTime < _pimpl->_prevFrameStartTime + _pimpl->_frameLimiter) {
                 Threading::YieldTimeSlice();
                 startTime = GetPerformanceCounter();
@@ -164,7 +170,10 @@ namespace PlatformRig
             }
         }
 
-        presChain->Present();
+        {
+            CPUProfileEvent_Conditional pEvnt("Present", _pimpl->_profiler);
+            presChain->Present();
+        }
 
         if (gpuProfiler) {
             RenderCore::Metal::GPUProfiler::Frame_End(*context, gpuProfiler);
@@ -195,9 +204,10 @@ namespace PlatformRig
         else { _pimpl->_frameLimiter = 0; }
     }
 
-    FrameRig::FrameRig(std::shared_ptr<DebugScreensSystem> debugSystem)
+    FrameRig::FrameRig(HierarchicalCPUProfiler* profiler, std::shared_ptr<DebugScreensSystem> debugSystem)
     {
         _pimpl = std::make_unique<Pimpl>();
+        _pimpl->_profiler = profiler;
 
         if (debugSystem) {
             _pimpl->_display = std::make_shared<FrameRigDisplay>(debugSystem, _pimpl->_prevFrameAllocationCount, _pimpl->_frameRate);

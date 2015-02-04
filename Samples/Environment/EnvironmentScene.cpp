@@ -24,6 +24,7 @@
 #include "../../ConsoleRig/Console.h"
 #include "../../Math/Transformations.h"
 #include "../../Utility/Streams/PathUtils.h"
+#include "../../Utility/Profiling/CPUProfiler.h"
 
 namespace SceneEngine { extern float SunDirectionAngle; }
 
@@ -70,9 +71,12 @@ namespace Sample
         if (    parseSettings._batchFilter == SceneParseSettings::BatchFilter::General
             ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::Depth) {
 
+            CPUProfileEvent pEvnt("ExecuteScene", g_cpuProfiler);
+
             #if defined(ENABLE_TERRAIN)
                 if (parseSettings._toggles & SceneParseSettings::Toggles::Terrain) {
                     if (Tweakable("DoTerrain", true)) {
+                        CPUProfileEvent pEvnt("TerrainRender", g_cpuProfiler);
                         _pimpl->_terrainManager->Render(context, parserContext, techniqueIndex);
                     }
                 }
@@ -82,6 +86,7 @@ namespace Sample
                 _pimpl->_characters->Render(context, parserContext, techniqueIndex);
 
                 if (_pimpl->_placementsManager) {
+                    CPUProfileEvent pEvnt("PlacementsRender", g_cpuProfiler);
                     _pimpl->_placementsManager->Render(context, parserContext, techniqueIndex);
                 }
             }
@@ -95,6 +100,8 @@ namespace Sample
         const SceneParseSettings& parseSettings,
         unsigned frustumIndex, unsigned techniqueIndex) const 
     {
+        CPUProfileEvent pEvnt("ExecuteShadowScene", g_cpuProfiler);
+
         if (Tweakable("DoShadows", true)) {
             SceneParseSettings settings = parseSettings;
             settings._toggles &= ~SceneParseSettings::Toggles::Terrain;

@@ -12,6 +12,7 @@
 #include <memory>
 
 namespace RenderOverlays { namespace DebuggingDisplay { class IWidget; class DebugScreensSystem; } }
+namespace Utility { class HierarchicalCPUProfiler; }
 
 namespace PlatformRig
 {
@@ -43,7 +44,9 @@ namespace PlatformRig
 
         void SetFrameLimiter(unsigned maxFPS);
 
-        FrameRig(std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem> debugSystem = nullptr);
+        FrameRig(
+            Utility::HierarchicalCPUProfiler* profiler = nullptr,
+            std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem> debugSystem = nullptr);
         ~FrameRig();
 
     protected:

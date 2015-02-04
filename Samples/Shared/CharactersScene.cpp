@@ -19,6 +19,7 @@
 #include "../../Math/Transformations.h"
 #include "../../Math/ProjectionMath.h"
 #include "../../Utility/Mixins.h"
+#include "../../Utility/Profiling/CPUProfiler.h"
 
 namespace Sample
 {
@@ -91,6 +92,7 @@ namespace Sample
         using namespace SceneEngine;
 
         RenderCore::Metal::GPUProfiler::DebugAnnotation anno(*context, L"Characters");
+        CPUProfileEvent pEvnt("CharactersSceneRender", g_cpuProfiler);
 
             //  Turn on auto cotangents for character rendering
             //  This prevents us from having to transform the tangent frame through the skinning
@@ -162,6 +164,8 @@ namespace Sample
                                 si->_finalMatrices.get(),
                                 model.GetPrepareMachine().GetSkeletonOutputCount(),
                                 &model.GetPrepareMachine().GetSkeletonBinding());
+
+                            CPUProfileEvent pEvnt("CharacterModelRender", g_cpuProfiler);
                             model.GetRenderer().Render(modelContext, *i2, &meshToModel, AsPointer(si));
                         }
                     } CATCH(const std::exception&) {
@@ -201,6 +205,8 @@ namespace Sample
     void CharactersScene::Prepare(
         RenderCore::Metal::DeviceContext* context)
     {
+        CPUProfileEvent pEvnt("CharactersScenePrepare", g_cpuProfiler);
+
             //  We need to prepare the animation state for all of the visible characters for
             //  this frame. Build the animation state before we do any rendering -- so 
             //  usually this is one of the first steps in rendering any given frame.
@@ -243,6 +249,8 @@ namespace Sample
 
     void CharactersScene::Cull(const Float4x4& worldToProjection)
     {
+        CPUProfileEvent pEvnt("CharactersSceneCull", g_cpuProfiler);
+
             //  Prepare the list of visible characters
             //  Here we do culling against the edge of the screen. We could do occlusion
             //  and/or distance culling also... This implementation is very primitive. 
@@ -331,6 +339,8 @@ namespace Sample
 
     void CharactersScene::Update(float deltaTime)
     {
+        CPUProfileEvent pEvnt("CharactersSceneUpdate", g_cpuProfiler);
+
             // update the simulations state for all characters
         for (auto i = _pimpl->_characters.begin(); i!=_pimpl->_characters.end(); ++i) {
             i->Update(deltaTime);
