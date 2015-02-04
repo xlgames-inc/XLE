@@ -10,6 +10,7 @@
 #include "../../PlatformRig/MainInputHandler.h"
 #include "../../PlatformRig/InputTranslator.h"
 #include "../../PlatformRig/DebuggingDisplays/GPUProfileDisplay.h"
+#include "../../PlatformRig/DebuggingDisplays/CPUProfileDisplay.h"
 #include "../../PlatformRig/FrameRig.h"
 #include "../../PlatformRig/PlatformRigUtil.h"
 
@@ -33,6 +34,7 @@
 #include "../../ConsoleRig/Console.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/StringFormat.h"
+#include "../../Utility/Profiling/CPUProfiler.h"
 
 #include <functional>
 
@@ -45,6 +47,7 @@ namespace Sample
         // "GPU profiler" doesn't have a place to live yet. We just manage it here, at 
         //  the top level
     RenderCore::Metal::GPUProfiler::Ptr g_gpuProfiler;
+    Utility::HierarchicalCPUProfiler g_cpuProfiler;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -128,6 +131,10 @@ namespace Sample
                 auto gpuProfilerDisplay = std::make_shared<PlatformRig::Overlays::GPUProfileDisplay>(g_gpuProfiler.get());
                 debugSystem->Register(gpuProfilerDisplay, "[Profiler] GPU Profiler");
             }
+            debugSystem->Register(
+                std::make_shared<PlatformRig::Overlays::CPUProfileDisplay>(&g_cpuProfiler), 
+                "[Profiler] CPU Profiler");
+
 
                 //  Setup input:
                 //      * We create a main input handler, and tie that to the window to receive inputs
@@ -155,7 +162,7 @@ namespace Sample
                 //          of timing and some thread management taskes
                 //      * the DeviceContext provides the methods we need for rendering.
             LogInfo << "Setup frame rig and rendering context";
-            FrameRig frameRig(debugSystem);
+            FrameRig frameRig(&g_cpuProfiler, debugSystem);
             auto context = RenderCore::Metal::DeviceContext::GetImmediateContext(renderDevice.get());
 
                 //  Finally, we execute the frame loop
@@ -178,6 +185,7 @@ namespace Sample
                     // ------- Update ----------------------------------------
                 bufferUploads->Update();
                 mainScene->Update(frameResult._elapsedTime);
+                g_cpuProfiler.EndFrame();
                 ++FrameRenderCount;
             }
         }
