@@ -331,8 +331,7 @@ namespace RenderCore
         PresentationChainDesc result;
         DXGI_SWAP_CHAIN_DESC dxgiDesc;
         _underlying->GetDesc(&dxgiDesc);
-        result._width = dxgiDesc.BufferDesc.Width;
-        result._height = dxgiDesc.BufferDesc.Height;
+        result._dimensions = UInt2(dxgiDesc.BufferDesc.Width, dxgiDesc.BufferDesc.Height);
         return result;
     }
 

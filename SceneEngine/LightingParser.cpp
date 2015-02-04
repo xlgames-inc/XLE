@@ -493,7 +493,7 @@ namespace SceneEngine
         SavedTargets savedTargets(context);
 
         ViewportDesc mainViewport(  
-            0.f, 0.f, float(qualitySettings._width), float(qualitySettings._height), 0.f, 1.f);
+            0.f, 0.f, float(qualitySettings._dimensions[0]), float(qualitySettings._dimensions[1]), 0.f, 1.f);
         
         typedef Metal::NativeFormat::Enum NativeFormat;
         auto sampling = BufferUploads::TextureSamples::Create(
@@ -824,7 +824,7 @@ namespace SceneEngine
             parserContext.SetMetricsBox(&metricsBox);
 
             LightingParser_SetGlobalTransform(
-                context, parserContext, camera, qualitySettings._width, qualitySettings._height);
+                context, parserContext, camera, qualitySettings._dimensions[0], qualitySettings._dimensions[1]);
         } 
         CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
         CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
@@ -877,7 +877,7 @@ namespace SceneEngine
                 //  Hack -- water reflections transformation needs aspect ratio correction disabled.
                 //          we can do that by passing height twice, as so...
             LightingParser_SetGlobalTransform(
-                context, parserContext, parserContext.GetSceneParser()->GetCameraDesc(), qualitySettings._height, qualitySettings._height,
+                context, parserContext, parserContext.GetSceneParser()->GetCameraDesc(), qualitySettings._dimensions[1], qualitySettings._dimensions[1],
                 &projectionMatrix);
 
             parserContext.GetSceneParser()->ExecuteScene(
@@ -970,6 +970,18 @@ namespace SceneEngine
     }
 
     LightingParserContext::~LightingParserContext() {}
+
+
+    RenderingQualitySettings::RenderingQualitySettings()
+    {
+        _dimensions = UInt2(0,0);
+        _samplingCount = _samplingQuality = 0;
+    }
+
+    RenderingQualitySettings::RenderingQualitySettings(
+        UInt2 dimensions, unsigned samplingCount, unsigned samplingQuality)
+    : _dimensions(dimensions), _samplingCount(samplingCount), _samplingQuality(samplingQuality)
+    {}
 
 }
 

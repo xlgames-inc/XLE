@@ -170,6 +170,7 @@ namespace Sample
         
         {
                 //  Create the debugging system, and add any "displays"
+                //  These are optional. They are for debugging and development tasks.
             LogInfo << "Setup tools and debugging";
             auto debugSystem = std::make_shared<RenderOverlays::DebuggingDisplay::DebugScreensSystem>();
             InitDebugDisplays(*debugSystem);
@@ -185,6 +186,19 @@ namespace Sample
             auto intersectionContext = std::make_shared<SceneEngine::IntersectionTestContext>(
                 mainScene, primMan._globalTechContext);
 
+                //  We also create some "overlay systems" in this sample. 
+                //  Again, it's optional. An overlay system will redirect all input
+                //  to some alternative task. 
+                //
+                //  For example, when the "overlay system" for the console is opened 
+                //  it will consume all input and prevent other systems from
+                //  getting input events. This is convenient, because we don't want
+                //  key presses to cause other things to happen while we enter text
+                //  into the console.
+                //
+                //  But the console is just a widget. So we can also add it as a 
+                //  debugging display. In this case, it won't consume all input, just
+                //  the specific input directed at it.
             auto overlaySys = std::make_shared<Sample::OverlaySystemManager>();
             {
                 using RenderOverlays::DebuggingDisplay::KeyId_Make;
@@ -195,11 +209,13 @@ namespace Sample
                         intersectionContext));
             }
 
+                //  We need to create input handlers, and then direct input from the 
+                //  OS to that input handler.
             auto cameraInputHandler = std::make_shared<PlatformRig::Camera::CameraInputHandler>(
                 mainScene->GetCameraPtr(), mainScene->GetPlayerCharacter(), CharactersScale);
-
             auto mainInputHandler = CreateInputHandler(
                 mainScene, debugSystem, intersectionContext, cameraInputHandler, overlaySys.get());
+
             primMan._window.GetInputTranslator().AddListener(mainInputHandler);
             auto stdPlugin = std::make_shared<SceneEngine::LightingParserStandardPlugin>();
             primMan._asyncMan->GetAssetSets().LogReport();
@@ -280,20 +296,16 @@ namespace Sample
         context->InvalidateCachedState();
         scene->PrepareFrame(context);
 
+        using namespace SceneEngine;
         auto presChainDesc = presentationChain->GetDesc();
-        SceneEngine::RenderingQualitySettings qualitySettings;
-        qualitySettings._width = presChainDesc._width;
-        qualitySettings._height = presChainDesc._height;
-        qualitySettings._samplingCount = Tweakable("SamplingCount", 1); 
-        qualitySettings._samplingQuality = Tweakable("SamplingQuality", 0);
-
-        SceneEngine::LightingParser_Execute(context, lightingParserContext, qualitySettings);
+        LightingParser_Execute(context, lightingParserContext, 
+            RenderingQualitySettings(presChainDesc._dimensions, Tweakable("SamplingCount", 1), Tweakable("SamplingQuality", 0)));
         if (overlaySys) {
             overlaySys->RenderToScene(context, lightingParserContext);
         }
 
-        auto& usefulFonts = SceneEngine::FindCachedBox<UsefulFonts>(UsefulFonts::Desc());
-        SceneEngine::DrawPendingResources(context, lightingParserContext, usefulFonts._defaultFont0.get());
+        auto& usefulFonts = FindCachedBox<UsefulFonts>(UsefulFonts::Desc());
+        DrawPendingResources(context, lightingParserContext, usefulFonts._defaultFont0.get());
         if (debugSystem) {
             debugSystem->Render(renderDevice, lightingParserContext.GetProjectionDesc()._worldToProjection);
         }

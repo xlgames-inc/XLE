@@ -555,10 +555,7 @@ namespace Overlays
             //      Cameras and lights should be arranged to suit the bounding box given. Let's use 
             //      orthogonal projection to make sure the object is positioned within the output viewport well.
         RenderCore::Metal::ViewportDesc viewport(*devContext);
-        SceneEngine::RenderingQualitySettings qualitySettings;
-        qualitySettings._width = unsigned(viewport.Width);
-        qualitySettings._height = unsigned(viewport.Height);
-        qualitySettings._samplingCount = 1; qualitySettings._samplingQuality = 0;
+        SceneEngine::RenderingQualitySettings qualitySettings(UInt2(unsigned(viewport.Width), unsigned(viewport.Height)));
 
             //  Aggressively reset the shared state set, to try to invalidate
             //  any cached states that have changed since the last render

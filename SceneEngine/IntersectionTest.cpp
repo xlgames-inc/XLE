@@ -77,11 +77,7 @@ namespace SceneEngine
         devContext->Bind(newViewport);
 
         LightingParserContext parserContext(context.GetSceneParser(), context.GetTechniqueContext());
-        RenderingQualitySettings qualitySettings;
-        qualitySettings._width = viewportDims[0];
-        qualitySettings._height = viewportDims[1];
-        qualitySettings._samplingCount = 1;
-        qualitySettings._samplingQuality = 0;
+        RenderingQualitySettings qualitySettings(viewportDims, 1, 0);
         LightingParser_SetupScene(
             devContext, parserContext, 
             context.GetCameraDesc(), qualitySettings);

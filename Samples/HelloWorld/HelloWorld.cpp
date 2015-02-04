@@ -32,7 +32,6 @@
 
 #include "../../ConsoleRig/Console.h"
 #include "../../ConsoleRig/Log.h"
-#include "../../ConsoleRig/IncludeLUA.h"
 #include "../../Utility/StringFormat.h"
 
 #include <functional>
@@ -226,16 +225,13 @@ namespace Sample
             //  build some resources before the main render occurs.
         scene->PrepareFrame(context);
 
+        using namespace SceneEngine;
         auto presChainDesc = presentationChain->GetDesc();
-        SceneEngine::RenderingQualitySettings qualitySettings;
-        qualitySettings._width = presChainDesc._width;
-        qualitySettings._height = presChainDesc._height;
-        qualitySettings._samplingCount = Tweakable("SamplingCount", 1); 
-        qualitySettings._samplingQuality = Tweakable("SamplingQuality", 0);
 
             //  Execute the lighting parser!
             //      This is where most rendering actually happens.
-        SceneEngine::LightingParser_Execute(context, lightingParserContext, qualitySettings);
+        LightingParser_Execute(context, lightingParserContext, 
+            RenderingQualitySettings(presChainDesc._dimensions, Tweakable("SamplingCount", 1), Tweakable("SamplingQuality", 0)));
 
             //  If we need to, we can render outside of the lighting parser.
             //  We just need to to use the device context to perform any rendering
@@ -246,7 +242,7 @@ namespace Sample
             //  during the render. Here, we can render them as a short list...
         bool hasPendingResources = !lightingParserContext._pendingResources.empty();
         auto defaultFont0 = RenderOverlays::GetX2Font("Raleway", 16);
-        SceneEngine::DrawPendingResources(context, lightingParserContext, defaultFont0.get());
+        DrawPendingResources(context, lightingParserContext, defaultFont0.get());
 
         debugSystem->Render(renderDevice, lightingParserContext.GetProjectionDesc()._worldToProjection);
 

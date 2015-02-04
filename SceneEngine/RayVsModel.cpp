@@ -137,10 +137,7 @@ namespace SceneEngine
         ViewportDesc newViewport(0.f, 0.f, float(255.f), float(255.f), 0.f, 1.f);
         devContext->Bind(newViewport);
 
-        RenderingQualitySettings qualitySettings;
-        qualitySettings._width = qualitySettings._height = 255;
-        qualitySettings._samplingCount = 1;
-        qualitySettings._samplingQuality = 0;
+        RenderingQualitySettings qualitySettings(UInt2(256, 256));
 
         Float4x4 specialProjMatrix = MakeFloat4x4(
             0.f, 0.f, 0.f, 0.5f,
@@ -157,7 +154,7 @@ namespace SceneEngine
         LightingParser_SetupScene(
             devContext, _parserContext, camera, qualitySettings);
         LightingParser_SetGlobalTransform(
-            devContext, _parserContext, camera, qualitySettings._width, qualitySettings._height,
+            devContext, _parserContext, camera, qualitySettings._dimensions[0], qualitySettings._dimensions[1],
             &specialProjMatrix);
 
         _oldSO = RenderCore::Metal::GeometryShader::GetDefaultStreamOutputInitializers();

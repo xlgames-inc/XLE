@@ -19,8 +19,14 @@ namespace SceneEngine
     class RenderingQualitySettings
     {
     public:
-        unsigned    _width, _height;
+        UInt2       _dimensions;
         unsigned    _samplingCount, _samplingQuality;
+
+        RenderingQualitySettings();
+        RenderingQualitySettings(
+            UInt2 dimensions,
+            unsigned samplingCount = 1,
+            unsigned samplingQuality = 0);
     };
 
     class LightingParserContext;

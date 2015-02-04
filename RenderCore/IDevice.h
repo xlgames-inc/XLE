@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../Core/Prefix.h"
+#include "../Math/Vector.h"
 #include "IDevice_Forward.h"
 #include <memory>
 
@@ -26,8 +27,7 @@ namespace RenderCore
     class PresentationChainDesc
     {
     public:
-        unsigned        _width;
-        unsigned        _height;
+        Int2 _dimensions;
     };
 
 #define FLEX_INTERFACE PresentationChain
