@@ -42,5 +42,7 @@ namespace Math
         return TestAABB_Aligned(localToProjection, mins, maxs) 
             == AABBIntersection::Culled;
     }
+
+    Float4 ExtractMinimalProjection(const Float4x4& projectionMatrix);
 }
 

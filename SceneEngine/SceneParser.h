@@ -13,7 +13,8 @@ namespace RenderCore { class CameraDesc; }
 namespace SceneEngine
 {
     class LightingParserContext;
-    class ShadowFrustumDesc;
+    class ProjectionDesc;
+    class ShadowProjectionDesc;
     class GlobalLightingDesc;
     class LightDesc;
 
@@ -54,24 +55,28 @@ namespace SceneEngine
     {
     public:
         virtual RenderCore::CameraDesc  GetCameraDesc() const = 0;
-        virtual void                            ExecuteScene(   RenderCore::Metal::DeviceContext* context, 
-                                                                LightingParserContext& parserContext, 
-                                                                const SceneParseSettings& parseSettings,
-                                                                unsigned techniqueIndex) const = 0;
+        virtual void                    ExecuteScene(   
+            RenderCore::Metal::DeviceContext* context, 
+            LightingParserContext& parserContext, 
+            const SceneParseSettings& parseSettings,
+            unsigned techniqueIndex) const = 0;
 
-        virtual unsigned                    GetShadowFrustumCount() const = 0;
-        virtual const ShadowFrustumDesc&    GetShadowFrustumDesc(unsigned index) const = 0;
-        virtual void                        ExecuteShadowScene( RenderCore::Metal::DeviceContext* context, 
-                                                                LightingParserContext& parserContext, 
-                                                                const SceneParseSettings& parseSettings,
-                                                                unsigned frustumIndex, unsigned techniqueIndex) const = 0;
+        virtual unsigned                GetShadowProjectionCount() const = 0;
+        virtual ShadowProjectionDesc    GetShadowProjectionDesc(
+            unsigned index, const ProjectionDesc& mainSceneProjectionDesc) const = 0;
 
-        virtual unsigned                    GetLightCount() const = 0;
-        virtual const LightDesc&            GetLightDesc(unsigned index) const = 0;
+        virtual void                    ExecuteShadowScene( 
+            RenderCore::Metal::DeviceContext* context, 
+            LightingParserContext& parserContext, 
+            const SceneParseSettings& parseSettings,
+            unsigned frustumIndex, unsigned techniqueIndex) const = 0;
 
-        virtual GlobalLightingDesc          GetGlobalLightingDesc() const = 0;
+        virtual unsigned                GetLightCount() const = 0;
+        virtual const LightDesc&        GetLightDesc(unsigned index) const = 0;
 
-        virtual float                       GetTimeValue() const = 0;
+        virtual GlobalLightingDesc      GetGlobalLightingDesc() const = 0;
+
+        virtual float                   GetTimeValue() const = 0;
     };
 
 }

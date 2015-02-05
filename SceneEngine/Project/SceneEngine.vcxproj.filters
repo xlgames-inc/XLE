@@ -94,6 +94,9 @@
     <ClCompile Include="..\RayVsModel.cpp">
       <Filter>Utilities</Filter>
     </ClCompile>
+    <ClCompile Include="..\LightInternal.cpp">
+      <Filter>Lighting And Processing</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\AmbientOcclusion.h">
@@ -201,6 +204,9 @@
     </ClInclude>
     <ClInclude Include="..\RayVsModel.h">
       <Filter>Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="..\LightInternal.h">
+      <Filter>Lighting And Processing</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

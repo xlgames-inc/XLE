@@ -14,12 +14,12 @@ namespace SceneEngine
     void VolumetricFog_Build(       RenderCore::Metal::DeviceContext* context, 
                                     LightingParserContext& lightingParserContext,
                                     bool useMsaaSamplers, 
-                                    ProcessedShadowFrustum& shadowFrustum);
+                                    PreparedShadowFrustum& shadowFrustum);
 
     void VolumetricFog_Resolve(     RenderCore::Metal::DeviceContext* context, 
                                     LightingParserContext& lightingParserContext,
                                     unsigned samplingCount, bool useMsaaSamplers, bool flipDirection,
-                                    ProcessedShadowFrustum& shadowFrustum);
+                                    PreparedShadowFrustum& shadowFrustum);
 
 
     class VolumetricFogMaterial

@@ -12,6 +12,7 @@
 #include "CommonResources.h"
 
 #include "LightingTargets.h"
+#include "LightInternal.h"
 #include "Tonemap.h"
 #include "VolumetricFog.h"
 #include "Shadows.h"
@@ -202,7 +203,7 @@ namespace SceneEngine
 
             //  Prepare exponential shadow maps for doing volume 
         const bool doVolumetricFog = Tweakable("DoVolumetricFog", false);
-        if (!parserContext._processedShadowState.empty() && parserContext._processedShadowState[0]._projectConstantBuffer && doVolumetricFog) {
+        if (!parserContext._processedShadowState.empty() && parserContext._processedShadowState[0].IsReady() && doVolumetricFog) {
             const bool useMsaaSamplers = mainTargets._desc._sampling._sampleCount > 1;
             VolumetricFog_Build(
                 context, parserContext, 
@@ -360,7 +361,7 @@ namespace SceneEngine
         }
     }
 
-    std::vector<ProcessedShadowFrustum> LightingParser_PrepareShadows(DeviceContext* context, LightingParserContext& parserContext);
+    std::vector<PreparedShadowFrustum> LightingParser_PrepareShadows(DeviceContext* context, LightingParserContext& parserContext);
 
     static void ForwardLightingModel_Render(DeviceContext* context, 
                                             LightingParserContext& parserContext,
@@ -692,43 +693,31 @@ namespace SceneEngine
         LightingParser_Overlays(context, parserContext);
     }
 
-    ProcessedShadowFrustum LightingParser_PrepareShadow(    DeviceContext* context, 
-                                                            LightingParserContext& parserContext,
-                                                            unsigned shadowFrustumIndex)
+    PreparedShadowFrustum LightingParser_PrepareShadow(    
+        DeviceContext* context, 
+        LightingParserContext& parserContext,
+        unsigned shadowFrustumIndex)
     {
-        ShadowProjectionConstants proj;
-        auto& frustum = parserContext.GetSceneParser()->GetShadowFrustumDesc(shadowFrustumIndex);
+        auto frustum = parserContext.GetSceneParser()->GetShadowProjectionDesc(
+            shadowFrustumIndex, parserContext.GetProjectionDesc());
         ViewportDesc newViewport[MaxShadowTexturesPerLight];
-        auto projectionCount = std::min(frustum._projectionCount, MaxShadowTexturesPerLight);
+        auto projectionCount = std::min(frustum._projections._count, MaxShadowTexturesPerLight);
         if (!projectionCount) {
-            return ProcessedShadowFrustum();
+            return PreparedShadowFrustum();
         }
 
-        ProcessedShadowFrustum processedResult;
-        proj._projectionCount = projectionCount;
-        for (unsigned c=0; c<projectionCount; ++c) {
-            proj._projection[c] = 
-                Math::Combine(  frustum._projections[c]._viewMatrix, 
-                                frustum._projections[c]._projectionMatrix);
+        for (unsigned c=0; c<frustum._projections._count; ++c) {
             newViewport[c].TopLeftX = newViewport[c].TopLeftY = 0;
             newViewport[c].Width = float(frustum._width);
             newViewport[c].Height = float(frustum._height);
             newViewport[c].MinDepth = 0.f;
             newViewport[c].MaxDepth = 1.f;
-            proj._shadowProjRatio[c] = Float4(
-                frustum._projections[c]._projectionDepthRatio[0], 
-                frustum._projections[c]._projectionDepthRatio[1], 
-                frustum._projections[c]._projectionScale[0],
-                frustum._projections[c]._projectionScale[1]);
         }
-        if (!processedResult._projectConstantBuffer) {
-            processedResult._projectConstantBuffer = std::make_unique<ConstantBuffer>(nullptr, sizeof(proj));
-        }
-        processedResult._projectConstantBuffer->Update(*context, &proj, sizeof(proj));
-        processedResult._projectConstantBufferSource = proj;
-        processedResult._frustumCount = projectionCount;
 
-        parserContext.SetGlobalCB(3, context, &proj, sizeof(proj));
+        PreparedShadowFrustum processedResult;
+        processedResult.InitialiseConstants(context, frustum._projections);
+        parserContext.SetGlobalCB(3, context, &processedResult._arbitraryCBSource, sizeof(processedResult._arbitraryCBSource));
+        parserContext.SetGlobalCB(3, context, &processedResult._orthoCBSource, sizeof(processedResult._orthoCBSource));
 
             /////////////////////////////////////////////
 
@@ -785,12 +774,12 @@ namespace SceneEngine
         return std::move(processedResult);
     }
 
-    std::vector<ProcessedShadowFrustum> LightingParser_PrepareShadows(DeviceContext* context, LightingParserContext& parserContext)
+    std::vector<PreparedShadowFrustum> LightingParser_PrepareShadows(DeviceContext* context, LightingParserContext& parserContext)
     {
         GPUProfiler::DebugAnnotation anno(*context, L"Prepare-Shadows");
 
-        std::vector<ProcessedShadowFrustum> result;
-        auto shadowFrustumCount = parserContext.GetSceneParser()->GetShadowFrustumCount();
+        std::vector<PreparedShadowFrustum> result;
+        auto shadowFrustumCount = parserContext.GetSceneParser()->GetShadowProjectionCount();
         result.reserve(shadowFrustumCount);
         for (unsigned c=0; c<shadowFrustumCount; ++c) {
             result.push_back(std::move(LightingParser_PrepareShadow(context, parserContext, c)));
@@ -961,10 +950,9 @@ namespace SceneEngine
             new(_projectionDesc.get()) ProjectionDesc();
         #pragma pop_macro("new")
 
-        _globalUniformsConstantBuffers.push_back(&_globalCBs[0]);
-        _globalUniformsConstantBuffers.push_back(&_globalCBs[1]);
-        _globalUniformsConstantBuffers.push_back(&_globalCBs[2]);
-        _globalUniformsConstantBuffers.push_back(&_globalCBs[3]);
+        for (unsigned c=0; c<dimof(_globalCBs); ++c) {
+            _globalUniformsConstantBuffers.push_back(&_globalCBs[c]);
+        }
         _globalUniformsStream = std::make_unique<RenderCore::Metal::UniformsStream>(
             nullptr, AsPointer(_globalUniformsConstantBuffers.begin()), _globalUniformsConstantBuffers.size());
     }

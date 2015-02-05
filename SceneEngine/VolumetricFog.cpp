@@ -10,6 +10,7 @@
 #include "LightDesc.h"
 #include "Noise.h"
 #include "CommonResources.h"
+#include "LightInternal.h"
 
 #include "../RenderCore/Metal/RenderTargetView.h"
 #include "../RenderCore/Metal/ShaderResource.h"
@@ -105,12 +106,12 @@ namespace SceneEngine
         auto injectLightBinding = std::make_unique<BoundUniforms>(std::ref(Assets::GetAssetDep<CompiledShaderByteCode>("game/xleres/volumetriceffect/injectlight.csh:InjectLighting:cs_*", defines)));
         TechniqueContext::BindGlobalUniforms(*injectLightBinding);
         injectLightBinding->BindConstantBuffer(Hash64("VolumetricFogConstants"), 0, 1);
-        injectLightBinding->BindConstantBuffer(Hash64("ShadowProjection"), 2, 1);
+        injectLightBinding->BindConstantBuffer(Hash64("ArbitraryShadowProjection"), 2, 1);
 
         auto propagateLightBinding = std::make_unique<BoundUniforms>(std::ref(Assets::GetAssetDep<CompiledShaderByteCode>("game/xleres/volumetriceffect/injectlight.csh:PropagateLighting:cs_*", defines)));
         TechniqueContext::BindGlobalUniforms(*propagateLightBinding);
         propagateLightBinding->BindConstantBuffer(Hash64("VolumetricFogConstants"), 0, 1);
-        injectLightBinding->BindConstantBuffer(Hash64("ShadowProjection"), 2, 1);
+        injectLightBinding->BindConstantBuffer(Hash64("ArbitraryShadowProjection"), 2, 1);
 
         const char* vertexShader = 
             desc._flipDirection
@@ -316,7 +317,7 @@ namespace SceneEngine
     void VolumetricFog_Build(   RenderCore::Metal::DeviceContext* context, 
                                 LightingParserContext& lightingParserContext,
                                 bool useMsaaSamplers, 
-                                ProcessedShadowFrustum& shadowFrustum)
+                                PreparedShadowFrustum& shadowFrustum)
     {
         TRY {
             auto& fogRes = FindCachedBox<VolumetricFogResources>(VolumetricFogResources::Desc(shadowFrustum._frustumCount, UseESMShadowMaps()));
@@ -338,7 +339,7 @@ namespace SceneEngine
             for (auto i=fogRes._shadowMapRenderTargets.begin(); i!=fogRes._shadowMapRenderTargets.end(); ++i, ++c) {
 
                 struct WorkingSlice { int _workingSlice; float _depthProjRatio0; float _depthProjRatio1; } globalsBuffer = {
-                    c, shadowFrustum._projectConstantBufferSource._shadowProjRatio[c][0], shadowFrustum._projectConstantBufferSource._shadowProjRatio[c][1]
+                    c, shadowFrustum._shadowProjRatio[c][0], shadowFrustum._projectConstantBufferSource._shadowProjRatio[c][1]
                 };
                 constantBufferPackets[1] = MakeSharedPkt(globalsBuffer);
 
@@ -396,7 +397,7 @@ namespace SceneEngine
             //     lightingParserContext.GetGlobalTransformCB(), Metal::ConstantBuffer(), Metal::ConstantBuffer(), 
             //     *shadowFrustum._projectConstantBuffer, lightingParserContext.GetGlobalStateCB()));
 
-            const Metal::ConstantBuffer* prebuiltCBs[3] = { nullptr, nullptr, shadowFrustum._projectConstantBuffer.get() };
+            const Metal::ConstantBuffer* prebuiltCBs[3] = { nullptr, nullptr, &shadowFrustum._arbitraryCB };
             fogShaders._injectLightBinding->Apply(
                 *context, lightingParserContext.GetGlobalUniformsStream(),
                 UniformsStream(constantBufferPackets, prebuiltCBs, dimof(constantBufferPackets)));
@@ -428,7 +429,7 @@ namespace SceneEngine
     void VolumetricFog_Resolve( RenderCore::Metal::DeviceContext* context, 
                                 LightingParserContext& lightingParserContext,
                                 unsigned samplingCount, bool useMsaaSamplers, bool flipDirection,
-                                ProcessedShadowFrustum& shadowFrustum)
+                                PreparedShadowFrustum& shadowFrustum)
     {
         auto& fogRes = FindCachedBox<VolumetricFogResources>(VolumetricFogResources::Desc(shadowFrustum._frustumCount, UseESMShadowMaps()));
         auto& fogShaders = FindCachedBoxDep<VolumetricFogShaders>(VolumetricFogShaders::Desc(samplingCount, useMsaaSamplers, flipDirection, UseESMShadowMaps(), 

@@ -133,6 +133,16 @@ namespace RenderCore
 
         return result;
     }
+    
+    ClipSpaceType::Enum GetDefaultClipSpaceType()
+    {
+            // (todo -- this condition could be a runtime test)
+        #if (GFXAPI_ACTIVE == GFXAPI_DX11) || (GFXAPI_ACTIVE == GFXAPI_DX9)         
+            return ClipSpaceType::Positive;
+        #else
+            return ClipSpaceType::StraddlingZero;
+        #endif
+    }
 
     Float4x4 PerspectiveProjection(
         const RenderCore::CameraDesc& sceneCamera, float viewportAspect)
@@ -140,11 +150,7 @@ namespace RenderCore
         return PerspectiveProjection(
             sceneCamera._verticalFieldOfView, viewportAspect,
             sceneCamera._nearClip, sceneCamera._farClip, GeometricCoordinateSpace::RightHanded, 
-            #if (GFXAPI_ACTIVE == GFXAPI_DX11) || (GFXAPI_ACTIVE == GFXAPI_DX9)         // (todo -- this condition could be a runtime test)
-                ClipSpaceType::Positive);
-            #else
-                ClipSpaceType::StraddlingZero);
-            #endif
+            GetDefaultClipSpaceType());
     }
 
     Float4x4 OrthogonalProjection(

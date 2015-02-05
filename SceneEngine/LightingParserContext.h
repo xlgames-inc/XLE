@@ -19,7 +19,7 @@ namespace SceneEngine
 {
     class MetricsBox;
     class ISceneParser;
-    class ProcessedShadowFrustum;
+    class PreparedShadowFrustum;
     class TechniqueContext;
     class TechniqueInterface;
     class ShadowProjectionConstants;
@@ -58,7 +58,7 @@ namespace SceneEngine
         RenderCore::Metal::ConstantBuffer&          GetGlobalStateCB()                  { return _globalCBs[1]; }
 
             //  ----------------- Working shadow state ----------------- 
-        std::vector<ProcessedShadowFrustum>     _processedShadowState;
+        std::vector<PreparedShadowFrustum>     _processedShadowState;
 
             //  ----------------- Exception reporting ----------------- 
         std::string                 _errorString;
@@ -78,7 +78,7 @@ namespace SceneEngine
         ~LightingParserContext();
 
     private:
-        RenderCore::Metal::ConstantBuffer   _globalCBs[4];
+        RenderCore::Metal::ConstantBuffer   _globalCBs[5];
         MetricsBox*                         _metricsBox;
         ISceneParser*                       _sceneParser;
         std::unique_ptr<TechniqueContext>   _techniqueContext;

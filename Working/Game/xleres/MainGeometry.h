@@ -183,8 +183,15 @@ struct VSShadowOutput /////////////////////////////////////////////////////
 		float2 texCoord : TEXCOORD0;
 	#endif
 
+	#if SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ARBITRARY
+        #if (OUTPUT_SHADOW_PROJECTION_COUNT>0)
+            float4 shadowPosition[OUTPUT_SHADOW_PROJECTION_COUNT] : SHADOWPOSITION;
+        #endif
+    #elif SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ORTHOGONAL
+        float3 baseShadowPosition : SHADOWPOSITION;
+    #endif
+
     #if (OUTPUT_SHADOW_PROJECTION_COUNT>0)
-        float4 shadowPosition[OUTPUT_SHADOW_PROJECTION_COUNT] : SHADOWPOSITION;
         uint shadowFrustumFlags : SHADOWFLAGS;
     #endif
 

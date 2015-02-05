@@ -12,6 +12,7 @@
 #include "ResourceBox.h"
 #include "Shadows.h"
 #include "CommonResources.h"
+#include "LightInternal.h"
 
 #include "Sky.h"
 #include "VolumetricFog.h"
@@ -279,7 +280,7 @@ namespace SceneEngine
                 }
 
                     //-------- do volumetric fog --------
-                if (!parserContext._processedShadowState.empty() && parserContext._processedShadowState[0]._projectConstantBuffer && doVolumetricFog) {
+                if (!parserContext._processedShadowState.empty() && parserContext._processedShadowState[0].IsReady() && doVolumetricFog) {
                     GPUProfiler::DebugAnnotation anno(*context, L"VolFog");
 
                     VolumetricFog_Resolve(
@@ -349,11 +350,11 @@ namespace SceneEngine
                     //  Perhaps this will be extended to support more lights with custom
                     //  shaders and resources.
                 if (    i._shadowFrustumIndex < parserContext._processedShadowState.size() 
-                    &&  parserContext._processedShadowState[i._shadowFrustumIndex]._projectConstantBuffer) {
+                    &&  parserContext._processedShadowState[i._shadowFrustumIndex].IsReady()) {
 
                     const auto& processedShadowFrustum = parserContext._processedShadowState[i._shadowFrustumIndex];
                     context->BindPS(MakeResourceList(3, processedShadowFrustum._shadowTextureResource));
-                    prebuiltConstantBuffers[0]   = processedShadowFrustum._projectConstantBuffer.get();
+                    prebuiltConstantBuffers[0] = &processedShadowFrustum._arbitraryCB;
 
                         //
                         //      We need an accurate way to get from screen coords into 
@@ -370,20 +371,22 @@ namespace SceneEngine
                     
                     constantBufferPackets[3] = BuildScreenToShadowConstants(parserContext, i);
 
-                    if (!i._isPointLight) {
+                    if (i._type == LightDesc::Directional) {
                         boundUniforms = lightingResolveShaders._shadowedDirectionalLightUniforms.get();
                         context->Bind(*lightingResolveShaders._shadowedDirectionalLight);
                     } else {
+                        assert(i._type == LightDesc::Point);
                         boundUniforms = lightingResolveShaders._shadowedPointLightUniforms.get();
                         context->Bind(*lightingResolveShaders._shadowedPointLight);
                     }
 
                 } else {
 
-                    if (!i._isPointLight) {
+                    if (!i._type == LightDesc::Directional) {
                         boundUniforms = lightingResolveShaders._unshadowedDirectionalLightUniforms.get();
                         context->Bind(*lightingResolveShaders._unshadowedDirectionalLight);
                     } else {
+                        assert(i._type == LightDesc::Point);
                         boundUniforms = lightingResolveShaders._unshadowedPointLightUniforms.get();
                         context->Bind(*lightingResolveShaders._unshadowedPointLight);
                     }
@@ -474,7 +477,7 @@ namespace SceneEngine
         XlZeroMemory(basis);
         basis._cameraToWorld = parserContext.GetSceneParser()->GetCameraDesc()._cameraToWorld;
         for (unsigned c=0; c<unsigned(parserContext._processedShadowState[light._shadowFrustumIndex]._frustumCount); ++c) {
-            auto& worldToShadowProj = parserContext._processedShadowState[light._shadowFrustumIndex]._projectConstantBufferSource._projection[c];
+            auto& worldToShadowProj = parserContext._processedShadowState[light._shadowFrustumIndex]._arbitraryCBSource._worldToProj[c];
             auto cameraToShadowProj = Combine(basis._cameraToWorld, worldToShadowProj);
             basis._cameraToShadow[c] = cameraToShadowProj;
         }

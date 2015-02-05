@@ -509,15 +509,16 @@ namespace Overlays
             _model->Render(context, parserContext, techniqueIndex, *_sharedStateSet, Identity<Float4x4>(), 0);
         }
 
-        unsigned GetShadowFrustumCount() const { return 0; }
-        const SceneEngine::ShadowFrustumDesc&   GetShadowFrustumDesc(unsigned index) const { return *(const SceneEngine::ShadowFrustumDesc*)nullptr; }
+        unsigned GetShadowProjectionCount() const { return 0; }
+        SceneEngine::ShadowProjectionDesc GetShadowProjectionDesc(unsigned index, const SceneEngine::ProjectionDesc& mainSceneProjectionDesc) const 
+        { return SceneEngine::ShadowProjectionDesc(); }
         
 
         unsigned                        GetLightCount() const { return 0; }
         const SceneEngine::LightDesc&   GetLightDesc(unsigned index) const
         {
             static SceneEngine::LightDesc light;
-            light._isPointLight = light._isDynamicLight = false;
+            light._type = SceneEngine::LightDesc::Directional;
             light._lightColour = Float3(5.f, 5.f, 5.f);
             light._negativeLightDirection = Float3(0.f, 0.f, 1.f);
             light._radius = 1000.f;

@@ -907,7 +907,7 @@ namespace SceneEngine
 
         auto gridPerspective = PerspectiveProjection(
             maxX, minY, minX, maxY,     // note -- maxX, minX flipped (required to match handiness of normal projection transforms)
-            1.0f, 100.f, ClipSpaceType::Positive);
+            1.0f, 100.f, GetDefaultClipSpaceType());
 
         result._gridProjection = Combine(worldToView, gridPerspective);
         result._gridProjectionOrigin = projectionViewPoint;

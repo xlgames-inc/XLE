@@ -11,19 +11,17 @@
 
 	// support up to 6 output frustums (for cube map point light source projections)
 [maxvertexcount(18)]
-	void main(triangle VSShadowOutput input[3], inout TriangleStream<VSOutput> outputStream)
+	void main(	triangle VSShadowOutput input[3], 
+				inout TriangleStream<VSOutput> outputStream)
 {
-	for (uint c=0; c<ProjectionCount; ++c) {
+	uint count = min(GetShadowSubProjectionCount(), OUTPUT_SHADOW_PROJECTION_COUNT);
+	for (uint c=0; c<count; ++c) {
 		#if defined(FRUSTUM_FILTER)
 			if ((FRUSTUM_FILTER & (1<<c)) == 0) {
 				continue;
 			}
 		#endif
 		
-		float4 p0 = input[0].shadowPosition[c];
-		float4 p1 = input[1].shadowPosition[c];
-		float4 p2 = input[2].shadowPosition[c];
-
 		uint shadowFrustumFlags0 = (input[0].shadowFrustumFlags >> (c*4)) & 0xf;
 		uint shadowFrustumFlags1 = (input[1].shadowFrustumFlags >> (c*4)) & 0xf;
 		uint shadowFrustumFlags2 = (input[2].shadowFrustumFlags >> (c*4)) & 0xf;
@@ -33,6 +31,16 @@
 		if (((shadowFrustumFlags0 & shadowFrustumFlags1) & shadowFrustumFlags2) != 0) {
 			continue;
 		}
+
+		#if SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ARBITRARY
+			float4 p0 = input[0].shadowPosition[c];
+			float4 p1 = input[1].shadowPosition[c];
+			float4 p2 = input[2].shadowPosition[c];
+		#else
+			float4 p0 = AdjustForCascade(input[0].baseShadowPosition, c);
+			float4 p1 = AdjustForCascade(input[1].baseShadowPosition, c);
+			float4 p2 = AdjustForCascade(input[2].baseShadowPosition, c);
+		#endif
 
 			//
 			//		Try to offset the final depth buffer

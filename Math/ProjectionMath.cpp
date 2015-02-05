@@ -386,5 +386,10 @@ namespace Math
     {
         return TestAABB_SSE(localToProjection, mins, maxs);
     }
+
+    Float4 ExtractMinimalProjection(const Float4x4& projectionMatrix)
+    {
+        return Float4(projectionMatrix(0,0), projectionMatrix(1,1), projectionMatrix(2,2), projectionMatrix(2,3));
+    }
 }
 

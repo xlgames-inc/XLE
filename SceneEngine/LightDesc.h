@@ -6,8 +6,7 @@
 
 #pragma once
 
-#include "../RenderCore/Metal/ShaderResource.h"
-#include "../RenderCore/Metal/Buffer.h"
+#include "../RenderCore/Metal/Forward.h"
 #include "../Math/Matrix.h"
 #include "../Math/Vector.h"
 #include "../Core/Types.h"
@@ -17,42 +16,112 @@ namespace SceneEngine
 
         //////////////////////////////////////////////////////////////////
 
-    static const unsigned MaxShadowTexturesPerLight = 6;
-
-    class ShadowFrustumDesc
+    /// <summary>Represents a set of shared projections</summary>
+    /// This class is intended to be used with cascaded shadows (and similiar
+    /// cascaded effects). Multiple cascades require multiple projections, and
+    /// this class represents a small bundle of cascades.
+    ///
+    /// Sometimes we want to put restrictions on the cascades in order to 
+    /// reduce shader calculations. For example, a collection of orthogonal
+    /// cascades can be defined by a set of axially aligned volumes in a shared
+    /// orthogonal projection space.
+    ///
+    template<int MaxProjections> class MultiProjection
     {
     public:
-        uint32      _width, _height;
-
-        typedef RenderCore::Metal::NativeFormat::Enum Format;
-        Format      _typelessFormat;
-        Format      _writeFormat;
-        Format      _readFormat;
-
-        class ShadowProjection
+        class FullSubProjection
         {
         public:
             Float4x4    _projectionMatrix;
             Float4x4    _viewMatrix;
-            Float2      _projectionDepthRatio;
-            Float2      _projectionScale;
         };
-        unsigned            _projectionCount;
-        ShadowProjection    _projections[MaxShadowTexturesPerLight];
-        Float4x4            _worldToClip;
 
-        ShadowFrustumDesc();
-        ShadowFrustumDesc(const ShadowFrustumDesc& copyFrom);
-        ShadowFrustumDesc& operator=(const ShadowFrustumDesc& copyFrom);
+        class OrthoSubProjection
+        {
+        public:
+            Float3  _projMins;
+            Float3  _projMaxs;
+        };
+
+        struct Mode { enum Enum { Arbitrary, Ortho }; };
+
+        typename Mode::Enum  _mode;
+        unsigned    _count;
+
+            /// @{
+        ///////////////////////////////////////////////////////////////////////
+            /// When in "Full" mode, each sub projection gets a full view and 
+            /// projection matrix. This means that every sub projection can 
+            /// have a completely independently defined projection.
+        FullSubProjection   _fullProj[MaxProjections];
+        ///////////////////////////////////////////////////////////////////////
+            /// @}
+
+            /// @{
+        ///////////////////////////////////////////////////////////////////////
+            /// When a "OrthoSub" mode, the sub projections have some restrictions
+            /// There is a single "definition transform" that defines a basic
+            /// projection that all sub projects inherit. The sub projects then
+            /// define and axially aligned area of XYZ space inside of the 
+            /// definition transform. When used with an orthogonal transform, this
+            /// allows each sub projection to wrap a volume of space. But all sub
+            /// projections must match the rotation and skew of other projections.
+        OrthoSubProjection  _orthoSub[MaxProjections];
+        Float4x4            _definitionViewMatrix;
+        Float4x4            _definitionProjMatrix;
+        ///////////////////////////////////////////////////////////////////////
+            /// @}
+
+            /// @{
+            /// In both modes, we often need to store the "minimal projection"
+            /// This is the 4 most important elements of the projection matrix.
+            /// In typical projection matrices, the remaining parts can be implied
+            /// which means that these 4 elements is enough to do reverse projection
+            /// work in the shader.
+            /// In the case of shadows, mostly we need to convert depth values from
+            /// projection space into view space (and since view space typically 
+            /// has the same scale as world space, we can assume that view space 
+            /// depth values are in natural world space units).
+        Float4      _minimalProjection[MaxProjections];
+            /// @}
+
+        MultiProjection();
     };
 
+    static const unsigned MaxShadowTexturesPerLight = 6;
+
+    /// <summary>Defines the projected shadows for a single light<summary>
+    /// Tied to a specific light via the "_shadowFrustumIndex" member.
+    class ShadowProjectionDesc
+    {
+    public:
+            /// @{
+            /// Shadow texture definition
+        uint32      _width, _height;
+        typedef RenderCore::Metal::NativeFormat::Enum Format;
+        Format      _typelessFormat;
+        Format      _writeFormat;
+        Format      _readFormat;
+            /// @}
+
+        typedef MultiProjection<MaxShadowTexturesPerLight> Projections;
+
+        Projections _projections;
+        Float4x4    _worldToClip;   ///< Intended for use in CPU-side culling. Objects culled by this transform will be culled from all projections
+
+        ShadowProjectionDesc();
+    };
+
+    /// <summary>Defines a dynamic light</summary>
+    /// Lights defined by this structure 
     class LightDesc
     {
     public:
+        enum Type { Directional, Point };
+
         Float3      _negativeLightDirection;
         float       _radius;
-        bool        _isDynamicLight;
-        bool        _isPointLight;
+        Type        _type;
         unsigned    _shadowFrustumIndex;
         Float3      _lightColour;
     };
@@ -68,81 +137,16 @@ namespace SceneEngine
         bool _doToneMap;
         bool _doVegetationSpawn;
 
-        GlobalLightingDesc() 
-            : _ambientLight(0.f, 0.f, 0.f), _skyTexture(nullptr)
-            , _doAtmosphereBlur(false), _doOcean(false), _doToneMap(false), _doVegetationSpawn(false) {}
+        GlobalLightingDesc();
     };
 
-    class ShadowProjectionConstants
+    
+    template<int MaxProjections>
+        MultiProjection<MaxProjections>::MultiProjection()
     {
-    public:
-        uint32      _projectionCount; 
-        uint32      _dummy[3];
-        Float4      _shadowProjRatio[MaxShadowTexturesPerLight];
-        Float4x4    _projection[MaxShadowTexturesPerLight];
-    };
-
-    class ProcessedShadowFrustum
-    {
-    public:
-        RenderCore::Metal::ShaderResourceView               _shadowTextureResource;
-        std::unique_ptr<RenderCore::Metal::ConstantBuffer>  _projectConstantBuffer;
-        int                                                 _frustumCount;
-        ShadowProjectionConstants                           _projectConstantBufferSource;
-
-        ProcessedShadowFrustum();
-        ProcessedShadowFrustum(ProcessedShadowFrustum&& moveFrom);
-        ProcessedShadowFrustum& operator=(ProcessedShadowFrustum&& moveFrom) never_throws;
-    };
-
-        //////////////////////////////////////////////////////////////////
-
-    inline ProcessedShadowFrustum::ProcessedShadowFrustum() : _frustumCount(0) {}
-    inline ProcessedShadowFrustum::ProcessedShadowFrustum(ProcessedShadowFrustum&& moveFrom)
-    : _shadowTextureResource(std::move(moveFrom._shadowTextureResource))
-    , _projectConstantBuffer(std::move(moveFrom._projectConstantBuffer))
-    , _projectConstantBufferSource(std::move(moveFrom._projectConstantBufferSource))
-    , _frustumCount(moveFrom._frustumCount)
-    {}
-
-    inline ProcessedShadowFrustum& ProcessedShadowFrustum::operator=(ProcessedShadowFrustum&& moveFrom)
-    {
-        _shadowTextureResource = std::move(moveFrom._shadowTextureResource);
-        _projectConstantBuffer = std::move(moveFrom._projectConstantBuffer);
-        _projectConstantBufferSource = std::move(moveFrom._projectConstantBufferSource);
-        _frustumCount = moveFrom._frustumCount;
-        return *this;
+        _mode = Mode::Arbitrary;
+        _count = 0;
     }
 
-    inline ShadowFrustumDesc::ShadowFrustumDesc()
-    {
-        _width = _height = 0;
-        _typelessFormat = _writeFormat = _readFormat = RenderCore::Metal::NativeFormat::Unknown;
-        _projectionCount = 0;
-        _worldToClip = Identity<Float4x4>();
-    }
-
-    inline ShadowFrustumDesc::ShadowFrustumDesc(const ShadowFrustumDesc& copyFrom)
-    {
-        _width = copyFrom._width; _height = copyFrom._height;
-        _typelessFormat = copyFrom._typelessFormat;
-        _writeFormat = copyFrom._writeFormat;
-        _readFormat = copyFrom._readFormat;
-        std::copy(copyFrom._projections, &copyFrom._projections[dimof(_projections)], _projections);
-        _projectionCount = copyFrom._projectionCount;
-        _worldToClip = copyFrom._worldToClip;
-    }
-
-    inline ShadowFrustumDesc& ShadowFrustumDesc::operator=(const ShadowFrustumDesc& copyFrom)
-    {
-        _width = copyFrom._width; _height = copyFrom._height;
-        _typelessFormat = copyFrom._typelessFormat;
-        _writeFormat = copyFrom._writeFormat;
-        _readFormat = copyFrom._readFormat;
-        std::copy(copyFrom._projections, &copyFrom._projections[dimof(_projections)], _projections);
-        _projectionCount = copyFrom._projectionCount;
-        _worldToClip = copyFrom._worldToClip;
-        return *this;
-    }
 }
 

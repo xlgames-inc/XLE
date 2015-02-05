@@ -245,27 +245,27 @@ namespace SceneEngine
 
         auto shadowedDirectionalLightUniforms = std::make_unique<Metal::BoundUniforms>(std::ref(*_shadowedDirectionalLight));
         TechniqueContext::BindGlobalUniforms(*shadowedDirectionalLightUniforms);
-        shadowedDirectionalLightUniforms->BindConstantBuffer(Hash64("ShadowProjection"), 0, 1);
+        shadowedDirectionalLightUniforms->BindConstantBuffer(Hash64("ArbitraryShadowProjection"), 0, 1);
         shadowedDirectionalLightUniforms->BindConstantBuffer(Hash64("LightBuffer"), 1, 1);
         shadowedDirectionalLightUniforms->BindConstantBuffer(Hash64("ShadowParameters"), 2, 1);
         shadowedDirectionalLightUniforms->BindConstantBuffer(Hash64("ScreenToShadowProjection"), 3, 1);
 
         auto shadowedPointLightUniforms = std::make_unique<Metal::BoundUniforms>(std::ref(*_shadowedPointLight));
         TechniqueContext::BindGlobalUniforms(*shadowedPointLightUniforms);
-        shadowedPointLightUniforms->BindConstantBuffer(Hash64("ShadowProjection"), 0, 1);
+        shadowedPointLightUniforms->BindConstantBuffer(Hash64("ArbitraryShadowProjection"), 0, 1);
         shadowedPointLightUniforms->BindConstantBuffer(Hash64("LightBuffer"), 1, 1);
         shadowedPointLightUniforms->BindConstantBuffer(Hash64("ShadowParameters"), 2, 1);
 
         auto unshadowedDirectionalLightUniforms = std::make_unique<Metal::BoundUniforms>(std::ref(*_unshadowedDirectionalLight));
         TechniqueContext::BindGlobalUniforms(*unshadowedDirectionalLightUniforms);
-        unshadowedDirectionalLightUniforms->BindConstantBuffer(Hash64("ShadowProjection"), 0, 1);
+        unshadowedDirectionalLightUniforms->BindConstantBuffer(Hash64("ArbitraryShadowProjection"), 0, 1);
         unshadowedDirectionalLightUniforms->BindConstantBuffer(Hash64("LightBuffer"), 1, 1);
         unshadowedDirectionalLightUniforms->BindConstantBuffer(Hash64("ShadowParameters"), 2, 1);
         unshadowedDirectionalLightUniforms->BindConstantBuffer(Hash64("ScreenToShadowProjection"), 3, 1);
 
         auto unshadowedPointLightUniforms = std::make_unique<Metal::BoundUniforms>(std::ref(*_unshadowedPointLight));
         TechniqueContext::BindGlobalUniforms(*unshadowedPointLightUniforms);
-        unshadowedPointLightUniforms->BindConstantBuffer(Hash64("ShadowProjection"), 0, 1);
+        unshadowedPointLightUniforms->BindConstantBuffer(Hash64("ArbitraryShadowProjection"), 0, 1);
         unshadowedPointLightUniforms->BindConstantBuffer(Hash64("LightBuffer"), 1, 1);
         unshadowedPointLightUniforms->BindConstantBuffer(Hash64("ShadowParameters"), 2, 1);
 

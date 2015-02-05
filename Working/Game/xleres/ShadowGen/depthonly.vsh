@@ -17,7 +17,7 @@
 
 VSShadowOutput main(VSInput input)
 {
-	float3 localPosition	= GetLocalPosition(input);
+	float3 localPosition = GetLocalPosition(input);
 
 	#if GEO_HAS_INSTANCE_ID==1
 		// float3 worldPosition = input.instanceOffset.xyz + localPosition;
@@ -33,20 +33,48 @@ VSShadowOutput main(VSInput input)
 		result.texCoord = input.texCoord;
 	#endif
 
-	uint count = min(ProjectionCount, OUTPUT_SHADOW_PROJECTION_COUNT);
 	result.shadowFrustumFlags = 0;
-	for (uint c=0; c<count; ++c) {
-		float4 p = ShadowProjection_GetOutput(worldPosition, c);
-		float2 z = p.xy / p.w;
+	
+	uint count = min(GetShadowSubProjectionCount(), OUTPUT_SHADOW_PROJECTION_COUNT);
 
-		bool	left	= z.x < -1.f,
-				right	= z.x >  1.f,
-				top		= z.y < -1.f,
-				bottom	= z.y >  1.f;
+	#if SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ARBITRARY
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
-		result.shadowPosition[c] = p;
-		result.shadowFrustumFlags |= (left | (right<<1) | (top<<2) | (bottom<<3)) << (c*4);
-	}
+		for (uint c=0; c<count; ++c) {
+			float4 p = ShadowProjection_GetOutput(worldPosition, c);
+			bool	left	= p.x < -p.w,
+					right	= p.x >  p.w,
+					top		= p.y < -p.w,
+					bottom	= p.y >  p.w;
+
+			result.shadowPosition[c] = p;
+			result.shadowFrustumFlags |= (left | (right<<1) | (top<<2) | (bottom<<3)) << (c*4);
+		}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+	#elif SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ORTHOGONAL
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+		float3 basePosition = mul(OrthoShadowProjection, float4(worldPosition, 1));
+		result.baseShadowPosition = basePosition;
+
+		uint count = min(OrthoShadowSubProjectionCount, OUTPUT_SHADOW_PROJECTION_COUNT);
+		for (uint c=0; c<count; ++c) {
+			float3 cascade = AdjustForCascade(basePosition, c);
+			bool	left	= cascade.x < -1.f,
+					right	= cascade.x >  1.f,
+					top		= cascade.y < -1.f,
+					bottom	= cascade.y >  1.f;
+
+			result.shadowPosition[c] = cascade;
+			result.shadowFrustumFlags |= 
+				(left | (right<<1) | (top<<2) | (bottom<<3)) << (c*4);
+		}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+	#endif
 
 	return result;
 }
+
+

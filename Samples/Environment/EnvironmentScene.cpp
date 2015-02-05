@@ -128,8 +128,7 @@ namespace Sample
             //  we want.
         static LightDesc dummy;
         dummy._radius = 10000.f;
-        dummy._isDynamicLight = false;
-        dummy._isPointLight = false;
+        dummy._type = LightDesc::Directional;
         dummy._shadowFrustumIndex = 0;
         dummy._lightColour = Float3(1.f, 1.f, 1.f);
 
@@ -161,14 +160,15 @@ namespace Sample
         return result;
     }
 
-    unsigned EnvironmentSceneParser::GetShadowFrustumCount() const
+    unsigned EnvironmentSceneParser::GetShadowProjectionCount() const
     { 
         return 1; 
     }
 
-    auto EnvironmentSceneParser::GetShadowFrustumDesc(unsigned index) const -> const ShadowFrustumDesc&
-    { 
-            //  Shadowing lights can have a ShadowFrustumDesc object associated.
+    auto EnvironmentSceneParser::GetShadowProjectionDesc(unsigned index, const ProjectionDesc& mainSceneProjectionDesc) const 
+        -> ShadowProjectionDesc
+    {
+            //  Shadowing lights can have a ShadowProjectionDesc object associated.
             //  This object determines the shadow "projections" or "cascades" we use 
             //  for calculating shadows.
             //
@@ -179,14 +179,13 @@ namespace Sample
             //  implementation is very basic. The results are ok, but not optimal.
             //  Specialised scenes may some specialised algorithm for calculating shadow
             //  cascades.
-        static ShadowFrustumDesc result[1];
-        if (index >= dimof(result)) {
+        if (index >= GetShadowProjectionCount()) {
             throw Exceptions::BasicLabel("Bad shadow frustum index");
         }
 
-        result[index] = PlatformRig::CalculateDefaultShadowFrustums(
-            GetLightDesc(index), GetCameraDesc());
-        return result[index];
+        return PlatformRig::CalculateDefaultShadowCascades(
+            GetLightDesc(index), mainSceneProjectionDesc,
+            PlatformRig::DefaultShadowFrustumSettings());
     }
 
     float EnvironmentSceneParser::GetTimeValue() const      

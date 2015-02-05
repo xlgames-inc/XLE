@@ -11,8 +11,7 @@
 #include "../RenderCore/IDevice_Forward.h"
 
 namespace RenderOverlays { namespace DebuggingDisplay { class DebugScreensSystem; }}
-namespace RenderCore { class CameraDesc; }
-namespace SceneEngine { class ShadowFrustumDesc; class LightDesc; }
+namespace SceneEngine { class ShadowProjectionDesc; class LightDesc; class ProjectionDesc; }
 
 namespace PlatformRig
 {
@@ -45,9 +44,26 @@ namespace PlatformRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    SceneEngine::ShadowFrustumDesc CalculateDefaultShadowFrustums(
+    class DefaultShadowFrustumSettings
+    {
+    public:
+        unsigned    _frustumCount;
+        bool        _arbitraryCascades;
+        float       _maxDistanceFromLight;
+        float       _maxDistanceFromCamera;
+        DefaultShadowFrustumSettings();
+    };
+
+    /// <summary>Calculate a default set of shadow cascades for the sun<summary>
+    /// Frequently we render the shadows from the sun using a number of "cascades."
+    /// This function will generate reasonable set of cascades given the input parameters
+    /// <param name="mainSceneCameraDesc">This is the projection desc used when rendering the 
+    /// the main scene from this camera (it's the project desc for the shadows render). This
+    /// is required for adapting the shadows projection to the main scene camera.</param>
+    SceneEngine::ShadowProjectionDesc CalculateDefaultShadowCascades(
         const SceneEngine::LightDesc& lightDesc,
-        const RenderCore::CameraDesc& cameraDesc);
+        const SceneEngine::ProjectionDesc& mainSceneCameraDesc,
+        const DefaultShadowFrustumSettings& settings);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

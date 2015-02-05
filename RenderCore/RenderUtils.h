@@ -101,6 +101,8 @@ namespace RenderCore
         GeometricCoordinateSpace::Enum coordinateSpace,
         ClipSpaceType::Enum clipSpaceType);
 
+    ClipSpaceType::Enum GetDefaultClipSpaceType();
+
     std::pair<Float3, Float3> BuildRayUnderCursor(
         Int2 mousePosition, RenderCore::CameraDesc& sceneCamera, 
         const std::pair<Float2, Float2>& viewport);
