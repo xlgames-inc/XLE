@@ -15,7 +15,7 @@ namespace BufferUploads
 {
             //////   R E F E R E N C E   C O U N T I N G   L A Y E R   //////
 
-    class ReferenceCountingLayer : public MarkerHeap
+    class ReferenceCountingLayer : public MarkerHeap<uint16>
     {
     public:
         std::pair<signed,signed> AddRef(unsigned start, unsigned size, const char name[] = NULL);
@@ -35,6 +35,8 @@ namespace BufferUploads
         ReferenceCountingLayer(size_t size);
         ReferenceCountingLayer(const ReferenceCountingLayer& cloneFrom);
     protected:
+
+        typedef uint16 Marker;
         class Entry
         {
         public:

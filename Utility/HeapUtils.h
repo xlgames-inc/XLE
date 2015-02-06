@@ -11,6 +11,8 @@
 #include <vector>
 #include <algorithm>
 #include <memory>
+#include <limits>
+#include <assert.h>
 
 namespace Utility
 {
@@ -110,10 +112,10 @@ namespace Utility
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class MarkerHeap
+    template <typename Marker>
+        class MarkerHeap
     {
     public:
-        typedef uint16 Marker;
         static Marker      ToInternalSize(unsigned size);
         static unsigned    ToExternalSize(Marker size);
         static unsigned    AlignSize(unsigned size);
@@ -126,7 +128,8 @@ namespace Utility
         unsigned _destination;
     };
 
-    class SimpleSpanningHeap : public MarkerHeap
+    template <typename Marker>
+        class SpanningHeap : public MarkerHeap<Marker>
     {
     public:
 
@@ -156,26 +159,45 @@ namespace Utility
 
         std::pair<std::unique_ptr<uint8[]>, size_t> Flatten() const;
 
-        SimpleSpanningHeap(unsigned size);
-        SimpleSpanningHeap(const SimpleSpanningHeap& cloneFrom);
-        SimpleSpanningHeap(const uint8 flattened[], size_t flattenedSize);
-        ~SimpleSpanningHeap();
-        const SimpleSpanningHeap& operator=(const SimpleSpanningHeap& cloneFrom);
+        SpanningHeap(unsigned size);
+        SpanningHeap(const SpanningHeap& cloneFrom);
+        SpanningHeap(const uint8 flattened[], size_t flattenedSize);
+        ~SpanningHeap();
+        const SpanningHeap& operator=(const SpanningHeap& cloneFrom);
     protected:
         std::vector<Marker>         _markers;
         mutable Threading::Mutex    _lock;
-        mutable bool    _largestFreeBlockValid;
-        mutable Marker  _largestFreeBlock;
+        mutable bool                _largestFreeBlockValid;
+        mutable Marker              _largestFreeBlock;
 
         Marker      CalculateLargestFreeBlock_Internal() const;
         bool        BlockAdjust_Internal(unsigned ptr, unsigned size, bool allocateOperation);
     };
 
+    typedef SpanningHeap<uint16> SimpleSpanningHeap;
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    inline MarkerHeap::Marker   MarkerHeap::ToInternalSize(unsigned size)    { return MarkerHeap::Marker(size>>4); }
-    inline unsigned             MarkerHeap::ToExternalSize(Marker size)      { return unsigned(size)<<4; }
-    inline unsigned             MarkerHeap::AlignSize(unsigned size)         { return (size&(~((1<<4)-1)))+((size&((1<<4)-1))?(1<<4):0); }
+    template <typename Marker>
+        inline auto MarkerHeap<Marker>::ToInternalSize(unsigned size) -> Marker
+    {
+        assert((size>>4) <= std::numeric_limits<Marker>::max());
+        return Marker(size>>4); 
+    }
+
+    template <typename Marker>
+        inline unsigned MarkerHeap<Marker>::ToExternalSize(Marker size)      
+    {
+        assert(size <= (std::numeric_limits<unsigned>::max()>>4));
+        return unsigned(size)<<4; 
+    }
+
+    template <typename Marker>
+        inline unsigned MarkerHeap<Marker>::AlignSize(unsigned size)
+    {
+        assert((size>>4) <= std::numeric_limits<Marker>::max());
+        return (size&(~((1<<4)-1)))+((size&((1<<4)-1))?(1<<4):0); 
+    }
 }
 
 using namespace Utility;

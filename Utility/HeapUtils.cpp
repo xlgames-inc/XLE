@@ -73,7 +73,8 @@ namespace Utility
             //////   S I M P L E   S P A N N I N G   H E A P   //////
         /////////////////////////////////////////////////////////////////////////////////
 
-    unsigned    SimpleSpanningHeap::Allocate(unsigned size)
+    template <typename Marker>
+        unsigned    SpanningHeap<Marker>::Allocate(unsigned size)
     {
         const Marker sentinel = Marker(~0x0);
         Marker bestSize = sentinel;
@@ -161,17 +162,20 @@ namespace Utility
         }
     }
 
-    bool        SimpleSpanningHeap::Allocate(unsigned ptr, unsigned size)
+    template <typename Marker>
+        bool        SpanningHeap<Marker>::Allocate(unsigned ptr, unsigned size)
     {
         return BlockAdjust_Internal(ptr, size, true);
     }
     
-    bool        SimpleSpanningHeap::Deallocate(unsigned ptr, unsigned size)
+    template <typename Marker>
+        bool        SpanningHeap<Marker>::Deallocate(unsigned ptr, unsigned size)
     {
         return BlockAdjust_Internal(ptr, size, false);
     }
 
-    bool        SimpleSpanningHeap::BlockAdjust_Internal(unsigned ptr, unsigned size, bool allocateOperation)
+    template <typename Marker>
+        bool        SpanningHeap<Marker>::BlockAdjust_Internal(unsigned ptr, unsigned size, bool allocateOperation)
     {
         ScopedLock(_lock);
         Marker internalOffset = ToInternalSize(ptr);
@@ -236,7 +240,8 @@ namespace Utility
         return false;
     }
 
-    SimpleSpanningHeap::Marker    SimpleSpanningHeap::CalculateLargestFreeBlock_Internal() const
+    template <typename Marker>
+        auto SpanningHeap<Marker>::CalculateLargestFreeBlock_Internal() const -> Marker
     {
         Marker largestBlock = 0;
         assert(!_markers.empty());
@@ -249,7 +254,8 @@ namespace Utility
         return largestBlock;
     }
 
-    unsigned    SimpleSpanningHeap::CalculateAvailableSpace() const
+    template <typename Marker>
+        unsigned    SpanningHeap<Marker>::CalculateAvailableSpace() const
     {
         ScopedLock(_lock);
         unsigned result = 0;
@@ -262,7 +268,8 @@ namespace Utility
         return ToExternalSize(Marker(result));
     }
 
-    unsigned    SimpleSpanningHeap::CalculateLargestFreeBlock() const
+    template <typename Marker>
+        unsigned    SpanningHeap<Marker>::CalculateLargestFreeBlock() const
     {
         ScopedLock(_lock);
         if (!_largestFreeBlockValid) {
@@ -272,7 +279,8 @@ namespace Utility
         return ToExternalSize(_largestFreeBlock);
     }
 
-    unsigned    SimpleSpanningHeap::CalculateAllocatedSpace() const
+    template <typename Marker>
+        unsigned    SpanningHeap<Marker>::CalculateAllocatedSpace() const
     {
         ScopedLock(_lock);
         unsigned result = 0;
@@ -285,7 +293,8 @@ namespace Utility
         return ToExternalSize(Marker(result));
     }
 
-    unsigned    SimpleSpanningHeap::CalculateHeapSize() const
+    template <typename Marker>
+        unsigned    SpanningHeap<Marker>::CalculateHeapSize() const
     {
         ScopedLock(_lock);
         if (_markers.empty()) {
@@ -294,7 +303,8 @@ namespace Utility
         return ToExternalSize(_markers[_markers.size()-1]);
     }
 
-    unsigned        SimpleSpanningHeap::AppendNewBlock(unsigned size)
+    template <typename Marker>
+        unsigned        SpanningHeap<Marker>::AppendNewBlock(unsigned size)
     {
         ScopedLock(_lock);
         if (!_markers.size()) {
@@ -308,7 +318,9 @@ namespace Utility
 
         const bool endsInAllocatedBlock = _markers.size()&1;  // odd markers == ends in allocated block
         auto finalMarker = _markers[_markers.size()-1];
-        auto newEnd = Marker(finalMarker + ToInternalSize(AlignSize(size)));
+        auto newBlockInternalSize = ToInternalSize(AlignSize(size));
+        assert((unsigned(finalMarker) + unsigned(newBlockInternalSize)) <= std::numeric_limits<Marker>::max());
+        auto newEnd = Marker(finalMarker + newBlockInternalSize);
         if (endsInAllocatedBlock) {
             _markers[_markers.size()-1] = newEnd;     // just shift the end marker back
         } else {
@@ -318,19 +330,22 @@ namespace Utility
         return ToExternalSize(finalMarker);
     }
     
-    uint64      SimpleSpanningHeap::CalculateHash() const
+    template <typename Marker>
+        uint64      SpanningHeap<Marker>::CalculateHash() const
     {
         ScopedLock(_lock);
         return Hash64(AsPointer(_markers.begin()), AsPointer(_markers.end()));
     }
 
-    bool        SimpleSpanningHeap::IsEmpty() const
+    template <typename Marker>
+        bool        SpanningHeap<Marker>::IsEmpty() const
     {
         ScopedLock(_lock);
         return _markers.size() <= 2;
     }
 
-    std::vector<unsigned> SimpleSpanningHeap::CalculateMetrics() const
+    template <typename Marker>
+        std::vector<unsigned> SpanningHeap<Marker>::CalculateMetrics() const
     {
         ScopedLock(_lock);
         std::vector<unsigned> result;
@@ -350,7 +365,10 @@ namespace Utility
     //     return (lhs.second-lhs.first)>(rhs.second-rhs.first);
     // }
 
-    static bool SortAllocatedBlocks_SmallestToLargest(const std::pair<MarkerHeap::Marker, MarkerHeap::Marker>& lhs, const std::pair<MarkerHeap::Marker, MarkerHeap::Marker>& rhs)
+    template<typename Marker>
+        static bool SortAllocatedBlocks_SmallestToLargest(
+            const std::pair<Marker, Marker>& lhs, 
+            const std::pair<Marker, Marker>& rhs)
     {
         return (lhs.second-lhs.first)<(rhs.second-rhs.first);
     }
@@ -365,7 +383,8 @@ namespace Utility
         return lhs._destination < rhs._destination;
     }
 
-    std::vector<DefragStep> SimpleSpanningHeap::CalculateDefragSteps() const
+    template <typename Marker>
+        std::vector<DefragStep> SpanningHeap<Marker>::CalculateDefragSteps() const
     {
         ScopedLock(_lock);
 
@@ -390,7 +409,7 @@ namespace Utility
             //      area in a resource to another -- and that might not be possible efficiently in D3D.
             //
 
-        std::sort(allocatedBlocks.begin(), allocatedBlocks.end(), SortAllocatedBlocks_SmallestToLargest);
+        std::sort(allocatedBlocks.begin(), allocatedBlocks.end(), SortAllocatedBlocks_SmallestToLargest<Marker>);
 
         std::vector<DefragStep> result;
         result.reserve(allocatedBlocks.size());
@@ -421,7 +440,8 @@ namespace Utility
         return result;
     }
 
-    void        SimpleSpanningHeap::PerformDefrag(const std::vector<DefragStep>& defrag)
+    template <typename Marker>
+        void        SpanningHeap<Marker>::PerformDefrag(const std::vector<DefragStep>& defrag)
     {
         ScopedLock(_lock);
 
@@ -468,7 +488,8 @@ namespace Utility
         assert(newLargestBlock >= startingLargestBlock);        // sometimes the tests will run a defrag that doesn't reduce the largest block
     }
 
-    std::pair<std::unique_ptr<uint8[]>, size_t> SimpleSpanningHeap::Flatten() const
+    template <typename Marker>
+        std::pair<std::unique_ptr<uint8[]>, size_t> SpanningHeap<Marker>::Flatten() const
     {
         // return a "serialized" / flattened representation of this heap
         //  -- useful to write it out to disk, or store in a compact form
@@ -486,7 +507,8 @@ namespace Utility
         return std::make_pair(std::move(result), resultSize);
     }
 
-    SimpleSpanningHeap::SimpleSpanningHeap(unsigned size)
+    template <typename Marker>
+        SpanningHeap<Marker>::SpanningHeap(unsigned size)
     {
         _markers.reserve(64);
         _markers.push_back(0);
@@ -495,7 +517,8 @@ namespace Utility
         _largestFreeBlock = 0;
     }
 
-    SimpleSpanningHeap::SimpleSpanningHeap(const uint8 flattened[], size_t flattenedSize)
+    template <typename Marker>
+        SpanningHeap<Marker>::SpanningHeap(const uint8 flattened[], size_t flattenedSize)
     {
         _largestFreeBlockValid = false;
         _largestFreeBlock = 0;
@@ -514,17 +537,24 @@ namespace Utility
         }
     }
 
-    SimpleSpanningHeap::SimpleSpanningHeap(const SimpleSpanningHeap& cloneFrom) : _markers(cloneFrom._markers), _largestFreeBlock(cloneFrom._largestFreeBlock), _largestFreeBlockValid(cloneFrom._largestFreeBlockValid) {}
+    template <typename Marker>
+        SpanningHeap<Marker>::SpanningHeap(const SpanningHeap<Marker>& cloneFrom) 
+    : _markers(cloneFrom._markers), _largestFreeBlock(cloneFrom._largestFreeBlock), _largestFreeBlockValid(cloneFrom._largestFreeBlockValid) {}
 
-    SimpleSpanningHeap::~SimpleSpanningHeap()
+    template <typename Marker>
+        SpanningHeap<Marker>::~SpanningHeap()
     {}
 
-    const SimpleSpanningHeap& SimpleSpanningHeap::operator=(const SimpleSpanningHeap& cloneFrom)
+    template <typename Marker>
+        const SpanningHeap<Marker>& SpanningHeap<Marker>::operator=(const SpanningHeap<Marker>& cloneFrom)
     {
         _markers = cloneFrom._markers;
         _largestFreeBlock = cloneFrom._largestFreeBlock;
         _largestFreeBlockValid = cloneFrom._largestFreeBlockValid;
         return *this;
     }
+
+    template SpanningHeap<uint16>;
+    template SpanningHeap<uint32>;
 }
 

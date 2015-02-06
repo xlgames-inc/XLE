@@ -1080,7 +1080,7 @@ namespace BufferUploads
             }
             (*offsetWriteIterator) = offset;
             queuedBytesAdjustment[AsUploadDataType(transaction->_desc)] -= Interlocked::Value(size);
-            offset += MarkerHeap::AlignSize(size);
+            offset += MarkerHeap<uint16>::AlignSize(size);
         }
 
         for (unsigned c=0; c<dimof(queuedBytesAdjustment); ++c) {
@@ -1248,7 +1248,7 @@ namespace BufferUploads
             for (;;) {
                 unsigned thisSize = 0;
                 if (batchingI!=batchOperation._batchedSteps.end()) {
-                    thisSize = MarkerHeap::AlignSize(PlatformInterface::ByteCount(batchingI->_creationDesc));
+                    thisSize = MarkerHeap<uint16>::AlignSize(PlatformInterface::ByteCount(batchingI->_creationDesc));
                 }
                 if (batchingI == batchOperation._batchedSteps.end() || (currentBatchSize+thisSize) > maxSingleBatch) {
                     if (batchingI == batchingStart) {
@@ -1460,7 +1460,7 @@ namespace BufferUploads
 
                     completed = true;
                     _batchPreparation_Main._batchedSteps.push_back(resourceCreateStep);
-                    _batchPreparation_Main._batchedAllocationSize += MarkerHeap::AlignSize(objectSize);
+                    _batchPreparation_Main._batchedAllocationSize += MarkerHeap<uint16>::AlignSize(objectSize);
                 }
 
                 if (completed) {

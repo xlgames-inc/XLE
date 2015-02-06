@@ -232,7 +232,7 @@ namespace Assets
                 directoryFile = BasicFile(_directoryFileName.c_str(), "wb");
             }
 
-            SimpleSpanningHeap spanningHeap(flattenedSpanningHeap.get(), dirHdr._spanningHeapSize);
+            SpanningHeap<uint32> spanningHeap(flattenedSpanningHeap.get(), dirHdr._spanningHeapSize);
             for (auto i=_pendingBlocks.begin(); i!=_pendingBlocks.end(); ++i) {
                 i->_pendingCommitPtr = ~unsigned(0x0);
 
@@ -259,23 +259,32 @@ namespace Assets
                 if (i->_pendingCommitPtr == ~unsigned(0x0)) {
 
                         // we need to allocate a new block
-                    i->_pendingCommitPtr = spanningHeap.Allocate(i->_data->size());
+                    auto newBlockSize = i->_data->size();
+                    
+                    #if defined(_DEBUG)
+                        auto originalHeapSize = spanningHeap.CalculateHeapSize();
+                    #endif
+
+                    i->_pendingCommitPtr = spanningHeap.Allocate(newBlockSize);
                     if (i->_pendingCommitPtr == ~unsigned(0x0)) {
-                        i->_pendingCommitPtr = spanningHeap.AppendNewBlock(i->_data->size());
+                        i->_pendingCommitPtr = spanningHeap.AppendNewBlock(newBlockSize);
                     }
+
+                    assert(spanningHeap.CalculateHeapSize() >= (originalHeapSize + newBlockSize));
 
                         // make sure we're not overlapping another block (just to make sure the allocators are working)
                     #if defined(_DEBUG)
                         for (auto b=blocks.cbegin(); b!=blocks.cend(); ++b) {
+                            assert((b->_start + b->_size) <= originalHeapSize);
                             assert(
-                                ((i->_pendingCommitPtr + i->_data->size()) <= b->_start)
+                                ((i->_pendingCommitPtr + newBlockSize) <= b->_start)
                                 || (i->_pendingCommitPtr >= (b->_start + b->_size)));
                         }
                     #endif
 
                     auto b = std::lower_bound(blocks.begin(), blocks.end(), i->_id, DirectoryChunk::CompareBlock());
                     assert(b==blocks.cend() || b->_id != i->_id);
-                    DirectoryChunk::Block newBlock = { i->_id, i->_pendingCommitPtr, i->_data->size() };
+                    DirectoryChunk::Block newBlock = { i->_id, i->_pendingCommitPtr, newBlockSize };
                     blocks.insert(b, newBlock);
 
                 }
