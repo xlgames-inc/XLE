@@ -280,13 +280,13 @@ namespace SceneEngine
                 }
 
                     //-------- do volumetric fog --------
-                if (!parserContext._processedShadowState.empty() && parserContext._processedShadowState[0].IsReady() && doVolumetricFog) {
+                if (!parserContext._preparedShadows.empty() && parserContext._preparedShadows[0].IsReady() && doVolumetricFog) {
                     GPUProfiler::DebugAnnotation anno(*context, L"VolFog");
 
                     VolumetricFog_Resolve(
                         context, parserContext, 
                         (c==0)?samplingCount:1, useMsaaSamplers, c==1,
-                        parserContext._processedShadowState[0]);
+                        parserContext._preparedShadows[0]);
                 }
 
                 for (auto i=lightingResolveContext._queuedResolveFunctions.cbegin();
@@ -325,8 +325,8 @@ namespace SceneEngine
         const unsigned samplingCount = resolveContext.GetSamplingCount();
         const bool useMsaaSamplers = resolveContext.UseMsaaSamplers();
 
-        ConstantBufferPacket constantBufferPackets[4];
-        const Metal::ConstantBuffer* prebuiltConstantBuffers[4] = { nullptr, nullptr, nullptr, nullptr };
+        ConstantBufferPacket constantBufferPackets[5];
+        const Metal::ConstantBuffer* prebuiltConstantBuffers[5] = { nullptr, nullptr, nullptr, nullptr };
         prebuiltConstantBuffers[2] = &FindCachedBox<ShadowResourcesBox>(ShadowResourcesBox::Desc())._sampleKernel32;
 
             ////////////////////////////////////////////////////////////////////////
@@ -336,6 +336,8 @@ namespace SceneEngine
                 LightingResolveShaders::Desc(
                     (resolveContext.GetCurrentPass()==LightingResolveContext::Pass::PerSample)?samplingCount:1, useMsaaSamplers, 
                     resolveContext.GetCurrentPass()==LightingResolveContext::Pass::PerPixel));
+
+        const bool allowOrthoShadowResolve = Tweakable("AllowOrthoShadowResolve", true);
 
             //-------- do lights --------
         auto lightCount = parserContext.GetSceneParser()->GetLightCount();
@@ -349,12 +351,13 @@ namespace SceneEngine
                     //  We only support a limited set of different light types so far.
                     //  Perhaps this will be extended to support more lights with custom
                     //  shaders and resources.
-                if (    i._shadowFrustumIndex < parserContext._processedShadowState.size() 
-                    &&  parserContext._processedShadowState[i._shadowFrustumIndex].IsReady()) {
+                if (    i._shadowFrustumIndex < parserContext._preparedShadows.size() 
+                    &&  parserContext._preparedShadows[i._shadowFrustumIndex].IsReady()) {
 
-                    const auto& processedShadowFrustum = parserContext._processedShadowState[i._shadowFrustumIndex];
-                    context->BindPS(MakeResourceList(3, processedShadowFrustum._shadowTextureResource));
-                    prebuiltConstantBuffers[0] = &processedShadowFrustum._arbitraryCB;
+                    const auto& preparedShadows = parserContext._preparedShadows[i._shadowFrustumIndex];
+                    context->BindPS(MakeResourceList(3, preparedShadows._shadowTextureResource));
+                    prebuiltConstantBuffers[0] = &preparedShadows._arbitraryCB;
+                    prebuiltConstantBuffers[4] = &preparedShadows._orthoCB;
 
                         //
                         //      We need an accurate way to get from screen coords into 
@@ -372,8 +375,13 @@ namespace SceneEngine
                     constantBufferPackets[3] = BuildScreenToShadowConstants(parserContext, i);
 
                     if (i._type == LightDesc::Directional) {
-                        boundUniforms = lightingResolveShaders._shadowedDirectionalLightUniforms.get();
-                        context->Bind(*lightingResolveShaders._shadowedDirectionalLight);
+                        if (preparedShadows._mode == ShadowProjectionDesc::Projections::Mode::Ortho && allowOrthoShadowResolve) {
+                            boundUniforms = lightingResolveShaders._shadowedDirectionalOrthoLightUniforms.get();
+                            context->Bind(*lightingResolveShaders._shadowedDirectionalOrthoLight);
+                        } else if (preparedShadows._mode == ShadowProjectionDesc::Projections::Mode::Arbitrary) {
+                            boundUniforms = lightingResolveShaders._shadowedDirectionalLightUniforms.get();
+                            context->Bind(*lightingResolveShaders._shadowedDirectionalLight);
+                        }
                     } else {
                         assert(i._type == LightDesc::Point);
                         boundUniforms = lightingResolveShaders._shadowedPointLightUniforms.get();
@@ -476,8 +484,8 @@ namespace SceneEngine
         } basis;
         XlZeroMemory(basis);
         basis._cameraToWorld = parserContext.GetSceneParser()->GetCameraDesc()._cameraToWorld;
-        for (unsigned c=0; c<unsigned(parserContext._processedShadowState[light._shadowFrustumIndex]._frustumCount); ++c) {
-            auto& worldToShadowProj = parserContext._processedShadowState[light._shadowFrustumIndex]._arbitraryCBSource._worldToProj[c];
+        for (unsigned c=0; c<unsigned(parserContext._preparedShadows[light._shadowFrustumIndex]._frustumCount); ++c) {
+            auto& worldToShadowProj = parserContext._preparedShadows[light._shadowFrustumIndex]._arbitraryCBSource._worldToProj[c];
             auto cameraToShadowProj = Combine(basis._cameraToWorld, worldToShadowProj);
             basis._cameraToShadow[c] = cameraToShadowProj;
         }

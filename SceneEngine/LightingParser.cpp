@@ -200,11 +200,11 @@ namespace SceneEngine
 
             //  Prepare exponential shadow maps for doing volume 
         const bool doVolumetricFog = Tweakable("DoVolumetricFog", false);
-        if (!parserContext._processedShadowState.empty() && parserContext._processedShadowState[0].IsReady() && doVolumetricFog) {
+        if (!parserContext._preparedShadows.empty() && parserContext._preparedShadows[0].IsReady() && doVolumetricFog) {
             const bool useMsaaSamplers = mainTargets._desc._sampling._sampleCount > 1;
             VolumetricFog_Build(
                 context, parserContext, 
-                useMsaaSamplers, parserContext._processedShadowState[0]);
+                useMsaaSamplers, parserContext._preparedShadows[0]);
         }
 
         #if defined(_DEBUG)
@@ -690,10 +690,10 @@ namespace SceneEngine
         LightingParser_Overlays(context, parserContext);
     }
 
-    PreparedShadowFrustum LightingParser_PrepareShadow(    
-        DeviceContext* context, 
-        LightingParserContext& parserContext,
-        unsigned shadowFrustumIndex)
+    static const std::string StringShadowCascadeMode = "SHADOW_CASCADE_MODE";
+
+    PreparedShadowFrustum LightingParser_PrepareShadow(
+        DeviceContext* context, LightingParserContext& parserContext, unsigned shadowFrustumIndex)
     {
         auto frustum = parserContext.GetSceneParser()->GetShadowProjectionDesc(
             shadowFrustumIndex, parserContext.GetProjectionDesc());
@@ -711,21 +711,29 @@ namespace SceneEngine
             newViewport[c].MaxDepth = 1.f;
         }
 
-        PreparedShadowFrustum processedResult;
-        processedResult.InitialiseConstants(context, frustum._projections);
-        parserContext.SetGlobalCB(3, context, &processedResult._arbitraryCBSource, sizeof(processedResult._arbitraryCBSource));
-        parserContext.SetGlobalCB(3, context, &processedResult._orthoCBSource, sizeof(processedResult._orthoCBSource));
+        PreparedShadowFrustum preparedResult;
+        preparedResult.InitialiseConstants(context, frustum._projections);
+        parserContext.SetGlobalCB(3, context, &preparedResult._arbitraryCBSource, sizeof(preparedResult._arbitraryCBSource));
+        parserContext.SetGlobalCB(4, context, &preparedResult._orthoCBSource, sizeof(preparedResult._orthoCBSource));
+
+            //  we need to set the "shadow cascade mode" settings to the right
+            //  mode for this prepare step;
+        parserContext.GetTechniqueContext()._runtimeState.SetParameter(
+            StringShadowCascadeMode, 
+            preparedResult._mode == ShadowProjectionDesc::Projections::Mode::Ortho?2:1);
 
             /////////////////////////////////////////////
 
-        auto& targetsBox = FindCachedBox<ShadowTargetsBox>(ShadowTargetsBox::Desc(
-            frustum._width, frustum._height, MaxShadowTexturesPerLight, 
-            FormatStack(frustum._typelessFormat, frustum._readFormat, frustum._writeFormat)));
-        auto& resources = FindCachedBox<ShadowWriteResources>(ShadowWriteResources::Desc(
-            Tweakable("ShadowSlopeScaledBias", 0.7f), Tweakable("ShadowDepthBiasClamp", 0.f), 
-            Tweakable("ShadowRasterDepthBias", 0)));
+        auto& targetsBox = FindCachedBox<ShadowTargetsBox>(
+            ShadowTargetsBox::Desc(
+                frustum._width, frustum._height, MaxShadowTexturesPerLight, 
+                FormatStack(frustum._typelessFormat, frustum._readFormat, frustum._writeFormat)));
+        auto& resources = FindCachedBox<ShadowWriteResources>(
+            ShadowWriteResources::Desc(
+                Tweakable("ShadowSlopeScaledBias", 0.7f), Tweakable("ShadowDepthBiasClamp", 0.f), 
+                Tweakable("ShadowRasterDepthBias", 0)));
 
-        processedResult._shadowTextureResource = targetsBox._shaderResource;
+        preparedResult._shadowTextureResource = targetsBox._shaderResource;
 
             /////////////////////////////////////////////
 
@@ -768,7 +776,9 @@ namespace SceneEngine
         savedTargets.ResetToOldTargets(context);
         context->Bind(CommonResources()._defaultRasterizer);
 
-        return std::move(processedResult);
+        parserContext.GetTechniqueContext()._runtimeState.SetParameter(StringShadowCascadeMode, 0);
+
+        return std::move(preparedResult);
     }
 
     std::vector<PreparedShadowFrustum> LightingParser_PrepareShadows(DeviceContext* context, LightingParserContext& parserContext)
@@ -834,7 +844,7 @@ namespace SceneEngine
                 CATCH_END
             }
 
-            parserContext._processedShadowState = 
+            parserContext._preparedShadows = 
                 std::move(LightingParser_PrepareShadows(context, parserContext));
         }
 

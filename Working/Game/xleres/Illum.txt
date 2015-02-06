@@ -92,6 +92,7 @@ ShadowGen
             FRUSTUM_FILTER
                 63
             SPAWNED_INSTANCE
+            SHADOW_CASCADE_MODE
     VertexShader
         game/xleres/shadowgen/depthonly.vsh:main
     GeometryShader

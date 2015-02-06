@@ -229,11 +229,16 @@ namespace SceneEngine
         _shadowedDirectionalLight = &::Assets::GetAssetDep<Metal::ShaderProgram>(
             vertexShader_viewFrustumVector, 
             "game/xleres/deferred/resolve.psh:ResolveLight:ps_*",
-            definesTable);
+            StringMeld<256>() << definesTable << ";SHADOW_CASCADE_MODE=1");
+        _shadowedDirectionalOrthoLight = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+            vertexShader_viewFrustumVector, 
+            "game/xleres/deferred/resolve.psh:ResolveLight:ps_*",
+            StringMeld<256>() << definesTable << ";SHADOW_CASCADE_MODE=2");
         _shadowedPointLight = &::Assets::GetAssetDep<Metal::ShaderProgram>(
             vertexShader_viewFrustumVector, 
             "game/xleres/deferred/resolve.psh:ResolvePointLight:ps_*",
-            definesTable);
+            StringMeld<256>() << definesTable << ";SHADOW_CASCADE_MODE=1");
+
         _unshadowedDirectionalLight = &::Assets::GetAssetDep<Metal::ShaderProgram>(
             vertexShader_viewFrustumVector, 
             "game/xleres/deferred/resolveunshadowed.psh:ResolveLightUnshadowed:ps_*",
@@ -243,42 +248,34 @@ namespace SceneEngine
             "game/xleres/deferred/resolveunshadowed.psh:ResolvePointLightUnshadowed:ps_*",
             definesTable);
 
-        auto shadowedDirectionalLightUniforms = std::make_unique<Metal::BoundUniforms>(std::ref(*_shadowedDirectionalLight));
-        TechniqueContext::BindGlobalUniforms(*shadowedDirectionalLightUniforms);
-        shadowedDirectionalLightUniforms->BindConstantBuffer(Hash64("ArbitraryShadowProjection"), 0, 1);
-        shadowedDirectionalLightUniforms->BindConstantBuffer(Hash64("LightBuffer"), 1, 1);
-        shadowedDirectionalLightUniforms->BindConstantBuffer(Hash64("ShadowParameters"), 2, 1);
-        shadowedDirectionalLightUniforms->BindConstantBuffer(Hash64("ScreenToShadowProjection"), 3, 1);
+        std::unique_ptr<BoundUniforms> bu[5];
+        bu[0] = std::make_unique<Metal::BoundUniforms>(std::ref(*_shadowedDirectionalLight));
+        bu[1] = std::make_unique<Metal::BoundUniforms>(std::ref(*_shadowedDirectionalOrthoLight));
+        bu[2] = std::make_unique<Metal::BoundUniforms>(std::ref(*_shadowedPointLight));
+        bu[3] = std::make_unique<Metal::BoundUniforms>(std::ref(*_unshadowedDirectionalLight));
+        bu[4] = std::make_unique<Metal::BoundUniforms>(std::ref(*_unshadowedPointLight));
 
-        auto shadowedPointLightUniforms = std::make_unique<Metal::BoundUniforms>(std::ref(*_shadowedPointLight));
-        TechniqueContext::BindGlobalUniforms(*shadowedPointLightUniforms);
-        shadowedPointLightUniforms->BindConstantBuffer(Hash64("ArbitraryShadowProjection"), 0, 1);
-        shadowedPointLightUniforms->BindConstantBuffer(Hash64("LightBuffer"), 1, 1);
-        shadowedPointLightUniforms->BindConstantBuffer(Hash64("ShadowParameters"), 2, 1);
-
-        auto unshadowedDirectionalLightUniforms = std::make_unique<Metal::BoundUniforms>(std::ref(*_unshadowedDirectionalLight));
-        TechniqueContext::BindGlobalUniforms(*unshadowedDirectionalLightUniforms);
-        unshadowedDirectionalLightUniforms->BindConstantBuffer(Hash64("ArbitraryShadowProjection"), 0, 1);
-        unshadowedDirectionalLightUniforms->BindConstantBuffer(Hash64("LightBuffer"), 1, 1);
-        unshadowedDirectionalLightUniforms->BindConstantBuffer(Hash64("ShadowParameters"), 2, 1);
-        unshadowedDirectionalLightUniforms->BindConstantBuffer(Hash64("ScreenToShadowProjection"), 3, 1);
-
-        auto unshadowedPointLightUniforms = std::make_unique<Metal::BoundUniforms>(std::ref(*_unshadowedPointLight));
-        TechniqueContext::BindGlobalUniforms(*unshadowedPointLightUniforms);
-        unshadowedPointLightUniforms->BindConstantBuffer(Hash64("ArbitraryShadowProjection"), 0, 1);
-        unshadowedPointLightUniforms->BindConstantBuffer(Hash64("LightBuffer"), 1, 1);
-        unshadowedPointLightUniforms->BindConstantBuffer(Hash64("ShadowParameters"), 2, 1);
+        for (unsigned c=0; c<dimof(bu); ++c) {
+            TechniqueContext::BindGlobalUniforms(*bu[c]);
+            bu[c]->BindConstantBuffer(Hash64("ArbitraryShadowProjection"), 0, 1);
+            bu[c]->BindConstantBuffer(Hash64("LightBuffer"), 1, 1);
+            bu[c]->BindConstantBuffer(Hash64("ShadowParameters"), 2, 1);
+            bu[c]->BindConstantBuffer(Hash64("ScreenToShadowProjection"), 3, 1);
+            bu[c]->BindConstantBuffer(Hash64("OrthogonalShadowProjection"), 4, 1);
+        }
 
         _validationCallback = std::make_shared<::Assets::DependencyValidation>();
         ::Assets::RegisterAssetDependency(_validationCallback, &_shadowedDirectionalLight->GetDependancyValidation());
+        ::Assets::RegisterAssetDependency(_validationCallback, &_shadowedDirectionalOrthoLight->GetDependancyValidation());
         ::Assets::RegisterAssetDependency(_validationCallback, &_shadowedPointLight->GetDependancyValidation());
         ::Assets::RegisterAssetDependency(_validationCallback, &_unshadowedDirectionalLight->GetDependancyValidation());
         ::Assets::RegisterAssetDependency(_validationCallback, &_unshadowedPointLight->GetDependancyValidation());
 
-        _shadowedDirectionalLightUniforms = std::move(shadowedDirectionalLightUniforms);
-        _shadowedPointLightUniforms = std::move(shadowedPointLightUniforms);
-        _unshadowedDirectionalLightUniforms = std::move(unshadowedDirectionalLightUniforms);
-        _unshadowedPointLightUniforms = std::move(unshadowedPointLightUniforms);
+        _shadowedDirectionalLightUniforms = std::move(bu[0]);
+        _shadowedDirectionalOrthoLightUniforms = std::move(bu[1]);
+        _shadowedPointLightUniforms = std::move(bu[2]);
+        _unshadowedDirectionalLightUniforms = std::move(bu[3]);
+        _unshadowedPointLightUniforms = std::move(bu[4]);
     }
 
     LightingResolveShaders::~LightingResolveShaders() {}

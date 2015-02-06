@@ -34,31 +34,31 @@ VSShadowOutput main(VSInput input)
 	#endif
 
 	result.shadowFrustumFlags = 0;
-	
+
 	uint count = min(GetShadowSubProjectionCount(), OUTPUT_SHADOW_PROJECTION_COUNT);
 
 	#if SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ARBITRARY
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-		for (uint c=0; c<count; ++c) {
-			float4 p = ShadowProjection_GetOutput(worldPosition, c);
-			bool	left	= p.x < -p.w,
-					right	= p.x >  p.w,
-					top		= p.y < -p.w,
-					bottom	= p.y >  p.w;
+		#if (OUTPUT_SHADOW_PROJECTION_COUNT>0)
+			for (uint c=0; c<count; ++c) {
+				float4 p = ShadowProjection_GetOutput(worldPosition, c);
+				bool	left	= p.x < -p.w,
+						right	= p.x >  p.w,
+						top		= p.y < -p.w,
+						bottom	= p.y >  p.w;
 
-			result.shadowPosition[c] = p;
-			result.shadowFrustumFlags |= (left | (right<<1) | (top<<2) | (bottom<<3)) << (c*4);
-		}
+				result.shadowPosition[c] = p;
+				result.shadowFrustumFlags |= (left | (right<<1) | (top<<2) | (bottom<<3)) << (c*4);
+			}
+		#endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 	#elif SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ORTHOGONAL
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-		float3 basePosition = mul(OrthoShadowProjection, float4(worldPosition, 1));
+		float3 basePosition = mul(OrthoShadowWorldToProj, float4(worldPosition, 1));
 		result.baseShadowPosition = basePosition;
-
-		uint count = min(OrthoShadowSubProjectionCount, OUTPUT_SHADOW_PROJECTION_COUNT);
 		for (uint c=0; c<count; ++c) {
 			float3 cascade = AdjustForCascade(basePosition, c);
 			bool	left	= cascade.x < -1.f,
@@ -66,8 +66,7 @@ VSShadowOutput main(VSInput input)
 					top		= cascade.y < -1.f,
 					bottom	= cascade.y >  1.f;
 
-			result.shadowPosition[c] = cascade;
-			result.shadowFrustumFlags |= 
+			result.shadowFrustumFlags |=
 				(left | (right<<1) | (top<<2) | (bottom<<3)) << (c*4);
 		}
 
@@ -76,5 +75,3 @@ VSShadowOutput main(VSInput input)
 
 	return result;
 }
-
-

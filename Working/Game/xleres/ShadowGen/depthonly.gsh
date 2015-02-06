@@ -11,7 +11,7 @@
 
 	// support up to 6 output frustums (for cube map point light source projections)
 [maxvertexcount(18)]
-	void main(	triangle VSShadowOutput input[3], 
+	void main(	triangle VSShadowOutput input[3],
 				inout TriangleStream<VSOutput> outputStream)
 {
 	uint count = min(GetShadowSubProjectionCount(), OUTPUT_SHADOW_PROJECTION_COUNT);
@@ -21,7 +21,7 @@
 				continue;
 			}
 		#endif
-		
+
 		uint shadowFrustumFlags0 = (input[0].shadowFrustumFlags >> (c*4)) & 0xf;
 		uint shadowFrustumFlags1 = (input[1].shadowFrustumFlags >> (c*4)) & 0xf;
 		uint shadowFrustumFlags2 = (input[2].shadowFrustumFlags >> (c*4)) & 0xf;
@@ -37,9 +37,9 @@
 			float4 p1 = input[1].shadowPosition[c];
 			float4 p2 = input[2].shadowPosition[c];
 		#elif SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ORTHOGONAL
-			float4 p0 = AdjustForCascade(input[0].baseShadowPosition, c);
-			float4 p1 = AdjustForCascade(input[1].baseShadowPosition, c);
-			float4 p2 = AdjustForCascade(input[2].baseShadowPosition, c);
+			float4 p0 = float4(AdjustForCascade(input[0].baseShadowPosition, c), 1.f);
+			float4 p1 = float4(AdjustForCascade(input[1].baseShadowPosition, c), 1.f);
+			float4 p2 = float4(AdjustForCascade(input[2].baseShadowPosition, c), 1.f);
 		#else
 			float4 p0 = 0.0.xxxx;
 			float4 p1 = 0.0.xxxx;
@@ -67,7 +67,7 @@
 		#endif
 		output.renderTargetIndex = c;
 		outputStream.Append(output);
-		
+
 		output.position = p1;
 		#if OUTPUT_TEXCOORD==1
 			output.texCoord = input[1].texCoord;
@@ -77,7 +77,7 @@
 		#endif
 		output.renderTargetIndex = c;
 		outputStream.Append(output);
-		
+
 		output.position = p2;
 		#if OUTPUT_TEXCOORD==1
 			output.texCoord = input[2].texCoord;

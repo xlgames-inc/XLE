@@ -11,6 +11,7 @@ namespace SceneEngine
         const MultiProjection<MaxShadowTexturesPerLight>& desc)
     {
         _frustumCount = desc._count;
+        _mode = desc._mode;
 
         XlZeroMemory(_arbitraryCBSource);
         XlZeroMemory(_orthoCBSource);

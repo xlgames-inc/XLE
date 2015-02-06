@@ -58,7 +58,7 @@ namespace SceneEngine
         RenderCore::Metal::ConstantBuffer&          GetGlobalStateCB()                  { return _globalCBs[1]; }
 
             //  ----------------- Working shadow state ----------------- 
-        std::vector<PreparedShadowFrustum>     _processedShadowState;
+        std::vector<PreparedShadowFrustum>     _preparedShadows;
 
             //  ----------------- Exception reporting ----------------- 
         std::string                 _errorString;

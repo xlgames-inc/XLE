@@ -159,7 +159,7 @@ namespace PlatformRig
         Float3 corners[8];
         CalculateAbsFrustumCorners(corners, trans);
         for (unsigned c=0; c<4; ++c) {
-            result[c] = Normalize(corners[8]);
+            result[c] = Normalize(corners[4+c]);    // use the more distance corners, on the far clip plane
         }
     }
 
@@ -185,7 +185,7 @@ namespace PlatformRig
 
         static const float frustumPower = 3.75f;
         const float shadowNearPlane = 1.f;
-        const float shadowFarPlane = settings._maxDistanceFromLight;
+        const float shadowFarPlane = 2.f * settings._maxDistanceFromLight;  // double because of back-projection
         const float backProjectionDistance = settings._maxDistanceFromCamera;
 
         float t = 0;
@@ -195,7 +195,7 @@ namespace PlatformRig
             -1.f, -1.f, 1.f, 1.f, shadowNearPlane, shadowFarPlane,
             GeometricCoordinateSpace::RightHanded, GetDefaultClipSpaceType());
 
-        Float3 cameraPos = ExtractTranslation(mainSceneProjectionDesc._viewToProjection);
+        Float3 cameraPos = ExtractTranslation(mainSceneProjectionDesc._viewToWorld);
         Float3 imaginaryLightPosition = cameraPos + backProjectionDistance * lightDesc._negativeLightDirection;
         result._definitionViewMatrix = MakeWorldToLight(lightDesc._negativeLightDirection, imaginaryLightPosition);
         Float4x4 worldToLightProj = Combine(result._definitionViewMatrix, result._definitionProjMatrix);
@@ -288,10 +288,10 @@ namespace PlatformRig
         Float4x4 clippingProjMatrix = result._definitionProjMatrix;
         for (unsigned c=0; c<3; ++c) {
             clippingProjMatrix(c,c) = 2.f / (allCascadesMaxs[c] - allCascadesMins[c]);
-            clippingProjMatrix(c,3) = -0.5f * (allCascadesMaxs[c] + allCascadesMins[c]);
+            clippingProjMatrix(c,3) = -(allCascadesMaxs[c] + allCascadesMins[c]) / (allCascadesMaxs[c] - allCascadesMins[c]);
         }
-        Float4x4 worldToClip = Combine(result._definitionViewMatrix, clippingProjMatrix);
 
+        Float4x4 worldToClip = Combine(result._definitionViewMatrix, clippingProjMatrix);
         return std::make_pair(result, worldToClip);
     }
 

@@ -7,6 +7,9 @@
 #if !defined(MAIN_GEOMETRY_H)
 #define MAIN_GEOMETRY_H
 
+#define SHADOW_CASCADE_MODE_ARBITRARY 1
+#define SHADOW_CASCADE_MODE_ORTHOGONAL 2
+
 #if !defined(VSOUTPUT_EXTRA)
     #define VSOUTPUT_EXTRA
 #endif
@@ -21,7 +24,7 @@
 struct VSInput //////////////////////////////////////////////////////
 {
 	float3 position : POSITION0;
-	
+
 	#if GEO_HAS_COLOUR==1
 		float4 colour : COLOR0;
         #if !defined(OUTPUT_COLOUR)
@@ -34,7 +37,7 @@ struct VSInput //////////////////////////////////////////////////////
 		#undef OUTPUT_TEXCOORD
 		#define OUTPUT_TEXCOORD 1
 	#endif
-	
+
 	#if GEO_HAS_TANGENT_FRAME==1
 		float4 tangent : TANGENT;
 		float3 bitangent : BITANGENT;
@@ -46,7 +49,7 @@ struct VSInput //////////////////////////////////////////////////////
 		    #define OUTPUT_TANGENT_FRAME 1
         #endif
 	#endif
-	
+
 	#if GEO_HAS_NORMAL==1
 		float3 normal : NORMAL;
         #undef OUTPUT_NORMAL
@@ -125,7 +128,7 @@ struct VSOutput /////////////////////////////////////////////////////
 	#if OUTPUT_TEXCOORD==1
 		float2 texCoord : TEXCOORD0;
 	#endif
-	
+
 	#if OUTPUT_TANGENT_FRAME==1
 		float3 tangent : TANGENT;
 		float3 bitangent : BITANGENT;
@@ -135,11 +138,11 @@ struct VSOutput /////////////////////////////////////////////////////
 		float4 localTangent : LOCALTANGENT;
 		float3 localBitangent : LOCALBITANGENT;
 	#endif
-	
+
 	#if (OUTPUT_TANGENT_FRAME==1) || (OUTPUT_NORMAL==1)
 		float3 normal : NORMAL;
 	#endif
-	
+
     #if (OUTPUT_LOCAL_NORMAL==1)
 		float3 localNormal : LOCALNORMAL;
 	#endif
@@ -151,7 +154,7 @@ struct VSOutput /////////////////////////////////////////////////////
     #if (OUTPUT_WORLD_VIEW_VECTOR==1)
 		float3 worldViewVector : WORLDVIEWVECTOR;
 	#endif
-	
+
 	#if (OUTPUT_RENDER_TARGET_INDEX==1)
 		uint renderTargetIndex : SV_RenderTargetArrayIndex;
 	#endif

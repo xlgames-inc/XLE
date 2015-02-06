@@ -74,6 +74,7 @@ ShadowGen
             FRUSTUM_FILTER
                 63
             SPAWNED_INSTANCE
+            SHADOW_CASCADE_MODE
     VertexShader
         game/xleres/shadowgen/depthonly.vsh:main
     GeometryShader
@@ -127,4 +128,3 @@ RayTest
         game/xleres/forward/raytest.gsh:triangles
     PixelShader
         null
-

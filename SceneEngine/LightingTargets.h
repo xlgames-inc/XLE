@@ -125,8 +125,7 @@ namespace SceneEngine
         {
         public:
             unsigned _msaaSampleCount;
-            bool _msaaSamplers;
-            bool _flipDirection;
+            bool _msaaSamplers, _flipDirection;
             Desc(unsigned msaaSampleCount, bool msaaSamplers, bool flipDirection) 
             {
                     //  we have to "memset" this -- because padding adds random values in 
@@ -138,15 +137,20 @@ namespace SceneEngine
             }
         };
 
-        RenderCore::Metal::ShaderProgram*   _shadowedDirectionalLight;
-        RenderCore::Metal::ShaderProgram*   _shadowedPointLight;
-        RenderCore::Metal::ShaderProgram*   _unshadowedPointLight;
-        RenderCore::Metal::ShaderProgram*   _unshadowedDirectionalLight;
+        typedef RenderCore::Metal::ShaderProgram ShaderProgram;
+        typedef RenderCore::Metal::BoundUniforms BoundUniforms;
 
-        std::unique_ptr<RenderCore::Metal::BoundUniforms>   _shadowedDirectionalLightUniforms;
-        std::unique_ptr<RenderCore::Metal::BoundUniforms>   _shadowedPointLightUniforms;
-        std::unique_ptr<RenderCore::Metal::BoundUniforms>   _unshadowedPointLightUniforms;
-        std::unique_ptr<RenderCore::Metal::BoundUniforms>   _unshadowedDirectionalLightUniforms;
+        ShaderProgram*  _shadowedDirectionalLight;
+        ShaderProgram*  _shadowedDirectionalOrthoLight;
+        ShaderProgram*  _shadowedPointLight;
+        ShaderProgram*  _unshadowedPointLight;
+        ShaderProgram*  _unshadowedDirectionalLight;
+
+        std::unique_ptr<BoundUniforms>  _shadowedDirectionalLightUniforms;
+        std::unique_ptr<BoundUniforms>  _shadowedDirectionalOrthoLightUniforms;
+        std::unique_ptr<BoundUniforms>  _shadowedPointLightUniforms;
+        std::unique_ptr<BoundUniforms>  _unshadowedPointLightUniforms;
+        std::unique_ptr<BoundUniforms>  _unshadowedDirectionalLightUniforms;
 
         const Assets::DependencyValidation& GetDependancyValidation() const   { return *_validationCallback; }
 
