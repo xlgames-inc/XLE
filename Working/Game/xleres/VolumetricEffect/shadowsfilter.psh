@@ -11,7 +11,7 @@
 Texture2DArray<float> InputShadowTextures : register(t2);
 
 int		WorkingSlice;
-float2	ShadowDepthProjRatio;
+float4	ShadowMinimalProjection;
 
 cbuffer Filtering
 {
@@ -31,11 +31,7 @@ float BuildExponentialShadowMap(float4 position : SV_Position, float2 texCoord :
 		//		todo -- use "GatherRed" to improve performance
 
 	const bool shadowsPerspectiveProj = ShadowsPerspectiveProjection;
-	const float shadowsFarClip = 1000.f;	// todo --  better way to do this
-	const float shadowsNearClip = 1.f;
-
 	const bool useAverage = false;
-	
 	if (useAverage) {
 		int c=0;
 		const int DownsampleCount = 4;
@@ -45,9 +41,9 @@ float BuildExponentialShadowMap(float4 position : SV_Position, float2 texCoord :
 				float shadowBufferDepth  = InputShadowTextures.Load(int4(coords.xy, WorkingSlice, 0));
 
 				if (shadowsPerspectiveProj) {
-					accumulativeLinearDepth += NDCDepthToLinearDepth(shadowBufferDepth, ShadowDepthProjRatio);
+					accumulativeLinearDepth += NDCDepthToWorldSpace_Perspective(shadowBufferDepth, AsMiniProjZW(ShadowMinimalProjection));
 				} else {
-					accumulativeLinearDepth += (NDCDepthToLinearDepth_Ortho(shadowBufferDepth, ShadowDepthProjRatio) - shadowsNearClip) / shadowsFarClip;
+					accumulativeLinearDepth += NDCDepthToWorldSpace_Ortho(shadowBufferDepth, AsMiniProjZW(ShadowMinimalProjection));
 				}
 			}
 		}
@@ -69,9 +65,9 @@ float BuildExponentialShadowMap(float4 position : SV_Position, float2 texCoord :
 				float shadowBufferDepth  = InputShadowTextures.Load(int4(coords.xy, WorkingSlice, 0));
 
 				if (shadowsPerspectiveProj) {
-					maxDepth = max(maxDepth, NDCDepthToLinearDepth(shadowBufferDepth, ShadowDepthProjRatio));
+					maxDepth = max(maxDepth, NDCDepthToWorldSpace_Perspective(shadowBufferDepth, AsMiniProjZW(ShadowMinimalProjection)));
 				} else {
-					maxDepth = max(maxDepth, (NDCDepthToLinearDepth_Ortho(shadowBufferDepth, ShadowDepthProjRatio) - shadowsNearClip) / shadowsFarClip);
+					maxDepth = max(maxDepth, NDCDepthToWorldSpace_Ortho(shadowBufferDepth, AsMiniProjZW(ShadowMinimalProjection)));
 				}
 			}
 		}

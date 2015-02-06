@@ -180,8 +180,8 @@ ProjectedLight BuildProjectedLight(Light l)
 		float minAngleY = lerp(-.5f * FOV.y, .5f * FOV.y, (groupId.y    ) / float(GroupCounts.y));
 		float maxAngleY = lerp(-.5f * FOV.y, .5f * FOV.y, (groupId.y + 1) / float(GroupCounts.y));
 
-		float worldDistanceMinDepth = lerp(NearClip, FarClip, NDCDepthToLinearDepth(asfloat(finalDepthMin)));
-		float worldDistanceMaxDepth = lerp(NearClip, FarClip, NDCDepthToLinearDepth(asfloat(finalDepthMax)));
+		float worldDistanceMinDepth = NDCDepthToWorldSpace(asfloat(finalDepthMin));
+		float worldDistanceMaxDepth = NDCDepthToWorldSpace(asfloat(finalDepthMax));
 
 		float2 A = float2(worldDistanceMaxDepth*tan(minAngleX), worldDistanceMaxDepth*tan(minAngleY));
 		float2 B = float2(worldDistanceMaxDepth*tan(maxAngleX), worldDistanceMaxDepth*tan(maxAngleY));
@@ -276,7 +276,7 @@ ProjectedLight BuildProjectedLight(Light l)
 
 	float2 frustumDim = tan(.5f * FOV);		// frustum dimensions at distance of "1"
 
-	float viewSpaceDepth = lerp(NearClip, FarClip, NDCDepthToLinearDepth(asfloat(depthAsInt)));
+	float viewSpaceDepth = NDCDepthToWorldSpace(asfloat(depthAsInt));
 	float2 AB = -1.0.xx + 2.0.xx * float2(
 		(float(pixelCoord.x) + .5f) / float(outputDim.x),
 		(float(pixelCoord.y) + .5f) / float(outputDim.y));

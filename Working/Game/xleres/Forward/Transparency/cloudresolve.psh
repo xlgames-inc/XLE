@@ -39,24 +39,20 @@ void BlendSamples(	SortingElement sortingBuffer[FixedSampleCount], uint sampleCo
 		[loop] for (int c=0; c<(sampleCount&(~1)); c+=2) {
 			float depth0 = sortingBuffer[c];
 			float depth1 = sortingBuffer[c+1];
-			totalDepth += NDCDepthToLinearDepth(depth0) - NDCDepthToLinearDepth(depth1);
+			totalDepth += NDCDepthToWorldSpace(depth0) - NDCDepthToWorldSpace(depth1);
 		}
 	} else {
 		[loop] for (int c=0; c<sampleCount; c++) {
 			float depth = sortingBuffer[c];
 			if (depth > 0.f) {
 					// the "max" is here so that when lastEntry is "0", we add "0" to totalDepth
-				totalDepth += NDCDepthToLinearDepth(max(depth, lastEntry)) - NDCDepthToLinearDepth(depth);
+				totalDepth += NDCDepthToWorldSpace(max(depth, lastEntry)) - NDCDepthToWorldSpace(depth);
 				lastEntry = 0.f;
 			} else {
 				lastEntry = -depth;
 			}
 		}
 	}
-
-		// "totalDepth" is 0->1 from near to far clip. So we need to multiply by difference to
-		//	bring into meters.
-	totalDepth = totalDepth*(FarClip-NearClip);
 
 		// standard "optical depth" calculation.
 	const float opticalDepth = -0.15f;

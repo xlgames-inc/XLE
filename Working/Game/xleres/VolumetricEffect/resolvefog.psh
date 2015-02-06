@@ -59,7 +59,7 @@ float4 ResolveFog(			float4 position : SV_Position,
 
 	int2 pixelCoords		= position.xy;
 	float depth				= LoadFloat1(DepthTexture, pixelCoords.xy, GetSampleIndex(sys));
-	float worldSpaceDepth	= NDCDepthToLinearDepth(depth) * FarClip;
+	float worldSpaceDepth	= NDCDepthToWorldSpace(depth);
 	
 	const float gridDepth		= 150.f;
 	float3 volumeTextureCoord   = float3(texCoord.xy, lerp(1.f/255.f, 254.f/255.f, saturate(worldSpaceDepth / gridDepth)));

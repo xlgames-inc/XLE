@@ -593,7 +593,7 @@ namespace RenderOverlays
         trans._worldToClip = viewProjectionTransform;
         trans._frustumCorners[0] = trans._frustumCorners[1] = trans._frustumCorners[2] = trans._frustumCorners[3] = Float4(0.f, 0.f, 0.f, 0.f);
         trans._worldSpaceView = Float3(0.f, 0.f, 0.f);
-        trans._nearClip = trans._farClip = trans._projRatio0 = trans._projRatio1 = 0.f;
+        trans._minimalProjection = Float4(0.f, 0.f, 0.f, 0.f);
         trans._dummy[0] = 0.f;
         trans._viewToWorld = Identity<Float4x4>();
         _globalTransformConstantBuffer = RenderCore::MakeSharedPkt(

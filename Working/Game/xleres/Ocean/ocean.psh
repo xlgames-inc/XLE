@@ -501,18 +501,16 @@ void CalculateRefractionValue(	inout OceanLightingParts parts,
 #if MAT_DO_REFRACTION==1
 	float oceanBottomDepthValue = LoadFloat1(DepthBuffer, parameters.pixelPosition.xy, 0);
 
-	float oceanBottomLinearDepth = NDCDepthToLinearDepth(oceanBottomDepthValue);
-	float oceanLinearDepth = NDCDepthToLinearDepth(oceanDepth);
+	float oceanBottomLinearDepth = NDCDepthToWorldSpace(oceanBottomDepthValue);
+	float oceanLinearDepth = NDCDepthToWorldSpace(oceanDepth);
 	float linearDepthThroughWater = oceanBottomLinearDepth - oceanLinearDepth;
 
-	if (linearDepthThroughWater > .25f || oceanBottomLinearDepth > .75f) {
+	if (linearDepthThroughWater > (.25f * FarClip) || oceanBottomLinearDepth > (.75f * FarClip)) {
 		parts.refractionAttenuationDepth = 100000.f;
 		parts.forwardDistanceThroughWater = 100000.f;
 		parts.refracted = 0.0.xxx;
 		return;
 	}
-
-	linearDepthThroughWater *= FarClip;	// convert to world space units
 
 	const float airRefractiveIndex = 1.f;
 	float3 incidentRay = -parameters.worldViewDirection;

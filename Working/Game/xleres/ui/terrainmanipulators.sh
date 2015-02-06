@@ -19,18 +19,17 @@ cbuffer CircleHighlightParameters
 Texture2D_MaybeMS<float>	DepthTexture;
 Texture2D					HighlightResource;
 
-float GetWorldSpaceDepth(int2 pixelCoords, uint sampleIndex)
+float GetLinear0To1Depth(int2 pixelCoords, uint sampleIndex)
 {
 	float depth = LoadFloat1(DepthTexture, pixelCoords.xy, sampleIndex);
-	return NDCDepthToLinearDepth(depth);		// undo projection matrix transformation
+	return NDCDepthToLinear0To1(depth);
 }
 
 float3 CalculateWorldPosition(int2 pixelCoords, uint sampleIndex, float3 viewFrustumVector)
 {
-	float worldSpaceDepth = GetWorldSpaceDepth(pixelCoords, sampleIndex);
+	float linear0To1Depth = GetLinear0To1Depth(pixelCoords, sampleIndex);
 	return CalculateWorldPosition(
-		viewFrustumVector, worldSpaceDepth,
-		NearClip, FarClip, WorldSpaceView);
+		viewFrustumVector, linear0To1Depth, WorldSpaceView);
 }
 
 

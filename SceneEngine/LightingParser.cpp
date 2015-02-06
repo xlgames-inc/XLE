@@ -139,10 +139,7 @@ namespace SceneEngine
             InvertOrthonormalTransform(sceneCamera._cameraToWorld), projectionMatrix);
         globalTransform._viewToWorld = sceneCamera._cameraToWorld;
         globalTransform._worldSpaceView = ExtractTranslation(sceneCamera._cameraToWorld);
-        globalTransform._nearClip = sceneCamera._nearClip;
-        globalTransform._farClip = sceneCamera._farClip;
-        globalTransform._projRatio0 = sceneCamera._farClip / (sceneCamera._farClip - sceneCamera._nearClip);
-        globalTransform._projRatio1 = sceneCamera._nearClip / (sceneCamera._nearClip - sceneCamera._farClip);
+        globalTransform._minimalProjection = ExtractMinimalProjection(projectionMatrix);
         globalTransform._dummy[0] = 1.f;
 
             //  we can calculate the projection corners either from the camera desc object,

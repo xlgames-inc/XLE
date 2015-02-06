@@ -63,9 +63,8 @@ namespace RenderCore
         Float4x4    _worldToClip;
         Float4      _frustumCorners[4];
         Float3      _worldSpaceView;
-        float       _nearClip, _farClip;
-        float       _projRatio0, _projRatio1;
         float       _dummy[1];
+        Float4      _minimalProjection;
         Float4x4    _viewToWorld;
     };
 
@@ -102,6 +101,11 @@ namespace RenderCore
         ClipSpaceType::Enum clipSpaceType);
 
     ClipSpaceType::Enum GetDefaultClipSpaceType();
+
+    std::pair<float, float> CalculateNearAndFarPlane(
+        const Float4& minimalProjection, ClipSpaceType::Enum clipSpaceType);
+    Float2 CalculateDepthProjRatio_Ortho(
+        const Float4& minimalProjection, ClipSpaceType::Enum clipSpaceType);
 
     std::pair<Float3, Float3> BuildRayUnderCursor(
         Int2 mousePosition, RenderCore::CameraDesc& sceneCamera, 

@@ -22,6 +22,7 @@
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Math/Vector.h"
 #include "../../Math/Transformations.h"
+#include "../../Math/ProjectionMath.h"
 #include "MarshalString.h"
 #include <tuple>
 #include <D3D11Shader.h>
@@ -478,10 +479,7 @@ namespace PreviewRender
         transformConstants._viewToWorld = camera._cameraToWorld;
 
         transformConstants._worldSpaceView = ExtractTranslation(camera._cameraToWorld);
-        transformConstants._nearClip = camera._nearClip;
-        transformConstants._farClip = camera._farClip;
-        transformConstants._projRatio0 = camera._farClip / (camera._farClip-camera._nearClip);
-        transformConstants._projRatio1 = camera._nearClip / (camera._nearClip-camera._farClip);
+        transformConstants._minimalProjection = ExtractMinimalProjection(projectionMatrix);
 
         // auto right      = Normalize(ExtractRight_Cam(camera._cameraToWorld));
         // auto up         = Normalize(ExtractUp_Cam(camera._cameraToWorld));

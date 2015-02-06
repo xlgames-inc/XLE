@@ -55,10 +55,10 @@ void main(
 	#if defined(DEPTH_IN_LINEAR_COORDS)
 			//	convert depth values to linear values before blending
 		outputDepth = 
-			  NDCDepthToLinearDepth(LoadFloat1(DepthTexture, uint2(position.xy)*4 + uint2(0,0), sampleIndex))
-			+ NDCDepthToLinearDepth(LoadFloat1(DepthTexture, uint2(position.xy)*4 + uint2(2,0), sampleIndex))
-			+ NDCDepthToLinearDepth(LoadFloat1(DepthTexture, uint2(position.xy)*4 + uint2(0,2), sampleIndex))
-			+ NDCDepthToLinearDepth(LoadFloat1(DepthTexture, uint2(position.xy)*4 + uint2(2,2), sampleIndex))
+			  NDCDepthToLinear0To1(LoadFloat1(DepthTexture, uint2(position.xy)*4 + uint2(0,0), sampleIndex))
+			+ NDCDepthToLinear0To1(LoadFloat1(DepthTexture, uint2(position.xy)*4 + uint2(2,0), sampleIndex))
+			+ NDCDepthToLinear0To1(LoadFloat1(DepthTexture, uint2(position.xy)*4 + uint2(0,2), sampleIndex))
+			+ NDCDepthToLinear0To1(LoadFloat1(DepthTexture, uint2(position.xy)*4 + uint2(2,2), sampleIndex))
 			;
 	#else
 		outputDepth = 
@@ -88,10 +88,10 @@ void main(
 	#if defined(DEPTH_IN_LINEAR_COORDS)
 			//	convert depth values to linear values before blending
 		outputDepth = 
-			  NDCDepthToLinearDepth(LoadFloat1(DepthTexture, uint2(position.xy)*2 + uint2(0,0), sampleIndex))
-			+ NDCDepthToLinearDepth(LoadFloat1(DepthTexture, uint2(position.xy)*2 + uint2(1,0), sampleIndex))
-			+ NDCDepthToLinearDepth(LoadFloat1(DepthTexture, uint2(position.xy)*2 + uint2(0,1), sampleIndex))
-			+ NDCDepthToLinearDepth(LoadFloat1(DepthTexture, uint2(position.xy)*2 + uint2(1,1), sampleIndex))
+			  NDCDepthToLinear0To1(LoadFloat1(DepthTexture, uint2(position.xy)*2 + uint2(0,0), sampleIndex))
+			+ NDCDepthToLinear0To1(LoadFloat1(DepthTexture, uint2(position.xy)*2 + uint2(1,0), sampleIndex))
+			+ NDCDepthToLinear0To1(LoadFloat1(DepthTexture, uint2(position.xy)*2 + uint2(0,1), sampleIndex))
+			+ NDCDepthToLinear0To1(LoadFloat1(DepthTexture, uint2(position.xy)*2 + uint2(1,1), sampleIndex))
 			;
 		outputDepth *= 0.25f;
 	#else

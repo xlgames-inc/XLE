@@ -112,12 +112,12 @@ namespace RenderCore
         if (clipSpaceType == ClipSpaceType::Positive) {
                 //  This is the D3D view of clip space
                 //      0<z/w<1
-            result(2,2) =  -(f) / (f-n);            // (note z direction flip here as well as below)
+            result(2,2) =    -(f) / (f-n);            // (note z direction flip here as well as below)
             result(2,3) =  -(f*n) / (f-n);
         } else {
                 //  This is the OpenGL view of clip space
                 //      -1<w/z<1
-            result(2,2) =  (f+n) / (f-n);
+            result(2,2) =        (f+n) / (f-n);
             result(2,3) =  -(-2.f*f*n) / (f-n);
         }
 
@@ -173,10 +173,11 @@ namespace RenderCore
                 //  This is the D3D view of clip space
                 //      0<z/w<1
             result(2,2) =  -1.f / (f-n);            // (note z direction flip here)
-            result(2,3) =  -n / (f-n);
+            result(2,3) =   -n / (f-n);
         } else {
             assert(0);
         }
+
             //
             //      Both OpenGL & DirectX expect a left-handed coordinate system post-projection
             //          +X is right
@@ -185,6 +186,72 @@ namespace RenderCore
             //
 
         return result;
+    }
+
+    std::pair<float, float> CalculateNearAndFarPlane(
+        const Float4& minimalProjection, ClipSpaceType::Enum clipSpaceType)
+    {
+            // Given a "minimal projection", figure out the near and far plane
+            // that was used to create this projection matrix (assuming it was a 
+            // perspective projection created with the function 
+            // "PerspectiveProjection"
+            //
+            // Note that the "minimal projection" can be got from a projection
+            // matrix using the "ExtractMinimalProjection" function.
+            //
+            // We just need to do some algebra to reverse the calculations we
+            // used to build the perspective transform matrix.
+            //
+            // For ClipSpaceType::Positive:
+            //      miniProj[2] = A = -f / (f-n)
+            //      miniProj[3] = B = -(f*n) / (f-n)
+            //      C = B / A = n
+            //      A * (f-n) = -f
+            //      Af - An = -f
+            //      Af + f = An
+            //      (A + 1) * f = An
+            //      f = An / (A+1)
+            //        = B / (A+1)
+            //
+            // For ClipSpaceType::StraddlingZero
+            //      miniProj[2] = A = (f+n) / (f-n)
+            //      miniProj[3] = B = (2fn) / (f-n)
+            //      n = B / (A + 1)
+            //      f = B / (A - 1)
+
+        const float A = minimalProjection[2];
+        const float B = minimalProjection[3];
+        if (clipSpaceType == ClipSpaceType::Positive) {
+            return std::make_pair(B / A, B / (A + 1.f));
+        } else {
+            return std::make_pair(B / (A + 1.f), B / (A - 1.f));
+        }
+    }
+
+    std::pair<float, float> CalculateNearAndFarPlane_Ortho(
+        const Float4& minimalProjection, ClipSpaceType::Enum clipSpaceType)
+    {
+            // For ClipSpaceType::Positive:
+            //      miniProj[2] = A = -1 / (f-n)
+            //      miniProj[3] = B = -n / (f-n)
+            //      C = B / A = n
+
+        const float A = minimalProjection[2];
+        const float B = minimalProjection[3];
+        if (clipSpaceType == ClipSpaceType::Positive) {
+            return std::make_pair(B / A, (B - 1.f) / A);
+        } else {
+            assert(0);
+            return std::make_pair(0.f, 0.f);
+        }
+    }
+
+    Float2 CalculateDepthProjRatio_Ortho(
+        const Float4& minimalProjection, ClipSpaceType::Enum clipSpaceType)
+    {
+        auto nearAndFar = CalculateNearAndFarPlane_Ortho(minimalProjection, clipSpaceType);
+        return Float2(    1.f / (nearAndFar.second - nearAndFar.first),
+            -nearAndFar.first / (nearAndFar.second - nearAndFar.first));
     }
 
     std::pair<Float3, Float3> BuildRayUnderCursor(

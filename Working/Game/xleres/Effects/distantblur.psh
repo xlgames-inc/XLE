@@ -12,7 +12,7 @@ Texture2D<float>	DepthsInput;
 
 float4 integrate(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
 {
-	float linearDepth = NDCDepthToLinearDepth(DepthsInput.Load(int3(position.xy, 0)));
+	float linearDepth = NDCDepthToLinear0To1(DepthsInput.Load(int3(position.xy, 0)));
 	float blurStart = .1f;
 	float blurEnd = .45f;
 	float blurring = saturate((linearDepth - blurStart) / (blurEnd - blurStart));

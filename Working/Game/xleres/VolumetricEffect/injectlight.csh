@@ -116,8 +116,8 @@ float3 CalculateSamplePoint(uint3 cellIndex)
 		;
 
 	return CalculateWorldPosition(
-		viewFrustumVectorToCentre, gridCellCentreDepth / (FarClip-NearClip),
-		NearClip, FarClip, WorldSpaceView);
+		viewFrustumVectorToCentre, gridCellCentreDepth / FarClip,
+		WorldSpaceView);
 }
 
 float MonochromeRaleighScattering(float cosTheta)

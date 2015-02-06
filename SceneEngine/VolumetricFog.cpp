@@ -338,8 +338,8 @@ namespace SceneEngine
             int c=0; 
             for (auto i=fogRes._shadowMapRenderTargets.begin(); i!=fogRes._shadowMapRenderTargets.end(); ++i, ++c) {
 
-                struct WorkingSlice { int _workingSlice; float _depthProjRatio0; float _depthProjRatio1; } globalsBuffer = {
-                    c, shadowFrustum._shadowProjRatio[c][0], shadowFrustum._projectConstantBufferSource._shadowProjRatio[c][1]
+                struct WorkingSlice { int _workingSlice; Float4 _miniProj; } globalsBuffer = {
+                    c, shadowFrustum._arbitraryCBSource._minimalProj[c]
                 };
                 constantBufferPackets[1] = MakeSharedPkt(globalsBuffer);
 

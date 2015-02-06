@@ -30,9 +30,8 @@ cbuffer RecordedTransform
 	row_major float4x4 Recorded_WorldToClip;
 	float4 Recorded_FrustumCorners[4];
 	float3 Recorded_WorldSpaceView;
-	float Recorded_NearClip;
-	float Recorded_FarClip;
-	float2 Recorded_DepthProjRatio;
+	float4 Recorded_MinimalProjection;
+	row_major float4x4 Recorded_CameraBasis;
 }
 
 float3 ToWorldSpacePosition(float3 recordedViewFrustumCoord)
@@ -47,10 +46,11 @@ float3 ToWorldSpacePosition(float3 recordedViewFrustumCoord)
  		+   weight2 * Recorded_FrustumCorners[2].xyz + weight3 * Recorded_FrustumCorners[3].xyz
  		;
 
-	float linearDepth = NDCDepthToLinearDepth(recordedViewFrustumCoord.z, Recorded_DepthProjRatio);
+	float linear0To1Depth = NDCDepthToLinear0To1_Perspective(
+	recordedViewFrustumCoord.z, AsMiniProjZW(Recorded_MinimalProjection));
 	return CalculateWorldPosition(
-		viewFrustumVector, linearDepth,
-		Recorded_NearClip, Recorded_FarClip, Recorded_WorldSpaceView);
+		viewFrustumVector, linear0To1Depth,
+		Recorded_WorldSpaceView);
 }
 
 void WriteQuad(float4 A, float4 B, float4 C, float4 D, uint colorIndex, float3 normal, uint renderTargetIndex, inout TriangleStream<GSOutput> outputStream)

@@ -39,7 +39,7 @@ float3 CalculateWorldSpacePosition(uint2 samplingPixel, uint2 outputDimensions, 
     #if defined(DEPTH_IN_LINEAR_COORDS)
 	    float linearDepth = DepthTexture[samplingPixel]; // LoadFloat1(DepthTexture, samplingPixel, msaaSampleIndex);
     #else
-        float linearDepth = NDCDepthToLinearDepth(DepthTexture[samplingPixel]);
+        float linear0To1Depth = NDCDepthToLinear0To1(DepthTexture[samplingPixel]);
     #endif
  
  	float2 tc = samplingPixel / float2(outputDimensions);
@@ -54,7 +54,7 @@ float3 CalculateWorldSpacePosition(uint2 samplingPixel, uint2 outputDimensions, 
  		;
  
     outputLinearDepth = linearDepth;
-	return CalculateWorldPosition(viewFrustumVector, linearDepth, NearClip, FarClip, WorldSpaceView);
+	return CalculateWorldPosition(viewFrustumVector, linearDepth, WorldSpaceView);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -66,7 +66,7 @@ float CalculateDepthDifference(float4 position, float2 outputDimensions)
     float2 tc = AsTexCoord(position.xy / position.w);
     #if defined(DEPTH_IN_LINEAR_COORDS)
 	    float queryLinearDepth	= DepthTexture[uint2(tc.xy*outputDimensions.xy)];
- 	    float depthDifference	= NDCDepthToLinearDepth(position.z / position.w) - queryLinearDepth;
+ 	    float depthDifference	= NDCDepthToLinear0To1(position.z / position.w) - queryLinearDepth;
     #else
         float queryDepth = DepthTexture[uint2(tc.xy*outputDimensions.xy)];
         float depthDifference = (position.z/position.w) - queryDepth;

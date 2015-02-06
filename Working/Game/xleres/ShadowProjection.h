@@ -42,16 +42,6 @@ cbuffer ScreenToShadowProjection
     row_major float4x4 CameraToWorld;
 }
 
-float4 ShadowProjection_GetOutput(VSInput geo, uint projectIndex)
-{
-	return mul(ShadowProjection[projectIndex], float4(geo.position,1));
-}
-
-float4 ShadowProjection_GetOutput(float3 position, uint projectIndex)
-{
-	return mul(ShadowProjection[projectIndex], float4(position,1));
-}
-
 uint GetShadowSubProjectionCount()
 {
     #if SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ARBITRARY
@@ -61,7 +51,7 @@ uint GetShadowSubProjectionCount()
 	#endif
 }
 
-float3 AdjustForCascade(Float3 basePosition, uint cascadeIndex)
+float3 AdjustForCascade(float3 basePosition, uint cascadeIndex)
 {
     #if SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ORTHOGONAL
         return float3(	
@@ -73,5 +63,21 @@ float3 AdjustForCascade(Float3 basePosition, uint cascadeIndex)
         return basePosition;
     #endif
 }
+
+float4 ShadowProjection_GetOutput(float3 position, uint cascadeIndex)
+{
+	#if SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ARBITRARY
+        return mul(ShadowWorldToProj[projectIndex], float4(position,1));
+    #elif SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ORTHOGONAL
+        float3 a = AdjustForCascade(mul(OrthoShadowWorldToProj, Float4(position, 1)));
+        return float4(a, 1.f);
+    #endif
+}
+
+float4 ShadowProjection_GetOutput(VSInput geo, uint cascadeIndex)
+{
+	return ShadowProjection_GetOutput(geo.position, cascadeIndex);
+}
+
 
 #endif
