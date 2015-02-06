@@ -52,7 +52,7 @@ namespace SceneEngine
 
             using namespace RenderCore::Metal;
             ConstantBufferPacket constantBufferPackets[2];
-            constantBufferPackets[0] = MakeLocalTransformPacket(Identity<Float4x4>(), ExtractTranslation(parserContext.GetProjectionDesc()._viewToWorld));
+            constantBufferPackets[0] = MakeLocalTransformPacket(Identity<Float4x4>(), ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld));
 
             ShaderProgram& shaderProgram = ::Assets::GetAsset<ShaderProgram>(
                 "game/xleres/forward/illum.vsh:main:" VS_DefShaderModel, 

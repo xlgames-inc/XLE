@@ -12,6 +12,8 @@
 #include "../Math/Vector.h"
 #include "../Math/Matrix.h"
 
+namespace RenderCore { class ProjectionDesc; }
+
 namespace RenderOverlays
 {
     class TextStyle;
@@ -129,7 +131,7 @@ namespace RenderOverlays
         virtual void    ReleaseState    () = 0;
         virtual void    SetState        (const OverlayState& state) = 0;
 
-        virtual Float4x4    GetWorldToProjection() = 0;
+        virtual RenderCore::ProjectionDesc    GetProjectionDesc() const = 0;
 
         virtual RenderCore::Metal::DeviceContext*   GetDeviceContext() = 0;
 

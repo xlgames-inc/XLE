@@ -57,7 +57,21 @@ namespace RenderCore
         CameraDesc();
     };
 
-    class GlobalTransform
+    __declspec(align(16)) class ProjectionDesc
+    {
+    public:
+        Float4x4        _worldToProjection;
+        Float4x4        _cameraToProjection;
+        Float4x4        _cameraToWorld;
+        float           _verticalFov;
+        float           _aspectRatio;
+        float           _nearClip;
+        float           _farClip;
+
+        ProjectionDesc();
+    };
+
+    class GlobalTransformConstants
     {
     public:
         Float4x4    _worldToClip;
@@ -68,7 +82,7 @@ namespace RenderCore
         Float4x4    _viewToWorld;
     };
 
-    struct LocalTransform
+    struct LocalTransformConstants
     {
     public:
         Float3x4    _localToWorld;
@@ -117,6 +131,8 @@ namespace RenderCore
         const Float3& cameraPosition,
         float nearClip, float farClip,
         const std::pair<Float2, Float2>& viewport);
+
+    GlobalTransformConstants BuildGlobalTransformConstants(const ProjectionDesc& projDesc);
 
     /// <summary>A reference counted packet for small allocations</summary>
     /// This object manage a small packet of reference counted memory in
@@ -167,7 +183,7 @@ namespace RenderCore
 
     SharedPkt MakeLocalTransformPacket(const Float4x4& localToWorld, const CameraDesc& camera);
     SharedPkt MakeLocalTransformPacket(const Float4x4& localToWorld, const Float3& worldSpaceCameraPosition);
-    LocalTransform MakeLocalTransform(const Float4x4& localToWorld, const Float3& worldSpaceCameraPosition);
+    LocalTransformConstants MakeLocalTransform(const Float4x4& localToWorld, const Float3& worldSpaceCameraPosition);
 
     template<typename T> SharedPkt MakeSharedPkt(const T& input)
     {

@@ -452,7 +452,7 @@ namespace PreviewRender
 
     RenderCore::Metal::ConstantBufferPacket SetupGlobalState(
         RenderCore::Metal::DeviceContext*   context,
-        const RenderCore::GlobalTransform&  globalTransform)
+        const RenderCore::GlobalTransformConstants&  globalTransform)
     {
             // deprecated -- use scene engine to set default states
         // context->Bind(SceneEngine::CommonResources()._dssReadWrite);
@@ -474,7 +474,7 @@ namespace PreviewRender
         Float4x4 projectionMatrix = PerspectiveProjection(
             camera, viewportDesc.Width / float(viewportDesc.Height));
 
-        GlobalTransform transformConstants;
+        GlobalTransformConstants transformConstants;
         transformConstants._worldToClip = Combine(worldToCamera, projectionMatrix);
         transformConstants._viewToWorld = camera._cameraToWorld;
 

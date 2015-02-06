@@ -13,6 +13,7 @@
 #include <memory>
 
 namespace RenderOverlays { namespace DebuggingDisplay { class IInputListener; } }
+namespace RenderCore { class ProjectionDesc; }
 
 namespace SceneEngine
 {
@@ -32,7 +33,7 @@ namespace Tools
     class PlacementsManipulatorsManager
     {
     public:
-        void RenderWidgets(RenderCore::IDevice* device, const Float4x4& viewProjTransform);
+        void RenderWidgets(RenderCore::IDevice* device, const RenderCore::ProjectionDesc& projectionDesc);
         void PlacementsManipulatorsManager::RenderToScene(
             RenderCore::Metal::DeviceContext* context, 
             SceneEngine::LightingParserContext& parserContext);

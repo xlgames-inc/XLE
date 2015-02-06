@@ -11,6 +11,7 @@
 #include "../RenderCore/Metal/State.h"
 #include "../ConsoleRig/Console.h"
 #include "../Math/Transformations.h"
+#include "../Math/ProjectionMath.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/StringUtils.h"
@@ -791,8 +792,18 @@ namespace RenderOverlays { namespace DebuggingDisplay
         destination[3] = A; destination[4] = C; destination[5] = D;
     }
 
-    BoundingBoxCorners::BoundingBoxCorners(const AABoundingBox& box, const Float3x4& localToWorld)
+    class HexahedronCorners
     {
+    public:
+        Float3  _worldSpacePts[8];
+
+        static HexahedronCorners FromAABB(const AABoundingBox& box, const Float3x4& localToWorld);
+        static HexahedronCorners FromFrustumCorners(const Float4x4& worldToProjection);
+    };
+
+    HexahedronCorners HexahedronCorners::FromAABB(const AABoundingBox& box, const Float3x4& localToWorld)
+    {
+        HexahedronCorners result;
         const Float3 bbpts[] = 
         {
             Float3(0.f, 0.f, 0.f), Float3(0.f, 1.f, 0.f),
@@ -802,21 +813,30 @@ namespace RenderOverlays { namespace DebuggingDisplay
         };
 
         for (unsigned c=0; c<dimof(bbpts); ++c) {
-            _worldSpacePts[c] = Float3(     LinearInterpolate(std::get<0>(box)[0], std::get<1>(box)[0], bbpts[c][0]),
-                                            LinearInterpolate(std::get<0>(box)[1], std::get<1>(box)[1], bbpts[c][1]),
-                                            LinearInterpolate(std::get<0>(box)[2], std::get<1>(box)[2], bbpts[c][2]));
-            _worldSpacePts[c] = TransformPoint(localToWorld, _worldSpacePts[c]);
+            result._worldSpacePts[c] = Float3(     
+                LinearInterpolate(std::get<0>(box)[0], std::get<1>(box)[0], bbpts[c][0]),
+                LinearInterpolate(std::get<0>(box)[1], std::get<1>(box)[1], bbpts[c][1]),
+                LinearInterpolate(std::get<0>(box)[2], std::get<1>(box)[2], bbpts[c][2]));
+            result._worldSpacePts[c] = TransformPoint(localToWorld, result._worldSpacePts[c]);
         }
+        return result;
+    }
+
+    HexahedronCorners HexahedronCorners::FromFrustumCorners(const Float4x4& worldToProjection)
+    {
+        HexahedronCorners result;
+        CalculateAbsFrustumCorners(result._worldSpacePts, worldToProjection);
+        std::swap(result._worldSpacePts[2], result._worldSpacePts[3]);
+        std::swap(result._worldSpacePts[4+2], result._worldSpacePts[4+3]);
+        return result;
     }
 
     static const float          BoundingBoxLineThickness = 3.f;
     static const unsigned char  BoundingBoxTriangleAlpha = 0x1f;
     static const unsigned char  BoundingBoxLineAlpha     = 0xff;
 
-    void DrawBoundingBox(IOverlayContext* context, const AABoundingBox& box, const Float3x4& localToWorld, ColorB entryColour, unsigned partMask)
+    void DrawHexahedronCorners(IOverlayContext* context, const HexahedronCorners&corners, ColorB entryColour, unsigned partMask)
     {
-        BoundingBoxCorners corners(box, localToWorld);
-
         if (partMask & 0x2) {
             Float3 lines[12*2];
             lines[ 0*2+0] = corners._worldSpacePts[0]; lines[ 0*2+1] = corners._worldSpacePts[1];
@@ -856,6 +876,23 @@ namespace RenderOverlays { namespace DebuggingDisplay
                 triangles, dimof(triangles),
                 ColorB(entryColour.r, entryColour.g, entryColour.b, BoundingBoxTriangleAlpha));
         }
+    }
+
+    void DrawBoundingBox(
+        IOverlayContext* context, const AABoundingBox& box, 
+        const Float3x4& localToWorld, 
+        ColorB entryColour, unsigned partMask)
+    {
+        auto corners = HexahedronCorners::FromAABB(box, localToWorld);
+        DrawHexahedronCorners(context, corners, entryColour, partMask);
+    }
+    
+    void DrawFrustum(
+        IOverlayContext* context, const Float4x4& worldToProjection, 
+        ColorB entryColour, unsigned partMask)
+    {
+        auto corners = HexahedronCorners::FromFrustumCorners(worldToProjection);
+        DrawHexahedronCorners(context, corners, entryColour, partMask);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////
@@ -1073,7 +1110,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
         return false;
     }
 
-    void DebugScreensSystem::Render(RenderCore::IDevice* device, const Float4x4& viewProjTransform)
+    void DebugScreensSystem::Render(RenderCore::IDevice* device, const RenderCore::ProjectionDesc& projDesc)
     {
         _currentInteractables = Interactables();
         
@@ -1084,7 +1121,8 @@ namespace RenderOverlays { namespace DebuggingDisplay
         Rect    rect(Coord2(0,0), maxCoords);
         Layout  completeLayout(rect);
         
-        auto overlayContext = std::make_unique<ImmediateOverlayContext>(devContext.get(), viewProjTransform);
+        auto overlayContext = std::make_unique<ImmediateOverlayContext>(
+            devContext.get(), projDesc);
         overlayContext->CaptureState();
 
         TRY {

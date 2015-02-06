@@ -198,7 +198,7 @@ namespace SceneEngine
             //      samples information!)
             //
         GFSDK_SSAO_InputData_D3D11 inputData;
-        auto projectionMatrixTranspose = parserContext.GetProjectionDesc()._viewToProjection;
+        auto projectionMatrixTranspose = parserContext.GetProjectionDesc()._cameraToProjection;
         inputData.DepthData.DepthTextureType = GFSDK_SSAO_HARDWARE_DEPTHS;
         inputData.DepthData.pProjectionMatrix = (const float*)&projectionMatrixTranspose;
         inputData.DepthData.pFullResDepthTextureSRV = depthBuffer.GetUnderlying();

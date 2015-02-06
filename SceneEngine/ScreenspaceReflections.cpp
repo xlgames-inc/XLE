@@ -346,7 +346,7 @@ namespace SceneEngine
             Float3      _projScale;
             float       _projZOffset;
         } viewProjParam = {
-            InvertOrthonormalTransform(projDesc._viewToWorld),
+            InvertOrthonormalTransform(projDesc._cameraToWorld),
             projScale, projZOffset
         };
 

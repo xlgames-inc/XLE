@@ -575,27 +575,23 @@ namespace RenderOverlays
         return _deviceContext.get();
     }
 
-    Float4x4    ImmediateOverlayContext::GetWorldToProjection()
+    RenderCore::ProjectionDesc    ImmediateOverlayContext::GetProjectionDesc() const
     {
-        return _worldToProjection;
+        return _projDesc;
     }
 
-    ImmediateOverlayContext::ImmediateOverlayContext(RenderCore::Metal::DeviceContext* deviceContext, const Float4x4& viewProjectionTransform)
+    ImmediateOverlayContext::ImmediateOverlayContext(
+        RenderCore::Metal::DeviceContext* deviceContext, 
+        const RenderCore::ProjectionDesc& projDesc)
     : _deviceContext(deviceContext)
     , _font(GetX2Font("Raleway", 16))
     , _defaultTextStyle(*_font.get())
-    , _worldToProjection(viewProjectionTransform)
+    , _projDesc(projDesc)
     {
         _writePointer = 0;
         _drawCalls.reserve(64);
 
-        RenderCore::GlobalTransform trans;
-        trans._worldToClip = viewProjectionTransform;
-        trans._frustumCorners[0] = trans._frustumCorners[1] = trans._frustumCorners[2] = trans._frustumCorners[3] = Float4(0.f, 0.f, 0.f, 0.f);
-        trans._worldSpaceView = Float3(0.f, 0.f, 0.f);
-        trans._farClip = 0.f;
-        trans._minimalProjection = Float4(0.f, 0.f, 0.f, 0.f);
-        trans._viewToWorld = Identity<Float4x4>();
+        auto trans = RenderCore::BuildGlobalTransformConstants(projDesc);
         _globalTransformConstantBuffer = RenderCore::MakeSharedPkt(
             (const uint8*)&trans, (const uint8*)PtrAdd(&trans, sizeof(trans)));
     }

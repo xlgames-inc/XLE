@@ -36,9 +36,9 @@ namespace Sample
 
         void RenderWidgets(
             RenderCore::IDevice* device, 
-            const Float4x4& worldToProjection)
+            const RenderCore::ProjectionDesc& projectionDesc)
         {
-            _placementsManipulators->RenderWidgets(device, worldToProjection);
+            _placementsManipulators->RenderWidgets(device, projectionDesc);
         }
 
         void SetActivationState(bool) {}

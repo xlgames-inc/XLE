@@ -32,7 +32,7 @@ namespace SceneEngine
         {
             using namespace RenderCore;
 
-            auto cameraPosition = ExtractTranslation(parserContext.GetProjectionDesc()._viewToWorld);
+            auto cameraPosition = ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld);
 
             const float rainBoxXYWidth = 30.f;
             const float rainBoxVerticalHeight = 15.f;
@@ -248,7 +248,7 @@ namespace SceneEngine
 	            int		    _particleCountWidth;
                 float       _dummy[3];
             } simParam = {
-                InvertOrthonormalTransform(projDesc._viewToWorld),
+                InvertOrthonormalTransform(projDesc._cameraToWorld),
                 projScale, projZOffset,
                 Float3(8.1f, 0.1f, -12.f),
                 1.0f / 60.f, particleCountWidth,
@@ -377,8 +377,8 @@ namespace SceneEngine
                 projZOffset = -(f*n) / (f-n);
             }
 
-            auto cameraPosition     = ExtractTranslation(parserContext.GetProjectionDesc()._viewToWorld);
-            auto cameraForward      = ExtractForward_Cam(parserContext.GetProjectionDesc()._viewToWorld);
+            auto cameraPosition     = ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld);
+            auto cameraForward      = ExtractForward_Cam(parserContext.GetProjectionDesc()._cameraToWorld);
             Float3 spawnPosition    = cameraPosition + 5.f * cameraForward;
 
             float spawnAngle0 = 2.f * float(M_PI) * Frac(parserContext.GetSceneParser()->GetTimeValue() / 5.f);
@@ -400,7 +400,7 @@ namespace SceneEngine
 	            int		    _particleCountWidth;
                 float       _dummy1[3];
             } simParam = {
-                InvertOrthonormalTransform(projDesc._viewToWorld),
+                InvertOrthonormalTransform(projDesc._cameraToWorld),
                 projScale, projZOffset,
                 spawnPosition, 0.f,
                 spawnDirection,

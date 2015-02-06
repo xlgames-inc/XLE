@@ -165,7 +165,7 @@ namespace Sample
         return 1; 
     }
 
-    auto EnvironmentSceneParser::GetShadowProjectionDesc(unsigned index, const ProjectionDesc& mainSceneProjectionDesc) const 
+    auto EnvironmentSceneParser::GetShadowProjectionDesc(unsigned index, const RenderCore::ProjectionDesc& mainSceneProjectionDesc) const 
         -> ShadowProjectionDesc
     {
             //  Shadowing lights can have a ShadowProjectionDesc object associated.

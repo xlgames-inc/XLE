@@ -911,7 +911,7 @@ namespace RenderCore { namespace Assets
         RenderCore::Metal::ConstantBufferPacket constantBufferPackets[1];
         constantBufferPackets[0] = MakeLocalTransformPacket(
             localToWorld, 
-            ExtractTranslation(parserContext.GetProjectionDesc()._viewToWorld));
+            ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld));
 
         ShaderProgram& shaderProgram = ::Assets::GetAsset<ShaderProgram>(  
             "game/xleres/forward/illum.vsh:main:" VS_DefShaderModel, 

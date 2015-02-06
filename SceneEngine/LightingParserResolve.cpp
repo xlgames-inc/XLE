@@ -489,7 +489,7 @@ namespace SceneEngine
             auto cameraToShadowProj = Combine(basis._cameraToWorld, worldToShadowProj);
             basis._cameraToShadow[c] = cameraToShadowProj;
         }
-        auto& proj = parserContext.GetProjectionDesc()._viewToProjection;
+        auto& proj = parserContext.GetProjectionDesc()._cameraToProjection;
         basis._originalProjectionScales = Float4(proj(0,0), proj(1,1), proj(2,2), proj(3,3));
         return MakeSharedPkt(basis);
     }

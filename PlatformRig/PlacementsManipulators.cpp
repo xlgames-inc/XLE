@@ -1615,9 +1615,9 @@ namespace Tools
         std::shared_ptr<SceneEngine::IntersectionTestScene> _intersectionTestScene;
     };
 
-    void PlacementsManipulatorsManager::RenderWidgets(RenderCore::IDevice* device, const Float4x4& viewProjTransform)
+    void PlacementsManipulatorsManager::RenderWidgets(RenderCore::IDevice* device, const RenderCore::ProjectionDesc& projectionDesc)
     {
-        _pimpl->_screens->Render(device, viewProjTransform);
+        _pimpl->_screens->Render(device, projectionDesc);
     }
 
     void PlacementsManipulatorsManager::RenderToScene(

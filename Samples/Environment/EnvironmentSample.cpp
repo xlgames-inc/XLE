@@ -34,6 +34,7 @@
 #include "../../RenderCore/Metal/GPUProfiler.h"
 #include "../../RenderOverlays/Font.h"
 #include "../../RenderOverlays/DebugHotKeys.h"
+#include "../../RenderOverlays/Overlays/ShadowFrustumDebugger.h"
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../Assets/CompileAndAsyncManager.h"
 
@@ -187,8 +188,13 @@ namespace Sample
                 "[Profiler] CPU Profiler");
 
             debugSystem->Register(
+                std::make_shared<::Overlays::ShadowFrustumDebugger>(mainScene), 
+                "[Test] Shadow frustum debugger");
+
+            debugSystem->Register(
                 std::make_shared<SceneEngine::PlacementsQuadTreeDebugger>(mainScene->GetPlacementManager()),
-                "PlacementsCulling");
+                "[Placements] Culling");
+
             auto intersectionContext = std::make_shared<SceneEngine::IntersectionTestContext>(
                 mainScene, primMan._globalTechContext);
 
@@ -316,10 +322,10 @@ namespace Sample
         auto& usefulFonts = FindCachedBox<UsefulFonts>(UsefulFonts::Desc());
         DrawPendingResources(context, lightingParserContext, usefulFonts._defaultFont0.get());
         if (debugSystem) {
-            debugSystem->Render(renderDevice, lightingParserContext.GetProjectionDesc()._worldToProjection);
+            debugSystem->Render(renderDevice, lightingParserContext.GetProjectionDesc());
         }
         if (overlaySys) {
-            overlaySys->RenderWidgets(renderDevice, lightingParserContext.GetProjectionDesc()._worldToProjection);
+            overlaySys->RenderWidgets(renderDevice, lightingParserContext.GetProjectionDesc());
         }
 
         return PlatformRig::FrameRig::RenderResult(!lightingParserContext._pendingResources.empty());

@@ -14,6 +14,7 @@
 #include "../Utility/UTFUtils.h"
 #include "IOverlayContext.h"
 #include "../RenderCore/IDevice_Forward.h"
+#include "../RenderCore/RenderUtils.h"
 #include <vector>
 #include <map>
 
@@ -227,13 +228,14 @@ namespace RenderOverlays { namespace DebuggingDisplay
     ///////////////////////////////////////////////////////////////////////////////////
     typedef std::tuple<Float3, Float3>      AABoundingBox;
 
-    class BoundingBoxCorners
-    {
-    public:
-        Float3  _worldSpacePts[8];
-        BoundingBoxCorners(const AABoundingBox& box, const Float3x4& localToWorld);
-    };
-    void        DrawBoundingBox(IOverlayContext* context, const AABoundingBox& box, const Float3x4& localToWorld, ColorB entryColour, unsigned partMask = 0x3);
+    void        DrawBoundingBox(
+        IOverlayContext* context, const AABoundingBox& box, 
+        const Float3x4& localToWorld, 
+        ColorB entryColour, unsigned partMask = 0x3);
+
+    void        DrawFrustum(
+        IOverlayContext* context, const Float4x4& worldToProjection, 
+        ColorB entryColour, unsigned partMask = 0x3);
 
     ///////////////////////////////////////////////////////////////////////////////////
     //          S C R O L L   B A R S
@@ -320,7 +322,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
     {
     public:
         bool        OnInputEvent(const InputSnapshot& evnt);
-        void        Render(RenderCore::IDevice* device, const Float4x4& viewProjTransform = Identity<Float4x4>());
+        void        Render(RenderCore::IDevice* device, const RenderCore::ProjectionDesc& projDesc = RenderCore::ProjectionDesc());
 
         enum Type { InPanel, SystemDisplay };
         void        Register(std::shared_ptr<IWidget> widget, const char name[], Type type = InPanel);

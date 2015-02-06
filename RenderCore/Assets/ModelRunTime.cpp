@@ -566,7 +566,7 @@ namespace RenderCore { namespace Assets
         Metal::ConstantBuffer _localTransformBuffer;
         ModelRenderingBox(const Desc&)
         {
-            Metal::ConstantBuffer localTransformBuffer(nullptr, sizeof(LocalTransform));
+            Metal::ConstantBuffer localTransformBuffer(nullptr, sizeof(LocalTransformConstants));
             _localTransformBuffer = std::move(localTransformBuffer);
         }
         ~ModelRenderingBox() {}
@@ -599,12 +599,12 @@ namespace RenderCore { namespace Assets
         auto& cmdStream = _scaffold->CommandStream();
         auto& geoCall = cmdStream.GetGeoCall(geoCallIndex);
 
-        LocalTransform trans;
+        LocalTransformConstants trans;
         if (transforms) {
             auto localToModel = transforms->GetMeshToModel(geoCall._transformMarker);
-            trans = MakeLocalTransform(Combine(localToModel, modelToWorld), ExtractTranslation(context._parserContext->GetProjectionDesc()._viewToWorld));
+            trans = MakeLocalTransform(Combine(localToModel, modelToWorld), ExtractTranslation(context._parserContext->GetProjectionDesc()._cameraToWorld));
         } else {
-            trans = MakeLocalTransform(modelToWorld, ExtractTranslation(context._parserContext->GetProjectionDesc()._viewToWorld));
+            trans = MakeLocalTransform(modelToWorld, ExtractTranslation(context._parserContext->GetProjectionDesc()._cameraToWorld));
         }
         localTransformBuffer.Update(*context._context, &trans, sizeof(trans));
 
@@ -634,7 +634,7 @@ namespace RenderCore { namespace Assets
             modelToWorld = Combine(transforms->GetMeshToModel(geoCall._transformMarker), modelToWorld);
         }
 
-        auto trans = MakeLocalTransform(modelToWorld, ExtractTranslation(context._parserContext->GetProjectionDesc()._viewToWorld));
+        auto trans = MakeLocalTransform(modelToWorld, ExtractTranslation(context._parserContext->GetProjectionDesc()._cameraToWorld));
         localTransformBuffer.Update(*context._context, &trans, sizeof(trans));
 
         auto cm = FindIf(_skinnedMeshes, [=](const Pimpl::SkinnedMesh& mesh) { return mesh._id == geoCall._geoId; });

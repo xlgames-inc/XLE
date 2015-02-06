@@ -24,6 +24,9 @@
       <Filter>Overlays</Filter>
     </ClCompile>
     <ClCompile Include="..\DebugHotKeys.cpp" />
+    <ClCompile Include="..\Overlays\ShadowFrustumDebugger.cpp">
+      <Filter>Overlays</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\DebuggingDisplay.h" />
@@ -51,6 +54,9 @@
       <Filter>Overlays</Filter>
     </ClInclude>
     <ClInclude Include="..\DebugHotKeys.h" />
+    <ClInclude Include="..\Overlays\ShadowFrustumDebugger.h">
+      <Filter>Overlays</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Overlays">

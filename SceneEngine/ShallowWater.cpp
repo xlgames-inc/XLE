@@ -653,7 +653,7 @@ namespace SceneEngine
         std::vector<PrioritisedActiveElement> scheduledGrids;
         std::vector<PrioritisedActiveElement> gridsToPrioritise;
     
-        auto cameraPosition = ExtractTranslation(parserContext.GetProjectionDesc()._viewToWorld);
+        auto cameraPosition = ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld);
         signed baseGridX = signed(cameraPosition[0] / gridPhysicalDimension);
         signed baseGridY = signed(cameraPosition[1] / gridPhysicalDimension);
         for (signed y=0; y<5; ++y) {

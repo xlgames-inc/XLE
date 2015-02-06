@@ -88,7 +88,7 @@ namespace RenderCore { namespace Assets { namespace Simple
             //  ... though I suppose we would need to use patches for tessellated geometry
         // context->Bind(Metal::Topology::TriangleList);
 
-        static Metal::ConstantBuffer localTransformBuffer(nullptr, sizeof(LocalTransform));     // this should go into some kind of global resource heap
+        static Metal::ConstantBuffer localTransformBuffer(nullptr, sizeof(LocalTransformConstants));     // this should go into some kind of global resource heap
         const Metal::ConstantBuffer* pkts[] = { &localTransformBuffer, nullptr };
 
         unsigned currentResourceIndex = ~unsigned(0x0);
@@ -111,7 +111,7 @@ namespace RenderCore { namespace Assets { namespace Simple
 
                 auto& localToModel = transforms[i->_transformMarker];
                 // auto localToModel = Identity<Float4x4>();
-                auto trans = MakeLocalTransform(Combine(localToModel, modelToWorld), ExtractTranslation(parserContext.GetProjectionDesc()._viewToWorld));
+                auto trans = MakeLocalTransform(Combine(localToModel, modelToWorld), ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld));
                 localTransformBuffer.Update(*context, &trans, sizeof(trans));
 
                 context->Bind(_pimpl->_indexBuffer, cm->_indexFormat, cm->_ibOffset);
@@ -251,11 +251,11 @@ namespace RenderCore { namespace Assets { namespace Simple
     {
         if (drawCalls._entries.empty()) return;
 
-        LocalTransform localTrans;
+        LocalTransformConstants localTrans;
         localTrans._localSpaceView = Float3(0.f, 0.f, 0.f);
         localTrans._localNegativeLightDirection = Float3(0.f, 0.f, 0.f);
         
-        static Metal::ConstantBuffer localTransformBuffer(nullptr, sizeof(LocalTransform));     // this should go into some kind of global resource heap
+        static Metal::ConstantBuffer localTransformBuffer(nullptr, sizeof(LocalTransformConstants));     // this should go into some kind of global resource heap
         const Metal::ConstantBuffer* pkts[] = { &localTransformBuffer, nullptr };
 
         std::sort(drawCalls._entries.begin(), drawCalls._entries.end(), CompareDrawCall);
@@ -297,7 +297,7 @@ namespace RenderCore { namespace Assets { namespace Simple
                 HRESULT hresult = context->GetUnderlying()->Map(
                     localTransformBuffer.GetUnderlying(), 0, D3D11_MAP_WRITE_DISCARD, 0, &result);
                 assert(SUCCEEDED(hresult) && result.pData); (void)hresult;
-                CopyTransform(((LocalTransform*)result.pData)->_localToWorld, d->_modelToWorld);
+                CopyTransform(((LocalTransformConstants*)result.pData)->_localToWorld, d->_modelToWorld);
                 context->GetUnderlying()->Unmap(localTransformBuffer.GetUnderlying(), 0);
             }
             

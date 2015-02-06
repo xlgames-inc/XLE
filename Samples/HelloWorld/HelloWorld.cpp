@@ -252,7 +252,7 @@ namespace Sample
         auto defaultFont0 = RenderOverlays::GetX2Font("Raleway", 16);
         DrawPendingResources(context, lightingParserContext, defaultFont0.get());
 
-        debugSystem->Render(renderDevice, lightingParserContext.GetProjectionDesc()._worldToProjection);
+        debugSystem->Render(renderDevice, lightingParserContext.GetProjectionDesc());
 
         return PlatformRig::FrameRig::RenderResult(hasPendingResources);
     }

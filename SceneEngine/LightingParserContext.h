@@ -12,7 +12,7 @@
 #include "../Utility/MemoryUtils.h"
 #include <functional>
 
-namespace RenderCore { class CameraDesc; }
+namespace RenderCore { class CameraDesc; class ProjectionDesc; }
 namespace Assets { namespace Exceptions { class InvalidResource; class PendingResource; } }
 
 namespace SceneEngine
@@ -25,18 +25,6 @@ namespace SceneEngine
     class ShadowProjectionConstants;
     class ILightingParserPlugin;
 
-    __declspec(align(16)) class ProjectionDesc
-    {
-    public:
-        Float4x4        _worldToProjection;
-        Float4x4        _viewToProjection;
-        Float4x4        _viewToWorld;
-        float           _verticalFov;
-        float           _aspectRatio;
-        float           _nearClip;
-        float           _farClip;
-    };
-
     class LightingParserContext
     {
     public:
@@ -47,8 +35,8 @@ namespace SceneEngine
         ISceneParser*   GetSceneParser()                    { return _sceneParser; }
 
             //  ----------------- Active projection context -----------------
-        ProjectionDesc&         GetProjectionDesc()         { return *_projectionDesc; }
-        const ProjectionDesc&   GetProjectionDesc() const   { return *_projectionDesc; }
+        RenderCore::ProjectionDesc&         GetProjectionDesc()         { return *_projectionDesc; }
+        const RenderCore::ProjectionDesc&   GetProjectionDesc() const   { return *_projectionDesc; }
 
             //  ----------------- Working technique context -----------------
         TechniqueContext&                           GetTechniqueContext()               { return *_techniqueContext.get(); }
@@ -82,7 +70,7 @@ namespace SceneEngine
         MetricsBox*                         _metricsBox;
         ISceneParser*                       _sceneParser;
         std::unique_ptr<TechniqueContext>   _techniqueContext;
-        std::unique_ptr<ProjectionDesc, AlignedDeletor>     _projectionDesc;
+        std::unique_ptr<RenderCore::ProjectionDesc, AlignedDeletor> _projectionDesc;
 
         std::unique_ptr<RenderCore::Metal::UniformsStream>      _globalUniformsStream;
         std::vector<const RenderCore::Metal::ConstantBuffer*>   _globalUniformsConstantBuffers;

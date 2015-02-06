@@ -622,7 +622,7 @@ namespace SceneEngine
         _dynamicTessellation = false;
 
         ConstantBuffer tileConstantsBuffer(nullptr, sizeof(TileConstants));
-        ConstantBuffer localTransformConstantsBuffer(nullptr, sizeof(LocalTransform));
+        ConstantBuffer localTransformConstantsBuffer(nullptr, sizeof(LocalTransformConstants));
 
         _tileConstantsBuffer = std::move(tileConstantsBuffer);
         _localTransformConstantsBuffer = std::move(localTransformConstantsBuffer);
@@ -876,7 +876,7 @@ namespace SceneEngine
             CullNodes(
                 terrainContext, collapseContext,
                 parserContext.GetProjectionDesc()._worldToProjection,
-                ExtractTranslation(parserContext.GetProjectionDesc()._viewToWorld),
+                ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld),
                 *renderInfo, cell._cellToWorld);
         }
     }
@@ -1402,7 +1402,7 @@ namespace SceneEngine
             return;
 
         auto cellToProjection = Combine(localToWorld, parserContext.GetProjectionDesc()._worldToProjection);
-        Float3 cellPositionMinusViewPosition = ExtractTranslation(localToWorld) - ExtractTranslation(parserContext.GetProjectionDesc()._viewToWorld);
+        Float3 cellPositionMinusViewPosition = ExtractTranslation(localToWorld) - ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld);
 
         auto& sourceCell = *cellRenderInfo._sourceCell;
         auto& sourceCoverage = *cellRenderInfo._sourceCoverage;

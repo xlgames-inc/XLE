@@ -129,67 +129,23 @@ namespace SceneEngine
             //  texture matters... The scene parser doesn't know what we're rendering
             //  do, so can't know the complete rendering output.
         const float aspectRatio = viewportWidth / float(viewportHeight);
-        auto projectionMatrix = PerspectiveProjection(sceneCamera, aspectRatio);
-
-        GlobalTransform globalTransform;
-        if (specialProjectionMatrix) {
-            projectionMatrix = *specialProjectionMatrix;
-        }
-        globalTransform._worldToClip = Combine(
-            InvertOrthonormalTransform(sceneCamera._cameraToWorld), projectionMatrix);
-        globalTransform._viewToWorld = sceneCamera._cameraToWorld;
-        globalTransform._worldSpaceView = ExtractTranslation(sceneCamera._cameraToWorld);
-        globalTransform._minimalProjection = ExtractMinimalProjection(projectionMatrix);
-        globalTransform._farClip = CalculateNearAndFarPlane(globalTransform._minimalProjection, GetDefaultClipSpaceType()).second;
-
-            //  we can calculate the projection corners either from the camera desc object,
-            //  or from the final world-to-clip matrix. Let's try to pick the method that
-            //  gives the most accurate results.
+        auto cameraToProjection = PerspectiveProjection(sceneCamera, aspectRatio);
 
         if (specialProjectionMatrix) {
-
-            Float3 absFrustumCorners[8];
-            CalculateAbsFrustumCorners(absFrustumCorners, globalTransform._worldToClip);
-            for (unsigned c=0; c<4; ++c) {
-                globalTransform._frustumCorners[c] = 
-                    Expand(Float3(absFrustumCorners[c] - globalTransform._worldSpaceView), 1.f);
-            }
-
-        } else {
-
-                //
-                //      "transform._frustumCorners" should be the world offsets of the corners of the frustum
-                //      from the camera position.
-                //
-                //      Camera coords:
-                //          Forward:    -Z
-                //          Up:         +Y
-                //          Right:      +X
-                //
-            const float top = sceneCamera._nearClip * XlTan(.5f * sceneCamera._verticalFieldOfView);
-            const float right = top * aspectRatio;
-            Float3 preTransformCorners[] = {
-                Float3(-right,  top, -sceneCamera._nearClip),
-                Float3(-right, -top, -sceneCamera._nearClip),
-                Float3( right,  top, -sceneCamera._nearClip),
-                Float3( right, -top, -sceneCamera._nearClip) 
-            };
-            for (unsigned c=0; c<4; ++c) {
-                globalTransform._frustumCorners[c] = 
-                    Expand(TransformDirectionVector(sceneCamera._cameraToWorld, preTransformCorners[c]), 1.f);
-            }
+            cameraToProjection = *specialProjectionMatrix;
         }
-        
-        parserContext.SetGlobalCB(0, context, &globalTransform, sizeof(globalTransform));
 
         auto& projDesc = parserContext.GetProjectionDesc();
         projDesc._verticalFov = sceneCamera._verticalFieldOfView;
         projDesc._aspectRatio = aspectRatio;
         projDesc._nearClip = sceneCamera._nearClip;
         projDesc._farClip = sceneCamera._farClip;
-        projDesc._worldToProjection = globalTransform._worldToClip;
-        projDesc._viewToProjection = projectionMatrix;
-        projDesc._viewToWorld = sceneCamera._cameraToWorld;
+        projDesc._worldToProjection = Combine(InvertOrthonormalTransform(sceneCamera._cameraToWorld), cameraToProjection);
+        projDesc._cameraToProjection = cameraToProjection;
+        projDesc._cameraToWorld = sceneCamera._cameraToWorld;
+
+        auto globalTransform = BuildGlobalTransformConstants(projDesc);
+        parserContext.SetGlobalCB(0, context, &globalTransform, sizeof(globalTransform));
     }
 
     void LightingParser_LateGBufferRender(  DeviceContext* context, 

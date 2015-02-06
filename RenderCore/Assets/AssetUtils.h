@@ -11,7 +11,7 @@
 #include "../Metal/Forward.h"
 #include "../../Utility/MemoryUtils.h"
 
-namespace RenderCore { class CameraDesc; class GlobalTransform; }
+namespace RenderCore { class CameraDesc; class GlobalTransformConstants; }
 
 namespace RenderCore { namespace Assets
 {

@@ -64,10 +64,10 @@ namespace Sample
         return _inputListener;
     }
 
-    void OverlaySystemManager::RenderWidgets(RenderCore::IDevice* device, const Float4x4& worldToProjection) 
+    void OverlaySystemManager::RenderWidgets(RenderCore::IDevice* device, const RenderCore::ProjectionDesc& projectionDesc) 
     {
         if (_activeChildIndex >= 0 && _activeChildIndex < signed(_childSystems.size())) {
-            _childSystems[_activeChildIndex].second->RenderWidgets(device, worldToProjection);
+            _childSystems[_activeChildIndex].second->RenderWidgets(device, projectionDesc);
         }
     }
 
@@ -111,7 +111,7 @@ namespace Sample
     {
     public:
         std::shared_ptr<IInputListener> GetInputListener();
-        void RenderWidgets(RenderCore::IDevice* device, const Float4x4& worldToProjection);
+        void RenderWidgets(RenderCore::IDevice* device, const RenderCore::ProjectionDesc& projectionDesc);
         void RenderToScene(
             RenderCore::Metal::DeviceContext* devContext, 
             SceneEngine::LightingParserContext& parserContext);
@@ -130,9 +130,9 @@ namespace Sample
         return _screens;
     }
 
-    void ConsoleOverlaySystem::RenderWidgets(RenderCore::IDevice* device, const Float4x4& worldToProjection)
+    void ConsoleOverlaySystem::RenderWidgets(RenderCore::IDevice* device, const RenderCore::ProjectionDesc& projectionDesc)
     {
-        _screens->Render(device, worldToProjection);
+        _screens->Render(device, projectionDesc);
     }
 
     void ConsoleOverlaySystem::RenderToScene(

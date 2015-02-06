@@ -744,7 +744,7 @@ namespace SceneEngine
             //      But when the water mesh does penetrate either near or far, 
             //      then we should customize the water projection transform slightly.
             //      
-        Float4x4 viewToWorld = mainCameraProjection._viewToWorld;
+        Float4x4 viewToWorld = mainCameraProjection._cameraToWorld;
 
         auto forward    = ExtractForward_Cam(viewToWorld);
         auto position   = ExtractTranslation(viewToWorld);
@@ -972,7 +972,7 @@ namespace SceneEngine
                 "GEO_HAS_COLOUR=1");
             auto localTransform = MakeLocalTransform(
                 Identity<Float4x4>(), 
-                ExtractTranslation(parserContext.GetProjectionDesc()._viewToWorld));
+                ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld));
             context->BindVS(MakeResourceList(parserContext.GetGlobalTransformCB(), ConstantBuffer(&localTransform, sizeof(localTransform))));
             context->Bind(shader);
             context->Bind(BoundInputLayout(GlobalInputLayouts::PC, shader));

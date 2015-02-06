@@ -1,3 +1,9 @@
+// Copyright 2015 XLGAMES Inc.
+//
+// Distributed under the MIT License (See
+// accompanying file "LICENSE" or the website
+// http://www.opensource.org/licenses/mit-license.php)
+
 #include "PlacementsQuadTree.h"
 #include "../Math/ProjectionMath.h"
 #include "../Utility/PtrUtils.h"
@@ -520,7 +526,7 @@ namespace SceneEngine
                 // the nodes in the quad tree).
                 // This is helpful for developing the algorithm for 
             auto quadTrees = _placementsManager->GetVisibleQuadTrees(
-                context->GetWorldToProjection());
+                context->GetProjectionDesc()._worldToProjection);
             for (auto i=quadTrees.cbegin(); i!=quadTrees.cend(); ++i) {
                 auto cellToWorld = i->first;
                 auto quadTree = i->second;
@@ -543,7 +549,7 @@ namespace SceneEngine
                 }
             }
         } else {
-            auto cells = _placementsManager->GetObjectBoundingBoxes(context->GetWorldToProjection());
+            auto cells = _placementsManager->GetObjectBoundingBoxes(context->GetProjectionDesc()._worldToProjection);
             for (auto c=cells.cbegin(); c!=cells.cend(); ++c) {
                 auto cellToWorld = c->first;
                 auto objs = c->second;

@@ -9,6 +9,7 @@
 #include "IOverlayContext.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/InputLayout.h"        // for ConstantBufferPacket
+#include "../RenderCore/RenderUtils.h"
 #include "../Math/Matrix.h"
 #include "Font.h"
 #include <vector>
@@ -61,9 +62,11 @@ namespace RenderOverlays
 
         RenderCore::Metal::DeviceContext*   GetDeviceContext();
 
-        Float4x4    GetWorldToProjection();
+        RenderCore::ProjectionDesc    GetProjectionDesc() const;
 
-        ImmediateOverlayContext(RenderCore::Metal::DeviceContext* deviceContext, const Float4x4& viewProjectionTransform = Identity<Float4x4>());
+        ImmediateOverlayContext(
+            RenderCore::Metal::DeviceContext* deviceContext, 
+            const RenderCore::ProjectionDesc& projDesc = RenderCore::ProjectionDesc());
         ~ImmediateOverlayContext();
 
         class ShaderBox;
@@ -73,13 +76,13 @@ namespace RenderOverlays
         uint8               _workingBuffer[64*1024];
         unsigned            _writePointer;
 
-        intrusive_ptr<Font>    _font;
-        TextStyle           _defaultTextStyle;
+        intrusive_ptr<Font>     _font;
+        TextStyle               _defaultTextStyle;
 
         RenderCore::Metal::ConstantBufferPacket _viewportConstantBuffer;
         RenderCore::Metal::ConstantBufferPacket _globalTransformConstantBuffer;
 
-        Float4x4 _worldToProjection;
+        RenderCore::ProjectionDesc _projDesc;
 
         enum VertexFormat { PC, PCT, PCR, PCTT };
         class DrawCall

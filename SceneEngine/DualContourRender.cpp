@@ -128,7 +128,7 @@ namespace SceneEngine
                 if (variation._boundUniforms) {
                     Metal::ConstantBufferPacket pkts[] = 
                     {
-                        MakeLocalTransformPacket(Identity<Float4x4>(), ExtractTranslation(parserContext.GetProjectionDesc()._viewToWorld))
+                        MakeLocalTransformPacket(Identity<Float4x4>(), ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld))
                     };
                     variation._boundUniforms->Apply(
                         *context, parserContext.GetGlobalUniformsStream(), 

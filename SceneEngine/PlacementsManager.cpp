@@ -14,6 +14,7 @@
 #include "../Assets/ChunkFile.h"
 
 #include "../RenderCore/Assets/ModelRunTime.h"
+#include "../RenderCore/RenderUtils.h"
 
 #include "../ConsoleRig/Log.h"
 #include "../ConsoleRig/Console.h"
@@ -575,7 +576,7 @@ namespace SceneEngine
         }
         
         __declspec(align(16)) auto cellToCullSpace = Combine(cellToWorld, parserContext.GetProjectionDesc()._worldToProjection);
-        auto cameraPosition = ExtractTranslation(parserContext.GetProjectionDesc()._viewToWorld);
+        auto cameraPosition = ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld);
         cameraPosition = TransformPoint(InvertOrthonormalTransform(cellToWorld), cameraPosition);
 
         const uint64* filterIterator = filterStart;

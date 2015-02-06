@@ -40,9 +40,9 @@ namespace RenderCore { namespace Assets
     }
 
     Metal::ConstantBufferLayoutElement GlobalTransform_Elements[] = {
-        { "WorldToClip", Metal::NativeFormat::Matrix4x4, offsetof(GlobalTransform, _worldToClip), 0 },
-        { "FrustumCorners", Metal::NativeFormat::R32G32B32A32_FLOAT, offsetof(GlobalTransform, _frustumCorners), 4 },
-        { "WorldSpaceView", Metal::NativeFormat::R32G32B32_FLOAT, offsetof(GlobalTransform, _worldSpaceView), 0 }
+        { "WorldToClip", Metal::NativeFormat::Matrix4x4, offsetof(GlobalTransformConstants, _worldToClip), 0 },
+        { "FrustumCorners", Metal::NativeFormat::R32G32B32A32_FLOAT, offsetof(GlobalTransformConstants, _frustumCorners), 4 },
+        { "WorldSpaceView", Metal::NativeFormat::R32G32B32_FLOAT, offsetof(GlobalTransformConstants, _worldSpaceView), 0 }
     };
 
     size_t GlobalTransform_ElementsCount = dimof(GlobalTransform_Elements);
@@ -83,9 +83,9 @@ namespace RenderCore { namespace Assets
         ////////////////////////////////////////////////////////////
 
     Metal::ConstantBufferLayoutElement Assets::LocalTransform_Elements[] = {
-        { "LocalToWorld",                   Metal::NativeFormat::Matrix3x4,        offsetof(LocalTransform, _localToWorld), 0                  },
-        { "LocalSpaceView",                 Metal::NativeFormat::R32G32B32_FLOAT,  offsetof(LocalTransform, _localSpaceView), 0                },
-        { "LocalNegativeLightDirection",    Metal::NativeFormat::R32G32B32_FLOAT,  offsetof(LocalTransform, _localNegativeLightDirection), 0   }
+        { "LocalToWorld",                   Metal::NativeFormat::Matrix3x4,        offsetof(LocalTransformConstants, _localToWorld), 0                  },
+        { "LocalSpaceView",                 Metal::NativeFormat::R32G32B32_FLOAT,  offsetof(LocalTransformConstants, _localSpaceView), 0                },
+        { "LocalNegativeLightDirection",    Metal::NativeFormat::R32G32B32_FLOAT,  offsetof(LocalTransformConstants, _localNegativeLightDirection), 0   }
     };
 
     size_t Assets::LocalTransform_ElementsCount = dimof(Assets::LocalTransform_Elements);

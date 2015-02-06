@@ -11,7 +11,8 @@
 #include "../RenderCore/IDevice_Forward.h"
 
 namespace RenderOverlays { namespace DebuggingDisplay { class DebugScreensSystem; }}
-namespace SceneEngine { class ShadowProjectionDesc; class LightDesc; class ProjectionDesc; }
+namespace SceneEngine { class ShadowProjectionDesc; class LightDesc; }
+namespace RenderCore { class ProjectionDesc; }
 
 namespace PlatformRig
 {
@@ -62,7 +63,7 @@ namespace PlatformRig
     /// is required for adapting the shadows projection to the main scene camera.</param>
     SceneEngine::ShadowProjectionDesc CalculateDefaultShadowCascades(
         const SceneEngine::LightDesc& lightDesc,
-        const SceneEngine::ProjectionDesc& mainSceneCameraDesc,
+        const RenderCore::ProjectionDesc& mainSceneCameraDesc,
         const DefaultShadowFrustumSettings& settings);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

@@ -84,7 +84,7 @@ namespace PlatformRig
     static std::pair<SceneEngine::ShadowProjectionDesc::Projections, Float4x4> 
         BuildBasicShadowProjections(
             const SceneEngine::LightDesc& lightDesc,
-            const SceneEngine::ProjectionDesc& mainSceneProjectionDesc,
+            const RenderCore::ProjectionDesc& mainSceneProjectionDesc,
             const DefaultShadowFrustumSettings& settings)
     {
         using namespace SceneEngine;
@@ -98,8 +98,8 @@ namespace PlatformRig
 
         auto negativeLightDirection = lightDesc._negativeLightDirection;
 
-        auto cameraPos = ExtractTranslation(mainSceneProjectionDesc._viewToWorld);
-        auto cameraForward = ExtractForward_Cam(mainSceneProjectionDesc._viewToWorld);
+        auto cameraPos = ExtractTranslation(mainSceneProjectionDesc._cameraToWorld);
+        auto cameraForward = ExtractForward_Cam(mainSceneProjectionDesc._cameraToWorld);
 
             //  Calculate a simple set of shadow frustums.
             //  This method is non-ideal, but it's just a place holder for now
@@ -146,14 +146,14 @@ namespace PlatformRig
 
     static void CalculateCameraFrustumCornersDirection(
         Float3 result[4],
-        const SceneEngine::ProjectionDesc& projDesc)
+        const RenderCore::ProjectionDesc& projDesc)
     {
         // For the given camera, calculate 4 vectors that represent the
         // the direction from the camera position to the frustum corners
         // (there are 8 frustum corners, but the directions to the far plane corners
         // are the same as the near plane corners)
-        Float4x4 projection = projDesc._viewToProjection;
-        Float4x4 noTransCameraToWorld = projDesc._viewToWorld;
+        Float4x4 projection = projDesc._cameraToProjection;
+        Float4x4 noTransCameraToWorld = projDesc._cameraToWorld;
         SetTranslation(noTransCameraToWorld, Float3(0.f, 0.f, 0.f));
         auto trans = Combine(InvertOrthonormalTransform(noTransCameraToWorld), projection);
         Float3 corners[8];
@@ -166,7 +166,7 @@ namespace PlatformRig
     static std::pair<SceneEngine::ShadowProjectionDesc::Projections, Float4x4>  
         BuildSimpleOrthogonalShadowProjections(
             const SceneEngine::LightDesc& lightDesc,
-            const SceneEngine::ProjectionDesc& mainSceneProjectionDesc,
+            const RenderCore::ProjectionDesc& mainSceneProjectionDesc,
             const DefaultShadowFrustumSettings& settings)
     {
         // We're going to build some basic adaptive shadow frustums. These frustums
@@ -195,7 +195,7 @@ namespace PlatformRig
             -1.f, -1.f, 1.f, 1.f, shadowNearPlane, shadowFarPlane,
             GeometricCoordinateSpace::RightHanded, GetDefaultClipSpaceType());
 
-        Float3 cameraPos = ExtractTranslation(mainSceneProjectionDesc._viewToWorld);
+        Float3 cameraPos = ExtractTranslation(mainSceneProjectionDesc._cameraToWorld);
         Float3 imaginaryLightPosition = cameraPos + backProjectionDistance * lightDesc._negativeLightDirection;
         result._definitionViewMatrix = MakeWorldToLight(lightDesc._negativeLightDirection, imaginaryLightPosition);
         Float4x4 worldToLightProj = Combine(result._definitionViewMatrix, result._definitionProjMatrix);
@@ -264,7 +264,7 @@ namespace PlatformRig
 				//	This is so we can capture geometry that is between the light
 				//	and the frustum
 
-            shadowViewMins[2] = shadowNearPlane;
+            // shadowViewMins[2] = shadowNearPlane;
 
             result._orthoSub[f]._projMins = shadowViewMins;
             result._orthoSub[f]._projMaxs = shadowViewMaxs;
@@ -277,6 +277,19 @@ namespace PlatformRig
             allCascadesMaxs[0] = std::max(allCascadesMaxs[0], shadowViewMaxs[0]);
             allCascadesMaxs[1] = std::max(allCascadesMaxs[1], shadowViewMaxs[1]);
             allCascadesMaxs[2] = std::max(allCascadesMaxs[2], shadowViewMaxs[2]);
+        }
+
+        for (unsigned f=0; f<result._count; ++f) {
+            result._fullProj[f]._viewMatrix = result._definitionViewMatrix;
+
+            auto projMatrix = result._definitionProjMatrix;
+            auto& mins = result._orthoSub[f]._projMins;
+            auto& maxs = result._orthoSub[f]._projMaxs;
+            for (unsigned c=0; c<3; ++c) {
+                projMatrix(c,c) = 2.f / (maxs[c] - mins[c]);
+                projMatrix(c,3) = -(maxs[c] + mins[c]) / (maxs[c] - mins[c]);
+            }
+            result._fullProj[f]._projectionMatrix = projMatrix;
         }
 
             //  When building the world to clip matrix, we want some to use some projection
@@ -298,7 +311,7 @@ namespace PlatformRig
     SceneEngine::ShadowProjectionDesc 
         CalculateDefaultShadowCascades(
             const SceneEngine::LightDesc& lightDesc,
-            const SceneEngine::ProjectionDesc& mainSceneProjectionDesc,
+            const RenderCore::ProjectionDesc& mainSceneProjectionDesc,
             const DefaultShadowFrustumSettings& settings)
     {
             //  Build a default shadow frustum projection from the given inputs

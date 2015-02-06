@@ -303,14 +303,83 @@ namespace RenderCore
             viewport);
     }
 
+    ProjectionDesc::ProjectionDesc()
+    {
+        _worldToProjection = Identity<Float4x4>();
+        _cameraToProjection = Identity<Float4x4>();
+        _cameraToWorld = Identity<Float4x4>();
+        _verticalFov = 0.f;
+        _aspectRatio = 0.f;
+        _nearClip = 0.f;
+        _farClip = 0.f;
+    }
+
+    GlobalTransformConstants BuildGlobalTransformConstants(const ProjectionDesc& projDesc)
+    {
+        GlobalTransformConstants globalTransform;
+        globalTransform._worldToClip = projDesc._worldToProjection;
+        globalTransform._viewToWorld = projDesc._cameraToWorld;
+        globalTransform._worldSpaceView = ExtractTranslation(projDesc._cameraToWorld);
+        globalTransform._minimalProjection = ExtractMinimalProjection(projDesc._cameraToProjection);
+        globalTransform._farClip = CalculateNearAndFarPlane(globalTransform._minimalProjection, GetDefaultClipSpaceType()).second;
+
+            //  We can calculate the projection corners either from the camera to world,
+            //  transform or from the final world-to-clip transform. Let's try to pick 
+            //  the method that gives the most accurate results.
+            //
+            //  Using the world to clip matrix should be the most reliable, because it 
+            //  will most likely agree with the shader results. The shaders only use 
+            //  cameraToWorld occasionally, but WorldToClip is an important part of the
+            //  pipeline.
+
+        enum FrustumCornersMode { FromWorldToClip, FromCameraToWorld };
+        const FrustumCornersMode cornersMode = FromWorldToClip;
+
+        if (constant_expression<cornersMode == FromWorldToClip>::result()) {
+
+            Float3 absFrustumCorners[8];
+            CalculateAbsFrustumCorners(absFrustumCorners, globalTransform._worldToClip);
+            for (unsigned c=0; c<4; ++c) {
+                globalTransform._frustumCorners[c] = 
+                    Expand(Float3(absFrustumCorners[c] - globalTransform._worldSpaceView), 1.f);
+            }
+
+        } else if (constant_expression<cornersMode == FromCameraToWorld>::result()) {
+
+                //
+                //      "transform._frustumCorners" should be the world offsets of the corners of the frustum
+                //      from the camera position.
+                //
+                //      Camera coords:
+                //          Forward:    -Z
+                //          Up:         +Y
+                //          Right:      +X
+                //
+            const float top = projDesc._nearClip * XlTan(.5f * projDesc._verticalFov);
+            const float right = top * projDesc._aspectRatio;
+            Float3 preTransformCorners[] = {
+                Float3(-right,  top, -projDesc._nearClip),
+                Float3(-right, -top, -projDesc._nearClip),
+                Float3( right,  top, -projDesc._nearClip),
+                Float3( right, -top, -projDesc._nearClip) 
+            };
+            for (unsigned c=0; c<4; ++c) {
+                globalTransform._frustumCorners[c] = 
+                    Expand(TransformDirectionVector(projDesc._cameraToWorld, preTransformCorners[c]), 1.f);
+            }
+        }
+
+        return globalTransform;
+    }
+
     SharedPkt MakeLocalTransformPacket(const Float4x4& localToWorld, const CameraDesc& camera)
     {
         return MakeLocalTransformPacket(localToWorld, ExtractTranslation(camera._cameraToWorld));
     }
 
-    LocalTransform MakeLocalTransform(const Float4x4& localToWorld, const Float3& worldSpaceCameraPosition)
+    LocalTransformConstants MakeLocalTransform(const Float4x4& localToWorld, const Float3& worldSpaceCameraPosition)
     {
-        LocalTransform localTransform;
+        LocalTransformConstants localTransform;
         CopyTransform(localTransform._localToWorld, localToWorld);
         auto worldToLocal = InvertOrthonormalTransform(localToWorld);
         localTransform._localSpaceView = TransformPoint(worldToLocal, worldSpaceCameraPosition);

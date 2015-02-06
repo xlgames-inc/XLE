@@ -510,7 +510,7 @@ namespace Overlays
         }
 
         unsigned GetShadowProjectionCount() const { return 0; }
-        SceneEngine::ShadowProjectionDesc GetShadowProjectionDesc(unsigned index, const SceneEngine::ProjectionDesc& mainSceneProjectionDesc) const 
+        SceneEngine::ShadowProjectionDesc GetShadowProjectionDesc(unsigned index, const RenderCore::ProjectionDesc& mainSceneProjectionDesc) const 
         { return SceneEngine::ShadowProjectionDesc(); }
         
 

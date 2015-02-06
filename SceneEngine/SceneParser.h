@@ -8,12 +8,11 @@
 
 #include "../RenderCore/Metal/Forward.h"
 
-namespace RenderCore { class CameraDesc; }
+namespace RenderCore { class CameraDesc; class ProjectionDesc; }
 
 namespace SceneEngine
 {
     class LightingParserContext;
-    class ProjectionDesc;
     class ShadowProjectionDesc;
     class GlobalLightingDesc;
     class LightDesc;
@@ -63,7 +62,7 @@ namespace SceneEngine
 
         virtual unsigned                GetShadowProjectionCount() const = 0;
         virtual ShadowProjectionDesc    GetShadowProjectionDesc(
-            unsigned index, const ProjectionDesc& mainSceneProjectionDesc) const = 0;
+            unsigned index, const RenderCore::ProjectionDesc& mainSceneProjectionDesc) const = 0;
 
         virtual void                    ExecuteShadowScene( 
             RenderCore::Metal::DeviceContext* context, 

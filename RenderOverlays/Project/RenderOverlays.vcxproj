@@ -182,6 +182,7 @@
     <ClCompile Include="..\OverlayContext.cpp" />
     <ClCompile Include="..\Overlays\Browser.cpp" />
     <ClCompile Include="..\Overlays\OceanSettings.cpp" />
+    <ClCompile Include="..\Overlays\ShadowFrustumDebugger.cpp" />
     <ClCompile Include="..\Overlays\TestMaterialSettings.cpp" />
     <ClCompile Include="..\Overlays\ToneMapSettings.cpp" />
     <ClCompile Include="..\Overlays\VolFogSettings.cpp" />
@@ -200,6 +201,7 @@
     <ClInclude Include="..\OverlayContext.h" />
     <ClInclude Include="..\Overlays\Browser.h" />
     <ClInclude Include="..\Overlays\OceanSettings.h" />
+    <ClInclude Include="..\Overlays\ShadowFrustumDebugger.h" />
     <ClInclude Include="..\Overlays\TestMaterialSettings.h" />
     <ClInclude Include="..\Overlays\ToneMapSettings.h" />
     <ClInclude Include="..\Overlays\VolFogSettings.h" />
