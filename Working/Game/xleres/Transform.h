@@ -12,6 +12,7 @@ cbuffer GlobalTransform : register(b0)
 	row_major float4x4 WorldToClip;
 	float4 FrustumCorners[4];
 	float3 WorldSpaceView;
+    float FarClip;
 	float4 MinimalProjection;
     row_major float4x4 CameraBasis;
 }

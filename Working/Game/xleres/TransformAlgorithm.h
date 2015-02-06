@@ -188,6 +188,11 @@ MiniProjZW GlobalMiniProjZW()
         return ndcDepthDifference / miniProj.Z;
     }
 
+    float WorldSpaceDepthDifferenceToNDC_Ortho(float worldSpaceDepth, MiniProjZW miniProj)
+    {
+        return worldSpaceDepth * miniProj.Z;
+    }
+
 ///////////////////////////////////////////////////////////////////////////////
     //      D E F A U L T S     //
 ///////////////////////////////////////////////////////////////////////////////

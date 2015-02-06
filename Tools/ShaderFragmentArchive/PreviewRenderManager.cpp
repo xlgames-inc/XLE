@@ -480,6 +480,7 @@ namespace PreviewRender
 
         transformConstants._worldSpaceView = ExtractTranslation(camera._cameraToWorld);
         transformConstants._minimalProjection = ExtractMinimalProjection(projectionMatrix);
+        transformConstants._farClip = CalculateNearAndFarPlane(transformConstants._minimalProjection, GetDefaultClipSpaceType()).second;
 
         // auto right      = Normalize(ExtractRight_Cam(camera._cameraToWorld));
         // auto up         = Normalize(ExtractUp_Cam(camera._cameraToWorld));

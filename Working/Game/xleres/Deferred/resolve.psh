@@ -146,12 +146,15 @@ float TestShadow(float2 texCoord, uint arrayIndex, float comparisonDistance)
 	}
 }
 
-float CalculateFilteredShadows(float2 texCoords, float comparisonDistance, uint arrayIndex, float casterDistance, int2 randomizerValue, float2 projectionScale, uint msaaSampleIndex)
+float CalculateFilteredShadows(
+	float2 texCoords, float comparisonDistance, uint arrayIndex, 
+	float casterDistance, int2 randomizerValue, 
+	float2 projectionScale, uint msaaSampleIndex)
 {
 	const bool usePoissonDiskMethod = false;
 	
-		//	in "ShadowsPerspectiveProjection", casterDistance is the difference between 2 NDC depths
-		//	Otherworld, casterDistance is world space distance between the sample and caster.
+		//	In "ShadowsPerspectiveProjection", casterDistance is the difference between 2 NDC depths
+		//	Otherwise, casterDistance is world space distance between the sample and caster.
 	float filterSize, filterSizePixels;
 	if (ShadowsPerspectiveProjection) {
 		filterSize = lerp(0.001f, 0.015f, saturate(casterDistance*30.f));
@@ -243,22 +246,26 @@ float CalculateFilteredShadows(float2 texCoords, float comparisonDistance, uint 
 	}
 }
 
-float ResolveShadows(uint projection, float2 shadowTexCoord, float comparisonDistance, int2 randomizerValue, uint msaaSampleIndex)
+float ResolveShadows(	uint projection, float2 shadowTexCoord, float comparisonDistance, 
+						int2 randomizerValue, uint msaaSampleIndex)
 {
 	float casterDistanceComparison = comparisonDistance;
 	float biasedDepth;
 	const bool shadowsPerspectiveProj = ShadowsPerspectiveProjection;
+
+		//	Here, we bias the shadow depth using world space units.
+		//	This appears to produce more reliable results and variety
+		//	of depth ranges. 
+		//	With perspective projection, it is more expensive than biasing in NDC depth space.
+		//	But with orthogonal shadows, it should be very similar
+	const float ShadowBiasWorldSpace = 0.05f;
+	MiniProjZW miniP = AsMiniProjZW(ShadowProjection_GetMiniProj(projection));
 	if (shadowsPerspectiveProj) {
-		const float ShadowBiasLinear = 0.00006f; // 0.0000003f;
-		float linearDepth = NDCDepthToLinearDepth(comparisonDistance, ShadowProjRatio[projection].xy);
-		biasedDepth = LinearDepthToNDCDepth(linearDepth - ShadowBiasLinear, ShadowProjRatio[projection].xy);
+		float worldSpaceDepth = NDCDepthToWorldSpace_Perspective(comparisonDistance, miniP);
+		biasedDepth = WorldSpaceDepthToNDC_Perspective(worldSpaceDepth - ShadowBiasWorldSpace, miniP);
 	} else {
-			// there's a problem here... LinearDepthDifferenceToNDC_Ortho is taking a world space linear depth, but
-			//the perspective versions take a 0->1 value. It's just an inconsistancy that causes some confusion.
-		const float ShadowBiasLinear = 0.05f;
-			// with orthogonal projection, we can do this much simplier...
-		biasedDepth = comparisonDistance - LinearDepthDifferenceToNDC_Ortho(ShadowBiasLinear, ShadowProjRatio[projection].xy);
-		// casterDistanceComparison = comparisonDistance - LinearDepthDifferenceToNDC_Ortho(0.1f, ShadowProjRatio[projection].xy);
+		biasedDepth = 
+			comparisonDistance - WorldSpaceDepthDifferenceToNDC_Ortho(ShadowBiasWorldSpace, miniP);
 	}
 
 	// float biasedDepth = comparisonDistance;
@@ -269,15 +276,15 @@ float ResolveShadows(uint projection, float2 shadowTexCoord, float comparisonDis
 		msaaSampleIndex, DitherPatternValue(randomizerValue));
 
 	if (!shadowsPerspectiveProj) {
-			// In orthogonal projection mode, NDC depths are actually linear. So, we can covert a difference
+			// In orthogonal projection mode, NDC depths are actually linear. So, we can convert a difference
 			// of depths in NDC space (like casterDistance) into world space depth easily. Linear depth values
 			// are more convenient for calculating the shadow filter radius
-		casterDistance = NDCDepthDifferenceToLinear_Ortho(casterDistance, ShadowProjRatio[projection].xy);
+		casterDistance = NDCDepthDifferenceToWorldSpace_Ortho(casterDistance, miniP);
 	}
 
 	return CalculateFilteredShadows(
 		shadowTexCoord, biasedDepth, projection, casterDistance, randomizerValue, 
-		ShadowProjRatio[projection].zw, msaaSampleIndex);
+		ShadowProjection_GetMiniProj(projection).xy, msaaSampleIndex);
 }
 
 float ResolveShadows_FromWorldPosition(float3 worldPosition, int2 randomizerValue, uint msaaSampleIndex)
@@ -287,15 +294,29 @@ float ResolveShadows_FromWorldPosition(float3 worldPosition, int2 randomizerValu
 
 		// find the first frustum we're within
 	uint c=0;
-	uint projectionCount = min(ProjectionCount, 6);
+	uint projectionCount = min(GetShadowSubProjectionCount(), 6);
+
+	#if SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ORTHOGONAL
+		float3 basePosition = mul(OrthoShadowWorldToProj, float4(worldPosition, 1));
+	#endif
+
 	for (;;c++) {
 		if (c == projectionCount) {
 			return 1.f;
 		}
 
-		float4 frustumCoordinates = mul(ShadowProjection[c], float4(worldPosition, 1));
-		texCoords = frustumCoordinates.xy / frustumCoordinates.w;
-		comparisonDistance = frustumCoordinates.z / frustumCoordinates.w;
+		float wPart = 1.f;
+		#if SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ARBITRARY
+			float4 frustumCoordinates = mul(ShadowWorldToProj[c], float4(worldPosition, 1));
+			wPart = frustumCoordinates.w;
+		#elif SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ORTHOGONAL
+			float3 frustumCoordinates = AdjustForCascade(basePosition, c);
+		#else
+			float3 frustumCoordinates = 2.0.xxx;
+		#endif
+
+		texCoords = frustumCoordinates.xy / wPart;
+		comparisonDistance = frustumCoordinates.z / wPart;
 		if (max(max(abs(texCoords.x), abs(texCoords.y)), max(comparisonDistance, 1.f-comparisonDistance)) < 1.f) {
 			break;
 		}
@@ -305,20 +326,21 @@ float ResolveShadows_FromWorldPosition(float3 worldPosition, int2 randomizerValu
 	return ResolveShadows(c, texCoords, comparisonDistance, randomizerValue, msaaSampleIndex);	
 }
 
-float ResolveShadows_CameraToShadowMethod(float2 texCoord, float worldSpaceDepth, int2 randomizerValue, uint msaaSampleIndex)
+
+float ResolveShadows_CameraToShadowMethod(float2 texCoord, float linear0To1Depth, int2 randomizerValue, uint msaaSampleIndex)
 {
 	const float3 cameraCoordinate = float3(
 		( 2.f * texCoord.x - 1.f) / OriginalProjectionScale.x,
 		(-2.f * texCoord.y + 1.f) / OriginalProjectionScale.y,
 		-1.f);
-	const float cameraCoordinateScale = (worldSpaceDepth * FarClip);
+	const float cameraCoordinateScale = (linear0To1Depth * FarClip);
 
 	float2 texCoords;
 	float comparisonDistance;
 	
 		// find the first frustum we're within
 	uint c=0;
-	uint projectionCount = min(ProjectionCount, 6);
+	uint projectionCount = min(GetShadowSubProjectionCount(), 6);
 	for (;;c++) {
 		if (c == projectionCount) {
 			return 1.f;
@@ -359,13 +381,15 @@ float ResolvePointLightShadows(float3 worldPosition, int2 randomizerValue, uint 
 	float4 frustumCoordinates;
 	float2 texCoords;
 
+		// "orthogonal" shadow projection method doesn't make sense for point light source
+		// shadows. In this case, it must be arbitrary
 	uint c=0;
 	for (;;c++) {
 		if (c == 6) {
 			return 1.f;
 		}
 
-		frustumCoordinates = mul(ShadowProjection[c], float4(worldPosition, 1));
+		frustumCoordinates = mul(ShadowWorldToProj[c], float4(worldPosition, 1));
 		texCoords = frustumCoordinates.xy / frustumCoordinates.w;
 		if (max(abs(texCoords.x), abs(texCoords.y)) < 1.f) {
 			break;
@@ -376,7 +400,9 @@ float ResolvePointLightShadows(float3 worldPosition, int2 randomizerValue, uint 
 	float comparisonDistance = frustumCoordinates.z / frustumCoordinates.w;
 	float biasedDepth = comparisonDistance - 0.0005f; 
 	float casterDistance = CalculateShadowCasterDistance(texCoords, comparisonDistance, c, msaaSampleIndex, DitherPatternValue(randomizerValue));
-	return CalculateFilteredShadows(texCoords, biasedDepth, c, casterDistance, randomizerValue, ShadowProjRatio[c].zw*sampleScale, msaaSampleIndex);
+	return CalculateFilteredShadows(
+		texCoords, biasedDepth, c, casterDistance, randomizerValue, 
+		ShadowProjection_GetMiniProj(c).xy*sampleScale, msaaSampleIndex);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -408,13 +434,12 @@ float4 ResolveLight(	float4 position : SV_Position,
 	// }
 	
 	float shadow;
-
 	const bool resolveByWorldPosition = false;
 	if (resolveByWorldPosition) {
 		shadow = ResolveShadows_FromWorldPosition(worldPosition, pixelCoords, GetSampleIndex(sys));
 	} else {
 		shadow = ResolveShadows_CameraToShadowMethod(texCoord,
-			GetWorldSpaceDepth(pixelCoords, GetSampleIndex(sys)),
+			GetLinear0To1Depth(pixelCoords, GetSampleIndex(sys)),
 			pixelCoords, GetSampleIndex(sys));
 	}
 

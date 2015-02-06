@@ -273,7 +273,7 @@ void ClusterKeyToLinearDepths(uint clusterKey, out float minDepth, out float max
 	}
 
 		//	Write cluster key
-	uint clusterKey = LinearDepthToClusterKey(NDCDepthToLinearDepth(depthNDC));
+	uint clusterKey = LinearDepthToClusterKey(NDCDepthToLinear0To1(depthNDC));
 	uint clusterKeyIndex = threadId.y*ThreadWidth+threadId.x;
 	ClusterKeys[clusterKeyIndex] = clusterKey;
 
@@ -323,8 +323,8 @@ void ClusterKeyToLinearDepths(uint clusterKey, out float minDepth, out float max
 	ClusterKeyToLinearDepths(
 		ClusterKeys[clusterForThisThread],
 		clusterForThisThreadMinDepth, clusterForThisThreadMaxDepth);
-	clusterForThisThreadMinDepth = lerp(NearClip, FarClip, clusterForThisThreadMinDepth);
-	clusterForThisThreadMaxDepth = lerp(NearClip, FarClip, clusterForThisThreadMaxDepth);
+	clusterForThisThreadMinDepth = FarClip * clusterForThisThreadMinDepth;
+	clusterForThisThreadMaxDepth = FarClip * clusterForThisThreadMaxDepth;
 	ActiveLightCount[clusterForThisThread] = 0;
 	float2 cA = float2(clusterForThisThreadMaxDepth*tanMinAngle.x, clusterForThisThreadMaxDepth*tanMinAngle.y);
 	float2 cB = float2(clusterForThisThreadMaxDepth*tanMaxAngle.x, clusterForThisThreadMaxDepth*tanMaxAngle.y);

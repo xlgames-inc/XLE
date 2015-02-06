@@ -116,7 +116,7 @@ float4 TransformPosition(float3 position, uint projectionIndex)
 	float3 D1 = ToWorldSpacePosition(float3(input[0].maxCoords.x, input[0].maxCoords.y, input[0].maxCoords.z));
 
 	#if SHADOWS==1
-		const uint projectionCount = min(ProjectionCount, 3);
+		const uint projectionCount = min(GetShadowSubProjectionCount(), 3);
 	#else
 		const uint projectionCount = 1;
 		[unroll]

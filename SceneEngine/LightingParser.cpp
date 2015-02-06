@@ -140,7 +140,7 @@ namespace SceneEngine
         globalTransform._viewToWorld = sceneCamera._cameraToWorld;
         globalTransform._worldSpaceView = ExtractTranslation(sceneCamera._cameraToWorld);
         globalTransform._minimalProjection = ExtractMinimalProjection(projectionMatrix);
-        globalTransform._dummy[0] = 1.f;
+        globalTransform._farClip = CalculateNearAndFarPlane(globalTransform._minimalProjection, GetDefaultClipSpaceType()).second;
 
             //  we can calculate the projection corners either from the camera desc object,
             //  or from the final world-to-clip matrix. Let's try to pick the method that

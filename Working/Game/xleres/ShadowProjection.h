@@ -48,6 +48,8 @@ uint GetShadowSubProjectionCount()
 		return ShadowSubProjectionCount;
 	#elif SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ORTHOGONAL
 		return OrthoShadowSubProjectionCount;
+    #else
+        return 0;
 	#endif
 }
 
@@ -71,12 +73,25 @@ float4 ShadowProjection_GetOutput(float3 position, uint cascadeIndex)
     #elif SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ORTHOGONAL
         float3 a = AdjustForCascade(mul(OrthoShadowWorldToProj, Float4(position, 1)));
         return float4(a, 1.f);
+    #else
+        return 0.0.xxxx;
     #endif
 }
 
 float4 ShadowProjection_GetOutput(VSInput geo, uint cascadeIndex)
 {
 	return ShadowProjection_GetOutput(geo.position, cascadeIndex);
+}
+
+float4 ShadowProjection_GetMiniProj(uint cascadeIndex)
+{
+	#if SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ARBITRARY
+        return ShadowMinimalProjection[cascadeIndex];
+    #elif SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ORTHOGONAL
+        return OrthoShadowMinimalProjection;
+    #else
+        return 1.0.xxxx;
+    #endif
 }
 
 

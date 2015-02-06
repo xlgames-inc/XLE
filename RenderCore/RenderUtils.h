@@ -63,7 +63,7 @@ namespace RenderCore
         Float4x4    _worldToClip;
         Float4      _frustumCorners[4];
         Float3      _worldSpaceView;
-        float       _dummy[1];
+        float       _farClip;
         Float4      _minimalProjection;
         Float4x4    _viewToWorld;
     };
