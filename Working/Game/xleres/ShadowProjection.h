@@ -39,6 +39,7 @@ cbuffer ScreenToShadowProjection
     row_major float4x4 CameraToShadow[ShadowMaxSubProjections];
     float4 OriginalProjectionScale;
     row_major float4x4 CameraToWorld;
+	row_major float4x4 OrthoCameraToShadow;	// the "definition" projection for cascades in ortho mode
 }
 
 uint GetShadowSubProjectionCount()
@@ -56,10 +57,9 @@ float3 AdjustForCascade(float3 basePosition, uint cascadeIndex)
 {
     #if SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ORTHOGONAL
         return float3(
-			basePosition.x * OrthoShadowCascadeScale[cascadeIndex].x,
-			basePosition.y * OrthoShadowCascadeScale[cascadeIndex].y,
-			basePosition.z * OrthoShadowCascadeScale[cascadeIndex].z)
-			+ OrthoShadowCascadeTrans[cascadeIndex];
+			basePosition.x * OrthoShadowCascadeScale[cascadeIndex].x + OrthoShadowCascadeTrans[cascadeIndex].x,
+			basePosition.y * OrthoShadowCascadeScale[cascadeIndex].y + OrthoShadowCascadeTrans[cascadeIndex].y,
+			basePosition.z);
     #else
         return basePosition;
     #endif

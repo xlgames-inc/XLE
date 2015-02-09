@@ -48,25 +48,25 @@ float3 GetMaterialColor(float materialValue)
 		// here's some sample specular colours we can use to get an ideal of the model
 		//		source:
 		//	http://seblagarde.wordpress.com/2011/08/17/feeding-a-physical-based-lighting-mode/
-	float3 MaterialTable[] = 
+	float3 MaterialTable[] =
 	{
-	float3(0.971519f, 0.959915f, 0.915324f),  /*Silver      */ 
-	float3(0.913183f, 0.921494f, 0.924524f),  /*Aluminium   */ 
-	float3(1.0f,      0.765557f, 0.336057f),  /*Gold        */ 
-	float3(0.955008f, 0.637427f, 0.538163f),  /*Copper      */ 
+	float3(0.971519f, 0.959915f, 0.915324f),  /*Silver      */
+	float3(0.913183f, 0.921494f, 0.924524f),  /*Aluminium   */
+	float3(1.0f,      0.765557f, 0.336057f),  /*Gold        */
+	float3(0.955008f, 0.637427f, 0.538163f),  /*Copper      */
 
-	float3(0.549585f, 0.556114f, 0.554256f),  /*Chromium    */ 
-	float3(0.659777f, 0.608679f, 0.525649f),  /*Nickel      */ 
-	float3(0.541931f, 0.496791f, 0.449419f),  /*Titanium    */ 
-	float3(0.662124f, 0.654864f, 0.633732f),  /*Cobalt      */ 
+	float3(0.549585f, 0.556114f, 0.554256f),  /*Chromium    */
+	float3(0.659777f, 0.608679f, 0.525649f),  /*Nickel      */
+	float3(0.541931f, 0.496791f, 0.449419f),  /*Titanium    */
+	float3(0.662124f, 0.654864f, 0.633732f),  /*Cobalt      */
 
-	float3(0.672411f, 0.637331f, 0.585456f)	  /*Platinum    */ 
+	float3(0.672411f, 0.637331f, 0.585456f)	  /*Platinum    */
 	};
 
 	float a = materialValue * 8.f;	// (table dim - 1)
 	uint i0 = uint(a);
 	uint i1 = min(8, i0+1);
-	
+
 	return lerp(MaterialTable[i0], MaterialTable[i1], frac(a));
 }
 
@@ -98,8 +98,12 @@ Texture2D_MaybeMS<float>	DepthTexture	 	: register(t4);
 
 float GetLinear0To1Depth(int2 pixelCoords, uint sampleIndex)
 {
-	return NDCDepthToLinear0To1(
-        LoadFloat1(DepthTexture, pixelCoords.xy, sampleIndex));
+	return NDCDepthToLinear0To1(LoadFloat1(DepthTexture, pixelCoords.xy, sampleIndex));
+}
+
+float GetWorldSpaceDepth(int2 pixelCoords, uint sampleIndex)
+{
+	return NDCDepthToWorldSpace(LoadFloat1(DepthTexture, pixelCoords.xy, sampleIndex));
 }
 
 float3 CalculateWorldPosition(int2 pixelCoords, uint sampleIndex, float3 viewFrustumVector)
@@ -125,9 +129,9 @@ float3 CalculateDiffuse(GBufferValues sample, float3 negativeLightDirection, flo
 	return light * lightColor * sample.diffuseAlbedo.rgb;
 }
 
-float3 CalculateSpecular(	GBufferValues sample, 
-							float3 viewDirection, 
-							float3 negativeLightDirection, 
+float3 CalculateSpecular(	GBufferValues sample,
+							float3 viewDirection,
+							float3 negativeLightDirection,
 							float3 lightColor)
 {
 	// float refractiveIndex0 = GetRefractiveIndex0();

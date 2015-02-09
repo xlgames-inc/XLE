@@ -128,11 +128,6 @@ namespace PlatformRig
                 RenderCore::GetDefaultClipSpaceType());
             p._viewMatrix = lightViewMatrix;
 
-            // p._projectionDepthRatio[0] = 1.f / (shadowFarPlane - shadowNearPlane);
-            // p._projectionDepthRatio[1] = -shadowNearPlane / (shadowFarPlane - shadowNearPlane);
-            // p._projectionScale[0] = 2.f / projectionWidth;
-            // p._projectionScale[1] = 2.f / projectionWidth;
-
             result._minimalProjection[c] = ExtractMinimalProjection(p._projectionMatrix);
         }
         

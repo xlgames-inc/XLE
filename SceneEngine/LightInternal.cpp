@@ -14,8 +14,8 @@ namespace SceneEngine
         _frustumCount = desc._count;
         _mode = desc._mode;
 
-        XlZeroMemory(_arbitraryCBSource);
-        XlZeroMemory(_orthoCBSource);
+        XlZeroMemory(_arbitraryCBSource);   // unused array elements must be zeroed out
+        XlZeroMemory(_orthoCBSource);       // unused array elements must be zeroed out
 
         typedef MultiProjection<MaxShadowTexturesPerLight>::Mode Mode;
         if (desc._mode == Mode::Arbitrary) {
@@ -39,8 +39,10 @@ namespace SceneEngine
                 //  prepared for comparisons.
             _arbitraryCBSource._projectionCount = _frustumCount;
             auto baseWorldToProj = desc._definitionViewMatrix;
-            for (unsigned c=0; c<_frustumCount; ++c) {
 
+            float p22 = 1.f, p23 = 0.f;
+
+            for (unsigned c=0; c<_frustumCount; ++c) {
                 const auto& mins = desc._orthoSub[c]._projMins;
                 const auto& maxs = desc._orthoSub[c]._projMaxs;
                 Float4x4 projMatrix = OrthogonalProjection(
@@ -52,17 +54,32 @@ namespace SceneEngine
 
                 _orthoCBSource._cascadeScale[c][0] = projMatrix(0,0);
                 _orthoCBSource._cascadeScale[c][1] = projMatrix(1,1);
-                _orthoCBSource._cascadeScale[c][2] = projMatrix(2,2);
                 _orthoCBSource._cascadeTrans[c][0] = projMatrix(0,3);
                 _orthoCBSource._cascadeTrans[c][1] = projMatrix(1,3);
-                _orthoCBSource._cascadeTrans[c][2] = projMatrix(2,3);
+
+                if (c==0) {
+                    p22 = projMatrix(2,2);
+                    p23 = projMatrix(2,3);
+                }
+
+                    // (unused parts)
+                _orthoCBSource._cascadeScale[c][2] = 1.f;
+                _orthoCBSource._cascadeTrans[c][2] = 0.f;
+                _orthoCBSource._cascadeScale[c][3] = 1.f;
+                _orthoCBSource._cascadeTrans[c][3] = 0.f;
             }
 
                 //  Also fill in the constants for ortho projection mode
             _orthoCBSource._projectionCount = _frustumCount;
             _orthoCBSource._minimalProjection = desc._minimalProjection[0];
-            _orthoCBSource._worldToProj = AsFloat3x4(baseWorldToProj);
 
+                //  We merge in the transform for the z component
+                //  Every cascade uses the same depth range, which means we only
+                //  have to adjust the X and Y components for each cascade
+            auto zComponentMerge = Identity<Float4x4>();
+            zComponentMerge(2,2) = p22;
+            zComponentMerge(2,3) = p23;
+            _orthoCBSource._worldToProj = AsFloat3x4(Combine(baseWorldToProj, zComponentMerge));
         }
 
         using RenderCore::Metal::ConstantBuffer;

@@ -481,8 +481,9 @@ namespace SceneEngine
             Float4x4    _cameraToShadow[6];
             Float4      _originalProjectionScales;
             Float4x4    _cameraToWorld;
+            Float4x4    _orthoCameraToShadow;
         } basis;
-        XlZeroMemory(basis);
+        XlZeroMemory(basis);    // unused array elements must be zeroed out
         basis._cameraToWorld = parserContext.GetSceneParser()->GetCameraDesc()._cameraToWorld;
         for (unsigned c=0; c<unsigned(parserContext._preparedShadows[light._shadowFrustumIndex]._frustumCount); ++c) {
             auto& worldToShadowProj = parserContext._preparedShadows[light._shadowFrustumIndex]._arbitraryCBSource._worldToProj[c];
@@ -491,6 +492,11 @@ namespace SceneEngine
         }
         auto& proj = parserContext.GetProjectionDesc()._cameraToProjection;
         basis._originalProjectionScales = Float4(proj(0,0), proj(1,1), proj(2,2), proj(3,3));
+
+        {
+            auto& worldToShadowProj = parserContext._preparedShadows[light._shadowFrustumIndex]._orthoCBSource._worldToProj;
+            basis._orthoCameraToShadow = Combine(basis._cameraToWorld, worldToShadowProj);
+        }
         return MakeSharedPkt(basis);
     }
 
