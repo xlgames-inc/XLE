@@ -357,9 +357,9 @@ namespace SceneEngine
                 bool isShadowsPass = techniqueIndex == TechniqueIndex_ShadowGen;
 
                 auto& debuggingShader = Assets::GetAssetDep<Metal::ShaderProgram>(
-                    "game/xleres/deferred/tileddebugging/beams.vsh:main:vs_*", 
-                    "game/xleres/deferred/tileddebugging/beams.gsh:main:gs_*", 
-                    "game/xleres/deferred/tileddebugging/beams.psh:main:ps_*",
+                    "game/xleres/deferred/debugging/beams.vsh:main:vs_*", 
+                    "game/xleres/deferred/debugging/beams.gsh:main:gs_*", 
+                    "game/xleres/deferred/debugging/beams.psh:main:ps_*",
                     isShadowsPass?"SHADOWS=1;SHADOW_CASCADE_MODE=1":"");    // hack -- SHADOW_CASCADE_MODE let explicitly here
 
                 Metal::BoundUniforms uniforms(debuggingShader);
@@ -382,9 +382,9 @@ namespace SceneEngine
                 if (!isShadowsPass && Tweakable("TiledBeamsTransparent", false)) {
                     context->Bind(CommonResources()._blendStraightAlpha);
                     auto& predepth = Assets::GetAssetDep<Metal::ShaderProgram>(
-                        "game/xleres/deferred/tileddebugging/beams.vsh:main:vs_*", 
-                        "game/xleres/deferred/tileddebugging/beams.gsh:main:gs_*", 
-                        "game/xleres/deferred/tileddebugging/beams.psh:predepth:ps_*",
+                        "game/xleres/deferred/debugging/beams.vsh:main:vs_*", 
+                        "game/xleres/deferred/debugging/beams.gsh:main:gs_*", 
+                        "game/xleres/deferred/debugging/beams.psh:predepth:ps_*",
                         "");
                     context->Bind(predepth);
                     context->Draw(globals[0]*globals[1]);
@@ -397,9 +397,9 @@ namespace SceneEngine
 
                 if (!isShadowsPass) {
                     context->Bind(Assets::GetAssetDep<Metal::ShaderProgram>(
-                        "game/xleres/deferred/tileddebugging/beams.vsh:main:vs_*", 
-                        "game/xleres/deferred/tileddebugging/beams.gsh:Outlines:gs_*", 
-                        "game/xleres/deferred/tileddebugging/beams.psh:main:ps_*",
+                        "game/xleres/deferred/debugging/beams.vsh:main:vs_*", 
+                        "game/xleres/deferred/debugging/beams.gsh:Outlines:gs_*", 
+                        "game/xleres/deferred/debugging/beams.psh:main:ps_*",
                         ""));
                     context->Draw(globals[0]*globals[1]);
                 }

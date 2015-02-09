@@ -57,8 +57,7 @@ namespace SceneEngine
         std::shared_ptr<Assets::DependencyValidation>  _validationCallback;
     };
 
-    static ConstantBufferPacket BuildScreenToShadowConstants(
-        LightingParserContext& parserContext, const LightDesc& light);
+    static ConstantBufferPacket BuildScreenToShadowConstants(LightingParserContext& parserContext, unsigned shadowFrustumIndex);
     static ConstantBufferPacket BuildLightConstants(const LightDesc& light);
     static void ResolveLights(  DeviceContext* context,
                                 LightingParserContext& parserContext,
@@ -326,7 +325,7 @@ namespace SceneEngine
         const bool useMsaaSamplers = resolveContext.UseMsaaSamplers();
 
         ConstantBufferPacket constantBufferPackets[5];
-        const Metal::ConstantBuffer* prebuiltConstantBuffers[5] = { nullptr, nullptr, nullptr, nullptr };
+        const Metal::ConstantBuffer* prebuiltConstantBuffers[5] = { nullptr, nullptr, nullptr, nullptr, nullptr };
         prebuiltConstantBuffers[2] = &FindCachedBox<ShadowResourcesBox>(ShadowResourcesBox::Desc())._sampleKernel32;
 
             ////////////////////////////////////////////////////////////////////////
@@ -372,7 +371,7 @@ namespace SceneEngine
                         //              are affected by this light.
                         //
                     
-                    constantBufferPackets[3] = BuildScreenToShadowConstants(parserContext, i);
+                    constantBufferPackets[3] = BuildScreenToShadowConstants(parserContext, i._shadowFrustumIndex);
 
                     if (i._type == LightDesc::Directional) {
                         if (preparedShadows._mode == ShadowProjectionDesc::Projections::Mode::Ortho && allowOrthoShadowResolve) {
@@ -474,30 +473,13 @@ namespace SceneEngine
         ////////////////////////////////////////////////////////////////////////
 
     static ConstantBufferPacket BuildScreenToShadowConstants(
-        LightingParserContext& parserContext, const LightDesc& light)
+        LightingParserContext& parserContext, unsigned shadowFrustumIndex)
     {
-        struct Basis
-        {
-            Float4x4    _cameraToShadow[6];
-            Float4      _originalProjectionScales;
-            Float4x4    _cameraToWorld;
-            Float4x4    _orthoCameraToShadow;
-        } basis;
-        XlZeroMemory(basis);    // unused array elements must be zeroed out
-        basis._cameraToWorld = parserContext.GetSceneParser()->GetCameraDesc()._cameraToWorld;
-        for (unsigned c=0; c<unsigned(parserContext._preparedShadows[light._shadowFrustumIndex]._frustumCount); ++c) {
-            auto& worldToShadowProj = parserContext._preparedShadows[light._shadowFrustumIndex]._arbitraryCBSource._worldToProj[c];
-            auto cameraToShadowProj = Combine(basis._cameraToWorld, worldToShadowProj);
-            basis._cameraToShadow[c] = cameraToShadowProj;
-        }
-        auto& proj = parserContext.GetProjectionDesc()._cameraToProjection;
-        basis._originalProjectionScales = Float4(proj(0,0), proj(1,1), proj(2,2), proj(3,3));
-
-        {
-            auto& worldToShadowProj = parserContext._preparedShadows[light._shadowFrustumIndex]._orthoCBSource._worldToProj;
-            basis._orthoCameraToShadow = Combine(basis._cameraToWorld, worldToShadowProj);
-        }
-        return MakeSharedPkt(basis);
+        return BuildScreenToShadowConstants(
+            parserContext._preparedShadows[shadowFrustumIndex]._frustumCount,
+            parserContext._preparedShadows[shadowFrustumIndex]._arbitraryCBSource,
+            parserContext._preparedShadows[shadowFrustumIndex]._orthoCBSource,
+            parserContext.GetProjectionDesc()._cameraToWorld);
     }
 
     static ConstantBufferPacket BuildLightConstants(const LightDesc& light)

@@ -16,4 +16,6 @@ float3 SRGBToLinear(float3 input)		    { return pow(input, 2.2f); }
 static const float LightingScale = 16.f;
 static const bool ShadowsPerspectiveProjection = false;
 
+float4 ByteColor(uint r, uint g, uint b, uint a) { return float4(r/float(0xff), g/float(0xff), b/float(0xff), a/float(0xff)); }
+
 #endif

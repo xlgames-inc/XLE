@@ -37,8 +37,6 @@ cbuffer OrthogonalShadowProjection
 cbuffer ScreenToShadowProjection
 {
     row_major float4x4 CameraToShadow[ShadowMaxSubProjections];
-    float4 OriginalProjectionScale;
-    row_major float4x4 CameraToWorld;
 	row_major float4x4 OrthoCameraToShadow;	// the "definition" projection for cascades in ortho mode
 }
 

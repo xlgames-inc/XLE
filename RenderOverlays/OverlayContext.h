@@ -14,6 +14,8 @@
 #include "Font.h"
 #include <vector>
 
+#pragma warning(disable:4324)
+
 namespace RenderOverlays
 {
     class ImmediateOverlayContext : public IOverlayContext
@@ -60,9 +62,9 @@ namespace RenderOverlays
         void ReleaseState();
         void SetState(const OverlayState& state);
 
-        RenderCore::Metal::DeviceContext*   GetDeviceContext();
-
-        RenderCore::ProjectionDesc    GetProjectionDesc() const;
+        RenderCore::Metal::DeviceContext*           GetDeviceContext();
+        RenderCore::ProjectionDesc                  GetProjectionDesc() const;
+        const RenderCore::Metal::UniformsStream&    GetGlobalUniformsStream() const;
 
         ImmediateOverlayContext(
             RenderCore::Metal::DeviceContext* deviceContext, 
@@ -81,6 +83,7 @@ namespace RenderOverlays
 
         RenderCore::Metal::ConstantBufferPacket _viewportConstantBuffer;
         RenderCore::Metal::ConstantBufferPacket _globalTransformConstantBuffer;
+        RenderCore::Metal::UniformsStream _globalUniformsStream;
 
         RenderCore::ProjectionDesc _projDesc;
 

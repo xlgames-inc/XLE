@@ -11,6 +11,8 @@
 #include "../RenderCore/Metal/Buffer.h"
 #include "../Core/Types.h"
 
+namespace RenderCore { class SharedPkt; }
+
 namespace SceneEngine
 {
     template<int MaxProjections> class MultiProjection;
@@ -66,5 +68,16 @@ namespace SceneEngine
         PreparedShadowFrustum(PreparedShadowFrustum&& moveFrom);
         PreparedShadowFrustum& operator=(PreparedShadowFrustum&& moveFrom) never_throws;
     };
+
+    void BuildShadowConstantBuffers(
+        CB_ArbitraryShadowProjection& arbitraryCBSource,
+        CB_OrthoShadowProjection& orthoCBSource,
+        const MultiProjection<MaxShadowTexturesPerLight>& desc);
+
+    RenderCore::SharedPkt BuildScreenToShadowConstants(
+        unsigned frustumCount,
+        const CB_ArbitraryShadowProjection& arbitraryCB,
+        const CB_OrthoShadowProjection& orthoCB,
+        const Float4x4& cameraToWorld);
 
 }

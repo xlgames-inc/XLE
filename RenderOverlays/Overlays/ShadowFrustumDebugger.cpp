@@ -9,14 +9,113 @@
 #include "../../SceneEngine/CommonResources.h"
 #include "../../SceneEngine/SceneParser.h"
 #include "../../SceneEngine/LightDesc.h"
+#include "../../SceneEngine/Techniques.h"
+#include "../../SceneEngine/ResourceBox.h"
+#include "../../SceneEngine/LightInternal.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
+#include "../../RenderCore/Metal/InputLayout.h"
+#include "../../Assets/Assets.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../Math/Transformations.h"
+#include "../../Utility/StringFormat.h"
+
+#include "../../SceneEngine/SceneEngineUtility.h"
+#include "../../RenderCore/DX11/Metal/DX11Utils.h"
 
 namespace Overlays
 {
     using namespace SceneEngine;
     using namespace RenderOverlays;
+    using namespace RenderCore::Metal;
+
+    class SFDResources
+    {
+    public:
+        class Desc 
+        {
+        public:
+            unsigned _cascadeMode;
+            Desc(unsigned cascadeMode) : _cascadeMode(cascadeMode) {}
+        };
+
+        ShaderProgram*  _shader;
+        BoundUniforms   _uniforms;
+        
+        const Assets::DependencyValidation& GetDependancyValidation() const   { return *_depVal; }
+        SFDResources(const Desc&);
+        ~SFDResources();
+    protected:
+        std::shared_ptr<Assets::DependencyValidation> _depVal;
+    };
+
+    SFDResources::SFDResources(const Desc& desc)
+    {
+        _shader = &Assets::GetAssetDep<ShaderProgram>(
+            "game/xleres/basic2D.vsh:fullscreen_viewfrustumvector:vs_*",
+            "game/xleres/deferred/debugging/cascadevis.psh:main:ps_*",
+            StringMeld<128>() << "SHADOW_CASCADE_MODE=" << desc._cascadeMode);
+
+        _uniforms = BoundUniforms(*_shader);
+        TechniqueContext::BindGlobalUniforms(_uniforms);
+        _uniforms.BindConstantBuffer(Hash64("ArbitraryShadowProjection"), 0, 1);
+        _uniforms.BindConstantBuffer(Hash64("OrthogonalShadowProjection"), 1, 1);
+        _uniforms.BindConstantBuffer(Hash64("ScreenToShadowProjection"), 2, 1);
+        _uniforms.BindShaderResource(Hash64("DepthTexture"), 0, 1);
+        
+        _depVal = std::make_shared<Assets::DependencyValidation>();
+        ::Assets::RegisterAssetDependency(_depVal, &_shader->GetDependancyValidation());
+    }
+
+    SFDResources::~SFDResources() {}
+
+    static void OverlayShadowFrustums(
+        DeviceContext& devContext, 
+        const UniformsStream& globalUniforms,
+        const RenderCore::ProjectionDesc& mainCameraProjectionDesc,
+        const ShadowProjectionDesc& projectionDesc)
+    {
+        devContext.Bind(CommonResources()._dssDisable);
+        devContext.Bind(CommonResources()._blendAlphaPremultiplied);
+
+        SavedTargets savedTargets(&devContext);
+        devContext.GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr);
+
+        ShaderResourceView depthSrv;
+        if (savedTargets.GetDepthStencilView())
+            depthSrv = ShaderResourceView(ExtractResource<ID3D::Resource>(
+                savedTargets.GetDepthStencilView()).get(), 
+                (NativeFormat::Enum)DXGI_FORMAT_R24_UNORM_X8_TYPELESS);
+
+        auto& res = FindCachedBoxDep<SFDResources>(
+            SFDResources::Desc(
+                (projectionDesc._projections._mode == ShadowProjectionDesc::Projections::Mode::Ortho)?2:1));
+        devContext.Bind(*res._shader);
+
+        CB_ArbitraryShadowProjection arbitraryCB;
+        CB_OrthoShadowProjection orthoCB;
+        BuildShadowConstantBuffers(arbitraryCB, orthoCB, projectionDesc._projections);
+
+        ConstantBufferPacket constantBufferPackets[3];
+        constantBufferPackets[0] = RenderCore::MakeSharedPkt(arbitraryCB);
+        constantBufferPackets[1] = RenderCore::MakeSharedPkt(orthoCB);
+        constantBufferPackets[2] = BuildScreenToShadowConstants(
+            projectionDesc._projections._count,
+            arbitraryCB, orthoCB, 
+            mainCameraProjectionDesc._cameraToWorld);
+        const ShaderResourceView* srv[] = { &depthSrv };
+
+        res._uniforms.Apply(
+            devContext, globalUniforms,
+            UniformsStream(
+                constantBufferPackets, nullptr, dimof(constantBufferPackets),
+                srv, dimof(srv)));
+
+        devContext.Bind(Topology::TriangleStrip);
+        devContext.Draw(4);
+
+        devContext.UnbindPS<ShaderResourceView>(4, 1);
+        savedTargets.ResetToOldTargets(&devContext);
+    }
 
     void ShadowFrustumDebugger::Render( 
         IOverlayContext* context, Layout& layout, 
@@ -28,23 +127,31 @@ namespace Overlays
             return;
         }
 
-        static SceneEngine::ShadowProjectionDesc projectionDesc;
+        static ShadowProjectionDesc projectionDesc;
         if (!Tweakable("ShadowDebugLock", false)) {
             projectionDesc = _scene->GetShadowProjectionDesc(0, context->GetProjectionDesc());
         }
+
+        auto& devContext = *context->GetDeviceContext();
+        context->ReleaseState();
+        OverlayShadowFrustums(
+            devContext, context->GetGlobalUniformsStream(),
+            context->GetProjectionDesc(), projectionDesc);
+        context->CaptureState();
         
             //  Get the first shadow projection from the scene, and draw an
             //  outline of all sub-projections with in.
             //  We could also add a control to select different projections
             //  when there are more than one...
-        context->GetDeviceContext()->Bind(CommonResources()._dssReadOnly);
+        devContext.Bind(CommonResources()._dssReadOnly);
 
         ColorB cols[]= {
             ColorB(196, 230, 230),
             ColorB(255, 128, 128),
             ColorB(128, 255, 128),
             ColorB(128, 128, 255),
-            ColorB(255, 255, 128)
+            ColorB(255, 255, 128),
+            ColorB(128, 255, 255)
         };
 
         const auto& projections = projectionDesc._projections;

@@ -8,11 +8,10 @@
 #define RESOLVE_PSH
 
 #include "resolveutil.h"
+#include "resolvecascade.h"
 #include "../CommonResources.h"
 #include "../Utility/Misc.h"
 #include "../Lighting/SampleFiltering.h"
-
-#include "../ShadowProjection.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -284,68 +283,6 @@ float ResolveShadows(	uint projection, float2 shadowTexCoord, float comparisonDi
 		ShadowProjection_GetMiniProj(projection).xy, msaaSampleIndex);
 }
 
-float ResolveShadows_FromWorldPosition(float3 worldPosition, int2 randomizerValue, uint msaaSampleIndex)
-{
-	float2 texCoords;
-	float comparisonDistance;
-
-		// find the first frustum we're within
-	uint c=0;
-	uint projectionCount = min(GetShadowSubProjectionCount(), ShadowMaxSubProjections);
-
-	#if SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ORTHOGONAL
-		float3 basePosition = mul(OrthoShadowWorldToProj, float4(worldPosition, 1));
-	#endif
-
-	for (;;c++) {
-		if (c == projectionCount) {
-			return 1.f;
-		}
-
-		float wPart = 1.f;
-		#if SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ARBITRARY
-			float4 frustumCoordinates = mul(ShadowWorldToProj[c], float4(worldPosition, 1));
-			wPart = frustumCoordinates.w;
-		#elif SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ORTHOGONAL
-			float3 frustumCoordinates = AdjustForCascade(basePosition, c);
-		#else
-			float3 frustumCoordinates = 2.0.xxx;
-		#endif
-
-		if (max(max(abs(frustumCoordinates.x), abs(frustumCoordinates.y)),
-			max(frustumCoordinates.z, wPart-frustumCoordinates.z)) < wPart) {
-
-			texCoords = frustumCoordinates.xy / wPart;
-			texCoords = float2(0.5f + 0.5f * texCoords.x, 0.5f - 0.5f * texCoords.y);
-			comparisonDistance = frustumCoordinates.z / wPart;
-			break;
-		}
-	}
-
-	return ResolveShadows(c, texCoords, comparisonDistance, randomizerValue, msaaSampleIndex);
-}
-
-float4 CameraCoordinateToShadow(float2 camCoordinate, float worldSpaceDepth, float4x4 camToShadow)
-{
-	const float cameraCoordinateScale = worldSpaceDepth; // (linear0To1Depth * FarClip);
-
-		//
-		//	Accuracy of this transformation is critical...
-		//		We'll be comparing to values in the shadow buffer, so we
-		//		should try to use the most accurate transformation method
-		//
-	float4x3 cameraToShadow4x3 = float4x3(
-		camToShadow[0].xyz,
-		camToShadow[1].xyz,
-		camToShadow[2].xyz,
-		camToShadow[3].xyz);
-	float4 offset = mul(cameraToShadow4x3, float3(camCoordinate, -1.f));
-	offset *= cameraCoordinateScale;	// try doing this scale here (maybe increase accuracy a bit?)
-
-	float4 translatePart = float4(camToShadow[0].w, camToShadow[1].w, camToShadow[2].w, camToShadow[3].w);
-	return offset + translatePart;
-}
-
 float ResolveShadows_Cascade(uint cascadeIndex, float4 cascadeNormCoords, int2 randomizerValue, uint msaaSampleIndex)
 {
 	float2 texCoords;
@@ -356,75 +293,6 @@ float ResolveShadows_Cascade(uint cascadeIndex, float4 cascadeNormCoords, int2 r
 
 	return ResolveShadows(cascadeIndex, texCoords, comparisonDistance, randomizerValue, msaaSampleIndex);
 }
-
-float ResolveShadows_CameraToShadowMethod(float2 texCoord, float worldSpaceDepth, int2 randomizerValue, uint msaaSampleIndex)
-{
-	const float2 camCoordinate = float2(
-		( 2.f * texCoord.x - 1.f) / OriginalProjectionScale.x,
-		(-2.f * texCoord.y + 1.f) / OriginalProjectionScale.y);
-
-	uint projectionCount = min(GetShadowSubProjectionCount(), ShadowMaxSubProjections);
-	float4 frustumCoordinates;
-	uint finalCascadeIndex = projectionCount;
-
-		// 	Find the first frustum we're within
-		//	This first loop is kept separate and simple
-		//	even though it means we need another comparison
-		//	below. This is just to try to keep the generated
-		//	shader code simplier.
-		//
-		//	Note that in order to unroll this first loop, we
-		//	must make the loop terminator a compile time constant.
-		//	Normally, the number of cascades is passed in a shader
-		//	constant (ie, not available at compile time).
-		//	However, if the cascade loop is simple, it may be better
-		//	to unroll, even if it means a few extra redundant checks
-		//	at the end.
-
-	#if SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ORTHOGONAL
-
-			// in ortho mode, this is much simplier... Here is a
-			// separate implementation to take advantage of that case!
-
-		float3 baseCoord = CameraCoordinateToShadow(camCoordinate, worldSpaceDepth, OrthoCameraToShadow).xyz;
-
-			// all cascades have the same near/far clip plane. So we can reject based on depth early
-			// then we only need to look at the XY part of each cascade
-		if (max(baseCoord.z, 1.f-baseCoord.z) <= 1.f) {
-			[unroll] for (uint c=0; c<ShadowMaxSubProjections; c++) {
-				float3 t = AdjustForCascade(baseCoord, c);
-				if (max(abs(t.x), abs(t.y)) < 1.f) {
-					finalCascadeIndex = c;
-					frustumCoordinates = float4(t, 1.f);
-					break;
-				}
-			}
-		}
-
-	#else
-		for (uint c=0; c<projectionCount; c++) {
-			frustumCoordinates = CameraCoordinateToShadow(
-				camCoordinate, worldSpaceDepth, CameraToShadow[c]);
-
-			float wPart = frustumCoordinates.w;
-			if (max(max(abs(frustumCoordinates.x), abs(frustumCoordinates.y)),
-				max(frustumCoordinates.z, wPart-frustumCoordinates.z)) < wPart) {
-
-				finalCascadeIndex = c;
-				break;
-			}
-		}
-	#endif
-
-	if (finalCascadeIndex < projectionCount) {
-		return ResolveShadows_Cascade(
-			finalCascadeIndex, frustumCoordinates, randomizerValue,  msaaSampleIndex);
-	} else {
-			// area outside of all cascades is considered outside of shadow...
-		return 1.f;
-	}
-}
-
 
 float ResolvePointLightShadows(float3 worldPosition, int2 randomizerValue, uint msaaSampleIndex)
 {
@@ -479,8 +347,8 @@ float4 ResolveLight(	float4 position : SV_Position,
 	// {
 	// 	float worldSpaceDepth = GetWorldSpaceDepth(pixelCoords, GetSampleIndex(sys));
 	// 	float3 cameraCoordinate = float3(
-	// 		( 2.f * texCoord.x - 1.f) / OriginalProjectionScale.x,
-	// 		(-2.f * texCoord.y + 1.f) / OriginalProjectionScale.y,
+	// 		( 2.f * texCoord.x - 1.f) / MinimalProjection.x,
+	// 		(-2.f * texCoord.y + 1.f) / MinimalProjection.y,
 	// 		-1.f) * (worldSpaceDepth * FarClip);
 	// 	worldPosition = mul(CameraToWorld, float4(cameraCoordinate, 1)).xyz;
 	// 	return float4(fmod(worldPosition/10,1.0.xxx),1);
@@ -498,14 +366,21 @@ float4 ResolveLight(	float4 position : SV_Position,
 		//	In theory, by camera position might be a little more accurate,
 		//	because it skips the world position stage. The function has been
 		//	optimised for accuracy.
-	float shadow;
+	uint finalCascadeIndex;
+	float4 cascadeNormCoords;
 	const bool resolveByWorldPosition = false;
 	if (resolveByWorldPosition) {
-		shadow = ResolveShadows_FromWorldPosition(worldPosition, pixelCoords, GetSampleIndex(sys));
+		FindCascade_FromWorldPosition(finalCascadeIndex, cascadeNormCoords, worldPosition);
 	} else {
-		shadow = ResolveShadows_CameraToShadowMethod(texCoord,
-			GetWorldSpaceDepth(pixelCoords, GetSampleIndex(sys)),
-			pixelCoords, GetSampleIndex(sys));
+		FindCascade_CameraToShadowMethod(
+			finalCascadeIndex, cascadeNormCoords,
+			texCoord, GetWorldSpaceDepth(pixelCoords, GetSampleIndex(sys)));
+	}
+
+	float shadow = 1.f;		// area outside of all cascades is considered outside of shadow...
+	if (finalCascadeIndex < min(GetShadowSubProjectionCount(), ShadowMaxSubProjections)) {
+		shadow = ResolveShadows_Cascade(
+			finalCascadeIndex, cascadeNormCoords, pixelCoords, GetSampleIndex(sys));
 	}
 
 	GBufferValues sample = LoadGBuffer(position, sys);

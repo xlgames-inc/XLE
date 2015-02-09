@@ -14,6 +14,7 @@
 #include "../RenderCore/RenderUtils.h"
 #include "../SceneEngine/CommonResources.h"
 #include "../SceneEngine/ResourceBox.h"
+#include "../SceneEngine/Techniques.h"
 #include "../Utility/StringFormat.h"
 
 #include "../RenderCore/DX11/Metal/IncludeDX11.h"
@@ -538,7 +539,7 @@ namespace RenderOverlays
             boundUniforms.BindConstantBuffer(
                 Hash64("ReciprocalViewportDimensions"), 0, 1,
                 ReciprocalViewportDimensions_Elements, dimof(ReciprocalViewportDimensions_Elements));
-            boundUniforms.BindConstantBuffer(Hash64("GlobalTransform"), 1, 1);
+            SceneEngine::TechniqueContext::BindGlobalUniforms(boundUniforms);
 
             Assets::RegisterAssetDependency(validationCallback, &_shaderProgram->GetDependancyValidation());
 
@@ -562,9 +563,9 @@ namespace RenderOverlays
             _deviceContext->Bind(*box._shaderProgram);
             _deviceContext->Bind(box._boundInputLayout);
 
-            ConstantBufferPacket constants[] = { _viewportConstantBuffer, _globalTransformConstantBuffer };
+            ConstantBufferPacket constants[] = { _viewportConstantBuffer };
             box._boundUniforms.Apply(
-                *_deviceContext.get(), UniformsStream(), UniformsStream(constants, nullptr, dimof(constants)));
+                *_deviceContext.get(), _globalUniformsStream, UniformsStream(constants, nullptr, dimof(constants)));
         } else {
             assert(0);
         }
@@ -578,6 +579,11 @@ namespace RenderOverlays
     RenderCore::ProjectionDesc    ImmediateOverlayContext::GetProjectionDesc() const
     {
         return _projDesc;
+    }
+
+    const RenderCore::Metal::UniformsStream&    ImmediateOverlayContext::GetGlobalUniformsStream() const
+    {
+        return _globalUniformsStream;
     }
 
     ImmediateOverlayContext::ImmediateOverlayContext(
@@ -594,6 +600,9 @@ namespace RenderOverlays
         auto trans = RenderCore::BuildGlobalTransformConstants(projDesc);
         _globalTransformConstantBuffer = RenderCore::MakeSharedPkt(
             (const uint8*)&trans, (const uint8*)PtrAdd(&trans, sizeof(trans)));
+
+        _globalUniformsStream = RenderCore::Metal::UniformsStream(
+            &_globalTransformConstantBuffer, nullptr, 1);
     }
 
     ImmediateOverlayContext::~ImmediateOverlayContext()
