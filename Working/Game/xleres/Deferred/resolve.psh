@@ -262,8 +262,7 @@ float ResolveShadows(	uint projection, float2 shadowTexCoord, float comparisonDi
 		float worldSpaceDepth = NDCDepthToWorldSpace_Perspective(comparisonDistance, miniP);
 		biasedDepth = WorldSpaceDepthToNDC_Perspective(worldSpaceDepth - ShadowBiasWorldSpace, miniP);
 	} else {
-		biasedDepth =
-			comparisonDistance - WorldSpaceDepthDifferenceToNDC_Ortho(ShadowBiasWorldSpace, miniP);
+		biasedDepth = comparisonDistance - WorldSpaceDepthDifferenceToNDC_Ortho(ShadowBiasWorldSpace, miniP);
 	}
 
 	// float biasedDepth = comparisonDistance;

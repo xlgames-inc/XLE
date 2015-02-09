@@ -283,9 +283,11 @@ namespace Utility
         unsigned    SpanningHeap<Marker>::CalculateAllocatedSpace() const
     {
         ScopedLock(_lock);
+        if (_markers.empty()) return 0;
+
         unsigned result = 0;
         std::vector<Marker>::const_iterator i = _markers.begin()+1;
-        for (; (i+1)<_markers.end();i+=2) {
+        for (; i<(_markers.end()-1);i+=2) {
             Marker start = *i;
             Marker end = *(i+1);
             result += end-start;

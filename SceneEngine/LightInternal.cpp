@@ -1,5 +1,6 @@
 #include "LightInternal.h"
 #include "LightDesc.h"
+#include "../RenderCore/RenderUtils.h"
 #include "../Math/Transformations.h"
 #include "../Math/ProjectionMath.h"
 #include "../Utility/MemoryUtils.h"
@@ -30,34 +31,37 @@ namespace SceneEngine
 
         } else if (desc._mode == Mode::Ortho) {
 
+            using namespace RenderCore;
+
                 //  We can still fill in the constant buffer
                 //  for arbitrary projection. If we use the right
                 //  shader, we shouldn't need this. But we can have it
                 //  prepared for comparisons.
             _arbitraryCBSource._projectionCount = _frustumCount;
-            auto baseWorldToProj = Combine(desc._definitionViewMatrix, desc._definitionProjMatrix);
+            auto baseWorldToProj = desc._definitionViewMatrix;
             for (unsigned c=0; c<_frustumCount; ++c) {
-                Float4x4 additionalPart = Identity<Float4x4>();
-                for (unsigned q=0; q<3; ++q) {
-                    additionalPart(q,q) =  2.f  / (desc._orthoSub[c]._projMaxs[q] - desc._orthoSub[c]._projMins[q]);
-                    additionalPart(q,3) = -0.5f * (desc._orthoSub[c]._projMaxs[q] + desc._orthoSub[c]._projMins[q]);
-                }
 
-                _arbitraryCBSource._worldToProj[c] = Combine(baseWorldToProj, additionalPart);
-                _arbitraryCBSource._minimalProj[c] = ExtractMinimalProjection(additionalPart);
+                const auto& mins = desc._orthoSub[c]._projMins;
+                const auto& maxs = desc._orthoSub[c]._projMaxs;
+                Float4x4 projMatrix = OrthogonalProjection(
+                    mins[0], mins[1], maxs[0], maxs[1], mins[2], maxs[2],
+                    GeometricCoordinateSpace::RightHanded, GetDefaultClipSpaceType());
+
+                _arbitraryCBSource._worldToProj[c] = Combine(baseWorldToProj, projMatrix);
+                _arbitraryCBSource._minimalProj[c] = ExtractMinimalProjection(projMatrix);
+
+                _orthoCBSource._cascadeScale[c][0] = projMatrix(0,0);
+                _orthoCBSource._cascadeScale[c][1] = projMatrix(1,1);
+                _orthoCBSource._cascadeScale[c][2] = projMatrix(2,2);
+                _orthoCBSource._cascadeTrans[c][0] = projMatrix(0,3);
+                _orthoCBSource._cascadeTrans[c][1] = projMatrix(1,3);
+                _orthoCBSource._cascadeTrans[c][2] = projMatrix(2,3);
             }
 
                 //  Also fill in the constants for ortho projection mode
             _orthoCBSource._projectionCount = _frustumCount;
             _orthoCBSource._minimalProjection = desc._minimalProjection[0];
             _orthoCBSource._worldToProj = AsFloat3x4(baseWorldToProj);
-
-            for (unsigned c=0; c<_frustumCount; ++c) {
-                for (unsigned q=0; q<3; ++q) {
-                    _orthoCBSource._cascadeScale[c][q] =  2.f  / (desc._orthoSub[c]._projMaxs[q] - desc._orthoSub[c]._projMins[q]);
-                    _orthoCBSource._cascadeTrans[c][q] = -0.5f * (desc._orthoSub[c]._projMaxs[q] + desc._orthoSub[c]._projMins[q]);
-                }
-            }
 
         }
 

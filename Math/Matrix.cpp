@@ -6,6 +6,43 @@
 
 #include "Matrix.h"
 
+/*!
+   \page cmlAutoExp CML library and AutoExp.dat
+
+   In Visual Studio 2010, you can add the following lines to the "[Visualizer]" section of your autoexp.dat to
+   get reasonable previews of vector types.
+   This is highly recommended, otherwise the watch window becomes a little cluttered.
+
+   \code
+   cml::vector<*> {
+	    preview(
+		    #switch ($e.dimension)
+		    #case 2 ( #("[", $e.m_data[0], ", ", $e.m_data[1], "]") )
+		    #case 3 ( #("[", $e.m_data[0], ", ", $e.m_data[1], ", ", $e.m_data[2], "]") )
+		    #case 4 ( #("[", $e.m_data[0], ", ", $e.m_data[1], ", ", $e.m_data[2], ", ", $e.m_data[3], "]") )
+		    #default ( "..." )
+	    )
+	    children(
+		    #array(expr: $e.m_data[$i], size: $e.dimension)
+	    )
+    }
+
+    cml::fixed_1D<*> {
+	    preview(
+		    #switch ($e.array_size)
+		    #case 2 ( #("[", $e.m_data[0], ", ", $e.m_data[1], "]") )
+		    #case 3 ( #("[", $e.m_data[0], ", ", $e.m_data[1], ", ", $e.m_data[2], "]") )
+		    #case 4 ( #("[", $e.m_data[0], ", ", $e.m_data[1], ", ", $e.m_data[2], ", ", $e.m_data[3], "]") )
+		    #default ( "..." )
+	    )
+	    children(
+		    #array(expr: $e.m_data[$i], size: $e.array_size)
+	    )
+    }
+    \endcode
+
+*/
+
 namespace Math
 {
     Float4x4 MakeFloat4x4(

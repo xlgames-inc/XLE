@@ -37,9 +37,9 @@
 			float4 p1 = input[1].shadowPosition[c];
 			float4 p2 = input[2].shadowPosition[c];
 		#elif SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ORTHOGONAL
-			float4 p0 = float4(AdjustForCascade(input[0].baseShadowPosition, c), 1.f);
-			float4 p1 = float4(AdjustForCascade(input[1].baseShadowPosition, c), 1.f);
-			float4 p2 = float4(AdjustForCascade(input[2].baseShadowPosition, c), 1.f);
+			float4 p0 = float4(AdjustForCascade(input[0].position.xyz, c), 1.f);
+			float4 p1 = float4(AdjustForCascade(input[1].position.xyz, c), 1.f);
+			float4 p2 = float4(AdjustForCascade(input[2].position.xyz, c), 1.f);
 		#else
 			float4 p0 = 0.0.xxxx;
 			float4 p1 = 0.0.xxxx;

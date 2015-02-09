@@ -10,6 +10,7 @@
 #include "../../SceneEngine/SceneParser.h"
 #include "../../SceneEngine/LightDesc.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
+#include "../../ConsoleRig/Console.h"
 #include "../../Math/Transformations.h"
 
 namespace Overlays
@@ -27,11 +28,16 @@ namespace Overlays
             return;
         }
 
+        static SceneEngine::ShadowProjectionDesc projectionDesc;
+        if (!Tweakable("ShadowDebugLock", false)) {
+            projectionDesc = _scene->GetShadowProjectionDesc(0, context->GetProjectionDesc());
+        }
+        
             //  Get the first shadow projection from the scene, and draw an
             //  outline of all sub-projections with in.
             //  We could also add a control to select different projections
             //  when there are more than one...
-        context->GetDeviceContext()->Bind(CommonResources()._dssDisable);
+        context->GetDeviceContext()->Bind(CommonResources()._dssReadOnly);
 
         ColorB cols[]= {
             ColorB(196, 230, 230),
@@ -41,7 +47,6 @@ namespace Overlays
             ColorB(255, 255, 128)
         };
 
-        auto projectionDesc = _scene->GetShadowProjectionDesc(0, context->GetProjectionDesc());
         const auto& projections = projectionDesc._projections;
         for (unsigned c=0; c<projections._count; ++c) {
             DebuggingDisplay::DrawFrustum(

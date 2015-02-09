@@ -30,6 +30,7 @@ cbuffer RecordedTransform
 	row_major float4x4 Recorded_WorldToClip;
 	float4 Recorded_FrustumCorners[4];
 	float3 Recorded_WorldSpaceView;
+	float Recorded_FarClip;
 	float4 Recorded_MinimalProjection;
 	row_major float4x4 Recorded_CameraBasis;
 }
@@ -41,13 +42,13 @@ float3 ToWorldSpacePosition(float3 recordedViewFrustumCoord)
 	float weight1 = (1.f - tc.x) * tc.y;
  	float weight2 = tc.x * (1.f - tc.y);
  	float weight3 = tc.x * tc.y;
- 	float3 viewFrustumVector = 
+ 	float3 viewFrustumVector =
  			weight0 * Recorded_FrustumCorners[0].xyz + weight1 * Recorded_FrustumCorners[1].xyz
  		+   weight2 * Recorded_FrustumCorners[2].xyz + weight3 * Recorded_FrustumCorners[3].xyz
  		;
 
 	float linear0To1Depth = NDCDepthToLinear0To1_Perspective(
-	recordedViewFrustumCoord.z, AsMiniProjZW(Recorded_MinimalProjection));
+		recordedViewFrustumCoord.z, AsMiniProjZW(Recorded_MinimalProjection), Recorded_FarClip);
 	return CalculateWorldPosition(
 		viewFrustumVector, linear0To1Depth,
 		Recorded_WorldSpaceView);
@@ -63,7 +64,7 @@ void WriteQuad(float4 A, float4 B, float4 C, float4 D, uint colorIndex, float3 n
 		output.renderTargetIndex = renderTargetIndex;
 	#endif
 
-		//	Quick backface culling test... 
+		//	Quick backface culling test...
 	float2 a = A.xy / A.w;
 	float2 b = B.xy / B.w;
 	float2 c = C.xy / C.w;
@@ -94,7 +95,7 @@ float4 TransformPosition(float3 position, uint projectionIndex)
 	#if SHADOWS==1
 		return ShadowProjection_GetOutput(position, projectionIndex);
 	#else
-		return mul(WorldToClip, float4(position,1));		
+		return mul(WorldToClip, float4(position,1));
 	#endif
 }
 
@@ -179,11 +180,9 @@ void WriteLine(float4 A, float4 B, uint colorIndex, inout LineStream<GSOutput> o
 	WriteLine(b0, d0, 2, outputStream);
 	WriteLine(d0, c0, 2, outputStream);
 	WriteLine(c0, a0, 2, outputStream);
-	
+
 	WriteLine(a0, a1, 2, outputStream);
 	WriteLine(b0, b1, 2, outputStream);
 	WriteLine(c0, c1, 2, outputStream);
 	WriteLine(d0, d1, 2, outputStream);
 }
-
-

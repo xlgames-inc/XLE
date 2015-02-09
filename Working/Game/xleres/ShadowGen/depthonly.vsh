@@ -58,7 +58,7 @@ VSShadowOutput main(VSInput input)
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 		float3 basePosition = mul(OrthoShadowWorldToProj, float4(worldPosition, 1));
-		result.baseShadowPosition = basePosition;
+		result.position = basePosition;
 		for (uint c=0; c<count; ++c) {
 			float3 cascade = AdjustForCascade(basePosition, c);
 			bool	left	= cascade.x < -1.f,

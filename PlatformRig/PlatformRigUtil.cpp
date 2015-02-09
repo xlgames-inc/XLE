@@ -184,28 +184,21 @@ namespace PlatformRig
         result._mode = ShadowProjectionDesc::Projections::Mode::Ortho;
 
         static const float frustumPower = 3.75f;
-        const float shadowNearPlane = 1.f;
-        const float shadowFarPlane = 2.f * settings._maxDistanceFromLight;  // double because of back-projection
-        const float backProjectionDistance = settings._maxDistanceFromCamera;
+        const float shadowNearPlane = -settings._maxDistanceFromCamera;
+        const float shadowFarPlane = settings._maxDistanceFromCamera;
 
         float t = 0;
         for (unsigned c=0; c<result._count; ++c) { t += std::pow(frustumPower, float(c)); }
 
-        result._definitionProjMatrix = OrthogonalProjection(
-            -1.f, -1.f, 1.f, 1.f, shadowNearPlane, shadowFarPlane,
-            GeometricCoordinateSpace::RightHanded, GetDefaultClipSpaceType());
-
         Float3 cameraPos = ExtractTranslation(mainSceneProjectionDesc._cameraToWorld);
-        Float3 imaginaryLightPosition = cameraPos + backProjectionDistance * lightDesc._negativeLightDirection;
+        Float3 imaginaryLightPosition = cameraPos;
         result._definitionViewMatrix = MakeWorldToLight(lightDesc._negativeLightDirection, imaginaryLightPosition);
-        Float4x4 worldToLightProj = Combine(result._definitionViewMatrix, result._definitionProjMatrix);
+        Float4x4 worldToLightProj = result._definitionViewMatrix;
 
             //  Calculate 4 vectors for the directions of the frustum corners, 
             //  relative to the camera position.
         Float3 frustumCornerDir[4];
         CalculateCameraFrustumCornersDirection(frustumCornerDir, mainSceneProjectionDesc);
-
-        auto basicMinimalProjection = ExtractMinimalProjection(result._definitionProjMatrix);
 
         Float3 allCascadesMins( FLT_MAX,  FLT_MAX,  FLT_MAX);
 		Float3 allCascadesMaxs(-FLT_MAX, -FLT_MAX, -FLT_MAX);
@@ -264,12 +257,11 @@ namespace PlatformRig
 				//	This is so we can capture geometry that is between the light
 				//	and the frustum
 
-            // shadowViewMins[2] = shadowNearPlane;
+            shadowViewMins[2] = shadowNearPlane;
+            shadowViewMaxs[2] = shadowFarPlane;
 
             result._orthoSub[f]._projMins = shadowViewMins;
             result._orthoSub[f]._projMaxs = shadowViewMaxs;
-
-            result._minimalProjection[f] = basicMinimalProjection;
 
             allCascadesMins[0] = std::min(allCascadesMins[0], shadowViewMins[0]);
             allCascadesMins[1] = std::min(allCascadesMins[1], shadowViewMins[1]);
@@ -282,14 +274,14 @@ namespace PlatformRig
         for (unsigned f=0; f<result._count; ++f) {
             result._fullProj[f]._viewMatrix = result._definitionViewMatrix;
 
-            auto projMatrix = result._definitionProjMatrix;
-            auto& mins = result._orthoSub[f]._projMins;
-            auto& maxs = result._orthoSub[f]._projMaxs;
-            for (unsigned c=0; c<3; ++c) {
-                projMatrix(c,c) = 2.f / (maxs[c] - mins[c]);
-                projMatrix(c,3) = -(maxs[c] + mins[c]) / (maxs[c] - mins[c]);
-            }
+            const auto& mins = result._orthoSub[f]._projMins;
+            const auto& maxs = result._orthoSub[f]._projMaxs;
+            Float4x4 projMatrix = OrthogonalProjection(
+                mins[0], mins[1], maxs[0], maxs[1], mins[2], maxs[2],
+                GeometricCoordinateSpace::RightHanded, GetDefaultClipSpaceType());
             result._fullProj[f]._projectionMatrix = projMatrix;
+
+            result._minimalProjection[f] = ExtractMinimalProjection(projMatrix);
         }
 
             //  When building the world to clip matrix, we want some to use some projection
@@ -298,11 +290,10 @@ namespace PlatformRig
             //  orthogonal space that is actually used. We just have to incorporate these
             //  mins and maxs into the projection matrix
 
-        Float4x4 clippingProjMatrix = result._definitionProjMatrix;
-        for (unsigned c=0; c<3; ++c) {
-            clippingProjMatrix(c,c) = 2.f / (allCascadesMaxs[c] - allCascadesMins[c]);
-            clippingProjMatrix(c,3) = -(allCascadesMaxs[c] + allCascadesMins[c]) / (allCascadesMaxs[c] - allCascadesMins[c]);
-        }
+        Float4x4 clippingProjMatrix = OrthogonalProjection(
+            allCascadesMins[0], allCascadesMins[1], allCascadesMaxs[0], allCascadesMaxs[1], 
+            shadowNearPlane, shadowFarPlane,
+            GeometricCoordinateSpace::RightHanded, GetDefaultClipSpaceType());
 
         Float4x4 worldToClip = Combine(result._definitionViewMatrix, clippingProjMatrix);
         return std::make_pair(result, worldToClip);

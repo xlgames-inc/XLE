@@ -378,7 +378,7 @@ namespace SceneEngine
                         if (preparedShadows._mode == ShadowProjectionDesc::Projections::Mode::Ortho && allowOrthoShadowResolve) {
                             boundUniforms = lightingResolveShaders._shadowedDirectionalOrthoLightUniforms.get();
                             context->Bind(*lightingResolveShaders._shadowedDirectionalOrthoLight);
-                        } else if (preparedShadows._mode == ShadowProjectionDesc::Projections::Mode::Arbitrary) {
+                        } else {
                             boundUniforms = lightingResolveShaders._shadowedDirectionalLightUniforms.get();
                             context->Bind(*lightingResolveShaders._shadowedDirectionalLight);
                         }

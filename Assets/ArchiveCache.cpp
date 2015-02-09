@@ -263,6 +263,7 @@ namespace Assets
                     
                     #if defined(_DEBUG)
                         auto originalHeapSize = spanningHeap.CalculateHeapSize();
+                        auto originalAllocatedSize = spanningHeap.CalculateAllocatedSpace();
                     #endif
 
                     i->_pendingCommitPtr = spanningHeap.Allocate(newBlockSize);
@@ -270,7 +271,8 @@ namespace Assets
                         i->_pendingCommitPtr = spanningHeap.AppendNewBlock(newBlockSize);
                     }
 
-                    assert(spanningHeap.CalculateHeapSize() >= (originalHeapSize + newBlockSize));
+                    assert(spanningHeap.CalculateAllocatedSpace() >= (originalAllocatedSize + newBlockSize));
+                    assert(spanningHeap.CalculateHeapSize() >= originalHeapSize);
 
                         // make sure we're not overlapping another block (just to make sure the allocators are working)
                     #if defined(_DEBUG)

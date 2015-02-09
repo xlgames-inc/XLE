@@ -164,16 +164,16 @@ namespace RenderCore
 
         Float4x4 result = Identity<Float4x4>();
         result(0,0) =  2.f / (r-l);
-        result(0,3) =  .5f * (r+l);
+        result(0,3) =  -(r+l) / (r-l);
 
-        result(1,1) =  2.f / (t-b);
-        result(1,3) =  .5f * (t+b);
+        result(1,1) =  2.f / (b-t);
+        result(1,3) =  -(t+b) / (b-t);
 
         if (clipSpaceType == ClipSpaceType::Positive) {
                 //  This is the D3D view of clip space
                 //      0<z/w<1
             result(2,2) =  -1.f / (f-n);            // (note z direction flip here)
-            result(2,3) =   -n / (f-n);
+            result(2,3) =    -n / (f-n);
         } else {
             assert(0);
         }
@@ -341,7 +341,7 @@ namespace RenderCore
             CalculateAbsFrustumCorners(absFrustumCorners, globalTransform._worldToClip);
             for (unsigned c=0; c<4; ++c) {
                 globalTransform._frustumCorners[c] = 
-                    Expand(Float3(absFrustumCorners[c] - globalTransform._worldSpaceView), 1.f);
+                    Expand(Float3(absFrustumCorners[4+c] - globalTransform._worldSpaceView), 1.f);
             }
 
         } else if (constant_expression<cornersMode == FromCameraToWorld>::result()) {
@@ -363,9 +363,10 @@ namespace RenderCore
                 Float3( right,  top, -projDesc._nearClip),
                 Float3( right, -top, -projDesc._nearClip) 
             };
+            float scale = projDesc._farClip / projDesc._nearClip;
             for (unsigned c=0; c<4; ++c) {
                 globalTransform._frustumCorners[c] = 
-                    Expand(TransformDirectionVector(projDesc._cameraToWorld, preTransformCorners[c]), 1.f);
+                    Expand(Float3(TransformDirectionVector(projDesc._cameraToWorld, preTransformCorners[c]) * scale), 1.f);
             }
         }
 

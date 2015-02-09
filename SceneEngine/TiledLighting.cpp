@@ -360,7 +360,7 @@ namespace SceneEngine
                     "game/xleres/deferred/tileddebugging/beams.vsh:main:vs_*", 
                     "game/xleres/deferred/tileddebugging/beams.gsh:main:gs_*", 
                     "game/xleres/deferred/tileddebugging/beams.psh:main:ps_*",
-                    isShadowsPass?"SHADOWS=1":"");
+                    isShadowsPass?"SHADOWS=1;SHADOW_CASCADE_MODE=1":"");    // hack -- SHADOW_CASCADE_MODE let explicitly here
 
                 Metal::BoundUniforms uniforms(debuggingShader);
                 uniforms.BindConstantBuffer(Hash64("RecordedTransform"), 0, 1);

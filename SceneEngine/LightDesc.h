@@ -68,7 +68,6 @@ namespace SceneEngine
             /// projections must match the rotation and skew of other projections.
         OrthoSubProjection  _orthoSub[MaxProjections];
         Float4x4            _definitionViewMatrix;
-        Float4x4            _definitionProjMatrix;
         ///////////////////////////////////////////////////////////////////////
             /// @}
 
