@@ -11,12 +11,13 @@
 #include "../BasicMaterial.h"
 #include "../Lighting/LightingAlgorithm.h"
 #include "../Utility/perlinnoise.h"
+#include "../Colour.h"
 
 Texture2D<float>	CustomTexture;
 Texture2D<float2>	ScratchMap : register(t17);		// high res procedural scratches
 Texture2D<float>	ScratchOccl : register(t18);
 
-PerPixelMaterialParam DecodeParametersTexture(float4 paramTextureSample)
+PerPixelMaterialParam DecodeParametersTexture_RMS(float4 paramTextureSample)
 {
 		//	We're just storing roughness, specular & material
 		//	pixel pixel in this texture. Another option is to
@@ -29,6 +30,39 @@ PerPixelMaterialParam DecodeParametersTexture(float4 paramTextureSample)
 	return result;
 }
 
+PerPixelMaterialParam DecodeParametersTexture_ColoredSpecular(float4 paramTexSample, float4 diffuseSample)
+{
+		// 	Some old textures just have a specular colour in the parameters
+		//	texture. We could do some conversion in a pre-processing step. But
+		//	let's just do a prototype conversion here.
+		//
+		//	If the specular colour is not similar to the diffuse (and particularly if
+		//	the diffuse is dark), then we can take that as a hint of metallicness.
+		//	But this is very rough.
+	float specLength = length(paramTexSample.rgb);
+	float3 specDir = paramTexSample.rgb / specLength;
+	float d = dot(specDir, diffuseSample.rgb);
+	float3 diffuseDiverge = diffuseSample.rgb - d * specDir;
+
+	PerPixelMaterialParam result = PerPixelMaterialParam_Default();
+	result.roughness = .5f;
+	result.specular = SRGBLuminance(paramTexSample.rgb);
+	result.metal = saturate(8.f * dot(diffuseDiverge, diffuseDiverge));
+	return result;
+}
+
+PerPixelMaterialParam DecodeParametersTexture(float4 paramTextureSample, float4 diffuseSample)
+{
+	const uint ParamTextType_RMS = 1;
+	const uint ParamTextType_ColoredSpecular = 2;
+	uint type = ParamTextType_ColoredSpecular;
+	if (type == ParamTextType_RMS) {
+		return DecodeParametersTexture_RMS(paramTextureSample);
+	} else if (type == ParamTextType_ColoredSpecular) {
+		return DecodeParametersTexture_ColoredSpecular(paramTextureSample, diffuseSample);
+	}
+}
+
 #if !((OUTPUT_TEXCOORD==1) && (MAT_ALPHA_TEST==1))
 	[earlydepthstencil]
 #endif
@@ -37,11 +71,12 @@ GBufferEncoded main(VSOutput geo)
 	DoAlphaTest(geo);
 
 	GBufferValues result = GBufferValues_Default();
+	float4 diffuseTextureSample = 1.0.xxxx;
 	#if (OUTPUT_TEXCOORD==1)
 		#if (USE_CLAMPING_SAMPLER_FOR_DIFFUSE==1)
-			float4 diffuseTextureSample = DiffuseTexture.Sample(ClampingSampler, geo.texCoord);
+			diffuseTextureSample = DiffuseTexture.Sample(ClampingSampler, geo.texCoord);
 		#else
-			float4 diffuseTextureSample = DiffuseTexture.Sample(MaybeAnisotropicSampler, geo.texCoord);
+			diffuseTextureSample = DiffuseTexture.Sample(MaybeAnisotropicSampler, geo.texCoord);
 		#endif
 		result.diffuseAlbedo = diffuseTextureSample.rgb;
 		result.blendingAlpha = diffuseTextureSample.a;
@@ -62,12 +97,13 @@ GBufferEncoded main(VSOutput geo)
 		result.blendingAlpha *= Opacity;
 	#endif
 
-	#if (RES_HAS_PARAMETER_MAP==1)
+	#if (RES_HAS_ParametersTexture!=0)
 			// 	We're expecting to find just roughness & specular in our parameter map.
 			//	We can't do colored specular in this way, except by using
 			//	the metal parameter.
 			//	Just using a trilinear sample for this. Anisotropy disabled.
-		result.material = DecodeParametersTexture(ParametersTexture.Sample(DefaultSampler, geo.texCoord));
+		result.material = DecodeParametersTexture(
+			ParametersTexture.Sample(DefaultSampler, geo.texCoord), diffuseTextureSample);
 	#endif
 
 	#if (RES_HAS_CUSTOM_MAP==1)
@@ -135,8 +171,8 @@ GBufferEncoded main(VSOutput geo)
 		#endif
 	}
 
-	#if RES_HAS_NORMAL_MAP && CLASSIFY_NORMAL_MAP
-		#if (RES_HAS_NORMAL_MAP_DXT==1)
+	#if RES_HAS_NormalsTexture && CLASSIFY_NORMAL_MAP
+		#if (RES_HAS_NormalsTexture_DXT==1)
 			result.diffuseAlbedo = float3(1,0,0);
 		#else
 			result.diffuseAlbedo = float3(0,1,0);
@@ -148,9 +184,16 @@ GBufferEncoded main(VSOutput geo)
 		//		an approximation of the variation in the normals used to
 		//		generate each mipmap cell.
 		//
-	#if (RES_HAS_NORMAL_MAP_DXT==1)		// only really valid when using DXT textures (3DX format normals are always unit length)
+	#if (RES_HAS_NormalsTexture_DXT==1)		// only really valid when using DXT textures (3DX format normals are always unit length)
 		result.normalMapAccuracy = dot(result.worldSpaceNormal, result.worldSpaceNormal);
 	#endif
+
+		//	Scale back the material roughness when there's some doubt
+		//	about the normal map accuracy. We want to try to avoid some
+		//	aliasing in the normal map. We can also just fade off the
+		//  roughness values as the mip map value increases.
+	result.material.roughness *= result.normalMapAccuracy;
+
 	return Encode(result);
 }
 

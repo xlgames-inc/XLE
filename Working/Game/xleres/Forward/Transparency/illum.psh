@@ -45,7 +45,7 @@ void OutputFragmentNode(uint2 position, float4 color, float depth)
 		//
 	uint newNodeId = NodesList.IncrementCounter();
 	uint oldNodeId;
-	InterlockedExchange(FragmentIds[position], newNodeId, oldNodeId); 
+	InterlockedExchange(FragmentIds[position], newNodeId, oldNodeId);
 
 	FragmentListNode newNode;
 	newNode.next = oldNodeId;
@@ -63,12 +63,12 @@ static const float3 NegativeLightDirection = float3(SqrtHalf, 0.f, SqrtHalf);
 // {
 // 		// (note -- the 1.f here assumes one side of the interface is air)
 // 	float f0 = Square((1.f - refractiveIndex) / (1.f + refractiveIndex));
-// 
+//
 // 	float A = 1.0f - saturate(dot(viewDirection, halfVector));
 // 	float sq = A*A;
 // 	float cb = sq*sq;
 // 	float q = cb*A;
-// 
+//
 // 	return f0 + (1.f - f0) * q;	// (note, use lerp for this..?)
 // }
 
@@ -76,7 +76,7 @@ float FresnelForReflection_Local(VSOutput geo, float refractiveIndex)
 {
 	float3 localSpaceNormal = normalize(geo.localNormal);
 	float3 localViewDirection = normalize(geo.localViewVector);
-	float3 localSpaceReflection = reflect(-localViewDirection, localSpaceNormal);	
+	float3 localSpaceReflection = reflect(-localViewDirection, localSpaceNormal);
 
 	// float3 halfVector = normalize(NegativeLightDirection + localViewDirection);
 	float3 halfVector = normalize(localSpaceReflection + localViewDirection);
@@ -98,12 +98,6 @@ float FresnelForReflection_World(VSOutput geo, float refractiveIndex)
 // Texture2D ReflectionBox5	: register(t10);
 
 Texture2D SkyReflectionTexture[3] : register(t7);
-
-float SRGBLuminance(float3 rgb)
-{
-	const float3 constants = float3(0.2126f, 0.7152f, 0.0722f);
-	return dot(constants, rgb);
-}
 
 void GlassShader(VSOutput geo)
 {
@@ -132,7 +126,7 @@ void GlassShader(VSOutput geo)
 	float3 worldViewDirection = normalize(geo.worldViewVector);
 	float3 worldSpaceReflection = reflect(-worldViewDirection, worldSpaceNormal);
 	//float4 reflectionLookup = ReadReflectionHemiBox(
-	//	worldSpaceReflection, 
+	//	worldSpaceReflection,
 	//	ReflectionBox12, ReflectionBox34, ReflectionBox5,
 	//	reflectionTextureDims, 4);
 	float2 skyReflectionCoord = HemisphericalMappingCoord(worldSpaceReflection);
@@ -141,8 +135,8 @@ void GlassShader(VSOutput geo)
 
 	// float3 localSpaceNormal = normalize(geo.localNormal);
 	// float3 localViewDirection = normalize(geo.localViewVector);
-	// float3 localSpaceReflection = reflect(-localViewDirection, localSpaceNormal);	
-	// 
+	// float3 localSpaceReflection = reflect(-localViewDirection, localSpaceNormal);
+	//
 	// // float3 halfVector = normalize(NegativeLightDirection + localViewDirection);
 	// float3 halfVector = normalize(localSpaceReflection + localViewDirection);
 	// const float refractiveIndex = 1.05f;
@@ -198,7 +192,7 @@ float4 main(VSOutput geo) : SV_Target
 	result.rgb *= .25f + 0.75f * saturate(dot(GetNormal(geo), NegativeDominantLightDirection));
 
 	// result.a *= 0.65f;
-	
+
 	const float minAlpha =   4.f / 255.f;
 	const float maxAlpha = 254.f / 255.f;
 	if (result.a < minAlpha) {
@@ -224,9 +218,9 @@ float4 main(VSOutput geo) : SV_Target
 
 		float destinationDepth = DuplicateOfDepthBuffer[uint2(geo.position.xy)];
 			// note -- check this -- should this be "geo.position.z / geo.position.w"
-			//			I always forget if the system has already done the perspective divide 
+			//			I always forget if the system has already done the perspective divide
 			//			before passing position to the shader
-		if (geo.position.z >= destinationDepth) {	
+		if (geo.position.z >= destinationDepth) {
 			discard;
 		}
 
@@ -242,4 +236,3 @@ float4 main(VSOutput geo) : SV_Target
 		return 0.0.xxxx;
 	}
 }
-

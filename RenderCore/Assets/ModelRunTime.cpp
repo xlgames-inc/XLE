@@ -57,36 +57,7 @@ namespace RenderCore { namespace Assets
             Float3 _materialSpecular;   float _alphaThreshold;
         };
 
-        class MaterialBindingInfo
-        {
-        public:
-            std::string _shaderName;
-            std::vector<uint8> _constants;
-            SceneEngine::ParameterBox _materialParamBox;
-        };
-
         static const std::string DefaultShader = "illum";
-
-        static MaterialBindingInfo MakeMaterialBindingInfo(const std::string& normalMapTextureName)
-        {
-            MaterialBindingInfo result;
-            result._shaderName = DefaultShader;
-            BasicMaterialConstants constants = { Float3(1.f, 1.f, 1.f), 1.f, Float3(1.f, 1.f, 1.f), 1.f };
-            result._constants = std::vector<uint8>((uint8*)&constants, (uint8*)PtrAdd(&constants, sizeof(BasicMaterialConstants)));
-
-            result._materialParamBox.SetParameter("RES_HAS_NORMAL_MAP", !normalMapTextureName.empty());
-            // result._materialParamBox.SetParameter("MAT_ALPHA_TEST", ??);
-
-                //  We need to decide whether the normal map is "DXT" 
-                //  format or not. This information isn't in the material
-                //  itself; we actually need to look at the texture file
-                //  to see what format it is. Unfortunately that means
-                //  opening the texture file to read it's header. However
-                //  we can accelerate it a bit by caching the result
-            result._materialParamBox.SetParameter("RES_HAS_NORMAL_MAP_DXT", IsDXTNormalMap(normalMapTextureName));
-
-            return result;
-        }
 
         static size_t InsertOrCombine(std::vector<std::vector<uint8>>& dest, std::vector<uint8>&& compare)
         {
@@ -152,9 +123,8 @@ namespace RenderCore { namespace Assets
             file.Read(destination, 1, readSize);
         }
 
-        static const std::string    DefaultNormalsTextureBinding = "NormalsTexture";
-        static const uint64         DefaultNormalsTextureBindingHash = Hash64(
-            AsPointer(DefaultNormalsTextureBinding.cbegin()), AsPointer(DefaultNormalsTextureBinding.cend()));
+        static const auto DefaultNormalsTextureBindingHash = Hash64("NormalsTexture");
+        static const auto DefaultParametersTextureBindingHash = Hash64("ParametersTexture");
     }
 
     ModelRenderer::ModelRenderer(ModelScaffold& scaffold, SharedStateSet& sharedStateSet, const ::Assets::DirectorySearchRules* searchRules, unsigned levelOfDetail)
@@ -213,6 +183,10 @@ namespace RenderCore { namespace Assets
         for (auto i=subMatResources.begin(); i!=subMatResources.end(); ++i) {
 
             std::string boundNormalMapName;
+            std::string shaderName = DefaultShader;
+            SceneEngine::ParameterBox materialParamBox;
+            BasicMaterialConstants basicConstants = { Float3(1.f, 1.f, 1.f), 1.f, Float3(1.f, 1.f, 1.f), 1.f };
+            std::vector<uint8> constants((uint8*)&basicConstants, (uint8*)PtrAdd(&basicConstants, sizeof(basicConstants)));
 
                 //  we need to create a list of all of the texture bind points that are referenced
                 //  by all of the materials used here. They will end up in sorted order
@@ -221,6 +195,7 @@ namespace RenderCore { namespace Assets
                 for (auto i=materialScaffoldData._bindings.cbegin(); i!=materialScaffoldData._bindings.cend(); ++i) {
                     auto bindName = i->_bindHash;
 
+                    materialParamBox.SetParameter((const char*)(StringMeld<64>() << "RES_HAS_" << std::hex << bindName), 1);
                     if (bindName == DefaultNormalsTextureBindingHash) {
                         boundNormalMapName = i->_resourceName;
                     }
@@ -231,12 +206,19 @@ namespace RenderCore { namespace Assets
                 }
             }
 
-                //  create a "material binding" object, and instantiate the low level objects
-                //  associated directly with this material.
-            auto matBinding = MakeMaterialBindingInfo(boundNormalMapName);
-            i->second._shaderName = sharedStateSet.InsertShaderName(matBinding._shaderName);
-            i->second._matParams = sharedStateSet.InsertParameterBox(matBinding._materialParamBox);
-            i->second._constantBuffer = InsertOrCombine(prescientMaterialConstantBuffers, std::move(matBinding._constants));
+            if (!boundNormalMapName.empty()) {
+                    //  We need to decide whether the normal map is "DXT" 
+                    //  format or not. This information isn't in the material
+                    //  itself; we actually need to look at the texture file
+                    //  to see what format it is. Unfortunately that means
+                    //  opening the texture file to read it's header. However
+                    //  we can accelerate it a bit by caching the result
+                materialParamBox.SetParameter("RES_HAS_NormalsTexture_DXT", IsDXTNormalMap(boundNormalMapName));
+            }
+
+            i->second._shaderName = sharedStateSet.InsertShaderName(shaderName);
+            i->second._matParams = sharedStateSet.InsertParameterBox(materialParamBox);
+            i->second._constantBuffer = InsertOrCombine(prescientMaterialConstantBuffers, std::move(constants));
             i->second._texturesIndex = textureSetCount++;
         }
 

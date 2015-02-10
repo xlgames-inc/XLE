@@ -307,13 +307,9 @@ namespace RenderCore { namespace ColladaConversion
         return result;
     }
 
-    static const std::string    DefaultDiffuseTextureBinding = "DiffuseTexture";
-    static const uint64         DefaultDiffuseTextureBindingHash = Hash64(
-        AsPointer(DefaultDiffuseTextureBinding.cbegin()), AsPointer(DefaultDiffuseTextureBinding.cend()));
 
-    static const std::string    DefaultNormalsTextureBinding = "NormalsTexture";
-    static const uint64         DefaultNormalsTextureBindingHash = Hash64(
-        AsPointer(DefaultNormalsTextureBinding.cbegin()), AsPointer(DefaultNormalsTextureBinding.cend()));
+    static const auto DefaultDiffuseTextureBindingHash = Hash64("DiffuseTexture");
+    static const auto DefaultNormalsTextureBindingHash = Hash64("NormalsTexture");
 
     static void AddBoundTexture( 
         const COLLADAFW::Effect* effect, unsigned commonEffectIndex,

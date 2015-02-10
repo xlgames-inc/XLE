@@ -82,7 +82,7 @@ float Material_GetSpecularScale1(GBufferValues gbuffer)
 float Material_GetReflectionScale(GBufferValues gbuffer)
 {
     if (UseMaterialOverride) { return MO_ReflectionsScale; }
-    else { return 1.f; }
+    else { return .5f; }
 }
 
 float Material_GetReflectionBoost(GBufferValues gbuffer)

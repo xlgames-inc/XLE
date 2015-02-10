@@ -7,10 +7,12 @@
 #define OUTPUT_TEXCOORD 1
 #define VSOUTPUT_EXTRA float2 dhdxy : DHDXY;
 
+#define GBUFFER_TYPE 1	// hack -- (not being set by the client code currently)
+
 //
 //	This is the basic LOD behaviour for terrain in XLE
 //		-- note that it's still in a very initial stage, and it's a bit experimental!
-//	
+//
 
 #include "TerrainGenerator.h"
 #include "../Transform.h"
@@ -71,7 +73,7 @@ PatchInputControlPoint vs_dyntess_main(uint vertexIndex : SV_VertexId)
 	int y = vertexIndex / 2;
 	uint rawHeightValue = HeightsTileSet.Load(
 		int4(HeightMapOrigin.xy + int2(x,y) * (TileDimensionsInVertices-OverlapTexels), HeightMapOrigin.z, 0));
-	
+
 	float3 localPosition;
 	localPosition.x		 = float(x);
 	localPosition.y		 = float(y);
@@ -117,7 +119,7 @@ float CalculateDoubleScreenSpaceEdgeLength(float3 e0, float3 e1)
 	// return CalculateScreenSpaceEdgeLength(lerp(e1, e0, 2.f), e1);
 }
 
-uint RemapEdgeIndex(uint hsEdgeIndex) 
+uint RemapEdgeIndex(uint hsEdgeIndex)
 {
 	if (hsEdgeIndex == 0) { return 3; }
 	if (hsEdgeIndex == 1) { return 0; }
@@ -130,7 +132,7 @@ uint RemapEdgeIndex(uint hsEdgeIndex)
 	//			-- this is run once per patch. It calculates values that are constant
 	//				over the entire patch
 	//
-HS_ConstantOutput PatchConstantFunction( 
+HS_ConstantOutput PatchConstantFunction(
     InputPatch<PatchInputControlPoint, ControlPointCount> ip,
     uint PatchID : SV_PrimitiveID)
 {
@@ -156,9 +158,9 @@ HS_ConstantOutput PatchConstantFunction(
 
 	for (uint c=0; c<4; ++c) {
 			//	Here, we calculate the amount of tessellation for the terrain edge
-			//	This is the most important algorithm for terrain. 
+			//	This is the most important algorithm for terrain.
 			//
-			//	The current method is just a simple solution. Most of time we might 
+			//	The current method is just a simple solution. Most of time we might
 			//	need something more sophisticated.
 			//
 			//	In particular, we want to try to detect edges that are most likely
@@ -166,7 +168,7 @@ HS_ConstantOutput PatchConstantFunction(
 			//	that don't need a lot of detail... But another area might have rocky
 			//	detail with sharp edges -- that type of geometry needs much more detail.
 			//
-			//	Note that this method is currently producing the wrong results for 
+			//	Note that this method is currently producing the wrong results for
 			//	tiles that straddle the near clip plane! This can make geometry near
 			//	the camera swim around a bit.
 		float2 startS	= screenPts[edgeStartPts[c]];
@@ -178,9 +180,9 @@ HS_ConstantOutput PatchConstantFunction(
 			//	vertices in near geometry when we need it.
 		float screenSpaceLength = length(startS - endS);
 		output.Edges[c] = clamp(
-			screenSpaceLength * mult, 
+			screenSpaceLength * mult,
 			MinTessellation, (DO_EXTRA_SMOOTHING==1)?(2*MaxTessellation):(MaxTessellation));
-		
+
 			// On the LOD interface boundaries, we need to lock the tessellation
 			// amounts to something predictable
 		const float lodBoundaryTess = MaxTessellation;
@@ -193,7 +195,7 @@ HS_ConstantOutput PatchConstantFunction(
 
 		//	Could use min, max or average edge
 		//	Note that when there are large variations between edge tessellation and
-		//	inside tessellation, it can cause some wierd artefacts. We need to be 
+		//	inside tessellation, it can cause some wierd artefacts. We need to be
 		//	careful about that.
 	// output.Inside[0] = min(output.Edges[1], output.Edges[3]);	// v==0 && v==1 edges
 	// output.Inside[1] = min(output.Edges[0], output.Edges[2]);	// u==0 && u==1 edges
@@ -217,8 +219,8 @@ struct PatchOutputControlPoint
 [patchconstantfunc("PatchConstantFunction")]
 [outputcontrolpoints(4)]
 [maxtessfactor(MaxTessellation)]
-PatchOutputControlPoint hs_main( 
-    InputPatch<PatchInputControlPoint, ControlPointCount> ip, 
+PatchOutputControlPoint hs_main(
+    InputPatch<PatchInputControlPoint, ControlPointCount> ip,
     uint i : SV_OutputControlPointID,
     uint PatchID : SV_PrimitiveID )
 {
@@ -256,8 +258,8 @@ float EvaluateCubicCurve(float pm0, float p0, float p1, float p2, float t)
 	float m0 = .5f * (p1 - pm0);		// catmull rom tangent values
 	float m1 = .5f * (p2 - p0);
 	return
-		  p0 * (1 - 3.f * t2 + 2.f * t3) 
-		+ p1 * (3.f * t2 - 2.f * t3) 
+		  p0 * (1 - 3.f * t2 + 2.f * t3)
+		+ p1 * (3.f * t2 - 2.f * t3)
 		+ m0 * (t - 2.f * t2 + t3)
 		+ m1 * (-t2 + t3);
 }
@@ -313,12 +315,12 @@ float CustomSample(float2 UV, int interpolationQuality)
 			//		that defines 4 control points
 			//		- make a new vertical curve along those control points
 			//		evaluate that curve at the UV.y position
-		
+
 		float A   = (float)HeightsTileSet.Load(int4(minTexelCorner + int2(0,0), HeightMapOrigin.z, 0));
 		float B   = (float)HeightsTileSet.Load(int4(minTexelCorner + int2(1,0), HeightMapOrigin.z, 0));
 		float C   = (float)HeightsTileSet.Load(int4(minTexelCorner + int2(0,1), HeightMapOrigin.z, 0));
 		float D   = (float)HeightsTileSet.Load(int4(minTexelCorner + int2(1,1), HeightMapOrigin.z, 0));
-		
+
 		float t0  = (float)HeightsTileSet.Load(int4( T0(minTexelCorner), HeightMapOrigin.z, 0));
 		float t1  = (float)HeightsTileSet.Load(int4( T1(minTexelCorner), HeightMapOrigin.z, 0));
 		float t2  = (float)HeightsTileSet.Load(int4( T2(minTexelCorner), HeightMapOrigin.z, 0));
@@ -367,7 +369,7 @@ float CustomSample(float2 UV, int interpolationQuality)
 
 		// quick hack to get normal values for the terrain
 		//		-- find height values from the source height map
-		//			and extract dhdx and dhdy from that 
+		//			and extract dhdx and dhdy from that
 		//		Inside CustomSample, there are many extra interpolation
 		//		steps -- that makes it a little inefficient
 		//
@@ -406,7 +408,7 @@ float CustomSample(float2 UV, int interpolationQuality)
 		float u2w = (1.f - UV.x) * (      UV.y);
 		float u3w = (      UV.x) * (      UV.y);
 
-		worldPosition = 
+		worldPosition =
 			  u0w * inputPatch[0].worldPosition
 			+ u1w * inputPatch[1].worldPosition
 			+ u2w * inputPatch[2].worldPosition
@@ -415,7 +417,7 @@ float CustomSample(float2 UV, int interpolationQuality)
 	}
 
 	float4 clipPosition  = mul( WorldToClip, float4(worldPosition, 1));
-	
+
 	VSOutput output;
 	output.position = clipPosition;
 	output.texCoord = UV.xy;
@@ -425,7 +427,7 @@ float CustomSample(float2 UV, int interpolationQuality)
 		// output height derivatives from domain shader (instead of normals
 		//		-- because they will go through the linear interpolators
 		//		much better than normals)
-	output.dhdxy = float2(dhdx, dhdy);	
+	output.dhdxy = float2(dhdx, dhdy);
 	return output;
 }
 
@@ -466,7 +468,7 @@ float edgeFactor2( float2 coords, float width )
 	//
 	//	Each has entries in the diffuse albedo, normals and specularity textures
 	//	We separate diffuse, normals and specularity into differnt arrays so they can have different
-	//	pixel formats and dimensions. But this storage mode does mean that every texture of the same 
+	//	pixel formats and dimensions. But this storage mode does mean that every texture of the same
 	//	type must agree on both pixel format and dimensions. We can get around that by converting the
 	//	array into some kind of large texture atlas (like a mega-texture type thing). That would also
 	//	work better for streaming mip maps.
@@ -494,12 +496,6 @@ cbuffer TexturingParameters : register(b5)
 	float4 TextureFrequency[StrataCount];
 }
 
-float Luminance(float3 colour)
-{
-	const float3 componentWeights = float3(0.299f, .587f, .114f);
-	return sqrt(dot(componentWeights, colour*colour));
-}
-
 ProceduralTextureOutput GetTextureForStrata(uint strataIndex, float3 worldPosition, float slopeFactor, float2 textureCoord, float noiseValue0)
 {
 	float2 tc0 = worldPosition.xy * TextureFrequency[strataIndex].xx;
@@ -513,11 +509,11 @@ ProceduralTextureOutput GetTextureForStrata(uint strataIndex, float3 worldPositi
 
 	float3 A = StrataDiffuse.Sample(MaybeAnisotropicSampler, float3(tc0, strataIndex*3+0)).rgb;
 	float3 An = StrataNormals.Sample(MaybeAnisotropicSampler, float3(tc0, strataIndex*3+0)).rgb;
-	float As = Luminance(StrataSpecularity.Sample(MaybeAnisotropicSampler, float3(tc0, strataIndex*3+0)).rgb);
+	float As = SRGBLuminance(StrataSpecularity.Sample(MaybeAnisotropicSampler, float3(tc0, strataIndex*3+0)).rgb);
 
 	float3 B = StrataDiffuse.Sample(MaybeAnisotropicSampler, float3(tc1, strataIndex*3+1)).rgb;
 	float3 Bn = StrataNormals.Sample(MaybeAnisotropicSampler, float3(tc1, strataIndex*3+1)).rgb;
-	float Bs = Luminance(StrataSpecularity.Sample(MaybeAnisotropicSampler, float3(tc1, strataIndex*3+1)).rgb);
+	float Bs = SRGBLuminance(StrataSpecularity.Sample(MaybeAnisotropicSampler, float3(tc1, strataIndex*3+1)).rgb);
 
 	float alpha = saturate(.5f + .7f * noiseValue0);
 	// alpha = min(1.f, exp(32.f * (alpha-.5f)));
@@ -530,7 +526,7 @@ ProceduralTextureOutput GetTextureForStrata(uint strataIndex, float3 worldPositi
 		// soft darkening based on slope give a curiously effective approximation of ambient occlusion
 	float3 S = .25f * StrataDiffuse.Sample(MaybeAnisotropicSampler, float3(tcS0, strataIndex*3+2)).rgb;
 	float3 Sn = StrataNormals.Sample(MaybeAnisotropicSampler, float3(tcS0, strataIndex*3+2)).rgb;
-	float3 Ss = Luminance(StrataSpecularity.Sample(MaybeAnisotropicSampler, float3(tcS0, strataIndex*3+2)).rgb);
+	float3 Ss = SRGBLuminance(StrataSpecularity.Sample(MaybeAnisotropicSampler, float3(tcS0, strataIndex*3+2)).rgb);
 
 	float slopeAlpha = pow(min(1,slopeFactor/5.f), 0.25f);
 	ProceduralTextureOutput result;
@@ -552,7 +548,7 @@ ProceduralTextureOutput BuildProceduralTextureValue(float3 worldPosition, float 
 	float noiseValue0 = fbmNoise2D(worldPosition.xy, 225.f, .65f, 2.1042, 4);
 	noiseValue0 += .5f * fbmNoise2D(worldPosition.xy, 33.7f, .75f, 2.1042, 4);
 	noiseValue0 = clamp(noiseValue0, -1.f, 1.f);
-	
+
 	float worldSpaceHeight = worldPosition.z - 25.f * noiseValue0; //  - 18.23f * noiseValue1;
 	uint strataBase0 = StrataCount-1, strataBase1 = StrataCount-1;
 	float strataAlpha = 0.f;
@@ -624,14 +620,14 @@ TerrainPixel CalculateTerrain(SW_GStoPS geo)
 	result.rgb = procTexture.diffuseAlbedo.rgb;
 
 	#if DRAW_WIREFRAME==1
-		float patchEdge = 1.0f - edgeFactor2(frac(geo.texCoord), 5.f).xxx; 
+		float patchEdge = 1.0f - edgeFactor2(frac(geo.texCoord), 5.f).xxx;
 		uint edgeIndex = GetEdgeIndex(geo.texCoord);
 		float3 lineColour = lerp(1.0.xxx, (NeighbourLodDiffs[edgeIndex]==0?float3(0,1,0):float3(1,0,0)), patchEdge);
 		result.rgb = lerp(lineColour, result.rgb, edgeFactor(geo.barycentricCoords));
 	#endif
 
 		//	calculate the normal from the input derivatives
-		//	because of the nature of terrain, we can make 
+		//	because of the nature of terrain, we can make
 		//	some simplifying assumptions.
 	float3 uaxis = float3(1.0f, 0.f, geo.dhdxy.x);
 	float3 vaxis = float3(0.0f, 1.f, geo.dhdxy.y);
@@ -642,12 +638,12 @@ TerrainPixel CalculateTerrain(SW_GStoPS geo)
 		+ procTexture.tangentSpaceNormal.y * vaxis
 		+ procTexture.tangentSpaceNormal.z * normal);
 
-	float emulatedAmbientOcclusion = lerp(0.5f, 1.f, Luminance(result.rgb));
+	float emulatedAmbientOcclusion = lerp(0.5f, 1.f, SRGBLuminance(result.rgb));
 
 	TerrainPixel output;
 	output.diffuseAlbedo = result;
 	output.worldSpaceNormal = deformedNormal;
-	output.specularity = procTexture.specularity;
+	output.specularity = .125f * procTexture.specularity;
 	output.cookedAmbientOcclusion = shadowing * emulatedAmbientOcclusion;
 	return output;
 }
@@ -656,12 +652,11 @@ TerrainPixel CalculateTerrain(SW_GStoPS geo)
 GBufferEncoded ps_main(SW_GStoPS geo)
 {
 	TerrainPixel p = CalculateTerrain(geo);
-	GBufferValues output;
+	GBufferValues output = GBufferValues_Default();
 	output.diffuseAlbedo = p.diffuseAlbedo;
 	output.worldSpaceNormal = p.worldSpaceNormal;
-	output.blendingAlpha = 1.f;
-	output.reflectivity = p.specularity;
-	output.normalMapAccuracy = 1.f;
+	output.material.specular = p.specularity;
+	output.material.roughness = 0.8f;
 	output.cookedAmbientOcclusion = p.cookedAmbientOcclusion;
 	return Encode(output);
 }
@@ -694,7 +689,7 @@ float RayVsTriangle(float3 rayStart, float3 rayEnd, float3 inputTriangle[3], out
 		//		between the ray and that plane. Then test to see if the intersection
 		//		point is within the triangle (or on an edge).
 		//
-	
+
 	float3 triangleNormal = normalize(cross(inputTriangle[1] - inputTriangle[0], inputTriangle[2] - inputTriangle[0]));
 	float planeW = dot(inputTriangle[0], triangleNormal);
 
@@ -707,7 +702,7 @@ float RayVsTriangle(float3 rayStart, float3 rayEnd, float3 inputTriangle[3], out
 	float3 intersectionPt = lerp(rayStart, rayEnd, alpha);
 
 		//	look to see if this point is contained within the triangle
-		//	we'll use barycentric coordinates (because that's useful for 
+		//	we'll use barycentric coordinates (because that's useful for
 		//	the caller later)
 	float3 v0 = inputTriangle[1] - inputTriangle[0], v1 = inputTriangle[2] - inputTriangle[0], v2 = intersectionPt - inputTriangle[0];
     float d00 = dot(v0, v0);
@@ -750,12 +745,12 @@ float RayVsTriangle(float3 rayStart, float3 rayEnd, float3 inputTriangle[3], out
 		float3 barycentric;
 		float intersection = RayVsTriangle(RayStart, RayEnd, testingTriangle, barycentric);
 		if (intersection >= 0.f && intersection < 1.f) {
-			float2 surfaceCoordinates = 
+			float2 surfaceCoordinates =
 				  barycentric.x * input[0].texCoord
 				+ barycentric.y * input[1].texCoord
 				+ barycentric.z * input[2].texCoord
 				;
-				
+
 			IntersectionResult intersectionResult;
 			intersectionResult._intersectionDistanceAndCoords = float4(
 				intersection, surfaceCoordinates.x, surfaceCoordinates.y, 1.f);
@@ -771,6 +766,3 @@ float RayVsTriangle(float3 rayStart, float3 rayEnd, float3 inputTriangle[3], out
 		// intersectionHits.Append(temp);
 	#endif
 }
-
-
-

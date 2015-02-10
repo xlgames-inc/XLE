@@ -3,8 +3,9 @@ Illum
         Geometry
             GEO_HAS_TEXCOORD
             GEO_HAS_TANGENT_FRAME
-            RES_HAS_NORMAL_MAP
-            RES_HAS_NORMAL_MAP_DXT
+            RES_HAS_bfbf327ee9403009
+            RES_HAS_c3a97fd4218f2a04
+            RES_HAS_NormalsTexture_DXT
         GlobalEnvironment
             AUTO_COTANGENT
             PREFER_ANISOTROPIC
@@ -41,8 +42,9 @@ Deferred
         Geometry
             GEO_HAS_TEXCOORD
             GEO_HAS_TANGENT_FRAME
-            RES_HAS_NORMAL_MAP
-            RES_HAS_NORMAL_MAP_DXT
+            RES_HAS_bfbf327ee9403009
+            RES_HAS_c3a97fd4218f2a04
+            RES_HAS_NormalsTexture_DXT
         GlobalEnvironment
             AUTO_COTANGENT
             PREFER_ANISOTROPIC
@@ -88,8 +90,9 @@ OrderIndependentTransparency
         Geometry
             GEO_HAS_TEXCOORD
             GEO_HAS_TANGENT_FRAME
-            RES_HAS_NORMAL_MAP
-            RES_HAS_NORMAL_MAP_DXT
+            RES_HAS_bfbf327ee9403009
+            RES_HAS_c3a97fd4218f2a04
+            RES_HAS_NormalsTexture_DXT
             OUTPUT_LOCAL_NORMAL
                 1
             OUTPUT_LOCAL_VIEW_VECTOR

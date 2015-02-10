@@ -68,7 +68,7 @@ GBufferEncoded main(VSOutput geo)
 		//		an approximation of the variation in the normals used to
 		//		generate each mipmap cell.
 		//
-	#if RES_HAS_NORMAL_MAP_DXT==1		// only really valid when using DXT textures (3DX format normals are always unit length)
+	#if RES_HAS_NormalsTexture_DXT==1		// only really valid when using DXT textures (3DX format normals are always unit length)
 		result.normalMapAccuracy = dot(result.worldSpaceNormal, result.worldSpaceNormal);
 	#endif
 	return Encode(result);

@@ -472,7 +472,7 @@ namespace RenderCore { namespace Assets { namespace Simple
 
                     // build a material parameter box and look for it in our list
                 SceneEngine::ParameterBox materialParamBox;
-                materialParamBox.SetParameter("RES_HAS_NORMAL_MAP", !normalMapTextureName.empty());
+                materialParamBox.SetParameter("RES_HAS_bfbf327ee9403009", !normalMapTextureName.empty());
                 if (subMaterial && subMaterial->_alphaThreshold < 1.f) {
                     materialParamBox.SetParameter("MAT_ALPHA_TEST", 1);
                 }
@@ -483,7 +483,7 @@ namespace RenderCore { namespace Assets { namespace Simple
                     //  to see what format it is. Unfortunately that means
                     //  opening the texture file to read it's header. However
                     //  we can accelerate it a bit by caching the result
-                materialParamBox.SetParameter("RES_HAS_NORMAL_MAP_DXT", IsDXTNormalMap(normalMapTextureName));
+                materialParamBox.SetParameter("RES_HAS_NormalsTexture_DXT", IsDXTNormalMap(normalMapTextureName));
 
                 materialIdToMaterialParameterBox.push_back(
                     std::make_pair(d->_subMaterialIndex, 

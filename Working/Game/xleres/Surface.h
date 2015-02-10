@@ -210,15 +210,15 @@ float3 LocalToWorldUnitVector(float3 localSpaceVector)
 
 float3 GetNormal(VSOutput geo)
 {
-    #if defined(RES_HAS_NORMAL_MAP_DXT)
-        bool dxtNormalMap = RES_HAS_NORMAL_MAP_DXT==1;
+    #if defined(RES_HAS_NormalsTexture_DXT)
+        bool dxtNormalMap = RES_HAS_NormalsTexture_DXT==1;
     #else
         bool dxtNormalMap = false;
     #endif
 
 	#if OUTPUT_TANGENT_FRAME==1
 	
-		#if (RES_HAS_NORMAL_MAP==1) && (OUTPUT_TEXCOORD==1)
+		#if (RES_HAS_NormalsTexture==1) && (OUTPUT_TEXCOORD==1)
             return NormalMapAlgorithm(
                 NormalsTexture, DefaultSampler, dxtNormalMap, 
                 geo.texCoord, BuildTangentFrameFromGeo(geo));
@@ -228,7 +228,7 @@ float3 GetNormal(VSOutput geo)
 
     #elif OUTPUT_LOCAL_TANGENT_FRAME==1
 
-        #if (RES_HAS_NORMAL_MAP==1) && (OUTPUT_TEXCOORD==1)
+        #if (RES_HAS_NormalsTexture==1) && (OUTPUT_TEXCOORD==1)
             float3 localNormal = NormalMapAlgorithm(
                 NormalsTexture, DefaultSampler, dxtNormalMap, 
                 geo.texCoord, BuildLocalTangentFrameFromGeo(geo));
@@ -242,14 +242,14 @@ float3 GetNormal(VSOutput geo)
 			return normalize(mul(GetLocalToWorldUniformScale(), BuildLocalTangentFrameFromGeo(geo).normal));
 		#endif
 		
-	#elif (OUTPUT_NORMAL==1) && (RES_HAS_NORMAL_MAP==1) && (OUTPUT_TEXCOORD==1) && (OUTPUT_WORLD_VIEW_VECTOR==1)
+	#elif (OUTPUT_NORMAL==1) && (RES_HAS_NormalsTexture==1) && (OUTPUT_TEXCOORD==1) && (OUTPUT_WORLD_VIEW_VECTOR==1)
 
 	    float3x3 normalsTextureToWorld = AutoCotangentFrame(normalize(geo.normal), GetWorldViewVector(geo), geo.texCoord);
 		float3 normalTextureSample = SampleNormalMap(NormalsTexture, DefaultSampler, dxtNormalMap, geo.texCoord);
 			// Note -- matrix multiply opposite from normal (so we can initialise normalsTextureToWorld easily)
 		return mul(normalTextureSample, normalsTextureToWorld);
 
-    #elif (OUTPUT_LOCAL_NORMAL==1) && (RES_HAS_NORMAL_MAP==1) && (OUTPUT_TEXCOORD==1) && (OUTPUT_LOCAL_VIEW_VECTOR==1)
+    #elif (OUTPUT_LOCAL_NORMAL==1) && (RES_HAS_NormalsTexture==1) && (OUTPUT_TEXCOORD==1) && (OUTPUT_LOCAL_VIEW_VECTOR==1)
 
 		float3x3 normalsTextureToWorld = AutoCotangentFrame(normalize(geo.localNormal), GetLocalViewVector(geo), geo.texCoord);
 		float3 normalTextureSample = SampleNormalMap(NormalsTexture, DefaultSampler, dxtNormalMap, geo.texCoord);

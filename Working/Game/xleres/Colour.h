@@ -18,4 +18,10 @@ static const bool ShadowsPerspectiveProjection = false;
 
 float4 ByteColor(uint r, uint g, uint b, uint a) { return float4(r/float(0xff), g/float(0xff), b/float(0xff), a/float(0xff)); }
 
+float SRGBLuminance(float3 rgb)
+{
+    const float3 constants = float3(0.2126f, 0.7152f, 0.0722f);
+    return dot(constants, rgb);
+}
+
 #endif

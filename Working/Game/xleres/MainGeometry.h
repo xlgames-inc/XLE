@@ -74,7 +74,7 @@ struct VSInput //////////////////////////////////////////////////////
     #endif
 }; //////////////////////////////////////////////////////////////////
 
-#if (MAT_DO_PARTICLE_LIGHTING==1) && (GEO_HAS_TEXCOORD==1) && (RES_HAS_NORMAL_MAP==1)
+#if (MAT_DO_PARTICLE_LIGHTING==1) && (GEO_HAS_TEXCOORD==1) && (RES_HAS_NormalsTexture==1)
     #undef OUTPUT_TANGENT_FRAME
     #define OUTPUT_TANGENT_FRAME 1
 

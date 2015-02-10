@@ -243,6 +243,8 @@ float CalculateFilteredShadows(
 	}
 }
 
+static const bool DoShadowFiltering = true;
+
 float ResolveShadows(	uint projection, float2 shadowTexCoord, float comparisonDistance,
 						int2 randomizerValue, uint msaaSampleIndex)
 {
@@ -255,7 +257,7 @@ float ResolveShadows(	uint projection, float2 shadowTexCoord, float comparisonDi
 		//	of depth ranges.
 		//	With perspective projection, it is more expensive than biasing in NDC depth space.
 		//	But with orthogonal shadows, it should be very similar
-	const float ShadowBiasWorldSpace = 0.05f;
+	const float ShadowBiasWorldSpace = 0.005f;
 	MiniProjZW miniP = AsMiniProjZW(ShadowProjection_GetMiniProj(projection));
 	if (shadowsPerspectiveProj) {
 		float worldSpaceDepth = NDCDepthToWorldSpace_Perspective(comparisonDistance, miniP);
@@ -278,9 +280,13 @@ float ResolveShadows(	uint projection, float2 shadowTexCoord, float comparisonDi
 		casterDistance = NDCDepthDifferenceToWorldSpace_Ortho(casterDistance, miniP);
 	}
 
-	return CalculateFilteredShadows(
-		shadowTexCoord, biasedDepth, projection, casterDistance, randomizerValue,
-		ShadowProjection_GetMiniProj(projection).xy, msaaSampleIndex);
+	if (DoShadowFiltering) {
+		return CalculateFilteredShadows(
+			shadowTexCoord, biasedDepth, projection, casterDistance, randomizerValue,
+			ShadowProjection_GetMiniProj(projection).xy, msaaSampleIndex);
+	} else {
+		return TestShadow(shadowTexCoord, projection, biasedDepth);
+	}
 }
 
 float ResolveShadows_Cascade(uint cascadeIndex, float4 cascadeNormCoords, int2 randomizerValue, uint msaaSampleIndex)
@@ -320,9 +326,14 @@ float ResolvePointLightShadows(float3 worldPosition, int2 randomizerValue, uint 
 	float comparisonDistance = frustumCoordinates.z / frustumCoordinates.w;
 	float biasedDepth = comparisonDistance - 0.0005f;
 	float casterDistance = CalculateShadowCasterDistance(texCoords, comparisonDistance, c, msaaSampleIndex, DitherPatternValue(randomizerValue));
-	return CalculateFilteredShadows(
-		texCoords, biasedDepth, c, casterDistance, randomizerValue,
-		ShadowProjection_GetMiniProj(c).xy*sampleScale, msaaSampleIndex);
+
+	if (DoShadowFiltering) {
+		return CalculateFilteredShadows(
+			texCoords, biasedDepth, c, casterDistance, randomizerValue,
+			ShadowProjection_GetMiniProj(c).xy*sampleScale, msaaSampleIndex);
+	} else {
+		return TestShadow(texCoords, c, biasedDepth);
+	}
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////

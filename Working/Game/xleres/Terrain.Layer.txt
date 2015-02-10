@@ -17,7 +17,8 @@ Illum
             GEO_HAS_TEXCOORD
             GEO_HAS_NORMAL
             GEO_HAS_TANGENT_FRAME
-            RES_HAS_NORMAL_MAP
+            RES_HAS_bfbf327ee9403009
+            RES_HAS_c3a97fd4218f2a04
             GEO_V_NORMAL_UNSIGNED
                 1
     VertexShader
@@ -33,7 +34,8 @@ Deferred
             GEO_HAS_TEXCOORD
             GEO_HAS_NORMAL
             GEO_HAS_TANGENT_FRAME
-            RES_HAS_NORMAL_MAP
+            RES_HAS_bfbf327ee9403009
+            RES_HAS_c3a97fd4218f2a04
             GEO_V_NORMAL_UNSIGNED
                 1
         GlobalEnvironment

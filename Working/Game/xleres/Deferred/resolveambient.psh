@@ -85,14 +85,13 @@ float3 CalculateSkyReflections(GBufferValues sample, float3 viewDirection, float
 
 	float roughness = Material_GetRoughness(sample);
 	float metal = Material_GetMetal(sample);
+	float specular = Material_GetSpecular0(sample);
 
 	float3 reflSampl = ReadSkyTexture(worldSpaceReflection, roughness);
 	reflSampl = SRGBToLinear(reflSampl);
 	reflSampl += Material_GetReflectionBoost(sample).xxx;
-	// reflSampl *= 3.f;		// hack -- heighten dynamic range a bit
-	// reflSampl += 0.2f;
-	// float3 reflSampl = pow(saturate(dot(worldSpaceReflection, float3(0.f, 0.f, 1.f))), 64.f).xxx;
-	return reflSampl * lerp(1.0.xxx, specularColor, metal) * (fresnel * sample.cookedAmbientOcclusion);
+
+	return reflSampl * lerp(1.0.xxx, specularColor, metal) * (specular * fresnel * sample.cookedAmbientOcclusion);
 }
 
 /////////////////////////////////////////
