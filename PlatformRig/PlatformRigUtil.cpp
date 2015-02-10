@@ -65,12 +65,15 @@ namespace PlatformRig
     {
         static unsigned frustumCount = 5;
         static bool arbitraryCascades = false;
-        static float maxDistanceFromLight = 1000.f;
         static float maxDistanceFromCamera = 1000.f;
+        static float frustumSizeFactor = 3.25f;
+        static float focusDistance = 3.f;
+
         _frustumCount = frustumCount;
         _arbitraryCascades = arbitraryCascades;
-        _maxDistanceFromLight = maxDistanceFromLight;
         _maxDistanceFromCamera = maxDistanceFromCamera;
+        _frustumSizeFactor = frustumSizeFactor;
+        _focusDistance = focusDistance;
     }
 
     static Float4x4 MakeWorldToLight(
@@ -91,7 +94,7 @@ namespace PlatformRig
         ShadowProjectionDesc::Projections result;
 
         const float shadowNearPlane = 1.f;
-        const float shadowFarPlane = settings._maxDistanceFromLight;
+        const float shadowFarPlane = settings._maxDistanceFromCamera;
         static float shadowWidthScale = 3.f;
         static float projectionSizePower = 3.75f;
         float shadowProjectionDist = shadowFarPlane - shadowNearPlane;
@@ -178,16 +181,15 @@ namespace PlatformRig
         result._count = settings._frustumCount;
         result._mode = ShadowProjectionDesc::Projections::Mode::Ortho;
 
-        static const float frustumPower = 3.75f;
         const float shadowNearPlane = -settings._maxDistanceFromCamera;
         const float shadowFarPlane = settings._maxDistanceFromCamera;
 
         float t = 0;
-        for (unsigned c=0; c<result._count; ++c) { t += std::pow(frustumPower, float(c)); }
+        for (unsigned c=0; c<result._count; ++c) { t += std::pow(settings._frustumSizeFactor, float(c)); }
 
         Float3 cameraPos = ExtractTranslation(mainSceneProjectionDesc._cameraToWorld);
-        Float3 imaginaryLightPosition = cameraPos;
-        result._definitionViewMatrix = MakeWorldToLight(lightDesc._negativeLightDirection, imaginaryLightPosition);
+        Float3 focusPoint = cameraPos + settings._focusDistance * ExtractForward(mainSceneProjectionDesc._cameraToWorld);
+        result._definitionViewMatrix = MakeWorldToLight(lightDesc._negativeLightDirection, focusPoint);
         Float4x4 worldToLightProj = result._definitionViewMatrix;
 
             //  Calculate 4 vectors for the directions of the frustum corners, 
@@ -202,7 +204,7 @@ namespace PlatformRig
 		for (unsigned f=0; f<result._count; ++f) {
 
 			float camNearPlane = distanceFromCamera;
-			distanceFromCamera += std::pow(frustumPower, float(f)) * settings._maxDistanceFromCamera / t;
+			distanceFromCamera += std::pow(settings._frustumSizeFactor, float(f)) * settings._maxDistanceFromCamera / t;
 			float camFarPlane = distanceFromCamera;
 
                 //  Find the frustum corners for this part of the camera frustum,

@@ -50,8 +50,9 @@ namespace PlatformRig
     public:
         unsigned    _frustumCount;
         bool        _arbitraryCascades;
-        float       _maxDistanceFromLight;
         float       _maxDistanceFromCamera;
+        float       _frustumSizeFactor;
+        float       _focusDistance;
         DefaultShadowFrustumSettings();
     };
 
