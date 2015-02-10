@@ -197,7 +197,8 @@ namespace SceneEngine
         using namespace BufferUploads;
         auto bufferUploadsDesc = BuildRenderTargetDesc(
             BindFlag::ShaderResource|BindFlag::RenderTarget,
-            BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, AsDXGIFormat(desc._format)));
+            BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, AsDXGIFormat(desc._format)),
+            "FinalResolve");
         auto postMsaaResolveTexture = CreateResourceImmediate(bufferUploadsDesc);
 
         RenderTargetView postMsaaResolveTarget(postMsaaResolveTexture.get());
@@ -467,16 +468,21 @@ namespace SceneEngine
                 //      Get the gbuffer render targets for this frame
                 //
 
+            const bool enableParametersBuffer = Tweakable("EnableParametersBuffer", true);
             auto& mainTargets = FindCachedBox<MainTargetsBox>(
                 MainTargetsBox::Desc(
                     unsigned(mainViewport.Width), unsigned(mainViewport.Height),
-                    FormatStack(NativeFormat::R16G16B16A16_FLOAT),
                     FormatStack(NativeFormat::R8G8B8A8_UNORM),
                     FormatStack(NativeFormat::R8G8B8A8_UNORM),
-                    FormatStack(NativeFormat(DXGI_FORMAT_R24G8_TYPELESS), 
-                                NativeFormat(DXGI_FORMAT_R24_UNORM_X8_TYPELESS), 
-                                NativeFormat(DXGI_FORMAT_D24_UNORM_S8_UINT)),
+                    FormatStack(enableParametersBuffer ? NativeFormat::R8G8B8A8_UNORM : NativeFormat::Unknown),
+                    FormatStack(
+                        NativeFormat(DXGI_FORMAT_R24G8_TYPELESS), 
+                        NativeFormat(DXGI_FORMAT_R24_UNORM_X8_TYPELESS), 
+                        NativeFormat(DXGI_FORMAT_D24_UNORM_S8_UINT)),
                     sampling));
+
+            auto& globalState = parserContext.GetTechniqueContext()._globalEnvironmentState;
+            globalState.SetParameter("GBUFFER_TYPE", enableParametersBuffer?1:2);
 
             TRY {
 

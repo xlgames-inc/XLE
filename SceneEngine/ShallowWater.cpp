@@ -134,7 +134,8 @@ namespace SceneEngine
         const auto unormNormalFormat = NativeFormat::R8G8_UNORM;
         auto normalsBufferUploadsDesc = BuildRenderTargetDesc(
             BindFlag::UnorderedAccess|BindFlag::ShaderResource,
-            BufferUploads::TextureDesc::Plain2D(width, height, typelessNormalFormat, uint8(normalsMipCount), uint8(maxSimulationGrids)));
+            BufferUploads::TextureDesc::Plain2D(width, height, typelessNormalFormat, uint8(normalsMipCount), uint8(maxSimulationGrids)),
+            "ShallowNormals");
         auto normalsTexture = uploads.Transaction_Immediate(normalsBufferUploadsDesc, nullptr)->AdoptUnderlying();
         std::vector<UnorderedAccessView> normalsTextureUVA;
         std::vector<ShaderResourceView> normalsSingleMipSRV;
@@ -149,7 +150,8 @@ namespace SceneEngine
                 ////
         auto foamTextureDesc = BuildRenderTargetDesc(
             BindFlag::UnorderedAccess|BindFlag::ShaderResource,
-            BufferUploads::TextureDesc::Plain2D(width, height, NativeFormat::R8_TYPELESS, 1, uint8(maxSimulationGrids)));
+            BufferUploads::TextureDesc::Plain2D(width, height, NativeFormat::R8_TYPELESS, 1, uint8(maxSimulationGrids)),
+            "ShallowFoam");
         auto foamQuantity0 = uploads.Transaction_Immediate(foamTextureDesc, nullptr)->AdoptUnderlying();
         auto foamQuantity1 = uploads.Transaction_Immediate(foamTextureDesc, nullptr)->AdoptUnderlying();
         UnorderedAccessView foamQuantityUVA0(foamQuantity0.get(), NativeFormat::R8_UINT);

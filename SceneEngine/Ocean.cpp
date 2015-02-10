@@ -156,7 +156,8 @@ namespace SceneEngine
 
         auto bufferUploadsDesc = BuildRenderTargetDesc(
             BindFlag::UnorderedAccess|BindFlag::RenderTarget|BindFlag::ShaderResource,
-            BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, NativeFormat::R32_TYPELESS));
+            BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, NativeFormat::R32_TYPELESS),
+            "FFT");
 
             ////
         auto workingTextureReal = uploads.Transaction_Immediate(bufferUploadsDesc, nullptr)->AdoptUnderlying();
@@ -194,7 +195,8 @@ namespace SceneEngine
         auto unormNormalFormat = desc._useDerivativesMapForNormals?NativeFormat::R8G8_UNORM:NativeFormat::R8G8B8A8_UNORM;
         auto normalsBufferUploadsDesc = BuildRenderTargetDesc(
             BindFlag::UnorderedAccess|BindFlag::ShaderResource,
-            BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, typelessNormalFormat, uint8(normalsMipCount)));
+            BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, typelessNormalFormat, uint8(normalsMipCount)),
+            "OceanNormals");
         auto normalsTexture = uploads.Transaction_Immediate(normalsBufferUploadsDesc, nullptr)->AdoptUnderlying();
         std::vector<UnorderedAccessView> normalsTextureUVA;
         std::vector<ShaderResourceView> normalsSingleMipSRV;
@@ -209,7 +211,8 @@ namespace SceneEngine
             ////
         auto foamTextureDesc = BuildRenderTargetDesc(
             BindFlag::UnorderedAccess|BindFlag::ShaderResource,
-            BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, NativeFormat::R8_TYPELESS));
+            BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, NativeFormat::R8_TYPELESS),
+            "Foam");
         auto foamQuantity0 = uploads.Transaction_Immediate(foamTextureDesc, nullptr)->AdoptUnderlying();
         auto foamQuantity1 = uploads.Transaction_Immediate(foamTextureDesc, nullptr)->AdoptUnderlying();
         UnorderedAccessView foamQuantityUVA0(foamQuantity0.get(), NativeFormat::R8_UINT);
@@ -448,7 +451,8 @@ namespace SceneEngine
         }
 
         auto bufferUploadsDesc = BuildRenderTargetDesc(
-            BindFlag::ShaderResource, BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, NativeFormat::R32_UINT));
+            BindFlag::ShaderResource, BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, NativeFormat::R32_UINT),
+            "FFTWorking");
         auto inputReal = uploads.Transaction_Immediate(
             bufferUploadsDesc, 
             BufferUploads::CreateBasicPacket(desc._width*desc._height*sizeof(float), realValues.get(), std::make_pair(unsigned(desc._width*sizeof(float)), unsigned(desc._width*desc._height*sizeof(float)))).get()

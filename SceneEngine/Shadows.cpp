@@ -19,7 +19,8 @@ namespace SceneEngine
         auto& uploads = *GetBufferUploads();
         auto uploadsDesc = BuildRenderTargetDesc(
             BindFlag::ShaderResource|BindFlag::DepthStencil,
-            BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, desc._formats._resourceFormat, 1, uint8(desc._targetCount)));
+            BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, desc._formats._resourceFormat, 1, uint8(desc._targetCount)),
+            "Shadows");
 
         auto shadowTexture = uploads.Transaction_Immediate(uploadsDesc, nullptr)->AdoptUnderlying();
         DepthStencilView depthStencilView(shadowTexture.get(), desc._formats._writeFormat, RenderCore::Metal::ArraySlice(desc._targetCount));

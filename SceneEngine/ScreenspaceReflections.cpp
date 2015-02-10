@@ -93,14 +93,14 @@ namespace SceneEngine
             ////////////
         auto maskTexture = uploads.Transaction_Immediate(
                 BuildRenderTargetDesc(  BindFlag::ShaderResource|BindFlag::UnorderedAccess,
-                                        BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, NativeFormat::R8_UNORM)), 
+                                        BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, NativeFormat::R8_UNORM), "SSReflMask"), 
                 nullptr)->AdoptUnderlying();
         UnorderedAccessView maskUnorderedAccess(maskTexture.get());
         ShaderResourceView maskShaderResource(maskTexture.get());
 
         auto reflectionsTexture = uploads.Transaction_Immediate(
                 BuildRenderTargetDesc(  BindFlag::ShaderResource|BindFlag::UnorderedAccess|BindFlag::RenderTarget,
-                                        BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, NativeFormat::R16G16B16A16_FLOAT)), 
+                                        BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, NativeFormat::R16G16B16A16_FLOAT), "SSRefl"), 
                 nullptr)->AdoptUnderlying();
         UnorderedAccessView reflectionsUnorderedAccess(reflectionsTexture.get());
         RenderTargetView reflectionsTarget(reflectionsTexture.get());
@@ -108,14 +108,14 @@ namespace SceneEngine
 
         auto downsampledNormals = uploads.Transaction_Immediate(
                 BuildRenderTargetDesc(  BindFlag::ShaderResource|BindFlag::RenderTarget,
-                                        BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, NativeFormat::R16G16B16A16_FLOAT)), //R11G11B10_FLOAT)), 
+                                        BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, NativeFormat::R16G16B16A16_FLOAT), "SSLowNorms"), //R11G11B10_FLOAT)), 
                 nullptr)->AdoptUnderlying();
         RenderTargetView downsampledNormalsTarget(downsampledNormals.get());
         ShaderResourceView downsampledNormalsShaderResource(downsampledNormals.get());
 
         auto downsampledDepth = uploads.Transaction_Immediate(
                 BuildRenderTargetDesc(  BindFlag::ShaderResource|BindFlag::RenderTarget,
-                                        BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, NativeFormat::R32_FLOAT)), // NativeFormat::R16_UNORM)), 
+                                        BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, NativeFormat::R32_FLOAT), "SSLowDepths"), // NativeFormat::R16_UNORM)), 
                 nullptr)->AdoptUnderlying();
         RenderTargetView downsampledDepthTarget(downsampledDepth.get());
         ShaderResourceView downsampledDepthShaderResource(downsampledDepth.get());

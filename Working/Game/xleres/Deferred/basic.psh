@@ -12,44 +12,21 @@
 #include "../Lighting/LightingAlgorithm.h"
 #include "../Utility/perlinnoise.h"
 
-static const float RefractiveIndex = 1.5f;
-
 Texture2D<float>	CustomTexture;
 Texture2D<float2>	ScratchMap : register(t17);		// high res procedural scratches
 Texture2D<float>	ScratchOccl : register(t18);
 
-float BlinnWyvillCosineApproximation(float x)
+PerPixelMaterialParam DecodeParametersTexture(float4 paramTextureSample)
 {
-	float x2 =  x *  x;
-	float x4 = x2 * x2;
-	float x6 = x4 * x2;
-
-	float fa =  4.f / 9.f;
-	float fb = 17.f / 9.f;
-	float fc = 22.f / 9.f;
-
-	float y = fa*x6 - fb*x4 + fc*x2;
-	return y;
-}
-
-float DoubleCubicSeatWithLinearBlend(float x, float a, float b)
-{
-	float epsilon = 0.00001f;
-	float min_param_a = 0.f + epsilon;
-	float max_param_a = 1.f - epsilon;
-	float min_param_b = 0.f;
-	float max_param_b = 1.f;
-	a = min(max_param_a, max(min_param_a, a));  
-	b = min(max_param_b, max(min_param_b, b)); 
-	b = 1.f - b; //reverse for intelligibility.
-
-	float y = 0.f;
-	if (x<=a) {
-		y = b*x + (1-b)*a*(1-pow(1-x/a, 3.f));
-	} else {
-		y = b*x + (1-b)*(a + (1-a)*pow((x-a)/(1-a), 3.f));
-	}
-	return y;
+		//	We're just storing roughness, specular & material
+		//	pixel pixel in this texture. Another option is to
+		//	have a per-pixel material index, and get these values
+		//	from a small table of material values.
+	PerPixelMaterialParam result = PerPixelMaterialParam_Default();
+	result.roughness = paramTextureSample.r;
+	result.specular = paramTextureSample.g;
+	result.metal = paramTextureSample.b;
+	return result;
 }
 
 #if !((OUTPUT_TEXCOORD==1) && (MAT_ALPHA_TEST==1))
@@ -85,13 +62,20 @@ GBufferEncoded main(VSOutput geo)
 		result.blendingAlpha *= Opacity;
 	#endif
 
-	result.reflectivity = 1.f;
+	#if (RES_HAS_PARAMETER_MAP==1)
+			// 	We're expecting to find just roughness & specular in our parameter map.
+			//	We can't do colored specular in this way, except by using
+			//	the metal parameter.
+			//	Just using a trilinear sample for this. Anisotropy disabled.
+		result.material = DecodeParametersTexture(ParametersTexture.Sample(DefaultSampler, geo.texCoord));
+	#endif
 
 	#if (RES_HAS_CUSTOM_MAP==1)
 			// use the "custom map" slot for a parameters texture (ambient occlusion, gloss, etc)
 		result.cookedAmbientOcclusion = CustomTexture.Sample(MaybeAnisotropicSampler, geo.texCoord).r;
-		
+
 			// use perlin noise to generate a random gloss pattern (for debugging)
+			// (add #include "../Utility/Equations.h")
 		// float3 worldPosition = WorldSpaceView - geo.worldViewVector;
 		// float gloss = fbmNoise3D(worldPosition, 1.f/9.23f, .5f, 2.1042, 3);
 		// const int method = 0;
@@ -139,7 +123,7 @@ GBufferEncoded main(VSOutput geo)
 			float scratchOcc = ScratchOccl.Sample(MaybeAnisotropicSampler, scratchTexCoords).r;
 			result.cookedAmbientOcclusion *= lerp(1.f, scratchOcc, .5f * scratchiness);
 
-		} else 
+		} else
 	#endif
 	{
 		result.worldSpaceNormal = GetNormal(geo);
@@ -150,15 +134,6 @@ GBufferEncoded main(VSOutput geo)
 			}
 		#endif
 	}
-	
-//	#if MAT_REFLECTIVENESS		// this is used by the ScreenSpace reflection debugging (but isn't really needed otherwise)
-//		float3 viewDirection = normalize(geo.worldViewVector);
-//		float3 worldSpaceReflection = reflect(-viewDirection, result.worldSpaceNormal);
-//		float3 halfVector = normalize(worldSpaceReflection + viewDirection);
-//		float fresnel = SchlickFresnel(viewDirection, halfVector, RefractiveIndex);
-//
-//		result.reflectivity = fresnel;
-//	#endif
 
 	#if RES_HAS_NORMAL_MAP && CLASSIFY_NORMAL_MAP
 		#if (RES_HAS_NORMAL_MAP_DXT==1)
@@ -169,7 +144,7 @@ GBufferEncoded main(VSOutput geo)
 	#endif
 
 		//
-		//		The length of the normal from the normal map can be used as 
+		//		The length of the normal from the normal map can be used as
 		//		an approximation of the variation in the normals used to
 		//		generate each mipmap cell.
 		//
@@ -186,7 +161,7 @@ GBufferEncoded invalid(VSOutput geo)
 	float3 color0 = float3(1.0f, 0.f, 0.f);
 	float3 color1 = float3(0.0f, 0.f, 1.f);
 	uint flag = (uint(geo.position.x/4.f) + uint(geo.position.y/4.f))&1;
-	GBufferValues result = GBufferValues_Default();	
+	GBufferValues result = GBufferValues_Default();
 	result.diffuseAlbedo = flag?color0:color1;
 	return Encode(result);
 }

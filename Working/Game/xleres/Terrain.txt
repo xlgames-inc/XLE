@@ -37,6 +37,8 @@ Deferred
         GlobalEnvironment
             PREFER_ANISOTROPIC
                 1
+            GBUFFER_TYPE
+                1
     VertexShader
         game/xleres/deferred/terrain.vsh:main
     PixelShader
@@ -70,4 +72,3 @@ ShadowGen_DisabledTechnique
         game/xleres/shadowgen/depthonly.gsh:main
     PixelShader
         null
-

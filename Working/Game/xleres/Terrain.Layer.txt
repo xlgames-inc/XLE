@@ -39,6 +39,8 @@ Deferred
         GlobalEnvironment
             PREFER_ANISOTROPIC
                 1
+            GBUFFER_TYPE
+                1
     VertexShader
         game/xleres/deferred/terrainlayer.vsh:main
     PixelShader

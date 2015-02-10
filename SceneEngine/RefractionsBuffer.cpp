@@ -32,7 +32,8 @@ namespace SceneEngine
 
         auto targetDesc = BuildRenderTargetDesc(
             BindFlag::ShaderResource|BindFlag::RenderTarget,
-            BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, NativeFormat::R8G8B8A8_TYPELESS));
+            BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, NativeFormat::R8G8B8A8_TYPELESS),
+            "Refractions");
 
         auto _refractionsTexture0 = uploads.Transaction_Immediate(targetDesc, nullptr)->AdoptUnderlying();
         auto _refractionsTexture1 = uploads.Transaction_Immediate(targetDesc, nullptr)->AdoptUnderlying();
@@ -146,7 +147,8 @@ namespace SceneEngine
 
         auto targetDesc = BuildRenderTargetDesc(
             BindFlag::ShaderResource,
-            BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, desc._format, 1, 1, desc._sampling));
+            BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, desc._format, 1, 1, desc._sampling),
+            "DepthDupe");
 
         auto texture = uploads.Transaction_Immediate(targetDesc, nullptr)->AdoptUnderlying();
 

@@ -63,17 +63,20 @@ namespace SceneEngine
         auto resLocator0 = uploads.Transaction_Immediate(
             BuildRenderTargetDesc(
                 BufferUploads::BindFlag::UnorderedAccess | BufferUploads::BindFlag::ShaderResource, 
-                BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, NativeFormat::R32_TYPELESS, 1)),
+                BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, NativeFormat::R32_TYPELESS, 1),
+                "TileLighting"),
             nullptr)->AdoptUnderlying();
         auto resLocator1 = uploads.Transaction_Immediate(
             BuildRenderTargetDesc(
                 BufferUploads::BindFlag::UnorderedAccess | BufferUploads::BindFlag::ShaderResource, 
-                BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, NativeFormat::R32_TYPELESS, 1)),
+                BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, NativeFormat::R32_TYPELESS, 1),
+                "TileLighting"),
             nullptr)->AdoptUnderlying();
         auto resLocator2 = uploads.Transaction_Immediate(
             BuildRenderTargetDesc(
                 BufferUploads::BindFlag::UnorderedAccess | BufferUploads::BindFlag::ShaderResource, 
-                BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, NativeFormat::R16_TYPELESS, 1)),
+                BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, NativeFormat::R16_TYPELESS, 1),
+                "TileLighting"),
             nullptr)->AdoptUnderlying();
 
         ShaderResourceView srv0(resLocator0.get(), NativeFormat::R32_FLOAT);
@@ -96,7 +99,8 @@ namespace SceneEngine
         auto resLocator3 = uploads.Transaction_Immediate(
             BuildRenderTargetDesc(
                 BufferUploads::BindFlag::UnorderedAccess | BufferUploads::BindFlag::ShaderResource, 
-                BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, (desc._bitDepth==16)?NativeFormat::R16G16B16A16_FLOAT:NativeFormat::R32G32B32A32_FLOAT, 1)),
+                BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, (desc._bitDepth==16)?NativeFormat::R16G16B16A16_FLOAT:NativeFormat::R32G32B32A32_FLOAT, 1),
+                "TileLighting"),
             nullptr)->AdoptUnderlying();
 
         BufferUploads::BufferDesc bufferDesc;

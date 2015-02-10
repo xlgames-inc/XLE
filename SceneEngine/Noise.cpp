@@ -40,8 +40,8 @@ namespace SceneEngine
         };
 
         auto& uploads = *GetBufferUploads();
-        auto gradDesc = BuildRenderTargetDesc(BufferUploads::BindFlag::ShaderResource, BufferUploads::TextureDesc::Plain1D(dimof(g), NativeFormat::R32G32B32_TYPELESS));
-        auto permDesc = BuildRenderTargetDesc(BufferUploads::BindFlag::ShaderResource, BufferUploads::TextureDesc::Plain1D(dimof(perm), NativeFormat::R8_TYPELESS));
+        auto gradDesc = BuildRenderTargetDesc(BufferUploads::BindFlag::ShaderResource, BufferUploads::TextureDesc::Plain1D(dimof(g), NativeFormat::R32G32B32_TYPELESS), "NoiseGrad");
+        auto permDesc = BuildRenderTargetDesc(BufferUploads::BindFlag::ShaderResource, BufferUploads::TextureDesc::Plain1D(dimof(perm), NativeFormat::R8_TYPELESS), "NoisePerm");
         auto gradPkt = BufferUploads::CreateEmptyPacket(gradDesc);
         XlCopyMemory(gradPkt->GetData(), g, std::min(sizeof(g), gradPkt->GetDataSize()));
         auto permPkt = BufferUploads::CreateEmptyPacket(permDesc);

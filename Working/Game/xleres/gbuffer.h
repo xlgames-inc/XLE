@@ -29,7 +29,7 @@ float ManualInterpolate(Texture2D tex, float2 texCoords)
 float3 GBuffer_CalculateBestFitNormal(float3 inputNormal)
 {
 	//
-	//		Calculate the normal value that will 
+	//		Calculate the normal value that will
 	//		quantize down to 8 bit best and still
 	//		best represent this normal...
 	//
@@ -43,7 +43,7 @@ float3 GBuffer_CalculateBestFitNormal(float3 inputNormal)
 	//
 
 		//	(assuming input normal is already normalized)
-	
+
 	// get unsigned normal for the cubemap lookup
 	float3 vNormalUns = abs(inputNormal.rgb);
 	// get the main axis for cubemap lookup
@@ -80,9 +80,9 @@ float4 CompressGBufferNormal(float3 inputNormal)
 	return float4(GBuffer_CalculateBestFitNormal(inputNormal),0);
 }
 
-float3 DecompressGBufferNormal(float4 gBufferNormalSample)
+float3 DecompressGBufferNormal(float3 gBufferNormalSample)
 {
-    float3 rangeAdj = -1.0.xxx + 2.f * gBufferNormalSample.xyz;
+    float3 rangeAdj = -1.0.xxx + 2.f * gBufferNormalSample;
     float lengthSq = dot(rangeAdj, rangeAdj);
     // if (lengthSq < 0.001f)
     //     return rangeAdj;
@@ -90,7 +90,11 @@ float3 DecompressGBufferNormal(float4 gBufferNormalSample)
     return rangeAdj * rsqrt(lengthSq);
 }
 
-#define HAS_PROPERTIES_BUFFER 1
+#if GBUFFER_TYPE == 1
+    #define HAS_PROPERTIES_BUFFER 1
+#else
+    #define HAS_PROPERTIES_BUFFER 0
+#endif
 
 struct GBufferEncoded
 {
@@ -101,23 +105,46 @@ struct GBufferEncoded
     #endif
 };
 
+struct PerPixelMaterialParam
+{
+    float   roughness;
+    float   specular;
+    float   metal;
+};
+
 struct GBufferValues
 {
-    float3  diffuseAlbedo;
-    float3  worldSpaceNormal;
+        // Basic geometry parameters
+    float3  diffuseAlbedo;      //  (expressed here in RGB format)
+    float3  worldSpaceNormal;   //  (here, in full 3D format)
+
+        // Per-pixel material parameters
+    PerPixelMaterialParam material;
+
+        // Special case parameters used by some shaders
     float   blendingAlpha;
-    float   reflectivity;
     float   normalMapAccuracy;
     float   cookedAmbientOcclusion;
 };
+
+PerPixelMaterialParam PerPixelMaterialParam_Default()
+{
+    PerPixelMaterialParam result;
+    result.roughness = 0.5f;
+    result.specular = 0.5f;
+    result.metal = 0.f;
+    return result;
+}
 
 GBufferValues GBufferValues_Default()
 {
     GBufferValues result;
     result.diffuseAlbedo     = 1.0.xxx;
     result.worldSpaceNormal  = 0.0.xxx;
+
+    result.material = PerPixelMaterialParam_Default();
+
     result.blendingAlpha     = 1.f;
-    result.reflectivity      = 0.f;
     result.normalMapAccuracy = 1.f;
     result.cookedAmbientOcclusion = 1.f;
     return result;
@@ -131,18 +158,24 @@ GBufferEncoded Encode(GBufferValues values)
         //      generate the encoded values
         //
     GBufferEncoded result;
-    result.diffuseBuffer = float4(values.diffuseAlbedo, values.blendingAlpha);
+    result.diffuseBuffer.rgb = values.diffuseAlbedo;
     result.normalBuffer.xyz = CompressGBufferNormal(values.worldSpaceNormal.xyz).xyz;
-    result.normalBuffer.a = values.blendingAlpha;
 
-        // todo -- use log scale for reflectivity?
+    const bool decalBlend = false;
+    if (decalBlend) {
+        result.diffuseBuffer.a = values.blendingAlpha;
+        result.normalBuffer.a = values.blendingAlpha;
+    } else {
+            // todo -- "normal map accuracy" can be used to soften the roughness here...
+        result.diffuseBuffer.a = values.material.roughness;
+        result.normalBuffer.a = values.material.specular;
+    }
+
     #if HAS_PROPERTIES_BUFFER == 1
-        result.propertiesBuffer.r = values.reflectivity;
+        result.propertiesBuffer.r = values.material.metal;
         result.propertiesBuffer.g = values.cookedAmbientOcclusion;
         result.propertiesBuffer.b = 0.f;
         result.propertiesBuffer.a = values.blendingAlpha;
-    #else
-        result.normalBuffer.a = reflectivity;
     #endif
 
     return result;
@@ -152,27 +185,27 @@ GBufferValues Decode(GBufferEncoded values)
 {
     GBufferValues result = GBufferValues_Default();
 	result.diffuseAlbedo = values.diffuseBuffer.rgb;
-	result.worldSpaceNormal  = DecompressGBufferNormal(values.normalBuffer);
-	result.blendingAlpha = values.diffuseBuffer.a;
-	result.reflectivity = 1.f;
+	result.worldSpaceNormal  = DecompressGBufferNormal(values.normalBuffer.xyz);
+
+    result.material.roughness = values.diffuseBuffer.a;
+    result.material.specular = values.normalBuffer.a;
+
+	result.blendingAlpha = 1.f;
 	result.normalMapAccuracy = 1.f;
 
 	#if HAS_PROPERTIES_BUFFER==1
+        result.material.metal = values.propertiesBuffer.r;
 		result.cookedAmbientOcclusion = values.propertiesBuffer.g;
-		result.reflectivity = values.propertiesBuffer.r;
-	#else
-		result.reflectivity = values.normalBuffer.a;
+        result.blendingAlpha = values.propertiesBuffer.a;
 	#endif
 	return result;
 }
 
 GBufferValues GetSystemStruct_GBufferValues()
 {
-        //  called by the shader nodes editor to get the 
+        //  called by the shader nodes editor to get the
         //  gbuffer values for preview
     return GBufferValues_Default();
 }
 
 #endif
-
-

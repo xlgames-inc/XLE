@@ -44,6 +44,9 @@ Deferred
             RES_HAS_NORMAL_MAP_DXT
             GEO_HAS_PARTICLE_INPUTS
                 1
+        GlobalEnvironment
+            GBUFFER_TYPE
+                1
         Material
             MAT_ALPHA_TEST
             MAT_REFLECTIVENESS
@@ -85,4 +88,3 @@ OrderIndependentTransparency
         game/xleres/particles/sprite.gsh:autoquads
     PixelShader
         game/xleres/forward/transparency/illum.psh:main
-

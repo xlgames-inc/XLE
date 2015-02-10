@@ -330,9 +330,11 @@ namespace SceneEngine
 
             ////////////////////////////////////////////////////////////////////////
 
+        unsigned gbufferType = (mainTargets._gbufferTextures[2]) ? 1 : 2;
         auto& lightingResolveShaders = 
             FindCachedBoxDep<LightingResolveShaders>(
                 LightingResolveShaders::Desc(
+                    gbufferType,
                     (resolveContext.GetCurrentPass()==LightingResolveContext::Pass::PerSample)?samplingCount:1, useMsaaSamplers, 
                     resolveContext.GetCurrentPass()==LightingResolveContext::Pass::PerPixel));
 

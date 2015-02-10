@@ -32,9 +32,9 @@ namespace SceneEngine
         std::fill((char*)this, PtrAdd((char*)this, sizeof(*this)), 0);
 
         _width = width; _height = height;
-        _diffuseFormat = diffuseFormat;
-        _normalFormat = normalFormat;
-        _parametersFormat = parametersFormat;
+        _gbufferFormats[0] = diffuseFormat;
+        _gbufferFormats[1] = normalFormat;
+        _gbufferFormats[2] = parametersFormat;
         _depthFormat = depthFormat;
         _sampling = sampling;
     }
@@ -45,41 +45,39 @@ namespace SceneEngine
         using namespace RenderCore;
         using namespace RenderCore::Metal;
         using namespace BufferUploads;
-        auto bufferUploadsDesc = BuildRenderTargetDesc(
-            BindFlag::ShaderResource|BindFlag::RenderTarget,
-            BufferUploads::TextureDesc::Plain2D(
-                desc._width, desc._height, AsDXGIFormat(desc._diffuseFormat._resourceFormat), 1, 0, 
-                desc._sampling));
-        ResourcePtr gbufferTextures[3];
-        gbufferTextures[0] = CreateResourceImmediate(bufferUploadsDesc);
-        bufferUploadsDesc._textureDesc._nativePixelFormat = AsDXGIFormat(desc._normalFormat._resourceFormat);
-        gbufferTextures[1] = CreateResourceImmediate(bufferUploadsDesc);
-        bufferUploadsDesc._textureDesc._nativePixelFormat = AsDXGIFormat(desc._parametersFormat._resourceFormat);
-        gbufferTextures[2] = CreateResourceImmediate(bufferUploadsDesc);
 
-        bufferUploadsDesc._bindFlags = BindFlag::ShaderResource|BindFlag::DepthStencil;
-        bufferUploadsDesc._gpuAccess = GPUAccess::Write;
-        bufferUploadsDesc._textureDesc._nativePixelFormat = AsDXGIFormat(desc._depthFormat._resourceFormat);
-        bufferUploadsDesc._textureDesc._samples = desc._sampling;
-        auto msaaDepthBufferTexture = CreateResourceImmediate(bufferUploadsDesc);
-        auto secondaryDepthBufferTexture = CreateResourceImmediate(bufferUploadsDesc);
+        ResourcePtr gbufferTextures[s_gbufferTextureCount];
+        RenderTargetView gbufferRTV[dimof(gbufferTextures)];
+        ShaderResourceView gbufferSRV[dimof(gbufferTextures)];
+        std::fill(gbufferTextures, &gbufferTextures[dimof(gbufferTextures)], nullptr);
+
+        auto bufferUploadsDesc = BufferUploads::CreateDesc(
+            BindFlag::ShaderResource|BindFlag::RenderTarget,
+            0, GPUAccess::Write | GPUAccess::Read,
+            BufferUploads::TextureDesc::Plain2D(
+                desc._width, desc._height, AsDXGIFormat(NativeFormat::Unknown), 1, 0, desc._sampling),
+            "GBuffer");
+        for (unsigned c=0; c<dimof(gbufferTextures); ++c) {
+            if (desc._gbufferFormats[c]._resourceFormat != NativeFormat::Unknown) {
+                bufferUploadsDesc._textureDesc._nativePixelFormat = AsDXGIFormat(desc._gbufferFormats[c]._resourceFormat);
+                gbufferTextures[c] = CreateResourceImmediate(bufferUploadsDesc);
+                gbufferRTV[c] = RenderTargetView(gbufferTextures[c].get(), desc._gbufferFormats[c]._writeFormat);
+                gbufferSRV[c] = ShaderResourceView(gbufferTextures[c].get(), desc._gbufferFormats[c]._shaderReadFormat);
+            }
+        }
 
             /////////
-
-        RenderTargetView gbufferTargets[3] = {
-            RenderTargetView(gbufferTextures[0].get(), desc._diffuseFormat._writeFormat),
-            RenderTargetView(gbufferTextures[1].get(), desc._normalFormat._writeFormat),
-            RenderTargetView(gbufferTextures[2].get(), desc._parametersFormat._writeFormat)
-        };
-
+        
+        auto depthBufferDesc = BufferUploads::CreateDesc(
+            BindFlag::ShaderResource|BindFlag::DepthStencil,
+            0, GPUAccess::Write | GPUAccess::Read,
+            BufferUploads::TextureDesc::Plain2D(
+                desc._width, desc._height, AsDXGIFormat(desc._depthFormat._resourceFormat), 1, 0, desc._sampling),
+            "MainDepth");
+        auto msaaDepthBufferTexture = CreateResourceImmediate(depthBufferDesc);
+        auto secondaryDepthBufferTexture = CreateResourceImmediate(depthBufferDesc);
         DepthStencilView msaaDepthBuffer(msaaDepthBufferTexture.get(), desc._depthFormat._writeFormat);
         DepthStencilView secondaryDepthBuffer(secondaryDepthBufferTexture.get(), desc._depthFormat._writeFormat);
-
-        ShaderResourceView gbufferTargetsSRV[3] = {
-            ShaderResourceView(gbufferTextures[0].get(), desc._diffuseFormat._shaderReadFormat),
-            ShaderResourceView(gbufferTextures[1].get(), desc._normalFormat._shaderReadFormat),
-            ShaderResourceView(gbufferTextures[2].get(), desc._parametersFormat._shaderReadFormat)
-        };
         ShaderResourceView msaaDepthBufferSRV(msaaDepthBufferTexture.get(), desc._depthFormat._shaderReadFormat);
         ShaderResourceView secondaryDepthBufferSRV(secondaryDepthBufferTexture.get(), desc._depthFormat._shaderReadFormat);
 
@@ -87,19 +85,13 @@ namespace SceneEngine
 
         for (unsigned c=0; c<dimof(_gbufferTextures); ++c) {
             _gbufferTextures[c] = std::move(gbufferTextures[c]);
+            _gbufferRTVs[c] = std::move(gbufferRTV[c]);
+            _gbufferRTVsSRV[c] = std::move(gbufferSRV[c]);
         }
         _msaaDepthBufferTexture = std::move(msaaDepthBufferTexture);
         _secondaryDepthBufferTexture = std::move(secondaryDepthBufferTexture);
-
-        for (unsigned c=0; c<dimof(_gbufferRTVs); ++c) {
-            _gbufferRTVs[c] = std::move(gbufferTargets[c]);
-        }
         _msaaDepthBuffer = std::move(msaaDepthBuffer);
         _secondaryDepthBuffer = std::move(secondaryDepthBuffer);
-
-        for (unsigned c=0; c<dimof(_gbufferRTVsSRV); ++c) {
-            _gbufferRTVsSRV[c] = std::move(gbufferTargetsSRV[c]);
-        }
         _msaaDepthBufferSRV = std::move(msaaDepthBufferSRV);
         _secondaryDepthBufferSRV = std::move(secondaryDepthBufferSRV);
     }
@@ -130,8 +122,8 @@ namespace SceneEngine
         auto bufferUploadsDesc = BuildRenderTargetDesc(
             BindFlag::ShaderResource|BindFlag::DepthStencil,
             BufferUploads::TextureDesc::Plain2D(
-                desc._width, desc._height, AsDXGIFormat(desc._depthFormat._resourceFormat), 1, 0, 
-                desc._sampling));
+                desc._width, desc._height, AsDXGIFormat(desc._depthFormat._resourceFormat), 1, 0, desc._sampling),
+            "ForwardTarget");
 
         auto msaaDepthBufferTexture = CreateResourceImmediate(bufferUploadsDesc);
         auto secondaryDepthBufferTexture = CreateResourceImmediate(bufferUploadsDesc);
@@ -182,7 +174,8 @@ namespace SceneEngine
             BindFlag::ShaderResource|BindFlag::RenderTarget,
             BufferUploads::TextureDesc::Plain2D(
                 desc._width, desc._height, AsDXGIFormat(desc._lightingResolveFormat._resourceFormat), 1, 0, 
-                desc._sampling));
+                desc._sampling),
+            "LightResolve");
 
         auto lightingResolveTexture = CreateResourceImmediate(bufferUploadsDesc);
         auto lightingResolveCopy = CreateResourceImmediate(bufferUploadsDesc);
@@ -213,8 +206,8 @@ namespace SceneEngine
         char definesTable[256];
         Utility::XlFormatString(
             definesTable, dimof(definesTable), 
-            "MSAA_SAMPLES=%i", 
-            (desc._msaaSampleCount<=1)?0:desc._msaaSampleCount);
+            "GBUFFER_TYPE=%i;MSAA_SAMPLES=%i", 
+            desc._gbufferType, (desc._msaaSampleCount<=1)?0:desc._msaaSampleCount);
 
         if (desc._msaaSamplers) {
             XlCatString(definesTable, dimof(definesTable), ";MSAA_SAMPLERS=1");
@@ -336,19 +329,18 @@ namespace SceneEngine
                 stagingDesc[c]._allocationRules = 0;
                 stagingDesc[c]._textureDesc = BufferUploads::TextureDesc::Plain2D(
                     mainTargets._desc._width, mainTargets._desc._height,
-                    mainTargets._desc._diffuseFormat._shaderReadFormat, 1, 0, 
+                    mainTargets._desc._gbufferFormats[c]._shaderReadFormat, 1, 0, 
                     mainTargets._desc._sampling);
             }
-
-            stagingDesc[1]._textureDesc._nativePixelFormat = mainTargets._desc._normalFormat._shaderReadFormat;
-            stagingDesc[2]._textureDesc._nativePixelFormat = mainTargets._desc._parametersFormat._shaderReadFormat;
 
             const char* outputNames[] = { "gbuffer_diffuse.dds", "gbuffer_normals.dds", "gbuffer_parameters.dds" };
             auto& bufferUploads = *GetBufferUploads();
             for (unsigned c=0; c<3; ++c) {
-                auto stagingTexture = bufferUploads.Transaction_Immediate(stagingDesc[c], nullptr)->AdoptUnderlying();
-                context->GetUnderlying()->CopyResource(stagingTexture.get(), mainTargets._gbufferTextures[c].get());
-                D3DX11SaveTextureToFile(context->GetUnderlying(), stagingTexture.get(), D3DX11_IFF_DDS, outputNames[c]);
+                if (mainTargets._gbufferTextures[c]) {
+                    auto stagingTexture = bufferUploads.Transaction_Immediate(stagingDesc[c], nullptr)->AdoptUnderlying();
+                    context->GetUnderlying()->CopyResource(stagingTexture.get(), mainTargets._gbufferTextures[c].get());
+                    D3DX11SaveTextureToFile(context->GetUnderlying(), stagingTexture.get(), D3DX11_IFF_DDS, outputNames[c]);
+                }
             }
         }
     #endif

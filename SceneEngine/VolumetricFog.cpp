@@ -210,7 +210,7 @@ namespace SceneEngine
     {
         auto shadowMapFormat = desc._esmShadowMaps?NativeFormat::R32_FLOAT:NativeFormat::R16_UNORM;
         auto renderTargetDesc = BuildRenderTargetDesc(BufferUploads::BindFlag::RenderTarget|BufferUploads::BindFlag::ShaderResource,
-            BufferUploads::TextureDesc::Plain2D(256, 256, shadowMapFormat, 0, uint8(desc._frustumCount)));
+            BufferUploads::TextureDesc::Plain2D(256, 256, shadowMapFormat, 0, uint8(desc._frustumCount)), "VolFog");
         auto& uploads = *GetBufferUploads();
 
         auto shadowMapTexture = uploads.Transaction_Immediate(renderTargetDesc, nullptr)->AdoptUnderlying();
@@ -230,7 +230,7 @@ namespace SceneEngine
         }
 
         auto densityTextureDesc = BuildRenderTargetDesc(BufferUploads::BindFlag::UnorderedAccess|BufferUploads::BindFlag::ShaderResource,
-            BufferUploads::TextureDesc::Plain3D(160, 90, 128, NativeFormat::R32_TYPELESS));
+            BufferUploads::TextureDesc::Plain3D(160, 90, 128, NativeFormat::R32_TYPELESS), "VolFog");
         auto densityTexture = uploads.Transaction_Immediate(densityTextureDesc, nullptr)->AdoptUnderlying();
         UnorderedAccessView densityUnorderedAccess(densityTexture.get(), NativeFormat::R32_FLOAT);
         ShaderResourceView densityShaderResource(densityTexture.get(), NativeFormat::R32_FLOAT);
@@ -244,7 +244,7 @@ namespace SceneEngine
         ShaderResourceView transmissionShaderResource(transmissionTexture.get(), NativeFormat::R32_FLOAT);
 
         auto scatteringTextureDesc = BuildRenderTargetDesc(BufferUploads::BindFlag::UnorderedAccess|BufferUploads::BindFlag::ShaderResource,
-            BufferUploads::TextureDesc::Plain3D(160, 90, 128, NativeFormat::R32G32B32A32_TYPELESS));
+            BufferUploads::TextureDesc::Plain3D(160, 90, 128, NativeFormat::R32G32B32A32_TYPELESS), "VolFog");
         auto inscatterFinalsTexture = uploads.Transaction_Immediate(scatteringTextureDesc, nullptr)->AdoptUnderlying();
         UnorderedAccessView inscatterFinalsUnorderedAccess(inscatterFinalsTexture.get(), NativeFormat::R32G32B32A32_FLOAT);
         ShaderResourceView inscatterFinalsShaderResource(inscatterFinalsTexture.get(), NativeFormat::R32G32B32A32_FLOAT);

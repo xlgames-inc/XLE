@@ -30,6 +30,8 @@ Deferred
                 1
             TANGENT_PROCESS_IN_PS
                 1
+            GBUFFER_TYPE
+                1
     VertexShader
         game/xleres/deferred/basic.vsh:main
     PixelShader

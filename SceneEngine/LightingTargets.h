@@ -20,6 +20,7 @@ namespace SceneEngine
     class MainTargetsBox
     {
     public:
+        static const unsigned s_gbufferTextureCount = 3;
         class Desc
         {
         public:
@@ -29,8 +30,9 @@ namespace SceneEngine
                     const BufferUploads::TextureSamples& sampling);
 
             unsigned _width, _height;
-            FormatStack _diffuseFormat, _normalFormat;
-            FormatStack _parametersFormat, _depthFormat;
+
+            FormatStack _gbufferFormats[s_gbufferTextureCount];
+            FormatStack _depthFormat;
             BufferUploads::TextureSamples _sampling;
         };
 
@@ -38,7 +40,7 @@ namespace SceneEngine
         ~MainTargetsBox();
 
         Desc _desc;
-        ResourcePtr  _gbufferTextures[3];
+        ResourcePtr  _gbufferTextures[s_gbufferTextureCount];
         ResourcePtr  _msaaDepthBufferTexture;
         ResourcePtr  _secondaryDepthBufferTexture;
 
@@ -46,12 +48,12 @@ namespace SceneEngine
         typedef RenderCore::Metal::DepthStencilView DSV;
         typedef RenderCore::Metal::ShaderResourceView SRV;
 
-        RTV _gbufferRTVs[3];
+        RTV _gbufferRTVs[s_gbufferTextureCount];
 
         DSV _msaaDepthBuffer;
         DSV _secondaryDepthBuffer;
 
-        SRV _gbufferRTVsSRV[3];
+        SRV _gbufferRTVsSRV[s_gbufferTextureCount];
         SRV _msaaDepthBufferSRV;
         SRV _secondaryDepthBufferSRV;
     };
@@ -124,13 +126,16 @@ namespace SceneEngine
         class Desc
         {
         public:
-            unsigned _msaaSampleCount;
-            bool _msaaSamplers, _flipDirection;
-            Desc(unsigned msaaSampleCount, bool msaaSamplers, bool flipDirection) 
+            unsigned    _msaaSampleCount;
+            bool        _msaaSamplers, _flipDirection;
+            unsigned    _gbufferType;
+
+            Desc(unsigned gbufferType, unsigned msaaSampleCount, bool msaaSamplers, bool flipDirection) 
             {
-                    //  we have to "memset" this -- because padding adds random values in 
-                    //  profile mode
+                    //  we have to "memset" this -- because padding adds
+                    //  random values in profile mode
                 std::fill((char*)this, PtrAdd((char*)this, sizeof(*this)), 0);
+                _gbufferType = gbufferType;
                 _msaaSampleCount = msaaSampleCount;
                 _msaaSamplers = msaaSamplers;
                 _flipDirection = flipDirection;

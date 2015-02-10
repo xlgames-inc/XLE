@@ -39,7 +39,8 @@ namespace SceneEngine
         auto& uploads = *GetBufferUploads();
         auto textureIdsDesc = BuildRenderTargetDesc(
             BindFlag::UnorderedAccess|BindFlag::ShaderResource,
-            BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, NativeFormat::R32_UINT));
+            BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, NativeFormat::R32_UINT),
+            "Trans");
         auto fragmentIdsTexture = uploads.Transaction_Immediate(textureIdsDesc, nullptr)->AdoptUnderlying();
 
         BufferUploads::BufferDesc nodeListBufferDesc;

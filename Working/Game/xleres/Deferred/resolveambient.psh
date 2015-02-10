@@ -52,8 +52,8 @@ float3 ReadSkyTexture(float3 reflectionVector, float roughness)
 
 	#if MAT_SKY_PROJECTION == 1
 		return ReadReflectionHemiBox(
-			reflectionVector, 
-			SkyReflectionTexture[0], SkyReflectionTexture[1], SkyReflectionTexture[2], 
+			reflectionVector,
+			SkyReflectionTexture[0], SkyReflectionTexture[1], SkyReflectionTexture[2],
 			reflectionTextureDims, uint(mipMap));
 	#elif MAT_SKY_PROJECTION == 3
 		float2 skyReflectionCoord = HemisphericalMappingCoord(reflectionVector);
@@ -67,7 +67,7 @@ float3 ReadSkyTexture(float3 reflectionVector, float roughness)
 
 float CalculateReflectionFresnel(GBufferValues sample, float3 viewDirection)
 {
-	float F0 = GetF0_0();
+	float F0 = Material_GetF0_0(sample);
 
 	// return saturate(sample.worldSpaceNormal);
 
@@ -80,18 +80,19 @@ float CalculateReflectionFresnel(GBufferValues sample, float3 viewDirection)
 float3 CalculateSkyReflections(GBufferValues sample, float3 viewDirection, float fresnel)
 {
 	// sample.cookedAmbientOcclusion = 3.f * (sample.cookedAmbientOcclusion - .66f);
-	float3 specularColor = GetSpecularColor0();
+	float3 specularColor = 1.0.xxx;
 	float3 worldSpaceReflection = reflect(-viewDirection, sample.worldSpaceNormal);
 
-	float roughness = MO_Roughness; // sample.reflectivity
-	roughness = saturate(roughness + .5f * (1.0f - sample.reflectivity));
+	float roughness = Material_GetRoughness(sample);
+	float metal = Material_GetMetal(sample);
+
 	float3 reflSampl = ReadSkyTexture(worldSpaceReflection, roughness);
 	reflSampl = SRGBToLinear(reflSampl);
-	reflSampl += MO_ReflectionsBoost.xxx;
+	reflSampl += Material_GetReflectionBoost(sample).xxx;
 	// reflSampl *= 3.f;		// hack -- heighten dynamic range a bit
 	// reflSampl += 0.2f;
 	// float3 reflSampl = pow(saturate(dot(worldSpaceReflection, float3(0.f, 0.f, 1.f))), 64.f).xxx;
-	return reflSampl * lerp(1.0.xxx, specularColor, MO_Metallic) * (fresnel * sample.cookedAmbientOcclusion);
+	return reflSampl * lerp(1.0.xxx, specularColor, metal) * (fresnel * sample.cookedAmbientOcclusion);
 }
 
 /////////////////////////////////////////
@@ -116,7 +117,8 @@ float3 BasicAmbient(int2 pixelCoords, SystemInputs sys, GBufferValues sample)
 	#endif
 
 	const float ambientScale = LightingScale;
-	return (((1.0f - MO_Metallic)*ambientScale*ambientOcclusionSample)*AmbientColour + LightingScale*tiledLights)*sample.diffuseAlbedo.rgb;
+	float metal = Material_GetMetal(sample);
+	return (((1.0f - metal)*ambientScale*ambientOcclusionSample)*AmbientColour + LightingScale*tiledLights)*sample.diffuseAlbedo.rgb;
 }
 
 /////////////////////////////////////////
@@ -124,9 +126,9 @@ float3 BasicAmbient(int2 pixelCoords, SystemInputs sys, GBufferValues sample)
 float4 CalculateScreenSpaceReflections(float2 texCoord, float fresnel, float cookedAmbientOcclusion)
 {
 		//	the screen space refl sampler should contain a texture coordinate
-		//	and an alpha value. We need a copy of the "lighting buffer" 
+		//	and an alpha value. We need a copy of the "lighting buffer"
 		//	render target for this step -- because we want to read from a texture
-		//	that can the direct lighting already calculated. 
+		//	that can the direct lighting already calculated.
 	float4 reflectionValue = ScreenSpaceReflResult.SampleLevel(ClampingSampler, texCoord, 0);
 
 	float intersectionQuality = reflectionValue.z;
@@ -161,19 +163,16 @@ float4 ResolveAmbient(	float4 position : SV_Position,
 			//	The "screen space" reflections block out the sky reflections.
 			//	If we get a collision with the screen space reflections, then we need
 			//	to blend from the sky reflection colour into that colour.
-			// note... if we want fogging on the reflections, we need to perform the fog calculations here, on the 
+			// note... if we want fogging on the reflections, we need to perform the fog calculations here, on the
 			// reflected pixel
 		float4 dynamicReflections = CalculateScreenSpaceReflections(texCoord, fresnel, sample.cookedAmbientOcclusion);
 		float3 finalReflection = lerp(skyReflections, dynamicReflections.rgb, dynamicReflections.a);
 	#else
 		float3 finalReflection = skyReflections;
 	#endif
-	result += MO_ReflectionsScale * finalReflection;
+	result += Material_GetReflectionScale(sample) * finalReflection;
 
 	return float4(result, 1.f);
 }
-
-
-
 
 #endif

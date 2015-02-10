@@ -79,18 +79,15 @@ namespace SceneEngine
 
     SavedBlendAndRasterizerState::~SavedBlendAndRasterizerState() {}
 
-    BufferUploads::BufferDesc BuildRenderTargetDesc( BufferUploads::BindFlag::BitField bindFlags, 
-                                                     const BufferUploads::TextureDesc& textureDesc)
+    BufferUploads::BufferDesc BuildRenderTargetDesc( 
+        BufferUploads::BindFlag::BitField bindFlags, 
+        const BufferUploads::TextureDesc& textureDesc,
+        const char name[])
     {
         using namespace BufferUploads;
-        BufferDesc desc;
-        desc._type = BufferDesc::Type::Texture;
-        desc._bindFlags = bindFlags;
-        desc._cpuAccess = 0;
-        desc._gpuAccess = GPUAccess::Read|GPUAccess::Write;
-        desc._allocationRules = 0;
-        desc._textureDesc = textureDesc;
-        return desc;
+        return CreateDesc(
+            bindFlags, 0, GPUAccess::Read|GPUAccess::Write,
+            textureDesc, name);
     }
 
     void SetupVertexGeneratorShader(RenderCore::Metal::DeviceContext* context)

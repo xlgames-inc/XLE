@@ -126,7 +126,7 @@ namespace Sample
             //  that should be used to render this scene.
         RenderCore::CameraDesc result;
         static const auto camDist = 50.f;
-        const auto camHeight = 15.f;
+        const auto camHeight = 7.5f;
         const auto secondsPerRotation = 40.f;
         const auto rotationSpeed = -gPI * 2.f / secondsPerRotation;
         Float3 cameraForward(XlCos(_time * rotationSpeed), XlSin(_time * rotationSpeed), 0.f);

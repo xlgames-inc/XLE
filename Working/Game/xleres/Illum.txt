@@ -68,6 +68,8 @@ Deferred
             TANGENT_PROCESS_IN_PS
                 1
             LOCAL_TO_WORLD_HAS_FLIP
+            GBUFFER_TYPE
+                1
         Material
             MAT_ALPHA_TEST
             MAT_REFLECTIVENESS

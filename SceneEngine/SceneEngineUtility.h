@@ -55,7 +55,8 @@ namespace SceneEngine
 
     BufferUploads::BufferDesc BuildRenderTargetDesc( 
         BufferUploads::BindFlag::BitField bindFlags, 
-        const BufferUploads::TextureDesc& textureDesc);
+        const BufferUploads::TextureDesc& textureDesc,
+        const char name[]);
 
     void SetupVertexGeneratorShader(RenderCore::Metal::DeviceContext* context);
     void BuildGaussianFilteringWeights(float result[], float standardDeviation, unsigned weightsCount);
