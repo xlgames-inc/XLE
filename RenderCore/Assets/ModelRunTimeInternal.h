@@ -293,18 +293,17 @@ namespace RenderCore { namespace Assets
         class SkinnedMesh : public Mesh
         {
         public:
-                //  vertex data is separated into several "streams". These match the low level api streams.
-                //  "mesh" members contain the static geometry elements.
-            struct VertexStreams { enum Enum { AnimatedGeo, SkeletonBinding, Max }; };
+                //  Vertex data is separated into several "streams". 
+                //  These match the low level api streams.
+                //  The base class "Mesh" members contain the static geometry elements.
 
+            struct VertexStreams { enum Enum { AnimatedGeo, SkeletonBinding, Max }; };
             unsigned    _extraVbOffset[VertexStreams::Max];
             unsigned    _extraVbStride[VertexStreams::Max];
             unsigned    _sourceFileExtraVBOffset[VertexStreams::Max];
             unsigned    _sourceFileExtraVBSize[VertexStreams::Max];
 
-            uint64      _animatedAIHash;
-            unsigned    _postSkinVertexStride;
-
+            uint64      _iaAnimationHash;
             const BoundSkinnedGeometry* _scaffold;
         };
 
@@ -312,8 +311,7 @@ namespace RenderCore { namespace Assets
         size_t  _texturesPerMaterial;
 
         ///////////////////////////////////////////////////////////////////////////////
-            //  Parallel arrays, ordered by draw calls, as we encounter them 
-            //  while rendering each mesh.
+            // "resources" or state information attached on a per-draw call basis
         class DrawCallResources
         {
         public:
@@ -333,6 +331,18 @@ namespace RenderCore { namespace Assets
         };
         std::vector<DrawCallResources>   _drawCallRes;
 
+        ///////////////////////////////////////////////////////////////////////////////
+            // Extra information attached to draw calls used with prepared animations
+        class PreparedAnimStream
+        {
+        public:
+            unsigned    _vertexStride;
+            unsigned    _techniqueInterface;
+            PreparedAnimStream() : _vertexStride(0), _techniqueInterface(~unsigned(0x0)) {}
+        };
+        std::vector<PreparedAnimStream> _preparedAnimStreams;   // one per skin call
+
+        ///////////////////////////////////////////////////////////////////////////////
         Metal::VertexBuffer         _vertexBuffer;
         Metal::IndexBuffer          _indexBuffer;
         std::vector<Mesh>           _meshes;
@@ -396,30 +406,23 @@ namespace RenderCore { namespace Assets
             ModelConstruction::BuffersUnderConstruction& workingBuffers,
             SharedStateSet& sharedStateSet) -> SkinnedMesh;
 
+        static void InitialiseSkinningVertexAssembly(
+            uint64 inputAssemblyHash,
+            const BoundSkinnedGeometry& scaffoldGeo);
+
+        static unsigned BuildPostSkinInputAssembly(
+            Metal::InputElementDesc dst[],
+            unsigned dstCount,
+            const BoundSkinnedGeometry& scaffoldGeo);
+
         void StartBuildingSkinning(Metal::DeviceContext& context, SkinningBindingBox& bindingBox) const;
         void EndBuildingSkinning(Metal::DeviceContext& context) const;
     };
 
-
-    template <int Count>
-        static unsigned BuildLowLevelInputAssembly(Metal::InputElementDesc (&result)[Count], 
-            const VertexElement* source, unsigned sourceCount,
-            unsigned startPoint = 0, unsigned lowLevelSlot = 0)
-        {
-            unsigned vertexElementCount = startPoint;
-            for (unsigned i=0; i<sourceCount; ++i) {
-                auto& sourceElement = source[i];
-                assert((vertexElementCount+1) <= Count);
-                if ((vertexElementCount+1) <= Count) {
-                        // in some cases we need multiple "slots". When we have multiple slots, the vertex data 
-                        //  should be one after another in the vb (that is, not interleaved)
-                    result[vertexElementCount++] = Metal::InputElementDesc(
-                        sourceElement._semantic, sourceElement._semanticIndex,
-                        sourceElement._format, lowLevelSlot, sourceElement._startOffset);
-                }
-            }
-            return vertexElementCount;
-        }
+    unsigned BuildLowLevelInputAssembly(
+        Metal::InputElementDesc dst[], unsigned dstMaxCount,
+        const VertexElement* source, unsigned sourceCount,
+        unsigned lowLevelSlot = 0);
 
     template <typename Type>
         void DestroyArray(const Type* begin, const Type* end)

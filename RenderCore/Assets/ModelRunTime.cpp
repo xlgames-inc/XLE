@@ -38,10 +38,7 @@
 
 #include <string>
 
-#include "../DX11/Metal/IncludeDX11.h"
-
 #pragma warning(disable:4189)
-#pragma warning(disable:4127)       //  warning C4127: conditional expression is constant
 
 namespace RenderCore { namespace Assets
 {
@@ -171,36 +168,6 @@ namespace RenderCore { namespace Assets
             return sharedStateSet.InsertParameterBox(geoParameters);
         }
 
-        void ApplyConversionFromStreamOutput(VertexElement dst[], const VertexElement src[], unsigned count)
-        {
-            using namespace Metal;
-            for (unsigned c=0; c<count; ++c) {
-                XlCopyMemory(&dst[c], &src[c], sizeof(VertexElement));
-
-                    // change 16 bit precision formats into 32 bit
-                    //  (also change 4 dimensional vectors into 3 dimension vectors. Since there
-                    //  isn't a 4D float16 format, most of the time the 4D format is intended to
-                    //  be a 3D format. This will break if the format is intended to truly be
-                    //  4D).
-                if (    GetComponentType(dst[c]._format) == FormatComponentType::Float
-                    &&  GetComponentPrecision(dst[c]._format) == 16) {
-
-                    auto components = GetComponents(dst[c]._format);
-                    if (components == FormatComponents::RGBAlpha) {
-                        components = FormatComponents::RGB;
-                    }
-                    auto componentType = GetComponentType(dst[c]._format);
-                    auto recastFormat = FindFormat(
-                        FormatCompressionType::None, 
-                        components, FormatComponentType::Float,
-                        32);
-                    if (recastFormat != NativeFormat::Unknown) {
-                        dst[c]._format = recastFormat;
-                    }
-                }
-            }
-        }
-
         static const auto DefaultNormalsTextureBindingHash = Hash64("NormalsTexture");
         static const auto DefaultParametersTextureBindingHash = Hash64("ParametersTexture");
 
@@ -312,6 +279,26 @@ namespace RenderCore { namespace Assets
         };
     }
 
+    unsigned BuildLowLevelInputAssembly(
+        Metal::InputElementDesc dst[], unsigned dstMaxCount,
+        const VertexElement* source, unsigned sourceCount,
+        unsigned lowLevelSlot)
+    {
+        unsigned vertexElementCount = 0;
+        for (unsigned i=0; i<sourceCount; ++i) {
+            auto& sourceElement = source[i];
+            assert((vertexElementCount+1) <= dstMaxCount);
+            if ((vertexElementCount+1) <= dstMaxCount) {
+                    // in some cases we need multiple "slots". When we have multiple slots, the vertex data 
+                    //  should be one after another in the vb (that is, not interleaved)
+                dst[vertexElementCount++] = Metal::InputElementDesc(
+                    sourceElement._semantic, sourceElement._semanticIndex,
+                    sourceElement._format, lowLevelSlot, sourceElement._startOffset);
+            }
+        }
+        return vertexElementCount;
+    }
+
     ModelRenderer::ModelRenderer(
         ModelScaffold& scaffold, SharedStateSet& sharedStateSet, 
         const ::Assets::DirectorySearchRules* searchRules, unsigned levelOfDetail)
@@ -360,8 +347,10 @@ namespace RenderCore { namespace Assets
         std::vector<Pimpl::Mesh> meshes;
         std::vector<Pimpl::MeshAndDrawCall> drawCalls;
         std::vector<Pimpl::DrawCallResources> drawCallRes;
+        std::vector<Pimpl::PreparedAnimStream> drawCallPreparedAnim;
         drawCalls.reserve(drawCallCount);
         drawCallRes.reserve(drawCallCount);
+        drawCallPreparedAnim.resize(drawCallCount);
 
         for (unsigned gi=0; gi<geoCallCount; ++gi) {
             auto& geoInst = cmdStream.GetGeoCall(gi);
@@ -393,7 +382,8 @@ namespace RenderCore { namespace Assets
                 //  We must define an input interface layout from the input streams.
             Metal::InputElementDesc inputDesc[12];
             unsigned vertexElementCount = BuildLowLevelInputAssembly(
-                inputDesc, geo._vb._ia._elements, geo._vb._ia._elementCount);
+                inputDesc, dimof(inputDesc),
+                geo._vb._ia._elements, geo._vb._ia._elementCount);
 
                 // setup the "Draw call" objects next
                 //  each draw calls can have separate technique indices, and different material assignments.
@@ -447,6 +437,28 @@ namespace RenderCore { namespace Assets
             if (existing != skinnedMeshes.end()) { continue; }
 
             skinnedMeshes.push_back(Pimpl::BuildMesh(geoInst, geo, workingBuffers, sharedStateSet));
+
+            ////////////////////////////////////////////////////////////////////////////////
+                //  Build technique interfaces and binding information for the prepared
+                //  animation case
+
+            {
+                Pimpl::PreparedAnimStream preparedStream;
+                Metal::InputElementDesc inputDescForRender[12];
+                auto vertexElementForRenderCount = 
+                    Pimpl::BuildPostSkinInputAssembly(
+                        inputDescForRender, dimof(inputDescForRender), geo);
+
+                preparedStream._techniqueInterface = 
+                    sharedStateSet.InsertTechniqueInterface(
+                        inputDescForRender, vertexElementForRenderCount, 
+                        AsPointer(textureBindPoints.cbegin()), textureBindPoints.size());
+
+                preparedStream._vertexStride = 
+                    CalculateVertexStride(inputDescForRender, &inputDescForRender[vertexElementForRenderCount]);
+
+                drawCallPreparedAnim[drawCallRes.size()-1] = preparedStream;
+            }
         }
 
             ////////////////////////////////////////////////////////////////////////
@@ -473,35 +485,27 @@ namespace RenderCore { namespace Assets
                 //
                 //  In path 2, the geometry shader prepare step may change the format of the
                 //  vertex elements. This typically occurs when using 16 bit floats (or maybe 
-                //  even fixed point formats)
-            Metal::InputElementDesc inputDescForRender[12];
-            unsigned vertexElementForRenderCount = 0;
-
-            const bool geometryConvertedViaGS = true;
-            if (!geometryConvertedViaGS) {
-                vertexElementForRenderCount = 
+                //  even fixed point formats). That means we need another technique interface
+                //  for the prepared animation case!
+            unsigned techniqueInterfaceIndex;
+            {
+                Metal::InputElementDesc inputDescForRender[12];
+                unsigned eleCount = 
                     BuildLowLevelInputAssembly(
-                        inputDescForRender, geo._animatedVertexElements._ia._elements, geo._animatedVertexElements._ia._elementCount);
-            } else {
-                VertexElement convertedElements[dimof(inputDescForRender)];
-                unsigned convertedCount = std::min(dimof(inputDescForRender), geo._animatedVertexElements._ia._elementCount);
-                ApplyConversionFromStreamOutput(convertedElements, geo._animatedVertexElements._ia._elements, convertedCount);
+                        inputDescForRender, dimof(inputDescForRender),
+                        geo._animatedVertexElements._ia._elements, 
+                        geo._animatedVertexElements._ia._elementCount);
 
-                vertexElementForRenderCount = 
+                    // (add the unanimated part)
+                eleCount += 
                     BuildLowLevelInputAssembly(
-                        inputDescForRender, convertedElements, convertedCount);
+                        &inputDescForRender[eleCount], dimof(inputDescForRender) - eleCount,
+                        geo._vb._ia._elements, geo._vb._ia._elementCount, 1);
 
-                mesh->_postSkinVertexStride = 
-                    CalculateVertexStride(inputDescForRender, &inputDescForRender[vertexElementForRenderCount]);
+                techniqueInterfaceIndex = sharedStateSet.InsertTechniqueInterface(
+                    inputDescForRender, eleCount, 
+                    AsPointer(textureBindPoints.cbegin()), textureBindPoints.size());
             }
-
-                // (add the unanimated part)
-            vertexElementForRenderCount = 
-                BuildLowLevelInputAssembly(
-                    inputDescForRender, geo._vb._ia._elements, geo._vb._ia._elementCount, vertexElementForRenderCount, 1);
-
-            auto techniqueInterfaceIndex = sharedStateSet.InsertTechniqueInterface(
-                inputDescForRender, vertexElementForRenderCount, AsPointer(textureBindPoints.cbegin()), textureBindPoints.size());
 
             for (unsigned di=0; di<geo._drawCallsCount; ++di) {
                 auto& d = geo._drawCalls[di];
@@ -522,15 +526,6 @@ namespace RenderCore { namespace Assets
                 drawCallRes.push_back(res);
                 skinnedDrawCalls.push_back(std::make_pair(gi, d));
             }
-
-            ////////////////////////////////////////////////////////////////////////////////
-            // Metal::InputElementDesc inputDescForSkin[12];
-            // unsigned vertexElementForSkinCount = 
-            //     BuildLowLevelInputAssembly(
-            //         inputDescForSkin, geo._animatedVertexElements._ia._elements, geo._animatedVertexElements._ia._elementCount);
-            // vertexElementForSkinCount = 
-            //     BuildLowLevelInputAssembly(
-            //         inputDescForSkin, geo._skeletonBinding._ia._elements, geo._skeletonBinding._ia._elementCount, vertexElementForSkinCount, 1);
 
         }
 
@@ -695,12 +690,12 @@ namespace RenderCore { namespace Assets
     }
 
     void ModelRenderer::Pimpl::BeginSkinCall(
-            const Context&          context,
-            Metal::ConstantBuffer&  localTransformBuffer,
-            const MeshToModel*      transforms,
-            Float4x4                modelToWorld,
-            unsigned                geoCallIndex,
-            PreparedAnimation*      preparedAnimation) const
+        const Context&          context,
+        Metal::ConstantBuffer&  localTransformBuffer,
+        const MeshToModel*      transforms,
+        Float4x4                modelToWorld,
+        unsigned                geoCallIndex,
+        PreparedAnimation*      preparedAnimation) const
     {
         auto& cmdStream = _scaffold->CommandStream();
         auto& geoCall = cmdStream.GetSkinCall(geoCallIndex);
@@ -811,10 +806,9 @@ namespace RenderCore { namespace Assets
             result._extraVbStride[c] = vd[c]->_ia._vertexStride;
         }
 
-        result._postSkinVertexStride = result._extraVbStride[animGeo];
-            // pre-calculate a hash value that is useful for binding animation data...
-        result._animatedAIHash = geo._animatedVertexElements._ia.BuildHash() ^ geo._skeletonBinding._ia.BuildHash();
-        result._scaffold = &geo;
+        result._iaAnimationHash = geo._animatedVertexElements._ia.BuildHash() ^ geo._skeletonBinding._ia.BuildHash();
+        InitialiseSkinningVertexAssembly(result._iaAnimationHash, geo);
+
         return result;
     }
 
@@ -922,19 +916,6 @@ namespace RenderCore { namespace Assets
         CATCH(::Assets::Exceptions::InvalidResource& e) { context._parserContext->Process(e); }
         CATCH(::Assets::Exceptions::PendingResource& e) { context._parserContext->Process(e); }
         CATCH_END
-    }
-
-    static intrusive_ptr<ID3D::Device> ExtractDevice(RenderCore::Metal::DeviceContext* context)
-    {
-        ID3D::Device* tempPtr;
-        context->GetUnderlying()->GetDevice(&tempPtr);
-        return moveptr(tempPtr);
-    }
-
-    bool ModelRenderer::CanDoPrepareAnimation(Metal::DeviceContext* context)
-    {
-        auto featureLevel = ExtractDevice(context)->GetFeatureLevel();
-        return (featureLevel >= D3D_FEATURE_LEVEL_10_0);
     }
 
 ////////////////////////////////////////////////////////////////////////////////

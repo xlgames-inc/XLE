@@ -163,7 +163,7 @@ namespace RenderCore { namespace Assets
             PreparedAnimation& operator=(PreparedAnimation&&);
         };
 
-        PreparedAnimation PreallocateState() const;
+        PreparedAnimation CreatePreparedAnimation() const;
 
         void PrepareAnimation(
             Metal::DeviceContext* context, 

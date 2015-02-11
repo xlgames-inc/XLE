@@ -59,14 +59,6 @@ namespace RenderCore { namespace Assets
             Desc(BindingType::Enum bindingType, uint64 iaHash, unsigned vertexStride) : _bindingType(bindingType), _iaHash(iaHash), _vertexStride(vertexStride) {}
         };
 
-        void    Start(  Metal::DeviceContext& context, 
-                        Metal::VertexBuffer& destinationVertexBuffer,
-                        std::shared_ptr<std::vector<uint8>> constantBufferPackets[], 
-                        size_t constantBufferPacketsCount,
-                        Metal::ShaderResourceView* tbufferResource);
-        void    End(Metal::DeviceContext& context);
-        void    Apply(Metal::DeviceContext& context, unsigned materialIndexValue);
-
         SkinningBindingBox(const Desc& desc);
 
         Metal::GeometryShader       _geometryShader;
@@ -373,6 +365,85 @@ namespace RenderCore { namespace Assets
     static TBufferTemporaryTexture AllocateNewTBufferTemporaryTexture(const void* bufferData, size_t bufferSize);
     static void PushTBufferTemporaryTexture(Metal::DeviceContext* context, TBufferTemporaryTexture& tex);
 
+    void ModelRenderer::Pimpl::InitialiseSkinningVertexAssembly(
+        uint64 inputAssemblyHash,
+        const BoundSkinnedGeometry& scaffoldGeo)
+    {
+        auto& iaBox = FindCachedBox<HashedInputAssemblies>(HashedInputAssemblies::Desc(inputAssemblyHash));
+        if (iaBox._elements.empty()) {
+                //  This hashed input assembly will contain both the full input assembly 
+                //  for preparing skinning (with the animated elements in slot 0, and 
+                //  the skeleton binding info in slot 1)
+            Metal::InputElementDesc inputDesc[12];
+            unsigned vertexElementCount = BuildLowLevelInputAssembly(
+                inputDesc, dimof(inputDesc),
+                scaffoldGeo._animatedVertexElements._ia._elements, 
+                scaffoldGeo._animatedVertexElements._ia._elementCount);
+
+            vertexElementCount += BuildLowLevelInputAssembly(
+                &inputDesc[vertexElementCount], dimof(inputDesc) - vertexElementCount,
+                scaffoldGeo._skeletonBinding._ia._elements, 
+                scaffoldGeo._skeletonBinding._ia._elementCount, 1);
+
+            iaBox._elements.insert(iaBox._elements.begin(), inputDesc, &inputDesc[vertexElementCount]);
+        }
+    }
+
+    static void ApplyConversionFromStreamOutput(VertexElement dst[], const VertexElement src[], unsigned count)
+    {
+        using namespace Metal;
+        for (unsigned c=0; c<count; ++c) {
+            XlCopyMemory(&dst[c], &src[c], sizeof(VertexElement));
+
+                // change 16 bit precision formats into 32 bit
+                //  (also change 4 dimensional vectors into 3 dimension vectors. Since there
+                //  isn't a 4D float16 format, most of the time the 4D format is intended to
+                //  be a 3D format. This will break if the format is intended to truly be
+                //  4D).
+            if (    GetComponentType(dst[c]._format) == FormatComponentType::Float
+                &&  GetComponentPrecision(dst[c]._format) == 16) {
+
+                auto components = GetComponents(dst[c]._format);
+                if (components == FormatComponents::RGBAlpha) {
+                    components = FormatComponents::RGB;
+                }
+                auto recastFormat = FindFormat(
+                    FormatCompressionType::None, 
+                    components, FormatComponentType::Float,
+                    32);
+                if (recastFormat != NativeFormat::Unknown) {
+                    dst[c]._format = recastFormat;
+                }
+            }
+        }
+    }
+
+    unsigned ModelRenderer::Pimpl::BuildPostSkinInputAssembly(
+        Metal::InputElementDesc dst[], unsigned dstCount,
+        const BoundSkinnedGeometry& scaffoldGeo)
+    {
+        // build the native input assembly that should be used when using
+        // prepared animation
+
+        VertexElement convertedElements[16];
+        unsigned convertedCount = 
+            std::min( dstCount, 
+                std::min( dimof(convertedElements), 
+                    scaffoldGeo._animatedVertexElements._ia._elementCount));
+        ApplyConversionFromStreamOutput(
+            convertedElements, scaffoldGeo._animatedVertexElements._ia._elements, convertedCount);
+
+        unsigned eleCount = BuildLowLevelInputAssembly(
+            dst, dstCount, convertedElements, convertedCount);
+
+            // (add the unanimated part)
+        eleCount += BuildLowLevelInputAssembly(
+            &dst[eleCount], dstCount - eleCount, 
+            scaffoldGeo._vb._ia._elements, scaffoldGeo._vb._ia._elementCount, 1);
+
+        return eleCount;
+    }
+
     void ModelRenderer::Pimpl::BuildSkinnedBuffer(  
                 Metal::DeviceContext*       context,
                 const SkinnedMesh&          mesh,
@@ -382,28 +453,15 @@ namespace RenderCore { namespace Assets
                 unsigned                    outputOffset) const
     {
         using namespace Metal;
-        const auto bindingType = Tweakable("SkeletonUpload_ViaTBuffer", false)
-            ?SkinningBindingBox::BindingType::tbuffer:SkinningBindingBox::BindingType::cbuffer;
+        const auto bindingType =
+            Tweakable("SkeletonUpload_ViaTBuffer", false)
+                ? SkinningBindingBox::BindingType::tbuffer
+                : SkinningBindingBox::BindingType::cbuffer;
 
             // fill in the "HashedInputAssemblies" box if necessary
         const auto& scaffold = *mesh._scaffold;
-        auto& iaBox = FindCachedBox<HashedInputAssemblies>(HashedInputAssemblies::Desc(mesh._animatedAIHash));
-        if (iaBox._elements.empty()) {
-                //  this hashed input assembly will contain both the full input assembly for preparing
-                //  skinning (with the animated elements in slot 0, and the skeleton binding info in slot 1)
-            Metal::InputElementDesc inputDesc[12];
-            unsigned vertexElementCount = BuildLowLevelInputAssembly(
-                inputDesc, 
-                scaffold._animatedVertexElements._ia._elements, scaffold._animatedVertexElements._ia._elementCount);
-            vertexElementCount = BuildLowLevelInputAssembly(
-                inputDesc, 
-                scaffold._skeletonBinding._ia._elements, scaffold._skeletonBinding._ia._elementCount, 
-                vertexElementCount, 1);
-            iaBox._elements.insert(iaBox._elements.begin(), inputDesc, &inputDesc[vertexElementCount]);
-        }
-
         auto& bindingBox = FindCachedBoxDep<SkinningBindingBox>(
-            SkinningBindingBox::Desc(bindingType, mesh._animatedAIHash, mesh._extraVbStride[SkinnedMesh::VertexStreams::AnimatedGeo]));
+            SkinningBindingBox::Desc(bindingType, mesh._iaAnimationHash, mesh._extraVbStride[SkinnedMesh::VertexStreams::AnimatedGeo]));
 
             ///////////////////////////////////////////////
 
@@ -547,7 +605,7 @@ namespace RenderCore { namespace Assets
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    auto ModelRenderer::PreallocateState() const -> PreparedAnimation
+    auto ModelRenderer::CreatePreparedAnimation() const -> PreparedAnimation
     {
             //  We need to allocate a vertex buffer that can contain the animated vertex data
             //  for this whole mesh. 
@@ -558,7 +616,7 @@ namespace RenderCore { namespace Assets
         for (auto m=_pimpl->_skinnedMeshes.cbegin(); m!=_pimpl->_skinnedMeshes.cend(); ++m) {
             PreparedAnimation::OffsetAndStride offAndStride;
             offAndStride._offset = vbSize;
-            offAndStride._stride = m->_postSkinVertexStride;
+            offAndStride._stride = 0;
             vbOffAndStride.push_back(offAndStride);
 
             const auto stream = Pimpl::SkinnedMesh::VertexStreams::AnimatedGeo;
@@ -588,6 +646,19 @@ namespace RenderCore { namespace Assets
         }
 
         _pimpl->EndBuildingSkinning(*context);
+    }
+
+    static intrusive_ptr<ID3D::Device> ExtractDevice(RenderCore::Metal::DeviceContext* context)
+    {
+        ID3D::Device* tempPtr;
+        context->GetUnderlying()->GetDevice(&tempPtr);
+        return moveptr(tempPtr);
+    }
+
+    bool ModelRenderer::CanDoPrepareAnimation(Metal::DeviceContext* context)
+    {
+        auto featureLevel = ExtractDevice(context)->GetFeatureLevel();
+        return (featureLevel >= D3D_FEATURE_LEVEL_10_0);
     }
 
     ModelRenderer::PreparedAnimation::PreparedAnimation() 

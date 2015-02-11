@@ -50,7 +50,6 @@ namespace RenderCore { namespace Assets
         }
 
         unsigned techniqueInterfaceIndex = 0;
-
         auto& hashes = _pimpl->_techniqueInterfaceHashes;
         auto& interfaces = _pimpl->_techniqueInterfaces;
 
@@ -59,12 +58,12 @@ namespace RenderCore { namespace Assets
                 //  No existing interface. We have to build a new one.
             SceneEngine::TechniqueInterface techniqueInterface(
                 Metal::InputLayout(vertexElements, count));
+
             static const auto HashLocalTransform = Hash64("LocalTransform");
             static const auto HashBasicMaterial = Hash64("BasicMaterialConstants");
             techniqueInterface.BindConstantBuffer(HashLocalTransform, 0, 1);
             techniqueInterface.BindConstantBuffer(HashBasicMaterial, 1, 1);
             SceneEngine::TechniqueContext::BindGlobalUniforms(techniqueInterface);
-
             for (unsigned c=0; c<textureBindPointsCount; ++c) {
                 techniqueInterface.BindShaderResource(textureBindPoints[c], c, 1);
             }
