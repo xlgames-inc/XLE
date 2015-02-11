@@ -79,13 +79,38 @@ namespace RenderCore { namespace Assets
             unsigned _texturesIndex; 
         };
 
-        static unsigned ScaffoldMaterialIndex(ModelScaffold& scaffold, unsigned geoCallIndex, unsigned drawCallIndex)
+        static const ModelCommandStream::GeoCall& GetGeoCall(ModelScaffold& scaffold, unsigned geoCallIndex)
         {
+                //  get the "RawGeometry" object in the given scaffold for the give
+                //  geocall index. This will query both unskinned and skinned raw calls
             auto& cmdStream = scaffold.CommandStream();
-            auto& meshData = scaffold.ImmutableData();
             auto geoCallCount = cmdStream.GetGeoCallCount();
 
-            auto& geoCall = (geoCallIndex < geoCallCount) ? cmdStream.GetGeoCall(geoCallIndex) : cmdStream.GetSkinCall(geoCallIndex - geoCallCount);
+            return (geoCallIndex < geoCallCount) ? cmdStream.GetGeoCall(geoCallIndex) : cmdStream.GetSkinCall(geoCallIndex - geoCallCount);
+        }
+        
+        static const RawGeometry& GetGeo(ModelScaffold& scaffold, unsigned geoCallIndex)
+        {
+                //  get the "RawGeometry" object in the given scaffold for the give
+                //  geocall index. This will query both unskinned and skinned raw calls
+            auto& meshData = scaffold.ImmutableData();
+            auto geoCallCount = scaffold.CommandStream().GetGeoCallCount();
+
+            auto& geoCall = GetGeoCall(scaffold, geoCallIndex);
+            return (geoCallIndex < geoCallCount) ? meshData._geos[geoCall._geoId] : (RawGeometry&)meshData._boundSkinnedControllers[geoCall._geoId];
+        }
+
+        static unsigned GetDrawCallCount(ModelScaffold& scaffold, unsigned geoCallIndex)
+        {
+            return GetGeo(scaffold, geoCallIndex)._drawCallsCount;
+        }
+
+        static unsigned ScaffoldMaterialIndex(ModelScaffold& scaffold, unsigned geoCallIndex, unsigned drawCallIndex)
+        {
+            auto& meshData = scaffold.ImmutableData();
+            auto geoCallCount = scaffold.CommandStream().GetGeoCallCount();
+
+            auto& geoCall = GetGeoCall(scaffold, geoCallIndex);
             auto& geo = (geoCallIndex < geoCallCount) ? meshData._geos[geoCall._geoId] : (RawGeometry&)meshData._boundSkinnedControllers[geoCall._geoId];
             unsigned subMatI = geo._drawCalls[drawCallIndex]._subMaterialIndex;
 
@@ -178,22 +203,132 @@ namespace RenderCore { namespace Assets
 
         static const auto DefaultNormalsTextureBindingHash = Hash64("NormalsTexture");
         static const auto DefaultParametersTextureBindingHash = Hash64("ParametersTexture");
+
+        std::vector<std::pair<unsigned, SubMatResources>> BuildMaterialResources(
+            ModelScaffold& scaffold, SharedStateSet& sharedStateSet, unsigned levelOfDetail,
+            std::vector<uint64>& textureBindPoints,
+            std::vector<std::vector<uint8>>& prescientMaterialConstantBuffers)
+        {
+            std::vector<std::pair<unsigned, SubMatResources>> materialResources;
+
+            auto& cmdStream = scaffold.CommandStream();
+            auto& meshData = scaffold.ImmutableData();
+
+            auto geoCallCount = cmdStream.GetGeoCallCount();
+            auto skinCallCount = cmdStream.GetSkinCallCount();
+            for (unsigned gi=0; gi<geoCallCount + skinCallCount; ++gi) {
+                auto& geoInst = (gi < geoCallCount) ? cmdStream.GetGeoCall(gi) : cmdStream.GetSkinCall(gi - geoCallCount);
+                if (geoInst._levelOfDetail != levelOfDetail) { continue; }
+
+                    //  Lookup the mesh geometry and material information from their respective inputs.
+                auto& geo = (gi < geoCallCount) ? meshData._geos[geoInst._geoId] : (RawGeometry&)meshData._boundSkinnedControllers[geoInst._geoId];
+                for (unsigned di=0; di<geo._drawCallsCount; ++di) {
+                    auto scaffoldMatIndex = ScaffoldMaterialIndex(scaffold, gi, di);
+                    auto existing = LowerBound(materialResources, scaffoldMatIndex);
+                    if (existing == materialResources.cend() || existing->first != scaffoldMatIndex) {
+                        materialResources.insert(existing, std::make_pair(scaffoldMatIndex, SubMatResources()));
+                    }
+                }
+            }
+
+                // fill in the details for all of the material references we found
+            BasicMaterialConstants basicConstants = { Float3(1.f, 1.f, 1.f), 1.f, Float3(1.f, 1.f, 1.f), 1.f };
+            std::vector<uint8> constants((uint8*)&basicConstants, (uint8*)PtrAdd(&basicConstants, sizeof(basicConstants)));
+            for (auto i=materialResources.begin(); i!=materialResources.end(); ++i) {
+                std::string shaderName = DefaultShader;
+                i->second._shaderName = sharedStateSet.InsertShaderName(shaderName);
+                i->second._constantBuffer = InsertOrCombine(prescientMaterialConstantBuffers, std::move(constants));
+                i->second._texturesIndex = std::distance(materialResources.begin(), i);
+            }
+
+                // configure the texture bind points array & material parameters box
+            for (auto i=materialResources.begin(); i!=materialResources.end(); ++i) {
+                std::string boundNormalMapName;
+                SceneEngine::ParameterBox materialParamBox;
+
+                    //  we need to create a list of all of the texture bind points that are referenced
+                    //  by all of the materials used here. They will end up in sorted order
+                if (i->first < scaffold.ImmutableData()._materialBindingsCount) {
+                    const auto& materialScaffoldData = scaffold.ImmutableData()._materialBindings[i->first];
+                    for (auto i=materialScaffoldData._bindings.cbegin(); i!=materialScaffoldData._bindings.cend(); ++i) {
+                        auto bindName = i->_bindHash;
+
+                        materialParamBox.SetParameter((const char*)(StringMeld<64>() << "RES_HAS_" << std::hex << bindName), 1);
+                        if (bindName == DefaultNormalsTextureBindingHash) {
+                            boundNormalMapName = i->_resourceName;
+                        }
+
+                        auto q = std::lower_bound(textureBindPoints.begin(), textureBindPoints.end(), bindName);
+                        if (q != textureBindPoints.end() && *q == bindName) { continue; }
+                        textureBindPoints.insert(q, bindName);
+                    }
+                }
+
+                if (!boundNormalMapName.empty()) {
+                        //  We need to decide whether the normal map is "DXT" 
+                        //  format or not. This information isn't in the material
+                        //  itself; we actually need to look at the texture file
+                        //  to see what format it is. Unfortunately that means
+                        //  opening the texture file to read it's header. However
+                        //  we can accelerate it a bit by caching the result
+                    materialParamBox.SetParameter("RES_HAS_NormalsTexture_DXT", IsDXTNormalMap(boundNormalMapName));
+                }
+
+                i->second._matParams = sharedStateSet.InsertParameterBox(materialParamBox);
+            }
+
+            return materialResources;
+        }
+
+        class BuffersUnderConstruction
+        {
+        public:
+            unsigned _vbSize;
+            unsigned _ibSize;
+
+            unsigned AllocateIB(unsigned size, RenderCore::Metal::NativeFormat::Enum format)
+            {
+                unsigned allocation = _ibSize;
+
+                    // we have to align the index buffer offset correctly
+                unsigned indexStride = (format == RenderCore::Metal::NativeFormat::R32_UINT)?4:2;
+                unsigned rem = _ibSize % indexStride;
+                if (rem != 0) {
+                    allocation += indexStride - rem;
+                }
+
+                _ibSize = allocation + size;
+                return allocation;
+            }
+
+            unsigned AllocateVB(unsigned size)
+            {
+                unsigned result = _vbSize;
+                _vbSize += size;
+                return result;
+            }
+
+            BuffersUnderConstruction() : _vbSize(0), _ibSize(0) {}
+        };
     }
 
-    ModelRenderer::ModelRenderer(ModelScaffold& scaffold, SharedStateSet& sharedStateSet, const ::Assets::DirectorySearchRules* searchRules, unsigned levelOfDetail)
+    ModelRenderer::ModelRenderer(
+        ModelScaffold& scaffold, SharedStateSet& sharedStateSet, 
+        const ::Assets::DirectorySearchRules* searchRules, unsigned levelOfDetail)
     {
         using namespace ModelConstruction;
 
             // build the underlying objects required to render the given scaffold 
             //  (at the given level of detail)
-        BasicFile file(scaffold.Filename().c_str(), "rb");
-        auto largeBlocksOffset = scaffold.LargeBlocksOffset();
-
         std::vector<uint64> textureBindPoints;
         std::vector<std::vector<uint8>> prescientMaterialConstantBuffers;
+        auto materialResources = BuildMaterialResources(
+            scaffold, sharedStateSet, levelOfDetail,
+            textureBindPoints, prescientMaterialConstantBuffers);
 
-        std::vector<std::pair<unsigned, SubMatResources>> subMatResources;
-        unsigned textureSetCount = 0;
+            // one "textureset" for each sub material (though, in theory, we could 
+            // combine texture sets for materials that share the same textures
+        unsigned textureSetCount = unsigned(materialResources.size());
 
         auto& cmdStream = scaffold.CommandStream();
         auto& meshData = scaffold.ImmutableData();
@@ -206,80 +341,16 @@ namespace RenderCore { namespace Assets
             //  "drawCall" objects. MeshCall gives us the material id, and the draw call 
             //  gives us the sub material id.
 
-        auto geoCallCount = cmdStream.GetGeoCallCount();
-        auto skinCallCount = cmdStream.GetSkinCallCount();
-        for (unsigned gi=0; gi<geoCallCount + skinCallCount; ++gi) {
-            auto& geoInst = (gi < geoCallCount) ? cmdStream.GetGeoCall(gi) : cmdStream.GetSkinCall(gi - geoCallCount);
-            if (geoInst._levelOfDetail != levelOfDetail) { continue; }
-
-                //  Lookup the mesh geometry and material information from their respective inputs.
-            auto& geo = (gi < geoCallCount) ? meshData._geos[geoInst._geoId] : (RawGeometry&)meshData._boundSkinnedControllers[geoInst._geoId];
-            for (unsigned di=0; di<geo._drawCallsCount; ++di) {
-                auto scaffoldMatIndex = ScaffoldMaterialIndex(scaffold, gi, di);
-                auto existing = LowerBound(subMatResources, scaffoldMatIndex);
-                if (existing == subMatResources.cend() || existing->first != scaffoldMatIndex) {
-                    subMatResources.insert(existing, std::make_pair(scaffoldMatIndex, SubMatResources()));
-                }
-            }
-        }
-
-            // fill in the details for all of the material references we found
-        for (auto i=subMatResources.begin(); i!=subMatResources.end(); ++i) {
-            std::string boundNormalMapName;
-            std::string shaderName = DefaultShader;
-            SceneEngine::ParameterBox materialParamBox;
-            BasicMaterialConstants basicConstants = { Float3(1.f, 1.f, 1.f), 1.f, Float3(1.f, 1.f, 1.f), 1.f };
-            std::vector<uint8> constants((uint8*)&basicConstants, (uint8*)PtrAdd(&basicConstants, sizeof(basicConstants)));
-
-                //  we need to create a list of all of the texture bind points that are referenced
-                //  by all of the materials used here. They will end up in sorted order
-            if (i->first < scaffold.ImmutableData()._materialBindingsCount) {
-                const auto& materialScaffoldData = scaffold.ImmutableData()._materialBindings[i->first];
-                for (auto i=materialScaffoldData._bindings.cbegin(); i!=materialScaffoldData._bindings.cend(); ++i) {
-                    auto bindName = i->_bindHash;
-
-                    materialParamBox.SetParameter((const char*)(StringMeld<64>() << "RES_HAS_" << std::hex << bindName), 1);
-                    if (bindName == DefaultNormalsTextureBindingHash) {
-                        boundNormalMapName = i->_resourceName;
-                    }
-
-                    auto q = std::lower_bound(textureBindPoints.begin(), textureBindPoints.end(), bindName);
-                    if (q != textureBindPoints.end() && *q == bindName) { continue; }
-                    textureBindPoints.insert(q, bindName);
-                }
-            }
-
-            if (!boundNormalMapName.empty()) {
-                    //  We need to decide whether the normal map is "DXT" 
-                    //  format or not. This information isn't in the material
-                    //  itself; we actually need to look at the texture file
-                    //  to see what format it is. Unfortunately that means
-                    //  opening the texture file to read it's header. However
-                    //  we can accelerate it a bit by caching the result
-                materialParamBox.SetParameter("RES_HAS_NormalsTexture_DXT", IsDXTNormalMap(boundNormalMapName));
-            }
-
-            i->second._shaderName = sharedStateSet.InsertShaderName(shaderName);
-            i->second._matParams = sharedStateSet.InsertParameterBox(materialParamBox);
-            i->second._constantBuffer = InsertOrCombine(prescientMaterialConstantBuffers, std::move(constants));
-            i->second._texturesIndex = textureSetCount++;
-        }
-
             //  Note that we can have cases where the same mesh is referenced multiple times by 
             //  a single "geo call". In these cases, we want the mesh data to be stored once
             //  in the vertex buffer / index buffer but for there to be multiple sets of "draw calls"
             //  So, we have to separate the mesh processing from the draw call processing here
         
-        size_t nascentVBSize = 0, nascentIBSize = 0;
-
-            //  these are parallel arrays in the order of the draw calls as we will encounter them 
-            //  during normal rendering
-        std::vector<unsigned> resourcesIndices;
-        std::vector<unsigned> techniqueInterfaceIndices;
-        std::vector<unsigned> shaderNameIndices;
-        std::vector<unsigned> materialParameterBoxIndices;
-        std::vector<unsigned> geoParameterBoxIndices;
-        std::vector<unsigned> constantBufferIndices;
+        BuffersUnderConstruction workingBuffers;
+        auto geoCallCount = cmdStream.GetGeoCallCount();
+        auto skinCallCount = cmdStream.GetSkinCallCount();
+        auto drawCallCount = 0;
+        for (unsigned c=0; c<geoCallCount + skinCallCount; ++c) { drawCallCount += GetDrawCallCount(scaffold, c); }
 
             //  We should calculate the size we'll need for nascentIB & nascentVB first, 
             //  so we don't have to do any reallocations
@@ -288,6 +359,9 @@ namespace RenderCore { namespace Assets
                 //          u n s k i n n e d   g e o                           //
         std::vector<Pimpl::Mesh> meshes;
         std::vector<Pimpl::MeshAndDrawCall> drawCalls;
+        std::vector<Pimpl::DrawCallResources> drawCallRes;
+        drawCalls.reserve(drawCallCount);
+        drawCallRes.reserve(drawCallCount);
 
         for (unsigned gi=0; gi<geoCallCount; ++gi) {
             auto& geoInst = cmdStream.GetGeoCall(gi);
@@ -297,36 +371,13 @@ namespace RenderCore { namespace Assets
                 //  is none, we can skip it completely
             assert(geoInst._geoId < meshData._geoCount);
             auto& geo = meshData._geos[geoInst._geoId];
-            if (!AtLeastOneValidDrawCall(geo, scaffold, gi, subMatResources)) { continue; }
+            if (!AtLeastOneValidDrawCall(geo, scaffold, gi, materialResources)) { continue; }
 
                 // if we encounter the same mesh multiple times, we don't need to store it every time
             auto existing = FindIf(meshes, [=](const Pimpl::Mesh& mesh) { return mesh._id == geoInst._geoId; });
             if (existing != meshes.end()) { continue; }
 
-            Pimpl::Mesh mesh;
-            mesh._id = geoInst._geoId;
-            mesh._ibOffset = nascentIBSize;
-            mesh._vbOffset = nascentVBSize;
-            mesh._indexFormat = geo._ib._format;
-            mesh._vertexStride = geo._vb._ia._vertexStride;
-            mesh._sourceFileIBOffset = largeBlocksOffset + geo._ib._offset;
-            mesh._sourceFileIBSize = geo._ib._size;
-            mesh._sourceFileVBOffset = largeBlocksOffset + geo._vb._offset;
-            mesh._sourceFileVBSize = geo._vb._size;
-            mesh._geoParamBox = BuildGeoParamBox(geo._vb._ia, sharedStateSet);
-
-            nascentVBSize += mesh._sourceFileVBSize;
-            nascentIBSize += mesh._sourceFileIBSize;
-
-                // we have to align the index buffer offset correctly
-            unsigned indexStride = (mesh._indexFormat == RenderCore::Metal::NativeFormat::R32_UINT)?4:2;
-            unsigned rem = mesh._ibOffset % indexStride;
-            if (rem != 0) {
-                mesh._ibOffset += indexStride - rem;
-                nascentIBSize += indexStride - rem;
-            }
-
-            meshes.push_back(mesh);
+            meshes.push_back(Pimpl::BuildMesh(geoInst, geo, workingBuffers, sharedStateSet));
         }
 
             ////////////////////////////////////////////////////////////////////////
@@ -336,9 +387,8 @@ namespace RenderCore { namespace Assets
             if (geoInst._levelOfDetail != levelOfDetail) { continue; }
             
             auto& geo = meshData._geos[geoInst._geoId];
-            auto meshI = FindIf(meshes, [=](const Pimpl::Mesh& mesh) { return mesh._id == geoInst._geoId; });
-            if (meshI == meshes.end()) { continue; }
-            auto meshIndex = std::distance(meshes.begin(), meshI);
+            auto mesh = FindIf(meshes, [=](const Pimpl::Mesh& mesh) { return mesh._id == geoInst._geoId; });
+            if (mesh == meshes.end()) { continue; }
 
                 //  We must define an input interface layout from the input streams.
             Metal::InputElementDesc inputDesc[12];
@@ -357,20 +407,22 @@ namespace RenderCore { namespace Assets
                 if (!d._indexCount) { continue; }
 
                 auto scaffoldMatIndex = ScaffoldMaterialIndex(scaffold, gi, di);
-                auto subMatResI = LowerBound(subMatResources, scaffoldMatIndex);
-                if (subMatResI == subMatResources.cend() || subMatResI->first != scaffoldMatIndex) {
+                auto matResI = LowerBound(materialResources, scaffoldMatIndex);
+                if (matResI == materialResources.cend() || matResI->first != scaffoldMatIndex) {
                     continue;   // missing shader name means a "no-draw" shader
                 }
+                const auto& matRes = matResI->second;
 
-                auto& subMatRes = subMatResI->second;
-                shaderNameIndices.push_back(subMatRes._shaderName);
-                materialParameterBoxIndices.push_back(subMatRes._matParams);
-                geoParameterBoxIndices.push_back(meshI->_geoParamBox);
-                constantBufferIndices.push_back(subMatRes._constantBuffer);
-                
-                techniqueInterfaceIndices.push_back(techniqueInterfaceIndex);
-                resourcesIndices.push_back(subMatRes._texturesIndex);
-
+                    //  "Draw call resources" are used when performing this draw call.
+                    //  They help select the right shader, and are also required for
+                    //  setting the graphics state (bound textures and shader constants, etc)
+                    //  We can initialise them now using some information from the geometry
+                    //  object and some information from the material.
+                Pimpl::DrawCallResources res(
+                    matRes._shaderName, techniqueInterfaceIndex,
+                    mesh->_geoParamBox, matRes._matParams, 
+                    matRes._texturesIndex, matRes._constantBuffer);
+                drawCallRes.push_back(res);
                 drawCalls.push_back(std::make_pair(gi, d));
             }
         }
@@ -388,55 +440,13 @@ namespace RenderCore { namespace Assets
                 //  is none, we can skip it completely
             assert(geoInst._geoId < meshData._boundSkinnedControllerCount);
             auto& geo = meshData._boundSkinnedControllers[geoInst._geoId];
-            if (!AtLeastOneValidDrawCall(geo, scaffold, geoCallCount + gi, subMatResources)) { continue; }
+            if (!AtLeastOneValidDrawCall(geo, scaffold, geoCallCount + gi, materialResources)) { continue; }
 
                 // if we encounter the same mesh multiple times, we don't need to store it every time
             auto existing = FindIf(skinnedMeshes, [=](const Pimpl::SkinnedMesh& mesh) { return mesh._id == geoInst._geoId; });
             if (existing != skinnedMeshes.end()) { continue; }
 
-            Pimpl::SkinnedMesh mesh;
-            mesh._id = geoInst._geoId;
-            mesh._ibOffset = nascentIBSize;
-            mesh._vbOffset = nascentVBSize;
-            mesh._indexFormat = geo._ib._format;
-            mesh._vertexStride = geo._vb._ia._vertexStride;
-            mesh._sourceFileIBOffset = largeBlocksOffset + geo._ib._offset;
-            mesh._sourceFileIBSize = geo._ib._size;
-            mesh._sourceFileVBOffset = largeBlocksOffset + geo._vb._offset;
-            mesh._sourceFileVBSize = geo._vb._size;
-            mesh._geoParamBox = BuildGeoParamBox(geo._vb._ia, sharedStateSet);
-
-            nascentVBSize += mesh._sourceFileVBSize;
-            nascentIBSize += mesh._sourceFileIBSize;
-
-            auto animGeo = Pimpl::SkinnedMesh::VertexStreams::AnimatedGeo;
-            auto skelBind = Pimpl::SkinnedMesh::VertexStreams::SkeletonBinding;
-
-            mesh._extraVbOffset[animGeo] = nascentVBSize;
-            mesh._extraVbStride[animGeo] = geo._animatedVertexElements._ia._vertexStride;
-            mesh._sourceFileExtraVBOffset[animGeo] = largeBlocksOffset + geo._animatedVertexElements._offset;
-            mesh._sourceFileExtraVBSize[animGeo] = geo._animatedVertexElements._size;
-            mesh._postSkinVertexStride = mesh._extraVbStride[animGeo];
-            nascentVBSize += mesh._sourceFileExtraVBSize[animGeo];
-
-            mesh._extraVbOffset[skelBind] = nascentVBSize;
-            mesh._extraVbStride[skelBind] = geo._skeletonBinding._ia._vertexStride;
-            mesh._sourceFileExtraVBOffset[skelBind] = largeBlocksOffset + geo._skeletonBinding._offset;
-            mesh._sourceFileExtraVBSize[skelBind] = geo._skeletonBinding._size;
-                // precalculate a hash value that is useful for binding animation data...
-            mesh._animatedAIHash = geo._animatedVertexElements._ia.BuildHash() ^ geo._skeletonBinding._ia.BuildHash();
-            mesh._scaffold = &geo;
-            nascentVBSize += mesh._sourceFileExtraVBSize[skelBind];
-
-                // we have to align the index buffer offset correctly
-            unsigned indexStride = (mesh._indexFormat == RenderCore::Metal::NativeFormat::R32_UINT)?4:2;
-            unsigned rem = mesh._ibOffset % indexStride;
-            if (rem != 0) {
-                mesh._ibOffset += indexStride - rem;
-                nascentIBSize += indexStride - rem;
-            }
-
-            skinnedMeshes.push_back(mesh);
+            skinnedMeshes.push_back(Pimpl::BuildMesh(geoInst, geo, workingBuffers, sharedStateSet));
         }
 
             ////////////////////////////////////////////////////////////////////////
@@ -446,9 +456,9 @@ namespace RenderCore { namespace Assets
             if (geoInst._levelOfDetail != levelOfDetail) { continue; }
 
             auto& geo = meshData._boundSkinnedControllers[geoInst._geoId];
-            auto meshI = FindIf(skinnedMeshes, [=](const Pimpl::SkinnedMesh& mesh) { return mesh._id == geoInst._geoId; });
-            if (meshI == skinnedMeshes.end()) { continue; }
-            auto meshIndex = std::distance(skinnedMeshes.begin(), meshI);
+            auto mesh = FindIf(skinnedMeshes, [=](const Pimpl::SkinnedMesh& mesh) { return mesh._id == geoInst._geoId; });
+            if (mesh == skinnedMeshes.end()) { continue; }
+            auto meshIndex = std::distance(skinnedMeshes.begin(), mesh);
             
             ////////////////////////////////////////////////////////////////////////////////
                 //  Build the input assembly we will use while rendering. This should 
@@ -481,7 +491,7 @@ namespace RenderCore { namespace Assets
                     BuildLowLevelInputAssembly(
                         inputDescForRender, convertedElements, convertedCount);
 
-                meshI->_postSkinVertexStride = 
+                mesh->_postSkinVertexStride = 
                     CalculateVertexStride(inputDescForRender, &inputDescForRender[vertexElementForRenderCount]);
             }
 
@@ -498,58 +508,68 @@ namespace RenderCore { namespace Assets
                 if (!d._indexCount) { continue; }
                 
                 auto scaffoldMatIndex = ScaffoldMaterialIndex(scaffold, geoCallCount + gi, di);
-                auto subMatResI = LowerBound(subMatResources, scaffoldMatIndex);
-                if (subMatResI == subMatResources.cend() || subMatResI->first != scaffoldMatIndex) {
+                auto subMatResI = LowerBound(materialResources, scaffoldMatIndex);
+                if (subMatResI == materialResources.cend() || subMatResI->first != scaffoldMatIndex) {
                     continue;   // missing shader name means a "no-draw" shader
                 }
 
-                auto& subMatRes = subMatResI->second;
-                shaderNameIndices.push_back(subMatRes._shaderName);
-                materialParameterBoxIndices.push_back(subMatRes._matParams);
-                geoParameterBoxIndices.push_back(meshI->_geoParamBox);
-                constantBufferIndices.push_back(subMatRes._constantBuffer);
-                
-                techniqueInterfaceIndices.push_back(techniqueInterfaceIndex);
-                resourcesIndices.push_back(subMatRes._texturesIndex);
+                auto& matRes = subMatResI->second;
+                Pimpl::DrawCallResources res(
+                    matRes._shaderName, techniqueInterfaceIndex,
+                    mesh->_geoParamBox, matRes._matParams, 
+                    matRes._texturesIndex, matRes._constantBuffer);
 
+                drawCallRes.push_back(res);
                 skinnedDrawCalls.push_back(std::make_pair(gi, d));
             }
 
             ////////////////////////////////////////////////////////////////////////////////
-            Metal::InputElementDesc inputDescForSkin[12];
-            unsigned vertexElementForSkinCount = BuildLowLevelInputAssembly(
-                inputDescForSkin, geo._animatedVertexElements._ia._elements, geo._animatedVertexElements._ia._elementCount);
-            vertexElementForSkinCount = BuildLowLevelInputAssembly(
-                inputDescForSkin, geo._skeletonBinding._ia._elements, geo._skeletonBinding._ia._elementCount, vertexElementForSkinCount, 1);
+            // Metal::InputElementDesc inputDescForSkin[12];
+            // unsigned vertexElementForSkinCount = 
+            //     BuildLowLevelInputAssembly(
+            //         inputDescForSkin, geo._animatedVertexElements._ia._elements, geo._animatedVertexElements._ia._elementCount);
+            // vertexElementForSkinCount = 
+            //     BuildLowLevelInputAssembly(
+            //         inputDescForSkin, geo._skeletonBinding._ia._elements, geo._skeletonBinding._ia._elementCount, vertexElementForSkinCount, 1);
 
         }
 
+            ////////////////////////////////////////////////////////////////////////
+                //
+                //  We have to load the "large blocks" from the file here
+                //      -- todo -- this part can be pushed into the background
+                //          using the buffer uploads system
+                //
         std::vector<uint8> nascentVB, nascentIB;
-        nascentVB.resize(nascentVBSize);
-        nascentIB.resize(nascentIBSize);
+        nascentVB.resize(workingBuffers._vbSize);
+        nascentIB.resize(workingBuffers._ibSize);
+
+        BasicFile file(scaffold.Filename().c_str(), "rb");
+        auto largeBlocksOffset = scaffold.LargeBlocksOffset();
 
         for (auto m=meshes.begin(); m!=meshes.end(); ++m) {
-            LoadBlock(file, &nascentIB[m->_ibOffset], m->_sourceFileIBOffset, m->_sourceFileIBSize);
-            LoadBlock(file, &nascentVB[m->_vbOffset], m->_sourceFileVBOffset, m->_sourceFileVBSize);
+            LoadBlock(file, &nascentIB[m->_ibOffset], largeBlocksOffset + m->_sourceFileIBOffset, m->_sourceFileIBSize);
+            LoadBlock(file, &nascentVB[m->_vbOffset], largeBlocksOffset + m->_sourceFileVBOffset, m->_sourceFileVBSize);
         }
 
         for (auto m=skinnedMeshes.begin(); m!=skinnedMeshes.end(); ++m) {
-            LoadBlock(file, &nascentIB[m->_ibOffset], m->_sourceFileIBOffset, m->_sourceFileIBSize);
-            LoadBlock(file, &nascentVB[m->_vbOffset], m->_sourceFileVBOffset, m->_sourceFileVBSize);
+            LoadBlock(file, &nascentIB[m->_ibOffset], largeBlocksOffset + m->_sourceFileIBOffset, m->_sourceFileIBSize);
+            LoadBlock(file, &nascentVB[m->_vbOffset], largeBlocksOffset + m->_sourceFileVBOffset, m->_sourceFileVBSize);
             for (unsigned s=0; s<Pimpl::SkinnedMesh::VertexStreams::Max; ++s) {
-                LoadBlock(file, &nascentVB[m->_extraVbOffset[s]], m->_sourceFileExtraVBOffset[s], m->_sourceFileExtraVBSize[s]);
+                LoadBlock(file, &nascentVB[m->_extraVbOffset[s]], largeBlocksOffset + m->_sourceFileExtraVBOffset[s], m->_sourceFileExtraVBSize[s]);
             }
         }
 
-            //  now that we have a list of all of the sub materials used, and we know how large the resource 
-            //  interface is, we build an array of deferred shader resources for shader inputs.
-        std::vector<Metal::DeferredShaderResource*> boundTextures;
+            ////////////////////////////////////////////////////////////////////////
+                //  now that we have a list of all of the sub materials used, and we know how large the resource 
+                //  interface is, we build an array of deferred shader resources for shader inputs.
         std::vector<SceneEngine::ParameterBox> materialParameterBoxes;
 
         auto texturesPerMaterial = textureBindPoints.size();
+        std::vector<Metal::DeferredShaderResource*> boundTextures;
         boundTextures.resize(textureSetCount * texturesPerMaterial, nullptr);
 
-        for (auto i=subMatResources.begin(); i!=subMatResources.end(); ++i) {
+        for (auto i=materialResources.begin(); i!=materialResources.end(); ++i) {
             unsigned subMatIndex = i->first;
             unsigned textureSetIndex = i->second._texturesIndex;
         
@@ -585,6 +605,8 @@ namespace RenderCore { namespace Assets
             }
         }
 
+            ////////////////////////////////////////////////////////////////////////
+
         std::vector<Metal::ConstantBuffer> finalConstantBuffers;
         for (auto cb=prescientMaterialConstantBuffers.cbegin(); cb!=prescientMaterialConstantBuffers.end(); ++cb) {
             Metal::ConstantBuffer newCB(AsPointer(cb->begin()), cb->size());
@@ -592,24 +614,25 @@ namespace RenderCore { namespace Assets
         }
 
         Metal::VertexBuffer vb(AsPointer(nascentVB.begin()), nascentVB.size());
-        Metal::IndexBuffer  ib(AsPointer(nascentIB.begin()), nascentIB.size());
+        Metal::IndexBuffer ib(AsPointer(nascentIB.begin()), nascentIB.size());
+
+            ////////////////////////////////////////////////////////////////////////
 
         auto pimpl = std::make_unique<Pimpl>();
+
         pimpl->_vertexBuffer = std::move(vb);
         pimpl->_indexBuffer = std::move(ib);
         pimpl->_meshes = std::move(meshes);
-        pimpl->_drawCalls = std::move(drawCalls);
-        pimpl->_techniqueInterfaceIndices = std::move(techniqueInterfaceIndices);
-        pimpl->_resourcesIndices = std::move(resourcesIndices);
-        pimpl->_boundTextures = std::move(boundTextures);
-        pimpl->_shaderNameIndices = std::move(shaderNameIndices);
-        pimpl->_materialParameterBoxIndices = std::move(materialParameterBoxIndices);
-        pimpl->_geoParameterBoxIndices = std::move(geoParameterBoxIndices);
-        pimpl->_constantBuffers = std::move(finalConstantBuffers);
-        pimpl->_constantBufferIndices = std::move(constantBufferIndices);
-        pimpl->_skinnedDrawCalls = std::move(skinnedDrawCalls);
         pimpl->_skinnedMeshes = std::move(skinnedMeshes);
+
+        pimpl->_drawCalls = std::move(drawCalls);
+        pimpl->_drawCallRes = std::move(drawCallRes);
+        pimpl->_skinnedDrawCalls = std::move(skinnedDrawCalls);
+
+        pimpl->_boundTextures = std::move(boundTextures);
+        pimpl->_constantBuffers = std::move(finalConstantBuffers);
         pimpl->_texturesPerMaterial = texturesPerMaterial;
+
         pimpl->_scaffold = &scaffold;
         pimpl->_levelOfDetail = levelOfDetail;
         _pimpl = std::move(pimpl);
@@ -632,21 +655,15 @@ namespace RenderCore { namespace Assets
         ~ModelRenderingBox() {}
     };
 
-
     Metal::BoundUniforms*    ModelRenderer::Pimpl::BeginVariation(
             const Context&          context,
             const SharedStateSet&   sharedStateSet,
             unsigned                drawCallIndex) const
     {
-        auto techInterfIndex        = _techniqueInterfaceIndices[drawCallIndex];
-        auto shaderNameIndex        = _shaderNameIndices[drawCallIndex];
-        auto materialParamIndex     = _materialParameterBoxIndices[drawCallIndex];
-        auto geoParamIndex          = _geoParameterBoxIndices[drawCallIndex];
-
+        const auto& res = _drawCallRes[drawCallIndex];
         return sharedStateSet.BeginVariation(
             context._context, *context._parserContext, context._techniqueIndex,
-            shaderNameIndex, techInterfIndex, geoParamIndex, materialParamIndex);
-
+            res._shaderName, res._techniqueInterface, res._geoParamBox, res._materialParamBox);
     }
 
     void ModelRenderer::Pimpl::BeginGeoCall(
@@ -745,6 +762,81 @@ namespace RenderCore { namespace Assets
             RenderCore::Metal::UniformsStream(nullptr, cbs, 2, srvs, _texturesPerMaterial));
     }
 
+    auto ModelRenderer::Pimpl::BuildMesh(
+        const ModelCommandStream::GeoCall& geoInst,
+        const RawGeometry& geo,
+        ModelConstruction::BuffersUnderConstruction& workingBuffers,
+        SharedStateSet& sharedStateSet) -> Mesh
+    {
+        Mesh result;
+        result._id = geoInst._geoId;
+        result._indexFormat = geo._ib._format;
+        result._vertexStride = geo._vb._ia._vertexStride;
+        result._geoParamBox = ModelConstruction::BuildGeoParamBox(geo._vb._ia, sharedStateSet);
+
+            // (source file locators)
+        result._sourceFileIBOffset = geo._ib._offset;
+        result._sourceFileIBSize = geo._ib._size;
+        result._sourceFileVBOffset = geo._vb._offset;
+        result._sourceFileVBSize = geo._vb._size;
+
+            // (vb, ib allocations)
+        result._ibOffset = workingBuffers.AllocateIB(result._sourceFileIBSize, result._indexFormat);
+        result._vbOffset = workingBuffers.AllocateVB(result._sourceFileVBSize);
+        return result;
+    }
+
+    auto ModelRenderer::Pimpl::BuildMesh(
+        const ModelCommandStream::GeoCall& geoInst,
+        const BoundSkinnedGeometry& geo,
+        ModelConstruction::BuffersUnderConstruction& workingBuffers,
+        SharedStateSet& sharedStateSet) -> SkinnedMesh
+    {
+            // Build the mesh, starting with the same basic behaviour as 
+            //  unskinned meshes.
+            //  (there a sort-of "slice" here... It's a bit of a hack)
+        Pimpl::SkinnedMesh result;
+        (Pimpl::Mesh&)result = BuildMesh(geoInst, (const RawGeometry&)geo, workingBuffers, sharedStateSet);
+
+        auto animGeo = Pimpl::SkinnedMesh::VertexStreams::AnimatedGeo;
+        auto skelBind = Pimpl::SkinnedMesh::VertexStreams::SkeletonBinding;
+        const VertexData* vd[2];
+        vd[animGeo] = &geo._animatedVertexElements;
+        vd[skelBind] = &geo._skeletonBinding;
+
+        for (unsigned c=0; c<2; ++c) {
+            result._sourceFileExtraVBOffset[c] = vd[c]->_offset;
+            result._sourceFileExtraVBSize[c] = vd[c]->_size;
+            result._extraVbOffset[c] = workingBuffers.AllocateVB(result._sourceFileExtraVBSize[c]);
+            result._extraVbStride[c] = vd[c]->_ia._vertexStride;
+        }
+
+        result._postSkinVertexStride = result._extraVbStride[animGeo];
+            // pre-calculate a hash value that is useful for binding animation data...
+        result._animatedAIHash = geo._animatedVertexElements._ia.BuildHash() ^ geo._skeletonBinding._ia.BuildHash();
+        result._scaffold = &geo;
+        return result;
+    }
+
+    ModelRenderer::Pimpl::DrawCallResources::DrawCallResources()
+    {
+        _shaderName = _techniqueInterface = _geoParamBox = _materialParamBox = 0;
+        _textureSet = _constantBuffer = 0;
+    }
+
+    ModelRenderer::Pimpl::DrawCallResources::DrawCallResources(
+        unsigned shaderName, unsigned techniqueInterface,
+        unsigned geoParamBox, unsigned matParamBox,
+        unsigned textureSet, unsigned constantBuffer)
+    {
+        _shaderName = shaderName;
+        _techniqueInterface = techniqueInterface;
+        _geoParamBox = geoParamBox;
+        _materialParamBox = matParamBox;
+        _textureSet = textureSet;
+        _constantBuffer = constantBuffer;
+    }
+
     void    ModelRenderer::Render(
             const Context&      context,
             const Float4x4&     modelToWorld,
@@ -754,7 +846,7 @@ namespace RenderCore { namespace Assets
         auto& box = SceneEngine::FindCachedBox<ModelRenderingBox>(ModelRenderingBox::Desc());
         const Metal::ConstantBuffer* pkts[] = { &box._localTransformBuffer, nullptr };
 
-        unsigned currRes = ~unsigned(0x0), currCB = ~unsigned(0x0), currGeoCall = ~unsigned(0x0);
+        unsigned currTextureSet = ~unsigned(0x0), currCB = ~unsigned(0x0), currGeoCall = ~unsigned(0x0);
         Metal::BoundUniforms* currUniforms = nullptr;
         auto& devContext = *context._context;
         auto& scaffold = *_pimpl->_scaffold;
@@ -770,22 +862,24 @@ namespace RenderCore { namespace Assets
                 //////////// Render un-skinned geometry ////////////
 
             unsigned drawCallIndex = 0;
-            for (auto md = _pimpl->_drawCalls.cbegin(); md != _pimpl->_drawCalls.cend(); ++md, ++drawCallIndex) {
+            for (auto md=_pimpl->_drawCalls.cbegin(); 
+                md!=_pimpl->_drawCalls.cend(); ++md, ++drawCallIndex) {
+
                 if (md->first != currGeoCall) {
                     _pimpl->BeginGeoCall(context, box._localTransformBuffer, transforms, modelToWorld, md->first);
                     currGeoCall = md->first;
                 }
 
                 auto* boundUniforms = _pimpl->BeginVariation(context, *context._sharedStateSet, drawCallIndex);
-                auto res = _pimpl->_resourcesIndices[drawCallIndex];
-                auto cb = _pimpl->_constantBufferIndices[drawCallIndex];
+                const auto& drawCallRes = _pimpl->_drawCallRes[drawCallIndex];
 
-                if (boundUniforms != currUniforms || res != currRes || cb != currCB) {
+                if (boundUniforms != currUniforms || drawCallRes._textureSet != currTextureSet || drawCallRes._constantBuffer != currCB) {
                     if (boundUniforms) {
-                        _pimpl->ApplyBoundUnforms(context, *boundUniforms, res, cb, pkts);
+                        _pimpl->ApplyBoundUnforms(
+                            context, *boundUniforms, drawCallRes._textureSet, drawCallRes._constantBuffer, pkts);
                     }
 
-                    currRes = res; currCB = cb;
+                    currTextureSet = drawCallRes._textureSet; currCB = drawCallRes._constantBuffer;
                     currUniforms = boundUniforms;
                 }
             
@@ -798,22 +892,24 @@ namespace RenderCore { namespace Assets
                 //////////// Render skinned geometry ////////////
 
             currGeoCall = ~unsigned(0x0);
-            for (auto md = _pimpl->_skinnedDrawCalls.cbegin(); md != _pimpl->_skinnedDrawCalls.cend(); ++md, ++drawCallIndex) {
+            for (auto md=_pimpl->_skinnedDrawCalls.cbegin(); 
+                md!=_pimpl->_skinnedDrawCalls.cend(); ++md, ++drawCallIndex) {
+
                 if (md->first != currGeoCall) {
                     _pimpl->BeginSkinCall(context, box._localTransformBuffer, transforms, modelToWorld, md->first, preparedAnimation);
                     currGeoCall = md->first;
                 }
 
                 auto* boundUniforms = _pimpl->BeginVariation(context, *context._sharedStateSet, drawCallIndex);
-                auto res = _pimpl->_resourcesIndices[drawCallIndex];
-                auto cb = _pimpl->_constantBufferIndices[drawCallIndex];
+                const auto& drawCallRes = _pimpl->_drawCallRes[drawCallIndex];
 
-                if (boundUniforms != currUniforms || res != currRes || cb != currCB) {
+                if (boundUniforms != currUniforms || drawCallRes._textureSet != currTextureSet || drawCallRes._constantBuffer != currCB) {
                     if (boundUniforms) {
-                        _pimpl->ApplyBoundUnforms(context, *boundUniforms, res, cb, pkts);
+                        _pimpl->ApplyBoundUnforms(
+                            context, *boundUniforms, drawCallRes._textureSet, drawCallRes._constantBuffer, pkts);
                     }
 
-                    currRes = res; currCB = cb;
+                    currTextureSet = drawCallRes._textureSet; currCB = drawCallRes._constantBuffer;
                     currUniforms = boundUniforms;
                 }
             

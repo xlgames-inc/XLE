@@ -270,6 +270,8 @@ namespace RenderCore { namespace Assets
 ////////////////////////////////////////////////////////////////////////////////////////////
     //      r e n d e r e r         //
 
+    namespace ModelConstruction { class BuffersUnderConstruction; }
+
     class ModelRenderer::Pimpl
     {
     public:
@@ -303,26 +305,38 @@ namespace RenderCore { namespace Assets
             uint64      _animatedAIHash;
             unsigned    _postSkinVertexStride;
 
-            BoundSkinnedGeometry* _scaffold;
+            const BoundSkinnedGeometry* _scaffold;
         };
 
         std::vector<Metal::DeferredShaderResource*> _boundTextures;
         size_t  _texturesPerMaterial;
-        
+
         ///////////////////////////////////////////////////////////////////////////////
             //  Parallel arrays, ordered by draw calls, as we encounter them 
             //  while rendering each mesh.
-        std::vector<unsigned>           _resourcesIndices;
-        std::vector<unsigned>           _techniqueInterfaceIndices;
-        std::vector<unsigned>           _shaderNameIndices;
-        std::vector<unsigned>           _materialParameterBoxIndices;
-        std::vector<unsigned>           _geoParameterBoxIndices;
-        std::vector<unsigned>           _constantBufferIndices;
+        class DrawCallResources
+        {
+        public:
+            unsigned _shaderName;
+            unsigned _techniqueInterface;
+            unsigned _geoParamBox;
+            unsigned _materialParamBox;
 
-        Metal::VertexBuffer             _vertexBuffer;
-        Metal::IndexBuffer              _indexBuffer;
-        std::vector<Mesh>               _meshes;
-        std::vector<SkinnedMesh>        _skinnedMeshes;
+            unsigned _textureSet;
+            unsigned _constantBuffer;
+
+            DrawCallResources();
+            DrawCallResources(
+                unsigned shaderName, unsigned techniqueInterface,
+                unsigned geoParamBox, unsigned matParamBox,
+                unsigned textureSet, unsigned constantBuffer);
+        };
+        std::vector<DrawCallResources>   _drawCallRes;
+
+        Metal::VertexBuffer         _vertexBuffer;
+        Metal::IndexBuffer          _indexBuffer;
+        std::vector<Mesh>           _meshes;
+        std::vector<SkinnedMesh>            _skinnedMeshes;
         std::vector<Metal::ConstantBuffer>  _constantBuffers;
 
         ///////////////////////////////////////////////////////////////////////////////
@@ -369,6 +383,18 @@ namespace RenderCore { namespace Assets
             const SkeletonBinding&  skeletonBinding,
             Metal::VertexBuffer&    outputResult,
             unsigned                outputOffset) const;
+
+        static auto BuildMesh(
+            const ModelCommandStream::GeoCall& geoInst,
+            const RawGeometry& geo,
+            ModelConstruction::BuffersUnderConstruction& workingBuffers,
+            SharedStateSet& sharedStateSet) -> Mesh;
+
+        static auto BuildMesh(
+            const ModelCommandStream::GeoCall& geoInst,
+            const BoundSkinnedGeometry& geo,
+            ModelConstruction::BuffersUnderConstruction& workingBuffers,
+            SharedStateSet& sharedStateSet) -> SkinnedMesh;
 
         void StartBuildingSkinning(Metal::DeviceContext& context, SkinningBindingBox& bindingBox) const;
         void EndBuildingSkinning(Metal::DeviceContext& context) const;

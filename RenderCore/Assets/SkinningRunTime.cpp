@@ -389,16 +389,17 @@ namespace RenderCore { namespace Assets
         const auto& scaffold = *mesh._scaffold;
         auto& iaBox = FindCachedBox<HashedInputAssemblies>(HashedInputAssemblies::Desc(mesh._animatedAIHash));
         if (iaBox._elements.empty()) {
-
                 //  this hashed input assembly will contain both the full input assembly for preparing
                 //  skinning (with the animated elements in slot 0, and the skeleton binding info in slot 1)
             Metal::InputElementDesc inputDesc[12];
             unsigned vertexElementCount = BuildLowLevelInputAssembly(
-                inputDesc, scaffold._animatedVertexElements._ia._elements, scaffold._animatedVertexElements._ia._elementCount);
+                inputDesc, 
+                scaffold._animatedVertexElements._ia._elements, scaffold._animatedVertexElements._ia._elementCount);
             vertexElementCount = BuildLowLevelInputAssembly(
-                inputDesc, scaffold._skeletonBinding._ia._elements, scaffold._skeletonBinding._ia._elementCount, vertexElementCount, 1);
+                inputDesc, 
+                scaffold._skeletonBinding._ia._elements, scaffold._skeletonBinding._ia._elementCount, 
+                vertexElementCount, 1);
             iaBox._elements.insert(iaBox._elements.begin(), inputDesc, &inputDesc[vertexElementCount]);
-
         }
 
         auto& bindingBox = FindCachedBoxDep<SkinningBindingBox>(
