@@ -95,8 +95,13 @@ namespace RenderCore { namespace Assets
     {
         auto& paramBoxes = _pimpl->_parameterBoxes;
         auto boxHash = box.GetHash();
-        auto p = std::find_if(paramBoxes.cbegin(), paramBoxes.cend(), 
-            [=](const SceneEngine::ParameterBox& box) { return box.GetHash() == boxHash; });
+        auto namesHash = box.GetParameterNamesHash();
+        auto p = std::find_if(
+            paramBoxes.cbegin(), paramBoxes.cend(), 
+            [=](const SceneEngine::ParameterBox& box) 
+            { 
+                return box.GetHash() == boxHash && box.GetParameterNamesHash() == namesHash; 
+            });
         if (p == paramBoxes.cend()) {
             paramBoxes.push_back(box);
             return paramBoxes.size()-1;
@@ -110,7 +115,8 @@ namespace RenderCore { namespace Assets
             unsigned techniqueIndex, unsigned shaderName, unsigned techniqueInterface, 
             unsigned geoParamBox, unsigned materialParamBox) const
     {
-        if (shaderName == _currentShaderName && techniqueInterface == _currentTechniqueInterface && materialParamBox == _currentMaterialParamBox) {
+        if (    shaderName == _currentShaderName && techniqueInterface == _currentTechniqueInterface 
+            &&  geoParamBox == _currentGeoParamBox && materialParamBox == _currentMaterialParamBox) {
             return _currentBoundUniforms;
         }
 
@@ -146,6 +152,7 @@ namespace RenderCore { namespace Assets
         _currentShaderName = shaderName;
         _currentTechniqueInterface = techniqueInterface;
         _currentMaterialParamBox = materialParamBox;
+        _currentGeoParamBox = geoParamBox;
         _currentBoundUniforms = variation._boundUniforms;
         return _currentBoundUniforms;
     }
@@ -155,6 +162,7 @@ namespace RenderCore { namespace Assets
         _currentShaderName = ~unsigned(0x0);
         _currentTechniqueInterface = ~unsigned(0x0);
         _currentMaterialParamBox = ~unsigned(0x0);
+        _currentGeoParamBox = ~unsigned(0x0);
         _currentBoundUniforms = nullptr;
     }
 
@@ -166,6 +174,7 @@ namespace RenderCore { namespace Assets
         _currentShaderName = ~unsigned(0x0);
         _currentTechniqueInterface = ~unsigned(0x0);
         _currentMaterialParamBox = ~unsigned(0x0);
+        _currentGeoParamBox = ~unsigned(0x0);
         _currentBoundUniforms = nullptr;
 
         _pimpl = std::move(pimpl);

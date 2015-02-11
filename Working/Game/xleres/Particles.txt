@@ -3,13 +3,8 @@ Illum
         Geometry
             GEO_HAS_COLOUR
             GEO_HAS_TEXCOORD
-            RES_HAS_bfbf327ee9403009
-            RES_HAS_c3a97fd4218f2a04
-            RES_HAS_NormalsTexture_DXT
             GEO_HAS_PARTICLE_INPUTS
                 1
-            RES_HAS_CUSTOM_MAP
-            RES_HAS_OPACITY_MAP
         Material
             MAT_ALPHA_TEST
             MAT_MODULATE_VERTEX_ALPHA
@@ -18,6 +13,11 @@ Illum
                 1
             MAT_BLEND_FOG
                 0
+            RES_HAS_bfbf327ee9403009
+            RES_HAS_c3a97fd4218f2a04
+            RES_HAS_NormalsTexture_DXT
+            RES_HAS_CUSTOM_MAP
+            RES_HAS_OPACITY_MAP
     VertexShader
         game/xleres/particles/Particle.vsh:nogs
     GeometryShader
@@ -41,9 +41,6 @@ Deferred
         Geometry
             GEO_HAS_COLOUR
             GEO_HAS_TEXCOORD
-            RES_HAS_bfbf327ee9403009
-            RES_HAS_c3a97fd4218f2a04
-            RES_HAS_NormalsTexture_DXT
             GEO_HAS_PARTICLE_INPUTS
                 1
         GlobalEnvironment
@@ -55,6 +52,9 @@ Deferred
                 1
             MAT_MODULATE_VERTEX_ALPHA
                 1
+            RES_HAS_bfbf327ee9403009
+            RES_HAS_c3a97fd4218f2a04
+            RES_HAS_NormalsTexture_DXT
     VertexShader
         game/xleres/particles/Particle.vsh:nogs
     GeometryShader
@@ -67,9 +67,6 @@ OrderIndependentTransparency
         Geometry
             GEO_HAS_COLOUR
             GEO_HAS_TEXCOORD
-            RES_HAS_bfbf327ee9403009
-            RES_HAS_c3a97fd4218f2a04
-            RES_HAS_NormalsTexture_DXT
             OUTPUT_LOCAL_NORMAL
                 1
             OUTPUT_LOCAL_VIEW_VECTOR
@@ -85,6 +82,9 @@ OrderIndependentTransparency
             MAT_PREMULTIPLIED_ALPHA
             MAT_MODULATE_VERTEX_ALPHA
                 1
+            RES_HAS_bfbf327ee9403009
+            RES_HAS_c3a97fd4218f2a04
+            RES_HAS_NormalsTexture_DXT
     VertexShader
         game/xleres/particles/Particle.vsh:nogs
     GeometryShader

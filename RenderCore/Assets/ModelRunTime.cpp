@@ -123,6 +123,59 @@ namespace RenderCore { namespace Assets
             file.Read(destination, 1, readSize);
         }
 
+        static bool HasElement(const GeoInputAssembly& ia, const char name[])
+        {
+            auto end = &ia._elements[ia._elementCount];
+            return std::find_if(
+                ia._elements, end, 
+                [=](const VertexElement& ele) { return !XlCompareString(ele._semantic, name); }) != end;
+        }
+
+        static unsigned BuildGeoParamBox(const GeoInputAssembly& ia, SharedStateSet& sharedStateSet)
+        {
+                //  Build a parameter box for this geometry configuration. The input assembly
+                //  
+            SceneEngine::ParameterBox geoParameters;
+            if (HasElement(ia, "TEXCOORD")) { geoParameters.SetParameter("GEO_HAS_TEXCOORD", 1); }
+            if (HasElement(ia, "NORMAL"))   { geoParameters.SetParameter("GEO_HAS_NORMAL", 1); }
+            if (HasElement(ia, "COLOR"))    { geoParameters.SetParameter("GEO_HAS_COLOUR", 1); }
+            if (HasElement(ia, "TANGENT") && HasElement(ia, "BITANGENT"))
+                { geoParameters.SetParameter("GEO_HAS_TANGENT_FRAME", 1); }
+            if (HasElement(ia, "BONEINDICES") && HasElement(ia, "BONEWEIGHTS"))
+                { geoParameters.SetParameter("GEO_HAS_SKIN_WEIGHTS", 1); }
+            return sharedStateSet.InsertParameterBox(geoParameters);
+        }
+
+        void ApplyConversionFromStreamOutput(VertexElement dst[], const VertexElement src[], unsigned count)
+        {
+            using namespace Metal;
+            for (unsigned c=0; c<count; ++c) {
+                XlCopyMemory(&dst[c], &src[c], sizeof(VertexElement));
+
+                    // change 16 bit precision formats into 32 bit
+                    //  (also change 4 dimensional vectors into 3 dimension vectors. Since there
+                    //  isn't a 4D float16 format, most of the time the 4D format is intended to
+                    //  be a 3D format. This will break if the format is intended to truly be
+                    //  4D).
+                if (    GetComponentType(dst[c]._format) == FormatComponentType::Float
+                    &&  GetComponentPrecision(dst[c]._format) == 16) {
+
+                    auto components = GetComponents(dst[c]._format);
+                    if (components == FormatComponents::RGBAlpha) {
+                        components = FormatComponents::RGB;
+                    }
+                    auto componentType = GetComponentType(dst[c]._format);
+                    auto recastFormat = FindFormat(
+                        FormatCompressionType::None, 
+                        components, FormatComponentType::Float,
+                        32);
+                    if (recastFormat != NativeFormat::Unknown) {
+                        dst[c]._format = recastFormat;
+                    }
+                }
+            }
+        }
+
         static const auto DefaultNormalsTextureBindingHash = Hash64("NormalsTexture");
         static const auto DefaultParametersTextureBindingHash = Hash64("ParametersTexture");
     }
@@ -144,15 +197,6 @@ namespace RenderCore { namespace Assets
 
         auto& cmdStream = scaffold.CommandStream();
         auto& meshData = scaffold.ImmutableData();
-
-        unsigned mainGeoParamBox = ~unsigned(0x0);
-        {
-                // todo -- this should come from the geometry type!
-            SceneEngine::ParameterBox geoParameters;
-            geoParameters.SetParameter("GEO_HAS_TEXCOORD", 1);
-            geoParameters.SetParameter("GEO_HAS_NORMAL", 1);
-            mainGeoParamBox = sharedStateSet.InsertParameterBox(geoParameters);
-        }
 
             //  First we need to bind each draw call to a material in our
             //  material scaffold. Then we need to find the superset of all bound textures
@@ -181,7 +225,6 @@ namespace RenderCore { namespace Assets
 
             // fill in the details for all of the material references we found
         for (auto i=subMatResources.begin(); i!=subMatResources.end(); ++i) {
-
             std::string boundNormalMapName;
             std::string shaderName = DefaultShader;
             SceneEngine::ParameterBox materialParamBox;
@@ -231,12 +274,12 @@ namespace RenderCore { namespace Assets
 
             //  these are parallel arrays in the order of the draw calls as we will encounter them 
             //  during normal rendering
-        std::vector<unsigned>   resourcesIndices;
-        std::vector<unsigned>   techniqueInterfaceIndices;
-        std::vector<unsigned>   shaderNameIndices;
-        std::vector<unsigned>   materialParameterBoxIndices;
-        std::vector<unsigned>   geoParameterBoxIndices;
-        std::vector<unsigned>   constantBufferIndices;
+        std::vector<unsigned> resourcesIndices;
+        std::vector<unsigned> techniqueInterfaceIndices;
+        std::vector<unsigned> shaderNameIndices;
+        std::vector<unsigned> materialParameterBoxIndices;
+        std::vector<unsigned> geoParameterBoxIndices;
+        std::vector<unsigned> constantBufferIndices;
 
             //  We should calculate the size we'll need for nascentIB & nascentVB first, 
             //  so we don't have to do any reallocations
@@ -270,6 +313,7 @@ namespace RenderCore { namespace Assets
             mesh._sourceFileIBSize = geo._ib._size;
             mesh._sourceFileVBOffset = largeBlocksOffset + geo._vb._offset;
             mesh._sourceFileVBSize = geo._vb._size;
+            mesh._geoParamBox = BuildGeoParamBox(geo._vb._ia, sharedStateSet);
 
             nascentVBSize += mesh._sourceFileVBSize;
             nascentIBSize += mesh._sourceFileIBSize;
@@ -285,7 +329,8 @@ namespace RenderCore { namespace Assets
             meshes.push_back(mesh);
         }
 
-            // construct vb, ib & draw calls (for GeoCalls)
+            ////////////////////////////////////////////////////////////////////////
+                // construct vb, ib & draw calls (for GeoCalls)
         for (unsigned gi=0; gi<geoCallCount; ++gi) {
             auto& geoInst = cmdStream.GetGeoCall(gi);
             if (geoInst._levelOfDetail != levelOfDetail) { continue; }
@@ -320,7 +365,7 @@ namespace RenderCore { namespace Assets
                 auto& subMatRes = subMatResI->second;
                 shaderNameIndices.push_back(subMatRes._shaderName);
                 materialParameterBoxIndices.push_back(subMatRes._matParams);
-                geoParameterBoxIndices.push_back(mainGeoParamBox);
+                geoParameterBoxIndices.push_back(meshI->_geoParamBox);
                 constantBufferIndices.push_back(subMatRes._constantBuffer);
                 
                 techniqueInterfaceIndices.push_back(techniqueInterfaceIndex);
@@ -359,6 +404,7 @@ namespace RenderCore { namespace Assets
             mesh._sourceFileIBSize = geo._ib._size;
             mesh._sourceFileVBOffset = largeBlocksOffset + geo._vb._offset;
             mesh._sourceFileVBSize = geo._vb._size;
+            mesh._geoParamBox = BuildGeoParamBox(geo._vb._ia, sharedStateSet);
 
             nascentVBSize += mesh._sourceFileVBSize;
             nascentIBSize += mesh._sourceFileIBSize;
@@ -370,6 +416,7 @@ namespace RenderCore { namespace Assets
             mesh._extraVbStride[animGeo] = geo._animatedVertexElements._ia._vertexStride;
             mesh._sourceFileExtraVBOffset[animGeo] = largeBlocksOffset + geo._animatedVertexElements._offset;
             mesh._sourceFileExtraVBSize[animGeo] = geo._animatedVertexElements._size;
+            mesh._postSkinVertexStride = mesh._extraVbStride[animGeo];
             nascentVBSize += mesh._sourceFileExtraVBSize[animGeo];
 
             mesh._extraVbOffset[skelBind] = nascentVBSize;
@@ -392,7 +439,8 @@ namespace RenderCore { namespace Assets
             skinnedMeshes.push_back(mesh);
         }
 
-            // construct vb, ib & draw calls (for SkinCalls)
+            ////////////////////////////////////////////////////////////////////////
+                // construct vb, ib & draw calls (for SkinCalls)
         for (unsigned gi=0; gi<skinCallCount; ++gi) {
             auto& geoInst = cmdStream.GetSkinCall(gi);
             if (geoInst._levelOfDetail != levelOfDetail) { continue; }
@@ -403,13 +451,44 @@ namespace RenderCore { namespace Assets
             auto meshIndex = std::distance(skinnedMeshes.begin(), meshI);
             
             ////////////////////////////////////////////////////////////////////////////////
-                //  We have two input assemblies -- one for the skinning prepare, and
-                //  one for the actual render
+                //  Build the input assembly we will use while rendering. This should 
+                //  contain the unskinned the vertex elements, and also the skinned vertex
+                //  elements.
+                //
+                //  There are 3 possible paths for the skinned vertex elements:
+                //      1) we do the skinning in the vertex shader, as we encounter them.
+                //          (In this case, we also need the skinning parameter vertex elements)
+                //      2) we do the skinning in a geometry shader prepare step
+                //      3) we do no skinning at all
+                //
+                //  In path 2, the geometry shader prepare step may change the format of the
+                //  vertex elements. This typically occurs when using 16 bit floats (or maybe 
+                //  even fixed point formats)
             Metal::InputElementDesc inputDescForRender[12];
-            unsigned vertexElementForRenderCount = BuildLowLevelInputAssembly(
-                inputDescForRender, geo._animatedVertexElements._ia._elements, geo._animatedVertexElements._ia._elementCount);
-            vertexElementForRenderCount = BuildLowLevelInputAssembly(
-                inputDescForRender, geo._vb._ia._elements, geo._vb._ia._elementCount, vertexElementForRenderCount, 1);
+            unsigned vertexElementForRenderCount = 0;
+
+            const bool geometryConvertedViaGS = true;
+            if (!geometryConvertedViaGS) {
+                vertexElementForRenderCount = 
+                    BuildLowLevelInputAssembly(
+                        inputDescForRender, geo._animatedVertexElements._ia._elements, geo._animatedVertexElements._ia._elementCount);
+            } else {
+                VertexElement convertedElements[dimof(inputDescForRender)];
+                unsigned convertedCount = std::min(dimof(inputDescForRender), geo._animatedVertexElements._ia._elementCount);
+                ApplyConversionFromStreamOutput(convertedElements, geo._animatedVertexElements._ia._elements, convertedCount);
+
+                vertexElementForRenderCount = 
+                    BuildLowLevelInputAssembly(
+                        inputDescForRender, convertedElements, convertedCount);
+
+                meshI->_postSkinVertexStride = 
+                    CalculateVertexStride(inputDescForRender, &inputDescForRender[vertexElementForRenderCount]);
+            }
+
+                // (add the unanimated part)
+            vertexElementForRenderCount = 
+                BuildLowLevelInputAssembly(
+                    inputDescForRender, geo._vb._ia._elements, geo._vb._ia._elementCount, vertexElementForRenderCount, 1);
 
             auto techniqueInterfaceIndex = sharedStateSet.InsertTechniqueInterface(
                 inputDescForRender, vertexElementForRenderCount, AsPointer(textureBindPoints.cbegin()), textureBindPoints.size());
@@ -427,7 +506,7 @@ namespace RenderCore { namespace Assets
                 auto& subMatRes = subMatResI->second;
                 shaderNameIndices.push_back(subMatRes._shaderName);
                 materialParameterBoxIndices.push_back(subMatRes._matParams);
-                geoParameterBoxIndices.push_back(mainGeoParamBox);
+                geoParameterBoxIndices.push_back(meshI->_geoParamBox);
                 constantBufferIndices.push_back(subMatRes._constantBuffer);
                 
                 techniqueInterfaceIndices.push_back(techniqueInterfaceIndex);
@@ -462,14 +541,13 @@ namespace RenderCore { namespace Assets
             }
         }
 
-
             //  now that we have a list of all of the sub materials used, and we know how large the resource 
             //  interface is, we build an array of deferred shader resources for shader inputs.
         std::vector<Metal::DeferredShaderResource*> boundTextures;
         std::vector<SceneEngine::ParameterBox> materialParameterBoxes;
 
         auto texturesPerMaterial = textureBindPoints.size();
-        boundTextures.resize(textureSetCount * texturesPerMaterial);
+        boundTextures.resize(textureSetCount * texturesPerMaterial, nullptr);
 
         for (auto i=subMatResources.begin(); i!=subMatResources.end(); ++i) {
             unsigned subMatIndex = i->first;
@@ -610,8 +688,10 @@ namespace RenderCore { namespace Assets
         auto& cmdStream = _scaffold->CommandStream();
         auto& geoCall = cmdStream.GetSkinCall(geoCallIndex);
 
-            // we only need to use the "transforms" array when we don't have prepared animation
-            //  (otherwise that information gets burned into the prepared vertex positions)
+            // We only need to use the "transforms" array when we don't 
+            // have prepared animation
+            //  (otherwise that information gets burned into the 
+            //   prepared vertex positions)
         if (!preparedAnimation && transforms) {
             modelToWorld = Combine(transforms->GetMeshToModel(geoCall._transformMarker), modelToWorld);
         }
@@ -621,30 +701,26 @@ namespace RenderCore { namespace Assets
 
         auto cm = FindIf(_skinnedMeshes, [=](const Pimpl::SkinnedMesh& mesh) { return mesh._id == geoCall._geoId; });
         assert(cm != _skinnedMeshes.end());
+        auto meshIndex = std::distance(_skinnedMeshes.cbegin(), cm);
 
         auto& devContext = *context._context;
         devContext.Bind(_indexBuffer, cm->_indexFormat, cm->_ibOffset);
 
-            // todo -- we need to replace the animated vertex stream with the post anim data
         auto animGeo = SkinnedMesh::VertexStreams::AnimatedGeo;
         UINT strides[2], offsets[2];
         ID3D::Buffer* underlyingVBs[2];
         strides[0] = cm->_extraVbStride[animGeo];
-        strides[1] = cm->_vertexStride;
         offsets[0] = cm->_extraVbOffset[animGeo];
+        strides[1] = cm->_vertexStride;
         offsets[1] = cm->_vbOffset;
         underlyingVBs[0] = underlyingVBs[1] = _vertexBuffer.GetUnderlying();
 
+            //  If we have a prepared animation, we have to replace the bindings
+            //  with the data from there.
         if (preparedAnimation) {
             underlyingVBs[0] = preparedAnimation->_skinningBuffer.GetUnderlying();
-
-                // we have to recalculate the offset currently
-            unsigned vbOffset = 0;
-            for (auto m=_skinnedMeshes.cbegin(); m!=_skinnedMeshes.cend(); ++m) {
-                if (m == cm) { break; }
-                vbOffset += m->_sourceFileExtraVBSize[Pimpl::SkinnedMesh::VertexStreams::AnimatedGeo];
-            }
-            offsets[0] = vbOffset;
+            strides[0] = preparedAnimation->_vbOffAndStride[meshIndex]._stride;
+            offsets[0] = preparedAnimation->_vbOffAndStride[meshIndex]._offset;
         }
 
         context._context->GetUnderlying()->IASetVertexBuffers(0, 2, underlyingVBs, strides, offsets);
@@ -666,7 +742,7 @@ namespace RenderCore { namespace Assets
         cbs[1] = &_constantBuffers[constantsIndex];
         boundUniforms.Apply(
             *context._context, context._parserContext->GetGlobalUniformsStream(),
-            RenderCore::Metal::UniformsStream(nullptr, cbs, dimof(cbs), srvs, _texturesPerMaterial));
+            RenderCore::Metal::UniformsStream(nullptr, cbs, 2, srvs, _texturesPerMaterial));
     }
 
     void    ModelRenderer::Render(

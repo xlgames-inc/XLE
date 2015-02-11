@@ -2,9 +2,6 @@ Illum
     Parameters
         Geometry
             GEO_HAS_NORMAL
-            RES_HAS_bfbf327ee9403009
-            RES_HAS_c3a97fd4218f2a04
-            RES_HAS_NormalsTexture_DXT
         GlobalEnvironment
             AUTO_COTANGENT
             PREFER_ANISOTROPIC
@@ -14,6 +11,9 @@ Illum
         Material
             MAT_BLEND_FOG
                 1
+            RES_HAS_bfbf327ee9403009
+            RES_HAS_c3a97fd4218f2a04
+            RES_HAS_NormalsTexture_DXT
     VertexShader
         game/xleres/forward/illum.vsh:main
     PixelShader
@@ -23,9 +23,6 @@ Deferred
     Parameters
         Geometry
             GEO_HAS_NORMAL
-            RES_HAS_bfbf327ee9403009
-            RES_HAS_c3a97fd4218f2a04
-            RES_HAS_NormalsTexture_DXT
         GlobalEnvironment
             AUTO_COTANGENT
             PREFER_ANISOTROPIC
@@ -34,6 +31,10 @@ Deferred
                 1
             GBUFFER_TYPE
                 1
+        Material
+            RES_HAS_bfbf327ee9403009
+            RES_HAS_c3a97fd4218f2a04
+            RES_HAS_NormalsTexture_DXT
     VertexShader
         game/xleres/deferred/basic.vsh:main
     PixelShader

@@ -309,7 +309,6 @@ namespace RenderCore { namespace ColladaConversion
 
 
     static const auto DefaultDiffuseTextureBindingHash = Hash64("DiffuseTexture");
-    static const auto DefaultNormalsTextureBindingHash = Hash64("NormalsTexture");
 
     static void AddBoundTexture( 
         const COLLADAFW::Effect* effect, unsigned commonEffectIndex,

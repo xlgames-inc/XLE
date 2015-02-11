@@ -3,9 +3,6 @@ Illum
         Geometry
             GEO_HAS_TEXCOORD
             GEO_HAS_TANGENT_FRAME
-            RES_HAS_bfbf327ee9403009
-            RES_HAS_c3a97fd4218f2a04
-            RES_HAS_NormalsTexture_DXT
         GlobalEnvironment
             AUTO_COTANGENT
             PREFER_ANISOTROPIC
@@ -19,6 +16,9 @@ Illum
             MAT_ALPHA_TEST
             MAT_BLEND_FOG
                 1
+            RES_HAS_bfbf327ee9403009
+            RES_HAS_c3a97fd4218f2a04
+            RES_HAS_NormalsTexture_DXT
         Runtime
             SPAWNED_INSTANCE
     VertexShader
@@ -42,9 +42,6 @@ Deferred
         Geometry
             GEO_HAS_TEXCOORD
             GEO_HAS_TANGENT_FRAME
-            RES_HAS_bfbf327ee9403009
-            RES_HAS_c3a97fd4218f2a04
-            RES_HAS_NormalsTexture_DXT
         GlobalEnvironment
             AUTO_COTANGENT
             PREFER_ANISOTROPIC
@@ -60,6 +57,9 @@ Deferred
             MAT_ALPHA_TEST
             MAT_DOUBLE_SIDED
                 1
+            RES_HAS_bfbf327ee9403009
+            RES_HAS_c3a97fd4218f2a04
+            RES_HAS_NormalsTexture_DXT
         Runtime
             SPAWNED_INSTANCE
             PER_INSTANCE_AO
@@ -90,9 +90,6 @@ OrderIndependentTransparency
         Geometry
             GEO_HAS_TEXCOORD
             GEO_HAS_TANGENT_FRAME
-            RES_HAS_bfbf327ee9403009
-            RES_HAS_c3a97fd4218f2a04
-            RES_HAS_NormalsTexture_DXT
             OUTPUT_LOCAL_NORMAL
                 1
             OUTPUT_LOCAL_VIEW_VECTOR
@@ -109,6 +106,9 @@ OrderIndependentTransparency
         Material
             MAT_ALPHA_TEST
             MAT_PREMULTIPLIED_ALPHA
+            RES_HAS_bfbf327ee9403009
+            RES_HAS_c3a97fd4218f2a04
+            RES_HAS_NormalsTexture_DXT
         Runtime
             SPAWNED_INSTANCE
     VertexShader

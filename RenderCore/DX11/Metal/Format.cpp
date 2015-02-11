@@ -132,6 +132,52 @@ namespace RenderCore { namespace Metal_DX11
         default: return 0;
         }
     }
+
+    unsigned    GetComponentPrecision(NativeFormat::Enum format)
+    {
+        return BitsPerPixel(format) / GetComponentCount(GetComponents(format));
+    }
+
+    unsigned    GetComponentCount(FormatComponents::Enum components)
+    {
+        using namespace FormatComponents;
+        switch (components) 
+        {
+        case Alpha:
+        case Luminance: 
+        case Depth: return 1;
+
+        case LuminanceAlpha:
+        case RG: return 2;
+        
+        case RGB: return 3;
+
+        case RGBAlpha:
+        case RGBE: return 4;
+
+        default: return 0;
+        }
+    }
+
+    NativeFormat::Enum FindFormat(
+        FormatCompressionType::Enum compression, 
+        FormatComponents::Enum components,
+        FormatComponentType::Enum componentType,
+        unsigned precision)
+    {
+        #define _EXP(X, Y, Z, U)                                                    \
+            if (    compression == FormatCompressionType::Z                         \
+                &&  components == GetComponents(NativeFormat::X##_##Y)              \
+                &&  componentType == GetComponentType(NativeFormat::X##_##Y)        \
+                &&  precision == GetComponentPrecision(NativeFormat::X##_##Y)) {    \
+                return NativeFormat::X##_##Y;                                       \
+            }                                                                       \
+            /**/
+            #include "../../Metal/Detail/DXGICompatibleFormats.h"
+        #undef _EXP
+
+        return NativeFormat::Unknown;
+    }
 }}
 
 

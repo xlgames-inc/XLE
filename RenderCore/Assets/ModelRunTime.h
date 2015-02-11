@@ -146,9 +146,17 @@ namespace RenderCore { namespace Assets
         class PreparedAnimation : noncopyable
         {
         public:
-            std::unique_ptr<Float4x4[]>     _finalMatrices;
-            Metal::VertexBuffer             _skinningBuffer;
-            AnimationState                  _animState;
+            std::unique_ptr<Float4x4[]> _finalMatrices;
+            Metal::VertexBuffer         _skinningBuffer;
+            AnimationState              _animState;
+
+            struct OffsetAndStride
+            {
+            public:
+                unsigned _offset;
+                unsigned _stride;
+            };
+            std::vector<OffsetAndStride>    _vbOffAndStride;
 
             PreparedAnimation();
             PreparedAnimation(PreparedAnimation&&);

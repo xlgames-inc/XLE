@@ -282,6 +282,7 @@ namespace RenderCore { namespace Assets
             unsigned _vbOffset, _ibOffset;
             unsigned _vertexStride;
             NativeFormat _indexFormat;
+            unsigned _geoParamBox;
 
             unsigned _sourceFileVBOffset, _sourceFileVBSize;
             unsigned _sourceFileIBOffset, _sourceFileIBSize;
@@ -294,12 +295,13 @@ namespace RenderCore { namespace Assets
                 //  "mesh" members contain the static geometry elements.
             struct VertexStreams { enum Enum { AnimatedGeo, SkeletonBinding, Max }; };
 
-            unsigned _extraVbOffset[VertexStreams::Max];
-            unsigned _extraVbStride[VertexStreams::Max];
+            unsigned    _extraVbOffset[VertexStreams::Max];
+            unsigned    _extraVbStride[VertexStreams::Max];
+            unsigned    _sourceFileExtraVBOffset[VertexStreams::Max];
+            unsigned    _sourceFileExtraVBSize[VertexStreams::Max];
 
-            unsigned _sourceFileExtraVBOffset[VertexStreams::Max], _sourceFileExtraVBSize[VertexStreams::Max];
-
-            uint64 _animatedAIHash;
+            uint64      _animatedAIHash;
+            unsigned    _postSkinVertexStride;
 
             BoundSkinnedGeometry* _scaffold;
         };
@@ -307,21 +309,23 @@ namespace RenderCore { namespace Assets
         std::vector<Metal::DeferredShaderResource*> _boundTextures;
         size_t  _texturesPerMaterial;
         
+        ///////////////////////////////////////////////////////////////////////////////
             //  Parallel arrays, ordered by draw calls, as we encounter them 
             //  while rendering each mesh.
-        std::vector<unsigned>       _resourcesIndices;
-        std::vector<unsigned>       _techniqueInterfaceIndices;
-        std::vector<unsigned>       _shaderNameIndices;
-        std::vector<unsigned>       _materialParameterBoxIndices;
-        std::vector<unsigned>       _geoParameterBoxIndices;
-        std::vector<unsigned>       _constantBufferIndices;
+        std::vector<unsigned>           _resourcesIndices;
+        std::vector<unsigned>           _techniqueInterfaceIndices;
+        std::vector<unsigned>           _shaderNameIndices;
+        std::vector<unsigned>           _materialParameterBoxIndices;
+        std::vector<unsigned>           _geoParameterBoxIndices;
+        std::vector<unsigned>           _constantBufferIndices;
 
-        Metal::VertexBuffer         _vertexBuffer;
-        Metal::IndexBuffer          _indexBuffer;
-        std::vector<Mesh>           _meshes;
-        std::vector<SkinnedMesh>    _skinnedMeshes;
+        Metal::VertexBuffer             _vertexBuffer;
+        Metal::IndexBuffer              _indexBuffer;
+        std::vector<Mesh>               _meshes;
+        std::vector<SkinnedMesh>        _skinnedMeshes;
         std::vector<Metal::ConstantBuffer>  _constantBuffers;
 
+        ///////////////////////////////////////////////////////////////////////////////
         typedef std::pair<unsigned, DrawCallDesc> MeshAndDrawCall;
         std::vector<MeshAndDrawCall>    _drawCalls;
         std::vector<MeshAndDrawCall>    _skinnedDrawCalls;
@@ -329,6 +333,7 @@ namespace RenderCore { namespace Assets
         ModelScaffold*      _scaffold;
         unsigned            _levelOfDetail;
 
+        ///////////////////////////////////////////////////////////////////////////////
         Pimpl() : _scaffold(nullptr), _levelOfDetail(~unsigned(0x0)) {}
         ~Pimpl() {}
 
@@ -358,15 +363,14 @@ namespace RenderCore { namespace Assets
             const Metal::ConstantBuffer*    cbs[2]);
 
         void BuildSkinnedBuffer(
-                Metal::DeviceContext*       context,
-                const SkinnedMesh&          mesh,
-                const Float4x4              transformationMachineResult[],
-                const SkeletonBinding&      skeletonBinding,
-                Metal::VertexBuffer&        outputResult,
-                unsigned                    outputOffset) const;
+            Metal::DeviceContext*   context,
+            const SkinnedMesh&      mesh,
+            const Float4x4          transformationMachineResult[],
+            const SkeletonBinding&  skeletonBinding,
+            Metal::VertexBuffer&    outputResult,
+            unsigned                outputOffset) const;
 
-        void StartBuildingSkinning(
-            Metal::DeviceContext& context, SkinningBindingBox& bindingBox) const;
+        void StartBuildingSkinning(Metal::DeviceContext& context, SkinningBindingBox& bindingBox) const;
         void EndBuildingSkinning(Metal::DeviceContext& context) const;
     };
 

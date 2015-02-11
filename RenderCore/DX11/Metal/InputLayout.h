@@ -48,6 +48,9 @@ namespace RenderCore { namespace Metal_DX11
 
     typedef std::pair<const InputElementDesc*, size_t>   InputLayout;
 
+    unsigned CalculateVertexStride(
+        const InputElementDesc* start, const InputElementDesc* end);
+
     /// Contains some common reusable vertex input layouts
     namespace GlobalInputLayouts
     {

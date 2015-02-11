@@ -12,13 +12,13 @@ Illum
                 1
             MAT_BLEND_FOG
                 1
+            RES_HAS_bfbf327ee9403009
+            RES_HAS_c3a97fd4218f2a04
         Geometry
             GEO_HAS_COLOUR
             GEO_HAS_TEXCOORD
             GEO_HAS_NORMAL
             GEO_HAS_TANGENT_FRAME
-            RES_HAS_bfbf327ee9403009
-            RES_HAS_c3a97fd4218f2a04
             GEO_V_NORMAL_UNSIGNED
                 1
     VertexShader
@@ -34,8 +34,6 @@ Deferred
             GEO_HAS_TEXCOORD
             GEO_HAS_NORMAL
             GEO_HAS_TANGENT_FRAME
-            RES_HAS_bfbf327ee9403009
-            RES_HAS_c3a97fd4218f2a04
             GEO_V_NORMAL_UNSIGNED
                 1
         GlobalEnvironment
@@ -43,6 +41,9 @@ Deferred
                 1
             GBUFFER_TYPE
                 1
+        Material
+            RES_HAS_bfbf327ee9403009
+            RES_HAS_c3a97fd4218f2a04
     VertexShader
         game/xleres/deferred/terrainlayer.vsh:main
     PixelShader

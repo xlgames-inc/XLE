@@ -65,6 +65,14 @@ namespace RenderCore { namespace Metal_DX11
     FormatComponents::Enum          GetComponents(NativeFormat::Enum format);
     FormatComponentType::Enum       GetComponentType(NativeFormat::Enum format);
     unsigned                        BitsPerPixel(NativeFormat::Enum format);
+    unsigned                        GetComponentPrecision(NativeFormat::Enum format);
+    unsigned                        GetComponentCount(FormatComponents::Enum components);
+
+    NativeFormat::Enum FindFormat(
+        FormatCompressionType::Enum compression, 
+        FormatComponents::Enum components,
+        FormatComponentType::Enum componentType,
+        unsigned precision);
 
     inline DXGI_FORMAT              AsDXGIFormat(NativeFormat::Enum format) { return DXGI_FORMAT(format); }
 }}

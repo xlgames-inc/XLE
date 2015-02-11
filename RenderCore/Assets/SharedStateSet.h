@@ -43,6 +43,7 @@ namespace RenderCore { namespace Assets
         mutable unsigned _currentShaderName;
         mutable unsigned _currentTechniqueInterface;
         mutable unsigned _currentMaterialParamBox;
+        mutable unsigned _currentGeoParamBox;
         mutable RenderCore::Metal::BoundUniforms* _currentBoundUniforms;
     };
 }}

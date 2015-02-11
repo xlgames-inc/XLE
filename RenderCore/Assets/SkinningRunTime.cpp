@@ -123,12 +123,16 @@ namespace RenderCore { namespace Assets
 
         const bool hasNormals = HasElement(AsPointer(skinningOutputLayout.cbegin()), AsPointer(skinningOutputLayout.cend()), "NORMAL");
 
+            //  outputs from skinning are always float3's currently. So, we can get the vertex stride
+            //  just from the outputs count
+        unsigned outputVertexStride = skinningOutputLayout.size() * 3 * sizeof(float);
+
         using namespace Metal;
         _geometryShader = GeometryShader(
             hasNormals ? geometryShaderSourcePN : geometryShaderSourceP, 
             GeometryShader::StreamOutputInitializers(
                 AsPointer(skinningOutputLayout.begin()), unsigned(skinningOutputLayout.size()),
-                &desc._vertexStride, 1));
+                &outputVertexStride, 1));
 
         _skinningVertexShaderP4 =  &::Assets::GetAsset<VertexShader>   (hasNormals ? skinningVertexShaderSourcePN4 : skinningVertexShaderSourceP4);
         _skinningVertexShaderP2 =  &::Assets::GetAsset<VertexShader>   (hasNormals ? skinningVertexShaderSourcePN2 : skinningVertexShaderSourceP2);
@@ -152,10 +156,11 @@ namespace RenderCore { namespace Assets
         /////////////////////////////////////////////////////////////////////////////
 
         auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        // RegisterResourceDependency(validationCallback, &_skinningVertexShaderP4->GetDependancyValidation());
-        // RegisterResourceDependency(validationCallback, &_skinningVertexShaderP2->GetDependancyValidation());
-        // RegisterResourceDependency(validationCallback, &_skinningVertexShaderP1->GetDependancyValidation());
-        // RegisterResourceDependency(validationCallback, &_skinningVertexShaderP0->GetDependancyValidation());
+        // ::Assets::RegisterAssetDependency(validationCallback, &_skinningVertexShaderP4->GetDependancyValidation());
+        // ::Assets::RegisterAssetDependency(validationCallback, &_skinningVertexShaderP2->GetDependancyValidation());
+        // ::Assets::RegisterAssetDependency(validationCallback, &_skinningVertexShaderP1->GetDependancyValidation());
+        // ::Assets::RegisterAssetDependency(validationCallback, &_skinningVertexShaderP0->GetDependancyValidation());
+        // ::Assets::RegisterAssetDependency(validationCallback, &_geometryShader->GetDependancyValidation());
         ::Assets::RegisterAssetDependency(validationCallback, &_vbByteCode->GetDependancyValidation());
 
         _validationCallback = std::move(validationCallback);
@@ -544,40 +549,61 @@ namespace RenderCore { namespace Assets
     auto ModelRenderer::PreallocateState() const -> PreparedAnimation
     {
             //  We need to allocate a vertex buffer that can contain the animated vertex data
-            //  for this whole mesh
+            //  for this whole mesh. 
         unsigned vbSize = 0;
+        std::vector<PreparedAnimation::OffsetAndStride> vbOffAndStride;
+        vbOffAndStride.reserve(_pimpl->_skinnedMeshes.size());
+
         for (auto m=_pimpl->_skinnedMeshes.cbegin(); m!=_pimpl->_skinnedMeshes.cend(); ++m) {
-            vbSize += m->_sourceFileExtraVBSize[Pimpl::SkinnedMesh::VertexStreams::AnimatedGeo];
+            PreparedAnimation::OffsetAndStride offAndStride;
+            offAndStride._offset = vbSize;
+            offAndStride._stride = m->_postSkinVertexStride;
+            vbOffAndStride.push_back(offAndStride);
+
+            const auto stream = Pimpl::SkinnedMesh::VertexStreams::AnimatedGeo;
+            unsigned size =     // (size post conversion might not be the same as the input data)
+                m->_sourceFileExtraVBSize[stream] / m->_extraVbStride[stream] * offAndStride._stride;
+            vbSize += size;
         }
 
         PreparedAnimation result;
         result._skinningBuffer = Metal::VertexBuffer(nullptr, vbSize);
+        result._vbOffAndStride = std::move(vbOffAndStride);
         return result;
     }
 
-    void ModelRenderer::PrepareAnimation(Metal::DeviceContext* context, PreparedAnimation& result, const SkeletonBinding& skeletonBinding) const
+    void ModelRenderer::PrepareAnimation(
+        Metal::DeviceContext* context, PreparedAnimation& result, 
+        const SkeletonBinding& skeletonBinding) const
     {
         // result._finalMatrices = GenerateOutputTransforms(animState);
 
-        unsigned vbOffset = 0;
-        for (auto m=_pimpl->_skinnedMeshes.cbegin(); m!=_pimpl->_skinnedMeshes.cend(); ++m) {
-            _pimpl->BuildSkinnedBuffer(context, *m, result._finalMatrices.get(), skeletonBinding, result._skinningBuffer, vbOffset);
-            vbOffset += m->_sourceFileExtraVBSize[Pimpl::SkinnedMesh::VertexStreams::AnimatedGeo];
+        auto o = result._vbOffAndStride.begin();
+        for (auto m=_pimpl->_skinnedMeshes.cbegin(); m!=_pimpl->_skinnedMeshes.cend(); ++m, ++o) {
+            _pimpl->BuildSkinnedBuffer(
+                context, *m, 
+                result._finalMatrices.get(), skeletonBinding, 
+                result._skinningBuffer, o->_offset);
         }
 
         _pimpl->EndBuildingSkinning(*context);
     }
 
-    ModelRenderer::PreparedAnimation::PreparedAnimation() {}
+    ModelRenderer::PreparedAnimation::PreparedAnimation() 
+    {
+    }
+
     ModelRenderer::PreparedAnimation::PreparedAnimation(PreparedAnimation&& moveFrom)
     : _finalMatrices(std::move(moveFrom._finalMatrices))
     , _skinningBuffer(std::move(moveFrom._skinningBuffer))
+    , _vbOffAndStride(std::move(moveFrom._vbOffAndStride))
     , _animState(moveFrom._animState) {}
 
     ModelRenderer::PreparedAnimation& ModelRenderer::PreparedAnimation::operator=(PreparedAnimation&& moveFrom)
     {
         _finalMatrices = std::move(moveFrom._finalMatrices);
         _skinningBuffer = std::move(moveFrom._skinningBuffer);
+        _vbOffAndStride = std::move(moveFrom._vbOffAndStride);
         _animState = moveFrom._animState;
         return *this;
     }

@@ -6,10 +6,6 @@ Illum
             GEO_HAS_TANGENT_FRAME
             GEO_HAS_SKIN_WEIGHTS
             GEO_HAS_NORMAL
-            RES_HAS_bfbf327ee9403009
-            RES_HAS_c3a97fd4218f2a04
-            RES_HAS_NormalsTexture_DXT
-            RES_HAS_OPACITY_MAP
         GlobalEnvironment
             AUTO_COTANGENT
             PREFER_ANISOTROPIC
@@ -25,6 +21,10 @@ Illum
             MAT_ALPHA_TEST
             MAT_BLEND_FOG
                 1
+            RES_HAS_bfbf327ee9403009
+            RES_HAS_c3a97fd4218f2a04
+            RES_HAS_NormalsTexture_DXT
+            RES_HAS_OPACITY_MAP
         Runtime
             SPAWNED_INSTANCE
     VertexShader
@@ -55,11 +55,8 @@ Deferred
             GEO_HAS_TANGENT_FRAME
             GEO_HAS_SKIN_WEIGHTS
             GEO_HAS_NORMAL
-            RES_HAS_bfbf327ee9403009
-            RES_HAS_c3a97fd4218f2a04
-            RES_HAS_NormalsTexture_DXT
-        GlobalEnvironment
             AUTO_COTANGENT
+        GlobalEnvironment
             PREFER_ANISOTROPIC
                 1
             SKIN_TRANSFORMS
@@ -76,6 +73,9 @@ Deferred
             MAT_ALPHA_TEST
             MAT_REFLECTIVENESS
             RES_HAS_CUSTOM_MAP
+            RES_HAS_bfbf327ee9403009
+            RES_HAS_c3a97fd4218f2a04
+            RES_HAS_NormalsTexture_DXT
         Runtime
             SPAWNED_INSTANCE
     VertexShader
@@ -111,9 +111,6 @@ OrderIndependentTransparency
             GEO_HAS_TANGENT_FRAME
             GEO_HAS_SKIN_WEIGHTS
             GEO_HAS_NORMAL
-            RES_HAS_bfbf327ee9403009
-            RES_HAS_c3a97fd4218f2a04
-            RES_HAS_NormalsTexture_DXT
             OUTPUT_LOCAL_NORMAL
                 1
             OUTPUT_LOCAL_VIEW_VECTOR
@@ -134,6 +131,9 @@ OrderIndependentTransparency
         Material
             MAT_ALPHA_TEST
             MAT_PREMULTIPLIED_ALPHA
+            RES_HAS_bfbf327ee9403009
+            RES_HAS_c3a97fd4218f2a04
+            RES_HAS_NormalsTexture_DXT
         Runtime
             SPAWNED_INSTANCE
     VertexShader

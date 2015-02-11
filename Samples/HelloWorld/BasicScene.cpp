@@ -240,7 +240,6 @@ namespace Sample
     {}
 
     static const std::string StringAutoCotangent("AUTO_COTANGENT");
-    static const std::string StringSkipMaterialDiffuse("SKIP_MATERIAL_DIFFUSE");
 
     static void SetEnvParameter(
         SceneEngine::LightingParserContext& context, const std::string& parameter, 
@@ -347,7 +346,6 @@ namespace Sample
             //      SKIP_MATERIAL_DIFFUSE -- this disables material diffuse parameters
             //                          (which, again, aren't properly handled by ModelRenderer)
             //      It's still a work-in-progress! This will be done better later.
-        SetEnvParameter(parserContext, StringSkipMaterialDiffuse, 1);
         SetEnvParameter(parserContext, StringAutoCotangent, 1);
 
             //  Before using SharedStateSet for the first time, we need to call Reset()
@@ -363,7 +361,6 @@ namespace Sample
             AsFloat4x4(UniformScale(1.f/x2ScaleFactor)));
 
             //  Reset those shader parameters
-        SetEnvParameter(parserContext, StringSkipMaterialDiffuse, 0);
         SetEnvParameter(parserContext, StringAutoCotangent, 0);
     }
 

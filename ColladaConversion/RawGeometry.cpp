@@ -449,7 +449,11 @@ namespace RenderCore { namespace ColladaConversion
             else                            return DestinationFormat(DestinationFormat::UNorm8, 4, Metal::NativeFormat::R8G8B8A8_UNORM);
         }
             
-        const bool use16BitFloats = false;  // OpenGL doesn't seem to support 16 bit floats in vertex buffers normally. We have to use fixed point? (and it's confusing the pre-skinning behaviour in D3D)
+            //  OpenGL doesn't seem to support 16 bit floats in vertex buffers normally. 
+            //  We have to use fixed point? 
+            //      \todo --    this should be configurable. We need some why to specific
+            //                  configuration settings for model conversion
+        const bool use16BitFloats = true;
         if (use16BitFloats) {
             if (parameterCount == 1)        return DestinationFormat(DestinationFormat::Float16, 1, Metal::NativeFormat::R16_FLOAT);
             else if (parameterCount == 2)   return DestinationFormat(DestinationFormat::Float16, 2, Metal::NativeFormat::R16G16_FLOAT);
@@ -875,6 +879,13 @@ namespace RenderCore { namespace ColladaConversion
                 auto& sourceData     = meshVertexSourceData[std::distance(vertexSemantics.cbegin(), i)];
                 sourceData = GetVertexData(*mesh, *i);
 
+                    // Note --  There's a problem here with texture coordinates. Sometimes texture coordinates
+                    //          have 3 components in the Collada file. But only 2 components are actually used
+                    //          by mapping. The last component might just be redundant. The only way to know 
+                    //          for sure that the final component is redundant is to look at where the geometry
+                    //          is used, and how this vertex element is bound to materials. But in this function
+                    //          call we only have access to the "Geometry" object, without any context information.
+                    //          We don't yet know how it will be bound to materials.
                 destinationFormats[std::distance(vertexSemantics.cbegin(), i)] = AsNativeFormat(AsPointer(sourceData._params.begin()), sourceData._params.size());
 
                 nativeElement._semanticName         = i->_semanticName;
@@ -882,8 +893,8 @@ namespace RenderCore { namespace ColladaConversion
                 nativeElement._nativeFormat         = destinationFormats[std::distance(vertexSemantics.cbegin(), i)]._format;
                 nativeElement._inputSlot            = 0;
                 nativeElement._alignedByteOffset    = (unsigned)accumulatingOffset;
-                nativeElement._inputSlotClass           = Metal::InputClassification::PerVertex;
-                nativeElement._instanceDataStepRate     = 0;
+                nativeElement._inputSlotClass       = Metal::InputClassification::PerVertex;
+                nativeElement._instanceDataStepRate = 0;
 
                 accumulatingOffset += Metal::BitsPerPixel(nativeElement._nativeFormat)/8;
             }
@@ -899,10 +910,11 @@ namespace RenderCore { namespace ColladaConversion
             //
             //      Write the data into the vertex buffer
             //
-        const unsigned short half0       = AsFloat16(0.f);
-        const unsigned short half1       = AsFloat16(1.f);
-        auto finalVertexBuffer                  = std::make_unique<uint8[]>(vertexSize*vertexCount);
-        auto unifiedVertexIndexToPositionIndex  = std::make_unique<uint32[]>(vertexCount);
+        const unsigned short half0 = AsFloat16(0.f);
+        const unsigned short half1 = AsFloat16(1.f);
+        auto finalVertexBuffer = std::make_unique<uint8[]>(vertexSize*vertexCount);
+        auto unifiedVertexIndexToPositionIndex = std::make_unique<uint32[]>(vertexCount);
+
         for (auto i=vertexSemantics.cbegin(); i!=vertexSemantics.cend(); ++i) {
             auto semanticIndex            = std::distance(vertexSemantics.cbegin(), i);
             const auto& nativeElement     = nativeElements[semanticIndex];
@@ -913,8 +925,8 @@ namespace RenderCore { namespace ColladaConversion
 
                     //      This could be be made more efficient with a smarter loop..
                 for (size_t v=0; v<vertexCount; ++v) {
-                    auto vertexDestination      = &finalVertexBuffer.get()[v*vertexSize];
-                    auto attributeIndex         = vertexMap[semanticIndex][v];
+                    auto vertexDestination = &finalVertexBuffer.get()[v*vertexSize];
+                    auto attributeIndex = vertexMap[semanticIndex][v];
 
                         //      Collada has this idea of "vertex index"; which is used to map
                         //      on the vertex weight information. But that seems to be lost in OpenCollada.
@@ -942,7 +954,7 @@ namespace RenderCore { namespace ColladaConversion
                             if (c < sourceData._stride) {
                                 ((float*)destination)[c] = ((float*)sourceStart)[c];
                             } else {
-                                ((float*)destination)[c] = (c < 3)?0.f:1.f;                 // default for values not set in Collada
+                                ((float*)destination)[c] = (c < 3)?0.f:1.f; // default for values not set in Collada
                             }
 
                             if (i->_doTextureCoordinateFlip && destinationFormat._componentCount >= 2) {
@@ -956,7 +968,7 @@ namespace RenderCore { namespace ColladaConversion
                             if (c < sourceData._stride) {
                                 ((unsigned short*)destination)[c] = AsFloat16(((float*)sourceStart)[c]);
                             } else {
-                                ((unsigned short*)destination)[c] = (c < 3)?half0:half1;     // default for values not set in Collada
+                                ((unsigned short*)destination)[c] = (c < 3)?half0:half1;    // default for values not set in Collada
                             }
                         }
 
@@ -968,9 +980,9 @@ namespace RenderCore { namespace ColladaConversion
 
                         for (unsigned c=0; c<destinationFormat._componentCount; ++c) {
                             if (c < sourceData._stride) {
-                                ((unsigned char*)destination)[c] = (unsigned char)(std::max(0.f, std::max(1.f, ((float*)sourceStart)[c]/255.f)));
+                                ((unsigned char*)destination)[c] = (unsigned char)Clamp(((float*)sourceStart)[c]*255.f, 0.f, 255.f);
                             } else {
-                                ((unsigned char*)destination)[c] = (c < 3)?0x0:0xff;     // default for values not set in Collada
+                                ((unsigned char*)destination)[c] = (c < 3)?0x0:0xff;    // default for values not set in Collada
                             }
                         }
 

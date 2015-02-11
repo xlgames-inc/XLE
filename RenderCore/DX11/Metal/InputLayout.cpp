@@ -292,6 +292,16 @@ namespace RenderCore { namespace Metal_DX11
         return NativeFormat::Unknown;
     }
 
+    unsigned CalculateVertexStride(
+        const InputElementDesc* start, const InputElementDesc* end)
+    {
+        unsigned result = 0;
+        for (auto i=start; i<end; ++i) {
+            result += BitsPerPixel(i->_nativeFormat);
+        }
+        return result / 8;
+    }
+
     ConstantBufferLayout::ConstantBufferLayout() { _size = 0; _elementCount = 0; }
     ConstantBufferLayout::ConstantBufferLayout(ConstantBufferLayout&& moveFrom)
     :   _elements(std::move(moveFrom._elements))
