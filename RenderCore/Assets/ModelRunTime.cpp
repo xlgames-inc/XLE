@@ -361,23 +361,13 @@ namespace RenderCore { namespace Assets
             if (!AtLeastOneValidDrawCall(geo, scaffold, gi, materialResources)) { continue; }
 
                 // if we encounter the same mesh multiple times, we don't need to store it every time
-            auto existing = FindIf(meshes, [=](const Pimpl::Mesh& mesh) { return mesh._id == geoInst._geoId; });
-            if (existing != meshes.end()) { continue; }
-
-            meshes.push_back(
-                Pimpl::BuildMesh(geoInst, geo, workingBuffers, sharedStateSet,
-                    AsPointer(textureBindPoints.cbegin()), textureBindPoints.size()));
-        }
-
-            ////////////////////////////////////////////////////////////////////////
-                // construct vb, ib & draw calls (for GeoCalls)
-        for (unsigned gi=0; gi<geoCallCount; ++gi) {
-            auto& geoInst = cmdStream.GetGeoCall(gi);
-            if (geoInst._levelOfDetail != levelOfDetail) { continue; }
-            
-            auto& geo = meshData._geos[geoInst._geoId];
             auto mesh = FindIf(meshes, [=](const Pimpl::Mesh& mesh) { return mesh._id == geoInst._geoId; });
-            if (mesh == meshes.end()) { continue; }
+            if (mesh == meshes.end()) {
+                meshes.push_back(
+                    Pimpl::BuildMesh(geoInst, geo, workingBuffers, sharedStateSet,
+                        AsPointer(textureBindPoints.cbegin()), textureBindPoints.size()));
+                mesh = meshes.end()-1;
+            }
 
                 // setup the "Draw call" objects next
             for (unsigned di=0; di<geo._drawCallsCount; ++di) {
@@ -422,28 +412,18 @@ namespace RenderCore { namespace Assets
             if (!AtLeastOneValidDrawCall(geo, scaffold, geoCallCount + gi, materialResources)) { continue; }
 
                 // if we encounter the same mesh multiple times, we don't need to store it every time
-            auto existing = FindIf(skinnedMeshes, [=](const Pimpl::SkinnedMesh& mesh) { return mesh._id == geoInst._geoId; });
-            if (existing != skinnedMeshes.end()) { continue; }
-
-            skinnedMeshes.push_back(
-                Pimpl::BuildMesh(geoInst, geo, workingBuffers, sharedStateSet, 
-                    AsPointer(textureBindPoints.cbegin()), textureBindPoints.size()));
-            skinnedBindings.push_back(
-                Pimpl::BuildAnimBinding(
-                    geoInst, geo, sharedStateSet, 
-                    AsPointer(textureBindPoints.cbegin()), textureBindPoints.size()));
-        }
-
-            ////////////////////////////////////////////////////////////////////////
-                // construct vb, ib & draw calls (for SkinCalls)
-        for (unsigned gi=0; gi<skinCallCount; ++gi) {
-            auto& geoInst = cmdStream.GetSkinCall(gi);
-            if (geoInst._levelOfDetail != levelOfDetail) { continue; }
-
-            auto& geo = meshData._boundSkinnedControllers[geoInst._geoId];
             auto mesh = FindIf(skinnedMeshes, [=](const Pimpl::SkinnedMesh& mesh) { return mesh._id == geoInst._geoId; });
-            if (mesh == skinnedMeshes.end()) { continue; }
-            auto meshIndex = std::distance(skinnedMeshes.begin(), mesh);
+            if (mesh == skinnedMeshes.end()) {
+                skinnedMeshes.push_back(
+                    Pimpl::BuildMesh(geoInst, geo, workingBuffers, sharedStateSet, 
+                        AsPointer(textureBindPoints.cbegin()), textureBindPoints.size()));
+                skinnedBindings.push_back(
+                    Pimpl::BuildAnimBinding(
+                        geoInst, geo, sharedStateSet, 
+                        AsPointer(textureBindPoints.cbegin()), textureBindPoints.size()));
+
+                mesh = skinnedMeshes.end()-1;
+            }
 
             for (unsigned di=0; di<geo._drawCallsCount; ++di) {
                 auto& d = geo._drawCalls[di];
@@ -523,7 +503,7 @@ namespace RenderCore { namespace Assets
                         //          So we need something different here... Something that can resolve a filename
                         //          in the background, and then return a shareable resource afterwards
                     if (searchRules) {
-                        char resolvedPath[MaxPath];
+                        ResChar resolvedPath[MaxPath];
                         searchRules->ResolveFile(resolvedPath, dimof(resolvedPath), t->_resourceName.c_str());
                         boundTextures[textureSetIndex*texturesPerMaterial + index] = 
                             &::Assets::GetAsset<Metal::DeferredShaderResource>(resolvedPath);
