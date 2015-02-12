@@ -7,6 +7,7 @@
 #include "ModelRunTime.h"
 #include "ModelRunTimeInternal.h"
 #include "RawAnimationCurve.h"
+#include "SharedStateSet.h"
 #include "AssetUtils.h"     // actually just needed for chunk id
 #include "../RenderUtils.h"
 
@@ -394,6 +395,7 @@ namespace RenderCore { namespace Assets
         using namespace Metal;
         for (unsigned c=0; c<count; ++c) {
             XlCopyMemory(&dst[c], &src[c], sizeof(VertexElement));
+            dst[c]._startOffset = ~unsigned(0x0);   // have to reset all of the offsets (because elements might change size)
 
                 // change 16 bit precision formats into 32 bit
                 //  (also change 4 dimensional vectors into 3 dimension vectors. Since there
@@ -444,9 +446,45 @@ namespace RenderCore { namespace Assets
         return eleCount;
     }
 
+    auto ModelRenderer::Pimpl::BuildAnimBinding(
+        const ModelCommandStream::GeoCall& geoInst,
+        const BoundSkinnedGeometry& geo,
+        SharedStateSet& sharedStateSet,
+        const uint64 textureBindPoints[], unsigned textureBindPointsCnt) -> SkinnedMeshAnimBinding
+    {
+            //  Build technique interfaces and binding information for the prepared
+            //  animation case. This is extra information attached to the skinned mesh
+            //  object that is used when we render the mesh using prepared animation
+
+        SkinnedMeshAnimBinding result;
+        result._iaAnimationHash = 0;
+        result._scaffold = &geo;
+        result._techniqueInterface = ~unsigned(0x0);
+        result._vertexStride = 0;
+
+        Metal::InputElementDesc inputDescForRender[12];
+        auto vertexElementForRenderCount = 
+            Pimpl::BuildPostSkinInputAssembly(
+                inputDescForRender, dimof(inputDescForRender), geo);
+
+        result._techniqueInterface = 
+            sharedStateSet.InsertTechniqueInterface(
+                inputDescForRender, vertexElementForRenderCount, 
+                textureBindPoints, textureBindPointsCnt);
+
+        result._vertexStride = 
+            CalculateVertexStride(inputDescForRender, &inputDescForRender[vertexElementForRenderCount], 0);
+
+        result._iaAnimationHash = geo._animatedVertexElements._ia.BuildHash() ^ geo._skeletonBinding._ia.BuildHash();
+        InitialiseSkinningVertexAssembly(result._iaAnimationHash, geo);
+
+        return result;
+    }
+
     void ModelRenderer::Pimpl::BuildSkinnedBuffer(  
                 Metal::DeviceContext*       context,
                 const SkinnedMesh&          mesh,
+                const SkinnedMeshAnimBinding& preparedAnimBinding, 
                 const Float4x4              transformationMachineResult[],
                 const SkeletonBinding&      skeletonBinding,
                 Metal::VertexBuffer&        outputResult,
@@ -459,9 +497,9 @@ namespace RenderCore { namespace Assets
                 : SkinningBindingBox::BindingType::cbuffer;
 
             // fill in the "HashedInputAssemblies" box if necessary
-        const auto& scaffold = *mesh._scaffold;
+        const auto& scaffold = *preparedAnimBinding._scaffold;
         auto& bindingBox = FindCachedBoxDep<SkinningBindingBox>(
-            SkinningBindingBox::Desc(bindingType, mesh._iaAnimationHash, mesh._extraVbStride[SkinnedMesh::VertexStreams::AnimatedGeo]));
+            SkinningBindingBox::Desc(bindingType, preparedAnimBinding._iaAnimationHash, mesh._extraVbStride[SkinnedMesh::VertexStreams::AnimatedGeo]));
 
             ///////////////////////////////////////////////
 
@@ -610,24 +648,22 @@ namespace RenderCore { namespace Assets
             //  We need to allocate a vertex buffer that can contain the animated vertex data
             //  for this whole mesh. 
         unsigned vbSize = 0;
-        std::vector<PreparedAnimation::OffsetAndStride> vbOffAndStride;
-        vbOffAndStride.reserve(_pimpl->_skinnedMeshes.size());
+        std::vector<unsigned> offsets;
+        offsets.reserve(_pimpl->_skinnedMeshes.size());
 
-        for (auto m=_pimpl->_skinnedMeshes.cbegin(); m!=_pimpl->_skinnedMeshes.cend(); ++m) {
-            PreparedAnimation::OffsetAndStride offAndStride;
-            offAndStride._offset = vbSize;
-            offAndStride._stride = 0;
-            vbOffAndStride.push_back(offAndStride);
+        auto b=_pimpl->_skinnedBindings.cbegin();
+        for (auto m=_pimpl->_skinnedMeshes.cbegin(); m!=_pimpl->_skinnedMeshes.cend(); ++m, ++b) {
+            offsets.push_back(vbSize);
 
             const auto stream = Pimpl::SkinnedMesh::VertexStreams::AnimatedGeo;
             unsigned size =     // (size post conversion might not be the same as the input data)
-                m->_sourceFileExtraVBSize[stream] / m->_extraVbStride[stream] * offAndStride._stride;
+                m->_sourceFileExtraVBSize[stream] / m->_extraVbStride[stream] * b->_vertexStride;
             vbSize += size;
         }
 
         PreparedAnimation result;
         result._skinningBuffer = Metal::VertexBuffer(nullptr, vbSize);
-        result._vbOffAndStride = std::move(vbOffAndStride);
+        result._vbOffsets = std::move(offsets);
         return result;
     }
 
@@ -635,14 +671,13 @@ namespace RenderCore { namespace Assets
         Metal::DeviceContext* context, PreparedAnimation& result, 
         const SkeletonBinding& skeletonBinding) const
     {
-        // result._finalMatrices = GenerateOutputTransforms(animState);
-
-        auto o = result._vbOffAndStride.begin();
-        for (auto m=_pimpl->_skinnedMeshes.cbegin(); m!=_pimpl->_skinnedMeshes.cend(); ++m, ++o) {
+        for (size_t i=0; i<_pimpl->_skinnedMeshes.size(); ++i) {
             _pimpl->BuildSkinnedBuffer(
-                context, *m, 
+                context, 
+                _pimpl->_skinnedMeshes[i], 
+                _pimpl->_skinnedBindings[i],
                 result._finalMatrices.get(), skeletonBinding, 
-                result._skinningBuffer, o->_offset);
+                result._skinningBuffer, result._vbOffsets[i]);
         }
 
         _pimpl->EndBuildingSkinning(*context);
@@ -668,14 +703,14 @@ namespace RenderCore { namespace Assets
     ModelRenderer::PreparedAnimation::PreparedAnimation(PreparedAnimation&& moveFrom)
     : _finalMatrices(std::move(moveFrom._finalMatrices))
     , _skinningBuffer(std::move(moveFrom._skinningBuffer))
-    , _vbOffAndStride(std::move(moveFrom._vbOffAndStride))
+    , _vbOffsets(std::move(moveFrom._vbOffsets))
     , _animState(moveFrom._animState) {}
 
     ModelRenderer::PreparedAnimation& ModelRenderer::PreparedAnimation::operator=(PreparedAnimation&& moveFrom)
     {
         _finalMatrices = std::move(moveFrom._finalMatrices);
         _skinningBuffer = std::move(moveFrom._skinningBuffer);
-        _vbOffAndStride = std::move(moveFrom._vbOffAndStride);
+        _vbOffsets = std::move(moveFrom._vbOffsets);
         _animState = moveFrom._animState;
         return *this;
     }

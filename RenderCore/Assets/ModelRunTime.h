@@ -149,14 +149,7 @@ namespace RenderCore { namespace Assets
             std::unique_ptr<Float4x4[]> _finalMatrices;
             Metal::VertexBuffer         _skinningBuffer;
             AnimationState              _animState;
-
-            struct OffsetAndStride
-            {
-            public:
-                unsigned _offset;
-                unsigned _stride;
-            };
-            std::vector<OffsetAndStride>    _vbOffAndStride;
+            std::vector<unsigned>       _vbOffsets;
 
             PreparedAnimation();
             PreparedAnimation(PreparedAnimation&&);

@@ -213,7 +213,7 @@ namespace Sample
 
         if (RenderCore::Assets::ModelRenderer::CanDoPrepareAnimation(context)) {
             while (_pimpl->_preallocatedState.size() < _pimpl->_stateCache.size()) {
-                _pimpl->_preallocatedState.push_back(_pimpl->_stateCache[0]._model->GetRenderer().PreallocateState());
+                _pimpl->_preallocatedState.push_back(_pimpl->_stateCache[0]._model->GetRenderer().CreatePreparedAnimation());
             }
         }
 

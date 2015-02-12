@@ -347,10 +347,8 @@ namespace RenderCore { namespace Assets
         std::vector<Pimpl::Mesh> meshes;
         std::vector<Pimpl::MeshAndDrawCall> drawCalls;
         std::vector<Pimpl::DrawCallResources> drawCallRes;
-        std::vector<Pimpl::PreparedAnimStream> drawCallPreparedAnim;
         drawCalls.reserve(drawCallCount);
         drawCallRes.reserve(drawCallCount);
-        drawCallPreparedAnim.resize(drawCallCount);
 
         for (unsigned gi=0; gi<geoCallCount; ++gi) {
             auto& geoInst = cmdStream.GetGeoCall(gi);
@@ -366,7 +364,9 @@ namespace RenderCore { namespace Assets
             auto existing = FindIf(meshes, [=](const Pimpl::Mesh& mesh) { return mesh._id == geoInst._geoId; });
             if (existing != meshes.end()) { continue; }
 
-            meshes.push_back(Pimpl::BuildMesh(geoInst, geo, workingBuffers, sharedStateSet));
+            meshes.push_back(
+                Pimpl::BuildMesh(geoInst, geo, workingBuffers, sharedStateSet,
+                    AsPointer(textureBindPoints.cbegin()), textureBindPoints.size()));
         }
 
             ////////////////////////////////////////////////////////////////////////
@@ -379,19 +379,7 @@ namespace RenderCore { namespace Assets
             auto mesh = FindIf(meshes, [=](const Pimpl::Mesh& mesh) { return mesh._id == geoInst._geoId; });
             if (mesh == meshes.end()) { continue; }
 
-                //  We must define an input interface layout from the input streams.
-            Metal::InputElementDesc inputDesc[12];
-            unsigned vertexElementCount = BuildLowLevelInputAssembly(
-                inputDesc, dimof(inputDesc),
-                geo._vb._ia._elements, geo._vb._ia._elementCount);
-
                 // setup the "Draw call" objects next
-                //  each draw calls can have separate technique indices, and different material assignments.
-                //  the material assignments will be burnt down to constant buffers, technique params 
-                //  and bound textures here
-            auto techniqueInterfaceIndex = sharedStateSet.InsertTechniqueInterface(
-                inputDesc, vertexElementCount, AsPointer(textureBindPoints.cbegin()), textureBindPoints.size());
-
             for (unsigned di=0; di<geo._drawCallsCount; ++di) {
                 auto& d = geo._drawCalls[di];
                 if (!d._indexCount) { continue; }
@@ -409,7 +397,7 @@ namespace RenderCore { namespace Assets
                     //  We can initialise them now using some information from the geometry
                     //  object and some information from the material.
                 Pimpl::DrawCallResources res(
-                    matRes._shaderName, techniqueInterfaceIndex,
+                    matRes._shaderName,
                     mesh->_geoParamBox, matRes._matParams, 
                     matRes._texturesIndex, matRes._constantBuffer);
                 drawCallRes.push_back(res);
@@ -421,6 +409,7 @@ namespace RenderCore { namespace Assets
                 //          s k i n n e d   g e o                           //
         std::vector<Pimpl::SkinnedMesh> skinnedMeshes;
         std::vector<Pimpl::MeshAndDrawCall> skinnedDrawCalls;
+        std::vector<Pimpl::SkinnedMeshAnimBinding> skinnedBindings;
 
         for (unsigned gi=0; gi<skinCallCount; ++gi) {
             auto& geoInst = cmdStream.GetSkinCall(gi);
@@ -436,29 +425,13 @@ namespace RenderCore { namespace Assets
             auto existing = FindIf(skinnedMeshes, [=](const Pimpl::SkinnedMesh& mesh) { return mesh._id == geoInst._geoId; });
             if (existing != skinnedMeshes.end()) { continue; }
 
-            skinnedMeshes.push_back(Pimpl::BuildMesh(geoInst, geo, workingBuffers, sharedStateSet));
-
-            ////////////////////////////////////////////////////////////////////////////////
-                //  Build technique interfaces and binding information for the prepared
-                //  animation case
-
-            {
-                Pimpl::PreparedAnimStream preparedStream;
-                Metal::InputElementDesc inputDescForRender[12];
-                auto vertexElementForRenderCount = 
-                    Pimpl::BuildPostSkinInputAssembly(
-                        inputDescForRender, dimof(inputDescForRender), geo);
-
-                preparedStream._techniqueInterface = 
-                    sharedStateSet.InsertTechniqueInterface(
-                        inputDescForRender, vertexElementForRenderCount, 
-                        AsPointer(textureBindPoints.cbegin()), textureBindPoints.size());
-
-                preparedStream._vertexStride = 
-                    CalculateVertexStride(inputDescForRender, &inputDescForRender[vertexElementForRenderCount]);
-
-                drawCallPreparedAnim[drawCallRes.size()-1] = preparedStream;
-            }
+            skinnedMeshes.push_back(
+                Pimpl::BuildMesh(geoInst, geo, workingBuffers, sharedStateSet, 
+                    AsPointer(textureBindPoints.cbegin()), textureBindPoints.size()));
+            skinnedBindings.push_back(
+                Pimpl::BuildAnimBinding(
+                    geoInst, geo, sharedStateSet, 
+                    AsPointer(textureBindPoints.cbegin()), textureBindPoints.size()));
         }
 
             ////////////////////////////////////////////////////////////////////////
@@ -471,41 +444,6 @@ namespace RenderCore { namespace Assets
             auto mesh = FindIf(skinnedMeshes, [=](const Pimpl::SkinnedMesh& mesh) { return mesh._id == geoInst._geoId; });
             if (mesh == skinnedMeshes.end()) { continue; }
             auto meshIndex = std::distance(skinnedMeshes.begin(), mesh);
-            
-            ////////////////////////////////////////////////////////////////////////////////
-                //  Build the input assembly we will use while rendering. This should 
-                //  contain the unskinned the vertex elements, and also the skinned vertex
-                //  elements.
-                //
-                //  There are 3 possible paths for the skinned vertex elements:
-                //      1) we do the skinning in the vertex shader, as we encounter them.
-                //          (In this case, we also need the skinning parameter vertex elements)
-                //      2) we do the skinning in a geometry shader prepare step
-                //      3) we do no skinning at all
-                //
-                //  In path 2, the geometry shader prepare step may change the format of the
-                //  vertex elements. This typically occurs when using 16 bit floats (or maybe 
-                //  even fixed point formats). That means we need another technique interface
-                //  for the prepared animation case!
-            unsigned techniqueInterfaceIndex;
-            {
-                Metal::InputElementDesc inputDescForRender[12];
-                unsigned eleCount = 
-                    BuildLowLevelInputAssembly(
-                        inputDescForRender, dimof(inputDescForRender),
-                        geo._animatedVertexElements._ia._elements, 
-                        geo._animatedVertexElements._ia._elementCount);
-
-                    // (add the unanimated part)
-                eleCount += 
-                    BuildLowLevelInputAssembly(
-                        &inputDescForRender[eleCount], dimof(inputDescForRender) - eleCount,
-                        geo._vb._ia._elements, geo._vb._ia._elementCount, 1);
-
-                techniqueInterfaceIndex = sharedStateSet.InsertTechniqueInterface(
-                    inputDescForRender, eleCount, 
-                    AsPointer(textureBindPoints.cbegin()), textureBindPoints.size());
-            }
 
             for (unsigned di=0; di<geo._drawCallsCount; ++di) {
                 auto& d = geo._drawCalls[di];
@@ -519,14 +457,13 @@ namespace RenderCore { namespace Assets
 
                 auto& matRes = subMatResI->second;
                 Pimpl::DrawCallResources res(
-                    matRes._shaderName, techniqueInterfaceIndex,
+                    matRes._shaderName,
                     mesh->_geoParamBox, matRes._matParams, 
                     matRes._texturesIndex, matRes._constantBuffer);
 
                 drawCallRes.push_back(res);
                 skinnedDrawCalls.push_back(std::make_pair(gi, d));
             }
-
         }
 
             ////////////////////////////////////////////////////////////////////////
@@ -619,6 +556,7 @@ namespace RenderCore { namespace Assets
         pimpl->_indexBuffer = std::move(ib);
         pimpl->_meshes = std::move(meshes);
         pimpl->_skinnedMeshes = std::move(skinnedMeshes);
+        pimpl->_skinnedBindings = std::move(skinnedBindings);
 
         pimpl->_drawCalls = std::move(drawCalls);
         pimpl->_drawCallRes = std::move(drawCallRes);
@@ -653,20 +591,21 @@ namespace RenderCore { namespace Assets
     Metal::BoundUniforms*    ModelRenderer::Pimpl::BeginVariation(
             const Context&          context,
             const SharedStateSet&   sharedStateSet,
-            unsigned                drawCallIndex) const
+            unsigned                drawCallIndex,
+            TechniqueInterface      techniqueInterface) const
     {
         const auto& res = _drawCallRes[drawCallIndex];
         return sharedStateSet.BeginVariation(
             context._context, *context._parserContext, context._techniqueIndex,
-            res._shaderName, res._techniqueInterface, res._geoParamBox, res._materialParamBox);
+            res._shaderName, techniqueInterface, res._geoParamBox, res._materialParamBox);
     }
 
-    void ModelRenderer::Pimpl::BeginGeoCall(
+    auto ModelRenderer::Pimpl::BeginGeoCall(
             const Context&          context,
             Metal::ConstantBuffer&  localTransformBuffer,
             const MeshToModel*      transforms,
             Float4x4                modelToWorld,
-            unsigned                geoCallIndex) const
+            unsigned                geoCallIndex) const -> TechniqueInterface
     {
         auto& cmdStream = _scaffold->CommandStream();
         auto& geoCall = cmdStream.GetGeoCall(geoCallIndex);
@@ -681,21 +620,23 @@ namespace RenderCore { namespace Assets
         localTransformBuffer.Update(*context._context, &trans, sizeof(trans));
 
             // todo -- should be possible to avoid this search
-        auto cm = FindIf(_meshes, [=](const Pimpl::Mesh& mesh) { return mesh._id == geoCall._geoId; });
-        assert(cm != _meshes.end());
+        auto mesh = FindIf(_meshes, [=](const Pimpl::Mesh& mesh) { return mesh._id == geoCall._geoId; });
+        assert(mesh != _meshes.end());
 
         auto& devContext = *context._context;
-        devContext.Bind(_indexBuffer, cm->_indexFormat, cm->_ibOffset);
-        devContext.Bind(ResourceList<Metal::VertexBuffer, 1>(std::make_tuple(std::ref(_vertexBuffer))), cm->_vertexStride, cm->_vbOffset);
+        devContext.Bind(_indexBuffer, mesh->_indexFormat, mesh->_ibOffset);
+        devContext.Bind(ResourceList<Metal::VertexBuffer, 1>(std::make_tuple(std::ref(_vertexBuffer))), mesh->_vertexStride, mesh->_vbOffset);
+
+        return mesh->_techniqueInterface;
     }
 
-    void ModelRenderer::Pimpl::BeginSkinCall(
+    auto ModelRenderer::Pimpl::BeginSkinCall(
         const Context&          context,
         Metal::ConstantBuffer&  localTransformBuffer,
         const MeshToModel*      transforms,
         Float4x4                modelToWorld,
         unsigned                geoCallIndex,
-        PreparedAnimation*      preparedAnimation) const
+        PreparedAnimation*      preparedAnimation) const -> TechniqueInterface
     {
         auto& cmdStream = _scaffold->CommandStream();
         auto& geoCall = cmdStream.GetSkinCall(geoCallIndex);
@@ -715,6 +656,8 @@ namespace RenderCore { namespace Assets
         assert(cm != _skinnedMeshes.end());
         auto meshIndex = std::distance(_skinnedMeshes.cbegin(), cm);
 
+        auto result = cm->_skinnedTechniqueInterface;
+
         auto& devContext = *context._context;
         devContext.Bind(_indexBuffer, cm->_indexFormat, cm->_ibOffset);
 
@@ -731,11 +674,14 @@ namespace RenderCore { namespace Assets
             //  with the data from there.
         if (preparedAnimation) {
             underlyingVBs[0] = preparedAnimation->_skinningBuffer.GetUnderlying();
-            strides[0] = preparedAnimation->_vbOffAndStride[meshIndex]._stride;
-            offsets[0] = preparedAnimation->_vbOffAndStride[meshIndex]._offset;
+            strides[0] = _skinnedBindings[meshIndex]._vertexStride;
+            offsets[0] = preparedAnimation->_vbOffsets[meshIndex];
+            result = _skinnedBindings[meshIndex]._techniqueInterface;
         }
 
         context._context->GetUnderlying()->IASetVertexBuffers(0, 2, underlyingVBs, strides, offsets);
+
+        return result;
     }
 
     void ModelRenderer::Pimpl::ApplyBoundUnforms(
@@ -761,7 +707,8 @@ namespace RenderCore { namespace Assets
         const ModelCommandStream::GeoCall& geoInst,
         const RawGeometry& geo,
         ModelConstruction::BuffersUnderConstruction& workingBuffers,
-        SharedStateSet& sharedStateSet) -> Mesh
+        SharedStateSet& sharedStateSet,
+        const uint64 textureBindPoints[], unsigned textureBindPointsCnt) -> Mesh
     {
         Mesh result;
         result._id = geoInst._geoId;
@@ -778,6 +725,14 @@ namespace RenderCore { namespace Assets
             // (vb, ib allocations)
         result._ibOffset = workingBuffers.AllocateIB(result._sourceFileIBSize, result._indexFormat);
         result._vbOffset = workingBuffers.AllocateVB(result._sourceFileVBSize);
+
+        Metal::InputElementDesc inputDesc[12];
+        unsigned vertexElementCount = BuildLowLevelInputAssembly(
+            inputDesc, dimof(inputDesc),
+            geo._vb._ia._elements, geo._vb._ia._elementCount);
+        result._techniqueInterface = sharedStateSet.InsertTechniqueInterface(
+            inputDesc, vertexElementCount, textureBindPoints, textureBindPointsCnt);
+
         return result;
     }
 
@@ -785,13 +740,16 @@ namespace RenderCore { namespace Assets
         const ModelCommandStream::GeoCall& geoInst,
         const BoundSkinnedGeometry& geo,
         ModelConstruction::BuffersUnderConstruction& workingBuffers,
-        SharedStateSet& sharedStateSet) -> SkinnedMesh
+        SharedStateSet& sharedStateSet,
+        const uint64 textureBindPoints[], unsigned textureBindPointsCnt) -> SkinnedMesh
     {
             // Build the mesh, starting with the same basic behaviour as 
             //  unskinned meshes.
             //  (there a sort-of "slice" here... It's a bit of a hack)
         Pimpl::SkinnedMesh result;
-        (Pimpl::Mesh&)result = BuildMesh(geoInst, (const RawGeometry&)geo, workingBuffers, sharedStateSet);
+        (Pimpl::Mesh&)result = BuildMesh(
+            geoInst, (const RawGeometry&)geo, workingBuffers, sharedStateSet,
+            textureBindPoints, textureBindPointsCnt);
 
         auto animGeo = Pimpl::SkinnedMesh::VertexStreams::AnimatedGeo;
         auto skelBind = Pimpl::SkinnedMesh::VertexStreams::SkeletonBinding;
@@ -806,25 +764,55 @@ namespace RenderCore { namespace Assets
             result._extraVbStride[c] = vd[c]->_ia._vertexStride;
         }
 
-        result._iaAnimationHash = geo._animatedVertexElements._ia.BuildHash() ^ geo._skeletonBinding._ia.BuildHash();
-        InitialiseSkinningVertexAssembly(result._iaAnimationHash, geo);
+        ////////////////////////////////////////////////////////////////////////////////
+            //  Build the input assembly we will use while rendering. This should 
+            //  contain the unskinned the vertex elements, and also the skinned vertex
+            //  elements.
+            //
+            //  There are 3 possible paths for the skinned vertex elements:
+            //      1) we do the skinning in the vertex shader, as we encounter them.
+            //          (In this case, we also need the skinning parameter vertex elements)
+            //      2) we do the skinning in a geometry shader prepare step
+            //      3) we do no skinning at all
+            //
+            //  In path 2, the geometry shader prepare step may change the format of the
+            //  vertex elements. This typically occurs when using 16 bit floats (or maybe 
+            //  even fixed point formats). That means we need another technique interface
+            //  for the prepared animation case!
+        {
+            Metal::InputElementDesc inputDescForRender[12];
+            unsigned eleCount = 
+                BuildLowLevelInputAssembly(
+                    inputDescForRender, dimof(inputDescForRender),
+                    geo._animatedVertexElements._ia._elements, 
+                    geo._animatedVertexElements._ia._elementCount);
+
+                // (add the unanimated part)
+            eleCount += 
+                BuildLowLevelInputAssembly(
+                    &inputDescForRender[eleCount], dimof(inputDescForRender) - eleCount,
+                    geo._vb._ia._elements, geo._vb._ia._elementCount, 1);
+
+            result._skinnedTechniqueInterface = sharedStateSet.InsertTechniqueInterface(
+                inputDescForRender, eleCount, 
+                textureBindPoints, textureBindPointsCnt);
+        }
 
         return result;
     }
 
     ModelRenderer::Pimpl::DrawCallResources::DrawCallResources()
     {
-        _shaderName = _techniqueInterface = _geoParamBox = _materialParamBox = 0;
+        _shaderName = _geoParamBox = _materialParamBox = 0;
         _textureSet = _constantBuffer = 0;
     }
 
     ModelRenderer::Pimpl::DrawCallResources::DrawCallResources(
-        unsigned shaderName, unsigned techniqueInterface,
+        unsigned shaderName,
         unsigned geoParamBox, unsigned matParamBox,
         unsigned textureSet, unsigned constantBuffer)
     {
         _shaderName = shaderName;
-        _techniqueInterface = techniqueInterface;
         _geoParamBox = geoParamBox;
         _materialParamBox = matParamBox;
         _textureSet = textureSet;
@@ -841,10 +829,13 @@ namespace RenderCore { namespace Assets
         const Metal::ConstantBuffer* pkts[] = { &box._localTransformBuffer, nullptr };
 
         unsigned currTextureSet = ~unsigned(0x0), currCB = ~unsigned(0x0), currGeoCall = ~unsigned(0x0);
+        Pimpl::TechniqueInterface currTechniqueInterface = ~Pimpl::TechniqueInterface(0x0);
         Metal::BoundUniforms* currUniforms = nullptr;
         auto& devContext = *context._context;
         auto& scaffold = *_pimpl->_scaffold;
         auto& cmdStream = scaffold.CommandStream();
+
+        if (Tweakable("SkinnedAsStatic", false)) { preparedAnimation = nullptr; }
 
         TRY
         {
@@ -860,14 +851,18 @@ namespace RenderCore { namespace Assets
                 md!=_pimpl->_drawCalls.cend(); ++md, ++drawCallIndex) {
 
                 if (md->first != currGeoCall) {
-                    _pimpl->BeginGeoCall(context, box._localTransformBuffer, transforms, modelToWorld, md->first);
+                    currTechniqueInterface = _pimpl->BeginGeoCall(
+                        context, box._localTransformBuffer, transforms, modelToWorld, md->first);
                     currGeoCall = md->first;
                 }
 
-                auto* boundUniforms = _pimpl->BeginVariation(context, *context._sharedStateSet, drawCallIndex);
+                auto* boundUniforms = _pimpl->BeginVariation(context, *context._sharedStateSet, drawCallIndex, currTechniqueInterface);
                 const auto& drawCallRes = _pimpl->_drawCallRes[drawCallIndex];
 
-                if (boundUniforms != currUniforms || drawCallRes._textureSet != currTextureSet || drawCallRes._constantBuffer != currCB) {
+                if (    boundUniforms != currUniforms 
+                    ||  drawCallRes._textureSet != currTextureSet 
+                    ||  drawCallRes._constantBuffer != currCB) {
+
                     if (boundUniforms) {
                         _pimpl->ApplyBoundUnforms(
                             context, *boundUniforms, drawCallRes._textureSet, drawCallRes._constantBuffer, pkts);
@@ -890,14 +885,19 @@ namespace RenderCore { namespace Assets
                 md!=_pimpl->_skinnedDrawCalls.cend(); ++md, ++drawCallIndex) {
 
                 if (md->first != currGeoCall) {
-                    _pimpl->BeginSkinCall(context, box._localTransformBuffer, transforms, modelToWorld, md->first, preparedAnimation);
+                    currTechniqueInterface = _pimpl->BeginSkinCall(
+                        context, box._localTransformBuffer, transforms, modelToWorld, md->first, 
+                        preparedAnimation);
                     currGeoCall = md->first;
                 }
 
-                auto* boundUniforms = _pimpl->BeginVariation(context, *context._sharedStateSet, drawCallIndex);
+                auto* boundUniforms = _pimpl->BeginVariation(context, *context._sharedStateSet, drawCallIndex, currTechniqueInterface);
                 const auto& drawCallRes = _pimpl->_drawCallRes[drawCallIndex];
 
-                if (boundUniforms != currUniforms || drawCallRes._textureSet != currTextureSet || drawCallRes._constantBuffer != currCB) {
+                if (    boundUniforms != currUniforms 
+                    ||  drawCallRes._textureSet != currTextureSet 
+                    ||  drawCallRes._constantBuffer != currCB) {
+
                     if (boundUniforms) {
                         _pimpl->ApplyBoundUnforms(
                             context, *boundUniforms, drawCallRes._textureSet, drawCallRes._constantBuffer, pkts);

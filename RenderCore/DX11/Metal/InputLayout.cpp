@@ -293,11 +293,19 @@ namespace RenderCore { namespace Metal_DX11
     }
 
     unsigned CalculateVertexStride(
-        const InputElementDesc* start, const InputElementDesc* end)
+        const InputElementDesc* start, const InputElementDesc* end,
+        unsigned slot)
     {
+            // note --  Assuming vertex elements are densely packed (which
+            //          they usually are).
+            //          We could also use the "_alignedByteOffset" member
+            //          to find out where the element begins and ends)
         unsigned result = 0;
         for (auto i=start; i<end; ++i) {
-            result += BitsPerPixel(i->_nativeFormat);
+            if (i->_inputSlot == slot) {
+                assert(i->_alignedByteOffset == (result/8) || i->_alignedByteOffset == ~unsigned(0x0));
+                result += BitsPerPixel(i->_nativeFormat);
+            }
         }
         return result / 8;
     }
