@@ -656,7 +656,7 @@ namespace SceneEngine
 
         TerrainRenderingResources(const Desc& desc);
 
-        const Assets::DependencyValidation& GetDependancyValidation() const   { return *_validationCallback; }
+        const Assets::DependencyValidation& GetDependencyValidation() const   { return *_validationCallback; }
     private:
         std::shared_ptr<Assets::DependencyValidation>  _validationCallback;
     };
@@ -713,7 +713,7 @@ namespace SceneEngine
         TechniqueContext::BindGlobalUniforms(boundUniforms);
 
         auto validationCallback = std::make_shared<Assets::DependencyValidation>();
-        Assets::RegisterAssetDependency(validationCallback, &shaderProgram->GetDependancyValidation());
+        Assets::RegisterAssetDependency(validationCallback, &shaderProgram->GetDependencyValidation());
 
         _shaderProgram = shaderProgram;
         _boundUniforms = std::move(boundUniforms);
@@ -825,9 +825,9 @@ namespace SceneEngine
                 // if it's been invalidated on disk, reload
             bool invalidation = false;
             if (i->second->_sourceCell) {
-                invalidation |= (i->second->_sourceCell->GetDependancyValidation().GetValidationIndex()!=0);
+                invalidation |= (i->second->_sourceCell->GetDependencyValidation().GetValidationIndex()!=0);
                 for (unsigned c=0; c<TerrainCellId::CoverageCount; ++c)
-                    invalidation |= (i->second->_sourceCoverage[c]->GetDependancyValidation().GetValidationIndex()!=0);
+                    invalidation |= (i->second->_sourceCoverage[c]->GetDependencyValidation().GetValidationIndex()!=0);
             }
             if (invalidation) {
                     // before we delete it, we need to erase it from the pending uploads
@@ -2220,7 +2220,7 @@ namespace SceneEngine
         TerrainMaterialTextures(const char definitionFile[]);
         ~TerrainMaterialTextures();
 
-        const Assets::DependencyValidation& GetDependancyValidation() const   { return *_validationCallback; }
+        const Assets::DependencyValidation& GetDependencyValidation() const   { return *_validationCallback; }
 
     private:
         std::shared_ptr<Assets::DependencyValidation>  _validationCallback;

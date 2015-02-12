@@ -101,7 +101,7 @@ namespace SceneEngine
         unsigned                GetObjectReferenceCount() const;
         const void*             GetFilenamesBuffer() const;
 
-        const ::Assets::DependencyValidation& GetDependancyValidation() const { return *_dependencyValidation; }
+        const ::Assets::DependencyValidation& GetDependencyValidation() const { return *_dependencyValidation; }
 
         void Save(const ResChar filename[]) const;
         void LogDetails(const char title[]) const;
@@ -285,6 +285,15 @@ namespace SceneEngine
             ReplaceString(
                 "game\\objects\\Env\\05_nature\\00_common\\\\common_plants_sanse.mtl",
                 "game\\model\\nature\\sansevieria\\small.mtl");
+
+            ReplaceString(
+                "game\\objects\\Env\\05_nature\\00_common\\digitalis_a.cgf",
+                "game\\model\\nature\\digitalis\\digitalis.dae");
+            ReplaceString(
+                "game\\objects\\Env\\05_nature\\00_common\\\\digitalis_a.mtl",
+                "game\\model\\nature\\digitalis\\digitalis.mtl");
+
+
             if (!_objects.empty()) {
                 LogDetails(filename);
             }
@@ -471,7 +480,7 @@ namespace SceneEngine
                 i2 = _cells.insert(i2, std::make_pair(filenameHash, std::move(newRenderInfo)));
             } else {
                     // check if we need to reload placements
-                if (i2->second._placements->GetDependancyValidation().GetValidationIndex() != 0) {
+                if (i2->second._placements->GetDependencyValidation().GetValidationIndex() != 0) {
                     i2->second._placements = &::Assets::GetAssetDep<Placements>(filename);
                 }
             }
@@ -552,7 +561,7 @@ namespace SceneEngine
                     i2 = _cells.insert(i2, std::make_pair(cell._filenameHash, std::move(newRenderInfo)));
                 } else {
                         // check if we need to reload placements
-                    if (i2->second._placements->GetDependancyValidation().GetValidationIndex() != 0) {
+                    if (i2->second._placements->GetDependencyValidation().GetValidationIndex() != 0) {
                         i2->second._placements = &::Assets::GetAssetDep<Placements>(cell._filename);
                         i2->second._quadTree.reset();
                     }

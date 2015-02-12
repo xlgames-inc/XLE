@@ -41,7 +41,7 @@ namespace Overlays
         ShaderProgram*  _shader;
         BoundUniforms   _uniforms;
         
-        const Assets::DependencyValidation& GetDependancyValidation() const   { return *_depVal; }
+        const Assets::DependencyValidation& GetDependencyValidation() const   { return *_depVal; }
         SFDResources(const Desc&);
         ~SFDResources();
     protected:
@@ -63,7 +63,7 @@ namespace Overlays
         _uniforms.BindShaderResource(Hash64("DepthTexture"), 0, 1);
         
         _depVal = std::make_shared<Assets::DependencyValidation>();
-        ::Assets::RegisterAssetDependency(_depVal, &_shader->GetDependancyValidation());
+        ::Assets::RegisterAssetDependency(_depVal, &_shader->GetDependencyValidation());
     }
 
     SFDResources::~SFDResources() {}

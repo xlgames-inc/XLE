@@ -71,7 +71,7 @@ namespace Assets
             { typedef std::unique_ptr<AssetType> Value; };
 
         template <int DoCheckDependancy> struct CheckDependancy { template<typename Resource> static bool NeedsRefresh(const Resource* resource); };
-        template<> struct CheckDependancy<1>   { template <typename Resource> static bool NeedsRefresh(const Resource* resource)   { return !resource || (resource->GetDependancyValidation().GetValidationIndex()!=0); } };
+        template<> struct CheckDependancy<1>   { template <typename Resource> static bool NeedsRefresh(const Resource* resource)   { return !resource || (resource->GetDependencyValidation().GetValidationIndex()!=0); } };
         template<> struct CheckDependancy<0>   { template <typename Resource> static bool NeedsRefresh(const Resource* resource)   { return !resource; } };
 
         template <int BoBackgroundCompile> struct ConstructAsset {};

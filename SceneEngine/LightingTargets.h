@@ -157,7 +157,7 @@ namespace SceneEngine
         std::unique_ptr<BoundUniforms>  _unshadowedPointLightUniforms;
         std::unique_ptr<BoundUniforms>  _unshadowedDirectionalLightUniforms;
 
-        const Assets::DependencyValidation& GetDependancyValidation() const   { return *_validationCallback; }
+        const Assets::DependencyValidation& GetDependencyValidation() const   { return *_validationCallback; }
 
         LightingResolveShaders(const Desc& desc);
         ~LightingResolveShaders();
@@ -196,7 +196,7 @@ namespace SceneEngine
         RenderCore::Metal::ShaderProgram*   _ambientLight;
         std::unique_ptr<RenderCore::Metal::BoundUniforms>   _ambientLightUniforms;
 
-        const Assets::DependencyValidation& GetDependancyValidation() const   { return *_validationCallback; }
+        const Assets::DependencyValidation& GetDependencyValidation() const   { return *_validationCallback; }
 
         AmbientResolveShaders(const Desc& desc);
         ~AmbientResolveShaders();

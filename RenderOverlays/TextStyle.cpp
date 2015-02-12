@@ -191,7 +191,7 @@ public:
 
     TextStyleResources(const Desc& desc);
 
-    const Assets::DependencyValidation& GetDependancyValidation() const   { return *_validationCallback; }
+    const Assets::DependencyValidation& GetDependencyValidation() const   { return *_validationCallback; }
 private:
     std::shared_ptr<Assets::DependencyValidation>  _validationCallback;
 };
@@ -220,7 +220,7 @@ TextStyleResources::TextStyleResources(const Desc& desc)
     boundUniforms.BindConstantBuffer(Hash64("ReciprocalViewportDimensions"), 0, 1, elements, dimof(elements));
 
     auto validationCallback = std::make_shared<Assets::DependencyValidation>();
-    Assets::RegisterAssetDependency(validationCallback, &shaderProgram.GetDependancyValidation());
+    Assets::RegisterAssetDependency(validationCallback, &shaderProgram.GetDependencyValidation());
 
     _shaderProgram = &shaderProgram;
     _boundInputLayout = std::move(boundInputLayout);

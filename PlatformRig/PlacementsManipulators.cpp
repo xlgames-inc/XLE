@@ -540,7 +540,7 @@ namespace Tools
         RenderCore::Metal::ShaderProgram* _drawHighlight;
         RenderCore::Metal::BoundUniforms _drawHighlightUniforms;
 
-        const Assets::DependencyValidation& GetDependancyValidation() const   { return *_validationCallback; }
+        const Assets::DependencyValidation& GetDependencyValidation() const   { return *_validationCallback; }
 
         HighlightShaders(const Desc&);
     protected:
@@ -557,7 +557,7 @@ namespace Tools
         SceneEngine::TechniqueContext::BindGlobalUniforms(uniforms);
 
         auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterAssetDependency(validationCallback, &drawHighlight->GetDependancyValidation());
+        ::Assets::RegisterAssetDependency(validationCallback, &drawHighlight->GetDependencyValidation());
 
         _validationCallback = std::move(validationCallback);
         _drawHighlight = std::move(drawHighlight);

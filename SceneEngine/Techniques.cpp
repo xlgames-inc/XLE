@@ -9,10 +9,12 @@
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Assets/AssetUtils.h"    // for Assets::LocalTransform_Elements
+#include "../Assets/AssetUtils.h"
 #include "../Math/Vector.h"
 #include "../Math/Matrix.h"
 #include "../Utility/Streams/Data.h"
 #include "../Utility/Streams/FileUtils.h"
+#include "../Utility/IteratorUtils.h"
 #include <algorithm>
 
 namespace SceneEngine
@@ -164,7 +166,7 @@ namespace SceneEngine
         uint64 globalHashWithInterface = inputHash ^ techniqueInterface.GetHashValue();
         auto i = std::lower_bound(_globalToResolved.begin(), _globalToResolved.end(), globalHashWithInterface, CompareFirst<uint64, ResolvedShader>());
         if (i!=_globalToResolved.cend() && i->first == globalHashWithInterface) {
-            if (i->second._shaderProgram && (i->second._shaderProgram->GetDependancyValidation().GetValidationIndex()!=0)) {
+            if (i->second._shaderProgram && (i->second._shaderProgram->GetDependencyValidation().GetValidationIndex()!=0)) {
                 ResolveAndBind(i->second, globalState, techniqueInterface);
             }
 
@@ -181,7 +183,7 @@ namespace SceneEngine
         auto i2 = std::lower_bound(_filteredToResolved.begin(), _filteredToResolved.end(), filteredHashWithInterface, CompareFirst<uint64, ResolvedShader>());
         if (i2!=_filteredToResolved.cend() && i2->first == filteredHashWithInterface) {
             _globalToResolved.insert(i, std::make_pair(globalHashWithInterface, i2->second));
-            if (i2->second._shaderProgram && (i2->second._shaderProgram->GetDependancyValidation().GetValidationIndex()!=0)) {
+            if (i2->second._shaderProgram && (i2->second._shaderProgram->GetDependencyValidation().GetValidationIndex()!=0)) {
                 ResolveAndBind(i2->second, globalState, techniqueInterface);
             }
 
@@ -315,24 +317,87 @@ namespace SceneEngine
         _resolvedMaterialConstantsLayouts.push_back(std::move(boundMaterialConstants));
     }
 
-    Technique::Technique(Data& source)
-    {
-            //
-            //      There are some parameters that will we always have an effect on the
-            //      binding. We need to make sure these are initialized with sensible
-            //      values.
-            //
-        auto& globalParam = _baseParameters._parameters[ShaderParameters::Source::GlobalEnvironment];
-        globalParam.SetParameter("vs_", 50);
-        globalParam.SetParameter("ps_", 50);
+    static const char* s_parameterBoxNames[] = 
+        { "Geometry", "GlobalEnvironment", "Runtime", "Material" };
 
-        _name = source.StrValue();
+    class ParameterBoxTable
+    {
+    public:
+        class Setting
+        {
+        public:
+            ParameterBox _boxes[4];
+
+            Setting();
+            Setting(Setting&& moveFrom);
+            Setting& operator=(Setting&& moveFrom);
+        };
+        std::vector<std::pair<uint64,Setting>> _settings;
+
+        ParameterBoxTable(const Assets::ResChar filename[]);
+        ParameterBoxTable(ParameterBoxTable&& moveFrom);
+        ParameterBoxTable& operator=(ParameterBoxTable&& moveFrom);
+
+        const ::Assets::DependencyValidation& GetDependencyValidation() const { return *_depVal; }
+    protected:
+        std::shared_ptr<::Assets::DependencyValidation> _depVal;
+    };
+
+    static void LoadInteritedParameterBoxes(
+        Data& source, ParameterBox dst[4],
+        Assets::DirectorySearchRules* searchRules,
+        std::vector<const Assets::DependencyValidation*>* inherited)
+    {
+            //  Find the child called "Inherit". This will provide a list of 
+            //  shareable settings that we can inherit from
+            //  Inherit lists should take the form "FileName:Setting"
+            //  FileName should have no extension -- we'll append .txt. 
+            //  The "setting" should be a top-level item in the file
+        auto* inheritList = source.ChildWithValue("Inherit");
+        if (inheritList) {
+            for (auto i=inheritList->child; i; i=i->next) {
+                auto* colon = const_cast<char*>(XlFindCharReverse(i->value, ':'));
+                if (colon) {
+                    *colon = '\0';
+                    Assets::ResChar resolvedFile[MaxPath];
+                    if (searchRules) {
+                        searchRules->ResolveFile(
+                            resolvedFile, dimof(resolvedFile), i->value);
+                    } else {
+                        XlCopyString(resolvedFile, dimof(resolvedFile), i->value);
+                    }
+                    *colon = ':';
+
+                    auto& settingsTable = Assets::GetAssetDep<ParameterBoxTable>(resolvedFile);
+                    auto settingHash = Hash64(colon+1);
+                    
+                    auto s = LowerBound(settingsTable._settings, settingHash);
+                    if (s != settingsTable._settings.end() && s->first == settingHash) {
+                        for (unsigned c=0; c<dimof(s_parameterBoxNames); ++c) {
+                            dst[c].MergeIn(s->second._boxes[c]);
+                        }
+                    }
+
+                    if (inherited) {
+                        if (std::find(  inherited->begin(), inherited->end(),
+                                        &settingsTable.GetDependencyValidation())
+                            == inherited->end()) {
+
+                            inherited->push_back(&settingsTable.GetDependencyValidation());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    static void LoadParameterBoxes(Data& source, ParameterBox dst[4])
+    {
         auto* p = source.ChildWithValue("Parameters");
         if (p) {
-            const char* parameterBoxNames[] = { "Geometry", "GlobalEnvironment", "Runtime", "Material" };
-            for (unsigned q=0; q<dimof(parameterBoxNames); ++q) {
-                auto* d = p->ChildWithValue(parameterBoxNames[q]);
-                auto& destinationParameters = _baseParameters._parameters[q];
+            for (unsigned q=0; q<dimof(s_parameterBoxNames); ++q) {
+                auto* d = p->ChildWithValue(s_parameterBoxNames[q]);
+                auto& destinationParameters = dst[q];
                 if (d) {
                     for (int c=0; c<d->Size(); ++c) {
                         auto child = d->ChildAt(c);
@@ -345,7 +410,60 @@ namespace SceneEngine
                 }
             }
         }
+    }
 
+    ParameterBoxTable::ParameterBoxTable(const Assets::ResChar filename[])
+    {
+        Data data;
+        size_t sourceFileSize = 0;
+        auto sourceFile = LoadFileAsMemoryBlock(filename, &sourceFileSize);
+
+        _depVal = std::make_shared<::Assets::DependencyValidation>();
+        RegisterFileDependency(_depVal, filename);
+
+        if (sourceFile) {
+            auto searchRules = Assets::DefaultDirectorySearchRules(filename);
+            std::vector<const ::Assets::DependencyValidation*> inherited;
+
+            data.Load((const char*)sourceFile.get(), (int)sourceFileSize);
+            
+                //  each top-level entry is a "Setting", which can contain parameter
+                //  boxes (and possibly inherit statements and shaders)
+
+            for (auto c=data.child; c; c=c->next) {
+                Setting newSetting;
+                LoadInteritedParameterBoxes(*c, newSetting._boxes, &searchRules, &inherited);
+                LoadParameterBoxes(*c, newSetting._boxes);
+
+                auto hash = Hash64(c->value);
+                auto i = LowerBound(_settings, hash);
+                _settings.insert(i, std::make_pair(hash, std::move(newSetting)));
+            }
+
+            for (auto i=inherited.begin(); i!=inherited.end(); ++i) {
+                ::Assets::RegisterAssetDependency(_depVal, *i);
+            }
+        }
+    }
+
+    Technique::Technique(
+        Data& source, 
+        Assets::DirectorySearchRules* searchRules,
+        std::vector<const Assets::DependencyValidation*>* inherited)
+    {
+            //
+            //      There are some parameters that will we always have an effect on the
+            //      binding. We need to make sure these are initialized with sensible
+            //      values.
+            //
+        auto& globalParam = _baseParameters._parameters[ShaderParameters::Source::GlobalEnvironment];
+        globalParam.SetParameter("vs_", 50);
+        globalParam.SetParameter("ps_", 50);
+
+        LoadInteritedParameterBoxes(source, _baseParameters._parameters, searchRules, inherited);
+        LoadParameterBoxes(source, _baseParameters._parameters);
+
+        _name = source.StrValue();
         _vertexShaderName = source.StrAttribute("VertexShader");
         _pixelShaderName = source.StrAttribute("PixelShader");
         _geometryShaderName = source.StrAttribute("GeometryShader");
@@ -388,40 +506,31 @@ namespace SceneEngine
         return _technique[techniqueIndex].FindVariation(globalState, techniqueInterface);
     }
 
-    static std::string LoadSourceFile(const std::string& sourceFileName)
-    {
-        TRY {
-            Utility::BasicFile file(sourceFileName.c_str(), "rb");
-
-            file.Seek(0, SEEK_END);
-            size_t size = file.TellP();
-            file.Seek(0, SEEK_SET);
-
-            std::string result;
-            result.resize(size, '\0');
-            file.Read(&result.at(0), 1, size);
-            return result;
-        } CATCH(const std::exception& ) {
-            return std::string();
-        } CATCH_END
-    }
-
     ShaderType::ShaderType(const char resourceName[])
     {
         Data data;
-        auto sourceFile = LoadSourceFile(resourceName);
-        if (!sourceFile.empty()) {
-            data.Load(&(*sourceFile.begin()), (int)sourceFile.size());
-            for (int c=0; c<data.Size(); ++c) {
-                auto child = data.ChildAt(c);
-                if (child) {
-                    _technique.push_back(Technique(*child));
-                }
-            }
-        }
+        size_t sourceFileSize = 0;
+        auto sourceFile = LoadFileAsMemoryBlock(resourceName, &sourceFileSize);
 
         _validationCallback = std::make_shared<Assets::DependencyValidation>();
         ::Assets::RegisterFileDependency(_validationCallback, resourceName);
+        
+        if (sourceFile) {
+            auto searchRules = Assets::DefaultDirectorySearchRules(resourceName);
+            std::vector<const ::Assets::DependencyValidation*> inheritedAssets;
+
+            data.Load((const char*)sourceFile.get(), (int)sourceFileSize);
+            for (int c=0; c<data.Size(); ++c) {
+                auto child = data.ChildAt(c);
+                if (child) {
+                    _technique.push_back(Technique(*child, &searchRules, &inheritedAssets));
+                }
+            }
+
+            for (auto i=inheritedAssets.begin(); i!=inheritedAssets.end(); ++i) {
+                ::Assets::RegisterAssetDependency(_validationCallback, *i);
+            }
+        }
     }
 
     ShaderType::~ShaderType()
@@ -509,7 +618,7 @@ namespace SceneEngine
         return result;
     }
 
-    uint32      ParameterBox::GetValue(size_t index)
+    uint32      ParameterBox::GetValue(size_t index) const
     {
         if (index < _parameterOffsets.size()) {
             return 0;
@@ -614,6 +723,16 @@ namespace SceneEngine
         return true;
     }
 
+    void ParameterBox::MergeIn(const ParameterBox& source)
+    {
+            // simple implementation... 
+            //  We could build a more effective implementation taking into account
+            //  the fact that both parameter boxes are sorted.
+        for (size_t i=size_t(0); i<source._parameterNames.size(); ++i) {
+            SetParameter(source._parameterNames[i], source.GetValue(i));
+        }
+    }
+
     ParameterBox::ParameterBox()
     {
         _cachedHash = _cachedParameterNameHash = 0;
@@ -664,28 +783,6 @@ namespace SceneEngine
 
         //////////////////////-------//////////////////////
 
-    
-    void     MergeParameterBoxes(ParameterBox& lhs, ParameterBox& rhs)
-    {
-        size_t i=0;
-
-        for (;;) {
-            if (i>=lhs._parameterHashValues.size()) {
-                if (i>=rhs._parameterHashValues.size()) {
-                    break;
-                }
-                lhs.SetParameter(rhs._parameterNames[i], rhs.GetValue(i));
-            } else if (i>=rhs._parameterHashValues.size()) {
-                rhs.SetParameter(lhs._parameterNames[i], lhs.GetValue(i));
-            } else if (lhs._parameterHashValues[i] < rhs._parameterHashValues[i]) {
-                rhs.SetParameter(lhs._parameterNames[i], lhs.GetValue(i));
-            } else if (rhs._parameterHashValues[i] < lhs._parameterHashValues[i]) {
-                lhs.SetParameter(rhs._parameterNames[i], rhs.GetValue(i));
-            } else {
-                ++i;
-            }
-        }
-    }
 
     void     TechniqueContext::BindGlobalUniforms(TechniqueInterface& binding)
     {

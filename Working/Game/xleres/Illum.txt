@@ -25,6 +25,8 @@ Illum
             RES_HAS_c3a97fd4218f2a04
             RES_HAS_NormalsTexture_DXT
             RES_HAS_OPACITY_MAP
+            MAT_VCOLOR_IS_ANIM_PARAM
+            MAT_DOUBLE_SIDED_LIGHTING
         Runtime
             SPAWNED_INSTANCE
     VertexShader
@@ -48,19 +50,16 @@ DepthOnly
     PixelShader
         game/xleres/forward/depthonly.psh:main
 Deferred
+    Inherit ("Shared:CommonMaterial", "Shared:Skinnable")
     Parameters
         Geometry
             GEO_HAS_COLOUR
             GEO_HAS_TEXCOORD
             GEO_HAS_TANGENT_FRAME
-            GEO_HAS_SKIN_WEIGHTS
             GEO_HAS_NORMAL
-            AUTO_COTANGENT
         GlobalEnvironment
             PREFER_ANISOTROPIC
                 1
-            SKIN_TRANSFORMS
-                0
             CLASSIFY_NORMAL_MAP
             SKIP_MATERIAL_DIFFUSE
                 0
@@ -69,13 +68,7 @@ Deferred
             LOCAL_TO_WORLD_HAS_FLIP
             GBUFFER_TYPE
                 1
-        Material
-            MAT_ALPHA_TEST
-            MAT_REFLECTIVENESS
-            RES_HAS_CUSTOM_MAP
-            RES_HAS_bfbf327ee9403009
-            RES_HAS_c3a97fd4218f2a04
-            RES_HAS_NormalsTexture_DXT
+            AUTO_COTANGENT
         Runtime
             SPAWNED_INSTANCE
     VertexShader

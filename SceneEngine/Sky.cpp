@@ -130,7 +130,7 @@ namespace SceneEngine
 
         SkyShaderRes(const Desc& desc);
 
-        const Assets::DependencyValidation& GetDependancyValidation() const   { return *_validationCallback; }
+        const Assets::DependencyValidation& GetDependencyValidation() const   { return *_validationCallback; }
     private:
         std::shared_ptr<Assets::DependencyValidation>  _validationCallback;
     };
@@ -180,9 +180,9 @@ namespace SceneEngine
         postFogUniforms.BindConstantBuffer(Hash64("SkySettings"), 0, 1);
 
         auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterAssetDependency(validationCallback, &_shader->GetDependancyValidation());
+        ::Assets::RegisterAssetDependency(validationCallback, &_shader->GetDependencyValidation());
         if (_postFogShader) {
-            ::Assets::RegisterAssetDependency(validationCallback, &_postFogShader->GetDependancyValidation());
+            ::Assets::RegisterAssetDependency(validationCallback, &_postFogShader->GetDependencyValidation());
         }
 
         _uniforms = std::move(uniforms);

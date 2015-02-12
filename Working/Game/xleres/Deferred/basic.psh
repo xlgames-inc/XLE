@@ -86,19 +86,23 @@ GBufferEncoded main(VSOutput geo)
 		#endif
 	#endif
 
-		//		This is currently causing problems with vegetation rendering
-		//		for vegetation objects, the colour is intended for wind animation
-		//		not for colouring... We have to ignore it here.
-	//#if (OUTPUT_COLOUR==1)
-	//	result.diffuseAlbedo.rgb *= geo.colour.rgb;
-	//#endif
-
-	#if (MAT_ALPHA_TEST==1)
-		if (result.blendingAlpha < AlphaThreshold) discard;
+	#if (OUTPUT_COLOUR==1)
+		result.diffuseAlbedo.rgb *= geo.colour.rgb;
+		#if MAT_MODULATE_VERTEX_ALPHA
+			result.blendingAlpha *= geo.colour.a;
+		#endif
 	#endif
 
 	#if (SKIP_MATERIAL_DIFFUSE!=1)
 		result.blendingAlpha *= Opacity;
+	#endif
+
+	#if (MAT_ALPHA_TEST==1)
+			// note -- 	Should the alpha threshold effect take into
+			//			account material "Opacity" and vertex alpha?
+			//			Compatibility with legacy DX9 thinking might
+			//			require it to only use the texture alpha?
+		if (result.blendingAlpha < AlphaThreshold) discard;
 	#endif
 
 	#if (RES_HAS_ParametersTexture!=0)

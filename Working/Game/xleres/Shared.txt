@@ -1,0 +1,18 @@
+CommonMaterial
+    Parameters
+        Material
+            MAT_ALPHA_TEST
+            MAT_REFLECTIVENESS
+            RES_HAS_CUSTOM_MAP
+            RES_HAS_bfbf327ee9403009
+            RES_HAS_c3a97fd4218f2a04
+            RES_HAS_NormalsTexture_DXT
+            MAT_VCOLOR_IS_ANIM_PARAM
+            MAT_DOUBLE_SIDED_LIGHTING
+Skinnable
+    Parameters
+        Geometry
+            GEO_HAS_SKIN_WEIGHTS
+        GlobalEnvironment
+            SKIN_TRANSFORMS
+                0

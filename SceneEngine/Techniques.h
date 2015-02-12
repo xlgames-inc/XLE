@@ -15,7 +15,7 @@
 
 namespace Utility { class Data; }
 using namespace Utility;
-namespace Assets { class DependencyValidation; }
+namespace Assets { class DependencyValidation; class DirectorySearchRules; }
 
 namespace SceneEngine
 {
@@ -42,12 +42,15 @@ namespace SceneEngine
         void        BuildStringTable(std::vector<std::pair<std::string, std::string>>& defines) const;
         void        OverrideStringTable(std::vector<std::pair<std::string, std::string>>& defines) const;
 
-        friend void                 MergeParameterBoxes(ParameterBox& lhs, ParameterBox& rhs);
+        void        MergeIn(const ParameterBox& source);
+
         static ParameterNameHash    MakeParameterNameHash(const std::string& name);
 
         bool        ParameterNamesAreEqual(const ParameterBox& other) const;
 
         ParameterBox();
+        ParameterBox(ParameterBox&& moveFrom);
+        ParameterBox& operator=(ParameterBox&& moveFrom);
         ~ParameterBox();
     private:
         mutable uint64      _cachedHash;
@@ -58,7 +61,7 @@ namespace SceneEngine
         std::vector<std::string>        _parameterNames;
         std::vector<uint8>              _values;
 
-        uint32      GetValue(size_t index);
+        uint32      GetValue(size_t index) const;
         uint64      CalculateHash() const;
         uint64      CalculateParameterNamesHash() const;
     };
@@ -157,7 +160,7 @@ namespace SceneEngine
                                             const TechniqueInterface& techniqueInterface);
         bool                IsValid() const { return !_vertexShaderName.empty(); }
 
-        Technique(Data& source);
+        Technique(Data& source, Assets::DirectorySearchRules* searchRules = nullptr, std::vector<const ::Assets::DependencyValidation*>* inherited = nullptr);
         Technique(Technique&& moveFrom);
         Technique& operator=(Technique&& moveFrom);
     protected:
@@ -204,7 +207,7 @@ namespace SceneEngine
     {
     public:
         ResolvedShader      FindVariation(int techniqueIndex, const ParameterBox* globalState[ShaderParameters::Source::Max], const TechniqueInterface& techniqueInterface);
-        const Assets::DependencyValidation&         GetDependancyValidation() const     { return *_validationCallback; }
+        const Assets::DependencyValidation&         GetDependencyValidation() const     { return *_validationCallback; }
 
         ShaderType(const char resourceName[]);
         ~ShaderType();

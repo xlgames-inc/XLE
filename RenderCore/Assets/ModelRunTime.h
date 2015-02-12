@@ -74,7 +74,7 @@ namespace RenderCore { namespace Assets
         std::pair<Float3, Float3>   GetStaticBoundingBox(unsigned lodIndex = 0) const;
         unsigned                    GetMaxLOD() const { return 1; }
 
-        const ::Assets::DependencyValidation& GetDependancyValidation() const { return *_validationCallback; }
+        const ::Assets::DependencyValidation& GetDependencyValidation() const { return *_validationCallback; }
 
         ModelScaffold(const ResChar filename[]);
         ModelScaffold(std::shared_ptr<::Assets::PendingCompileMarker>&& marker);

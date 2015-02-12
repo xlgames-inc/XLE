@@ -27,8 +27,14 @@ struct VSInput //////////////////////////////////////////////////////
 
     #if GEO_HAS_COLOUR==1
         float4 colour : COLOR0;
-        #if !defined(OUTPUT_COLOUR)
-            #define OUTPUT_COLOUR 1
+
+            // vertex is used only in the vertex shader when
+            // "MAT_VCOLOR_IS_ANIM_PARAM" is set. So, in this case,
+            // don't output to further pipeline stages.
+        #if MAT_VCOLOR_IS_ANIM_PARAM!=1
+            #if !defined(OUTPUT_COLOUR)
+                #define OUTPUT_COLOUR 1
+            #endif
         #endif
     #endif
 

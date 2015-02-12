@@ -258,11 +258,11 @@ namespace SceneEngine
         }
 
         _validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterAssetDependency(_validationCallback, &_shadowedDirectionalLight->GetDependancyValidation());
-        ::Assets::RegisterAssetDependency(_validationCallback, &_shadowedDirectionalOrthoLight->GetDependancyValidation());
-        ::Assets::RegisterAssetDependency(_validationCallback, &_shadowedPointLight->GetDependancyValidation());
-        ::Assets::RegisterAssetDependency(_validationCallback, &_unshadowedDirectionalLight->GetDependancyValidation());
-        ::Assets::RegisterAssetDependency(_validationCallback, &_unshadowedPointLight->GetDependancyValidation());
+        ::Assets::RegisterAssetDependency(_validationCallback, &_shadowedDirectionalLight->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(_validationCallback, &_shadowedDirectionalOrthoLight->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(_validationCallback, &_shadowedPointLight->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(_validationCallback, &_unshadowedDirectionalLight->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(_validationCallback, &_unshadowedPointLight->GetDependencyValidation());
 
         _shadowedDirectionalLightUniforms = std::move(bu[0]);
         _shadowedDirectionalOrthoLightUniforms = std::move(bu[1]);
@@ -304,7 +304,7 @@ namespace SceneEngine
         ambientLightUniforms->BindConstantBuffer(Hash64("AmbientLightBuffer"), 0, 1);
 
         auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterAssetDependency(validationCallback, &ambientLight->GetDependancyValidation());
+        ::Assets::RegisterAssetDependency(validationCallback, &ambientLight->GetDependencyValidation());
 
         _ambientLight = std::move(ambientLight);
         _ambientLightUniforms = std::move(ambientLightUniforms);

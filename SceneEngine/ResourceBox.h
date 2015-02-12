@@ -68,7 +68,7 @@ namespace SceneEngine
         auto& boxTable = GetBoxTable<Box>();
         auto i = std::lower_bound(boxTable.begin(), boxTable.end(), hashValue, CompareFirst<uint64, std::unique_ptr<Box>>());
         if (i!=boxTable.end() && i->first==hashValue) {
-            if (i->second->GetDependancyValidation().GetValidationIndex()!=0) {
+            if (i->second->GetDependencyValidation().GetValidationIndex()!=0) {
                 i->second = std::make_unique<Box>(desc);
                 ConsoleRig::xleWarningDebugOnly("Created cached box for type (%s) -- rebuilding due to validation failure. HashValue:(0x%08x%08x)\n", 
                                                 typeid(Box).name(), uint32(hashValue>>32), uint32(hashValue));

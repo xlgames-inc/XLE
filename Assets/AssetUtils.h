@@ -28,6 +28,8 @@ namespace Assets
         unsigned _startPointCount;
     };
 
+    DirectorySearchRules DefaultDirectorySearchRules(const ResChar baseFile[]);
+
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
     class FileAndTime

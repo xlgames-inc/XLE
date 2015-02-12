@@ -58,7 +58,7 @@ namespace RenderCore { namespace Metal_DX11
         const void*                 GetByteCode() const;
         size_t                      GetSize() const;
         ShaderStage::Enum           GetStage() const                { return _stage; }
-        const ::Assets::DependencyValidation& GetDependancyValidation() const { return *_validationCallback; }
+        const ::Assets::DependencyValidation& GetDependencyValidation() const { return *_validationCallback; }
 
         intrusive_ptr<ID3D::ShaderReflection>  GetReflection() const;
         const char*                 Initializer() const;
@@ -130,7 +130,7 @@ namespace RenderCore { namespace Metal_DX11
         explicit DeferredShaderResource(const ResChar resourceName[], const ResChar sourceSpace[] = LinearSpace);
         ~DeferredShaderResource();
         const ShaderResourceView&       GetShaderResource() const;
-        const ::Assets::DependencyValidation&     GetDependancyValidation() const     { return *_validationCallback; }
+        const ::Assets::DependencyValidation&     GetDependencyValidation() const     { return *_validationCallback; }
         const char*                     Initializer() const;
     private:
         mutable ShaderResourceView      _finalResource;
@@ -201,7 +201,7 @@ namespace RenderCore { namespace Metal_DX11
         typedef ID3D::HullShader*       UnderlyingType;
         UnderlyingType                  GetUnderlying() const { return _underlying.get(); }
 
-        const ::Assets::DependencyValidation&     GetDependancyValidation() const     { return *_validationCallback; }
+        const ::Assets::DependencyValidation&     GetDependencyValidation() const     { return *_validationCallback; }
         
     private:
         intrusive_ptr<ID3D::HullShader>            _underlying;
@@ -220,7 +220,7 @@ namespace RenderCore { namespace Metal_DX11
         typedef ID3D::DomainShader*     UnderlyingType;
         UnderlyingType                  GetUnderlying() const { return _underlying.get(); }
 
-        const ::Assets::DependencyValidation&     GetDependancyValidation() const     { return *_validationCallback; }
+        const ::Assets::DependencyValidation&     GetDependencyValidation() const     { return *_validationCallback; }
         
     private:
         intrusive_ptr<ID3D::DomainShader>          _underlying;
@@ -239,7 +239,7 @@ namespace RenderCore { namespace Metal_DX11
         typedef ID3D::ComputeShader*    UnderlyingType;
         UnderlyingType                  GetUnderlying() const { return _underlying.get(); }
 
-        const ::Assets::DependencyValidation&     GetDependancyValidation() const     { return *_validationCallback; }
+        const ::Assets::DependencyValidation&     GetDependencyValidation() const     { return *_validationCallback; }
         
     private:
         intrusive_ptr<ID3D::ComputeShader>         _underlying;
@@ -317,7 +317,7 @@ namespace RenderCore { namespace Metal_DX11
         const CompiledShaderByteCode&       GetCompiledVertexShader() const     { return _compiledVertexShader; }
         const CompiledShaderByteCode&       GetCompiledPixelShader() const      { return _compiledPixelShader; }
         const CompiledShaderByteCode*       GetCompiledGeometryShader() const   { return _compiledGeometryShader; }
-        const ::Assets::DependencyValidation&         GetDependancyValidation() const     { return *_validationCallback; }
+        const ::Assets::DependencyValidation&         GetDependencyValidation() const     { return *_validationCallback; }
 
     protected:
         const CompiledShaderByteCode&           _compiledVertexShader;
