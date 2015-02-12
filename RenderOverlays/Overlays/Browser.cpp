@@ -609,7 +609,7 @@ namespace Overlays
         BoundingBox boundingBox;
         auto boundingBoxI = _pimpl->_boundingBoxes.find(hashedName);
         if (boundingBoxI== _pimpl->_boundingBoxes.end()) {
-            boundingBox = model->GetBoundingBox(0);
+            boundingBox = model->GetStaticBoundingBox(0);
             _pimpl->_boundingBoxes.insert(std::make_pair(hashedName, boundingBox));
         } else {
             boundingBox = boundingBoxI->second;

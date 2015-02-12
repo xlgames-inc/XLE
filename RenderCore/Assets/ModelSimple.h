@@ -135,7 +135,7 @@ namespace RenderCore { namespace Assets { namespace Simple
     {
     public:
         const std::string&          Filename() const { return _filename; }
-        std::pair<Float3, Float3>   GetBoundingBox(unsigned lodIndex = 0) const;
+        std::pair<Float3, Float3>   GetStaticBoundingBox(unsigned lodIndex = 0) const;
         unsigned                    GetMaxLOD() const { return _maxLOD; }
 
         unsigned                    GetMaterialRefCount() const            { return _materials.size(); }

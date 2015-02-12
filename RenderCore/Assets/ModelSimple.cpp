@@ -35,7 +35,7 @@ namespace RenderCore { namespace Assets { namespace Simple
         return *this;
     }
 
-    std::pair<Float3, Float3>   ModelScaffold::GetBoundingBox(unsigned lodIndex) const
+    std::pair<Float3, Float3>   ModelScaffold::GetStaticBoundingBox(unsigned lodIndex) const
     {
             // (have to reopen the file, because the vertex data hasn't previously been loaded into memory)
         BasicFile file(_filename.c_str(), "rb");

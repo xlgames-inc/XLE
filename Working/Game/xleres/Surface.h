@@ -11,6 +11,7 @@
 #include "MainGeometry.h"
 #include "SurfaceAlgorithm.h"
 #include "Transform.h"
+#include "BasicMaterial.h"
 
 float3 GetLocalViewVector(VSOutput geo)
 {
@@ -55,7 +56,7 @@ float3 TransformPositionThroughSkinning(VSInput input, float3 position)
     #if GEO_HAS_SKIN_WEIGHTS
         float3 result = 0.0.xxx;
         #if SKIN_TRANSFORMS==SKIN_TRANSFORMS_MATRICES
-			
+
 			[unroll] for (uint i=0; i<4; ++i) {
 				result += input.boneWeights[i] * mul(BoneTransforms[input.boneIndices[i]], float4(position, 1.f));
 			}
@@ -78,7 +79,7 @@ float3 TransformDirectionVectorThroughSkinning(VSInput input, float3 directionVe
     #if GEO_HAS_SKIN_WEIGHTS
         float3 result = 0.0.xxx;
         #if SKIN_TRANSFORMS==SKIN_TRANSFORMS_MATRICES
-			
+
 			[unroll] for (uint i=0; i<4; ++i) {
                     // (assuming no scale!)
                 const row_major float3x4 jointTransform = BoneTransforms[input.boneIndices[i]];
@@ -167,7 +168,7 @@ float3 GetLocalNormal(VSInput input)
             return input.normal;
         #endif
     #elif GEO_HAS_TANGENT_FRAME==1
-            //  if the tangent and bitangent are unit-length and perpendicular, then we 
+            //  if the tangent and bitangent are unit-length and perpendicular, then we
             //  shouldn't have to normalize here. Since the inputs are coming from the
             //  vertex buffer, let's assume it's ok
         float4 localTangent = GetLocalTangent(input);
@@ -197,8 +198,8 @@ float3 LocalToWorldUnitVector(float3 localSpaceVector)
 
             //  There's some issues here. If local-to-world has a flip on it, it might flip
             //  the direction we get from the cross product here... That's probably not
-            //  what's expected. 
-            //  (worldNormal shouldn't need to be normalized, so long as worldTangent 
+            //  what's expected.
+            //  (worldNormal shouldn't need to be normalized, so long as worldTangent
             //  and worldNormal are perpendicular to each other)
 		float3 worldNormal		= cross(worldTangent, worldBitangent) * localTangent.w;
         #if LOCAL_TO_WORLD_HAS_FLIP==1
@@ -217,10 +218,10 @@ float3 GetNormal(VSOutput geo)
     #endif
 
 	#if OUTPUT_TANGENT_FRAME==1
-	
+
 		#if (RES_HAS_NormalsTexture==1) && (OUTPUT_TEXCOORD==1)
             return NormalMapAlgorithm(
-                NormalsTexture, DefaultSampler, dxtNormalMap, 
+                NormalsTexture, DefaultSampler, dxtNormalMap,
                 geo.texCoord, BuildTangentFrameFromGeo(geo));
 		#else
 			return normalize(geo.normal);
@@ -230,7 +231,7 @@ float3 GetNormal(VSOutput geo)
 
         #if (RES_HAS_NormalsTexture==1) && (OUTPUT_TEXCOORD==1)
             float3 localNormal = NormalMapAlgorithm(
-                NormalsTexture, DefaultSampler, dxtNormalMap, 
+                NormalsTexture, DefaultSampler, dxtNormalMap,
                 geo.texCoord, BuildLocalTangentFrameFromGeo(geo));
 
                 // note --  Problems when there is a scale on LocalToWorld here.
@@ -241,7 +242,7 @@ float3 GetNormal(VSOutput geo)
 		#else
 			return normalize(mul(GetLocalToWorldUniformScale(), BuildLocalTangentFrameFromGeo(geo).normal));
 		#endif
-		
+
 	#elif (OUTPUT_NORMAL==1) && (RES_HAS_NormalsTexture==1) && (OUTPUT_TEXCOORD==1) && (OUTPUT_WORLD_VIEW_VECTOR==1)
 
 	    float3x3 normalsTextureToWorld = AutoCotangentFrame(normalize(geo.normal), GetWorldViewVector(geo), geo.texCoord);
@@ -255,7 +256,7 @@ float3 GetNormal(VSOutput geo)
 		float3 normalTextureSample = SampleNormalMap(NormalsTexture, DefaultSampler, dxtNormalMap, geo.texCoord);
 			// Note -- matrix multiply opposite from normal (so we can initialise normalsTextureToWorld easily)
 		return mul(normalTextureSample, normalsTextureToWorld);
-	
+
     #elif (OUTPUT_NORMAL==1)
 
         return normalize(geo.normal);
@@ -264,11 +265,11 @@ float3 GetNormal(VSOutput geo)
 		return 1.0.xxx;
 	#endif
 }
-	
+
 void DoAlphaTest(VSOutput geo)
 {
 	#if (OUTPUT_TEXCOORD==1) && (MAT_ALPHA_TEST==1)
-        AlphaTestAlgorithm(DiffuseTexture, DefaultSampler, geo.texCoord, 0.5f);
+        AlphaTestAlgorithm(DiffuseTexture, DefaultSampler, geo.texCoord, AlphaThreshold);
 	#endif
 }
 

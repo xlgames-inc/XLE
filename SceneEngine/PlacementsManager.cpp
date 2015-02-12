@@ -4,14 +4,28 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#define MODEL_FORMAT_RUNTIME 1
+#define MODEL_FORMAT_SIMPLE 2
+#define MODEL_FORMAT MODEL_FORMAT_RUNTIME
+
 #include "PlacementsManager.h"
 #include "PlacementsQuadTree.h"
-#include "../RenderCore/Assets/ModelSimple.h"
 #include "../RenderCore/Assets/SharedStateSet.h"
+
+#if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
+    #include "../RenderCore/Assets/ModelRunTime.h"
+    #include "../Assets/CompileAndAsyncManager.h"
+    #include "../Assets/IntermediateResources.h"
+    #include "../RenderCore/Assets/ColladaCompilerInterface.h"
+#else
+    #include "../RenderCore/Assets/ModelSimple.h"
+#endif
 #include "../RenderCore/Assets/IModelFormat.h"
+
 #include "../SceneEngine/LightingParserContext.h"
 #include "../Assets/Assets.h"
 #include "../Assets/ChunkFile.h"
+#include "../Assets/AssetUtils.h"
 
 #include "../RenderCore/Assets/ModelRunTime.h"
 #include "../RenderCore/RenderUtils.h"
@@ -29,6 +43,7 @@
 #include "../Utility/StringFormat.h"
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/Streams/DataSerialize.h"
+#include "../Utility/Streams/PathUtils.h"
 #include "../Core/Types.h"
 
 #include <random>
@@ -38,9 +53,29 @@ namespace RenderCore {
     extern char BuildDateString[];
 }
 
+#if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
+    namespace Assets
+    {
+        template<> uint64 GetCompileProcessType<RenderCore::Assets::ModelScaffold>() 
+        { 
+            return RenderCore::Assets::ColladaCompiler::Type_Model; 
+        }
+    }
+#endif
+
 namespace SceneEngine
 {
     using Assets::ResChar;
+
+    #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
+        using RenderCore::Assets::ModelRenderer;
+        using RenderCore::Assets::ModelScaffold;
+        // using RenderCore::Assets::MaterialScaffold;
+    #else
+        using RenderCore::Assets::Simple::ModelRenderer;
+        using RenderCore::Assets::Simple::ModelScaffold;
+        using RenderCore::Assets::Simple::MaterialScaffold;
+    #endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -69,6 +104,7 @@ namespace SceneEngine
         const ::Assets::DependencyValidation& GetDependancyValidation() const { return *_dependencyValidation; }
 
         void Save(const ResChar filename[]) const;
+        void LogDetails(const char title[]) const;
 
         Placements(const ResChar filename[]);
         Placements();
@@ -78,6 +114,7 @@ namespace SceneEngine
         std::vector<uint8>              _filenamesBuffer;
 
         std::shared_ptr<::Assets::DependencyValidation>   _dependencyValidation;
+        void ReplaceString(const char oldString[], const char newString[]);
     };
 
     auto        Placements::GetObjectReferences() const -> const ObjectReference*   { return AsPointer(_objects.begin()); }
@@ -110,6 +147,87 @@ namespace SceneEngine
         fileWriter.Write(&hdr, sizeof(hdr), 1);
         fileWriter.Write(AsPointer(_objects.begin()), sizeof(ObjectReference), hdr._objectRefCount);
         fileWriter.Write(AsPointer(_filenamesBuffer.begin()), 1, hdr._filenamesBufferSize);
+    }
+
+    void Placements::LogDetails(const char title[]) const
+    {
+        // write some details about this placements file to the log
+        LogInfo << "---<< Placements file: " << title << " >>---";
+        LogInfo << "    (" << _objects.size() << ") object references -- " << sizeof(ObjectReference) * _objects.size() / 1024.f << "k in objects, " << _filenamesBuffer.size() / 1024.f << "k in string table";
+
+        unsigned configCount = 0;
+        auto i = _objects.cbegin();
+        while (i != _objects.cend()) {
+            auto starti = i;
+            while (i != _objects.cend() && i->_materialFilenameOffset == starti->_materialFilenameOffset && i->_modelFilenameOffset == starti->_modelFilenameOffset) { ++i; }
+            ++configCount;
+        }
+        LogInfo << "    (" << configCount << ") configurations";
+
+        i = _objects.cbegin();
+        while (i != _objects.cend()) {
+            auto starti = i;
+            while (i != _objects.cend() && i->_materialFilenameOffset == starti->_materialFilenameOffset && i->_modelFilenameOffset == starti->_modelFilenameOffset) { ++i; }
+
+            auto modelName = (const char*)PtrAdd(AsPointer(_filenamesBuffer.begin()), starti->_modelFilenameOffset + sizeof(uint64));
+            auto materialName = (const char*)PtrAdd(AsPointer(_filenamesBuffer.begin()), starti->_materialFilenameOffset + sizeof(uint64));
+            LogInfo << "    [" << (i-starti) << "] objects (" << modelName << "), (" << materialName << ")";
+        }
+    }
+
+    void Placements::ReplaceString(const char oldString[], const char newString[])
+    {
+        unsigned replacementStart = 0, preReplacementEnd = 0;
+        unsigned postReplacementEnd = 0;
+
+        uint64 oldHash = Hash64(oldString);
+        uint64 newHash = Hash64(newString);
+
+            //  first, look through and find the old string.
+            //  then, 
+        auto i = _filenamesBuffer.begin();
+        for(;i !=_filenamesBuffer.end(); ++i) {
+            auto starti = i;
+            if (std::distance(i, _filenamesBuffer.end()) < sizeof(uint64)) {
+                assert(0);
+                break;  // not enough room for a full hash code. Seems like the string table is corrupted
+            }
+            i += sizeof(uint64);
+            while (i != _filenamesBuffer.end() && *i) { ++i; }
+
+            if (*(const uint64*)AsPointer(starti) == oldHash) {
+
+                    // if this is our string, then we need to erase the old content and insert
+                    // the new
+
+                auto length = XlStringLen(newString);
+                std::vector<uint8> replacementContent(sizeof(uint64) + length + 1, 0);
+                *(uint64*)AsPointer(replacementContent.begin()) = newHash;
+
+                XlCopyMemory(
+                    AsPointer(replacementContent.begin() + sizeof(uint64)),
+                    newString, length);
+
+                replacementStart = std::distance(_filenamesBuffer.begin(), starti);
+                preReplacementEnd = std::distance(_filenamesBuffer.begin(), i);
+                postReplacementEnd = replacementStart + replacementContent.size();
+                i = _filenamesBuffer.erase(starti, i);
+                _filenamesBuffer.insert(i, replacementContent.begin(), replacementContent.end());
+
+                    // Now we have to adjust all of the offsets in the ObjectReferences
+                for (auto o=_objects.begin(); o!=_objects.end(); ++o) {
+                    if (o->_modelFilenameOffset > replacementStart) {
+                        o->_modelFilenameOffset -= preReplacementEnd - postReplacementEnd;
+                        assert(o->_modelFilenameOffset > replacementStart);
+                    }
+                    if (o->_materialFilenameOffset > replacementStart) {
+                        o->_materialFilenameOffset -= preReplacementEnd - postReplacementEnd;
+                        assert(o->_materialFilenameOffset > replacementStart);
+                    }
+                }
+                return;
+            }
+        }
     }
 
     Placements::Placements(const ResChar filename[])
@@ -159,6 +277,18 @@ namespace SceneEngine
         _objects = std::move(objects);
         _filenamesBuffer = std::move(filenamesBuffer);
         _dependencyValidation = std::move(depValidation);
+
+        #if defined(_DEBUG)
+            ReplaceString(
+                "game\\objects\\Env\\05_nature\\00_common\\common_plants_sanse01.cgf",
+                "game\\model\\nature\\sansevieria\\small.dae");
+            ReplaceString(
+                "game\\objects\\Env\\05_nature\\00_common\\\\common_plants_sanse.mtl",
+                "game\\model\\nature\\sansevieria\\small.mtl");
+            if (!_objects.empty()) {
+                LogDetails(filename);
+            }
+        #endif
     }
 
     Placements::Placements()
@@ -195,9 +325,6 @@ namespace SceneEngine
             const PlacementCell& cell,
             const uint64* filterStart = nullptr, const uint64* filterEnd = nullptr);
 
-        typedef RenderCore::Assets::Simple::ModelScaffold ModelScaffold;
-        typedef RenderCore::Assets::Simple::MaterialScaffold MaterialScaffold;
-        typedef RenderCore::Assets::Simple::ModelRenderer ModelRenderer;
         typedef ModelRenderer::SortedModelDrawCalls PreparedState;
         
         auto GetCachedModel(const ResChar filename[]) -> const ModelScaffold&;
@@ -214,14 +341,18 @@ namespace SceneEngine
         {
         public:
             LRUCache<ModelScaffold>             _modelScaffolds;
-            LRUCache<MaterialScaffold>          _materialScaffolds;
+            #if MODEL_FORMAT != MODEL_FORMAT_RUNTIME
+                LRUCache<MaterialScaffold>          _materialScaffolds;
+            #endif
             LRUCache<ModelRenderer>             _modelRenderers;
             RenderCore::Assets::SharedStateSet  _sharedStates;
             PreparedState                       _preparedRenders;
 
             Cache()
             : _modelScaffolds(2000)
-            , _materialScaffolds(2000)
+            #if MODEL_FORMAT != MODEL_FORMAT_RUNTIME
+                , _materialScaffolds(2000)
+            #endif
             , _modelRenderers(500) {}
         };
 
@@ -289,8 +420,31 @@ namespace SceneEngine
         LightingParserContext& parserContext, 
         unsigned techniqueIndex)
     {
-        ModelRenderer::RenderPrepared(
-            _cache->_preparedRenders, context, parserContext, techniqueIndex, _cache->_sharedStates);
+        #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
+            ModelRenderer::RenderPrepared(
+                ModelRenderer::Context(context, parserContext, techniqueIndex, _cache->_sharedStates),
+                _cache->_preparedRenders);
+        #else
+            ModelRenderer::RenderPrepared(
+                _cache->_preparedRenders, context, parserContext, techniqueIndex, _cache->_sharedStates);
+        #endif
+    }
+
+    namespace Internal
+    {
+        std::shared_ptr<ModelScaffold> CreateModelScaffold(const ResChar filename[], RenderCore::Assets::IModelFormat& modelFormat)
+        {
+            #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
+                auto& compilers = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateCompilers();
+                auto& store = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateStore();
+                auto marker = compilers.PrepareResource(
+                    ::Assets::GetCompileProcessType<ModelScaffold>(), 
+                    (const char**)&filename, 1, store);
+                return std::make_shared<ModelScaffold>(std::move(marker));
+            #else
+                return modelFormat.CreateModel(filename);
+            #endif
+        }
     }
 
     auto PlacementsRenderer::GetCachedModel(const ResChar filename[]) -> const ModelScaffold&
@@ -298,7 +452,7 @@ namespace SceneEngine
         auto hash = Hash64(filename);
         auto model = _cache->_modelScaffolds.Get(hash);
         if (!model) {
-            model = _modelFormat->CreateModel(filename);
+            model = Internal::CreateModelScaffold(filename, *_modelFormat);
             _cache->_modelScaffolds.Insert(hash, model);
         }
         return *model;
@@ -421,10 +575,6 @@ namespace SceneEngine
 
     namespace Internal
     {
-        using RenderCore::Assets::Simple::ModelRenderer;
-        using RenderCore::Assets::Simple::ModelScaffold;
-        using RenderCore::Assets::Simple::MaterialScaffold;
-            
         class RendererHelper
         {
         public:
@@ -440,13 +590,17 @@ namespace SceneEngine
             {
                 _currentModel = _currentMaterial = _currentRenderer = 0ull;
                 _model = nullptr;
-                _material = nullptr;
+                #if MODEL_FORMAT != MODEL_FORMAT_RUNTIME
+                    _material = nullptr;
+                #endif
                 _renderer = nullptr;
             }
         protected:
             uint64 _currentModel, _currentMaterial, _currentRenderer;
             ModelScaffold* _model;
-            MaterialScaffold* _material;
+            #if MODEL_FORMAT != MODEL_FORMAT_RUNTIME
+                MaterialScaffold* _material;
+            #endif
             ModelRenderer* _renderer;
         };
 
@@ -477,28 +631,33 @@ namespace SceneEngine
                 _model = cache._modelScaffolds.Get(modelHash).get();
                 if (!_model) {
                     auto modelFilename = (const ResChar*)PtrAdd(filenamesBuffer, obj._modelFilenameOffset + sizeof(uint64));
-                    auto newModel = modelFormat.CreateModel(modelFilename);
+                    auto newModel = CreateModelScaffold(modelFilename, modelFormat);
                     _model = newModel.get();
                     cache._modelScaffolds.Insert(modelHash, std::move(newModel));
                 }
                 _currentModel = modelHash;
             }
 
-            if (materialHash != _currentMaterial) {
-                _material = cache._materialScaffolds.Get(materialHash).get();
-                if (!_material) {
-                    std::shared_ptr<MaterialScaffold> newMaterial;
-                    TRY {
-                        auto materialFilename = (const ResChar*)PtrAdd(filenamesBuffer, obj._materialFilenameOffset + sizeof(uint64));
-                        newMaterial = modelFormat.CreateMaterial(materialFilename);
-                    } CATCH (...) {    // sometimes get missing files
-                        return;
-                    } CATCH_END
-                    _material = newMaterial.get();
-                    cache._materialScaffolds.Insert(materialHash, std::move(newMaterial));
+            #if MODEL_FORMAT != MODEL_FORMAT_RUNTIME
+                if (materialHash != _currentMaterial) {
+                    _material = cache._materialScaffolds.Get(materialHash).get();
+                    if (!_material) {
+                        std::shared_ptr<MaterialScaffold> newMaterial;
+                        TRY {
+                            auto materialFilename = (const ResChar*)PtrAdd(filenamesBuffer, obj._materialFilenameOffset + sizeof(uint64));
+                            newMaterial = modelFormat.CreateMaterial(materialFilename);
+                        } CATCH (...) {    // sometimes get missing files
+                            return;
+                        } CATCH_END
+                        _material = newMaterial.get();
+                        cache._materialScaffolds.Insert(materialHash, std::move(newMaterial));
+                    }
+                    _currentMaterial = materialHash;
                 }
-                _currentMaterial = materialHash;
-            }
+            #else
+                (void)materialHash;
+                auto _material = 0ull;
+            #endif
 
                 // Simple LOD calculation based on distanceSq from camera...
                 //      Currently all models have only the single LOD. But this
@@ -506,7 +665,7 @@ namespace SceneEngine
                 //      it may mean rapidly switching back and forth between 
                 //      renderers (which can be expensive)
             unsigned LOD = std::min(_model->GetMaxLOD(), unsigned(distanceSq / (150.f*150.f)));
-            uint64 hashedRenderer = (uint64(_model) << 2) | (uint64(_material) << 48) | uint64(LOD);
+            uint64 hashedRenderer = (uint64(_model) << 2ull) | (uint64(_material) << 48ull) | uint64(LOD);
 
             if (hashedRenderer != _currentRenderer) {
                     //  Here we have to choose a shared state set for this object.
@@ -514,8 +673,19 @@ namespace SceneEngine
                     //  and separate the objects into their correct state set, as required...
                 _renderer = cache._modelRenderers.Get(hashedRenderer).get();
                 if (!_renderer) {
-                    auto newRenderer = modelFormat.CreateRenderer(
-                        std::ref(*_model), std::ref(*_material), std::ref(cache._sharedStates), LOD);
+                    #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
+                        auto modelFilename = (const ResChar*)PtrAdd(filenamesBuffer, obj._modelFilenameOffset + sizeof(uint64));
+                        char skinPath[MaxPath];
+                        XlDirname(skinPath, dimof(skinPath), modelFilename);
+                        ::Assets::DirectorySearchRules searchRules;
+                        searchRules.AddSearchDirectory(skinPath);
+
+                        auto newRenderer = std::make_shared<ModelRenderer>(
+                            std::ref(*_model), std::ref(cache._sharedStates), &searchRules, LOD);
+                    #else
+                        auto newRenderer = modelFormat.CreateRenderer(
+                            std::ref(*_model), std::ref(*_material), std::ref(cache._sharedStates), LOD);
+                    #endif
                     _renderer = newRenderer.get();
                     cache._modelRenderers.Insert(hashedRenderer, std::move(newRenderer));
                 }
@@ -949,7 +1119,7 @@ namespace SceneEngine
 
                     auto& model = _pimpl->_renderer->GetCachedModel(
                         (const char*)PtrAdd(p.GetFilenamesBuffer(), obj._modelFilenameOffset + sizeof(uint64)));
-                    const auto& localBoundingBox = model.GetBoundingBox();
+                    const auto& localBoundingBox = model.GetStaticBoundingBox();
                     if (!RayVsAABB( cellSpaceRay, AsFloat4x4(obj._localToCell), 
                                     localBoundingBox.first, localBoundingBox.second)) {
                         continue;
@@ -1036,7 +1206,7 @@ namespace SceneEngine
 
                             // note -- we have access to the cell space bounding box. But the local
                             //          space box would be better.
-                        def._localSpaceBoundingBox = model.GetBoundingBox();
+                        def._localSpaceBoundingBox = model.GetStaticBoundingBox();
                         def._model = *(uint64*)PtrAdd(p.GetFilenamesBuffer(), obj._modelFilenameOffset);
                         def._material = *(uint64*)PtrAdd(p.GetFilenamesBuffer(), obj._materialFilenameOffset);
 
@@ -1118,7 +1288,7 @@ namespace SceneEngine
     std::pair<Float3, Float3>   Transaction::GetLocalBoundingBox(unsigned index) const
     {
         auto& model = _editorPimpl->_renderer->GetCachedModel(_objects[index]._model.c_str());
-        return model.GetBoundingBox();
+        return model.GetStaticBoundingBox();
     }
 
     void    Transaction::SetObject(unsigned index, const ObjTransDef& newState)
@@ -1156,13 +1326,15 @@ namespace SceneEngine
         //  cells -- so sometimes objects will stick out the side of a cell.
 
         auto& model = _editorPimpl->_renderer->GetCachedModel(newState._model.c_str());
-        auto boundingBoxCentre = LinearInterpolate(model.GetBoundingBox().first, model.GetBoundingBox().second, 0.5f);
+        auto boundingBoxCentre = LinearInterpolate(model.GetStaticBoundingBox().first, model.GetStaticBoundingBox().second, 0.5f);
         auto worldSpaceCenter = TransformPoint(newState._localToWorld, boundingBoxCentre);
 
         std::string materialFilename = newState._material;
-        if (materialFilename.empty()) {
-            materialFilename = _editorPimpl->_renderer->GetModelFormat()->DefaultMaterialName(model);
-        }
+        #if MODEL_FORMAT != MODEL_FORMAT_RUNTIME
+            if (materialFilename.empty()) {
+                materialFilename = _editorPimpl->_renderer->GetModelFormat()->DefaultMaterialName(model);
+            }
+        #endif
 
         PlacementGUID guid(0, 0);
         PlacementsTransform localToCell = Identity<PlacementsTransform>();
@@ -1193,7 +1365,7 @@ namespace SceneEngine
                 }
 
                 dynPlacements->AddPlacement(
-                    localToCell, TransformBoundingBox(localToCell, model.GetBoundingBox()),
+                    localToCell, TransformBoundingBox(localToCell, model.GetStaticBoundingBox()),
                     newState._model.c_str(), materialFilename.c_str(), id);
 
                 guid = PlacementGUID(i->_filenameHash, id);
@@ -1247,11 +1419,13 @@ namespace SceneEngine
             localToCell = Combine(newState._localToWorld, InvertOrthonormalTransform(cellToWorld));
 
             auto& model = _editorPimpl->_renderer->GetCachedModel(newState._model.c_str());
-            cellSpaceBoundary = TransformBoundingBox(localToCell, model.GetBoundingBox());
+            cellSpaceBoundary = TransformBoundingBox(localToCell, model.GetStaticBoundingBox());
 
-            if (materialFilename.empty()) {
-                materialFilename = _editorPimpl->_renderer->GetModelFormat()->DefaultMaterialName(model);
-            }
+            #if MODEL_FORMAT != MODEL_FORMAT_RUNTIME
+                if (materialFilename.empty()) {
+                    materialFilename = _editorPimpl->_renderer->GetModelFormat()->DefaultMaterialName(model);
+                }
+            #endif
         }
 
             // todo --  handle the case where an object should move to another cell!
@@ -1460,7 +1634,7 @@ namespace SceneEngine
     std::pair<Float3, Float3> PlacementsEditor::GetModelBoundingBox(const ResChar modelName[]) const
     {
         auto& model = _pimpl->_renderer->GetCachedModel(modelName);
-        return model.GetBoundingBox();
+        return model.GetStaticBoundingBox();
     }
 
     auto PlacementsEditor::Transaction_Begin(

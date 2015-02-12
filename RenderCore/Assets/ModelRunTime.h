@@ -71,7 +71,8 @@ namespace RenderCore { namespace Assets
         unsigned                    LargeBlocksOffset() const   { return _largeBlocksOffset; }
         const ModelCommandStream&   CommandStream() const;
         const ModelImmutableData&   ImmutableData() const       { return *_data; };
-        std::pair<Float3, Float3>   GetStaticBoundingBox() const;
+        std::pair<Float3, Float3>   GetStaticBoundingBox(unsigned lodIndex = 0) const;
+        unsigned                    GetMaxLOD() const { return 1; }
 
         const ::Assets::DependencyValidation& GetDependancyValidation() const { return *_validationCallback; }
 
@@ -143,6 +144,25 @@ namespace RenderCore { namespace Assets
             PreparedAnimation*  preparedAnimation = nullptr) const;
 
             ////////////////////////////////////////////////////////////
+        class SortedModelDrawCalls
+        {
+        public:
+            class Entry;
+            std::vector<Entry> _entries;
+            SortedModelDrawCalls();
+            ~SortedModelDrawCalls();
+            void Reset();
+        };
+        void Prepare(
+            SortedModelDrawCalls& dest, 
+            const SharedStateSet& sharedStateSet, 
+            const Float4x4& modelToWorld,
+            const MeshToModel*  transforms = nullptr);
+        static void RenderPrepared(
+            const Context&          context,
+            SortedModelDrawCalls&   drawCalls);
+
+            ////////////////////////////////////////////////////////////
         class PreparedAnimation : noncopyable
         {
         public:
@@ -171,6 +191,7 @@ namespace RenderCore { namespace Assets
     protected:
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
+        friend class SortedModelDrawCalls;
     };
 
 ////////////////////////////////////////////////////////////////////////////////////////////

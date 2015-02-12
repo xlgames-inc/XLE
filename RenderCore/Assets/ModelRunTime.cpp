@@ -199,7 +199,8 @@ namespace RenderCore { namespace Assets
             }
 
                 // fill in the details for all of the material references we found
-            BasicMaterialConstants basicConstants = { Float3(1.f, 1.f, 1.f), 1.f, Float3(1.f, 1.f, 1.f), 1.f };
+            const float alphaThreshold = .33f;
+            BasicMaterialConstants basicConstants = { Float3(1.f, 1.f, 1.f), 1.f, Float3(1.f, 1.f, 1.f), alphaThreshold };
             std::vector<uint8> constants((uint8*)&basicConstants, (uint8*)PtrAdd(&basicConstants, sizeof(basicConstants)));
             for (auto i=materialResources.begin(); i!=materialResources.end(); ++i) {
                 std::string shaderName = DefaultShader;
@@ -240,6 +241,8 @@ namespace RenderCore { namespace Assets
                         //  we can accelerate it a bit by caching the result
                     materialParamBox.SetParameter("RES_HAS_NormalsTexture_DXT", IsDXTNormalMap(boundNormalMapName));
                 }
+
+                materialParamBox.SetParameter("MAT_ALPHA_TEST", 1);
 
                 i->second._matParams = sharedStateSet.InsertParameterBox(materialParamBox);
             }
@@ -827,8 +830,7 @@ namespace RenderCore { namespace Assets
                 //////////// Render un-skinned geometry ////////////
 
             unsigned drawCallIndex = 0;
-            for (auto md=_pimpl->_drawCalls.cbegin(); 
-                md!=_pimpl->_drawCalls.cend(); ++md, ++drawCallIndex) {
+            for (auto md=_pimpl->_drawCalls.cbegin(); md!=_pimpl->_drawCalls.cend(); ++md, ++drawCallIndex) {
 
                 if (md->first != currGeoCall) {
                     currTechniqueInterface = _pimpl->BeginGeoCall(
@@ -896,6 +898,171 @@ namespace RenderCore { namespace Assets
         CATCH(::Assets::Exceptions::InvalidResource& e) { context._parserContext->Process(e); }
         CATCH(::Assets::Exceptions::PendingResource& e) { context._parserContext->Process(e); }
         CATCH_END
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+
+    class ModelRenderer::SortedModelDrawCalls::Entry
+    {
+    public:
+        unsigned        _shaderVariationHash;
+
+        ModelRenderer*  _renderer;
+        unsigned        _drawCallIndex;
+        Float4x4        _meshToWorld;
+
+        unsigned        _indexCount, _firstIndex, _firstVertex;
+        Topology        _topology;
+        
+        ModelRenderer::Pimpl::Mesh* _mesh;
+    };
+
+    void ModelRenderer::SortedModelDrawCalls::Reset() 
+    {
+        _entries.erase(_entries.begin(), _entries.end());
+    }
+
+    ModelRenderer::SortedModelDrawCalls::SortedModelDrawCalls() 
+    {
+        _entries.reserve(10*1000);
+    }
+
+    ModelRenderer::SortedModelDrawCalls::~SortedModelDrawCalls() {}
+
+    bool CompareDrawCall(const ModelRenderer::SortedModelDrawCalls::Entry& lhs, const ModelRenderer::SortedModelDrawCalls::Entry& rhs)
+    {
+        if (lhs._shaderVariationHash == rhs._shaderVariationHash) {
+            if (lhs._renderer == rhs._renderer) {
+                if (lhs._mesh == rhs._mesh) {
+                    return lhs._drawCallIndex < rhs._drawCallIndex;
+                }
+                return lhs._mesh < rhs._mesh;
+            }
+            return lhs._renderer < rhs._renderer;
+        }
+        return lhs._shaderVariationHash < rhs._shaderVariationHash; 
+    }
+
+    void    ModelRenderer::Prepare(
+        SortedModelDrawCalls& dest, 
+        const SharedStateSet& sharedStateSet, 
+        const Float4x4& modelToWorld,
+        const MeshToModel* transforms)
+    {
+            //  After culling; submit all of the draw-calls in this mesh to a list to be sorted
+            //  Note -- only unskinned geometry supported currently. In theory, we might be able
+            //          to do the same with skinned geometry (at least, when not using the "prepare" step
+        unsigned drawCallIndex = 0;
+        for (auto md=_pimpl->_drawCalls.cbegin(); md!=_pimpl->_drawCalls.cend(); ++md, ++drawCallIndex) {
+            const auto& drawCallRes = _pimpl->_drawCallRes[drawCallIndex];
+            const auto& d = md->second;
+
+            auto geoParamIndex = drawCallRes._geoParamBox;
+            auto matParamIndex = drawCallRes._materialParamBox;
+            auto shaderNameIndex = drawCallRes._shaderName;
+
+            auto& cmdStream = _pimpl->_scaffold->CommandStream();
+            auto& geoCall = cmdStream.GetGeoCall(md->first);
+            auto mesh = FindIf(_pimpl->_meshes, [=](const Pimpl::Mesh& mesh) { return mesh._id == geoCall._geoId; });
+            assert(mesh != _pimpl->_meshes.end());
+
+            unsigned techniqueInterface = mesh->_techniqueInterface;
+
+            SortedModelDrawCalls::Entry entry;
+            entry._drawCallIndex = drawCallIndex;
+            entry._renderer = this;
+            if (transforms) {
+                entry._meshToWorld = Combine(transforms->GetMeshToModel(geoCall._transformMarker), modelToWorld);
+            } else {
+                entry._meshToWorld = modelToWorld;
+            }
+            entry._shaderVariationHash = techniqueInterface ^ (geoParamIndex << 12) ^ (matParamIndex << 15) ^ (shaderNameIndex << 24);  // simple hash of these indices. Note that collisions might be possible
+            entry._indexCount = d._indexCount;
+            entry._firstIndex = d._firstIndex;
+            entry._firstVertex = d._firstVertex;
+            entry._topology = d._topology;
+            entry._mesh = AsPointer(mesh);
+            dest._entries.push_back(entry);
+        }
+    }
+
+    void ModelRenderer::RenderPrepared(
+        const Context&          context,
+        SortedModelDrawCalls&   drawCalls)
+    {
+        if (drawCalls._entries.empty()) return;
+
+        LocalTransformConstants localTrans;
+        localTrans._localSpaceView = Float3(0.f, 0.f, 0.f);
+        localTrans._localNegativeLightDirection = Float3(0.f, 0.f, 0.f);
+        
+        static Metal::ConstantBuffer localTransformBuffer(nullptr, sizeof(LocalTransformConstants));     // this should go into some kind of global resource heap
+        const Metal::ConstantBuffer* pkts[] = { &localTransformBuffer, nullptr };
+
+        std::sort(drawCalls._entries.begin(), drawCalls._entries.end(), CompareDrawCall);
+
+        const ModelRenderer::Pimpl::Mesh* currentMesh = nullptr;
+        RenderCore::Metal::BoundUniforms* boundUniforms = nullptr;
+        unsigned currentVariationHash = ~unsigned(0x0);
+        unsigned currentTextureSet = ~unsigned(0x0);
+        unsigned currentConstantBufferIndex = ~unsigned(0x0);
+
+        for (auto d=drawCalls._entries.cbegin(); d!=drawCalls._entries.cend(); ++d) {
+            auto& renderer = *d->_renderer;
+            const auto& drawCallRes = renderer._pimpl->_drawCallRes[d->_drawCallIndex];
+
+                // Note -- at the moment, shader variation hash is the sorting priority.
+                //          This reduces the shader changes to a minimum. It also means we
+                //          do the work in "BeginVariation" to resolve the variation
+                //          as rarely as possible. However, we could pre-resolve all of the
+                //          variations that we're going to need and use another value as the
+                //          sorting priority instead... That might reduce the API thrashing
+                //          in some cases.
+            if (currentVariationHash != d->_shaderVariationHash) {
+                boundUniforms = context._sharedStateSet->BeginVariation(
+                    context._context, *context._parserContext, context._techniqueIndex,
+                    drawCallRes._shaderName, d->_mesh->_techniqueInterface, drawCallRes._geoParamBox, drawCallRes._materialParamBox);
+                currentVariationHash = d->_shaderVariationHash;
+                currentTextureSet = ~unsigned(0x0);
+            }
+
+            if (!boundUniforms) continue;
+
+                // We have to do this transform update very frequently! isn't there a better way?
+            {
+                D3D11_MAPPED_SUBRESOURCE result;
+                HRESULT hresult = context._context->GetUnderlying()->Map(
+                    localTransformBuffer.GetUnderlying(), 0, D3D11_MAP_WRITE_DISCARD, 0, &result);
+                assert(SUCCEEDED(hresult) && result.pData); (void)hresult;
+                CopyTransform(((LocalTransformConstants*)result.pData)->_localToWorld, d->_meshToWorld);
+                context._context->GetUnderlying()->Unmap(localTransformBuffer.GetUnderlying(), 0);
+            }
+            
+            if (currentMesh != d->_mesh) {
+                context._context->Bind(renderer._pimpl->_indexBuffer, d->_mesh->_indexFormat, d->_mesh->_ibOffset);
+                context._context->Bind(ResourceList<Metal::VertexBuffer, 1>(std::make_tuple(std::ref(renderer._pimpl->_vertexBuffer))), 
+                    d->_mesh->_vertexStride, d->_mesh->_vbOffset);
+                currentMesh = d->_mesh;
+                currentTextureSet = ~unsigned(0x0);
+            }
+
+            auto textureSet = drawCallRes._textureSet;
+            auto constantBufferIndex = drawCallRes._constantBuffer;
+
+                //  sometimes the same render call may be rendered in several different locations. In these cases,
+                //  we can reduce the API thrashing to the minimum by avoiding re-setting resources and constants
+            if (boundUniforms && (textureSet != currentTextureSet || constantBufferIndex != currentConstantBufferIndex)) {
+                renderer._pimpl->ApplyBoundUnforms(
+                    context, *boundUniforms,
+                    textureSet, constantBufferIndex, pkts);
+
+                currentTextureSet = textureSet;
+                currentConstantBufferIndex = constantBufferIndex;
+            }
+
+            context._context->Bind(d->_topology);
+            context._context->DrawIndexed(d->_indexCount, d->_firstIndex, d->_firstVertex);
+        }
     }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1089,7 +1256,7 @@ namespace RenderCore { namespace Assets
     }
 
     const ModelCommandStream&   ModelScaffold::CommandStream() const       { return _data->_visualScene; }
-    std::pair<Float3, Float3>   ModelScaffold::GetStaticBoundingBox() const { return _data->_boundingBox; }
+    std::pair<Float3, Float3>   ModelScaffold::GetStaticBoundingBox(unsigned) const { return _data->_boundingBox; }
 
 }}
 

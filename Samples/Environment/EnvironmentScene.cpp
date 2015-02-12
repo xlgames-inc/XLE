@@ -85,7 +85,7 @@ namespace Sample
             if (parseSettings._toggles & SceneParseSettings::Toggles::NonTerrain) {
                 _pimpl->_characters->Render(context, parserContext, techniqueIndex);
 
-                if (_pimpl->_placementsManager) {
+                if (_pimpl->_placementsManager && Tweakable("DoPlacements", true)) {
                     CPUProfileEvent pEvnt("PlacementsRender", g_cpuProfiler);
                     _pimpl->_placementsManager->Render(context, parserContext, techniqueIndex);
                 }
