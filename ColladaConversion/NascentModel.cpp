@@ -474,6 +474,7 @@ namespace RenderCore { namespace ColladaConversion
 
             Assets::MaterialParameters result;
             result._bindings = std::move(matSettings._resourceBindings);
+            result._matParams = std::move(matSettings._matParamBox);
 
             _objects.Add(
                 effect->getOriginalId(),

@@ -10,6 +10,7 @@
 #include "../Metal/InputLayout.h"
 #include "../Metal/Forward.h"
 #include "../../Utility/MemoryUtils.h"
+#include "../../Utility/ParameterBox.h"
 
 namespace RenderCore { class CameraDesc; class GlobalTransformConstants; }
 
@@ -40,11 +41,13 @@ namespace RenderCore { namespace Assets
             uint64          _bindHash;
             std::string     _resourceName;
 
-            ResourceBinding(uint64 bindHash, const std::string& resourceName) : _bindHash(bindHash), _resourceName(resourceName) {}
+            ResourceBinding(uint64 bindHash, const std::string& resourceName)
+                : _bindHash(bindHash), _resourceName(resourceName) {}
             void Serialize(Serialization::NascentBlockSerializer& serializer) const;
         };
-        typedef std::vector<ResourceBinding, Serialization::BlockSerializerAllocator<ResourceBinding>> ResourceBindingSet;
+        typedef Serialization::Vector<ResourceBinding>::Type ResourceBindingSet;
         ResourceBindingSet _bindings;
+        ParameterBox _matParams;
 
         void Serialize(Serialization::NascentBlockSerializer& serializer) const;
 

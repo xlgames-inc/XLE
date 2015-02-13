@@ -6,9 +6,12 @@
 
 #pragma once
 
+#include "../Assets/BlockSerializer.h"
 #include "../Core/Types.h"
 #include <string>
 #include <vector>
+
+namespace Serialization { class NascentBlockSerializer; }
 
 namespace Utility
 {
@@ -20,6 +23,9 @@ namespace Utility
             //      a handy abstraction to represent a number of 
             //      parameters held together. We must be able to
             //      quickly merge and filter values in this table.
+
+    #pragma pack(push)
+    #pragma pack(1)
 
     class ParameterBox
     {
@@ -42,6 +48,8 @@ namespace Utility
 
         bool        ParameterNamesAreEqual(const ParameterBox& other) const;
 
+        void Serialize(Serialization::NascentBlockSerializer& serializer) const;
+
         ParameterBox();
         ParameterBox(ParameterBox&& moveFrom);
         ParameterBox& operator=(ParameterBox&& moveFrom);
@@ -50,15 +58,17 @@ namespace Utility
         mutable uint64      _cachedHash;
         mutable uint64      _cachedParameterNameHash;
     
-        std::vector<ParameterNameHash>  _parameterHashValues;
-        std::vector<uint32>             _parameterOffsets;
-        std::vector<std::string>        _parameterNames;
-        std::vector<uint8>              _values;
+        Serialization::Vector<ParameterNameHash>::Type  _parameterHashValues;
+        Serialization::Vector<uint32>::Type             _parameterOffsets;
+        Serialization::Vector<std::string>::Type        _parameterNames;
+        Serialization::Vector<uint8>::Type              _values;
 
         uint32      GetValue(size_t index) const;
         uint64      CalculateHash() const;
         uint64      CalculateParameterNamesHash() const;
     };
+
+    #pragma pack(pop)
 
 }
 

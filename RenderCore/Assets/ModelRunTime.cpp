@@ -218,6 +218,9 @@ namespace RenderCore { namespace Assets
                     //  by all of the materials used here. They will end up in sorted order
                 if (i->first < scaffold.ImmutableData()._materialBindingsCount) {
                     const auto& materialScaffoldData = scaffold.ImmutableData()._materialBindings[i->first];
+
+                    materialParamBox = materialScaffoldData._matParams;
+
                     for (auto i=materialScaffoldData._bindings.cbegin(); i!=materialScaffoldData._bindings.cend(); ++i) {
                         auto bindName = i->_bindHash;
 

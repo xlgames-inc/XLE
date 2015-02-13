@@ -208,6 +208,16 @@ namespace Utility
         }
     }
 
+    void ParameterBox::Serialize(Serialization::NascentBlockSerializer& serializer) const
+    {
+        Serialization::Serialize(serializer, _cachedHash);
+        Serialization::Serialize(serializer, _cachedParameterNameHash);
+        Serialization::Serialize(serializer, _parameterHashValues);
+        Serialization::Serialize(serializer, _parameterOffsets);
+        Serialization::Serialize(serializer, _parameterNames);
+        Serialization::Serialize(serializer, _values);
+    }
+
     ParameterBox::ParameterBox()
     {
         _cachedHash = _cachedParameterNameHash = 0;

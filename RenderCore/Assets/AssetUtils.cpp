@@ -240,17 +240,20 @@ namespace RenderCore { namespace Assets
     void MaterialParameters::Serialize(Serialization::NascentBlockSerializer& serializer) const
     {
         Serialization::Serialize(serializer, _bindings);
+        Serialization::Serialize(serializer, _matParams);
     }
 
     MaterialParameters::MaterialParameters() {}
 
     MaterialParameters::MaterialParameters(MaterialParameters&& moveFrom)
     : _bindings(std::move(moveFrom._bindings))
+    , _matParams(std::move(moveFrom._matParams))
     {}
 
     MaterialParameters& MaterialParameters::operator=(MaterialParameters&& moveFrom)
     {
         _bindings = std::move(moveFrom._bindings);
+        _matParams = std::move(moveFrom._matParams);
         return *this;
     }
 

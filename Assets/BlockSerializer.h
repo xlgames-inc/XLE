@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../Core/Types.h"
+#include "../Core/Exceptions.h"
 #include "../Math/Vector.h"
 #include "../Math/Matrix.h"
 #include "../Utility/PtrUtils.h"
@@ -236,6 +237,15 @@ namespace Serialization
         BlockSerializerDeleter(BlockSerializerDeleter<Type[]>&& moveFrom)       : _fromFixedStorage(moveFrom._fromFixedStorage) {}
     private:
         unsigned    _fromFixedStorage;
+    };
+
+        ////////////////////////////////////////////////////
+
+    template<typename Type>
+        class Vector
+    {
+    public:
+        typedef std::vector<Type, BlockSerializerAllocator<Type>> Type;
     };
 
         ////////////////////////////////////////////////////
