@@ -114,7 +114,7 @@ namespace RenderCore { namespace Assets
             XlCopyString(colladaFile, initializers[0]);
             auto* extPtr = XlExtension(colladaFile);
             if (!extPtr || !*extPtr) {
-                strcat_s(colladaFile, ".dae");
+                XlCatString(colladaFile, dimof(colladaFile), ".dae");
             }
 
             auto model = (*_pimpl->_createModel)(colladaFile);

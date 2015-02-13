@@ -16,7 +16,7 @@
 namespace SceneEngine 
 {
     class LightingParserContext; class TechniqueInterface; 
-    class ParameterBox; class ResolvedShader;
+    class ResolvedShader;
 }
 
 namespace RenderCore { namespace Assets { class SharedStateSet; } }

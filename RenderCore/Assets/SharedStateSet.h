@@ -11,7 +11,8 @@
 #include <string>
 #include <memory>
 
-namespace SceneEngine { class ParameterBox; class LightingParserContext; }
+namespace SceneEngine { class LightingParserContext; }
+namespace Utility { class ParameterBox; }
 
 namespace RenderCore { namespace Assets
 {
@@ -23,7 +24,7 @@ namespace RenderCore { namespace Assets
             const uint64 textureBindPoints[], unsigned textureBindPointsCount);
 
         unsigned InsertShaderName(const std::string& shaderName);
-        unsigned InsertParameterBox(const SceneEngine::ParameterBox& box);
+        unsigned InsertParameterBox(const Utility::ParameterBox& box);
 
         RenderCore::Metal::BoundUniforms* BeginVariation(
             Metal::DeviceContext* context, 

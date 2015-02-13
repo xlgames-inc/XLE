@@ -360,7 +360,7 @@ namespace RenderCore { namespace Assets { namespace Simple
 
         std::vector<uint8> nascentVB, nascentIB;
         std::vector<Pimpl::Mesh> meshes;
-        std::vector<SceneEngine::ParameterBox> materialParameterBoxes;
+        std::vector<ParameterBox> materialParameterBoxes;
 
         std::vector<uint64> textureBindPoints;
         std::vector<int> subMaterialIndexToResourceIndex;
@@ -379,7 +379,7 @@ namespace RenderCore { namespace Assets { namespace Simple
 
         unsigned mainGeoParamBox = ~unsigned(0x0);
         {
-            SceneEngine::ParameterBox geoParameters;
+            ParameterBox geoParameters;
             geoParameters.SetParameter("GEO_HAS_TEXCOORD", 1);
             // geoParameters.SetParameter("GEO_HAS_NORMAL", 1);     (ignoring normal if we're using tangent frames for normal maps)
             // geoParameters.SetParameter("GEO_HAS_COLOUR", 1);     (ignoring colour always)
@@ -471,7 +471,7 @@ namespace RenderCore { namespace Assets { namespace Simple
                     sharedStateSet.InsertShaderName(shaderName)));
 
                     // build a material parameter box and look for it in our list
-                SceneEngine::ParameterBox materialParamBox;
+                ParameterBox materialParamBox;
                 materialParamBox.SetParameter("RES_HAS_bfbf327ee9403009", !normalMapTextureName.empty());
                 if (subMaterial && subMaterial->_alphaThreshold < 1.f) {
                     materialParamBox.SetParameter("MAT_ALPHA_TEST", 1);

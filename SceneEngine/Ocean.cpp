@@ -50,7 +50,7 @@ namespace SceneEngine
     RenderCore::Metal::ShaderResourceView OceanReflectionResource;
     Float4x4 OceanWorldToReflection = Identity<Float4x4>();
 
-    static SceneEngine::ParameterBox MaterialState_Blank;
+    static ParameterBox MaterialState_Blank;
 
     OceanSettings GlobalOceanSettings; 
     OceanLightingSettings GlobalOceanLightingSettings; 

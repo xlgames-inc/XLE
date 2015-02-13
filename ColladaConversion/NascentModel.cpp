@@ -16,6 +16,7 @@
 #include "RawGeometry.h"
 #include "ConversionObjects.h"
 #include "ColladaUtils.h"
+#include "MaterialSettingsFile.h"
 
 #include "../RenderCore/Assets/ModelRunTime.h"
 #include "../RenderCore/Assets/RawAnimationCurve.h"
@@ -30,6 +31,7 @@
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../Assets/BlockSerializer.h"
+#include "../Assets/AssetUtils.h"
 
 #include "../ConsoleRig/Console.h"
 #include "../ConsoleRig/OutputStream.h"
@@ -37,6 +39,9 @@
 #include "../Utility/Streams/FileUtils.h"        // (for materials stuff)
 #include "../Utility/Streams/Data.h"             // (for materials stuff)
 #include "../Utility/Streams/Stream.h"
+#include "../Utility/Streams/PathUtils.h"
+#include "../Utility/ParameterBox.h"
+#include "../Utility/StringFormat.h"
 
 #pragma warning(push)
 #pragma warning(disable:4201)       // nonstandard extension used : nameless struct/union
@@ -89,24 +94,36 @@ namespace RenderCore { namespace ColladaConversion
     {
     public:
         uint64 AsNativeBindingHash(const std::string& input) const;
+        const ::Assets::DependencyValidation& GetDependencyValidation() const { return *_depVal; }
 
-        ImportConfiguration();
+        ImportConfiguration(const ResChar filename[]);
         ~ImportConfiguration();
-    protected:
+    private:
         std::vector<std::pair<std::string, uint64>> _exportNameToBindingHash;
+        std::shared_ptr<::Assets::DependencyValidation> _depVal;
     };
 
     class Writer : public COLLADAFW::IWriter
     {
     public:
-	    Writer() : IWriter() {}
+	    Writer(const ResChar baseName[], const ::Assets::DirectorySearchRules& searchRules) 
+            : _importConfig("colladaimport.cfg")  
+        {
+            ResChar resolvedFile[MaxPath];
+            searchRules.ResolveFile(resolvedFile, dimof(resolvedFile), StringMeld<MaxPath>() << baseName << ".material");
+            _matSettingsFile = MaterialSettingsFile(resolvedFile);
+        }
+
 	    virtual ~Writer(){}
 
 	    /** This method will be called if an error in the loading process occurred and the loader cannot
 	    continue to to load. The writer should undo all operations that have been performed.
 	    @param errorMessage A message containing informations about the error that occurred.
 	    */
-	    virtual void cancel(const COLLADAFW::String& errorMessage){}
+	    virtual void cancel(const COLLADAFW::String& errorMessage)
+        {
+            LogAlwaysError << "Got error while parsing Collada: " << errorMessage;
+        }
 
 	    /** This is the method called. The writer hast to prepare to receive data.*/
 	    virtual void start(){}
@@ -215,17 +232,18 @@ namespace RenderCore { namespace ColladaConversion
             ColladaConversion::HashedColladaUniqueId    _animationListName;
             COLLADAFW::UniqueId                         _animationId;
 
-            unsigned                                    _samplerWidth;
-            unsigned                                    _samplerOffset;
+            unsigned        _samplerWidth;
+            unsigned        _samplerOffset;
 
-            AnimationLink(  ColladaConversion::HashedColladaUniqueId animationListName, 
-                            const COLLADAFW::UniqueId& animationId, 
-                            unsigned samplerWidth, unsigned samplerOffset)
+            AnimationLink(  
+                ColladaConversion::HashedColladaUniqueId animationListName, 
+                const COLLADAFW::UniqueId& animationId, 
+                unsigned samplerWidth, unsigned samplerOffset)
             : _animationListName(animationListName), _animationId(animationId)
             , _samplerWidth(samplerWidth), _samplerOffset(samplerOffset) {}
         };
 
-        std::vector<AnimationLink>                  _animationLinks;
+        std::vector<AnimationLink>  _animationLinks;
 
         void CompleteProcessing();
 
@@ -239,6 +257,7 @@ namespace RenderCore { namespace ColladaConversion
         void HandleFormatError(const FormatError& error);
 
         ImportConfiguration _importConfig;
+        MaterialSettingsFile _matSettingsFile;
     };
 
     void Writer::HandleFormatError(const FormatError& error)
@@ -278,35 +297,6 @@ namespace RenderCore { namespace ColladaConversion
 
         return false;
 	}
-
-    static bool LoadDataFile(const char* path, Data* out)
-    {
-        std::unique_ptr<char[]> str;
-        size_t read, size = 0;
-
-        {
-            BasicFile file(path, "rb");
-
-            file.Seek(0, SEEK_END);
-            size = file.TellP();
-            file.Seek(0, SEEK_SET);
-            if (!size) {
-                return false;
-            }
-    
-            str.reset(new char[size]);
-            read = (size_t)file.Read(str.get(), 1, size);
-        }
-
-        bool result;
-        if (read == size) {
-            result = out->Load(str.get(), (int)size);
-        } else {
-            result = false;
-        }
-        return result;
-    }
-
 
     static const auto DefaultDiffuseTextureBindingHash = Hash64("DiffuseTexture");
 
@@ -355,10 +345,18 @@ namespace RenderCore { namespace ColladaConversion
         }
     }
 
-    ImportConfiguration::ImportConfiguration()
+    ImportConfiguration::ImportConfiguration(const ResChar filename[])
     {
         Data data;
-        if (LoadDataFile("colladaimport.cfg", &data)) {
+        size_t sourceFileSize = 0;
+        auto sourceFile = LoadFileAsMemoryBlock(filename, &sourceFileSize);
+
+        _depVal = std::make_shared<::Assets::DependencyValidation>();
+        RegisterFileDependency(_depVal, filename);
+        
+        if (sourceFile && sourceFileSize) {
+            Data data;
+            data.Load((const char*)sourceFile.get(), (int)sourceFileSize);
             auto* bindingRenames = data.ChildWithValue("BindingRenames");
             if (bindingRenames) {
                 auto* child = bindingRenames->child;
@@ -390,6 +388,8 @@ namespace RenderCore { namespace ColladaConversion
         return i->second;
     }
 
+////////////////////////////////////////////////////////////////////////
+
     bool Writer::writeEffect( const COLLADAFW::Effect* effect )
     {
         TRY {
@@ -408,34 +408,30 @@ namespace RenderCore { namespace ColladaConversion
                 //      Note; how should we associate the material to the script
                 //      file? From the material name, the id or the effect id?
                 //
-            const std::string& originalName = effect->getName();
-            Assets::MaterialParameters result;
+            MaterialSettingsFile::MaterialDesc matSettings;
 
-            TRY {
-
-                Data data;
-                if (LoadDataFile((originalName + ".material").c_str(), &data)) {
-                    Data* resourceBindings = data.Find("resource_bindings");
-                    if (resourceBindings) {
-
-                        foreachData(i, resourceBindings) {
-                            if (i->value && i->value[0] && i->child) {
-                                const char* resource = i->child->value;
-                                if (resource && resource[0]) {
-                                    result._bindings.push_back(
-                                        Assets::MaterialParameters::ResourceBinding(
-                                            Hash64(i->value, &i->value[XlStringLen(i->value)]),
-                                            resource));
-                                }
-                            }
-                        }
-
-                    }
+            {
+                    //  Look for material settings with the same name as the 
+                    //  effect. If we can't find it, look for a default settings
+                    //  entry (just called "*")
+                auto hashName = Hash64(effect->getName());
+                auto i = LowerBound(_matSettingsFile._materials, hashName);
+                if (i != _matSettingsFile._materials.end() && i->first == hashName) {
+                    matSettings = i->second;
                 }
+                static const auto defHash = Hash64("*");
+                i = LowerBound(_matSettingsFile._materials, defHash);
+                if (i != _matSettingsFile._materials.end() && i->first == defHash) {
+                    matSettings = i->second;
+                }
+            }
 
-            } CATCH(const ::Exceptions::BasicLabel&) {
-                // suppress file errors
-            } CATCH_END
+                //  Any settings from the Collada file should override what we read
+                //  in the material settings file. This means that we have 
+                //  clear out the settings in the Collada file if we want the .material
+                //  file to show through. This pattern works best if we can use 
+                //  the .material files to specify the default settings, and then use
+                //  the collada data to specialise the settings of specific parts of geometry.
 
             using namespace COLLADAFW;
             using namespace ColladaConversion;
@@ -446,7 +442,7 @@ namespace RenderCore { namespace ColladaConversion
                 auto& diffuse = commonEffects[c]->getDiffuse();
                 if (diffuse.getType() == ColorOrTexture::TEXTURE) {
                     AddBoundTexture(
-                        effect, c, _objects, result._bindings,
+                        effect, c, _objects, matSettings._resourceBindings,
                         DefaultDiffuseTextureBindingHash, 
                         diffuse.getTexture().getSamplerId());
                 }
@@ -456,6 +452,7 @@ namespace RenderCore { namespace ColladaConversion
                 //  way OpenCollada works, there must be at least one profile_COMMON part
                 //  Let's assume the sampler indices refer to the samplers stored in the 
                 //  first profile_COMMON object.
+
             auto& xts = const_cast<COLLADAFW::Effect*>(effect)->getExtraTextures();
             for (unsigned c=0; c<xts.getCount(); ++c) {
                 auto xt = xts[c];
@@ -469,11 +466,14 @@ namespace RenderCore { namespace ColladaConversion
                     auto bindPoint = _importConfig.AsNativeBindingHash(match[2]);
                     if (bindPoint != 0) {
                         AddBoundTexture(
-                            effect, 0, _objects, result._bindings,
+                            effect, 0, _objects, matSettings._resourceBindings,
                             bindPoint, xt->samplerId);
                     }
                 }
             }
+
+            Assets::MaterialParameters result;
+            result._bindings = std::move(matSettings._resourceBindings);
 
             _objects.Add(
                 effect->getOriginalId(),
@@ -1127,9 +1127,15 @@ namespace RenderCore { namespace ColladaConversion
             ValidationErrorHandler  errorHandler;
             COLLADASaxFWL::Loader   loader(&errorHandler);
 	        loader.registerExtraDataCallbackHandler(extraDataCallback.get());
+
+            auto searchRules = ::Assets::DefaultDirectorySearchRules(identifier);
+
+            ResChar baseName[MaxPath];
+            XlBasename(baseName, dimof(baseName), identifier);
+            XlChopExtension(baseName);
             
-            Writer                  writer;
-	        COLLADAFW::Root         root(&loader, &writer);
+            Writer writer(baseName, searchRules);
+	        COLLADAFW::Root root(&loader, &writer);
             
 	        root.loadDocument(identifier);
             writer.CompleteProcessing();

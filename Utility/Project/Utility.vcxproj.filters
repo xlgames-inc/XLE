@@ -79,6 +79,7 @@
     <ClInclude Include="..\Profiling\CPUProfiler.h">
       <Filter>Profiling</Filter>
     </ClInclude>
+    <ClInclude Include="..\ParameterBox.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\StringFormat.cpp" />
@@ -123,5 +124,6 @@
     <ClCompile Include="..\Profiling\CPUProfiler.cpp">
       <Filter>Profiling</Filter>
     </ClCompile>
+    <ClCompile Include="..\ParameterBox.cpp" />
   </ItemGroup>
 </Project>

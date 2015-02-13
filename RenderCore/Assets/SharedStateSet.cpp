@@ -11,6 +11,7 @@
 #include "../../SceneEngine/Techniques.h"
 #include "../../SceneEngine/LightingParserContext.h"
 #include "../../Utility/Streams/FileUtils.h"
+#include "../../Utility/ParameterBox.h"
 #include <vector>
 
 namespace RenderCore { namespace Assets
@@ -20,7 +21,7 @@ namespace RenderCore { namespace Assets
     public:
         std::vector<std::string>                        _shaderNames;
         std::vector<SceneEngine::TechniqueInterface>    _techniqueInterfaces;
-        std::vector<SceneEngine::ParameterBox>          _parameterBoxes;
+        std::vector<ParameterBox>                       _parameterBoxes;
         std::vector<uint64>                             _techniqueInterfaceHashes;
     };
 
@@ -90,14 +91,14 @@ namespace RenderCore { namespace Assets
         }
     }
 
-    unsigned SharedStateSet::InsertParameterBox(const SceneEngine::ParameterBox& box)
+    unsigned SharedStateSet::InsertParameterBox(const ParameterBox& box)
     {
         auto& paramBoxes = _pimpl->_parameterBoxes;
         auto boxHash = box.GetHash();
         auto namesHash = box.GetParameterNamesHash();
         auto p = std::find_if(
             paramBoxes.cbegin(), paramBoxes.cend(), 
-            [=](const SceneEngine::ParameterBox& box) 
+            [=](const ParameterBox& box) 
             { 
                 return box.GetHash() == boxHash && box.GetParameterNamesHash() == namesHash; 
             });
@@ -132,7 +133,7 @@ namespace RenderCore { namespace Assets
         }
 
         auto& shaderType = ::Assets::GetAssetDep<SceneEngine::ShaderType>(buffer);
-        const SceneEngine::ParameterBox* state[] = {
+        const ParameterBox* state[] = {
             &_pimpl->_parameterBoxes[geoParamBox],
             &parserContext.GetTechniqueContext()._globalEnvironmentState,
             &parserContext.GetTechniqueContext()._runtimeState,

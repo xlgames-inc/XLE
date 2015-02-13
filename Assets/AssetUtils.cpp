@@ -41,6 +41,7 @@ namespace Assets
         auto len = XlStringLen(directoryName);
         if (len > 0) { directoryName[len-1] = '\0'; }
         XlBasename(baseName, dimof(baseName), baseName);
+        if (!directoryName[0]) XlCopyString(directoryName, "./");
         Utility::AttachFileSystemMonitor(directoryName, baseName, validationIndex);
     }
 

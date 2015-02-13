@@ -123,6 +123,7 @@
     <ClInclude Include="..\MemoryUtils.h" />
     <ClInclude Include="..\MiniHeap.h" />
     <ClInclude Include="..\Mixins.h" />
+    <ClInclude Include="..\ParameterBox.h" />
     <ClInclude Include="..\Profiling\CPUProfiler.h" />
     <ClInclude Include="..\PtrUtils.h" />
     <ClInclude Include="..\IntrusivePtr.h" />
@@ -153,6 +154,7 @@
     <ClCompile Include="..\HeapUtils.cpp" />
     <ClCompile Include="..\MiniHeap.cpp" />
     <ClCompile Include="..\MiscImplementation.cpp" />
+    <ClCompile Include="..\ParameterBox.cpp" />
     <ClCompile Include="..\Profiling\CPUProfiler.cpp" />
     <ClCompile Include="..\Streams\Data.cpp" />
     <ClCompile Include="..\Streams\FileUtils.cpp" />

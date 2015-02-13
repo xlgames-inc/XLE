@@ -2,6 +2,7 @@ CommonMaterial
     Parameters
         Material
             MAT_ALPHA_TEST
+            MAT_PREMULTIPLIED_ALPHA
             MAT_REFLECTIVENESS
             RES_HAS_CUSTOM_MAP
             RES_HAS_bfbf327ee9403009
@@ -16,3 +17,18 @@ Skinnable
         GlobalEnvironment
             SKIN_TRANSFORMS
                 0
+VegetationSpawn
+    Parameters
+        Runtime
+            SPAWNED_INSTANCE
+System
+    Parameters
+        GlobalEnvironment
+            AUTO_COTANGENT
+            PREFER_ANISOTROPIC 1
+            TANGENT_PROCESS_IN_PS 1
+            LOCAL_TO_WORLD_HAS_FLIP
+Deferred
+    Parameters
+        GlobalEnvironment
+            GBUFFER_TYPE 1

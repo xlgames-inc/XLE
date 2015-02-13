@@ -157,7 +157,7 @@ namespace RenderCore { namespace Assets
         {
                 //  Build a parameter box for this geometry configuration. The input assembly
                 //  
-            SceneEngine::ParameterBox geoParameters;
+            ParameterBox geoParameters;
             if (HasElement(ia, "TEXCOORD")) { geoParameters.SetParameter("GEO_HAS_TEXCOORD", 1); }
             if (HasElement(ia, "NORMAL"))   { geoParameters.SetParameter("GEO_HAS_NORMAL", 1); }
             if (HasElement(ia, "COLOR"))    { geoParameters.SetParameter("GEO_HAS_COLOUR", 1); }
@@ -212,7 +212,7 @@ namespace RenderCore { namespace Assets
                 // configure the texture bind points array & material parameters box
             for (auto i=materialResources.begin(); i!=materialResources.end(); ++i) {
                 std::string boundNormalMapName;
-                SceneEngine::ParameterBox materialParamBox;
+                ParameterBox materialParamBox;
 
                     //  we need to create a list of all of the texture bind points that are referenced
                     //  by all of the materials used here. They will end up in sorted order
@@ -478,7 +478,7 @@ namespace RenderCore { namespace Assets
             ////////////////////////////////////////////////////////////////////////
                 //  now that we have a list of all of the sub materials used, and we know how large the resource 
                 //  interface is, we build an array of deferred shader resources for shader inputs.
-        std::vector<SceneEngine::ParameterBox> materialParameterBoxes;
+        std::vector<ParameterBox> materialParameterBoxes;
 
         auto texturesPerMaterial = textureBindPoints.size();
         std::vector<Metal::DeferredShaderResource*> boundTextures;
