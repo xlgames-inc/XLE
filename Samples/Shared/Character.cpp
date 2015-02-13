@@ -72,10 +72,7 @@ namespace Sample
         assert(skelMarker->GetState() == Assets::AssetState::Ready);
         assert(animMarker->GetState() == Assets::AssetState::Ready);
 
-        char skinPath[MaxPath];
-        XlDirname(skinPath, dimof(skinPath), skin);
-        ::Assets::DirectorySearchRules searchRules;
-        searchRules.AddSearchDirectory(skinPath);
+        auto searchRules = Assets::DefaultDirectorySearchRules(skin);
 
             // These scaffolds don't support GetResourceComp() currently...
         using namespace RenderCore::Assets;

@@ -135,6 +135,15 @@ namespace Assets
         return *this;
     }
 
+    DirectorySearchRules DefaultDirectorySearchRules(const ResChar baseFile[])
+    {
+        char skinPath[MaxPath];
+        XlDirname(skinPath, dimof(skinPath), baseFile);
+        Assets::DirectorySearchRules searchRules;
+        searchRules.AddSearchDirectory(skinPath);
+        return searchRules;
+    }
+
     namespace Exceptions
     {
         InvalidResource::InvalidResource(const char resourceId[], const char what[]) 

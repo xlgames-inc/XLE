@@ -684,10 +684,7 @@ namespace SceneEngine
                 if (!_renderer) {
                     #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
                         auto modelFilename = (const ResChar*)PtrAdd(filenamesBuffer, obj._modelFilenameOffset + sizeof(uint64));
-                        char skinPath[MaxPath];
-                        XlDirname(skinPath, dimof(skinPath), modelFilename);
-                        ::Assets::DirectorySearchRules searchRules;
-                        searchRules.AddSearchDirectory(skinPath);
+                        auto searchRules = ::Assets::DefaultDirectorySearchRules(modelFilename);
 
                         auto newRenderer = std::make_shared<ModelRenderer>(
                             std::ref(*_model), std::ref(cache._sharedStates), &searchRules, LOD);

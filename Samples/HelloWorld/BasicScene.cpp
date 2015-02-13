@@ -315,10 +315,7 @@ namespace Sample
                 //  dependent assets (like textures). In this case, we just need to
                 //  add the directory that contains the dae file as a search path
                 //  (though if we needed, we could add other paths as well).
-            char skinPath[MaxPath];
-            XlDirname(skinPath, dimof(skinPath), sampleAsset);
-            Assets::DirectorySearchRules searchRules;
-            searchRules.AddSearchDirectory(skinPath);
+            auto searchRules = Assets::DefaultDirectorySearchRules(sampleAsset);
 
                 //  Now, finally we can construct the model render.
                 //

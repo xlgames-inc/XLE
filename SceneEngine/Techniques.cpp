@@ -343,6 +343,21 @@ namespace SceneEngine
         std::shared_ptr<::Assets::DependencyValidation> _depVal;
     };
 
+    ParameterBoxTable::Setting::Setting() {}
+    ParameterBoxTable::Setting::Setting(Setting&& moveFrom)
+    {
+        for (unsigned c=0; c<dimof(_boxes); ++c) {
+            _boxes[c] = std::move(moveFrom._boxes[c]);
+        }
+    }
+    auto ParameterBoxTable::Setting::operator=(Setting&& moveFrom) -> Setting&
+    {
+        for (unsigned c=0; c<dimof(_boxes); ++c) {
+            _boxes[c] = std::move(moveFrom._boxes[c]);
+        }
+        return *this;
+    }
+
     static void LoadInteritedParameterBoxes(
         Data& source, ParameterBox dst[4],
         Assets::DirectorySearchRules* searchRules,
@@ -356,17 +371,15 @@ namespace SceneEngine
         auto* inheritList = source.ChildWithValue("Inherit");
         if (inheritList) {
             for (auto i=inheritList->child; i; i=i->next) {
-                auto* colon = const_cast<char*>(XlFindCharReverse(i->value, ':'));
+                auto* colon = XlFindCharReverse(i->value, ':');
                 if (colon) {
-                    *colon = '\0';
                     Assets::ResChar resolvedFile[MaxPath];
+                    XlCopyNString(resolvedFile, i->value, colon-i->value);
+                    XlCatString(resolvedFile, dimof(resolvedFile), ".txt");
                     if (searchRules) {
                         searchRules->ResolveFile(
-                            resolvedFile, dimof(resolvedFile), i->value);
-                    } else {
-                        XlCopyString(resolvedFile, dimof(resolvedFile), i->value);
+                            resolvedFile, dimof(resolvedFile), resolvedFile);
                     }
-                    *colon = ':';
 
                     auto& settingsTable = Assets::GetAssetDep<ParameterBoxTable>(resolvedFile);
                     auto settingHash = Hash64(colon+1);
@@ -444,6 +457,18 @@ namespace SceneEngine
                 ::Assets::RegisterAssetDependency(_depVal, *i);
             }
         }
+    }
+
+    ParameterBoxTable::ParameterBoxTable(ParameterBoxTable&& moveFrom)
+    : _settings(std::move(moveFrom._settings))
+    , _depVal(std::move(moveFrom._depVal))
+    {}
+
+    ParameterBoxTable& ParameterBoxTable::operator=(ParameterBoxTable&& moveFrom)
+    {
+        _settings = std::move(moveFrom._settings);
+        _depVal = std::move(moveFrom._depVal);
+        return *this;
     }
 
     Technique::Technique(
@@ -736,6 +761,27 @@ namespace SceneEngine
     ParameterBox::ParameterBox()
     {
         _cachedHash = _cachedParameterNameHash = 0;
+    }
+
+    ParameterBox::ParameterBox(ParameterBox&& moveFrom)
+    : _parameterHashValues(std::move(moveFrom._parameterHashValues))
+    , _parameterOffsets(std::move(moveFrom._parameterOffsets))
+    , _parameterNames(std::move(moveFrom._parameterNames))
+    , _values(std::move(moveFrom._values))
+    {
+        _cachedHash = moveFrom._cachedHash;
+        _cachedParameterNameHash = moveFrom._cachedParameterNameHash;
+    }
+        
+    ParameterBox& ParameterBox::operator=(ParameterBox&& moveFrom)
+    {
+        _parameterHashValues = std::move(moveFrom._parameterHashValues);
+        _parameterOffsets = std::move(moveFrom._parameterOffsets);
+        _parameterNames = std::move(moveFrom._parameterNames);
+        _values = std::move(moveFrom._values);
+        _cachedHash = moveFrom._cachedHash;
+        _cachedParameterNameHash = moveFrom._cachedParameterNameHash;
+        return *this;
     }
 
     ParameterBox::~ParameterBox()

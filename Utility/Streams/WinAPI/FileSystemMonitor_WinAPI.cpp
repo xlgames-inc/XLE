@@ -226,6 +226,7 @@ namespace Utility
                                     const std::shared_ptr<OnChangeCallback>& callback)
     {
         ScopedLock(MonitoredDirectoriesLock);
+        assert(directoryName && directoryName[0]);
 
         auto hash = MonitoredDirectory::HashFilename(directoryName);
         auto i = std::lower_bound(
