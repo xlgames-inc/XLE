@@ -5,12 +5,172 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "MaterialSettingsFile.h"
+#include "../RenderCore/Metal/State.h"      // (just for Blend/BlendOp enum members)
 #include "../Assets/AssetUtils.h"
 #include "../Utility/Streams/Data.h"
+#include "../Utility/Conversion.h"
 #include "../Utility/Streams/FileUtils.h"
+
 
 namespace RenderCore { namespace ColladaConversion
 {
+    static Metal::Blend::Enum DeserializeBlend(const Data* source, const char name[])
+    {
+        using namespace Metal::Blend;
+        std::pair<Enum, const char*> names[] =
+        {
+            std::make_pair(Zero, "zero"),
+            std::make_pair(One, "one"),
+            
+            std::make_pair(SrcColor, "srccolor"),
+            std::make_pair(InvSrcColor, "invsrccolor"),
+            std::make_pair(DestColor, "destcolor"),
+            std::make_pair(InvDestColor, "invdestcolor"),
+
+            std::make_pair(SrcAlpha, "srcalpha"),
+            std::make_pair(InvSrcAlpha, "invsrcalpha"),
+            std::make_pair(DestAlpha, "destalpha"),
+            std::make_pair(InvDestAlpha, "invdestalpha"),
+        };
+
+        if (source) {
+            auto* child = source->ChildWithValue(name);
+            if (child && child->child && child->child->value) {
+                const char* value = child->child->value;
+                for (unsigned c=0; c<dimof(names); ++c) {
+                    if (!XlCompareStringI(value, names[c].second)) {
+                        return names[c].first;
+                    }
+                }
+                return (Enum)XlAtoI32(value);
+            }
+        }
+
+        return Zero;
+    }
+
+    static Metal::BlendOp::Enum DeserializeBlendOp(const Data* source, const char name[])
+    {
+        using namespace Metal::BlendOp;
+        std::pair<Enum, const char*> names[] =
+        {
+            std::make_pair(NoBlending, "noblending"),
+            std::make_pair(NoBlending, "none"),
+            std::make_pair(NoBlending, "false"),
+
+            std::make_pair(Add, "add"),
+            std::make_pair(Subtract, "subtract"),
+            std::make_pair(RevSubtract, "revSubtract"),
+            std::make_pair(Min, "min"),
+            std::make_pair(Max, "max")
+        };
+
+        if (source) {
+            auto* child = source->ChildWithValue(name);
+            if (child && child->child && child->child->value) {
+                const char* value = child->child->value;
+                for (unsigned c=0; c<dimof(names); ++c) {
+                    if (!XlCompareStringI(value, names[c].second)) {
+                        return names[c].first;
+                    }
+                }
+                return (Enum)XlAtoI32(value);
+            }
+        }
+
+        return NoBlending;
+    }
+
+    static Assets::MaterialParameters::StateSet ParseStateSet(const Data& src)
+    {
+        typedef Assets::MaterialParameters::StateSet StateSet;
+        StateSet result;
+        {
+            auto* child = src.ChildWithValue("DoubleSided");
+            if (child && child->child && child->child->value) {
+                result._doubleSided = Conversion::Convert<bool>((const char*)child->child->value);
+                result._flag |= StateSet::Flag::DoubleSided;
+            }
+        }
+        {
+            auto* child = src.ChildWithValue("Wireframe");
+            if (child && child->child && child->child->value) {
+                result._wireframe = Conversion::Convert<bool>((const char*)child->child->value);
+                result._flag |= StateSet::Flag::Wireframe;
+            }
+        }
+        {
+            auto* child = src.ChildWithValue("WriteMask");
+            if (child && child->child && child->child->value) {
+                result._writeMask = child->child->IntValue();
+                result._flag |= StateSet::Flag::WriteMask;
+            }
+        }
+        {
+            auto* child = src.ChildWithValue("DeferredBlend");
+            if (child && child->child && child->child->value) {
+                if (XlCompareStringI(child->child->value, "decal")) {
+                    result._deferredBlend = StateSet::DeferredBlend::Decal;
+                } else {
+                    result._deferredBlend = StateSet::DeferredBlend::Opaque;
+                }
+                result._flag |= StateSet::Flag::DeferredBlend;
+            }
+        }
+        {
+            auto* child = src.ChildWithValue("DepthBias");
+            if (child && child->child && child->child->value) {
+                result._depthBias = child->child->IntValue();
+                result._flag |= StateSet::Flag::DepthBias;
+            }
+        }
+        {
+            auto* child = src.ChildWithValue("ForwardBlend");
+            if (child && child->child) {
+                result._forwardBlendSrc = DeserializeBlend(child, "Src");
+                result._forwardBlendDst = DeserializeBlend(child, "Dst");
+                result._forwardBlendOp = DeserializeBlendOp(child, "Op");
+                result._flag |= StateSet::Flag::ForwardBlend;
+            }
+        }
+        return result;
+    }
+
+    static Assets::MaterialParameters::StateSet Merge(
+        Assets::MaterialParameters::StateSet underride,
+        Assets::MaterialParameters::StateSet override)
+    {
+        typedef Assets::MaterialParameters::StateSet StateSet;
+        StateSet result = underride;
+        if (override._flag & StateSet::Flag::DoubleSided) {
+            result._doubleSided = override._doubleSided;
+            result._flag |= StateSet::Flag::DoubleSided;
+        }
+        if (override._flag & StateSet::Flag::Wireframe) {
+            result._wireframe = override._wireframe;
+            result._flag |= StateSet::Flag::Wireframe;
+        }
+        if (override._flag & StateSet::Flag::WriteMask) {
+            result._writeMask = override._writeMask;
+            result._flag |= StateSet::Flag::WriteMask;
+        }
+        if (override._flag & StateSet::Flag::DeferredBlend) {
+            result._deferredBlend = override._deferredBlend;
+            result._flag |= StateSet::Flag::DeferredBlend;
+        }
+        if (override._flag & StateSet::Flag::ForwardBlend) {
+            result._forwardBlendSrc = override._forwardBlendSrc;
+            result._forwardBlendDst = override._forwardBlendDst;
+            result._forwardBlendOp = override._forwardBlendOp;
+            result._flag |= StateSet::Flag::ForwardBlend;
+        }
+        if (override._flag & StateSet::Flag::DepthBias) {
+            result._depthBias = override._depthBias;
+            result._flag |= StateSet::Flag::DepthBias;
+        }
+        return result;
+    }
+
     MaterialSettingsFile::MaterialDesc::MaterialDesc(
         const Data& source,
         ::Assets::DirectorySearchRules* searchRules,
@@ -36,6 +196,7 @@ namespace RenderCore { namespace ColladaConversion
                     auto s = LowerBound(settingsTable._materials, settingHash);
                     if (s != settingsTable._materials.end() && s->first == settingHash) {
                         _matParamBox.MergeIn(s->second._matParamBox);
+                        _stateSet = Merge(_stateSet, s->second._stateSet);
                         _resourceBindings.insert(
                             _resourceBindings.end(),
                             s->second._resourceBindings.begin(), s->second._resourceBindings.end());
@@ -74,7 +235,12 @@ namespace RenderCore { namespace ColladaConversion
             }
         }
 
-            // \todo -- also load "States" table
+            // also load "States" table. This requires a bit more parsing work
+        const auto* stateSet = source.ChildWithValue("States");
+        if (stateSet) {
+            auto parsedStateSet = ParseStateSet(*stateSet);
+            _stateSet = Merge(_stateSet, parsedStateSet);
+        }
     }
 
     MaterialSettingsFile::MaterialDesc::MaterialDesc() {}

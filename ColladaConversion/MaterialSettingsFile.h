@@ -22,6 +22,7 @@ namespace RenderCore { namespace ColladaConversion
         public:
             ParameterBox _matParamBox;
             Assets::MaterialParameters::ResourceBindingSet _resourceBindings;
+            Assets::MaterialParameters::StateSet _stateSet;
 
             MaterialDesc();
             ~MaterialDesc();

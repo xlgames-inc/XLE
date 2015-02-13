@@ -341,17 +341,6 @@ namespace RenderCore { namespace Assets
         std::vector<DrawCallResources>   _drawCallRes;
 
         ///////////////////////////////////////////////////////////////////////////////
-            // Extra information attached to draw calls used with prepared animations
-        // class PreparedAnimStream
-        // {
-        // public:
-        //     unsigned    _vertexStride;
-        //     unsigned    _techniqueInterface;
-        //     PreparedAnimStream() : _vertexStride(0), _techniqueInterface(~unsigned(0x0)) {}
-        // };
-        // std::vector<PreparedAnimStream> _preparedAnimStreams;   // one per skin call
-
-        ///////////////////////////////////////////////////////////////////////////////
         Metal::VertexBuffer         _vertexBuffer;
         Metal::IndexBuffer          _indexBuffer;
         std::vector<Mesh>           _meshes;

@@ -241,6 +241,27 @@ namespace RenderCore { namespace Assets
     {
         Serialization::Serialize(serializer, _bindings);
         Serialization::Serialize(serializer, _matParams);
+        Serialization::Serialize(serializer, _stateSet.GetHash());
+    }
+
+    MaterialParameters::StateSet::StateSet()
+    {
+        _doubleSided = false;
+        _wireframe = false;
+        _writeMask = 0xf;
+        _deferredBlend = DeferredBlend::Opaque;
+        _depthBias = 0;
+        _flag = 0;
+        
+        _forwardBlendSrc = Metal::Blend::One;
+        _forwardBlendDst = Metal::Blend::Zero;
+        _forwardBlendOp = Metal::BlendOp::NoBlending;
+    }
+
+    uint64 MaterialParameters::StateSet::GetHash() const
+    {
+        static_assert(sizeof(*this) == sizeof(uint64), "expecting StateSet to be 64 bits long");
+        return *(const uint64*)this;
     }
 
     MaterialParameters::MaterialParameters() {}
@@ -334,7 +355,7 @@ namespace RenderCore { namespace Assets
             
             //  use a memory mapped file for this. This way, we never have to 
             //  worry about flushing out to disk... The OS will take care of 
-            //  comitting the results to disk on exit
+            //  committing the results to disk on exit
         auto cache = std::make_unique<MemoryMappedFile>(
             "int/TextureFormatCache.dat", entrySize * MaxCachedTextures + sizeof(Header),
             MemoryMappedFile::Access::Read|MemoryMappedFile::Access::Write|MemoryMappedFile::Access::OpenAlways);

@@ -4,6 +4,8 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#pragma once
+
 #include "../../Core/Types.h"
 
 namespace Utility

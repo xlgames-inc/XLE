@@ -35,4 +35,19 @@ namespace Conversion
     template<> inline float Convert<float, char*>(char input[])    { return XlAtoF32(input); }
     template<> inline uint32 Convert<uint32, char*>(char input[])  { return XlAtoUI32(input); }
     template<> inline int32 Convert<int32, char*>(char input[])    { return XlAtoI32(input); }
+
+    template<> inline bool Convert<bool, const char*>(const char input[])    
+    {
+        if (    !XlCompareStringI(input, "true")
+            ||  !XlCompareStringI(input, "yes")
+            ||  !XlCompareStringI(input, "t")
+            ||  !XlCompareStringI(input, "y")) {
+            return true;
+        }
+        int asInt = 0;
+        if (XlSafeAtoi(input, &asInt)) {
+            return !!asInt;
+        }
+        return false;
+    }
 }
