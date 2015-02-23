@@ -41,10 +41,10 @@ float3 PerformWindBending(
         // This is counter productive for grass objects. So it may be helpful to
         // have a shader define to enable/disable this!
 
-        float branchPhase = .4f * animParams.b + dot(objCentreWorld.xy, 1.0.xx);
-        float detailPhase = .4f * animParams.r + dot(posWorld.xyz, 1.0.xxx);
+        float detailPhase = dot(posWorld.xyz, 20.0.xxx);
+        float branchPhase = detailPhase;
 
-        float speed = 0.15f;
+        float speed = 0.125f;
         float2 timeParam = Time + float2(detailPhase, branchPhase);
 
             // Here, .xy are the two "edge" components
@@ -60,12 +60,14 @@ float3 PerformWindBending(
         vWaves = CubicSCurve4(TriangleWave4(vWaves));
         float2 vWavesSum = vWaves.xz + baseAmpRatio * vWaves.yw;
 
+        const float baseStrength = .2f;
             // Attenuate detail movement near z=0 in object local space
             // This should clamp the vertices on the bottom of the object
             // into place, so they don't slide about the terrain.
         float detailAmp = saturate(3.f * (posWorld.z - objCentreWorld.z));
-        detailAmp *= 0.15f;
-        float branchAmp = 0.1f * animParams.g;
+        detailAmp *= baseStrength * (1.f - animParams.g);
+        float branchAmp = 0.15f * (1.f - animParams.b);
+
         posWorld.xyz += vWavesSum.xxy * float3(detailAmp * normalWorld.xy, branchAmp);
 
     #endif
