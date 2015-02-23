@@ -244,7 +244,7 @@ namespace RenderCore { namespace Assets
         Serialization::Serialize(serializer, _stateSet.GetHash());
     }
 
-    MaterialParameters::StateSet::StateSet()
+    RenderStateSet::RenderStateSet()
     {
         _doubleSided = false;
         _wireframe = false;
@@ -258,7 +258,7 @@ namespace RenderCore { namespace Assets
         _forwardBlendOp = Metal::BlendOp::NoBlending;
     }
 
-    uint64 MaterialParameters::StateSet::GetHash() const
+    uint64 RenderStateSet::GetHash() const
     {
         static_assert(sizeof(*this) == sizeof(uint64), "expecting StateSet to be 64 bits long");
         return *(const uint64*)this;
@@ -269,12 +269,14 @@ namespace RenderCore { namespace Assets
     MaterialParameters::MaterialParameters(MaterialParameters&& moveFrom)
     : _bindings(std::move(moveFrom._bindings))
     , _matParams(std::move(moveFrom._matParams))
+    , _stateSet(moveFrom._stateSet)
     {}
 
     MaterialParameters& MaterialParameters::operator=(MaterialParameters&& moveFrom)
     {
         _bindings = std::move(moveFrom._bindings);
         _matParams = std::move(moveFrom._matParams);
+        _stateSet = moveFrom._stateSet;
         return *this;
     }
 

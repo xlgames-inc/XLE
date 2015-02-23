@@ -74,6 +74,7 @@ namespace RenderCore { namespace Assets
             unsigned _matParams; 
             unsigned _constantBuffer; 
             unsigned _texturesIndex; 
+            unsigned _renderStateSet;
         };
 
         static const ModelCommandStream::GeoCall& GetGeoCall(ModelScaffold& scaffold, unsigned geoCallIndex)
@@ -213,6 +214,7 @@ namespace RenderCore { namespace Assets
             for (auto i=materialResources.begin(); i!=materialResources.end(); ++i) {
                 std::string boundNormalMapName;
                 ParameterBox materialParamBox;
+                RenderStateSet stateSet;
 
                     //  we need to create a list of all of the texture bind points that are referenced
                     //  by all of the materials used here. They will end up in sorted order
@@ -220,6 +222,7 @@ namespace RenderCore { namespace Assets
                     const auto& materialScaffoldData = scaffold.ImmutableData()._materialBindings[i->first];
 
                     materialParamBox = materialScaffoldData._matParams;
+                    stateSet = materialScaffoldData._stateSet;
 
                     for (auto i=materialScaffoldData._bindings.cbegin(); i!=materialScaffoldData._bindings.cend(); ++i) {
                         auto bindName = i->_bindHash;
@@ -248,6 +251,7 @@ namespace RenderCore { namespace Assets
                 materialParamBox.SetParameter("MAT_ALPHA_TEST", 1);
 
                 i->second._matParams = sharedStateSet.InsertParameterBox(materialParamBox);
+                i->second._renderStateSet = sharedStateSet.InsertRenderStateSet(stateSet);
             }
 
             return materialResources;
@@ -395,7 +399,8 @@ namespace RenderCore { namespace Assets
                 Pimpl::DrawCallResources res(
                     matRes._shaderName,
                     mesh->_geoParamBox, matRes._matParams, 
-                    matRes._texturesIndex, matRes._constantBuffer);
+                    matRes._texturesIndex, matRes._constantBuffer,
+                    matRes._renderStateSet);
                 drawCallRes.push_back(res);
                 drawCalls.push_back(std::make_pair(gi, d));
             }
@@ -445,7 +450,8 @@ namespace RenderCore { namespace Assets
                 Pimpl::DrawCallResources res(
                     matRes._shaderName,
                     mesh->_geoParamBox, matRes._matParams, 
-                    matRes._texturesIndex, matRes._constantBuffer);
+                    matRes._texturesIndex, matRes._constantBuffer,
+                    matRes._renderStateSet);
 
                 drawCallRes.push_back(res);
                 skinnedDrawCalls.push_back(std::make_pair(gi, d));
@@ -580,9 +586,12 @@ namespace RenderCore { namespace Assets
             unsigned                drawCallIndex,
             TechniqueInterface      techniqueInterface) const
     {
+        static Utility::ParameterBox tempGlobalStatesBox;
+
         const auto& res = _drawCallRes[drawCallIndex];
+        sharedStateSet.BeginRenderState(context._context, tempGlobalStatesBox, techniqueInterface, res._renderStateSet);
         return sharedStateSet.BeginVariation(
-            context._context, *context._parserContext, context._techniqueIndex,
+            context._context, context._parserContext->GetTechniqueContext(), context._techniqueIndex,
             res._shaderName, techniqueInterface, res._geoParamBox, res._materialParamBox);
     }
 
@@ -790,19 +799,21 @@ namespace RenderCore { namespace Assets
     ModelRenderer::Pimpl::DrawCallResources::DrawCallResources()
     {
         _shaderName = _geoParamBox = _materialParamBox = 0;
-        _textureSet = _constantBuffer = 0;
+        _textureSet = _constantBuffer = _renderStateSet = 0;
     }
 
     ModelRenderer::Pimpl::DrawCallResources::DrawCallResources(
         unsigned shaderName,
         unsigned geoParamBox, unsigned matParamBox,
-        unsigned textureSet, unsigned constantBuffer)
+        unsigned textureSet, unsigned constantBuffer,
+        unsigned renderStateSet)
     {
         _shaderName = shaderName;
         _geoParamBox = geoParamBox;
         _materialParamBox = matParamBox;
         _textureSet = textureSet;
         _constantBuffer = constantBuffer;
+        _renderStateSet = renderStateSet;
     }
 
     void    ModelRenderer::Render(
@@ -1023,11 +1034,15 @@ namespace RenderCore { namespace Assets
                 //          in some cases.
             if (currentVariationHash != d->_shaderVariationHash) {
                 boundUniforms = context._sharedStateSet->BeginVariation(
-                    context._context, *context._parserContext, context._techniqueIndex,
-                    drawCallRes._shaderName, d->_mesh->_techniqueInterface, drawCallRes._geoParamBox, drawCallRes._materialParamBox);
+                    context._context, context._parserContext->GetTechniqueContext(), context._techniqueIndex,
+                    drawCallRes._shaderName, d->_mesh->_techniqueInterface, drawCallRes._geoParamBox, 
+                    drawCallRes._materialParamBox);
                 currentVariationHash = d->_shaderVariationHash;
                 currentTextureSet = ~unsigned(0x0);
             }
+
+            static Utility::ParameterBox tempGlobalStatesBox;
+            context._sharedStateSet->BeginRenderState(context._context, tempGlobalStatesBox, context._techniqueIndex, drawCallRes._renderStateSet);
 
             if (!boundUniforms) continue;
 

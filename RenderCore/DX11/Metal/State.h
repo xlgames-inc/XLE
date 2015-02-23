@@ -137,6 +137,16 @@ namespace RenderCore { namespace Metal_DX11
         };
     };
 
+    /// Container for FillMode::Enum
+    namespace FillMode
+    {
+        enum Enum
+        {
+            Solid = 3,      // D3D11_FILL_SOLID
+            Wireframe = 2   // D3D11_FILL_WIREFRAME
+        };
+    };
+
     /// <summary>States used while rasterising triangles</summary>
     ///
     ///     These states are used during triangle setup for interpolator
@@ -170,8 +180,14 @@ namespace RenderCore { namespace Metal_DX11
         RasterizerState(CullMode::Enum cullmode = CullMode::Back, bool frontCounterClockwise = true);
         RasterizerState(
             CullMode::Enum cullmode, bool frontCounterClockwise,
+            FillMode::Enum fillmode,
             int depthBias, float depthBiasClamp, float slopeScaledBias);
         ~RasterizerState();
+
+        RasterizerState(RasterizerState&& moveFrom);
+        RasterizerState& operator=(RasterizerState&& moveFrom);
+        RasterizerState(const RasterizerState& copyFrom);
+        RasterizerState& operator=(const RasterizerState& copyFrom);
 
         typedef ID3D::RasterizerState*  UnderlyingType;
         UnderlyingType                  GetUnderlying() const  { return _underlying.get(); }
@@ -279,6 +295,11 @@ namespace RenderCore { namespace Metal_DX11
                     Blend::Enum dstBlend = Blend::InvSrcAlpha,
                     bool terrainLayer = false);
         ~BlendState();
+
+        BlendState(BlendState&& moveFrom);
+        BlendState& operator=(BlendState&& moveFrom);
+        BlendState(const BlendState& copyFrom);
+        BlendState& operator=(const BlendState& copyFrom);
 
         typedef ID3D::BlendState*   UnderlyingType;
         UnderlyingType              GetUnderlying() const  { return _underlying.get(); }

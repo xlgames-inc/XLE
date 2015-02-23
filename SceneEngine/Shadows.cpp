@@ -100,6 +100,7 @@ namespace SceneEngine
             //          the rasterized shape.
         RenderCore::Metal::RasterizerState rasterizerState(
             RenderCore::Metal::CullMode::Back, true, 
+            RenderCore::Metal::FillMode::Solid,
             desc._rasterDepthBias, desc._depthBiasClamp, desc._slopeScaledBias);
         _rasterizerState = std::move(rasterizerState);
     }

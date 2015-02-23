@@ -49,6 +49,26 @@ namespace RenderCore { namespace Metal_DX11
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
+    RasterizerState::RasterizerState(RasterizerState&& moveFrom)
+    : _underlying(std::move(moveFrom._underlying))
+    {}
+
+    RasterizerState& RasterizerState::operator=(RasterizerState&& moveFrom)
+    {
+        _underlying = std::move(moveFrom._underlying);
+        return *this;
+    }
+
+    RasterizerState::RasterizerState(const RasterizerState& copyFrom)
+    : _underlying(copyFrom._underlying)
+    {}
+
+    RasterizerState& RasterizerState::operator=(const RasterizerState& copyFrom)
+    {
+        _underlying = copyFrom._underlying;
+        return *this;
+    }
+
     RasterizerState::RasterizerState(CullMode::Enum cullmode, bool frontCounterClockwise)
     {
         D3D11_RASTERIZER_DESC rasterizerDesc;
@@ -68,10 +88,11 @@ namespace RenderCore { namespace Metal_DX11
 
     RasterizerState::RasterizerState(
         CullMode::Enum cullmode, bool frontCounterClockwise,
+        FillMode::Enum fillmode,
         int depthBias, float depthBiasClamp, float slopeScaledBias)
     {
         D3D11_RASTERIZER_DESC rasterizerDesc;
-        rasterizerDesc.FillMode = D3D11_FILL_SOLID;
+        rasterizerDesc.FillMode = (D3D11_FILL_MODE)fillmode;
         rasterizerDesc.CullMode = (D3D11_CULL_MODE)cullmode;
         rasterizerDesc.FrontCounterClockwise = frontCounterClockwise;
         rasterizerDesc.DepthBias = depthBias;
@@ -87,6 +108,26 @@ namespace RenderCore { namespace Metal_DX11
     RasterizerState::~RasterizerState() {}
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
+
+    BlendState::BlendState(BlendState&& moveFrom)
+    : _underlying(std::move(moveFrom._underlying))
+    {}
+
+    BlendState& BlendState::operator=(BlendState&& moveFrom)
+    {
+        _underlying = std::move(moveFrom._underlying);
+        return *this;
+    }
+
+    BlendState::BlendState(const BlendState& copyFrom)
+    : _underlying(copyFrom._underlying)
+    {}
+
+    BlendState& BlendState::operator=(const BlendState& copyFrom)
+    {
+        _underlying = copyFrom._underlying;
+        return *this;
+    }
 
     BlendState::BlendState(BlendOp::Enum blendingOperation, Blend::Enum srcBlend, Blend::Enum dstBlend, bool terrainLayer)
     {

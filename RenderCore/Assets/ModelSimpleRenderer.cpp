@@ -125,7 +125,7 @@ namespace RenderCore { namespace Assets { namespace Simple
                     auto geoParamIndex          = _pimpl->_geoParameterBoxIndices[drawCallIndex];
 
                     auto* boundUniforms = sharedStateSet.BeginVariation(
-                        context, parserContext, techniqueIndex,
+                        context, parserContext.GetTechniqueContext(), techniqueIndex,
                         shaderNameIndex, techInterfIndex, geoParamIndex, materialParamIndex);
 
                     auto resourceIndex          = _pimpl->_resourcesIndices[drawCallIndex];
@@ -283,7 +283,7 @@ namespace RenderCore { namespace Assets { namespace Simple
                 auto geoParamIndex = renderer._pimpl->_geoParameterBoxIndices[d->_drawCallIndex];
 
                 boundUniforms = sharedStateSet.BeginVariation(
-                    context, parserContext, techniqueIndex,
+                    context, parserContext.GetTechniqueContext(), techniqueIndex,
                     shaderNameIndex, techInterfIndex, geoParamIndex, materialParamIndex);
                 currentVariationHash = d->_shaderVariationHash;
                 currentResourceIndex = ~unsigned(0x0);

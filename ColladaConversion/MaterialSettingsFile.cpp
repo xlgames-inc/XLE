@@ -81,9 +81,9 @@ namespace RenderCore { namespace ColladaConversion
         return NoBlending;
     }
 
-    static Assets::MaterialParameters::StateSet ParseStateSet(const Data& src)
+    static Assets::RenderStateSet ParseStateSet(const Data& src)
     {
-        typedef Assets::MaterialParameters::StateSet StateSet;
+        typedef Assets::RenderStateSet StateSet;
         StateSet result;
         {
             auto* child = src.ChildWithValue("DoubleSided");
@@ -136,11 +136,11 @@ namespace RenderCore { namespace ColladaConversion
         return result;
     }
 
-    static Assets::MaterialParameters::StateSet Merge(
-        Assets::MaterialParameters::StateSet underride,
-        Assets::MaterialParameters::StateSet override)
+    static Assets::RenderStateSet Merge(
+        Assets::RenderStateSet underride,
+        Assets::RenderStateSet override)
     {
-        typedef Assets::MaterialParameters::StateSet StateSet;
+        typedef Assets::RenderStateSet StateSet;
         StateSet result = underride;
         if (override._flag & StateSet::Flag::DoubleSided) {
             result._doubleSided = override._doubleSided;
