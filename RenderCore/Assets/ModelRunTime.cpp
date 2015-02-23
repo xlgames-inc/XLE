@@ -58,6 +58,7 @@ namespace RenderCore { namespace Assets
 
         static size_t InsertOrCombine(std::vector<std::vector<uint8>>& dest, std::vector<uint8>&& compare)
         {
+            assert(compare.size());
             for (auto i = dest.cbegin(); i!=dest.cend(); ++i) {
                 if (i->size() == compare.size() && (XlCompareMemory(AsPointer(i->begin()), AsPointer(compare.begin()), i->size()) == 0)) {
                     return std::distance(dest.cbegin(), i);
@@ -206,7 +207,7 @@ namespace RenderCore { namespace Assets
             for (auto i=materialResources.begin(); i!=materialResources.end(); ++i) {
                 std::string shaderName = DefaultShader;
                 i->second._shaderName = sharedStateSet.InsertShaderName(shaderName);
-                i->second._constantBuffer = InsertOrCombine(prescientMaterialConstantBuffers, std::move(constants));
+                i->second._constantBuffer = InsertOrCombine(prescientMaterialConstantBuffers, std::vector<uint8>(constants));
                 i->second._texturesIndex = std::distance(materialResources.begin(), i);
             }
 
@@ -533,6 +534,7 @@ namespace RenderCore { namespace Assets
 
         std::vector<Metal::ConstantBuffer> finalConstantBuffers;
         for (auto cb=prescientMaterialConstantBuffers.cbegin(); cb!=prescientMaterialConstantBuffers.end(); ++cb) {
+            assert(cb->size());
             Metal::ConstantBuffer newCB(AsPointer(cb->begin()), cb->size());
             finalConstantBuffers.push_back(std::move(newCB));
         }
@@ -693,6 +695,7 @@ namespace RenderCore { namespace Assets
             srvs[c] = t?(&t->GetShaderResource()):nullptr;
         }
         cbs[1] = &_constantBuffers[constantsIndex];
+        assert(cbs[1] && cbs[1]->GetUnderlying());
         boundUniforms.Apply(
             *context._context, context._parserContext->GetGlobalUniformsStream(),
             RenderCore::Metal::UniformsStream(nullptr, cbs, 2, srvs, _texturesPerMaterial));

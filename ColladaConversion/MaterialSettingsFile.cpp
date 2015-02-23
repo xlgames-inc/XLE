@@ -272,6 +272,8 @@ namespace RenderCore { namespace ColladaConversion
                 ::Assets::RegisterAssetDependency(_depVal, *i);
             }
         }
+
+        std::sort(_materials.begin(), _materials.end(), CompareFirst<uint64, MaterialDesc>());
     }
 
     MaterialSettingsFile::~MaterialSettingsFile() {}

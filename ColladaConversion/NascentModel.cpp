@@ -414,15 +414,21 @@ namespace RenderCore { namespace ColladaConversion
                     //  Look for material settings with the same name as the 
                     //  effect. If we can't find it, look for a default settings
                     //  entry (just called "*")
+                    //  Note that we could modify this so that all materials inherit
+                    //  from the default, or have the default only apply if there are
+                    //  no perfect matches. Either way has advantages... But in this
+                    //  version, the default will only apply if we can't find an
+                    //  exact match
                 auto hashName = Hash64(effect->getName());
                 auto i = LowerBound(_matSettingsFile._materials, hashName);
                 if (i != _matSettingsFile._materials.end() && i->first == hashName) {
                     matSettings = i->second;
-                }
-                static const auto defHash = Hash64("*");
-                i = LowerBound(_matSettingsFile._materials, defHash);
-                if (i != _matSettingsFile._materials.end() && i->first == defHash) {
-                    matSettings = i->second;
+                } else {
+                    static const auto defHash = Hash64("*");
+                    i = LowerBound(_matSettingsFile._materials, defHash);
+                    if (i != _matSettingsFile._materials.end() && i->first == defHash) {
+                        matSettings = i->second;
+                    }
                 }
             }
 

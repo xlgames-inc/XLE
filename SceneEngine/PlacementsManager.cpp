@@ -293,6 +293,13 @@ namespace SceneEngine
                 "game\\objects\\Env\\05_nature\\00_common\\\\digitalis_a.mtl",
                 "game\\model\\nature\\digitalis\\digitalis.mtl");
 
+            ReplaceString(
+                "game\\objects\\Env\\05_nature\\00_common\\common_tree_middle02.cgf",
+                "game\\model\\nature\\commontree\\middle02.dae");
+            ReplaceString(
+                "game\\objects\\Env\\05_nature\\00_common\\common_tree_big.mtl",
+                "game\\model\\nature\\commontree\\middle02.mtl");
+
 
             if (!_objects.empty()) {
                 LogDetails(filename);
