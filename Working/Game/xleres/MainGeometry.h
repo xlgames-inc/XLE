@@ -40,26 +40,30 @@ struct VSInput //////////////////////////////////////////////////////
 
     #if GEO_HAS_TEXCOORD==1
         float2 texCoord : TEXCOORD;
-        #undef OUTPUT_TEXCOORD
-        #define OUTPUT_TEXCOORD 1
+        #if !defined(OUTPUT_TEXCOORD)
+            #define OUTPUT_TEXCOORD 1
+        #endif
     #endif
 
     #if GEO_HAS_TANGENT_FRAME==1
         float4 tangent : TANGENT;
         float3 bitangent : BITANGENT;
         #if TANGENT_PROCESS_IN_PS==1
-            #undef OUTPUT_LOCAL_TANGENT_FRAME
-            #define OUTPUT_LOCAL_TANGENT_FRAME 1
+            #if !defined(OUTPUT_LOCAL_TANGENT_FRAME)
+                #define OUTPUT_LOCAL_TANGENT_FRAME 1
+            #endif
         #else
-            #undef OUTPUT_TANGENT_FRAME
-            #define OUTPUT_TANGENT_FRAME 1
+            #if !defined(OUTPUT_TANGENT_FRAME)
+                #define OUTPUT_TANGENT_FRAME 1
+            #endif
         #endif
     #endif
 
     #if GEO_HAS_NORMAL==1
         float3 normal : NORMAL;
-        #undef OUTPUT_NORMAL
-        #define OUTPUT_NORMAL 1
+        #if !defined(OUTPUT_NORMAL)
+            #define OUTPUT_NORMAL 1
+        #endif
     #endif
 
     #if GEO_HAS_SKIN_WEIGHTS==1

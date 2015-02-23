@@ -48,8 +48,11 @@ ShadowGen
     Parameters
         Geometry
             GEO_HAS_TEXCOORD
+            GEO_HAS_COLOUR
+            GEO_HAS_NORMAL
         Material
             MAT_ALPHA_TEST
+            MAT_VCOLOR_IS_ANIM_PARAM
         Runtime
             FRUSTUM_FILTER
                 63

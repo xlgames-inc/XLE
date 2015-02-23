@@ -10,6 +10,7 @@
 #include "../TransformAlgorithm.h"
 #include "../Surface.h"
 #include "../ShadowProjection.h"
+#include "../Vegetation/WindAnim.h"
 
 #if GEO_HAS_INSTANCE_ID==1
 	StructuredBuffer<float4> InstanceOffsets : register(t15);
@@ -22,11 +23,22 @@ VSShadowOutput main(VSInput input)
 	#if GEO_HAS_INSTANCE_ID==1
 		// float3 worldPosition = input.instanceOffset.xyz + localPosition;
 		float3 worldPosition = InstanceOffsets[input.instanceId] + localPosition;
+		objectCentreWorld = InstanceOffsets[input.instanceId];
 	#else
 		float3 worldPosition = mul(LocalToWorld, float4(localPosition,1)).xyz;
+		float3 objectCentreWorld = float3(LocalToWorld[0][3], LocalToWorld[1][3], LocalToWorld[2][3]);
+	#endif
+
+		// note that when rendering shadows, we actually only need the normal
+		// for doing the vertex wind animation
+	float3 worldNormal = mul(GetLocalToWorldUniformScale(), GetLocalNormal(input));
+	#if GEO_HAS_TANGENT_FRAME==1
+		worldNormal =  BuildWorldSpaceTangentFrame(input).normal;
 	#endif
 
 	VSShadowOutput result;
+
+	worldPosition = PerformWindBending(worldPosition, worldNormal, objectCentreWorld, float3(1,0,0), GetColour(input));
 	result.position = worldPosition.xyz;
 
 	#if OUTPUT_TEXCOORD==1
