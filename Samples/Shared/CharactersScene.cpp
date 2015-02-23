@@ -109,7 +109,7 @@ namespace Sample
         ConstantBuffer materialConstantBuffer(materialPropertiesBuffer.begin(), materialPropertiesBuffer.size());
         context->BindPS(RenderCore::MakeResourceList(6, materialConstantBuffer));
 
-        _pimpl->_charactersSharedStateSet.Reset();
+        _pimpl->_charactersSharedStateSet.CaptureState(context);
 
         RenderCore::Assets::ModelRenderer::Context modelContext(
             context, parserContext, techniqueIndex, _pimpl->_charactersSharedStateSet);
@@ -197,6 +197,8 @@ namespace Sample
             // }
 
         }
+
+        _pimpl->_charactersSharedStateSet.ReleaseState(context);
 
         techEnv.SetParameter(StringSkipMaterialDiffuse, 0);
         techEnv.SetParameter(StringAutoCotangent, 0);

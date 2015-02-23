@@ -200,6 +200,7 @@ namespace RenderCore { namespace ColladaConversion
                         _resourceBindings.insert(
                             _resourceBindings.end(),
                             s->second._resourceBindings.begin(), s->second._resourceBindings.end());
+                        _constants.MergeIn(s->second._constants);
                     }
 
                     if (inherited && std::find(inherited->begin(), inherited->end(), &settingsTable.GetDependencyValidation())== inherited->end()) {
@@ -209,12 +210,21 @@ namespace RenderCore { namespace ColladaConversion
             }
         }
 
-            //  Load ShaderParams & ResourceBindings
+            //  Load ShaderParams & ResourceBindings & Constants
 
         const auto* p = source.ChildWithValue("ShaderParams");
         if (p) {
             for (auto child=p->child; child; child=child->next) {
                 _matParamBox.SetParameter(
+                    child->StrValue(),
+                    child->ChildAt(0)?child->ChildAt(0)->IntValue():0);
+            }
+        }
+
+        const auto* c = source.ChildWithValue("Constants");
+        if (c) {
+            for (auto child=p->child; child; child=child->next) {
+                _constants.SetParameter(
                     child->StrValue(),
                     child->ChildAt(0)?child->ChildAt(0)->IntValue():0);
             }

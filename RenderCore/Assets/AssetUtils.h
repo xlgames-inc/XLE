@@ -160,6 +160,7 @@ namespace RenderCore { namespace Assets
         ResourceBindingSet _bindings;
         ParameterBox _matParams;
         RenderStateSet _stateSet;
+        ParameterBox _constants;
 
         void Serialize(Serialization::NascentBlockSerializer& serializer) const;
 

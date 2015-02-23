@@ -560,13 +560,15 @@ namespace Overlays
 
             //  Aggressively reset the shared state set, to try to invalidate
             //  any cached states that have changed since the last render
-        sharedStates.Reset();
+        sharedStates.CaptureState(devContext);
 
         ModelSceneParser sceneParser(model, boundingBox, sharedStates);
         SceneEngine::TechniqueContext techniqueContext;
         techniqueContext._globalEnvironmentState.SetParameter("SKIP_MATERIAL_DIFFUSE", 1);
         SceneEngine::LightingParserContext lightingParserContext(&sceneParser, techniqueContext);
         SceneEngine::LightingParser_Execute(devContext, lightingParserContext, qualitySettings);
+
+        sharedStates.ReleaseState(devContext);
     }
 
     static const unsigned ModelBrowserItemDimensions = 196;

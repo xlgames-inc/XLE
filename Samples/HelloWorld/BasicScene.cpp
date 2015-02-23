@@ -345,17 +345,18 @@ namespace Sample
             //      It's still a work-in-progress! This will be done better later.
         SetEnvParameter(parserContext, StringAutoCotangent, 1);
 
-            //  Before using SharedStateSet for the first time, we need to call Reset()
-            //  This will effectively capture the device context state. If we were rendering
-            //  multiple models with the same shared state, we would reset once and render
-            //  multiple times.
-        _sharedStateSet->Reset();
+            //  Before using SharedStateSet for the first time, we need to capture the device 
+            //  context state. If we were rendering multiple models with the same shared state, we would 
+            //  capture once and render multiple times with the same capture.
+        _sharedStateSet->CaptureState(context);
 
             //  Finally, we can render the object!
         const float x2ScaleFactor = 100.f;
         _modelRenderer->Render(
             ModelRenderer::Context(context, parserContext, techniqueIndex, *_sharedStateSet),
             AsFloat4x4(UniformScale(1.f/x2ScaleFactor)));
+
+        _sharedStateSet->ReleaseState(context);
 
             //  Reset those shader parameters
         SetEnvParameter(parserContext, StringAutoCotangent, 0);

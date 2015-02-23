@@ -27,6 +27,8 @@ namespace RenderCore { namespace Assets
         std::vector<ParameterBox>                       _parameterBoxes;
         std::vector<uint64>                             _techniqueInterfaceHashes;
         std::vector<std::pair<uint64, RenderStateSet>>  _renderStateSets;
+
+        Metal::DeviceContext* _capturedContext;
     };
 
     static uint64 Hash(const Metal::InputElementDesc& desc)
@@ -282,6 +284,8 @@ namespace RenderCore { namespace Assets
         const Utility::ParameterBox& globalStates,
         unsigned techniqueIndex, unsigned renderStateSetIndex) const
     {
+        assert(_pimpl->_capturedContext == context);
+
         static DefaultRenderStateSetResolver resolver;
 
         auto globalHash = globalStates.GetHash() ^ globalStates.GetParameterNamesHash();
@@ -299,8 +303,10 @@ namespace RenderCore { namespace Assets
         _currentGlobalRenderState = globalHash;
     }
 
-    void SharedStateSet::Reset()
+    void SharedStateSet::CaptureState(Metal::DeviceContext* context)
     {
+        assert(context);
+        assert(!_pimpl->_capturedContext);
         _currentShaderName = ~unsigned(0x0);
         _currentTechniqueInterface = ~unsigned(0x0);
         _currentMaterialParamBox = ~unsigned(0x0);
@@ -308,6 +314,14 @@ namespace RenderCore { namespace Assets
         _currentRenderState = ~unsigned(0x0);
         _currentGlobalRenderState = ~unsigned(0x0);
         _currentBoundUniforms = nullptr;
+        _pimpl->_capturedContext = context;
+    }
+
+    void SharedStateSet::ReleaseState(Metal::DeviceContext* context)
+    {
+        assert(context);
+        assert(_pimpl->_capturedContext==context);
+        _pimpl->_capturedContext = nullptr;
     }
 
 
@@ -323,11 +337,14 @@ namespace RenderCore { namespace Assets
         _currentGlobalRenderState = ~unsigned(0x0);
         _currentBoundUniforms = nullptr;
 
+        pimpl->_capturedContext = nullptr;
         _pimpl = std::move(pimpl);
     }
 
     SharedStateSet::~SharedStateSet()
-    {}
+    {
+        assert(!_pimpl->_capturedContext);
+    }
 
 }}
 

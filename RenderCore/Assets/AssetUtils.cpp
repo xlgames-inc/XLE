@@ -242,6 +242,7 @@ namespace RenderCore { namespace Assets
         Serialization::Serialize(serializer, _bindings);
         Serialization::Serialize(serializer, _matParams);
         Serialization::Serialize(serializer, _stateSet.GetHash());
+        Serialization::Serialize(serializer, _constants);
     }
 
     RenderStateSet::RenderStateSet()
@@ -270,6 +271,7 @@ namespace RenderCore { namespace Assets
     : _bindings(std::move(moveFrom._bindings))
     , _matParams(std::move(moveFrom._matParams))
     , _stateSet(moveFrom._stateSet)
+    , _constants(std::move(moveFrom._constants))
     {}
 
     MaterialParameters& MaterialParameters::operator=(MaterialParameters&& moveFrom)
@@ -277,6 +279,7 @@ namespace RenderCore { namespace Assets
         _bindings = std::move(moveFrom._bindings);
         _matParams = std::move(moveFrom._matParams);
         _stateSet = moveFrom._stateSet;
+        _constants = std::move(moveFrom._constants);
         return *this;
     }
 

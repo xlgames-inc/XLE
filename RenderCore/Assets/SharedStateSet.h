@@ -61,7 +61,8 @@ namespace RenderCore { namespace Assets
             const Utility::ParameterBox& globalStates,
             unsigned techniqueIndex, unsigned renderStateSetIndex) const;
 
-        void Reset();
+        void CaptureState(Metal::DeviceContext* context);
+        void ReleaseState(Metal::DeviceContext* context);
 
         SharedStateSet();
         ~SharedStateSet();

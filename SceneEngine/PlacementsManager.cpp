@@ -425,10 +425,10 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    void PlacementsRenderer::BeginRender(RenderCore::Metal::DeviceContext*)
+    void PlacementsRenderer::BeginRender(RenderCore::Metal::DeviceContext* devContext)
     {
         _cache->_preparedRenders.Reset();
-        _cache->_sharedStates.Reset();
+        _cache->_sharedStates.CaptureState(devContext);
     }
 
     void PlacementsRenderer::EndRender(
@@ -436,14 +436,21 @@ namespace SceneEngine
         LightingParserContext& parserContext, 
         unsigned techniqueIndex)
     {
-        #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
-            ModelRenderer::RenderPrepared(
-                ModelRenderer::Context(context, parserContext, techniqueIndex, _cache->_sharedStates),
-                _cache->_preparedRenders);
-        #else
-            ModelRenderer::RenderPrepared(
-                _cache->_preparedRenders, context, parserContext, techniqueIndex, _cache->_sharedStates);
-        #endif
+        TRY 
+        {
+            #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
+                ModelRenderer::RenderPrepared(
+                    ModelRenderer::Context(context, parserContext, techniqueIndex, _cache->_sharedStates),
+                    _cache->_preparedRenders);
+            #else
+                ModelRenderer::RenderPrepared(
+                    _cache->_preparedRenders, context, parserContext, techniqueIndex, _cache->_sharedStates);
+            #endif
+        }
+        CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
+        CATCH_END
+        _cache->_sharedStates.ReleaseState(context);
     }
 
     namespace Internal
@@ -586,7 +593,8 @@ namespace SceneEngine
         } 
         CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
         CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
-        CATCH (...) {} CATCH_END
+        CATCH (...) {} 
+        CATCH_END
     }
 
     namespace Internal
