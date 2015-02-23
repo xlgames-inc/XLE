@@ -31,7 +31,7 @@ struct VSInput //////////////////////////////////////////////////////
             // vertex is used only in the vertex shader when
             // "MAT_VCOLOR_IS_ANIM_PARAM" is set. So, in this case,
             // don't output to further pipeline stages.
-        #if MAT_VCOLOR_IS_ANIM_PARAM!=1
+        #if MAT_VCOLOR_IS_ANIM_PARAM!=1 || VIS_ANIM_PARAM!=0
             #if !defined(OUTPUT_COLOUR)
                 #define OUTPUT_COLOUR 1
             #endif

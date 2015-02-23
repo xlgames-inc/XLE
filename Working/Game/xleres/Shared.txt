@@ -10,6 +10,8 @@ CommonMaterial
             RES_HAS_NormalsTexture_DXT
             MAT_VCOLOR_IS_ANIM_PARAM
             MAT_DOUBLE_SIDED_LIGHTING
+        GlobalEnvironment
+            VIS_ANIM_PARAM
 Skinnable
     Parameters
         Geometry
