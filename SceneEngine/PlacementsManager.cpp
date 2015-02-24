@@ -186,7 +186,7 @@ namespace SceneEngine
             //  first, look through and find the old string.
             //  then, 
         auto i = _filenamesBuffer.begin();
-        for(;i !=_filenamesBuffer.end(); ++i) {
+        for(;i !=_filenamesBuffer.end();) {
             auto starti = i;
             if (std::distance(i, _filenamesBuffer.end()) < sizeof(uint64)) {
                 assert(0);
@@ -194,6 +194,7 @@ namespace SceneEngine
             }
             i += sizeof(uint64);
             while (i != _filenamesBuffer.end() && *i) { ++i; }
+            if (i != _filenamesBuffer.end()) { ++i; }   // one more increment to include the null character
 
             if (*(const uint64*)AsPointer(starti) == oldHash) {
 
@@ -212,7 +213,10 @@ namespace SceneEngine
                 preReplacementEnd = std::distance(_filenamesBuffer.begin(), i);
                 postReplacementEnd = replacementStart + replacementContent.size();
                 i = _filenamesBuffer.erase(starti, i);
+                auto dst = std::distance(_filenamesBuffer.begin(), i);
                 _filenamesBuffer.insert(i, replacementContent.begin(), replacementContent.end());
+                i = _filenamesBuffer.begin();
+                std::advance(i, dst + replacementContent.size());
 
                     // Now we have to adjust all of the offsets in the ObjectReferences
                 for (auto o=_objects.begin(); o!=_objects.end(); ++o) {
@@ -279,28 +283,6 @@ namespace SceneEngine
         _dependencyValidation = std::move(depValidation);
 
         #if defined(_DEBUG)
-            ReplaceString(
-                "game\\objects\\Env\\05_nature\\00_common\\common_plants_sanse01.cgf",
-                "game\\model\\nature\\sansevieria\\small.dae");
-            ReplaceString(
-                "game\\objects\\Env\\05_nature\\00_common\\\\common_plants_sanse.mtl",
-                "game\\model\\nature\\sansevieria\\small.mtl");
-
-            ReplaceString(
-                "game\\objects\\Env\\05_nature\\00_common\\digitalis_a.cgf",
-                "game\\model\\nature\\digitalis\\digitalis.dae");
-            ReplaceString(
-                "game\\objects\\Env\\05_nature\\00_common\\\\digitalis_a.mtl",
-                "game\\model\\nature\\digitalis\\digitalis.mtl");
-
-            ReplaceString(
-                "game\\objects\\Env\\05_nature\\00_common\\common_tree_middle02.cgf",
-                "game\\model\\nature\\commontree\\middle02.dae");
-            ReplaceString(
-                "game\\objects\\Env\\05_nature\\00_common\\common_tree_big.mtl",
-                "game\\model\\nature\\commontree\\middle02.mtl");
-
-
             if (!_objects.empty()) {
                 LogDetails(filename);
             }
@@ -1286,7 +1268,9 @@ namespace SceneEngine
 
         std::vector<ObjTransDef>    _originalState;
         std::vector<ObjTransDef>    _objects;
-        std::vector<PlacementGUID>  _guids;
+
+        std::vector<PlacementGUID>  _originalGuids;
+        std::vector<PlacementGUID>  _pushedGuids;
 
         void PushObj(unsigned index, const ObjTransDef& newState);
 
@@ -1296,14 +1280,15 @@ namespace SceneEngine
 
     auto    Transaction::GetObject(unsigned index) const -> const ObjTransDef& { return _objects[index]; }
     auto    Transaction::GetObjectOriginalState(unsigned index) const -> const ObjTransDef& { return _originalState[index]; }
-    PlacementGUID   Transaction::GetGuid(unsigned index) const { return _guids[index]; }
-    PlacementGUID   Transaction::GetOriginalGuid(unsigned index) const { return _guids[index]; }
+    PlacementGUID   Transaction::GetGuid(unsigned index) const { return _pushedGuids[index]; }
+    PlacementGUID   Transaction::GetOriginalGuid(unsigned index) const { return _originalGuids[index]; }
 
     unsigned    Transaction::GetObjectCount() const
     {
-        assert(_guids.size() == _originalState.size());
-        assert(_guids.size() == _objects.size());
-        return _guids.size();
+        assert(_originalGuids.size() == _originalState.size());
+        assert(_originalGuids.size() == _objects.size());
+        assert(_originalGuids.size() == _pushedGuids.size());
+        return _originalGuids.size();
     }
 
     std::pair<Float3, Float3>   Transaction::GetLocalBoundingBox(unsigned index) const
@@ -1327,6 +1312,21 @@ namespace SceneEngine
     {
         if (lhs.first == rhs.first) { return lhs.second < rhs.second; }
         return lhs.first < rhs.first;
+    }
+
+    static uint32 EverySecondBit(uint64 input)
+    {
+        uint32 result = 0;
+        for (unsigned c=0; c<32; ++c) {
+            result |= uint32((input >> (uint64(c)*2ull)) & 0x1ull)<<c;
+        }
+        return result;
+    }
+
+    static uint64 ObjectIdTopPart(const std::string& model, const std::string& material)
+    {
+        auto modelAndMaterialHash = Hash64(model, Hash64(material));
+        return uint64(EverySecondBit(modelAndMaterialHash)) << 32ull;
     }
 
     bool    Transaction::Create(const ObjTransDef& newState)
@@ -1376,12 +1376,10 @@ namespace SceneEngine
                     //  Note that it's possible that the bottom 32 bits could collide with an
                     //  existing object. It's unlikely, but possible. So let's make sure we
                     //  have a unique GUID before we add it.
-                auto modelAndMaterialHash = Hash64(materialFilename, Hash64(newState._model));
-                unsigned idTopPart = unsigned((modelAndMaterialHash >> 32ull) ^ modelAndMaterialHash);
-                uint64 id;
+                uint64 id, idTopPart = ObjectIdTopPart(newState._model, materialFilename);
                 for (;;) {
                     auto id32 = BuildGuid32();
-                    id = (uint64(idTopPart) << 32ull) | uint64(id32);
+                    id = idTopPart | uint64(id32);
                     if (!dynPlacements->HasObject(id)) { break; }
                 }
 
@@ -1404,12 +1402,13 @@ namespace SceneEngine
         originalState._localToWorld = Identity<Float3x4>();
         originalState._transaction = ObjTransDef::Error;
 
-        auto insertLoc = std::lower_bound(_guids.begin(), _guids.end(), guid, CompareGUID);
-        auto insertIndex = std::distance(_guids.begin(), insertLoc);
+        auto insertLoc = std::lower_bound(_originalGuids.begin(), _originalGuids.end(), guid, CompareGUID);
+        auto insertIndex = std::distance(_originalGuids.begin(), insertLoc);
 
         _originalState.insert(_originalState.begin() + insertIndex, originalState);
         _objects.insert(_objects.begin() + insertIndex, newObj);
-        _guids.insert(_guids.begin() + insertIndex, guid);
+        _originalGuids.insert(_originalGuids.begin() + insertIndex, guid);
+        _pushedGuids.insert(_pushedGuids.begin() + insertIndex, guid);
 
         return true;
     }
@@ -1425,7 +1424,7 @@ namespace SceneEngine
             // update the DynPlacements object with the changes to the object at index "index"
         std::vector<ObjTransDef> originalState;
         
-        auto guid = _guids[index];
+        auto& guid = _pushedGuids[index];
 
         auto cellToWorld = _editorPimpl->GetCellToWorld(guid.first);
         auto& dynPlacements = *_editorPimpl->GetDynPlacements(guid.first);
@@ -1451,20 +1450,41 @@ namespace SceneEngine
 
             // todo --  handle the case where an object should move to another cell!
             //          this should actually change the first part of the GUID
+            //          Also, if the type of the object changes, it should change the guid... Which
+            //          means that it should change location in the list of objects. In this case
+            //          we should erase the old object and create a new one
 
-        if (dst != objects.end() && dst->_guid == guid.second) {
-                // we found the referenced object already existing (we get "error" state when reverting a creation operation)
-            if (newState._transaction == ObjTransDef::Deleted || newState._transaction == ObjTransDef::Error) {
-                objects.erase(dst);
-            } else {
+        bool isDeleteOp = newState._transaction == ObjTransDef::Deleted || newState._transaction == ObjTransDef::Error;
+        bool destroyExisting = isDeleteOp;
+        bool hasExisting = dst != objects.end() && dst->_guid == guid.second;
+
+            // awkward case where the object id has changed... This can happen
+            // if the object model or material was changed
+        auto newIdTopPart = ObjectIdTopPart(newState._model, materialFilename);
+        bool objectIdChanged = newIdTopPart != (guid.second & 0xffffffff00000000ull);
+        if (objectIdChanged) {
+            for (;;) {
+                auto id32 = BuildGuid32();
+                guid.second = newIdTopPart | uint64(id32);
+                if (!dynPlacements.HasObject(guid.second)) { break; }
+            }
+
+                // destroy & re-create
+            destroyExisting = true;
+        }
+
+        if (destroyExisting && hasExisting) {
+            objects.erase(dst);
+            hasExisting = false;
+        } 
+        
+        if (!isDeleteOp) {
+            if (hasExisting) {
                 dst->_localToCell = localToCell;
                 dst->_modelFilenameOffset = dynPlacements.AddString(newState._model.c_str());
                 dst->_materialFilenameOffset = dynPlacements.AddString(materialFilename.c_str());
                 dst->_cellSpaceBoundary = cellSpaceBoundary;
-            }
-        } else {
-                // the referenced object wasn't there. We may have to create it
-            if (newState._transaction == ObjTransDef::Created || newState._transaction == ObjTransDef::Unchanged) {
+            } else {
                 dynPlacements.AddPlacement(
                     localToCell, cellSpaceBoundary, 
                     newState._model.c_str(), materialFilename.c_str(), 
@@ -1550,7 +1570,8 @@ namespace SceneEngine
 
         _objects = originalState;
         _originalState = std::move(originalState);
-        _guids = std::move(guids);
+        _originalGuids = guids;
+        _pushedGuids = std::move(guids);
         _editorPimpl = editorPimpl;
         _state = Active;
     }

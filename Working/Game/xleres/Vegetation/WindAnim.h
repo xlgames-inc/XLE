@@ -64,7 +64,7 @@ float3 PerformWindBending(
         vWaves = CubicSCurve4(TriangleWave4(vWaves));
         float2 vWavesSum = vWaves.xz + baseAmpRatio * vWaves.yw;
 
-        const float baseStrength = .2f;
+        const float baseStrength = .1f;
             // Attenuate detail movement near z=0 in object local space
             // This should clamp the vertices on the bottom of the object
             // into place, so they don't slide about the terrain.

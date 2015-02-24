@@ -8,6 +8,7 @@
 #include "../CommonResources.h"
 #include "../Surface.h"
 #include "../Colour.h"
+#include "../BasicMaterial.h"
 
 Texture2D<float> OpacityTexture;
 Texture2D<float> CustomTexture;
@@ -17,15 +18,6 @@ cbuffer BasicLightingEnvironment
 	float3 SunLightNegativeDirection;
 	float3 SunLightColor;
 	float3 Ambient;
-}
-
-cbuffer MaterialConstants
-{
-	float4 MaterialDiffuse;
-	float4 MaterialSpecular;
-	float DetailTextureStrength;
-	float SpecMultiplier;
-	float SpecBumpScale;
 }
 
 cbuffer ObjectAmbientBuffer : register(b7)
@@ -74,7 +66,7 @@ float4 main(VSOutput geo) : SV_Target0
 		float lambert = saturate(dot(normal, SunLightNegativeDirection));
 		float3 diffuseLightingColor = SunLightColor * lambert;
 		float3 diffuseAndAmbient = (diffuseLightingColor + PerObjectAmbient);
-		
+
 		float3 finalColor = (diffuseLightingColor * PerObjectAmbient.a) + PerObjectAmbient;
 		finalColor *= baseColor.rgb;
 		// finalColor *= baseColor.a;
@@ -82,7 +74,7 @@ float4 main(VSOutput geo) : SV_Target0
 		#if RES_HAS_CUSTOM_MAP==1
 			float3 vView	= normalize(-geo.worldViewVector);
 			float fNdotE	= dot(vView.xyz, normal.xyz);
-			float3 vReflVec = (2.f * fNdotE * normal.xyz) - vView.xyz;   
+			float3 vReflVec = (2.f * fNdotE * normal.xyz) - vView.xyz;
 			float3 specular = CustomTexture.Sample(DefaultSampler, SpecBumpScale * vReflVec.xy);
 			finalColor.rgb += specular * SpecMultiplier * MaterialSpecular * diffuseAndAmbient;
 		#endif
@@ -117,4 +109,3 @@ float4 invalid(VSOutput geo) : SV_Target0
 	uint flag = (uint(geo.position.x/4.f) + uint(geo.position.y/4.f))&1;
 	return float4(flag?color0:color1, 1.f);
 }
-
