@@ -31,8 +31,8 @@ VSShadowOutput main(VSInput input)
 
 		// note that when rendering shadows, we actually only need the normal
 		// for doing the vertex wind animation
-	float3 worldNormal = mul(GetLocalToWorldUniformScale(), GetLocalNormal(input));
-	#if GEO_HAS_TANGENT_FRAME==1
+	float3 worldNormal = LocalToWorldUnitVector(GetLocalNormal(input));
+	#if (GEO_HAS_NORMAL==0) && (GEO_HAS_TANGENT_FRAME==1)
 		worldNormal =  BuildWorldSpaceTangentFrame(input).normal;
 	#endif
 

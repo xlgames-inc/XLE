@@ -108,6 +108,7 @@ struct VSInput //////////////////////////////////////////////////////
 
 #if (GEO_HAS_NORMAL==1 || GEO_HAS_TANGENT_FRAME==1) && (AUTO_COTANGENT==1)
     #undef OUTPUT_TANGENT_FRAME
+    #undef OUTPUT_LOCAL_TANGENT_FRAME
 
         // Can do this in either local or world space -- set OUTPUT_LOCAL_NORMAL & OUTPUT_LOCAL_VIEW_VECTOR for normal space
     #define OUTPUT_NORMAL 1
@@ -118,7 +119,7 @@ struct VSInput //////////////////////////////////////////////////////
     #define OUTPUT_WORLD_VIEW_VECTOR 1       // (need world view vector for the fresnel calculation)
 #endif
 
-#if MAT_DOUBLE_SIDED
+#if MAT_DOUBLE_SIDED_LIGHTING
     #define OUTPUT_WORLD_VIEW_VECTOR 1
 #endif
 

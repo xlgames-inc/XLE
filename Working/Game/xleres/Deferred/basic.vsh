@@ -34,9 +34,8 @@ VSOutput main(VSInput input)
 		output.texCoord 	= GetTexCoord(input);
 	#endif
 
-	float3 worldNormal = mul(GetLocalToWorldUniformScale(), GetLocalNormal(input));
+	float3 worldNormal = LocalToWorldUnitVector(GetLocalNormal(input));
 	#if GEO_HAS_TANGENT_FRAME==1
-
 		TangentFrameStruct worldSpaceTangentFrame = BuildWorldSpaceTangentFrame(input);
 
 		#if OUTPUT_TANGENT_FRAME==1
@@ -44,16 +43,13 @@ VSOutput main(VSInput input)
 			output.bitangent = worldSpaceTangentFrame.bitangent;
 		#endif
 
-		#if (OUTPUT_TANGENT_FRAME==1) || (OUTPUT_NORMAL==1)
-			output.normal = worldSpaceTangentFrame.normal;
+		#if GEO_HAS_NORMAL==0
+			worldNormal = worldSpaceTangentFrame.normal;
 		#endif
+	#endif
 
-		worldNormal = worldSpaceTangentFrame.normal;
-
-	#elif (OUTPUT_NORMAL==1)
-
+	#if (OUTPUT_NORMAL==1)
 		output.normal = worldNormal;
-
 	#endif
 
 	worldPosition = PerformWindBending(worldPosition, worldNormal, objectCentreWorld, float3(1,0,0), GetColour(input));

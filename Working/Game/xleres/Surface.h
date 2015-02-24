@@ -120,6 +120,20 @@ float3 GetLocalPosition(VSInput input)
     }
 #endif
 
+float3 NormalFromTangents(float3 tangent, float3 bitangent)
+{
+		// Note -- the order of this cross product
+		// 		depends on whether we have a right handed or
+		//		left handed tangent frame. That should depend
+		//		on how the tangent frame is generated, and
+		//		whether there is a flip on any transforms applied.
+	float3 normal = cross(bitangent, tangent);
+	#if LOCAL_TO_WORLD_HAS_FLIP==1
+		normal = -normal;
+	#endif
+	return normal;
+}
+
 #if (OUTPUT_LOCAL_TANGENT_FRAME==1)
     TangentFrameStruct BuildLocalTangentFrameFromGeo(VSOutput geo)
     {
@@ -135,7 +149,7 @@ float3 GetLocalPosition(VSInput input)
                 //          (but it would also result in other subtle artefacts in
                 //          the normal map. Let's try to cheat and avoid the normalize,
                 //          (and just assume it's close to unit length)
-            result.normal   = cross(result.tangent, result.bitangent) * geo.localTangent.w;
+            result.normal   = NormalFromTangents(result.tangent, result.bitangent) * geo.localTangent.w;
         #endif
         return result;
     }
@@ -173,7 +187,7 @@ float3 GetLocalNormal(VSInput input)
             //  vertex buffer, let's assume it's ok
         float4 localTangent = GetLocalTangent(input);
         float3 localBitangent = GetLocalBitangent(input);
-        return cross(localTangent.xyz, localBitangent.xyz) * localTangent.w;
+        return NormalFromTangents(localTangent.xyz, localBitangent.xyz) * localTangent.w;
     #else
         return float3(0,0,1);
     #endif
@@ -201,10 +215,7 @@ float3 LocalToWorldUnitVector(float3 localSpaceVector)
             //  what's expected.
             //  (worldNormal shouldn't need to be normalized, so long as worldTangent
             //  and worldNormal are perpendicular to each other)
-		float3 worldNormal		= cross(worldTangent, worldBitangent) * localTangent.w;
-        #if LOCAL_TO_WORLD_HAS_FLIP==1
-            worldNormal             = -worldNormal;
-        #endif
+		float3 worldNormal		= NormalFromTangents(worldTangent, worldBitangent) * localTangent.w;
         return BuildTangentFrame(worldTangent, worldBitangent, worldNormal);
     }
 #endif

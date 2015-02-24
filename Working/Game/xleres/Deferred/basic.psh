@@ -188,7 +188,7 @@ GBufferEncoded main(VSOutput geo)
 	{
 		result.worldSpaceNormal = GetNormal(geo);
 
-		#if (MAT_DOUBLE_SIDED==1) && (OUTPUT_WORLD_VIEW_VECTOR==1)
+		#if (MAT_DOUBLE_SIDED_LIGHTING==1) && (OUTPUT_WORLD_VIEW_VECTOR==1)
 			if (dot(result.worldSpaceNormal, geo.worldViewVector) < 0.f) {
 				result.worldSpaceNormal *= -1.f;
 			}

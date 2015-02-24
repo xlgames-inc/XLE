@@ -401,7 +401,8 @@ namespace RenderCore { namespace Assets
             const RawGeometry& geo,
             ModelConstruction::BuffersUnderConstruction& workingBuffers,
             SharedStateSet& sharedStateSet,
-            const uint64 textureBindPoints[], unsigned textureBindPointsCnt) -> Mesh;
+            const uint64 textureBindPoints[], unsigned textureBindPointsCnt,
+            bool normalFromSkinning = false) -> Mesh;
 
         static auto BuildMesh(
             const ModelCommandStream::GeoCall& geoInst,

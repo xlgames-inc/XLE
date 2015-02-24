@@ -155,14 +155,15 @@ namespace RenderCore { namespace Assets
                 [=](const VertexElement& ele) { return !XlCompareString(ele._semantic, name); }) != end;
         }
 
-        static unsigned BuildGeoParamBox(const GeoInputAssembly& ia, SharedStateSet& sharedStateSet)
+        static unsigned BuildGeoParamBox(const GeoInputAssembly& ia, SharedStateSet& sharedStateSet, bool normalFromSkinning)
         {
                 //  Build a parameter box for this geometry configuration. The input assembly
                 //  
             ParameterBox geoParameters;
             if (HasElement(ia, "TEXCOORD")) { geoParameters.SetParameter("GEO_HAS_TEXCOORD", 1); }
-            if (HasElement(ia, "NORMAL"))   { geoParameters.SetParameter("GEO_HAS_NORMAL", 1); }
             if (HasElement(ia, "COLOR"))    { geoParameters.SetParameter("GEO_HAS_COLOUR", 1); }
+            if (HasElement(ia, "NORMAL") || normalFromSkinning) 
+                { geoParameters.SetParameter("GEO_HAS_NORMAL", 1); }
             if (HasElement(ia, "TANGENT") && HasElement(ia, "BITANGENT"))
                 { geoParameters.SetParameter("GEO_HAS_TANGENT_FRAME", 1); }
             if (HasElement(ia, "BONEINDICES") && HasElement(ia, "BONEWEIGHTS"))
@@ -706,13 +707,14 @@ namespace RenderCore { namespace Assets
         const RawGeometry& geo,
         ModelConstruction::BuffersUnderConstruction& workingBuffers,
         SharedStateSet& sharedStateSet,
-        const uint64 textureBindPoints[], unsigned textureBindPointsCnt) -> Mesh
+        const uint64 textureBindPoints[], unsigned textureBindPointsCnt,
+        bool normalFromSkinning) -> Mesh
     {
         Mesh result;
         result._id = geoInst._geoId;
         result._indexFormat = geo._ib._format;
         result._vertexStride = geo._vb._ia._vertexStride;
-        result._geoParamBox = ModelConstruction::BuildGeoParamBox(geo._vb._ia, sharedStateSet);
+        result._geoParamBox = ModelConstruction::BuildGeoParamBox(geo._vb._ia, sharedStateSet, normalFromSkinning);
 
             // (source file locators)
         result._sourceFileIBOffset = geo._ib._offset;
@@ -744,10 +746,13 @@ namespace RenderCore { namespace Assets
             // Build the mesh, starting with the same basic behaviour as 
             //  unskinned meshes.
             //  (there a sort-of "slice" here... It's a bit of a hack)
+
+        bool skinnedNormal = ModelConstruction::HasElement(geo._animatedVertexElements._ia, "NORMAL");
         Pimpl::SkinnedMesh result;
         (Pimpl::Mesh&)result = BuildMesh(
             geoInst, (const RawGeometry&)geo, workingBuffers, sharedStateSet,
-            textureBindPoints, textureBindPointsCnt);
+            textureBindPoints, textureBindPointsCnt,
+            skinnedNormal);
 
         auto animGeo = Pimpl::SkinnedMesh::VertexStreams::AnimatedGeo;
         auto skelBind = Pimpl::SkinnedMesh::VertexStreams::SkeletonBinding;

@@ -239,15 +239,6 @@ namespace Sample
     BasicSceneParser::Model::~Model()
     {}
 
-    static const std::string StringAutoCotangent("AUTO_COTANGENT");
-
-    static void SetEnvParameter(
-        SceneEngine::LightingParserContext& context, const std::string& parameter, 
-        uint32 newValue)
-    {
-        context.GetTechniqueContext()._globalEnvironmentState.SetParameter(parameter, newValue);
-    }
-
     void BasicSceneParser::Model::RenderOpaque(
         RenderCore::Metal::DeviceContext* context, 
         LightingParserContext& parserContext, 
@@ -336,15 +327,6 @@ namespace Sample
                 &searchRules, levelOfDetail);
         }
 
-            //  In this example, we're going to set some shader parameters:
-            //      AUTO_COTANGENT --   this calculates the tangents in the pixel shader
-            //                          it's needed at the moment, because tangents aren't
-            //                          properly handled by ModelRenderer
-            //      SKIP_MATERIAL_DIFFUSE -- this disables material diffuse parameters
-            //                          (which, again, aren't properly handled by ModelRenderer)
-            //      It's still a work-in-progress! This will be done better later.
-        SetEnvParameter(parserContext, StringAutoCotangent, 1);
-
             //  Before using SharedStateSet for the first time, we need to capture the device 
             //  context state. If we were rendering multiple models with the same shared state, we would 
             //  capture once and render multiple times with the same capture.
@@ -357,9 +339,6 @@ namespace Sample
             AsFloat4x4(UniformScale(1.f/x2ScaleFactor)));
 
         _sharedStateSet->ReleaseState(context);
-
-            //  Reset those shader parameters
-        SetEnvParameter(parserContext, StringAutoCotangent, 0);
     }
 
 }

@@ -30,31 +30,31 @@ VSOutput main(VSInput input)
 	#endif
 
 	output.position			= mul(WorldToClip, float4(worldPosition,1));
-	
+
 	#if OUTPUT_COLOUR==1
 		output.colour = GetColour(input);
 	#endif
-	
+
 	#if OUTPUT_TEXCOORD==1
 		output.texCoord = GetTexCoord(input);
 	#endif
 
+	float3 worldNormal = LocalToWorldUnitVector(GetLocalNormal(input));
 	#if GEO_HAS_TANGENT_FRAME==1
 		TangentFrameStruct worldSpaceTangentFrame = BuildWorldSpaceTangentFrame(input);
-		
+
 		#if OUTPUT_TANGENT_FRAME==1
-			output.tangent 		= worldSpaceTangentFrame.tangent;
-			output.bitangent 	= worldSpaceTangentFrame.bitangent;
-		#endif
-		
-		#if (OUTPUT_TANGENT_FRAME==1) || (OUTPUT_NORMAL==1)
-			output.normal 		= worldSpaceTangentFrame.normal;
+			output.tangent = worldSpaceTangentFrame.tangent;
+			output.bitangent = worldSpaceTangentFrame.bitangent;
 		#endif
 
-	#elif (OUTPUT_NORMAL==1)  
+		#if GEO_HAS_NORMAL==0
+			worldNormal = worldSpaceTangentFrame.normal;
+		#endif
+	#endif
 
-		output.normal = mul(GetLocalToWorldUniformScale(), GetLocalNormal(input));
-
+	#if (OUTPUT_NORMAL==1)
+		output.normal = worldNormal;
 	#endif
 
 	#if OUTPUT_LOCAL_TANGENT_FRAME==1
@@ -65,7 +65,7 @@ VSOutput main(VSInput input)
 	#if (OUTPUT_LOCAL_NORMAL==1)
 		output.localNormal = GetLocalNormal(input);
 	#endif
-	
+
 	#if OUTPUT_LOCAL_VIEW_VECTOR==1
 		output.localViewVector = LocalSpaceView.xyz - localPosition.xyz;
 	#endif
@@ -86,6 +86,6 @@ VSOutput main(VSInput input)
 	#if (OUTPUT_PER_VERTEX_AO==1) && (GEO_HAS_INSTANCE_ID==1)
 		output.ambientOcclusion = InstanceOffsets[input.instanceId].w;
 	#endif
-	
+
 	return output;
 }

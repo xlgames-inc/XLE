@@ -41,7 +41,11 @@ float3 PerformWindBending(
         // This is counter productive for grass objects. So it may be helpful to
         // have a shader define to enable/disable this!
 
-        float detailPhase = dot(posWorld.xyz, 20.0.xxx);
+            // (if the phase scalar for z is too large, we start to get wierd
+            // bending of upright grass type objects. But x and y seems to cause
+            // fewer problems. So let's try to reduce the impact that 'z' has on
+            // the bending phase)
+        float detailPhase = dot(posWorld.xyz, float3(2, 2, 0.4));
         float branchPhase = detailPhase;
 
         float speed = 0.125f;

@@ -81,7 +81,6 @@ namespace Sample
 //////////////////////////////////////////////////////////////////////////////////////////////
 
     static const std::string StringAutoCotangent("AUTO_COTANGENT");
-    static const std::string StringSkipMaterialDiffuse("SKIP_MATERIAL_DIFFUSE");
 
     void CharactersScene::Render(
         RenderCore::Metal::DeviceContext* context,
@@ -99,7 +98,6 @@ namespace Sample
             //  transforms (and avoids having to store those tangents in the prepared animation buffer)
         auto& techEnv = parserContext.GetTechniqueContext()._globalEnvironmentState;
         techEnv.SetParameter(StringAutoCotangent, 1);
-        techEnv.SetParameter(StringSkipMaterialDiffuse, 1);
 
         // auto globalStateBuffer = RenderCore::Assets::SetupGlobalState(context, _camera);
         // ConstantBuffer globalConstantBuffer(AsPointer(globalStateBuffer->begin()), globalStateBuffer->size());
@@ -200,7 +198,6 @@ namespace Sample
 
         _pimpl->_charactersSharedStateSet.ReleaseState(context);
 
-        techEnv.SetParameter(StringSkipMaterialDiffuse, 0);
         techEnv.SetParameter(StringAutoCotangent, 0);
     }
 
