@@ -592,7 +592,7 @@ namespace RenderCore { namespace Assets
         static Utility::ParameterBox tempGlobalStatesBox;
 
         const auto& res = _drawCallRes[drawCallIndex];
-        sharedStateSet.BeginRenderState(context._context, tempGlobalStatesBox, techniqueInterface, res._renderStateSet);
+        sharedStateSet.BeginRenderState(context._context, tempGlobalStatesBox, context._techniqueIndex, res._renderStateSet);
         return sharedStateSet.BeginVariation(
             context._context, context._parserContext->GetTechniqueContext(), context._techniqueIndex,
             res._shaderName, techniqueInterface, res._geoParamBox, res._materialParamBox);
@@ -1049,10 +1049,10 @@ namespace RenderCore { namespace Assets
                 currentTextureSet = ~unsigned(0x0);
             }
 
+            if (!boundUniforms) continue;
+
             static Utility::ParameterBox tempGlobalStatesBox;
             context._sharedStateSet->BeginRenderState(context._context, tempGlobalStatesBox, context._techniqueIndex, drawCallRes._renderStateSet);
-
-            if (!boundUniforms) continue;
 
                 // We have to do this transform update very frequently! isn't there a better way?
             {
