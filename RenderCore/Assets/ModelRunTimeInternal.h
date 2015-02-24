@@ -270,7 +270,7 @@ namespace RenderCore { namespace Assets
 ////////////////////////////////////////////////////////////////////////////////////////////
     //      r e n d e r e r         //
 
-    namespace ModelConstruction { class BuffersUnderConstruction; }
+    namespace ModelConstruction { class BuffersUnderConstruction; class ParamBoxDescriptions; }
 
     class ModelRenderer::Pimpl
     {
@@ -355,8 +355,15 @@ namespace RenderCore { namespace Assets
         std::vector<MeshAndDrawCall>    _drawCalls;
         std::vector<MeshAndDrawCall>    _skinnedDrawCalls;
 
-        ModelScaffold*      _scaffold;
-        unsigned            _levelOfDetail;
+        ModelScaffold*  _scaffold;
+        unsigned        _levelOfDetail;
+
+        ///////////////////////////////////////////////////////////////////////////////
+        #if defined(_DEBUG)
+            unsigned _vbSize, _ibSize;
+            std::vector<std::string> _boundTextureNames;
+            std::vector<std::pair<unsigned,std::string>> _paramBoxDesc;
+        #endif
 
         ///////////////////////////////////////////////////////////////////////////////
         Pimpl() : _scaffold(nullptr), _levelOfDetail(~unsigned(0x0)) {}
@@ -402,6 +409,7 @@ namespace RenderCore { namespace Assets
             ModelConstruction::BuffersUnderConstruction& workingBuffers,
             SharedStateSet& sharedStateSet,
             const uint64 textureBindPoints[], unsigned textureBindPointsCnt,
+            ModelConstruction::ParamBoxDescriptions& paramBoxDesc,
             bool normalFromSkinning = false) -> Mesh;
 
         static auto BuildMesh(
@@ -409,7 +417,8 @@ namespace RenderCore { namespace Assets
             const BoundSkinnedGeometry& geo,
             ModelConstruction::BuffersUnderConstruction& workingBuffers,
             SharedStateSet& sharedStateSet,
-            const uint64 textureBindPoints[], unsigned textureBindPointsCnt) -> SkinnedMesh;
+            const uint64 textureBindPoints[], unsigned textureBindPointsCnt,
+            ModelConstruction::ParamBoxDescriptions& paramBoxDesc) -> SkinnedMesh;
 
         static auto BuildAnimBinding(
             const ModelCommandStream::GeoCall& geoInst,

@@ -48,7 +48,7 @@ namespace Utility
 
         bool        ParameterNamesAreEqual(const ParameterBox& other) const;
 
-        void Serialize(Serialization::NascentBlockSerializer& serializer) const;
+        void        Serialize(Serialization::NascentBlockSerializer& serializer) const;
 
         ParameterBox();
         ParameterBox(ParameterBox&& moveFrom);

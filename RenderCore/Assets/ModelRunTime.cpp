@@ -37,6 +37,7 @@
 #include "../../Utility/StringFormat.h"
 
 #include <string>
+#include <iomanip>
 
 #pragma warning(disable:4189)
 
@@ -155,10 +156,44 @@ namespace RenderCore { namespace Assets
                 [=](const VertexElement& ele) { return !XlCompareString(ele._semantic, name); }) != end;
         }
 
-        static unsigned BuildGeoParamBox(const GeoInputAssembly& ia, SharedStateSet& sharedStateSet, bool normalFromSkinning)
+        #if defined(_DEBUG)
+            static std::string MakeDescription(const ParameterBox& paramBox)
+            {
+                std::vector<std::pair<std::string, std::string>> defines;
+                paramBox.BuildStringTable(defines);
+                std::stringstream dst;
+                for (auto i=defines.cbegin(); i!=defines.cend(); ++i) {
+                    if (i != defines.cbegin()) { dst << "; "; }
+                    dst << i->first << " = " << i->second;
+                }
+                return dst.str();
+            }
+            
+            class ParamBoxDescriptions
+            {
+            public:
+                void Add(unsigned index, const ParameterBox& box)
+                {
+                    auto existing = LowerBound(_descriptions, index);
+                    if (existing == _descriptions.end() || existing->first != index) {
+                        _descriptions.insert(existing, std::make_pair(index, MakeDescription(box)));
+                    }
+                }
+                std::vector<std::pair<unsigned,std::string>> _descriptions;
+            };
+        #else
+            class ParamBoxDescriptions
+            {
+            public:
+                void Add(unsigned index, const ParameterBox& box) {}
+            };
+        #endif
+
+        static unsigned BuildGeoParamBox(
+            const GeoInputAssembly& ia, SharedStateSet& sharedStateSet, 
+            ModelConstruction::ParamBoxDescriptions& paramBoxDesc, bool normalFromSkinning)
         {
                 //  Build a parameter box for this geometry configuration. The input assembly
-                //  
             ParameterBox geoParameters;
             if (HasElement(ia, "TEXCOORD")) { geoParameters.SetParameter("GEO_HAS_TEXCOORD", 1); }
             if (HasElement(ia, "COLOR"))    { geoParameters.SetParameter("GEO_HAS_COLOUR", 1); }
@@ -168,16 +203,19 @@ namespace RenderCore { namespace Assets
                 { geoParameters.SetParameter("GEO_HAS_TANGENT_FRAME", 1); }
             if (HasElement(ia, "BONEINDICES") && HasElement(ia, "BONEWEIGHTS"))
                 { geoParameters.SetParameter("GEO_HAS_SKIN_WEIGHTS", 1); }
-            return sharedStateSet.InsertParameterBox(geoParameters);
+            auto result = sharedStateSet.InsertParameterBox(geoParameters);
+            paramBoxDesc.Add(result, geoParameters);
+            return result;
         }
 
         static const auto DefaultNormalsTextureBindingHash = Hash64("NormalsTexture");
         static const auto DefaultParametersTextureBindingHash = Hash64("ParametersTexture");
 
-        std::vector<std::pair<unsigned, SubMatResources>> BuildMaterialResources(
+        static std::vector<std::pair<unsigned, SubMatResources>> BuildMaterialResources(
             ModelScaffold& scaffold, SharedStateSet& sharedStateSet, unsigned levelOfDetail,
             std::vector<uint64>& textureBindPoints,
-            std::vector<std::vector<uint8>>& prescientMaterialConstantBuffers)
+            std::vector<std::vector<uint8>>& prescientMaterialConstantBuffers,
+            ParamBoxDescriptions& paramBoxDesc)
         {
             std::vector<std::pair<unsigned, SubMatResources>> materialResources;
 
@@ -250,10 +288,10 @@ namespace RenderCore { namespace Assets
                     materialParamBox.SetParameter("RES_HAS_NormalsTexture_DXT", IsDXTNormalMap(boundNormalMapName));
                 }
 
-                materialParamBox.SetParameter("MAT_ALPHA_TEST", 1);
-
                 i->second._matParams = sharedStateSet.InsertParameterBox(materialParamBox);
                 i->second._renderStateSet = sharedStateSet.InsertRenderStateSet(stateSet);
+
+                paramBoxDesc.Add(i->second._matParams, materialParamBox);
             }
 
             return materialResources;
@@ -321,9 +359,11 @@ namespace RenderCore { namespace Assets
             //  (at the given level of detail)
         std::vector<uint64> textureBindPoints;
         std::vector<std::vector<uint8>> prescientMaterialConstantBuffers;
+        ModelConstruction::ParamBoxDescriptions paramBoxDesc;
         auto materialResources = BuildMaterialResources(
             scaffold, sharedStateSet, levelOfDetail,
-            textureBindPoints, prescientMaterialConstantBuffers);
+            textureBindPoints, prescientMaterialConstantBuffers,
+            paramBoxDesc);
 
             // one "textureset" for each sub material (though, in theory, we could 
             // combine texture sets for materials that share the same textures
@@ -376,8 +416,10 @@ namespace RenderCore { namespace Assets
             auto mesh = FindIf(meshes, [=](const Pimpl::Mesh& mesh) { return mesh._id == geoInst._geoId; });
             if (mesh == meshes.end()) {
                 meshes.push_back(
-                    Pimpl::BuildMesh(geoInst, geo, workingBuffers, sharedStateSet,
-                        AsPointer(textureBindPoints.cbegin()), textureBindPoints.size()));
+                    Pimpl::BuildMesh(
+                        geoInst, geo, workingBuffers, sharedStateSet,
+                        AsPointer(textureBindPoints.cbegin()), textureBindPoints.size(),
+                        paramBoxDesc));
                 mesh = meshes.end()-1;
             }
 
@@ -429,7 +471,8 @@ namespace RenderCore { namespace Assets
             if (mesh == skinnedMeshes.end()) {
                 skinnedMeshes.push_back(
                     Pimpl::BuildMesh(geoInst, geo, workingBuffers, sharedStateSet, 
-                        AsPointer(textureBindPoints.cbegin()), textureBindPoints.size()));
+                        AsPointer(textureBindPoints.cbegin()), textureBindPoints.size(),
+                        paramBoxDesc));
                 skinnedBindings.push_back(
                     Pimpl::BuildAnimBinding(
                         geoInst, geo, sharedStateSet, 
@@ -494,6 +537,10 @@ namespace RenderCore { namespace Assets
         auto texturesPerMaterial = textureBindPoints.size();
         std::vector<Metal::DeferredShaderResource*> boundTextures;
         boundTextures.resize(textureSetCount * texturesPerMaterial, nullptr);
+        #if defined(_DEBUG)
+            std::vector<std::string> boundTextureNames;
+            boundTextureNames.resize(textureSetCount * texturesPerMaterial);
+        #endif
 
         for (auto i=materialResources.begin(); i!=materialResources.end(); ++i) {
             unsigned subMatIndex = i->first;
@@ -516,14 +563,15 @@ namespace RenderCore { namespace Assets
                         //          name, something that can be matched against other (already loaded) resources.
                         //          So we need something different here... Something that can resolve a filename
                         //          in the background, and then return a shareable resource afterwards
+                    auto dsti = textureSetIndex*texturesPerMaterial + index;
                     if (searchRules) {
                         ResChar resolvedPath[MaxPath];
                         searchRules->ResolveFile(resolvedPath, dimof(resolvedPath), t->_resourceName.c_str());
-                        boundTextures[textureSetIndex*texturesPerMaterial + index] = 
-                            &::Assets::GetAsset<Metal::DeferredShaderResource>(resolvedPath);
+                        boundTextures[dsti] = &::Assets::GetAsset<Metal::DeferredShaderResource>(resolvedPath);
+                        DEBUG_ONLY(boundTextureNames[dsti] = resolvedPath);
                     } else {
-                        boundTextures[textureSetIndex*texturesPerMaterial + index] = 
-                            &::Assets::GetAsset<Metal::DeferredShaderResource>(t->_resourceName.c_str());
+                        boundTextures[dsti] = &::Assets::GetAsset<Metal::DeferredShaderResource>(t->_resourceName.c_str());
+                        DEBUG_ONLY(boundTextureNames[dsti] = t->_resourceName);
                     }
                 } CATCH (const ::Assets::Exceptions::InvalidResource&) {
                     LogWarning << "Warning -- shader resource (" << t->_resourceName << ") couldn't be found";
@@ -563,11 +611,22 @@ namespace RenderCore { namespace Assets
 
         pimpl->_scaffold = &scaffold;
         pimpl->_levelOfDetail = levelOfDetail;
+        
+        #if defined(_DEBUG)
+            pimpl->_vbSize = nascentVB.size();
+            pimpl->_ibSize = nascentIB.size();
+            pimpl->_boundTextureNames = std::move(boundTextureNames);
+            pimpl->_paramBoxDesc = std::move(paramBoxDesc._descriptions);
+        #endif
         _pimpl = std::move(pimpl);
+
+        DEBUG_ONLY(LogReport());
     }
 
     ModelRenderer::~ModelRenderer()
     {}
+
+    
 
     class ModelRenderingBox
     {
@@ -708,13 +767,14 @@ namespace RenderCore { namespace Assets
         ModelConstruction::BuffersUnderConstruction& workingBuffers,
         SharedStateSet& sharedStateSet,
         const uint64 textureBindPoints[], unsigned textureBindPointsCnt,
+        ModelConstruction::ParamBoxDescriptions& paramBoxDesc,
         bool normalFromSkinning) -> Mesh
     {
         Mesh result;
         result._id = geoInst._geoId;
         result._indexFormat = geo._ib._format;
         result._vertexStride = geo._vb._ia._vertexStride;
-        result._geoParamBox = ModelConstruction::BuildGeoParamBox(geo._vb._ia, sharedStateSet, normalFromSkinning);
+        result._geoParamBox = ModelConstruction::BuildGeoParamBox(geo._vb._ia, sharedStateSet, paramBoxDesc, normalFromSkinning);
 
             // (source file locators)
         result._sourceFileIBOffset = geo._ib._offset;
@@ -741,7 +801,8 @@ namespace RenderCore { namespace Assets
         const BoundSkinnedGeometry& geo,
         ModelConstruction::BuffersUnderConstruction& workingBuffers,
         SharedStateSet& sharedStateSet,
-        const uint64 textureBindPoints[], unsigned textureBindPointsCnt) -> SkinnedMesh
+        const uint64 textureBindPoints[], unsigned textureBindPointsCnt,
+        ModelConstruction::ParamBoxDescriptions& paramBoxDesc) -> SkinnedMesh
     {
             // Build the mesh, starting with the same basic behaviour as 
             //  unskinned meshes.
@@ -752,7 +813,7 @@ namespace RenderCore { namespace Assets
         (Pimpl::Mesh&)result = BuildMesh(
             geoInst, (const RawGeometry&)geo, workingBuffers, sharedStateSet,
             textureBindPoints, textureBindPointsCnt,
-            skinnedNormal);
+            paramBoxDesc, skinnedNormal);
 
         auto animGeo = Pimpl::SkinnedMesh::VertexStreams::AnimatedGeo;
         auto skelBind = Pimpl::SkinnedMesh::VertexStreams::SkeletonBinding;
@@ -1172,6 +1233,115 @@ namespace RenderCore { namespace Assets
         _skeletonOutput = skeletonOutput;
         _skeletonOutputCount = skeletonOutputCount;
         _skeletonBinding = binding;
+    }
+
+    template<unsigned Size>
+        static std::string Width(unsigned input)
+    {
+        static char buffer[Size+1];
+        auto err = _itoa_s(input, buffer, 10);
+        if (!err) {
+            auto length = XlStringLen(buffer);
+            if (length < Size) {
+                auto movement = Size-length;
+                XlMoveMemory(&buffer[movement], buffer, length);
+                XlSetMemory(buffer, ' ', movement);
+                buffer[Size] = '\0';
+            }
+            return std::string(buffer);
+        } else { return std::string("<<err>>"); }
+    }
+
+    void ModelRenderer::LogReport() const
+    {
+        LogInfo << "---<< Model Renderer: " << _pimpl->_scaffold->Filename() << " (LOD: " << _pimpl->_levelOfDetail << ") >>---";
+        LogInfo << "  [" << _pimpl->_meshes.size() << "] meshes";
+        LogInfo << "  [" << _pimpl->_skinnedMeshes.size() << "] skinned meshes";
+        LogInfo << "  [" << _pimpl->_constantBuffers.size() << "] constant buffers";
+        LogInfo << "  [" << _pimpl->_drawCalls.size() << "] draw calls";
+        LogInfo << "  [" << _pimpl->_skinnedDrawCalls.size() << "] skinned draw calls";
+        LogInfo << "  [" << _pimpl->_boundTextures.size() << "] bound textures";
+        LogInfo << "  [" << _pimpl->_texturesPerMaterial << "] textures per material";
+        LogInfo << "  [" << _pimpl->_vbSize / 1024.f << "k] VB size";
+        LogInfo << "  [" << _pimpl->_ibSize / 1024.f << "k] IB size";
+        LogInfo << "  Draw calls |  Indxs | GeoC |  Shr | GeoP | MatP |  Tex |   CB |   RS ";
+
+        for (unsigned c=0; c<_pimpl->_drawCalls.size(); ++c) {
+            const auto&m = _pimpl->_drawCalls[c].first;
+            const auto&d = _pimpl->_drawCalls[c].second;
+            const auto&r = _pimpl->_drawCallRes[c];
+            LogInfo
+                << "  [" << Width<3>(c) << "] (M)  |"
+                << Width<7>(d._indexCount) << " |"
+                << Width<5>(m) << " |"
+                << Width<5>(r._shaderName) << " |"
+                << Width<5>(r._geoParamBox) << " |"
+                << Width<5>(r._materialParamBox) << " |"
+                << Width<5>(r._textureSet) << " |"
+                << Width<5>(r._constantBuffer) << " |"
+                << Width<5>(r._renderStateSet);
+        }
+
+        for (unsigned c=0; c<_pimpl->_skinnedDrawCalls.size(); ++c) {
+            const auto&m = _pimpl->_skinnedDrawCalls[c].first;
+            const auto&d = _pimpl->_skinnedDrawCalls[c].second;
+            const auto&r = _pimpl->_drawCallRes[c + _pimpl->_drawCalls.size()];
+            LogInfo
+                << "  [" << Width<3>(c) << "] (S)  |"
+                << Width<7>(d._indexCount) << " |"
+                << Width<5>(m) << " |"
+                << Width<5>(r._shaderName) << " |"
+                << Width<5>(r._geoParamBox) << " |"
+                << Width<5>(r._materialParamBox) << " |"
+                << Width<5>(r._textureSet) << " |"
+                << Width<5>(r._constantBuffer) << " |"
+                << Width<5>(r._renderStateSet);
+        }
+
+        LogInfo << "  Meshes     | GeoC |  SrcVB |  SrcIB | VtxS | TchI | GeoP | IdxF";
+
+        for (unsigned c=0; c<_pimpl->_meshes.size(); ++c) {
+            const auto&m = _pimpl->_meshes[c];
+            LogInfo
+                << "  [" << Width<3>(c) << "] (M)  |"
+                << Width<5>(m._id) << " |"
+                << Width<6>(m._sourceFileVBSize/1024) << "k |"
+                << Width<6>(m._sourceFileIBSize/1024) << "k |"
+                << Width<5>(m._vertexStride) << " |"
+                << Width<5>(m._techniqueInterface) << " |"
+                << Width<5>(m._geoParamBox) << " |"
+                << Width<5>(m._indexFormat);
+        }
+        for (unsigned c=0; c<_pimpl->_skinnedMeshes.size(); ++c) {
+            const auto&m = _pimpl->_skinnedMeshes[c];
+            LogInfo
+                << "  [" << Width<3>(c) << "] (S)  |"
+                << Width<5>(m._id) << " |"
+                << Width<6>(m._sourceFileVBSize/1024) << "k |"
+                << Width<6>(m._sourceFileIBSize/1024) << "k |"
+                << Width<5>(m._vertexStride) << " |"
+                << Width<5>(m._techniqueInterface) << " |"
+                << Width<5>(m._geoParamBox) << " |"
+                << Width<5>(m._indexFormat);
+        }
+
+        if (_pimpl->_texturesPerMaterial) {
+            LogInfo << "  Bound Textures";
+            for (unsigned c=0; c<_pimpl->_boundTextureNames.size() / _pimpl->_texturesPerMaterial; ++c) {
+                StringMeld<512> temp;
+                for (unsigned q=0; q<_pimpl->_texturesPerMaterial; ++q) {
+                    if (q) { temp << ", "; }
+                    temp << _pimpl->_boundTextureNames[c*_pimpl->_texturesPerMaterial+q];
+                }
+                LogInfo << "  [" << Width<3>(c) << "] " << temp;
+            }
+        }
+
+        LogInfo << "  Parameter Boxes";
+        for (unsigned c=0; c<_pimpl->_paramBoxDesc.size(); ++c) {
+            auto& i = _pimpl->_paramBoxDesc[c];
+            LogInfo << "  [" << Width<3>(i.first) << "] " << i.second;
+        }
     }
 
         ////////////////////////////////////////////////////////////

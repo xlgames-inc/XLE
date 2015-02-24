@@ -852,32 +852,6 @@ bool XlSafeAtoi64(const char* str, int64* n)
     return true;
 }
 
-bool XlSafeAtoui64(const char* str, uint64* n)
-{
-    char* end = const_cast<char*>(&str[XlStringLen(str)]);
-    #if CLIBRARIES_ACTIVE == CLIBRARIES_MSVC
-        *n = _strtoui64(str, &end, 10);
-        if (*n == MAX_UINT64) {
-            return false;
-        }
-    #else
-        errno = 0;
-        *n = strtoull(str, &end, 10);
-        if (*n == MAX_INT64 || *n == MIN_INT64) {
-            if (errno == ERANGE) {
-                return false;
-            }
-        }
-        if (!*n && errno!=0) {
-            return false;
-        }
-    #endif
-    if (!end || *end != '\0') {
-        return false;
-    }
-    return true;
-}
-
 const char* XlReplaceString(char* dst, size_t size, const char* src, const char* strOld, const char* strNew)
 {
     assert(size > 0);

@@ -185,6 +185,8 @@ namespace RenderCore { namespace Assets
 
         static bool CanDoPrepareAnimation(Metal::DeviceContext* context);
 
+        void LogReport() const;
+
             ////////////////////////////////////////////////////////////
         ModelRenderer(ModelScaffold& scaffold, SharedStateSet& sharedStateSet, const ::Assets::DirectorySearchRules* searchRules = nullptr, unsigned levelOfDetail = 0);
         ~ModelRenderer();
