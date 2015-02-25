@@ -9,7 +9,7 @@
 #include "../RenderOverlays/DebuggingDisplay.h"
 #include "../Math/Matrix.h"
 
-namespace RenderCore { class CameraDesc; }
+namespace RenderCore { namespace Techniques { class CameraDesc; } }
 
 namespace PlatformRig { namespace Camera
 {
@@ -29,12 +29,12 @@ namespace PlatformRig { namespace Camera
         void    Commit(float dt);
         
         CameraInputHandler(
-            std::shared_ptr<RenderCore::CameraDesc> camera, 
+            std::shared_ptr<RenderCore::Techniques::CameraDesc> camera, 
             std::shared_ptr<ICameraAttach> playerCharacter,
             float charactersScale);
 
     protected:
-        std::shared_ptr<RenderCore::CameraDesc> _camera;
+        std::shared_ptr<RenderCore::Techniques::CameraDesc> _camera;
         std::shared_ptr<ICameraAttach> _playerCharacter;
         std::unique_ptr<UnitCamManager> _unitCamera;
         Float3 _orbitFocus;

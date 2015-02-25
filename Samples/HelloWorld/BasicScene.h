@@ -26,7 +26,7 @@ namespace Sample
         typedef SceneEngine::LightDesc              LightDesc;
         typedef SceneEngine::GlobalLightingDesc     GlobalLightingDesc;
 
-        RenderCore::CameraDesc GetCameraDesc() const;
+        RenderCore::Techniques::CameraDesc GetCameraDesc() const;
 
         void ExecuteScene(
             RenderCore::Metal::DeviceContext* context, 
@@ -35,7 +35,7 @@ namespace Sample
             unsigned techniqueIndex) const;
 
         unsigned GetShadowProjectionCount() const;
-        ShadowProjectionDesc GetShadowProjectionDesc(unsigned index, const RenderCore::ProjectionDesc& mainSceneProjectionDesc) const;
+        ShadowProjectionDesc GetShadowProjectionDesc(unsigned index, const RenderCore::Techniques::ProjectionDesc& mainSceneProjectionDesc) const;
         void ExecuteShadowScene( 
             RenderCore::Metal::DeviceContext* context, 
             LightingParserContext& parserContext, 

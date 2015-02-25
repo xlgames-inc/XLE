@@ -20,8 +20,8 @@
 
 #include "../RenderCore/Assets/ModelRunTime.h"
 #include "../RenderCore/Assets/RawAnimationCurve.h"
-#include "../RenderCore/Assets/AssetUtils.h"        // for MaterialParameters
-#include "../RenderCore/RenderUtils.h"              // for CameraDesc
+#include "../RenderCore/Assets/AssetUtils.h"            // for MaterialParameters
+#include "../RenderCore/Techniques/TechniqueUtils.h"    // for CameraDesc
 
 #include "../RenderCore/Metal/Buffer.h"
 #include "../RenderCore/Metal/Shader.h"
@@ -1245,17 +1245,17 @@ namespace RenderCore { namespace ColladaConversion
         return (unsigned)_visualScene._cameraInstances.size();
     }
 
-    auto        NascentModel::Camera(unsigned index) const -> CameraDesc
+    auto        NascentModel::Camera(unsigned index) const -> Techniques::CameraDesc
     {
             //
             //      We have to run the transformations machine to calculate
             //      the current state of the camera.
             //      But we don't have all of the animation parameters, etc...
             //
-        if (index >= _visualScene._cameraInstances.size()) return CameraDesc();
+        if (index >= _visualScene._cameraInstances.size()) return Techniques::CameraDesc();
         auto finalMatrices = _skeleton.GetTransformationMachine().GenerateOutputTransforms(
             _skeleton.GetTransformationMachine().GetDefaultParameters());
-        CameraDesc result;
+        Techniques::CameraDesc result;
         result._cameraToWorld       = finalMatrices[_visualScene._cameraInstances[index]._localToWorldId];
         result._nearClip            = 0.1f;
         result._farClip             = 1000.f;

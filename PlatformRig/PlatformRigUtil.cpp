@@ -8,7 +8,7 @@
 #include "../RenderCore/IDevice.h"
 #include "../SceneEngine/LightDesc.h"
 #include "../SceneEngine/LightingParserContext.h"   // just for ProjectionDesc
-#include "../RenderCore/RenderUtils.h"
+#include "../RenderCore/Techniques/TechniqueUtils.h"
 #include "../ConsoleRig/Console.h"
 #include "../ConsoleRig/IncludeLUA.h"
 #include "../Math/Transformations.h"
@@ -87,7 +87,7 @@ namespace PlatformRig
     static std::pair<SceneEngine::ShadowProjectionDesc::Projections, Float4x4> 
         BuildBasicShadowProjections(
             const SceneEngine::LightDesc& lightDesc,
-            const RenderCore::ProjectionDesc& mainSceneProjectionDesc,
+            const RenderCore::Techniques::ProjectionDesc& mainSceneProjectionDesc,
             const DefaultShadowFrustumSettings& settings)
     {
         using namespace SceneEngine;
@@ -123,12 +123,12 @@ namespace PlatformRig
                 //  we need to make sure the correct faces are back-faced culled. If
                 //  the wrong faces are culled, the results will still look close to being
                 //  correct in many places, but there will be light leakage
-            p._projectionMatrix = RenderCore::OrthogonalProjection(
+            p._projectionMatrix = RenderCore::Techniques::OrthogonalProjection(
                 -.5f * projectionWidth,  .5f * projectionWidth,
                  .5f * projectionWidth, -.5f * projectionWidth,
                 shadowNearPlane, shadowFarPlane,
-                RenderCore::GeometricCoordinateSpace::RightHanded,
-                RenderCore::GetDefaultClipSpaceType());
+                RenderCore::Techniques::GeometricCoordinateSpace::RightHanded,
+                RenderCore::Techniques::GetDefaultClipSpaceType());
             p._viewMatrix = lightViewMatrix;
 
             result._minimalProjection[c] = ExtractMinimalProjection(p._projectionMatrix);
@@ -144,7 +144,7 @@ namespace PlatformRig
 
     static void CalculateCameraFrustumCornersDirection(
         Float3 result[4],
-        const RenderCore::ProjectionDesc& projDesc)
+        const RenderCore::Techniques::ProjectionDesc& projDesc)
     {
         // For the given camera, calculate 4 vectors that represent the
         // the direction from the camera position to the frustum corners
@@ -164,7 +164,7 @@ namespace PlatformRig
     static std::pair<SceneEngine::ShadowProjectionDesc::Projections, Float4x4>  
         BuildSimpleOrthogonalShadowProjections(
             const SceneEngine::LightDesc& lightDesc,
-            const RenderCore::ProjectionDesc& mainSceneProjectionDesc,
+            const RenderCore::Techniques::ProjectionDesc& mainSceneProjectionDesc,
             const DefaultShadowFrustumSettings& settings)
     {
         // We're going to build some basic adaptive shadow frustums. These frustums
@@ -273,9 +273,9 @@ namespace PlatformRig
 
             const auto& mins = result._orthoSub[f]._projMins;
             const auto& maxs = result._orthoSub[f]._projMaxs;
-            Float4x4 projMatrix = OrthogonalProjection(
+            Float4x4 projMatrix = Techniques::OrthogonalProjection(
                 mins[0], mins[1], maxs[0], maxs[1], mins[2], maxs[2],
-                GeometricCoordinateSpace::RightHanded, GetDefaultClipSpaceType());
+                Techniques::GeometricCoordinateSpace::RightHanded, Techniques::GetDefaultClipSpaceType());
             result._fullProj[f]._projectionMatrix = projMatrix;
 
             result._minimalProjection[f] = ExtractMinimalProjection(projMatrix);
@@ -287,10 +287,10 @@ namespace PlatformRig
             //  orthogonal space that is actually used. We just have to incorporate these
             //  mins and maxs into the projection matrix
 
-        Float4x4 clippingProjMatrix = OrthogonalProjection(
+        Float4x4 clippingProjMatrix = Techniques::OrthogonalProjection(
             allCascadesMins[0], allCascadesMins[1], allCascadesMaxs[0], allCascadesMaxs[1], 
             shadowNearPlane, shadowFarPlane,
-            GeometricCoordinateSpace::RightHanded, GetDefaultClipSpaceType());
+            Techniques::GeometricCoordinateSpace::RightHanded, Techniques::GetDefaultClipSpaceType());
 
         Float4x4 worldToClip = Combine(result._definitionViewMatrix, clippingProjMatrix);
         return std::make_pair(result, worldToClip);
@@ -299,7 +299,7 @@ namespace PlatformRig
     SceneEngine::ShadowProjectionDesc 
         CalculateDefaultShadowCascades(
             const SceneEngine::LightDesc& lightDesc,
-            const RenderCore::ProjectionDesc& mainSceneProjectionDesc,
+            const RenderCore::Techniques::ProjectionDesc& mainSceneProjectionDesc,
             const DefaultShadowFrustumSettings& settings)
     {
             //  Build a default shadow frustum projection from the given inputs

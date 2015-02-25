@@ -6,9 +6,9 @@
 
 #include "RefractionsBuffer.h"
 #include "SceneEngineUtility.h"
-#include "ResourceBox.h"
 #include "LightingParserContext.h"
-#include "CommonResources.h"
+#include "../RenderCore/Techniques/ResourceBox.h"
+#include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Metal/Format.h"
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/Buffer.h"
@@ -63,7 +63,7 @@ namespace SceneEngine
             ViewportDesc newViewport(0, 0, float(refractionBox._width), float(refractionBox._height), 0.f, 1.f);
             context->Bind(newViewport);
 
-            context->Bind(CommonResources()._blendOpaque);
+            context->Bind(Techniques::CommonResources()._blendOpaque);
             context->UnbindPS<ShaderResourceView>(12, 1);
 
             auto res = ExtractResource<ID3D::Resource>(oldTargets.GetRenderTargets()[0]);
@@ -177,7 +177,7 @@ namespace SceneEngine
                 BufferUploads::TextureSamples::Create());
 
                 //  Resolve into the new buffer
-            auto& box = FindCachedBox<DuplicateDepthBuffer>(d);
+            auto& box = Techniques::FindCachedBox<DuplicateDepthBuffer>(d);
             context->GetUnderlying()->ResolveSubresource(
                 box._resource.get(), 0, sourceDepthBuffer, 0,
                 AsDXGIFormat(AsResolvableFormat(d._format)));
@@ -190,7 +190,7 @@ namespace SceneEngine
                 BufferUploads::TextureSamples::Create(uint8(textureDesc.SampleDesc.Count), uint8(textureDesc.SampleDesc.Quality)));
 
                 //  Copy into the new buffer
-            auto& box = FindCachedBox<DuplicateDepthBuffer>(d);
+            auto& box = Techniques::FindCachedBox<DuplicateDepthBuffer>(d);
             context->GetUnderlying()->CopyResource(box._resource.get(), sourceDepthBuffer);
             return box._srv;
 

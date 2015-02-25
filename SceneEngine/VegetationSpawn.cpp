@@ -5,13 +5,13 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "VegetationSpawn.h"
-#include "ResourceBox.h"
 #include "SceneEngineUtility.h"
 #include "LightingParserContext.h"
 #include "LightingParser.h"
 #include "SceneParser.h"
 #include "Noise.h"
 
+#include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/State.h"
@@ -26,6 +26,8 @@
 
 namespace SceneEngine
 {
+    using namespace RenderCore;
+
     class VegetationSpawnResources
     {
     public:
@@ -154,11 +156,11 @@ namespace SceneEngine
 
         TRY 
         {
-            auto& perlinNoiseRes = SceneEngine::FindCachedBox<SceneEngine::PerlinNoiseResources>(SceneEngine::PerlinNoiseResources::Desc());
+            auto& perlinNoiseRes = Techniques::FindCachedBox<SceneEngine::PerlinNoiseResources>(SceneEngine::PerlinNoiseResources::Desc());
             context->BindGS(RenderCore::MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
             context->BindGS(RenderCore::MakeResourceList(RenderCore::Metal::SamplerState()));
 
-            auto& res = FindCachedBox<VegetationSpawnResources>(VegetationSpawnResources::Desc(TotalBufferCount));
+            auto& res = Techniques::FindCachedBox<VegetationSpawnResources>(VegetationSpawnResources::Desc(TotalBufferCount));
             class InstanceSpawnConstants
             {
             public:
@@ -304,7 +306,7 @@ namespace SceneEngine
             //          INT BaseVertexLocation;
             //          UINT StartInstanceLocation;
             //      }
-        auto& res = FindCachedBox<VegetationSpawnResources>(VegetationSpawnResources::Desc(TotalBufferCount));
+        auto& res = Techniques::FindCachedBox<VegetationSpawnResources>(VegetationSpawnResources::Desc(TotalBufferCount));
         if ((instanceId-1) > res._instanceBuffers.size())
             return false;
 

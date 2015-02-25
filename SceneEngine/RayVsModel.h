@@ -29,8 +29,8 @@ namespace SceneEngine
 
         RayVsModelStateContext(
             RenderCore::Metal::DeviceContext* devContext,
-            const SceneEngine::TechniqueContext& techniqueContext,
-            const RenderCore::CameraDesc* cameraForLOD = nullptr);
+            const RenderCore::Techniques::TechniqueContext& techniqueContext,
+            const RenderCore::Techniques::CameraDesc* cameraForLOD = nullptr);
         ~RayVsModelStateContext();
 
     protected:

@@ -221,9 +221,9 @@ namespace SceneEngine
         return Int2(clientRect.right - clientRect.left, clientRect.bottom - clientRect.top);
     }
     
-    static Float4x4 CalculateWorldToProjection(const RenderCore::CameraDesc& sceneCamera, float viewportAspect)
+    static Float4x4 CalculateWorldToProjection(const RenderCore::Techniques::CameraDesc& sceneCamera, float viewportAspect)
     {
-        auto projectionMatrix = RenderCore::PerspectiveProjection(sceneCamera, viewportAspect);
+        auto projectionMatrix = RenderCore::Techniques::PerspectiveProjection(sceneCamera, viewportAspect);
         return Combine(InvertOrthonormalTransform(sceneCamera._cameraToWorld), projectionMatrix);
     }
 
@@ -237,7 +237,7 @@ namespace SceneEngine
         CalculateAbsFrustumCorners(frustumCorners, worldToProjection);
         Float3 cameraPosition = ExtractTranslation(sceneCamera._cameraToWorld);
 
-        return RenderCore::BuildRayUnderCursor(
+        return RenderCore::Techniques::BuildRayUnderCursor(
             screenCoord, frustumCorners, cameraPosition, 
             sceneCamera._nearClip, sceneCamera._farClip,
             std::make_pair(Float2(0.f, 0.f), Float2(float(viewport[0]), float(viewport[1]))));
@@ -264,14 +264,14 @@ namespace SceneEngine
         return SceneEngine::GetImmediateContext();
     }
 
-    RenderCore::CameraDesc IntersectionTestContext::GetCameraDesc() const 
+    RenderCore::Techniques::CameraDesc IntersectionTestContext::GetCameraDesc() const 
     { 
         return _sceneParser->GetCameraDesc();
     }
 
     IntersectionTestContext::IntersectionTestContext(
         std::shared_ptr<SceneEngine::ISceneParser> sceneParser,
-        std::shared_ptr<SceneEngine::TechniqueContext> techniqueContext)
+        std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext)
     : _sceneParser(std::move(sceneParser))
     , _techniqueContext(std::move(techniqueContext))
     {}

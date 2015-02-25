@@ -5,8 +5,8 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "../../RenderOverlays/OverlayContext.h"
-#include "../../SceneEngine/CommonResources.h"
-#include "../../SceneEngine/ResourceBox.h"
+#include "../../RenderCore/Techniques/CommonResources.h"
+#include "../../RenderCore/Techniques/ResourceBox.h"
 
 namespace Sample
 {
@@ -80,7 +80,7 @@ namespace Sample
         const bool textRenderingMethod = 1;
 
         using namespace RenderOverlays;
-        auto& res = SceneEngine::FindCachedBox<RenderPostSceneResources>(RenderPostSceneResources::Desc(64));
+        auto& res = RenderCore::Techniques::FindCachedBox<RenderPostSceneResources>(RenderPostSceneResources::Desc(64));
         TextStyle style(*res._font);
         ColorB col(0xffffffff);
 
@@ -99,7 +99,7 @@ namespace Sample
                 //      Render text directly to the scene using RenderOverlays stuff.
                 //      This requires some more low-level code, so it's less convenient
 
-            auto& commonRes = SceneEngine::CommonResources();
+            auto& commonRes = RenderCore::Techniques::CommonResources();
             context->Bind(commonRes._blendStraightAlpha);
             context->Bind(commonRes._dssReadWrite);
             context->Bind(commonRes._defaultRasterizer);

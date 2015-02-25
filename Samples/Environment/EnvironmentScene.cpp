@@ -16,7 +16,7 @@
 #include "../../SceneEngine/PlacementsManager.h"
 #include "../../SceneEngine/SceneEngineUtility.h"
 
-#include "../../RenderCore/RenderUtils.h"
+#include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../RenderCore/Metal/State.h"
 #include "../../RenderCore/Assets/TerrainFormat.h"
 #include "../../RenderCore/Assets/ModelFormatPlugins.h"
@@ -42,8 +42,8 @@ namespace Sample
         std::unique_ptr<CharactersScene>                _characters;
         std::shared_ptr<SceneEngine::TerrainManager>    _terrainManager;
         std::shared_ptr<SceneEngine::PlacementsManager> _placementsManager;
-        std::shared_ptr<RenderCore::CameraDesc>         _cameraDesc;
-        std::shared_ptr<RenderCore::Assets::IModelFormat> _modelFormat;
+        std::shared_ptr<RenderCore::Techniques::CameraDesc> _cameraDesc;
+        std::shared_ptr<RenderCore::Assets::IModelFormat>   _modelFormat;
 
         float _time;
     };
@@ -54,7 +54,7 @@ namespace Sample
     {
         RenderCore::Metal::ViewportDesc viewport(*context);
         auto sceneCamera = GetCameraDesc();
-        auto projectionMatrix = RenderCore::PerspectiveProjection(
+        auto projectionMatrix = RenderCore::Techniques::PerspectiveProjection(
             sceneCamera, viewport.Width / float(viewport.Height));
         auto worldToProjection = Combine(InvertOrthonormalTransform(sceneCamera._cameraToWorld), projectionMatrix);
 
@@ -109,7 +109,7 @@ namespace Sample
         }
     }
 
-    RenderCore::CameraDesc EnvironmentSceneParser::GetCameraDesc() const 
+    RenderCore::Techniques::CameraDesc EnvironmentSceneParser::GetCameraDesc() const 
     { 
         return *_pimpl->_cameraDesc;
     }
@@ -165,7 +165,7 @@ namespace Sample
         return 1; 
     }
 
-    auto EnvironmentSceneParser::GetShadowProjectionDesc(unsigned index, const RenderCore::ProjectionDesc& mainSceneProjectionDesc) const 
+    auto EnvironmentSceneParser::GetShadowProjectionDesc(unsigned index, const RenderCore::Techniques::ProjectionDesc& mainSceneProjectionDesc) const 
         -> ShadowProjectionDesc
     {
             //  Shadowing lights can have a ShadowProjectionDesc object associated.
@@ -217,7 +217,7 @@ namespace Sample
         return _pimpl->_placementsManager;
     }
 
-    std::shared_ptr<RenderCore::CameraDesc> EnvironmentSceneParser::GetCameraPtr()
+    std::shared_ptr<RenderCore::Techniques::CameraDesc> EnvironmentSceneParser::GetCameraPtr()
     {
         return _pimpl->_cameraDesc;
     }
@@ -246,7 +246,7 @@ namespace Sample
             SceneEngine::WorldPlacementsConfig(WorldDirectory),
             pimpl->_modelFormat, worldOffset);
 
-        pimpl->_cameraDesc = std::make_shared<RenderCore::CameraDesc>();
+        pimpl->_cameraDesc = std::make_shared<RenderCore::Techniques::CameraDesc>();
         pimpl->_cameraDesc->_cameraToWorld = pimpl->_characters->DefaultCameraToWorld();
         pimpl->_cameraDesc->_nearClip = 0.5f;
         pimpl->_cameraDesc->_farClip = 6000.f;

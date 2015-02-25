@@ -19,7 +19,7 @@ namespace SceneEngine
     class IntersectionTestContext;
     class IntersectionTestScene;
 }
-namespace RenderCore { class CameraDesc; }
+namespace RenderCore { namespace Techniques { class CameraDesc; } }
 
 namespace Tools
 {

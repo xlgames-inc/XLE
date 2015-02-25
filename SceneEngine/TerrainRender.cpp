@@ -8,13 +8,13 @@
 #include "TerrainInternal.h"
 #include "TerrainUberSurface.h"
 #include "LightingParserContext.h"
-#include "Techniques.h"
 #include "Noise.h"
 #include "SimplePatchBox.h"
-#include "ResourceBox.h"
 #include "SceneEngineUtility.h"
 #include "SurfaceHeightsProvider.h"
-#include "CommonResources.h"
+#include "../RenderCore/Techniques/Techniques.h"
+#include "../RenderCore/Techniques/ResourceBox.h"
+#include "../RenderCore/Techniques/CommonResources.h"
 #include "../Utility/Streams/DataSerialize.h"
 #include "../Utility/StringFormat.h"
 
@@ -622,7 +622,7 @@ namespace SceneEngine
         _dynamicTessellation = false;
 
         ConstantBuffer tileConstantsBuffer(nullptr, sizeof(TileConstants));
-        ConstantBuffer localTransformConstantsBuffer(nullptr, sizeof(LocalTransformConstants));
+        ConstantBuffer localTransformConstantsBuffer(nullptr, sizeof(Techniques::LocalTransformConstants));
 
         _tileConstantsBuffer = std::move(tileConstantsBuffer);
         _localTransformConstantsBuffer = std::move(localTransformConstantsBuffer);
@@ -710,7 +710,7 @@ namespace SceneEngine
         }
 
         BoundUniforms boundUniforms(*shaderProgram);
-        TechniqueContext::BindGlobalUniforms(boundUniforms);
+        Techniques::TechniqueContext::BindGlobalUniforms(boundUniforms);
 
         auto validationCallback = std::make_shared<Assets::DependencyValidation>();
         Assets::RegisterAssetDependency(validationCallback, &shaderProgram->GetDependencyValidation());
@@ -728,7 +728,7 @@ namespace SceneEngine
             const bool noisyTerrain = Tweakable("TerrainNoise", false);
             const bool drawWireframe = Tweakable("TerrainWireframe", false);
 
-            auto& box = FindCachedBoxDep<TerrainRenderingResources>(
+            auto& box = Techniques::FindCachedBoxDep<TerrainRenderingResources>(
                 TerrainRenderingResources::Desc(mode, doExtraSmoothing, noisyTerrain, _isTextured, drawWireframe));
 
             context->Bind(*box._shaderProgram);
@@ -759,10 +759,10 @@ namespace SceneEngine
             context->Bind(*shaderProgram);
 
             BoundUniforms uniforms(*shaderProgram);
-            TechniqueContext::BindGlobalUniforms(uniforms);
+            Techniques::TechniqueContext::BindGlobalUniforms(uniforms);
             uniforms.Apply(*context, parserContext.GetGlobalUniformsStream(), UniformsStream());
 
-            auto& simplePatchBox = FindCachedBox<SimplePatchBox>(
+            auto& simplePatchBox = Techniques::FindCachedBox<SimplePatchBox>(
                 SimplePatchBox::Desc(_elementSize[0], _elementSize[1], true));
             context->Bind(simplePatchBox._simplePatchIndexBuffer, NativeFormat::R32_UINT);
             context->Bind(RenderCore::Metal::Topology::TriangleList);
@@ -774,7 +774,7 @@ namespace SceneEngine
         context->Unbind<BoundInputLayout>();
             ////-////-/====/-////-////
 
-        auto& perlinNoiseRes = FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());
+        auto& perlinNoiseRes = Techniques::FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());
         context->BindVS(MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
         context->BindDS(MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
         context->BindVS(MakeResourceList(7, _tileConstantsBuffer));
@@ -784,7 +784,7 @@ namespace SceneEngine
         context->BindVS(MakeResourceList(1, _localTransformConstantsBuffer));
         context->BindDS(MakeResourceList(1, _localTransformConstantsBuffer));
 
-        context->Bind(CommonResources()._dssReadWrite);
+        context->Bind(Techniques::CommonResources()._dssReadWrite);
 
         if (mode == Mode_VegetationPrepare) {
             context->BindGS(MakeResourceList(7, _tileConstantsBuffer));
@@ -1520,7 +1520,7 @@ namespace SceneEngine
                         // switch to a given cell more than once (resulting in multiple uploads of
                         // it's local transform)
                     if (i->_cell != currentCell) {
-                        auto localTransform = RenderCore::MakeLocalTransform(i->_cellToWorld, Float3(0,0,0));
+                        auto localTransform = Techniques::MakeLocalTransform(i->_cellToWorld, Float3(0,0,0));
                         terrainContext._localTransformConstantsBuffer.Update(*context, &localTransform, sizeof(localTransform));
                         currentCell = i->_cell;
                     }

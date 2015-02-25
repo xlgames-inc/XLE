@@ -6,12 +6,12 @@
 
 #include "ShadowFrustumDebugger.h"
 #include "../IOverlayContext.h"
-#include "../../SceneEngine/CommonResources.h"
 #include "../../SceneEngine/SceneParser.h"
 #include "../../SceneEngine/LightDesc.h"
-#include "../../SceneEngine/Techniques.h"
-#include "../../SceneEngine/ResourceBox.h"
 #include "../../SceneEngine/LightInternal.h"
+#include "../../RenderCore/Techniques/CommonResources.h"
+#include "../../RenderCore/Techniques/Techniques.h"
+#include "../../RenderCore/Techniques/ResourceBox.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/InputLayout.h"
 #include "../../Assets/Assets.h"
@@ -24,8 +24,8 @@
 
 namespace Overlays
 {
-    using namespace SceneEngine;
     using namespace RenderOverlays;
+    using namespace RenderCore;
     using namespace RenderCore::Metal;
 
     class SFDResources
@@ -56,7 +56,7 @@ namespace Overlays
             StringMeld<128>() << "SHADOW_CASCADE_MODE=" << desc._cascadeMode);
 
         _uniforms = BoundUniforms(*_shader);
-        TechniqueContext::BindGlobalUniforms(_uniforms);
+        Techniques::TechniqueContext::BindGlobalUniforms(_uniforms);
         _uniforms.BindConstantBuffer(Hash64("ArbitraryShadowProjection"), 0, 1);
         _uniforms.BindConstantBuffer(Hash64("OrthogonalShadowProjection"), 1, 1);
         _uniforms.BindConstantBuffer(Hash64("ScreenToShadowProjection"), 2, 1);
@@ -71,13 +71,13 @@ namespace Overlays
     static void OverlayShadowFrustums(
         DeviceContext& devContext, 
         const UniformsStream& globalUniforms,
-        const RenderCore::ProjectionDesc& mainCameraProjectionDesc,
-        const ShadowProjectionDesc& projectionDesc)
+        const RenderCore::Techniques::ProjectionDesc& mainCameraProjectionDesc,
+        const SceneEngine::ShadowProjectionDesc& projectionDesc)
     {
-        devContext.Bind(CommonResources()._dssDisable);
-        devContext.Bind(CommonResources()._blendAlphaPremultiplied);
+        devContext.Bind(Techniques::CommonResources()._dssDisable);
+        devContext.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
 
-        SavedTargets savedTargets(&devContext);
+        SceneEngine::SavedTargets savedTargets(&devContext);
         devContext.GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr);
 
         ShaderResourceView depthSrv;
@@ -86,13 +86,13 @@ namespace Overlays
                 savedTargets.GetDepthStencilView()).get(), 
                 (NativeFormat::Enum)DXGI_FORMAT_R24_UNORM_X8_TYPELESS);
 
-        auto& res = FindCachedBoxDep<SFDResources>(
+        auto& res = Techniques::FindCachedBoxDep<SFDResources>(
             SFDResources::Desc(
-                (projectionDesc._projections._mode == ShadowProjectionDesc::Projections::Mode::Ortho)?2:1));
+                (projectionDesc._projections._mode == SceneEngine::ShadowProjectionDesc::Projections::Mode::Ortho)?2:1));
         devContext.Bind(*res._shader);
 
-        CB_ArbitraryShadowProjection arbitraryCB;
-        CB_OrthoShadowProjection orthoCB;
+        SceneEngine::CB_ArbitraryShadowProjection arbitraryCB;
+        SceneEngine::CB_OrthoShadowProjection orthoCB;
         BuildShadowConstantBuffers(arbitraryCB, orthoCB, projectionDesc._projections);
 
         ConstantBufferPacket constantBufferPackets[3];
@@ -127,7 +127,7 @@ namespace Overlays
             return;
         }
 
-        static ShadowProjectionDesc projectionDesc;
+        static SceneEngine::ShadowProjectionDesc projectionDesc;
         if (!Tweakable("ShadowDebugLock", false)) {
             projectionDesc = _scene->GetShadowProjectionDesc(0, context->GetProjectionDesc());
         }
@@ -143,7 +143,7 @@ namespace Overlays
             //  outline of all sub-projections with in.
             //  We could also add a control to select different projections
             //  when there are more than one...
-        devContext.Bind(CommonResources()._dssReadOnly);
+        devContext.Bind(Techniques::CommonResources()._dssReadOnly);
 
         ColorB cols[]= {
             ColorB(196, 230, 230),

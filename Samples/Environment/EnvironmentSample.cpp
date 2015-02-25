@@ -20,12 +20,12 @@
 #include "../../PlatformRig/FrameRig.h"
 #include "../../PlatformRig/PlatformRigUtil.h"
 
-#include "../../SceneEngine/Techniques.h"
 #include "../../SceneEngine/SceneEngineUtility.h"
 #include "../../SceneEngine/LightingParser.h"
 #include "../../SceneEngine/LightingParserStandardPlugin.h"
 #include "../../SceneEngine/LightingParserContext.h"
-#include "../../SceneEngine/ResourceBox.h"
+#include "../../RenderCore/Techniques/Techniques.h"
+#include "../../RenderCore/Techniques/ResourceBox.h"
 #include "../../SceneEngine/PlacementsQuadTreeDebugger.h"
 #include "../../SceneEngine/IntersectionTest.h"
 
@@ -274,7 +274,7 @@ namespace Sample
 
         mainScene.reset();
         g_gpuProfiler.reset();
-        SceneEngine::ResourceBoxes_Shutdown();
+        RenderCore::Techniques::ResourceBoxes_Shutdown();
         RenderOverlays::CleanupFontSystem();
         primMan._asyncMan->GetAssetSets().Clear();
         primMan._asyncMan.reset();
@@ -319,7 +319,7 @@ namespace Sample
             overlaySys->RenderToScene(context, lightingParserContext);
         }
 
-        auto& usefulFonts = FindCachedBox<UsefulFonts>(UsefulFonts::Desc());
+        auto& usefulFonts = RenderCore::Techniques::FindCachedBox<UsefulFonts>(UsefulFonts::Desc());
         DrawPendingResources(context, lightingParserContext, usefulFonts._defaultFont0.get());
         if (debugSystem) {
             debugSystem->Render(renderDevice, lightingParserContext.GetProjectionDesc());

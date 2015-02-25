@@ -12,7 +12,7 @@
 #include "../Math/Vector.h"
 #include "../Math/Matrix.h"
 
-namespace RenderCore { class ProjectionDesc; }
+namespace RenderCore { namespace Techniques { class ProjectionDesc; } }
 
 namespace RenderOverlays
 {
@@ -131,9 +131,9 @@ namespace RenderOverlays
         virtual void    ReleaseState    () = 0;
         virtual void    SetState        (const OverlayState& state) = 0;
 
-        virtual RenderCore::ProjectionDesc               GetProjectionDesc() const = 0;
-        virtual const RenderCore::Metal::UniformsStream& GetGlobalUniformsStream() const = 0;
-        virtual RenderCore::Metal::DeviceContext*        GetDeviceContext() = 0;
+        virtual RenderCore::Techniques::ProjectionDesc      GetProjectionDesc() const = 0;
+        virtual const RenderCore::Metal::UniformsStream&    GetGlobalUniformsStream() const = 0;
+        virtual RenderCore::Metal::DeviceContext*           GetDeviceContext() = 0;
 
         ~IOverlayContext();
     };

@@ -6,7 +6,7 @@
 
 #include "RenderingUtils.h"
 #include "LightingParserContext.h"
-#include "Techniques.h"
+#include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/RenderUtils.h"
 #include "../RenderCore/Assets/AssetUtils.h"
@@ -51,6 +51,7 @@ namespace SceneEngine
             VertexBuffer vertexBuffer(vertices, sizeof(vertices));
 
             using namespace RenderCore::Metal;
+            using namespace RenderCore::Techniques;
             ConstantBufferPacket constantBufferPackets[2];
             constantBufferPackets[0] = MakeLocalTransformPacket(Identity<Float4x4>(), ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld));
 
@@ -67,7 +68,7 @@ namespace SceneEngine
             BoundUniforms boundLayout(shaderProgram);
             static const auto HashLocalTransform = Hash64("LocalTransform");
             boundLayout.BindConstantBuffer(HashLocalTransform, 0, 1, RenderCore::Assets::LocalTransform_Elements, RenderCore::Assets::LocalTransform_ElementsCount);
-            SceneEngine::TechniqueContext::BindGlobalUniforms(boundLayout);
+            TechniqueContext::BindGlobalUniforms(boundLayout);
             boundLayout.Apply(*context, 
                 parserContext.GetGlobalUniformsStream(),
                 UniformsStream(constantBufferPackets, nullptr, dimof(constantBufferPackets)));

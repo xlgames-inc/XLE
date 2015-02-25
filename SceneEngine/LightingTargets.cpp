@@ -6,10 +6,10 @@
 
 #include "LightingTargets.h"
 #include "SceneEngineUtility.h"
-#include "Techniques.h"
 #include "LightingParserContext.h"
-#include "CommonResources.h"
 
+#include "../RenderCore/Techniques/Techniques.h"
+#include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Assets/AssetUtils.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/StringFormat.h"
@@ -249,7 +249,7 @@ namespace SceneEngine
         bu[4] = std::make_unique<Metal::BoundUniforms>(std::ref(*_unshadowedPointLight));
 
         for (unsigned c=0; c<dimof(bu); ++c) {
-            TechniqueContext::BindGlobalUniforms(*bu[c]);
+            Techniques::TechniqueContext::BindGlobalUniforms(*bu[c]);
             bu[c]->BindConstantBuffer(Hash64("ArbitraryShadowProjection"), 0, 1);
             bu[c]->BindConstantBuffer(Hash64("LightBuffer"), 1, 1);
             bu[c]->BindConstantBuffer(Hash64("ShadowParameters"), 2, 1);
@@ -357,7 +357,7 @@ namespace SceneEngine
                 "game/xleres/deferred/debugging.psh:GBufferDebugging:ps_*",
                 useMsaaSamplers?"MSAA_SAMPLERS=1":"");
             context->Bind(debuggingShader);
-            context->Bind(CommonResources()._blendStraightAlpha);
+            context->Bind(Techniques::CommonResources()._blendStraightAlpha);
             SetupVertexGeneratorShader(context);
             context->Draw(4);
         } 

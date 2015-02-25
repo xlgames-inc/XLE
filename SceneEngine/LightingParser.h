@@ -12,7 +12,7 @@
 #include "../Math/Matrix.h"
 #include <functional>
 
-namespace RenderCore { class CameraDesc; }
+namespace RenderCore { namespace Techniques { class CameraDesc; } }
 
 namespace SceneEngine
 {
@@ -90,7 +90,7 @@ namespace SceneEngine
     void LightingParser_SetupScene(
         RenderCore::Metal::DeviceContext* context,
         LightingParserContext& parserContext,
-        const RenderCore::CameraDesc& camera,
+        const RenderCore::Techniques::CameraDesc& camera,
         const RenderingQualitySettings& qualitySettings);
 
     /// <summary>Set camera related states after camera changes<summary>
@@ -104,7 +104,7 @@ namespace SceneEngine
     void LightingParser_SetGlobalTransform( 
         RenderCore::Metal::DeviceContext* context, 
         LightingParserContext& parserContext, 
-        const RenderCore::CameraDesc& sceneCamera,
+        const RenderCore::Techniques::CameraDesc& sceneCamera,
         unsigned viewportWidth, unsigned viewportHeight,
         const Float4x4* specialProjectionMatrix = nullptr);
 

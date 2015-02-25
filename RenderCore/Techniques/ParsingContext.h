@@ -38,6 +38,9 @@ namespace RenderCore { namespace Techniques
         void                        Process(const ::Assets::Exceptions::InvalidResource& e);
         void                        Process(const ::Assets::Exceptions::PendingResource& e);
 
+        ParsingContext(const TechniqueContext& techniqueContext);
+        ~ParsingContext();
+
     protected:
         Metal::ConstantBuffer   _globalCBs[5];
 

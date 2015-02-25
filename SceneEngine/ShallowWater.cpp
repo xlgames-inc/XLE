@@ -9,11 +9,11 @@
 #include "SimplePatchBox.h"
 #include "SceneEngineUtility.h"
 #include "LightingParserContext.h"
-#include "Techniques.h"
-#include "ResourceBox.h"
 #include "SurfaceHeightsProvider.h"
-#include "CommonResources.h"
 
+#include "../RenderCore/Techniques/Techniques.h"
+#include "../RenderCore/Techniques/ResourceBox.h"
+#include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Metal/Format.h"
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/DeviceContextImpl.h"
@@ -899,7 +899,7 @@ namespace SceneEngine
             "game/xleres/solidwireframe.psh:main:ps_*",
             shaderDefines);
         BoundUniforms boundUniforms(patchRender);
-        TechniqueContext::BindGlobalUniforms(boundUniforms);
+        Techniques::TechniqueContext::BindGlobalUniforms(boundUniforms);
         boundUniforms.BindConstantBuffer(Hash64("OceanMaterialSettings"), 0, 1);
         boundUniforms.BindConstantBuffer(Hash64("ShallowWaterGridConstants"), 1, 1);
 
@@ -908,9 +908,9 @@ namespace SceneEngine
         SetupVertexGeneratorShader(context);
         context->BindVS(MakeResourceList(3, shallowBox._simulationGrid->_waterHeightsSRV[thisFrameBuffer]));
         context->Bind(Topology::TriangleList);
-        context->Bind(CommonResources()._dssReadWrite);
+        context->Bind(Techniques::CommonResources()._dssReadWrite);
 
-        auto& simplePatchBox = FindCachedBox<SimplePatchBox>(SimplePatchBox::Desc(shallowBox._gridDimension, shallowBox._gridDimension, true));
+        auto& simplePatchBox = Techniques::FindCachedBox<SimplePatchBox>(SimplePatchBox::Desc(shallowBox._gridDimension, shallowBox._gridDimension, true));
         context->Bind(simplePatchBox._simplePatchIndexBuffer, NativeFormat::R32_UINT);
 
         for (auto i=shallowBox._activeSimulationElements.cbegin(); i!=shallowBox._activeSimulationElements.cend(); ++i) {
@@ -954,7 +954,7 @@ namespace SceneEngine
             "game/xleres/Ocean/OceanVelocitiesDebugging.sh:ps_main:ps_*",
             shaderDefines);
         BoundUniforms boundUniforms(patchRender);
-        TechniqueContext::BindGlobalUniforms(boundUniforms);
+        Techniques::TechniqueContext::BindGlobalUniforms(boundUniforms);
         boundUniforms.BindConstantBuffer(Hash64("OceanMaterialSettings"), 0, 1);
         boundUniforms.BindConstantBuffer(Hash64("ShallowWaterGridConstants"), 1, 1);
 
@@ -971,9 +971,9 @@ namespace SceneEngine
             shallowBox._simulationGrid->_waterVelocitiesSRV[2],
             shallowBox._simulationGrid->_waterVelocitiesSRV[3]));
         context->Bind(Topology::TriangleList);
-        context->Bind(CommonResources()._dssReadWrite);
+        context->Bind(Techniques::CommonResources()._dssReadWrite);
 
-        auto& simplePatchBox = FindCachedBox<SimplePatchBox>(SimplePatchBox::Desc(shallowBox._gridDimension, shallowBox._gridDimension, true));
+        auto& simplePatchBox = Techniques::FindCachedBox<SimplePatchBox>(SimplePatchBox::Desc(shallowBox._gridDimension, shallowBox._gridDimension, true));
         context->Bind(simplePatchBox._simplePatchIndexBuffer, NativeFormat::R32_UINT);
 
         for (auto i=shallowBox._activeSimulationElements.cbegin(); i!=shallowBox._activeSimulationElements.cend(); ++i) {

@@ -11,7 +11,7 @@
 
 namespace PlatformRig { namespace Camera
 {
-    static void UpdateCamera_Slew(  RenderCore::CameraDesc& camera, float dt, 
+    static void UpdateCamera_Slew(  RenderCore::Techniques::CameraDesc& camera, float dt, 
                                     const RenderOverlays::DebuggingDisplay::InputSnapshot& input)
     {
             // (Derived from Archeage/x2standalone camera mode)
@@ -108,7 +108,7 @@ namespace PlatformRig { namespace Camera
         camera._cameraToWorld = Expand(rotationPart, camPos);
     }
 
-    static void UpdateCamera_Orbit( RenderCore::CameraDesc& camera, float dt, Float3& focusPoint,
+    static void UpdateCamera_Orbit( RenderCore::Techniques::CameraDesc& camera, float dt, Float3& focusPoint,
                                     const RenderOverlays::DebuggingDisplay::InputSnapshot& input)
     {
         const float cl_sensitivity   = 20.f;
@@ -243,7 +243,7 @@ namespace PlatformRig { namespace Camera
     }
 
     CameraInputHandler::CameraInputHandler(
-        std::shared_ptr<RenderCore::CameraDesc> camera, 
+        std::shared_ptr<RenderCore::Techniques::CameraDesc> camera, 
         std::shared_ptr<ICameraAttach> playerCharacter,
         float charactersScale) 
     : _camera(std::move(camera)) 

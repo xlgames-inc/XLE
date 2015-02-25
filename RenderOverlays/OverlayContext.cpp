@@ -12,9 +12,9 @@
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/RenderUtils.h"
-#include "../SceneEngine/CommonResources.h"
-#include "../SceneEngine/ResourceBox.h"
-#include "../SceneEngine/Techniques.h"
+#include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Techniques/ResourceBox.h"
+#include "../RenderCore/Techniques/Techniques.h"
 #include "../Utility/StringFormat.h"
 
 #include "../RenderCore/DX11/Metal/IncludeDX11.h"
@@ -368,10 +368,10 @@ namespace RenderOverlays
     void ImmediateOverlayContext::SetState(const OverlayState& state) 
     {
         using namespace RenderCore::Metal;
-        _deviceContext->Bind(SceneEngine::CommonResources()._dssReadWrite);
-        _deviceContext->Bind(SceneEngine::CommonResources()._blendStraightAlpha);
-        _deviceContext->Bind(SceneEngine::CommonResources()._defaultRasterizer);
-        _deviceContext->BindPS(RenderCore::ResourceList<SamplerState, 1>(std::make_tuple(SceneEngine::CommonResources()._defaultSampler)));
+        _deviceContext->Bind(RenderCore::Techniques::CommonResources()._dssReadWrite);
+        _deviceContext->Bind(RenderCore::Techniques::CommonResources()._blendStraightAlpha);
+        _deviceContext->Bind(RenderCore::Techniques::CommonResources()._defaultRasterizer);
+        _deviceContext->BindPS(RenderCore::ResourceList<SamplerState, 1>(std::make_tuple(RenderCore::Techniques::CommonResources()._defaultSampler)));
 
         ViewportDesc viewportDesc(*_deviceContext);
         ReciprocalViewportDimensions reciprocalViewportDimensions = { 1.f / float(viewportDesc.Width), 1.f / float(viewportDesc.Height), 0.f, 0.f };
@@ -539,7 +539,7 @@ namespace RenderOverlays
             boundUniforms.BindConstantBuffer(
                 Hash64("ReciprocalViewportDimensions"), 0, 1,
                 ReciprocalViewportDimensions_Elements, dimof(ReciprocalViewportDimensions_Elements));
-            SceneEngine::TechniqueContext::BindGlobalUniforms(boundUniforms);
+            RenderCore::Techniques::TechniqueContext::BindGlobalUniforms(boundUniforms);
 
             Assets::RegisterAssetDependency(validationCallback, &_shaderProgram->GetDependencyValidation());
 
@@ -556,7 +556,7 @@ namespace RenderOverlays
                 //              (since it's just the same every time)
         using namespace RenderCore::Metal;
 
-        auto& box = SceneEngine::FindCachedBoxDep<ShaderBox>(
+        auto& box = RenderCore::Techniques::FindCachedBoxDep<ShaderBox>(
             ShaderBox::Desc(topology, format, projMode, pixelShaderName));
 
         if (box._shaderProgram) {
@@ -576,7 +576,7 @@ namespace RenderOverlays
         return _deviceContext.get();
     }
 
-    RenderCore::ProjectionDesc    ImmediateOverlayContext::GetProjectionDesc() const
+    RenderCore::Techniques::ProjectionDesc    ImmediateOverlayContext::GetProjectionDesc() const
     {
         return _projDesc;
     }
@@ -588,7 +588,7 @@ namespace RenderOverlays
 
     ImmediateOverlayContext::ImmediateOverlayContext(
         RenderCore::Metal::DeviceContext* deviceContext, 
-        const RenderCore::ProjectionDesc& projDesc)
+        const RenderCore::Techniques::ProjectionDesc& projDesc)
     : _deviceContext(deviceContext)
     , _font(GetX2Font("Raleway", 16))
     , _defaultTextStyle(*_font.get())
@@ -597,7 +597,7 @@ namespace RenderOverlays
         _writePointer = 0;
         _drawCalls.reserve(64);
 
-        auto trans = RenderCore::BuildGlobalTransformConstants(projDesc);
+        auto trans = RenderCore::Techniques::BuildGlobalTransformConstants(projDesc);
         _globalTransformConstantBuffer = RenderCore::MakeSharedPkt(
             (const uint8*)&trans, (const uint8*)PtrAdd(&trans, sizeof(trans)));
 
@@ -619,10 +619,10 @@ namespace RenderOverlays
 
 }
 
-namespace SceneEngine
+namespace RenderCore { namespace Techniques
 {
     template<> uint64 CalculateCachedBoxHash(const RenderOverlays::ImmediateOverlayContext::ShaderBox::Desc& desc)
     {
         return (uint64(desc._format) << 32) ^ (uint64(desc._projMode) << 16) ^ uint64(desc._topology) ^ Hash64(desc._pixelShaderName);
     }
-}
+}}

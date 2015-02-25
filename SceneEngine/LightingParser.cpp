@@ -8,8 +8,6 @@
 #include "LightingParserContext.h"
 #include "SceneParser.h"
 #include "SceneEngineUtility.h"
-#include "ResourceBox.h"
-#include "CommonResources.h"
 
 #include "LightingTargets.h"
 #include "LightInternal.h"
@@ -18,7 +16,6 @@
 #include "Shadows.h"
 #include "MetricsBox.h"
 #include "Ocean.h"
-#include "Techniques.h"
 #include "RefractionsBuffer.h"
 #include "OrderIndependentTransparency.h"
 #include "Sky.h"
@@ -26,6 +23,9 @@
 #include "Noise.h"
 
 #include "../RenderCore/RenderUtils.h"
+#include "../RenderCore/Techniques/ResourceBox.h"
+#include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Metal/GPUProfiler.h"
 #include "../RenderCore/Metal/DeviceContextImpl.h"
 #include "../ConsoleRig/Console.h"
@@ -79,7 +79,7 @@ namespace SceneEngine
             context->BindCS(RenderCore::MakeResourceList(14, normalsFittingResource));
 
                 // perlin noise resources in standard slots
-            auto& perlinNoiseRes = FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());
+            auto& perlinNoiseRes = Techniques::FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());
             context->BindPS(MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
 
                 // procedural scratch texture for scratches test
@@ -100,9 +100,9 @@ namespace SceneEngine
             //      are at their defaults.
             //
 
-        context->Bind(CommonResources()._dssReadWrite);
-        context->Bind(CommonResources()._blendOpaque);
-        context->Bind(CommonResources()._defaultRasterizer);
+        context->Bind(Techniques::CommonResources()._dssReadWrite);
+        context->Bind(Techniques::CommonResources()._blendOpaque);
+        context->Bind(Techniques::CommonResources()._defaultRasterizer);
         context->Bind(Topology::TriangleList);
         context->BindVS(RenderCore::MakeResourceList(ConstantBuffer(), ConstantBuffer(), ConstantBuffer(), ConstantBuffer(), ConstantBuffer()));
         context->BindPS(RenderCore::MakeResourceList(ConstantBuffer(), ConstantBuffer(), ConstantBuffer(), ConstantBuffer(), ConstantBuffer()));
@@ -119,7 +119,7 @@ namespace SceneEngine
 
     void LightingParser_SetGlobalTransform( DeviceContext* context, 
                                             LightingParserContext& parserContext, 
-                                            const RenderCore::CameraDesc& sceneCamera,
+                                            const Techniques::CameraDesc& sceneCamera,
                                             unsigned viewportWidth, unsigned viewportHeight,
                                             const Float4x4* specialProjectionMatrix)
     {
@@ -129,7 +129,7 @@ namespace SceneEngine
             //  texture matters... The scene parser doesn't know what we're rendering
             //  do, so can't know the complete rendering output.
         const float aspectRatio = viewportWidth / float(viewportHeight);
-        auto cameraToProjection = PerspectiveProjection(sceneCamera, aspectRatio);
+        auto cameraToProjection = Techniques::PerspectiveProjection(sceneCamera, aspectRatio);
 
         if (specialProjectionMatrix) {
             cameraToProjection = *specialProjectionMatrix;
@@ -270,7 +270,7 @@ namespace SceneEngine
         GPUProfiler::DebugAnnotation anno(*context, L"Overlays");
 
         ViewportDesc mainViewportDesc(*context);
-        auto& refractionBox = FindCachedBox<RefractionsBuffer>(RefractionsBuffer::Desc(unsigned(mainViewportDesc.Width/2), unsigned(mainViewportDesc.Height/2)));
+        auto& refractionBox = Techniques::FindCachedBox<RefractionsBuffer>(RefractionsBuffer::Desc(unsigned(mainViewportDesc.Width/2), unsigned(mainViewportDesc.Height/2)));
         BuildRefractionsTexture(context, parserContext, refractionBox, 4.f);
         context->BindPS(MakeResourceList(12, refractionBox._refractionsFrontSRV));
 
@@ -349,7 +349,7 @@ namespace SceneEngine
             //      will switch early-depth-stencil on and off as necessary, but in the second
             //      pass we want it on permanently because the depth reject will end up performing
             //      the same job as alpha testing)
-        context->Bind(CommonResources()._dssReadOnly);
+        context->Bind(Techniques::CommonResources()._dssReadOnly);
 
             /////
             
@@ -453,7 +453,7 @@ namespace SceneEngine
         typedef Metal::NativeFormat::Enum NativeFormat;
         auto sampling = BufferUploads::TextureSamples::Create(
             uint8(std::max(qualitySettings._samplingCount, 1u)), uint8(qualitySettings._samplingQuality));
-        auto& lightingResTargets = FindCachedBox<LightingResolveTextureBox>(
+        auto& lightingResTargets = Techniques::FindCachedBox<LightingResolveTextureBox>(
             LightingResolveTextureBox::Desc(
                 unsigned(mainViewport.Width), unsigned(mainViewport.Height),
                 FormatStack(NativeFormat::R16G16B16A16_FLOAT),
@@ -469,7 +469,7 @@ namespace SceneEngine
                 //
 
             const bool enableParametersBuffer = Tweakable("EnableParametersBuffer", true);
-            auto& mainTargets = FindCachedBox<MainTargetsBox>(
+            auto& mainTargets = Techniques::FindCachedBox<MainTargetsBox>(
                 MainTargetsBox::Desc(
                     unsigned(mainViewport.Width), unsigned(mainViewport.Height),
                     FormatStack(NativeFormat::R8G8B8A8_UNORM),
@@ -528,7 +528,7 @@ namespace SceneEngine
             context->Bind(
                 MakeResourceList(lightingResTargets._lightingResolveRTV), 
                 &mainTargets._msaaDepthBuffer);
-            context->Bind(CommonResources()._dssReadOnly);
+            context->Bind(Techniques::CommonResources()._dssReadOnly);
 
             TRY {
 
@@ -562,7 +562,7 @@ namespace SceneEngine
 
         } else if (lightingModel == LightingModel::Forward) {
 
-            auto& mainTargets = FindCachedBox<ForwardTargetsBox>(
+            auto& mainTargets = Techniques::FindCachedBox<ForwardTargetsBox>(
                 ForwardTargetsBox::Desc(
                     unsigned(mainViewport.Width), unsigned(mainViewport.Height),
                     FormatStack(NativeFormat(DXGI_FORMAT_R24G8_TYPELESS), 
@@ -603,7 +603,7 @@ namespace SceneEngine
                 //
             if (qualitySettings._samplingCount > 1) {
                 TextureDesc2D inputTextureDesc(postLightingResolveTexture);
-				auto& msaaResolveRes = FindCachedBox<FinalResolveResources>(
+				auto& msaaResolveRes = Techniques::FindCachedBox<FinalResolveResources>(
 					FinalResolveResources::Desc(inputTextureDesc.Width, inputTextureDesc.Height, (Metal::NativeFormat::Enum)inputTextureDesc.Format));
                 LightingParser_ResolveMSAA(
                     context, parserContext,
@@ -686,11 +686,11 @@ namespace SceneEngine
 
             /////////////////////////////////////////////
 
-        auto& targetsBox = FindCachedBox<ShadowTargetsBox>(
+        auto& targetsBox = Techniques::FindCachedBox<ShadowTargetsBox>(
             ShadowTargetsBox::Desc(
                 frustum._width, frustum._height, MaxShadowTexturesPerLight, 
                 FormatStack(frustum._typelessFormat, frustum._readFormat, frustum._writeFormat)));
-        auto& resources = FindCachedBox<ShadowWriteResources>(
+        auto& resources = Techniques::FindCachedBox<ShadowWriteResources>(
             ShadowWriteResources::Desc(
                 Tweakable("ShadowSlopeScaledBias", 0.7f), Tweakable("ShadowDepthBiasClamp", 0.f), 
                 Tweakable("ShadowRasterDepthBias", 0)));
@@ -736,7 +736,7 @@ namespace SceneEngine
         CATCH_END
 
         savedTargets.ResetToOldTargets(context);
-        context->Bind(CommonResources()._defaultRasterizer);
+        context->Bind(Techniques::CommonResources()._defaultRasterizer);
 
         parserContext.GetTechniqueContext()._runtimeState.SetParameter(StringShadowCascadeMode, 0);
 
@@ -758,7 +758,7 @@ namespace SceneEngine
 
     void LightingParser_SetupScene( DeviceContext* context, 
                                     LightingParserContext& parserContext,
-                                    const RenderCore::CameraDesc& camera,
+                                    const RenderCore::Techniques::CameraDesc& camera,
                                     const RenderingQualitySettings& qualitySettings)
     {
         TRY {
@@ -776,7 +776,7 @@ namespace SceneEngine
             }
             parserContext.SetGlobalCB(1, context, &time, sizeof(time));
 
-            auto& metricsBox = FindCachedBox<MetricsBox>(MetricsBox::Desc());
+            auto& metricsBox = Techniques::FindCachedBox<MetricsBox>(MetricsBox::Desc());
             unsigned clearValues[] = {0,0,0,0};
             context->Clear(metricsBox._metricsBufferUAV, clearValues);
             parserContext.SetMetricsBox(&metricsBox);
@@ -866,68 +866,14 @@ namespace SceneEngine
         _metricsBox = box;
     }
 
-    void LightingParserContext::SetGlobalCB(unsigned index, RenderCore::Metal::DeviceContext* context, const void* newData, size_t dataSize)
-    {
-        if (index >= dimof(_globalCBs)) {
-            return;
-        }
-
-        if (!_globalCBs[index].GetUnderlying()) {
-            _globalCBs[index] = ConstantBuffer(newData, dataSize, false);
-        } else {
-            _globalCBs[index].Update(*context, newData, dataSize);
-        }
-    }
-
-    void LightingParserContext::Process(const ::Assets::Exceptions::InvalidResource& e)
-    {
-            //  Handle a "invalid resource" exception that 
-            //  occurred during rendering. Normally this will just mean
-            //  reporting the invalid resource to the screen.
-        std::string id = e.ResourceId();
-        auto i = std::lower_bound(_invalidResources.begin(), _invalidResources.end(), id);
-        if (i == _invalidResources.end() || *i != id) {
-            _invalidResources.insert(i, id);
-        }
-    }
-
-    void LightingParserContext::Process(const ::Assets::Exceptions::PendingResource& e)
-    {
-            //  Handle a "pending resource" exception that 
-            //  occurred during rendering. Normally this will just mean
-            //  reporting the invalid resource to the screen.
-            //  These happen fairly often -- particularly when just starting up, or
-            //  when changing rendering settings.
-            //  at the moment, this will result in a bunch of allocations -- that's not
-            //  ideal during error processing.
-        std::string id = e.ResourceId();
-        auto i = std::lower_bound(_pendingResources.begin(), _pendingResources.end(), id);
-        if (i == _pendingResources.end() || *i != id) {
-            _pendingResources.insert(i, id);
-        }
-    }
-
-    LightingParserContext::LightingParserContext(ISceneParser* sceneParser, const TechniqueContext& techniqueContext)
-    : _sceneParser(sceneParser)
+    LightingParserContext::LightingParserContext(ISceneParser* sceneParser, const Techniques::TechniqueContext& techniqueContext)
+    : ParsingContext(techniqueContext)
+    , _sceneParser(sceneParser)
     {
         _metricsBox = nullptr;
-        _techniqueContext = std::make_unique<TechniqueContext>(techniqueContext);
-
-        _projectionDesc.reset((ProjectionDesc*)XlMemAlign(sizeof(ProjectionDesc), 16));
-        #pragma push_macro("new")
-        #undef new
-            new(_projectionDesc.get()) ProjectionDesc();
-        #pragma pop_macro("new")
-
-        for (unsigned c=0; c<dimof(_globalCBs); ++c) {
-            _globalUniformsConstantBuffers.push_back(&_globalCBs[c]);
-        }
-        _globalUniformsStream = std::make_unique<RenderCore::Metal::UniformsStream>(
-            nullptr, AsPointer(_globalUniformsConstantBuffers.begin()), _globalUniformsConstantBuffers.size());
     }
 
     LightingParserContext::~LightingParserContext() {}
-
 
     RenderingQualitySettings::RenderingQualitySettings()
     {

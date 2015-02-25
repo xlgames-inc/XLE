@@ -14,11 +14,12 @@
 #include "PlacementsManager.h"
 #include "../RenderOverlays/IOverlayContext.h"
 #include "../RenderCore/Metal/DeviceContext.h"
-#include "CommonResources.h"
+#include "../RenderCore/Techniques/CommonResources.h"
 #include "../ConsoleRig/Console.h"
 
 namespace SceneEngine
 {
+    using namespace RenderCore;
 
     class PlacementsQuadTree::Pimpl
     {
@@ -504,7 +505,7 @@ namespace SceneEngine
         RenderOverlays::IOverlayContext* context, Layout& layout, 
         Interactables& interactables, InterfaceState& interfaceState)
     {
-        context->GetDeviceContext()->Bind(CommonResources()._dssDisable);
+        context->GetDeviceContext()->Bind(Techniques::CommonResources()._dssDisable);
         static signed treeDepthFilter = -1;
         static bool drawObjects = false;
 

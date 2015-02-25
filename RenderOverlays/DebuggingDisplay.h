@@ -14,7 +14,7 @@
 #include "../Utility/UTFUtils.h"
 #include "IOverlayContext.h"
 #include "../RenderCore/IDevice_Forward.h"
-#include "../RenderCore/RenderUtils.h"
+#include "../RenderCore/Techniques/TechniqueUtils.h"
 #include <vector>
 #include <map>
 
@@ -322,7 +322,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
     {
     public:
         bool        OnInputEvent(const InputSnapshot& evnt);
-        void        Render(RenderCore::IDevice* device, const RenderCore::ProjectionDesc& projDesc = RenderCore::ProjectionDesc());
+        void        Render(RenderCore::IDevice* device, const RenderCore::Techniques::ProjectionDesc& projDesc = RenderCore::Techniques::ProjectionDesc());
 
         enum Type { InPanel, SystemDisplay };
         void        Register(std::shared_ptr<IWidget> widget, const char name[], Type type = InPanel);

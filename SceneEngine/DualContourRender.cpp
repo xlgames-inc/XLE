@@ -7,20 +7,20 @@
 #include "DualContourRender.h"
 #include "DualContour.h"
 #include "OITInternal.h"
-#include "Techniques.h"
 #include "LightingParserContext.h"
-#include "ResourceBox.h"
-#include "CommonResources.h"
 #include "SceneEngineUtility.h"
 #include "RefractionsBuffer.h"  // for BuildDuplicatedDepthBuffer
 
+#include "../RenderCore/Techniques/Techniques.h"
+#include "../RenderCore/Techniques/ResourceBox.h"
+#include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Techniques/TechniqueUtils.h"
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/DeviceContextImpl.h"
 #include "../RenderCore/DX11/Metal/DX11Utils.h"
-#include "../RenderCore/RenderUtils.h"
 #include "../ConsoleRig/Console.h"
 #include "../Math/Transformations.h"
 
@@ -114,11 +114,11 @@ namespace SceneEngine
                 &parserContext.GetTechniqueContext()._runtimeState, &materialParameters
             };
 
-            TechniqueInterface techniqueInterface(Metal::GlobalInputLayouts::PN);
-            TechniqueContext::BindGlobalUniforms(techniqueInterface);
+            Techniques::TechniqueInterface techniqueInterface(Metal::GlobalInputLayouts::PN);
+            Techniques::TechniqueContext::BindGlobalUniforms(techniqueInterface);
             techniqueInterface.BindConstantBuffer(Hash64("LocalTransform"), 0, 1);
 
-            auto& shaderType = Assets::GetAssetDep<ShaderType>("game/xleres/cloudvolume.txt");
+            auto& shaderType = ::Assets::GetAssetDep<Techniques::ShaderType>("game/xleres/cloudvolume.txt");
             auto variation = shaderType.FindVariation(techniqueIndex, state, techniqueInterface);
             if (variation._shaderProgram != nullptr) {
                 context->Bind(*variation._shaderProgram);
@@ -128,7 +128,7 @@ namespace SceneEngine
                 if (variation._boundUniforms) {
                     Metal::ConstantBufferPacket pkts[] = 
                     {
-                        MakeLocalTransformPacket(Identity<Float4x4>(), ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld))
+                        Techniques::MakeLocalTransformPacket(Identity<Float4x4>(), ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld))
                     };
                     variation._boundUniforms->Apply(
                         *context, parserContext.GetGlobalUniformsStream(), 
@@ -164,8 +164,8 @@ namespace SceneEngine
                 targets._fragmentIdsTextureSRV, 
                 targets._nodeListBufferSRV, duplicatedDepthBuffer));
 
-            context->Bind(CommonResources()._blendAlphaPremultiplied);
-            context->Bind(CommonResources()._dssReadOnly);
+            context->Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
+            context->Bind(Techniques::CommonResources()._dssReadOnly);
 
             auto& resolveShader = Assets::GetAssetDep<Metal::ShaderProgram>(
                 "game/xleres/basic2D.vsh:fullscreen:vs_*", 
@@ -212,11 +212,11 @@ namespace SceneEngine
             // }
 
             auto& transparencyTargets = 
-                FindCachedBox<TransparencyTargetsBox>(
+                Techniques::FindCachedBox<TransparencyTargetsBox>(
                     TransparencyTargetsBox::Desc(unsigned(mainViewport.Width), unsigned(mainViewport.Height), false));
             OrderIndependentTransparency_ClearAndBind(context, transparencyTargets, duplicatedDepthBuffer);
-            context->Bind(CommonResources()._dssReadOnly);  // never write to depth (even for very opaque pixels)
-            context->Bind(CommonResources()._cullDisable);  // we need to write both front and back faces (but the pixel shader will treat them differently)
+            context->Bind(Techniques::CommonResources()._dssReadOnly);  // never write to depth (even for very opaque pixels)
+            context->Bind(Techniques::CommonResources()._cullDisable);  // we need to write both front and back faces (but the pixel shader will treat them differently)
             RenderOpaqueMethod(context, parserContext, 4, pimpl);
 
 
@@ -252,8 +252,8 @@ namespace SceneEngine
         unsigned techniqueIndex) const
     {
             // render as a solid object (into main scene or shadow scene)
-        context->Bind(CommonResources()._dssReadWrite);
-        context->Bind(CommonResources()._defaultRasterizer);
+        context->Bind(Techniques::CommonResources()._dssReadWrite);
+        context->Bind(Techniques::CommonResources()._defaultRasterizer);
         RenderOpaqueMethod(context, parserContext, techniqueIndex, _pimpl.get());
     }
 
@@ -320,10 +320,10 @@ namespace SceneEngine
                 &parserContext.GetTechniqueContext()._runtimeState, &materialParameters
             };
 
-            TechniqueInterface techniqueInterface(Metal::GlobalInputLayouts::PN);
-            TechniqueContext::BindGlobalUniforms(techniqueInterface);
+            Techniques::TechniqueInterface techniqueInterface(Metal::GlobalInputLayouts::PN);
+            Techniques::TechniqueContext::BindGlobalUniforms(techniqueInterface);
 
-            auto& shaderType = Assets::GetAssetDep<ShaderType>("game/xleres/illum.txt");
+            auto& shaderType = ::Assets::GetAssetDep<Techniques::ShaderType>("game/xleres/illum.txt");
             auto variation = shaderType.FindVariation(techniqueIndex, state, techniqueInterface);
             if (variation._shaderProgram != nullptr) {
                 context->Bind(*variation._shaderProgram);
@@ -348,7 +348,7 @@ namespace SceneEngine
                 context->Bind(ib, (indexSize==4)?Metal::NativeFormat::R32_UINT:Metal::NativeFormat::R16_UINT);
 
                 context->Bind(Metal::Topology::TriangleList);
-                context->Bind(CommonResources()._dssReadWrite);
+                context->Bind(Techniques::CommonResources()._dssReadWrite);
 
                 context->DrawIndexed(ibDataCount);
             }

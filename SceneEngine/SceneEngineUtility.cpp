@@ -7,7 +7,7 @@
 #include "SceneEngineUtility.h"
 
 #include "LightingParserContext.h"
-#include "CommonResources.h"
+#include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderOverlays/Font.h"
 
 #include "../RenderCore/DX11/Metal/IncludeDX11.h"
@@ -155,7 +155,7 @@ namespace SceneEngine
             &&  parserContext._errorString.empty())
             return;
 
-        context->Bind(SceneEngine::CommonResources()._blendStraightAlpha);
+        context->Bind(RenderCore::Techniques::CommonResources()._blendStraightAlpha);
 
         using namespace RenderOverlays;
         TextStyle   style(*font); 

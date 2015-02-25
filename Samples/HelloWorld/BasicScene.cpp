@@ -5,13 +5,13 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "BasicScene.h"
-#include "../../RenderCore/RenderUtils.h"
+#include "../../RenderCore/Techniques/TechniqueUtils.h"
+#include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Assets/ModelRunTime.h"
 #include "../../RenderCore/Assets/SharedStateSet.h"
 #include "../../RenderCore/Assets/ColladaCompilerInterface.h"
 #include "../../SceneEngine/LightDesc.h"
 #include "../../SceneEngine/LightingParserContext.h"
-#include "../../SceneEngine/Techniques.h"
 #include "../../Assets/Assets.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/IntermediateResources.h"
@@ -116,7 +116,7 @@ namespace Sample
         ExecuteScene(context, parserContext, parseSettings, techniqueIndex);
     }
 
-    RenderCore::CameraDesc BasicSceneParser::GetCameraDesc() const 
+    RenderCore::Techniques::CameraDesc BasicSceneParser::GetCameraDesc() const 
     { 
             //  The scene parser provides some global rendering properties
             //  to the lighting parser. 
@@ -124,7 +124,7 @@ namespace Sample
             //  The simplest example of this is the camera properties.
             //  This function just returns the properties the main camera
             //  that should be used to render this scene.
-        RenderCore::CameraDesc result;
+        RenderCore::Techniques::CameraDesc result;
         static const auto camDist = 50.f;
         const auto camHeight = 7.5f;
         const auto secondsPerRotation = 40.f;
@@ -187,7 +187,7 @@ namespace Sample
         return 1; 
     }
 
-    auto BasicSceneParser::GetShadowProjectionDesc(unsigned index, const RenderCore::ProjectionDesc& mainSceneProjectionDesc) const 
+    auto BasicSceneParser::GetShadowProjectionDesc(unsigned index, const RenderCore::Techniques::ProjectionDesc& mainSceneProjectionDesc) const 
         -> ShadowProjectionDesc
     {
             //  Shadowing lights can have a ShadowProjectionDesc object associated.

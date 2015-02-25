@@ -18,7 +18,7 @@
 #include "../Math/Transformations.h"
 #include <tuple>
 
-namespace RenderCore { class CameraDesc; }
+namespace RenderCore { namespace Techniques { class CameraDesc; }}
 
 #if defined(PROJECT_COLLADA_CONVERSION)
     #define CONVERSION_API dll_export
@@ -76,7 +76,7 @@ namespace RenderCore { namespace ColladaConversion
 
         std::pair<Float3, Float3>   CalculateBoundingBox() const;
         unsigned                    CameraCount() const;
-        CameraDesc                  Camera(unsigned index) const;
+        Techniques::CameraDesc      Camera(unsigned index) const;
 
         CONVERSION_API NascentChunkArray    SerializeSkin() const;
         CONVERSION_API NascentChunkArray    SerializeAnimationSet() const;

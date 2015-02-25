@@ -1,6 +1,6 @@
 #include "LightInternal.h"
 #include "LightDesc.h"
-#include "../RenderCore/RenderUtils.h"
+#include "../RenderCore/Techniques/TechniqueUtils.h"
 #include "../Math/Transformations.h"
 #include "../Math/ProjectionMath.h"
 #include "../Utility/MemoryUtils.h"
@@ -45,6 +45,7 @@ namespace SceneEngine
             for (unsigned c=0; c<frustumCount; ++c) {
                 const auto& mins = desc._orthoSub[c]._projMins;
                 const auto& maxs = desc._orthoSub[c]._projMaxs;
+                using namespace RenderCore::Techniques;
                 Float4x4 projMatrix = OrthogonalProjection(
                     mins[0], mins[1], maxs[0], maxs[1], mins[2], maxs[2],
                     GeometricCoordinateSpace::RightHanded, GetDefaultClipSpaceType());

@@ -9,14 +9,14 @@
 #include "LightingTargets.h"
 #include "SceneParser.h"
 #include "SceneEngineUtility.h"
-#include "ResourceBox.h"
 #include "Shadows.h"
-#include "CommonResources.h"
 #include "LightInternal.h"
 
 #include "Sky.h"
 #include "VolumetricFog.h"
 
+#include "../RenderCore/Techniques/ResourceBox.h"
+#include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/RenderUtils.h"
 #include "../RenderCore/Metal/DeviceContextImpl.h"
 #include "../RenderCore/Metal/State.h"
@@ -75,7 +75,7 @@ namespace SceneEngine
         const unsigned samplingCount = mainTargets._desc._sampling._sampleCount;
 
         SetupVertexGeneratorShader(context);
-        context->Bind(CommonResources()._blendOneSrcAlpha);
+        context->Bind(Techniques::CommonResources()._blendOneSrcAlpha);
 
                 //      Bind lighting resolve texture
                 //      (in theory, in LDR/non-MSAA modes we could write directly to the 
@@ -84,10 +84,10 @@ namespace SceneEngine
             MakeResourceList(lightingResTargets._lightingResolveRTV), 
             (doSampleFrequencyOptimisation && samplingCount>1)?&mainTargets._secondaryDepthBuffer:nullptr);
         if (doSampleFrequencyOptimisation && samplingCount > 1) {
-            context->Bind(CommonResources()._cullDisable);
+            context->Bind(Techniques::CommonResources()._cullDisable);
             context->Bind(resolveRes._writePixelFrequencyPixels, 0xff);
         } else {
-            context->Bind(CommonResources()._dssDisable);
+            context->Bind(Techniques::CommonResources()._dssDisable);
         }
 
         context->BindPS(MakeResourceList(
@@ -111,7 +111,7 @@ namespace SceneEngine
         const unsigned samplingCount = lightingResolveContext.GetSamplingCount();
         const bool useMsaaSamplers = lightingResolveContext.UseMsaaSamplers();
 
-        auto& resolveRes = FindCachedBoxDep<LightingResolveResources>(LightingResolveResources::Desc(samplingCount));
+        auto& resolveRes = Techniques::FindCachedBoxDep<LightingResolveResources>(LightingResolveResources::Desc(samplingCount));
 
             //
             //    Our inputs is the prepared gbuffer 
@@ -230,7 +230,7 @@ namespace SceneEngine
 
                         //-------- ambient light shader --------
                     auto& ambientResolveShaders = 
-                        FindCachedBoxDep<AmbientResolveShaders>(
+                        Techniques::FindCachedBoxDep<AmbientResolveShaders>(
                             AmbientResolveShaders::Desc(
                                 (c==0)?samplingCount:1, useMsaaSamplers, c==1,
                                 lightingResolveContext._ambientOcclusionResult.IsGood(),
@@ -269,7 +269,7 @@ namespace SceneEngine
                         //          we have to change all of the render states. We need
                         //          a better way to manage render states during lighting resolve
                         //          (pending refactoring)
-                    context->Bind(CommonResources()._dssReadOnly);
+                    context->Bind(Techniques::CommonResources()._dssReadOnly);
                     context->UnbindPS<ShaderResourceView>(4, 1);
                     context->Bind(MakeResourceList(lightingResTargets._lightingResolveRTV), &mainTargets._msaaDepthBuffer);
                     Sky_Render(context, parserContext, false);     // we do a first pass of the sky here, and then follow up with a second pass after lighting resolve
@@ -304,8 +304,8 @@ namespace SceneEngine
         context->UnbindPS<ShaderResourceView>(0, 9);
 
             // reset some of the states to more common defaults...
-        context->Bind(CommonResources()._defaultRasterizer);
-        context->Bind(CommonResources()._dssReadWrite);
+        context->Bind(Techniques::CommonResources()._defaultRasterizer);
+        context->Bind(Techniques::CommonResources()._dssReadWrite);
         
         if (Tweakable("DeferredDebugging", false)) {
             parserContext._pendingOverlays.push_back(
@@ -326,13 +326,13 @@ namespace SceneEngine
 
         ConstantBufferPacket constantBufferPackets[5];
         const Metal::ConstantBuffer* prebuiltConstantBuffers[5] = { nullptr, nullptr, nullptr, nullptr, nullptr };
-        prebuiltConstantBuffers[2] = &FindCachedBox<ShadowResourcesBox>(ShadowResourcesBox::Desc())._sampleKernel32;
+        prebuiltConstantBuffers[2] = &Techniques::FindCachedBox<ShadowResourcesBox>(ShadowResourcesBox::Desc())._sampleKernel32;
 
             ////////////////////////////////////////////////////////////////////////
 
         unsigned gbufferType = (mainTargets._gbufferTextures[2]) ? 1 : 2;
         auto& lightingResolveShaders = 
-            FindCachedBoxDep<LightingResolveShaders>(
+            Techniques::FindCachedBoxDep<LightingResolveShaders>(
                 LightingResolveShaders::Desc(
                     gbufferType,
                     (resolveContext.GetCurrentPass()==LightingResolveContext::Pass::PerSample)?samplingCount:1, useMsaaSamplers, 

@@ -8,14 +8,14 @@
 
 #include "ScreenspaceReflections.h"
 #include "SceneEngineUtility.h"
-#include "ResourceBox.h"
 #include "LightingParserContext.h"
 #include "SceneParser.h"
-#include "Techniques.h"
-#include "CommonResources.h"
 #include "Sky.h"
 #include "LightDesc.h"
 
+#include "../RenderCore/Techniques/Techniques.h"
+#include "../RenderCore/Techniques/ResourceBox.h"
+#include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Metal/RenderTargetView.h"
 #include "../RenderCore/Metal/ShaderResource.h"
 #include "../RenderCore/Metal/State.h"
@@ -302,13 +302,13 @@ namespace SceneEngine
             //
         using namespace RenderCore;
         auto cfg = GetConfig(width, height, useMsaaSamplers);
-        auto& res = FindCachedBoxDep<ScreenSpaceReflectionsResources>(cfg);
+        auto& res = Techniques::FindCachedBoxDep<ScreenSpaceReflectionsResources>(cfg);
 
         SavedTargets oldTargets(context);
         SavedBlendAndRasterizerState oldBlendAndRasterizer(context);
 
-        context->Bind(CommonResources()._blendOpaque);
-        context->Bind(CommonResources()._cullDisable);
+        context->Bind(Techniques::CommonResources()._blendOpaque);
+        context->Bind(Techniques::CommonResources()._cullDisable);
         ViewportDesc newViewport(0, 0, float(cfg._width), float(cfg._height), 0.f, 1.f);
         context->Bind(newViewport);
 
@@ -434,7 +434,7 @@ namespace SceneEngine
                 "game/xleres/screenspacerefl/debugging.psh:main:ps_*",
                 definesBuffer);
             context->Bind(debuggingShader);
-            context->Bind(CommonResources()._blendStraightAlpha);
+            context->Bind(Techniques::CommonResources()._blendStraightAlpha);
 
             context->BindPS(MakeResourceList(5, resources._maskShaderResource, resources._downsampledNormalsShaderResource));
             context->BindPS(MakeResourceList(10, resources._downsampledDepthShaderResource, resources._reflectionsShaderResource));
@@ -455,7 +455,7 @@ namespace SceneEngine
             Metal::BoundUniforms boundUniforms(debuggingShader);
             boundUniforms.BindConstantBuffer(Hash64("BasicGlobals"), 0, 1);
             boundUniforms.BindConstantBuffer(Hash64("SamplingPattern"), 1, 1);
-            TechniqueContext::BindGlobalUniforms(boundUniforms);
+            Techniques::TechniqueContext::BindGlobalUniforms(boundUniforms);
             const Metal::ConstantBuffer* prebuiltBuffers[] = { &globalConstantsBuffer, &resources._samplingPatternConstants };
             boundUniforms.Apply(*context, 
                 parserContext.GetGlobalUniformsStream(),

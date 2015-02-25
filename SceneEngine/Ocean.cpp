@@ -9,17 +9,17 @@
 #include "Ocean.h"
 #include "ShallowWater.h"
 #include "SceneEngineUtility.h"
-#include "ResourceBox.h"
-#include "Techniques.h"
 #include "LightingParserContext.h"
 #include "SceneParser.h"
 #include "RefractionsBuffer.h"
 #include "SimplePatchBox.h"
 #include "Sky.h"
 #include "Noise.h"
-#include "CommonResources.h"
 #include "LightDesc.h"
 
+#include "../RenderCore/Techniques/ResourceBox.h"
+#include "../RenderCore/Techniques/Techniques.h"
+#include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Metal/Format.h"
 #include "../RenderCore/Metal/RenderTargetView.h"
 #include "../RenderCore/Metal/ShaderResource.h"
@@ -275,7 +275,7 @@ namespace SceneEngine
     void FFT_DoDebugging(RenderCore::Metal::DeviceContext* context)
     {
         const unsigned dimensions = 256;
-        auto& box = FindCachedBox<FFTBufferBox>(FFTBufferBox::Desc(dimensions,dimensions, false));
+        auto& box = Techniques::FindCachedBox<FFTBufferBox>(FFTBufferBox::Desc(dimensions,dimensions, false));
 
         SavedTargets savedTargets(context);
         ViewportDesc oldViewport(*context);
@@ -310,7 +310,7 @@ namespace SceneEngine
         context->Bind(fft2); context->Dispatch((dimensions + (32-1))/32);
         context->UnbindCS<UnorderedAccessView>(0, 2);
 
-        context->Bind(CommonResources()._blendStraightAlpha);
+        context->Bind(Techniques::CommonResources()._blendStraightAlpha);
         context->Bind(Assets::GetAssetDep<Metal::ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen:vs_*", "game/xleres/Ocean/FFTDebugging.psh:main:ps_*"));
         context->BindPS(MakeResourceList(box._workingTextureRealShaderResource, box._workingTextureImaginaryShaderResource));
@@ -603,9 +603,9 @@ namespace SceneEngine
         const Float2 calmWindVector = oceanSettings._windVelocity[0] * Float2(XlCos(oceanSettings._windAngle[0]), XlSin(oceanSettings._windAngle[0]));
         const Float2 strongWindVector = oceanSettings._windVelocity[1] * Float2(XlCos(oceanSettings._windAngle[1]), XlSin(oceanSettings._windAngle[1]));
 
-        auto& calmSpectrum = FindCachedBox<StartingSpectrumBox>(
+        auto& calmSpectrum = Techniques::FindCachedBox<StartingSpectrumBox>(
             StartingSpectrumBox::Desc(dimensions,dimensions, physicalDimensions, calmWindVector, oceanSettings._scaleAgainstWind[0], oceanSettings._suppressionFactor[0]));
-        auto& strongSpectrum = FindCachedBox<StartingSpectrumBox>(
+        auto& strongSpectrum = Techniques::FindCachedBox<StartingSpectrumBox>(
             StartingSpectrumBox::Desc(dimensions,dimensions, physicalDimensions, strongWindVector, oceanSettings._scaleAgainstWind[1], oceanSettings._suppressionFactor[1]));
     
         const char* fftDefines = "";
@@ -629,7 +629,7 @@ namespace SceneEngine
         const ConstantBuffer* cbs[] = { &renderingConstantsBuffer, &materialConstantBuffer };
 
         BoundUniforms setupUniforms(Assets::GetAssetDep<Metal::CompiledShaderByteCode>("game/xleres/Ocean/FFT.csh:Setup:cs_*", "DO_INVERSE=0"));
-        TechniqueContext::BindGlobalUniforms(setupUniforms);
+        Techniques::TechniqueContext::BindGlobalUniforms(setupUniforms);
         setupUniforms.BindConstantBuffer(Hash64("OceanRenderingConstants"), 0, 1);
         setupUniforms.BindConstantBuffer(Hash64("OceanMaterialSettings"), 1, 1);
         setupUniforms.Apply(*context, 
@@ -669,7 +669,7 @@ namespace SceneEngine
             //  Generate normals using the displacement textures
         if (!fftBuffer._normalsTextureUAV.empty()) {
             BoundUniforms buildNormalsUniforms(Assets::GetAssetDep<Metal::CompiledShaderByteCode>(fftBuffer._useDerivativesMapForNormals ? "game/xleres/Ocean/OceanNormals.csh:BuildDerivatives:cs_*" : "game/xleres/Ocean/OceanNormals.csh:BuildNormals:cs_*"));
-            TechniqueContext::BindGlobalUniforms(buildNormalsUniforms);
+            Techniques::TechniqueContext::BindGlobalUniforms(buildNormalsUniforms);
             buildNormalsUniforms.BindConstantBuffer(Hash64("OceanRenderingConstants"), 0, 1);
             buildNormalsUniforms.BindConstantBuffer(Hash64("OceanMaterialSettings"), 1, 1);
             buildNormalsUniforms.Apply(*context, 
@@ -735,7 +735,7 @@ namespace SceneEngine
     };
 
     bool CalculateGridProjection(   GridRenderingConstants& result,
-                                    ProjectionDesc& mainCameraProjection, 
+                                    Techniques::ProjectionDesc& mainCameraProjection, 
                                     float oceanBaseHeight)
     {
             //
@@ -909,9 +909,9 @@ namespace SceneEngine
             }
         }
 
-        auto gridPerspective = PerspectiveProjection(
+        auto gridPerspective = Techniques::PerspectiveProjection(
             maxX, minY, minX, maxY,     // note -- maxX, minX flipped (required to match handiness of normal projection transforms)
-            1.0f, 100.f, GetDefaultClipSpaceType());
+            1.0f, 100.f, Techniques::GetDefaultClipSpaceType());
 
         result._gridProjection = Combine(worldToView, gridPerspective);
         result._gridProjectionOrigin = projectionViewPoint;
@@ -937,7 +937,7 @@ namespace SceneEngine
 
     void DrawProjectorFrustums( RenderCore::Metal::DeviceContext* context,
                                 LightingParserContext& parserContext,
-                                ProjectionDesc& mainCameraProjection,
+                                Techniques::ProjectionDesc& mainCameraProjection,
                                 float oceanBaseHeight)
     {
         GridRenderingConstants gridConstants;
@@ -974,7 +974,7 @@ namespace SceneEngine
                 "game/xleres/forward/illum.vsh:main:vs_*", 
                 "game/xleres/forward/illum.psh:main:ps_*",
                 "GEO_HAS_COLOUR=1");
-            auto localTransform = MakeLocalTransform(
+            auto localTransform = Techniques::MakeLocalTransform(
                 Identity<Float4x4>(), 
                 ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld));
             context->BindVS(MakeResourceList(parserContext.GetGlobalTransformCB(), ConstantBuffer(&localTransform, sizeof(localTransform))));
@@ -1026,7 +1026,7 @@ namespace SceneEngine
         } else {
             patchWidth = patchHeight = dimensions;
         }
-        auto& simplePatchBox = FindCachedBox<SimplePatchBox>(SimplePatchBox::Desc(patchWidth, patchHeight, true));
+        auto& simplePatchBox = Techniques::FindCachedBox<SimplePatchBox>(SimplePatchBox::Desc(patchWidth, patchHeight, true));
         context->Bind(simplePatchBox._simplePatchIndexBuffer, NativeFormat::R32_UINT);
 
         //////////////////////////////////////////////////////////////////////////////
@@ -1036,7 +1036,7 @@ namespace SceneEngine
         XlSetMemory(&gridConstants, 0, sizeof(gridConstants));
         gridConstants._gridPatchWidth = patchWidth;
         gridConstants._gridPatchHeight = patchHeight;
-        static ProjectionDesc savedProjection;
+        static Techniques::ProjectionDesc savedProjection;
         if (!pause) {
             savedProjection = parserContext.GetProjectionDesc();
         }
@@ -1070,7 +1070,7 @@ namespace SceneEngine
         const bool useWireframeRender               = Tweakable("OceanRenderWireframe", false);
         if (!useWireframeRender) {
 
-            auto& shaderType = Assets::GetAssetDep<ShaderType>("game/xleres/ocean/oceanmaterial.txt");
+            auto& shaderType = Assets::GetAssetDep<Techniques::ShaderType>("game/xleres/ocean/oceanmaterial.txt");
 
             ParameterBox materialParameters;
             materialParameters.SetParameter("MAT_USE_DERIVATIVES_MAP", unsigned(fftBuffer._useDerivativesMapForNormals));
@@ -1085,8 +1085,8 @@ namespace SceneEngine
                 &parserContext.GetTechniqueContext()._runtimeState, &materialParameters
             };
             
-            TechniqueInterface techniqueInterface;
-            TechniqueContext::BindGlobalUniforms(techniqueInterface);
+            Techniques::TechniqueInterface techniqueInterface;
+            Techniques::TechniqueContext::BindGlobalUniforms(techniqueInterface);
             techniqueInterface.BindConstantBuffer(HashMaterialConstants, 0, 1);
             techniqueInterface.BindConstantBuffer(HashGridConstants, 1, 1);
             techniqueInterface.BindConstantBuffer(HashRenderingConstants, 2, 1);
@@ -1119,7 +1119,7 @@ namespace SceneEngine
                 "game/xleres/solidwireframe.psh:outlinepatch:ps_*",
                 "SOLIDWIREFRAME_TEXCOORD=1");
             BoundUniforms boundUniforms(patchRender);
-            TechniqueContext::BindGlobalUniforms(boundUniforms);
+            Techniques::TechniqueContext::BindGlobalUniforms(boundUniforms);
             boundUniforms.BindConstantBuffer(HashMaterialConstants, 0, 1);
             boundUniforms.BindConstantBuffer(HashGridConstants, 1, 1);
             boundUniforms.BindConstantBuffer(HashRenderingConstants, 2, 1);
@@ -1145,10 +1145,10 @@ namespace SceneEngine
                 //  only need the depth buffer if we're doing refractions
             context->BindPS(MakeResourceList(9, refractionsBox->_refractionsFrontSRV, depthBufferSRV));
         }
-        auto& perlinNoiseRes = FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());
+        auto& perlinNoiseRes = Techniques::FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());
         context->BindVS(MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
 
-        context->Bind(CommonResources()._dssReadWrite);    // make sure depth read and write are enabled
+        context->Bind(Techniques::CommonResources()._dssReadWrite);    // make sure depth read and write are enabled
         SetupVertexGeneratorShader(context);        // (disable vertex input)
         context->Bind(Topology::TriangleList);
         context->DrawIndexed(simplePatchBox._simplePatchIndexCount);
@@ -1178,15 +1178,15 @@ namespace SceneEngine
         const Float2 calmWindVector     = oceanSettings._windVelocity[0] * Float2(XlCos(oceanSettings._windAngle[0]), XlSin(oceanSettings._windAngle[0]));
         const Float2 strongWindVector   = oceanSettings._windVelocity[1] * Float2(XlCos(oceanSettings._windAngle[1]), XlSin(oceanSettings._windAngle[1]));
 
-        auto& calmSpectrum = FindCachedBox<StartingSpectrumBox>(
+        auto& calmSpectrum = Techniques::FindCachedBox<StartingSpectrumBox>(
             StartingSpectrumBox::Desc(  dimensions,dimensions, physicalDimensions, calmWindVector, 
                                         oceanSettings._scaleAgainstWind[0], oceanSettings._suppressionFactor[0]));
-        auto& strongSpectrum = FindCachedBox<StartingSpectrumBox>(
+        auto& strongSpectrum = Techniques::FindCachedBox<StartingSpectrumBox>(
             StartingSpectrumBox::Desc(  dimensions,dimensions, physicalDimensions, strongWindVector, 
                                         oceanSettings._scaleAgainstWind[1], oceanSettings._suppressionFactor[1]));
 
         SetupVertexGeneratorShader(context);
-        context->Bind(CommonResources()._blendStraightAlpha);
+        context->Bind(Techniques::CommonResources()._blendStraightAlpha);
         context->Bind(Assets::GetAssetDep<Metal::ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen:vs_*", "game/xleres/Ocean/FFTDebugging.psh:main:ps_*"));
         context->BindPS(MakeResourceList(   fftBuffer._workingTextureRealShaderResource, fftBuffer._workingTextureImaginaryShaderResource,
@@ -1205,7 +1205,7 @@ namespace SceneEngine
                 //      We need to take a copy of the back buffer for refractions
                 //      we could blur it here -- but is it better blurred or sharp?
             ViewportDesc mainViewportDesc(*context);
-            auto& refractionBox = FindCachedBox<RefractionsBuffer>(
+            auto& refractionBox = Techniques::FindCachedBox<RefractionsBuffer>(
                 RefractionsBuffer::Desc(unsigned(mainViewportDesc.Width/2.f), unsigned(mainViewportDesc.Height/2.f)));
             BuildRefractionsTexture(context, parserContext, refractionBox, 1.6f);
 
@@ -1222,14 +1222,14 @@ namespace SceneEngine
             const bool useDerivativesMap = Tweakable("OceanNormalsBasedOnDerivatives", true);
             const bool doShallowWater = Tweakable("OceanDoShallowWater", false);
             const bool usePipeModel = Tweakable("OceanShallowPipeModel", false);
-            auto& fftBuffer = FindCachedBox<FFTBufferBox>(FFTBufferBox::Desc(
+            auto& fftBuffer = Techniques::FindCachedBox<FFTBufferBox>(FFTBufferBox::Desc(
                 GlobalOceanSettings._gridDimensions, GlobalOceanSettings._gridDimensions, useDerivativesMap));
             ShallowWaterSim* shallowWaterBox = nullptr;
 
-            context->Bind(CommonResources()._dssReadOnly);   // write disabled
+            context->Bind(Techniques::CommonResources()._dssReadOnly);   // write disabled
             UpdateOceanSurface(context, parserContext, GlobalOceanSettings, fftBuffer);
             if (doShallowWater && MainSurfaceHeightsProvider) {
-                shallowWaterBox = &FindCachedBox<ShallowWaterSim>(
+                shallowWaterBox = &Techniques::FindCachedBox<ShallowWaterSim>(
                     ShallowWaterSim::Desc(shallowGridDimension, simulatingGridsCount, usePipeModel, false));
                 ShallowWater_DoSim(
                     context, parserContext, GlobalOceanSettings, shallowGridPhysicalDimension,

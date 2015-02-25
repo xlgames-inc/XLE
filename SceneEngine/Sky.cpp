@@ -6,11 +6,11 @@
 
 #include "Sky.h"
 #include "LightingParserContext.h"
-#include "Techniques.h"
-#include "ResourceBox.h"
-#include "CommonResources.h"
 #include "SceneParser.h"
 #include "LightDesc.h"
+#include "../RenderCore/Techniques/Techniques.h"
+#include "../RenderCore/Techniques/ResourceBox.h"
+#include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/InputLayout.h"
@@ -175,8 +175,8 @@ namespace SceneEngine
         if (_postFogShader) {
             postFogUniforms = RenderCore::Metal::BoundUniforms(*_postFogShader);
         }
-        TechniqueContext::BindGlobalUniforms(uniforms);
-        TechniqueContext::BindGlobalUniforms(postFogUniforms);
+        Techniques::TechniqueContext::BindGlobalUniforms(uniforms);
+        Techniques::TechniqueContext::BindGlobalUniforms(postFogUniforms);
         postFogUniforms.BindConstantBuffer(Hash64("SkySettings"), 0, 1);
 
         auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
@@ -202,11 +202,11 @@ namespace SceneEngine
 
             SkyTextureParts textureParts(skyTextureName);
 
-            auto& res = FindCachedBoxDep<SkyShaderRes>(SkyShaderRes::Desc(textureParts._projectionType, blendFog, CurrentSkyGeometryType));
+            auto& res = Techniques::FindCachedBoxDep<SkyShaderRes>(SkyShaderRes::Desc(textureParts._projectionType, blendFog, CurrentSkyGeometryType));
 
             res._uniforms.Apply(*context, parserContext.GetGlobalUniformsStream(), Metal::UniformsStream());
             context->Bind(*res._shader);
-            context->Bind(CommonResources()._blendOpaque);
+            context->Bind(Techniques::CommonResources()._blendOpaque);
 
             SkyTexture_BindPS(context, parserContext, textureParts, 0);
 
@@ -239,7 +239,7 @@ namespace SceneEngine
 
             SkyTextureParts textureParts(skyTextureName);
 
-            auto& res = FindCachedBoxDep<SkyShaderRes>(SkyShaderRes::Desc(textureParts._projectionType, false, CurrentSkyGeometryType));
+            auto& res = Techniques::FindCachedBoxDep<SkyShaderRes>(SkyShaderRes::Desc(textureParts._projectionType, false, CurrentSkyGeometryType));
             if (!res._postFogShader)
                 return;
 
@@ -261,7 +261,7 @@ namespace SceneEngine
                 parserContext.GetGlobalUniformsStream(),
                 Metal::UniformsStream(nullptr, constants, 1));
 
-            context->Bind(CommonResources()._blendStraightAlpha);
+            context->Bind(Techniques::CommonResources()._blendStraightAlpha);
             context->Bind(*res._postFogShader);
 
             if (CurrentSkyGeometryType == Plane) {

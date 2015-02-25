@@ -184,7 +184,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\AmbientOcclusion.cpp" />
-    <ClCompile Include="..\CommonResources.cpp" />
     <ClCompile Include="..\DualContour.cpp" />
     <ClCompile Include="..\DualContourRender.cpp" />
     <ClCompile Include="..\IntersectionTest.cpp" />
@@ -208,7 +207,6 @@
     <ClCompile Include="..\Shadows.cpp" />
     <ClCompile Include="..\ShallowWater.cpp" />
     <ClCompile Include="..\Sky.cpp" />
-    <ClCompile Include="..\Techniques.cpp" />
     <ClCompile Include="..\Terrain.cpp" />
     <ClCompile Include="..\TerrainCollisions.cpp" />
     <ClCompile Include="..\TerrainRender.cpp" />
@@ -218,7 +216,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\AmbientOcclusion.h" />
-    <ClInclude Include="..\CommonResources.h" />
     <ClInclude Include="..\DualContour.h" />
     <ClInclude Include="..\DualContourRender.h" />
     <ClInclude Include="..\IntersectionTest.h" />
@@ -238,7 +235,6 @@
     <ClInclude Include="..\RayVsModel.h" />
     <ClInclude Include="..\RefractionsBuffer.h" />
     <ClInclude Include="..\RenderingUtils.h" />
-    <ClInclude Include="..\ResourceBox.h" />
     <ClInclude Include="..\LightingParser.h" />
     <ClInclude Include="..\SceneEngineUtility.h" />
     <ClInclude Include="..\SceneParser.h" />
@@ -258,7 +254,6 @@
     <ClInclude Include="..\VolumetricFog.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\Techniques.h" />
     <ClCompile Include="..\VegetationSpawn.cpp" />
     <ClCompile Include="..\VolumetricFog.cpp">
       <FileType>Document</FileType>

@@ -14,11 +14,12 @@
 #include "../SceneEngine/SceneParser.h"
 #include "../SceneEngine/Terrain.h"
 #include "../SceneEngine/TerrainUberSurface.h"
-#include "../SceneEngine/Techniques.h"
 #include "../SceneEngine/SceneEngineUtility.h"
-#include "../SceneEngine/CommonResources.h"
-#include "../SceneEngine/ResourceBox.h"
 #include "../SceneEngine/IntersectionTest.h"
+
+#include "../RenderCore/Techniques/Techniques.h"
+#include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Techniques/ResourceBox.h"
 
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/State.h"
@@ -180,7 +181,7 @@ namespace Tools
             const ShaderResourceView* resources[] = { &depthSrv, &circleHighlight.GetShaderResource() };
 
             BoundUniforms boundLayout(shaderProgram);
-            SceneEngine::TechniqueContext::BindGlobalUniforms(boundLayout);
+            RenderCore::Techniques::TechniqueContext::BindGlobalUniforms(boundLayout);
             boundLayout.BindConstantBuffer(Hash64("CircleHighlightParameters"), 0, 1);
             boundLayout.BindShaderResource(Hash64("DepthTexture"), 0, 1);
             boundLayout.BindShaderResource(Hash64("HighlightResource"), 1, 1);
@@ -190,8 +191,8 @@ namespace Tools
                 parserContext.GetGlobalUniformsStream(),
                 UniformsStream(constantBufferPackets, nullptr, dimof(constantBufferPackets), resources, dimof(resources)));
 
-            context->Bind(SceneEngine::CommonResources()._blendAlphaPremultiplied);
-            context->Bind(SceneEngine::CommonResources()._dssDisable);
+            context->Bind(RenderCore::Techniques::CommonResources()._blendAlphaPremultiplied);
+            context->Bind(RenderCore::Techniques::CommonResources()._dssDisable);
             context->Bind(Topology::TriangleStrip);
             context->GetUnderlying()->IASetInputLayout(nullptr);
 
@@ -556,7 +557,7 @@ namespace Tools
                 const ShaderResourceView* resources[] = { &depthSrv, &circleHighlight.GetShaderResource() };
 
                 BoundUniforms boundLayout(shaderProgram);
-                SceneEngine::TechniqueContext::BindGlobalUniforms(boundLayout);
+                RenderCore::Techniques::TechniqueContext::BindGlobalUniforms(boundLayout);
                 boundLayout.BindConstantBuffer(Hash64("RectangleHighlightParameters"), 0, 1);
                 boundLayout.BindShaderResource(Hash64("DepthTexture"), 0, 1);
                 boundLayout.BindShaderResource(Hash64("HighlightResource"), 1, 1);
@@ -566,8 +567,8 @@ namespace Tools
                     parserContext.GetGlobalUniformsStream(),
                     UniformsStream(constantBufferPackets, nullptr, dimof(constantBufferPackets), resources, dimof(resources)));
 
-                context->Bind(SceneEngine::CommonResources()._blendAlphaPremultiplied);
-                context->Bind(SceneEngine::CommonResources()._dssDisable);
+                context->Bind(RenderCore::Techniques::CommonResources()._blendAlphaPremultiplied);
+                context->Bind(RenderCore::Techniques::CommonResources()._dssDisable);
                 context->Bind(Topology::TriangleStrip);
                 context->GetUnderlying()->IASetInputLayout(nullptr);
 
@@ -952,7 +953,7 @@ namespace Tools
         auto boolParameters = manipulator.GetBoolParameters();
         auto statusText = manipulator.GetStatusText();
 
-        auto& res = SceneEngine::FindCachedBox<WidgetResources>(WidgetResources::Desc());
+        auto& res = RenderCore::Techniques::FindCachedBox<WidgetResources>(WidgetResources::Desc());
 
         unsigned parameterCount = unsigned(1 + floatParameters.second + boolParameters.second); // (+1 for the selector control)
         if (!statusText.empty()) { ++parameterCount; }

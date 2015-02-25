@@ -64,7 +64,7 @@ namespace Sample
         return _inputListener;
     }
 
-    void OverlaySystemManager::RenderWidgets(RenderCore::IDevice* device, const RenderCore::ProjectionDesc& projectionDesc) 
+    void OverlaySystemManager::RenderWidgets(RenderCore::IDevice* device, const RenderCore::Techniques::ProjectionDesc& projectionDesc) 
     {
         if (_activeChildIndex >= 0 && _activeChildIndex < signed(_childSystems.size())) {
             _childSystems[_activeChildIndex].second->RenderWidgets(device, projectionDesc);
@@ -111,7 +111,7 @@ namespace Sample
     {
     public:
         std::shared_ptr<IInputListener> GetInputListener();
-        void RenderWidgets(RenderCore::IDevice* device, const RenderCore::ProjectionDesc& projectionDesc);
+        void RenderWidgets(RenderCore::IDevice* device, const RenderCore::Techniques::ProjectionDesc& projectionDesc);
         void RenderToScene(
             RenderCore::Metal::DeviceContext* devContext, 
             SceneEngine::LightingParserContext& parserContext);
@@ -130,7 +130,7 @@ namespace Sample
         return _screens;
     }
 
-    void ConsoleOverlaySystem::RenderWidgets(RenderCore::IDevice* device, const RenderCore::ProjectionDesc& projectionDesc)
+    void ConsoleOverlaySystem::RenderWidgets(RenderCore::IDevice* device, const RenderCore::Techniques::ProjectionDesc& projectionDesc)
     {
         _screens->Render(device, projectionDesc);
     }

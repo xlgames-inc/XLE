@@ -17,7 +17,7 @@
 #include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderCore/Metal/InputLayout.h"
 #include "../../RenderCore/Metal/State.h"
-#include "../../RenderCore/RenderUtils.h"
+#include "../../RenderCore/Techniques/TechniqueUtils.h"
 // #include "../../RenderCore/Assets/AssetUtils.h"
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Math/Vector.h"
@@ -452,19 +452,19 @@ namespace PreviewRender
 
     RenderCore::Metal::ConstantBufferPacket SetupGlobalState(
         RenderCore::Metal::DeviceContext*   context,
-        const RenderCore::GlobalTransformConstants&  globalTransform)
+        const RenderCore::Techniques::GlobalTransformConstants&  globalTransform)
     {
             // deprecated -- use scene engine to set default states
         // context->Bind(SceneEngine::CommonResources()._dssReadWrite);
         // context->Bind(SceneEngine::CommonResources()._blendStraightAlpha);
         // context->Bind(SceneEngine::CommonResources()._defaultRasterizer);
         // context->BindPS(MakeResourceList(SceneEngine::CommonResources()._defaultSampler));
-        return MakeSharedPkt(globalTransform);
+        return RenderCore::MakeSharedPkt(globalTransform);
     }
 
     RenderCore::Metal::ConstantBufferPacket SetupGlobalState(
         RenderCore::Metal::DeviceContext*   context,
-        const RenderCore::CameraDesc&       camera)
+        const RenderCore::Techniques::CameraDesc&       camera)
     {
         using namespace RenderCore;
         using namespace RenderCore::Metal;
@@ -474,13 +474,13 @@ namespace PreviewRender
         Float4x4 projectionMatrix = PerspectiveProjection(
             camera, viewportDesc.Width / float(viewportDesc.Height));
 
-        GlobalTransformConstants transformConstants;
+        Techniques::GlobalTransformConstants transformConstants;
         transformConstants._worldToClip = Combine(worldToCamera, projectionMatrix);
         transformConstants._viewToWorld = camera._cameraToWorld;
 
         transformConstants._worldSpaceView = ExtractTranslation(camera._cameraToWorld);
         transformConstants._minimalProjection = ExtractMinimalProjection(projectionMatrix);
-        transformConstants._farClip = CalculateNearAndFarPlane(transformConstants._minimalProjection, GetDefaultClipSpaceType()).second;
+        transformConstants._farClip = Techniques::CalculateNearAndFarPlane(transformConstants._minimalProjection, Techniques::GetDefaultClipSpaceType()).second;
 
         // auto right      = Normalize(ExtractRight_Cam(camera._cameraToWorld));
         // auto up         = Normalize(ExtractUp_Cam(camera._cameraToWorld));
@@ -536,7 +536,7 @@ namespace PreviewRender
                 //      Constants / Resources
                 //
 
-            RenderCore::CameraDesc camera;
+            RenderCore::Techniques::CameraDesc camera;
             camera._cameraToWorld = MakeCameraToWorld(Float3(1,0,0), Float3(0,0,1), Float3(-5,0,0));
 
             RenderCore::Metal::ViewportDesc currentViewport(*context);
@@ -549,7 +549,7 @@ namespace PreviewRender
         
             std::vector<RenderCore::Metal::ConstantBufferPacket> constantBufferPackets;
             constantBufferPackets.push_back(SetupGlobalState(context, camera));
-            constantBufferPackets.push_back(MakeLocalTransformPacket(Identity<Float4x4>(), camera));
+            constantBufferPackets.push_back(Techniques::MakeLocalTransformPacket(Identity<Float4x4>(), camera));
 
             BoundUniforms boundLayout(shaderProgram);
             boundLayout.BindConstantBuffer(   Hash64("GlobalTransform"), 0, 1); //, Assets::GlobalTransform_Elements, Assets::GlobalTransform_ElementsCount);

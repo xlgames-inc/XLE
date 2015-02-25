@@ -5,7 +5,6 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "LightingParserStandardPlugin.h"
-#include "ResourceBox.h"
 #include "SceneParser.h"
 
 #include "VegetationSpawn.h"
@@ -16,6 +15,7 @@
 #include "LightingParserContext.h"
 #include "LightDesc.h"
 
+#include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Metal/GPUProfiler.h"
 #include "../ConsoleRig/Console.h"
 #include "../Core/Exceptions.h"
@@ -53,7 +53,7 @@ namespace SceneEngine
         if (Tweakable("DoAO", true)) {
             const bool useNormals = Tweakable("AO_UseNormals", true);
             auto& mainTargets = resolveContext.GetMainTargets();
-            auto& aoRes = FindCachedBox<AmbientOcclusionResources>(
+            auto& aoRes = Techniques::FindCachedBox<AmbientOcclusionResources>(
                 AmbientOcclusionResources::Desc(
                     mainTargets._desc._width, mainTargets._desc._height, NativeFormat::R8_UNORM,
                     useNormals, (useNormals && resolveContext.GetSamplingCount() > 1)?NativeFormat::R8G8B8A8_UNORM:NativeFormat::Unknown));

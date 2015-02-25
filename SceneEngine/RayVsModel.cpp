@@ -7,12 +7,12 @@
 #include "RayVsModel.h"
 #include "SceneEngineUtility.h"
 #include "LightingParser.h"
-#include "ResourceBox.h"
-#include "CommonResources.h"
+#include "../RenderCore/Techniques/ResourceBox.h"
+#include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Techniques/TechniqueUtils.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/DataPacket.h"
 
-#include "../RenderCore/RenderUtils.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/DX11/Metal/DX11Utils.h"
 
@@ -118,8 +118,8 @@ namespace SceneEngine
 
     RayVsModelStateContext::RayVsModelStateContext(
         RenderCore::Metal::DeviceContext* devContext,
-        const SceneEngine::TechniqueContext& techniqueContext,
-        const RenderCore::CameraDesc* cameraForLOD)
+        const RenderCore::Techniques::TechniqueContext& techniqueContext,
+        const RenderCore::Techniques::CameraDesc* cameraForLOD)
     : _devContext(devContext)
     , _parserContext(nullptr, techniqueContext)
     {
@@ -148,7 +148,7 @@ namespace SceneEngine
             // The camera settings can affect the LOD that objects a rendered with.
             // So, in some cases we need to initialise the camera to the same state
             // used in rendering. This will ensure that we get the right LOD behaviour.
-        RenderCore::CameraDesc camera;
+        RenderCore::Techniques::CameraDesc camera;
         if (cameraForLOD) { camera = *cameraForLOD; }
 
         LightingParser_SetupScene(
@@ -170,7 +170,7 @@ namespace SceneEngine
         GeometryShader::SetDefaultStreamOutputInitializers(
             GeometryShader::StreamOutputInitializers(eles, dimof(eles), strides, dimof(strides)));
 
-        _res = &SceneEngine::FindCachedBox<RayVsModelResources>(
+        _res = &RenderCore::Techniques::FindCachedBox<RayVsModelResources>(
             RayVsModelResources::Desc(sizeof(ResultEntry), s_maxResultCount));
 
             // the only way to clear these things is copy from another buffer...
@@ -180,7 +180,7 @@ namespace SceneEngine
         unsigned offsets[] = { 0 };
         devContext->GetUnderlying()->SOSetTargets(dimof(targets), targets, offsets);
 
-        devContext->BindGS(RenderCore::MakeResourceList(SceneEngine::CommonResources()._defaultSampler));
+        devContext->BindGS(RenderCore::MakeResourceList(RenderCore::Techniques::CommonResources()._defaultSampler));
     }
 
     RayVsModelStateContext::~RayVsModelStateContext()

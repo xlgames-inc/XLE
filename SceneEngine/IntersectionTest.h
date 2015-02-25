@@ -11,11 +11,10 @@
 #include "../Math/Vector.h"
 #include <memory>
 
-namespace RenderCore { class CameraDesc; }
+namespace RenderCore { namespace Techniques { class CameraDesc; class TechniqueContext; }}
 
 namespace SceneEngine
 {
-    class TechniqueContext;
     class ISceneParser;
     class TerrainManager;
     class PlacementsEditor;
@@ -31,19 +30,19 @@ namespace SceneEngine
     public:
         std::pair<Float3, Float3> CalculateWorldSpaceRay(Int2 screenCoord) const;
         Float2 ProjectToScreenSpace(const Float3& worldSpaceCoord) const;
-        RenderCore::CameraDesc GetCameraDesc() const;
-        const TechniqueContext& GetTechniqueContext() const { return *_techniqueContext.get(); }
+        RenderCore::Techniques::CameraDesc GetCameraDesc() const;
+        const RenderCore::Techniques::TechniqueContext& GetTechniqueContext() const { return *_techniqueContext.get(); }
         ISceneParser* GetSceneParser() const { return _sceneParser.get(); }
         Int2 GetViewportSize() const;
         intrusive_ptr<RenderCore::Metal::DeviceContext> GetImmediateContext() const;
 
         IntersectionTestContext(
             std::shared_ptr<ISceneParser> sceneParser,
-            std::shared_ptr<TechniqueContext> techniqueContext);
+            std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext);
         ~IntersectionTestContext();
     protected:
         std::shared_ptr<ISceneParser>      _sceneParser;
-        std::shared_ptr<TechniqueContext>  _techniqueContext;
+        std::shared_ptr<RenderCore::Techniques::TechniqueContext>  _techniqueContext;
     };
 
     /// <summary>Resolves ray and box intersections for tools</summary>

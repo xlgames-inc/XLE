@@ -13,7 +13,13 @@
 #include "../Utility/MemoryUtils.h"
 #include <functional>
 
-namespace RenderCore { class CameraDesc; class ProjectionDesc; }
+namespace RenderCore { namespace Techniques 
+{
+    class CameraDesc; class ProjectionDesc; 
+    class TechniqueContext;
+    class TechniqueInterface;
+}}
+
 namespace Assets { namespace Exceptions { class InvalidResource; class PendingResource; } }
 
 namespace SceneEngine
@@ -21,8 +27,6 @@ namespace SceneEngine
     class MetricsBox;
     class ISceneParser;
     class PreparedShadowFrustum;
-    class TechniqueContext;
-    class TechniqueInterface;
     class ShadowProjectionConstants;
     class ILightingParserPlugin;
 
@@ -45,7 +49,7 @@ namespace SceneEngine
             //  ----------------- Plugins -----------------
         std::vector<std::shared_ptr<ILightingParserPlugin>> _plugins;
 
-        LightingParserContext(ISceneParser* sceneParser, const TechniqueContext& techniqueContext);
+        LightingParserContext(ISceneParser* sceneParser, const RenderCore::Techniques::TechniqueContext& techniqueContext);
         ~LightingParserContext();
 
     private:

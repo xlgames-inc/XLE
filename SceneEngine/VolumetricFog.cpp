@@ -5,14 +5,14 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "VolumetricFog.h"
-#include "ResourceBox.h"
 #include "SceneEngineUtility.h"
 #include "LightDesc.h"
 #include "Noise.h"
-#include "CommonResources.h"
 #include "LightInternal.h"
-#include "Techniques.h"
 
+#include "../RenderCore/Techniques/ResourceBox.h"
+#include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Metal/RenderTargetView.h"
 #include "../RenderCore/Metal/ShaderResource.h"
 #include "../RenderCore/Metal/State.h"
@@ -88,7 +88,7 @@ namespace SceneEngine
             "game/xleres/basic2D.vsh:fullscreen:vs_*", "game/xleres/VolumetricEffect/shadowsfilter.psh:VerticalBoxFilter11:ps_*");
 
         auto buildExponentialShadowMapBinding = std::make_unique<BoundUniforms>(std::ref(*buildExponentialShadowMap));
-        TechniqueContext::BindGlobalUniforms(*buildExponentialShadowMapBinding);
+        Techniques::TechniqueContext::BindGlobalUniforms(*buildExponentialShadowMapBinding);
         buildExponentialShadowMapBinding->BindConstantBuffer(Hash64("VolumetricFogConstants"), 0, 1);
         buildExponentialShadowMapBinding->BindConstantBuffer(Hash64("$Globals"), 1, 1);
 
@@ -104,12 +104,12 @@ namespace SceneEngine
         auto* propagateLight = &Assets::GetAssetDep<ComputeShader>("game/xleres/volumetriceffect/injectlight.csh:PropagateLighting:cs_*", defines);
 
         auto injectLightBinding = std::make_unique<BoundUniforms>(std::ref(Assets::GetAssetDep<CompiledShaderByteCode>("game/xleres/volumetriceffect/injectlight.csh:InjectLighting:cs_*", defines)));
-        TechniqueContext::BindGlobalUniforms(*injectLightBinding);
+        Techniques::TechniqueContext::BindGlobalUniforms(*injectLightBinding);
         injectLightBinding->BindConstantBuffer(Hash64("VolumetricFogConstants"), 0, 1);
         injectLightBinding->BindConstantBuffer(Hash64("ArbitraryShadowProjection"), 2, 1);
 
         auto propagateLightBinding = std::make_unique<BoundUniforms>(std::ref(Assets::GetAssetDep<CompiledShaderByteCode>("game/xleres/volumetriceffect/injectlight.csh:PropagateLighting:cs_*", defines)));
-        TechniqueContext::BindGlobalUniforms(*propagateLightBinding);
+        Techniques::TechniqueContext::BindGlobalUniforms(*propagateLightBinding);
         propagateLightBinding->BindConstantBuffer(Hash64("VolumetricFogConstants"), 0, 1);
         injectLightBinding->BindConstantBuffer(Hash64("ArbitraryShadowProjection"), 2, 1);
 
@@ -320,8 +320,8 @@ namespace SceneEngine
                                 PreparedShadowFrustum& shadowFrustum)
     {
         TRY {
-            auto& fogRes = FindCachedBox<VolumetricFogResources>(VolumetricFogResources::Desc(shadowFrustum._frustumCount, UseESMShadowMaps()));
-            auto& fogShaders = FindCachedBoxDep<VolumetricFogShaders>(VolumetricFogShaders::Desc(1, useMsaaSamplers, false, UseESMShadowMaps(), 
+            auto& fogRes = Techniques::FindCachedBox<VolumetricFogResources>(VolumetricFogResources::Desc(shadowFrustum._frustumCount, UseESMShadowMaps()));
+            auto& fogShaders = Techniques::FindCachedBoxDep<VolumetricFogShaders>(VolumetricFogShaders::Desc(1, useMsaaSamplers, false, UseESMShadowMaps(), 
                 GlobalVolumetricFogMaterial._noiseDensityScale > 0.f));
 
             RenderCore::Metal::ConstantBufferPacket constantBufferPackets[3];
@@ -330,7 +330,7 @@ namespace SceneEngine
             SavedTargets savedTargets(context);
             ViewportDesc newViewport(0, 0, 256, 256, 0.f, 1.f);
             context->Bind(newViewport);
-            context->Bind(CommonResources()._blendOpaque);
+            context->Bind(Techniques::CommonResources()._blendOpaque);
             context->Bind(*fogShaders._buildExponentialShadowMap);
             SetupVertexGeneratorShader(context);
             context->BindPS(MakeResourceList(2, shadowFrustum._shadowTextureResource));
@@ -382,9 +382,9 @@ namespace SceneEngine
             }
 
             savedTargets.ResetToOldTargets(context);
-            context->Bind(CommonResources()._blendStraightAlpha);
+            context->Bind(Techniques::CommonResources()._blendStraightAlpha);
 
-            auto& perlinNoiseRes = FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());
+            auto& perlinNoiseRes = Techniques::FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());
             context->BindCS(MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
 
                 //  Inject the starting light into the volume texture (using compute shader)
@@ -431,8 +431,8 @@ namespace SceneEngine
                                 unsigned samplingCount, bool useMsaaSamplers, bool flipDirection,
                                 PreparedShadowFrustum& shadowFrustum)
     {
-        auto& fogRes = FindCachedBox<VolumetricFogResources>(VolumetricFogResources::Desc(shadowFrustum._frustumCount, UseESMShadowMaps()));
-        auto& fogShaders = FindCachedBoxDep<VolumetricFogShaders>(VolumetricFogShaders::Desc(samplingCount, useMsaaSamplers, flipDirection, UseESMShadowMaps(), 
+        auto& fogRes = Techniques::FindCachedBox<VolumetricFogResources>(VolumetricFogResources::Desc(shadowFrustum._frustumCount, UseESMShadowMaps()));
+        auto& fogShaders = Techniques::FindCachedBoxDep<VolumetricFogShaders>(VolumetricFogShaders::Desc(samplingCount, useMsaaSamplers, flipDirection, UseESMShadowMaps(), 
             GlobalVolumetricFogMaterial._noiseDensityScale > 0.f));
 
         context->BindPS(MakeResourceList(7, fogRes._inscatterFinalsValuesShaderResource, fogRes._transmissionValuesShaderResource));

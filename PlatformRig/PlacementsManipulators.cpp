@@ -11,12 +11,13 @@
 #include "../SceneEngine/PlacementsManager.h"
 #include "../SceneEngine/Terrain.h"
 #include "../SceneEngine/SceneParser.h"
-#include "../SceneEngine/Techniques.h"
 #include "../SceneEngine/LightingParserContext.h"
-#include "../SceneEngine/CommonResources.h"
 #include "../SceneEngine/IntersectionTest.h"
 
 #include "../RenderOverlays/DebuggingDisplay.h"
+#include "../RenderCore/Techniques/Techniques.h"
+#include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/State.h"
 #include "../RenderOverlays/OverlayContext.h"
@@ -29,7 +30,6 @@
 
 #include "../BufferUploads/IBufferUploads.h"
 #include "../SceneEngine/SceneEngineUtility.h"
-#include "../SceneEngine/ResourceBox.h"
 #include "../Math/ProjectionMath.h"
 #include <iomanip>
 
@@ -554,7 +554,7 @@ namespace Tools
             "game/xleres/effects/outlinehighlight.psh:main:ps_*");
 
         RenderCore::Metal::BoundUniforms uniforms(*drawHighlight);
-        SceneEngine::TechniqueContext::BindGlobalUniforms(uniforms);
+        RenderCore::Techniques::TechniqueContext::BindGlobalUniforms(uniforms);
 
         auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
         ::Assets::RegisterAssetDependency(validationCallback, &drawHighlight->GetDependencyValidation());
@@ -577,7 +577,7 @@ namespace Tools
             SavedTargets savedTargets(context);
             const auto& viewport = savedTargets.GetViewports()[0];
 
-            auto& offscreen = FindCachedBox<CommonOffscreenTarget>(
+            auto& offscreen = RenderCore::Techniques::FindCachedBox<CommonOffscreenTarget>(
                 CommonOffscreenTarget::Desc(unsigned(viewport.Width), unsigned(viewport.Height), 
                 Metal::NativeFormat::R8G8B8A8_UNORM));
 
@@ -593,14 +593,14 @@ namespace Tools
 
             context->BindPS(MakeResourceList(offscreen._srv));
 
-            auto& shaders = FindCachedBoxDep<HighlightShaders>(HighlightShaders::Desc());
+            auto& shaders = Techniques::FindCachedBoxDep<HighlightShaders>(HighlightShaders::Desc());
             shaders._drawHighlightUniforms.Apply(
                 *context, 
                 parserContext.GetGlobalUniformsStream(), RenderCore::Metal::UniformsStream());
             context->Bind(*shaders._drawHighlight);
-            context->Bind(SceneEngine::CommonResources()._blendAlphaPremultiplied);
-            context->Bind(SceneEngine::CommonResources()._dssDisable);
-            context->Bind(RenderCore::Metal::Topology::TriangleStrip);
+            context->Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
+            context->Bind(Techniques::CommonResources()._dssDisable);
+            context->Bind(Metal::Topology::TriangleStrip);
             context->Draw(4);
         } 
         CATCH (const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); } 
@@ -1615,7 +1615,7 @@ namespace Tools
         std::shared_ptr<SceneEngine::IntersectionTestScene> _intersectionTestScene;
     };
 
-    void PlacementsManipulatorsManager::RenderWidgets(RenderCore::IDevice* device, const RenderCore::ProjectionDesc& projectionDesc)
+    void PlacementsManipulatorsManager::RenderWidgets(RenderCore::IDevice* device, const RenderCore::Techniques::ProjectionDesc& projectionDesc)
     {
         _pimpl->_screens->Render(device, projectionDesc);
     }

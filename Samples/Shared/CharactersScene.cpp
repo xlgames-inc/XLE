@@ -13,8 +13,8 @@
 #include "../../RenderCore/Assets/AnimationRunTime.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/GPUProfiler.h"
-#include "../../SceneEngine/CommonResources.h"
-#include "../../SceneEngine/Techniques.h"
+#include "../../RenderCore/Techniques/CommonResources.h"
+#include "../../RenderCore/Techniques/Techniques.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../Math/Transformations.h"
 #include "../../Math/ProjectionMath.h"
@@ -148,8 +148,8 @@ namespace Sample
 
                 namespace GPUProfiler = RenderCore::Metal::GPUProfiler;
 
-                context->Bind(CommonResources()._dssReadWrite);
-                context->Bind(CommonResources()._blendOpaque);
+                context->Bind(RenderCore::Techniques::CommonResources()._dssReadWrite);
+                context->Bind(RenderCore::Techniques::CommonResources()._blendOpaque);
 
                 GPUProfiler::TriggerEvent(*context, g_gpuProfiler.get(), "RenderCharacters", GPUProfiler::Begin);
 

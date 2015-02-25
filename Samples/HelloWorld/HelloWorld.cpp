@@ -22,12 +22,12 @@
 #include "../../RenderOverlays/DebugHotKeys.h"
 #include "../../BufferUploads/IBufferUploads.h"
 
-#include "../../SceneEngine/Techniques.h"
 #include "../../SceneEngine/SceneEngineUtility.h"
 #include "../../SceneEngine/LightingParser.h"
 #include "../../SceneEngine/LightingParserStandardPlugin.h"
 #include "../../SceneEngine/LightingParserContext.h"
-#include "../../SceneEngine/ResourceBox.h"
+#include "../../RenderCore/Techniques/Techniques.h"
+#include "../../RenderCore/Techniques/ResourceBox.h"
 #include "../../SceneEngine/SceneParser.h"
 #include "../../SceneEngine/LightDesc.h"
 
@@ -200,7 +200,7 @@ namespace Sample
 
         mainScene.reset();
         g_gpuProfiler.reset();
-        SceneEngine::ResourceBoxes_Shutdown();
+        RenderCore::Techniques::ResourceBoxes_Shutdown();
         RenderOverlays::CleanupFontSystem();
         asyncMan->GetAssetSets().Clear();
         asyncMan.reset();

@@ -7,18 +7,18 @@
 #pragma once
 
 #include "OverlappedWindow.h"
-#include "../SceneEngine/Techniques.h"
 #include "../RenderCore/IDevice_Forward.h"
+#include "../RenderCore/Techniques/Techniques.h"
 
 namespace RenderOverlays { namespace DebuggingDisplay { class DebugScreensSystem; }}
 namespace SceneEngine { class ShadowProjectionDesc; class LightDesc; }
-namespace RenderCore { class ProjectionDesc; }
+namespace RenderCore { namespace Techniques { class ProjectionDesc; } }
 
 namespace PlatformRig
 {
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class GlobalTechniqueContext : public SceneEngine::TechniqueContext
+    class GlobalTechniqueContext : public RenderCore::Techniques::TechniqueContext
     {
     public:
         void SetInteger(const char name[], uint32 value);
@@ -64,7 +64,7 @@ namespace PlatformRig
     /// is required for adapting the shadows projection to the main scene camera.</param>
     SceneEngine::ShadowProjectionDesc CalculateDefaultShadowCascades(
         const SceneEngine::LightDesc& lightDesc,
-        const RenderCore::ProjectionDesc& mainSceneCameraDesc,
+        const RenderCore::Techniques::ProjectionDesc& mainSceneCameraDesc,
         const DefaultShadowFrustumSettings& settings);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

@@ -6,13 +6,13 @@
 
 #include "TiledLighting.h"
 #include "SceneEngineUtility.h"
-#include "ResourceBox.h"
 #include "MetricsBox.h"
 #include "LightingParserContext.h"
-#include "CommonResources.h"
 #include "SceneParser.h"
 #include "LightDesc.h"
 
+#include "../RenderCore/Techniques/ResourceBox.h"
+#include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Metal/RenderTargetView.h"
 #include "../RenderCore/Metal/ShaderResource.h"
 #include "../RenderCore/Metal/State.h"
@@ -144,7 +144,7 @@ namespace SceneEngine
                 "game/xleres/basic2D.vsh:fullscreen:vs_*", 
                 "game/xleres/deferred/debugging.psh:DepthsDebuggingTexture:ps_*");
             context->Bind(debuggingShader);
-            context->Bind(CommonResources()._blendStraightAlpha);
+            context->Bind(Techniques::CommonResources()._blendStraightAlpha);
             SetupVertexGeneratorShader(context);
             context->Draw(4);
             context->UnbindPS<ShaderResourceView>(0, 4);
@@ -172,7 +172,7 @@ namespace SceneEngine
                 TextureDesc2D tDesc(depthsSRV.GetUnderlying());
                 unsigned width = tDesc.Width, height = tDesc.Height, sampleCount = tDesc.SampleDesc.Count;
 
-                auto& tileLightingResources = FindCachedBox<TileLightingResources>(
+                auto& tileLightingResources = Techniques::FindCachedBox<TileLightingResources>(
                     TileLightingResources::Desc(width, height, 16));
 
                 auto camera = lightingParserContext.GetSceneParser()->GetCameraDesc();
@@ -355,7 +355,7 @@ namespace SceneEngine
                     return;
                 }
 
-                auto& tileLightingResources = FindCachedBox<TileLightingResources>(
+                auto& tileLightingResources = Techniques::FindCachedBox<TileLightingResources>(
                     TileLightingResources::Desc(mainViewportWidth, mainViewportHeight, 16));
 
                 bool isShadowsPass = techniqueIndex == TechniqueIndex_ShadowGen;
@@ -379,12 +379,12 @@ namespace SceneEngine
                 uniforms.Apply(*context, lightingParserContext.GetGlobalUniformsStream(), UniformsStream(constants, prebuiltBuffers));
                                 
                 context->BindVS(MakeResourceList(tileLightingResources._debuggingTextureSRV[0], tileLightingResources._debuggingTextureSRV[1]));
-                context->Bind(CommonResources()._dssReadWrite);
+                context->Bind(Techniques::CommonResources()._dssReadWrite);
                 SetupVertexGeneratorShader(context);
                 context->Bind(Metal::Topology::PointList);
 
                 if (!isShadowsPass && Tweakable("TiledBeamsTransparent", false)) {
-                    context->Bind(CommonResources()._blendStraightAlpha);
+                    context->Bind(Techniques::CommonResources()._blendStraightAlpha);
                     auto& predepth = Assets::GetAssetDep<Metal::ShaderProgram>(
                         "game/xleres/deferred/debugging/beams.vsh:main:vs_*", 
                         "game/xleres/deferred/debugging/beams.gsh:main:gs_*", 
@@ -393,7 +393,7 @@ namespace SceneEngine
                     context->Bind(predepth);
                     context->Draw(globals[0]*globals[1]);
                 } else {
-                    context->Bind(CommonResources()._blendOpaque);
+                    context->Bind(Techniques::CommonResources()._blendOpaque);
                 }
 
                 context->Bind(debuggingShader);

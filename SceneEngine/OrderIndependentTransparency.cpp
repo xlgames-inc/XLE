@@ -9,12 +9,12 @@
 #include "SceneEngineUtility.h"
 #include "SceneParser.h"
 #include "LightingParserContext.h"
-#include "ResourceBox.h"
 #include "Noise.h"
 #include "MetricsBox.h"
 #include "LightDesc.h"
 #include "Sky.h"
 
+#include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../BufferUploads/IBufferUploads.h"
 
@@ -96,7 +96,7 @@ namespace SceneEngine
     {
         ViewportDesc mainViewport(*context);
 
-        auto& transparencyTargets = FindCachedBox<TransparencyTargetsBox>(
+        auto& transparencyTargets = Techniques::FindCachedBox<TransparencyTargetsBox>(
             TransparencyTargetsBox::Desc(unsigned(mainViewport.Width), unsigned(mainViewport.Height), true));
 
             //
@@ -116,7 +116,7 @@ namespace SceneEngine
         auto box34  = Assets::GetAssetDep<RenderCore::Metal::DeferredShaderResource>("game/xleres/refltexture/boxc_34.dds", Metal::DeferredShaderResource::SRGBSpace).GetShaderResource();
         context->BindPS(MakeResourceList(8, box12, box34, box5));
 
-        auto& perlinNoiseRes = FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());
+        auto& perlinNoiseRes = Techniques::FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());
         context->BindPS(MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
 
             //
@@ -146,7 +146,7 @@ namespace SceneEngine
                 SkyTexture_BindPS(context, parserContext, skyTexture, 7);
             }
 
-            auto& transparencyTargets = FindCachedBox<TransparencyTargetsBox>(
+            auto& transparencyTargets = Techniques::FindCachedBox<TransparencyTargetsBox>(
                 TransparencyTargetsBox::Desc(unsigned(mainViewport.Width), unsigned(mainViewport.Height), true));
 
             context->BindPS(MakeResourceList(

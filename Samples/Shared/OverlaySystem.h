@@ -15,7 +15,7 @@
 
 namespace SceneEngine { class LightingParserContext; }
 namespace RenderOverlays { namespace DebuggingDisplay { class IInputListener; } }
-namespace RenderCore { class ProjectionDesc; }
+namespace RenderCore { namespace Techniques { class ProjectionDesc; } }
 
 namespace Sample
 {
@@ -29,7 +29,7 @@ namespace Sample
         virtual void RenderToScene(
             RenderCore::Metal::DeviceContext* devContext, 
             SceneEngine::LightingParserContext& parserContext) = 0; 
-        virtual void RenderWidgets(RenderCore::IDevice* device, const RenderCore::ProjectionDesc& projectionDesc) = 0;
+        virtual void RenderWidgets(RenderCore::IDevice* device, const RenderCore::Techniques::ProjectionDesc& projectionDesc) = 0;
         virtual void SetActivationState(bool newState) = 0;
 
         virtual ~IOverlaySystem();
@@ -39,7 +39,7 @@ namespace Sample
     {
     public:
         std::shared_ptr<IInputListener> GetInputListener();
-        void RenderWidgets(RenderCore::IDevice* device, const RenderCore::ProjectionDesc& projectionDesc);
+        void RenderWidgets(RenderCore::IDevice* device, const RenderCore::Techniques::ProjectionDesc& projectionDesc);
         void RenderToScene(
             RenderCore::Metal::DeviceContext* devContext, 
             SceneEngine::LightingParserContext& parserContext);

@@ -5,12 +5,12 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Rain.h"
-#include "Techniques.h"
 #include "LightingParserContext.h"
 #include "SceneParser.h"
 #include "SceneEngineUtility.h"
-#include "ResourceBox.h"
-#include "CommonResources.h"
+#include "../RenderCore/Techniques/Techniques.h"
+#include "../RenderCore/Techniques/ResourceBox.h"
+#include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/State.h"
@@ -88,7 +88,7 @@ namespace SceneEngine
                 "game/xleres/effects/rainparticles.sh:ps_main:ps_*",
                 "");
             Metal::BoundUniforms uniforms(shader);
-            TechniqueContext::BindGlobalUniforms(uniforms);
+            Techniques::TechniqueContext::BindGlobalUniforms(uniforms);
             static uint64 HashRainSpawn = Hash64("RainSpawn");
             static uint64 HashRandomValuesTexture = Hash64("RandomValuesTexture");
             uniforms.BindConstantBuffer(HashRainSpawn, 0, 1);
@@ -189,7 +189,7 @@ namespace SceneEngine
         {
             using namespace RenderCore;
             const unsigned particleCountWidth = 64;
-            auto& resources = FindCachedBox<SimRainResources>(SimRainResources::Desc(particleCountWidth));
+            auto& resources = Techniques::FindCachedBox<SimRainResources>(SimRainResources::Desc(particleCountWidth));
 
                 //  we need to run a compute shader to update the position of these particles
                 //  first, we have to unbind the depth buffer and create a shader resource view for it
@@ -209,7 +209,7 @@ namespace SceneEngine
                 "game/xleres/effects/simrain.sh:SimulateDrops:cs_*", 
                 "");
             Metal::BoundUniforms simUniforms(simulationShaderByteCode);
-            TechniqueContext::BindGlobalUniforms(simUniforms);
+            Techniques::TechniqueContext::BindGlobalUniforms(simUniforms);
             static uint64 HashSimulationParameters  = Hash64("SimulationParameters");
             static uint64 HashRandomValuesTexture   = Hash64("RandomValuesTexture");
             static uint64 HashParticlesInput        = Hash64("ParticlesInput");
@@ -263,7 +263,7 @@ namespace SceneEngine
             
             context->Bind(simulationShader);
             context->BindCS(MakeResourceList(resources._simParticlesUAV));
-            context->BindCS(MakeResourceList(CommonResources()._defaultSampler));
+            context->BindCS(MakeResourceList(Techniques::CommonResources()._defaultSampler));
 
             context->Bind(ResourceList<Metal::RenderTargetView, 0>(), nullptr);
             simUniforms.Apply(
@@ -286,7 +286,7 @@ namespace SceneEngine
                 "game/xleres/effects/rainparticles.sh:ps_main:ps_*",
                 "");
             Metal::BoundUniforms drawUniforms(shader);
-            TechniqueContext::BindGlobalUniforms(drawUniforms);
+            Techniques::TechniqueContext::BindGlobalUniforms(drawUniforms);
             drawUniforms.BindConstantBuffer(HashSimulationParameters, 0, 1);
             drawUniforms.BindShaderResource(HashRandomValuesTexture, 0, 1);
             drawUniforms.BindShaderResource(HashParticlesInput, 1, 1);
@@ -328,7 +328,7 @@ namespace SceneEngine
         {
             using namespace RenderCore;
             const unsigned particleCountWidth = 128;
-            auto& resources = FindCachedBox<SimRainResources>(SimRainResources::Desc(particleCountWidth));
+            auto& resources = Techniques::FindCachedBox<SimRainResources>(SimRainResources::Desc(particleCountWidth));
 
                 //  we need to run a compute shader to update the position of these particles
                 //  first, we have to unbind the depth buffer and create a shader resource view for it
@@ -348,7 +348,7 @@ namespace SceneEngine
                 "game/xleres/effects/sparkparticlestest.sh:SimulateDrops:cs_*", 
                 "");
             Metal::BoundUniforms simUniforms(simulationShaderByteCode);
-            TechniqueContext::BindGlobalUniforms(simUniforms);
+            Techniques::TechniqueContext::BindGlobalUniforms(simUniforms);
             static uint64 HashSimulationParameters  = Hash64("SimulationParameters");
             static uint64 HashRandomValuesTexture   = Hash64("RandomValuesTexture");
             static uint64 HashParticlesInput        = Hash64("ParticlesInput");
@@ -416,7 +416,7 @@ namespace SceneEngine
             
             context->Bind(simulationShader);
             context->BindCS(MakeResourceList(resources._simParticlesUAV));
-            context->BindCS(MakeResourceList(CommonResources()._defaultSampler));
+            context->BindCS(MakeResourceList(Techniques::CommonResources()._defaultSampler));
 
             context->Bind(ResourceList<Metal::RenderTargetView, 0>(), nullptr);
             simUniforms.Apply(
@@ -439,7 +439,7 @@ namespace SceneEngine
                 "game/xleres/effects/sparkparticlestest.sh:ps_main:ps_*",
                 "");
             Metal::BoundUniforms drawUniforms(shader);
-            TechniqueContext::BindGlobalUniforms(drawUniforms);
+            Techniques::TechniqueContext::BindGlobalUniforms(drawUniforms);
             drawUniforms.BindConstantBuffer(HashSimulationParameters, 0, 1);
             drawUniforms.BindShaderResource(HashRandomValuesTexture, 0, 1);
             drawUniforms.BindShaderResource(HashParticlesInput, 1, 1);

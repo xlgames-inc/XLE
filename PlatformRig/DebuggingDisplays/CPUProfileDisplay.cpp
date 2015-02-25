@@ -6,7 +6,7 @@
 
 #include "CPUProfileDisplay.h"
 #include "../../RenderOverlays/Font.h"
-#include "../../SceneEngine/ResourceBox.h"
+#include "../../RenderCore/Techniques/ResourceBox.h"
 #include "../../Utility/Profiling/CPUProfiler.h"
 #include "../../Utility/StringFormat.h"
 #include <stack>
@@ -138,7 +138,7 @@ namespace PlatformRig { namespace Overlays
         Float3 dividingLines[256];
         Float3* divingLinesIterator = dividingLines;
 
-        auto& res = SceneEngine::FindCachedBox<DrawProfilerResources>(DrawProfilerResources::Desc());
+        auto& res = RenderCore::Techniques::FindCachedBox<DrawProfilerResources>(DrawProfilerResources::Desc());
         TextStyle leftStyle(*res._leftFont); leftStyle._options.shadow = 0;
         TextStyle middleStyle(*res._middleFont); middleStyle._options.outline = 1; middleStyle._options.shadow = 0;
         TextStyle rightStyle(*res._rightFont);

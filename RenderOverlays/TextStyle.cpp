@@ -26,8 +26,8 @@
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/InputLayout.h"
 
-#include "../SceneEngine/CommonResources.h"
-#include "../SceneEngine/ResourceBox.h"
+#include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Techniques/ResourceBox.h"
 
 #include "../RenderCore/DX11/Metal/IncludeDX11.h"
 
@@ -289,13 +289,13 @@ float   TextStyle::Draw(
         // VertexShader& vshader    = GetResource<VertexShader>(vertexShaderSource);
         // PixelShader& pshader     = GetResource<PixelShader>(pixelShaderSource);
 
-        auto& res = SceneEngine::FindCachedBoxDep<TextStyleResources>(TextStyleResources::Desc());
+        auto& res = RenderCore::Techniques::FindCachedBoxDep<TextStyleResources>(TextStyleResources::Desc());
         renderer->Bind(res._boundInputLayout);     // have to bind a standard P2CT input layout
         renderer->Bind(*res._shaderProgram);
         renderer->Bind(Topology::TriangleList);
 
-        renderer->Bind(SceneEngine::CommonResources()._dssDisable);
-        renderer->Bind(SceneEngine::CommonResources()._cullDisable);
+        renderer->Bind(RenderCore::Techniques::CommonResources()._dssDisable);
+        renderer->Bind(RenderCore::Techniques::CommonResources()._cullDisable);
 
         {
             ViewportDesc viewportDesc(*renderer);

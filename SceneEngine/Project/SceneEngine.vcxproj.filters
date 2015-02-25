@@ -7,9 +7,6 @@
     <ClCompile Include="..\Tonemap.cpp">
       <Filter>Lighting And Processing</Filter>
     </ClCompile>
-    <ClCompile Include="..\Techniques.cpp">
-      <Filter>Fundamentals</Filter>
-    </ClCompile>
     <ClCompile Include="..\ScreenspaceReflections.cpp">
       <Filter>Lighting And Processing</Filter>
     </ClCompile>
@@ -66,9 +63,6 @@
     </ClCompile>
     <ClCompile Include="..\Sky.cpp">
       <Filter>Objects</Filter>
-    </ClCompile>
-    <ClCompile Include="..\CommonResources.cpp">
-      <Filter>Fundamentals</Filter>
     </ClCompile>
     <ClCompile Include="..\Ocean.cpp">
       <Filter>Objects\Water</Filter>
@@ -163,9 +157,6 @@
     <ClInclude Include="..\Sky.h">
       <Filter>Objects</Filter>
     </ClInclude>
-    <ClInclude Include="..\CommonResources.h">
-      <Filter>Fundamentals</Filter>
-    </ClInclude>
     <ClInclude Include="..\SimplePatchBox.h">
       <Filter>Objects\Water</Filter>
     </ClInclude>
@@ -174,9 +165,6 @@
     </ClInclude>
     <ClInclude Include="..\SurfaceHeightsProvider.h">
       <Filter>Objects\Terrain</Filter>
-    </ClInclude>
-    <ClInclude Include="..\ResourceBox.h">
-      <Filter>Fundamentals</Filter>
     </ClInclude>
     <ClInclude Include="..\SceneEngineUtility.h">
       <Filter>Fundamentals</Filter>
@@ -231,10 +219,5 @@
     <Filter Include="Utilities">
       <UniqueIdentifier>{2f4d3dbd-a37a-44be-94d0-e9443ed47c1d}</UniqueIdentifier>
     </Filter>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="..\Techniques.h">
-      <Filter>Fundamentals</Filter>
-    </None>
   </ItemGroup>
 </Project>

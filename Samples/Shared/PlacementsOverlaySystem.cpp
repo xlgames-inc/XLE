@@ -36,7 +36,7 @@ namespace Sample
 
         void RenderWidgets(
             RenderCore::IDevice* device, 
-            const RenderCore::ProjectionDesc& projectionDesc)
+            const RenderCore::Techniques::ProjectionDesc& projectionDesc)
         {
             _placementsManipulators->RenderWidgets(device, projectionDesc);
         }

@@ -595,12 +595,12 @@ namespace RenderCore { namespace ColladaConversion
 
 
     // HACK --- need to find a better place for this!
-#include "../SceneEngine/ResourceBox.h"
-namespace SceneEngine
-{
-    namespace Internal
-    {
-        IBoxTable::~IBoxTable() {}
-        std::vector<std::unique_ptr<IBoxTable>> BoxTables;
-    }
-}
+// #include "../SceneEngine/ResourceBox.h"
+// namespace SceneEngine
+// {
+//     namespace Internal
+//     {
+//         IBoxTable::~IBoxTable() {}
+//         std::vector<std::unique_ptr<IBoxTable>> BoxTables;
+//     }
+// }

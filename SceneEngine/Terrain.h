@@ -12,7 +12,7 @@
 #include "../Utility/Mixins.h"
 #include "../Core/Types.h"
 
-namespace RenderCore { class CameraDesc; }
+namespace RenderCore { namespace Techniques { class CameraDesc; } }
 
 namespace SceneEngine
 {

@@ -1111,7 +1111,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
         return false;
     }
 
-    void DebugScreensSystem::Render(RenderCore::IDevice* device, const RenderCore::ProjectionDesc& projDesc)
+    void DebugScreensSystem::Render(RenderCore::IDevice* device, const RenderCore::Techniques::ProjectionDesc& projDesc)
     {
         _currentInteractables = Interactables();
         

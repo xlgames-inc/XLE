@@ -9,7 +9,6 @@
 
 #include "../../RenderCore/Assets/ModelSimple.h"
 #include "../../RenderCore/Metal/State.h"
-#include "../../RenderCore/RenderUtils.h"
 #include "../../RenderCore/Assets/SharedStateSet.h"
 #include "../../RenderCore/Assets/IModelFormat.h"
 #include "../../RenderCore/Metal/DeviceContextImpl.h"
@@ -19,7 +18,8 @@
 #include "../../SceneEngine/LightingParser.h"
 #include "../../SceneEngine/LightingParserContext.h"
 #include "../../SceneEngine/SceneParser.h"
-#include "../../SceneEngine/Techniques.h"
+#include "../../RenderCore/Techniques/TechniqueUtils.h"
+#include "../../RenderCore/Techniques/Techniques.h"
 
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../Math/Transformations.h"
@@ -33,6 +33,7 @@
 
 namespace Overlays
 {
+    using namespace RenderCore;
     typedef std::basic_string<ucs2> ucs2string;
 
     class DirectoryQuery
@@ -108,7 +109,6 @@ namespace Overlays
     static void Copy2DTexture(
         RenderCore::Metal::DeviceContext* context, const RenderCore::Metal::ShaderResourceView& srv, Float2 screenMins, Float2 screenMaxs, float scrollAreaMin, float scrollAreaMax)
     {
-        using namespace RenderCore;
         using namespace RenderCore::Metal;
         
         class Vertex
@@ -470,11 +470,11 @@ namespace Overlays
     class ModelSceneParser : public SceneEngine::ISceneParser
     {
     public:
-        RenderCore::CameraDesc  GetCameraDesc() const
+        RenderCore::Techniques::CameraDesc  GetCameraDesc() const
         {
             const float border = 0.0f;
             float maxHalfDimension = .5f * std::max(_boundingBox.second[1] - _boundingBox.first[1], _boundingBox.second[2] - _boundingBox.first[2]);
-            RenderCore::CameraDesc result;
+            RenderCore::Techniques::CameraDesc result;
             result._verticalFieldOfView = Deg2Rad(60.f);
             Float3 position = .5f * (_boundingBox.first + _boundingBox.second);
             position[0] = _boundingBox.first[0] - (maxHalfDimension * (1.f + border)) / XlTan(0.5f * result._verticalFieldOfView);
@@ -510,7 +510,7 @@ namespace Overlays
         }
 
         unsigned GetShadowProjectionCount() const { return 0; }
-        SceneEngine::ShadowProjectionDesc GetShadowProjectionDesc(unsigned index, const RenderCore::ProjectionDesc& mainSceneProjectionDesc) const 
+        SceneEngine::ShadowProjectionDesc GetShadowProjectionDesc(unsigned index, const RenderCore::Techniques::ProjectionDesc& mainSceneProjectionDesc) const 
         { return SceneEngine::ShadowProjectionDesc(); }
         
 
@@ -563,7 +563,7 @@ namespace Overlays
         sharedStates.CaptureState(devContext);
 
         ModelSceneParser sceneParser(model, boundingBox, sharedStates);
-        SceneEngine::TechniqueContext techniqueContext;
+        Techniques::TechniqueContext techniqueContext;
         techniqueContext._globalEnvironmentState.SetParameter("SKIP_MATERIAL_DIFFUSE", 1);
         SceneEngine::LightingParserContext lightingParserContext(&sceneParser, techniqueContext);
         SceneEngine::LightingParser_Execute(devContext, lightingParserContext, qualitySettings);

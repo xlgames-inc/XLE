@@ -8,14 +8,14 @@
 #include "TerrainInternal.h"
 #include "Terrain.h"
 #include "SceneEngineUtility.h"
-#include "Techniques.h"
 #include "LightingParserContext.h"
 #include "Noise.h"
-#include "ResourceBox.h"
 #include "ShallowWater.h"
 #include "Ocean.h"
 #include "SurfaceHeightsProvider.h"
-#include "CommonResources.h"
+#include "../RenderCore/Techniques/Techniques.h"
+#include "../RenderCore/Techniques/ResourceBox.h"
+#include "../RenderCore/Techniques/CommonResources.h"
 
 #include "..\RenderCore\Resource.h"
 #include "..\RenderCore\Metal\Format.h"
@@ -42,6 +42,7 @@
 
 namespace SceneEngine
 {
+    using namespace RenderCore;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -533,7 +534,7 @@ namespace SceneEngine
             UnorderedAccessView uav(_pimpl->_gpucache[0].get());
             context.BindCS(RenderCore::MakeResourceList(uav));
 
-            auto& perlinNoiseRes = FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());
+            auto& perlinNoiseRes = Techniques::FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());
             context.BindCS(RenderCore::MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
 
             char fullShaderName[256];
@@ -1015,7 +1016,7 @@ namespace SceneEngine
                 "game/xleres/ui/terrainmodification.sh:GpuCacheDebugging:ps_*",
                 "");
             context->Bind(debuggingShader);
-            context->Bind(CommonResources()._blendStraightAlpha);
+            context->Bind(Techniques::CommonResources()._blendStraightAlpha);
             SetupVertexGeneratorShader(context);
             context->Draw(4);
         } 
