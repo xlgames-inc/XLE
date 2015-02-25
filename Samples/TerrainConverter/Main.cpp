@@ -101,6 +101,8 @@ static UInt2 ConvertDEMData(
     const unsigned cellWidthInNodes = 1<<(destCellTreeDepth-1);
     const unsigned clampingDim = destNodeDims * cellWidthInNodes;
     UInt2 finalDims = inCfg._dims;
+    finalDims[0] = std::min(finalDims[0], 512u * 6u);
+    finalDims[1] = std::min(finalDims[1], 512u * 6u);
     if ((finalDims[0] % clampingDim) != 0) { finalDims[0] += clampingDim - (finalDims[0] % clampingDim); }
     if ((finalDims[1] % clampingDim) != 0) { finalDims[1] += clampingDim - (finalDims[1] % clampingDim); }
 
@@ -129,19 +131,21 @@ static UInt2 ConvertDEMData(
     float* outputArray = (float*)PtrAdd(outputUberFile.GetData(), sizeof(TerrainUberHeader));
     auto inputArray = (const float*)inputFile.GetData();
 
-    for (unsigned y=0; y<inCfg._dims[1]; ++y) {
+    for (unsigned y=0; y<std::min(finalDims[1], inCfg._dims[1]); ++y) {
         std::copy(
             &inputArray[y * inCfg._dims[0]],
-            &inputArray[y * inCfg._dims[0] + inCfg._dims[0]],
+            &inputArray[y * inCfg._dims[0] + std::min(inCfg._dims[0], finalDims[0])],
             &outputArray[y * finalDims[0]]);
     }
 
         // fill in the extra space caused by rounding up
-    for (unsigned y=0; y<inCfg._dims[1]; ++y) {
-        std::fill(
-            &outputArray[y * finalDims[0] + inCfg._dims[0]],
-            &outputArray[y * finalDims[0] + finalDims[0]],
-            0.f);
+    if (finalDims[0] > inCfg._dims[0]) {
+        for (unsigned y=0; y<inCfg._dims[1]; ++y) {
+            std::fill(
+                &outputArray[y * finalDims[0] + inCfg._dims[0]],
+                &outputArray[y * finalDims[0] + finalDims[0]],
+                0.f);
+        }
     }
 
     for (unsigned y=inCfg._dims[1]; y < finalDims[1]; ++y) {
@@ -171,7 +175,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
     const unsigned cellTreeDepth = 5;
 
     auto cellCount = ConvertDEMData(
-        "game/demworld", "../SampleSourceData/Elevation/n38w120/floatn38w120_13",
+        "game/demworld", "../../work/XLE/SampleSourceData/Elevation/n38w120/floatn38w120_13",
         nodeDims, cellTreeDepth);
 
     TerrainConfig cfg("game/demworld", cellCount, TerrainConfig::XLE, nodeDims, cellTreeDepth);

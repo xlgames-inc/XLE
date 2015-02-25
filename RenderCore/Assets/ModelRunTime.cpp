@@ -1261,8 +1261,8 @@ namespace RenderCore { namespace Assets
         LogInfo << "  [" << _pimpl->_skinnedDrawCalls.size() << "] skinned draw calls";
         LogInfo << "  [" << _pimpl->_boundTextures.size() << "] bound textures";
         LogInfo << "  [" << _pimpl->_texturesPerMaterial << "] textures per material";
-        LogInfo << "  [" << _pimpl->_vbSize / 1024.f << "k] VB size";
-        LogInfo << "  [" << _pimpl->_ibSize / 1024.f << "k] IB size";
+        DEBUG_ONLY(LogInfo << "  [" << _pimpl->_vbSize / 1024.f << "k] VB size");
+        DEBUG_ONLY(LogInfo << "  [" << _pimpl->_ibSize / 1024.f << "k] IB size");
         LogInfo << "  Draw calls |  Indxs | GeoC |  Shr | GeoP | MatP |  Tex |   CB |   RS ";
 
         for (unsigned c=0; c<_pimpl->_drawCalls.size(); ++c) {
@@ -1324,23 +1324,25 @@ namespace RenderCore { namespace Assets
                 << Width<5>(m._indexFormat);
         }
 
-        if (_pimpl->_texturesPerMaterial) {
-            LogInfo << "  Bound Textures";
-            for (unsigned c=0; c<_pimpl->_boundTextureNames.size() / _pimpl->_texturesPerMaterial; ++c) {
-                StringMeld<512> temp;
-                for (unsigned q=0; q<_pimpl->_texturesPerMaterial; ++q) {
-                    if (q) { temp << ", "; }
-                    temp << _pimpl->_boundTextureNames[c*_pimpl->_texturesPerMaterial+q];
+        #if defined(_DEBUG)
+            if (_pimpl->_texturesPerMaterial) {
+                LogInfo << "  Bound Textures";
+                for (unsigned c=0; c<_pimpl->_boundTextureNames.size() / _pimpl->_texturesPerMaterial; ++c) {
+                    StringMeld<512> temp;
+                    for (unsigned q=0; q<_pimpl->_texturesPerMaterial; ++q) {
+                        if (q) { temp << ", "; }
+                        temp << _pimpl->_boundTextureNames[c*_pimpl->_texturesPerMaterial+q];
+                    }
+                    LogInfo << "  [" << Width<3>(c) << "] " << temp;
                 }
-                LogInfo << "  [" << Width<3>(c) << "] " << temp;
             }
-        }
 
-        LogInfo << "  Parameter Boxes";
-        for (unsigned c=0; c<_pimpl->_paramBoxDesc.size(); ++c) {
-            auto& i = _pimpl->_paramBoxDesc[c];
-            LogInfo << "  [" << Width<3>(i.first) << "] " << i.second;
-        }
+            LogInfo << "  Parameter Boxes";
+            for (unsigned c=0; c<_pimpl->_paramBoxDesc.size(); ++c) {
+                auto& i = _pimpl->_paramBoxDesc[c];
+                LogInfo << "  [" << Width<3>(i.first) << "] " << i.second;
+            }
+        #endif
     }
 
         ////////////////////////////////////////////////////////////

@@ -1032,6 +1032,11 @@ namespace SceneEngine
     public:
         void operator()(Int2 s0, Int2 s1, float edgeAlpha)
         {
+            assert(s0[0] >= 0 && s0[0] < int(_surface->GetWidth()));
+            assert(s0[1] >= 0 && s0[1] < int(_surface->GetHeight()));
+            assert(s1[0] >= 0 && s1[0] < int(_surface->GetWidth()));
+            assert(s1[0] >= 0 && s1[0] < int(_surface->GetHeight()));
+
             // we need to find the height of the edge at the point we pass through it
             float h0 = _surface->GetValueFast(s0[0], s0[1]);
             float h1 = _surface->GetValueFast(s1[0], s1[1]);
@@ -1070,17 +1075,26 @@ namespace SceneEngine
             //  where will this iteration hit the edge of the valid area?
             //  start with a really long line, then clamp it to the valid region
         Float2 fe = samplePt + std::min(maxShadowDistance, surface._width + surface._height) * sunDirectionOfMovement;
-        if (fe[0] < 1.f) {
-            fe = LinearInterpolate(samplePt, fe, (1.f-samplePt[0]) / (fe[0]-samplePt[0]));
-        } else if (fe[0] > float(surface._width-2)) {
-            fe = LinearInterpolate(samplePt, fe, (float(surface._width-2) - samplePt[0]) / (fe[0]-samplePt[0]));
+        if (fe[0] < 0.f) {
+            fe = LinearInterpolate(samplePt, fe, (-samplePt[0]) / (fe[0]-samplePt[0]));
+            fe[0] = 0.f;
+        } else if (fe[0] > float(surface._width-1)) {
+            fe = LinearInterpolate(samplePt, fe, (float(surface._width-1) - samplePt[0]) / (fe[0]-samplePt[0]));
+            fe[0] = float(surface._width-1);
         }
         
-        if (fe[1] < 1.f) {
-            fe = LinearInterpolate(samplePt, fe, (1.f-samplePt[1]) / (fe[1]-samplePt[1]));
-        } else if (fe[1] > float(surface._height-2)) {
-            fe = LinearInterpolate(samplePt, fe, (float(surface._height-2) - samplePt[1]) / (fe[1]-samplePt[1]));
+        if (fe[1] < 0.f) {
+            fe = LinearInterpolate(samplePt, fe, (-samplePt[1]) / (fe[1]-samplePt[1]));
+            fe[1] = 0.f;
+        } else if (fe[1] > float(surface._height-1)) {
+            fe = LinearInterpolate(samplePt, fe, (float(surface._height-1) - samplePt[1]) / (fe[1]-samplePt[1]));
+            fe[1] = float(surface._height-1);
         }
+
+        assert(samplePt[0] >= 0.f && samplePt[0] < surface._width);
+        assert(samplePt[1] >= 0.f && samplePt[1] < surface._height);
+        assert(fe[0] >= 0.f && fe[0] < surface._width);
+        assert(fe[1] >= 0.f && fe[1] < surface._height);
 
         ShadowingAngleOperator opr(&surface, Expand(samplePt, sampleHeight), xyScale);
         GridEdgeIterator(samplePt, fe, opr);
@@ -1144,8 +1158,8 @@ namespace SceneEngine
         auto lineOfSamples = std::make_unique<ShadowSample[]>(width);
         std::fill(lineOfSamples.get(), &lineOfSamples[width], ShadowSample(0xffff, 0xffff));
         for (int y=0; y<int(height); ++y) {
-            if (y > interestingMins[1] && y <= interestingMaxs[1]) {
-                for (int x=interestingMins[0]; x<std::min(interestingMaxs[0]+1, int(width)); ++x) {
+            if (y >= interestingMins[1] && y < interestingMaxs[1]) {
+                for (int x=interestingMins[0]; x<std::min(interestingMaxs[0], int(width)); ++x) {
 
                         //  first values is in the opposite direction of the sun movement. This will be a negative number
                         //  (but we'll store it as a positive value to increase precision)

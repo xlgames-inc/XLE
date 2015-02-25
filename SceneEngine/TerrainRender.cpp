@@ -2653,7 +2653,9 @@ namespace SceneEngine
         if (!DoesFileExist(uberShadowingFile)) {
             // Int2 interestingMins((9-1) * 16 * 32, (19-1) * 16 * 32), interestingMaxs((9+4) * 16 * 32, (19+4) * 16 * 32);
             Int2 interestingMins(0, 0);
-            Int2 interestingMaxs = /*outputConfig._cellCount*/ Int2(2,2) * 16 * 32 - Int2(1,1);
+            Int2 interestingMaxs = UInt2(
+                outputConfig._cellCount[0] * outputConfig.CellDimensionsInNodes()[0] * outputConfig.NodeDimensionsInElements()[0],
+                outputConfig._cellCount[1] * outputConfig.CellDimensionsInNodes()[1] * outputConfig.NodeDimensionsInElements()[1]);
 
             float xyScale = 10.f;
             Float2 sunDirectionOfMovement = Normalize(Float2(1.f, 0.33f));
