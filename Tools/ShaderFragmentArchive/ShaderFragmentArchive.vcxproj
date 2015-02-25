@@ -199,6 +199,9 @@
     <ProjectReference Include="..\..\RenderCore\Project\RenderCore_DX11.vcxproj">
       <Project>{e43e10b8-7cd4-a5d0-6270-17c50cb74adf}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\..\RenderCore\Project\RenderCore_Techniques.vcxproj">
+      <Project>{8188bb13-0b12-c110-2a31-515435fd3bb5}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\..\ShaderParser\Project\ShaderParser.vcxproj">
       <Project>{d7818769-51d6-7fe8-161b-71f0f96a076f}</Project>
     </ProjectReference>
