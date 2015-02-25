@@ -15,7 +15,6 @@ namespace SceneEngine
 
     bool VegetationSpawn_DrawInstances(
             RenderCore::Metal::DeviceContext* context,
-            LightingParserContext& parserContext, 
             unsigned instanceId, unsigned indexCount, unsigned startIndexLocation, unsigned baseVertexLocation);
 }
 

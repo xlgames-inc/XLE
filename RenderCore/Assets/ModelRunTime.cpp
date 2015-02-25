@@ -11,6 +11,10 @@
 #include "RawAnimationCurve.h"
 #include "SharedStateSet.h"
 
+#include "../Techniques/Techniques.h"
+#include "../Techniques/ResourceBox.h"
+#include "../Techniques/ParsingContext.h"
+
 #include "../Metal/Buffer.h"
 #include "../Metal/State.h"
 #include "../Metal/DeviceContext.h"
@@ -30,14 +34,9 @@
 #include "../../Math/Transformations.h"
 #include "../../ConsoleRig/Console.h"
 
-#include "../../SceneEngine/LightingParserContext.h"
-#include "../../SceneEngine/Techniques.h"
-#include "../../SceneEngine/ResourceBox.h"
-
 #include "../../Utility/StringFormat.h"
 
 #include <string>
-#include <iomanip>
 
 #pragma warning(disable:4189)
 
@@ -636,7 +635,7 @@ namespace RenderCore { namespace Assets
         Metal::ConstantBuffer _localTransformBuffer;
         ModelRenderingBox(const Desc&)
         {
-            Metal::ConstantBuffer localTransformBuffer(nullptr, sizeof(LocalTransformConstants));
+            Metal::ConstantBuffer localTransformBuffer(nullptr, sizeof(Techniques::LocalTransformConstants));
             _localTransformBuffer = std::move(localTransformBuffer);
         }
         ~ModelRenderingBox() {}
@@ -667,12 +666,12 @@ namespace RenderCore { namespace Assets
         auto& cmdStream = _scaffold->CommandStream();
         auto& geoCall = cmdStream.GetGeoCall(geoCallIndex);
 
-        LocalTransformConstants trans;
+        Techniques::LocalTransformConstants trans;
         if (transforms) {
             auto localToModel = transforms->GetMeshToModel(geoCall._transformMarker);
-            trans = MakeLocalTransform(Combine(localToModel, modelToWorld), ExtractTranslation(context._parserContext->GetProjectionDesc()._cameraToWorld));
+            trans = Techniques::MakeLocalTransform(Combine(localToModel, modelToWorld), ExtractTranslation(context._parserContext->GetProjectionDesc()._cameraToWorld));
         } else {
-            trans = MakeLocalTransform(modelToWorld, ExtractTranslation(context._parserContext->GetProjectionDesc()._cameraToWorld));
+            trans = Techniques::MakeLocalTransform(modelToWorld, ExtractTranslation(context._parserContext->GetProjectionDesc()._cameraToWorld));
         }
         localTransformBuffer.Update(*context._context, &trans, sizeof(trans));
 
@@ -706,7 +705,7 @@ namespace RenderCore { namespace Assets
             modelToWorld = Combine(transforms->GetMeshToModel(geoCall._transformMarker), modelToWorld);
         }
 
-        auto trans = MakeLocalTransform(modelToWorld, ExtractTranslation(context._parserContext->GetProjectionDesc()._cameraToWorld));
+        auto trans = Techniques::MakeLocalTransform(modelToWorld, ExtractTranslation(context._parserContext->GetProjectionDesc()._cameraToWorld));
         localTransformBuffer.Update(*context._context, &trans, sizeof(trans));
 
         auto cm = FindIf(_skinnedMeshes, [=](const Pimpl::SkinnedMesh& mesh) { return mesh._id == geoCall._geoId; });
@@ -891,7 +890,7 @@ namespace RenderCore { namespace Assets
             const MeshToModel*  transforms,
             PreparedAnimation*  preparedAnimation) const
     {
-        auto& box = SceneEngine::FindCachedBox<ModelRenderingBox>(ModelRenderingBox::Desc());
+        auto& box = Techniques::FindCachedBox<ModelRenderingBox>(ModelRenderingBox::Desc());
         const Metal::ConstantBuffer* pkts[] = { &box._localTransformBuffer, nullptr };
 
         unsigned currTextureSet = ~unsigned(0x0), currCB = ~unsigned(0x0), currGeoCall = ~unsigned(0x0);
@@ -1075,11 +1074,11 @@ namespace RenderCore { namespace Assets
     {
         if (drawCalls._entries.empty()) return;
 
-        LocalTransformConstants localTrans;
+        Techniques::LocalTransformConstants localTrans;
         localTrans._localSpaceView = Float3(0.f, 0.f, 0.f);
         localTrans._localNegativeLightDirection = Float3(0.f, 0.f, 0.f);
         
-        static Metal::ConstantBuffer localTransformBuffer(nullptr, sizeof(LocalTransformConstants));     // this should go into some kind of global resource heap
+        static Metal::ConstantBuffer localTransformBuffer(nullptr, sizeof(Techniques::LocalTransformConstants));     // this should go into some kind of global resource heap
         const Metal::ConstantBuffer* pkts[] = { &localTransformBuffer, nullptr };
 
         std::sort(drawCalls._entries.begin(), drawCalls._entries.end(), CompareDrawCall);
@@ -1121,7 +1120,7 @@ namespace RenderCore { namespace Assets
                 HRESULT hresult = context._context->GetUnderlying()->Map(
                     localTransformBuffer.GetUnderlying(), 0, D3D11_MAP_WRITE_DISCARD, 0, &result);
                 assert(SUCCEEDED(hresult) && result.pData); (void)hresult;
-                CopyTransform(((LocalTransformConstants*)result.pData)->_localToWorld, d->_meshToWorld);
+                CopyTransform(((Techniques::LocalTransformConstants*)result.pData)->_localToWorld, d->_meshToWorld);
                 context._context->GetUnderlying()->Unmap(localTransformBuffer.GetUnderlying(), 0);
             }
             

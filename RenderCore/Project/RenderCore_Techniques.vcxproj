@@ -78,8 +78,8 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{962EA621-C2A6-D312-53CB-7B545D981B75}</ProjectGuid>
-    <RootNamespace>RenderCore_Assets</RootNamespace>
+    <RootNamespace>RenderCore_Techniques</RootNamespace>
+    <ProjectGuid>{8188BB13-0B12-C110-2A31-515435FD3BB5}</ProjectGuid>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Label="Configuration">
@@ -112,24 +112,6 @@
     <Import Project="..\..\Solutions\Main.props" />
     <Import Project="..\..\Foreign\CommonForClients.props" />
   </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug-OpenGL|Win32'">
-    <Import Project="..\..\Foreign\angleproject\AngleForClients.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug-OpenGL|x64'">
-    <Import Project="..\..\Foreign\angleproject\AngleForClients.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile-OpenGL|Win32'">
-    <Import Project="..\..\Foreign\angleproject\AngleForClients.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile-OpenGL|x64'">
-    <Import Project="..\..\Foreign\angleproject\AngleForClients.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release-OpenGL|Win32'">
-    <Import Project="..\..\Foreign\angleproject\AngleForClients.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release-OpenGL|x64'">
-    <Import Project="..\..\Foreign\angleproject\AngleForClients.props" />
-  </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup />
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">
@@ -148,37 +130,17 @@
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\Assets\AssetUtils.cpp" />
-    <ClCompile Include="..\Assets\ColladaCompilerInterface.cpp" />
-    <ClCompile Include="..\Assets\ModelFormatPlugins.cpp" />
-    <ClCompile Include="..\Assets\ModelSimple.cpp" />
-    <ClCompile Include="..\Assets\ModelSimpleRenderer.cpp" />
-    <ClCompile Include="..\Assets\ModelRunTime.cpp" />
-    <ClCompile Include="..\Assets\NascentTransformationMachine.cpp" />
-    <ClCompile Include="..\Assets\SharedStateSet.cpp" />
-    <ClCompile Include="..\Assets\SkinningRunTime.cpp" />
-    <ClCompile Include="..\Assets\TerrainFormat.cpp" />
+    <ClInclude Include="..\Techniques\CommonResources.h" />
+    <ClInclude Include="..\Techniques\ResourceBox.h" />
+    <ClInclude Include="..\Techniques\ParsingContext.h" />
+    <ClInclude Include="..\Techniques\Techniques.h" />
+    <ClInclude Include="..\Techniques\TechniqueUtils.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\Assets\AnimationRunTime.h" />
-    <ClInclude Include="..\Assets\AssetUtils.h" />
-    <ClInclude Include="..\Assets\ColladaCompilerInterface.h" />
-    <ClInclude Include="..\Assets\ModelFormatPlugins.h" />
-    <ClInclude Include="..\Assets\ModelRunTimeInternal.h" />
-    <ClInclude Include="..\Assets\ModelSimple.h" />
-    <ClInclude Include="..\Assets\ModelRunTime.h" />
-    <ClInclude Include="..\Assets\NascentTransformationMachine.h" />
-    <ClInclude Include="..\Assets\SharedStateSet.h" />
-    <ClInclude Include="..\Assets\TerrainFormat.h" />
-    <ClInclude Include="..\Assets\TransformationCommands.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="RenderCore.vcxproj">
-      <Project>{116fe083-50bc-1393-470f-f834ef6e02ff}</Project>
-    </ProjectReference>
-    <ProjectReference Include="RenderCore_Techniques.vcxproj">
-      <Project>{8188bb13-0b12-c110-2a31-515435fd3bb5}</Project>
-    </ProjectReference>
+    <ClCompile Include="..\Techniques\CommonResources.cpp" />
+    <ClCompile Include="..\Techniques\ParsingContext.cpp" />
+    <ClCompile Include="..\Techniques\Techniques.cpp" />
+    <ClCompile Include="..\Techniques\TechniqueUtils.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

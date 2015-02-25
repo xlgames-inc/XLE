@@ -10,6 +10,7 @@
 
 #include "PlacementsManager.h"
 #include "PlacementsQuadTree.h"
+#include "LightingParserContext.h"
 #include "../RenderCore/Assets/SharedStateSet.h"
 
 #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
@@ -22,7 +23,6 @@
 #endif
 #include "../RenderCore/Assets/IModelFormat.h"
 
-#include "../SceneEngine/LightingParserContext.h"
 #include "../Assets/Assets.h"
 #include "../Assets/ChunkFile.h"
 #include "../Assets/AssetUtils.h"

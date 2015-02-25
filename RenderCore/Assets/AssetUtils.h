@@ -12,7 +12,7 @@
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/ParameterBox.h"
 
-namespace RenderCore { class CameraDesc; class GlobalTransformConstants; }
+namespace RenderCore { namespace Techniques { class CameraDesc; class GlobalTransformConstants; } }
 
 namespace RenderCore { namespace Assets
 {

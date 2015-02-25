@@ -7,9 +7,7 @@
 #include "CommonResources.h"
 #include "ResourceBox.h"
 
-#include "../RenderCore/DX11/Metal/IncludeDX11.h"   // hack for assignment operators in state objects
-
-namespace SceneEngine
+namespace RenderCore { namespace Techniques
 {
     namespace Internal
     {
@@ -45,4 +43,4 @@ namespace SceneEngine
         Internal::BoxTables = std::vector<std::unique_ptr<Internal::IBoxTable>>();
     }
 
-}
+}}

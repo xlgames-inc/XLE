@@ -22,11 +22,9 @@
 #include "../Metal/Format.h"
 #include <stdarg.h>
 
-#include "../../SceneEngine/ResourceBox.h"
-
-    // for debugging rendering
-#include "../../SceneEngine/LightingParserContext.h"
-#include "../../SceneEngine/Techniques.h"
+#include "../Techniques/ResourceBox.h"
+#include "../Techniques/Techniques.h"
+#include "../Techniques/TechniqueUtils.h"
 
 namespace RenderCore { namespace Assets
 {
@@ -40,9 +38,9 @@ namespace RenderCore { namespace Assets
     }
 
     Metal::ConstantBufferLayoutElement GlobalTransform_Elements[] = {
-        { "WorldToClip", Metal::NativeFormat::Matrix4x4, offsetof(GlobalTransformConstants, _worldToClip), 0 },
-        { "FrustumCorners", Metal::NativeFormat::R32G32B32A32_FLOAT, offsetof(GlobalTransformConstants, _frustumCorners), 4 },
-        { "WorldSpaceView", Metal::NativeFormat::R32G32B32_FLOAT, offsetof(GlobalTransformConstants, _worldSpaceView), 0 }
+        { "WorldToClip", Metal::NativeFormat::Matrix4x4, offsetof(Techniques::GlobalTransformConstants, _worldToClip), 0 },
+        { "FrustumCorners", Metal::NativeFormat::R32G32B32A32_FLOAT, offsetof(Techniques::GlobalTransformConstants, _frustumCorners), 4 },
+        { "WorldSpaceView", Metal::NativeFormat::R32G32B32_FLOAT, offsetof(Techniques::GlobalTransformConstants, _worldSpaceView), 0 }
     };
 
     size_t GlobalTransform_ElementsCount = dimof(GlobalTransform_Elements);
@@ -83,9 +81,9 @@ namespace RenderCore { namespace Assets
         ////////////////////////////////////////////////////////////
 
     Metal::ConstantBufferLayoutElement Assets::LocalTransform_Elements[] = {
-        { "LocalToWorld",                   Metal::NativeFormat::Matrix3x4,        offsetof(LocalTransformConstants, _localToWorld), 0                  },
-        { "LocalSpaceView",                 Metal::NativeFormat::R32G32B32_FLOAT,  offsetof(LocalTransformConstants, _localSpaceView), 0                },
-        { "LocalNegativeLightDirection",    Metal::NativeFormat::R32G32B32_FLOAT,  offsetof(LocalTransformConstants, _localNegativeLightDirection), 0   }
+        { "LocalToWorld",                   Metal::NativeFormat::Matrix3x4,        offsetof(Techniques::LocalTransformConstants, _localToWorld), 0                  },
+        { "LocalSpaceView",                 Metal::NativeFormat::R32G32B32_FLOAT,  offsetof(Techniques::LocalTransformConstants, _localSpaceView), 0                },
+        { "LocalNegativeLightDirection",    Metal::NativeFormat::R32G32B32_FLOAT,  offsetof(Techniques::LocalTransformConstants, _localNegativeLightDirection), 0   }
     };
 
     size_t Assets::LocalTransform_ElementsCount = dimof(Assets::LocalTransform_Elements);
@@ -373,7 +371,7 @@ namespace RenderCore { namespace Assets
     {
         if (textureName.empty()) return false;
 
-        auto& cache = SceneEngine::FindCachedBox<CachedTextureFormats>(
+        auto& cache = Techniques::FindCachedBox<CachedTextureFormats>(
             CachedTextureFormats::Desc());
 
         typedef CachedTextureFormats::Header Hdr;

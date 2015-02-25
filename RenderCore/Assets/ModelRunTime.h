@@ -17,7 +17,7 @@
 #include "../../Core/Types.h"
 #include <vector>
 
-namespace SceneEngine { class LightingParserContext; }
+namespace RenderCore { namespace Techniques { class ParsingContext; } }
 namespace Assets { class DirectorySearchRules; class PendingCompileMarker; }
 
 namespace RenderCore { namespace Assets
@@ -112,13 +112,13 @@ namespace RenderCore { namespace Assets
         {
         public:
             Metal::DeviceContext* _context;
-            SceneEngine::LightingParserContext* _parserContext;
+            Techniques::ParsingContext* _parserContext;
             unsigned _techniqueIndex;
             const SharedStateSet* _sharedStateSet;
 
             Context(
                 Metal::DeviceContext* context, 
-                SceneEngine::LightingParserContext& parserContext,
+                Techniques::ParsingContext& parserContext,
                 unsigned techniqueIndex, const SharedStateSet& sharedStateSet)
                 : _context(context), _parserContext(&parserContext), _techniqueIndex(techniqueIndex), _sharedStateSet(&sharedStateSet) {}
         };
@@ -320,7 +320,7 @@ namespace RenderCore { namespace Assets
 
         void RenderSkeleton(
                 Metal::DeviceContext* context, 
-                SceneEngine::LightingParserContext& parserContext, 
+                Techniques::ParsingContext& parserContext, 
                 const AnimationState& animState, const Float4x4& localToWorld);
         
         SkinPrepareMachine(ModelScaffold&, AnimationSetScaffold&, SkeletonScaffold&);

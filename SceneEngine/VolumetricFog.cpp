@@ -11,6 +11,7 @@
 #include "Noise.h"
 #include "CommonResources.h"
 #include "LightInternal.h"
+#include "Techniques.h"
 
 #include "../RenderCore/Metal/RenderTargetView.h"
 #include "../RenderCore/Metal/ShaderResource.h"
@@ -22,7 +23,6 @@
 #include "../RenderCore/RenderUtils.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../ConsoleRig/Console.h"
-#include "../SceneEngine/Techniques.h"
 
 #include "../Utility/StringFormat.h"
 

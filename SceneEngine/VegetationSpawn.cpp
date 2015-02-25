@@ -289,7 +289,6 @@ namespace SceneEngine
 
     bool VegetationSpawn_DrawInstances(
             RenderCore::Metal::DeviceContext* context,
-            LightingParserContext& parserContext, 
             unsigned instanceId, unsigned indexCount, unsigned startIndexLocation, unsigned baseVertexLocation)
     {
         if (instanceId==0 || (instanceId-1) > TotalBufferCount)

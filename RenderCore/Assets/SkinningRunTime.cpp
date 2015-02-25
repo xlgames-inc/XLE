@@ -16,23 +16,21 @@
 #include "../Metal/DeviceContext.h"
 #include "../Metal/DeviceContextImpl.h"
 
-#include "../../SceneEngine/ResourceBox.h"
-#include "../../SceneEngine/Techniques.h"
+#include "../Techniques/ResourceBox.h"
+#include "../Techniques/Techniques.h"
+#include "../Techniques/TechniqueUtils.h"
+#include "../Techniques/ParsingContext.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Assets/ChunkFile.h"
 #include "../../Utility/Streams/FileUtils.h"
 
-#include "../../SceneEngine/LightingParserContext.h"       // (for debugging rendering)
-
-#include "../DX11/Metal/IncludeDX11.h"
+// #include "../DX11/Metal/IncludeDX11.h"
 
 #pragma warning(disable:4127)       // conditional expression is constant
 
 namespace RenderCore { namespace Assets
 {
-    using namespace SceneEngine;
-
     class HashedInputAssemblies
     {
     public:
@@ -92,7 +90,7 @@ namespace RenderCore { namespace Assets
 
     SkinningBindingBox::SkinningBindingBox(const Desc& desc)
     {
-        auto& ai = FindCachedBox<HashedInputAssemblies>(HashedInputAssemblies::Desc(desc._iaHash));
+        auto& ai = Techniques::FindCachedBox<HashedInputAssemblies>(HashedInputAssemblies::Desc(desc._iaHash));
         const auto& skinningInputLayout = ai._elements;
 
         std::vector<Metal::InputElementDesc> skinningOutputLayout;
@@ -370,7 +368,7 @@ namespace RenderCore { namespace Assets
         uint64 inputAssemblyHash,
         const BoundSkinnedGeometry& scaffoldGeo)
     {
-        auto& iaBox = FindCachedBox<HashedInputAssemblies>(HashedInputAssemblies::Desc(inputAssemblyHash));
+        auto& iaBox = Techniques::FindCachedBox<HashedInputAssemblies>(HashedInputAssemblies::Desc(inputAssemblyHash));
         if (iaBox._elements.empty()) {
                 //  This hashed input assembly will contain both the full input assembly 
                 //  for preparing skinning (with the animated elements in slot 0, and 
@@ -498,7 +496,7 @@ namespace RenderCore { namespace Assets
 
             // fill in the "HashedInputAssemblies" box if necessary
         const auto& scaffold = *preparedAnimBinding._scaffold;
-        auto& bindingBox = FindCachedBoxDep<SkinningBindingBox>(
+        auto& bindingBox = Techniques::FindCachedBoxDep<SkinningBindingBox>(
             SkinningBindingBox::Desc(bindingType, preparedAnimBinding._iaAnimationHash, mesh._extraVbStride[SkinnedMesh::VertexStreams::AnimatedGeo]));
 
             ///////////////////////////////////////////////
@@ -1029,7 +1027,7 @@ namespace RenderCore { namespace Assets
 
     void    SkinPrepareMachine::RenderSkeleton( 
                 Metal::DeviceContext* context, 
-                SceneEngine::LightingParserContext& parserContext, 
+                Techniques::ParsingContext& parserContext, 
                 const AnimationState& animState, const Float4x4& localToWorld)
     {
         using namespace RenderCore::Metal;
@@ -1041,8 +1039,8 @@ namespace RenderCore { namespace Assets
 
             //      Setup basic state --- blah, blah, blah..., 
 
-        RenderCore::Metal::ConstantBufferPacket constantBufferPackets[1];
-        constantBufferPackets[0] = MakeLocalTransformPacket(
+        ConstantBufferPacket constantBufferPackets[1];
+        constantBufferPackets[0] = Techniques::MakeLocalTransformPacket(
             localToWorld, 
             ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld));
 
@@ -1056,7 +1054,7 @@ namespace RenderCore { namespace Assets
         BoundUniforms boundLayout(shaderProgram);
         static const auto HashLocalTransform = Hash64("LocalTransform");
         boundLayout.BindConstantBuffer( HashLocalTransform, 0, 1, Assets::LocalTransform_Elements, Assets::LocalTransform_ElementsCount);
-        SceneEngine::TechniqueContext::BindGlobalUniforms(boundLayout);
+        Techniques::TechniqueContext::BindGlobalUniforms(boundLayout);
         boundLayout.Apply(*context, 
             parserContext.GetGlobalUniformsStream(),
             UniformsStream(constantBufferPackets, nullptr, dimof(constantBufferPackets)));

@@ -6,11 +6,11 @@
 
 #pragma once
 
-#include "../RenderCore/Metal/Forward.h"
-#include "../RenderCore/Metal/InputLayout.h"        // required for _materialConstantsLayout in ResolvedShader
-#include "../Utility/ParameterBox.h"
-#include "../Core/Prefix.h"
-#include "../Core/Types.h"
+#include "../Metal/Forward.h"
+#include "../Metal/InputLayout.h"        // required for _materialConstantsLayout in ResolvedShader
+#include "../../Utility/ParameterBox.h"
+#include "../../Core/Prefix.h"
+#include "../../Core/Types.h"
 #include <string>
 #include <vector>
 
@@ -18,7 +18,7 @@ namespace Utility { class Data; }
 using namespace Utility;
 namespace Assets { class DependencyValidation; class DirectorySearchRules; }
 
-namespace SceneEngine
+namespace RenderCore { namespace Techniques
 {
     class ShaderParameters
     {
@@ -48,11 +48,11 @@ namespace SceneEngine
     class ResolvedShader
     {
     public:
-        uint64                                      _variationHash;
-        RenderCore::Metal::ShaderProgram*           _shaderProgram;
-        RenderCore::Metal::BoundUniforms*           _boundUniforms;
-        RenderCore::Metal::BoundInputLayout*        _boundLayout;
-        RenderCore::Metal::ConstantBufferLayout*    _materialConstantsLayout;
+        uint64                          _variationHash;
+        Metal::ShaderProgram*           _shaderProgram;
+        Metal::BoundUniforms*           _boundUniforms;
+        Metal::BoundInputLayout*        _boundLayout;
+        Metal::ConstantBufferLayout*    _materialConstantsLayout;
 
         ResolvedShader();
     };
@@ -91,7 +91,7 @@ namespace SceneEngine
         uint64  GetHashValue() const;
 
         TechniqueInterface();
-        TechniqueInterface(const RenderCore::Metal::InputLayout& vertexInputLayout);
+        TechniqueInterface(const Metal::InputLayout& vertexInputLayout);
         TechniqueInterface(TechniqueInterface&& moveFrom);
         TechniqueInterface&operator=(TechniqueInterface&& moveFrom);
         ~TechniqueInterface();
@@ -114,7 +114,7 @@ namespace SceneEngine
                                             const TechniqueInterface& techniqueInterface);
         bool                IsValid() const { return !_vertexShaderName.empty(); }
 
-        Technique(Data& source, Assets::DirectorySearchRules* searchRules = nullptr, std::vector<const ::Assets::DependencyValidation*>* inherited = nullptr);
+        Technique(Data& source, ::Assets::DirectorySearchRules* searchRules = nullptr, std::vector<const ::Assets::DependencyValidation*>* inherited = nullptr);
         Technique(Technique&& moveFrom);
         Technique& operator=(Technique&& moveFrom);
     protected:
@@ -151,23 +151,23 @@ namespace SceneEngine
             const ParameterBox* globalState[ShaderParameters::Source::Max],
             const TechniqueInterface& techniqueInterface);
 
-        std::vector<std::unique_ptr<RenderCore::Metal::ShaderProgram>> _resolvedShaderPrograms;
-        std::vector<std::unique_ptr<RenderCore::Metal::BoundUniforms>> _resolvedBoundUniforms;
-        std::vector<std::unique_ptr<RenderCore::Metal::BoundInputLayout>> _resolvedBoundInputLayouts;
-        std::vector<std::unique_ptr<RenderCore::Metal::ConstantBufferLayout>> _resolvedMaterialConstantsLayouts;
+        std::vector<std::unique_ptr<Metal::ShaderProgram>> _resolvedShaderPrograms;
+        std::vector<std::unique_ptr<Metal::BoundUniforms>> _resolvedBoundUniforms;
+        std::vector<std::unique_ptr<Metal::BoundInputLayout>> _resolvedBoundInputLayouts;
+        std::vector<std::unique_ptr<Metal::ConstantBufferLayout>> _resolvedMaterialConstantsLayouts;
     };
 
     class ShaderType
     {
     public:
         ResolvedShader      FindVariation(int techniqueIndex, const ParameterBox* globalState[ShaderParameters::Source::Max], const TechniqueInterface& techniqueInterface);
-        const Assets::DependencyValidation&         GetDependencyValidation() const     { return *_validationCallback; }
+        const ::Assets::DependencyValidation&         GetDependencyValidation() const     { return *_validationCallback; }
 
         ShaderType(const char resourceName[]);
         ~ShaderType();
     private:
         std::vector<Technique>      _technique;
-        std::shared_ptr<Assets::DependencyValidation>   _validationCallback;
+        std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
     };
 
         //////////////////////////////////////////////////////////////////
@@ -181,8 +181,8 @@ namespace SceneEngine
         ParameterBox   _runtimeState;
 
         static void     BindGlobalUniforms(TechniqueInterface&);
-        static void     BindGlobalUniforms(RenderCore::Metal::BoundUniforms&);
+        static void     BindGlobalUniforms(Metal::BoundUniforms&);
     };
 
-}
+}}
 

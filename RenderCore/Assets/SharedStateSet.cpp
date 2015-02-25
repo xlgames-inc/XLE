@@ -6,13 +6,12 @@
 
 #include "SharedStateSet.h"
 #include "AssetUtils.h"
+#include "../Techniques/Techniques.h"
+#include "../Techniques/CommonResources.h"
 #include "../Metal/InputLayout.h"
 #include "../Metal/DeviceContext.h"
 #include "../Metal/Buffer.h"
 #include "../Metal/State.h"
-#include "../../SceneEngine/Techniques.h"
-#include "../../SceneEngine/LightingParserContext.h"
-#include "../../SceneEngine/CommonResources.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/ParameterBox.h"
 #include <vector>
@@ -23,7 +22,7 @@ namespace RenderCore { namespace Assets
     {
     public:
         std::vector<std::string>                        _shaderNames;
-        std::vector<SceneEngine::TechniqueInterface>    _techniqueInterfaces;
+        std::vector<Techniques::TechniqueInterface>     _techniqueInterfaces;
         std::vector<ParameterBox>                       _parameterBoxes;
         std::vector<uint64>                             _techniqueInterfaceHashes;
         std::vector<std::pair<uint64, RenderStateSet>>  _renderStateSets;
@@ -63,14 +62,14 @@ namespace RenderCore { namespace Assets
         auto existingInterface = std::find(hashes.cbegin(), hashes.cend(), interfHash);
         if (existingInterface == hashes.cend()) {
                 //  No existing interface. We have to build a new one.
-            SceneEngine::TechniqueInterface techniqueInterface(
+            Techniques::TechniqueInterface techniqueInterface(
                 Metal::InputLayout(vertexElements, count));
 
             static const auto HashLocalTransform = Hash64("LocalTransform");
             static const auto HashBasicMaterial = Hash64("BasicMaterialConstants");
             techniqueInterface.BindConstantBuffer(HashLocalTransform, 0, 1);
             techniqueInterface.BindConstantBuffer(HashBasicMaterial, 1, 1);
-            SceneEngine::TechniqueContext::BindGlobalUniforms(techniqueInterface);
+            Techniques::TechniqueContext::BindGlobalUniforms(techniqueInterface);
             for (unsigned c=0; c<textureBindPointsCount; ++c) {
                 techniqueInterface.BindShaderResource(textureBindPoints[c], c, 1);
             }
@@ -146,7 +145,7 @@ namespace RenderCore { namespace Assets
 
     RenderCore::Metal::BoundUniforms* SharedStateSet::BeginVariation(
             Metal::DeviceContext* context, 
-            SceneEngine::TechniqueContext& techniqueContext,
+            Techniques::TechniqueContext& techniqueContext,
             unsigned techniqueIndex, unsigned shaderName, unsigned techniqueInterface, 
             unsigned geoParamBox, unsigned materialParamBox) const
     {
@@ -167,7 +166,7 @@ namespace RenderCore { namespace Assets
             XlCatString(buffer, dimof(buffer), ".txt");
         }
 
-        auto& shaderType = ::Assets::GetAssetDep<SceneEngine::ShaderType>(buffer);
+        auto& shaderType = ::Assets::GetAssetDep<Techniques::ShaderType>(buffer);
         const ParameterBox* state[] = {
             &_pimpl->_parameterBoxes[geoParamBox],
             &techniqueContext._globalEnvironmentState,
@@ -202,8 +201,8 @@ namespace RenderCore { namespace Assets
             //  constructor, otherwise they'll build the new
             //  underlying state objects
         CompiledRenderStateSet()
-            : _blendState(SceneEngine::CommonResources()._blendOpaque)
-            , _rasterizerState(SceneEngine::CommonResources()._defaultRasterizer)
+            : _blendState(Techniques::CommonResources()._blendOpaque)
+            , _rasterizerState(Techniques::CommonResources()._defaultRasterizer)
         {}
     };
 
@@ -244,14 +243,14 @@ namespace RenderCore { namespace Assets
                     result._blendState = Metal::BlendState(
                         Metal::BlendOp::Add, Metal::Blend::SrcAlpha, Metal::Blend::InvSrcAlpha, true);
                 } else {
-                    result._blendState = SceneEngine::CommonResources()._blendOpaque;
+                    result._blendState = Techniques::CommonResources()._blendOpaque;
                 }
             } else if (techniqueIndex == 0 || techniqueIndex == 4) {
                 if (states._flag & RenderStateSet::Flag::ForwardBlend) {
                     result._blendState = Metal::BlendState(
                         states._forwardBlendOp, states._forwardBlendSrc, states._forwardBlendDst);
                 } else {
-                    result._blendState = SceneEngine::CommonResources()._blendOpaque;
+                    result._blendState = Techniques::CommonResources()._blendOpaque;
                 }
             }
 

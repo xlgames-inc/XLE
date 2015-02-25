@@ -11,7 +11,7 @@
 #include <string>
 #include <memory>
 
-namespace SceneEngine { class TechniqueContext; }
+namespace RenderCore { namespace Techniques { class TechniqueContext; } }
 namespace Utility { class ParameterBox; }
 
 namespace RenderCore { namespace Assets
@@ -48,9 +48,9 @@ namespace RenderCore { namespace Assets
         unsigned InsertParameterBox(const Utility::ParameterBox& box);
         unsigned InsertRenderStateSet(const RenderStateSet& states);
 
-        RenderCore::Metal::BoundUniforms* BeginVariation(
+        Metal::BoundUniforms* BeginVariation(
             Metal::DeviceContext* context,
-            SceneEngine::TechniqueContext& parserContext,
+            Techniques::TechniqueContext& parserContext,
             unsigned techniqueIndex,
             unsigned shaderName, unsigned techniqueInterface,
             unsigned geoParamBox, unsigned materialParamBox) const;
@@ -76,7 +76,7 @@ namespace RenderCore { namespace Assets
         mutable unsigned _currentGeoParamBox;
         mutable unsigned _currentRenderState;
         mutable uint64 _currentGlobalRenderState;
-        mutable RenderCore::Metal::BoundUniforms* _currentBoundUniforms;
+        mutable Metal::BoundUniforms* _currentBoundUniforms;
     };
 }}
 

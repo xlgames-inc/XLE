@@ -5,28 +5,26 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Techniques.h"
-#include "LightDesc.h"      // for MaxShadowTexturesPerLight
-#include "../RenderCore/Metal/Shader.h"
-#include "../RenderCore/Metal/InputLayout.h"
-#include "../RenderCore/Assets/AssetUtils.h"    // for Assets::LocalTransform_Elements
-#include "../Assets/AssetUtils.h"
-#include "../Math/Vector.h"
-#include "../Math/Matrix.h"
-#include "../Utility/Streams/Data.h"
-#include "../Utility/Streams/FileUtils.h"
-#include "../Utility/IteratorUtils.h"
+#include "../Metal/Shader.h"
+#include "../Metal/InputLayout.h"
+#include "../../Assets/AssetUtils.h"
+#include "../../Math/Vector.h"
+#include "../../Math/Matrix.h"
+#include "../../Utility/Streams/Data.h"
+#include "../../Utility/Streams/FileUtils.h"
+#include "../../Utility/IteratorUtils.h"
 #include <algorithm>
 
-namespace SceneEngine
+namespace RenderCore { namespace Techniques
 {
         ///////////////////////   T E C H N I Q U E   I N T E R F A C E   ///////////////////////////
 
     class TechniqueInterface::Pimpl
     {
     public:
-        std::vector<RenderCore::Metal::InputElementDesc>    _vertexInputLayout;
-        std::vector<std::pair<uint64, unsigned>>            _constantBuffers;
-        std::vector<std::pair<uint64, unsigned>>            _shaderResources;
+        std::vector<Metal::InputElementDesc>        _vertexInputLayout;
+        std::vector<std::pair<uint64, unsigned>>    _constantBuffers;
+        std::vector<std::pair<uint64, unsigned>>    _shaderResources;
 
         uint64 _hashValue;
         Pimpl() : _hashValue(0) {}
@@ -46,10 +44,10 @@ namespace SceneEngine
             struct PartialDesc
             {
                 unsigned                    _semanticIndex;
-                RenderCore::Metal::NativeFormat::Enum          _nativeFormat;
+                Metal::NativeFormat::Enum          _nativeFormat;
                 unsigned                    _inputSlot;
                 unsigned                    _alignedByteOffset;
-                RenderCore::Metal::InputClassification::Enum   _inputSlotClass;
+                Metal::InputClassification::Enum   _inputSlotClass;
                 unsigned                    _instanceDataStepRate;
             } partialDesc;
 
@@ -101,7 +99,7 @@ namespace SceneEngine
         _pimpl = std::make_unique<TechniqueInterface::Pimpl>();
     }
 
-    TechniqueInterface::TechniqueInterface(const RenderCore::Metal::InputLayout& vertexInputLayout)
+    TechniqueInterface::TechniqueInterface(const Metal::InputLayout& vertexInputLayout)
     {
         _pimpl = std::make_unique<TechniqueInterface::Pimpl>();
         _pimpl->_vertexInputLayout.insert(
@@ -267,8 +265,7 @@ namespace SceneEngine
                 combinedStrings.push_back(';');
             });
 
-        using namespace RenderCore;
-        using namespace RenderCore::Metal;
+        using namespace Metal;
     
         std::unique_ptr<ShaderProgram> shaderProgram;
         std::unique_ptr<BoundUniforms> boundUniforms;
@@ -334,7 +331,7 @@ namespace SceneEngine
         };
         std::vector<std::pair<uint64,Setting>> _settings;
 
-        ParameterBoxTable(const Assets::ResChar filename[]);
+        ParameterBoxTable(const ::Assets::ResChar filename[]);
         ParameterBoxTable(ParameterBoxTable&& moveFrom);
         ParameterBoxTable& operator=(ParameterBoxTable&& moveFrom);
 
@@ -360,8 +357,8 @@ namespace SceneEngine
 
     static void LoadInteritedParameterBoxes(
         Data& source, ParameterBox dst[4],
-        Assets::DirectorySearchRules* searchRules,
-        std::vector<const Assets::DependencyValidation*>* inherited)
+        ::Assets::DirectorySearchRules* searchRules,
+        std::vector<const ::Assets::DependencyValidation*>* inherited)
     {
             //  Find the child called "Inherit". This will provide a list of 
             //  shareable settings that we can inherit from
@@ -373,7 +370,7 @@ namespace SceneEngine
             for (auto i=inheritList->child; i; i=i->next) {
                 auto* colon = XlFindCharReverse(i->value, ':');
                 if (colon) {
-                    Assets::ResChar resolvedFile[MaxPath];
+                    ::Assets::ResChar resolvedFile[MaxPath];
                     XlCopyNString(resolvedFile, i->value, colon-i->value);
                     XlCatString(resolvedFile, dimof(resolvedFile), ".txt");
                     if (searchRules) {
@@ -381,7 +378,7 @@ namespace SceneEngine
                             resolvedFile, dimof(resolvedFile), resolvedFile);
                     }
 
-                    auto& settingsTable = Assets::GetAssetDep<ParameterBoxTable>(resolvedFile);
+                    auto& settingsTable = ::Assets::GetAssetDep<ParameterBoxTable>(resolvedFile);
                     auto settingHash = Hash64(colon+1);
                     
                     auto s = LowerBound(settingsTable._settings, settingHash);
@@ -422,7 +419,7 @@ namespace SceneEngine
         }
     }
 
-    ParameterBoxTable::ParameterBoxTable(const Assets::ResChar filename[])
+    ParameterBoxTable::ParameterBoxTable(const ::Assets::ResChar filename[])
     {
         Data data;
         size_t sourceFileSize = 0;
@@ -432,7 +429,7 @@ namespace SceneEngine
         RegisterFileDependency(_depVal, filename);
 
         if (sourceFile) {
-            auto searchRules = Assets::DefaultDirectorySearchRules(filename);
+            auto searchRules = ::Assets::DefaultDirectorySearchRules(filename);
             std::vector<const ::Assets::DependencyValidation*> inherited;
 
             data.Load((const char*)sourceFile.get(), (int)sourceFileSize);
@@ -470,8 +467,8 @@ namespace SceneEngine
 
     Technique::Technique(
         Data& source, 
-        Assets::DirectorySearchRules* searchRules,
-        std::vector<const Assets::DependencyValidation*>* inherited)
+        ::Assets::DirectorySearchRules* searchRules,
+        std::vector<const ::Assets::DependencyValidation*>* inherited)
     {
             //
             //      There are some parameters that will we always have an effect on the
@@ -534,11 +531,11 @@ namespace SceneEngine
         size_t sourceFileSize = 0;
         auto sourceFile = LoadFileAsMemoryBlock(resourceName, &sourceFileSize);
 
-        _validationCallback = std::make_shared<Assets::DependencyValidation>();
+        _validationCallback = std::make_shared<::Assets::DependencyValidation>();
         ::Assets::RegisterFileDependency(_validationCallback, resourceName);
         
         if (sourceFile) {
-            auto searchRules = Assets::DefaultDirectorySearchRules(resourceName);
+            auto searchRules = ::Assets::DefaultDirectorySearchRules(resourceName);
             std::vector<const ::Assets::DependencyValidation*> inheritedAssets;
 
             data.Load((const char*)sourceFile.get(), (int)sourceFileSize);
@@ -616,7 +613,7 @@ namespace SceneEngine
         binding.BindConstantBuffer(HashOrthoShadowProjection, 4, 0);
     }
 
-    void     TechniqueContext::BindGlobalUniforms(RenderCore::Metal::BoundUniforms& binding)
+    void     TechniqueContext::BindGlobalUniforms(Metal::BoundUniforms& binding)
     {
             //  We need to specify the order of resources as they appear in 
             //  _globalUniformsStream
@@ -632,5 +629,5 @@ namespace SceneEngine
         binding.BindConstantBuffer(HashOrthoShadowProjection, 4, 0);
     }
 
-}
+}}
 

@@ -13,12 +13,7 @@
 #include <vector>
 #include <memory>
 
-namespace SceneEngine 
-{
-    class LightingParserContext; class TechniqueInterface; 
-    class ResolvedShader;
-}
-
+namespace RenderCore { namespace Techniques { class ParsingContext; }}
 namespace RenderCore { namespace Assets { class SharedStateSet; } }
 
 namespace RenderCore { namespace Assets { namespace Simple
@@ -228,7 +223,7 @@ namespace RenderCore { namespace Assets { namespace Simple
     public:
         void    Render(
             Metal::DeviceContext* context, 
-            SceneEngine::LightingParserContext& parserContext,
+            Techniques::ParsingContext& parserContext,
             unsigned techniqueIndex,
             const SharedStateSet& sharedStateSet,
             const Float4x4& modelToWorld, unsigned vegetationSpawnObjectIndex = 0);
@@ -246,7 +241,7 @@ namespace RenderCore { namespace Assets { namespace Simple
         static void RenderPrepared(
             SortedModelDrawCalls& drawCalls,
             Metal::DeviceContext* context, 
-            SceneEngine::LightingParserContext& parserContext,
+            Techniques::ParsingContext& parserContext,
             unsigned techniqueIndex,
             const SharedStateSet& sharedStateSet);
                                 
