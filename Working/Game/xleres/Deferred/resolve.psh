@@ -257,7 +257,7 @@ float ResolveShadows(	uint projection, float2 shadowTexCoord, float comparisonDi
 		//	of depth ranges.
 		//	With perspective projection, it is more expensive than biasing in NDC depth space.
 		//	But with orthogonal shadows, it should be very similar
-	const float ShadowBiasWorldSpace = 0.005f;
+	const float ShadowBiasWorldSpace = -0.03f;
 	MiniProjZW miniP = AsMiniProjZW(ShadowProjection_GetMiniProj(projection));
 	if (shadowsPerspectiveProj) {
 		float worldSpaceDepth = NDCDepthToWorldSpace_Perspective(comparisonDistance, miniP);

@@ -50,12 +50,16 @@
 			//		Try to offset the final depth buffer
 			//		value by half the depth buffer precision.
 			//		This seems to get a better result... suggesting
-			//		maybe a floor takes place.
+			//		maybe a floor takes place? It's unclear. Actually,
+			//		subtracting half a pixel seems to give the most
+			//		balanced result. When there is no bias, this approximately
+			//		half of pixels shadow themselves, and half don't.
+			//		Still some investigation required to find out why that is...
 			//
 		const float halfDepthBufferPrecision = .5f/65536.f;
-		p0.z += halfDepthBufferPrecision * p0.w;
-		p1.z += halfDepthBufferPrecision * p1.w;
-		p2.z += halfDepthBufferPrecision * p2.w;
+		p0.z -= halfDepthBufferPrecision * p0.w;
+		p1.z -= halfDepthBufferPrecision * p1.w;
+		p2.z -= halfDepthBufferPrecision * p2.w;
 
 		VSOutput output;
 		output.position = p0;

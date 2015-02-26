@@ -157,7 +157,7 @@ float4 ResolveAmbient(	float4 position : SV_Position,
 	float3 result = BasicAmbient(pixelCoords, sys, sample);
 
 	float fresnel = CalculateReflectionFresnel(sample, normalize(-viewFrustumVector));
-	float3 skyReflections = LightingScale * CalculateSkyReflections(sample, normalize(-viewFrustumVector), fresnel);
+	float3 skyReflections = 0.25f * LightingScale * CalculateSkyReflections(sample, normalize(-viewFrustumVector), fresnel);
 	#if CALCULATE_SCREENSPACE_REFLECTIONS==1
 			//	The "screen space" reflections block out the sky reflections.
 			//	If we get a collision with the screen space reflections, then we need

@@ -61,8 +61,9 @@ namespace SceneEngine
         //          PS t14 -- normals fitting texture
         //          CS t14 -- normals fitting texture
         //          
-        //          PS s0, s1, s2 -- default sampler, clamping sampler, anisotropic wrapping sampler
-        //          VS s0, s1, s2 -- default sampler, clamping sampler, anisotropic wrapping sampler
+        //          PS s0, s1, s2, s4 -- default sampler, clamping sampler, anisotropic wrapping sampler, point sampler
+        //          VS s0, s1, s2, s4 -- default sampler, clamping sampler, anisotropic wrapping sampler, point sampler
+        //          PS s6 -- samplerWrapU
         //
     void SetFrameGlobalStates(DeviceContext* context, LightingParserContext& parserContext)
     {
@@ -70,9 +71,11 @@ namespace SceneEngine
             SamplerState samplerDefault, 
                 samplerClamp(FilterMode::Trilinear, AddressMode::Clamp, AddressMode::Clamp, AddressMode::Clamp), 
                 samplerAnisotrophic(FilterMode::Anisotropic),
-                samplerPoint(FilterMode::Point, AddressMode::Clamp, AddressMode::Clamp, AddressMode::Clamp);
+                samplerPoint(FilterMode::Point, AddressMode::Clamp, AddressMode::Clamp, AddressMode::Clamp),
+                samplerWrapU(FilterMode::Trilinear, AddressMode::Wrap, AddressMode::Clamp);
             context->BindPS(RenderCore::MakeResourceList(samplerDefault, samplerClamp, samplerAnisotrophic, samplerPoint));
             context->BindVS(RenderCore::MakeResourceList(samplerDefault, samplerClamp, samplerAnisotrophic, samplerPoint));
+            context->BindPS(RenderCore::MakeResourceList(6, samplerWrapU));
 
             auto normalsFittingResource = Assets::GetAssetDep<RenderCore::Metal::DeferredShaderResource>("game/xleres/DefaultResources/normalsfitting.dds").GetShaderResource();
             context->BindPS(RenderCore::MakeResourceList(14, normalsFittingResource));

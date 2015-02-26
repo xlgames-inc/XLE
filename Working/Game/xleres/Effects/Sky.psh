@@ -21,12 +21,12 @@ float3 CalculateBaseSkyColor(float2 texCoord, float3 viewFrustumVector)
 
 		uint2 reflectionTextureDims;
 		ReflectionBox[0].GetDimensions(
-			reflectionTextureDims.x, 
+			reflectionTextureDims.x,
 			reflectionTextureDims.y);
-	
+
 		float4 result = ReadReflectionHemiBox(
-			normalize(viewFrustumVector), 
-			ReflectionBox[0], ReflectionBox[1], ReflectionBox[2], 
+			normalize(viewFrustumVector),
+			ReflectionBox[0], ReflectionBox[1], ReflectionBox[2],
 			reflectionTextureDims, 0);
 		result.rgb = SRGBToLinear(result.rgb);
 		return result;
@@ -41,15 +41,30 @@ float3 CalculateBaseSkyColor(float2 texCoord, float3 viewFrustumVector)
 
 	#elif MAT_SKY_PROJECTION == 3
 
-			//	this is "panoramic projection." 
+			//	this is "panoramic projection."
 		float2 t = HemisphericalMappingCoord(viewFrustumVector);
 		if (t.y < 1.f) {
-			// return float4(2.5f * DiffuseTexture.Sample(ClampingSampler, t).rgb, 1.f);
-			int2 dimensions;
-			DiffuseTexture.GetDimensions(dimensions.x, dimensions.y);
-			float3 result = DiffuseTexture.Load(int3(t.xy * float2(dimensions.x, dimensions.y), 0)).rgb;
-			result.rgb = SRGBToLinear(result.rgb);
-			return result;
+				// 	Texture coordinates wrap strangely because of
+				//	the hemispherical projection. At the wrapping
+				//	point the "x" texture coordinate will approach 1,
+				//	and then suddenly drop down to 0. This causes the
+				//	mipmapping algorithm to get the wrong result. We
+				//	can correct for this, though, compensating for
+				//	wrapping in the derviatives values.
+				//	(or, I guess, always use the top mip-map level...?)
+			float2 tddx = ddx(t);
+			float2 tddy = ddy(t);
+			if (tddx.x < -0.5f) { tddx.x += 1.f; }
+			if (tddx.x >  0.5f) { tddx.x -= 1.f; }
+			if (tddy.x < -0.5f) { tddy.x += 1.f; }
+			if (tddy.x >  0.5f) { tddy.x -= 1.f; }
+			return float4(2.5f * DiffuseTexture.SampleGrad(WrapUSampler, t, tddx, tddy).rgb, 1.f);
+
+			// int2 dimensions;
+			// DiffuseTexture.GetDimensions(dimensions.x, dimensions.y);
+			// float3 result = DiffuseTexture.Load(int3(t.xy * float2(dimensions.x, dimensions.y), 0)).rgb;
+			// result.rgb = SRGBToLinear(result.rgb);
+			// return result;
 		}
 
 		return 0.0.xxxx;
@@ -62,7 +77,7 @@ float3 CalculateBaseSkyColor(float2 texCoord, float3 viewFrustumVector)
 }
 
 
-float4 CalculateColour0(	float2 texCoord, 
+float4 CalculateColour0(	float2 texCoord,
 							float3 viewFrustumVector, float3 worldSpacePosition)
 {
 	float3 color = CalculateBaseSkyColor(texCoord, viewFrustumVector);
@@ -110,7 +125,7 @@ VSOutput vs_main(VSInput input)
 	output.position		 = mul(WorldToClip, float4(worldPosition,1));
 
 	output.position.z	 = 1.0f * output.position.w;		// push to infinity
-	
+
 	#if OUTPUT_TEXCOORD==1
 		output.texCoord = GetTexCoord(input);
 	#endif
@@ -122,7 +137,6 @@ VSOutput vs_main(VSInput input)
 	#if OUTPUT_FOG_COLOR == 1
 		output.fogColor = CalculateFog(worldPosition.z, WorldSpaceView - worldPosition, NegativeDominantLightDirection);
 	#endif
-	
+
 	return output;
 }
-

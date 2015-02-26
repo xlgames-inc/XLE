@@ -15,6 +15,7 @@ SamplerState	DefaultSampler          : register(s0);
 SamplerState	ClampingSampler         : register(s1);
 SamplerState    AnisotropicSampler      : register(s2);
 SamplerState    PointClampSampler       : register(s3);
+SamplerState    WrapUSampler            : register(s6);
 
 Texture2D       NormalsFittingTexture   : register(t14);
 

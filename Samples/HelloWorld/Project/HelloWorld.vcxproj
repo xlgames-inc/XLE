@@ -127,6 +127,9 @@
     <ProjectReference Include="..\..\..\RenderCore\Project\RenderCore_DX11.vcxproj">
       <Project>{e43e10b8-7cd4-a5d0-6270-17c50cb74adf}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\..\..\RenderCore\Project\RenderCore_Techniques.vcxproj">
+      <Project>{8188bb13-0b12-c110-2a31-515435fd3bb5}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\..\..\RenderOverlays\Project\RenderOverlays.vcxproj">
       <Project>{726e12f1-b69b-188d-390b-3a1e1889126d}</Project>
     </ProjectReference>

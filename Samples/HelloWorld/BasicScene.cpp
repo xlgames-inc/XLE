@@ -175,7 +175,7 @@ namespace Sample
             //  times in a single frame. Generally the properties can be animated in
             //  any way, but they should stay constant over the course of a single frame.
         GlobalLightingDesc result;
-        auto ambientScale = Tweakable("AmbientScale", 0.075f);
+        auto ambientScale = Tweakable("AmbientScale", .5f * 0.075f);
         result._ambientLight = Float3(.65f * ambientScale, .7f * ambientScale, 1.f * ambientScale);
         result._skyTexture = "game/xleres/defaultresources/sky/samplesky.dds";
         result._doToneMap = true;
