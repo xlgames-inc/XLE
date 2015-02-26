@@ -355,7 +355,7 @@ namespace RenderCore { namespace Assets
         std::vector<MeshAndDrawCall>    _drawCalls;
         std::vector<MeshAndDrawCall>    _skinnedDrawCalls;
 
-        ModelScaffold*  _scaffold;
+        const ModelScaffold*  _scaffold;
         unsigned        _levelOfDetail;
 
         ///////////////////////////////////////////////////////////////////////////////

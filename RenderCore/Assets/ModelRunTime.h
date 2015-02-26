@@ -188,7 +188,7 @@ namespace RenderCore { namespace Assets
         void LogReport() const;
 
             ////////////////////////////////////////////////////////////
-        ModelRenderer(ModelScaffold& scaffold, SharedStateSet& sharedStateSet, const ::Assets::DirectorySearchRules* searchRules = nullptr, unsigned levelOfDetail = 0);
+        ModelRenderer(const ModelScaffold& scaffold, SharedStateSet& sharedStateSet, const ::Assets::DirectorySearchRules* searchRules = nullptr, unsigned levelOfDetail = 0);
         ~ModelRenderer();
     protected:
         class Pimpl;

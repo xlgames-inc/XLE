@@ -78,7 +78,7 @@ namespace RenderCore { namespace Assets
             unsigned _renderStateSet;
         };
 
-        static const ModelCommandStream::GeoCall& GetGeoCall(ModelScaffold& scaffold, unsigned geoCallIndex)
+        static const ModelCommandStream::GeoCall& GetGeoCall(const ModelScaffold& scaffold, unsigned geoCallIndex)
         {
                 //  get the "RawGeometry" object in the given scaffold for the give
                 //  geocall index. This will query both unskinned and skinned raw calls
@@ -88,7 +88,7 @@ namespace RenderCore { namespace Assets
             return (geoCallIndex < geoCallCount) ? cmdStream.GetGeoCall(geoCallIndex) : cmdStream.GetSkinCall(geoCallIndex - geoCallCount);
         }
         
-        static const RawGeometry& GetGeo(ModelScaffold& scaffold, unsigned geoCallIndex)
+        static const RawGeometry& GetGeo(const ModelScaffold& scaffold, unsigned geoCallIndex)
         {
                 //  get the "RawGeometry" object in the given scaffold for the give
                 //  geocall index. This will query both unskinned and skinned raw calls
@@ -99,12 +99,12 @@ namespace RenderCore { namespace Assets
             return (geoCallIndex < geoCallCount) ? meshData._geos[geoCall._geoId] : (RawGeometry&)meshData._boundSkinnedControllers[geoCall._geoId];
         }
 
-        static unsigned GetDrawCallCount(ModelScaffold& scaffold, unsigned geoCallIndex)
+        static unsigned GetDrawCallCount(const ModelScaffold& scaffold, unsigned geoCallIndex)
         {
             return GetGeo(scaffold, geoCallIndex)._drawCallsCount;
         }
 
-        static unsigned ScaffoldMaterialIndex(ModelScaffold& scaffold, unsigned geoCallIndex, unsigned drawCallIndex)
+        static unsigned ScaffoldMaterialIndex(const ModelScaffold& scaffold, unsigned geoCallIndex, unsigned drawCallIndex)
         {
             auto& meshData = scaffold.ImmutableData();
             auto geoCallCount = scaffold.CommandStream().GetGeoCallCount();
@@ -122,7 +122,7 @@ namespace RenderCore { namespace Assets
             return ~unsigned(0x0);
         }
 
-        template <typename T> static bool AtLeastOneValidDrawCall(const RawGeometry& geo, ModelScaffold& scaffold, unsigned geoCallIndex, std::vector<std::pair<unsigned, T>>& subMatResources)
+        template <typename T> static bool AtLeastOneValidDrawCall(const RawGeometry& geo, const ModelScaffold& scaffold, unsigned geoCallIndex, std::vector<std::pair<unsigned, T>>& subMatResources)
         {
                 //  look for at least one valid draw call in this geo instance
                 //  a valid draw call should have got shader and material information bound
@@ -211,7 +211,7 @@ namespace RenderCore { namespace Assets
         static const auto DefaultParametersTextureBindingHash = Hash64("ParametersTexture");
 
         static std::vector<std::pair<unsigned, SubMatResources>> BuildMaterialResources(
-            ModelScaffold& scaffold, SharedStateSet& sharedStateSet, unsigned levelOfDetail,
+            const ModelScaffold& scaffold, SharedStateSet& sharedStateSet, unsigned levelOfDetail,
             std::vector<uint64>& textureBindPoints,
             std::vector<std::vector<uint8>>& prescientMaterialConstantBuffers,
             ParamBoxDescriptions& paramBoxDesc)
@@ -296,6 +296,59 @@ namespace RenderCore { namespace Assets
             return materialResources;
         }
 
+        std::vector<Metal::DeferredShaderResource*> BuildBoundTextures(
+            const ModelScaffold& scaffold,
+            const ::Assets::DirectorySearchRules* searchRules,
+            const std::vector<std::pair<unsigned, SubMatResources>>& materialResources,
+            const std::vector<uint64>& textureBindPoints, unsigned textureSetCount,
+            std::vector<std::string>& boundTextureNames)
+        {
+            auto texturesPerMaterial = textureBindPoints.size();
+
+            std::vector<Metal::DeferredShaderResource*> boundTextures;
+            boundTextures.resize(textureSetCount * texturesPerMaterial, nullptr);
+            DEBUG_ONLY(boundTextureNames.resize(textureSetCount * texturesPerMaterial));
+
+            for (auto i=materialResources.begin(); i!=materialResources.end(); ++i) {
+                unsigned subMatIndex = i->first;
+                unsigned textureSetIndex = i->second._texturesIndex;
+        
+                if (subMatIndex >= scaffold.ImmutableData()._materialBindingsCount)
+                    continue;
+
+                const auto& materialScaffoldData = scaffold.ImmutableData()._materialBindings[subMatIndex];
+                for (auto t=materialScaffoldData._bindings.cbegin(); t!=materialScaffoldData._bindings.cend(); ++t) {
+                    auto bindName = t->_bindHash;
+                    auto i = std::find(textureBindPoints.cbegin(), textureBindPoints.cend(), bindName);
+                    assert(i!=textureBindPoints.cend());
+                    auto index = std::distance(textureBindPoints.cbegin(), i);
+        
+                    TRY {
+                            // note --  Ideally we want to do this filename resolve in a background thread
+                            //          however, it doesn't work well with our resources system. Because we're
+                            //          expecting to create the DeferredShaderResource from a definitive file
+                            //          name, something that can be matched against other (already loaded) resources.
+                            //          So we need something different here... Something that can resolve a filename
+                            //          in the background, and then return a shareable resource afterwards
+                        auto dsti = textureSetIndex*texturesPerMaterial + index;
+                        if (searchRules) {
+                            ResChar resolvedPath[MaxPath];
+                            searchRules->ResolveFile(resolvedPath, dimof(resolvedPath), t->_resourceName.c_str());
+                            boundTextures[dsti] = &::Assets::GetAsset<Metal::DeferredShaderResource>(resolvedPath);
+                            DEBUG_ONLY(boundTextureNames[dsti] = resolvedPath);
+                        } else {
+                            boundTextures[dsti] = &::Assets::GetAsset<Metal::DeferredShaderResource>(t->_resourceName.c_str());
+                            DEBUG_ONLY(boundTextureNames[dsti] = t->_resourceName);
+                        }
+                    } CATCH (const ::Assets::Exceptions::InvalidResource&) {
+                        LogWarning << "Warning -- shader resource (" << t->_resourceName << ") couldn't be found";
+                    } CATCH_END
+                }
+            }
+
+            return std::move(boundTextures);
+        }
+
         class BuffersUnderConstruction
         {
         public:
@@ -349,7 +402,7 @@ namespace RenderCore { namespace Assets
     }
 
     ModelRenderer::ModelRenderer(
-        ModelScaffold& scaffold, SharedStateSet& sharedStateSet, 
+        const ModelScaffold& scaffold, SharedStateSet& sharedStateSet, 
         const ::Assets::DirectorySearchRules* searchRules, unsigned levelOfDetail)
     {
         using namespace ModelConstruction;
@@ -531,52 +584,11 @@ namespace RenderCore { namespace Assets
             ////////////////////////////////////////////////////////////////////////
                 //  now that we have a list of all of the sub materials used, and we know how large the resource 
                 //  interface is, we build an array of deferred shader resources for shader inputs.
-        std::vector<ParameterBox> materialParameterBoxes;
-
-        auto texturesPerMaterial = textureBindPoints.size();
-        std::vector<Metal::DeferredShaderResource*> boundTextures;
-        boundTextures.resize(textureSetCount * texturesPerMaterial, nullptr);
-        #if defined(_DEBUG)
-            std::vector<std::string> boundTextureNames;
-            boundTextureNames.resize(textureSetCount * texturesPerMaterial);
-        #endif
-
-        for (auto i=materialResources.begin(); i!=materialResources.end(); ++i) {
-            unsigned subMatIndex = i->first;
-            unsigned textureSetIndex = i->second._texturesIndex;
-        
-            if (subMatIndex >= scaffold.ImmutableData()._materialBindingsCount)
-                continue;
-
-            const auto& materialScaffoldData = scaffold.ImmutableData()._materialBindings[subMatIndex];
-            for (auto t=materialScaffoldData._bindings.cbegin(); t!=materialScaffoldData._bindings.cend(); ++t) {
-                auto bindName = t->_bindHash;
-                auto i = std::find(textureBindPoints.cbegin(), textureBindPoints.cend(), bindName);
-                assert(i!=textureBindPoints.cend());
-                auto index = std::distance(textureBindPoints.cbegin(), i);
-        
-                TRY {
-                        // note --  Ideally we want to do this filename resolve in a background thread
-                        //          however, it doesn't work well with our resources system. Because we're
-                        //          expecting to create the DeferredShaderResource from a definitive file
-                        //          name, something that can be matched against other (already loaded) resources.
-                        //          So we need something different here... Something that can resolve a filename
-                        //          in the background, and then return a shareable resource afterwards
-                    auto dsti = textureSetIndex*texturesPerMaterial + index;
-                    if (searchRules) {
-                        ResChar resolvedPath[MaxPath];
-                        searchRules->ResolveFile(resolvedPath, dimof(resolvedPath), t->_resourceName.c_str());
-                        boundTextures[dsti] = &::Assets::GetAsset<Metal::DeferredShaderResource>(resolvedPath);
-                        DEBUG_ONLY(boundTextureNames[dsti] = resolvedPath);
-                    } else {
-                        boundTextures[dsti] = &::Assets::GetAsset<Metal::DeferredShaderResource>(t->_resourceName.c_str());
-                        DEBUG_ONLY(boundTextureNames[dsti] = t->_resourceName);
-                    }
-                } CATCH (const ::Assets::Exceptions::InvalidResource&) {
-                    LogWarning << "Warning -- shader resource (" << t->_resourceName << ") couldn't be found";
-                } CATCH_END
-            }
-        }
+        std::vector<std::string> boundTextureNames;
+        auto boundTextures = BuildBoundTextures(
+            scaffold, searchRules,
+            materialResources, textureBindPoints, textureSetCount,
+            boundTextureNames);
 
             ////////////////////////////////////////////////////////////////////////
 
@@ -606,7 +618,7 @@ namespace RenderCore { namespace Assets
 
         pimpl->_boundTextures = std::move(boundTextures);
         pimpl->_constantBuffers = std::move(finalConstantBuffers);
-        pimpl->_texturesPerMaterial = texturesPerMaterial;
+        pimpl->_texturesPerMaterial = textureBindPoints.size();
 
         pimpl->_scaffold = &scaffold;
         pimpl->_levelOfDetail = levelOfDetail;
