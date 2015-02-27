@@ -7,6 +7,7 @@
 #include "../../../PlatformRig/AllocationProfiler.h"
 #include "../../../ConsoleRig/Log.h"
 #include "../../../Utility/Streams/PathUtils.h"
+#include "../../../Utility/Streams/FileUtils.h"
 #include "../../../Utility/SystemUtils.h"
 #include "../../../Core/Exceptions.h"
 #include <stdio.h>
@@ -57,6 +58,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
         //  Initialize the "AccumulatedAllocations" profiler as soon as possible, to catch
         //  startup allocation counts.
     PlatformRig::AccumulatedAllocations accumulatedAllocations;
+	CreateDirectoryRecursive("int");
     ConsoleRig::Logging_Startup("log.cfg", "int/helloworldlog.txt");
     LogInfo << "------------------------------------------------------------------------------------------";
 

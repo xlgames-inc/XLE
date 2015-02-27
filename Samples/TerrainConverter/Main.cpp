@@ -162,6 +162,7 @@ static UInt2 ConvertDEMData(
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
     SetWorkingDirectory();
+	CreateDirectoryRecursive("int");
     ConsoleRig::Logging_Startup("log.cfg", "int/terrconvlog.txt");
 
     auto compileAndAsync = std::make_unique<::Assets::CompileAndAsyncManager>();
