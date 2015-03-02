@@ -146,6 +146,11 @@ namespace PlatformRig
         }
         device->BeginFrame(presChain);
 
+            //  We must invalidate the cached state at least once per frame.
+            //  It appears that the driver might forget bound constant buffers
+            //  during the begin frame or present
+        context->InvalidateCachedState();
+
         ////////////////////////////////
 
         auto renderRes = renderFunction(context);
