@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../Metal/State.h"
+#include "../Metal/Buffer.h"
 
 namespace RenderCore { namespace Techniques 
 {
@@ -30,6 +31,8 @@ namespace RenderCore { namespace Techniques
         Metal::RasterizerState _cullReverse;
 
         Metal::SamplerState _defaultSampler;
+
+        Metal::ConstantBuffer _localTransformBuffer;
 
     private:
         CommonResourceBox(CommonResourceBox&);

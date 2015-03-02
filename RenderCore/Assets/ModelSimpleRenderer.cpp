@@ -19,6 +19,7 @@
 #include "../Techniques/Techniques.h"
 #include "../Techniques/ResourceBox.h"
 #include "../Techniques/ParsingContext.h"
+#include "../Techniques/CommonResources.h"
 #include "../../SceneEngine/VegetationSpawn.h"
 
 #include "../../Math/Matrix.h"
@@ -88,7 +89,7 @@ namespace RenderCore { namespace Assets { namespace Simple
             //  ... though I suppose we would need to use patches for tessellated geometry
         // context->Bind(Metal::Topology::TriangleList);
 
-        static Metal::ConstantBuffer localTransformBuffer(nullptr, sizeof(Techniques::LocalTransformConstants));     // this should go into some kind of global resource heap
+        Metal::ConstantBuffer& localTransformBuffer = Techniques::CommonResources()._localTransformBuffer;
         const Metal::ConstantBuffer* pkts[] = { &localTransformBuffer, nullptr };
 
         unsigned currentResourceIndex = ~unsigned(0x0);
@@ -255,7 +256,7 @@ namespace RenderCore { namespace Assets { namespace Simple
         localTrans._localSpaceView = Float3(0.f, 0.f, 0.f);
         localTrans._localNegativeLightDirection = Float3(0.f, 0.f, 0.f);
         
-        static Metal::ConstantBuffer localTransformBuffer(nullptr, sizeof(Techniques::LocalTransformConstants));     // this should go into some kind of global resource heap
+        Metal::ConstantBuffer& localTransformBuffer =  Techniques::CommonResources()._localTransformBuffer;
         const Metal::ConstantBuffer* pkts[] = { &localTransformBuffer, nullptr };
 
         std::sort(drawCalls._entries.begin(), drawCalls._entries.end(), CompareDrawCall);

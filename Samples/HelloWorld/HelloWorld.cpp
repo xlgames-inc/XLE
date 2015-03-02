@@ -69,11 +69,15 @@ namespace Sample
             //      * RenderDevice & presentation chain
             //      * BufferUploads
             //      * CompileAndAsyncManager
+            //
+            // Note that the render device should be created first, so that the window
+            // object is destroyed before the device is destroyed.
         LogInfo << "Building primary managers";
-        PlatformRig::OverlappedWindow window;
-        auto clientRect = window.GetRect();
         auto console = std::make_unique<ConsoleRig::Console>();
         auto renderDevice = RenderCore::CreateDevice();
+
+        PlatformRig::OverlappedWindow window;
+        auto clientRect = window.GetRect();
         std::shared_ptr<RenderCore::IPresentationChain> presentationChain = 
             renderDevice->CreatePresentationChain(window.GetUnderlyingHandle(), 
                 clientRect.second[0] - clientRect.first[0], clientRect.second[1] - clientRect.first[1]);

@@ -6,6 +6,7 @@
 
 #include "CommonResources.h"
 #include "ResourceBox.h"
+#include "TechniqueUtils.h" // just for sizeof(LocalTransformConstants)
 
 namespace RenderCore { namespace Techniques
 {
@@ -30,6 +31,8 @@ namespace RenderCore { namespace Techniques
         _defaultRasterizer = CullMode::Back;
         _cullDisable = CullMode::None;
         _cullReverse = RasterizerState(CullMode::Back, false);
+
+        _localTransformBuffer = ConstantBuffer(nullptr, sizeof(LocalTransformConstants));
     }
 
     CommonResourceBox& CommonResources()

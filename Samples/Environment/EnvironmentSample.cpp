@@ -63,10 +63,10 @@ namespace Sample
     public:
         std::unique_ptr<ConsoleRig::Console> _console;
 
-        PlatformRig::OverlappedWindow _window;
         std::unique_ptr<RenderCore::IDevice> _rDevice;
         std::shared_ptr<RenderCore::IPresentationChain> _presChain;
         std::unique_ptr<BufferUploads::IManager> _bufferUploads;
+        PlatformRig::OverlappedWindow _window;
 
         std::unique_ptr<Assets::CompileAndAsyncManager> _asyncMan;
 
@@ -215,10 +215,12 @@ namespace Sample
             {
                 using RenderOverlays::DebuggingDisplay::KeyId_Make;
                 overlaySys->AddSystem(KeyId_Make("~"), Sample::CreateConsoleOverlaySystem());
-                overlaySys->AddSystem(KeyId_Make("1"), 
-                    Sample::CreatePlacementsEditorOverlaySystem(
-                        mainScene->GetPlacementManager(), mainScene->GetTerrainManager(), 
-                        intersectionContext));
+                if (mainScene->GetPlacementManager()) {
+                    overlaySys->AddSystem(KeyId_Make("1"), 
+                        Sample::CreatePlacementsEditorOverlaySystem(
+                            mainScene->GetPlacementManager(), mainScene->GetTerrainManager(), 
+                            intersectionContext));
+                }
             }
 
                 //  We need to create input handlers, and then direct input from the 

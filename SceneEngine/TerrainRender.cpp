@@ -2663,7 +2663,7 @@ namespace SceneEngine
         }
     }
 
-    static void RegisterCircuitUpdate(
+    static void RegisterShortCircuitUpdate(
         const TerrainConfig& terrainCfg,
         unsigned overlap,
         TerrainUberSurfaceInterface* uberInterface,
@@ -2685,7 +2685,6 @@ namespace SceneEngine
             }
         }
     }
-
 
     //////////////////////////////////////////////////////////////////////////////////////////
     TerrainManager::TerrainManager(
@@ -2735,7 +2734,6 @@ namespace SceneEngine
         ////////////////////////////////////////////////////////////////////////////
             // decide on the list of terrain cells we're going to render
             //  The caller should be deciding this -- what cells to prepare, and any offset information
-        pimpl->_cells.clear();
         for (int cellY=cellMin[1]; cellY<cellMax[1]; ++cellY) {
             for (int cellX=cellMin[0]; cellX<cellMax[0]; ++cellX) {
                 CellAndPosition cell;
@@ -2775,7 +2773,7 @@ namespace SceneEngine
         pimpl->_heightsProvider = std::make_unique<TerrainSurfaceHeightsProvider>(pimpl->_renderer, cfg, pimpl->_coords);
         pimpl->_ioFormat = std::move(ioFormat);
         pimpl->_cfg = cfg;
-        RegisterCircuitUpdate(
+        RegisterShortCircuitUpdate(
             cfg, overlap,
             pimpl->_uberSurfaceInterface.get(), pimpl->_renderer);
         

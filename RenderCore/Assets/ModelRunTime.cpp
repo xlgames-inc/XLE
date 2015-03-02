@@ -14,6 +14,7 @@
 #include "../Techniques/Techniques.h"
 #include "../Techniques/ResourceBox.h"
 #include "../Techniques/ParsingContext.h"
+#include "../Techniques/CommonResources.h"
 
 #include "../Metal/Buffer.h"
 #include "../Metal/State.h"
@@ -1090,7 +1091,7 @@ namespace RenderCore { namespace Assets
         localTrans._localSpaceView = Float3(0.f, 0.f, 0.f);
         localTrans._localNegativeLightDirection = Float3(0.f, 0.f, 0.f);
         
-        static Metal::ConstantBuffer localTransformBuffer(nullptr, sizeof(Techniques::LocalTransformConstants));     // this should go into some kind of global resource heap
+        Metal::ConstantBuffer& localTransformBuffer = Techniques::CommonResources()._localTransformBuffer;
         const Metal::ConstantBuffer* pkts[] = { &localTransformBuffer, nullptr };
 
         std::sort(drawCalls._entries.begin(), drawCalls._entries.end(), CompareDrawCall);
