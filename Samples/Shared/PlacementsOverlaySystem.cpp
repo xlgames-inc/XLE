@@ -10,10 +10,10 @@
 
 namespace Sample
 {
-    class Manipulators : public IOverlaySystem
+    class PlacementsManipulators : public IOverlaySystem
     {
     public:
-        Manipulators(
+        PlacementsManipulators(
             std::shared_ptr<SceneEngine::PlacementsManager> placementsManager,
             std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
             std::shared_ptr<SceneEngine::IntersectionTestContext> intersectionContext)
@@ -52,7 +52,7 @@ namespace Sample
         std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
         std::shared_ptr<SceneEngine::IntersectionTestContext> intersectionContext)
     {
-        return std::make_shared<Manipulators>(
+        return std::make_shared<PlacementsManipulators>(
             std::move(placementsManager), std::move(terrainManager), std::move(intersectionContext));
     }
 }

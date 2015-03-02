@@ -2984,6 +2984,18 @@ namespace SceneEngine
             (worldSpacePosition[1] - _terrainOffset[1]) * float(_config.NodeDimensionsInElements()[1]) / _nodeSizeMeters);
     }
 
+    float TerrainCoordinateSystem::WorldSpaceDistanceToTerrainCoords(float distance) const
+    {
+            //  if the scale factors for X and Y are different, we can only end up with an
+            //  approximation (since we don't know if this distance is the distance along
+            //  a straight line, or around a curve, or what direction it falls... etc)
+        float scale = std::min(
+            float(_config.NodeDimensionsInElements()[0]) / _nodeSizeMeters, 
+            float(_config.NodeDimensionsInElements()[1]) / _nodeSizeMeters);
+
+        return scale * distance;
+    }
+
     Float2  TerrainCoordinateSystem::TerrainCoordsToWorldSpace(const Float2& terrainCoords) const
     {
             //  calculate world space coords (excluding height) that correspond

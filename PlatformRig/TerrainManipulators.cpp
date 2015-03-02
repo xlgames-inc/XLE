@@ -262,7 +262,10 @@ namespace Tools
             //
         auto *i = _terrainManager->GetUberSurfaceInterface();
         if (i) {
-            i->AdjustHeights(_terrainManager->GetCoords().WorldSpaceToTerrainCoords(Truncate(worldSpacePosition)), size, .05f * strength, _powerValue);
+            i->AdjustHeights(
+                _terrainManager->GetCoords().WorldSpaceToTerrainCoords(Truncate(worldSpacePosition)), 
+                _terrainManager->GetCoords().WorldSpaceDistanceToTerrainCoords(size), 
+                .05f * strength, _powerValue);
         }
     }
 
@@ -305,7 +308,11 @@ namespace Tools
     {
         auto *i = _terrainManager->GetUberSurfaceInterface();
         if (i) {
-            i->Smooth(_terrainManager->GetCoords().WorldSpaceToTerrainCoords(Truncate(worldSpacePosition)), size, unsigned(_filterRadius), _standardDeviation, _strength, _flags);
+            i->Smooth(
+                _terrainManager->GetCoords().WorldSpaceToTerrainCoords(Truncate(worldSpacePosition)), 
+                _terrainManager->GetCoords().WorldSpaceDistanceToTerrainCoords(size),
+                unsigned(_filterRadius), 
+                _standardDeviation, _strength, _flags);
         }
     }
 
@@ -357,7 +364,10 @@ namespace Tools
     {
         auto *i = _terrainManager->GetUberSurfaceInterface();
         if (i) {
-            i->AddNoise(_terrainManager->GetCoords().WorldSpaceToTerrainCoords(Truncate(worldSpacePosition)), size, .05f * strength);
+            i->AddNoise(
+                _terrainManager->GetCoords().WorldSpaceToTerrainCoords(Truncate(worldSpacePosition)), 
+                _terrainManager->GetCoords().WorldSpaceDistanceToTerrainCoords(size), 
+                .05f * strength);
         }
     }
 
@@ -396,9 +406,11 @@ namespace Tools
     {
         auto *i = _terrainManager->GetUberSurfaceInterface();
         if (i && _targetOnMouseDown.second) {
-            i->CopyHeight(  _terrainManager->GetCoords().WorldSpaceToTerrainCoords(Truncate(worldSpacePosition)), 
-                            _terrainManager->GetCoords().WorldSpaceToTerrainCoords(Truncate(_targetOnMouseDown.first)), 
-                            size, strength, _powerValue, _flags);
+            i->CopyHeight(
+                _terrainManager->GetCoords().WorldSpaceToTerrainCoords(Truncate(worldSpacePosition)), 
+                _terrainManager->GetCoords().WorldSpaceToTerrainCoords(Truncate(_targetOnMouseDown.first)), 
+                _terrainManager->GetCoords().WorldSpaceDistanceToTerrainCoords(size), 
+                strength, _powerValue, _flags);
         }
     }
 

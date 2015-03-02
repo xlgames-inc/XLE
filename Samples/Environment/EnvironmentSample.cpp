@@ -11,6 +11,7 @@
 #include "../Shared/Character.h"
 #include "../Shared/OverlaySystem.h"
 #include "../Shared/PlacementsOverlaySystem.h"
+#include "../Shared/TerrainOverlaySystem.h"
 
 #include "../../PlatformRig/OverlappedWindow.h"
 #include "../../PlatformRig/MainInputHandler.h"
@@ -220,6 +221,11 @@ namespace Sample
                         Sample::CreatePlacementsEditorOverlaySystem(
                             mainScene->GetPlacementManager(), mainScene->GetTerrainManager(), 
                             intersectionContext));
+                }
+                if (mainScene->GetTerrainManager()) {
+                    overlaySys->AddSystem(KeyId_Make("2"), 
+                        Sample::CreateTerrainEditorOverlaySystem(
+                            mainScene->GetTerrainManager(), intersectionContext));
                 }
             }
 

@@ -97,6 +97,7 @@
     <ClCompile Include="..\..\Shared\OverlaySystem.cpp" />
     <ClCompile Include="..\..\Shared\PlacementsOverlaySystem.cpp" />
     <ClCompile Include="..\..\Shared\SampleInputHandler.cpp" />
+    <ClCompile Include="..\..\Shared\TerrainOverlaySystem.cpp" />
     <ClCompile Include="..\EnvironmentSample.cpp" />
     <ClCompile Include="..\EnvironmentScene.cpp" />
     <ClCompile Include="..\WinAPI\WindowStartup.cpp" />
@@ -109,6 +110,7 @@
     <ClInclude Include="..\..\Shared\PlacementsOverlaySystem.h" />
     <ClInclude Include="..\..\Shared\SampleGlobals.h" />
     <ClInclude Include="..\..\Shared\SampleInputHandler.h" />
+    <ClInclude Include="..\..\Shared\TerrainOverlaySystem.h" />
     <ClInclude Include="..\EnvironmentScene.h" />
   </ItemGroup>
   <ItemGroup>

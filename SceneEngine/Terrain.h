@@ -73,6 +73,7 @@ namespace SceneEngine
     public:
         Float2      WorldSpaceToTerrainCoords(const Float2& worldSpacePosition) const;
         Float2      TerrainCoordsToWorldSpace(const Float2& terrainCoords) const;
+        float       WorldSpaceDistanceToTerrainCoords(float distance) const;
 
         TerrainCoordinateSystem(
             Float2 terrainOffset = Float2(0.f, 0.f),
