@@ -22,7 +22,8 @@ namespace Utility
     void XlChDir(const utf8 path[]);
     void XlChDir(const ucs2 path[]);
 
-    void XlOutputDebugString(const char* format, ...);
+    void XlOutputDebugString(const char* format);
+    void XlMessageBox(const char* content, const char* title);
 }
 
 

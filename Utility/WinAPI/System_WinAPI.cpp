@@ -200,15 +200,14 @@ bool XlPulseEvent(XlHandle h)
     return PulseEvent(h) != FALSE;
 }
 
-void XlOutputDebugString(const char* format, ...)
+void XlOutputDebugString(const char* format)
 {
-    va_list	argList;
-    char szBuffer[1024];
-    va_start(argList, format);
-    XlFormatStringV(szBuffer, dimof(szBuffer), format, argList);
-    va_end(argList);
-    XlCatString(szBuffer, dimof(szBuffer), "\n");
-    OutputDebugString(szBuffer);
+    ::OutputDebugStringA(format);
+}
+
+void XlMessageBox(const char* content, const char* title)
+{
+    ::MessageBoxA(nullptr, content, title, MB_OK);
 }
 
 uint32 XlWaitForMultipleSyncObjects(uint32 waitCount, XlHandle waitObjects[], bool waitAll, uint32 waitTime, bool alterable)

@@ -17,6 +17,7 @@
     //          prefer to to use the following header ---
     //          This helps prevent name conflicts with 
     //          windows #defines and so forth...
+    //  (this is only actually required for the "WinMain" signature)
 #include "../../../Core/WinAPI/IncludeWindows.h"
 
 namespace Sample
@@ -29,9 +30,9 @@ namespace Sample
             //      For convenience, set the working directory to be ../Working 
             //              (relative to the application path)
             //
-        nchar_t appPath     [MAX_PATH];
-        nchar_t appDir      [MAX_PATH];
-        nchar_t workingDir  [MAX_PATH];
+        nchar_t appPath     [MaxPath];
+        nchar_t appDir      [MaxPath];
+        nchar_t workingDir  [MaxPath];
 
         XlGetProcessPath    (appPath, dimof(appPath));
         XlSimplifyPath      (appPath, dimof(appPath), appPath, a2n("\\/"));
@@ -58,6 +59,13 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
         //  Initialize the "AccumulatedAllocations" profiler as soon as possible, to catch
         //  startup allocation counts.
     PlatformRig::AccumulatedAllocations accumulatedAllocations;
+
+        //  We need to initialize logging output.
+        //  The "int" directory stands for "intermediate." We cache processed 
+        //  models and textures in this directory
+        //  But it's also a convenient place for log files (since it's excluded from
+        //  git and it contains only temporary data).
+        //  Note that we overwrite the log file every time, destroying previous data.
 	CreateDirectoryRecursive("int");
     ConsoleRig::Logging_Startup("log.cfg", "int/helloworldlog.txt");
     LogInfo << "------------------------------------------------------------------------------------------";
@@ -71,7 +79,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
         LogAlwaysError << "Hit top level exception. Aborting program!";
         LogAlwaysError << e.what();
-        ::MessageBoxA(nullptr, e.what(), "Top level exception", MB_OK);
+        XlMessageBox(e.what(), "Top level exception");
     } CATCH_END
 
     return 0;
