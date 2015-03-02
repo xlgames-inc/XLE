@@ -1,0 +1,8 @@
+Samplesky.dds was derived from an image received from Openfootage.net.
+The original file was a 32 bit floating point image in .hdr format. It has been converted to .dds format, normal maps have been generated and the pixel format has been changed.
+Please see:
+http://www.openfootage.net/
+
+This texture is covered by the Creative Commons Attribution 4.0 license.
+http://creativecommons.org/licenses/by/4.0/
+
