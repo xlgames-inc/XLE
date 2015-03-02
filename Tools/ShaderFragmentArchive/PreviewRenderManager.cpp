@@ -629,29 +629,6 @@ namespace PreviewRender
     }
 
     
-
-    PreviewBuilder::PreviewBuilder(System::String^ shaderText)
-    {
-        _pimpl = new PreviewBuilderPimpl();
-
-        std::string nativeShaderText = clix::marshalString<clix::E_UTF8>(shaderText);
-        try {
-            using namespace RenderCore::Metal;
-            _pimpl->_vertexShader = std::make_unique<CompiledShaderByteCode>(nativeShaderText.c_str(), "VertexShaderEntry", VS_DefShaderModel, "SHADER_NODE_EDITOR=1");
-            _pimpl->_pixelShader = std::make_unique<CompiledShaderByteCode>(nativeShaderText.c_str(), "PixelShaderEntry", PS_DefShaderModel, "SHADER_NODE_EDITOR=1");
-        }
-        catch (::Assets::Exceptions::PendingResource&) {}
-        catch (::Assets::Exceptions::InvalidResource&) 
-        {
-            _pimpl->_errorString = "Compile failure";
-        }
-    }
-
-    PreviewBuilder::~PreviewBuilder()
-    {
-        delete _pimpl;
-    }
-
     static unsigned FlipComponents(unsigned input) 
     {
         return  (input & 0xff00ff00)
@@ -687,7 +664,7 @@ namespace PreviewRender
 
         static void BackgroundThreadFunction()
         {
-            for (;;) {
+            while (Active) {
                 Assets::CompileAndAsyncManager::GetInstance().Update();
                 #undef Yield
                 System::Threading::Thread::Yield();
@@ -696,6 +673,7 @@ namespace PreviewRender
 
         static void Kick() 
         {
+            Active = true;
             if (!BackgroundThread) {
                     //  this thread never dies -- and it keeps 
                     //      the program alive after it's finished
@@ -703,6 +681,17 @@ namespace PreviewRender
                 BackgroundThread->Start();
             }
         }
+
+        static void Shutdown()
+        {
+            Active = false;
+            BackgroundThread->Join();
+            delete BackgroundThread;
+            BackgroundThread = nullptr;
+        }
+
+    private:
+        static bool Active = true;
     };
 
     System::Drawing::Bitmap^    PreviewBuilder::GenerateBitmap(ShaderDiagram::Document^ doc, Size^ size)
@@ -837,6 +826,33 @@ namespace PreviewRender
     {
         delete _bitmap;
         _bitmap = nullptr;
+    }
+
+    PreviewBuilder::PreviewBuilder(System::String^ shaderText)
+    {
+        _pimpl = new PreviewBuilderPimpl();
+
+        std::string nativeShaderText = clix::marshalString<clix::E_UTF8>(shaderText);
+        try {
+            using namespace RenderCore::Metal;
+            _pimpl->_vertexShader = std::make_unique<CompiledShaderByteCode>(nativeShaderText.c_str(), "VertexShaderEntry", VS_DefShaderModel, "SHADER_NODE_EDITOR=1");
+            _pimpl->_pixelShader = std::make_unique<CompiledShaderByteCode>(nativeShaderText.c_str(), "PixelShaderEntry", PS_DefShaderModel, "SHADER_NODE_EDITOR=1");
+        }
+        catch (::Assets::Exceptions::PendingResource&) {}
+        catch (::Assets::Exceptions::InvalidResource&) 
+        {
+            _pimpl->_errorString = "Compile failure";
+        }
+    }
+
+    PreviewBuilder::~PreviewBuilder()
+    {
+        delete _pimpl;
+    }
+
+    void PreviewBuilder::Shutdown()
+    {
+        ResourceCompilerThread_Hack::Shutdown();
     }
 
     PreviewBuilder^    Manager::CreatePreview(System::String^ shaderText)
