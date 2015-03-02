@@ -12,6 +12,7 @@
 #include "../Metal/DeviceContext.h"
 #include "../Metal/Buffer.h"
 #include "../Metal/State.h"
+#include "../Techniques/ResourceBox.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/ParameterBox.h"
 #include <vector>
@@ -211,11 +212,14 @@ namespace RenderCore { namespace Assets
     class DefaultRenderStateSetResolver
     {
     public:
+        class Desc {};
+
         auto Compile(
             const RenderStateSet& states, 
             const Utility::ParameterBox& globalStates,
             unsigned techniqueIndex) -> const CompiledRenderStateSet*;
 
+        DefaultRenderStateSetResolver(const Desc&) {}
     protected:
         std::vector<std::pair<uint64, CompiledRenderStateSet>> _forwardStates;
         std::vector<std::pair<uint64, CompiledRenderStateSet>> _deferredStates;
@@ -285,11 +289,12 @@ namespace RenderCore { namespace Assets
     {
         assert(_pimpl->_capturedContext == context);
 
-        static DefaultRenderStateSetResolver resolver;
-
         auto globalHash = globalStates.GetHash() ^ globalStates.GetParameterNamesHash();
         if (    _currentRenderState == renderStateSetIndex
             &&  _currentGlobalRenderState == globalHash) { return; }
+
+        auto& resolver = Techniques::FindCachedBox<DefaultRenderStateSetResolver>(
+            DefaultRenderStateSetResolver::Desc());
 
         auto compiled = resolver.Compile(
             _pimpl->_renderStateSets[renderStateSetIndex].second, globalStates, techniqueIndex);
