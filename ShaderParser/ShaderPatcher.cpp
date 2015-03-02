@@ -226,18 +226,20 @@ namespace ShaderPatcher
 
     static ShaderSourceParser::ParameterStructSignature LoadParameterStructSignature(const std::tuple<std::string, std::string>& splitName)
     {
-        using namespace ShaderSourceParser;
-        TRY {
-            auto shaderFile = LoadSourceFile(std::get<0>(splitName));
-            auto parsedFile = BuildShaderFragmentSignature(shaderFile.c_str(), shaderFile.size());
+        if (!std::get<0>(splitName).empty()) {
+            using namespace ShaderSourceParser;
+            TRY {
+                auto shaderFile = LoadSourceFile(std::get<0>(splitName));
+                auto parsedFile = BuildShaderFragmentSignature(shaderFile.c_str(), shaderFile.size());
 
-            auto i = std::find_if(parsedFile._parameterStructs.cbegin(), parsedFile._parameterStructs.cend(), 
-                [&](const ParameterStructSignature& signature) { return signature._name == std::get<1>(splitName); });
-            if (i!=parsedFile._parameterStructs.cend()) {
-                return std::move(const_cast<ParameterStructSignature&>(*i));
-            }
-        } CATCH (...) {
-        } CATCH_END
+                auto i = std::find_if(parsedFile._parameterStructs.cbegin(), parsedFile._parameterStructs.cend(), 
+                    [&](const ParameterStructSignature& signature) { return signature._name == std::get<1>(splitName); });
+                if (i!=parsedFile._parameterStructs.cend()) {
+                    return std::move(const_cast<ParameterStructSignature&>(*i));
+                }
+            } CATCH (...) {
+            } CATCH_END
+        }
 
         return ShaderSourceParser::ParameterStructSignature();
     }
@@ -348,6 +350,7 @@ namespace ShaderPatcher
     void        NodeGraph::AddDefaultOutputs(const Node& node)
     {
         auto sig = LoadFunctionSignature(SplitArchiveName(node.ArchiveName()));
+        auto nodeId = node.NodeId();
 
             //  a function can actually output many values. Each output needs it's own default
             //  output node attached. First, look for a "return" value. Then search through
@@ -355,8 +358,8 @@ namespace ShaderPatcher
         if (!sig._returnType.empty() && sig._returnType != "void") {
             if (!HasConnection(_nodeConnections, node.NodeId(), "return")) {
                 auto newNodeId = GetUniqueNodeId();
-                _nodes.push_back(Node(sig._returnType, newNodeId, Node::Type::Output));
-                _nodeConnections.push_back(NodeConnection(newNodeId, node.NodeId(), "value", sig._returnType, "return", sig._returnType));
+                _nodes.push_back(Node(sig._returnType, newNodeId, Node::Type::Output)); // (note -- this invalidates "node"!)
+                _nodeConnections.push_back(NodeConnection(newNodeId, nodeId, "value", sig._returnType, "return", sig._returnType));
             }
         }
 
@@ -364,8 +367,8 @@ namespace ShaderPatcher
             if (i->_direction & ShaderSourceParser::FunctionSignature::Parameter::Out) {
                 if (!HasConnection(_nodeConnections, node.NodeId(), i->_name)) {
                     auto newNodeId = GetUniqueNodeId();
-                    _nodes.push_back(Node(i->_type, newNodeId, Node::Type::Output));
-                    _nodeConnections.push_back(NodeConnection(newNodeId, node.NodeId(), "value", i->_type, i->_name, i->_type));
+                    _nodes.push_back(Node(i->_type, newNodeId, Node::Type::Output));    // (note -- this invalidates "node"!)
+                    _nodeConnections.push_back(NodeConnection(newNodeId, nodeId, "value", i->_type, i->_name, i->_type));
                 }
             }
         }
