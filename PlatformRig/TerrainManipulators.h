@@ -46,8 +46,7 @@ namespace Tools
         void SelectManipulator(signed relativeIndex);
         IManipulator* GetActiveManipulator() const { return _manipulators[_activeManipulatorIndex].get(); }
 
-        std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener>   CreateInputListener(
-            std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem> debugScreensSystem = nullptr);
+        std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener>   CreateInputListener();
 
         ManipulatorsInterface(
             std::shared_ptr<SceneEngine::TerrainManager> terrainManager,

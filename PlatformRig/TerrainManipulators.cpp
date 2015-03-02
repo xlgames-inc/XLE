@@ -803,33 +803,24 @@ namespace Tools
     {
     public:
         bool    OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt);
-
-        InputListener(
-            std::shared_ptr<ManipulatorsInterface> parent, 
-            std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem> debugScreensSystem);
+        InputListener(std::shared_ptr<ManipulatorsInterface> parent);
     private:
         std::weak_ptr<ManipulatorsInterface> _parent;
-        std::weak_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem> _debugScreensSystem;
     };
 
     bool    ManipulatorsInterface::InputListener::OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
     {
         auto p = _parent.lock();
         if (p) {
-                // this would probably be better if the input handler was registered / deregistered as the debugging screen became visible
-            auto dss = _debugScreensSystem.lock();
-            if (!dss || (dss->CurrentScreen(0) && XlFindStringI(dss->CurrentScreen(0), "terrain"))) {
-                if (auto a = p->GetActiveManipulator()) {
-                    return a->OnInputEvent(evnt, *p->_intersectionTestContext, *p->_intersectionTestScene);
-                }
+            if (auto a = p->GetActiveManipulator()) {
+                return a->OnInputEvent(evnt, *p->_intersectionTestContext, *p->_intersectionTestScene);
             }
         }
         return false;
     }
 
-    ManipulatorsInterface::InputListener::InputListener(std::shared_ptr<ManipulatorsInterface> parent, std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem> debugScreensSystem)
+    ManipulatorsInterface::InputListener::InputListener(std::shared_ptr<ManipulatorsInterface> parent)
         : _parent(std::move(parent))
-        , _debugScreensSystem(std::move(debugScreensSystem))
     {}
 
     void    ManipulatorsInterface::Render(RenderCore::Metal::DeviceContext* context, SceneEngine::LightingParserContext& parserContext)
@@ -846,10 +837,9 @@ namespace Tools
         _activeManipulatorIndex = unsigned(_activeManipulatorIndex + relativeIndex + _manipulators.size()) % unsigned(_manipulators.size());
     }
 
-    std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener>   ManipulatorsInterface::CreateInputListener(
-        std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem> debugScreensSystem)
+    std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener>   ManipulatorsInterface::CreateInputListener()
     {
-        return std::make_shared<InputListener>(shared_from_this(), debugScreensSystem);
+        return std::make_shared<InputListener>(shared_from_this());
     }
 
     ManipulatorsInterface::ManipulatorsInterface(
@@ -1162,7 +1152,9 @@ namespace Tools
             }
         }
 
-        return HandleManipulatorsControls(interfaceState, input, *_manipulatorsInterface->GetActiveManipulator());
+        return 
+            HandleManipulatorsControls(interfaceState, input, *_manipulatorsInterface->GetActiveManipulator())
+            || !interfaceState.GetMouseOverStack().empty();
     }
 
 

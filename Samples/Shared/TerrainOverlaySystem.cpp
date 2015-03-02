@@ -12,7 +12,7 @@ namespace Sample
 {
     using RenderOverlays::DebuggingDisplay::DebugScreensSystem;
 
-    class TerrainManipulators : public IOverlaySystem
+    class TerrainManipulators : public IOverlaySystem, public RenderOverlays::DebuggingDisplay::IInputListener, public std::enable_shared_from_this<TerrainManipulators>
     {
     public:
         TerrainManipulators(
@@ -21,15 +21,21 @@ namespace Sample
         {
             _manipulatorsInterface = std::make_shared<::Tools::ManipulatorsInterface>(terrainManager, intersectionContext);
             _terrainManipulators = std::make_shared<::Tools::ManipulatorsDisplay>(_manipulatorsInterface);
-            _inputListener = _manipulatorsInterface->CreateInputListener();
+            _manipInputListener = _manipulatorsInterface->CreateInputListener();
 
             _screens = std::make_shared<DebugScreensSystem>();
             _screens->Register(_terrainManipulators, "Terrain", DebugScreensSystem::SystemDisplay);
         }
 
-        std::shared_ptr<IInputListener> GetInputListener()
+        std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener> GetInputListener()
         {
-            return _inputListener;
+            return shared_from_this();
+        }
+
+        bool OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
+        {
+            return  _screens->OnInputEvent(evnt)
+                ||  _manipInputListener->OnInputEvent(evnt);
         }
 
         void RenderToScene(
@@ -50,9 +56,9 @@ namespace Sample
 
     private:
         std::shared_ptr<::Tools::ManipulatorsInterface> _manipulatorsInterface;
-        std::shared_ptr<::Tools::ManipulatorsDisplay> _terrainManipulators;
-        std::shared_ptr<IInputListener> _inputListener;
-        std::shared_ptr<DebugScreensSystem> _screens;
+        std::shared_ptr<::Tools::ManipulatorsDisplay>   _terrainManipulators;
+        std::shared_ptr<DebugScreensSystem>             _screens;
+        std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener>                 _manipInputListener;
     };
 
     std::shared_ptr<IOverlaySystem> CreateTerrainEditorOverlaySystem(

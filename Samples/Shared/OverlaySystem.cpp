@@ -71,9 +71,7 @@ namespace Sample
         }
     }
 
-    void OverlaySystemManager::RenderToScene(
-        RenderCore::Metal::DeviceContext* devContext, 
-        SceneEngine::LightingParserContext& parserContext) 
+    void OverlaySystemManager::RenderToScene(RenderCore::Metal::DeviceContext* devContext, SceneEngine::LightingParserContext& parserContext) 
     {
         if (_activeChildIndex >= 0 && _activeChildIndex < signed(_childSystems.size())) {
             _childSystems[_activeChildIndex].second->RenderToScene(devContext, parserContext);
