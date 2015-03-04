@@ -1572,12 +1572,12 @@ namespace Tools
         std::shared_ptr<SceneEngine::IntersectionTestContext> intersectionTestContext,
         std::shared_ptr<SceneEngine::IntersectionTestScene> intersectionTestScene)
     {
-        auto browser = std::make_shared<ModelBrowser>("game\\objects\\Env", editor->GetModelFormat());
+        auto browser = std::make_shared<ModelBrowser>("game\\model", editor->GetModelFormat());
         _browserActive = false;
         _activeManipulatorIndex = 0;
         _drawSelectedModel = false;
 
-        std::string selectedModel = "game\\objects\\Env\\02_harihara\\001_hdeco\\backpack_mockup.cgf";
+        std::string selectedModel = "game\\model\\nature\\lupinus\\lupinusb.DAE";
 
         std::vector<std::unique_ptr<IManipulator>> manipulators;
         manipulators.push_back(std::make_unique<SelectAndEdit>(this, editor));

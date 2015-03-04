@@ -4,10 +4,22 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#define MODEL_FORMAT_RUNTIME 1
+#define MODEL_FORMAT_SIMPLE 2
+#define MODEL_FORMAT MODEL_FORMAT_RUNTIME
+
 #include "Browser.h"
 #include "../Font.h"
 
-#include "../../RenderCore/Assets/ModelSimple.h"
+#if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
+    #include "../../RenderCore/Assets/ModelRunTime.h"
+    #include "../../Assets/CompileAndAsyncManager.h"
+    #include "../../Assets/IntermediateResources.h"
+    #include "../../RenderCore/Assets/ColladaCompilerInterface.h"
+#else
+    #include "../../RenderCore/Assets/ModelSimple.h"
+#endif
+
 #include "../../RenderCore/Metal/State.h"
 #include "../../RenderCore/Assets/SharedStateSet.h"
 #include "../../RenderCore/Assets/IModelFormat.h"
@@ -21,6 +33,7 @@
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../RenderCore/Techniques/Techniques.h"
 
+#include "../../Assets/AssetUtils.h"
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../Math/Transformations.h"
 
@@ -31,11 +44,21 @@
 #include "../../Utility/HeapUtils.h"
 #include "../../Utility/Streams/PathUtils.h"
 
+#if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
+    namespace Assets
+    {
+        template<> uint64 GetCompileProcessType<RenderCore::Assets::ModelScaffold>();
+        // { 
+        //     return RenderCore::Assets::ColladaCompiler::Type_Model; 
+        // }
+    }
+#endif
+
 namespace Overlays
 {
     using namespace RenderCore;
     typedef std::basic_string<ucs2> ucs2string;
-
+    
     class DirectoryQuery
     {
     public:
@@ -294,7 +317,7 @@ namespace Overlays
         ScrollBar::Coordinates scrollCoordinates(scrollBarRect, 0.f, float(surfaceMaxSize), float(browserLayout.GetMaximumSize().Height()));
         unsigned itemScrollOffset = unsigned(_mainScrollBar.CalculateCurrentOffset(scrollCoordinates));
 
-            // let's render each cgf file to an off-screen buffer, and then copy the results to the main output
+            // let's render each model file to an off-screen buffer, and then copy the results to the main output
         for (auto i=_pimpl->_modelFiles->_files.cbegin(); i!=_pimpl->_modelFiles->_files.cend(); ++i) {
 
                 // filter out some items based on the filename
@@ -434,9 +457,14 @@ namespace Overlays
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    using RenderCore::Assets::Simple::ModelScaffold;
-    using RenderCore::Assets::Simple::MaterialScaffold;
-    using RenderCore::Assets::Simple::ModelRenderer;
+    #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
+        using RenderCore::Assets::ModelRenderer;
+        using RenderCore::Assets::ModelScaffold;
+    #else
+        using RenderCore::Assets::Simple::ModelRenderer;
+        using RenderCore::Assets::Simple::ModelScaffold;
+        using RenderCore::Assets::Simple::MaterialScaffold;
+    #endif
     using RenderCore::Assets::SharedStateSet;
 
     typedef std::pair<Float3, Float3> BoundingBox;
@@ -447,9 +475,13 @@ namespace Overlays
         std::map<uint64, BoundingBox> _boundingBoxes;
         
         LRUCache<ModelScaffold>     _modelScaffolds;
-        LRUCache<MaterialScaffold>  _materialScaffolds;
+        #if MODEL_FORMAT != MODEL_FORMAT_RUNTIME
+            LRUCache<MaterialScaffold>  _materialScaffolds;
+        #endif
         LRUCache<ModelRenderer>     _modelRenderers;
         SharedStateSet              _sharedStateSet;
+
+        std::vector<std::pair<uint64, std::string>> _modelNames;
 
         RenderCore::Metal::RenderTargetView     _rtv;
         RenderCore::Metal::DepthStencilView     _dsv;
@@ -462,7 +494,9 @@ namespace Overlays
 
     ModelBrowser::Pimpl::Pimpl()
     : _modelScaffolds(2000)
-    , _materialScaffolds(2000)
+    #if MODEL_FORMAT != MODEL_FORMAT_RUNTIME
+        , _materialScaffolds(2000)
+    #endif
     , _modelRenderers(50)
     {
     }
@@ -497,7 +531,15 @@ namespace Overlays
         {
             if (    parseSettings._batchFilter == SceneEngine::SceneParseSettings::BatchFilter::Depth
                 ||  parseSettings._batchFilter == SceneEngine::SceneParseSettings::BatchFilter::General) {
-                _model->Render(context, parserContext, techniqueIndex, *_sharedStateSet, Identity<Float4x4>(), 0);
+                
+                    
+                #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
+                    _model->Render(
+                        ModelRenderer::Context(context, parserContext, techniqueIndex, *_sharedStateSet),
+                        Identity<Float4x4>());
+                #else
+                    _model->Render(context, parserContext, techniqueIndex, *_sharedStateSet, Identity<Float4x4>(), 0);
+                #endif
             }
         }
 
@@ -506,7 +548,7 @@ namespace Overlays
                                     const SceneEngine::SceneParseSettings& parseSettings,
                                     unsigned index, unsigned techniqueIndex) const
         {
-            _model->Render(context, parserContext, techniqueIndex, *_sharedStateSet, Identity<Float4x4>(), 0);
+            ExecuteScene(context, parserContext, parseSettings, techniqueIndex);
         }
 
         unsigned GetShadowProjectionCount() const { return 0; }
@@ -589,21 +631,52 @@ namespace Overlays
         uint64 hashedName = Hash64(AsPointer(filename.cbegin()), AsPointer(filename.cend()));
         auto model = _pimpl->_modelScaffolds.Get(hashedName);
         if (!model) {
-            model = _pimpl->_format->CreateModel((const char*)utf8Filename);
+            #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
+                auto& man = ::Assets::CompileAndAsyncManager::GetInstance();
+                auto& compilers = man.GetIntermediateCompilers();
+                auto& store = man.GetIntermediateStore();
+                const ResChar* inits[] = { (const ResChar*) utf8Filename };
+                auto marker = compilers.PrepareResource(
+                    ::Assets::GetCompileProcessType<ModelScaffold>(), 
+                    inits, dimof(inits), store);
+                model = std::make_shared<ModelScaffold>(std::move(marker));
+            #else
+                model = _pimpl->_format->CreateModel((const char*)utf8Filename);
+            #endif
             _pimpl->_modelScaffolds.Insert(hashedName, model);
-        }
-        auto defMatName = _pimpl->_format->DefaultMaterialName(*model);
-        uint64 hashedMaterial = Hash64(defMatName);
-        auto material = _pimpl->_materialScaffolds.Get(hashedMaterial);
-        if (!material) {
-            material = _pimpl->_format->CreateMaterial(defMatName.c_str());
-            _pimpl->_materialScaffolds.Insert(hashedMaterial, material);
-        }
 
-        uint64 hashedModel = uint64(model.get()) | (uint64(material.get()) << 48);
+            auto ni = LowerBound(_pimpl->_modelNames, hashedName);
+            if (ni == _pimpl->_modelNames.end() || ni->first != hashedName) {
+                _pimpl->_modelNames.insert(ni, std::make_pair(hashedName, (const char*)utf8Filename));
+            }
+        }
+            
+        #if MODEL_FORMAT != MODEL_FORMAT_RUNTIME
+            auto defMatName = _pimpl->_format->DefaultMaterialName(*model);
+            if (defMatName.empty()) { return std::make_pair(nullptr, 0); }
+
+            uint64 hashedMaterial = Hash64(defMatName);
+            auto material = _pimpl->_materialScaffolds.Get(hashedMaterial);
+            if (!material) {
+                material = _pimpl->_format->CreateMaterial(defMatName.c_str());
+                _pimpl->_materialScaffolds.Insert(hashedMaterial, material);
+            }
+            uint64 hashedModel = uint64(model.get()) | (uint64(material.get()) << 48);
+        #else
+            uint64 hashedModel = uint64(model.get());
+        #endif
+        
         auto renderer = _pimpl->_modelRenderers.Get(hashedModel);
         if (!renderer) {
-            renderer = _pimpl->_format->CreateRenderer(std::ref(*model), std::ref(*material), std::ref(_pimpl->_sharedStateSet), 0);
+            #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
+                auto searchRules = ::Assets::DefaultDirectorySearchRules((const ResChar*)utf8Filename);
+                renderer = std::make_shared<ModelRenderer>(
+                    std::ref(*model), std::ref(_pimpl->_sharedStateSet), &searchRules, 0);
+            #else
+                renderer = _pimpl->_format->CreateRenderer(
+                    std::ref(*model), std::ref(*material), std::ref(_pimpl->_sharedStateSet), 0);
+            #endif
+
             _pimpl->_modelRenderers.Insert(hashedModel, renderer);
         }
 
@@ -636,9 +709,10 @@ namespace Overlays
         }
 
         if (input.IsRelease_LButton()) {
-            auto model = _pimpl->_modelScaffolds.Get(interfaceState.TopMostWidget()._id);
-            if (model) {
-                return ProcessInputResult(true, model->Filename());
+            auto id = interfaceState.TopMostWidget()._id;
+            auto model = LowerBound(_pimpl->_modelNames, id);
+            if (model != _pimpl->_modelNames.end() && model->first == id) {
+                return ProcessInputResult(true, model->second);
             }
         }
 
@@ -658,7 +732,7 @@ namespace Overlays
     ModelBrowser::ModelBrowser(
         const char baseDirectory[], 
         std::shared_ptr<RenderCore::Assets::IModelFormat> format)
-    : SharedBrowser(baseDirectory, "Model Browser", ModelBrowserItemDimensions, "*.cgf")
+    : SharedBrowser(baseDirectory, "Model Browser", ModelBrowserItemDimensions, "*.dae")
     {
         auto pimpl = std::make_unique<Pimpl>();
 

@@ -33,8 +33,8 @@ namespace PlatformRig
         auto tonemapSettingsDisplay         = std::make_shared<::Overlays::ToneMapSettingsDisplay>(std::ref(SceneEngine::GlobalToneMapSettings));
         auto colorGradingSettingsDisplay    = std::make_shared<::Overlays::ColorGradingSettingsDisplay>(std::ref(SceneEngine::GlobalColorGradingSettings));
         auto testMaterialSettings           = std::make_shared<::Overlays::TestMaterialSettings>(std::ref(SceneEngine::GlobalMaterialOverride));
-        auto modelBrowser                   = std::make_shared<::Overlays::ModelBrowser>("game\\objects\\Env", nullptr);
-        auto textureBrowser                 = std::make_shared<::Overlays::TextureBrowser>("Game\\textures\\aa_terrain");
+        auto modelBrowser                   = std::make_shared<::Overlays::ModelBrowser>("game\\model", nullptr);
+        auto textureBrowser                 = std::make_shared<::Overlays::TextureBrowser>("game\\textures\\aa_terrain");
         auto gridIteratorDisplay            = std::make_shared<PlatformRig::Overlays::GridIteratorDisplay>();
         auto volFogDisplay                  = std::make_shared<::Overlays::VolumetricFogSettings>(std::ref(SceneEngine::GlobalVolumetricFogMaterial));
         auto dualContouringTest             = std::make_shared<PlatformRig::Overlays::DualContouringTest>();
