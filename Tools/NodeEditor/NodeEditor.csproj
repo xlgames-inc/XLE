@@ -160,7 +160,7 @@
       <Project>{E4CC63D8-127D-4BC9-80E0-CCB3E9DA06DC}</Project>
       <Name>HyperGraph</Name>
     </ProjectReference>
-    <ProjectReference Include="..\ShaderFragmentArchive\ShaderFragmentArchive.vcxproj">
+    <ProjectReference Include="..\ShaderFragmentArchive\Project\ShaderFragmentArchive.vcxproj">
       <Project>{39EA3939-2098-42CF-8F3A-E3D13BDB546B}</Project>
       <Name>ShaderFragmentArchive</Name>
     </ProjectReference>
