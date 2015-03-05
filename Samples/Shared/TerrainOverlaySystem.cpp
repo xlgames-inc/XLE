@@ -5,14 +5,17 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "TerrainOverlaySystem.h"
-#include "OverlaySystem.h"
 #include "../../PlatformRig/TerrainManipulators.h"
+#include "../../PlatformRig/OverlaySystem.h"
 
 namespace Sample
 {
     using RenderOverlays::DebuggingDisplay::DebugScreensSystem;
 
-    class TerrainManipulators : public IOverlaySystem, public RenderOverlays::DebuggingDisplay::IInputListener, public std::enable_shared_from_this<TerrainManipulators>
+    class TerrainManipulators
+        : public PlatformRig::IOverlaySystem
+        , public RenderOverlays::DebuggingDisplay::IInputListener
+        , public std::enable_shared_from_this<TerrainManipulators>
     {
     public:
         TerrainManipulators(
@@ -61,7 +64,7 @@ namespace Sample
         std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener>                 _manipInputListener;
     };
 
-    std::shared_ptr<IOverlaySystem> CreateTerrainEditorOverlaySystem(
+    std::shared_ptr<PlatformRig::IOverlaySystem> CreateTerrainEditorOverlaySystem(
         std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
         std::shared_ptr<SceneEngine::IntersectionTestContext> intersectionContext)
     {

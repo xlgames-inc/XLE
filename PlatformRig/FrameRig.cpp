@@ -6,6 +6,8 @@
 
 #include "FrameRig.h"
 #include "AllocationProfiler.h"
+#include "OverlaySystem.h"
+#include "MainInputHandler.h"
 
 #include "../RenderCore/Metal/GPUProfiler.h"
 #include "../RenderOverlays/Font.h"
@@ -75,14 +77,15 @@ namespace PlatformRig
         unsigned    _frameRenderCount;
         uint64      _frameLimiter;
         uint64      _timerFrequency;
-        HierarchicalCPUProfiler* _profiler;
+
+        std::shared_ptr<OverlaySystemSet> _mainOverlaySys;
+        std::shared_ptr<DebugScreensSystem> _debugSystem;
 
         Pimpl() 
         : _prevFrameStartTime(0) 
         , _timerFrequency(GetPerformanceCounterFrequency())
         , _frameRenderCount(0)
         , _frameLimiter(0)
-        , _profiler(nullptr)
         {
             _timerToSeconds = 1.0f / float(_timerFrequency);
         }
@@ -111,7 +114,43 @@ namespace PlatformRig
         _tabHeadingFont = std::move(tabHeadingFont);
     }
 
-    
+///////////////////////////////////////////////////////////////////////////////
+
+    class DebugScreensOverlay : public IOverlaySystem
+    {
+    public:
+        DebugScreensOverlay(std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem> debugScreensSystem)
+            : _debugScreensSystem(debugScreensSystem)
+            , _inputListener(std::make_shared<PlatformRig::DebugScreensInputHandler>(std::move(debugScreensSystem)))
+        {
+        }
+
+        std::shared_ptr<IInputListener> GetInputListener()  { return _inputListener; }
+
+        void RenderToScene(
+            RenderCore::Metal::DeviceContext* devContext, 
+            SceneEngine::LightingParserContext& parserContext) {}
+
+        void RenderWidgets(
+            RenderCore::IDevice* device, 
+            const RenderCore::Techniques::ProjectionDesc& projectionDesc)
+        {
+            _debugScreensSystem->Render(device, projectionDesc);
+        }
+
+        void SetActivationState(bool) {}
+
+    private:
+        std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem> _debugScreensSystem;
+        std::shared_ptr<DebugScreensInputHandler> _inputListener;
+    };
+
+    static std::shared_ptr<IOverlaySystem> CreateDebugScreensOverlay(
+        std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem> debugScreensSystem)
+    {
+        return std::make_shared<DebugScreensOverlay>(std::move(debugScreensSystem));
+    }
+
 ///////////////////////////////////////////////////////////////////////////////
 
     auto FrameRig::ExecuteFrame(
@@ -119,15 +158,16 @@ namespace PlatformRig
         RenderCore::IDevice* device,
         RenderCore::IPresentationChain* presChain,
         RenderCore::Metal::GPUProfiler::Profiler* gpuProfiler,
+        HierarchicalCPUProfiler* cpuProfiler,
         const FrameRenderFunction& renderFunction) -> FrameResult
     {
-        CPUProfileEvent_Conditional pEvnt("FrameRig::ExecuteFrame", _pimpl->_profiler);
+        CPUProfileEvent_Conditional pEvnt("FrameRig::ExecuteFrame", cpuProfiler);
 
         assert(context && device && presChain);
 
         uint64 startTime = GetPerformanceCounter();
         if (_pimpl->_frameLimiter) {
-            CPUProfileEvent_Conditional pEvnt("FrameLimiter", _pimpl->_profiler);
+            CPUProfileEvent_Conditional pEvnt("FrameLimiter", cpuProfiler);
             while (startTime < _pimpl->_prevFrameStartTime + _pimpl->_frameLimiter) {
                 Threading::YieldTimeSlice();
                 startTime = GetPerformanceCounter();
@@ -175,7 +215,7 @@ namespace PlatformRig
         }
 
         {
-            CPUProfileEvent_Conditional pEvnt("Present", _pimpl->_profiler);
+            CPUProfileEvent_Conditional pEvnt("Present", cpuProfiler);
             presChain->Present();
         }
 
@@ -208,20 +248,30 @@ namespace PlatformRig
         else { _pimpl->_frameLimiter = 0; }
     }
 
-    void FrameRig::AttachToDebugSystem(std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem> debugSystem)
+    std::shared_ptr<OverlaySystemSet>& FrameRig::GetMainOverlaySystem()
     {
-        if (debugSystem) {
-            auto display = std::make_shared<FrameRigDisplay>(
-                debugSystem, 
-                _pimpl->_prevFrameAllocationCount, _pimpl->_frameRate);
-            debugSystem->Register(display, "FrameRig", DebugScreensSystem::SystemDisplay);
-        }
+        return _pimpl->_mainOverlaySys;
     }
 
-    FrameRig::FrameRig(HierarchicalCPUProfiler* profiler)
+    std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem>& FrameRig::GetDebugSystem()
+    {
+        return _pimpl->_debugSystem;
+    }
+
+    FrameRig::FrameRig()
     {
         _pimpl = std::make_unique<Pimpl>();
-        _pimpl->_profiler = profiler;
+
+        _pimpl->_mainOverlaySys = std::make_shared<OverlaySystemSet>();
+
+        {
+            _pimpl->_debugSystem = std::make_shared<DebugScreensSystem>();
+            auto display = std::make_shared<FrameRigDisplay>(
+                _pimpl->_debugSystem, _pimpl->_prevFrameAllocationCount, _pimpl->_frameRate);
+            _pimpl->_debugSystem->Register(display, "FrameRig", DebugScreensSystem::SystemDisplay);
+        }
+
+        _pimpl->_mainOverlaySys->AddSystem(CreateDebugScreensOverlay(_pimpl->_debugSystem));
 
         LogInfo << "---- Beginning FrameRig ------------------------------------------------------------------";
         auto accAlloc = AccumulatedAllocations::GetInstance();

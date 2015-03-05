@@ -5,12 +5,12 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "PlacementsOverlaySystem.h"
-#include "OverlaySystem.h"
 #include "../../PlatformRig/PlacementsManipulators.h"
+#include "../../PlatformRig/OverlaySystem.h"
 
 namespace Sample
 {
-    class PlacementsManipulators : public IOverlaySystem
+    class PlacementsManipulators : public PlatformRig::IOverlaySystem
     {
     public:
         PlacementsManipulators(
@@ -47,7 +47,7 @@ namespace Sample
         std::shared_ptr<::Tools::PlacementsManipulatorsManager> _placementsManipulators;
     };
 
-    std::shared_ptr<IOverlaySystem> CreatePlacementsEditorOverlaySystem(
+    std::shared_ptr<PlatformRig::IOverlaySystem> CreatePlacementsEditorOverlaySystem(
         std::shared_ptr<SceneEngine::PlacementsManager> placementsManager,
         std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
         std::shared_ptr<SceneEngine::IntersectionTestContext> intersectionContext)

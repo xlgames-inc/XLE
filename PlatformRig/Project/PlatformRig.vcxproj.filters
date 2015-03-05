@@ -42,6 +42,7 @@
     <ClCompile Include="..\DebuggingDisplays\CPUProfileDisplay.cpp">
       <Filter>DebuggingDisplays</Filter>
     </ClCompile>
+    <ClCompile Include="..\OverlaySystem.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="WinAPI">
@@ -89,5 +90,6 @@
     <ClInclude Include="..\DebuggingDisplays\CPUProfileDisplay.h">
       <Filter>DebuggingDisplays</Filter>
     </ClInclude>
+    <ClInclude Include="..\OverlaySystem.h" />
   </ItemGroup>
 </Project>

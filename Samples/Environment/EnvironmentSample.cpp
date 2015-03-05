@@ -9,7 +9,6 @@
 #include "../Shared/SampleInputHandler.h"
 #include "../Shared/SampleGlobals.h"
 #include "../Shared/Character.h"
-#include "../Shared/OverlaySystem.h"
 #include "../Shared/PlacementsOverlaySystem.h"
 #include "../Shared/TerrainOverlaySystem.h"
 
@@ -20,6 +19,7 @@
 #include "../../PlatformRig/DebuggingDisplays/CPUProfileDisplay.h"
 #include "../../PlatformRig/FrameRig.h"
 #include "../../PlatformRig/PlatformRigUtil.h"
+#include "../../PlatformRig/OverlaySystem.h"
 
 #include "../../SceneEngine/SceneEngineUtility.h"
 #include "../../SceneEngine/LightingParser.h"
@@ -117,51 +117,18 @@ namespace Sample
         }
     };
 
-    class DebugScreensOverlay : public IOverlaySystem
-    {
-    public:
-        DebugScreensOverlay(std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem> debugScreensSystem)
-            : _debugScreensSystem(debugScreensSystem)
-            , _inputListener(std::make_shared<PlatformRig::DebugScreensInputHandler>(std::move(debugScreensSystem)))
-        {
-        }
-
-        std::shared_ptr<IInputListener> GetInputListener()  { return _inputListener; }
-
-        void RenderToScene(
-            RenderCore::Metal::DeviceContext* devContext, 
-            SceneEngine::LightingParserContext& parserContext) {}
-
-        void RenderWidgets(
-            RenderCore::IDevice* device, 
-            const RenderCore::Techniques::ProjectionDesc& projectionDesc)
-        {
-            _debugScreensSystem->Render(device, projectionDesc);
-        }
-
-        void SetActivationState(bool) {}
-
-    private:
-        std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem> _debugScreensSystem;
-        std::shared_ptr<PlatformRig::DebugScreensInputHandler> _inputListener;
-    };
-
-    std::shared_ptr<IOverlaySystem> CreateDebugScreensOverlay(
-        std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem> debugScreensSystem)
-    {
-        return std::make_shared<DebugScreensOverlay>(std::move(debugScreensSystem));
-    }
+    
 
     static std::shared_ptr<PlatformRig::MainInputHandler> CreateInputHandler(
         std::shared_ptr<EnvironmentSceneParser> mainScene, 
         std::shared_ptr<SceneEngine::IntersectionTestContext> intersectionTestContext,
         std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener> cameraInputListener,
-        IOverlaySystem* overlaySystem)
+        std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener> overlaySystemInputListener)
     {
         auto mainInputHandler = std::make_shared<PlatformRig::MainInputHandler>();
         mainInputHandler->AddListener(RenderOverlays::MakeHotKeysHandler("game/xleres/hotkey.txt"));
-        if (overlaySystem) {
-            mainInputHandler->AddListener(overlaySystem->GetInputListener());
+        if (overlaySystemInputListener) {
+            mainInputHandler->AddListener(overlaySystemInputListener);
         }
 
             // tie in input for player character & camera
@@ -181,7 +148,7 @@ namespace Sample
         RenderCore::Metal::DeviceContext* context,
         SceneEngine::LightingParserContext& lightingParserContext, EnvironmentSceneParser* scene,
         RenderCore::IDevice* renderDevice, RenderCore::IPresentationChain* presentationChain,
-        IOverlaySystem* overlaySys);
+        PlatformRig::IOverlaySystem* overlaySys);
 
     void ExecuteSample()
     {
@@ -209,22 +176,23 @@ namespace Sample
                 //  Create the debugging system, and add any "displays"
                 //  These are optional. They are for debugging and development tasks.
             LogInfo << "Setup tools and debugging";
-            auto debugSystem = std::make_shared<RenderOverlays::DebuggingDisplay::DebugScreensSystem>();
-            InitDebugDisplays(*debugSystem);
+            FrameRig frameRig;
+            
+            InitDebugDisplays(*frameRig.GetDebugSystem());
 
             if (g_gpuProfiler) {
                 auto gpuProfilerDisplay = std::make_shared<PlatformRig::Overlays::GPUProfileDisplay>(g_gpuProfiler.get());
-                debugSystem->Register(gpuProfilerDisplay, "[Profiler] GPU Profiler");
+                frameRig.GetDebugSystem()->Register(gpuProfilerDisplay, "[Profiler] GPU Profiler");
             }
-            debugSystem->Register(
+            frameRig.GetDebugSystem()->Register(
                 std::make_shared<PlatformRig::Overlays::CPUProfileDisplay>(&g_cpuProfiler), 
                 "[Profiler] CPU Profiler");
 
-            debugSystem->Register(
+            frameRig.GetDebugSystem()->Register(
                 std::make_shared<::Overlays::ShadowFrustumDebugger>(mainScene), 
                 "[Test] Shadow frustum debugger");
 
-            debugSystem->Register(
+            frameRig.GetDebugSystem()->Register(
                 std::make_shared<SceneEngine::PlacementsQuadTreeDebugger>(mainScene->GetPlacementManager()),
                 "[Placements] Culling");
 
@@ -244,10 +212,10 @@ namespace Sample
                 //  But the console is just a widget. So we can also add it as a 
                 //  debugging display. In this case, it won't consume all input, just
                 //  the specific input directed at it.
-            auto overlaySwitch = std::make_shared<Sample::OverlaySystemSwitch>();
+            auto overlaySwitch = std::make_shared<PlatformRig::OverlaySystemSwitch>();
             {
                 using RenderOverlays::DebuggingDisplay::KeyId_Make;
-                overlaySwitch->AddSystem(KeyId_Make("~"), Sample::CreateConsoleOverlaySystem());
+                overlaySwitch->AddSystem(KeyId_Make("~"), PlatformRig::CreateConsoleOverlaySystem());
                 if (mainScene->GetPlacementManager()) {
                     overlaySwitch->AddSystem(
                         KeyId_Make("1"),
@@ -263,28 +231,23 @@ namespace Sample
                 }
             }
 
-            auto mainOverlaySys = std::make_shared<Sample::OverlaySystemSet>();
-            mainOverlaySys->AddSystem(CreateDebugScreensOverlay(debugSystem));
-            mainOverlaySys->AddSystem(overlaySwitch);
+            frameRig.GetMainOverlaySystem()->AddSystem(overlaySwitch);
 
                 //  We need to create input handlers, and then direct input from the 
                 //  OS to that input handler.
             auto cameraInputHandler = std::make_shared<PlatformRig::Camera::CameraInputHandler>(
                 mainScene->GetCameraPtr(), mainScene->GetPlayerCharacter(), CharactersScale);
             auto mainInputHandler = CreateInputHandler(
-                mainScene, intersectionContext, cameraInputHandler, mainOverlaySys.get());
+                mainScene, intersectionContext, cameraInputHandler, frameRig.GetMainOverlaySystem()->GetInputListener());
 
             primMan._window.GetInputTranslator().AddListener(mainInputHandler);
             auto stdPlugin = std::make_shared<SceneEngine::LightingParserStandardPlugin>();
             primMan._asyncMan->GetAssetSets().LogReport();
 
-                //  We need 2 final objects for rendering:
-                //      * the FrameRig schedules continuous rendering. It will take care
-                //          of timing and some thread management tasks
-                //      * the DeviceContext provides the methods we need for rendering.
+                //  One last object required for rendering:
+                //      *   the DeviceContext provides the methods for directly 
+                //          interacting with the GPU
             LogInfo << "Setup frame rig and rendering context";
-            FrameRig frameRig(&g_cpuProfiler);
-            frameRig.AttachToDebugSystem(debugSystem);
             auto context = RenderCore::Metal::DeviceContext::GetImmediateContext(primMan._rDevice.get());
 
                 //  Finally, we execute the frame loop
@@ -299,12 +262,13 @@ namespace Sample
                 lightingParserContext._plugins.push_back(stdPlugin);
 
                 auto frameResult = frameRig.ExecuteFrame(
-                    context.get(), primMan._rDevice.get(), primMan._presChain.get(), g_gpuProfiler.get(),
+                    context.get(), primMan._rDevice.get(), primMan._presChain.get(), 
+                    g_gpuProfiler.get(), &g_cpuProfiler,
                     std::bind(
                         RenderFrame, std::placeholders::_1,
                         std::ref(lightingParserContext), mainScene.get(), 
                         primMan._rDevice.get(), primMan._presChain.get(), 
-                        mainOverlaySys.get()));
+                        frameRig.GetMainOverlaySystem().get()));
 
                     // ------- Update ----------------------------------------
                 primMan._bufferUploads->Update();
@@ -348,7 +312,7 @@ namespace Sample
         SceneEngine::LightingParserContext& lightingParserContext,
         EnvironmentSceneParser* scene, RenderCore::IDevice* renderDevice,
         RenderCore::IPresentationChain* presentationChain,
-        IOverlaySystem* overlaySys)
+        PlatformRig::IOverlaySystem* overlaySys)
     {
         CPUProfileEvent pEvnt("RenderFrame", g_cpuProfiler);
 

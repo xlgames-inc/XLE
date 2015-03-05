@@ -17,7 +17,7 @@ namespace SceneEngine { class LightingParserContext; }
 namespace RenderOverlays { namespace DebuggingDisplay { class IInputListener; } }
 namespace RenderCore { namespace Techniques { class ProjectionDesc; } }
 
-namespace Sample
+namespace PlatformRig
 {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

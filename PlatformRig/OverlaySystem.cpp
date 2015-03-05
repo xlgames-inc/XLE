@@ -9,7 +9,7 @@
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../ConsoleRig/Console.h"
 
-namespace Sample
+namespace PlatformRig
 {
     using RenderOverlays::DebuggingDisplay::IInputListener;
 

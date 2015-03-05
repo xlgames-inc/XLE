@@ -16,6 +16,8 @@ namespace Utility { class HierarchicalCPUProfiler; }
 
 namespace PlatformRig
 {
+    class OverlaySystemSet;
+
     class FrameRig
     {
     public:
@@ -40,12 +42,15 @@ namespace PlatformRig
             RenderCore::IDevice* device,
             RenderCore::IPresentationChain* presChain,
             RenderCore::Metal::GPUProfiler::Profiler* gpuProfiler,
+            Utility::HierarchicalCPUProfiler* profiler,
             const FrameRenderFunction& renderFunction);
 
         void SetFrameLimiter(unsigned maxFPS);
-        void AttachToDebugSystem(std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem> debugSystem);
 
-        FrameRig(Utility::HierarchicalCPUProfiler* profiler = nullptr);
+        std::shared_ptr<OverlaySystemSet>& GetMainOverlaySystem();
+        std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem>& GetDebugSystem();
+
+        FrameRig();
         ~FrameRig();
 
     protected:
