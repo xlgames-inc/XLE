@@ -115,11 +115,45 @@ namespace Sample
             _defaultFont0 = RenderOverlays::GetX2Font("Raleway", 16);
             _defaultFont1 = RenderOverlays::GetX2Font("Vera", 16);
         }
-    };    
+    };
+
+    class DebugScreensOverlay : public IOverlaySystem
+    {
+    public:
+        DebugScreensOverlay(std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem> debugScreensSystem)
+            : _debugScreensSystem(debugScreensSystem)
+            , _inputListener(std::make_shared<PlatformRig::DebugScreensInputHandler>(std::move(debugScreensSystem)))
+        {
+        }
+
+        std::shared_ptr<IInputListener> GetInputListener()  { return _inputListener; }
+
+        void RenderToScene(
+            RenderCore::Metal::DeviceContext* devContext, 
+            SceneEngine::LightingParserContext& parserContext) {}
+
+        void RenderWidgets(
+            RenderCore::IDevice* device, 
+            const RenderCore::Techniques::ProjectionDesc& projectionDesc)
+        {
+            _debugScreensSystem->Render(device, projectionDesc);
+        }
+
+        void SetActivationState(bool) {}
+
+    private:
+        std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem> _debugScreensSystem;
+        std::shared_ptr<PlatformRig::DebugScreensInputHandler> _inputListener;
+    };
+
+    std::shared_ptr<IOverlaySystem> CreateDebugScreensOverlay(
+        std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem> debugScreensSystem)
+    {
+        return std::make_shared<DebugScreensOverlay>(std::move(debugScreensSystem));
+    }
 
     static std::shared_ptr<PlatformRig::MainInputHandler> CreateInputHandler(
         std::shared_ptr<EnvironmentSceneParser> mainScene, 
-        std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem> debugScreens,
         std::shared_ptr<SceneEngine::IntersectionTestContext> intersectionTestContext,
         std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener> cameraInputListener,
         IOverlaySystem* overlaySystem)
@@ -129,7 +163,6 @@ namespace Sample
         if (overlaySystem) {
             mainInputHandler->AddListener(overlaySystem->GetInputListener());
         }
-        mainInputHandler->AddListener(std::make_shared<PlatformRig::DebugScreensInputHandler>(std::move(debugScreens)));
 
             // tie in input for player character & camera
         mainInputHandler->AddListener(std::move(cameraInputListener));
@@ -148,7 +181,6 @@ namespace Sample
         RenderCore::Metal::DeviceContext* context,
         SceneEngine::LightingParserContext& lightingParserContext, EnvironmentSceneParser* scene,
         RenderCore::IDevice* renderDevice, RenderCore::IPresentationChain* presentationChain,
-        RenderOverlays::DebuggingDisplay::DebugScreensSystem* debugSystem,
         IOverlaySystem* overlaySys);
 
     void ExecuteSample()
@@ -212,29 +244,35 @@ namespace Sample
                 //  But the console is just a widget. So we can also add it as a 
                 //  debugging display. In this case, it won't consume all input, just
                 //  the specific input directed at it.
-            auto overlaySys = std::make_shared<Sample::OverlaySystemManager>();
+            auto overlaySwitch = std::make_shared<Sample::OverlaySystemSwitch>();
             {
                 using RenderOverlays::DebuggingDisplay::KeyId_Make;
-                overlaySys->AddSystem(KeyId_Make("~"), Sample::CreateConsoleOverlaySystem());
+                overlaySwitch->AddSystem(KeyId_Make("~"), Sample::CreateConsoleOverlaySystem());
                 if (mainScene->GetPlacementManager()) {
-                    overlaySys->AddSystem(KeyId_Make("1"), 
+                    overlaySwitch->AddSystem(
+                        KeyId_Make("1"),
                         Sample::CreatePlacementsEditorOverlaySystem(
                             mainScene->GetPlacementManager(), mainScene->GetTerrainManager(), 
                             intersectionContext));
                 }
                 if (mainScene->GetTerrainManager()) {
-                    overlaySys->AddSystem(KeyId_Make("2"), 
+                    overlaySwitch->AddSystem(
+                        KeyId_Make("2"),
                         Sample::CreateTerrainEditorOverlaySystem(
                             mainScene->GetTerrainManager(), intersectionContext));
                 }
             }
+
+            auto mainOverlaySys = std::make_shared<Sample::OverlaySystemSet>();
+            mainOverlaySys->AddSystem(CreateDebugScreensOverlay(debugSystem));
+            mainOverlaySys->AddSystem(overlaySwitch);
 
                 //  We need to create input handlers, and then direct input from the 
                 //  OS to that input handler.
             auto cameraInputHandler = std::make_shared<PlatformRig::Camera::CameraInputHandler>(
                 mainScene->GetCameraPtr(), mainScene->GetPlayerCharacter(), CharactersScale);
             auto mainInputHandler = CreateInputHandler(
-                mainScene, debugSystem, intersectionContext, cameraInputHandler, overlaySys.get());
+                mainScene, intersectionContext, cameraInputHandler, mainOverlaySys.get());
 
             primMan._window.GetInputTranslator().AddListener(mainInputHandler);
             auto stdPlugin = std::make_shared<SceneEngine::LightingParserStandardPlugin>();
@@ -245,7 +283,8 @@ namespace Sample
                 //          of timing and some thread management tasks
                 //      * the DeviceContext provides the methods we need for rendering.
             LogInfo << "Setup frame rig and rendering context";
-            FrameRig frameRig(&g_cpuProfiler, debugSystem);
+            FrameRig frameRig(&g_cpuProfiler);
+            frameRig.AttachToDebugSystem(debugSystem);
             auto context = RenderCore::Metal::DeviceContext::GetImmediateContext(primMan._rDevice.get());
 
                 //  Finally, we execute the frame loop
@@ -265,7 +304,7 @@ namespace Sample
                         RenderFrame, std::placeholders::_1,
                         std::ref(lightingParserContext), mainScene.get(), 
                         primMan._rDevice.get(), primMan._presChain.get(), 
-                        debugSystem.get(), overlaySys.get()));
+                        mainOverlaySys.get()));
 
                     // ------- Update ----------------------------------------
                 primMan._bufferUploads->Update();
@@ -309,29 +348,29 @@ namespace Sample
         SceneEngine::LightingParserContext& lightingParserContext,
         EnvironmentSceneParser* scene, RenderCore::IDevice* renderDevice,
         RenderCore::IPresentationChain* presentationChain,
-        RenderOverlays::DebuggingDisplay::DebugScreensSystem* debugSystem,
         IOverlaySystem* overlaySys)
     {
         CPUProfileEvent pEvnt("RenderFrame", g_cpuProfiler);
 
             //  some scene might need a "prepare" step to 
             //  build some resources before the main render occurs.
-        context->InvalidateCachedState();
         scene->PrepareFrame(context);
 
         using namespace SceneEngine;
         auto presChainDesc = presentationChain->GetDesc();
-        LightingParser_Execute(context, lightingParserContext, 
-            RenderingQualitySettings(presChainDesc._dimensions, Tweakable("SamplingCount", 1), Tweakable("SamplingQuality", 0)));
+        LightingParser_Execute(
+            context, lightingParserContext, 
+            RenderingQualitySettings(
+                presChainDesc._dimensions, 
+                Tweakable("SamplingCount", 1), Tweakable("SamplingQuality", 0)));
+
         if (overlaySys) {
             overlaySys->RenderToScene(context, lightingParserContext);
         }
 
         auto& usefulFonts = RenderCore::Techniques::FindCachedBox<UsefulFonts>(UsefulFonts::Desc());
         DrawPendingResources(context, lightingParserContext, usefulFonts._defaultFont0.get());
-        if (debugSystem) {
-            debugSystem->Render(renderDevice, lightingParserContext.GetProjectionDesc());
-        }
+
         if (overlaySys) {
             overlaySys->RenderWidgets(renderDevice, lightingParserContext.GetProjectionDesc());
         }

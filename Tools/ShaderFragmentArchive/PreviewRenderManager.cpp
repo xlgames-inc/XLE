@@ -226,9 +226,10 @@ namespace PreviewRender
     }
 
     static std::vector<const RenderCore::Metal::ShaderResourceView*>
-        BuildBoundTextures(     RenderCore::Metal::BoundUniforms& boundUniforms,
-                                ID3D::ShaderReflection* reflection,
-                                ShaderDiagram::Document^ doc)
+        BuildBoundTextures(
+            RenderCore::Metal::BoundUniforms& boundUniforms,
+            ID3D::ShaderReflection* reflection,
+            ShaderDiagram::Document^ doc)
     {
         using namespace RenderCore;
         std::vector<const Metal::ShaderResourceView*> result;
@@ -386,7 +387,9 @@ namespace PreviewRender
         std::vector<Float3> spherePoints;
         for(int i = 0; i < 20; i++) {
                 // note -- flip here to flip the winding
-            GeodesicSphere_Subdivide(vdata[tindices[i][0]], vdata[tindices[i][2]], vdata[tindices[i][1]], spherePoints, detail);
+            GeodesicSphere_Subdivide(
+                vdata[tindices[i][0]], vdata[tindices[i][2]], 
+                vdata[tindices[i][1]], spherePoints, detail);
         }
         return spherePoints;
     }
@@ -628,15 +631,6 @@ namespace PreviewRender
         return DrawPreviewResult_Error;
     }
 
-    
-    static unsigned FlipComponents(unsigned input) 
-    {
-        return  (input & 0xff00ff00)
-            |   (input >> 16) & 0xff
-            |   (input & 0xff) << 16
-            ;
-    }
-
     System::Drawing::Bitmap^    PreviewBuilder::GenerateErrorBitmap(const char str[], Size^ size)
     {
             //      Previously, we got an error while rendering this item.
@@ -800,7 +794,8 @@ namespace PreviewRender
                     void* sourcePtr = PtrAdd(mappedTexture.pData, y * mappedTexture.RowPitch);
                     System::IntPtr destinationPtr = data->Scan0 + y * width * sizeof(unsigned);
                     for (int x=0; x<width; ++x) {
-                        ((unsigned*)(void*)destinationPtr)[x] = (FlipComponents(((unsigned*)sourcePtr)[x]) & 0x00ffffff) | 0xff000000;
+                        ((unsigned*)(void*)destinationPtr)[x] = 
+                            (RenderCore::ARGBtoABGR(((unsigned*)sourcePtr)[x]) & 0x00ffffff) | 0xff000000;
                     }
                 }
                 // XlCopyMemory((void*)ptr, mappedTexture.pData, mappedTexture.DepthPitch);

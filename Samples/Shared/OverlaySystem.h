@@ -19,6 +19,8 @@ namespace RenderCore { namespace Techniques { class ProjectionDesc; } }
 
 namespace Sample
 {
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
     class IOverlaySystem
     {
     public:
@@ -35,10 +37,12 @@ namespace Sample
         virtual ~IOverlaySystem();
     };
 
-    class OverlaySystemManager : public IOverlaySystem
+///////////////////////////////////////////////////////////////////////////////////////////////////
+    class OverlaySystemSwitch : public IOverlaySystem
     {
     public:
         std::shared_ptr<IInputListener> GetInputListener();
+
         void RenderWidgets(RenderCore::IDevice* device, const RenderCore::Techniques::ProjectionDesc& projectionDesc);
         void RenderToScene(
             RenderCore::Metal::DeviceContext* devContext, 
@@ -47,14 +51,39 @@ namespace Sample
 
         void AddSystem(uint32 activator, std::shared_ptr<IOverlaySystem> system);
 
-        OverlaySystemManager();
-        ~OverlaySystemManager();
+        OverlaySystemSwitch();
+        ~OverlaySystemSwitch();
 
     private:
         class InputListener;
 
         signed _activeChildIndex;
         std::vector<std::pair<uint32,std::shared_ptr<IOverlaySystem>>> _childSystems;
+        std::shared_ptr<InputListener> _inputListener;
+    };
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+    class OverlaySystemSet : public IOverlaySystem
+    {
+    public:
+        std::shared_ptr<IInputListener> GetInputListener();
+
+        void RenderWidgets(RenderCore::IDevice* device, const RenderCore::Techniques::ProjectionDesc& projectionDesc);
+        void RenderToScene(
+            RenderCore::Metal::DeviceContext* devContext, 
+            SceneEngine::LightingParserContext& parserContext);
+        void SetActivationState(bool newState);
+
+        void AddSystem(std::shared_ptr<IOverlaySystem> system);
+
+        OverlaySystemSet();
+        ~OverlaySystemSet();
+
+    private:
+        class InputListener;
+
+        signed _activeChildIndex;
+        std::vector<std::shared_ptr<IOverlaySystem>> _childSystems;
         std::shared_ptr<InputListener> _inputListener;
     };
 

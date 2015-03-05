@@ -43,10 +43,9 @@ namespace PlatformRig
             const FrameRenderFunction& renderFunction);
 
         void SetFrameLimiter(unsigned maxFPS);
+        void AttachToDebugSystem(std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem> debugSystem);
 
-        FrameRig(
-            Utility::HierarchicalCPUProfiler* profiler = nullptr,
-            std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem> debugSystem = nullptr);
+        FrameRig(Utility::HierarchicalCPUProfiler* profiler = nullptr);
         ~FrameRig();
 
     protected:

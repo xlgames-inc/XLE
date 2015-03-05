@@ -75,7 +75,6 @@ namespace PlatformRig
         unsigned    _frameRenderCount;
         uint64      _frameLimiter;
         uint64      _timerFrequency;
-        std::shared_ptr<FrameRigDisplay> _display;
         HierarchicalCPUProfiler* _profiler;
 
         Pimpl() 
@@ -209,15 +208,20 @@ namespace PlatformRig
         else { _pimpl->_frameLimiter = 0; }
     }
 
-    FrameRig::FrameRig(HierarchicalCPUProfiler* profiler, std::shared_ptr<DebugScreensSystem> debugSystem)
+    void FrameRig::AttachToDebugSystem(std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem> debugSystem)
+    {
+        if (debugSystem) {
+            auto display = std::make_shared<FrameRigDisplay>(
+                debugSystem, 
+                _pimpl->_prevFrameAllocationCount, _pimpl->_frameRate);
+            debugSystem->Register(display, "FrameRig", DebugScreensSystem::SystemDisplay);
+        }
+    }
+
+    FrameRig::FrameRig(HierarchicalCPUProfiler* profiler)
     {
         _pimpl = std::make_unique<Pimpl>();
         _pimpl->_profiler = profiler;
-
-        if (debugSystem) {
-            _pimpl->_display = std::make_shared<FrameRigDisplay>(debugSystem, _pimpl->_prevFrameAllocationCount, _pimpl->_frameRate);
-            debugSystem->Register(_pimpl->_display, "FrameRig", DebugScreensSystem::SystemDisplay);
-        }
 
         LogInfo << "---- Beginning FrameRig ------------------------------------------------------------------";
         auto accAlloc = AccumulatedAllocations::GetInstance();

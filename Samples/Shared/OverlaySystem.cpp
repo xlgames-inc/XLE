@@ -13,7 +13,9 @@ namespace Sample
 {
     using RenderOverlays::DebuggingDisplay::IInputListener;
 
-    class OverlaySystemManager::InputListener : public IInputListener
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class OverlaySystemSwitch::InputListener : public IInputListener
     {
     public:
         virtual bool    OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
@@ -54,31 +56,31 @@ namespace Sample
             return false;
         }
 
-        InputListener(OverlaySystemManager* parent) : _parent(parent) {}
+        InputListener(OverlaySystemSwitch* parent) : _parent(parent) {}
     protected:
-        OverlaySystemManager* _parent;
+        OverlaySystemSwitch* _parent;
     };
 
-    std::shared_ptr<IInputListener> OverlaySystemManager::GetInputListener()
+    std::shared_ptr<IInputListener> OverlaySystemSwitch::GetInputListener()
     {
         return _inputListener;
     }
 
-    void OverlaySystemManager::RenderWidgets(RenderCore::IDevice* device, const RenderCore::Techniques::ProjectionDesc& projectionDesc) 
+    void OverlaySystemSwitch::RenderWidgets(RenderCore::IDevice* device, const RenderCore::Techniques::ProjectionDesc& projectionDesc) 
     {
         if (_activeChildIndex >= 0 && _activeChildIndex < signed(_childSystems.size())) {
             _childSystems[_activeChildIndex].second->RenderWidgets(device, projectionDesc);
         }
     }
 
-    void OverlaySystemManager::RenderToScene(RenderCore::Metal::DeviceContext* devContext, SceneEngine::LightingParserContext& parserContext) 
+    void OverlaySystemSwitch::RenderToScene(RenderCore::Metal::DeviceContext* devContext, SceneEngine::LightingParserContext& parserContext) 
     {
         if (_activeChildIndex >= 0 && _activeChildIndex < signed(_childSystems.size())) {
             _childSystems[_activeChildIndex].second->RenderToScene(devContext, parserContext);
         }
     }
 
-    void OverlaySystemManager::SetActivationState(bool newState) 
+    void OverlaySystemSwitch::SetActivationState(bool newState) 
     {
         if (!newState) {
             if (_activeChildIndex >= 0 && _activeChildIndex < signed(_childSystems.size())) {
@@ -88,18 +90,79 @@ namespace Sample
         }
     }
 
-    void OverlaySystemManager::AddSystem(uint32 activator, std::shared_ptr<IOverlaySystem> system)
+    void OverlaySystemSwitch::AddSystem(uint32 activator, std::shared_ptr<IOverlaySystem> system)
     {
         _childSystems.push_back(std::make_pair(activator, std::move(system)));
     }
 
-    OverlaySystemManager::OverlaySystemManager() 
+    OverlaySystemSwitch::OverlaySystemSwitch() 
     : _activeChildIndex(-1)
     {
         _inputListener = std::make_shared<InputListener>(this);
     }
 
-    OverlaySystemManager::~OverlaySystemManager() {}
+    OverlaySystemSwitch::~OverlaySystemSwitch() {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class OverlaySystemSet::InputListener : public IInputListener
+    {
+    public:
+        virtual bool    OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
+        {
+            using namespace RenderOverlays::DebuggingDisplay;
+            for (auto i=_parent->_childSystems.begin(); i!=_parent->_childSystems.end(); ++i) {
+                if ((*i)->GetInputListener()->OnInputEvent(evnt)) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        InputListener(OverlaySystemSet* parent) : _parent(parent) {}
+    protected:
+        OverlaySystemSet* _parent;
+    };
+
+    std::shared_ptr<IInputListener> OverlaySystemSet::GetInputListener()         { return _inputListener; }
+
+    void OverlaySystemSet::RenderWidgets(RenderCore::IDevice* device, const RenderCore::Techniques::ProjectionDesc& projectionDesc) 
+    {
+        for (auto i=_childSystems.begin(); i!=_childSystems.end(); ++i) {
+            (*i)->RenderWidgets(device, projectionDesc);
+        }
+    }
+
+    void OverlaySystemSet::RenderToScene(RenderCore::Metal::DeviceContext* devContext, SceneEngine::LightingParserContext& parserContext) 
+    {
+        for (auto i=_childSystems.begin(); i!=_childSystems.end(); ++i) {
+            (*i)->RenderToScene(devContext, parserContext);
+        }
+    }
+
+    void OverlaySystemSet::SetActivationState(bool newState) 
+    {
+        for (auto i=_childSystems.begin(); i!=_childSystems.end(); ++i) {
+            (*i)->SetActivationState(newState);
+        }
+    }
+
+    void OverlaySystemSet::AddSystem(std::shared_ptr<IOverlaySystem> system)
+    {
+        _childSystems.push_back(std::move(system));
+            // todo -- do we need to call SetActivationState() here?
+    }
+
+    OverlaySystemSet::OverlaySystemSet() 
+    : _activeChildIndex(-1)
+    {
+        _inputListener = std::make_shared<InputListener>(this);
+    }
+
+    OverlaySystemSet::~OverlaySystemSet() {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     IOverlaySystem::~IOverlaySystem() {}
 

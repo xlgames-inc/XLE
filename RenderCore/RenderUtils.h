@@ -130,6 +130,15 @@ namespace RenderCore
         std::swap(other._marker, _marker);
         std::swap(other._size, _size);
     }
+
+    inline unsigned ARGBtoABGR(unsigned input)
+    {
+        return   (input & 0xff00ff00)
+            |   ((input & 0x00ff0000) >> 16)
+            |   ((input & 0x000000ff) << 16)
+            ;
+    }
+
 }
 
 

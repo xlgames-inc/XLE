@@ -142,14 +142,6 @@ static unsigned RGBA8(const Color4& color)
         ;
 }
 
-static unsigned ARGBtoABGR(unsigned input)
-{
-    return   (input & 0xff00ff00)
-        |   ((input & 0x00ff0000) >> 16)
-        |   ((input & 0x000000ff) << 16)
-        ;
-}
-
 static unsigned ToDigitValue(ucs4 chr, unsigned base)
 {
     if (chr >= '0' && chr <= '9')                   { return       chr - '0'; }
@@ -466,9 +458,9 @@ float   TextStyle::Draw(
                 }
             }
 
-            if (!workingVertices.PushQuad(pos, ARGBtoABGR(colorOverride?colorOverride:colorARGB), tc, depth)) {
+            if (!workingVertices.PushQuad(pos, RenderCore::ARGBtoABGR(colorOverride?colorOverride:colorARGB), tc, depth)) {
                 Flush(*renderer, workingVertices);
-                workingVertices.PushQuad(pos, ARGBtoABGR(colorOverride?colorOverride:colorARGB), tc, depth);
+                workingVertices.PushQuad(pos, RenderCore::ARGBtoABGR(colorOverride?colorOverride:colorARGB), tc, depth);
             }
 
             x += fc->xAdvance * xScale;
