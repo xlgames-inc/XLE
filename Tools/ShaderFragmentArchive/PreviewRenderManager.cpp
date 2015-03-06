@@ -711,7 +711,7 @@ namespace PreviewRender
 
         using namespace RenderCore;
         using namespace RenderCore::Metal;
-        auto context = DeviceContext::GetImmediateContext(Manager::Instance->GetDevice());
+        auto context = DeviceContext::Get(*Manager::Instance->GetDevice()->GetImmediateContext());
 
         D3D11_TEXTURE2D_DESC targetDesc;
         targetDesc.Width                = width;
@@ -726,7 +726,7 @@ namespace PreviewRender
         targetDesc.CPUAccessFlags       = 0;
         targetDesc.MiscFlags            = 0;
 
-        intrusive_ptr<ID3D::Texture2D> targetTexture = CreateTexture(Manager::Instance->GetDevice(), targetDesc);
+        auto targetTexture = CreateTexture(Manager::Instance->GetDevice(), targetDesc);
         intrusive_ptr<ID3D::RenderTargetView> renderTargetView;
         if (targetTexture) {
             D3D11_RENDER_TARGET_VIEW_DESC viewDesc;

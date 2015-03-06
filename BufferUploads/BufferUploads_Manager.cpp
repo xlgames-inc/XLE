@@ -9,12 +9,13 @@
 #include "PlatformInterface.h"
 #include "ResourceSource.h"
 #include "DataPacket.h"
+#include "../RenderCore/IDevice.h"
+#include "../RenderCore/IThreadContext.h"
 #include "../ConsoleRig/Log.h"
 #include "../Utility/Threading/ThreadingUtils.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/BitUtils.h"
-// #include "../RenderCore/DX11/DX11Utils.h"
 #include <assert.h>
 #include <utility>
 #include <algorithm>
@@ -702,7 +703,7 @@ namespace BufferUploads
                 return nullptr;                   // failed to allocate the resource. Return false and We'll try again later...
             }
     
-            PlatformInterface::UnderlyingDeviceContext deviceContext(_device);
+            PlatformInterface::UnderlyingDeviceContext deviceContext(_device->GetImmediateContext());
             for (unsigned l=part._lodLevelMin; l<=part._lodLevelMax; ++l) {
                 for (unsigned a=0; a<std::max(1u,part._arrayIndex); ++a) {
                     auto size = initialisationData->GetDataSize(l, a);
@@ -2275,7 +2276,7 @@ namespace BufferUploads
         return _foregroundContext->EventList_Release(id);
     }
 
-    void                    Manager::Update()
+    void                    Manager::Update(std::shared_ptr<RenderCore::IThreadContext>& immediateContext)
     {
         if (_waitingForDeviceResetEvent!=XlHandle_Invalid) {
             assert(0);
@@ -2286,8 +2287,8 @@ namespace BufferUploads
             _assemblyLine->Process(_foregroundStepMask, *_foregroundContext.get());
         }
             //  Commit both the foreground and background contexts here
-        _foregroundContext->CommitToImmediate(*_gpuEventStack);
-        _backgroundContext->CommitToImmediate(*_gpuEventStack);
+        _foregroundContext->CommitToImmediate(immediateContext, *_gpuEventStack);
+        _backgroundContext->CommitToImmediate(immediateContext, *_gpuEventStack);
 
         PlatformInterface::Resource_RecalculateVideoMemoryHeadroom();
     }
@@ -2384,29 +2385,27 @@ namespace BufferUploads
         bool multithreadingOk = true; // CRenderer::CV_r_BufferUpload_Enable!=2;
         bool doBatchingUploadInForeground = !PlatformInterface::CanDoNooverwriteMapInBackground;
 
-        intrusive_ptr<DeviceContext> immediateDeviceContext = 
-            DeviceContext::GetImmediateContext(renderDevice);
+        auto immediateDeviceContext = renderDevice->GetImmediateContext();
+        decltype(immediateDeviceContext) backgroundDeviceContext;
 
-        intrusive_ptr<DeviceContext> deviceContext;
         if (multithreadingOk) {
-            deviceContext = DeviceContext::CreateDeferredContext(renderDevice);
+            backgroundDeviceContext = renderDevice->CreateDeferredContext();
 
                 //
                 //      When using an older feature level, we can fail while
                 //      creating a deferred context. In these cases, we have
                 //      to drop back to single threaded mode.
                 //
-            if (!deviceContext) {
-                deviceContext = immediateDeviceContext;
-                multithreadingOk = false;
+            if (!backgroundDeviceContext) {
+                backgroundDeviceContext = immediateDeviceContext;
             }
         } else {
-            deviceContext = immediateDeviceContext;
+            backgroundDeviceContext = immediateDeviceContext;
         }
 
-        multithreadingOk = deviceContext.get() != immediateDeviceContext;
-        _backgroundContext   = std::make_unique<ThreadContext>(renderDevice, deviceContext.get());
-        _foregroundContext   = std::make_unique<ThreadContext>(renderDevice, immediateDeviceContext.get());
+        multithreadingOk = !backgroundDeviceContext->IsImmediate() && (backgroundDeviceContext != immediateDeviceContext);
+        _backgroundContext   = std::make_unique<ThreadContext>(backgroundDeviceContext);
+        _foregroundContext   = std::make_unique<ThreadContext>(std::move(immediateDeviceContext));
         _gpuEventStack       = std::make_unique<PlatformInterface::GPUEventStack>(renderDevice);
 
             //  todo --     if we don't have driver support for concurrent creates, we should try to do this

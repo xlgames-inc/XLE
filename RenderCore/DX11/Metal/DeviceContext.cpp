@@ -158,7 +158,7 @@ namespace RenderCore { namespace Metal_DX11
     {
             // note --  D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT is 128 for D3D11
             //          It's a little too big to declared on the stack. So let's limit
-            //          the maximum size 
+            //          the maximum size
         ID3D::ShaderResourceView* srv[16];
         assert(count <= dimof(srv));
         count = std::min(count, dimof(srv));
@@ -210,13 +210,13 @@ namespace RenderCore { namespace Metal_DX11
         _underlying->CSSetUnorderedAccessViews(startSlot, count, uoavs, initialCounts);
     }
 
-    template<> void DeviceContext::Unbind<BoundInputLayout>()    
-    { 
+    template<> void DeviceContext::Unbind<BoundInputLayout>()
+    {
         _underlying->IASetInputLayout(nullptr);
     }
 
-    template<> void DeviceContext::Unbind<VertexBuffer>()    
-    { 
+    template<> void DeviceContext::Unbind<VertexBuffer>()
+    {
         ID3D::Buffer* vb = nullptr;
         UINT strides = 0, offsets = 0;
         _underlying->IASetVertexBuffers(0, 1, &vb, &strides, &offsets);
@@ -266,74 +266,42 @@ namespace RenderCore { namespace Metal_DX11
         return intrusive_ptr<CommandList>();
     }
 
-    bool                        DeviceContext::IsImmediate() const
+    bool    DeviceContext::IsImmediate() const
     {
         auto type = _underlying->GetType();
         return type == D3D11_DEVICE_CONTEXT_IMMEDIATE;
     }
 
-    void                        DeviceContext::CommitCommandList(CommandList& commandList)
+    void    DeviceContext::CommitCommandList(CommandList& commandList)
     {
         _underlying->ExecuteCommandList(commandList.GetUnderlying(), FALSE);
     }
 
-    intrusive_ptr<DeviceContext>        DeviceContext::GetImmediateContext(IDevice* device)
+    std::shared_ptr<DeviceContext>  DeviceContext::Get(IThreadContext& threadContext)
     {
-        RenderCore::IDeviceDX11* dx11Device = 
-            (RenderCore::IDeviceDX11*)device->QueryInterface(__uuidof(RenderCore::IDeviceDX11));
-        if (dx11Device) {
-            intrusive_ptr<ID3D::DeviceContext> underlyingContext(dx11Device->GetImmediateContext());
-            return make_intrusive<DeviceContext>(underlyingContext.get());
+        auto tc = (IThreadContextDX11*)threadContext.QueryInterface(__uuidof(IThreadContextDX11));
+        if (tc) {
+            return tc->GetUnderlying();
         }
         return nullptr;
     }
 
     void DeviceContext::PrepareForDestruction(IDevice* device, IPresentationChain* presentationChain)
     {
-        auto context = GetImmediateContext(device);
-        context->GetUnderlying()->ClearState();
-        for (unsigned c=0; c<6; ++c) {
-            device->BeginFrame(presentationChain);
-            context->GetUnderlying()->Flush();
-        }
-    }
-
-    intrusive_ptr<DeviceContext>        DeviceContext::CreateDeferredContext(IDevice* device)
-    {
-        RenderCore::IDeviceDX11* dx11Device = 
-            (RenderCore::IDeviceDX11*)device->QueryInterface(__uuidof(RenderCore::IDeviceDX11));
-        if (dx11Device) {
-            ID3D::Device* d3dDevice = dx11Device->GetUnderlyingDevice();
-            if (d3dDevice) {
-
-                D3D11_FEATURE_DATA_THREADING threadingSupport;
-                XlZeroMemory(threadingSupport);
-                HRESULT hresult = d3dDevice->CheckFeatureSupport(
-                    D3D11_FEATURE_THREADING, &threadingSupport, sizeof(threadingSupport) );
-                uint32 driverCreateFlags = d3dDevice->GetCreationFlags();
-                if (SUCCEEDED(hresult)) {
-                    LogInfoF("D3D Multithreading support: concurrent creates: (%i), command lists: (%i), driver single threaded: (%i)", 
-                         threadingSupport.DriverConcurrentCreates, threadingSupport.DriverCommandLists,
-                         (driverCreateFlags&D3D11_CREATE_DEVICE_SINGLETHREADED)?1:0);
-                }
-
-                const bool multithreadingOk = 
-                        !(driverCreateFlags&D3D11_CREATE_DEVICE_SINGLETHREADED)
-                    &&  threadingSupport.DriverConcurrentCreates
-                    ;
-
-                if (multithreadingOk) {
-                    return make_intrusive<DeviceContext>(
-                        ObjectFactory(*d3dDevice).CreateDeferredContext());
-                }
+        auto metalContext = Get(*device->GetImmediateContext());
+        if (metalContext) {
+            metalContext->GetUnderlying()->ClearState();
+            for (unsigned c=0; c<6; ++c) {
+                device->BeginFrame(presentationChain);
+                metalContext->GetUnderlying()->Flush();
             }
         }
-        return intrusive_ptr<DeviceContext>();
     }
+
 
     static intrusive_ptr<ID3D::Device> ExtractUnderlyingDevice(RenderCore::IDevice* device)
     {
-        RenderCore::IDeviceDX11* dx11Device = 
+        RenderCore::IDeviceDX11* dx11Device =
             (RenderCore::IDeviceDX11*)device->QueryInterface(__uuidof(RenderCore::IDeviceDX11));
         if (dx11Device) {
             return dx11Device->GetUnderlyingDevice();
@@ -357,7 +325,7 @@ namespace RenderCore { namespace Metal_DX11
             }
 
             *ppvObject = NULL;
-            return E_NOINTERFACE; 
+            return E_NOINTERFACE;
         }
 
         virtual ULONG STDMETHODCALLTYPE AddRef() { return RefCountedObject::AddRef(); }
@@ -537,9 +505,9 @@ namespace RenderCore { namespace Metal_DX11
     }
 
     intrusive_ptr<ID3D::GeometryShader> ObjectFactory::CreateGeometryShaderWithStreamOutput(
-        const void* data, size_t size, 
+        const void* data, size_t size,
         const D3D11_SO_DECLARATION_ENTRY* declEntries,
-        unsigned declEntryCount, const unsigned bufferStrides[], unsigned stridesCount, 
+        unsigned declEntryCount, const unsigned bufferStrides[], unsigned stridesCount,
         unsigned rasterizedStreamIndex, ID3D::ClassLinkage* linkage)
     {
         ScopedLock(_attachedData->_creationLock);
@@ -589,7 +557,7 @@ namespace RenderCore { namespace Metal_DX11
         ScopedLock(_attachedData->_creationLock);
         return D3DDeviceCreate<ID3D::Query>(_device.get(), &ID3D::Device::CreateQuery, desc);
     }
-        /// @}    
+        /// @}
 
     ObjectFactory::ObjectFactory(IDevice* device)
     : _device(ExtractUnderlyingDevice(device))
@@ -611,27 +579,27 @@ namespace RenderCore { namespace Metal_DX11
         InitAttachedData();
     }
 
-    ObjectFactory::ObjectFactory() 
-    : _device(GetDefaultUnderlyingDevice()) 
-    { 
-        InitAttachedData(); 
+    ObjectFactory::ObjectFactory()
+    : _device(GetDefaultUnderlyingDevice())
+    {
+        InitAttachedData();
     }
 
     ObjectFactory::~ObjectFactory() {}
     ObjectFactory::ObjectFactory(const ObjectFactory& cloneFrom) : _device(cloneFrom._device), _attachedData(cloneFrom._attachedData) {}
-    ObjectFactory& ObjectFactory::operator=(const ObjectFactory& cloneFrom) 
-    { 
-        _device = cloneFrom._device; 
+    ObjectFactory& ObjectFactory::operator=(const ObjectFactory& cloneFrom)
+    {
+        _device = cloneFrom._device;
         _attachedData = cloneFrom._attachedData;
-        return *this; 
+        return *this;
     }
 
     ObjectFactory::ObjectFactory(ObjectFactory&& moveFrom) never_throws : _device(std::move(moveFrom._device)), _attachedData(std::move(moveFrom._attachedData)) {}
-    ObjectFactory& ObjectFactory::operator=(ObjectFactory&& moveFrom) never_throws 
-    { 
-        _device = std::move(moveFrom._device); 
+    ObjectFactory& ObjectFactory::operator=(ObjectFactory&& moveFrom) never_throws
+    {
+        _device = std::move(moveFrom._device);
         _attachedData = std::move(moveFrom._attachedData);
-        return *this; 
+        return *this;
     }
 
     void ObjectFactory::InitAttachedData()
@@ -665,4 +633,3 @@ namespace RenderCore { namespace Metal_DX11
 }}
 
 intrusive_ptr<RenderCore::Metal_DX11::Underlying::Resource>;
-

@@ -6,9 +6,20 @@
 
 #pragma once
 
+#include <memory>
+
 namespace GUILayer
 {
 
+    class EngineDevice
+    {
+    public:
 
+        EngineDevice();
+        ~EngineDevice();
+    protected:
+        class Pimpl;
+        std::unique_ptr<Pimpl> _pimpl;
+    };
 }
 

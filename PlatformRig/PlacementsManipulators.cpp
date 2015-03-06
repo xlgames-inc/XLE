@@ -62,7 +62,7 @@ namespace Tools
     public:
         void    Render(         IOverlayContext* context, Layout& layout, 
                                 Interactables& interactables, InterfaceState& interfaceState);
-        void    RenderToScene(  RenderCore::Metal::DeviceContext* context, 
+        void    RenderToScene(  RenderCore::IThreadContext* context, 
                                 SceneEngine::LightingParserContext& parserContext);
         bool    ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);
 
@@ -102,7 +102,7 @@ namespace Tools
             const SceneEngine::IntersectionTestContext& hitTestContext,
             const SceneEngine::IntersectionTestScene& hitTestScene);
         void Render(
-            RenderCore::Metal::DeviceContext* context,
+            RenderCore::IThreadContext* context,
             SceneEngine::LightingParserContext& parserContext);
 
         const char* GetName() const;
@@ -402,7 +402,7 @@ namespace Tools
                 
                 SceneEngine::PlacementGUID firstHit(0,0);
                 auto hitTestResult = hitTestScene.FirstRayIntersection(
-                    hitTestContext.GetImmediateContext().get(), hitTestContext, worldSpaceRay);
+                    hitTestContext.GetImmediateContext(), hitTestContext, worldSpaceRay);
                 if (hitTestResult._type == SceneEngine::IntersectionTestScene::Type::Placement) {
                     firstHit = hitTestResult._objectGuid;
                 }
@@ -465,7 +465,7 @@ namespace Tools
                 
                 SceneEngine::PlacementGUID firstHit(0,0);
                 auto hitTestResult = hitTestScene.FirstRayIntersection(
-                    hitTestContext.GetImmediateContext().get(), hitTestContext, worldSpaceRay);
+                    hitTestContext.GetImmediateContext(), hitTestContext, worldSpaceRay);
                 if (hitTestResult._type == SceneEngine::IntersectionTestScene::Type::Placement) {
                     auto tempTrans = _editor->Transaction_Begin(&hitTestResult._objectGuid, &hitTestResult._objectGuid + 1);
                     if (tempTrans->GetObjectCount() == 1) {
@@ -609,7 +609,7 @@ namespace Tools
     }
 
     void SelectAndEdit::Render(
-        RenderCore::Metal::DeviceContext* context,
+        RenderCore::IThreadContext* context,
         SceneEngine::LightingParserContext& parserContext)
     {
         std::vector<std::pair<uint64, uint64>> activeSelection;
@@ -631,7 +631,7 @@ namespace Tools
                 //  likely get the most efficient results by rendering
                 //  all of objects that require highlights in one go.
             RenderHighlight(
-                context, parserContext, _editor.get(),
+                RenderCore::Metal::DeviceContext::Get(*context).get(), parserContext, _editor.get(),
                 AsPointer(activeSelection.begin()), AsPointer(activeSelection.end()));
         }
     }
@@ -715,7 +715,7 @@ namespace Tools
             const SceneEngine::IntersectionTestContext& hitTestContext,
             const SceneEngine::IntersectionTestScene& hitTestScene);
         void Render(
-            RenderCore::Metal::DeviceContext* context,
+            RenderCore::IThreadContext* context,
             SceneEngine::LightingParserContext& parserContext);
 
         const char* GetName() const;
@@ -830,7 +830,7 @@ namespace Tools
     }
 
     void PlaceSingle::Render(
-        RenderCore::Metal::DeviceContext* context,
+        RenderCore::IThreadContext* context,
         SceneEngine::LightingParserContext& parserContext)
     {
         ++_rendersSinceHitTest;
@@ -842,7 +842,7 @@ namespace Tools
             }
 
             RenderHighlight(
-                context, parserContext, _editor.get(),
+                RenderCore::Metal::DeviceContext::Get(*context).get(), parserContext, _editor.get(),
                 AsPointer(objects.begin()), AsPointer(objects.end()));
         }
     }
@@ -894,7 +894,7 @@ namespace Tools
             const SceneEngine::IntersectionTestContext& hitTestContext,
             const SceneEngine::IntersectionTestScene& hitTestScene);
         void Render(
-            RenderCore::Metal::DeviceContext* context,
+            RenderCore::IThreadContext* context,
             SceneEngine::LightingParserContext& parserContext);
 
         const char* GetName() const;
@@ -1239,11 +1239,13 @@ namespace Tools
     }
 
     void ScatterPlacements::Render(
-        RenderCore::Metal::DeviceContext* context,
+        RenderCore::IThreadContext* context,
         SceneEngine::LightingParserContext& parserContext)
     {
         if (_hasHoverPoint) {
-            RenderCylinderHighlight(context, parserContext, _hoverPoint, _radius);
+            RenderCylinderHighlight(
+                RenderCore::Metal::DeviceContext::Get(*context).get(), 
+                parserContext, _hoverPoint, _radius);
         }
     }
 
@@ -1536,7 +1538,7 @@ namespace Tools
     }
 
     void PlacementsWidgets::RenderToScene(
-        RenderCore::Metal::DeviceContext* context, SceneEngine::LightingParserContext& parserContext)
+        RenderCore::IThreadContext* context, SceneEngine::LightingParserContext& parserContext)
     {
         _manipulators[_activeManipulatorIndex]->Render(context, parserContext);
     }
@@ -1615,15 +1617,16 @@ namespace Tools
         std::shared_ptr<SceneEngine::IntersectionTestScene> _intersectionTestScene;
     };
 
-    void PlacementsManipulatorsManager::RenderWidgets(RenderCore::IDevice* device, const RenderCore::Techniques::ProjectionDesc& projectionDesc)
+    void PlacementsManipulatorsManager::RenderWidgets(
+        RenderCore::IThreadContext* device, const RenderCore::Techniques::ProjectionDesc& projectionDesc)
     {
         _pimpl->_screens->Render(device, projectionDesc);
     }
 
     void PlacementsManipulatorsManager::RenderToScene(
-        RenderCore::Metal::DeviceContext* context, SceneEngine::LightingParserContext& parserContext)
+        RenderCore::IThreadContext* device, SceneEngine::LightingParserContext& parserContext)
     {
-        _pimpl->_placementsDispl->RenderToScene(context, parserContext);
+        _pimpl->_placementsDispl->RenderToScene(device, parserContext);
     }
 
     auto PlacementsManipulatorsManager::GetInputLister() -> std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener>

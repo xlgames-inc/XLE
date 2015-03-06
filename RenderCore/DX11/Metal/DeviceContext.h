@@ -8,6 +8,7 @@
 
 #include "DX11.h"
 #include "../../IDevice_Forward.h"
+#include "../../IThreadContext_Forward.h"
 #include "../../Resource.h"
 #include "../../../Utility/Mixins.h"
 #include "../../../Utility/Threading/ThreadingUtils.h"
@@ -71,7 +72,7 @@ namespace RenderCore { namespace Metal_DX11
 	        PatchList16 = 48        // D3D11_PRIMITIVE_TOPOLOGY_16_CONTROL_POINT_PATCHLIST	= 48
         };
     }
-       
+
         //  todo ---    DeviceContext, ObjectFactory & CommandList -- maybe these
         //              should go into RenderCore (because it's impossible to do anything without them)
 
@@ -125,14 +126,14 @@ namespace RenderCore { namespace Metal_DX11
         intrusive_ptr<ID3D::ComputeShader> CreateComputeShader(const void*, size_t, ID3D::ClassLinkage* = nullptr);
         intrusive_ptr<ID3D::GeometryShader> CreateGeometryShader(const void*, size_t, ID3D::ClassLinkage* = nullptr);
         intrusive_ptr<ID3D::GeometryShader> CreateGeometryShaderWithStreamOutput(
-            const void*, size_t, 
+            const void*, size_t,
             const D3D11_SO_DECLARATION_ENTRY* declEntries,
-            unsigned declEntryCount, const unsigned bufferStrides[], unsigned stridesCount, 
+            unsigned declEntryCount, const unsigned bufferStrides[], unsigned stridesCount,
             unsigned rasterizedStreamIndex, ID3D::ClassLinkage* = nullptr);
         intrusive_ptr<ID3D::DomainShader> CreateDomainShader(const void*, size_t, ID3D::ClassLinkage* = nullptr);
         intrusive_ptr<ID3D::HullShader> CreateHullShader(const void*, size_t, ID3D::ClassLinkage* = nullptr);
         /// @}
-        
+
         /// @{
         /// Misc
         intrusive_ptr<ID3D::DeviceContext> CreateDeferredContext();
@@ -159,7 +160,7 @@ namespace RenderCore { namespace Metal_DX11
         void InitAttachedData();
     };
 
-    class DeviceContext : public RefCountedObject, noncopyable
+    class DeviceContext : noncopyable
     {
     public:
         template<int Count> void    Bind(const ResourceList<VertexBuffer, Count>& VBs, unsigned stride, unsigned offset);
@@ -227,9 +228,7 @@ namespace RenderCore { namespace Metal_DX11
         intrusive_ptr<CommandList>  ResolveCommandList();
         void                        CommitCommandList(CommandList& commandList);
 
-        static intrusive_ptr<DeviceContext>    GetImmediateContext(IDevice* device);
-        static intrusive_ptr<DeviceContext>    CreateDeferredContext(IDevice* device);
-
+        static std::shared_ptr<DeviceContext> Get(IThreadContext& threadContext);
         static void PrepareForDestruction(IDevice* device, IPresentationChain* presentationChain);
 
         ID3D::DeviceContext*            GetUnderlying() const           { return _underlying.get(); }
@@ -252,4 +251,3 @@ namespace RenderCore { namespace Metal_DX11
 
 
 }}
-

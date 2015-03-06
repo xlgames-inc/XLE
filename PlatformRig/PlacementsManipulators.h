@@ -33,9 +33,11 @@ namespace Tools
     class PlacementsManipulatorsManager
     {
     public:
-        void RenderWidgets(RenderCore::IDevice* device, const RenderCore::Techniques::ProjectionDesc& projectionDesc);
-        void PlacementsManipulatorsManager::RenderToScene(
-            RenderCore::Metal::DeviceContext* context, 
+        void RenderWidgets(
+            RenderCore::IThreadContext* device, 
+            const RenderCore::Techniques::ProjectionDesc& projectionDesc);
+        void RenderToScene(
+            RenderCore::IThreadContext* context, 
             SceneEngine::LightingParserContext& parserContext);
 
         std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener> GetInputLister();

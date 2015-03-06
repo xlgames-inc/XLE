@@ -81,6 +81,8 @@
     <ClInclude Include="..\Metal\RenderTargetView.h">
       <Filter>Metal</Filter>
     </ClInclude>
+    <ClInclude Include="..\IThreadContext.h" />
+    <ClInclude Include="..\IThreadContext_Forward.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Util">

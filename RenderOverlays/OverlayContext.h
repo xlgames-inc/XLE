@@ -67,14 +67,14 @@ namespace RenderOverlays
         const RenderCore::Metal::UniformsStream&    GetGlobalUniformsStream() const;
 
         ImmediateOverlayContext(
-            RenderCore::Metal::DeviceContext* deviceContext, 
+            RenderCore::IThreadContext* threadContext, 
             const RenderCore::Techniques::ProjectionDesc& projDesc = RenderCore::Techniques::ProjectionDesc());
         ~ImmediateOverlayContext();
 
         class ShaderBox;
 
     private:
-        intrusive_ptr<RenderCore::Metal::DeviceContext>    _deviceContext;
+        std::shared_ptr<RenderCore::Metal::DeviceContext>    _deviceContext;
         uint8               _workingBuffer[64*1024];
         unsigned            _writePointer;
 

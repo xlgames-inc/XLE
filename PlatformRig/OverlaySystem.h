@@ -6,8 +6,8 @@
 
 #pragma once
 
-#include "../../RenderCore/Metal/Forward.h"
 #include "../../RenderCore/IDevice_Forward.h"
+#include "../../RenderCore/IThreadContext_Forward.h"
 #include "../../Math/Matrix.h"
 #include "../../Core/Types.h"
 #include <memory>
@@ -29,9 +29,11 @@ namespace PlatformRig
         virtual std::shared_ptr<IInputListener> GetInputListener() = 0;
 
         virtual void RenderToScene(
-            RenderCore::Metal::DeviceContext* devContext, 
+            RenderCore::IThreadContext* device, 
             SceneEngine::LightingParserContext& parserContext) = 0; 
-        virtual void RenderWidgets(RenderCore::IDevice* device, const RenderCore::Techniques::ProjectionDesc& projectionDesc) = 0;
+        virtual void RenderWidgets(
+            RenderCore::IThreadContext* device, 
+            const RenderCore::Techniques::ProjectionDesc& projectionDesc) = 0;
         virtual void SetActivationState(bool newState) = 0;
 
         virtual ~IOverlaySystem();
@@ -43,9 +45,11 @@ namespace PlatformRig
     public:
         std::shared_ptr<IInputListener> GetInputListener();
 
-        void RenderWidgets(RenderCore::IDevice* device, const RenderCore::Techniques::ProjectionDesc& projectionDesc);
+        void RenderWidgets(
+            RenderCore::IThreadContext* device, 
+            const RenderCore::Techniques::ProjectionDesc& projectionDesc);
         void RenderToScene(
-            RenderCore::Metal::DeviceContext* devContext, 
+            RenderCore::IThreadContext* devContext, 
             SceneEngine::LightingParserContext& parserContext);
         void SetActivationState(bool newState);
 
@@ -68,9 +72,11 @@ namespace PlatformRig
     public:
         std::shared_ptr<IInputListener> GetInputListener();
 
-        void RenderWidgets(RenderCore::IDevice* device, const RenderCore::Techniques::ProjectionDesc& projectionDesc);
+        void RenderWidgets(
+            RenderCore::IThreadContext* device, 
+            const RenderCore::Techniques::ProjectionDesc& projectionDesc);
         void RenderToScene(
-            RenderCore::Metal::DeviceContext* devContext, 
+            RenderCore::IThreadContext* devContext, 
             SceneEngine::LightingParserContext& parserContext);
         void SetActivationState(bool newState);
 

@@ -7,6 +7,7 @@
 #include "../../RenderOverlays/OverlayContext.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Techniques/ResourceBox.h"
+#include "../../RenderCore/IThreadContext.h"
 
 namespace Sample
 {
@@ -66,7 +67,7 @@ namespace Sample
     /// <summary>Renders some text to a device</summary>
     /// This is intended as a simple first-steps rendering example.
     /// We show 2 ways to render text onto the screen.
-    void RenderPostScene(RenderCore::Metal::DeviceContext* context)
+    void RenderPostScene(RenderCore::IThreadContext* context)
     {
             //
             //  Let's render some text in the middle of the screen.
@@ -84,14 +85,16 @@ namespace Sample
         TextStyle style(*res._font);
         ColorB col(0xffffffff);
 
-        RenderCore::Metal::ViewportDesc viewport(*context);
+        auto contextStateDesc = context->GetStateDesc();
         if (constant_expression<textRenderingMethod==0>::result()) {
 
                 //      Render text using a IOverlayContext
             ImmediateOverlayContext overlayContext(context);
             overlayContext.CaptureState();
             overlayContext.DrawText(
-                std::make_tuple(Float3(0.f, 0.f, 0.f), Float3(viewport.Width, viewport.Height, 0.f)),
+                std::make_tuple(
+                    Float3(0.f, 0.f, 0.f), 
+                    Float3(float(contextStateDesc._viewportDimensions[0]), float(contextStateDesc._viewportDimensions[1]), 0.f)),
                 1.f, &style, col, TextAlignment::Center, text, nullptr);
 
         } else {
@@ -100,18 +103,19 @@ namespace Sample
                 //      This requires some more low-level code, so it's less convenient
 
             auto& commonRes = RenderCore::Techniques::CommonResources();
-            context->Bind(commonRes._blendStraightAlpha);
-            context->Bind(commonRes._dssReadWrite);
-            context->Bind(commonRes._defaultRasterizer);
-            context->BindPS(RenderCore::MakeResourceList(commonRes._defaultSampler));
+            auto metalContext = RenderCore::Metal::DeviceContext::Get(*context);
+            metalContext->Bind(commonRes._blendStraightAlpha);
+            metalContext->Bind(commonRes._dssReadWrite);
+            metalContext->Bind(commonRes._defaultRasterizer);
+            metalContext->BindPS(RenderCore::MakeResourceList(commonRes._defaultSampler));
 
             ucs4 buffer[1024];
             utf8_2_ucs4((const utf8*)text, XlStringLen(text), buffer, dimof(buffer));
-            Quad quad = Quad::MinMax(Float2(0.f, 0.f), Float2(viewport.Width, viewport.Height));
+            Quad quad = Quad::MinMax(Float2(0.f, 0.f), Float2(float(contextStateDesc._viewportDimensions[0]), float(contextStateDesc._viewportDimensions[1])));
 
             auto alignment = style.AlignText(quad, UIALIGN_CENTER, buffer, -1);
             style.Draw(
-                context, alignment[0], alignment[1],
+                metalContext.get(), alignment[0], alignment[1],
                 buffer, -1, 
                 0.f, 1.f, 0.f, 0.f,
                 col.AsUInt32(), UI_TEXT_STATE_NORMAL, 0.f, &quad);

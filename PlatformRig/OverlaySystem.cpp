@@ -66,17 +66,19 @@ namespace PlatformRig
         return _inputListener;
     }
 
-    void OverlaySystemSwitch::RenderWidgets(RenderCore::IDevice* device, const RenderCore::Techniques::ProjectionDesc& projectionDesc) 
+    void OverlaySystemSwitch::RenderWidgets(
+        RenderCore::IThreadContext* device, const RenderCore::Techniques::ProjectionDesc& projectionDesc) 
     {
         if (_activeChildIndex >= 0 && _activeChildIndex < signed(_childSystems.size())) {
             _childSystems[_activeChildIndex].second->RenderWidgets(device, projectionDesc);
         }
     }
 
-    void OverlaySystemSwitch::RenderToScene(RenderCore::Metal::DeviceContext* devContext, SceneEngine::LightingParserContext& parserContext) 
+    void OverlaySystemSwitch::RenderToScene(
+        RenderCore::IThreadContext* device, SceneEngine::LightingParserContext& parserContext) 
     {
         if (_activeChildIndex >= 0 && _activeChildIndex < signed(_childSystems.size())) {
-            _childSystems[_activeChildIndex].second->RenderToScene(devContext, parserContext);
+            _childSystems[_activeChildIndex].second->RenderToScene(device, parserContext);
         }
     }
 
@@ -127,17 +129,21 @@ namespace PlatformRig
 
     std::shared_ptr<IInputListener> OverlaySystemSet::GetInputListener()         { return _inputListener; }
 
-    void OverlaySystemSet::RenderWidgets(RenderCore::IDevice* device, const RenderCore::Techniques::ProjectionDesc& projectionDesc) 
+    void OverlaySystemSet::RenderWidgets(
+        RenderCore::IThreadContext* device, 
+        const RenderCore::Techniques::ProjectionDesc& projectionDesc) 
     {
         for (auto i=_childSystems.begin(); i!=_childSystems.end(); ++i) {
             (*i)->RenderWidgets(device, projectionDesc);
         }
     }
 
-    void OverlaySystemSet::RenderToScene(RenderCore::Metal::DeviceContext* devContext, SceneEngine::LightingParserContext& parserContext) 
+    void OverlaySystemSet::RenderToScene(
+        RenderCore::IThreadContext* device, 
+        SceneEngine::LightingParserContext& parserContext) 
     {
         for (auto i=_childSystems.begin(); i!=_childSystems.end(); ++i) {
-            (*i)->RenderToScene(devContext, parserContext);
+            (*i)->RenderToScene(device, parserContext);
         }
     }
 
@@ -172,9 +178,11 @@ namespace PlatformRig
     {
     public:
         std::shared_ptr<IInputListener> GetInputListener();
-        void RenderWidgets(RenderCore::IDevice* device, const RenderCore::Techniques::ProjectionDesc& projectionDesc);
+        void RenderWidgets(
+            RenderCore::IThreadContext* device, 
+            const RenderCore::Techniques::ProjectionDesc& projectionDesc);
         void RenderToScene(
-            RenderCore::Metal::DeviceContext* devContext, 
+            RenderCore::IThreadContext* devContext, 
             SceneEngine::LightingParserContext& parserContext);
         void SetActivationState(bool);
 
@@ -191,13 +199,15 @@ namespace PlatformRig
         return _screens;
     }
 
-    void ConsoleOverlaySystem::RenderWidgets(RenderCore::IDevice* device, const RenderCore::Techniques::ProjectionDesc& projectionDesc)
+    void ConsoleOverlaySystem::RenderWidgets(
+        RenderCore::IThreadContext* device, 
+        const RenderCore::Techniques::ProjectionDesc& projectionDesc)
     {
         _screens->Render(device, projectionDesc);
     }
 
     void ConsoleOverlaySystem::RenderToScene(
-        RenderCore::Metal::DeviceContext* devContext, 
+        RenderCore::IThreadContext* device, 
         SceneEngine::LightingParserContext& parserContext) {}
     void ConsoleOverlaySystem::SetActivationState(bool) {}
 

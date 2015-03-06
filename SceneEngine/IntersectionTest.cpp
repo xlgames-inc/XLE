@@ -32,12 +32,12 @@ namespace SceneEngine
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static intrusive_ptr<RenderCore::Metal::DeviceContext> GetImmediateContext()
+    static std::shared_ptr<RenderCore::Metal::DeviceContext> GetImmediateContext()
     {
         using namespace RenderCore::Metal;
         ID3D::DeviceContext* immContextTemp = nullptr;
         ObjectFactory().GetUnderlying()->GetImmediateContext(&immContextTemp);
-        return make_intrusive<DeviceContext>(
+        return std::make_shared<DeviceContext>(
             intrusive_ptr<ID3D::DeviceContext>(moveptr(immContextTemp)));
     }
 
@@ -123,7 +123,7 @@ namespace SceneEngine
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     auto IntersectionTestScene::FirstRayIntersection(
-        RenderCore::Metal::DeviceContext* devContext,
+        std::shared_ptr<RenderCore::Metal::DeviceContext> devContext,
         const IntersectionTestContext& context,
         std::pair<Float3, Float3> worldSpaceRay,
         Type::BitField filter) const -> Result
@@ -132,7 +132,7 @@ namespace SceneEngine
 
         if ((filter & Type::Terrain) && _terrainManager) {
             auto intersection = FindTerrainIntersection(
-                devContext, context, *_terrainManager.get(), worldSpaceRay);
+                devContext.get(), context, *_terrainManager.get(), worldSpaceRay);
             if (intersection.second) {
                 float distance = Magnitude(intersection.first - worldSpaceRay.first);
                 if (distance < result._distance) {
@@ -171,7 +171,7 @@ namespace SceneEngine
                 for (unsigned c=0; c<count; ++c) {
                     auto guid = trans->GetGuid(c);
                     auto r = RayVsPlacements(
-                        devContext, stateContext,
+                        devContext.get(), stateContext,
                         *_placements, guid);
 
                     if (r.first && r.second < result._distance) {
@@ -197,7 +197,7 @@ namespace SceneEngine
         Int2 cursorPosition, Type::BitField filter) const -> Result
     {
         return FirstRayIntersection(
-            context.GetImmediateContext().get(),
+            context.GetImmediateContext(),
             context, context.CalculateWorldSpaceRay(cursorPosition), filter);
     }
 
@@ -259,7 +259,7 @@ namespace SceneEngine
         return GetViewportDims();
     }
 
-    intrusive_ptr<RenderCore::Metal::DeviceContext> IntersectionTestContext::GetImmediateContext() const
+    std::shared_ptr<RenderCore::Metal::DeviceContext> IntersectionTestContext::GetImmediateContext() const
     {
         return SceneEngine::GetImmediateContext();
     }

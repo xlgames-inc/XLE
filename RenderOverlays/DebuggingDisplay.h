@@ -13,7 +13,7 @@
 #include "../Math/Matrix.h"
 #include "../Utility/UTFUtils.h"
 #include "IOverlayContext.h"
-#include "../RenderCore/IDevice_Forward.h"
+#include "../RenderCore/IThreadContext_Forward.h"
 #include "../RenderCore/Techniques/TechniqueUtils.h"
 #include <vector>
 #include <map>
@@ -322,7 +322,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
     {
     public:
         bool        OnInputEvent(const InputSnapshot& evnt);
-        void        Render(RenderCore::IDevice* device, const RenderCore::Techniques::ProjectionDesc& projDesc = RenderCore::Techniques::ProjectionDesc());
+        void        Render(RenderCore::IThreadContext* device, const RenderCore::Techniques::ProjectionDesc& projDesc = RenderCore::Techniques::ProjectionDesc());
 
         enum Type { InPanel, SystemDisplay };
         void        Register(std::shared_ptr<IWidget> widget, const char name[], Type type = InPanel);

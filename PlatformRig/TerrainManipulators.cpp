@@ -74,7 +74,7 @@ namespace Tools
             const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt, 
             const IntersectionTestContext& hitTestContext,
             const IntersectionTestScene& hitTestScene);
-        virtual void    Render(RenderCore::Metal::DeviceContext* context, SceneEngine::LightingParserContext& parserContext);
+        virtual void    Render(RenderCore::IThreadContext* context, SceneEngine::LightingParserContext& parserContext);
 
         virtual void    PerformAction(const Float3& worldSpacePosition, float size, float strength) = 0;
         virtual void    SetActivationState(bool) {}
@@ -213,7 +213,7 @@ namespace Tools
     }
 
     void    CommonManipulator::Render(
-                    RenderCore::Metal::DeviceContext* context, 
+                    RenderCore::IThreadContext* context, 
                     SceneEngine::LightingParserContext& parserContext)
     {
             //  Draw a highlight on the area that we're going to modify. Since we want this to behave like a decal, 
@@ -222,7 +222,9 @@ namespace Tools
             //  In theory, we could stencil out the terrain, as well -- so we only actually draw onto terrain 
             //  geometry.
         if (_currentWorldSpaceTarget.second) {
-            RenderCylinderHighlight(context, parserContext, _currentWorldSpaceTarget.first, _size);
+            RenderCylinderHighlight(
+                RenderCore::Metal::DeviceContext::Get(*context).get(), 
+                parserContext, _currentWorldSpaceTarget.first, _size);
         }
     }
 
@@ -452,7 +454,7 @@ namespace Tools
             const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt, 
             const IntersectionTestContext& hitTestContext,
             const IntersectionTestScene& hitTestScene);
-        virtual void    Render(RenderCore::Metal::DeviceContext* context, SceneEngine::LightingParserContext& parserContext);
+        virtual void    Render(RenderCore::IThreadContext* context, SceneEngine::LightingParserContext& parserContext);
 
         virtual void    PerformAction(const Float3& anchor0, const Float3& anchor1) = 0;
         
@@ -521,15 +523,17 @@ namespace Tools
         return false;
     }
 
-    void    RectangleManipulator::Render(RenderCore::Metal::DeviceContext* context, SceneEngine::LightingParserContext& parserContext)
+    void    RectangleManipulator::Render(RenderCore::IThreadContext* context, SceneEngine::LightingParserContext& parserContext)
     {
             //  while dragging, we should draw a rectangle highlight on the terrain
         using namespace RenderCore::Metal;
         if (_isDragging && _secondAnchor.second) {
+
+            auto devContext = RenderCore::Metal::DeviceContext::Get(*context);
                 
                 // unbind the depth buffer
-            SceneEngine::SavedTargets savedTargets(context);
-            context->GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr);
+            SceneEngine::SavedTargets savedTargets(devContext.get());
+            devContext->GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr);
 
                 // create shader resource view for the depth buffer
             ShaderResourceView depthSrv;
@@ -574,30 +578,31 @@ namespace Tools
                 boundLayout.BindShaderResource(Hash64("DepthTexture"), 0, 1);
                 boundLayout.BindShaderResource(Hash64("HighlightResource"), 1, 1);
 
-                context->Bind(shaderProgram);
-                boundLayout.Apply(*context, 
+                devContext->Bind(shaderProgram);
+                boundLayout.Apply(
+                    *devContext.get(), 
                     parserContext.GetGlobalUniformsStream(),
                     UniformsStream(constantBufferPackets, nullptr, dimof(constantBufferPackets), resources, dimof(resources)));
 
-                context->Bind(RenderCore::Techniques::CommonResources()._blendAlphaPremultiplied);
-                context->Bind(RenderCore::Techniques::CommonResources()._dssDisable);
-                context->Bind(Topology::TriangleStrip);
-                context->GetUnderlying()->IASetInputLayout(nullptr);
+                devContext->Bind(RenderCore::Techniques::CommonResources()._blendAlphaPremultiplied);
+                devContext->Bind(RenderCore::Techniques::CommonResources()._dssDisable);
+                devContext->Bind(Topology::TriangleStrip);
+                devContext->GetUnderlying()->IASetInputLayout(nullptr);
 
                     // note --  this will render a full screen quad. we could render cylinder geometry instead,
                     //          because this decal only affects the area within a cylinder. But it's just for
                     //          tools, so the easy way should be fine.
-                context->Draw(4);
+                devContext->Draw(4);
 
                 ID3D::ShaderResourceView* srv = nullptr;
-                context->GetUnderlying()->PSSetShaderResources(3, 1, &srv);
+                devContext->GetUnderlying()->PSSetShaderResources(3, 1, &srv);
             } 
             CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
             CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
             CATCH(...) {} 
             CATCH_END
 
-            savedTargets.ResetToOldTargets(context);
+            savedTargets.ResetToOldTargets(devContext.get());
         }
     }
 
@@ -662,7 +667,7 @@ namespace Tools
     public:
         virtual void            PerformAction(const Float3& anchor0, const Float3& anchor1);
         virtual const char*     GetName() const { return "Erosion simulation"; }
-        virtual void            Render(RenderCore::Metal::DeviceContext* context, SceneEngine::LightingParserContext& parserContext);
+        virtual void            Render(RenderCore::IThreadContext* context, SceneEngine::LightingParserContext& parserContext);
 
         virtual std::pair<FloatParameter*, size_t>  GetFloatParameters() const;
         virtual std::pair<BoolParameter*, size_t>   GetBoolParameters() const;
@@ -688,7 +693,7 @@ namespace Tools
         }
     }
 
-    void    ErosionManipulator::Render(RenderCore::Metal::DeviceContext* context, SceneEngine::LightingParserContext& parserContext)
+    void    ErosionManipulator::Render(RenderCore::IThreadContext* context, SceneEngine::LightingParserContext& parserContext)
     {
         RectangleManipulator::Render(context, parserContext);
 
@@ -710,7 +715,9 @@ namespace Tools
         if (_flags & (1<<1)) {
             auto *i = _terrainManager->GetUberSurfaceInterface();
             if (i && i->Erosion_IsPrepared()) {
-                i->Erosion_RenderDebugging(context, parserContext, _terrainManager->GetCoords());
+                i->Erosion_RenderDebugging(
+                    RenderCore::Metal::DeviceContext::Get(*context).get(), 
+                    parserContext, _terrainManager->GetCoords());
             }
         }
     }
@@ -823,7 +830,7 @@ namespace Tools
         : _parent(std::move(parent))
     {}
 
-    void    ManipulatorsInterface::Render(RenderCore::Metal::DeviceContext* context, SceneEngine::LightingParserContext& parserContext)
+    void    ManipulatorsInterface::Render(RenderCore::IThreadContext* context, SceneEngine::LightingParserContext& parserContext)
     {
         if (auto a = GetActiveManipulator())
             a->Render(context, parserContext);

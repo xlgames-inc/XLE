@@ -7,7 +7,6 @@
 #pragma once
 
 #include "ManipulatorsUtil.h"
-#include "../RenderCore/Metal/Forward.h"
 #include "../RenderOverlays/DebuggingDisplay.h"
 #include "../Utility/IntrusivePtr.h"
 #include <memory>
@@ -39,7 +38,7 @@ namespace Tools
     class ManipulatorsInterface : public std::enable_shared_from_this<ManipulatorsInterface>
     {
     public:
-        void    Render( RenderCore::Metal::DeviceContext* context, 
+        void    Render( RenderCore::IThreadContext* context, 
                         SceneEngine::LightingParserContext& parserContext);
         void    Update();
 

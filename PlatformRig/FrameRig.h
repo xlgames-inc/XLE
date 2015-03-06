@@ -7,7 +7,7 @@
 #pragma once
 
 #include "../RenderCore/IDevice.h"
-#include "../RenderCore/Metal/Forward.h"
+#include "../RenderCore/Metal/GPUProfiler.h"
 #include <functional>
 #include <memory>
 
@@ -34,11 +34,11 @@ namespace PlatformRig
             RenderResult(bool hasPendingResources) : _hasPendingResources(hasPendingResources) {}
         };
 
-        typedef std::function<RenderResult(RenderCore::Metal::DeviceContext*)>
+        typedef std::function<RenderResult(RenderCore::IThreadContext*)>
             FrameRenderFunction;
 
         FrameResult ExecuteFrame(
-            RenderCore::Metal::DeviceContext* context,
+            RenderCore::IThreadContext* context,
             RenderCore::IDevice* device,
             RenderCore::IPresentationChain* presChain,
             RenderCore::Metal::GPUProfiler::Profiler* gpuProfiler,

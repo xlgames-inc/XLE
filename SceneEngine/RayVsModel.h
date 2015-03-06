@@ -28,13 +28,13 @@ namespace SceneEngine
         LightingParserContext& GetParserContext() { return _parserContext; }
 
         RayVsModelStateContext(
-            RenderCore::Metal::DeviceContext* devContext,
+            std::shared_ptr<RenderCore::Metal::DeviceContext> devContext,
             const RenderCore::Techniques::TechniqueContext& techniqueContext,
             const RenderCore::Techniques::CameraDesc* cameraForLOD = nullptr);
         ~RayVsModelStateContext();
 
     protected:
-        intrusive_ptr<RenderCore::Metal::DeviceContext> _devContext;
+        std::shared_ptr<RenderCore::Metal::DeviceContext> _devContext;
         RayVsModelResources* _res;
         RenderCore::Metal::GeometryShader::StreamOutputInitializers _oldSO;
 

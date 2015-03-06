@@ -5,7 +5,10 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Device.h"
+#include "Metal/DeviceContext.h"
+#include "Metal/State.h"
 #include "../../Assets/CompileAndAsyncManager.h"
+#include "../../ConsoleRig/Log.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/WinAPI/WinAPIWrapper.h"
 #include "../../Core/Exceptions.h"
@@ -120,16 +123,20 @@ namespace RenderCore
             ThrowException(Exceptions::BasicLabel("Failure in D3D11 device construction. Aborting."));
         }
 
+        auto immediateThreadContext = std::make_shared<ThreadContextDX11>(immediateContext);
+
             //  Once we know there can be no more exceptions thrown, we can commit
             //  locals to the members.
-        std::swap(_underlying, underlying);
-        std::swap(_immediateContext, immediateContext);
+        _underlying = std::move(underlying);
+        _immediateContext = std::move(immediateContext);
+        _immediateThreadContext = std::move(immediateThreadContext);
     }
 
     Device::~Device()
     {
-        _underlying.reset();
+        _immediateThreadContext.reset();
         _immediateContext.reset();
+        _underlying.reset();
 
             //  After we've released our references, dump a list of all 
             //  active objects. Ideally we want to have no active objects
@@ -231,6 +238,43 @@ namespace RenderCore
         swapChain->AttachToContext(_immediateContext.get(), _underlying.get());
     }
 
+    std::shared_ptr<IThreadContext> Device::GetImmediateContext()
+    {
+        return _immediateThreadContext;
+    }
+
+    std::unique_ptr<IThreadContext> Device::CreateDeferredContext()
+    {
+            // create a new deferred context, and return a wrapper object
+        D3D11_FEATURE_DATA_THREADING threadingSupport;
+        XlZeroMemory(threadingSupport);
+        HRESULT hresult = _underlying->CheckFeatureSupport(
+            D3D11_FEATURE_THREADING, &threadingSupport, sizeof(threadingSupport) );
+        uint32 driverCreateFlags = _underlying->GetCreationFlags();
+        if (SUCCEEDED(hresult)) {
+            LogInfoF(
+                "D3D Multithreading support: concurrent creates: (%i), command lists: (%i), driver single threaded: (%i)", 
+                 threadingSupport.DriverConcurrentCreates, threadingSupport.DriverCommandLists,
+                 (driverCreateFlags&D3D11_CREATE_DEVICE_SINGLETHREADED)?1:0);
+        }
+        
+        const bool multithreadingOk = 
+                !(driverCreateFlags&D3D11_CREATE_DEVICE_SINGLETHREADED)
+            &&  threadingSupport.DriverConcurrentCreates
+            ;
+        
+        if (multithreadingOk) {
+            ID3D::DeviceContext* defContextTemp = nullptr;
+            auto hresult = _underlying->CreateDeferredContext(0, &defContextTemp);
+            if (SUCCEEDED(hresult) && defContextTemp) {
+                intrusive_ptr<ID3D::DeviceContext> defContext(moveptr(defContextTemp));
+                return std::make_unique<ThreadContextDX11>(std::move(defContext));
+            }
+        }
+
+        return nullptr;
+    }
+
     extern char VersionString[];
     extern char BuildDateString[];
         
@@ -264,7 +308,7 @@ namespace RenderCore
         return _underlying.get();
     }
 
-    ID3D::DeviceContext*    DeviceDX11::GetImmediateContext()
+    ID3D::DeviceContext*    DeviceDX11::GetImmediateDeviceContext()
     {
         return _immediateContext.get();
     }
@@ -419,12 +463,54 @@ namespace RenderCore
         }
     }
 
-
     //////////////////////////////////////////////////////////////////////////////////////////////////
 
     render_dll_export std::unique_ptr<IDevice>    CreateDevice()
     {
         return std::make_unique<DeviceDX11>();
     }
+
+
+    //////////////////////////////////////////////////////////////////////////////////////////////////
+
+    bool    ThreadContext::IsImmediate() const
+    {
+        return _underlying->IsImmediate();
+    }
+
+    auto ThreadContext::GetStateDesc() const -> StateDesc
+    {
+        Metal_DX11::ViewportDesc viewport(*_underlying.get());
+
+        StateDesc result;
+        result._viewportDimensions = Int2(int(viewport.Width), int(viewport.Height));
+        return result;
+    }
+
+    ThreadContext::ThreadContext(intrusive_ptr<ID3D::DeviceContext> devContext) 
+    {
+        _underlying = std::make_shared<Metal_DX11::DeviceContext>(std::move(devContext));
+    }
+
+    ThreadContext::~ThreadContext() {}
+
+
+    void*   ThreadContextDX11::QueryInterface(const GUID& guid)
+    {
+        if (guid == __uuidof(Base_ThreadContextDX11)) { return (IThreadContextDX11*)this; }
+        return nullptr;
+    }
+
+    std::shared_ptr<Metal_DX11::DeviceContext>&  ThreadContextDX11::GetUnderlying()
+    {
+        return _underlying;
+    }
+
+    ThreadContextDX11::ThreadContextDX11(intrusive_ptr<ID3D::DeviceContext> devContext)
+    : ThreadContext(devContext)
+    {}
+
+    ThreadContextDX11::~ThreadContextDX11() {}
+
 }
 

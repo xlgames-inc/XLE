@@ -100,10 +100,10 @@ namespace BufferUploads { namespace PlatformInterface
         void                                            BeginCommandList();
 
             ////////   C O N S T R U C T I O N   ////////
-        UnderlyingDeviceContext(RenderCore::IDevice* device, DeviceContext* context = NULL);
+        UnderlyingDeviceContext(std::shared_ptr<RenderCore::IThreadContext> renderCoreContext);
         ~UnderlyingDeviceContext();
 
-        DeviceContext& GetUnderlying() { return *_context.get(); }
+        DeviceContext& GetUnderlying() { return *_devContext.get(); }
 
         #if GFXAPI_ACTIVE == GFXAPI_DX11
             private: 
@@ -113,8 +113,8 @@ namespace BufferUploads { namespace PlatformInterface
     private:
         void Unmap(const Underlying::Resource&, unsigned _subresourceIndex);
         friend class MappedBuffer;
-        RenderCore::IDevice*        _device;
-        intrusive_ptr<DeviceContext>   _context;
+        std::shared_ptr<RenderCore::IThreadContext> _renderCoreContext;
+        std::shared_ptr<DeviceContext>              _devContext;
     };
 
         /////////////////////////////////////////////////////////////////////

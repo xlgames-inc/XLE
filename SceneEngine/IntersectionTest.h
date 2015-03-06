@@ -34,7 +34,7 @@ namespace SceneEngine
         const RenderCore::Techniques::TechniqueContext& GetTechniqueContext() const { return *_techniqueContext.get(); }
         ISceneParser* GetSceneParser() const { return _sceneParser.get(); }
         Int2 GetViewportSize() const;
-        intrusive_ptr<RenderCore::Metal::DeviceContext> GetImmediateContext() const;
+        std::shared_ptr<RenderCore::Metal::DeviceContext> GetImmediateContext() const;
 
         IntersectionTestContext(
             std::shared_ptr<ISceneParser> sceneParser,
@@ -82,7 +82,7 @@ namespace SceneEngine
         };
 
         Result FirstRayIntersection(
-            RenderCore::Metal::DeviceContext* devContext,
+            std::shared_ptr<RenderCore::Metal::DeviceContext> devContext,
             const IntersectionTestContext& context,
             std::pair<Float3, Float3> worldSpaceRay,
             Type::BitField filter = ~Type::BitField(0)) const;

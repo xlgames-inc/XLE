@@ -9,6 +9,7 @@
 #include "IBufferUploads.h"
 
 #include "PlatformInterface.h"
+#include "../RenderCore/IThreadContext_Forward.h"
 #include "../RenderCore/Metal/Resource.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../Utility/Threading/LockFree.h"
@@ -52,8 +53,8 @@ namespace BufferUploads
 
         void Add(DeferredCopy&& copy);
         void Add(DeferredDefragCopy&& copy);
-        void CommitToImmediate_PreCommandList(RenderCore::IDevice* device);
-        void CommitToImmediate_PostCommandList(RenderCore::IDevice* device);
+        void CommitToImmediate_PreCommandList(std::shared_ptr<RenderCore::IThreadContext>& immediateContext);
+        void CommitToImmediate_PostCommandList(std::shared_ptr<RenderCore::IThreadContext>& immediateContext);
         bool IsEmpty() const;
 
         void swap(CommitStep& other);
@@ -102,7 +103,10 @@ namespace BufferUploads
     public:
         void                    BeginCommandList();
         void                    ResolveCommandList();
-        void                    CommitToImmediate(PlatformInterface::GPUEventStack& gpuEventStack);
+        void                    CommitToImmediate(
+            std::shared_ptr<RenderCore::IThreadContext>& commitTo,
+            PlatformInterface::GPUEventStack& gpuEventStack);
+
         CommandListMetrics      PopMetrics();
 
         void                    EventList_Get(IManager::EventListID id, Event_ResourceReposition*& begin, Event_ResourceReposition*& end);
@@ -132,7 +136,7 @@ namespace BufferUploads
 
         LockFree::FixedSizeQueue<unsigned, 4> _pendingFramePriority_CommandLists;
 
-        ThreadContext(RenderCore::IDevice* device, DeviceContext* context);
+        ThreadContext(std::shared_ptr<RenderCore::IThreadContext> underlyingContext);
         ~ThreadContext();
     private:
         CommandListMetrics _commandListUnderConstruction;
@@ -142,7 +146,7 @@ namespace BufferUploads
             LockFree::FixedSizeQueue<CommandListMetrics, 32> _recentRetirements;
         #endif
         PlatformInterface::UnderlyingDeviceContext _deviceContext;
-        RenderCore::IDevice* _device;
+        std::shared_ptr<RenderCore::IThreadContext> _underlyingContext;
 
         TimeMarker  _lastResolve;
         TimeMarker  _tickFrequency;

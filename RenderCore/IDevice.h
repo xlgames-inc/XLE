@@ -6,9 +6,10 @@
 
 #pragma once
 
+#include "IDevice_Forward.h"
+#include "IThreadContext_Forward.h"
 #include "../Core/Prefix.h"
 #include "../Math/Vector.h"
-#include "IDevice_Forward.h"
 #include <memory>
 
 #if OUTPUT_DLL
@@ -187,6 +188,9 @@ namespace RenderCore
             /// Note that rendering to offscreen surfaces can happen outside of the BeginFrame/Present boundaries.
             /// <seealso cref="RenderCore::IPresentationChain::Present"/>
             IMETHOD void                BeginFrame(IPresentationChain* presentationChain) IPURE;
+
+            IMETHOD std::shared_ptr<IThreadContext>     GetImmediateContext() IPURE;
+            IMETHOD std::unique_ptr<IThreadContext>     CreateDeferredContext() IPURE;
 
             /// <summary>Returns version information for this device</summary>
             /// Queries build number and build date information.

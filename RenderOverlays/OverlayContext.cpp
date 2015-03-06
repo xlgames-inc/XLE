@@ -587,13 +587,14 @@ namespace RenderOverlays
     }
 
     ImmediateOverlayContext::ImmediateOverlayContext(
-        RenderCore::Metal::DeviceContext* deviceContext, 
+        RenderCore::IThreadContext* threadContext, 
         const RenderCore::Techniques::ProjectionDesc& projDesc)
-    : _deviceContext(deviceContext)
-    , _font(GetX2Font("Raleway", 16))
+    : _font(GetX2Font("Raleway", 16))
     , _defaultTextStyle(*_font.get())
     , _projDesc(projDesc)
     {
+        _deviceContext = RenderCore::Metal::DeviceContext::Get(*threadContext);
+
         _writePointer = 0;
         _drawCalls.reserve(64);
 

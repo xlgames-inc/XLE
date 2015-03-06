@@ -28,14 +28,14 @@ namespace Sample
         }
 
         void RenderToScene(
-            RenderCore::Metal::DeviceContext* devContext, 
+            RenderCore::IThreadContext* devContext, 
             SceneEngine::LightingParserContext& parserContext)
         {
             _placementsManipulators->RenderToScene(devContext, parserContext);
         }
 
         void RenderWidgets(
-            RenderCore::IDevice* device, 
+            RenderCore::IThreadContext* device, 
             const RenderCore::Techniques::ProjectionDesc& projectionDesc)
         {
             _placementsManipulators->RenderWidgets(device, projectionDesc);

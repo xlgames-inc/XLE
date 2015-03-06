@@ -61,7 +61,7 @@ namespace Tools
             const SceneEngine::IntersectionTestContext& hitTestContext,
             const SceneEngine::IntersectionTestScene& hitTestScene) = 0;
         virtual void Render(
-            RenderCore::Metal::DeviceContext* context, 
+            RenderCore::IThreadContext* context, 
             SceneEngine::LightingParserContext& parserContext) = 0;
 
         virtual const char* GetName() const = 0;

@@ -7,6 +7,7 @@
 #include "DebuggingDisplay.h"
 #include "OverlayContext.h"
 #include "../RenderCore/IDevice.h"
+#include "../RenderCore/IThreadContext.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/State.h"
 #include "../ConsoleRig/Console.h"
@@ -1111,19 +1112,15 @@ namespace RenderOverlays { namespace DebuggingDisplay
         return false;
     }
 
-    void DebugScreensSystem::Render(RenderCore::IDevice* device, const RenderCore::Techniques::ProjectionDesc& projDesc)
+    void DebugScreensSystem::Render(RenderCore::IThreadContext* context, const RenderCore::Techniques::ProjectionDesc& projDesc)
     {
         _currentInteractables = Interactables();
         
-        intrusive_ptr<RenderCore::Metal::DeviceContext> devContext = RenderCore::Metal::DeviceContext::GetImmediateContext(device);
-        RenderCore::Metal::ViewportDesc viewport(*devContext);
-
-        Coord2  maxCoords(viewport.Width, viewport.Height);
+        auto maxCoords = context->GetStateDesc()._viewportDimensions;
         Rect    rect(Coord2(0,0), maxCoords);
         Layout  completeLayout(rect);
         
-        auto overlayContext = std::make_unique<ImmediateOverlayContext>(
-            devContext.get(), projDesc);
+        auto overlayContext = std::make_unique<ImmediateOverlayContext>(context, projDesc);
         overlayContext->CaptureState();
 
         TRY {

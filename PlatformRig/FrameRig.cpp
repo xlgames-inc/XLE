@@ -128,11 +128,11 @@ namespace PlatformRig
         std::shared_ptr<IInputListener> GetInputListener()  { return _inputListener; }
 
         void RenderToScene(
-            RenderCore::Metal::DeviceContext* devContext, 
+            RenderCore::IThreadContext* devContext, 
             SceneEngine::LightingParserContext& parserContext) {}
 
         void RenderWidgets(
-            RenderCore::IDevice* device, 
+            RenderCore::IThreadContext* device, 
             const RenderCore::Techniques::ProjectionDesc& projectionDesc)
         {
             _debugScreensSystem->Render(device, projectionDesc);
@@ -154,7 +154,7 @@ namespace PlatformRig
 ///////////////////////////////////////////////////////////////////////////////
 
     auto FrameRig::ExecuteFrame(
-        RenderCore::Metal::DeviceContext* context,
+        RenderCore::IThreadContext* context,
         RenderCore::IDevice* device,
         RenderCore::IPresentationChain* presChain,
         RenderCore::Metal::GPUProfiler::Profiler* gpuProfiler,
@@ -180,15 +180,17 @@ namespace PlatformRig
         }
         _pimpl->_prevFrameStartTime = startTime;
 
+        auto metalContext = RenderCore::Metal::DeviceContext::Get(*context);
+
         if (gpuProfiler) {
-            RenderCore::Metal::GPUProfiler::Frame_Begin(*context, gpuProfiler, _pimpl->_frameRenderCount);
+            RenderCore::Metal::GPUProfiler::Frame_Begin(*metalContext, gpuProfiler, _pimpl->_frameRenderCount);
         }
         device->BeginFrame(presChain);
 
             //  We must invalidate the cached state at least once per frame.
             //  It appears that the driver might forget bound constant buffers
             //  during the begin frame or present
-        context->InvalidateCachedState();
+        metalContext->InvalidateCachedState();
 
         ////////////////////////////////
 
@@ -220,7 +222,7 @@ namespace PlatformRig
         }
 
         if (gpuProfiler) {
-            RenderCore::Metal::GPUProfiler::Frame_End(*context, gpuProfiler);
+            RenderCore::Metal::GPUProfiler::Frame_End(*metalContext, gpuProfiler);
         }
 
         uint64 duration = GetPerformanceCounter() - startTime;

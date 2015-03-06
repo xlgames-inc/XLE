@@ -48,7 +48,7 @@
                     uint32 subResource = D3D11CalcSubresource(lodLevel, arrayIndex, desc._textureDesc._mipCount);
                     if (isFullUpdate) {
 
-                        _context->GetUnderlying()->UpdateSubresource(ResPtr(resource), subResource, NULL, data, rowAndSlicePitch.first, rowAndSlicePitch.second);
+                        _devContext->GetUnderlying()->UpdateSubresource(ResPtr(resource), subResource, NULL, data, rowAndSlicePitch.first, rowAndSlicePitch.second);
 
                     } else {
 
@@ -59,7 +59,7 @@
                                 //  Attempt to use "ID3D11DeviceContext1", if we can get it. This version solves
                                 //  a bug in the earlier version of D3D11
                             ID3D11DeviceContext1 * devContext1Temp = nullptr;
-                            auto hresult = _context->GetUnderlying()->QueryInterface(__uuidof(ID3D11DeviceContext1), (void**)&devContext1Temp);
+                            auto hresult = _devContext->GetUnderlying()->QueryInterface(__uuidof(ID3D11DeviceContext1), (void**)&devContext1Temp);
                             intrusive_ptr<ID3D11DeviceContext1> devContext1(devContext1Temp, false);
                             if (SUCCEEDED(hresult) && devContext1) {
 
@@ -107,7 +107,7 @@
 
                             assert(pAdjustedSrcData != nullptr);
                             assert(!IsBadReadPtr(data, rowAndSlicePitch.second));
-                            _context->GetUnderlying()->UpdateSubresource(ResPtr(resource), subResource, &d3dBox, pAdjustedSrcData, rowAndSlicePitch.first, rowAndSlicePitch.second);
+                            _devContext->GetUnderlying()->UpdateSubresource(ResPtr(resource), subResource, &d3dBox, pAdjustedSrcData, rowAndSlicePitch.first, rowAndSlicePitch.second);
 
                         }
                     }
@@ -140,18 +140,18 @@
                                 }
                             }
                         #endif
-                        _context->GetUnderlying()->UpdateSubresource(ResPtr(resource), 0, &box, data, 0, 0);
+                        _devContext->GetUnderlying()->UpdateSubresource(ResPtr(resource), 0, &box, data, 0, 0);
                     } else {
                         D3D11_MAPPED_SUBRESOURCE mappedSubresource;
-                        const bool canDoNoOverwrite = (_context.get() == DeviceContext::GetImmediateContext(_device));
+                        const bool canDoNoOverwrite = _renderCoreContext->IsImmediate();
                         assert(canDoNoOverwrite || resourceOffsetValue==0);     //  this code could be dangerous when the resource offset value != 0. Map() will map the entire
                                                                                 //  resource. But when using a batched index buffer, we only want to map and write to a small part of the buffer.
-                        HRESULT hresult = _context->GetUnderlying()->Map(ResPtr(resource), 0, canDoNoOverwrite?D3D11_MAP_WRITE_NO_OVERWRITE:D3D11_MAP_WRITE_DISCARD, 0/*D3D11_MAP_FLAG_DO_NOT_WAIT*/, &mappedSubresource);
+                        HRESULT hresult = _devContext->GetUnderlying()->Map(ResPtr(resource), 0, canDoNoOverwrite?D3D11_MAP_WRITE_NO_OVERWRITE:D3D11_MAP_WRITE_DISCARD, 0/*D3D11_MAP_FLAG_DO_NOT_WAIT*/, &mappedSubresource);
                         assert(SUCCEEDED(hresult));
                         if (SUCCEEDED(hresult)) {
                             assert(mappedSubresource.RowPitch >= dataSize);
                             XlCopyMemoryAlign16(PtrAdd(mappedSubresource.pData, resourceOffsetValue), data, dataSize);
-                            _context->GetUnderlying()->Unmap(ResPtr(resource), 0);
+                            _devContext->GetUnderlying()->Unmap(ResPtr(resource), 0);
                         }
                     }
                 }
@@ -171,7 +171,7 @@
                     uint32 subResource = D3D11CalcSubresource(lodLevel, arrayIndex, desc._textureDesc._mipCount);
                     D3D11_MAPPED_SUBRESOURCE mappedSubresource;
                     XlZeroMemory(mappedSubresource);
-                    HRESULT hresult = _context->GetUnderlying()->Map(
+                    HRESULT hresult = _devContext->GetUnderlying()->Map(
                         ResPtr(resource), subResource, 
                         D3D11_MAP_WRITE, 0, &mappedSubresource);
                     assert(SUCCEEDED(hresult));
@@ -189,11 +189,11 @@
         void UnderlyingDeviceContext::UpdateFinalResourceFromStaging(const Underlying::Resource& finalResource, const Underlying::Resource& staging, const BufferDesc& destinationDesc, unsigned lodLevelMin, unsigned lodLevelMax, unsigned stagingLODOffset)
         {
             if ((lodLevelMin == ~unsigned(0x0) || lodLevelMax == ~unsigned(0x0)) && destinationDesc._type == BufferDesc::Type::Texture && !stagingLODOffset) {
-                _context->GetUnderlying()->CopyResource(ResPtr(finalResource), ResPtr(staging));
+                _devContext->GetUnderlying()->CopyResource(ResPtr(finalResource), ResPtr(staging));
             } else {
                 for (unsigned a=0; a<destinationDesc._textureDesc._arrayCount; ++a) {
                     for (unsigned c=lodLevelMin; c<=lodLevelMax; ++c) {
-                        _context->GetUnderlying()->CopySubresourceRegion(
+                        _devContext->GetUnderlying()->CopySubresourceRegion(
                             ResPtr(finalResource), 
                             D3D11CalcSubresource(c, a, destinationDesc._textureDesc._mipCount),
                             0, 0, 0,
@@ -220,7 +220,7 @@
                     sourceBox.right  = i->_sourceEnd;
                     sourceBox.top    = sourceBox.front   = 0;
                     sourceBox.bottom = sourceBox.back    = 1;
-                    _context->GetUnderlying()->CopySubresourceRegion(ResPtr(destination), 0, i->_destination, 0, 0, ResPtr(source), 0, &sourceBox);
+                    _devContext->GetUnderlying()->CopySubresourceRegion(ResPtr(destination), 0, i->_destination, 0, 0, ResPtr(source), 0, &sourceBox);
                 }
             } else {
                 MappedBuffer sourceBuffer       = Map(source, MapType::ReadOnly);
@@ -237,17 +237,17 @@
 
         void UnderlyingDeviceContext::ResourceCopy(const Underlying::Resource& destination, const Underlying::Resource& source)
         {
-            _context->GetUnderlying()->CopyResource(ResPtr(destination), ResPtr(source));
+            _devContext->GetUnderlying()->CopyResource(ResPtr(destination), ResPtr(source));
         }
 
         intrusive_ptr<RenderCore::Metal::CommandList> UnderlyingDeviceContext::ResolveCommandList()
         {
-            return _context->ResolveCommandList();
+            return _devContext->ResolveCommandList();
         }
 
         void                        UnderlyingDeviceContext::BeginCommandList()
         {
-            _context->BeginCommandList();
+            _devContext->BeginCommandList();
         }
 
         UnderlyingDeviceContext::MappedBuffer UnderlyingDeviceContext::Map(const Underlying::Resource& resource, MapType::Enum mapType, unsigned lodLevel, unsigned arrayIndex)
@@ -270,7 +270,7 @@
             case MapType::ReadOnly:     platformMap = D3D11_MAP_READ;               break;
             default:                    platformMap = D3D11_MAP_WRITE;              break;
             }
-            HRESULT hresult = _context->GetUnderlying()->Map(ResPtr(resource), subResource, platformMap, 0/*D3D11_MAP_FLAG_DO_NOT_WAIT*/, &result);
+            HRESULT hresult = _devContext->GetUnderlying()->Map(ResPtr(resource), subResource, platformMap, 0/*D3D11_MAP_FLAG_DO_NOT_WAIT*/, &result);
             if (SUCCEEDED(hresult)) {
                 return MappedBuffer(*this, resource, subResource, result.pData, result.RowPitch, result.DepthPitch);
             }
@@ -285,20 +285,20 @@
 
         void UnderlyingDeviceContext::Unmap(const Underlying::Resource& resource, unsigned subResourceIndex)
         {
-            _context->GetUnderlying()->Unmap(ResPtr(resource), subResourceIndex);
+            _devContext->GetUnderlying()->Unmap(ResPtr(resource), subResourceIndex);
         }
 
-        UnderlyingDeviceContext::UnderlyingDeviceContext(RenderCore::IDevice* device, DeviceContext* context) 
-        : _context(context)
-        , _device(device)
+        UnderlyingDeviceContext::UnderlyingDeviceContext(
+            std::shared_ptr<RenderCore::IThreadContext> renderCoreContext) 
+        : _renderCoreContext(std::move(renderCoreContext))
         {
+            _devContext = DeviceContext::Get(*_renderCoreContext);
+
             _useUpdateSubresourceWorkaround = false;
-            if (!_context) {
-                _context = DeviceContext::GetImmediateContext(device);
-            }
-            if (_context->GetUnderlying() != DeviceContext::GetImmediateContext(device)->GetUnderlying()) {
-                ID3D::Device* devicePtr = NULL;
-                context->GetUnderlying()->GetDevice(&devicePtr);
+
+            if (!_devContext->IsImmediate()) {
+                ID3D::Device* devicePtr = nullptr;
+                _devContext->GetUnderlying()->GetDevice(&devicePtr);
                 intrusive_ptr<ID3D::Device> device(devicePtr, false);
 
                     //

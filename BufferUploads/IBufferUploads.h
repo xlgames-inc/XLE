@@ -12,6 +12,7 @@
 #include "../Utility/Mixins.h"
 #include "../Utility/StringUtils.h"
 #include "../RenderCore/IDevice_Forward.h"
+#include "../RenderCore/IThreadContext_Forward.h"
 #include "../RenderCore/Metal/Resource.h"
 #include "IBufferUploads_Forward.h"
 #include <vector>
@@ -561,7 +562,7 @@ namespace BufferUploads
 
             /// <summary>Called every frame to update uploads</summary>
             /// Performs once-per-frame tasks. Normally called by the render device once per frame.
-        IMETHOD void                    Update                  () IPURE;
+        IMETHOD void                    Update  (std::shared_ptr<RenderCore::IThreadContext>& immediateContext) IPURE;
             /// @}
 
             /// \name Utilities, profiling & debugging

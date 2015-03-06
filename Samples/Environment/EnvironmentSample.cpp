@@ -145,7 +145,7 @@ namespace Sample
 
     static void SetupCompilers(::Assets::CompileAndAsyncManager& asyncMan);
     static PlatformRig::FrameRig::RenderResult RenderFrame(
-        RenderCore::Metal::DeviceContext* context,
+        RenderCore::IThreadContext* context,
         SceneEngine::LightingParserContext& lightingParserContext, EnvironmentSceneParser* scene,
         RenderCore::IDevice* renderDevice, RenderCore::IPresentationChain* presentationChain,
         PlatformRig::IOverlaySystem* overlaySys);
@@ -248,7 +248,7 @@ namespace Sample
                 //      *   the DeviceContext provides the methods for directly 
                 //          interacting with the GPU
             LogInfo << "Setup frame rig and rendering context";
-            auto context = RenderCore::Metal::DeviceContext::GetImmediateContext(primMan._rDevice.get());
+            auto context = primMan._rDevice->GetImmediateContext();
 
                 //  Finally, we execute the frame loop
             for (;;) {
@@ -271,7 +271,7 @@ namespace Sample
                         frameRig.GetMainOverlaySystem().get()));
 
                     // ------- Update ----------------------------------------
-                primMan._bufferUploads->Update();
+                primMan._bufferUploads->Update(context);
                 mainScene->Update(frameResult._elapsedTime);
                 cameraInputHandler->Commit(frameResult._elapsedTime);   // we need to be careful to update the camera at the right time (relative to character update)
                 g_cpuProfiler.EndFrame();
@@ -308,7 +308,7 @@ namespace Sample
     }
 
     PlatformRig::FrameRig::RenderResult RenderFrame(
-        RenderCore::Metal::DeviceContext* context,
+        RenderCore::IThreadContext* context,
         SceneEngine::LightingParserContext& lightingParserContext,
         EnvironmentSceneParser* scene, RenderCore::IDevice* renderDevice,
         RenderCore::IPresentationChain* presentationChain,
@@ -316,14 +316,16 @@ namespace Sample
     {
         CPUProfileEvent pEvnt("RenderFrame", g_cpuProfiler);
 
+        auto metalContext = RenderCore::Metal::DeviceContext::Get(*context);
+
             //  some scene might need a "prepare" step to 
             //  build some resources before the main render occurs.
-        scene->PrepareFrame(context);
+        scene->PrepareFrame(metalContext.get());
 
         using namespace SceneEngine;
         auto presChainDesc = presentationChain->GetDesc();
         LightingParser_Execute(
-            context, lightingParserContext, 
+            metalContext.get(), lightingParserContext, 
             RenderingQualitySettings(
                 presChainDesc._dimensions, 
                 Tweakable("SamplingCount", 1), Tweakable("SamplingQuality", 0)));
@@ -333,10 +335,10 @@ namespace Sample
         }
 
         auto& usefulFonts = RenderCore::Techniques::FindCachedBox<UsefulFonts>(UsefulFonts::Desc());
-        DrawPendingResources(context, lightingParserContext, usefulFonts._defaultFont0.get());
+        DrawPendingResources(metalContext.get(), lightingParserContext, usefulFonts._defaultFont0.get());
 
         if (overlaySys) {
-            overlaySys->RenderWidgets(renderDevice, lightingParserContext.GetProjectionDesc());
+            overlaySys->RenderWidgets(context, lightingParserContext.GetProjectionDesc());
         }
 
         return PlatformRig::FrameRig::RenderResult(!lightingParserContext._pendingResources.empty());

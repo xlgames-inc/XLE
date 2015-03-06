@@ -42,14 +42,14 @@ namespace Sample
         }
 
         void RenderToScene(
-            RenderCore::Metal::DeviceContext* devContext, 
+            RenderCore::IThreadContext* devContext, 
             SceneEngine::LightingParserContext& parserContext)
         {
             _manipulatorsInterface->Render(devContext, parserContext);
         }
 
         void RenderWidgets(
-            RenderCore::IDevice* device, 
+            RenderCore::IThreadContext* device, 
             const RenderCore::Techniques::ProjectionDesc& projectionDesc)
         {
             _screens->Render(device, projectionDesc);

@@ -183,6 +183,8 @@
     <ClInclude Include="..\FlexEnd.h" />
     <ClInclude Include="..\FlexUtil.h" />
     <ClInclude Include="..\IDevice_Forward.h" />
+    <ClInclude Include="..\IThreadContext.h" />
+    <ClInclude Include="..\IThreadContext_Forward.h" />
     <ClInclude Include="..\Metal\Buffer.h" />
     <ClInclude Include="..\Metal\Detail\DXGICompatibleFormats.h" />
     <ClInclude Include="..\Metal\DeviceContext.h" />

@@ -117,7 +117,7 @@ namespace SceneEngine
     }
 
     RayVsModelStateContext::RayVsModelStateContext(
-        RenderCore::Metal::DeviceContext* devContext,
+        std::shared_ptr<RenderCore::Metal::DeviceContext> devContext,
         const RenderCore::Techniques::TechniqueContext& techniqueContext,
         const RenderCore::Techniques::CameraDesc* cameraForLOD)
     : _devContext(devContext)
@@ -152,9 +152,9 @@ namespace SceneEngine
         if (cameraForLOD) { camera = *cameraForLOD; }
 
         LightingParser_SetupScene(
-            devContext, _parserContext, camera, qualitySettings);
+            _devContext.get(), _parserContext, camera, qualitySettings);
         LightingParser_SetGlobalTransform(
-            devContext, _parserContext, camera, qualitySettings._dimensions[0], qualitySettings._dimensions[1],
+            _devContext.get(), _parserContext, camera, qualitySettings._dimensions[0], qualitySettings._dimensions[1],
             &specialProjMatrix);
 
         _oldSO = RenderCore::Metal::GeometryShader::GetDefaultStreamOutputInitializers();

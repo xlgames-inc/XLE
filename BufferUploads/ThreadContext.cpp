@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "ThreadContext.h"
+#include "../RenderCore/IThreadContext.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/HeapUtils.h"
@@ -52,8 +53,8 @@ namespace BufferUploads
             _queuedCommandLists.push_overflow(std::move(newCommandList));
         } else {
                     // immediate resolve -- skip the render thread resolve step...
-            _commitStepUnderConstruction.CommitToImmediate_PreCommandList(_device);
-            _commitStepUnderConstruction.CommitToImmediate_PostCommandList(_device);
+            _commitStepUnderConstruction.CommitToImmediate_PreCommandList(_underlyingContext);
+            _commitStepUnderConstruction.CommitToImmediate_PostCommandList(_underlyingContext);
             newCommandList._metrics._frameId = PlatformInterface::GetFrameID();
             newCommandList._metrics._commitTime = currentTime;
             #if defined(XL_BUFFER_UPLOAD_RECORD_THREAD_CONTEXT_METRICS)
@@ -70,9 +71,11 @@ namespace BufferUploads
         ++_commandListIDUnderConstruction;
     }
 
-    void ThreadContext::CommitToImmediate(PlatformInterface::GPUEventStack& gpuEventStack)
+    void ThreadContext::CommitToImmediate(
+        std::shared_ptr<RenderCore::IThreadContext>& commitTo,
+        PlatformInterface::GPUEventStack& gpuEventStack)
     {
-        auto immContext = DeviceContext::GetImmediateContext(_device);
+        auto immContext = DeviceContext::Get(*commitTo);
         if (_requiresResolves) {
             // FUNCTION_PROFILER_RENDER_FLAT
 
@@ -98,11 +101,11 @@ namespace BufferUploads
                         gotStart = true;
                     }
 
-                    commandList->_commitStep.CommitToImmediate_PreCommandList(_device);
+                    commandList->_commitStep.CommitToImmediate_PreCommandList(commitTo);
                     if (commandList->_deviceCommandList) {
                         immContext->CommitCommandList(*commandList->_deviceCommandList.get());
                     }
-                    commandList->_commitStep.CommitToImmediate_PostCommandList(_device);
+                    commandList->_commitStep.CommitToImmediate_PostCommandList(commitTo);
                     _commandListIDCommittedToImmediate   = std::max(_commandListIDCommittedToImmediate, commandList->_id);
                     gpuEventStack.TriggerEvent(immContext.get(), commandList->_id);
                 
@@ -271,11 +274,12 @@ namespace BufferUploads
         }
     }
 
-    ThreadContext::ThreadContext(RenderCore::IDevice* device, DeviceContext* context) 
-    : _deviceContext(device, context), _requiresResolves(PlatformInterface::ContextBasedMultithreading) // context != PlatformInterface::GetImmediateContext())
+    ThreadContext::ThreadContext(std::shared_ptr<RenderCore::IThreadContext> underlyingContext) 
+    : _deviceContext(underlyingContext), _requiresResolves(PlatformInterface::ContextBasedMultithreading) // context != PlatformInterface::GetImmediateContext())
     , _currentEventListId(0), _eventListWritingIndex(0), _currentEventListProcessedId(0)
-    , _currentEventListPublishedId(0), _device(device)
+    , _currentEventListPublishedId(0)
     {
+        _underlyingContext = std::move(underlyingContext);
         _lastResolve = _tickFrequency = 0;
         _commitCountCurrent = _commitCountLastResolve = 0;
         // XlZeroMemory(_eventBuffers);
@@ -283,7 +287,7 @@ namespace BufferUploads
             QueryPerformanceFrequency((LARGE_INTEGER*)&_tickFrequency);
         #endif
 
-        if (context->IsImmediate()) {
+        if (_underlyingContext->IsImmediate()) {
             _requiresResolves = false;  // immediate context requires no resolves
         }
 
@@ -351,10 +355,10 @@ namespace BufferUploads
         _deferredDefragCopies.push_back(std::forward<CommitStep::DeferredDefragCopy>(copy));
     }
 
-    void CommitStep::CommitToImmediate_PreCommandList(RenderCore::IDevice* device)
+    void CommitStep::CommitToImmediate_PreCommandList(std::shared_ptr<RenderCore::IThreadContext>& immContext)
     {
         if (!_deferredCopies.empty()) {
-            PlatformInterface::UnderlyingDeviceContext immediateContext(device);
+            PlatformInterface::UnderlyingDeviceContext immediateContext(immContext);
             for (auto i=_deferredCopies.begin(); i!=_deferredCopies.end(); ++i) {
                 const bool useMapPath = true;
                 if (useMapPath) {
@@ -368,10 +372,10 @@ namespace BufferUploads
         }
     }
 
-    void CommitStep::CommitToImmediate_PostCommandList(RenderCore::IDevice* device)
+    void CommitStep::CommitToImmediate_PostCommandList(std::shared_ptr<RenderCore::IThreadContext>& immContext)
     {
         if (!_deferredDefragCopies.empty()) {
-            PlatformInterface::UnderlyingDeviceContext immediateContext(device);
+            PlatformInterface::UnderlyingDeviceContext immediateContext(immContext);
             for (std::vector<DeferredDefragCopy>::const_iterator i=_deferredDefragCopies.begin(); i!=_deferredDefragCopies.end(); ++i) {
                 immediateContext.ResourceCopy_DefragSteps(*i->_destination, *i->_source, i->_steps);
             }

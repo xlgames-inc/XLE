@@ -533,12 +533,12 @@
 
         void                        UnderlyingDeviceContext::BeginCommandList()
         {
-            _context->BeginCommandList();
+            _devContext->BeginCommandList();
         }
 
         UnderlyingDeviceContext::UnderlyingDeviceContext(RenderCore::IDevice* device, DeviceContext* context)
         : _device(device)
-        , _context(context ? intrusive_ptr<DeviceContext>(context) : DeviceContext::GetImmediateContext(device))
+        , _devContext(context ? intrusive_ptr<DeviceContext>(context) : DeviceContext::GetImmediateContext(device))
         {
         }
 
