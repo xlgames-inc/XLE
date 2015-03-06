@@ -11,6 +11,7 @@
 #include "PreviewRenderManager.h"
 #include "TypeRules.h"
 #include "ShaderDiagramDocument.h"
+#include "../GUILayer/MarshalString.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/DeviceContextImpl.h"
@@ -23,7 +24,6 @@
 #include "../../Math/Vector.h"
 #include "../../Math/Transformations.h"
 #include "../../Math/ProjectionMath.h"
-#include "MarshalString.h"
 #include <tuple>
 #include <D3D11Shader.h>
 

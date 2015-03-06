@@ -23,19 +23,19 @@ namespace GUILayer
         PlatformRig::FrameRig& GetFrameRig() { return *_frameRig; }
         std::shared_ptr<RenderCore::IPresentationChain>& GetPresentationChain() { return _presentationChain; }
 
-        WindowRig(EngineDevice& device, const void* platformWindowHandle);
+        WindowRig(RenderCore::IDevice& device, const void* platformWindowHandle);
         ~WindowRig();
     protected:
         std::unique_ptr<PlatformRig::FrameRig> _frameRig;
         std::shared_ptr<RenderCore::IPresentationChain> _presentationChain;
     };
 
-    WindowRig::WindowRig(EngineDevice& device, const void* platformWindowHandle)
+    WindowRig::WindowRig(RenderCore::IDevice& device, const void* platformWindowHandle)
     {
         ::RECT clientRect;
         GetClientRect((HWND)platformWindowHandle, &clientRect);
 
-        _presentationChain = device.GetRenderDevice()->CreatePresentationChain(
+        _presentationChain = device.CreatePresentationChain(
             platformWindowHandle,
             clientRect.right - clientRect.left, clientRect.bottom - clientRect.top);
         _frameRig = std::make_unique<PlatformRig::FrameRig>();
@@ -57,12 +57,17 @@ namespace GUILayer
         return PlatformRig::FrameRig::RenderResult(false);
     }
 
-    void EngineControl::OnPaint(PaintEventArgs pe)
+    void EngineControl::OnPaint(PaintEventArgs^ pe)
     {
+        // Note -- we're suppressing base class paint events to
+        // try to avoid flicker. See:
+        //    https://msdn.microsoft.com/en-us/library/1e430ef4(v=vs.85).aspx
+        // __super::OnPaint(pe);
+
         auto& frameRig = _pimpl->_windowRig->GetFrameRig();
         {
-            auto& engineDevice = EngineDevice::GetInstance();
-            auto* renderDevice = engineDevice.GetRenderDevice();
+            auto engineDevice = EngineDevice::GetInstance();
+            auto* renderDevice = engineDevice->GetRenderDevice();
             frameRig.ExecuteFrame(
                 renderDevice->GetImmediateContext().get(),
                 renderDevice,
@@ -70,14 +75,9 @@ namespace GUILayer
                 nullptr, nullptr, 
                 DummyRenderFrame);
         }
-
-        // Note -- we're suppressing base class paint events to
-        // try to avoid flicker. See:
-        //    https://msdn.microsoft.com/en-us/library/1e430ef4(v=vs.85).aspx
-        // __super::OnPaint(pe);
     }
 
-    void EngineControl::OnPaintBackground(PaintEventArgs)
+    void EngineControl::OnPaintBackground(PaintEventArgs^)
     {
         // never draw the background. We want to avoid cases where
         // the background draws over a valid rendered surface (particularly
@@ -89,7 +89,8 @@ namespace GUILayer
     EngineControl::EngineControl()
     {
         _pimpl = gcnew Pimpl;
-        _pimpl->_windowRig.reset(new WindowRig(EngineDevice::GetInstance(), this->Handle.ToPointer()));
+        _pimpl->_windowRig.reset(
+            new WindowRig(*EngineDevice::GetInstance()->GetRenderDevice(), this->Handle.ToPointer()));
         InitializeComponent();
     }
 

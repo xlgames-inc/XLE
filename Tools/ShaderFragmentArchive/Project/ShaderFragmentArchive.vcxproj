@@ -64,7 +64,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="../MarshalString.h" />
     <ClInclude Include="../PreviewRenderManager.h" />
     <ClInclude Include="../ShaderDiagramDocument.h" />
     <ClInclude Include="../ShaderFragmentArchive.h" />

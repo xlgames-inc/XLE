@@ -9,7 +9,6 @@
     <ClInclude Include="../Stdafx.h">
       <Filter>System</Filter>
     </ClInclude>
-    <ClInclude Include="../MarshalString.h" />
     <ClInclude Include="../TypeRules.h" />
     <ClInclude Include="../PreviewRenderManager.h" />
     <ClInclude Include="../ShaderDiagramDocument.h" />

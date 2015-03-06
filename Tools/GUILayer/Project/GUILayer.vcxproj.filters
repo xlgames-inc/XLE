@@ -8,5 +8,6 @@
     <ClInclude Include="..\EngineDevice.h" />
     <ClInclude Include="..\CLIXAutoPtr.h" />
     <ClInclude Include="..\EngineControl.h" />
+    <ClInclude Include="..\MarshalString.h" />
   </ItemGroup>
 </Project>

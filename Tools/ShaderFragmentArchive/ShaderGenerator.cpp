@@ -7,7 +7,7 @@
 #include "stdafx.h"
 
 #include "ShaderGenerator.h"
-#include "MarshalString.h"
+#include "../GUILayer/MarshalString.h"
 #include "../../ShaderParser/ShaderPatcher.h"
 
 namespace ShaderPatcherLayer 

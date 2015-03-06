@@ -31,7 +31,7 @@
  
 namespace clix
 {
-    template<class T> ref class auto_ptr
+    template<class T> public ref class auto_ptr
     {
     public:
         typedef T element_type;

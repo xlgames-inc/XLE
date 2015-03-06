@@ -7,9 +7,9 @@
 #include "stdafx.h"
 
 #include "ShaderFragmentArchive.h"
+#include "../GUILayer/MarshalString.h"
 #include "../../ShaderParser/InterfaceSignature.h"
 #include "../../ShaderParser/ParameterSignature.h"
-#include "MarshalString.h"
 #include "../../Utility/Streams/FileSystemMonitor.h"
 #include "../../Utility/Streams/PathUtils.h"
 

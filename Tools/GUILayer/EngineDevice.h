@@ -6,25 +6,42 @@
 
 #pragma once
 
+#include "CLIXAutoPtr.h"
+#include "../../RenderCore/IDevice_Forward.h"
+#include "../../RenderCore/IThreadContext_Forward.h"
 #include <memory>
 
-namespace RenderCore { class IDevice; }
+namespace Assets { class CompileAndAsyncManager; }
+namespace ConsoleRig { class Console; }
+namespace BufferUploads { class IManager; }
 
 namespace GUILayer
 {
-    class EngineDevice
+    class EngineDeviceInternal
+    {
+    public:
+        std::unique_ptr<RenderCore::IDevice> _renderDevice;
+        std::shared_ptr<RenderCore::IThreadContext> _immediateContext;
+        std::unique_ptr<::Assets::CompileAndAsyncManager> _asyncMan;
+        std::unique_ptr<ConsoleRig::Console> _console;
+        std::unique_ptr<BufferUploads::IManager> _bufferUploads;
+
+        ~EngineDeviceInternal();
+    };
+
+    public ref class EngineDevice
     {
     public:
         RenderCore::IDevice* GetRenderDevice();
-        static EngineDevice& GetInstance() { return *s_instance; }
+        static EngineDevice^ GetInstance() { return s_instance; }
+        static void SetDefaultWorkingDirectory();
 
         EngineDevice();
         ~EngineDevice();
     protected:
-        class Pimpl;
-        std::unique_ptr<Pimpl> _pimpl;
+        clix::auto_ptr<EngineDeviceInternal> _pimpl;
 
-        static EngineDevice* s_instance;
+        static EngineDevice^ s_instance;
     };
 }
 

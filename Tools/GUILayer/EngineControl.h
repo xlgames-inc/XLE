@@ -23,8 +23,8 @@ namespace GUILayer
 	protected:
 		~EngineControl();
 
-        virtual void OnPaint(PaintEventArgs);
-        virtual void OnPaintBackground(PaintEventArgs);
+        virtual void OnPaint(PaintEventArgs^) override;
+        virtual void OnPaintBackground(PaintEventArgs^) override;
 
 	private:
 		System::ComponentModel::Container ^components;

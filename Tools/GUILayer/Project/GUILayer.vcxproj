@@ -64,6 +64,7 @@
     <ClInclude Include="..\EngineControl.h">
       <FileType>CppControl</FileType>
     </ClInclude>
+    <ClInclude Include="..\MarshalString.h" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="System" />
