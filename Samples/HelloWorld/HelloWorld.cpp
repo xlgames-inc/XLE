@@ -13,6 +13,7 @@
 #include "../../PlatformRig/DebuggingDisplays/CPUProfileDisplay.h"
 #include "../../PlatformRig/FrameRig.h"
 #include "../../PlatformRig/PlatformRigUtil.h"
+#include "../../PlatformRig/OverlaySystem.h"
 
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Assets/ColladaCompilerInterface.h"
@@ -53,11 +54,11 @@ namespace Sample
 
     static void SetupCompilers(::Assets::CompileAndAsyncManager& asyncMan);
     static PlatformRig::FrameRig::RenderResult RenderFrame(
-        RenderCore::Metal::DeviceContext* context,
+        RenderCore::IThreadContext* context,
         SceneEngine::LightingParserContext& lightingParserContext, BasicSceneParser* scene,
         RenderCore::IDevice* renderDevice, RenderCore::IPresentationChain* presentationChain,
-        RenderOverlays::DebuggingDisplay::DebugScreensSystem* debugSystem);
-    void RenderPostScene(RenderCore::Metal::DeviceContext* context);
+        PlatformRig::IOverlaySystem* debugSystem);
+    void RenderPostScene(RenderCore::IThreadContext* context);
 
     void ExecuteSample()
     {
@@ -128,14 +129,15 @@ namespace Sample
                 //  useful to create a debugging display to go along with any new feature. 
                 //  It just provides a convenient architecture for visualizing important information.
             LogInfo << "Setup tools and debugging";
-            auto debugSystem = std::make_shared<RenderOverlays::DebuggingDisplay::DebugScreensSystem>();
-            InitDebugDisplays(*debugSystem);
+            FrameRig frameRig;
+
+            InitDebugDisplays(*frameRig.GetDebugSystem());
 
             if (g_gpuProfiler) {
                 auto gpuProfilerDisplay = std::make_shared<PlatformRig::Overlays::GPUProfileDisplay>(g_gpuProfiler.get());
-                debugSystem->Register(gpuProfilerDisplay, "[Profiler] GPU Profiler");
+                frameRig.GetDebugSystem()->Register(gpuProfilerDisplay, "[Profiler] GPU Profiler");
             }
-            debugSystem->Register(
+            frameRig.GetDebugSystem()->Register(
                 std::make_shared<PlatformRig::Overlays::CPUProfileDisplay>(&g_cpuProfiler), 
                 "[Profiler] CPU Profiler");
 
@@ -147,7 +149,7 @@ namespace Sample
             LogInfo << "Setup input";
             auto mainInputHandler = std::make_shared<PlatformRig::MainInputHandler>();
             mainInputHandler->AddListener(RenderOverlays::MakeHotKeysHandler("game/xleres/hotkey.txt"));
-            mainInputHandler->AddListener(std::make_shared<PlatformRig::DebugScreensInputHandler>(debugSystem));
+            mainInputHandler->AddListener(frameRig.GetMainOverlaySystem()->GetInputListener());
             window.GetInputTranslator().AddListener(mainInputHandler);
 
                 //  The lighting parser allows plug ins for customizing the lighting process
@@ -166,8 +168,7 @@ namespace Sample
                 //          of timing and some thread management taskes
                 //      * the DeviceContext provides the methods we need for rendering.
             LogInfo << "Setup frame rig and rendering context";
-            FrameRig frameRig(&g_cpuProfiler, debugSystem);
-            auto context = RenderCore::Metal::DeviceContext::GetImmediateContext(renderDevice.get());
+            auto context = renderDevice->GetImmediateContext();
 
                 //  Finally, we execute the frame loop
             for (;;) {
@@ -180,14 +181,16 @@ namespace Sample
                 lightingParserContext._plugins.push_back(stdPlugin);
 
                 auto frameResult = frameRig.ExecuteFrame(
-                    context.get(), renderDevice.get(), presentationChain.get(), g_gpuProfiler.get(),
+                    context.get(), renderDevice.get(), presentationChain.get(), 
+                    g_gpuProfiler.get(), &g_cpuProfiler,
                     std::bind(
                         RenderFrame, std::placeholders::_1,
                         std::ref(lightingParserContext), mainScene.get(), 
-                        renderDevice.get(), presentationChain.get(), debugSystem.get()));
+                        renderDevice.get(), presentationChain.get(), 
+                        frameRig.GetMainOverlaySystem().get()));
 
                     // ------- Update ----------------------------------------
-                bufferUploads->Update();
+                bufferUploads->Update(context);
                 mainScene->Update(frameResult._elapsedTime);
                 g_cpuProfiler.EndFrame();
                 ++FrameRenderCount;
@@ -227,22 +230,23 @@ namespace Sample
     }
 
     PlatformRig::FrameRig::RenderResult RenderFrame(
-        RenderCore::Metal::DeviceContext* context,
+        RenderCore::IThreadContext* context,
         SceneEngine::LightingParserContext& lightingParserContext,
         BasicSceneParser* scene, RenderCore::IDevice* renderDevice,
         RenderCore::IPresentationChain* presentationChain,
-        RenderOverlays::DebuggingDisplay::DebugScreensSystem* debugSystem)
+        PlatformRig::IOverlaySystem* overlaySys)
     {
             //  some scene might need a "prepare" step to 
             //  build some resources before the main render occurs.
-        scene->PrepareFrame(context);
+        auto metalContext = RenderCore::Metal::DeviceContext::Get(*context);
+        scene->PrepareFrame(metalContext.get());
 
         using namespace SceneEngine;
         auto presChainDesc = presentationChain->GetDesc();
 
             //  Execute the lighting parser!
             //      This is where most rendering actually happens.
-        LightingParser_Execute(context, lightingParserContext, 
+        LightingParser_Execute(metalContext.get(), lightingParserContext, 
             RenderingQualitySettings(presChainDesc._dimensions, Tweakable("SamplingCount", 1), Tweakable("SamplingQuality", 0)));
 
             //  If we need to, we can render outside of the lighting parser.
@@ -250,13 +254,19 @@ namespace Sample
             //  operations here.
         RenderPostScene(context);
 
+        if (overlaySys) {
+            overlaySys->RenderToScene(context, lightingParserContext);
+        }
+
             //  The lighting parser will tell us if there where any pending resources
             //  during the render. Here, we can render them as a short list...
         bool hasPendingResources = !lightingParserContext._pendingResources.empty();
         auto defaultFont0 = RenderOverlays::GetX2Font("Raleway", 16);
-        DrawPendingResources(context, lightingParserContext, defaultFont0.get());
+        DrawPendingResources(metalContext.get(), lightingParserContext, defaultFont0.get());
 
-        debugSystem->Render(renderDevice, lightingParserContext.GetProjectionDesc());
+        if (overlaySys) {
+            overlaySys->RenderWidgets(context, lightingParserContext.GetProjectionDesc());
+        }
 
         return PlatformRig::FrameRig::RenderResult(hasPendingResources);
     }
