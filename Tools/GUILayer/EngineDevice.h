@@ -8,18 +8,23 @@
 
 #include <memory>
 
+namespace RenderCore { class IDevice; }
+
 namespace GUILayer
 {
-
     class EngineDevice
     {
     public:
+        RenderCore::IDevice* GetRenderDevice();
+        static EngineDevice& GetInstance() { return *s_instance; }
 
         EngineDevice();
         ~EngineDevice();
     protected:
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
+
+        static EngineDevice* s_instance;
     };
 }
 

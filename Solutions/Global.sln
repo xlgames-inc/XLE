@@ -82,6 +82,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GUILayer", "..\Tools\GUILay
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ShaderFragmentArchive", "..\Tools\ShaderFragmentArchive\Project\ShaderFragmentArchive.vcxproj", "{39EA3939-2098-42CF-8F3A-E3D13BDB546B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BasicGUI", "..\Samples\BasicGUI\Project\BasicGUI.csproj", "{C1BFD687-C6C9-4CF3-87F1-C64C6A53A7BC}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Tegra-Android = Debug|Tegra-Android
@@ -560,6 +562,18 @@ Global
 		{39EA3939-2098-42CF-8F3A-E3D13BDB546B}.Release|Win32.Build.0 = Release|Win32
 		{39EA3939-2098-42CF-8F3A-E3D13BDB546B}.Release|x64.ActiveCfg = Release|x64
 		{39EA3939-2098-42CF-8F3A-E3D13BDB546B}.Release|x64.Build.0 = Release|x64
+		{C1BFD687-C6C9-4CF3-87F1-C64C6A53A7BC}.Debug|Tegra-Android.ActiveCfg = Debug|x86
+		{C1BFD687-C6C9-4CF3-87F1-C64C6A53A7BC}.Debug|Win32.ActiveCfg = Debug|x86
+		{C1BFD687-C6C9-4CF3-87F1-C64C6A53A7BC}.Debug|Win32.Build.0 = Debug|x86
+		{C1BFD687-C6C9-4CF3-87F1-C64C6A53A7BC}.Debug|x64.ActiveCfg = Debug|x86
+		{C1BFD687-C6C9-4CF3-87F1-C64C6A53A7BC}.Profile|Tegra-Android.ActiveCfg = Release|x86
+		{C1BFD687-C6C9-4CF3-87F1-C64C6A53A7BC}.Profile|Win32.ActiveCfg = Release|x86
+		{C1BFD687-C6C9-4CF3-87F1-C64C6A53A7BC}.Profile|Win32.Build.0 = Release|x86
+		{C1BFD687-C6C9-4CF3-87F1-C64C6A53A7BC}.Profile|x64.ActiveCfg = Release|x86
+		{C1BFD687-C6C9-4CF3-87F1-C64C6A53A7BC}.Release|Tegra-Android.ActiveCfg = Release|x86
+		{C1BFD687-C6C9-4CF3-87F1-C64C6A53A7BC}.Release|Win32.ActiveCfg = Release|x86
+		{C1BFD687-C6C9-4CF3-87F1-C64C6A53A7BC}.Release|Win32.Build.0 = Release|x86
+		{C1BFD687-C6C9-4CF3-87F1-C64C6A53A7BC}.Release|x64.ActiveCfg = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -588,5 +602,6 @@ Global
 		{3835285C-9A30-41F3-A615-6C41D14F7074} = {18FDF4B2-37E2-4DFF-B22B-566674160D0B}
 		{D0B45E37-A60C-C794-FFC6-36EB94DA74E1} = {18FDF4B2-37E2-4DFF-B22B-566674160D0B}
 		{C6F14090-65B3-A158-A259-80284609A288} = {18FDF4B2-37E2-4DFF-B22B-566674160D0B}
+		{C1BFD687-C6C9-4CF3-87F1-C64C6A53A7BC} = {18FDF4B2-37E2-4DFF-B22B-566674160D0B}
 	EndGlobalSection
 EndGlobal
