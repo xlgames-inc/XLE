@@ -114,7 +114,7 @@ namespace RenderCore { namespace Techniques
                                             const TechniqueInterface& techniqueInterface);
         bool                IsValid() const { return !_vertexShaderName.empty(); }
 
-        Technique(Data& source, ::Assets::DirectorySearchRules* searchRules = nullptr, std::vector<const ::Assets::DependencyValidation*>* inherited = nullptr);
+        Technique(Utility::Data& source, ::Assets::DirectorySearchRules* searchRules = nullptr, std::vector<const ::Assets::DependencyValidation*>* inherited = nullptr);
         Technique(Technique&& moveFrom);
         Technique& operator=(Technique&& moveFrom);
     protected:

@@ -8,6 +8,8 @@
 #include "MarshalString.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Metal/Shader.h"
+#include "../../RenderCore/Techniques/ResourceBox.h"
+#include "../../RenderOverlays/Font.h"
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../ConsoleRig/Log.h"
@@ -36,9 +38,56 @@ namespace GUILayer
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+        //      hack to make it easy to spawn a thread to process
+        //      items in the background
+    ref class ResourceCompilerThread_Hack
+    {
+    public:
+        static System::Threading::Thread^ BackgroundThread = nullptr;
+
+        static void BackgroundThreadFunction()
+        {
+            while (Active) {
+                Assets::CompileAndAsyncManager::GetInstance().Update();
+                #undef Yield
+                System::Threading::Thread::Yield();
+            }
+        }
+
+        static void Kick() 
+        {
+            Active = true;
+            if (!BackgroundThread) {
+                    //  this thread never dies -- and it keeps 
+                    //      the program alive after it's finished
+                BackgroundThread = gcnew System::Threading::Thread(gcnew System::Threading::ThreadStart(&BackgroundThreadFunction));
+                BackgroundThread->Start();
+            }
+        }
+
+        static void Shutdown()
+        {
+            Active = false;
+            BackgroundThread->Join();
+            delete BackgroundThread;
+            BackgroundThread = nullptr;
+        }
+
+    private:
+        static bool Active = true;
+    };
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
     RenderCore::IDevice* EngineDevice::GetRenderDevice()
     {
         return _pimpl->_renderDevice.get();
+    }
+
+    BufferUploads::IManager* EngineDevice::GetBufferUploads()
+    {
+        return _pimpl->_bufferUploads.get();
     }
     
     EngineDevice::EngineDevice()
@@ -58,6 +107,9 @@ namespace GUILayer
         _pimpl->_asyncMan = RenderCore::Metal::CreateCompileAndAsyncManager();
         _pimpl->_bufferUploads = BufferUploads::CreateManager(_pimpl->_renderDevice.get());
 
+        RenderOverlays::InitFontSystem(_pimpl->_renderDevice.get(), _pimpl->_bufferUploads.get());
+        ResourceCompilerThread_Hack::Kick();
+
         s_instance = this;
     }
 
@@ -65,6 +117,12 @@ namespace GUILayer
     {
         assert(s_instance == this);
         s_instance = nullptr;
+        
+        RenderCore::Techniques::ResourceBoxes_Shutdown();
+        RenderOverlays::CleanupFontSystem();
+        ResourceCompilerThread_Hack::Shutdown();
+        delete _pimpl;
+        TerminateFileSystemMonitoring();
     }
 }
 

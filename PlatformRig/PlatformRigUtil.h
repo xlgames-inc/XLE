@@ -32,7 +32,7 @@ namespace PlatformRig
     /// <summary>Resizes a presentation chain to match a window</summary>
     /// A handler to resize the presentation chain whenever the window
     /// changes size (keeping 1:1 ratio)
-    class ResizePresentationChain : public PlatformRig::IWindowHandler
+    class ResizePresentationChain : public IWindowHandler
     {
     public:
         void    OnResize(unsigned newWidth, unsigned newHeight);

@@ -9,11 +9,11 @@
 #include "CLIXAutoPtr.h"
 #include "../../RenderCore/IDevice_Forward.h"
 #include "../../RenderCore/IThreadContext_Forward.h"
+#include "../../BufferUploads/IBufferUploads_Forward.h"
 #include <memory>
 
 namespace Assets { class CompileAndAsyncManager; }
 namespace ConsoleRig { class Console; }
-namespace BufferUploads { class IManager; }
 
 namespace GUILayer
 {
@@ -33,6 +33,7 @@ namespace GUILayer
     {
     public:
         RenderCore::IDevice* GetRenderDevice();
+        BufferUploads::IManager* GetBufferUploads();
         static EngineDevice^ GetInstance() { return s_instance; }
         static void SetDefaultWorkingDirectory();
 

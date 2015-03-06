@@ -649,51 +649,10 @@ namespace PreviewRender
         return newBitmap;
     }
 
-        //      hack to make it easy to spawn a thread to process
-        //      items in the background
-    ref class ResourceCompilerThread_Hack
-    {
-    public:
-        static System::Threading::Thread^ BackgroundThread = nullptr;
-
-        static void BackgroundThreadFunction()
-        {
-            while (Active) {
-                Assets::CompileAndAsyncManager::GetInstance().Update();
-                #undef Yield
-                System::Threading::Thread::Yield();
-            }
-        }
-
-        static void Kick() 
-        {
-            Active = true;
-            if (!BackgroundThread) {
-                    //  this thread never dies -- and it keeps 
-                    //      the program alive after it's finished
-                BackgroundThread = gcnew System::Threading::Thread(gcnew System::Threading::ThreadStart(&BackgroundThreadFunction));
-                BackgroundThread->Start();
-            }
-        }
-
-        static void Shutdown()
-        {
-            Active = false;
-            BackgroundThread->Join();
-            delete BackgroundThread;
-            BackgroundThread = nullptr;
-        }
-
-    private:
-        static bool Active = true;
-    };
-
     System::Drawing::Bitmap^    PreviewBuilder::GenerateBitmap(ShaderDiagram::Document^ doc, Size^ size)
     {
         const int width = std::max(0, int(size->Width));
         const int height = std::max(0, int(size->Height));
-
-        ResourceCompilerThread_Hack::Kick();
 
         if (!_pimpl->_errorString.empty()) {
             return GenerateErrorBitmap(_pimpl->_errorString.c_str(), size);
@@ -843,11 +802,6 @@ namespace PreviewRender
     PreviewBuilder::~PreviewBuilder()
     {
         delete _pimpl;
-    }
-
-    void PreviewBuilder::Shutdown()
-    {
-        ResourceCompilerThread_Hack::Shutdown();
     }
 
     PreviewBuilder^    Manager::CreatePreview(System::String^ shaderText)

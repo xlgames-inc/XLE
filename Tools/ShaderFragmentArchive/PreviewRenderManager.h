@@ -28,8 +28,6 @@ namespace PreviewRender
         void    Update(ShaderDiagram::Document^ doc, Size^ size);
         void    Invalidate();
 
-        static void Shutdown();
-
         PreviewBuilder(System::String^ shaderText);
         ~PreviewBuilder();
     private:

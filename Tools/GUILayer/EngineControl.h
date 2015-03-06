@@ -25,6 +25,7 @@ namespace GUILayer
 
         virtual void OnPaint(PaintEventArgs^) override;
         virtual void OnPaintBackground(PaintEventArgs^) override;
+        virtual void OnResize(EventArgs^ e) override;
 
 	private:
 		System::ComponentModel::Container ^components;

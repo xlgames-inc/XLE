@@ -182,6 +182,7 @@ public:
     RenderCore::Metal::BoundUniforms    _boundUniforms;
 
     TextStyleResources(const Desc& desc);
+    ~TextStyleResources();
 
     const Assets::DependencyValidation& GetDependencyValidation() const   { return *_validationCallback; }
 private:
@@ -219,6 +220,9 @@ TextStyleResources::TextStyleResources(const Desc& desc)
     _boundUniforms = std::move(boundUniforms);
     _validationCallback = std::move(validationCallback);
 }
+
+TextStyleResources::~TextStyleResources()
+{}
 
 float   TextStyle::Draw(    
     RenderCore::Metal::DeviceContext* renderer, 
@@ -347,7 +351,8 @@ float   TextStyle::Draw(
             if (tex != currentBoundTexture) {
                 Flush(*renderer, workingVertices);
 
-                ShaderResourceView::UnderlyingResource sourceTexture = (ShaderResourceView::UnderlyingResource)tex->GetUnderlying();
+                ShaderResourceView::UnderlyingResource sourceTexture = 
+                    (ShaderResourceView::UnderlyingResource)tex->GetUnderlying();
                 if (!sourceTexture) {
                     throw ::Assets::Exceptions::PendingResource("", "Pending background upload of font texture");
                 }
