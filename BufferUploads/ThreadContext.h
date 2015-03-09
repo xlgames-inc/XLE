@@ -53,8 +53,8 @@ namespace BufferUploads
 
         void Add(DeferredCopy&& copy);
         void Add(DeferredDefragCopy&& copy);
-        void CommitToImmediate_PreCommandList(std::shared_ptr<RenderCore::IThreadContext>& immediateContext);
-        void CommitToImmediate_PostCommandList(std::shared_ptr<RenderCore::IThreadContext>& immediateContext);
+        void CommitToImmediate_PreCommandList(RenderCore::IThreadContext& immediateContext);
+        void CommitToImmediate_PostCommandList(RenderCore::IThreadContext& immediateContext);
         bool IsEmpty() const;
 
         void swap(CommitStep& other);
@@ -104,7 +104,7 @@ namespace BufferUploads
         void                    BeginCommandList();
         void                    ResolveCommandList();
         void                    CommitToImmediate(
-            std::shared_ptr<RenderCore::IThreadContext>& commitTo,
+            RenderCore::IThreadContext& commitTo,
             PlatformInterface::GPUEventStack& gpuEventStack);
 
         CommandListMetrics      PopMetrics();

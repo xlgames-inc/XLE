@@ -46,7 +46,7 @@ namespace BufferUploads
         PoolSystemMetrics       CalculatePoolMetrics() const;
         size_t                  ByteCount(const BufferDesc& desc) const;
 
-        void                    Update(std::shared_ptr<RenderCore::IThreadContext>&);
+        void                    Update(RenderCore::IThreadContext&);
         void                    Flush();
         void                    FramePriority_Barrier();
 

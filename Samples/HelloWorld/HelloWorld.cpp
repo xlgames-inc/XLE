@@ -190,7 +190,7 @@ namespace Sample
                         frameRig.GetMainOverlaySystem().get()));
 
                     // ------- Update ----------------------------------------
-                bufferUploads->Update(context);
+                bufferUploads->Update(*context);
                 mainScene->Update(frameResult._elapsedTime);
                 g_cpuProfiler.EndFrame();
                 ++FrameRenderCount;

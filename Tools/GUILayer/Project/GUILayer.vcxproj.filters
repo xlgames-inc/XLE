@@ -3,11 +3,14 @@
   <ItemGroup>
     <ClCompile Include="..\EngineDevice.cpp" />
     <ClCompile Include="..\EngineControl.cpp" />
+    <ClCompile Include="..\WindowRig.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\EngineDevice.h" />
     <ClInclude Include="..\CLIXAutoPtr.h" />
     <ClInclude Include="..\EngineControl.h" />
     <ClInclude Include="..\MarshalString.h" />
+    <ClInclude Include="..\IWindowRig.h" />
+    <ClInclude Include="..\WindowRigInternal.h" />
   </ItemGroup>
 </Project>

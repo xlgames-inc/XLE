@@ -703,7 +703,7 @@ namespace BufferUploads
                 return nullptr;                   // failed to allocate the resource. Return false and We'll try again later...
             }
     
-            PlatformInterface::UnderlyingDeviceContext deviceContext(_device->GetImmediateContext());
+            PlatformInterface::UnderlyingDeviceContext deviceContext(*_device->GetImmediateContext());
             for (unsigned l=part._lodLevelMin; l<=part._lodLevelMax; ++l) {
                 for (unsigned a=0; a<std::max(1u,part._arrayIndex); ++a) {
                     auto size = initialisationData->GetDataSize(l, a);
@@ -2276,7 +2276,7 @@ namespace BufferUploads
         return _foregroundContext->EventList_Release(id);
     }
 
-    void                    Manager::Update(std::shared_ptr<RenderCore::IThreadContext>& immediateContext)
+    void                    Manager::Update(RenderCore::IThreadContext& immediateContext)
     {
         if (_waitingForDeviceResetEvent!=XlHandle_Invalid) {
             assert(0);

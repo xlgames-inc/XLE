@@ -562,7 +562,7 @@ namespace BufferUploads
 
             /// <summary>Called every frame to update uploads</summary>
             /// Performs once-per-frame tasks. Normally called by the render device once per frame.
-        IMETHOD void                    Update  (std::shared_ptr<RenderCore::IThreadContext>& immediateContext) IPURE;
+        IMETHOD void                    Update  (RenderCore::IThreadContext& immediateContext) IPURE;
             /// @}
 
             /// \name Utilities, profiling & debugging

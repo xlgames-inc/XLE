@@ -6,6 +6,8 @@
 
 #pragma once
 
+#include "CLIXAutoPtr.h"
+
 using namespace System;
 using namespace System::ComponentModel;
 using namespace System::Collections;
@@ -15,6 +17,7 @@ using namespace System::Drawing;
 
 namespace GUILayer 
 {
+    class EngineControlPimpl;
 	public ref class EngineControl : public System::Windows::Forms::UserControl
 	{
 	public:
@@ -30,8 +33,7 @@ namespace GUILayer
 	private:
 		System::ComponentModel::Container ^components;
 
-        ref class Pimpl;
-        Pimpl^ _pimpl;
+        clix::auto_ptr<EngineControlPimpl> _pimpl;
 
 #pragma region Windows Form Designer generated code
 		/// <summary>

@@ -100,7 +100,7 @@ namespace BufferUploads { namespace PlatformInterface
         void                                            BeginCommandList();
 
             ////////   C O N S T R U C T I O N   ////////
-        UnderlyingDeviceContext(std::shared_ptr<RenderCore::IThreadContext> renderCoreContext);
+        UnderlyingDeviceContext(RenderCore::IThreadContext& renderCoreContext);
         ~UnderlyingDeviceContext();
 
         DeviceContext& GetUnderlying() { return *_devContext.get(); }
@@ -113,8 +113,8 @@ namespace BufferUploads { namespace PlatformInterface
     private:
         void Unmap(const Underlying::Resource&, unsigned _subresourceIndex);
         friend class MappedBuffer;
-        std::shared_ptr<RenderCore::IThreadContext> _renderCoreContext;
-        std::shared_ptr<DeviceContext>              _devContext;
+        RenderCore::IThreadContext*         _renderCoreContext;
+        std::shared_ptr<DeviceContext>      _devContext;
     };
 
         /////////////////////////////////////////////////////////////////////

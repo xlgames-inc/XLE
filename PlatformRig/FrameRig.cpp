@@ -80,8 +80,9 @@ namespace PlatformRig
 
         std::shared_ptr<OverlaySystemSet> _mainOverlaySys;
         std::shared_ptr<DebugScreensSystem> _debugSystem;
+        std::vector<PostPresentCallback> _postPresentCallbacks;
 
-        Pimpl() 
+        Pimpl()
         : _prevFrameStartTime(0) 
         , _timerFrequency(GetPerformanceCounterFrequency())
         , _frameRenderCount(0)
@@ -221,6 +222,12 @@ namespace PlatformRig
             presChain->Present();
         }
 
+        {
+            for (auto i=_pimpl->_postPresentCallbacks.begin(); i!=_pimpl->_postPresentCallbacks.end(); ++i) {
+                (*i)(*context);
+            }
+        }
+
         if (gpuProfiler) {
             RenderCore::Metal::GPUProfiler::Frame_End(*metalContext, gpuProfiler);
         }
@@ -258,6 +265,11 @@ namespace PlatformRig
     std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem>& FrameRig::GetDebugSystem()
     {
         return _pimpl->_debugSystem;
+    }
+
+    void FrameRig::AddPostPresentCallback(const PostPresentCallback& postPresentCallback)
+    {
+        _pimpl->_postPresentCallbacks.push_back(postPresentCallback);
     }
 
     FrameRig::FrameRig()

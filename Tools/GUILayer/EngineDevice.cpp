@@ -6,6 +6,8 @@
 
 #include "EngineDevice.h"
 #include "MarshalString.h"
+#include "WindowRigInternal.h"
+#include "../../PlatformRig/FrameRig.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderCore/Techniques/ResourceBox.h"
@@ -20,8 +22,6 @@
 
 namespace GUILayer
 {
-    EngineDeviceInternal::~EngineDeviceInternal() {}
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
     void EngineDevice::SetDefaultWorkingDirectory()
     {
@@ -78,18 +78,42 @@ namespace GUILayer
         static bool Active = true;
     };
 
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-    RenderCore::IDevice* EngineDevice::GetRenderDevice()
+    RenderCore::IDevice* NativeEngineDevice::GetRenderDevice()
     {
-        return _pimpl->_renderDevice.get();
+        return _renderDevice.get();
     }
 
-    BufferUploads::IManager* EngineDevice::GetBufferUploads()
+    BufferUploads::IManager* NativeEngineDevice::GetBufferUploads()
     {
-        return _pimpl->_bufferUploads.get();
+        return _bufferUploads.get();
     }
     
+    std::unique_ptr<IWindowRig> NativeEngineDevice::CreateWindowRig(const void* nativeWindowHandle)
+    {
+        std::unique_ptr<WindowRig> result(new WindowRig(*_renderDevice.get(), nativeWindowHandle));
+
+        std::shared_ptr<BufferUploads::IManager> bufferUploads = _bufferUploads;
+        result->GetFrameRig().AddPostPresentCallback(
+            [=](RenderCore::IThreadContext& threadContext)
+            { bufferUploads->Update(threadContext); });
+
+        return std::move(result);
+    }
+
+    NativeEngineDevice::NativeEngineDevice()
+    {
+        _console = std::make_unique<ConsoleRig::Console>();
+        _renderDevice = RenderCore::CreateDevice();
+        _immediateContext = _renderDevice->GetImmediateContext();
+        _asyncMan = RenderCore::Metal::CreateCompileAndAsyncManager();
+        _bufferUploads = BufferUploads::CreateManager(_renderDevice.get());
+    }
+
+    NativeEngineDevice::~NativeEngineDevice()
+    {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
     EngineDevice::EngineDevice()
     {
         assert(s_instance == nullptr);
@@ -100,14 +124,9 @@ namespace GUILayer
         ConsoleRig::Logging_Startup("log.cfg", 
             StringMeld<128>() << "int/" << appName << ".txt");
 
-        _pimpl.reset(new EngineDeviceInternal);
-        _pimpl->_console = std::make_unique<ConsoleRig::Console>();
-        _pimpl->_renderDevice = RenderCore::CreateDevice();
-        _pimpl->_immediateContext = _pimpl->_renderDevice->GetImmediateContext();
-        _pimpl->_asyncMan = RenderCore::Metal::CreateCompileAndAsyncManager();
-        _pimpl->_bufferUploads = BufferUploads::CreateManager(_pimpl->_renderDevice.get());
-
-        RenderOverlays::InitFontSystem(_pimpl->_renderDevice.get(), _pimpl->_bufferUploads.get());
+        _pimpl.reset(new NativeEngineDevice);
+        
+        RenderOverlays::InitFontSystem(_pimpl->GetRenderDevice(), _pimpl->GetBufferUploads());
         ResourceCompilerThread_Hack::Kick();
 
         s_instance = this;

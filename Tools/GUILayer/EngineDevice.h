@@ -17,30 +17,47 @@ namespace ConsoleRig { class Console; }
 
 namespace GUILayer
 {
-    class EngineDeviceInternal
+    class IWindowRig;
+
+    class NativeEngineDevice
     {
     public:
+        RenderCore::IDevice*        GetRenderDevice();
+        BufferUploads::IManager*    GetBufferUploads();
+        std::unique_ptr<IWindowRig> CreateWindowRig(const void* nativeWindowHandle);
+
+        NativeEngineDevice();
+        ~NativeEngineDevice();
+
+    protected:
         std::unique_ptr<RenderCore::IDevice> _renderDevice;
         std::shared_ptr<RenderCore::IThreadContext> _immediateContext;
         std::unique_ptr<::Assets::CompileAndAsyncManager> _asyncMan;
         std::unique_ptr<ConsoleRig::Console> _console;
-        std::unique_ptr<BufferUploads::IManager> _bufferUploads;
-
-        ~EngineDeviceInternal();
+        std::shared_ptr<BufferUploads::IManager> _bufferUploads;
     };
 
+    /// <summary>CLI layer to represent a rendering device</summary>
+    ///
+    /// This class manages the construction/destruction and access of some global 
+    /// engine resources.
+    ///
+    /// It must be a managed classed, so that it can be accessed from a C# layer.
+    /// We generally want to avoid putting a lot of functionality in "ref class"
+    /// CLI objects -- but we do need them to provide interfaces that can be used
+    /// from GUI elements. This creates a kind of balancing act between what should
+    /// go in "ref class" objects and plain native objects.
     public ref class EngineDevice
     {
     public:
-        RenderCore::IDevice* GetRenderDevice();
-        BufferUploads::IManager* GetBufferUploads();
         static EngineDevice^ GetInstance() { return s_instance; }
         static void SetDefaultWorkingDirectory();
+        NativeEngineDevice& GetNative() { return *_pimpl; }
 
         EngineDevice();
         ~EngineDevice();
     protected:
-        clix::auto_ptr<EngineDeviceInternal> _pimpl;
+        clix::auto_ptr<NativeEngineDevice> _pimpl;
 
         static EngineDevice^ s_instance;
     };

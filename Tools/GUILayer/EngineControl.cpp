@@ -8,7 +8,7 @@
 
 #include "EngineControl.h"
 #include "EngineDevice.h"
-#include "CLIXAutoPtr.h"
+#include "IWindowRig.h"
 #include "../../PlatformRig/FrameRig.h"
 #include "../../PlatformRig/OverlappedWindow.h"
 #include "../../RenderCore/IDevice.h"
@@ -25,84 +25,13 @@
 namespace GUILayer 
 {
 
+    
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class ResizePresentationChain : public PlatformRig::IWindowHandler
+    class EngineControlPimpl
     {
     public:
-        void    OnResize(unsigned newWidth, unsigned newHeight);
-
-        ResizePresentationChain(
-            std::shared_ptr<RenderCore::IPresentationChain> presentationChain);
-    protected:
-        std::shared_ptr<RenderCore::IPresentationChain> _presentationChain;
-    };
-
-    void ResizePresentationChain::OnResize(unsigned newWidth, unsigned newHeight)
-    {
-        if (_presentationChain) {
-                //  When we become an icon, we'll end up with zero width and height.
-                //  We can't actually resize the presentation to zero. And we can't
-                //  delete the presentation chain from here. So maybe just do nothing.
-            if (newWidth && newHeight) {
-                _presentationChain->Resize(newWidth, newHeight);
-            }
-        }
-    }
-
-    ResizePresentationChain::ResizePresentationChain(std::shared_ptr<RenderCore::IPresentationChain> presentationChain)
-    : _presentationChain(presentationChain)
-    {}
-
-
-    class WindowRig
-    {
-    public:
-        PlatformRig::FrameRig& GetFrameRig() { return *_frameRig; }
-        std::shared_ptr<RenderCore::IPresentationChain>& GetPresentationChain() { return _presentationChain; }
-        void AddWindowHandler(std::shared_ptr<PlatformRig::IWindowHandler> windowHandler);
-
-        void OnResize(unsigned newWidth, unsigned newHeight);
-
-        WindowRig(RenderCore::IDevice& device, const void* platformWindowHandle);
-        ~WindowRig();
-    protected:
-        std::unique_ptr<PlatformRig::FrameRig> _frameRig;
-        std::shared_ptr<RenderCore::IPresentationChain> _presentationChain;
-        std::vector<std::shared_ptr<PlatformRig::IWindowHandler>> _windowHandlers;
-    };
-
-    void WindowRig::AddWindowHandler(std::shared_ptr<PlatformRig::IWindowHandler> windowHandler)
-    {
-        _windowHandlers.push_back(std::move(windowHandler));
-    }
-
-    void WindowRig::OnResize(unsigned newWidth, unsigned newHeight)
-    {
-        for (auto i=_windowHandlers.begin(); i!=_windowHandlers.end(); ++i) {
-            (*i)->OnResize(newWidth, newHeight);
-        }
-    }
-
-    WindowRig::WindowRig(RenderCore::IDevice& device, const void* platformWindowHandle)
-    {
-        ::RECT clientRect;
-        GetClientRect((HWND)platformWindowHandle, &clientRect);
-
-        _presentationChain = device.CreatePresentationChain(
-            platformWindowHandle,
-            clientRect.right - clientRect.left, clientRect.bottom - clientRect.top);
-        _frameRig = std::make_unique<PlatformRig::FrameRig>();
-    }
-
-    WindowRig::~WindowRig() {}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-    ref class EngineControl::Pimpl
-    {
-    public:
-        clix::auto_ptr<WindowRig> _windowRig;
+        std::unique_ptr<IWindowRig> _windowRig;
     };
 
     class RenderPostSceneResources
@@ -158,7 +87,7 @@ namespace GUILayer
         auto& frameRig = _pimpl->_windowRig->GetFrameRig();
         {
             auto engineDevice = EngineDevice::GetInstance();
-            auto* renderDevice = engineDevice->GetRenderDevice();
+            auto* renderDevice = engineDevice->GetNative().GetRenderDevice();
             auto immediateContext = renderDevice->GetImmediateContext();
             frameRig.ExecuteFrame(
                 immediateContext.get(),
@@ -166,9 +95,6 @@ namespace GUILayer
                 _pimpl->_windowRig->GetPresentationChain().get(),
                 nullptr, nullptr, 
                 DummyRenderFrame);
-
-                // we need to tick buffer uploads in the main present thread at regular intervals...
-            engineDevice->GetBufferUploads()->Update(immediateContext);
         }
     }
 
@@ -189,12 +115,8 @@ namespace GUILayer
 
     EngineControl::EngineControl()
     {
-        _pimpl = gcnew Pimpl;
-        _pimpl->_windowRig.reset(
-            new WindowRig(*EngineDevice::GetInstance()->GetRenderDevice(), this->Handle.ToPointer()));
-
-        _pimpl->_windowRig->AddWindowHandler(
-            std::make_shared<ResizePresentationChain>(_pimpl->_windowRig->GetPresentationChain()));
+        _pimpl.reset(new EngineControlPimpl);
+        _pimpl->_windowRig = EngineDevice::GetInstance()->GetNative().CreateWindowRig(this->Handle.ToPointer());
         InitializeComponent();
     }
 

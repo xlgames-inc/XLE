@@ -47,6 +47,9 @@ namespace PlatformRig
 
         void SetFrameLimiter(unsigned maxFPS);
 
+        typedef std::function<void(RenderCore::IThreadContext&)> PostPresentCallback;
+        virtual void AddPostPresentCallback(const PostPresentCallback&);
+
         std::shared_ptr<OverlaySystemSet>& GetMainOverlaySystem();
         std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem>& GetDebugSystem();
 

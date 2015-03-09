@@ -288,12 +288,10 @@
             _devContext->GetUnderlying()->Unmap(ResPtr(resource), subResourceIndex);
         }
 
-        UnderlyingDeviceContext::UnderlyingDeviceContext(
-            std::shared_ptr<RenderCore::IThreadContext> renderCoreContext) 
-        : _renderCoreContext(std::move(renderCoreContext))
+        UnderlyingDeviceContext::UnderlyingDeviceContext(RenderCore::IThreadContext& renderCoreContext) 
+        : _renderCoreContext(&renderCoreContext)
         {
             _devContext = DeviceContext::Get(*_renderCoreContext);
-
             _useUpdateSubresourceWorkaround = false;
 
             if (!_devContext->IsImmediate()) {

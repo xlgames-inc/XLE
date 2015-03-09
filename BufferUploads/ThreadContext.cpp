@@ -53,8 +53,8 @@ namespace BufferUploads
             _queuedCommandLists.push_overflow(std::move(newCommandList));
         } else {
                     // immediate resolve -- skip the render thread resolve step...
-            _commitStepUnderConstruction.CommitToImmediate_PreCommandList(_underlyingContext);
-            _commitStepUnderConstruction.CommitToImmediate_PostCommandList(_underlyingContext);
+            _commitStepUnderConstruction.CommitToImmediate_PreCommandList(*_underlyingContext);
+            _commitStepUnderConstruction.CommitToImmediate_PostCommandList(*_underlyingContext);
             newCommandList._metrics._frameId = PlatformInterface::GetFrameID();
             newCommandList._metrics._commitTime = currentTime;
             #if defined(XL_BUFFER_UPLOAD_RECORD_THREAD_CONTEXT_METRICS)
@@ -72,10 +72,10 @@ namespace BufferUploads
     }
 
     void ThreadContext::CommitToImmediate(
-        std::shared_ptr<RenderCore::IThreadContext>& commitTo,
+        RenderCore::IThreadContext& commitTo,
         PlatformInterface::GPUEventStack& gpuEventStack)
     {
-        auto immContext = DeviceContext::Get(*commitTo);
+        auto immContext = DeviceContext::Get(commitTo);
         if (_requiresResolves) {
             // FUNCTION_PROFILER_RENDER_FLAT
 
@@ -275,7 +275,7 @@ namespace BufferUploads
     }
 
     ThreadContext::ThreadContext(std::shared_ptr<RenderCore::IThreadContext> underlyingContext) 
-    : _deviceContext(underlyingContext), _requiresResolves(PlatformInterface::ContextBasedMultithreading) // context != PlatformInterface::GetImmediateContext())
+    : _deviceContext(*underlyingContext), _requiresResolves(PlatformInterface::ContextBasedMultithreading) // context != PlatformInterface::GetImmediateContext())
     , _currentEventListId(0), _eventListWritingIndex(0), _currentEventListProcessedId(0)
     , _currentEventListPublishedId(0)
     {
@@ -355,7 +355,7 @@ namespace BufferUploads
         _deferredDefragCopies.push_back(std::forward<CommitStep::DeferredDefragCopy>(copy));
     }
 
-    void CommitStep::CommitToImmediate_PreCommandList(std::shared_ptr<RenderCore::IThreadContext>& immContext)
+    void CommitStep::CommitToImmediate_PreCommandList(RenderCore::IThreadContext& immContext)
     {
         if (!_deferredCopies.empty()) {
             PlatformInterface::UnderlyingDeviceContext immediateContext(immContext);
@@ -372,7 +372,7 @@ namespace BufferUploads
         }
     }
 
-    void CommitStep::CommitToImmediate_PostCommandList(std::shared_ptr<RenderCore::IThreadContext>& immContext)
+    void CommitStep::CommitToImmediate_PostCommandList(RenderCore::IThreadContext& immContext)
     {
         if (!_deferredDefragCopies.empty()) {
             PlatformInterface::UnderlyingDeviceContext immediateContext(immContext);
