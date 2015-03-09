@@ -35,6 +35,14 @@ namespace GUILayer
 
         clix::auto_ptr<EngineControlPimpl> _pimpl;
 
+        void Evnt_KeyDown(Object^, KeyEventArgs^ e);
+        void Evnt_KeyUp(Object^, KeyEventArgs^ e);
+        void Evnt_KeyPress(Object^, KeyPressEventArgs^ e);
+        void Evnt_MouseMove(Object^, MouseEventArgs^ e);
+        void Evnt_MouseDown(Object^, MouseEventArgs^ e);
+        void Evnt_MouseUp(Object^, MouseEventArgs^ e);
+        void Evnt_DoubleClick(Object^, MouseEventArgs^ e);
+
 #pragma region Windows Form Designer generated code
 		/// <summary>
 		/// Required method for Designer support - do not modify

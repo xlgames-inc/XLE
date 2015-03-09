@@ -79,15 +79,8 @@ namespace GUILayer
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-    RenderCore::IDevice* NativeEngineDevice::GetRenderDevice()
-    {
-        return _renderDevice.get();
-    }
-
-    BufferUploads::IManager* NativeEngineDevice::GetBufferUploads()
-    {
-        return _bufferUploads.get();
-    }
+    RenderCore::IDevice* NativeEngineDevice::GetRenderDevice()          { return _renderDevice.get(); }
+    BufferUploads::IManager* NativeEngineDevice::GetBufferUploads()     { return _bufferUploads.get(); }
     
     std::unique_ptr<IWindowRig> NativeEngineDevice::CreateWindowRig(const void* nativeWindowHandle)
     {
@@ -121,8 +114,7 @@ namespace GUILayer
             // initialise logging first...
         auto appName = clix::marshalString<clix::E_UTF8>(System::Windows::Forms::Application::ProductName);
         CreateDirectoryRecursive("int");
-        ConsoleRig::Logging_Startup("log.cfg", 
-            StringMeld<128>() << "int/" << appName << ".txt");
+        ConsoleRig::Logging_Startup("log.cfg", StringMeld<128>() << "int/" << appName << ".txt");
 
         _pimpl.reset(new NativeEngineDevice);
         

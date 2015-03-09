@@ -75,9 +75,7 @@ namespace Sample
             //      1. using a IOverlayContext
             //      2. using RenderOverlay::Font directly
             //
-        const char text[] = {
-            "Hello World!... It's me, XLE!"
-        };
+        const char text[] = "Hello World!... It's me, XLE!";
         const bool textRenderingMethod = 1;
 
         using namespace RenderOverlays;
