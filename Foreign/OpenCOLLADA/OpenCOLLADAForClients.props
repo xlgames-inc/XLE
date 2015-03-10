@@ -4,16 +4,12 @@
     <Import Project="$(SolutionDir)/defines.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros">
-    <ColladaConfiguration Condition="$(Configuration.Contains('Debug'))">Debug</ColladaConfiguration>
-    <ColladaConfiguration Condition="!$(Configuration.Contains('Debug'))">Release_static</ColladaConfiguration>
-    <SaxFrameworkLoaderConfiguration Condition="$(Configuration.Contains('Debug'))">Debug_Expat</SaxFrameworkLoaderConfiguration>
-    <SaxFrameworkLoaderConfiguration Condition="!$(Configuration.Contains('Debug'))">Release_Expat_NoValidation_static</SaxFrameworkLoaderConfiguration>
-	<GeneratedSaxParserConfiguration Condition="$(Configuration.Contains('Debug'))">Debug_Expat</GeneratedSaxParserConfiguration>
-    <GeneratedSaxParserConfiguration Condition="!$(Configuration.Contains('Debug'))">Release_Expat_static</GeneratedSaxParserConfiguration>
-	<PCREConfiguration Condition="$(Configuration.Contains('Debug'))">Debug</PCREConfiguration>
-    <PCREConfiguration Condition="!$(Configuration.Contains('Debug'))">Release_static</PCREConfiguration>
-	<ExpatLib Condition="$(Configuration.Contains('Debug'))">Debug/libexpatMT</ExpatLib>
-    <ExpatLib Condition="!$(Configuration.Contains('Debug'))">Release/libexpatMT</ExpatLib>
+    <ColladaConfiguration Condition="$(Configuration.Contains('Debug'))">Debug_v110</ColladaConfiguration>
+    <ColladaConfiguration Condition="!$(Configuration.Contains('Debug'))">Release_static_v110</ColladaConfiguration>
+    <SaxFrameworkLoaderConfiguration Condition="$(Configuration.Contains('Debug'))">Debug_LibXML_NoValidation_v110</SaxFrameworkLoaderConfiguration>
+    <SaxFrameworkLoaderConfiguration Condition="!$(Configuration.Contains('Debug'))">Release_LibXML_NoValidation_static_v110</SaxFrameworkLoaderConfiguration>
+	<GeneratedSaxParserConfiguration Condition="$(Configuration.Contains('Debug'))">Debug_LibXML_v110</GeneratedSaxParserConfiguration>
+    <GeneratedSaxParserConfiguration Condition="!$(Configuration.Contains('Debug'))">Release_LibXML_static_v110</GeneratedSaxParserConfiguration>
 	<OCBase>$(ForeignDir)/OpenCollada</OCBase>
   </PropertyGroup>
   <ItemDefinitionGroup>
@@ -22,7 +18,7 @@
 		$(OCBase)\COLLADABaseUtils\include;
 		$(OCBase)\COLLADAFramework\include;
 		$(OCBase)\COLLADASaxFrameworkLoader\include;
-		$(OCBase)\Externals\expat\lib;
+		$(OCBase)\Externals\libxml\lib;
 		$(OCBase)\Externals\MathMLSolver\include;
 		$(OCBase)\GeneratedSaxParser\include;
 		%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -33,8 +29,8 @@
 		$(OCBase)/COLLADABaseUtils/lib/win/$(Platform)/$(ColladaConfiguration)/COLLADABaseUtils.lib;
 		$(OCBase)/COLLADASaxFrameworkLoader/lib/win/$(Platform)/$(SaxFrameworkLoaderConfiguration)/COLLADASaxFrameworkLoader.lib;
 		$(OCBase)/Externals/MathMLSolver/lib/win/$(Platform)/$(ColladaConfiguration)/MathMLSolver.lib;
-		$(OCBase)/Externals/expat/$(Platform)/bin/$(ExpatLib).lib;
-		$(OCBase)/Externals/pcre/lib/win/$(Platform)/$(PCREConfiguration)/pcre.lib;
+		$(OCBase)/Externals/libxml/lib/win/$(Platform)/$(ColladaConfiguration)/libxml.lib;
+		$(OCBase)/Externals/pcre/lib/win/$(Platform)/$(ColladaConfiguration)/pcre.lib;
 		$(OCBase)/GeneratedSaxParser/lib/win/$(Platform)/$(GeneratedSaxParserConfiguration)/GeneratedSaxParser.lib;
 		%(AdditionalDependencies)</AdditionalDependencies>
     </Lib>
@@ -44,8 +40,8 @@
 		$(OCBase)/COLLADABaseUtils/lib/win/$(Platform)/$(ColladaConfiguration)/COLLADABaseUtils.lib;
 		$(OCBase)/COLLADASaxFrameworkLoader/lib/win/$(Platform)/$(SaxFrameworkLoaderConfiguration)/COLLADASaxFrameworkLoader.lib;
 		$(OCBase)/Externals/MathMLSolver/lib/win/$(Platform)/$(ColladaConfiguration)/MathMLSolver.lib;
-		$(OCBase)/Externals/expat/$(Platform)/bin/$(ExpatLib).lib;
-		$(OCBase)/Externals/pcre/lib/win/$(Platform)/$(PCREConfiguration)/pcre.lib;
+        $(OCBase)/Externals/libxml/lib/win/$(Platform)/$(ColladaConfiguration)/libxml.lib;
+		$(OCBase)/Externals/pcre/lib/win/$(Platform)/$(ColladaConfiguration)/pcre.lib;
 		$(OCBase)/GeneratedSaxParser/lib/win/$(Platform)/$(GeneratedSaxParserConfiguration)/GeneratedSaxParser.lib;
 		%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
