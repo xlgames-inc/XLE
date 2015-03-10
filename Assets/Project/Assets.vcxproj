@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup Label="NsightTegraProject">
     <NsightTegraProjectRevisionNumber>4</NsightTegraProjectRevisionNumber>
   </PropertyGroup>
@@ -63,6 +63,9 @@
     <AndroidMinAPI Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'">android-17</AndroidMinAPI>
     <AndroidTargetAPI Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'">android-17</AndroidTargetAPI>
     <AndroidMaxAPI Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'" />
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Platform)'=='Win32' or '$(Platform)'=='x64'">
+    <PlatformToolset>v120</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="PropertySheets">
