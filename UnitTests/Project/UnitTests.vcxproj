@@ -58,6 +58,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\BasicMaths.cpp" />
+    <ClCompile Include="..\ModelConversion.cpp" />
     <ClCompile Include="..\StartupShutdown.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -78,6 +79,9 @@
     </ProjectReference>
     <ProjectReference Include="..\..\RenderCore\Project\RenderCore.vcxproj">
       <Project>{116fe083-50bc-1393-470f-f834ef6e02ff}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\RenderCore\Project\RenderCore_Assets.vcxproj">
+      <Project>{962ea621-c2a6-d312-53cb-7b545d981b75}</Project>
     </ProjectReference>
     <ProjectReference Include="..\..\RenderCore\Project\RenderCore_DX11.vcxproj">
       <Project>{e43e10b8-7cd4-a5d0-6270-17c50cb74adf}</Project>

@@ -3,5 +3,6 @@
   <ItemGroup>
     <ClCompile Include="..\BasicMaths.cpp" />
     <ClCompile Include="..\StartupShutdown.cpp" />
+    <ClCompile Include="..\ModelConversion.cpp" />
   </ItemGroup>
 </Project>
