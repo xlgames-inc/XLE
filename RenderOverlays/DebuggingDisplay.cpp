@@ -1120,7 +1120,17 @@ namespace RenderOverlays { namespace DebuggingDisplay
         Rect    rect(Coord2(0,0), maxCoords);
         Layout  completeLayout(rect);
         
-        auto overlayContext = std::make_unique<ImmediateOverlayContext>(context, projDesc);
+			//	awkward method for allocating a ImmediateOverlayContext that is aligned
+			//	on the heap... This needs to be aligned for the projection matrices
+			//	within the object.
+			//	\todo -- We need a better solution for dealing with aligned matrices!
+		auto overlayContext = std::unique_ptr<ImmediateOverlayContext, AlignedDeletor>(
+			(ImmediateOverlayContext*)XlMemAlign(sizeof(ImmediateOverlayContext), 16));
+		#pragma push_macro("new")
+		#undef new
+			new(overlayContext.get()) ImmediateOverlayContext(context, projDesc);
+		#pragma pop_macro("new")
+
         overlayContext->CaptureState();
 
         TRY {

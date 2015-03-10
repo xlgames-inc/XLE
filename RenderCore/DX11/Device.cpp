@@ -473,6 +473,16 @@ namespace RenderCore
 
     //////////////////////////////////////////////////////////////////////////////////////////////////
 
+	#if !FLEX_USE_VTABLE_ThreadContext && !DOXYGEN
+		namespace Detail
+		{
+			void* Ignore_ThreadContext::QueryInterface(const GUID& guid)
+			{
+				return nullptr;
+			}
+		}
+	#endif
+
     bool    ThreadContext::IsImmediate() const
     {
         return _underlying->IsImmediate();
@@ -493,7 +503,6 @@ namespace RenderCore
     }
 
     ThreadContext::~ThreadContext() {}
-
 
     void*   ThreadContextDX11::QueryInterface(const GUID& guid)
     {

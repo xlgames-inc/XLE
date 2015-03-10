@@ -64,7 +64,13 @@ namespace GUILayer
         auto contextStateDesc = context->GetStateDesc();
         
             //      Render text using a IOverlayContext
-        auto overlayContext = std::make_unique<ImmediateOverlayContext>(context);
+		auto overlayContext = std::unique_ptr<ImmediateOverlayContext, AlignedDeletor>(
+			(ImmediateOverlayContext*)XlMemAlign(sizeof(ImmediateOverlayContext), 16));
+		#pragma push_macro("new")
+		#undef new
+				new(overlayContext.get()) ImmediateOverlayContext(context);
+		#pragma pop_macro("new")
+		
         overlayContext->CaptureState();
         overlayContext->DrawText(
             std::make_tuple(

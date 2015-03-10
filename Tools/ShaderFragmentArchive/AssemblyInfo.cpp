@@ -43,4 +43,4 @@ using namespace System::Security::Permissions;
 
 [assembly:CLSCompliantAttribute(true)];
 
-[assembly:SecurityPermission(SecurityAction::RequestMinimum, UnmanagedCode = true)];
+// [assembly:SecurityPermission(SecurityAction::RequestMinimum, UnmanagedCode = true)];

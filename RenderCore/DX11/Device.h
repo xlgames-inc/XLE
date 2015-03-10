@@ -6,9 +6,11 @@
 
 #pragma once
 
-#define FLEX_CONTEXT_Device            FLEX_CONTEXT_CONCRETE
-#define FLEX_CONTEXT_DeviceDX11        FLEX_CONTEXT_CONCRETE
-#define FLEX_CONTEXT_PresentationChain FLEX_CONTEXT_CONCRETE
+#define FLEX_CONTEXT_Device				FLEX_CONTEXT_CONCRETE
+#define FLEX_CONTEXT_DeviceDX11			FLEX_CONTEXT_CONCRETE
+#define FLEX_CONTEXT_PresentationChain	FLEX_CONTEXT_CONCRETE
+#define FLEX_CONTEXT_ThreadContext		FLEX_CONTEXT_CONCRETE
+#define FLEX_CONTEXT_ThreadContextDX11	FLEX_CONTEXT_CONCRETE
 
 #include "../IDevice.h"
 #include "../IThreadContext.h"
