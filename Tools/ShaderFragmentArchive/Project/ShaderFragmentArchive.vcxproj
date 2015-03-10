@@ -20,7 +20,6 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{39EA3939-2098-42CF-8F3A-E3D13BDB546B}</ProjectGuid>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <Keyword>ManagedCProj</Keyword>
     <RootNamespace>ShaderFragmentArchive</RootNamespace>
   </PropertyGroup>

@@ -409,7 +409,7 @@ namespace NodeEditor
 		public event EventHandler<TreeModelEventArgs> NodesInserted;
 		public event EventHandler<TreeModelEventArgs> NodesRemoved;
 		public event EventHandler<TreePathEventArgs> StructureChanged;
-        public void OnStructureChanged()
+        public void OnStructureChanged(Object sender)
         {
             _cache = new Dictionary<string, List<BaseItem>>();
             if (StructureChanged != null)

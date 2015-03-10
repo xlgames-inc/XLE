@@ -71,9 +71,6 @@
   <ItemGroup>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
-    <Reference Include="Ribbon">
-      <HintPath>..\..\Foreign\RibbonLib_v2.6\Ribbon\bin\Release\Ribbon.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.Composition" />
     <Reference Include="System.Core" />
@@ -152,6 +149,10 @@
     <None Include="Resources\me_square_small.png" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\Foreign\RibbonLib_v2.6\Ribbon\Ribbon.csproj">
+      <Project>{0d4f3c14-b605-4471-b581-79784a89675c}</Project>
+      <Name>Ribbon</Name>
+    </ProjectReference>
     <ProjectReference Include="..\..\Foreign\TreeViewAdv-1.7.0.0\Aga.Controls\Aga.Controls.csproj">
       <Project>{E73BB233-D88B-44A7-A98F-D71EE158381D}</Project>
       <Name>Aga.Controls</Name>
@@ -161,7 +162,7 @@
       <Name>HyperGraph</Name>
     </ProjectReference>
     <ProjectReference Include="..\ShaderFragmentArchive\Project\ShaderFragmentArchive.vcxproj">
-      <Project>{39EA3939-2098-42CF-8F3A-E3D13BDB546B}</Project>
+      <Project>{39ea3939-2098-42cf-8f3a-e3d13bdb546b}</Project>
       <Name>ShaderFragmentArchive</Name>
     </ProjectReference>
   </ItemGroup>

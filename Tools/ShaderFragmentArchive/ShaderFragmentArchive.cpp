@@ -138,10 +138,10 @@ namespace ShaderFragmentArchive
         Utility::AttachFileSystemMonitor(directoryName, baseName, validationIndex);
     }
 
-    void ShaderFragment::OnChange(Object^)
+    void ShaderFragment::OnChange(Object^obj)
     {
         ++_changeMarker;
-        ChangeEvent();
+        ChangeEvent(obj);
     }
 
     ShaderFragment::ShaderFragment(String^ sourceFile)
