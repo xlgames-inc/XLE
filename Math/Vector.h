@@ -92,6 +92,18 @@ namespace Math
             return (rhs - lhs) * alpha + lhs;
         }
 
+
+		template<typename BasicType, int Count>
+			inline bool Equivalent(
+				cml::vector<BasicType, cml::fixed<Count>> lhs, 
+				cml::vector<BasicType, cml::fixed<Count>> rhs, BasicType tolerance)
+			{
+				for (unsigned i=0; i<Count; ++i)
+					if (!Equivalent(lhs[i], rhs[i], tolerance))
+						return false;
+				return true;
+			}
+
     #endif
 
     template<> inline const Float3& Zero<Float3>()

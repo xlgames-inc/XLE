@@ -86,6 +86,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ShaderFragmentArchive", "..
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BasicGUI", "..\Samples\BasicGUI\Project\BasicGUI.csproj", "{C1BFD687-C6C9-4CF3-87F1-C64C6A53A7BC}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "UnitTests", "..\UnitTests\Project\UnitTests.vcxproj", "{985D4936-5CC2-4E43-8B9A-A5F8B4D2CEB3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Tegra-Android = Debug|Tegra-Android
@@ -573,6 +575,18 @@ Global
 		{C1BFD687-C6C9-4CF3-87F1-C64C6A53A7BC}.Release|Win32.ActiveCfg = Release|x86
 		{C1BFD687-C6C9-4CF3-87F1-C64C6A53A7BC}.Release|Win32.Build.0 = Release|x86
 		{C1BFD687-C6C9-4CF3-87F1-C64C6A53A7BC}.Release|x64.ActiveCfg = Release|x86
+		{985D4936-5CC2-4E43-8B9A-A5F8B4D2CEB3}.Debug|Tegra-Android.ActiveCfg = Debug|Win32
+		{985D4936-5CC2-4E43-8B9A-A5F8B4D2CEB3}.Debug|Win32.ActiveCfg = Debug|Win32
+		{985D4936-5CC2-4E43-8B9A-A5F8B4D2CEB3}.Debug|Win32.Build.0 = Debug|Win32
+		{985D4936-5CC2-4E43-8B9A-A5F8B4D2CEB3}.Debug|x64.ActiveCfg = Debug|Win32
+		{985D4936-5CC2-4E43-8B9A-A5F8B4D2CEB3}.Profile|Tegra-Android.ActiveCfg = Release|Win32
+		{985D4936-5CC2-4E43-8B9A-A5F8B4D2CEB3}.Profile|Win32.ActiveCfg = Release|Win32
+		{985D4936-5CC2-4E43-8B9A-A5F8B4D2CEB3}.Profile|Win32.Build.0 = Release|Win32
+		{985D4936-5CC2-4E43-8B9A-A5F8B4D2CEB3}.Profile|x64.ActiveCfg = Release|Win32
+		{985D4936-5CC2-4E43-8B9A-A5F8B4D2CEB3}.Release|Tegra-Android.ActiveCfg = Release|Win32
+		{985D4936-5CC2-4E43-8B9A-A5F8B4D2CEB3}.Release|Win32.ActiveCfg = Release|Win32
+		{985D4936-5CC2-4E43-8B9A-A5F8B4D2CEB3}.Release|Win32.Build.0 = Release|Win32
+		{985D4936-5CC2-4E43-8B9A-A5F8B4D2CEB3}.Release|x64.ActiveCfg = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

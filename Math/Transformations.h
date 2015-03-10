@@ -31,13 +31,19 @@ namespace Math
     class RotationZ         { public: float _angle;     explicit RotationZ(float angle) : _angle(angle) {} };
 
     #if MATHLIBRARY_ACTIVE == MATHLIBRARY_CML
-        typedef cml::matrix< float, cml::fixed<3,3>, cml::col_basis>    RotationMatrix;
-        inline RotationMatrix   MakeRotationMatrix(Float3 axis, Float3::value_type angle) 
+		inline Float3x3   MakeRotationMatrix(Float3 axis, Float3::value_type angle)
         {
-            RotationMatrix result; 
+			Float3x3 result;
             cml::matrix_rotation_axis_angle(result, axis, angle);
             return result;
         }
+
+		inline Quaternion   MakeRotationQuaternion(Float3 axis, Float3::value_type angle)
+		{
+			Quaternion result;
+			cml::quaternion_rotation_axis_angle(result, axis, angle);
+			return result;
+		}
     #endif
 
     class RotationScaleTranslation
@@ -48,8 +54,10 @@ namespace Math
             //      It can represent any affline transformation,
             //      and includes a non-uniform scale parameter.
             //
-            //      Note that the translation part here is assumed to be applied
-            //      after rotation/scale
+            //      In effect, we apply in this order:
+			//			1) scale 
+			//			2) rotation
+			//			3) translation
             //
         Quaternion      _rotation;
         Float3          _scale;
@@ -97,8 +105,8 @@ namespace Math
     void            Combine_InPlace(Float4x4& transform, RotationZ rotation);
     
 
-    Float4x4        Combine(const RotationMatrix& rotation, const Float4x4& transform);
-    Float4x4        Combine(const Float4x4& transform, const RotationMatrix& rotation);
+    Float4x4        Combine(const Float3x3& rotation, const Float4x4& transform);
+	Float4x4        Combine(const Float4x4& transform, const Float3x3& rotation);
 
         //
         //      Basic transformations
@@ -159,7 +167,9 @@ namespace Math
     Float4x4    AsFloat4x4(const UniformScale& input);
     Float4x4    AsFloat4x4(const Float3& translation);
     Float3x4    AsFloat3x4(const Float3& translation);
-    Float4x4    AsFloat4x4(const Float3x4& orthonormalTransform);
+	Float4x4    AsFloat4x4(const Float3x3& rotationMatrix); 
+	Float4x4    AsFloat4x4(const Quaternion& input);
+	Float4x4    AsFloat4x4(const Float3x4& orthonormalTransform);
     Float3x4    AsFloat3x4(const Float4x4& orthonormalTransform);
 
     inline Float4x4     Combine(const Float3x4& firstTransform, const Float4x4& secondTransform)

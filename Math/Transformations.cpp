@@ -136,7 +136,7 @@ namespace Math
         transform(2,0) *= scale._scale[2]; transform(2,1) *= scale._scale[2]; transform(2,2) *= scale._scale[2];
     }
 
-    Float4x4 Combine(const RotationMatrix& rotation, const Float4x4& transform)
+    Float4x4 Combine(const Float3x3& rotation, const Float4x4& transform)
     {
             //      But our "transform" is a geometric transform... We just want
             //      to multiply the top-left 3x3 part of the 4x4 matrix by the
@@ -144,7 +144,7 @@ namespace Math
 
         Float4x4 result;
         const Float4x4& lhs          = transform;
-        const RotationMatrix& rhs    = rotation;
+		const Float3x3& rhs = rotation;
         result(0,0) = lhs(0,0) * rhs(0,0) + lhs(0,1) * rhs(1,0) + lhs(0,2) * rhs(2,0) ;
         result(0,1) = lhs(0,0) * rhs(0,1) + lhs(0,1) * rhs(1,1) + lhs(0,2) * rhs(2,1) ;
         result(0,2) = lhs(0,0) * rhs(0,2) + lhs(0,1) * rhs(1,2) + lhs(0,2) * rhs(2,2) ;
@@ -168,11 +168,11 @@ namespace Math
         return result;
     }
 
-    Float4x4 Combine(const Float4x4& transform, const RotationMatrix& rotation)
+	Float4x4 Combine(const Float4x4& transform, const Float3x3& rotation)
     {
         Float4x4 result;
         const Float4x4& rhs          = transform;
-        const RotationMatrix& lhs    = rotation;
+		const Float3x3& lhs = rotation;
 
         result(0,0) = lhs(0,0) * rhs(0,0) + lhs(0,1) * rhs(1,0) + lhs(0,2) * rhs(2,0);
         result(0,1) = lhs(0,0) * rhs(0,1) + lhs(0,1) * rhs(1,1) + lhs(0,2) * rhs(2,1);
@@ -622,6 +622,21 @@ namespace Math
             0.f, 1.f, 0.f, translation[1],
             0.f, 0.f, 1.f, translation[2]);
     }
+
+	Float4x4    AsFloat4x4(const Quaternion& input)
+	{
+			// todo -- better implementation possible
+		return AsFloat4x4(AsFloat3x3(input));
+	}
+
+	Float4x4    AsFloat4x4(const Float3x3& rotationMatrix)
+	{
+		return Float4x4(
+			rotationMatrix(0, 0), rotationMatrix(0, 1), rotationMatrix(0, 2), 0.f,
+			rotationMatrix(1, 0), rotationMatrix(1, 1), rotationMatrix(1, 2), 0.f,
+			rotationMatrix(2, 0), rotationMatrix(2, 1), rotationMatrix(2, 2), 0.f,
+			0.f, 0.f, 0.f, 1.f);
+	}
 
     Float4x4    AsFloat4x4(const Float3x4& orthonormalTransform)
     {

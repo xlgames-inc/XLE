@@ -136,7 +136,7 @@ bool XlGetCurrentDirectory(uint32 nBufferLength, char lpBuffer[])
 	return GetCurrentDirectoryA((DWORD)nBufferLength, lpBuffer) != FALSE;
 }
 
-bool XlGetCurrentDirectory(uint32 nBufferLength, ucs2* lpBuffer[])
+bool XlGetCurrentDirectory(uint32 nBufferLength, ucs2 lpBuffer[])
 {
     return GetCurrentDirectoryW((DWORD)nBufferLength, (wchar_t*)lpBuffer) != FALSE;
 }

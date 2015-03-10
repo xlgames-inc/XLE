@@ -150,7 +150,7 @@ namespace Tools
     {
         Float4x4 transform;
         if (_activeSubop._type == SubOperation::Rotate) {
-            transform = AsFloat4x4(-_anchorPoint);
+            transform = AsFloat4x4(Float3(-_anchorPoint));
 
             if (XlAbs(_activeSubop._parameter[0]) > 0.f) {
                 Combine_InPlace(transform, RotationX(_activeSubop._parameter[0]));
@@ -166,7 +166,7 @@ namespace Tools
 
             Combine_InPlace(transform, _anchorPoint);
         } else if (_activeSubop._type == SubOperation::Scale) {
-            transform = AsFloat4x4(-_anchorPoint);
+            transform = AsFloat4x4(Float3(-_anchorPoint));
             Combine_InPlace(transform, ArbitraryScale(_activeSubop._parameter));
             Combine_InPlace(transform, _anchorPoint);
         } else if (_activeSubop._type == SubOperation::Translate) {
@@ -179,7 +179,7 @@ namespace Tools
             float terrainHeight = GetTerrainHeight(
                 *Sample::MainTerrainFormat.get(), Sample::MainTerrainConfig, Sample::MainTerrainCoords, 
                 finalXY);
-            transform = AsFloat4x4(-ExtractTranslation(inputObj._localToWorld) + Expand(finalXY, terrainHeight));
+            transform = AsFloat4x4(Float3(-ExtractTranslation(inputObj._localToWorld) + Expand(finalXY, terrainHeight)));
         } else {
             return inputObj;
         }
