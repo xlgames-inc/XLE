@@ -78,7 +78,7 @@ namespace ShaderFragmentArchive {
     };
 
         ///////////////////////////////////////////////////////////////
-    public delegate void ChangeEventHandler();
+    public delegate void ChangeEventHandler(Object^ sender);
     public ref class ShaderFragment
 	{
     public:

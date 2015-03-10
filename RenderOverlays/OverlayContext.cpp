@@ -67,25 +67,25 @@ namespace RenderOverlays
     void ImmediateOverlayContext::DrawPoint      (ProjectionMode::Enum proj, const Float3& v,     const ColorB& col,      uint8 size)
     {
         typedef Vertex_PCR Vertex;
-        if ((_writePointer + sizeof(Vertex)) > sizeof(_workingBuffer)) {
+        if ((_writePointer + sizeof(Vertex)) > _workingBufferSize) {
             Flush();
         }
 
         PushDrawCall(DrawCall(unsigned(RenderCore::Metal::Topology::PointList), _writePointer, 1, AsVertexFormat<Vertex>(), proj));
-        *(Vertex*)&_workingBuffer[_writePointer] = Vertex(v, HardwareColor(col), float(size));
+        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(v, HardwareColor(col), float(size));
         _writePointer += sizeof(Vertex);
     }
 
     void ImmediateOverlayContext::DrawPoints     (ProjectionMode::Enum proj, const Float3 v[],    uint32 numPoints,       const ColorB& col,    uint8 size)
     {
         typedef Vertex_PCR Vertex;
-        if ((_writePointer + numPoints * sizeof(Vertex)) > sizeof(_workingBuffer)) {
+        if ((_writePointer + numPoints * sizeof(Vertex)) > _workingBufferSize) {
             Flush();
         }
 
         PushDrawCall(DrawCall(unsigned(RenderCore::Metal::Topology::PointList), _writePointer, numPoints, AsVertexFormat<Vertex>(), proj));
         for (unsigned c=0; c<numPoints; ++c) {
-            *(Vertex*)&_workingBuffer[_writePointer] = Vertex(v[c], HardwareColor(col), float(size));
+            *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(v[c], HardwareColor(col), float(size));
             _writePointer += sizeof(Vertex);
         }
     }
@@ -93,13 +93,13 @@ namespace RenderOverlays
     void ImmediateOverlayContext::DrawPoints     (ProjectionMode::Enum proj, const Float3 v[],    uint32 numPoints,       const ColorB col[],   uint8 size)
     {
         typedef Vertex_PCR Vertex;
-        if ((_writePointer + numPoints * sizeof(Vertex)) > sizeof(_workingBuffer)) {
+        if ((_writePointer + numPoints * sizeof(Vertex)) > _workingBufferSize) {
             Flush();
         }
 
         PushDrawCall(DrawCall(unsigned(RenderCore::Metal::Topology::PointList), _writePointer, numPoints, AsVertexFormat<Vertex>(), proj));
         for (unsigned c=0; c<numPoints; ++c) {
-            *(Vertex*)&_workingBuffer[_writePointer] = Vertex(v[c], HardwareColor(col[c]), float(size));
+            *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(v[c], HardwareColor(col[c]), float(size));
             _writePointer += sizeof(Vertex);
         }
     }
@@ -107,25 +107,25 @@ namespace RenderOverlays
     void ImmediateOverlayContext::DrawLine       (ProjectionMode::Enum proj, const Float3& v0,    const ColorB& colV0,    const Float3& v1,     const ColorB& colV1, float thickness)
     {
         typedef Vertex_PC Vertex;
-        if ((_writePointer + 2 * sizeof(Vertex)) > sizeof(_workingBuffer)) {
+        if ((_writePointer + 2 * sizeof(Vertex)) > _workingBufferSize) {
             Flush();
         }
 
         PushDrawCall(DrawCall(unsigned(RenderCore::Metal::Topology::LineList), _writePointer, 2, AsVertexFormat<Vertex>(), proj));
-        *(Vertex*)&_workingBuffer[_writePointer] = Vertex(v0, HardwareColor(colV0)); _writePointer += sizeof(Vertex);
-        *(Vertex*)&_workingBuffer[_writePointer] = Vertex(v1, HardwareColor(colV1)); _writePointer += sizeof(Vertex);
+        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(v0, HardwareColor(colV0)); _writePointer += sizeof(Vertex);
+		*(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(v1, HardwareColor(colV1)); _writePointer += sizeof(Vertex);
     }
 
     void ImmediateOverlayContext::DrawLines      (ProjectionMode::Enum proj, const Float3 v[],    uint32 numPoints,       const ColorB& col,    float thickness)
     {
         typedef Vertex_PC Vertex;
-        if ((_writePointer + numPoints * sizeof(Vertex)) > sizeof(_workingBuffer)) {
+        if ((_writePointer + numPoints * sizeof(Vertex)) > _workingBufferSize) {
             Flush();
         }
 
         PushDrawCall(DrawCall(unsigned(RenderCore::Metal::Topology::LineList), _writePointer, numPoints, AsVertexFormat<Vertex>(), proj));
         for (unsigned c=0; c<numPoints; ++c) {
-            *(Vertex*)&_workingBuffer[_writePointer] = Vertex(v[c], HardwareColor(col));
+			*(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(v[c], HardwareColor(col));
             _writePointer += sizeof(Vertex);
         }
     }
@@ -133,17 +133,17 @@ namespace RenderOverlays
     void ImmediateOverlayContext::DrawLines      (ProjectionMode::Enum proj, const Float3 v[],    uint32 numPoints,       const ColorB col[],   float thickness)
     {
         typedef Vertex_PC Vertex;
-        unsigned maxPointsPerBatch = (sizeof(_workingBuffer) / sizeof(Vertex)) & ~0x1;
+        unsigned maxPointsPerBatch = (_workingBufferSize / sizeof(Vertex)) & ~0x1;
         while (numPoints) {
             unsigned pointsThisBatch = std::min(numPoints, maxPointsPerBatch);
 
-            if ((_writePointer + pointsThisBatch * sizeof(Vertex)) > sizeof(_workingBuffer)) {
+            if ((_writePointer + pointsThisBatch * sizeof(Vertex)) > _workingBufferSize) {
                 Flush();
             }
 
             PushDrawCall(DrawCall(unsigned(RenderCore::Metal::Topology::LineList), _writePointer, pointsThisBatch, AsVertexFormat<Vertex>(), proj));
             for (unsigned c=0; c<pointsThisBatch; ++c) {
-                *(Vertex*)&_workingBuffer[_writePointer] = Vertex(v[c], HardwareColor(col[c]));
+				*(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(v[c], HardwareColor(col[c]));
                 _writePointer += sizeof(Vertex);
             }
 
@@ -156,13 +156,13 @@ namespace RenderOverlays
     void ImmediateOverlayContext::DrawTriangles  (ProjectionMode::Enum proj, const Float3 v[],    uint32 numPoints,       const ColorB& col)
     {
         typedef Vertex_PC Vertex;
-        if ((_writePointer + numPoints * sizeof(Vertex)) > sizeof(_workingBuffer)) {
+        if ((_writePointer + numPoints * sizeof(Vertex)) > _workingBufferSize) {
             Flush();
         }
 
         PushDrawCall(DrawCall(unsigned(RenderCore::Metal::Topology::TriangleList), _writePointer, numPoints, AsVertexFormat<Vertex>(), proj));
         for (unsigned c=0; c<numPoints; ++c) {
-            *(Vertex*)&_workingBuffer[_writePointer] = Vertex(v[c], HardwareColor(col));
+			*(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(v[c], HardwareColor(col));
             _writePointer += sizeof(Vertex);
         }
     }
@@ -170,13 +170,13 @@ namespace RenderOverlays
     void ImmediateOverlayContext::DrawTriangles  (ProjectionMode::Enum proj, const Float3 v[],    uint32 numPoints,       const ColorB col[])
     {
         typedef Vertex_PC Vertex;
-        if ((_writePointer + numPoints * sizeof(Vertex)) > sizeof(_workingBuffer)) {
+        if ((_writePointer + numPoints * sizeof(Vertex)) > _workingBufferSize) {
             Flush();
         }
 
         PushDrawCall(DrawCall(unsigned(RenderCore::Metal::Topology::TriangleList), _writePointer, numPoints, AsVertexFormat<Vertex>(), proj));
         for (unsigned c=0; c<numPoints; ++c) {
-            *(Vertex*)&_workingBuffer[_writePointer] = Vertex(v[c], HardwareColor(col[c]));
+			*(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(v[c], HardwareColor(col[c]));
             _writePointer += sizeof(Vertex);
         }
     }
@@ -186,14 +186,14 @@ namespace RenderOverlays
                                                     const ColorB& colV1, const Float3& v2,       const ColorB& colV2)
     {
         typedef Vertex_PC Vertex;
-        if ((_writePointer + 3 * sizeof(Vertex)) > sizeof(_workingBuffer)) {
+        if ((_writePointer + 3 * sizeof(Vertex)) > _workingBufferSize) {
             Flush();
         }
 
         PushDrawCall(DrawCall(unsigned(RenderCore::Metal::Topology::TriangleList), _writePointer, 3, AsVertexFormat<Vertex>(), proj));
-        *(Vertex*)&_workingBuffer[_writePointer] = Vertex(v0, HardwareColor(colV0)); _writePointer += sizeof(Vertex);
-        *(Vertex*)&_workingBuffer[_writePointer] = Vertex(v1, HardwareColor(colV1)); _writePointer += sizeof(Vertex);
-        *(Vertex*)&_workingBuffer[_writePointer] = Vertex(v2, HardwareColor(colV2)); _writePointer += sizeof(Vertex);
+        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(v0, HardwareColor(colV0)); _writePointer += sizeof(Vertex);
+        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(v1, HardwareColor(colV1)); _writePointer += sizeof(Vertex);
+        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(v2, HardwareColor(colV2)); _writePointer += sizeof(Vertex);
     }
 
     void    ImmediateOverlayContext::DrawQuad(
@@ -205,18 +205,18 @@ namespace RenderOverlays
         const std::string& pixelShader)
     {
         typedef Vertex_PCTT Vertex;
-        if ((_writePointer + 6 * sizeof(Vertex)) > sizeof(_workingBuffer)) {
+        if ((_writePointer + 6 * sizeof(Vertex)) > _workingBufferSize) {
             Flush();
         }
 
         PushDrawCall(DrawCall(unsigned(RenderCore::Metal::Topology::TriangleList), _writePointer, 6, AsVertexFormat<Vertex>(), proj, pixelShader));
         auto col = HardwareColor(color);
-        *(Vertex*)&_workingBuffer[_writePointer] = Vertex(Float3(mins[0], mins[1], mins[2]), col, Float2(minTex0[0], minTex0[1]), Float2(minTex1[0], minTex1[1])); _writePointer += sizeof(Vertex);
-        *(Vertex*)&_workingBuffer[_writePointer] = Vertex(Float3(mins[0], maxs[1], mins[2]), col, Float2(minTex0[0], maxTex0[1]), Float2(minTex1[0], maxTex1[1])); _writePointer += sizeof(Vertex);
-        *(Vertex*)&_workingBuffer[_writePointer] = Vertex(Float3(maxs[0], mins[1], mins[2]), col, Float2(maxTex0[0], minTex0[1]), Float2(maxTex1[0], minTex1[1])); _writePointer += sizeof(Vertex);
-        *(Vertex*)&_workingBuffer[_writePointer] = Vertex(Float3(maxs[0], mins[1], mins[2]), col, Float2(maxTex0[0], minTex0[1]), Float2(maxTex1[0], minTex1[1])); _writePointer += sizeof(Vertex);
-        *(Vertex*)&_workingBuffer[_writePointer] = Vertex(Float3(mins[0], maxs[1], mins[2]), col, Float2(minTex0[0], maxTex0[1]), Float2(minTex1[0], maxTex1[1])); _writePointer += sizeof(Vertex);
-        *(Vertex*)&_workingBuffer[_writePointer] = Vertex(Float3(maxs[0], maxs[1], mins[2]), col, Float2(maxTex0[0], maxTex0[1]), Float2(maxTex1[0], maxTex1[1])); _writePointer += sizeof(Vertex);
+        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(mins[0], mins[1], mins[2]), col, Float2(minTex0[0], minTex0[1]), Float2(minTex1[0], minTex1[1])); _writePointer += sizeof(Vertex);
+        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(mins[0], maxs[1], mins[2]), col, Float2(minTex0[0], maxTex0[1]), Float2(minTex1[0], maxTex1[1])); _writePointer += sizeof(Vertex);
+        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(maxs[0], mins[1], mins[2]), col, Float2(maxTex0[0], minTex0[1]), Float2(maxTex1[0], minTex1[1])); _writePointer += sizeof(Vertex);
+        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(maxs[0], mins[1], mins[2]), col, Float2(maxTex0[0], minTex0[1]), Float2(maxTex1[0], minTex1[1])); _writePointer += sizeof(Vertex);
+        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(mins[0], maxs[1], mins[2]), col, Float2(minTex0[0], maxTex0[1]), Float2(minTex1[0], maxTex1[1])); _writePointer += sizeof(Vertex);
+        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(maxs[0], maxs[1], mins[2]), col, Float2(maxTex0[0], maxTex0[1]), Float2(maxTex1[0], maxTex1[1])); _writePointer += sizeof(Vertex);
     }
 
     void    ImmediateOverlayContext::DrawQuad(
@@ -226,18 +226,18 @@ namespace RenderOverlays
             const std::string& pixelShader = std::string())
     {
         typedef Vertex_PC Vertex;
-        if ((_writePointer + 6 * sizeof(Vertex)) > sizeof(_workingBuffer)) {
+        if ((_writePointer + 6 * sizeof(Vertex)) > _workingBufferSize) {
             Flush();
         }
 
         PushDrawCall(DrawCall(unsigned(RenderCore::Metal::Topology::TriangleList), _writePointer, 6, AsVertexFormat<Vertex>(), proj, pixelShader));
         auto col = HardwareColor(color);
-        *(Vertex*)&_workingBuffer[_writePointer] = Vertex(Float3(mins[0], mins[1], mins[2]), col); _writePointer += sizeof(Vertex);
-        *(Vertex*)&_workingBuffer[_writePointer] = Vertex(Float3(mins[0], maxs[1], mins[2]), col); _writePointer += sizeof(Vertex);
-        *(Vertex*)&_workingBuffer[_writePointer] = Vertex(Float3(maxs[0], mins[1], mins[2]), col); _writePointer += sizeof(Vertex);
-        *(Vertex*)&_workingBuffer[_writePointer] = Vertex(Float3(maxs[0], mins[1], mins[2]), col); _writePointer += sizeof(Vertex);
-        *(Vertex*)&_workingBuffer[_writePointer] = Vertex(Float3(mins[0], maxs[1], mins[2]), col); _writePointer += sizeof(Vertex);
-        *(Vertex*)&_workingBuffer[_writePointer] = Vertex(Float3(maxs[0], maxs[1], mins[2]), col); _writePointer += sizeof(Vertex);
+        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(mins[0], mins[1], mins[2]), col); _writePointer += sizeof(Vertex);
+        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(mins[0], maxs[1], mins[2]), col); _writePointer += sizeof(Vertex);
+        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(maxs[0], mins[1], mins[2]), col); _writePointer += sizeof(Vertex);
+        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(maxs[0], mins[1], mins[2]), col); _writePointer += sizeof(Vertex);
+        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(mins[0], maxs[1], mins[2]), col); _writePointer += sizeof(Vertex);
+        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(maxs[0], maxs[1], mins[2]), col); _writePointer += sizeof(Vertex);
     }
 
     void ImmediateOverlayContext::DrawTexturedQuad(
@@ -247,18 +247,18 @@ namespace RenderOverlays
         ColorB color, const Float2& minTex0, const Float2& maxTex0)
     {
         typedef Vertex_PCTT Vertex;
-        if ((_writePointer + 6 * sizeof(Vertex)) > sizeof(_workingBuffer)) {
+        if ((_writePointer + 6 * sizeof(Vertex)) > _workingBufferSize) {
             Flush();
         }
 
         PushDrawCall(DrawCall(unsigned(RenderCore::Metal::Topology::TriangleList), _writePointer, 6, AsVertexFormat<Vertex>(), proj, std::string(), texture));
         auto col = HardwareColor(color);
-        *(Vertex*)&_workingBuffer[_writePointer] = Vertex(Float3(mins[0], mins[1], mins[2]), col, Float2(minTex0[0], minTex0[1]), Float2(0.f, 0.f)); _writePointer += sizeof(Vertex);
-        *(Vertex*)&_workingBuffer[_writePointer] = Vertex(Float3(mins[0], maxs[1], mins[2]), col, Float2(minTex0[0], maxTex0[1]), Float2(0.f, 0.f)); _writePointer += sizeof(Vertex);
-        *(Vertex*)&_workingBuffer[_writePointer] = Vertex(Float3(maxs[0], mins[1], mins[2]), col, Float2(maxTex0[0], minTex0[1]), Float2(0.f, 0.f)); _writePointer += sizeof(Vertex);
-        *(Vertex*)&_workingBuffer[_writePointer] = Vertex(Float3(maxs[0], mins[1], mins[2]), col, Float2(maxTex0[0], minTex0[1]), Float2(0.f, 0.f)); _writePointer += sizeof(Vertex);
-        *(Vertex*)&_workingBuffer[_writePointer] = Vertex(Float3(mins[0], maxs[1], mins[2]), col, Float2(minTex0[0], maxTex0[1]), Float2(0.f, 0.f)); _writePointer += sizeof(Vertex);
-        *(Vertex*)&_workingBuffer[_writePointer] = Vertex(Float3(maxs[0], maxs[1], mins[2]), col, Float2(maxTex0[0], maxTex0[1]), Float2(0.f, 0.f)); _writePointer += sizeof(Vertex);
+        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(mins[0], mins[1], mins[2]), col, Float2(minTex0[0], minTex0[1]), Float2(0.f, 0.f)); _writePointer += sizeof(Vertex);
+        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(mins[0], maxs[1], mins[2]), col, Float2(minTex0[0], maxTex0[1]), Float2(0.f, 0.f)); _writePointer += sizeof(Vertex);
+        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(maxs[0], mins[1], mins[2]), col, Float2(maxTex0[0], minTex0[1]), Float2(0.f, 0.f)); _writePointer += sizeof(Vertex);
+        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(maxs[0], mins[1], mins[2]), col, Float2(maxTex0[0], minTex0[1]), Float2(0.f, 0.f)); _writePointer += sizeof(Vertex);
+        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(mins[0], maxs[1], mins[2]), col, Float2(minTex0[0], maxTex0[1]), Float2(0.f, 0.f)); _writePointer += sizeof(Vertex);
+        *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(maxs[0], maxs[1], mins[2]), col, Float2(maxTex0[0], maxTex0[1]), Float2(0.f, 0.f)); _writePointer += sizeof(Vertex);
     }
 
     static UiAlign AsUiAlign(TextAlignment::Enum alignment)
@@ -384,7 +384,7 @@ namespace RenderOverlays
     {
         using namespace RenderCore::Metal;
         if (_writePointer != 0) {
-            VertexBuffer temporaryBuffer(_workingBuffer, _writePointer);
+			VertexBuffer temporaryBuffer(_workingBuffer.get(), _writePointer);
             for (auto i=_drawCalls.cbegin(); i!=_drawCalls.cend(); ++i) {
                 _deviceContext->Bind((Topology::Enum)i->_topology);
 
@@ -593,6 +593,8 @@ namespace RenderOverlays
     , _defaultTextStyle(*_font.get())
     , _projDesc(projDesc)
     {
+		_workingBufferSize = 16 * 1024;
+		_workingBuffer = std::make_unique<uint8[]>(_workingBufferSize);
         _deviceContext = RenderCore::Metal::DeviceContext::Get(*threadContext);
 
         _writePointer = 0;

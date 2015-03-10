@@ -757,7 +757,7 @@ private:
     int _count;
     const char* _p;
     int _lookahead;
-    char _buf[BSIZE];
+    std::unique_ptr<char[]> _buf;
     int _offset;
     Data* _lineParent;
     int _parentIndent[MAX_INDENT];
@@ -789,6 +789,8 @@ DataParser::DataParser(Data* root)
     _startOfLine = true;
     _comment = 0;
     _lineNum = 1;
+
+	_buf = std::make_unique<char[]>(BSIZE);
 
     _reportTabs = true;
     _reportToken = true;
@@ -912,7 +914,7 @@ void DataParser::SaveChar(int c)
             _reportToken = false;
         }
     } else {
-        _buf[_offset++] = (char)c;
+        _buf.get()[_offset++] = (char)c;
     }
 }
 
@@ -1015,13 +1017,22 @@ Data* DataParser::Scalar()
                 SaveChar('\n');
                 SaveChar('\0');
                 size_t oldLen = _comment ? XlStringSize(_comment) : 0;
-                size_t newLen = oldLen + XlStringSize(_buf) + 1;
-                _comment = (char*)realloc(_comment, newLen);
-                _comment[oldLen] = '\0';
-                XlCatString(_comment, newLen, _buf);
+                size_t newLen = oldLen + XlStringSize(_buf.get()) + 1;
+                auto newComment = (char*)realloc(_comment, newLen);
+				if (newComment) {
+					_comment = newComment;
+					_comment[oldLen] = '\0';
+					XlCatString(_comment, newLen, _buf.get());
+				} else {
+						// failure during realloc...
+						//	Just cleanup _comment
+					assert(0);
+					free(_comment);
+					_comment = nullptr;
+				}
             } else {
                 SaveChar('\0');
-                _lineParent->SetPostComment(_buf);
+                _lineParent->SetPostComment(_buf.get());
             }
 
             return 0;
@@ -1117,7 +1128,7 @@ Data* DataParser::Scalar()
     if (_offset > 0 || quote) {
         SaveChar('\0');
 
-        n = new Data(_buf);
+        n = new Data(_buf.get());
         if (_comment) {
             if (!_lineParent->parent && !_lineParent->child) {
                 // special case for first comment in the file

@@ -788,7 +788,7 @@ namespace ShaderPatcher
                     // at the moment, each output element is a struct. It might be convenient
                     // if we could use both structs or value types
                 char buffer[64];
-                _snprintf_s(buffer, _TRUNCATE, "OUT_%i", i->NodeId());
+				_snprintf_s(buffer, _TRUNCATE, "OUT_%08x%08x", uint32(i->NodeId() >> 32), uint32(i->NodeId()));
                     
                 auto signature = LoadParameterStructSignature(SplitArchiveName(i->ArchiveName()));
                 if (!signature._name.empty()) {

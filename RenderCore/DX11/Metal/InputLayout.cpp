@@ -177,54 +177,56 @@ namespace RenderCore { namespace Metal_DX11
             if (!_stageBindings[s]._reflection) continue;
 
             D3D11_SHADER_DESC shaderDesc;
-            _stageBindings[s]._reflection->GetDesc(&shaderDesc);
+            auto hresult = _stageBindings[s]._reflection->GetDesc(&shaderDesc);
 
-            for (unsigned c=0; c<shaderDesc.BoundResources; ++c) {
-                D3D11_SHADER_INPUT_BIND_DESC bindingDesc;
-                HRESULT hresult = _stageBindings[s]._reflection->GetResourceBindingDesc(c, &bindingDesc);
-                if (SUCCEEDED(hresult)) {
-                    const uint64 hash = Hash64(bindingDesc.Name, &bindingDesc.Name[XlStringLen(bindingDesc.Name)]);
-                    if (hash == hashName) {
-                        ID3D::ShaderReflectionConstantBuffer* cbReflection = _stageBindings[s]._reflection->GetConstantBufferByName(
-                            bindingDesc.Name);
-                        if (!cbReflection) 
-                            continue;
+			if (SUCCEEDED(hresult)) {
+				for (unsigned c=0; c<shaderDesc.BoundResources; ++c) {
+					D3D11_SHADER_INPUT_BIND_DESC bindingDesc;
+					HRESULT hresult = _stageBindings[s]._reflection->GetResourceBindingDesc(c, &bindingDesc);
+					if (SUCCEEDED(hresult)) {
+						const uint64 hash = Hash64(bindingDesc.Name, &bindingDesc.Name[XlStringLen(bindingDesc.Name)]);
+						if (hash == hashName) {
+							ID3D::ShaderReflectionConstantBuffer* cbReflection = _stageBindings[s]._reflection->GetConstantBufferByName(
+								bindingDesc.Name);
+							if (!cbReflection) 
+								continue;
 
-                        D3D11_SHADER_BUFFER_DESC cbDesc;
-                        XlZeroMemory(cbDesc);
-                        cbReflection->GetDesc(&cbDesc); // when GetConstantBufferByName() fails, it returns a dummy object that doesn't do anything in GetDesc();
-                        if (!cbDesc.Size) 
-                            continue;
+							D3D11_SHADER_BUFFER_DESC cbDesc;
+							XlZeroMemory(cbDesc);
+							cbReflection->GetDesc(&cbDesc); // when GetConstantBufferByName() fails, it returns a dummy object that doesn't do anything in GetDesc();
+							if (!cbDesc.Size) 
+								continue;
 
-                        assert(Hash64(cbDesc.Name) == hashName);        // double check we got the correct reflection object
+							assert(Hash64(cbDesc.Name) == hashName);        // double check we got the correct reflection object
 
-                        #if defined(_DEBUG)
-                            for (size_t c=0; c<elementCount; ++c) {
-                                ID3D::ShaderReflectionVariable* variable = 
-                                    cbReflection->GetVariableByName(elements[c]._name);
-                                assert(variable);
-                                if (variable) {
-                                    D3D11_SHADER_VARIABLE_DESC variableDesc;
-                                    XlZeroMemory(variableDesc);
-                                    variable->GetDesc(&variableDesc);
-                                    assert(variableDesc.Name!=nullptr);
-                                    assert(variableDesc.StartOffset == elements[c]._offset);
-                                    assert(variableDesc.Size == std::max(1u, elements[c]._arrayCount) * BitsPerPixel(elements[c]._format) / 8);
-                                }
-                            }
-                        #endif
-                        (void)elements; (void)elementCount; // (not used in release)
+							#if defined(_DEBUG)
+								for (size_t c=0; c<elementCount; ++c) {
+									ID3D::ShaderReflectionVariable* variable = 
+										cbReflection->GetVariableByName(elements[c]._name);
+									assert(variable);
+									if (variable) {
+										D3D11_SHADER_VARIABLE_DESC variableDesc;
+										XlZeroMemory(variableDesc);
+										variable->GetDesc(&variableDesc);
+										assert(variableDesc.Name!=nullptr);
+										assert(variableDesc.StartOffset == elements[c]._offset);
+										assert(variableDesc.Size == std::max(1u, elements[c]._arrayCount) * BitsPerPixel(elements[c]._format) / 8);
+									}
+								}
+							#endif
+							(void)elements; (void)elementCount; // (not used in release)
 
-                        StageBinding::Binding newBinding;
-                        newBinding._shaderSlot = bindingDesc.BindPoint;
-                        newBinding._inputInterfaceSlot = slot | (stream<<16);
-                        newBinding._savedCB = ConstantBuffer(nullptr, cbDesc.Size);
-                        _stageBindings[s]._shaderConstantBindings.push_back(newBinding);
-                        functionResult = true;
-                        break;
-                    }
-                }
-            }
+							StageBinding::Binding newBinding;
+							newBinding._shaderSlot = bindingDesc.BindPoint;
+							newBinding._inputInterfaceSlot = slot | (stream<<16);
+							newBinding._savedCB = ConstantBuffer(nullptr, cbDesc.Size);
+							_stageBindings[s]._shaderConstantBindings.push_back(newBinding);
+							functionResult = true;
+							break;
+						}
+					}
+				}
+			}
         }
 
         return functionResult;
@@ -412,21 +414,24 @@ namespace RenderCore { namespace Metal_DX11
             if (!_stageBindings[s]._reflection) continue;
 
             D3D11_SHADER_DESC shaderDesc;
-            _stageBindings[s]._reflection->GetDesc(&shaderDesc);
+            auto hresult = _stageBindings[s]._reflection->GetDesc(&shaderDesc);
 
-            bool gotBinding = false;
-            for (unsigned c=0; c<shaderDesc.BoundResources && !gotBinding; ++c) {
-                D3D11_SHADER_INPUT_BIND_DESC bindingDesc;
-                HRESULT hresult = _stageBindings[s]._reflection->GetResourceBindingDesc(c, &bindingDesc);
-                if (SUCCEEDED(hresult)) {
-                    const uint64 hash = Hash64(bindingDesc.Name, &bindingDesc.Name[XlStringLen(bindingDesc.Name)]);
-                    if (hash == hashName) {
-                        StageBinding::Binding newBinding = {bindingDesc.BindPoint, slot | (stream<<16)};
-                        _stageBindings[s]._shaderResourceBindings.push_back(newBinding);
-                        gotBinding = functionResult = true;      // (we should also try to bind against other stages)
-                    }
-                }
-            }
+			assert(SUCCEEDED(hresult));
+			if (SUCCEEDED(hresult)) {
+				bool gotBinding = false;
+				for (unsigned c=0; c<shaderDesc.BoundResources && !gotBinding; ++c) {
+					D3D11_SHADER_INPUT_BIND_DESC bindingDesc;
+					HRESULT hresult = _stageBindings[s]._reflection->GetResourceBindingDesc(c, &bindingDesc);
+					if (SUCCEEDED(hresult)) {
+						const uint64 hash = Hash64(bindingDesc.Name, &bindingDesc.Name[XlStringLen(bindingDesc.Name)]);
+						if (hash == hashName) {
+							StageBinding::Binding newBinding = {bindingDesc.BindPoint, slot | (stream<<16)};
+							_stageBindings[s]._shaderResourceBindings.push_back(newBinding);
+							gotBinding = functionResult = true;      // (we should also try to bind against other stages)
+						}
+					}
+				}
+			}
         }
 
         return functionResult;

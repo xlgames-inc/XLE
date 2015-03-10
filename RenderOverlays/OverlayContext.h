@@ -75,8 +75,9 @@ namespace RenderOverlays
 
     private:
         std::shared_ptr<RenderCore::Metal::DeviceContext>    _deviceContext;
-        uint8               _workingBuffer[64*1024];
-        unsigned            _writePointer;
+        std::unique_ptr<uint8[]>	_workingBuffer;
+		unsigned					_workingBufferSize;
+		unsigned					_writePointer;
 
         intrusive_ptr<Font>     _font;
         TextStyle               _defaultTextStyle;

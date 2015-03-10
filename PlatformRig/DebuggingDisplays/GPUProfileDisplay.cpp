@@ -206,7 +206,7 @@ namespace PlatformRig { namespace Overlays
                     Coord2(labelRect._bottomRight[0], LinearInterpolate(labelRect._topLeft[1], labelRect._bottomRight[1], 0.333f)) );
                 DrawText(context, sectionNameRect, 2.f, nullptr, ColorB(0xffffffffu), section._id);
 
-                if (_sections[c]._durationHistoryLength) {
+				if (section._durationHistoryLength) {
                     Rect durationRect( 
                         Coord2(labelRect._topLeft[0], sectionNameRect._bottomRight[1]),
                         Coord2(labelRect._bottomRight[0], LinearInterpolate(labelRect._topLeft[1], labelRect._bottomRight[1], 0.667f)) );
@@ -237,7 +237,8 @@ namespace PlatformRig { namespace Overlays
                         static const InteractableId baseButtonIds[] = { InteractableId_Make("GPUProfiler_Pause"), InteractableId_Make("GPUProfiler_Hide"), InteractableId_Make("GPUProfiler_Reset") };
                         const unsigned buffer = 4, buttonSpacing = 2;
                         unsigned buttonSize0 =  std::min(mouseOverRect.Width(), mouseOverRect.Height()) - 2*buffer;
-                        unsigned buttonSize1 = (std::max(mouseOverRect.Width(), mouseOverRect.Height()) - 2*buffer - ((dimof(buttonNames)-1)*buttonSpacing)) / dimof(buttonNames);
+						const auto buttonCount = dimof(buttonNames);
+						unsigned buttonSize1 = (std::max(mouseOverRect.Width(), mouseOverRect.Height()) - 2*buffer - ((buttonCount - 1)*buttonSpacing)) / buttonCount;
                         unsigned buttonSize  =  std::min(buttonSize0, buttonSize1);
 
                         Coord2 middle(  mouseOverRect._topLeft[0] + buffer + buttonSize/2,

@@ -693,6 +693,7 @@ namespace BufferUploads
         }
     
         if (!allowUploadByInitialisation || !(finalResourceConstruction._flags & ResourceSource::ResourceConstruction::Flags::InitialisationSuccessful)) {
+			assert(initialisationData);
             unsigned lodOffset = requestedStagingLODOffset;
             unsigned actualisedStagingLODOffset = requestedStagingLODOffset;
             BufferDesc stagingBufferDesc = ApplyLODOffset(AsStagingDesc(desc), lodOffset);
@@ -2026,11 +2027,13 @@ namespace BufferUploads
         }
 
         Interlocked::Value size = 0;
-        for (unsigned l=part._lodLevelMin; l<=part._lodLevelMax; ++l) {
-            for (unsigned a=0; a<std::max(1u,part._arrayIndex); ++a) {
-                size += (unsigned)rawData->GetDataSize(l,a);
-            }
-        }
+		if (rawData) {
+			for (unsigned l = part._lodLevelMin; l <= part._lodLevelMax; ++l) {
+				for (unsigned a = 0; a < std::max(1u, part._arrayIndex); ++a) {
+					size += (unsigned)rawData->GetDataSize(l, a);
+				}
+			}
+		}
 
         if (transaction->_desc._type == BufferDesc::Type::LinearBuffer) {
             assert(PlatformInterface::ByteCount(transaction->_desc)==unsigned(size));

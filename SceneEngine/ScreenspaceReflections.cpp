@@ -134,7 +134,7 @@ namespace SceneEngine
             uint8 closestSamples2[blockDimension][blockDimension][4];
         };
 
-        SamplingPattern samplingPattern;
+		auto samplingPattern = std::make_unique<SamplingPattern>();
 
         for (unsigned c=0; c<samplesPerBlock; ++c) {
             const int baseX = (c%8) * 9 + 1;
@@ -147,10 +147,10 @@ namespace SceneEngine
                 offsetY = rand() % ((2*jitterRadius)+1) - jitterRadius;
             }
             
-            samplingPattern.samplePositions[c][0] = std::min(std::max(baseX + offsetX, 0), 64-1);
-            samplingPattern.samplePositions[c][1] = std::min(std::max(baseY + offsetY, 0), 64-1);
-            samplingPattern.samplePositions[c][2] = 0;
-            samplingPattern.samplePositions[c][3] = 0;
+            samplingPattern->samplePositions[c][0] = std::min(std::max(baseX + offsetX, 0), 64-1);
+            samplingPattern->samplePositions[c][1] = std::min(std::max(baseY + offsetY, 0), 64-1);
+            samplingPattern->samplePositions[c][2] = 0;
+            samplingPattern->samplePositions[c][3] = 0;
         }
     
         for (unsigned y=0; y<blockDimension; ++y) {
@@ -163,8 +163,8 @@ namespace SceneEngine
                 unsigned writtenSamples = 0;
                 for (unsigned s=0; s<samplesPerBlock; ++s) {
                     float distanceSq = 
-                          (float(samplingPattern.samplePositions[s][0]) - float(x)) * (float(samplingPattern.samplePositions[s][0]) - float(x))
-                        + (float(samplingPattern.samplePositions[s][1]) - float(y)) * (float(samplingPattern.samplePositions[s][1]) - float(y))
+                          (float(samplingPattern->samplePositions[s][0]) - float(x)) * (float(samplingPattern->samplePositions[s][0]) - float(x))
+                        + (float(samplingPattern->samplePositions[s][1]) - float(y)) * (float(samplingPattern->samplePositions[s][1]) - float(y))
                         ;
 
                     auto i = std::lower_bound(closestDistanceSq, &closestDistanceSq[writtenSamples], distanceSq);
@@ -192,16 +192,16 @@ namespace SceneEngine
                 }
 
                 for (unsigned c=0; c<4; ++c) {
-                    samplingPattern.closestSamples[y][x][c] = uint8(closestSampleIndex[c]);
+                    samplingPattern->closestSamples[y][x][c] = uint8(closestSampleIndex[c]);
                 }
                 for (unsigned c=0; c<4; ++c) {
-                    samplingPattern.closestSamples2[y][x][c] = uint8(closestSampleIndex[4+c]);
+                    samplingPattern->closestSamples2[y][x][c] = uint8(closestSampleIndex[4+c]);
                 }
 
             }
         }
 
-        ConstantBuffer samplingPatternConstants(&samplingPattern, sizeof(samplingPattern));
+		ConstantBuffer samplingPatternConstants(samplingPattern.get(), sizeof(SamplingPattern));
 
             ////////////
         auto* buildMask = &Assets::GetAssetDep<ComputeShader>(

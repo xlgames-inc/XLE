@@ -256,11 +256,13 @@ namespace PlatformRig { namespace Overlays
                     DrawText(context, sectionNameRect, 2.5f, nullptr, ColorB(0xffffffffu), GraphTabs::Names[_graphsMode]);
                 }
 
-                float mostRecentValue = valuesBuffer[dimof(valuesBuffer)-valuesCount];
-                Rect valueRect( 
-                    Coord2(graphArea._topLeft[0], graphArea._topLeft[1]),
-                    Coord2(sectionNameRect._bottomRight[0], LinearInterpolate(graphArea._topLeft[1], graphArea._bottomRight[1], 0.4f)) );
-                DrawFormatText(context, valueRect, 2.f, nullptr, ColorB(0xffffffffu), "%6.3f", mostRecentValue);
+				if (valuesCount > 0) {
+					float mostRecentValue = valuesBuffer[dimof(valuesBuffer) - valuesCount];
+					Rect valueRect(
+						Coord2(graphArea._topLeft[0], graphArea._topLeft[1]),
+						Coord2(sectionNameRect._bottomRight[0], LinearInterpolate(graphArea._topLeft[1], graphArea._bottomRight[1], 0.4f)));
+					DrawFormatText(context, valueRect, 2.f, nullptr, ColorB(0xffffffffu), "%6.3f", mostRecentValue);
+				}
 
                 Rect realGraphRect(
                     Coord2(graphArea._topLeft[0], LinearInterpolate(graphArea._topLeft[1], graphArea._bottomRight[1], 0.333f)),

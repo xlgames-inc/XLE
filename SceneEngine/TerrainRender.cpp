@@ -1847,10 +1847,16 @@ namespace SceneEngine
             _sourceCell = &cell;
             _heightMapStreamingFilePtr = heightMapFileHandle;
             _heightMapCacheStreamingFilePtr = heightMapCacheFileHandle;
-            for (unsigned c=0; c<TerrainCellId::CoverageCount;++c) {
-                _sourceCoverage[c] = cellCoverage[c];
-                _coverageStreamingFilePtr[c] = coverageFileHandle[c];
-            }
+            
+			if (cellCoverage) {
+				for (unsigned c = 0; c < TerrainCellId::CoverageCount; ++c) {
+					_sourceCoverage[c] = cellCoverage[c];
+					_coverageStreamingFilePtr[c] = coverageFileHandle[c];
+				}
+			} else {
+				std::fill(_sourceCoverage, &_sourceCoverage[TerrainCellId::CoverageCount], nullptr);
+				std::fill(_coverageStreamingFilePtr, &_coverageStreamingFilePtr[TerrainCellId::CoverageCount], INVALID_HANDLE_VALUE);
+			}
         }
     }
 

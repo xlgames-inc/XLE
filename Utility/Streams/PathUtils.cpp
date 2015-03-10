@@ -65,6 +65,7 @@ void simplify_path(T* dst, int count, const T* path0, const T* sep)
     XlCopyString(path, dimof(path), path0);
     size_t cnt = XlTokenizeString(path, dimof(path), sep, tokens, dimof(tokens));
     for (size_t i = 0; i < cnt; ++i) {
+		assert(tokens[i]);
         if (XlEqString(tokens[i], dot) || tokens[i][0] == T('\0')) {
             tokens[i] = NULL;
         } else if (XlEqString(tokens[i], dotdot)) {

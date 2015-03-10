@@ -152,20 +152,22 @@ namespace RenderCore
             //  call this in a way that doesn't require any extra .lib files.
         #if defined(_DEBUG)
             auto debugModule = LoadLibrary(TEXT("dxgidebug.dll"));
-            auto rawProc = GetProcAddress(debugModule, "DXGIGetDebugInterface");
-            typedef HRESULT WINAPI getDebugInterfaceType(REFIID, void **);
-            auto proc = (getDebugInterfaceType*)rawProc;
-            if (proc) {
-                IDXGIDebug* debugInterface = nullptr;
-                auto hresult = (*proc)(__uuidof(IDXGIDebug), (void**)&debugInterface);
-                if (SUCCEEDED(hresult) && debugInterface) {
-                    const GUID debugAll = { 0xe48ae283, 0xda80, 0x490b, 0x87, 0xe6, 0x43, 0xe9, 0xa9, 0xcf, 0xda, 0x8 };
-                    debugInterface->ReportLiveObjects(debugAll, DXGI_DEBUG_RLO_ALL);
-                    debugInterface->Release();
-                }
-            }
+			if (debugModule) {
+				auto rawProc = GetProcAddress(debugModule, "DXGIGetDebugInterface");
+				typedef HRESULT WINAPI getDebugInterfaceType(REFIID, void **);
+				auto proc = (getDebugInterfaceType*)rawProc;
+				if (proc) {
+					IDXGIDebug* debugInterface = nullptr;
+					auto hresult = (*proc)(__uuidof(IDXGIDebug), (void**)&debugInterface);
+					if (SUCCEEDED(hresult) && debugInterface) {
+						const GUID debugAll = { 0xe48ae283, 0xda80, 0x490b, 0x87, 0xe6, 0x43, 0xe9, 0xa9, 0xcf, 0xda, 0x8 };
+						debugInterface->ReportLiveObjects(debugAll, DXGI_DEBUG_RLO_ALL);
+						debugInterface->Release();
+					}
+				}
 
-            FreeLibrary(debugModule);
+				FreeLibrary(debugModule);
+			}
         #endif
     }
 
@@ -260,7 +262,7 @@ namespace RenderCore
         
         const bool multithreadingOk = 
                 !(driverCreateFlags&D3D11_CREATE_DEVICE_SINGLETHREADED)
-            &&  threadingSupport.DriverConcurrentCreates
+			&& (SUCCEEDED(hresult) && threadingSupport.DriverConcurrentCreates)
             ;
         
         if (multithreadingOk) {
@@ -374,8 +376,12 @@ namespace RenderCore
     {
         PresentationChainDesc result;
         DXGI_SWAP_CHAIN_DESC dxgiDesc;
-        _underlying->GetDesc(&dxgiDesc);
-        result._dimensions = UInt2(dxgiDesc.BufferDesc.Width, dxgiDesc.BufferDesc.Height);
+        auto hresult = _underlying->GetDesc(&dxgiDesc);
+		if (SUCCEEDED(hresult)) {
+			result._dimensions = UInt2(dxgiDesc.BufferDesc.Width, dxgiDesc.BufferDesc.Height);
+		} else {
+			result._dimensions = UInt2(0, 0);
+		}
         return result;
     }
 

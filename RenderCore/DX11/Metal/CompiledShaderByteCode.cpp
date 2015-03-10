@@ -646,7 +646,10 @@ namespace RenderCore { namespace Metal_DX11
 
         D3D11_SHADER_DESC desc;
         XlZeroMemory(desc);
-        refl->GetDesc(&desc);
+        hresult = refl->GetDesc(&desc);
+		if (!SUCCEEDED(hresult)) {
+			return "<Failure in D3DReflect>";
+		}
 
         std::stringstream str;
         str << "Instruction Count: " << desc.InstructionCount << "; ";
@@ -890,7 +893,7 @@ namespace RenderCore { namespace Metal_DX11
                 //  shader... Sometimes there might be an #include that is hidden behind a #ifdef
 
             char depName[MaxPath];
-            _snprintf_s(depName, _TRUNCATE, "%s-%x", archiveName, uint32(archiveId>>32ull), uint32(archiveId));
+            _snprintf_s(depName, _TRUNCATE, "%s-%08x%08x", archiveName, uint32(archiveId>>32ull), uint32(archiveId));
 
             auto archive = _shaderCacheSet->GetArchive(archiveName, destinationStore);
             if (archive->HasItem(archiveId)) {
