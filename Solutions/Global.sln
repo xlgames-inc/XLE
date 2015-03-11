@@ -88,6 +88,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BasicGUI", "..\Samples\Basi
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "UnitTests", "..\UnitTests\Project\UnitTests.vcxproj", "{985D4936-5CC2-4E43-8B9A-A5F8B4D2CEB3}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TestDLL", "..\Samples\TestDLL\Project\TestDLL.vcxproj", "{2515AD98-AE67-49D3-96A0-2E4A2D8CB4B8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Tegra-Android = Debug|Tegra-Android
@@ -587,6 +589,21 @@ Global
 		{985D4936-5CC2-4E43-8B9A-A5F8B4D2CEB3}.Release|Win32.ActiveCfg = Release|Win32
 		{985D4936-5CC2-4E43-8B9A-A5F8B4D2CEB3}.Release|Win32.Build.0 = Release|Win32
 		{985D4936-5CC2-4E43-8B9A-A5F8B4D2CEB3}.Release|x64.ActiveCfg = Release|Win32
+		{2515AD98-AE67-49D3-96A0-2E4A2D8CB4B8}.Debug|Tegra-Android.ActiveCfg = Debug|Win32
+		{2515AD98-AE67-49D3-96A0-2E4A2D8CB4B8}.Debug|Win32.ActiveCfg = Debug|Win32
+		{2515AD98-AE67-49D3-96A0-2E4A2D8CB4B8}.Debug|Win32.Build.0 = Debug|Win32
+		{2515AD98-AE67-49D3-96A0-2E4A2D8CB4B8}.Debug|x64.ActiveCfg = Debug|x64
+		{2515AD98-AE67-49D3-96A0-2E4A2D8CB4B8}.Debug|x64.Build.0 = Debug|x64
+		{2515AD98-AE67-49D3-96A0-2E4A2D8CB4B8}.Profile|Tegra-Android.ActiveCfg = Profile|Win32
+		{2515AD98-AE67-49D3-96A0-2E4A2D8CB4B8}.Profile|Win32.ActiveCfg = Profile|Win32
+		{2515AD98-AE67-49D3-96A0-2E4A2D8CB4B8}.Profile|Win32.Build.0 = Profile|Win32
+		{2515AD98-AE67-49D3-96A0-2E4A2D8CB4B8}.Profile|x64.ActiveCfg = Profile|x64
+		{2515AD98-AE67-49D3-96A0-2E4A2D8CB4B8}.Profile|x64.Build.0 = Profile|x64
+		{2515AD98-AE67-49D3-96A0-2E4A2D8CB4B8}.Release|Tegra-Android.ActiveCfg = Release|Win32
+		{2515AD98-AE67-49D3-96A0-2E4A2D8CB4B8}.Release|Win32.ActiveCfg = Release|Win32
+		{2515AD98-AE67-49D3-96A0-2E4A2D8CB4B8}.Release|Win32.Build.0 = Release|Win32
+		{2515AD98-AE67-49D3-96A0-2E4A2D8CB4B8}.Release|x64.ActiveCfg = Release|x64
+		{2515AD98-AE67-49D3-96A0-2E4A2D8CB4B8}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -616,5 +633,6 @@ Global
 		{E1E9A4C1-97A8-44B7-8279-D287313C5B6B} = {E7DC652E-A855-4E12-9C04-6F36B489FF74}
 		{39EA3939-2098-42CF-8F3A-E3D13BDB546B} = {E7DC652E-A855-4E12-9C04-6F36B489FF74}
 		{C1BFD687-C6C9-4CF3-87F1-C64C6A53A7BC} = {18FDF4B2-37E2-4DFF-B22B-566674160D0B}
+		{2515AD98-AE67-49D3-96A0-2E4A2D8CB4B8} = {18FDF4B2-37E2-4DFF-B22B-566674160D0B}
 	EndGlobalSection
 EndGlobal

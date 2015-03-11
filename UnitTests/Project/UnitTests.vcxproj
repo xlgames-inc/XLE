@@ -58,6 +58,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\BasicMaths.cpp" />
+    <ClCompile Include="..\DLLBinding.cpp" />
     <ClCompile Include="..\ModelConversion.cpp" />
     <ClCompile Include="..\StartupShutdown.cpp" />
   </ItemGroup>

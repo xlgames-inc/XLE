@@ -4,5 +4,6 @@
     <ClCompile Include="..\BasicMaths.cpp" />
     <ClCompile Include="..\StartupShutdown.cpp" />
     <ClCompile Include="..\ModelConversion.cpp" />
+    <ClCompile Include="..\DLLBinding.cpp" />
   </ItemGroup>
 </Project>
