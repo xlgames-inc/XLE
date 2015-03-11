@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "../../RenderCore/IThreadContext_Forward.h"
 #include "../../SceneEngine/SceneParser.h"
 #include <memory>
 
@@ -17,7 +18,7 @@ namespace Sample
     class EnvironmentSceneParser : public SceneEngine::ISceneParser
     {
     public:
-        void PrepareFrame(RenderCore::Metal::DeviceContext* context);
+        void PrepareFrame(RenderCore::IThreadContext& context);
         void Update(float deltaTime);
 
         typedef SceneEngine::ShadowProjectionDesc   ShadowProjectionDesc;

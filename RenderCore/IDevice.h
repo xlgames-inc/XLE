@@ -215,7 +215,7 @@ namespace RenderCore
         #endif
 
         #if FLEX_CONTEXT_Device != FLEX_CONTEXT_CONCRETE
-            std::unique_ptr<IDevice>    CreateDevice();
+            std::shared_ptr<IDevice>    CreateDevice();
         #endif
             
         #if defined(DOXYGEN)

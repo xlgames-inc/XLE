@@ -30,7 +30,7 @@ namespace Overlays
         std::unique_ptr<Pimpl> _pimpl;
         ScrollBar   _mainScrollBar;
 
-        virtual std::pair<const RenderCore::Metal::ShaderResourceView*, uint64> GetSRV(RenderCore::Metal::DeviceContext* devContext, const std::basic_string<ucs2>&) = 0;
+        virtual std::pair<const RenderCore::Metal::ShaderResourceView*, uint64> GetSRV(RenderCore::IThreadContext& devContext, const std::basic_string<ucs2>&) = 0;
         virtual bool Filter(const std::basic_string<ucs2>&) = 0;
     };
 
@@ -52,7 +52,7 @@ namespace Overlays
             InterfaceState& interfaceState, const InputSnapshot& input);
 
         Coord2  GetPreviewSize() const;
-        auto    GetSRV(RenderCore::Metal::DeviceContext* devContext, const std::basic_string<ucs2>&) -> std::pair<const RenderCore::Metal::ShaderResourceView*, uint64>;
+        auto    GetSRV(RenderCore::IThreadContext& context, const std::basic_string<ucs2>&) -> std::pair<const RenderCore::Metal::ShaderResourceView*, uint64>;
 
     private:
         class Pimpl;
@@ -71,7 +71,7 @@ namespace Overlays
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
 
-        std::pair<const RenderCore::Metal::ShaderResourceView*, uint64> GetSRV(RenderCore::Metal::DeviceContext* devContext, const std::basic_string<ucs2>&);
+        std::pair<const RenderCore::Metal::ShaderResourceView*, uint64> GetSRV(RenderCore::IThreadContext& devContext, const std::basic_string<ucs2>&);
         bool Filter(const std::basic_string<ucs2>&);
     };
 }

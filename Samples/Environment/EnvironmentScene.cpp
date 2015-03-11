@@ -50,16 +50,17 @@ namespace Sample
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    void EnvironmentSceneParser::PrepareFrame(RenderCore::Metal::DeviceContext* context) 
+    void EnvironmentSceneParser::PrepareFrame(RenderCore::IThreadContext& context)
     {
-        RenderCore::Metal::ViewportDesc viewport(*context);
+        auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
+        RenderCore::Metal::ViewportDesc viewport(*metalContext.get());
         auto sceneCamera = GetCameraDesc();
         auto projectionMatrix = RenderCore::Techniques::PerspectiveProjection(
             sceneCamera, viewport.Width / float(viewport.Height));
         auto worldToProjection = Combine(InvertOrthonormalTransform(sceneCamera._cameraToWorld), projectionMatrix);
 
         _pimpl->_characters->Cull(worldToProjection);
-        _pimpl->_characters->Prepare(context);
+        _pimpl->_characters->Prepare(metalContext.get());
     }
 
     void EnvironmentSceneParser::ExecuteScene(   

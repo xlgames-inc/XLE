@@ -54,9 +54,9 @@ namespace Sample
 
     static void SetupCompilers(::Assets::CompileAndAsyncManager& asyncMan);
     static PlatformRig::FrameRig::RenderResult RenderFrame(
-        RenderCore::IThreadContext* context,
+        RenderCore::IThreadContext& context,
         SceneEngine::LightingParserContext& lightingParserContext, BasicSceneParser* scene,
-        RenderCore::IDevice* renderDevice, RenderCore::IPresentationChain* presentationChain,
+        RenderCore::IPresentationChain* presentationChain,
         PlatformRig::IOverlaySystem* debugSystem);
     void RenderPostScene(RenderCore::IThreadContext* context);
 
@@ -177,16 +177,16 @@ namespace Sample
                 }
 
                     // ------- Render ----------------------------------------
-                SceneEngine::LightingParserContext lightingParserContext(mainScene.get(), *globalTechniqueContext);
+                SceneEngine::LightingParserContext lightingParserContext(*globalTechniqueContext);
                 lightingParserContext._plugins.push_back(stdPlugin);
 
                 auto frameResult = frameRig.ExecuteFrame(
-                    context.get(), renderDevice.get(), presentationChain.get(), 
+                    *context.get(), presentationChain.get(), 
                     g_gpuProfiler.get(), &g_cpuProfiler,
                     std::bind(
                         RenderFrame, std::placeholders::_1,
                         std::ref(lightingParserContext), mainScene.get(), 
-                        renderDevice.get(), presentationChain.get(), 
+                        presentationChain.get(), 
                         frameRig.GetMainOverlaySystem().get()));
 
                     // ------- Update ----------------------------------------
@@ -230,15 +230,15 @@ namespace Sample
     }
 
     PlatformRig::FrameRig::RenderResult RenderFrame(
-        RenderCore::IThreadContext* context,
+        RenderCore::IThreadContext& context,
         SceneEngine::LightingParserContext& lightingParserContext,
-        BasicSceneParser* scene, RenderCore::IDevice* renderDevice,
+        BasicSceneParser* scene,
         RenderCore::IPresentationChain* presentationChain,
         PlatformRig::IOverlaySystem* overlaySys)
     {
             //  some scene might need a "prepare" step to 
             //  build some resources before the main render occurs.
-        auto metalContext = RenderCore::Metal::DeviceContext::Get(*context);
+        auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
         scene->PrepareFrame(metalContext.get());
 
         using namespace SceneEngine;
@@ -246,16 +246,19 @@ namespace Sample
 
             //  Execute the lighting parser!
             //      This is where most rendering actually happens.
-        LightingParser_Execute(metalContext.get(), lightingParserContext, 
-            RenderingQualitySettings(presChainDesc._dimensions, Tweakable("SamplingCount", 1), Tweakable("SamplingQuality", 0)));
+        if (scene) {
+            LightingParser_ExecuteScene(
+                context, lightingParserContext, *scene,
+                RenderingQualitySettings(presChainDesc._dimensions, Tweakable("SamplingCount", 1), Tweakable("SamplingQuality", 0)));
+        }
 
             //  If we need to, we can render outside of the lighting parser.
             //  We just need to to use the device context to perform any rendering
             //  operations here.
-        RenderPostScene(context);
+        RenderPostScene(&context);
 
         if (overlaySys) {
-            overlaySys->RenderToScene(context, lightingParserContext);
+            overlaySys->RenderToScene(&context, lightingParserContext);
         }
 
             //  The lighting parser will tell us if there where any pending resources
@@ -265,7 +268,7 @@ namespace Sample
         DrawPendingResources(metalContext.get(), lightingParserContext, defaultFont0.get());
 
         if (overlaySys) {
-            overlaySys->RenderWidgets(context, lightingParserContext.GetProjectionDesc());
+            overlaySys->RenderWidgets(&context, lightingParserContext.GetProjectionDesc());
         }
 
         return PlatformRig::FrameRig::RenderResult(hasPendingResources);

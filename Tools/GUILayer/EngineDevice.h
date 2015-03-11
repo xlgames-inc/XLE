@@ -30,7 +30,7 @@ namespace GUILayer
         ~NativeEngineDevice();
 
     protected:
-        std::unique_ptr<RenderCore::IDevice> _renderDevice;
+        std::shared_ptr<RenderCore::IDevice> _renderDevice;
         std::shared_ptr<RenderCore::IThreadContext> _immediateContext;
         std::unique_ptr<::Assets::CompileAndAsyncManager> _asyncMan;
         std::unique_ptr<ConsoleRig::Console> _console;

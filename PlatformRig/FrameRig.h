@@ -34,12 +34,11 @@ namespace PlatformRig
             RenderResult(bool hasPendingResources) : _hasPendingResources(hasPendingResources) {}
         };
 
-        typedef std::function<RenderResult(RenderCore::IThreadContext*)>
+        typedef std::function<RenderResult(RenderCore::IThreadContext&)>
             FrameRenderFunction;
 
         FrameResult ExecuteFrame(
-            RenderCore::IThreadContext* context,
-            RenderCore::IDevice* device,
+            RenderCore::IThreadContext& context,
             RenderCore::IPresentationChain* presChain,
             RenderCore::Metal::GPUProfiler::Profiler* gpuProfiler,
             Utility::HierarchicalCPUProfiler* profiler,

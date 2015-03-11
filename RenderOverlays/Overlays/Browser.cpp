@@ -24,6 +24,7 @@
 #include "../../RenderCore/Assets/SharedStateSet.h"
 #include "../../RenderCore/Assets/IModelFormat.h"
 #include "../../RenderCore/Metal/DeviceContextImpl.h"
+#include "../../RenderCore/IThreadContext.h"
 
 #include "../../SceneEngine/SceneEngineUtility.h"
 #include "../../SceneEngine/LightDesc.h"
@@ -299,8 +300,8 @@ namespace Overlays
 
         context->ReleaseState();        // (drawing directly to the device context -- so we must get the overlay context to release the state)
 
-        auto* devContext = context->GetDeviceContext();
-        SceneEngine::SavedTargets oldTargets(devContext);
+        auto devContext = RenderCore::Metal::DeviceContext::Get(*context->GetDeviceContext());
+        SceneEngine::SavedTargets oldTargets(devContext.get());
 
         std::vector<std::pair<std::string, Rect>> labels;
 
@@ -338,11 +339,11 @@ namespace Overlays
 
                 utf8 utf8Filename[MaxPath];
                 ucs2_2_utf8(AsPointer(i->_filename.cbegin()), i->_filename.size(), utf8Filename, dimof(utf8Filename));
-                auto srv = GetSRV(devContext, i->_filename);
+                auto srv = GetSRV(*context->GetDeviceContext(), i->_filename);
 
                     // return to the main render target viewport & viewport -- and copy the offscreen image we've just rendered
-                oldTargets.ResetToOldTargets(devContext);
-                Copy2DTexture(devContext, *srv.first, 
+                oldTargets.ResetToOldTargets(devContext.get());
+                Copy2DTexture(devContext.get(), *srv.first, 
                     Float2(float(outputRect._topLeft[0]), float(outputRect._topLeft[1])), 
                     Float2(float(outputRect._bottomRight[0]), float(outputRect._bottomRight[1])),
                     float(browserLayout.GetMaximumSize()._topLeft[1]), float(browserLayout.GetMaximumSize()._bottomRight[1]));
@@ -591,34 +592,35 @@ namespace Overlays
         BoundingBox _boundingBox;
     };
 
-    static void RenderModel(RenderCore::Metal::DeviceContext* devContext, ModelRenderer& model, const BoundingBox& boundingBox, SharedStateSet& sharedStates)
+    static void RenderModel(RenderCore::IThreadContext& context, ModelRenderer& model, const BoundingBox& boundingBox, SharedStateSet& sharedStates)
     {
             // Render the given model. Create a minimal version of the full rendering process:
             //      We need to create a LightingParserContext, and ISceneParser as well.
             //      Cameras and lights should be arranged to suit the bounding box given. Let's use 
             //      orthogonal projection to make sure the object is positioned within the output viewport well.
-        RenderCore::Metal::ViewportDesc viewport(*devContext);
-        SceneEngine::RenderingQualitySettings qualitySettings(UInt2(unsigned(viewport.Width), unsigned(viewport.Height)));
+        SceneEngine::RenderingQualitySettings qualitySettings(context.GetStateDesc()._viewportDimensions);
+        auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
 
             //  Aggressively reset the shared state set, to try to invalidate
             //  any cached states that have changed since the last render
-        sharedStates.CaptureState(devContext);
+        sharedStates.CaptureState(metalContext.get());
 
         ModelSceneParser sceneParser(model, boundingBox, sharedStates);
         Techniques::TechniqueContext techniqueContext;
         techniqueContext._globalEnvironmentState.SetParameter("SKIP_MATERIAL_DIFFUSE", 1);
-        SceneEngine::LightingParserContext lightingParserContext(&sceneParser, techniqueContext);
-        SceneEngine::LightingParser_Execute(devContext, lightingParserContext, qualitySettings);
+        SceneEngine::LightingParserContext lightingParserContext(techniqueContext);
+        SceneEngine::LightingParser_ExecuteScene(context, lightingParserContext, sceneParser, qualitySettings);
 
-        sharedStates.ReleaseState(devContext);
+        sharedStates.ReleaseState(metalContext.get());
     }
 
     static const unsigned ModelBrowserItemDimensions = 196;
 
     std::pair<const RenderCore::Metal::ShaderResourceView*, uint64> ModelBrowser::GetSRV(
-        RenderCore::Metal::DeviceContext* devContext, 
+        RenderCore::IThreadContext& context, 
         const std::basic_string<ucs2>& filename)
     {
+        auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
             // draw this item into our offscreen target, and return the SRV
         
         utf8 utf8Filename[MaxPath];
@@ -692,12 +694,12 @@ namespace Overlays
 
             // draw this object to our off screen buffer
         const unsigned offscreenDims = ModelBrowserItemDimensions;
-        devContext->Bind(RenderCore::MakeResourceList(_pimpl->_rtv), &_pimpl->_dsv);
-        devContext->Bind(RenderCore::Metal::ViewportDesc(0, 0, float(offscreenDims), float(offscreenDims), 0.f, 1.f));
-        devContext->Clear(_pimpl->_rtv, Float4(0.f, 0.f, 0.f, 1.f));
-        devContext->Clear(_pimpl->_dsv, 1.f, 0);
-        devContext->Bind(RenderCore::Metal::Topology::TriangleList);
-        RenderModel(devContext, *renderer, boundingBox, _pimpl->_sharedStateSet);
+        metalContext->Bind(RenderCore::MakeResourceList(_pimpl->_rtv), &_pimpl->_dsv);
+        metalContext->Bind(RenderCore::Metal::ViewportDesc(0, 0, float(offscreenDims), float(offscreenDims), 0.f, 1.f));
+        metalContext->Clear(_pimpl->_rtv, Float4(0.f, 0.f, 0.f, 1.f));
+        metalContext->Clear(_pimpl->_dsv, 1.f, 0);
+        metalContext->Bind(RenderCore::Metal::Topology::TriangleList);
+        RenderModel(context, *renderer, boundingBox, _pimpl->_sharedStateSet);
 
         return std::make_pair(&_pimpl->_srv, hashedName);   // note, here, the hashedName only considered the model name, not the material name
     }
@@ -779,7 +781,7 @@ namespace Overlays
 
     TextureBrowser::~TextureBrowser() {}
 
-    std::pair<const RenderCore::Metal::ShaderResourceView*, uint64> TextureBrowser::GetSRV(RenderCore::Metal::DeviceContext* devContext, const std::basic_string<ucs2>& filename)
+    std::pair<const RenderCore::Metal::ShaderResourceView*, uint64> TextureBrowser::GetSRV(RenderCore::IThreadContext& devContext, const std::basic_string<ucs2>& filename)
     {
         uint64 hashedName = Hash64(AsPointer(filename.cbegin()), AsPointer(filename.cend()));
         auto res = _pimpl->_resources.Get(hashedName);

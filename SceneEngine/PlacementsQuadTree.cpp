@@ -505,7 +505,7 @@ namespace SceneEngine
         RenderOverlays::IOverlayContext* context, Layout& layout, 
         Interactables& interactables, InterfaceState& interfaceState)
     {
-        context->GetDeviceContext()->Bind(Techniques::CommonResources()._dssDisable);
+        RenderCore::Metal::DeviceContext::Get(*context->GetDeviceContext())->Bind(Techniques::CommonResources()._dssDisable);
         static signed treeDepthFilter = -1;
         static bool drawObjects = false;
 

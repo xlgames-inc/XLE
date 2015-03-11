@@ -34,26 +34,26 @@ namespace BasicGUI
         /// </summary>
         private void InitializeComponent()
         {
-            this.button1 = new GUILayer.TestControl();
+            this.viewerControl = new GUILayer.LayerControl();
             this.SuspendLayout();
             // 
             // button1
             // 
-            this.button1.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            this.viewerControl.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.button1.Location = new System.Drawing.Point(12, 12);
-            this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(260, 238);
-            this.button1.TabIndex = 0;
-            this.button1.Text = "button1";
+            this.viewerControl.Location = new System.Drawing.Point(12, 12);
+            this.viewerControl.Name = "button1";
+            this.viewerControl.Size = new System.Drawing.Size(260, 238);
+            this.viewerControl.TabIndex = 0;
+            this.viewerControl.Text = "button1";
             // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(284, 262);
-            this.Controls.Add(this.button1);
+            this.Controls.Add(this.viewerControl);
             this.Name = "MainForm";
             this.Text = "MainForm";
             this.ResumeLayout(false);
@@ -62,6 +62,6 @@ namespace BasicGUI
 
         #endregion
 
-        private GUILayer.EngineControl button1;
+        private GUILayer.LayerControl viewerControl;
     }
 }

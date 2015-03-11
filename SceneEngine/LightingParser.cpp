@@ -761,6 +761,7 @@ namespace SceneEngine
 
     void LightingParser_SetupScene( DeviceContext* context, 
                                     LightingParserContext& parserContext,
+                                    ISceneParser* sceneParser,
                                     const RenderCore::Techniques::CameraDesc& camera,
                                     const RenderingQualitySettings& qualitySettings)
     {
@@ -769,12 +770,12 @@ namespace SceneEngine
             ReturnToSteadyState(context);
 
             Float4 time(0.f, 0.f, 0.f, 0.f);
-            if (parserContext.GetSceneParser()) {
-                time[3] = parserContext.GetSceneParser()->GetTimeValue();
-                if (parserContext.GetSceneParser()->GetLightCount() > 0) {
-                    time[0] = parserContext.GetSceneParser()->GetLightDesc(0)._negativeLightDirection[0];
-                    time[1] = parserContext.GetSceneParser()->GetLightDesc(0)._negativeLightDirection[1];
-                    time[2] = parserContext.GetSceneParser()->GetLightDesc(0)._negativeLightDirection[2];
+            if (sceneParser) {
+                time[3] = sceneParser->GetTimeValue();
+                if (sceneParser->GetLightCount() > 0) {
+                    time[0] = sceneParser->GetLightDesc(0)._negativeLightDirection[0];
+                    time[1] = sceneParser->GetLightDesc(0)._negativeLightDirection[1];
+                    time[2] = sceneParser->GetLightDesc(0)._negativeLightDirection[2];
                 }
             }
             parserContext.SetGlobalCB(1, context, &time, sizeof(time));
@@ -792,17 +793,21 @@ namespace SceneEngine
         CATCH_END
     }
 
-    void LightingParser_Execute(    DeviceContext* context, 
-                                    LightingParserContext& parserContext,
-                                    const RenderingQualitySettings& qualitySettings)
+    void LightingParser_ExecuteScene(
+        RenderCore::IThreadContext& context, 
+        LightingParserContext& parserContext,
+        ISceneParser& scene,
+        const RenderingQualitySettings& qualitySettings)
     {
-        LightingParser_SetupScene(context, parserContext, parserContext.GetSceneParser()->GetCameraDesc(), qualitySettings);
+        auto metalContext = DeviceContext::Get(context);
+        parserContext.SetSceneParser(&scene);
+        LightingParser_SetupScene(metalContext.get(), parserContext, &scene, scene.GetCameraDesc(), qualitySettings);
 
         {
-            GPUProfiler::DebugAnnotation anno(*context, L"Prepare");
+            GPUProfiler::DebugAnnotation anno(*metalContext.get(), L"Prepare");
             for (auto i=parserContext._plugins.cbegin(); i!=parserContext._plugins.cend(); ++i) {
                 TRY {
-                    (*i)->OnPreScenePrepare(context, parserContext);
+                    (*i)->OnPreScenePrepare(metalContext.get(), parserContext);
                 }
                 CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
                 CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
@@ -810,73 +815,37 @@ namespace SceneEngine
             }
 
             parserContext._preparedShadows = 
-                std::move(LightingParser_PrepareShadows(context, parserContext));
+                std::move(LightingParser_PrepareShadows(metalContext.get(), parserContext));
         }
 
         TRY {
-            LightingParser_MainScene(context, parserContext, qualitySettings);
+            LightingParser_MainScene(metalContext.get(), parserContext, qualitySettings);
         }
         CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
         CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
         CATCH_END
+
+        parserContext.SetSceneParser(nullptr);
     }
-
-    void LightingParser_ExecuteOverlayPass(
-                                    RenderCore::Metal::DeviceContext* context, 
-                                    LightingParserContext& parserContext,
-                                    const RenderingQualitySettings& qualitySettings,
-                                    const Float4x4& projectionMatrix,
-                                    bool drawSky)
-    {
-        LightingParser_SetupScene(context, parserContext, parserContext.GetSceneParser()->GetCameraDesc(), qualitySettings);
-
-            //  in an "overlay pass" we want to draw over another 
-            //  completed scene. So just set up some states, and then
-            //  execute the scene.
-            //      -- note sky disabled!
-        TRY {
-                //  Hack -- water reflections transformation needs aspect ratio correction disabled.
-                //          we can do that by passing height twice, as so...
-            LightingParser_SetGlobalTransform(
-                context, parserContext, parserContext.GetSceneParser()->GetCameraDesc(), qualitySettings._dimensions[1], qualitySettings._dimensions[1],
-                &projectionMatrix);
-
-            parserContext.GetSceneParser()->ExecuteScene(
-                context, parserContext, 
-                SceneParseSettings( SceneParseSettings::BatchFilter::General, 
-                                    (SceneParseSettings::Toggles::BitField)~SceneParseSettings::Toggles::TerrainLayers),
-                TechniqueIndex_General);
-
-            parserContext.GetSceneParser()->ExecuteScene(
-                context, parserContext, 
-                SceneParseSettings( SceneParseSettings::BatchFilter::Transparent, 
-                                    (SceneParseSettings::Toggles::BitField)~SceneParseSettings::Toggles::TerrainLayers),
-                TechniqueIndex_General);
-
-            if (Tweakable("DoSky", true) && drawSky) {
-                Sky_Render(context, parserContext, true);
-                Sky_RenderPostFog(context, parserContext);
-            }
-        } 
-        CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
-        CATCH_END
-    }
-
 
     void LightingParserContext::SetMetricsBox(MetricsBox* box)
     {
         _metricsBox = box;
     }
 
-    LightingParserContext::LightingParserContext(ISceneParser* sceneParser, const Techniques::TechniqueContext& techniqueContext)
+    LightingParserContext::LightingParserContext(const Techniques::TechniqueContext& techniqueContext)
     : ParsingContext(techniqueContext)
-    , _sceneParser(sceneParser)
+    , _sceneParser(nullptr)
     {
         _metricsBox = nullptr;
     }
 
     LightingParserContext::~LightingParserContext() {}
+
+    void LightingParserContext::SetSceneParser(ISceneParser* sceneParser)
+    {
+        _sceneParser = sceneParser;
+    }
 
     RenderingQualitySettings::RenderingQualitySettings()
     {

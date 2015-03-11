@@ -132,10 +132,10 @@ namespace Overlays
             projectionDesc = _scene->GetShadowProjectionDesc(0, context->GetProjectionDesc());
         }
 
-        auto& devContext = *context->GetDeviceContext();
+        auto devContext = DeviceContext::Get(*context->GetDeviceContext());
         context->ReleaseState();
         OverlayShadowFrustums(
-            devContext, context->GetGlobalUniformsStream(),
+            *devContext, context->GetGlobalUniformsStream(),
             context->GetProjectionDesc(), projectionDesc);
         context->CaptureState();
         
@@ -143,7 +143,7 @@ namespace Overlays
             //  outline of all sub-projections with in.
             //  We could also add a control to select different projections
             //  when there are more than one...
-        devContext.Bind(Techniques::CommonResources()._dssReadOnly);
+        devContext->Bind(Techniques::CommonResources()._dssReadOnly);
 
         ColorB cols[]= {
             ColorB(196, 230, 230),

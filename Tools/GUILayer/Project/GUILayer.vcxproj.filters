@@ -4,6 +4,8 @@
     <ClCompile Include="..\EngineDevice.cpp" />
     <ClCompile Include="..\EngineControl.cpp" />
     <ClCompile Include="..\WindowRig.cpp" />
+    <ClCompile Include="..\LayerControl.cpp" />
+    <ClCompile Include="..\TestControl.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\EngineDevice.h" />
@@ -12,5 +14,8 @@
     <ClInclude Include="..\MarshalString.h" />
     <ClInclude Include="..\IWindowRig.h" />
     <ClInclude Include="..\WindowRigInternal.h" />
+    <ClInclude Include="..\LayerControl.h" />
+    <ClInclude Include="..\TestControl.h" />
+    <ClInclude Include="..\EngineControlInternal.h" />
   </ItemGroup>
 </Project>

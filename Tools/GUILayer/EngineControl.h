@@ -7,6 +7,7 @@
 #pragma once
 
 #include "CLIXAutoPtr.h"
+#include "../../RenderCore/IThreadContext_Forward.h"
 
 using namespace System;
 using namespace System::ComponentModel;
@@ -17,8 +18,10 @@ using namespace System::Drawing;
 
 namespace GUILayer 
 {
+    class IWindowRig;
+
     class EngineControlPimpl;
-	public ref class EngineControl : public System::Windows::Forms::UserControl
+	public ref class EngineControl abstract : public System::Windows::Forms::UserControl
 	{
 	public:
 		EngineControl();
@@ -29,6 +32,8 @@ namespace GUILayer
         virtual void OnPaint(PaintEventArgs^) override;
         virtual void OnPaintBackground(PaintEventArgs^) override;
         virtual void OnResize(EventArgs^ e) override;
+
+        virtual void Render(RenderCore::IThreadContext&, IWindowRig&) = 0;
 
 	private:
 		System::ComponentModel::Container ^components;

@@ -121,7 +121,7 @@ namespace SceneEngine
         const RenderCore::Techniques::TechniqueContext& techniqueContext,
         const RenderCore::Techniques::CameraDesc* cameraForLOD)
     : _devContext(devContext)
-    , _parserContext(nullptr, techniqueContext)
+    , _parserContext(techniqueContext)
     {
         assert(devContext);
         using namespace RenderCore::Metal;
@@ -152,7 +152,7 @@ namespace SceneEngine
         if (cameraForLOD) { camera = *cameraForLOD; }
 
         LightingParser_SetupScene(
-            _devContext.get(), _parserContext, camera, qualitySettings);
+            _devContext.get(), _parserContext, nullptr, camera, qualitySettings);
         LightingParser_SetGlobalTransform(
             _devContext.get(), _parserContext, camera, qualitySettings._dimensions[0], qualitySettings._dimensions[1],
             &specialProjMatrix);

@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "../RenderCore/IThreadContext_Forward.h"
 #include "../RenderCore/Metal/Forward.h"
 #include "../RenderCore/Metal/ShaderResource.h"
 #include "../BufferUploads/IBufferUploads_Forward.h"
@@ -31,6 +32,7 @@ namespace SceneEngine
 
     class LightingParserContext;
     class SceneParseSettings;
+    class ISceneParser;
 
     /// <summary>Execute rendering<summary>
     /// This is the main entry point for rendering a scene.
@@ -69,17 +71,11 @@ namespace SceneEngine
     ///
     ///     presentationChain->Present();
     /// </code>
-    void LightingParser_Execute(
-        RenderCore::Metal::DeviceContext* context,
+    void LightingParser_ExecuteScene(
+        RenderCore::IThreadContext& context,
         LightingParserContext& parserContext,
+        ISceneParser& sceneParser,
         const RenderingQualitySettings& qualitySettings);
-
-    void LightingParser_ExecuteOverlayPass(
-        RenderCore::Metal::DeviceContext* context,
-        LightingParserContext& parserContext,
-        const RenderingQualitySettings& qualitySettings,
-        const Float4x4& projectionMatrix,
-        bool drawSky);
 
     /// <summary>Initialise basic states for scene rendering<summary>
     /// Some render operations don't want to use the full lighting parser structure.
@@ -90,6 +86,7 @@ namespace SceneEngine
     void LightingParser_SetupScene(
         RenderCore::Metal::DeviceContext* context,
         LightingParserContext& parserContext,
+        ISceneParser* sceneParser,
         const RenderCore::Techniques::CameraDesc& camera,
         const RenderingQualitySettings& qualitySettings);
 

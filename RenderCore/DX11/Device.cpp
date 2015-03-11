@@ -123,13 +123,10 @@ namespace RenderCore
             ThrowException(Exceptions::BasicLabel("Failure in D3D11 device construction. Aborting."));
         }
 
-        auto immediateThreadContext = std::make_shared<ThreadContextDX11>(immediateContext);
-
             //  Once we know there can be no more exceptions thrown, we can commit
             //  locals to the members.
         _underlying = std::move(underlying);
         _immediateContext = std::move(immediateContext);
-        _immediateThreadContext = std::move(immediateThreadContext);
     }
 
     Device::~Device()
@@ -242,6 +239,9 @@ namespace RenderCore
 
     std::shared_ptr<IThreadContext> Device::GetImmediateContext()
     {
+        if (!_immediateThreadContext) {
+            _immediateThreadContext = std::make_shared<ThreadContextDX11>(_immediateContext, shared_from_this());
+        }
         return _immediateThreadContext;
     }
 
@@ -270,7 +270,7 @@ namespace RenderCore
             auto hresult = _underlying->CreateDeferredContext(0, &defContextTemp);
             if (SUCCEEDED(hresult) && defContextTemp) {
                 intrusive_ptr<ID3D::DeviceContext> defContext(moveptr(defContextTemp));
-                return std::make_unique<ThreadContextDX11>(std::move(defContext));
+                return std::make_unique<ThreadContextDX11>(std::move(defContext), shared_from_this());
             }
         }
 
@@ -471,11 +471,10 @@ namespace RenderCore
 
     //////////////////////////////////////////////////////////////////////////////////////////////////
 
-    render_dll_export std::unique_ptr<IDevice>    CreateDevice()
+    render_dll_export std::shared_ptr<IDevice>    CreateDevice()
     {
-        return std::make_unique<DeviceDX11>();
+        return std::make_shared<DeviceDX11>();
     }
-
 
     //////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -503,12 +502,26 @@ namespace RenderCore
         return result;
     }
 
-    ThreadContext::ThreadContext(intrusive_ptr<ID3D::DeviceContext> devContext) 
+    ThreadContext::ThreadContext(intrusive_ptr<ID3D::DeviceContext> devContext, std::shared_ptr<Device> device)
+    : _device(std::move(device))
     {
         _underlying = std::make_shared<Metal_DX11::DeviceContext>(std::move(devContext));
     }
 
     ThreadContext::~ThreadContext() {}
+
+    std::shared_ptr<IDevice> ThreadContext::GetDevice() const
+    {
+        // Find a pointer back to the IDevice object associated with this 
+        // thread context...
+        // There are two ways to do this:
+        //  1) get the D3D::IDevice from the DeviceContext
+        //  2) there is a pointer back to the RenderCore::IDevice() hidden within
+        //      the D3D::IDevice
+        // Or, we could just store a std::shared_ptr back to the device within
+        // this object.
+        return _device.lock();
+    }
 
     void*   ThreadContextDX11::QueryInterface(const GUID& guid)
     {
@@ -521,8 +534,8 @@ namespace RenderCore
         return _underlying;
     }
 
-    ThreadContextDX11::ThreadContextDX11(intrusive_ptr<ID3D::DeviceContext> devContext)
-    : ThreadContext(devContext)
+    ThreadContextDX11::ThreadContextDX11(intrusive_ptr<ID3D::DeviceContext> devContext, std::shared_ptr<Device> device)
+    : ThreadContext(devContext, std::move(device))
     {}
 
     ThreadContextDX11::~ThreadContextDX11() {}

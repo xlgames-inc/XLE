@@ -50,13 +50,15 @@ namespace RenderCore
     class ThreadContext : public Base_ThreadContext
     {
     public:
-        bool                IsImmediate() const;
-        StateDesc           GetStateDesc() const;
+        bool                        IsImmediate() const;
+        StateDesc                   GetStateDesc() const;
+        std::shared_ptr<IDevice>    GetDevice() const;
 
-        ThreadContext(intrusive_ptr<ID3D::DeviceContext> devContext);
+        ThreadContext(intrusive_ptr<ID3D::DeviceContext> devContext, std::shared_ptr<Device> device);
         ~ThreadContext();
     protected:
         std::shared_ptr<Metal_DX11::DeviceContext> _underlying;
+        std::weak_ptr<Device> _device;  // (must be weak, because Device holds a shared_ptr to the immediate context)
     };
 
     class ThreadContextDX11 : public ThreadContext, public Base_ThreadContextDX11
@@ -65,13 +67,13 @@ namespace RenderCore
         virtual void*       QueryInterface(const GUID& guid);
         std::shared_ptr<Metal_DX11::DeviceContext>&  GetUnderlying();
 
-        ThreadContextDX11(intrusive_ptr<ID3D::DeviceContext> devContext);
+        ThreadContextDX11(intrusive_ptr<ID3D::DeviceContext> devContext, std::shared_ptr<Device> device);
         ~ThreadContextDX11();
     };
 
 ////////////////////////////////////////////////////////////////////////////////
 
-    class Device : public Base_Device
+    class Device : public Base_Device, public std::enable_shared_from_this<Device>
     {
     public:
         std::unique_ptr<IPresentationChain>     CreatePresentationChain(const void* platformValue, unsigned width, unsigned height) /*override*/;

@@ -308,7 +308,7 @@ namespace RenderOverlays
         q.max = Float2(std::get<1>(quad)[0], std::get<1>(quad)[1]);
         Float2 alignedPosition = textStyle->AlignText(q, AsUiAlign(alignment), unicharBuffer);
         return textStyle->Draw(
-            _deviceContext.get(), 
+            _metalContext.get(), 
             alignedPosition[0], alignedPosition[1],
             unicharBuffer, dimof(unicharBuffer),
             0.f, 1.f, 0.f, 
@@ -368,12 +368,12 @@ namespace RenderOverlays
     void ImmediateOverlayContext::SetState(const OverlayState& state) 
     {
         using namespace RenderCore::Metal;
-        _deviceContext->Bind(RenderCore::Techniques::CommonResources()._dssReadWrite);
-        _deviceContext->Bind(RenderCore::Techniques::CommonResources()._blendStraightAlpha);
-        _deviceContext->Bind(RenderCore::Techniques::CommonResources()._defaultRasterizer);
-        _deviceContext->BindPS(RenderCore::ResourceList<SamplerState, 1>(std::make_tuple(RenderCore::Techniques::CommonResources()._defaultSampler)));
+        _metalContext->Bind(RenderCore::Techniques::CommonResources()._dssReadWrite);
+        _metalContext->Bind(RenderCore::Techniques::CommonResources()._blendStraightAlpha);
+        _metalContext->Bind(RenderCore::Techniques::CommonResources()._defaultRasterizer);
+        _metalContext->BindPS(RenderCore::ResourceList<SamplerState, 1>(std::make_tuple(RenderCore::Techniques::CommonResources()._defaultSampler)));
 
-        ViewportDesc viewportDesc(*_deviceContext);
+        ViewportDesc viewportDesc(*_metalContext);
         ReciprocalViewportDimensions reciprocalViewportDimensions = { 1.f / float(viewportDesc.Width), 1.f / float(viewportDesc.Height), 0.f, 0.f };
         _viewportConstantBuffer = RenderCore::MakeSharedPkt(
             (const uint8*)&reciprocalViewportDimensions, 
@@ -386,7 +386,7 @@ namespace RenderOverlays
         if (_writePointer != 0) {
 			VertexBuffer temporaryBuffer(_workingBuffer.get(), _writePointer);
             for (auto i=_drawCalls.cbegin(); i!=_drawCalls.cend(); ++i) {
-                _deviceContext->Bind((Topology::Enum)i->_topology);
+                _metalContext->Bind((Topology::Enum)i->_topology);
 
                     //
                     //      Rebind the vertex buffer for each draw call
@@ -398,7 +398,7 @@ namespace RenderOverlays
                 vbs[0] = &temporaryBuffer;
                 strides[0] = VertexSize(i->_vertexFormat);
                 offsets[0] = i->_vertexOffset;
-                _deviceContext->Bind(0, 1, vbs, strides, offsets);
+                _metalContext->Bind(0, 1, vbs, strides, offsets);
 
                     //
                     //      The shaders we need to use (and the vertex input
@@ -407,10 +407,10 @@ namespace RenderOverlays
                     //
                 SetShader(i->_topology, i->_vertexFormat, i->_projMode, i->_pixelShaderName);
                 if (!i->_textureName.empty()) {
-                    _deviceContext->BindPS(RenderCore::MakeResourceList(
+                    _metalContext->BindPS(RenderCore::MakeResourceList(
                         Assets::GetAssetDep<DeferredShaderResource>(i->_textureName.c_str()).GetShaderResource()));
                 }
-                _deviceContext->Draw(i->_vertexCount);
+                _metalContext->Draw(i->_vertexCount);
             }
         }
 
@@ -560,20 +560,20 @@ namespace RenderOverlays
             ShaderBox::Desc(topology, format, projMode, pixelShaderName));
 
         if (box._shaderProgram) {
-            _deviceContext->Bind(*box._shaderProgram);
-            _deviceContext->Bind(box._boundInputLayout);
+            _metalContext->Bind(*box._shaderProgram);
+            _metalContext->Bind(box._boundInputLayout);
 
             ConstantBufferPacket constants[] = { _viewportConstantBuffer };
             box._boundUniforms.Apply(
-                *_deviceContext.get(), _globalUniformsStream, UniformsStream(constants, nullptr, dimof(constants)));
+                *_metalContext.get(), _globalUniformsStream, UniformsStream(constants, nullptr, dimof(constants)));
         } else {
             assert(0);
         }
     }
 
-    RenderCore::Metal::DeviceContext*   ImmediateOverlayContext::GetDeviceContext()
+    RenderCore::IThreadContext*   ImmediateOverlayContext::GetDeviceContext()
     {
-        return _deviceContext.get();
+        return _deviceContext;
     }
 
     RenderCore::Techniques::ProjectionDesc    ImmediateOverlayContext::GetProjectionDesc() const
@@ -592,10 +592,11 @@ namespace RenderOverlays
     : _font(GetX2Font("Raleway", 16))
     , _defaultTextStyle(*_font.get())
     , _projDesc(projDesc)
+    , _deviceContext(threadContext)
     {
 		_workingBufferSize = 16 * 1024;
 		_workingBuffer = std::make_unique<uint8[]>(_workingBufferSize);
-        _deviceContext = RenderCore::Metal::DeviceContext::Get(*threadContext);
+        _metalContext = RenderCore::Metal::DeviceContext::Get(*_deviceContext);
 
         _writePointer = 0;
         _drawCalls.reserve(64);

@@ -7,7 +7,8 @@
 #pragma once
 
 #include "IOverlayContext_Forward.h"
-#include "../RenderCore/Metal/Forward.h"        // just for DeviceContext
+#include "../RenderCore/IThreadContext.h"
+#include "../RenderCore/Metal/Forward.h"        // for RenderCore::Metal::UniformsStream
 #include "../Core/Types.h"
 #include "../Math/Vector.h"
 #include "../Math/Matrix.h"
@@ -133,7 +134,7 @@ namespace RenderOverlays
 
         virtual RenderCore::Techniques::ProjectionDesc      GetProjectionDesc() const = 0;
         virtual const RenderCore::Metal::UniformsStream&    GetGlobalUniformsStream() const = 0;
-        virtual RenderCore::Metal::DeviceContext*           GetDeviceContext() = 0;
+        virtual RenderCore::IThreadContext*                 GetDeviceContext() = 0;
 
         ~IOverlayContext();
     };

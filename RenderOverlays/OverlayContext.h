@@ -62,7 +62,7 @@ namespace RenderOverlays
         void ReleaseState();
         void SetState(const OverlayState& state);
 
-        RenderCore::Metal::DeviceContext*           GetDeviceContext();
+        RenderCore::IThreadContext*                 GetDeviceContext();
         RenderCore::Techniques::ProjectionDesc      GetProjectionDesc() const;
         const RenderCore::Metal::UniformsStream&    GetGlobalUniformsStream() const;
 
@@ -74,7 +74,8 @@ namespace RenderOverlays
         class ShaderBox;
 
     private:
-        std::shared_ptr<RenderCore::Metal::DeviceContext>    _deviceContext;
+        RenderCore::IThreadContext*                         _deviceContext;
+        std::shared_ptr<RenderCore::Metal::DeviceContext>   _metalContext;
         std::unique_ptr<uint8[]>	_workingBuffer;
 		unsigned					_workingBufferSize;
 		unsigned					_writePointer;

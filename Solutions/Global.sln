@@ -90,6 +90,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "UnitTests", "..\UnitTests\P
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TestDLL", "..\Samples\TestDLL\Project\TestDLL.vcxproj", "{2515AD98-AE67-49D3-96A0-2E4A2D8CB4B8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ModelViewer", "..\Samples\ModelViewer\Project\ModelViewer.csproj", "{06F6B39A-1EDA-4ABF-B120-1F885562FE16}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Tegra-Android = Debug|Tegra-Android
@@ -604,6 +606,18 @@ Global
 		{2515AD98-AE67-49D3-96A0-2E4A2D8CB4B8}.Release|Win32.Build.0 = Release|Win32
 		{2515AD98-AE67-49D3-96A0-2E4A2D8CB4B8}.Release|x64.ActiveCfg = Release|x64
 		{2515AD98-AE67-49D3-96A0-2E4A2D8CB4B8}.Release|x64.Build.0 = Release|x64
+		{06F6B39A-1EDA-4ABF-B120-1F885562FE16}.Debug|Tegra-Android.ActiveCfg = Debug|x86
+		{06F6B39A-1EDA-4ABF-B120-1F885562FE16}.Debug|Win32.ActiveCfg = Debug|x86
+		{06F6B39A-1EDA-4ABF-B120-1F885562FE16}.Debug|Win32.Build.0 = Debug|x86
+		{06F6B39A-1EDA-4ABF-B120-1F885562FE16}.Debug|x64.ActiveCfg = Debug|x86
+		{06F6B39A-1EDA-4ABF-B120-1F885562FE16}.Profile|Tegra-Android.ActiveCfg = Release|x86
+		{06F6B39A-1EDA-4ABF-B120-1F885562FE16}.Profile|Win32.ActiveCfg = Release|x86
+		{06F6B39A-1EDA-4ABF-B120-1F885562FE16}.Profile|Win32.Build.0 = Release|x86
+		{06F6B39A-1EDA-4ABF-B120-1F885562FE16}.Profile|x64.ActiveCfg = Release|x86
+		{06F6B39A-1EDA-4ABF-B120-1F885562FE16}.Release|Tegra-Android.ActiveCfg = Release|x86
+		{06F6B39A-1EDA-4ABF-B120-1F885562FE16}.Release|Win32.ActiveCfg = Release|x86
+		{06F6B39A-1EDA-4ABF-B120-1F885562FE16}.Release|Win32.Build.0 = Release|x86
+		{06F6B39A-1EDA-4ABF-B120-1F885562FE16}.Release|x64.ActiveCfg = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -634,5 +648,6 @@ Global
 		{39EA3939-2098-42CF-8F3A-E3D13BDB546B} = {E7DC652E-A855-4E12-9C04-6F36B489FF74}
 		{C1BFD687-C6C9-4CF3-87F1-C64C6A53A7BC} = {18FDF4B2-37E2-4DFF-B22B-566674160D0B}
 		{2515AD98-AE67-49D3-96A0-2E4A2D8CB4B8} = {18FDF4B2-37E2-4DFF-B22B-566674160D0B}
+		{06F6B39A-1EDA-4ABF-B120-1F885562FE16} = {18FDF4B2-37E2-4DFF-B22B-566674160D0B}
 	EndGlobalSection
 EndGlobal

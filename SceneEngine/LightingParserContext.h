@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "../RenderCore/IThreadContext_Forward.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Metal/Forward.h"
 #include "../RenderCore/Metal/Buffer.h"
@@ -29,6 +30,7 @@ namespace SceneEngine
     class PreparedShadowFrustum;
     class ShadowProjectionConstants;
     class ILightingParserPlugin;
+    class RenderingQualitySettings;
 
     class LightingParserContext : public RenderCore::Techniques::ParsingContext
     {
@@ -49,12 +51,16 @@ namespace SceneEngine
             //  ----------------- Plugins -----------------
         std::vector<std::shared_ptr<ILightingParserPlugin>> _plugins;
 
-        LightingParserContext(ISceneParser* sceneParser, const RenderCore::Techniques::TechniqueContext& techniqueContext);
+        LightingParserContext(const RenderCore::Techniques::TechniqueContext& techniqueContext);
         ~LightingParserContext();
 
     private:
         MetricsBox*                         _metricsBox;
         ISceneParser*                       _sceneParser;
+
+        void SetSceneParser(ISceneParser* sceneParser);
+        friend void LightingParser_ExecuteScene(
+            RenderCore::IThreadContext&, LightingParserContext&, ISceneParser&, const RenderingQualitySettings&);
     };
 }
 

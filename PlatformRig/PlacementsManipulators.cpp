@@ -1430,7 +1430,8 @@ namespace Tools
 
                 if (_browser) {
                     auto* devContext = context->GetDeviceContext();
-                    SceneEngine::SavedTargets oldTargets(devContext);
+                    auto metalContext = RenderCore::Metal::DeviceContext::Get(*devContext);
+                    SceneEngine::SavedTargets oldTargets(metalContext.get());
                     const RenderCore::Metal::ShaderResourceView* srv = nullptr;
                 
                     const char* errorMsg = nullptr;
@@ -1441,18 +1442,18 @@ namespace Tools
                             (const utf8*)AsPointer(_selectedModel.cbegin()), _selectedModel.size(), 
                             ucs2Filename, dimof(ucs2Filename));
 
-                        auto browserSRV = _browser->GetSRV(devContext, ucs2Filename);
+                        auto browserSRV = _browser->GetSRV(*devContext, ucs2Filename);
                         srv = browserSRV.first;
                     } 
                     CATCH(const ::Assets::Exceptions::InvalidResource&) { errorMsg = "Invalid"; } 
                     CATCH(const ::Assets::Exceptions::PendingResource&) { errorMsg = "Pending"; } 
                     CATCH_END
 
-                    oldTargets.ResetToOldTargets(devContext);
+                    oldTargets.ResetToOldTargets(metalContext.get());
 
                     if (srv) {
                         DrawQuadDirect(
-                            devContext, *srv,
+                            metalContext.get(), *srv,
                             Float2(float(previewRect._topLeft[0]), float(previewRect._topLeft[1])), 
                             Float2(float(previewRect._bottomRight[0]), float(previewRect._bottomRight[1])));
                     } else if (errorMsg) {

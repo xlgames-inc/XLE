@@ -9,6 +9,7 @@
 #include "OverlaySystem.h"
 #include "MainInputHandler.h"
 
+#include "../RenderCore/IThreadContext.h"
 #include "../RenderCore/Metal/GPUProfiler.h"
 #include "../RenderOverlays/Font.h"
 #include "../RenderOverlays/DebuggingDisplay.h"
@@ -155,8 +156,7 @@ namespace PlatformRig
 ///////////////////////////////////////////////////////////////////////////////
 
     auto FrameRig::ExecuteFrame(
-        RenderCore::IThreadContext* context,
-        RenderCore::IDevice* device,
+        RenderCore::IThreadContext& context,
         RenderCore::IPresentationChain* presChain,
         RenderCore::Metal::GPUProfiler::Profiler* gpuProfiler,
         HierarchicalCPUProfiler* cpuProfiler,
@@ -164,7 +164,7 @@ namespace PlatformRig
     {
         CPUProfileEvent_Conditional pEvnt("FrameRig::ExecuteFrame", cpuProfiler);
 
-        assert(context && device && presChain);
+        assert(presChain);
 
         uint64 startTime = GetPerformanceCounter();
         if (_pimpl->_frameLimiter) {
@@ -181,11 +181,13 @@ namespace PlatformRig
         }
         _pimpl->_prevFrameStartTime = startTime;
 
-        auto metalContext = RenderCore::Metal::DeviceContext::Get(*context);
+        auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
 
         if (gpuProfiler) {
             RenderCore::Metal::GPUProfiler::Frame_Begin(*metalContext, gpuProfiler, _pimpl->_frameRenderCount);
         }
+        auto device = context.GetDevice();
+        assert(device);
         device->BeginFrame(presChain);
 
             //  We must invalidate the cached state at least once per frame.
@@ -224,7 +226,7 @@ namespace PlatformRig
 
         {
             for (auto i=_pimpl->_postPresentCallbacks.begin(); i!=_pimpl->_postPresentCallbacks.end(); ++i) {
-                (*i)(*context);
+                (*i)(context);
             }
         }
 

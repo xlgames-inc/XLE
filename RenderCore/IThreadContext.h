@@ -7,6 +7,9 @@
 #pragma once
 
 #include "IThreadContext_Forward.h"
+#include "IDevice_Forward.h"
+#include "../Math/Vector.h"
+#include <memory>
 
 #if OUTPUT_DLL
     #define render_dll_export       dll_export
@@ -54,6 +57,7 @@ namespace RenderCore
     public:
         IMETHOD virtual void*   QueryInterface(const GUID& guid) IPURE;
         IMETHOD bool            IsImmediate() const IPURE;
+        IMETHOD std::shared_ptr<IDevice>    GetDevice() const IPURE;
 
         class StateDesc
         {

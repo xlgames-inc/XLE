@@ -64,7 +64,7 @@ namespace Sample
     public:
         std::unique_ptr<ConsoleRig::Console> _console;
 
-        std::unique_ptr<RenderCore::IDevice> _rDevice;
+        std::shared_ptr<RenderCore::IDevice> _rDevice;
         std::shared_ptr<RenderCore::IPresentationChain> _presChain;
         std::unique_ptr<BufferUploads::IManager> _bufferUploads;
         PlatformRig::OverlappedWindow _window;
@@ -145,9 +145,9 @@ namespace Sample
 
     static void SetupCompilers(::Assets::CompileAndAsyncManager& asyncMan);
     static PlatformRig::FrameRig::RenderResult RenderFrame(
-        RenderCore::IThreadContext* context,
+        RenderCore::IThreadContext& context,
         SceneEngine::LightingParserContext& lightingParserContext, EnvironmentSceneParser* scene,
-        RenderCore::IDevice* renderDevice, RenderCore::IPresentationChain* presentationChain,
+        RenderCore::IPresentationChain* presentationChain,
         PlatformRig::IOverlaySystem* overlaySys);
 
     void ExecuteSample()
@@ -258,16 +258,16 @@ namespace Sample
 
                     // ------- Render ----------------------------------------
                 SceneEngine::LightingParserContext lightingParserContext(
-                    mainScene.get(), *primMan._globalTechContext);
+                    *primMan._globalTechContext);
                 lightingParserContext._plugins.push_back(stdPlugin);
 
                 auto frameResult = frameRig.ExecuteFrame(
-                    context.get(), primMan._rDevice.get(), primMan._presChain.get(), 
+                    *context.get(), primMan._presChain.get(), 
                     g_gpuProfiler.get(), &g_cpuProfiler,
                     std::bind(
                         RenderFrame, std::placeholders::_1,
                         std::ref(lightingParserContext), mainScene.get(), 
-                        primMan._rDevice.get(), primMan._presChain.get(), 
+                        primMan._presChain.get(), 
                         frameRig.GetMainOverlaySystem().get()));
 
                     // ------- Update ----------------------------------------
@@ -308,37 +308,38 @@ namespace Sample
     }
 
     PlatformRig::FrameRig::RenderResult RenderFrame(
-        RenderCore::IThreadContext* context,
+        RenderCore::IThreadContext& context,
         SceneEngine::LightingParserContext& lightingParserContext,
-        EnvironmentSceneParser* scene, RenderCore::IDevice* renderDevice,
+        EnvironmentSceneParser* scene,
         RenderCore::IPresentationChain* presentationChain,
         PlatformRig::IOverlaySystem* overlaySys)
     {
         CPUProfileEvent pEvnt("RenderFrame", g_cpuProfiler);
 
-        auto metalContext = RenderCore::Metal::DeviceContext::Get(*context);
-
             //  some scene might need a "prepare" step to 
             //  build some resources before the main render occurs.
-        scene->PrepareFrame(metalContext.get());
+        scene->PrepareFrame(context);
 
         using namespace SceneEngine;
-        auto presChainDesc = presentationChain->GetDesc();
-        LightingParser_Execute(
-            metalContext.get(), lightingParserContext, 
-            RenderingQualitySettings(
-                presChainDesc._dimensions, 
-                Tweakable("SamplingCount", 1), Tweakable("SamplingQuality", 0)));
+        if (scene) {
+            auto presChainDesc = presentationChain->GetDesc();
+            LightingParser_ExecuteScene(
+                context, lightingParserContext, *scene, 
+                RenderingQualitySettings(
+                    presChainDesc._dimensions, 
+                    Tweakable("SamplingCount", 1), Tweakable("SamplingQuality", 0)));
+        }
 
         if (overlaySys) {
-            overlaySys->RenderToScene(context, lightingParserContext);
+            overlaySys->RenderToScene(&context, lightingParserContext);
         }
 
         auto& usefulFonts = RenderCore::Techniques::FindCachedBox<UsefulFonts>(UsefulFonts::Desc());
+        auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
         DrawPendingResources(metalContext.get(), lightingParserContext, usefulFonts._defaultFont0.get());
 
         if (overlaySys) {
-            overlaySys->RenderWidgets(context, lightingParserContext.GetProjectionDesc());
+            overlaySys->RenderWidgets(&context, lightingParserContext.GetProjectionDesc());
         }
 
         return PlatformRig::FrameRig::RenderResult(!lightingParserContext._pendingResources.empty());

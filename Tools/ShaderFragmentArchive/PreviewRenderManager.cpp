@@ -37,7 +37,7 @@ namespace PreviewRender
     class ManagerPimpl
     {
     public:
-        std::unique_ptr<RenderCore::IDevice>   _device;
+        std::shared_ptr<RenderCore::IDevice>   _device;
         std::unique_ptr<::Assets::CompileAndAsyncManager> _asyncMan;
     };
 

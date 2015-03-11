@@ -60,16 +60,21 @@
   <ItemGroup>
     <ClCompile Include="..\EngineDevice.cpp" />
     <ClCompile Include="..\EngineControl.cpp" />
+    <ClCompile Include="..\LayerControl.cpp" />
+    <ClCompile Include="..\TestControl.cpp" />
     <ClCompile Include="..\WindowRig.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\CLIXAutoPtr.h" />
+    <ClInclude Include="..\EngineControlInternal.h" />
     <ClInclude Include="..\EngineDevice.h" />
     <ClInclude Include="..\EngineControl.h">
       <FileType>CppControl</FileType>
     </ClInclude>
     <ClInclude Include="..\IWindowRig.h" />
+    <ClInclude Include="..\LayerControl.h" />
     <ClInclude Include="..\MarshalString.h" />
+    <ClInclude Include="..\TestControl.h" />
     <ClInclude Include="..\WindowRigInternal.h" />
   </ItemGroup>
   <ItemGroup>
