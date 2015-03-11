@@ -30,17 +30,18 @@ namespace RenderCore { namespace ColladaConversion
             MaterialDesc(
                 const Utility::Data& source,
                 ::Assets::DirectorySearchRules* searchRules = nullptr,
-                std::vector<const ::Assets::DependencyValidation*>* inherited = nullptr);
+                std::vector<std::shared_ptr<::Assets::DependencyValidation>>* inherited = nullptr);
         };
         std::vector<std::pair<uint64, MaterialDesc>> _materials;
         
-        const ::Assets::DependencyValidation& GetDependencyValidation() const { return *_depVal; }
+        std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() { return _depVal; }
         
         MaterialSettingsFile();
         MaterialSettingsFile(const ResChar filename[]);
         ~MaterialSettingsFile();
     private:
         std::shared_ptr<::Assets::DependencyValidation> _depVal;
+		std::vector<std::shared_ptr<::Assets::DependencyValidation>> _inherited;
     };
 }}
 

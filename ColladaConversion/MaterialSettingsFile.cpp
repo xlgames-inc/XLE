@@ -174,7 +174,7 @@ namespace RenderCore { namespace ColladaConversion
     MaterialSettingsFile::MaterialDesc::MaterialDesc(
         const Data& source,
         ::Assets::DirectorySearchRules* searchRules,
-        std::vector<const ::Assets::DependencyValidation*>* inherited)
+        std::vector<std::shared_ptr<::Assets::DependencyValidation>>* inherited)
     {
             // first, load inherited settings.
         auto* inheritList = source.ChildWithValue("Inherit");
@@ -203,8 +203,8 @@ namespace RenderCore { namespace ColladaConversion
                         _constants.MergeIn(s->second._constants);
                     }
 
-                    if (inherited && std::find(inherited->begin(), inherited->end(), &settingsTable.GetDependencyValidation())== inherited->end()) {
-                        inherited->push_back(&settingsTable.GetDependencyValidation());
+                    if (inherited && std::find(inherited->begin(), inherited->end(), settingsTable.GetDependencyValidation())== inherited->end()) {
+                        inherited->push_back(settingsTable.GetDependencyValidation());
                     }
                 }
             }
@@ -268,7 +268,7 @@ namespace RenderCore { namespace ColladaConversion
 
         if (sourceFile) {
             auto searchRules = ::Assets::DefaultDirectorySearchRules(filename);
-            std::vector<const ::Assets::DependencyValidation*> inherited;
+            std::vector<std::shared_ptr<::Assets::DependencyValidation>> inherited;
 
             Data data;
             data.Load((const char*)sourceFile.get(), (int)sourceFileSize);
@@ -279,8 +279,10 @@ namespace RenderCore { namespace ColladaConversion
             }
 
             for (auto i=inherited.begin(); i!=inherited.end(); ++i) {
-                ::Assets::RegisterAssetDependency(_depVal, *i);
+                ::Assets::RegisterAssetDependency(_depVal, i->get());
             }
+
+			_inherited = std::move(inherited);
         }
 
         std::sort(_materials.begin(), _materials.end(), CompareFirst<uint64, MaterialDesc>());

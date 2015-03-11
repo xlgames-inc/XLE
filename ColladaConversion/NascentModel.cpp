@@ -1363,5 +1363,10 @@ namespace RenderCore { namespace ColladaConversion
     {
         return std::make_pair(VersionString, BuildDateString);
     }
+
+	CONVERSION_API void ShutdownLibrary()
+	{
+		TerminateFileSystemMonitoring();
+	}
 }}
 

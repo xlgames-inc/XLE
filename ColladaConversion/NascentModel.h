@@ -97,6 +97,7 @@ namespace RenderCore { namespace ColladaConversion
 
     CONVERSION_API std::unique_ptr<NascentModel, Internal::CrossDLLDeletor>     CreateModel(const ResChar identifier[]);
     CONVERSION_API std::pair<const char*, const char*>                          GetVersionInformation();
+	CONVERSION_API void															ShutdownLibrary();
 
     typedef std::unique_ptr<NascentModel, Internal::CrossDLLDeletor> CreateModelFunction(const ResChar identifier[]);
     typedef NascentChunkArray (NascentModel::*ModelSerializeFunction)() const;

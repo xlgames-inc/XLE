@@ -187,7 +187,16 @@ namespace RenderCore { namespace Assets
 
     ColladaCompiler::~ColladaCompiler()
     {
-        (*Windows::FreeLibrary)(_pimpl->_conversionLibrary);
+		if (_pimpl->_conversionLibrary && _pimpl->_conversionLibrary != INVALID_HANDLE_VALUE) {
+				// we need to call the "Shutdown" function before we can unload the DLL
+			const char ShutdownLibraryName[] = "?ShutdownLibrary@ColladaConversion@RenderCore@@YAXXZ";
+			auto shutdownLibraryFn = (void(*)())(*Windows::Fn_GetProcAddress)(_pimpl->_conversionLibrary, ShutdownLibraryName);
+			if (shutdownLibraryFn) {
+				(*shutdownLibraryFn)();
+			}
+
+			(*Windows::FreeLibrary)(_pimpl->_conversionLibrary);
+		}
     }
 
     void ColladaCompiler::AttachLibrary()
