@@ -7,9 +7,41 @@
 #pragma once
 
 #include "OverlaySystem.h"
+#include "../Assets/AssetUtils.h"
+
+namespace RenderCore { namespace Assets 
+{
+    class IModelFormat; 
+    class ModelRenderer;
+    class SharedStateSet;
+}}
+
+namespace SceneEngine { class ISceneParser; }
 
 namespace PlatformRig
 {
+    class ModelVisCache
+    {
+    public:
+        class Model
+        {
+        public:
+            RenderCore::Assets::ModelRenderer* _renderer;
+            RenderCore::Assets::SharedStateSet* _sharedStateSet;
+            std::pair<Float3, Float3> _boundingBox;
+            uint64 _hash;
+        };
+
+        Model GetModel(const Assets::ResChar filename[]);
+        std::string HashToModelName(uint64 hash);
+
+        ModelVisCache(std::shared_ptr<RenderCore::Assets::IModelFormat> format);
+        ~ModelVisCache();
+    protected:
+        class Pimpl;
+        std::unique_ptr<Pimpl> _pimpl;
+    };
+
     class ModelVisLayer : public IOverlaySystem
     {
     public:
@@ -23,12 +55,13 @@ namespace PlatformRig
             const RenderCore::Techniques::ProjectionDesc& projectionDesc);
         virtual void SetActivationState(bool newState);
 
-        ModelVisLayer();
+        ModelVisLayer(std::shared_ptr<ModelVisCache> cache);
         ~ModelVisLayer();
-
     protected:
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
     };
+
+    std::unique_ptr<SceneEngine::ISceneParser> CreateModelScene(const ModelVisCache::Model& model);
 }
 

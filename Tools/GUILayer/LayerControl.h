@@ -15,13 +15,11 @@ namespace GUILayer
 	public ref class LayerControl : public EngineControl
 	{
 	public:
+
 		LayerControl();
-
-	protected:
 		~LayerControl();
-
+    protected:
         virtual void Render(RenderCore::IThreadContext&, IWindowRig&) override;
-
         clix::auto_ptr<LayerControlPimpl> _pimpl;
 	};
 }

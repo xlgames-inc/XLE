@@ -14,7 +14,7 @@ Foreign/OpenCOLLADA/COLLADASaxFrameworkLoader/lib
 PluginNonDist/
 
 *.user
-!*.csproj.user
+*.csproj.user
 *.ncb
 *.suo
 *.swp
@@ -55,4 +55,3 @@ Working/game/textures/
 Working/game/worlds/
 Working/localtest/
 Working/game/mainworld/
-

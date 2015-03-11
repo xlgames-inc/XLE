@@ -4,21 +4,10 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#define MODEL_FORMAT_RUNTIME 1
-#define MODEL_FORMAT_SIMPLE 2
-#define MODEL_FORMAT MODEL_FORMAT_RUNTIME
-
 #include "Browser.h"
 #include "../Font.h"
 
-#if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
-    #include "../../RenderCore/Assets/ModelRunTime.h"
-    #include "../../Assets/CompileAndAsyncManager.h"
-    #include "../../Assets/IntermediateResources.h"
-    #include "../../RenderCore/Assets/ColladaCompilerInterface.h"
-#else
-    #include "../../RenderCore/Assets/ModelSimple.h"
-#endif
+#include "../../PlatformRig/ModelVisualisation.h"
 
 #include "../../RenderCore/Metal/State.h"
 #include "../../RenderCore/Assets/SharedStateSet.h"
@@ -44,16 +33,6 @@
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/HeapUtils.h"
 #include "../../Utility/Streams/PathUtils.h"
-
-#if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
-    namespace Assets
-    {
-        template<> uint64 GetCompileProcessType<RenderCore::Assets::ModelScaffold>();
-        // { 
-        //     return RenderCore::Assets::ColladaCompiler::Type_Model; 
-        // }
-    }
-#endif
 
 namespace Overlays
 {
@@ -458,141 +437,20 @@ namespace Overlays
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
-        using RenderCore::Assets::ModelRenderer;
-        using RenderCore::Assets::ModelScaffold;
-    #else
-        using RenderCore::Assets::Simple::ModelRenderer;
-        using RenderCore::Assets::Simple::ModelScaffold;
-        using RenderCore::Assets::Simple::MaterialScaffold;
-    #endif
-    using RenderCore::Assets::SharedStateSet;
-
-    typedef std::pair<Float3, Float3> BoundingBox;
-
     class ModelBrowser::Pimpl
     {
     public:
-        std::map<uint64, BoundingBox> _boundingBoxes;
-        
-        LRUCache<ModelScaffold>     _modelScaffolds;
-        #if MODEL_FORMAT != MODEL_FORMAT_RUNTIME
-            LRUCache<MaterialScaffold>  _materialScaffolds;
-        #endif
-        LRUCache<ModelRenderer>     _modelRenderers;
-        SharedStateSet              _sharedStateSet;
-
-        std::vector<std::pair<uint64, std::string>> _modelNames;
-
         RenderCore::Metal::RenderTargetView     _rtv;
         RenderCore::Metal::DepthStencilView     _dsv;
         RenderCore::Metal::ShaderResourceView   _srv;
 
-        std::shared_ptr<RenderCore::Assets::IModelFormat> _format;
-
-        Pimpl();
+        std::unique_ptr<PlatformRig::ModelVisCache> _cache;
+        std::vector<std::pair<uint64, std::string>> _modelNames;
     };
 
-    ModelBrowser::Pimpl::Pimpl()
-    : _modelScaffolds(2000)
-    #if MODEL_FORMAT != MODEL_FORMAT_RUNTIME
-        , _materialScaffolds(2000)
-    #endif
-    , _modelRenderers(50)
-    {
-    }
-
-    class ModelSceneParser : public SceneEngine::ISceneParser
-    {
-    public:
-        RenderCore::Techniques::CameraDesc  GetCameraDesc() const
-        {
-            const float border = 0.0f;
-            float maxHalfDimension = .5f * std::max(_boundingBox.second[1] - _boundingBox.first[1], _boundingBox.second[2] - _boundingBox.first[2]);
-            RenderCore::Techniques::CameraDesc result;
-            result._verticalFieldOfView = Deg2Rad(60.f);
-            Float3 position = .5f * (_boundingBox.first + _boundingBox.second);
-            position[0] = _boundingBox.first[0] - (maxHalfDimension * (1.f + border)) / XlTan(0.5f * result._verticalFieldOfView);
-            result._cameraToWorld = Float4x4(
-                0.f, 0.f, -1.f, position[0],
-                -1.f, 0.f,  0.f, position[1],
-                0.f, 1.f,  0.f, position[2],
-                0.f, 0.f, 0.f, 1.f);
-            Combine_InPlace(result._cameraToWorld, position);
-            result._nearClip = 0.01f;
-            result._farClip = 1000.f;
-            result._temporaryMatrix = Identity<Float4x4>();
-            return result;
-        }
-
-        void ExecuteScene(  RenderCore::Metal::DeviceContext* context, 
-                            SceneEngine::LightingParserContext& parserContext, 
-                            const SceneEngine::SceneParseSettings& parseSettings,
-                            unsigned techniqueIndex) const 
-        {
-            if (    parseSettings._batchFilter == SceneEngine::SceneParseSettings::BatchFilter::Depth
-                ||  parseSettings._batchFilter == SceneEngine::SceneParseSettings::BatchFilter::General) {
-                
-                    
-                #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
-                    _model->Render(
-                        ModelRenderer::Context(context, parserContext, techniqueIndex, *_sharedStateSet),
-                        Identity<Float4x4>());
-                #else
-                    _model->Render(context, parserContext, techniqueIndex, *_sharedStateSet, Identity<Float4x4>(), 0);
-                #endif
-            }
-        }
-
-        void ExecuteShadowScene(    RenderCore::Metal::DeviceContext* context, 
-                                    SceneEngine::LightingParserContext& parserContext, 
-                                    const SceneEngine::SceneParseSettings& parseSettings,
-                                    unsigned index, unsigned techniqueIndex) const
-        {
-            ExecuteScene(context, parserContext, parseSettings, techniqueIndex);
-        }
-
-        unsigned GetShadowProjectionCount() const { return 0; }
-        SceneEngine::ShadowProjectionDesc GetShadowProjectionDesc(unsigned index, const RenderCore::Techniques::ProjectionDesc& mainSceneProjectionDesc) const 
-        { return SceneEngine::ShadowProjectionDesc(); }
-        
-
-        unsigned                        GetLightCount() const { return 0; }
-        const SceneEngine::LightDesc&   GetLightDesc(unsigned index) const
-        {
-            static SceneEngine::LightDesc light;
-            light._type = SceneEngine::LightDesc::Directional;
-            light._lightColour = Float3(5.f, 5.f, 5.f);
-            light._negativeLightDirection = Float3(0.f, 0.f, 1.f);
-            light._radius = 1000.f;
-            light._shadowFrustumIndex = ~unsigned(0x0);
-            return light;
-        }
-
-        SceneEngine::GlobalLightingDesc GetGlobalLightingDesc() const
-        {
-            SceneEngine::GlobalLightingDesc result;
-            result._ambientLight = Float3(0.25f, 0.25f, 0.25f);
-            result._skyTexture = nullptr;
-            result._doAtmosphereBlur = false;
-            result._doOcean = false;
-            result._doToneMap = false;
-            return result;
-        }
-
-        float GetTimeValue() const { return 0.f; }
-
-        ModelSceneParser(ModelRenderer& model, const BoundingBox& boundingBox, const SharedStateSet& sharedStateSet) 
-            : _model(&model), _boundingBox(boundingBox), _sharedStateSet(&sharedStateSet) {}
-        ~ModelSceneParser() {}
-
-    protected:
-        ModelRenderer * _model;
-        const SharedStateSet* _sharedStateSet;
-        BoundingBox _boundingBox;
-    };
-
-    static void RenderModel(RenderCore::IThreadContext& context, ModelRenderer& model, const BoundingBox& boundingBox, SharedStateSet& sharedStates)
+    static void RenderModel(
+        RenderCore::IThreadContext& context, 
+        PlatformRig::ModelVisCache::Model& model)
     {
             // Render the given model. Create a minimal version of the full rendering process:
             //      We need to create a LightingParserContext, and ISceneParser as well.
@@ -603,15 +461,15 @@ namespace Overlays
 
             //  Aggressively reset the shared state set, to try to invalidate
             //  any cached states that have changed since the last render
-        sharedStates.CaptureState(metalContext.get());
+        model._sharedStateSet->CaptureState(metalContext.get());
 
-        ModelSceneParser sceneParser(model, boundingBox, sharedStates);
+        auto sceneParser = PlatformRig::CreateModelScene(model);
         Techniques::TechniqueContext techniqueContext;
         techniqueContext._globalEnvironmentState.SetParameter("SKIP_MATERIAL_DIFFUSE", 1);
         SceneEngine::LightingParserContext lightingParserContext(techniqueContext);
-        SceneEngine::LightingParser_ExecuteScene(context, lightingParserContext, sceneParser, qualitySettings);
+        SceneEngine::LightingParser_ExecuteScene(context, lightingParserContext, *sceneParser.get(), qualitySettings);
 
-        sharedStates.ReleaseState(metalContext.get());
+        model._sharedStateSet->ReleaseState(metalContext.get());
     }
 
     static const unsigned ModelBrowserItemDimensions = 196;
@@ -626,71 +484,13 @@ namespace Overlays
         utf8 utf8Filename[MaxPath];
         ucs2_2_utf8(AsPointer(filename.cbegin()), filename.size(), utf8Filename, dimof(utf8Filename));
 
-        if (!_pimpl->_format) {
-            return std::make_pair(nullptr, 0);
+        uint64 hashedName = Hash64((const char*)utf8Filename);
+        auto ni = LowerBound(_pimpl->_modelNames, hashedName);
+        if (ni == _pimpl->_modelNames.end() || ni->first != hashedName) {
+            _pimpl->_modelNames.insert(ni, std::make_pair(hashedName, std::string((const char*)utf8Filename)));
         }
 
-        uint64 hashedName = Hash64(AsPointer(filename.cbegin()), AsPointer(filename.cend()));
-        auto model = _pimpl->_modelScaffolds.Get(hashedName);
-        if (!model) {
-            #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
-                auto& man = ::Assets::CompileAndAsyncManager::GetInstance();
-                auto& compilers = man.GetIntermediateCompilers();
-                auto& store = man.GetIntermediateStore();
-                const ResChar* inits[] = { (const ResChar*) utf8Filename };
-                auto marker = compilers.PrepareResource(
-                    ::Assets::GetCompileProcessType<ModelScaffold>(), 
-                    inits, dimof(inits), store);
-                model = std::make_shared<ModelScaffold>(std::move(marker));
-            #else
-                model = _pimpl->_format->CreateModel((const char*)utf8Filename);
-            #endif
-            _pimpl->_modelScaffolds.Insert(hashedName, model);
-
-            auto ni = LowerBound(_pimpl->_modelNames, hashedName);
-            if (ni == _pimpl->_modelNames.end() || ni->first != hashedName) {
-                _pimpl->_modelNames.insert(ni, std::make_pair(hashedName, (const char*)utf8Filename));
-            }
-        }
-            
-        #if MODEL_FORMAT != MODEL_FORMAT_RUNTIME
-            auto defMatName = _pimpl->_format->DefaultMaterialName(*model);
-            if (defMatName.empty()) { return std::make_pair(nullptr, 0); }
-
-            uint64 hashedMaterial = Hash64(defMatName);
-            auto material = _pimpl->_materialScaffolds.Get(hashedMaterial);
-            if (!material) {
-                material = _pimpl->_format->CreateMaterial(defMatName.c_str());
-                _pimpl->_materialScaffolds.Insert(hashedMaterial, material);
-            }
-            uint64 hashedModel = uint64(model.get()) | (uint64(material.get()) << 48);
-        #else
-            uint64 hashedModel = uint64(model.get());
-        #endif
-        
-        auto renderer = _pimpl->_modelRenderers.Get(hashedModel);
-        if (!renderer) {
-            #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
-                auto searchRules = ::Assets::DefaultDirectorySearchRules((const ResChar*)utf8Filename);
-                renderer = std::make_shared<ModelRenderer>(
-                    std::ref(*model), std::ref(_pimpl->_sharedStateSet), &searchRules, 0);
-            #else
-                renderer = _pimpl->_format->CreateRenderer(
-                    std::ref(*model), std::ref(*material), std::ref(_pimpl->_sharedStateSet), 0);
-            #endif
-
-            _pimpl->_modelRenderers.Insert(hashedModel, renderer);
-        }
-
-            // cache the bounding box, because it's an expensive operation to recalculate
-        BoundingBox boundingBox;
-        auto boundingBoxI = _pimpl->_boundingBoxes.find(hashedName);
-        if (boundingBoxI== _pimpl->_boundingBoxes.end()) {
-            boundingBox = model->GetStaticBoundingBox(0);
-            _pimpl->_boundingBoxes.insert(std::make_pair(hashedName, boundingBox));
-        } else {
-            boundingBox = boundingBoxI->second;
-        }
+        auto model = _pimpl->_cache->GetModel((const ::Assets::ResChar*)utf8Filename);
 
             // draw this object to our off screen buffer
         const unsigned offscreenDims = ModelBrowserItemDimensions;
@@ -699,7 +499,7 @@ namespace Overlays
         metalContext->Clear(_pimpl->_rtv, Float4(0.f, 0.f, 0.f, 1.f));
         metalContext->Clear(_pimpl->_dsv, 1.f, 0);
         metalContext->Bind(RenderCore::Metal::Topology::TriangleList);
-        RenderModel(context, *renderer, boundingBox, _pimpl->_sharedStateSet);
+        RenderModel(context, model);
 
         return std::make_pair(&_pimpl->_srv, hashedName);   // note, here, the hashedName only considered the model name, not the material name
     }
@@ -755,7 +555,8 @@ namespace Overlays
         pimpl->_rtv =RenderCore::Metal::RenderTargetView(offscreenResource.get());
         pimpl->_dsv = RenderCore::Metal::DepthStencilView(depthResource.get());
         pimpl->_srv = RenderCore::Metal::ShaderResourceView(offscreenResource.get());
-        pimpl->_format = std::move(format);
+
+        pimpl->_cache = std::make_unique<PlatformRig::ModelVisCache>(std::move(format));
 
         _pimpl = std::move(pimpl);
     }
