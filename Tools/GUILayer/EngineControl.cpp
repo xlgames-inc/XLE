@@ -32,6 +32,8 @@ namespace GUILayer
         auto* renderDevice = engineDevice->GetNative().GetRenderDevice();
         auto immediateContext = renderDevice->GetImmediateContext();
         Render(*immediateContext.get(), *_pimpl->_windowRig.get());
+
+        // Invalidate();
     }
 
     void EngineControl::OnPaintBackground(PaintEventArgs^)
@@ -110,6 +112,12 @@ namespace GUILayer
         if (_pimpl->_inputTranslator) {
             _pimpl->_inputTranslator->OnMouseButtonDblClk(AsIndex(e->Button));
         }
+    }
+
+    IWindowRig& EngineControl::GetWindowRig()
+    {
+        assert(_pimpl->_windowRig);
+        return *_pimpl->_windowRig;
     }
 
     EngineControl::EngineControl()

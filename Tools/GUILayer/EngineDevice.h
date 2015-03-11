@@ -25,6 +25,7 @@ namespace GUILayer
         RenderCore::IDevice*        GetRenderDevice();
         BufferUploads::IManager*    GetBufferUploads();
         std::unique_ptr<IWindowRig> CreateWindowRig(const void* nativeWindowHandle);
+        void                        AttachColladaCompilers();
 
         NativeEngineDevice();
         ~NativeEngineDevice();
@@ -53,6 +54,8 @@ namespace GUILayer
         static EngineDevice^ GetInstance() { return s_instance; }
         static void SetDefaultWorkingDirectory();
         NativeEngineDevice& GetNative() { return *_pimpl; }
+
+        void AttachColladaCompilers();
 
         EngineDevice();
         ~EngineDevice();

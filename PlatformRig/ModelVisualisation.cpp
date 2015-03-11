@@ -173,19 +173,23 @@ namespace PlatformRig
         RenderCore::Techniques::CameraDesc  GetCameraDesc() const
         {
             const float border = 0.0f;
-            float maxHalfDimension = .5f * std::max(_boundingBox.second[1] - _boundingBox.first[1], _boundingBox.second[2] - _boundingBox.first[2]);
+            static float fov = 40.f;
+
             RenderCore::Techniques::CameraDesc result;
-            result._verticalFieldOfView = Deg2Rad(60.f);
+            result._verticalFieldOfView = Deg2Rad(fov);
             Float3 position = .5f * (_boundingBox.first + _boundingBox.second);
-            position[0] = _boundingBox.first[0] - (maxHalfDimension * (1.f + border)) / XlTan(0.5f * result._verticalFieldOfView);
+
+                // push back to attempt to fill the viewport with the bounding box
+            float verticalHalfDimension = .5f * _boundingBox.second[2] - _boundingBox.first[2];
+            position[0] = _boundingBox.first[0] - (verticalHalfDimension * (1.f + border)) / XlTan(.5f * result._verticalFieldOfView);
+
             result._cameraToWorld = Float4x4(
                 0.f, 0.f, -1.f, position[0],
                 -1.f, 0.f,  0.f, position[1],
                 0.f, 1.f,  0.f, position[2],
                 0.f, 0.f, 0.f, 1.f);
-            Combine_InPlace(result._cameraToWorld, position);
-            result._nearClip = 0.01f;
-            result._farClip = 1000.f;
+            result._farClip = 1.25f * (_boundingBox.second[0] - position[0]);
+            result._nearClip = result._farClip / 10000.f;
             result._temporaryMatrix = Identity<Float4x4>();
             return result;
         }
@@ -198,6 +202,10 @@ namespace PlatformRig
             if (    parseSettings._batchFilter == SceneEngine::SceneParseSettings::BatchFilter::Depth
                 ||  parseSettings._batchFilter == SceneEngine::SceneParseSettings::BatchFilter::General) {
 
+                if (_sharedStateSet) {
+                    _sharedStateSet->CaptureState(context);
+                }
+
                 #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
                     _model->Render(
                         ModelRenderer::Context(context, parserContext, techniqueIndex, *_sharedStateSet),
@@ -205,6 +213,10 @@ namespace PlatformRig
                 #else
                     _model->Render(context, parserContext, techniqueIndex, *_sharedStateSet, Identity<Float4x4>(), 0);
                 #endif
+
+                if (_sharedStateSet) {
+                    _sharedStateSet->ReleaseState(context);
+                }
             }
         }
 
@@ -226,9 +238,9 @@ namespace PlatformRig
         {
             static SceneEngine::LightDesc light;
             light._type = SceneEngine::LightDesc::Directional;
-            light._lightColour = Float3(5.f, 5.f, 5.f);
-            light._negativeLightDirection = Float3(0.f, 0.f, 1.f);
-            light._radius = 1000.f;
+            light._lightColour = 5.f * Float3(5.f, 5.f, 5.f);
+            light._negativeLightDirection = Normalize(Float3(-.1f, 0.33f, 1.f));
+            light._radius = 10000.f;
             light._shadowFrustumIndex = ~unsigned(0x0);
             return light;
         }
@@ -236,7 +248,7 @@ namespace PlatformRig
         SceneEngine::GlobalLightingDesc GetGlobalLightingDesc() const
         {
             SceneEngine::GlobalLightingDesc result;
-            result._ambientLight = Float3(0.25f, 0.25f, 0.25f);
+            result._ambientLight = 5.f * Float3(0.25f, 0.25f, 0.25f);
             result._skyTexture = nullptr;
             result._doAtmosphereBlur = false;
             result._doOcean = false;
@@ -247,13 +259,13 @@ namespace PlatformRig
         float GetTimeValue() const { return 0.f; }
 
         ModelSceneParser(
-            ModelRenderer& model, const std::pair<Float3, Float3>& boundingBox, const SharedStateSet& sharedStateSet) 
+            ModelRenderer& model, const std::pair<Float3, Float3>& boundingBox, SharedStateSet& sharedStateSet)
             : _model(&model), _boundingBox(boundingBox), _sharedStateSet(&sharedStateSet) {}
         ~ModelSceneParser() {}
 
     protected:
         ModelRenderer * _model;
-        const SharedStateSet* _sharedStateSet;
+        SharedStateSet* _sharedStateSet;
         std::pair<Float3, Float3> _boundingBox;
     };
 
@@ -285,7 +297,7 @@ namespace PlatformRig
         const char modelFilename[] = "game/model/galleon/galleon.dae";
         auto model = _pimpl->_cache->GetModel(modelFilename);
         assert(model._renderer && model._sharedStateSet);
-            
+
         ModelSceneParser sceneParser(*model._renderer, model._boundingBox, *model._sharedStateSet);
         LightingParser_ExecuteScene(
             *context, parserContext, sceneParser,

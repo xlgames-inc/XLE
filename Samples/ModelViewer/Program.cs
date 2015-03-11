@@ -23,7 +23,8 @@ namespace BasicGUI
             Application.SetCompatibleTextRenderingDefault(false);
 
             GUILayer.EngineDevice.SetDefaultWorkingDirectory();
-            using(new GUILayer.EngineDevice()) {
+            using(var device = new GUILayer.EngineDevice()) {
+                device.AttachColladaCompilers();
                 Application.Run(new MainForm());
             }
         }

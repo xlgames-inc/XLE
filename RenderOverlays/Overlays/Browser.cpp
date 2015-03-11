@@ -459,17 +459,11 @@ namespace Overlays
         SceneEngine::RenderingQualitySettings qualitySettings(context.GetStateDesc()._viewportDimensions);
         auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
 
-            //  Aggressively reset the shared state set, to try to invalidate
-            //  any cached states that have changed since the last render
-        model._sharedStateSet->CaptureState(metalContext.get());
-
         auto sceneParser = PlatformRig::CreateModelScene(model);
         Techniques::TechniqueContext techniqueContext;
         techniqueContext._globalEnvironmentState.SetParameter("SKIP_MATERIAL_DIFFUSE", 1);
         SceneEngine::LightingParserContext lightingParserContext(techniqueContext);
         SceneEngine::LightingParser_ExecuteScene(context, lightingParserContext, *sceneParser.get(), qualitySettings);
-
-        model._sharedStateSet->ReleaseState(metalContext.get());
     }
 
     static const unsigned ModelBrowserItemDimensions = 196;

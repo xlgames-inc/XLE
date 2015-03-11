@@ -7,10 +7,12 @@
 #include "EngineDevice.h"
 #include "MarshalString.h"
 #include "WindowRigInternal.h"
+#include "../../SceneEngine/SceneEngineUtility.h"
 #include "../../PlatformRig/FrameRig.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderCore/Techniques/ResourceBox.h"
+#include "../../RenderCore/Assets/ColladaCompilerInterface.h"
 #include "../../RenderOverlays/Font.h"
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../ConsoleRig/Console.h"
@@ -94,6 +96,16 @@ namespace GUILayer
         return std::move(result);
     }
 
+    void NativeEngineDevice::AttachColladaCompilers()
+    {
+        auto& compilers = _asyncMan->GetIntermediateCompilers();
+        using RenderCore::Assets::ColladaCompiler;
+		auto colladaProcessor = std::make_shared<ColladaCompiler>();
+		compilers.AddCompiler(ColladaCompiler::Type_Model, colladaProcessor);
+		compilers.AddCompiler(ColladaCompiler::Type_AnimationSet, colladaProcessor);
+		compilers.AddCompiler(ColladaCompiler::Type_Skeleton, colladaProcessor);
+    }
+
     NativeEngineDevice::NativeEngineDevice()
     {
         _console = std::make_unique<ConsoleRig::Console>();
@@ -101,12 +113,18 @@ namespace GUILayer
         _immediateContext = _renderDevice->GetImmediateContext();
         _asyncMan = RenderCore::Metal::CreateCompileAndAsyncManager();
         _bufferUploads = BufferUploads::CreateManager(_renderDevice.get());
+        SceneEngine::SetBufferUploads(_bufferUploads.get());
     }
 
     NativeEngineDevice::~NativeEngineDevice()
     {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+    void EngineDevice::AttachColladaCompilers()
+    {
+        _pimpl->AttachColladaCompilers();
+    }
+    
     EngineDevice::EngineDevice()
     {
         assert(s_instance == nullptr);

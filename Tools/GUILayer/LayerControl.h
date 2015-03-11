@@ -15,6 +15,7 @@ namespace GUILayer
 	public ref class LayerControl : public EngineControl
 	{
 	public:
+        void SetupDefaultVis();
 
 		LayerControl();
 		~LayerControl();

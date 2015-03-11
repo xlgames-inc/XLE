@@ -34,6 +34,7 @@ namespace GUILayer
         virtual void OnResize(EventArgs^ e) override;
 
         virtual void Render(RenderCore::IThreadContext&, IWindowRig&) = 0;
+        IWindowRig& GetWindowRig();
 
 	private:
 		System::ComponentModel::Container ^components;

@@ -35,6 +35,7 @@ namespace BasicGUI
         private void InitializeComponent()
         {
             this.viewerControl = new GUILayer.LayerControl();
+            this.viewerControl.SetupDefaultVis();
             this.SuspendLayout();
             // 
             // button1

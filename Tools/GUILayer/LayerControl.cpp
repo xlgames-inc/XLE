@@ -13,12 +13,14 @@
 #include "../../PlatformRig/PlatformRigUtil.h"
 #include "../../PlatformRig/FrameRig.h"
 #include "../../PlatformRig/OverlaySystem.h"
+#include "../../PlatformRig/ModelVisualisation.h"
 
 #include "../../RenderOverlays/Font.h"
 #include "../../SceneEngine/SceneEngineUtility.h"
 #include "../../SceneEngine/LightingParserStandardPlugin.h"
 #include "../../SceneEngine/LightingParserContext.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
+#include "../../Utility/PtrUtils.h"
 
 namespace GUILayer 
 {
@@ -68,6 +70,20 @@ namespace GUILayer
             std::bind(
                 RenderFrame, std::placeholders::_1,
                 std::ref(*_pimpl), frameRig.GetMainOverlaySystem().get()));
+    }
+
+    static std::shared_ptr<PlatformRig::ModelVisCache> s_visCache;
+    
+    void LayerControl::SetupDefaultVis()
+    {
+        if (!s_visCache) {
+            s_visCache = std::make_shared<PlatformRig::ModelVisCache>(
+                std::shared_ptr<RenderCore::Assets::IModelFormat>());
+        }
+
+        auto visLayer = std::make_unique<PlatformRig::ModelVisLayer>(s_visCache);
+        auto& overlaySet = *GetWindowRig().GetFrameRig().GetMainOverlaySystem();
+        overlaySet.AddSystem(std::move(visLayer));
     }
 
     LayerControl::LayerControl()

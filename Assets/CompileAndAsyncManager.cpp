@@ -75,6 +75,8 @@ namespace Assets
             _threadPump->Update();
         }
 
+        ScopedLock(_pollingProcessesLock);
+
             //  Normally the polling processes will be waiting for the thread
             //  pump to complete something. So do this after the thread pump update
         for (auto i=_pollingProcesses.begin(); i!=_pollingProcesses.end();) {
@@ -95,6 +97,7 @@ namespace Assets
 
     void CompileAndAsyncManager::Add(const std::shared_ptr<IPollingAsyncProcess>& pollingProcess)
     {
+        ScopedLock(_pollingProcessesLock);
         _pollingProcesses.push_back(pollingProcess);
     }
 

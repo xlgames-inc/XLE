@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "../Utility/Threading/Mutex.h"
 #include "../Core/Prefix.h"
 #include "../Core/Types.h"
 #include <memory>
@@ -89,6 +90,8 @@ namespace Assets
         std::vector<std::shared_ptr<IPollingAsyncProcess>> _pollingProcesses;
         std::unique_ptr<IThreadPump> _threadPump;
         std::unique_ptr<AssetSetManager> _assetSets;
+
+        Utility::Threading::Mutex _pollingProcessesLock;
 
         static CompileAndAsyncManager* _instance;
     };
