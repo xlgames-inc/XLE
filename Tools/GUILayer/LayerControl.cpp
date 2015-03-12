@@ -81,7 +81,7 @@ namespace GUILayer
                 std::shared_ptr<RenderCore::Assets::IModelFormat>());
         }
 
-        auto visLayer = std::make_unique<PlatformRig::ModelVisLayer>(s_visCache);
+        auto visLayer = std::make_unique<PlatformRig::ModelVisLayer>(std::make_shared<PlatformRig::ModelVisSettings>(), s_visCache);
         auto& overlaySet = *GetWindowRig().GetFrameRig().GetMainOverlaySystem();
         overlaySet.AddSystem(std::move(visLayer));
     }

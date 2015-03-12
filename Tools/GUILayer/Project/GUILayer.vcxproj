@@ -62,6 +62,7 @@
     <ClCompile Include="..\EngineControl.cpp" />
     <ClCompile Include="..\LayerControl.cpp" />
     <ClCompile Include="..\TestControl.cpp" />
+    <ClCompile Include="..\UITypesBinding.cpp" />
     <ClCompile Include="..\WindowRig.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -75,6 +76,7 @@
     <ClInclude Include="..\LayerControl.h" />
     <ClInclude Include="..\MarshalString.h" />
     <ClInclude Include="..\TestControl.h" />
+    <ClInclude Include="..\UITypesBinding.h" />
     <ClInclude Include="..\WindowRigInternal.h" />
   </ItemGroup>
   <ItemGroup>

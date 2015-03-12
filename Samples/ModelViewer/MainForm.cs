@@ -20,6 +20,11 @@ namespace BasicGUI
         public MainForm()
         {
             InitializeComponent();
+
+            visSettings = GUILayer.ModelVisSettings.CreateDefault();
+            propertyGrid1.SelectedObject = visSettings;
         }
+
+        private GUILayer.ModelVisSettings visSettings;
     }
 }

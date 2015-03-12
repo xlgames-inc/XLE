@@ -36,6 +36,7 @@ namespace BasicGUI
         {
             this.viewerControl = new GUILayer.LayerControl();
             this.viewerControl.SetupDefaultVis();
+            this.propertyGrid1 = new System.Windows.Forms.PropertyGrid();
             this.SuspendLayout();
             // 
             // button1
@@ -45,9 +46,20 @@ namespace BasicGUI
             | System.Windows.Forms.AnchorStyles.Right)));
             this.viewerControl.Location = new System.Drawing.Point(12, 12);
             this.viewerControl.Name = "button1";
-            this.viewerControl.Size = new System.Drawing.Size(260, 238);
+            this.viewerControl.Size = new System.Drawing.Size(130, 238);
             this.viewerControl.TabIndex = 0;
             this.viewerControl.Text = "button1";
+            // 
+            // propertyGrid1
+            // 
+            this.propertyGrid1.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.propertyGrid1.HelpVisible = false;
+            this.propertyGrid1.Location = new System.Drawing.Point(142, 12);
+            this.propertyGrid1.Name = "propertyGrid1";
+            this.propertyGrid1.Size = new System.Drawing.Size(130, 238);
+            this.propertyGrid1.TabIndex = 0;
+            this.propertyGrid1.ToolbarVisible = false;
             // 
             // MainForm
             // 
@@ -55,6 +67,7 @@ namespace BasicGUI
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(284, 262);
             this.Controls.Add(this.viewerControl);
+            this.Controls.Add(this.propertyGrid1);
             this.Name = "MainForm";
             this.Text = "MainForm";
             this.ResumeLayout(false);
@@ -64,5 +77,6 @@ namespace BasicGUI
         #endregion
 
         private GUILayer.LayerControl viewerControl;
+        private System.Windows.Forms.PropertyGrid propertyGrid1;
     }
 }

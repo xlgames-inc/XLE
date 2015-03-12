@@ -281,6 +281,7 @@ namespace PlatformRig
     {
     public:
         std::shared_ptr<ModelVisCache> _cache;
+        std::shared_ptr<ModelVisSettings> _settings;
     };
 
     auto ModelVisLayer::GetInputListener() -> std::shared_ptr<IInputListener>
@@ -294,9 +295,15 @@ namespace PlatformRig
     {
         using namespace SceneEngine;
 
-        const char modelFilename[] = "game/model/galleon/galleon.dae";
-        auto model = _pimpl->_cache->GetModel(modelFilename);
+        auto model = _pimpl->_cache->GetModel(_pimpl->_settings->_modelName.c_str());
         assert(model._renderer && model._sharedStateSet);
+
+        if (_pimpl->_settings->_pendingCameraAlignToModel) {
+                // After the model is loaded, if we have a pending camera align,
+                // we should reset the camera to the match the model.
+                // We also need to trigger the change event after we make a change...
+            // Trigger(_pimpl->_settings->_changeCallbacks);
+        }
 
         ModelSceneParser sceneParser(*model._renderer, model._boundingBox, *model._sharedStateSet);
         LightingParser_ExecuteScene(
@@ -313,9 +320,12 @@ namespace PlatformRig
     void ModelVisLayer::SetActivationState(bool newState)
     {}
 
-    ModelVisLayer::ModelVisLayer(std::shared_ptr<ModelVisCache> cache) 
+    ModelVisLayer::ModelVisLayer(
+        std::shared_ptr<ModelVisSettings> settings,
+        std::shared_ptr<ModelVisCache> cache) 
     {
         _pimpl = std::make_unique<Pimpl>();
+        _pimpl->_settings = std::move(settings);
         _pimpl->_cache = std::move(cache);
     }
 
@@ -323,6 +333,15 @@ namespace PlatformRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    ModelVisSettings::ModelVisSettings()
+    {
+        _modelName = "game/model/galleon/galleon.dae";
+        _pendingCameraAlignToModel = true;
+        _doHighlightWireframe = false;
+        _highlightRay = std::make_pair(Zero<Float3>(), Zero<Float3>());
+        _highlightRayWidth = 0.f;
+        _colourByMaterial = false;
+    }
     
 }
 
