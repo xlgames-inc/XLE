@@ -9,6 +9,7 @@
 #include "LayerControl.h"
 #include "EngineControlInternal.h"
 #include "IWindowRig.h"
+#include "UITypesBinding.h"
 #include "../../PlatformRig/InputTranslator.h"
 #include "../../PlatformRig/PlatformRigUtil.h"
 #include "../../PlatformRig/FrameRig.h"
@@ -177,15 +178,14 @@ namespace GUILayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
     
-    void LayerControl::SetupDefaultVis()
+    void LayerControl::SetupDefaultVis(ModelVisSettings^ settings)
     {
         if (!s_visCache) {
             s_visCache = std::make_shared<PlatformRig::ModelVisCache>(
                 std::shared_ptr<RenderCore::Assets::IModelFormat>());
         }
 
-        auto settings = std::make_shared<PlatformRig::ModelVisSettings>();
-        auto visLayer = std::make_unique<PlatformRig::ModelVisLayer>(settings, s_visCache);
+        auto visLayer = std::make_unique<PlatformRig::ModelVisLayer>(settings->GetUnderlying(), s_visCache);
         auto& overlaySet = *GetWindowRig().GetFrameRig().GetMainOverlaySystem();
         overlaySet.AddSystem(std::move(visLayer));
 
@@ -193,7 +193,7 @@ namespace GUILayer
         auto manipulators = std::make_unique<ManipulatorStack>();
         manipulators->Register(
             ManipulatorStack::CameraManipulator,
-            PlatformRig::CreateCameraManipulator(settings->_camera));
+            PlatformRig::CreateCameraManipulator(settings->GetUnderlying()->_camera));
 
         overlaySet.AddSystem(std::make_shared<InputLayer>(std::move(manipulators)));
     }

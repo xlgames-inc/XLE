@@ -12,10 +12,12 @@ namespace GUILayer
 {
     class LayerControlPimpl;
 
+    ref class ModelVisSettings;
+
 	public ref class LayerControl : public EngineControl
 	{
 	public:
-        void SetupDefaultVis();
+        void SetupDefaultVis(ModelVisSettings^ settings);
 
 		LayerControl();
 		~LayerControl();

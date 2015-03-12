@@ -10,6 +10,7 @@
 #include "MarshalString.h"
 #include "../../PlatformRig/ModelVisualisation.h"
 #include "../../Utility/Streams/PathUtils.h"
+#include "../../Utility/SystemUtils.h"
 
 using namespace System::ComponentModel;
 using namespace System::Windows::Forms;
@@ -70,7 +71,16 @@ namespace GUILayer
 
             void set(System::String^ value)
             {
-                (*_object)->_modelName = clix::marshalString<clix::E_UTF8>(value);
+                    //  we need to make a filename relative to the current working
+                    //  directory
+                auto nativeName = clix::marshalString<clix::E_UTF8>(value);
+                char directory[MaxPath];
+                XlGetCurrentDirectory(dimof(directory), directory);
+                XlMakeRelPath(directory, dimof(directory), directory, nativeName.c_str());
+                (*_object)->_modelName = directory;
+
+                (*_object)->_pendingCameraAlignToModel = true; 
+                (*_object)->_changeEvent.Trigger(); 
             }
         }
 
@@ -85,6 +95,19 @@ namespace GUILayer
                 (*_object)->_changeEvent.Trigger(); 
             }
         }
+
+        [Description("Reset camera to match the object")]
+        property bool ResetCamera
+        {
+            bool get() { return (*_object)->_pendingCameraAlignToModel; }
+            void set(bool value)
+            {
+                (*_object)->_pendingCameraAlignToModel = value; 
+                (*_object)->_changeEvent.Trigger(); 
+            }
+        }
+
+        std::shared_ptr<PlatformRig::ModelVisSettings> GetUnderlying() { return *_object.get(); }
 
         ModelVisSettings(std::shared_ptr<PlatformRig::ModelVisSettings> attached)
         {

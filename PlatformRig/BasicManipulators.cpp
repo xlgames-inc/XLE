@@ -92,10 +92,15 @@ namespace PlatformRig
         if (evnt._mouseDelta[0] || evnt._mouseDelta[1]) {
             if (modifierMode == Translate) {
 
+                float distanceToFocus = Magnitude(_visCameraSettings->_focus -_visCameraSettings->_position);
+                float speedScale = distanceToFocus * XlTan(0.5f * Deg2Rad(_visCameraSettings->_verticalFieldOfView));
+
                     //  Translate the camera, but don't change forward direction
+                    //  Speed should be related to the distance to the focus point -- so that
+                    //  it works ok for both small models and large models.
                 Float3 translation
-                    =   (_translateSpeed *  evnt._mouseDelta[1]) * up
-                    +   (_translateSpeed * -evnt._mouseDelta[0]) * right;
+                    =   (speedScale * _translateSpeed *  evnt._mouseDelta[1]) * up
+                    +   (speedScale * _translateSpeed * -evnt._mouseDelta[0]) * right;
 
                 _visCameraSettings->_position += translation;
                 _visCameraSettings->_focus += translation;
@@ -157,7 +162,7 @@ namespace PlatformRig
     CameraMovementManipulator::CameraMovementManipulator(std::shared_ptr<VisCameraSettings> visCameraSettings)
     : _visCameraSettings(visCameraSettings)
     {
-        _translateSpeed = 5.f;
+        _translateSpeed = 0.002f;
         _orbitRotationSpeed = .01f * gPI;
         _wheelTranslateSpeed = 1.f;
     }

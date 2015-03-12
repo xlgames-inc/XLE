@@ -22,6 +22,7 @@ namespace BasicGUI
             InitializeComponent();
 
             visSettings = GUILayer.ModelVisSettings.CreateDefault();
+            viewerControl.SetupDefaultVis(visSettings);
             propertyGrid1.SelectedObject = visSettings;
         }
 

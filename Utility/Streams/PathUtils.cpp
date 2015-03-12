@@ -170,9 +170,14 @@ void XlMakeRelPath(char* dst, int count, const char* root, const char* path)
     const char* s = path;
     const char* lastSlashS = root;
     const char* lastSlashC = path;
-    while (*c && *s) {
-        if (*c != *s)
+    for (;;) {
+        if ((*c != *s) || (*c == '\0')) {
+            if (*c == '\0' && (*s == '\0' || *s == '\\' || *s == '/')) {
+                lastSlashC = c-1;
+                lastSlashS = s-1;
+            }
             break;
+        }
         if (*c == '\\' || *c == '/') {
             lastSlashS = s;
             lastSlashC = c;

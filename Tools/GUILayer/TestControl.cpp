@@ -55,7 +55,7 @@ namespace GUILayer
 			(ImmediateOverlayContext*)XlMemAlign(sizeof(ImmediateOverlayContext), 16));
 		#pragma push_macro("new")
 		#undef new
-				new(overlayContext.get()) ImmediateOverlayContext(&context);
+            new(overlayContext.get()) ImmediateOverlayContext(&context);
 		#pragma pop_macro("new")
 		
         overlayContext->CaptureState();
@@ -76,10 +76,8 @@ namespace GUILayer
     {
         auto& frameRig = windowRig.GetFrameRig();
         frameRig.ExecuteFrame(
-            threadContext,
-            windowRig.GetPresentationChain().get(),
-            nullptr, nullptr, 
-            DummyRenderFrame);
+            threadContext, windowRig.GetPresentationChain().get(),
+            nullptr, nullptr, DummyRenderFrame);
     }
 
     TestControl::TestControl() {}

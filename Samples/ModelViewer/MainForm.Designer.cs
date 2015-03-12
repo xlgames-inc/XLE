@@ -35,7 +35,6 @@ namespace BasicGUI
         private void InitializeComponent()
         {
             this.viewerControl = new GUILayer.LayerControl();
-            this.viewerControl.SetupDefaultVis();
             this.propertyGrid1 = new System.Windows.Forms.PropertyGrid();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
