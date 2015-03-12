@@ -8,7 +8,7 @@
 
 namespace Utility
 {
-    void AlignedDeletor::operator()(void* ptr) 
+    void PODAlignedDeletor::operator()(void* ptr) 
     { 
         XlMemAlignFree(ptr); 
     }

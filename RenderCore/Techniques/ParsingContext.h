@@ -45,7 +45,7 @@ namespace RenderCore { namespace Techniques
         Metal::ConstantBuffer   _globalCBs[5];
 
         std::unique_ptr<TechniqueContext>   _techniqueContext;
-        std::unique_ptr<ProjectionDesc, AlignedDeletor> _projectionDesc;
+        std::unique_ptr<ProjectionDesc, AlignedDeletor<ProjectionDesc>> _projectionDesc;
 
         std::unique_ptr<Metal::UniformsStream>      _globalUniformsStream;
         std::vector<const Metal::ConstantBuffer*>   _globalUniformsConstantBuffers;

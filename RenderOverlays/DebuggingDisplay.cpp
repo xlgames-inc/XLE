@@ -1124,7 +1124,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
 			//	on the heap... This needs to be aligned for the projection matrices
 			//	within the object.
 			//	\todo -- We need a better solution for dealing with aligned matrices!
-		auto overlayContext = std::unique_ptr<ImmediateOverlayContext, AlignedDeletor>(
+		auto overlayContext = std::unique_ptr<ImmediateOverlayContext, AlignedDeletor<ImmediateOverlayContext>>(
 			(ImmediateOverlayContext*)XlMemAlign(sizeof(ImmediateOverlayContext), 16));
 		#pragma push_macro("new")
 		#undef new
@@ -1183,6 +1183,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
         } CATCH_END
 
         overlayContext->ReleaseState();
+        overlayContext.reset();
 
         //      Redo the current interface state, in case any of the interactables have moved during the render...
         _currentInterfaceState = _currentInteractables.BuildInterfaceState(_currentMouse, _currentMouseHeld);

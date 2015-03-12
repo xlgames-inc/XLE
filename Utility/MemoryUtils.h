@@ -65,7 +65,18 @@ namespace Utility
 
     #endif
 
-    struct AlignedDeletor { void operator()(void* p); };
+    struct PODAlignedDeletor { void operator()(void* p); };
+
+    template<typename Type>
+        struct AlignedDeletor : public PODAlignedDeletor 
+    {
+    public:
+        void operator()(Type* p)
+        {
+            if (p) { p->~Type(); }
+            PODAlignedDeletor::operator()(p);
+        }
+    };
 
         ////////////   H A S H I N G   ////////////
 

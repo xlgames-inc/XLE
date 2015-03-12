@@ -109,12 +109,14 @@ namespace GUILayer
 
         std::shared_ptr<PlatformRig::ModelVisSettings> GetUnderlying() { return *_object.get(); }
 
+        void AttachCallback(PropertyGrid^ callback);
+
         ModelVisSettings(std::shared_ptr<PlatformRig::ModelVisSettings> attached)
         {
             _object.reset(new std::shared_ptr<PlatformRig::ModelVisSettings>(std::move(attached)));
         }
 
-        ~ModelVisSettings() { delete _object; }
+        ~ModelVisSettings() { _object.reset(); }
 
         static ModelVisSettings^ CreateDefault()
         {

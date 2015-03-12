@@ -51,7 +51,7 @@ namespace GUILayer
         auto contextStateDesc = context.GetStateDesc();
         
             //      Render text using a IOverlayContext
-		auto overlayContext = std::unique_ptr<ImmediateOverlayContext, AlignedDeletor>(
+		auto overlayContext = std::unique_ptr<ImmediateOverlayContext, AlignedDeletor<ImmediateOverlayContext>>(
 			(ImmediateOverlayContext*)XlMemAlign(sizeof(ImmediateOverlayContext), 16));
 		#pragma push_macro("new")
 		#undef new

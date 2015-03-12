@@ -21,7 +21,7 @@ namespace BufferUploads
         BasicRawDataPacket(size_t dataSize, const void* data = nullptr, std::pair<unsigned,unsigned> rowAndSlicePitch = std::make_pair(0,0));
         virtual ~BasicRawDataPacket();
     protected:
-        std::unique_ptr<uint8, AlignedDeletor> _data; 
+        std::unique_ptr<uint8, PODAlignedDeletor> _data; 
         size_t _dataSize;
         std::pair<unsigned,unsigned> _rowAndSlicePitch;
 
