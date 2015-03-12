@@ -30,6 +30,11 @@
     #include "../../RenderCore/Assets/ModelSimple.h"
 #endif
 
+#include "../../RenderCore/Metal/DeviceContext.h"
+#include "../../RenderCore/Metal/Shader.h"
+#include "../../SceneEngine/SceneEngineUtility.h"
+#include "../../RenderCore/DX11/Metal/DX11Utils.h"
+
 #include <map>
 
 #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
@@ -347,6 +352,71 @@ namespace PlatformRig
     }
 
     ModelVisLayer::~ModelVisLayer() {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class VisualisationOverlay::Pimpl
+    {
+    public:
+        std::shared_ptr<ModelVisSettings> _settings;
+    };
+    
+    void VisualisationOverlay::RenderToScene(
+        RenderCore::IThreadContext* context, 
+        SceneEngine::LightingParserContext& parserContext)
+    {
+            //  Draw an overlay over the scene, 
+            //  containing debugging / profiling information
+        if (_pimpl->_settings->_colourByMaterial) {
+            TRY 
+            {
+                using namespace RenderCore;
+                auto metalContext = Metal::DeviceContext::Get(*context);
+                SceneEngine::SavedTargets savedTargets(metalContext.get());
+
+                Metal::ShaderResourceView depthSrv;
+                if (savedTargets.GetDepthStencilView())
+                    depthSrv = Metal::ShaderResourceView(
+                        Metal::ExtractResource<ID3D::Resource>(savedTargets.GetDepthStencilView()).get(), 
+                        (Metal::NativeFormat::Enum)DXGI_FORMAT_X24_TYPELESS_G8_UINT);
+
+                metalContext->GetUnderlying()->OMSetRenderTargets(
+                    1, savedTargets.GetRenderTargets(), nullptr);
+
+                auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+                    "game/xleres/basic2D.vsh:fullscreen:vs_*", 
+                    "game/xleres/Effects/HighlightVis.psh:HighlightDrawCalls:ps_*");
+                metalContext->Bind(Metal::Topology::TriangleStrip);
+                metalContext->Unbind<Metal::BoundInputLayout>();
+                metalContext->Bind(shader);
+                metalContext->BindPS(MakeResourceList(depthSrv));
+                metalContext->Draw(4);
+                metalContext->UnbindPS<Metal::ShaderResourceView>(0, 1);
+
+                savedTargets.ResetToOldTargets(metalContext.get());
+            }
+            CATCH (const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); } 
+            CATCH (const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); } 
+            CATCH_END
+        }
+    }
+
+    void VisualisationOverlay::RenderWidgets(
+        RenderCore::IThreadContext*, const RenderCore::Techniques::ProjectionDesc&)
+    {}
+
+    auto VisualisationOverlay::GetInputListener() -> std::shared_ptr<IInputListener>
+    { return nullptr; }
+
+    void VisualisationOverlay::SetActivationState(bool) {}
+
+    VisualisationOverlay::VisualisationOverlay(std::shared_ptr<ModelVisSettings> settings)
+    {
+        _pimpl = std::make_unique<Pimpl>();
+        _pimpl->_settings = settings;
+    }
+
+    VisualisationOverlay::~VisualisationOverlay() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

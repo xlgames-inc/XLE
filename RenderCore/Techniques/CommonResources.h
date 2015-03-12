@@ -20,6 +20,7 @@ namespace RenderCore { namespace Techniques
         Metal::DepthStencilState _dssReadWrite;
         Metal::DepthStencilState _dssReadOnly;
         Metal::DepthStencilState _dssDisable;
+        Metal::DepthStencilState _dssReadWriteWriteStencil;
 
         Metal::BlendState _blendStraightAlpha;
         Metal::BlendState _blendAlphaPremultiplied;

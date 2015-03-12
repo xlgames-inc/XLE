@@ -1,0 +1,35 @@
+// Copyright 2015 XLGAMES Inc.
+//
+// Distributed under the MIT License (See
+// accompanying file "LICENSE" or the website
+// http://www.opensource.org/licenses/mit-license.php)
+
+Texture2D<uint>		StencilInput;
+
+float4 HighlightDrawCalls(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
+{
+	float4 colours[] = 
+	{
+		float4(1.f, 0.f, 0.f, 1.f),
+		float4(0.f, 1.f, 0.f, 1.f),
+		float4(0.f, 0.f, 1.f, 1.f),
+
+		float4(1.f, 1.f, 0.f, 1.f),
+		float4(0.f, 1.f, 1.f, 1.f),
+		float4(1.f, 0.f, 1.f, 1.f),
+
+		float4(.5f, 0.f, 0.f, 1.f),
+		float4(0.f, .5f, 0.f, 1.f),
+		float4(0.f, 0.f, .5f, 1.f),
+
+		float4(.5f, .5f, 0.f, 1.f),
+		float4(0.f, .5f, .5f, 1.f),
+		float4(.5f, 0.f, .5f, 1.f)
+	};
+
+	uint stencilValue = StencilInput.Load(uint3(position.xy, 0));
+	if (stencilValue == 0) { discard; }
+	--stencilValue;
+	return colours[stencilValue%12];
+}
+

@@ -110,6 +110,26 @@ namespace PlatformRig
         std::unique_ptr<Pimpl> _pimpl;
     };
 
+    class VisualisationOverlay : public IOverlaySystem
+    {
+    public:
+        virtual std::shared_ptr<IInputListener> GetInputListener();
+
+        virtual void RenderToScene(
+            RenderCore::IThreadContext* context, 
+            SceneEngine::LightingParserContext& parserContext); 
+        virtual void RenderWidgets(
+            RenderCore::IThreadContext* context, 
+            const RenderCore::Techniques::ProjectionDesc& projectionDesc);
+        virtual void SetActivationState(bool newState);
+
+        VisualisationOverlay(std::shared_ptr<ModelVisSettings> settings);
+        ~VisualisationOverlay();
+    protected:
+        class Pimpl;
+        std::unique_ptr<Pimpl> _pimpl;
+    };
+
     std::unique_ptr<SceneEngine::ISceneParser> CreateModelScene(const ModelVisCache::Model& model);
 }
 

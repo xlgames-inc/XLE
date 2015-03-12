@@ -188,6 +188,7 @@ namespace GUILayer
         auto visLayer = std::make_unique<PlatformRig::ModelVisLayer>(settings->GetUnderlying(), s_visCache);
         auto& overlaySet = *GetWindowRig().GetFrameRig().GetMainOverlaySystem();
         overlaySet.AddSystem(std::move(visLayer));
+        overlaySet.AddSystem(std::make_shared<PlatformRig::VisualisationOverlay>(settings->GetUnderlying()));
 
             // create an input listener that feeds into a stack of manipulators
         auto manipulators = std::make_unique<ManipulatorStack>();

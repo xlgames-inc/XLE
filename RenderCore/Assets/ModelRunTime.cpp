@@ -951,6 +951,7 @@ namespace RenderCore { namespace Assets
             
                 const auto& d = md->second;
                 devContext.Bind(d._topology);  // do we really need to set the topology every time?
+                devContext.Bind(Techniques::CommonResources()._dssReadWriteWriteStencil, 1+drawCallIndex);  // write stencil buffer with draw index
                 devContext.DrawIndexed(d._indexCount, d._firstIndex, d._firstVertex);
             }
 
