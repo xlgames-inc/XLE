@@ -107,7 +107,7 @@ namespace Tools
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     Rect DrawManipulatorControls(
-        IOverlayContext* context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState,
+        IOverlayContext* context, DebuggingDisplay::Layout& layout, Interactables&interactables, InterfaceState& interfaceState,
         IManipulator& manipulator, const char title[]);
 
     bool HandleManipulatorsControls(

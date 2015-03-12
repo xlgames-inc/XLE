@@ -17,6 +17,8 @@ using namespace System::Drawing::Design;
 
 namespace GUILayer
 {
+    template<typename T> using AutoToShared = clix::auto_ptr<std::shared_ptr<T>>;
+
     private ref class FileNameEditor : UITypeEditor
     {
     public:
@@ -61,7 +63,7 @@ namespace GUILayer
         [EditorAttribute(FileNameEditor::typeid, UITypeEditor::typeid)]
         property System::String^ ModelName
         {
-            System::String^ get() 
+            System::String^ get()
             {
                 return clix::marshalString<clix::E_UTF8>((*_object)->_modelName.c_str());
             }
@@ -72,16 +74,24 @@ namespace GUILayer
             }
         }
 
+        [Category("Visualisation")]
+        [Description("Highlight material divisions")]
         property bool ColourByMaterial
         {
             bool get() { return (*_object)->_colourByMaterial; }
-            void set(bool value) { (*_object)->_colourByMaterial = value; }
+            void set(bool value)
+            {
+                (*_object)->_colourByMaterial = value; 
+                (*_object)->_changeEvent.Trigger(); 
+            }
         }
 
         ModelVisSettings(std::shared_ptr<PlatformRig::ModelVisSettings> attached)
         {
             _object.reset(new std::shared_ptr<PlatformRig::ModelVisSettings>(std::move(attached)));
         }
+
+        ~ModelVisSettings() { delete _object; }
 
         static ModelVisSettings^ CreateDefault()
         {
@@ -90,7 +100,7 @@ namespace GUILayer
         }
 
     protected:
-        clix::auto_ptr<std::shared_ptr<PlatformRig::ModelVisSettings>> _object;
+        AutoToShared<PlatformRig::ModelVisSettings> _object;
     };
 }
 

@@ -22,6 +22,17 @@ namespace Math
 
     std::pair<Float3, Float3> TransformBoundingBox(const Float3x4& transformation, std::pair<Float3, Float3> boundingBox);
 
+    /// <summary>Conversion from cartesian to spherical polar coordinates</summary>
+    /// Returns a 3 component vector with:
+    ///     [0] = theta
+    ///     [1] = phi
+    ///     [2] = distance
+    ///
+    /// See description in wikipedia:
+    /// http://en.wikipedia.org/wiki/Spherical_coordinate_system
+    Float3 CartesianToSpherical(Float3 direction);
+    Float3 SphericalToCartesian(Float3 spherical);
+
         ////////////////////////////////////////////////////////////////////////////////////////////////
             //      I N L I N E   I M P L E M E N T A T I O N S
         ////////////////////////////////////////////////////////////////////////////////////////////////

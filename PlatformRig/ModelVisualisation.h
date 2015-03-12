@@ -42,6 +42,25 @@ namespace PlatformRig
         std::unique_ptr<Pimpl> _pimpl;
     };
 
+    class ChangeEvent
+    {
+    public:
+        std::vector<std::shared_ptr<OnChangeCallback>> _callbacks;
+        void Trigger();
+        ~ChangeEvent();
+    };
+
+    class VisCameraSettings
+    {
+    public:
+        Float3  _position;
+        Float3  _focus;
+        float   _verticalFieldOfView;
+        float   _nearClip, _farClip;
+
+        VisCameraSettings();
+    };
+
     /// <summary>Settings related to the visualisation of a model</summary>
     /// This is a "model" part of a MVC pattern related to the way a model
     /// is presented in a viewport. Typically some other controls might 
@@ -55,7 +74,7 @@ namespace PlatformRig
     {
     public:
         std::string _modelName;
-        // RenderCore::Techniques::CameraDesc _camera;
+        std::shared_ptr<VisCameraSettings> _camera;
         bool _pendingCameraAlignToModel;
 
         bool _doHighlightWireframe;
@@ -64,7 +83,7 @@ namespace PlatformRig
 
         bool _colourByMaterial;
 
-        std::vector<std::shared_ptr<OnChangeCallback>> _changeCallbacks;
+        ChangeEvent _changeEvent;
 
         ModelVisSettings();
     };

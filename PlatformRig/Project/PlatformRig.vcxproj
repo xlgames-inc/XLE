@@ -145,6 +145,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\BasicManipulators.cpp" />
     <ClCompile Include="..\CameraManager.cpp" />
     <ClCompile Include="..\DebuggingDisplays\BufferUploadDisplay.cpp" />
     <ClCompile Include="..\DebuggingDisplays\ConsoleDisplay.cpp" />
@@ -214,6 +215,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">true</ExcludedFromBuild>
     </ClInclude>
+    <ClInclude Include="..\BasicManipulators.h" />
     <ClInclude Include="..\CameraManager.h" />
     <ClInclude Include="..\DebuggingDisplays\BufferUploadDisplay.h" />
     <ClInclude Include="..\DebuggingDisplays\ConsoleDisplay.h" />

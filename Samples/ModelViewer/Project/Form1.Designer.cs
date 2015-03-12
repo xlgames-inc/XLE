@@ -1,12 +1,6 @@
-﻿// Copyright 2015 XLGAMES Inc.
-//
-// Distributed under the MIT License (See
-// accompanying file "LICENSE" or the website
-// http://www.opensource.org/licenses/mit-license.php)
-
-namespace BasicGUI
+﻿namespace ModelViewer
 {
-    partial class MainForm
+    partial class Form1
     {
         /// <summary>
         /// Required designer variable.
@@ -34,60 +28,44 @@ namespace BasicGUI
         /// </summary>
         private void InitializeComponent()
         {
-            this.viewerControl = new GUILayer.LayerControl();
-            this.viewerControl.SetupDefaultVis();
             this.propertyGrid1 = new System.Windows.Forms.PropertyGrid();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
-            this.splitContainer1.Panel1.SuspendLayout(); 
             this.splitContainer1.Panel2.SuspendLayout();
             this.splitContainer1.SuspendLayout();
             this.SuspendLayout();
             // 
-            // button1
-            // 
-            this.viewerControl.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.viewerControl.Location = new System.Drawing.Point(12, 12);
-            this.viewerControl.Name = "button1";
-            this.viewerControl.Size = new System.Drawing.Size(130, 238);
-            this.viewerControl.Text = "button1";
-            // 
             // propertyGrid1
             // 
             this.propertyGrid1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.propertyGrid1.HelpVisible = false;
-            this.propertyGrid1.Location = new System.Drawing.Point(142, 12);
+            this.propertyGrid1.Location = new System.Drawing.Point(0, 0);
             this.propertyGrid1.Name = "propertyGrid1";
-            this.propertyGrid1.Size = new System.Drawing.Size(130, 238);
-            this.propertyGrid1.ToolbarVisible = false;
+            this.propertyGrid1.Size = new System.Drawing.Size(122, 416);
+            this.propertyGrid1.TabIndex = 1;
             // 
             // splitContainer1
             // 
-            this.splitContainer1.Location = new System.Drawing.Point(55, 133);
-            this.splitContainer1.Name = "splitContainer1";
             this.splitContainer1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.splitContainer1.Size = new System.Drawing.Size(334, 242);
-            this.splitContainer1.SplitterDistance = 300;
             this.splitContainer1.FixedPanel = System.Windows.Forms.FixedPanel.Panel2;
-            // 
-            // splitContainer1.Panel1
-            // 
-            this.splitContainer1.Panel1.Controls.Add(this.viewerControl);
+            this.splitContainer1.Location = new System.Drawing.Point(0, 0);
+            this.splitContainer1.Name = "splitContainer1";
             // 
             // splitContainer1.Panel2
             // 
             this.splitContainer1.Panel2.Controls.Add(this.propertyGrid1);
+            this.splitContainer1.Size = new System.Drawing.Size(435, 416);
+            this.splitContainer1.SplitterDistance = 309;
+            this.splitContainer1.TabIndex = 2;
             // 
-            // MainForm
+            // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(284, 262);
+            this.ClientSize = new System.Drawing.Size(435, 416);
             this.Controls.Add(this.splitContainer1);
-            this.Name = "MainForm";
-            this.Text = "MainForm";
+            this.Name = "Form1";
+            this.Text = "Form1";
             this.splitContainer1.Panel2.ResumeLayout(false);
-            this.splitContainer1.Panel1.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).EndInit();
             this.splitContainer1.ResumeLayout(false);
             this.ResumeLayout(false);
@@ -96,7 +74,6 @@ namespace BasicGUI
 
         #endregion
 
-        private GUILayer.LayerControl viewerControl;
         private System.Windows.Forms.PropertyGrid propertyGrid1;
         private System.Windows.Forms.SplitContainer splitContainer1;
     }

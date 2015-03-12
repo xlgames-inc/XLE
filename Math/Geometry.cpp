@@ -11,6 +11,24 @@
 namespace Math
 {
 
+    Float3 CartesianToSpherical(Float3 direction)
+    {
+        Float3 result;
+        float rDist = XlRSqrt(MagnitudeSquared(direction));
+        result[0] = XlACos(direction[2] * rDist);
+        result[1] = XlATan2(direction[1], direction[0]);
+        result[2] = 1.0f / rDist;
+        return result;
+    }
+
+    Float3 SphericalToCartesian(Float3 spherical)
+    {
+        return Float3(
+            spherical[2] * XlSin(spherical[0]) * XlCos(spherical[1]),
+            spherical[2] * XlSin(spherical[0]) * XlSin(spherical[1]),
+            spherical[2] * XlCos(spherical[0]));
+    }
+
     bool RayVsAABB(const std::pair<Float3, Float3>& worldSpaceRay, const Float4x4& aabbToWorld, const Float3& mins, const Float3& maxs)
     {
             //  Does this ray intersect the aabb? 

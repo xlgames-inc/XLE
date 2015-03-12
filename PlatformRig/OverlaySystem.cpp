@@ -114,7 +114,8 @@ namespace PlatformRig
         {
             using namespace RenderOverlays::DebuggingDisplay;
             for (auto i=_parent->_childSystems.begin(); i!=_parent->_childSystems.end(); ++i) {
-                if ((*i)->GetInputListener()->OnInputEvent(evnt)) {
+                auto listener = (*i)->GetInputListener();
+                if (listener && listener->OnInputEvent(evnt)) {
                     return true;
                 }
             }

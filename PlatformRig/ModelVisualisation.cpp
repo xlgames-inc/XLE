@@ -167,29 +167,36 @@ namespace PlatformRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    VisCameraSettings AlignCameraToBoundingBox(float verticalFieldOfView, const std::pair<Float3, Float3>& box)
+    {
+        const float border = 0.0f;
+        Float3 position = .5f * (box.first + box.second);
+
+            // push back to attempt to fill the viewport with the bounding box
+        float verticalHalfDimension = .5f * box.second[2] - box.first[2];
+        position[0] = box.first[0] - (verticalHalfDimension * (1.f + border)) / XlTan(.5f * Deg2Rad(verticalFieldOfView));
+
+        VisCameraSettings result;
+        result._position = position;
+        result._focus = .5f * (box.first + box.second);
+        result._verticalFieldOfView = verticalFieldOfView;
+        result._farClip = 1.25f * (box.second[0] - position[0]);
+        result._nearClip = result._farClip / 10000.f;
+        return result;
+    }
+
     class ModelSceneParser : public SceneEngine::ISceneParser
     {
     public:
         RenderCore::Techniques::CameraDesc  GetCameraDesc() const
         {
-            const float border = 0.0f;
-            static float fov = 40.f;
-
             RenderCore::Techniques::CameraDesc result;
-            result._verticalFieldOfView = Deg2Rad(fov);
-            Float3 position = .5f * (_boundingBox.first + _boundingBox.second);
-
-                // push back to attempt to fill the viewport with the bounding box
-            float verticalHalfDimension = .5f * _boundingBox.second[2] - _boundingBox.first[2];
-            position[0] = _boundingBox.first[0] - (verticalHalfDimension * (1.f + border)) / XlTan(.5f * result._verticalFieldOfView);
-
-            result._cameraToWorld = Float4x4(
-                0.f, 0.f, -1.f, position[0],
-                -1.f, 0.f,  0.f, position[1],
-                0.f, 1.f,  0.f, position[2],
-                0.f, 0.f, 0.f, 1.f);
-            result._farClip = 1.25f * (_boundingBox.second[0] - position[0]);
-            result._nearClip = result._farClip / 10000.f;
+            result._cameraToWorld = MakeCameraToWorld(
+                Normalize(_settings->_camera->_focus - _settings->_camera->_position),
+                Float3(0.f, 0.f, 1.f), _settings->_camera->_position);
+            result._farClip = _settings->_camera->_farClip;
+            result._nearClip = _settings->_camera->_nearClip;
+            result._verticalFieldOfView = Deg2Rad(_settings->_camera->_verticalFieldOfView);
             result._temporaryMatrix = Identity<Float4x4>();
             return result;
         }
@@ -259,20 +266,24 @@ namespace PlatformRig
         float GetTimeValue() const { return 0.f; }
 
         ModelSceneParser(
+            const ModelVisSettings& settings,
             ModelRenderer& model, const std::pair<Float3, Float3>& boundingBox, SharedStateSet& sharedStateSet)
-            : _model(&model), _boundingBox(boundingBox), _sharedStateSet(&sharedStateSet) {}
+            : _model(&model), _boundingBox(boundingBox), _sharedStateSet(&sharedStateSet), _settings(&settings) {}
         ~ModelSceneParser() {}
 
     protected:
         ModelRenderer * _model;
         SharedStateSet* _sharedStateSet;
         std::pair<Float3, Float3> _boundingBox;
+        const ModelVisSettings* _settings;
     };
 
     std::unique_ptr<SceneEngine::ISceneParser> CreateModelScene(const ModelVisCache::Model& model)
     {
+        ModelVisSettings settings;
+        *settings._camera = AlignCameraToBoundingBox(40.f, model._boundingBox);
         return std::make_unique<ModelSceneParser>(
-            *model._renderer, model._boundingBox, *model._sharedStateSet);
+            settings, *model._renderer, model._boundingBox, *model._sharedStateSet);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -302,10 +313,16 @@ namespace PlatformRig
                 // After the model is loaded, if we have a pending camera align,
                 // we should reset the camera to the match the model.
                 // We also need to trigger the change event after we make a change...
-            // Trigger(_pimpl->_settings->_changeCallbacks);
+            *_pimpl->_settings->_camera = AlignCameraToBoundingBox(
+                _pimpl->_settings->_camera->_verticalFieldOfView,
+                model._boundingBox);
+            _pimpl->_settings->_pendingCameraAlignToModel = false;
+            _pimpl->_settings->_changeEvent.Trigger();
         }
 
-        ModelSceneParser sceneParser(*model._renderer, model._boundingBox, *model._sharedStateSet);
+        ModelSceneParser sceneParser(
+            *_pimpl->_settings,
+            *model._renderer, model._boundingBox, *model._sharedStateSet);
         LightingParser_ExecuteScene(
             *context, parserContext, sceneParser,
             RenderingQualitySettings(context->GetStateDesc()._viewportDimensions));
@@ -333,6 +350,14 @@ namespace PlatformRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    void ChangeEvent::Trigger() 
+    {
+        for (auto i=_callbacks.begin(); i!=_callbacks.end(); ++i) {
+            (*i)->OnChange();
+        }
+    }
+    ChangeEvent::~ChangeEvent() {}
+
     ModelVisSettings::ModelVisSettings()
     {
         _modelName = "game/model/galleon/galleon.dae";
@@ -341,7 +366,16 @@ namespace PlatformRig
         _highlightRay = std::make_pair(Zero<Float3>(), Zero<Float3>());
         _highlightRayWidth = 0.f;
         _colourByMaterial = false;
+        _camera = std::make_shared<VisCameraSettings>();
     }
     
+    VisCameraSettings::VisCameraSettings()
+    {
+        _position = Zero<Float3>();
+        _focus = Zero<Float3>();
+        _verticalFieldOfView = 40.f;
+        _nearClip = _farClip = 0.f;
+    }
+
 }
 

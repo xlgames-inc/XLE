@@ -12,6 +12,7 @@
 #include "IWindowRig.h"
 #include "../../PlatformRig/FrameRig.h"
 #include "../../PlatformRig/OverlappedWindow.h"
+#include "../../PlatformRig/OverlaySystem.h"
 #include "../../PlatformRig/InputTranslator.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../BufferUploads/IBufferUploads.h"
@@ -56,6 +57,7 @@ namespace GUILayer
         if (_pimpl->_inputTranslator) { 
             _pimpl->_inputTranslator->OnKeyChange(e->KeyValue, true); 
             e->Handled = true;
+            Invalidate();
         }
     }
 
@@ -64,6 +66,7 @@ namespace GUILayer
         if (_pimpl->_inputTranslator) { 
             _pimpl->_inputTranslator->OnKeyChange(e->KeyValue, false); 
             e->Handled = true;
+            Invalidate();
         }
     }
 
@@ -72,6 +75,7 @@ namespace GUILayer
         if (_pimpl->_inputTranslator) {
             _pimpl->_inputTranslator->OnChar(e->KeyChar);
             e->Handled = true;
+            Invalidate();
         }
     }
 
@@ -80,6 +84,7 @@ namespace GUILayer
             // (todo -- only when activated?)
         if (_pimpl->_inputTranslator) {
             _pimpl->_inputTranslator->OnMouseMove(e->Location.X, e->Location.Y);
+            Invalidate();
         }
     }
 
@@ -87,8 +92,8 @@ namespace GUILayer
     {
         switch (button) {
         case MouseButtons::Left: return 0;
-        case MouseButtons::Middle: return 1;
-        case MouseButtons::Right: return 2;
+        case MouseButtons::Right: return 1;
+        case MouseButtons::Middle: return 2;
         default: return 3;
         }
     }
@@ -97,6 +102,7 @@ namespace GUILayer
     {
         if (_pimpl->_inputTranslator) {
             _pimpl->_inputTranslator->OnMouseButtonChange(AsIndex(e->Button), true);
+            Invalidate();
         }
     }
 
@@ -104,6 +110,15 @@ namespace GUILayer
     {
         if (_pimpl->_inputTranslator) {
             _pimpl->_inputTranslator->OnMouseButtonChange(AsIndex(e->Button), false);
+            Invalidate();
+        }
+    }
+
+    void EngineControl::Evnt_MouseWheel(Object^, MouseEventArgs^ e)
+    {
+        if (_pimpl->_inputTranslator) {
+            _pimpl->_inputTranslator->OnMouseWheel(e->Delta);
+            Invalidate();
         }
     }
 
@@ -111,6 +126,7 @@ namespace GUILayer
     {
         if (_pimpl->_inputTranslator) {
             _pimpl->_inputTranslator->OnMouseButtonDblClk(AsIndex(e->Button));
+            Invalidate();
         }
     }
 
@@ -125,6 +141,7 @@ namespace GUILayer
         _pimpl.reset(new EngineControlPimpl);
         _pimpl->_windowRig = EngineDevice::GetInstance()->GetNative().CreateWindowRig(this->Handle.ToPointer());
         _pimpl->_inputTranslator = std::make_unique<PlatformRig::InputTranslator>();
+        _pimpl->_inputTranslator->AddListener(_pimpl->_windowRig->GetFrameRig().GetMainOverlaySystem()->GetInputListener());
         InitializeComponent();
 
         KeyDown += gcnew System::Windows::Forms::KeyEventHandler(this, &EngineControl::Evnt_KeyDown);
@@ -133,6 +150,7 @@ namespace GUILayer
         MouseMove += gcnew System::Windows::Forms::MouseEventHandler(this, &EngineControl::Evnt_MouseMove);
         MouseDown += gcnew System::Windows::Forms::MouseEventHandler(this, &EngineControl::Evnt_MouseDown);
         MouseUp += gcnew System::Windows::Forms::MouseEventHandler(this, &EngineControl::Evnt_MouseUp);
+        MouseWheel += gcnew System::Windows::Forms::MouseEventHandler(this, &EngineControl::Evnt_MouseWheel);
         MouseDoubleClick += gcnew System::Windows::Forms::MouseEventHandler(this, &EngineControl::Evnt_DoubleClick);
     }
 
