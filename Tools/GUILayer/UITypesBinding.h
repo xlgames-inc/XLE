@@ -11,10 +11,13 @@
 #include "../../PlatformRig/ModelVisualisation.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/SystemUtils.h"
+#include "../../Utility/ParameterBox.h"
 
 using namespace System::ComponentModel;
 using namespace System::Windows::Forms;
 using namespace System::Drawing::Design;
+
+namespace RenderCore { namespace Assets { class RawMaterialConfiguration; }}
 
 namespace GUILayer
 {
@@ -127,6 +130,54 @@ namespace GUILayer
 
     protected:
         AutoToShared<PlatformRig::ModelVisSettings> _object;
+    };
+
+    public ref class BindingUtil
+    {
+    public:
+        ref class StringIntPair : public INotifyPropertyChanged
+        {
+        public:
+            property System::String^ Name { System::String^ get(); void set(System::String^); }
+            property unsigned Value { unsigned get(); void set(unsigned); }
+
+            virtual event PropertyChangedEventHandler^ PropertyChanged;
+
+            StringIntPair() : _value(0) {}
+            StringIntPair(System::String^ name, unsigned value) { Name = name; Value = value; }
+
+        protected:
+            void NotifyPropertyChanged(/*[CallerMemberName]*/ System::String^ propertyName);
+
+            System::String^ _name;
+            unsigned _value;
+        };
+
+        static BindingList<StringIntPair^>^ AsBindingList(const ParameterBox& paramBox);
+        static ParameterBox AsParameterBox(BindingList<StringIntPair^>^);
+    };
+
+    public ref class RawMaterialConfiguration
+    {
+    public:
+        using NativeConfig = RenderCore::Assets::RawMaterialConfiguration;
+        property BindingList<BindingUtil::StringIntPair^>^ MaterialParameterBox {
+            BindingList<BindingUtil::StringIntPair^>^ get();
+        }
+
+        property BindingList<BindingUtil::StringIntPair^>^ ShaderConstants {
+            BindingList<BindingUtil::StringIntPair^>^ get();
+        }
+
+        RawMaterialConfiguration(System::String^ initialiser);
+        RawMaterialConfiguration(std::shared_ptr<NativeConfig> underlying);
+        ~RawMaterialConfiguration();
+    protected:
+        AutoToShared<NativeConfig> _underlying;
+
+        BindingList<BindingUtil::StringIntPair^>^ _materialParameterBox;
+        BindingList<BindingUtil::StringIntPair^>^ _shaderConstants;
+        void ParameterBox_Changed(System::Object^, ListChangedEventArgs^);
     };
 }
 

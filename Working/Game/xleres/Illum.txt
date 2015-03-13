@@ -7,11 +7,9 @@ Illum
             GEO_HAS_TANGENT_FRAME
             GEO_HAS_NORMAL
         GlobalEnvironment
-            SKIP_MATERIAL_DIFFUSE
-                0
+            SKIP_MATERIAL_DIFFUSE 0
         Material
-            MAT_BLEND_FOG
-                1
+            MAT_BLEND_FOG 1
     VertexShader
         game/xleres/forward/illum.vsh:main
     PixelShader
@@ -37,8 +35,7 @@ Deferred
             GEO_HAS_NORMAL
         GlobalEnvironment
             CLASSIFY_NORMAL_MAP
-            SKIP_MATERIAL_DIFFUSE
-                0
+            SKIP_MATERIAL_DIFFUSE 0
     VertexShader
         game/xleres/deferred/basic.vsh:main
     PixelShader
@@ -54,8 +51,7 @@ ShadowGen
             MAT_ALPHA_TEST
             MAT_VCOLOR_IS_ANIM_PARAM
         Runtime
-            FRUSTUM_FILTER
-                63
+            FRUSTUM_FILTER 63
             SHADOW_CASCADE_MODE
     VertexShader
         game/xleres/shadowgen/depthonly.vsh:main
@@ -71,14 +67,10 @@ OrderIndependentTransparency
             GEO_HAS_TEXCOORD
             GEO_HAS_TANGENT_FRAME
             GEO_HAS_NORMAL
-            OUTPUT_LOCAL_NORMAL
-                1
-            OUTPUT_LOCAL_VIEW_VECTOR
-                1
-            OUTPUT_WORLD_VIEW_VECTOR
-                1
-            OUTPUT_WORLD_POSITION
-                1
+            OUTPUT_LOCAL_NORMAL 1
+            OUTPUT_LOCAL_VIEW_VECTOR 1
+            OUTPUT_WORLD_VIEW_VECTOR 1
+            OUTPUT_WORLD_POSITION 1
     VertexShader
         game/xleres/forward/illum.vsh:main
     PixelShader
@@ -89,8 +81,7 @@ RayTest
     Parameters
         Geometry
             GEO_HAS_TEXCOORD
-            OUTPUT_WORLD_POSITION
-                1
+            OUTPUT_WORLD_POSITION 1
         Material
             MAT_ALPHA_TEST
     VertexShader
