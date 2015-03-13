@@ -13,7 +13,7 @@ using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 
-namespace BasicGUI
+namespace ModelViewer
 {
     public partial class MainForm : Form
     {
@@ -25,6 +25,9 @@ namespace BasicGUI
             viewerControl.SetupDefaultVis(visSettings);
             propertyGrid1.SelectedObject = visSettings;
             visSettings.AttachCallback(propertyGrid1);
+
+                // pop-up a modal version of the material editor (for testing/prototyping)
+            (new ModalMaterialEditor()).ShowDialog();
         }
 
         private GUILayer.ModelVisSettings visSettings;

@@ -5,14 +5,15 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "MaterialSettingsFile.h"
-#include "../RenderCore/Metal/State.h"      // (just for Blend/BlendOp enum members)
-#include "../Assets/AssetUtils.h"
-#include "../Utility/Streams/Data.h"
-#include "../Utility/Conversion.h"
-#include "../Utility/Streams/FileUtils.h"
+#include "../Metal/State.h"      // (just for Blend/BlendOp enum members)
+#include "../../Assets/AssetUtils.h"
+#include "../../Utility/Streams/Data.h"
+#include "../../Utility/Conversion.h"
+#include "../../Utility/Streams/FileUtils.h"
+#include "../../Utility/StringFormat.h"
 
 
-namespace RenderCore { namespace ColladaConversion
+namespace RenderCore { namespace Assets
 {
     static Metal::Blend::Enum DeserializeBlend(const Data* source, const char name[])
     {
@@ -171,13 +172,57 @@ namespace RenderCore { namespace ColladaConversion
         return result;
     }
 
-    MaterialSettingsFile::MaterialDesc::MaterialDesc(
-        const Data& source,
-        ::Assets::DirectorySearchRules* searchRules,
-        std::vector<std::shared_ptr<::Assets::DependencyValidation>>* inherited)
+    RawMaterialConfiguration::RawMaterialConfiguration() {}
+
+    class CompareResourceBinding
     {
-            // first, load inherited settings.
-        auto* inheritList = source.ChildWithValue("Inherit");
+    public:
+        bool operator()(const MaterialParameters::ResourceBinding& lhs, uint64 rhs)
+        {
+            return lhs._bindHash < rhs;
+        }
+        bool operator()(uint64 lhs, const MaterialParameters::ResourceBinding& rhs)
+        {
+            return lhs < rhs._bindHash;
+        }
+        bool operator()(const MaterialParameters::ResourceBinding& lhs, 
+                        const MaterialParameters::ResourceBinding& rhs)
+        {
+            return lhs._bindHash < rhs._bindHash;
+        }
+    };
+
+    RawMaterialConfiguration::RawMaterialConfiguration(const ResChar initialiser[])
+    {
+            // We're expecting an initialiser of the format "filename:setting"
+            // If there is no colon, 
+        auto colon = XlFindCharReverse(initialiser, ':');
+        if (!colon)
+            ThrowException(::Assets::Exceptions::InvalidResource(initialiser, ""));
+
+        ResChar rawFilename[MaxPath];
+        XlCopyNString(rawFilename, initialiser, colon - initialiser);
+
+        size_t sourceFileSize = 0;
+        auto sourceFile = LoadFileAsMemoryBlock(rawFilename, &sourceFileSize);
+        if (!sourceFile)
+            ThrowException(::Assets::Exceptions::InvalidResource(initialiser, 
+                "Missing or empty file"));
+
+        auto searchRules = ::Assets::DefaultDirectorySearchRules(rawFilename);
+
+        Data data;
+        data.Load((const char*)sourceFile.get(), (int)sourceFileSize);
+
+        auto source = data.ChildWithValue(colon+1);
+        if (!source)
+            ThrowException(::Assets::Exceptions::InvalidResource(initialiser, 
+                StringMeld<256>() << "Missing material configuration: " << (colon+1)));
+
+        _depVal = std::make_shared<::Assets::DependencyValidation>();
+
+                // first, load inherited settings.
+        auto* inheritList = source->ChildWithValue("Inherit");
         if (inheritList) {
             for (auto i=inheritList->child; i; i=i->next) {
                 auto* colon = XlFindCharReverse(i->value, ':');
@@ -185,34 +230,39 @@ namespace RenderCore { namespace ColladaConversion
                     ::Assets::ResChar resolvedFile[MaxPath];
                     XlCopyNString(resolvedFile, i->value, colon-i->value);
                     XlCatString(resolvedFile, dimof(resolvedFile), ".material");
-                    if (searchRules) {
-                        searchRules->ResolveFile(
-                            resolvedFile, dimof(resolvedFile), resolvedFile);
-                    }
+                    searchRules.ResolveFile(
+                        resolvedFile, dimof(resolvedFile), resolvedFile);
 
-                    MaterialSettingsFile settingsTable(resolvedFile);
-                    auto settingHash = Hash64(colon+1);
-                    
-                    auto s = LowerBound(settingsTable._materials, settingHash);
-                    if (s != settingsTable._materials.end() && s->first == settingHash) {
-                        _matParamBox.MergeIn(s->second._matParamBox);
-                        _stateSet = Merge(_stateSet, s->second._stateSet);
-                        _resourceBindings.insert(
-                            _resourceBindings.end(),
-                            s->second._resourceBindings.begin(), s->second._resourceBindings.end());
-                        _constants.MergeIn(s->second._constants);
-                    }
+                    StringMeld<MaxPath, ::Assets::ResChar> finalName;
+                    finalName << resolvedFile << colon;
 
-                    if (inherited && std::find(inherited->begin(), inherited->end(), settingsTable.GetDependencyValidation())== inherited->end()) {
-                        inherited->push_back(settingsTable.GetDependencyValidation());
-                    }
+                    _inherit.push_back(std::string(finalName));
+
+                    TRY {
+                        RegisterAssetDependency(
+                            _depVal, 
+                            &::Assets::GetAssetDep<RawMaterialConfiguration>(finalName).GetDependencyValidation());
+                    } CATCH (...) {} CATCH_END
+
+                    // RawMaterialConfiguration settingsTable(resolvedFile);
+                    // auto settingHash = Hash64(colon+1);
+                    // 
+                    // auto s = LowerBound(settingsTable._materials, settingHash);
+                    // if (s != settingsTable._materials.end() && s->first == settingHash) {
+                    //     _matParamBox.MergeIn(s->second._matParamBox);
+                    //     _stateSet = Merge(_stateSet, s->second._stateSet);
+                    //     _resourceBindings.insert(
+                    //         _resourceBindings.end(),
+                    //         s->second._resourceBindings.begin(), s->second._resourceBindings.end());
+                    //     _constants.MergeIn(s->second._constants);
+                    // }
                 }
             }
         }
 
             //  Load ShaderParams & ResourceBindings & Constants
 
-        const auto* p = source.ChildWithValue("ShaderParams");
+        const auto* p = source->ChildWithValue("ShaderParams");
         if (p) {
             for (auto child=p->child; child; child=child->next) {
                 _matParamBox.SetParameter(
@@ -221,7 +271,7 @@ namespace RenderCore { namespace ColladaConversion
             }
         }
 
-        const auto* c = source.ChildWithValue("Constants");
+        const auto* c = source->ChildWithValue("Constants");
         if (c) {
             for (auto child=p->child; child; child=child->next) {
                 _constants.SetParameter(
@@ -230,64 +280,92 @@ namespace RenderCore { namespace ColladaConversion
             }
         }
 
-        const auto* resourceBindings = source.ChildWithValue("ResourceBindings");
+        const auto* resourceBindings = source->ChildWithValue("ResourceBindings");
         if (resourceBindings) {
             for (auto i=p->child; i; i=i->next) {
                 if (i->value && i->value[0] && i->child) {
                     const char* resource = i->child->value;
                     if (resource && resource[0]) {
-                        _resourceBindings.push_back(
-                            Assets::MaterialParameters::ResourceBinding(
-                                Hash64(i->value, &i->value[XlStringLen(i->value)]),
-                                resource));
+                        auto hash = Hash64(i->value, &i->value[XlStringLen(i->value)]);
+                        auto i = std::lower_bound(
+                            _resourceBindings.begin(), _resourceBindings.end(),
+                            hash, CompareResourceBinding());
+
+                        if (i!=_resourceBindings.end() && i->_bindHash==hash) {
+                            i->_resourceName = resource;
+                        } else {
+                            _resourceBindings.insert(
+                                i, Assets::MaterialParameters::ResourceBinding(hash, resource));
+                        }
                     }
                 }
             }
         }
 
             // also load "States" table. This requires a bit more parsing work
-        const auto* stateSet = source.ChildWithValue("States");
+        const auto* stateSet = source->ChildWithValue("States");
         if (stateSet) {
             auto parsedStateSet = ParseStateSet(*stateSet);
             _stateSet = Merge(_stateSet, parsedStateSet);
         }
+
+        _filename = rawFilename;
+        _settingName = colon+1;
+        RegisterFileDependency(_depVal, rawFilename);
     }
 
-    MaterialSettingsFile::MaterialDesc::MaterialDesc() {}
-    MaterialSettingsFile::MaterialDesc::~MaterialDesc() {}
+    RawMaterialConfiguration::~RawMaterialConfiguration() {}
 
-    MaterialSettingsFile::MaterialSettingsFile() {}
-
-    MaterialSettingsFile::MaterialSettingsFile(const ResChar filename[])
+    void RawMaterialConfiguration::MergeInto(MaterialParameters& dest)
     {
-        size_t sourceFileSize = 0;
-        auto sourceFile = LoadFileAsMemoryBlock(filename, &sourceFileSize);
+        dest._matParams.MergeIn(_matParamBox);
+        dest._stateSet = Merge(dest._stateSet, _stateSet);
+        dest._constants.MergeIn(_constants);
 
-        _depVal = std::make_shared<::Assets::DependencyValidation>();
-        RegisterFileDependency(_depVal, filename);
-
-        if (sourceFile) {
-            auto searchRules = ::Assets::DefaultDirectorySearchRules(filename);
-            std::vector<std::shared_ptr<::Assets::DependencyValidation>> inherited;
-
-            Data data;
-            data.Load((const char*)sourceFile.get(), (int)sourceFileSize);
-
-            for (auto c=data.child; c; c=c->next) {
-                MaterialDesc matDesc(*c, &searchRules, &inherited);
-                _materials.push_back(std::make_pair(Hash64(c->value), std::move(matDesc)));
+        auto desti = dest._bindings.begin();
+        for (auto i=_resourceBindings.begin(); i!=_resourceBindings.end(); ++i) {
+            desti = std::lower_bound(
+                desti, dest._bindings.end(),
+                i->_bindHash, CompareResourceBinding());
+            if (desti!=dest._bindings.end() && desti->_bindHash == i->_bindHash) {
+                desti->_resourceName = i->_resourceName;
+            } else {
+                desti = dest._bindings.insert(desti, *i);
             }
+        }
+    }
 
-            for (auto i=inherited.begin(); i!=inherited.end(); ++i) {
-                ::Assets::RegisterAssetDependency(_depVal, i->get());
-            }
+    MaterialParameters RawMaterialConfiguration::Resolve(std::vector<::Assets::FileAndTime>* deps)
+    {
+            // resolve all of the inheritance options and generate a final 
+            // MaterialParameters object. We need to start at the bottom of the
+            // inheritance tree, and merge in new parameters as we come across them.
 
-			_inherited = std::move(inherited);
+        MaterialParameters result;
+        for (auto i=_inherit.cbegin(); i!=_inherit.cend(); ++i) {
+            TRY {
+                auto& rawParams = ::Assets::GetAssetDep<RawMaterialConfiguration>(i->c_str());
+                rawParams.MergeInto(result);
+                if (deps) {
+                    ::Assets::FileAndTime fileAndTime(
+                        rawParams._filename, 
+                        GetFileModificationTime(rawParams._filename.c_str()));
+                    deps->push_back(fileAndTime);
+                }
+            } 
+            CATCH (...) {} 
+            CATCH_END
         }
 
-        std::sort(_materials.begin(), _materials.end(), CompareFirst<uint64, MaterialDesc>());
-    }
+        MergeInto(result);
+        if (deps) {
+            ::Assets::FileAndTime fileAndTime(
+                _filename, 
+                GetFileModificationTime(_filename.c_str()));
+            deps->push_back(fileAndTime);
+        }
 
-    MaterialSettingsFile::~MaterialSettingsFile() {}
+        return result;
+    }
 }}
 

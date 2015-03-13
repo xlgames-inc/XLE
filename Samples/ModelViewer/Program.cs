@@ -9,7 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Forms;
 
-namespace BasicGUI
+namespace ModelViewer
 {
     static class Program
     {

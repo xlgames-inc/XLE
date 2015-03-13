@@ -16,7 +16,7 @@
 #include "RawGeometry.h"
 #include "ConversionObjects.h"
 #include "ColladaUtils.h"
-#include "MaterialSettingsFile.h"
+// #include "MaterialSettingsFile.h"
 
 #include "../RenderCore/Assets/ModelRunTime.h"
 #include "../RenderCore/Assets/RawAnimationCurve.h"
@@ -111,7 +111,7 @@ namespace RenderCore { namespace ColladaConversion
         {
             ResChar resolvedFile[MaxPath];
             searchRules.ResolveFile(resolvedFile, dimof(resolvedFile), StringMeld<MaxPath>() << baseName << ".material");
-            _matSettingsFile = MaterialSettingsFile(resolvedFile);
+            // _matSettingsFile = RawMaterialConfiguration(resolvedFile);
         }
 
 	    virtual ~Writer(){}
@@ -257,7 +257,7 @@ namespace RenderCore { namespace ColladaConversion
         void HandleFormatError(const FormatError& error);
 
         ImportConfiguration _importConfig;
-        MaterialSettingsFile _matSettingsFile;
+        // RawMaterialConfiguration _matSettingsFile;
     };
 
     void Writer::HandleFormatError(const FormatError& error)
@@ -408,7 +408,7 @@ namespace RenderCore { namespace ColladaConversion
                 //      Note; how should we associate the material to the script
                 //      file? From the material name, the id or the effect id?
                 //
-            MaterialSettingsFile::MaterialDesc matSettings;
+            /*RawMaterialConfiguration::MaterialDesc matSettings;
 
             {
                     //  Look for material settings with the same name as the 
@@ -430,7 +430,9 @@ namespace RenderCore { namespace ColladaConversion
                         matSettings = i->second;
                     }
                 }
-            }
+            }*/
+
+            RenderCore::Assets::MaterialParameters matSettings;
 
                 //  Any settings from the Collada file should override what we read
                 //  in the material settings file. This means that we have 
@@ -448,7 +450,7 @@ namespace RenderCore { namespace ColladaConversion
                 auto& diffuse = commonEffects[c]->getDiffuse();
                 if (diffuse.getType() == ColorOrTexture::TEXTURE) {
                     AddBoundTexture(
-                        effect, c, _objects, matSettings._resourceBindings,
+                        effect, c, _objects, matSettings._bindings,
                         DefaultDiffuseTextureBindingHash, 
                         diffuse.getTexture().getSamplerId());
                 }
@@ -472,15 +474,15 @@ namespace RenderCore { namespace ColladaConversion
                     auto bindPoint = _importConfig.AsNativeBindingHash(match[2]);
                     if (bindPoint != 0) {
                         AddBoundTexture(
-                            effect, 0, _objects, matSettings._resourceBindings,
+                            effect, 0, _objects, matSettings._bindings,
                             bindPoint, xt->samplerId);
                     }
                 }
             }
 
             Assets::MaterialParameters result;
-            result._bindings = std::move(matSettings._resourceBindings);
-            result._matParams = std::move(matSettings._matParamBox);
+            result._bindings = std::move(matSettings._bindings);
+            result._matParams = std::move(matSettings._matParams);
             result._stateSet = matSettings._stateSet;
             result._constants = std::move(matSettings._constants);
 

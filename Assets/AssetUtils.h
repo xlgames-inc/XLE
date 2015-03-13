@@ -35,11 +35,12 @@ namespace Assets
     class FileAndTime
     {
     public:
-        std::string _filename;
+        std::basic_string<ResChar> _filename;
         uint64 _timeMarker;
 
         FileAndTime() : _timeMarker(0) {}
-        FileAndTime(const std::string& filename, uint64 timeMarker) : _filename(filename), _timeMarker(timeMarker) {}
+        FileAndTime(const std::basic_string<ResChar>& filename, uint64 timeMarker) 
+            : _filename(filename), _timeMarker(timeMarker) {}
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////

@@ -4,7 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-namespace BasicGUI
+namespace ModelViewer
 {
     partial class MainForm
     {

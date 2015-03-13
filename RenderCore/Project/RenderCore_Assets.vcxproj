@@ -153,6 +153,7 @@
   <ItemGroup>
     <ClCompile Include="..\Assets\AssetUtils.cpp" />
     <ClCompile Include="..\Assets\ColladaCompilerInterface.cpp" />
+    <ClCompile Include="..\Assets\MaterialSettingsFile.cpp" />
     <ClCompile Include="..\Assets\ModelFormatPlugins.cpp" />
     <ClCompile Include="..\Assets\ModelSimple.cpp" />
     <ClCompile Include="..\Assets\ModelSimpleRenderer.cpp" />
@@ -166,6 +167,7 @@
     <ClInclude Include="..\Assets\AnimationRunTime.h" />
     <ClInclude Include="..\Assets\AssetUtils.h" />
     <ClInclude Include="..\Assets\ColladaCompilerInterface.h" />
+    <ClInclude Include="..\Assets\MaterialSettingsFile.h" />
     <ClInclude Include="..\Assets\ModelFormatPlugins.h" />
     <ClInclude Include="..\Assets\ModelRunTimeInternal.h" />
     <ClInclude Include="..\Assets\ModelSimple.h" />

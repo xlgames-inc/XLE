@@ -87,7 +87,6 @@
     <ClCompile Include="..\AnimationConversion.cpp" />
     <ClCompile Include="..\ColladaConversion.cpp" />
     <ClCompile Include="..\ConversionObjects.cpp" />
-    <ClCompile Include="..\MaterialSettingsFile.cpp" />
     <ClCompile Include="..\ModelCommandStream.cpp" />
     <ClCompile Include="..\NascentModel.cpp" />
     <ClCompile Include="..\RawGeometry.cpp" />
@@ -99,7 +98,6 @@
     <ClInclude Include="..\ColladaConversion.h" />
     <ClInclude Include="..\ColladaUtils.h" />
     <ClInclude Include="..\ConversionObjects.h" />
-    <ClInclude Include="..\MaterialSettingsFile.h" />
     <ClInclude Include="..\ModelCommandStream.h" />
     <ClInclude Include="..\NascentModel.h" />
     <ClInclude Include="..\RawGeometry.h" />
