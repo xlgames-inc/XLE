@@ -96,6 +96,7 @@ namespace GUILayer
             }
         }
 
+        [Category("Visualisation")]
         [Description("Reset camera to match the object")]
         property bool ResetCamera
         {

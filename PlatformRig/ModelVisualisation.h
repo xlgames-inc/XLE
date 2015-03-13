@@ -123,7 +123,9 @@ namespace PlatformRig
             const RenderCore::Techniques::ProjectionDesc& projectionDesc);
         virtual void SetActivationState(bool newState);
 
-        VisualisationOverlay(std::shared_ptr<ModelVisSettings> settings);
+        VisualisationOverlay(
+            std::shared_ptr<ModelVisSettings> settings,
+            std::shared_ptr<ModelVisCache> cache);
         ~VisualisationOverlay();
     protected:
         class Pimpl;

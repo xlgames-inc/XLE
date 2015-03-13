@@ -15,6 +15,7 @@
 #include "../SceneEngine/LightingParserContext.h"
 #include "../RenderCore/IThreadContext.h"
 #include "../RenderCore/Techniques/TechniqueUtils.h"
+#include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Assets/SharedStateSet.h"
 #include "../Assets/AssetUtils.h"
@@ -358,6 +359,7 @@ namespace PlatformRig
     class VisualisationOverlay::Pimpl
     {
     public:
+        std::shared_ptr<ModelVisCache> _cache;
         std::shared_ptr<ModelVisSettings> _settings;
     };
     
@@ -368,10 +370,31 @@ namespace PlatformRig
             //  Draw an overlay over the scene, 
             //  containing debugging / profiling information
         if (_pimpl->_settings->_colourByMaterial) {
+
             TRY 
             {
                 using namespace RenderCore;
                 auto metalContext = Metal::DeviceContext::Get(*context);
+
+                    //  We need to query the model to build a lookup table between draw call index
+                    //  and material binding index. The shader reads a draw call index from the 
+                    //  stencil buffer and remaps that into a material index using this table.
+                if (_pimpl->_cache) {
+                    auto model = _pimpl->_cache->GetModel(_pimpl->_settings->_modelName.c_str());
+                    assert(model._renderer && model._sharedStateSet);
+
+                    UInt4 DrawCallToMaterialIndexMap[256];
+                    XlSetMemory(DrawCallToMaterialIndexMap, sizeof(DrawCallToMaterialIndexMap), 0xff);
+                    auto bindingVec = model._renderer->DrawCallToMaterialBinding();
+                    unsigned t = 0;
+                    for (auto i=bindingVec.cbegin(); i!=bindingVec.cend() && t < dimof(DrawCallToMaterialIndexMap); ++i, ++t) {
+                        DrawCallToMaterialIndexMap[t] = UInt4(bindingVec[t], bindingVec[t], bindingVec[t], bindingVec[t]);
+                    }
+
+                    metalContext->BindPS(MakeResourceList(
+                        Metal::ConstantBuffer(DrawCallToMaterialIndexMap, sizeof(DrawCallToMaterialIndexMap))));
+                }
+
                 SceneEngine::SavedTargets savedTargets(metalContext.get());
 
                 Metal::ShaderResourceView depthSrv;
@@ -383,14 +406,29 @@ namespace PlatformRig
                 metalContext->GetUnderlying()->OMSetRenderTargets(
                     1, savedTargets.GetRenderTargets(), nullptr);
 
-                auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                    "game/xleres/basic2D.vsh:fullscreen:vs_*", 
-                    "game/xleres/Effects/HighlightVis.psh:HighlightDrawCalls:ps_*");
                 metalContext->Bind(Metal::Topology::TriangleStrip);
                 metalContext->Unbind<Metal::BoundInputLayout>();
-                metalContext->Bind(shader);
                 metalContext->BindPS(MakeResourceList(depthSrv));
-                metalContext->Draw(4);
+                metalContext->Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
+                
+                {
+                    auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+                        "game/xleres/basic2D.vsh:fullscreen:vs_*", 
+                        "game/xleres/Effects/HighlightVis.psh:HighlightDrawCalls:ps_*");
+                
+                    metalContext->Bind(shader);
+                    metalContext->Draw(4);
+                }
+
+                {
+                    auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+                        "game/xleres/basic2D.vsh:fullscreen:vs_*", 
+                        "game/xleres/Effects/HighlightVis.psh:OutlineDrawCall:ps_*");
+                
+                    metalContext->Bind(shader);
+                    metalContext->Draw(4);
+                }
+
                 metalContext->UnbindPS<Metal::ShaderResourceView>(0, 1);
 
                 savedTargets.ResetToOldTargets(metalContext.get());
@@ -410,10 +448,13 @@ namespace PlatformRig
 
     void VisualisationOverlay::SetActivationState(bool) {}
 
-    VisualisationOverlay::VisualisationOverlay(std::shared_ptr<ModelVisSettings> settings)
+    VisualisationOverlay::VisualisationOverlay(
+        std::shared_ptr<ModelVisSettings> settings,
+        std::shared_ptr<ModelVisCache> cache)
     {
         _pimpl = std::make_unique<Pimpl>();
-        _pimpl->_settings = settings;
+        _pimpl->_settings = std::move(settings);
+        _pimpl->_cache = std::move(cache);
     }
 
     VisualisationOverlay::~VisualisationOverlay() {}

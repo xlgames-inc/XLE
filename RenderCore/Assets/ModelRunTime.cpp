@@ -70,7 +70,7 @@ namespace RenderCore { namespace Assets
             return dest.size()-1;
         }
 
-        struct SubMatResources 
+        struct SubMatResources
         { 
             unsigned _shaderName; 
             unsigned _matParams; 
@@ -241,7 +241,10 @@ namespace RenderCore { namespace Assets
 
                 // fill in the details for all of the material references we found
             const float alphaThreshold = .33f;
-            BasicMaterialConstants basicConstants = { Float3(1.f, 1.f, 1.f), 1.f, Float3(1.f, 1.f, 1.f), alphaThreshold };
+            BasicMaterialConstants basicConstants = 
+            { 
+                Float3(1.f, 1.f, 1.f), 1.f, Float3(1.f, 1.f, 1.f), alphaThreshold 
+            };
             std::vector<uint8> constants((uint8*)&basicConstants, (uint8*)PtrAdd(&basicConstants, sizeof(basicConstants)));
             for (auto i=materialResources.begin(); i!=materialResources.end(); ++i) {
                 std::string shaderName = DefaultShader;
@@ -497,7 +500,7 @@ namespace RenderCore { namespace Assets
                     matRes._shaderName,
                     mesh->_geoParamBox, matRes._matParams, 
                     matRes._texturesIndex, matRes._constantBuffer,
-                    matRes._renderStateSet);
+                    matRes._renderStateSet, scaffoldMatIndex);
                 drawCallRes.push_back(res);
                 drawCalls.push_back(std::make_pair(gi, d));
             }
@@ -549,7 +552,7 @@ namespace RenderCore { namespace Assets
                     matRes._shaderName,
                     mesh->_geoParamBox, matRes._matParams, 
                     matRes._texturesIndex, matRes._constantBuffer,
-                    matRes._renderStateSet);
+                    matRes._renderStateSet, scaffoldMatIndex);
 
                 drawCallRes.push_back(res);
                 skinnedDrawCalls.push_back(std::make_pair(gi, d));
@@ -881,13 +884,14 @@ namespace RenderCore { namespace Assets
     {
         _shaderName = _geoParamBox = _materialParamBox = 0;
         _textureSet = _constantBuffer = _renderStateSet = 0;
+        _materialBindingIndex = 0;
     }
 
     ModelRenderer::Pimpl::DrawCallResources::DrawCallResources(
         unsigned shaderName,
         unsigned geoParamBox, unsigned matParamBox,
         unsigned textureSet, unsigned constantBuffer,
-        unsigned renderStateSet)
+        unsigned renderStateSet, unsigned materialBindingIndex)
     {
         _shaderName = shaderName;
         _geoParamBox = geoParamBox;
@@ -895,6 +899,7 @@ namespace RenderCore { namespace Assets
         _textureSet = textureSet;
         _constantBuffer = constantBuffer;
         _renderStateSet = renderStateSet;
+        _materialBindingIndex = materialBindingIndex;
     }
 
     void    ModelRenderer::Render(
@@ -1263,6 +1268,16 @@ namespace RenderCore { namespace Assets
             }
             return std::string(buffer);
         } else { return std::string("<<err>>"); }
+    }
+
+    std::vector<unsigned> ModelRenderer::DrawCallToMaterialBinding()
+    {
+        std::vector<unsigned> result;
+        result.reserve(_pimpl->_drawCallRes.size());
+        for (auto i=_pimpl->_drawCallRes.begin(); i!=_pimpl->_drawCallRes.end(); ++i) {
+            result.push_back(i->_materialBindingIndex);
+        }
+        return result;
     }
 
     void ModelRenderer::LogReport() const

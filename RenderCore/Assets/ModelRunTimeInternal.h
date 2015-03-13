@@ -333,12 +333,14 @@ namespace RenderCore { namespace Assets
             unsigned _constantBuffer;
             unsigned _renderStateSet;
 
+            unsigned _materialBindingIndex;
+
             DrawCallResources();
             DrawCallResources(
                 unsigned shaderName,
                 unsigned geoParamBox, unsigned matParamBox,
                 unsigned textureSet, unsigned constantBuffer,
-                unsigned renderStateSet);
+                unsigned renderStateSet, unsigned materialBindingIndex);
         };
         std::vector<DrawCallResources>   _drawCallRes;
 

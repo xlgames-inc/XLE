@@ -1,25 +1,12 @@
+// Copyright 2015 XLGAMES Inc.
+//
+// Distributed under the MIT License (See
+// accompanying file "LICENSE" or the website
+// http://www.opensource.org/licenses/mit-license.php)
+
+#include "SharrFilter.h"
 
 Texture2D InputTexture;
-
-static const float SharrConstant = 1.f/60.f;
-
-static const float SharrHoriz5x5[5][5] = 
-{
-	{ -1.f * SharrConstant, -1.f * SharrConstant,  0.f,  1.f * SharrConstant,  1.f * SharrConstant },
-	{ -2.f * SharrConstant, -2.f * SharrConstant,  0.f,  2.f * SharrConstant,  2.f * SharrConstant },
-	{ -3.f * SharrConstant, -6.f * SharrConstant,  0.f,  6.f * SharrConstant,  3.f * SharrConstant },
-	{ -2.f * SharrConstant, -2.f * SharrConstant,  0.f,  2.f * SharrConstant,  2.f * SharrConstant },
-	{ -1.f * SharrConstant, -1.f * SharrConstant,  0.f,  1.f * SharrConstant,  1.f * SharrConstant }
-};
-
-static const float SharrVert5x5[5][5] = 
-{
-	{ -1.f * SharrConstant, -2.f * SharrConstant, -3.f * SharrConstant, -2.f * SharrConstant, -1.f * SharrConstant },
-	{ -1.f * SharrConstant, -2.f * SharrConstant, -6.f * SharrConstant, -2.f * SharrConstant, -1.f * SharrConstant },
-	{  0.f * SharrConstant,  0.f * SharrConstant,  0.f * SharrConstant,  0.f * SharrConstant,  0.f * SharrConstant },
-	{  1.f * SharrConstant,  2.f * SharrConstant,  6.f * SharrConstant,  2.f * SharrConstant,  1.f * SharrConstant },
-	{  1.f * SharrConstant,  2.f * SharrConstant,  3.f * SharrConstant,  2.f * SharrConstant,  1.f * SharrConstant }
-};
 
 float4 main(float4 pos : SV_Position) : SV_Target0
 {
@@ -35,8 +22,8 @@ float4 main(float4 pos : SV_Position) : SV_Target0
 	float2 dhdp = 0.0.xx;
 	for (int y=0; y<5; ++y) {
 		for (int x=0; x<5; ++x) {
-				//	We need to convert the input colour values to some 
-				//	kind of scalar. We could use luminance. But if we 
+				//	We need to convert the input colour values to some
+				//	kind of scalar. We could use luminance. But if we
 				//	just want to find the outline of a rendered area,
 				//	then we can use the alpha channel
 			float value = InputTexture.Load(int3(basePos, 0), int2(x-2, y-2)).a;
@@ -49,5 +36,3 @@ float4 main(float4 pos : SV_Position) : SV_Target0
 	float3 baseColor = float3(1.5f, 1.35f, .7f);
 	return float4(alpha * baseColor, alpha);
 }
-
-
