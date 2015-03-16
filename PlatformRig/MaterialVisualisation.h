@@ -46,6 +46,8 @@ namespace PlatformRig
             SystemConstants();
         };
         SystemConstants _systemConstants;
+
+        MaterialVisObject() { _shaderProgram = nullptr; }
     };
 
     /// <summary>Renders a visualisation of a material</summary>

@@ -6,7 +6,9 @@
 
 #include "OverlaySystem.h"
 #include "../../PlatformRig/DebuggingDisplays/ConsoleDisplay.h"
+#include "../../SceneEngine/LightingParserContext.h"
 #include "../../RenderOverlays/DebuggingDisplay.h"
+#include "../../Assets/Assets.h"
 #include "../../ConsoleRig/Console.h"
 
 namespace PlatformRig
@@ -144,7 +146,12 @@ namespace PlatformRig
         SceneEngine::LightingParserContext& parserContext) 
     {
         for (auto i=_childSystems.begin(); i!=_childSystems.end(); ++i) {
-            (*i)->RenderToScene(device, parserContext);
+            TRY {
+                (*i)->RenderToScene(device, parserContext);
+            } 
+            CATCH (::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
+            CATCH (::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
+            CATCH_END
         }
     }
 

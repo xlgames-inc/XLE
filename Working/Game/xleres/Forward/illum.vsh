@@ -80,7 +80,7 @@ VSOutput main(VSInput input)
 
 	#if OUTPUT_FOG_COLOR == 1
 		// output.fogColor = CalculateFog(worldPosition.z, WorldSpaceView - worldPosition, NegativeDominantLightDirection);
-		output.fogColor = 0.0.xxxx;
+		output.fogColor = float4(0.0.xxx, 1.f);
 	#endif
 
 	#if (OUTPUT_PER_VERTEX_AO==1) && (GEO_HAS_INSTANCE_ID==1)

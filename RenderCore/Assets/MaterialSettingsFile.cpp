@@ -316,7 +316,7 @@ namespace RenderCore { namespace Assets
 
     RawMaterialConfiguration::~RawMaterialConfiguration() {}
 
-    void RawMaterialConfiguration::MergeInto(MaterialParameters& dest)
+    void RawMaterialConfiguration::MergeInto(MaterialParameters& dest) const
     {
         dest._matParams.MergeIn(_matParamBox);
         dest._stateSet = Merge(dest._stateSet, _stateSet);
@@ -335,7 +335,7 @@ namespace RenderCore { namespace Assets
         }
     }
 
-    MaterialParameters RawMaterialConfiguration::Resolve(std::vector<::Assets::FileAndTime>* deps)
+    MaterialParameters RawMaterialConfiguration::Resolve(std::vector<::Assets::FileAndTime>* deps) const
     {
             // resolve all of the inheritance options and generate a final 
             // MaterialParameters object. We need to start at the bottom of the

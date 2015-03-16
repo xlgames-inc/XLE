@@ -7,6 +7,7 @@
     <ClCompile Include="..\LayerControl.cpp" />
     <ClCompile Include="..\TestControl.cpp" />
     <ClCompile Include="..\UITypesBinding.cpp" />
+    <ClCompile Include="..\MaterialVisualisation.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\EngineDevice.h" />
@@ -19,5 +20,7 @@
     <ClInclude Include="..\TestControl.h" />
     <ClInclude Include="..\EngineControlInternal.h" />
     <ClInclude Include="..\UITypesBinding.h" />
+    <ClInclude Include="..\MaterialVisualisation.h" />
+    <ClInclude Include="..\IOverlaySystem.h" />
   </ItemGroup>
 </Project>

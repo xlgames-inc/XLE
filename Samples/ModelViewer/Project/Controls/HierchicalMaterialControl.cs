@@ -21,5 +21,13 @@ namespace ModelViewer
         {
             InitializeComponent();
         }
+
+        public GUILayer.RawMaterialConfiguration Object
+        {
+            set
+            {
+                materialControl1.Object = value;
+            }
+        }
     }
 }

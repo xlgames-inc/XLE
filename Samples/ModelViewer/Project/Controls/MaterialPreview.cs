@@ -20,6 +20,23 @@ namespace ModelViewer.Controls
         public MaterialPreview()
         {
             InitializeComponent();
+            visSettings = GUILayer.MaterialVisSettings.CreateDefault();
         }
+
+        public GUILayer.RawMaterialConfiguration Object
+        {
+            set 
+            {
+                if (visLayer == null) {
+                    visLayer = new GUILayer.MaterialVisLayer(visSettings, value);
+                    preview.AddSystem(visLayer);
+                } else {
+                    visLayer.SetConfig(value);
+                }
+            }
+        }
+
+        protected GUILayer.MaterialVisLayer visLayer;
+        protected GUILayer.MaterialVisSettings visSettings;
     }
 }

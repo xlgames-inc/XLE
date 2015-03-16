@@ -21,5 +21,13 @@ namespace ModelViewer
         {
             InitializeComponent();
         }
+
+        public GUILayer.RawMaterialConfiguration Object
+        {
+            set
+            {
+                hierchicalMaterialControl1.Object = value;
+            }
+        }
     }
 }

@@ -169,6 +169,8 @@ namespace GUILayer
             BindingList<BindingUtil::StringIntPair^>^ get();
         }
 
+        const NativeConfig& GetUnderlying() { return *_underlying->get(); }
+
         RawMaterialConfiguration(System::String^ initialiser);
         RawMaterialConfiguration(std::shared_ptr<NativeConfig> underlying);
         ~RawMaterialConfiguration();

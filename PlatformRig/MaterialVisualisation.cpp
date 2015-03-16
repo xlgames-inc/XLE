@@ -43,7 +43,7 @@ namespace PlatformRig
         SceneEngine::ShadowProjectionDesc GetShadowProjectionDesc(unsigned index, const RenderCore::Techniques::ProjectionDesc& mainSceneProjectionDesc) const 
             { return SceneEngine::ShadowProjectionDesc(); }
 
-        unsigned                        GetLightCount() const { return 0; }
+        unsigned                        GetLightCount() const { return 1; }
         const SceneEngine::LightDesc&   GetLightDesc(unsigned index) const
         {
             static SceneEngine::LightDesc light;
@@ -418,16 +418,16 @@ namespace PlatformRig
                 }
 
                 if (!str.empty()) {
-                    const Metal::DeferredShaderResource& texture = 
-                        ::Assets::GetAssetDep<Metal::DeferredShaderResource>(str.c_str());
-
                     TRY {
+                        const Metal::DeferredShaderResource& texture = 
+                            ::Assets::GetAssetDep<Metal::DeferredShaderResource>(str.c_str());
+
                         result.push_back(&texture.GetShaderResource());
                         boundUniforms.BindShaderResource(
                             Hash64(bindDesc.Name, &bindDesc.Name[XlStringLen(bindDesc.Name)]),
                             unsigned(result.size()-1), 1);
                     }
-                    CATCH (::Assets::Exceptions::InvalidResource& ) {}
+                    CATCH (const ::Assets::Exceptions::InvalidResource&) {}
                     CATCH_END
                 }
                 
@@ -616,6 +616,8 @@ namespace PlatformRig
     {
         _geometryType = GeometryType::Sphere;
         _lightingType = LightingType::NoLightingParser;
+        _camera = std::make_shared<VisCameraSettings>();
+        _camera->_position = Float3(-5.f, 0.f, 0.f);
     }
 
     MaterialVisObject::SystemConstants::SystemConstants()

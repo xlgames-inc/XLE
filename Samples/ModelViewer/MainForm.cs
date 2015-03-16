@@ -27,7 +27,10 @@ namespace ModelViewer
             visSettings.AttachCallback(propertyGrid1);
 
                 // pop-up a modal version of the material editor (for testing/prototyping)
-            (new ModalMaterialEditor()).ShowDialog();
+            var editor = new ModalMaterialEditor();
+            editor.Object =  new GUILayer.RawMaterialConfiguration(
+                "Game\\Model\\Galleon\\galleon.material:galleon_sail");
+            editor.ShowDialog();
         }
 
         private GUILayer.ModelVisSettings visSettings;

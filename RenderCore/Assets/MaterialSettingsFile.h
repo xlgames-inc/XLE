@@ -28,7 +28,7 @@ namespace RenderCore { namespace Assets
         std::vector<ResString> _inherit;
         const ::Assets::DependencyValidation& GetDependencyValidation() const { return *_depVal; }
 
-        MaterialParameters Resolve(std::vector<::Assets::FileAndTime>* deps = nullptr);
+        MaterialParameters Resolve(std::vector<::Assets::FileAndTime>* deps = nullptr) const;
         
         RawMaterialConfiguration();
         RawMaterialConfiguration(const ::Assets::ResChar initialiser[]);
@@ -36,7 +36,7 @@ namespace RenderCore { namespace Assets
     private:
         std::shared_ptr<::Assets::DependencyValidation> _depVal;
 
-        void MergeInto(MaterialParameters& dest);
+        void MergeInto(MaterialParameters& dest) const;
     };
 }}
 

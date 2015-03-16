@@ -38,6 +38,7 @@ namespace ModelViewer.Controls
             this.checkBox1 = new System.Windows.Forms.CheckBox();
             this.comboBox2 = new System.Windows.Forms.ComboBox();
             this.comboBox1 = new System.Windows.Forms.ComboBox();
+            this.preview = new GUILayer.LayerControl();
             this.groupBox1.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -93,10 +94,18 @@ namespace ModelViewer.Controls
             this.comboBox1.Size = new System.Drawing.Size(155, 21);
             this.comboBox1.TabIndex = 0;
             // 
+            // preview
+            // 
+            this.preview.Location = new System.Drawing.Point(4, 4);
+            this.preview.Name = "preview";
+            this.preview.Size = new System.Drawing.Size(544, 339);
+            this.preview.TabIndex = 1;
+            // 
             // MaterialPreview
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.Controls.Add(this.preview);
             this.Controls.Add(this.groupBox1);
             this.Name = "MaterialPreview";
             this.Size = new System.Drawing.Size(723, 346);
@@ -112,5 +121,6 @@ namespace ModelViewer.Controls
         private System.Windows.Forms.ComboBox comboBox1;
         private System.Windows.Forms.CheckBox checkBox1;
         private System.Windows.Forms.ComboBox comboBox2;
+        private GUILayer.LayerControl preview;
     }
 }

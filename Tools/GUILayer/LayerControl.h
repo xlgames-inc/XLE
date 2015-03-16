@@ -13,11 +13,14 @@ namespace GUILayer
     class LayerControlPimpl;
 
     ref class ModelVisSettings;
+    ref class IOverlaySystem;
 
 	public ref class LayerControl : public EngineControl
 	{
 	public:
         void SetupDefaultVis(ModelVisSettings^ settings);
+
+        void AddSystem(IOverlaySystem^ overlay);
 
 		LayerControl();
 		~LayerControl();

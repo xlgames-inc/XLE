@@ -21,13 +21,9 @@ namespace ModelViewer.Controls
         {
             InitializeComponent();
 
-            var matSettings = new GUILayer.RawMaterialConfiguration(
-                "Game\\Model\\Galleon\\galleon.material:galleon_sail");
-
-
-                //  Create the columns programmatically (because the
-                //  automatic generation seems to get the columns in
-                //  the wrong order).
+            //  Create the columns programmatically (because the
+            //  automatic generation seems to get the columns in
+            //  the wrong order).
             {
                 materialParameterBox.AutoGenerateColumns = false;
                 // var cell = new DataGridViewTextBoxCell();
@@ -85,9 +81,16 @@ namespace ModelViewer.Controls
                         AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill
                     });
             }
+        }
 
-            materialParameterBox.DataSource = matSettings.MaterialParameterBox;
-            shaderConstants.DataSource = matSettings.ShaderConstants;
+        public GUILayer.RawMaterialConfiguration Object
+        {
+            set
+            {
+                materialParameterBox.DataSource = value.MaterialParameterBox;
+                shaderConstants.DataSource = value.ShaderConstants;
+                materialPreview1.Object = value;
+            }
         }
     }
 }

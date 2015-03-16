@@ -302,16 +302,16 @@ namespace PlatformRig
             }
         }
 
-        {
-            using namespace luabridge;
-            auto* luaState = ConsoleRig::Console::GetInstance().GetLuaState();
-            getGlobalNamespace(luaState)
-                .beginClass<FrameRig>("FrameRig")
-                    .addFunction("SetFrameLimiter", &FrameRig::SetFrameLimiter)
-                .endClass();
-            
-            setGlobal(luaState, this, "MainFrameRig");
-        }
+        // {
+        //     using namespace luabridge;
+        //     auto* luaState = ConsoleRig::Console::GetInstance().GetLuaState();
+        //     getGlobalNamespace(luaState)
+        //         .beginClass<FrameRig>("FrameRig")
+        //             .addFunction("SetFrameLimiter", &FrameRig::SetFrameLimiter)
+        //         .endClass();
+        //     
+        //     setGlobal(luaState, this, "MainFrameRig");
+        // }
     }
 
     FrameRig::~FrameRig() 
