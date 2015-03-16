@@ -523,6 +523,29 @@ namespace RenderCore
         return _device.lock();
     }
 
+    void ThreadContext::ClearAllBoundTargets() const
+    {
+        const auto numTargets = D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT;
+        ID3D::RenderTargetView* rtv[numTargets];
+        ID3D::DepthStencilView* dsv = nullptr;
+        XlZeroMemory(rtv);
+
+        _underlying->GetUnderlying()->OMGetRenderTargets(numTargets, rtv, &dsv);
+        for (unsigned c=0; c<numTargets; ++c) {
+            if (rtv[c]) {
+                float clearColour[4] = { 0.f, 0.f, 0.f, 0.f };
+                _underlying->GetUnderlying()->ClearRenderTargetView(rtv[c], clearColour);
+                rtv[c]->Release();
+            }
+        }
+
+        if (dsv) {
+            _underlying->GetUnderlying()->ClearDepthStencilView(
+                dsv, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.f, 0);
+            dsv->Release();
+        }
+    }
+
     void*   ThreadContextDX11::QueryInterface(const GUID& guid)
     {
         if (guid == __uuidof(Base_ThreadContextDX11)) { return (IThreadContextDX11*)this; }

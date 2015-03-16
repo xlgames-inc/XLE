@@ -98,7 +98,7 @@ float4 main(VSOutput geo) : SV_Target0
 		//	with particles. Normally particles go through
 		//	lighting at this stage.
 	result.a = saturate(result.a);
-	result.rgb *= LightingScale;
+	// result.rgb *= LightingScale;		(note -- should we scale by this here? when using this shader with a basic lighting pipeline [eg, for material preview], the scale is unwanted)
 	return result;
 }
 

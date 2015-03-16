@@ -274,7 +274,7 @@ namespace PlatformRig
         _pimpl->_postPresentCallbacks.push_back(postPresentCallback);
     }
 
-    FrameRig::FrameRig()
+    FrameRig::FrameRig(bool isMainFrameRig)
     {
         _pimpl = std::make_unique<Pimpl>();
 
@@ -282,9 +282,11 @@ namespace PlatformRig
 
         {
             _pimpl->_debugSystem = std::make_shared<DebugScreensSystem>();
-            auto display = std::make_shared<FrameRigDisplay>(
-                _pimpl->_debugSystem, _pimpl->_prevFrameAllocationCount, _pimpl->_frameRate);
-            _pimpl->_debugSystem->Register(display, "FrameRig", DebugScreensSystem::SystemDisplay);
+            if (isMainFrameRig) {
+                auto display = std::make_shared<FrameRigDisplay>(
+                    _pimpl->_debugSystem, _pimpl->_prevFrameAllocationCount, _pimpl->_frameRate);
+                _pimpl->_debugSystem->Register(display, "FrameRig", DebugScreensSystem::SystemDisplay);
+            }
         }
 
         _pimpl->_mainOverlaySys->AddSystem(CreateDebugScreensOverlay(_pimpl->_debugSystem));
@@ -302,24 +304,34 @@ namespace PlatformRig
             }
         }
 
-        // {
-        //     using namespace luabridge;
-        //     auto* luaState = ConsoleRig::Console::GetInstance().GetLuaState();
-        //     getGlobalNamespace(luaState)
-        //         .beginClass<FrameRig>("FrameRig")
-        //             .addFunction("SetFrameLimiter", &FrameRig::SetFrameLimiter)
-        //         .endClass();
-        //     
-        //     setGlobal(luaState, this, "MainFrameRig");
-        // }
+        if (isMainFrameRig) {
+            using namespace luabridge;
+            auto* luaState = ConsoleRig::Console::GetInstance().GetLuaState();
+            getGlobalNamespace(luaState)
+                .beginClass<FrameRig>("FrameRig")
+                    .addFunction("SetFrameLimiter", &FrameRig::SetFrameLimiter)
+                .endClass();
+            
+            setGlobal(luaState, this, "MainFrameRig");
+        }
     }
 
     FrameRig::~FrameRig() 
     {
         auto* luaState = ConsoleRig::Console::GetInstance().GetLuaState();
-        // luabridge::setGlobal(luaState, nullptr, "MainFrameRig");
-        lua_pushnil(luaState);
-        lua_setglobal(luaState, "MainFrameRig");
+        
+        bool resetGlobal = false;
+
+        {
+            auto existingValue = luabridge::getGlobal(luaState, "MainFrameRig");
+            resetGlobal = (existingValue.isUserdata() && ((FrameRig*)existingValue) == this);
+        }
+    
+        if (resetGlobal) {
+            // luabridge::setGlobal(luaState, nullptr, "MainFrameRig");
+            lua_pushnil(luaState);
+            lua_setglobal(luaState, "MainFrameRig");
+        }
     }
 
 ///////////////////////////////////////////////////////////////////////////////

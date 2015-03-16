@@ -21,6 +21,11 @@ namespace GUILayer
         property GeometryType Geometry { GeometryType get(); void set(GeometryType); }
         property LightingType Lighting { LightingType get(); void set(LightingType); }
 
+        property VisCameraSettings^ Camera
+        {
+            VisCameraSettings^ get() { return gcnew VisCameraSettings((*_object)->_camera); }
+        }
+
         static MaterialVisSettings^ CreateDefault();
 
         MaterialVisSettings(std::shared_ptr<PlatformRig::MaterialVisSettings> attached)

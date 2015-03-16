@@ -177,11 +177,55 @@ namespace PlatformRig
             vertex._normal      = Normalize(*i);        // centre is the origin, so normal points towards the position
 
                 //  Texture coordinates based on longitude / latitude
+                //  2 texture wraps horizontally, and 1 wrap vertically
+                //      let's map [-0.5f*pi, .5f*pi] -> [0.f, 1.f];
+
             float latitude  = XlASin((*i)[2]);
             float longitude = XlATan2((*i)[1], (*i)[0]);
+            latitude = 1.f - (latitude + .5f * gPI) / gPI;
+            longitude = (longitude + .5f * gPI) / gPI;
+
             vertex._texCoord = Float2(longitude, latitude);
             result.push_back(vertex);
         }
+        return result;
+    }
+
+    static std::vector<Internal::Vertex3D> BuildCube()
+    {
+            // build a basic cube at the origing with radius 1. All edges are "sharp" edges //
+        Float3 normals[] = { 
+            Float3(0.f, 0.f, -1.f), Float3(0.f, 0.f, 1.f),
+            Float3(1.f, 0.f, 0.f), Float3(-1.f, 0.f, 0.f),
+            Float3(0.f, 1.f, 0.f), Float3(0.f, -1.f, 0.f)
+        };
+        Float3 Us[] = {
+            Float3(1.f, 0.f, 0.f), Float3(-1.f, 0.f, 0.f),
+            Float3(0.f, 1.f, 0.f), Float3(0.f, -1.f, 0.f),
+            Float3(-1.f, 0.f, 0.f), Float3(1.f, 0.f,  0.f)
+        };
+        Float3 Vs[] = {
+            Float3(0.f, 1.f, 0.f), Float3(0.f, 1.f, 0.f),
+            Float3(0.f, 0.f, -1.f), Float3(0.f, 0.f, -1.f),
+            Float3(0.f, 0.f, -1.f), Float3(0.f, 0.f, -1.f)
+        };
+
+        float faceCoord[4][2] = {{ -1.f, -1.f }, { -1.f, 1.f }, { 1.f, -1.f }, { 1.f, 1.f }};
+
+        std::vector<Internal::Vertex3D> result;
+        for (unsigned c=0; c<6; ++c) {
+            auto normal = normals[c], u = Us[c], v = Vs[c];
+
+            Internal::Vertex3D a[4];
+            for (unsigned q=0; q<4; ++q) {
+                a[q]._position = normal + faceCoord[q][0] * u + faceCoord[q][1] * v;
+                a[q]._normal = normal;
+                a[q]._texCoord = Float2(.5f * faceCoord[q][0] + .5f, .5f * faceCoord[q][1] + .5f);
+            }
+            result.push_back(a[0]); result.push_back(a[1]); result.push_back(a[2]);
+            result.push_back(a[2]); result.push_back(a[1]); result.push_back(a[3]);
+        }
+
         return result;
     }
 
@@ -219,17 +263,27 @@ namespace PlatformRig
             metalContext->Bind(Metal::Topology::TriangleStrip);
             metalContext->Draw(dimof(vertices));
 
-        } else if (geoType == MaterialVisSettings::GeometryType::Sphere) {
+        } else {
 
             Metal::BoundInputLayout boundVertexInputLayout(
                 std::make_pair(Internal::Vertex3D_InputLayout, dimof(Internal::Vertex3D_InputLayout)), shaderProgram);
             metalContext->Bind(boundVertexInputLayout);
             
-            auto sphereGeometry = BuildGeodesicSphere();
-            Metal::VertexBuffer vertexBuffer(AsPointer(sphereGeometry.begin()), sphereGeometry.size() * sizeof(Internal::Vertex3D));
+            Metal::VertexBuffer vertexBuffer;
+            unsigned count = 0;
+
+            if (geoType == MaterialVisSettings::GeometryType::Sphere) {
+                auto sphereGeometry = BuildGeodesicSphere();
+                vertexBuffer = Metal::VertexBuffer(AsPointer(sphereGeometry.begin()), sphereGeometry.size() * sizeof(Internal::Vertex3D));
+                count = unsigned(sphereGeometry.size());
+            } else if (geoType == MaterialVisSettings::GeometryType::Cube) {
+                auto cubeGeometry = BuildCube();
+                vertexBuffer = Metal::VertexBuffer(AsPointer(cubeGeometry.begin()), cubeGeometry.size() * sizeof(Internal::Vertex3D));
+                count = unsigned(cubeGeometry.size());
+            }
             metalContext->Bind(MakeResourceList(vertexBuffer), sizeof(Internal::Vertex3D), 0);
             metalContext->Bind(Metal::Topology::TriangleList);
-            metalContext->Draw(unsigned(sphereGeometry.size()));
+            metalContext->Draw(count);
 
         }
     }

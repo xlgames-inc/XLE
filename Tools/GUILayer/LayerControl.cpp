@@ -46,6 +46,8 @@ namespace GUILayer
     {
         using namespace SceneEngine;
 
+        context.ClearAllBoundTargets();
+
         LightingParserContext lightingParserContext(*pimpl._globalTechniqueContext);
         lightingParserContext._plugins.push_back(pimpl._stdPlugin);
 
@@ -191,13 +193,7 @@ namespace GUILayer
         overlaySet.AddSystem(std::move(visLayer));
         overlaySet.AddSystem(std::make_shared<PlatformRig::VisualisationOverlay>(settings->GetUnderlying(), s_visCache));
 
-            // create an input listener that feeds into a stack of manipulators
-        auto manipulators = std::make_unique<ManipulatorStack>();
-        manipulators->Register(
-            ManipulatorStack::CameraManipulator,
-            PlatformRig::CreateCameraManipulator(settings->GetUnderlying()->_camera));
-
-        overlaySet.AddSystem(std::make_shared<InputLayer>(std::move(manipulators)));
+        AddDefaultCameraHandler(settings->Camera);
     }
 
     namespace Internal
@@ -243,6 +239,18 @@ namespace GUILayer
         auto& overlaySet = *GetWindowRig().GetFrameRig().GetMainOverlaySystem();
         overlaySet.AddSystem(std::shared_ptr<Internal::OverlaySystemAdapter>(
             new Internal::OverlaySystemAdapter(overlay)));
+    }
+
+    void LayerControl::AddDefaultCameraHandler(VisCameraSettings^ settings)
+    {
+        // create an input listener that feeds into a stack of manipulators
+        auto manipulators = std::make_unique<ManipulatorStack>();
+        manipulators->Register(
+            ManipulatorStack::CameraManipulator,
+            PlatformRig::CreateCameraManipulator(settings->GetUnderlying()));
+
+        auto& overlaySet = *GetWindowRig().GetFrameRig().GetMainOverlaySystem();
+        overlaySet.AddSystem(std::make_shared<InputLayer>(std::move(manipulators)));
     }
 
     LayerControl::LayerControl()

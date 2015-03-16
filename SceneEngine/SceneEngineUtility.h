@@ -29,9 +29,9 @@ namespace SceneEngine
         
         void SetDepthStencilView(ID3D::DepthStencilView* dsv);
 
-    private:
         static const unsigned MaxSimultaneousRenderTargetCount = 8; // D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT
         static const unsigned MaxViewportAndScissorRectCount = 16;  // D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE
+    private:
         ID3D::RenderTargetView* _oldTargets[MaxSimultaneousRenderTargetCount];
         ID3D::DepthStencilView* _oldDepthTarget;
         RenderCore::Metal::ViewportDesc _oldViewports[MaxViewportAndScissorRectCount];

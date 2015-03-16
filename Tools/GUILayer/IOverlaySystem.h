@@ -23,6 +23,8 @@ namespace GUILayer
             RenderCore::IThreadContext* device, 
             const RenderCore::Techniques::ProjectionDesc& projectionDesc) = 0;
         virtual void SetActivationState(bool newState) = 0;
+
+        virtual ~IOverlaySystem() {}
     };
 }
 

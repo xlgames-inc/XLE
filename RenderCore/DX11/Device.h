@@ -53,6 +53,7 @@ namespace RenderCore
         bool                        IsImmediate() const;
         StateDesc                   GetStateDesc() const;
         std::shared_ptr<IDevice>    GetDevice() const;
+        void                        ClearAllBoundTargets() const;
 
         ThreadContext(intrusive_ptr<ID3D::DeviceContext> devContext, std::shared_ptr<Device> device);
         ~ThreadContext();

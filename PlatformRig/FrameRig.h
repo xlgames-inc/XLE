@@ -52,7 +52,7 @@ namespace PlatformRig
         std::shared_ptr<OverlaySystemSet>& GetMainOverlaySystem();
         std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem>& GetDebugSystem();
 
-        FrameRig();
+        FrameRig(bool isMainFrameRig = true);
         ~FrameRig();
 
     protected:

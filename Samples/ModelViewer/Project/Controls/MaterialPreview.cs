@@ -21,6 +21,14 @@ namespace ModelViewer.Controls
         {
             InitializeComponent();
             visSettings = GUILayer.MaterialVisSettings.CreateDefault();
+
+            comboBox1.DataSource = Enum.GetValues(typeof(GUILayer.MaterialVisSettings.GeometryType));
+            comboBox1.SelectedItem = visSettings.Geometry;
+            comboBox1.SelectedIndexChanged += ComboBoxSelectedIndexChanged;
+
+            comboBox2.DataSource = Enum.GetValues(typeof(GUILayer.MaterialVisSettings.LightingType));
+            comboBox2.SelectedItem = visSettings.Lighting;
+            comboBox2.SelectedIndexChanged += ComboBoxSelectedIndexChanged;
         }
 
         public GUILayer.RawMaterialConfiguration Object
@@ -30,9 +38,25 @@ namespace ModelViewer.Controls
                 if (visLayer == null) {
                     visLayer = new GUILayer.MaterialVisLayer(visSettings, value);
                     preview.AddSystem(visLayer);
+                    preview.AddDefaultCameraHandler(visSettings.Camera);
                 } else {
                     visLayer.SetConfig(value);
                 }
+            }
+        }
+
+        private void ComboBoxSelectedIndexChanged(object sender, System.EventArgs e)
+        {
+            GUILayer.MaterialVisSettings.GeometryType newGeometry;
+            if (Enum.TryParse<GUILayer.MaterialVisSettings.GeometryType>(comboBox1.SelectedValue.ToString(), out newGeometry))
+            {
+                visSettings.Geometry = newGeometry;
+            }
+
+            GUILayer.MaterialVisSettings.LightingType newLighting;
+            if (Enum.TryParse<GUILayer.MaterialVisSettings.LightingType>(comboBox2.SelectedValue.ToString(), out newLighting))
+            {
+                visSettings.Lighting = newLighting;
             }
         }
 

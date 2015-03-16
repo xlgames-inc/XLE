@@ -59,6 +59,23 @@ namespace GUILayer
         OpenFileDialog ^ofd;
     };
 
+    public ref class VisCameraSettings
+    {
+    public:
+        std::shared_ptr<PlatformRig::VisCameraSettings> GetUnderlying() { return *_object.get(); }
+
+        VisCameraSettings(std::shared_ptr<PlatformRig::VisCameraSettings> attached)
+        {
+            _object.reset(new std::shared_ptr<PlatformRig::VisCameraSettings>(std::move(attached)));
+        }
+        ~VisCameraSettings()
+        {
+            _object.reset();
+        }
+    protected:
+        AutoToShared<PlatformRig::VisCameraSettings> _object;
+    };
+
     public ref class ModelVisSettings
     {
     public:
@@ -109,6 +126,11 @@ namespace GUILayer
                 (*_object)->_pendingCameraAlignToModel = value; 
                 (*_object)->_changeEvent.Trigger(); 
             }
+        }
+
+        property VisCameraSettings^ Camera
+        {
+            VisCameraSettings^ get() { return gcnew VisCameraSettings((*_object)->_camera); }
         }
 
         std::shared_ptr<PlatformRig::ModelVisSettings> GetUnderlying() { return *_object.get(); }
