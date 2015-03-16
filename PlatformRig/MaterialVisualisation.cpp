@@ -6,11 +6,13 @@
 
 #include "MaterialVisualisation.h"
 #include "../SceneEngine/LightingParserContext.h"
+#include "../SceneEngine/LightingParser.h"
 #include "../SceneEngine/SceneParser.h"
 #include "../SceneEngine/LightDesc.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Metal/DeviceContext.h"
+#include "../RenderCore/IThreadContext.h"
 #include "../Math/Transformations.h"
 
 #include "../RenderCore/DX11/Metal/IncludeDX11.h"
@@ -232,33 +234,6 @@ namespace PlatformRig
         }
     }
 
-    class ModelSceneParser : public VisSceneParser
-    {
-    public:
-        void ExecuteScene(  RenderCore::Metal::DeviceContext* context, 
-                            SceneEngine::LightingParserContext& parserContext, 
-                            const SceneEngine::SceneParseSettings& parseSettings,
-                            unsigned techniqueIndex) const 
-        {
-            if (    parseSettings._batchFilter == SceneEngine::SceneParseSettings::BatchFilter::Depth
-                ||  parseSettings._batchFilter == SceneEngine::SceneParseSettings::BatchFilter::General) {
-
-                // draw here
-            }
-        }
-
-        void ExecuteShadowScene(    RenderCore::Metal::DeviceContext* context, 
-                                    SceneEngine::LightingParserContext& parserContext, 
-                                    const SceneEngine::SceneParseSettings& parseSettings,
-                                    unsigned index, unsigned techniqueIndex) const
-        {
-            ExecuteScene(context, parserContext, parseSettings, techniqueIndex);
-        }
-
-        using VisSceneParser::VisSceneParser;
-        ModelSceneParser() = delete;
-    };
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     static bool PositionInputIs2D(ID3D::ShaderReflection& reflection)
@@ -469,6 +444,95 @@ namespace PlatformRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    class MaterialSceneParser : public VisSceneParser
+    {
+    public:
+        void ExecuteScene(  RenderCore::Metal::DeviceContext* context, 
+                            SceneEngine::LightingParserContext& parserContext, 
+                            const SceneEngine::SceneParseSettings& parseSettings,
+                            unsigned techniqueIndex) const 
+        {
+            if (    parseSettings._batchFilter == SceneEngine::SceneParseSettings::BatchFilter::Depth
+                ||  parseSettings._batchFilter == SceneEngine::SceneParseSettings::BatchFilter::General) {
+
+                    // draw here
+                Draw(context, parserContext);
+            }
+        }
+
+        void ExecuteShadowScene(    RenderCore::Metal::DeviceContext* context, 
+                                    SceneEngine::LightingParserContext& parserContext, 
+                                    const SceneEngine::SceneParseSettings& parseSettings,
+                                    unsigned index, unsigned techniqueIndex) const
+        {
+            ExecuteScene(context, parserContext, parseSettings, techniqueIndex);
+        }
+
+        void Draw(  RenderCore::Metal::DeviceContext* metalContext, 
+                    SceneEngine::LightingParserContext& parserContext) const
+        {
+            using namespace RenderCore;
+            metalContext->Bind(*_object->_shaderProgram);
+            metalContext->Bind(RenderCore::Techniques::CommonResources()._defaultRasterizer);
+
+                // disable blending to avoid problem when rendering single component stuff 
+                //  (ie, nodes that output "float", not "float4")
+            metalContext->Bind(RenderCore::Techniques::CommonResources()._blendOpaque);
+
+                //
+                //      Constants / Resources
+                //
+
+            Metal::ViewportDesc currentViewport(*metalContext);
+            
+            auto materialConstants = BuildMaterialConstants(
+                *_object->_shaderProgram->GetCompiledPixelShader().GetReflection(), 
+                _object->_parameters._constants,
+                _object->_systemConstants, UInt2(unsigned(currentViewport.Width), unsigned(currentViewport.Height)));
+        
+            Metal::BoundUniforms boundLayout(*_object->_shaderProgram);
+            Techniques::TechniqueContext::BindGlobalUniforms(boundLayout);
+            
+            std::vector<RenderCore::Metal::ConstantBufferPacket> constantBufferPackets;
+            constantBufferPackets.push_back(
+                Techniques::MakeLocalTransformPacket(Identity<Float4x4>(), GetCameraDesc()));
+            boundLayout.BindConstantBuffer(Hash64("LocalTransform"), 0, 1);
+            for (auto i=materialConstants.cbegin(); i!=materialConstants.cend(); ++i) {
+                boundLayout.BindConstantBuffer(i->first, unsigned(constantBufferPackets.size()), 1);
+                constantBufferPackets.push_back(std::move(i->second));
+            }
+
+            auto boundTextures = BuildBoundTextures(
+                boundLayout, 
+                *_object->_shaderProgram->GetCompiledPixelShader().GetReflection(), 
+                _object->_parameters._bindings);
+            boundLayout.Apply(
+                *metalContext,
+                parserContext.GetGlobalUniformsStream(),
+                Metal::UniformsStream( 
+                    AsPointer(constantBufferPackets.begin()), nullptr, constantBufferPackets.size(), 
+                    AsPointer(boundTextures.begin()), boundTextures.size()));
+
+            auto geoType = _settings->_geometryType;
+            if (PositionInputIs2D(*_object->_shaderProgram->GetCompiledVertexShader().GetReflection())) {
+                geoType = MaterialVisSettings::GeometryType::Plane2D;
+            }
+
+            DrawPreviewGeometry(metalContext, geoType, *_object->_shaderProgram);
+        }
+
+        MaterialSceneParser(
+            const MaterialVisSettings& settings,
+            const MaterialVisObject& object)
+        : VisSceneParser(settings._camera), _settings(&settings), _object(&object) {}
+
+    protected:
+        const MaterialVisSettings*  _settings;
+        const MaterialVisObject*    _object;
+    };
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
     bool MaterialVisLayer::Draw(
         RenderCore::IThreadContext& context,
         SceneEngine::LightingParserContext& parserContext,
@@ -480,56 +544,24 @@ namespace PlatformRig
 
         TRY {
 
-            auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
+            MaterialSceneParser sceneParser(settings, object);
+            SceneEngine::RenderingQualitySettings qualSettings(context.GetStateDesc()._viewportDimensions);
 
-            metalContext->Bind(*object._shaderProgram);
-            metalContext->Bind(RenderCore::Techniques::CommonResources()._defaultRasterizer);
-
-                // disable blending to avoid problem when rendering single component stuff 
-                //  (ie, nodes that output "float", not "float4")
-            metalContext->Bind(RenderCore::Techniques::CommonResources()._blendOpaque);
-
-                //
-                //      Constants / Resources
-                //
-
-            RenderCore::Techniques::CameraDesc camera;
-            camera._cameraToWorld = MakeCameraToWorld(Float3(1,0,0), Float3(0,0,1), Float3(-5,0,0));
-
-            RenderCore::Metal::ViewportDesc currentViewport(*metalContext);
-            
-            auto materialConstants = BuildMaterialConstants(
-                *object._shaderProgram->GetCompiledPixelShader().GetReflection(), 
-                object._parameters._constants,
-                object._systemConstants, UInt2(unsigned(currentViewport.Width), unsigned(currentViewport.Height)));
-        
-            BoundUniforms boundLayout(*object._shaderProgram);
-            Techniques::TechniqueContext::BindGlobalUniforms(boundLayout);
-            
-            std::vector<RenderCore::Metal::ConstantBufferPacket> constantBufferPackets;
-            constantBufferPackets.push_back(Techniques::MakeLocalTransformPacket(Identity<Float4x4>(), camera));
-            boundLayout.BindConstantBuffer(Hash64("LocalTransform"), 0, 1);
-            for (auto i=materialConstants.cbegin(); i!=materialConstants.cend(); ++i) {
-                boundLayout.BindConstantBuffer(i->first, unsigned(constantBufferPackets.size()), 1);
-                constantBufferPackets.push_back(std::move(i->second));
+            if (settings._lightingType == MaterialVisSettings::LightingType::NoLightingParser) {
+                
+                auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
+                SceneEngine::LightingParser_SetupScene(
+                    metalContext.get(), parserContext, 
+                    &sceneParser, sceneParser.GetCameraDesc(),
+                    qualSettings);
+                sceneParser.Draw(metalContext.get(), parserContext);
+                
+            } else if (settings._lightingType == MaterialVisSettings::LightingType::Deferred) {
+                SceneEngine::LightingParser_ExecuteScene(context, parserContext, sceneParser, qualSettings);
+            } else if (settings._lightingType == MaterialVisSettings::LightingType::Forward) {
+                // no way to force the lighting parser to use a forward lighting pass currently
             }
 
-            auto boundTextures = BuildBoundTextures(
-                boundLayout, 
-                *object._shaderProgram->GetCompiledPixelShader().GetReflection(), 
-                object._parameters._bindings);
-            boundLayout.Apply(
-                *metalContext,
-                parserContext.GetGlobalUniformsStream(),
-                UniformsStream( AsPointer(constantBufferPackets.begin()), nullptr, constantBufferPackets.size(), 
-                                AsPointer(boundTextures.begin()), boundTextures.size()));
-
-            auto geoType = settings._geometryType;
-            if (PositionInputIs2D(*object._shaderProgram->GetCompiledVertexShader().GetReflection())) {
-                geoType = MaterialVisSettings::GeometryType::Plane2D;
-            }
-
-            DrawPreviewGeometry(metalContext.get(), geoType, *object._shaderProgram);
             return true;
         }
         CATCH (::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
@@ -583,7 +615,7 @@ namespace PlatformRig
     MaterialVisSettings::MaterialVisSettings()
     {
         _geometryType = GeometryType::Sphere;
-        _lightingType = LightingType::Deferred;
+        _lightingType = LightingType::NoLightingParser;
     }
 
     MaterialVisObject::SystemConstants::SystemConstants()
