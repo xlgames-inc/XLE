@@ -32,19 +32,19 @@ namespace ShaderPatcher
             };
         };
         
-        Node(const std::string& archiveName, uint64 nodeId, Type::Enum type);
+        Node(const std::string& archiveName, uint32 nodeId, Type::Enum type);
 
         Node(Node&& moveFrom);
         Node& operator=(Node&& moveFrom) never_throws;
         Node& operator=(const Node& cloneFrom);
 
         const std::string&  ArchiveName() const     { return _archiveName; }
-        uint64              NodeId() const          { return _nodeId; }
+        uint32              NodeId() const          { return _nodeId; }
         Type::Enum          GetType() const         { return _type; }
         
     private:
         std::string     _archiveName;
-        uint64          _nodeId;
+        uint32          _nodeId;
         Type::Enum      _type;
     };
 
@@ -63,15 +63,15 @@ namespace ShaderPatcher
     class NodeConnection
     {
     public:
-        NodeConnection( uint64 outputNodeId, uint64 inputNodeId, 
+        NodeConnection( uint32 outputNodeId, uint32 inputNodeId, 
                         const std::string& outputParameterName, const Type& outputType, 
                         const std::string& inputParameterName, const Type& inputType);
 
         NodeConnection(NodeConnection&& moveFrom);
         NodeConnection& operator=(NodeConnection&& moveFrom);
 
-        uint64      OutputNodeId() const        { return _outputNodeId; }
-        uint64      InputNodeId() const         { return _inputNodeId; }
+        uint32      OutputNodeId() const        { return _outputNodeId; }
+        uint32      InputNodeId() const         { return _inputNodeId; }
 
         const Type&         InputType() const               { return _inputType; }
         const Type&         OutputType() const              { return _outputType; }
@@ -79,8 +79,8 @@ namespace ShaderPatcher
         const std::string&  OutputParameterName() const     { return _outputParameterName; }
 
     private:
-        uint64          _outputNodeId;
-        uint64          _inputNodeId;
+        uint32          _outputNodeId;
+        uint32          _inputNodeId;
         std::string     _outputParameterName;
         Type            _outputType;
         std::string     _inputParameterName;
@@ -92,16 +92,16 @@ namespace ShaderPatcher
     class NodeConstantConnection
     {
     public:
-        NodeConstantConnection(uint64 outputNodeId, const std::string& outputParameterName, const std::string& value);
+        NodeConstantConnection(uint32 outputNodeId, const std::string& outputParameterName, const std::string& value);
         NodeConstantConnection(NodeConstantConnection&& moveFrom);
         NodeConstantConnection& operator=(NodeConstantConnection&& moveFrom);
 
-        uint64              OutputNodeId() const            { return _outputNodeId; }
+        uint32              OutputNodeId() const            { return _outputNodeId; }
         const std::string&  OutputParameterName() const     { return _outputParameterName; }
         const std::string&  Value() const                   { return _value; }
 
     private:
-        uint64          _outputNodeId;
+        uint32          _outputNodeId;
         std::string     _outputParameterName;
         std::string     _value;
     };
@@ -123,11 +123,11 @@ namespace ShaderPatcher
         std::string                         GetName() const                     { return _name; }
         void                                SetName(std::string newName)        { _name = newName; }
 
-        void        TrimForPreview(uint64 previewNode);
+        void        TrimForPreview(uint32 previewNode);
         bool        TrimForOutputs(const std::string outputs[], size_t outputCount);
         void        AddDefaultOutputs();
 
-        const Node*         GetNode(uint64 nodeId) const;
+        const Node*         GetNode(uint32 nodeId) const;
 
         NodeGraph(const std::string& name = std::string());
         NodeGraph(NodeGraph&& moveFrom);
@@ -139,11 +139,11 @@ namespace ShaderPatcher
         std::vector<NodeConstantConnection> _nodeConstantConnections;
         std::string                         _name;
 
-        void        Trim(const uint64* trimNodesBegin, const uint64* trimNodesEnd);
-        bool        IsUpstream(uint64 startNode, uint64 searchingForNode);
-        bool        IsDownstream(uint64 startNode, const uint64* searchingForNodesStart, const uint64* searchingForNodesEnd);
-        bool        HasNode(uint64 nodeId);
-        uint64      GetUniqueNodeId() const;
+        void        Trim(const uint32* trimNodesBegin, const uint32* trimNodesEnd);
+        bool        IsUpstream(uint32 startNode, uint32 searchingForNode);
+        bool        IsDownstream(uint32 startNode, const uint32* searchingForNodesStart, const uint32* searchingForNodesEnd);
+        bool        HasNode(uint32 nodeId);
+        uint32      GetUniqueNodeId() const;
         void        AddDefaultOutputs(const Node& node);
     };
 

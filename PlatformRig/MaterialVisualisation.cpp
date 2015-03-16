@@ -9,8 +9,12 @@
 #include "../SceneEngine/SceneParser.h"
 #include "../SceneEngine/LightDesc.h"
 #include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../Math/Transformations.h"
+
+#include "../RenderCore/DX11/Metal/IncludeDX11.h"
+#include <d3d11shader.h>
 
 namespace PlatformRig
 {
@@ -252,6 +256,7 @@ namespace PlatformRig
         }
 
         using VisSceneParser::VisSceneParser;
+        ModelSceneParser() = delete;
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -280,10 +285,192 @@ namespace PlatformRig
         return false;
     }
 
+    static bool WriteSystemVariable(
+        const char name[], 
+        const MaterialVisObject::SystemConstants& constants, 
+        UInt2 viewportDims,
+        void* destination, void* destinationEnd)
+    {
+        size_t size = size_t(destinationEnd) - size_t(destination);
+        if (!_stricmp(name, "SI_OutputDimensions") && size >= (sizeof(unsigned)*2)) {
+            ((unsigned*)destination)[0] = viewportDims[0];
+            ((unsigned*)destination)[1] = viewportDims[1];
+            return true;
+        } else if (!_stricmp(name, "SI_NegativeLightDirection") && size >= sizeof(Float3)) {
+            *((Float3*)destination) = constants._lightNegativeDirection;
+            return true;
+        } else if (!_stricmp(name, "SI_LightColor") && size >= sizeof(Float3)) {
+            *((Float3*)destination) = constants._lightColour;
+            return true;
+        }
+        return false;
+    }
+
+    static std::vector<std::pair<uint64, RenderCore::Metal::ConstantBufferPacket>> 
+        BuildMaterialConstants(
+            ID3D::ShaderReflection& reflection, 
+            const ParameterBox& constants,
+            const MaterialVisObject::SystemConstants& systemConstantsContext,
+            UInt2 viewportDims)
+    {
+
+            //
+            //      Find the cbuffers, and look for the variables
+            //      within. Attempt to fill those values with the appropriate values
+            //      from the current previewing material state
+            //
+        std::vector<std::pair<uint64, RenderCore::Metal::ConstantBufferPacket>> finalResult;
+
+        D3D11_SHADER_DESC shaderDesc;
+        reflection.GetDesc(&shaderDesc);
+        for (unsigned c=0; c<shaderDesc.BoundResources; ++c) {
+
+            D3D11_SHADER_INPUT_BIND_DESC bindDesc;
+            reflection.GetResourceBindingDesc(c, &bindDesc);
+
+            if (bindDesc.Type == D3D10_SIT_CBUFFER) {
+                auto cbuffer = reflection.GetConstantBufferByName(bindDesc.Name);
+                if (cbuffer) {
+                    D3D11_SHADER_BUFFER_DESC bufferDesc;
+                    HRESULT hresult = cbuffer->GetDesc(&bufferDesc);
+                    if (SUCCEEDED(hresult)) {
+
+                        auto result = RenderCore::MakeSharedPkt(bufferDesc.Size);
+                        std::fill((uint8*)result.begin(), (uint8*)result.end(), 0);
+                        bool foundAtLeastOneParameter = false;
+
+                        for (unsigned c=0; c<bufferDesc.Variables; ++c) {
+                            auto reflectionVariable = cbuffer->GetVariableByIndex(c);
+                            D3D11_SHADER_VARIABLE_DESC variableDesc;
+                            hresult = reflectionVariable->GetDesc(&variableDesc);
+                            if (SUCCEEDED(hresult)) {
+
+                                    //
+                                    //      If the variable is within our table of 
+                                    //      material parameter values, then copy that
+                                    //      value into the appropriate place in the cbuffer.
+                                    //
+                                    //      However, note that this may require a cast sometimes
+                                    //
+
+                                auto nameHash = ParameterBox::MakeParameterNameHash(variableDesc.Name);
+                                auto param = constants.GetParameter(nameHash);
+                                if (param.first) {
+
+                                    auto type = reflectionVariable->GetType();
+                                    D3D11_SHADER_TYPE_DESC typeDesc;
+                                    hresult = type->GetDesc(&typeDesc);
+                                    if (SUCCEEDED(hresult)) {
+
+                                            //
+                                            //      Finally, copy whatever the material object
+                                            //      is, into the destination position in the 
+                                            //      constant buffer;
+                                            //  
+
+                                        // ShaderPatcherLayer::TypeRules::CopyToBytes(
+                                        //     PtrAdd(result.begin(), variableDesc.StartOffset), obj, 
+                                        //     BuildTypeName(typeDesc), ShaderPatcherLayer::TypeRules::ExtractTypeName(obj),
+                                        //     result.end());
+
+                                        *(uint32*)PtrAdd(result.begin(), variableDesc.StartOffset) = param.second;
+                                        foundAtLeastOneParameter = true;
+                                    }
+
+                                } else {
+                                    
+                                    foundAtLeastOneParameter |= WriteSystemVariable(
+                                        variableDesc.Name, systemConstantsContext, viewportDims,
+                                        PtrAdd(result.begin(), variableDesc.StartOffset), result.end());
+
+                                }
+
+                            }
+                        }
+
+                        if (foundAtLeastOneParameter) {
+                            finalResult.push_back(
+                                std::make_pair(Hash64(bindDesc.Name), std::move(result)));
+                        }   
+                    }
+                }
+            }
+
+        }
+
+        return finalResult;
+    }
+
+    static inline bool CompareRB(
+        const RenderCore::Assets::MaterialParameters::ResourceBinding& lhs,
+        const RenderCore::Assets::MaterialParameters::ResourceBinding& rhs)
+    {
+        return lhs._bindHash  < rhs._bindHash;
+    }
+
+    static std::vector<const RenderCore::Metal::ShaderResourceView*>
+        BuildBoundTextures(
+            RenderCore::Metal::BoundUniforms& boundUniforms,
+            ID3D::ShaderReflection& reflection,
+            const RenderCore::Assets::MaterialParameters::ResourceBindingSet& bindings)
+    {
+        using namespace RenderCore;
+        typedef RenderCore::Assets::MaterialParameters::ResourceBinding ResourceBinding;
+        std::vector<const Metal::ShaderResourceView*> result;
+
+            //
+            //      Find the texture binding points, and assign textures from
+            //      the material parameters state to them.
+            //
+
+        D3D11_SHADER_DESC shaderDesc;
+        reflection.GetDesc(&shaderDesc);
+        for (unsigned c=0; c<shaderDesc.BoundResources; ++c) {
+
+            D3D11_SHADER_INPUT_BIND_DESC bindDesc;
+            reflection.GetResourceBindingDesc(c, &bindDesc);
+            if  (bindDesc.Type == D3D10_SIT_TEXTURE) {
+
+                std::string str;
+                auto hash = Hash64(bindDesc.Name);
+                auto i = std::lower_bound(bindings.begin(), bindings.end(), ResourceBinding(hash, std::string()), CompareRB);
+                if (i != bindings.end() && i->_bindHash == hash) {
+                    str = i->_resourceName;
+                } else {
+                        //  It's not mentioned in the material resources. try to look
+                        //  for a default resource for this bind point
+                    str = std::string("game/xleres/DefaultResources/") + bindDesc.Name + ".dds";
+                }
+
+                if (!str.empty()) {
+                    const Metal::DeferredShaderResource& texture = 
+                        ::Assets::GetAssetDep<Metal::DeferredShaderResource>(str.c_str());
+
+                    TRY {
+                        result.push_back(&texture.GetShaderResource());
+                        boundUniforms.BindShaderResource(
+                            Hash64(bindDesc.Name, &bindDesc.Name[XlStringLen(bindDesc.Name)]),
+                            unsigned(result.size()-1), 1);
+                    }
+                    CATCH (::Assets::Exceptions::InvalidResource& ) {}
+                    CATCH_END
+                }
+                
+            } else if (bindDesc.Type == D3D10_SIT_SAMPLER) {
+
+                    //  we should also bind samplers to something
+                    //  reasonable, also...
+
+            }
+        }
+
+        return result;
+    }
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     bool MaterialVisLayer::Draw(
-        RenderCore::IThreadContext* context,
+        RenderCore::IThreadContext& context,
         SceneEngine::LightingParserContext& parserContext,
         const MaterialVisSettings& settings,
         const MaterialVisObject& object)
@@ -293,7 +480,7 @@ namespace PlatformRig
 
         TRY {
 
-            auto metalContext = RenderCore::Metal::DeviceContext::Get(*context);
+            auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
 
             metalContext->Bind(*object._shaderProgram);
             metalContext->Bind(RenderCore::Techniques::CommonResources()._defaultRasterizer);
@@ -314,24 +501,26 @@ namespace PlatformRig
             auto materialConstants = BuildMaterialConstants(
                 *object._shaderProgram->GetCompiledPixelShader().GetReflection(), 
                 object._parameters._constants,
-                object._systemConstants);
+                object._systemConstants, UInt2(unsigned(currentViewport.Width), unsigned(currentViewport.Height)));
         
+            BoundUniforms boundLayout(*object._shaderProgram);
+            Techniques::TechniqueContext::BindGlobalUniforms(boundLayout);
+            
             std::vector<RenderCore::Metal::ConstantBufferPacket> constantBufferPackets;
-            constantBufferPackets.push_back(SetupGlobalState(context, camera));
             constantBufferPackets.push_back(Techniques::MakeLocalTransformPacket(Identity<Float4x4>(), camera));
-
-            BoundUniforms boundLayout(shaderProgram);
-            boundLayout.BindConstantBuffer(   Hash64("GlobalTransform"), 0, 1); //, Assets::GlobalTransform_Elements, Assets::GlobalTransform_ElementsCount);
-            boundLayout.BindConstantBuffer(    Hash64("LocalTransform"), 1, 1); //, Assets::LocalTransform_Elements, Assets::LocalTransform_ElementsCount);
+            boundLayout.BindConstantBuffer(Hash64("LocalTransform"), 0, 1);
             for (auto i=materialConstants.cbegin(); i!=materialConstants.cend(); ++i) {
-                boundLayout.BindConstantBuffer(Hash64(i->_bindingName), unsigned(constantBufferPackets.size()), 1);
-                constantBufferPackets.push_back(i->_buffer);
+                boundLayout.BindConstantBuffer(i->first, unsigned(constantBufferPackets.size()), 1);
+                constantBufferPackets.push_back(std::move(i->second));
             }
 
-            auto boundTextures = BuildBoundTextures(boundLayout, builder._pixelShader->GetReflection().get(), doc);
+            auto boundTextures = BuildBoundTextures(
+                boundLayout, 
+                *object._shaderProgram->GetCompiledPixelShader().GetReflection(), 
+                object._parameters._bindings);
             boundLayout.Apply(
-                *metalContext, 
-                UniformsStream(),
+                *metalContext,
+                parserContext.GetGlobalUniformsStream(),
                 UniformsStream( AsPointer(constantBufferPackets.begin()), nullptr, constantBufferPackets.size(), 
                                 AsPointer(boundTextures.begin()), boundTextures.size()));
 
@@ -366,7 +555,8 @@ namespace PlatformRig
         RenderCore::IThreadContext* context, 
         SceneEngine::LightingParserContext& parserContext)
     {
-        Draw(context, parserContext, *_pimpl->_settings, *_pimpl->_object);
+        assert(context);
+        Draw(*context, parserContext, *_pimpl->_settings, *_pimpl->_object);
     }
 
     void MaterialVisLayer::RenderWidgets(
@@ -387,6 +577,20 @@ namespace PlatformRig
 
     MaterialVisLayer::~MaterialVisLayer()
     {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    MaterialVisSettings::MaterialVisSettings()
+    {
+        _geometryType = GeometryType::Sphere;
+        _lightingType = LightingType::Deferred;
+    }
+
+    MaterialVisObject::SystemConstants::SystemConstants()
+    {
+        _lightNegativeDirection = Float3(0.f, 0.f, 1.f);
+        _lightColour = Float3(1.f, 1.f, 1.f);
+    }
 
 }
 

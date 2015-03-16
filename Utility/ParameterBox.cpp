@@ -18,6 +18,11 @@ namespace Utility
         return Hash32(AsPointer(name.cbegin()), AsPointer(name.cend()));
     }
 
+    ParameterBox::ParameterNameHash    ParameterBox::MakeParameterNameHash(const char name[])
+    {
+        return Hash32(name, &name[XlStringLen(name)]);
+    }
+
     void        ParameterBox::SetParameter(const std::string& name, uint32 value)
     {
         auto hash = MakeParameterNameHash(name);
@@ -56,27 +61,27 @@ namespace Utility
         _cachedHash = 0;
     }
 
-    uint32      ParameterBox::GetParameter(const std::string& name) const
+    std::pair<bool, uint32>      ParameterBox::GetParameter(const std::string& name) const
     {
         auto hash = MakeParameterNameHash(name);
         auto i = std::lower_bound(_parameterHashValues.cbegin(), _parameterHashValues.cend(), hash);
         if (i!=_parameterHashValues.cend() && *i == hash) {
             size_t index = std::distance(_parameterHashValues.cbegin(), i);
             auto offset = _parameterOffsets[index];
-            return *(uint32*)&_values[offset];
+            return std::make_pair(true, *(uint32*)&_values[offset]);
         }
-        return 0;
+        return std::make_pair(false, 0);
     }
 
-    uint32      ParameterBox::GetParameter(ParameterNameHash name) const
+    std::pair<bool, uint32>      ParameterBox::GetParameter(ParameterNameHash name) const
     {
         auto i = std::lower_bound(_parameterHashValues.cbegin(), _parameterHashValues.cend(), name);
         if (i!=_parameterHashValues.cend() && *i == name) {
             size_t index = std::distance(_parameterHashValues.cbegin(), i);
             auto offset = _parameterOffsets[index];
-            return *(uint32*)&_values[offset];
+            return std::make_pair(true, *(uint32*)&_values[offset]);
         }
-        return 0;
+        return std::make_pair(false, 0);
     }
 
     uint64      ParameterBox::CalculateParameterNamesHash() const

@@ -242,9 +242,9 @@ namespace NodeEditor
     public class ShaderFragmentNodeTag
     {
         public string ArchiveName { get; set; }
-        public UInt64 Id { get; set; }
+        public UInt32 Id { get; set; }
         public ShaderFragmentNodeTag(string archiveName) { ArchiveName = archiveName; Id = ++nodeAccumulatingId; }
-        private static UInt64 nodeAccumulatingId = 1;
+        private static UInt32 nodeAccumulatingId = 1;
     }
 
     public class ShaderProcedureNodeTag : ShaderFragmentNodeTag

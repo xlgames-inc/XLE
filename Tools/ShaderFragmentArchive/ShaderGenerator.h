@@ -30,7 +30,7 @@ namespace ShaderPatcherLayer {
             Constants
         };
         [DataMember] property String^       FragmentArchiveName;
-        [DataMember] property UInt64        NodeId;
+        [DataMember] property UInt32        NodeId;
         [DataMember] property int           VisualNodeId;
         [DataMember] property Type          NodeType;
     };
@@ -39,8 +39,8 @@ namespace ShaderPatcherLayer {
     [DataContract] public ref class NodeConnection
     {
     public:
-        [DataMember] property UInt64        OutputNodeID;
-        [DataMember] property UInt64        InputNodeID;
+        [DataMember] property UInt32        OutputNodeID;
+        [DataMember] property UInt32        InputNodeID;
         [DataMember] property String^       OutputParameterName;
         [DataMember] property String^       OutputType;
         [DataMember] property String^       InputParameterName;
@@ -52,7 +52,7 @@ namespace ShaderPatcherLayer {
     [DataContract] public ref class NodeConstantConnection
     {
     public:
-        [DataMember] property UInt64        OutputNodeID;
+        [DataMember] property UInt32        OutputNodeID;
         [DataMember] property String^       OutputParameterName;
         [DataMember] property String^       Value;
     };
@@ -93,10 +93,10 @@ namespace ShaderPatcherLayer {
         NodeGraph();
 
         ShaderPatcher::NodeGraph    ConvertToNative(String^ name);
-        ShaderPatcher::NodeGraph    ConvertToNativePreview(UInt64 previewNodeId);
+        ShaderPatcher::NodeGraph    ConvertToNativePreview(UInt32 previewNodeId);
 
         static public String^       GenerateShader(NodeGraph^ graph, String^ name);
-        static public String^       GeneratePreviewShader(NodeGraph^ graph, UInt64 previewNodeId);
+        static public String^       GeneratePreviewShader(NodeGraph^ graph, UInt32 previewNodeId);
 
     private:
         List<Node^>^                    _nodes;

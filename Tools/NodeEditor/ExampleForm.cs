@@ -419,14 +419,14 @@ namespace NodeEditor
             }
         }
 
-        private UInt64 AttachedId(object senderObject)
+        private UInt32 AttachedId(object senderObject)
         {
             if (senderObject is ToolStripMenuItem)
             {
                 var tag = ((ToolStripMenuItem)senderObject).GetCurrentParent().Tag;
-                if (tag is UInt64)
+                if (tag is UInt32)
                 {
-                    return (UInt64)tag;
+                    return (UInt32)tag;
                 }
             }
             return 0;

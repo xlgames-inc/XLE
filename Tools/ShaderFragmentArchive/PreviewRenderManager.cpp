@@ -5,32 +5,18 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "stdafx.h"
-#pragma warning(disable:4100)       // unreferenced formal parameter
-#include "../../Core/Prefix.h"
-#include "../../Core/WinAPI/IncludeWindows.h"
 #include "PreviewRenderManager.h"
 #include "TypeRules.h"
 #include "ShaderDiagramDocument.h"
 #include "../GUILayer/MarshalString.h"
+
+#include "../../PlatformRig/MaterialVisualisation.h"
+#include "../../SceneEngine/LightingParserContext.h"
+
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
-#include "../../RenderCore/Metal/DeviceContextImpl.h"
-#include "../../RenderCore/Metal/Shader.h"
-#include "../../RenderCore/Metal/InputLayout.h"
-#include "../../RenderCore/Metal/State.h"
-#include "../../RenderCore/Techniques/TechniqueUtils.h"
-// #include "../../RenderCore/Assets/AssetUtils.h"
-#include "../../Assets/CompileAndAsyncManager.h"
-#include "../../Math/Vector.h"
 #include "../../Math/Transformations.h"
-#include "../../Math/ProjectionMath.h"
-#include <tuple>
-#include <D3D11Shader.h>
-
 #include "../../RenderCore/DX11/Metal/IncludeDX11.h"
-
-namespace RenderCore { namespace Metal_DX11 { std::unique_ptr<ShaderProgram> CreatePreviewShader(const std::string& nativeShaderText); } }
-namespace RenderCore { namespace Assets { extern Float3 NegativeLightDirection; } }
 
 namespace PreviewRender
 {
@@ -39,6 +25,7 @@ namespace PreviewRender
     public:
         std::shared_ptr<RenderCore::IDevice>   _device;
         std::unique_ptr<::Assets::CompileAndAsyncManager> _asyncMan;
+        std::shared_ptr<RenderCore::Techniques::TechniqueContext> _globalTechniqueContext;
     };
 
     static intrusive_ptr<ID3D::Texture2D> CreateTexture(
@@ -58,22 +45,7 @@ namespace PreviewRender
         return result;
     }
 
-    // static void WaitUntilReady(const RenderCore::Metal::CompiledShaderByteCode& shaderByteCode)
-    // {
-    //     for (;;)
-    //     {
-    //         TRY 
-    //         {
-    //             RenderCore::Metal_DX11::UpdateThreadPump();
-    //             shaderByteCode.GetSize();
-    //             break;
-    //         } 
-    //         CATCH (::Assets::Exceptions::PendingResource&) {}
-    //         CATCH (...) {throw;}
-    //         CATCH_END
-    //     }
-    // }
-
+#if 0
     static System::String^ BuildTypeName(const D3D11_SHADER_TYPE_DESC& typeDesc)
     {
         System::String^ typeName;
@@ -104,13 +76,6 @@ namespace PreviewRender
         return typeName;
     }
 
-    class MaterialConstantBuffer
-    {
-    public:
-        std::string _bindingName;
-        RenderCore::Metal::ConstantBufferPacket _buffer;
-    };
-
     class SystemConstantsContext
     {
     public:
@@ -135,168 +100,7 @@ namespace PreviewRender
         }
         return false;
     }
-
-    static std::vector<MaterialConstantBuffer> BuildMaterialConstants(ID3D::ShaderReflection* reflection, ShaderDiagram::Document^ doc, const SystemConstantsContext& systemConstantsContext)
-    {
-
-            //
-            //      Find the cbuffers, and look for the variables
-            //      within. Attempt to fill those values with the appropriate values
-            //      from the current previewing material state
-            //
-        std::vector<MaterialConstantBuffer> finalResult;
-
-        D3D11_SHADER_DESC shaderDesc;
-        reflection->GetDesc(&shaderDesc);
-        for (unsigned c=0; c<shaderDesc.BoundResources; ++c) {
-
-            D3D11_SHADER_INPUT_BIND_DESC bindDesc;
-            reflection->GetResourceBindingDesc(c, &bindDesc);
-
-            if (bindDesc.Type == D3D10_SIT_CBUFFER) {
-                auto cbuffer = reflection->GetConstantBufferByName(bindDesc.Name);
-                if (cbuffer) {
-                    D3D11_SHADER_BUFFER_DESC bufferDesc;
-                    HRESULT hresult = cbuffer->GetDesc(&bufferDesc);
-                    if (SUCCEEDED(hresult)) {
-
-                        auto result = RenderCore::MakeSharedPkt(bufferDesc.Size);
-                        std::fill((uint8*)result.begin(), (uint8*)result.end(), 0);
-                        bool foundAtLeastOnParameter = false;
-
-                        for (unsigned c=0; c<bufferDesc.Variables; ++c) {
-                            auto reflectionVariable = cbuffer->GetVariableByIndex(c);
-                            D3D11_SHADER_VARIABLE_DESC variableDesc;
-                            hresult = reflectionVariable->GetDesc(&variableDesc);
-                            if (SUCCEEDED(hresult)) {
-
-                                    //
-                                    //      If the variable is within our table of 
-                                    //      material parameter values, then copy that
-                                    //      value into the appropriate place in the cbuffer.
-                                    //
-                                    //      However, note that this may require a cast sometimes
-                                    //
-
-                                auto managedName = clix::marshalString<clix::E_UTF8>(variableDesc.Name);
-                                if (doc->PreviewMaterialState->ContainsKey(managedName)) {
-                                    auto obj = doc->PreviewMaterialState[managedName];
-
-                                    auto type = reflectionVariable->GetType();
-                                    D3D11_SHADER_TYPE_DESC typeDesc;
-                                    hresult = type->GetDesc(&typeDesc);
-                                    if (SUCCEEDED(hresult)) {
-
-                                            //
-                                            //      Finally, copy whatever the material object
-                                            //      is, into the destination position in the 
-                                            //      constant buffer;
-                                            //  
-
-                                        ShaderPatcherLayer::TypeRules::CopyToBytes(
-                                            PtrAdd(result.begin(), variableDesc.StartOffset), obj, 
-                                            BuildTypeName(typeDesc), ShaderPatcherLayer::TypeRules::ExtractTypeName(obj),
-                                            result.end());
-                                        foundAtLeastOnParameter = true;
-                                    }
-                                } else {
-                                    
-                                    foundAtLeastOnParameter |= WriteSystemVariable(
-                                        variableDesc.Name, doc, systemConstantsContext,
-                                        PtrAdd(result.begin(), variableDesc.StartOffset), result.end());
-
-                                }
-
-                            }
-                        }
-
-                        if (foundAtLeastOnParameter) {
-                            MaterialConstantBuffer bind;
-                            bind._bindingName = bindDesc.Name;
-                            bind._buffer = std::move(result);
-                            finalResult.push_back(bind);
-                        }   
-                    }
-                }
-            }
-
-        }
-
-        return finalResult;
-    }
-
-    static std::vector<const RenderCore::Metal::ShaderResourceView*>
-        BuildBoundTextures(
-            RenderCore::Metal::BoundUniforms& boundUniforms,
-            ID3D::ShaderReflection* reflection,
-            ShaderDiagram::Document^ doc)
-    {
-        using namespace RenderCore;
-        std::vector<const Metal::ShaderResourceView*> result;
-
-            //
-            //      Find the texture binding points, and assign textures from
-            //      the material parameters state to them.
-            //
-
-        D3D11_SHADER_DESC shaderDesc;
-        reflection->GetDesc(&shaderDesc);
-        for (unsigned c=0; c<shaderDesc.BoundResources; ++c) {
-
-            D3D11_SHADER_INPUT_BIND_DESC bindDesc;
-            reflection->GetResourceBindingDesc(c, &bindDesc);
-            if  (bindDesc.Type == D3D10_SIT_TEXTURE) {
-
-                String^ str;
-                auto managedName = clix::marshalString<clix::E_UTF8>(bindDesc.Name);
-                if (doc->PreviewMaterialState->ContainsKey(managedName)) {
-                    auto textureName = doc->PreviewMaterialState[managedName];
-                    str = dynamic_cast<String^>(textureName);
-                } else {
-                        //  It's not mentioned in the material resources. try to look
-                        //  for a default resource for this bind point
-                    str = gcnew String("game/xleres/DefaultResources/") + gcnew String(bindDesc.Name) + gcnew String(".dds");
-                }
-
-                if (str) {
-                    auto nativeString = clix::marshalString<clix::E_UTF8>(str);
-                    const Metal::DeferredShaderResource& texture = 
-                        ::Assets::GetAssetDep<Metal::DeferredShaderResource>(nativeString.c_str());
-
-                    try {
-                        result.push_back(&texture.GetShaderResource());
-                        boundUniforms.BindShaderResource(
-                            Hash64(bindDesc.Name, &bindDesc.Name[XlStringLen(bindDesc.Name)]),
-                            unsigned(result.size()-1), 1);
-                    }
-                    catch (::Assets::Exceptions::InvalidResource& ) {}
-
-                }
-                
-            } else if (bindDesc.Type == D3D10_SIT_SAMPLER) {
-
-                    //  we should also bind samplers to something
-                    //  reasonable, also...
-
-            }
-        }
-
-        return result;
-    }
-
-
-    static Float4x4 MakeCameraToWorld(const Float3& forward, const Float3& up, const Float3& position)
-    {
-        Float3 right            = Cross(forward, up);
-        Float3 adjustedUp       = Normalize(Cross(right, forward));
-        Float3 adjustedRight    = Normalize(Cross(forward, adjustedUp));
-
-        return Float4x4(
-            right[0], up[0], -forward[0], position[0],
-            right[1], up[1], -forward[1], position[1],
-            right[2], up[2], -forward[2], position[2],
-            0.f, 0.f, 0.f, 1.f);
-    }
+#endif
     
     class PreviewBuilderPimpl
     {
@@ -321,6 +125,8 @@ namespace PreviewRender
             }
         }
     };
+
+#if 0
 
     RenderCore::Metal::ConstantBufferPacket SetupGlobalState(
         RenderCore::Metal::DeviceContext*   context,
@@ -381,6 +187,8 @@ namespace PreviewRender
         return SetupGlobalState(context, transformConstants);
     }
 
+#endif
+
     enum DrawPreviewResult
     {
         DrawPreviewResult_Error,
@@ -388,15 +196,55 @@ namespace PreviewRender
         DrawPreviewResult_Success
     };
 
-    static DrawPreviewResult DrawPreview(RenderCore::Metal::DeviceContext* context, PreviewBuilderPimpl& builder, ShaderDiagram::Document^ doc)
+    static DrawPreviewResult DrawPreview(
+        RenderCore::IThreadContext& context, 
+        PreviewBuilderPimpl& builder, ShaderDiagram::Document^ doc)
     {
-        auto& shaderProgram = builder.GetShaderProgram();
+        using namespace PlatformRig;
 
-        SystemConstantsContext systemConstantsContext;
-            systemConstantsContext._outputWidth = (unsigned)currentViewport.Width;
-            systemConstantsContext._outputHeight = (unsigned)currentViewport.Height;
-            systemConstantsContext._lightNegativeDirection = Normalize(Float3(-1.f, 0.f, 1.f));
-            systemConstantsContext._lightColour = Float3(1,1,1);
+        try {
+            MaterialVisObject visObject;
+            visObject._shaderProgram = &builder.GetShaderProgram();
+            visObject._systemConstants._lightNegativeDirection = Normalize(doc->NegativeLightDirection);
+            visObject._systemConstants._lightColour = Float3(1,1,1);
+
+                //  We need to convert the material parameters and resource bindings
+                //  from the "doc" into native format in the "visObject._parameters" object.
+                //  Any "string" parameter might be a texture binding
+            for each (auto i in doc->PreviewMaterialState) {
+                auto str = dynamic_cast<String^>(i.Value);
+                if (str) {
+                    visObject._parameters._bindings.push_back(
+                        RenderCore::Assets::MaterialParameters::ResourceBinding(
+                            Hash64(clix::marshalString<clix::E_UTF8>(i.Key)),
+                            clix::marshalString<clix::E_UTF8>(str)));
+                }
+            }
+
+                //  Shader constants are more difficult... we only support uint32 currently!
+            for each (auto i in doc->PreviewMaterialState) {
+                uint32 dest;
+                ShaderPatcherLayer::TypeRules::CopyToBytes(
+                    &dest, i.Value, "uint", 
+                    ShaderPatcherLayer::TypeRules::ExtractTypeName(i.Value),
+                    PtrAdd(&dest, sizeof(dest)));
+            }
+
+            MaterialVisSettings visSettings;
+            visSettings._camera = std::make_shared<VisCameraSettings>();
+            visSettings._camera->_position = Float3(-5, 0, 0);
+
+            SceneEngine::LightingParserContext parserContext(
+                *Manager::Instance->GetGlobalTechniqueContext());
+
+            bool result = PlatformRig::MaterialVisLayer::Draw(
+                context, parserContext, 
+                visSettings, visObject);
+
+            if (result) return DrawPreviewResult_Success;
+            if (!parserContext._pendingResources.empty()) return DrawPreviewResult_Pending;
+        } catch (::Assets::Exceptions::InvalidResource&) { return DrawPreviewResult_Error; }
+        catch (::Assets::Exceptions::PendingResource&) { return DrawPreviewResult_Pending; }
 
         return DrawPreviewResult_Error;
     }
@@ -440,7 +288,8 @@ namespace PreviewRender
 
         using namespace RenderCore;
         using namespace RenderCore::Metal;
-        auto context = DeviceContext::Get(*Manager::Instance->GetDevice()->GetImmediateContext());
+        auto context = Manager::Instance->GetDevice()->GetImmediateContext();
+        auto metalContext = DeviceContext::Get(*context);
 
         D3D11_TEXTURE2D_DESC targetDesc;
         targetDesc.Width                = width;
@@ -476,22 +325,22 @@ namespace PreviewRender
 
         {
             ID3D::RenderTargetView* rtView = renderTargetView.get();
-            context->GetUnderlying()->OMSetRenderTargets(1, &rtView, nullptr);
+            metalContext->GetUnderlying()->OMSetRenderTargets(1, &rtView, nullptr);
 
             D3D11_VIEWPORT viewport;
             viewport.TopLeftX = viewport.TopLeftY = 0;
             viewport.Width = FLOAT(width); 
             viewport.Height = FLOAT(height);
             viewport.MinDepth = 0.f; viewport.MaxDepth = 1.f;
-            context->GetUnderlying()->RSSetViewports(1, &viewport);
+            metalContext->GetUnderlying()->RSSetViewports(1, &viewport);
 
             FLOAT clearColor[] = {0.05f, 0.05f, 0.2f, 1.f};
-            context->GetUnderlying()->ClearRenderTargetView(rtView, clearColor);
+            metalContext->GetUnderlying()->ClearRenderTargetView(rtView, clearColor);
         }
 
             ////////////
 
-        auto result = DrawPreview(context.get(), *_pimpl, doc);
+        auto result = DrawPreview(*context, *_pimpl, doc);
         if (result == DrawPreviewResult_Error) {
             return GenerateErrorBitmap(_pimpl->_errorString.c_str(), size);
         } else if (result == DrawPreviewResult_Pending) {
@@ -507,10 +356,10 @@ namespace PreviewRender
         readableTargetDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
         intrusive_ptr<ID3D::Texture2D> readableTarget = CreateTexture(Manager::Instance->GetDevice(), readableTargetDesc);
 
-        context->GetUnderlying()->CopyResource(readableTarget.get(), targetTexture.get());
+        metalContext->GetUnderlying()->CopyResource(readableTarget.get(), targetTexture.get());
 
         D3D11_MAPPED_SUBRESOURCE mappedTexture;
-        HRESULT hresult = context->GetUnderlying()->Map(readableTarget.get(), 0, D3D11_MAP_READ, 0, &mappedTexture);
+        HRESULT hresult = metalContext->GetUnderlying()->Map(readableTarget.get(), 0, D3D11_MAP_READ, 0, &mappedTexture);
         if (SUCCEEDED(hresult)) {
             using System::Drawing::Bitmap;
             using namespace System::Drawing;
@@ -534,7 +383,7 @@ namespace PreviewRender
                 newBitmap->UnlockBits(data);
             }
 
-            context->GetUnderlying()->Unmap(readableTarget.get(), 0);
+            metalContext->GetUnderlying()->Unmap(readableTarget.get(), 0);
             return newBitmap;
         }
 
@@ -601,6 +450,11 @@ namespace PreviewRender
         return _pimpl->_device.get();
     }
 
+    RenderCore::Techniques::TechniqueContext* Manager::GetGlobalTechniqueContext()
+    {
+        return _pimpl->_globalTechniqueContext.get();
+    }
+
     static Manager::Manager()
     {
         _instance = nullptr;
@@ -611,6 +465,7 @@ namespace PreviewRender
         _pimpl = new ManagerPimpl;
         _pimpl->_device = RenderCore::CreateDevice();
         _pimpl->_asyncMan = RenderCore::Metal::CreateCompileAndAsyncManager();
+        _pimpl->_globalTechniqueContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
     }
 
     Manager::~Manager()

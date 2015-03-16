@@ -79,7 +79,7 @@ namespace ShaderPatcherLayer
         return res;
     }
 
-    ShaderPatcher::NodeGraph        NodeGraph::ConvertToNativePreview(UInt64 previewNodeId)
+    ShaderPatcher::NodeGraph        NodeGraph::ConvertToNativePreview(UInt32 previewNodeId)
     {
         auto graph = ConvertToNative("Preview");
         graph.TrimForPreview(previewNodeId);
@@ -96,7 +96,7 @@ namespace ShaderPatcherLayer
             +   ShaderPatcher::GenerateShaderBody(nativeGraph, graphOfTemporaries));
     }
 
-    String^         NodeGraph::GeneratePreviewShader(NodeGraph^ graph, UInt64 previewNodeId)
+    String^         NodeGraph::GeneratePreviewShader(NodeGraph^ graph, UInt32 previewNodeId)
     {
         auto nativeGraph = graph->ConvertToNativePreview(previewNodeId);
         ShaderPatcher::NodeGraph graphOfTemporaries = ShaderPatcher::GenerateGraphOfTemporaries(nativeGraph);

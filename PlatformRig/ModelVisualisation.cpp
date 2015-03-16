@@ -485,7 +485,8 @@ namespace PlatformRig
         _position = Zero<Float3>();
         _focus = Zero<Float3>();
         _verticalFieldOfView = 40.f;
-        _nearClip = _farClip = 0.f;
+        _nearClip = 0.1f;
+        _farClip = 1000.f;
     }
 
 }

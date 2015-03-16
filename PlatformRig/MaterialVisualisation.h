@@ -28,6 +28,8 @@ namespace PlatformRig
             enum Enum { Deferred, Forward, NoLightingParser };
         };
         LightingType::Enum _lightingType;
+
+        MaterialVisSettings();
     };
 
     class MaterialVisObject
@@ -68,7 +70,7 @@ namespace PlatformRig
         ~MaterialVisLayer();
 
         static bool Draw(
-            RenderCore::IThreadContext* context,
+            RenderCore::IThreadContext& context,
             SceneEngine::LightingParserContext& lightingParser,
             const MaterialVisSettings& settings,
             const MaterialVisObject& object);

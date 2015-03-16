@@ -32,8 +32,8 @@ namespace Utility
     public:
         typedef uint32 ParameterNameHash;
         void        SetParameter(const std::string& name, uint32 value);
-        uint32      GetParameter(const std::string& name) const;
-        uint32      GetParameter(ParameterNameHash name) const;
+        std::pair<bool, uint32>      GetParameter(const std::string& name) const;
+        std::pair<bool, uint32>      GetParameter(ParameterNameHash name) const;
 
         uint64      GetHash() const;
         uint64      GetParameterNamesHash() const;
@@ -45,6 +45,7 @@ namespace Utility
         void        MergeIn(const ParameterBox& source);
 
         static ParameterNameHash    MakeParameterNameHash(const std::string& name);
+        static ParameterNameHash    MakeParameterNameHash(const char name[]);
 
         bool        ParameterNamesAreEqual(const ParameterBox& other) const;
 

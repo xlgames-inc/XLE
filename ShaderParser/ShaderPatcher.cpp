@@ -10,6 +10,7 @@
 #include "../Core/Exceptions.h"
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/StringUtils.h"
+#include "../Utility/StringFormat.h"
 #include "../Utility/PtrUtils.h"
 #include <sstream>
 #include <assert.h>
@@ -24,7 +25,7 @@ namespace ShaderPatcher
 
         ///////////////////////////////////////////////////////////////
 
-    Node::Node(const std::string& archiveName, uint64 nodeId, Type::Enum type)
+    Node::Node(const std::string& archiveName, uint32 nodeId, Type::Enum type)
     : _archiveName(archiveName)
     , _nodeId(nodeId)
     , _type(type)
@@ -56,7 +57,7 @@ namespace ShaderPatcher
 
         ///////////////////////////////////////////////////////////////
 
-    NodeConnection::NodeConnection( uint64 outputNodeId, uint64 inputNodeId, 
+    NodeConnection::NodeConnection( uint32 outputNodeId, uint32 inputNodeId, 
                                     const std::string& outputParameterName, const Type& outputType, 
                                     const std::string& inputParameterName, const Type& inputType)
     :       _outputNodeId(outputNodeId)
@@ -91,7 +92,7 @@ namespace ShaderPatcher
 
         ///////////////////////////////////////////////////////////////
 
-    NodeConstantConnection::NodeConstantConnection(uint64 outputNodeId, const std::string& outputParameterName, const std::string& value)
+    NodeConstantConnection::NodeConstantConnection(uint32 outputNodeId, const std::string& outputParameterName, const std::string& value)
     :       _outputNodeId(outputNodeId)
     ,       _outputParameterName(outputParameterName)
     ,       _value(value)
@@ -134,7 +135,7 @@ namespace ShaderPatcher
         return *this;
     }
 
-    bool            NodeGraph::IsUpstream(uint64 startNode, uint64 searchingForNode)
+    bool            NodeGraph::IsUpstream(uint32 startNode, uint32 searchingForNode)
     {
             //  Starting at 'startNode', search upstream and see if we find 'searchingForNode'
         if (startNode == searchingForNode) {
@@ -152,9 +153,9 @@ namespace ShaderPatcher
         return false;
     }
 
-    bool            NodeGraph::IsDownstream(uint64 startNode, 
-                                            const uint64* searchingForNodesStart, 
-                                            const uint64* searchingForNodesEnd)
+    bool            NodeGraph::IsDownstream(uint32 startNode, 
+                                            const uint32* searchingForNodesStart, 
+                                            const uint32* searchingForNodesEnd)
     {
         if (std::find(searchingForNodesStart, searchingForNodesEnd, startNode) != searchingForNodesEnd) {
             return true;
@@ -171,7 +172,7 @@ namespace ShaderPatcher
         return false;
     }
 
-    bool            NodeGraph::HasNode(uint64 nodeId)
+    bool            NodeGraph::HasNode(uint32 nodeId)
     {
         return std::find_if(_nodes.begin(), _nodes.end(), 
             [=](const Node& node) { return node.NodeId() == nodeId; }) != _nodes.end();
@@ -254,7 +255,7 @@ namespace ShaderPatcher
             //      connections,
             //
 
-        std::vector<uint64> trimmingNodes;
+        std::vector<uint32> trimmingNodes;
         auto outputsEnd = &outputs[outputCount];
         for (auto i=GetNodeConnections().cbegin(); i!=GetNodeConnections().cend(); ++i) {
             if (std::find(outputs, outputsEnd, i->OutputParameterName()) != outputsEnd) {
@@ -273,14 +274,14 @@ namespace ShaderPatcher
         return true;
     }
 
-    uint64            NodeGraph::GetUniqueNodeId() const
+    uint32            NodeGraph::GetUniqueNodeId() const
     {
-        uint64 largestId = 0;
+        uint32 largestId = 0;
         std::for_each(_nodes.cbegin(), _nodes.cend(), [&](const Node& n) { largestId = std::max(largestId, n.NodeId()); });
         return largestId+1;
     }
 
-    const Node*     NodeGraph::GetNode(uint64 nodeId) const
+    const Node*     NodeGraph::GetNode(uint32 nodeId) const
     {
         auto res = std::find_if(
             _nodes.cbegin(), _nodes.cend(),
@@ -309,7 +310,7 @@ namespace ShaderPatcher
         return 1;
     }
 
-    void            NodeGraph::TrimForPreview(uint64 previewNode)
+    void            NodeGraph::TrimForPreview(uint32 previewNode)
     {
         Trim(&previewNode, &previewNode+1);
 
@@ -326,7 +327,7 @@ namespace ShaderPatcher
         }
     }
 
-    static bool HasConnection(const std::vector<NodeConnection>& connections, uint64 destinationId, const std::string& destinationName)
+    static bool HasConnection(const std::vector<NodeConnection>& connections, uint32 destinationId, const std::string& destinationName)
     {
         return
             std::find_if(
@@ -339,7 +340,7 @@ namespace ShaderPatcher
     void        NodeGraph::AddDefaultOutputs()
     {
             // annoying redirection (because we're modifying the node array)
-        std::vector<uint64> starterNodes;
+        std::vector<uint32> starterNodes;
         for (auto i=_nodes.begin(); i!=_nodes.end(); ++i)
             starterNodes.push_back(i->NodeId());
 
@@ -374,7 +375,7 @@ namespace ShaderPatcher
         }
     }
 
-    void            NodeGraph::Trim(const uint64* trimNodesBegin, const uint64* trimNodesEnd)
+    void            NodeGraph::Trim(const uint32* trimNodesBegin, const uint32* trimNodesEnd)
     {
             //
             //      Trim out all of the nodes that are upstream of
@@ -435,10 +436,10 @@ namespace ShaderPatcher
 
         ///////////////////////////////////////////////////////////////
 
-    static bool SortNodesFunction(  uint64                  node,
-                                    std::vector<uint64>&    presorted, 
-                                    std::vector<uint64>&    sorted, 
-                                    std::vector<uint64>&    marks,
+    static bool SortNodesFunction(  uint32                  node,
+                                    std::vector<uint32>&    presorted, 
+                                    std::vector<uint32>&    sorted, 
+                                    std::vector<uint32>&    marks,
                                     const NodeGraph&        graph)
     {
         if (std::find(presorted.begin(), presorted.end(), node) == presorted.end()) {
@@ -460,18 +461,18 @@ namespace ShaderPatcher
         return true;
     }
 
-    static std::string AsString(uint64 i)
+    static std::string AsString(uint32 i)
     {
         char buffer[128];
         XlI64toA(i, buffer, dimof(buffer), 10);
         return buffer;
     }
 
-    static std::string OutputTemporaryForNode(uint64 nodeId, const std::string& outputName)        
+    static std::string OutputTemporaryForNode(uint32 nodeId, const std::string& outputName)        
     { 
         return std::string("Output_") + AsString(nodeId) + "_" + outputName; 
     }
-    static std::string InterpolatorParameterName(uint64 nodeId)     { return std::string("interp_") + AsString(nodeId); }
+    static std::string InterpolatorParameterName(uint32 nodeId)     { return std::string("interp_") + AsString(nodeId); }
 
     static std::stringstream GenerateFunctionCall(const Node& node, const NodeGraph& nodeGraph, const NodeGraph& graphOfTemporaries)
     {
@@ -659,7 +660,7 @@ namespace ShaderPatcher
 
             */
 
-        std::vector<uint64> presortedNodes, sortedNodes;
+        std::vector<uint32> presortedNodes, sortedNodes;
         sortedNodes.reserve(graph.GetNodes().size());
 
         for (auto i=graph.GetNodes().cbegin(); i!=graph.GetNodes().cend(); ++i) {
@@ -668,7 +669,7 @@ namespace ShaderPatcher
 
         bool acyclic = true;
         while (!presortedNodes.empty()) {
-            std::vector<uint64> temporaryMarks;
+            std::vector<uint32> temporaryMarks;
             bool sortReturn = SortNodesFunction(
                 presortedNodes[0],
                 presortedNodes, sortedNodes,
@@ -787,14 +788,14 @@ namespace ShaderPatcher
 
                     // at the moment, each output element is a struct. It might be convenient
                     // if we could use both structs or value types
-                char buffer[64];
-				_snprintf_s(buffer, _TRUNCATE, "OUT_%08x%08x", uint32(i->NodeId() >> 32), uint32(i->NodeId()));
+                StringMeld<64> buffer;
+                buffer << "OUT_" << i->NodeId();
                     
                 auto signature = LoadParameterStructSignature(SplitArchiveName(i->ArchiveName()));
                 if (!signature._name.empty()) {
-                    result.push_back(MainFunctionParameter(signature._name, buffer, i->ArchiveName()));
+                    result.push_back(MainFunctionParameter(signature._name, std::string(buffer), i->ArchiveName()));
                 } else {
-                    result.push_back(MainFunctionParameter(i->ArchiveName(), buffer, i->ArchiveName()));
+                    result.push_back(MainFunctionParameter(i->ArchiveName(), std::string(buffer), i->ArchiveName()));
                 }
             }
         }
@@ -1222,7 +1223,7 @@ namespace ShaderPatcher
                                 //          (or we might even have the same parameter name multiple times)
                             std::stringstream stream; stream << "IN_" << p->_name;
 
-                            NodeConnection newConnection(i->NodeId(), ~0ull, p->_name, p->_type, stream.str(), p->_type);
+                            NodeConnection newConnection(i->NodeId(), ~0ul, p->_name, p->_type, stream.str(), p->_type);
                             graphOfTemporaries.GetNodeConnections().push_back(newConnection);
                         }
                     }

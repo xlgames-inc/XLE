@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../../RenderCore/IDevice_Forward.h"
+#include "../../RenderCore/Techniques/Techniques.h"
 #include "ShaderDiagramDocument.h"
 #include <memory>
 
@@ -44,6 +45,7 @@ namespace PreviewRender
         PreviewBuilder^         CreatePreview(System::String^ shaderText);
         void                    RotateLightDirection(ShaderDiagram::Document^ doc, System::Drawing::PointF rotationAmount);
         RenderCore::IDevice*    GetDevice();
+        RenderCore::Techniques::TechniqueContext* GetGlobalTechniqueContext();
 
         static property Manager^     Instance
         {
