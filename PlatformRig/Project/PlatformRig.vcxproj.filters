@@ -45,6 +45,7 @@
     <ClCompile Include="..\OverlaySystem.cpp" />
     <ClCompile Include="..\ModelVisualisation.cpp" />
     <ClCompile Include="..\BasicManipulators.cpp" />
+    <ClCompile Include="..\MaterialVisualisation.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="WinAPI">
@@ -95,5 +96,6 @@
     <ClInclude Include="..\OverlaySystem.h" />
     <ClInclude Include="..\ModelVisualisation.h" />
     <ClInclude Include="..\BasicManipulators.h" />
+    <ClInclude Include="..\MaterialVisualisation.h" />
   </ItemGroup>
 </Project>
