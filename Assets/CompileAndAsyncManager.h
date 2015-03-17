@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include "../Utility/Threading/Mutex.h"
 #include "../Core/Prefix.h"
 #include "../Core/Types.h"
 #include <memory>
@@ -59,7 +58,8 @@ namespace Assets
         void Add(std::unique_ptr<IAssetSet>&& set);
         void Clear();
         void LogReport();
-        unsigned BoundThreadId();
+        unsigned BoundThreadId() const;
+		bool IsBoundThread() const;
 
         AssetSetManager();
         ~AssetSetManager();
@@ -85,13 +85,8 @@ namespace Assets
 
         static CompileAndAsyncManager& GetInstance() { assert(_instance); return *_instance; }
     protected:
-        std::unique_ptr<IntermediateResources::CompilerSet> _intMan;
-        std::unique_ptr<IntermediateResources::Store> _intStore;
-        std::vector<std::shared_ptr<IPollingAsyncProcess>> _pollingProcesses;
-        std::unique_ptr<IThreadPump> _threadPump;
-        std::unique_ptr<AssetSetManager> _assetSets;
-
-        Utility::Threading::Mutex _pollingProcessesLock;
+		class Pimpl;
+		std::unique_ptr<Pimpl> _pimpl;
 
         static CompileAndAsyncManager* _instance;
     };

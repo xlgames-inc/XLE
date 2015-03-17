@@ -7,6 +7,8 @@
 #include "CompileAndAsyncManager.h"
 #include "IntermediateResources.h"
 #include "../ConsoleRig/Log.h"
+#include "../Utility/Threading/Mutex.h"
+#include "../Utility/Threading/ThreadingUtils.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/PtrUtils.h"
 
@@ -55,7 +57,10 @@ namespace Assets
         }
     }
 
-    unsigned AssetSetManager::BoundThreadId() { return _pimpl->_boundThreadId; }
+	bool AssetSetManager::IsBoundThread() const
+	{
+		return _pimpl->_boundThreadId == Threading::CurrentThreadId();
+	}
 
     AssetSetManager::AssetSetManager()
     {
@@ -69,17 +74,29 @@ namespace Assets
 
         ////////////////////////////////////////////////////////////
 
+	class CompileAndAsyncManager::Pimpl
+	{
+	public:
+		std::unique_ptr<IntermediateResources::CompilerSet> _intMan;
+		std::unique_ptr<IntermediateResources::Store> _intStore;
+		std::vector<std::shared_ptr<IPollingAsyncProcess>> _pollingProcesses;
+		std::unique_ptr<IThreadPump> _threadPump;
+		std::unique_ptr<AssetSetManager> _assetSets;
+
+		Utility::Threading::Mutex _pollingProcessesLock;
+	};
+
     void CompileAndAsyncManager::Update()
     {
-        if (_threadPump) {
-            _threadPump->Update();
+		if (_pimpl->_threadPump) {
+			_pimpl->_threadPump->Update();
         }
 
-        ScopedLock(_pollingProcessesLock);
+		ScopedLock(_pimpl->_pollingProcessesLock);
 
             //  Normally the polling processes will be waiting for the thread
             //  pump to complete something. So do this after the thread pump update
-        for (auto i=_pollingProcesses.begin(); i!=_pollingProcesses.end();) {
+		for (auto i = _pimpl->_pollingProcesses.begin(); i != _pimpl->_pollingProcesses.end();) {
             bool remove = false;
             TRY {
                 auto result = (*i)->Update();
@@ -90,36 +107,36 @@ namespace Assets
             } CATCH_END
 
                     // remove if necessary...
-            if (remove) { i = _pollingProcesses.erase(i); } 
+			if (remove) { i = _pimpl->_pollingProcesses.erase(i); }
             else { ++i; }
         }
     }
 
     void CompileAndAsyncManager::Add(const std::shared_ptr<IPollingAsyncProcess>& pollingProcess)
     {
-        ScopedLock(_pollingProcessesLock);
-        _pollingProcesses.push_back(pollingProcess);
+		ScopedLock(_pimpl->_pollingProcessesLock);
+		_pimpl->_pollingProcesses.push_back(pollingProcess);
     }
 
     IntermediateResources::Store& CompileAndAsyncManager::GetIntermediateStore() 
     { 
-        return *_intStore.get(); 
+		return *_pimpl->_intStore.get();
     }
     
     IntermediateResources::CompilerSet& CompileAndAsyncManager::GetIntermediateCompilers() 
     { 
-        return *_intMan.get(); 
+		return *_pimpl->_intMan.get();
     }
 
     AssetSetManager& CompileAndAsyncManager::GetAssetSets() 
     { 
-        return *_assetSets.get(); 
+		return *_pimpl->_assetSets.get();
     }
 
     void CompileAndAsyncManager::Add(std::unique_ptr<IThreadPump>&& threadPump)
     {
-        assert(!_threadPump);
-        _threadPump = std::move(threadPump);
+		assert(!_pimpl->_threadPump);
+		_pimpl->_threadPump = std::move(threadPump);
     }
 
     CompileAndAsyncManager* CompileAndAsyncManager::_instance = nullptr;
@@ -145,9 +162,11 @@ namespace Assets
         auto intStore = std::make_unique<IntermediateResources::Store>("Int", storeVersionString);
         auto assetSets = std::make_unique<AssetSetManager>();
 
-        _intMan = std::move(intMan);
-        _intStore = std::move(intStore);
-        _assetSets = std::move(assetSets);
+		_pimpl = std::make_unique<Pimpl>();
+
+        _pimpl->_intMan = std::move(intMan);
+        _pimpl->_intStore = std::move(intStore);
+        _pimpl->_assetSets = std::move(assetSets);
         assert(!_instance);
         _instance = this;
     }

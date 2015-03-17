@@ -9,7 +9,6 @@
 #include "CompileAndAsyncManager.h"
 #include "../Utility/Streams/FileSystemMonitor.h"       // (for OnChangeCallback base class)
 #include "../Utility/IteratorUtils.h"
-#include "../Utility/Threading/ThreadingUtils.h"
 #include "../Core/Types.h"
 #include "../Core/Exceptions.h"
 #include <vector>
@@ -59,7 +58,7 @@ namespace Assets
                 auto& assetSets = CompileAndAsyncManager::GetInstance().GetAssetSets();
                 assetSets.Add(std::move(s));
             }
-            assert(CompileAndAsyncManager::GetInstance().GetAssetSets().BoundThreadId() == Threading::CurrentThreadId());  // currently not thread safe; we have to check the thread ids
+            assert(CompileAndAsyncManager::GetInstance().GetAssetSets().IsBoundThread());  // currently not thread safe; we have to check the thread ids
             #if defined(ASSETS_STORE_NAMES)
                     // These should agree. If there's a mismatch, there may be a threading problem
                 assert(set->_assets.size() == set->_assetNames.size());

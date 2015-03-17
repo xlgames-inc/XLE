@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include "Temp.h"
 #include "CLIXAutoPtr.h"
 #include "../../RenderCore/IThreadContext_Forward.h"
 
@@ -19,6 +18,8 @@ using namespace System::Drawing;
 
 namespace GUILayer 
 {
+	class IWindowRig;
+	class EngineControlPimpl;
 	public ref class EngineControl abstract : public System::Windows::Forms::UserControl
 	{
 	public:
