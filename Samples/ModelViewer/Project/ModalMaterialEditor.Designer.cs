@@ -42,14 +42,14 @@ namespace ModelViewer
             this.hierchicalMaterialControl1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.hierchicalMaterialControl1.Location = new System.Drawing.Point(0, 0);
             this.hierchicalMaterialControl1.Name = "hierchicalMaterialControl1";
-            this.hierchicalMaterialControl1.Size = new System.Drawing.Size(612, 503);
+            this.hierchicalMaterialControl1.Size = new System.Drawing.Size(400, 700);
             this.hierchicalMaterialControl1.TabIndex = 0;
             // 
             // ModalMaterialEditor
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(612, 503);
+            this.ClientSize = new System.Drawing.Size(400, 700);
             this.Controls.Add(this.hierchicalMaterialControl1);
             this.Name = "ModalMaterialEditor";
             this.Text = "ModalMaterialEditor";

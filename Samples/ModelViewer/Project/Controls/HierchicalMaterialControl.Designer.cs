@@ -62,7 +62,7 @@ namespace ModelViewer
             // 
             this.splitContainer1.Panel2.Controls.Add(this.materialControl1);
             this.splitContainer1.Panel2.RightToLeft = System.Windows.Forms.RightToLeft.No;
-            this.splitContainer1.Size = new System.Drawing.Size(721, 607);
+            this.splitContainer1.Size = new System.Drawing.Size(326, 607);
             this.splitContainer1.SplitterDistance = 58;
             this.splitContainer1.TabIndex = 0;
             // 
@@ -78,7 +78,7 @@ namespace ModelViewer
             treeNode2.Text = "Model/Nature/FirTree/fir.material";
             this.treeView1.Nodes.AddRange(new System.Windows.Forms.TreeNode[] {
             treeNode2});
-            this.treeView1.Size = new System.Drawing.Size(721, 58);
+            this.treeView1.Size = new System.Drawing.Size(326, 58);
             this.treeView1.TabIndex = 0;
             // 
             // materialControl1
@@ -95,7 +95,7 @@ namespace ModelViewer
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.Controls.Add(this.splitContainer1);
             this.Name = "HierchicalMaterialControl";
-            this.Size = new System.Drawing.Size(721, 607);
+            this.Size = new System.Drawing.Size(326, 607);
             this.splitContainer1.Panel1.ResumeLayout(false);
             this.splitContainer1.Panel2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).EndInit();
