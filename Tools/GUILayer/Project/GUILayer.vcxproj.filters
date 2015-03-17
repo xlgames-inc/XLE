@@ -8,6 +8,7 @@
     <ClCompile Include="..\TestControl.cpp" />
     <ClCompile Include="..\UITypesBinding.cpp" />
     <ClCompile Include="..\MaterialVisualisation.cpp" />
+    <ClCompile Include="..\AssemblyInfo.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\EngineDevice.h" />
