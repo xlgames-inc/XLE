@@ -7,7 +7,7 @@
 #pragma once
 
 #include "OverlaySystem.h"
-#include "../Assets/AssetUtils.h"
+#include "../Assets/Assets.h"
 
 namespace RenderCore { namespace Assets 
 {

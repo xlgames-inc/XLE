@@ -6,8 +6,11 @@
 
 #pragma once
 
-#include "AssetUtils.h"
+#include "../Metal/Forward.h"       // for Metal::Blend
+#include "../../Assets/Assets.h"
 #include "../../Utility/ParameterBox.h"
+#include "../../Utility/Mixins.h"
+
 
 namespace Assets { class DependencyValidation; class DirectorySearchRules; }
 namespace Utility { class Data; }

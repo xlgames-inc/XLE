@@ -21,6 +21,7 @@
 #include "../RenderCore/Assets/ModelRunTime.h"
 #include "../RenderCore/Assets/RawAnimationCurve.h"
 #include "../RenderCore/Assets/Material.h"
+#include "../RenderCore/Assets/AssetUtils.h"
 #include "../RenderCore/Techniques/TechniqueUtils.h"    // for CameraDesc
 
 #include "../RenderCore/Metal/Buffer.h"

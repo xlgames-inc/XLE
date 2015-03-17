@@ -9,7 +9,6 @@
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/RenderUtils.h"
-#include "../RenderCore/Assets/AssetUtils.h"
 #include "../Math/Transformations.h"
 
 namespace SceneEngine
@@ -67,7 +66,7 @@ namespace SceneEngine
 
             BoundUniforms boundLayout(shaderProgram);
             static const auto HashLocalTransform = Hash64("LocalTransform");
-            boundLayout.BindConstantBuffer(HashLocalTransform, 0, 1, RenderCore::Assets::LocalTransform_Elements, RenderCore::Assets::LocalTransform_ElementsCount);
+            boundLayout.BindConstantBuffer(HashLocalTransform, 0, 1); // , RenderCore::Assets::LocalTransform_Elements, RenderCore::Assets::LocalTransform_ElementsCount);
             TechniqueContext::BindGlobalUniforms(boundLayout);
             boundLayout.Apply(*context, 
                 parserContext.GetGlobalUniformsStream(),

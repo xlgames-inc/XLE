@@ -10,7 +10,6 @@
 
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/CommonResources.h"
-#include "../RenderCore/Assets/AssetUtils.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/StringFormat.h"
 

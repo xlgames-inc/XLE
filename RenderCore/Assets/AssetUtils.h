@@ -6,11 +6,8 @@
 
 #pragma once
 
-#include "../../Assets/BlockSerializer.h"
-#include "../Metal/InputLayout.h"
 #include "../Metal/Forward.h"
-#include "../../Utility/MemoryUtils.h"
-#include "../../Utility/ParameterBox.h"
+#include "../Metal/InputLayout.h"
 
 namespace RenderCore { namespace Techniques { class CameraDesc; class GlobalTransformConstants; } }
 

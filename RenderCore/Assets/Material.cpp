@@ -11,6 +11,7 @@
 #include "../../Utility/Conversion.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/StringFormat.h"
+#include "../../Utility/MemoryUtils.h"
 
 namespace RenderCore { namespace Assets
 {
@@ -247,7 +248,7 @@ namespace RenderCore { namespace Assets
         }
     };
 
-    RawMaterial::RawMaterial(const ResChar initialiser[])
+    RawMaterial::RawMaterial(const ::Assets::ResChar initialiser[])
     {
             // We're expecting an initialiser of the format "filename:setting"
             // If there is no colon, 
@@ -255,7 +256,7 @@ namespace RenderCore { namespace Assets
         if (!colon)
             ThrowException(::Assets::Exceptions::InvalidResource(initialiser, ""));
 
-        ResChar rawFilename[MaxPath];
+        ::Assets::ResChar rawFilename[MaxPath];
         XlCopyNString(rawFilename, initialiser, colon - initialiser);
 
         size_t sourceFileSize = 0;
