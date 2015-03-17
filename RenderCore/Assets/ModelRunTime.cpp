@@ -8,6 +8,7 @@
 #include "ModelRunTimeInternal.h"
 #include "TransformationCommands.h"
 #include "AssetUtils.h"     // maybe only needed for chunk ids
+#include "Material.h"
 #include "RawAnimationCurve.h"
 #include "SharedStateSet.h"
 

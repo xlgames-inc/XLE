@@ -242,11 +242,7 @@ namespace Serialization
         ////////////////////////////////////////////////////
 
     template<typename Type>
-        class Vector
-    {
-    public:
-        typedef std::vector<Type, BlockSerializerAllocator<Type>> Type;
-    };
+        using Vector = std::vector<Type, BlockSerializerAllocator<Type>>;
 
         ////////////////////////////////////////////////////
         

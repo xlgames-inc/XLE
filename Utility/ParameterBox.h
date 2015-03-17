@@ -59,10 +59,10 @@ namespace Utility
         mutable uint64      _cachedHash;
         mutable uint64      _cachedParameterNameHash;
     
-        Serialization::Vector<ParameterNameHash>::Type  _parameterHashValues;
-        Serialization::Vector<uint32>::Type             _parameterOffsets;
-        Serialization::Vector<std::string>::Type        _parameterNames;
-        Serialization::Vector<uint8>::Type              _values;
+        Serialization::Vector<ParameterNameHash>    _parameterHashValues;
+        Serialization::Vector<uint32>               _parameterOffsets;
+        Serialization::Vector<std::string>          _parameterNames;
+        Serialization::Vector<uint8>                _values;
 
         uint32      GetValue(size_t index) const;
         uint64      CalculateHash() const;

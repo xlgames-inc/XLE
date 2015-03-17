@@ -4,17 +4,72 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "MaterialSettingsFile.h"
-#include "../Metal/State.h"      // (just for Blend/BlendOp enum members)
+#include "Material.h"
+#include "../Metal/State.h"      // (just for Blend/BlendOp enum members... maybe we need a higher level version of these enums?)
 #include "../../Assets/AssetUtils.h"
 #include "../../Utility/Streams/Data.h"
 #include "../../Utility/Conversion.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/StringFormat.h"
 
-
 namespace RenderCore { namespace Assets
 {
+
+    
+    void ResourceBinding::Serialize(Serialization::NascentBlockSerializer& serializer) const
+    {
+        Serialization::Serialize(serializer, _bindHash);
+        Serialization::Serialize(serializer, _resourceName);
+    }
+    
+    void ResolvedMaterial::Serialize(Serialization::NascentBlockSerializer& serializer) const
+    {
+        Serialization::Serialize(serializer, _bindings);
+        Serialization::Serialize(serializer, _matParams);
+        Serialization::Serialize(serializer, _stateSet.GetHash());
+        Serialization::Serialize(serializer, _constants);
+    }
+
+    RenderStateSet::RenderStateSet()
+    {
+        _doubleSided = false;
+        _wireframe = false;
+        _writeMask = 0xf;
+        _deferredBlend = DeferredBlend::Opaque;
+        _depthBias = 0;
+        _flag = 0;
+        
+        _forwardBlendSrc = Metal::Blend::One;
+        _forwardBlendDst = Metal::Blend::Zero;
+        _forwardBlendOp = Metal::BlendOp::NoBlending;
+    }
+
+    uint64 RenderStateSet::GetHash() const
+    {
+        static_assert(sizeof(*this) == sizeof(uint64), "expecting StateSet to be 64 bits long");
+        return *(const uint64*)this;
+    }
+
+    ResolvedMaterial::ResolvedMaterial() {}
+
+    ResolvedMaterial::ResolvedMaterial(ResolvedMaterial&& moveFrom)
+    : _bindings(std::move(moveFrom._bindings))
+    , _matParams(std::move(moveFrom._matParams))
+    , _stateSet(moveFrom._stateSet)
+    , _constants(std::move(moveFrom._constants))
+    {}
+
+    ResolvedMaterial& ResolvedMaterial::operator=(ResolvedMaterial&& moveFrom)
+    {
+        _bindings = std::move(moveFrom._bindings);
+        _matParams = std::move(moveFrom._matParams);
+        _stateSet = moveFrom._stateSet;
+        _constants = std::move(moveFrom._constants);
+        return *this;
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
     static Metal::Blend::Enum DeserializeBlend(const Data* source, const char name[])
     {
         using namespace Metal::Blend;
@@ -177,16 +232,16 @@ namespace RenderCore { namespace Assets
     class CompareResourceBinding
     {
     public:
-        bool operator()(const ResolvedMaterial::ResourceBinding& lhs, uint64 rhs)
+        bool operator()(const ResourceBinding& lhs, uint64 rhs)
         {
             return lhs._bindHash < rhs;
         }
-        bool operator()(uint64 lhs, const ResolvedMaterial::ResourceBinding& rhs)
+        bool operator()(uint64 lhs, const ResourceBinding& rhs)
         {
             return lhs < rhs._bindHash;
         }
-        bool operator()(const ResolvedMaterial::ResourceBinding& lhs, 
-                        const ResolvedMaterial::ResourceBinding& rhs)
+        bool operator()(const ResourceBinding& lhs, 
+                        const ResourceBinding& rhs)
         {
             return lhs._bindHash < rhs._bindHash;
         }
@@ -294,8 +349,7 @@ namespace RenderCore { namespace Assets
                         if (i!=_resourceBindings.end() && i->_bindHash==hash) {
                             i->_resourceName = resource;
                         } else {
-                            _resourceBindings.insert(
-                                i, Assets::ResolvedMaterial::ResourceBinding(hash, resource));
+                            _resourceBindings.insert(i, ResourceBinding(hash, resource));
                         }
                     }
                 }
@@ -367,5 +421,8 @@ namespace RenderCore { namespace Assets
 
         return result;
     }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
 }}
 

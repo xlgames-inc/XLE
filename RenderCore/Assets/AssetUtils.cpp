@@ -226,61 +226,6 @@ namespace RenderCore { namespace Assets
         }
     }
 
-
-        ////////////////////////////////////////////////////////////
-
-    void ResolvedMaterial::ResourceBinding::Serialize(Serialization::NascentBlockSerializer& serializer) const
-    {
-        Serialization::Serialize(serializer, _bindHash);
-        Serialization::Serialize(serializer, _resourceName);
-    }
-    
-    void ResolvedMaterial::Serialize(Serialization::NascentBlockSerializer& serializer) const
-    {
-        Serialization::Serialize(serializer, _bindings);
-        Serialization::Serialize(serializer, _matParams);
-        Serialization::Serialize(serializer, _stateSet.GetHash());
-        Serialization::Serialize(serializer, _constants);
-    }
-
-    RenderStateSet::RenderStateSet()
-    {
-        _doubleSided = false;
-        _wireframe = false;
-        _writeMask = 0xf;
-        _deferredBlend = DeferredBlend::Opaque;
-        _depthBias = 0;
-        _flag = 0;
-        
-        _forwardBlendSrc = Metal::Blend::One;
-        _forwardBlendDst = Metal::Blend::Zero;
-        _forwardBlendOp = Metal::BlendOp::NoBlending;
-    }
-
-    uint64 RenderStateSet::GetHash() const
-    {
-        static_assert(sizeof(*this) == sizeof(uint64), "expecting StateSet to be 64 bits long");
-        return *(const uint64*)this;
-    }
-
-    ResolvedMaterial::ResolvedMaterial() {}
-
-    ResolvedMaterial::ResolvedMaterial(ResolvedMaterial&& moveFrom)
-    : _bindings(std::move(moveFrom._bindings))
-    , _matParams(std::move(moveFrom._matParams))
-    , _stateSet(moveFrom._stateSet)
-    , _constants(std::move(moveFrom._constants))
-    {}
-
-    ResolvedMaterial& ResolvedMaterial::operator=(ResolvedMaterial&& moveFrom)
-    {
-        _bindings = std::move(moveFrom._bindings);
-        _matParams = std::move(moveFrom._matParams);
-        _stateSet = moveFrom._stateSet;
-        _constants = std::move(moveFrom._constants);
-        return *this;
-    }
-
         ////////////////////////////////////////////////////////////
 
     TransformationParameterSet::TransformationParameterSet()

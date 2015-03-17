@@ -20,7 +20,7 @@
 
 #include "../RenderCore/Assets/ModelRunTime.h"
 #include "../RenderCore/Assets/RawAnimationCurve.h"
-#include "../RenderCore/Assets/MaterialSettingsFile.h"
+#include "../RenderCore/Assets/Material.h"
 #include "../RenderCore/Techniques/TechniqueUtils.h"    // for CameraDesc
 
 #include "../RenderCore/Metal/Buffer.h"
@@ -303,12 +303,12 @@ namespace RenderCore { namespace ColladaConversion
     static void AddBoundTexture( 
         const COLLADAFW::Effect* effect, unsigned commonEffectIndex,
         const TableOfObjects& objects,
-        RenderCore::Assets::ResolvedMaterial::ResourceBindingSet& bindings,
+        RenderCore::Assets::ResourceBindingSet& bindings,
         uint64 bindingHash,
         COLLADAFW::SamplerID samplerId)
     {
         auto i = std::find_if(bindings.cbegin(), bindings.cend(),
-            [=](const Assets::ResolvedMaterial::ResourceBinding&b) 
+            [=](const Assets::ResourceBinding&b) 
                 { return b._bindHash == bindingHash; });
         if (i==bindings.cend()) {
 
@@ -338,7 +338,7 @@ namespace RenderCore { namespace ColladaConversion
                 }
                 if (refTexture) {
                     bindings.push_back(
-                        Assets::ResolvedMaterial::ResourceBinding(
+                        Assets::ResourceBinding(
                             bindingHash, refTexture->_resourceName));
                 }
             }

@@ -7,7 +7,7 @@
 #pragma warning(disable:4512)
 
 #include "UITypesBinding.h"
-#include "../../RenderCore/Assets/MaterialSettingsFile.h"
+#include "../../RenderCore/Assets/Material.h"
 #include <msclr\auto_gcroot.h>
 
 namespace GUILayer

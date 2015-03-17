@@ -7,7 +7,7 @@
 #pragma once
 
 #include "ModelVisualisation.h"
-#include "../RenderCore/Assets/AssetUtils.h"
+#include "../RenderCore/Assets/Material.h"
 #include "../RenderCore/Metal/Forward.h"
 
 namespace PlatformRig

@@ -30,7 +30,7 @@
       <Filter>Assets</Filter>
     </ClCompile>
     <ClCompile Include="..\Assets\ModelFormatPlugins.cpp" />
-    <ClCompile Include="..\Assets\MaterialSettingsFile.cpp">
+    <ClCompile Include="..\Assets\Material.cpp">
       <Filter>Assets</Filter>
     </ClCompile>
   </ItemGroup>
@@ -62,7 +62,7 @@
       <Filter>Assets</Filter>
     </ClInclude>
     <ClInclude Include="..\Assets\ModelFormatPlugins.h" />
-    <ClInclude Include="..\Assets\MaterialSettingsFile.h">
+    <ClInclude Include="..\Assets\Material.h">
       <Filter>Assets</Filter>
     </ClInclude>
   </ItemGroup>

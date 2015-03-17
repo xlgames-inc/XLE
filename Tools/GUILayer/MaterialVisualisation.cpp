@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "MaterialVisualisation.h"
-#include "../../RenderCore/Assets/MaterialSettingsFile.h"
+#include "../../RenderCore/Assets/Material.h"
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../SceneEngine/LightingParserContext.h"
 

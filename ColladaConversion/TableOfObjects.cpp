@@ -8,7 +8,7 @@
 #include "RawGeometry.h"
 #include "ConversionObjects.h"
 #include "../RenderCore/Assets/RawAnimationCurve.h"
-#include "../RenderCore/Assets/MaterialSettingsFile.h"
+#include "../RenderCore/Assets/Material.h"
 #include "ModelCommandStream.h"
 #include "../Assets/BlockSerializer.h"
 #include "../ConsoleRig/Log.h"
