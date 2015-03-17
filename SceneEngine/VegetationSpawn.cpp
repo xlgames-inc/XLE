@@ -241,14 +241,14 @@ namespace SceneEngine
             UINT initialCounts[8];
             std::fill(outputBins, &outputBins[dimof(outputBins)], nullptr);
             std::fill(initialCounts, &initialCounts[dimof(initialCounts)], 0);
-            for (unsigned c=0; c<std::min(TotalBufferCount, dimof(outputBins)); ++c) {
+            for (unsigned c=0; c<std::min(TotalBufferCount, (unsigned)dimof(outputBins)); ++c) {
                 outputBins[c] = res._instanceBufferUAVs[c].GetUnderlying();
 
                 unsigned clearValues[] = { 0, 0, 0, 0 };
                 context->Clear(res._instanceBufferUAVs[c], clearValues);
             }
             context->BindCS(RenderCore::MakeResourceList(res._streamOutputSRV[0], res._streamOutputSRV[1]));
-            context->GetUnderlying()->CSSetUnorderedAccessViews(0, std::min(TotalBufferCount, dimof(outputBins)), outputBins, initialCounts);
+            context->GetUnderlying()->CSSetUnorderedAccessViews(0, std::min(TotalBufferCount, (unsigned)dimof(outputBins)), outputBins, initialCounts);
 
             char buffer[64];
             _snprintf_s(buffer, _TRUNCATE, "INSTANCE_BIN_COUNT=%i", TotalBufferCount);
@@ -256,7 +256,7 @@ namespace SceneEngine
             context->Dispatch(StreamOutputMaxCount / 256);
 
                 // clear all of the UAVs again
-            context->UnbindCS<UnorderedAccessView>(0, std::min(TotalBufferCount, dimof(outputBins)));
+            context->UnbindCS<UnorderedAccessView>(0, std::min(TotalBufferCount, (unsigned)dimof(outputBins)));
             context->UnbindCS<ShaderResourceView>(0, 2);
 
             res._isPrepared = true;

@@ -533,7 +533,7 @@ namespace PlatformRig { namespace Overlays
             DrawLines(context,
                 AsPointer(transformedLines.cbegin()),
                 AsPointer(lineColours.cbegin()),
-                transformedLines.size()/2);
+                unsigned(transformedLines.size()/2));
         }
 
     }

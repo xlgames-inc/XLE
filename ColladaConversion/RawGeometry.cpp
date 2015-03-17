@@ -1181,23 +1181,23 @@ namespace RenderCore { namespace ColladaConversion
             //  class members and scaffold structure get written to the serialiser, but the very large stuff
             //  should end up in a separate pool
 
-        unsigned vbOffset = largeResourcesBlock.size();
-        unsigned vbSize = _vertices.size();
+        auto vbOffset = largeResourcesBlock.size();
+        auto vbSize = _vertices.size();
         largeResourcesBlock.insert(largeResourcesBlock.end(), _vertices.begin(), _vertices.end());
 
-        unsigned ibOffset = largeResourcesBlock.size();
-        unsigned ibSize = _indices.size();
+        auto ibOffset = largeResourcesBlock.size();
+        auto ibSize = _indices.size();
         largeResourcesBlock.insert(largeResourcesBlock.end(), _indices.begin(), _indices.end());
 
         _mainDrawInputAssembly.Serialize(outputSerializer);
-        outputSerializer.SerializeValue(vbOffset);
-        outputSerializer.SerializeValue(vbSize);
+        outputSerializer.SerializeValue(unsigned(vbOffset));
+        outputSerializer.SerializeValue(unsigned(vbSize));
         outputSerializer.SerializeValue(unsigned(_indexFormat));
-        outputSerializer.SerializeValue(ibOffset);
-        outputSerializer.SerializeValue(ibSize);
+        outputSerializer.SerializeValue(unsigned(ibOffset));
+        outputSerializer.SerializeValue(unsigned(ibSize));
         
         outputSerializer.SerializeSubBlock(AsPointer(_mainDrawCalls.begin()), AsPointer(_mainDrawCalls.end()));
-        outputSerializer.SerializeValue(_mainDrawCalls.size());
+        outputSerializer.SerializeValue(unsigned(_mainDrawCalls.size()));
     }
 
 

@@ -22,6 +22,12 @@
     //  better functionality for redirecting log messages to different
     //  places!)
 #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
+
+    #if TARGET_64BIT
+            // 64 bit version of easylogging++ requires windows.h!
+        #include "../Core/WinAPI/IncludeWindows.h"
+    #endif
+
     #pragma push_macro("WINAPI")
     #pragma push_macro("WINBASEAPI")
     #pragma push_macro("DECLSPEC_IMPORT")

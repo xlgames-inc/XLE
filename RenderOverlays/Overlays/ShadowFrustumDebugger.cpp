@@ -158,13 +158,13 @@ namespace Overlays
         for (unsigned c=0; c<projections._count; ++c) {
             DebuggingDisplay::DrawFrustum(
                 context, Combine(projections._fullProj[c]._viewMatrix, projections._fullProj[c]._projectionMatrix),
-                cols[std::min(dimof(cols), c)], 0x1);
+                cols[std::min((unsigned)dimof(cols), c)], 0x1);
         }
 
         for (unsigned c=0; c<projections._count; ++c) {
             DebuggingDisplay::DrawFrustum(
                 context, Combine(projections._fullProj[c]._viewMatrix, projections._fullProj[c]._projectionMatrix),
-                cols[std::min(dimof(cols), c)], 0x2);
+                cols[std::min((unsigned)dimof(cols), c)], 0x2);
         }
     }
 

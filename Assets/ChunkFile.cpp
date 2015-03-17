@@ -6,9 +6,9 @@
 
 #include "ChunkFile.h"
 #include "Assets.h"
-#include "../../Utility/Streams/FileUtils.h"
-#include "../../Utility/PtrUtils.h"
-#include "../../Utility/MemoryUtils.h"
+#include "../Utility/Streams/FileUtils.h"
+#include "../Utility/PtrUtils.h"
+#include "../Utility/MemoryUtils.h"
 
 namespace Serialization { namespace ChunkFile
 {
@@ -126,7 +126,8 @@ namespace Serialization { namespace ChunkFile
         _activeChunk._type = type;
         _activeChunk._chunkVersion = version;
         XlCopyString(_activeChunk._name, name);
-        _activeChunk._fileOffset = _activeChunkStart = TellP();
+        _activeChunkStart = TellP();
+        _activeChunk._fileOffset = (ChunkFile::SizeType)_activeChunkStart;
         _activeChunk._size = 0; // unknown currently
 
         _hasActiveChunk = true;
@@ -138,7 +139,7 @@ namespace Serialization { namespace ChunkFile
         auto oldLoc = TellP();
         auto chunkHeaderLoc = sizeof(ChunkFileHeader) + _activeChunkIndex * sizeof(ChunkHeader);
         Seek(chunkHeaderLoc, SEEK_SET);
-        _activeChunk._size = std::max(size_t(0), oldLoc - _activeChunkStart);
+        _activeChunk._size = (ChunkFile::SizeType)std::max(size_t(0), oldLoc - _activeChunkStart);
         Write(&_activeChunk, sizeof(ChunkHeader), 1);
         Seek(oldLoc, SEEK_SET);
         ++_activeChunkIndex;

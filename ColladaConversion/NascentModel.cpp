@@ -1276,9 +1276,9 @@ namespace RenderCore { namespace ColladaConversion
         size_t size = Serialization::Block_GetSize(block.get());
 
         Serialization::ChunkFile::ChunkHeader scaffoldChunk(
-            RenderCore::Assets::ChunkType_ModelScaffold, 0, _name.c_str(), size);
+            RenderCore::Assets::ChunkType_ModelScaffold, 0, _name.c_str(), unsigned(size));
         Serialization::ChunkFile::ChunkHeader largeBlockChunk(
-            RenderCore::Assets::ChunkType_ModelScaffoldLargeBlocks, 0, _name.c_str(), largeResourcesBlock.size());
+            RenderCore::Assets::ChunkType_ModelScaffoldLargeBlocks, 0, _name.c_str(), (unsigned)largeResourcesBlock.size());
 
         NascentChunkArray result(
             std::unique_ptr<NascentChunk[], Internal::CrossDLLDeletor>(
@@ -1301,7 +1301,7 @@ namespace RenderCore { namespace ColladaConversion
         size_t size = Serialization::Block_GetSize(block.get());
 
         Serialization::ChunkFile::ChunkHeader scaffoldChunk(
-            RenderCore::Assets::ChunkType_AnimationSet, 0, _name.c_str(), size);
+            RenderCore::Assets::ChunkType_AnimationSet, 0, _name.c_str(), unsigned(size));
 
         NascentChunkArray result(
             std::unique_ptr<NascentChunk[], Internal::CrossDLLDeletor>(
@@ -1322,7 +1322,7 @@ namespace RenderCore { namespace ColladaConversion
         size_t size = Serialization::Block_GetSize(block.get());
 
         Serialization::ChunkFile::ChunkHeader scaffoldChunk(
-            RenderCore::Assets::ChunkType_Skeleton, 0, _name.c_str(), size);
+            RenderCore::Assets::ChunkType_Skeleton, 0, _name.c_str(), unsigned(size));
 
         NascentChunkArray result(
             std::unique_ptr<NascentChunk[], Internal::CrossDLLDeletor>(

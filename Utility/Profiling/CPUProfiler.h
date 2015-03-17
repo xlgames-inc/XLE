@@ -11,6 +11,11 @@
 #include <vector>
 #include <assert.h>
 
+#if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
+    typedef union _LARGE_INTEGER LARGE_INTEGER;
+    extern "C" __declspec(dllimport) int __stdcall QueryPerformanceCounter(LARGE_INTEGER *);
+#endif
+
 namespace Utility
 {
     /// <summary>Hierarchical CPU call Profiler</summary>
@@ -115,11 +120,6 @@ namespace Utility
             uint32 _aeStackI;
         #endif
     };
-
-    #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
-        typedef union _LARGE_INTEGER LARGE_INTEGER;
-        extern "C" __declspec(dllimport) int __stdcall QueryPerformanceCounter(LARGE_INTEGER *);
-    #endif
     
     uint32 XlGetCurrentThreadId();
 

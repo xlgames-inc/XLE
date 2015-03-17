@@ -2342,7 +2342,7 @@ namespace SceneEngine
                     desc._bindFlags = BindFlag::ShaderResource;
                     desc._textureDesc._nativePixelFormat = destFormat;
                     auto compressedBuffer = bufferUploads.Transaction_Immediate(
-                            desc, BufferUploads::CreateBasicPacket(final.slicePitch, final.pixels, std::make_pair(final.rowPitch, final.slicePitch)).get());
+                            desc, BufferUploads::CreateBasicPacket(final.slicePitch, final.pixels, std::make_pair(unsigned(final.rowPitch), unsigned(final.slicePitch))).get());
 
                     resamplingBuffer = compressedBuffer;   
                 }
@@ -2376,7 +2376,7 @@ namespace SceneEngine
             ThrowException(::Exceptions::BasicLabel("Parse error while loading terrain texture list"));
 
         Data data;
-        bool loadResult = data.Load((const char*)file.get(), fileSize);
+        bool loadResult = data.Load((const char*)file.get(), int(fileSize));
         if (!loadResult)
             ThrowException(::Exceptions::BasicLabel("Parse error while loading terrain texture list"));
 

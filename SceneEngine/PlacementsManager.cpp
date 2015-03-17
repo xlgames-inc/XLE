@@ -118,7 +118,7 @@ namespace SceneEngine
     };
 
     auto        Placements::GetObjectReferences() const -> const ObjectReference*   { return AsPointer(_objects.begin()); }
-    unsigned    Placements::GetObjectReferenceCount() const                         { return _objects.size(); }
+    unsigned    Placements::GetObjectReferenceCount() const                         { return unsigned(_objects.size()); }
     const void* Placements::GetFilenamesBuffer() const                              { return AsPointer(_filenamesBuffer.begin()); }
 
     static const uint64 ChunkType_Placements = ConstHash64<'Plac','emen','ts'>::Value;
@@ -141,8 +141,8 @@ namespace SceneEngine
 
         PlacementsHeader hdr;
         hdr._version = 0;
-        hdr._objectRefCount = _objects.size();
-        hdr._filenamesBufferSize = _filenamesBuffer.size();
+        hdr._objectRefCount = (unsigned)_objects.size();
+        hdr._filenamesBufferSize = unsigned(_filenamesBuffer.size());
         hdr._dummy = 0;
         fileWriter.Write(&hdr, sizeof(hdr), 1);
         fileWriter.Write(AsPointer(_objects.begin()), sizeof(ObjectReference), hdr._objectRefCount);
@@ -209,9 +209,9 @@ namespace SceneEngine
                     AsPointer(replacementContent.begin() + sizeof(uint64)),
                     newString, length);
 
-                replacementStart = std::distance(_filenamesBuffer.begin(), starti);
-                preReplacementEnd = std::distance(_filenamesBuffer.begin(), i);
-                postReplacementEnd = replacementStart + replacementContent.size();
+                replacementStart = (unsigned)std::distance(_filenamesBuffer.begin(), starti);
+                preReplacementEnd = (unsigned)std::distance(_filenamesBuffer.begin(), i);
+                postReplacementEnd = unsigned(replacementStart + replacementContent.size());
                 i = _filenamesBuffer.erase(starti, i);
                 auto dst = std::distance(_filenamesBuffer.begin(), i);
                 _filenamesBuffer.insert(i, replacementContent.begin(), replacementContent.end());
@@ -962,7 +962,7 @@ namespace SceneEngine
         }
 
         if (result == ~unsigned(0x0)) {
-            result = _filenamesBuffer.size();
+            result = unsigned(_filenamesBuffer.size());
             auto length = XlStringLen(str);
             _filenamesBuffer.resize(_filenamesBuffer.size() + sizeof(uint64) + length + sizeof(ResChar));
             auto* dest = &_filenamesBuffer[result];
@@ -1288,7 +1288,7 @@ namespace SceneEngine
         assert(_originalGuids.size() == _originalState.size());
         assert(_originalGuids.size() == _objects.size());
         assert(_originalGuids.size() == _pushedGuids.size());
-        return _originalGuids.size();
+        return (unsigned)_originalGuids.size();
     }
 
     std::pair<Float3, Float3>   Transaction::GetLocalBoundingBox(unsigned index) const

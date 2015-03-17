@@ -58,8 +58,8 @@ namespace Utility
 
         if (_objects.size() < _cacheSize) {
             _objects.push_back(object);
-            _lookupTable.insert(i, std::make_pair(hashName, _objects.size()-1));
-            _queue.BringToFront(_objects.size()-1);
+            _lookupTable.insert(i, std::make_pair(hashName, unsigned(_objects.size()-1)));
+            _queue.BringToFront(unsigned(_objects.size()-1));
             return;
         }
 

@@ -103,7 +103,7 @@ namespace RenderCore { namespace Assets
 
         static unsigned GetDrawCallCount(const ModelScaffold& scaffold, unsigned geoCallIndex)
         {
-            return GetGeo(scaffold, geoCallIndex)._drawCallsCount;
+            return (unsigned)GetGeo(scaffold, geoCallIndex)._drawCallsCount;
         }
 
         static MaterialGuid ScaffoldMaterialIndex(const ModelScaffold& scaffold, unsigned geoCallIndex, unsigned drawCallIndex)
@@ -250,8 +250,8 @@ namespace RenderCore { namespace Assets
             for (auto i=materialResources.begin(); i!=materialResources.end(); ++i) {
                 std::string shaderName = DefaultShader;
                 i->second._shaderName = sharedStateSet.InsertShaderName(shaderName);
-                i->second._constantBuffer = InsertOrCombine(prescientMaterialConstantBuffers, std::vector<uint8>(constants));
-                i->second._texturesIndex = std::distance(materialResources.begin(), i);
+                i->second._constantBuffer = (unsigned)InsertOrCombine(prescientMaterialConstantBuffers, std::vector<uint8>(constants));
+                i->second._texturesIndex = (unsigned)std::distance(materialResources.begin(), i);
             }
 
                 // configure the texture bind points array & material parameters box
@@ -475,7 +475,7 @@ namespace RenderCore { namespace Assets
                 meshes.push_back(
                     Pimpl::BuildMesh(
                         geoInst, geo, workingBuffers, sharedStateSet,
-                        AsPointer(textureBindPoints.cbegin()), textureBindPoints.size(),
+                        AsPointer(textureBindPoints.cbegin()), (unsigned)textureBindPoints.size(),
                         paramBoxDesc));
                 mesh = meshes.end()-1;
             }
@@ -521,19 +521,19 @@ namespace RenderCore { namespace Assets
                 //  is none, we can skip it completely
             assert(geoInst._geoId < meshData._boundSkinnedControllerCount);
             auto& geo = meshData._boundSkinnedControllers[geoInst._geoId];
-            if (!AtLeastOneValidDrawCall(geo, scaffold, geoCallCount + gi, materialResources)) { continue; }
+            if (!AtLeastOneValidDrawCall(geo, scaffold, unsigned(geoCallCount + gi), materialResources)) { continue; }
 
                 // if we encounter the same mesh multiple times, we don't need to store it every time
             auto mesh = FindIf(skinnedMeshes, [=](const Pimpl::SkinnedMesh& mesh) { return mesh._id == geoInst._geoId; });
             if (mesh == skinnedMeshes.end()) {
                 skinnedMeshes.push_back(
                     Pimpl::BuildMesh(geoInst, geo, workingBuffers, sharedStateSet, 
-                        AsPointer(textureBindPoints.cbegin()), textureBindPoints.size(),
+                        AsPointer(textureBindPoints.cbegin()), (unsigned)textureBindPoints.size(),
                         paramBoxDesc));
                 skinnedBindings.push_back(
                     Pimpl::BuildAnimBinding(
                         geoInst, geo, sharedStateSet, 
-                        AsPointer(textureBindPoints.cbegin()), textureBindPoints.size()));
+                        AsPointer(textureBindPoints.cbegin()), (unsigned)textureBindPoints.size()));
 
                 mesh = skinnedMeshes.end()-1;
             }
@@ -542,7 +542,7 @@ namespace RenderCore { namespace Assets
                 auto& d = geo._drawCalls[di];
                 if (!d._indexCount) { continue; }
                 
-                auto scaffoldMatIndex = ScaffoldMaterialIndex(scaffold, geoCallCount + gi, di);
+                auto scaffoldMatIndex = ScaffoldMaterialIndex(scaffold, unsigned(geoCallCount + gi), di);
                 auto subMatResI = LowerBound(materialResources, scaffoldMatIndex);
                 if (subMatResI == materialResources.cend() || subMatResI->first != scaffoldMatIndex) {
                     continue;   // missing shader name means a "no-draw" shader
@@ -629,8 +629,8 @@ namespace RenderCore { namespace Assets
         pimpl->_levelOfDetail = levelOfDetail;
         
         #if defined(_DEBUG)
-            pimpl->_vbSize = nascentVB.size();
-            pimpl->_ibSize = nascentIB.size();
+            pimpl->_vbSize = (unsigned)nascentVB.size();
+            pimpl->_ibSize = (unsigned)nascentIB.size();
             pimpl->_boundTextureNames = std::move(boundTextureNames);
             pimpl->_paramBoxDesc = std::move(paramBoxDesc._descriptions);
         #endif

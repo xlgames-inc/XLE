@@ -46,14 +46,14 @@ namespace RenderCore
     SharedPkt MakeSharedPkt(size_t size)
     {
         auto& heap = SharedPkt::GetHeap();
-        return SharedPkt(heap.Allocate(size), size);
+        return SharedPkt(heap.Allocate((unsigned)size), size);
     }
 
     SharedPkt MakeSharedPkt(const void* begin, const void* end)
     {
         auto& heap = SharedPkt::GetHeap();
         auto size = size_t(ptrdiff_t(end) - ptrdiff_t(begin));
-        SharedPkt pkt(heap.Allocate(size), size);
+        SharedPkt pkt(heap.Allocate((unsigned)size), size);
         if (pkt.begin()) {
             XlCopyMemory(pkt.begin(), begin, size);
         }

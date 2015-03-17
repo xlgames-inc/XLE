@@ -129,7 +129,7 @@ namespace Utility
     {
         if (!(size * count)) return 0;
         DWORD bytesRead = 0;
-        auto result = ReadFile(_file, buffer, size * count, &bytesRead, nullptr);
+        auto result = ReadFile(_file, buffer, DWORD(size * count), &bytesRead, nullptr);
         auto errorCode = GetLastError();
         assert((bytesRead%size)==0); (void)errorCode;
         return result?(bytesRead/size):0;
@@ -139,7 +139,7 @@ namespace Utility
     {
         if (!(size * count)) return 0;
         DWORD bytesWritten = 0;
-        auto result = WriteFile(_file, buffer, size * count, &bytesWritten, nullptr);
+        auto result = WriteFile(_file, buffer, DWORD(size * count), &bytesWritten, nullptr);
         assert((bytesWritten%size)==0);
         return result?(bytesWritten/size):0;
     }
@@ -153,7 +153,7 @@ namespace Utility
         case SEEK_END: underlingMoveMethod = FILE_END; break;
         default: assert(0);
         }
-        return SetFilePointer(_file, offset, nullptr, underlingMoveMethod);
+        return SetFilePointer(_file, LONG(offset), nullptr, underlingMoveMethod);
     }
 
     size_t   BasicFile::TellP() const never_throws

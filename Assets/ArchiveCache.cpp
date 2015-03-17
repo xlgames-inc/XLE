@@ -259,7 +259,7 @@ namespace Assets
                 if (i->_pendingCommitPtr == ~unsigned(0x0)) {
 
                         // we need to allocate a new block
-                    auto newBlockSize = i->_data->size();
+                    auto newBlockSize = (unsigned)i->_data->size();
                     
                     #if defined(_DEBUG)
                         auto originalHeapSize = spanningHeap.CalculateHeapSize();
@@ -325,12 +325,12 @@ namespace Assets
                 auto flattenedHeap = spanningHeap.Flatten();
             
                 ChunkHeader chunkHeader(
-                    ChunkType_ArchiveDirectory, 0, "ArchiveCache", sizeof(DirectoryChunk) + blocks.size() * sizeof(DirectoryChunk::Block) + flattenedHeap.second);
+                    ChunkType_ArchiveDirectory, 0, "ArchiveCache", unsigned(sizeof(DirectoryChunk) + blocks.size() * sizeof(DirectoryChunk::Block) + flattenedHeap.second));
                 chunkHeader._fileOffset = sizeof(ChunkFileHeader) + sizeof(ChunkHeader);
 
                 DirectoryChunk chunkData;
-                chunkData._blockCount = blocks.size();
-                chunkData._spanningHeapSize = flattenedHeap.second;
+                chunkData._blockCount = (unsigned)blocks.size();
+                chunkData._spanningHeapSize = (unsigned)flattenedHeap.second;
 
                     // Write blank header data to the file
                     //  note that there's a potential problem here, because
@@ -391,7 +391,7 @@ namespace Assets
                     debugFile.BeginChunk(ChunkType_ArchiveAttachments, 0, "ArchiveAttachments");
 
                     AttachedStringChunk hdr;
-                    hdr._blockCount = attachedStrings.size();
+                    hdr._blockCount = (unsigned)attachedStrings.size();
                     debugFile.Write(&hdr, sizeof(AttachedStringChunk), 1);
 
                     unsigned offset = 0;
@@ -399,7 +399,7 @@ namespace Assets
                         AttachedStringChunk::Block block;
                         block._id = b->first;
                         block._start = offset;
-                        block._size = b->second.size();
+                        block._size = (unsigned)b->second.size();
                         offset += block._size;
                         debugFile.Write(&block, sizeof(block), 1);
                     }
@@ -458,7 +458,7 @@ namespace Assets
 
                 attachedBlocks.resize(dirHdr._blockCount);
                 debugFile.Read(AsPointer(attachedBlocks.begin()), sizeof(AttachedStringChunk::Block), dirHdr._blockCount);
-                debugFileStartPoint = debugFile.TellP();
+                debugFileStartPoint = (unsigned)debugFile.TellP();
             } CATCH (...) {
             } CATCH_END
         #endif
@@ -496,7 +496,7 @@ namespace Assets
 
             BlockMetrics newMetrics;
             newMetrics._id = p->_id;
-            newMetrics._size = p->_data->size();
+            newMetrics._size = (unsigned)p->_data->size();
             newMetrics._offset = ~unsigned(0x0);
             #if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
                 newMetrics._attachedString = p->_attachedString;

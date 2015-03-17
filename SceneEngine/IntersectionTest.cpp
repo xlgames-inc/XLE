@@ -110,7 +110,7 @@ namespace SceneEngine
             &object, &object+1);
 
         auto results = stateContext.GetResults();
-        fnResult.first = results.size();
+        fnResult.first = unsigned(results.size());
         for (auto i=results.cbegin(); i!=results.cend(); ++i) {
             if (i->_intersectionDepth < fnResult.second) {
                 fnResult.second = i->_intersectionDepth;

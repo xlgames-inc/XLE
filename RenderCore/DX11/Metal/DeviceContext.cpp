@@ -161,7 +161,7 @@ namespace RenderCore { namespace Metal_DX11
             //          the maximum size
         ID3D::ShaderResourceView* srv[16];
         assert(count <= dimof(srv));
-        count = std::min(count, dimof(srv));
+        count = std::min(count, (unsigned)dimof(srv));
         std::fill(srv, &srv[count], nullptr);
         _underlying->VSSetShaderResources(startSlot, count, srv);
     }
@@ -171,7 +171,7 @@ namespace RenderCore { namespace Metal_DX11
     {
         ID3D::ShaderResourceView* srv[16];
         assert(count <= dimof(srv));
-        count = std::min(count, dimof(srv));
+        count = std::min(count, (unsigned)dimof(srv));
         std::fill(srv, &srv[count], nullptr);
         _underlying->GSSetShaderResources(startSlot, count, srv);
     }
@@ -181,7 +181,7 @@ namespace RenderCore { namespace Metal_DX11
     {
         ID3D::ShaderResourceView* srv[16];
         assert(count <= dimof(srv));
-        count = std::min(count, dimof(srv));
+        count = std::min(count, (unsigned)dimof(srv));
         std::fill(srv, &srv[count], nullptr);
         _underlying->PSSetShaderResources(startSlot, count, srv);
     }
@@ -191,7 +191,7 @@ namespace RenderCore { namespace Metal_DX11
     {
         ID3D::ShaderResourceView* srv[16];
         assert(count <= dimof(srv));
-        count = std::min(count, dimof(srv));
+        count = std::min(count, (unsigned)dimof(srv));
         std::fill(srv, &srv[count], nullptr);
         _underlying->CSSetShaderResources(startSlot, count, srv);
     }
@@ -205,7 +205,7 @@ namespace RenderCore { namespace Metal_DX11
             unsigned(-1), unsigned(-1), unsigned(-1), unsigned(-1), unsigned(-1), unsigned(-1), unsigned(-1), unsigned(-1)
         };
         assert(count <= dimof(uoavs));
-        count = std::min(count, dimof(uoavs));
+        count = std::min(count, (unsigned)dimof(uoavs));
         std::fill(uoavs, &uoavs[count], nullptr);
         _underlying->CSSetUnorderedAccessViews(startSlot, count, uoavs, initialCounts);
     }

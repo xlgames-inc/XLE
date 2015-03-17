@@ -68,7 +68,7 @@ namespace RenderCore { namespace Assets
         BasicFile outputFile(destinationFilename, "wb");
         outputFile.Write(&header, sizeof(header), 1);
 
-        unsigned trackingOffset = outputFile.TellP() + sizeof(ChunkHeader) * chunks.second;
+        unsigned trackingOffset = unsigned(outputFile.TellP() + sizeof(ChunkHeader) * chunks.second);
         for (unsigned i=0; i<chunks.second; ++i) {
             auto& c = chunks.first[i];
             auto hdr = c._hdr;

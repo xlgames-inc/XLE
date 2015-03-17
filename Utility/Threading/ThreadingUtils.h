@@ -63,7 +63,7 @@
 /// as well. See the MSVC documentation for _ReadWriteBarrier. The documentation is a little unclear
 /// about whether there is a runtime memory barrier (and on what platforms it takes effect).
 
-#if THREAD_LIBRARY == THREAD_LIBRARY_TINYTHREAD
+#if (THREAD_LIBRARY == THREAD_LIBRARY_TINYTHREAD) || (THREAD_LIBRARY == THREAD_LIBRARY_STDCPP)
 
     #include <intrin.h>
 

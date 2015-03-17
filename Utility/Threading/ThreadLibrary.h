@@ -6,9 +6,20 @@
 
 #pragma once
 
+#include "../../Core/SelectConfiguration.h"
+
 #define THREAD_LIBRARY_TBB              1
 #define THREAD_LIBRARY_TINYTHREAD       2
 #define THREAD_LIBRARY_STDCPP           3
 
-#define THREAD_LIBRARY THREAD_LIBRARY_TINYTHREAD
+#if COMPILER_ACTIVE == COMPILER_TYPE_MSVC
+    #if _MSC_VER >= 1700
+        #define THREAD_LIBRARY THREAD_LIBRARY_STDCPP
+    #else
+            // older versions of Visual Studio standard library don't have threading support types
+        #define THREAD_LIBRARY THREAD_LIBRARY_TINYTHREAD
+    #endif
+#else
+    #define THREAD_LIBRARY THREAD_LIBRARY_STDCPP
+#endif
 

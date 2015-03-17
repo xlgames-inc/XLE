@@ -129,10 +129,10 @@ namespace SceneEngine
             Payload payload;
             InitPayload(payload, workingObjects);
             _payloads.push_back(std::move(payload));
-            newNode._payloadID = _payloads.size()-1;
+            newNode._payloadID = unsigned(_payloads.size()-1);
 
             if (parent) {
-                parent->_children[childIndex] = _nodes.size();
+                parent->_children[childIndex] = unsigned(_nodes.size());
             }
             _nodes.push_back(newNode);
             return;
@@ -173,7 +173,7 @@ namespace SceneEngine
             const bool useAdaptiveDivision = true;
             if (constant_expression<useAdaptiveDivision>::result()) {
 
-                auto objCount =  sortedObjects.size();
+                auto objCount =  unsigned(sortedObjects.size());
                 auto testCount = std::max(size_t(1), objCount/size_t(4));
 
                     //  Attempt to optimise X dividing line
@@ -339,12 +339,12 @@ namespace SceneEngine
             Payload payload;
             InitPayload(payload, dividedObjects[4]);
             _payloads.push_back(std::move(payload));
-            newNode._payloadID = _payloads.size()-1;
+            newNode._payloadID = unsigned(_payloads.size()-1);
         }
 
         assert(dividedObjects[0].size() + dividedObjects[1].size() + dividedObjects[2].size() + dividedObjects[3].size() + dividedObjects[4].size() == workingObjects.size());
 
-        auto newNodeId = _nodes.size();
+        auto newNodeId = unsigned(_nodes.size());
         if (parent) {
             parent->_children[childIndex] = newNodeId;
         }
@@ -538,14 +538,14 @@ namespace SceneEngine
                     if (treeDepthFilter < 0 || signed(n->_treeDepth) == treeDepthFilter) {
                         DrawBoundingBox(
                             context, n->_boundary, cellToWorld,
-                            cols[std::min(dimof(cols), n->_treeDepth)], 0x1);
+                            cols[std::min((unsigned)dimof(cols), n->_treeDepth)], 0x1);
                     }
                 }
                 for (auto n=nodes.cbegin(); n!=nodes.cend(); ++n) {
                     if (treeDepthFilter < 0 || signed(n->_treeDepth) == treeDepthFilter) {
                         DrawBoundingBox(
                             context, n->_boundary, cellToWorld,
-                            cols[std::min(dimof(cols), n->_treeDepth)], 0x2);
+                            cols[std::min((unsigned)dimof(cols), n->_treeDepth)], 0x2);
                     }
                 }
             }

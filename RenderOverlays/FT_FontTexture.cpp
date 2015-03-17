@@ -621,7 +621,7 @@ FontCharID FT_FontTextureMgr::FontFace::FindEmptyCharSlot(const FontChar& fc, in
                 //                      FontFace keeps indices into the _slotList array. So we can't
                 //                      change the position of existing slot arrays
             _slotList.push_back(_texHeap->CreateCharSlotArray(_size, maxCount));
-            slotIndex = _slotList.size()-1;
+            slotIndex = unsigned(_slotList.size()-1);
             slot = _slotList[slotIndex].get();
 
             // ClearFontTextureRegion(slot->GetSlotHeight(), slot->GetSlotHeightEnd());

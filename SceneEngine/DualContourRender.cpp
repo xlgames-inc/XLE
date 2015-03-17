@@ -277,7 +277,7 @@ namespace SceneEngine
         pimpl->_vertexBuffer = Metal::VertexBuffer(
             AsPointer(mesh._vertices.cbegin()), mesh._vertices.size() * sizeof(DualContourMesh::Vertex));
         pimpl->_indexFormat = (indexSize==4)?Metal::NativeFormat::R32_UINT:Metal::NativeFormat::R16_UINT;
-        pimpl->_indexCount = ibDataCount;
+        pimpl->_indexCount = (unsigned)ibDataCount;
 
         _pimpl = std::move(pimpl);
     }
@@ -350,7 +350,7 @@ namespace SceneEngine
                 context->Bind(Metal::Topology::TriangleList);
                 context->Bind(Techniques::CommonResources()._dssReadWrite);
 
-                context->DrawIndexed(ibDataCount);
+                context->DrawIndexed(unsigned(ibDataCount));
             }
         }
         CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }

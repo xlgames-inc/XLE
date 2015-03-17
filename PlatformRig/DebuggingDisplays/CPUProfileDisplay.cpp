@@ -225,7 +225,7 @@ namespace PlatformRig { namespace Overlays
         }
 
         context->DrawLines(
-            ProjectionMode::P2D, dividingLines, divingLinesIterator - dividingLines, settings._dividingLineColor);
+            ProjectionMode::P2D, dividingLines, unsigned(divingLinesIterator - dividingLines), settings._dividingLineColor);
     }
 
     void CPUProfileDisplay::Render(

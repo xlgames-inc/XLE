@@ -196,7 +196,7 @@ namespace RenderCore { namespace Assets
     {
         unsigned nodeCount = 0;
         for (unsigned l=0; l<treeDepth; ++l) {
-            size_t fieldNodeCount = (1<<l) * (1<<l);
+            unsigned fieldNodeCount = (1<<l) * (1<<l);
             nodeCount += fieldNodeCount;
         }
         return nodeCount;
@@ -366,13 +366,13 @@ namespace RenderCore { namespace Assets
             std::vector<uint8> compressionData;
             compressionData.resize(sizeof(float)*2);
             *(std::pair<float, float>*)AsPointer(compressionData.begin()) = std::make_pair(minValue, (maxValue - minValue) / float(0xffff));
-            return CoverageDataResult(std::move(compressionData), Metal::NativeFormat::R16_UINT, rawDataSize);
+            return CoverageDataResult(std::move(compressionData), Metal::NativeFormat::R16_UINT, (unsigned)rawDataSize);
 
         } else if (compression == Compression::None) {
 
             auto rawDataSize = sizeof(Element)*dimensionsInElements*dimensionsInElements;
             destinationFile.Write(sampledValues.get(), rawDataSize, 1);
-            return CoverageDataResult(std::vector<uint8>(), AsFormat<Element>(), rawDataSize);
+            return CoverageDataResult(std::vector<uint8>(), AsFormat<Element>(), (unsigned)rawDataSize);
 
         } else {
             return CoverageDataResult(std::vector<uint8>(), Metal::NativeFormat::Unknown, 0);

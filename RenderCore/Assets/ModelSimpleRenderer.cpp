@@ -513,10 +513,10 @@ namespace RenderCore { namespace Assets { namespace Simple
                 }
                 if (c == prescientMaterialConstantBuffers.cend()) {
                     prescientMaterialConstantBuffers.push_back(std::move(buffer));
-                    materialIdToConstantBuffer.push_back(std::make_pair(d->_subMaterialIndex, prescientMaterialConstantBuffers.size()-1));
+                    materialIdToConstantBuffer.push_back(std::make_pair(d->_subMaterialIndex, unsigned(prescientMaterialConstantBuffers.size()-1)));
                 } else {
                     auto index = std::distance(prescientMaterialConstantBuffers.cbegin(), c);
-                    materialIdToConstantBuffer.push_back(std::make_pair(d->_subMaterialIndex, index));
+                    materialIdToConstantBuffer.push_back(std::make_pair(d->_subMaterialIndex, unsigned(index)));
                 }
 
             }
@@ -560,8 +560,8 @@ namespace RenderCore { namespace Assets { namespace Simple
 
             Pimpl::Mesh mesh;
             mesh._id = meshId;
-            mesh._ibOffset = nascentIB.size();
-            mesh._vbOffset = nascentVB.size();
+            mesh._ibOffset = (unsigned)nascentIB.size();
+            mesh._vbOffset = (unsigned)nascentVB.size();
             mesh._indexFormat = sourceMesh->_indexFormat;
 
             nascentIB.resize(mesh._ibOffset + sourceMesh->_indexBufferSize);
@@ -629,7 +629,7 @@ namespace RenderCore { namespace Assets { namespace Simple
             }
 
             auto techniqueInterfaceIndex = sharedStateSet.InsertTechniqueInterface(
-                inputDesc, vertexElementCount, AsPointer(textureBindPoints.cbegin()), textureBindPoints.size());
+                inputDesc, vertexElementCount, AsPointer(textureBindPoints.cbegin()), (unsigned)textureBindPoints.size());
 
             for (auto d = sourceMesh->_drawCalls.cbegin(); d!=sourceMesh->_drawCalls.cend(); ++d) {
                 if (!d->_indexCount)
@@ -645,7 +645,7 @@ namespace RenderCore { namespace Assets { namespace Simple
                 techniqueInterfaceIndices.push_back(techniqueInterfaceIndex);
                 auto i = std::find(subMaterialIndexToResourceIndex.cbegin(), subMaterialIndexToResourceIndex.cend(), d->_subMaterialIndex);
                 assert(i != subMaterialIndexToResourceIndex.cend());
-                resourcesIndices.push_back(std::distance(subMaterialIndexToResourceIndex.cbegin(), i));
+                resourcesIndices.push_back((unsigned)std::distance(subMaterialIndexToResourceIndex.cbegin(), i));
 
                 auto mpb = std::find_if(materialIdToMaterialParameterBox.cbegin(), materialIdToMaterialParameterBox.cend(),
                     [=](const std::pair<int, unsigned>& p) { return p.first == d->_subMaterialIndex; });
@@ -719,7 +719,7 @@ namespace RenderCore { namespace Assets { namespace Simple
         pimpl->_constantBufferIndices = std::move(constantBufferIndices);
         pimpl->_texturesPerMaterial = texturesPerMaterial;
         _pimpl = std::move(pimpl);
-        _scaffoldLODIndex = std::distance(scaffold._lods.cbegin(), lod);
+        _scaffoldLODIndex = (unsigned)std::distance(scaffold._lods.cbegin(), lod);
         _scaffold = &scaffold;
         _levelOfDetail = levelOfDetail;
     }

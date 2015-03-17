@@ -142,7 +142,7 @@ namespace RenderCore { namespace Metal_DX11
                     timeMarker = (uint64(ft.dwHighDateTime) << 32ull) | uint64(ft.dwLowDateTime);
                     file = std::make_unique<uint8[]>(size);
                     DWORD byteRead = 0;
-                    auto b = ReadFile(handle, file.get(), size, &byteRead, nullptr);
+                    auto b = ReadFile(handle, file.get(), DWORD(size), &byteRead, nullptr);
                     assert(b); (void)b;
                     CloseHandle(handle);
                 }

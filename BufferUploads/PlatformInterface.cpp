@@ -96,7 +96,7 @@ namespace BufferUploads { namespace PlatformInterface
                 rows = mipMapDesc._height;
             }
 
-            rows = std::min(rows, sourceDataSize/sourceRowPitch);
+            rows = std::min(rows, unsigned(sourceDataSize/sourceRowPitch));
             for (unsigned j = 0; j < rows; j++) {
                 assert((size_t(destination) + sourceRowPitch - size_t(originalDest)) <= destinationDataSize);
                 XlCopyMemoryAlign16(destination, sourceData, sourceRowPitch);

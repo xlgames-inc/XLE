@@ -51,6 +51,7 @@
     namespace Utility { namespace Threading
     {
         typedef std::mutex Mutex;
+        typedef std::recursive_mutex RecursiveMutex;
         typedef std::mutex ReadWriteMutex;      // C++11 doesn't have a read/write lock (coming in C++14, apparently)
     }}
     using namespace Utility;

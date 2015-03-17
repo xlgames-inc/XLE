@@ -116,7 +116,7 @@ namespace RenderCore { namespace Assets
 
             //  outputs from skinning are always float3's currently. So, we can get the vertex stride
             //  just from the outputs count
-        unsigned outputVertexStride = skinningOutputLayout.size() * 3 * sizeof(float);
+        unsigned outputVertexStride = unsigned(skinningOutputLayout.size() * 3 * sizeof(float));
 
         using namespace Metal;
         _geometryShader = GeometryShader(
@@ -428,7 +428,7 @@ namespace RenderCore { namespace Assets
         VertexElement convertedElements[16];
         unsigned convertedCount = 
             std::min( dstCount, 
-                std::min( dimof(convertedElements), 
+                std::min((unsigned)dimof(convertedElements), 
                     scaffoldGeo._animatedVertexElements._ia._elementCount));
         ApplyConversionFromStreamOutput(
             convertedElements, scaffoldGeo._animatedVertexElements._ia._elements, convertedCount);

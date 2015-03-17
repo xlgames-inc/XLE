@@ -496,7 +496,7 @@ namespace SceneEngine
                         //  query the density field again to get the normal at this location.
                     auto normal = fn.GetNormal(pt);
                     vertices.push_back(DualContourMesh::Vertex(pt, normal));
-                    vertexIndices[index] = vertices.size()-1;
+                    vertexIndices[index] = unsigned(vertices.size()-1);
                 }
             }
         }

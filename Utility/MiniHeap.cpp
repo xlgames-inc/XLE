@@ -83,18 +83,18 @@ namespace Utility
         class Block
         {
         public:
-            size_t  _offset, _size;
+            unsigned  _offset, _size;
             Interlocked::Value  _refCount;
         };
         std::vector<Block>  _blocks;
 
-        void*   Allocate(size_t size);
+        void*   Allocate(unsigned size);
 
         class CompareBlockOffset
         {
         public:
-            bool operator()(const Block& lhs, size_t rhs) { return lhs._offset < rhs; }
-            bool operator()(size_t lhs, const Block& rhs) { return lhs < rhs._offset; }
+            bool operator()(const Block& lhs, unsigned rhs) { return lhs._offset < rhs; }
+            bool operator()(unsigned lhs, const Block& rhs) { return lhs < rhs._offset; }
             bool operator()(const Block& lhs, const Block& rhs) { return lhs._offset < rhs._offset; }
         };
 
@@ -107,7 +107,7 @@ namespace Utility
         FreePage& operator=(const FreePage&);
     };
 
-    void*   FreePage::Allocate(size_t size)
+    void*   FreePage::Allocate(unsigned size)
     {
         unsigned offset = _spanningHeap.Allocate(size);
         if (offset == ~unsigned(0x0)) {
@@ -219,7 +219,7 @@ namespace Utility
         return (blockSize + 16 - 1) / 16 - 1;
     }
 
-    auto MiniHeap::Allocate(size_t size) -> Allocation
+    auto MiniHeap::Allocate(unsigned size) -> Allocation
     {
         if (!size) { return Allocation(); }     // zero size allocation is valid, but wierd
 
@@ -244,7 +244,7 @@ namespace Utility
                 if (result != ~unsigned(0x0)) {
                     Allocation alloc;
                     alloc._allocation = PtrAdd(AsPointer(i->_pageMemory.begin()), result * blockSize);
-                    alloc._marker = MakeMarker(fixedSizeHeap, std::distance(pages.begin(), i), result);
+                    alloc._marker = MakeMarker(fixedSizeHeap, (unsigned)std::distance(pages.begin(), i), result);
                     return alloc;
                 }
             }
@@ -255,7 +255,7 @@ namespace Utility
             assert(resultIdx != ~unsigned(0x0));
             Allocation alloc;
             alloc._allocation = PtrAdd(AsPointer(newPage._pageMemory.begin()), resultIdx * blockSize);
-            alloc._marker = MakeMarker(fixedSizeHeap, pages.size(), resultIdx);
+            alloc._marker = MakeMarker(fixedSizeHeap, (unsigned)pages.size(), resultIdx);
             pages.push_back(std::move(newPage));
             return alloc;
         }
@@ -267,7 +267,7 @@ namespace Utility
             if (result) {
                 Allocation alloc;
                 alloc._allocation = result;
-                alloc._marker = MakeMarker(FixedSizeHeapCount, std::distance(_pimpl->_freePages.begin(), i), 0);
+                alloc._marker = MakeMarker(FixedSizeHeapCount, (unsigned)std::distance(_pimpl->_freePages.begin(), i), 0);
                 return alloc;
             }
         }
@@ -275,7 +275,7 @@ namespace Utility
         FreePage newPage(FreePageSize);
         Allocation alloc;
         alloc._allocation = newPage.Allocate(size);
-        alloc._marker = MakeMarker(FixedSizeHeapCount, _pimpl->_freePages.size(), 0);
+        alloc._marker = MakeMarker(FixedSizeHeapCount, (unsigned)_pimpl->_freePages.size(), 0);
         assert(alloc._allocation != nullptr);
         _pimpl->_freePages.push_back(std::move(newPage));
         return alloc;
@@ -299,7 +299,7 @@ namespace Utility
                         //  Free it directly, ignoring current status of reference count
                     auto offset = ptrdiff_t(ptr) - ptrdiff_t(AsPointer(i->_pageMemory.cbegin()));
                     assert((offset % blockSize) == 0);
-                    i->_allocationStatus.Deallocate(offset / blockSize);
+                    i->_allocationStatus.Deallocate(uint32(offset / blockSize));
                     return;
                 }
             }
@@ -309,7 +309,7 @@ namespace Utility
             if (ptr >= AsPointer(i->_pageMemory.cbegin()) && ptr < AsPointer(i->_pageMemory.cend())) {
                     //  allocation is within the page. We should look for a block that
                     //  matches
-                auto offset = size_t(ptrdiff_t(ptr) - ptrdiff_t(AsPointer(i->_pageMemory.cbegin())));
+                auto offset = unsigned(ptrdiff_t(ptr) - ptrdiff_t(AsPointer(i->_pageMemory.cbegin())));
                 auto b = std::lower_bound(
                     i->_blocks.cbegin(), i->_blocks.cend(), 
                     offset, FreePage::CompareBlockOffset());
@@ -368,7 +368,7 @@ namespace Utility
                 throw Exceptions::HeapCorruption();
             }
 
-            auto offset = size_t(ptrdiff_t(marker._allocation) - ptrdiff_t(AsPointer(page._pageMemory.cbegin())));
+            auto offset = unsigned(ptrdiff_t(marker._allocation) - ptrdiff_t(AsPointer(page._pageMemory.cbegin())));
             auto b = std::lower_bound(
                 page._blocks.begin(), page._blocks.end(), 
                 offset, FreePage::CompareBlockOffset());
@@ -426,7 +426,7 @@ namespace Utility
                 throw Exceptions::HeapCorruption();
             }
 
-            auto offset = size_t(ptrdiff_t(marker._allocation) - ptrdiff_t(AsPointer(page._pageMemory.cbegin())));
+            auto offset = unsigned(ptrdiff_t(marker._allocation) - ptrdiff_t(AsPointer(page._pageMemory.cbegin())));
             auto b = std::lower_bound(
                 page._blocks.begin(), page._blocks.end(), 
                 offset, FreePage::CompareBlockOffset());

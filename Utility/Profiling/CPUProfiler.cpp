@@ -126,7 +126,7 @@ namespace Utility
                 link._resolvedChildrenTime = link._resolvedInclusiveTime = 0;
                 ++i;
 
-                workingStack[_workingStackIndex++] = parentsAndChildren.size();
+                workingStack[_workingStackIndex++] = (unsigned)parentsAndChildren.size();
                 parentsAndChildren.push_back(link);
 
             }
@@ -165,7 +165,7 @@ namespace Utility
             //  Note that we're not merging root events here! Merging occurs for every
             //  other events, just not the root events
         for (auto root = rootEventsStart; root < rootEventsEnd; ++root) {
-            auto outputId = result.size();
+            auto outputId = (ResolvedEvent::Id)result.size();
             if (lastRootEventOutputId != ResolvedEvent::s_id_Invalid) {
                     // attach the new root event as a sibling of the last one added
                 result[lastRootEventOutputId]._sibling = outputId;
@@ -232,7 +232,7 @@ namespace Utility
                         //  It doesn't exist. Create a new event, and attach it to the last sibling 
                         //  of the parent
                     ResolvedEvent newEvent = BlankEvent(mergedChildStart->_label);
-                    existingChildIterator = result.size();
+                    existingChildIterator = (ResolvedEvent::Id)result.size();
                     result.push_back(newEvent);
                     if (lastSibling != ResolvedEvent::s_id_Invalid) {
                         result[lastSibling]._sibling = existingChildIterator;
@@ -243,7 +243,7 @@ namespace Utility
 
                     //  Now either we've created a new event, or we're merging into an existing one.
                 auto& dstEvent = result[existingChildIterator];
-                dstEvent._eventCount += mergedChildEnd - mergedChildStart;
+                dstEvent._eventCount += signed(mergedChildEnd - mergedChildStart);
                 for (auto c = mergedChildStart; c<mergedChildEnd; ++c) {
                     dstEvent._inclusiveTime += c->_resolvedInclusiveTime;
                     dstEvent._exclusiveTime += c->_resolvedInclusiveTime - c->_resolvedChildrenTime;

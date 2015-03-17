@@ -1107,7 +1107,7 @@ namespace RenderCore { namespace ColladaConversion
 
                         if (finalWeightBufferFormat) {
                             result._preskinningIA._vertexInputLayout = *finalWeightBufferFormat;
-                            result._preskinningIA._vertexStride = destinationWeightVertexStride;
+                            result._preskinningIA._vertexStride = (unsigned)destinationWeightVertexStride;
                         }
 
                         result._localBoundingBox = boundingBox;

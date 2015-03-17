@@ -1508,9 +1508,9 @@ namespace Tools
             auto newManipIndex = _activeManipulatorIndex;
 
             if (topMost._id == Id_SelectedManipulatorLeft) {            // ---- go back one manipulator ----
-                newManipIndex = (_activeManipulatorIndex + _manipulators.size() - 1) % _manipulators.size();
+                newManipIndex = unsigned((_activeManipulatorIndex + _manipulators.size() - 1) % _manipulators.size());
             } else if (topMost._id == Id_SelectedManipulatorRight) {    // ---- go forward one manipulator ----
-                newManipIndex = (_activeManipulatorIndex + 1) % _manipulators.size();
+                newManipIndex = unsigned((_activeManipulatorIndex + 1) % _manipulators.size());
             }
 
             if (newManipIndex != _activeManipulatorIndex) {

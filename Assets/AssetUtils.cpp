@@ -70,7 +70,7 @@ namespace Assets
             return; 
         }
 
-        unsigned allocationLength = XlStringLen(dir) + 1;
+        unsigned allocationLength = (unsigned)XlStringLen(dir) + 1;
         if (_bufferOverflow.empty() && (_bufferUsed + allocationLength <= dimof(_buffer))) {
                 // just append this new string to our buffer, and add a new start offset
             XlCopyMemory(&_buffer[_bufferUsed], dir, allocationLength * sizeof(ResChar));

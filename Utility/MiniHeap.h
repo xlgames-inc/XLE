@@ -61,7 +61,7 @@ namespace Utility
             Allocation(void* a, uint32 marker) : _allocation(a), _marker(marker) {}
         };
 
-        Allocation  Allocate(size_t size);
+        Allocation  Allocate(unsigned size);
         void        Free(void* ptr);
         void        AddRef(Allocation marker);
         void        Release(Allocation marker);

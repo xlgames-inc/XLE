@@ -288,7 +288,7 @@ namespace Overlays
         interactables.Register(Interactables::Widget(browserLayout.GetMaximumSize(), Id_MainSurface));
         
         unsigned itemsPerRow = (browserLayout.GetMaximumSize().Width() - 2 * browserLayout._paddingInternalBorder + browserLayout._paddingBetweenAllocations) / (_pimpl->_itemDimensions + browserLayout._paddingBetweenAllocations);
-        unsigned rowsRequired = (_pimpl->_modelFiles->_files.size() + itemsPerRow - 1) / itemsPerRow;
+        unsigned rowsRequired = unsigned((_pimpl->_modelFiles->_files.size() + itemsPerRow - 1) / itemsPerRow);
         unsigned surfaceMaxSize = rowsRequired * (_pimpl->_itemDimensions + browserLayout._paddingBetweenAllocations);
 
         auto scrollBarRect = browserLayout.GetMaximumSize();
@@ -371,7 +371,7 @@ namespace Overlays
             return true;
         }
 
-        unsigned subDirCount = _pimpl->_subDirectories ? _pimpl->_subDirectories->_directories.size() : 0;
+        unsigned subDirCount = unsigned(_pimpl->_subDirectories ? _pimpl->_subDirectories->_directories.size() : 0);
         if (input.IsPress_LButton() || input.IsRelease_LButton()) {
 
                 //  look through the entire mouse over stack to look for 

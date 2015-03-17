@@ -77,9 +77,9 @@ namespace RenderCore { namespace Assets
                 
             interfaces.push_back(std::move(techniqueInterface));
             hashes.push_back(interfHash);
-            techniqueInterfaceIndex = interfaces.size()-1;
+            techniqueInterfaceIndex = unsigned(interfaces.size()-1);
         } else {
-            techniqueInterfaceIndex = existingInterface - hashes.cbegin();
+            techniqueInterfaceIndex = unsigned(existingInterface - hashes.cbegin());
         }
 
         return techniqueInterfaceIndex;
@@ -91,9 +91,9 @@ namespace RenderCore { namespace Assets
         auto n = std::find(shaderNames.cbegin(), shaderNames.cend(), shaderName);
         if (n == shaderNames.cend()) {
             shaderNames.push_back(shaderName);
-            return shaderNames.size()-1;
+            return unsigned(shaderNames.size()-1);
         } else {
-            return std::distance(shaderNames.cbegin(), n);
+            return unsigned(std::distance(shaderNames.cbegin(), n));
         }
     }
 
@@ -110,9 +110,9 @@ namespace RenderCore { namespace Assets
             });
         if (p == paramBoxes.cend()) {
             paramBoxes.push_back(box);
-            return paramBoxes.size()-1;
+            return unsigned(paramBoxes.size()-1);
         } else {
-            return std::distance(paramBoxes.cbegin(), p);
+            return unsigned(std::distance(paramBoxes.cbegin(), p));
         }
     }
 
@@ -141,7 +141,7 @@ namespace RenderCore { namespace Assets
         }
 
         _pimpl->_renderStateSets.push_back(std::make_pair(hash, states));
-        return _pimpl->_renderStateSets.size()-1;
+        return unsigned(_pimpl->_renderStateSets.size()-1);
     }
 
     RenderCore::Metal::BoundUniforms* SharedStateSet::BeginVariation(

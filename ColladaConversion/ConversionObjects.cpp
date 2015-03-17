@@ -32,40 +32,40 @@ namespace RenderCore { namespace ColladaConversion
     {
         using namespace Serialization;
 
-        unsigned vbOffset0 = largeResourcesBlock.size();
-        unsigned vbSize0 = _unanimatedVertexElements.size();
+        auto vbOffset0 = largeResourcesBlock.size();
+        auto vbSize0 = _unanimatedVertexElements.size();
         largeResourcesBlock.insert(largeResourcesBlock.end(), _unanimatedVertexElements.begin(), _unanimatedVertexElements.end());
 
-        unsigned vbOffset1 = largeResourcesBlock.size();
-        unsigned vbSize1 = _animatedVertexElements.size();
+        auto vbOffset1 = largeResourcesBlock.size();
+        auto vbSize1 = _animatedVertexElements.size();
         largeResourcesBlock.insert(largeResourcesBlock.end(), _animatedVertexElements.begin(), _animatedVertexElements.end());
 
-        unsigned vbOffset2 = largeResourcesBlock.size();
-        unsigned vbSize2 = _skeletonBinding.size();
+        auto vbOffset2 = largeResourcesBlock.size();
+        auto vbSize2 = _skeletonBinding.size();
         largeResourcesBlock.insert(largeResourcesBlock.end(), _skeletonBinding.begin(), _skeletonBinding.end());
 
-        unsigned ibOffset = largeResourcesBlock.size();
-        unsigned ibSize = _indices.size();
+        auto ibOffset = largeResourcesBlock.size();
+        auto ibSize = _indices.size();
         largeResourcesBlock.insert(largeResourcesBlock.end(), _indices.begin(), _indices.end());
 
             // first part is just like "NascentRawGeometry::Serialize"
         _mainDrawUnanimatedIA.Serialize(outputSerializer);
-        outputSerializer.SerializeValue(vbOffset0);
-        outputSerializer.SerializeValue(vbSize0);
+        outputSerializer.SerializeValue(unsigned(vbOffset0));
+        outputSerializer.SerializeValue(unsigned(vbSize0));
         outputSerializer.SerializeValue(unsigned(_indexFormat));
-        outputSerializer.SerializeValue(ibOffset);
-        outputSerializer.SerializeValue(ibSize);
+        outputSerializer.SerializeValue(unsigned(ibOffset));
+        outputSerializer.SerializeValue(unsigned(ibSize));
         
         outputSerializer.SerializeSubBlock(AsPointer(_mainDrawCalls.begin()), AsPointer(_mainDrawCalls.end()));
         outputSerializer.SerializeValue(_mainDrawCalls.size());
 
             // append skinning related information
         _mainDrawAnimatedIA.Serialize(outputSerializer);
-        outputSerializer.SerializeValue(vbOffset1);
-        outputSerializer.SerializeValue(vbSize1);
+        outputSerializer.SerializeValue(unsigned(vbOffset1));
+        outputSerializer.SerializeValue(unsigned(vbSize1));
         _preskinningIA.Serialize(outputSerializer);
-        outputSerializer.SerializeValue(vbOffset2);
-        outputSerializer.SerializeValue(vbSize2);
+        outputSerializer.SerializeValue(unsigned(vbOffset2));
+        outputSerializer.SerializeValue(unsigned(vbSize2));
 
         outputSerializer.SerializeSubBlock(_inverseBindMatrices.begin(), _inverseBindMatrices.end());
         outputSerializer.SerializeValue(_inverseBindMatrices.size());

@@ -23,9 +23,9 @@ namespace PlatformRig
             unsigned _allocationCount;
             unsigned _freeCount;
             unsigned _reallocCount;
-            unsigned _allocationsSize;
-            unsigned _freesSize;
-            unsigned _reallocsSize;
+            size_t _allocationsSize;
+            size_t _freesSize;
+            size_t _reallocsSize;
             Snapshot() : _allocationCount(0), _freeCount(0), _reallocCount(0), _allocationsSize(0), _freesSize(0), _reallocsSize(0) {}
         };
 
@@ -41,8 +41,8 @@ namespace PlatformRig
         class CurrentHeapMetrics
         {
         public:
-            unsigned _usage;
-            unsigned _blockCount;
+            size_t _usage;
+            size_t _blockCount;
         };
         static CurrentHeapMetrics GetCurrentHeapMetrics();
 
