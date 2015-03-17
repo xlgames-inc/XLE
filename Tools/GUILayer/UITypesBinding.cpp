@@ -98,30 +98,30 @@ namespace GUILayer
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     BindingList<BindingUtil::StringIntPair^>^ 
-        RawMaterialConfiguration::MaterialParameterBox::get()
+        RawMaterial::MaterialParameterBox::get()
     {
         if (!_materialParameterBox) {
             _materialParameterBox = BindingUtil::AsBindingList((*_underlying)->_matParamBox);
             _materialParameterBox->ListChanged += 
                 gcnew ListChangedEventHandler(
-                    this, &RawMaterialConfiguration::ParameterBox_Changed);
+                    this, &RawMaterial::ParameterBox_Changed);
         }
         return _materialParameterBox;
     }
 
     BindingList<BindingUtil::StringIntPair^>^ 
-        RawMaterialConfiguration::ShaderConstants::get()
+        RawMaterial::ShaderConstants::get()
     {
         if (!_shaderConstants) {
             _shaderConstants = BindingUtil::AsBindingList((*_underlying)->_constants);
             _shaderConstants->ListChanged += 
                 gcnew ListChangedEventHandler(
-                    this, &RawMaterialConfiguration::ParameterBox_Changed);
+                    this, &RawMaterial::ParameterBox_Changed);
         }
         return _shaderConstants;
     }
 
-    void RawMaterialConfiguration::ParameterBox_Changed(System::Object^ obj, ListChangedEventArgs^e)
+    void RawMaterial::ParameterBox_Changed(System::Object^ obj, ListChangedEventArgs^e)
     {
             //  Commit these changes back to the native object by re-creating the parameter box
             //  Ignore a couple of cases... 
@@ -152,7 +152,7 @@ namespace GUILayer
         }
     }
 
-    RawMaterialConfiguration::RawMaterialConfiguration(System::String^ initialiser)
+    RawMaterial::RawMaterial(System::String^ initialiser)
     {
         auto nativeInit = clix::marshalString<clix::E_UTF8>(initialiser);
         auto& source = ::Assets::GetAssetDep<NativeConfig>(nativeInit.c_str());
@@ -161,14 +161,14 @@ namespace GUILayer
             new std::shared_ptr<NativeConfig>(std::move(copy)));
     }
 
-    RawMaterialConfiguration::RawMaterialConfiguration(
+    RawMaterial::RawMaterial(
         std::shared_ptr<NativeConfig> underlying)
     {
         _underlying.reset(
             new std::shared_ptr<NativeConfig>(std::move(underlying)));
     }
 
-    RawMaterialConfiguration::~RawMaterialConfiguration()
+    RawMaterial::~RawMaterial()
     {}
 
 }

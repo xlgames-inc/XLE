@@ -36,7 +36,7 @@ namespace PlatformRig
     {
     public:
         RenderCore::Metal::ShaderProgram* _shaderProgram;
-        RenderCore::Assets::MaterialParameters _parameters;
+        RenderCore::Assets::ResolvedMaterial _parameters;
 
         class SystemConstants
         {

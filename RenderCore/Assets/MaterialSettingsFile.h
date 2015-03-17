@@ -14,10 +14,10 @@ namespace Utility { class Data; }
 
 namespace RenderCore { namespace Assets
 {
-    class RawMaterialConfiguration
+    class RawMaterial
     {
     public:
-        Assets::MaterialParameters::ResourceBindingSet _resourceBindings;
+        Assets::ResolvedMaterial::ResourceBindingSet _resourceBindings;
         ParameterBox _matParamBox;
         Assets::RenderStateSet _stateSet;
         ParameterBox _constants;
@@ -28,15 +28,15 @@ namespace RenderCore { namespace Assets
         std::vector<ResString> _inherit;
         const ::Assets::DependencyValidation& GetDependencyValidation() const { return *_depVal; }
 
-        MaterialParameters Resolve(std::vector<::Assets::FileAndTime>* deps = nullptr) const;
+        ResolvedMaterial Resolve(std::vector<::Assets::FileAndTime>* deps = nullptr) const;
         
-        RawMaterialConfiguration();
-        RawMaterialConfiguration(const ::Assets::ResChar initialiser[]);
-        ~RawMaterialConfiguration();
+        RawMaterial();
+        RawMaterial(const ::Assets::ResChar initialiser[]);
+        ~RawMaterial();
     private:
         std::shared_ptr<::Assets::DependencyValidation> _depVal;
 
-        void MergeInto(MaterialParameters& dest) const;
+        void MergeInto(ResolvedMaterial& dest) const;
     };
 }}
 

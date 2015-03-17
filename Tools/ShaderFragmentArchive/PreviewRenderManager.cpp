@@ -215,7 +215,7 @@ namespace PreviewRender
                 auto str = dynamic_cast<String^>(i.Value);
                 if (str) {
                     visObject._parameters._bindings.push_back(
-                        RenderCore::Assets::MaterialParameters::ResourceBinding(
+                        RenderCore::Assets::ResolvedMaterial::ResourceBinding(
                             Hash64(clix::marshalString<clix::E_UTF8>(i.Key)),
                             clix::marshalString<clix::E_UTF8>(str)));
                 }

@@ -17,7 +17,7 @@ using namespace System::ComponentModel;
 using namespace System::Windows::Forms;
 using namespace System::Drawing::Design;
 
-namespace RenderCore { namespace Assets { class RawMaterialConfiguration; }}
+namespace RenderCore { namespace Assets { class RawMaterial; }}
 
 namespace GUILayer
 {
@@ -179,10 +179,10 @@ namespace GUILayer
         static ParameterBox AsParameterBox(BindingList<StringIntPair^>^);
     };
 
-    public ref class RawMaterialConfiguration
+    public ref class RawMaterial
     {
     public:
-        using NativeConfig = RenderCore::Assets::RawMaterialConfiguration;
+        using NativeConfig = RenderCore::Assets::RawMaterial;
         property BindingList<BindingUtil::StringIntPair^>^ MaterialParameterBox {
             BindingList<BindingUtil::StringIntPair^>^ get();
         }
@@ -193,9 +193,9 @@ namespace GUILayer
 
         const NativeConfig& GetUnderlying() { return *_underlying->get(); }
 
-        RawMaterialConfiguration(System::String^ initialiser);
-        RawMaterialConfiguration(std::shared_ptr<NativeConfig> underlying);
-        ~RawMaterialConfiguration();
+        RawMaterial(System::String^ initialiser);
+        RawMaterial(std::shared_ptr<NativeConfig> underlying);
+        ~RawMaterial();
     protected:
         AutoToShared<NativeConfig> _underlying;
 

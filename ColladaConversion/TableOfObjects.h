@@ -11,7 +11,7 @@
 
 namespace Serialization { class NascentBlockSerializer; }
 
-namespace RenderCore { namespace Assets { class MaterialParameters; class RawAnimationCurve; } }
+namespace RenderCore { namespace Assets { class RawMaterial; class RawAnimationCurve; } }
 
 namespace RenderCore { namespace ColladaConversion
 {
@@ -79,7 +79,7 @@ namespace RenderCore { namespace ColladaConversion
         std::vector<Object<UnboundMorphController>>                     _morphControllers;
         std::vector<Object<NascentBoundSkinnedGeometry>>                _boundSkinnedGeometry;
         std::vector<Object<Assets::RawAnimationCurve>>                  _animationCurves;
-        std::vector<Object<Assets::MaterialParameters>>                 _materials;
+        std::vector<Object<Assets::RawMaterial>>                        _materials;
         std::vector<Object<ReferencedTexture>>                          _referencedTextures;
         std::vector<Object<ReferencedMaterial>>                         _referencedMaterials;
 

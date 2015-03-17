@@ -29,7 +29,7 @@ namespace ModelViewer
                 // pop-up a modal version of the material editor (for testing/prototyping)
             using (var editor = new ModalMaterialEditor())
             {
-                editor.Object = new GUILayer.RawMaterialConfiguration(
+                editor.Object = new GUILayer.RawMaterial(
                     "Game\\Model\\Galleon\\galleon.material:galleon_sail");
                 editor.ShowDialog();
             }

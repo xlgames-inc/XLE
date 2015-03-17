@@ -431,8 +431,8 @@ namespace PlatformRig
     }
 
     static inline bool CompareRB(
-        const RenderCore::Assets::MaterialParameters::ResourceBinding& lhs,
-        const RenderCore::Assets::MaterialParameters::ResourceBinding& rhs)
+        const RenderCore::Assets::ResolvedMaterial::ResourceBinding& lhs,
+        const RenderCore::Assets::ResolvedMaterial::ResourceBinding& rhs)
     {
         return lhs._bindHash  < rhs._bindHash;
     }
@@ -441,10 +441,10 @@ namespace PlatformRig
         BuildBoundTextures(
             RenderCore::Metal::BoundUniforms& boundUniforms,
             ID3D::ShaderReflection& reflection,
-            const RenderCore::Assets::MaterialParameters::ResourceBindingSet& bindings)
+            const RenderCore::Assets::ResolvedMaterial::ResourceBindingSet& bindings)
     {
         using namespace RenderCore;
-        typedef RenderCore::Assets::MaterialParameters::ResourceBinding ResourceBinding;
+        typedef RenderCore::Assets::ResolvedMaterial::ResourceBinding ResourceBinding;
         std::vector<const Metal::ShaderResourceView*> result;
 
             //

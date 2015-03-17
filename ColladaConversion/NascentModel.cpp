@@ -20,7 +20,7 @@
 
 #include "../RenderCore/Assets/ModelRunTime.h"
 #include "../RenderCore/Assets/RawAnimationCurve.h"
-#include "../RenderCore/Assets/AssetUtils.h"            // for MaterialParameters
+#include "../RenderCore/Assets/MaterialSettingsFile.h"
 #include "../RenderCore/Techniques/TechniqueUtils.h"    // for CameraDesc
 
 #include "../RenderCore/Metal/Buffer.h"
@@ -111,7 +111,7 @@ namespace RenderCore { namespace ColladaConversion
         {
             ResChar resolvedFile[MaxPath];
             searchRules.ResolveFile(resolvedFile, dimof(resolvedFile), StringMeld<MaxPath>() << baseName << ".material");
-            // _matSettingsFile = RawMaterialConfiguration(resolvedFile);
+            // _matSettingsFile = RawMaterial(resolvedFile);
         }
 
 	    virtual ~Writer(){}
@@ -257,7 +257,7 @@ namespace RenderCore { namespace ColladaConversion
         void HandleFormatError(const FormatError& error);
 
         ImportConfiguration _importConfig;
-        // RawMaterialConfiguration _matSettingsFile;
+        // RawMaterial _matSettingsFile;
     };
 
     void Writer::HandleFormatError(const FormatError& error)
@@ -303,12 +303,12 @@ namespace RenderCore { namespace ColladaConversion
     static void AddBoundTexture( 
         const COLLADAFW::Effect* effect, unsigned commonEffectIndex,
         const TableOfObjects& objects,
-        RenderCore::Assets::MaterialParameters::ResourceBindingSet& bindings,
+        RenderCore::Assets::ResolvedMaterial::ResourceBindingSet& bindings,
         uint64 bindingHash,
         COLLADAFW::SamplerID samplerId)
     {
         auto i = std::find_if(bindings.cbegin(), bindings.cend(),
-            [=](const Assets::MaterialParameters::ResourceBinding&b) 
+            [=](const Assets::ResolvedMaterial::ResourceBinding&b) 
                 { return b._bindHash == bindingHash; });
         if (i==bindings.cend()) {
 
@@ -338,7 +338,7 @@ namespace RenderCore { namespace ColladaConversion
                 }
                 if (refTexture) {
                     bindings.push_back(
-                        Assets::MaterialParameters::ResourceBinding(
+                        Assets::ResolvedMaterial::ResourceBinding(
                             bindingHash, refTexture->_resourceName));
                 }
             }
@@ -408,7 +408,7 @@ namespace RenderCore { namespace ColladaConversion
                 //      Note; how should we associate the material to the script
                 //      file? From the material name, the id or the effect id?
                 //
-            /*RawMaterialConfiguration::MaterialDesc matSettings;
+            /*RawMaterial::MaterialDesc matSettings;
 
             {
                     //  Look for material settings with the same name as the 
@@ -432,7 +432,7 @@ namespace RenderCore { namespace ColladaConversion
                 }
             }*/
 
-            RenderCore::Assets::MaterialParameters matSettings;
+            RenderCore::Assets::RawMaterial matSettings;
 
                 //  Any settings from the Collada file should override what we read
                 //  in the material settings file. This means that we have 
@@ -450,7 +450,7 @@ namespace RenderCore { namespace ColladaConversion
                 auto& diffuse = commonEffects[c]->getDiffuse();
                 if (diffuse.getType() == ColorOrTexture::TEXTURE) {
                     AddBoundTexture(
-                        effect, c, _objects, matSettings._bindings,
+                        effect, c, _objects, matSettings._resourceBindings,
                         DefaultDiffuseTextureBindingHash, 
                         diffuse.getTexture().getSamplerId());
                 }
@@ -474,23 +474,17 @@ namespace RenderCore { namespace ColladaConversion
                     auto bindPoint = _importConfig.AsNativeBindingHash(match[2]);
                     if (bindPoint != 0) {
                         AddBoundTexture(
-                            effect, 0, _objects, matSettings._bindings,
+                            effect, 0, _objects, matSettings._resourceBindings,
                             bindPoint, xt->samplerId);
                     }
                 }
             }
 
-            Assets::MaterialParameters result;
-            result._bindings = std::move(matSettings._bindings);
-            result._matParams = std::move(matSettings._matParams);
-            result._stateSet = matSettings._stateSet;
-            result._constants = std::move(matSettings._constants);
-
             _objects.Add(
                 effect->getOriginalId(),
                 effect->getName(),
                 effect->getUniqueId(),
-                std::move(result));
+                std::move(matSettings));
             return true;
 
         } CATCH(const FormatError& error) {
@@ -513,10 +507,10 @@ namespace RenderCore { namespace ColladaConversion
                 material->getName(),
                 material->getUniqueId(),
                 ReferencedMaterial(effect));
-            /*const MaterialParameters* convertedMaterial = nullptr;
-            ObjectId tableId = _objects.Get<MaterialParameters>(effect);
+            /*const ResolvedMaterial* convertedMaterial = nullptr;
+            ObjectId tableId = _objects.Get<ResolvedMaterial>(effect);
             if (tableId!=ObjectId_Invalid) {
-                convertedMaterial = _objects.Get<MaterialParameters>(tableId);
+                convertedMaterial = _objects.Get<ResolvedMaterial>(tableId);
             }
 
             if (convertedMaterial) {
@@ -530,7 +524,7 @@ namespace RenderCore { namespace ColladaConversion
                     material->getOriginalId(),
                     material->getName(),
                     material->getUniqueId(),
-                    MaterialParameters(*convertedMaterial));
+                    ResolvedMaterial(*convertedMaterial));
             }*/
             return true;
 

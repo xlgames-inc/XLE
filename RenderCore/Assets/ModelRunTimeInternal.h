@@ -17,7 +17,7 @@ namespace RenderCore { namespace Assets
     class RawAnimationCurve;
     class AnimationImmutableData;
     class AnimationSet;
-    class MaterialParameters;
+    class ResolvedMaterial;
 
     #pragma pack(push)
     #pragma pack(1)
@@ -170,7 +170,7 @@ namespace RenderCore { namespace Assets
         size_t                      _geoCount;
         BoundSkinnedGeometry*       _boundSkinnedControllers;
         size_t                      _boundSkinnedControllerCount;
-        MaterialParameters*         _materialBindings;
+        ResolvedMaterial*         _materialBindings;
         size_t                      _materialBindingsCount;
 
         std::pair<Float3, Float3>   _boundingBox;

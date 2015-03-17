@@ -8,7 +8,7 @@
 #include "RawGeometry.h"
 #include "ConversionObjects.h"
 #include "../RenderCore/Assets/RawAnimationCurve.h"
-#include "../RenderCore/Assets/AssetUtils.h"        // for MaterialParameters
+#include "../RenderCore/Assets/MaterialSettingsFile.h"
 #include "ModelCommandStream.h"
 #include "../Assets/BlockSerializer.h"
 #include "../ConsoleRig/Log.h"
@@ -75,8 +75,8 @@ namespace RenderCore { namespace ColladaConversion
     template <> auto     TableOfObjects::GetSet<Assets::RawAnimationCurve>() const -> const std::vector<Object<Assets::RawAnimationCurve>>&         { return _animationCurves; }
     template <> auto     TableOfObjects::GetSet<Assets::RawAnimationCurve>() -> std::vector<Object<Assets::RawAnimationCurve>>&                     { return _animationCurves; }
 
-    template <> auto     TableOfObjects::GetSet<Assets::MaterialParameters>() const -> const std::vector<Object<Assets::MaterialParameters>>&         { return _materials; }
-    template <> auto     TableOfObjects::GetSet<Assets::MaterialParameters>() -> std::vector<Object<Assets::MaterialParameters>>&                     { return _materials; }
+    template <> auto     TableOfObjects::GetSet<Assets::RawMaterial>() const -> const std::vector<Object<Assets::RawMaterial>>&         { return _materials; }
+    template <> auto     TableOfObjects::GetSet<Assets::RawMaterial>() -> std::vector<Object<Assets::RawMaterial>>&                     { return _materials; }
 
     template <> auto     TableOfObjects::GetSet<ReferencedTexture>() const -> const std::vector<Object<ReferencedTexture>>&         { return _referencedTextures; }
     template <> auto     TableOfObjects::GetSet<ReferencedTexture>() -> std::vector<Object<ReferencedTexture>>&                     { return _referencedTextures; }
@@ -162,8 +162,8 @@ namespace RenderCore { namespace ColladaConversion
             outputSerializer.SerializeValue(_boundSkinnedGeometry.size());
         }
 
-        outputSerializer.SerializeSubBlock(AsPointer(_materials.begin()), AsPointer(_materials.end()));
-        outputSerializer.SerializeValue(_materials.size());
+        // outputSerializer.SerializeSubBlock(AsPointer(_materials.begin()), AsPointer(_materials.end()));
+        // outputSerializer.SerializeValue(_materials.size());
     }
 
     void    TableOfObjects::SerializeAnimationSet(Serialization::NascentBlockSerializer& outputSerializer) const
@@ -221,7 +221,7 @@ namespace RenderCore { namespace ColladaConversion
     template void Instantiator<UnboundMorphController>();
     template void Instantiator<NascentBoundSkinnedGeometry>();
     template void Instantiator<Assets::RawAnimationCurve>();
-    template void Instantiator<Assets::MaterialParameters>();
+    template void Instantiator<Assets::RawMaterial>();
     template void Instantiator<ReferencedTexture>();
     template void Instantiator<ReferencedMaterial>();
 

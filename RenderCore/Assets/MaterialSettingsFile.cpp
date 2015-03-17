@@ -172,27 +172,27 @@ namespace RenderCore { namespace Assets
         return result;
     }
 
-    RawMaterialConfiguration::RawMaterialConfiguration() {}
+    RawMaterial::RawMaterial() {}
 
     class CompareResourceBinding
     {
     public:
-        bool operator()(const MaterialParameters::ResourceBinding& lhs, uint64 rhs)
+        bool operator()(const ResolvedMaterial::ResourceBinding& lhs, uint64 rhs)
         {
             return lhs._bindHash < rhs;
         }
-        bool operator()(uint64 lhs, const MaterialParameters::ResourceBinding& rhs)
+        bool operator()(uint64 lhs, const ResolvedMaterial::ResourceBinding& rhs)
         {
             return lhs < rhs._bindHash;
         }
-        bool operator()(const MaterialParameters::ResourceBinding& lhs, 
-                        const MaterialParameters::ResourceBinding& rhs)
+        bool operator()(const ResolvedMaterial::ResourceBinding& lhs, 
+                        const ResolvedMaterial::ResourceBinding& rhs)
         {
             return lhs._bindHash < rhs._bindHash;
         }
     };
 
-    RawMaterialConfiguration::RawMaterialConfiguration(const ResChar initialiser[])
+    RawMaterial::RawMaterial(const ResChar initialiser[])
     {
             // We're expecting an initialiser of the format "filename:setting"
             // If there is no colon, 
@@ -241,10 +241,10 @@ namespace RenderCore { namespace Assets
                     TRY {
                         RegisterAssetDependency(
                             _depVal, 
-                            &::Assets::GetAssetDep<RawMaterialConfiguration>(finalName).GetDependencyValidation());
+                            &::Assets::GetAssetDep<RawMaterial>(finalName).GetDependencyValidation());
                     } CATCH (...) {} CATCH_END
 
-                    // RawMaterialConfiguration settingsTable(resolvedFile);
+                    // RawMaterial settingsTable(resolvedFile);
                     // auto settingHash = Hash64(colon+1);
                     // 
                     // auto s = LowerBound(settingsTable._materials, settingHash);
@@ -295,7 +295,7 @@ namespace RenderCore { namespace Assets
                             i->_resourceName = resource;
                         } else {
                             _resourceBindings.insert(
-                                i, Assets::MaterialParameters::ResourceBinding(hash, resource));
+                                i, Assets::ResolvedMaterial::ResourceBinding(hash, resource));
                         }
                     }
                 }
@@ -314,9 +314,9 @@ namespace RenderCore { namespace Assets
         RegisterFileDependency(_depVal, rawFilename);
     }
 
-    RawMaterialConfiguration::~RawMaterialConfiguration() {}
+    RawMaterial::~RawMaterial() {}
 
-    void RawMaterialConfiguration::MergeInto(MaterialParameters& dest) const
+    void RawMaterial::MergeInto(ResolvedMaterial& dest) const
     {
         dest._matParams.MergeIn(_matParamBox);
         dest._stateSet = Merge(dest._stateSet, _stateSet);
@@ -335,16 +335,16 @@ namespace RenderCore { namespace Assets
         }
     }
 
-    MaterialParameters RawMaterialConfiguration::Resolve(std::vector<::Assets::FileAndTime>* deps) const
+    ResolvedMaterial RawMaterial::Resolve(std::vector<::Assets::FileAndTime>* deps) const
     {
             // resolve all of the inheritance options and generate a final 
-            // MaterialParameters object. We need to start at the bottom of the
+            // ResolvedMaterial object. We need to start at the bottom of the
             // inheritance tree, and merge in new parameters as we come across them.
 
-        MaterialParameters result;
+        ResolvedMaterial result;
         for (auto i=_inherit.cbegin(); i!=_inherit.cend(); ++i) {
             TRY {
-                auto& rawParams = ::Assets::GetAssetDep<RawMaterialConfiguration>(i->c_str());
+                auto& rawParams = ::Assets::GetAssetDep<RawMaterial>(i->c_str());
                 rawParams.MergeInto(result);
                 if (deps) {
                     ::Assets::FileAndTime fileAndTime(

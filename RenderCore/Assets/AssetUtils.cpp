@@ -229,13 +229,13 @@ namespace RenderCore { namespace Assets
 
         ////////////////////////////////////////////////////////////
 
-    void MaterialParameters::ResourceBinding::Serialize(Serialization::NascentBlockSerializer& serializer) const
+    void ResolvedMaterial::ResourceBinding::Serialize(Serialization::NascentBlockSerializer& serializer) const
     {
         Serialization::Serialize(serializer, _bindHash);
         Serialization::Serialize(serializer, _resourceName);
     }
     
-    void MaterialParameters::Serialize(Serialization::NascentBlockSerializer& serializer) const
+    void ResolvedMaterial::Serialize(Serialization::NascentBlockSerializer& serializer) const
     {
         Serialization::Serialize(serializer, _bindings);
         Serialization::Serialize(serializer, _matParams);
@@ -263,16 +263,16 @@ namespace RenderCore { namespace Assets
         return *(const uint64*)this;
     }
 
-    MaterialParameters::MaterialParameters() {}
+    ResolvedMaterial::ResolvedMaterial() {}
 
-    MaterialParameters::MaterialParameters(MaterialParameters&& moveFrom)
+    ResolvedMaterial::ResolvedMaterial(ResolvedMaterial&& moveFrom)
     : _bindings(std::move(moveFrom._bindings))
     , _matParams(std::move(moveFrom._matParams))
     , _stateSet(moveFrom._stateSet)
     , _constants(std::move(moveFrom._constants))
     {}
 
-    MaterialParameters& MaterialParameters::operator=(MaterialParameters&& moveFrom)
+    ResolvedMaterial& ResolvedMaterial::operator=(ResolvedMaterial&& moveFrom)
     {
         _bindings = std::move(moveFrom._bindings);
         _matParams = std::move(moveFrom._matParams);

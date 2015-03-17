@@ -70,14 +70,14 @@ namespace GUILayer
         return nullptr;
     }
 
-    void MaterialVisLayer::SetConfig(RawMaterialConfiguration^ config)
+    void MaterialVisLayer::SetConfig(RawMaterial^ config)
     {
         _config = config;
     }
 
     MaterialVisLayer::MaterialVisLayer(
         MaterialVisSettings^ settings,
-        RawMaterialConfiguration^ config)
+        RawMaterial^ config)
     : _settings(settings), _config(config)
     {}
 

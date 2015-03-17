@@ -83,7 +83,7 @@ namespace ModelViewer.Controls
             }
         }
 
-        public GUILayer.RawMaterialConfiguration Object
+        public GUILayer.RawMaterial Object
         {
             set
             {

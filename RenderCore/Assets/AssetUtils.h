@@ -142,7 +142,7 @@ namespace RenderCore { namespace Assets
     /// low-level. These parameters are settings that can be used during
     /// the main render step (rather than some higher level, CPU-side
     /// operation).
-    class MaterialParameters : noncopyable
+    class ResolvedMaterial : noncopyable
     {
     public:
         class ResourceBinding
@@ -164,9 +164,9 @@ namespace RenderCore { namespace Assets
 
         void Serialize(Serialization::NascentBlockSerializer& serializer) const;
 
-        MaterialParameters();
-        MaterialParameters(MaterialParameters&& moveFrom);
-        MaterialParameters& operator=(MaterialParameters&& moveFrom);
+        ResolvedMaterial();
+        ResolvedMaterial(ResolvedMaterial&& moveFrom);
+        ResolvedMaterial& operator=(ResolvedMaterial&& moveFrom);
     };
 
     #pragma pack(pop)

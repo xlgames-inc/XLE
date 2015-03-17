@@ -551,7 +551,7 @@ namespace RenderCore { namespace ColladaConversion
                         //      Redirect from ReferencedMaterial -> MaterialParameters
                     ObjectId finalMaterialId = ObjectId_Invalid;
                     if (matRef) {
-                        finalMaterialId = accessableObjects.Get<Assets::MaterialParameters>(matRef->_effectId.AsColladaId());
+                        finalMaterialId = accessableObjects.Get<Assets::RawMaterial>(matRef->_effectId.AsColladaId());
                     }
                     materials[std::distance(geometryMaterialOrdering.cbegin(), i)] = finalMaterialId;
                     break;

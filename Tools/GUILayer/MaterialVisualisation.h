@@ -53,15 +53,15 @@ namespace GUILayer
         virtual void SetActivationState(bool newState) override;
         virtual std::shared_ptr<IInputListener> GetInputListener() override;
 
-        void SetConfig(RawMaterialConfiguration^ config);
+        void SetConfig(RawMaterial^ config);
 
         MaterialVisLayer(
             MaterialVisSettings^ settings,
-            RawMaterialConfiguration^ config);
+            RawMaterial^ config);
         ~MaterialVisLayer();
         
     protected:
-        RawMaterialConfiguration^ _config;
+        RawMaterial^ _config;
         MaterialVisSettings^ _settings;
     };
 }

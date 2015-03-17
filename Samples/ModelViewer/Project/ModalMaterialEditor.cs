@@ -22,7 +22,7 @@ namespace ModelViewer
             InitializeComponent();
         }
 
-        public GUILayer.RawMaterialConfiguration Object
+        public GUILayer.RawMaterial Object
         {
             set
             {
