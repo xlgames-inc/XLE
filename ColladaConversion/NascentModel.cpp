@@ -41,6 +41,7 @@
 #include "../Utility/Streams/Data.h"             // (for materials stuff)
 #include "../Utility/Streams/Stream.h"
 #include "../Utility/Streams/PathUtils.h"
+#include "../Utility/Streams/StreamTypes.h"
 #include "../Utility/ParameterBox.h"
 #include "../Utility/StringFormat.h"
 
@@ -111,8 +112,8 @@ namespace RenderCore { namespace ColladaConversion
             : _importConfig("colladaimport.cfg")  
         {
             ResChar resolvedFile[MaxPath];
-            searchRules.ResolveFile(resolvedFile, dimof(resolvedFile), StringMeld<MaxPath>() << baseName << ".material");
-            // _matSettingsFile = RawMaterial(resolvedFile);
+            searchRules.ResolveFile(resolvedFile, dimof(resolvedFile), StringMeld<MaxPath>() << baseName);
+            _matSettingsFile = resolvedFile;
         }
 
 	    virtual ~Writer(){}
@@ -258,7 +259,7 @@ namespace RenderCore { namespace ColladaConversion
         void HandleFormatError(const FormatError& error);
 
         ImportConfiguration _importConfig;
-        // RawMaterial _matSettingsFile;
+        std::basic_string<ResChar> _matSettingsFile;
     };
 
     void Writer::HandleFormatError(const FormatError& error)
@@ -333,7 +334,7 @@ namespace RenderCore { namespace ColladaConversion
 
                 const auto& sampler = *ec.getSamplerPointerArray()[samplerId];
                 const ReferencedTexture* refTexture = nullptr;
-                ObjectId tableId = objects.Get<ReferencedTexture>(sampler.getSourceImage());
+                ObjectId tableId = objects.GetObjectId<ReferencedTexture>(sampler.getSourceImage());
                 if (tableId != ObjectId_Invalid) {
                     refTexture = objects.GetFromObjectId<ReferencedTexture>(tableId);
                 }
@@ -435,6 +436,10 @@ namespace RenderCore { namespace ColladaConversion
 
             RenderCore::Assets::RawMaterial matSettings;
 
+                // we must inherit properties from the "material settings file"
+            matSettings._inherit.push_back(_matSettingsFile + ":*");
+            matSettings._inherit.push_back(_matSettingsFile + ":" + effect->getName());
+
                 //  Any settings from the Collada file should override what we read
                 //  in the material settings file. This means that we have 
                 //  clear out the settings in the Collada file if we want the .material
@@ -502,31 +507,19 @@ namespace RenderCore { namespace ColladaConversion
             using namespace COLLADAFW;
             using namespace ColladaConversion;
 
+                //  In Collada, geometry instances reference a material
+                //  Each material contains an "effect". It's the effect
+                //  that contains the real material information.
+                //
+                //  Both the material and the effect have string ids. But
+                //  only the material has a name. So we should use this 
+                //  material name when binding to a .material file.
+
             const UniqueId& effect = material->getInstantiatedEffect();
             _objects.Add(
-                material->getOriginalId(),
-                material->getName(),
-                material->getUniqueId(),
-                ReferencedMaterial(effect));
-            /*const ResolvedMaterial* convertedMaterial = nullptr;
-            ObjectId tableId = _objects.Get<ResolvedMaterial>(effect);
-            if (tableId!=ObjectId_Invalid) {
-                convertedMaterial = _objects.Get<ResolvedMaterial>(tableId);
-            }
-
-            if (convertedMaterial) {
-
-                    //
-                    //      No further changes to this material.
-                    //      Just copy it back in under the new instantiated
-                    //      id
-
-                _objects.Add(
-                    material->getOriginalId(),
-                    material->getName(),
-                    material->getUniqueId(),
-                    ResolvedMaterial(*convertedMaterial));
-            }*/
+                material->getOriginalId(), material->getName(), material->getUniqueId(),
+                ReferencedMaterial(effect, Hash64(material->getName()), material->getName()));
+            
             return true;
 
         } CATCH(const FormatError& error) {
@@ -609,7 +602,7 @@ namespace RenderCore { namespace ColladaConversion
                 //      Now, read the animation links and add "AnimationDriver" objects as required
                 //
             for (auto i=_animationLinks.begin(); i!=_animationLinks.end(); ++i) {
-                ColladaConversion::ObjectId tableId = _objects.Get<Assets::RawAnimationCurve>(i->_animationId);
+                ColladaConversion::ObjectId tableId = _objects.GetObjectId<Assets::RawAnimationCurve>(i->_animationId);
                 if (tableId != ColladaConversion::ObjectId_Invalid) {
                     _animationSet.AddAnimationDriver(
                         _skeleton.GetTransformationMachine().HashedIdToStringId(i->_animationListName),
@@ -711,7 +704,7 @@ namespace RenderCore { namespace ColladaConversion
                 COLLADAFW::UniqueId id = skinController->getSkinControllerData();
 
                     //  Find this id within our table of objects
-                ColladaConversion::ObjectId tableId = _objects.Get<ColladaConversion::UnboundSkinController>(id);
+                ColladaConversion::ObjectId tableId = _objects.GetObjectId<ColladaConversion::UnboundSkinController>(id);
                 const ColladaConversion::UnboundSkinController* obj = nullptr;
                 if (tableId != ColladaConversion::ObjectId_Invalid) {
                     obj = _objects.GetFromObjectId<ColladaConversion::UnboundSkinController>(tableId);
@@ -843,7 +836,7 @@ namespace RenderCore { namespace ColladaConversion
                     interpolatorType.first, interpolatorType.second);
 
                         //      If we've build the visual scene already, hook up the animation driver
-                ColladaConversion::ObjectId tableId = _objects.Get<Assets::RawAnimationCurve>(animationLink._animationId);
+                ColladaConversion::ObjectId tableId = _objects.GetObjectId<Assets::RawAnimationCurve>(animationLink._animationId);
                 if (tableId != ColladaConversion::ObjectId_Invalid) {
                     std::string stringId = _skeleton.GetTransformationMachine().HashedIdToStringId(animationLink._animationListName);
                     if (stringId.empty()) {
@@ -1336,6 +1329,32 @@ namespace RenderCore { namespace ColladaConversion
                 new NascentChunk[1], Internal::CrossDLLDeletor(&DestroyChunkArray)),
             1);
         result.first[0] = NascentChunk(scaffoldChunk, std::vector<uint8>(block.get(), PtrAdd(block.get(), size)));
+        return std::move(result);
+    }
+
+    CONVERSION_API NascentChunkArray NascentModel::SerializeMaterials() const
+    {
+        auto table = _objects.SerializeMaterial();
+
+        const unsigned size = 64*1024;
+        auto buffer = std::make_unique<uint8[]>(size);
+        MemoryOutputStream strm(buffer.get(), size);
+        for (auto i=table.cbegin(); i!=table.cend(); ++i) {
+            (*i)->SaveToOutputStream(strm);
+        }
+
+            // convert into a chunk...
+
+        auto finalSize = std::min(size, unsigned(strm.Cursor() - strm.Begin()));
+
+        Serialization::ChunkFile::ChunkHeader scaffoldChunk(
+            RenderCore::Assets::ChunkType_RawMat, 0, _name.c_str(), finalSize);
+
+        NascentChunkArray result(
+            std::unique_ptr<NascentChunk[], Internal::CrossDLLDeletor>(
+                new NascentChunk[1], Internal::CrossDLLDeletor(&DestroyChunkArray)),
+            1);
+        result.first[0] = NascentChunk(scaffoldChunk, std::vector<uint8>(buffer.get(), PtrAdd(buffer.get(), size)));
         return std::move(result);
     }
 

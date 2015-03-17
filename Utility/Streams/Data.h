@@ -10,8 +10,8 @@
 
 namespace Utility
 {
+    class OutputStream;
 
-    class Data; 
     class Data {
     public:
         char* value;
@@ -112,6 +112,7 @@ namespace Utility
         bool Save(const char* filename, bool includeComment = true) const;
         bool SaveToBuffer(char* s, int* len) const ;
         bool SavePrettyValue(char* s, int* len) const;
+        void SaveToOutputStream(OutputStream& f, bool includeComment = true) const;
     };
 
     #define foreachData(i, d) \

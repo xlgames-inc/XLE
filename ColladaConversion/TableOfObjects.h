@@ -12,6 +12,7 @@
 namespace Serialization { class NascentBlockSerializer; }
 
 namespace RenderCore { namespace Assets { class RawMaterial; class RawAnimationCurve; } }
+namespace Utility { class Data; }
 
 namespace RenderCore { namespace ColladaConversion
 {
@@ -28,7 +29,7 @@ namespace RenderCore { namespace ColladaConversion
     {
     public:
         template <typename Type>
-            ObjectId    Get(const COLLADAFW::UniqueId&      id) const;
+            ObjectId    GetObjectId(const COLLADAFW::UniqueId&      id) const;
 
         template <typename Type>
             bool        Has(const COLLADAFW::UniqueId&      id) const;
@@ -48,6 +49,7 @@ namespace RenderCore { namespace ColladaConversion
 
         void    SerializeSkin(Serialization::NascentBlockSerializer& outputSerializer, std::vector<uint8>& largeResourcesBlock) const;
         void    SerializeAnimationSet(Serialization::NascentBlockSerializer& outputSerializer) const;
+        std::vector<std::unique_ptr<Data>>  SerializeMaterial() const;
 
         TableOfObjects();
         ~TableOfObjects();

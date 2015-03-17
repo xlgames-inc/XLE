@@ -158,18 +158,20 @@ namespace RenderCore { namespace ColladaConversion
     class NascentModelCommandStream : noncopyable
     {
     public:
+        typedef uint64 MaterialGuid;
+        static const MaterialGuid s_materialGuid_Invalid = ~0x0ull;
 
             /////   G E O M E T R Y   I N S T A N C E   /////
         class GeometryInstance
         {
         public:
-            ObjectId                _id;
-            unsigned                _localToWorldId;
-            std::vector<ObjectId>   _materials;
-            unsigned                _levelOfDetail;
-            GeometryInstance(ObjectId id, unsigned localToWorldId, std::vector<ObjectId>&& materials, unsigned levelOfDetail) 
+            ObjectId                    _id;
+            unsigned                    _localToWorldId;
+            std::vector<MaterialGuid>   _materials;
+            unsigned                    _levelOfDetail;
+            GeometryInstance(ObjectId id, unsigned localToWorldId, std::vector<MaterialGuid>&& materials, unsigned levelOfDetail) 
             :   _id(id), _localToWorldId(localToWorldId)
-            ,   _materials(std::forward<std::vector<ObjectId>>(materials))
+            ,   _materials(std::forward<std::vector<MaterialGuid>>(materials))
             ,   _levelOfDetail(levelOfDetail) {}
 
             void Serialize(Serialization::NascentBlockSerializer& serializer) const;
@@ -188,12 +190,12 @@ namespace RenderCore { namespace ColladaConversion
         class SkinControllerInstance
         {
         public:
-            ObjectId                _id;
-            unsigned                _localToWorldId;
-            std::vector<ObjectId>   _materials;
-            unsigned                _levelOfDetail;
-            SkinControllerInstance(ObjectId id, unsigned localToWorldId, std::vector<ObjectId>&& materials, unsigned levelOfDetail)
-            :   _id(id), _localToWorldId(localToWorldId), _materials(std::forward<std::vector<ObjectId>>(materials))
+            ObjectId                    _id;
+            unsigned                    _localToWorldId;
+            std::vector<MaterialGuid>   _materials;
+            unsigned                    _levelOfDetail;
+            SkinControllerInstance(ObjectId id, unsigned localToWorldId, std::vector<MaterialGuid>&& materials, unsigned levelOfDetail)
+            :   _id(id), _localToWorldId(localToWorldId), _materials(std::forward<std::vector<MaterialGuid>>(materials))
             ,   _levelOfDetail(levelOfDetail) {}
 
             void Serialize(Serialization::NascentBlockSerializer& serializer) const;
@@ -227,9 +229,10 @@ namespace RenderCore { namespace ColladaConversion
         void                                    Serialize(Serialization::NascentBlockSerializer& serializer) const;
 
     private:
-        std::vector<ObjectId>                   BuildMaterialTable( const COLLADAFW::MaterialBindingArray&  bindingArray, 
-                                                                    const std::vector<uint64>&              geometryMaterialOrdering, 
-                                                                    const TableOfObjects&                   accessableObjects);
+        std::vector<MaterialGuid>
+            BuildMaterialTable( const COLLADAFW::MaterialBindingArray&  bindingArray, 
+                                const std::vector<uint64>&              geometryMaterialOrdering, 
+                                const TableOfObjects&                   accessableObjects);
 
         class TransformationMachineOutput;
         std::vector<TransformationMachineOutput>    _transformationMachineOutputs;

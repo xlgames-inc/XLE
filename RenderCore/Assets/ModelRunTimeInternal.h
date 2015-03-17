@@ -8,6 +8,7 @@
 
 #include "ModelRunTime.h"
 #include "AnimationRunTime.h"
+#include "Material.h"
 
 namespace RenderCore { namespace Assets 
 {
@@ -34,11 +35,11 @@ namespace RenderCore { namespace Assets
         class GeoCall
         {
         public:
-            unsigned    _geoId;
-            unsigned    _transformMarker;
-            unsigned*   _materialIds;
-            size_t      _materialCount;
-            unsigned    _levelOfDetail;
+            unsigned        _geoId;
+            unsigned        _transformMarker;
+            MaterialGuid*   _materialGuids;
+            size_t          _materialCount;
+            unsigned        _levelOfDetail;
         };
 
         class InputInterface
@@ -170,12 +171,20 @@ namespace RenderCore { namespace Assets
         size_t                      _geoCount;
         BoundSkinnedGeometry*       _boundSkinnedControllers;
         size_t                      _boundSkinnedControllerCount;
-        ResolvedMaterial*         _materialBindings;
-        size_t                      _materialBindingsCount;
+        MaterialGuid*               _materialReferences;
+        size_t                      _materialReferencesCount;
 
         std::pair<Float3, Float3>   _boundingBox;
 
         ~ModelImmutableData();
+    };
+
+    class MaterialScaffoldImmutableData
+    {
+    public:
+        size_t              _materialCount;
+        MaterialGuid*       _materialGuids;
+        ResolvedMaterial*   _materials;
     };
 
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -333,14 +342,14 @@ namespace RenderCore { namespace Assets
             unsigned _constantBuffer;
             unsigned _renderStateSet;
 
-            unsigned _materialBindingIndex;
+            MaterialGuid _materialBindingIndex;
 
             DrawCallResources();
             DrawCallResources(
                 unsigned shaderName,
                 unsigned geoParamBox, unsigned matParamBox,
                 unsigned textureSet, unsigned constantBuffer,
-                unsigned renderStateSet, unsigned materialBindingIndex);
+                unsigned renderStateSet, MaterialGuid materialBindingIndex);
         };
         std::vector<DrawCallResources>   _drawCallRes;
 

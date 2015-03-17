@@ -12,6 +12,8 @@
 #include "ModelCommandStream.h"
 #include "../Assets/BlockSerializer.h"
 #include "../ConsoleRig/Log.h"
+#include "../Utility/StringFormat.h"
+#include "../Utility/Streams/Data.h"
 
 #pragma warning(push)
 #pragma warning(disable:4201)       // nonstandard extension used : nameless struct/union
@@ -25,7 +27,7 @@ namespace RenderCore { namespace ColladaConversion
     using ::Assets::Exceptions::FormatError;
 
     template <typename Type>
-        ObjectId    TableOfObjects::Get(const COLLADAFW::UniqueId& id) const
+        ObjectId    TableOfObjects::GetObjectId(const COLLADAFW::UniqueId& id) const
     {
         auto& set = GetSet<Type>();
         for (auto i=set.cbegin(); i!=set.cend(); ++i)
@@ -172,6 +174,33 @@ namespace RenderCore { namespace ColladaConversion
         outputSerializer.SerializeValue(_animationCurves.size());
     }
 
+    std::vector<std::unique_ptr<Data>>  TableOfObjects::SerializeMaterial() const
+    {
+        // We're going to write a text file chunk containing all
+        // of the raw material settings. We need to do this for every ReferencedMaterial
+        // in the table of objects.
+        // Note that some of these materials might not actually be used by any meshes...
+        // It looks like the max exporter can export redundant materials sometimes.
+        // So we could cull down this list. there might be some cases where unreferenced
+        // materials might be useful, though...?
+
+        std::vector<std::unique_ptr<Data>> result;
+        for (auto i=_referencedMaterials.cbegin(); i!=_referencedMaterials.cend(); ++i) {
+            auto objectId = GetObjectId<Assets::RawMaterial>(i->_internalType._effectId.AsColladaId());
+            if (objectId != ObjectId_Invalid) {
+                const auto* obj = GetFromObjectId<Assets::RawMaterial>(objectId);
+                if (obj) {
+                    auto newBlock = obj->SerializeAsData();
+                    newBlock->SetValue(StringMeld<64>() << std::hex << i->_internalType._guid);
+                    newBlock->SetAttribute("Name", i->_name.c_str());
+                    result.push_back(std::move(newBlock));
+                }
+            }
+        }
+
+        return std::move(result);
+    }
+
     TableOfObjects::TableOfObjects(TableOfObjects&& moveFrom)
     :   _geos(std::move(moveFrom._geos))
     ,   _models(std::move(moveFrom._models))
@@ -206,7 +235,7 @@ namespace RenderCore { namespace ColladaConversion
     template <typename Type>
         void Instantiator()
     {
-        auto i0 = &TableOfObjects::Get<Type>;
+        auto i0 = &TableOfObjects::GetObjectId<Type>;
         auto i1 = &TableOfObjects::Has<Type>;
         auto i2 = &TableOfObjects::Add<Type>;
         auto i3 = &TableOfObjects::GetDesc<Type>;

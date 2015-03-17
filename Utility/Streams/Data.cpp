@@ -1458,13 +1458,8 @@ bool Data::SavePrettyValue(char* s, int* len) const
     return true;
 }
 
-static void SaveToOutputStream(OutputStream& f, const Data* data, bool includeComment = true)
+void Data::SaveToOutputStream(OutputStream& f, bool includeComment) const
 {
-    Data* meta = data->meta;
-    // Data* child = data->child;
-    char* preComment = data->preComment;
-    char* postComment = data->postComment;
-
     if (meta) {
         if (meta->preComment && includeComment)
             PrintComment(f, 0, meta->preComment);
@@ -1476,7 +1471,7 @@ static void SaveToOutputStream(OutputStream& f, const Data* data, bool includeCo
     if (preComment && includeComment) {
         PrintComment(f, 0, preComment);
     }
-    foreachData(child, data) {
+    foreachData(child, this) {
         PrettyPrint(f, 0, child, includeComment);
     }
     if (postComment && includeComment) {
@@ -1492,7 +1487,7 @@ bool Data::Save(const char* filename, bool includeComment) const
         return false;
     }
 
-    SaveToOutputStream(*f, this, includeComment);
+    SaveToOutputStream(*f, includeComment);
 
     return true;
 }
@@ -1506,7 +1501,7 @@ bool Data::SaveToBuffer(char* s, int* len) const
         return false;
     }
 
-    SaveToOutputStream(*f, this);
+    SaveToOutputStream(*f);
 
     return true;
 }

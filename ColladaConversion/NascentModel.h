@@ -81,6 +81,7 @@ namespace RenderCore { namespace ColladaConversion
         CONVERSION_API NascentChunkArray    SerializeSkin() const;
         CONVERSION_API NascentChunkArray    SerializeAnimationSet() const;
         CONVERSION_API NascentChunkArray    SerializeSkeleton() const;
+        CONVERSION_API NascentChunkArray    SerializeMaterials() const;
 
         CONVERSION_API void         MergeAnimationData(const NascentModel& source, const char animationName[]);
 

@@ -398,7 +398,7 @@ namespace RenderCore { namespace ColladaConversion
                 //
 
             const UniqueId& id = node.getInstanceGeometries()[c]->getInstanciatedObjectId();
-            ObjectId tableId = accessableObjects.Get<NascentRawGeometry>(id);
+            ObjectId tableId = accessableObjects.GetObjectId<NascentRawGeometry>(id);
             if (tableId==ObjectId_Invalid) {
                 Warning( "Warning -- bad instanced geometry link found in node (%s)\n", GetNodeStringID(node).c_str());
             } else {
@@ -408,7 +408,7 @@ namespace RenderCore { namespace ColladaConversion
 
         for (size_t c=0; c<node.getInstanceNodes().getCount(); ++c) {
             const UniqueId& id = node.getInstanceNodes()[c]->getInstanciatedObjectId();
-            ObjectId tableId = accessableObjects.Get<NascentModelCommandStream>(id);
+            ObjectId tableId = accessableObjects.GetObjectId<NascentModelCommandStream>(id);
             if (tableId==ObjectId_Invalid) {
                 Warning("Warning -- bad instanced geometry link found in node (%s)\n", GetNodeStringID(node).c_str());
             } else {
@@ -418,9 +418,9 @@ namespace RenderCore { namespace ColladaConversion
 
         for (size_t c=0; c<node.getInstanceControllers().getCount(); ++c) {
             const UniqueId& id = node.getInstanceControllers()[c]->getInstanciatedObjectId();
-            ObjectId tableId = accessableObjects.Get<UnboundSkinControllerAndAttachedSkeleton>(id);
+            ObjectId tableId = accessableObjects.GetObjectId<UnboundSkinControllerAndAttachedSkeleton>(id);
             if (tableId==ObjectId_Invalid) {
-                tableId = accessableObjects.Get<UnboundMorphController>(id);
+                tableId = accessableObjects.GetObjectId<UnboundMorphController>(id);
             }
             if (tableId==ObjectId_Invalid) {
                 Warning("Warning -- bad instanced controller link found in node (%s)\n", GetNodeStringID(node).c_str());
@@ -526,10 +526,10 @@ namespace RenderCore { namespace ColladaConversion
 
 
 
-    std::vector<ObjectId>       NascentModelCommandStream::BuildMaterialTable(
+    auto NascentModelCommandStream::BuildMaterialTable(
         const COLLADAFW::MaterialBindingArray& bindingArray, 
         const std::vector<uint64>& geometryMaterialOrdering,
-        const TableOfObjects& accessableObjects)
+        const TableOfObjects& accessableObjects) -> std::vector<MaterialGuid>
     {
                         //
                         //        For each material referenced in the raw geometry, try to 
@@ -537,27 +537,27 @@ namespace RenderCore { namespace ColladaConversion
                         //            We have to map it via the binding table in the InstanceGeometry
                         //
                         
-        std::vector<ObjectId> materials;
-        materials.resize(geometryMaterialOrdering.size(), ObjectId_Invalid);
+        std::vector<MaterialGuid> materialGuids;
+        materialGuids.resize(geometryMaterialOrdering.size(), ObjectId_Invalid);
 
         for (unsigned c=0; c<bindingArray.getCount(); ++c)
             for (auto i=geometryMaterialOrdering.cbegin(); i!=geometryMaterialOrdering.cend(); ++i)
                 if (*i == bindingArray[c].getMaterialId()) {
-                    assert(materials[std::distance(geometryMaterialOrdering.cbegin(), i)] == ObjectId_Invalid);
+                    assert(materialGuids[std::distance(geometryMaterialOrdering.cbegin(), i)] == ObjectId_Invalid);
 
-                    ObjectId refMaterialTableId = accessableObjects.Get<ReferencedMaterial>(bindingArray[c].getReferencedMaterial());
+                    ObjectId refMaterialTableId = accessableObjects.GetObjectId<ReferencedMaterial>(bindingArray[c].getReferencedMaterial());
                     const ReferencedMaterial* matRef = accessableObjects.GetFromObjectId<ReferencedMaterial>(refMaterialTableId);
 
-                        //      Redirect from ReferencedMaterial -> MaterialParameters
-                    ObjectId finalMaterialId = ObjectId_Invalid;
-                    if (matRef) {
-                        finalMaterialId = accessableObjects.Get<Assets::RawMaterial>(matRef->_effectId.AsColladaId());
-                    }
-                    materials[std::distance(geometryMaterialOrdering.cbegin(), i)] = finalMaterialId;
+                        //      The "ReferenceMaterial" contains a guid value that will be used for matching
+                        //      this reference against a material scaffold file
+                    auto guid = s_materialGuid_Invalid;
+                    if (matRef) guid = matRef->_guid;
+
+                    materialGuids[std::distance(geometryMaterialOrdering.cbegin(), i)] = guid;
                     break;
                 }
 
-        return std::move(materials);
+        return std::move(materialGuids);
     }
     
     class NascentModelCommandStream::TransformationMachineOutput
@@ -593,11 +593,10 @@ namespace RenderCore { namespace ColladaConversion
             for (size_t c=0; c<node.getInstanceGeometries().getCount(); ++c) {
                 const InstanceGeometry& instanceGeo = *node.getInstanceGeometries()[c];
                 const UniqueId& id  = instanceGeo.getInstanciatedObjectId();
-                ObjectId tableId    = accessableObjects.Get<NascentRawGeometry>(id);
+                ObjectId tableId    = accessableObjects.GetObjectId<NascentRawGeometry>(id);
                 if (tableId!=ObjectId_Invalid) {
-                    const NascentRawGeometry* inputGeometry = 
-                        accessableObjects.GetFromObjectId<NascentRawGeometry>(tableId);
-                    std::vector<ObjectId> materials = BuildMaterialTable(
+                    const auto* inputGeometry = accessableObjects.GetFromObjectId<NascentRawGeometry>(tableId);
+                    auto materials = BuildMaterialTable(
                         instanceGeo.getMaterialBindings(), inputGeometry->_materials, accessableObjects);
                     _geometryInstances.push_back(GeometryInstance(tableId, (unsigned)thisOutputMatrix, std::move(materials), 0));
                 }
@@ -605,7 +604,7 @@ namespace RenderCore { namespace ColladaConversion
 
             for (size_t c=0; c<node.getInstanceNodes().getCount(); ++c) {
                 const UniqueId& id  = node.getInstanceNodes()[c]->getInstanciatedObjectId();
-                ObjectId tableId    = accessableObjects.Get<NascentModelCommandStream>(id);
+                ObjectId tableId    = accessableObjects.GetObjectId<NascentModelCommandStream>(id);
                 if (tableId!=ObjectId_Invalid) {
                     _modelInstances.push_back(ModelInstance(tableId, (unsigned)thisOutputMatrix));
                 }
@@ -628,7 +627,7 @@ namespace RenderCore { namespace ColladaConversion
             //      Now traverse to child nodes.
             //
 
-        const NodePointerArray& childNodes = node.getChildNodes();
+        const auto& childNodes = node.getChildNodes();
         for (size_t c=0; c<childNodes.getCount(); ++c) {
             PushNode(*childNodes[c], accessableObjects, skeletonReferences);
         }
@@ -736,7 +735,7 @@ namespace RenderCore { namespace ColladaConversion
             const UniqueId& id = node.getInstanceControllers()[instanceController]->getInstanciatedObjectId();
             const UnboundSkinControllerAndAttachedSkeleton* controllerAndSkeleton = nullptr;
 
-            ObjectId tableId = accessableObjects.Get<UnboundSkinControllerAndAttachedSkeleton>(id);
+            ObjectId tableId = accessableObjects.GetObjectId<UnboundSkinControllerAndAttachedSkeleton>(id);
             if (tableId != ObjectId_Invalid) {
                 controllerAndSkeleton = accessableObjects.GetFromObjectId<UnboundSkinControllerAndAttachedSkeleton>(tableId);
             }
@@ -755,18 +754,18 @@ namespace RenderCore { namespace ColladaConversion
                         //
 
                     const NascentRawGeometry* source = nullptr;
-                    ObjectId sourceTableId = accessableObjects.Get<NascentRawGeometry>(
+                    ObjectId sourceTableId = accessableObjects.GetObjectId<NascentRawGeometry>(
                         controllerAndSkeleton->_source.AsColladaId());
                     if (sourceTableId != ObjectId_Invalid) {
                         source = accessableObjects.GetFromObjectId<NascentRawGeometry>(sourceTableId);
                     } else {
-                        sourceTableId = accessableObjects.Get<UnboundMorphController>(
+                        sourceTableId = accessableObjects.GetObjectId<UnboundMorphController>(
                             controllerAndSkeleton->_source.AsColladaId());
                         if (sourceTableId != ObjectId_Invalid) {
                             const UnboundMorphController* morphController = 
                                 accessableObjects.GetFromObjectId<UnboundMorphController>(sourceTableId);
                             if (morphController) {
-                                sourceTableId = accessableObjects.Get<NascentRawGeometry>(morphController->_source.AsColladaId());
+                                sourceTableId = accessableObjects.GetObjectId<NascentRawGeometry>(morphController->_source.AsColladaId());
                                 if (sourceTableId != ObjectId_Invalid) {
                                     source = accessableObjects.GetFromObjectId<NascentRawGeometry>(sourceTableId);
                                 }
@@ -1122,7 +1121,7 @@ namespace RenderCore { namespace ColladaConversion
                             //
                             //  Have to build the material bindings, as well..
                             //
-                        std::vector<ObjectId> materials = BuildMaterialTable(
+                        auto materials = BuildMaterialTable(
                             node.getInstanceControllers()[instanceController]->getMaterialBindings(), source->_materials, accessableObjects);
 
                         SkinControllerInstance newInstance(finalObjectTableId, FindTransformationMachineOutput(AsHashedColladaUniqueId(node.getUniqueId())), std::move(materials), 0);
@@ -1285,7 +1284,7 @@ namespace RenderCore { namespace ColladaConversion
         const InstanceControllerPointerArray& instanceControllers = node.getInstanceControllers();
         for (size_t c=0; c<instanceControllers.getCount(); ++c) {
             const UnboundSkinControllerAndAttachedSkeleton* controller = nullptr;
-            ObjectId tableId = objects.Get<UnboundSkinControllerAndAttachedSkeleton>(
+            ObjectId tableId = objects.GetObjectId<UnboundSkinControllerAndAttachedSkeleton>(
                 instanceControllers[c]->getInstanciatedObjectId());
             if (tableId != ObjectId_Invalid) {
                 controller = objects.GetFromObjectId<UnboundSkinControllerAndAttachedSkeleton>(tableId);

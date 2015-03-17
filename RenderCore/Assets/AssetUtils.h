@@ -30,5 +30,6 @@ namespace RenderCore { namespace Assets
     static const uint64 ChunkType_ModelScaffoldLargeBlocks = ConstHash64<'Mode', 'lSca', 'fold', 'Larg'>::Value;
     static const uint64 ChunkType_AnimationSet = ConstHash64<'Anim', 'Set'>::Value;
     static const uint64 ChunkType_Skeleton = ConstHash64<'Skel', 'eton'>::Value;
+    static const uint64 ChunkType_RawMat = ConstHash64<'RawM', 'at'>::Value;
 }}
 

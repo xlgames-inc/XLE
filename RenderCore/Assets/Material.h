@@ -123,6 +123,8 @@ namespace RenderCore { namespace Assets
         RenderStateSet();
     };
 
+    typedef uint64 MaterialGuid;
+
     class ResourceBinding
     {
     public:
@@ -198,6 +200,8 @@ namespace RenderCore { namespace Assets
         const ::Assets::DependencyValidation& GetDependencyValidation() const { return *_depVal; }
 
         ResolvedMaterial Resolve(std::vector<::Assets::FileAndTime>* deps = nullptr) const;
+
+        std::unique_ptr<Data> SerializeAsData() const;
         
         RawMaterial();
         RawMaterial(const ::Assets::ResChar initialiser[]);

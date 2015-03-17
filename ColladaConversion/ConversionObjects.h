@@ -170,8 +170,12 @@ namespace RenderCore { namespace ColladaConversion
     class ReferencedMaterial
     {
     public:
+        typedef uint64 Guid;
         FullColladaId   _effectId;
-        ReferencedMaterial(const FullColladaId& effectId) : _effectId(effectId) {}
+        Guid            _guid;
+        std::string     _descriptiveName;
+        ReferencedMaterial(const FullColladaId& effectId, const Guid& guid, const std::string& descriptiveName) 
+            : _effectId(effectId), _guid(guid), _descriptiveName(descriptiveName) {}
     };
 
         ////////////////////////////////////////////////////////

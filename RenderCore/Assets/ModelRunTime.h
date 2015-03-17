@@ -185,7 +185,7 @@ namespace RenderCore { namespace Assets
 
         static bool CanDoPrepareAnimation(Metal::DeviceContext* context);
 
-        std::vector<unsigned> DrawCallToMaterialBinding();
+        std::vector<uint64> DrawCallToMaterialBinding();
         void LogReport() const;
 
             ////////////////////////////////////////////////////////////
