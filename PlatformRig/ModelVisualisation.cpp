@@ -388,7 +388,7 @@ namespace PlatformRig
                     auto bindingVec = model._renderer->DrawCallToMaterialBinding();
                     unsigned t = 0;
                     for (auto i=bindingVec.cbegin(); i!=bindingVec.cend() && t < dimof(DrawCallToMaterialIndexMap); ++i, ++t) {
-                        DrawCallToMaterialIndexMap[t] = UInt4(bindingVec[t], bindingVec[t], bindingVec[t], bindingVec[t]);
+                        DrawCallToMaterialIndexMap[t] = UInt4((unsigned)bindingVec[t], (unsigned)bindingVec[t], (unsigned)bindingVec[t], (unsigned)bindingVec[t]);
                     }
 
                     metalContext->BindPS(MakeResourceList(

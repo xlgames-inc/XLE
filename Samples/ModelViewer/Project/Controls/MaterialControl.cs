@@ -81,6 +81,35 @@ namespace ModelViewer.Controls
                         AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill
                     });
             }
+
+            {
+                resourceBindings.AutoGenerateColumns = false;
+                // var cell = new DataGridViewTextBoxCell();
+
+                resourceBindings.Columns.Add(
+                    new DataGridViewTextBoxColumn()
+                    {
+                        // CellTemplate = cell,
+                        Name = "Binding",
+                        HeaderText = "Binding",
+                        ToolTipText = "Binding point in the shader",
+                        DataPropertyName = "Name",
+                        FillWeight = 30,
+                        AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill
+                    });
+
+                resourceBindings.Columns.Add(
+                    new DataGridViewTextBoxColumn()
+                    {
+                        // CellTemplate = cell,
+                        Name = "ResourceName",
+                        HeaderText = "ResourceName",
+                        ToolTipText = "Name of the bound resourec",
+                        DataPropertyName = "Value",
+                        FillWeight = 70,
+                        AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill
+                    });
+            }
         }
 
         public GUILayer.RawMaterial Object
@@ -89,6 +118,7 @@ namespace ModelViewer.Controls
             {
                 materialParameterBox.DataSource = value.MaterialParameterBox;
                 shaderConstants.DataSource = value.ShaderConstants;
+                resourceBindings.DataSource = value.ResourceBindings;
                 materialPreview1.Object = value;
             }
         }

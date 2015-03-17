@@ -8,6 +8,7 @@
 #include "../../RenderCore/Assets/Material.h"
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../SceneEngine/LightingParserContext.h"
+#include "../../Assets/AssetUtils.h"
 
 namespace GUILayer
 {
@@ -16,7 +17,8 @@ namespace GUILayer
         SceneEngine::LightingParserContext& parserContext)
     {
         PlatformRig::MaterialVisObject obj;
-        obj._parameters = _config->GetUnderlying().Resolve();
+        obj._parameters = _config->GetUnderlying().Resolve(
+            ::Assets::DefaultDirectorySearchRules(_config->GetUnderlying()._filename.c_str()));
         // obj._systemConstants = 
 
             // We must build a shader program to render this preview

@@ -8,6 +8,7 @@
 
 #include "UITypesBinding.h"
 #include "../../RenderCore/Assets/Material.h"
+#include "../../Utility/StringFormat.h"
 #include <msclr\auto_gcroot.h>
 
 namespace GUILayer
@@ -44,35 +45,51 @@ namespace GUILayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    System::String^ BindingUtil::StringIntPair::Name::get() { return _name; }
+    template<typename NameType, typename ValueType>
+        NameType BindingUtil::PropertyPair<NameType, ValueType>::Name::get() { return _name; }
 
-    void BindingUtil::StringIntPair::Name::set(System::String^ newValue)
+    template<typename NameType, typename ValueType>
+        void BindingUtil::PropertyPair<NameType, ValueType>::Name::set(NameType newValue)
     {
         _name = newValue;
         NotifyPropertyChanged("Name");
     }
 
-    unsigned BindingUtil::StringIntPair::Value::get() { return _value; } 
-    void BindingUtil::StringIntPair::Value::set(unsigned newValue)
+    template<typename NameType, typename ValueType>
+        ValueType BindingUtil::PropertyPair<NameType, ValueType>::Value::get() { return _value; } 
+
+    template<typename NameType, typename ValueType>
+        void BindingUtil::PropertyPair<NameType, ValueType>::Value::set(ValueType newValue)
     {
         _value = newValue;
         NotifyPropertyChanged("Value");
     }
 
-    void BindingUtil::StringIntPair::NotifyPropertyChanged(System::String^ propertyName)
+    template<typename NameType, typename ValueType>
+        void BindingUtil::PropertyPair<NameType, ValueType>::NotifyPropertyChanged(System::String^ propertyName)
     {
         PropertyChanged(this, gcnew PropertyChangedEventArgs(propertyName));
     }
 
-    BindingList<BindingUtil::StringIntPair^>^ BindingUtil::AsBindingList(const ParameterBox& paramBox)
+    public ref class BindingConv
     {
-        auto result = gcnew BindingList<StringIntPair^>();
+    public:
+        static BindingList<BindingUtil::StringIntPair^>^ AsBindingList(const ParameterBox& paramBox);
+        static ParameterBox AsParameterBox(BindingList<BindingUtil::StringIntPair^>^);
+
+        static BindingList<BindingUtil::StringStringPair^>^ AsBindingList(const RenderCore::Assets::ResourceBindingSet& bindingSet);
+        static RenderCore::Assets::ResourceBindingSet AsResourceBindingList(BindingList<BindingUtil::StringStringPair^>^);
+    };
+
+    BindingList<BindingUtil::StringIntPair^>^ BindingConv::AsBindingList(const ParameterBox& paramBox)
+    {
+        auto result = gcnew BindingList<BindingUtil::StringIntPair^>();
         std::vector<std::pair<std::string, std::string>> stringTable;
         paramBox.BuildStringTable(stringTable);
 
         for (auto i=stringTable.cbegin(); i!=stringTable.cend(); ++i) {
             result->Add(
-                gcnew StringIntPair(
+                gcnew BindingUtil::StringIntPair(
                     clix::marshalString<clix::E_UTF8>(i->first),
                     XlAtoI32(i->second.c_str())));
         }
@@ -80,7 +97,7 @@ namespace GUILayer
         return result;
     }
 
-    ParameterBox BindingUtil::AsParameterBox(BindingList<StringIntPair^>^ input)
+    ParameterBox BindingConv::AsParameterBox(BindingList<BindingUtil::StringIntPair^>^ input)
     {
         ParameterBox result;
         for each(auto i in input) {
@@ -95,13 +112,54 @@ namespace GUILayer
         return result;
     }
 
+    BindingList<BindingUtil::StringStringPair^>^ BindingConv::AsBindingList(
+        const RenderCore::Assets::ResourceBindingSet& bindingSet)
+    {
+        auto result = gcnew BindingList<BindingUtil::StringStringPair^>();
+
+        for (auto i=bindingSet.cbegin(); i!=bindingSet.cend(); ++i) {
+            StringMeld<64> nameTemp;
+            nameTemp << std::hex << i->_bindHash;
+
+            result->Add(
+                gcnew BindingUtil::StringStringPair(
+                    clix::marshalString<clix::E_UTF8>((const char*)nameTemp),
+                    clix::marshalString<clix::E_UTF8>(i->_resourceName)));
+        }
+
+        return result;
+    }
+
+    RenderCore::Assets::ResourceBindingSet BindingConv::AsResourceBindingList(BindingList<BindingUtil::StringStringPair^>^ input)
+    {
+        using namespace RenderCore::Assets;
+        ResourceBindingSet result;
+
+        for each(auto i in input) {
+            if (i->Name && i->Name->Length > 0) {
+                MaterialGuid guid = XlAtoI64(clix::marshalString<clix::E_UTF8>(i->Name).c_str(), nullptr, 16);
+                auto ins = std::lower_bound(
+                    result.begin(), result.end(), 
+                    guid, ResourceBinding::Compare());
+                if (ins==result.end() || ins->_bindHash != guid) {
+                    result.insert(ins, 
+                        ResourceBinding(
+                            guid, 
+                            clix::marshalString<clix::E_UTF8>(i->Value)));
+                }
+            }
+        }
+
+        return result;
+    }
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     BindingList<BindingUtil::StringIntPair^>^ 
         RawMaterial::MaterialParameterBox::get()
     {
         if (!_materialParameterBox) {
-            _materialParameterBox = BindingUtil::AsBindingList((*_underlying)->_matParamBox);
+            _materialParameterBox = BindingConv::AsBindingList((*_underlying)->_matParamBox);
             _materialParameterBox->ListChanged += 
                 gcnew ListChangedEventHandler(
                     this, &RawMaterial::ParameterBox_Changed);
@@ -113,12 +171,24 @@ namespace GUILayer
         RawMaterial::ShaderConstants::get()
     {
         if (!_shaderConstants) {
-            _shaderConstants = BindingUtil::AsBindingList((*_underlying)->_constants);
+            _shaderConstants = BindingConv::AsBindingList((*_underlying)->_constants);
             _shaderConstants->ListChanged += 
                 gcnew ListChangedEventHandler(
                     this, &RawMaterial::ParameterBox_Changed);
         }
         return _shaderConstants;
+    }
+
+    BindingList<BindingUtil::StringStringPair^>^ 
+        RawMaterial::ResourceBindings::get()
+    {
+        if (!_resourceBindings) {
+            _resourceBindings = BindingConv::AsBindingList((*_underlying)->_resourceBindings);
+            _resourceBindings->ListChanged += 
+                gcnew ListChangedEventHandler(
+                    this, &RawMaterial::ResourceBinding_Changed);
+        }
+        return _resourceBindings;
     }
 
     void RawMaterial::ParameterBox_Changed(System::Object^ obj, ListChangedEventArgs^e)
@@ -145,10 +215,31 @@ namespace GUILayer
 
         if (_underlying.get()) {
             if (obj == _materialParameterBox) {
-                (*_underlying)->_matParamBox = BindingUtil::AsParameterBox(_materialParameterBox);
+                (*_underlying)->_matParamBox = BindingConv::AsParameterBox(_materialParameterBox);
             } else if (obj == _shaderConstants) {
-                (*_underlying)->_constants = BindingUtil::AsParameterBox(_shaderConstants);
+                (*_underlying)->_constants = BindingConv::AsParameterBox(_shaderConstants);
             }
+        }
+    }
+
+    void RawMaterial::ResourceBinding_Changed(System::Object^ obj, ListChangedEventArgs^ e)
+    {
+        if (e->ListChangedType == ListChangedType::ItemMoved) {
+            return;
+        }
+
+        using Box = BindingList<BindingUtil::StringStringPair^>;
+
+        if (e->ListChangedType == ListChangedType::ItemAdded) {
+            assert(e->NewIndex < ((Box^)obj)->Count);
+            if (!((Box^)obj)[e->NewIndex]->Name || ((Box^)obj)[e->NewIndex]->Name->Length > 0) {
+                return;
+            }
+        }
+
+        if (_underlying.get()) {
+            assert(obj == _resourceBindings);
+            (*_underlying)->_resourceBindings = BindingConv::AsResourceBindingList(_resourceBindings);
         }
     }
 

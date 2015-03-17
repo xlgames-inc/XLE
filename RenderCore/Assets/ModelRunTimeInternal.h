@@ -179,12 +179,10 @@ namespace RenderCore { namespace Assets
         ~ModelImmutableData();
     };
 
-    class MaterialScaffoldImmutableData
+    class MaterialImmutableData
     {
     public:
-        size_t              _materialCount;
-        MaterialGuid*       _materialGuids;
-        ResolvedMaterial*   _materials;
+        Serialization::Vector<std::pair<MaterialGuid, ResolvedMaterial>> _materials;
     };
 
 ////////////////////////////////////////////////////////////////////////////////////////////

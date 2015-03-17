@@ -32,16 +32,16 @@ namespace Utility
             inline bool operator()(Second& lhs, std::pair<First, Second>& rhs) const                     { return lhs < rhs.second; }
         };
 
-    template <typename First, typename Second>
-        static typename std::vector<std::pair<First, Second>>::iterator LowerBound(
-            typename std::vector<std::pair<First, Second>>&v, First compareToFirst)
+    template <typename First, typename Second, typename Allocator>
+        static typename std::vector<std::pair<First, Second>, Allocator>::iterator LowerBound(
+            typename std::vector<std::pair<First, Second>, Allocator>&v, First compareToFirst)
         {
             return std::lower_bound(v.begin(), v.end(), compareToFirst, CompareFirst<First, Second>());
         }
 
-    template <typename First, typename Second>
-        static typename std::vector<std::pair<First, Second>>::const_iterator LowerBound(
-            typename const std::vector<std::pair<First, Second>>&v, First compareToFirst)
+    template <typename First, typename Second, typename Allocator>
+        static typename std::vector<std::pair<First, Second>, Allocator>::const_iterator LowerBound(
+            typename const std::vector<std::pair<First, Second>, Allocator>&v, First compareToFirst)
         {
             return std::lower_bound(v.cbegin(), v.cend(), compareToFirst, CompareFirst<First, Second>());
         }

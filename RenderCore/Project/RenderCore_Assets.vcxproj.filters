@@ -33,6 +33,9 @@
     <ClCompile Include="..\Assets\Material.cpp">
       <Filter>Assets</Filter>
     </ClCompile>
+    <ClCompile Include="..\Assets\MaterialScaffold.cpp">
+      <Filter>Assets</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Assets\ModelRunTime.h">

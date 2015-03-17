@@ -154,6 +154,7 @@
     <ClCompile Include="..\Assets\AssetUtils.cpp" />
     <ClCompile Include="..\Assets\ColladaCompilerInterface.cpp" />
     <ClCompile Include="..\Assets\Material.cpp" />
+    <ClCompile Include="..\Assets\MaterialScaffold.cpp" />
     <ClCompile Include="..\Assets\ModelFormatPlugins.cpp" />
     <ClCompile Include="..\Assets\ModelSimple.cpp" />
     <ClCompile Include="..\Assets\ModelSimpleRenderer.cpp" />

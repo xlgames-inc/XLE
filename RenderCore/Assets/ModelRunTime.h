@@ -25,7 +25,11 @@ namespace RenderCore { namespace Assets
     class SharedStateSet;
     class ModelCommandStream;
     class ModelImmutableData;
+    class MaterialImmutableData;
     class TransformationMachine;
+    class ResolvedMaterial;
+
+    typedef uint64 MaterialGuid;
 
     typedef Metal::Topology::Enum Topology;
     typedef Metal::NativeFormat::Enum NativeFormat;
@@ -87,6 +91,21 @@ namespace RenderCore { namespace Assets
         std::string                 _filename;
         unsigned                    _largeBlocksOffset;
 
+        std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
+    };
+
+    class MaterialScaffold
+    {
+    public:
+        const MaterialImmutableData&    ImmutableData() const       { return *_data; };
+        const ResolvedMaterial*         GetMaterial(MaterialGuid guid);
+
+        const ::Assets::DependencyValidation& GetDependencyValidation() const { return *_validationCallback; }
+
+        MaterialScaffold(const ResChar filename[]);
+        ~MaterialScaffold();
+    protected:
+        std::unique_ptr<MaterialImmutableData> _data;
         std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
     };
 
@@ -185,7 +204,7 @@ namespace RenderCore { namespace Assets
 
         static bool CanDoPrepareAnimation(Metal::DeviceContext* context);
 
-        std::vector<uint64> DrawCallToMaterialBinding();
+        std::vector<MaterialGuid> DrawCallToMaterialBinding();
         void LogReport() const;
 
             ////////////////////////////////////////////////////////////

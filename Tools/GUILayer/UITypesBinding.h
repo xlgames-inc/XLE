@@ -157,26 +157,27 @@ namespace GUILayer
     public ref class BindingUtil
     {
     public:
-        ref class StringIntPair : public INotifyPropertyChanged
+        template<typename NameType, typename ValueType>
+            ref class PropertyPair : public INotifyPropertyChanged
         {
         public:
-            property System::String^ Name { System::String^ get(); void set(System::String^); }
-            property unsigned Value { unsigned get(); void set(unsigned); }
+            property NameType Name { NameType get(); void set(NameType); }
+            property ValueType Value { ValueType get(); void set(ValueType); }
 
             virtual event PropertyChangedEventHandler^ PropertyChanged;
 
-            StringIntPair() : _value(0) {}
-            StringIntPair(System::String^ name, unsigned value) { Name = name; Value = value; }
+            PropertyPair() : _value(0) {}
+            PropertyPair(NameType name, ValueType value) { Name = name; Value = value; }
 
         protected:
             void NotifyPropertyChanged(/*[CallerMemberName]*/ System::String^ propertyName);
 
-            System::String^ _name;
-            unsigned _value;
+            NameType _name;
+            ValueType _value;
         };
 
-        static BindingList<StringIntPair^>^ AsBindingList(const ParameterBox& paramBox);
-        static ParameterBox AsParameterBox(BindingList<StringIntPair^>^);
+        typedef PropertyPair<System::String^, unsigned> StringIntPair;
+        typedef PropertyPair<System::String^, System::String^> StringStringPair;
     };
 
     public ref class RawMaterial
@@ -191,6 +192,10 @@ namespace GUILayer
             BindingList<BindingUtil::StringIntPair^>^ get();
         }
 
+        property BindingList<BindingUtil::StringStringPair^>^ ResourceBindings {
+            BindingList<BindingUtil::StringStringPair^>^ get();
+        }
+
         const NativeConfig& GetUnderlying() { return *_underlying->get(); }
 
         RawMaterial(System::String^ initialiser);
@@ -201,7 +206,9 @@ namespace GUILayer
 
         BindingList<BindingUtil::StringIntPair^>^ _materialParameterBox;
         BindingList<BindingUtil::StringIntPair^>^ _shaderConstants;
+        BindingList<BindingUtil::StringStringPair^>^ _resourceBindings;
         void ParameterBox_Changed(System::Object^, ListChangedEventArgs^);
+        void ResourceBinding_Changed(System::Object^, ListChangedEventArgs^);
     };
 }
 

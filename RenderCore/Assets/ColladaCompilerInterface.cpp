@@ -20,6 +20,7 @@ namespace RenderCore { namespace Assets
         ColladaConversion::ModelSerializeFunction _serializeSkinFunction;
         ColladaConversion::ModelSerializeFunction _serializeAnimationFunction;
         ColladaConversion::ModelSerializeFunction _serializeSkeletonFunction;
+        ColladaConversion::ModelSerializeFunction _serializeMaterialsFunction;
         ColladaConversion::MergeAnimationDataFunction _mergeAnimationDataFunction;
         ColladaConversion::CreateModelFunction* _createModel;
 
@@ -34,6 +35,7 @@ namespace RenderCore { namespace Assets
             _serializeSkinFunction = nullptr;
             _serializeAnimationFunction = nullptr;
             _serializeSkeletonFunction = nullptr;
+            _serializeMaterialsFunction = nullptr;
             _mergeAnimationDataFunction = nullptr;
             _createModel = nullptr;
             _conversionDLLVersion = std::make_pair("Unknown", "Unknown");
@@ -79,7 +81,22 @@ namespace RenderCore { namespace Assets
             auto& c = chunks.first[i];
             outputFile.Write(AsPointer(c._data.begin()), c._data.size(), 1);
         }
-}
+    }
+
+    static void SerializeToFileJustChunk(
+        RenderCore::ColladaConversion::NascentModel& model, 
+        RenderCore::ColladaConversion::ModelSerializeFunction fn,
+        const char destinationFilename[],
+        std::pair<const char*, const char*> versionInfo)
+    {
+        auto chunks = (model.*fn)();
+
+        BasicFile outputFile(destinationFilename, "wb");
+        for (unsigned i=0; i<chunks.second; ++i) {
+            auto& c = chunks.first[i];
+            outputFile.Write(AsPointer(c._data.begin()), c._data.size(), 1);
+        }
+    }
 
     std::shared_ptr<::Assets::PendingCompileMarker> ColladaCompiler::PrepareResource(
         uint64 typeCode, 
@@ -120,6 +137,11 @@ namespace RenderCore { namespace Assets
             auto model = (*_pimpl->_createModel)(colladaFile);
             if (typeCode == Type_Model) {
                 SerializeToFile(*model, _pimpl->_serializeSkinFunction, outputName, _pimpl->_conversionDLLVersion);
+
+                char matName[MaxPath];
+                destinationStore.MakeIntermediateName(matName, dimof(matName), initializers[0]);
+                XlCatString(matName, dimof(matName), "-rawmat");
+                SerializeToFileJustChunk(*model, _pimpl->_serializeMaterialsFunction, matName, _pimpl->_conversionDLLVersion);
             } else {
                 SerializeToFile(*model, _pimpl->_serializeSkeletonFunction, outputName, _pimpl->_conversionDLLVersion);
             }
@@ -213,12 +235,14 @@ namespace RenderCore { namespace Assets
                 const char ModelSerializeSkinName[]         = "?SerializeSkin@NascentModel@ColladaConversion@RenderCore@@QBE?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk@ColladaConversion@RenderCore@@VCrossDLLDeletor@Internal@23@@std@@I@std@@XZ";
                 const char ModelSerializeAnimationName[]    = "?SerializeAnimationSet@NascentModel@ColladaConversion@RenderCore@@QBE?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk@ColladaConversion@RenderCore@@VCrossDLLDeletor@Internal@23@@std@@I@std@@XZ";
                 const char ModelSerializeSkeletonName[]     = "?SerializeSkeleton@NascentModel@ColladaConversion@RenderCore@@QBE?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk@ColladaConversion@RenderCore@@VCrossDLLDeletor@Internal@23@@std@@I@std@@XZ";
+                const char ModelSerializeMaterialsName[]    = "?SerializeMaterials@NascentModel@ColladaConversion@RenderCore@@QBE?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk@ColladaConversion@RenderCore@@VCrossDLLDeletor@Internal@23@@std@@I@std@@XZ";
                 const char ModelMergeAnimationDataName[]    = "?MergeAnimationData@NascentModel@ColladaConversion@RenderCore@@QAEXABV123@QBD@Z";
 
                 _pimpl->_createModel = (CreateModelFunction*)((*Windows::Fn_GetProcAddress)(_pimpl->_conversionLibrary, CreateModelName));
                 *(FARPROC*)&_pimpl->_serializeSkinFunction       = (*Windows::Fn_GetProcAddress)(_pimpl->_conversionLibrary, ModelSerializeSkinName);
                 *(FARPROC*)&_pimpl->_serializeAnimationFunction  = (*Windows::Fn_GetProcAddress)(_pimpl->_conversionLibrary, ModelSerializeAnimationName);
                 *(FARPROC*)&_pimpl->_serializeSkeletonFunction   = (*Windows::Fn_GetProcAddress)(_pimpl->_conversionLibrary, ModelSerializeSkeletonName);
+                *(FARPROC*)&_pimpl->_serializeMaterialsFunction  = (*Windows::Fn_GetProcAddress)(_pimpl->_conversionLibrary, ModelSerializeMaterialsName);
                 *(FARPROC*)&_pimpl->_mergeAnimationDataFunction  = (*Windows::Fn_GetProcAddress)(_pimpl->_conversionLibrary, ModelMergeAnimationDataName);
 
                     // get version information

@@ -10,6 +10,7 @@
 #include "../../Utility/Streams/Data.h"
 #include "../../Utility/Conversion.h"
 #include "../../Utility/Streams/FileUtils.h"
+#include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/MemoryUtils.h"
 
@@ -292,24 +293,6 @@ namespace RenderCore { namespace Assets
 
     RawMaterial::RawMaterial() {}
 
-    class CompareResourceBinding
-    {
-    public:
-        bool operator()(const ResourceBinding& lhs, uint64 rhs)
-        {
-            return lhs._bindHash < rhs;
-        }
-        bool operator()(uint64 lhs, const ResourceBinding& rhs)
-        {
-            return lhs < rhs._bindHash;
-        }
-        bool operator()(const ResourceBinding& lhs, 
-                        const ResourceBinding& rhs)
-        {
-            return lhs._bindHash < rhs._bindHash;
-        }
-    };
-
     RawMaterial::RawMaterial(const ::Assets::ResChar initialiser[])
     {
             // We're expecting an initialiser of the format "filename:setting"
@@ -391,7 +374,7 @@ namespace RenderCore { namespace Assets
 
         const auto* c = source->ChildWithValue("Constants");
         if (c) {
-            for (auto child=p->child; child; child=child->next) {
+            for (auto child=c->child; child; child=child->next) {
                 _constants.SetParameter(
                     child->StrValue(),
                     child->ChildAt(0)?child->ChildAt(0)->IntValue():0);
@@ -400,7 +383,7 @@ namespace RenderCore { namespace Assets
 
         const auto* resourceBindings = source->ChildWithValue("ResourceBindings");
         if (resourceBindings) {
-            for (auto i=p->child; i; i=i->next) {
+            for (auto i=resourceBindings->child; i; i=i->next) {
                 if (i->value && i->value[0] && i->child) {
                     const char* resource = i->child->value;
                     if (resource && resource[0]) {
@@ -409,14 +392,14 @@ namespace RenderCore { namespace Assets
                             //  if we can parse the the name as hex, then well and good...
                             //  otherwise, treat it as a string
                         const char* endptr = nullptr;
-                        hash = XlAtoI64(resource, &endptr, 16);
+                        hash = XlAtoI64(i->value, &endptr, 16);
                         if (!endptr || *endptr != '\0') {
                             hash = Hash64(i->value, &i->value[XlStringLen(i->value)]);
                         }
 
                         auto i = std::lower_bound(
                             _resourceBindings.begin(), _resourceBindings.end(),
-                            hash, CompareResourceBinding());
+                            hash, ResourceBinding::Compare());
 
                         if (i!=_resourceBindings.end() && i->_bindHash==hash) {
                             i->_resourceName = resource;
@@ -498,7 +481,7 @@ namespace RenderCore { namespace Assets
         for (auto i=_resourceBindings.begin(); i!=_resourceBindings.end(); ++i) {
             desti = std::lower_bound(
                 desti, dest._bindings.end(),
-                i->_bindHash, CompareResourceBinding());
+                i->_bindHash, ResourceBinding::Compare());
             if (desti!=dest._bindings.end() && desti->_bindHash == i->_bindHash) {
                 desti->_resourceName = i->_resourceName;
             } else {
@@ -507,7 +490,9 @@ namespace RenderCore { namespace Assets
         }
     }
 
-    ResolvedMaterial RawMaterial::Resolve(std::vector<::Assets::FileAndTime>* deps) const
+    ResolvedMaterial RawMaterial::Resolve(
+        const ::Assets::DirectorySearchRules& searchRules,
+        std::vector<::Assets::FileAndTime>* deps) const
     {
             // resolve all of the inheritance options and generate a final 
             // ResolvedMaterial object. We need to start at the bottom of the
@@ -516,7 +501,22 @@ namespace RenderCore { namespace Assets
         ResolvedMaterial result;
         for (auto i=_inherit.cbegin(); i!=_inherit.cend(); ++i) {
             TRY {
-                auto& rawParams = ::Assets::GetAssetDep<RawMaterial>(i->c_str());
+                char baseName[MaxPath];
+                char configName[MaxPath];
+                const auto colon = i->find_first_of(';');
+                if (colon != std::string::npos) {
+                    XlCopyNString(baseName, i->c_str(), colon);
+                    XlCopyString(configName, &i->c_str()[colon+1]);
+                } else {
+                    XlCopyString(baseName, i->c_str());
+                    XlCopyString(configName, "*");
+                }
+                XlCatString(baseName, dimof(baseName), ".material");
+                searchRules.ResolveFile(baseName, dimof(baseName), baseName);
+                XlChopExtension(baseName);
+
+                auto& rawParams = ::Assets::GetAssetDep<RawMaterial>(
+                    StringMeld<MaxPath>() << baseName << ":" << configName);
                 rawParams.MergeInto(result);
                 if (deps) {
                     ::Assets::FileAndTime fileAndTime(

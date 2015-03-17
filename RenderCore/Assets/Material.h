@@ -134,6 +134,24 @@ namespace RenderCore { namespace Assets
         ResourceBinding(uint64 bindHash, const std::string& resourceName)
             : _bindHash(bindHash), _resourceName(resourceName) {}
         void Serialize(Serialization::NascentBlockSerializer& serializer) const;
+
+        class Compare
+        {
+        public:
+            bool operator()(const ResourceBinding& lhs, uint64 rhs)
+            {
+                return lhs._bindHash < rhs;
+            }
+            bool operator()(uint64 lhs, const ResourceBinding& rhs)
+            {
+                return lhs < rhs._bindHash;
+            }
+            bool operator()(const ResourceBinding& lhs, 
+                            const ResourceBinding& rhs)
+            {
+                return lhs._bindHash < rhs._bindHash;
+            }
+        };
     };
     typedef Serialization::Vector<ResourceBinding> ResourceBindingSet;
 
@@ -199,12 +217,15 @@ namespace RenderCore { namespace Assets
         std::vector<ResString> _inherit;
         const ::Assets::DependencyValidation& GetDependencyValidation() const { return *_depVal; }
 
-        ResolvedMaterial Resolve(std::vector<::Assets::FileAndTime>* deps = nullptr) const;
+        ResolvedMaterial Resolve(
+            const ::Assets::DirectorySearchRules& searchRules,
+            std::vector<::Assets::FileAndTime>* deps = nullptr) const;
 
         std::unique_ptr<Data> SerializeAsData() const;
         
         RawMaterial();
         RawMaterial(const ::Assets::ResChar initialiser[]);
+        RawMaterial(const Data&);
         ~RawMaterial();
     private:
         std::shared_ptr<::Assets::DependencyValidation> _depVal;

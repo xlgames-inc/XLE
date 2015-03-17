@@ -1339,9 +1339,11 @@ namespace RenderCore { namespace ColladaConversion
         const unsigned size = 64*1024;
         auto buffer = std::make_unique<uint8[]>(size);
         MemoryOutputStream strm(buffer.get(), size);
-        for (auto i=table.cbegin(); i!=table.cend(); ++i) {
-            (*i)->SaveToOutputStream(strm);
+        auto root = std::make_unique<Data>();
+        for (auto i=table.begin(); i!=table.end(); ++i) {
+            root->Add(i->release());
         }
+        root->SaveToOutputStream(strm);
 
             // convert into a chunk...
 
@@ -1354,7 +1356,7 @@ namespace RenderCore { namespace ColladaConversion
             std::unique_ptr<NascentChunk[], Internal::CrossDLLDeletor>(
                 new NascentChunk[1], Internal::CrossDLLDeletor(&DestroyChunkArray)),
             1);
-        result.first[0] = NascentChunk(scaffoldChunk, std::vector<uint8>(buffer.get(), PtrAdd(buffer.get(), size)));
+        result.first[0] = NascentChunk(scaffoldChunk, std::vector<uint8>(buffer.get(), PtrAdd(buffer.get(), finalSize)));
         return std::move(result);
     }
 

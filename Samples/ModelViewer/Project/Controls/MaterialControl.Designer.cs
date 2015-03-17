@@ -40,7 +40,7 @@ namespace ModelViewer.Controls
             this.checkBox1 = new System.Windows.Forms.CheckBox();
             this.shaderConstants = new System.Windows.Forms.DataGridView();
             this.materialParameterBox = new System.Windows.Forms.DataGridView();
-            this.dataGridView1 = new System.Windows.Forms.DataGridView();
+            this.resourceBindings = new System.Windows.Forms.DataGridView();
             this.materialPreview1 = new ModelViewer.Controls.MaterialPreview();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
@@ -49,7 +49,7 @@ namespace ModelViewer.Controls
             this.groupBox1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.shaderConstants)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.materialParameterBox)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.resourceBindings)).BeginInit();
             this.SuspendLayout();
             // 
             // splitContainer1
@@ -68,7 +68,7 @@ namespace ModelViewer.Controls
             this.splitContainer1.Panel2.Controls.Add(this.groupBox1);
             this.splitContainer1.Panel2.Controls.Add(this.shaderConstants);
             this.splitContainer1.Panel2.Controls.Add(this.materialParameterBox);
-            this.splitContainer1.Panel2.Controls.Add(this.dataGridView1);
+            this.splitContainer1.Panel2.Controls.Add(this.resourceBindings);
             this.splitContainer1.Size = new System.Drawing.Size(689, 653);
             this.splitContainer1.SplitterDistance = 266;
             this.splitContainer1.TabIndex = 0;
@@ -139,20 +139,20 @@ namespace ModelViewer.Controls
             // 
             // dataGridView1
             // 
-            this.dataGridView1.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            this.resourceBindings.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.dataGridView1.BorderStyle = System.Windows.Forms.BorderStyle.None;
-            this.dataGridView1.CellBorderStyle = System.Windows.Forms.DataGridViewCellBorderStyle.None;
-            this.dataGridView1.ColumnHeadersBorderStyle = System.Windows.Forms.DataGridViewHeaderBorderStyle.None;
-            this.dataGridView1.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            this.dataGridView1.ColumnHeadersVisible = false;
-            this.dataGridView1.Location = new System.Drawing.Point(3, 3);
-            this.dataGridView1.Name = "dataGridView1";
-            this.dataGridView1.RowHeadersBorderStyle = System.Windows.Forms.DataGridViewHeaderBorderStyle.None;
-            this.dataGridView1.RowHeadersWidthSizeMode = System.Windows.Forms.DataGridViewRowHeadersWidthSizeMode.DisableResizing;
-            this.dataGridView1.Size = new System.Drawing.Size(418, 211);
-            this.dataGridView1.TabIndex = 0;
+            this.resourceBindings.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.resourceBindings.CellBorderStyle = System.Windows.Forms.DataGridViewCellBorderStyle.None;
+            this.resourceBindings.ColumnHeadersBorderStyle = System.Windows.Forms.DataGridViewHeaderBorderStyle.None;
+            this.resourceBindings.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            this.resourceBindings.ColumnHeadersVisible = false;
+            this.resourceBindings.Location = new System.Drawing.Point(3, 3);
+            this.resourceBindings.Name = "dataGridView1";
+            this.resourceBindings.RowHeadersBorderStyle = System.Windows.Forms.DataGridViewHeaderBorderStyle.None;
+            this.resourceBindings.RowHeadersWidthSizeMode = System.Windows.Forms.DataGridViewRowHeadersWidthSizeMode.DisableResizing;
+            this.resourceBindings.Size = new System.Drawing.Size(418, 211);
+            this.resourceBindings.TabIndex = 0;
             // 
             // materialPreview1
             // 
@@ -177,7 +177,7 @@ namespace ModelViewer.Controls
             this.groupBox1.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.shaderConstants)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.materialParameterBox)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.resourceBindings)).EndInit();
             this.ResumeLayout(false);
 
         }
@@ -190,7 +190,7 @@ namespace ModelViewer.Controls
         private System.Windows.Forms.CheckBox checkBox1;
         private System.Windows.Forms.DataGridView shaderConstants;
         private System.Windows.Forms.DataGridView materialParameterBox;
-        private System.Windows.Forms.DataGridView dataGridView1;
+        private System.Windows.Forms.DataGridView resourceBindings;
         private MaterialPreview materialPreview1;
     }
 }
