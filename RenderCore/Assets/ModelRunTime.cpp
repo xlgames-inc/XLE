@@ -400,7 +400,7 @@ namespace RenderCore { namespace Assets
                     //  should be one after another in the vb (that is, not interleaved)
                 dst[vertexElementCount++] = Metal::InputElementDesc(
                     sourceElement._semantic, sourceElement._semanticIndex,
-                    sourceElement._format, lowLevelSlot, sourceElement._startOffset);
+                    Metal::NativeFormat::Enum(sourceElement._format), lowLevelSlot, sourceElement._startOffset);
             }
         }
         return vertexElementCount;
@@ -697,7 +697,7 @@ namespace RenderCore { namespace Assets
         assert(mesh != _meshes.end());
 
         auto& devContext = *context._context;
-        devContext.Bind(_indexBuffer, mesh->_indexFormat, mesh->_ibOffset);
+        devContext.Bind(_indexBuffer, Metal::NativeFormat::Enum(mesh->_indexFormat), mesh->_ibOffset);
         devContext.Bind(ResourceList<Metal::VertexBuffer, 1>(std::make_tuple(std::ref(_vertexBuffer))), mesh->_vertexStride, mesh->_vbOffset);
 
         return mesh->_techniqueInterface;
@@ -732,7 +732,7 @@ namespace RenderCore { namespace Assets
         auto result = cm->_skinnedTechniqueInterface;
 
         auto& devContext = *context._context;
-        devContext.Bind(_indexBuffer, cm->_indexFormat, cm->_ibOffset);
+        devContext.Bind(_indexBuffer, Metal::NativeFormat::Enum(cm->_indexFormat), cm->_ibOffset);
 
         auto animGeo = SkinnedMesh::VertexStreams::AnimatedGeo;
         UINT strides[2], offsets[2];
@@ -799,7 +799,7 @@ namespace RenderCore { namespace Assets
         result._sourceFileVBSize = geo._vb._size;
 
             // (vb, ib allocations)
-        result._ibOffset = workingBuffers.AllocateIB(result._sourceFileIBSize, result._indexFormat);
+        result._ibOffset = workingBuffers.AllocateIB(result._sourceFileIBSize, Metal::NativeFormat::Enum(result._indexFormat));
         result._vbOffset = workingBuffers.AllocateVB(result._sourceFileVBSize);
 
         Metal::InputElementDesc inputDesc[12];
@@ -956,7 +956,7 @@ namespace RenderCore { namespace Assets
                 }
             
                 const auto& d = md->second;
-                devContext.Bind(d._topology);  // do we really need to set the topology every time?
+                devContext.Bind(Metal::Topology::Enum(d._topology));  // do we really need to set the topology every time?
                 devContext.Bind(Techniques::CommonResources()._dssReadWriteWriteStencil, 1+drawCallIndex);  // write stencil buffer with draw index
                 devContext.DrawIndexed(d._indexCount, d._firstIndex, d._firstVertex);
             }
@@ -992,7 +992,7 @@ namespace RenderCore { namespace Assets
                 }
             
                 const auto& d = md->second;
-                devContext.Bind(d._topology);  // do we really need to set the topology every time?
+                devContext.Bind(Metal::Topology::Enum(d._topology));  // do we really need to set the topology every time?
                 devContext.DrawIndexed(d._indexCount, d._firstIndex, d._firstVertex);
             }
 
@@ -1014,7 +1014,7 @@ namespace RenderCore { namespace Assets
         Float4x4        _meshToWorld;
 
         unsigned        _indexCount, _firstIndex, _firstVertex;
-        Topology        _topology;
+        Metal::Topology::Enum        _topology;
         
         ModelRenderer::Pimpl::Mesh* _mesh;
     };
@@ -1082,7 +1082,7 @@ namespace RenderCore { namespace Assets
             entry._indexCount = d._indexCount;
             entry._firstIndex = d._firstIndex;
             entry._firstVertex = d._firstVertex;
-            entry._topology = d._topology;
+            entry._topology = Metal::Topology::Enum(d._topology);
             entry._mesh = AsPointer(mesh);
             dest._entries.push_back(entry);
         }
@@ -1145,7 +1145,7 @@ namespace RenderCore { namespace Assets
             }
             
             if (currentMesh != d->_mesh) {
-                context._context->Bind(renderer._pimpl->_indexBuffer, d->_mesh->_indexFormat, d->_mesh->_ibOffset);
+                context._context->Bind(renderer._pimpl->_indexBuffer, Metal::NativeFormat::Enum(d->_mesh->_indexFormat), d->_mesh->_ibOffset);
                 context._context->Bind(ResourceList<Metal::VertexBuffer, 1>(std::make_tuple(std::ref(renderer._pimpl->_vertexBuffer))), 
                     d->_mesh->_vertexStride, d->_mesh->_vbOffset);
                 currentMesh = d->_mesh;

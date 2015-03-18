@@ -11,6 +11,7 @@
 #include "../Utility/Threading/ThreadingUtils.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/PtrUtils.h"
+#include "../Core/SelectConfiguration.h"
 
 namespace Assets
 {
@@ -155,9 +156,17 @@ namespace Assets
             //          major changes in the meantime.
         auto intMan = std::make_unique<IntermediateResources::CompilerSet>();
         #if defined(_DEBUG)
-            const char storeVersionString[] = "0.0.0d";
+            #if TARGET_64BIT
+                const char storeVersionString[] = "0.0.0d64";
+            #else
+                const char storeVersionString[] = "0.0.0d";
+            #endif
         #else
-            const char storeVersionString[] = "0.0.0r";
+            #if TARGET_64BIT
+                const char storeVersionString[] = "0.0.0r64";
+            #else
+                const char storeVersionString[] = "0.0.0r";
+            #endif
         #endif
         auto intStore = std::make_unique<IntermediateResources::Store>("Int", storeVersionString);
         auto assetSets = std::make_unique<AssetSetManager>();

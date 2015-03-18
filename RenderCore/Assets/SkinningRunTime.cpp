@@ -400,10 +400,10 @@ namespace RenderCore { namespace Assets
                 //  isn't a 4D float16 format, most of the time the 4D format is intended to
                 //  be a 3D format. This will break if the format is intended to truly be
                 //  4D).
-            if (    GetComponentType(dst[c]._format) == FormatComponentType::Float
-                &&  GetComponentPrecision(dst[c]._format) == 16) {
+            if (    GetComponentType(Metal::NativeFormat::Enum(dst[c]._format)) == FormatComponentType::Float
+                &&  GetComponentPrecision(Metal::NativeFormat::Enum(dst[c]._format)) == 16) {
 
-                auto components = GetComponents(dst[c]._format);
+                auto components = GetComponents(Metal::NativeFormat::Enum(dst[c]._format));
                 if (components == FormatComponents::RGBAlpha) {
                     components = FormatComponents::RGB;
                 }

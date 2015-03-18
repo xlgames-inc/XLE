@@ -230,13 +230,26 @@ namespace RenderCore { namespace Assets
                 using namespace RenderCore::ColladaConversion;
 
                     //  Find and set the function pointers we need
-                    //  Note the function names have been decorated by the visual studio compiler
-                const char CreateModelName[]                = "?CreateModel@ColladaConversion@RenderCore@@YA?AV?$unique_ptr@VNascentModel@ColladaConversion@RenderCore@@VCrossDLLDeletor@Internal@23@@std@@QBD@Z";
-                const char ModelSerializeSkinName[]         = "?SerializeSkin@NascentModel@ColladaConversion@RenderCore@@QBE?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk@ColladaConversion@RenderCore@@VCrossDLLDeletor@Internal@23@@std@@I@std@@XZ";
-                const char ModelSerializeAnimationName[]    = "?SerializeAnimationSet@NascentModel@ColladaConversion@RenderCore@@QBE?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk@ColladaConversion@RenderCore@@VCrossDLLDeletor@Internal@23@@std@@I@std@@XZ";
-                const char ModelSerializeSkeletonName[]     = "?SerializeSkeleton@NascentModel@ColladaConversion@RenderCore@@QBE?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk@ColladaConversion@RenderCore@@VCrossDLLDeletor@Internal@23@@std@@I@std@@XZ";
-                const char ModelSerializeMaterialsName[]    = "?SerializeMaterials@NascentModel@ColladaConversion@RenderCore@@QBE?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk@ColladaConversion@RenderCore@@VCrossDLLDeletor@Internal@23@@std@@I@std@@XZ";
-                const char ModelMergeAnimationDataName[]    = "?MergeAnimationData@NascentModel@ColladaConversion@RenderCore@@QAEXABV123@QBD@Z";
+                    //  Note the function names have been decorated by the compiler
+                    //      ... we could consider a better method for doing this... Maybe the DLL should just
+                    //          export a single method, and just query function addresses with some fixed guids...? 
+                #if !TARGET_64BIT
+                    const char CreateModelName[]                = "?CreateModel@ColladaConversion@RenderCore@@YA?AV?$unique_ptr@VNascentModel@ColladaConversion@RenderCore@@VCrossDLLDeletor@Internal@23@@std@@QBD@Z";
+                    const char ModelSerializeSkinName[]         = "?SerializeSkin@NascentModel@ColladaConversion@RenderCore@@QBE?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk@ColladaConversion@RenderCore@@VCrossDLLDeletor@Internal@23@@std@@I@std@@XZ";
+                    const char ModelSerializeAnimationName[]    = "?SerializeAnimationSet@NascentModel@ColladaConversion@RenderCore@@QBE?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk@ColladaConversion@RenderCore@@VCrossDLLDeletor@Internal@23@@std@@I@std@@XZ";
+                    const char ModelSerializeSkeletonName[]     = "?SerializeSkeleton@NascentModel@ColladaConversion@RenderCore@@QBE?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk@ColladaConversion@RenderCore@@VCrossDLLDeletor@Internal@23@@std@@I@std@@XZ";
+                    const char ModelSerializeMaterialsName[]    = "?SerializeMaterials@NascentModel@ColladaConversion@RenderCore@@QBE?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk@ColladaConversion@RenderCore@@VCrossDLLDeletor@Internal@23@@std@@I@std@@XZ";
+                    const char ModelMergeAnimationDataName[]    = "?MergeAnimationData@NascentModel@ColladaConversion@RenderCore@@QAEXABV123@QBD@Z";
+                    const char VersionInformationName[] = "?GetVersionInformation@ColladaConversion@RenderCore@@YA?AU?$pair@PBDPBD@std@@XZ";
+                #else
+                    const char CreateModelName[]                = "?CreateModel@ColladaConversion@RenderCore@@YA?AV?$unique_ptr@VNascentModel@ColladaConversion@RenderCore@@VCrossDLLDeletor@Internal@23@@std@@QEBD@Z";
+                    const char ModelSerializeSkinName[]         = "?SerializeSkin@NascentModel@ColladaConversion@RenderCore@@QEBA?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk@ColladaConversion@RenderCore@@VCrossDLLDeletor@Internal@23@@std@@I@std@@XZ";
+                    const char ModelSerializeAnimationName[]    = "?SerializeAnimationSet@NascentModel@ColladaConversion@RenderCore@@QEBA?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk@ColladaConversion@RenderCore@@VCrossDLLDeletor@Internal@23@@std@@I@std@@XZ";
+                    const char ModelSerializeSkeletonName[]     = "?SerializeSkeleton@NascentModel@ColladaConversion@RenderCore@@QEBA?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk@ColladaConversion@RenderCore@@VCrossDLLDeletor@Internal@23@@std@@I@std@@XZ";
+                    const char ModelSerializeMaterialsName[]    = "?SerializeMaterials@NascentModel@ColladaConversion@RenderCore@@QEBA?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk@ColladaConversion@RenderCore@@VCrossDLLDeletor@Internal@23@@std@@I@std@@XZ";
+                    const char ModelMergeAnimationDataName[]    = "?MergeAnimationData@NascentModel@ColladaConversion@RenderCore@@QEAAXAEBV123@QEBD@Z";
+                    const char VersionInformationName[] = "?GetVersionInformation@ColladaConversion@RenderCore@@YA?AU?$pair@PEBDPEBD@std@@XZ";
+                #endif
 
                 _pimpl->_createModel = (CreateModelFunction*)((*Windows::Fn_GetProcAddress)(_pimpl->_conversionLibrary, CreateModelName));
                 *(FARPROC*)&_pimpl->_serializeSkinFunction       = (*Windows::Fn_GetProcAddress)(_pimpl->_conversionLibrary, ModelSerializeSkinName);
@@ -246,7 +259,6 @@ namespace RenderCore { namespace Assets
                 *(FARPROC*)&_pimpl->_mergeAnimationDataFunction  = (*Windows::Fn_GetProcAddress)(_pimpl->_conversionLibrary, ModelMergeAnimationDataName);
 
                     // get version information
-                const char VersionInformationName[] = "?GetVersionInformation@ColladaConversion@RenderCore@@YA?AU?$pair@PBDPBD@std@@XZ";
                 typedef std::pair<const char*, const char*> VersionQueryFn();
                 auto queryFn = (VersionQueryFn*)(*Windows::Fn_GetProcAddress)(_pimpl->_conversionLibrary, VersionInformationName);
                 if (queryFn) {

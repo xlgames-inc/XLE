@@ -20,6 +20,9 @@ namespace RenderCore { namespace Assets
     class AnimationSet;
     class ResolvedMaterial;
 
+    typedef unsigned TopologyPlaceholder;
+    typedef unsigned NativeFormatPlaceholder;
+
     #pragma pack(push)
     #pragma pack(1)
 
@@ -78,7 +81,7 @@ namespace RenderCore { namespace Assets
         unsigned    _firstIndex, _indexCount;
         unsigned    _firstVertex;
         unsigned    _subMaterialIndex;
-        Topology    _topology;
+        TopologyPlaceholder    _topology;
 
         DrawCallDesc(unsigned firstIndex, unsigned indexCount, unsigned firstVertex, unsigned subMaterialIndex, Metal::Topology::Enum topology) 
         : _firstIndex(firstIndex), _indexCount(indexCount), _firstVertex(firstVertex), _subMaterialIndex(subMaterialIndex), _topology(topology) {}
@@ -89,7 +92,7 @@ namespace RenderCore { namespace Assets
     public:
         char            _semantic[16];  // limited max size for semantic name (only alternative is to use a hash value)
         unsigned        _semanticIndex;
-        NativeFormat    _format;
+        NativeFormatPlaceholder    _format;
         unsigned        _startOffset;
     };
 
@@ -115,7 +118,7 @@ namespace RenderCore { namespace Assets
     class IndexData
     {
     public:
-        NativeFormat        _format;
+        NativeFormatPlaceholder        _format;
         unsigned            _offset, _size;
     };
 
@@ -291,7 +294,7 @@ namespace RenderCore { namespace Assets
             unsigned _id;
             unsigned _vbOffset, _ibOffset;
             unsigned _vertexStride;
-            NativeFormat _indexFormat;
+            NativeFormatPlaceholder _indexFormat;
             unsigned _geoParamBox;
             TechniqueInterface _techniqueInterface;
 

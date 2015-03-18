@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include "../Metal/Forward.h"       // for NativeFormat::Enum and Topology::Enum
 #include "../Metal/Format.h"
 #include "../Metal/Buffer.h"
 #include "../Resource.h"
@@ -30,9 +29,6 @@ namespace RenderCore { namespace Assets
     class ResolvedMaterial;
 
     typedef uint64 MaterialGuid;
-
-    typedef Metal::Topology::Enum Topology;
-    typedef Metal::NativeFormat::Enum NativeFormat;
 
     /// <summary>Represents the state of animation effects on an object<summary>
     /// AnimationState is a placeholder for containing the states related to

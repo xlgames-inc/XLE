@@ -1197,7 +1197,7 @@ namespace RenderCore { namespace ColladaConversion
         outputSerializer.SerializeValue(unsigned(ibSize));
         
         outputSerializer.SerializeSubBlock(AsPointer(_mainDrawCalls.begin()), AsPointer(_mainDrawCalls.end()));
-        outputSerializer.SerializeValue(unsigned(_mainDrawCalls.size()));
+        outputSerializer.SerializeValue(_mainDrawCalls.size());
     }
 
 
