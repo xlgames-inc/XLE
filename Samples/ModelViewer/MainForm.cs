@@ -30,9 +30,7 @@ namespace ModelViewer
             using (var editor = new ModalMaterialEditor())
             {
                 editor.Object = new GUILayer.RawMaterial(
-                    // "Game\\Model\\Galleon\\galleon.material:galleon_sail");
-                    // "int\\d0\\game\\model\\galleon\\galleon.dae-rawmat:93405fbac7096378");
-                    "int\\d0\\game\\model\\galleon\\galleon.dae-rawmat:742a2bffd0e885af");
+                    "Game\\Model\\Galleon\\galleon.dae:galleon_01");
                 editor.ShowDialog();
             }
         }

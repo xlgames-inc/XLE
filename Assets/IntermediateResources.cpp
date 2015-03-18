@@ -4,6 +4,8 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#define _SCL_SECURE_NO_WARNINGS
+
 #include "IntermediateResources.h"
 
 #include "CompileAndAsyncManager.h"     // for ~PendingCompileMarker -- remove
@@ -31,7 +33,17 @@ namespace Assets { namespace IntermediateResources
     {
             // calculate the intermediate file for this request name (normally just a file with the 
             //  same name in our branch directory
-        _snprintf_s(buffer, sizeof(ResChar)*bufferMaxCount, _TRUNCATE, "%s/%s", _baseDirectory.c_str(), firstInitializer);
+        if (buffer == firstInitializer) {
+            assert(bufferMaxCount >= (_baseDirectory.size()+1));
+            auto length = XlStringLen(firstInitializer);
+            auto moveSize = std::min(length, unsigned(bufferMaxCount-1-(_baseDirectory.size()+1)));
+            XlMoveMemory(&buffer[_baseDirectory.size()+1], buffer, moveSize);
+            buffer[_baseDirectory.size()+1+moveSize] = ResChar('\0');
+            std::copy(_baseDirectory.begin(), _baseDirectory.end(), buffer);
+            buffer[_baseDirectory.size()] = ResChar('/');
+        } else {
+            _snprintf_s(buffer, sizeof(ResChar)*bufferMaxCount, _TRUNCATE, "%s/%s", _baseDirectory.c_str(), firstInitializer);
+        }
     }
 
     template <int DestCount>

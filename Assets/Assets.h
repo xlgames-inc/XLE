@@ -145,6 +145,16 @@ namespace Assets
                     InsertAssetName(GetAssetSet<AssetType>()._assetNames, hash, (const char**)&init, InitCount);
                 #endif
 
+                    // we have to search again for the insertion point
+                    //  it's possible that while constructing the asset, we may have called GetAsset<>
+                    //  to create another asset. This can invalidate our iterator "i". If we had some way
+                    //  to test to make sure that the assetSet definitely hasn't changed, we coudl skip this.
+                    //  But just doing a size check wouldn't be 100% -- because there might be an add, then a remove
+                    //      (well, remove isn't possible currently. But it may happen at some point.
+                    //  For the future, we should consider threading problems, also. We will probably need
+                    //  a lock on the assetset -- and it may be best to release this lock while we're calling
+                    //  the constructor
+                i = LowerBound(assetSet, hash);
                 return *assetSet.insert(i, std::make_pair(hash, std::move(newAsset)))->second;
             }
 

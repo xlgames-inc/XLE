@@ -440,60 +440,91 @@ namespace PlatformRig
     static std::vector<const RenderCore::Metal::ShaderResourceView*>
         BuildBoundTextures(
             RenderCore::Metal::BoundUniforms& boundUniforms,
-            ID3D::ShaderReflection& reflection,
-            const RenderCore::Assets::ResourceBindingSet& bindings)
+            RenderCore::Metal::ShaderProgram& shaderProgram,
+            const RenderCore::Assets::ResourceBindingSet& bindings,
+            const Assets::DirectorySearchRules& searchRules)
     {
         using namespace RenderCore;
         typedef RenderCore::Assets::ResourceBinding ResourceBinding;
         std::vector<const Metal::ShaderResourceView*> result;
+        std::vector<uint64> alreadyBound;
 
             //
-            //      Find the texture binding points, and assign textures from
-            //      the material parameters state to them.
+            //      For each entry in our resource binding set, we're going
+            //      to register a binding in the BoundUniforms, and find
+            //      the associated shader resource view.
+            //      For any shader resources that are used by the shader, but
+            //      not bound to anything -- we need to assign them to the 
+            //      default objects.
             //
 
-        D3D11_SHADER_DESC shaderDesc;
-        reflection.GetDesc(&shaderDesc);
-        for (unsigned c=0; c<shaderDesc.BoundResources; ++c) {
+        const Metal::CompiledShaderByteCode* shaderCode[] = {
+            &shaderProgram.GetCompiledVertexShader(),
+            &shaderProgram.GetCompiledPixelShader(),
+            shaderProgram.GetCompiledGeometryShader(),
+        };
 
-            D3D11_SHADER_INPUT_BIND_DESC bindDesc;
-            reflection.GetResourceBindingDesc(c, &bindDesc);
-            if  (bindDesc.Type == D3D10_SIT_TEXTURE) {
+        for (unsigned s=0; s<dimof(shaderCode); ++s) {
+            if (!shaderCode[s]) continue;
 
-                std::string str;
-                auto hash = Hash64(bindDesc.Name);
-                auto i = std::lower_bound(bindings.begin(), bindings.end(), ResourceBinding(hash, std::string()), CompareRB);
-                if (i != bindings.end() && i->_bindHash == hash) {
-                    str = i->_resourceName;
-                } else {
-                        //  It's not mentioned in the material resources. try to look
-                        //  for a default resource for this bind point
-                    str = std::string("game/xleres/DefaultResources/") + bindDesc.Name + ".dds";
-                }
+            auto reflection = shaderCode[s]->GetReflection();
+            D3D11_SHADER_DESC shaderDesc;
+            reflection->GetDesc(&shaderDesc);
 
-                if (!str.empty()) {
-                    TRY {
-                        const Metal::DeferredShaderResource& texture = 
-                            ::Assets::GetAssetDep<Metal::DeferredShaderResource>(str.c_str());
+            for (unsigned c=0; c<shaderDesc.BoundResources; ++c) {
 
-                        result.push_back(&texture.GetShaderResource());
-                        boundUniforms.BindShaderResource(
-                            Hash64(bindDesc.Name, &bindDesc.Name[XlStringLen(bindDesc.Name)]),
-                            unsigned(result.size()-1), 1);
+                D3D11_SHADER_INPUT_BIND_DESC bindDesc;
+                reflection->GetResourceBindingDesc(c, &bindDesc);
+                if  (bindDesc.Type == D3D10_SIT_TEXTURE) {
+
+                    std::string str;
+                    auto hash = Hash64(bindDesc.Name);
+                    auto i = std::lower_bound(
+                        bindings.begin(), bindings.end(), 
+                        ResourceBinding(hash, std::string()), CompareRB);
+                    if (i != bindings.end() && i->_bindHash == hash) {
+                        str = i->_resourceName;
+                    } else {
+                            //  It's not mentioned in the material resources. try to look
+                            //  for a default resource for this bind point
+                        str = std::string("game/xleres/DefaultResources/") + bindDesc.Name + ".dds";
                     }
-                    CATCH (const ::Assets::Exceptions::InvalidResource&) {}
-                    CATCH_END
-                }
+
+                    auto bindingHash = Hash64(bindDesc.Name, &bindDesc.Name[XlStringLen(bindDesc.Name)]);
+                    if (std::find(alreadyBound.cbegin(), alreadyBound.cend(), bindingHash) != alreadyBound.cend()) {
+                        continue;
+                    }
+                    alreadyBound.push_back(bindingHash);
+
+                    if (!str.empty()) {
+                        TRY {
+                            ResChar resolvedFile[MaxPath];
+                            searchRules.ResolveFile(
+                                resolvedFile, dimof(resolvedFile),
+                                str.c_str());
+
+                            const Metal::DeferredShaderResource& texture = 
+                                ::Assets::GetAssetDep<Metal::DeferredShaderResource>(resolvedFile);
+
+                            result.push_back(&texture.GetShaderResource());
+                            boundUniforms.BindShaderResource(
+                                bindingHash,
+                                unsigned(result.size()-1), 1);
+                        }
+                        CATCH (const ::Assets::Exceptions::InvalidResource&) {}
+                        CATCH_END
+                    }
                 
-            } else if (bindDesc.Type == D3D10_SIT_SAMPLER) {
+                } else if (bindDesc.Type == D3D10_SIT_SAMPLER) {
 
-                    //  we should also bind samplers to something
-                    //  reasonable, also...
+                        //  we should also bind samplers to something
+                        //  reasonable, also...
 
+                }
             }
         }
 
-        return result;
+        return std::move(result);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -557,9 +588,8 @@ namespace PlatformRig
             }
 
             auto boundTextures = BuildBoundTextures(
-                boundLayout, 
-                *_object->_shaderProgram->GetCompiledPixelShader().GetReflection(), 
-                _object->_parameters._bindings);
+                boundLayout, *_object->_shaderProgram,
+                _object->_parameters._bindings, _object->_searchRules);
             boundLayout.Apply(
                 *metalContext,
                 parserContext.GetGlobalUniformsStream(),

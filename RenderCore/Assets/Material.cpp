@@ -7,6 +7,7 @@
 #include "Material.h"
 #include "../Metal/State.h"      // (just for Blend/BlendOp enum members... maybe we need a higher level version of these enums?)
 #include "../../Assets/AssetUtils.h"
+#include "../../Assets/IntermediateResources.h"
 #include "../../Utility/Streams/Data.h"
 #include "../../Utility/Conversion.h"
 #include "../../Utility/Streams/FileUtils.h"
@@ -304,8 +305,19 @@ namespace RenderCore { namespace Assets
         ::Assets::ResChar rawFilename[MaxPath];
         XlCopyNString(rawFilename, initialiser, colon - initialiser);
 
+        ::Assets::ResChar concreteFilename[MaxPath];
+        XlCopyString(concreteFilename, rawFilename);
+
+            //  If we're attempting to load from a .dae file, then we need to
+            //  instead redirect the query towards the compiled version
+        if (!XlCompareStringI(XlExtension(concreteFilename), "dae")) {
+            auto& store = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateStore();
+            XlCatString(concreteFilename, dimof(concreteFilename), "-rawmat");
+            store.MakeIntermediateName(concreteFilename, dimof(concreteFilename), concreteFilename);
+        }
+
         size_t sourceFileSize = 0;
-        auto sourceFile = LoadFileAsMemoryBlock(rawFilename, &sourceFileSize);
+        auto sourceFile = LoadFileAsMemoryBlock(concreteFilename, &sourceFileSize);
         if (!sourceFile)
             ThrowException(::Assets::Exceptions::InvalidResource(initialiser, 
                 "Missing or empty file"));
@@ -316,6 +328,12 @@ namespace RenderCore { namespace Assets
         data.Load((const char*)sourceFile.get(), (int)sourceFileSize);
 
         auto source = data.ChildWithValue(colon+1);
+        if (!source) {
+            StringMeld<64> hashedName;
+            hashedName << std::hex << Hash64(colon+1);
+            source = data.ChildWithValue(hashedName);
+        }
+
         if (!source)
             ThrowException(::Assets::Exceptions::InvalidResource(initialiser, 
                 StringMeld<256>() << "Missing material configuration: " << (colon+1)));

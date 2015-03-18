@@ -9,6 +9,7 @@
 #include "ModelVisualisation.h"
 #include "../RenderCore/Assets/Material.h"
 #include "../RenderCore/Metal/Forward.h"
+#include "../Assets/AssetUtils.h"
 
 namespace PlatformRig
 {
@@ -37,6 +38,7 @@ namespace PlatformRig
     public:
         RenderCore::Metal::ShaderProgram* _shaderProgram;
         RenderCore::Assets::ResolvedMaterial _parameters;
+        Assets::DirectorySearchRules _searchRules;
 
         class SystemConstants
         {

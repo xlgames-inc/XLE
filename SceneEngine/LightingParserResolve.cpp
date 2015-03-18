@@ -391,7 +391,7 @@ namespace SceneEngine
 
                 } else {
 
-                    if (!i._type == LightDesc::Directional) {
+                    if (i._type == LightDesc::Directional) {
                         boundUniforms = lightingResolveShaders._unshadowedDirectionalLightUniforms.get();
                         context->Bind(*lightingResolveShaders._unshadowedDirectionalLight);
                     } else {

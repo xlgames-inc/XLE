@@ -19,8 +19,8 @@ namespace GUILayer
         if (!_config->GetUnderlying()) { return; }
 
         PlatformRig::MaterialVisObject obj;
-        obj._parameters = _config->GetUnderlying()->Resolve(
-            ::Assets::DefaultDirectorySearchRules(_config->GetUnderlying()->_filename.c_str()));
+        obj._searchRules = ::Assets::DefaultDirectorySearchRules(_config->GetUnderlying()->_filename.c_str());
+        obj._parameters = _config->GetUnderlying()->Resolve(obj._searchRules);
         // obj._systemConstants = 
 
             // We must build a shader program to render this preview
@@ -31,8 +31,6 @@ namespace GUILayer
         {
             using namespace RenderCore;
             Techniques::TechniqueInterface techniqueInterface(Metal::GlobalInputLayouts::PNT);
-            Techniques::TechniqueContext::BindGlobalUniforms(techniqueInterface);
-            techniqueInterface.BindConstantBuffer(Hash64("LocalTransform"), 0, 1);
 
             ParameterBox materialParameters;
             ParameterBox geoParameters;
