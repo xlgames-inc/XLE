@@ -22,17 +22,17 @@ namespace ModelViewer
 
         protected override void OnPaint(PaintEventArgs pe)
         {
-            layerControl.OnPaint(pe);
+            if (layerControl != null) layerControl.OnPaint(pe);
         }
 
         protected override void OnPaintBackground(PaintEventArgs pe)
         {
-            layerControl.OnPaintBackground(pe);
+            if (layerControl != null) layerControl.OnPaintBackground(pe);
         }
 
         protected override void OnResize(EventArgs pe)
         {
-            layerControl.OnResize(pe);
+            if (layerControl!=null) layerControl.OnResize(pe);
             base.OnResize(pe);
         }
 

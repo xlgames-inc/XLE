@@ -16,9 +16,11 @@ namespace GUILayer
         RenderCore::IThreadContext* context, 
         SceneEngine::LightingParserContext& parserContext)
     {
+        if (!_config->GetUnderlying()) { return; }
+
         PlatformRig::MaterialVisObject obj;
-        obj._parameters = _config->GetUnderlying().Resolve(
-            ::Assets::DefaultDirectorySearchRules(_config->GetUnderlying()._filename.c_str()));
+        obj._parameters = _config->GetUnderlying()->Resolve(
+            ::Assets::DefaultDirectorySearchRules(_config->GetUnderlying()->_filename.c_str()));
         // obj._systemConstants = 
 
             // We must build a shader program to render this preview

@@ -34,11 +34,8 @@ namespace ModelViewer
         /// </summary>
         private void InitializeComponent()
         {
-            System.Windows.Forms.TreeNode treeNode1 = new System.Windows.Forms.TreeNode("../Nature:Common");
-            System.Windows.Forms.TreeNode treeNode2 = new System.Windows.Forms.TreeNode("Model/Nature/FirTree/fir.material", new System.Windows.Forms.TreeNode[] {
-            treeNode1});
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
-            this.treeView1 = new System.Windows.Forms.TreeView();
+            this.treeView1 = new ComboTreeBox();
             this.materialControl1 = new ModelViewer.Controls.MaterialControl();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
@@ -52,6 +49,8 @@ namespace ModelViewer
             this.splitContainer1.Location = new System.Drawing.Point(0, 0);
             this.splitContainer1.Name = "splitContainer1";
             this.splitContainer1.Orientation = System.Windows.Forms.Orientation.Horizontal;
+            this.splitContainer1.FixedPanel = System.Windows.Forms.FixedPanel.Panel1;
+            this.splitContainer1.IsSplitterFixed = true;
             // 
             // splitContainer1.Panel1
             // 
@@ -63,21 +62,15 @@ namespace ModelViewer
             this.splitContainer1.Panel2.Controls.Add(this.materialControl1);
             this.splitContainer1.Panel2.RightToLeft = System.Windows.Forms.RightToLeft.No;
             this.splitContainer1.Size = new System.Drawing.Size(326, 607);
-            this.splitContainer1.SplitterDistance = 58;
+            this.splitContainer1.SplitterDistance = 24;
             this.splitContainer1.TabIndex = 0;
             // 
             // treeView1
             // 
-            this.treeView1.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            // this.treeView1.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.treeView1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.treeView1.Location = new System.Drawing.Point(0, 0);
             this.treeView1.Name = "treeView1";
-            treeNode1.Name = "Node1";
-            treeNode1.Text = "../Nature:Common";
-            treeNode2.Name = "Node0";
-            treeNode2.Text = "Model/Nature/FirTree/fir.material";
-            this.treeView1.Nodes.AddRange(new System.Windows.Forms.TreeNode[] {
-            treeNode2});
             this.treeView1.Size = new System.Drawing.Size(326, 58);
             this.treeView1.TabIndex = 0;
             // 
@@ -107,7 +100,7 @@ namespace ModelViewer
         #endregion
 
         private System.Windows.Forms.SplitContainer splitContainer1;
-        private System.Windows.Forms.TreeView treeView1;
+        private ComboTreeBox treeView1;
         private Controls.MaterialControl materialControl1;
     }
 }

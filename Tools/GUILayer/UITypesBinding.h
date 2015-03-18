@@ -144,11 +144,7 @@ namespace GUILayer
 
         ~ModelVisSettings() { _object.reset(); }
 
-        static ModelVisSettings^ CreateDefault()
-        {
-            auto attached = std::make_shared<PlatformRig::ModelVisSettings>();
-            return gcnew ModelVisSettings(std::move(attached));
-        }
+        static ModelVisSettings^ CreateDefault();
 
     protected:
         AutoToShared<PlatformRig::ModelVisSettings> _object;
@@ -166,7 +162,7 @@ namespace GUILayer
 
             virtual event PropertyChangedEventHandler^ PropertyChanged;
 
-            PropertyPair() : _value(0) {}
+            PropertyPair() {}
             PropertyPair(NameType name, ValueType value) { Name = name; Value = value; }
 
         protected:
@@ -196,13 +192,19 @@ namespace GUILayer
             BindingList<BindingUtil::StringStringPair^>^ get();
         }
 
-        const NativeConfig& GetUnderlying() { return *_underlying->get(); }
+        const NativeConfig* GetUnderlying() { return _underlying.get() ? _underlying->get() : nullptr; }
+
+        System::Collections::Generic::List<RawMaterial^>^ BuildInheritanceList();
+        property System::String^ Filename { System::String^ get(); }
+        property System::String^ SettingName { System::String^ get(); }
 
         RawMaterial(System::String^ initialiser);
         RawMaterial(std::shared_ptr<NativeConfig> underlying);
         ~RawMaterial();
     protected:
         AutoToShared<NativeConfig> _underlying;
+        System::String^ DummyFilename;
+        System::String^ DummySettingName;
 
         BindingList<BindingUtil::StringIntPair^>^ _materialParameterBox;
         BindingList<BindingUtil::StringIntPair^>^ _shaderConstants;

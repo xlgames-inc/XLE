@@ -27,6 +27,46 @@ namespace ModelViewer
             set
             {
                 materialControl1.Object = value;
+
+                    // Build a hierarchical of nodes in the combo box
+                    // representing the inheritance tree in the material object
+                treeView1.Nodes.Clear();
+                if (value!=null) {
+                    var parentNode = treeView1.Nodes.Add(
+                        value.Filename + ":" + value.SettingName);
+                    parentNode.Tag = value;
+                    AddComboBoxChildren(
+                        parentNode,
+                        value.BuildInheritanceList());
+                    parentNode.Expanded = true;
+                    treeView1.SelectedNode = parentNode;
+
+                    treeView1.SelectedNodeChanged += SubMatSelectedNodeChanged;
+                }
+            }
+        }
+
+        protected void SubMatSelectedNodeChanged(object sender, EventArgs e)
+        {
+                //  When the selected node changes, we want to 
+                //  change the object that we're currently editing...
+            var mat = treeView1.SelectedNode.Tag as GUILayer.RawMaterial;
+            if (mat != null)
+            {
+                materialControl1.Object = mat;
+            }
+        }
+
+        protected void AddComboBoxChildren(
+            ComboTreeNode parentNode, 
+            List<GUILayer.RawMaterial> childMats)
+        {
+            if (childMats == null) return;
+            foreach (var mat in childMats)
+            {
+                var newNode = parentNode.Nodes.Add(mat.Filename + ":" + mat.SettingName);
+                newNode.Tag = mat;
+                AddComboBoxChildren(newNode, mat.BuildInheritanceList());
             }
         }
     }

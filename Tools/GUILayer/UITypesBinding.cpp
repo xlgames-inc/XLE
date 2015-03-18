@@ -43,6 +43,12 @@ namespace GUILayer
             std::shared_ptr<OnChangeCallback>(new InvalidatePropertyGrid(callback)));
     }
 
+    ModelVisSettings^ ModelVisSettings::CreateDefault()
+    {
+        auto attached = std::make_shared<PlatformRig::ModelVisSettings>();
+        return gcnew ModelVisSettings(std::move(attached));
+    }
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     template<typename NameType, typename ValueType>
@@ -142,10 +148,10 @@ namespace GUILayer
                     result.begin(), result.end(), 
                     guid, ResourceBinding::Compare());
                 if (ins==result.end() || ins->_bindHash != guid) {
+                    std::string value;
+                    if (i->Value) { value = clix::marshalString<clix::E_UTF8>(i->Value); }
                     result.insert(ins, 
-                        ResourceBinding(
-                            guid, 
-                            clix::marshalString<clix::E_UTF8>(i->Value)));
+                        ResourceBinding(guid, value));
                 }
             }
         }
@@ -158,11 +164,14 @@ namespace GUILayer
     BindingList<BindingUtil::StringIntPair^>^ 
         RawMaterial::MaterialParameterBox::get()
     {
+        if (!_underlying.get()) { return nullptr; }
         if (!_materialParameterBox) {
             _materialParameterBox = BindingConv::AsBindingList((*_underlying)->_matParamBox);
             _materialParameterBox->ListChanged += 
                 gcnew ListChangedEventHandler(
                     this, &RawMaterial::ParameterBox_Changed);
+            _materialParameterBox->AllowNew = true;
+            _materialParameterBox->AllowEdit = true;
         }
         return _materialParameterBox;
     }
@@ -170,11 +179,14 @@ namespace GUILayer
     BindingList<BindingUtil::StringIntPair^>^ 
         RawMaterial::ShaderConstants::get()
     {
+        if (!_underlying.get()) { return nullptr; }
         if (!_shaderConstants) {
             _shaderConstants = BindingConv::AsBindingList((*_underlying)->_constants);
             _shaderConstants->ListChanged += 
                 gcnew ListChangedEventHandler(
                     this, &RawMaterial::ParameterBox_Changed);
+            _shaderConstants->AllowNew = true;
+            _shaderConstants->AllowEdit = true;
         }
         return _shaderConstants;
     }
@@ -182,11 +194,14 @@ namespace GUILayer
     BindingList<BindingUtil::StringStringPair^>^ 
         RawMaterial::ResourceBindings::get()
     {
+        if (!_underlying.get()) { return nullptr; }
         if (!_resourceBindings) {
             _resourceBindings = BindingConv::AsBindingList((*_underlying)->_resourceBindings);
             _resourceBindings->ListChanged += 
                 gcnew ListChangedEventHandler(
                     this, &RawMaterial::ResourceBinding_Changed);
+            _resourceBindings->AllowNew = true;
+            _resourceBindings->AllowEdit = true;
         }
         return _resourceBindings;
     }
@@ -243,13 +258,52 @@ namespace GUILayer
         }
     }
 
+    System::Collections::Generic::List<RawMaterial^>^ RawMaterial::BuildInheritanceList()
+    {
+        // create a RawMaterial wrapper object for all of the inheritted objects
+        
+        if (_underlying.get()) {
+            auto result = gcnew System::Collections::Generic::List<RawMaterial^>();
+
+            for (   auto i=(*_underlying)->_inherit.cbegin(); 
+                    i!=(*_underlying)->_inherit.cend(); ++i) {
+                result->Add(gcnew RawMaterial(
+                    clix::marshalString<clix::E_UTF8>(*i)));
+            }
+            return result;
+        }
+        return nullptr;
+    }
+
+    System::String^ RawMaterial::Filename::get()
+    {
+        if (!_underlying.get()) { return DummyFilename; }
+        return clix::marshalString<clix::E_UTF8>((*_underlying)->_filename);
+    }
+
+    System::String^ RawMaterial::SettingName::get()
+    {
+        if (!_underlying.get()) { return DummySettingName; }
+        return clix::marshalString<clix::E_UTF8>((*_underlying)->_settingName);
+    }
+
     RawMaterial::RawMaterial(System::String^ initialiser)
     {
-        auto nativeInit = clix::marshalString<clix::E_UTF8>(initialiser);
-        auto& source = ::Assets::GetAssetDep<NativeConfig>(nativeInit.c_str());
-        auto copy = std::make_shared<NativeConfig>(source);
-        _underlying.reset(
-            new std::shared_ptr<NativeConfig>(std::move(copy)));
+        TRY {
+            auto nativeInit = clix::marshalString<clix::E_UTF8>(initialiser);
+            auto& source = ::Assets::GetAssetDep<NativeConfig>(nativeInit.c_str());
+            auto copy = std::make_shared<NativeConfig>(source);
+            _underlying.reset(
+                new std::shared_ptr<NativeConfig>(std::move(copy)));
+        } CATCH (const Assets::Exceptions::InvalidResource&) {
+            auto colon = initialiser->IndexOf(':');
+            if (colon > 1) {
+                DummyFilename = initialiser->Substring(0, colon);
+                DummySettingName = initialiser->Substring(colon+1);
+            } else {
+                DummyFilename = initialiser;
+            }
+        } CATCH_END
     }
 
     RawMaterial::RawMaterial(
@@ -262,5 +316,8 @@ namespace GUILayer
     RawMaterial::~RawMaterial()
     {}
 
+
+    template BindingUtil::PropertyPair<System::String^, unsigned>;
+    template BindingUtil::PropertyPair<System::String^, System::String^>;
 }
 

@@ -65,7 +65,7 @@ namespace GUILayer
         _presentationChain = device.CreatePresentationChain(
             platformWindowHandle,
             clientRect.right - clientRect.left, clientRect.bottom - clientRect.top);
-        _frameRig = std::make_unique<PlatformRig::FrameRig>(false); // (not "main" frame rig by default)
+        _frameRig = std::make_shared<PlatformRig::FrameRig>(false); // (not "main" frame rig by default)
 
         AddWindowHandler(std::make_shared<ResizePresentationChain>(_presentationChain));
     }

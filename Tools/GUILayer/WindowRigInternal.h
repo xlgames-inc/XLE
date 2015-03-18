@@ -7,10 +7,9 @@
 #pragma once
 
 #include "IWindowRig.h"
+#include "../../RenderCore/IDevice_Forward.h"
 #include <memory>
 #include <vector>
-
-namespace RenderCore { class IDevice; }
 
 namespace GUILayer
 {
@@ -26,7 +25,7 @@ namespace GUILayer
         WindowRig(RenderCore::IDevice& device, const void* platformWindowHandle);
         ~WindowRig();
     protected:
-        std::unique_ptr<PlatformRig::FrameRig> _frameRig;
+        std::shared_ptr<PlatformRig::FrameRig> _frameRig;
         std::shared_ptr<RenderCore::IPresentationChain> _presentationChain;
         std::vector<std::shared_ptr<PlatformRig::IWindowHandler>> _windowHandlers;
     };

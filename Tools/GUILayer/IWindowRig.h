@@ -6,11 +6,12 @@
 
 #pragma once
 
+#include "../../RenderCore/IDevice_Forward.h"
+#include "../../RenderCore/IThreadContext_Forward.h"
 #include <memory>
 #include <functional>
 
 namespace PlatformRig { class FrameRig; class IWindowHandler; }
-namespace RenderCore { class IPresentationChain; class IThreadContext; }
 
 namespace GUILayer
 {
