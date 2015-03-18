@@ -327,6 +327,7 @@ namespace Sample
                 context, lightingParserContext, *scene, 
                 RenderingQualitySettings(
                     presChainDesc._dimensions, 
+                    (Tweakable("LightingModel", 0) == 0) ? RenderingQualitySettings::LightingModel::Deferred : RenderingQualitySettings::LightingModel::Forward,
                     Tweakable("SamplingCount", 1), Tweakable("SamplingQuality", 0)));
         }
 

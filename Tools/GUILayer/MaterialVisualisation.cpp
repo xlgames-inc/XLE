@@ -6,9 +6,11 @@
 
 #include "MaterialVisualisation.h"
 #include "../../RenderCore/Assets/Material.h"
+#include "../../RenderCore/Assets/AssetUtils.h"
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../SceneEngine/LightingParserContext.h"
 #include "../../Assets/AssetUtils.h"
+#include "../../Utility/StringFormat.h"
 
 namespace GUILayer
 {
@@ -30,18 +32,31 @@ namespace GUILayer
 
         {
             using namespace RenderCore;
-            Techniques::TechniqueInterface techniqueInterface(Metal::GlobalInputLayouts::PNT);
+            Techniques::TechniqueInterface techniqueInterface(Metal::GlobalInputLayouts::PNTT);
 
-            ParameterBox materialParameters;
+            static const auto DefaultNormalsTextureBindingHash = Hash64("NormalsTexture");
+            ParameterBox materialParameters = obj._parameters._matParams;
+            for (auto i=obj._parameters._bindings.cbegin(); i!=obj._parameters._bindings.cend(); ++i) {
+                materialParameters.SetParameter(std::string(StringMeld<64>() << "RES_HAS_" << std::hex << i->_bindHash), 1);
+                if (i->_bindHash == DefaultNormalsTextureBindingHash) {
+                    ResChar resolvedName[MaxPath];
+                    obj._searchRules.ResolveFile(resolvedName, dimof(resolvedName), i->_resourceName.c_str());
+                    materialParameters.SetParameter("RES_HAS_NormalsTexture_DXT", 
+                        RenderCore::Assets::IsDXTNormalMap(resolvedName));
+                }
+            }
+
             ParameterBox geoParameters;
             geoParameters.SetParameter("GEO_HAS_NORMAL", 1);
             geoParameters.SetParameter("GEO_HAS_TEXCOORD", 1);
+            geoParameters.SetParameter("GEO_HAS_TANGENT_FRAME", 1);
             const ParameterBox* state[] = {
                 &geoParameters, &parserContext.GetTechniqueContext()._globalEnvironmentState,
-                &parserContext.GetTechniqueContext()._runtimeState, &obj._parameters._matParams
+                &parserContext.GetTechniqueContext()._runtimeState, &materialParameters
             };
 
-            const unsigned techniqueIndex = 0;
+            const unsigned techniqueIndex = 
+                (_settings->Lighting == MaterialVisSettings::LightingType::Deferred) ? 2 : 0;
 
             auto& shaderType = ::Assets::GetAssetDep<Techniques::ShaderType>("game/xleres/illum.txt");
             auto variation = shaderType.FindVariation(techniqueIndex, state, techniqueInterface);

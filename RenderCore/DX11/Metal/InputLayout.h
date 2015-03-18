@@ -62,6 +62,7 @@ namespace RenderCore { namespace Metal_DX11
         extern InputLayout PT;
         extern InputLayout PN;
         extern InputLayout PNT;
+        extern InputLayout PNTT;
     }
 
         ////////////////////////////////////////////////////////////////////////////////////////////////

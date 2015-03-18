@@ -23,9 +23,18 @@ namespace SceneEngine
         UInt2       _dimensions;
         unsigned    _samplingCount, _samplingQuality;
 
+        enum class LightingModel
+        {
+            Forward,
+            Deferred
+        };
+
+        LightingModel _lightingModel;
+
         RenderingQualitySettings();
         RenderingQualitySettings(
             UInt2 dimensions,
+            LightingModel lightingModel = LightingModel::Deferred,
             unsigned samplingCount = 1,
             unsigned samplingQuality = 0);
     };

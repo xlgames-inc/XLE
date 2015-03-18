@@ -37,15 +37,6 @@ namespace SceneEngine
     using namespace RenderCore;
     using namespace RenderCore::Metal;
 
-    namespace LightingModel
-    {
-        enum Enum
-        {
-            Forward,
-            Deferred
-        };
-    }
-
     void LightingParser_ResolveGBuffer( DeviceContext* context,
                                         LightingParserContext& parserContext,
                                         MainTargetsBox& mainTargets,
@@ -462,9 +453,7 @@ namespace SceneEngine
                 FormatStack(NativeFormat::R16G16B16A16_FLOAT),
                 sampling));
 
-        LightingModel::Enum lightingModel = 
-            (Tweakable("LightingModel", 0) == 0)?LightingModel::Deferred:LightingModel::Forward;
-        if (lightingModel == LightingModel::Deferred) {
+        if (qualitySettings._lightingModel == RenderingQualitySettings::LightingModel::Deferred) {
 
                 //
             //////////////////////////////////////////////////////////////////////////////////////
@@ -563,7 +552,7 @@ namespace SceneEngine
             postLightingResolveTexture  = lightingResTargets._lightingResolveTexture.get();
             postLightingResolveRTV      = lightingResTargets._lightingResolveRTV;
 
-        } else if (lightingModel == LightingModel::Forward) {
+        } else if (qualitySettings._lightingModel == RenderingQualitySettings::LightingModel::Forward) {
 
             auto& mainTargets = Techniques::FindCachedBox<ForwardTargetsBox>(
                 ForwardTargetsBox::Desc(
@@ -850,12 +839,14 @@ namespace SceneEngine
     RenderingQualitySettings::RenderingQualitySettings()
     {
         _dimensions = UInt2(0,0);
+        _lightingModel = LightingModel::Deferred;
         _samplingCount = _samplingQuality = 0;
     }
 
     RenderingQualitySettings::RenderingQualitySettings(
-        UInt2 dimensions, unsigned samplingCount, unsigned samplingQuality)
-    : _dimensions(dimensions), _samplingCount(samplingCount), _samplingQuality(samplingQuality)
+        UInt2 dimensions, 
+        LightingModel lightingModel, unsigned samplingCount, unsigned samplingQuality)
+    : _dimensions(dimensions), _lightingModel(lightingModel), _samplingCount(samplingCount), _samplingQuality(samplingQuality)
     {}
 
 }

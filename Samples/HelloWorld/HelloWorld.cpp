@@ -249,7 +249,10 @@ namespace Sample
         if (scene) {
             LightingParser_ExecuteScene(
                 context, lightingParserContext, *scene,
-                RenderingQualitySettings(presChainDesc._dimensions, Tweakable("SamplingCount", 1), Tweakable("SamplingQuality", 0)));
+                RenderingQualitySettings(
+                    presChainDesc._dimensions, 
+                    (Tweakable("LightingModel", 0) == 0) ? RenderingQualitySettings::LightingModel::Deferred : RenderingQualitySettings::LightingModel::Forward,
+                    Tweakable("SamplingCount", 1), Tweakable("SamplingQuality", 0)));
         }
 
             //  If we need to, we can render outside of the lighting parser.

@@ -95,6 +95,8 @@ namespace PlatformRig
             Float3      _position;
             Float3      _normal;
             Float2      _texCoord;
+            Float3      _tangent;
+            Float3      _bitangent;
         };
         #pragma pack(pop)
 
@@ -106,7 +108,9 @@ namespace PlatformRig
         static RenderCore::Metal::InputElementDesc Vertex3D_InputLayout[] = {
             RenderCore::Metal::InputElementDesc( "POSITION", 0, RenderCore::Metal::NativeFormat::R32G32B32_FLOAT ),
             RenderCore::Metal::InputElementDesc(   "NORMAL", 0, RenderCore::Metal::NativeFormat::R32G32B32_FLOAT ),
-            RenderCore::Metal::InputElementDesc( "TEXCOORD", 0, RenderCore::Metal::NativeFormat::R32G32_FLOAT )
+            RenderCore::Metal::InputElementDesc( "TEXCOORD", 0, RenderCore::Metal::NativeFormat::R32G32_FLOAT ),
+            RenderCore::Metal::InputElementDesc( "TANGENT", 0, RenderCore::Metal::NativeFormat::R32G32B32_FLOAT ),
+            RenderCore::Metal::InputElementDesc( "BITANGENT", 0, RenderCore::Metal::NativeFormat::R32G32B32_FLOAT )
         };
     }
 
@@ -186,6 +190,10 @@ namespace PlatformRig
             longitude = (longitude + .5f * gPI) / gPI;
 
             vertex._texCoord = Float2(longitude, latitude);
+
+            vertex._tangent = Float3((*i)[1], -(*i)[0], 0.f);
+            vertex._bitangent = Cross(vertex._tangent, vertex._normal);
+
             result.push_back(vertex);
         }
         return result;
@@ -221,6 +229,8 @@ namespace PlatformRig
                 a[q]._position = normal + faceCoord[q][0] * u + faceCoord[q][1] * v;
                 a[q]._normal = normal;
                 a[q]._texCoord = Float2(.5f * faceCoord[q][0] + .5f, .5f * faceCoord[q][1] + .5f);
+                a[q]._tangent = u;
+                a[q]._bitangent = v;
             }
             result.push_back(a[0]); result.push_back(a[1]); result.push_back(a[2]);
             result.push_back(a[2]); result.push_back(a[1]); result.push_back(a[3]);
@@ -330,6 +340,18 @@ namespace PlatformRig
             return true;
         } else if (!_stricmp(name, "SI_LightColor") && size >= sizeof(Float3)) {
             *((Float3*)destination) = constants._lightColour;
+            return true;
+        } else if (!_stricmp(name, "MaterialDiffuse") && size >= sizeof(Float3)) {
+            *((Float3*)destination) = Float3(1.f, 1.f, 1.f);
+            return true;
+        } else if (!_stricmp(name, "Opacity") && size >= sizeof(float)) {
+            *((float*)destination) = 1.f;
+            return true;
+        } else if (!_stricmp(name, "MaterialSpecular") && size >= sizeof(Float3)) {
+            *((Float3*)destination) = Float3(1.f, 1.f, 1.f);
+            return true;
+        } else if (!_stricmp(name, "AlphaThreshold") && size >= sizeof(float)) {
+            *((float*)destination) = .33f;
             return true;
         }
         return false;
@@ -641,9 +663,11 @@ namespace PlatformRig
                 sceneParser.Draw(metalContext.get(), parserContext);
                 
             } else if (settings._lightingType == MaterialVisSettings::LightingType::Deferred) {
+                qualSettings._lightingModel = SceneEngine::RenderingQualitySettings::LightingModel::Deferred;
                 SceneEngine::LightingParser_ExecuteScene(context, parserContext, sceneParser, qualSettings);
             } else if (settings._lightingType == MaterialVisSettings::LightingType::Forward) {
-                // no way to force the lighting parser to use a forward lighting pass currently
+                qualSettings._lightingModel = SceneEngine::RenderingQualitySettings::LightingModel::Forward;
+                SceneEngine::LightingParser_ExecuteScene(context, parserContext, sceneParser, qualSettings);
             }
 
             return true;

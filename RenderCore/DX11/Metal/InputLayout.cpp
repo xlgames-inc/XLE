@@ -103,6 +103,15 @@ namespace RenderCore { namespace Metal_DX11
                 InputElementDesc( "NORMAL",   0, NativeFormat::R32G32B32_FLOAT ),
                 InputElementDesc( "TEXCOORD",   0, NativeFormat::R32G32_FLOAT )
             };
+
+            InputElementDesc PNTT_Elements[] = 
+            {
+                InputElementDesc( "POSITION",   0, NativeFormat::R32G32B32_FLOAT),
+                InputElementDesc( "NORMAL",   0, NativeFormat::R32G32B32_FLOAT ),
+                InputElementDesc( "TEXCOORD",   0, NativeFormat::R32G32_FLOAT ),
+                InputElementDesc( "TANGENT",   0, NativeFormat::R32G32B32_FLOAT ),
+                InputElementDesc( "BITANGENT",   0, NativeFormat::R32G32B32_FLOAT )
+            };
         }
 
         InputLayout P2CT = std::make_pair(Detail::P2CT_Elements, dimof(Detail::P2CT_Elements));
@@ -112,6 +121,7 @@ namespace RenderCore { namespace Metal_DX11
         InputLayout PT = std::make_pair(Detail::PT_Elements, dimof(Detail::PT_Elements));
         InputLayout PN = std::make_pair(Detail::PN_Elements, dimof(Detail::PN_Elements));
         InputLayout PNT = std::make_pair(Detail::PNT_Elements, dimof(Detail::PNT_Elements));
+        InputLayout PNTT = std::make_pair(Detail::PNTT_Elements, dimof(Detail::PNTT_Elements));
     }
 
         ////////////////////////////////////////////////////////////////////////////////////////////////

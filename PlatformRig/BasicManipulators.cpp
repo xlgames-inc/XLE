@@ -128,7 +128,10 @@ namespace PlatformRig
         }
 
         if (evnt._wheelDelta) {
-            Float3 translation = (evnt._wheelDelta * _wheelTranslateSpeed) * forward;
+            float distanceToFocus = Magnitude(_visCameraSettings->_focus -_visCameraSettings->_position);
+            float speedScale = distanceToFocus * XlTan(0.5f * Deg2Rad(_visCameraSettings->_verticalFieldOfView));
+
+            Float3 translation = (evnt._wheelDelta * speedScale * _wheelTranslateSpeed) * forward;
             _visCameraSettings->_position += translation;
             _visCameraSettings->_focus += translation;
         }
@@ -164,7 +167,7 @@ namespace PlatformRig
     {
         _translateSpeed = 0.002f;
         _orbitRotationSpeed = .01f * gPI;
-        _wheelTranslateSpeed = 1.f;
+        _wheelTranslateSpeed = _translateSpeed;
     }
 
     CameraMovementManipulator::~CameraMovementManipulator()
