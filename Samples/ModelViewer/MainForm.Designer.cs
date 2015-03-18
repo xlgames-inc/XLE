@@ -38,7 +38,7 @@ namespace ModelViewer
         /// </summary>
         private void InitializeComponent()
         {
-            this.viewerControl = new GUILayer.LayerControl();
+            this.viewerControl = new LayerControl();
             this.propertyGrid1 = new System.Windows.Forms.PropertyGrid();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
@@ -99,7 +99,7 @@ namespace ModelViewer
 
         #endregion
 
-        private GUILayer.LayerControl viewerControl;
+        private LayerControl viewerControl;
         private System.Windows.Forms.PropertyGrid propertyGrid1;
         private System.Windows.Forms.SplitContainer splitContainer1;
     }

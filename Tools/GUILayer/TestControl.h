@@ -13,11 +13,10 @@ namespace GUILayer
 	public ref class TestControl : public EngineControl
 	{
 	public:
-		TestControl();
-
-	protected:
+		TestControl(Control^ control);
 		~TestControl();
 
+    protected:
         virtual void Render(RenderCore::IThreadContext& threadContext, IWindowRig& windowRig) override;
 	};
 }

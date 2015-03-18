@@ -46,10 +46,10 @@ namespace GUILayer
         // __super::OnPaintBackground(pe);
     }
 
-    void EngineControl::OnResize(EventArgs^ e)
+    void EngineControl::OnResize(System::EventArgs^ e)
     {
-        _pimpl->_windowRig->OnResize(Size.Width, Size.Height);
-        __super::OnResize(e);
+        _pimpl->_windowRig->OnResize(_control->Size.Width, _control->Size.Height);
+        // __super::OnResize(e);
     }
 
     void EngineControl::Evnt_KeyDown(Object^, KeyEventArgs^ e)
@@ -57,7 +57,7 @@ namespace GUILayer
         if (_pimpl->_inputTranslator) { 
             _pimpl->_inputTranslator->OnKeyChange(e->KeyValue, true); 
             e->Handled = true;
-            Invalidate();
+            _control->Invalidate();
         }
     }
 
@@ -66,7 +66,7 @@ namespace GUILayer
         if (_pimpl->_inputTranslator) { 
             _pimpl->_inputTranslator->OnKeyChange(e->KeyValue, false); 
             e->Handled = true;
-            Invalidate();
+            _control->Invalidate();
         }
     }
 
@@ -75,7 +75,7 @@ namespace GUILayer
         if (_pimpl->_inputTranslator) {
             _pimpl->_inputTranslator->OnChar(e->KeyChar);
             e->Handled = true;
-            Invalidate();
+            _control->Invalidate();
         }
     }
 
@@ -84,7 +84,7 @@ namespace GUILayer
             // (todo -- only when activated?)
         if (_pimpl->_inputTranslator) {
             _pimpl->_inputTranslator->OnMouseMove(e->Location.X, e->Location.Y);
-            Invalidate();
+            _control->Invalidate();
         }
     }
 
@@ -102,7 +102,7 @@ namespace GUILayer
     {
         if (_pimpl->_inputTranslator) {
             _pimpl->_inputTranslator->OnMouseButtonChange(AsIndex(e->Button), true);
-            Invalidate();
+            _control->Invalidate();
         }
     }
 
@@ -110,7 +110,7 @@ namespace GUILayer
     {
         if (_pimpl->_inputTranslator) {
             _pimpl->_inputTranslator->OnMouseButtonChange(AsIndex(e->Button), false);
-            Invalidate();
+            _control->Invalidate();
         }
     }
 
@@ -118,7 +118,7 @@ namespace GUILayer
     {
         if (_pimpl->_inputTranslator) {
             _pimpl->_inputTranslator->OnMouseWheel(e->Delta);
-            Invalidate();
+            _control->Invalidate();
         }
     }
 
@@ -126,7 +126,7 @@ namespace GUILayer
     {
         if (_pimpl->_inputTranslator) {
             _pimpl->_inputTranslator->OnMouseButtonDblClk(AsIndex(e->Button));
-            Invalidate();
+            _control->Invalidate();
         }
     }
 
@@ -136,22 +136,22 @@ namespace GUILayer
         return *_pimpl->_windowRig;
     }
 
-    EngineControl::EngineControl()
+    EngineControl::EngineControl(Control^ control)
+        : _control(control)
     {
         _pimpl.reset(new EngineControlPimpl);
-        _pimpl->_windowRig = EngineDevice::GetInstance()->GetNative().CreateWindowRig(this->Handle.ToPointer());
+        _pimpl->_windowRig = EngineDevice::GetInstance()->GetNative().CreateWindowRig(_control->Handle.ToPointer());
         _pimpl->_inputTranslator = std::make_unique<PlatformRig::InputTranslator>();
         _pimpl->_inputTranslator->AddListener(_pimpl->_windowRig->GetFrameRig().GetMainOverlaySystem()->GetInputListener());
-        InitializeComponent();
 
-        KeyDown += gcnew System::Windows::Forms::KeyEventHandler(this, &EngineControl::Evnt_KeyDown);
-        KeyUp += gcnew System::Windows::Forms::KeyEventHandler(this, &EngineControl::Evnt_KeyUp);
-        KeyPress += gcnew System::Windows::Forms::KeyPressEventHandler(this, &EngineControl::Evnt_KeyPress);
-        MouseMove += gcnew System::Windows::Forms::MouseEventHandler(this, &EngineControl::Evnt_MouseMove);
-        MouseDown += gcnew System::Windows::Forms::MouseEventHandler(this, &EngineControl::Evnt_MouseDown);
-        MouseUp += gcnew System::Windows::Forms::MouseEventHandler(this, &EngineControl::Evnt_MouseUp);
-        MouseWheel += gcnew System::Windows::Forms::MouseEventHandler(this, &EngineControl::Evnt_MouseWheel);
-        MouseDoubleClick += gcnew System::Windows::Forms::MouseEventHandler(this, &EngineControl::Evnt_DoubleClick);
+        control->KeyDown += gcnew System::Windows::Forms::KeyEventHandler(this, &EngineControl::Evnt_KeyDown);
+        control->KeyUp += gcnew System::Windows::Forms::KeyEventHandler(this, &EngineControl::Evnt_KeyUp);
+        control->KeyPress += gcnew System::Windows::Forms::KeyPressEventHandler(this, &EngineControl::Evnt_KeyPress);
+        control->MouseMove += gcnew System::Windows::Forms::MouseEventHandler(this, &EngineControl::Evnt_MouseMove);
+        control->MouseDown += gcnew System::Windows::Forms::MouseEventHandler(this, &EngineControl::Evnt_MouseDown);
+        control->MouseUp += gcnew System::Windows::Forms::MouseEventHandler(this, &EngineControl::Evnt_MouseUp);
+        control->MouseWheel += gcnew System::Windows::Forms::MouseEventHandler(this, &EngineControl::Evnt_MouseWheel);
+        control->MouseDoubleClick += gcnew System::Windows::Forms::MouseEventHandler(this, &EngineControl::Evnt_DoubleClick);
     }
 
     EngineControl::~EngineControl()
@@ -160,7 +160,6 @@ namespace GUILayer
         //     EngineDevice::GetInstance()->GetRenderDevice(), 
         //     _pimpl->_windowRig->GetPresentationChain().get());
 
-        delete components;
         delete _pimpl;
     }
 

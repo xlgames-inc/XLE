@@ -22,7 +22,7 @@ namespace ModelViewer
             InitializeComponent();
 
             visSettings = GUILayer.ModelVisSettings.CreateDefault();
-            viewerControl.SetupDefaultVis(visSettings);
+            viewerControl.Underlying.SetupDefaultVis(visSettings);
             propertyGrid1.SelectedObject = visSettings;
             visSettings.AttachCallback(propertyGrid1);
 

@@ -38,7 +38,7 @@ namespace ModelViewer.Controls
             this.checkBox1 = new System.Windows.Forms.CheckBox();
             this.comboBox2 = new System.Windows.Forms.ComboBox();
             this.comboBox1 = new System.Windows.Forms.ComboBox();
-            this.preview = new GUILayer.LayerControl();
+            this.preview = new LayerControl();
             this.groupBox1.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -123,6 +123,6 @@ namespace ModelViewer.Controls
         private System.Windows.Forms.ComboBox comboBox1;
         private System.Windows.Forms.CheckBox checkBox1;
         private System.Windows.Forms.ComboBox comboBox2;
-        private GUILayer.LayerControl preview;
+        private LayerControl preview;
     }
 }

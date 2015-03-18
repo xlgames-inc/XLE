@@ -117,6 +117,12 @@
     <Compile Include="Controls\HierchicalMaterialControl.Designer.cs">
       <DependentUpon>HierchicalMaterialControl.cs</DependentUpon>
     </Compile>
+    <Compile Include="LayerControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="LayerControl.Designer.cs">
+      <DependentUpon>LayerControl.cs</DependentUpon>
+    </Compile>
     <Compile Include="ModalMaterialEditor.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -166,12 +172,6 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\..\Tools\GUILayer\Project\GUILayer.vcxproj">
-      <Project>{E1E9A4C1-97A8-44B7-8279-D287313C5B6B}</Project>
-      <Name>GUILayer</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <BootstrapperPackage Include=".NETFramework,Version=v4.0,Profile=Client">
       <Visible>False</Visible>
       <ProductName>Microsoft .NET Framework 4 Client Profile %28x86 and x64%29</ProductName>
@@ -192,6 +192,12 @@
       <ProductName>Windows Installer 3.1</ProductName>
       <Install>true</Install>
     </BootstrapperPackage>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Tools\GUILayer\Project\GUILayer.vcxproj">
+      <Project>{e1e9a4c1-97a8-44b7-8279-d287313c5b6b}</Project>
+      <Name>GUILayer</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it.

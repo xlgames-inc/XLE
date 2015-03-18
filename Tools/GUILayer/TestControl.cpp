@@ -80,7 +80,7 @@ namespace GUILayer
             nullptr, nullptr, DummyRenderFrame);
     }
 
-    TestControl::TestControl() {}
+    TestControl::TestControl(Control^ control) : EngineControl(control) {}
     TestControl::~TestControl() {}
 
 }

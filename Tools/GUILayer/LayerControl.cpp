@@ -253,7 +253,8 @@ namespace GUILayer
         overlaySet.AddSystem(std::make_shared<InputLayer>(std::move(manipulators)));
     }
 
-    LayerControl::LayerControl()
+    LayerControl::LayerControl(Control^ control)
+        : EngineControl(control)
     {
         _pimpl.reset(new LayerControlPimpl());
         _pimpl->_stdPlugin = std::make_shared<SceneEngine::LightingParserStandardPlugin>();

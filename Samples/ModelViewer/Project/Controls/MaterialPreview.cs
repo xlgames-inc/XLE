@@ -37,8 +37,8 @@ namespace ModelViewer.Controls
             {
                 if (visLayer == null) {
                     visLayer = new GUILayer.MaterialVisLayer(visSettings, value);
-                    preview.AddSystem(visLayer);
-                    preview.AddDefaultCameraHandler(visSettings.Camera);
+                    preview.Underlying.AddSystem(visLayer);
+                    preview.Underlying.AddDefaultCameraHandler(visSettings.Camera);
                 } else {
                     visLayer.SetConfig(value);
                 }

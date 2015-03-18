@@ -24,11 +24,12 @@ namespace GUILayer
 
         void AddSystem(IOverlaySystem^ overlay);
 
-		LayerControl();
+		LayerControl(Control^ control);
 		~LayerControl();
     protected:
-        virtual void Render(RenderCore::IThreadContext&, IWindowRig&) override;
         clix::auto_ptr<LayerControlPimpl> _pimpl;
+
+        virtual void Render(RenderCore::IThreadContext&, IWindowRig&) override;
 	};
 }
 
