@@ -162,13 +162,17 @@ namespace Serialization
         size_t  _internalPointerCount;
     };
     
-    std::unique_ptr<uint8[]>      NascentBlockSerializer::AsMemoryBlock()
+    size_t      NascentBlockSerializer::Size() const
     {
-        std::unique_ptr<uint8[]> result = std::make_unique<uint8[]>(
-            sizeof(Header)
+        return sizeof(Header)
             + _memory.size()
             + _trailingSubBlocks.size()
-            + _internalPointers.size() * sizeof(InternalPointer));
+            + _internalPointers.size() * sizeof(InternalPointer);
+    }
+
+    std::unique_ptr<uint8[]>      NascentBlockSerializer::AsMemoryBlock() const
+    {
+        std::unique_ptr<uint8[]> result = std::make_unique<uint8[]>(Size());
 
         ((Header*)result.get())->_rawMemorySize = _memory.size() + _trailingSubBlocks.size();
         ((Header*)result.get())->_internalPointerCount = _internalPointers.size();

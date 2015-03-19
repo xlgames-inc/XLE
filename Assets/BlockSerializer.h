@@ -13,6 +13,7 @@
 #include "../Utility/PtrUtils.h"
 #include <vector>
 #include <iterator>
+#include <type_traits>
 
 namespace Serialization
 {
@@ -33,15 +34,15 @@ namespace Serialization
         template<typename Type> void    SerializeSubBlock(const Type* begin, const Type* end, SpecialBuffer::Enum specialBuffer = SpecialBuffer::Unknown);
         void                            SerializeSubBlock(NascentBlockSerializer& subBlock, SpecialBuffer::Enum specialBuffer = SpecialBuffer::Unknown);
 
-        virtual void    SerializeSpecialBuffer( SpecialBuffer::Enum specialBuffer, 
+        void    SerializeSpecialBuffer( SpecialBuffer::Enum specialBuffer, 
                                                 const void* begin, const void* end);
         
-        virtual void    SerializeValue  ( uint8     value );
-        virtual void    SerializeValue  ( uint16    value );
-        virtual void    SerializeValue  ( uint32    value );
-        virtual void    SerializeValue  ( uint64    value );
-        virtual void    SerializeValue  ( float     value );
-        virtual void    SerializeValue  ( const std::string& value );
+        void    SerializeValue  ( uint8     value );
+        void    SerializeValue  ( uint16    value );
+        void    SerializeValue  ( uint32    value );
+        void    SerializeValue  ( uint64    value );
+        void    SerializeValue  ( float     value );
+        void    SerializeValue  ( const std::string& value );
 
         template<typename Type, typename Allocator>
             void    SerializeValue  ( const std::vector<Type, Allocator>& value );
@@ -55,7 +56,8 @@ namespace Serialization
         template<typename Type>
             void    SerializeRaw    ( Type      type );
 
-        std::unique_ptr<uint8[]>      AsMemoryBlock();
+        std::unique_ptr<uint8[]>        AsMemoryBlock() const;
+        size_t                          Size() const;
 
         NascentBlockSerializer();
         ~NascentBlockSerializer();
@@ -77,32 +79,17 @@ namespace Serialization
         std::vector<uint8>              _trailingSubBlocks;
         std::vector<InternalPointer>    _internalPointers;
 
-        virtual void PushBackPointer(size_t value);
-        virtual void PushBackRaw(const void* data, size_t size);
-        virtual void PushBackRaw_SubBlock(const void* data, size_t size);
-        virtual void PushBackInternalPointer(const InternalPointer& ptr);
-        virtual void PushBackPlaceholder(SpecialBuffer::Enum specialBuffer);
+        void PushBackPointer(size_t value);
+        void PushBackRaw(const void* data, size_t size);
+        void PushBackRaw_SubBlock(const void* data, size_t size);
+        void PushBackInternalPointer(const InternalPointer& ptr);
+        void PushBackPlaceholder(SpecialBuffer::Enum specialBuffer);
     };
 
     void            Block_Initialize(void* block, const void* base=nullptr);
     const void*     Block_GetFirstObject(const void* blockStart);
     size_t          Block_GetSize(const void* block);
     std::unique_ptr<uint8[]>     Block_Duplicate(const void* block);
-
-        ////////////////////////////////////////////////////
-
-    template <typename Type>
-        void Serialize(NascentBlockSerializer& serializer, const Type& object)
-    {
-        object.Serialize(serializer);
-    }
-
-    inline void Serialize(NascentBlockSerializer& serializer, uint8  value)                { serializer.SerializeValue(value); }
-    inline void Serialize(NascentBlockSerializer& serializer, uint16 value)                { serializer.SerializeValue(value); }
-    inline void Serialize(NascentBlockSerializer& serializer, uint32 value)                { serializer.SerializeValue(value); }
-    inline void Serialize(NascentBlockSerializer& serializer, uint64 value)                { serializer.SerializeValue(value); }
-    inline void Serialize(NascentBlockSerializer& serializer, float  value)                { serializer.SerializeValue(value); }
-    inline void Serialize(NascentBlockSerializer& serializer, const std::string& value)    { serializer.SerializeValue(value); }
 
         ////////////////////////////////////////////////////
 
@@ -246,15 +233,37 @@ namespace Serialization
 
         ////////////////////////////////////////////////////
         
+    template<typename T> struct HasSerialize
+    {
+        template<typename U, void (U::*)(NascentBlockSerializer&) const> struct FunctionSignature {};
+        template<typename U> static std::true_type Test1(FunctionSignature<U, &U::Serialize>*);
+        template<typename U> static std::false_type Test1(...);
+        static const bool Result = decltype(Test1<T>(0))::value;
+    };
 
-    template<typename Type, typename Allocator>
-        void Serialize(NascentBlockSerializer& serializer, const std::vector<Type, Allocator>& value)
+    template<typename T> struct IsValueType
+    {
+        template<typename U, void (NascentBlockSerializer::*)(U)> struct FunctionSignature {};
+        template<typename U> static std::true_type Test1(FunctionSignature<U, &NascentBlockSerializer::SerializeValue>*);
+        template<typename U> static std::false_type Test1(...);
+        static const bool Result = decltype(Test1<T>(0))::value | decltype(Test1<const T&>(0))::value;
+    };
+
+    template<typename Type, typename std::enable_if<HasSerialize<Type>::Result>::type* = nullptr>
+        void Serialize(NascentBlockSerializer& serializer, const Type& value)
+            { value.Serialize(serializer); }
+
+    template <typename Type, typename std::enable_if<IsValueType<Type>::Result>::type* = nullptr>
+        void Serialize(NascentBlockSerializer& serializer, const Type& value)
             { serializer.SerializeValue(value); }
 
-    template<typename Type, typename Deletor>
-        void Serialize(NascentBlockSerializer& serializer, const DynamicArray<Type, Deletor>& value)
-            { serializer.SerializeValue(value); }
-        
+    template<typename TypeLHS, typename TypeRHS>
+        void Serialize(NascentBlockSerializer& serializer, const std::pair<TypeLHS, TypeRHS>& value)
+            { 
+                Serialize(serializer, value.first);
+                Serialize(serializer, value.second);
+            }
+
     template<typename Type, typename Deletor>
         void Serialize(NascentBlockSerializer& serializer, const std::unique_ptr<Type, Deletor>& value, size_t count)
             { serializer.SerializeValue(value, count); }
@@ -264,7 +273,7 @@ namespace Serialization
                                 const cml::vector< Primitive, cml::fixed<Dimen> >& vec)
     {
         for (unsigned j=0; j<Dimen; ++j) {
-            serializer.SerializeValue(vec[j]);
+            Serialize(serializer, vec[j]);
         }
     }
     
@@ -273,9 +282,13 @@ namespace Serialization
     {
         for (unsigned i=0; i<4; ++i)
             for (unsigned j=0; j<4; ++j) {
-                serializer.SerializeValue(float4x4(i,j));
+                Serialize(serializer, (float)float4x4(i,j));
             }
     }
+
+        // the following has no implementation. Objects that don't match will attempt to use this implementation
+    void Serialize(NascentBlockSerializer& serializer, ...) = delete;
+
 
 }
 
