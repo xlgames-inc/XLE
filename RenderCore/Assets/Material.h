@@ -212,9 +212,8 @@ namespace RenderCore { namespace Assets
         ParameterBox _constants;
 
         using ResString = std::basic_string<::Assets::ResChar>;
-        ResString _filename;
-        ResString _settingName;
         std::vector<ResString> _inherit;
+
         const ::Assets::DependencyValidation& GetDependencyValidation() const { return *_depVal; }
 
         ResolvedMaterial Resolve(
@@ -222,6 +221,8 @@ namespace RenderCore { namespace Assets
             std::vector<::Assets::FileAndTime>* deps = nullptr) const;
 
         std::unique_ptr<Data> SerializeAsData() const;
+        ResString GetInitializerFilename() const    { return _splitName._initializerFilename; }
+        ResString GetSettingName() const            { return _splitName._settingName; }
         
         RawMaterial();
         RawMaterial(const ::Assets::ResChar initialiser[]);
@@ -231,6 +232,18 @@ namespace RenderCore { namespace Assets
         std::shared_ptr<::Assets::DependencyValidation> _depVal;
 
         void MergeInto(ResolvedMaterial& dest) const;
+
+        class RawMatSplitName
+        {
+        public:
+            ResString _settingName;
+            ResString _concreteFilename;
+            ResString _initializerFilename;
+
+            RawMatSplitName();
+            RawMatSplitName(const ::Assets::ResChar initialiser[]);
+        };
+        RawMatSplitName _splitName;
     };
 
     void MakeConcreteRawMaterialFilename(

@@ -299,6 +299,7 @@ namespace RenderCore { namespace Assets
 
     void MakeConcreteRawMaterialFilename(::Assets::ResChar dest[], unsigned dstCount, const ::Assets::ResChar inputName[])
     {
+        assert(dest != inputName);
         XlCopyString(dest, dstCount, inputName);
 
             //  If we're attempting to load from a .dae file, then we need to
@@ -321,10 +322,11 @@ namespace RenderCore { namespace Assets
         return hashId;
     }
 
-    RawMaterial::RawMaterial(const ::Assets::ResChar initialiser[])
+    RawMaterial::RawMatSplitName::RawMatSplitName() {}
+
+    RawMaterial::RawMatSplitName::RawMatSplitName(const ::Assets::ResChar initialiser[])
     {
             // We're expecting an initialiser of the format "filename:setting"
-            // If there is no colon, 
         auto colon = XlFindCharReverse(initialiser, ':');
         if (!colon)
             ThrowException(::Assets::Exceptions::InvalidResource(initialiser, ""));
@@ -334,28 +336,36 @@ namespace RenderCore { namespace Assets
 
         ::Assets::ResChar concreteFilename[MaxPath];
         MakeConcreteRawMaterialFilename(concreteFilename, dimof(concreteFilename), rawFilename);
+
+        _settingName = colon+1;
+        _concreteFilename  = concreteFilename;
+        _initializerFilename = rawFilename;
+    }
+
+    RawMaterial::RawMaterial(const ::Assets::ResChar initialiser[])
+    {
+        _splitName = RawMatSplitName(initialiser);
+        auto searchRules = ::Assets::DefaultDirectorySearchRules(_splitName._initializerFilename.c_str());
         
         size_t sourceFileSize = 0;
-        auto sourceFile = LoadFileAsMemoryBlock(concreteFilename, &sourceFileSize);
+        auto sourceFile = LoadFileAsMemoryBlock(_splitName._concreteFilename.c_str(), &sourceFileSize);
         if (!sourceFile)
             ThrowException(::Assets::Exceptions::InvalidResource(initialiser, 
-                StringMeld<128>() << "Missing or empty file: " << concreteFilename));
-
-        auto searchRules = ::Assets::DefaultDirectorySearchRules(rawFilename);
+                StringMeld<128>() << "Missing or empty file: " << _splitName._concreteFilename));
 
         Data data;
         data.Load((const char*)sourceFile.get(), (int)sourceFileSize);
 
-        auto source = data.ChildWithValue(colon+1);
+        auto source = data.ChildWithValue(_splitName._settingName.c_str());
         if (!source) {
             StringMeld<64> hashedName;
-            hashedName << std::hex << Hash64(colon+1);
+            hashedName << std::hex << Hash64(_splitName._settingName);
             source = data.ChildWithValue(hashedName);
         }
 
         if (!source)
             ThrowException(::Assets::Exceptions::InvalidResource(initialiser, 
-                StringMeld<256>() << "Missing material configuration: " << (colon+1)));
+                StringMeld<256>() << "Missing material configuration: " << _splitName._settingName));
 
         _depVal = std::make_shared<::Assets::DependencyValidation>();
 
@@ -367,34 +377,21 @@ namespace RenderCore { namespace Assets
                 if (colon) {
                     ::Assets::ResChar resolvedFile[MaxPath];
                     XlCopyNString(resolvedFile, i->value, colon-i->value);
-                    XlCatString(resolvedFile, dimof(resolvedFile), ".material");
-                    searchRules.ResolveFile(
-                        resolvedFile, dimof(resolvedFile), resolvedFile);
+                    if (!XlExtension(resolvedFile))
+                        XlCatString(resolvedFile, dimof(resolvedFile), ".material");
+                    searchRules.ResolveFile(resolvedFile, dimof(resolvedFile), resolvedFile);
                     XlNormalizePath(resolvedFile, dimof(resolvedFile), resolvedFile);
 
-                    StringMeld<MaxPath, ::Assets::ResChar> finalName;
-                    finalName << resolvedFile << colon;
+                    StringMeld<MaxPath, ::Assets::ResChar> finalRawMatName;
+                    finalRawMatName << resolvedFile << colon;
 
-                    _inherit.push_back(std::string(finalName));
+                    _inherit.push_back(ResString(finalRawMatName));
 
                     TRY {
                         RegisterAssetDependency(
                             _depVal, 
-                            &::Assets::GetAssetDep<RawMaterial>(finalName).GetDependencyValidation());
+                            &::Assets::GetAssetDep<RawMaterial>(finalRawMatName).GetDependencyValidation());
                     } CATCH (...) {} CATCH_END
-
-                    // RawMaterial settingsTable(resolvedFile);
-                    // auto settingHash = Hash64(colon+1);
-                    // 
-                    // auto s = LowerBound(settingsTable._materials, settingHash);
-                    // if (s != settingsTable._materials.end() && s->first == settingHash) {
-                    //     _matParamBox.MergeIn(s->second._matParamBox);
-                    //     _stateSet = Merge(_stateSet, s->second._stateSet);
-                    //     _resourceBindings.insert(
-                    //         _resourceBindings.end(),
-                    //         s->second._resourceBindings.begin(), s->second._resourceBindings.end());
-                    //     _constants.MergeIn(s->second._constants);
-                    // }
                 }
             }
         }
@@ -452,13 +449,10 @@ namespace RenderCore { namespace Assets
             // also load "States" table. This requires a bit more parsing work
         const auto* stateSet = source->ChildWithValue("States");
         if (stateSet) {
-            auto parsedStateSet = DeserializeStateSet(*stateSet);
-            _stateSet = Merge(_stateSet, parsedStateSet);
+            _stateSet = DeserializeStateSet(*stateSet);
         }
 
-        _filename = rawFilename;
-        _settingName = colon+1;
-        RegisterFileDependency(_depVal, rawFilename);
+        RegisterFileDependency(_depVal, _splitName._concreteFilename.c_str());
     }
 
     RawMaterial::~RawMaterial() {}
@@ -539,39 +533,24 @@ namespace RenderCore { namespace Assets
         ResolvedMaterial result;
         for (auto i=_inherit.cbegin(); i!=_inherit.cend(); ++i) {
             TRY {
-                char baseName[MaxPath];
-                char configName[MaxPath];
-                const auto colon = i->find_first_of(':');
-                if (colon != std::string::npos) {
-                    XlCopyNString(baseName, i->c_str(), colon);
-                    XlCopyString(configName, &i->c_str()[colon+1]);
-                } else {
-                    XlCopyString(baseName, i->c_str());
-                    XlCopyString(configName, "*");
-                }
-                if (!XlExtension(baseName))
-                    XlCatString(baseName, dimof(baseName), ".material");
-                searchRules.ResolveFile(baseName, dimof(baseName), baseName);
-                XlNormalizePath(baseName, dimof(baseName), baseName);
+                RawMatSplitName splitName(i->c_str());
 
                     // add a dependency to this file, even if it doesn't exist
                 if (deps) {
                     auto existing = std::find_if(deps->cbegin(), deps->cend(),
                         [&](const ::Assets::FileAndTime& test) 
                         {
-                            return !XlCompareStringI(test._filename.c_str(), baseName);
+                            return !XlCompareStringI(test._filename.c_str(), splitName._concreteFilename.c_str());
                         });
                     if (existing == deps->cend()) {
                         ::Assets::FileAndTime fileAndTime(
-                            baseName, 
-                            GetFileModificationTime(baseName));
+                            splitName._concreteFilename, 
+                            GetFileModificationTime(splitName._concreteFilename.c_str()));
                         deps->push_back(fileAndTime);
                     }
                 }
 
-                // XlChopExtension(baseName);
-                auto& rawParams = ::Assets::GetAssetDep<RawMaterial>(
-                    StringMeld<MaxPath>() << baseName << ":" << configName);
+                auto& rawParams = ::Assets::GetAssetDep<RawMaterial>(i->c_str());
                 rawParams.MergeInto(result);
             } 
             CATCH (...) {} 
@@ -583,12 +562,12 @@ namespace RenderCore { namespace Assets
             auto existing = std::find_if(deps->cbegin(), deps->cend(),
                 [&](const ::Assets::FileAndTime& test) 
                 {
-                    return !XlCompareStringI(test._filename.c_str(), _filename.c_str());
+                    return !XlCompareStringI(test._filename.c_str(), _splitName._concreteFilename.c_str());
                 });
             if (existing == deps->cend()) {
                 ::Assets::FileAndTime fileAndTime(
-                    _filename, 
-                    GetFileModificationTime(_filename.c_str()));
+                    _splitName._concreteFilename, 
+                    GetFileModificationTime(_splitName._concreteFilename.c_str()));
                 deps->push_back(fileAndTime);
             }
         }

@@ -117,7 +117,7 @@ namespace PlatformRig
                 
         uint64 hashedName = Hash64(filename);
         auto model = _pimpl->_modelScaffolds.Get(hashedName);
-        if (!model) {
+        if (!model || model->GetDependencyValidation().GetValidationIndex() > 0) {
             _pimpl->_modelScaffolds.Insert(
                 hashedName, 
                 Internal::CreateModelScaffold(filename, *_pimpl->_format));

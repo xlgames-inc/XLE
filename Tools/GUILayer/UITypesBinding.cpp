@@ -278,13 +278,13 @@ namespace GUILayer
     System::String^ RawMaterial::Filename::get()
     {
         if (!_underlying.get()) { return DummyFilename; }
-        return clix::marshalString<clix::E_UTF8>((*_underlying)->_filename);
+        return clix::marshalString<clix::E_UTF8>((*_underlying)->GetInitializerFilename());
     }
 
     System::String^ RawMaterial::SettingName::get()
     {
         if (!_underlying.get()) { return DummySettingName; }
-        return clix::marshalString<clix::E_UTF8>((*_underlying)->_settingName);
+        return clix::marshalString<clix::E_UTF8>((*_underlying)->GetSettingName());
     }
 
     RawMaterial::RawMaterial(System::String^ initialiser)

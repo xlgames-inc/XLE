@@ -21,7 +21,7 @@ namespace GUILayer
         if (!_config->GetUnderlying()) { return; }
 
         PlatformRig::MaterialVisObject obj;
-        obj._searchRules = ::Assets::DefaultDirectorySearchRules(_config->GetUnderlying()->_filename.c_str());
+        obj._searchRules = ::Assets::DefaultDirectorySearchRules(_config->GetUnderlying()->GetInitializerFilename().c_str());
         obj._parameters = _config->GetUnderlying()->Resolve(obj._searchRules);
         // obj._systemConstants = 
 

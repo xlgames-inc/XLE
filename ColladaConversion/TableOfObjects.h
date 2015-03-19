@@ -49,7 +49,7 @@ namespace RenderCore { namespace ColladaConversion
 
         void    SerializeSkin(Serialization::NascentBlockSerializer& outputSerializer, std::vector<uint8>& largeResourcesBlock) const;
         void    SerializeAnimationSet(Serialization::NascentBlockSerializer& outputSerializer) const;
-        std::vector<std::unique_ptr<Data>>  SerializeMaterial() const;
+        std::vector<std::unique_ptr<Data>>  SerializeMaterial(const std::string& matSettingsFile) const;
 
         TableOfObjects();
         ~TableOfObjects();

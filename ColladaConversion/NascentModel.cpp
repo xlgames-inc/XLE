@@ -108,13 +108,8 @@ namespace RenderCore { namespace ColladaConversion
     class Writer : public COLLADAFW::IWriter
     {
     public:
-	    Writer(const ResChar baseName[], const ::Assets::DirectorySearchRules& searchRules) 
-            : _importConfig("colladaimport.cfg")  
-        {
-            ResChar resolvedFile[MaxPath];
-            searchRules.ResolveFile(resolvedFile, dimof(resolvedFile), StringMeld<MaxPath>() << baseName);
-            _matSettingsFile = resolvedFile;
-        }
+	    Writer() : _importConfig("colladaimport.cfg")  
+        {}
 
 	    virtual ~Writer(){}
 
@@ -259,7 +254,6 @@ namespace RenderCore { namespace ColladaConversion
         void HandleFormatError(const FormatError& error);
 
         ImportConfiguration _importConfig;
-        std::basic_string<ResChar> _matSettingsFile;
     };
 
     void Writer::HandleFormatError(const FormatError& error)
@@ -396,49 +390,7 @@ namespace RenderCore { namespace ColladaConversion
     {
         TRY {
 
-                //
-                //      When we encounter an effect, let's read some extra
-                //      information about that effect from a script file
-                //
-                //      Most of the material information is in the effect
-                //      object. The "material" just instantiates the effect
-                //      and can add some parameters. It seems that most
-                //      collada exporters just use the material object to
-                //      reference the effect, and put all of the real information
-                //      in the effect.
-                //
-                //      Note; how should we associate the material to the script
-                //      file? From the material name, the id or the effect id?
-                //
-            /*RawMaterial::MaterialDesc matSettings;
-
-            {
-                    //  Look for material settings with the same name as the 
-                    //  effect. If we can't find it, look for a default settings
-                    //  entry (just called "*")
-                    //  Note that we could modify this so that all materials inherit
-                    //  from the default, or have the default only apply if there are
-                    //  no perfect matches. Either way has advantages... But in this
-                    //  version, the default will only apply if we can't find an
-                    //  exact match
-                auto hashName = Hash64(effect->getName());
-                auto i = LowerBound(_matSettingsFile._materials, hashName);
-                if (i != _matSettingsFile._materials.end() && i->first == hashName) {
-                    matSettings = i->second;
-                } else {
-                    static const auto defHash = Hash64("*");
-                    i = LowerBound(_matSettingsFile._materials, defHash);
-                    if (i != _matSettingsFile._materials.end() && i->first == defHash) {
-                        matSettings = i->second;
-                    }
-                }
-            }*/
-
             RenderCore::Assets::RawMaterial matSettings;
-
-                // we must inherit properties from the "material settings file"
-            matSettings._inherit.push_back(_matSettingsFile + ":*");
-            matSettings._inherit.push_back(_matSettingsFile + ":" + effect->getName());
 
                 //  Any settings from the Collada file should override what we read
                 //  in the material settings file. This means that we have 
@@ -1127,13 +1079,7 @@ namespace RenderCore { namespace ColladaConversion
             COLLADASaxFWL::Loader   loader(&errorHandler);
 	        loader.registerExtraDataCallbackHandler(extraDataCallback.get());
 
-            auto searchRules = ::Assets::DefaultDirectorySearchRules(identifier);
-
-            ResChar baseName[MaxPath];
-            XlBasename(baseName, dimof(baseName), identifier);
-            XlChopExtension(baseName);
-            
-            Writer writer(baseName, searchRules);
+            Writer writer;
 	        COLLADAFW::Root root(&loader, &writer);
             
 	        root.loadDocument(identifier);
@@ -1334,7 +1280,16 @@ namespace RenderCore { namespace ColladaConversion
 
     CONVERSION_API NascentChunkArray NascentModel::SerializeMaterials() const
     {
-        auto table = _objects.SerializeMaterial();
+        std::string matSettingsFile;
+        {
+            ResChar settingsName[MaxPath];
+            XlBasename(settingsName, dimof(settingsName), _name.c_str());
+            XlChopExtension(settingsName);
+            XlCatString(settingsName, dimof(settingsName), ".material");
+            matSettingsFile = settingsName;
+        }
+
+        auto table = _objects.SerializeMaterial(matSettingsFile);
 
         const unsigned size = 64*1024;
         auto buffer = std::make_unique<uint8[]>(size);
