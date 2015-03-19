@@ -16,8 +16,6 @@ namespace COLLADAFW
     typedef PointerArray<Transformation> TransformationPointerArray;
 }
 
-namespace Serialization { class NascentBlockSerializer; }
-
 namespace RenderCore { namespace ColladaConversion
 {
         ////////////////////////////////////////////////////////
@@ -25,7 +23,10 @@ namespace RenderCore { namespace ColladaConversion
     class NascentTransformationMachine_Collada : public RenderCore::Assets::NascentTransformationMachine
     {
     public:
-        unsigned                    PushTransformations     (   const COLLADAFW::TransformationPointerArray& transformations, const char nodeName[]);
+        unsigned PushTransformations(const COLLADAFW::TransformationPointerArray& transformations, const char nodeName[]);
+
+        void    Serialize(Serialization::NascentBlockSerializer& outputSerializer) const 
+            { RenderCore::Assets::NascentTransformationMachine::Serialize(outputSerializer); }
 
         NascentTransformationMachine_Collada();
         NascentTransformationMachine_Collada(NascentTransformationMachine_Collada&& machine);

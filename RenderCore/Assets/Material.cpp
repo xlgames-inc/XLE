@@ -5,15 +5,21 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Material.h"
+#include "AssetUtils.h"
 #include "../Metal/State.h"      // (just for Blend/BlendOp enum members... maybe we need a higher level version of these enums?)
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/IntermediateResources.h"
+#include "../../Assets/BlockSerializer.h"
+#include "../../Assets/ChunkFile.h"
+#include "../../ConsoleRig/Log.h"
 #include "../../Utility/Streams/Data.h"
 #include "../../Utility/Conversion.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/MemoryUtils.h"
+
+namespace RenderCore { extern char VersionString[]; extern char BuildDateString[]; }
 
 namespace RenderCore { namespace Assets
 {
@@ -294,6 +300,19 @@ namespace RenderCore { namespace Assets
 
     RawMaterial::RawMaterial() {}
 
+    static void MakeConcreteRawMaterialFilename(::Assets::ResChar dest[], unsigned dstCount, const ::Assets::ResChar inputName[])
+    {
+        XlCopyString(dest, dstCount, inputName);
+
+            //  If we're attempting to load from a .dae file, then we need to
+            //  instead redirect the query towards the compiled version
+        if (!XlCompareStringI(XlExtension(dest), "dae")) {
+            auto& store = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateStore();
+            XlCatString(dest, dstCount, "-rawmat");
+            store.MakeIntermediateName(dest, dstCount, dest);
+        }
+    }
+
     RawMaterial::RawMaterial(const ::Assets::ResChar initialiser[])
     {
             // We're expecting an initialiser of the format "filename:setting"
@@ -306,21 +325,13 @@ namespace RenderCore { namespace Assets
         XlCopyNString(rawFilename, initialiser, colon - initialiser);
 
         ::Assets::ResChar concreteFilename[MaxPath];
-        XlCopyString(concreteFilename, rawFilename);
-
-            //  If we're attempting to load from a .dae file, then we need to
-            //  instead redirect the query towards the compiled version
-        if (!XlCompareStringI(XlExtension(concreteFilename), "dae")) {
-            auto& store = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateStore();
-            XlCatString(concreteFilename, dimof(concreteFilename), "-rawmat");
-            store.MakeIntermediateName(concreteFilename, dimof(concreteFilename), concreteFilename);
-        }
-
+        MakeConcreteRawMaterialFilename(concreteFilename, dimof(concreteFilename), rawFilename);
+        
         size_t sourceFileSize = 0;
         auto sourceFile = LoadFileAsMemoryBlock(concreteFilename, &sourceFileSize);
         if (!sourceFile)
             ThrowException(::Assets::Exceptions::InvalidResource(initialiser, 
-                "Missing or empty file"));
+                StringMeld<128>() << "Missing or empty file: " << concreteFilename));
 
         auto searchRules = ::Assets::DefaultDirectorySearchRules(rawFilename);
 
@@ -556,6 +567,77 @@ namespace RenderCore { namespace Assets
         }
 
         return result;
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    void CompileMaterialScaffold(const char source[])
+    {
+        ::Assets::ResChar concreteFilename[MaxPath];
+        MakeConcreteRawMaterialFilename(concreteFilename, dimof(concreteFilename), source);
+
+        std::vector<uint64> configurations;
+
+        {
+                //  We need to load the "-rawmat" file first to get the list
+                //  of configurations within
+            size_t sourceFileSize = 0;
+            auto sourceFile = LoadFileAsMemoryBlock(concreteFilename, &sourceFileSize);
+            if (!sourceFile)
+                ThrowException(::Assets::Exceptions::InvalidResource(source, 
+                    StringMeld<128>() << "Missing or empty file: " << concreteFilename));
+
+            Data data;
+            data.Load((const char*)sourceFile.get(), (int)sourceFileSize);
+
+            for (auto config=data.child; config; config=config->next) {
+                if (!config->value) continue;
+                configurations.push_back(XlAtoI64(config->value, nullptr, 16));
+            }
+        }
+
+        auto searchRules = ::Assets::DefaultDirectorySearchRules(source);
+        std::vector<::Assets::FileAndTime> deps;
+
+            //  for each configuration, we want to build a resolved material
+            //  Note that this is a bit crazy, because we're going to be loading
+            //  and re-parsing the same files over and over again!
+        Serialization::Vector<std::pair<MaterialGuid, ResolvedMaterial>> resolved;
+        resolved.reserve(configurations.size());
+
+        for (auto i=configurations.cbegin(); i!=configurations.cend(); ++i) {
+            StringMeld<MaxPath, ::Assets::ResChar> matName;
+            matName << source << ":" << std::hex << *i;
+            TRY {
+                auto& rawMat = ::Assets::GetAssetDep<RawMaterial>(matName);
+                resolved.push_back(std::make_pair(*i, rawMat.Resolve(searchRules, &deps)));
+            } CATCH (const ::Assets::Exceptions::InvalidResource&) {
+                LogWarning << "Got an invalid resource exception while compiling material scaffold for " << source;
+            } CATCH_END
+        }
+
+            // "resolved" is now actually the data we want to write out
+        {
+            Serialization::NascentBlockSerializer blockSerializer;
+            Serialization::Serialize(blockSerializer, resolved);
+
+            auto block = blockSerializer.AsMemoryBlock();
+            auto blockSize = blockSerializer.Size();
+
+            ::Assets::ResChar finalName[MaxPath];
+            auto& store = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateStore();
+            store.MakeIntermediateName(finalName, dimof(finalName), source);
+            XlCatString(finalName, dimof(finalName), "-resmat");
+
+            Serialization::ChunkFile::SimpleChunkFileWriter output(
+                1, finalName, "wb", 0,
+                VersionString, BuildDateString);
+
+            output.BeginChunk(ChunkType_ResolvedMat, 0, source);
+            output.Write(block.get(), 1, blockSize);
+            output.FinishCurrentChunk();
+        }
+
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

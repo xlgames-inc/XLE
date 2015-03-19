@@ -232,5 +232,7 @@ namespace RenderCore { namespace Assets
 
         void MergeInto(ResolvedMaterial& dest) const;
     };
+
+    void CompileMaterialScaffold(const char source[]);
 }}
 
