@@ -43,6 +43,7 @@ namespace Serialization
         void    SerializeValue  ( uint64    value );
         void    SerializeValue  ( float     value );
         void    SerializeValue  ( const std::string& value );
+        void    AddPadding      ( unsigned sizeInBytes );
 
         template<typename Type, typename Allocator>
             void    SerializeValue  ( const std::vector<Type, Allocator>& value );
@@ -82,7 +83,7 @@ namespace Serialization
         void PushBackPointer(size_t value);
         void PushBackRaw(const void* data, size_t size);
         void PushBackRaw_SubBlock(const void* data, size_t size);
-        void PushBackInternalPointer(const InternalPointer& ptr);
+        void RegisterInternalPointer(const InternalPointer& ptr);
         void PushBackPlaceholder(SpecialBuffer::Enum specialBuffer);
     };
 
@@ -262,6 +263,10 @@ namespace Serialization
             { 
                 Serialize(serializer, value.first);
                 Serialize(serializer, value.second);
+                const auto padding = sizeof(typename std::pair<TypeLHS, TypeRHS>) - sizeof(TypeLHS) - sizeof(TypeRHS);
+                if (constant_expression<(padding > 0)>::result()) {
+                    serializer.AddPadding(padding);
+                }
             }
 
     template<typename Type, typename Deletor>
@@ -282,7 +287,7 @@ namespace Serialization
     {
         for (unsigned i=0; i<4; ++i)
             for (unsigned j=0; j<4; ++j) {
-                Serialize(serializer, (float)float4x4(i,j));
+                Serialize(serializer, float4x4(i,j));
             }
     }
 

@@ -90,6 +90,11 @@ namespace Serialization
                     std::back_inserter(_memory));
     }
 
+    void    NascentBlockSerializer::AddPadding(unsigned sizeInBytes)
+    {
+        _memory.insert(_memory.end(), sizeInBytes, 0);
+    }
+
     void NascentBlockSerializer::PushBackRaw(const void* data, size_t size)
     {
         std::copy(  (const uint8*)data, (const uint8*)PtrAdd(data, size), 
@@ -102,7 +107,7 @@ namespace Serialization
                     std::back_inserter(_trailingSubBlocks));
     }
 
-    void NascentBlockSerializer::PushBackInternalPointer(const InternalPointer& ptr)
+    void NascentBlockSerializer::RegisterInternalPointer(const InternalPointer& ptr)
     {
         _internalPointers.push_back(ptr);
     }
@@ -119,7 +124,7 @@ namespace Serialization
         ptr._subBlockOffset  = _trailingSubBlocks.size();
         ptr._subBlockSize    = subBlock._memory.size();
         ptr._specialBuffer   = specialBuffer;
-        PushBackInternalPointer(ptr);
+        RegisterInternalPointer(ptr);
 
         PushBackPlaceholder(specialBuffer);
 
@@ -128,14 +133,13 @@ namespace Serialization
             //      on an offset, also.
             //
 
-        for (   auto    i =  subBlock._internalPointers.cbegin(); 
-                        i != subBlock._internalPointers.cend(); ++i) {
-            InternalPointer p     = *i;
+        for (auto i=subBlock._internalPointers.cbegin(); i!=subBlock._internalPointers.cend(); ++i) {
+            InternalPointer p = *i;
             if (p._pointerOffset & PtrFlagBit) {
-                p._pointerOffset     = (p._pointerOffset&PtrMask) + subBlock._memory.size() + ptr._subBlockOffset;
-            } else {
-                p._pointerOffset    +=  ptr._subBlockOffset;
+                p._pointerOffset     = (p._pointerOffset&PtrMask) + subBlock._memory.size();
             }
+            p._pointerOffset    +=  ptr._subBlockOffset;
+
                 //
                 //      Because the pointer itself is in the "subblock" part, we
                 //      need tag it some way, to prevent confusion with pointers
@@ -143,7 +147,7 @@ namespace Serialization
                 //
             p._pointerOffset     |= PtrFlagBit;
             p._subBlockOffset    +=  ptr._subBlockOffset + subBlock._memory.size();
-            PushBackInternalPointer(p);
+            RegisterInternalPointer(p);
         }
 
         PushBackRaw_SubBlock(AsPointer(subBlock._memory.begin()), subBlock._memory.size());

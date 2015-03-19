@@ -518,7 +518,7 @@ namespace RenderCore { namespace ColladaConversion
             const UniqueId& effect = material->getInstantiatedEffect();
             _objects.Add(
                 material->getOriginalId(), material->getName(), material->getUniqueId(),
-                ReferencedMaterial(effect, Hash64(material->getName()), material->getName()));
+                ReferencedMaterial(effect, RenderCore::Assets::MakeMaterialGuid(material->getName().c_str()), material->getName()));
             
             return true;
 

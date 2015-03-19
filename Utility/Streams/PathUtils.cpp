@@ -217,19 +217,15 @@ void XlResolveRelPath(char* dst, int count, const char* base, const char* rel)
 
 const char* XlExtension(const char* path)
 {
-    const char* p = path;
-    const char* ext = 0;
-    while (*p) {
-        if (*p == '.') {
-            ext = p + 1;
-        }
-        ++p;
+    auto len = XlStringLen(path);
+    if (!len) return nullptr;
+    const char* p = &path[len-1];
+    while (p >= path) {
+        if (*p == '\\' || *p == '/') return nullptr;
+        if (*p == '.') return p + 1;
+        --p;
     }
-    if (ext) {
-        return ext;
-    } else {
-        return p;
-    }
+    return nullptr;
 }
 
 void XlChopExtension(char* path)

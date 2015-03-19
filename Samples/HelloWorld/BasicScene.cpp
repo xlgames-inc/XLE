@@ -10,6 +10,7 @@
 #include "../../RenderCore/Assets/ModelRunTime.h"
 #include "../../RenderCore/Assets/SharedStateSet.h"
 #include "../../RenderCore/Assets/ColladaCompilerInterface.h"
+#include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../SceneEngine/LightDesc.h"
 #include "../../SceneEngine/LightingParserContext.h"
 #include "../../Assets/Assets.h"
@@ -300,6 +301,7 @@ namespace Sample
                 //  never be correctly loaded (eg, missing file or something)
             const char sampleAsset[] = "game/model/galleon/galleon.dae";
             auto& scaffold = Assets::GetAssetComp<ModelScaffold>(sampleAsset);
+            auto& matScaffold = Assets::GetAssetComp<MaterialScaffold>(sampleAsset);
 
                 //  We want to create a Assets::DirectorySearchRules object before we
                 //  make the ModelRenderer. This is used when we need to find the 
@@ -323,7 +325,7 @@ namespace Sample
                 //  exception.
             const unsigned levelOfDetail = 0;
             _modelRenderer = std::make_unique<ModelRenderer>(
-                std::ref(scaffold), std::ref(*_sharedStateSet), 
+                std::ref(scaffold), std::ref(matScaffold), std::ref(*_sharedStateSet), 
                 &searchRules, levelOfDetail);
         }
 

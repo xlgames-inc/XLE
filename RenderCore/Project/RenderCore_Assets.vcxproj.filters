@@ -68,5 +68,8 @@
     <ClInclude Include="..\Assets\Material.h">
       <Filter>Assets</Filter>
     </ClInclude>
+    <ClInclude Include="..\Assets\MaterialScaffold.h">
+      <Filter>Assets</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

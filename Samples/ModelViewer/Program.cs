@@ -24,7 +24,7 @@ namespace ModelViewer
 
             GUILayer.EngineDevice.SetDefaultWorkingDirectory();
             using(var device = new GUILayer.EngineDevice()) {
-                device.AttachColladaCompilers();
+                device.AttachDefaultCompilers();
                 Application.Run(new MainForm());
             }
         }

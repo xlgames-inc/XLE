@@ -13,6 +13,7 @@
 #include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderCore/Techniques/ResourceBox.h"
 #include "../../RenderCore/Assets/ColladaCompilerInterface.h"
+#include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../RenderOverlays/Font.h"
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../ConsoleRig/Console.h"
@@ -96,7 +97,7 @@ namespace GUILayer
         return std::move(result);
     }
 
-    void NativeEngineDevice::AttachColladaCompilers()
+    void NativeEngineDevice::AttachDefaultCompilers()
     {
         auto& compilers = _asyncMan->GetIntermediateCompilers();
         using RenderCore::Assets::ColladaCompiler;
@@ -104,6 +105,9 @@ namespace GUILayer
 		compilers.AddCompiler(ColladaCompiler::Type_Model, colladaProcessor);
 		compilers.AddCompiler(ColladaCompiler::Type_AnimationSet, colladaProcessor);
 		compilers.AddCompiler(ColladaCompiler::Type_Skeleton, colladaProcessor);
+        compilers.AddCompiler(
+            RenderCore::Assets::MaterialScaffold::CompileProcessType,
+            std::make_shared<RenderCore::Assets::MaterialScaffoldCompiler>());
     }
 
     NativeEngineDevice::NativeEngineDevice()
@@ -120,9 +124,9 @@ namespace GUILayer
     {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void EngineDevice::AttachColladaCompilers()
+    void EngineDevice::AttachDefaultCompilers()
     {
-        _pimpl->AttachColladaCompilers();
+        _pimpl->AttachDefaultCompilers();
     }
     
     EngineDevice::EngineDevice()

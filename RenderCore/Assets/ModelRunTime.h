@@ -27,6 +27,7 @@ namespace RenderCore { namespace Assets
     class MaterialImmutableData;
     class TransformationMachine;
     class ResolvedMaterial;
+    class MaterialScaffold;
 
     typedef uint64 MaterialGuid;
 
@@ -87,21 +88,6 @@ namespace RenderCore { namespace Assets
         std::string                 _filename;
         unsigned                    _largeBlocksOffset;
 
-        std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
-    };
-
-    class MaterialScaffold
-    {
-    public:
-        const MaterialImmutableData&    ImmutableData() const       { return *_data; };
-        const ResolvedMaterial*         GetMaterial(MaterialGuid guid);
-
-        const ::Assets::DependencyValidation& GetDependencyValidation() const { return *_validationCallback; }
-
-        MaterialScaffold(const ResChar filename[]);
-        ~MaterialScaffold();
-    protected:
-        std::unique_ptr<MaterialImmutableData> _data;
         std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
     };
 
@@ -204,7 +190,10 @@ namespace RenderCore { namespace Assets
         void LogReport() const;
 
             ////////////////////////////////////////////////////////////
-        ModelRenderer(const ModelScaffold& scaffold, SharedStateSet& sharedStateSet, const ::Assets::DirectorySearchRules* searchRules = nullptr, unsigned levelOfDetail = 0);
+        ModelRenderer(
+            const ModelScaffold& scaffold, const MaterialScaffold& matScaffold,
+            SharedStateSet& sharedStateSet, 
+            const ::Assets::DirectorySearchRules* searchRules = nullptr, unsigned levelOfDetail = 0);
         ~ModelRenderer();
     protected:
         class Pimpl;

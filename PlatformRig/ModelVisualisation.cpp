@@ -24,6 +24,7 @@
 
 #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
     #include "../../RenderCore/Assets/ModelRunTime.h"
+    #include "../../RenderCore/Assets/MaterialScaffold.h"
     #include "../../Assets/CompileAndAsyncManager.h"
     #include "../../Assets/IntermediateResources.h"
     #include "../../RenderCore/Assets/ColladaCompilerInterface.h"
@@ -38,21 +39,12 @@
 
 #include <map>
 
-#if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
-    namespace Assets
-    {
-        template<> uint64 GetCompileProcessType<RenderCore::Assets::ModelScaffold>();
-        // { 
-        //     return RenderCore::Assets::ColladaCompiler::Type_Model; 
-        // }
-    }
-#endif
-
 namespace PlatformRig
 {
     #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
         using RenderCore::Assets::ModelRenderer;
         using RenderCore::Assets::ModelScaffold;
+        using RenderCore::Assets::MaterialScaffold;
     #else
         using RenderCore::Assets::Simple::ModelRenderer;
         using RenderCore::Assets::Simple::ModelScaffold;
@@ -68,9 +60,7 @@ namespace PlatformRig
         std::map<uint64, BoundingBox> _boundingBoxes;
 
         LRUCache<ModelScaffold>     _modelScaffolds;
-        #if MODEL_FORMAT != MODEL_FORMAT_RUNTIME
-            LRUCache<MaterialScaffold>  _materialScaffolds;
-        #endif
+        LRUCache<MaterialScaffold>  _materialScaffolds;
         LRUCache<ModelRenderer>     _modelRenderers;
 
         std::shared_ptr<RenderCore::Assets::IModelFormat> _format;
@@ -81,11 +71,40 @@ namespace PlatformRig
         
     ModelVisCache::Pimpl::Pimpl()
     : _modelScaffolds(2000)
-    #if MODEL_FORMAT != MODEL_FORMAT_RUNTIME
-        , _materialScaffolds(2000)
-    #endif
+    , _materialScaffolds(2000)
     , _modelRenderers(50)
     {
+    }
+
+    namespace Internal
+    {
+        std::shared_ptr<ModelScaffold> CreateModelScaffold(const ::Assets::ResChar filename[], RenderCore::Assets::IModelFormat& modelFormat)
+        {
+            #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
+                auto& compilers = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateCompilers();
+                auto& store = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateStore();
+                auto marker = compilers.PrepareResource(
+                    RenderCore::Assets::ColladaCompiler::Type_Model, 
+                    (const char**)&filename, 1, store);
+                return std::make_shared<ModelScaffold>(std::move(marker));
+            #else
+                return modelFormat.CreateModel(filename);
+            #endif
+        }
+
+        std::shared_ptr<MaterialScaffold> CreateMaterialScaffold(const ::Assets::ResChar filename[], RenderCore::Assets::IModelFormat& modelFormat)
+        {
+            #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
+                auto& compilers = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateCompilers();
+                auto& store = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateStore();
+                auto marker = compilers.PrepareResource(
+                    MaterialScaffold::CompileProcessType, 
+                    (const char**)&filename, 1, store);
+                return std::make_shared<MaterialScaffold>(std::move(marker));
+            #else
+                return modelFormat.CreateMaterial(filename);
+            #endif
+        }
     }
 
     auto ModelVisCache::GetModel(const Assets::ResChar filename[]) -> Model
@@ -95,46 +114,38 @@ namespace PlatformRig
                 return std::make_pair(nullptr, 0);
             }
         #endif
-
+                
         uint64 hashedName = Hash64(filename);
         auto model = _pimpl->_modelScaffolds.Get(hashedName);
         if (!model) {
-            #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
-                auto& man = ::Assets::CompileAndAsyncManager::GetInstance();
-                auto& compilers = man.GetIntermediateCompilers();
-                auto& store = man.GetIntermediateStore();
-                const Assets::ResChar* inits[] = { filename };
-                auto marker = compilers.PrepareResource(
-                    ::Assets::GetCompileProcessType<ModelScaffold>(), 
-                    inits, dimof(inits), store);
-                model = std::make_shared<ModelScaffold>(std::move(marker));
-            #else
-                model = _pimpl->_format->CreateModel((const char*)utf8Filename);
-            #endif
-            _pimpl->_modelScaffolds.Insert(hashedName, model);
+            _pimpl->_modelScaffolds.Insert(
+                hashedName, 
+                Internal::CreateModelScaffold(filename, *_pimpl->_format));
         }
             
         #if MODEL_FORMAT != MODEL_FORMAT_RUNTIME
             auto defMatName = _pimpl->_format->DefaultMaterialName(*model);
             if (defMatName.empty()) { return std::make_pair(nullptr, 0); }
-
             uint64 hashedMaterial = Hash64(defMatName);
-            auto material = _pimpl->_materialScaffolds.Get(hashedMaterial);
-            if (!material) {
-                material = _pimpl->_format->CreateMaterial(defMatName.c_str());
-                _pimpl->_materialScaffolds.Insert(hashedMaterial, material);
-            }
-            uint64 hashedModel = uint64(model.get()) | (uint64(material.get()) << 48);
+            auto matNamePtr = defMatName.c_str();
         #else
-            uint64 hashedModel = uint64(model.get());
+            uint64 hashedMaterial = hashedName;
+            auto matNamePtr = filename;
         #endif
-        
+
+        auto material = _pimpl->_materialScaffolds.Get(hashedMaterial);
+        if (!material || material->GetDependencyValidation().GetValidationIndex() > 0) {
+            material = Internal::CreateMaterialScaffold(matNamePtr, *_pimpl->_format);
+            _pimpl->_materialScaffolds.Insert(hashedMaterial, material);
+        }
+
+        uint64 hashedModel = uint64(model.get()) | (uint64(material.get()) << 48);
         auto renderer = _pimpl->_modelRenderers.Get(hashedModel);
         if (!renderer) {
             #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
                 auto searchRules = ::Assets::DefaultDirectorySearchRules(filename);
                 renderer = std::make_shared<ModelRenderer>(
-                    std::ref(*model), std::ref(*_pimpl->_sharedStateSet), &searchRules, 0);
+                    std::ref(*model), std::ref(*material), std::ref(*_pimpl->_sharedStateSet), &searchRules, 0);
             #else
                 renderer = _pimpl->_format->CreateRenderer(
                     std::ref(*model), std::ref(*material), std::ref(_pimpl->_sharedStateSet), 0);

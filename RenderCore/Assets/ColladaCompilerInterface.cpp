@@ -116,7 +116,7 @@ namespace RenderCore { namespace Assets
              if (depVal) {
                     // already exists -- just return "ready"
                 return std::make_unique<::Assets::PendingCompileMarker>(
-                    ::Assets::AssetState::Ready, outputName, ~0ull, nullptr);
+                    ::Assets::AssetState::Ready, outputName, ~0ull, std::move(depVal));
              }
         }
 

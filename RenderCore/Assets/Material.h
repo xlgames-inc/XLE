@@ -233,6 +233,9 @@ namespace RenderCore { namespace Assets
         void MergeInto(ResolvedMaterial& dest) const;
     };
 
-    void CompileMaterialScaffold(const char source[]);
+    void MakeConcreteRawMaterialFilename(
+        ::Assets::ResChar dest[], unsigned dstCount, const ::Assets::ResChar inputName[]);
+    uint64 MakeMaterialGuid(const char name[]);
+
 }}
 

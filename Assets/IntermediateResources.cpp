@@ -84,7 +84,7 @@ namespace Assets { namespace IntermediateResources
                     auto dateHigh = (unsigned)dependency->IntAttribute("ModTimeHigh");
                     
                     uint64  curTime;
-                    if (basePath) {
+                    if (basePath && basePath[0]) {
                         XlConcatPath(buffer, dimof(buffer), basePath, depName);
                         curTime = GetFileModificationTime(buffer);
                         RegisterFileDependency(validation, buffer);
@@ -137,8 +137,12 @@ namespace Assets { namespace IntermediateResources
             c->SetAttribute("ModTimeLow", (int)(s->_timeMarker));
             dependenciesBlock->Add(c.release());
 
-            XlConcatPath(buffer, dimof(buffer), baseDir, s->_filename.c_str());
-            RegisterFileDependency(result, buffer);
+            if (baseDir[0]) {
+                XlConcatPath(buffer, dimof(buffer), baseDir, s->_filename.c_str());
+                RegisterFileDependency(result, buffer);
+            } else {
+                RegisterFileDependency(result, s->_filename.c_str());
+            }
         }
         data.Add(dependenciesBlock.release());
 

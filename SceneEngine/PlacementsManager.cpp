@@ -28,6 +28,7 @@
 #include "../Assets/AssetUtils.h"
 
 #include "../RenderCore/Assets/ModelRunTime.h"
+#include "../RenderCore/Assets/MaterialScaffold.h"
 #include "../RenderCore/RenderUtils.h"
 
 #include "../ConsoleRig/Log.h"
@@ -53,16 +54,6 @@ namespace RenderCore {
     extern char BuildDateString[];
 }
 
-#if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
-    namespace Assets
-    {
-        template<> uint64 GetCompileProcessType<RenderCore::Assets::ModelScaffold>() 
-        { 
-            return RenderCore::Assets::ColladaCompiler::Type_Model; 
-        }
-    }
-#endif
-
 namespace SceneEngine
 {
     using Assets::ResChar;
@@ -70,7 +61,7 @@ namespace SceneEngine
     #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
         using RenderCore::Assets::ModelRenderer;
         using RenderCore::Assets::ModelScaffold;
-        // using RenderCore::Assets::MaterialScaffold;
+        using RenderCore::Assets::MaterialScaffold;
     #else
         using RenderCore::Assets::Simple::ModelRenderer;
         using RenderCore::Assets::Simple::ModelScaffold;
@@ -339,18 +330,14 @@ namespace SceneEngine
         {
         public:
             LRUCache<ModelScaffold>             _modelScaffolds;
-            #if MODEL_FORMAT != MODEL_FORMAT_RUNTIME
-                LRUCache<MaterialScaffold>          _materialScaffolds;
-            #endif
+            LRUCache<MaterialScaffold>          _materialScaffolds;
             LRUCache<ModelRenderer>             _modelRenderers;
             RenderCore::Assets::SharedStateSet  _sharedStates;
             PreparedState                       _preparedRenders;
 
             Cache()
             : _modelScaffolds(2000)
-            #if MODEL_FORMAT != MODEL_FORMAT_RUNTIME
-                , _materialScaffolds(2000)
-            #endif
+            , _materialScaffolds(2000)
             , _modelRenderers(500) {}
         };
 
@@ -443,11 +430,25 @@ namespace SceneEngine
                 auto& compilers = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateCompilers();
                 auto& store = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateStore();
                 auto marker = compilers.PrepareResource(
-                    ::Assets::GetCompileProcessType<ModelScaffold>(), 
+                    RenderCore::Assets::ColladaCompiler::Type_Model, 
                     (const char**)&filename, 1, store);
                 return std::make_shared<ModelScaffold>(std::move(marker));
             #else
                 return modelFormat.CreateModel(filename);
+            #endif
+        }
+
+        std::shared_ptr<MaterialScaffold> CreateMaterialScaffold(const ResChar filename[], RenderCore::Assets::IModelFormat& modelFormat)
+        {
+            #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
+                auto& compilers = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateCompilers();
+                auto& store = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateStore();
+                auto marker = compilers.PrepareResource(
+                    MaterialScaffold::CompileProcessType, 
+                    (const char**)&filename, 1, store);
+                return std::make_shared<MaterialScaffold>(std::move(marker));
+            #else
+                return modelFormat.CreateMaterial(filename);
             #endif
         }
     }
@@ -596,17 +597,13 @@ namespace SceneEngine
             {
                 _currentModel = _currentMaterial = _currentRenderer = 0ull;
                 _model = nullptr;
-                #if MODEL_FORMAT != MODEL_FORMAT_RUNTIME
-                    _material = nullptr;
-                #endif
+                _material = nullptr;
                 _renderer = nullptr;
             }
         protected:
             uint64 _currentModel, _currentMaterial, _currentRenderer;
             ModelScaffold* _model;
-            #if MODEL_FORMAT != MODEL_FORMAT_RUNTIME
-                MaterialScaffold* _material;
-            #endif
+            MaterialScaffold* _material;
             ModelRenderer* _renderer;
         };
 
@@ -644,26 +641,21 @@ namespace SceneEngine
                 _currentModel = modelHash;
             }
 
-            #if MODEL_FORMAT != MODEL_FORMAT_RUNTIME
-                if (materialHash != _currentMaterial) {
-                    _material = cache._materialScaffolds.Get(materialHash).get();
-                    if (!_material) {
-                        std::shared_ptr<MaterialScaffold> newMaterial;
-                        TRY {
-                            auto materialFilename = (const ResChar*)PtrAdd(filenamesBuffer, obj._materialFilenameOffset + sizeof(uint64));
-                            newMaterial = modelFormat.CreateMaterial(materialFilename);
-                        } CATCH (...) {    // sometimes get missing files
-                            return;
-                        } CATCH_END
-                        _material = newMaterial.get();
-                        cache._materialScaffolds.Insert(materialHash, std::move(newMaterial));
-                    }
-                    _currentMaterial = materialHash;
+            if (materialHash != _currentMaterial) {
+                _material = cache._materialScaffolds.Get(materialHash).get();
+                if (!_material) {
+                    std::shared_ptr<MaterialScaffold> newMaterial;
+                    TRY {
+                        auto materialFilename = (const ResChar*)PtrAdd(filenamesBuffer, obj._materialFilenameOffset + sizeof(uint64));
+                        newMaterial = CreateMaterialScaffold(materialFilename, modelFormat);
+                    } CATCH (...) {    // sometimes get missing files
+                        return;
+                    } CATCH_END
+                    _material = newMaterial.get();
+                    cache._materialScaffolds.Insert(materialHash, std::move(newMaterial));
                 }
-            #else
-                (void)materialHash;
-                auto _material = 0ull;
-            #endif
+                _currentMaterial = materialHash;
+            }
 
                 // Simple LOD calculation based on distanceSq from camera...
                 //      Currently all models have only the single LOD. But this
@@ -684,7 +676,7 @@ namespace SceneEngine
                         auto searchRules = ::Assets::DefaultDirectorySearchRules(modelFilename);
 
                         auto newRenderer = std::make_shared<ModelRenderer>(
-                            std::ref(*_model), std::ref(cache._sharedStates), &searchRules, LOD);
+                            std::ref(*_model), std::ref(*_material), std::ref(cache._sharedStates), &searchRules, LOD);
                     #else
                         auto newRenderer = modelFormat.CreateRenderer(
                             std::ref(*_model), std::ref(*_material), std::ref(cache._sharedStates), LOD);

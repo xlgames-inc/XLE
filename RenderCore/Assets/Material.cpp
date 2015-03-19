@@ -5,7 +5,6 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Material.h"
-#include "AssetUtils.h"
 #include "../Metal/State.h"      // (just for Blend/BlendOp enum members... maybe we need a higher level version of these enums?)
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/IntermediateResources.h"
@@ -18,8 +17,6 @@
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/MemoryUtils.h"
-
-namespace RenderCore { extern char VersionString[]; extern char BuildDateString[]; }
 
 namespace RenderCore { namespace Assets
 {
@@ -300,17 +297,28 @@ namespace RenderCore { namespace Assets
 
     RawMaterial::RawMaterial() {}
 
-    static void MakeConcreteRawMaterialFilename(::Assets::ResChar dest[], unsigned dstCount, const ::Assets::ResChar inputName[])
+    void MakeConcreteRawMaterialFilename(::Assets::ResChar dest[], unsigned dstCount, const ::Assets::ResChar inputName[])
     {
         XlCopyString(dest, dstCount, inputName);
 
             //  If we're attempting to load from a .dae file, then we need to
             //  instead redirect the query towards the compiled version
-        if (!XlCompareStringI(XlExtension(dest), "dae")) {
+        auto ext = XlExtension(dest);
+        if (ext && !XlCompareStringI(ext, "dae")) {
             auto& store = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateStore();
             XlCatString(dest, dstCount, "-rawmat");
             store.MakeIntermediateName(dest, dstCount, dest);
         }
+    }
+
+    uint64 MakeMaterialGuid(const char name[])
+    {
+            //  If the material name is just a number, then we will use that
+            //  as the guid. Otherwise we hash the name.
+        const char* parseEnd = nullptr;
+        uint64 hashId = XlAtoI64(name, &parseEnd, 16);
+        if (!parseEnd || *parseEnd != '\0' ) { hashId = Hash64(name); }
+        return hashId;
     }
 
     RawMaterial::RawMaterial(const ::Assets::ResChar initialiser[])
@@ -362,6 +370,7 @@ namespace RenderCore { namespace Assets
                     XlCatString(resolvedFile, dimof(resolvedFile), ".material");
                     searchRules.ResolveFile(
                         resolvedFile, dimof(resolvedFile), resolvedFile);
+                    XlNormalizePath(resolvedFile, dimof(resolvedFile), resolvedFile);
 
                     StringMeld<MaxPath, ::Assets::ResChar> finalName;
                     finalName << resolvedFile << colon;
@@ -532,7 +541,7 @@ namespace RenderCore { namespace Assets
             TRY {
                 char baseName[MaxPath];
                 char configName[MaxPath];
-                const auto colon = i->find_first_of(';');
+                const auto colon = i->find_first_of(':');
                 if (colon != std::string::npos) {
                     XlCopyNString(baseName, i->c_str(), colon);
                     XlCopyString(configName, &i->c_str()[colon+1]);
@@ -540,19 +549,30 @@ namespace RenderCore { namespace Assets
                     XlCopyString(baseName, i->c_str());
                     XlCopyString(configName, "*");
                 }
-                XlCatString(baseName, dimof(baseName), ".material");
+                if (!XlExtension(baseName))
+                    XlCatString(baseName, dimof(baseName), ".material");
                 searchRules.ResolveFile(baseName, dimof(baseName), baseName);
-                XlChopExtension(baseName);
+                XlNormalizePath(baseName, dimof(baseName), baseName);
 
+                    // add a dependency to this file, even if it doesn't exist
+                if (deps) {
+                    auto existing = std::find_if(deps->cbegin(), deps->cend(),
+                        [&](const ::Assets::FileAndTime& test) 
+                        {
+                            return !XlCompareStringI(test._filename.c_str(), baseName);
+                        });
+                    if (existing == deps->cend()) {
+                        ::Assets::FileAndTime fileAndTime(
+                            baseName, 
+                            GetFileModificationTime(baseName));
+                        deps->push_back(fileAndTime);
+                    }
+                }
+
+                // XlChopExtension(baseName);
                 auto& rawParams = ::Assets::GetAssetDep<RawMaterial>(
                     StringMeld<MaxPath>() << baseName << ":" << configName);
                 rawParams.MergeInto(result);
-                if (deps) {
-                    ::Assets::FileAndTime fileAndTime(
-                        rawParams._filename, 
-                        GetFileModificationTime(rawParams._filename.c_str()));
-                    deps->push_back(fileAndTime);
-                }
             } 
             CATCH (...) {} 
             CATCH_END
@@ -560,87 +580,23 @@ namespace RenderCore { namespace Assets
 
         MergeInto(result);
         if (deps) {
-            ::Assets::FileAndTime fileAndTime(
-                _filename, 
-                GetFileModificationTime(_filename.c_str()));
-            deps->push_back(fileAndTime);
+            auto existing = std::find_if(deps->cbegin(), deps->cend(),
+                [&](const ::Assets::FileAndTime& test) 
+                {
+                    return !XlCompareStringI(test._filename.c_str(), _filename.c_str());
+                });
+            if (existing == deps->cend()) {
+                ::Assets::FileAndTime fileAndTime(
+                    _filename, 
+                    GetFileModificationTime(_filename.c_str()));
+                deps->push_back(fileAndTime);
+            }
         }
 
         return result;
     }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    void CompileMaterialScaffold(const char source[])
-    {
-        ::Assets::ResChar concreteFilename[MaxPath];
-        MakeConcreteRawMaterialFilename(concreteFilename, dimof(concreteFilename), source);
-
-        std::vector<uint64> configurations;
-
-        {
-                //  We need to load the "-rawmat" file first to get the list
-                //  of configurations within
-            size_t sourceFileSize = 0;
-            auto sourceFile = LoadFileAsMemoryBlock(concreteFilename, &sourceFileSize);
-            if (!sourceFile)
-                ThrowException(::Assets::Exceptions::InvalidResource(source, 
-                    StringMeld<128>() << "Missing or empty file: " << concreteFilename));
-
-            Data data;
-            data.Load((const char*)sourceFile.get(), (int)sourceFileSize);
-
-            for (auto config=data.child; config; config=config->next) {
-                if (!config->value) continue;
-                configurations.push_back(XlAtoI64(config->value, nullptr, 16));
-            }
-        }
-
-        auto searchRules = ::Assets::DefaultDirectorySearchRules(source);
-        std::vector<::Assets::FileAndTime> deps;
-
-            //  for each configuration, we want to build a resolved material
-            //  Note that this is a bit crazy, because we're going to be loading
-            //  and re-parsing the same files over and over again!
-        Serialization::Vector<std::pair<MaterialGuid, ResolvedMaterial>> resolved;
-        resolved.reserve(configurations.size());
-
-        for (auto i=configurations.cbegin(); i!=configurations.cend(); ++i) {
-            StringMeld<MaxPath, ::Assets::ResChar> matName;
-            matName << source << ":" << std::hex << *i;
-            TRY {
-                auto& rawMat = ::Assets::GetAssetDep<RawMaterial>(matName);
-                resolved.push_back(std::make_pair(*i, rawMat.Resolve(searchRules, &deps)));
-            } CATCH (const ::Assets::Exceptions::InvalidResource&) {
-                LogWarning << "Got an invalid resource exception while compiling material scaffold for " << source;
-            } CATCH_END
-        }
-
-            // "resolved" is now actually the data we want to write out
-        {
-            Serialization::NascentBlockSerializer blockSerializer;
-            Serialization::Serialize(blockSerializer, resolved);
-
-            auto block = blockSerializer.AsMemoryBlock();
-            auto blockSize = blockSerializer.Size();
-
-            ::Assets::ResChar finalName[MaxPath];
-            auto& store = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateStore();
-            store.MakeIntermediateName(finalName, dimof(finalName), source);
-            XlCatString(finalName, dimof(finalName), "-resmat");
-
-            Serialization::ChunkFile::SimpleChunkFileWriter output(
-                1, finalName, "wb", 0,
-                VersionString, BuildDateString);
-
-            output.BeginChunk(ChunkType_ResolvedMat, 0, source);
-            output.Write(block.get(), 1, blockSize);
-            output.FinishCurrentChunk();
-        }
-
-    }
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
 
 }}
 

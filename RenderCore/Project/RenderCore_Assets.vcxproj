@@ -169,6 +169,7 @@
     <ClInclude Include="..\Assets\AssetUtils.h" />
     <ClInclude Include="..\Assets\ColladaCompilerInterface.h" />
     <ClInclude Include="..\Assets\Material.h" />
+    <ClInclude Include="..\Assets\MaterialScaffold.h" />
     <ClInclude Include="..\Assets\ModelFormatPlugins.h" />
     <ClInclude Include="..\Assets\ModelRunTimeInternal.h" />
     <ClInclude Include="..\Assets\ModelSimple.h" />

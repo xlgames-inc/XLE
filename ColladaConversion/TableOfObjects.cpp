@@ -152,7 +152,7 @@ namespace RenderCore { namespace ColladaConversion
                 i->_internalType.Serialize(tempBlock, largeResourcesBlock);
             }
             outputSerializer.SerializeSubBlock(tempBlock);
-            outputSerializer.SerializeValue(_geos.size());
+            Serialization::Serialize(outputSerializer, _geos.size());
         }
 
         {
@@ -161,11 +161,17 @@ namespace RenderCore { namespace ColladaConversion
                 i->_internalType.Serialize(tempBlock, largeResourcesBlock);
             }
             outputSerializer.SerializeSubBlock(tempBlock);
-            outputSerializer.SerializeValue(_boundSkinnedGeometry.size());
+            Serialization::Serialize(outputSerializer, _boundSkinnedGeometry.size());
         }
 
-        // outputSerializer.SerializeSubBlock(AsPointer(_materials.begin()), AsPointer(_materials.end()));
-        // outputSerializer.SerializeValue(_materials.size());
+        {
+            Serialization::NascentBlockSerializer tempBlock;
+            for (auto i=_referencedMaterials.cbegin(); i!=_referencedMaterials.cend(); ++i) {
+                Serialization::Serialize(tempBlock, i->_internalType._guid);
+            }
+            outputSerializer.SerializeSubBlock(tempBlock);
+            Serialization::Serialize(outputSerializer, _referencedMaterials.size());
+        }
     }
 
     void    TableOfObjects::SerializeAnimationSet(Serialization::NascentBlockSerializer& outputSerializer) const
@@ -191,8 +197,7 @@ namespace RenderCore { namespace ColladaConversion
                 const auto* obj = GetFromObjectId<Assets::RawMaterial>(objectId);
                 if (obj) {
                     auto newBlock = obj->SerializeAsData();
-                    newBlock->SetValue(StringMeld<64>() << std::hex << i->_internalType._guid);
-                    newBlock->SetAttribute("Name", i->_name.c_str());
+                    newBlock->SetValue(i->_name.c_str());
                     result.push_back(std::move(newBlock));
                 }
             }

@@ -53,8 +53,11 @@ namespace Utility
     {
             // try to insert this object into the cache (if it's not already here)
         auto i = std::lower_bound(_lookupTable.cbegin(), _lookupTable.cend(), hashName, CompareFirst<uint64, unsigned>());
-        if (i != _lookupTable.cend() && i->first == hashName)
-            return;     // already here
+        if (i != _lookupTable.cend() && i->first == hashName) {
+                // already here! But we should replace, this might be an update operation
+            _objects[i->second] = object;
+            return;
+        }
 
         if (_objects.size() < _cacheSize) {
             _objects.push_back(object);

@@ -4,6 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#include "MaterialScaffold.h"
 #include "ModelRunTime.h"
 #include "ModelRunTimeInternal.h"
 #include "Material.h"
@@ -11,14 +12,129 @@
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/IteratorUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
+#include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Streams/Data.h"
 #include "../../Utility/StringFormat.h"
+#include "../../Assets/BlockSerializer.h"
+#include "../../Assets/ChunkFile.h"
+#include "../../Assets/IntermediateResources.h"
+
+namespace RenderCore { extern char VersionString[]; extern char BuildDateString[]; }
 
 namespace RenderCore { namespace Assets
 {
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    const ResolvedMaterial* MaterialScaffold::GetMaterial(MaterialGuid guid)
+    static void CompileMaterialScaffold(const char source[], const char destination[], std::vector<::Assets::FileAndTime>* outDeps)
+    {
+        ::Assets::ResChar concreteFilename[MaxPath];
+        MakeConcreteRawMaterialFilename(concreteFilename, dimof(concreteFilename), source);
+
+        Serialization::Vector<std::string> configurations;
+
+        {
+                //  We need to load the "-rawmat" file first to get the list
+                //  of configurations within
+            size_t sourceFileSize = 0;
+            auto sourceFile = LoadFileAsMemoryBlock(concreteFilename, &sourceFileSize);
+            if (!sourceFile)
+                ThrowException(::Assets::Exceptions::InvalidResource(source, 
+                    StringMeld<128>() << "Missing or empty file: " << concreteFilename));
+
+            Data data;
+            data.Load((const char*)sourceFile.get(), (int)sourceFileSize);
+
+            for (auto config=data.child; config; config=config->next) {
+                if (!config->value) continue;
+                configurations.push_back(config->value);
+            }
+        }
+
+        auto searchRules = ::Assets::DefaultDirectorySearchRules(source);
+        std::vector<::Assets::FileAndTime> deps;
+
+            //  for each configuration, we want to build a resolved material
+            //  Note that this is a bit crazy, because we're going to be loading
+            //  and re-parsing the same files over and over again!
+        Serialization::Vector<std::pair<MaterialGuid, ResolvedMaterial>> resolved;
+        resolved.reserve(configurations.size());
+
+        for (auto i=configurations.cbegin(); i!=configurations.cend(); ++i) {
+            StringMeld<MaxPath, ::Assets::ResChar> matName;
+            matName << source << ":" << *i;
+            TRY {
+                auto& rawMat = ::Assets::GetAssetDep<RawMaterial>(matName);
+                resolved.push_back(std::make_pair(MakeMaterialGuid(i->c_str()), rawMat.Resolve(searchRules, &deps)));
+            } CATCH (const ::Assets::Exceptions::InvalidResource&) {
+                LogWarning << "Got an invalid resource exception while compiling material scaffold for " << source;
+            } CATCH_END
+        }
+
+        std::sort(resolved.begin(), resolved.end(), CompareFirst<MaterialGuid, ResolvedMaterial>());
+
+            // "resolved" is now actually the data we want to write out
+        {
+            Serialization::NascentBlockSerializer blockSerializer;
+            Serialization::Serialize(blockSerializer, resolved);
+
+            auto blockSize = blockSerializer.Size();
+            auto block = blockSerializer.AsMemoryBlock();
+
+            Serialization::ChunkFile::SimpleChunkFileWriter output(
+                1, destination, "wb", 0,
+                VersionString, BuildDateString);
+
+            output.BeginChunk(ChunkType_ResolvedMat, 0, source);
+            output.Write(block.get(), 1, blockSize);
+            output.FinishCurrentChunk();
+        }
+
+        if (outDeps) {
+            *outDeps = std::move(deps);
+        }
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    std::shared_ptr<::Assets::PendingCompileMarker> MaterialScaffoldCompiler::PrepareResource(
+        uint64 typeCode, 
+        const ::Assets::ResChar* initializers[], unsigned initializerCount,
+        const ::Assets::IntermediateResources::Store& destinationStore)
+    {
+        char outputName[MaxPath];
+        destinationStore.MakeIntermediateName(outputName, dimof(outputName), initializers[0]);
+        XlCatString(outputName, dimof(outputName), "-resmat");
+
+        if (DoesFileExist(outputName)) {
+                // MakeDependencyValidation returns an object only if dependencies are currently good
+             auto depVal = destinationStore.MakeDependencyValidation(outputName);
+             if (depVal) {
+                    // already exists -- just return "ready"
+                return std::make_unique<::Assets::PendingCompileMarker>(
+                    ::Assets::AssetState::Ready, outputName, ~0ull, std::move(depVal));
+             }
+        }
+
+        std::vector<::Assets::FileAndTime> deps;
+        CompileMaterialScaffold(initializers[0], outputName, &deps);
+        // char baseDir[MaxPath];
+        // XlDirname(baseDir, dimof(baseDir), initializers[0]);
+        auto newDepVal = destinationStore.WriteDependencies(outputName, "", deps);
+
+        return std::make_unique<::Assets::PendingCompileMarker>(
+            ::Assets::AssetState::Ready, outputName, ~0ull, std::move(newDepVal));
+    }
+
+    MaterialScaffoldCompiler::MaterialScaffoldCompiler()
+    {}
+
+    MaterialScaffoldCompiler::~MaterialScaffoldCompiler()
+    {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    const ResolvedMaterial* MaterialScaffold::GetMaterial(MaterialGuid guid) const
     {
         auto i = LowerBound(_data->_materials, guid);
         if (i!=_data->_materials.end() && i->first==guid){
@@ -27,37 +143,37 @@ namespace RenderCore { namespace Assets
         return nullptr;
     }
 
-    MaterialScaffold::MaterialScaffold(const ResChar filename[])
+    MaterialScaffold::MaterialScaffold(std::shared_ptr<::Assets::PendingCompileMarker>&& marker)
     {
-            //  This work should be done in a pre-processing step. But we're 
-            //  going to do it here for now.
+        assert(marker && marker->GetState() == ::Assets::AssetState::Ready);
 
-        _data = std::make_unique<MaterialImmutableData>();
+        const auto* filename = marker->_sourceID0;
+        BasicFile file(filename, "rb");
 
-        size_t fileSize = 0;
-        auto sourceFile = LoadFileAsMemoryBlock(filename, &fileSize);
+        auto chunks = Serialization::ChunkFile::LoadChunkTable(file);
 
-        _validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterFileDependency(_validationCallback, filename);
-
-        auto searchRules = ::Assets::DefaultDirectorySearchRules(filename);
-
-        Data data;
-        data.Load((const char*)sourceFile.get(), int(fileSize));
-        for (int c=0; c<data.Size(); ++c) {
-            auto child = data.ChildAt(c);
-            if (!child || !child->value) continue;
-
-            MaterialGuid guid = XlAtoI64(child->value, nullptr, 16);
-            RawMaterial rawMat(StringMeld<MaxPath>() << filename << ":" << child->value);
-            auto i = LowerBound(_data->_materials, guid);
-            if (i!=_data->_materials.begin() && i->first == guid) {
-                LogWarning << "Hit guid collision while loading material file " << filename << ". Ignoring duplicated entry";
-            } else {
-                std::vector<::Assets::FileAndTime> deps;
-                auto resolved = rawMat.Resolve(searchRules, &deps);
-                _data->_materials.insert(i, std::make_pair(guid, std::move(resolved)));
+        Serialization::ChunkFile::ChunkHeader scaffoldChunk;
+        for (auto i=chunks.begin(); i!=chunks.end(); ++i) {
+            if (i->_type == ChunkType_ResolvedMat) {
+                scaffoldChunk = *i;
+                break;
             }
+        }
+
+        if (!scaffoldChunk._fileOffset)
+            throw ::Assets::Exceptions::FormatError("Missing material scaffold chunk: %s", filename);
+
+        _rawMemoryBlock = std::make_unique<uint8[]>(scaffoldChunk._size);
+        file.Seek(scaffoldChunk._fileOffset, SEEK_SET);
+        file.Read(_rawMemoryBlock.get(), 1, scaffoldChunk._size);
+
+        Serialization::Block_Initialize(_rawMemoryBlock.get());        
+        _data = (const MaterialImmutableData*)Serialization::Block_GetFirstObject(_rawMemoryBlock.get());
+
+        if (marker->_dependencyValidation) {
+            _validationCallback = marker->_dependencyValidation;
+        } else {
+            _validationCallback = std::make_shared<::Assets::DependencyValidation>();
         }
     }
 
