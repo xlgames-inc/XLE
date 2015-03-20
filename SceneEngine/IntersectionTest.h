@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "../RenderCore/Metal/DeviceContext.h"
+#include "../RenderCore/IThreadContext_Forward.h"
 #include "../Core/Types.h"
 #include "../Math/Vector.h"
 #include <memory>
@@ -34,14 +34,16 @@ namespace SceneEngine
         const RenderCore::Techniques::TechniqueContext& GetTechniqueContext() const { return *_techniqueContext.get(); }
         ISceneParser* GetSceneParser() const { return _sceneParser.get(); }
         Int2 GetViewportSize() const;
-        std::shared_ptr<RenderCore::Metal::DeviceContext> GetImmediateContext() const;
+        const std::shared_ptr<RenderCore::IThreadContext>& GetThreadContext() const;
 
         IntersectionTestContext(
+            std::shared_ptr<RenderCore::IThreadContext> threadContext,
             std::shared_ptr<ISceneParser> sceneParser,
             std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext);
         ~IntersectionTestContext();
     protected:
-        std::shared_ptr<ISceneParser>      _sceneParser;
+        std::shared_ptr<RenderCore::IThreadContext> _threadContext;
+        std::shared_ptr<ISceneParser> _sceneParser;
         std::shared_ptr<RenderCore::Techniques::TechniqueContext>  _techniqueContext;
     };
 
@@ -82,7 +84,6 @@ namespace SceneEngine
         };
 
         Result FirstRayIntersection(
-            std::shared_ptr<RenderCore::Metal::DeviceContext> devContext,
             const IntersectionTestContext& context,
             std::pair<Float3, Float3> worldSpaceRay,
             Type::BitField filter = ~Type::BitField(0)) const;

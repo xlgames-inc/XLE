@@ -6,12 +6,19 @@
 
 #pragma once
 
-#include "LightingParserContext.h"
-#include "../RenderCore/Metal/Shader.h"
+#include "../RenderCore/IThreadContext_Forward.h"
+#include "../Math/Vector.h"
+#include <vector>
+
+namespace RenderCore { namespace Techniques 
+{
+    class TechniqueContext; class CameraDesc;
+}}
 
 namespace SceneEngine
 {
     class RayVsModelResources;
+    class LightingParserContext;
 
     class RayVsModelStateContext
     {
@@ -25,20 +32,17 @@ namespace SceneEngine
 
         std::vector<ResultEntry> GetResults();
         void SetRay(const std::pair<Float3, Float3> worldSpaceRay);
-        LightingParserContext& GetParserContext() { return _parserContext; }
+        LightingParserContext& GetParserContext();
 
         RayVsModelStateContext(
-            std::shared_ptr<RenderCore::Metal::DeviceContext> devContext,
+            std::shared_ptr<RenderCore::IThreadContext> threadContext,
             const RenderCore::Techniques::TechniqueContext& techniqueContext,
             const RenderCore::Techniques::CameraDesc* cameraForLOD = nullptr);
         ~RayVsModelStateContext();
 
     protected:
-        std::shared_ptr<RenderCore::Metal::DeviceContext> _devContext;
-        RayVsModelResources* _res;
-        RenderCore::Metal::GeometryShader::StreamOutputInitializers _oldSO;
-
-        LightingParserContext _parserContext;
+        class Pimpl;
+        std::unique_ptr<Pimpl> _pimpl;
 
         static const unsigned s_maxResultCount = 256;
     };

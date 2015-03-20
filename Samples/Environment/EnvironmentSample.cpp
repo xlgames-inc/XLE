@@ -197,7 +197,7 @@ namespace Sample
                 "[Placements] Culling");
 
             auto intersectionContext = std::make_shared<SceneEngine::IntersectionTestContext>(
-                mainScene, primMan._globalTechContext);
+                primMan._rDevice->GetImmediateContext(), mainScene, primMan._globalTechContext);
 
                 //  We also create some "overlay systems" in this sample. 
                 //  Again, it's optional. An overlay system will redirect all input

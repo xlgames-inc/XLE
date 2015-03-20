@@ -7,6 +7,9 @@
 #include "RayVsModel.h"
 #include "SceneEngineUtility.h"
 #include "LightingParser.h"
+#include "LightingParserContext.h"
+#include "../RenderCore/IThreadContext_Forward.h"
+#include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/TechniqueUtils.h"
@@ -18,6 +21,19 @@
 
 namespace SceneEngine
 {
+    class RayVsModelStateContext::Pimpl
+    {
+    public:
+        std::shared_ptr<RenderCore::IThreadContext> _threadContext;
+        RayVsModelResources* _res;
+        RenderCore::Metal::GeometryShader::StreamOutputInitializers _oldSO;
+
+        LightingParserContext _parserContext;
+
+        Pimpl(const RenderCore::Techniques::TechniqueContext& techniqueContext)
+            : _parserContext(techniqueContext) {}
+    };
+
     class RayVsModelResources
     {
     public:
@@ -67,16 +83,19 @@ namespace SceneEngine
     {
         std::vector<ResultEntry> result;
 
+        auto metalContext = RenderCore::Metal::DeviceContext::Get(*_pimpl->_threadContext);
+
             // We must lock the stream output buffer, and look for results within it
             // it seems that this kind of thing wasn't part of the original intentions
             // for stream output. So the results can appear anywhere within the buffer.
             // We have to search for non-zero entries. Results that haven't been written
             // to will appear zeroed out.
-        _devContext->GetUnderlying()->CopyResource(_res->_cpuAccessBuffer.get(), _res->_streamOutputBuffer.get());
+        metalContext->GetUnderlying()->CopyResource(
+            _pimpl->_res->_cpuAccessBuffer.get(), _pimpl->_res->_streamOutputBuffer.get());
 
         D3D11_MAPPED_SUBRESOURCE mappedSub;
-        auto hresult = _devContext->GetUnderlying()->Map(
-            _res->_cpuAccessBuffer.get(), 0, D3D11_MAP_READ, 0, &mappedSub);
+        auto hresult = metalContext->GetUnderlying()->Map(
+            _pimpl->_res->_cpuAccessBuffer.get(), 0, D3D11_MAP_READ, 0, &mappedSub);
         if (SUCCEEDED(hresult)) {
 
             const auto* mappedData = (const ResultEntry*)mappedSub.pData;
@@ -91,7 +110,7 @@ namespace SceneEngine
                 }
             }
 
-            _devContext->GetUnderlying()->Unmap(_res->_cpuAccessBuffer.get(), 0);
+            metalContext->GetUnderlying()->Unmap(_pimpl->_res->_cpuAccessBuffer.get(), 0);
         }
 
         return result;
@@ -112,19 +131,28 @@ namespace SceneEngine
             (worldSpaceRay.second - worldSpaceRay.first) / rayLength, 0
         };
 
-        _devContext->BindGS(RenderCore::MakeResourceList(
-            RenderCore::Metal::ConstantBuffer(&rayDefinitionCBuffer, sizeof(rayDefinitionCBuffer))));
+        auto metalContext = RenderCore::Metal::DeviceContext::Get(*_pimpl->_threadContext);
+        metalContext->BindGS(
+            RenderCore::MakeResourceList(
+                RenderCore::Metal::ConstantBuffer(&rayDefinitionCBuffer, sizeof(rayDefinitionCBuffer))));
+    }
+
+    LightingParserContext& RayVsModelStateContext::GetParserContext()
+    {
+        return _pimpl->_parserContext;
     }
 
     RayVsModelStateContext::RayVsModelStateContext(
-        std::shared_ptr<RenderCore::Metal::DeviceContext> devContext,
+        std::shared_ptr<RenderCore::IThreadContext> threadContext,
         const RenderCore::Techniques::TechniqueContext& techniqueContext,
         const RenderCore::Techniques::CameraDesc* cameraForLOD)
-    : _devContext(devContext)
-    , _parserContext(techniqueContext)
     {
-        assert(devContext);
         using namespace RenderCore::Metal;
+
+        _pimpl = std::make_unique<Pimpl>(techniqueContext);
+        _pimpl->_threadContext = threadContext;
+
+        auto metalContext = RenderCore::Metal::DeviceContext::Get(*threadContext);
 
             // We're doing the intersection test in the geometry shader. This means
             // we have to setup a projection transform to avoid removing any potential
@@ -135,7 +163,7 @@ namespace SceneEngine
             // would transform all points into a single point in the center of the view
             // frustum.
         ViewportDesc newViewport(0.f, 0.f, float(255.f), float(255.f), 0.f, 1.f);
-        devContext->Bind(newViewport);
+        metalContext->Bind(newViewport);
 
         RenderingQualitySettings qualitySettings(UInt2(256, 256));
 
@@ -152,12 +180,12 @@ namespace SceneEngine
         if (cameraForLOD) { camera = *cameraForLOD; }
 
         LightingParser_SetupScene(
-            _devContext.get(), _parserContext, nullptr, camera, qualitySettings);
+            metalContext.get(), _pimpl->_parserContext, nullptr, camera, qualitySettings);
         LightingParser_SetGlobalTransform(
-            _devContext.get(), _parserContext, camera, qualitySettings._dimensions[0], qualitySettings._dimensions[1],
+            metalContext.get(), _pimpl->_parserContext, camera, qualitySettings._dimensions[0], qualitySettings._dimensions[1],
             &specialProjMatrix);
 
-        _oldSO = RenderCore::Metal::GeometryShader::GetDefaultStreamOutputInitializers();
+        _pimpl->_oldSO = RenderCore::Metal::GeometryShader::GetDefaultStreamOutputInitializers();
 
         static const InputElementDesc eles[] = {
             InputElementDesc("INTERSECTIONDEPTH",   0, NativeFormat::R32_FLOAT),
@@ -170,24 +198,25 @@ namespace SceneEngine
         GeometryShader::SetDefaultStreamOutputInitializers(
             GeometryShader::StreamOutputInitializers(eles, dimof(eles), strides, dimof(strides)));
 
-        _res = &RenderCore::Techniques::FindCachedBox<RayVsModelResources>(
+        _pimpl->_res = &RenderCore::Techniques::FindCachedBox<RayVsModelResources>(
             RayVsModelResources::Desc(sizeof(ResultEntry), s_maxResultCount));
 
             // the only way to clear these things is copy from another buffer...
-        devContext->GetUnderlying()->CopyResource(_res->_streamOutputBuffer.get(), _res->_clearedBuffer.get());
+        metalContext->GetUnderlying()->CopyResource(
+            _pimpl->_res->_streamOutputBuffer.get(), _pimpl->_res->_clearedBuffer.get());
 
-        ID3D::Buffer* targets[] = { _res->_streamOutputBuffer.get() };
+        ID3D::Buffer* targets[] = { _pimpl->_res->_streamOutputBuffer.get() };
         unsigned offsets[] = { 0 };
-        devContext->GetUnderlying()->SOSetTargets(dimof(targets), targets, offsets);
+        metalContext->GetUnderlying()->SOSetTargets(dimof(targets), targets, offsets);
 
-        devContext->BindGS(RenderCore::MakeResourceList(RenderCore::Techniques::CommonResources()._defaultSampler));
+        metalContext->BindGS(RenderCore::MakeResourceList(RenderCore::Techniques::CommonResources()._defaultSampler));
     }
 
     RayVsModelStateContext::~RayVsModelStateContext()
     {
-        assert(_devContext);
-        _devContext->GetUnderlying()->SOSetTargets(0, nullptr, nullptr);
-        RenderCore::Metal::GeometryShader::SetDefaultStreamOutputInitializers(_oldSO);
+        auto metalContext = RenderCore::Metal::DeviceContext::Get(*_pimpl->_threadContext);
+        metalContext->GetUnderlying()->SOSetTargets(0, nullptr, nullptr);
+        RenderCore::Metal::GeometryShader::SetDefaultStreamOutputInitializers(_pimpl->_oldSO);
     }
 
 

@@ -401,8 +401,7 @@ namespace Tools
                 auto worldSpaceRay = hitTestContext.CalculateWorldSpaceRay(evnt._mousePosition);
                 
                 SceneEngine::PlacementGUID firstHit(0,0);
-                auto hitTestResult = hitTestScene.FirstRayIntersection(
-                    hitTestContext.GetImmediateContext(), hitTestContext, worldSpaceRay);
+                auto hitTestResult = hitTestScene.FirstRayIntersection(hitTestContext, worldSpaceRay);
                 if (hitTestResult._type == SceneEngine::IntersectionTestScene::Type::Placement) {
                     firstHit = hitTestResult._objectGuid;
                 }
@@ -464,8 +463,7 @@ namespace Tools
                 auto worldSpaceRay = hitTestContext.CalculateWorldSpaceRay(evnt._mousePosition);
                 
                 SceneEngine::PlacementGUID firstHit(0,0);
-                auto hitTestResult = hitTestScene.FirstRayIntersection(
-                    hitTestContext.GetImmediateContext(), hitTestContext, worldSpaceRay);
+                auto hitTestResult = hitTestScene.FirstRayIntersection(hitTestContext, worldSpaceRay);
                 if (hitTestResult._type == SceneEngine::IntersectionTestScene::Type::Placement) {
                     auto tempTrans = _editor->Transaction_Begin(&hitTestResult._objectGuid, &hitTestResult._objectGuid + 1);
                     if (tempTrans->GetObjectCount() == 1) {

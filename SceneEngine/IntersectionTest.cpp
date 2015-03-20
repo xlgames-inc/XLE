@@ -32,15 +32,6 @@ namespace SceneEngine
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static std::shared_ptr<RenderCore::Metal::DeviceContext> GetImmediateContext()
-    {
-        using namespace RenderCore::Metal;
-        ID3D::DeviceContext* immContextTemp = nullptr;
-        ObjectFactory().GetUnderlying()->GetImmediateContext(&immContextTemp);
-        return std::make_shared<DeviceContext>(
-            intrusive_ptr<ID3D::DeviceContext>(moveptr(immContextTemp)));
-    }
-
     static std::pair<Float3, bool> FindTerrainIntersection(
         RenderCore::Metal::DeviceContext* devContext,
         LightingParserContext& parserContext,
@@ -85,8 +76,7 @@ namespace SceneEngine
     }
 
     static std::pair<unsigned, float> RayVsPlacements(
-        RenderCore::Metal::DeviceContext* devContext,
-        RayVsModelStateContext& stateContext,
+        RenderCore::Metal::DeviceContext& metalContext, RayVsModelStateContext& stateContext,
         SceneEngine::PlacementsEditor& placementsEditor, SceneEngine::PlacementGUID object)
     {
             // Using the GPU, look for intersections between the ray
@@ -98,14 +88,14 @@ namespace SceneEngine
             // immediate context can't be doing anything else in another thread.
             //
             // This will require more complex threading support in the future!
-        assert(devContext->GetUnderlying()->GetType() == D3D11_DEVICE_CONTEXT_IMMEDIATE);
+        assert(metalContext.GetUnderlying()->GetType() == D3D11_DEVICE_CONTEXT_IMMEDIATE);
         auto fnResult = std::make_pair(0, FLT_MAX);
 
             //  We need to invoke the render for the given object
             //  now. Afterwards we can query the buffers for the result
         const unsigned techniqueIndex = 6;
         placementsEditor.RenderFiltered(
-            devContext, stateContext.GetParserContext(), techniqueIndex,
+            &metalContext, stateContext.GetParserContext(), techniqueIndex,
             &object, &object+1);
 
         auto results = stateContext.GetResults();
@@ -122,16 +112,17 @@ namespace SceneEngine
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     auto IntersectionTestScene::FirstRayIntersection(
-        std::shared_ptr<RenderCore::Metal::DeviceContext> devContext,
         const IntersectionTestContext& context,
         std::pair<Float3, Float3> worldSpaceRay,
         Type::BitField filter) const -> Result
     {
         Result result;
 
+        auto metalContext = RenderCore::Metal::DeviceContext::Get(*context.GetThreadContext());
+
         if ((filter & Type::Terrain) && _terrainManager) {
             auto intersection = FindTerrainIntersection(
-                devContext.get(), context, *_terrainManager.get(), worldSpaceRay);
+                metalContext.get(), context, *_terrainManager.get(), worldSpaceRay);
             if (intersection.second) {
                 float distance = Magnitude(intersection.first - worldSpaceRay.first);
                 if (distance < result._distance) {
@@ -160,7 +151,7 @@ namespace SceneEngine
                 float rayLength = Magnitude(worldSpaceRay.second - worldSpaceRay.first);
 
                 auto cam = context.GetCameraDesc();
-                RayVsModelStateContext stateContext(devContext, context.GetTechniqueContext(), &cam);
+                RayVsModelStateContext stateContext(context.GetThreadContext(), context.GetTechniqueContext(), &cam);
                 stateContext.SetRay(worldSpaceRay);
 
                 // note --  we could do this all in a single render call, except that there
@@ -169,9 +160,7 @@ namespace SceneEngine
                 auto count = trans->GetObjectCount();
                 for (unsigned c=0; c<count; ++c) {
                     auto guid = trans->GetGuid(c);
-                    auto r = RayVsPlacements(
-                        devContext.get(), stateContext,
-                        *_placements, guid);
+                    auto r = RayVsPlacements(*metalContext.get(), stateContext, *_placements, guid);
 
                     if (r.first && r.second < result._distance) {
                         result = Result();
@@ -196,7 +185,6 @@ namespace SceneEngine
         Int2 cursorPosition, Type::BitField filter) const -> Result
     {
         return FirstRayIntersection(
-            context.GetImmediateContext(),
             context, context.CalculateWorldSpaceRay(cursorPosition), filter);
     }
 
@@ -258,9 +246,9 @@ namespace SceneEngine
         return GetViewportDims();
     }
 
-    std::shared_ptr<RenderCore::Metal::DeviceContext> IntersectionTestContext::GetImmediateContext() const
+    const std::shared_ptr<RenderCore::IThreadContext>& IntersectionTestContext::GetThreadContext() const
     {
-        return SceneEngine::GetImmediateContext();
+        return _threadContext;
     }
 
     RenderCore::Techniques::CameraDesc IntersectionTestContext::GetCameraDesc() const 
@@ -269,9 +257,11 @@ namespace SceneEngine
     }
 
     IntersectionTestContext::IntersectionTestContext(
+        std::shared_ptr<RenderCore::IThreadContext> threadContext,
         std::shared_ptr<SceneEngine::ISceneParser> sceneParser,
         std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext)
-    : _sceneParser(std::move(sceneParser))
+    : _threadContext(threadContext)
+    , _sceneParser(std::move(sceneParser))
     , _techniqueContext(std::move(techniqueContext))
     {}
 
