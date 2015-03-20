@@ -119,9 +119,8 @@ namespace PlatformRig
         result._hashedModelName = Hash64(filename);
         result._model = _pimpl->_modelScaffolds.Get(result._hashedModelName);
         if (!result._model || result._model->GetDependencyValidation().GetValidationIndex() > 0) {
-            _pimpl->_modelScaffolds.Insert(
-                result._hashedModelName, 
-                Internal::CreateModelScaffold(filename, *_pimpl->_format));
+            result._model = Internal::CreateModelScaffold(filename, *_pimpl->_format);
+            _pimpl->_modelScaffolds.Insert(result._hashedModelName, result._model);
         }
             
         #if MODEL_FORMAT != MODEL_FORMAT_RUNTIME

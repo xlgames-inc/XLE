@@ -105,6 +105,7 @@ namespace ModelViewer.Controls
             this.checkBox2.TabIndex = 1;
             this.checkBox2.Text = "Wireframe";
             this.checkBox2.UseVisualStyleBackColor = true;
+            this.checkBox2.ThreeState = true;
             // 
             // checkBox1
             // 
@@ -116,6 +117,7 @@ namespace ModelViewer.Controls
             this.checkBox1.TabIndex = 0;
             this.checkBox1.Text = "Double sided";
             this.checkBox1.UseVisualStyleBackColor = true;
+            this.checkBox1.ThreeState = true;
             // 
             // shaderConstants
             // 

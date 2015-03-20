@@ -78,18 +78,32 @@ namespace GUILayer
     }
 
     System::String^ VisMouseOver::MaterialName::get() 
-    { 
+    {
+        auto fullName = FullMaterialName;
+        if (fullName) {
+            int index = fullName->IndexOf(':');
+            return fullName->Substring((index>=0) ? (index+1) : 0);
+        }
+        return "<<no material>>";
+    }
+
+    bool VisMouseOver::HasMouseOver::get()
+    {
+        return (*_object)->_hasMouseOver;
+    }
+
+    System::String^ VisMouseOver::FullMaterialName::get()
+    {
         if ((*_object)->_hasMouseOver) {
             auto scaffolds = (*_modelCache)->GetScaffolds((*_modelSettings)->_modelName.c_str());
             if (scaffolds._material) {
                 auto matName = scaffolds._material->GetMaterialName((*_object)->_materialGuid);
                 if (matName) {
-                    auto colon = XlFindChar(matName, ':');
-                    return clix::marshalString<clix::E_UTF8>(std::string(colon ? (colon+1) : matName));
+                    return clix::marshalString<clix::E_UTF8>(std::string(matName));
                 }
             }
         }
-        return "<<no material>>";
+        return nullptr;
     }
 
     void VisMouseOver::AttachCallback(PropertyGrid^ callback)
@@ -141,6 +155,10 @@ namespace GUILayer
         void BindingUtil::PropertyPair<NameType, ValueType>::NotifyPropertyChanged(System::String^ propertyName)
     {
         PropertyChanged(this, gcnew PropertyChangedEventArgs(propertyName));
+        // _propertyChangedContext->Send(
+        //     gcnew System::Threading::SendOrPostCallback(
+        //         o => PropertyChanged(this, gcnew PropertyChangedEventArgs(propertyName))
+        //     ), nullptr);
     }
 
     public ref class BindingConv
@@ -361,6 +379,7 @@ namespace GUILayer
             auto copy = std::make_shared<NativeConfig>(source);
             _underlying.reset(
                 new std::shared_ptr<NativeConfig>(std::move(copy)));
+            _renderStateSet = gcnew RenderStateSet(*_underlying);
         } CATCH (const Assets::Exceptions::InvalidResource&) {
             auto colon = initialiser->IndexOf(':');
             if (colon > 1) {
@@ -377,11 +396,93 @@ namespace GUILayer
     {
         _underlying.reset(
             new std::shared_ptr<NativeConfig>(std::move(underlying)));
+        _renderStateSet = gcnew RenderStateSet(*_underlying);
     }
 
     RawMaterial::~RawMaterial()
-    {}
+    {
+        _underlying.reset();
+        delete _renderStateSet;
+    }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    auto RenderStateSet::DoubleSided::get() -> CheckState
+    {
+        auto& stateSet = (*_underlying)->_stateSet;
+        if (stateSet._flag & RenderCore::Assets::RenderStateSet::Flag::DoubleSided) {
+            if (stateSet._doubleSided) return CheckState::Checked;
+            else return CheckState::Unchecked;
+        }
+        return CheckState::Indeterminate;
+    }
+    
+    void RenderStateSet::DoubleSided::set(CheckState checkState)
+    {
+        auto& stateSet = (*_underlying)->_stateSet;
+        if (checkState == CheckState::Indeterminate) {
+            stateSet._flag &= ~RenderCore::Assets::RenderStateSet::Flag::DoubleSided;
+        } else {
+            stateSet._flag |= RenderCore::Assets::RenderStateSet::Flag::DoubleSided;
+            stateSet._doubleSided = (checkState == CheckState::Checked);
+        }
+        NotifyPropertyChanged("DoubleSided");
+    }
+
+    CheckState RenderStateSet::Wireframe::get()
+    {
+        auto& stateSet = (*_underlying)->_stateSet;
+        if (stateSet._flag & RenderCore::Assets::RenderStateSet::Flag::Wireframe) {
+            if (stateSet._wireframe) return CheckState::Checked;
+            else return CheckState::Unchecked;
+        }
+        return CheckState::Indeterminate;
+    }
+
+    void RenderStateSet::Wireframe::set(CheckState checkState)
+    {
+        auto& stateSet = (*_underlying)->_stateSet;
+        if (checkState == CheckState::Indeterminate) {
+            stateSet._flag &= ~RenderCore::Assets::RenderStateSet::Flag::Wireframe;
+        } else {
+            stateSet._flag |= RenderCore::Assets::RenderStateSet::Flag::Wireframe;
+            stateSet._wireframe = (checkState == CheckState::Checked);
+        }
+        NotifyPropertyChanged("Wireframe");
+    }
+
+    auto RenderStateSet::DeferredBlend::get() -> DeferredBlendState
+    {
+        return DeferredBlendState::Unset;
+    }
+    
+    void RenderStateSet::DeferredBlend::set(DeferredBlendState)
+    {
+        NotifyPropertyChanged("DeferredBlend");
+    }
+
+    RenderStateSet::RenderStateSet(std::shared_ptr<RenderCore::Assets::RawMaterial> underlying)
+    {
+        _underlying.reset(
+            new std::shared_ptr<RenderCore::Assets::RawMaterial>(std::move(underlying)));
+        _propertyChangedContext = System::Threading::SynchronizationContext::Current;
+    }
+
+    RenderStateSet::~RenderStateSet()
+    {
+        _underlying.reset();
+    }
+
+    void RenderStateSet::NotifyPropertyChanged(System::String^ propertyName)
+    {
+        PropertyChanged(this, gcnew PropertyChangedEventArgs(propertyName));
+        // _propertyChangedContext->Send(
+        //     gcnew System::Threading::SendOrPostCallback(
+        //         o => PropertyChanged(this, gcnew PropertyChangedEventArgs(propertyName))
+        //     ), nullptr);
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     template BindingUtil::PropertyPair<System::String^, unsigned>;
     template BindingUtil::PropertyPair<System::String^, System::String^>;

@@ -84,7 +84,6 @@ namespace GUILayer
     }
 
     static std::shared_ptr<PlatformRig::ModelVisCache> s_visCache;
-    static std::shared_ptr<PlatformRig::VisMouseOver> s_visMouseOver;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -183,14 +182,11 @@ namespace GUILayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
     
-    void LayerControl::SetupDefaultVis(ModelVisSettings^ settings)
+    void LayerControl::SetupDefaultVis(ModelVisSettings^ settings, VisMouseOver^ mouseOver)
     {
         if (!s_visCache) {
             s_visCache = std::make_shared<PlatformRig::ModelVisCache>(
                 std::shared_ptr<RenderCore::Assets::IModelFormat>());
-        }
-        if (!s_visMouseOver) {
-            s_visMouseOver = std::make_shared<PlatformRig::VisMouseOver>();
         }
 
         auto visLayer = std::make_unique<PlatformRig::ModelVisLayer>(settings->GetUnderlying(), s_visCache);
@@ -198,13 +194,13 @@ namespace GUILayer
         overlaySet.AddSystem(std::move(visLayer));
         overlaySet.AddSystem(
             std::make_shared<PlatformRig::VisualisationOverlay>(
-                settings->GetUnderlying(), s_visCache, s_visMouseOver));
+                settings->GetUnderlying(), s_visCache, mouseOver->GetUnderlying()));
 
         AddDefaultCameraHandler(settings->Camera);
 
         overlaySet.AddSystem(
             std::make_shared<PlatformRig::MouseOverTrackingOverlay>(
-                s_visMouseOver,
+                mouseOver->GetUnderlying(),
                 EngineDevice::GetInstance()->GetNative().GetRenderDevice()->GetImmediateContext(),
                 _pimpl->_globalTechniqueContext,
                 settings->GetUnderlying(), s_visCache));
@@ -216,11 +212,9 @@ namespace GUILayer
             s_visCache = std::make_shared<PlatformRig::ModelVisCache>(
                 std::shared_ptr<RenderCore::Assets::IModelFormat>());
         }
-        if (!s_visMouseOver) {
-            s_visMouseOver = std::make_shared<PlatformRig::VisMouseOver>();
-        }
 
-        return gcnew VisMouseOver(s_visMouseOver, settings->GetUnderlying(), s_visCache);
+        return gcnew VisMouseOver(
+            std::make_shared<PlatformRig::VisMouseOver>(), settings->GetUnderlying(), s_visCache);
     }
 
     namespace Internal

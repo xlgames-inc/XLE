@@ -17,7 +17,7 @@ using namespace System::ComponentModel;
 using namespace System::Windows::Forms;
 using namespace System::Drawing::Design;
 
-namespace RenderCore { namespace Assets { class RawMaterial; }}
+namespace RenderCore { namespace Assets { class RawMaterial; class RenderStateSet; }}
 
 namespace GUILayer
 {
@@ -135,9 +135,8 @@ namespace GUILayer
             VisCameraSettings^ get() { return gcnew VisCameraSettings((*_object)->_camera); }
         }
 
-        std::shared_ptr<PlatformRig::ModelVisSettings> GetUnderlying() { return *_object.get(); }
-
         void AttachCallback(PropertyGrid^ callback);
+        std::shared_ptr<PlatformRig::ModelVisSettings> GetUnderlying() { return *_object.get(); }
 
         ModelVisSettings(std::shared_ptr<PlatformRig::ModelVisSettings> attached)
         {
@@ -164,13 +163,18 @@ namespace GUILayer
         [Category("Material")]
         property System::String^ MaterialName { System::String^ get(); }
 
+        [Browsable(false)] property bool HasMouseOver { bool get(); }
+        [Browsable(false)] property System::String^ FullMaterialName { System::String^ get(); }
+
         void AttachCallback(PropertyGrid^ callback);
+        std::shared_ptr<PlatformRig::VisMouseOver> GetUnderlying() { return *_object.get(); }
 
         VisMouseOver(
             std::shared_ptr<PlatformRig::VisMouseOver> attached,
             std::shared_ptr<PlatformRig::ModelVisSettings> settings,
             std::shared_ptr<PlatformRig::ModelVisCache> cache);
         ~VisMouseOver();
+
     protected:
         AutoToShared<PlatformRig::VisMouseOver> _object;
         AutoToShared<PlatformRig::ModelVisSettings> _modelSettings;
@@ -187,13 +191,14 @@ namespace GUILayer
             property NameType Name { NameType get(); void set(NameType); }
             property ValueType Value { ValueType get(); void set(ValueType); }
 
-            virtual event PropertyChangedEventHandler^ PropertyChanged;
+            PropertyPair() { _propertyChangedContext = System::Threading::SynchronizationContext::Current; }
+            PropertyPair(NameType name, ValueType value) : PropertyPair() { Name = name; Value = value; }
 
-            PropertyPair() {}
-            PropertyPair(NameType name, ValueType value) { Name = name; Value = value; }
+            virtual event PropertyChangedEventHandler^ PropertyChanged;
 
         protected:
             void NotifyPropertyChanged(/*[CallerMemberName]*/ System::String^ propertyName);
+            System::Threading::SynchronizationContext^ _propertyChangedContext;
 
             NameType _name;
             ValueType _value;
@@ -201,6 +206,27 @@ namespace GUILayer
 
         typedef PropertyPair<System::String^, unsigned> StringIntPair;
         typedef PropertyPair<System::String^, System::String^> StringStringPair;
+    };
+
+    public ref class RenderStateSet : System::ComponentModel::INotifyPropertyChanged
+    {
+    public:
+        using CheckState = System::Windows::Forms::CheckState;
+        property CheckState DoubleSided { CheckState get(); void set(CheckState); }
+        property CheckState Wireframe { CheckState get(); void set(CheckState); }
+
+        enum class DeferredBlendState { Opaque, Decal, Unset };
+        property DeferredBlendState DeferredBlend { DeferredBlendState get(); void set(DeferredBlendState); }
+
+        virtual event System::ComponentModel::PropertyChangedEventHandler^ PropertyChanged;
+
+        RenderStateSet(std::shared_ptr<RenderCore::Assets::RawMaterial> underlying);
+        ~RenderStateSet();
+    protected:
+        AutoToShared<RenderCore::Assets::RawMaterial> _underlying;
+
+        void NotifyPropertyChanged(/*[CallerMemberName]*/ System::String^ propertyName);
+        System::Threading::SynchronizationContext^ _propertyChangedContext;
     };
 
     public ref class RawMaterial
@@ -219,6 +245,8 @@ namespace GUILayer
             BindingList<BindingUtil::StringStringPair^>^ get();
         }
 
+        property RenderStateSet^ StateSet { RenderStateSet^ get() { return _renderStateSet; } }
+
         const NativeConfig* GetUnderlying() { return _underlying.get() ? _underlying->get() : nullptr; }
 
         System::Collections::Generic::List<RawMaterial^>^ BuildInheritanceList();
@@ -230,6 +258,7 @@ namespace GUILayer
         ~RawMaterial();
     protected:
         AutoToShared<NativeConfig> _underlying;
+        RenderStateSet^ _renderStateSet;
         System::String^ DummyFilename;
         System::String^ DummySettingName;
 

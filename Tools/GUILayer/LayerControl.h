@@ -17,22 +17,22 @@ namespace GUILayer
     ref class VisCameraSettings;
     ref class VisMouseOver;
 
-	public ref class LayerControl : public EngineControl
-	{
-	public:
-        void SetupDefaultVis(ModelVisSettings^ settings);
+    public ref class LayerControl : public EngineControl
+    {
+    public:
+        void SetupDefaultVis(ModelVisSettings^ settings, VisMouseOver^ mouseOver);
         VisMouseOver^ CreateVisMouseOver(ModelVisSettings^ settings);
-        void AddDefaultCameraHandler(VisCameraSettings^);
 
+        void AddDefaultCameraHandler(VisCameraSettings^);
         void AddSystem(IOverlaySystem^ overlay);
 
-		LayerControl(Control^ control);
-		~LayerControl();
+        LayerControl(Control^ control);
+        ~LayerControl();
     protected:
         clix::auto_ptr<LayerControlPimpl> _pimpl;
 
         virtual void Render(RenderCore::IThreadContext&, IWindowRig&) override;
-	};
+    };
 }
 
 

@@ -120,6 +120,19 @@ namespace ModelViewer.Controls
                 shaderConstants.DataSource = value.ShaderConstants;
                 resourceBindings.DataSource = value.ResourceBindings;
                 materialPreview1.Object = value;
+
+                checkBox1.DataBindings.Clear();
+                checkBox2.DataBindings.Clear();
+                if (value.StateSet != null) 
+                {
+                    checkBox1.DataBindings.Add("CheckState", value.StateSet, "DoubleSided", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged);
+                    checkBox2.DataBindings.Add("CheckState", value.StateSet, "Wireframe", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged);
+                }
+                else
+                {
+                    checkBox1.CheckState = CheckState.Indeterminate;
+                    checkBox2.CheckState = CheckState.Indeterminate;
+                }
             }
         }
     }
