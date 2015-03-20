@@ -6,6 +6,7 @@
 
 #include "../MainGeometry.h"
 #include "../CommonResources.h"
+#include "../BasicMaterial.h"
 
 struct GSOutput
 {
@@ -13,16 +14,17 @@ struct GSOutput
 	float4	triangleA : POINT0;
 	float4	triangleB : POINT1;
 	float4	triangleC : POINT2;
+	uint	drawCallIndex : DRAWCALLINDEX;
 };
 
 cbuffer RayDefinition
 {
-	float3	RayStart; 
+	float3	RayStart;
 	float	RayLength;
 	float3	RayDirection;
 }
 
-
+uint CurrentDrawCallIndex;
 
 float3 RayTriangleIntersection(float3 p, float3 d, float3 v0, float3 v1, float3 v2)
 {
@@ -78,9 +80,9 @@ float3 RayTriangleIntersection(float3 p, float3 d, float3 v0, float3 v1, float3 
 	// We're going to ignore the winding order. So callers will get both front-face
 	// and back-face intersections.
 
-	float3 intersectionResult = 
-		RayTriangleIntersection( 
-			RayStart, RayDirection, 
+	float3 intersectionResult =
+		RayTriangleIntersection(
+			RayStart, RayDirection,
 			input[0].worldPosition, input[1].worldPosition, input[2].worldPosition);
 	if (intersectionResult.x > 0.f && intersectionResult.x < RayLength) {
 		GSOutput result;
@@ -89,27 +91,26 @@ float3 RayTriangleIntersection(float3 p, float3 d, float3 v0, float3 v1, float3 
 
 		bool isOpaquePart = true;
 
-		// If this is alpha test geometry, we need to check the texture 
+		// If this is alpha test geometry, we need to check the texture
 		// to see if this  is a transparent pixel. This method is sometimes
 		// used for "picking" tests in tools. Without this alpha test check,
 		// the alpha tested triangles will behave like opaque triangles, which
 		// will give a confusing result for the user.
 		#if (OUTPUT_TEXCOORD==1) && (MAT_ALPHA_TEST==1)
-			const float alphaThreshold = 0.5f;
-			float2 texCoord = 
+			float2 texCoord =
 				  barycentric.x * GetTexCoord(input[0])
 				+ barycentric.y * GetTexCoord(input[1])
 				+ barycentric.z * GetTexCoord(input[2])
 				;
-			isOpaquePart = DiffuseTexture.SampleLevel(DefaultSampler, texCoord, 0).a > alphaThreshold;
+			isOpaquePart = DiffuseTexture.SampleLevel(DefaultSampler, texCoord, 0).a > AlphaThreshold;
 		#endif
 
 		if (isOpaquePart) {
 			result.triangleA = float4(input[0].worldPosition, barycentric.x);
 			result.triangleB = float4(input[1].worldPosition, barycentric.y);
 			result.triangleC = float4(input[2].worldPosition, barycentric.z);
+			result.drawCallIndex = CurrentDrawCallIndex;
 			outputStream.Append(result);
 		}
 	}
 }
-

@@ -104,14 +104,16 @@ namespace GUILayer
             }
         }
 
+        enum class ColourByMaterialType { None, All, MouseOver };
+
         [Category("Visualisation")]
         [Description("Highlight material divisions")]
-        property bool ColourByMaterial
+        property ColourByMaterialType ColourByMaterial
         {
-            bool get() { return (*_object)->_colourByMaterial; }
-            void set(bool value)
+            ColourByMaterialType get() { return (ColourByMaterialType)(*_object)->_colourByMaterial; }
+            void set(ColourByMaterialType value)
             {
-                (*_object)->_colourByMaterial = value; 
+                (*_object)->_colourByMaterial = unsigned(value); 
                 (*_object)->_changeEvent.Trigger(); 
             }
         }
@@ -148,6 +150,31 @@ namespace GUILayer
 
     protected:
         AutoToShared<PlatformRig::ModelVisSettings> _object;
+    };
+
+    public ref class VisMouseOver
+    {
+    public:
+        [Description("Intersection coordinate")]
+        property System::String^ IntersectionPt { System::String^ get(); }
+
+        [Description("Draw call index")]
+        property unsigned DrawCallIndex { unsigned get(); }
+
+        [Category("Material")]
+        property System::String^ MaterialName { System::String^ get(); }
+
+        void AttachCallback(PropertyGrid^ callback);
+
+        VisMouseOver(
+            std::shared_ptr<PlatformRig::VisMouseOver> attached,
+            std::shared_ptr<PlatformRig::ModelVisSettings> settings,
+            std::shared_ptr<PlatformRig::ModelVisCache> cache);
+        ~VisMouseOver();
+    protected:
+        AutoToShared<PlatformRig::VisMouseOver> _object;
+        AutoToShared<PlatformRig::ModelVisSettings> _modelSettings;
+        AutoToShared<PlatformRig::ModelVisCache> _modelCache;
     };
 
     public ref class BindingUtil

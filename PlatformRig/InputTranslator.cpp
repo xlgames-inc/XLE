@@ -13,6 +13,8 @@ namespace PlatformRig
 {
     using RenderOverlays::DebuggingDisplay::IInputListener;
 
+    UInt2 InputTranslator::s_hackWindowSize = UInt2(0,0);
+
     class InputTranslator::Pimpl
     {
     public:

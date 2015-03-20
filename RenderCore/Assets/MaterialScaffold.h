@@ -24,6 +24,7 @@ namespace RenderCore { namespace Assets
     public:
         const MaterialImmutableData&    ImmutableData() const       { return *_data; };
         const ResolvedMaterial*         GetMaterial(MaterialGuid guid) const;
+        const char*                     GetMaterialName(MaterialGuid guid) const;
 
         const ::Assets::DependencyValidation& GetDependencyValidation() const { return *_validationCallback; }
 

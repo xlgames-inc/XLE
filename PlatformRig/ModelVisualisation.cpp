@@ -9,6 +9,7 @@
 #define MODEL_FORMAT MODEL_FORMAT_RUNTIME
 
 #include "ModelVisualisation.h"
+#include "InputTranslator.h"
 #include "../SceneEngine/SceneParser.h"
 #include "../SceneEngine/LightDesc.h"
 #include "../SceneEngine/LightingParser.h"
@@ -24,6 +25,7 @@
 #include "../Assets/AssetUtils.h"
 #include "../Math/Transformations.h"
 #include "../Utility/HeapUtils.h"
+#include "../Utility/StringFormat.h"
 
 #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
     #include "../../RenderCore/Assets/ModelRunTime.h"
@@ -110,19 +112,15 @@ namespace PlatformRig
         }
     }
 
-    auto ModelVisCache::GetModel(const Assets::ResChar filename[]) -> Model
+    auto ModelVisCache::GetScaffolds(const Assets::ResChar filename[]) -> Scaffolds
     {
-        #if MODEL_FORMAT == MODEL_FORMAT_SIMPLE
-            if (!_pimpl->_format) {
-                return std::make_pair(nullptr, 0);
-            }
-        #endif
-                
-        uint64 hashedName = Hash64(filename);
-        auto model = _pimpl->_modelScaffolds.Get(hashedName);
-        if (!model || model->GetDependencyValidation().GetValidationIndex() > 0) {
+        Scaffolds result;
+
+        result._hashedModelName = Hash64(filename);
+        result._model = _pimpl->_modelScaffolds.Get(result._hashedModelName);
+        if (!result._model || result._model->GetDependencyValidation().GetValidationIndex() > 0) {
             _pimpl->_modelScaffolds.Insert(
-                hashedName, 
+                result._hashedModelName, 
                 Internal::CreateModelScaffold(filename, *_pimpl->_format));
         }
             
@@ -132,23 +130,31 @@ namespace PlatformRig
             uint64 hashedMaterial = Hash64(defMatName);
             auto matNamePtr = defMatName.c_str();
         #else
-            uint64 hashedMaterial = hashedName;
+            uint64 hashedMaterial = result._hashedModelName;
             auto matNamePtr = filename;
         #endif
 
-        auto material = _pimpl->_materialScaffolds.Get(hashedMaterial);
-        if (!material || material->GetDependencyValidation().GetValidationIndex() > 0) {
-            material = Internal::CreateMaterialScaffold(matNamePtr, *_pimpl->_format);
-            _pimpl->_materialScaffolds.Insert(hashedMaterial, material);
+        result._material = _pimpl->_materialScaffolds.Get(hashedMaterial);
+        if (!result._material || result._material->GetDependencyValidation().GetValidationIndex() > 0) {
+            result._material = Internal::CreateMaterialScaffold(matNamePtr, *_pimpl->_format);
+            _pimpl->_materialScaffolds.Insert(hashedMaterial, result._material);
         }
 
-        uint64 hashedModel = uint64(model.get()) | (uint64(material.get()) << 48);
+        return result;
+    }
+
+    auto ModelVisCache::GetModel(const Assets::ResChar filename[]) -> Model
+    {
+        auto scaffold = GetScaffolds(filename);
+        if (!scaffold._model || !scaffold._material) { return Model(); }
+
+        uint64 hashedModel = uint64(scaffold._model.get()) | (uint64(scaffold._material.get()) << 48);
         auto renderer = _pimpl->_modelRenderers.Get(hashedModel);
         if (!renderer) {
             #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
                 auto searchRules = ::Assets::DefaultDirectorySearchRules(filename);
                 renderer = std::make_shared<ModelRenderer>(
-                    std::ref(*model), std::ref(*material), std::ref(*_pimpl->_sharedStateSet), &searchRules, 0);
+                    std::ref(*scaffold._model), std::ref(*scaffold._material), std::ref(*_pimpl->_sharedStateSet), &searchRules, 0);
             #else
                 renderer = _pimpl->_format->CreateRenderer(
                     std::ref(*model), std::ref(*material), std::ref(_pimpl->_sharedStateSet), 0);
@@ -159,10 +165,10 @@ namespace PlatformRig
 
             // cache the bounding box, because it's an expensive operation to recalculate
         BoundingBox boundingBox;
-        auto boundingBoxI = _pimpl->_boundingBoxes.find(hashedName);
+        auto boundingBoxI = _pimpl->_boundingBoxes.find(scaffold._hashedModelName);
         if (boundingBoxI== _pimpl->_boundingBoxes.end()) {
-            boundingBox = model->GetStaticBoundingBox(0);
-            _pimpl->_boundingBoxes.insert(std::make_pair(hashedName, boundingBox));
+            boundingBox = scaffold._model->GetStaticBoundingBox(0);
+            _pimpl->_boundingBoxes.insert(std::make_pair(scaffold._hashedModelName, boundingBox));
         } else {
             boundingBox = boundingBoxI->second;
         }
@@ -171,7 +177,7 @@ namespace PlatformRig
         result._renderer = renderer.get();
         result._sharedStateSet = _pimpl->_sharedStateSet.get();
         result._boundingBox = boundingBox;
-        result._hash = hashedName;
+        result._hashedModelName = scaffold._hashedModelName;
         return result;
     }
 
@@ -380,6 +386,7 @@ namespace PlatformRig
     public:
         std::shared_ptr<ModelVisCache> _cache;
         std::shared_ptr<ModelVisSettings> _settings;
+        std::shared_ptr<VisMouseOver> _mouseOver;
     };
     
     void VisualisationOverlay::RenderToScene(
@@ -389,6 +396,10 @@ namespace PlatformRig
             //  Draw an overlay over the scene, 
             //  containing debugging / profiling information
         if (_pimpl->_settings->_colourByMaterial) {
+
+            if (_pimpl->_settings->_colourByMaterial == 2 && !_pimpl->_mouseOver->_hasMouseOver) {
+                return;
+            }
 
             TRY 
             {
@@ -402,16 +413,24 @@ namespace PlatformRig
                     auto model = _pimpl->_cache->GetModel(_pimpl->_settings->_modelName.c_str());
                     assert(model._renderer && model._sharedStateSet);
 
-                    UInt4 DrawCallToMaterialIndexMap[256];
-                    XlSetMemory(DrawCallToMaterialIndexMap, sizeof(DrawCallToMaterialIndexMap), 0xff);
+                    struct Constants
+                    {
+                        UInt4 HighlightMaterial;
+                        UInt4 DrawCallToMaterialIndexMap[256];
+                    } constants;
+                    XlSetMemory(&constants, sizeof(constants), 0xff);
+
                     auto bindingVec = model._renderer->DrawCallToMaterialBinding();
                     unsigned t = 0;
-                    for (auto i=bindingVec.cbegin(); i!=bindingVec.cend() && t < dimof(DrawCallToMaterialIndexMap); ++i, ++t) {
-                        DrawCallToMaterialIndexMap[t] = UInt4((unsigned)bindingVec[t], (unsigned)bindingVec[t], (unsigned)bindingVec[t], (unsigned)bindingVec[t]);
+                    for (auto i=bindingVec.cbegin(); i!=bindingVec.cend() && t < dimof(constants.DrawCallToMaterialIndexMap); ++i, ++t) {
+                        constants.DrawCallToMaterialIndexMap[t] = UInt4((unsigned)bindingVec[t], (unsigned)bindingVec[t], (unsigned)bindingVec[t], (unsigned)bindingVec[t]);
                     }
 
+                    auto guid = _pimpl->_mouseOver->_materialGuid;
+                    constants.HighlightMaterial = UInt4(unsigned(guid), unsigned(guid), unsigned(guid), unsigned(guid));
+
                     metalContext->BindPS(MakeResourceList(
-                        Metal::ConstantBuffer(DrawCallToMaterialIndexMap, sizeof(DrawCallToMaterialIndexMap))));
+                        Metal::ConstantBuffer(&constants, sizeof(constants))));
                 }
 
                 SceneEngine::SavedTargets savedTargets(metalContext.get());
@@ -433,7 +452,8 @@ namespace PlatformRig
                 {
                     auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
                         "game/xleres/basic2D.vsh:fullscreen:vs_*", 
-                        "game/xleres/Effects/HighlightVis.psh:HighlightDrawCalls:ps_*");
+                        "game/xleres/Effects/HighlightVis.psh:HighlightDrawCalls:ps_*",
+                        StringMeld<64>() << "COLOUR_BY_MAT=" << _pimpl->_settings->_colourByMaterial);
                 
                     metalContext->Bind(shader);
                     metalContext->Draw(4);
@@ -442,7 +462,8 @@ namespace PlatformRig
                 {
                     auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
                         "game/xleres/basic2D.vsh:fullscreen:vs_*", 
-                        "game/xleres/Effects/HighlightVis.psh:OutlineDrawCall:ps_*");
+                        "game/xleres/Effects/HighlightVis.psh:OutlineDrawCall:ps_*",
+                        StringMeld<64>() << "COLOUR_BY_MAT=" << _pimpl->_settings->_colourByMaterial);
                 
                     metalContext->Bind(shader);
                     metalContext->Draw(4);
@@ -469,11 +490,13 @@ namespace PlatformRig
 
     VisualisationOverlay::VisualisationOverlay(
         std::shared_ptr<ModelVisSettings> settings,
-        std::shared_ptr<ModelVisCache> cache)
+        std::shared_ptr<ModelVisCache> cache,
+        std::shared_ptr<VisMouseOver> mouseOver)
     {
         _pimpl = std::make_unique<Pimpl>();
         _pimpl->_settings = std::move(settings);
         _pimpl->_cache = std::move(cache);
+        _pimpl->_mouseOver = std::move(mouseOver);
     }
 
     VisualisationOverlay::~VisualisationOverlay() {}
@@ -492,24 +515,57 @@ namespace PlatformRig
 
             auto metalContext = RenderCore::Metal::DeviceContext::Get(*_threadContext);
             auto cam = AsCameraDesc(*_settings->_camera);
-            auto worldSpaceRay = IntersectionTestContext::CalculateWorldSpaceRay(cam, evnt._mousePosition);
+            auto worldSpaceRay = IntersectionTestContext::CalculateWorldSpaceRay(
+                cam, evnt._mousePosition, InputTranslator::s_hackWindowSize);
             
-            RayVsModelStateContext stateContext(_threadContext, *_techniqueContext, &cam);
-            LightingParserContext parserContext(*_techniqueContext);
-            stateContext.SetRay(worldSpaceRay);
-            model._sharedStateSet->CaptureState(metalContext.get());
-            model._renderer->Render(
-                ModelRenderer::Context(metalContext.get(), parserContext, 6, *model._sharedStateSet),
-                Identity<Float4x4>());
-            model._sharedStateSet->ReleaseState(metalContext.get());
+            std::vector<RayVsModelStateContext::ResultEntry> results;
+            TRY {
+                RayVsModelStateContext stateContext(_threadContext, *_techniqueContext, &cam);
+                LightingParserContext parserContext(*_techniqueContext);
+                stateContext.SetRay(worldSpaceRay);
+                model._sharedStateSet->CaptureState(metalContext.get());
+                model._renderer->Render(
+                    ModelRenderer::Context(metalContext.get(), parserContext, 6, *model._sharedStateSet),
+                    Identity<Float4x4>());
+                model._sharedStateSet->ReleaseState(metalContext.get());
 
-            auto results = stateContext.GetResults();
+                results = stateContext.GetResults();
+            }
+            CATCH (const ::Assets::Exceptions::InvalidResource&) {}
+            CATCH (const ::Assets::Exceptions::PendingResource&) {}
+            CATCH_END
+
             if (!results.empty()) {
-                _mouseOver->_hasMouseOver = true;
+                    // find the closest intersection, and let's get so information from that...
+                std::sort(results.begin(), results.end(), RayVsModelStateContext::ResultEntry::CompareDepth);
+
                 _mouseOver->_intersectionPt = 
-                    LinearInterpolate(worldSpaceRay.first, worldSpaceRay.second, results[0]._intersectionDepth);
+                    worldSpaceRay.first + results[0]._intersectionDepth * Normalize(worldSpaceRay.second - worldSpaceRay.first);
+
+                auto drawCallIndex = results[0]._drawCallIndex;
+                auto matBinding = model._renderer->DrawCallToMaterialBinding();
+                uint64 materialGuid; 
+                if (results[0]._drawCallIndex < matBinding.size()) {
+                    materialGuid = matBinding[results[0]._drawCallIndex];
+                } else {
+                    materialGuid = ~0x0ull;
+                }
+
+                if (    drawCallIndex != _mouseOver->_drawCallIndex
+                    ||  materialGuid != _mouseOver->_materialGuid
+                    ||  !_mouseOver->_hasMouseOver) {
+
+                    _mouseOver->_hasMouseOver = true;
+                    _mouseOver->_drawCallIndex = drawCallIndex;
+                    _mouseOver->_materialGuid = materialGuid;
+                    _mouseOver->_changeEvent.Trigger();
+                }
+
             } else {
-                _mouseOver->_hasMouseOver = false;
+                if (_mouseOver->_hasMouseOver) {
+                    _mouseOver->_hasMouseOver = false;
+                    _mouseOver->_changeEvent.Trigger();
+                }
             }
 
             return false;
@@ -582,7 +638,7 @@ namespace PlatformRig
         _doHighlightWireframe = false;
         _highlightRay = std::make_pair(Zero<Float3>(), Zero<Float3>());
         _highlightRayWidth = 0.f;
-        _colourByMaterial = false;
+        _colourByMaterial = 0;
         _camera = std::make_shared<VisCameraSettings>();
     }
     

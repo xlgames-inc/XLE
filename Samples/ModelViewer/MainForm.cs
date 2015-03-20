@@ -23,16 +23,21 @@ namespace ModelViewer
 
             visSettings = GUILayer.ModelVisSettings.CreateDefault();
             viewerControl.Underlying.SetupDefaultVis(visSettings);
-            propertyGrid1.SelectedObject = visSettings;
-            visSettings.AttachCallback(propertyGrid1);
 
+            viewSettings.SelectedObject = visSettings;
+            visSettings.AttachCallback(mouseOverDetails);
+
+            var mouseOver = viewerControl.Underlying.CreateVisMouseOver(visSettings);
+            mouseOverDetails.SelectedObject = mouseOver;
+            mouseOver.AttachCallback(mouseOverDetails);
+            
                 // pop-up a modal version of the material editor (for testing/prototyping)
-            using (var editor = new ModalMaterialEditor())
-            {
-                editor.Object = new GUILayer.RawMaterial(
-                    "Game\\Model\\Galleon\\galleon.dae:galleon_01");
-                editor.ShowDialog();
-            }
+            // using (var editor = new ModalMaterialEditor())
+            // {
+            //     editor.Object = new GUILayer.RawMaterial(
+            //         "Game\\Model\\Galleon\\galleon.dae:galleon_01");
+            //     editor.ShowDialog();
+            // }
         }
 
         private GUILayer.ModelVisSettings visSettings;

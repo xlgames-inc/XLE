@@ -28,6 +28,8 @@ namespace PlatformRig
 
         Int2    GetMousePosition();
 
+        static UInt2 s_hackWindowSize;
+
         InputTranslator();
         ~InputTranslator();
 

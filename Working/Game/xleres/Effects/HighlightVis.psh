@@ -6,6 +6,7 @@
 
 #include "SharrFilter.h"
 
+uint4 HighlightMaterial;
 uint4 DrawCallToMaterialIndexMap[256];
 
 // This is a random but distinct set of colours generated from
@@ -33,11 +34,24 @@ Texture2D<uint>		StencilInput;
 
 static const uint DummyMaterialIndex = 0xffffffff;
 
+uint GetHighlightMaterial()
+{
+	return HighlightMaterial.x;
+}
+
 uint MaterialIndex(uint2 pos)
 {
 	uint stencilValue = StencilInput.Load(uint3(pos, 0));
 	if (stencilValue == 0) { return DummyMaterialIndex; }
-	return DrawCallToMaterialIndexMap[(stencilValue-1)%256];
+
+	uint result = DrawCallToMaterialIndexMap[(stencilValue-1)%256].x;
+	#if COLOUR_BY_MAT==2
+			// in this mode, we ignore every material except the highlighted one
+		if (result != GetHighlightMaterial()) {
+			result = DummyMaterialIndex;
+		}
+	#endif
+	return result;
 }
 
 bool HatchFilter(uint2 position)

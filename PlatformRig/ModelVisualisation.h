@@ -14,6 +14,8 @@ namespace RenderCore { namespace Assets
     class IModelFormat; 
     class ModelRenderer;
     class SharedStateSet;
+    class ModelScaffold;
+    class MaterialScaffold;
 }}
 
 namespace RenderCore { namespace Techniques 
@@ -34,10 +36,21 @@ namespace PlatformRig
             RenderCore::Assets::ModelRenderer* _renderer;
             RenderCore::Assets::SharedStateSet* _sharedStateSet;
             std::pair<Float3, Float3> _boundingBox;
-            uint64 _hash;
+            uint64 _hashedModelName;
+
+            Model() : _renderer(nullptr), _sharedStateSet(nullptr), _hashedModelName(0) {}
+        };
+
+        class Scaffolds
+        {
+        public:
+            std::shared_ptr<RenderCore::Assets::ModelScaffold> _model;
+            std::shared_ptr<RenderCore::Assets::MaterialScaffold> _material;
+            uint64 _hashedModelName;
         };
 
         Model GetModel(const Assets::ResChar filename[]);
+        Scaffolds GetScaffolds(const Assets::ResChar filename[]);
         std::string HashToModelName(uint64 hash);
 
         ModelVisCache(std::shared_ptr<RenderCore::Assets::IModelFormat> format);
@@ -86,11 +99,27 @@ namespace PlatformRig
         std::pair<Float3, Float3> _highlightRay;
         float _highlightRayWidth;
 
-        bool _colourByMaterial;
+        unsigned _colourByMaterial;
 
         ChangeEvent _changeEvent;
 
         ModelVisSettings();
+    };
+
+    class VisMouseOver
+    {
+    public:
+        bool _hasMouseOver;
+        Float3 _intersectionPt;
+        unsigned _drawCallIndex;
+        uint64 _materialGuid;
+
+        ChangeEvent _changeEvent;
+
+        VisMouseOver() 
+            : _hasMouseOver(false), _intersectionPt(Zero<Float3>())
+            , _drawCallIndex(0), _materialGuid(0)
+            {}
     };
 
     class ModelVisLayer : public IOverlaySystem
@@ -130,20 +159,12 @@ namespace PlatformRig
 
         VisualisationOverlay(
             std::shared_ptr<ModelVisSettings> settings,
-            std::shared_ptr<ModelVisCache> cache);
+            std::shared_ptr<ModelVisCache> cache,
+            std::shared_ptr<VisMouseOver> mouseOver);
         ~VisualisationOverlay();
     protected:
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
-    };
-
-    class VisMouseOver
-    {
-    public:
-        bool _hasMouseOver;
-        Float3 _intersectionPt;
-
-        VisMouseOver() : _hasMouseOver(false), _intersectionPt(Zero<Float3>()) {}
     };
 
     class MouseOverTrackingOverlay : public IOverlaySystem

@@ -28,6 +28,10 @@ namespace SceneEngine
         public:
             union { unsigned _depthAsInt; float _intersectionDepth; };
             Float4 _pt[3];
+            unsigned _drawCallIndex;
+
+            static bool CompareDepth(const ResultEntry& lhs, const ResultEntry& rhs)
+                { return lhs._intersectionDepth < rhs._intersectionDepth; }
         };
 
         std::vector<ResultEntry> GetResults();

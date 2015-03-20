@@ -83,6 +83,7 @@ namespace GUILayer
     {
             // (todo -- only when activated?)
         if (_pimpl->_inputTranslator) {
+            PlatformRig::InputTranslator::s_hackWindowSize = UInt2(unsigned(_control->Size.Width), unsigned(_control->Size.Height));
             _pimpl->_inputTranslator->OnMouseMove(e->Location.X, e->Location.Y);
             _control->Invalidate();
         }

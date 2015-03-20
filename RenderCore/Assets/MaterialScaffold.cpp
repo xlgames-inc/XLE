@@ -58,25 +58,30 @@ namespace RenderCore { namespace Assets
             //  Note that this is a bit crazy, because we're going to be loading
             //  and re-parsing the same files over and over again!
         Serialization::Vector<std::pair<MaterialGuid, ResolvedMaterial>> resolved;
+        Serialization::Vector<std::pair<MaterialGuid, std::string>> resolvedNames;
         resolved.reserve(configurations.size());
 
         for (auto i=configurations.cbegin(); i!=configurations.cend(); ++i) {
+            auto guid = MakeMaterialGuid(i->c_str());
             StringMeld<MaxPath, ::Assets::ResChar> matName;
             matName << source << ":" << *i;
+            resolvedNames.push_back(std::make_pair(guid, std::string(matName)));
             TRY {
                 auto& rawMat = ::Assets::GetAssetDep<RawMaterial>(matName);
-                resolved.push_back(std::make_pair(MakeMaterialGuid(i->c_str()), rawMat.Resolve(searchRules, &deps)));
+                resolved.push_back(std::make_pair(guid, rawMat.Resolve(searchRules, &deps)));
             } CATCH (const ::Assets::Exceptions::InvalidResource&) {
                 LogWarning << "Got an invalid resource exception while compiling material scaffold for " << source;
             } CATCH_END
         }
 
         std::sort(resolved.begin(), resolved.end(), CompareFirst<MaterialGuid, ResolvedMaterial>());
+        std::sort(resolvedNames.begin(), resolvedNames.end(), CompareFirst<MaterialGuid, std::string>());
 
             // "resolved" is now actually the data we want to write out
         {
             Serialization::NascentBlockSerializer blockSerializer;
             Serialization::Serialize(blockSerializer, resolved);
+            Serialization::Serialize(blockSerializer, resolvedNames);
 
             auto blockSize = blockSerializer.Size();
             auto block = blockSerializer.AsMemoryBlock();
@@ -139,6 +144,15 @@ namespace RenderCore { namespace Assets
         auto i = LowerBound(_data->_materials, guid);
         if (i!=_data->_materials.end() && i->first==guid){
             return &i->second;
+        }
+        return nullptr;
+    }
+
+    const char* MaterialScaffold::GetMaterialName(MaterialGuid guid) const
+    {
+        auto i = LowerBound(_data->_materialNames, guid);
+        if (i!=_data->_materialNames.end() && i->first==guid){
+            return i->second.c_str();
         }
         return nullptr;
     }

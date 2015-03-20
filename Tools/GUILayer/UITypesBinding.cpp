@@ -7,9 +7,12 @@
 #pragma warning(disable:4512)
 
 #include "UITypesBinding.h"
+#include "../../PlatformRig/ModelVisualisation.h"
 #include "../../RenderCore/Assets/Material.h"
+#include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../Utility/StringFormat.h"
 #include <msclr\auto_gcroot.h>
+#include <iomanip>
 
 namespace GUILayer
 {
@@ -30,7 +33,7 @@ namespace GUILayer
     void    InvalidatePropertyGrid::OnChange()
     {
         if (_linked.get()) {
-            _linked->Invalidate();
+            _linked->Refresh();
         }
     }
 
@@ -47,6 +50,69 @@ namespace GUILayer
     {
         auto attached = std::make_shared<PlatformRig::ModelVisSettings>();
         return gcnew ModelVisSettings(std::move(attached));
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    System::String^ VisMouseOver::IntersectionPt::get()
+    {
+        if ((*_object)->_hasMouseOver) {
+            return clix::marshalString<clix::E_UTF8>(
+                std::string(StringMeld<64>()
+                    << std::setprecision(5)
+                    << (*_object)->_intersectionPt[0] << ","
+                    << (*_object)->_intersectionPt[1] << ","
+                    << (*_object)->_intersectionPt[2]));
+        } else {
+            return "<<no intersection>>";
+        }
+    }
+
+    unsigned VisMouseOver::DrawCallIndex::get() 
+    { 
+        if ((*_object)->_hasMouseOver) {
+            return (*_object)->_drawCallIndex;
+        } else {
+            return ~unsigned(0x0);
+        }
+    }
+
+    System::String^ VisMouseOver::MaterialName::get() 
+    { 
+        if ((*_object)->_hasMouseOver) {
+            auto scaffolds = (*_modelCache)->GetScaffolds((*_modelSettings)->_modelName.c_str());
+            if (scaffolds._material) {
+                auto matName = scaffolds._material->GetMaterialName((*_object)->_materialGuid);
+                if (matName) {
+                    auto colon = XlFindChar(matName, ':');
+                    return clix::marshalString<clix::E_UTF8>(std::string(colon ? (colon+1) : matName));
+                }
+            }
+        }
+        return "<<no material>>";
+    }
+
+    void VisMouseOver::AttachCallback(PropertyGrid^ callback)
+    {
+        (*_object)->_changeEvent._callbacks.push_back(
+            std::shared_ptr<OnChangeCallback>(new InvalidatePropertyGrid(callback)));
+    }
+
+    VisMouseOver::VisMouseOver(
+        std::shared_ptr<PlatformRig::VisMouseOver> attached,
+        std::shared_ptr<PlatformRig::ModelVisSettings> settings,
+        std::shared_ptr<PlatformRig::ModelVisCache> cache)
+    {
+        _object.reset(new std::shared_ptr<PlatformRig::VisMouseOver>(std::move(attached)));
+        _modelSettings.reset(new std::shared_ptr<PlatformRig::ModelVisSettings>(std::move(settings)));
+        _modelCache.reset(new std::shared_ptr<PlatformRig::ModelVisCache>(std::move(cache)));
+    }
+
+    VisMouseOver::~VisMouseOver() 
+    { 
+        _object.reset(); 
+        _modelSettings.reset(); 
+        _modelCache.reset(); 
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

@@ -84,6 +84,7 @@ namespace GUILayer
     }
 
     static std::shared_ptr<PlatformRig::ModelVisCache> s_visCache;
+    static std::shared_ptr<PlatformRig::VisMouseOver> s_visMouseOver;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -188,20 +189,38 @@ namespace GUILayer
             s_visCache = std::make_shared<PlatformRig::ModelVisCache>(
                 std::shared_ptr<RenderCore::Assets::IModelFormat>());
         }
+        if (!s_visMouseOver) {
+            s_visMouseOver = std::make_shared<PlatformRig::VisMouseOver>();
+        }
 
         auto visLayer = std::make_unique<PlatformRig::ModelVisLayer>(settings->GetUnderlying(), s_visCache);
         auto& overlaySet = *GetWindowRig().GetFrameRig().GetMainOverlaySystem();
         overlaySet.AddSystem(std::move(visLayer));
-        overlaySet.AddSystem(std::make_shared<PlatformRig::VisualisationOverlay>(settings->GetUnderlying(), s_visCache));
+        overlaySet.AddSystem(
+            std::make_shared<PlatformRig::VisualisationOverlay>(
+                settings->GetUnderlying(), s_visCache, s_visMouseOver));
 
         AddDefaultCameraHandler(settings->Camera);
 
         overlaySet.AddSystem(
             std::make_shared<PlatformRig::MouseOverTrackingOverlay>(
-                std::make_shared<PlatformRig::VisMouseOver>(),
+                s_visMouseOver,
                 EngineDevice::GetInstance()->GetNative().GetRenderDevice()->GetImmediateContext(),
                 _pimpl->_globalTechniqueContext,
                 settings->GetUnderlying(), s_visCache));
+    }
+
+    VisMouseOver^ LayerControl::CreateVisMouseOver(ModelVisSettings^ settings)
+    {
+        if (!s_visCache) {
+            s_visCache = std::make_shared<PlatformRig::ModelVisCache>(
+                std::shared_ptr<RenderCore::Assets::IModelFormat>());
+        }
+        if (!s_visMouseOver) {
+            s_visMouseOver = std::make_shared<PlatformRig::VisMouseOver>();
+        }
+
+        return gcnew VisMouseOver(s_visMouseOver, settings->GetUnderlying(), s_visCache);
     }
 
     namespace Internal

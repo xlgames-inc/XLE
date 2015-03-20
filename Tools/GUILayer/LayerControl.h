@@ -15,11 +15,13 @@ namespace GUILayer
     ref class ModelVisSettings;
     ref class IOverlaySystem;
     ref class VisCameraSettings;
+    ref class VisMouseOver;
 
 	public ref class LayerControl : public EngineControl
 	{
 	public:
         void SetupDefaultVis(ModelVisSettings^ settings);
+        VisMouseOver^ CreateVisMouseOver(ModelVisSettings^ settings);
         void AddDefaultCameraHandler(VisCameraSettings^);
 
         void AddSystem(IOverlaySystem^ overlay);

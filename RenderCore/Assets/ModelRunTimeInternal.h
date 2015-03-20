@@ -168,14 +168,14 @@ namespace RenderCore { namespace Assets
     class ModelImmutableData
     {
     public:
-        ModelCommandStream          _visualScene;
+        ModelCommandStream      _visualScene;
         
-        RawGeometry*                _geos;
-        size_t                      _geoCount;
-        BoundSkinnedGeometry*       _boundSkinnedControllers;
-        size_t                      _boundSkinnedControllerCount;
-        MaterialGuid*               _materialReferences;
-        size_t                      _materialReferencesCount;
+        RawGeometry*            _geos;
+        size_t                  _geoCount;
+        BoundSkinnedGeometry*   _boundSkinnedControllers;
+        size_t                  _boundSkinnedControllerCount;
+        MaterialGuid*           _materialReferences;
+        size_t                  _materialReferencesCount;
 
         std::pair<Float3, Float3>   _boundingBox;
 
@@ -186,6 +186,7 @@ namespace RenderCore { namespace Assets
     {
     public:
         Serialization::Vector<std::pair<MaterialGuid, ResolvedMaterial>> _materials;
+        Serialization::Vector<std::pair<MaterialGuid, std::string>> _materialNames;
     };
 
 ////////////////////////////////////////////////////////////////////////////////////////////
