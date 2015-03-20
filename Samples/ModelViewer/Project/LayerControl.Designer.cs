@@ -16,6 +16,7 @@
             if (disposing && (components != null))
             {
                 components.Dispose();
+                layerControl.Dispose();
             }
             base.Dispose(disposing);
         }

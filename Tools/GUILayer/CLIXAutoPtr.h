@@ -49,7 +49,7 @@ namespace clix
         !auto_ptr() /*throw()*/
         {
             using namespace std;
-            assert(("msclr::auto_ptr<> : Finalizer used! The variable deleted in non-deterministic way.", false));
+            System::Diagnostics::Debugger::Log(0, "msclr::auto_ptr<>", "Finalizer used! The variable deleted in non-deterministic way.");
  
             delete p_;
         }
