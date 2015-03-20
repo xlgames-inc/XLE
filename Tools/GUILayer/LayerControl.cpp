@@ -11,6 +11,7 @@
 #include "IWindowRig.h"
 #include "IOverlaySystem.h"
 #include "UITypesBinding.h"
+#include "EngineDevice.h"
 #include "../../PlatformRig/InputTranslator.h"
 #include "../../PlatformRig/FrameRig.h"
 #include "../../PlatformRig/OverlaySystem.h"
@@ -194,6 +195,13 @@ namespace GUILayer
         overlaySet.AddSystem(std::make_shared<PlatformRig::VisualisationOverlay>(settings->GetUnderlying(), s_visCache));
 
         AddDefaultCameraHandler(settings->Camera);
+
+        overlaySet.AddSystem(
+            std::make_shared<PlatformRig::MouseOverTrackingOverlay>(
+                std::make_shared<PlatformRig::VisMouseOver>(),
+                EngineDevice::GetInstance()->GetNative().GetRenderDevice()->GetImmediateContext(),
+                _pimpl->_globalTechniqueContext,
+                settings->GetUnderlying(), s_visCache));
     }
 
     namespace Internal

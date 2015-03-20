@@ -214,10 +214,11 @@ namespace SceneEngine
         return Combine(InvertOrthonormalTransform(sceneCamera._cameraToWorld), projectionMatrix);
     }
 
-    std::pair<Float3, Float3> IntersectionTestContext::CalculateWorldSpaceRay(Int2 screenCoord) const
+    std::pair<Float3, Float3> IntersectionTestContext::CalculateWorldSpaceRay(
+        const RenderCore::Techniques::CameraDesc& sceneCamera,
+        Int2 screenCoord)
     {
         auto viewport = GetViewportDims();
-        auto sceneCamera = _sceneParser->GetCameraDesc();
         auto worldToProjection = CalculateWorldToProjection(sceneCamera, viewport[0] / float(viewport[1]));
 
         Float3 frustumCorners[8];
@@ -228,6 +229,11 @@ namespace SceneEngine
             screenCoord, frustumCorners, cameraPosition, 
             sceneCamera._nearClip, sceneCamera._farClip,
             std::make_pair(Float2(0.f, 0.f), Float2(float(viewport[0]), float(viewport[1]))));
+    }
+
+    std::pair<Float3, Float3> IntersectionTestContext::CalculateWorldSpaceRay(Int2 screenCoord) const
+    {
+        return CalculateWorldSpaceRay(_sceneParser->GetCameraDesc(), screenCoord);
     }
 
     Float2 IntersectionTestContext::ProjectToScreenSpace(const Float3& worldSpaceCoord) const

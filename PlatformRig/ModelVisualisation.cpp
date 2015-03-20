@@ -13,6 +13,9 @@
 #include "../SceneEngine/LightDesc.h"
 #include "../SceneEngine/LightingParser.h"
 #include "../SceneEngine/LightingParserContext.h"
+#include "../SceneEngine/RayVsModel.h"
+#include "../SceneEngine/IntersectionTest.h"
+#include "../RenderOverlays/DebuggingDisplay.h"
 #include "../RenderCore/IThreadContext.h"
 #include "../RenderCore/Techniques/TechniqueUtils.h"
 #include "../RenderCore/Techniques/CommonResources.h"
@@ -202,20 +205,25 @@ namespace PlatformRig
         return result;
     }
 
+    static RenderCore::Techniques::CameraDesc AsCameraDesc(const VisCameraSettings& camSettings)
+    {
+        RenderCore::Techniques::CameraDesc result;
+        result._cameraToWorld = MakeCameraToWorld(
+            Normalize(camSettings._focus - camSettings._position),
+            Float3(0.f, 0.f, 1.f), camSettings._position);
+        result._farClip = camSettings._farClip;
+        result._nearClip = camSettings._nearClip;
+        result._verticalFieldOfView = Deg2Rad(camSettings._verticalFieldOfView);
+        result._temporaryMatrix = Identity<Float4x4>();
+        return result;
+    }
+
     class ModelSceneParser : public SceneEngine::ISceneParser
     {
     public:
         RenderCore::Techniques::CameraDesc  GetCameraDesc() const
         {
-            RenderCore::Techniques::CameraDesc result;
-            result._cameraToWorld = MakeCameraToWorld(
-                Normalize(_settings->_camera->_focus - _settings->_camera->_position),
-                Float3(0.f, 0.f, 1.f), _settings->_camera->_position);
-            result._farClip = _settings->_camera->_farClip;
-            result._nearClip = _settings->_camera->_nearClip;
-            result._verticalFieldOfView = Deg2Rad(_settings->_camera->_verticalFieldOfView);
-            result._temporaryMatrix = Identity<Float4x4>();
-            return result;
+            return AsCameraDesc(*_settings->_camera);
         }
 
         void ExecuteScene(  RenderCore::Metal::DeviceContext* context, 
@@ -469,6 +477,93 @@ namespace PlatformRig
     }
 
     VisualisationOverlay::~VisualisationOverlay() {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class MouseOverTrackingListener : public RenderOverlays::DebuggingDisplay::IInputListener
+    {
+    public:
+        bool OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
+        {
+            using namespace SceneEngine;
+
+            auto model = _cache->GetModel(_settings->_modelName.c_str());
+            assert(model._renderer && model._sharedStateSet);
+
+            auto metalContext = RenderCore::Metal::DeviceContext::Get(*_threadContext);
+            auto cam = AsCameraDesc(*_settings->_camera);
+            auto worldSpaceRay = IntersectionTestContext::CalculateWorldSpaceRay(cam, evnt._mousePosition);
+            
+            RayVsModelStateContext stateContext(_threadContext, *_techniqueContext, &cam);
+            LightingParserContext parserContext(*_techniqueContext);
+            stateContext.SetRay(worldSpaceRay);
+            model._sharedStateSet->CaptureState(metalContext.get());
+            model._renderer->Render(
+                ModelRenderer::Context(metalContext.get(), parserContext, 6, *model._sharedStateSet),
+                Identity<Float4x4>());
+            model._sharedStateSet->ReleaseState(metalContext.get());
+
+            auto results = stateContext.GetResults();
+            if (!results.empty()) {
+                _mouseOver->_hasMouseOver = true;
+                _mouseOver->_intersectionPt = 
+                    LinearInterpolate(worldSpaceRay.first, worldSpaceRay.second, results[0]._intersectionDepth);
+            } else {
+                _mouseOver->_hasMouseOver = false;
+            }
+
+            return false;
+        }
+
+        MouseOverTrackingListener(
+            std::shared_ptr<VisMouseOver> mouseOver,
+            std::shared_ptr<RenderCore::IThreadContext> threadContext,
+            std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext,
+            std::shared_ptr<ModelVisSettings> settings,
+            std::shared_ptr<ModelVisCache> cache)
+            : _mouseOver(std::move(mouseOver))
+            , _threadContext(std::move(threadContext))
+            , _techniqueContext(std::move(techniqueContext))
+            , _settings(std::move(settings))
+            , _cache(std::move(cache))
+        {}
+        MouseOverTrackingListener::~MouseOverTrackingListener() {}
+
+    protected:
+        std::shared_ptr<VisMouseOver> _mouseOver;
+        std::shared_ptr<RenderCore::IThreadContext> _threadContext;
+        std::shared_ptr<RenderCore::Techniques::TechniqueContext> _techniqueContext;
+        std::shared_ptr<ModelVisSettings> _settings;
+        std::shared_ptr<ModelVisCache> _cache;
+    };
+
+    auto MouseOverTrackingOverlay::GetInputListener() -> std::shared_ptr<IInputListener>
+    {
+        return _inputListener;
+    }
+
+    void MouseOverTrackingOverlay::RenderToScene(
+        RenderCore::IThreadContext*, 
+        SceneEngine::LightingParserContext&) {}
+    void MouseOverTrackingOverlay::RenderWidgets(
+        RenderCore::IThreadContext*, 
+        const RenderCore::Techniques::ProjectionDesc&) {}
+    void MouseOverTrackingOverlay::SetActivationState(bool) {}
+
+    MouseOverTrackingOverlay::MouseOverTrackingOverlay(
+        std::shared_ptr<VisMouseOver> mouseOver,
+        std::shared_ptr<RenderCore::IThreadContext> threadContext,
+        std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext,
+        std::shared_ptr<ModelVisSettings> settings,
+        std::shared_ptr<ModelVisCache> cache)
+    {
+        _inputListener = std::make_shared<MouseOverTrackingListener>(
+            std::move(mouseOver),
+            std::move(threadContext), std::move(techniqueContext), 
+            std::move(settings), std::move(cache));
+    }
+
+    MouseOverTrackingOverlay::~MouseOverTrackingOverlay() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

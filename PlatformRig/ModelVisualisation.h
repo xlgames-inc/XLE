@@ -16,6 +16,11 @@ namespace RenderCore { namespace Assets
     class SharedStateSet;
 }}
 
+namespace RenderCore { namespace Techniques 
+{
+    class TechniqueContext;
+}}
+
 namespace SceneEngine { class ISceneParser; }
 
 namespace PlatformRig
@@ -130,6 +135,39 @@ namespace PlatformRig
     protected:
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
+    };
+
+    class VisMouseOver
+    {
+    public:
+        bool _hasMouseOver;
+        Float3 _intersectionPt;
+
+        VisMouseOver() : _hasMouseOver(false), _intersectionPt(Zero<Float3>()) {}
+    };
+
+    class MouseOverTrackingOverlay : public IOverlaySystem
+    {
+    public:
+        virtual std::shared_ptr<IInputListener> GetInputListener();
+
+        virtual void RenderToScene(
+            RenderCore::IThreadContext* context, 
+            SceneEngine::LightingParserContext& parserContext); 
+        virtual void RenderWidgets(
+            RenderCore::IThreadContext* context, 
+            const RenderCore::Techniques::ProjectionDesc& projectionDesc);
+        virtual void SetActivationState(bool newState);
+
+        MouseOverTrackingOverlay(
+            std::shared_ptr<VisMouseOver> mouseOver,
+            std::shared_ptr<RenderCore::IThreadContext> threadContext,
+            std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext,
+            std::shared_ptr<ModelVisSettings> settings,
+            std::shared_ptr<ModelVisCache> cache);
+        ~MouseOverTrackingOverlay();
+    protected:
+        std::shared_ptr<IInputListener> _inputListener;
     };
 
     std::unique_ptr<SceneEngine::ISceneParser> CreateModelScene(const ModelVisCache::Model& model);

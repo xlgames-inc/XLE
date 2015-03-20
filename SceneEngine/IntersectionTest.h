@@ -29,6 +29,10 @@ namespace SceneEngine
     {
     public:
         std::pair<Float3, Float3> CalculateWorldSpaceRay(Int2 screenCoord) const;
+        static std::pair<Float3, Float3> CalculateWorldSpaceRay(
+            const RenderCore::Techniques::CameraDesc& sceneCamera,
+            Int2 screenCoord);
+        
         Float2 ProjectToScreenSpace(const Float3& worldSpaceCoord) const;
         RenderCore::Techniques::CameraDesc GetCameraDesc() const;
         const RenderCore::Techniques::TechniqueContext& GetTechniqueContext() const { return *_techniqueContext.get(); }
