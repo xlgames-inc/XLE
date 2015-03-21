@@ -17,6 +17,11 @@
 #if defined(_DEBUG)
     #define ASSETS_STORE_NAMES
 #endif
+#define ASSETS_STORE_DIVERGENT		// divergent assets are intended for tools (not in-game). But we can't selectively disable this feature
+
+#if defined(ASSETS_STORE_DIVERGENT)
+	#include "DivergentAsset.h"
+#endif
 
 namespace Assets
 {
@@ -26,6 +31,13 @@ namespace Assets
 
     namespace Internal
     {
+		template <typename AssetType>
+			class AssetTraits
+		{
+		public:
+			using DivAsset = DivergentAsset<AssetType>;
+		};
+
         template <typename AssetType>
             class AssetSet : public IAssetSet
         {
@@ -35,6 +47,12 @@ namespace Assets
             void LogReport();
 
             static std::vector<std::pair<uint64, std::unique_ptr<AssetType>>> _assets;
+			
+			#if defined(ASSETS_STORE_DIVERGENT)
+				using DivAsset = typename AssetTraits<AssetType>::DivAsset;
+				static std::vector<std::pair<uint64, std::unique_ptr<DivAsset>>> _divergentAssets;
+			#endif
+
             #if defined(ASSETS_STORE_NAMES)
                 static std::vector<std::pair<uint64, std::string>> _assetNames;
             #endif
@@ -123,9 +141,20 @@ namespace Assets
                     //      * otherwise we build a new asset
                     //
                 auto hash = BuildHash(init);
-                auto& assetSet = GetAssetSet<AssetType>()._assets;
-                auto i = LowerBound(assetSet, hash);
-                if (i != assetSet.end() && i->first == hash) {
+				auto& assetSet = GetAssetSet<AssetType>();
+
+				#if defined(ASSETS_STORE_DIVERGENT)
+						// divergent assets will always shadow normal assets
+						// we also don't do a dependency check for these assets
+					auto di = LowerBound(assetSet._divergentAssets, hash);
+					if (di != assetSet._divergentAssets.end() && di->first == hash) {
+						return *di->second->GetAsset();
+					}
+				#endif
+
+                auto& assets = assetSet._assets;
+				auto i = LowerBound(assets, hash);
+				if (i != assets.end() && i->first == hash) {
                     if (CheckDependancy<DoCheckDependancy>::NeedsRefresh(i->second.get())) {
                             // note --  old resource will stay in memory until the new one has been constructed
                             //          If we get an exception during construct, we'll be left with a null ptr
@@ -154,9 +183,35 @@ namespace Assets
                     //  For the future, we should consider threading problems, also. We will probably need
                     //  a lock on the assetset -- and it may be best to release this lock while we're calling
                     //  the constructor
-                i = LowerBound(assetSet, hash);
-                return *assetSet.insert(i, std::make_pair(hash, std::move(newAsset)))->second;
+				i = LowerBound(assets, hash);
+				return *assets.insert(i, std::make_pair(hash, std::move(newAsset)))->second;
             }
+
+		template <typename AssetType, int InitCount>
+			std::shared_ptr<typename AssetTraits<AssetType>::DivAsset>& GetDivergentAsset(AssetInitializer<InitCount> init)
+			{
+				#if !defined(ASSETS_STORE_DIVERGENT)
+					throw ::Exceptions::BasicLabel("Could not get divergent asset, because ASSETS_STORE_DIVERGENT is not defined");
+				#else
+
+					auto hash = BuildHash(init);
+					auto& assetSet = GetAssetSet<AssetType>();
+					auto di = LowerBound(assetSet._divergentAssets, hash);
+					if (di != assetSet._divergentAssets.end() && di->first == hash) {
+						return di->second;
+					}
+
+					auto newDivAsset = std::make_shared<typename AssetTraits<AssetType>::DivAsset>(
+						GetAsset<true, false, AssetType>(init));
+
+						// Do we have to search for an insertion point here again?
+						// is it possible that constructing an asset could create a new divergent
+						// asset of the same type? It seems unlikely
+					assert(di == LowerBound(assetSet._divergentAssets, hash));
+					return assetSet._divergentAssets.insert(di, std::make_pair(hash, std::move(newDivAsset)))->second;
+
+				#endif
+			}
 
         template <typename AssetType>
             AssetSet<AssetType>::~AssetSet() {}
@@ -165,6 +220,9 @@ namespace Assets
             void AssetSet<AssetType>::Clear() 
             {
                 _assets.clear();
+				#if defined(ASSETS_STORE_DIVERGENT)
+					_divergentAssets.clear();
+				#endif
                 #if defined(ASSETS_STORE_NAMES)
                     _assetNames.clear();
                 #endif

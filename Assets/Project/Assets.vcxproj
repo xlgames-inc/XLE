@@ -97,6 +97,7 @@
     <ClInclude Include="..\BlockSerializer.h" />
     <ClInclude Include="..\ChunkFile.h" />
     <ClInclude Include="..\CompileAndAsyncManager.h" />
+    <ClInclude Include="..\DivergentAsset.h" />
     <ClInclude Include="..\IntermediateResources.h" />
   </ItemGroup>
   <ItemGroup>
@@ -106,6 +107,7 @@
     <ClCompile Include="..\BlockSerializer.cpp" />
     <ClCompile Include="..\ChunkFile.cpp" />
     <ClCompile Include="..\CompileAndAsyncManager.cpp" />
+    <ClCompile Include="..\DivergentAsset.cpp" />
     <ClCompile Include="..\IntermediateResources.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

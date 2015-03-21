@@ -8,6 +8,7 @@
     <ClInclude Include="..\CompileAndAsyncManager.h" />
     <ClInclude Include="..\IntermediateResources.h" />
     <ClInclude Include="..\ArchiveCache.h" />
+    <ClInclude Include="..\DivergentAsset.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Assets.cpp" />
@@ -17,6 +18,7 @@
     <ClCompile Include="..\CompileAndAsyncManager.cpp" />
     <ClCompile Include="..\IntermediateResources.cpp" />
     <ClCompile Include="..\ArchiveCache.cpp" />
+    <ClCompile Include="..\DivergentAsset.cpp" />
   </ItemGroup>
   <ItemGroup>
   </ItemGroup>
