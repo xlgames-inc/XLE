@@ -122,8 +122,8 @@ namespace SceneEngine
             Desc(unsigned projectionType, bool blendFog, SkyGeometryType geoType) : _projectionType(projectionType), _blendFog(blendFog), _geoType(geoType) {}
         };
 
-        RenderCore::Metal::ShaderProgram* _shader;
-        RenderCore::Metal::ShaderProgram* _postFogShader;
+        const RenderCore::Metal::ShaderProgram* _shader;
+        const RenderCore::Metal::ShaderProgram* _postFogShader;
 
         RenderCore::Metal::BoundUniforms _uniforms;
         RenderCore::Metal::BoundUniforms _postfogUniforms;

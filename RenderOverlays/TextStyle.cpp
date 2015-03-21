@@ -177,7 +177,7 @@ class TextStyleResources
 public:
     class Desc {};
 
-    RenderCore::Metal::ShaderProgram*   _shaderProgram;
+    const RenderCore::Metal::ShaderProgram*   _shaderProgram;
     RenderCore::Metal::BoundInputLayout _boundInputLayout;
     RenderCore::Metal::BoundUniforms    _boundUniforms;
 
@@ -202,7 +202,7 @@ TextStyleResources::TextStyleResources(const Desc& desc)
     const char pixelShaderSource[]    = "game/xleres/basic.psh:PCT_Text:" PS_DefShaderModel;
 
     using namespace RenderCore::Metal;
-    ShaderProgram& shaderProgram = Assets::GetAssetDep<ShaderProgram>(vertexShaderSource, pixelShaderSource);
+    const auto& shaderProgram = Assets::GetAssetDep<ShaderProgram>(vertexShaderSource, pixelShaderSource);
     BoundInputLayout boundInputLayout(GlobalInputLayouts::PCT, shaderProgram);
 
     ConstantBufferLayoutElement elements[] = {

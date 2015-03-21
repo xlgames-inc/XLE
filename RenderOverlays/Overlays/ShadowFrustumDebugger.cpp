@@ -38,7 +38,7 @@ namespace Overlays
             Desc(unsigned cascadeMode) : _cascadeMode(cascadeMode) {}
         };
 
-        ShaderProgram*  _shader;
+        const ShaderProgram*  _shader;
         BoundUniforms   _uniforms;
         
         const Assets::DependencyValidation& GetDependencyValidation() const   { return *_depVal; }
@@ -53,7 +53,7 @@ namespace Overlays
         _shader = &Assets::GetAssetDep<ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen_viewfrustumvector:vs_*",
             "game/xleres/deferred/debugging/cascadevis.psh:main:ps_*",
-            StringMeld<128>() << "SHADOW_CASCADE_MODE=" << desc._cascadeMode);
+            (const ::Assets::ResChar*)(StringMeld<128, ::Assets::ResChar>() << "SHADOW_CASCADE_MODE=" << desc._cascadeMode));
 
         _uniforms = BoundUniforms(*_shader);
         Techniques::TechniqueContext::BindGlobalUniforms(_uniforms);

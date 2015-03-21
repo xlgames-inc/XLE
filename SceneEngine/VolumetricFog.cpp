@@ -55,17 +55,17 @@ namespace SceneEngine
                 , _esmShadowMaps(esmShadowMaps), _doNoiseOffset(doNoiseOffset) {}
         };
 
-        RenderCore::Metal::ShaderProgram*                   _buildExponentialShadowMap;
+        const RenderCore::Metal::ShaderProgram*             _buildExponentialShadowMap;
         std::unique_ptr<RenderCore::Metal::BoundUniforms>   _buildExponentialShadowMapBinding;
-        RenderCore::Metal::ShaderProgram*                   _horizontalFilter;
-        RenderCore::Metal::ShaderProgram*                   _verticalFilter;
+        const RenderCore::Metal::ShaderProgram*             _horizontalFilter;
+        const RenderCore::Metal::ShaderProgram*             _verticalFilter;
         std::unique_ptr<RenderCore::Metal::BoundUniforms>   _horizontalFilterBinding, _verticalFilterBinding;
 
-        RenderCore::Metal::ComputeShader*                   _injectLight;
+        const RenderCore::Metal::ComputeShader*             _injectLight;
         std::unique_ptr<RenderCore::Metal::BoundUniforms>   _injectLightBinding;
-        RenderCore::Metal::ComputeShader*                   _propagateLight;
+        const RenderCore::Metal::ComputeShader*             _propagateLight;
         std::unique_ptr<RenderCore::Metal::BoundUniforms>   _propagateLightBinding;
-        RenderCore::Metal::ShaderProgram*                   _resolveLight;
+        const RenderCore::Metal::ShaderProgram*             _resolveLight;
         std::unique_ptr<RenderCore::Metal::BoundUniforms>   _resolveLightBinding;
 
         VolumetricFogShaders(const Desc& desc);

@@ -467,7 +467,7 @@ namespace RenderCore { namespace Assets
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    SceneEngine::TerrainCell& TerrainFormat::LoadHeights(const char filename[], bool skipDependsCheck) const
+    const SceneEngine::TerrainCell& TerrainFormat::LoadHeights(const char filename[], bool skipDependsCheck) const
     {
         if (skipDependsCheck) {
             return ::Assets::GetAsset<TerrainCell>(filename);
@@ -475,7 +475,7 @@ namespace RenderCore { namespace Assets
         return ::Assets::GetAssetDep<TerrainCell>(filename);
     }
 
-    SceneEngine::TerrainCellTexture& TerrainFormat::LoadCoverage(const char filename[]) const
+    const SceneEngine::TerrainCellTexture& TerrainFormat::LoadCoverage(const char filename[]) const
     {
         return ::Assets::GetAssetDep<TerrainCellTexture>(filename);
     }

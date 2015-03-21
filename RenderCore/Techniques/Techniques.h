@@ -26,12 +26,12 @@ namespace RenderCore { namespace Techniques
         struct Source { enum Enum { Geometry, GlobalEnvironment, Runtime, Material, Max }; };
         ParameterBox    _parameters[Source::Max];
 
-        uint64      CalculateFilteredHash(uint64 inputHash, const ParameterBox* globalState[Source::Max]);
+        uint64      CalculateFilteredHash(uint64 inputHash, const ParameterBox* globalState[Source::Max]) const;
         void        BuildStringTable(std::vector<std::pair<std::string, std::string>>& defines) const;
 
     private:
-        uint64      CalculateFilteredState(const ParameterBox* globalState[Source::Max]);
-        std::vector<std::pair<uint64, uint64>>  _globalToFilteredTable;
+        uint64      CalculateFilteredState(const ParameterBox* globalState[Source::Max]) const;
+        mutable std::vector<std::pair<uint64, uint64>>  _globalToFilteredTable;
 
         friend class Technique;
     };
@@ -111,7 +111,7 @@ namespace RenderCore { namespace Techniques
     {
     public:
         ResolvedShader      FindVariation(  const ParameterBox* globalState[ShaderParameters::Source::Max], 
-                                            const TechniqueInterface& techniqueInterface);
+                                            const TechniqueInterface& techniqueInterface) const;
         bool                IsValid() const { return !_vertexShaderName.empty(); }
 
         Technique(Utility::Data& source, ::Assets::DirectorySearchRules* searchRules = nullptr, std::vector<const ::Assets::DependencyValidation*>* inherited = nullptr);
@@ -120,8 +120,8 @@ namespace RenderCore { namespace Techniques
     protected:
         std::string         _name;
         ShaderParameters    _baseParameters;
-        std::vector<std::pair<uint64, ResolvedShader>>  _filteredToResolved;
-        std::vector<std::pair<uint64, ResolvedShader>>  _globalToResolved;
+        mutable std::vector<std::pair<uint64, ResolvedShader>>  _filteredToResolved;
+        mutable std::vector<std::pair<uint64, ResolvedShader>>  _globalToResolved;
         std::string         _vertexShaderName;
         std::string         _pixelShaderName;
         std::string         _geometryShaderName;
@@ -149,18 +149,18 @@ namespace RenderCore { namespace Techniques
         void        ResolveAndBind( 
             ResolvedShader& shader, 
             const ParameterBox* globalState[ShaderParameters::Source::Max],
-            const TechniqueInterface& techniqueInterface);
+            const TechniqueInterface& techniqueInterface) const;
 
-        std::vector<std::unique_ptr<Metal::ShaderProgram>> _resolvedShaderPrograms;
-        std::vector<std::unique_ptr<Metal::BoundUniforms>> _resolvedBoundUniforms;
-        std::vector<std::unique_ptr<Metal::BoundInputLayout>> _resolvedBoundInputLayouts;
-        std::vector<std::unique_ptr<Metal::ConstantBufferLayout>> _resolvedMaterialConstantsLayouts;
+        mutable std::vector<std::unique_ptr<Metal::ShaderProgram>> _resolvedShaderPrograms;
+        mutable std::vector<std::unique_ptr<Metal::BoundUniforms>> _resolvedBoundUniforms;
+        mutable std::vector<std::unique_ptr<Metal::BoundInputLayout>> _resolvedBoundInputLayouts;
+        mutable std::vector<std::unique_ptr<Metal::ConstantBufferLayout>> _resolvedMaterialConstantsLayouts;
     };
 
     class ShaderType
     {
     public:
-        ResolvedShader      FindVariation(int techniqueIndex, const ParameterBox* globalState[ShaderParameters::Source::Max], const TechniqueInterface& techniqueInterface);
+        ResolvedShader      FindVariation(int techniqueIndex, const ParameterBox* globalState[ShaderParameters::Source::Max], const TechniqueInterface& techniqueInterface) const;
         const ::Assets::DependencyValidation&         GetDependencyValidation() const     { return *_validationCallback; }
 
         ShaderType(const char resourceName[]);

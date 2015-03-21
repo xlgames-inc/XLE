@@ -221,15 +221,15 @@ namespace SceneEngine
         _shadowedDirectionalLight = &::Assets::GetAssetDep<Metal::ShaderProgram>(
             vertexShader_viewFrustumVector, 
             "game/xleres/deferred/resolve.psh:ResolveLight:ps_*",
-            StringMeld<256>() << definesTable << ";SHADOW_CASCADE_MODE=1");
+            (const ::Assets::ResChar*)(StringMeld<256, ::Assets::ResChar>() << definesTable << ";SHADOW_CASCADE_MODE=1"));
         _shadowedDirectionalOrthoLight = &::Assets::GetAssetDep<Metal::ShaderProgram>(
             vertexShader_viewFrustumVector, 
             "game/xleres/deferred/resolve.psh:ResolveLight:ps_*",
-            StringMeld<256>() << definesTable << ";SHADOW_CASCADE_MODE=2");
+			(const ::Assets::ResChar*)(StringMeld<256, ::Assets::ResChar>() << definesTable << ";SHADOW_CASCADE_MODE=2"));
         _shadowedPointLight = &::Assets::GetAssetDep<Metal::ShaderProgram>(
             vertexShader_viewFrustumVector, 
             "game/xleres/deferred/resolve.psh:ResolvePointLight:ps_*",
-            StringMeld<256>() << definesTable << ";SHADOW_CASCADE_MODE=1");
+			(const ::Assets::ResChar*)(StringMeld<256, ::Assets::ResChar>() << definesTable << ";SHADOW_CASCADE_MODE=1"));
 
         _unshadowedDirectionalLight = &::Assets::GetAssetDep<Metal::ShaderProgram>(
             vertexShader_viewFrustumVector, 

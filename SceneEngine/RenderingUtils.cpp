@@ -54,7 +54,7 @@ namespace SceneEngine
             ConstantBufferPacket constantBufferPackets[2];
             constantBufferPackets[0] = MakeLocalTransformPacket(Identity<Float4x4>(), ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld));
 
-            ShaderProgram& shaderProgram = ::Assets::GetAsset<ShaderProgram>(
+            const auto& shaderProgram = ::Assets::GetAsset<ShaderProgram>(
                 "game/xleres/forward/illum.vsh:main:" VS_DefShaderModel, 
                 "game/xleres/forward/illum.psh:main", 
                 "GEO_HAS_COLOUR=1");

@@ -67,7 +67,7 @@ namespace RenderCore { namespace Assets
             matName << source << ":" << *i;
             resolvedNames.push_back(std::make_pair(guid, std::string(matName)));
             TRY {
-                auto& rawMat = ::Assets::GetAssetDep<RawMaterial>(matName);
+                auto& rawMat = ::Assets::GetAssetDep<RawMaterial>((const ::Assets::ResChar*)matName);
                 resolved.push_back(std::make_pair(guid, rawMat.Resolve(searchRules, &deps)));
             } CATCH (const ::Assets::Exceptions::InvalidResource&) {
                 LogWarning << "Got an invalid resource exception while compiling material scaffold for " << source;

@@ -328,7 +328,7 @@ namespace RenderCore { namespace Assets
                 Techniques::ParsingContext& parserContext, 
                 const AnimationState& animState, const Float4x4& localToWorld);
         
-        SkinPrepareMachine(ModelScaffold&, AnimationSetScaffold&, SkeletonScaffold&);
+        SkinPrepareMachine(const ModelScaffold&, const AnimationSetScaffold&, const SkeletonScaffold&);
         ~SkinPrepareMachine();
     protected:
         class Pimpl;

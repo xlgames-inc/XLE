@@ -134,7 +134,7 @@ namespace Overlays
         VertexBuffer vertexBuffer(vertices, sizeof(vertices));
         context->Bind(ResourceList<VertexBuffer, 1>(std::make_tuple(std::ref(vertexBuffer))), sizeof(Vertex), 0);
 
-        ShaderProgram& shaderProgram = ::Assets::GetAssetDep<ShaderProgram>(
+        const auto& shaderProgram = ::Assets::GetAssetDep<ShaderProgram>(
             "game/xleres/basic2D.vsh:P2T:" VS_DefShaderModel, 
             "game/xleres/basic.psh:copy_point_scrolllimit:" PS_DefShaderModel);
         BoundInputLayout boundVertexInputLayout(std::make_pair(vertexInputLayout, dimof(vertexInputLayout)), shaderProgram);

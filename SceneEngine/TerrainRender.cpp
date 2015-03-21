@@ -651,7 +651,7 @@ namespace SceneEngine
             }
         };
 
-        DeepShaderProgram* _shaderProgram;
+        const DeepShaderProgram* _shaderProgram;
         RenderCore::Metal::BoundUniforms _boundUniforms;
 
         TerrainRenderingResources(const Desc& desc);
@@ -692,7 +692,7 @@ namespace SceneEngine
             gs = "game/xleres/solidwireframe.gsh:main:gs_*";
         }
 
-        DeepShaderProgram* shaderProgram;
+        const DeepShaderProgram* shaderProgram;
         TRY {
             shaderProgram = &Assets::GetAssetDep<DeepShaderProgram>(
                 "game/xleres/forward/terrain_generator.sh:vs_dyntess_main:vs_*", 
@@ -738,7 +738,7 @@ namespace SceneEngine
                 //  when using dynamic tessellation, the basic geometry should just be
                 //  a quad. We'll use a vertex generator shader.
         } else {
-            ShaderProgram* shaderProgram;
+            const ShaderProgram* shaderProgram;
             if (mode == Mode_Normal) {
                 shaderProgram = &Assets::GetAssetDep<ShaderProgram>(
                     "game/xleres/forward/terrain_generator.sh:vs_main:vs_*", 
@@ -2243,7 +2243,7 @@ namespace SceneEngine
     }
 
     template <typename Type>
-        static Type& GetAssetImmediate(const char initializer[])
+        static const Type& GetAssetImmediate(const char initializer[])
     {
         for (;;) {
             TRY {
@@ -2734,7 +2734,9 @@ namespace SceneEngine
 
         char uberSurfaceFile[MaxPath];
         cfg.GetUberSurfaceFilename(uberSurfaceFile, dimof(uberSurfaceFile), TerrainConfig::FileType::Heightmap);
-        auto& uberSurface = Assets::GetAsset<TerrainUberHeightsSurface>(uberSurfaceFile);
+
+            // uber-surface is a special-case asset, because we can edit it without a "DivergentAsset". But to do that, we must const_cast here
+        auto& uberSurface = const_cast<TerrainUberHeightsSurface&>(Assets::GetAsset<TerrainUberHeightsSurface>(uberSurfaceFile));
         pimpl->_uberSurfaceInterface = std::make_unique<TerrainUberSurfaceInterface>(std::ref(uberSurface), ioFormat);
 
         ////////////////////////////////////////////////////////////////////////////

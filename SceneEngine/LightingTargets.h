@@ -145,11 +145,11 @@ namespace SceneEngine
         typedef RenderCore::Metal::ShaderProgram ShaderProgram;
         typedef RenderCore::Metal::BoundUniforms BoundUniforms;
 
-        ShaderProgram*  _shadowedDirectionalLight;
-        ShaderProgram*  _shadowedDirectionalOrthoLight;
-        ShaderProgram*  _shadowedPointLight;
-        ShaderProgram*  _unshadowedPointLight;
-        ShaderProgram*  _unshadowedDirectionalLight;
+        const ShaderProgram*  _shadowedDirectionalLight;
+        const ShaderProgram*  _shadowedDirectionalOrthoLight;
+        const ShaderProgram*  _shadowedPointLight;
+        const ShaderProgram*  _unshadowedPointLight;
+        const ShaderProgram*  _unshadowedDirectionalLight;
 
         std::unique_ptr<BoundUniforms>  _shadowedDirectionalLightUniforms;
         std::unique_ptr<BoundUniforms>  _shadowedDirectionalOrthoLightUniforms;
@@ -193,7 +193,7 @@ namespace SceneEngine
             }
         };
 
-        RenderCore::Metal::ShaderProgram*   _ambientLight;
+        const RenderCore::Metal::ShaderProgram*   _ambientLight;
         std::unique_ptr<RenderCore::Metal::BoundUniforms>   _ambientLightUniforms;
 
         const Assets::DependencyValidation& GetDependencyValidation() const   { return *_validationCallback; }

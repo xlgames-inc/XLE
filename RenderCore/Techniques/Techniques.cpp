@@ -146,7 +146,7 @@ namespace RenderCore { namespace Techniques
     #endif
 
     ResolvedShader      Technique::FindVariation(   const ParameterBox* globalState[ShaderParameters::Source::Max],
-                                                    const TechniqueInterface& techniqueInterface)
+                                                    const TechniqueInterface& techniqueInterface) const
     {
             //
             //      todo --     It would be cool if the caller passed in some kind of binding desc
@@ -214,7 +214,7 @@ namespace RenderCore { namespace Techniques
     
     void        Technique::ResolveAndBind(  ResolvedShader& resolvedShader, 
                                             const ParameterBox* globalState[ShaderParameters::Source::Max],
-                                            const TechniqueInterface& techniqueInterface)
+                                            const TechniqueInterface& techniqueInterface) const
     {
         std::vector<std::pair<std::string, std::string>> defines;
         _baseParameters.BuildStringTable(defines);
@@ -515,9 +515,10 @@ namespace RenderCore { namespace Techniques
 
     ///////////////////////   S H A D E R   T Y P E   ///////////////////////////
 
-    ResolvedShader      ShaderType::FindVariation(  int techniqueIndex, 
-                                                    const ParameterBox* globalState[ShaderParameters::Source::Max],
-                                                    const TechniqueInterface& techniqueInterface)
+    ResolvedShader      ShaderType::FindVariation(  
+		int techniqueIndex, 
+        const ParameterBox* globalState[ShaderParameters::Source::Max],
+        const TechniqueInterface& techniqueInterface) const
     {
         if (techniqueIndex >= int(_technique.size()) || !_technique[techniqueIndex].IsValid()) {
             return ResolvedShader();
@@ -557,7 +558,7 @@ namespace RenderCore { namespace Techniques
 
         //////////////////////-------//////////////////////
 
-    uint64      ShaderParameters::CalculateFilteredState(const ParameterBox* globalState[Source::Max])
+    uint64      ShaderParameters::CalculateFilteredState(const ParameterBox* globalState[Source::Max]) const
     {
         uint64 filteredState = 0;
         for (unsigned c=0; c<Source::Max; ++c) {
@@ -566,7 +567,7 @@ namespace RenderCore { namespace Techniques
         return filteredState;
     }
 
-    uint64      ShaderParameters::CalculateFilteredHash(uint64 inputHash, const ParameterBox* globalState[Source::Max])
+    uint64      ShaderParameters::CalculateFilteredHash(uint64 inputHash, const ParameterBox* globalState[Source::Max]) const
     {
             //      Find a local state to match
         auto i = std::lower_bound(_globalToFilteredTable.cbegin(), _globalToFilteredTable.cend(), inputHash, CompareFirst<uint64, uint64>());

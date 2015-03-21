@@ -51,13 +51,13 @@ namespace SceneEngine
         intrusive_ptr<ID3D::Resource> _maskTexture;
         RenderCore::Metal::UnorderedAccessView _maskUnorderedAccess;
         RenderCore::Metal::ShaderResourceView _maskShaderResource;
-        RenderCore::Metal::ComputeShader* _buildMask;
+        const RenderCore::Metal::ComputeShader* _buildMask;
 
         intrusive_ptr<ID3D::Resource> _reflectionsTexture;
         RenderCore::Metal::RenderTargetView _reflectionsTarget;
         RenderCore::Metal::UnorderedAccessView _reflectionsUnorderedAccess;
         RenderCore::Metal::ShaderResourceView _reflectionsShaderResource;
-        RenderCore::Metal::ComputeShader* _buildReflections;
+		const RenderCore::Metal::ComputeShader* _buildReflections;
 
         intrusive_ptr<ID3D::Resource> _downsampledNormals;
         intrusive_ptr<ID3D::Resource> _downsampledDepth;
@@ -66,9 +66,9 @@ namespace SceneEngine
         RenderCore::Metal::ShaderResourceView _downsampledNormalsShaderResource;
         RenderCore::Metal::ShaderResourceView _downsampledDepthShaderResource;
 
-        RenderCore::Metal::ShaderProgram* _downsampleTargets;
-        RenderCore::Metal::ShaderProgram* _horizontalBlur;
-        RenderCore::Metal::ShaderProgram* _verticalBlur;
+        const RenderCore::Metal::ShaderProgram* _downsampleTargets;
+        const RenderCore::Metal::ShaderProgram* _horizontalBlur;
+        const RenderCore::Metal::ShaderProgram* _verticalBlur;
 
         RenderCore::Metal::ConstantBuffer _samplingPatternConstants;
 

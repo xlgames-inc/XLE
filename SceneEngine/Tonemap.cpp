@@ -128,10 +128,10 @@ namespace SceneEngine
         std::vector<BloomStepBuffer>                        _bloomBuffers;
         BloomStepBuffer                                     _bloomTempBuffer;
 
-        RenderCore::Metal::ComputeShader*                   _sampleInitialLuminance;
-        RenderCore::Metal::ComputeShader*                   _luminanceStepDown;
-        RenderCore::Metal::ComputeShader*                   _updateOverallLuminance;
-        RenderCore::Metal::ComputeShader*                   _brightPassStepDown;
+        const RenderCore::Metal::ComputeShader*		_sampleInitialLuminance;
+        const RenderCore::Metal::ComputeShader*		_luminanceStepDown;
+        const RenderCore::Metal::ComputeShader*		_updateOverallLuminance;
+        const RenderCore::Metal::ComputeShader*		_brightPassStepDown;
 
         unsigned _firstStepWidth;
         unsigned _firstStepHeight;
@@ -474,7 +474,7 @@ namespace SceneEngine
                 , _doLevelsAdjustment(doLevelsAdjustments), _doSelectiveColour(doSelectiveColour), _doFilterColour(doFilterColour) {}
         };
 
-        RenderCore::Metal::ShaderProgram* _shaderProgram;
+        const RenderCore::Metal::ShaderProgram* _shaderProgram;
         RenderCore::Metal::BoundUniforms _uniforms;
 
         ToneMapShaderBox(const Desc& descs);
@@ -639,14 +639,14 @@ namespace SceneEngine
         RenderCore::Metal::RenderTargetView     _blurBufferRTV[2];
         RenderCore::Metal::ShaderResourceView   _blurBufferSRV[2];
 
-        RenderCore::Metal::ShaderProgram*       _horizontalFilter;
-        RenderCore::Metal::ShaderProgram*       _verticalFilter;
+        const RenderCore::Metal::ShaderProgram*       _horizontalFilter;
+        const RenderCore::Metal::ShaderProgram*       _verticalFilter;
         std::unique_ptr<RenderCore::Metal::BoundUniforms>   _horizontalFilterBinding;
         std::unique_ptr<RenderCore::Metal::BoundUniforms>   _verticalFilterBinding;
 
         RenderCore::Metal::BlendState           _integrateBlend;
 
-        RenderCore::Metal::ShaderProgram*       _integrateDistantBlur;
+        const RenderCore::Metal::ShaderProgram*       _integrateDistantBlur;
         std::unique_ptr<RenderCore::Metal::BoundUniforms>   _integrateDistantBlurBinding;
 
         const Assets::DependencyValidation& GetDependencyValidation() const   { return *_validationCallback; }

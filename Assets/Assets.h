@@ -13,6 +13,7 @@
 #include "../Core/Exceptions.h"
 #include <vector>
 #include <utility>
+#include <string>
 
 #if defined(_DEBUG)
     #define ASSETS_STORE_NAMES
@@ -63,8 +64,7 @@ namespace Assets
         void LogAssetName(unsigned index, const char name[]);
         void InsertAssetName(   
             std::vector<std::pair<uint64, std::string>>& assetNames, 
-            uint64 hash,
-            const char* initializers[], unsigned initializerCount);
+            uint64 hash, const std::string& name);
 
         template<typename AssetType>
             AssetSet<AssetType>& GetAssetSet() 
@@ -93,43 +93,33 @@ namespace Assets
 
         template <int BoBackgroundCompile> struct ConstructAsset {};
 
-            //  Here, AssetInitializer is basically just a templated array.
-            //  In C++11, we could use variadic template parameters, and 
-            //  that would give a much better result.
-            //  But at the moment, we're still keeping Visual Studio 2010 support.
-        template <int InitCount> struct AssetInitializer {};
-        template <> struct AssetInitializer<1> { const char *_name0; };
-        template <> struct AssetInitializer<2> { const char *_name0, *_name1; };
-        template <> struct AssetInitializer<3> { const char *_name0, *_name1, *_name2; };
-        template <> struct AssetInitializer<4> { const char *_name0, *_name1, *_name2, *_name3; };
-        template <> struct AssetInitializer<5> { const char *_name0, *_name1, *_name2, *_name3, *_name4; };
-        template <> struct AssetInitializer<6> { const char *_name0, *_name1, *_name2, *_name3, *_name4, *_name5; };
-
         template<> struct ConstructAsset<0>
         { 
-            template<typename AssetType> static typename Ptr<AssetType>::Value Create(AssetInitializer<1> init) { return std::make_unique<AssetType>(init._name0); }
-            template<typename AssetType> static typename Ptr<AssetType>::Value Create(AssetInitializer<2> init) { return std::make_unique<AssetType>(init._name0, init._name1); }
-            template<typename AssetType> static typename Ptr<AssetType>::Value Create(AssetInitializer<3> init) { return std::make_unique<AssetType>(init._name0, init._name1, init._name2); }
-            template<typename AssetType> static typename Ptr<AssetType>::Value Create(AssetInitializer<4> init) { return std::make_unique<AssetType>(init._name0, init._name1, init._name2, init._name3); }
-            template<typename AssetType> static typename Ptr<AssetType>::Value Create(AssetInitializer<5> init) { return std::make_unique<AssetType>(init._name0, init._name1, init._name2, init._name3, init._name4); }
-            template<typename AssetType> static typename Ptr<AssetType>::Value Create(AssetInitializer<6> init) { return std::make_unique<AssetType>(init._name0, init._name1, init._name2, init._name3, init._name4, init._name5); }
+            template<typename AssetType, typename... Params> 
+				static typename Ptr<AssetType>::Value Create(Params... initialisers)
+			{
+				return std::make_unique<AssetType>(initialisers...);
+			}
         };
 
         template<> struct ConstructAsset<1>
         { 
-            template<typename AssetType, int InitCount> static typename Ptr<AssetType>::Value Create(AssetInitializer<InitCount> init) 
+            template<typename AssetType, typename... Params> 
+				static typename Ptr<AssetType>::Value Create(Params... initialisers)
             {
                 auto& compilers = CompileAndAsyncManager::GetInstance().GetIntermediateCompilers();
                 auto& store = CompileAndAsyncManager::GetInstance().GetIntermediateStore();
-                auto marker = compilers.PrepareResource(GetCompileProcessType<AssetType>(), (const char**)&init, InitCount, store);
+				const char* inits[] = { ((const char*)initialisers)... };
+				auto marker = compilers.PrepareResource(GetCompileProcessType<AssetType>(), inits, dimof(inits), store);
                 return std::make_unique<AssetType>(std::move(marker));
             }
         };
 
-        template <int InitCount> uint64 BuildHash(AssetInitializer<InitCount> init);
+		template <typename... Params> uint64 BuildHash(Params... initialisers);
+		template <typename... Params> std::basic_string<ResChar> AsString(Params... initialisers);
 
-        template<bool DoCheckDependancy, bool DoBackgroundCompile, typename AssetType, int InitCount>
-            AssetType& GetAsset(AssetInitializer<InitCount> init)
+		template<bool DoCheckDependancy, bool DoBackgroundCompile, typename AssetType, typename... Params>
+			const AssetType& GetAsset(Params... initialisers)
             {
                     //
                     //  This is the main bit of functionality in this file. Here we define
@@ -140,15 +130,16 @@ namespace Assets
                     //          * otherwise return the existing asset
                     //      * otherwise we build a new asset
                     //
-                auto hash = BuildHash(init);
+				auto hash = BuildHash(initialisers...);
 				auto& assetSet = GetAssetSet<AssetType>();
+				(void)assetSet;	// (is this a compiler problem? It thinks this is unreferenced?)
 
 				#if defined(ASSETS_STORE_DIVERGENT)
 						// divergent assets will always shadow normal assets
 						// we also don't do a dependency check for these assets
 					auto di = LowerBound(assetSet._divergentAssets, hash);
 					if (di != assetSet._divergentAssets.end() && di->first == hash) {
-						return *di->second->GetAsset();
+						return di->second->GetAsset();
 					}
 				#endif
 
@@ -160,18 +151,18 @@ namespace Assets
                             //          If we get an exception during construct, we'll be left with a null ptr
                             //          in this asset set
                         auto oldResource = std::move(i->second);
-                        i->second = ConstructAsset<DoBackgroundCompile>::Create<AssetType>(init);
+						i->second = ConstructAsset<DoBackgroundCompile>::Create<AssetType>(initialisers...);
                     }
                     return *i->second;
                 }
 
-                auto newAsset = ConstructAsset<DoBackgroundCompile>::Create<AssetType>(init);
+				auto newAsset = ConstructAsset<DoBackgroundCompile>::Create<AssetType>(initialisers...);
                 #if defined(ASSETS_STORE_NAMES)
                         // This is extra functionality designed for debugging and profiling
                         // attach a name to this hash value, so we can query the contents
                         // of an asset set and get meaningful values
                         //  (only insert after we've completed creation; because creation can throw an exception)
-                    InsertAssetName(GetAssetSet<AssetType>()._assetNames, hash, (const char**)&init, InitCount);
+					InsertAssetName(assetSet._assetNames, hash, AsString(initialisers...));
                 #endif
 
                     // we have to search again for the insertion point
@@ -187,8 +178,8 @@ namespace Assets
 				return *assets.insert(i, std::make_pair(hash, std::move(newAsset)))->second;
             }
 
-		template <typename AssetType, int InitCount>
-			std::shared_ptr<typename AssetTraits<AssetType>::DivAsset>& GetDivergentAsset(AssetInitializer<InitCount> init)
+		template <typename AssetType, typename... Params>
+			std::shared_ptr<typename AssetTraits<AssetType>::DivAsset>& GetDivergentAsset(Params... initialisers)
 			{
 				#if !defined(ASSETS_STORE_DIVERGENT)
 					throw ::Exceptions::BasicLabel("Could not get divergent asset, because ASSETS_STORE_DIVERGENT is not defined");
@@ -202,7 +193,7 @@ namespace Assets
 					}
 
 					auto newDivAsset = std::make_shared<typename AssetTraits<AssetType>::DivAsset>(
-						GetAsset<true, false, AssetType>(init));
+						GetAsset<true, false, AssetType>(initialisers...));
 
 						// Do we have to search for an insertion point here again?
 						// is it possible that constructing an asset could create a new divergent
@@ -265,22 +256,16 @@ namespace Assets
             template <typename AssetType>
                 std::vector<std::pair<uint64, std::string>> AssetSet<AssetType>::_assetNames;
         #endif
+
+        #if defined(ASSETS_STORE_DIVERGENT)
+            template <typename AssetType>
+                std::vector<std::pair<uint64, std::unique_ptr<typename AssetSet<AssetType>::DivAsset>>> AssetSet<AssetType>::_divergentAssets;
+        #endif
     }
 
-    template<typename Resource> Resource& GetAsset(const char name[]) { Internal::AssetInitializer<1> init = {name}; return Internal::GetAsset<false, false, Resource>(init); }
-    template<typename Resource> Resource& GetAsset(const char name0[], const char name1[]) { Internal::AssetInitializer<2> init = {name0, name1}; return Internal::GetAsset<false, false, Resource>(init); }
-    template<typename Resource> Resource& GetAsset(const char name0[], const char name1[], const char name2[]) { Internal::AssetInitializer<3> init = {name0, name1, name2}; return Internal::GetAsset<false, false, Resource>(init); }
-    template<typename Resource> Resource& GetAsset(const char name0[], const char name1[], const char name2[], const char name3[]) { Internal::AssetInitializer<4> init = {name0, name1, name2, name3}; return Internal::GetAsset<false, false, Resource>(init); }
-    template<typename Resource> Resource& GetAsset(const char name0[], const char name1[], const char name2[], const char name3[], const char name4[], const char name5[]) { Internal::AssetInitializer<6> init = {name0, name1, name2, name3, name4, name5}; return Internal::GetAsset<false, false, Resource>(init); }
-
-    template<typename Resource> Resource& GetAssetDep(const char name[]) { Internal::AssetInitializer<1> init = {name}; return Internal::GetAsset<true, false, Resource>(init); }
-    template<typename Resource> Resource& GetAssetDep(const char name0[], const char name1[]) { Internal::AssetInitializer<2> init = {name0, name1}; return Internal::GetAsset<true, false, Resource>(init); }
-    template<typename Resource> Resource& GetAssetDep(const char name0[], const char name1[], const char name2[]) { Internal::AssetInitializer<3> init = {name0, name1, name2}; return Internal::GetAsset<true, false, Resource>(init); }
-    template<typename Resource> Resource& GetAssetDep(const char name0[], const char name1[], const char name2[], const char name3[]) { Internal::AssetInitializer<4> init = {name0, name1, name2, name3}; return Internal::GetAsset<true, false, Resource>(init); }
-    template<typename Resource> Resource& GetAssetDep(const char name0[], const char name1[], const char name2[], const char name3[], const char name4[], const char name5[]) { Internal::AssetInitializer<6> init = {name0, name1, name2, name3, name4, name5}; return Internal::GetAsset<true, false, Resource>(init); }
-
-    template<typename Resource> Resource& GetAssetComp(const char name[]) { Internal::AssetInitializer<1> init = {name}; return Internal::GetAsset<true, true, Resource>(init); }
-    template<typename Resource> Resource& GetAssetComp(const char name0[], const char name1[]) { Internal::AssetInitializer<2> init = {name0, name1}; return Internal::GetAsset<true, true, Resource>(init); }
+	template<typename AssetType, typename... Params> const AssetType& GetAsset(Params... initialisers)		{ return Internal::GetAsset<false, false, AssetType>(initialisers...); }
+	template<typename AssetType, typename... Params> const AssetType& GetAssetDep(Params... initialisers)	{ return Internal::GetAsset<true, false, AssetType>(initialisers...); }
+	template<typename AssetType, typename... Params> const AssetType& GetAssetComp(Params... initialisers)	{ return Internal::GetAsset<true, true, AssetType>(initialisers...); }
 
         ////////////////////////////////////////////////////////////////////////
 

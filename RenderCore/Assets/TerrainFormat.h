@@ -31,8 +31,8 @@ namespace RenderCore { namespace Assets
     class TerrainFormat : public SceneEngine::ITerrainFormat
     {
     public:
-        virtual SceneEngine::TerrainCell& LoadHeights(const char filename[], bool skipDependsCheck) const;
-        virtual SceneEngine::TerrainCellTexture& LoadCoverage(const char filename[]) const;
+        virtual const SceneEngine::TerrainCell& LoadHeights(const char filename[], bool skipDependsCheck) const;
+        virtual const SceneEngine::TerrainCellTexture& LoadCoverage(const char filename[]) const;
         virtual void WriteCell( 
             const char destinationFile[], SceneEngine::TerrainUberSurface<float>& surface, 
             UInt2 cellMins, UInt2 cellMaxs, unsigned treeDepth, unsigned overlapElements) const;

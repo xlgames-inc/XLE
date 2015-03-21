@@ -328,7 +328,7 @@ namespace RenderCore { namespace Assets
             unsigned    _vertexStride;
         };
 
-        std::vector<Metal::DeferredShaderResource*> _boundTextures;
+        std::vector<const Metal::DeferredShaderResource*> _boundTextures;
         size_t  _texturesPerMaterial;
 
         ///////////////////////////////////////////////////////////////////////////////

@@ -452,7 +452,7 @@ namespace PlatformRig
                     auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
                         "game/xleres/basic2D.vsh:fullscreen:vs_*", 
                         "game/xleres/Effects/HighlightVis.psh:HighlightDrawCalls:ps_*",
-                        StringMeld<64>() << "COLOUR_BY_MAT=" << _pimpl->_settings->_colourByMaterial);
+                        (const ::Assets::ResChar*)(StringMeld<64, ::Assets::ResChar>() << "COLOUR_BY_MAT=" << _pimpl->_settings->_colourByMaterial));
                 
                     metalContext->Bind(shader);
                     metalContext->Draw(4);
@@ -462,7 +462,7 @@ namespace PlatformRig
                     auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
                         "game/xleres/basic2D.vsh:fullscreen:vs_*", 
                         "game/xleres/Effects/HighlightVis.psh:OutlineDrawCall:ps_*",
-                        StringMeld<64>() << "COLOUR_BY_MAT=" << _pimpl->_settings->_colourByMaterial);
+                        (const ::Assets::ResChar*)(StringMeld<64, ::Assets::ResChar>() << "COLOUR_BY_MAT=" << _pimpl->_settings->_colourByMaterial));
                 
                     metalContext->Bind(shader);
                     metalContext->Draw(4);

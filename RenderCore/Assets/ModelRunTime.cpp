@@ -304,7 +304,7 @@ namespace RenderCore { namespace Assets
             return materialResources;
         }
 
-        std::vector<Metal::DeferredShaderResource*> BuildBoundTextures(
+        std::vector<const Metal::DeferredShaderResource*> BuildBoundTextures(
             const ModelScaffold& scaffold, const MaterialScaffold& matScaffold,
             const ::Assets::DirectorySearchRules* searchRules,
             const std::vector<std::pair<MaterialGuid, SubMatResources>>& materialResources,
@@ -313,7 +313,7 @@ namespace RenderCore { namespace Assets
         {
             auto texturesPerMaterial = textureBindPoints.size();
 
-            std::vector<Metal::DeferredShaderResource*> boundTextures;
+            std::vector<const Metal::DeferredShaderResource*> boundTextures;
             boundTextures.resize(textureSetCount * texturesPerMaterial, nullptr);
             DEBUG_ONLY(boundTextureNames.resize(textureSetCount * texturesPerMaterial));
 

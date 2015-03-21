@@ -535,7 +535,7 @@ namespace Tools
     public:
         class Desc {};
 
-        RenderCore::Metal::ShaderProgram* _drawHighlight;
+        const RenderCore::Metal::ShaderProgram* _drawHighlight;
         RenderCore::Metal::BoundUniforms _drawHighlightUniforms;
 
         const Assets::DependencyValidation& GetDependencyValidation() const   { return *_validationCallback; }
@@ -1312,7 +1312,7 @@ namespace Tools
         VertexBuffer vertexBuffer(vertices, sizeof(vertices));
         context->Bind(ResourceList<VertexBuffer, 1>(std::make_tuple(std::ref(vertexBuffer))), sizeof(Vertex), 0);
 
-        ShaderProgram& shaderProgram = ::Assets::GetAssetDep<ShaderProgram>(
+        const auto& shaderProgram = ::Assets::GetAssetDep<ShaderProgram>(
             "game/xleres/basic2D.vsh:P2T:" VS_DefShaderModel, 
             "game/xleres/basic.psh:copy_bilinear:" PS_DefShaderModel);
         BoundInputLayout boundVertexInputLayout(std::make_pair(vertexInputLayout, dimof(vertexInputLayout)), shaderProgram);

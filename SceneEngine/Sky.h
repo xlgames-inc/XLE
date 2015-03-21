@@ -20,9 +20,9 @@ namespace SceneEngine
     class SkyTextureParts
     {
     public:
-        RenderCore::Metal::DeferredShaderResource*      _faces12;
-        RenderCore::Metal::DeferredShaderResource*      _faces34;
-        RenderCore::Metal::DeferredShaderResource*      _face5;
+        const RenderCore::Metal::DeferredShaderResource*      _faces12;
+        const RenderCore::Metal::DeferredShaderResource*      _faces34;
+        const RenderCore::Metal::DeferredShaderResource*      _face5;
         int                                             _projectionType;
 
         SkyTextureParts(const char skyTextureName[]);

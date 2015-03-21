@@ -24,52 +24,88 @@ namespace Assets
             LogInfo << "    [" << index << "] " << name;
         }
 
+		template <typename Object>
+			inline void StreamCommaSeparated(std::stringstream& result, const Object& obj)
+		{
+			result << obj << ", ";
+		}
+
+		template <typename... Params>
+			std::string AsString(Params... initialisers)
+		{
+			std::stringstream result;
+			int dummy[] = { 0, (StreamCommaSeparated(result, initialisers), 0)... };
+			(void)dummy;
+			// StreamCommaSeparated(result, initialisers)...;
+			return result.str();
+		}
+
         void InsertAssetName(   std::vector<std::pair<uint64, std::string>>& assetNames, 
-                                uint64 hash,
-                                const char* initializers[], unsigned initializerCount)
+                                uint64 hash, const std::string& name)
         {
-            std::stringstream name;
-            for (unsigned c=0; c<initializerCount; ++c) {
-                auto s = initializers[c];
-                if (c != 0) { name << " "; }
-                if (s) { name << "[" << s << "]"; }
-                else { name << "[null]"; }
-            }
             auto ni = LowerBound(assetNames, hash);
             if (ni != assetNames.cend() && ni->first == hash) {
                 assert(0);  // hit a hash collision! In most cases, this will cause major problems!
                     // maybe this could happen if an asset is removed from the table, but it's name remains?
-                ni->second = "<<collision>> " + ni->second + " <<with>> " + name.str();
+                ni->second = "<<collision>> " + ni->second + " <<with>> " + name;
             } else {
-                assetNames.insert(ni, std::make_pair(hash, name.str()));
+                assetNames.insert(ni, std::make_pair(hash, name));
             }
         }
 
-        template <int InitCount>
-            uint64 BuildHash(AssetInitializer<InitCount> init)
-            { 
-                    //  Note Hash64 is a relatively expensive hash function
-                    //      ... we might get away with using a simpler/quicker hash function
-                    //  Note that if we move over to variadic template initialisers, it
-                    //  might not be as easy to build the hash value (because they would
-                    //  allow some initialisers to be different types -- not just strings).
-                    //  If we want to support any type as initialisers, we need to either
-                    //  define some rules for hashing arbitrary objects, or think of a better way
-                    //  to build the hash.
-                uint64 result = DefaultSeed64;
-                for (unsigned c=0; c<InitCount; ++c) {
-                    auto s = ((const char**)&init)[c];
-                    result = s?Hash64(s, &s[Utility::XlStringLen(s)], result):result;  // (previous hash becomes seed for next one)
-                }
-                return result;
-            }
+		template <typename... Params>
+			uint64 BuildHash(Params... initialisers)
+        { 
+                //  Note Hash64 is a relatively expensive hash function
+                //      ... we might get away with using a simpler/quicker hash function
+                //  Note that if we move over to variadic template initialisers, it
+                //  might not be as easy to build the hash value (because they would
+                //  allow some initialisers to be different types -- not just strings).
+                //  If we want to support any type as initialisers, we need to either
+                //  define some rules for hashing arbitrary objects, or think of a better way
+                //  to build the hash.
+            uint64 result = DefaultSeed64;
+			int dummy[] = { 0, (result = Hash64(initialisers, result), 0)... };
+			(void)dummy;
+			// (result = Hash64(initialisers, result))...;
+            return result;
+        }
 
-        template uint64 BuildHash(AssetInitializer<1> init);
-        template uint64 BuildHash(AssetInitializer<2> init);
-        template uint64 BuildHash(AssetInitializer<3> init);
-        template uint64 BuildHash(AssetInitializer<4> init);
-        template uint64 BuildHash(AssetInitializer<5> init);
-        template uint64 BuildHash(AssetInitializer<6> init);
+            // the following isn't going to work... we can't predict all of the expansions that will be used
+		template std::basic_string<ResChar> AsString(const ResChar*);
+		template std::basic_string<ResChar> AsString(const ResChar*, const ResChar*);
+		template std::basic_string<ResChar> AsString(const ResChar*, const ResChar*, const ResChar*);
+		template std::basic_string<ResChar> AsString(const ResChar*, const ResChar*, const ResChar*, const ResChar*);
+		template std::basic_string<ResChar> AsString(const ResChar*, const ResChar*, const ResChar*, const ResChar*, const ResChar*);
+		template std::basic_string<ResChar> AsString(const ResChar*, const ResChar*, const ResChar*, const ResChar*, const ResChar*, const ResChar*);
+		template std::basic_string<ResChar> AsString(const ResChar*, const ResChar*, const ResChar*, const ResChar*, const ResChar*, const ResChar*, const ResChar*);
+
+		template uint64 BuildHash(const ResChar*);
+		template uint64 BuildHash(const ResChar*, const ResChar*);
+		template uint64 BuildHash(const ResChar*, const ResChar*, const ResChar*);
+		template uint64 BuildHash(const ResChar*, const ResChar*, const ResChar*, const ResChar*);
+		template uint64 BuildHash(const ResChar*, const ResChar*, const ResChar*, const ResChar*, const ResChar*);
+		template uint64 BuildHash(const ResChar*, const ResChar*, const ResChar*, const ResChar*, const ResChar*, const ResChar*);
+		template uint64 BuildHash(const ResChar*, const ResChar*, const ResChar*, const ResChar*, const ResChar*, const ResChar*, const ResChar*);
+
+        template std::basic_string<ResChar> AsString(ResChar*); 
+        template uint64 BuildHash(ResChar*);
+
+        template std::basic_string<ResChar> AsString(const ResChar*, ResChar*);
+        template uint64 BuildHash(const ResChar*, ResChar*);
+
+        template std::basic_string<ResChar> AsString(const ResChar*, const ResChar*, ResChar*);
+        template uint64 BuildHash(const ResChar*, const ResChar*, ResChar*);
+
+        template std::basic_string<ResChar> AsString(char const *, char const *, char const *, char const *, char const *, char *);
+        template uint64 BuildHash(char const *, char const *, char const *, char const *, char const *, char *);
+
+        template std::basic_string<ResChar> AsString(char *, char const *);
+        template uint64 BuildHash(char *, char const *);
+
+        template std::basic_string<ResChar> AsString(char const *, char const *, char const *, char *);
+        template uint64 BuildHash(char const *, char const *, char const *, char *);
+
     }
 }
 

@@ -126,7 +126,7 @@ namespace RenderCore { namespace Metal_DX11
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    BoundUniforms::BoundUniforms(ShaderProgram& shader)
+    BoundUniforms::BoundUniforms(const ShaderProgram& shader)
     {
             //  In this case, we must bind with every shader stage 
             //      (since a shader program actually reflects the state of the entire stage pipeline) 
@@ -138,7 +138,7 @@ namespace RenderCore { namespace Metal_DX11
         }
     }
 
-    BoundUniforms::BoundUniforms(DeepShaderProgram& shader)
+    BoundUniforms::BoundUniforms(const DeepShaderProgram& shader)
     {
             //  In this case, we must bind with every shader stage 
             //      (since a shader program actually reflects the state of the entire stage pipeline) 
@@ -152,7 +152,7 @@ namespace RenderCore { namespace Metal_DX11
         _stageBindings[ShaderStage::Domain]._reflection     = shader.GetCompiledDomainShader().GetReflection();
     }
 
-    BoundUniforms::BoundUniforms(CompiledShaderByteCode& shader)
+	BoundUniforms::BoundUniforms(const CompiledShaderByteCode& shader)
     {
             //  In this case, we're binding with a single shader stage
         ShaderStage::Enum stage = shader.GetStage();

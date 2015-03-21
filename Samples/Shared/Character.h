@@ -43,9 +43,9 @@ namespace Sample
         const RenderCore::Assets::ModelScaffold& GetModelScaffold() const;
 
     protected:
-        RenderCore::Assets::ModelScaffold* _model;
-        RenderCore::Assets::SkeletonScaffold* _skeleton;
-        RenderCore::Assets::AnimationSetScaffold* _animationSet;
+        const RenderCore::Assets::ModelScaffold* _model;
+        const RenderCore::Assets::SkeletonScaffold* _skeleton;
+        const RenderCore::Assets::AnimationSetScaffold* _animationSet;
 
         std::unique_ptr<RenderCore::Assets::ModelRenderer> _renderer;
         std::unique_ptr<RenderCore::Assets::SkinPrepareMachine> _prepareMachine;

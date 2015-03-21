@@ -390,7 +390,7 @@ namespace RenderCore { namespace Assets
                     TRY {
                         RegisterAssetDependency(
                             _depVal, 
-                            &::Assets::GetAssetDep<RawMaterial>(finalRawMatName).GetDependencyValidation());
+                            &::Assets::GetAssetDep<RawMaterial>((const ::Assets::ResChar*)finalRawMatName).GetDependencyValidation());
                     } CATCH (...) {} CATCH_END
                 }
             }

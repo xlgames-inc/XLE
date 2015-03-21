@@ -461,7 +461,7 @@ namespace RenderOverlays
                 : _topology(topology), _format(format), _projMode(projMode), _pixelShaderName(pixelShaderName) {}
         };
 
-        RenderCore::Metal::ShaderProgram* _shaderProgram;
+        const RenderCore::Metal::ShaderProgram* _shaderProgram;
         RenderCore::Metal::BoundInputLayout _boundInputLayout;
         RenderCore::Metal::BoundUniforms _boundUniforms;
 

@@ -45,7 +45,7 @@ namespace SceneEngine
 
         DepthStencilState   _alwaysWriteToStencil;
         DepthStencilState   _writePixelFrequencyPixels;
-        ShaderProgram*      _perSampleMask;
+        const ShaderProgram*      _perSampleMask;
 
         SamplerState        _shadowComparisonSampler;
         SamplerState        _shadowDepthSampler;

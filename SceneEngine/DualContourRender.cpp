@@ -118,7 +118,7 @@ namespace SceneEngine
             Techniques::TechniqueContext::BindGlobalUniforms(techniqueInterface);
             techniqueInterface.BindConstantBuffer(Hash64("LocalTransform"), 0, 1);
 
-            auto& shaderType = ::Assets::GetAssetDep<Techniques::ShaderType>("game/xleres/cloudvolume.txt");
+            const auto& shaderType = ::Assets::GetAssetDep<Techniques::ShaderType>("game/xleres/cloudvolume.txt");
             auto variation = shaderType.FindVariation(techniqueIndex, state, techniqueInterface);
             if (variation._shaderProgram != nullptr) {
                 context->Bind(*variation._shaderProgram);

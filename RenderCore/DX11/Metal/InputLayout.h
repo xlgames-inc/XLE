@@ -151,9 +151,9 @@ namespace RenderCore { namespace Metal_DX11
     class BoundUniforms
     {
     public:
-        BoundUniforms(ShaderProgram& shader);
-        BoundUniforms(DeepShaderProgram& shader);
-        BoundUniforms(CompiledShaderByteCode& shader);
+        BoundUniforms(const ShaderProgram& shader);
+        BoundUniforms(const DeepShaderProgram& shader);
+        BoundUniforms(const CompiledShaderByteCode& shader);
         BoundUniforms(const BoundUniforms& copyFrom);
         BoundUniforms();
         ~BoundUniforms();

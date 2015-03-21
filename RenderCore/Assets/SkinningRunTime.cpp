@@ -65,12 +65,12 @@ namespace RenderCore { namespace Assets
         Metal::BoundInputLayout     _boundInputLayout;
         BindingType::Enum           _bindingType;
 
-        Metal::VertexShader*        _skinningVertexShaderP4;
-        Metal::VertexShader*        _skinningVertexShaderP2;
-        Metal::VertexShader*        _skinningVertexShaderP1;
-        Metal::VertexShader*        _skinningVertexShaderP0;
+        const Metal::VertexShader*        _skinningVertexShaderP4;
+        const Metal::VertexShader*        _skinningVertexShaderP2;
+        const Metal::VertexShader*        _skinningVertexShaderP1;
+        const Metal::VertexShader*        _skinningVertexShaderP0;
 
-        Metal::CompiledShaderByteCode* _vbByteCode;
+        const Metal::CompiledShaderByteCode* _vbByteCode;
 
         const ::Assets::DependencyValidation& GetDependencyValidation() const   { return *_validationCallback; }
         std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
@@ -891,8 +891,8 @@ namespace RenderCore { namespace Assets
     public:
         std::unique_ptr<AnimationSetBinding> _animationSetBinding;
         std::unique_ptr<SkeletonBinding> _skeletonBinding;
-        AnimationSetScaffold* _animationSetScaffold;
-        SkeletonScaffold* _skeletonScaffold;
+        const AnimationSetScaffold* _animationSetScaffold;
+        const SkeletonScaffold* _skeletonScaffold;
     };
 
     void SkinPrepareMachine::PrepareAnimation(   
@@ -927,7 +927,7 @@ namespace RenderCore { namespace Assets
         return _pimpl->_skeletonScaffold->GetTransformationMachine().GetOutputMatrixCount();
     }
 
-    SkinPrepareMachine::SkinPrepareMachine(ModelScaffold& skinScaffold, AnimationSetScaffold& animationScaffold, SkeletonScaffold& skeletonScaffold)
+    SkinPrepareMachine::SkinPrepareMachine(const ModelScaffold& skinScaffold, const AnimationSetScaffold& animationScaffold, const SkeletonScaffold& skeletonScaffold)
     {
         auto pimpl = std::make_unique<Pimpl>();
         pimpl->_animationSetBinding = std::make_unique<AnimationSetBinding>(
@@ -1044,7 +1044,7 @@ namespace RenderCore { namespace Assets
             localToWorld, 
             ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld));
 
-        ShaderProgram& shaderProgram = ::Assets::GetAsset<ShaderProgram>(  
+        const auto& shaderProgram = ::Assets::GetAsset<ShaderProgram>(  
             "game/xleres/forward/illum.vsh:main:" VS_DefShaderModel, 
             "game/xleres/forward/illum.psh:main", "GEO_HAS_COLOUR=1");
         BoundInputLayout boundVertexInputLayout(std::make_pair(vertexInputLayout, dimof(vertexInputLayout)), shaderProgram);

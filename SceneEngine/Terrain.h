@@ -165,8 +165,8 @@ namespace SceneEngine
     class ITerrainFormat
     {
     public:
-        virtual TerrainCell& LoadHeights(const char filename[], bool skipDependsCheck = false) const = 0;
-        virtual TerrainCellTexture& LoadCoverage(const char filename[]) const = 0;
+        virtual const TerrainCell& LoadHeights(const char filename[], bool skipDependsCheck = false) const = 0;
+        virtual const TerrainCellTexture& LoadCoverage(const char filename[]) const = 0;
         virtual void WriteCell( 
             const char destinationFile[], TerrainUberSurface<float>& surface, 
             UInt2 cellMins, UInt2 cellMaxs, unsigned treeDepth, unsigned overlapElements) const = 0;
