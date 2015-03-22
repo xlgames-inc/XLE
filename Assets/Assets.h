@@ -51,7 +51,7 @@ namespace Assets
 			
 			#if defined(ASSETS_STORE_DIVERGENT)
 				using DivAsset = typename AssetTraits<AssetType>::DivAsset;
-				static std::vector<std::pair<uint64, std::unique_ptr<DivAsset>>> _divergentAssets;
+				static std::vector<std::pair<uint64, std::shared_ptr<DivAsset>>> _divergentAssets;
 			#endif
 
             #if defined(ASSETS_STORE_NAMES)
@@ -98,7 +98,7 @@ namespace Assets
             template<typename AssetType, typename... Params> 
 				static typename Ptr<AssetType>::Value Create(Params... initialisers)
 			{
-				return std::make_unique<AssetType>(initialisers...);
+				return std::make_unique<AssetType>(std::forward<Params>(initialisers)...);
 			}
         };
 
@@ -151,18 +151,22 @@ namespace Assets
                             //          If we get an exception during construct, we'll be left with a null ptr
                             //          in this asset set
                         auto oldResource = std::move(i->second);
-						i->second = ConstructAsset<DoBackgroundCompile>::Create<AssetType>(initialisers...);
+                        i->second = ConstructAsset<DoBackgroundCompile>::Create<AssetType>(std::forward<Params>(initialisers)...);
                     }
                     return *i->second;
                 }
 
-				auto newAsset = ConstructAsset<DoBackgroundCompile>::Create<AssetType>(initialisers...);
+                #if defined(ASSETS_STORE_NAMES)
+                    auto name = AsString(initialisers...);  // (have to do this before constructor (incase constructor does std::move operations)
+                #endif
+
+                auto newAsset = ConstructAsset<DoBackgroundCompile>::Create<AssetType>(std::forward<Params>(initialisers)...);
                 #if defined(ASSETS_STORE_NAMES)
                         // This is extra functionality designed for debugging and profiling
                         // attach a name to this hash value, so we can query the contents
                         // of an asset set and get meaningful values
                         //  (only insert after we've completed creation; because creation can throw an exception)
-					InsertAssetName(assetSet._assetNames, hash, AsString(initialisers...));
+					InsertAssetName(assetSet._assetNames, hash, name);
                 #endif
 
                     // we have to search again for the insertion point
@@ -185,15 +189,17 @@ namespace Assets
 					throw ::Exceptions::BasicLabel("Could not get divergent asset, because ASSETS_STORE_DIVERGENT is not defined");
 				#else
 
-					auto hash = BuildHash(init);
+					auto hash = BuildHash(initialisers...);
 					auto& assetSet = GetAssetSet<AssetType>();
+                    (void)assetSet;
 					auto di = LowerBound(assetSet._divergentAssets, hash);
 					if (di != assetSet._divergentAssets.end() && di->first == hash) {
 						return di->second;
 					}
 
-					auto newDivAsset = std::make_shared<typename AssetTraits<AssetType>::DivAsset>(
-						GetAsset<true, false, AssetType>(initialisers...));
+                    std::weak_ptr<UndoQueue> undoQueue;
+                    auto newDivAsset = std::make_shared<typename AssetTraits<AssetType>::DivAsset>(
+                        GetAsset<true, false, AssetType>(std::forward<Params>(initialisers)...), undoQueue);
 
 						// Do we have to search for an insertion point here again?
 						// is it possible that constructing an asset could create a new divergent
@@ -259,13 +265,17 @@ namespace Assets
 
         #if defined(ASSETS_STORE_DIVERGENT)
             template <typename AssetType>
-                std::vector<std::pair<uint64, std::unique_ptr<typename AssetSet<AssetType>::DivAsset>>> AssetSet<AssetType>::_divergentAssets;
+                std::vector<std::pair<uint64, std::shared_ptr<typename AssetSet<AssetType>::DivAsset>>> AssetSet<AssetType>::_divergentAssets;
         #endif
     }
 
-	template<typename AssetType, typename... Params> const AssetType& GetAsset(Params... initialisers)		{ return Internal::GetAsset<false, false, AssetType>(initialisers...); }
-	template<typename AssetType, typename... Params> const AssetType& GetAssetDep(Params... initialisers)	{ return Internal::GetAsset<true, false, AssetType>(initialisers...); }
-	template<typename AssetType, typename... Params> const AssetType& GetAssetComp(Params... initialisers)	{ return Internal::GetAsset<true, true, AssetType>(initialisers...); }
+    template<typename AssetType, typename... Params> const AssetType& GetAsset(Params... initialisers)		    { return Internal::GetAsset<false, false, AssetType>(std::forward<Params>(initialisers)...); }
+    template<typename AssetType, typename... Params> const AssetType& GetAssetDep(Params... initialisers)	    { return Internal::GetAsset<true, false, AssetType>(std::forward<Params>(initialisers)...); }
+    template<typename AssetType, typename... Params> const AssetType& GetAssetComp(Params... initialisers)	    { return Internal::GetAsset<true, true, AssetType>(std::forward<Params>(initialisers)...); }
+
+    template<typename AssetType, typename... Params> 
+        std::shared_ptr<typename Internal::AssetTraits<AssetType>::DivAsset>& GetDivergentAsset(Params... initialisers)	
+            { return Internal::GetDivergentAsset<AssetType>(std::forward<Params>(initialisers)...); }
 
         ////////////////////////////////////////////////////////////////////////
 

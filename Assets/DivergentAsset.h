@@ -7,6 +7,7 @@
 #pragma once
 
 #include <memory>
+#include <string>
 
 namespace Assets
 {
@@ -17,17 +18,20 @@ namespace Assets
 	class ITransaction
 	{
 	public:
+        const std::string& GetName() const { return _name; }
 
-		ITransaction(std::shared_ptr<UndoQueue> undoQueue);
+		ITransaction(const char name[], std::shared_ptr<UndoQueue> undoQueue);
 		virtual ~ITransaction();
 	protected:
 		std::shared_ptr<UndoQueue> _undoQueue;
+        std::string _name;
 	};
 
 	class UndoQueue
 	{
 	public:
 		void PushBack(std::shared_ptr<ITransaction> transaction);
+        std::shared_ptr<ITransaction> GetTop();
 
 		UndoQueue();
 		~UndoQueue();
@@ -54,18 +58,29 @@ namespace Assets
 		virtual void    Cancel();
 
 		DivergentTransaction(
+            const char name[],
 			std::shared_ptr<Asset> workingCopy,
 			std::shared_ptr<UndoQueue> undoQueue);
 		virtual ~DivergentTransaction();
 
 	protected:
 		std::shared_ptr<Asset> _transactionCopy;
-		std::shared_ptr<Asset> _workingCopy;
-		std::shared_ptr<UndoQueue> _undoQueue;
+		std::shared_ptr<Asset> _liveCopy;
+        std::shared_ptr<Asset> _originalCopy;
 
 		enum class State { NoAction, Modified, Committed };
 		State _state;
 	};
+
+    template <typename Transaction>
+        class TransactionPtr : public std::shared_ptr<Transaction>
+    {
+    public:
+        // using std::shared_ptr::shared_ptr;       // (not compiling in C++/CLI?)
+
+        TransactionPtr(std::shared_ptr<Transaction> ptr) : std::shared_ptr<Transaction>(std::move(ptr)) {}
+        ~TransactionPtr() { if (get()) get()->Commit(); }
+    };
 
 	template <typename Asset>
 		class DivergentAsset : public DivergentAssetBase
@@ -73,13 +88,15 @@ namespace Assets
 	public:
 		const Asset& GetAsset() const;
 
-		std::shared_ptr<DivergentTransaction<Asset>> Transaction_Begin();
+        TransactionPtr<DivergentTransaction<Asset>> Transaction_Begin(const char name[]);
 
 		DivergentAsset(const Asset& pristineCopy, std::weak_ptr<UndoQueue> undoQueue);
 		~DivergentAsset();
 	protected:
 		const Asset*				_pristineCopy;
 		std::shared_ptr<Asset>		_workingCopy;
+
+        std::shared_ptr<DivergentTransaction<Asset>> _lastTransaction;
 	};
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -87,12 +104,9 @@ namespace Assets
 	template<typename Asset>
 		Asset& DivergentTransaction<Asset>::GetAsset()
 	{
-			// we can't get the asset again after commit
-		assert(_state != State::Committed);
-
-		_state = (_state == State::NoAction) ? State::Modified : State::Committed;
+		_state = State::Modified;
 		if (!_transactionCopy)
-			_transactionCopy = std::make_shared<Asset>(*workingCopy.get()); 
+			_transactionCopy = std::make_shared<Asset>(*_liveCopy.get());
 		return *_transactionCopy.get();
 	}
 
@@ -100,9 +114,11 @@ namespace Assets
 		void    DivergentTransaction<Asset>::Commit()
 	{
 		if (_transactionCopy) {
-			Asset temp = std::move(*_workingCopy);
-			*_workingCopy = std::move(*_transactionCopy);
-			*_transactionCopy = std::move(temp);
+            Asset temp = std::move(*_liveCopy);
+            *_liveCopy = std::move(*_transactionCopy);
+            if (!_originalCopy)
+                _originalCopy = std::move(_transactionCopy);
+            *_originalCopy = std::move(temp);
 			_state = State::Committed;
 		}
 	}
@@ -110,20 +126,22 @@ namespace Assets
 	template<typename Asset>
 		void    DivergentTransaction<Asset>::Cancel()
 	{
-		if (state == State::Committed && _transactionCopy) {
-			*_workingCopy = *_transactionCopy;
+		if (_originalCopy) {
+            *_liveCopy = std::move(*_originalCopy);
 		}
 
-		_transactionCopy.reset();
+        _transactionCopy.reset();
+        _originalCopy.reset();
 		_state = State::NoAction;
 	}
 
 	template<typename Asset>
 		DivergentTransaction<Asset>::DivergentTransaction(
+            const char name[],
 			std::shared_ptr<Asset> workingCopy,
 			std::shared_ptr<UndoQueue> undoQueue)
-		: _workingCopy(std::move(workingCopy))
-		, _undoQueue(std::move(undoQueue))
+        : ITransaction(name, std::move(undoQueue))
+        , _liveCopy(std::move(workingCopy))
 		, _state(State::NoAction)
 	{
 	}
@@ -131,7 +149,7 @@ namespace Assets
 	template<typename Asset>
 		DivergentTransaction<Asset>::~DivergentTransaction()
 	{
-		if (_state == State::Modified) { Commit(); }
+        if (_transactionCopy) { Commit(); }
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -144,12 +162,37 @@ namespace Assets
 	}
 
 	template<typename Asset>
-		std::shared_ptr<DivergentTransaction<Asset>> DivergentAsset<Asset>::Transaction_Begin()
+        TransactionPtr<DivergentTransaction<Asset>> DivergentAsset<Asset>::Transaction_Begin(const char name[])
 	{
 		if (!_workingCopy) {
 			_workingCopy = std::make_shared<Asset>(*_pristineCopy);
 		}
-		return std::make_shared<DivergentTransaction<Asset>>(_workingCopy);
+
+            // If we have a "_lastTransaction" and that transaction is on the top of the undoqueue
+            // and the name of that transaction matches the name for this new transaction,
+            // then we can combine them together and just reuse the same one.
+            //
+            // We might also want a time-out here. If the transaction hasn't been used for a while,
+            // or if the transaction was first created some time ago, then we could restart a
+            // new transaction. 
+            // This kind of time-out is important for undo. Each transaction becomes a single undo 
+            // step. So we should attempt to group together actions as transactions in order to make
+            // the undo operation seem most natural.
+        auto undoQueue = _undoQueue.lock();
+        if (undoQueue) {
+            if (_lastTransaction != undoQueue->GetTop()) {
+                _lastTransaction.reset();
+            }
+        }
+
+        if (_lastTransaction && XlCompareString(_lastTransaction->GetName().c_str(), name) != 0) {
+            _lastTransaction.reset();
+        }
+
+        if (!_lastTransaction) {
+            _lastTransaction = std::make_shared<DivergentTransaction<Asset>>(name, _workingCopy, undoQueue);
+        }
+        return TransactionPtr<DivergentTransaction<Asset>>(_lastTransaction);
 	}
 
 	template<typename Asset>

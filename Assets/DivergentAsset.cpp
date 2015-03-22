@@ -9,14 +9,16 @@
 namespace Assets
 {
 
-	ITransaction::ITransaction(std::shared_ptr<UndoQueue> undoQueue)
+    ITransaction::ITransaction(const char name[], std::shared_ptr<UndoQueue> undoQueue)
 	: _undoQueue(std::move(undoQueue))
+    , _name(name)
 	{}
 
 	ITransaction::~ITransaction()
 	{}
 
 	void UndoQueue::PushBack(std::shared_ptr<ITransaction> transaction) {}
+    std::shared_ptr<ITransaction> UndoQueue::GetTop() { return nullptr; }
 	UndoQueue::UndoQueue() {}
 	UndoQueue::~UndoQueue() {}
 

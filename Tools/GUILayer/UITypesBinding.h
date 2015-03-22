@@ -220,10 +220,10 @@ namespace GUILayer
 
         virtual event System::ComponentModel::PropertyChangedEventHandler^ PropertyChanged;
 
-        RenderStateSet(std::shared_ptr<RenderCore::Assets::RawMaterial> underlying);
+        RenderStateSet(std::shared_ptr<::Assets::DivergentAsset<RenderCore::Assets::RawMaterial>> underlying);
         ~RenderStateSet();
     protected:
-        AutoToShared<RenderCore::Assets::RawMaterial> _underlying;
+        AutoToShared<::Assets::DivergentAsset<RenderCore::Assets::RawMaterial>> _underlying;
 
         void NotifyPropertyChanged(/*[CallerMemberName]*/ System::String^ propertyName);
         System::Threading::SynchronizationContext^ _propertyChangedContext;
@@ -232,7 +232,7 @@ namespace GUILayer
     public ref class RawMaterial
     {
     public:
-        using NativeConfig = RenderCore::Assets::RawMaterial;
+        using NativeConfig = ::Assets::DivergentAsset<RenderCore::Assets::RawMaterial>;
         property BindingList<BindingUtil::StringIntPair^>^ MaterialParameterBox {
             BindingList<BindingUtil::StringIntPair^>^ get();
         }
@@ -247,7 +247,7 @@ namespace GUILayer
 
         property RenderStateSet^ StateSet { RenderStateSet^ get() { return _renderStateSet; } }
 
-        const NativeConfig* GetUnderlying() { return _underlying.get() ? _underlying->get() : nullptr; }
+        const RenderCore::Assets::RawMaterial* GetUnderlying() { return _underlying.get() ? &_underlying->get()->GetAsset() : nullptr; }
 
         System::Collections::Generic::List<RawMaterial^>^ BuildInheritanceList();
         property System::String^ Filename { System::String^ get(); }
