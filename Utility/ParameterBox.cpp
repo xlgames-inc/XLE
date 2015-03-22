@@ -23,7 +23,8 @@ namespace Utility
         return Hash32(name, &name[XlStringLen(name)]);
     }
 
-    void        ParameterBox::SetParameter(const std::string& name, uint32 value)
+    template<typename Type>
+        void ParameterBox::SetParameter(const std::string& name, Type value)
     {
         auto hash = MakeParameterNameHash(name);
         auto i = std::lower_bound(_parameterHashValues.cbegin(), _parameterHashValues.cend(), hash);
@@ -61,7 +62,8 @@ namespace Utility
         _cachedHash = 0;
     }
 
-    std::pair<bool, uint32>      ParameterBox::GetParameter(const std::string& name) const
+    template<typename Type>
+        std::pair<bool, uint32> ParameterBox::GetParameter(const char name[]) const
     {
         auto hash = MakeParameterNameHash(name);
         auto i = std::lower_bound(_parameterHashValues.cbegin(), _parameterHashValues.cend(), hash);
@@ -73,7 +75,8 @@ namespace Utility
         return std::make_pair(false, 0);
     }
 
-    std::pair<bool, uint32>      ParameterBox::GetParameter(ParameterNameHash name) const
+    template<typename Type>
+        std::pair<bool, uint32> ParameterBox::GetParameter(ParameterNameHash name) const
     {
         auto i = std::lower_bound(_parameterHashValues.cbegin(), _parameterHashValues.cend(), name);
         if (i!=_parameterHashValues.cend() && *i == name) {
@@ -91,25 +94,21 @@ namespace Utility
             //  though the xor operation here doesn't depend on order, it should be
             //  ok -- because if the same parameter names appear in two different
             //  parameter boxes, they should have the same order.
-        uint64 result = 0x7EF5E3B02A75ED13ui64;
-        for (auto i=_parameterNames.cbegin(); i!=_parameterNames.cend(); ++i) {
-            result ^= Hash64(AsPointer(i->cbegin()), AsPointer(i->cend()));
-        }
-        return result;
-    }
-
-    uint32      ParameterBox::GetValue(size_t index) const
-    {
-        if (index < _parameterOffsets.size()) {
-            auto offset = _parameterOffsets[index];
-            return *(uint32*)&_values[offset];
-        }
-        return 0;    
+        return Hash64(AsPointer(_names.cbegin()), AsPointer(_names.cend()));
     }
 
     uint64      ParameterBox::CalculateHash() const
     {
         return Hash64(AsPointer(_values.cbegin()), AsPointer(_values.cend()));
+    }
+
+    const void* ParameterBox::GetValue(size_t index) const
+    {
+        if (index < _offsets.size()) {
+            auto offset = _offsets[index].second;
+            return &_values[offset];
+        }
+        return 0;    
     }
 
     uint64      ParameterBox::GetHash() const
@@ -137,33 +136,35 @@ namespace Utility
 
         uint8 temporaryValues[1024];
         std::copy(_values.cbegin(), _values.cend(), temporaryValues);
+
         auto i  = _parameterHashValues.cbegin();
         auto i2 = source._parameterHashValues.cbegin();
         while (i < _parameterHashValues.cend() && i2 < source._parameterHashValues.cend()) {
-            if (*i < *i2) {
-                ++i;
-            } else if (*i > *i2) {
-                ++i2;
-            } else if (*i == *i2) {
-                size_t offsetDest   = _parameterOffsets[std::distance(_parameterHashValues.cbegin(), i)];
-                size_t offsetSrc    = source._parameterOffsets[std::distance(source._parameterHashValues.cbegin(), i2)];
-                *(uint32*)PtrAdd(temporaryValues, offsetDest) = *(uint32*)PtrAdd(AsPointer(source._values.cbegin()), offsetSrc);
-                ++i;
-                ++i2;
+
+            if (*i < *i2)       { ++i; } 
+            else if (*i > *i2)  { ++i2; } 
+            else if (*i == *i2) {
+                auto offsetDest = _offsets[std::distance(_parameterHashValues.cbegin(), i)].second;
+                auto typeDest   = _types[std::distance(_parameterHashValues.cbegin(), i)];
+                auto offsetSrc  = source._offsets[std::distance(source._parameterHashValues.cbegin(), i2)].second;
+                auto typeSrc    = source._types[std::distance(source._parameterHashValues.cbegin(), i2)];
+                
+                if (typeDest == typeSrc) {
+                    XlCopyMemory(
+                        PtrAdd(temporaryValues, offsetDest), 
+                        PtrAdd(AsPointer(source._values.cbegin()), offsetSrc),
+                        typeDest.GetSize());
+                }
+
+                ++i; ++i2;
             }
+
         }
 
         return Hash64(temporaryValues, PtrAdd(temporaryValues, _values.size()));
     }
 
-    static std::string AsString(uint32 value)
-    {
-        char buffer[32];
-        Utility::XlI32toA_s(value, buffer, dimof(buffer), 10);
-        return buffer;
-    }
-
-    void        ParameterBox::BuildStringTable(std::vector<std::pair<std::string, std::string>>& defines) const
+    void ParameterBox::BuildStringTable(std::vector<std::pair<const char*, std::string>>& defines) const
     {
         for (auto i=_parameterNames.cbegin(); i!=_parameterNames.cend(); ++i) {
             auto insertPosition     = std::lower_bound(defines.begin(), defines.end(), *i, CompareFirst<std::string, std::string>());
@@ -177,7 +178,7 @@ namespace Utility
         }
     }
 
-    void        ParameterBox::OverrideStringTable(std::vector<std::pair<std::string, std::string>>& defines) const
+    void ParameterBox::OverrideStringTable(std::vector<std::pair<const char*, std::string>>& defines) const
     {
         for (auto i=_parameterNames.cbegin(); i!=_parameterNames.cend(); ++i) {
             auto insertPosition     = std::lower_bound(defines.begin(), defines.end(), *i, CompareFirst<std::string, std::string>());
@@ -189,7 +190,7 @@ namespace Utility
         }
     }
 
-    bool        ParameterBox::ParameterNamesAreEqual(const ParameterBox& other) const
+    bool ParameterBox::ParameterNamesAreEqual(const ParameterBox& other) const
     {
             // return true iff both boxes have exactly the same parameter names, in the same order
         if (_parameterNames.size() != other._parameterNames.size()) {
@@ -218,9 +219,10 @@ namespace Utility
         Serialization::Serialize(serializer, _cachedHash);
         Serialization::Serialize(serializer, _cachedParameterNameHash);
         Serialization::Serialize(serializer, _parameterHashValues);
-        Serialization::Serialize(serializer, _parameterOffsets);
-        Serialization::Serialize(serializer, _parameterNames);
+        Serialization::Serialize(serializer, _offsets);
+        Serialization::Serialize(serializer, _names);
         Serialization::Serialize(serializer, _values);
+        Serialization::Serialize(serializer, _types);
     }
 
     ParameterBox::ParameterBox()

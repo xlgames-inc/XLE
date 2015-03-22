@@ -15,6 +15,45 @@ namespace Serialization { class NascentBlockSerializer; }
 
 namespace Utility
 {
+    namespace ImpliedTyping
+    {
+        enum class Type : uint8 { Int, UInt, Float };
+        enum class TypeHint : uint8 { None, Vector, Color };
+        class TypeDesc
+        {
+        public:
+            Type        _type;
+            TypeHint    _typeHint;
+            uint16      _arrayCount;
+
+            uint32 GetSize();
+        };
+
+        /// Calculate type of an object given in string form.
+        /// Object should be formatted in one of the following C++ like patterns:
+        /// 
+        ///  "1u" (or "1ui" or "1ul", etc)
+        ///  ".3" (or "0.3f", etc)
+        ///  "{1u, 2u, 3u}" (or "[1u, 2u, 3u]")
+        ///  "{1u, 2u, 3u}c" or "{1u, 2u, 3u}v"
+        ///
+        /// This is intended for storing common basic types in text files, and 
+        /// for use while entering data in tools. We want the type of the data to
+        /// be implied by the string representing the data (without needing an
+        /// extra field to describe the type).
+        ///
+        /// This kind of thing is useful when interfacing with scripting languages
+        /// like HLSL and Lua. There are only a few basic types that we need
+        /// to support.
+        ///
+        /// But sometimes we also want to had hints for out to interpret the data.
+        /// For example, 3 floats could be a vector or a colour. We will use C++
+        /// like postfix characters for this (eg, "{1,1,1}c" is a color)
+        TypeDesc CalculateType(const char expression[]);
+
+        template <typename Type>
+            Type Parse(const char expression[]);
+    }
 
         //////////////////////////////////////////////////////////////////
             //      P A R A M E T E R   B O X                       //
@@ -31,40 +70,46 @@ namespace Utility
     {
     public:
         typedef uint32 ParameterNameHash;
-        void        SetParameter(const std::string& name, uint32 value);
-        std::pair<bool, uint32>      GetParameter(const std::string& name) const;
-        std::pair<bool, uint32>      GetParameter(ParameterNameHash name) const;
 
-        uint64      GetHash() const;
-        uint64      GetParameterNamesHash() const;
-        uint64      TranslateHash(const ParameterBox& source) const;
+        using Type = ImpliedTyping::Type;
+        using TypeDesc = ImpliedTyping::TypeDesc;
 
-        void        BuildStringTable(std::vector<std::pair<std::string, std::string>>& defines) const;
-        void        OverrideStringTable(std::vector<std::pair<std::string, std::string>>& defines) const;
+        template<typename Type> void SetParameter(const char name[], Type value);
+        template<typename Type> std::pair<bool, Type> GetParameter(const char name[]) const;
+        template<typename Type> std::pair<bool, Type> GetParameter(ParameterNameHash name) const;
 
-        void        MergeIn(const ParameterBox& source);
+        uint64  GetHash() const;
+        uint64  GetParameterNamesHash() const;
+        uint64  TranslateHash(const ParameterBox& source) const;
+
+        void    BuildStringTable(std::vector<std::pair<const char*, std::string>>& defines) const;
+        void    OverrideStringTable(std::vector<std::pair<const char*, std::string>>& defines) const;
+
+        void    MergeIn(const ParameterBox& source);
 
         static ParameterNameHash    MakeParameterNameHash(const std::string& name);
         static ParameterNameHash    MakeParameterNameHash(const char name[]);
 
-        bool        ParameterNamesAreEqual(const ParameterBox& other) const;
+        bool    ParameterNamesAreEqual(const ParameterBox& other) const;
 
-        void        Serialize(Serialization::NascentBlockSerializer& serializer) const;
+        void    Serialize(Serialization::NascentBlockSerializer& serializer) const;
 
         ParameterBox();
+        ParameterBox(std::initializer_list<std::pair<const char*, const char*>>);
         ParameterBox(ParameterBox&& moveFrom);
         ParameterBox& operator=(ParameterBox&& moveFrom);
         ~ParameterBox();
     private:
         mutable uint64      _cachedHash;
         mutable uint64      _cachedParameterNameHash;
-    
-        Serialization::Vector<ParameterNameHash>    _parameterHashValues;
-        Serialization::Vector<uint32>               _parameterOffsets;
-        Serialization::Vector<std::string>          _parameterNames;
-        Serialization::Vector<uint8>                _values;
 
-        uint32      GetValue(size_t index) const;
+        Serialization::Vector<ParameterNameHash>            _parameterHashValues;
+        Serialization::Vector<std::pair<uint32, uint32>>    _offsets;
+        Serialization::Vector<char>     _names;
+        Serialization::Vector<uint8>    _values;
+        Serialization::Vector<TypeDesc> _types;
+
+        const void* GetValue(size_t index) const;
         uint64      CalculateHash() const;
         uint64      CalculateParameterNamesHash() const;
     };

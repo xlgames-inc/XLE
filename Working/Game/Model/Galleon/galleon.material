@@ -2,5 +2,6 @@ galleon_sail_1
     ShaderParams ( MAT_DOUBLE_SIDED_LIGHTING 1 )
     States ( DoubleSided true )
 galleon_sail
-    ShaderParams ( MAT_DOUBLE_SIDED_LIGHTING 1 )
+    ShaderParams ( MAT_DOUBLE_SIDED_LIGHTING 1u )
+	Constants ( Diffuse "{.1f, .2f, .3f}c", AlphaThreshold .5f )
     States ( DoubleSided true )
