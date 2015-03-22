@@ -382,7 +382,7 @@ namespace GUILayer
             auto nativeInit = clix::marshalString<clix::E_UTF8>(initialiser);
             auto& source = ::Assets::GetDivergentAsset<RenderCore::Assets::RawMaterial>(nativeInit.c_str());
             _underlying.reset(
-                new std::shared_ptr<NativeConfig>(std::move(source)));
+                new std::shared_ptr<NativeConfig>(source));
             _renderStateSet = gcnew RenderStateSet(*_underlying);
         } CATCH (const Assets::Exceptions::InvalidResource&) {
             auto colon = initialiser->IndexOf(':');
