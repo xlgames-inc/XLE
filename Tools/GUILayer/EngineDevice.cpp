@@ -82,8 +82,9 @@ namespace GUILayer
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-    RenderCore::IDevice* NativeEngineDevice::GetRenderDevice()          { return _renderDevice.get(); }
-    BufferUploads::IManager* NativeEngineDevice::GetBufferUploads()     { return _bufferUploads.get(); }
+    RenderCore::IDevice* NativeEngineDevice::GetRenderDevice()              { return _renderDevice.get(); }
+    BufferUploads::IManager* NativeEngineDevice::GetBufferUploads()         { return _bufferUploads.get(); }
+    ::Assets::CompileAndAsyncManager* NativeEngineDevice::GetASyncManager() { return _asyncMan.get(); }
     
     std::unique_ptr<IWindowRig> NativeEngineDevice::CreateWindowRig(const void* nativeWindowHandle)
     {

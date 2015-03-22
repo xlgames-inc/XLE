@@ -32,14 +32,6 @@ namespace ModelViewer
             visMouseOver.AttachCallback(mouseOverDetails);
 
             viewerControl.MouseClick += OnViewerMouseClick;
-            
-                // pop-up a modal version of the material editor (for testing/prototyping)
-            // using (var editor = new ModalMaterialEditor())
-            // {
-            //     editor.Object = new GUILayer.RawMaterial(
-            //         "Game\\Model\\Galleon\\galleon.dae:galleon_01");
-            //     editor.ShowDialog();
-            // }
         }
 
         protected void ContextMenu_EditMaterial(object sender, EventArgs e)
@@ -56,12 +48,20 @@ namespace ModelViewer
             }
         }
 
+        protected void ContextMenu_ShowModifications(object sender, EventArgs e)
+        {
+            using (var dialog = new ModalModifications(GUILayer.EngineDevice.GetInstance())) {
+                dialog.ShowDialog();
+            }
+        }
+
         protected void OnViewerMouseClick(object sender, MouseEventArgs e)
         {
             if (e.Button == MouseButtons.Right) {
                 if (visMouseOver.HasMouseOver) {
                     ContextMenu cm = new ContextMenu();
                     cm.MenuItems.Add("Edit &Material", new EventHandler(ContextMenu_EditMaterial));
+                    cm.MenuItems.Add("Show Modifications", new EventHandler(ContextMenu_ShowModifications));
                     cm.Show(this, e.Location);
                 }
             }

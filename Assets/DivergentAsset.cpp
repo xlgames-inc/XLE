@@ -9,9 +9,9 @@
 namespace Assets
 {
 
-    ITransaction::ITransaction(const char name[], std::shared_ptr<UndoQueue> undoQueue)
+    ITransaction::ITransaction(const char name[], uint64 assetId, uint64 typeCode, std::shared_ptr<UndoQueue> undoQueue)
 	: _undoQueue(std::move(undoQueue))
-    , _name(name)
+    , _name(name), _assetId(assetId), _typeCode(typeCode)
 	{}
 
 	ITransaction::~ITransaction()
@@ -19,6 +19,8 @@ namespace Assets
 
 	void UndoQueue::PushBack(std::shared_ptr<ITransaction> transaction) {}
     std::shared_ptr<ITransaction> UndoQueue::GetTop() { return nullptr; }
+    unsigned UndoQueue::GetCount() { return 0; }
+    ITransaction* UndoQueue::GetTransaction(unsigned) { return nullptr; }
 	UndoQueue::UndoQueue() {}
 	UndoQueue::~UndoQueue() {}
 
@@ -27,5 +29,6 @@ namespace Assets
 	{}
 
 	DivergentAssetBase::~DivergentAssetBase() {}
+
 }
 

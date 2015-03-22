@@ -9,6 +9,7 @@
 #include "CompileAndAsyncManager.h"
 #include "../Utility/Streams/FileSystemMonitor.h"       // (for OnChangeCallback base class)
 #include "../Utility/IteratorUtils.h"
+#include "../Utility/MemoryUtils.h"
 #include "../Core/Types.h"
 #include "../Core/Exceptions.h"
 #include <vector>
@@ -45,7 +46,12 @@ namespace Assets
         public:
             ~AssetSet();
             void Clear();
-            void LogReport();
+            void LogReport() const;
+            uint64          GetTypeCode() const;
+            const char*     GetTypeName() const;
+            unsigned        GetDivergentCount() const;
+            uint64          GetDivergentId(unsigned index) const;
+            std::string     GetAssetName(uint64 id) const;
 
             static std::vector<std::pair<uint64, std::unique_ptr<AssetType>>> _assets;
 			
@@ -199,7 +205,7 @@ namespace Assets
 
                     std::weak_ptr<UndoQueue> undoQueue;
                     auto newDivAsset = std::make_shared<typename AssetTraits<AssetType>::DivAsset>(
-                        GetAsset<true, false, AssetType>(std::forward<Params>(initialisers)...), undoQueue);
+                        GetAsset<true, false, AssetType>(std::forward<Params>(initialisers)...), hash, assetSet.GetTypeCode(), undoQueue);
 
 						// Do we have to search for an insertion point here again?
 						// is it possible that constructing an asset could create a new divergent
@@ -226,7 +232,7 @@ namespace Assets
             }
 
         template <typename AssetType>
-            void AssetSet<AssetType>::LogReport() 
+            void AssetSet<AssetType>::LogReport() const 
             {
                 LogHeader(unsigned(_assets.size()), typeid(AssetType).name());
                 #if defined(ASSETS_STORE_NAMES)
@@ -253,6 +259,42 @@ namespace Assets
                             uint32(i->first>>32), uint32(i->first));
                         LogAssetName(index, buffer);
                     }
+                #endif
+            }
+
+        template <typename AssetType>
+            uint64          AssetSet<AssetType>::GetTypeCode() const
+            {
+                return Hash64(typeid(AssetType).name());
+            }
+
+        template <typename AssetType>
+            const char*     AssetSet<AssetType>::GetTypeName() const
+            {
+                return typeid(AssetType).name();
+            }
+
+        template <typename AssetType>
+            unsigned        AssetSet<AssetType>::GetDivergentCount() const
+            {
+                return unsigned(_divergentAssets.size());
+            }
+
+        template <typename AssetType>
+            uint64          AssetSet<AssetType>::GetDivergentId(unsigned index) const
+            {
+                if (index < _divergentAssets.size()) return _divergentAssets[index].first;
+                return ~0x0ull;
+            }
+
+        template <typename AssetType>
+            std::string     AssetSet<AssetType>::GetAssetName(uint64 id) const
+            {
+                #if defined(ASSETS_STORE_NAMES)
+                    auto i = LowerBound(_assetNames, id);
+                    if (i != _assetNames.end() && i->first == id)
+                        return i->second;
+                    return std::string();
                 #endif
             }
 

@@ -9,6 +9,7 @@
     <ClCompile Include="..\UITypesBinding.cpp" />
     <ClCompile Include="..\MaterialVisualisation.cpp" />
     <ClCompile Include="..\AssemblyInfo.cpp" />
+    <ClCompile Include="..\DivergentAssetList.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\EngineDevice.h" />
@@ -23,5 +24,6 @@
     <ClInclude Include="..\UITypesBinding.h" />
     <ClInclude Include="..\MaterialVisualisation.h" />
     <ClInclude Include="..\IOverlaySystem.h" />
+    <ClInclude Include="..\DivergentAssetList.h" />
   </ItemGroup>
 </Project>

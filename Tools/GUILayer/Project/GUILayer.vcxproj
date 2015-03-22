@@ -74,6 +74,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\AssemblyInfo.cpp" />
+    <ClCompile Include="..\DivergentAssetList.cpp" />
     <ClCompile Include="..\EngineDevice.cpp" />
     <ClCompile Include="..\EngineControl.cpp" />
     <ClCompile Include="..\LayerControl.cpp" />
@@ -84,6 +85,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\CLIXAutoPtr.h" />
+    <ClInclude Include="..\DivergentAssetList.h" />
     <ClInclude Include="..\EngineControlInternal.h" />
     <ClInclude Include="..\EngineDevice.h" />
     <ClInclude Include="..\EngineControl.h" />
@@ -115,6 +117,9 @@
     </ProjectReference>
     <ProjectReference Include="..\..\..\Foreign\Project\Foreign.vcxproj">
       <Project>{9f01282b-6297-4f87-a309-287c2c574b76}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\Foreign\TreeViewAdv-1.7.0.0\Aga.Controls\Aga.Controls.csproj">
+      <Project>{e73bb233-d88b-44a7-a98f-d71ee158381d}</Project>
     </ProjectReference>
     <ProjectReference Include="..\..\..\Math\Project\Math.vcxproj">
       <Project>{2e51aa64-7e29-cd4a-fb7f-bac486a3575c}</Project>

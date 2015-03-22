@@ -24,6 +24,7 @@ namespace GUILayer
     public:
         RenderCore::IDevice*        GetRenderDevice();
         BufferUploads::IManager*    GetBufferUploads();
+        ::Assets::CompileAndAsyncManager* GetASyncManager();
         std::unique_ptr<IWindowRig> CreateWindowRig(const void* nativeWindowHandle);
         void                        AttachDefaultCompilers();
 

@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "../Core/Types.h"
 #include <memory>
 #include <string>
 
@@ -19,12 +20,15 @@ namespace Assets
 	{
 	public:
         const std::string& GetName() const { return _name; }
+        uint64 GetAssetId() const { return _assetId; }
+        uint64 GetTypeCode() const { return _typeCode; }
 
-		ITransaction(const char name[], std::shared_ptr<UndoQueue> undoQueue);
+		ITransaction(const char name[], uint64 assetId, uint64 typeCode, std::shared_ptr<UndoQueue> undoQueue);
 		virtual ~ITransaction();
 	protected:
 		std::shared_ptr<UndoQueue> _undoQueue;
         std::string _name;
+        uint64 _assetId, _typeCode;
 	};
 
 	class UndoQueue
@@ -32,6 +36,9 @@ namespace Assets
 	public:
 		void PushBack(std::shared_ptr<ITransaction> transaction);
         std::shared_ptr<ITransaction> GetTop();
+
+        unsigned GetCount();
+        ITransaction* GetTransaction(unsigned index);
 
 		UndoQueue();
 		~UndoQueue();
@@ -59,6 +66,7 @@ namespace Assets
 
 		DivergentTransaction(
             const char name[],
+            uint64 assetId, uint64 typeCode,
 			std::shared_ptr<Asset> workingCopy,
 			std::shared_ptr<UndoQueue> undoQueue);
 		virtual ~DivergentTransaction();
@@ -70,6 +78,7 @@ namespace Assets
 
 		enum class State { NoAction, Modified, Committed };
 		State _state;
+        uint64 _assetId, _typeCode;
 	};
 
     template <typename Transaction>
@@ -90,11 +99,13 @@ namespace Assets
 
         TransactionPtr<DivergentTransaction<Asset>> Transaction_Begin(const char name[]);
 
-		DivergentAsset(const Asset& pristineCopy, std::weak_ptr<UndoQueue> undoQueue);
+		DivergentAsset(const Asset& pristineCopy, uint64 assetId, uint64 typeCode, std::weak_ptr<UndoQueue> undoQueue);
 		~DivergentAsset();
 	protected:
-		const Asset*				_pristineCopy;
-		std::shared_ptr<Asset>		_workingCopy;
+		const Asset*			_pristineCopy;
+		std::shared_ptr<Asset>  _workingCopy;
+        uint64                  _assetId;
+        uint64                  _typeCode;
 
         std::shared_ptr<DivergentTransaction<Asset>> _lastTransaction;
 	};
@@ -138,9 +149,10 @@ namespace Assets
 	template<typename Asset>
 		DivergentTransaction<Asset>::DivergentTransaction(
             const char name[],
+            uint64 assetId, uint64 typeCode,
 			std::shared_ptr<Asset> workingCopy,
 			std::shared_ptr<UndoQueue> undoQueue)
-        : ITransaction(name, std::move(undoQueue))
+        : ITransaction(name, assetId, typeCode, std::move(undoQueue))
         , _liveCopy(std::move(workingCopy))
 		, _state(State::NoAction)
 	{
@@ -178,6 +190,7 @@ namespace Assets
             // This kind of time-out is important for undo. Each transaction becomes a single undo 
             // step. So we should attempt to group together actions as transactions in order to make
             // the undo operation seem most natural.
+            //
         auto undoQueue = _undoQueue.lock();
         if (undoQueue) {
             if (_lastTransaction != undoQueue->GetTop()) {
@@ -190,15 +203,18 @@ namespace Assets
         }
 
         if (!_lastTransaction) {
-            _lastTransaction = std::make_shared<DivergentTransaction<Asset>>(name, _workingCopy, undoQueue);
+            _lastTransaction = std::make_shared<DivergentTransaction<Asset>>(name, _assetId, _typeCode, _workingCopy, undoQueue);
         }
         return TransactionPtr<DivergentTransaction<Asset>>(_lastTransaction);
 	}
 
 	template<typename Asset>
 		DivergentAsset<Asset>::DivergentAsset(
-			const Asset& pristineCopy, std::weak_ptr<UndoQueue> undoQueue)
+			const Asset& pristineCopy,
+            uint64 assetId, uint64 typeCode,
+            std::weak_ptr<UndoQueue> undoQueue)
 	: DivergentAssetBase(std::move(undoQueue))
+    , _assetId(assetId), _typeCode(typeCode)
 	{
 		_pristineCopy = &pristineCopy;
 	}

@@ -63,6 +63,16 @@ namespace Assets
 		return _pimpl->_boundThreadId == Threading::CurrentThreadId();
 	}
 
+    unsigned AssetSetManager::GetAssetSetCount()
+    {
+        return unsigned(_pimpl->_sets.size());
+    }
+
+    const IAssetSet* AssetSetManager::GetAssetSet(unsigned index)
+    {
+        return _pimpl->_sets[index].get();
+    }
+
     AssetSetManager::AssetSetManager()
     {
         auto pimpl = std::make_unique<Pimpl>();

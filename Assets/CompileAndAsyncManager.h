@@ -47,8 +47,13 @@ namespace Assets
     class IAssetSet
     {
     public:
-        virtual void Clear() = 0;
-        virtual void LogReport() = 0;
+        virtual void            Clear() = 0;
+        virtual void            LogReport() const = 0;
+        virtual uint64          GetTypeCode() const = 0;
+        virtual const char*     GetTypeName() const = 0;
+        virtual unsigned        GetDivergentCount() const = 0;
+        virtual uint64          GetDivergentId(unsigned index) const = 0;
+        virtual std::string     GetAssetName(uint64 id) const = 0;
         virtual ~IAssetSet();
     };
 
@@ -60,6 +65,9 @@ namespace Assets
         void LogReport();
         unsigned BoundThreadId() const;
 		bool IsBoundThread() const;
+
+        unsigned GetAssetSetCount();
+        const IAssetSet* GetAssetSet(unsigned index);
 
         AssetSetManager();
         ~AssetSetManager();
