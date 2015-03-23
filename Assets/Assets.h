@@ -437,3 +437,47 @@ namespace Assets
 }
 
 
+#include "../Utility/MemoryUtils.h"
+#include "../Utility/StringUtils.h"
+#include "../ConsoleRig/Log.h"
+#include <sstream>
+
+namespace Assets 
+{
+    namespace Internal
+    {
+        template <typename Object>
+			inline void StreamCommaSeparated(std::stringstream& result, const Object& obj)
+		{
+			result << obj << ", ";
+		}
+
+		template <typename... Params>
+			std::string AsString(Params... initialisers)
+		{
+			std::stringstream result;
+			int dummy[] = { 0, (StreamCommaSeparated(result, initialisers), 0)... };
+			(void)dummy;
+			return result.str();
+		}
+
+		template <typename... Params>
+			uint64 BuildHash(Params... initialisers)
+        { 
+                //  Note Hash64 is a relatively expensive hash function
+                //      ... we might get away with using a simpler/quicker hash function
+                //  Note that if we move over to variadic template initialisers, it
+                //  might not be as easy to build the hash value (because they would
+                //  allow some initialisers to be different types -- not just strings).
+                //  If we want to support any type as initialisers, we need to either
+                //  define some rules for hashing arbitrary objects, or think of a better way
+                //  to build the hash.
+            uint64 result = DefaultSeed64;
+			int dummy[] = { 0, (result = Hash64(initialisers, result), 0)... };
+			(void)dummy;
+            return result;
+        }
+    }
+}
+
+

@@ -405,7 +405,7 @@ namespace PlatformRig
                                     //
 
                                 auto nameHash = ParameterBox::MakeParameterNameHash(variableDesc.Name);
-                                auto param = constants.GetParameter(nameHash);
+                                auto param = constants.GetParameter<uint32>(nameHash);
                                 if (param.first) {
 
                                     auto type = reflectionVariable->GetType();

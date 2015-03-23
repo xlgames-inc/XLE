@@ -673,7 +673,7 @@ namespace SceneEngine
             //  we need to set the "shadow cascade mode" settings to the right
             //  mode for this prepare step;
         parserContext.GetTechniqueContext()._runtimeState.SetParameter(
-            StringShadowCascadeMode, 
+            StringShadowCascadeMode.c_str(), 
             preparedResult._mode == ShadowProjectionDesc::Projections::Mode::Ortho?2:1);
 
             /////////////////////////////////////////////
@@ -730,7 +730,7 @@ namespace SceneEngine
         savedTargets.ResetToOldTargets(context);
         context->Bind(Techniques::CommonResources()._defaultRasterizer);
 
-        parserContext.GetTechniqueContext()._runtimeState.SetParameter(StringShadowCascadeMode, 0);
+        parserContext.GetTechniqueContext()._runtimeState.SetParameter(StringShadowCascadeMode.c_str(), 0);
 
         return std::move(preparedResult);
     }

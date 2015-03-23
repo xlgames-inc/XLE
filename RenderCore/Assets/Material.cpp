@@ -457,11 +457,11 @@ namespace RenderCore { namespace Assets
 
     RawMaterial::~RawMaterial() {}
 
-    static std::unique_ptr<Data> WriteStringTable(const char name[], const std::vector<std::pair<std::string, std::string>>& table)
+    static std::unique_ptr<Data> WriteStringTable(const char name[], const std::vector<std::pair<const char*, std::string>>& table)
     {
         auto result = std::make_unique<Data>(name);
         for (auto i=table.cbegin(); i!=table.cend(); ++i) {
-            result->SetAttribute(i->first.c_str(), i->second.c_str());
+            result->SetAttribute(i->first, i->second.c_str());
         }
         return std::move(result);
     }
@@ -479,13 +479,13 @@ namespace RenderCore { namespace Assets
             result->Add(inheritBlock.release());
         }
 
-        std::vector<std::pair<std::string, std::string>> matParamStringTable;
+        std::vector<std::pair<const char*, std::string>> matParamStringTable;
         _matParamBox.BuildStringTable(matParamStringTable);
         if (!matParamStringTable.empty()) {
             result->Add(WriteStringTable("ShaderParams", matParamStringTable).release());
         }
 
-        std::vector<std::pair<std::string, std::string>> constantsStringTable;
+        std::vector<std::pair<const char*, std::string>> constantsStringTable;
         _constants.BuildStringTable(constantsStringTable);
         if (!constantsStringTable.empty()) {
             result->Add(WriteStringTable("Constants", constantsStringTable).release());

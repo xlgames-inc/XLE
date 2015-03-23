@@ -10,9 +10,52 @@
 #include "StringUtils.h"
 #include "IteratorUtils.h"
 #include <algorithm>
+#include <utility>
 
 namespace Utility
 {
+    namespace ImpliedTyping
+    {
+        uint32 TypeDesc::GetSize() const
+        {
+            switch (_type) {
+            case TypeCat::Int:
+            case TypeCat::UInt:
+            case TypeCat::Float: return sizeof(unsigned)*std::max(1u,unsigned(_arrayCount));
+            default: return 0;
+            }
+        }
+
+        void    TypeDesc::Serialize(Serialization::NascentBlockSerializer& serializer) const
+        {
+            Serialization::Serialize(serializer, *(uint32*)this);
+        }
+
+        bool operator==(const TypeDesc& lhs, const TypeDesc& rhs)
+        {
+            return lhs._type == rhs._type
+                && lhs._typeHint == rhs._typeHint
+                && lhs._arrayCount == rhs._arrayCount;
+        }
+
+
+        TypeDesc::TypeDesc()
+        {
+            _type = TypeCat::UInt;
+            _typeHint = TypeHint::None;
+            _arrayCount = 1;
+        }
+
+        template<typename Type> TypeDesc TypeOf() { return TypeDesc(); }
+
+        TypeDesc TypeOf(const char expression[]) { return TypeDesc(); }
+        template <typename Type> Type Parse(const char expression[]) { return Type(0); }
+
+        std::string AsString(const void*, const TypeDesc&) { return std::string(); }
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
     ParameterBox::ParameterNameHash ParameterBox::MakeParameterNameHash(const std::string& name)
     {
         return Hash32(AsPointer(name.cbegin()), AsPointer(name.cend()));
@@ -23,69 +66,151 @@ namespace Utility
         return Hash32(name, &name[XlStringLen(name)]);
     }
 
+    void ParameterBox::SetParameter(const char name[], const char data[])
+    {
+        assert(0);
+    }
+
     template<typename Type>
-        void ParameterBox::SetParameter(const std::string& name, Type value)
+        void ParameterBox::SetParameter(const char name[], Type value)
+    {
+        const auto insertType = ImpliedTyping::TypeOf<Type>();
+        auto size = insertType.GetSize();
+        assert(size == sizeof(Type));
+        SetParameter(name, &value, insertType);
+    }
+
+    void ParameterBox::SetParameter(
+        const char name[], const void* value, 
+        const ImpliedTyping::TypeDesc& insertType)
     {
         auto hash = MakeParameterNameHash(name);
         auto i = std::lower_bound(_parameterHashValues.cbegin(), _parameterHashValues.cend(), hash);
         if (i==_parameterHashValues.cend()) {
+                // push new value onto the end (including name & type info)
             _parameterHashValues.push_back(hash);
-            auto offset = _values.size();
-            _parameterOffsets.push_back((ParameterNameHash)offset);
-            _parameterNames.push_back(name);
-            _values.resize(offset+sizeof(uint32), 0);
-            *(uint32*)&_values[offset] = value;
+
+            auto valueOffset = _values.size();
+            auto nameOffset = _names.size();
+            
+            _values.insert(_values.end(), (const uint8*)&value, (const uint8*)PtrAdd(&value, sizeof(value)));
+
+            auto nameLength = XlStringLen(name)+1;
+            _names.insert(_names.end(), name, &name[nameLength]);
+
+            _offsets.push_back(std::make_pair(valueOffset, nameOffset));
+            _types.push_back(insertType);
+
             _cachedHash = 0;
             _cachedParameterNameHash = 0;
             return;
         }
+
+        const auto valueSize = insertType.GetSize();
 
         size_t index = std::distance(_parameterHashValues.cbegin(), i);
         if (*i!=hash) {
+                // insert new value in the middle somewhere
             _parameterHashValues.insert(i, hash);
-            _parameterNames.insert(_parameterNames.begin()+index, name);
-            size_t offset = _parameterOffsets[index];
-            _parameterOffsets.insert(_parameterOffsets.begin()+index, uint32(offset));
-            for (auto i2=_parameterOffsets.begin()+index+1; i2<_parameterOffsets.end(); ++i2) {
-                (*i2) += sizeof(uint32);
+
+            const auto nameLength = XlStringLen(name)+1;
+            auto dstOffsets = _offsets[index];
+
+            _offsets.insert(_offsets.begin()+index, dstOffsets);
+            for (auto i2=_offsets.begin()+index+1; i2<_offsets.end(); ++i2) {
+                i2->first += nameLength;
+                i2->second += valueSize;
             }
-            _values.insert(_values.cbegin()+offset, (byte*)&value, (byte*)PtrAdd(&value, sizeof(uint32)));
-            *(uint32*)&_values[offset] = value;
+
+            _values.insert(
+                _values.cbegin()+dstOffsets.second, 
+                (uint8*)&value, (uint8*)PtrAdd(&value, valueSize));
+            _names.insert(
+                _names.cbegin()+dstOffsets.first, 
+                name, &name[nameLength]);
+            _types.insert(_types.begin() + index, insertType);
+
             _cachedHash = 0;
             _cachedParameterNameHash = 0;
             return;
         }
 
-        assert(_parameterNames[index] == name);
-        auto offset = _parameterOffsets[index];
-        *(uint32*)&_values[offset] = value;
+            // just update the value
+        assert(!XlCompareString(&_names[index], name));
+        const auto offset = _offsets[index];
+        const auto& existingType = _types[index];
+
+        if (existingType.GetSize() == valueSize) {
+
+                // same type, or type with the same size...
+            XlCopyMemory(&_values[offset.first], (uint8*)&value, valueSize);
+            _types[index] = insertType;
+
+        } else {
+
+                // if the size of the type changes, we need to adjust the values table a bit
+                // hopefully this should be an uncommon case
+            auto dstOffsets = _offsets[index];
+            signed sizeChange = signed(existingType.GetSize()) - signed(valueSize);
+
+            for (auto i2=_offsets.begin()+index+1; i2<_offsets.end(); ++i2) {
+                i2->second += sizeChange;
+            }
+
+            _values.erase(
+                _values.cbegin()+dstOffsets.second,
+                _values.cbegin()+dstOffsets.second+existingType.GetSize());
+            _values.insert(
+                _values.cbegin()+dstOffsets.second, 
+                (uint8*)&value, (uint8*)PtrAdd(&value, valueSize));
+            _types[index] = insertType;
+
+        }
+
         _cachedHash = 0;
     }
 
     template<typename Type>
-        std::pair<bool, uint32> ParameterBox::GetParameter(const char name[]) const
+        std::pair<bool, Type> ParameterBox::GetParameter(const char name[]) const
     {
         auto hash = MakeParameterNameHash(name);
         auto i = std::lower_bound(_parameterHashValues.cbegin(), _parameterHashValues.cend(), hash);
         if (i!=_parameterHashValues.cend() && *i == hash) {
             size_t index = std::distance(_parameterHashValues.cbegin(), i);
-            auto offset = _parameterOffsets[index];
-            return std::make_pair(true, *(uint32*)&_values[offset]);
+            auto offset = _offsets[index];
+            return std::make_pair(true, *(Type*)&_values[offset.second]);
         }
-        return std::make_pair(false, 0);
+        return std::make_pair(false, Type(0));
     }
 
     template<typename Type>
-        std::pair<bool, uint32> ParameterBox::GetParameter(ParameterNameHash name) const
+        std::pair<bool, Type> ParameterBox::GetParameter(ParameterNameHash name) const
     {
         auto i = std::lower_bound(_parameterHashValues.cbegin(), _parameterHashValues.cend(), name);
         if (i!=_parameterHashValues.cend() && *i == name) {
             size_t index = std::distance(_parameterHashValues.cbegin(), i);
-            auto offset = _parameterOffsets[index];
-            return std::make_pair(true, *(uint32*)&_values[offset]);
+            auto offset = _offsets[index];
+            return std::make_pair(true, *(Type*)&_values[offset.second]);
         }
-        return std::make_pair(false, 0);
+        return std::make_pair(false, Type(0));
     }
+
+    template void ParameterBox::SetParameter(const char name[], uint32 value);
+    template std::pair<bool, uint32> ParameterBox::GetParameter(const char name[]) const;
+    template std::pair<bool, uint32> ParameterBox::GetParameter(ParameterNameHash name) const;
+
+    template void ParameterBox::SetParameter(const char name[], int32 value);
+    template std::pair<bool, int32> ParameterBox::GetParameter(const char name[]) const;
+    template std::pair<bool, int32> ParameterBox::GetParameter(ParameterNameHash name) const;
+
+    template void ParameterBox::SetParameter(const char name[], bool value);
+    template std::pair<bool, bool> ParameterBox::GetParameter(const char name[]) const;
+    template std::pair<bool, bool> ParameterBox::GetParameter(ParameterNameHash name) const;
+
+    template void ParameterBox::SetParameter(const char name[], float value);
+    template std::pair<bool, float> ParameterBox::GetParameter(const char name[]) const;
+    template std::pair<bool, float> ParameterBox::GetParameter(ParameterNameHash name) const;
+
 
     uint64      ParameterBox::CalculateParameterNamesHash() const
     {
@@ -164,28 +289,55 @@ namespace Utility
         return Hash64(temporaryValues, PtrAdd(temporaryValues, _values.size()));
     }
 
+    class StringTableComparison
+    {
+    public:
+        bool operator()(const char* lhs, const std::pair<const char*, std::string>& rhs) const 
+        {
+            return XlCompareString(lhs, rhs.first) < 0;
+        }
+
+        bool operator()(const std::pair<const char*, std::string>& lhs, const std::pair<const char*, std::string>& rhs) const 
+        {
+            return XlCompareString(lhs.first, rhs.first) < 0;
+        }
+
+        bool operator()(const std::pair<const char*, std::string>& lhs, const char* rhs) const 
+        {
+            return XlCompareString(lhs.first, rhs) < 0;
+        }
+    };
+
     void ParameterBox::BuildStringTable(std::vector<std::pair<const char*, std::string>>& defines) const
     {
-        for (auto i=_parameterNames.cbegin(); i!=_parameterNames.cend(); ++i) {
-            auto insertPosition     = std::lower_bound(defines.begin(), defines.end(), *i, CompareFirst<std::string, std::string>());
-            auto offset             = _parameterOffsets[std::distance(_parameterNames.cbegin(), i)];
-            auto value              = *(uint32*)&_values[offset];
-            if (insertPosition!=defines.cend() && insertPosition->first == *i) {
-                insertPosition->second = AsString(value);
+        for (auto i=_offsets.cbegin(); i!=_offsets.cend(); ++i) {
+            const auto* name = &_names[i->first];
+            const void* value = &_values[i->second];
+            const auto& type = _types[std::distance(_offsets.begin(), i)];
+            auto stringFormat = ImpliedTyping::AsString(value, type);
+
+            auto insertPosition = std::lower_bound(
+                defines.begin(), defines.end(), name, StringTableComparison());
+            if (insertPosition!=defines.cend() && !XlCompareString(insertPosition->first, name)) {
+                insertPosition->second = stringFormat;
             } else {
-                defines.insert(insertPosition, std::make_pair(*i, AsString(value)));
+                defines.insert(insertPosition, std::make_pair(name, stringFormat));
             }
         }
     }
 
     void ParameterBox::OverrideStringTable(std::vector<std::pair<const char*, std::string>>& defines) const
     {
-        for (auto i=_parameterNames.cbegin(); i!=_parameterNames.cend(); ++i) {
-            auto insertPosition     = std::lower_bound(defines.begin(), defines.end(), *i, CompareFirst<std::string, std::string>());
-            auto offset             = _parameterOffsets[std::distance(_parameterNames.cbegin(), i)];
-            auto value              = *(uint32*)&_values[offset];
-            if (insertPosition!=defines.cend() && insertPosition->first == *i) {
-                insertPosition->second = AsString(value);
+        for (auto i=_offsets.cbegin(); i!=_offsets.cend(); ++i) {
+            const auto* name = &_names[i->first];
+            const void* value = &_values[i->second];
+            const auto& type = _types[std::distance(_offsets.begin(), i)];
+
+            auto insertPosition = std::lower_bound(
+                defines.begin(), defines.end(), name, StringTableComparison());
+
+            if (insertPosition!=defines.cend() && !XlCompareString(insertPosition->first, name)) {
+                insertPosition->second = ImpliedTyping::AsString(value, type);
             }
         }
     }
@@ -193,15 +345,10 @@ namespace Utility
     bool ParameterBox::ParameterNamesAreEqual(const ParameterBox& other) const
     {
             // return true iff both boxes have exactly the same parameter names, in the same order
-        if (_parameterNames.size() != other._parameterNames.size()) {
+        if (_names.size() != other._names.size()) {
             return false;
         }
-        for (unsigned c=0; c<_parameterNames.size(); ++c) {
-            if (_parameterNames[c] != other._parameterNames[c]) {
-                return false;
-            }
-        }
-        return true;
+        return GetParameterNamesHash() == other.GetParameterNamesHash();
     }
 
     void ParameterBox::MergeIn(const ParameterBox& source)
@@ -209,8 +356,12 @@ namespace Utility
             // simple implementation... 
             //  We could build a more effective implementation taking into account
             //  the fact that both parameter boxes are sorted.
-        for (size_t i=size_t(0); i<source._parameterNames.size(); ++i) {
-            SetParameter(source._parameterNames[i], source.GetValue(i));
+        for (auto i=_offsets.cbegin(); i!=_offsets.cend(); ++i) {
+            const auto* name = &source._names[i->first];
+            SetParameter(
+                name, 
+                &source._values[i->second],
+                source._types[std::distance(_offsets.cbegin(), i)]);
         }
     }
 
@@ -230,11 +381,20 @@ namespace Utility
         _cachedHash = _cachedParameterNameHash = 0;
     }
 
+    ParameterBox::ParameterBox(
+        std::initializer_list<std::pair<const char*, const char*>> init)
+    {
+        for (auto i=init.begin(); i!=init.end(); ++i) {
+            SetParameter(i->first, i->second);
+        }
+    }
+
     ParameterBox::ParameterBox(ParameterBox&& moveFrom)
     : _parameterHashValues(std::move(moveFrom._parameterHashValues))
-    , _parameterOffsets(std::move(moveFrom._parameterOffsets))
-    , _parameterNames(std::move(moveFrom._parameterNames))
+    , _offsets(std::move(moveFrom._offsets))
+    , _names(std::move(moveFrom._names))
     , _values(std::move(moveFrom._values))
+    , _types(std::move(moveFrom._types))
     {
         _cachedHash = moveFrom._cachedHash;
         _cachedParameterNameHash = moveFrom._cachedParameterNameHash;
@@ -243,9 +403,10 @@ namespace Utility
     ParameterBox& ParameterBox::operator=(ParameterBox&& moveFrom)
     {
         _parameterHashValues = std::move(moveFrom._parameterHashValues);
-        _parameterOffsets = std::move(moveFrom._parameterOffsets);
-        _parameterNames = std::move(moveFrom._parameterNames);
+        _offsets = std::move(moveFrom._offsets);
+        _names = std::move(moveFrom._names);
         _values = std::move(moveFrom._values);
+        _types = std::move(moveFrom._types);
         _cachedHash = moveFrom._cachedHash;
         _cachedParameterNameHash = moveFrom._cachedParameterNameHash;
         return *this;
@@ -254,6 +415,9 @@ namespace Utility
     ParameterBox::~ParameterBox()
     {
     }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
 }
 
 

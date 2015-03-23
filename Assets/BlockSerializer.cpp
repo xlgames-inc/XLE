@@ -154,6 +154,21 @@ namespace Serialization
         PushBackRaw_SubBlock(AsPointer(subBlock._trailingSubBlocks.begin()), subBlock._trailingSubBlocks.size());
     }
 
+    void NascentBlockSerializer::SerializeRawSubBlock(const void* begin, const void* end, SpecialBuffer::Enum specialBuffer)
+    {
+        auto size = size_t(end) - size_t(begin);
+
+        InternalPointer ptr;
+        ptr._pointerOffset   = _memory.size();
+        ptr._subBlockOffset  = _trailingSubBlocks.size();
+        ptr._subBlockSize    = size;
+        ptr._specialBuffer   = specialBuffer;
+        RegisterInternalPointer(ptr);
+
+        PushBackPlaceholder(specialBuffer);
+        PushBackRaw_SubBlock(begin, size);
+    }
+
     void NascentBlockSerializer::SerializeValue(const std::string& value)
     {
         SerializeSpecialBuffer(SpecialBuffer::String, AsPointer(value.begin()), AsPointer(value.end()));

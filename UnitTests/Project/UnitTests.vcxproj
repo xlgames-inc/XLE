@@ -61,6 +61,7 @@
     <ClCompile Include="..\DLLBinding.cpp" />
     <ClCompile Include="..\ModelConversion.cpp" />
     <ClCompile Include="..\StartupShutdown.cpp" />
+    <ClCompile Include="..\Utilities.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Assets\Project\Assets.vcxproj">

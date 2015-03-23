@@ -37,7 +37,7 @@ namespace GUILayer
             static const auto DefaultNormalsTextureBindingHash = Hash64("NormalsTexture");
             ParameterBox materialParameters = obj._parameters._matParams;
             for (auto i=obj._parameters._bindings.cbegin(); i!=obj._parameters._bindings.cend(); ++i) {
-                materialParameters.SetParameter(std::string(StringMeld<64>() << "RES_HAS_" << std::hex << i->_bindHash), 1);
+                materialParameters.SetParameter(StringMeld<64>() << "RES_HAS_" << std::hex << i->_bindHash, 1);
                 if (i->_bindHash == DefaultNormalsTextureBindingHash) {
                     ResChar resolvedName[MaxPath];
                     obj._searchRules.ResolveFile(resolvedName, dimof(resolvedName), i->_resourceName.c_str());

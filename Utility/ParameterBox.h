@@ -17,16 +17,19 @@ namespace Utility
 {
     namespace ImpliedTyping
     {
-        enum class Type : uint8 { Int, UInt, Float };
+        enum class TypeCat : uint8 { Int, UInt, Float };
         enum class TypeHint : uint8 { None, Vector, Color };
         class TypeDesc
         {
         public:
-            Type        _type;
+            TypeCat     _type;
             TypeHint    _typeHint;
             uint16      _arrayCount;
 
-            uint32 GetSize();
+            void    Serialize(Serialization::NascentBlockSerializer& serializer) const;
+            TypeDesc();
+            uint32 GetSize() const;
+            friend bool operator==(const TypeDesc& lhs, const TypeDesc& rhs);
         };
 
         /// Calculate type of an object given in string form.
@@ -49,10 +52,13 @@ namespace Utility
         /// But sometimes we also want to had hints for out to interpret the data.
         /// For example, 3 floats could be a vector or a colour. We will use C++
         /// like postfix characters for this (eg, "{1,1,1}c" is a color)
-        TypeDesc CalculateType(const char expression[]);
+        TypeDesc TypeOf(const char expression[]);
+        template<typename Type> TypeDesc TypeOf();
 
         template <typename Type>
             Type Parse(const char expression[]);
+
+        std::string AsString(const void*, const TypeDesc&);
     }
 
         //////////////////////////////////////////////////////////////////
@@ -71,9 +77,10 @@ namespace Utility
     public:
         typedef uint32 ParameterNameHash;
 
-        using Type = ImpliedTyping::Type;
         using TypeDesc = ImpliedTyping::TypeDesc;
 
+        void SetParameter(const char name[], const void* data, const ImpliedTyping::TypeDesc& type);
+        void SetParameter(const char name[], const char data[]);
         template<typename Type> void SetParameter(const char name[], Type value);
         template<typename Type> std::pair<bool, Type> GetParameter(const char name[]) const;
         template<typename Type> std::pair<bool, Type> GetParameter(ParameterNameHash name) const;

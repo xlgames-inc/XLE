@@ -97,7 +97,7 @@ namespace RenderCore { namespace Assets { namespace Simple
         Metal::BoundUniforms* currentBoundUniforms = nullptr;
 
         if (vegetationSpawnObjectIndex)
-            parserContext.GetTechniqueContext()._runtimeState.SetParameter(StringSpawnedInstance, 1);
+            parserContext.GetTechniqueContext()._runtimeState.SetParameter(StringSpawnedInstance.c_str(), 1);
 
         TRY
         {
@@ -160,12 +160,12 @@ namespace RenderCore { namespace Assets { namespace Simple
 
         } CATCH (...) {
             if (vegetationSpawnObjectIndex)
-                parserContext.GetTechniqueContext()._runtimeState.SetParameter(StringSpawnedInstance, 0);
+                parserContext.GetTechniqueContext()._runtimeState.SetParameter(StringSpawnedInstance.c_str(), 0);
             throw;
         } CATCH_END
 
         if (vegetationSpawnObjectIndex)
-            parserContext.GetTechniqueContext()._runtimeState.SetParameter(StringSpawnedInstance, 0);
+            parserContext.GetTechniqueContext()._runtimeState.SetParameter(StringSpawnedInstance.c_str(), 0);
     }
 
     class ModelRenderer::SortedModelDrawCalls::Entry

@@ -161,7 +161,7 @@ namespace RenderCore { namespace Assets
         #if defined(_DEBUG)
             static std::string MakeDescription(const ParameterBox& paramBox)
             {
-                std::vector<std::pair<std::string, std::string>> defines;
+                std::vector<std::pair<const char*, std::string>> defines;
                 paramBox.BuildStringTable(defines);
                 std::stringstream dst;
                 for (auto i=defines.cbegin(); i!=defines.cend(); ++i) {

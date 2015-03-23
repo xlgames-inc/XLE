@@ -27,7 +27,7 @@ namespace RenderCore { namespace Techniques
         ParameterBox    _parameters[Source::Max];
 
         uint64      CalculateFilteredHash(uint64 inputHash, const ParameterBox* globalState[Source::Max]) const;
-        void        BuildStringTable(std::vector<std::pair<std::string, std::string>>& defines) const;
+        void        BuildStringTable(std::vector<std::pair<const char*, std::string>>& defines) const;
 
     private:
         uint64      CalculateFilteredState(const ParameterBox* globalState[Source::Max]) const;

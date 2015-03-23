@@ -216,7 +216,7 @@ namespace RenderCore { namespace Techniques
                                             const ParameterBox* globalState[ShaderParameters::Source::Max],
                                             const TechniqueInterface& techniqueInterface) const
     {
-        std::vector<std::pair<std::string, std::string>> defines;
+        std::vector<std::pair<const char*, std::string>> defines;
         _baseParameters.BuildStringTable(defines);
         for (unsigned c=0; c<ShaderParameters::Source::Max; ++c) {
             globalState[c]->OverrideStringTable(defines);
@@ -224,7 +224,7 @@ namespace RenderCore { namespace Techniques
 
         std::string vsShaderModel, psShaderModel, gsShaderModel;
         auto vsi = std::lower_bound(defines.cbegin(), defines.cend(), "vs_", CompareFirst<std::string, std::string>());
-        if (vsi != defines.cend() && vsi->first == "vs_") {
+        if (vsi != defines.cend() && !XlCompareString(vsi->first, "vs_")) {
             char buffer[32];
             int integerValue = Utility::XlAtoI32(vsi->second.c_str());
             sprintf_s(buffer, dimof(buffer), ":vs_%i_%i", integerValue/10, integerValue%10);
@@ -233,7 +233,7 @@ namespace RenderCore { namespace Techniques
             vsShaderModel = ":" VS_DefShaderModel;
         }
         auto psi = std::lower_bound(defines.cbegin(), defines.cend(), "ps_", CompareFirst<std::string, std::string>());
-        if (psi != defines.cend() && psi->first == "ps_") {
+        if (psi != defines.cend() && !XlCompareString(psi->first, "ps_")) {
             char buffer[32];
             int integerValue = Utility::XlAtoI32(psi->second.c_str());
             sprintf_s(buffer, dimof(buffer), ":ps_%i_%i", integerValue/10, integerValue%10);
@@ -242,7 +242,7 @@ namespace RenderCore { namespace Techniques
             psShaderModel = ":" PS_DefShaderModel;
         }
         auto gsi = std::lower_bound(defines.cbegin(), defines.cend(), "gs_", CompareFirst<std::string, std::string>());
-        if (gsi != defines.cend() && gsi->first == "gs_") {
+        if (gsi != defines.cend() && !XlCompareString(gsi->first, "gs_")) {
             char buffer[32];
             int integerValue = Utility::XlAtoI32(psi->second.c_str());
             sprintf_s(buffer, dimof(buffer), ":gs_%i_%i", integerValue/10, integerValue%10);
@@ -580,7 +580,7 @@ namespace RenderCore { namespace Techniques
         return filteredState;
     }
 
-    void        ShaderParameters::BuildStringTable(std::vector<std::pair<std::string, std::string>>& defines) const
+    void        ShaderParameters::BuildStringTable(std::vector<std::pair<const char*, std::string>>& defines) const
     {
         for (unsigned c=0; c<dimof(_parameters); ++c) {
             _parameters[c].BuildStringTable(defines);

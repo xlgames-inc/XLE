@@ -174,7 +174,7 @@ namespace GUILayer
     BindingList<BindingUtil::StringIntPair^>^ BindingConv::AsBindingList(const ParameterBox& paramBox)
     {
         auto result = gcnew BindingList<BindingUtil::StringIntPair^>();
-        std::vector<std::pair<std::string, std::string>> stringTable;
+        std::vector<std::pair<const char*, std::string>> stringTable;
         paramBox.BuildStringTable(stringTable);
 
         for (auto i=stringTable.cbegin(); i!=stringTable.cend(); ++i) {
@@ -195,7 +195,7 @@ namespace GUILayer
                 //  not quite finished yet. We have to ignore in this case.
             if (i->Name && i->Name->Length > 0) {
                 result.SetParameter(
-                    clix::marshalString<clix::E_UTF8>(i->Name),
+                    clix::marshalString<clix::E_UTF8>(i->Name).c_str(),
                     i->Value);
             }
         }

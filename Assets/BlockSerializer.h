@@ -31,8 +31,14 @@ namespace Serialization
         };
         
         template<typename Type> void    SerializeSubBlock(const Type* type);
-        template<typename Type> void    SerializeSubBlock(const Type* begin, const Type* end, SpecialBuffer::Enum specialBuffer = SpecialBuffer::Unknown);
-        void                            SerializeSubBlock(NascentBlockSerializer& subBlock, SpecialBuffer::Enum specialBuffer = SpecialBuffer::Unknown);
+        template<typename Type, typename std::enable_if< !std::is_pod<Type>::value >::type* = nullptr>
+            void    SerializeSubBlock(const Type* begin, const Type* end, SpecialBuffer::Enum specialBuffer = SpecialBuffer::Unknown);
+
+        template<typename Type, typename std::enable_if< std::is_pod<Type>::value >::type* = nullptr>
+            void    SerializeSubBlock(const Type* begin, const Type* end, SpecialBuffer::Enum specialBuffer = SpecialBuffer::Unknown);
+
+        void    SerializeSubBlock(NascentBlockSerializer& subBlock, SpecialBuffer::Enum specialBuffer = SpecialBuffer::Unknown);
+        void    SerializeRawSubBlock(const void* begin, const void* end, SpecialBuffer::Enum specialBuffer = SpecialBuffer::Unknown);
 
         void    SerializeSpecialBuffer( SpecialBuffer::Enum specialBuffer, 
                                                 const void* begin, const void* end);
@@ -94,7 +100,7 @@ namespace Serialization
 
         ////////////////////////////////////////////////////
 
-    template<typename Type>
+    template<typename Type, typename std::enable_if< !std::is_pod<Type>::value >::type*>
         void    NascentBlockSerializer::SerializeSubBlock(const Type* begin, const Type* end, SpecialBuffer::Enum specialBuffer)
     {
         NascentBlockSerializer temporaryBlock;
@@ -103,6 +109,12 @@ namespace Serialization
         }
 
         SerializeSubBlock(temporaryBlock, specialBuffer);
+    }
+
+    template<typename Type, typename std::enable_if< std::is_pod<Type>::value >::type*>
+        void    NascentBlockSerializer::SerializeSubBlock(const Type* begin, const Type* end, SpecialBuffer::Enum specialBuffer)
+    {
+        SerializeRawSubBlock((const void*)begin, (const void*)end, specialBuffer);
     }
         
     template<typename Type>

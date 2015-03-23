@@ -97,7 +97,7 @@ namespace Sample
             //  This prevents us from having to transform the tangent frame through the skinning
             //  transforms (and avoids having to store those tangents in the prepared animation buffer)
         auto& techEnv = parserContext.GetTechniqueContext()._globalEnvironmentState;
-        techEnv.SetParameter(StringAutoCotangent, 1);
+        techEnv.SetParameter(StringAutoCotangent.c_str(), 1);
 
         // auto globalStateBuffer = RenderCore::Assets::SetupGlobalState(context, _camera);
         // ConstantBuffer globalConstantBuffer(AsPointer(globalStateBuffer->begin()), globalStateBuffer->size());
@@ -198,7 +198,7 @@ namespace Sample
 
         _pimpl->_charactersSharedStateSet.ReleaseState(context);
 
-        techEnv.SetParameter(StringAutoCotangent, 0);
+        techEnv.SetParameter(StringAutoCotangent.c_str(), 0);
     }
 
     void CharactersScene::Prepare(
