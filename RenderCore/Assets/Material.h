@@ -228,10 +228,6 @@ namespace RenderCore { namespace Assets
         RawMaterial(const ::Assets::ResChar initialiser[]);
         RawMaterial(const Data&);
         ~RawMaterial();
-    private:
-        std::shared_ptr<::Assets::DependencyValidation> _depVal;
-
-        void MergeInto(ResolvedMaterial& dest) const;
 
         class RawMatSplitName
         {
@@ -243,6 +239,12 @@ namespace RenderCore { namespace Assets
             RawMatSplitName();
             RawMatSplitName(const ::Assets::ResChar initialiser[]);
         };
+
+    private:
+        std::shared_ptr<::Assets::DependencyValidation> _depVal;
+
+        void MergeInto(ResolvedMaterial& dest) const;
+
         RawMatSplitName _splitName;
     };
 

@@ -10,6 +10,7 @@
 #include "StringUtils.h"
 #include "IteratorUtils.h"
 #include "StringFormat.h"
+#include "../ConsoleRig/Log.h"
 #include <algorithm>
 #include <utility>
 #include <regex>
@@ -38,8 +39,8 @@ namespace Utility
 
         bool operator==(const TypeDesc& lhs, const TypeDesc& rhs)
         {
+                // (note -- ignoring type hint for this comparison (because the hint isn't actually related to the structure of the data)
             return lhs._type == rhs._type
-                && lhs._typeHint == rhs._typeHint
                 && lhs._arrayCount == rhs._arrayCount;
         }
 
@@ -49,8 +50,6 @@ namespace Utility
         , _typeHint(hint)
         , _arrayCount(arrayCount)
         {}
-
-        // template<typename Type> TypeDesc TypeOf() { return TypeDesc(); }
 
         template<> TypeDesc TypeOf<unsigned>()  { return TypeDesc(TypeCat::UInt); }
         template<> TypeDesc TypeOf<signed>()    { return TypeDesc(TypeCat::Int); }
@@ -66,16 +65,105 @@ namespace Utility
 
         TypeDesc TypeOf(const char expression[]) 
         {
+                // not implemented
+            assert(0);
             return TypeDesc();
         }
 
-        template <typename Type> Type Parse(const char expression[]) { return Type(0); }
+        bool Cast(
+            void* dest, size_t destSize, TypeDesc destType,
+            const void* src, TypeDesc srcType)
+        {
+            if (destType._arrayCount <= 1) {
+                    // casting single element. Will we read the first element
+                    // of the 
+                switch (destType._type) {
+                case TypeCat::Bool:
+                    {
+                        switch (srcType._type) {
+                        case TypeCat::Bool: *(bool*)dest = *(bool*)src; return true;
+                        case TypeCat::Int: *(bool*)dest = !!*(signed*)src; return true;
+                        case TypeCat::UInt: *(bool*)dest = !!*(unsigned*)src; return true;
+                        case TypeCat::Float: *(bool*)dest = !!*(float*)src; return true;
+                        }
+                    }
+                    break;
+
+                case TypeCat::Int:
+                    {
+                        switch (srcType._type) {
+                        case TypeCat::Bool: *(signed*)dest = signed(*(bool*)src); return true;
+                        case TypeCat::Int: *(signed*)dest = *(signed*)src; return true;
+                        case TypeCat::UInt: *(signed*)dest = signed(*(unsigned*)src); return true;
+                        case TypeCat::Float: *(signed*)dest = signed(*(float*)src); return true;
+                        }
+                    }
+                    break;
+
+                case TypeCat::UInt:
+                    {
+                        switch (srcType._type) {
+                        case TypeCat::Bool: *(unsigned*)dest = unsigned(*(bool*)src); return true;
+                        case TypeCat::Int: *(unsigned*)dest = unsigned(*(signed*)src); return true;
+                        case TypeCat::UInt: *(unsigned*)dest = *(unsigned*)src; return true;
+                        case TypeCat::Float: *(unsigned*)dest = unsigned(*(float*)src); return true;
+                        }
+                    }
+                    break;
+
+                case TypeCat::Float:
+                    {
+                        switch (srcType._type) {
+                        case TypeCat::Bool: *(float*)dest = float(*(bool*)src); return true;
+                        case TypeCat::Int: *(float*)dest = float(*(signed*)src); return true;
+                        case TypeCat::UInt: *(float*)dest = float(*(unsigned*)src); return true;
+                        case TypeCat::Float: *(float*)dest = *(float*)src; return true;
+                        }
+                    }
+                    break;
+                }
+            } else {
+                    // multiple array elements. We might need to remap elements
+                void* destIterator = dest;
+                const void* srcIterator = src;
+                auto sizeRemaining = destSize;
+                for (unsigned c=0; c<destType._arrayCount; ++c) {
+                    if (sizeRemaining < TypeDesc(destType._type).GetSize()) {
+                        return false;
+                    }
+                    if (c < srcType._arrayCount) {
+                        if (!Cast(destIterator, sizeRemaining, TypeDesc(destType._type),
+                            srcIterator, TypeDesc(srcType._type))) {
+                            return false;
+                        }
+
+                        destIterator = PtrAdd(destIterator, TypeDesc(destType._type).GetSize());
+                        srcIterator = PtrAdd(srcIterator, TypeDesc(srcType._type).GetSize());
+                        sizeRemaining -= TypeDesc(destType._type).GetSize();
+                    } else {
+                            // using HLSL rules for filling in blanks:
+                            //  element 3 is 1, but others are 0
+                        unsigned value = (c==3)?1:0;
+                        if (!Cast(destIterator, sizeRemaining, TypeDesc(destType._type),
+                            &value, TypeDesc(TypeCat::UInt))) {
+                            return false;
+                        }
+                        destIterator = PtrAdd(destIterator, TypeDesc(destType._type).GetSize());
+                        sizeRemaining -= TypeDesc(destType._type).GetSize();
+                    }
+                }
+                return true;
+            }
+
+            return false;
+        }
+
 
         template<typename CharType>
             TypeDesc Parse(
                 const CharType expressionBegin[], 
                 const CharType expressionEnd[], 
-                const void* dest, size_t destSize)
+                void* dest, size_t destSize)
         {
                 // parse string expression into native types.
                 // We'll write the native object into the buffer and return a type desc
@@ -175,7 +263,15 @@ namespace Utility
                             eleMatch.first, eleMatch.second,
                             dstIterator, dstIteratorSize);
 
-                        assert(subType._type == cat);   // trouble with mixed types in arrays
+                        if (subType._type != cat) {
+                            bool castSuccess = Cast(   
+                                dstIterator, size_t(dstIteratorSize), TypeDesc(cat),
+                                dstIterator, subType);
+                            if (castSuccess) { LogWarning << "Mixed types in while parsing array in ImpliedTypes::Parse (cast success)"; }
+                            if (castSuccess) { LogWarning << "Mixed types in while parsing array in ImpliedTypes::Parse (cast failed)"; }
+                            subType._type = cat;
+                        }
+
                         assert(subType._arrayCount <= 1);
                         dstIterator = PtrAdd(dstIterator, subType.GetSize());
                         dstIteratorSize -= subType.GetSize();
@@ -193,6 +289,22 @@ namespace Utility
             }
 
             return TypeDesc(TypeCat::Void);
+        }
+
+        template <typename Type> std::pair<bool, Type> Parse(const char expression[]) 
+        {
+            char buffer[256];
+            auto parseType = Parse(expression, &expression[XlStringLen(expression)], buffer, sizeof(buffer));
+            if (parseType == TypeOf<Type>()) {
+                return std::make_pair(true, *(Type*)buffer);
+            } else {
+                Type casted;
+                if (Cast(&casted, sizeof(casted), TypeOf<Type>(),
+                    buffer, parseType)) {
+                    return std::make_pair(true, casted);
+                }
+            }
+            return std::make_pair(false, Type());
         }
 
         std::string AsString(const void* data, size_t dataSize, const TypeDesc& desc)
@@ -213,6 +325,9 @@ namespace Utility
                 case TypeCat::Void:     result << "<<void>>"; break;
                 default:                result << "<<error>>"; break;
                 }
+
+                    // skip forward one element
+                data = PtrAdd(data, TypeDesc(desc._type).GetSize());
             }
 
             if (arrayCount > 1) {
@@ -225,6 +340,18 @@ namespace Utility
 
             return result.str();
         }
+
+        template std::pair<bool, bool> Parse(const char expression[]);
+        template std::pair<bool, unsigned> Parse(const char expression[]);
+        template std::pair<bool, signed> Parse(const char expression[]);
+        template std::pair<bool, float> Parse(const char expression[]);
+        template std::pair<bool, Float2> Parse(const char expression[]);
+        template std::pair<bool, Float3> Parse(const char expression[]);
+        template std::pair<bool, Float4> Parse(const char expression[]);
+        template std::pair<bool, UInt2> Parse(const char expression[]);
+        template std::pair<bool, UInt3> Parse(const char expression[]);
+        template std::pair<bool, UInt4> Parse(const char expression[]);
+
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -345,30 +472,31 @@ namespace Utility
     }
 
     template<typename Type>
-        std::pair<bool, Type> ParameterBox::GetParameter(const char name[]) const
-    {
-        auto hash = MakeParameterNameHash(name);
-        auto i = std::lower_bound(_parameterHashValues.cbegin(), _parameterHashValues.cend(), hash);
-        if (i!=_parameterHashValues.cend() && *i == hash) {
-            size_t index = std::distance(_parameterHashValues.cbegin(), i);
-            auto offset = _offsets[index];
-            assert(_types[index].GetSize() == sizeof(Type));
-            return std::make_pair(true, *(Type*)&_values[offset.second]);
-        }
-        return std::make_pair(false, Type(0));
-    }
-
-    template<typename Type>
         std::pair<bool, Type> ParameterBox::GetParameter(ParameterNameHash name) const
     {
         auto i = std::lower_bound(_parameterHashValues.cbegin(), _parameterHashValues.cend(), name);
         if (i!=_parameterHashValues.cend() && *i == name) {
             size_t index = std::distance(_parameterHashValues.cbegin(), i);
             auto offset = _offsets[index];
-            assert(_types[index].GetSize() == sizeof(Type));
-            return std::make_pair(true, *(Type*)&_values[offset.second]);
+
+            if (_types[index] == ImpliedTyping::TypeOf<Type>()) {
+                return std::make_pair(true, *(Type*)&_values[offset.second]);
+            } else {
+                Type result;
+                if (ImpliedTyping::Cast(
+                    &result, sizeof(result), ImpliedTyping::TypeOf<Type>(),
+                    &_values[offset.second], _types[index])) {
+                    return std::make_pair(true, result);
+                }
+            }
         }
         return std::make_pair(false, Type());
+    }
+    
+    template<typename Type>
+        std::pair<bool, Type> ParameterBox::GetParameter(const char name[]) const
+    {
+        return GetParameter<Type>(MakeParameterNameHash(name));
     }
 
     bool ParameterBox::GetParameter(ParameterNameHash name, void* dest, const ImpliedTyping::TypeDesc& destType) const
@@ -377,10 +505,15 @@ namespace Utility
         if (i!=_parameterHashValues.cend() && *i == name) {
             size_t index = std::distance(_parameterHashValues.cbegin(), i);
             auto offset = _offsets[index];
-            assert(_types[index] == destType);
-            if (_types[index].GetSize() == destType.GetSize()) {
+
+            if (_types[index] == destType) {
                 XlCopyMemory(dest, &_values[offset.second], destType.GetSize());
                 return true;
+            }
+            else {
+                return ImpliedTyping::Cast(
+                    dest, destType.GetSize(), destType,
+                    &_values[offset.second], _types[index]);
             }
         }
         return false;

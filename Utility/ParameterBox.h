@@ -60,10 +60,14 @@ namespace Utility
             TypeDesc Parse(
                 const CharType expressionBegin[], 
                 const CharType expressionEnd[],
-                const void* dest, size_t destSize);
+                void* dest, size_t destSize);
 
         template <typename Type>
-            Type Parse(const char expression[]);
+            std::pair<bool, Type> Parse(const char expression[]);
+
+        bool Cast(
+            void* dest, size_t destSize, TypeDesc destType,
+            const void* src, TypeDesc srcType);
 
         std::string AsString(const void* data, size_t dataSize, const TypeDesc&);
     }

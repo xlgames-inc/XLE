@@ -13,21 +13,22 @@
 namespace Assets
 {
 	class UndoQueue;
+    typedef char ResChar;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	class ITransaction
 	{
 	public:
-        const std::string& GetName() const { return _name; }
+        const std::basic_string<ResChar>& GetName() const { return _name; }
         uint64 GetAssetId() const { return _assetId; }
         uint64 GetTypeCode() const { return _typeCode; }
 
-		ITransaction(const char name[], uint64 assetId, uint64 typeCode, std::shared_ptr<UndoQueue> undoQueue);
+		ITransaction(const ResChar name[], uint64 assetId, uint64 typeCode, std::shared_ptr<UndoQueue> undoQueue);
 		virtual ~ITransaction();
 	protected:
 		std::shared_ptr<UndoQueue> _undoQueue;
-        std::string _name;
+        std::basic_string<ResChar> _name;
         uint64 _assetId, _typeCode;
 	};
 
@@ -49,6 +50,15 @@ namespace Assets
 	class DivergentAssetBase
 	{
 	public:
+        class AssetIdentifier
+        {
+        public:
+            std::basic_string<ResChar> _descriptiveName;
+            std::basic_string<ResChar> _targetFilename;
+
+            void OnChange();
+        };
+
 		DivergentAssetBase(std::weak_ptr<UndoQueue> undoQueue);
 		virtual ~DivergentAssetBase();
 	protected:
@@ -67,6 +77,7 @@ namespace Assets
 		DivergentTransaction(
             const char name[],
             uint64 assetId, uint64 typeCode,
+            const DivergentAssetBase::AssetIdentifier& identifer,
 			std::shared_ptr<Asset> workingCopy,
 			std::shared_ptr<UndoQueue> undoQueue);
 		virtual ~DivergentTransaction();
@@ -75,6 +86,7 @@ namespace Assets
 		std::shared_ptr<Asset> _transactionCopy;
 		std::shared_ptr<Asset> _liveCopy;
         std::shared_ptr<Asset> _originalCopy;
+        DivergentAssetBase::AssetIdentifier _identifer;
 
 		enum class State { NoAction, Modified, Committed };
 		State _state;
@@ -99,16 +111,41 @@ namespace Assets
 
         TransactionPtr<DivergentTransaction<Asset>> Transaction_Begin(const char name[]);
 
-		DivergentAsset(const Asset& pristineCopy, uint64 assetId, uint64 typeCode, std::weak_ptr<UndoQueue> undoQueue);
+		DivergentAsset(
+            const Asset& pristineCopy, 
+            uint64 assetId, uint64 typeCode, 
+            const AssetIdentifier& identifer,
+            std::weak_ptr<UndoQueue> undoQueue);
 		~DivergentAsset();
 	protected:
 		const Asset*			_pristineCopy;
 		std::shared_ptr<Asset>  _workingCopy;
         uint64                  _assetId;
         uint64                  _typeCode;
+        AssetIdentifier         _identifier;
 
         std::shared_ptr<DivergentTransaction<Asset>> _lastTransaction;
 	};
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    namespace Internal
+    {
+        template <typename... Params>
+			std::basic_string<ResChar> AsString(Params... initialisers);
+    }
+
+    template<typename Asset, typename... Params>
+        std::basic_string<ResChar> BuildDescriptiveName(Params... initialisers) 
+        {
+            return Internal::AsString(initialisers...);
+        }
+
+    template<typename Asset, typename... Params>
+        std::basic_string<ResChar> BuildTargetFilename(Params... initialisers)
+        {
+            return Internal::AsString(std::get<0>(std::tuple<Params...>(initialisers...)));
+        }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -131,6 +168,9 @@ namespace Assets
                 _originalCopy = std::move(_transactionCopy);
             *_originalCopy = std::move(temp);
 			_state = State::Committed;
+
+            const_cast<::Assets::DependencyValidation&>(_liveCopy->GetDependencyValidation()).OnChange();
+            _identifer.OnChange();
 		}
 	}
 	
@@ -150,11 +190,13 @@ namespace Assets
 		DivergentTransaction<Asset>::DivergentTransaction(
             const char name[],
             uint64 assetId, uint64 typeCode,
+            const DivergentAssetBase::AssetIdentifier& identifer,
 			std::shared_ptr<Asset> workingCopy,
 			std::shared_ptr<UndoQueue> undoQueue)
         : ITransaction(name, assetId, typeCode, std::move(undoQueue))
         , _liveCopy(std::move(workingCopy))
 		, _state(State::NoAction)
+        , _identifer(identifer)
 	{
 	}
 
@@ -203,7 +245,8 @@ namespace Assets
         }
 
         if (!_lastTransaction) {
-            _lastTransaction = std::make_shared<DivergentTransaction<Asset>>(name, _assetId, _typeCode, _workingCopy, undoQueue);
+            _lastTransaction = std::make_shared<DivergentTransaction<Asset>>(
+                name, _assetId, _typeCode, _identifier, _workingCopy, undoQueue);
         }
         return TransactionPtr<DivergentTransaction<Asset>>(_lastTransaction);
 	}
@@ -212,9 +255,11 @@ namespace Assets
 		DivergentAsset<Asset>::DivergentAsset(
 			const Asset& pristineCopy,
             uint64 assetId, uint64 typeCode,
+            const AssetIdentifier& identifer,
             std::weak_ptr<UndoQueue> undoQueue)
 	: DivergentAssetBase(std::move(undoQueue))
     , _assetId(assetId), _typeCode(typeCode)
+    , _identifier(identifer)
 	{
 		_pristineCopy = &pristineCopy;
 	}

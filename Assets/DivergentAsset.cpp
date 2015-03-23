@@ -5,9 +5,37 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "DivergentAsset.h"
+#include "../Utility/Streams/PathUtils.h"
+#include "../Utility/Streams/FileSystemMonitor.h"
 
 namespace Assets
 {
+    void DivergentAssetBase::AssetIdentifier::OnChange()
+    {
+        // We need to mark the target file invalidated.
+        // this is a little strange, because the target file
+        // hasn't actually changed. 
+        // 
+        // But this is required because some dependent assets
+        // don't have a dependency on the asset itself (just
+        // on the underlying file). Invalidating the file ensures
+        // that we invoke a update on all assets that require it.
+
+        if (_targetFilename.empty()) return;
+
+        ResChar path[MaxPath];
+        ResChar filename[MaxPath];
+        XlDirname(path, dimof(path), _targetFilename.c_str());
+        XlBasename(filename, dimof(filename), _targetFilename.c_str());
+
+        auto len = XlStringLen(path);
+        if (len > 0 && (path[len-1] == '\\' || path[len-1] == '/')) {
+            path[len-1] = '\0'; 
+        }
+
+        FakeFileChange(path, filename);
+    }
+
 
     ITransaction::ITransaction(const char name[], uint64 assetId, uint64 typeCode, std::shared_ptr<UndoQueue> undoQueue)
 	: _undoQueue(std::move(undoQueue))

@@ -56,9 +56,9 @@ float4 main(VSOutput geo) : SV_Target0
 		#endif
 	#endif
 
-	#if MAT_DO_PARTICLE_LIGHTING==1
-		result.rgb *= MaterialDiffuse.rgb;
+  result.rgb *= MaterialDiffuse.rgb;
 
+	#if MAT_DO_PARTICLE_LIGHTING==1
 		float4 baseColor = result;
 
 			// Very basic lighting (from the sun only)

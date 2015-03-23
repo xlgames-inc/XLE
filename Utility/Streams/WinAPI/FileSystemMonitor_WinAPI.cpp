@@ -35,6 +35,7 @@ namespace Utility
         const OVERLAPPED*   GetOverlappedPtr() const { return &_overlapped; }
         unsigned            GetCreationOrderId() const { return _monitoringUpdateId; }
 
+        void OnChange(const char filename[]);
     private:
         std::vector<std::pair<uint64, std::shared_ptr<OnChangeCallback>>>  _callbacks;
         Threading::Mutex  _callbacksLock;
@@ -113,15 +114,7 @@ namespace Utility
                     (utf8*)buffer, dimof(buffer));
                 buffer[std::min(size_t(destSize), dimof(buffer)-1)] = '\0';
 
-                auto hash = HashFilename((char*)buffer);
-                ScopedLock(_callbacksLock);
-                auto i = std::equal_range(
-                    _callbacks.cbegin(), _callbacks.cend(), 
-                    hash, CompareFirst<uint64, std::shared_ptr<OnChangeCallback>>());
-                for (auto i2=i.first; i2!=i.second; ++i2) {
-                        // todo -- what happens if OnChange() results in a change to _callbacks?
-                    i2->second->OnChange();
-                }
+                OnChange((const char*)buffer);
             }
 
             if (!notifyInformation->NextEntryOffset) {
@@ -134,6 +127,19 @@ namespace Utility
         _bytesReturned = 0;
         XlSetMemory(_resultBuffer, dimof(_resultBuffer), 0);
         BeginMonitoring();
+    }
+
+    void MonitoredDirectory::OnChange(const char filename[])
+    {
+        auto hash = MonitoredDirectory::HashFilename(filename);
+        ScopedLock(_callbacksLock);
+        auto i = std::equal_range(
+            _callbacks.cbegin(), _callbacks.cend(), 
+            hash, CompareFirst<uint64, std::shared_ptr<OnChangeCallback>>());
+        for (auto i2=i.first; i2!=i.second; ++i2) {
+                // todo -- what happens if OnChange() results in a change to _callbacks?
+            i2->second->OnChange();
+        }
     }
 
     void CALLBACK MonitoredDirectory::CompletionRoutine(
@@ -244,6 +250,18 @@ namespace Utility
             //  we need to trigger the background thread so that it begins the the ReadDirectoryChangesW operation
             //  (that operation must begin and be handled in the same thread when using completion routines)
         RestartMonitoring();
+    }
+
+    void    FakeFileChange(const char directoryName[], const char filename[])
+    {
+        ScopedLock(MonitoredDirectoriesLock);
+        auto hash = MonitoredDirectory::HashFilename(directoryName);
+        auto i = std::lower_bound(
+            MonitoredDirectories.cbegin(), MonitoredDirectories.cend(), 
+            hash, CompareFirst<uint64, std::unique_ptr<MonitoredDirectory>>());
+        if (i != MonitoredDirectories.cend() && i->first == hash) {
+            i->second->OnChange(filename);
+        }
     }
     
 }

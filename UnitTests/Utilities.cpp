@@ -7,6 +7,7 @@
 #include "../Utility/ParameterBox.h"
 #include "../Utility/SystemUtils.h"
 #include "../Utility/StringFormat.h"
+#include "../Math/Vector.h"
 #include <CppUnitTest.h>
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
@@ -50,6 +51,22 @@ namespace UnitTests
                     StringMeld<256>() << i->first << " = " << i->second << "\n");
             }
 
+        }
+
+        TEST_METHOD(ImpliedTypingTest)
+        {
+            auto t0 = ImpliedTyping::Parse<Float4>("{.5f, 10, true}");
+            Assert::IsTrue(
+                t0.first && Equivalent(t0.second, Float4(.5f, 10.f, 1.f, 1.f), 0.001f),
+                L"Parse with array element cast");
+            
+            auto t1 = ImpliedTyping::Parse<Float4>("23");
+            Assert::IsTrue(
+                t1.first && Equivalent(t1.second, Float4(23.f, 0.f, 0.f, 1.f), 0.001f),
+                L"Scalar to array cast");
+
+            Assert::AreEqual(ImpliedTyping::Parse<signed>("true").second, 1, L"bool to signed cast");
+            Assert::AreEqual(ImpliedTyping::Parse<signed>("{true, 60, 1.f}").second, 1, L"bool array to signed cast");
         }
     };
 }

@@ -123,10 +123,8 @@ namespace RenderCore { namespace Assets
 
         std::vector<::Assets::FileAndTime> deps;
         CompileMaterialScaffold(initializers[0], outputName, &deps);
-        // char baseDir[MaxPath];
-        // XlDirname(baseDir, dimof(baseDir), initializers[0]);
-        auto newDepVal = destinationStore.WriteDependencies(outputName, "", deps);
 
+        auto newDepVal = destinationStore.WriteDependencies(outputName, "", deps);
         return std::make_unique<::Assets::PendingCompileMarker>(
             ::Assets::AssetState::Ready, outputName, ~0ull, std::move(newDepVal));
     }

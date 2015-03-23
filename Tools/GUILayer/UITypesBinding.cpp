@@ -10,9 +10,20 @@
 #include "../../PlatformRig/ModelVisualisation.h"
 #include "../../RenderCore/Assets/Material.h"
 #include "../../RenderCore/Assets/MaterialScaffold.h"
+#include "../../Assets/DivergentAsset.h"
 #include "../../Utility/StringFormat.h"
 #include <msclr\auto_gcroot.h>
 #include <iomanip>
+
+namespace Assets
+{
+    template<>
+        std::basic_string<ResChar> BuildTargetFilename<RenderCore::Assets::RawMaterial>(const char* init)
+        {
+            RenderCore::Assets::RawMaterial::RawMatSplitName splitName(init);
+            return splitName._concreteFilename;
+        }
+}
 
 namespace GUILayer
 {
@@ -497,6 +508,13 @@ namespace GUILayer
 
     void RenderStateSet::NotifyPropertyChanged(System::String^ propertyName)
     {
+            //  This only works correctly in the UI thread. However, given that
+            //  this event can be raised by low-level engine code, we might be
+            //  in some other thread. We can get around that by using the 
+            //  synchronisation functionality in .net to post a message to the
+            //  UI thread... That requires creating a delegate type and passing
+            //  propertyName to it. It's easy in C#. But it's a little more difficult
+            //  in C++/CLI.
         PropertyChanged(this, gcnew PropertyChangedEventArgs(propertyName));
         // _propertyChangedContext->Send(
         //     gcnew System::Threading::SendOrPostCallback(

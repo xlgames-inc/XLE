@@ -4,4 +4,4 @@ galleon_sail_1
 galleon_sail
     ShaderParams ( MAT_DOUBLE_SIDED_LIGHTING 1u )
     States ( DoubleSided true )
-    Constants ( MaterialDiffuse "{.1f, .2f, .3f}c", AlphaThreshold .5f )
+    Constants ( MaterialDiffuse "{.5f, .1f, .1f}c", AlphaThreshold .5f )

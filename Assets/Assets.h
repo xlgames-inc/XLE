@@ -90,8 +90,7 @@ namespace Assets
             return *set;
         }
 
-        template<typename AssetType> struct Ptr
-            { typedef std::unique_ptr<AssetType> Value; };
+        template<typename AssetType> using Ptr = std::unique_ptr<AssetType>;
 
         template <int DoCheckDependancy> struct CheckDependancy { template<typename Resource> static bool NeedsRefresh(const Resource* resource); };
         template<> struct CheckDependancy<1>   { template <typename Resource> static bool NeedsRefresh(const Resource* resource)   { return !resource || (resource->GetDependencyValidation().GetValidationIndex()!=0); } };
@@ -102,7 +101,7 @@ namespace Assets
         template<> struct ConstructAsset<0>
         { 
             template<typename AssetType, typename... Params> 
-				static typename Ptr<AssetType>::Value Create(Params... initialisers)
+				static typename Ptr<AssetType> Create(Params... initialisers)
 			{
 				return std::make_unique<AssetType>(std::forward<Params>(initialisers)...);
 			}
@@ -111,7 +110,7 @@ namespace Assets
         template<> struct ConstructAsset<1>
         { 
             template<typename AssetType, typename... Params> 
-				static typename Ptr<AssetType>::Value Create(Params... initialisers)
+				static typename Ptr<AssetType> Create(Params... initialisers)
             {
                 auto& compilers = CompileAndAsyncManager::GetInstance().GetIntermediateCompilers();
                 auto& store = CompileAndAsyncManager::GetInstance().GetIntermediateStore();
@@ -203,9 +202,15 @@ namespace Assets
 						return di->second;
 					}
 
+                    typename AssetTraits<AssetType>::DivAsset::AssetIdentifier identifier;
+                    identifier._descriptiveName = BuildDescriptiveName<AssetType>(initialisers...);
+                    identifier._targetFilename = BuildTargetFilename<AssetType>(initialisers...);
+
                     std::weak_ptr<UndoQueue> undoQueue;
                     auto newDivAsset = std::make_shared<typename AssetTraits<AssetType>::DivAsset>(
-                        GetAsset<true, false, AssetType>(std::forward<Params>(initialisers)...), hash, assetSet.GetTypeCode(), undoQueue);
+                        GetAsset<true, false, AssetType>(std::forward<Params>(initialisers)...), 
+                        hash, assetSet.GetTypeCode(), 
+                        identifier, undoQueue);
 
 						// Do we have to search for an insertion point here again?
 						// is it possible that constructing an asset could create a new divergent
@@ -447,15 +452,16 @@ namespace Assets
     namespace Internal
     {
         template <typename Object>
-			inline void StreamCommaSeparated(std::stringstream& result, const Object& obj)
+			inline void StreamCommaSeparated(std::basic_stringstream<ResChar>& result, const Object& obj)
 		{
-			result << obj << ", ";
+			result << ", " << obj;
 		}
 
-		template <typename... Params>
-			std::string AsString(Params... initialisers)
+		template <typename P0, typename... Params>
+			std::basic_string<ResChar> AsString(P0 p0, Params... initialisers)
 		{
-			std::stringstream result;
+			std::basic_stringstream<ResChar> result;
+            result << p0;
 			int dummy[] = { 0, (StreamCommaSeparated(result, initialisers), 0)... };
 			(void)dummy;
 			return result.str();

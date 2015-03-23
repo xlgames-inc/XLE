@@ -254,7 +254,6 @@ namespace RenderCore { namespace Assets
                 const float alphaThreshold = .33f;
                 BasicMaterialConstants basicConstants = 
                     { Float3(1.f, 1.f, 1.f), 1.f, Float3(1.f, 1.f, 1.f), alphaThreshold };
-                std::vector<uint8> constants((uint8*)&basicConstants, (uint8*)PtrAdd(&basicConstants, sizeof(basicConstants)));
 
                 static const auto HashMaterialDiffuse = ParameterBox::MakeParameterNameHash("MaterialDiffuse");
                 static const auto HashOpacity = ParameterBox::MakeParameterNameHash("Opacity");
@@ -276,6 +275,7 @@ namespace RenderCore { namespace Assets
                     if (matAlphaTreshold.first) { basicConstants._alphaThreshold = matAlphaTreshold.second; }
                 }
 
+                std::vector<uint8> constants((uint8*)&basicConstants, (uint8*)PtrAdd(&basicConstants, sizeof(basicConstants)));
                 i->second._constantBuffer = 
                     (unsigned)InsertOrCombine(prescientMaterialConstantBuffers, std::vector<uint8>(constants));
             }

@@ -39,45 +39,5 @@ namespace Assets
             }
         }
 
-
-#if 0
-            // the following isn't going to work... we can't predict all of the expansions that will be used
-		template std::basic_string<ResChar> AsString(const ResChar*);
-		template std::basic_string<ResChar> AsString(const ResChar*, const ResChar*);
-		template std::basic_string<ResChar> AsString(const ResChar*, const ResChar*, const ResChar*);
-		template std::basic_string<ResChar> AsString(const ResChar*, const ResChar*, const ResChar*, const ResChar*);
-		template std::basic_string<ResChar> AsString(const ResChar*, const ResChar*, const ResChar*, const ResChar*, const ResChar*);
-		template std::basic_string<ResChar> AsString(const ResChar*, const ResChar*, const ResChar*, const ResChar*, const ResChar*, const ResChar*);
-		template std::basic_string<ResChar> AsString(const ResChar*, const ResChar*, const ResChar*, const ResChar*, const ResChar*, const ResChar*, const ResChar*);
-
-		template uint64 BuildHash(const ResChar*);
-		template uint64 BuildHash(const ResChar*, const ResChar*);
-		template uint64 BuildHash(const ResChar*, const ResChar*, const ResChar*);
-		template uint64 BuildHash(const ResChar*, const ResChar*, const ResChar*, const ResChar*);
-		template uint64 BuildHash(const ResChar*, const ResChar*, const ResChar*, const ResChar*, const ResChar*);
-		template uint64 BuildHash(const ResChar*, const ResChar*, const ResChar*, const ResChar*, const ResChar*, const ResChar*);
-		template uint64 BuildHash(const ResChar*, const ResChar*, const ResChar*, const ResChar*, const ResChar*, const ResChar*, const ResChar*);
-
-        template std::basic_string<ResChar> AsString(ResChar*); 
-        template uint64 BuildHash(ResChar*);
-
-        template std::basic_string<ResChar> AsString(const ResChar*, ResChar*);
-        template uint64 BuildHash(const ResChar*, ResChar*);
-
-        template std::basic_string<ResChar> AsString(const ResChar*, const ResChar*, ResChar*);
-        template uint64 BuildHash(const ResChar*, const ResChar*, ResChar*);
-
-        template std::basic_string<ResChar> AsString(char const *, char const *, char const *, char const *, char const *, char *);
-        template uint64 BuildHash(char const *, char const *, char const *, char const *, char const *, char *);
-
-        template std::basic_string<ResChar> AsString(char *, char const *);
-        template uint64 BuildHash(char *, char const *);
-
-        template std::basic_string<ResChar> AsString(char const *, char const *, char const *, char *);
-        template uint64 BuildHash(char const *, char const *, char const *, char *);
-
-#endif
-
-
     }
 }
