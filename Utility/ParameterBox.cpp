@@ -9,8 +9,10 @@
 #include "PtrUtils.h"
 #include "StringUtils.h"
 #include "IteratorUtils.h"
+#include "StringFormat.h"
 #include <algorithm>
 #include <utility>
+#include <regex>
 
 namespace Utility
 {
@@ -19,14 +21,17 @@ namespace Utility
         uint32 TypeDesc::GetSize() const
         {
             switch (_type) {
+            case TypeCat::Bool: return sizeof(bool)*std::max(1u,unsigned(_arrayCount));
+
             case TypeCat::Int:
             case TypeCat::UInt:
             case TypeCat::Float: return sizeof(unsigned)*std::max(1u,unsigned(_arrayCount));
+            case TypeCat::Void:
             default: return 0;
             }
         }
 
-        void    TypeDesc::Serialize(Serialization::NascentBlockSerializer& serializer) const
+        void TypeDesc::Serialize(Serialization::NascentBlockSerializer& serializer) const
         {
             Serialization::Serialize(serializer, *(uint32*)this);
         }
@@ -39,19 +44,181 @@ namespace Utility
         }
 
 
-        TypeDesc::TypeDesc()
+        TypeDesc::TypeDesc(TypeCat cat, uint16 arrayCount, TypeHint hint)
+        : _type(cat)
+        , _typeHint(hint)
+        , _arrayCount(arrayCount)
+        {}
+
+        // template<typename Type> TypeDesc TypeOf() { return TypeDesc(); }
+
+        template<> TypeDesc TypeOf<unsigned>()  { return TypeDesc(TypeCat::UInt); }
+        template<> TypeDesc TypeOf<signed>()    { return TypeDesc(TypeCat::Int); }
+        template<> TypeDesc TypeOf<bool>()      { return TypeDesc(TypeCat::Bool); }
+        template<> TypeDesc TypeOf<float>()     { return TypeDesc(TypeCat::Float); }
+        template<> TypeDesc TypeOf<void>()      { return TypeDesc(TypeCat::Void); }
+
+        TypeDesc TypeOf(const char expression[]) 
         {
-            _type = TypeCat::UInt;
-            _typeHint = TypeHint::None;
-            _arrayCount = 1;
+            return TypeDesc();
         }
 
-        template<typename Type> TypeDesc TypeOf() { return TypeDesc(); }
-
-        TypeDesc TypeOf(const char expression[]) { return TypeDesc(); }
         template <typename Type> Type Parse(const char expression[]) { return Type(0); }
 
-        std::string AsString(const void*, const TypeDesc&) { return std::string(); }
+        template<typename CharType>
+            TypeDesc Parse(
+                const CharType expressionBegin[], 
+                const CharType expressionEnd[], 
+                const void* dest, size_t destSize)
+        {
+                // parse string expression into native types.
+                // We'll write the native object into the buffer and return a type desc
+            static std::basic_regex<CharType> booleanTrue(R"(^(true)|(y)|(yes)|(TRUE)|(Y)|(YES)$)");
+            static std::basic_regex<CharType> booleanFalse(R"(^(false)|(n)|(no)|(FALSE)|(N)|(NO)$)");
+
+            if (std::regex_match(expressionBegin, expressionEnd, booleanTrue)) {
+                assert(destSize >= sizeof(bool));
+                *(bool*)dest = true;
+                return TypeDesc(TypeCat::Bool);
+            } else if (std::regex_match(expressionBegin, expressionEnd, booleanFalse)) {
+                assert(destSize >= sizeof(bool));
+                *(bool*)dest = false;
+                return TypeDesc(TypeCat::Bool);
+            }
+
+            static std::basic_regex<CharType> unsignedPattern(
+                R"(^\+?(([\d]+)|(0x[\da-fA-F]+))((u)|(ui)|(ul)|(ull)|(U)|(UI)|(UL)|(ULL))?$)");
+            if (std::regex_match(expressionBegin, expressionEnd, unsignedPattern)) {
+                assert(destSize >= sizeof(unsigned));
+                auto len = expressionEnd - expressionBegin;
+                if (len > 2 && (expressionBegin[0] == '0' && expressionBegin[1] == 'x')) {
+                        // hex form
+                    *(uint32*)dest = XlAtoUI32(&expressionBegin[2], nullptr, 16);
+                } else {
+                    *(uint32*)dest = XlAtoUI32(expressionBegin);
+                }
+                return TypeDesc(TypeCat::UInt);
+            }
+
+            static std::basic_regex<CharType> signedPattern(R"(^[-\+]?(([\d]+)|(0x[\da-fA-F]+))((i)|(l)|(ll)|(I)|(L)|(LL))?$)");
+            if (std::regex_match(expressionBegin, expressionEnd, signedPattern)) {
+                assert(destSize >= sizeof(unsigned));
+                auto len = expressionEnd - expressionBegin;
+                if (len > 2 && (expressionBegin[0] == '0' && expressionBegin[1] == 'x')) {
+                        // hex form
+                    *(int32*)dest = XlAtoI32(&expressionBegin[2], nullptr, 16);
+                } else {
+                    *(int32*)dest = XlAtoI32(expressionBegin);
+                }
+                return TypeDesc(TypeCat::Int);
+            }
+
+            static std::basic_regex<CharType> floatPattern(R"(^[-\+]?(([\d]*\.?[\d]+)|([\d]+\.))([eE][-\+]?[\d]+)?[fF]?$)");
+            if (std::regex_match(expressionBegin, expressionEnd, floatPattern)) {
+                assert(destSize >= sizeof(float));
+                *(float*)dest = XlAtoF32(expressionBegin);
+                return TypeDesc(TypeCat::Float);
+            }
+
+            {
+                    // match for float array:
+                // R"(^\{\s*[-\+]?(([\d]*\.?[\d]+)|([\d]+\.))([eE][-\+]?[\d]+)?[fF]\s*(\s*,\s*([-\+]?(([\d]*\.?[\d]+)|([\d]+\.))([eE][-\+]?[\d]+)?[fF]))*\s*\}[vc]?$)"
+
+                static std::basic_regex<CharType> arrayPattern(R"(\{\s*([^,\s]+(?:\s*,\s*[^,\s]+)*)\s*\}([vcVC]?))");
+                // std::match_results<typename std::basic_string<CharType>::const_iterator> cm; 
+                std::match_results<const CharType*> cm; 
+                if (std::regex_match(expressionBegin, expressionEnd, cm, arrayPattern)) {
+                    static std::basic_regex<CharType> arrayElementPattern(R"(\s*([^,\s]+)\s*(?:,|$))");
+
+                    const auto& subMatch = cm[1];
+                    std::regex_iterator<const CharType*> rit(
+                        subMatch.first, subMatch.second,
+                        arrayElementPattern);
+                    std::regex_iterator<const CharType*> rend;
+
+                    auto dstIterator = dest;
+                    auto dstIteratorSize = ptrdiff_t(destSize);
+
+                    TypeCat cat = TypeCat::Void;
+                    unsigned count = 0;
+                    if (rit != rend) {
+                        assert(rit->size() >= 1);
+                        const auto& eleMatch = (*rit)[1];
+
+                        auto subType = Parse(
+                            eleMatch.first, eleMatch.second,
+                            dstIterator, dstIteratorSize);
+
+                        assert(subType._arrayCount <= 1);
+                        assert(subType._type != TypeCat::Void);
+                        cat = subType._type;
+
+                        auto size = subType.GetSize();
+                        dstIterator = PtrAdd(dstIterator, size);
+                        dstIteratorSize -= size;
+                        ++rit;
+                        ++count;
+                    }
+
+                    assert(cat != TypeCat::Void);
+                    for (;rit != rend; ++rit) {
+                        assert(rit->size() >= 1);
+                        const auto& eleMatch = (*rit)[1];
+
+                        auto subType = Parse(
+                            eleMatch.first, eleMatch.second,
+                            dstIterator, dstIteratorSize);
+
+                        assert(subType._type == cat);   // trouble with mixed types in arrays
+                        assert(subType._arrayCount <= 1);
+                        dstIterator = PtrAdd(dstIterator, subType.GetSize());
+                        dstIteratorSize -= subType.GetSize();
+                        ++count;
+                    }
+
+                    TypeHint hint = TypeHint::None;
+                    if (cm.size() >= 2 && cm[2].length() >= 1) {
+                        if (tolower(cm[2].str()[0]) == 'v') hint = TypeHint::Vector;
+                        if (tolower(cm[2].str()[0]) == 'c') hint = TypeHint::Color;
+                    }
+
+                    return TypeDesc(cat, uint16(count), hint);
+                }
+            }
+
+            return TypeDesc(TypeCat::Void);
+        }
+
+        std::string AsString(const void* data, size_t dataSize, const TypeDesc& desc)
+        {
+            std::stringstream result;
+            assert(dataSize >= desc.GetSize());
+            auto arrayCount = std::max(unsigned(desc._arrayCount), 1u);
+            if (arrayCount > 1) result << "{";
+
+            for (auto i=0u; i<arrayCount; ++i) {
+                if (i!=0) result << ", ";
+                switch (desc._type) {
+                // case TypeCat::Bool:     if (!*(bool*)data) { result << "true"; } else { result << "true"; }; break;
+                case TypeCat::Bool:     result << *(bool*)data; break;
+                case TypeCat::Int:      result << *(signed*)data; break;
+                case TypeCat::UInt:     result << *(unsigned*)data; break;
+                case TypeCat::Float:    result << *(float*)data; break;
+                case TypeCat::Void:     result << "<<void>>"; break;
+                default:                result << "<<error>>"; break;
+                }
+            }
+
+            if (arrayCount > 1) {
+                result << "}";
+                switch (desc._typeHint) {
+                case TypeHint::Color: result << "c"; break;
+                case TypeHint::Vector: result << "v"; break;
+                }
+            }
+
+            return result.str();
+        }
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -68,7 +235,9 @@ namespace Utility
 
     void ParameterBox::SetParameter(const char name[], const char data[])
     {
-        assert(0);
+        uint8 buffer[128];
+        auto typeDesc = ImpliedTyping::Parse(data, &data[XlStringLen(data)], buffer, sizeof(buffer));
+        SetParameter(name, buffer, typeDesc);
     }
 
     template<typename Type>
@@ -85,6 +254,7 @@ namespace Utility
         const ImpliedTyping::TypeDesc& insertType)
     {
         auto hash = MakeParameterNameHash(name);
+        const auto valueSize = insertType.GetSize();
         auto i = std::lower_bound(_parameterHashValues.cbegin(), _parameterHashValues.cend(), hash);
         if (i==_parameterHashValues.cend()) {
                 // push new value onto the end (including name & type info)
@@ -93,20 +263,18 @@ namespace Utility
             auto valueOffset = _values.size();
             auto nameOffset = _names.size();
             
-            _values.insert(_values.end(), (const uint8*)&value, (const uint8*)PtrAdd(&value, sizeof(value)));
+            _values.insert(_values.end(), (const uint8*)value, (const uint8*)PtrAdd(value, valueSize));
 
             auto nameLength = XlStringLen(name)+1;
             _names.insert(_names.end(), name, &name[nameLength]);
 
-            _offsets.push_back(std::make_pair(valueOffset, nameOffset));
+            _offsets.push_back(std::make_pair(nameOffset, valueOffset));
             _types.push_back(insertType);
 
             _cachedHash = 0;
             _cachedParameterNameHash = 0;
             return;
         }
-
-        const auto valueSize = insertType.GetSize();
 
         size_t index = std::distance(_parameterHashValues.cbegin(), i);
         if (*i!=hash) {
@@ -124,7 +292,7 @@ namespace Utility
 
             _values.insert(
                 _values.cbegin()+dstOffsets.second, 
-                (uint8*)&value, (uint8*)PtrAdd(&value, valueSize));
+                (uint8*)value, (uint8*)PtrAdd(value, valueSize));
             _names.insert(
                 _names.cbegin()+dstOffsets.first, 
                 name, &name[nameLength]);
@@ -143,7 +311,7 @@ namespace Utility
         if (existingType.GetSize() == valueSize) {
 
                 // same type, or type with the same size...
-            XlCopyMemory(&_values[offset.first], (uint8*)&value, valueSize);
+            XlCopyMemory(&_values[offset.first], (uint8*)value, valueSize);
             _types[index] = insertType;
 
         } else {
@@ -151,7 +319,7 @@ namespace Utility
                 // if the size of the type changes, we need to adjust the values table a bit
                 // hopefully this should be an uncommon case
             auto dstOffsets = _offsets[index];
-            signed sizeChange = signed(existingType.GetSize()) - signed(valueSize);
+            signed sizeChange = signed(valueSize) - signed(existingType.GetSize());
 
             for (auto i2=_offsets.begin()+index+1; i2<_offsets.end(); ++i2) {
                 i2->second += sizeChange;
@@ -162,7 +330,7 @@ namespace Utility
                 _values.cbegin()+dstOffsets.second+existingType.GetSize());
             _values.insert(
                 _values.cbegin()+dstOffsets.second, 
-                (uint8*)&value, (uint8*)PtrAdd(&value, valueSize));
+                (uint8*)value, (uint8*)PtrAdd(value, valueSize));
             _types[index] = insertType;
 
         }
@@ -314,7 +482,7 @@ namespace Utility
             const auto* name = &_names[i->first];
             const void* value = &_values[i->second];
             const auto& type = _types[std::distance(_offsets.begin(), i)];
-            auto stringFormat = ImpliedTyping::AsString(value, type);
+            auto stringFormat = ImpliedTyping::AsString(value, _values.size() - i->second, type);
 
             auto insertPosition = std::lower_bound(
                 defines.begin(), defines.end(), name, StringTableComparison());
@@ -337,7 +505,7 @@ namespace Utility
                 defines.begin(), defines.end(), name, StringTableComparison());
 
             if (insertPosition!=defines.cend() && !XlCompareString(insertPosition->first, name)) {
-                insertPosition->second = ImpliedTyping::AsString(value, type);
+                insertPosition->second = ImpliedTyping::AsString(value, _values.size()-i->second, type);
             }
         }
     }
@@ -356,12 +524,12 @@ namespace Utility
             // simple implementation... 
             //  We could build a more effective implementation taking into account
             //  the fact that both parameter boxes are sorted.
-        for (auto i=_offsets.cbegin(); i!=_offsets.cend(); ++i) {
+        for (auto i=source._offsets.cbegin(); i!=source._offsets.cend(); ++i) {
             const auto* name = &source._names[i->first];
             SetParameter(
                 name, 
                 &source._values[i->second],
-                source._types[std::distance(_offsets.cbegin(), i)]);
+                source._types[std::distance(source._offsets.cbegin(), i)]);
         }
     }
 

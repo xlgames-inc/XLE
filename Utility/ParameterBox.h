@@ -17,7 +17,7 @@ namespace Utility
 {
     namespace ImpliedTyping
     {
-        enum class TypeCat : uint8 { Int, UInt, Float };
+        enum class TypeCat : uint8 { Void, Bool, Int, UInt, Float };
         enum class TypeHint : uint8 { None, Vector, Color };
         class TypeDesc
         {
@@ -27,7 +27,7 @@ namespace Utility
             uint16      _arrayCount;
 
             void    Serialize(Serialization::NascentBlockSerializer& serializer) const;
-            TypeDesc();
+            TypeDesc(TypeCat cat = TypeCat::UInt, uint16 arrayCount = 1, TypeHint hint = TypeHint::None);
             uint32 GetSize() const;
             friend bool operator==(const TypeDesc& lhs, const TypeDesc& rhs);
         };
@@ -36,6 +36,7 @@ namespace Utility
         /// Object should be formatted in one of the following C++ like patterns:
         /// 
         ///  "1u" (or "1ui" or "1ul", etc)
+        ///  "1b" (or "true" or "false")
         ///  ".3" (or "0.3f", etc)
         ///  "{1u, 2u, 3u}" (or "[1u, 2u, 3u]")
         ///  "{1u, 2u, 3u}c" or "{1u, 2u, 3u}v"
@@ -55,10 +56,16 @@ namespace Utility
         TypeDesc TypeOf(const char expression[]);
         template<typename Type> TypeDesc TypeOf();
 
+        template<typename CharType>
+            TypeDesc Parse(
+                const CharType expressionBegin[], 
+                const CharType expressionEnd[],
+                const void* dest, size_t destSize);
+
         template <typename Type>
             Type Parse(const char expression[]);
 
-        std::string AsString(const void*, const TypeDesc&);
+        std::string AsString(const void* data, size_t dataSize, const TypeDesc&);
     }
 
         //////////////////////////////////////////////////////////////////

@@ -164,26 +164,42 @@ namespace GUILayer
     public ref class BindingConv
     {
     public:
-        static BindingList<BindingUtil::StringIntPair^>^ AsBindingList(const ParameterBox& paramBox);
+        static BindingList<BindingUtil::StringStringPair^>^ AsBindingList(const ParameterBox& paramBox);
+        static ParameterBox AsParameterBox(BindingList<BindingUtil::StringStringPair^>^);
         static ParameterBox AsParameterBox(BindingList<BindingUtil::StringIntPair^>^);
 
         static BindingList<BindingUtil::StringStringPair^>^ AsBindingList(const RenderCore::Assets::ResourceBindingSet& bindingSet);
         static RenderCore::Assets::ResourceBindingSet AsResourceBindingList(BindingList<BindingUtil::StringStringPair^>^);
     };
 
-    BindingList<BindingUtil::StringIntPair^>^ BindingConv::AsBindingList(const ParameterBox& paramBox)
+    BindingList<BindingUtil::StringStringPair^>^ BindingConv::AsBindingList(const ParameterBox& paramBox)
     {
-        auto result = gcnew BindingList<BindingUtil::StringIntPair^>();
+        auto result = gcnew BindingList<BindingUtil::StringStringPair^>();
         std::vector<std::pair<const char*, std::string>> stringTable;
         paramBox.BuildStringTable(stringTable);
 
         for (auto i=stringTable.cbegin(); i!=stringTable.cend(); ++i) {
             result->Add(
-                gcnew BindingUtil::StringIntPair(
+                gcnew BindingUtil::StringStringPair(
                     clix::marshalString<clix::E_UTF8>(i->first),
-                    XlAtoI32(i->second.c_str())));
+                    clix::marshalString<clix::E_UTF8>(i->second)));
         }
 
+        return result;
+    }
+
+    ParameterBox BindingConv::AsParameterBox(BindingList<BindingUtil::StringStringPair^>^ input)
+    {
+        ParameterBox result;
+        for each(auto i in input) {
+                //  We get items with null names when they are being added, but
+                //  not quite finished yet. We have to ignore in this case.
+            if (i->Name && i->Name->Length > 0) {
+                result.SetParameter(
+                    clix::marshalString<clix::E_UTF8>(i->Name).c_str(),
+                    clix::marshalString<clix::E_UTF8>(i->Value).c_str());
+            }
+        }
         return result;
     }
 
@@ -245,7 +261,7 @@ namespace GUILayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    BindingList<BindingUtil::StringIntPair^>^ 
+    BindingList<BindingUtil::StringStringPair^>^ 
         RawMaterial::MaterialParameterBox::get()
     {
         if (!_underlying.get()) { return nullptr; }
@@ -260,7 +276,7 @@ namespace GUILayer
         return _materialParameterBox;
     }
 
-    BindingList<BindingUtil::StringIntPair^>^ 
+    BindingList<BindingUtil::StringStringPair^>^ 
         RawMaterial::ShaderConstants::get()
     {
         if (!_underlying.get()) { return nullptr; }
@@ -303,7 +319,7 @@ namespace GUILayer
             return;
         }
 
-        using Box = BindingList<BindingUtil::StringIntPair^>;
+        using Box = BindingList<BindingUtil::StringStringPair^>;
 
         if (e->ListChangedType == ListChangedType::ItemAdded) {
             assert(e->NewIndex < ((Box^)obj)->Count);

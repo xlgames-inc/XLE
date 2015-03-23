@@ -233,12 +233,12 @@ namespace GUILayer
     {
     public:
         using NativeConfig = ::Assets::DivergentAsset<RenderCore::Assets::RawMaterial>;
-        property BindingList<BindingUtil::StringIntPair^>^ MaterialParameterBox {
-            BindingList<BindingUtil::StringIntPair^>^ get();
+        property BindingList<BindingUtil::StringStringPair^>^ MaterialParameterBox {
+            BindingList<BindingUtil::StringStringPair^>^ get();
         }
 
-        property BindingList<BindingUtil::StringIntPair^>^ ShaderConstants {
-            BindingList<BindingUtil::StringIntPair^>^ get();
+        property BindingList<BindingUtil::StringStringPair^>^ ShaderConstants {
+            BindingList<BindingUtil::StringStringPair^>^ get();
         }
 
         property BindingList<BindingUtil::StringStringPair^>^ ResourceBindings {
@@ -262,8 +262,8 @@ namespace GUILayer
         System::String^ DummyFilename;
         System::String^ DummySettingName;
 
-        BindingList<BindingUtil::StringIntPair^>^ _materialParameterBox;
-        BindingList<BindingUtil::StringIntPair^>^ _shaderConstants;
+        BindingList<BindingUtil::StringStringPair^>^ _materialParameterBox;
+        BindingList<BindingUtil::StringStringPair^>^ _shaderConstants;
         BindingList<BindingUtil::StringStringPair^>^ _resourceBindings;
         void ParameterBox_Changed(System::Object^, ListChangedEventArgs^);
         void ResourceBinding_Changed(System::Object^, ListChangedEventArgs^);

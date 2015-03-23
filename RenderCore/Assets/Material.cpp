@@ -401,18 +401,18 @@ namespace RenderCore { namespace Assets
         const auto* p = source->ChildWithValue("ShaderParams");
         if (p) {
             for (auto child=p->child; child; child=child->next) {
-                _matParamBox.SetParameter(
-                    child->StrValue(),
-                    child->ChildAt(0)?child->ChildAt(0)->IntValue():0);
+                if (child->ChildAt(0)) {
+                    _matParamBox.SetParameter(child->StrValue(), child->ChildAt(0)->StrValue());
+                }
             }
         }
 
         const auto* c = source->ChildWithValue("Constants");
         if (c) {
             for (auto child=c->child; child; child=child->next) {
-                _constants.SetParameter(
-                    child->StrValue(),
-                    child->ChildAt(0)?child->ChildAt(0)->IntValue():0);
+                if (child->ChildAt(0)) {
+                    _constants.SetParameter(child->StrValue(), child->ChildAt(0)->StrValue());
+                }
             }
         }
 
