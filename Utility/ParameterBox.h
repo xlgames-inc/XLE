@@ -89,8 +89,11 @@ namespace Utility
         void SetParameter(const char name[], const void* data, const ImpliedTyping::TypeDesc& type);
         void SetParameter(const char name[], const char data[]);
         template<typename Type> void SetParameter(const char name[], Type value);
+
         template<typename Type> std::pair<bool, Type> GetParameter(const char name[]) const;
         template<typename Type> std::pair<bool, Type> GetParameter(ParameterNameHash name) const;
+        bool GetParameter(ParameterNameHash name, void* dest, const ImpliedTyping::TypeDesc& destType) const;
+        bool HasParameter(ParameterNameHash name) const;
 
         uint64  GetHash() const;
         uint64  GetParameterNamesHash() const;

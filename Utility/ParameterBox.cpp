@@ -57,6 +57,12 @@ namespace Utility
         template<> TypeDesc TypeOf<bool>()      { return TypeDesc(TypeCat::Bool); }
         template<> TypeDesc TypeOf<float>()     { return TypeDesc(TypeCat::Float); }
         template<> TypeDesc TypeOf<void>()      { return TypeDesc(TypeCat::Void); }
+        template<> TypeDesc TypeOf<Float2>()    { return TypeDesc(TypeCat::Float, 2, TypeHint::Vector); }
+        template<> TypeDesc TypeOf<Float3>()    { return TypeDesc(TypeCat::Float, 3, TypeHint::Vector); }
+        template<> TypeDesc TypeOf<Float4>()    { return TypeDesc(TypeCat::Float, 4, TypeHint::Vector); }
+        template<> TypeDesc TypeOf<UInt2>()     { return TypeDesc(TypeCat::UInt, 2, TypeHint::Vector); }
+        template<> TypeDesc TypeOf<UInt3>()     { return TypeDesc(TypeCat::UInt, 3, TypeHint::Vector); }
+        template<> TypeDesc TypeOf<UInt4>()     { return TypeDesc(TypeCat::UInt, 4, TypeHint::Vector); }
 
         TypeDesc TypeOf(const char expression[]) 
         {
@@ -346,6 +352,7 @@ namespace Utility
         if (i!=_parameterHashValues.cend() && *i == hash) {
             size_t index = std::distance(_parameterHashValues.cbegin(), i);
             auto offset = _offsets[index];
+            assert(_types[index].GetSize() == sizeof(Type));
             return std::make_pair(true, *(Type*)&_values[offset.second]);
         }
         return std::make_pair(false, Type(0));
@@ -358,9 +365,31 @@ namespace Utility
         if (i!=_parameterHashValues.cend() && *i == name) {
             size_t index = std::distance(_parameterHashValues.cbegin(), i);
             auto offset = _offsets[index];
+            assert(_types[index].GetSize() == sizeof(Type));
             return std::make_pair(true, *(Type*)&_values[offset.second]);
         }
-        return std::make_pair(false, Type(0));
+        return std::make_pair(false, Type());
+    }
+
+    bool ParameterBox::GetParameter(ParameterNameHash name, void* dest, const ImpliedTyping::TypeDesc& destType) const
+    {
+        auto i = std::lower_bound(_parameterHashValues.cbegin(), _parameterHashValues.cend(), name);
+        if (i!=_parameterHashValues.cend() && *i == name) {
+            size_t index = std::distance(_parameterHashValues.cbegin(), i);
+            auto offset = _offsets[index];
+            assert(_types[index] == destType);
+            if (_types[index].GetSize() == destType.GetSize()) {
+                XlCopyMemory(dest, &_values[offset.second], destType.GetSize());
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool ParameterBox::HasParameter(ParameterNameHash name) const
+    {
+        auto i = std::lower_bound(_parameterHashValues.cbegin(), _parameterHashValues.cend(), name);
+        return i!=_parameterHashValues.cend() && *i == name;
     }
 
     template void ParameterBox::SetParameter(const char name[], uint32 value);
@@ -378,6 +407,30 @@ namespace Utility
     template void ParameterBox::SetParameter(const char name[], float value);
     template std::pair<bool, float> ParameterBox::GetParameter(const char name[]) const;
     template std::pair<bool, float> ParameterBox::GetParameter(ParameterNameHash name) const;
+
+    template void ParameterBox::SetParameter(const char name[], Float2 value);
+    template std::pair<bool, Float2> ParameterBox::GetParameter(const char name[]) const;
+    template std::pair<bool, Float2> ParameterBox::GetParameter(ParameterNameHash name) const;
+    
+    template void ParameterBox::SetParameter(const char name[], Float3 value);
+    template std::pair<bool, Float3> ParameterBox::GetParameter(const char name[]) const;
+    template std::pair<bool, Float3> ParameterBox::GetParameter(ParameterNameHash name) const;
+
+    template void ParameterBox::SetParameter(const char name[], Float4 value);
+    template std::pair<bool, Float4> ParameterBox::GetParameter(const char name[]) const;
+    template std::pair<bool, Float4> ParameterBox::GetParameter(ParameterNameHash name) const;
+
+    template void ParameterBox::SetParameter(const char name[], UInt2 value);
+    template std::pair<bool, UInt2> ParameterBox::GetParameter(const char name[]) const;
+    template std::pair<bool, UInt2> ParameterBox::GetParameter(ParameterNameHash name) const;
+    
+    template void ParameterBox::SetParameter(const char name[], UInt3 value);
+    template std::pair<bool, UInt3> ParameterBox::GetParameter(const char name[]) const;
+    template std::pair<bool, UInt3> ParameterBox::GetParameter(ParameterNameHash name) const;
+
+    template void ParameterBox::SetParameter(const char name[], UInt4 value);
+    template std::pair<bool, UInt4> ParameterBox::GetParameter(const char name[]) const;
+    template std::pair<bool, UInt4> ParameterBox::GetParameter(ParameterNameHash name) const;
 
 
     uint64      ParameterBox::CalculateParameterNamesHash() const

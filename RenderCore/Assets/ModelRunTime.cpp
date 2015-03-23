@@ -243,17 +243,41 @@ namespace RenderCore { namespace Assets
             }
 
                 // fill in the details for all of the material references we found
-            const float alphaThreshold = .33f;
-            BasicMaterialConstants basicConstants = 
-            { 
-                Float3(1.f, 1.f, 1.f), 1.f, Float3(1.f, 1.f, 1.f), alphaThreshold 
-            };
-            std::vector<uint8> constants((uint8*)&basicConstants, (uint8*)PtrAdd(&basicConstants, sizeof(basicConstants)));
             for (auto i=materialResources.begin(); i!=materialResources.end(); ++i) {
                 std::string shaderName = DefaultShader;
                 i->second._shaderName = sharedStateSet.InsertShaderName(shaderName);
-                i->second._constantBuffer = (unsigned)InsertOrCombine(prescientMaterialConstantBuffers, std::vector<uint8>(constants));
                 i->second._texturesIndex = (unsigned)std::distance(materialResources.begin(), i);
+            }
+
+                // build material constants
+            for (auto i=materialResources.begin(); i!=materialResources.end(); ++i) {
+                const float alphaThreshold = .33f;
+                BasicMaterialConstants basicConstants = 
+                    { Float3(1.f, 1.f, 1.f), 1.f, Float3(1.f, 1.f, 1.f), alphaThreshold };
+                std::vector<uint8> constants((uint8*)&basicConstants, (uint8*)PtrAdd(&basicConstants, sizeof(basicConstants)));
+
+                static const auto HashMaterialDiffuse = ParameterBox::MakeParameterNameHash("MaterialDiffuse");
+                static const auto HashOpacity = ParameterBox::MakeParameterNameHash("Opacity");
+                static const auto HashMaterialSpecular = ParameterBox::MakeParameterNameHash("MaterialSpecular");
+                static const auto HashAlphaThreshold = ParameterBox::MakeParameterNameHash("AlphaThreshold");
+
+                auto* matData = matScaffold.GetMaterial(i->first);
+                if (matData) {
+                    auto& constants = matData->_constants;
+                    auto matDiffuse = constants.GetParameter<Float3>(HashMaterialDiffuse);
+                    if (matDiffuse.first) { 
+                        basicConstants._materialDiffuse = matDiffuse.second; 
+                    }
+                    auto matOpacity = constants.GetParameter<float>(HashOpacity);
+                    if (matOpacity.first) { basicConstants._opacity = matOpacity.second; }
+                    auto matSpecular = constants.GetParameter<Float3>(HashMaterialSpecular);
+                    if (matSpecular.first) { basicConstants._materialSpecular = matSpecular.second; }
+                    auto matAlphaTreshold = constants.GetParameter<float>(HashAlphaThreshold);
+                    if (matAlphaTreshold.first) { basicConstants._alphaThreshold = matAlphaTreshold.second; }
+                }
+
+                i->second._constantBuffer = 
+                    (unsigned)InsertOrCombine(prescientMaterialConstantBuffers, std::vector<uint8>(constants));
             }
 
                 // configure the texture bind points array & material parameters box

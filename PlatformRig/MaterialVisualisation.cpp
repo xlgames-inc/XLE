@@ -357,6 +357,32 @@ namespace PlatformRig
         return false;
     }
 
+    static ImpliedTyping::TypeDesc GetType(D3D11_SHADER_TYPE_DESC typeDesc)
+    {
+        using namespace Utility::ImpliedTyping;
+        TypeDesc result;
+        switch (typeDesc.Type) {
+        case D3D_SVT_BOOL:  result._type = TypeCat::Bool;   break;
+        case D3D_SVT_INT:   result._type = TypeCat::Int;    break;
+        case D3D_SVT_FLOAT: result._type = TypeCat::Float;  break;
+        case D3D_SVT_UINT:
+        case D3D_SVT_UINT8: result._type = TypeCat::UInt;   break;
+
+        default:
+        case D3D_SVT_VOID:  result._type = TypeCat::Void;   break;
+        }
+
+        if (typeDesc.Elements > 0) {
+            result._arrayCount = uint16(typeDesc.Elements);
+        } else if (typeDesc.Class == D3D_SVC_VECTOR) {
+            result._arrayCount = uint16(typeDesc.Columns);
+        } else if (typeDesc.Class == D3D_SVC_MATRIX_ROWS || typeDesc.Class == D3D_SVC_MATRIX_COLUMNS) {
+            result._arrayCount = uint16(typeDesc.Columns * typeDesc.Rows);
+        }
+
+        return result;
+    }
+
     static std::vector<std::pair<uint64, RenderCore::Metal::ConstantBufferPacket>> 
         BuildMaterialConstants(
             ID3D::ShaderReflection& reflection, 
@@ -405,8 +431,8 @@ namespace PlatformRig
                                     //
 
                                 auto nameHash = ParameterBox::MakeParameterNameHash(variableDesc.Name);
-                                auto param = constants.GetParameter<uint32>(nameHash);
-                                if (param.first) {
+                                auto hasParam = constants.HasParameter(nameHash);
+                                if (hasParam) {
 
                                     auto type = reflectionVariable->GetType();
                                     D3D11_SHADER_TYPE_DESC typeDesc;
@@ -417,15 +443,17 @@ namespace PlatformRig
                                             //      Finally, copy whatever the material object
                                             //      is, into the destination position in the 
                                             //      constant buffer;
-                                            //  
+                                            //
 
-                                        // ShaderPatcherLayer::TypeRules::CopyToBytes(
-                                        //     PtrAdd(result.begin(), variableDesc.StartOffset), obj, 
-                                        //     BuildTypeName(typeDesc), ShaderPatcherLayer::TypeRules::ExtractTypeName(obj),
-                                        //     result.end());
+                                        auto impliedType = GetType(typeDesc);
+                                        assert((variableDesc.StartOffset + impliedType.GetSize()) <= bufferDesc.Size);
+                                        if ((variableDesc.StartOffset + impliedType.GetSize()) <= bufferDesc.Size) {
+                                            constants.GetParameter(
+                                                nameHash,
+                                                PtrAdd(result.begin(), variableDesc.StartOffset),
+                                                impliedType);
 
-                                        *(uint32*)PtrAdd(result.begin(), variableDesc.StartOffset) = param.second;
-                                        foundAtLeastOneParameter = true;
+                                        }
                                     }
 
                                 } else {

@@ -461,7 +461,6 @@ namespace Overlays
 
         auto sceneParser = PlatformRig::CreateModelScene(model);
         Techniques::TechniqueContext techniqueContext;
-        techniqueContext._globalEnvironmentState.SetParameter("SKIP_MATERIAL_DIFFUSE", 1);
         SceneEngine::LightingParserContext lightingParserContext(techniqueContext);
         SceneEngine::LightingParser_ExecuteScene(context, lightingParserContext, *sceneParser.get(), qualitySettings);
     }
