@@ -10,6 +10,7 @@
     <ClCompile Include="..\MaterialVisualisation.cpp" />
     <ClCompile Include="..\AssemblyInfo.cpp" />
     <ClCompile Include="..\DivergentAssetList.cpp" />
+    <ClCompile Include="..\CustomDataGridEditor.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\EngineDevice.h" />
