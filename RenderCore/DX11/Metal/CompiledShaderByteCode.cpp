@@ -94,22 +94,22 @@ namespace RenderCore { namespace Metal_DX11
     class IncludeHandler : public ID3D10Include 
     {
     public:
-        IncludeHandler(const char baseDirectory[], const char baseFile[] = nullptr, uint64 baseFileModTime = 0) : _baseDirectory(baseDirectory) 
+        IncludeHandler(const char baseDirectory[], const Assets::DependentFileState& baseFile = Assets::DependentFileState()) : _baseDirectory(baseDirectory) 
         {
             _searchDirectories.push_back(baseDirectory);
-            if (baseFile && baseFile[0]) {
-                _includeFiles.push_back(Assets::FileAndTime(baseFile, baseFileModTime));
+            if (!baseFile._filename.empty()) {
+                _includeFiles.push_back(baseFile);
             }
         }
         HRESULT __stdcall   Open(D3D10_INCLUDE_TYPE IncludeType, LPCSTR pFileName, LPCVOID pParentData, LPCVOID *ppData, UINT *pBytes);
         HRESULT __stdcall   Close(LPCVOID pData);
         
-        const std::vector<Assets::FileAndTime>& GetIncludeFiles() const     { return _includeFiles; }
+        const std::vector<Assets::DependentFileState>& GetIncludeFiles() const     { return _includeFiles; }
         const std::string&              GetBaseDirectory() const    { return _baseDirectory; }
         
     private:
         std::string                 _baseDirectory;
-        std::vector<Assets::FileAndTime>    _includeFiles;
+        std::vector<Assets::DependentFileState>    _includeFiles;
         std::vector<std::string>    _searchDirectories;
     };
 
@@ -123,7 +123,7 @@ namespace RenderCore { namespace Metal_DX11
             XlSimplifyPath(path, dimof(path), path, "\\/");
 
             std::unique_ptr<uint8[]> file;
-            uint64 timeMarker = 0;
+            ::Assets::DependentFileState timeMarker;
             {
                     // need to use Win32 file operations, so we can get the modification time
                     //  at exactly the time we're reading it.
@@ -139,7 +139,7 @@ namespace RenderCore { namespace Metal_DX11
                     FILETIME ft;
                     GetFileTime(handle, nullptr, nullptr, &ft);
 
-                    timeMarker = (uint64(ft.dwHighDateTime) << 32ull) | uint64(ft.dwLowDateTime);
+                    timeMarker._timeMarker = (uint64(ft.dwHighDateTime) << 32ull) | uint64(ft.dwLowDateTime);
                     file = std::make_unique<uint8[]>(size);
                     DWORD byteRead = 0;
                     auto b = ReadFile(handle, file.get(), DWORD(size), &byteRead, nullptr);
@@ -149,13 +149,8 @@ namespace RenderCore { namespace Metal_DX11
             }
 
             if (file) {
-                    // The filename we write to our dependencies list should be relative
-                    // to the base directory (which will be the first directory in "_searchDirectories"
-                char relativeFilename[MaxPath];
-                XlMakeRelPath(
-                    relativeFilename, dimof(relativeFilename), 
-                    _searchDirectories[0].c_str(), path);
-
+                timeMarker._filename = path;
+                
                 XlDirname(path, dimof(path), path);
                 std::string newDirectory = path;
                 auto i = std::find(_searchDirectories.cbegin(), _searchDirectories.cend(), newDirectory);
@@ -165,7 +160,7 @@ namespace RenderCore { namespace Metal_DX11
                 if (ppData) { *ppData = file.release(); }
                 if (pBytes) { *pBytes = (UINT)size; }
 
-                _includeFiles.push_back(Assets::FileAndTime(std::string(relativeFilename), timeMarker));
+                _includeFiles.push_back(timeMarker);
                 return S_OK;
             }
         }
@@ -235,12 +230,12 @@ namespace RenderCore { namespace Metal_DX11
     public:
         intrusive_ptr<ID3D::Blob> Resolve(const char initializer[], const std::shared_ptr<Assets::DependencyValidation>& depVal = nullptr) const;
 
-        const std::vector<Assets::FileAndTime>& GetDependencies() const     
+        const std::vector<Assets::DependentFileState>& GetDependencies() const     
         { 
             if (_includeHandler) {
                 return _includeHandler->GetIncludeFiles(); 
             } else {
-                static std::vector<Assets::FileAndTime> blank;
+                static std::vector<Assets::DependentFileState> blank;
                 return blank;
             }
         }
@@ -272,18 +267,14 @@ namespace RenderCore { namespace Metal_DX11
 
             // DavidJ --    the normalize path steps here don't work for network
             //              paths. The first "\\" gets removed in the process
-        ResChar buffer          [MaxPath];
-        ResChar cwd             [MaxPath];
         ResChar normalizedPath  [MaxPath];
-        XlGetCurrentDirectory(dimof(cwd), cwd);
-        XlCatString(cwd, dimof(cwd), '\\');
-        XlConcatPath(buffer, dimof(buffer), cwd, shaderPath._filename);
-        XlToDosPath(normalizedPath, dimof(normalizedPath), buffer);
+        XlNormalizePath(normalizedPath, dimof(normalizedPath), shaderPath._filename);
         
         ResChar directoryName[MaxPath];
         XlDirname(directoryName, dimof(directoryName), normalizedPath);
-        XlBasename(buffer, dimof(buffer), normalizedPath);
-        auto includeHandler = std::make_unique<IncludeHandler>(directoryName, buffer, GetFileModificationTime(normalizedPath));
+        auto includeHandler = std::make_unique<IncludeHandler>(
+            directoryName, 
+            ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateStore().GetDependentFileState(normalizedPath));
 
         std::string definesCopy;
         auto arrayOfDefines = MakeDefinesTable(definesTable, shaderPath._shaderModel, definesCopy);
@@ -328,7 +319,7 @@ namespace RenderCore { namespace Metal_DX11
         _futureShader = nullptr;
         _futureResult = ~HRESULT(0x0);
 
-        auto includeHandler = std::make_unique<IncludeHandler>("", "");
+        auto includeHandler = std::make_unique<IncludeHandler>("");
 
         std::string definesCopy;
         auto arrayOfDefines = MakeDefinesTable(definesTable, shaderModel, definesCopy);
@@ -914,7 +905,7 @@ namespace RenderCore { namespace Metal_DX11
                     std::make_shared<ShaderCompileProcess>(
                         shaderId,  definesTable,
                         std::move(archive), archiveId, 
-                        [=](::Assets::AssetState::Enum newState, const std::vector<Assets::FileAndTime>& deps)
+                        [=](::Assets::AssetState::Enum newState, const std::vector<Assets::DependentFileState>& deps)
                         {
                                 //  note -- we're accessing an unprotected pointer to the "destinationStore"
                                 //  The list of dependencies here should mostly be path names relative

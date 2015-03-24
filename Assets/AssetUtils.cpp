@@ -17,8 +17,8 @@
 
 namespace Assets
 {
-    static Utility::Threading::RecursiveMutex           ResourceDependenciesLock;
-    static std::vector<std::pair<const DependencyValidation*, std::shared_ptr<DependencyValidation>>>       ResourceDependencies;
+    static Utility::Threading::RecursiveMutex ResourceDependenciesLock;
+    static std::vector<std::pair<const OnChangeCallback*, std::shared_ptr<DependencyValidation>>> ResourceDependencies;
 
     void    DependencyValidation::OnChange()
     { 
@@ -26,14 +26,14 @@ namespace Assets
         ResourceDependenciesLock.lock();
         auto range = std::equal_range(
             ResourceDependencies.begin(), ResourceDependencies.end(), 
-            this, CompareFirst<const DependencyValidation*, std::shared_ptr<DependencyValidation>>());
+            this, CompareFirst<const OnChangeCallback*, std::shared_ptr<DependencyValidation>>());
         for (auto i=range.first; i!=range.second; ++i) {
             i->second->OnChange();
         }
         ResourceDependenciesLock.unlock();
     }
 
-    void RegisterFileDependency(const std::shared_ptr<DependencyValidation>& validationIndex, const char filename[])
+    void RegisterFileDependency(std::shared_ptr<Utility::OnChangeCallback> validationIndex, const char filename[])
     {
         ResChar directoryName[MaxPath], baseName[MaxPath];
         XlNormalizePath(baseName, dimof(baseName), filename);
@@ -44,17 +44,17 @@ namespace Assets
         }
         XlBasename(baseName, dimof(baseName), baseName);
         if (!directoryName[0]) XlCopyString(directoryName, "./");
-        Utility::AttachFileSystemMonitor(directoryName, baseName, validationIndex);
+        Utility::AttachFileSystemMonitor(directoryName, baseName, std::move(validationIndex));
     }
 
-    void RegisterAssetDependency(const std::shared_ptr<DependencyValidation>& dependentResource, const DependencyValidation* dependency)
+    void RegisterAssetDependency(std::shared_ptr<DependencyValidation> dependentResource, const Utility::OnChangeCallback* dependency)
     {
         assert(dependentResource && dependency);
         ResourceDependenciesLock.lock();
         auto i = std::lower_bound(
             ResourceDependencies.begin(), ResourceDependencies.end(), 
-            dependency, CompareFirst<const OnChangeCallback*, std::shared_ptr<OnChangeCallback>>());
-        ResourceDependencies.insert(i, std::make_pair(dependency, dependentResource));
+            dependency, CompareFirst<const OnChangeCallback*, std::shared_ptr<DependencyValidation>>());
+        ResourceDependencies.insert(i, std::make_pair(dependency, std::move(dependentResource)));
         ResourceDependenciesLock.unlock();
     }
 

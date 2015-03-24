@@ -19,7 +19,7 @@ namespace Assets
         ////////////////////////////////////////////////////////////
 
     void IPollingAsyncProcess::FireTrigger( AssetState::Enum newState,
-                                            const std::vector<Assets::FileAndTime>& dependencies) 
+                                            const std::vector<Assets::DependentFileState>& dependencies) 
     {
         _fn(newState, dependencies); 
     }

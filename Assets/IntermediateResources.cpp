@@ -17,6 +17,7 @@
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/IteratorUtils.h"
 #include "../Utility/PtrUtils.h"
+#include "../Utility/ExceptionLogging.h"
 
 #include "../Core/WinAPI/IncludeWindows.h"
 #include <memory>
@@ -56,6 +57,70 @@ namespace Assets { namespace IntermediateResources
             _snprintf_s(destination, DestCount, _TRUNCATE, "%s/.deps/%s", baseDirectory, f);
         }
 
+    class RetainedFileRecord : public DependencyValidation
+    {
+    public:
+        DependentFileState _state;
+
+        void OnChange()
+        {
+                // on change, update the modification time record
+            _state._timeMarker = GetFileModificationTime(_state._filename.c_str());
+            DependencyValidation::OnChange();
+        }
+
+        RetainedFileRecord(const ResChar filename[])
+        : _state(filename, 0ull) {}
+    };
+
+    static std::vector<std::pair<uint64, std::shared_ptr<RetainedFileRecord>>> RetainedRecords;
+
+    static std::shared_ptr<RetainedFileRecord>& GetRetainedFileRecord(const char filename[])
+    {
+            //  We should normalize to avoid problems related to
+            //  case insensitivity and slash differences
+        char buffer[MaxPath];
+        XlNormalizePath(buffer, dimof(buffer), filename);
+
+        auto hash = Hash64(buffer);
+        auto i = LowerBound(RetainedRecords, hash);
+        if (i!=RetainedRecords.end() && i->first == hash) {
+            return i->second;
+        }
+
+            //  we should call "AttachFileSystemMonitor" before we query for the
+            //  file's current modification time
+        auto newRecord = std::make_shared<RetainedFileRecord>(buffer);
+        RegisterFileDependency(newRecord, buffer);
+        newRecord->_state._timeMarker = GetFileModificationTime(buffer);
+
+        return RetainedRecords.insert(i, std::make_pair(hash, std::move(newRecord)))->second;
+    }
+
+    const DependentFileState& Store::GetDependentFileState(const ResChar filename[]) const
+    {
+        return GetRetainedFileRecord(filename)->_state;
+    }
+
+    void Store::ShadowFile(const ResChar filename[])
+    {
+        auto& record = GetRetainedFileRecord(filename);
+        record->_state._status = DependentFileState::Status::Shadowed;
+
+            // propagate change messages...
+        ResChar path[MaxPath];
+        ResChar basename[MaxPath];
+        XlDirname(path, dimof(path), record->_state._filename.c_str());
+        XlBasename(basename, dimof(basename), record->_state._filename.c_str());
+        auto len = XlStringLen(path);
+        if (len > 0 && (path[len-1] == '\\' || path[len-1] == '/')) {
+            path[len-1] = '\0'; 
+        }
+        FakeFileChange(path, basename);
+
+        record->OnChange();
+    }
+
     std::shared_ptr<DependencyValidation> Store::MakeDependencyValidation(const ResChar intermediateFileName[]) const
     {
             //  When we process a file, we write a little text file to the
@@ -73,9 +138,7 @@ namespace Assets { namespace IntermediateResources
             data.LoadFromFile(buffer);
 
             auto* basePath = data.StrAttribute("BasePath");
-
             auto validation = std::make_shared<DependencyValidation>();
-
             auto* dependenciesBlock = data.ChildWithValue("Dependencies");
             if (dependenciesBlock) {
                 for (auto* dependency = dependenciesBlock->child; dependency; dependency = dependency->next) {
@@ -83,24 +146,31 @@ namespace Assets { namespace IntermediateResources
                     auto dateLow = (unsigned)dependency->IntAttribute("ModTimeLow");
                     auto dateHigh = (unsigned)dependency->IntAttribute("ModTimeHigh");
                     
-                    uint64  curTime;
+                    const RetainedFileRecord* record;
                     if (basePath && basePath[0]) {
                         XlConcatPath(buffer, dimof(buffer), basePath, depName);
-                        curTime = GetFileModificationTime(buffer);
-                        RegisterFileDependency(validation, buffer);
+                        record = GetRetainedFileRecord(buffer).get();
+                        RegisterAssetDependency(validation, record);
                     } else {
-                        curTime = GetFileModificationTime(depName);
-                        RegisterFileDependency(validation, depName);
+                        record = GetRetainedFileRecord(depName).get();
+                        RegisterAssetDependency(validation, record);
                     }
 
-                    if (!curTime) {
-                        LogInfo << "Asset (" << intermediateFileName << ") is invalidated because of missing dependency (" << depName << ")";
+                    if (record->_state._status == DependentFileState::Status::Shadowed) {
+                        LogInfo << "Asset (" << intermediateFileName << ") is invalidated because dependency (" << depName << ") is marked shadowed";
                         return nullptr;
-                    } else { 
-                        if (curTime != ((uint64(dateHigh) << 32ull) | uint64(dateLow))) {
-                            LogInfo << "Asset (" << intermediateFileName << ") is invalidated because of file data on dependency (" << depName << ")";
-                            return nullptr;
-                        }
+                    }
+
+                    if (!record->_state._timeMarker) {
+                        LogInfo
+                            << "Asset (" << intermediateFileName 
+                            << ") is invalidated because of missing dependency (" << depName << ")";
+                        return nullptr;
+                    } else if (record->_state._timeMarker != ((uint64(dateHigh) << 32ull) | uint64(dateLow))) {
+                        LogInfo
+                            << "Asset (" << intermediateFileName 
+                            << ") is invalidated because of file data on dependency (" << depName << ")";
+                        return nullptr;
                     }
                 }
             }
@@ -117,7 +187,9 @@ namespace Assets { namespace IntermediateResources
         } CATCH_END
     }
 
-    std::shared_ptr<DependencyValidation> Store::WriteDependencies(const ResChar intermediateFileName[], const ResChar baseDir[], const std::vector<FileAndTime>& dependencies) const
+    std::shared_ptr<DependencyValidation> Store::WriteDependencies(
+        const ResChar intermediateFileName[], const ResChar baseDir[], 
+        const std::vector<DependentFileState>& dependencies) const
     {
         Data data;
 
@@ -131,18 +203,20 @@ namespace Assets { namespace IntermediateResources
         auto dependenciesBlock = std::make_unique<Data>("Dependencies");
         for (auto s=dependencies.cbegin(); s!=dependencies.cend(); ++s) {
             auto c = std::make_unique<Data>();
-            c->SetAttribute("Name", s->_filename.c_str());
 
-            c->SetAttribute("ModTimeHigh", (int)(s->_timeMarker>>32ull));
-            c->SetAttribute("ModTimeLow", (int)(s->_timeMarker));
-            dependenciesBlock->Add(c.release());
+            ResChar normalizedPath[MaxPath];
+            XlNormalizePath(normalizedPath, dimof(normalizedPath), s->_filename.c_str());
 
-            if (baseDir[0]) {
-                XlConcatPath(buffer, dimof(buffer), baseDir, s->_filename.c_str());
-                RegisterFileDependency(result, buffer);
-            } else {
-                RegisterFileDependency(result, s->_filename.c_str());
+            ResChar relativePath[MaxPath];
+            XlMakeRelPath(relativePath, dimof(relativePath), baseDir, normalizedPath);
+            c->SetAttribute("Name", relativePath);
+
+            if (s->_status != DependentFileState::Status::Shadowed) {
+                c->SetAttribute("ModTimeHigh", (int)(s->_timeMarker>>32ull));
+                c->SetAttribute("ModTimeLow", (int)(s->_timeMarker));
             }
+            dependenciesBlock->Add(c.release());
+            RegisterFileDependency(result, s->_filename.c_str());
         }
         data.Add(dependenciesBlock.release());
 
@@ -277,7 +351,7 @@ namespace Assets { namespace IntermediateResources
             TRY {
                 return i->second->PrepareResource(typeCode, initializers, initializerCount, store);
             } CATCH (const std::exception& e) {
-                LogAlwaysError << "Exception during processing of (" << initializers[0] << "). Exception details: (" << e.what() << ")";
+                LogAlwaysError << "Exception during processing of (" << initializers[0] << "). Exception details: (" << e << ")";
             } CATCH (...) {
                 LogAlwaysError << "Unknown exception during processing of (" << initializers[0] << ").";
             } CATCH_END

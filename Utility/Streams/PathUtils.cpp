@@ -168,13 +168,19 @@ void XlMakeRelPath(char* dst, int count, const char* root, const char* path)
         //          it should be replaced with a more reliable version
     const char* c = root;
     const char* s = path;
-    const char* lastSlashS = root;
-    const char* lastSlashC = path;
+    const char* lastSlashS = path;
+    const char* lastSlashC = root;
     for (;;) {
         if ((*c != *s) || (*c == '\0')) {
-            if (*c == '\0' && (*s == '\0' || *s == '\\' || *s == '/')) {
+            if (*c == '\0' && (*s == '\\' || *s == '/')) {
                 lastSlashC = c-1;
                 lastSlashS = s-1;
+            } else {
+                s = lastSlashS;
+                c = lastSlashC;
+                if ((*c == '\\' || *c == '/') && (*s == '\\' || *s == '/')) {
+                    ++s; ++c;
+                }
             }
             break;
         }
@@ -185,9 +191,6 @@ void XlMakeRelPath(char* dst, int count, const char* root, const char* path)
         ++c;
         ++s;
     }
-
-    s = lastSlashS+1;
-    c = lastSlashC+1;
 
     while (*s == '/' || *s =='\\') { ++s; }
 

@@ -147,10 +147,8 @@ namespace RenderCore { namespace Assets
             }
 
                 // write new dependencies
-            std::vector<::Assets::FileAndTime> deps;
-            char relName[MaxPath];
-            XlBasename(relName, dimof(relName), colladaFile);
-            deps.push_back(::Assets::FileAndTime(relName, GetFileModificationTime(colladaFile)));
+            std::vector<::Assets::DependentFileState> deps;
+            deps.push_back(destinationStore.GetDependentFileState(colladaFile));
             auto newDepVal = destinationStore.WriteDependencies(outputName, baseDir, deps);
         
                 // we can return a "ready" resource
@@ -162,7 +160,7 @@ namespace RenderCore { namespace Assets
                 //  source for the animation set should actually be a directory name, and
                 //  we'll use all of the dae files in that directory as animation inputs
             auto sourceFiles = FindFiles(std::string(initializers[0]) + "/*.dae");
-            std::vector<::Assets::FileAndTime> deps;
+            std::vector<::Assets::DependentFileState> deps;
 
             auto mergedAnimationSet = (*_pimpl->_createModel)(nullptr);
             for (auto i=sourceFiles.begin(); i!=sourceFiles.end(); ++i) {
@@ -186,9 +184,7 @@ namespace RenderCore { namespace Assets
                     LogAlwaysError << "Exception while processing animation: (" << baseName << "). Exception is: (" << e.what() << ")";
                 } CATCH_END
 
-                char relName[MaxPath];
-                XlMakeRelPath(relName, dimof(relName), baseDir, i->c_str());
-                deps.push_back(::Assets::FileAndTime(relName, GetFileModificationTime(i->c_str())));
+                deps.push_back(destinationStore.GetDependentFileState(i->c_str()));
             }
 
             SerializeToFile(*mergedAnimationSet, _pimpl->_serializeAnimationFunction, outputName, _pimpl->_conversionDLLVersion);

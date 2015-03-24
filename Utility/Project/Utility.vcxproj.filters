@@ -80,6 +80,7 @@
       <Filter>Profiling</Filter>
     </ClInclude>
     <ClInclude Include="..\ParameterBox.h" />
+    <ClInclude Include="..\ExceptionLogging.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\StringFormat.cpp" />

@@ -229,7 +229,7 @@ namespace Utility
     }
 
     void AttachFileSystemMonitor(   const char directoryName[], const char filename[], 
-                                    const std::shared_ptr<OnChangeCallback>& callback)
+                                    std::shared_ptr<OnChangeCallback> callback)
     {
         ScopedLock(MonitoredDirectoriesLock);
         assert(directoryName && directoryName[0]);
@@ -239,13 +239,13 @@ namespace Utility
             MonitoredDirectories.cbegin(), MonitoredDirectories.cend(), 
             hash, CompareFirst<uint64, std::unique_ptr<MonitoredDirectory>>());
         if (i != MonitoredDirectories.cend() && i->first == hash) {
-            i->second->AttachCallback(MonitoredDirectory::HashFilename(filename), callback);
+            i->second->AttachCallback(MonitoredDirectory::HashFilename(filename), std::move(callback));
             return;
         }
 
         ++CreationOrderId_Foreground;
         auto i2 = MonitoredDirectories.insert(i, std::make_pair(hash, std::make_unique<MonitoredDirectory>(directoryName)));
-        i2->second->AttachCallback(MonitoredDirectory::HashFilename(filename), callback);
+        i2->second->AttachCallback(MonitoredDirectory::HashFilename(filename), std::move(callback));
 
             //  we need to trigger the background thread so that it begins the the ReadDirectoryChangesW operation
             //  (that operation must begin and be handled in the same thread when using completion routines)

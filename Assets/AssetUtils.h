@@ -32,15 +32,20 @@ namespace Assets
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class FileAndTime
+    class DependentFileState
     {
     public:
         std::basic_string<ResChar> _filename;
         uint64 _timeMarker;
 
-        FileAndTime() : _timeMarker(0) {}
-        FileAndTime(const std::basic_string<ResChar>& filename, uint64 timeMarker) 
-            : _filename(filename), _timeMarker(timeMarker) {}
+        enum class Status { Normal, Shadowed };
+        Status _status;
+
+        DependentFileState() : _timeMarker(0ull), _status(Status::Normal) {}
+        DependentFileState(
+            const std::basic_string<ResChar>& filename, 
+            uint64 timeMarker)
+        : _filename(filename), _timeMarker(timeMarker), _status(Status::Normal) {}
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////

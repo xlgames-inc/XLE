@@ -218,7 +218,7 @@ namespace RenderCore { namespace Assets
 
         ResolvedMaterial Resolve(
             const ::Assets::DirectorySearchRules& searchRules,
-            std::vector<::Assets::FileAndTime>* deps = nullptr) const;
+            std::vector<::Assets::DependentFileState>* deps = nullptr) const;
 
         std::unique_ptr<Data> SerializeAsData() const;
         ResString GetInitializerFilename() const    { return _splitName._initializerFilename; }

@@ -11,7 +11,7 @@
 namespace Assets 
 {
     class PendingCompileMarker; 
-    class FileAndTime; 
+    class DependentFileState; 
     class DependencyValidation; 
     namespace AssetState { enum Enum; }
     class ArchiveCache;
@@ -64,9 +64,12 @@ namespace Assets { namespace IntermediateResources
         std::shared_ptr<DependencyValidation>    MakeDependencyValidation(const ResChar intermediateFileName[]) const;
         std::shared_ptr<DependencyValidation>    WriteDependencies(
             const ResChar intermediateFileName[], const ResChar baseDir[], 
-            const std::vector<::Assets::FileAndTime>& dependencies) const;
+            const std::vector<DependentFileState>& dependencies) const;
 
         void    MakeIntermediateName(ResChar buffer[], unsigned bufferMaxCount, const ResChar firstInitializer[]) const;
+
+        const DependentFileState& GetDependentFileState(const ResChar filename[]) const;
+        void    ShadowFile(const ResChar filename[]);
 
         Store(const ResChar baseDirectory[], const ResChar versionString[]);
         ~Store();

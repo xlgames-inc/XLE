@@ -9,15 +9,16 @@
 #include "ModelRunTimeInternal.h"
 #include "Material.h"
 #include "../../Assets/AssetUtils.h"
+#include "../../Assets/BlockSerializer.h"
+#include "../../Assets/ChunkFile.h"
+#include "../../Assets/IntermediateResources.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/IteratorUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Streams/Data.h"
 #include "../../Utility/StringFormat.h"
-#include "../../Assets/BlockSerializer.h"
-#include "../../Assets/ChunkFile.h"
-#include "../../Assets/IntermediateResources.h"
+#include "../../Utility/ExceptionLogging.h"
 
 namespace RenderCore { extern char VersionString[]; extern char BuildDateString[]; }
 
@@ -26,7 +27,7 @@ namespace RenderCore { namespace Assets
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static void CompileMaterialScaffold(const char source[], const char destination[], std::vector<::Assets::FileAndTime>* outDeps)
+    static void CompileMaterialScaffold(const char source[], const char destination[], std::vector<::Assets::DependentFileState>* outDeps)
     {
         ::Assets::ResChar concreteFilename[MaxPath];
         MakeConcreteRawMaterialFilename(concreteFilename, dimof(concreteFilename), source);
@@ -52,7 +53,7 @@ namespace RenderCore { namespace Assets
         }
 
         auto searchRules = ::Assets::DefaultDirectorySearchRules(source);
-        std::vector<::Assets::FileAndTime> deps;
+        std::vector<::Assets::DependentFileState> deps;
 
             //  for each configuration, we want to build a resolved material
             //  Note that this is a bit crazy, because we're going to be loading
@@ -69,8 +70,9 @@ namespace RenderCore { namespace Assets
             TRY {
                 auto& rawMat = ::Assets::GetAssetDep<RawMaterial>((const ::Assets::ResChar*)matName);
                 resolved.push_back(std::make_pair(guid, rawMat.Resolve(searchRules, &deps)));
-            } CATCH (const ::Assets::Exceptions::InvalidResource&) {
+            } CATCH (const ::Assets::Exceptions::InvalidResource& e) {
                 LogWarning << "Got an invalid resource exception while compiling material scaffold for " << source;
+                LogWarning << "Exception follows: " << e;
             } CATCH_END
         }
 
@@ -121,7 +123,7 @@ namespace RenderCore { namespace Assets
              }
         }
 
-        std::vector<::Assets::FileAndTime> deps;
+        std::vector<::Assets::DependentFileState> deps;
         CompileMaterialScaffold(initializers[0], outputName, &deps);
 
         auto newDepVal = destinationStore.WriteDependencies(outputName, "", deps);

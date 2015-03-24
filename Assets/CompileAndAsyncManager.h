@@ -15,7 +15,7 @@
 
 namespace Assets
 {
-    class DependencyValidation; class FileAndTime; 
+    class DependencyValidation; class DependentFileState; 
     namespace IntermediateResources { class CompilerSet; class Store; }
     namespace AssetState { enum Enum; }
     class ArchiveCache;
@@ -28,11 +28,11 @@ namespace Assets
 
         typedef std::function<void(
             AssetState::Enum newState,
-            const std::vector<FileAndTime>&)> CallbackFn;
+            const std::vector<DependentFileState>&)> CallbackFn;
         IPollingAsyncProcess(CallbackFn&& fn);
         virtual ~IPollingAsyncProcess();
     protected:
-        void FireTrigger(AssetState::Enum, const std::vector<FileAndTime>& = std::vector<FileAndTime>());
+        void FireTrigger(AssetState::Enum, const std::vector<DependentFileState>& = std::vector<DependentFileState>());
     private:
         CallbackFn _fn;
     };

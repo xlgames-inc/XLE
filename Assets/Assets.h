@@ -430,14 +430,14 @@ namespace Assets
     /// already been destroyed).
     /// <param name="validationIndex">Callback to receive invalidation events</param>
     /// <param name="filename">Normally formatted filename</param>
-    void RegisterFileDependency(const std::shared_ptr<DependencyValidation>& validationIndex, const char filename[]);
+    void RegisterFileDependency(std::shared_ptr<Utility::OnChangeCallback> validationIndex, const char filename[]);
 
     /// <summary>Registers a dependency on another resource</summary>
     /// Sometimes resources are dependent on other resources. This function helps registers a 
     /// dependency between resources.
     /// If <paramref name="dependency"/> ever gets a OnChange() message, then <paramref name="dependentResource"/> 
     /// will also receive the OnChange() message.
-    void RegisterAssetDependency(const std::shared_ptr<DependencyValidation>& dependentResource, const DependencyValidation* dependency);
+    void RegisterAssetDependency(std::shared_ptr<DependencyValidation> dependentResource, const Utility::OnChangeCallback* dependency);
 
 }
 

@@ -524,7 +524,7 @@ namespace RenderCore { namespace Assets
 
     ResolvedMaterial RawMaterial::Resolve(
         const ::Assets::DirectorySearchRules& searchRules,
-        std::vector<::Assets::FileAndTime>* deps) const
+        std::vector<::Assets::DependentFileState>* deps) const
     {
             // resolve all of the inheritance options and generate a final 
             // ResolvedMaterial object. We need to start at the bottom of the
@@ -538,15 +538,13 @@ namespace RenderCore { namespace Assets
                     // add a dependency to this file, even if it doesn't exist
                 if (deps) {
                     auto existing = std::find_if(deps->cbegin(), deps->cend(),
-                        [&](const ::Assets::FileAndTime& test) 
+                        [&](const ::Assets::DependentFileState& test) 
                         {
                             return !XlCompareStringI(test._filename.c_str(), splitName._concreteFilename.c_str());
                         });
                     if (existing == deps->cend()) {
-                        ::Assets::FileAndTime fileAndTime(
-                            splitName._concreteFilename, 
-                            GetFileModificationTime(splitName._concreteFilename.c_str()));
-                        deps->push_back(fileAndTime);
+                        auto& store = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateStore();
+                        deps->push_back(store.GetDependentFileState(splitName._concreteFilename.c_str()));
                     }
                 }
 
@@ -560,15 +558,13 @@ namespace RenderCore { namespace Assets
         MergeInto(result);
         if (deps) {
             auto existing = std::find_if(deps->cbegin(), deps->cend(),
-                [&](const ::Assets::FileAndTime& test) 
+                [&](const ::Assets::DependentFileState& test) 
                 {
                     return !XlCompareStringI(test._filename.c_str(), _splitName._concreteFilename.c_str());
                 });
             if (existing == deps->cend()) {
-                ::Assets::FileAndTime fileAndTime(
-                    _splitName._concreteFilename, 
-                    GetFileModificationTime(_splitName._concreteFilename.c_str()));
-                deps->push_back(fileAndTime);
+                auto& store = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateStore();
+                deps->push_back(store.GetDependentFileState(_splitName._concreteFilename.c_str()));
             }
         }
 

@@ -16,7 +16,7 @@ namespace Utility
         virtual void    OnChange() = 0;
     };
 
-    void    AttachFileSystemMonitor(const char directoryName[], const char filename[], const std::shared_ptr<OnChangeCallback>& callback);
+    void    AttachFileSystemMonitor(const char directoryName[], const char filename[], std::shared_ptr<OnChangeCallback> callback);
     void    FakeFileChange(const char directoryName[], const char filename[]);
     void    TerminateFileSystemMonitoring();
 }

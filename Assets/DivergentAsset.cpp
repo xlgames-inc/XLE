@@ -5,8 +5,8 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "DivergentAsset.h"
-#include "../Utility/Streams/PathUtils.h"
-#include "../Utility/Streams/FileSystemMonitor.h"
+#include "CompileAndAsyncManager.h"
+#include "IntermediateResources.h"
 
 namespace Assets
 {
@@ -23,17 +23,8 @@ namespace Assets
 
         if (_targetFilename.empty()) return;
 
-        ResChar path[MaxPath];
-        ResChar filename[MaxPath];
-        XlDirname(path, dimof(path), _targetFilename.c_str());
-        XlBasename(filename, dimof(filename), _targetFilename.c_str());
-
-        auto len = XlStringLen(path);
-        if (len > 0 && (path[len-1] == '\\' || path[len-1] == '/')) {
-            path[len-1] = '\0'; 
-        }
-
-        FakeFileChange(path, filename);
+        CompileAndAsyncManager::GetInstance().GetIntermediateStore().ShadowFile(
+            _targetFilename.c_str());
     }
 
 
