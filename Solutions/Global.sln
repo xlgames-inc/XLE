@@ -92,6 +92,10 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TestDLL", "..\Samples\TestD
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ModelViewer", "..\Samples\ModelViewer\Project\ModelViewer.csproj", "{06F6B39A-1EDA-4ABF-B120-1F885562FE16}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LevelEditor.vs2010", "..\Foreign\SonyLE\LevelEditor\LevelEditor.vs2010.csproj", "{7DA4D304-37A9-4CD2-B30E-032B1C92A14E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RenderingInterop.vs2010", "..\Foreign\SonyLE\LevelEditorNativeRendering\RenderingInterop.vs2010.csproj", "{8FDEBB1D-43B9-4922-AD51-4E58A0D71FBC}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Tegra-Android = Debug|Tegra-Android
@@ -619,6 +623,29 @@ Global
 		{06F6B39A-1EDA-4ABF-B120-1F885562FE16}.Release|Win32.ActiveCfg = Release|x86
 		{06F6B39A-1EDA-4ABF-B120-1F885562FE16}.Release|Win32.Build.0 = Release|x86
 		{06F6B39A-1EDA-4ABF-B120-1F885562FE16}.Release|x64.ActiveCfg = Release|x86
+		{7DA4D304-37A9-4CD2-B30E-032B1C92A14E}.Debug|Tegra-Android.ActiveCfg = Debug|x64
+		{7DA4D304-37A9-4CD2-B30E-032B1C92A14E}.Debug|Win32.ActiveCfg = Debug|x64
+		{7DA4D304-37A9-4CD2-B30E-032B1C92A14E}.Debug|Win32.Build.0 = Debug|x64
+		{7DA4D304-37A9-4CD2-B30E-032B1C92A14E}.Debug|x64.ActiveCfg = Debug|x64
+		{7DA4D304-37A9-4CD2-B30E-032B1C92A14E}.Debug|x64.Build.0 = Debug|x64
+		{7DA4D304-37A9-4CD2-B30E-032B1C92A14E}.Profile|Tegra-Android.ActiveCfg = Release|x64
+		{7DA4D304-37A9-4CD2-B30E-032B1C92A14E}.Profile|Win32.ActiveCfg = Release|x64
+		{7DA4D304-37A9-4CD2-B30E-032B1C92A14E}.Profile|x64.ActiveCfg = Release|x64
+		{7DA4D304-37A9-4CD2-B30E-032B1C92A14E}.Profile|x64.Build.0 = Release|x64
+		{7DA4D304-37A9-4CD2-B30E-032B1C92A14E}.Release|Tegra-Android.ActiveCfg = Release|x64
+		{7DA4D304-37A9-4CD2-B30E-032B1C92A14E}.Release|Win32.ActiveCfg = Release|x64
+		{7DA4D304-37A9-4CD2-B30E-032B1C92A14E}.Release|x64.ActiveCfg = Release|x64
+		{7DA4D304-37A9-4CD2-B30E-032B1C92A14E}.Release|x64.Build.0 = Release|x64
+		{8FDEBB1D-43B9-4922-AD51-4E58A0D71FBC}.Debug|Tegra-Android.ActiveCfg = Debug|Any CPU
+		{8FDEBB1D-43B9-4922-AD51-4E58A0D71FBC}.Debug|Win32.ActiveCfg = Debug|Any CPU
+		{8FDEBB1D-43B9-4922-AD51-4E58A0D71FBC}.Debug|Win32.Build.0 = Debug|Any CPU
+		{8FDEBB1D-43B9-4922-AD51-4E58A0D71FBC}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{8FDEBB1D-43B9-4922-AD51-4E58A0D71FBC}.Profile|Tegra-Android.ActiveCfg = Release|Any CPU
+		{8FDEBB1D-43B9-4922-AD51-4E58A0D71FBC}.Profile|Win32.ActiveCfg = Release|Any CPU
+		{8FDEBB1D-43B9-4922-AD51-4E58A0D71FBC}.Profile|x64.ActiveCfg = Release|Any CPU
+		{8FDEBB1D-43B9-4922-AD51-4E58A0D71FBC}.Release|Tegra-Android.ActiveCfg = Release|Any CPU
+		{8FDEBB1D-43B9-4922-AD51-4E58A0D71FBC}.Release|Win32.ActiveCfg = Release|Any CPU
+		{8FDEBB1D-43B9-4922-AD51-4E58A0D71FBC}.Release|x64.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -650,5 +677,7 @@ Global
 		{C1BFD687-C6C9-4CF3-87F1-C64C6A53A7BC} = {18FDF4B2-37E2-4DFF-B22B-566674160D0B}
 		{2515AD98-AE67-49D3-96A0-2E4A2D8CB4B8} = {18FDF4B2-37E2-4DFF-B22B-566674160D0B}
 		{06F6B39A-1EDA-4ABF-B120-1F885562FE16} = {18FDF4B2-37E2-4DFF-B22B-566674160D0B}
+		{7DA4D304-37A9-4CD2-B30E-032B1C92A14E} = {E7DC652E-A855-4E12-9C04-6F36B489FF74}
+		{8FDEBB1D-43B9-4922-AD51-4E58A0D71FBC} = {E7DC652E-A855-4E12-9C04-6F36B489FF74}
 	EndGlobalSection
 EndGlobal
