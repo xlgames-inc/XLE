@@ -372,9 +372,10 @@ namespace LevelEditor.OSC
 
         private float GetRenderFlags(GlobalRenderFlags flags)
         {
-            return (((NativeDesignControl) m_designView.ActiveView).RenderState.RenderFlag & flags) == flags
-                ? 1.0f
-                : 0.0f;
+            // return (((NativeDesignControl) m_designView.ActiveView).RenderState.RenderFlag & flags) == flags
+            //     ? 1.0f
+            //     : 0.0f;
+            return 1.0f;
         }
 
         private bool GetOscParam(object oscData, out float param1)
@@ -423,22 +424,22 @@ namespace LevelEditor.OSC
 
         private void SetRenderFlags(GlobalRenderFlags flags, object oscData)
         {
-            float param1;
-            if (!GetOscParam(oscData, out param1))
-                return;
-            var designControl = (NativeDesignControl)m_designView.ActiveView;
-            if (param1 == 0.0f)
-                designControl.RenderState.RenderFlag &= ~flags;
-            else
-                designControl.RenderState.RenderFlag |= flags;
-            designControl.Invalidate();
+            // float param1;
+            // if (!GetOscParam(oscData, out param1))
+            //     return;
+            // var designControl = (NativeDesignControl)m_designView.ActiveView;
+            // if (param1 == 0.0f)
+            //     designControl.RenderState.RenderFlag &= ~flags;
+            // else
+            //     designControl.RenderState.RenderFlag |= flags;
+            // designControl.Invalidate();
         }
 
         void IInitializable.Initialize()
         {
             //m_globalFog = new GlobalFog();
             m_designView.ContextChanged += DesignView_ContextChanged;
-            ((NativeDesignControl)m_designView.ActiveView).RenderState.Changed += RenderStateChanged;
+            // ((NativeDesignControl)m_designView.ActiveView).RenderState.Changed += RenderStateChanged;
 
             base.Initialize();
 

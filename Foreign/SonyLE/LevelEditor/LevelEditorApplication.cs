@@ -126,8 +126,6 @@ namespace LevelEditor
                 typeof(LevelEditor.GameProjectLister),
                 typeof(LevelEditor.ResourceMetadataService),
                 typeof(LevelEditor.ResourceConverter),               
-                typeof(LevelEditor.Terrain.TerrainEditor),
-                typeof(LevelEditor.Terrain.TerrainManipulator),                 
                 typeof(LevelEditor.SnapFilter),
                 typeof(LevelEditor.PickFilters.LocatorPickFilter),
                 typeof(LevelEditor.PickFilters.BasicShapePickFilter),

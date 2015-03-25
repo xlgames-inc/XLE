@@ -9,8 +9,6 @@ using LevelEditor.DomNodeAdapters;
 
 using PropertyDescriptor = Sce.Atf.Dom.PropertyDescriptor;
 
-using LevelEditor.Terrain;
-
 namespace LevelEditor
 {
     /// <summary>
@@ -71,12 +69,6 @@ namespace LevelEditor
 
             // Billboard
             Schema.billboardTestType.Type.Define(new ExtensionInfo<Billboard>());
-                                   
-            // terrain
-            Schema.terrainGobType.Type.Define(new ExtensionInfo<TerrainGob>());
-            Schema.layerMapType.Type.Define(new ExtensionInfo<LayerMap>());
-            Schema.decorationMapType.Type.Define(new ExtensionInfo<DecorationMap>());
-            
 
             // references
             Schema.gameReferenceType.Type.Define(new ExtensionInfo<GameReference>());            

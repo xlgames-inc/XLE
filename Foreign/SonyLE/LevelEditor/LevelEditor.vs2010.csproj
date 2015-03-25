@@ -141,47 +141,14 @@
     <Compile Include="Services\SplashForm.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Terrain\CreateTerrainDlg.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Terrain\CreateTerrainDlg.Designer.cs">
-      <DependentUpon>CreateTerrainDlg.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Terrain\CreateTerrainMapDlg.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Terrain\CreateTerrainMapDlg.Designer.cs">
-      <DependentUpon>CreateTerrainMapDlg.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Terrain\ITerrainSurface.cs" />
-    <Compile Include="Terrain\LayerMap.cs" />
-    <Compile Include="Terrain\TerrainBrush.cs" />
-    <Compile Include="Terrain\TerrainEditor.cs" />
-    <Compile Include="Terrain\TerrainEditorControl.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="Terrain\TerrainEditorControl.Designer.cs">
-      <DependentUpon>TerrainEditorControl.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Terrain\TerrainGob.cs" />
-    <Compile Include="Terrain\TerrainManipulator.cs" />
     <Compile Include="Validators\CustomLockingValidator.cs" />
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
-    <EmbeddedResource Include="Terrain\CreateTerrainDlg.resx">
-      <DependentUpon>CreateTerrainDlg.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="schemas\gap.xsd">
       <SubType>
       </SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Terrain\CreateTerrainMapDlg.resx">
-      <DependentUpon>CreateTerrainMapDlg.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Terrain\TerrainEditorControl.resx">
-      <DependentUpon>TerrainEditorControl.cs</DependentUpon>
     </EmbeddedResource>
     <None Include="schemas\GenSchemaDef.bat" />
     <EmbeddedResource Include="schemas\level_editor.xsd">
@@ -195,6 +162,10 @@
     <ProjectReference Include="..\LevelEditorNativeRendering\RenderingInterop.vs2010.csproj">
       <Project>{8FDEBB1D-43B9-4922-AD51-4E58A0D71FBC}</Project>
       <Name>RenderingInterop.vs2010</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\XLELayer\Project\XLELayer.vcxproj">
+      <Project>{0556e85e-3cbd-4ac0-8842-01e1963312bd}</Project>
+      <Name>XLELayer</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
