@@ -93,53 +93,7 @@ namespace RenderingInterop
         }
 
         private void GenThumbnail(Uri resourceUri, string thumbnailPath)
-        {             
-            NativeObjectAdapter gameLevel = GameEngine.GetGameLevel();
-            try
-            {
-                IResource resource = m_resourceService.Load(resourceUri);
-                IGameObject gob = m_resourceConverterService.Convert(resource);
-                if (gob == null) return;
-                
-                m_game.RootGameObjectFolder.GameObjects.Add(gob);
-
-                GameEngine.SetRenderState(m_renderState);
-                GameEngine.SetGameLevel(m_game.Cast<NativeObjectAdapter>());
-
-                m_gameEngine.WaitForPendingResources();
-                FrameTime fr = new FrameTime(0, 0);
-                m_gameEngine.Update(fr, UpdateType.Paused);
-
-                IBoundable boundable = gob.Cast<IBoundable>();
-                Sphere3F sphere = boundable.BoundingBox.ToSphere();
-                
-                if (Math.Abs(sphere.Radius) <= float.Epsilon)
-                    sphere.Radius = 1.0f;
-
-                m_cam.SetPerspective(
-               (float)Math.PI / 4,
-               1.0f,
-               sphere.Radius * 0.01f,
-               sphere.Radius * 4.0f);
-
-
-                Vec3F camPos = sphere.Center + new Vec3F(sphere.Radius, sphere.Radius, sphere.Radius) * 1.5f;
-                m_cam.Set(camPos, sphere.Center, new Vec3F(0, 1, 0));
-
-                GameEngine.Begin(m_renderSurface.InstanceId, m_cam.ViewMatrix, m_cam.ProjectionMatrix);
-                GameEngine.RenderGame();
-                GameEngine.End();
-                GameEngine.SaveRenderSurfaceToFile(m_renderSurface.InstanceId, thumbnailPath);                
-                m_game.RootGameObjectFolder.GameObjects.Remove(gob);
-
-                m_resourceService.Unload(resourceUri);
-            }
-            finally
-            {
-                GameEngine.SetGameLevel(gameLevel);
-            }
-             
-             
+        {
         }
 
         private void Init()
@@ -189,14 +143,14 @@ namespace RenderingInterop
         [Import(AllowDefault = false)]
         private IMainWindow m_mainWindow = null;
 
-        [Import(AllowDefault = false)]
-        private IResourceService m_resourceService = null;
-
-        [Import(AllowDefault = false)]
-        private ResourceConverterService m_resourceConverterService = null;
-
-        [Import(AllowDefault = false)]
-        private IGameEngineProxy m_gameEngine;
+        // [Import(AllowDefault = false)]
+        // private IResourceService m_resourceService = null;
+        // 
+        // [Import(AllowDefault = false)]
+        // private ResourceConverterService m_resourceConverterService = null;
+        // 
+        // [Import(AllowDefault = false)]
+        // private IGameEngineProxy m_gameEngine;
 
         private IGame m_game;        
         private Camera m_cam = new Camera();

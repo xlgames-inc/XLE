@@ -306,62 +306,6 @@ namespace RenderingInterop
             // render the scene.
             public override void Render()
             {
-                if (GameEngine.IsInError
-                    || SurfaceId == 0
-                    || Visible == false
-                    || Width == 0
-                    || Height == 0
-                    || Game == null)
-                    return;
-
-                
-                NativeObjectAdapter gameLevel = GameEngine.GetGameLevel();
-                try
-                {                    
-                    NativeObjectAdapter game = Game.As<NativeObjectAdapter>();
-                    GameEngine.SetGameLevel(game);
-                    GameEngine.SetRenderState(m_renderState);
-                    if (Game.RootGameObjectFolder.GameObjects.Count > 0)
-                    {
-                        FrameTime fr = new FrameTime(0, 0);
-                        GameEngineProxy.WaitForPendingResources();
-                        GameEngineProxy.Update(fr, UpdateType.Paused);
-                    }
-
-                    if (ResetCamera)
-                    {
-                        // save view type
-                        ViewTypes viewtype = this.ViewType;
-                        ViewType = ViewTypes.Perspective;
-                        Size sz = ClientSize;
-                        float aspect = (float)sz.Width / (float)sz.Height;
-                        IBoundable boundable = Game.RootGameObjectFolder.Cast<IBoundable>();
-                        Sce.Atf.VectorMath.Sphere3F sphere = boundable.BoundingBox.ToSphere();
-                        float nearZ = sphere.Radius * 0.01f;
-                        nearZ = Math.Min(0.1f, nearZ);
-                        Camera.SetPerspective(
-                            (float)Math.PI / 4,
-                            aspect,
-                            nearZ,
-                            sphere.Radius * 10.0f);
-
-                        Vec3F camPos = sphere.Center + new Vec3F(sphere.Radius, sphere.Radius, sphere.Radius) * 1.2f;
-                        Camera.Set(camPos, sphere.Center, new Vec3F(0, 1, 0));
-                        ViewType = viewtype;
-                        ResetCamera = false;
-                    }
-                                       
-                    GameEngine.Begin(SurfaceId, Camera.ViewMatrix, Camera.ProjectionMatrix);
-                    if(Game.RootGameObjectFolder.GameObjects.Count > 0)
-                        GameEngine.RenderGame();                        
-                    string str = "View Type: " + ViewType.ToString();
-                    GameEngine.DrawText2D(str, Util3D.CaptionFont, 1, 1, Color.White);
-                    GameEngine.End();
-                }
-                finally
-                {
-                    GameEngine.SetGameLevel(gameLevel);
-                }
             }
 
             /// <summary>
