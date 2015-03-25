@@ -29,21 +29,15 @@ namespace GUILayer
         //    https://msdn.microsoft.com/en-us/library/1e430ef4(v=vs.85).aspx
         // __super::OnPaint(pe);
 
+        Render();
+    }
+
+    void EngineControl::Render()
+    {
         auto engineDevice = EngineDevice::GetInstance();
         auto* renderDevice = engineDevice->GetNative().GetRenderDevice();
         auto immediateContext = renderDevice->GetImmediateContext();
         Render(*immediateContext.get(), *_pimpl->_windowRig.get());
-
-        // Invalidate();
-    }
-
-    void EngineControl::OnPaintBackground(PaintEventArgs^)
-    {
-        // never draw the background. We want to avoid cases where
-        // the background draws over a valid rendered surface (particularly
-        // since the rendering might be desynchronised from the normal window
-        // update process
-        // __super::OnPaintBackground(pe);
     }
 
     void EngineControl::OnResize(System::EventArgs^ e)

@@ -33,6 +33,11 @@ namespace ModelViewer
             InitializeComponent();
 
             layerControl = new LayerControlHack(this);
+            ResizeRedraw = false;
+            DoubleBuffered = false;
+            SetStyle(ControlStyles.UserPaint, true);
+            SetStyle(ControlStyles.AllPaintingInWmPaint, true);
+            SetStyle(ControlStyles.Opaque, true);
         }
 
         internal LayerControlHack Underlying { get { return layerControl; } }
@@ -40,12 +45,6 @@ namespace ModelViewer
         protected override void OnPaint(PaintEventArgs pe)
         {
             if (layerControl != null) layerControl.OnPaint(pe);
-        }
-
-        protected override void OnPaintBackground(PaintEventArgs pe)
-        {
-            // base.OnPaintBackground(pe);
-            if (layerControl != null) layerControl.OnPaintBackground(pe);
         }
 
         protected override void OnResize(EventArgs pe)

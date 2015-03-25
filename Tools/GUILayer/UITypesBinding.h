@@ -19,6 +19,8 @@ using namespace System::Drawing::Design;
 
 namespace RenderCore { namespace Assets { class RawMaterial; class RenderStateSet; }}
 
+#pragma make_public(PlatformRig::VisCameraSettings)
+
 namespace GUILayer
 {
     template<typename T> using AutoToShared = clix::auto_ptr<std::shared_ptr<T>>;
@@ -62,11 +64,17 @@ namespace GUILayer
     public ref class VisCameraSettings
     {
     public:
-        std::shared_ptr<PlatformRig::VisCameraSettings> GetUnderlying() { return *_object.get(); }
+        const std::shared_ptr<PlatformRig::VisCameraSettings>& GetUnderlying() { return *_object.get(); }
+        PlatformRig::VisCameraSettings* GetUnderlyingRaw() { return _object.get()->get(); }
 
         VisCameraSettings(std::shared_ptr<PlatformRig::VisCameraSettings> attached)
         {
             _object.reset(new std::shared_ptr<PlatformRig::VisCameraSettings>(std::move(attached)));
+        }
+        VisCameraSettings()
+        {
+            auto temp = std::make_shared<PlatformRig::VisCameraSettings>();
+            _object.reset(new std::shared_ptr<PlatformRig::VisCameraSettings>(std::move(temp)));
         }
         ~VisCameraSettings()
         {
@@ -143,6 +151,12 @@ namespace GUILayer
             _object.reset(new std::shared_ptr<PlatformRig::ModelVisSettings>(std::move(attached)));
         }
 
+        ModelVisSettings() 
+        {
+            auto temp = std::make_shared<PlatformRig::ModelVisSettings>();
+            _object.reset(new std::shared_ptr<PlatformRig::ModelVisSettings>(std::move(temp)));
+        }
+
         ~ModelVisSettings() { _object.reset(); }
 
         static ModelVisSettings^ CreateDefault();
@@ -173,6 +187,7 @@ namespace GUILayer
             std::shared_ptr<PlatformRig::VisMouseOver> attached,
             std::shared_ptr<PlatformRig::ModelVisSettings> settings,
             std::shared_ptr<PlatformRig::ModelVisCache> cache);
+        VisMouseOver();
         ~VisMouseOver();
 
     protected:
@@ -269,4 +284,3 @@ namespace GUILayer
         void ResourceBinding_Changed(System::Object^, ListChangedEventArgs^);
     };
 }
-

@@ -133,6 +133,12 @@ namespace GUILayer
         _modelCache.reset(new std::shared_ptr<PlatformRig::ModelVisCache>(std::move(cache)));
     }
 
+    VisMouseOver::VisMouseOver()
+    {
+        auto temp = std::make_shared<PlatformRig::VisMouseOver>();
+        _object.reset(new std::shared_ptr<PlatformRig::VisMouseOver>(std::move(temp)));
+    }
+
     VisMouseOver::~VisMouseOver() 
     { 
         _object.reset(); 

@@ -82,10 +82,10 @@ namespace GUILayer
     {
     }
 
-    auto MaterialVisLayer::GetInputListener() -> std::shared_ptr<IInputListener>
-    {
-        return nullptr;
-    }
+    // auto MaterialVisLayer::GetInputListener() -> std::shared_ptr<IInputListener>
+    // {
+    //     return nullptr;
+    // }
 
     void MaterialVisLayer::SetConfig(RawMaterial^ config)
     {

@@ -104,6 +104,7 @@ namespace RenderingInterop
             {
                 GUILayer.EngineDevice.SetDefaultWorkingDirectory();
                 _engineDevice = new GUILayer.EngineDevice();
+                _engineDevice.AttachDefaultCompilers();
                 CriticalError = "";
                 s_inist.PopulateEngineInfo("<EngineInfo />");
 
@@ -124,8 +125,8 @@ namespace RenderingInterop
         /// </summary>
         public static void Clear()
         {
-            throw new NotImplementedException();
-            // s_idToDomNode.Clear();
+            s_idToDomNode.Clear();
+            _gameLevel = 0;
             // NativeClear();
         }
 
@@ -179,9 +180,19 @@ namespace RenderingInterop
 
         #region update and rendering
 
-        private static NativeObjectAdapter gameLevel;
-        public static void SetGameLevel(NativeObjectAdapter game)   { gameLevel = game; }
-        public static NativeObjectAdapter GetGameLevel()            { return gameLevel; }
+        private static ulong _gameLevel;
+        public static void SetGameLevel(NativeObjectAdapter game) 
+        { 
+            _gameLevel = game != null ? game.InstanceId : 0;
+        }
+
+        public static NativeObjectAdapter GetGameLevel()            
+        {
+            if (_gameLevel != 0)
+                return GetAdapterFromId(_gameLevel);
+            else
+                return null;
+        }
 
         // public static void SetGameLevel(NativeObjectAdapter game)
         // {
@@ -642,11 +653,27 @@ namespace RenderingInterop
         private static uint NativeGetObjectTypeId(string className) { return 0;  }
         private static uint NativeGetObjectPropertyId(uint id, string propertyName) { return 0; }
         private static uint NativeGetObjectChildListId(uint id, string listName) { return 0; }
-        private static ulong NativeCreateObject(uint typeId, IntPtr data, int size) { return 0; }
+        private static ulong s_currentInstanceId = 1;
+        private static ulong NativeCreateObject(uint typeId, IntPtr data, int size) 
+        {
+            return s_currentInstanceId++; 
+        }
         private static void NativeDestroyObject(uint typeId, ulong instanceId) {}
         private static void NativeInvokeMemberFn(ulong instanceId, string fn, IntPtr arg, out IntPtr retVal) { retVal = IntPtr.Zero; }
         private static void NativeSetObjectProperty(uint typeId, uint propId, ulong instanceId, IntPtr data, int size) { }
-        private static void NativeGetObjectProperty(uint typeId, uint propId, ulong instanceId, out IntPtr data, out int size) { data = IntPtr.Zero; size = 0; }
+
+        static GCHandle s_savedBoundingBoxHandle;
+        static bool s_builtSavedBoundingBox = false;
+        private static void NativeGetObjectProperty(uint typeId, uint propId, ulong instanceId, out IntPtr data, out int size) 
+        {
+            if (!s_builtSavedBoundingBox) {
+                Vec3F[] boundingBox = new Vec3F[2] { new Vec3F(-10.0f, -10.0f, -10.0f), new Vec3F(10.0f, 10.0f, 10.0f) };
+                s_savedBoundingBoxHandle = GCHandle.Alloc(boundingBox, GCHandleType.Pinned);
+                s_builtSavedBoundingBox = true;
+            }
+            data = s_savedBoundingBoxHandle.AddrOfPinnedObject();
+            size = sizeof(float) * 6;
+        }
         private static void NativeObjectAddChild(uint typeid, uint listId, ulong parentId, ulong childId, int index) { }
         private static void NativeObjectRemoveChild(uint typeid, uint listId, ulong parentId, ulong childId) { }
 

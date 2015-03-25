@@ -51,7 +51,7 @@ namespace GUILayer
             RenderCore::IThreadContext* device, 
             const RenderCore::Techniques::ProjectionDesc& projectionDesc) override;
         virtual void SetActivationState(bool newState) override;
-        virtual std::shared_ptr<IInputListener> GetInputListener() override;
+        // virtual std::shared_ptr<IInputListener> GetInputListener() override;
 
         void SetConfig(RawMaterial^ config);
 

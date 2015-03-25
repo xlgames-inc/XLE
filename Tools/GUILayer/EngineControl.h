@@ -19,8 +19,8 @@ namespace GUILayer
 	public ref class EngineControl abstract
 	{
 	public:
+        void Render();
         void OnPaint(PaintEventArgs^);
-        void OnPaintBackground(PaintEventArgs^);
         void OnResize(System::EventArgs^ e);
 
         IWindowRig& GetWindowRig();

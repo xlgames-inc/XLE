@@ -54,7 +54,8 @@ namespace GUILayer
             while (Active) {
                 Assets::CompileAndAsyncManager::GetInstance().Update();
                 #undef Yield
-                System::Threading::Thread::Yield();
+                // System::Threading::Thread::Yield();
+                System::Threading::Thread::Sleep(100);
             }
         }
 

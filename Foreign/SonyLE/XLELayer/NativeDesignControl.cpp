@@ -4,6 +4,10 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#include "../../PlatformRig/ModelVisualisation.h"
+#include "../../PlatformRig/OverlaySystem.h"
+#include <memory>
+
 using namespace System;
 using namespace System::Windows::Forms;
 using namespace System::Drawing;
@@ -20,17 +24,97 @@ using namespace LevelEditorCore;
 
 namespace XLELayer
 {
+    static Float3 AsFloat3(Vec3F^ input) { return Float3(input->X, input->Y, input->Z); }
+
+    private ref class ManipulatorOverlay : public GUILayer::IOverlaySystem
+    {
+    public:
+        virtual void RenderToScene(
+            RenderCore::IThreadContext* device, 
+            SceneEngine::LightingParserContext& parserContext) override
+        {
+            using namespace LevelEditorCore;
+            // GameEngine::SetRendererFlag(RenderingInterop::BasicRendererFlags::Foreground | RenderingInterop::BasicRendererFlags::Lit);
+            if (_designView->Manipulator != nullptr)
+                _designView->Manipulator->Render(_viewControl);
+        }
+
+        virtual void RenderWidgets(
+            RenderCore::IThreadContext* device, 
+            const RenderCore::Techniques::ProjectionDesc& projectionDesc) override {}
+        virtual void SetActivationState(bool) override {}
+
+        ManipulatorOverlay(
+            LevelEditorCore::DesignView^ designView,
+            LevelEditorCore::ViewControl^ viewControl)
+        : _designView(designView), _viewControl(viewControl) {}
+
+        ~ManipulatorOverlay() 
+        {
+            delete _designView;
+            delete _viewControl;
+        }
+
+        !ManipulatorOverlay() 
+        {
+            delete _designView;
+            delete _viewControl;
+        }
+
+    protected:
+        LevelEditorCore::DesignView^ _designView;
+        LevelEditorCore::ViewControl^ _viewControl;
+    };
+
     public ref class NativeDesignControl : public DesignViewControl
     {
     public:
         NativeDesignControl(LevelEditorCore::DesignView^ designView)
         : DesignViewControl(designView)
-        {}
+        {
+            _layerControl = gcnew GUILayer::LayerControl(this);
+            auto visSettings = gcnew GUILayer::ModelVisSettings();
+            visSettings->ModelName = R"--(E:\XLE\Working\Game\Model\Nature\FirTree\fir.dae)--";
+            _cameraSettings = visSettings->Camera;
+            _layerControl->SetupDefaultVis(visSettings, gcnew GUILayer::VisMouseOver());
+            _layerControl->AddSystem(gcnew ManipulatorOverlay(designView, this));
 
-        ~NativeDesignControl() {}
-        !NativeDesignControl() {}
+            if (s_marqueePen == nullptr) {
+                using namespace System::Drawing;
+                s_marqueePen = gcnew Pen(Color::FromArgb(30, 30, 30), 2);
+                s_marqueePen->DashPattern = gcnew array<float, 1> { 3.f, 3.f };
+            }
+        }
 
-        void Render() override {}
+        ~NativeDesignControl() { delete _layerControl; }
+        !NativeDesignControl() { delete _layerControl; }
+
+        void Render() override 
+        {
+                //  "_cameraSettings" should match the camera set in 
+                //  the view control
+            auto camera = Camera;
+            _cameraSettings->GetUnderlyingRaw()->_position = AsFloat3(camera->WorldEye);
+            _cameraSettings->GetUnderlyingRaw()->_focus = AsFloat3(camera->WorldLookAtPoint);
+            _cameraSettings->GetUnderlyingRaw()->_verticalFieldOfView = camera->YFov * 180.f / gPI;
+            _cameraSettings->GetUnderlyingRaw()->_nearClip = camera->NearZ;
+            _cameraSettings->GetUnderlyingRaw()->_farClip = camera->FarZ;
+            _layerControl->Render();
+
+            // GameEngine.SetRendererFlag(BasicRendererFlags.Foreground | BasicRendererFlags.Lit);
+            // if (DesignView.Manipulator != null)
+            //     DesignView.Manipulator.Render(this);
+
+            if (IsPicking)
+            {// todo: use Directx to draw marque.                
+                Graphics^ g = CreateGraphics();
+                auto rect = MakeRect(FirstMousePoint, CurrentMousePoint);
+                if (rect.Width > 0 && rect.Height > 0) {
+                    g->DrawRectangle(s_marqueePen, rect);
+                }
+                delete g;
+            }
+        }
 
     protected:
         IList<Object^>^ Pick(MouseEventArgs^ e) override { return gcnew List<Object^>(); }
@@ -56,6 +140,15 @@ namespace XLELayer
             }            
         }
 
+        void OnResize(System::EventArgs^ e) override
+        {
+            _layerControl->OnResize(e);
+            __super::OnResize(e);
+        }
+
+        GUILayer::LayerControl^ _layerControl;
+        GUILayer::VisCameraSettings^ _cameraSettings;
+
     private:
         IGame^ TargetGame()
         {
@@ -72,6 +165,19 @@ namespace XLELayer
             return Adapters::As<IGame^>(DesignView->Context);
         }
         
+        static System::Drawing::Rectangle MakeRect(Point p1, Point p2)
+        {
+            int minx = System::Math::Min(p1.X, p2.X);
+            int miny = System::Math::Min(p1.Y, p2.Y);
+            int maxx = System::Math::Max(p1.X, p2.X);
+            int maxy = System::Math::Max(p1.Y, p2.Y);
+            int w = maxx - minx;
+            int h = maxy - miny;
+            return System::Drawing::Rectangle(minx, miny, w, h);
+        }
+
+        static System::Drawing::Pen^ s_marqueePen;
+
         // ref class GameDocRange : IEnumerable<DomNode^> 
         // {
         // private:
