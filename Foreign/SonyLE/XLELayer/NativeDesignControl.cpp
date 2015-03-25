@@ -25,8 +25,7 @@ namespace XLELayer
     public:
         NativeDesignControl(LevelEditorCore::DesignView^ designView)
         : DesignViewControl(designView)
-        {
-        }
+        {}
 
         ~NativeDesignControl() {}
         !NativeDesignControl() {}
@@ -34,7 +33,7 @@ namespace XLELayer
         void Render() override {}
 
     protected:
-        IList<Object^>^ Pick(MouseEventArgs^ e) override { return nullptr; }
+        IList<Object^>^ Pick(MouseEventArgs^ e) override { return gcnew List<Object^>(); }
         void OnDragEnter(DragEventArgs^ drgevent) override {}
         void OnDragOver(DragEventArgs^ drgevent) override {}
         void OnDragDrop(DragEventArgs^ drgevent) override {}
@@ -49,8 +48,7 @@ namespace XLELayer
                     return;
                 }
 
-                // GameLoop.Update();
-                // Render();                
+                Render();
             }
             catch(Exception^ ex)
             {
@@ -73,7 +71,6 @@ namespace XLELayer
             
             return Adapters::As<IGame^>(DesignView->Context);
         }
-
         ref class GameDocRange : IEnumerable<DomNode^> 
         {
         private:
@@ -89,7 +86,6 @@ namespace XLELayer
                         return nullptr;
                     }
                 }
-
                 property Object^ Current2
                 {
                     virtual Object^ get() = System::Collections::IEnumerator::Current::get
@@ -97,7 +93,6 @@ namespace XLELayer
                         return Current;
                     }
                 };
-
                 virtual bool MoveNext() 
                 { 
                     if (_stage == 0) {
@@ -131,7 +126,6 @@ namespace XLELayer
 
                     return false;
                 }
-
                 virtual void Reset() = IEnumerator<DomNode^>::Reset { throw gcnew NotImplementedException(); }
 
                 GameDocRangeIterator()
@@ -140,7 +134,6 @@ namespace XLELayer
                     _folderNode = Adapters::Cast<DomNode^>(_gameDocRegistry->MasterDocument->RootGameObjectFolder);
                     _folderNodeIterator = _folderNode->Subtree->GetEnumerator();
                 }
-
                 ~GameDocRangeIterator() {}
                 !GameDocRangeIterator() {}
 
@@ -159,33 +152,14 @@ namespace XLELayer
             virtual System::Collections::IEnumerator^ GetEnumerator2() = System::Collections::IEnumerable::GetEnumerator
             { return GetEnumerator(); }
         };
- 
-
         property IEnumerable<DomNode^>^ Items
         {
             IEnumerable<DomNode^>^ get()
             {
-                // auto gameDocumentRegistry = Globals::MEFContainer->GetExportedValue<IGameDocumentRegistry^>();
-                // auto folderNode = Adapters::Cast<DomNode^>(gameDocumentRegistry->MasterDocument->RootGameObjectFolder);
-                // for each(auto childNode in folderNode->Subtree)
-                // {
-                //     yield return childNode;
-                // }
-                // 
-                // for each(auto subDoc in gameDocumentRegistry->SubDocuments)
-                // {
-                //     folderNode = Adapters::Cast<DomNode^>(subDoc.RootGameObjectFolder);
-                //     for each(DomNode childNode in folderNode.Subtree)
-                //     {
-                //         yield return childNode;
-                //     }
-                // }
+                    // C# version of this just uses "yield"... which makes it much easier
                 return gcnew GameDocRange();
             }
         }
-
     };
 }
-
-
 

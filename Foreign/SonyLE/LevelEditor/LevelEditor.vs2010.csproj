@@ -45,15 +45,15 @@
   <ItemGroup>
     <Reference Include="Atf.Core, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\lib\Debug\Atf.Core.dll</HintPath>
+      <HintPath>..\ATF\lib\Debug\Atf.Core.dll</HintPath>
     </Reference>
     <Reference Include="Atf.Gui, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\lib\Debug\Atf.Gui.dll</HintPath>
+      <HintPath>..\ATF\lib\Debug\Atf.Gui.dll</HintPath>
     </Reference>
     <Reference Include="Atf.Gui.WinForms, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\lib\Debug\Atf.Gui.WinForms.dll</HintPath>
+      <HintPath>..\ATF\lib\Debug\Atf.Gui.WinForms.dll</HintPath>
     </Reference>
     <Reference Include="Atf.IronPython, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
@@ -67,7 +67,7 @@
     </Reference>
     <Reference Include="LevelEditorCore, Version=3.8.1.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\lib\Debug\LevelEditorCore.dll</HintPath>
+      <HintPath>..\LevelEditorCore\lib\Debug\LevelEditorCore.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Dynamic">
       <HintPath>..\ATF\ThirdParty\IronPython\Microsoft.Dynamic.dll</HintPath>
