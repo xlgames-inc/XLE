@@ -401,7 +401,7 @@ namespace Utility
             auto nameLength = XlStringLen(name)+1;
             _names.insert(_names.end(), name, &name[nameLength]);
 
-            _offsets.push_back(std::make_pair(nameOffset, valueOffset));
+            _offsets.push_back(std::make_pair(unsigned(nameOffset), unsigned(valueOffset)));
             _types.push_back(insertType);
 
             _cachedHash = 0;
@@ -419,7 +419,7 @@ namespace Utility
 
             _offsets.insert(_offsets.begin()+index, dstOffsets);
             for (auto i2=_offsets.begin()+index+1; i2<_offsets.end(); ++i2) {
-                i2->first += nameLength;
+                i2->first += unsigned(nameLength);
                 i2->second += valueSize;
             }
 
