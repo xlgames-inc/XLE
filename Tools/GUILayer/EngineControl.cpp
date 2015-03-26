@@ -9,6 +9,7 @@
 #include "EngineControl.h"
 #include "EngineControlInternal.h"
 #include "EngineDevice.h"
+#include "NativeEngineDevice.h"
 #include "IWindowRig.h"
 #include "../../PlatformRig/FrameRig.h"
 #include "../../PlatformRig/OverlappedWindow.h"

@@ -8,6 +8,7 @@
 
 #include "UITypesBinding.h"
 #include "IOverlaySystem.h"
+#include "EngineForward.h"
 #include "../../PlatformRig/MaterialVisualisation.h"
 
 namespace GUILayer

@@ -7,6 +7,7 @@
 #pragma warning(disable:4512)
 
 #include "UITypesBinding.h"
+#include "EngineForward.h"
 #include "../../PlatformRig/ModelVisualisation.h"
 #include "../../RenderCore/Assets/Material.h"
 #include "../../RenderCore/Assets/MaterialScaffold.h"

@@ -12,6 +12,7 @@
 #include "IOverlaySystem.h"
 #include "UITypesBinding.h"
 #include "EngineDevice.h"
+#include "NativeEngineDevice.h"
 #include "../../PlatformRig/InputTranslator.h"
 #include "../../PlatformRig/FrameRig.h"
 #include "../../PlatformRig/OverlaySystem.h"

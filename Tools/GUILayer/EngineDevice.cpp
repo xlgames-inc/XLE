@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "EngineDevice.h"
+#include "NativeEngineDevice.h"
 #include "MarshalString.h"
 #include "WindowRigInternal.h"
 #include "../../SceneEngine/SceneEngineUtility.h"
@@ -83,10 +84,6 @@ namespace GUILayer
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-    RenderCore::IDevice* NativeEngineDevice::GetRenderDevice()              { return _renderDevice.get(); }
-    BufferUploads::IManager* NativeEngineDevice::GetBufferUploads()         { return _bufferUploads.get(); }
-    ::Assets::CompileAndAsyncManager* NativeEngineDevice::GetASyncManager() { return _asyncMan.get(); }
-    
     std::unique_ptr<IWindowRig> NativeEngineDevice::CreateWindowRig(const void* nativeWindowHandle)
     {
         std::unique_ptr<WindowRig> result(new WindowRig(*_renderDevice.get(), nativeWindowHandle));
