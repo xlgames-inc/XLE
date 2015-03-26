@@ -397,6 +397,22 @@
         </xs:extension>
     </xs:complexContent>
   </xs:complexType>
+
+  <xs:complexType name="materialTestType">
+    <xs:annotation>
+      <xs:appinfo>
+        <scea.dom.editors name="MaterialTest" category="Examples" menuText="Game Objects/MaterialTest" description="Test Material"/>
+        <scea.dom.editors.attribute category="Material" name="property" displayName="SomeProperty" description = "Some property test" />
+        <scea.dom.editors.attribute category="Material" name="materialname" displayName="material name" description = "Material name test" />
+      </xs:appinfo>
+    </xs:annotation>
+    <xs:complexContent>
+      <xs:extension base="gameObjectType" >
+        <xs:attribute name="materialname" type="xs:anyURI" default="game/model/galleon/galleon.material:galleon_sail"/>
+        <xs:attribute name="property" type="xs:float"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
  
   <xs:complexType name="orcType">
     <xs:annotation>

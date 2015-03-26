@@ -22,6 +22,25 @@ namespace RenderingInterop
         VF_MAX,     // always last
     }
 
+    static class VertexFormatMethods
+    {
+        public static uint GetSize(this VertexFormat vf)
+        {
+            switch (vf)
+            {
+            case VertexFormat.VF_P:     return 3 * 4;
+            case VertexFormat.VF_PC:    return 3*4 + 4;
+            case VertexFormat.VF_PN:    return 3*4 + 3*4;
+            case VertexFormat.VF_PT:    return 3*4 + 2*4;
+            case VertexFormat.VF_PTC:   return 3*4 + 2*4 + 4;
+            case VertexFormat.VF_PNT:   return 3*4 + 3*4 + 2*4;
+            case VertexFormat.VF_PNTT:  return 3*4 + 3*4 + 2*4 + 4*4;
+            case VertexFormat.VF_T:     return 2*4;
+            default: return 0;
+            }
+        }
+    }
+
 
     // Defines how data in a vertex stream is interpreted during a draw call. Reference    
     public enum PrimitiveType

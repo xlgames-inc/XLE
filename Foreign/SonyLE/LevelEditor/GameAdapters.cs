@@ -70,6 +70,9 @@ namespace LevelEditor
             // Billboard
             Schema.billboardTestType.Type.Define(new ExtensionInfo<Billboard>());
 
+            // Material
+            Schema.decorationMapType.Type.Define(new ExtensionInfo<MaterialGob>());
+
             // references
             Schema.gameReferenceType.Type.Define(new ExtensionInfo<GameReference>());            
             Schema.resourceReferenceType.Type.Define(new ExtensionInfo<ResourceReference>());

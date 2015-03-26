@@ -92,6 +92,7 @@ namespace RenderingInterop
 
         private static GameEngine s_inist;
         private static GUILayer.EngineDevice _engineDevice;
+        private static XLELayer.SavedRenderResources _savedRenderResources;
 
         /// <summary>
         /// init game engine 
@@ -105,6 +106,7 @@ namespace RenderingInterop
                 GUILayer.EngineDevice.SetDefaultWorkingDirectory();
                 _engineDevice = new GUILayer.EngineDevice();
                 _engineDevice.AttachDefaultCompilers();
+                _savedRenderResources = new XLELayer.SavedRenderResources(_engineDevice);
                 CriticalError = "";
                 s_inist.PopulateEngineInfo("<EngineInfo />");
 
@@ -677,9 +679,20 @@ namespace RenderingInterop
         private static void NativeObjectAddChild(uint typeid, uint listId, ulong parentId, ulong childId, int index) { }
         private static void NativeObjectRemoveChild(uint typeid, uint listId, ulong parentId, ulong childId) { }
 
-        private static ulong NativeCreateVertexBuffer(VertexFormat vf, void* buffer, uint vertexCount) { return 0; }
-        private static ulong NativeCreateIndexBuffer(uint* buffer, uint indexCount) { return 0; }
-        private static void NativeDeleteBuffer(ulong buffer) { }
+        private static ulong NativeCreateVertexBuffer(VertexFormat vf, void* buffer, uint vertexCount) 
+        {
+            return _savedRenderResources.CreateVertexBuffer(
+                buffer,
+                vertexCount * vf.GetSize());
+        }
+        private static ulong NativeCreateIndexBuffer(uint* buffer, uint indexCount) 
+        {
+            return _savedRenderResources.CreateIndexBuffer(buffer, 2*indexCount);
+        }
+        private static void NativeDeleteBuffer(ulong buffer) 
+        {
+            _savedRenderResources.DeleteBuffer(buffer);
+        }
         private static void NativeSetRendererFlag(BasicRendererFlags renderFlag) { }
         private static void NativeDrawPrimitive(PrimitiveType pt,
                                                         ulong vb,
