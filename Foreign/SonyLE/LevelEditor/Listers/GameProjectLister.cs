@@ -185,8 +185,8 @@ namespace LevelEditor
         {
             ICommandClient cmdclient = (ICommandClient)this;
             
-            if (context == this.TreeView && 
-                (Adapters.Is<IGame>(target) || Adapters.Is<GameReference>(target)))
+            if (context == this.TreeView &&
+                (Adapters.Is<IGame>(target) || Adapters.Is<GameReference>(target) || Adapters.Is<IResolveable>(target)))
             {
                 foreach (Command command in Enum.GetValues(typeof(Command)))
                 {
@@ -222,10 +222,17 @@ namespace LevelEditor
                 case Command.Exclude:
                     cando = TreeControlAdapter.LastHit.Is<GameReference>();
                     break;
+
                 case Command.Resolve:
                     {
                         GameReference gameRef = TreeControlAdapter.LastHit.As<GameReference>();
                         cando = gameRef != null && gameRef.Target == null;
+
+                        if (!cando)
+                        {
+                            var resolveable = TreeControlAdapter.LastHit.As<IResolveable>();
+                            cando = resolveable != null && !resolveable.IsResolved();
+                        }
                     }                    
                     break;
 
@@ -233,6 +240,12 @@ namespace LevelEditor
                     {
                         GameReference gameRef = TreeControlAdapter.LastHit.As<GameReference>();
                         cando = gameRef != null && gameRef.Target != null;
+
+                        if (!cando)
+                        {
+                            var resolveable = TreeControlAdapter.LastHit.As<IResolveable>();
+                            cando = resolveable != null && resolveable.IsResolved();
+                        }
                     }                    
                     break;
 
@@ -249,83 +262,98 @@ namespace LevelEditor
         }
 
         void ICommandClient.DoCommand(object commandTag)
-        {            
+        {
+            IDocument gameDocument = null;
+            string filePath = null;
             IGame game = TreeControlAdapter.LastHit.As<IGame>();
             if (game == null)
             {
                 GameReference gameRef = TreeControlAdapter.LastHit.As<GameReference>();
-                game = gameRef.Target;
+                if (gameRef != null)
+                {
+                    game = gameRef.Target;
+                }
             }
-            IDocument gameDocument = game.As<IDocument>();
-            string filePath = null;
+            if (game != null)
+            {
+                gameDocument = game.As<IDocument>();
+            }
 
             switch ((Command)commandTag)
             {
                 case Command.CreateNewSubGame:
-                    filePath = Util.GetFilePath(m_fileFilter,
-                        System.IO.Path.GetDirectoryName(gameDocument.Uri.LocalPath), true);
-                    if (!string.IsNullOrEmpty(filePath))
+                    if (gameDocument != null)
                     {
-                        try
+                        filePath = Util.GetFilePath(m_fileFilter,
+                            System.IO.Path.GetDirectoryName(gameDocument.Uri.LocalPath), true);
+                        if (!string.IsNullOrEmpty(filePath))
                         {
-                            if (!m_gameEditor.Info.IsCompatiblePath(filePath))
-                                throw new Exception("Incompatible file type " + filePath);
+                            try
+                            {
+                                if (!m_gameEditor.Info.IsCompatiblePath(filePath))
+                                    throw new Exception("Incompatible file type " + filePath);
 
-                            Uri ur = new Uri(filePath);
-                            if (m_gameDocumentRegistry.FindDocument(ur) != null)
-                                throw new Exception(filePath + " is already open");
-                            GameDocument subGame = GameDocument.OpenOrCreate(ur, m_schemaLoader);
-                            subGame.Dirty = true;
-                            GameReference gameRef = GameReference.CreateNew(subGame);
-                            IHierarchical parent = game.As<IHierarchical>();
-                            parent.AddChild(gameRef);
-                            // because we performing this operation outside of TransactionContext
-                            // we must set Document Dirty flag.
-                            gameDocument.Dirty = true;
+                                Uri ur = new Uri(filePath);
+                                if (m_gameDocumentRegistry.FindDocument(ur) != null)
+                                    throw new Exception(filePath + " is already open");
+                                GameDocument subGame = GameDocument.OpenOrCreate(ur, m_schemaLoader);
+                                subGame.Dirty = true;
+                                GameReference gameRef = GameReference.CreateNew(subGame);
+                                IHierarchical parent = game.As<IHierarchical>();
+                                parent.AddChild(gameRef);
+                                // because we performing this operation outside of TransactionContext
+                                // we must set Document Dirty flag.
+                                gameDocument.Dirty = true;
 
-                        }
-                        catch (Exception ex)
-                        {
-                            MessageBox.Show(m_mainWindow.DialogOwner, ex.Message);
+                            }
+                            catch (Exception ex)
+                            {
+                                MessageBox.Show(m_mainWindow.DialogOwner, ex.Message);
+                            }
                         }
                     }
                     break;
+
                 case Command.AddSubGame:
-
-                    filePath = Util.GetFilePath(m_fileFilter, 
-                        System.IO.Path.GetDirectoryName(gameDocument.Uri.LocalPath), 
-                        false);
-                   
-                    if (!string.IsNullOrEmpty(filePath))
+                    if (gameDocument != null)
                     {
-                        try
+                        filePath = Util.GetFilePath(m_fileFilter,
+                            System.IO.Path.GetDirectoryName(gameDocument.Uri.LocalPath),
+                            false);
+
+                        if (!string.IsNullOrEmpty(filePath))
                         {
-                            if (!m_gameEditor.Info.IsCompatiblePath(filePath))
-                                throw new Exception("Incompatible file type " + filePath);
+                            try
+                            {
+                                if (!m_gameEditor.Info.IsCompatiblePath(filePath))
+                                    throw new Exception("Incompatible file type " + filePath);
 
-                            Uri ur = new Uri(filePath);
-                            if (m_gameDocumentRegistry.FindDocument(ur) != null)
-                                throw new Exception(filePath + " is already open");
+                                Uri ur = new Uri(filePath);
+                                if (m_gameDocumentRegistry.FindDocument(ur) != null)
+                                    throw new Exception(filePath + " is already open");
 
-                            GameReference gameRef = GameReference.CreateNew(ur);
-                            gameRef.Resolve();
-                            IHierarchical parent = game.As<IHierarchical>();
-                            parent.AddChild(gameRef);
+                                GameReference gameRef = GameReference.CreateNew(ur);
+                                gameRef.Resolve();
+                                IHierarchical parent = game.As<IHierarchical>();
+                                parent.AddChild(gameRef);
 
-                            // because we performing this operation outside of TransactionContext
-                            // we must set Document Dirty flag.
-                            gameDocument.Dirty = true;
-                            RefreshLayerContext();
-                        }
-                        catch (Exception ex)
-                        {
-                            MessageBox.Show(m_mainWindow.DialogOwner, ex.Message);
+                                // because we performing this operation outside of TransactionContext
+                                // we must set Document Dirty flag.
+                                gameDocument.Dirty = true;
+                                RefreshLayerContext();
+                            }
+                            catch (Exception ex)
+                            {
+                                MessageBox.Show(m_mainWindow.DialogOwner, ex.Message);
+                            }
                         }
                     }
                     break;
                 case Command.Exclude:
                     {
                         GameReference gameRef = TreeControlAdapter.LastHit.As<GameReference>();
+                        if (gameRef == null) { break; }
+
                         gameDocument = gameRef.DomNode.Parent.Cast<IDocument>();
                         GameDocument subDoc = gameRef.Target.Cast<GameDocument>();
                         
@@ -358,10 +386,29 @@ namespace LevelEditor
                     break;
                 case Command.Resolve:
                     {
-                        GameReference gameRef = TreeControlAdapter.LastHit.As<GameReference>();
-                        gameRef.Resolve();
-                        TreeControlAdapter.Refresh(gameRef);
-                        RefreshLayerContext();
+                        bool madeChange = false;
+                        var lastHit = TreeControlAdapter.LastHit;
+                        GameReference gameRef = lastHit.As<GameReference>();
+                        if (gameRef != null)
+                        {
+                            gameRef.Resolve();
+                            madeChange = true;
+                        }
+                        else
+                        {
+                            var resolveable = lastHit.As<IResolveable>();
+                            if (resolveable != null && !resolveable.IsResolved())
+                            {
+                                resolveable.Resolve();
+                                madeChange = true;
+                            }
+                        }
+
+                        if (madeChange)
+                        {
+                            TreeControlAdapter.Refresh(lastHit);
+                            RefreshLayerContext();
+                        }
                     }
                     break;
                 case Command.Unresolve:
@@ -369,30 +416,43 @@ namespace LevelEditor
                         try
                         {
                             GameReference gameRef = TreeControlAdapter.LastHit.As<GameReference>();
-                            GameDocument subDoc = gameRef.Target.Cast<GameDocument>();
-                            bool unresolve = true;
-                            bool save = false;
-                            if (subDoc.Dirty)
+                            if (gameRef!=null)
                             {
-                                string msg = "Save changes\r\n" + subDoc.Uri.LocalPath;                                
-                                DialogResult dlgResult =
-                                    MessageBox.Show(m_mainWindow.DialogOwner, msg, m_mainWindow.Text
-                                    , MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
+                                GameDocument subDoc = gameRef.Target.Cast<GameDocument>();
+                                bool unresolve = true;
+                                bool save = false;
+                                if (subDoc.Dirty)
+                                {
+                                    string msg = "Save changes\r\n" + subDoc.Uri.LocalPath;
+                                    DialogResult dlgResult =
+                                        MessageBox.Show(m_mainWindow.DialogOwner, msg, m_mainWindow.Text
+                                        , MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
 
-                                save = dlgResult == DialogResult.Yes;
-                                unresolve = dlgResult != DialogResult.Cancel;
+                                    save = dlgResult == DialogResult.Yes;
+                                    unresolve = dlgResult != DialogResult.Cancel;
+                                }
+                                //cando = gameRef != null && gameRef.Target != null;
+                                if (save)
+                                    subDoc.Save(subDoc.Uri, m_schemaLoader);
+                                if (unresolve)
+                                {
+                                    gameRef.Unresolve();
+                                    UpdateGameObjectReferences();
+                                    RefreshLayerContext();
+
+                                }
+                                TreeControlAdapter.Refresh(gameRef);
                             }
-                            //cando = gameRef != null && gameRef.Target != null;
-                            if (save) 
-                                subDoc.Save(subDoc.Uri, m_schemaLoader);
-                            if (unresolve)
+                            else
                             {
-                                gameRef.Unresolve();
-                                UpdateGameObjectReferences();
-                                RefreshLayerContext();
-
+                                var resolveable = TreeControlAdapter.LastHit.As<IResolveable>();
+                                if (resolveable!=null && resolveable.IsResolved())
+                                {
+                                    resolveable.Unresolve();
+                                    RefreshLayerContext();
+                                    TreeControlAdapter.Refresh(TreeControlAdapter.LastHit);
+                                }
                             }
-                            TreeControlAdapter.Refresh(gameRef);
                         }
                         catch (Exception ex)
                         {
@@ -403,6 +463,7 @@ namespace LevelEditor
 
                 //<<XLE
                 case Command.SetupWorldPlacements:
+                    if (game != null)
                     {
                         var newDoc = PlacementsFolder.CreateNew();
                         IHierarchical parent = game.As<IHierarchical>();

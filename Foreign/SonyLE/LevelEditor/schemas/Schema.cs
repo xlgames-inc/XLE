@@ -605,7 +605,7 @@ namespace LevelEditor
             placementsFolderType.cellChild = placementsFolderType.Type.GetChildInfo("cell");
 
             placementsDocumentType.Type = getNodeType("gap", "placementsDocumentType");
-            placementsDocumentType.placementsChild = placementsDocumentType.Type.GetChildInfo("placements");
+            placementsDocumentType.placementsChild = placementsDocumentType.Type.GetChildInfo("placement");
 
             abstractPlacementObjectType.Type = getNodeType("gap", "abstractPlacementObjectType"); 
             

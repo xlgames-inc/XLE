@@ -16,6 +16,13 @@ using LevelEditorCore;
 
 namespace LevelEditor.DomNodeAdapters
 {
+    interface IResolveable
+    {
+        void Resolve();
+        void Unresolve();
+        bool IsResolved();
+    }
+
     public class GenericReference<T> : DomNodeAdapter, IReference<T>, IListable
     {
         #region IReference<T> Members
@@ -61,10 +68,6 @@ namespace LevelEditor.DomNodeAdapters
         }
 
         #endregion
-
-        /// <summary>
-        /// Gets a value indicating if this reference has been resolved</summary>        
-        public bool IsResolved { get { return m_target != null; } }
 
         protected string m_error = string.Empty;
         protected T m_target = default(T);
@@ -143,7 +146,7 @@ namespace LevelEditor.DomNodeAdapters
         private readonly List<IDocument> m_documents = new List<IDocument>();
     }
 
-    public class PlacementsCellRef : GenericReference<XLEPlacementDocument>
+    public class PlacementsCellRef : GenericReference<XLEPlacementDocument>, IHierarchical, IResolveable
     {
         static PlacementsCellRef() { s_nameAttribute = Schema.placementsCellReferenceType.nameAttribute; }
 
@@ -154,9 +157,7 @@ namespace LevelEditor.DomNodeAdapters
             get { return GetAttribute<Uri>(Schema.placementsCellReferenceType.refAttribute); }
         }
 
-        /// <summary>
-        /// Resolves the Uri to DomNode</summary>        
-        public void Resolve()
+        public virtual void Resolve()
         {
             if (m_target == null)
             {
@@ -170,36 +171,41 @@ namespace LevelEditor.DomNodeAdapters
                 }
             }            
         }
-
-        /// <summary>
-        /// Sets target to null and removes the resolved 
-        /// GameDocument from  GameDocumentRegistry</summary>
-        public void Unresolve()
+        public virtual void Unresolve()
         {
             if (m_target != null)
             {
                 var gameDocRegistry = Globals.MEFContainer.GetExportedValue<GenericDocumentRegistry>();
-                gameDocRegistry.Remove(m_target.As<IDocument>());
+                    // We can't remove, because a single document can have multiple references upon it
+                    // We need strict reference counting to do this properly. But how do we do that 
+                    // in C#? We need to drop references in many cases:
+                    //  * close master document
+                    //  * delete cell ref
+                    //  * removal of parent from the tree
+                    //  * change uri
+                    // It might turn out difficult to catch all of those cases reliably
+                // gameDocRegistry.Remove(m_target.As<IDocument>()); 
                 m_target = null;
-
                 m_error = "Not resolved";
             }
         }
+        public virtual bool IsResolved() { return m_target != null; }
 
         public Vec3F Mins
         {
             get { return GetAttribute<Vec3F>(Schema.placementsCellReferenceType.minsAttribute); }
         }
-
         public Vec3F Maxs
         {
             get { return GetAttribute<Vec3F>(Schema.placementsCellReferenceType.maxsAttribute); }
         }
-
         public XLEPlacementDocument Target
         {
             get { return m_target; }
         }
+    
+        public bool CanAddChild(object child) { return (m_target != null) && m_target.CanAddChild(child); }
+        public bool AddChild(object child) { return (m_target != null) && m_target.AddChild(child); }
     }
 
     public class PlacementsFolder : DomNodeAdapter, IListable
@@ -209,7 +215,7 @@ namespace LevelEditor.DomNodeAdapters
             var doc = new DomNode(Schema.placementsFolderType.Type);
 
             var pref = new DomNode(Schema.placementsCellReferenceType.Type);
-            pref.SetAttribute(Schema.placementsCellReferenceType.refAttribute, "game/demworld/p035_020.doc");
+            pref.SetAttribute(Schema.placementsCellReferenceType.refAttribute, "game/demworld/p035_020.plcdoc");
             pref.SetAttribute(Schema.placementsCellReferenceType.nameAttribute, "35-20");
             doc.GetChildList(Schema.placementsFolderType.cellChild).Add(pref);
             return doc;

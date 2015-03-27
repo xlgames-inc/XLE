@@ -320,13 +320,20 @@
   </xs:complexType>
 
   <xs:complexType name="abstractPlacementObjectType">
+    <xs:annotation>
+      <xs:appinfo>
+        <scea.dom.editors.attribute name="locked" displayName="Locked" description="Lock this object" category="General" editor="Sce.Atf.Controls.PropertyEditing.BoolEditor,Atf.Gui.WinForms"/>
+        <scea.dom.editors.attribute name="visible" displayName="Visibility" description="Whether item is visible in Design View" category="Display" editor="Sce.Atf.Controls.PropertyEditing.BoolEditor,Atf.Gui.WinForms"/>
+      </xs:appinfo>
+    </xs:annotation>
+
     <xs:attribute name="transform" type="matrixType" default="1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1"/>
     <xs:attribute name="translate" type="vector3Type" default="0 0 0"/>
     <xs:attribute name="rotate" type="vector3Type" default="0 0 0"/>
     <xs:attribute name="scale" type="vector3Type" default="1 1 1"/>
     <xs:attribute name="pivot" type="vector3Type" default="0 0 0"/>
     <xs:attribute name="ID" type="xs:ID" />
-    
+      
     <xs:attribute name="visible" type="xs:boolean" default="true" />
     <xs:attribute name="locked" type="xs:boolean" default="false" />
   </xs:complexType>
@@ -361,10 +368,9 @@
     <xs:annotation>
       <xs:appinfo>
         <scea.dom.editors name="Placement" category="Level Tools" image="LevelEditorCore.Resources.gameObject.png" menuText="Placement" description="Placement"/>
-        <scea.dom.editors.attribute name="locked" displayName="Locked" description="Lock this object" category="General" editor="Sce.Atf.Controls.PropertyEditing.BoolEditor,Atf.Gui.WinForms"/>
-        <scea.dom.editors.attribute name="visible" displayName="Visibility" description="Whether item is visible in Design View" category="Display" editor="Sce.Atf.Controls.PropertyEditing.BoolEditor,Atf.Gui.WinForms"/>
       </xs:appinfo>
     </xs:annotation>
+    
     <xs:complexContent>
       <xs:extension base="abstractPlacementObjectType">
         <xs:sequence>
