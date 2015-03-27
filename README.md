@@ -1,4 +1,4 @@
-![XLE](https://github.com/djewsbury/XLE/wiki/images/xlelogo3.png)
+![XLE](https://github.com/xlgames-inc/XLE/wiki/images/xlelogo3.png)
 
 XLE prototype 3D game engine
 
