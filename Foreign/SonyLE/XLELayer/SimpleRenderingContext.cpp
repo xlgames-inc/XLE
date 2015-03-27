@@ -124,8 +124,8 @@ namespace XLELayer
                 *engineDevice->GetNative().GetRenderDevice()));
     }
 
-    SavedRenderResources::~SavedRenderResources() {}
-    SavedRenderResources::!SavedRenderResources() {}
+    SavedRenderResources::~SavedRenderResources() { _pimpl.reset(); }
+    SavedRenderResources::!SavedRenderResources() { _pimpl.reset(); }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////?//
 
@@ -139,8 +139,8 @@ namespace XLELayer
             new std::shared_ptr<RenderCore::Metal::DeviceContext>(
                 RenderCore::Metal::DeviceContext::Get(threadContext)));
     }
-    SimpleRenderingContext::~SimpleRenderingContext() { _devContext.reset(); }
-    SimpleRenderingContext::!SimpleRenderingContext() { _devContext.reset(); }
+    SimpleRenderingContext::~SimpleRenderingContext() { _devContext.reset(); delete _savedRes; }
+    SimpleRenderingContext::!SimpleRenderingContext() { _devContext.reset(); delete _savedRes; }
 
 }
 

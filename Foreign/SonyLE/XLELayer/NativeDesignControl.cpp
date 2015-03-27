@@ -86,8 +86,8 @@ namespace XLELayer
             }
         }
 
-        ~NativeDesignControl() { delete _layerControl; }
-        !NativeDesignControl() { delete _layerControl; }
+        ~NativeDesignControl() { delete _layerControl; delete _cameraSettings; }
+        !NativeDesignControl() { delete _layerControl; delete _cameraSettings; }
 
         void Render() override 
         {
