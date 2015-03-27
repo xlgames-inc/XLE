@@ -160,12 +160,18 @@ namespace LevelEditor
                 typeof(RenderingInterop.TextureThumbnailResolver)
                 );
 
+            // <<XLE
+            TypeCatalog xleExtensionTypes = new TypeCatalog(
+                typeof(DomNodeAdapters.GenericDocumentRegistry)
+                );
+            // XLE>>
             
             List<ComposablePartCatalog> catalogs = new List<ComposablePartCatalog>();
             catalogs.Add(AtfCatalog);            
             catalogs.Add(LECoreCatalog);
             catalogs.Add(renderingInteropCatalog);
             catalogs.Add(thisAssemCatalog);
+            catalogs.Add(xleExtensionTypes);
             
                         
             // temp solution, look for statemachine plugin by name.

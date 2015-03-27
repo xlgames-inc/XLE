@@ -51,7 +51,8 @@ namespace LevelEditor
                         // todo use schema annotation to decide what to use 
                         // for converting relative uri to absolute.
                         if (node.Type == Schema.gameReferenceType.Type
-                            || node.Type == Schema.gameObjectReferenceType.Type)
+                            || node.Type == Schema.gameObjectReferenceType.Type
+                            || node.Type == Schema.placementsCellReferenceType.Type)
                         {
                             string urStr = ur.ToString();
                             int fragIndex = urStr.LastIndexOf('#');

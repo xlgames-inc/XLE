@@ -208,6 +208,16 @@ namespace LevelEditor
                 {
                     subGame.Resolve();
                 }
+
+                // <<XLE
+                // resolve other types of document references
+                var placementsFolder = document.GetChild<PlacementsFolder>(Schema.gameType.placementsFolderChild);
+                if (placementsFolder != null) {
+                    foreach (var cell in placementsFolder.Cells) {
+                        cell.Resolve();
+                    }
+                }
+                // XLE>>
             }
 
             document.Dirty = false;

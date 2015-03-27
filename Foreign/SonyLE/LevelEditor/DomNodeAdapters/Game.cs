@@ -52,8 +52,15 @@ namespace LevelEditor.DomNodeAdapters
         /// are NOT inserted as children of this object but rather as children
         /// of the GameObjectFolder child (thus becoming grand children of Game)</remarks>
         public bool CanAddChild(object child)
-        {            
-            return child.Is<GameReference>();            
+        {
+            if (child.Is<GameReference>()) return true;
+
+            // <<XLE
+            var domNode = child as DomNode;
+            if (domNode != null && domNode.Type == Schema.placementsFolderType.Type) return true;
+            // XLE>>
+
+            return false;
         }
 
         /// <summary>
@@ -71,6 +78,19 @@ namespace LevelEditor.DomNodeAdapters
                 grefList.Add(gameref);
                 return true;
             }
+
+            // <<XLE
+            var domNode = child as DomNode;
+            if (domNode != null)
+            {
+                if (domNode.Type == Schema.placementsFolderType.Type)
+                {
+                    SetChild(Schema.gameType.placementsFolderChild, domNode);
+                    return true;
+                }
+            }
+            // XLE>>
+
             return false;           
         }
 

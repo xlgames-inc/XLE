@@ -39,6 +39,7 @@ namespace LevelEditor
             gameType.bookmarksChild = gameType.Type.GetChildInfo("bookmarks");
             gameType.gameReferenceChild = gameType.Type.GetChildInfo("gameReference");
             gameType.gridChild = gameType.Type.GetChildInfo("grid");
+            gameType.placementsFolderChild = gameType.Type.GetChildInfo("placements");
 
             gameObjectFolderType.Type = getNodeType("gap", "gameObjectFolderType");
             gameObjectFolderType.nameAttribute = gameObjectFolderType.Type.GetAttributeInfo("name");
@@ -592,6 +593,28 @@ namespace LevelEditor
             prefabRootElement = getRootElement(NS, "prefab");
             textureMetadataRootElement = getRootElement(NS, "textureMetadata");
             resourceMetadataRootElement = getRootElement(NS, "resourceMetadata");
+
+            // <<XLE
+            placementsCellReferenceType.Type = getNodeType("gap", "placementsCellReference");
+            placementsCellReferenceType.refAttribute = placementsCellReferenceType.Type.GetAttributeInfo("ref");
+            placementsCellReferenceType.nameAttribute = placementsCellReferenceType.Type.GetAttributeInfo("name");
+            placementsCellReferenceType.minsAttribute = placementsCellReferenceType.Type.GetAttributeInfo("mins");
+            placementsCellReferenceType.maxsAttribute = placementsCellReferenceType.Type.GetAttributeInfo("maxs");
+
+            placementsFolderType.Type = getNodeType("gap", "placementsFolder");
+            placementsFolderType.cellChild = placementsFolderType.Type.GetChildInfo("cell");
+
+            placementsDocumentType.Type = getNodeType("gap", "placementsDocumentType");
+            placementsDocumentType.placementsChild = placementsDocumentType.Type.GetChildInfo("placements");
+
+            abstractPlacementObjectType.Type = getNodeType("gap", "abstractPlacementObjectType"); 
+            
+            placementObjectType.Type = getNodeType("gap", "placementObjectType");
+            placementObjectType.modelChild = placementObjectType.Type.GetChildInfo("model");
+            placementObjectType.materialChild = placementObjectType.Type.GetChildInfo("material");
+
+            placementsDocumentRootElement = getRootElement(NS, "placementsDocument");
+            // XLE>>
         }
 
         public static class gameType
@@ -607,6 +630,10 @@ namespace LevelEditor
             public static ChildInfo bookmarksChild;
             public static ChildInfo gameReferenceChild;
             public static ChildInfo gridChild;
+            
+            // <<<XLE
+            public static ChildInfo placementsFolderChild;
+            // XLE>>
         }
 
         public static class gameObjectFolderType
@@ -1315,5 +1342,42 @@ namespace LevelEditor
         public static ChildInfo textureMetadataRootElement;
 
         public static ChildInfo resourceMetadataRootElement;
+
+        // <<XLE
+        public static class placementsCellReferenceType
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo refAttribute;
+            public static AttributeInfo nameAttribute;
+            public static AttributeInfo minsAttribute;
+            public static AttributeInfo maxsAttribute;
+        }
+
+        public static class placementsFolderType
+        {
+            public static DomNodeType Type;
+            public static ChildInfo cellChild;
+        }
+
+        public static class placementsDocumentType
+        {
+            public static DomNodeType Type;
+            public static ChildInfo placementsChild;
+        }
+
+        public static class abstractPlacementObjectType
+        {
+            public static DomNodeType Type;
+        }
+        
+        public static class placementObjectType
+        {
+            public static DomNodeType Type;
+            public static ChildInfo modelChild;
+            public static ChildInfo materialChild;
+        }
+
+        public static ChildInfo placementsDocumentRootElement;
+        // XLE>>
     }
 }

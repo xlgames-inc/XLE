@@ -51,13 +51,21 @@ namespace LevelEditor
                 {
                     domNode = gameRef.Target.As<DomNode>();
                 }
+                // <<XLE
+                var placementsCellRef = domNode.As<PlacementsCellRef>();
+                if (placementsCellRef != null && placementsCellRef.Target != null)
+                {
+                    domNode = placementsCellRef.Target.As<DomNode>();
+                }
+                // XLE>>
 
                 foreach (ChildInfo childInfo in domNode.Type.Children)
                 {                    
                    
                     // todo use schema annotatoin to mark types that need to have ref slot.
                     bool isReference = Schema.gameObjectReferenceType.Type.IsAssignableFrom(childInfo.Type) ||
-                                        Schema.resourceReferenceType.Type.IsAssignableFrom(childInfo.Type);
+                                        Schema.resourceReferenceType.Type.IsAssignableFrom(childInfo.Type) || 
+                                        Schema.placementsCellReferenceType.Type.IsAssignableFrom(childInfo.Type);
 
                     bool hasChild = false;
                     foreach (DomNode child in domNode.GetChildren(childInfo))

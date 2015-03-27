@@ -368,6 +368,13 @@ namespace LevelEditor
             get { return Schema.gameObjectFolderType.Type; }
         }
 
+        // <<XLE
+        public DomNodeType PlacementsCellReferenceType
+        {
+            get { return Schema.placementsCellReferenceType.Type; }
+        }
+        // XLE>>
+
         public ChildInfo GameRootElement
         {
             get { return Schema.gameRootElement; }
