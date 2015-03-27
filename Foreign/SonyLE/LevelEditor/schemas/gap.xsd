@@ -307,10 +307,17 @@
   <!-- XLE types -->
 
   <xs:complexType name="placementsCellReference">
+    <xs:annotation>
+      <xs:appinfo>
+        <scea.dom.editors.attribute name="mins" displayName="Mins" description="Minimum point of this cell" category="Bounds" editor="Sce.Atf.Controls.PropertyEditing.NumericTupleEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.FloatArrayConverter"/>
+        <scea.dom.editors.attribute name="maxs" displayName="Maxs" description="Maximum point of this cell" category="Bounds" editor="Sce.Atf.Controls.PropertyEditing.NumericTupleEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.FloatArrayConverter"/>
+      </xs:appinfo>
+    </xs:annotation>
+    
     <xs:attribute name="ref" type="xs:anyURI" />
     <xs:attribute name="name" type="xs:string" />
-    <xs:attribute name="mins" type="vector3Type" />
-    <xs:attribute name="maxs" type="vector3Type" />
+    <xs:attribute name="mins" type="vector3Type" default="-1000 -1000 -1000"/>
+    <xs:attribute name="maxs" type="vector3Type" default="1000 1000 1000"/>
   </xs:complexType>
 
   <xs:complexType name="placementsFolder">
@@ -351,7 +358,7 @@
   <xs:complexType name="placementModelRef">
     <xs:complexContent>
       <xs:extension base="resourceReferenceType">
-        <xs:attribute name="ref" type="xs:anyURI"/>
+        <xs:attribute name="uri" type="xs:anyURI"/>
       </xs:extension>
     </xs:complexContent>
   </xs:complexType>
@@ -359,7 +366,7 @@
   <xs:complexType name="placementMaterialRef">
     <xs:complexContent>
       <xs:extension base="resourceReferenceType">
-        <xs:attribute name="ref" type="xs:anyURI"/>
+        <xs:attribute name="uri" type="xs:anyURI"/>
       </xs:extension>
     </xs:complexContent>
   </xs:complexType>

@@ -108,7 +108,12 @@ namespace RenderingInterop
                 _engineDevice.AttachDefaultCompilers();
                 _savedRenderResources = new XLELayer.SavedRenderResources(_engineDevice);
                 CriticalError = "";
-                s_inist.PopulateEngineInfo("<EngineInfo />");
+                s_inist.PopulateEngineInfo(
+                    @"<EngineInfo>
+                        <SupportedResources>
+                            <ResourceDescriptor Type='Model' Name='Model' Description='Model' Ext='.dae' />
+                        </SupportedResources>
+                    </EngineInfo>");
 
                 // \todo -- hook up logging to "LogCallback"
             }

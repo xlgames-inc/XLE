@@ -39,18 +39,23 @@ namespace LevelEditor
         {
             get { return GameEditor.s_info.FileType; }
         }
+
+        private static void SaveDomDocument(DomNode node, Uri uri, SchemaLoader schemaLoader)
+        {
+            string filePath = uri.LocalPath;
+            FileMode fileMode = File.Exists(filePath) ? FileMode.Truncate : FileMode.OpenOrCreate;
+            using (FileStream stream = new FileStream(filePath, fileMode))
+            {
+                var writer = new CustomDomXmlWriter(Globals.ResourceRoot, schemaLoader.TypeCollection);
+                writer.Write(node, stream, uri);
+            }
+        }
         
         public void Save(Uri uri, SchemaLoader schemaLoader)
         {
             if (Dirty || m_uriChanged)
-            {                
-                string filePath = uri.LocalPath;
-                FileMode fileMode = File.Exists(filePath) ? FileMode.Truncate : FileMode.OpenOrCreate;
-                using (FileStream stream = new FileStream(filePath, fileMode))
-                {
-                    var writer = new CustomDomXmlWriter(Globals.ResourceRoot, schemaLoader.TypeCollection);
-                    writer.Write(DomNode, stream, uri);
-                }
+            {
+                SaveDomDocument(DomNode, uri, schemaLoader);
                 m_uriChanged = false;
             }
             
@@ -61,6 +66,19 @@ namespace LevelEditor
                 if(subDoc == null) continue;
                 subDoc.Save(subDoc.Uri, schemaLoader);                
             }
+
+            // <<XLE
+                // also save other reference types
+            var placementsFolder = GetChild<PlacementsFolder>(Schema.gameType.placementsFolderChild);
+            if (placementsFolder!=null) {
+                foreach (var cellRef in placementsFolder.Cells)
+                {
+                    XLEPlacementDocument doc = cellRef.Target;
+                    if (doc == null) continue;
+                    SaveDomDocument(doc.DomNode, cellRef.Uri, schemaLoader);
+                }
+            }
+            // XLE>>
 
             Dirty = false;
         }
