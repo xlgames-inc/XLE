@@ -154,9 +154,9 @@ namespace RenderingInterop
                     swapChainId = GameEngine.GetObjectTypeId("SwapChain");
                     SurfaceId = GameEngine.CreateObject(0, swapChainId, this.Handle, IntPtr.Size);
                     SizePropId = GameEngine.GetObjectPropertyId(swapChainId, "Size");
-                    GameEngine.SetObjectProperty(swapChainId, SurfaceId, SizePropId, ClientSize);
+                    GameEngine.SetObjectProperty(swapChainId, 0, SurfaceId, SizePropId, ClientSize);
                     BkgColorPropId = GameEngine.GetObjectPropertyId(swapChainId, "BkgColor");
-                    GameEngine.SetObjectProperty(swapChainId, SurfaceId, BkgColorPropId, BackColor);
+                    GameEngine.SetObjectProperty(swapChainId, 0, SurfaceId, BkgColorPropId, BackColor);
 
                 }
 
@@ -266,7 +266,7 @@ namespace RenderingInterop
                 base.OnBackColorChanged(e);
                 if (swapChainId != 0)
                 {
-                    GameEngine.SetObjectProperty(swapChainId, SurfaceId, BkgColorPropId, BackColor);
+                    GameEngine.SetObjectProperty(swapChainId, 0, SurfaceId, BkgColorPropId, BackColor);
                 }
             }
 
@@ -276,7 +276,7 @@ namespace RenderingInterop
                 Size sz = ClientSize;
                 if (!GameEngine.IsInError && SurfaceId != 0 && sz.Width > 0 && sz.Height > 0)
                 {
-                    GameEngine.SetObjectProperty(swapChainId, SurfaceId, SizePropId, sz);
+                    GameEngine.SetObjectProperty(swapChainId, 0, SurfaceId, SizePropId, sz);
                     Camera.Aspect = (float)sz.Width / (float)sz.Height;
                 }
             }

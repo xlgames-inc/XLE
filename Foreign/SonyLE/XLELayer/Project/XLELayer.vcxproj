@@ -76,7 +76,6 @@
   <ItemGroup>
     <ClCompile Include="..\MaterialLayer.cpp" />
     <ClCompile Include="..\NativeDesignControl.cpp" />
-    <ClCompile Include="..\SimpleRenderingContext.cpp" />
   </ItemGroup>
   <ItemGroup>
   </ItemGroup>

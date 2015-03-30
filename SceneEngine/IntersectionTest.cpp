@@ -136,7 +136,7 @@ namespace SceneEngine
 
         if ((filter & Type::Placement) && _placements) {
             auto roughIntersection = 
-                _placements->Find_RayIntersection(worldSpaceRay.first, worldSpaceRay.second);
+                _placements->Find_RayIntersection(worldSpaceRay.first, worldSpaceRay.second, nullptr);
 
                 // we can improve the intersection by doing ray-vs-triangle tests
                 // on the roughIntersection geometry

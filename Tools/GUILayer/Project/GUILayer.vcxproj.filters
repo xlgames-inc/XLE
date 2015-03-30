@@ -12,6 +12,8 @@
     <ClCompile Include="..\DivergentAssetList.cpp" />
     <ClCompile Include="..\CustomDataGridEditor.cpp" />
     <ClCompile Include="..\GUILayerUtil.cpp" />
+    <ClCompile Include="..\SimpleRenderingContext.cpp" />
+    <ClCompile Include="..\LevelEditorScene.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\EngineDevice.h" />

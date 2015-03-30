@@ -4,7 +4,8 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "../../Tools/GUILayer/NativeEngineDevice.h"
+#include "EngineDevice.h"
+#include "NativeEngineDevice.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Metal/Buffer.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
@@ -15,7 +16,10 @@
 #include "../../Tools/GUILayer/CLIXAutoPtr.h"
 #include <vector>
 
-namespace XLELayer
+#pragma make_public(RenderCore::IThreadContext)
+#pragma make_public(RenderCore::Techniques::ProjectionDesc)
+
+namespace GUILayer
 {
     template<typename T> using AutoToShared = clix::auto_ptr<std::shared_ptr<T>>;
 
@@ -32,6 +36,9 @@ namespace XLELayer
             , _objectFactory(&device) {}
     };
 
+    /// <summary>Create and maintain rendering resources for SimpleRenderingContext</summary>
+    /// Create & maintain vertex and index buffers. Intended for use when linking to
+    /// C# GUI apps.
     public ref class SavedRenderResources
     {
     public:
@@ -39,13 +46,22 @@ namespace XLELayer
         uint64  CreateIndexBuffer(void* data, size_t size);
         bool    DeleteBuffer(uint64 id);
 
-        SavedRenderResources(GUILayer::EngineDevice^ engineDevice);
+        SavedRenderResources(EngineDevice^ engineDevice);
         ~SavedRenderResources();
         !SavedRenderResources();
     protected:
         clix::auto_ptr<SavedRenderResourcesPimpl> _pimpl;
     };
 
+    /// <summary>Context for simple rendering commands</summary>
+    /// Some tools need to perform basic rendering commands: create a vertex buffer,
+    /// set a technique, draw some polygons. 
+    /// 
+    /// For example, a manipulator might want to draw a 3D arrow or tube as part
+    /// of a widget.
+    ///
+    /// This provides this kind of basic behaviour via the CLI interface so it
+    /// can be used by C# (or other C++/CLI) code.
     public ref class SimpleRenderingContext
     {
     public:
@@ -117,7 +133,7 @@ namespace XLELayer
         return false;
     }
 
-    SavedRenderResources::SavedRenderResources(GUILayer::EngineDevice^ engineDevice) 
+    SavedRenderResources::SavedRenderResources(EngineDevice^ engineDevice) 
     {
         _pimpl.reset(
             new SavedRenderResourcesPimpl(

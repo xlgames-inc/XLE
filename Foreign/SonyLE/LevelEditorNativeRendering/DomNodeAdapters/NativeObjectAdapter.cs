@@ -169,7 +169,7 @@ namespace RenderingInterop
                     pinHandle = GCHandle.Alloc(data, GCHandleType.Pinned);
                     IntPtr ptr = pinHandle.AddrOfPinnedObject();
                     int sz = Marshal.SizeOf(elmentType);
-                    GameEngine.SetObjectProperty(typeId, InstanceId, id, ptr, sz * attribInfo.Type.Length);
+                    GameEngine.SetObjectProperty(typeId, m_documentId, InstanceId, id, ptr, sz * attribInfo.Type.Length);
 
                 }
                 finally
@@ -191,7 +191,7 @@ namespace RenderingInterop
                         {
                             ptr = new IntPtr((void*)chptr);
                             sz = str.Length * 2;
-                            GameEngine.SetObjectProperty(typeId, InstanceId, id, ptr, sz);
+                            GameEngine.SetObjectProperty(typeId, m_documentId, InstanceId, id, ptr, sz);
                         }
                         return;
                     }
@@ -281,7 +281,7 @@ namespace RenderingInterop
                         {
                             ptr = new IntPtr((void*)chptr);
                             sz = str.Length * 2;
-                            GameEngine.SetObjectProperty(typeId, InstanceId, id, ptr, sz);
+                            GameEngine.SetObjectProperty(typeId, m_documentId, InstanceId, id, ptr, sz);
                         }
                         return;
                     }
@@ -298,7 +298,7 @@ namespace RenderingInterop
                     }                    
                 }
 
-                GameEngine.SetObjectProperty(typeId, InstanceId, id, ptr, sz);
+                GameEngine.SetObjectProperty(typeId, m_documentId, InstanceId, id, ptr, sz);
             }
         }
 
@@ -306,6 +306,16 @@ namespace RenderingInterop
         {
             get;
             private set;
+            // get
+            // {
+            //     var node = DomNode;
+            //     if (node != null)
+            //     {
+            //         var tag = node.Type.GetTag(NativeAnnotations.NativeType);
+            //         if (tag != null) { return (uint)tag; }
+            //     }
+            //     return 0;
+            // }
         }        
 
         /// <summary>

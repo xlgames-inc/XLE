@@ -802,7 +802,7 @@ namespace SceneEngine
 
     PlacementsRenderer::PlacementsRenderer(std::shared_ptr<RenderCore::Assets::IModelFormat> modelFormat)
     {
-        assert(modelFormat);
+        // assert(modelFormat);
         auto cache = std::make_unique<Cache>();
         _cache = std::move(cache);
         _modelFormat = std::move(modelFormat);
@@ -1243,6 +1243,7 @@ namespace SceneEngine
         virtual void        SetObject(unsigned index, const ObjTransDef& newState);
 
         virtual bool        Create(const ObjTransDef& newState);
+        virtual bool        Create(PlacementGUID guid, const ObjTransDef& newState);
         virtual void        Delete(unsigned index);
 
         virtual void    Commit();
@@ -1252,7 +1253,8 @@ namespace SceneEngine
         Transaction(
             PlacementsEditor::Pimpl*    editorPimpl,
             const PlacementGUID*        placementsBegin,
-            const PlacementGUID*        placementsEnd);
+            const PlacementGUID*        placementsEnd,
+            PlacementsEditor::TransactionFlags::BitField transactionFlags = 0);
         ~Transaction();
 
     protected:
@@ -1405,6 +1407,63 @@ namespace SceneEngine
         return true;
     }
 
+    bool    Transaction::Create(PlacementGUID guid, const ObjTransDef& newState)
+    {
+        auto& model = _editorPimpl->_renderer->GetCachedModel(newState._model.c_str());
+        auto boundingBoxCentre = LinearInterpolate(model.GetStaticBoundingBox().first, model.GetStaticBoundingBox().second, 0.5f);
+        auto worldSpaceCenter = TransformPoint(newState._localToWorld, boundingBoxCentre);
+
+        std::string materialFilename = newState._material;
+        #if MODEL_FORMAT != MODEL_FORMAT_RUNTIME
+            if (materialFilename.empty()) {
+                materialFilename = _editorPimpl->_renderer->GetModelFormat()->DefaultMaterialName(model);
+            }
+        #endif
+
+        PlacementsTransform localToCell = Identity<PlacementsTransform>();
+        bool foundCell = false;
+
+        for (auto i=_editorPimpl->_cells.cbegin(); i!=_editorPimpl->_cells.cend(); ++i) {
+            if (i->_filenameHash == guid.first) {
+                auto dynPlacements = _editorPimpl->GetDynPlacements(i->_filenameHash);
+                localToCell = Combine(newState._localToWorld, InvertOrthonormalTransform(i->_cellToWorld));
+
+                auto idTopPart = ObjectIdTopPart(newState._model, materialFilename);
+                uint64 id = idTopPart | uint64(guid.second & 0xffffffffull);
+                if (dynPlacements->HasObject(id)) {
+                    assert(0);      // got a hash collision or duplicated id
+                    return false;
+                }
+
+                dynPlacements->AddPlacement(
+                    localToCell, TransformBoundingBox(localToCell, model.GetStaticBoundingBox()),
+                    newState._model.c_str(), materialFilename.c_str(), id);
+
+                guid.second = id;
+                foundCell = true;
+                break;
+            }
+        }
+        if (!foundCell) return false;    // couldn't find a way to create this object
+        
+        ObjTransDef newObj = newState;
+        newObj._transaction = ObjTransDef::Created;
+
+        ObjTransDef originalState;
+        originalState._localToWorld = Identity<Float3x4>();
+        originalState._transaction = ObjTransDef::Error;
+
+        auto insertLoc = std::lower_bound(_originalGuids.begin(), _originalGuids.end(), guid, CompareGUID);
+        auto insertIndex = std::distance(_originalGuids.begin(), insertLoc);
+
+        _originalState.insert(_originalState.begin() + insertIndex, originalState);
+        _objects.insert(_objects.begin() + insertIndex, newObj);
+        _originalGuids.insert(_originalGuids.begin() + insertIndex, guid);
+        _pushedGuids.insert(_pushedGuids.begin() + insertIndex, guid);
+
+        return true;
+    }
+
     void    Transaction::Delete(unsigned index)
     {
         _objects[index]._transaction = ObjTransDef::Deleted;
@@ -1514,9 +1573,10 @@ namespace SceneEngine
     Transaction::Transaction(
         PlacementsEditor::Pimpl*    editorPimpl,
         const PlacementGUID*        guidsBegin,
-        const PlacementGUID*        guidsEnd)
+        const PlacementGUID*        guidsEnd,
+        PlacementsEditor::TransactionFlags::BitField transactionFlags)
     {
-        //  We need to sort; because this method is mostly assuming we're working
+            //  We need to sort; because this method is mostly assuming we're working
             //  with a sorted list. Most of the time originalPlacements will be close
             //  to sorted order (which, of course, means that quick sort isn't ideal, but, anyway...)
         auto guids = std::vector<PlacementGUID>(guidsBegin, guidsEnd);
@@ -1536,26 +1596,53 @@ namespace SceneEngine
             auto cellToWorld = cellIterator->_cellToWorld;
 
             auto& placements = editorPimpl->_renderer->GetCachedPlacements(cellIterator->_filenameHash, cellIterator->_filename);
-            auto pIterator = placements.GetObjectReferences();
-            auto pEnd = &placements.GetObjectReferences()[placements.GetObjectReferenceCount()];
-            for (;i != iend; ++i) {
-                    //  Here, we're assuming everything is sorted, so we can just march forward
-                    //  through the destination placements list
-                pIterator = std::lower_bound(pIterator, pEnd, i->second, CompareObjectId());
-                if (pIterator != pEnd && pIterator->_guid == i->second) {
-                        // Build a ObjTransDef object from this object, and record it
-                    ObjTransDef def;
-                    def._localToWorld = Combine(pIterator->_localToCell, cellToWorld);
-                    def._model = (const char*)PtrAdd(placements.GetFilenamesBuffer(), sizeof(uint64) + pIterator->_modelFilenameOffset);
-                    def._material = (const char*)PtrAdd(placements.GetFilenamesBuffer(), sizeof(uint64) + pIterator->_materialFilenameOffset);
-                    def._transaction = ObjTransDef::Unchanged;
-                    originalState.push_back(def);
-                } else {
-                        // we couldn't find an original for this object. It's invalid
-                    ObjTransDef def;
-                    def._localToWorld = Identity<Float3x4>();
-                    def._transaction = ObjTransDef::Error;
-                    originalState.push_back(def);
+            if (transactionFlags & PlacementsEditor::TransactionFlags::IgnoreIdTop32Bits) {
+                    //  Sometimes we want to ignore the top 32 bits of the id. It works, but it's
+                    //  much less efficient, because we can't take advantage of the sorting.
+                    //  Ideally we should avoid this path
+                for (;i != iend; ++i) {
+                    uint32 comparison = uint32(i->second);
+                    auto pend = &placements.GetObjectReferences()[placements.GetObjectReferenceCount()];
+                    auto pIterator = std::find_if(
+                        placements.GetObjectReferences(), pend,
+                        [=](const Placements::ObjectReference& obj) { return uint32(obj._guid) == comparison; });
+                    if (pIterator!=pend) {
+                        ObjTransDef def;
+                        def._localToWorld = Combine(pIterator->_localToCell, cellToWorld);
+                        def._model = (const char*)PtrAdd(placements.GetFilenamesBuffer(), sizeof(uint64) + pIterator->_modelFilenameOffset);
+                        def._material = (const char*)PtrAdd(placements.GetFilenamesBuffer(), sizeof(uint64) + pIterator->_materialFilenameOffset);
+                        def._transaction = ObjTransDef::Unchanged;
+                        originalState.push_back(def);
+                    } else {
+                            // we couldn't find an original for this object. It's invalid
+                        ObjTransDef def;
+                        def._localToWorld = Identity<Float3x4>();
+                        def._transaction = ObjTransDef::Error;
+                        originalState.push_back(def);
+                    }
+                }
+            } else {
+                auto pIterator = placements.GetObjectReferences();
+                auto pEnd = &placements.GetObjectReferences()[placements.GetObjectReferenceCount()];
+                for (;i != iend; ++i) {
+                        //  Here, we're assuming everything is sorted, so we can just march forward
+                        //  through the destination placements list
+                    pIterator = std::lower_bound(pIterator, pEnd, i->second, CompareObjectId());
+                    if (pIterator != pEnd && pIterator->_guid == i->second) {
+                            // Build a ObjTransDef object from this object, and record it
+                        ObjTransDef def;
+                        def._localToWorld = Combine(pIterator->_localToCell, cellToWorld);
+                        def._model = (const char*)PtrAdd(placements.GetFilenamesBuffer(), sizeof(uint64) + pIterator->_modelFilenameOffset);
+                        def._material = (const char*)PtrAdd(placements.GetFilenamesBuffer(), sizeof(uint64) + pIterator->_materialFilenameOffset);
+                        def._transaction = ObjTransDef::Unchanged;
+                        originalState.push_back(def);
+                    } else {
+                            // we couldn't find an original for this object. It's invalid
+                        ObjTransDef def;
+                        def._localToWorld = Identity<Float3x4>();
+                        def._transaction = ObjTransDef::Error;
+                        originalState.push_back(def);
+                    }
                 }
             }
         }
@@ -1587,6 +1674,35 @@ namespace SceneEngine
         newCell._mins = mins;
         newCell._maxs = maxs;
         _pimpl->_cells.insert(i, newCell);
+    }
+
+    uint64 PlacementsEditor::CreateCell(
+        PlacementsManager& manager,
+        const ::Assets::ResChar name[],
+        const Float2& mins, const Float2& maxs)
+    {
+            //  The implementation here is not great. Originally, PlacementsManager
+            //  was supposed to be constructed with all of it's cells already created.
+            //  But we need create/delete for the interface with the editor
+        PlacementCell newCell;
+        XlCopyString(newCell._filename, name);
+        newCell._filenameHash = Hash64(newCell._filename);
+        newCell._cellToWorld = AsFloat3x4(Expand(mins, 0.f));
+        newCell._aabbMin = Expand(mins, -10000.f);
+        newCell._aabbMax = Expand(maxs, -10000.f);
+        manager._pimpl->_cells.push_back(newCell);
+        RegisterCell(newCell, mins, maxs);
+        return newCell._filenameHash;
+    }
+
+    void PlacementsEditor::RemoveCell(PlacementsManager& manager, uint64 id)
+    {
+        assert(0);  // not implemented yet
+    }
+
+    uint64 PlacementsEditor::GenerateObjectGUID()
+    {
+        return uint64(BuildGuid32());
     }
 
     void PlacementsEditor::RenderFiltered(
@@ -1673,9 +1789,10 @@ namespace SceneEngine
 
     auto PlacementsEditor::Transaction_Begin(
         const PlacementGUID* placementsBegin, 
-        const PlacementGUID* placementsEnd) -> std::shared_ptr<ITransaction>
+        const PlacementGUID* placementsEnd,
+        TransactionFlags::BitField transactionFlags) -> std::shared_ptr<ITransaction>
     {
-        return std::make_shared<Transaction>(_pimpl.get(), placementsBegin, placementsEnd);
+        return std::make_shared<Transaction>(_pimpl.get(), placementsBegin, placementsEnd, transactionFlags);
     }
 
     PlacementsEditor::PlacementsEditor(std::shared_ptr<PlacementsRenderer> renderer)
@@ -1706,6 +1823,12 @@ namespace SceneEngine
             _cellCount = Deserialize(c, "CellCount", _cellCount);
             _cellSize = Deserialize(c, "CellSize", _cellSize);
         }
+    }
+
+    WorldPlacementsConfig::WorldPlacementsConfig()
+    {
+        _cellCount = UInt2(0,0);
+        _cellSize = 512.f;
     }
 
 }

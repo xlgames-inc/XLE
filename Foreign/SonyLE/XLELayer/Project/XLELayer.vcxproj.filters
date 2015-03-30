@@ -2,7 +2,6 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="..\NativeDesignControl.cpp" />
-    <ClCompile Include="..\SimpleRenderingContext.cpp" />
     <ClCompile Include="..\MaterialLayer.cpp" />
   </ItemGroup>
   <ItemGroup>

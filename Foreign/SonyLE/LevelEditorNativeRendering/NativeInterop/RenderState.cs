@@ -37,7 +37,7 @@ namespace RenderingInterop
             get { return m_renderflags; }
             set 
             { 
-                GameEngine.SetObjectProperty(m_typeId, m_intanceId, m_renderFlagId, (uint)value);
+                GameEngine.SetObjectProperty(m_typeId, 0, m_intanceId, m_renderFlagId, (uint)value);
                 if (value != m_renderflags)
                 {
                     m_renderflags = value;
@@ -56,7 +56,7 @@ namespace RenderingInterop
             get { return m_wireColor; }
             set 
             { 
-                GameEngine.SetObjectProperty(m_typeId, m_intanceId, m_wirecolorId, value);
+                GameEngine.SetObjectProperty(m_typeId, 0, m_intanceId, m_wirecolorId, value);
                 if (value != m_wireColor)
                 {
                     m_wireColor = value;
@@ -74,7 +74,7 @@ namespace RenderingInterop
             get { return m_selectionColor; }
             set
             {
-                GameEngine.SetObjectProperty(m_typeId, m_intanceId, m_selColorId, value);
+                GameEngine.SetObjectProperty(m_typeId, 0, m_intanceId, m_selColorId, value);
                 if (value != m_selectionColor)
                 {
                     m_selectionColor = value;

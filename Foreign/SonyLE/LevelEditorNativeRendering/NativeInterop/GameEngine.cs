@@ -92,7 +92,8 @@ namespace RenderingInterop
 
         private static GameEngine s_inist;
         private static GUILayer.EngineDevice _engineDevice;
-        private static XLELayer.SavedRenderResources _savedRenderResources;
+        private static GUILayer.SavedRenderResources _savedRenderResources;
+        private static GUILayer.EditorSceneManager _underlyingScene;
 
         /// <summary>
         /// init game engine 
@@ -106,7 +107,8 @@ namespace RenderingInterop
                 GUILayer.EngineDevice.SetDefaultWorkingDirectory();
                 _engineDevice = new GUILayer.EngineDevice();
                 _engineDevice.AttachDefaultCompilers();
-                _savedRenderResources = new XLELayer.SavedRenderResources(_engineDevice);
+                _savedRenderResources = new GUILayer.SavedRenderResources(_engineDevice);
+                _underlyingScene = new GUILayer.EditorSceneManager();
                 CriticalError = "";
                 s_inist.PopulateEngineInfo(
                     @"<EngineInfo>
@@ -252,7 +254,7 @@ namespace RenderingInterop
             uint id = NativeGetObjectTypeId(className);
             if (id == 0)
             {
-                CriticalError = className + " is not defined in runtime";
+                System.Diagnostics.Debug.WriteLine(className + " is not defined in runtime");
             }
             return id;
         }
@@ -263,7 +265,7 @@ namespace RenderingInterop
             uint propId = NativeGetObjectPropertyId(typeId, propertyName);
             if (propId == 0)
             {
-                CriticalError = propertyName + " is not defined for typeid " + typeId;
+                System.Diagnostics.Debug.WriteLine(propertyName + " is not defined for typeid " + typeId);
             }
             return propId;
         }
@@ -274,7 +276,7 @@ namespace RenderingInterop
             uint propId = NativeGetObjectChildListId(typeId, listName);
             if (propId == 0)
             {
-                CriticalError = listName + " is not defined for typeid " + typeId;
+                System.Diagnostics.Debug.WriteLine(listName + " is not defined for typeid " + typeId);
             }
             return propId;
         }
@@ -304,10 +306,11 @@ namespace RenderingInterop
             s_idToDomNode.Remove(new Pair<ulong, ulong>(documentId, instanceId));
         }
 
-        private static ulong s_currentDocumentId = 1;
+        // private static ulong s_currentDocumentId = 1;
         public static ulong CreateDocument(uint typeId)
         {
-            return s_currentDocumentId++; 
+            // return s_currentDocumentId++; 
+            return _underlyingScene.CreateDocument(typeId, "");
         }
 
         // public static void ObjectAddChild(uint typeId, uint listId, ulong parentId, ulong childId)
@@ -356,37 +359,37 @@ namespace RenderingInterop
            NativeInvokeMemberFn(instanceId, fn, arg, out retVal);
         }
 
-        public static void SetObjectProperty(uint typeid, ulong instanceId, uint propId, Color color)
+        public static void SetObjectProperty(uint typeid, ulong documentId, ulong instanceId, uint propId, Color color)
         {
             Vec4F val = new Vec4F(color.R/255.0f, color.G/255.0f, color.B/255.0f, color.A/255.0f);
             IntPtr ptr = new IntPtr(&val);
             int sz = Marshal.SizeOf(val);
-            NativeSetObjectProperty(typeid, propId, instanceId, ptr, sz);
+            NativeSetObjectProperty(typeid, propId, documentId, instanceId, ptr, sz);
         }
 
-        public static void SetObjectProperty(uint typeid, ulong instanceId, uint propId, uint val)
+        public static void SetObjectProperty(uint typeid, ulong documentId, ulong instanceId, uint propId, uint val)
         {
             IntPtr ptr = new IntPtr(&val);
-            NativeSetObjectProperty(typeid, propId, instanceId, ptr, sizeof (uint));
+            NativeSetObjectProperty(typeid, propId, documentId, instanceId, ptr, sizeof(uint));
         }
 
-        public static void SetObjectProperty(uint typeid, ulong instanceId, uint propId, Vec4F val)
+        public static void SetObjectProperty(uint typeid, ulong documentId, ulong instanceId, uint propId, Vec4F val)
         {
             IntPtr ptr = new IntPtr(&val);
             int sizeInBytes = Marshal.SizeOf(val);
-            NativeSetObjectProperty(typeid, propId, instanceId, ptr, sizeInBytes);
+            NativeSetObjectProperty(typeid, propId, documentId, instanceId, ptr, sizeInBytes);
         }
 
-        public static void SetObjectProperty(uint typeid, ulong instanceId, uint propId, Size sz)
+        public static void SetObjectProperty(uint typeid, ulong documentId, ulong instanceId, uint propId, Size sz)
         {
             IntPtr ptr = new IntPtr(&sz);
             int sizeInBytes = Marshal.SizeOf(sz);
-            NativeSetObjectProperty(typeid, propId, instanceId, ptr, sizeInBytes);
+            NativeSetObjectProperty(typeid, propId, documentId, instanceId, ptr, sizeInBytes);
         }
 
-        public static void SetObjectProperty(uint typeid, ulong instanceId, uint propId, IntPtr data, int size)
+        public static void SetObjectProperty(uint typeid, ulong documentId, ulong instanceId, uint propId, IntPtr data, int size)
         {
-            NativeSetObjectProperty(typeid, propId, instanceId, data, size);
+            NativeSetObjectProperty(typeid, propId, documentId, instanceId, data, size);
         }
 
         public static void GetObjectProperty(uint typeId, uint propId, ulong instanceId, out int data)
@@ -648,18 +651,33 @@ namespace RenderingInterop
 
         #region private members
 
-        private static uint NativeGetObjectTypeId(string className) { return 0;  }
-        private static uint NativeGetObjectPropertyId(uint id, string propertyName) { return 0; }
-        private static uint NativeGetObjectChildListId(uint id, string listName) { return 0; }
-        private static ulong s_currentInstanceId = 1;
+        private static uint NativeGetObjectTypeId(string className) { return _underlyingScene.GetTypeId(className); }
+        private static uint NativeGetObjectPropertyId(uint id, string propertyName) { return _underlyingScene.GetPropertyId(id, propertyName); }
+        private static uint NativeGetObjectChildListId(uint id, string listName) { return _underlyingScene.GetChildListId(id, listName); }
+        // private static ulong s_currentInstanceId = 1;
         private static ulong NativeCreateObject(ulong documentId, ulong existingId, uint typeId, IntPtr data, int size) 
         {
-            if (existingId!=0) return existingId;
-            return s_currentInstanceId++; 
+            // if (existingId!=0) return existingId;
+            // return s_currentInstanceId++;
+            if (existingId==0)
+                existingId = _underlyingScene.AssignObjectId(documentId, typeId);
+
+            if (_underlyingScene.CreateObject(documentId, existingId, typeId, ""))
+                return existingId;
+            return 0;
         }
-        private static void NativeDestroyObject(ulong documentId, ulong instanceId, uint typeId) {}
+        private static void NativeDestroyObject(ulong documentId, ulong instanceId, uint typeId) 
+        {
+            _underlyingScene.DeleteObject(documentId, instanceId, typeId);
+        }
         private static void NativeInvokeMemberFn(ulong instanceId, string fn, IntPtr arg, out IntPtr retVal) { retVal = IntPtr.Zero; }
-        private static void NativeSetObjectProperty(uint typeId, uint propId, ulong instanceId, IntPtr data, int size) { }
+        private static void NativeSetObjectProperty(uint typeId, uint propId, ulong documentId, ulong instanceId, IntPtr data, int size) 
+        {
+            unsafe
+            {
+                _underlyingScene.SetProperty(documentId, instanceId, typeId, propId, data.ToPointer());
+            }
+        }
 
         static GCHandle s_savedBoundingBoxHandle;
         static bool s_builtSavedBoundingBox = false;

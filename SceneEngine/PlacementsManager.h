@@ -28,6 +28,7 @@ namespace SceneEngine
         UInt2 _cellCount;
 
         WorldPlacementsConfig(const std::string& baseDir);
+        WorldPlacementsConfig();
     };
 
     class PlacementsRenderer;
@@ -64,6 +65,8 @@ namespace SceneEngine
     protected:
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
+
+        friend class PlacementsEditor;
     };
 
     typedef std::pair<uint64, uint64> PlacementGUID;
@@ -111,6 +114,7 @@ namespace SceneEngine
 
             virtual void    SetObject(unsigned index, const ObjTransDef& newState) = 0;
             virtual bool    Create(const ObjTransDef& newState) = 0;
+            virtual bool    Create(PlacementGUID guid, const ObjTransDef& newState) = 0;
             virtual void    Delete(unsigned index) = 0;
 
             virtual void    Commit() = 0;
@@ -118,17 +122,22 @@ namespace SceneEngine
             virtual void    UndoAndRestart() = 0;
         };
 
+        struct TransactionFlags { 
+            enum Flags { IgnoreIdTop32Bits = 1<<1 };
+            typedef unsigned BitField;
+        };
         std::shared_ptr<ITransaction> Transaction_Begin(
-            const PlacementGUID* placementsBegin, const PlacementGUID* placementsEnd);
+            const PlacementGUID* placementsBegin, const PlacementGUID* placementsEnd,
+            TransactionFlags::BitField transactionFlags = 0);
 
             // -------------- intersections --------------
         std::vector<PlacementGUID> Find_BoxIntersection(
             const Float3& worldSpaceMins, const Float3& worldSpaceMaxs,
-            const std::function<bool(const ObjIntersectionDef&)>& predicate = nullptr);
+            const std::function<bool(const ObjIntersectionDef&)>& predicate);
 
         std::vector<PlacementGUID> Find_RayIntersection(
             const Float3& rayStart, const Float3& rayEnd,
-            const std::function<bool(const ObjIntersectionDef&)>& predicate = nullptr);
+            const std::function<bool(const ObjIntersectionDef&)>& predicate);
 
         void RenderFiltered(
             RenderCore::Metal::DeviceContext* context,
@@ -139,6 +148,13 @@ namespace SceneEngine
         void RegisterCell(
             const PlacementCell& cell,
             const Float2& mins, const Float2& maxs);
+
+        uint64 CreateCell(
+            PlacementsManager& manager,
+            const ::Assets::ResChar name[],
+            const Float2& mins, const Float2& maxs);
+        void RemoveCell(PlacementsManager& manager, uint64 id);
+        static uint64 GenerateObjectGUID();
 
         void Save();
 
