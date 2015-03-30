@@ -23,7 +23,7 @@ namespace RenderingInterop
             m_typeId = GameEngine.GetObjectTypeId(typeName);
             BkgColorPropId = GameEngine.GetObjectPropertyId(m_typeId, "BkgColor");
 
-            m_intanceId = GameEngine.CreateObject(m_typeId, ptr, sizeInBytes);
+            m_intanceId = GameEngine.CreateObject(0, m_typeId, ptr, sizeInBytes);
 
         }
 
@@ -44,7 +44,7 @@ namespace RenderingInterop
         {
             if (m_intanceId != 0)
             {
-                GameEngine.DestroyObject(m_typeId, m_intanceId);
+                GameEngine.DestroyObject(0, m_intanceId, m_typeId);
                 m_intanceId = 0;
             }
             base.Dispose(disposing);

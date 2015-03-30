@@ -83,45 +83,45 @@ namespace RenderingInterop
 
         private void Init()
         {
-            if (m_game != null) 
-                return;
-
-            NativeObjectAdapter curLevel = GameEngine.GetGameLevel();
-            try
-            {
-                // create new document by creating a Dom node of the root type defined by the schema                 
-                DomNode rootNode = new DomNode(m_schemaLoader.GameType, m_schemaLoader.GameRootElement);
-                INameable nameable = rootNode.As<INameable>();
-                nameable.Name = "Game";
-                NativeObjectAdapter gameLevel = rootNode.Cast<NativeObjectAdapter>();
-                GameEngine.CreateObject(gameLevel);
-                GameEngine.SetGameLevel(gameLevel);
-                gameLevel.UpdateNativeOjbect();
-                NativeGameWorldAdapter gworld = rootNode.Cast<NativeGameWorldAdapter>();
-                m_game = rootNode.Cast<IGame>();
-                IGameObjectFolder rootFolder = m_game.RootGameObjectFolder;
-                m_renderSurface.Game = m_game;
-                m_renderSurface.GameEngineProxy = m_gameEngine;
-
-            }
-            finally
-            {
-                GameEngine.SetGameLevel(curLevel);
-            }
-
-
-            m_mainWindow.Closed += delegate
-            {
-                GameEngine.DestroyObject(m_game.Cast<NativeObjectAdapter>());
-                m_renderSurface.Dispose();
-            };
+            // if (m_game != null) 
+            //     return;
+            // 
+            // NativeObjectAdapter curLevel = GameEngine.GetGameLevel();
+            // try
+            // {
+            //     // create new document by creating a Dom node of the root type defined by the schema                 
+            //     DomNode rootNode = new DomNode(m_schemaLoader.GameType, m_schemaLoader.GameRootElement);
+            //     INameable nameable = rootNode.As<INameable>();
+            //     nameable.Name = "Game";
+            //     NativeObjectAdapter gameLevel = rootNode.Cast<NativeObjectAdapter>();
+            //     GameEngine.CreateObject(gameLevel);
+            //     GameEngine.SetGameLevel(gameLevel);
+            //     gameLevel.UpdateNativeOjbect();
+            //     NativeDocumentAdapter gworld = rootNode.Cast<NativeDocumentAdapter>();
+            //     m_game = rootNode.Cast<IGame>();
+            //     IGameObjectFolder rootFolder = m_game.RootGameObjectFolder;
+            //     m_renderSurface.Game = m_game;
+            //     m_renderSurface.GameEngineProxy = m_gameEngine;
+            // 
+            // }
+            // finally
+            // {
+            //     GameEngine.SetGameLevel(curLevel);
+            // }
+            // 
+            // 
+            // m_mainWindow.Closed += delegate
+            // {
+            //     GameEngine.DestroyObject(m_game.Cast<NativeObjectAdapter>());
+            //     m_renderSurface.Dispose();
+            // };
         }
 
-        [Import(AllowDefault = false)]
-        private ISchemaLoader m_schemaLoader = null;
-
-        [Import(AllowDefault = false)]
-        private IMainWindow m_mainWindow = null;
+        // [Import(AllowDefault = false)]
+        // private ISchemaLoader m_schemaLoader = null;
+        // 
+        // [Import(AllowDefault = false)]
+        // private IMainWindow m_mainWindow = null;
 
         [Import(AllowDefault = true)]
         private ResourceLister m_resourceLister = null;
@@ -135,8 +135,8 @@ namespace RenderingInterop
         [Import(AllowDefault = false)]
         private ControlHostService m_controlHostService = null;
 
-        [Import(AllowDefault = false)]
-        private IGameEngineProxy m_gameEngine;
+        // [Import(AllowDefault = false)]
+        // private IGameEngineProxy m_gameEngine;
 
         private NativeViewControl m_renderSurface;
         private IGame m_game;        
@@ -152,7 +152,7 @@ namespace RenderingInterop
                 if (!GameEngine.IsInError)
                 {
                     swapChainId = GameEngine.GetObjectTypeId("SwapChain");
-                    SurfaceId = GameEngine.CreateObject(swapChainId, this.Handle, IntPtr.Size);
+                    SurfaceId = GameEngine.CreateObject(0, swapChainId, this.Handle, IntPtr.Size);
                     SizePropId = GameEngine.GetObjectPropertyId(swapChainId, "Size");
                     GameEngine.SetObjectProperty(swapChainId, SurfaceId, SizePropId, ClientSize);
                     BkgColorPropId = GameEngine.GetObjectPropertyId(swapChainId, "BkgColor");
@@ -282,7 +282,7 @@ namespace RenderingInterop
             }
             protected override void Dispose(bool disposing)
             {
-                GameEngine.DestroyObject(swapChainId, SurfaceId);
+                GameEngine.DestroyObject(0, SurfaceId, swapChainId);
                 SurfaceId = 0;
                 if (disposing)
                 {

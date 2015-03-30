@@ -209,7 +209,7 @@ namespace RenderingInterop
                         // find hit record.
                         foreach (var hit in hits)
                         {
-                            if (m_snapFilter.CanSnapTo(node, GameEngine.GetAdapterFromId(hit.instanceId)))
+                            if (m_snapFilter.CanSnapTo(node, GameEngine.GetAdapterFromId(hit.documentId, hit.instanceId)))
                             {
                                 target = hit;
                                 cansnap = true;

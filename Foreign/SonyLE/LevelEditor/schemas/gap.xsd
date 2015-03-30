@@ -346,6 +346,12 @@
   </xs:complexType>
   
   <xs:complexType name="placementsDocumentType">
+    <xs:annotation>
+      <xs:appinfo>
+        <LeGe.NativeType nativeName="PlacementsDocument"/>
+      </xs:appinfo>
+    </xs:annotation>
+  
     <xs:sequence>
       <xs:element name="placement" type="abstractPlacementObjectType" minOccurs="0" maxOccurs="unbounded" />
     </xs:sequence>
@@ -374,6 +380,10 @@
   <xs:complexType name="placementObjectType">
     <xs:annotation>
       <xs:appinfo>
+        <LeGe.NativeType nativeName="PlacementObject"/>
+        <LeGe.NativeProperty name="transform" nativeName="Transform" nativeType="Float4x4" access="set"/>
+        <LeGe.NativeProperty name="visible" nativeName="Visible" nativeType="bool" access="set,get"/>
+
         <scea.dom.editors name="Placement" category="Level Tools" image="LevelEditorCore.Resources.gameObject.png" menuText="Placement" description="Placement"/>
       </xs:appinfo>
     </xs:annotation>

@@ -47,8 +47,13 @@ namespace RenderingInterop
             DomNodeType gridType = m_schemaLoader.TypeCollection.GetNodeType(ns, "gridType");            
             gridType.Define(new ExtensionInfo<GridRenderer>());
 
+            // <<XLE        (other objects must behave as documents, also)
+            DomNodeType placementsDocumentType = m_schemaLoader.TypeCollection.GetNodeType(ns, "placementsDocumentType");
+            placementsDocumentType.Define(new ExtensionInfo<NativeDocumentAdapter>());
+            // XLE>>
+            
             // register NativeGameWorldAdapter on game type.
-            m_schemaLoader.GameType.Define(new ExtensionInfo<NativeGameWorldAdapter>());
+            m_schemaLoader.GameType.Define(new ExtensionInfo<NativeDocumentAdapter>());
 
             // parse schema annotation.
             foreach (DomNodeType domType in m_schemaLoader.TypeCollection.GetNodeTypes())
@@ -200,9 +205,9 @@ namespace RenderingInterop
             if (document == m_gameDocumentRegistry.MasterDocument)
             {
                 NativeObjectAdapter gameLevel = document.Cast<NativeObjectAdapter>();
-                GameEngine.CreateObject(gameLevel);
-                GameEngine.SetGameLevel(gameLevel);
-                gameLevel.UpdateNativeOjbect();
+                // GameEngine.CreateObject(0, gameLevel);
+                // GameEngine.SetGameLevel(gameLevel);
+                // gameLevel.UpdateNativeOjbect();
 
                 //create vertex buffer for grid.
                 IGrid grid = document.As<IGame>().Grid;
@@ -211,11 +216,12 @@ namespace RenderingInterop
 
                 m_designView.Context = document.Cast<IGameContext>();                
             }
-            DomNode masterNode = m_gameDocumentRegistry.MasterDocument.As<DomNode>();
-            DomNode rooFolderNode = game.RootGameObjectFolder.Cast<DomNode>();
 
-            NativeGameWorldAdapter gworld = masterNode.Cast<NativeGameWorldAdapter>();
-            gworld.Insert(masterNode, rooFolderNode, masterNode.Type.GetChildInfo("gameObjectFolder"), -1);            
+            //      XLE -- moved this functionality to NativeDocumentAdapter::OnNodeSet()
+            // DomNode masterNode = m_gameDocumentRegistry.MasterDocument.As<DomNode>();
+            // DomNode rooFolderNode = game.RootGameObjectFolder.Cast<DomNode>();
+            // NativeDocumentAdapter gworld = masterNode.Cast<NativeDocumentAdapter>();
+            // gworld.Insert(masterNode, rooFolderNode, masterNode.Type.GetChildInfo("gameObjectFolder"), -1);            
         }
 
         private void m_gameDocumentRegistry_DocumentRemoved(object sender, ItemRemovedEventArgs<IGameDocument> e)
@@ -228,15 +234,15 @@ namespace RenderingInterop
                 GridRenderer gridRender = grid.Cast<GridRenderer>();
                 gridRender.DeleteVertexBuffer();
                 m_designView.Context = null;                
-                GameEngine.DestroyObject(game.Cast<NativeObjectAdapter>());
+                // GameEngine.DestroyObject(0, game.Cast<NativeObjectAdapter>());
                 GameEngine.Clear();
             }
             else
             {// sub document.
-                DomNode masterNode = m_gameDocumentRegistry.MasterDocument.As<DomNode>();
-                DomNode rooFolderNode = game.RootGameObjectFolder.Cast<DomNode>();
-                NativeGameWorldAdapter gworld = masterNode.Cast<NativeGameWorldAdapter>();
-                gworld.Remove(masterNode, rooFolderNode, masterNode.Type.GetChildInfo("gameObjectFolder"));
+                // DomNode masterNode = m_gameDocumentRegistry.MasterDocument.As<DomNode>();
+                // DomNode rooFolderNode = game.RootGameObjectFolder.Cast<DomNode>();
+                // NativeDocumentAdapter gworld = masterNode.Cast<NativeDocumentAdapter>();
+                // gworld.Remove(masterNode, rooFolderNode, masterNode.Type.GetChildInfo("gameObjectFolder"));
             }
         }
        

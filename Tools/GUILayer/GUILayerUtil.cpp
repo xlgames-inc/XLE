@@ -1,0 +1,20 @@
+// Copyright 2015 XLGAMES Inc.
+//
+// Distributed under the MIT License (See
+// accompanying file "LICENSE" or the website
+// http://www.opensource.org/licenses/mit-license.php)
+
+#include "MarshalString.h"
+#include "../../Utility/MemoryUtils.h"
+
+namespace GUILayer
+{
+    public ref class Util
+    {
+    public:
+        static System::UInt64 HashID(System::String^ string)
+        {
+            return Hash64(clix::marshalString<clix::E_UTF8>(string));
+        }
+    };
+}

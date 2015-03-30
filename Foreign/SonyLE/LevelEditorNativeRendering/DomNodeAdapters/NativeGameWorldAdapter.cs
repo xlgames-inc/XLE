@@ -5,7 +5,7 @@ using Sce.Atf.Adaptation;
 
 namespace RenderingInterop
 {
-    public class NativeGameWorldAdapter : DomNodeAdapter
+    public class NativeDocumentAdapter : DomNodeAdapter
     {
         protected override void OnNodeSet()
         {
@@ -15,16 +15,32 @@ namespace RenderingInterop
             node.ChildInserted += node_ChildInserted;
             node.ChildRemoved += node_ChildRemoved;
             ManageNativeObjectLifeTime = true;
+
+                // we must register this document and get an id for it
+            string nativeTypeName = node.Type.GetTag(NativeAnnotations.NativeName) as string;
+            uint typeId = 0;
+            if (nativeTypeName != null) {
+                typeId = GameEngine.GetObjectTypeId(nativeTypeName);
+            }
+            m_nativeDocId = GameEngine.CreateDocument(typeId);
         }
 
         void node_ChildInserted(object sender, ChildEventArgs e)
-        {                        
-            Insert(e.Parent, e.Child, e.ChildInfo, e.Index);
+        {
+            NativeObjectAdapter childObject = e.Child.As<NativeObjectAdapter>();
+            if (childObject != null)
+            {
+                childObject.OnAddToDocument(this);
+            }
         }
 
         void node_ChildRemoved(object sender, ChildEventArgs e)
-        {                        
-            Remove(e.Parent, e.Child, e.ChildInfo);
+        {
+            NativeObjectAdapter childObject = e.Child.As<NativeObjectAdapter>();
+            if (childObject != null)
+            {
+                childObject.OnRemoveFromDocument(this);
+            }
         }
 
         /// <summary>
@@ -37,65 +53,7 @@ namespace RenderingInterop
             get;
             set;
         }
-        public void Remove(DomNode parent, DomNode child, ChildInfo chInfo)
-        {
-            NativeObjectAdapter childObject = child.As<NativeObjectAdapter>();
-            NativeObjectAdapter parentObject = parent.As<NativeObjectAdapter>();
-
-            object listIdObj = chInfo.GetTag(NativeAnnotations.NativeElement);
-
-            if (childObject == null || parentObject == null || listIdObj == null)
-                return;
-
-            uint listId = (uint)listIdObj;
-            uint typeId = (uint)chInfo.DefiningType.GetTag(NativeAnnotations.NativeType);
-            ulong parentId = parentObject.InstanceId;
-            ulong childId = childObject.InstanceId;
-            GameEngine.ObjectRemoveChild(typeId, listId, parentId, childId);
-            if (ManageNativeObjectLifeTime)
-            {                
-                GameEngine.DestroyObject(childObject);
-            }
-        }
-
-        public void Insert(DomNode parent, DomNode child, ChildInfo chInfo, int index)
-        {
-            NativeObjectAdapter childObject = child.As<NativeObjectAdapter>();
-            NativeObjectAdapter parentObject = parent.As<NativeObjectAdapter>();
-
-            object listIdObj = chInfo.GetTag(NativeAnnotations.NativeElement);
-
-            if (childObject == null || parentObject == null || listIdObj == null)
-                return;
-
-            if (chInfo.IsList && index >= (parent.GetChildList(chInfo).Count - 1))
-                index = -1;
-
-            if (ManageNativeObjectLifeTime)
-            {
-                GameEngine.CreateObject(childObject);
-                childObject.UpdateNativeOjbect();
-            }
-            System.Diagnostics.Debug.Assert(childObject.InstanceId != 0);
-
-            uint listId = (uint)listIdObj;
-            uint typeId = (uint)chInfo.DefiningType.GetTag(NativeAnnotations.NativeType);
-            ulong parentId = parentObject.InstanceId;
-            ulong childId = childObject.InstanceId;
-
-            if (index >= 0)
-            {
-                GameEngine.ObjectInsertChild(typeId, listId, parentId, childId, index);
-            }
-            else
-            {
-                GameEngine.ObjectAddChild(typeId, listId, parentId, childId);
-            }
-
-            foreach (var node in child.Children)
-            {
-                Insert(child, node, node.ChildInfo, -1); // use -1 for index to indicate an append operation.
-            }
-        }    
+        public ulong NativeDocumentId { get { return m_nativeDocId; } }
+        private ulong m_nativeDocId;
     }
 }

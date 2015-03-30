@@ -19,7 +19,7 @@ namespace RenderingInterop
         {
             string typeName = typeof (RenderState).Name;
             m_typeId = GameEngine.GetObjectTypeId(typeName);
-            m_intanceId = GameEngine.CreateObject(m_typeId, IntPtr.Zero, 0);
+            m_intanceId = GameEngine.CreateObject(0, m_typeId, IntPtr.Zero, 0);
             m_renderFlagId = GameEngine.GetObjectPropertyId(m_typeId, "GlobalRenderFlags");
             m_wirecolorId = GameEngine.GetObjectPropertyId(m_typeId, "WireframeColor");
             m_selColorId = GameEngine.GetObjectPropertyId(m_typeId, "SelectionColor");
@@ -150,7 +150,7 @@ namespace RenderingInterop
         {
             if(m_intanceId != 0)
             {
-                GameEngine.DestroyObject(m_typeId, m_intanceId);
+                GameEngine.DestroyObject(0, m_intanceId, m_typeId);
                 m_typeId = 0;
                 m_renderFlagId = 0;
                 m_wirecolorId = 0;

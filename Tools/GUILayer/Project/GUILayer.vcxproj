@@ -78,6 +78,7 @@
     <ClCompile Include="..\DivergentAssetList.cpp" />
     <ClCompile Include="..\EngineDevice.cpp" />
     <ClCompile Include="..\EngineControl.cpp" />
+    <ClCompile Include="..\GUILayerUtil.cpp" />
     <ClCompile Include="..\LayerControl.cpp" />
     <ClCompile Include="..\MaterialVisualisation.cpp" />
     <ClCompile Include="..\TestControl.cpp" />

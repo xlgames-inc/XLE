@@ -98,50 +98,50 @@ namespace RenderingInterop
 
         private void Init()
         {
-            NativeObjectAdapter curLevel = GameEngine.GetGameLevel();
-            try
-            {
-                // create new document by creating a Dom node of the root type defined by the schema                 
-                DomNode rootNode = new DomNode(m_schemaLoader.GameType, m_schemaLoader.GameRootElement);
-                INameable nameable = rootNode.Cast<INameable>();
-                nameable.Name = "ThumbnailGenerator";
-
-                NativeObjectAdapter gameLevel = rootNode.Cast<NativeObjectAdapter>();
-                GameEngine.CreateObject(gameLevel);
-                GameEngine.SetGameLevel(gameLevel);
-                gameLevel.UpdateNativeOjbect();
-                NativeGameWorldAdapter gworld = rootNode.Cast<NativeGameWorldAdapter>();
-
-                m_game = rootNode.Cast<IGame>();
-                IGameObjectFolder rootFolder = m_game.RootGameObjectFolder;                
-                m_renderSurface = new TextureRenderSurface(96, 96);
-                m_renderState = new RenderState();
-                m_renderState.RenderFlag = GlobalRenderFlags.Solid | GlobalRenderFlags.Textured | GlobalRenderFlags.Lit | GlobalRenderFlags.Shadows;
-
-
-            }
-            finally
-            {
-                GameEngine.SetGameLevel(curLevel);
-            }
-
-
-            m_mainWindow.Closed += delegate
-            {
-                GameEngine.DestroyObject(m_game.Cast<NativeObjectAdapter>());
-                m_renderSurface.Dispose();
-                m_renderState.Dispose();
-            };
+            // NativeObjectAdapter curLevel = GameEngine.GetGameLevel();
+            // try
+            // {
+            //     // create new document by creating a Dom node of the root type defined by the schema                 
+            //     DomNode rootNode = new DomNode(m_schemaLoader.GameType, m_schemaLoader.GameRootElement);
+            //     INameable nameable = rootNode.Cast<INameable>();
+            //     nameable.Name = "ThumbnailGenerator";
+            // 
+            //     NativeObjectAdapter gameLevel = rootNode.Cast<NativeObjectAdapter>();
+            //     GameEngine.CreateObject(gameLevel);
+            //     GameEngine.SetGameLevel(gameLevel);
+            //     gameLevel.UpdateNativeOjbect();
+            //     NativeDocumentAdapter gworld = rootNode.Cast<NativeDocumentAdapter>();
+            // 
+            //     m_game = rootNode.Cast<IGame>();
+            //     IGameObjectFolder rootFolder = m_game.RootGameObjectFolder;                
+            //     m_renderSurface = new TextureRenderSurface(96, 96);
+            //     m_renderState = new RenderState();
+            //     m_renderState.RenderFlag = GlobalRenderFlags.Solid | GlobalRenderFlags.Textured | GlobalRenderFlags.Lit | GlobalRenderFlags.Shadows;
+            // 
+            // 
+            // }
+            // finally
+            // {
+            //     GameEngine.SetGameLevel(curLevel);
+            // }
+            // 
+            // 
+            // m_mainWindow.Closed += delegate
+            // {
+            //     GameEngine.DestroyObject(m_game.Cast<NativeObjectAdapter>());
+            //     m_renderSurface.Dispose();
+            //     m_renderState.Dispose();
+            // };
 
         }
         
         private SynchronizationContext m_syncContext;
 
-        [Import(AllowDefault = false)]
-        private ISchemaLoader m_schemaLoader = null;
-
-        [Import(AllowDefault = false)]
-        private IMainWindow m_mainWindow = null;
+        // [Import(AllowDefault = false)]
+        // private ISchemaLoader m_schemaLoader = null;
+        // 
+        // [Import(AllowDefault = false)]
+        // private IMainWindow m_mainWindow = null;
 
         // [Import(AllowDefault = false)]
         // private IResourceService m_resourceService = null;
@@ -154,7 +154,7 @@ namespace RenderingInterop
 
         private IGame m_game;        
         private Camera m_cam = new Camera();
-        private TextureRenderSurface m_renderSurface;
-        private RenderState m_renderState;
+        // private TextureRenderSurface m_renderSurface;
+        // private RenderState m_renderState;
     }
 }

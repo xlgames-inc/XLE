@@ -133,7 +133,7 @@ namespace RenderingInterop
         public static void Clear()
         {
             s_idToDomNode.Clear();
-            _gameLevel = 0;
+            // _gameLevel = 0;
             // NativeClear();
         }
 
@@ -145,7 +145,10 @@ namespace RenderingInterop
         {
             while (s_idToDomNode.Count > 0)
             {
-                DestroyObject(s_idToDomNode.Values.First());
+                DestroyObject(
+                    s_idToDomNode.Keys.First().First,
+                    s_idToDomNode.Keys.First().Second, 
+                    s_idToDomNode.Values.First().TypeId);
             }
             s_idToDomNode.Clear();
 
@@ -187,19 +190,19 @@ namespace RenderingInterop
 
         #region update and rendering
 
-        private static ulong _gameLevel;
-        public static void SetGameLevel(NativeObjectAdapter game) 
-        { 
-            _gameLevel = game != null ? game.InstanceId : 0;
-        }
-
-        public static NativeObjectAdapter GetGameLevel()            
-        {
-            if (_gameLevel != 0)
-                return GetAdapterFromId(_gameLevel);
-            else
-                return null;
-        }
+        // private static ulong _gameLevel;
+        // public static void SetGameLevel(NativeObjectAdapter game) 
+        // { 
+        //     _gameLevel = game != null ? game.InstanceId : 0;
+        // }
+        // 
+        // public static NativeObjectAdapter GetGameLevel()            
+        // {
+        //     if (_gameLevel != 0)
+        //         return GetAdapterFromId(0, _gameLevel);
+        //     else
+        //         return null;
+        // }
 
         // public static void SetGameLevel(NativeObjectAdapter game)
         // {
@@ -276,89 +279,77 @@ namespace RenderingInterop
             return propId;
         }
 
-        public static ulong CreateObject(uint typeId, IntPtr data, int size)
+        public static ulong CreateObject(ulong documentId, uint typeId, IntPtr data, int size)
         {
-            ulong instanceId = NativeCreateObject(typeId, data, size);
-            return instanceId;
+            return NativeCreateObject(documentId, 0, typeId, data, size);
         }
 
-        public static ulong CreateObject(NativeObjectAdapter gob)
+        public static ulong CreateObject(ulong documentId, ulong existingId, uint typeId, IntPtr data, int size)
         {
-            ulong instanceId = CreateObject(gob.TypeId, IntPtr.Zero, 0);
-            if (instanceId != 0)
-            {
-                s_idToDomNode.Add(instanceId, gob);
-                gob.SetNativeHandle(instanceId);
-            }
-            return instanceId;
+            return NativeCreateObject(documentId, existingId, typeId, data, size);
         }
 
-        public static void DestroyObject(uint typeId, ulong instanceId)
+        public static void DestroyObject(ulong documentId, ulong instanceId, uint typeId)
         {
-            NativeDestroyObject(typeId, instanceId);
+            NativeDestroyObject(documentId, instanceId, typeId);
         }
 
-        public static void DestroyObject(NativeObjectAdapter gob)
+        public static void RegisterGob(ulong documentId, ulong instanceId, NativeObjectAdapter gob)
         {
-            if (gob.InstanceId == 0)
-                return;
-            NativeDestroyObject(gob.TypeId, gob.InstanceId);
-            ResetIds(gob);
-
+            s_idToDomNode.Add(new Pair<ulong, ulong>(documentId, instanceId), gob);
         }
 
-        private static void ResetIds(NativeObjectAdapter gob)
+        public static void DeregisterGob(ulong documentId, ulong instanceId, NativeObjectAdapter gob)
         {
-            s_idToDomNode.Remove(gob.InstanceId);
-            gob.SetNativeHandle(0);
-            foreach (DomNode child in gob.DomNode.Children)
-            {
-                NativeObjectAdapter childObject = child.As<NativeObjectAdapter>();
-                if (childObject != null)
-                    ResetIds(childObject);
-            }
+            s_idToDomNode.Remove(new Pair<ulong, ulong>(documentId, instanceId));
         }
 
-        public static void ObjectAddChild(uint typeId, uint listId, ulong parentId, ulong childId)
+        private static ulong s_currentDocumentId = 1;
+        public static ulong CreateDocument(uint typeId)
         {
-            // a negative index means to 'append' the child to the parent list.
-            NativeObjectAddChild(typeId, listId, parentId, childId, -1);
+            return s_currentDocumentId++; 
         }
 
-        public static void ObjectInsertChild(uint typeId, uint listId, ulong parentId, ulong childId, int index)
-        {
-            // a negative index means to 'append' the child to the parent list.
-            NativeObjectAddChild(typeId, listId, parentId, childId, index);
-        }
-
-        public static void ObjectInsertChild(NativeObjectAdapter parent, NativeObjectAdapter child, uint listId,int index)
-        {
-            uint typeId = parent != null ? parent.TypeId : 0;
-            ulong parentId = parent != null ? parent.InstanceId : 0;
-            ulong childId = child != null ? child.InstanceId : 0;
-            ObjectInsertChild(typeId, listId, parentId, childId, index);
-        }
-
-        public static void ObjectAddChild(NativeObjectAdapter parent, NativeObjectAdapter child, uint listId)
-        {
-            uint typeId = parent != null ? parent.TypeId : 0;
-            ulong parentId = parent != null ? parent.InstanceId : 0;
-            ulong childId = child != null ? child.InstanceId : 0;
-            ObjectAddChild(typeId, listId, parentId, childId);
-        }
-
-        public static void ObjectRemoveChild(uint typeId, uint listId, ulong parentId, ulong childId)
-        {
-            NativeObjectRemoveChild(typeId, listId, parentId, childId);
-        }
-
-        public static void ObjectRemoveChild(NativeObjectAdapter parent, NativeObjectAdapter child, uint listId)
-        {
-            uint typeId = parent != null ? parent.TypeId : 0;
-            ulong parentId = parent != null ? parent.InstanceId : 0;
-            ulong childId = child != null ? child.InstanceId : 0;
-            ObjectRemoveChild(typeId, listId, parentId, childId);
-        }
+        // public static void ObjectAddChild(uint typeId, uint listId, ulong parentId, ulong childId)
+        // {
+        //     // a negative index means to 'append' the child to the parent list.
+        //     NativeObjectAddChild(typeId, listId, parentId, childId, -1);
+        // }
+        // 
+        // public static void ObjectInsertChild(uint typeId, uint listId, ulong parentId, ulong childId, int index)
+        // {
+        //     // a negative index means to 'append' the child to the parent list.
+        //     NativeObjectAddChild(typeId, listId, parentId, childId, index);
+        // }
+        // 
+        // public static void ObjectInsertChild(NativeObjectAdapter parent, NativeObjectAdapter child, uint listId,int index)
+        // {
+        //     uint typeId = parent != null ? parent.TypeId : 0;
+        //     ulong parentId = parent != null ? parent.InstanceId : 0;
+        //     ulong childId = child != null ? child.InstanceId : 0;
+        //     ObjectInsertChild(typeId, listId, parentId, childId, index);
+        // }
+        // 
+        // public static void ObjectAddChild(NativeObjectAdapter parent, NativeObjectAdapter child, uint listId)
+        // {
+        //     uint typeId = parent != null ? parent.TypeId : 0;
+        //     ulong parentId = parent != null ? parent.InstanceId : 0;
+        //     ulong childId = child != null ? child.InstanceId : 0;
+        //     ObjectAddChild(typeId, listId, parentId, childId);
+        // }
+        // 
+        // public static void ObjectRemoveChild(uint typeId, uint listId, ulong parentId, ulong childId)
+        // {
+        //     NativeObjectRemoveChild(typeId, listId, parentId, childId);
+        // }
+        // 
+        // public static void ObjectRemoveChild(NativeObjectAdapter parent, NativeObjectAdapter child, uint listId)
+        // {
+        //     uint typeId = parent != null ? parent.TypeId : 0;
+        //     ulong parentId = parent != null ? parent.InstanceId : 0;
+        //     ulong childId = child != null ? child.InstanceId : 0;
+        //     ObjectRemoveChild(typeId, listId, parentId, childId);
+        // }
 
         public static void InvokeMemberFn(ulong instanceId, string fn, IntPtr arg, out IntPtr retVal)
         {
@@ -434,9 +425,9 @@ namespace RenderingInterop
             NativeGetObjectProperty(typeId,propId,instanceId, out data,out size);
         }
 
-        public static NativeObjectAdapter GetAdapterFromId(ulong instanceId)
+        public static NativeObjectAdapter GetAdapterFromId(ulong documentId, ulong instanceId)
         {
-            return s_idToDomNode[instanceId];
+            return s_idToDomNode[new Pair<ulong, ulong>(documentId, instanceId)];
         }
 
         #endregion
@@ -661,11 +652,12 @@ namespace RenderingInterop
         private static uint NativeGetObjectPropertyId(uint id, string propertyName) { return 0; }
         private static uint NativeGetObjectChildListId(uint id, string listName) { return 0; }
         private static ulong s_currentInstanceId = 1;
-        private static ulong NativeCreateObject(uint typeId, IntPtr data, int size) 
+        private static ulong NativeCreateObject(ulong documentId, ulong existingId, uint typeId, IntPtr data, int size) 
         {
+            if (existingId!=0) return existingId;
             return s_currentInstanceId++; 
         }
-        private static void NativeDestroyObject(uint typeId, ulong instanceId) {}
+        private static void NativeDestroyObject(ulong documentId, ulong instanceId, uint typeId) {}
         private static void NativeInvokeMemberFn(ulong instanceId, string fn, IntPtr arg, out IntPtr retVal) { retVal = IntPtr.Zero; }
         private static void NativeSetObjectProperty(uint typeId, uint propId, ulong instanceId, IntPtr data, int size) { }
 
@@ -681,8 +673,8 @@ namespace RenderingInterop
             data = s_savedBoundingBoxHandle.AddrOfPinnedObject();
             size = sizeof(float) * 6;
         }
-        private static void NativeObjectAddChild(uint typeid, uint listId, ulong parentId, ulong childId, int index) { }
-        private static void NativeObjectRemoveChild(uint typeid, uint listId, ulong parentId, ulong childId) { }
+        // private static void NativeObjectAddChild(uint typeid, uint listId, ulong parentId, ulong childId, int index) { }
+        // private static void NativeObjectRemoveChild(uint typeid, uint listId, ulong parentId, ulong childId) { }
 
         private static ulong NativeCreateVertexBuffer(VertexFormat vf, void* buffer, uint vertexCount) 
         {
@@ -867,7 +859,7 @@ namespace RenderingInterop
         //    return (FntDlg)dlg;
         //}
 
-        private static Dictionary<ulong, NativeObjectAdapter> s_idToDomNode = new Dictionary<ulong, NativeObjectAdapter>();
+        private static Dictionary<Pair<ulong, ulong>, NativeObjectAdapter> s_idToDomNode = new Dictionary<Pair<ulong, ulong>, NativeObjectAdapter>();
         // private static class NativeMethods
         // {
         //     [DllImport("kernel32", CharSet = CharSet.Auto, SetLastError = true)]

@@ -21,9 +21,60 @@ namespace RenderingInterop
             DomNode node = DomNode;           
             node.AttributeChanged += node_AttributeChanged;            
             TypeId = (uint)DomNode.Type.GetTag(NativeAnnotations.NativeType);
-            
+
+            System.Diagnostics.Debug.Assert(m_instanceId==0);
+
+            // <<XLE    
+            //      moveing child initialisation to here (from 
+            //      NativeGameEditor::m_gameDocumentRegistry_DocumentAdded)
+            //      We need to initialise the children of
+            //      non-game documents (but the previous path only worked for game documents)
+            //
+            //      Maybe neither is ideal. We should do this after a "resolve" event
+            //      for the document. 
+            CreateNativeObject();
+            // XLE>>
         }
-       
+
+        public void OnRemoveFromDocument(NativeDocumentAdapter doc)
+        {
+            OnRemoveFromDocument_NonHier(doc);
+
+                // note -- use "Subtree" & not "Children" because this
+                //  will allow us to also touch NativeObjectAdapters
+                //  that are children of non-native objects
+                //  eg:
+                //      <<native object>>
+                //          <<non-native object>
+                //              <<native object>>
+            foreach (DomNode child in DomNode.Subtree)
+            {
+                NativeObjectAdapter childObject = child.As<NativeObjectAdapter>();
+                if (childObject != null)
+                    childObject.OnRemoveFromDocument_NonHier(doc);
+            }
+        }
+
+        private void OnRemoveFromDocument_NonHier(NativeDocumentAdapter doc)
+        {
+            if (DomNode == null || m_instanceId == 0) return;
+
+            ulong documentId = (doc != null) ? doc.NativeDocumentId : 0;
+            System.Diagnostics.Debug.Assert(documentId == m_documentId);
+
+            GameEngine.DestroyObject(m_documentId, m_instanceId, TypeId);
+            GameEngine.DeregisterGob(m_documentId, m_instanceId, this);
+            ReleaseNativeHandle();
+        }
+
+        public void OnAddToDocument(NativeDocumentAdapter doc)
+        {
+            var node = DomNode;
+            var docTest = (node != null) ? node.GetRoot().As<NativeDocumentAdapter>() : null;
+            System.Diagnostics.Debug.Assert(doc == docTest);
+            CreateNativeObject();
+        }
+        
         void node_AttributeChanged(object sender, AttributeEventArgs e)
         {
             // process events only for the DomNode attached to this adapter.
@@ -31,7 +82,6 @@ namespace RenderingInterop
                 return;
             UpdateNativeProperty(e.AttributeInfo);
         }
-
         
         /// <summary>
         /// Updates all the shared properties  
@@ -46,6 +96,53 @@ namespace RenderingInterop
             }
         }
 
+        private void CreateNativeObject()
+        {
+            var node = DomNode;
+            if (DomNode == null || m_instanceId != 0) return;
+
+            var doc = node.GetRoot().As<NativeDocumentAdapter>();
+            if (doc != null && doc.ManageNativeObjectLifeTime)
+            {
+                // The object might have a pre-assigned instance id.
+                // If so, we should attempt to use that same id.
+                // This is important if we want the id to persist between sessions
+                //      --  For example, we must reference placement objects through
+                //          a GUID value that remains constant. We don't want to create
+                //          new temporary ids for placements every time we create them,
+                //          when the GUID value is more reliable
+
+                ulong existingId = 0;
+                var idField = DomNode.Type.GetAttributeInfo("ID");
+                if (idField != null)
+                {
+                    var id = DomNode.GetAttribute(idField);
+                    if (id is UInt64)
+                    {
+                        existingId = (UInt64)id;
+                    }
+                    else
+                    {
+                        string stringId = id as string;
+                        if (stringId != null && stringId.Length > 0)
+                        {
+                            if (!UInt64.TryParse(stringId, out existingId))
+                            {
+                                existingId = GUILayer.Util.HashID(stringId);
+                            }
+                        }
+                    }
+                }
+
+                m_instanceId = GameEngine.CreateObject(doc.NativeDocumentId, existingId, TypeId, IntPtr.Zero, 0);
+
+                if (m_instanceId != 0)
+                {
+                    m_documentId = doc.NativeDocumentId;
+                    GameEngine.RegisterGob(m_instanceId, m_documentId, this);
+                }
+            }
+        }
       
         unsafe private void UpdateNativeProperty(AttributeInfo attribInfo)
         {
@@ -213,12 +310,10 @@ namespace RenderingInterop
 
         /// <summary>
         /// this method is exclusively used by GameEngine class.                
-        public void SetNativeHandle(ulong instanceId)
-        {            
-            m_instanceId = instanceId;           
-        }
+        public void ReleaseNativeHandle() { m_instanceId = 0; m_documentId = 0; }
 
-        private ulong m_instanceId;
+        private ulong m_instanceId = 0;
+        private ulong m_documentId = 0;
         
         #region INativeObject Members
         public void InvokeFunction(string fn, IntPtr arg, out IntPtr retval)

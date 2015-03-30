@@ -37,6 +37,7 @@ namespace RenderingInterop
     [StructLayout(LayoutKind.Sequential)]
     public struct HitRecord
     {
+        public ulong documentId;
         public ulong instanceId;    // instance id of the game object.
         public uint index;          // index of sub-object (if any )
         public float distance;      // distance from camera ( for sorting )
