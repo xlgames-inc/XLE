@@ -195,7 +195,8 @@ namespace GUILayer
         overlaySet.AddSystem(std::move(visLayer));
         overlaySet.AddSystem(
             std::make_shared<PlatformRig::VisualisationOverlay>(
-                settings->GetUnderlying(), s_visCache,  mouseOver ? mouseOver->GetUnderlying() : nullptr));
+                settings->GetUnderlying(), s_visCache, 
+                mouseOver ? mouseOver->GetUnderlying() : nullptr));
 
         AddDefaultCameraHandler(settings->Camera);
 

@@ -91,9 +91,9 @@ namespace RenderingInterop
 
 
         private static GameEngine s_inist;
-        private static GUILayer.EngineDevice _engineDevice;
-        private static GUILayer.SavedRenderResources _savedRenderResources;
-        private static GUILayer.EditorSceneManager _underlyingScene;
+        private static GUILayer.EngineDevice s_engineDevice;
+        private static GUILayer.SavedRenderResources s_savedRenderResources;
+        private static GUILayer.EditorSceneManager s_underlyingScene;
 
         /// <summary>
         /// init game engine 
@@ -105,10 +105,10 @@ namespace RenderingInterop
             try
             {
                 GUILayer.EngineDevice.SetDefaultWorkingDirectory();
-                _engineDevice = new GUILayer.EngineDevice();
-                _engineDevice.AttachDefaultCompilers();
-                _savedRenderResources = new GUILayer.SavedRenderResources(_engineDevice);
-                _underlyingScene = new GUILayer.EditorSceneManager();
+                s_engineDevice = new GUILayer.EngineDevice();
+                s_engineDevice.AttachDefaultCompilers();
+                s_savedRenderResources = new GUILayer.SavedRenderResources(s_engineDevice);
+                s_underlyingScene = new GUILayer.EditorSceneManager();
                 CriticalError = "";
                 s_inist.PopulateEngineInfo(
                     @"<EngineInfo>
@@ -127,6 +127,8 @@ namespace RenderingInterop
 
         public static bool IsInError { get { return CriticalError.Length > 0; } }
         public static string CriticalError { get; private set; }
+
+        public static GUILayer.EditorSceneManager GetEditorSceneManager() { return s_underlyingScene; }
 
         /// <summary>
         /// delete all the game object in native side.
@@ -154,8 +156,8 @@ namespace RenderingInterop
             }
             s_idToDomNode.Clear();
 
-            _engineDevice.Dispose();
-            _engineDevice = null;
+            s_engineDevice.Dispose();
+            s_engineDevice = null;
             CriticalError = s_notInitialized;
         }
 
@@ -259,6 +261,17 @@ namespace RenderingInterop
             return id;
         }
 
+        public static uint GetDocumentTypeId(string className)
+        {
+            if (IsInError) return 0;
+            uint id = NativeGetDocumentTypeId(className);
+            if (id == 0)
+            {
+                System.Diagnostics.Debug.WriteLine(className + " document type is not defined in runtime");
+            }
+            return id;
+        }
+
         public static uint GetObjectPropertyId(uint typeId, string propertyName)
         {
             if (IsInError) return 0;
@@ -310,7 +323,7 @@ namespace RenderingInterop
         public static ulong CreateDocument(uint typeId)
         {
             // return s_currentDocumentId++; 
-            return _underlyingScene.CreateDocument(typeId, "");
+            return s_underlyingScene.CreateDocument(typeId, "");
         }
 
         // public static void ObjectAddChild(uint typeId, uint listId, ulong parentId, ulong childId)
@@ -651,31 +664,32 @@ namespace RenderingInterop
 
         #region private members
 
-        private static uint NativeGetObjectTypeId(string className) { return _underlyingScene.GetTypeId(className); }
-        private static uint NativeGetObjectPropertyId(uint id, string propertyName) { return _underlyingScene.GetPropertyId(id, propertyName); }
-        private static uint NativeGetObjectChildListId(uint id, string listName) { return _underlyingScene.GetChildListId(id, listName); }
+        private static uint NativeGetObjectTypeId(string className) { return s_underlyingScene.GetTypeId(className); }
+        private static uint NativeGetDocumentTypeId(string className) { return s_underlyingScene.GetDocumentTypeId(className); }
+        private static uint NativeGetObjectPropertyId(uint id, string propertyName) { return s_underlyingScene.GetPropertyId(id, propertyName); }
+        private static uint NativeGetObjectChildListId(uint id, string listName) { return s_underlyingScene.GetChildListId(id, listName); }
         // private static ulong s_currentInstanceId = 1;
         private static ulong NativeCreateObject(ulong documentId, ulong existingId, uint typeId, IntPtr data, int size) 
         {
             // if (existingId!=0) return existingId;
             // return s_currentInstanceId++;
             if (existingId==0)
-                existingId = _underlyingScene.AssignObjectId(documentId, typeId);
+                existingId = s_underlyingScene.AssignObjectId(documentId, typeId);
 
-            if (_underlyingScene.CreateObject(documentId, existingId, typeId, ""))
+            if (s_underlyingScene.CreateObject(documentId, existingId, typeId, ""))
                 return existingId;
             return 0;
         }
         private static void NativeDestroyObject(ulong documentId, ulong instanceId, uint typeId) 
         {
-            _underlyingScene.DeleteObject(documentId, instanceId, typeId);
+            s_underlyingScene.DeleteObject(documentId, instanceId, typeId);
         }
         private static void NativeInvokeMemberFn(ulong instanceId, string fn, IntPtr arg, out IntPtr retVal) { retVal = IntPtr.Zero; }
         private static void NativeSetObjectProperty(uint typeId, uint propId, ulong documentId, ulong instanceId, IntPtr data, int size) 
         {
             unsafe
             {
-                _underlyingScene.SetProperty(documentId, instanceId, typeId, propId, data.ToPointer());
+                s_underlyingScene.SetProperty(documentId, instanceId, typeId, propId, data.ToPointer());
             }
         }
 
@@ -696,17 +710,17 @@ namespace RenderingInterop
 
         private static ulong NativeCreateVertexBuffer(VertexFormat vf, void* buffer, uint vertexCount) 
         {
-            return _savedRenderResources.CreateVertexBuffer(
+            return s_savedRenderResources.CreateVertexBuffer(
                 buffer,
                 vertexCount * vf.GetSize());
         }
         private static ulong NativeCreateIndexBuffer(uint* buffer, uint indexCount) 
         {
-            return _savedRenderResources.CreateIndexBuffer(buffer, 2*indexCount);
+            return s_savedRenderResources.CreateIndexBuffer(buffer, 2*indexCount);
         }
         private static void NativeDeleteBuffer(ulong buffer) 
         {
-            _savedRenderResources.DeleteBuffer(buffer);
+            s_savedRenderResources.DeleteBuffer(buffer);
         }
         private static void NativeSetRendererFlag(BasicRendererFlags renderFlag) { }
         private static void NativeDrawPrimitive(PrimitiveType pt,

@@ -14,7 +14,7 @@ namespace GUILayer { namespace EditorDynamicInterface
     DocumentId RegisteredTypes::CreateDocument(EditorScene& scene, DocumentTypeId docType, const char initializer[]) const
     {
         if (docType > 0 && (docType-1) < _knownDocumentTypes.size()) {
-            auto& reg = _knownDocumentTypes[docType];
+            auto& reg = _knownDocumentTypes[docType-1];
             return reg._owner->CreateDocument(scene, reg._mappedTypeId, initializer);
         }
         return 0;

@@ -210,7 +210,7 @@ namespace PlatformRig
         return result;
     }
 
-    static RenderCore::Techniques::CameraDesc AsCameraDesc(const VisCameraSettings& camSettings)
+    RenderCore::Techniques::CameraDesc AsCameraDesc(const VisCameraSettings& camSettings)
     {
         RenderCore::Techniques::CameraDesc result;
         result._cameraToWorld = MakeCameraToWorld(

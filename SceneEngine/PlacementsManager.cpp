@@ -1689,7 +1689,7 @@ namespace SceneEngine
         newCell._filenameHash = Hash64(newCell._filename);
         newCell._cellToWorld = AsFloat3x4(Expand(mins, 0.f));
         newCell._aabbMin = Expand(mins, -10000.f);
-        newCell._aabbMax = Expand(maxs, -10000.f);
+        newCell._aabbMax = Expand(maxs,  10000.f);
         manager._pimpl->_cells.push_back(newCell);
         RegisterCell(newCell, mins, maxs);
         return newCell._filenameHash;

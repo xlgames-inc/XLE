@@ -348,7 +348,7 @@
   <xs:complexType name="placementsDocumentType">
     <xs:annotation>
       <xs:appinfo>
-        <LeGe.NativeType nativeName="PlacementsDocument"/>
+        <LeGe.NativeDocumentType nativeName="PlacementsDocument"/>
       </xs:appinfo>
     </xs:annotation>
   

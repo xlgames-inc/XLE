@@ -47,11 +47,6 @@ namespace RenderingInterop
             DomNodeType gridType = m_schemaLoader.TypeCollection.GetNodeType(ns, "gridType");            
             gridType.Define(new ExtensionInfo<GridRenderer>());
 
-            // <<XLE        (other objects must behave as documents, also)
-            DomNodeType placementsDocumentType = m_schemaLoader.TypeCollection.GetNodeType(ns, "placementsDocumentType");
-            placementsDocumentType.Define(new ExtensionInfo<NativeDocumentAdapter>());
-            // XLE>>
-            
             // register NativeGameWorldAdapter on game type.
             m_schemaLoader.GameType.Define(new ExtensionInfo<NativeDocumentAdapter>());
 
@@ -75,6 +70,13 @@ namespace RenderingInterop
                         domType.SetTag(NativeAnnotations.NativeType, GameEngine.GetObjectTypeId(typeName));                        
                         if (domType.IsAbstract == false)
                             domType.Define(new ExtensionInfo<NativeObjectAdapter>());                        
+                    }
+                    else if (elm.LocalName == NativeAnnotations.NativeDocumentType)
+                    {
+                        string typeName = elm.GetAttribute(NativeAnnotations.NativeName);
+                        domType.SetTag(NativeAnnotations.NativeDocumentType, GameEngine.GetDocumentTypeId(typeName));
+                        if (domType.IsAbstract == false)
+                            domType.Define(new ExtensionInfo<NativeDocumentAdapter>());
                     }
                     else if (elm.LocalName == NativeAnnotations.NativeProperty)
                     {

@@ -109,6 +109,8 @@ namespace RenderCore { namespace Assets
         const ::Assets::ResChar* initializers[], unsigned initializerCount,
         const ::Assets::IntermediateResources::Store& destinationStore)
     {
+        if (!initializerCount || !initializers[0][0]) return nullptr;
+
         char outputName[MaxPath];
         destinationStore.MakeIntermediateName(outputName, dimof(outputName), initializers[0]);
         XlCatString(outputName, dimof(outputName), "-resmat");

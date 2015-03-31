@@ -26,6 +26,8 @@ namespace XLELayer
 {
     static Float3 AsFloat3(Vec3F^ input) { return Float3(input->X, input->Y, input->Z); }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
     private ref class ManipulatorOverlay : public GUILayer::IOverlaySystem
     {
     public:
@@ -66,19 +68,18 @@ namespace XLELayer
         LevelEditorCore::ViewControl^ _viewControl;
     };
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
     public ref class NativeDesignControl : public DesignViewControl
     {
     public:
-        NativeDesignControl(LevelEditorCore::DesignView^ designView)
+        NativeDesignControl(LevelEditorCore::DesignView^ designView, GUILayer::EditorSceneManager^ sceneManager)
         : DesignViewControl(designView)
         {
             _layerControl = gcnew GUILayer::LayerControl(this);
-            auto visSettings = gcnew GUILayer::ModelVisSettings();
-            visSettings->ModelName = R"--(E:\XLE\Working\Game\Model\Nature\FirTree\fir.dae)--";
-            _cameraSettings = visSettings->Camera;
-            _layerControl->SetupDefaultVis(visSettings, gcnew GUILayer::VisMouseOver());
-            _layerControl->AddSystem(gcnew ManipulatorOverlay(designView, this));
-
+            _cameraSettings = gcnew GUILayer::VisCameraSettings();
+            _layerControl->AddSystem(sceneManager->CreateOverlaySystem(_cameraSettings));
+            
             if (s_marqueePen == nullptr) {
                 using namespace System::Drawing;
                 s_marqueePen = gcnew Pen(Color::FromArgb(30, 30, 30), 2);

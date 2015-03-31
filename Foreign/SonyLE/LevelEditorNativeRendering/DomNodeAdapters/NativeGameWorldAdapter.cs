@@ -17,11 +17,8 @@ namespace RenderingInterop
             ManageNativeObjectLifeTime = true;
 
                 // we must register this document and get an id for it
-            string nativeTypeName = node.Type.GetTag(NativeAnnotations.NativeName) as string;
-            uint typeId = 0;
-            if (nativeTypeName != null) {
-                typeId = GameEngine.GetObjectTypeId(nativeTypeName);
-            }
+            var tag = node.Type.GetTag(NativeAnnotations.NativeDocumentType);
+            var typeId = (tag!=null) ? (uint)tag : 0;
             m_nativeDocId = GameEngine.CreateDocument(typeId);
         }
 

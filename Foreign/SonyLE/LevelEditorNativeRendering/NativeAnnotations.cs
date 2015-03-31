@@ -12,6 +12,7 @@ namespace RenderingInterop
     public static class NativeAnnotations
     {                
         public const string NativeType = "LeGe.NativeType";
+        public const string NativeDocumentType = "LeGe.NativeDocumentType";
         public const string NativeName = "nativeName";
         public const string Name = "name";
         public const string NativeProperty = "LeGe.NativeProperty";

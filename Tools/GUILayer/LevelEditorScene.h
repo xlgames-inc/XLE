@@ -7,10 +7,12 @@
 #pragma once
 #include <memory>
 
-namespace SceneEngine { class PlacementsManager; class PlacementsEditor; }
+namespace SceneEngine { class PlacementsManager; class PlacementsEditor; class ISceneParser; }
 
 namespace GUILayer
 {
+    ref class VisCameraSettings;
+
     class EditorScene
     {
     public:
@@ -19,5 +21,6 @@ namespace GUILayer
 
         EditorScene();
     };
-}
 
+    namespace EditorDynamicInterface { class RegisteredTypes; }
+}

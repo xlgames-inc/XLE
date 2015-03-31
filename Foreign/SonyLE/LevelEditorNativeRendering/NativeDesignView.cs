@@ -25,10 +25,10 @@ namespace RenderingInterop
     {        
         public NativeDesignView()
         {                       
-            QuadView.TopLeft = new NativeDesignControl(this) { ViewType = ViewTypes.Perspective };
-            QuadView.TopRight = new NativeDesignControl(this) { ViewType = ViewTypes.Right };
-            QuadView.BottomLeft = new NativeDesignControl(this) { ViewType = ViewTypes.Top };
-            QuadView.BottomRight = new NativeDesignControl(this) { ViewType = ViewTypes.Front };
+            QuadView.TopLeft = new XLELayer.NativeDesignControl(this, GameEngine.GetEditorSceneManager()) { ViewType = ViewTypes.Perspective };
+            QuadView.TopRight = new XLELayer.NativeDesignControl(this, GameEngine.GetEditorSceneManager()) { ViewType = ViewTypes.Right };
+            QuadView.BottomLeft = new XLELayer.NativeDesignControl(this, GameEngine.GetEditorSceneManager()) { ViewType = ViewTypes.Top };
+            QuadView.BottomRight = new XLELayer.NativeDesignControl(this, GameEngine.GetEditorSceneManager()) { ViewType = ViewTypes.Front };
 
             // set control names.            
             QuadView.TopLeft.Name = "TopLeft";

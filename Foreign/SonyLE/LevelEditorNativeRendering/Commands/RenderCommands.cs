@@ -172,7 +172,7 @@ namespace RenderingInterop
             if (!(commandTag is Command))
                 return false;
 
-            NativeDesignControl activeControl = (NativeDesignControl)m_designView.ActiveView;
+            // NativeDesignControl activeControl = (NativeDesignControl)m_designView.ActiveView;
             RenderState rs = new RenderState(); // activeControl.RenderState;
 
             var context = m_propertyGrid.PropertyGridView.EditingContext as RenderStateEditingContext;
@@ -210,7 +210,7 @@ namespace RenderingInterop
         {
             if (commandTag is Command)
             {
-                NativeDesignControl control = (NativeDesignControl)m_designView.ActiveView;
+                // NativeDesignControl control = (NativeDesignControl)m_designView.ActiveView;
                 RenderState rs = new RenderState(); // control.RenderState;
                 
                 switch ((Command)commandTag)
@@ -277,7 +277,7 @@ namespace RenderingInterop
                   //      m_designView.RealTime = !m_designView.RealTime;
                   //      break;
                 }
-                control.Invalidate();                
+                m_designView.ActiveView.Invalidate();                
             }
         }
 
@@ -289,7 +289,7 @@ namespace RenderingInterop
         {
             if (commandTag is Command)
             {
-                NativeDesignControl control = (NativeDesignControl)m_designView.ActiveView;
+                // NativeDesignControl control = (NativeDesignControl)m_designView.ActiveView;
                 GlobalRenderFlags flags = (new RenderState()).RenderFlag; // control.RenderState.RenderFlag;
                 switch ((Command)commandTag)
                 {

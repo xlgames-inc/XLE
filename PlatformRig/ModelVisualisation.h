@@ -21,6 +21,7 @@ namespace RenderCore { namespace Assets
 namespace RenderCore { namespace Techniques 
 {
     class TechniqueContext;
+    class CameraDesc;
 }}
 
 namespace SceneEngine { class ISceneParser; }
@@ -78,6 +79,8 @@ namespace PlatformRig
 
         VisCameraSettings();
     };
+
+    RenderCore::Techniques::CameraDesc AsCameraDesc(const VisCameraSettings& camSettings);
 
     /// <summary>Settings related to the visualisation of a model</summary>
     /// This is a "model" part of a MVC pattern related to the way a model
