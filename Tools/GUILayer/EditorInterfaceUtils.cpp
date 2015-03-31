@@ -8,7 +8,6 @@
 #include "EngineDevice.h"
 #include "NativeEngineDevice.h"
 #include "LayerControl.h"
-#include "EngineControlInternal.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../SceneEngine/IntersectionTest.h"
 

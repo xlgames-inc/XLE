@@ -35,7 +35,6 @@
     <ClInclude Include="..\WindowRigInternal.h" />
     <ClInclude Include="..\LayerControl.h" />
     <ClInclude Include="..\TestControl.h" />
-    <ClInclude Include="..\EngineControlInternal.h" />
     <ClInclude Include="..\UITypesBinding.h" />
     <ClInclude Include="..\MaterialVisualisation.h" />
     <ClInclude Include="..\IOverlaySystem.h" />

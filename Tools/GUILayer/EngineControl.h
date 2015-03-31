@@ -8,6 +8,9 @@
 
 #include "CLIXAutoPtr.h"
 #include "../../RenderCore/IThreadContext_Forward.h"
+#include <memory>
+
+namespace PlatformRig { class InputTranslator; }
 
 using namespace System::Windows::Forms;
 using namespace System::Drawing;
@@ -27,6 +30,7 @@ namespace GUILayer
 
         EngineControl(Control^ control);
 		~EngineControl();
+        !EngineControl();
 
     protected:
         void Evnt_KeyDown(Object^, KeyEventArgs^ e);
@@ -44,6 +48,15 @@ namespace GUILayer
         clix::auto_ptr<EngineControlPimpl> _pimpl;
         Control^ _control;
 	};
+
+    class EngineControlPimpl
+    {
+    public:
+        std::unique_ptr<IWindowRig> _windowRig;
+        std::unique_ptr<PlatformRig::InputTranslator> _inputTranslator;
+
+        ~EngineControlPimpl();
+    };
 }
 
 

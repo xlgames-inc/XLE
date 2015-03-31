@@ -155,8 +155,8 @@ namespace GUILayer
             new std::shared_ptr<RenderCore::Metal::DeviceContext>(
                 RenderCore::Metal::DeviceContext::Get(threadContext)));
     }
-    SimpleRenderingContext::~SimpleRenderingContext() { _devContext.reset(); delete _savedRes; }
-    SimpleRenderingContext::!SimpleRenderingContext() { _devContext.reset(); delete _savedRes; }
+    SimpleRenderingContext::~SimpleRenderingContext() { _devContext.reset(); delete _savedRes; _savedRes = nullptr; }
+    SimpleRenderingContext::!SimpleRenderingContext() { _devContext.reset(); delete _savedRes; _savedRes = nullptr; }
 
 }
 

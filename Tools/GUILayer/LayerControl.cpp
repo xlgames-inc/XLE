@@ -7,7 +7,6 @@
 #pragma warning(disable:4793) //  : function compiled as native :
 
 #include "LayerControl.h"
-#include "EngineControlInternal.h"
 #include "IWindowRig.h"
 #include "IOverlaySystem.h"
 #include "UITypesBinding.h"
@@ -246,7 +245,7 @@ namespace GUILayer
             }
 
             OverlaySystemAdapter(::GUILayer::IOverlaySystem^ managedOverlay) : _managedOverlay(managedOverlay) {}
-            ~OverlaySystemAdapter() { delete _managedOverlay; }
+            ~OverlaySystemAdapter() {}
         protected:
             gcroot<::GUILayer::IOverlaySystem^> _managedOverlay;
         };

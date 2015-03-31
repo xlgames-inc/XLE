@@ -95,7 +95,6 @@
     <ClInclude Include="..\CLIXAutoPtr.h" />
     <ClInclude Include="..\DivergentAssetList.h" />
     <ClInclude Include="..\EditorDynamicInterface.h" />
-    <ClInclude Include="..\EngineControlInternal.h" />
     <ClInclude Include="..\EngineDevice.h" />
     <ClInclude Include="..\EngineControl.h" />
     <ClInclude Include="..\IOverlaySystem.h" />

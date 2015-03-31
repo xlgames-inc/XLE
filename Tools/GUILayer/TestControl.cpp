@@ -8,7 +8,6 @@
 
 #include "TestControl.h"
 #include "IOverlaySystem.h"
-#include "EngineControlInternal.h"
 #include "EngineDevice.h"
 #include "NativeEngineDevice.h"
 #include "IWindowRig.h"

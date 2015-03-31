@@ -7,7 +7,6 @@
 #pragma warning(disable:4793) //  : function compiled as native :
 
 #include "EngineControl.h"
-#include "EngineControlInternal.h"
 #include "EngineDevice.h"
 #include "NativeEngineDevice.h"
 #include "IWindowRig.h"
@@ -156,7 +155,14 @@ namespace GUILayer
         //     EngineDevice::GetInstance()->GetRenderDevice(), 
         //     _pimpl->_windowRig->GetPresentationChain().get());
 
-        delete _pimpl;
+        _pimpl.reset();
+        delete _control; _control = nullptr;
+    }
+
+    EngineControl::!EngineControl()
+    {
+        _pimpl.reset();
+        delete _control; _control = nullptr;
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

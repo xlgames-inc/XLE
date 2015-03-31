@@ -53,14 +53,14 @@ namespace XLELayer
 
         ~ManipulatorOverlay() 
         {
-            delete _designView;
-            delete _viewControl;
+            delete _designView; _designView = nullptr;
+            delete _viewControl; _designView = nullptr;
         }
 
         !ManipulatorOverlay() 
         {
-            delete _designView;
-            delete _viewControl;
+            delete _designView; _designView = nullptr;
+            delete _viewControl; _designView = nullptr;
         }
 
     protected:
@@ -106,8 +106,8 @@ namespace XLELayer
                 0.f, 0.f, 0.f, 1.f);
         }
 
-        ~NativeDesignControl() { delete _layerControl; delete _cameraSettings; }
-        !NativeDesignControl() { delete _layerControl; delete _cameraSettings; }
+        ~NativeDesignControl() { delete _layerControl; _layerControl = nullptr; delete _cameraSettings; _cameraSettings = nullptr; delete _sceneManager; _sceneManager = nullptr; }
+        !NativeDesignControl() { delete _layerControl; _layerControl = nullptr; delete _cameraSettings; _cameraSettings = nullptr; delete _sceneManager; _sceneManager = nullptr; }
 
         void Render() override 
         {
