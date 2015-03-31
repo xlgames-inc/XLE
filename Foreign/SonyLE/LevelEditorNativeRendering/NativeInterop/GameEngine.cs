@@ -109,6 +109,7 @@ namespace RenderingInterop
                 s_engineDevice.AttachDefaultCompilers();
                 s_savedRenderResources = new GUILayer.SavedRenderResources(s_engineDevice);
                 s_underlyingScene = new GUILayer.EditorSceneManager();
+                Util3D.Init();
                 CriticalError = "";
                 s_inist.PopulateEngineInfo(
                     @"<EngineInfo>
@@ -728,7 +729,14 @@ namespace RenderingInterop
                                                         uint StartVertex,
                                                         uint vertexCount,
                                                         float* color,
-                                                        float* xform) { }
+                                                        float* xform) 
+        {
+            using (var context = XLELayer.NativeDesignControl.CreateSimpleRenderingContext(s_savedRenderResources))
+            {
+                context.DrawPrimitive((uint)pt, vb, StartVertex, vertexCount, color, xform);
+            }
+        }
+
         private static void NativeDrawIndexedPrimitive(PrimitiveType pt,
                                                         ulong vb,
                                                         ulong ib,
@@ -736,7 +744,13 @@ namespace RenderingInterop
                                                         uint indexCount,
                                                         uint startVertex,
                                                         float* color,
-                                                        float* xform) { }
+                                                        float* xform) 
+        {
+            using (var context = XLELayer.NativeDesignControl.CreateSimpleRenderingContext(s_savedRenderResources))
+            {
+                context.DrawIndexedPrimitive((uint)pt, vb, ib, startIndex, indexCount, startVertex, color, xform);
+            }
+        }
 
         // [DllImportAttribute("LvEdRenderingEngine", EntryPoint = "LvEd_Initialize", CallingConvention = CallingConvention.StdCall)]
         // private static extern void NativeInitialize(LogCallbackType logCallback, InvalidateViewsDlg invalidateCallback,

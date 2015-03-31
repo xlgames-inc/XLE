@@ -6,6 +6,9 @@
 
 #include "../../PlatformRig/ModelVisualisation.h"
 #include "../../PlatformRig/OverlaySystem.h"
+#include "../../SceneEngine/LightingParserContext.h"
+#include "../../Tools/GUILayer/NativeEngineDevice.h"
+#include "../../RenderCore/IDevice.h"
 #include <memory>
 
 using namespace System;
@@ -33,13 +36,7 @@ namespace XLELayer
     public:
         virtual void RenderToScene(
             RenderCore::IThreadContext* device, 
-            SceneEngine::LightingParserContext& parserContext) override
-        {
-            using namespace LevelEditorCore;
-            // GameEngine::SetRendererFlag(RenderingInterop::BasicRendererFlags::Foreground | RenderingInterop::BasicRendererFlags::Lit);
-            if (_designView->Manipulator != nullptr)
-                _designView->Manipulator->Render(_viewControl);
-        }
+            SceneEngine::LightingParserContext& parserContext) override;
 
         virtual void RenderWidgets(
             RenderCore::IThreadContext* device, 
@@ -73,6 +70,18 @@ namespace XLELayer
     public ref class NativeDesignControl : public DesignViewControl
     {
     public:
+        static RenderCore::Techniques::ParsingContext* s_currentParsingContext = nullptr;
+
+        static GUILayer::SimpleRenderingContext^ CreateSimpleRenderingContext(GUILayer::SavedRenderResources^ savedRes)
+        {
+            if (!s_currentParsingContext) return nullptr;
+
+            return gcnew GUILayer::SimpleRenderingContext(
+                savedRes, 
+                *GUILayer::EngineDevice::GetInstance()->GetNative().GetRenderDevice()->GetImmediateContext(),
+                s_currentParsingContext);
+        }
+
         NativeDesignControl(
             LevelEditorCore::DesignView^ designView, 
             GUILayer::EditorSceneManager^ sceneManager)
@@ -82,6 +91,7 @@ namespace XLELayer
             _cameraSettings = gcnew GUILayer::VisCameraSettings();
             _sceneManager = sceneManager;
             _layerControl->AddSystem(sceneManager->CreateOverlaySystem(_cameraSettings));
+            _layerControl->AddSystem(gcnew ManipulatorOverlay(designView, this));
             
             if (s_marqueePen == nullptr) {
                 using namespace System::Drawing;
@@ -317,5 +327,28 @@ namespace XLELayer
         //     }
         // }
     };
+
+
+    void ManipulatorOverlay::RenderToScene(
+        RenderCore::IThreadContext* device, 
+        SceneEngine::LightingParserContext& parserContext)
+    {
+        using namespace LevelEditorCore;
+        NativeDesignControl::s_currentParsingContext = &parserContext;
+            
+        try
+        {
+            // GameEngine::SetRendererFlag(RenderingInterop::BasicRendererFlags::Foreground | RenderingInterop::BasicRendererFlags::Lit);
+            if (_designView->Manipulator != nullptr)
+                _designView->Manipulator->Render(_viewControl);
+        }
+        catch (...)
+        {
+            NativeDesignControl::s_currentParsingContext = nullptr;
+            throw;
+        }
+
+        NativeDesignControl::s_currentParsingContext = nullptr;
+    }
 }
 

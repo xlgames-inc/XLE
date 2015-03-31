@@ -16,6 +16,9 @@
 #include "../../Tools/GUILayer/CLIXAutoPtr.h"
 #include <vector>
 
+#include "../../Assets/Assets.h"
+#include "../../RenderCore/Techniques/Techniques.h"
+
 #pragma make_public(RenderCore::IThreadContext)
 #pragma make_public(RenderCore::Techniques::ProjectionDesc)
 
@@ -28,11 +31,11 @@ namespace GUILayer
     public:
         std::vector<std::pair<uint64, RenderCore::Metal::VertexBuffer>> _vertexBuffers;
         std::vector<std::pair<uint64, RenderCore::Metal::IndexBuffer>> _indexBuffers;
-        uint64 _currentBufferIndex;
+        uint64 _nextBufferID;
         RenderCore::Metal::ObjectFactory _objectFactory;
 
         SavedRenderResourcesPimpl(RenderCore::IDevice& device)
-            : _currentBufferIndex(0)
+            : _nextBufferID(1)
             , _objectFactory(&device) {}
     };
 
@@ -45,6 +48,9 @@ namespace GUILayer
         uint64  CreateVertexBuffer(void* data, size_t size);
         uint64  CreateIndexBuffer(void* data, size_t size);
         bool    DeleteBuffer(uint64 id);
+
+        const RenderCore::Metal::VertexBuffer* GetVertexBuffer(uint64 id);
+        const RenderCore::Metal::IndexBuffer* GetIndexBuffer(uint64 id);
 
         SavedRenderResources(EngineDevice^ engineDevice);
         ~SavedRenderResources();
@@ -65,6 +71,46 @@ namespace GUILayer
     public ref class SimpleRenderingContext
     {
     public:
+        void SetupState(const float xform[])
+        {
+            using namespace RenderCore;
+
+            const auto techniqueIndex = 0u;
+
+            Techniques::TechniqueInterface techniqueInterface(
+                Metal::GlobalInputLayouts::PNT);
+            Techniques::TechniqueContext::BindGlobalUniforms(techniqueInterface);
+            techniqueInterface.BindConstantBuffer(Hash64("LocalTransform"), 0, 1);
+
+            ParameterBox materialParameters;
+            ParameterBox geoParameters({ 
+                std::make_pair("GEO_HAS_NORMAL", "1"),
+                std::make_pair("GEO_HAS_TEXCOORD", "1") });
+            const ParameterBox* state[] = {
+                &geoParameters, &_parsingContext->GetTechniqueContext()._globalEnvironmentState,
+                &_parsingContext->GetTechniqueContext()._runtimeState, &materialParameters
+            };
+
+            auto& shaderType = ::Assets::GetAssetDep<Techniques::ShaderType>("game/xleres/illum.txt");
+            auto variation = shaderType.FindVariation(techniqueIndex, state, techniqueInterface);
+            if (variation._shaderProgram == nullptr) {
+                return; // we can't render because we couldn't resolve a good shader variation
+            }
+
+            RenderCore::Metal::ConstantBufferPacket cpkts[] = { 
+                Techniques::MakeLocalTransformPacket(Transpose(*(Float4x4*)xform), Float3(0.f, 0.f, 0.f)) 
+            };
+
+            auto& devContext = *_devContext->get();
+            devContext.Bind(*variation._shaderProgram);
+            devContext.Bind(*variation._boundLayout);
+            variation._boundUniforms->Apply(devContext,
+                _parsingContext->GetGlobalUniformsStream(), 
+                Metal::UniformsStream(cpkts, nullptr, dimof(cpkts)));
+
+            devContext.Bind(Metal::Topology::TriangleList);
+        }
+
         void DrawPrimitive(
             unsigned primitiveType,
             uint64 vb,
@@ -76,6 +122,13 @@ namespace GUILayer
             //      (including vertex input format)
             // "color" can be passed as a Float4 as the material parameter "MaterialDiffuse"
             // then we just bind the vertex buffer and call draw
+
+            auto* vbuffer = _savedRes->GetVertexBuffer(vb);
+            if (!vbuffer) return;
+
+            SetupState(xform);
+            _devContext->get()->Bind(RenderCore::MakeResourceList(*vbuffer), 3*4+3*4+2*4, 0);
+            _devContext->get()->Draw(vertexCount, startVertex);
         }
 
         void DrawIndexedPrimitive(
@@ -86,12 +139,22 @@ namespace GUILayer
             unsigned startVertex,
             const float color[], const float xform[]) 
         {
+            auto* ibuffer = _savedRes->GetIndexBuffer(ib);
+            auto* vbuffer = _savedRes->GetVertexBuffer(vb);
+            if (!ibuffer || !vbuffer) return;
+            
+            SetupState(xform);
+            
+            auto& devContext = *_devContext->get();
+            devContext.Bind(RenderCore::MakeResourceList(*vbuffer), 3*4+3*4+2*4, 0);
+            devContext.Bind(*ibuffer, RenderCore::Metal::NativeFormat::R16_UINT);
+            devContext.DrawIndexed(indexCount, startIndex, startVertex);
         }
 
         SimpleRenderingContext(
             SavedRenderResources^ savedRes, 
             RenderCore::IThreadContext& threadContext,
-            RenderCore::Techniques::ParsingContext& parsingContext);
+            void* parsingContext);
         ~SimpleRenderingContext();
         !SimpleRenderingContext();
     protected:
@@ -105,15 +168,29 @@ namespace GUILayer
     uint64  SavedRenderResources::CreateVertexBuffer(void* data, size_t size)
     {
         RenderCore::Metal::VertexBuffer newBuffer(_pimpl->_objectFactory, data, size);
-        _pimpl->_vertexBuffers.push_back(std::make_pair(_pimpl->_currentBufferIndex, std::move(newBuffer)));
-        return _pimpl->_currentBufferIndex++;
+        _pimpl->_vertexBuffers.push_back(std::make_pair(_pimpl->_nextBufferID, std::move(newBuffer)));
+        return _pimpl->_nextBufferID++;
     }
 
     uint64  SavedRenderResources::CreateIndexBuffer(void* data, size_t size)
     {
         RenderCore::Metal::IndexBuffer newBuffer(_pimpl->_objectFactory, data, size);
-        _pimpl->_indexBuffers.push_back(std::make_pair(_pimpl->_currentBufferIndex, std::move(newBuffer)));
-        return _pimpl->_currentBufferIndex++;
+        _pimpl->_indexBuffers.push_back(std::make_pair(_pimpl->_nextBufferID, std::move(newBuffer)));
+        return _pimpl->_nextBufferID++;
+    }
+
+    const RenderCore::Metal::VertexBuffer* SavedRenderResources::GetVertexBuffer(uint64 id)
+    {
+        for (auto i = _pimpl->_vertexBuffers.cbegin(); i != _pimpl->_vertexBuffers.cend(); ++i)
+            if (i->first == id) return &i->second;
+        return nullptr;
+    }
+
+    const RenderCore::Metal::IndexBuffer* SavedRenderResources::GetIndexBuffer(uint64 id)
+    {
+        for (auto i = _pimpl->_indexBuffers.cbegin(); i != _pimpl->_indexBuffers.cend(); ++i)
+            if (i->first == id) return &i->second;
+        return nullptr;
     }
 
     bool SavedRenderResources::DeleteBuffer(uint64 id)
@@ -148,8 +225,8 @@ namespace GUILayer
     SimpleRenderingContext::SimpleRenderingContext(
         SavedRenderResources^ savedRes, 
         RenderCore::IThreadContext& threadContext,
-        RenderCore::Techniques::ParsingContext& parsingContext)
-    : _savedRes(savedRes), _parsingContext(&parsingContext)
+        void* parsingContext)
+    : _savedRes(savedRes), _parsingContext((RenderCore::Techniques::ParsingContext*)parsingContext)
     {
         _devContext.reset(
             new std::shared_ptr<RenderCore::Metal::DeviceContext>(
