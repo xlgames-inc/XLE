@@ -8,6 +8,7 @@
 
 #include "CLIXAutoPtr.h"
 #include "MarshalString.h"
+#include "AutoToShared.h"
 #include "../../PlatformRig/ModelVisualisation.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/SystemUtils.h"
@@ -23,8 +24,6 @@ namespace RenderCore { namespace Assets { class RawMaterial; class RenderStateSe
 
 namespace GUILayer
 {
-    template<typename T> using AutoToShared = clix::auto_ptr<std::shared_ptr<T>>;
-
     private ref class FileNameEditor : UITypeEditor
     {
     public:

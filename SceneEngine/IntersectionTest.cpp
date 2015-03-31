@@ -69,7 +69,7 @@ namespace SceneEngine
 
         LightingParserContext parserContext(context.GetTechniqueContext());
         LightingParser_SetupScene(
-            devContext, parserContext, context.GetSceneParser(),
+            devContext, parserContext, nullptr,
             context.GetCameraDesc(), RenderingQualitySettings(viewportDims));
 
         return FindTerrainIntersection(devContext, parserContext, terrainManager, worldSpaceRay);
@@ -232,13 +232,13 @@ namespace SceneEngine
 
     std::pair<Float3, Float3> IntersectionTestContext::CalculateWorldSpaceRay(Int2 screenCoord) const
     {
-        return CalculateWorldSpaceRay(_sceneParser->GetCameraDesc(), screenCoord, GetViewportDims());
+        return CalculateWorldSpaceRay(_cameraDesc, screenCoord, GetViewportDims());
     }
 
     Float2 IntersectionTestContext::ProjectToScreenSpace(const Float3& worldSpaceCoord) const
     {
         auto viewport = GetViewportDims();
-        auto worldToProjection = CalculateWorldToProjection(_sceneParser->GetCameraDesc(), viewport[0] / float(viewport[1]));
+        auto worldToProjection = CalculateWorldToProjection(_cameraDesc, viewport[0] / float(viewport[1]));
         auto projCoords = worldToProjection * Expand(worldSpaceCoord, 1.f);
 
         return Float2(
@@ -257,16 +257,27 @@ namespace SceneEngine
     }
 
     RenderCore::Techniques::CameraDesc IntersectionTestContext::GetCameraDesc() const 
-    { 
-        return _sceneParser->GetCameraDesc();
+    {
+        if (_sceneParser)
+            return _sceneParser->GetCameraDesc();
+        return _cameraDesc;
     }
+
+    IntersectionTestContext::IntersectionTestContext(
+        std::shared_ptr<RenderCore::IThreadContext> threadContext,
+        const RenderCore::Techniques::CameraDesc& cameraDesc,
+        std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext)
+    : _threadContext(threadContext)
+    , _cameraDesc(cameraDesc)
+    , _techniqueContext(std::move(techniqueContext))
+    {}
 
     IntersectionTestContext::IntersectionTestContext(
         std::shared_ptr<RenderCore::IThreadContext> threadContext,
         std::shared_ptr<SceneEngine::ISceneParser> sceneParser,
         std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext)
     : _threadContext(threadContext)
-    , _sceneParser(std::move(sceneParser))
+    , _sceneParser(sceneParser)
     , _techniqueContext(std::move(techniqueContext))
     {}
 

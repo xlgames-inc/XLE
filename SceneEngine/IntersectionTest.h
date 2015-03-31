@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../RenderCore/IThreadContext_Forward.h"
+#include "../RenderCore/Techniques/TechniqueUtils.h"
 #include "../Core/Types.h"
 #include "../Math/Vector.h"
 #include <memory>
@@ -28,6 +29,9 @@ namespace SceneEngine
     class IntersectionTestContext
     {
     public:
+
+            // "CameraDesc" member is only require for the following utility
+            //  methods
         std::pair<Float3, Float3> CalculateWorldSpaceRay(Int2 screenCoord) const;
         static std::pair<Float3, Float3> CalculateWorldSpaceRay(
             const RenderCore::Techniques::CameraDesc& sceneCamera,
@@ -35,19 +39,26 @@ namespace SceneEngine
         
         Float2 ProjectToScreenSpace(const Float3& worldSpaceCoord) const;
         RenderCore::Techniques::CameraDesc GetCameraDesc() const;
-        const RenderCore::Techniques::TechniqueContext& GetTechniqueContext() const { return *_techniqueContext.get(); }
         ISceneParser* GetSceneParser() const { return _sceneParser.get(); }
         Int2 GetViewportSize() const;
+
+            // technique context & thread context is enough for most operations
+        const RenderCore::Techniques::TechniqueContext& GetTechniqueContext() const { return *_techniqueContext.get(); }
         const std::shared_ptr<RenderCore::IThreadContext>& GetThreadContext() const;
 
         IntersectionTestContext(
             std::shared_ptr<RenderCore::IThreadContext> threadContext,
-            std::shared_ptr<ISceneParser> sceneParser,
+            const RenderCore::Techniques::CameraDesc& cameraDesc,
+            std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext);
+        IntersectionTestContext(
+            std::shared_ptr<RenderCore::IThreadContext> threadContext,
+            std::shared_ptr<SceneEngine::ISceneParser> sceneParser,
             std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext);
         ~IntersectionTestContext();
     protected:
         std::shared_ptr<RenderCore::IThreadContext> _threadContext;
         std::shared_ptr<ISceneParser> _sceneParser;
+        RenderCore::Techniques::CameraDesc _cameraDesc;
         std::shared_ptr<RenderCore::Techniques::TechniqueContext>  _techniqueContext;
     };
 

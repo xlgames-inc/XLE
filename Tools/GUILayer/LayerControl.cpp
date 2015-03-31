@@ -34,13 +34,7 @@ unsigned FrameRenderCount = 0;
 
 namespace GUILayer 
 {
-    class LayerControlPimpl 
-    {
-    public:
-        std::shared_ptr<SceneEngine::LightingParserStandardPlugin> _stdPlugin;
-        std::shared_ptr<RenderCore::Techniques::TechniqueContext> _globalTechniqueContext;
-    };
-
+    
     static PlatformRig::FrameRig::RenderResult RenderFrame(
         RenderCore::IThreadContext& context,
         LayerControlPimpl& pimpl,
@@ -277,6 +271,11 @@ namespace GUILayer
         overlaySet.AddSystem(std::make_shared<InputLayer>(std::move(manipulators)));
     }
 
+    std::shared_ptr<RenderCore::Techniques::TechniqueContext> LayerControl::GetTechniqueContext()
+    {
+        return _pimpl->_globalTechniqueContext;
+    }
+
     LayerControl::LayerControl(Control^ control)
         : EngineControl(control)
     {
@@ -285,7 +284,14 @@ namespace GUILayer
         _pimpl->_globalTechniqueContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
     }
 
-	LayerControl::~LayerControl()
-    {}
+    LayerControl::~LayerControl()
+    {
+        _pimpl.reset();
+    }
+
+    LayerControl::!LayerControl()
+    {
+        _pimpl.reset();
+    }
 }
 

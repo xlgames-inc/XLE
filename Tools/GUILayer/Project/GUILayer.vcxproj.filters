@@ -22,6 +22,9 @@
     <ClCompile Include="..\PlacementsInterface.cpp">
       <Filter>DynInterface</Filter>
     </ClCompile>
+    <ClCompile Include="..\EditorInterfaceUtils.cpp">
+      <Filter>DynInterface</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\EngineDevice.h" />
@@ -46,6 +49,7 @@
     <ClInclude Include="..\LevelEditorScene.h">
       <Filter>DynInterface</Filter>
     </ClInclude>
+    <ClInclude Include="..\AutoToShared.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="DynInterface">

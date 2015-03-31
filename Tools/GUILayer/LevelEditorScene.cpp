@@ -12,6 +12,7 @@
 #include "../../SceneEngine/PlacementsManager.h"
 #include "../../SceneEngine/SceneParser.h"
 #include "../../SceneEngine/LightDesc.h"
+#include "../../SceneEngine/IntersectionTest.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../Core/Types.h"
 
@@ -25,12 +26,9 @@
 
 #pragma make_public(RenderCore::IThreadContext)
 #pragma make_public(RenderCore::Techniques::ProjectionDesc)
-#pragma make_public(PlatformRig::VisCameraSettings)
 
 namespace GUILayer
 {
-    // template<typename T> using AutoToShared = clix::auto_ptr<std::shared_ptr<T>>;
-
     // Many level editors work around a structure of objects and attributes.
     // That is, the scene is composed of a hierachy of objects, and each object
     // as some type, and a set of attributes. In the case of the SonyWWS editor,
@@ -178,31 +176,6 @@ namespace GUILayer
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     using namespace EditorDynamicInterface;
-    public ref class EditorSceneManager
-    {
-    public:
-        DocumentId CreateDocument(DocumentTypeId docType, System::String^ initializer);
-        bool DeleteDocument(DocumentId doc, DocumentTypeId docType);
-
-        ObjectId AssignObjectId(DocumentId doc, ObjectTypeId type);
-        bool CreateObject(DocumentId doc, ObjectId obj, ObjectTypeId objType, System::String^ initializer);
-        bool DeleteObject(DocumentId doc, ObjectId obj, ObjectTypeId objType);
-        bool SetProperty(DocumentId doc, ObjectId obj, ObjectTypeId objType, PropertyId prop, void* data);
-
-        ObjectTypeId GetTypeId(System::String^ name);
-        DocumentTypeId GetDocumentTypeId(System::String^ name);
-        PropertyId GetPropertyId(ObjectTypeId type, System::String^ name);
-        ChildListId GetChildListId(ObjectTypeId type, System::String^ name);
-
-        IOverlaySystem^ CreateOverlaySystem(VisCameraSettings^ camera);
-
-        EditorSceneManager();
-        ~EditorSceneManager();
-        !EditorSceneManager();
-    protected:
-        AutoToShared<EditorScene> _scene;
-        AutoToShared<EditorDynamicInterface::RegisteredTypes> _dynInterface;
-    };
 
     DocumentId EditorSceneManager::CreateDocument(DocumentTypeId docType, System::String^ initializer) 
         { return (*_dynInterface)->CreateDocument(**_scene, docType, clix::marshalString<clix::E_UTF8>(initializer).c_str()); }
@@ -226,12 +199,34 @@ namespace GUILayer
     PropertyId EditorSceneManager::GetPropertyId(ObjectTypeId type, System::String^ name)       { return (*_dynInterface)->GetPropertyId(type, clix::marshalString<clix::E_UTF8>(name).c_str()); }
     ChildListId EditorSceneManager::GetChildListId(ObjectTypeId type, System::String^ name)     { return (*_dynInterface)->GetChildListId(type, clix::marshalString<clix::E_UTF8>(name).c_str()); }
 
-    template<typename Type>
-        void InitAutoToShared(AutoToShared<Type>% obj)
-        {
-            obj.reset(new std::shared_ptr<Type>(std::make_shared<Type>()));
+    System::Collections::Generic::IEnumerable<HitRecord^>^ 
+        EditorSceneManager::RayIntersection(
+            const SceneEngine::IntersectionTestContext& testContext,
+            Float3 worldSpaceRayStart, Float3 worldSpaceRayEnd)
+    {
+        SceneEngine::IntersectionTestScene testScene(nullptr, (*_scene)->_placementsEditor);
+
+        auto firstResult = testScene.FirstRayIntersection(
+            testContext,
+            std::make_pair(worldSpaceRayStart, worldSpaceRayEnd));
+
+        if (firstResult._type != 0) {
+            auto record = gcnew HitRecord;
+            record->_document = firstResult._objectGuid.first;
+            record->_object = firstResult._objectGuid.second;
+            record->_distance = firstResult._distance;
+            record->_worldSpaceCollisionX = firstResult._worldSpaceCollision[0];
+            record->_worldSpaceCollisionY = firstResult._worldSpaceCollision[1];
+            record->_worldSpaceCollisionZ = firstResult._worldSpaceCollision[2];
+
+            auto result = gcnew System::Collections::Generic::List<HitRecord^>();
+            result->Add(record);
+            return result;
         }
 
+        return nullptr;
+    }
+ 
     EditorSceneManager::EditorSceneManager()
     {
         InitAutoToShared(_scene);

@@ -77,6 +77,7 @@
     <ClCompile Include="..\CustomDataGridEditor.cpp" />
     <ClCompile Include="..\DivergentAssetList.cpp" />
     <ClCompile Include="..\EditorDynamicInterface.cpp" />
+    <ClCompile Include="..\EditorInterfaceUtils.cpp" />
     <ClCompile Include="..\EngineDevice.cpp" />
     <ClCompile Include="..\EngineControl.cpp" />
     <ClCompile Include="..\GUILayerUtil.cpp" />
@@ -90,6 +91,7 @@
     <ClCompile Include="..\WindowRig.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\AutoToShared.h" />
     <ClInclude Include="..\CLIXAutoPtr.h" />
     <ClInclude Include="..\DivergentAssetList.h" />
     <ClInclude Include="..\EditorDynamicInterface.h" />

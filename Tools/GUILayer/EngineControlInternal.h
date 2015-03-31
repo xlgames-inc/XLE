@@ -18,6 +18,8 @@ namespace GUILayer
     public:
         std::unique_ptr<IWindowRig> _windowRig;
         std::unique_ptr<PlatformRig::InputTranslator> _inputTranslator;
+
+        ~EngineControlPimpl();
     };
 }
 

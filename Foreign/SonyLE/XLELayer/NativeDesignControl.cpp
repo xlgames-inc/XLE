@@ -73,11 +73,14 @@ namespace XLELayer
     public ref class NativeDesignControl : public DesignViewControl
     {
     public:
-        NativeDesignControl(LevelEditorCore::DesignView^ designView, GUILayer::EditorSceneManager^ sceneManager)
+        NativeDesignControl(
+            LevelEditorCore::DesignView^ designView, 
+            GUILayer::EditorSceneManager^ sceneManager)
         : DesignViewControl(designView)
         {
             _layerControl = gcnew GUILayer::LayerControl(this);
             _cameraSettings = gcnew GUILayer::VisCameraSettings();
+            _sceneManager = sceneManager;
             _layerControl->AddSystem(sceneManager->CreateOverlaySystem(_cameraSettings));
             
             if (s_marqueePen == nullptr) {
@@ -85,6 +88,22 @@ namespace XLELayer
                 s_marqueePen = gcnew Pen(Color::FromArgb(30, 30, 30), 2);
                 s_marqueePen->DashPattern = gcnew array<float, 1> { 3.f, 3.f };
             }
+
+                //  use the camera "AxisSystem" to convert from the native SonyWWS
+                //  camera coordinates into the coordinates we need for XLE.
+                //      SonyWWS native has +Y as up
+                //      But XLE uses +Z up
+                //  note -- handiness untested. XLE defaults to right handed coordinates in
+                //          view space.
+                //
+                //  When using AxisSystem like this, we must use the "World..." properties 
+                //  in the Camera object. eg, "WorldEye" gives us the native XLE coordinates,
+                //  "Eye" gives us the native SonyWWS coordinates.
+            Camera->AxisSystem = gcnew Matrix4F(
+                1.f, 0.f, 0.f, 0.f, 
+                0.f, 0.f, -1.f, 0.f, 
+                0.f, 1.f, 0.f, 0.f, 
+                0.f, 0.f, 0.f, 1.f);
         }
 
         ~NativeDesignControl() { delete _layerControl; delete _cameraSettings; }
@@ -118,7 +137,35 @@ namespace XLELayer
         }
 
     protected:
-        IList<Object^>^ Pick(MouseEventArgs^ e) override { return gcnew List<Object^>(); }
+        IList<Object^>^ Pick(MouseEventArgs^ e) override 
+        { 
+            bool multiSelect = DragOverThreshold;
+            if (multiSelect) {
+                return gcnew List<Object^>();   // multi-select not supported yet
+            }
+
+            Ray3F ray = GetWorldRay(CurrentMousePoint);
+            float maxCollisionDistance = 2048.f;
+
+                //  We need to find a list of objects that intersect this ray.
+                //  When we find the objects, we can use GameEngine::GetAdapterFromId
+                //  to try to match the picked objects to NativeObjectAdapter objects
+            
+            auto endPt = ray.Origin + maxCollisionDistance * ray.Direction;
+            /*auto results =*/ GUILayer::EditorInterfaceUtils::RayIntersection(
+                GUILayer::EngineDevice::GetInstance(), _layerControl, _sceneManager,
+                ray.Origin.X, ray.Origin.Y, ray.Origin.Z,
+                endPt.X, endPt.Y, endPt.Z);
+
+            // if (results) {
+            //     for each(auto r in results)
+            //     {
+            // 
+            //     }
+            // }
+            return gcnew List<Object^>();
+        }
+
         void OnDragEnter(DragEventArgs^ drgevent) override {}
         void OnDragOver(DragEventArgs^ drgevent) override {}
         void OnDragDrop(DragEventArgs^ drgevent) override {}
@@ -149,22 +196,23 @@ namespace XLELayer
 
         GUILayer::LayerControl^ _layerControl;
         GUILayer::VisCameraSettings^ _cameraSettings;
+        GUILayer::EditorSceneManager^ _sceneManager;
 
     private:
-        IGame^ TargetGame()
-        {
-            auto selection = Adapters::As<ISelectionContext^>(DesignView->Context);
-            auto node = selection->GetLastSelected<DomNode^>();
-                      
-            IReference<IGame^>^ gameref = Adapters::As<IReference<IGame^>^>(node);
-            if (gameref != nullptr && gameref->Target != nullptr)
-                return gameref->Target;  
-                      
-            if(node != nullptr)
-                return Adapters::As<IGame^>(node->GetRoot()); 
-            
-            return Adapters::As<IGame^>(DesignView->Context);
-        }
+        // IGame^ TargetGame()
+        // {
+        //     auto selection = Adapters::As<ISelectionContext^>(DesignView->Context);
+        //     auto node = selection->GetLastSelected<DomNode^>();
+        //               
+        //     IReference<IGame^>^ gameref = Adapters::As<IReference<IGame^>^>(node);
+        //     if (gameref != nullptr && gameref->Target != nullptr)
+        //         return gameref->Target;  
+        //               
+        //     if(node != nullptr)
+        //         return Adapters::As<IGame^>(node->GetRoot()); 
+        //     
+        //     return Adapters::As<IGame^>(DesignView->Context);
+        // }
         
         static System::Drawing::Rectangle MakeRect(Point p1, Point p2)
         {
