@@ -10,12 +10,102 @@ using Sce.Atf.VectorMath;
 
 namespace LevelEditor.DomNodeAdapters
 {
+    public class GenericTransformableObject : DomNodeAdapter, ITransformable
+    {
+        #region ITransformable Members
+
+        public virtual void UpdateTransform()
+        {
+            Matrix4F xform = TransformUtils.CalcTransform(this);
+            SetAttribute(m_transformAttributes.transformAttribute, xform.ToArray());
+        }
+
+        /// <summary>
+        /// Gets and sets the local transformation matrix</summary>
+        public virtual Matrix4F Transform
+        {
+            get { return new Matrix4F(GetAttribute<float[]>(m_transformAttributes.transformAttribute)); }
+        }
+
+        /// <summary>
+        /// Gets and sets the node translation</summary>
+        public virtual Vec3F Translation
+        {
+            get { return DomNodeUtil.GetVector(DomNode, m_transformAttributes.translateAttribute); }
+            set
+            {
+                if ((TransformationType & TransformationTypes.Translation) == 0)
+                    return;
+                DomNodeUtil.SetVector(DomNode, m_transformAttributes.translateAttribute, value);
+            }
+        }
+
+        /// <summary>
+        /// Gets and sets the node rotation</summary>
+        public virtual Vec3F Rotation
+        {
+            get { return DomNodeUtil.GetVector(DomNode, m_transformAttributes.rotateAttribute); }
+            set
+            {
+                if ((TransformationType & TransformationTypes.Rotation) == 0)
+                    return;
+                DomNodeUtil.SetVector(DomNode, m_transformAttributes.rotateAttribute, value);
+            }
+        }
+
+        /// <summary>
+        /// Gets and sets the node scale</summary>
+        public virtual Vec3F Scale
+        {
+            get { return DomNodeUtil.GetVector(DomNode, m_transformAttributes.scaleAttribute); }
+            set
+            {
+                if ((TransformationType & TransformationTypes.Scale) == 0
+                    && (TransformationType & TransformationTypes.UniformScale) == 0)
+                    return;
+
+                DomNodeUtil.SetVector(DomNode, m_transformAttributes.scaleAttribute, value);
+            }
+        }
+
+        /// <summary>
+        /// Gets and sets the node scale pivot</summary>
+        public virtual Vec3F Pivot
+        {
+            get { return DomNodeUtil.GetVector(DomNode, m_transformAttributes.pivotAttribute); }
+            set
+            {
+                if ((TransformationType & TransformationTypes.Pivot) == 0)
+                    return;
+                DomNodeUtil.SetVector(DomNode, m_transformAttributes.pivotAttribute, value);
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the type of transformation this object can support. By default
+        /// all transformation types are supported.</summary>
+        public TransformationTypes TransformationType
+        {
+            get { return GetAttribute<TransformationTypes>(m_transformAttributes.transformationTypeAttribute); }
+            set
+            {
+                int v = (int)value;
+                SetAttribute(m_transformAttributes.transformationTypeAttribute, v);
+            }
+        }
+
+        #endregion
+    
+        public GenericTransformableObject(Schema.transformAttributes transformAttributes) { m_transformAttributes = transformAttributes; }
+        private Schema.transformAttributes m_transformAttributes;
+    }
+
     /// <summary>
     /// GameObject, a (usually) renderable 3D object in the level</summary>
     /// <remarks>Game objects have a transformation (translation/rotation/scale) and a bounding box
     /// The can be rendered in the DesignView and listed in the ProjectLister tree view.</remarks>
-    public class GameObject : DomNodeAdapter, IGameObject
-    {              
+    public class GameObject : GenericTransformableObject, IGameObject
+    {
         #region INameable
 
         /// <summary>
@@ -24,90 +114,6 @@ namespace LevelEditor.DomNodeAdapters
         {
             get { return GetAttribute<string>(Schema.gameObjectType.nameAttribute); }
             set { SetAttribute(Schema.gameObjectType.nameAttribute, value); }
-        }
-
-        #endregion
-
-        #region ITransformable Members
-
-        public virtual void UpdateTransform()
-        {
-            Matrix4F xform = TransformUtils.CalcTransform(this);
-            SetAttribute(Schema.gameObjectType.transformAttribute, xform.ToArray());
-        }
-
-        /// <summary>
-        /// Gets and sets the local transformation matrix</summary>
-        public virtual Matrix4F Transform
-        {
-            get { return new Matrix4F(GetAttribute<float[]>(Schema.gameObjectType.transformAttribute)); }            
-        }
-
-        /// <summary>
-        /// Gets and sets the node translation</summary>
-        public virtual Vec3F Translation
-        {
-            get { return DomNodeUtil.GetVector(DomNode, Schema.gameObjectType.translateAttribute); }
-            set
-            {
-                if ((TransformationType & TransformationTypes.Translation) == 0)
-                    return;
-                DomNodeUtil.SetVector(DomNode, Schema.gameObjectType.translateAttribute, value);
-            }
-        }
-
-        /// <summary>
-        /// Gets and sets the node rotation</summary>
-        public virtual Vec3F Rotation
-        {
-            get { return DomNodeUtil.GetVector(DomNode, Schema.gameObjectType.rotateAttribute); }
-            set
-            {
-                if ((TransformationType & TransformationTypes.Rotation) == 0)
-                    return;
-                DomNodeUtil.SetVector(DomNode, Schema.gameObjectType.rotateAttribute, value);
-            }
-        }
-
-        /// <summary>
-        /// Gets and sets the node scale</summary>
-        public virtual Vec3F Scale
-        {
-            get { return DomNodeUtil.GetVector(DomNode, Schema.gameObjectType.scaleAttribute); }
-            set 
-            {
-                if ((TransformationType & TransformationTypes.Scale) == 0
-                    && (TransformationType & TransformationTypes.UniformScale) == 0)
-                    return;
-
-                DomNodeUtil.SetVector(DomNode, Schema.gameObjectType.scaleAttribute, value); 
-            }
-        }
-
-        /// <summary>
-        /// Gets and sets the node scale pivot</summary>
-        public virtual Vec3F Pivot
-        {
-            get { return DomNodeUtil.GetVector(DomNode, Schema.gameObjectType.pivotAttribute); }
-            set 
-            {
-                if ((TransformationType & TransformationTypes.Pivot) == 0)
-                    return;
-                DomNodeUtil.SetVector(DomNode, Schema.gameObjectType.pivotAttribute, value); 
-            }
-        }
-                     
-        /// <summary>
-        /// Gets or sets the type of transformation this object can support. By default
-        /// all transformation types are supported.</summary>
-        public TransformationTypes TransformationType
-        {
-            get { return GetAttribute<TransformationTypes>(Schema.gameObjectType.transformationTypeAttribute); }
-            set 
-            {
-                int v = (int)value;
-                SetAttribute(Schema.gameObjectType.transformationTypeAttribute, v);
-            }
         }
 
         #endregion
@@ -159,6 +165,8 @@ namespace LevelEditor.DomNodeAdapters
         }
       
         #endregion          
+    
+        public GameObject() : base(Schema.gameObjectType.transform) {}
     }
    
 }

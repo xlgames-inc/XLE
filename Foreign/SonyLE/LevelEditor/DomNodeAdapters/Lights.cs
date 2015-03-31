@@ -15,7 +15,7 @@ namespace LevelEditor.DomNodeAdapters
         protected override void OnNodeSet()
         {
             base.OnNodeSet();
-            DomNodeUtil.SetVector(DomNode, Schema.gameObjectType.scaleAttribute, new Vec3F(0.4f, 0.4f, 0.4f)); 
+            DomNodeUtil.SetVector(DomNode, Schema.gameObjectType.transform.scaleAttribute, new Vec3F(0.4f, 0.4f, 0.4f)); 
             UpdateTransform();
             TransformationType = TransformationTypes.Translation;
         }
@@ -88,7 +88,7 @@ namespace LevelEditor.DomNodeAdapters
         protected override void OnNodeSet()
         {
             base.OnNodeSet();
-            DomNodeUtil.SetVector(DomNode, Schema.gameObjectType.scaleAttribute, new Vec3F(0.4f, 0.4f, 0.4f)); 
+            DomNodeUtil.SetVector(DomNode, Schema.gameObjectType.transform.scaleAttribute, new Vec3F(0.4f, 0.4f, 0.4f)); 
             UpdateTransform();
             TransformationType = TransformationTypes.Translation;            
         }

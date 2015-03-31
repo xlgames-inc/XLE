@@ -17,9 +17,6 @@ namespace LevelEditor.DomNodeAdapters
         {
             base.OnNodeSet();
 
-            if (Schema.gameObjectType.Type.IsAssignableFrom(this.DomNode.Type) == false)
-                throw new InvalidOperationException("this adapter can only attach to instance of gameobjecttype");
-
             m_transformable = DomNode.As<ITransformable>();            
             DomNode.AttributeChanged += OnAttributeChanged;
         }
@@ -27,7 +24,7 @@ namespace LevelEditor.DomNodeAdapters
         private void OnAttributeChanged(object sender, AttributeEventArgs e)
         {
 
-            if (e.AttributeInfo.Equivalent(Schema.gameObjectType.pivotAttribute))
+            if (e.AttributeInfo.Equivalent(TransformAttributes.pivotAttribute))
             {// Update translation to keep object pinned when moving pivot                
                 Matrix4F L0 = m_transformable.Transform;
                 Matrix4F L1 = TransformUtils.CalcTransform(
@@ -51,7 +48,7 @@ namespace LevelEditor.DomNodeAdapters
         public void ComputeTransform()
         {
             Matrix4F xform = TransformUtils.CalcTransform(m_transformable);
-            SetAttribute(Schema.gameObjectType.transformAttribute, xform.ToArray());
+            SetAttribute(TransformAttributes.transformAttribute, xform.ToArray());
         }
       
         /// <summary>
@@ -64,13 +61,38 @@ namespace LevelEditor.DomNodeAdapters
             // because using simple equality (==) doesn't respect inheritance
             // i.e. (Schema.baseType.someAttribute == Schema.derivedType.someAttribute) returns false
             // whereas (Schema.baseType.someAttribue.Equivalent(Schema.derivedType.someAttribute)) returns true
-            return (attributeInfo.Equivalent(Schema.gameObjectType.translateAttribute)
-                    || attributeInfo.Equivalent(Schema.gameObjectType.rotateAttribute)
-                    || attributeInfo.Equivalent(Schema.gameObjectType.scaleAttribute)
-                    || attributeInfo.Equivalent(Schema.gameObjectType.pivotAttribute));
+            var transformAttrib = TransformAttributes;
+            return (attributeInfo.Equivalent(transformAttrib.translateAttribute)
+                    || attributeInfo.Equivalent(transformAttrib.rotateAttribute)
+                    || attributeInfo.Equivalent(transformAttrib.scaleAttribute)
+                    || attributeInfo.Equivalent(transformAttrib.pivotAttribute));
+        }
+
+        private Schema.transformAttributes TransformAttributes
+        {
+            get 
+            {
+                    //  To use this adapter with different types of nodes,
+                    //  we need to query the transform attributes here.
+                    //  This class cannot take any parameters to it's constructor,
+                    //  and there is no way to map from the node type object to the
+                    //  precalculated static objects in "Schema". So we have to query again.
+                    //  I'm presuming that "GetAttributeInfo" in DomNodeType is not too
+                    //  inefficient, but to avoid a lot of work when loading a huge
+                    //  hierarchy of nodes, let's calculate it on demand
+                if (m_transformAttrib == null)
+                {
+                    var node = DomNode;
+                    if (node==null) return null;
+
+                    m_transformAttrib = new Schema.transformAttributes(node.Type);
+                }
+
+                return m_transformAttrib;
+            }
         }
 
         private ITransformable m_transformable;
-
+        private Schema.transformAttributes m_transformAttrib = null;
     }
 }
