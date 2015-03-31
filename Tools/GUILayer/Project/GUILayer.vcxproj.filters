@@ -13,7 +13,15 @@
     <ClCompile Include="..\CustomDataGridEditor.cpp" />
     <ClCompile Include="..\GUILayerUtil.cpp" />
     <ClCompile Include="..\SimpleRenderingContext.cpp" />
-    <ClCompile Include="..\LevelEditorScene.cpp" />
+    <ClCompile Include="..\EditorDynamicInterface.cpp">
+      <Filter>DynInterface</Filter>
+    </ClCompile>
+    <ClCompile Include="..\LevelEditorScene.cpp">
+      <Filter>DynInterface</Filter>
+    </ClCompile>
+    <ClCompile Include="..\PlacementsInterface.cpp">
+      <Filter>DynInterface</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\EngineDevice.h" />
@@ -29,5 +37,19 @@
     <ClInclude Include="..\MaterialVisualisation.h" />
     <ClInclude Include="..\IOverlaySystem.h" />
     <ClInclude Include="..\DivergentAssetList.h" />
+    <ClInclude Include="..\EditorDynamicInterface.h">
+      <Filter>DynInterface</Filter>
+    </ClInclude>
+    <ClInclude Include="..\PlacementsInterface.h">
+      <Filter>DynInterface</Filter>
+    </ClInclude>
+    <ClInclude Include="..\LevelEditorScene.h">
+      <Filter>DynInterface</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="DynInterface">
+      <UniqueIdentifier>{2e5a400c-56a8-4a39-ac39-d6829928e93f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
 </Project>
