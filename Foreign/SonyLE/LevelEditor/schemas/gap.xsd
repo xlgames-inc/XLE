@@ -343,6 +343,9 @@
       
     <xs:attribute name="visible" type="xs:boolean" default="true" />
     <xs:attribute name="locked" type="xs:boolean" default="false" />
+
+    <!-- see public enum TransformationTypes in LevelEditorCore -->
+    <xs:attribute name="transformationType" type="xs:integer" default="15"/>
   </xs:complexType>
   
   <xs:complexType name="placementsDocumentType">

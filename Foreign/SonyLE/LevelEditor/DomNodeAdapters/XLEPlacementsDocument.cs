@@ -80,31 +80,6 @@ namespace LevelEditor.DomNodeAdapters
 
         public override string Type { get { return GameEditor.s_placementDocInfo.FileType; } }
     }
-
-    class XLEPlacementObject : DomNodeAdapter, IListable
-    {
-        #region IListable Members
-        public void GetInfo(ItemInfo info)
-        {
-            info.ImageIndex = Util.GetTypeImageIndex(DomNode.Type, info.GetImageList());
-            info.Label = "Placement";
-        }
-        #endregion
-
-        // public string Model
-        // {
-        //     get 
-        //     {
-        //         return GetAttribute<string>(Schema.placementObjectType.modelChild);
-        //     }
-        // }
-        // 
-        // public string Material
-        // {
-        //     get
-        //     {
-        //         return GetAttribute<string>(Schema.placementObjectType.materialChild);
-        //     }
-        // }
-    }
 }
+
+

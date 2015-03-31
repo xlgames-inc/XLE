@@ -117,8 +117,10 @@
     <Compile Include="DomNodeAdapters\Locator.cs" />
     <Compile Include="DomNodeAdapters\Slot.cs" />
     <Compile Include="DomNodeAdapters\TransformUpdater.cs" />
-    <Compile Include="DomNodeAdapters\XLEPlacements.cs" />
+    <Compile Include="DomNodeAdapters\XLEPlacementProperties.cs" />
+    <Compile Include="DomNodeAdapters\XLEPlacement.cs" />
     <Compile Include="DomNodeAdapters\XLEPlacementsCellRef.cs" />
+    <Compile Include="DomNodeAdapters\XLEPlacementsDocument.cs" />
     <Compile Include="DomSerializers\CustomDomXmlReader.cs" />
     <Compile Include="DomSerializers\CustomDomXmlWriter.cs" />
     <Compile Include="GameAdapters.cs" />

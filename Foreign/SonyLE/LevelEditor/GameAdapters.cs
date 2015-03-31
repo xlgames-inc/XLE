@@ -132,7 +132,10 @@ namespace LevelEditor
             Schema.placementsCellReferenceType.Type.Define(new ExtensionInfo<PlacementsCellRef>());
             Schema.placementsFolderType.Type.Define(new ExtensionInfo<PlacementsFolder>());
             Schema.placementsDocumentType.Type.Define(new ExtensionInfo<XLEPlacementDocument>());
+
             Schema.placementObjectType.Type.Define(new ExtensionInfo<XLEPlacementObject>());
+            Schema.placementObjectType.Type.Define(new ExtensionInfo<GameObjectProperties>());
+            Schema.placementObjectType.Type.Define(new ExtensionInfo<TransformUpdater>());
             // XLE>>
         }
     }
