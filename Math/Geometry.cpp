@@ -8,7 +8,7 @@
 #include "Transformations.h"
 #include "../Core/Prefix.h"
 
-namespace Math
+namespace XLEMath
 {
 
     Float3 CartesianToSpherical(Float3 direction)

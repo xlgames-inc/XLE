@@ -10,7 +10,7 @@
 #include "Matrix.h"
 #include <utility>
 
-namespace Math
+namespace XLEMath
 {
     float   SignedDistance(const Float3& pt, const Float4& plane);
     float   RayVsPlane(const Float3& rayStart, const Float3& rayEnd, const Float4& plane);

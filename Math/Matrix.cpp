@@ -43,7 +43,7 @@
 
 */
 
-namespace Math
+namespace XLEMath
 {
     Float4x4 MakeFloat4x4(
         float m00, float m01, float m02, float m03,

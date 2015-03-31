@@ -9,7 +9,7 @@
 #include "Vector.h"
 #include "Matrix.h"
 
-namespace Math
+namespace XLEMath
 {
     void CalculateAbsFrustumCorners(
         Float3 frustumCorners[8],

@@ -8,7 +8,7 @@
 
 #include "Vector.h"
 
-namespace Math
+namespace XLEMath
 {
     float SimplexNoise(Float2 input);
     float SimplexNoise(Float3 input);

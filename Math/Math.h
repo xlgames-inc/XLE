@@ -17,7 +17,11 @@
     #include <intrin.h>
 #endif
 
-namespace Math
+// note -   namespace "::Math" causes problems with with .net "::Math"
+//          it's a common name, so it might be used in other foreign libraries
+//          as well. To avoid problems, let's prefer less generic names for root
+//          namespaces.
+namespace XLEMath
 {
         //
         //      Useful constants. Some of these can be accessed from
@@ -131,5 +135,5 @@ namespace Math
     template<typename Type> const Type& Zero();
 }
 
-using namespace Math;
+using namespace XLEMath;
 

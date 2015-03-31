@@ -13,7 +13,7 @@
 //  some confusion about some of the floating point constants from one
 //  implementation to another.
 
-namespace Math
+namespace XLEMath
 {
     class Grad
     {

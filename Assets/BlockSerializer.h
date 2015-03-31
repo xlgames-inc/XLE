@@ -295,7 +295,7 @@ namespace Serialization
     }
     
     inline void Serialize(   NascentBlockSerializer&     serializer, 
-                             const ::Math::Float4x4&       float4x4)
+                             const ::XLEMath::Float4x4&       float4x4)
     {
         for (unsigned i=0; i<4; ++i)
             for (unsigned j=0; j<4; ++j) {

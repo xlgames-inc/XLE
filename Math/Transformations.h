@@ -18,7 +18,7 @@
     #pragma warning(pop)
 #endif
 
-namespace Math
+namespace XLEMath
 {
         //
         //      Primitive transformation types
