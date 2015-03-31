@@ -81,19 +81,19 @@
   </ItemGroup>
   <ItemGroup>
     <Reference Include="Atf.Core">
-      <HintPath>..\..\lib\Debug\Atf.Core.dll</HintPath>
+      <HintPath>..\..\Atf\lib\Debug\Atf.Core.dll</HintPath>
     </Reference>
     <Reference Include="Atf.Gui">
-      <HintPath>..\..\lib\Debug\Atf.Gui.dll</HintPath>
+      <HintPath>..\..\Atf\lib\Debug\Atf.Gui.dll</HintPath>
     </Reference>
     <Reference Include="Atf.Gui.WinForms">
-      <HintPath>..\..\lib\Debug\Atf.Gui.WinForms.dll</HintPath>
+      <HintPath>..\..\Atf\lib\Debug\Atf.Gui.WinForms.dll</HintPath>
     </Reference>
     <Reference Include="Atf.IronPython">
       <HintPath>..\..\ATF\lib\Debug\Atf.IronPython.dll</HintPath>
     </Reference>
     <Reference Include="LevelEditorCore">
-      <HintPath>..\..\lib\Debug\LevelEditorCore.dll</HintPath>
+      <HintPath>..\..\LevelEditorCore\lib\Debug\LevelEditorCore.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.Composition" />
