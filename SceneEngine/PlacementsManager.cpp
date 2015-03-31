@@ -1607,6 +1607,8 @@ namespace SceneEngine
                         placements.GetObjectReferences(), pend,
                         [=](const Placements::ObjectReference& obj) { return uint32(obj._guid) == comparison; });
                     if (pIterator!=pend) {
+                        i->second = pIterator->_guid;       // set the recorded guid to the full guid
+
                         ObjTransDef def;
                         def._localToWorld = Combine(pIterator->_localToCell, cellToWorld);
                         def._model = (const char*)PtrAdd(placements.GetFilenamesBuffer(), sizeof(uint64) + pIterator->_modelFilenameOffset);

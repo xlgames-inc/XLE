@@ -88,7 +88,7 @@ namespace RenderingInterop
         /// between this and native object 
         /// only call onece.
         /// </summary>
-        public void UpdateNativeOjbect()
+        public void UpdateNativeObject()
         {
             foreach (AttributeInfo attribInfo in this.DomNode.Type.Attributes)
             {
@@ -140,6 +140,8 @@ namespace RenderingInterop
                 {
                     m_documentId = doc.NativeDocumentId;
                     GameEngine.RegisterGob(m_instanceId, m_documentId, this);
+
+                    UpdateNativeObject();
                 }
             }
         }

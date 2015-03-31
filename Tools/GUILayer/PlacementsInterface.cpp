@@ -8,6 +8,7 @@
 #include "LevelEditorScene.h"
 #include "../../SceneEngine/PlacementsManager.h"
 #include "../../Utility/StringFormat.h"
+#include "../../Math/Transformations.h"
 
 namespace GUILayer { namespace EditorDynamicInterface
 {
@@ -100,8 +101,10 @@ namespace GUILayer { namespace EditorDynamicInterface
             SceneEngine::PlacementsEditor::TransactionFlags::IgnoreIdTop32Bits);
         if (transaction->GetObjectCount()==1) {
             if (prop == Property_Transform) {
+                    // note -- putting in a transpose here, because the level editor matrix
+                    //          math uses a transposed form
                 auto originalObject = transaction->GetObject(0);
-                originalObject._localToWorld = *(const Float3x4*)stringForm;
+                originalObject._localToWorld = AsFloat3x4(Transpose(*(const Float4x4*)stringForm));
                 transaction->SetObject(0, originalObject);
                 transaction->Commit();
             }
