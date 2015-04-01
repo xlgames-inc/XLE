@@ -141,7 +141,7 @@ namespace GUILayer
         unsigned index, const RenderCore::Techniques::ProjectionDesc& mainSceneProjectionDesc) const 
     { return ShadowProjectionDesc(); }
 
-    unsigned           EditorSceneParser::GetLightCount() const { return 0; }
+    unsigned           EditorSceneParser::GetLightCount() const { return 1; }
     const LightDesc&   EditorSceneParser::GetLightDesc(unsigned index) const
     {
         static LightDesc light;

@@ -88,6 +88,8 @@ namespace RenderingInterop
                 gridXform = Matrix4F.Multiply(scale, trans);
             }
 
+            gridXform = Matrix4F.Multiply(gridXform, cam.AxisSystem);
+
             GameEngine.DrawPrimitive(PrimitiveType.LineList, m_gridVBId, 0, m_gridVertexCount, Color.LightGray,
                                      gridXform);
         }

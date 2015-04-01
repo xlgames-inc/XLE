@@ -16,7 +16,6 @@ using ViewTypes = Sce.Atf.Rendering.ViewTypes;
 
 namespace RenderingInterop
 {
-    
     [Export(typeof(ISnapSettings))]
     [Export(typeof(IDesignView))]    
     [Export(typeof(DesignView))]
@@ -24,11 +23,22 @@ namespace RenderingInterop
     public class NativeDesignView : DesignView
     {        
         public NativeDesignView()
-        {                       
-            QuadView.TopLeft = new XLELayer.NativeDesignControl(this, GameEngine.GetEditorSceneManager()) { ViewType = ViewTypes.Perspective };
-            QuadView.TopRight = new XLELayer.NativeDesignControl(this, GameEngine.GetEditorSceneManager()) { ViewType = ViewTypes.Right };
-            QuadView.BottomLeft = new XLELayer.NativeDesignControl(this, GameEngine.GetEditorSceneManager()) { ViewType = ViewTypes.Top };
-            QuadView.BottomRight = new XLELayer.NativeDesignControl(this, GameEngine.GetEditorSceneManager()) { ViewType = ViewTypes.Front };
+        {
+            XLELayer.NativeDesignControl[] views = new XLELayer.NativeDesignControl[]
+            {
+                new XLELayer.NativeDesignControl(this, GameEngine.GetEditorSceneManager()) { ViewType = ViewTypes.Perspective },
+                new XLELayer.NativeDesignControl(this, GameEngine.GetEditorSceneManager()) { ViewType = ViewTypes.Right },
+                new XLELayer.NativeDesignControl(this, GameEngine.GetEditorSceneManager()) { ViewType = ViewTypes.Top },
+                new XLELayer.NativeDesignControl(this, GameEngine.GetEditorSceneManager()) { ViewType = ViewTypes.Front }
+            };
+            foreach (var v in views)
+            {
+                v.AddRenderCallback(RenderCallback);
+            }
+            QuadView.TopLeft = views[0];
+            QuadView.TopRight = views[1];
+            QuadView.BottomLeft = views[2];
+            QuadView.BottomRight = views[3];
 
             // set control names.            
             QuadView.TopLeft.Name = "TopLeft";
@@ -67,6 +77,13 @@ namespace RenderingInterop
         }
 
         private ISelectionContext m_selectionContext;
+
+        private void RenderCallback(DesignView designView, Sce.Atf.Rendering.Camera camera)
+        {
+            var game = designView.Context.As<IGame>();
+            GridRenderer gridRender = game.Grid.Cast<GridRenderer>();
+            gridRender.Render(camera);
+        }
         
     }
 

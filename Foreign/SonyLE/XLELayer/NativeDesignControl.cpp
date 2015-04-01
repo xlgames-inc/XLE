@@ -31,6 +31,8 @@ namespace XLELayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    public delegate void RenderCallback(LevelEditorCore::DesignView^ designView, Sce::Atf::Rendering::Camera^ camera);
+
     private ref class ManipulatorOverlay : public GUILayer::IOverlaySystem
     {
     public:
@@ -42,6 +44,8 @@ namespace XLELayer
             RenderCore::IThreadContext* device, 
             const RenderCore::Techniques::ProjectionDesc& projectionDesc) override {}
         virtual void SetActivationState(bool) override {}
+
+        event RenderCallback^ OnRender;
 
         ManipulatorOverlay(
             LevelEditorCore::DesignView^ designView,
@@ -71,7 +75,6 @@ namespace XLELayer
     {
     public:
         static RenderCore::Techniques::ParsingContext* s_currentParsingContext = nullptr;
-
         static GUILayer::SimpleRenderingContext^ CreateSimpleRenderingContext(GUILayer::SavedRenderResources^ savedRes)
         {
             if (!s_currentParsingContext) return nullptr;
@@ -91,7 +94,8 @@ namespace XLELayer
             _cameraSettings = gcnew GUILayer::VisCameraSettings();
             _sceneManager = sceneManager;
             _layerControl->AddSystem(sceneManager->CreateOverlaySystem(_cameraSettings));
-            _layerControl->AddSystem(gcnew ManipulatorOverlay(designView, this));
+            _manipulatorOverlay = gcnew ManipulatorOverlay(designView, this);
+            _layerControl->AddSystem(_manipulatorOverlay);
             
             if (s_marqueePen == nullptr) {
                 using namespace System::Drawing;
@@ -130,9 +134,15 @@ namespace XLELayer
             _cameraSettings->GetUnderlyingRaw()->_farClip = camera->FarZ;
             _layerControl->Render();
 
-            // GameEngine.SetRendererFlag(BasicRendererFlags.Foreground | BasicRendererFlags.Lit);
-            // if (DesignView.Manipulator != null)
-            //     DesignView.Manipulator.Render(this);
+                // testing for agreement between SonyWWS camera code and XLE camera code
+            // float viewportAspect = Width / float(Height);
+            // auto camDesc = PlatformRig::AsCameraDesc(*_cameraSettings->GetUnderlyingRaw());
+            // auto proj = RenderCore::Techniques::PerspectiveProjection(
+            //     camDesc, viewportAspect);
+            // auto viewMat = InvertOrthonormalTransform(camDesc._cameraToWorld);
+            // auto compViewMat = Camera->ViewMatrix;
+            // auto compProjMat = Camera->ProjectionMatrix;
+            // (void)compViewMat; (void)compProjMat; (void)proj; (void)viewMat;
 
             if (IsPicking)
             {// todo: use Directx to draw marque.                
@@ -143,6 +153,11 @@ namespace XLELayer
                 }
                 delete g;
             }
+        }
+
+        void AddRenderCallback(RenderCallback^ callback)
+        {
+            _manipulatorOverlay->OnRender += callback;
         }
 
     protected:
@@ -200,6 +215,11 @@ namespace XLELayer
         void OnResize(System::EventArgs^ e) override
         {
             _layerControl->OnResize(e);
+            auto sz = ClientSize;
+            if (sz.Width > 0 && sz.Height > 0)
+            {
+                Camera->Aspect = (float)sz.Width / (float)sz.Height;
+            }
             __super::OnResize(e);
         }
 
@@ -222,6 +242,8 @@ namespace XLELayer
         //     
         //     return Adapters::As<IGame^>(DesignView->Context);
         // }
+        
+        ManipulatorOverlay^ _manipulatorOverlay;
         
         static System::Drawing::Rectangle MakeRect(Point p1, Point p2)
         {
@@ -337,6 +359,11 @@ namespace XLELayer
             
         try
         {
+            // auto game = Sce::Atf::Adaptation::Adapters::As<IGame^>(_designView->Context);
+            // GridRenderer gridRender = game->Grid->Cast<GridRenderer>();
+            // gridRender.Render(_viewControl->Camera);
+            OnRender(_designView, _viewControl->Camera);
+
             // GameEngine::SetRendererFlag(RenderingInterop::BasicRendererFlags::Foreground | RenderingInterop::BasicRendererFlags::Lit);
             if (_designView->Manipulator != nullptr)
                 _designView->Manipulator->Render(_viewControl);

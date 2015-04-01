@@ -123,7 +123,7 @@ namespace GUILayer
             techniqueInterface.BindConstantBuffer(Hash64("LocalTransform"), 0, 1);
             techniqueInterface.BindConstantBuffer(Hash64("BasicMaterialConstants"), 1, 1);
 
-            ParameterBox materialParameters;
+            static ParameterBox materialParameters({std::make_pair("MAT_SKIP_LIGHTING_SCALE", "1")});
             const ParameterBox* state[] = {
                 &vf._geoParams, &parsingContext.GetTechniqueContext()._globalEnvironmentState,
                 &parsingContext.GetTechniqueContext()._runtimeState, &materialParameters
