@@ -103,7 +103,7 @@ namespace LevelEditor.DomNodeAdapters
                         //  the root node of the main document) needs to recieve change events.
                         //  Even though the placement document is a separate document, we still
                         //  need to use the same single selection and history context
-                    m_target.DomNode.SubscribeToEvents(DomNode);
+                    // m_target.DomNode.SubscribeToEvents(DomNode);
                 }
             }            
         }

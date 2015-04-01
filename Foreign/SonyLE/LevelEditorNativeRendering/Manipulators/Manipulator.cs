@@ -21,6 +21,7 @@ namespace RenderingInterop
         public Manipulator()
         {
             NodeList = new List<ITransformable>();
+            TransactionContextList = new List<ITransactionContext>();
             HitMatrix = new Matrix4F();
             DesignView = null;
         }
@@ -85,6 +86,12 @@ namespace RenderingInterop
 
         }
 
+        protected IList<ITransactionContext> TransactionContextList
+        {
+            get;
+            private set;
+        }
+
         protected Matrix4F HitMatrix
         {
             get;
@@ -108,5 +115,20 @@ namespace RenderingInterop
         public const float AxisThickness = 1.0f / 26.0f;
         public const float AxisHandle = 1.0f / 6.0f;
 
+        protected void SetupTransactionContexts(IEnumerable<DomNode> nodes)
+        {
+            TransactionContextList.Clear();
+            if (nodes == null) return;
+
+            var result = new List<ITransactionContext>();
+            foreach (var n in nodes)
+            {
+                var context = n.GetRoot().As<ITransactionContext>();
+                if (context != null && !result.Contains(context))
+                {
+                    TransactionContextList.Add(context);
+                }
+            }
+        }
     }
 }

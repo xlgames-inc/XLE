@@ -848,7 +848,10 @@ namespace LevelEditor
         
         public bool IsMasterContext
         {
-            get { return this.Cast<IGameDocument>() == m_gameDocumentRegistry.MasterDocument; }
+            get {
+                var gameDoc = this.As<IGameDocument>();
+                return (gameDoc != null) && gameDoc == m_gameDocumentRegistry.MasterDocument; 
+            }
         }
         public IGameObjectFolder RootGameObjectFolder
         {

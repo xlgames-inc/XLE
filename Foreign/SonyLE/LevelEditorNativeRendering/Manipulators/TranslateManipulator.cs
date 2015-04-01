@@ -77,10 +77,11 @@ namespace RenderingInterop
 
             var selectionContext = DesignView.Context.As<ISelectionContext>();
             var selection = selectionContext.Selection;
-            var transactionContext = DesignView.Context.As<ITransactionContext>();
 
             IEnumerable<DomNode> rootDomNodes = DomNode.GetRoots(selection.AsIEnumerable<DomNode>());
             m_duplicating = Control.ModifierKeys == m_duplicateKey;
+
+            SetupTransactionContexts(rootDomNodes);
 
             if (m_duplicating)
             { 
@@ -96,7 +97,8 @@ namespace RenderingInterop
                 {
                     DomNode[] copies = DomNode.Copy(originals);
 
-                    transactionContext.Begin("Copy And Move".Localize());
+                    foreach(var t in TransactionContextList)
+                        t.Begin("Copy And Move".Localize());
 
                     List<object> newSelection = new List<object>();
                     // re-parent copy
@@ -130,7 +132,8 @@ namespace RenderingInterop
                 }
 
                 if (NodeList.Count > 0)
-                    transactionContext.Begin("Move".Localize());                
+                    foreach (var t in TransactionContextList)
+                        t.Begin("Move".Localize());
             }
 
             m_originalValues = new Vec3F[NodeList.Count];
@@ -292,20 +295,23 @@ namespace RenderingInterop
                 {                    
                     IManipulatorNotify notifier = NodeList[k].As<IManipulatorNotify>();
                     if (notifier != null) notifier.OnEndDrag();
-                }        
-
-                var transactionContext = DesignView.Context.As<ITransactionContext>();
-                try
-                {
-                    if (transactionContext.InTransaction)
-                        transactionContext.End();
                 }
-                catch (InvalidTransactionException ex)
+
+                var transactionContexts = TransactionContextList;
+                foreach (var t in transactionContexts)
                 {
-                    if (transactionContext.InTransaction)
-                        transactionContext.Cancel();
-                    if (ex.ReportError)
-                        Outputs.WriteLine(OutputMessageType.Error, ex.Message);
+                    try
+                    {
+                        if (t.InTransaction)
+                            t.End();
+                    }
+                    catch (InvalidTransactionException ex)
+                    {
+                        if (t.InTransaction)
+                            t.Cancel();
+                        if (ex.ReportError)
+                            Outputs.WriteLine(OutputMessageType.Error, ex.Message);
+                    }
                 }
             }
             m_hitRegion = HitRegion.None;
@@ -360,6 +366,7 @@ namespace RenderingInterop
         private void Clear()
         {            
             NodeList.Clear();
+            TransactionContextList.Clear();
             m_originalValues = null;
             m_originalRotations = null;
         }
