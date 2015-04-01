@@ -74,78 +74,6 @@ namespace LevelEditor.DomNodeAdapters
         protected static AttributeInfo s_nameAttribute;
     }
 
-    [Export(typeof(GenericDocumentRegistry))]
-    [PartCreationPolicy(CreationPolicy.Shared)]
-    public class GenericDocumentRegistry
-    {
-        public T FindDocument<T>(Uri ur) where T : class
-        {
-            foreach (var doc in m_documents)
-                if (doc.Uri == ur) {
-                    var adapt = doc as IAdaptable;
-                    return doc.As<T>();
-                }
-            return default(T);
-        }
-
-        public bool Contains(IDocument doc)
-        {
-            return m_documents.Contains(doc);
-        }
-
-        public void Add(IDocument doc)
-        {
-            if (doc == null)
-                throw new ArgumentNullException("doc");
-
-            if (!m_documents.Contains(doc))
-            {
-                m_documents.Add(doc);
-                doc.DirtyChanged += OnDocumentDirtyChanged;
-                doc.UriChanged += OnDocumentUriChanged;
-                DocumentAdded(this, new ItemInsertedEventArgs<IDocument>(m_documents.Count - 1, doc));
-            }
-        }
-
-        public void Remove(IDocument doc)
-        {
-            if (doc == null || !m_documents.Contains(doc))
-                return;
-
-            m_documents.Remove(doc);
-            doc.DirtyChanged -= OnDocumentDirtyChanged;
-            doc.UriChanged -= OnDocumentUriChanged;
-            DocumentRemoved(this, new ItemRemovedEventArgs<IDocument>(0, doc));
-        }
-
-        public event EventHandler<ItemInsertedEventArgs<IDocument>> DocumentAdded = delegate { };
-        public event EventHandler<ItemRemovedEventArgs<IDocument>> DocumentRemoved = delegate { };
-        public event EventHandler<ItemChangedEventArgs<IDocument>> DocumentDirtyChanged = delegate { };
-        public event EventHandler<ItemChangedEventArgs<IDocument>> DocumentUriChanged = delegate { };
-
-        public void Clear()
-        {
-            for (int i = m_documents.Count - 1; i >= 0; i--)
-            {
-                var doc = m_documents[i];
-                m_documents.RemoveAt(i);
-                DocumentRemoved(this, new ItemRemovedEventArgs<IDocument>(i, doc));
-            }
-        }
-
-        private void OnDocumentDirtyChanged(object sender, EventArgs e)
-        {
-            DocumentDirtyChanged(this, new ItemChangedEventArgs<IDocument>((IDocument)sender));
-        }
-
-        private void OnDocumentUriChanged(object sender, UriChangedEventArgs e)
-        {
-            DocumentUriChanged(this, new ItemChangedEventArgs<IDocument>((IDocument)sender));
-        }
-
-        private readonly List<IDocument> m_documents = new List<IDocument>();
-    }
-
     public class PlacementsCellRef : GenericReference<XLEPlacementDocument>, IHierarchical, IResolveable
     {
         static PlacementsCellRef() { s_nameAttribute = Schema.placementsCellReferenceType.nameAttribute; }
@@ -168,6 +96,14 @@ namespace LevelEditor.DomNodeAdapters
                 {
                     SchemaLoader schemaloader = Globals.MEFContainer.GetExportedValue<SchemaLoader>();
                     m_target = XLEPlacementDocument.OpenOrCreate(ur, schemaloader);
+
+                        //  We can use "SubscribeToEvents" to feed changes to the sub-tree
+                        //  into the tree that this cell belongs to.
+                        //  This is important because the "GameContext" (which is attached to
+                        //  the root node of the main document) needs to recieve change events.
+                        //  Even though the placement document is a separate document, we still
+                        //  need to use the same single selection and history context
+                    m_target.DomNode.SubscribeToEvents(DomNode);
                 }
             }            
         }
@@ -175,16 +111,8 @@ namespace LevelEditor.DomNodeAdapters
         {
             if (m_target != null)
             {
-                var gameDocRegistry = Globals.MEFContainer.GetExportedValue<GenericDocumentRegistry>();
-                    // We can't remove, because a single document can have multiple references upon it
-                    // We need strict reference counting to do this properly. But how do we do that 
-                    // in C#? We need to drop references in many cases:
-                    //  * close master document
-                    //  * delete cell ref
-                    //  * removal of parent from the tree
-                    //  * change uri
-                    // It might turn out difficult to catch all of those cases reliably
-                // gameDocRegistry.Remove(m_target.As<IDocument>()); 
+                m_target.DomNode.UnsubscribeFromEvents(DomNode);
+                XLEPlacementDocument.Release(m_target);
                 m_target = null;
                 m_error = "Not resolved";
             }
