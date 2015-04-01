@@ -156,13 +156,11 @@ namespace GUILayer
         //     _pimpl->_windowRig->GetPresentationChain().get());
 
         _pimpl.reset();
-        delete _control; _control = nullptr;
     }
 
     EngineControl::!EngineControl()
     {
         _pimpl.reset();
-        delete _control; _control = nullptr;
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

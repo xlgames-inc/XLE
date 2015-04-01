@@ -98,11 +98,7 @@ namespace GUILayer
     : _settings(settings), _config(config)
     {}
 
-    MaterialVisLayer::~MaterialVisLayer()
-    {
-        delete _config;
-        delete _settings;
-    }
+    MaterialVisLayer::~MaterialVisLayer() {}
 
     
     static MaterialVisSettings::GeometryType AsManaged(

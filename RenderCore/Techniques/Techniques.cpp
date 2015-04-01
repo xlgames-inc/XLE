@@ -526,6 +526,18 @@ namespace RenderCore { namespace Techniques
         return _technique[techniqueIndex].FindVariation(globalState, techniqueInterface);
     }
 
+    ResolvedShader      ShaderType::FindVariationSuppressExcept(  
+        int techniqueIndex, 
+        const ParameterBox* globalState[ShaderParameters::Source::Max],
+        const TechniqueInterface& techniqueInterface) const
+    {
+        TRY {
+            return FindVariation(techniqueIndex, globalState, techniqueInterface);
+        } CATCH (...) {
+            return ResolvedShader();
+        } CATCH_END
+    }
+
     ShaderType::ShaderType(const char resourceName[])
     {
         Data data;

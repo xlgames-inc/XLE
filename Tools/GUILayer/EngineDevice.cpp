@@ -153,7 +153,7 @@ namespace GUILayer
         RenderCore::Techniques::ResourceBoxes_Shutdown();
         RenderOverlays::CleanupFontSystem();
         ResourceCompilerThread_Hack::Shutdown();
-        delete _pimpl;
+        _pimpl.reset();
         TerminateFileSystemMonitoring();
     }
 }

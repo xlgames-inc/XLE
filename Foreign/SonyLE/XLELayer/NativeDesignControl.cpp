@@ -116,8 +116,7 @@ namespace XLELayer
                 0.f, 0.f, 0.f, 1.f);
         }
 
-        ~NativeDesignControl() { delete _layerControl; _layerControl = nullptr; delete _cameraSettings; _cameraSettings = nullptr; delete _sceneManager; _sceneManager = nullptr; }
-        !NativeDesignControl() { delete _layerControl; _layerControl = nullptr; delete _cameraSettings; _cameraSettings = nullptr; delete _sceneManager; _sceneManager = nullptr; }
+        ~NativeDesignControl() { delete _layerControl; _layerControl = nullptr; delete _cameraSettings; _cameraSettings = nullptr; }
 
         void Render() override 
         {

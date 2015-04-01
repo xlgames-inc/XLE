@@ -28,7 +28,7 @@ namespace RenderingInterop
         {
             switch (vf)
             {
-            case VertexFormat.VF_P:     return 3 * 4;
+            case VertexFormat.VF_P:     return 3*4;
             case VertexFormat.VF_PC:    return 3*4 + 4;
             case VertexFormat.VF_PN:    return 3*4 + 3*4;
             case VertexFormat.VF_PT:    return 3*4 + 2*4;

@@ -112,6 +112,7 @@ namespace RenderCore { namespace Techniques
     public:
         ResolvedShader      FindVariation(  const ParameterBox* globalState[ShaderParameters::Source::Max], 
                                             const TechniqueInterface& techniqueInterface) const;
+
         bool                IsValid() const { return !_vertexShaderName.empty(); }
 
         Technique(Utility::Data& source, ::Assets::DirectorySearchRules* searchRules = nullptr, std::vector<const ::Assets::DependencyValidation*>* inherited = nullptr);
@@ -161,6 +162,7 @@ namespace RenderCore { namespace Techniques
     {
     public:
         ResolvedShader      FindVariation(int techniqueIndex, const ParameterBox* globalState[ShaderParameters::Source::Max], const TechniqueInterface& techniqueInterface) const;
+        ResolvedShader      FindVariationSuppressExcept(int techniqueIndex, const ParameterBox* globalState[ShaderParameters::Source::Max], const TechniqueInterface& techniqueInterface) const;
         const ::Assets::DependencyValidation&         GetDependencyValidation() const     { return *_validationCallback; }
 
         ShaderType(const char resourceName[]);

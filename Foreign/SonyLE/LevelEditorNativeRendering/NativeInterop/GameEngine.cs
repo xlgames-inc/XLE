@@ -157,6 +157,11 @@ namespace RenderingInterop
             }
             s_idToDomNode.Clear();
 
+            Util3D.Shutdown();
+            s_underlyingScene.Dispose();
+            s_underlyingScene = null;
+            s_savedRenderResources.Dispose();
+            s_savedRenderResources = null;
             s_engineDevice.Dispose();
             s_engineDevice = null;
             CriticalError = s_notInitialized;
@@ -713,11 +718,12 @@ namespace RenderingInterop
         {
             return s_savedRenderResources.CreateVertexBuffer(
                 buffer,
-                vertexCount * vf.GetSize());
+                vertexCount * vf.GetSize(),
+                (uint)vf);
         }
         private static ulong NativeCreateIndexBuffer(uint* buffer, uint indexCount) 
         {
-            return s_savedRenderResources.CreateIndexBuffer(buffer, 2*indexCount);
+            return s_savedRenderResources.CreateIndexBuffer(buffer, sizeof(uint)*indexCount);
         }
         private static void NativeDeleteBuffer(ulong buffer) 
         {
