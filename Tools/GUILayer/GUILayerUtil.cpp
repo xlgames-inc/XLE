@@ -4,6 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#include "GUILayerUtil.h"
 #include "MarshalString.h"
 #include "../../Utility/MemoryUtils.h"
 
@@ -17,4 +18,12 @@ namespace GUILayer
             return Hash64(clix::marshalString<clix::E_UTF8>(string));
         }
     };
+
+    TechniqueContextWrapper::TechniqueContextWrapper(
+        std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext)
+    {
+        _techniqueContext.reset(
+            new std::shared_ptr<RenderCore::Techniques::TechniqueContext>(std::move(techniqueContext)));
+    }
 }
+

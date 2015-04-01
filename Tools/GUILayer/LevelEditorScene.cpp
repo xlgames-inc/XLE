@@ -199,30 +199,45 @@ namespace GUILayer
     PropertyId EditorSceneManager::GetPropertyId(ObjectTypeId type, System::String^ name)       { return (*_dynInterface)->GetPropertyId(type, clix::marshalString<clix::E_UTF8>(name).c_str()); }
     ChildListId EditorSceneManager::GetChildListId(ObjectTypeId type, System::String^ name)     { return (*_dynInterface)->GetChildListId(type, clix::marshalString<clix::E_UTF8>(name).c_str()); }
 
-    System::Collections::Generic::IEnumerable<HitRecord^>^ 
+    System::Collections::Generic::ICollection<HitRecord^>^ 
         EditorSceneManager::RayIntersection(
             const SceneEngine::IntersectionTestContext& testContext,
             Float3 worldSpaceRayStart, Float3 worldSpaceRayEnd)
     {
-        SceneEngine::IntersectionTestScene testScene(nullptr, (*_scene)->_placementsEditor);
+        TRY
+        {
+            SceneEngine::IntersectionTestScene testScene(nullptr, (*_scene)->_placementsEditor);
 
-        auto firstResult = testScene.FirstRayIntersection(
-            testContext,
-            std::make_pair(worldSpaceRayStart, worldSpaceRayEnd));
+            auto firstResult = testScene.FirstRayIntersection(
+                testContext,
+                std::make_pair(worldSpaceRayStart, worldSpaceRayEnd));
 
-        if (firstResult._type != 0) {
-            auto record = gcnew HitRecord;
-            record->_document = firstResult._objectGuid.first;
-            record->_object = firstResult._objectGuid.second;
-            record->_distance = firstResult._distance;
-            record->_worldSpaceCollisionX = firstResult._worldSpaceCollision[0];
-            record->_worldSpaceCollisionY = firstResult._worldSpaceCollision[1];
-            record->_worldSpaceCollisionZ = firstResult._worldSpaceCollision[2];
+            if (firstResult._type != 0) {
+                auto record = gcnew HitRecord;
+                record->_document = firstResult._objectGuid.first;
+                record->_object = firstResult._objectGuid.second;
+                record->_distance = firstResult._distance;
+                record->_worldSpaceCollisionX = firstResult._worldSpaceCollision[0];
+                record->_worldSpaceCollisionY = firstResult._worldSpaceCollision[1];
+                record->_worldSpaceCollisionZ = firstResult._worldSpaceCollision[2];
 
-            auto result = gcnew System::Collections::Generic::List<HitRecord^>();
-            result->Add(record);
-            return result;
+                    // hack -- for placement objects, we must strip off the top 32 bits
+                    //          from the object id.
+                if (firstResult._type == IntersectionTestScene::Type::Placement) {
+                    record->_object &= 0x00000000ffffffffull;
+                }
+
+                auto result = gcnew System::Collections::Generic::List<HitRecord^>();
+                result->Add(record);
+                return result;
+            }
         }
+        CATCH(const ::Assets::Exceptions::InvalidResource& e)
+        {
+            LogWarning << "Invalid resource while performing ray intersection test: {" << e.what() << "}";
+        }
+        CATCH(const ::Assets::Exceptions::PendingResource&) {}
+        CATCH_END
 
         return nullptr;
     }

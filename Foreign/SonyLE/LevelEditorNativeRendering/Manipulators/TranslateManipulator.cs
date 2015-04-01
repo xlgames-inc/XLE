@@ -201,7 +201,10 @@ namespace RenderingInterop
 
                     rayW.MoveToIncludePoint(orgPosW + snapOffset + manipMove);
                     
-                    HitRecord[] hits = GameEngine.RayPick(view, proj, rayW, true);
+                    HitRecord[] hits = NativeInterop.Picking.RayPick(
+                        // vc.SceneManager, vc.TechniqueContext, 
+                        null, null,
+                        rayW, vc.Camera.FarZ, true);
                     bool cansnap = false;
                     HitRecord target = new HitRecord();
                     if (hits.Length > 0)

@@ -67,7 +67,7 @@ namespace GUILayer
 
         IOverlaySystem^ CreateOverlaySystem(VisCameraSettings^ camera);
 
-        System::Collections::Generic::IEnumerable<HitRecord^>^ 
+        System::Collections::Generic::ICollection<HitRecord^>^ 
             RayIntersection(
                 const SceneEngine::IntersectionTestContext& testContext,
                 Float3 worldSpaceRayStart, Float3 worldSpaceRayEnd);

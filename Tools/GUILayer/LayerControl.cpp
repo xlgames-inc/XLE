@@ -12,6 +12,7 @@
 #include "UITypesBinding.h"
 #include "EngineDevice.h"
 #include "NativeEngineDevice.h"
+#include "GUILayerUtil.h"
 #include "../../PlatformRig/InputTranslator.h"
 #include "../../PlatformRig/FrameRig.h"
 #include "../../PlatformRig/OverlaySystem.h"
@@ -270,9 +271,9 @@ namespace GUILayer
         overlaySet.AddSystem(std::make_shared<InputLayer>(std::move(manipulators)));
     }
 
-    std::shared_ptr<RenderCore::Techniques::TechniqueContext> LayerControl::GetTechniqueContext()
+    TechniqueContextWrapper^ LayerControl::GetTechniqueContext()
     {
-        return _pimpl->_globalTechniqueContext;
+        return gcnew TechniqueContextWrapper(_pimpl->_globalTechniqueContext);
     }
 
     LayerControl::LayerControl(Control^ control)

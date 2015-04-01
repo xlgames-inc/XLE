@@ -20,6 +20,7 @@ namespace GUILayer
     ref class IOverlaySystem;
     ref class VisCameraSettings;
     ref class VisMouseOver;
+    ref class TechniqueContextWrapper;
 
     public ref class LayerControl : public EngineControl
     {
@@ -30,7 +31,7 @@ namespace GUILayer
         void AddDefaultCameraHandler(VisCameraSettings^);
         void AddSystem(IOverlaySystem^ overlay);
 
-        std::shared_ptr<RenderCore::Techniques::TechniqueContext> GetTechniqueContext();
+        TechniqueContextWrapper^ GetTechniqueContext();
 
         LayerControl(Control^ control);
         ~LayerControl();

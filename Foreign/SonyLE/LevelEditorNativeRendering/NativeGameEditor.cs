@@ -237,7 +237,7 @@ namespace RenderingInterop
                 gridRender.DeleteVertexBuffer();
                 m_designView.Context = null;                
                 // GameEngine.DestroyObject(0, game.Cast<NativeObjectAdapter>());
-                GameEngine.Clear();
+                // GameEngine.Clear();
             }
             else
             {// sub document.

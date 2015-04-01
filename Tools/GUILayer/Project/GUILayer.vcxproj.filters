@@ -49,6 +49,7 @@
       <Filter>DynInterface</Filter>
     </ClInclude>
     <ClInclude Include="..\AutoToShared.h" />
+    <ClInclude Include="..\GUILayerUtil.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="DynInterface">

@@ -97,6 +97,7 @@
     <ClInclude Include="..\EditorDynamicInterface.h" />
     <ClInclude Include="..\EngineDevice.h" />
     <ClInclude Include="..\EngineControl.h" />
+    <ClInclude Include="..\GUILayerUtil.h" />
     <ClInclude Include="..\IOverlaySystem.h" />
     <ClInclude Include="..\IWindowRig.h" />
     <ClInclude Include="..\LayerControl.h" />

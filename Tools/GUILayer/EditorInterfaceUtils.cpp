@@ -8,6 +8,7 @@
 #include "EngineDevice.h"
 #include "NativeEngineDevice.h"
 #include "LayerControl.h"
+#include "GUILayerUtil.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../SceneEngine/IntersectionTest.h"
 
@@ -17,40 +18,29 @@ namespace GUILayer
     public ref class EditorInterfaceUtils
     {
     public:
-        static System::Collections::Generic::IEnumerable<HitRecord^>^ 
+        static System::Collections::Generic::ICollection<HitRecord^>^ 
             RayIntersection(
-                EngineDevice^ engineDevice, LayerControl^ layerControl,
+                EngineDevice^ engineDevice, 
+                TechniqueContextWrapper^ techniqueContext,
                 EditorSceneManager^ editorSceneManager,
                 float worldSpaceRayStartX,
                 float worldSpaceRayStartY,
                 float worldSpaceRayStartZ,
                 float worldSpaceRayEndX,
                 float worldSpaceRayEndY,
-                float worldSpaceRayEndZ);
+                float worldSpaceRayEndZ)
+        {
+            SceneEngine::IntersectionTestContext testContext(
+                engineDevice->GetNative().GetRenderDevice()->GetImmediateContext(),
+                RenderCore::Techniques::CameraDesc(),
+                *techniqueContext->_techniqueContext.get());
+
+            return editorSceneManager->RayIntersection(
+                testContext, 
+                Float3(worldSpaceRayStartX, worldSpaceRayStartY, worldSpaceRayStartZ),
+                Float3(worldSpaceRayEndX, worldSpaceRayEndY, worldSpaceRayEndZ));
+        }
     };
-
-    System::Collections::Generic::IEnumerable<HitRecord^>^ 
-        EditorInterfaceUtils::RayIntersection(
-            EngineDevice^ engineDevice, LayerControl^ layerControl,
-            EditorSceneManager^ editorSceneManager,
-            float worldSpaceRayStartX,
-            float worldSpaceRayStartY,
-            float worldSpaceRayStartZ,
-            float worldSpaceRayEndX,
-            float worldSpaceRayEndY,
-            float worldSpaceRayEndZ)
-    {
-        SceneEngine::IntersectionTestContext testContext(
-            engineDevice->GetNative().GetRenderDevice()->GetImmediateContext(),
-            RenderCore::Techniques::CameraDesc(),
-            layerControl->GetTechniqueContext());
-
-        return editorSceneManager->RayIntersection(
-            testContext, 
-            Float3(worldSpaceRayStartX, worldSpaceRayStartY, worldSpaceRayStartZ),
-            Float3(worldSpaceRayEndX, worldSpaceRayEndY, worldSpaceRayEndZ));
-    }
-
 }
 
 

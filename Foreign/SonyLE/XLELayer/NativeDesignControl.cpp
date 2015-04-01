@@ -144,36 +144,14 @@ namespace XLELayer
             _manipulatorOverlay->OnRender += callback;
         }
 
-    protected:
-        // IList<Object^>^ Pick(MouseEventArgs^ e) override 
-        // { 
-        //     bool multiSelect = DragOverThreshold;
-        //     if (multiSelect) {
-        //         return gcnew List<Object^>();   // multi-select not supported yet
-        //     }
-        // 
-        //     Ray3F ray = GetWorldRay(CurrentMousePoint);
-        //     float maxCollisionDistance = 2048.f;
-        // 
-        //         //  We need to find a list of objects that intersect this ray.
-        //         //  When we find the objects, we can use GameEngine::GetAdapterFromId
-        //         //  to try to match the picked objects to NativeObjectAdapter objects
-        //     
-        //     auto endPt = ray.Origin + maxCollisionDistance * ray.Direction;
-        //     /*auto results =*/ GUILayer::EditorInterfaceUtils::RayIntersection(
-        //         GUILayer::EngineDevice::GetInstance(), _layerControl, _sceneManager,
-        //         ray.Origin.X, ray.Origin.Y, ray.Origin.Z,
-        //         endPt.X, endPt.Y, endPt.Z);
-        // 
-        //     // if (results) {
-        //     //     for each(auto r in results)
-        //     //     {
-        //     // 
-        //     //     }
-        //     // }
-        //     return gcnew List<Object^>();
-        // }
+        property GUILayer::EditorSceneManager^ SceneManager {
+            GUILayer::EditorSceneManager^ get() { return _sceneManager; }
+        }
+        property GUILayer::TechniqueContextWrapper^ TechniqueContext {
+            GUILayer::TechniqueContextWrapper^ get() { return _layerControl->GetTechniqueContext(); }
+        }
 
+    protected:
         void OnResize(System::EventArgs^ e) override
         {
             _layerControl->OnResize(e);

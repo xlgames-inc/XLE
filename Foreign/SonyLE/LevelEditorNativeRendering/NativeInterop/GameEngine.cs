@@ -130,17 +130,18 @@ namespace RenderingInterop
         public static string CriticalError { get; private set; }
 
         public static GUILayer.EditorSceneManager GetEditorSceneManager() { return s_underlyingScene; }
+        public static GUILayer.EngineDevice GetEngineDevice() { return s_engineDevice; }
 
         /// <summary>
         /// delete all the game object in native side.
         /// and reset the game to default.
         /// </summary>
-        public static void Clear()
-        {
-            s_idToDomNode.Clear();
-            // _gameLevel = 0;
-            // NativeClear();
-        }
+        // public static void Clear()
+        // {
+        //     s_idToDomNode.Clear();
+        //     // _gameLevel = 0;
+        //     // NativeClear();
+        // }
 
         /// <summary>
         /// shutdown game engine.
@@ -151,8 +152,8 @@ namespace RenderingInterop
             while (s_idToDomNode.Count > 0)
             {
                 DestroyObject(
-                    s_idToDomNode.Keys.First().First,
-                    s_idToDomNode.Keys.First().Second, 
+                    s_idToDomNode.Keys.First().Item1,
+                    s_idToDomNode.Keys.First().Item2, 
                     s_idToDomNode.Values.First().TypeId);
             }
             s_idToDomNode.Clear();
@@ -317,12 +318,12 @@ namespace RenderingInterop
 
         public static void RegisterGob(ulong documentId, ulong instanceId, NativeObjectAdapter gob)
         {
-            s_idToDomNode.Add(new Pair<ulong, ulong>(documentId, instanceId), gob);
+            s_idToDomNode.Add(Tuple.Create(documentId, instanceId), gob);
         }
 
         public static void DeregisterGob(ulong documentId, ulong instanceId, NativeObjectAdapter gob)
         {
-            s_idToDomNode.Remove(new Pair<ulong, ulong>(documentId, instanceId));
+            s_idToDomNode.Remove(Tuple.Create(documentId, instanceId));
         }
 
         // private static ulong s_currentDocumentId = 1;
@@ -449,14 +450,18 @@ namespace RenderingInterop
 
         public static NativeObjectAdapter GetAdapterFromId(ulong documentId, ulong instanceId)
         {
-            return s_idToDomNode[new Pair<ulong, ulong>(documentId, instanceId)];
+            NativeObjectAdapter result;
+            if (s_idToDomNode.TryGetValue(Tuple.Create(documentId, instanceId), out result)) {
+                return result;
+            }
+            return null;
         }
 
         #endregion
 
         #region picking and selection
-        public static bool RayPick(Matrix4F viewxform, Matrix4F projxfrom, Ray3F rayW, bool skipSelected, out HitRecord hit) { hit = new HitRecord(); return false; }
-        public static HitRecord[] RayPick(Matrix4F viewxform, Matrix4F projxfrom, Ray3F rayW, bool skipSelected) { return null; }
+        // public static bool RayPick(Matrix4F viewxform, Matrix4F projxfrom, Ray3F rayW, bool skipSelected, out HitRecord hit) { hit = new HitRecord(); return false; }
+        // public static HitRecord[] RayPick(Matrix4F viewxform, Matrix4F projxfrom, Ray3F rayW, bool skipSelected) { return null; }
         public static void SetSelection(IEnumerable<NativeObjectAdapter> selection) { }
 
         public static HitRecord[] FrustumPick(ulong renderSurface, Matrix4F viewxform, Matrix4F projxfrom, RectangleF rect) { return null; }
@@ -913,7 +918,8 @@ namespace RenderingInterop
         //    return (FntDlg)dlg;
         //}
 
-        private static Dictionary<Pair<ulong, ulong>, NativeObjectAdapter> s_idToDomNode = new Dictionary<Pair<ulong, ulong>, NativeObjectAdapter>();
+        private static Dictionary<Tuple<ulong, ulong>, NativeObjectAdapter> s_idToDomNode 
+            = new Dictionary<Tuple<ulong, ulong>, NativeObjectAdapter>();
         // private static class NativeMethods
         // {
         //     [DllImport("kernel32", CharSet = CharSet.Auto, SetLastError = true)]

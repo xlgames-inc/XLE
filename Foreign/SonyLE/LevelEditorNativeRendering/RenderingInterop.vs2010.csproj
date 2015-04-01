@@ -86,6 +86,7 @@
     <Compile Include="NativeInterop\Enums.cs" />
     <Compile Include="NativeInterop\GameEngine.cs" />
     <Compile Include="DomNodeAdapters\NativeObjectAdapter.cs" />
+    <Compile Include="NativeInterop\Picking.cs" />
     <Compile Include="NativeInterop\RenderState.cs" />
     <Compile Include="NativeInterop\Structs.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

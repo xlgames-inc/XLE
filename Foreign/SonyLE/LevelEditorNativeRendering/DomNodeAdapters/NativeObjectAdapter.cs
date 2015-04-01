@@ -139,7 +139,7 @@ namespace RenderingInterop
                 if (m_instanceId != 0)
                 {
                     m_documentId = doc.NativeDocumentId;
-                    GameEngine.RegisterGob(m_instanceId, m_documentId, this);
+                    GameEngine.RegisterGob(m_documentId, m_instanceId, this);
 
                     UpdateNativeObject();
                 }
