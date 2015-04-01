@@ -24,12 +24,12 @@ namespace RenderingInterop
     {        
         public NativeDesignView()
         {
-            XLELayer.NativeDesignControl[] views = new XLELayer.NativeDesignControl[]
+            NativeDesignControl[] views = new NativeDesignControl[]
             {
-                new XLELayer.NativeDesignControl(this, GameEngine.GetEditorSceneManager()) { ViewType = ViewTypes.Perspective },
-                new XLELayer.NativeDesignControl(this, GameEngine.GetEditorSceneManager()) { ViewType = ViewTypes.Right },
-                new XLELayer.NativeDesignControl(this, GameEngine.GetEditorSceneManager()) { ViewType = ViewTypes.Top },
-                new XLELayer.NativeDesignControl(this, GameEngine.GetEditorSceneManager()) { ViewType = ViewTypes.Front }
+                new NativeDesignControl(this, GameEngine.GetEditorSceneManager()) { ViewType = ViewTypes.Perspective },
+                new NativeDesignControl(this, GameEngine.GetEditorSceneManager()) { ViewType = ViewTypes.Right },
+                new NativeDesignControl(this, GameEngine.GetEditorSceneManager()) { ViewType = ViewTypes.Top },
+                new NativeDesignControl(this, GameEngine.GetEditorSceneManager()) { ViewType = ViewTypes.Front }
             };
             foreach (var v in views)
             {

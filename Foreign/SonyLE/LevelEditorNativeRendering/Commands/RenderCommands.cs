@@ -172,8 +172,8 @@ namespace RenderingInterop
             if (!(commandTag is Command))
                 return false;
 
-            // NativeDesignControl activeControl = (NativeDesignControl)m_designView.ActiveView;
-            RenderState rs = new RenderState(); // activeControl.RenderState;
+            NativeDesignControl activeControl = (NativeDesignControl)m_designView.ActiveView;
+            RenderState rs = activeControl.RenderState;
 
             var context = m_propertyGrid.PropertyGridView.EditingContext as RenderStateEditingContext;
             if (context == null || context.Item != rs)
@@ -210,8 +210,8 @@ namespace RenderingInterop
         {
             if (commandTag is Command)
             {
-                // NativeDesignControl control = (NativeDesignControl)m_designView.ActiveView;
-                RenderState rs = new RenderState(); // control.RenderState;
+                NativeDesignControl control = (NativeDesignControl)m_designView.ActiveView;
+                RenderState rs = control.RenderState;
                 
                 switch ((Command)commandTag)
                 {
@@ -289,8 +289,8 @@ namespace RenderingInterop
         {
             if (commandTag is Command)
             {
-                // NativeDesignControl control = (NativeDesignControl)m_designView.ActiveView;
-                GlobalRenderFlags flags = (new RenderState()).RenderFlag; // control.RenderState.RenderFlag;
+                NativeDesignControl control = (NativeDesignControl)m_designView.ActiveView;
+                GlobalRenderFlags flags = control.RenderState.RenderFlag;
                 switch ((Command)commandTag)
                 {
                     case Command.RenderSmooth:

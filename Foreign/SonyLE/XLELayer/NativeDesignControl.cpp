@@ -96,12 +96,6 @@ namespace XLELayer
             _layerControl->AddSystem(sceneManager->CreateOverlaySystem(_cameraSettings));
             _manipulatorOverlay = gcnew ManipulatorOverlay(designView, this);
             _layerControl->AddSystem(_manipulatorOverlay);
-            
-            if (s_marqueePen == nullptr) {
-                using namespace System::Drawing;
-                s_marqueePen = gcnew Pen(Color::FromArgb(30, 30, 30), 2);
-                s_marqueePen->DashPattern = gcnew array<float, 1> { 3.f, 3.f };
-            }
 
                 //  use the camera "AxisSystem" to convert from the native SonyWWS
                 //  camera coordinates into the coordinates we need for XLE.
@@ -143,16 +137,6 @@ namespace XLELayer
             // auto compViewMat = Camera->ViewMatrix;
             // auto compProjMat = Camera->ProjectionMatrix;
             // (void)compViewMat; (void)compProjMat; (void)proj; (void)viewMat;
-
-            if (IsPicking)
-            {// todo: use Directx to draw marque.                
-                Graphics^ g = CreateGraphics();
-                auto rect = MakeRect(FirstMousePoint, CurrentMousePoint);
-                if (rect.Width > 0 && rect.Height > 0) {
-                    g->DrawRectangle(s_marqueePen, rect);
-                }
-                delete g;
-            }
         }
 
         void AddRenderCallback(RenderCallback^ callback)
@@ -161,56 +145,34 @@ namespace XLELayer
         }
 
     protected:
-        IList<Object^>^ Pick(MouseEventArgs^ e) override 
-        { 
-            bool multiSelect = DragOverThreshold;
-            if (multiSelect) {
-                return gcnew List<Object^>();   // multi-select not supported yet
-            }
-
-            Ray3F ray = GetWorldRay(CurrentMousePoint);
-            float maxCollisionDistance = 2048.f;
-
-                //  We need to find a list of objects that intersect this ray.
-                //  When we find the objects, we can use GameEngine::GetAdapterFromId
-                //  to try to match the picked objects to NativeObjectAdapter objects
-            
-            auto endPt = ray.Origin + maxCollisionDistance * ray.Direction;
-            /*auto results =*/ GUILayer::EditorInterfaceUtils::RayIntersection(
-                GUILayer::EngineDevice::GetInstance(), _layerControl, _sceneManager,
-                ray.Origin.X, ray.Origin.Y, ray.Origin.Z,
-                endPt.X, endPt.Y, endPt.Z);
-
-            // if (results) {
-            //     for each(auto r in results)
-            //     {
-            // 
-            //     }
-            // }
-            return gcnew List<Object^>();
-        }
-
-        void OnDragEnter(DragEventArgs^ drgevent) override {}
-        void OnDragOver(DragEventArgs^ drgevent) override {}
-        void OnDragDrop(DragEventArgs^ drgevent) override {}
-        void OnDragLeave(EventArgs^ drgevent) override {}
-
-        void OnPaint(PaintEventArgs^ e) override
-        {
-            try
-            {
-                if (DesignView->Context == nullptr || GameLoop == nullptr) {
-                    e->Graphics->Clear(DesignView->BackColor);
-                    return;
-                }
-
-                Render();
-            }
-            catch(Exception^ ex)
-            {
-                e->Graphics->DrawString(ex->Message, Font, Brushes::Red, 1, 1);
-            }            
-        }
+        // IList<Object^>^ Pick(MouseEventArgs^ e) override 
+        // { 
+        //     bool multiSelect = DragOverThreshold;
+        //     if (multiSelect) {
+        //         return gcnew List<Object^>();   // multi-select not supported yet
+        //     }
+        // 
+        //     Ray3F ray = GetWorldRay(CurrentMousePoint);
+        //     float maxCollisionDistance = 2048.f;
+        // 
+        //         //  We need to find a list of objects that intersect this ray.
+        //         //  When we find the objects, we can use GameEngine::GetAdapterFromId
+        //         //  to try to match the picked objects to NativeObjectAdapter objects
+        //     
+        //     auto endPt = ray.Origin + maxCollisionDistance * ray.Direction;
+        //     /*auto results =*/ GUILayer::EditorInterfaceUtils::RayIntersection(
+        //         GUILayer::EngineDevice::GetInstance(), _layerControl, _sceneManager,
+        //         ray.Origin.X, ray.Origin.Y, ray.Origin.Z,
+        //         endPt.X, endPt.Y, endPt.Z);
+        // 
+        //     // if (results) {
+        //     //     for each(auto r in results)
+        //     //     {
+        //     // 
+        //     //     }
+        //     // }
+        //     return gcnew List<Object^>();
+        // }
 
         void OnResize(System::EventArgs^ e) override
         {
@@ -228,125 +190,7 @@ namespace XLELayer
         GUILayer::EditorSceneManager^ _sceneManager;
 
     private:
-        // IGame^ TargetGame()
-        // {
-        //     auto selection = Adapters::As<ISelectionContext^>(DesignView->Context);
-        //     auto node = selection->GetLastSelected<DomNode^>();
-        //               
-        //     IReference<IGame^>^ gameref = Adapters::As<IReference<IGame^>^>(node);
-        //     if (gameref != nullptr && gameref->Target != nullptr)
-        //         return gameref->Target;  
-        //               
-        //     if(node != nullptr)
-        //         return Adapters::As<IGame^>(node->GetRoot()); 
-        //     
-        //     return Adapters::As<IGame^>(DesignView->Context);
-        // }
-        
         ManipulatorOverlay^ _manipulatorOverlay;
-        
-        static System::Drawing::Rectangle MakeRect(Point p1, Point p2)
-        {
-            int minx = System::Math::Min(p1.X, p2.X);
-            int miny = System::Math::Min(p1.Y, p2.Y);
-            int maxx = System::Math::Max(p1.X, p2.X);
-            int maxy = System::Math::Max(p1.Y, p2.Y);
-            int w = maxx - minx;
-            int h = maxy - miny;
-            return System::Drawing::Rectangle(minx, miny, w, h);
-        }
-
-        static System::Drawing::Pen^ s_marqueePen;
-
-        // ref class GameDocRange : IEnumerable<DomNode^> 
-        // {
-        // private:
-        //     ref class GameDocRangeIterator : IEnumerator<DomNode^> 
-        //     {
-        //     public:
-        //         property DomNode^ Current 
-        //      {
-        //          virtual DomNode^ get()
-        //          { 
-        //              if (_stage == 0) { return _folderNodeIterator->Current; }
-        //              if (_stage == 1) { return _subDocFolder->Current; }
-        //              return nullptr;
-        //          }
-        //      }
-        //         property Object^ Current2
-        //      {
-        //          virtual Object^ get() = System::Collections::IEnumerator::Current::get
-        //          {
-        //              return Current;
-        //          }
-        //      };
-        //         virtual bool MoveNext() 
-        //      { 
-        //          if (_stage == 0) {
-        //              if (!_folderNodeIterator || !_folderNodeIterator->MoveNext()) {
-        //                  _stage = 1;
-        //
-        //                  _subDocs = _gameDocRegistry->SubDocuments->GetEnumerator();
-        //                  if (!_subDocs || !_subDocs->Current) { _stage = 2; return false; }
-        //
-        //                  for (;;) {
-        //                      auto folderNode = Adapters::Cast<DomNode^>(_subDocs->Current);
-        //                      _subDocFolder = folderNode->Subtree->GetEnumerator();
-        //                      if (_subDocFolder && _subDocFolder->Current) break;
-        //
-        //                      if (!_subDocs->MoveNext()) { _stage = 2; return false; }
-        //                  }
-        //              }
-        //          } else if (_stage == 1) {
-        //              if (_subDocFolder->MoveNext()) { return true; }
-        //
-        //              for (;;) {
-        //                  if (!_subDocs->MoveNext()) { _stage = 2; return false; }
-        //                  
-        //                  auto folderNode = Adapters::Cast<DomNode^>(_subDocs->Current);
-        //                  _subDocFolder = folderNode->Subtree->GetEnumerator();
-        //                  if (_subDocFolder && _subDocFolder->Current) break;
-        //              }
-        //
-        //              return true;
-        //          }
-        //
-        //          return false;
-        //      }
-        //         virtual void Reset() = IEnumerator<DomNode^>::Reset { throw gcnew NotImplementedException(); }
-        // 
-        //         GameDocRangeIterator()
-        //      {
-        //          _gameDocRegistry = Globals::MEFContainer->GetExportedValue<IGameDocumentRegistry^>();
-        //          _folderNode = Adapters::Cast<DomNode^>(_gameDocRegistry->MasterDocument->RootGameObjectFolder);
-        //          _folderNodeIterator = _folderNode->Subtree->GetEnumerator();
-        //      }
-        //         ~GameDocRangeIterator() {}
-        //         !GameDocRangeIterator() {}
-        // 
-        //     protected:
-        //         unsigned _stage;
-        //         IEnumerator<DomNode^>^ _folderNodeIterator;
-        //         IEnumerator<LevelEditorCore::IGameDocument^>^ _subDocs;
-        //         IEnumerator<DomNode^>^ _subDocFolder;
-        // 
-        //         LevelEditorCore::IGameDocumentRegistry^ _gameDocRegistry;
-        //         DomNode^ _folderNode;
-        //     };
-        // 
-        // public:
-        //     virtual IEnumerator<DomNode^>^ GetEnumerator() { return gcnew GameDocRangeIterator(); }
-        //     virtual System::Collections::IEnumerator^ GetEnumerator2() = System::Collections::IEnumerable::GetEnumerator
-        //     { return GetEnumerator(); }
-        // };
-        // property IEnumerable<DomNode^>^ Items
-        // {
-        //     IEnumerable<DomNode^>^ get()
-        //     {
-        //             // C# version of this just uses "yield"... which makes it much easier
-        //         return gcnew GameDocRange();
-        //     }
-        // }
     };
 
 
@@ -359,12 +203,7 @@ namespace XLELayer
             
         try
         {
-            // auto game = Sce::Atf::Adaptation::Adapters::As<IGame^>(_designView->Context);
-            // GridRenderer gridRender = game->Grid->Cast<GridRenderer>();
-            // gridRender.Render(_viewControl->Camera);
             OnRender(_designView, _viewControl->Camera);
-
-            // GameEngine::SetRendererFlag(RenderingInterop::BasicRendererFlags::Foreground | RenderingInterop::BasicRendererFlags::Lit);
             if (_designView->Manipulator != nullptr)
                 _designView->Manipulator->Render(_viewControl);
         }

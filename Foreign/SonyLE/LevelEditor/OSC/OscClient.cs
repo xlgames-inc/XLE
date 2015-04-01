@@ -372,10 +372,9 @@ namespace LevelEditor.OSC
 
         private float GetRenderFlags(GlobalRenderFlags flags)
         {
-            // return (((NativeDesignControl) m_designView.ActiveView).RenderState.RenderFlag & flags) == flags
-            //     ? 1.0f
-            //     : 0.0f;
-            return 1.0f;
+            return (((NativeDesignControl) m_designView.ActiveView).RenderState.RenderFlag & flags) == flags
+                ? 1.0f
+                : 0.0f;
         }
 
         private bool GetOscParam(object oscData, out float param1)

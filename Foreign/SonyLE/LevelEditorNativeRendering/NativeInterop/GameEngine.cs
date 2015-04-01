@@ -459,6 +459,8 @@ namespace RenderingInterop
         public static HitRecord[] RayPick(Matrix4F viewxform, Matrix4F projxfrom, Ray3F rayW, bool skipSelected) { return null; }
         public static void SetSelection(IEnumerable<NativeObjectAdapter> selection) { }
 
+        public static HitRecord[] FrustumPick(ulong renderSurface, Matrix4F viewxform, Matrix4F projxfrom, RectangleF rect) { return null; }
+
         // public static bool RayPick(Matrix4F viewxform, Matrix4F projxfrom, Ray3F rayW, bool skipSelected, out HitRecord hit)
         // {
         //     HitRecord* nativeHits = null;

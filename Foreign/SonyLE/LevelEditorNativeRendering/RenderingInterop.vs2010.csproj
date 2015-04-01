@@ -78,6 +78,9 @@
     <Compile Include="Manipulators\TranslateManipulator.cs" />
     <Compile Include="Manipulators\TranslatorControl.cs" />
     <Compile Include="NativeAnnotations.cs" />
+    <Compile Include="NativeDesignControl.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="NativeDesignView.cs" />
     <Compile Include="NativeGameEditor.cs" />
     <Compile Include="NativeInterop\Enums.cs" />
