@@ -340,6 +340,11 @@ namespace RenderingInterop
             get { return m_instanceId; }
 
         }
+
+        public ulong DocumentId
+        {
+            get { return m_documentId; }
+        }
         #endregion
     }
 }

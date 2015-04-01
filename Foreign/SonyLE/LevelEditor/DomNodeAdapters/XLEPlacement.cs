@@ -13,7 +13,7 @@ using LevelEditorCore;
 
 namespace LevelEditor.DomNodeAdapters
 {
-    class XLEPlacementObject : GenericTransformableObject, IListable
+    class XLEPlacementObject : GenericTransformableObject, IListable, IVisible, ILockable
     {
         #region IListable Members
         public void GetInfo(ItemInfo info)
@@ -24,6 +24,22 @@ namespace LevelEditor.DomNodeAdapters
         #endregion
 
         public XLEPlacementObject() : base(Schema.placementObjectType.transform) {}
+
+        #region IVisible Members
+        public virtual bool Visible
+        {
+            get { return true; }
+            set { }
+        }
+        #endregion
+
+        #region ILockable Members
+        public virtual bool IsLocked
+        {
+            get { return false; }
+            set { }
+        }
+        #endregion
 
         // public string Model
         // {

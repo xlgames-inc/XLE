@@ -82,7 +82,7 @@ namespace GUILayer { namespace EditorDynamicInterface
     bool PlacementObjectType::SetProperty(
         EditorScene& scene, DocumentId doc, ObjectId obj, 
         ObjectTypeId type, PropertyId prop, 
-        const char stringForm[]) const
+        const void* src, size_t srcSize) const
     {
             // find the object, and set the given property (as per the new value specified in the string)
             //  We need to create a transaction, make the change and then commit it back.
@@ -103,12 +103,58 @@ namespace GUILayer { namespace EditorDynamicInterface
             if (prop == Property_Transform) {
                     // note -- putting in a transpose here, because the level editor matrix
                     //          math uses a transposed form
-                auto originalObject = transaction->GetObject(0);
-                originalObject._localToWorld = AsFloat3x4(Transpose(*(const Float4x4*)stringForm));
-                transaction->SetObject(0, originalObject);
-                transaction->Commit();
+                if (srcSize >= sizeof(Float4x4)) {
+                    auto originalObject = transaction->GetObject(0);
+                    originalObject._localToWorld = AsFloat3x4(Transpose(*(const Float4x4*)src));
+                    transaction->SetObject(0, originalObject);
+                    transaction->Commit();
+                    return true;
+                }
             }
-            return true;
+        }
+
+        return false;
+    }
+
+    bool PlacementObjectType::GetProperty(
+        EditorScene& scene, DocumentId doc, ObjectId obj, 
+        ObjectTypeId type, PropertyId prop, 
+        void* dest, size_t* destSize) const
+    {
+        if (type != ObjectType_Placement) { assert(0); return false; }
+        if (prop != Property_Transform && prop != Property_Visible
+            && prop != Property_Bounds && prop != Property_LocalBounds) { assert(0); return false; }
+        assert(destSize);
+
+        typedef std::pair<Float3, Float3> BoundingBox;
+
+        auto guid = SceneEngine::PlacementGUID(doc, obj);
+        auto transaction = scene._placementsEditor->Transaction_Begin(
+            &guid, &guid+1, 
+            SceneEngine::PlacementsEditor::TransactionFlags::IgnoreIdTop32Bits);
+        if (transaction->GetObjectCount()==1) {
+            if (prop == Property_Transform) {
+                if (*destSize >= sizeof(Float4x4)) {
+                    auto originalObject = transaction->GetObject(0);
+                        // note -- putting in a transpose here, because the level editor matrix
+                        //          math uses a transposed form
+                    *(Float4x4*)dest = Transpose(AsFloat4x4(originalObject._localToWorld));
+                    return true;
+                }
+                *destSize = sizeof(Float4x4);
+            } else if (prop == Property_Bounds) {
+                if (*destSize >= sizeof(BoundingBox)) {
+                    *(BoundingBox*)dest = transaction->GetWorldBoundingBox(0);
+                    return true;
+                }
+                *destSize = sizeof(BoundingBox);
+            } else if (prop == Property_LocalBounds) {
+                if (*destSize >= sizeof(BoundingBox)) {
+                    *(BoundingBox*)dest = transaction->GetLocalBoundingBox(0);
+                    return true;
+                }
+                *destSize = sizeof(BoundingBox);
+            }
         }
 
         return false;
@@ -130,6 +176,8 @@ namespace GUILayer { namespace EditorDynamicInterface
     {
         if (!XlCompareString(name, "transform")) return Property_Transform;
         if (!XlCompareString(name, "visible")) return Property_Visible;
+        if (!XlCompareString(name, "Bounds")) return Property_Bounds;
+        if (!XlCompareString(name, "LocalBounds")) return Property_LocalBounds;
         return 0;
     }
 

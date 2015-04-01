@@ -19,7 +19,8 @@ namespace GUILayer { namespace EditorDynamicInterface
         ObjectId AssignObjectId(EditorScene& scene, DocumentId doc, ObjectTypeId type) const;
         bool CreateObject(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId type, const char initializer[]) const;
         bool DeleteObject(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId objType) const;
-        bool SetProperty(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId type, PropertyId prop, const char stringForm[]) const;
+        bool SetProperty(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId type, PropertyId prop, const void* src, size_t srcSize) const;
+        bool GetProperty(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId type, PropertyId prop, void* dest, size_t* destSize) const;
 
         ObjectTypeId GetTypeId(const char name[]) const;
         DocumentTypeId GetDocumentTypeId(const char name[]) const;
@@ -33,5 +34,7 @@ namespace GUILayer { namespace EditorDynamicInterface
         static const ObjectTypeId ObjectType_Placement = 1; // (ObjectTypeId)ConstHash64<'plac', 'emen', 't'>::Value;
         static const PropertyId Property_Transform = 100;
         static const PropertyId Property_Visible = 101;
+        static const PropertyId Property_Bounds = 102;
+        static const PropertyId Property_LocalBounds = 103;
     };
 }}

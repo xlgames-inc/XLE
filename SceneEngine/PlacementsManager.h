@@ -111,6 +111,7 @@ namespace SceneEngine
             virtual PlacementGUID       GetOriginalGuid(unsigned index) const = 0;
             virtual unsigned            GetObjectCount() const = 0;
             virtual auto                GetLocalBoundingBox(unsigned index) const -> std::pair<Float3, Float3> = 0;
+            virtual auto                GetWorldBoundingBox(unsigned index) const -> std::pair<Float3, Float3> = 0;
 
             virtual void    SetObject(unsigned index, const ObjTransDef& newState) = 0;
             virtual bool    Create(const ObjTransDef& newState) = 0;

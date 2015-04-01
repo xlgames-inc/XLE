@@ -58,7 +58,8 @@ namespace GUILayer
         ObjectId AssignObjectId(DocumentId doc, ObjectTypeId type);
         bool CreateObject(DocumentId doc, ObjectId obj, ObjectTypeId objType, System::String^ initializer);
         bool DeleteObject(DocumentId doc, ObjectId obj, ObjectTypeId objType);
-        bool SetProperty(DocumentId doc, ObjectId obj, ObjectTypeId objType, PropertyId prop, void* data);
+        bool SetProperty(DocumentId doc, ObjectId obj, ObjectTypeId objType, PropertyId prop, const void* src, size_t srcSize);
+        bool GetProperty(DocumentId doc, ObjectId obj, ObjectTypeId objType, PropertyId prop, void* dest, size_t* destSize);
 
         ObjectTypeId GetTypeId(System::String^ name);
         DocumentTypeId GetDocumentTypeId(System::String^ name);

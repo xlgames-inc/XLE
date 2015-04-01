@@ -149,12 +149,12 @@ namespace RenderingInterop
         /// </summary>
         public static void Shutdown()
         {
-            while (s_idToDomNode.Count > 0)
+            foreach (var keyValue in s_idToDomNode)
             {
                 DestroyObject(
-                    s_idToDomNode.Keys.First().Item1,
-                    s_idToDomNode.Keys.First().Item2, 
-                    s_idToDomNode.Values.First().TypeId);
+                    keyValue.Key.Item1,
+                    keyValue.Key.Item2, 
+                    keyValue.Value.TypeId);
             }
             s_idToDomNode.Clear();
 
@@ -412,40 +412,41 @@ namespace RenderingInterop
             NativeSetObjectProperty(typeid, propId, documentId, instanceId, data, size);
         }
 
-        public static void GetObjectProperty(uint typeId, uint propId, ulong instanceId, out int data)
-        {
-            int datasize = 0;
-            IntPtr ptrData;
-            GetObjectProperty(typeId, propId, instanceId, out ptrData, out datasize);
-            if (datasize > 0)
-            {
-                data = *(int*)ptrData.ToPointer();
-            }
-            else
-            {
-                data = 0;
-            }
+        // public static void GetObjectProperty(uint typeId, uint propId, ulong instanceId, out int data)
+        // {
+        //     int datasize = 0;
+        //     IntPtr ptrData;
+        //     GetObjectProperty(typeId, propId, instanceId, out ptrData, out datasize);
+        //     if (datasize > 0)
+        //     {
+        //         data = *(int*)ptrData.ToPointer();
+        //     }
+        //     else
+        //     {
+        //         data = 0;
+        //     }
+        // 
+        // }
+        // 
+        // public static void GetObjectProperty(uint typeId, uint propId, ulong instanceId, out uint data)
+        // {
+        //     int datasize = 0;
+        //     IntPtr ptrData;
+        //     GetObjectProperty(typeId, propId, instanceId, out ptrData, out datasize);
+        //     if (datasize > 0)
+        //     {
+        //         data = *(uint*)ptrData.ToPointer();
+        //     }
+        //     else
+        //     {
+        //         data = 0;
+        //     }
+        // 
+        // }
 
-        }
-
-        public static void GetObjectProperty(uint typeId, uint propId, ulong instanceId, out uint data)
+        public static void GetObjectProperty(uint typeId, uint propId, ulong documentId, ulong instanceId, out IntPtr data, out int size)
         {
-            int datasize = 0;
-            IntPtr ptrData;
-            GetObjectProperty(typeId, propId, instanceId, out ptrData, out datasize);
-            if (datasize > 0)
-            {
-                data = *(uint*)ptrData.ToPointer();
-            }
-            else
-            {
-                data = 0;
-            }
-
-        }
-        public static void GetObjectProperty(uint typeId, uint propId, ulong instanceId, out IntPtr data, out int size)
-        {
-            NativeGetObjectProperty(typeId,propId,instanceId, out data,out size);
+            NativeGetObjectProperty(typeId, propId, documentId, instanceId, out data, out size);
         }
 
         public static NativeObjectAdapter GetAdapterFromId(ulong documentId, ulong instanceId)
@@ -702,19 +703,42 @@ namespace RenderingInterop
         {
             unsafe
             {
-                s_underlyingScene.SetProperty(documentId, instanceId, typeId, propId, data.ToPointer());
+                s_underlyingScene.SetProperty(documentId, instanceId, typeId, propId, data.ToPointer(), (ulong)size);
             }
         }
 
         static GCHandle s_savedBoundingBoxHandle;
+        static GCHandle s_temporaryNativeBuffer;
+        static uint s_temporaryNativeBufferSize = 0;
         static bool s_builtSavedBoundingBox = false;
-        private static void NativeGetObjectProperty(uint typeId, uint propId, ulong instanceId, out IntPtr data, out int size) 
+
+        private static void NativeGetObjectProperty(uint typeId, uint propId, ulong documentId, ulong instanceId, out IntPtr data, out int size) 
         {
             if (!s_builtSavedBoundingBox) {
+
                 Vec3F[] boundingBox = new Vec3F[2] { new Vec3F(-10.0f, -10.0f, -10.0f), new Vec3F(10.0f, 10.0f, 10.0f) };
                 s_savedBoundingBoxHandle = GCHandle.Alloc(boundingBox, GCHandleType.Pinned);
                 s_builtSavedBoundingBox = true;
+
+                var bufferInit = new uint[64];
+                s_temporaryNativeBuffer = GCHandle.Alloc(bufferInit, GCHandleType.Pinned);
+                s_temporaryNativeBufferSize = (uint)sizeof(uint) * 64;
             }
+
+            unsafe 
+            {
+                ulong bufferSize = s_temporaryNativeBufferSize;
+                IntPtr pinnedPtr = s_temporaryNativeBuffer.AddrOfPinnedObject();
+                if (s_underlyingScene.GetProperty(
+                    documentId, instanceId, typeId, propId,
+                    pinnedPtr.ToPointer(), &bufferSize))
+                {
+                    data = s_temporaryNativeBuffer.AddrOfPinnedObject();
+                    size = (int)bufferSize;
+                    return;
+                }
+            }
+
             data = s_savedBoundingBoxHandle.AddrOfPinnedObject();
             size = sizeof(float) * 6;
         }

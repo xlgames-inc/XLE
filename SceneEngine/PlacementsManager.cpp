@@ -1239,6 +1239,7 @@ namespace SceneEngine
         PlacementGUID       GetOriginalGuid(unsigned index) const;
         unsigned            GetObjectCount() const;
         std::pair<Float3, Float3>   GetLocalBoundingBox(unsigned index) const;
+        std::pair<Float3, Float3>   GetWorldBoundingBox(unsigned index) const;
 
         virtual void        SetObject(unsigned index, const ObjTransDef& newState);
 
@@ -1289,6 +1290,17 @@ namespace SceneEngine
     {
         auto& model = _editorPimpl->_renderer->GetCachedModel(_objects[index]._model.c_str());
         return model.GetStaticBoundingBox();
+    }
+
+    std::pair<Float3, Float3>   Transaction::GetWorldBoundingBox(unsigned index) const
+    {
+        auto guid = _pushedGuids[index];
+        auto cellToWorld = _editorPimpl->GetCellToWorld(guid.first);
+        auto& dynPlacements = *_editorPimpl->GetDynPlacements(guid.first);
+        auto& objects = dynPlacements.GetObjects();
+
+        auto dst = std::lower_bound(objects.begin(), objects.end(), guid.second, CompareObjectId());
+        return TransformBoundingBox(cellToWorld, dst->_cellSpaceBoundary);
     }
 
     void    Transaction::SetObject(unsigned index, const ObjTransDef& newState)

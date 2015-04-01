@@ -56,11 +56,20 @@ namespace GUILayer { namespace EditorDynamicInterface
         return false;
     }
 
-    bool RegisteredTypes::SetProperty(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId objType, PropertyId prop, const char stringForm[]) const
+    bool RegisteredTypes::SetProperty(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId objType, PropertyId prop, const void* src, size_t srcSize) const
     {
         if (objType > 0 && (objType-1) < _knownObjectTypes.size()) {
             auto& reg = _knownObjectTypes[objType-1];
-            return reg._owner->SetProperty(scene, doc, obj, reg._mappedTypeId, prop, stringForm);
+            return reg._owner->SetProperty(scene, doc, obj, reg._mappedTypeId, prop, src, srcSize);
+        }
+        return false;
+    }
+
+    bool RegisteredTypes::GetProperty(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId objType, PropertyId prop, void* dest, size_t* destSize) const
+    {
+        if (objType > 0 && (objType-1) < _knownObjectTypes.size()) {
+            auto& reg = _knownObjectTypes[objType-1];
+            return reg._owner->GetProperty(scene, doc, obj, reg._mappedTypeId, prop, dest, destSize);
         }
         return false;
     }

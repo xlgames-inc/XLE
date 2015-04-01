@@ -191,8 +191,11 @@ namespace GUILayer
     bool EditorSceneManager::DeleteObject(DocumentId doc, ObjectId obj, ObjectTypeId objType)
         { return (*_dynInterface)->DeleteObject(**_scene, doc, obj, objType); }
 
-    bool EditorSceneManager::SetProperty(DocumentId doc, ObjectId obj, ObjectTypeId objType, PropertyId prop, void* data)
-        { return (*_dynInterface)->SetProperty(**_scene, doc, obj, objType, prop, (const char*)data); }
+    bool EditorSceneManager::SetProperty(DocumentId doc, ObjectId obj, ObjectTypeId objType, PropertyId prop, const void* src, size_t srcSize)
+        { return (*_dynInterface)->SetProperty(**_scene, doc, obj, objType, prop, src, srcSize); }
+
+    bool EditorSceneManager::GetProperty(DocumentId doc, ObjectId obj, ObjectTypeId objType, PropertyId prop, void* dest, size_t* destSize)
+        { return (*_dynInterface)->GetProperty(**_scene, doc, obj, objType, prop, dest, destSize); }
 
     ObjectTypeId EditorSceneManager::GetTypeId(System::String^ name)                            { return (*_dynInterface)->GetTypeId(clix::marshalString<clix::E_UTF8>(name).c_str()); }
     DocumentTypeId EditorSceneManager::GetDocumentTypeId(System::String^ name)                  { return (*_dynInterface)->GetDocumentTypeId(clix::marshalString<clix::E_UTF8>(name).c_str()); }
