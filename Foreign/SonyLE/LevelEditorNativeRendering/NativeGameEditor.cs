@@ -50,6 +50,8 @@ namespace RenderingInterop
             // register NativeGameWorldAdapter on game type.
             m_schemaLoader.GameType.Define(new ExtensionInfo<NativeDocumentAdapter>());
 
+            var knownBoundableTypes = new List<DomNodeType>();
+
             // parse schema annotation.
             foreach (DomNodeType domType in m_schemaLoader.TypeCollection.GetNodeTypes())
             {
@@ -57,7 +59,9 @@ namespace RenderingInterop
                 if (annotations == null)
                     continue;
 
-                
+
+                bool isBoundableType = false;
+
                 // collect all the properties that only exist in native side.
                 List<NativeAttributeInfo> nativeAttribs = new List<NativeAttributeInfo>();
 
@@ -97,6 +101,11 @@ namespace RenderingInterop
                             NativeAttributeInfo attribInfo = new NativeAttributeInfo(domType,nativePropName,typeId,propId);
                             nativeAttribs.Add(attribInfo);
                         }
+
+                        if (nativePropName == "Bounds" || nativePropName == "LocalBounds")
+                        {
+                            isBoundableType = true;
+                        }
                         
                     }
                     else if (elm.LocalName == NativeAnnotations.NativeElement)
@@ -112,12 +121,31 @@ namespace RenderingInterop
                 {
                     domType.SetTag(nativeAttribs.ToArray());
                 }
+
+                    // if we have any boundable types in our lineage, then we should be boundable ourselves
+                if (!isBoundableType)
+                {
+                    foreach(var type in domType.Lineage)
+                    {
+                        if (knownBoundableTypes.Contains(type))
+                        {
+                            isBoundableType = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (isBoundableType)
+                {
+                    if (domType.IsAbstract == false)
+                        domType.Define(new ExtensionInfo<BoundableObject>());
+                    knownBoundableTypes.Add(domType);
+                }
             }
 
             
             // register BoundableObject
-            m_schemaLoader.GameObjectType.Define(new ExtensionInfo<BoundableObject>());
-            m_schemaLoader.GameObjectFolderType.Define(new ExtensionInfo<BoundableObject>());
+            m_schemaLoader.GameObjectFolderType.Define(new ExtensionInfo<BoundableObject>());   // doesn't have a bound native attributes -- is this really intended?s
             
             #region code to handle gameObjectFolder
 
