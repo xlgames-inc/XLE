@@ -14,7 +14,7 @@
 #include "../SceneEngine/SceneParser.h"
 #include "../SceneEngine/Terrain.h"
 #include "../SceneEngine/TerrainUberSurface.h"
-#include "../SceneEngine/SceneEngineUtility.h"
+#include "../SceneEngine/SceneEngineUtils.h"
 #include "../SceneEngine/IntersectionTest.h"
 
 #include "../RenderCore/Techniques/Techniques.h"

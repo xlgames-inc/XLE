@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "VolumetricFog.h"
-#include "SceneEngineUtility.h"
+#include "SceneEngineUtils.h"
 #include "LightDesc.h"
 #include "Noise.h"
 #include "LightInternal.h"

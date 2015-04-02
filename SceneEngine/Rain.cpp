@@ -7,7 +7,7 @@
 #include "Rain.h"
 #include "LightingParserContext.h"
 #include "SceneParser.h"
-#include "SceneEngineUtility.h"
+#include "SceneEngineUtils.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"

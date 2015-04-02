@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "MetricsBox.h"
-#include "SceneEngineUtility.h"
+#include "SceneEngineUtils.h"
 
 namespace SceneEngine
 {

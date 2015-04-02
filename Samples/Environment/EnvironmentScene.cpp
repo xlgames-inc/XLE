@@ -14,7 +14,7 @@
 #include "../../SceneEngine/LightingParserContext.h"
 #include "../../SceneEngine/Terrain.h"
 #include "../../SceneEngine/PlacementsManager.h"
-#include "../../SceneEngine/SceneEngineUtility.h"
+#include "../../SceneEngine/SceneEngineUtils.h"
 
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../RenderCore/Metal/State.h"

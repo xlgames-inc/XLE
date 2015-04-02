@@ -19,7 +19,7 @@
 #include "../../Math/Transformations.h"
 #include "../../Utility/StringFormat.h"
 
-#include "../../SceneEngine/SceneEngineUtility.h"
+#include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../RenderCore/DX11/Metal/DX11Utils.h"
 
 namespace Overlays

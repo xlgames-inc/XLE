@@ -8,7 +8,7 @@
 #include "NativeEngineDevice.h"
 #include "MarshalString.h"
 #include "WindowRigInternal.h"
-#include "../../SceneEngine/SceneEngineUtility.h"
+#include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../PlatformRig/FrameRig.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Metal/Shader.h"

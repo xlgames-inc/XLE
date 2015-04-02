@@ -9,6 +9,7 @@
 #include "../RenderCore/Metal/Forward.h"
 #include "../BufferUploads/IBufferUploads_Forward.h"
 #include "../Math/Vector.h"
+#include "../Assets/Assets.h"
 #include "../Utility/Mixins.h"
 #include "../Core/Types.h"
 
@@ -27,18 +28,18 @@ namespace SceneEngine
     public:
         enum Filenames { XLE, Legacy };
 
-        std::string _baseDir;
+        ::Assets::rstring _baseDir;
         UInt2       _cellCount;
         Filenames   _filenamesMode;
 
         TerrainConfig(
-            const std::string& baseDir, UInt2 cellCount, 
+			const ::Assets::rstring& baseDir, UInt2 cellCount,
             Filenames filenamesMode = XLE, 
             unsigned nodeDimsInElements = 32u, unsigned cellTreeDepth = 5u, unsigned nodeOverlap = 2u)
             : _baseDir(baseDir), _cellCount(cellCount), _filenamesMode(filenamesMode)
             , _nodeDimsInElements(nodeDimsInElements), _cellTreeDepth(cellTreeDepth), _nodeOverlap(nodeOverlap) {}
 
-        TerrainConfig(const std::string& baseDir = std::string());
+		TerrainConfig(const ::Assets::rstring& baseDir = ::Assets::rstring());
 
         struct FileType
         {

@@ -39,7 +39,7 @@
 
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/Shader.h"
-#include "../../SceneEngine/SceneEngineUtility.h"
+#include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../RenderCore/DX11/Metal/DX11Utils.h"
 
 #include <map>

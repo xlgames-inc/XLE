@@ -25,7 +25,7 @@ using namespace Sce::Atf::Controls::PropertyEditing;
 #include "../../SceneEngine/IntersectionTest.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Assets/TerrainFormat.h"
-#include "../../RenderCore/Techniques/Techniques.h"
+// #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../Tools/GUILayer/CLIXAutoPtr.h"
 #include "../../Tools/GUILayer/MarshalString.h"
 #include "../../Tools/GUILayer/AutoToShared.h"
@@ -38,101 +38,6 @@ namespace SceneEngine { class TerrainManager; }
 
 namespace XLELayer
 {
-    class TerrainManagerPimpl
-    {
-    public:
-        std::shared_ptr<SceneEngine::TerrainManager> _terrainManager;
-
-        class RegisteredManipulator
-        {
-        public:
-            std::string _name;
-            std::shared_ptr<Tools::IManipulator> _manipulator;
-            RegisteredManipulator(
-                const std::string& name,
-                std::shared_ptr<Tools::IManipulator> manipulator)
-            : _name(name), _manipulator(manipulator)
-            {}
-            RegisteredManipulator() {}
-        };
-        std::vector<RegisteredManipulator> _manipulators;
-    };
-
-    private ref class TerrainManager
-    {
-    public:
-        std::shared_ptr<Tools::IManipulator> GetManipulator(String^ name);
-        IEnumerable<String^>^ GetManipulatorNames();
-
-        std::shared_ptr<SceneEngine::TerrainManager> GetUnderlying() { return _pimpl->_terrainManager; }
-
-        static TerrainManager^ GetActive(LevelEditorCore::ViewControl^) { return nullptr; }
-
-        TerrainManager(String^ baseDir);
-        ~TerrainManager();
-    private:
-        clix::auto_ptr<TerrainManagerPimpl> _pimpl;
-    };
-
-    public ref class TerrainGobAdapter : public Sce::Atf::Dom::DomNodeAdapter
-    {
-    protected:
-        void OnNodeSet() override
-        {
-            __super::OnNodeSet();            
-            auto node = DomNode;           
-            node->AttributeChanged += gcnew EventHandler<Sce::Atf::Dom::AttributeEventArgs^>(this, &TerrainGobAdapter::node_AttributeChanged);
-        }
-
-        void node_AttributeChanged(Object^ sender, Sce::Atf::Dom::AttributeEventArgs^ e)
-        {
-            if (e->AttributeInfo->Name == "basedir") {
-                TerrainManager = gcnew XLELayer::TerrainManager(
-                    GetAttribute<System::String^>(e->AttributeInfo));
-            }
-        }
-
-    internal:
-        property TerrainManager^ TerrainManager;
-    };
-
-    std::shared_ptr<Tools::IManipulator> TerrainManager::GetManipulator(String^ name)
-    {
-        std::string nativeName = clix::marshalString<clix::E_UTF8>(name);
-        for (auto i=_pimpl->_manipulators.cbegin(); i!=_pimpl->_manipulators.cend(); ++i)
-            if (i->_name == nativeName)
-                return i->_manipulator;
-        return nullptr;
-    }
-
-    IEnumerable<String^>^ TerrainManager::GetManipulatorNames()
-    {
-        auto result = gcnew List<String^>();
-        for (auto i=_pimpl->_manipulators.cbegin(); i!=_pimpl->_manipulators.cend(); ++i) {
-            result->Add(clix::marshalString<clix::E_UTF8>(i->_name));
-        }
-        return result;
-    }
-
-    TerrainManager::TerrainManager(String^ baseDir)
-    {
-        _pimpl.reset(new TerrainManagerPimpl());
-
-        SceneEngine::TerrainConfig cfg(clix::marshalString<clix::E_UTF8>(baseDir));
-        _pimpl->_terrainManager = std::make_shared<SceneEngine::TerrainManager>(
-            cfg,
-            std::make_unique<RenderCore::Assets::TerrainFormat>(),
-            GUILayer::EngineDevice::GetInstance()->GetNative().GetBufferUploads(),
-            Int2(0,0), cfg._cellCount);
-
-        // _pimpl->_manipulators.push_back(TerrainManagerPimpl::RegisteredManipulator("",...));
-    }
-
-    TerrainManager::~TerrainManager()
-    {
-        _pimpl.reset();
-    }
-
     template<typename ParamType>
         static const ParamType* FindParameter(
             const char name[], std::pair<ParamType*, size_t> params, bool caseInsensitive)
@@ -242,13 +147,12 @@ namespace XLELayer
 
         virtual bool Pick(LevelEditorCore::ViewControl^ vc, Point scrPt)
         {
-            auto terrainManager = TerrainManager::GetActive(vc);
-            if (!terrainManager) return false;
+			auto scene = GUILayer::EditorSceneManager::GetInstance();
+			if (!scene) return false;
             
             auto ray = vc->GetWorldRay(scrPt);
 
             using namespace SceneEngine;
-            IntersectionTestScene scene(terrainManager->GetUnderlying(), nullptr);
             IntersectionTestContext testContext(
                 GUILayer::EngineDevice::GetInstance()->GetNative().GetRenderDevice()->GetImmediateContext(),
                 RenderCore::Techniques::CameraDesc(),
@@ -264,10 +168,15 @@ namespace XLELayer
 
         virtual void Render(LevelEditorCore::ViewControl^ vc)
         {
-            auto terrainManager = TerrainManager::GetActive(vc);
-            if (!terrainManager) return;
+				//	We can't get any context information from here!
+				//	EditorSceneManager must be a singleton, otherwise
+				//	there's no way to get it. Ideally the ViewControl
+				//	could tell us something, but there's no way to attach
+				//	more context information on the render call
+			auto scene = GUILayer::EditorSceneManager::GetInstance(vc);
+			if (!scene) return;
 
-            auto manip = terrainManager->GetManipulator(_activeManipulatorName);
+			auto manip = scene->GetManipulator(_activeManipulatorName);
             if (!manip) return;
 
             if (!ManipulatorOverlay::s_currentParsingContext) return;

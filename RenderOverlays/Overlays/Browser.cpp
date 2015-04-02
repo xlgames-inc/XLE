@@ -16,7 +16,7 @@
 #include "../../RenderCore/Metal/DeviceContextImpl.h"
 #include "../../RenderCore/IThreadContext.h"
 
-#include "../../SceneEngine/SceneEngineUtility.h"
+#include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../SceneEngine/LightDesc.h"
 #include "../../SceneEngine/LightingParser.h"
 #include "../../SceneEngine/LightingParserContext.h"

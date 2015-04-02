@@ -7,7 +7,7 @@
 #include "ShallowWater.h"
 #include "Ocean.h"
 #include "SimplePatchBox.h"
-#include "SceneEngineUtility.h"
+#include "SceneEngineUtils.h"
 #include "LightingParserContext.h"
 #include "SurfaceHeightsProvider.h"
 

@@ -10,7 +10,7 @@
 #include "LightingParserContext.h"
 #include "Noise.h"
 #include "SimplePatchBox.h"
-#include "SceneEngineUtility.h"
+#include "SceneEngineUtils.h"
 #include "SurfaceHeightsProvider.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/ResourceBox.h"

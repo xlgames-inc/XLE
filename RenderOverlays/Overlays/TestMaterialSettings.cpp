@@ -6,7 +6,7 @@
 
 #include "TestMaterialSettings.h"
 #include "../../SceneEngine/LightingParser.h"
-#include "../../SceneEngine/SceneEngineUtility.h"
+#include "../../SceneEngine/SceneEngineUtils.h"
 
 namespace Overlays
 {

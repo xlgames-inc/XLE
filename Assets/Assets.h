@@ -28,6 +28,7 @@
 namespace Assets
 {
     typedef char ResChar;
+	using rstring = std::basic_string<ResChar>;
 
         ////////////////////////////////////////////////////////////////////////
 

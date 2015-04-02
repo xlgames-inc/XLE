@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "SceneEngineUtility.h"
+#include "SceneEngineUtils.h"
 
 #include "../RenderCore/Metal/Format.h"
 #include "../RenderCore/Metal/RenderTargetView.h"

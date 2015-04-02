@@ -29,7 +29,7 @@
 #include "../Math/Geometry.h"
 
 #include "../BufferUploads/IBufferUploads.h"
-#include "../SceneEngine/SceneEngineUtility.h"
+#include "../SceneEngine/SceneEngineUtils.h"
 #include "../Math/ProjectionMath.h"
 #include <iomanip>
 

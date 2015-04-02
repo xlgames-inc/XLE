@@ -373,8 +373,8 @@
   <xs:complexType name="terrainType">
     <xs:annotation>
       <xs:appinfo>
-        <LeGe.NativeProperty name="basedir" nativeName="basedir" nativeType="string" access="set"/>
         <LeGe.NativeType nativeName="Terrain"/>
+        <LeGe.NativeProperty name="basedir" nativeName="basedir" nativeType="string" access="set"/>
       </xs:appinfo>
     </xs:annotation>
 

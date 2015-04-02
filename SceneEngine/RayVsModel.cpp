@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "RayVsModel.h"
-#include "SceneEngineUtility.h"
+#include "SceneEngineUtils.h"
 #include "LightingParser.h"
 #include "LightingParserContext.h"
 #include "../RenderCore/IThreadContext_Forward.h"

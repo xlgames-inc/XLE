@@ -7,7 +7,7 @@
 #define _SCL_SECURE_NO_WARNINGS         // suppress warning related to std::move (algorithm.h version)
 
 #include "ScreenspaceReflections.h"
-#include "SceneEngineUtility.h"
+#include "SceneEngineUtils.h"
 #include "LightingParserContext.h"
 #include "SceneParser.h"
 #include "Sky.h"

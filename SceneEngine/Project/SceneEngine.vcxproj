@@ -215,7 +215,7 @@
     <ClCompile Include="..\RefractionsBuffer.cpp" />
     <ClCompile Include="..\LightingParser.cpp" />
     <ClCompile Include="..\RenderingUtils.cpp" />
-    <ClCompile Include="..\SceneEngineUtility.cpp" />
+    <ClCompile Include="..\SceneEngineUtils.cpp" />
     <ClCompile Include="..\ScreenspaceReflections.cpp" />
     <ClCompile Include="..\Shadows.cpp" />
     <ClCompile Include="..\ShallowWater.cpp" />
@@ -249,7 +249,7 @@
     <ClInclude Include="..\RefractionsBuffer.h" />
     <ClInclude Include="..\RenderingUtils.h" />
     <ClInclude Include="..\LightingParser.h" />
-    <ClInclude Include="..\SceneEngineUtility.h" />
+    <ClInclude Include="..\SceneEngineUtils.h" />
     <ClInclude Include="..\SceneParser.h" />
     <ClInclude Include="..\ScreenspaceReflections.h" />
     <ClInclude Include="..\LightDesc.h" />

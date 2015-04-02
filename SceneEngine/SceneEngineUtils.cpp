@@ -4,7 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "SceneEngineUtility.h"
+#include "SceneEngineUtils.h"
 
 #include "LightingParserContext.h"
 #include "../RenderCore/Techniques/CommonResources.h"

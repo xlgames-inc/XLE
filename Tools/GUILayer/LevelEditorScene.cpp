@@ -10,6 +10,7 @@
 #include "CLIXAutoPtr.h"
 #include "MarshalString.h"
 #include "../../SceneEngine/PlacementsManager.h"
+#include "../../SceneEngine/Terrain.h"
 #include "../../SceneEngine/SceneParser.h"
 #include "../../SceneEngine/LightDesc.h"
 #include "../../SceneEngine/IntersectionTest.h"
@@ -56,6 +57,8 @@ namespace GUILayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+	EditorScene::RegisteredManipulator::~RegisteredManipulator() {}
+
     EditorScene::EditorScene()
     {
         _placementsManager = std::make_shared<SceneEngine::PlacementsManager>(
@@ -63,6 +66,9 @@ namespace GUILayer
             std::shared_ptr<RenderCore::Assets::IModelFormat>(), Float2(0.f, 0.f));
         _placementsEditor = _placementsManager->CreateEditor();
     }
+
+	EditorScene::~EditorScene()
+	{}
 
     class EditorSceneParser : public SceneEngine::ISceneParser
     {
@@ -118,6 +124,10 @@ namespace GUILayer
     {
         if (    parseSettings._batchFilter == SceneParseSettings::BatchFilter::General
             ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::Depth) {
+
+			if (parseSettings._toggles & SceneParseSettings::Toggles::Terrain && _editorScene->_terrainManager) {
+				_editorScene->_terrainManager->Render(context, parserContext, techniqueIndex);
+			}
 
             if (parseSettings._toggles & SceneParseSettings::Toggles::NonTerrain) {
                 _editorScene->_placementsManager->Render(
@@ -202,6 +212,22 @@ namespace GUILayer
     PropertyId EditorSceneManager::GetPropertyId(ObjectTypeId type, System::String^ name)       { return (*_dynInterface)->GetPropertyId(type, clix::marshalString<clix::E_UTF8>(name).c_str()); }
     ChildListId EditorSceneManager::GetChildListId(ObjectTypeId type, System::String^ name)     { return (*_dynInterface)->GetChildListId(type, clix::marshalString<clix::E_UTF8>(name).c_str()); }
 
+	Tools::IManipulator* EditorSceneManager::GetManipulator(System::String^ name)
+	{
+		auto nativeName = clix::marshalString<clix::E_UTF8>(name);
+		for (auto i : (*_scene)->_terrainManipulators)
+			if (i._name == nativeName) return i._manipulator.get();
+		return nullptr;
+	}
+
+	System::Collections::Generic::IEnumerable<System::String^>^ EditorSceneManager::GetManipulatorNames()
+	{
+		auto result = gcnew System::Collections::Generic::List<System::String^>();
+		for (auto i : (*_scene)->_terrainManipulators)
+			result->Add(clix::marshalString<clix::E_UTF8>(i._name));
+		return result;
+	}
+
     System::Collections::Generic::ICollection<HitRecord^>^ 
         EditorSceneManager::RayIntersection(
             const SceneEngine::IntersectionTestContext& testContext,
@@ -209,7 +235,7 @@ namespace GUILayer
     {
         TRY
         {
-            SceneEngine::IntersectionTestScene testScene(nullptr, (*_scene)->_placementsEditor);
+            SceneEngine::IntersectionTestScene testScene((*_scene)->_terrainManager, (*_scene)->_placementsEditor);
 
             auto firstResult = testScene.FirstRayIntersection(
                 testContext,

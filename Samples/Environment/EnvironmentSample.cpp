@@ -21,7 +21,7 @@
 #include "../../PlatformRig/PlatformRigUtil.h"
 #include "../../PlatformRig/OverlaySystem.h"
 
-#include "../../SceneEngine/SceneEngineUtility.h"
+#include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../SceneEngine/LightingParser.h"
 #include "../../SceneEngine/LightingParserStandardPlugin.h"
 #include "../../SceneEngine/LightingParserContext.h"
