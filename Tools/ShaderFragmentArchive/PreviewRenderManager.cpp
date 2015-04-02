@@ -15,6 +15,7 @@
 
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
+#include "../../RenderCore/Metal/Shader.h"
 #include "../../Math/Transformations.h"
 #include "../../RenderCore/DX11/Metal/IncludeDX11.h"
 

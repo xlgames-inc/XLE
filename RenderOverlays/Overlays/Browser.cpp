@@ -10,6 +10,7 @@
 #include "../../PlatformRig/ModelVisualisation.h"
 
 #include "../../RenderCore/Metal/State.h"
+#include "../../RenderCore/Metal/InputLayout.h"
 #include "../../RenderCore/Assets/SharedStateSet.h"
 #include "../../RenderCore/Assets/IModelFormat.h"
 #include "../../RenderCore/Metal/DeviceContextImpl.h"

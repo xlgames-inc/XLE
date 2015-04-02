@@ -33,6 +33,7 @@
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Assets/ColladaCompilerInterface.h"
 #include "../../RenderCore/Metal/GPUProfiler.h"
+#include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderOverlays/Font.h"
 #include "../../RenderOverlays/DebugHotKeys.h"
 #include "../../RenderOverlays/Overlays/ShadowFrustumDebugger.h"

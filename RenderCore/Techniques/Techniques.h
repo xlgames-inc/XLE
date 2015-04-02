@@ -7,7 +7,6 @@
 #pragma once
 
 #include "../Metal/Forward.h"
-#include "../Metal/InputLayout.h"        // required for _materialConstantsLayout in ResolvedShader
 #include "../../Utility/ParameterBox.h"
 #include "../../Core/Prefix.h"
 #include "../../Core/Types.h"

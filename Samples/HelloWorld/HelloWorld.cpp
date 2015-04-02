@@ -19,6 +19,7 @@
 #include "../../RenderCore/Assets/ColladaCompilerInterface.h"
 #include "../../RenderCore/Metal/GPUProfiler.h"
 #include "../../RenderCore/Metal/State.h"
+#include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderOverlays/Font.h"
 #include "../../RenderOverlays/DebugHotKeys.h"
 #include "../../BufferUploads/IBufferUploads.h"

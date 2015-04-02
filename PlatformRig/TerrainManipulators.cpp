@@ -23,6 +23,8 @@
 
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/State.h"
+#include "../RenderCore/Metal/Shader.h"
+#include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/RenderUtils.h"
 
 #include "../Math/ProjectionMath.h"

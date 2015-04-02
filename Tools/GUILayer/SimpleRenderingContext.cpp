@@ -9,6 +9,7 @@
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Metal/Buffer.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
+#include "../../RenderCore/Metal/InputLayout.h"
 #include "../../Math/Vector.h"
 #include "../../Math/Matrix.h"
 #include "../../Utility/IteratorUtils.h"

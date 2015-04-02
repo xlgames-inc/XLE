@@ -12,6 +12,7 @@
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Metal/DeviceContext.h"
+#include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/IThreadContext.h"
 #include "../Math/Transformations.h"
 
