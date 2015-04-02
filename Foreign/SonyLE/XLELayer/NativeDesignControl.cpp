@@ -131,6 +131,7 @@ namespace XLELayer
         ManipulatorOverlay^ _manipulatorOverlay;
     };
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     void ManipulatorOverlay::RenderToScene(
         RenderCore::IThreadContext* device, 
@@ -153,5 +154,17 @@ namespace XLELayer
 
         s_currentParsingContext = nullptr;
     }
+
+    void ManipulatorOverlay::RenderWidgets(
+            RenderCore::IThreadContext* device, 
+            const RenderCore::Techniques::ProjectionDesc& projectionDesc) {}
+    void ManipulatorOverlay::SetActivationState(bool) {}
+
+    ManipulatorOverlay::ManipulatorOverlay(
+        LevelEditorCore::DesignView^ designView,
+        LevelEditorCore::ViewControl^ viewControl)
+    : _designView(designView), _viewControl(viewControl) {}
+    ManipulatorOverlay::~ManipulatorOverlay() {}
+    ManipulatorOverlay::!ManipulatorOverlay() {}
 }
 

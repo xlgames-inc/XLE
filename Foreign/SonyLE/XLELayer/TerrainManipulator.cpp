@@ -4,6 +4,8 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#pragma warning(disable:4564)
+
 using namespace System;
 using namespace System::Collections::Generic;
 using namespace System::ComponentModel;
@@ -56,7 +58,7 @@ namespace XLELayer
         std::vector<RegisteredManipulator> _manipulators;
     };
 
-    public ref class TerrainManager
+    private ref class TerrainManager
     {
     public:
         std::shared_ptr<Tools::IManipulator> GetManipulator(String^ name);
@@ -72,6 +74,27 @@ namespace XLELayer
         clix::auto_ptr<TerrainManagerPimpl> _pimpl;
     };
 
+    public ref class TerrainGobAdapter : public Sce::Atf::Dom::DomNodeAdapter
+    {
+    protected:
+        void OnNodeSet() override
+        {
+            __super::OnNodeSet();            
+            auto node = DomNode;           
+            node->AttributeChanged += gcnew EventHandler<Sce::Atf::Dom::AttributeEventArgs^>(this, &TerrainGobAdapter::node_AttributeChanged);
+        }
+
+        void node_AttributeChanged(Object^ sender, Sce::Atf::Dom::AttributeEventArgs^ e)
+        {
+            if (e->AttributeInfo->Name == "basedir") {
+                TerrainManager = gcnew XLELayer::TerrainManager(
+                    GetAttribute<System::String^>(e->AttributeInfo));
+            }
+        }
+
+    internal:
+        property TerrainManager^ TerrainManager;
+    };
 
     std::shared_ptr<Tools::IManipulator> TerrainManager::GetManipulator(String^ name)
     {

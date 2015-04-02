@@ -23,17 +23,16 @@ namespace XLELayer
 
         virtual void RenderWidgets(
             RenderCore::IThreadContext* device, 
-            const RenderCore::Techniques::ProjectionDesc& projectionDesc) override {}
-        virtual void SetActivationState(bool) override {}
+            const RenderCore::Techniques::ProjectionDesc& projectionDesc) override;
+        virtual void SetActivationState(bool) override;
 
         event RenderCallback^ OnRender;
 
         ManipulatorOverlay(
             LevelEditorCore::DesignView^ designView,
-            LevelEditorCore::ViewControl^ viewControl)
-        : _designView(designView), _viewControl(viewControl) {}
-        ~ManipulatorOverlay() {}
-        !ManipulatorOverlay() {}
+            LevelEditorCore::ViewControl^ viewControl);
+        ~ManipulatorOverlay();
+        !ManipulatorOverlay();
 
         static SceneEngine::LightingParserContext* s_currentParsingContext = nullptr;
     protected:

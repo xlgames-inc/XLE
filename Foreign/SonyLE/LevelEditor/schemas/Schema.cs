@@ -491,7 +491,7 @@ namespace LevelEditor
             placementsCellReferenceType.minsAttribute = placementsCellReferenceType.Type.GetAttributeInfo("mins");
             placementsCellReferenceType.maxsAttribute = placementsCellReferenceType.Type.GetAttributeInfo("maxs");
 
-            placementsFolderType.Type = getNodeType("gap", "placementsFolder");
+            placementsFolderType.Type = getNodeType("gap", "placementsFolderType");
             placementsFolderType.cellChild = placementsFolderType.Type.GetChildInfo("cell");
 
             placementsDocumentType.Type = getNodeType("gap", "placementsDocumentType");
@@ -504,6 +504,8 @@ namespace LevelEditor
             placementObjectType.transform = new transformAttributes(placementObjectType.Type);
             placementObjectType.modelChild = placementObjectType.Type.GetChildInfo("model");
             placementObjectType.materialChild = placementObjectType.Type.GetChildInfo("material");
+
+            terrainType.Type = getNodeType("gap", "terrainType");
 
             placementsDocumentRootElement = getRootElement(NS, "placementsDocument");
             // XLE>>
@@ -1179,6 +1181,11 @@ namespace LevelEditor
             public static transformAttributes transform;
             public static ChildInfo modelChild;
             public static ChildInfo materialChild;
+        }
+
+        public static class terrainType
+        {
+            public static DomNodeType Type;
         }
 
         public static ChildInfo placementsDocumentRootElement;

@@ -278,7 +278,8 @@
       <xs:element name="bookmarks" type="bookmarksType" minOccurs="0" maxOccurs="1"/>
       <xs:element name="gameReference" type="gameReferenceType" minOccurs="0" maxOccurs="unbounded"/>
       <xs:element name="grid" type="gridType" minOccurs="0" maxOccurs="1" />
-      <xs:element name="placements" type="placementsFolder" minOccurs="0" maxOccurs="1" />
+      <xs:element name="placements" type="placementsFolderType" minOccurs="0" maxOccurs="1" />
+      <xs:element name="terrain" type="terrainType" minOccurs="0" maxOccurs="1" />
     </xs:sequence>
     <xs:attribute name="name" type="xs:ID" />
     <xs:attribute name="fogEnabled" type="xs:boolean" default="true"/>
@@ -320,7 +321,7 @@
     <xs:attribute name="maxs" type="vector3Type" default="1000 1000 1000"/>
   </xs:complexType>
 
-  <xs:complexType name="placementsFolder">
+  <xs:complexType name="placementsFolderType">
     <xs:sequence>
       <xs:element name="cell" type="placementsCellReference" minOccurs="0" maxOccurs="unbounded" />
     </xs:sequence>
@@ -366,9 +367,13 @@
     </xs:sequence>
     <xs:attribute name="name" type="xs:string" />
   </xs:complexType>
-  
+ 
   <xs:element name="placementsDocument" type="placementsDocumentType"/>
 
+  <xs:complexType name="terrainType">
+    <xs:attribute name="basedir" type="xs:string" />
+  </xs:complexType>
+  
     <!-- the following are concrete types... They can be moved into another schema file -->
 
   <xs:complexType name="placementModelRef">
