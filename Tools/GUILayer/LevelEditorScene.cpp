@@ -6,7 +6,7 @@
 
 #include "LevelEditorScene.h"
 #include "EditorDynamicInterface.h"
-#include "PlacementsInterface.h"
+#include "PlacementsGobInterface.h"
 #include "CLIXAutoPtr.h"
 #include "MarshalString.h"
 #include "../../SceneEngine/PlacementsManager.h"

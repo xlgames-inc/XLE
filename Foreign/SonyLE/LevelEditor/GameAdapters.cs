@@ -138,8 +138,6 @@ namespace LevelEditor
             Schema.placementObjectType.Type.Define(new ExtensionInfo<XLEPlacementObject>());
             Schema.placementObjectType.Type.Define(new ExtensionInfo<GameObjectProperties>());
             Schema.placementObjectType.Type.Define(new ExtensionInfo<TransformUpdater>());
-
-            Schema.terrainType.Type.Define(new ExtensionInfo<XLELayer.TerrainGobAdapter>());
             // XLE>>
         }
     }

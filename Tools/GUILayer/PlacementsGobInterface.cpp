@@ -4,7 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "PlacementsInterface.h"
+#include "PlacementsGobInterface.h"
 #include "LevelEditorScene.h"
 #include "../../SceneEngine/PlacementsManager.h"
 #include "../../Utility/StringFormat.h"

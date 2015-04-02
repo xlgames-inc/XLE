@@ -19,10 +19,13 @@
     <ClCompile Include="..\LevelEditorScene.cpp">
       <Filter>DynInterface</Filter>
     </ClCompile>
-    <ClCompile Include="..\PlacementsInterface.cpp">
+    <ClCompile Include="..\EditorInterfaceUtils.cpp">
       <Filter>DynInterface</Filter>
     </ClCompile>
-    <ClCompile Include="..\EditorInterfaceUtils.cpp">
+    <ClCompile Include="..\TerrainGobInterface.cpp">
+      <Filter>DynInterface</Filter>
+    </ClCompile>
+    <ClCompile Include="..\PlacementsGobInterface.cpp">
       <Filter>DynInterface</Filter>
     </ClCompile>
   </ItemGroup>
@@ -42,14 +45,17 @@
     <ClInclude Include="..\EditorDynamicInterface.h">
       <Filter>DynInterface</Filter>
     </ClInclude>
-    <ClInclude Include="..\PlacementsInterface.h">
-      <Filter>DynInterface</Filter>
-    </ClInclude>
     <ClInclude Include="..\LevelEditorScene.h">
       <Filter>DynInterface</Filter>
     </ClInclude>
     <ClInclude Include="..\AutoToShared.h" />
     <ClInclude Include="..\GUILayerUtil.h" />
+    <ClInclude Include="..\PlacementsGobInterface.h">
+      <Filter>DynInterface</Filter>
+    </ClInclude>
+    <ClInclude Include="..\TerrainGobInterface.h">
+      <Filter>DynInterface</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="DynInterface">

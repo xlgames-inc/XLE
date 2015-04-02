@@ -371,6 +371,13 @@
   <xs:element name="placementsDocument" type="placementsDocumentType"/>
 
   <xs:complexType name="terrainType">
+    <xs:annotation>
+      <xs:appinfo>
+        <LeGe.NativeProperty name="basedir" nativeName="basedir" nativeType="string" access="set"/>
+        <LeGe.NativeType nativeName="Terrain"/>
+      </xs:appinfo>
+    </xs:annotation>
+
     <xs:attribute name="basedir" type="xs:string" />
   </xs:complexType>
   
