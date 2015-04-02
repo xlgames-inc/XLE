@@ -14,80 +14,7 @@ using LevelEditorCore;
 
 namespace LevelEditor.DomNodeAdapters
 {
-    [Export(typeof(GenericDocumentRegistry))]
-    [PartCreationPolicy(CreationPolicy.Shared)]
-    public class GenericDocumentRegistry
-    {
-        public T FindDocument<T>(Uri ur) where T : class
-        {
-            foreach (var doc in m_documents)
-                if (doc.Uri == ur)
-                {
-                    var adapt = doc as IAdaptable;
-                    return doc.As<T>();
-                }
-            return default(T);
-        }
-
-        public bool Contains(IDocument doc)
-        {
-            return m_documents.Contains(doc);
-        }
-
-        public void Add(IDocument doc)
-        {
-            if (doc == null)
-                throw new ArgumentNullException("doc");
-
-            if (!m_documents.Contains(doc))
-            {
-                m_documents.Add(doc);
-                doc.DirtyChanged += OnDocumentDirtyChanged;
-                doc.UriChanged += OnDocumentUriChanged;
-                DocumentAdded(this, new ItemInsertedEventArgs<IDocument>(m_documents.Count - 1, doc));
-            }
-        }
-
-        public void Remove(IDocument doc)
-        {
-            if (doc == null || !m_documents.Contains(doc))
-                return;
-
-            m_documents.Remove(doc);
-            doc.DirtyChanged -= OnDocumentDirtyChanged;
-            doc.UriChanged -= OnDocumentUriChanged;
-            DocumentRemoved(this, new ItemRemovedEventArgs<IDocument>(0, doc));
-        }
-
-        public event EventHandler<ItemInsertedEventArgs<IDocument>> DocumentAdded = delegate { };
-        public event EventHandler<ItemRemovedEventArgs<IDocument>> DocumentRemoved = delegate { };
-        public event EventHandler<ItemChangedEventArgs<IDocument>> DocumentDirtyChanged = delegate { };
-        public event EventHandler<ItemChangedEventArgs<IDocument>> DocumentUriChanged = delegate { };
-
-        public void Clear()
-        {
-            for (int i = m_documents.Count - 1; i >= 0; i--)
-            {
-                var doc = m_documents[i];
-                m_documents.RemoveAt(i);
-                DocumentRemoved(this, new ItemRemovedEventArgs<IDocument>(i, doc));
-            }
-        }
-
-        private void OnDocumentDirtyChanged(object sender, EventArgs e)
-        {
-            DocumentDirtyChanged(this, new ItemChangedEventArgs<IDocument>((IDocument)sender));
-        }
-
-        private void OnDocumentUriChanged(object sender, UriChangedEventArgs e)
-        {
-            DocumentUriChanged(this, new ItemChangedEventArgs<IDocument>((IDocument)sender));
-        }
-
-        private readonly List<IDocument> m_documents = new List<IDocument>();
-    }
-
-    public class XLEPlacementDocument : DomDocument, IListable, IHierarchical
+    public class XLEPlacementDocument : DomDocument, IListable, IHierarchical, IGameDocument, IGameObjectFolder
     {
         #region IListable Members
         public void GetInfo(ItemInfo info)
@@ -113,16 +40,73 @@ namespace LevelEditor.DomNodeAdapters
             return false;
         }
         #endregion
+        #region INameable Members
 
-        internal static GenericDocumentRegistry GetDocRegistry()
+        /// <summary>
+        /// Gets and sets the name</summary>
+        public string Name
+        {
+            get { return GetAttribute<string>(Schema.placementsDocumentType.nameAttribute); }
+            set { SetAttribute(Schema.placementsDocumentType.nameAttribute, value); }
+        }
+
+        #endregion
+        #region IVisible Members
+        public bool Visible
+        {
+            get { return true; }
+            set { }
+        }
+        #endregion
+        #region ILockable Members
+        public bool IsLocked
+        {
+            get
+            {
+                ILockable lockable = GetParentAs<ILockable>();
+                return (lockable != null) ? lockable.IsLocked : false;
+            }
+            set { SetAttribute(Schema.gameObjectFolderType.lockedAttribute, value); }
+        }
+        #endregion
+        #region IGameObjectFolder Members
+
+        /// <summary>
+        /// Gets the list of game objects</summary>
+        public IList<IGameObject> GameObjects
+        {
+            get { return GetChildList<IGameObject>(Schema.placementsDocumentType.placementsChild); }
+        }
+
+        /// <summary>
+        /// Gets the list of child game object folders</summary>
+        public IList<IGameObjectFolder> GameObjectFolders
+        {
+            get { return null; }
+        }
+        #endregion
+        #region IGameDocument Members
+            //  XLEPlacementDocument is derived from IGameDocument for the convenience of using the GameDocumentRegistry
+            //  But there are some properties that aren't valid for this type
+        public IGameObjectFolder RootGameObjectFolder { get { return this; } }
+        public bool IsMasterGameDocument { get { return false; } }
+        public IEnumerable<IReference<IGameDocument>> GameDocumentReferences { get { return null; } }
+
+        public event EventHandler<ItemChangedEventArgs<IEditableResourceOwner>> EditableResourceOwnerDirtyChanged = delegate { };
+        public void NotifyEditableResourceOwnerDirtyChanged(IEditableResourceOwner resOwner)
+        {
+            EditableResourceOwnerDirtyChanged(this, new ItemChangedEventArgs<IEditableResourceOwner>(resOwner));
+        }
+        #endregion
+
+        internal static GameDocumentRegistry GetDocRegistry()
         {
                 //  There are some problems related to using a document registry for
                 //  these placement documents. Using a registry allow us to have multiple
                 //  references to the same document... But in the case of placement cells, that
                 //  isn't normal. We may get a better result by just creating and destroying
                 //  the document for every reference
-            // return Globals.MEFContainer.GetExportedValue<GenericDocumentRegistry>();
-            return null;
+            return Globals.MEFContainer.GetExportedValue<GameDocumentRegistry>();
         }
 
         public static XLEPlacementDocument OpenOrCreate(Uri uri, SchemaLoader schemaLoader)
@@ -133,8 +117,8 @@ namespace LevelEditor.DomNodeAdapters
             var docRegistry = GetDocRegistry();
             if (docRegistry != null)
             {
-                var existing = docRegistry.FindDocument<XLEPlacementDocument>(uri);
-                if (existing != null) return existing;
+                var existing = docRegistry.FindDocument(uri);
+                if (existing != null) return null;      // prevent a second reference here
             }
 
             string filePath = uri.LocalPath;
@@ -165,7 +149,6 @@ namespace LevelEditor.DomNodeAdapters
             doc.Dirty = false;
             return doc;
         }
-
         public static void Release(XLEPlacementDocument doc)
         {
             // We can't remove, because a single document can have multiple references upon it
@@ -179,7 +162,7 @@ namespace LevelEditor.DomNodeAdapters
             var gameDocRegistry = GetDocRegistry();
             if (gameDocRegistry != null)
             {
-                gameDocRegistry.Remove(doc.As<IDocument>());
+                gameDocRegistry.Remove(doc.As<IGameDocument>());
             } 
             else
             {

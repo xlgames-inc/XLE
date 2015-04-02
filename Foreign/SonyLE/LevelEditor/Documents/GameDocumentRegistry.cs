@@ -154,12 +154,16 @@ namespace LevelEditor
         {            
             foreach (IGameDocument doc in Documents)
             {
-                DomNode folderNode = doc.RootGameObjectFolder.Cast<DomNode>();
-                foreach (DomNode childNode in folderNode.Subtree)
+                var rootFolder = doc.RootGameObjectFolder;
+                if (rootFolder!=null)
                 {
-                    T t = childNode.As<T>();
-                    if (t != null)
-                        yield return t;
+                    DomNode folderNode = rootFolder.Cast<DomNode>();
+                    foreach (DomNode childNode in folderNode.Subtree)
+                    {
+                        T t = childNode.As<T>();
+                        if (t != null)
+                            yield return t;
+                    }
                 }
             }
         }

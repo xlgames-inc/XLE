@@ -161,9 +161,9 @@ namespace LevelEditor
                 );
 
             // <<XLE
-            TypeCatalog xleExtensionTypes = new TypeCatalog(
-                typeof(DomNodeAdapters.GenericDocumentRegistry)
-                );
+            TypeCatalog xleExtensionTypes = new TypeCatalog();
+            //     typeof(DomNodeAdapters.GenericDocumentRegistry)
+            //     );
             // XLE>>
             
             List<ComposablePartCatalog> catalogs = new List<ComposablePartCatalog>();

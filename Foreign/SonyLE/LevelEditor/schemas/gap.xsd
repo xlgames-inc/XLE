@@ -364,6 +364,7 @@
     <xs:sequence>
       <xs:element name="placement" type="abstractPlacementObjectType" minOccurs="0" maxOccurs="unbounded" />
     </xs:sequence>
+    <xs:attribute name="name" type="xs:string" />
   </xs:complexType>
   
   <xs:element name="placementsDocument" type="placementsDocumentType"/>

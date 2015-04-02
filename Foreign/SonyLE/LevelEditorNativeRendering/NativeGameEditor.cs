@@ -231,18 +231,21 @@ namespace RenderingInterop
         private void m_gameDocumentRegistry_DocumentAdded(object sender, ItemInsertedEventArgs<IGameDocument> e)
         {
             IGameDocument document = e.Item;
-            IGame game = document.Cast<IGame>();
             if (document == m_gameDocumentRegistry.MasterDocument)
             {
-                NativeObjectAdapter gameLevel = document.Cast<NativeObjectAdapter>();
+                // NativeObjectAdapter gameLevel = document.Cast<NativeObjectAdapter>();
                 // GameEngine.CreateObject(0, gameLevel);
                 // GameEngine.SetGameLevel(gameLevel);
                 // gameLevel.UpdateNativeOjbect();
 
                 //create vertex buffer for grid.
-                IGrid grid = document.As<IGame>().Grid;
-                GridRenderer gridRender = grid.Cast<GridRenderer>();
-                gridRender.CreateVertices();
+                IGame game = document.Cast<IGame>();
+                if (game != null)
+                {
+                    IGrid grid = game.Grid;
+                    GridRenderer gridRender = grid.Cast<GridRenderer>();
+                    gridRender.CreateVertices();
+                }
 
                 m_designView.Context = document.Cast<IGameContext>();                
             }
