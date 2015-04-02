@@ -26,7 +26,7 @@ namespace RenderingInterop
                 s_selColorId = GameEngine.GetObjectPropertyId(s_typeId, "SelectionColor");
                 s_propertyIdsSet = true;
             }
-            m_intanceId = GameEngine.CreateObject(0, s_typeId, IntPtr.Zero, 0);
+            m_intanceId = GameEngine.CreateObject(0, 0, s_typeId, IntPtr.Zero, 0);
         }
 
         /// <summary>

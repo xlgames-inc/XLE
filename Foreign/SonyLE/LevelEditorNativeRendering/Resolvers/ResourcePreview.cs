@@ -149,16 +149,15 @@ namespace RenderingInterop
             public NativeViewControl()
             {
                 ClientSize = new Size(16, 16);
-                if (!GameEngine.IsInError)
-                {
-                    swapChainId = GameEngine.GetObjectTypeId("SwapChain");
-                    SurfaceId = GameEngine.CreateObject(0, swapChainId, this.Handle, IntPtr.Size);
-                    SizePropId = GameEngine.GetObjectPropertyId(swapChainId, "Size");
-                    GameEngine.SetObjectProperty(swapChainId, 0, SurfaceId, SizePropId, ClientSize);
-                    BkgColorPropId = GameEngine.GetObjectPropertyId(swapChainId, "BkgColor");
-                    GameEngine.SetObjectProperty(swapChainId, 0, SurfaceId, BkgColorPropId, BackColor);
-
-                }
+                // if (!GameEngine.IsInError)
+                // {
+                //     swapChainId = GameEngine.GetObjectTypeId("SwapChain");
+                //     SurfaceId = GameEngine.CreateObject(0, 0, swapChainId, this.Handle, IntPtr.Size);
+                //     SizePropId = GameEngine.GetObjectPropertyId(swapChainId, "Size");
+                //     GameEngine.SetObjectProperty(swapChainId, 0, SurfaceId, SizePropId, ClientSize);
+                //     BkgColorPropId = GameEngine.GetObjectPropertyId(swapChainId, "BkgColor");
+                //     GameEngine.SetObjectProperty(swapChainId, 0, SurfaceId, BkgColorPropId, BackColor);
+                // }
 
                 m_renderState = new RenderState();
                 m_renderState.RenderFlag = GlobalRenderFlags.Solid | GlobalRenderFlags.Textured | GlobalRenderFlags.Lit;
@@ -250,11 +249,11 @@ namespace RenderingInterop
                 get;
                 set;
             }
-            public ulong SurfaceId
-            {
-                get;
-                private set;
-            }
+            // public ulong SurfaceId
+            // {
+            //     get;
+            //     private set;
+            // }
 
             public RenderState RenderState
             {
@@ -264,26 +263,26 @@ namespace RenderingInterop
             protected override void OnBackColorChanged(EventArgs e)
             {
                 base.OnBackColorChanged(e);
-                if (swapChainId != 0)
-                {
-                    GameEngine.SetObjectProperty(swapChainId, 0, SurfaceId, BkgColorPropId, BackColor);
-                }
+                // if (swapChainId != 0)
+                // {
+                //     GameEngine.SetObjectProperty(swapChainId, 0, SurfaceId, BkgColorPropId, BackColor);
+                // }
             }
 
             protected override void OnSizeChanged(EventArgs e)
             {
                 base.OnSizeChanged(e);
                 Size sz = ClientSize;
-                if (!GameEngine.IsInError && SurfaceId != 0 && sz.Width > 0 && sz.Height > 0)
-                {
-                    GameEngine.SetObjectProperty(swapChainId, 0, SurfaceId, SizePropId, sz);
+                //if (!GameEngine.IsInError && SurfaceId != 0 && sz.Width > 0 && sz.Height > 0)
+                //{
+                //    GameEngine.SetObjectProperty(swapChainId, 0, SurfaceId, SizePropId, sz);
                     Camera.Aspect = (float)sz.Width / (float)sz.Height;
-                }
+                //}
             }
             protected override void Dispose(bool disposing)
             {
-                GameEngine.DestroyObject(0, SurfaceId, swapChainId);
-                SurfaceId = 0;
+                // GameEngine.DestroyObject(0, SurfaceId, swapChainId);
+                // SurfaceId = 0;
                 if (disposing)
                 {
                     m_renderState.Dispose();
@@ -340,9 +339,9 @@ namespace RenderingInterop
             }
 
             private RenderState m_renderState;
-            private readonly uint swapChainId;
-            private readonly uint SizePropId;
-            private readonly uint BkgColorPropId;
+            // private readonly uint swapChainId;
+            // private readonly uint SizePropId;
+            // private readonly uint BkgColorPropId;
         }
     }
 }

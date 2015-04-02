@@ -177,16 +177,16 @@ namespace GUILayer
 
     using namespace EditorDynamicInterface;
 
-    DocumentId EditorSceneManager::CreateDocument(DocumentTypeId docType, System::String^ initializer) 
-        { return (*_dynInterface)->CreateDocument(**_scene, docType, clix::marshalString<clix::E_UTF8>(initializer).c_str()); }
+    DocumentId EditorSceneManager::CreateDocument(DocumentTypeId docType) 
+        { return (*_dynInterface)->CreateDocument(**_scene, docType, ""); }
     bool EditorSceneManager::DeleteDocument(DocumentId doc, DocumentTypeId docType)
         { return (*_dynInterface)->DeleteDocument(**_scene, doc, docType); }
 
     ObjectId EditorSceneManager::AssignObjectId(DocumentId doc, ObjectTypeId type)
         { return (*_dynInterface)->AssignObjectId(**_scene, doc, type); }
 
-    bool EditorSceneManager::CreateObject(DocumentId doc, ObjectId obj, ObjectTypeId objType, System::String^ initializer)
-        { return (*_dynInterface)->CreateObject(**_scene, doc, obj, objType, clix::marshalString<clix::E_UTF8>(initializer).c_str()); }
+    bool EditorSceneManager::CreateObject(DocumentId doc, ObjectId obj, ObjectTypeId objType)
+        { return (*_dynInterface)->CreateObject(**_scene, doc, obj, objType, ""); }
 
     bool EditorSceneManager::DeleteObject(DocumentId doc, ObjectId obj, ObjectTypeId objType)
         { return (*_dynInterface)->DeleteObject(**_scene, doc, obj, objType); }
