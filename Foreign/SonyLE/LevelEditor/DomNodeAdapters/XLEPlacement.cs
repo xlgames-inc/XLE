@@ -13,7 +13,7 @@ using LevelEditorCore;
 
 namespace LevelEditor.DomNodeAdapters
 {
-    class XLEPlacementObject : GenericTransformableObject, IListable, IVisible, ILockable
+    class XLEPlacementObject : GenericTransformableObject, IGameObject
     {
         #region IListable Members
         public void GetInfo(ItemInfo info)
@@ -24,6 +24,14 @@ namespace LevelEditor.DomNodeAdapters
         #endregion
 
         public XLEPlacementObject() : base(Schema.placementObjectType.transform) {}
+
+        #region INameable Members
+        public string Name
+        {
+            get { return "Placement"; }
+            set { }
+        }
+        #endregion
 
         #region IVisible Members
         public virtual bool Visible

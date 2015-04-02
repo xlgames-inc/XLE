@@ -345,7 +345,7 @@
     <xs:attribute name="rotate" type="vector3Type" default="0 0 0"/>
     <xs:attribute name="scale" type="vector3Type" default="1 1 1"/>
     <xs:attribute name="pivot" type="vector3Type" default="0 0 0"/>
-    <xs:attribute name="ID" type="xs:ID" />
+    <xs:attribute name="ID" type="xs:unsignedLong" default="0"/>
       
     <xs:attribute name="visible" type="xs:boolean" default="true" />
     <xs:attribute name="locked" type="xs:boolean" default="false" />

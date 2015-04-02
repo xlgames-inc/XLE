@@ -135,20 +135,19 @@ namespace RenderingInterop
             return paths;
         }
         
-        private IGame TargetGame()
-        {            
+        private IGameDocument TargetGame()
+        {
             var selection = DesignView.Context.As<ISelectionContext>();
             DomNode node = selection.GetLastSelected<DomNode>();
                       
             IReference<IGame> gameref = Adapters.As<IReference<IGame>>(node);
             if (gameref != null && gameref.Target != null)
-                return gameref.Target;  
+                return gameref.Target.As<IGameDocument>();
                       
             if(node != null)
-                return node.GetRoot().As<IGame>(); 
-            
-            return DesignView.Context.As<IGame>();
-            
+                return node.GetRoot().As<IGameDocument>();
+
+            return DesignView.Context.As<IGameDocument>();
         }
 
         private readonly List<DomNode> m_ghosts = new List<DomNode>();
@@ -156,7 +155,7 @@ namespace RenderingInterop
         protected override void OnDragEnter(DragEventArgs drgevent)
         {
             base.OnDragEnter(drgevent);
-            IGame dragDropTarget = TargetGame();
+            var dragDropTarget = TargetGame();
 
             if (dragDropTarget.RootGameObjectFolder.IsLocked)
             {
@@ -255,7 +254,7 @@ namespace RenderingInterop
 
             if (m_ghosts.Count > 0)
             {
-                IGame dragDropTarget = TargetGame();
+                var dragDropTarget = TargetGame();
                 IGameObjectFolder rootFolder = dragDropTarget.RootGameObjectFolder;
 
                 foreach (DomNode ghost in m_ghosts)
@@ -281,7 +280,7 @@ namespace RenderingInterop
 
             if (m_ghosts.Count > 0)
             {
-                IGame dragDropTarget = TargetGame();
+                var dragDropTarget = TargetGame();
                 IGameObjectFolder rootFolder = dragDropTarget.RootGameObjectFolder;
                 foreach (DomNode ghost in m_ghosts)
                 {
