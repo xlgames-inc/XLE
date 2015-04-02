@@ -4,6 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#include "ManipulatorOverlay.h"
 #include "../../PlatformRig/ModelVisualisation.h"
 #include "../../PlatformRig/OverlaySystem.h"
 #include "../../SceneEngine/LightingParserContext.h"
@@ -31,58 +32,17 @@ namespace XLELayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    public delegate void RenderCallback(LevelEditorCore::DesignView^ designView, Sce::Atf::Rendering::Camera^ camera);
-
-    private ref class ManipulatorOverlay : public GUILayer::IOverlaySystem
-    {
-    public:
-        virtual void RenderToScene(
-            RenderCore::IThreadContext* device, 
-            SceneEngine::LightingParserContext& parserContext) override;
-
-        virtual void RenderWidgets(
-            RenderCore::IThreadContext* device, 
-            const RenderCore::Techniques::ProjectionDesc& projectionDesc) override {}
-        virtual void SetActivationState(bool) override {}
-
-        event RenderCallback^ OnRender;
-
-        ManipulatorOverlay(
-            LevelEditorCore::DesignView^ designView,
-            LevelEditorCore::ViewControl^ viewControl)
-        : _designView(designView), _viewControl(viewControl) {}
-
-        ~ManipulatorOverlay() 
-        {
-            delete _designView; _designView = nullptr;
-            delete _viewControl; _designView = nullptr;
-        }
-
-        !ManipulatorOverlay() 
-        {
-            delete _designView; _designView = nullptr;
-            delete _viewControl; _designView = nullptr;
-        }
-
-    protected:
-        LevelEditorCore::DesignView^ _designView;
-        LevelEditorCore::ViewControl^ _viewControl;
-    };
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
     public ref class NativeDesignControl : public DesignViewControl
     {
     public:
-        static RenderCore::Techniques::ParsingContext* s_currentParsingContext = nullptr;
         static GUILayer::SimpleRenderingContext^ CreateSimpleRenderingContext(GUILayer::SavedRenderResources^ savedRes)
         {
-            if (!s_currentParsingContext) return nullptr;
+            if (!ManipulatorOverlay::s_currentParsingContext) return nullptr;
 
             return gcnew GUILayer::SimpleRenderingContext(
                 savedRes, 
                 *GUILayer::EngineDevice::GetInstance()->GetNative().GetRenderDevice()->GetImmediateContext(),
-                s_currentParsingContext);
+                ManipulatorOverlay::s_currentParsingContext);
         }
 
         NativeDesignControl(
@@ -177,7 +137,7 @@ namespace XLELayer
         SceneEngine::LightingParserContext& parserContext)
     {
         using namespace LevelEditorCore;
-        NativeDesignControl::s_currentParsingContext = &parserContext;
+        s_currentParsingContext = &parserContext;
             
         try
         {
@@ -187,11 +147,11 @@ namespace XLELayer
         }
         catch (...)
         {
-            NativeDesignControl::s_currentParsingContext = nullptr;
+            s_currentParsingContext = nullptr;
             throw;
         }
 
-        NativeDesignControl::s_currentParsingContext = nullptr;
+        s_currentParsingContext = nullptr;
     }
 }
 

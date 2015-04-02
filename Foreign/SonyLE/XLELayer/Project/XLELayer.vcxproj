@@ -76,8 +76,10 @@
   <ItemGroup>
     <ClCompile Include="..\MaterialLayer.cpp" />
     <ClCompile Include="..\NativeDesignControl.cpp" />
+    <ClCompile Include="..\TerrainManipulator.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\ManipulatorOverlay.h" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="Atf.Core">
@@ -97,6 +99,7 @@
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.Composition" />
+    <Reference Include="System.Core" />
     <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />
@@ -138,6 +141,9 @@
     </ProjectReference>
     <ProjectReference Include="..\..\..\..\RenderOverlays\Project\RenderOverlays.vcxproj">
       <Project>{726e12f1-b69b-188d-390b-3a1e1889126d}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\..\SceneEngine\Project\SceneEngine.vcxproj">
+      <Project>{0a40e6ed-47cc-a08e-71c5-8a3515d81eaf}</Project>
     </ProjectReference>
     <ProjectReference Include="..\..\..\..\Tools\GUILayer\Project\GUILayer.vcxproj">
       <Project>{e1e9a4c1-97a8-44b7-8279-d287313c5b6b}</Project>
