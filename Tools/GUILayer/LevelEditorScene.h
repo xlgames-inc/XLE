@@ -12,10 +12,8 @@
 #include "../../Math/Vector.h"
 #include <memory>
 
-namespace SceneEngine { class PlacementsManager; class PlacementsEditor; class ISceneParser; class IntersectionTestContext; class TerrainManager; }
+namespace SceneEngine { class PlacementsManager; class PlacementsEditor; class ISceneParser; class IntersectionTestScene; class TerrainManager; }
 namespace Tools { class IManipulator; }
-
-#pragma make_public(ToolsRig::IManipulator)
 
 namespace GUILayer
 {
@@ -95,8 +93,9 @@ namespace GUILayer
 
         System::Collections::Generic::ICollection<HitRecord^>^ 
             RayIntersection(
-                const SceneEngine::IntersectionTestContext& testContext,
-                Float3 worldSpaceRayStart, Float3 worldSpaceRayEnd,
+                clix::auto_ptr<SceneEngine::IntersectionTestContext>^ testContext,
+                float startX, float startY, float startZ,
+                float endX, float endY, float endZ,
                 unsigned filter);
 
         EditorSceneManager();

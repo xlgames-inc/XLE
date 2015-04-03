@@ -41,4 +41,3 @@ namespace GUILayer
     };
 }
 
-#pragma make_public(GUILayer::NativeEngineDevice)

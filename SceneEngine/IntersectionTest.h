@@ -25,6 +25,11 @@ namespace SceneEngine
     /// Frequently we need to do "hit tests" and various projection and 
     /// unprojection operations. This context contains the minimal references
     /// to do this.
+    /// Note that we need some camera information for LOD calculations. We could
+    /// assume everything is at top LOD; but we will get a better match with 
+    /// the rendered result if we take into account LOD. We even need viewport
+    /// size -- because this can effect LOD as well. It's frustrating, but all 
+    /// this is required!
     /// <seealso cref="IntersectionResolver" />
     class IntersectionTestContext
     {

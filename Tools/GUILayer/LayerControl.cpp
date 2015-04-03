@@ -13,6 +13,7 @@
 #include "EngineDevice.h"
 #include "NativeEngineDevice.h"
 #include "GUILayerUtil.h"
+#include "ExportedNativeTypes.h"
 #include "../ToolsRig/ModelVisualisation.h"
 #include "../ToolsRig/IManipulator.h"
 #include "../ToolsRig/BasicManipulators.h"

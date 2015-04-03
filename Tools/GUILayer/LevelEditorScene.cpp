@@ -9,6 +9,7 @@
 #include "PlacementsGobInterface.h"
 #include "CLIXAutoPtr.h"
 #include "MarshalString.h"
+#include "ExportedNativeTypes.h"
 #include "../../SceneEngine/PlacementsManager.h"
 #include "../../SceneEngine/Terrain.h"
 #include "../../SceneEngine/SceneParser.h"
@@ -24,9 +25,6 @@
 #include "../../RenderCore/IThreadContext.h"
 
 #include <memory>
-
-#pragma make_public(RenderCore::IThreadContext)
-#pragma make_public(RenderCore::Techniques::ProjectionDesc)
 
 namespace GUILayer
 {
@@ -230,8 +228,9 @@ namespace GUILayer
 
     System::Collections::Generic::ICollection<HitRecord^>^ 
         EditorSceneManager::RayIntersection(
-            const SceneEngine::IntersectionTestContext& testContext,
-            Float3 worldSpaceRayStart, Float3 worldSpaceRayEnd,
+            clix::auto_ptr<SceneEngine::IntersectionTestContext>^ testContext,
+            float startX, float startY, float startZ,
+            float endX, float endY, float endZ,
             unsigned filter)
     {
         TRY
@@ -239,8 +238,8 @@ namespace GUILayer
             SceneEngine::IntersectionTestScene testScene((*_scene)->_terrainManager, (*_scene)->_placementsEditor);
 
             auto firstResult = testScene.FirstRayIntersection(
-                testContext,
-                std::make_pair(worldSpaceRayStart, worldSpaceRayEnd),
+                **testContext,
+                std::make_pair(Float3(startX, startY, startZ), Float3(endX, endY, endZ)),
                 filter);
 
             if (firstResult._type != 0) {

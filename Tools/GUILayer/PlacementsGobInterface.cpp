@@ -6,6 +6,7 @@
 
 #include "PlacementsGobInterface.h"
 #include "LevelEditorScene.h"
+#include "ExportedNativeTypes.h"
 #include "../../SceneEngine/PlacementsManager.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Math/Transformations.h"

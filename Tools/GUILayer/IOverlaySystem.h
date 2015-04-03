@@ -34,6 +34,3 @@ namespace GUILayer
     };
 }
 
-#pragma make_public(RenderCore::IThreadContext)
-#pragma make_public(SceneEngine::LightingParserContext)
-#pragma make_public(RenderCore::Techniques::ProjectionDesc)

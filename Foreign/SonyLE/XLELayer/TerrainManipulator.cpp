@@ -150,10 +150,11 @@ namespace XLELayer
             auto ray = vc->GetWorldRay(scrPt);
             auto start = ray.Origin;
             auto end = ray.Origin + vc->Camera->FarZ * ray.Direction;
-            auto result = GUILayer::EditorInterfaceUtils::RayIntersection(
-                GUILayer::EngineDevice::GetInstance(),
-                nullptr, scene,
-                start.X, start.Y, start.Z, end.X, end.Y, end.Z,
+            auto result = scene->RayIntersection(
+                GUILayer::EditorInterfaceUtils::CreateIntersectionTestContext(
+                    GUILayer::EngineDevice::GetInstance(), nullptr), 
+                start.X, start.Y, start.Z,
+                end.X, end.Y, end.Z,
                 SceneEngine::IntersectionTestScene::Type::Terrain);
 
             return result->Count > 0;

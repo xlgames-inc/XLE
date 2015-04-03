@@ -6,6 +6,7 @@
 
 #include "EngineDevice.h"
 #include "NativeEngineDevice.h"
+#include "ExportedNativeTypes.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Metal/Buffer.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
@@ -19,9 +20,6 @@
 
 #include "../../Assets/Assets.h"
 #include "../../RenderCore/Techniques/Techniques.h"
-
-#pragma make_public(RenderCore::IThreadContext)
-#pragma make_public(RenderCore::Techniques::ProjectionDesc)
 
 namespace GUILayer
 {

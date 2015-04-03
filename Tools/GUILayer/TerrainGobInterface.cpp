@@ -6,6 +6,7 @@
 
 #include "TerrainGobInterface.h"
 #include "LevelEditorScene.h"
+#include "ExportedNativeTypes.h"
 #include "../../SceneEngine/Terrain.h"
 #include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../RenderCore/Assets/TerrainFormat.h"

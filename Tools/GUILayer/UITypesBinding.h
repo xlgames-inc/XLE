@@ -20,8 +20,6 @@ using namespace System::Drawing::Design;
 
 namespace RenderCore { namespace Assets { class RawMaterial; class RenderStateSet; }}
 
-#pragma make_public(ToolsRig::VisCameraSettings)
-
 namespace GUILayer
 {
     private ref class FileNameEditor : UITypeEditor

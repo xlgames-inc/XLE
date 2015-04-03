@@ -8,6 +8,7 @@
 
 #include "UITypesBinding.h"
 #include "EngineForward.h"
+#include "ExportedNativeTypes.h"
 #include "../ToolsRig/ModelVisualisation.h"
 #include "../ToolsRig/VisualisationUtils.h"
 #include "../../RenderCore/Assets/Material.h"

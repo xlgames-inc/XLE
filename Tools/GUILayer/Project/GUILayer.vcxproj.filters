@@ -56,6 +56,7 @@
     <ClInclude Include="..\TerrainGobInterface.h">
       <Filter>DynInterface</Filter>
     </ClInclude>
+    <ClInclude Include="..\ExportedNativeTypes.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="DynInterface">
