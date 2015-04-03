@@ -9,7 +9,7 @@
 #include "UITypesBinding.h"
 #include "IOverlaySystem.h"
 #include "EngineForward.h"
-#include "../../PlatformRig/MaterialVisualisation.h"
+#include "../ToolsRig/MaterialVisualisation.h"
 
 namespace GUILayer
 {
@@ -29,17 +29,17 @@ namespace GUILayer
 
         static MaterialVisSettings^ CreateDefault();
 
-        MaterialVisSettings(std::shared_ptr<PlatformRig::MaterialVisSettings> attached)
+        MaterialVisSettings(std::shared_ptr<ToolsRig::MaterialVisSettings> attached)
         {
-            _object.reset(new std::shared_ptr<PlatformRig::MaterialVisSettings>(std::move(attached)));
+            _object.reset(new std::shared_ptr<ToolsRig::MaterialVisSettings>(std::move(attached)));
         }
 
         ~MaterialVisSettings() { _object.reset(); }
 
-        const PlatformRig::MaterialVisSettings& GetUnderlying() { return *_object->get(); }
+        const ToolsRig::MaterialVisSettings& GetUnderlying() { return *_object->get(); }
 
     protected:
-        AutoToShared<PlatformRig::MaterialVisSettings> _object;
+        AutoToShared<ToolsRig::MaterialVisSettings> _object;
     };
 
     public ref class MaterialVisLayer : public IOverlaySystem

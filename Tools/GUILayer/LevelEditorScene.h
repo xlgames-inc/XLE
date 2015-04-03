@@ -8,14 +8,14 @@
 
 #include "EditorDynamicInterface.h"
 #include "AutoToShared.h"
-#include "../../PlatformRig/ManipulatorsUtil.h"
+#include "../../Tools/ToolsRig/ManipulatorsUtil.h"
 #include "../../Math/Vector.h"
 #include <memory>
 
 namespace SceneEngine { class PlacementsManager; class PlacementsEditor; class ISceneParser; class IntersectionTestContext; class TerrainManager; }
 namespace Tools { class IManipulator; }
 
-#pragma make_public(Tools::IManipulator)
+#pragma make_public(ToolsRig::IManipulator)
 #pragma make_public(RenderCore::IThreadContext)
 #pragma make_public(RenderCore::Techniques::ProjectionDesc)
 
@@ -35,10 +35,10 @@ namespace GUILayer
 		{
 		public:
 			std::string _name;
-			std::shared_ptr<Tools::IManipulator> _manipulator;
+			std::shared_ptr<ToolsRig::IManipulator> _manipulator;
 			RegisteredManipulator(
 				const std::string& name,
-				std::shared_ptr<Tools::IManipulator> manipulator)
+				std::shared_ptr<ToolsRig::IManipulator> manipulator)
 				: _name(name), _manipulator(std::move(manipulator))
 			{}
 			RegisteredManipulator() {}
@@ -90,7 +90,7 @@ namespace GUILayer
         PropertyId GetPropertyId(ObjectTypeId type, System::String^ name);
         ChildListId GetChildListId(ObjectTypeId type, System::String^ name);
 
-		Tools::IManipulator* GetManipulator(System::String^ name);
+		ToolsRig::IManipulator* GetManipulator(System::String^ name);
 		System::Collections::Generic::IEnumerable<System::String^>^ GetManipulatorNames();
 
         IOverlaySystem^ CreateOverlaySystem(VisCameraSettings^ camera);

@@ -9,7 +9,7 @@
 #include "CLIXAutoPtr.h"
 #include "MarshalString.h"
 #include "AutoToShared.h"
-#include "../../PlatformRig/ModelVisualisation.h"
+#include "../ToolsRig/ModelVisualisation.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/SystemUtils.h"
 #include "../../Utility/ParameterBox.h"
@@ -20,7 +20,7 @@ using namespace System::Drawing::Design;
 
 namespace RenderCore { namespace Assets { class RawMaterial; class RenderStateSet; }}
 
-#pragma make_public(PlatformRig::VisCameraSettings)
+#pragma make_public(ToolsRig::VisCameraSettings)
 
 namespace GUILayer
 {
@@ -63,24 +63,24 @@ namespace GUILayer
     public ref class VisCameraSettings
     {
     public:
-        const std::shared_ptr<PlatformRig::VisCameraSettings>& GetUnderlying() { return *_object.get(); }
-        PlatformRig::VisCameraSettings* GetUnderlyingRaw() { return _object.get()->get(); }
+        const std::shared_ptr<ToolsRig::VisCameraSettings>& GetUnderlying() { return *_object.get(); }
+        ToolsRig::VisCameraSettings* GetUnderlyingRaw() { return _object.get()->get(); }
 
-        VisCameraSettings(std::shared_ptr<PlatformRig::VisCameraSettings> attached)
+        VisCameraSettings(std::shared_ptr<ToolsRig::VisCameraSettings> attached)
         {
-            _object.reset(new std::shared_ptr<PlatformRig::VisCameraSettings>(std::move(attached)));
+            _object.reset(new std::shared_ptr<ToolsRig::VisCameraSettings>(std::move(attached)));
         }
         VisCameraSettings()
         {
-            auto temp = std::make_shared<PlatformRig::VisCameraSettings>();
-            _object.reset(new std::shared_ptr<PlatformRig::VisCameraSettings>(std::move(temp)));
+            auto temp = std::make_shared<ToolsRig::VisCameraSettings>();
+            _object.reset(new std::shared_ptr<ToolsRig::VisCameraSettings>(std::move(temp)));
         }
         ~VisCameraSettings()
         {
             _object.reset();
         }
     protected:
-        AutoToShared<PlatformRig::VisCameraSettings> _object;
+        AutoToShared<ToolsRig::VisCameraSettings> _object;
     };
 
     public ref class ModelVisSettings
@@ -143,17 +143,17 @@ namespace GUILayer
         }
 
         void AttachCallback(PropertyGrid^ callback);
-        std::shared_ptr<PlatformRig::ModelVisSettings> GetUnderlying() { return *_object.get(); }
+        std::shared_ptr<ToolsRig::ModelVisSettings> GetUnderlying() { return *_object.get(); }
 
-        ModelVisSettings(std::shared_ptr<PlatformRig::ModelVisSettings> attached)
+        ModelVisSettings(std::shared_ptr<ToolsRig::ModelVisSettings> attached)
         {
-            _object.reset(new std::shared_ptr<PlatformRig::ModelVisSettings>(std::move(attached)));
+            _object.reset(new std::shared_ptr<ToolsRig::ModelVisSettings>(std::move(attached)));
         }
 
         ModelVisSettings() 
         {
-            auto temp = std::make_shared<PlatformRig::ModelVisSettings>();
-            _object.reset(new std::shared_ptr<PlatformRig::ModelVisSettings>(std::move(temp)));
+            auto temp = std::make_shared<ToolsRig::ModelVisSettings>();
+            _object.reset(new std::shared_ptr<ToolsRig::ModelVisSettings>(std::move(temp)));
         }
 
         ~ModelVisSettings() { _object.reset(); }
@@ -161,7 +161,7 @@ namespace GUILayer
         static ModelVisSettings^ CreateDefault();
 
     protected:
-        AutoToShared<PlatformRig::ModelVisSettings> _object;
+        AutoToShared<ToolsRig::ModelVisSettings> _object;
     };
 
     public ref class VisMouseOver
@@ -180,19 +180,19 @@ namespace GUILayer
         [Browsable(false)] property System::String^ FullMaterialName { System::String^ get(); }
 
         void AttachCallback(PropertyGrid^ callback);
-        std::shared_ptr<PlatformRig::VisMouseOver> GetUnderlying() { return *_object.get(); }
+        std::shared_ptr<ToolsRig::VisMouseOver> GetUnderlying() { return *_object.get(); }
 
         VisMouseOver(
-            std::shared_ptr<PlatformRig::VisMouseOver> attached,
-            std::shared_ptr<PlatformRig::ModelVisSettings> settings,
-            std::shared_ptr<PlatformRig::ModelVisCache> cache);
+            std::shared_ptr<ToolsRig::VisMouseOver> attached,
+            std::shared_ptr<ToolsRig::ModelVisSettings> settings,
+            std::shared_ptr<ToolsRig::ModelVisCache> cache);
         VisMouseOver();
         ~VisMouseOver();
 
     protected:
-        AutoToShared<PlatformRig::VisMouseOver> _object;
-        AutoToShared<PlatformRig::ModelVisSettings> _modelSettings;
-        AutoToShared<PlatformRig::ModelVisCache> _modelCache;
+        AutoToShared<ToolsRig::VisMouseOver> _object;
+        AutoToShared<ToolsRig::ModelVisSettings> _modelSettings;
+        AutoToShared<ToolsRig::ModelVisCache> _modelCache;
     };
 
     public ref class BindingUtil

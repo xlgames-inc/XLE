@@ -7,11 +7,11 @@
 #pragma once
 
 #include "ModelVisualisation.h"
-#include "../RenderCore/Assets/Material.h"
-#include "../RenderCore/Metal/Forward.h"
-#include "../Assets/AssetUtils.h"
+#include "../../RenderCore/Assets/Material.h"
+#include "../../RenderCore/Metal/Forward.h"
+#include "../../Assets/AssetUtils.h"
 
-namespace PlatformRig
+namespace ToolsRig
 {
     class MaterialVisSettings
     {
@@ -55,7 +55,7 @@ namespace PlatformRig
     /// <summary>Renders a visualisation of a material</summary>
     /// Designed for tools, this layer will render a material on a 
     /// generic piece of geometry, with generic environment settings.
-    class MaterialVisLayer : public IOverlaySystem
+    class MaterialVisLayer : public PlatformRig::IOverlaySystem
     {
     public:
         virtual std::shared_ptr<IInputListener> GetInputListener();

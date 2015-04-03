@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "MaterialVisualisation.h"
+#include "../ToolsRig/VisualisationUtils.h"
 #include "../../RenderCore/Assets/Material.h"
 #include "../../RenderCore/Assets/AssetUtils.h"
 #include "../../RenderCore/Techniques/Techniques.h"
@@ -20,7 +21,7 @@ namespace GUILayer
     {
         if (!_config->GetUnderlying()) { return; }
 
-        PlatformRig::MaterialVisObject obj;
+        ToolsRig::MaterialVisObject obj;
         obj._searchRules = ::Assets::DefaultDirectorySearchRules(_config->GetUnderlying()->GetInitializerFilename().c_str());
         obj._parameters = _config->GetUnderlying()->Resolve(obj._searchRules);
         // obj._systemConstants = 
@@ -67,7 +68,7 @@ namespace GUILayer
             obj._shaderProgram = variation._shaderProgram;
         }
 
-        PlatformRig::MaterialVisLayer::Draw(
+        ToolsRig::MaterialVisLayer::Draw(
             *context, parserContext,
             _settings->GetUnderlying(), obj);
     }
@@ -102,54 +103,54 @@ namespace GUILayer
 
     
     static MaterialVisSettings::GeometryType AsManaged(
-        PlatformRig::MaterialVisSettings::GeometryType::Enum input)
+        ToolsRig::MaterialVisSettings::GeometryType::Enum input)
     {
         switch (input) {
-        case PlatformRig::MaterialVisSettings::GeometryType::Sphere:
+        case ToolsRig::MaterialVisSettings::GeometryType::Sphere:
             return MaterialVisSettings::GeometryType::Sphere;
-        case PlatformRig::MaterialVisSettings::GeometryType::Cube:
+        case ToolsRig::MaterialVisSettings::GeometryType::Cube:
             return MaterialVisSettings::GeometryType::Cube;
         default:
             return MaterialVisSettings::GeometryType::Plane2D;
         }
     }
 
-    static PlatformRig::MaterialVisSettings::GeometryType::Enum AsNative(
+    static ToolsRig::MaterialVisSettings::GeometryType::Enum AsNative(
          MaterialVisSettings::GeometryType input)
     {
         switch (input) {
         case MaterialVisSettings::GeometryType::Sphere:
-            return PlatformRig::MaterialVisSettings::GeometryType::Sphere;
+            return ToolsRig::MaterialVisSettings::GeometryType::Sphere;
         case MaterialVisSettings::GeometryType::Cube:
-            return PlatformRig::MaterialVisSettings::GeometryType::Cube;
+            return ToolsRig::MaterialVisSettings::GeometryType::Cube;
         default:
-            return PlatformRig::MaterialVisSettings::GeometryType::Plane2D;
+            return ToolsRig::MaterialVisSettings::GeometryType::Plane2D;
         }
     }
 
     static MaterialVisSettings::LightingType AsManaged(
-        PlatformRig::MaterialVisSettings::LightingType::Enum input)
+        ToolsRig::MaterialVisSettings::LightingType::Enum input)
     {
         switch (input) {
-        case PlatformRig::MaterialVisSettings::LightingType::Deferred:
+        case ToolsRig::MaterialVisSettings::LightingType::Deferred:
             return MaterialVisSettings::LightingType::Deferred;
-        case PlatformRig::MaterialVisSettings::LightingType::Forward:
+        case ToolsRig::MaterialVisSettings::LightingType::Forward:
             return MaterialVisSettings::LightingType::Forward;
         default:
             return MaterialVisSettings::LightingType::NoLightingParser;
         }
     }
 
-    static PlatformRig::MaterialVisSettings::LightingType::Enum AsNative(
+    static ToolsRig::MaterialVisSettings::LightingType::Enum AsNative(
          MaterialVisSettings::LightingType input)
     {
         switch (input) {
         case MaterialVisSettings::LightingType::Deferred:
-            return PlatformRig::MaterialVisSettings::LightingType::Deferred;
+            return ToolsRig::MaterialVisSettings::LightingType::Deferred;
         case MaterialVisSettings::LightingType::Forward:
-            return PlatformRig::MaterialVisSettings::LightingType::Forward;
+            return ToolsRig::MaterialVisSettings::LightingType::Forward;
         default:
-            return PlatformRig::MaterialVisSettings::LightingType::NoLightingParser;
+            return ToolsRig::MaterialVisSettings::LightingType::NoLightingParser;
         }
     }
 
@@ -175,7 +176,7 @@ namespace GUILayer
 
     MaterialVisSettings^ MaterialVisSettings::CreateDefault()
     {
-        return gcnew MaterialVisSettings(std::make_shared<PlatformRig::MaterialVisSettings>());
+        return gcnew MaterialVisSettings(std::make_shared<ToolsRig::MaterialVisSettings>());
     }
 
 }

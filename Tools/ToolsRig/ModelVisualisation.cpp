@@ -9,23 +9,24 @@
 #define MODEL_FORMAT MODEL_FORMAT_RUNTIME
 
 #include "ModelVisualisation.h"
-#include "InputTranslator.h"
-#include "../SceneEngine/SceneParser.h"
-#include "../SceneEngine/LightDesc.h"
-#include "../SceneEngine/LightingParser.h"
-#include "../SceneEngine/LightingParserContext.h"
-#include "../SceneEngine/RayVsModel.h"
-#include "../SceneEngine/IntersectionTest.h"
-#include "../RenderOverlays/DebuggingDisplay.h"
-#include "../RenderCore/IThreadContext.h"
-#include "../RenderCore/Techniques/TechniqueUtils.h"
-#include "../RenderCore/Techniques/CommonResources.h"
-#include "../RenderCore/Metal/DeviceContext.h"
-#include "../RenderCore/Assets/SharedStateSet.h"
-#include "../Assets/AssetUtils.h"
-#include "../Math/Transformations.h"
-#include "../Utility/HeapUtils.h"
-#include "../Utility/StringFormat.h"
+#include "VisualisationUtils.h"
+#include "../../PlatformRig/InputTranslator.h"
+#include "../../SceneEngine/SceneParser.h"
+#include "../../SceneEngine/LightDesc.h"
+#include "../../SceneEngine/LightingParser.h"
+#include "../../SceneEngine/LightingParserContext.h"
+#include "../../SceneEngine/RayVsModel.h"
+#include "../../SceneEngine/IntersectionTest.h"
+#include "../../RenderOverlays/DebuggingDisplay.h"
+#include "../../RenderCore/IThreadContext.h"
+#include "../../RenderCore/Techniques/TechniqueUtils.h"
+#include "../../RenderCore/Techniques/CommonResources.h"
+#include "../../RenderCore/Metal/DeviceContext.h"
+#include "../../RenderCore/Assets/SharedStateSet.h"
+#include "../../Assets/AssetUtils.h"
+#include "../../Math/Transformations.h"
+#include "../../Utility/HeapUtils.h"
+#include "../../Utility/StringFormat.h"
 
 #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
     #include "../../RenderCore/Assets/ModelRunTime.h"
@@ -44,7 +45,7 @@
 
 #include <map>
 
-namespace PlatformRig
+namespace ToolsRig
 {
     #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
         using RenderCore::Assets::ModelRenderer;
@@ -515,7 +516,7 @@ namespace PlatformRig
             auto metalContext = RenderCore::Metal::DeviceContext::Get(*_threadContext);
             auto cam = AsCameraDesc(*_settings->_camera);
             auto worldSpaceRay = IntersectionTestContext::CalculateWorldSpaceRay(
-                cam, evnt._mousePosition, InputTranslator::s_hackWindowSize);
+                cam, evnt._mousePosition, PlatformRig::InputTranslator::s_hackWindowSize);
             
             std::vector<RayVsModelStateContext::ResultEntry> results;
             TRY {

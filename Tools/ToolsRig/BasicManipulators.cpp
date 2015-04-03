@@ -7,16 +7,17 @@
 #include "BasicManipulators.h"
 #include "ManipulatorsUtil.h"
 #include "ModelVisualisation.h"
-#include "../RenderOverlays/DebuggingDisplay.h"
-#include "../Math/Transformations.h"
-#include "../Math/Geometry.h"
+#include "VisualisationUtils.h"
+#include "../../RenderOverlays/DebuggingDisplay.h"
+#include "../../Math/Transformations.h"
+#include "../../Math/Geometry.h"
 #include <memory>
 
-namespace PlatformRig
+namespace ToolsRig
 {
     using RenderOverlays::DebuggingDisplay::InputSnapshot;
 
-    class CameraMovementManipulator : public Tools::IManipulator
+    class CameraMovementManipulator : public IManipulator
     {
     public:
         bool OnInputEvent(
@@ -175,7 +176,7 @@ namespace PlatformRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    std::shared_ptr<Tools::IManipulator> CreateCameraManipulator(
+    std::shared_ptr<IManipulator> CreateCameraManipulator(
         std::shared_ptr<VisCameraSettings> visCameraSettings)
     {
         return std::make_shared<CameraMovementManipulator>(visCameraSettings);

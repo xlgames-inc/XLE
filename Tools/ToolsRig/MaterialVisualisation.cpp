@@ -5,21 +5,22 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "MaterialVisualisation.h"
-#include "../SceneEngine/LightingParserContext.h"
-#include "../SceneEngine/LightingParser.h"
-#include "../SceneEngine/SceneParser.h"
-#include "../SceneEngine/LightDesc.h"
-#include "../RenderCore/Techniques/CommonResources.h"
-#include "../RenderCore/Techniques/Techniques.h"
-#include "../RenderCore/Metal/DeviceContext.h"
-#include "../RenderCore/Metal/InputLayout.h"
-#include "../RenderCore/IThreadContext.h"
-#include "../Math/Transformations.h"
+#include "VisualisationUtils.h"
+#include "../../SceneEngine/LightingParserContext.h"
+#include "../../SceneEngine/LightingParser.h"
+#include "../../SceneEngine/SceneParser.h"
+#include "../../SceneEngine/LightDesc.h"
+#include "../../RenderCore/Techniques/CommonResources.h"
+#include "../../RenderCore/Techniques/Techniques.h"
+#include "../../RenderCore/Metal/DeviceContext.h"
+#include "../../RenderCore/Metal/InputLayout.h"
+#include "../../RenderCore/IThreadContext.h"
+#include "../../Math/Transformations.h"
 
-#include "../RenderCore/DX11/Metal/IncludeDX11.h"
+#include "../../RenderCore/DX11/Metal/IncludeDX11.h"
 #include <d3d11shader.h>
 
-namespace PlatformRig
+namespace ToolsRig
 {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

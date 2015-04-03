@@ -5,10 +5,10 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "ManipulatorOverlay.h"
-#include "../../PlatformRig/ModelVisualisation.h"
+#include "../../Tools/ToolsRig/VisualisationUtils.h"
+#include "../../Tools/GUILayer/NativeEngineDevice.h"
 #include "../../PlatformRig/OverlaySystem.h"
 #include "../../SceneEngine/LightingParserContext.h"
-#include "../../Tools/GUILayer/NativeEngineDevice.h"
 #include "../../RenderCore/IDevice.h"
 #include <memory>
 

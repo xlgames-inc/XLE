@@ -6,8 +6,8 @@
 
 #pragma once
 
-#include "OverlaySystem.h"
-#include "../Assets/Assets.h"
+#include "../../PlatformRig/OverlaySystem.h"
+#include "../../Assets/Assets.h"
 
 namespace RenderCore { namespace Assets 
 {
@@ -26,8 +26,10 @@ namespace RenderCore { namespace Techniques
 
 namespace SceneEngine { class ISceneParser; }
 
-namespace PlatformRig
+namespace ToolsRig
 {
+    class VisCameraSettings;
+
     class ModelVisCache
     {
     public:
@@ -68,19 +70,6 @@ namespace PlatformRig
         void Trigger();
         ~ChangeEvent();
     };
-
-    class VisCameraSettings
-    {
-    public:
-        Float3  _position;
-        Float3  _focus;
-        float   _verticalFieldOfView;
-        float   _nearClip, _farClip;
-
-        VisCameraSettings();
-    };
-
-    RenderCore::Techniques::CameraDesc AsCameraDesc(const VisCameraSettings& camSettings);
 
     /// <summary>Settings related to the visualisation of a model</summary>
     /// This is a "model" part of a MVC pattern related to the way a model
@@ -125,7 +114,7 @@ namespace PlatformRig
             {}
     };
 
-    class ModelVisLayer : public IOverlaySystem
+    class ModelVisLayer : public PlatformRig::IOverlaySystem
     {
     public:
         virtual std::shared_ptr<IInputListener> GetInputListener();
@@ -147,7 +136,7 @@ namespace PlatformRig
         std::unique_ptr<Pimpl> _pimpl;
     };
 
-    class VisualisationOverlay : public IOverlaySystem
+    class VisualisationOverlay : public PlatformRig::IOverlaySystem
     {
     public:
         virtual std::shared_ptr<IInputListener> GetInputListener();
@@ -170,7 +159,7 @@ namespace PlatformRig
         std::unique_ptr<Pimpl> _pimpl;
     };
 
-    class MouseOverTrackingOverlay : public IOverlaySystem
+    class MouseOverTrackingOverlay : public PlatformRig::IOverlaySystem
     {
     public:
         virtual std::shared_ptr<IInputListener> GetInputListener();

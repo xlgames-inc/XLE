@@ -13,12 +13,13 @@
 #include "EngineDevice.h"
 #include "NativeEngineDevice.h"
 #include "GUILayerUtil.h"
+#include "../ToolsRig/ModelVisualisation.h"
+#include "../ToolsRig/ManipulatorsUtil.h"
+#include "../ToolsRig/BasicManipulators.h"
+#include "../ToolsRig/VisualisationUtils.h"
 #include "../../PlatformRig/InputTranslator.h"
 #include "../../PlatformRig/FrameRig.h"
 #include "../../PlatformRig/OverlaySystem.h"
-#include "../../PlatformRig/ModelVisualisation.h"
-#include "../../PlatformRig/ManipulatorsUtil.h"
-#include "../../PlatformRig/BasicManipulators.h"
 
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../RenderOverlays/Font.h"
@@ -78,7 +79,7 @@ namespace GUILayer
                 std::ref(*_pimpl), frameRig.GetMainOverlaySystem().get()));
     }
 
-    static std::shared_ptr<PlatformRig::ModelVisCache> s_visCache;
+    static std::shared_ptr<ToolsRig::ModelVisCache> s_visCache;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -86,15 +87,15 @@ namespace GUILayer
     {
     public:
         bool    OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt);
-        void    Register(uint64 id, std::shared_ptr<Tools::IManipulator> manipulator);
+        void    Register(uint64 id, std::shared_ptr<ToolsRig::IManipulator> manipulator);
 
         static const uint64 CameraManipulator = 256;
 
         ManipulatorStack();
         ~ManipulatorStack();
     protected:
-        std::vector<std::shared_ptr<Tools::IManipulator>> _activeManipulators;
-        std::vector<std::pair<uint64, std::shared_ptr<Tools::IManipulator>>> _registeredManipulators;
+        std::vector<std::shared_ptr<ToolsRig::IManipulator>> _activeManipulators;
+        std::vector<std::pair<uint64, std::shared_ptr<ToolsRig::IManipulator>>> _registeredManipulators;
     };
 
     bool    ManipulatorStack::OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
@@ -124,7 +125,7 @@ namespace GUILayer
         return false;
     }
 
-    void    ManipulatorStack::Register(uint64 id, std::shared_ptr<Tools::IManipulator> manipulator)
+    void    ManipulatorStack::Register(uint64 id, std::shared_ptr<ToolsRig::IManipulator> manipulator)
     {
         auto i = LowerBound(_registeredManipulators, id);
         if (i!=_registeredManipulators.end() && i->first == id) {
@@ -180,22 +181,22 @@ namespace GUILayer
     void LayerControl::SetupDefaultVis(ModelVisSettings^ settings, VisMouseOver^ mouseOver)
     {
         if (!s_visCache) {
-            s_visCache = std::make_shared<PlatformRig::ModelVisCache>(
+            s_visCache = std::make_shared<ToolsRig::ModelVisCache>(
                 std::shared_ptr<RenderCore::Assets::IModelFormat>());
         }
 
-        auto visLayer = std::make_unique<PlatformRig::ModelVisLayer>(settings->GetUnderlying(), s_visCache);
+        auto visLayer = std::make_unique<ToolsRig::ModelVisLayer>(settings->GetUnderlying(), s_visCache);
         auto& overlaySet = *GetWindowRig().GetFrameRig().GetMainOverlaySystem();
         overlaySet.AddSystem(std::move(visLayer));
         overlaySet.AddSystem(
-            std::make_shared<PlatformRig::VisualisationOverlay>(
+            std::make_shared<ToolsRig::VisualisationOverlay>(
                 settings->GetUnderlying(), s_visCache, 
                 mouseOver ? mouseOver->GetUnderlying() : nullptr));
 
         AddDefaultCameraHandler(settings->Camera);
 
         overlaySet.AddSystem(
-            std::make_shared<PlatformRig::MouseOverTrackingOverlay>(
+            std::make_shared<ToolsRig::MouseOverTrackingOverlay>(
                 mouseOver->GetUnderlying(),
                 EngineDevice::GetInstance()->GetNative().GetRenderDevice()->GetImmediateContext(),
                 _pimpl->_globalTechniqueContext,
@@ -205,12 +206,12 @@ namespace GUILayer
     VisMouseOver^ LayerControl::CreateVisMouseOver(ModelVisSettings^ settings)
     {
         if (!s_visCache) {
-            s_visCache = std::make_shared<PlatformRig::ModelVisCache>(
+            s_visCache = std::make_shared<ToolsRig::ModelVisCache>(
                 std::shared_ptr<RenderCore::Assets::IModelFormat>());
         }
 
         return gcnew VisMouseOver(
-            std::make_shared<PlatformRig::VisMouseOver>(), settings->GetUnderlying(), s_visCache);
+            std::make_shared<ToolsRig::VisMouseOver>(), settings->GetUnderlying(), s_visCache);
     }
 
     namespace Internal
@@ -265,7 +266,7 @@ namespace GUILayer
         auto manipulators = std::make_unique<ManipulatorStack>();
         manipulators->Register(
             ManipulatorStack::CameraManipulator,
-            PlatformRig::CreateCameraManipulator(settings->GetUnderlying()));
+            ToolsRig::CreateCameraManipulator(settings->GetUnderlying()));
 
         auto& overlaySet = *GetWindowRig().GetFrameRig().GetMainOverlaySystem();
         overlaySet.AddSystem(std::make_shared<InputLayer>(std::move(manipulators)));

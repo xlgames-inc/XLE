@@ -8,29 +8,29 @@
 #include "ManipulatorsUtil.h"
 #include "TerrainManipulators.h"        // needed for hit tests
 
-#include "../SceneEngine/PlacementsManager.h"
-#include "../SceneEngine/Terrain.h"
-#include "../SceneEngine/SceneParser.h"
-#include "../SceneEngine/LightingParserContext.h"
-#include "../SceneEngine/IntersectionTest.h"
+#include "../../SceneEngine/PlacementsManager.h"
+#include "../../SceneEngine/Terrain.h"
+#include "../../SceneEngine/SceneParser.h"
+#include "../../SceneEngine/LightingParserContext.h"
+#include "../../SceneEngine/IntersectionTest.h"
 
-#include "../RenderOverlays/DebuggingDisplay.h"
-#include "../RenderCore/Techniques/Techniques.h"
-#include "../RenderCore/Techniques/CommonResources.h"
-#include "../RenderCore/Techniques/ResourceBox.h"
-#include "../RenderCore/Metal/DeviceContext.h"
-#include "../RenderCore/Metal/State.h"
-#include "../RenderOverlays/OverlayContext.h"
-#include "../RenderOverlays/Overlays/Browser.h"
+#include "../../RenderOverlays/DebuggingDisplay.h"
+#include "../../RenderCore/Techniques/Techniques.h"
+#include "../../RenderCore/Techniques/CommonResources.h"
+#include "../../RenderCore/Techniques/ResourceBox.h"
+#include "../../RenderCore/Metal/DeviceContext.h"
+#include "../../RenderCore/Metal/State.h"
+#include "../../RenderOverlays/OverlayContext.h"
+#include "../../RenderOverlays/Overlays/Browser.h"
 
-#include "../Utility/TimeUtils.h"
-#include "../Utility/StringFormat.h"
-#include "../Math/Transformations.h"
-#include "../Math/Geometry.h"
+#include "../../Utility/TimeUtils.h"
+#include "../../Utility/StringFormat.h"
+#include "../../Math/Transformations.h"
+#include "../../Math/Geometry.h"
 
-#include "../BufferUploads/IBufferUploads.h"
-#include "../SceneEngine/SceneEngineUtils.h"
-#include "../Math/ProjectionMath.h"
+#include "../../BufferUploads/IBufferUploads.h"
+#include "../../SceneEngine/SceneEngineUtils.h"
+#include "../../Math/ProjectionMath.h"
 #include <iomanip>
 
 namespace Sample
@@ -40,7 +40,7 @@ namespace Sample
     extern SceneEngine::TerrainConfig MainTerrainConfig;
 }
 
-namespace Tools
+namespace ToolsRig
 {
     using namespace RenderOverlays::DebuggingDisplay;
 

@@ -7,14 +7,14 @@
 #pragma once
 
 #include "ManipulatorsUtil.h"
-#include "../RenderOverlays/DebuggingDisplay.h"
-#include "../Utility/IntrusivePtr.h"
+#include "../../RenderOverlays/DebuggingDisplay.h"
+#include "../../Utility/IntrusivePtr.h"
 #include <memory>
 
 namespace RenderOverlays { class IOverlayContext; namespace DebuggingDisplay { class InputSnapshot; class IInputListener; class InterfaceState; struct Layout; class Interactables; class DebugScreensSystem; }; class Font; }
 namespace SceneEngine { class LightingParserContext; class TerrainManager; class IntersectionTestContext; class IntersectionTestScene; }
 
-namespace Tools
+namespace ToolsRig
 {
     class TerrainHitTestContext
     {

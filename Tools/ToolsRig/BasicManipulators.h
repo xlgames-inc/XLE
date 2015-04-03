@@ -8,13 +8,12 @@
 
 #include <memory>
 
-namespace Tools { class IManipulator; }
-
-namespace PlatformRig
+namespace ToolsRig
 {
+    class IManipulator;
     class VisCameraSettings;
 
-    std::shared_ptr<Tools::IManipulator> CreateCameraManipulator(
+    std::shared_ptr<IManipulator> CreateCameraManipulator(
         std::shared_ptr<VisCameraSettings> visCameraSettings);
 }
 

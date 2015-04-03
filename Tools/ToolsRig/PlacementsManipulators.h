@@ -6,10 +6,10 @@
 
 #pragma once
 
-#include "../RenderCore/IDevice_Forward.h"
-#include "../RenderCore/Metal/DeviceContext.h"
-#include "../Math/Matrix.h"
-#include "../Core/Types.h"
+#include "../../RenderCore/IDevice_Forward.h"
+#include "../../RenderCore/Metal/DeviceContext.h"
+#include "../../Math/Matrix.h"
+#include "../../Core/Types.h"
 #include <memory>
 
 namespace RenderOverlays { namespace DebuggingDisplay { class IInputListener; } }
@@ -23,7 +23,7 @@ namespace SceneEngine
     class LightingParserContext;
 }
 
-namespace Tools
+namespace ToolsRig
 {
     /// <summary>Basic tools for placing and arranging objects<summary>
     /// To author a world, we need to be able to select, move and place

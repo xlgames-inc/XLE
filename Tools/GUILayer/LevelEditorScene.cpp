@@ -19,7 +19,7 @@
 
 #include "IOverlaySystem.h"
 #include "UITypesBinding.h" // for VisCameraSettings
-#include "../../PlatformRig/ModelVisualisation.h"  // for VisCameraSettings
+#include "../ToolsRig/VisualisationUtils.h"
 #include "../../SceneEngine/LightingParser.h"
 #include "../../RenderCore/IThreadContext.h"
 
@@ -105,11 +105,11 @@ namespace GUILayer
 
         EditorSceneParser(
             std::shared_ptr<EditorScene> editorScene,
-            std::shared_ptr<PlatformRig::VisCameraSettings> camera);
+            std::shared_ptr<ToolsRig::VisCameraSettings> camera);
         ~EditorSceneParser();
     protected:
         std::shared_ptr<EditorScene> _editorScene;
-        std::shared_ptr<PlatformRig::VisCameraSettings> _camera;
+        std::shared_ptr<ToolsRig::VisCameraSettings> _camera;
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -178,7 +178,7 @@ namespace GUILayer
 
     EditorSceneParser::EditorSceneParser(
         std::shared_ptr<EditorScene> editorScene,
-        std::shared_ptr<PlatformRig::VisCameraSettings> camera)
+        std::shared_ptr<ToolsRig::VisCameraSettings> camera)
         : _editorScene(std::move(editorScene)), _camera(std::move(camera))
     {}
     EditorSceneParser::~EditorSceneParser() {}
@@ -212,7 +212,7 @@ namespace GUILayer
     PropertyId EditorSceneManager::GetPropertyId(ObjectTypeId type, System::String^ name)       { return (*_dynInterface)->GetPropertyId(type, clix::marshalString<clix::E_UTF8>(name).c_str()); }
     ChildListId EditorSceneManager::GetChildListId(ObjectTypeId type, System::String^ name)     { return (*_dynInterface)->GetChildListId(type, clix::marshalString<clix::E_UTF8>(name).c_str()); }
 
-	Tools::IManipulator* EditorSceneManager::GetManipulator(System::String^ name)
+	ToolsRig::IManipulator* EditorSceneManager::GetManipulator(System::String^ name)
 	{
 		auto nativeName = clix::marshalString<clix::E_UTF8>(name);
 		for (auto i : (*_scene)->_terrainManipulators)

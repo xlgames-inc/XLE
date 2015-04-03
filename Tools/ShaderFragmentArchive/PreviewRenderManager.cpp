@@ -10,7 +10,8 @@
 #include "ShaderDiagramDocument.h"
 #include "../GUILayer/MarshalString.h"
 
-#include "../../PlatformRig/MaterialVisualisation.h"
+#include "../ToolsRig/MaterialVisualisation.h"
+#include "../ToolsRig/VisualisationUtils.h"
 #include "../../SceneEngine/LightingParserContext.h"
 
 #include "../../RenderCore/IDevice.h"
@@ -201,7 +202,7 @@ namespace PreviewRender
         RenderCore::IThreadContext& context, 
         PreviewBuilderPimpl& builder, ShaderDiagram::Document^ doc)
     {
-        using namespace PlatformRig;
+        using namespace ToolsRig;
 
         try {
             MaterialVisObject visObject;
@@ -238,7 +239,7 @@ namespace PreviewRender
             SceneEngine::LightingParserContext parserContext(
                 *Manager::Instance->GetGlobalTechniqueContext());
 
-            bool result = PlatformRig::MaterialVisLayer::Draw(
+            bool result = ToolsRig::MaterialVisLayer::Draw(
                 context, parserContext, 
                 visSettings, visObject);
 

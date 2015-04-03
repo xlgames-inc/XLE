@@ -6,9 +6,9 @@
 
 #pragma once
 
-#include "../RenderOverlays/DebuggingDisplay.h"
-#include "../RenderOverlays/IOverlayContext.h"
-#include "../RenderCore/Metal/Forward.h"
+#include "../../RenderOverlays/DebuggingDisplay.h"
+#include "../../RenderOverlays/IOverlayContext.h"
+#include "../../RenderCore/Metal/Forward.h"
 
 namespace SceneEngine 
 { 
@@ -21,7 +21,7 @@ namespace SceneEngine
 }
 namespace RenderCore { namespace Techniques { class CameraDesc; } }
 
-namespace Tools
+namespace ToolsRig
 {
     using namespace RenderOverlays;
     using namespace RenderOverlays::DebuggingDisplay;

@@ -127,6 +127,7 @@
     <ClInclude Include="..\ModelVisualisation.h" />
     <ClInclude Include="..\PlacementsManipulators.h" />
     <ClInclude Include="..\TerrainManipulators.h" />
+    <ClInclude Include="..\VisualisationUtils.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

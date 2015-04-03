@@ -8,7 +8,8 @@
 
 #include "UITypesBinding.h"
 #include "EngineForward.h"
-#include "../../PlatformRig/ModelVisualisation.h"
+#include "../ToolsRig/ModelVisualisation.h"
+#include "../ToolsRig/VisualisationUtils.h"
 #include "../../RenderCore/Assets/Material.h"
 #include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../Assets/DivergentAsset.h"
@@ -60,7 +61,7 @@ namespace GUILayer
 
     ModelVisSettings^ ModelVisSettings::CreateDefault()
     {
-        auto attached = std::make_shared<PlatformRig::ModelVisSettings>();
+        auto attached = std::make_shared<ToolsRig::ModelVisSettings>();
         return gcnew ModelVisSettings(std::move(attached));
     }
 
@@ -125,19 +126,19 @@ namespace GUILayer
     }
 
     VisMouseOver::VisMouseOver(
-        std::shared_ptr<PlatformRig::VisMouseOver> attached,
-        std::shared_ptr<PlatformRig::ModelVisSettings> settings,
-        std::shared_ptr<PlatformRig::ModelVisCache> cache)
+        std::shared_ptr<ToolsRig::VisMouseOver> attached,
+        std::shared_ptr<ToolsRig::ModelVisSettings> settings,
+        std::shared_ptr<ToolsRig::ModelVisCache> cache)
     {
-        _object.reset(new std::shared_ptr<PlatformRig::VisMouseOver>(std::move(attached)));
-        _modelSettings.reset(new std::shared_ptr<PlatformRig::ModelVisSettings>(std::move(settings)));
-        _modelCache.reset(new std::shared_ptr<PlatformRig::ModelVisCache>(std::move(cache)));
+        _object.reset(new std::shared_ptr<ToolsRig::VisMouseOver>(std::move(attached)));
+        _modelSettings.reset(new std::shared_ptr<ToolsRig::ModelVisSettings>(std::move(settings)));
+        _modelCache.reset(new std::shared_ptr<ToolsRig::ModelVisCache>(std::move(cache)));
     }
 
     VisMouseOver::VisMouseOver()
     {
-        auto temp = std::make_shared<PlatformRig::VisMouseOver>();
-        _object.reset(new std::shared_ptr<PlatformRig::VisMouseOver>(std::move(temp)));
+        auto temp = std::make_shared<ToolsRig::VisMouseOver>();
+        _object.reset(new std::shared_ptr<ToolsRig::VisMouseOver>(std::move(temp)));
     }
 
     VisMouseOver::~VisMouseOver() 

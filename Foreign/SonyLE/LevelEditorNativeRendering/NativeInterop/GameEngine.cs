@@ -84,6 +84,7 @@ namespace RenderingInterop
                 s_savedRenderResources = new GUILayer.SavedRenderResources(s_engineDevice);
                 s_underlyingScene = new GUILayer.EditorSceneManager();
                 Util3D.Init();
+                XLELayer.TerrainManipulator.SceneManager = s_underlyingScene;
                 CriticalError = "";
                 s_inist.PopulateEngineInfo(
                     @"<EngineInfo>
@@ -122,6 +123,7 @@ namespace RenderingInterop
             s_idToDomNode.Clear();
 
             Util3D.Shutdown();
+            XLELayer.TerrainManipulator.SceneManager = null;
             s_underlyingScene.Dispose();
             s_underlyingScene = null;
             s_savedRenderResources.Dispose();

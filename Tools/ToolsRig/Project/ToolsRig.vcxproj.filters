@@ -14,5 +14,6 @@
     <ClInclude Include="..\PlacementsManipulators.h" />
     <ClInclude Include="..\ModelVisualisation.h" />
     <ClInclude Include="..\MaterialVisualisation.h" />
+    <ClInclude Include="..\VisualisationUtils.h" />
   </ItemGroup>
 </Project>

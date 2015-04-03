@@ -20,7 +20,7 @@ using namespace Sce::Atf::Applications;
 using namespace Sce::Atf::Controls::PropertyEditing;
 
 #include "ManipulatorOverlay.h"
-#include "../../PlatformRig/ManipulatorsUtil.h"
+#include "../../Tools/ToolsRig/ManipulatorsUtil.h"
 #include "../../SceneEngine/IntersectionTest.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../Tools/GUILayer/CLIXAutoPtr.h"
@@ -76,13 +76,13 @@ namespace XLELayer
             }
         }
 
-        ManipulatorPropertiesContext(std::shared_ptr<Tools::IManipulator> manipulator)
+        ManipulatorPropertiesContext(std::shared_ptr<ToolsRig::IManipulator> manipulator)
         {
-            _manipulator.reset(new std::shared_ptr<Tools::IManipulator>(std::move(manipulator)));
+            _manipulator.reset(new std::shared_ptr<ToolsRig::IManipulator>(std::move(manipulator)));
         }
 
     protected:
-        GUILayer::AutoToShared<Tools::IManipulator> _manipulator;
+        GUILayer::AutoToShared<ToolsRig::IManipulator> _manipulator;
 
         ref class Helper : public ::System::Dynamic::DynamicObject
         {
@@ -121,12 +121,12 @@ namespace XLELayer
                 return false;
             }
 
-            Helper(std::shared_ptr<Tools::IManipulator> manipulator)
+            Helper(std::shared_ptr<ToolsRig::IManipulator> manipulator)
             {
-                _manipulator.reset(new std::shared_ptr<Tools::IManipulator>(std::move(manipulator)));
+                _manipulator.reset(new std::shared_ptr<ToolsRig::IManipulator>(std::move(manipulator)));
             }
         protected:
-            GUILayer::AutoToShared<Tools::IManipulator> _manipulator;
+            GUILayer::AutoToShared<ToolsRig::IManipulator> _manipulator;
         };
     };
 
@@ -135,6 +135,8 @@ namespace XLELayer
     public ref class TerrainManipulator : public LevelEditorCore::IManipulator
     {
     public:
+        static property GUILayer::EditorSceneManager^ SceneManager;
+
         TerrainManipulator() 
         {
             _activeManipulatorName = "Raise and Lower";
@@ -142,7 +144,7 @@ namespace XLELayer
 
         virtual bool Pick(LevelEditorCore::ViewControl^ vc, Point scrPt)
         {
-			GUILayer::EditorSceneManager^ scene = nullptr; // GUILayer::EditorSceneManager::GetInstance();
+			GUILayer::EditorSceneManager^ scene = SceneManager;
 			if (!scene) return false;
             
             auto ray = vc->GetWorldRay(scrPt);
@@ -164,7 +166,7 @@ namespace XLELayer
 				//	there's no way to get it. Ideally the ViewControl
 				//	could tell us something, but there's no way to attach
 				//	more context information on the render call
-			GUILayer::EditorSceneManager^ scene = nullptr; // GUILayer::EditorSceneManager::GetInstance(vc);
+			GUILayer::EditorSceneManager^ scene = SceneManager;
 			if (!scene) return;
 
 			auto manip = scene->GetManipulator(_activeManipulatorName);

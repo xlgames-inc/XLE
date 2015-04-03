@@ -6,36 +6,36 @@
 
 #include "TerrainManipulators.h"
 #include "ManipulatorsUtil.h"
-#include "../RenderOverlays/DebuggingDisplay.h"
-#include "../RenderOverlays/Font.h"
+#include "../../RenderOverlays/DebuggingDisplay.h"
+#include "../../RenderOverlays/Font.h"
 
-#include "../SceneEngine/LightingParserContext.h"
-#include "../SceneEngine/LightingParser.h"
-#include "../SceneEngine/SceneParser.h"
-#include "../SceneEngine/Terrain.h"
-#include "../SceneEngine/TerrainUberSurface.h"
-#include "../SceneEngine/SceneEngineUtils.h"
-#include "../SceneEngine/IntersectionTest.h"
+#include "../../SceneEngine/LightingParserContext.h"
+#include "../../SceneEngine/LightingParser.h"
+#include "../../SceneEngine/SceneParser.h"
+#include "../../SceneEngine/Terrain.h"
+#include "../../SceneEngine/TerrainUberSurface.h"
+#include "../../SceneEngine/SceneEngineUtils.h"
+#include "../../SceneEngine/IntersectionTest.h"
 
-#include "../RenderCore/Techniques/Techniques.h"
-#include "../RenderCore/Techniques/CommonResources.h"
-#include "../RenderCore/Techniques/ResourceBox.h"
+#include "../../RenderCore/Techniques/Techniques.h"
+#include "../../RenderCore/Techniques/CommonResources.h"
+#include "../../RenderCore/Techniques/ResourceBox.h"
 
-#include "../RenderCore/Metal/DeviceContext.h"
-#include "../RenderCore/Metal/State.h"
-#include "../RenderCore/Metal/Shader.h"
-#include "../RenderCore/Metal/InputLayout.h"
-#include "../RenderCore/RenderUtils.h"
+#include "../../RenderCore/Metal/DeviceContext.h"
+#include "../../RenderCore/Metal/State.h"
+#include "../../RenderCore/Metal/Shader.h"
+#include "../../RenderCore/Metal/InputLayout.h"
+#include "../../RenderCore/RenderUtils.h"
 
-#include "../Math/ProjectionMath.h"
-#include "../Math/Transformations.h"
-#include "../Utility/TimeUtils.h"
+#include "../../Math/ProjectionMath.h"
+#include "../../Math/Transformations.h"
+#include "../../Utility/TimeUtils.h"
 
-#include "../RenderCore/DX11/Metal/DX11Utils.h"
+#include "../../RenderCore/DX11/Metal/DX11Utils.h"
 
 extern unsigned FrameRenderCount;
 
-namespace Tools
+namespace ToolsRig
 {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //      M A N I P U L A T O R S             //

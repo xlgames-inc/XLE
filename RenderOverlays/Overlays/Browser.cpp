@@ -7,7 +7,7 @@
 #include "Browser.h"
 #include "../Font.h"
 
-#include "../../PlatformRig/ModelVisualisation.h"
+#include "../../../Tools/ToolsRig/ModelVisualisation.h"
 
 #include "../../RenderCore/Metal/State.h"
 #include "../../RenderCore/Metal/InputLayout.h"
@@ -445,13 +445,13 @@ namespace Overlays
         RenderCore::Metal::DepthStencilView     _dsv;
         RenderCore::Metal::ShaderResourceView   _srv;
 
-        std::unique_ptr<PlatformRig::ModelVisCache> _cache;
+        std::unique_ptr<ToolsRig::ModelVisCache> _cache;
         std::vector<std::pair<uint64, std::string>> _modelNames;
     };
 
     static void RenderModel(
         RenderCore::IThreadContext& context, 
-        PlatformRig::ModelVisCache::Model& model)
+        ToolsRig::ModelVisCache::Model& model)
     {
             // Render the given model. Create a minimal version of the full rendering process:
             //      We need to create a LightingParserContext, and ISceneParser as well.
@@ -460,7 +460,7 @@ namespace Overlays
         SceneEngine::RenderingQualitySettings qualitySettings(context.GetStateDesc()._viewportDimensions);
         auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
 
-        auto sceneParser = PlatformRig::CreateModelScene(model);
+        auto sceneParser = ToolsRig::CreateModelScene(model);
         Techniques::TechniqueContext techniqueContext;
         SceneEngine::LightingParserContext lightingParserContext(techniqueContext);
         SceneEngine::LightingParser_ExecuteScene(context, lightingParserContext, *sceneParser.get(), qualitySettings);
@@ -550,7 +550,7 @@ namespace Overlays
         pimpl->_dsv = RenderCore::Metal::DepthStencilView(depthResource.get());
         pimpl->_srv = RenderCore::Metal::ShaderResourceView(offscreenResource.get());
 
-        pimpl->_cache = std::make_unique<PlatformRig::ModelVisCache>(std::move(format));
+        pimpl->_cache = std::make_unique<ToolsRig::ModelVisCache>(std::move(format));
 
         _pimpl = std::move(pimpl);
     }
