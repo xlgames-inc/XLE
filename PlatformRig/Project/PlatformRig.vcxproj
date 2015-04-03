@@ -145,7 +145,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\BasicManipulators.cpp" />
     <ClCompile Include="..\CameraManager.cpp" />
     <ClCompile Include="..\DebuggingDisplays\BufferUploadDisplay.cpp" />
     <ClCompile Include="..\DebuggingDisplays\ConsoleDisplay.cpp" />
@@ -167,7 +166,6 @@
     </ClCompile>
     <ClCompile Include="..\ModelVisualisation.cpp" />
     <ClCompile Include="..\OverlaySystem.cpp" />
-    <ClCompile Include="..\PlacementsManipulators.cpp" />
     <ClCompile Include="..\PlatformRigUtil.cpp" />
     <ClCompile Include="..\StatePropagation.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
@@ -176,7 +174,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\TerrainManipulators.cpp" />
     <ClCompile Include="..\UnitCamera.cpp" />
     <ClCompile Include="..\WinAPI\AllocationProfiler.cpp" />
     <ClCompile Include="..\WinAPI\OverlappedWindow.cpp" />
@@ -222,7 +219,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="..\BasicManipulators.h" />
     <ClInclude Include="..\CameraManager.h" />
     <ClInclude Include="..\DebuggingDisplays\BufferUploadDisplay.h" />
     <ClInclude Include="..\DebuggingDisplays\ConsoleDisplay.h" />
@@ -233,7 +229,6 @@
     <ClInclude Include="..\FrameRig.h" />
     <ClInclude Include="..\InputTranslator.h" />
     <ClInclude Include="..\MainInputHandler.h" />
-    <ClInclude Include="..\ManipulatorsUtil.h" />
     <ClInclude Include="..\MaterialVisualisation.h" />
     <ClInclude Include="..\MeshNode.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
@@ -245,7 +240,6 @@
     <ClInclude Include="..\ModelVisualisation.h" />
     <ClInclude Include="..\OverlappedWindow.h" />
     <ClInclude Include="..\OverlaySystem.h" />
-    <ClInclude Include="..\PlacementsManipulators.h" />
     <ClInclude Include="..\PlatformRigUtil.h" />
     <ClInclude Include="..\StatePropagation.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
@@ -254,7 +248,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="..\TerrainManipulators.h" />
     <ClInclude Include="..\UnitCamera.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
