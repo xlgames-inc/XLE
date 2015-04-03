@@ -4,11 +4,15 @@
     <ClCompile Include="..\TerrainManipulators.cpp" />
     <ClCompile Include="..\BasicManipulators.cpp" />
     <ClCompile Include="..\PlacementsManipulators.cpp" />
+    <ClCompile Include="..\ModelVisualisation.cpp" />
+    <ClCompile Include="..\MaterialVisualisation.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\TerrainManipulators.h" />
     <ClInclude Include="..\BasicManipulators.h" />
     <ClInclude Include="..\ManipulatorsUtil.h" />
     <ClInclude Include="..\PlacementsManipulators.h" />
+    <ClInclude Include="..\ModelVisualisation.h" />
+    <ClInclude Include="..\MaterialVisualisation.h" />
   </ItemGroup>
 </Project>

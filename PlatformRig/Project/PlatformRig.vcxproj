@@ -156,7 +156,6 @@
     <ClCompile Include="..\InitDebugDisplays.cpp" />
     <ClCompile Include="..\InputTranslator.cpp" />
     <ClCompile Include="..\MainInputHandler.cpp" />
-    <ClCompile Include="..\MaterialVisualisation.cpp" />
     <ClCompile Include="..\MeshNode.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">true</ExcludedFromBuild>
@@ -164,7 +163,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\ModelVisualisation.cpp" />
     <ClCompile Include="..\OverlaySystem.cpp" />
     <ClCompile Include="..\PlatformRigUtil.cpp" />
     <ClCompile Include="..\StatePropagation.cpp">
@@ -229,7 +227,6 @@
     <ClInclude Include="..\FrameRig.h" />
     <ClInclude Include="..\InputTranslator.h" />
     <ClInclude Include="..\MainInputHandler.h" />
-    <ClInclude Include="..\MaterialVisualisation.h" />
     <ClInclude Include="..\MeshNode.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">true</ExcludedFromBuild>
@@ -237,7 +234,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="..\ModelVisualisation.h" />
     <ClInclude Include="..\OverlappedWindow.h" />
     <ClInclude Include="..\OverlaySystem.h" />
     <ClInclude Include="..\PlatformRigUtil.h" />

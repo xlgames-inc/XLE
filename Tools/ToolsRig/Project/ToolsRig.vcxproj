@@ -115,12 +115,16 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\BasicManipulators.cpp" />
+    <ClCompile Include="..\MaterialVisualisation.cpp" />
+    <ClCompile Include="..\ModelVisualisation.cpp" />
     <ClCompile Include="..\PlacementsManipulators.cpp" />
     <ClCompile Include="..\TerrainManipulators.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\BasicManipulators.h" />
     <ClInclude Include="..\ManipulatorsUtil.h" />
+    <ClInclude Include="..\MaterialVisualisation.h" />
+    <ClInclude Include="..\ModelVisualisation.h" />
     <ClInclude Include="..\PlacementsManipulators.h" />
     <ClInclude Include="..\TerrainManipulators.h" />
   </ItemGroup>

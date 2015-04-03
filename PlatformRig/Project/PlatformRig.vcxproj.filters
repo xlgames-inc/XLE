@@ -41,8 +41,6 @@
       <Filter>DebuggingDisplays</Filter>
     </ClCompile>
     <ClCompile Include="..\OverlaySystem.cpp" />
-    <ClCompile Include="..\ModelVisualisation.cpp" />
-    <ClCompile Include="..\MaterialVisualisation.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="WinAPI">
@@ -88,7 +86,5 @@
       <Filter>DebuggingDisplays</Filter>
     </ClInclude>
     <ClInclude Include="..\OverlaySystem.h" />
-    <ClInclude Include="..\ModelVisualisation.h" />
-    <ClInclude Include="..\MaterialVisualisation.h" />
   </ItemGroup>
 </Project>
