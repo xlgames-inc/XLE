@@ -378,7 +378,7 @@ namespace Utility
     {
         const auto insertType = ImpliedTyping::TypeOf<Type>();
         auto size = insertType.GetSize();
-        assert(size == sizeof(Type));
+        assert(size == sizeof(Type)); (void)size;
         SetParameter(name, &value, insertType);
     }
 

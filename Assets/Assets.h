@@ -301,6 +301,8 @@ namespace Assets
                     if (i != _assetNames.end() && i->first == id)
                         return i->second;
                     return std::string();
+                #else
+                    return std::string();
                 #endif
             }
 
