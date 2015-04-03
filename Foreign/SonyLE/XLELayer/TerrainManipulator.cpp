@@ -21,11 +21,8 @@ using namespace Sce::Atf::Controls::PropertyEditing;
 
 #include "ManipulatorOverlay.h"
 #include "../../PlatformRig/ManipulatorsUtil.h"
-#include "../../SceneEngine/Terrain.h"
 #include "../../SceneEngine/IntersectionTest.h"
 #include "../../RenderCore/IDevice.h"
-#include "../../RenderCore/Assets/TerrainFormat.h"
-// #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../Tools/GUILayer/CLIXAutoPtr.h"
 #include "../../Tools/GUILayer/MarshalString.h"
 #include "../../Tools/GUILayer/AutoToShared.h"
@@ -133,8 +130,6 @@ namespace XLELayer
         };
     };
 
-    static Float3 AsFloat3(Vec3F input) { return Float3(input.X, input.Y, input.Z); }
-
     [Export(LevelEditorCore::IManipulator::typeid)]
     [PartCreationPolicy(CreationPolicy::Shared)]
     public ref class TerrainManipulator : public LevelEditorCore::IManipulator
@@ -147,23 +142,19 @@ namespace XLELayer
 
         virtual bool Pick(LevelEditorCore::ViewControl^ vc, Point scrPt)
         {
-			auto scene = GUILayer::EditorSceneManager::GetInstance();
+			GUILayer::EditorSceneManager^ scene = nullptr; // GUILayer::EditorSceneManager::GetInstance();
 			if (!scene) return false;
             
             auto ray = vc->GetWorldRay(scrPt);
+            auto start = ray.Origin;
+            auto end = ray.Origin + vc->Camera->FarZ * ray.Direction;
+            auto result = GUILayer::EditorInterfaceUtils::RayIntersection(
+                GUILayer::EngineDevice::GetInstance(),
+                nullptr, scene,
+                start.X, start.Y, start.Z, end.X, end.Y, end.Z,
+                SceneEngine::IntersectionTestScene::Type::Terrain);
 
-            using namespace SceneEngine;
-            IntersectionTestContext testContext(
-                GUILayer::EngineDevice::GetInstance()->GetNative().GetRenderDevice()->GetImmediateContext(),
-                RenderCore::Techniques::CameraDesc(),
-                std::make_shared<RenderCore::Techniques::TechniqueContext>());
-
-            auto result = scene.FirstRayIntersection(
-                testContext, 
-                std::make_pair(AsFloat3(ray.Origin), AsFloat3(ray.Origin + vc->Camera->FarZ * ray.Direction)),
-                IntersectionTestScene::Type::Terrain);
-
-            return result._type != 0;
+            return result->Count > 0;
         }
 
         virtual void Render(LevelEditorCore::ViewControl^ vc)
@@ -173,7 +164,7 @@ namespace XLELayer
 				//	there's no way to get it. Ideally the ViewControl
 				//	could tell us something, but there's no way to attach
 				//	more context information on the render call
-			auto scene = GUILayer::EditorSceneManager::GetInstance(vc);
+			GUILayer::EditorSceneManager^ scene = nullptr; // GUILayer::EditorSceneManager::GetInstance(vc);
 			if (!scene) return;
 
 			auto manip = scene->GetManipulator(_activeManipulatorName);

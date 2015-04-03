@@ -231,7 +231,8 @@ namespace GUILayer
     System::Collections::Generic::ICollection<HitRecord^>^ 
         EditorSceneManager::RayIntersection(
             const SceneEngine::IntersectionTestContext& testContext,
-            Float3 worldSpaceRayStart, Float3 worldSpaceRayEnd)
+            Float3 worldSpaceRayStart, Float3 worldSpaceRayEnd,
+            unsigned filter)
     {
         TRY
         {
@@ -239,7 +240,8 @@ namespace GUILayer
 
             auto firstResult = testScene.FirstRayIntersection(
                 testContext,
-                std::make_pair(worldSpaceRayStart, worldSpaceRayEnd));
+                std::make_pair(worldSpaceRayStart, worldSpaceRayEnd),
+                filter);
 
             if (firstResult._type != 0) {
                 auto record = gcnew HitRecord;

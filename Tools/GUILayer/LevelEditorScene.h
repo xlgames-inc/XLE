@@ -8,11 +8,16 @@
 
 #include "EditorDynamicInterface.h"
 #include "AutoToShared.h"
+#include "../../PlatformRig/ManipulatorsUtil.h"
 #include "../../Math/Vector.h"
 #include <memory>
 
 namespace SceneEngine { class PlacementsManager; class PlacementsEditor; class ISceneParser; class IntersectionTestContext; class TerrainManager; }
 namespace Tools { class IManipulator; }
+
+#pragma make_public(Tools::IManipulator)
+#pragma make_public(RenderCore::IThreadContext)
+#pragma make_public(RenderCore::Techniques::ProjectionDesc)
 
 namespace GUILayer
 {
@@ -93,7 +98,8 @@ namespace GUILayer
         System::Collections::Generic::ICollection<HitRecord^>^ 
             RayIntersection(
                 const SceneEngine::IntersectionTestContext& testContext,
-                Float3 worldSpaceRayStart, Float3 worldSpaceRayEnd);
+                Float3 worldSpaceRayStart, Float3 worldSpaceRayEnd,
+                unsigned filter);
 
         EditorSceneManager();
         ~EditorSceneManager();
@@ -104,4 +110,4 @@ namespace GUILayer
     };
 }
 
-#pragma make_public(Tools::IManipulator)
+

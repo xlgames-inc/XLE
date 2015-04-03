@@ -10,6 +10,7 @@
 #include "LayerControl.h"
 #include "GUILayerUtil.h"
 #include "../../RenderCore/IDevice.h"
+#include "../../RenderCore/Techniques/Techniques.h"
 #include "../../SceneEngine/IntersectionTest.h"
 
 namespace GUILayer
@@ -28,17 +29,25 @@ namespace GUILayer
                 float worldSpaceRayStartZ,
                 float worldSpaceRayEndX,
                 float worldSpaceRayEndY,
-                float worldSpaceRayEndZ)
+                float worldSpaceRayEndZ,
+                unsigned filter)
         {
+            std::shared_ptr<RenderCore::Techniques::TechniqueContext> nativeTC;
+            if (techniqueContext) {
+                nativeTC = *techniqueContext->_techniqueContext.get();
+            } else {
+                nativeTC = std::make_shared<RenderCore::Techniques::TechniqueContext>();
+            }
             SceneEngine::IntersectionTestContext testContext(
                 engineDevice->GetNative().GetRenderDevice()->GetImmediateContext(),
                 RenderCore::Techniques::CameraDesc(),
-                *techniqueContext->_techniqueContext.get());
+                nativeTC);
 
             return editorSceneManager->RayIntersection(
                 testContext, 
                 Float3(worldSpaceRayStartX, worldSpaceRayStartY, worldSpaceRayStartZ),
-                Float3(worldSpaceRayEndX, worldSpaceRayEndY, worldSpaceRayEndZ));
+                Float3(worldSpaceRayEndX, worldSpaceRayEndY, worldSpaceRayEndZ),
+                ~0u);
         }
     };
 }

@@ -21,7 +21,7 @@ namespace RenderingInterop.NativeInterop
             var results = GUILayer.EditorInterfaceUtils.RayIntersection(
                 GameEngine.GetEngineDevice(), techniqueContext, sceneManager,
                 ray.Origin.X, ray.Origin.Y, ray.Origin.Z,
-                endPt.X, endPt.Y, endPt.Z);
+                endPt.X, endPt.Y, endPt.Z, ~0u);
 
             if (results == null) { return null; }
 
