@@ -119,14 +119,19 @@
     <ClCompile Include="..\ModelVisualisation.cpp" />
     <ClCompile Include="..\PlacementsManipulators.cpp" />
     <ClCompile Include="..\TerrainManipulators.cpp" />
+    <ClCompile Include="..\TerrainManipulatorsCommon.cpp" />
+    <ClCompile Include="..\TerrainManipulatorsInterface.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\BasicManipulators.h" />
+    <ClInclude Include="..\IManipulator.h" />
     <ClInclude Include="..\ManipulatorsUtil.h" />
     <ClInclude Include="..\MaterialVisualisation.h" />
     <ClInclude Include="..\ModelVisualisation.h" />
     <ClInclude Include="..\PlacementsManipulators.h" />
     <ClInclude Include="..\TerrainManipulators.h" />
+    <ClInclude Include="..\TerrainManipulatorsInterface.h" />
+    <ClInclude Include="..\TerrainManipulatorsCommon.h" />
     <ClInclude Include="..\VisualisationUtils.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

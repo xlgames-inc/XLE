@@ -6,6 +6,18 @@
 
 #pragma warning(disable:4564)
 
+#include "ManipulatorOverlay.h"
+#include "../../Tools/ToolsRig/IManipulator.h"
+#include "../../SceneEngine/IntersectionTest.h"
+#include "../../RenderCore/IDevice.h"
+#include "../../Tools/GUILayer/CLIXAutoPtr.h"
+#include "../../Tools/GUILayer/MarshalString.h"
+#include "../../Tools/GUILayer/AutoToShared.h"
+#include "../../Tools/GUILayer/NativeEngineDevice.h"
+#include "../../Utility/PtrUtils.h"
+#include "../../Utility/StringUtils.h"
+#include <memory>
+
 using namespace System;
 using namespace System::Collections::Generic;
 using namespace System::ComponentModel;
@@ -18,18 +30,6 @@ using namespace Sce::Atf::VectorMath;
 using namespace Sce::Atf::Adaptation;
 using namespace Sce::Atf::Applications;
 using namespace Sce::Atf::Controls::PropertyEditing;
-
-#include "ManipulatorOverlay.h"
-#include "../../Tools/ToolsRig/ManipulatorsUtil.h"
-#include "../../SceneEngine/IntersectionTest.h"
-#include "../../RenderCore/IDevice.h"
-#include "../../Tools/GUILayer/CLIXAutoPtr.h"
-#include "../../Tools/GUILayer/MarshalString.h"
-#include "../../Tools/GUILayer/AutoToShared.h"
-#include "../../Tools/GUILayer/NativeEngineDevice.h"
-#include "../../Utility/PtrUtils.h"
-#include "../../Utility/StringUtils.h"
-#include <memory>
 
 namespace SceneEngine { class TerrainManager; }
 

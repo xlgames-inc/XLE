@@ -8,7 +8,6 @@
 
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../RenderOverlays/IOverlayContext.h"
-#include "../../RenderCore/Metal/Forward.h"
 
 namespace SceneEngine 
 { 
@@ -53,58 +52,9 @@ namespace ToolsRig
             1.f, nullptr, formatting._foreground, TextAlignment::Center, label, nullptr);
     }
 
-    class IManipulator
-    {
-    public:
-        virtual bool OnInputEvent(
-            const InputSnapshot& evnt, 
-            const SceneEngine::IntersectionTestContext& hitTestContext,
-            const SceneEngine::IntersectionTestScene& hitTestScene) = 0;
-        virtual void Render(
-            RenderCore::IThreadContext* context, 
-            SceneEngine::LightingParserContext& parserContext) = 0;
-
-        virtual const char* GetName() const = 0;
-        virtual std::string GetStatusText() const = 0;
-
-        template<typename T> class Parameter
-        {
-        public:
-            enum ScaleType { Linear, Logarithmic };
-
-            size_t _valueOffset;
-            T _min, _max;
-            ScaleType _scaleType;
-            const char* _name;
-
-            Parameter() {}
-            Parameter(size_t valueOffset, T min, T max, ScaleType scaleType, const char name[])
-                : _valueOffset(valueOffset), _min(min), _max(max), _scaleType(scaleType), _name(name) {}
-        };
-
-        typedef Parameter<float> FloatParameter;
-
-        class BoolParameter
-        {
-        public:
-            size_t      _valueOffset;
-            unsigned    _bitIndex;
-            const char* _name;
-
-            BoolParameter() {}
-            BoolParameter(size_t valueOffset, unsigned bitIndex, const char name[])
-                : _valueOffset(valueOffset), _bitIndex(bitIndex), _name(name) {}
-        };
-
-            // (warning -- result will probably contain pointers to internal memory within this manipulator)
-        virtual std::pair<FloatParameter*, size_t>  GetFloatParameters() const = 0;     
-        virtual std::pair<BoolParameter*, size_t>   GetBoolParameters() const = 0;
-        virtual void SetActivationState(bool newState) = 0;
-
-        virtual ~IManipulator();
-    };
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class IManipulator;
 
     Rect DrawManipulatorControls(
         IOverlayContext* context, DebuggingDisplay::Layout& layout, Interactables&interactables, InterfaceState& interfaceState,
@@ -129,5 +79,12 @@ namespace ToolsRig
         IManipulator* basePtr = (IManipulator*)t;
         return size_t(&(t->*member)) - size_t(basePtr);
     }
+
+    std::pair<Float3, bool> FindTerrainIntersection(
+        const SceneEngine::IntersectionTestContext& context, const SceneEngine::IntersectionTestScene& scene,
+        const Int2 screenCoords);
+
+    inline Float2 RoundDownToInteger(Float2 input) { return Float2(XlFloor(input[0] + 0.5f), XlFloor(input[1] + 0.5f)); }
+    inline Float2 RoundUpToInteger(Float2 input)   { return Float2(XlCeil(input[0] - 0.5f), XlCeil(input[1] - 0.5f)); }
 }
 

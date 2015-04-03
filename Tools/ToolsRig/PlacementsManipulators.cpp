@@ -5,8 +5,8 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "PlacementsManipulators.h"
+#include "IManipulator.h"
 #include "ManipulatorsUtil.h"
-#include "TerrainManipulators.h"        // needed for hit tests
 
 #include "../../SceneEngine/PlacementsManager.h"
 #include "../../SceneEngine/Terrain.h"
@@ -15,6 +15,7 @@
 #include "../../SceneEngine/IntersectionTest.h"
 
 #include "../../RenderOverlays/DebuggingDisplay.h"
+#include "../../RenderOverlays/IOverlayContext.h"
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Techniques/ResourceBox.h"
@@ -60,7 +61,7 @@ namespace ToolsRig
     class PlacementsWidgets : public IWidget, public IPlacementManipManagerInterface
     {
     public:
-        void    Render(         IOverlayContext* context, Layout& layout, 
+        void    Render(         RenderOverlays::IOverlayContext* context, Layout& layout, 
                                 Interactables& interactables, InterfaceState& interfaceState);
         void    RenderToScene(  RenderCore::IThreadContext* context, 
                                 SceneEngine::LightingParserContext& parserContext);

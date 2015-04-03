@@ -9,6 +9,7 @@
 #include "../../SceneEngine/Terrain.h"
 #include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../RenderCore/Assets/TerrainFormat.h"
+#include "../../Tools/ToolsRig/TerrainManipulators.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Math/Transformations.h"
 
@@ -72,6 +73,12 @@ namespace GUILayer { namespace EditorDynamicInterface
 			Int2(0, 0), cfg._cellCount);
 
 		// we must create all of the manipulator objects after creating the terrain (because they are associated)
+        auto manip = ToolsRig::CreateTerrainManipulators(scene._terrainManager);
+        for (auto& t : manip) {
+            scene._terrainManipulators.push_back(
+                EditorScene::RegisteredManipulator(t->GetName(), std::move(t)));
+        }
+
 		
 		return false;
 	}

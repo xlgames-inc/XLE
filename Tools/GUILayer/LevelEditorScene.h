@@ -8,7 +8,7 @@
 
 #include "EditorDynamicInterface.h"
 #include "AutoToShared.h"
-#include "../../Tools/ToolsRig/ManipulatorsUtil.h"
+#include "../../Tools/ToolsRig/IManipulator.h"
 #include "../../Math/Vector.h"
 #include <memory>
 
@@ -16,8 +16,6 @@ namespace SceneEngine { class PlacementsManager; class PlacementsEditor; class I
 namespace Tools { class IManipulator; }
 
 #pragma make_public(ToolsRig::IManipulator)
-#pragma make_public(RenderCore::IThreadContext)
-#pragma make_public(RenderCore::Techniques::ProjectionDesc)
 
 namespace GUILayer
 {

@@ -5,8 +5,10 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "TerrainOverlaySystem.h"
-#include "../../Tools/ToolsRig/TerrainManipulators.h"
+#include "../../Tools/ToolsRig/TerrainManipulatorsInterface.h"
 #include "../../PlatformRig/OverlaySystem.h"
+#include "../../RenderOverlays/DebuggingDisplay.h"
+#include <memory>
 
 namespace Sample
 {
@@ -59,9 +61,9 @@ namespace Sample
 
     private:
         std::shared_ptr<::ToolsRig::ManipulatorsInterface> _manipulatorsInterface;
-        std::shared_ptr<::ToolsRig::ManipulatorsDisplay>   _terrainManipulators;
-        std::shared_ptr<DebugScreensSystem>             _screens;
-        std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener>                 _manipInputListener;
+        std::shared_ptr<::ToolsRig::ManipulatorsDisplay> _terrainManipulators;
+        std::shared_ptr<DebugScreensSystem> _screens;
+        std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener> _manipInputListener;
     };
 
     std::shared_ptr<PlatformRig::IOverlaySystem> CreateTerrainEditorOverlaySystem(

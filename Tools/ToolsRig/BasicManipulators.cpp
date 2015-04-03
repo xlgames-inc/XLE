@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "BasicManipulators.h"
-#include "ManipulatorsUtil.h"
+#include "IManipulator.h"
 #include "ModelVisualisation.h"
 #include "VisualisationUtils.h"
 #include "../../RenderOverlays/DebuggingDisplay.h"

@@ -156,8 +156,8 @@ namespace XLELayer
     }
 
     void ManipulatorOverlay::RenderWidgets(
-            RenderCore::IThreadContext* device, 
-            const RenderCore::Techniques::ProjectionDesc& projectionDesc) {}
+        RenderCore::IThreadContext* device, 
+        const RenderCore::Techniques::ProjectionDesc& projectionDesc) {}
     void ManipulatorOverlay::SetActivationState(bool) {}
 
     ManipulatorOverlay::ManipulatorOverlay(

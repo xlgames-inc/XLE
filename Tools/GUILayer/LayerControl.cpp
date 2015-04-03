@@ -14,7 +14,7 @@
 #include "NativeEngineDevice.h"
 #include "GUILayerUtil.h"
 #include "../ToolsRig/ModelVisualisation.h"
-#include "../ToolsRig/ManipulatorsUtil.h"
+#include "../ToolsRig/IManipulator.h"
 #include "../ToolsRig/BasicManipulators.h"
 #include "../ToolsRig/VisualisationUtils.h"
 #include "../../PlatformRig/InputTranslator.h"
