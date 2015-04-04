@@ -229,7 +229,7 @@ namespace Sample
         pimpl->_time = 0.f;
         pimpl->_characters = std::make_unique<CharactersScene>();
 
-        Float2 worldOffset(-11200.f - 7000.f, -11200.f + 700.f);
+        Float3 worldOffset(-11200.f - 7000.f, -11200.f + 700.f, 0.f);
 
         #if defined(ENABLE_TERRAIN)
             MainTerrainFormat = std::make_shared<RenderCore::Assets::TerrainFormat>();
@@ -245,7 +245,7 @@ namespace Sample
 
         pimpl->_placementsManager = std::make_shared<SceneEngine::PlacementsManager>(
             SceneEngine::WorldPlacementsConfig(WorldDirectory),
-            pimpl->_modelFormat, worldOffset);
+            pimpl->_modelFormat, Truncate(worldOffset));
 
         pimpl->_cameraDesc = std::make_shared<RenderCore::Techniques::CameraDesc>();
         pimpl->_cameraDesc->_cameraToWorld = pimpl->_characters->DefaultCameraToWorld();

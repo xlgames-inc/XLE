@@ -18,6 +18,7 @@ namespace Tools { class IManipulator; }
 namespace GUILayer
 {
     ref class VisCameraSettings;
+    ref class IntersectionTestContextWrapper;
 
     class EditorScene
     {
@@ -93,7 +94,7 @@ namespace GUILayer
 
         System::Collections::Generic::ICollection<HitRecord^>^ 
             RayIntersection(
-                clix::auto_ptr<SceneEngine::IntersectionTestContext>^ testContext,
+                IntersectionTestContextWrapper^ testContext,
                 float startX, float startY, float startZ,
                 float endX, float endY, float endZ,
                 unsigned filter);

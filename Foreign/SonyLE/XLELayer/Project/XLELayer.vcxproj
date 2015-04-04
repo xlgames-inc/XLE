@@ -80,6 +80,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\ManipulatorOverlay.h" />
+    <ClInclude Include="..\XLELayerUtils.h" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="Atf.Core">
@@ -147,6 +148,9 @@
     </ProjectReference>
     <ProjectReference Include="..\..\..\..\Tools\GUILayer\Project\GUILayer.vcxproj">
       <Project>{e1e9a4c1-97a8-44b7-8279-d287313c5b6b}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\..\Tools\ToolsRig\Project\ToolsRig.vcxproj">
+      <Project>{f47f1b0a-ae7c-482a-baf8-d47a6b09b817}</Project>
     </ProjectReference>
     <ProjectReference Include="..\..\..\..\Utility\Project\Utility.vcxproj">
       <Project>{6b8011c1-2d1f-1ebb-b0ef-377b2e8e87ae}</Project>

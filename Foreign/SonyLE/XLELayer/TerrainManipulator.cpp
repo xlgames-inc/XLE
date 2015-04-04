@@ -7,6 +7,7 @@
 #pragma warning(disable:4564)
 
 #include "ManipulatorOverlay.h"
+#include "XLELayerUtils.h"
 #include "../../Tools/ToolsRig/IManipulator.h"
 #include "../../SceneEngine/IntersectionTest.h"
 #include "../../RenderCore/IDevice.h"
@@ -14,6 +15,7 @@
 #include "../../Tools/GUILayer/MarshalString.h"
 #include "../../Tools/GUILayer/AutoToShared.h"
 #include "../../Tools/GUILayer/NativeEngineDevice.h"
+#include "../../Tools/ToolsRig/VisualisationUtils.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/StringUtils.h"
 #include <memory>
@@ -51,6 +53,8 @@ namespace XLELayer
         }
         return nullptr;
     }
+
+    
 
     public ref class ManipulatorPropertiesContext : public IPropertyEditingContext
     {
@@ -146,18 +150,20 @@ namespace XLELayer
         {
 			GUILayer::EditorSceneManager^ scene = SceneManager;
 			if (!scene) return false;
-            
+
+            auto camera = vc->Camera;
             auto ray = vc->GetWorldRay(scrPt);
             auto start = ray.Origin;
             auto end = ray.Origin + vc->Camera->FarZ * ray.Direction;
             auto result = scene->RayIntersection(
                 GUILayer::EditorInterfaceUtils::CreateIntersectionTestContext(
-                    GUILayer::EngineDevice::GetInstance(), nullptr), 
+                    GUILayer::EngineDevice::GetInstance(), nullptr,
+                    XLELayerUtils::AsCameraDesc(camera)), 
                 start.X, start.Y, start.Z,
                 end.X, end.Y, end.Z,
                 SceneEngine::IntersectionTestScene::Type::Terrain);
 
-            return result->Count > 0;
+            return result && (result->Count > 0);
         }
 
         virtual void Render(LevelEditorCore::ViewControl^ vc)

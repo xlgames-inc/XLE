@@ -533,7 +533,7 @@ namespace RenderCore
         _underlying->GetUnderlying()->OMGetRenderTargets(numTargets, rtv, &dsv);
         for (unsigned c=0; c<numTargets; ++c) {
             if (rtv[c]) {
-                float clearColour[4] = { 0.f, 0.f, 0.f, 0.f };
+                float clearColour[4] = { 0.33f, 0.33f, 0.33f, 0.f };
                 _underlying->GetUnderlying()->ClearRenderTargetView(rtv[c], clearColour);
                 rtv[c]->Release();
             }

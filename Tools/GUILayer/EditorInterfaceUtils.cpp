@@ -18,10 +18,11 @@ namespace GUILayer
     public ref class EditorInterfaceUtils
     {
     public:
-        static clix::auto_ptr<SceneEngine::IntersectionTestContext>^
+        static IntersectionTestContextWrapper^
             CreateIntersectionTestContext(
                 EngineDevice^ engineDevice,
-                TechniqueContextWrapper^ techniqueContext)
+                TechniqueContextWrapper^ techniqueContext,
+                const RenderCore::Techniques::CameraDesc& camera)
         {
             std::shared_ptr<RenderCore::Techniques::TechniqueContext> nativeTC;
             if (techniqueContext) {
@@ -29,43 +30,12 @@ namespace GUILayer
             } else {
                 nativeTC = std::make_shared<RenderCore::Techniques::TechniqueContext>();
             }
-            return gcnew clix::auto_ptr<SceneEngine::IntersectionTestContext>(
-                new SceneEngine::IntersectionTestContext(
+            return gcnew IntersectionTestContextWrapper(
+                std::make_shared<SceneEngine::IntersectionTestContext>(
                     engineDevice->GetNative().GetRenderDevice()->GetImmediateContext(),
-                    RenderCore::Techniques::CameraDesc(),
+                    camera,
                     nativeTC));
         }
-
-        // static System::Collections::Generic::ICollection<HitRecord^>^ 
-        //     RayIntersection(
-        //         EngineDevice^ engineDevice, 
-        //         TechniqueContextWrapper^ techniqueContext,
-        //         EditorSceneManager^ editorSceneManager,
-        //         float worldSpaceRayStartX,
-        //         float worldSpaceRayStartY,
-        //         float worldSpaceRayStartZ,
-        //         float worldSpaceRayEndX,
-        //         float worldSpaceRayEndY,
-        //         float worldSpaceRayEndZ,
-        //         unsigned filter)
-        // {
-        //     std::shared_ptr<RenderCore::Techniques::TechniqueContext> nativeTC;
-        //     if (techniqueContext) {
-        //         nativeTC = *techniqueContext->_techniqueContext.get();
-        //     } else {
-        //         nativeTC = std::make_shared<RenderCore::Techniques::TechniqueContext>();
-        //     }
-        //     SceneEngine::IntersectionTestContext testContext(
-        //         engineDevice->GetNative().GetRenderDevice()->GetImmediateContext(),
-        //         RenderCore::Techniques::CameraDesc(),
-        //         nativeTC);
-        // 
-        //     return editorSceneManager->RayIntersection(
-        //         testContext, 
-        //         Float3(worldSpaceRayStartX, worldSpaceRayStartY, worldSpaceRayStartZ),
-        //         Float3(worldSpaceRayEndX, worldSpaceRayEndY, worldSpaceRayEndZ),
-        //         ~0u);
-        // }
     };
 }
 

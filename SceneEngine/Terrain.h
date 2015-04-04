@@ -75,9 +75,10 @@ namespace SceneEngine
         Float2      WorldSpaceToTerrainCoords(const Float2& worldSpacePosition) const;
         Float2      TerrainCoordsToWorldSpace(const Float2& terrainCoords) const;
         float       WorldSpaceDistanceToTerrainCoords(float distance) const;
+        float       TerrainHeightOffset() const;
 
         TerrainCoordinateSystem(
-            Float2 terrainOffset = Float2(0.f, 0.f),
+            Float3 terrainOffset = Float3(0.f, 0.f, 0.f),
             float nodeSizeMeters = 0.f,
             const TerrainConfig& config = TerrainConfig())
         : _terrainOffset(terrainOffset)
@@ -85,7 +86,7 @@ namespace SceneEngine
         , _config(config) {}
 
     protected:
-        Float2 _terrainOffset;
+        Float3 _terrainOffset;
         float _nodeSizeMeters;
         TerrainConfig _config;
     };
@@ -140,7 +141,7 @@ namespace SceneEngine
                         std::shared_ptr<ITerrainFormat> ioFormat, 
                         BufferUploads::IManager* bufferUploads,
                         Int2 cellMin, Int2 cellMax, // (not inclusive of cellMax)
-                        Float2 worldSpaceOrigin = Float2(0.f, 0.f));
+                        Float3 worldSpaceOrigin = Float3(0.f, 0.f, -1000.f));
         ~TerrainManager();
 
     private:

@@ -67,7 +67,10 @@ namespace GUILayer { namespace EditorDynamicInterface
 		scene._terrainManager.reset();
 		scene._terrainManipulators.clear();
 
-		SceneEngine::TerrainConfig cfg((const ::Assets::ResChar*)src);
+        ::Assets::ResChar buffer[MaxPath];
+        ucs2_2_utf8((const ucs2*)src, XlStringLen((const ucs2*)src), (utf8*)buffer, dimof(buffer));
+
+		SceneEngine::TerrainConfig cfg(buffer);
 		scene._terrainManager = std::make_shared<SceneEngine::TerrainManager>(
 			cfg, std::make_unique<RenderCore::Assets::TerrainFormat>(),
 			SceneEngine::GetBufferUploads(),

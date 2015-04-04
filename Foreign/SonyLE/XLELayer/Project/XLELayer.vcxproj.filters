@@ -7,5 +7,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\ManipulatorOverlay.h" />
+    <ClInclude Include="..\XLELayerUtils.h" />
   </ItemGroup>
 </Project>

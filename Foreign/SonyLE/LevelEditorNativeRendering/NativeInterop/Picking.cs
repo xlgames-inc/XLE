@@ -13,13 +13,13 @@ namespace RenderingInterop.NativeInterop
         public static HitRecord[] RayPick(
             GUILayer.EditorSceneManager sceneManager,
             GUILayer.TechniqueContextWrapper techniqueContext,
-            Ray3F ray, float maxCollisionDistance, bool ignoreSelection)
+            Ray3F ray, Sce.Atf.Rendering.Camera camera, bool ignoreSelection)
         {
             System.Diagnostics.Debug.Assert(!ignoreSelection);
 
-            var endPt = ray.Origin + maxCollisionDistance * ray.Direction;
-            using (var context = GUILayer.EditorInterfaceUtils.CreateIntersectionTestContext(
-                    GameEngine.GetEngineDevice(), techniqueContext))
+            var endPt = ray.Origin + camera.FarZ * ray.Direction;
+            using (var context = XLELayer.XLELayerUtils.CreateIntersectionTestContext(
+                GameEngine.GetEngineDevice(), techniqueContext, camera))
             {
                 var results = sceneManager.RayIntersection(
                     context,

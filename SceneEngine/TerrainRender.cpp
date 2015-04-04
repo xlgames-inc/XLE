@@ -577,6 +577,25 @@ namespace SceneEngine
         Int4 _neighbourLodDiffs;
     };
 
+    class TerrainMaterialTextures
+    {
+    public:
+        enum Resources { Diffuse, Normal, Specularity, ResourceCount };
+        intrusive_ptr<ID3D::Resource> _textureArray[ResourceCount];
+        RenderCore::Metal::ShaderResourceView _srv[ResourceCount];
+        RenderCore::Metal::ConstantBuffer _texturingConstants;
+        unsigned _strataCount;
+        
+        TerrainMaterialTextures();
+        TerrainMaterialTextures(const char definitionFile[]);
+        ~TerrainMaterialTextures();
+
+        const Assets::DependencyValidation& GetDependencyValidation() const   { return *_validationCallback; }
+
+    private:
+        std::shared_ptr<Assets::DependencyValidation>  _validationCallback;
+    };
+
     class TerrainRenderingContext
     {
     public:
@@ -607,7 +626,7 @@ namespace SceneEngine
 
         enum Mode { Mode_Normal, Mode_RayTest, Mode_VegetationPrepare };
 
-        void    EnterState(DeviceContext* context, LightingParserContext& parserContext, Mode mode = Mode_Normal);
+        void    EnterState(DeviceContext* context, LightingParserContext& parserContext, const TerrainMaterialTextures& materials, Mode mode = Mode_Normal);
         void    ExitState(DeviceContext* context, LightingParserContext& parserContext);
     };
 
@@ -637,10 +656,11 @@ namespace SceneEngine
             TerrainRenderingContext::Mode _mode;
             bool _doExtraSmoothing, _noisyTerrain, _isTextured;
             bool _drawWireframe;
+            unsigned _strataCount;
 
             Desc(   TerrainRenderingContext::Mode mode,
                     bool doExtraSmoothing, bool noisyTerrain, bool isTextured,
-                    bool drawWireframe)
+                    bool drawWireframe, unsigned strataCount)
             {
                 std::fill((uint8*)this, (uint8*)PtrAdd(this, sizeof(*this)), 0);
                 _mode = mode;
@@ -648,6 +668,7 @@ namespace SceneEngine
                 _noisyTerrain = noisyTerrain;
                 _isTextured = isTextured;
                 _drawWireframe = drawWireframe;
+                _strataCount = strataCount;
             }
         };
 
@@ -665,8 +686,8 @@ namespace SceneEngine
     {
         char definesBuffer[256];
         _snprintf_s(definesBuffer, _TRUNCATE, 
-            "DO_EXTRA_SMOOTHING=%i;SOLIDWIREFRAME_TEXCOORD=%i;DO_ADD_NOISE=%i;OUTPUT_WORLD_POSITION=1;SOLIDWIREFRAME_WORLDPOSITION=1;DRAW_WIREFRAME=%i", 
-            int(desc._doExtraSmoothing), int(desc._isTextured), int(desc._noisyTerrain), int(desc._drawWireframe));
+            "DO_EXTRA_SMOOTHING=%i;SOLIDWIREFRAME_TEXCOORD=%i;DO_ADD_NOISE=%i;OUTPUT_WORLD_POSITION=1;SOLIDWIREFRAME_WORLDPOSITION=1;DRAW_WIREFRAME=%i;STRATA_COUNT=%i", 
+            int(desc._doExtraSmoothing), int(desc._isTextured), int(desc._noisyTerrain), int(desc._drawWireframe), desc._strataCount);
         const char* ps = desc._isTextured ? "game/xleres/forward/terrain_generator.sh:ps_main:ps_*" : "game/xleres/solidwireframe.psh:main:ps_*";
 
         if (Tweakable("LightingModel", 0) == 1 && desc._isTextured) {
@@ -720,7 +741,7 @@ namespace SceneEngine
         _validationCallback = std::move(validationCallback);
     }
 
-    void        TerrainRenderingContext::EnterState(DeviceContext* context, LightingParserContext& parserContext, Mode mode)
+    void        TerrainRenderingContext::EnterState(DeviceContext* context, LightingParserContext& parserContext, const TerrainMaterialTextures& texturing, Mode mode)
     {
         _dynamicTessellation = Tweakable("TerrainDynamicTessellation", true);
         if (_dynamicTessellation) {
@@ -729,7 +750,7 @@ namespace SceneEngine
             const bool drawWireframe = Tweakable("TerrainWireframe", false);
 
             auto& box = Techniques::FindCachedBoxDep<TerrainRenderingResources>(
-                TerrainRenderingResources::Desc(mode, doExtraSmoothing, noisyTerrain, _isTextured, drawWireframe));
+                TerrainRenderingResources::Desc(mode, doExtraSmoothing, noisyTerrain, _isTextured, drawWireframe, texturing._strataCount));
 
             context->Bind(*box._shaderProgram);
             context->Bind(Topology::PatchList4);
@@ -2151,7 +2172,7 @@ namespace SceneEngine
                         result._baseCoordinate[1] = node._heightMapTile._y;
                         result._baseCoordinate[2] = node._heightMapTile._arrayIndex;
                         result._heightScale = sourceNode->_localToCell(2,2);
-                        result._heightOffset = sourceNode->_localToCell(2,3);
+                        result._heightOffset = sourceNode->_localToCell(2,3) + _coordSystem.TerrainHeightOffset();
 
                             //  what is the coordinate in our texture for the "minCoord" ? 
                             //  we want an actual pixel location
@@ -2215,25 +2236,6 @@ namespace SceneEngine
     extern ISurfaceHeightsProvider* MainSurfaceHeightsProvider;
 
     //////////////////////////////////////////////////////////////////////////////////////////
-    class TerrainMaterialTextures
-    {
-    public:
-        enum Resources { Diffuse, Normal, Specularity, ResourceCount };
-        intrusive_ptr<ID3D::Resource> _textureArray[ResourceCount];
-        RenderCore::Metal::ShaderResourceView _srv[ResourceCount];
-        RenderCore::Metal::ConstantBuffer _texturingConstants;
-        
-        TerrainMaterialTextures(const char definitionFile[]);
-        ~TerrainMaterialTextures();
-
-        const Assets::DependencyValidation& GetDependencyValidation() const   { return *_validationCallback; }
-
-    private:
-        std::shared_ptr<Assets::DependencyValidation>  _validationCallback;
-    };
-
-
-
     static RenderCore::Metal::DeviceContext GetImmediateContext()
     {
         ID3D::DeviceContext* immContextTemp = nullptr;
@@ -2365,6 +2367,12 @@ namespace SceneEngine
         }
     }
 
+    TerrainMaterialTextures::TerrainMaterialTextures()
+    {
+        _strataCount = 0;
+        _validationCallback = nullptr;
+    }
+
     TerrainMaterialTextures::TerrainMaterialTextures(const char definitionFile[])
     {
         const char * textureNames[] = { "Texture0", "Texture1", "Slopes" };
@@ -2483,6 +2491,7 @@ namespace SceneEngine
         _srv[Specularity] = std::move(specularitySrv);
         _texturingConstants = std::move(texContBuffer);
         _validationCallback = std::move(validationCallback);
+        _strataCount = strataCount;
     }
 
     TerrainMaterialTextures::~TerrainMaterialTextures() {}
@@ -2697,7 +2706,7 @@ namespace SceneEngine
         const TerrainConfig& cfg,
         std::shared_ptr<ITerrainFormat> ioFormat, 
         BufferUploads::IManager* bufferUploads,
-        Int2 cellMin, Int2 cellMax, Float2 worldSpaceOrigin)
+        Int2 cellMin, Int2 cellMax, Float3 worldSpaceOrigin)
     {
         auto pimpl = std::make_unique<Pimpl>();
         
@@ -2753,7 +2762,7 @@ namespace SceneEngine
                 cell._id._cellToWorld = Float4x4(
                     cellSize, 0.f, 0.f, cellOrigin[0],
                     0.f, cellSize, 0.f, cellOrigin[1],
-                    0.f, 0.f, 1.f, 0.f,
+                    0.f, 0.f, 1.f, pimpl->_coords.TerrainHeightOffset(),
                     0.f, 0.f, 0.f, 1.f);
 
                     //  Calculate the bounding box. Note that we have to actually read the
@@ -2850,7 +2859,7 @@ namespace SceneEngine
             context->BindGS(MakeResourceList(6, lightingConstantsBuffer));  
         }
 
-        state.EnterState(context, parserContext, mode);
+        state.EnterState(context, parserContext, textures, mode);
         renderer->Render(context, parserContext, state);
         state.ExitState(context, parserContext);
     }
@@ -2940,7 +2949,7 @@ namespace SceneEngine
         } rayTestBuffer = { ray.first, 0.f, ray.second, 0.f };
         context->BindGS(MakeResourceList(2, ConstantBuffer(&rayTestBuffer, sizeof(rayTestBuffer))));
 
-        state.EnterState(context, parserContext, TerrainRenderingContext::Mode_RayTest);
+        state.EnterState(context, parserContext, TerrainMaterialTextures(), TerrainRenderingContext::Mode_RayTest);
         _pimpl->_renderer->Render(context, parserContext, state);
         state.ExitState(context, parserContext);
 
@@ -3013,6 +3022,8 @@ namespace SceneEngine
             terrainCoords[0] * _nodeSizeMeters / float(_config.NodeDimensionsInElements()[0]) + _terrainOffset[0], 
             terrainCoords[1] * _nodeSizeMeters / float(_config.NodeDimensionsInElements()[1]) + _terrainOffset[1]);
     }
+
+    float       TerrainCoordinateSystem::TerrainHeightOffset() const { return _terrainOffset[2]; }
 
     Float2 TerrainConfig::TerrainCoordsToCellBasedCoords(const Float2& terrainCoords) const
     {

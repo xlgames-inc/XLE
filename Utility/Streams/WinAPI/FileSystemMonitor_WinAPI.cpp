@@ -106,7 +106,17 @@ namespace Utility
         FILE_NOTIFY_INFORMATION* notifyInformation = 
             (FILE_NOTIFY_INFORMATION*)_resultBuffer;
         for (;;) {
-            if (notifyInformation->Action == FILE_ACTION_MODIFIED) {
+
+                //  Most editors just change the last write date when a file changes
+                //  But some (like Visual Studio) will actually rename and replace the
+                //  file (for error safety). To catch these cases, we need to look for
+                //  file renames (also creation/deletion events would be useful)
+            if (    notifyInformation->Action == FILE_ACTION_MODIFIED
+                ||  notifyInformation->Action == FILE_ACTION_ADDED
+                ||  notifyInformation->Action == FILE_ACTION_REMOVED
+                ||  notifyInformation->Action == FILE_ACTION_RENAMED_OLD_NAME
+                ||  notifyInformation->Action == FILE_ACTION_RENAMED_NEW_NAME) {
+
                 char buffer[MaxPath];
                 buffer[0] = '\0';
                 auto destSize = ucs2_2_utf8(
@@ -169,7 +179,7 @@ namespace Utility
 
         auto hresult = ReadDirectoryChangesW(
             _directoryHandle, _resultBuffer, sizeof(_resultBuffer),
-            FALSE, FILE_NOTIFY_CHANGE_LAST_WRITE,
+            FALSE, FILE_NOTIFY_CHANGE_LAST_WRITE | FILE_NOTIFY_CHANGE_FILE_NAME,
             /*&_bytesReturned*/nullptr, &_overlapped, &CompletionRoutine);
         assert(hresult); (void)hresult;
     }

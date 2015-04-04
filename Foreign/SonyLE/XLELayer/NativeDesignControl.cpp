@@ -5,8 +5,10 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "ManipulatorOverlay.h"
+#include "XLELayerUtils.h"
 #include "../../Tools/ToolsRig/VisualisationUtils.h"
 #include "../../Tools/GUILayer/NativeEngineDevice.h"
+#include "../../Tools/GUILayer/CLIXAutoPtr.h"
 #include "../../PlatformRig/OverlaySystem.h"
 #include "../../SceneEngine/LightingParserContext.h"
 #include "../../RenderCore/IDevice.h"
@@ -28,8 +30,6 @@ using namespace LevelEditorCore;
 
 namespace XLELayer
 {
-    static Float3 AsFloat3(Vec3F^ input) { return Float3(input->X, input->Y, input->Z); }
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     public ref class NativeDesignControl : public DesignViewControl

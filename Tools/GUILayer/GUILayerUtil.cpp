@@ -25,5 +25,12 @@ namespace GUILayer
         _techniqueContext.reset(
             new std::shared_ptr<RenderCore::Techniques::TechniqueContext>(std::move(techniqueContext)));
     }
+
+    IntersectionTestContextWrapper::IntersectionTestContextWrapper(
+        std::shared_ptr<SceneEngine::IntersectionTestContext> context)
+    {
+        _context.reset(
+            new std::shared_ptr<SceneEngine::IntersectionTestContext>(std::move(context)));
+    }
 }
 

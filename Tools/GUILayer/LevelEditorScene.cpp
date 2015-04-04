@@ -7,14 +7,17 @@
 #include "LevelEditorScene.h"
 #include "EditorDynamicInterface.h"
 #include "PlacementsGobInterface.h"
+#include "TerrainGobInterface.h"
 #include "CLIXAutoPtr.h"
 #include "MarshalString.h"
+#include "GUILayerUtil.h"
 #include "ExportedNativeTypes.h"
 #include "../../SceneEngine/PlacementsManager.h"
 #include "../../SceneEngine/Terrain.h"
 #include "../../SceneEngine/SceneParser.h"
 #include "../../SceneEngine/LightDesc.h"
 #include "../../SceneEngine/IntersectionTest.h"
+#include "../../SceneEngine/LightingParserContext.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../Core/Types.h"
 
@@ -124,12 +127,22 @@ namespace GUILayer
             ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::Depth) {
 
 			if (parseSettings._toggles & SceneParseSettings::Toggles::Terrain && _editorScene->_terrainManager) {
-				_editorScene->_terrainManager->Render(context, parserContext, techniqueIndex);
+				TRY {
+                    _editorScene->_terrainManager->Render(context, parserContext, techniqueIndex);
+                }
+                CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
+                CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
+                CATCH_END
 			}
 
             if (parseSettings._toggles & SceneParseSettings::Toggles::NonTerrain) {
-                _editorScene->_placementsManager->Render(
-                    context, parserContext, techniqueIndex);
+                TRY {
+                    _editorScene->_placementsManager->Render(
+                        context, parserContext, techniqueIndex);
+                }
+                CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
+                CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
+                CATCH_END
             }
         }
     }
@@ -228,7 +241,7 @@ namespace GUILayer
 
     System::Collections::Generic::ICollection<HitRecord^>^ 
         EditorSceneManager::RayIntersection(
-            clix::auto_ptr<SceneEngine::IntersectionTestContext>^ testContext,
+            IntersectionTestContextWrapper^ testContext,
             float startX, float startY, float startZ,
             float endX, float endY, float endZ,
             unsigned filter)
@@ -238,7 +251,7 @@ namespace GUILayer
             SceneEngine::IntersectionTestScene testScene((*_scene)->_terrainManager, (*_scene)->_placementsEditor);
 
             auto firstResult = testScene.FirstRayIntersection(
-                **testContext,
+                **testContext->_context,
                 std::make_pair(Float3(startX, startY, startZ), Float3(endX, endY, endZ)),
                 filter);
 
@@ -277,6 +290,7 @@ namespace GUILayer
         InitAutoToShared(_scene);
         InitAutoToShared(_dynInterface);
         (*_dynInterface)->RegisterType(std::make_shared<EditorDynamicInterface::PlacementObjectType>());
+        (*_dynInterface)->RegisterType(std::make_shared<EditorDynamicInterface::TerrainObjectType>());
     }
 
     EditorSceneManager::~EditorSceneManager()

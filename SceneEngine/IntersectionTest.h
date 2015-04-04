@@ -7,7 +7,7 @@
 #pragma once
 
 #include "../RenderCore/IThreadContext_Forward.h"
-#include "../RenderCore/Techniques/TechniqueUtils.h"
+#include "../RenderCore/Techniques/TechniqueUtils.h"        // for CameraDesc
 #include "../Core/Types.h"
 #include "../Math/Vector.h"
 #include <memory>

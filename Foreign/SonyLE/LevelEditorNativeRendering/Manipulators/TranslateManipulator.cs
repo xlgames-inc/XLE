@@ -207,7 +207,7 @@ namespace RenderingInterop
                     HitRecord[] hits = NativeInterop.Picking.RayPick(
                         // vc.SceneManager, vc.TechniqueContext, 
                         null, null,
-                        rayW, vc.Camera.FarZ, true);
+                        rayW, vc.Camera, true);
                     bool cansnap = false;
                     HitRecord target = new HitRecord();
                     if (hits.Length > 0)

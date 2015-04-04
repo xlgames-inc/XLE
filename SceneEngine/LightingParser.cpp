@@ -105,7 +105,7 @@ namespace SceneEngine
 
     static void ClearDeferredBuffers(DeviceContext* context, MainTargetsBox& mainTargets)
     {
-        context->Clear(mainTargets._gbufferRTVs[0], Float4(0.f, 0.f, 0.f, 1.f));
+        context->Clear(mainTargets._gbufferRTVs[0], Float4(0.33f, 0.33f, 0.33f, 1.f));
         context->Clear(mainTargets._gbufferRTVs[1], Float4(0.f, 0.f, 0.f, 0.f));
         context->Clear(mainTargets._gbufferRTVs[2], Float4(0.f, 0.f, 0.f, 0.f));
         context->Clear(mainTargets._msaaDepthBuffer, 1.f, 0);
