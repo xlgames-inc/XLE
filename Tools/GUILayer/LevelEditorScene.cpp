@@ -239,51 +239,11 @@ namespace GUILayer
 		return result;
 	}
 
-    System::Collections::Generic::ICollection<HitRecord^>^ 
-        EditorSceneManager::RayIntersection(
-            IntersectionTestContextWrapper^ testContext,
-            float startX, float startY, float startZ,
-            float endX, float endY, float endZ,
-            unsigned filter)
-    {
-        TRY
-        {
-            SceneEngine::IntersectionTestScene testScene((*_scene)->_terrainManager, (*_scene)->_placementsEditor);
-
-            auto firstResult = testScene.FirstRayIntersection(
-                **testContext->_context,
-                std::make_pair(Float3(startX, startY, startZ), Float3(endX, endY, endZ)),
-                filter);
-
-            if (firstResult._type != 0) {
-                auto record = gcnew HitRecord;
-                record->_document = firstResult._objectGuid.first;
-                record->_object = firstResult._objectGuid.second;
-                record->_distance = firstResult._distance;
-                record->_worldSpaceCollisionX = firstResult._worldSpaceCollision[0];
-                record->_worldSpaceCollisionY = firstResult._worldSpaceCollision[1];
-                record->_worldSpaceCollisionZ = firstResult._worldSpaceCollision[2];
-
-                    // hack -- for placement objects, we must strip off the top 32 bits
-                    //          from the object id.
-                if (firstResult._type == IntersectionTestScene::Type::Placement) {
-                    record->_object &= 0x00000000ffffffffull;
-                }
-
-                auto result = gcnew System::Collections::Generic::List<HitRecord^>();
-                result->Add(record);
-                return result;
-            }
-        }
-        CATCH(const ::Assets::Exceptions::InvalidResource& e)
-        {
-            LogWarning << "Invalid resource while performing ray intersection test: {" << e.what() << "}";
-        }
-        CATCH(const ::Assets::Exceptions::PendingResource&) {}
-        CATCH_END
-
-        return nullptr;
-    }
+	IntersectionTestSceneWrapper^ EditorSceneManager::GetIntersectionScene()
+	{
+		auto native = std::make_shared<SceneEngine::IntersectionTestScene>((*_scene)->_terrainManager, (*_scene)->_placementsEditor);
+		return gcnew IntersectionTestSceneWrapper(native);
+	}
  
     EditorSceneManager::EditorSceneManager()
     {

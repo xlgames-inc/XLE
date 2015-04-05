@@ -8,7 +8,7 @@
 #include "AutoToShared.h"
 
 namespace RenderCore { namespace Techniques { class TechniqueContext; } }
-namespace SceneEngine { class IntersectionTestContext; }
+namespace SceneEngine { class IntersectionTestContext; class IntersectionTestScene; }
 
 namespace GUILayer
 {
@@ -25,6 +25,16 @@ namespace GUILayer
     public:
         AutoToShared<SceneEngine::IntersectionTestContext> _context;
 
+		SceneEngine::IntersectionTestContext& GetNative();
         IntersectionTestContextWrapper(std::shared_ptr<SceneEngine::IntersectionTestContext> context);
     };
+
+	public ref class IntersectionTestSceneWrapper
+	{
+	public:
+		AutoToShared<SceneEngine::IntersectionTestScene> _scene;
+
+		SceneEngine::IntersectionTestScene& GetNative();
+		IntersectionTestSceneWrapper(std::shared_ptr<SceneEngine::IntersectionTestScene> scene);
+	};
 }

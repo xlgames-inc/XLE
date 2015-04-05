@@ -32,5 +32,22 @@ namespace GUILayer
         _context.reset(
             new std::shared_ptr<SceneEngine::IntersectionTestContext>(std::move(context)));
     }
+
+	SceneEngine::IntersectionTestContext& IntersectionTestContextWrapper::GetNative()
+	{
+		return **_context;
+	}
+
+	IntersectionTestSceneWrapper::IntersectionTestSceneWrapper(
+		std::shared_ptr<SceneEngine::IntersectionTestScene> scene)
+	{
+		_scene.reset(
+			new std::shared_ptr<SceneEngine::IntersectionTestScene>(std::move(scene)));
+	}
+
+	SceneEngine::IntersectionTestScene& IntersectionTestSceneWrapper::GetNative()
+	{
+		return **_scene;
+	}
 }
 

@@ -19,6 +19,7 @@ namespace GUILayer
 {
     ref class VisCameraSettings;
     ref class IntersectionTestContextWrapper;
+	ref class IntersectionTestSceneWrapper;
 
     class EditorScene
     {
@@ -48,17 +49,6 @@ namespace GUILayer
     };
 
     namespace EditorDynamicInterface { class RegisteredTypes; }
-
-    public ref class HitRecord
-    {
-    public:
-        EditorDynamicInterface::DocumentId _document;
-        EditorDynamicInterface::ObjectId _object;
-        float _distance;
-        float _worldSpaceCollisionX;
-        float _worldSpaceCollisionY;
-        float _worldSpaceCollisionZ;
-    };
 
     ref class IOverlaySystem;
 
@@ -92,12 +82,7 @@ namespace GUILayer
 
         IOverlaySystem^ CreateOverlaySystem(VisCameraSettings^ camera);
 
-        System::Collections::Generic::ICollection<HitRecord^>^ 
-            RayIntersection(
-                IntersectionTestContextWrapper^ testContext,
-                float startX, float startY, float startZ,
-                float endX, float endY, float endZ,
-                unsigned filter);
+		IntersectionTestSceneWrapper^ GetIntersectionScene();
 
         EditorSceneManager();
         ~EditorSceneManager();

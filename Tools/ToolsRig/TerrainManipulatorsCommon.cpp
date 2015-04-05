@@ -171,6 +171,7 @@ namespace ToolsRig
                 RenderCore::Metal::DeviceContext::Get(*context).get(), 
                 parserContext, _currentWorldSpaceTarget.first, _size);
         }
+		++FrameRenderCount;
     }
 
     CommonManipulator::CommonManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager)

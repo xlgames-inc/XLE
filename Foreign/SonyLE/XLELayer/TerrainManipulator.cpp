@@ -10,6 +10,7 @@
 #include "XLELayerUtils.h"
 #include "../../Tools/ToolsRig/IManipulator.h"
 #include "../../SceneEngine/IntersectionTest.h"
+#include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../Tools/GUILayer/CLIXAutoPtr.h"
 #include "../../Tools/GUILayer/MarshalString.h"
@@ -34,6 +35,8 @@ using namespace Sce::Atf::Applications;
 using namespace Sce::Atf::Controls::PropertyEditing;
 
 namespace SceneEngine { class TerrainManager; }
+
+extern "C" __declspec(dllimport) short __stdcall GetKeyState(int nVirtKey);
 
 namespace XLELayer
 {
@@ -134,6 +137,14 @@ namespace XLELayer
         };
     };
 
+	static unsigned GetMouseButtonState()
+	{
+		return ((GetKeyState(4) < 0) << 2)
+			| ((GetKeyState(2) < 0) << 1)
+			| ((GetKeyState(1) < 0) << 0)
+			;
+	}
+
     [Export(LevelEditorCore::IManipulator::typeid)]
     [PartCreationPolicy(CreationPolicy::Shared)]
     public ref class TerrainManipulator : public LevelEditorCore::IManipulator
@@ -148,22 +159,12 @@ namespace XLELayer
 
         virtual bool Pick(LevelEditorCore::ViewControl^ vc, Point scrPt)
         {
-			GUILayer::EditorSceneManager^ scene = SceneManager;
-			if (!scene) return false;
-
-            auto camera = vc->Camera;
-            auto ray = vc->GetWorldRay(scrPt);
-            auto start = ray.Origin;
-            auto end = ray.Origin + vc->Camera->FarZ * ray.Direction;
-            auto result = scene->RayIntersection(
-                GUILayer::EditorInterfaceUtils::CreateIntersectionTestContext(
-                    GUILayer::EngineDevice::GetInstance(), nullptr,
-                    XLELayerUtils::AsCameraDesc(camera)), 
-                start.X, start.Y, start.Z,
-                end.X, end.Y, end.Z,
-                SceneEngine::IntersectionTestScene::Type::Terrain);
-
-            return result && (result->Count > 0);
+			using namespace RenderOverlays::DebuggingDisplay;
+			InputSnapshot evnt(0, 0, 0, Coord2(scrPt.X, scrPt.Y), Coord2(0, 0));
+				// "return true" has two effects --
+				//		1. sets the cursor to a moving cursor
+				//		2. turns mouse down into "drag-begin" event
+			return SendInputEvent(vc->Camera, evnt);
         }
 
         virtual void Render(LevelEditorCore::ViewControl^ vc)
@@ -185,10 +186,35 @@ namespace XLELayer
                 GUILayer::EngineDevice::GetInstance()->GetNative().GetRenderDevice()->GetImmediateContext().get(),
                 *ManipulatorOverlay::s_currentParsingContext);
         }
-        
+
         virtual void OnBeginDrag() {}
-        virtual void OnDragging(LevelEditorCore::ViewControl^ vc, Point scrPt) {}
-        virtual void OnEndDrag(LevelEditorCore::ViewControl^ vc, Point scrPt) {}
+        virtual void OnDragging(LevelEditorCore::ViewControl^ vc, Point scrPt) 
+		{
+			// we need to create a fake "mouse over" event and pass it through to
+			// the currently selected manipulator. We might also need to set the state
+			// for buttons and keys pressed down
+			using namespace RenderOverlays::DebuggingDisplay;
+			InputSnapshot evnt(
+				GetMouseButtonState(), 0, 0,
+				Coord2(scrPt.X, scrPt.Y), Coord2(0, 0));
+
+			SendInputEvent(vc->Camera, evnt);
+		}
+
+        virtual void OnEndDrag(LevelEditorCore::ViewControl^ vc, Point scrPt) 
+		{
+			// we need to create operations and turn them into a transaction:
+			// string transName = string.Format("Apply {0} brush", brush.Name);
+			// 
+			// GameContext context = m_designView.Context.As<GameContext>();
+			// context.DoTransaction(
+			// 	delegate
+			// {
+			// 	foreach(var op in m_tmpOps)
+			// 		context.TransactionOperations.Add(op);
+			// }, transName);
+			// m_tmpOps.Clear();
+		}
 
         property LevelEditorCore::ManipulatorInfo^ ManipulatorInfo
         {
@@ -204,6 +230,27 @@ namespace XLELayer
 
     private:
         String^ _activeManipulatorName;
+
+		bool SendInputEvent(
+			Sce::Atf::Rendering::Camera^ camera, 
+			const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
+		{
+			GUILayer::EditorSceneManager^ scene = SceneManager;
+			if (!scene) return false;
+
+			auto manip = scene->GetManipulator(_activeManipulatorName);
+			if (!manip) return false;
+
+			auto hitTestContext = GUILayer::EditorInterfaceUtils::CreateIntersectionTestContext(
+				GUILayer::EngineDevice::GetInstance(), nullptr,
+				XLELayerUtils::AsCameraDesc(camera));
+			auto hitTestScene = SceneManager->GetIntersectionScene();
+
+			manip->OnInputEvent(evnt, hitTestContext->GetNative(), hitTestScene->GetNative());
+			delete hitTestContext;
+			delete hitTestScene;
+			return true;
+		}
     };
 
 }
