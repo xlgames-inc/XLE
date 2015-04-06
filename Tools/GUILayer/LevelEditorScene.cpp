@@ -58,8 +58,6 @@ namespace GUILayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	EditorScene::RegisteredManipulator::~RegisteredManipulator() {}
-
     EditorScene::EditorScene()
     {
         _placementsManager = std::make_shared<SceneEngine::PlacementsManager>(
@@ -126,9 +124,9 @@ namespace GUILayer
         if (    parseSettings._batchFilter == SceneParseSettings::BatchFilter::General
             ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::Depth) {
 
-			if (parseSettings._toggles & SceneParseSettings::Toggles::Terrain && _editorScene->_terrainManager) {
+			if (parseSettings._toggles & SceneParseSettings::Toggles::Terrain && _editorScene->_terrainGob && _editorScene->_terrainGob->_terrainManager) {
 				TRY {
-                    _editorScene->_terrainManager->Render(context, parserContext, techniqueIndex);
+                    _editorScene->_terrainGob->_terrainManager->Render(context, parserContext, techniqueIndex);
                 }
                 CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
                 CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
@@ -167,7 +165,7 @@ namespace GUILayer
     {
         static LightDesc light;
         light._type = LightDesc::Directional;
-        light._lightColour = 5.f * Float3(5.f, 5.f, 5.f);
+        light._lightColour = Float3(1.f, 1.f, 1.f);
         light._negativeLightDirection = Normalize(Float3(-.1f, 0.33f, 1.f));
         light._radius = 10000.f;
         light._shadowFrustumIndex = ~unsigned(0x0);
@@ -177,11 +175,9 @@ namespace GUILayer
     GlobalLightingDesc EditorSceneParser::GetGlobalLightingDesc() const
     {
         GlobalLightingDesc result;
-        result._ambientLight = 5.f * Float3(0.25f, 0.25f, 0.25f);
-        result._skyTexture = nullptr;
-        result._doAtmosphereBlur = false;
-        result._doOcean = false;
-        result._doToneMap = false;
+        result._ambientLight = .03f * Float3(1.f, 1.f, 1.f);
+        result._skyTexture = "game/xleres/DefaultResources/sky/desertsky.jpg";
+        result._doToneMap = true;
         return result;
     }
 
@@ -223,25 +219,54 @@ namespace GUILayer
     PropertyId EditorSceneManager::GetPropertyId(ObjectTypeId type, System::String^ name)       { return (*_dynInterface)->GetPropertyId(type, clix::marshalString<clix::E_UTF8>(name).c_str()); }
     ChildListId EditorSceneManager::GetChildListId(ObjectTypeId type, System::String^ name)     { return (*_dynInterface)->GetChildListId(type, clix::marshalString<clix::E_UTF8>(name).c_str()); }
 
-	ToolsRig::IManipulator* EditorSceneManager::GetManipulator(System::String^ name)
+    IManipulatorSet::~IManipulatorSet() {}
+
+    ref class TerrainManipulators : public IManipulatorSet
+    {
+    public:
+        virtual ToolsRig::IManipulator* GetManipulator(System::String^ name) override;
+		virtual System::Collections::Generic::IEnumerable<System::String^>^ GetManipulatorNames() override;
+
+        TerrainManipulators(std::shared_ptr<EditorScene> scene);
+        ~TerrainManipulators();
+    protected:
+        AutoToShared<EditorScene> _scene;
+    };
+
+	ToolsRig::IManipulator* TerrainManipulators::GetManipulator(System::String^ name)
 	{
 		auto nativeName = clix::marshalString<clix::E_UTF8>(name);
-		for (auto i : (*_scene)->_terrainManipulators)
-			if (i._name == nativeName) return i._manipulator.get();
+        if ((*_scene)->_terrainGob) {
+		    for (auto i : (*_scene)->_terrainGob->_terrainManipulators)
+			    if (i._name == nativeName) return i._manipulator.get();
+        }
 		return nullptr;
 	}
 
-	System::Collections::Generic::IEnumerable<System::String^>^ EditorSceneManager::GetManipulatorNames()
+	System::Collections::Generic::IEnumerable<System::String^>^ TerrainManipulators::GetManipulatorNames()
 	{
 		auto result = gcnew System::Collections::Generic::List<System::String^>();
-		for (auto i : (*_scene)->_terrainManipulators)
-			result->Add(clix::marshalString<clix::E_UTF8>(i._name));
+        if ((*_scene)->_terrainGob) {
+		    for (auto i : (*_scene)->_terrainGob->_terrainManipulators)
+			    result->Add(clix::marshalString<clix::E_UTF8>(i._name));
+        }
 		return result;
 	}
 
+    TerrainManipulators::TerrainManipulators(std::shared_ptr<EditorScene> scene)
+    {
+        _scene.reset(new std::shared_ptr<EditorScene>(std::move(scene)));
+    }
+
+    TerrainManipulators::~TerrainManipulators() {}
+
+    IManipulatorSet^ EditorSceneManager::GetTerrainManipulators() { return _terrainManipulators; }
+
 	IntersectionTestSceneWrapper^ EditorSceneManager::GetIntersectionScene()
 	{
-		auto native = std::make_shared<SceneEngine::IntersectionTestScene>((*_scene)->_terrainManager, (*_scene)->_placementsEditor);
+		auto native = std::make_shared<SceneEngine::IntersectionTestScene>(
+            ((*_scene)->_terrainGob) ? (*_scene)->_terrainGob->_terrainManager : nullptr,
+            (*_scene)->_placementsEditor);
 		return gcnew IntersectionTestSceneWrapper(native);
 	}
  
@@ -251,6 +276,7 @@ namespace GUILayer
         InitAutoToShared(_dynInterface);
         (*_dynInterface)->RegisterType(std::make_shared<EditorDynamicInterface::PlacementObjectType>());
         (*_dynInterface)->RegisterType(std::make_shared<EditorDynamicInterface::TerrainObjectType>());
+        _terrainManipulators = gcnew TerrainManipulators(*_scene);
     }
 
     EditorSceneManager::~EditorSceneManager()

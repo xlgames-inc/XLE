@@ -2172,7 +2172,7 @@ namespace SceneEngine
                         result._baseCoordinate[1] = node._heightMapTile._y;
                         result._baseCoordinate[2] = node._heightMapTile._arrayIndex;
                         result._heightScale = sourceNode->_localToCell(2,2);
-                        result._heightOffset = sourceNode->_localToCell(2,3) + _coordSystem.TerrainHeightOffset();
+                        result._heightOffset = sourceNode->_localToCell(2,3) + _coordSystem.TerrainOffset()[2];
 
                             //  what is the coordinate in our texture for the "minCoord" ? 
                             //  we want an actual pixel location
@@ -2762,7 +2762,7 @@ namespace SceneEngine
                 cell._id._cellToWorld = Float4x4(
                     cellSize, 0.f, 0.f, cellOrigin[0],
                     0.f, cellSize, 0.f, cellOrigin[1],
-                    0.f, 0.f, 1.f, pimpl->_coords.TerrainHeightOffset(),
+                    0.f, 0.f, 1.f, pimpl->_coords.TerrainOffset()[2],
                     0.f, 0.f, 0.f, 1.f);
 
                     //  Calculate the bounding box. Note that we have to actually read the
@@ -2778,8 +2778,8 @@ namespace SceneEngine
                     maxHeight = std::max(maxHeight, zOffset + zScale);
                 }
 
-                cell._id._aabbMin = Expand(cellOrigin, minHeight);
-                cell._id._aabbMax = Expand(Float2(cellOrigin + Float2(cellSize, cellSize)), maxHeight);
+                cell._id._aabbMin = Expand(cellOrigin, minHeight + pimpl->_coords.TerrainOffset()[2]);
+                cell._id._aabbMax = Expand(Float2(cellOrigin + Float2(cellSize, cellSize)), maxHeight + pimpl->_coords.TerrainOffset()[2]);
                 pimpl->_cells.push_back(cell);
             }
         }
@@ -2994,6 +2994,23 @@ namespace SceneEngine
         return resultCount;
     }
 
+    void TerrainManager::SetWorldSpaceOrigin(const Float3& origin)
+    {
+        auto change = origin - _pimpl->_coords.TerrainOffset();
+        _pimpl->_coords.SetTerrainOffset(origin);
+
+            //  We have to update the _cellToWorld transforms
+            //  Note that we could get some floating point creep if we
+            //  do this very frequently! This method is fine for tools, but
+            //  could be a problem if attempting to move the terrain origin
+            //  in-game.
+        for (auto& i:_pimpl->_cells) {
+            Combine_InPlace(i._id._cellToWorld, change);
+            i._id._aabbMin += change;
+            i._id._aabbMax += change;
+        }
+    }
+
     Float2  TerrainCoordinateSystem::WorldSpaceToTerrainCoords(const Float2& worldSpacePosition) const
     {
         return Float2(
@@ -3023,7 +3040,8 @@ namespace SceneEngine
             terrainCoords[1] * _nodeSizeMeters / float(_config.NodeDimensionsInElements()[1]) + _terrainOffset[1]);
     }
 
-    float       TerrainCoordinateSystem::TerrainHeightOffset() const { return _terrainOffset[2]; }
+    Float3      TerrainCoordinateSystem::TerrainOffset() const { return _terrainOffset; }
+    void        TerrainCoordinateSystem::SetTerrainOffset(const Float3& newOffset) { _terrainOffset = newOffset; }
 
     Float2 TerrainConfig::TerrainCoordsToCellBasedCoords(const Float2& terrainCoords) const
     {

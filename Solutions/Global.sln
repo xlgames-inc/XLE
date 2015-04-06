@@ -98,6 +98,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RenderingInterop.vs2010", "
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "XLELayer", "..\Foreign\SonyLE\XLELayer\Project\XLELayer.vcxproj", "{0556E85E-3CBD-4AC0-8842-01E1963312BD}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ToolsRig", "..\Tools\ToolsRig\Project\ToolsRig.vcxproj", "{F47F1B0A-AE7C-482A-BAF8-D47A6B09B817}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Tegra-Android = Debug|Tegra-Android
@@ -664,6 +666,24 @@ Global
 		{0556E85E-3CBD-4AC0-8842-01E1963312BD}.Release|Win32.Build.0 = Release|Win32
 		{0556E85E-3CBD-4AC0-8842-01E1963312BD}.Release|x64.ActiveCfg = Release|x64
 		{0556E85E-3CBD-4AC0-8842-01E1963312BD}.Release|x64.Build.0 = Release|x64
+		{F47F1B0A-AE7C-482A-BAF8-D47A6B09B817}.Debug|Tegra-Android.ActiveCfg = Debug|Tegra-Android
+		{F47F1B0A-AE7C-482A-BAF8-D47A6B09B817}.Debug|Tegra-Android.Build.0 = Debug|Tegra-Android
+		{F47F1B0A-AE7C-482A-BAF8-D47A6B09B817}.Debug|Win32.ActiveCfg = Debug|Win32
+		{F47F1B0A-AE7C-482A-BAF8-D47A6B09B817}.Debug|Win32.Build.0 = Debug|Win32
+		{F47F1B0A-AE7C-482A-BAF8-D47A6B09B817}.Debug|x64.ActiveCfg = Debug|x64
+		{F47F1B0A-AE7C-482A-BAF8-D47A6B09B817}.Debug|x64.Build.0 = Debug|x64
+		{F47F1B0A-AE7C-482A-BAF8-D47A6B09B817}.Profile|Tegra-Android.ActiveCfg = Profile|Tegra-Android
+		{F47F1B0A-AE7C-482A-BAF8-D47A6B09B817}.Profile|Tegra-Android.Build.0 = Profile|Tegra-Android
+		{F47F1B0A-AE7C-482A-BAF8-D47A6B09B817}.Profile|Win32.ActiveCfg = Profile|Win32
+		{F47F1B0A-AE7C-482A-BAF8-D47A6B09B817}.Profile|Win32.Build.0 = Profile|Win32
+		{F47F1B0A-AE7C-482A-BAF8-D47A6B09B817}.Profile|x64.ActiveCfg = Profile|x64
+		{F47F1B0A-AE7C-482A-BAF8-D47A6B09B817}.Profile|x64.Build.0 = Profile|x64
+		{F47F1B0A-AE7C-482A-BAF8-D47A6B09B817}.Release|Tegra-Android.ActiveCfg = Release|Tegra-Android
+		{F47F1B0A-AE7C-482A-BAF8-D47A6B09B817}.Release|Tegra-Android.Build.0 = Release|Tegra-Android
+		{F47F1B0A-AE7C-482A-BAF8-D47A6B09B817}.Release|Win32.ActiveCfg = Release|Win32
+		{F47F1B0A-AE7C-482A-BAF8-D47A6B09B817}.Release|Win32.Build.0 = Release|Win32
+		{F47F1B0A-AE7C-482A-BAF8-D47A6B09B817}.Release|x64.ActiveCfg = Release|x64
+		{F47F1B0A-AE7C-482A-BAF8-D47A6B09B817}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -698,5 +718,6 @@ Global
 		{7DA4D304-37A9-4CD2-B30E-032B1C92A14E} = {E7DC652E-A855-4E12-9C04-6F36B489FF74}
 		{8FDEBB1D-43B9-4922-AD51-4E58A0D71FBC} = {E7DC652E-A855-4E12-9C04-6F36B489FF74}
 		{0556E85E-3CBD-4AC0-8842-01E1963312BD} = {E7DC652E-A855-4E12-9C04-6F36B489FF74}
+		{F47F1B0A-AE7C-482A-BAF8-D47A6B09B817} = {E7DC652E-A855-4E12-9C04-6F36B489FF74}
 	EndGlobalSection
 EndGlobal

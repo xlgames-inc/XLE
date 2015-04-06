@@ -71,7 +71,7 @@ namespace LevelEditor
             Schema.billboardTestType.Type.Define(new ExtensionInfo<Billboard>());
 
             // Material
-            Schema.decorationMapType.Type.Define(new ExtensionInfo<MaterialGob>());
+            // Schema.decorationMapType.Type.Define(new ExtensionInfo<MaterialGob>());
 
             // references
             Schema.gameReferenceType.Type.Define(new ExtensionInfo<GameReference>());            
@@ -138,6 +138,8 @@ namespace LevelEditor
             Schema.placementObjectType.Type.Define(new ExtensionInfo<XLEPlacementObject>());
             Schema.placementObjectType.Type.Define(new ExtensionInfo<GameObjectProperties>());
             Schema.placementObjectType.Type.Define(new ExtensionInfo<TransformUpdater>());
+
+            Schema.terrainType.Type.Define(new ExtensionInfo<XLETerrainGob>());
             // XLE>>
         }
     }

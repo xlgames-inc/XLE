@@ -425,59 +425,6 @@ namespace LevelEditor
             orcType.friendsChild = orcType.Type.GetChildInfo("friends");
             orcType.childrenChild = orcType.Type.GetChildInfo("children");
 
-            terrainMapType.Type = getNodeType("gap", "terrainMapType");
-            terrainMapType.nameAttribute = terrainMapType.Type.GetAttributeInfo("name");
-            terrainMapType.visibleAttribute = terrainMapType.Type.GetAttributeInfo("visible");
-            terrainMapType.minHeightAttribute = terrainMapType.Type.GetAttributeInfo("minHeight");
-            terrainMapType.maxHeightAttribute = terrainMapType.Type.GetAttributeInfo("maxHeight");
-            terrainMapType.minSlopeAttribute = terrainMapType.Type.GetAttributeInfo("minSlope");
-            terrainMapType.maxSlopeAttribute = terrainMapType.Type.GetAttributeInfo("maxSlope");
-            terrainMapType.diffuseAttribute = terrainMapType.Type.GetAttributeInfo("diffuse");
-            terrainMapType.normalAttribute = terrainMapType.Type.GetAttributeInfo("normal");
-            terrainMapType.specularAttribute = terrainMapType.Type.GetAttributeInfo("specular");
-            terrainMapType.maskAttribute = terrainMapType.Type.GetAttributeInfo("mask");
-
-            decorationMapType.Type = getNodeType("gap", "decorationMapType");
-            decorationMapType.nameAttribute = decorationMapType.Type.GetAttributeInfo("name");
-            decorationMapType.visibleAttribute = decorationMapType.Type.GetAttributeInfo("visible");
-            decorationMapType.minHeightAttribute = decorationMapType.Type.GetAttributeInfo("minHeight");
-            decorationMapType.maxHeightAttribute = decorationMapType.Type.GetAttributeInfo("maxHeight");
-            decorationMapType.minSlopeAttribute = decorationMapType.Type.GetAttributeInfo("minSlope");
-            decorationMapType.maxSlopeAttribute = decorationMapType.Type.GetAttributeInfo("maxSlope");
-            decorationMapType.diffuseAttribute = decorationMapType.Type.GetAttributeInfo("diffuse");
-            decorationMapType.normalAttribute = decorationMapType.Type.GetAttributeInfo("normal");
-            decorationMapType.specularAttribute = decorationMapType.Type.GetAttributeInfo("specular");
-            decorationMapType.maskAttribute = decorationMapType.Type.GetAttributeInfo("mask");
-            decorationMapType.scaleAttribute = decorationMapType.Type.GetAttributeInfo("scale");
-            decorationMapType.numOfDecoratorsAttribute = decorationMapType.Type.GetAttributeInfo("numOfDecorators");
-            decorationMapType.lodDistanceAttribute = decorationMapType.Type.GetAttributeInfo("lodDistance");
-            decorationMapType.useBillboardAttribute = decorationMapType.Type.GetAttributeInfo("useBillboard");
-
-            layerMapType.Type = getNodeType("gap", "layerMapType");
-            layerMapType.nameAttribute = layerMapType.Type.GetAttributeInfo("name");
-            layerMapType.visibleAttribute = layerMapType.Type.GetAttributeInfo("visible");
-            layerMapType.minHeightAttribute = layerMapType.Type.GetAttributeInfo("minHeight");
-            layerMapType.maxHeightAttribute = layerMapType.Type.GetAttributeInfo("maxHeight");
-            layerMapType.minSlopeAttribute = layerMapType.Type.GetAttributeInfo("minSlope");
-            layerMapType.maxSlopeAttribute = layerMapType.Type.GetAttributeInfo("maxSlope");
-            layerMapType.diffuseAttribute = layerMapType.Type.GetAttributeInfo("diffuse");
-            layerMapType.normalAttribute = layerMapType.Type.GetAttributeInfo("normal");
-            layerMapType.specularAttribute = layerMapType.Type.GetAttributeInfo("specular");
-            layerMapType.maskAttribute = layerMapType.Type.GetAttributeInfo("mask");
-            layerMapType.lodTextureAttribute = layerMapType.Type.GetAttributeInfo("lodTexture");
-            layerMapType.textureScaleAttribute = layerMapType.Type.GetAttributeInfo("textureScale");
-
-            terrainGobType.Type = getNodeType("gap", "terrainGobType");
-            terrainGobType.transform = new transformAttributes(terrainGobType.Type);
-            terrainGobType.nameAttribute = terrainGobType.Type.GetAttributeInfo("name");
-            terrainGobType.visibleAttribute = terrainGobType.Type.GetAttributeInfo("visible");
-            terrainGobType.lockedAttribute = terrainGobType.Type.GetAttributeInfo("locked");
-            terrainGobType.cellSizeAttribute = terrainGobType.Type.GetAttributeInfo("cellSize");
-            terrainGobType.heightMapAttribute = terrainGobType.Type.GetAttributeInfo("heightMap");
-            terrainGobType.componentChild = terrainGobType.Type.GetChildInfo("component");
-            terrainGobType.layerMapChild = terrainGobType.Type.GetChildInfo("layerMap");
-            terrainGobType.decorationMapChild = terrainGobType.Type.GetChildInfo("decorationMap");
-
             gameRootElement = getRootElement(NS, "game");
             prototypeRootElement = getRootElement(NS, "prototype");
             prefabRootElement = getRootElement(NS, "prefab");
@@ -1070,71 +1017,6 @@ namespace LevelEditor
             public static ChildInfo targetChild;
             public static ChildInfo friendsChild;
             public static ChildInfo childrenChild;
-        }
-
-        public static class terrainMapType
-        {
-            public static DomNodeType Type;
-            public static AttributeInfo nameAttribute;
-            public static AttributeInfo visibleAttribute;
-            public static AttributeInfo minHeightAttribute;
-            public static AttributeInfo maxHeightAttribute;
-            public static AttributeInfo minSlopeAttribute;
-            public static AttributeInfo maxSlopeAttribute;
-            public static AttributeInfo diffuseAttribute;
-            public static AttributeInfo normalAttribute;
-            public static AttributeInfo specularAttribute;
-            public static AttributeInfo maskAttribute;
-        }
-
-        public static class decorationMapType
-        {
-            public static DomNodeType Type;
-            public static AttributeInfo nameAttribute;
-            public static AttributeInfo visibleAttribute;
-            public static AttributeInfo minHeightAttribute;
-            public static AttributeInfo maxHeightAttribute;
-            public static AttributeInfo minSlopeAttribute;
-            public static AttributeInfo maxSlopeAttribute;
-            public static AttributeInfo diffuseAttribute;
-            public static AttributeInfo normalAttribute;
-            public static AttributeInfo specularAttribute;
-            public static AttributeInfo maskAttribute;
-            public static AttributeInfo scaleAttribute;
-            public static AttributeInfo numOfDecoratorsAttribute;
-            public static AttributeInfo lodDistanceAttribute;
-            public static AttributeInfo useBillboardAttribute;
-        }
-
-        public static class layerMapType
-        {
-            public static DomNodeType Type;
-            public static AttributeInfo nameAttribute;
-            public static AttributeInfo visibleAttribute;
-            public static AttributeInfo minHeightAttribute;
-            public static AttributeInfo maxHeightAttribute;
-            public static AttributeInfo minSlopeAttribute;
-            public static AttributeInfo maxSlopeAttribute;
-            public static AttributeInfo diffuseAttribute;
-            public static AttributeInfo normalAttribute;
-            public static AttributeInfo specularAttribute;
-            public static AttributeInfo maskAttribute;
-            public static AttributeInfo lodTextureAttribute;
-            public static AttributeInfo textureScaleAttribute;
-        }
-
-        public static class terrainGobType
-        {
-            public static DomNodeType Type;
-            public static transformAttributes transform;
-            public static AttributeInfo nameAttribute;
-            public static AttributeInfo visibleAttribute;
-            public static AttributeInfo lockedAttribute;
-            public static AttributeInfo cellSizeAttribute;
-            public static AttributeInfo heightMapAttribute;
-            public static ChildInfo componentChild;
-            public static ChildInfo layerMapChild;
-            public static ChildInfo decorationMapChild;
         }
 
         public static ChildInfo gameRootElement;

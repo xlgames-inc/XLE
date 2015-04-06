@@ -9,6 +9,7 @@
 #include "EditorDynamicInterface.h"
 #include "AutoToShared.h"
 #include "../../Tools/ToolsRig/IManipulator.h"
+#include "../../Assets/Assets.h"    // just for ResChar
 #include "../../Math/Vector.h"
 #include <memory>
 
@@ -21,13 +22,10 @@ namespace GUILayer
     ref class IntersectionTestContextWrapper;
 	ref class IntersectionTestSceneWrapper;
 
-    class EditorScene
+    class TerrainGob
     {
     public:
-        std::shared_ptr<SceneEngine::PlacementsManager> _placementsManager;
-        std::shared_ptr<SceneEngine::PlacementsEditor> _placementsEditor;
-
-		std::shared_ptr<SceneEngine::TerrainManager> _terrainManager;
+        std::shared_ptr<SceneEngine::TerrainManager> _terrainManager;
 
 		class RegisteredManipulator
 		{
@@ -44,6 +42,23 @@ namespace GUILayer
 		};
 		std::vector<RegisteredManipulator> _terrainManipulators;
 
+        void SetBaseDir(const Assets::ResChar dir[]);
+        void SetOffset(const Float3& offset);
+
+        TerrainGob();
+        ~TerrainGob();
+
+    protected:
+        Float3 _terrainOffset;
+    };
+
+    class EditorScene
+    {
+    public:
+        std::shared_ptr<SceneEngine::PlacementsManager> _placementsManager;
+        std::shared_ptr<SceneEngine::PlacementsEditor> _placementsEditor;
+        std::unique_ptr<TerrainGob> _terrainGob;
+
         EditorScene();
 		~EditorScene();
     };
@@ -52,9 +67,23 @@ namespace GUILayer
 
     ref class IOverlaySystem;
 
+    public ref class IManipulatorSet abstract
+    {
+    public:
+        virtual ToolsRig::IManipulator* GetManipulator(System::String^ name) = 0;
+		virtual System::Collections::Generic::IEnumerable<System::String^>^ GetManipulatorNames() = 0;
+        virtual ~IManipulatorSet();
+    };
+
     public ref class EditorSceneManager
     {
     public:
+            //// //// ////   U T I L S   //// //// ////
+        IManipulatorSet^ GetTerrainManipulators();
+        IOverlaySystem^ CreateOverlaySystem(VisCameraSettings^ camera);
+		IntersectionTestSceneWrapper^ GetIntersectionScene();
+
+            //// //// ////   G O B   I N T E R F A C E   //// //// ////
         using DocumentTypeId = EditorDynamicInterface::DocumentTypeId;
         using ObjectTypeId = EditorDynamicInterface::ObjectTypeId;
         using DocumentId = EditorDynamicInterface::DocumentId;
@@ -77,19 +106,14 @@ namespace GUILayer
         PropertyId GetPropertyId(ObjectTypeId type, System::String^ name);
         ChildListId GetChildListId(ObjectTypeId type, System::String^ name);
 
-		ToolsRig::IManipulator* GetManipulator(System::String^ name);
-		System::Collections::Generic::IEnumerable<System::String^>^ GetManipulatorNames();
-
-        IOverlaySystem^ CreateOverlaySystem(VisCameraSettings^ camera);
-
-		IntersectionTestSceneWrapper^ GetIntersectionScene();
-
+            //// //// ////   C O N S T R U C T O R S   //// //// ////
         EditorSceneManager();
         ~EditorSceneManager();
         !EditorSceneManager();
     protected:
         AutoToShared<EditorScene> _scene;
         AutoToShared<EditorDynamicInterface::RegisteredTypes> _dynInterface;
+        IManipulatorSet^ _terrainManipulators;
     };
 }
 

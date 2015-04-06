@@ -32,5 +32,6 @@ namespace GUILayer { namespace EditorDynamicInterface
 
 		static const ObjectTypeId ObjectType_Terrain = 1; // (ObjectTypeId)ConstHash64<'plac', 'emen', 't'>::Value;
 		static const PropertyId Property_BaseDir = 200;
+        static const PropertyId Property_Offset = 201;
 	};
 }}

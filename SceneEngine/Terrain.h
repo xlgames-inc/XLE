@@ -75,7 +75,8 @@ namespace SceneEngine
         Float2      WorldSpaceToTerrainCoords(const Float2& worldSpacePosition) const;
         Float2      TerrainCoordsToWorldSpace(const Float2& terrainCoords) const;
         float       WorldSpaceDistanceToTerrainCoords(float distance) const;
-        float       TerrainHeightOffset() const;
+        Float3      TerrainOffset() const;
+        void        SetTerrainOffset(const Float3& newOffset);
 
         TerrainCoordinateSystem(
             Float3 terrainOffset = Float3(0.f, 0.f, 0.f),
@@ -136,6 +137,7 @@ namespace SceneEngine
         ISurfaceHeightsProvider*        GetHeightsProvider();
 
         const TerrainCoordinateSystem&  GetCoords() const;
+        void SetWorldSpaceOrigin(const Float3& origin);
 
         TerrainManager( const TerrainConfig& cfg,
                         std::shared_ptr<ITerrainFormat> ioFormat, 

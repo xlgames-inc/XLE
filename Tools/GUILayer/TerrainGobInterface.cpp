@@ -14,9 +14,55 @@
 #include "../../Utility/StringFormat.h"
 #include "../../Math/Transformations.h"
 
+namespace GUILayer
+{
+    TerrainGob::RegisteredManipulator::~RegisteredManipulator() {}
+
+    void TerrainGob::SetBaseDir(const Assets::ResChar dir[])
+    {
+        _terrainManager.reset();
+		_terrainManipulators.clear();
+
+        ::Assets::ResChar buffer[MaxPath];
+        ucs2_2_utf8((const ucs2*)dir, XlStringLen((const ucs2*)dir), (utf8*)buffer, dimof(buffer));
+
+		SceneEngine::TerrainConfig cfg(buffer);
+		_terrainManager = std::make_shared<SceneEngine::TerrainManager>(
+			cfg, std::make_unique<RenderCore::Assets::TerrainFormat>(),
+			SceneEngine::GetBufferUploads(),
+			Int2(0, 0), cfg._cellCount,
+            _terrainOffset);
+
+		// we must create all of the manipulator objects after creating the terrain (because they are associated)
+        auto manip = ToolsRig::CreateTerrainManipulators(_terrainManager);
+        for (auto& t : manip) {
+            _terrainManipulators.push_back(
+                RegisteredManipulator(t->GetName(), std::move(t)));
+        }
+    }
+
+    void TerrainGob::SetOffset(const Float3& offset)
+    {
+        _terrainOffset = offset;
+        if (_terrainManager) {
+            _terrainManager->SetWorldSpaceOrigin(offset);
+        }
+    }
+
+    TerrainGob::TerrainGob()
+    {
+            //	We don't actually create the terrain until we set the 
+            //  "basedir" property
+			//	this is just a short-cut to avoid extra work.
+        _terrainOffset = Float3(0.f, 0.f, 0.f);
+    }
+
+    TerrainGob::~TerrainGob()
+    {}
+}
+
 namespace GUILayer { namespace EditorDynamicInterface
 {
-
 	DocumentId TerrainObjectType::CreateDocument(EditorScene& scene, DocumentTypeId docType, const char initializer[]) const
 	{
 		return 0;
@@ -39,10 +85,7 @@ namespace GUILayer { namespace EditorDynamicInterface
 		const char initializer[]) const
 	{
 		if (type != ObjectType_Terrain) { assert(0); return false; }
-		scene._terrainManager.reset();
-		scene._terrainManipulators.clear();
-			//	We don't actually create until we set the "basedir" property
-			//	this is just a short-cut to avoid extra work.
+		scene._terrainGob = std::make_unique<TerrainGob>();
 		return true;
 	}
 
@@ -51,8 +94,7 @@ namespace GUILayer { namespace EditorDynamicInterface
 		ObjectId obj, ObjectTypeId type) const
 	{
 		if (type != ObjectType_Terrain) { assert(0); return false; }
-		scene._terrainManager.reset();
-		scene._terrainManipulators.clear();
+		scene._terrainGob.reset();
 		return true;
 	}
 
@@ -62,28 +104,21 @@ namespace GUILayer { namespace EditorDynamicInterface
 		const void* src, size_t srcSize) const
 	{
 		if (type != ObjectType_Terrain) { assert(0); return false; }
-		if (prop != Property_BaseDir) { assert(0); return false; }
 
-		scene._terrainManager.reset();
-		scene._terrainManipulators.clear();
-
-        ::Assets::ResChar buffer[MaxPath];
-        ucs2_2_utf8((const ucs2*)src, XlStringLen((const ucs2*)src), (utf8*)buffer, dimof(buffer));
-
-		SceneEngine::TerrainConfig cfg(buffer);
-		scene._terrainManager = std::make_shared<SceneEngine::TerrainManager>(
-			cfg, std::make_unique<RenderCore::Assets::TerrainFormat>(),
-			SceneEngine::GetBufferUploads(),
-			Int2(0, 0), cfg._cellCount);
-
-		// we must create all of the manipulator objects after creating the terrain (because they are associated)
-        auto manip = ToolsRig::CreateTerrainManipulators(scene._terrainManager);
-        for (auto& t : manip) {
-            scene._terrainManipulators.push_back(
-                EditorScene::RegisteredManipulator(t->GetName(), std::move(t)));
+        if (!scene._terrainGob) {
+            assert(0);
+            return false;
+        }
+		
+        if (prop == Property_BaseDir) {
+            scene._terrainGob->SetBaseDir((const Assets::ResChar*)src);
+            return true;
+        } else if (prop == Property_Offset) {
+            scene._terrainGob->SetOffset(*(const Float3*)src);
+            return true;
         }
 
-		
+		assert(0);
 		return false;
 	}
 
@@ -110,6 +145,7 @@ namespace GUILayer { namespace EditorDynamicInterface
 	PropertyId TerrainObjectType::GetPropertyId(ObjectTypeId type, const char name[]) const
 	{
 		if (!XlCompareString(name, "basedir")) return Property_BaseDir;
+        if (!XlCompareString(name, "offset")) return Property_Offset;
 		return 0;
 	}
 

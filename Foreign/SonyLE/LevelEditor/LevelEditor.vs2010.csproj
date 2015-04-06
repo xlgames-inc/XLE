@@ -121,6 +121,7 @@
     <Compile Include="DomNodeAdapters\XLEPlacement.cs" />
     <Compile Include="DomNodeAdapters\XLEPlacementsCellRef.cs" />
     <Compile Include="DomNodeAdapters\XLEPlacementsDocument.cs" />
+    <Compile Include="DomNodeAdapters\XLETerrainGob.cs" />
     <Compile Include="DomSerializers\CustomDomXmlReader.cs" />
     <Compile Include="DomSerializers\CustomDomXmlWriter.cs" />
     <Compile Include="GameAdapters.cs" />
@@ -146,6 +147,13 @@
     <Compile Include="Services\SplashForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="TerrainControls\XLETerrainControls.cs" />
+    <Compile Include="TerrainControls\XLETerrainManipControls.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="TerrainControls\XLETerrainManipControls.Designer.cs">
+      <DependentUpon>XLETerrainManipControls.cs</DependentUpon>
+    </Compile>
     <Compile Include="Validators\CustomLockingValidator.cs" />
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
@@ -154,6 +162,9 @@
     <EmbeddedResource Include="schemas\gap.xsd">
       <SubType>
       </SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="TerrainControls\XLETerrainManipControls.resx">
+      <DependentUpon>XLETerrainManipControls.cs</DependentUpon>
     </EmbeddedResource>
     <None Include="schemas\GenSchemaDef.bat" />
     <EmbeddedResource Include="schemas\level_editor.xsd">
@@ -164,6 +175,10 @@
     <Compile Include="schemas\Schema.cs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\..\Tools\GUILayer\Project\GUILayer.vcxproj">
+      <Project>{e1e9a4c1-97a8-44b7-8279-d287313c5b6b}</Project>
+      <Name>GUILayer</Name>
+    </ProjectReference>
     <ProjectReference Include="..\LevelEditorNativeRendering\RenderingInterop.vs2010.csproj">
       <Project>{8FDEBB1D-43B9-4922-AD51-4E58A0D71FBC}</Project>
       <Name>RenderingInterop.vs2010</Name>
@@ -179,6 +194,7 @@
   <ItemGroup>
     <EmbeddedResource Include="Resources\ja\Localization.xml" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
