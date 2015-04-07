@@ -5,7 +5,8 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #pragma once
-#include "AutoToShared.h"
+
+#include "CLIXAutoPtr.h"
 
 namespace RenderCore { namespace Techniques { class TechniqueContext; } }
 namespace SceneEngine { class IntersectionTestContext; class IntersectionTestScene; }
@@ -15,7 +16,7 @@ namespace GUILayer
     public ref class TechniqueContextWrapper
     {
     public:
-        AutoToShared<RenderCore::Techniques::TechniqueContext> _techniqueContext;
+        clix::shared_ptr<RenderCore::Techniques::TechniqueContext> _techniqueContext;
 
         TechniqueContextWrapper(std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext);
     };
@@ -23,7 +24,7 @@ namespace GUILayer
     public ref class IntersectionTestContextWrapper
     {
     public:
-        AutoToShared<SceneEngine::IntersectionTestContext> _context;
+        clix::shared_ptr<SceneEngine::IntersectionTestContext> _context;
 
 		SceneEngine::IntersectionTestContext& GetNative();
         IntersectionTestContextWrapper(std::shared_ptr<SceneEngine::IntersectionTestContext> context);
@@ -32,7 +33,7 @@ namespace GUILayer
 	public ref class IntersectionTestSceneWrapper
 	{
 	public:
-		AutoToShared<SceneEngine::IntersectionTestScene> _scene;
+		clix::shared_ptr<SceneEngine::IntersectionTestScene> _scene;
 
 		SceneEngine::IntersectionTestScene& GetNative();
 		IntersectionTestSceneWrapper(std::shared_ptr<SceneEngine::IntersectionTestScene> scene);

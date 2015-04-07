@@ -23,8 +23,6 @@
 
 namespace GUILayer
 {
-    template<typename T> using AutoToShared = clix::auto_ptr<std::shared_ptr<T>>;
-
     class VertexFormatRecord
     {
     public:
@@ -188,10 +186,10 @@ namespace GUILayer
             auto* vfFormat = _savedRes->GetVertexBufferFormat(vb);
             if (!vfFormat) return;
 
-            if (SetupState(*_devContext->get(), *_parsingContext, color, xform, *vfFormat)) {
-                _devContext->get()->Bind((RenderCore::Metal::Topology::Enum)primitiveType);
-                _devContext->get()->Bind(RenderCore::MakeResourceList(*vbuffer), vfFormat->_vertexStride, 0);
-                _devContext->get()->Draw(vertexCount, startVertex);
+            if (SetupState(*_devContext.get(), *_parsingContext, color, xform, *vfFormat)) {
+                _devContext->Bind((RenderCore::Metal::Topology::Enum)primitiveType);
+                _devContext->Bind(RenderCore::MakeResourceList(*vbuffer), vfFormat->_vertexStride, 0);
+                _devContext->Draw(vertexCount, startVertex);
             }
         }
 
@@ -210,9 +208,9 @@ namespace GUILayer
             auto* vfFormat = _savedRes->GetVertexBufferFormat(vb);
             if (!vfFormat) return;
             
-            if (SetupState(*_devContext->get(), *_parsingContext, color, xform, *vfFormat)) {
-                auto& devContext = *_devContext->get();
-                _devContext->get()->Bind((RenderCore::Metal::Topology::Enum)primitiveType);
+            if (SetupState(*_devContext.get(), *_parsingContext, color, xform, *vfFormat)) {
+                auto& devContext = *_devContext.get();
+                _devContext->Bind((RenderCore::Metal::Topology::Enum)primitiveType);
                 devContext.Bind(RenderCore::MakeResourceList(*vbuffer), vfFormat->_vertexStride, 0);
                 devContext.Bind(*ibuffer, RenderCore::Metal::NativeFormat::R32_UINT);   // Sony editor always uses 32 bit indices
                 devContext.DrawIndexed(indexCount, startIndex, startVertex);
@@ -228,7 +226,7 @@ namespace GUILayer
     protected:
         SavedRenderResources^ _savedRes;
         RenderCore::Techniques::ParsingContext* _parsingContext;
-        AutoToShared<RenderCore::Metal::DeviceContext> _devContext;
+        clix::shared_ptr<RenderCore::Metal::DeviceContext> _devContext;
     };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////?//
@@ -306,9 +304,7 @@ namespace GUILayer
         void* parsingContext)
     : _savedRes(savedRes), _parsingContext((RenderCore::Techniques::ParsingContext*)parsingContext)
     {
-        _devContext.reset(
-            new std::shared_ptr<RenderCore::Metal::DeviceContext>(
-                RenderCore::Metal::DeviceContext::Get(threadContext)));
+        _devContext = RenderCore::Metal::DeviceContext::Get(threadContext);
     }
     SimpleRenderingContext::~SimpleRenderingContext() { _devContext.reset(); }
     SimpleRenderingContext::!SimpleRenderingContext() { _devContext.reset(); }

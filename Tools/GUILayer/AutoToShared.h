@@ -12,12 +12,5 @@
 namespace GUILayer
 {
     template<typename T> using AutoToShared = clix::auto_ptr<std::shared_ptr<T>>;
-
-    template<typename Type>
-        void InitAutoToShared(AutoToShared<Type>% obj)
-        {
-            obj.reset(new std::shared_ptr<Type>(std::make_shared<Type>()));
-        }
-
 }
 

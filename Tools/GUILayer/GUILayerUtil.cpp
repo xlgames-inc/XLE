@@ -22,32 +22,29 @@ namespace GUILayer
     TechniqueContextWrapper::TechniqueContextWrapper(
         std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext)
     {
-        _techniqueContext.reset(
-            new std::shared_ptr<RenderCore::Techniques::TechniqueContext>(std::move(techniqueContext)));
+        _techniqueContext = std::move(techniqueContext);
     }
 
     IntersectionTestContextWrapper::IntersectionTestContextWrapper(
         std::shared_ptr<SceneEngine::IntersectionTestContext> context)
     {
-        _context.reset(
-            new std::shared_ptr<SceneEngine::IntersectionTestContext>(std::move(context)));
+        _context = std::move(context);
     }
 
 	SceneEngine::IntersectionTestContext& IntersectionTestContextWrapper::GetNative()
 	{
-		return **_context;
+		return *_context.get();
 	}
 
 	IntersectionTestSceneWrapper::IntersectionTestSceneWrapper(
 		std::shared_ptr<SceneEngine::IntersectionTestScene> scene)
 	{
-		_scene.reset(
-			new std::shared_ptr<SceneEngine::IntersectionTestScene>(std::move(scene)));
+		_scene = std::move(scene);
 	}
 
 	SceneEngine::IntersectionTestScene& IntersectionTestSceneWrapper::GetNative()
 	{
-		return **_scene;
+		return *_scene.get();
 	}
 }
 

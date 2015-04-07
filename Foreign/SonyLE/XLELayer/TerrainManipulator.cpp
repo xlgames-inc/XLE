@@ -14,7 +14,6 @@
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../Tools/GUILayer/CLIXAutoPtr.h"
-#include "../../Tools/GUILayer/AutoToShared.h"
 #include "../../Tools/GUILayer/NativeEngineDevice.h"
 #include "../../Tools/ToolsRig/VisualisationUtils.h"
 

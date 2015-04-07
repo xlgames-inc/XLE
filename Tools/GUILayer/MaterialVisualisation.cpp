@@ -157,22 +157,22 @@ namespace GUILayer
 
     MaterialVisSettings::GeometryType MaterialVisSettings::Geometry::get()
     {
-        return AsManaged(_object->get()->_geometryType);
+        return AsManaged(_object->_geometryType);
     }
 
     void MaterialVisSettings::Geometry::set(GeometryType value)
     {
-        _object->get()->_geometryType = AsNative(value);
+        _object->_geometryType = AsNative(value);
     }
 
     MaterialVisSettings::LightingType MaterialVisSettings::Lighting::get()
     {
-        return AsManaged(_object->get()->_lightingType);
+        return AsManaged(_object->_lightingType);
     }
 
     void MaterialVisSettings::Lighting::set(LightingType value)
     {
-        _object->get()->_lightingType = AsNative(value);
+        _object->_lightingType = AsNative(value);
     }
 
     MaterialVisSettings^ MaterialVisSettings::CreateDefault()

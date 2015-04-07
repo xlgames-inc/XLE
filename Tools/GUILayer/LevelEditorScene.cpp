@@ -197,29 +197,29 @@ namespace GUILayer
     using namespace EditorDynamicInterface;
 
     DocumentId EditorSceneManager::CreateDocument(DocumentTypeId docType) 
-        { return (*_dynInterface)->CreateDocument(**_scene, docType, ""); }
+        { return _dynInterface->CreateDocument(*_scene.get(), docType, ""); }
     bool EditorSceneManager::DeleteDocument(DocumentId doc, DocumentTypeId docType)
-        { return (*_dynInterface)->DeleteDocument(**_scene, doc, docType); }
+        { return _dynInterface->DeleteDocument(*_scene.get(), doc, docType); }
 
     ObjectId EditorSceneManager::AssignObjectId(DocumentId doc, ObjectTypeId type)
-        { return (*_dynInterface)->AssignObjectId(**_scene, doc, type); }
+        { return _dynInterface->AssignObjectId(*_scene.get(), doc, type); }
 
     bool EditorSceneManager::CreateObject(DocumentId doc, ObjectId obj, ObjectTypeId objType)
-        { return (*_dynInterface)->CreateObject(**_scene, doc, obj, objType, ""); }
+        { return _dynInterface->CreateObject(*_scene.get(), doc, obj, objType, ""); }
 
     bool EditorSceneManager::DeleteObject(DocumentId doc, ObjectId obj, ObjectTypeId objType)
-        { return (*_dynInterface)->DeleteObject(**_scene, doc, obj, objType); }
+        { return _dynInterface->DeleteObject(*_scene.get(), doc, obj, objType); }
 
     bool EditorSceneManager::SetProperty(DocumentId doc, ObjectId obj, ObjectTypeId objType, PropertyId prop, const void* src, size_t srcSize)
-        { return (*_dynInterface)->SetProperty(**_scene, doc, obj, objType, prop, src, srcSize); }
+        { return _dynInterface->SetProperty(*_scene.get(), doc, obj, objType, prop, src, srcSize); }
 
     bool EditorSceneManager::GetProperty(DocumentId doc, ObjectId obj, ObjectTypeId objType, PropertyId prop, void* dest, size_t* destSize)
-        { return (*_dynInterface)->GetProperty(**_scene, doc, obj, objType, prop, dest, destSize); }
+        { return _dynInterface->GetProperty(*_scene.get(), doc, obj, objType, prop, dest, destSize); }
 
-    ObjectTypeId EditorSceneManager::GetTypeId(System::String^ name)                            { return (*_dynInterface)->GetTypeId(clix::marshalString<clix::E_UTF8>(name).c_str()); }
-    DocumentTypeId EditorSceneManager::GetDocumentTypeId(System::String^ name)                  { return (*_dynInterface)->GetDocumentTypeId(clix::marshalString<clix::E_UTF8>(name).c_str()); }
-    PropertyId EditorSceneManager::GetPropertyId(ObjectTypeId type, System::String^ name)       { return (*_dynInterface)->GetPropertyId(type, clix::marshalString<clix::E_UTF8>(name).c_str()); }
-    ChildListId EditorSceneManager::GetChildListId(ObjectTypeId type, System::String^ name)     { return (*_dynInterface)->GetChildListId(type, clix::marshalString<clix::E_UTF8>(name).c_str()); }
+    DocumentTypeId EditorSceneManager::GetDocumentTypeId(System::String^ name)                  { return _dynInterface->GetDocumentTypeId(clix::marshalString<clix::E_UTF8>(name).c_str()); }
+    ObjectTypeId EditorSceneManager::GetTypeId(System::String^ name)                            { return _dynInterface->GetTypeId(clix::marshalString<clix::E_UTF8>(name).c_str()); }
+    PropertyId EditorSceneManager::GetPropertyId(ObjectTypeId type, System::String^ name)       { return _dynInterface->GetPropertyId(type, clix::marshalString<clix::E_UTF8>(name).c_str()); }
+    ChildListId EditorSceneManager::GetChildListId(ObjectTypeId type, System::String^ name)     { return _dynInterface->GetChildListId(type, clix::marshalString<clix::E_UTF8>(name).c_str()); }
 
     IManipulatorSet::~IManipulatorSet() {}
 
@@ -227,8 +227,8 @@ namespace GUILayer
 
     IManipulatorSet^ EditorSceneManager::CreateTerrainManipulators() 
     { 
-        if (_scene && (*_scene)->_terrainGob && (*_scene)->_terrainGob->_terrainManager) {
-            return gcnew TerrainManipulators((*_scene)->_terrainGob->_terrainManager);
+        if (_scene->_terrainGob && _scene->_terrainGob->_terrainManager) {
+            return gcnew TerrainManipulators(_scene->_terrainGob->_terrainManager);
         } else {
             return nullptr;
         }
@@ -237,17 +237,17 @@ namespace GUILayer
 	IntersectionTestSceneWrapper^ EditorSceneManager::GetIntersectionScene()
 	{
 		auto native = std::make_shared<SceneEngine::IntersectionTestScene>(
-            ((*_scene)->_terrainGob) ? (*_scene)->_terrainGob->_terrainManager : nullptr,
-            (*_scene)->_placementsEditor);
+            (_scene->_terrainGob) ? _scene->_terrainGob->_terrainManager : nullptr,
+            _scene->_placementsEditor);
 		return gcnew IntersectionTestSceneWrapper(native);
 	}
  
     EditorSceneManager::EditorSceneManager()
     {
-        InitAutoToShared(_scene);
-        InitAutoToShared(_dynInterface);
-        (*_dynInterface)->RegisterType(std::make_shared<EditorDynamicInterface::PlacementObjectType>());
-        (*_dynInterface)->RegisterType(std::make_shared<EditorDynamicInterface::TerrainObjectType>());
+        _scene = std::make_shared<EditorScene>();
+        _dynInterface = std::make_shared<EditorDynamicInterface::RegisteredTypes>();
+        _dynInterface->RegisterType(std::make_shared<EditorDynamicInterface::PlacementObjectType>());
+        _dynInterface->RegisterType(std::make_shared<EditorDynamicInterface::TerrainObjectType>());
     }
 
     EditorSceneManager::~EditorSceneManager()
@@ -304,7 +304,7 @@ namespace GUILayer
 
     IOverlaySystem^ EditorSceneManager::CreateOverlaySystem(VisCameraSettings^ camera)
     {
-        auto sceneParser = std::make_shared<EditorSceneParser>(*_scene, camera->GetUnderlying());
+        auto sceneParser = std::make_shared<EditorSceneParser>(_scene.GetNativePtr(), camera->GetUnderlying());
         return gcnew EditorSceneOverlay(std::move(sceneParser));
     }
 }

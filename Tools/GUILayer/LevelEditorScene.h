@@ -7,7 +7,7 @@
 #pragma once
 
 #include "EditorDynamicInterface.h"
-#include "AutoToShared.h"
+#include "CLIXAutoPtr.h"
 #include "../../Assets/Assets.h"    // just for ResChar
 #include "../../Math/Vector.h"
 #include <memory>
@@ -88,8 +88,8 @@ namespace GUILayer
         ~EditorSceneManager();
         !EditorSceneManager();
     protected:
-        AutoToShared<EditorScene> _scene;
-        AutoToShared<EditorDynamicInterface::RegisteredTypes> _dynInterface;
+        clix::shared_ptr<EditorScene> _scene;
+        clix::shared_ptr<EditorDynamicInterface::RegisteredTypes> _dynInterface;
     };
 }
 

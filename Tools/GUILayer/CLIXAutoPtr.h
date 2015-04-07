@@ -145,9 +145,14 @@ namespace clix
             pPtr = new std::shared_ptr<T>(t);
         }
 
-        shared_ptr(std::shared_ptr<T> t) 
+        shared_ptr(std::shared_ptr<T>&& t)
         {
-            pPtr = new std::shared_ptr<T>(t);
+            pPtr = new std::shared_ptr<T>(std::move(t));
+        }
+
+        shared_ptr(const std::shared_ptr<T>& copyFrom)
+        {
+            pPtr = new std::shared_ptr<T>(copyFrom);
         }
 
         shared_ptr(shared_ptr<T>% t) 
@@ -171,7 +176,7 @@ namespace clix
             return *pPtr;
         }
 
-        std::shared_ptr<T>& GetNative()
+        std::shared_ptr<T>& GetNativePtr()
         {
             return *pPtr;
         }
@@ -192,6 +197,18 @@ namespace clix
         {
             delete pPtr;
             pPtr = new std::shared_ptr<T>(*ptr.pPtr);
+            return *this;
+        }
+
+        shared_ptr<T>% operator=(const std::shared_ptr<T>& copyFrom)
+        {
+            (*pPtr) = copyFrom;
+            return *this;
+        }
+
+        shared_ptr<T>% operator=(std::shared_ptr<T>&& moveFrom)
+        {
+            (*pPtr) = std::move(moveFrom);
             return *this;
         }
 

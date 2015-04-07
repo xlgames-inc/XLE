@@ -40,7 +40,7 @@ namespace GUILayer
         {
             std::shared_ptr<RenderCore::Techniques::TechniqueContext> nativeTC;
             if (techniqueContext) {
-                nativeTC = *techniqueContext->_techniqueContext.get();
+                nativeTC = techniqueContext->_techniqueContext.GetNativePtr();
             } else {
                 nativeTC = std::make_shared<RenderCore::Techniques::TechniqueContext>();
             }
@@ -62,8 +62,8 @@ namespace GUILayer
 		{
 			TRY
 			{
-				auto firstResult = (*testScene->_scene)->FirstRayIntersection(
-					**testContext->_context,
+				auto firstResult = testScene->_scene->FirstRayIntersection(
+					*testContext->_context.get(),
 					std::make_pair(Float3(startX, startY, startZ), Float3(endX, endY, endZ)),
 					filter);
 
