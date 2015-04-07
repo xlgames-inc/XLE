@@ -32,6 +32,7 @@
 
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Assets/ColladaCompilerInterface.h"
+#include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../RenderCore/Metal/GPUProfiler.h"
 #include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderOverlays/Font.h"
@@ -307,6 +308,9 @@ namespace Sample
         compilers.AddCompiler(ColladaCompiler::Type_Model, colladaProcessor);
         compilers.AddCompiler(ColladaCompiler::Type_AnimationSet, colladaProcessor);
         compilers.AddCompiler(ColladaCompiler::Type_Skeleton, colladaProcessor);
+        compilers.AddCompiler(
+            RenderCore::Assets::MaterialScaffold::CompileProcessType,
+            std::make_shared<RenderCore::Assets::MaterialScaffoldCompiler>());
     }
 
     PlatformRig::FrameRig::RenderResult RenderFrame(

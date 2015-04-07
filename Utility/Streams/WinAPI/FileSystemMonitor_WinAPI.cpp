@@ -253,6 +253,17 @@ namespace Utility
             return;
         }
 
+        #if defined(_DEBUG)
+            {
+                auto handle = CreateFile(
+                    directoryName, FILE_LIST_DIRECTORY,
+                    FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,
+                    nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_OVERLAPPED, nullptr);
+                assert(handle != INVALID_HANDLE_VALUE);
+                CloseHandle(handle);
+            }
+        #endif
+
         ++CreationOrderId_Foreground;
         auto i2 = MonitoredDirectories.insert(i, std::make_pair(hash, std::make_unique<MonitoredDirectory>(directoryName)));
         i2->second->AttachCallback(MonitoredDirectory::HashFilename(filename), std::move(callback));

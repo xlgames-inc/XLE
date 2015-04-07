@@ -16,6 +16,7 @@
 #include "../../Assets/AssetUtils.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../Utility/Streams/PathUtils.h"
+#include "../../Utility/StringFormat.h"
 
 #if defined(ENABLE_TERRAIN)
     #include "../../SceneEngine/Terrain.h"

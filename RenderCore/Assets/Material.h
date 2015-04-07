@@ -216,9 +216,13 @@ namespace RenderCore { namespace Assets
 
         const ::Assets::DependencyValidation& GetDependencyValidation() const { return *_depVal; }
 
-        ResolvedMaterial Resolve(
+        void Resolve(
+            ResolvedMaterial& result,
             const ::Assets::DirectorySearchRules& searchRules,
             std::vector<::Assets::DependentFileState>* deps = nullptr) const;
+
+        std::vector<ResString> ResolveInherited(
+            const ::Assets::DirectorySearchRules& searchRules) const;
 
         std::unique_ptr<Data> SerializeAsData() const;
         ResString GetInitializerFilename() const    { return _splitName._initializerFilename; }

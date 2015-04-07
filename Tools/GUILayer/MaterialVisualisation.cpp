@@ -24,7 +24,7 @@ namespace GUILayer
 
         ToolsRig::MaterialVisObject obj;
         obj._searchRules = ::Assets::DefaultDirectorySearchRules(_config->GetUnderlying()->GetInitializerFilename().c_str());
-        obj._parameters = _config->GetUnderlying()->Resolve(obj._searchRules);
+        _config->GetUnderlying()->Resolve(obj._parameters, obj._searchRules);
         // obj._systemConstants = 
 
             // We must build a shader program to render this preview

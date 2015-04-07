@@ -29,8 +29,13 @@ namespace RenderCore { namespace Assets
 
     static void CompileMaterialScaffold(const char source[], const char destination[], std::vector<::Assets::DependentFileState>* outDeps)
     {
+            //  get associated "raw" material information. This is should contain the material information attached
+            //  to the geometry export (eg, .dae file). Note -- maybe the name of the raw file should come
+            //  from the .material name (ie, to make it easier to have multiple material files with the same dae file)
         ::Assets::ResChar concreteFilename[MaxPath];
-        MakeConcreteRawMaterialFilename(concreteFilename, dimof(concreteFilename), source);
+        XlCopyString(concreteFilename, dimof(concreteFilename), source);
+        XlChopExtension(concreteFilename);
+        MakeConcreteRawMaterialFilename(concreteFilename, dimof(concreteFilename), concreteFilename);
 
         Serialization::Vector<std::string> configurations;
 
@@ -62,14 +67,20 @@ namespace RenderCore { namespace Assets
         Serialization::Vector<std::pair<MaterialGuid, std::string>> resolvedNames;
         resolved.reserve(configurations.size());
 
+        // StringMeld<MaxPath, ::Assets::ResChar> materialFilename;
+        // materialFilename << source;
+        // if (!XlExtension(source)) materialFilename << ".material";
+
         for (auto i=configurations.cbegin(); i!=configurations.cend(); ++i) {
             auto guid = MakeMaterialGuid(i->c_str());
             StringMeld<MaxPath, ::Assets::ResChar> matName;
-            matName << source << ":" << *i;
-            resolvedNames.push_back(std::make_pair(guid, std::string(matName)));
+            matName << concreteFilename << ":" << *i;
             TRY {
                 auto& rawMat = ::Assets::GetAssetDep<RawMaterial>((const ::Assets::ResChar*)matName);
-                resolved.push_back(std::make_pair(guid, rawMat.Resolve(searchRules, &deps)));
+                ResolvedMaterial resMat;
+                rawMat.Resolve(resMat, searchRules, &deps);
+                resolved.push_back(std::make_pair(guid, std::move(resMat)));
+                resolvedNames.push_back(std::make_pair(guid, std::string(StringMeld<MaxPath, ::Assets::ResChar>() << source << ":" << *i)));
             } CATCH (const ::Assets::Exceptions::InvalidResource& e) {
                 LogWarning << "Got an invalid resource exception while compiling material scaffold for " << source;
                 LogWarning << "Exception follows: " << e;

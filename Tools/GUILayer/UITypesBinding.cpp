@@ -14,6 +14,7 @@
 #include "../../RenderCore/Assets/Material.h"
 #include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../Assets/DivergentAsset.h"
+#include "../../Assets/AssetUtils.h"
 #include "../../Utility/StringFormat.h"
 #include <msclr\auto_gcroot.h>
 #include <iomanip>
@@ -391,7 +392,11 @@ namespace GUILayer
             auto result = gcnew System::Collections::Generic::List<RawMaterial^>();
 
             auto& asset = (*_underlying)->GetAsset();
-            for (auto i = asset._inherit.cbegin(); i != asset._inherit.cend(); ++i) {
+            auto searchRules = ::Assets::DefaultDirectorySearchRules(
+                asset.GetInitializerFilename().c_str());
+            
+            auto inheritted = asset.ResolveInherited(searchRules);
+            for (auto i = inheritted.cbegin(); i != inheritted.cend(); ++i) {
                 result->Add(gcnew RawMaterial(
                     clix::marshalString<clix::E_UTF8>(*i)));
             }

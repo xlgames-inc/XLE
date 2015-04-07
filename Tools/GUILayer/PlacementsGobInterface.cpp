@@ -48,8 +48,8 @@ namespace GUILayer { namespace EditorDynamicInterface
 
         SceneEngine::PlacementsEditor::ObjTransDef newObj;
         newObj._localToWorld = Identity<decltype(newObj._localToWorld)>();
-        newObj._model = "game/model/nature/bushtree/BushE.dae";
-        newObj._material = "game/model/nature/bushtree/BushE.dae";
+        newObj._model = "game/model/nature/bushtree/BushE";
+        newObj._material = "game/model/nature/bushtree/BushE";
 
         auto guid = SceneEngine::PlacementGUID(doc, obj);
         auto transaction = scene._placementsEditor->Transaction_Begin(nullptr, nullptr);

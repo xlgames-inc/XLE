@@ -13,7 +13,7 @@
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../Assets/Assets.h"
-#include "../../ConsoleRig/Log.h"
+// #include "../../ConsoleRig/Log.h"        (can't include in Win32 managed code)
 
 namespace GUILayer
 {
@@ -89,7 +89,8 @@ namespace GUILayer
 			}
 			CATCH(const ::Assets::Exceptions::InvalidResource& e)
 			{
-				LogWarning << "Invalid resource while performing ray intersection test: {" << e.what() << "}";
+                (void)e;
+			    // LogWarning << "Invalid resource while performing ray intersection test: {" << e.what() << "}";
 			}
 			CATCH(const ::Assets::Exceptions::PendingResource&) {}
 			CATCH_END

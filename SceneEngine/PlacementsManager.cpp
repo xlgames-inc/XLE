@@ -641,6 +641,12 @@ namespace SceneEngine
                 _currentModel = modelHash;
             }
 
+                // hack to skip things with empty material names
+            if (*(const ResChar*)PtrAdd(filenamesBuffer, obj._materialFilenameOffset + sizeof(uint64)) == '\0') {
+                // assert(0);
+                return;
+            }
+
             if (materialHash != _currentMaterial) {
                 _material = cache._materialScaffolds.Get(materialHash).get();
                 if (!_material) {
