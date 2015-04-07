@@ -8,7 +8,6 @@
 
 #include "CLIXAutoPtr.h"
 #include "MarshalString.h"
-#include "AutoToShared.h"
 #include "../ToolsRig/ModelVisualisation.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/SystemUtils.h"
@@ -61,24 +60,23 @@ namespace GUILayer
     public ref class VisCameraSettings
     {
     public:
-        const std::shared_ptr<ToolsRig::VisCameraSettings>& GetUnderlying() { return *_object.get(); }
-        ToolsRig::VisCameraSettings* GetUnderlyingRaw() { return _object.get()->get(); }
+        const std::shared_ptr<ToolsRig::VisCameraSettings>& GetUnderlying() { return _object.GetNativePtr(); }
+        ToolsRig::VisCameraSettings* GetUnderlyingRaw() { return _object.get(); }
 
         VisCameraSettings(std::shared_ptr<ToolsRig::VisCameraSettings> attached)
         {
-            _object.reset(new std::shared_ptr<ToolsRig::VisCameraSettings>(std::move(attached)));
+            _object = std::move(attached);
         }
         VisCameraSettings()
         {
-            auto temp = std::make_shared<ToolsRig::VisCameraSettings>();
-            _object.reset(new std::shared_ptr<ToolsRig::VisCameraSettings>(std::move(temp)));
+            _object = std::make_shared<ToolsRig::VisCameraSettings>();
         }
         ~VisCameraSettings()
         {
             _object.reset();
         }
     protected:
-        AutoToShared<ToolsRig::VisCameraSettings> _object;
+        clix::shared_ptr<ToolsRig::VisCameraSettings> _object;
     };
 
     public ref class ModelVisSettings
@@ -91,7 +89,7 @@ namespace GUILayer
         {
             System::String^ get()
             {
-                return clix::marshalString<clix::E_UTF8>((*_object)->_modelName.c_str());
+                return clix::marshalString<clix::E_UTF8>(_object->_modelName.c_str());
             }
 
             void set(System::String^ value)
@@ -102,10 +100,10 @@ namespace GUILayer
                 char directory[MaxPath];
                 XlGetCurrentDirectory(dimof(directory), directory);
                 XlMakeRelPath(directory, dimof(directory), directory, nativeName.c_str());
-                (*_object)->_modelName = directory;
+                _object->_modelName = directory;
 
-                (*_object)->_pendingCameraAlignToModel = true; 
-                (*_object)->_changeEvent.Trigger(); 
+                _object->_pendingCameraAlignToModel = true; 
+                _object->_changeEvent.Trigger(); 
             }
         }
 
@@ -115,11 +113,11 @@ namespace GUILayer
         [Description("Highlight material divisions")]
         property ColourByMaterialType ColourByMaterial
         {
-            ColourByMaterialType get() { return (ColourByMaterialType)(*_object)->_colourByMaterial; }
+            ColourByMaterialType get() { return (ColourByMaterialType)_object->_colourByMaterial; }
             void set(ColourByMaterialType value)
             {
-                (*_object)->_colourByMaterial = unsigned(value); 
-                (*_object)->_changeEvent.Trigger(); 
+                _object->_colourByMaterial = unsigned(value); 
+                _object->_changeEvent.Trigger(); 
             }
         }
 
@@ -127,31 +125,30 @@ namespace GUILayer
         [Description("Reset camera to match the object")]
         property bool ResetCamera
         {
-            bool get() { return (*_object)->_pendingCameraAlignToModel; }
+            bool get() { return _object->_pendingCameraAlignToModel; }
             void set(bool value)
             {
-                (*_object)->_pendingCameraAlignToModel = value; 
-                (*_object)->_changeEvent.Trigger(); 
+                _object->_pendingCameraAlignToModel = value; 
+                _object->_changeEvent.Trigger(); 
             }
         }
 
         property VisCameraSettings^ Camera
         {
-            VisCameraSettings^ get() { return gcnew VisCameraSettings((*_object)->_camera); }
+            VisCameraSettings^ get() { return gcnew VisCameraSettings(_object->_camera); }
         }
 
         void AttachCallback(PropertyGrid^ callback);
-        std::shared_ptr<ToolsRig::ModelVisSettings> GetUnderlying() { return *_object.get(); }
+        std::shared_ptr<ToolsRig::ModelVisSettings> GetUnderlying() { return _object.GetNativePtr(); }
 
         ModelVisSettings(std::shared_ptr<ToolsRig::ModelVisSettings> attached)
         {
-            _object.reset(new std::shared_ptr<ToolsRig::ModelVisSettings>(std::move(attached)));
+            _object = std::move(attached);
         }
 
         ModelVisSettings() 
         {
-            auto temp = std::make_shared<ToolsRig::ModelVisSettings>();
-            _object.reset(new std::shared_ptr<ToolsRig::ModelVisSettings>(std::move(temp)));
+            _object = std::make_shared<ToolsRig::ModelVisSettings>();
         }
 
         ~ModelVisSettings() { _object.reset(); }
@@ -159,7 +156,7 @@ namespace GUILayer
         static ModelVisSettings^ CreateDefault();
 
     protected:
-        AutoToShared<ToolsRig::ModelVisSettings> _object;
+        clix::shared_ptr<ToolsRig::ModelVisSettings> _object;
     };
 
     public ref class VisMouseOver
@@ -178,7 +175,7 @@ namespace GUILayer
         [Browsable(false)] property System::String^ FullMaterialName { System::String^ get(); }
 
         void AttachCallback(PropertyGrid^ callback);
-        std::shared_ptr<ToolsRig::VisMouseOver> GetUnderlying() { return *_object.get(); }
+        std::shared_ptr<ToolsRig::VisMouseOver> GetUnderlying() { return _object.GetNativePtr(); }
 
         VisMouseOver(
             std::shared_ptr<ToolsRig::VisMouseOver> attached,
@@ -188,9 +185,9 @@ namespace GUILayer
         ~VisMouseOver();
 
     protected:
-        AutoToShared<ToolsRig::VisMouseOver> _object;
-        AutoToShared<ToolsRig::ModelVisSettings> _modelSettings;
-        AutoToShared<ToolsRig::ModelVisCache> _modelCache;
+        clix::shared_ptr<ToolsRig::VisMouseOver> _object;
+        clix::shared_ptr<ToolsRig::ModelVisSettings> _modelSettings;
+        clix::shared_ptr<ToolsRig::ModelVisCache> _modelCache;
     };
 
     public ref class BindingUtil
@@ -235,7 +232,7 @@ namespace GUILayer
         RenderStateSet(std::shared_ptr<::Assets::DivergentAsset<RenderCore::Assets::RawMaterial>> underlying);
         ~RenderStateSet();
     protected:
-        AutoToShared<::Assets::DivergentAsset<RenderCore::Assets::RawMaterial>> _underlying;
+        clix::shared_ptr<::Assets::DivergentAsset<RenderCore::Assets::RawMaterial>> _underlying;
 
         void NotifyPropertyChanged(/*[CallerMemberName]*/ System::String^ propertyName);
         System::Threading::SynchronizationContext^ _propertyChangedContext;
@@ -259,7 +256,7 @@ namespace GUILayer
 
         property RenderStateSet^ StateSet { RenderStateSet^ get() { return _renderStateSet; } }
 
-        const RenderCore::Assets::RawMaterial* GetUnderlying() { return _underlying.get() ? &_underlying->get()->GetAsset() : nullptr; }
+        const RenderCore::Assets::RawMaterial* GetUnderlying() { return _underlying.get() ? &_underlying->GetAsset() : nullptr; }
 
         System::Collections::Generic::List<RawMaterial^>^ BuildInheritanceList();
         property System::String^ Filename { System::String^ get(); }
@@ -269,7 +266,7 @@ namespace GUILayer
         RawMaterial(std::shared_ptr<NativeConfig> underlying);
         ~RawMaterial();
     protected:
-        AutoToShared<NativeConfig> _underlying;
+        clix::shared_ptr<NativeConfig> _underlying;
         RenderStateSet^ _renderStateSet;
         System::String^ DummyFilename;
         System::String^ DummySettingName;

@@ -276,7 +276,7 @@ namespace GUILayer
         EditorSceneOverlay(std::shared_ptr<SceneEngine::ISceneParser> sceneParser);
         ~EditorSceneOverlay();
     protected:
-        AutoToShared<SceneEngine::ISceneParser> _sceneParser;
+        clix::shared_ptr<SceneEngine::ISceneParser> _sceneParser;
     };
     
     void EditorSceneOverlay::RenderToScene(
@@ -285,7 +285,7 @@ namespace GUILayer
     {
         if (_sceneParser.get()) {
             SceneEngine::LightingParser_ExecuteScene(
-                *threadContext, parserContext, **_sceneParser, 
+                *threadContext, parserContext, *_sceneParser.get(), 
                 SceneEngine::RenderingQualitySettings(threadContext->GetStateDesc()._viewportDimensions));
         }
     }
@@ -298,7 +298,7 @@ namespace GUILayer
     void EditorSceneOverlay::SetActivationState(bool) {}
     EditorSceneOverlay::EditorSceneOverlay(std::shared_ptr<SceneEngine::ISceneParser> sceneParser)
     {
-        _sceneParser.reset(new std::shared_ptr<SceneEngine::ISceneParser>(std::move(sceneParser)));
+        _sceneParser = std::move(sceneParser);
     }
     EditorSceneOverlay::~EditorSceneOverlay() {}
 

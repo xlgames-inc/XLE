@@ -92,7 +92,6 @@
     <ClCompile Include="..\WindowRig.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\AutoToShared.h" />
     <ClInclude Include="..\CLIXAutoPtr.h" />
     <ClInclude Include="..\DivergentAssetList.h" />
     <ClInclude Include="..\EditorDynamicInterface.h" />
