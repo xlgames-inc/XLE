@@ -198,7 +198,8 @@ namespace Sample
                 "[Placements] Culling");
 
             auto intersectionContext = std::make_shared<SceneEngine::IntersectionTestContext>(
-                primMan._rDevice->GetImmediateContext(), mainScene, primMan._globalTechContext);
+                primMan._rDevice->GetImmediateContext(), mainScene, 
+                primMan._presChain->GetViewportContext(), primMan._globalTechContext);
 
                 //  We also create some "overlay systems" in this sample. 
                 //  Again, it's optional. An overlay system will redirect all input
@@ -323,11 +324,11 @@ namespace Sample
 
         using namespace SceneEngine;
         if (scene) {
-            auto presChainDesc = presentationChain->GetDesc();
+            auto presChainDims = presentationChain->GetViewportContext()->_dimensions;
             LightingParser_ExecuteScene(
                 context, lightingParserContext, *scene, 
                 RenderingQualitySettings(
-                    presChainDesc._dimensions, 
+                    presChainDims, 
                     (Tweakable("LightingModel", 0) == 0) ? RenderingQualitySettings::LightingModel::Deferred : RenderingQualitySettings::LightingModel::Forward,
                     Tweakable("SamplingCount", 1), Tweakable("SamplingQuality", 0)));
         }

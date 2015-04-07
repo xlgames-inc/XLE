@@ -13,6 +13,7 @@
 #include <memory>
 
 namespace RenderCore { namespace Techniques { class CameraDesc; class TechniqueContext; }}
+namespace RenderCore { class ViewportContext; }
 
 namespace SceneEngine
 {
@@ -45,7 +46,7 @@ namespace SceneEngine
         Float2 ProjectToScreenSpace(const Float3& worldSpaceCoord) const;
         RenderCore::Techniques::CameraDesc GetCameraDesc() const;
         ISceneParser* GetSceneParser() const { return _sceneParser.get(); }
-        Int2 GetViewportSize() const;
+        UInt2 GetViewportSize() const;
 
             // technique context & thread context is enough for most operations
         const RenderCore::Techniques::TechniqueContext& GetTechniqueContext() const { return *_techniqueContext.get(); }
@@ -54,15 +55,18 @@ namespace SceneEngine
         IntersectionTestContext(
             std::shared_ptr<RenderCore::IThreadContext> threadContext,
             const RenderCore::Techniques::CameraDesc& cameraDesc,
+            std::shared_ptr<RenderCore::ViewportContext> viewportContext,
             std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext);
         IntersectionTestContext(
             std::shared_ptr<RenderCore::IThreadContext> threadContext,
             std::shared_ptr<SceneEngine::ISceneParser> sceneParser,
+            std::shared_ptr<RenderCore::ViewportContext> viewportContext,
             std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext);
         ~IntersectionTestContext();
     protected:
         std::shared_ptr<RenderCore::IThreadContext> _threadContext;
         std::shared_ptr<ISceneParser> _sceneParser;
+        std::shared_ptr<RenderCore::ViewportContext> _viewportContext;
         RenderCore::Techniques::CameraDesc _cameraDesc;
         std::shared_ptr<RenderCore::Techniques::TechniqueContext>  _techniqueContext;
     };

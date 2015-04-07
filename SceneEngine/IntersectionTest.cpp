@@ -18,12 +18,11 @@
 #include "../RenderCore/DX11/Metal/IncludeDX11.h"
 #include "../RenderCore/DX11/Metal/DX11Utils.h"
 #include "../RenderCore/RenderUtils.h"
+#include "../RenderCore/IDevice.h"
 
 #include "../Math/Transformations.h"
 #include "../Math/Vector.h"
 #include "../Math/ProjectionMath.h"
-
-#include "../Core/WinAPI/IncludeWindows.h"      // *hack* just needed for getting client rect coords!
 
 
 namespace SceneEngine
@@ -199,14 +198,6 @@ namespace SceneEngine
     {}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    static Int2 GetViewportDims()
-    {
-            // HACK -- currently there's no good way to get the viewport size
-            // we have to do a hack via windows...!
-        RECT clientRect; GetClientRect(GetActiveWindow(), &clientRect);
-        return Int2(clientRect.right - clientRect.left, clientRect.bottom - clientRect.top);
-    }
     
     static Float4x4 CalculateWorldToProjection(const RenderCore::Techniques::CameraDesc& sceneCamera, float viewportAspect)
     {
@@ -232,12 +223,12 @@ namespace SceneEngine
 
     std::pair<Float3, Float3> IntersectionTestContext::CalculateWorldSpaceRay(Int2 screenCoord) const
     {
-        return CalculateWorldSpaceRay(_cameraDesc, screenCoord, GetViewportDims());
+        return CalculateWorldSpaceRay(_cameraDesc, screenCoord, GetViewportSize());
     }
 
     Float2 IntersectionTestContext::ProjectToScreenSpace(const Float3& worldSpaceCoord) const
     {
-        auto viewport = GetViewportDims();
+        auto viewport = GetViewportSize();
         auto worldToProjection = CalculateWorldToProjection(_cameraDesc, viewport[0] / float(viewport[1]));
         auto projCoords = worldToProjection * Expand(worldSpaceCoord, 1.f);
 
@@ -246,9 +237,9 @@ namespace SceneEngine
             (projCoords[1] / projCoords[3] * -0.5f + 0.5f) * float(viewport[1]));
     }
 
-    Int2 IntersectionTestContext::GetViewportSize() const
+    UInt2 IntersectionTestContext::GetViewportSize() const
     {
-        return GetViewportDims();
+        return _viewportContext->_dimensions;
     }
 
     const std::shared_ptr<RenderCore::IThreadContext>& IntersectionTestContext::GetThreadContext() const
@@ -266,19 +257,23 @@ namespace SceneEngine
     IntersectionTestContext::IntersectionTestContext(
         std::shared_ptr<RenderCore::IThreadContext> threadContext,
         const RenderCore::Techniques::CameraDesc& cameraDesc,
+        std::shared_ptr<RenderCore::ViewportContext> viewportContext,
         std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext)
     : _threadContext(threadContext)
     , _cameraDesc(cameraDesc)
     , _techniqueContext(std::move(techniqueContext))
+    , _viewportContext(std::move(viewportContext))
     {}
 
     IntersectionTestContext::IntersectionTestContext(
         std::shared_ptr<RenderCore::IThreadContext> threadContext,
         std::shared_ptr<SceneEngine::ISceneParser> sceneParser,
+        std::shared_ptr<RenderCore::ViewportContext> viewportContext,
         std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext)
     : _threadContext(threadContext)
     , _sceneParser(sceneParser)
     , _techniqueContext(std::move(techniqueContext))
+    , _viewportContext(std::move(viewportContext))
     {}
 
     IntersectionTestContext::~IntersectionTestContext() {}

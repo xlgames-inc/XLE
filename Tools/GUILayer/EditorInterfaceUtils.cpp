@@ -35,7 +35,8 @@ namespace GUILayer
             CreateIntersectionTestContext(
                 EngineDevice^ engineDevice,
                 TechniqueContextWrapper^ techniqueContext,
-                const RenderCore::Techniques::CameraDesc& camera)
+                const RenderCore::Techniques::CameraDesc& camera,
+                int viewportWidth, int viewportHeight)
         {
             std::shared_ptr<RenderCore::Techniques::TechniqueContext> nativeTC;
             if (techniqueContext) {
@@ -47,6 +48,7 @@ namespace GUILayer
                 std::make_shared<SceneEngine::IntersectionTestContext>(
                     engineDevice->GetNative().GetRenderDevice()->GetImmediateContext(),
                     camera,
+                    std::make_shared<RenderCore::ViewportContext>(UInt2(viewportWidth, viewportHeight)),
                     nativeTC));
         }
 

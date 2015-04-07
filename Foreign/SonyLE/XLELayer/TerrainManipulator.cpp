@@ -37,13 +37,13 @@ extern "C" __declspec(dllimport) short __stdcall GetKeyState(int nVirtKey);
 
 namespace XLELayer
 {
-	static unsigned GetMouseButtonState()
-	{
-		return ((GetKeyState(4) < 0) << 2)
-			| ((GetKeyState(2) < 0) << 1)
-			| ((GetKeyState(1) < 0) << 0)
-			;
-	}
+	// static unsigned GetMouseButtonState()
+	// {
+	// 	return ((GetKeyState(4) < 0) << 2)
+	// 		| ((GetKeyState(2) < 0) << 1)
+	// 		| ((GetKeyState(1) < 0) << 0)
+	// 		;
+	// }
 
     public ref class ActiveManipulatorContext
     {
@@ -163,7 +163,7 @@ namespace XLELayer
 				// "return true" has two effects --
 				//		1. sets the cursor to a moving cursor
 				//		2. turns mouse down into "drag-begin" event
-			return SendInputEvent(vc->Camera, evnt);
+			return SendInputEvent(vc->ClientSize, vc->Camera, evnt);
         }
         virtual void Render(LevelEditorCore::ViewControl^ vc)
         {
@@ -181,21 +181,35 @@ namespace XLELayer
                 *ManipulatorOverlay::s_currentParsingContext);
         }
 
-        virtual void OnBeginDrag() {}
+        virtual void OnBeginDrag() { _pendingBeginDrag = true; }
         virtual void OnDragging(LevelEditorCore::ViewControl^ vc, Point scrPt) 
 		{
-			// we need to create a fake "mouse over" event and pass it through to
-			// the currently selected manipulator. We might also need to set the state
-			// for buttons and keys pressed down
+			    //  We need to create a fake "mouse over" event and pass it through to
+			    //  the currently selected manipulator. We might also need to set the state
+			    //  for buttons and keys pressed down.
+                //  For the first "OnDragging" operation after a "OnBeginDrag", we should
+                //  emulate a mouse down event.
 			using namespace RenderOverlays::DebuggingDisplay;
+            auto btnState = 1<<0;
 			InputSnapshot evnt(
-				GetMouseButtonState(), 0, 0,
+				btnState, _pendingBeginDrag ? btnState : 0, 0,
 				Coord2(scrPt.X, scrPt.Y), Coord2(0, 0));
+            SetupModifierKeys(evnt);
 
-			SendInputEvent(vc->Camera, evnt);
+			SendInputEvent(vc->ClientSize, vc->Camera, evnt);
+            _pendingBeginDrag = false;
 		}
         virtual void OnEndDrag(LevelEditorCore::ViewControl^ vc, Point scrPt) 
 		{
+                // Emulate a "mouse up" operation 
+            using namespace RenderOverlays::DebuggingDisplay;
+            auto btnState = 1<<0;
+			InputSnapshot evnt(
+				0, btnState, 0,
+				Coord2(scrPt.X, scrPt.Y), Coord2(0, 0));
+            SetupModifierKeys(evnt);
+            SendInputEvent(vc->ClientSize, vc->Camera, evnt);
+
 			// we need to create operations and turn them into a transaction:
 			// string transName = string.Format("Apply {0} brush", brush.Name);
 			// 
@@ -221,7 +235,10 @@ namespace XLELayer
             }
         }
 
-        TerrainManipulator() {}
+        TerrainManipulator() 
+        {
+            _pendingBeginDrag = false;
+        }
 
         virtual void Initialize()
         {
@@ -234,6 +251,7 @@ namespace XLELayer
         }
     private:
 		bool SendInputEvent(
+            Drawing::Size viewportSize,
 			Sce::Atf::Rendering::Camera^ camera, 
 			const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
 		{
@@ -242,7 +260,8 @@ namespace XLELayer
 
 			auto hitTestContext = GUILayer::EditorInterfaceUtils::CreateIntersectionTestContext(
 				GUILayer::EngineDevice::GetInstance(), nullptr,
-				XLELayerUtils::AsCameraDesc(camera));
+				XLELayerUtils::AsCameraDesc(camera),
+                viewportSize.Width, viewportSize.Height);
 			auto hitTestScene = SceneManager->GetIntersectionScene();
 
 			underlying->OnInputEvent(evnt, hitTestContext->GetNative(), hitTestScene->GetNative());
@@ -250,6 +269,19 @@ namespace XLELayer
 			delete hitTestScene;
 			return true;
 		}
+
+        void SetupModifierKeys(RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
+        {
+            using namespace RenderOverlays::DebuggingDisplay;
+            typedef InputSnapshot::ActiveButton ActiveButton;
+            static auto shift = KeyId_Make("shift");
+            static auto control = KeyId_Make("control");
+            static auto alt = KeyId_Make("alt");
+
+            if (GetKeyState(0x10) < 0) evnt._activeButtons.push_back(ActiveButton(shift, false, true));
+            if (GetKeyState(0x11) < 0) evnt._activeButtons.push_back(ActiveButton(control, false, true));
+            if (GetKeyState(0x12) < 0) evnt._activeButtons.push_back(ActiveButton(alt, false, true));
+        }
 
         void OnDOMChange(System::Object^ object)
         {
@@ -279,6 +311,7 @@ namespace XLELayer
 
         DomChangeInspector^ _domChangeInspector;
         ActiveManipulatorContext^ _manipContext;
+        bool _pendingBeginDrag;
 
         [Import(AllowDefault = false)]
         ITerrainControls^ _controls;

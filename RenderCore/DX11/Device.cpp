@@ -335,10 +335,23 @@ namespace RenderCore
 
     //////////////////////////////////////////////////////////////////////////////////////////////////
 
+    static UInt2 GetBufferSize(IDXGI::SwapChain& swapChain)
+    {
+        DXGI_SWAP_CHAIN_DESC dxgiDesc;
+        auto hresult = swapChain.GetDesc(&dxgiDesc);
+		if (SUCCEEDED(hresult)) {
+			return UInt2(dxgiDesc.BufferDesc.Width, dxgiDesc.BufferDesc.Height);
+		} else {
+			return UInt2(0, 0);
+		}
+    }
+
     PresentationChain::PresentationChain(intrusive_ptr<IDXGI::SwapChain> underlying, const void* attachedWindow)
     : _underlying(std::move(underlying))
     , _attachedWindow(attachedWindow)
     {
+        _viewportContext = std::make_shared<ViewportContext>();
+        _viewportContext->_dimensions = GetBufferSize(*_underlying);
     }
 
     PresentationChain::~PresentationChain()
@@ -363,26 +376,18 @@ namespace RenderCore
             }
         }
 
-        const auto backBufferCount   = 2u;
+        const auto backBufferCount = 2u;
         _underlying->ResizeBuffers(
-            backBufferCount, 
-            newWidth, newHeight, 
+            backBufferCount, newWidth, newHeight, 
             DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
-    
+
+        _viewportContext->_dimensions = GetBufferSize(*_underlying);
         _defaultDepthTarget.reset(0);
     }
 
-    PresentationChainDesc   PresentationChain::GetDesc() const
+    std::shared_ptr<ViewportContext> PresentationChain::GetViewportContext() const
     {
-        PresentationChainDesc result;
-        DXGI_SWAP_CHAIN_DESC dxgiDesc;
-        auto hresult = _underlying->GetDesc(&dxgiDesc);
-		if (SUCCEEDED(hresult)) {
-			result._dimensions = UInt2(dxgiDesc.BufferDesc.Width, dxgiDesc.BufferDesc.Height);
-		} else {
-			result._dimensions = UInt2(0, 0);
-		}
-        return result;
+        return _viewportContext;
     }
 
     void PresentationChain::AttachToContext(ID3D::DeviceContext* context, ID3D::Device* device)

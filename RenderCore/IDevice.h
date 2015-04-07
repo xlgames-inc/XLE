@@ -25,10 +25,13 @@ namespace RenderCore
 {
 ////////////////////////////////////////////////////////////////////////////////
 
-    class PresentationChainDesc
+    class ViewportContext
     {
     public:
-        Int2 _dimensions;
+        UInt2 _dimensions;
+
+        ViewportContext() : _dimensions(0,0) {}
+        ViewportContext(UInt2 dims) : _dimensions(dims) {}
     };
 
 #define FLEX_INTERFACE PresentationChain
@@ -90,8 +93,8 @@ namespace RenderCore
             /// the window.
             IMETHOD void                    Resize(unsigned newWidth=0, unsigned newHeight=0) IPURE;
 
-            /// <summary>Returns a description of this object</summary>
-            IMETHOD PresentationChainDesc   GetDesc() const IPURE;
+            /// <summary>Returns a context object that will track the size of the viewport</summary>
+            IMETHOD std::shared_ptr<ViewportContext>        GetViewportContext() const IPURE;
             IDESTRUCTOR
         };
 

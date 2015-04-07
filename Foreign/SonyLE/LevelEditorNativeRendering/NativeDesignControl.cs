@@ -75,7 +75,7 @@ namespace RenderingInterop
             {// ray pick
                 Ray3F rayW = GetWorldRay(CurrentMousePoint);
                 hits = NativeInterop.Picking.RayPick(
-                    SceneManager, TechniqueContext, rayW, Camera, false);
+                    SceneManager, TechniqueContext, rayW, Camera, ClientSize.Width, ClientSize.Height, false);
             }
 
             if (hits==null) return new List<object>();
@@ -214,7 +214,7 @@ namespace RenderingInterop
             {
                 Matrix4F v = Camera.ViewMatrix;
                 Matrix4F p = Camera.ProjectionMatrix;
-                HitRecord[] hits = NativeInterop.Picking.RayPick(SceneManager, TechniqueContext, rayw, Camera, false);
+                HitRecord[] hits = NativeInterop.Picking.RayPick(SceneManager, TechniqueContext, rayw, Camera, ClientSize.Width, ClientSize.Height, false);
                 foreach (HitRecord ht in hits)
                 {
                     hitnode = GameEngine.GetAdapterFromId(ht.documentId, ht.instanceId).Cast<DomNode>();

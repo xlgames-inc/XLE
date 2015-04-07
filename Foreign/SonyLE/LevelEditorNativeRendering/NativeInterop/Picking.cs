@@ -13,13 +13,15 @@ namespace RenderingInterop.NativeInterop
         public static HitRecord[] RayPick(
             GUILayer.EditorSceneManager sceneManager,
             GUILayer.TechniqueContextWrapper techniqueContext,
-            Ray3F ray, Sce.Atf.Rendering.Camera camera, bool ignoreSelection)
+            Ray3F ray, Sce.Atf.Rendering.Camera camera, 
+            int viewportWidth, int viewportHeight,
+            bool ignoreSelection)
         {
             System.Diagnostics.Debug.Assert(!ignoreSelection);
 
             var endPt = ray.Origin + camera.FarZ * ray.Direction;
             using (var context = XLELayer.XLELayerUtils.CreateIntersectionTestContext(
-                GameEngine.GetEngineDevice(), techniqueContext, camera))
+                GameEngine.GetEngineDevice(), techniqueContext, camera, (uint)viewportWidth, (uint)viewportHeight))
             {
                 using (var scene = sceneManager.GetIntersectionScene())
                 {
@@ -50,7 +52,5 @@ namespace RenderingInterop.NativeInterop
                 }
             }
         }
-
-        public static HitRecord[] RayPick(Matrix4F viewxform, Matrix4F projxfrom, Ray3F rayW, bool skipSelected) { return null; }
     }
 }

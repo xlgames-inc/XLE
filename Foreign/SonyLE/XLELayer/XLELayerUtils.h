@@ -32,10 +32,12 @@ namespace XLELayer
             CreateIntersectionTestContext(
                 GUILayer::EngineDevice^ engineDevice,
                 GUILayer::TechniqueContextWrapper^ techniqueContext,
-                Sce::Atf::Rendering::Camera^ camera)
+                Sce::Atf::Rendering::Camera^ camera,
+                unsigned viewportWidth, unsigned viewportHeight)
         {
             return GUILayer::EditorInterfaceUtils::CreateIntersectionTestContext(
-                engineDevice, techniqueContext, AsCameraDesc(camera));
+                engineDevice, techniqueContext, 
+                AsCameraDesc(camera), viewportWidth, viewportHeight);
         }
     };
 }
