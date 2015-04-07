@@ -224,7 +224,7 @@ namespace GUILayer
     ref class TerrainManipulators : public IManipulatorSet
     {
     public:
-        virtual ToolsRig::IManipulator* GetManipulator(System::String^ name) override;
+        virtual clix::shared_ptr<ToolsRig::IManipulator> GetManipulator(System::String^ name) override;
 		virtual System::Collections::Generic::IEnumerable<System::String^>^ GetManipulatorNames() override;
 
         TerrainManipulators(std::shared_ptr<EditorScene> scene);
@@ -233,14 +233,16 @@ namespace GUILayer
         AutoToShared<EditorScene> _scene;
     };
 
-	ToolsRig::IManipulator* TerrainManipulators::GetManipulator(System::String^ name)
+    template clix::shared_ptr<ToolsRig::IManipulator>;
+
+	clix::shared_ptr<ToolsRig::IManipulator> TerrainManipulators::GetManipulator(System::String^ name)
 	{
 		auto nativeName = clix::marshalString<clix::E_UTF8>(name);
         if ((*_scene)->_terrainGob) {
 		    for (auto i : (*_scene)->_terrainGob->_terrainManipulators)
-			    if (i._name == nativeName) return i._manipulator.get();
+			    if (i._name == nativeName) return clix::shared_ptr<ToolsRig::IManipulator>(i._manipulator);
         }
-		return nullptr;
+		return clix::shared_ptr<ToolsRig::IManipulator>();
 	}
 
 	System::Collections::Generic::IEnumerable<System::String^>^ TerrainManipulators::GetManipulatorNames()

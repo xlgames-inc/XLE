@@ -74,12 +74,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\ManipulatorPropertyContext.cpp" />
     <ClCompile Include="..\MaterialLayer.cpp" />
     <ClCompile Include="..\NativeDesignControl.cpp" />
     <ClCompile Include="..\TerrainManipulator.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\ManipulatorOverlay.h" />
+    <ClInclude Include="..\ManipulatorPropertyContext.h" />
     <ClInclude Include="..\XLELayerUtils.h" />
   </ItemGroup>
   <ItemGroup>

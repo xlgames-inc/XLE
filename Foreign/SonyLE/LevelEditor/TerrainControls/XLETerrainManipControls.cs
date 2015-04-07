@@ -25,7 +25,7 @@ namespace LevelEditor.TerrainControls
 
                 if (_manipulators != null) {
                     SetFocusProperties(
-                        XLELayer.ManipulatorPropertiesContext.Get(
+                        XLELayer.ManipulatorPropertyContext.Create(
                             _manipulators, ActiveManipulator));
                 } else {
                     SetFocusProperties(null);

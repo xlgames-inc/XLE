@@ -70,7 +70,7 @@ namespace GUILayer
     public ref class IManipulatorSet abstract
     {
     public:
-        virtual ToolsRig::IManipulator* GetManipulator(System::String^ name) = 0;
+        virtual clix::shared_ptr<ToolsRig::IManipulator> GetManipulator(System::String^ name) = 0;
 		virtual System::Collections::Generic::IEnumerable<System::String^>^ GetManipulatorNames() = 0;
         virtual ~IManipulatorSet();
     };

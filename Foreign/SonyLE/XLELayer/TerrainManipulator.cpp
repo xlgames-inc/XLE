@@ -7,19 +7,16 @@
 #pragma warning(disable:4564)
 
 #include "ManipulatorOverlay.h"
+#include "ManipulatorPropertyContext.h"
 #include "XLELayerUtils.h"
 #include "../../Tools/ToolsRig/IManipulator.h"
 #include "../../SceneEngine/IntersectionTest.h"
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../Tools/GUILayer/CLIXAutoPtr.h"
-#include "../../Tools/GUILayer/MarshalString.h"
 #include "../../Tools/GUILayer/AutoToShared.h"
 #include "../../Tools/GUILayer/NativeEngineDevice.h"
 #include "../../Tools/ToolsRig/VisualisationUtils.h"
-#include "../../Utility/PtrUtils.h"
-#include "../../Utility/StringUtils.h"
-#include <memory>
 
 using namespace System;
 using namespace System::Collections::Generic;
@@ -40,192 +37,6 @@ extern "C" __declspec(dllimport) short __stdcall GetKeyState(int nVirtKey);
 
 namespace XLELayer
 {
-    template<typename ParamType>
-        static const ParamType* FindParameter(
-            const char name[], std::pair<ParamType*, size_t> params, bool caseInsensitive)
-    {
-        for (unsigned c=0; c<params.second; ++c) {
-            bool match = false;
-            if (caseInsensitive) {
-                match = !XlCompareStringI(params.first[c]._name, name);
-            } else {
-                match = !XlCompareString(params.first[c]._name, name);
-            }
-            if (match) 
-                return &params.first[c];
-        }
-        return nullptr;
-    }
-
-    public ref class ManipulatorPropertiesContext : public IPropertyEditingContext
-    {
-    public:
-        property IEnumerable<Object^>^ Items
-        {
-            virtual IEnumerable<Object^>^ get()
-            {
-                auto result = gcnew List<Object^>();
-                result->Add(_helper);
-                return result; 
-            }
-        }
-
-        property IEnumerable<System::ComponentModel::PropertyDescriptor^>^ PropertyDescriptors
-        {
-            virtual IEnumerable<System::ComponentModel::PropertyDescriptor^>^ get()
-            {
-                    // We must convert each property in the manipulator 
-                    // into a property descriptor that can be used with 
-                    // the ATF GUI elements
-                using System::ComponentModel::PropertyDescriptor;
-                auto result = gcnew List<PropertyDescriptor^>();
-
-                auto fParams = _manipulator->GetFloatParameters();
-                for (size_t c=0; c<fParams.second; ++c) {
-                    const auto& param = fParams.first[c];
-                    auto descriptor = 
-                        gcnew DynamicPropertyDescriptor(
-                            clix::marshalString<clix::E_UTF8>(param._name),
-                            System::Single::typeid, 
-                            gcnew array<Attribute^, 1> {
-                                gcnew DescriptionAttribute(
-                                    String::Format("{0} to {1} ({2})",
-                                        param._min, param._max, 
-                                        (param._scaleType == ToolsRig::IManipulator::FloatParameter::Linear)?"Linear":"Logarithmic"))
-                            });
-                    result->Add(descriptor);
-                }
-
-                return result;
-            }
-        }
-
-            // note --  no protection on this pointer. Caller must ensure the
-            //          native manipulator stays around for the life-time of 
-            //          this object.
-        ManipulatorPropertiesContext(ToolsRig::IManipulator* manipulator)
-            : _manipulator(manipulator)
-        {
-            _helper = gcnew Helper(_manipulator);
-        }
-        ~ManipulatorPropertiesContext()
-        {
-            delete _helper;
-        }
-
-        static ManipulatorPropertiesContext^ Get(GUILayer::IManipulatorSet^ mani, System::String^ name)
-        {
-            auto m = mani->GetManipulator(name);
-            if (m) return gcnew ManipulatorPropertiesContext(m);
-            return nullptr;
-        }
-
-    protected:
-        ref class Helper : public ::System::Dynamic::DynamicObject
-        {
-        public:
-            bool TryGetMember(System::Dynamic::GetMemberBinder^ binder, Object^% result) override
-            {
-                return TryGetMember(binder->Name, binder->IgnoreCase, result);
-            }
-
-            bool TrySetMember(System::Dynamic::SetMemberBinder^ binder, Object^ value) override
-            {
-                return TryGetMember(binder->Name, binder->IgnoreCase, value);
-            }
-
-            bool TryGetMember(System::String^ name, bool ignoreCase, Object^% result)
-            {
-                auto nativeName = clix::marshalString<clix::E_UTF8>(name);
-                auto floatParam = FindParameter(nativeName.c_str(), _manipulator->GetFloatParameters(), ignoreCase);
-                if (floatParam) {
-                    result = gcnew Single(*(float*)PtrAdd(_manipulator, floatParam->_valueOffset));
-                    return true;
-                }
-
-                auto boolParam = FindParameter(nativeName.c_str(), _manipulator->GetBoolParameters(), ignoreCase);
-                if (boolParam) {
-                    result = gcnew Boolean(*(bool*)PtrAdd(_manipulator, floatParam->_valueOffset));
-                    return true;
-                }
-
-                result = nullptr;
-                return false;
-            }
-
-            bool TrySetMember(System::String^ name, bool ignoreCase, Object^ value)
-            {
-                auto nativeName = clix::marshalString<clix::E_UTF8>(name);
-                auto floatParam = FindParameter(nativeName.c_str(), _manipulator->GetFloatParameters(), ignoreCase);
-                if (floatParam) {
-                    *(float*)PtrAdd(_manipulator, floatParam->_valueOffset) = (float)value;
-                    return true;
-                }
-                auto boolParam = FindParameter(nativeName.c_str(), _manipulator->GetBoolParameters(), ignoreCase);
-                if (boolParam) {
-                    *(bool*)PtrAdd(_manipulator, floatParam->_valueOffset) = (bool)value;
-                    return true;
-                }
-                return false;
-            }
-
-            property int Count;
-
-            Helper(ToolsRig::IManipulator* manipulator)
-            {
-                // _manipulator.reset(new std::shared_ptr<ToolsRig::IManipulator>(std::move(manipulator)));
-                _manipulator = manipulator;
-            }
-        protected:
-            // GUILayer::AutoToShared<ToolsRig::IManipulator> _manipulator;
-            ToolsRig::IManipulator * _manipulator;
-        };
-
-        ref class DynamicPropertyDescriptor : PropertyDescriptor
-        {
-        public:
-            Type^ _propertyType;
-
-            DynamicPropertyDescriptor(
-                System::String^ propertyName, Type^ propertyType, array<Attribute^,1>^ propertyAttributes)
-                : PropertyDescriptor(propertyName, propertyAttributes)
-            {
-                _propertyType = propertyType;
-            }
-
-            System::Object^ GetValue(System::Object^ component) override
-            {
-                auto dynObject = dynamic_cast<Helper^>(component);
-                if (dynObject) {
-                    System::Object^ result = nullptr;
-                    if (dynObject->TryGetMember(Name, false, result)) {
-                        return result;
-                    }
-                }
-                return nullptr;
-            }
-
-            void SetValue(System::Object^ component, System::Object^ value) override
-            {
-                auto dynObject = dynamic_cast<Helper^>(component);
-                if (dynObject) {
-                    dynObject->TrySetMember(Name, false, value);
-                }
-            }
-
-            bool CanResetValue(System::Object^ component) override  { return true; }
-            void ResetValue(System::Object^ component) override {}
-
-            bool ShouldSerializeValue(System::Object^ component) override { return false; }
-            property Type^ ComponentType    { Type^ get() override { return Helper::typeid; } } 
-            property bool IsReadOnly        { bool get() override { return false; } }
-            property Type^ PropertyType     { Type^ get() override { return _propertyType; } }
-        };
-
-        ToolsRig::IManipulator* _manipulator;
-        Helper^ _helper;
-    };
-
 	static unsigned GetMouseButtonState()
 	{
 		return ((GetKeyState(4) < 0) << 2)
@@ -392,7 +203,7 @@ namespace XLELayer
             auto active = _terrainEditor->ActiveManipulator;
 			if (!set || !active) return nullptr;
 
-			return set->GetManipulator(active);
+			return set->GetManipulator(active).get();
         }
 
         void OnDOMChange(System::Object^ object)
