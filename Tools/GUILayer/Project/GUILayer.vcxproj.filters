@@ -57,6 +57,7 @@
       <Filter>DynInterface</Filter>
     </ClInclude>
     <ClInclude Include="..\ExportedNativeTypes.h" />
+    <ClInclude Include="..\ManipulatorUtils.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="DynInterface">

@@ -11,6 +11,7 @@
 #include "CLIXAutoPtr.h"
 #include "MarshalString.h"
 #include "GUILayerUtil.h"
+#include "ManipulatorUtils.h"
 #include "ExportedNativeTypes.h"
 #include "../../SceneEngine/PlacementsManager.h"
 #include "../../SceneEngine/Terrain.h"
@@ -24,6 +25,7 @@
 #include "IOverlaySystem.h"
 #include "UITypesBinding.h" // for VisCameraSettings
 #include "../ToolsRig/VisualisationUtils.h"
+#include "../ToolsRig/IManipulator.h"
 #include "../../SceneEngine/LightingParser.h"
 #include "../../RenderCore/IThreadContext.h"
 
@@ -221,48 +223,16 @@ namespace GUILayer
 
     IManipulatorSet::~IManipulatorSet() {}
 
-    ref class TerrainManipulators : public IManipulatorSet
-    {
-    public:
-        virtual clix::shared_ptr<ToolsRig::IManipulator> GetManipulator(System::String^ name) override;
-		virtual System::Collections::Generic::IEnumerable<System::String^>^ GetManipulatorNames() override;
-
-        TerrainManipulators(std::shared_ptr<EditorScene> scene);
-        ~TerrainManipulators();
-    protected:
-        AutoToShared<EditorScene> _scene;
-    };
-
     template clix::shared_ptr<ToolsRig::IManipulator>;
 
-	clix::shared_ptr<ToolsRig::IManipulator> TerrainManipulators::GetManipulator(System::String^ name)
-	{
-		auto nativeName = clix::marshalString<clix::E_UTF8>(name);
-        if ((*_scene)->_terrainGob) {
-		    for (auto i : (*_scene)->_terrainGob->_terrainManipulators)
-			    if (i._name == nativeName) return clix::shared_ptr<ToolsRig::IManipulator>(i._manipulator);
+    IManipulatorSet^ EditorSceneManager::CreateTerrainManipulators() 
+    { 
+        if (_scene && (*_scene)->_terrainGob && (*_scene)->_terrainGob->_terrainManager) {
+            return gcnew TerrainManipulators((*_scene)->_terrainGob->_terrainManager);
+        } else {
+            return nullptr;
         }
-		return clix::shared_ptr<ToolsRig::IManipulator>();
-	}
-
-	System::Collections::Generic::IEnumerable<System::String^>^ TerrainManipulators::GetManipulatorNames()
-	{
-		auto result = gcnew System::Collections::Generic::List<System::String^>();
-        if ((*_scene)->_terrainGob) {
-		    for (auto i : (*_scene)->_terrainGob->_terrainManipulators)
-			    result->Add(clix::marshalString<clix::E_UTF8>(i._name));
-        }
-		return result;
-	}
-
-    TerrainManipulators::TerrainManipulators(std::shared_ptr<EditorScene> scene)
-    {
-        _scene.reset(new std::shared_ptr<EditorScene>(std::move(scene)));
     }
-
-    TerrainManipulators::~TerrainManipulators() {}
-
-    IManipulatorSet^ EditorSceneManager::GetTerrainManipulators() { return _terrainManipulators; }
 
 	IntersectionTestSceneWrapper^ EditorSceneManager::GetIntersectionScene()
 	{
@@ -278,7 +248,6 @@ namespace GUILayer
         InitAutoToShared(_dynInterface);
         (*_dynInterface)->RegisterType(std::make_shared<EditorDynamicInterface::PlacementObjectType>());
         (*_dynInterface)->RegisterType(std::make_shared<EditorDynamicInterface::TerrainObjectType>());
-        _terrainManipulators = gcnew TerrainManipulators(*_scene);
     }
 
     EditorSceneManager::~EditorSceneManager()

@@ -25,23 +25,25 @@ namespace LevelEditor.TerrainControls
                 Controls, 
                 new ControlInfo("Terrain Manipulator", "Terrain manipulator properties", StandardControlGroup.Right), 
                 null);
+            Controls.SetActiveContext(m_activeContext);
         }
 
         public XLETerrainManipControls Controls { get; private set; }
-        public string ActiveManipulator { get { return Controls.ActiveManipulator; } }
-        public GUILayer.IManipulatorSet Manipulators
+
+        public XLELayer.ActiveManipulatorContext ActiveContext
         {
             set 
             {
-                m_manipulators = value; 
-                Controls.SetManipulators(value);
+                m_activeContext = value;
+                if (Controls != null)
+                {
+                    Controls.SetActiveContext(value);
+                }
             }
-            get { return m_manipulators; }
         }
-
-        private GUILayer.IManipulatorSet m_manipulators;
 
         [Import(AllowDefault = false)]
         IControlHostService m_controlHostService;
+        XLELayer.ActiveManipulatorContext m_activeContext;
     }
 }

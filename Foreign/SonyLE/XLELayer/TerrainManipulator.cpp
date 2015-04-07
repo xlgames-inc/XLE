@@ -45,11 +45,51 @@ namespace XLELayer
 			;
 	}
 
+    public ref class ActiveManipulatorContext
+    {
+    public:
+        ToolsRig::IManipulator* GetNativeManipulator();
+
+        property GUILayer::IManipulatorSet^ ManipulatorSet  { GUILayer::IManipulatorSet^ get(); void set(GUILayer::IManipulatorSet^); }
+        property String^ ActiveManipulator                  { String^ get(); void set(String^); }
+
+        event EventHandler^ OnActiveManipulatorChange;
+        event EventHandler^ OnManipulatorSetChange;
+
+        ActiveManipulatorContext();
+    private:
+        GUILayer::IManipulatorSet^ _manipulatorSet;
+        String^ _activeManipulator;
+    };
+
+    GUILayer::IManipulatorSet^ ActiveManipulatorContext::ManipulatorSet::get() { return _manipulatorSet; }
+    void ActiveManipulatorContext::ManipulatorSet::set(GUILayer::IManipulatorSet^ value)
+    {
+        if (value != _manipulatorSet) {
+            _manipulatorSet = value;
+            OnManipulatorSetChange(this, nullptr);
+        }
+    }
+
+    String^ ActiveManipulatorContext::ActiveManipulator::get() { return _activeManipulator; }
+    void ActiveManipulatorContext::ActiveManipulator::set(String^ value)
+    {
+        if (value != _activeManipulator) {
+            _activeManipulator = value;
+            OnActiveManipulatorChange(this, nullptr);
+        }
+    }
+
+    ActiveManipulatorContext::ActiveManipulatorContext()
+    {
+        _manipulatorSet = nullptr;
+        _activeManipulator = "";
+    }
+
     public interface class ITerrainControls
     {
     public:
-        property String^ ActiveManipulator { virtual String^ get(); }
-        property GUILayer::IManipulatorSet^ Manipulators { virtual void set(GUILayer::IManipulatorSet^); }
+        property ActiveManipulatorContext^ ActiveContext { virtual void set(ActiveManipulatorContext^); }
     };
 
     private ref class DomChangeInspector
@@ -78,6 +118,7 @@ namespace XLELayer
                 m_observableContext->ItemInserted -= gcnew EventHandler<ItemInsertedEventArgs<System::Object^>^>(this, &DomChangeInspector::m_observableContext_ItemInserted);
                 m_observableContext->ItemRemoved -= gcnew EventHandler<ItemRemovedEventArgs<System::Object^>^>(this, &DomChangeInspector::m_observableContext_ItemRemoved);
                 m_observableContext->ItemChanged -= gcnew EventHandler<Sce::Atf::ItemChangedEventArgs<System::Object^>^>(this, &DomChangeInspector::m_observableContext_ItemChanged);
+                m_observableContext->Reloaded -= gcnew EventHandler(this, &DomChangeInspector::m_observableContext_Reloaded);
             }
             m_observableContext = observableContext;
 
@@ -85,6 +126,7 @@ namespace XLELayer
                 m_observableContext->ItemInserted += gcnew EventHandler<ItemInsertedEventArgs<System::Object^>^>(this, &DomChangeInspector::m_observableContext_ItemInserted);
                 m_observableContext->ItemRemoved += gcnew EventHandler<ItemRemovedEventArgs<System::Object^>^>(this, &DomChangeInspector::m_observableContext_ItemRemoved);
                 m_observableContext->ItemChanged += gcnew EventHandler<Sce::Atf::ItemChangedEventArgs<System::Object^>^>(this, &DomChangeInspector::m_observableContext_ItemChanged);
+                m_observableContext->Reloaded += gcnew EventHandler(this, &DomChangeInspector::m_observableContext_Reloaded);
             }
             OnActiveContextChanged(sender);
         }
@@ -92,10 +134,19 @@ namespace XLELayer
         void m_observableContext_ItemChanged(System::Object^ sender, Sce::Atf::ItemChangedEventArgs<System::Object^>^ e) { OnDOMObjectChanged(e->Item); }
         void m_observableContext_ItemRemoved(System::Object^ sender, ItemRemovedEventArgs<System::Object^>^ e) { OnDOMObjectChanged(e->Item); }
         void m_observableContext_ItemInserted(System::Object^ sender, ItemInsertedEventArgs<System::Object^>^ e) { OnDOMObjectChanged(e->Item); }
+        void m_observableContext_Reloaded(System::Object^ sender, EventArgs^ e) { OnDOMObjectChanged(nullptr); }
         
         IObservableContext^ m_observableContext;
         IContextRegistry^ m_contextRegistry;
     };
+
+    ToolsRig::IManipulator* ActiveManipulatorContext::GetNativeManipulator()
+    {
+        auto set = ManipulatorSet;
+        auto active = ActiveManipulator;
+		if (!set || !active) return nullptr;
+		return set->GetManipulator(active).get();
+    }
 
     [Export(LevelEditorCore::IManipulator::typeid)]
     [Export(IInitializable::typeid)]
@@ -122,7 +173,7 @@ namespace XLELayer
 				//	could tell us something, but there's no way to attach
 				//	more context information on the render call
             if (!ManipulatorOverlay::s_currentParsingContext) return;
-            auto underlying = GetNativeManipulator();
+            auto underlying = _manipContext->GetNativeManipulator();
             if (!underlying) return;
 
             underlying->Render(
@@ -175,15 +226,18 @@ namespace XLELayer
         virtual void Initialize()
         {
             _domChangeInspector = gcnew DomChangeInspector(m_contextRegistry);
-            _domChangeInspector->OnActiveContextChanged += gcnew DomChangeInspector::OnChangedDelegate(this, &TerrainManipulator::OnDOMChange);
+            _domChangeInspector->OnActiveContextChanged += gcnew DomChangeInspector::OnChangedDelegate(this, &TerrainManipulator::UpdateManipulatorContext);
             _domChangeInspector->OnDOMObjectChanged += gcnew DomChangeInspector::OnChangedDelegate(this, &TerrainManipulator::OnDOMChange);
+
+            _manipContext = gcnew ActiveManipulatorContext();
+            _controls->ActiveContext = _manipContext;
         }
     private:
 		bool SendInputEvent(
 			Sce::Atf::Rendering::Camera^ camera, 
 			const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
 		{
-			auto underlying = GetNativeManipulator();
+			auto underlying = _manipContext->GetNativeManipulator();
             if (!underlying) return false;
 
 			auto hitTestContext = GUILayer::EditorInterfaceUtils::CreateIntersectionTestContext(
@@ -197,29 +251,37 @@ namespace XLELayer
 			return true;
 		}
 
-        ToolsRig::IManipulator* GetNativeManipulator()
-        {
-            auto set = SceneManager->GetTerrainManipulators();
-            auto active = _terrainEditor->ActiveManipulator;
-			if (!set || !active) return nullptr;
-
-			return set->GetManipulator(active).get();
-        }
-
         void OnDOMChange(System::Object^ object)
         {
-            auto node = Sce::Atf::Adaptation::Adapters::As<Sce::Atf::Dom::DomNodeAdapter^>(object);
-            if (node && node->DomNode->Type->Name == "gap:terrainType") {
-                if (SceneManager) {
-                    _terrainEditor->Manipulators = SceneManager->GetTerrainManipulators();
+            bool updateManipulators = false;
+            if (!object && SceneManager) {
+                updateManipulators = true;
+            } else {
+                auto node = Sce::Atf::Adaptation::Adapters::As<Sce::Atf::Dom::DomNodeAdapter^>(object);
+                if (node && node->DomNode->Type->Name == "gap:terrainType") {
+                    updateManipulators = true;
                 }
+            }
+
+            if (updateManipulators) {
+                UpdateManipulatorContext(object);
+            }
+        }
+
+        void UpdateManipulatorContext(System::Object^ object)
+        {
+            if (SceneManager) {
+                _manipContext->ManipulatorSet = SceneManager->CreateTerrainManipulators();
+            } else {
+                _manipContext->ManipulatorSet = nullptr;
             }
         }
 
         DomChangeInspector^ _domChangeInspector;
+        ActiveManipulatorContext^ _manipContext;
 
         [Import(AllowDefault = false)]
-        ITerrainControls^ _terrainEditor;
+        ITerrainControls^ _controls;
 
         [Import(AllowDefault = false)]
         IContextRegistry^ m_contextRegistry;

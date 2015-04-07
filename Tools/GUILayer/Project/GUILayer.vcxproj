@@ -104,6 +104,7 @@
     <ClInclude Include="..\IWindowRig.h" />
     <ClInclude Include="..\LayerControl.h" />
     <ClInclude Include="..\LevelEditorScene.h" />
+    <ClInclude Include="..\ManipulatorUtils.h" />
     <ClInclude Include="..\MarshalString.h" />
     <ClInclude Include="..\MaterialVisualisation.h" />
     <ClInclude Include="..\PlacementsGobInterface.h" />

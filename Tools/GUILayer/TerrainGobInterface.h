@@ -6,7 +6,12 @@
 
 #pragma once
 
+#include "ManipulatorUtils.h"
 #include "EditorDynamicInterface.h"
+#include "CLIXAutoPtr.h"
+#include <vector>
+
+namespace Tools { class IManipulator; }
 
 namespace GUILayer { namespace EditorDynamicInterface
 {
@@ -35,3 +40,39 @@ namespace GUILayer { namespace EditorDynamicInterface
         static const PropertyId Property_Offset = 201;
 	};
 }}
+
+namespace SceneEngine { class TerrainManager; }
+
+namespace GUILayer
+{
+    class TerrainManipulatorsPimpl
+    {
+    public:
+        class RegisteredManipulator
+		{
+		public:
+			std::string _name;
+			std::shared_ptr<ToolsRig::IManipulator> _manipulator;
+			RegisteredManipulator(
+				const std::string& name,
+				std::shared_ptr<ToolsRig::IManipulator> manipulator)
+				: _name(name), _manipulator(std::move(manipulator))
+			{}
+			RegisteredManipulator() {}
+			~RegisteredManipulator();
+		};
+		std::vector<RegisteredManipulator> _terrainManipulators;
+    };
+
+    ref class TerrainManipulators : public IManipulatorSet
+    {
+    public:
+        virtual clix::shared_ptr<ToolsRig::IManipulator> GetManipulator(System::String^ name) override;
+		virtual System::Collections::Generic::IEnumerable<System::String^>^ GetManipulatorNames() override;
+
+        TerrainManipulators(std::shared_ptr<SceneEngine::TerrainManager> terrain);
+        ~TerrainManipulators();
+    protected:
+        clix::auto_ptr<TerrainManipulatorsPimpl> _pimpl;
+    };
+}

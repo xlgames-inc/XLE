@@ -8,7 +8,6 @@
 
 #include "EditorDynamicInterface.h"
 #include "AutoToShared.h"
-#include "../../Tools/ToolsRig/IManipulator.h"
 #include "../../Assets/Assets.h"    // just for ResChar
 #include "../../Math/Vector.h"
 #include <memory>
@@ -26,21 +25,6 @@ namespace GUILayer
     {
     public:
         std::shared_ptr<SceneEngine::TerrainManager> _terrainManager;
-
-		class RegisteredManipulator
-		{
-		public:
-			std::string _name;
-			std::shared_ptr<ToolsRig::IManipulator> _manipulator;
-			RegisteredManipulator(
-				const std::string& name,
-				std::shared_ptr<ToolsRig::IManipulator> manipulator)
-				: _name(name), _manipulator(std::move(manipulator))
-			{}
-			RegisteredManipulator() {}
-			~RegisteredManipulator();
-		};
-		std::vector<RegisteredManipulator> _terrainManipulators;
 
         void SetBaseDir(const Assets::ResChar dir[]);
         void SetOffset(const Float3& offset);
@@ -66,20 +50,13 @@ namespace GUILayer
     namespace EditorDynamicInterface { class RegisteredTypes; }
 
     ref class IOverlaySystem;
-
-    public ref class IManipulatorSet abstract
-    {
-    public:
-        virtual clix::shared_ptr<ToolsRig::IManipulator> GetManipulator(System::String^ name) = 0;
-		virtual System::Collections::Generic::IEnumerable<System::String^>^ GetManipulatorNames() = 0;
-        virtual ~IManipulatorSet();
-    };
+    ref class IManipulatorSet;
 
     public ref class EditorSceneManager
     {
     public:
             //// //// ////   U T I L S   //// //// ////
-        IManipulatorSet^ GetTerrainManipulators();
+        IManipulatorSet^ CreateTerrainManipulators();
         IOverlaySystem^ CreateOverlaySystem(VisCameraSettings^ camera);
 		IntersectionTestSceneWrapper^ GetIntersectionScene();
 
@@ -113,7 +90,6 @@ namespace GUILayer
     protected:
         AutoToShared<EditorScene> _scene;
         AutoToShared<EditorDynamicInterface::RegisteredTypes> _dynInterface;
-        IManipulatorSet^ _terrainManipulators;
     };
 }
 

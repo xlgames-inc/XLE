@@ -7,21 +7,20 @@
 #include "TerrainGobInterface.h"
 #include "LevelEditorScene.h"
 #include "ExportedNativeTypes.h"
+#include "MarshalString.h"
 #include "../../SceneEngine/Terrain.h"
 #include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../RenderCore/Assets/TerrainFormat.h"
 #include "../../Tools/ToolsRig/TerrainManipulators.h"
+#include "../../Tools/ToolsRig/IManipulator.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Math/Transformations.h"
 
 namespace GUILayer
 {
-    TerrainGob::RegisteredManipulator::~RegisteredManipulator() {}
-
     void TerrainGob::SetBaseDir(const Assets::ResChar dir[])
     {
         _terrainManager.reset();
-		_terrainManipulators.clear();
 
         ::Assets::ResChar buffer[MaxPath];
         ucs2_2_utf8((const ucs2*)dir, XlStringLen((const ucs2*)dir), (utf8*)buffer, dimof(buffer));
@@ -32,13 +31,6 @@ namespace GUILayer
 			SceneEngine::GetBufferUploads(),
 			Int2(0, 0), cfg._cellCount,
             _terrainOffset);
-
-		// we must create all of the manipulator objects after creating the terrain (because they are associated)
-        auto manip = ToolsRig::CreateTerrainManipulators(_terrainManager);
-        for (auto& t : manip) {
-            _terrainManipulators.push_back(
-                RegisteredManipulator(t->GetName(), std::move(t)));
-        }
     }
 
     void TerrainGob::SetOffset(const Float3& offset)
@@ -59,6 +51,42 @@ namespace GUILayer
 
     TerrainGob::~TerrainGob()
     {}
+
+
+
+    TerrainManipulatorsPimpl::RegisteredManipulator::~RegisteredManipulator() {}
+
+	clix::shared_ptr<ToolsRig::IManipulator> TerrainManipulators::GetManipulator(System::String^ name)
+	{
+		auto nativeName = clix::marshalString<clix::E_UTF8>(name);
+		for (auto i : _pimpl->_terrainManipulators)
+			if (i._name == nativeName) return clix::shared_ptr<ToolsRig::IManipulator>(i._manipulator);
+		return clix::shared_ptr<ToolsRig::IManipulator>();
+	}
+
+	System::Collections::Generic::IEnumerable<System::String^>^ TerrainManipulators::GetManipulatorNames()
+	{
+		auto result = gcnew System::Collections::Generic::List<System::String^>();
+		for (auto i : _pimpl->_terrainManipulators)
+			result->Add(clix::marshalString<clix::E_UTF8>(i._name));
+		return result;
+	}
+
+    TerrainManipulators::TerrainManipulators(std::shared_ptr<SceneEngine::TerrainManager> terrain)
+    {
+        _pimpl.reset(new TerrainManipulatorsPimpl);
+
+        auto manip = ToolsRig::CreateTerrainManipulators(terrain);
+        for (auto& t : manip) {
+            _pimpl->_terrainManipulators.push_back(
+                TerrainManipulatorsPimpl::RegisteredManipulator(t->GetName(), std::move(t)));
+        }
+    }
+
+    TerrainManipulators::~TerrainManipulators() 
+    {
+        _pimpl.reset();
+    }
 }
 
 namespace GUILayer { namespace EditorDynamicInterface
