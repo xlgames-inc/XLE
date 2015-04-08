@@ -29,7 +29,9 @@
         private void InitializeComponent()
         {
             this.manipulatorSelection = new System.Windows.Forms.ListBox();
-            this.manipulatorProperties = new Sce.Atf.Controls.PropertyEditing.PropertyGrid();
+            this.manipulatorProperties = new Sce.Atf.Controls.PropertyEditing.PropertyGrid(
+                Sce.Atf.Controls.PropertyEditing.PropertyGridMode.DisableSearchControls
+                | Sce.Atf.Controls.PropertyEditing.PropertyGridMode.HideResetAllButton);
             this.SuspendLayout();
             // 
             // manipulatorSelection

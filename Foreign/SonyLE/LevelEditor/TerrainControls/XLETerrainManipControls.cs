@@ -14,6 +14,28 @@ namespace LevelEditor.TerrainControls
         public XLETerrainManipControls()
         {
             InitializeComponent();
+            Layout += XLETerrainManipControls_Layout;
+        }
+
+        private void XLETerrainManipControls_Layout(object sender, LayoutEventArgs e)
+        {
+                // resize children based on the orientation of this window
+            var size = ClientSize;
+            if (size.Width > size.Height)
+            {
+                var selectionWidth = 149;
+                manipulatorSelection.Size = new System.Drawing.Size(selectionWidth, size.Height - 6);
+                manipulatorProperties.Location = new System.Drawing.Point(selectionWidth + 9, 3);
+                manipulatorProperties.Size = new System.Drawing.Size(size.Width - selectionWidth - 12, size.Height - 6);
+            }
+            else
+            {
+                var h = manipulatorSelection.PreferredHeight;
+
+                manipulatorSelection.Size = new System.Drawing.Size(size.Width - 6, h);
+                manipulatorProperties.Location = new System.Drawing.Point(3, h + 9);
+                manipulatorProperties.Size = new System.Drawing.Size(size.Width - 6, size.Height - h - 12);
+            }
         }
 
         private void manipulatorSelection_SelectedIndexChanged(object sender, EventArgs e)
