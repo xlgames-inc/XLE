@@ -4,11 +4,12 @@
     <ClCompile Include="..\NativeDesignControl.cpp" />
     <ClCompile Include="..\MaterialLayer.cpp" />
     <ClCompile Include="..\TerrainManipulator.cpp" />
-    <ClCompile Include="..\ManipulatorPropertyContext.cpp" />
+    <ClCompile Include="..\NativeManipulators.cpp" />
+    <ClCompile Include="..\PlacementManipulator.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\ManipulatorOverlay.h" />
     <ClInclude Include="..\XLELayerUtils.h" />
-    <ClInclude Include="..\ManipulatorPropertyContext.h" />
+    <ClInclude Include="..\NativeManipulators.h" />
   </ItemGroup>
 </Project>

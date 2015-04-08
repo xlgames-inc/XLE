@@ -83,6 +83,7 @@
     <ClCompile Include="..\GUILayerUtil.cpp" />
     <ClCompile Include="..\LayerControl.cpp" />
     <ClCompile Include="..\LevelEditorScene.cpp" />
+    <ClCompile Include="..\ManipulatorUtils.cpp" />
     <ClCompile Include="..\MaterialVisualisation.cpp" />
     <ClCompile Include="..\PlacementsGobInterface.cpp" />
     <ClCompile Include="..\SimpleRenderingContext.cpp" />
@@ -114,6 +115,7 @@
   </ItemGroup>
   <ItemGroup>
     <Reference Include="System" />
+    <Reference Include="System.Core" />
     <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />

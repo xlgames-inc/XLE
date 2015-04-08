@@ -28,6 +28,7 @@
     <ClCompile Include="..\PlacementsGobInterface.cpp">
       <Filter>DynInterface</Filter>
     </ClCompile>
+    <ClCompile Include="..\ManipulatorUtils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\EngineDevice.h" />

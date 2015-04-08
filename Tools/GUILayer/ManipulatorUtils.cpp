@@ -4,19 +4,21 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "ManipulatorPropertyContext.h"
-#include "../../Tools/ToolsRig/IManipulator.h"
-#include "../../Tools/GUILayer/MarshalString.h"
+#include "ManipulatorUtils.h"
+#include "ExportedNativeTypes.h"
+#include "../ToolsRig/IManipulator.h"
+#include "../GUILayer/MarshalString.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/StringUtils.h"
 
 using namespace System;
 using namespace System::Collections::Generic;
 using namespace System::ComponentModel;
-using namespace Sce::Atf::Applications;
 
-namespace XLELayer
+namespace GUILayer
 {
+    IPropertySource::~IPropertySource() {}
+
     template<typename ParamType>
         static const ParamType* FindParameter(
             const char name[], std::pair<ParamType*, size_t> params, bool caseInsensitive)
@@ -33,6 +35,29 @@ namespace XLELayer
         }
         return nullptr;
     }
+
+    public ref class ManipulatorPropertyContext : public IPropertySource
+    {
+    public:
+        property IEnumerable<Object^>^ Items
+        {
+            virtual IEnumerable<Object^>^ get() override;
+        }
+
+        property IEnumerable<System::ComponentModel::PropertyDescriptor^>^ PropertyDescriptors
+        {
+            virtual IEnumerable<System::ComponentModel::PropertyDescriptor^>^ get() override;
+        }
+
+        ManipulatorPropertyContext(std::shared_ptr<ToolsRig::IManipulator> manipulator);
+        ~ManipulatorPropertyContext();
+
+    protected:
+        ref class Helper;
+        ref class DynamicPropertyDescriptor;
+        clix::shared_ptr<ToolsRig::IManipulator> _manipulator;
+        Helper^ _helper;
+    };
 
     ref class ManipulatorPropertyContext::Helper : public ::System::Dynamic::DynamicObject
     {
@@ -92,7 +117,7 @@ namespace XLELayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    ref class ManipulatorPropertyContext::DynamicPropertyDescriptor : PropertyDescriptor
+    ref class ManipulatorPropertyContext::DynamicPropertyDescriptor : public PropertyDescriptor
     {
     public:
         Type^ _propertyType;
@@ -184,16 +209,18 @@ namespace XLELayer
         delete _helper;
     }
 
-    ManipulatorPropertyContext^ ManipulatorPropertyContext::Create(
-        GUILayer::IManipulatorSet^ mani, System::String^ name)
+
+    IManipulatorSet::~IManipulatorSet() {}
+
+    IPropertySource^ IManipulatorSet::GetProperties(System::String^ name)
     {
-        auto m = mani->GetManipulator(name);
-        if (m) return gcnew ManipulatorPropertyContext(
-            *(std::shared_ptr<ToolsRig::IManipulator>*)m.GetNativeOpaque());
+        auto m = GetManipulator(name);
+        if (m) return gcnew ManipulatorPropertyContext(m.GetNativePtr());
         return nullptr;
     }
 
 
+    template clix::shared_ptr<ToolsRig::IManipulator>;
 }
 
 

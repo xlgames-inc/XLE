@@ -10,13 +10,27 @@
 
 namespace ToolsRig { class IManipulator; }
 
+using namespace System;
+using namespace System::Collections::Generic;
+
 namespace GUILayer
 {
+    public ref class IPropertySource abstract
+    {
+    public:
+        property IEnumerable<Object^>^ Items { virtual IEnumerable<Object^>^ get() = 0; }
+        property IEnumerable<System::ComponentModel::PropertyDescriptor^>^ PropertyDescriptors
+            { virtual IEnumerable<System::ComponentModel::PropertyDescriptor^>^ get() = 0; }
+        virtual ~IPropertySource();
+    };
+
     public ref class IManipulatorSet abstract
     {
     public:
-        virtual clix::shared_ptr<ToolsRig::IManipulator> GetManipulator(System::String^ name) = 0;
-		virtual System::Collections::Generic::IEnumerable<System::String^>^ GetManipulatorNames() = 0;
+        virtual clix::shared_ptr<ToolsRig::IManipulator> GetManipulator(String^ name) = 0;
+		virtual IEnumerable<String^>^ GetManipulatorNames() = 0;
+        
+        IPropertySource^ GetProperties(String^ name);
         virtual ~IManipulatorSet();
     };
 }

@@ -221,10 +221,6 @@ namespace GUILayer
     PropertyId EditorSceneManager::GetPropertyId(ObjectTypeId type, System::String^ name)       { return _dynInterface->GetPropertyId(type, clix::marshalString<clix::E_UTF8>(name).c_str()); }
     ChildListId EditorSceneManager::GetChildListId(ObjectTypeId type, System::String^ name)     { return _dynInterface->GetChildListId(type, clix::marshalString<clix::E_UTF8>(name).c_str()); }
 
-    IManipulatorSet::~IManipulatorSet() {}
-
-    template clix::shared_ptr<ToolsRig::IManipulator>;
-
     IManipulatorSet^ EditorSceneManager::CreateTerrainManipulators() 
     { 
         if (_scene->_terrainGob && _scene->_terrainGob->_terrainManager) {

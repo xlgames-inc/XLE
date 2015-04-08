@@ -4,6 +4,8 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#pragma warning(disable:4564)   // method 'Copy' of class 'Sce::Atf::Dom::DomNode' defines unsupported default parameter 'originalToCopyMap'
+
 #include "ManipulatorOverlay.h"
 #include "XLELayerUtils.h"
 #include "../../Tools/ToolsRig/VisualisationUtils.h"
@@ -25,8 +27,6 @@ using namespace Sce::Atf::Applications;
 using namespace Sce::Atf::Dom;
 using namespace Sce::Atf::VectorMath;
 using namespace LevelEditorCore;
-
-#pragma warning(disable:4564)   // method 'Copy' of class 'Sce::Atf::Dom::DomNode' defines unsupported default parameter 'originalToCopyMap'
 
 namespace XLELayer
 {

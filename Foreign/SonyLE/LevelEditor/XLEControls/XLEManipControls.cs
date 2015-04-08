@@ -7,11 +7,11 @@ using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 
-namespace LevelEditor.TerrainControls
+namespace LevelEditor.XLEControls
 {
-    public partial class XLETerrainManipControls : UserControl
+    public partial class XLEManipControls : UserControl
     {
-        public XLETerrainManipControls()
+        public XLEManipControls()
         {
             InitializeComponent();
             Layout += XLETerrainManipControls_Layout;
@@ -78,8 +78,7 @@ namespace LevelEditor.TerrainControls
             if (_context != null && _context.ManipulatorSet != null && _context.ActiveManipulator != null)
             {
                 SetFocusProperties(
-                    XLELayer.ManipulatorPropertyContext.Create(
-                        _context.ManipulatorSet, _context.ActiveManipulator));
+                    new XLELayer.PropertyBridge(_context.ManipulatorSet.GetProperties(_context.ActiveManipulator)));
             }
             else
             {

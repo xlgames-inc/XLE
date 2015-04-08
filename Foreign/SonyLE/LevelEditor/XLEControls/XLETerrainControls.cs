@@ -11,7 +11,7 @@ using Sce.Atf.Dom;
 
 using LevelEditorCore;
 
-namespace LevelEditor.TerrainControls
+namespace LevelEditor.XLEControls
 {
     [Export(typeof(XLELayer.ITerrainControls))]
     [Export(typeof(IInitializable))]
@@ -20,7 +20,7 @@ namespace LevelEditor.TerrainControls
     {
         void IInitializable.Initialize()
         {
-            Controls = new XLETerrainManipControls();
+            Controls = new XLEManipControls();
             m_controlHostService.RegisterControl(
                 Controls, 
                 new ControlInfo("Terrain Manipulator", "Terrain manipulator properties", StandardControlGroup.Right), 
@@ -28,7 +28,7 @@ namespace LevelEditor.TerrainControls
             Controls.SetActiveContext(m_activeContext);
         }
 
-        public XLETerrainManipControls Controls { get; private set; }
+        public XLEManipControls Controls { get; private set; }
 
         public XLELayer.ActiveManipulatorContext ActiveContext
         {

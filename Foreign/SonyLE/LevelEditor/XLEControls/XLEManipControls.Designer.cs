@@ -1,6 +1,6 @@
-﻿namespace LevelEditor.TerrainControls
+﻿namespace LevelEditor.XLEControls
 {
-    partial class XLETerrainManipControls
+    partial class XLEManipControls
     {
         /// <summary> 
         /// Required designer variable.
