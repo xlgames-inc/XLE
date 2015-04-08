@@ -246,7 +246,7 @@ namespace RenderCore { namespace Metal_DX11 { namespace GPUProfiler     /// Low 
                     ScopedLock(g_globalEventListener_Mutex);
                         //      Write an event to set the frequency. We should expect the frequency should be constant
                         //      in a single play through, but it doesn't hurt to keep recording it...
-                    const size_t entrySize = sizeof(uint32)*2+sizeof(uint64);
+                    const size_t entrySize = sizeof(size_t)*2+sizeof(uint64);
                     if (size_t(eventBufferPtr)+entrySize > size_t(eventBufferEnd)) {
                         for (std::vector<EventListener*>::iterator i=g_globalEventListener.begin(); i!=g_globalEventListener.end(); ++i) {
                             (**i)(evntBuffer, eventBufferPtr);
@@ -254,8 +254,8 @@ namespace RenderCore { namespace Metal_DX11 { namespace GPUProfiler     /// Low 
                         eventBufferPtr = (byte*)evntBuffer;
                     }
 
-                    *((uint32*)eventBufferPtr) = ~uint32(0x0);                  eventBufferPtr+=sizeof(uint32);
-                    *((uint32*)eventBufferPtr) = frameInFlight._renderFrameId;  eventBufferPtr+=sizeof(uint32);
+                    *((size_t*)eventBufferPtr) = ~size_t(0x0);                  eventBufferPtr+=sizeof(size_t);
+                    *((size_t*)eventBufferPtr) = frameInFlight._renderFrameId;  eventBufferPtr+=sizeof(size_t);
                     *((uint64*)eventBufferPtr) = disjointData.Frequency;        eventBufferPtr+=sizeof(uint64);
                 }
 

@@ -54,8 +54,8 @@ namespace PlatformRig { namespace Overlays
         const void * evnt = eventsBufferStart;
         while (evnt < eventsBufferEnd) {
             const void * packetStart = evnt;
-            uint32 eventType = (uint32)*((const size_t*)evnt); evnt = PtrAdd(evnt, sizeof(size_t));
-            if (eventType == ~uint32(0x0)) {
+            size_t eventType = *((const size_t*)evnt); evnt = PtrAdd(evnt, sizeof(size_t));
+            if (eventType == ~size_t(0x0)) {
                 FrameId frameId = (FrameId)*((const size_t*)evnt); evnt = PtrAdd(evnt, sizeof(size_t));
                 GPUTime frequency = *((const uint64*)evnt); evnt = PtrAdd(evnt, sizeof(uint64));
 
@@ -328,7 +328,8 @@ namespace PlatformRig { namespace Overlays
     {
         for (;;) {
             eventsBufferStart = _currentFrame->ProcessGPUEvents(eventsBufferStart, eventsBufferEnd);
-            if (eventsBufferStart==eventsBufferEnd) {
+            if (eventsBufferStart>=eventsBufferEnd) {
+                assert(eventsBufferStart==eventsBufferEnd);
                 return;
             }
 
