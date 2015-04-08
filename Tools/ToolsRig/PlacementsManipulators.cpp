@@ -34,13 +34,6 @@
 #include "../../Math/ProjectionMath.h"
 #include <iomanip>
 
-// namespace Sample
-// {
-//     extern std::shared_ptr<SceneEngine::ITerrainFormat> MainTerrainFormat;
-//     extern SceneEngine::TerrainCoordinateSystem MainTerrainCoords;
-//     extern SceneEngine::TerrainConfig MainTerrainConfig;
-// }
-
 namespace ToolsRig
 {
     using namespace RenderOverlays::DebuggingDisplay;
@@ -134,10 +127,12 @@ namespace ToolsRig
         Float3 _anchorPoint;
 
         SceneEngine::PlacementsEditor::ObjTransDef TransformObject(
+            const SceneEngine::IntersectionTestScene& hitTestScene,
             const SceneEngine::PlacementsEditor::ObjTransDef& inputObj);
     };
 
     SceneEngine::PlacementsEditor::ObjTransDef SelectAndEdit::TransformObject(
+        const SceneEngine::IntersectionTestScene& hitTestScene,
         const SceneEngine::PlacementsEditor::ObjTransDef& inputObj)
     {
         Float4x4 transform;
@@ -168,10 +163,14 @@ namespace ToolsRig
                 //  we have a 2d translation in XY. But then the Z values should be calculated
                 //  from the terrain height.
             Float2 finalXY = Truncate(ExtractTranslation(inputObj._localToWorld)) + Truncate(_activeSubop._parameter);
-            // float terrainHeight = GetTerrainHeight(
-            //     *Sample::MainTerrainFormat.get(), Sample::MainTerrainConfig, Sample::MainTerrainCoords, 
-            //     finalXY);
             float terrainHeight = 0.f;
+            auto terrain = hitTestScene.GetTerrain().get();
+            if (terrain) {
+                terrainHeight = GetTerrainHeight(
+                    *terrain->GetFormat().get(), terrain->GetConfig(), terrain->GetCoords(), 
+                    finalXY);
+            }
+            
             transform = AsFloat4x4(Float3(-ExtractTranslation(inputObj._localToWorld) + Expand(finalXY, terrainHeight)));
         } else {
             return inputObj;
@@ -369,7 +368,7 @@ namespace ToolsRig
                     unsigned count = _transaction->GetObjectCount();
                     for (unsigned c=0; c<count; ++c) {
                         auto& originalState = _transaction->GetObjectOriginalState(c);
-                        auto newState = TransformObject(originalState);
+                        auto newState = TransformObject(hitTestScene, originalState);
                         _transaction->SetObject(c, newState);
                     }
                 }
@@ -910,7 +909,9 @@ namespace ToolsRig
         Float3 _hoverPoint;
         bool _hasHoverPoint;
 
-        void PerformScatter(const Float3& centre, const char modelName[], const char materialName[]);
+        void PerformScatter(
+            const SceneEngine::IntersectionTestScene& hitTestScene,
+            const Float3& centre, const char modelName[], const char materialName[]);
     };
 
     bool ScatterPlacements::OnInputEvent(
@@ -934,7 +935,7 @@ namespace ToolsRig
             if (test._type == SceneEngine::IntersectionTestScene::Type::Terrain) {
                 auto selectedModel = _manInterface->GetSelectedModel();
                 if (now >= (_spawnTimer + spawnTimeOut) && !selectedModel.empty()) {
-                    PerformScatter(test._worldSpaceCollision, selectedModel.c_str(), selectedModel.c_str());
+                    PerformScatter(hitTestScene, test._worldSpaceCollision, selectedModel.c_str(), selectedModel.c_str());
                     _spawnTimer = now;
                 }
                 return true;
@@ -1158,6 +1159,7 @@ namespace ToolsRig
     }
 
     void ScatterPlacements::PerformScatter(
+        const SceneEngine::IntersectionTestScene& hitTestScene,
         const Float3& centre, const char modelName[], const char materialName[])
     {
             // Our scatter algorithm is a little unique
@@ -1216,10 +1218,12 @@ namespace ToolsRig
 
         for (auto p=noisyPts.begin(); p!=noisyPts.end(); ++p) {
             Float2 pt = *p + Truncate(centre);
-            // float height = SceneEngine::GetTerrainHeight(
-            //     *Sample::MainTerrainFormat.get(), Sample::MainTerrainConfig, Sample::MainTerrainCoords, 
-            //     pt);
             float height = 0.f;
+            auto terrain = hitTestScene.GetTerrain().get();
+            if (terrain) {
+                height = SceneEngine::GetTerrainHeight(
+                    *terrain->GetFormat().get(), terrain->GetConfig(), terrain->GetCoords(), pt);
+            }
 
             auto objectToWorld = AsFloat4x4(Expand(pt, height));
             Combine_InPlace(RotationZ(rand() * 2.f * gPI / float(RAND_MAX)), objectToWorld);

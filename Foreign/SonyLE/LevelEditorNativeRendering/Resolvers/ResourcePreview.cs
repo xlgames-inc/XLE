@@ -57,7 +57,7 @@ namespace RenderingInterop
 
         private void resourceLister_SelectionChanged(object sender, EventArgs e)
         {
-           // if (m_game == null) Init();
+            if (m_game == null) return; // Init();
 
             m_game.RootGameObjectFolder.GameObjects.Clear();                        
             m_renderSurface.Invalidate();

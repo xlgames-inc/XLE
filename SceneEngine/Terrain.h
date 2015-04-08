@@ -137,6 +137,8 @@ namespace SceneEngine
         ISurfaceHeightsProvider*        GetHeightsProvider();
 
         const TerrainCoordinateSystem&  GetCoords() const;
+        const TerrainConfig&            GetConfig() const;
+        const std::shared_ptr<ITerrainFormat>& GetFormat() const;
         void SetWorldSpaceOrigin(const Float3& origin);
 
         TerrainManager( const TerrainConfig& cfg,

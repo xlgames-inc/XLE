@@ -237,7 +237,7 @@ namespace GUILayer
 
     namespace Internal
     {
-        class PlacementManipulatorContextAdapter : public ToolsRig::IPlacementManipulatorSettings
+        class PlacementManipulatorSettingsAdapter : public ToolsRig::IPlacementManipulatorSettings
         {
         public:
             virtual std::string GetSelectedModel() const;
@@ -245,37 +245,37 @@ namespace GUILayer
             virtual void SelectModel(const char newModelName[]);
             virtual void SwitchToMode(Mode::Enum newMode);
 
-            PlacementManipulatorContextAdapter(IPlacementManipulatorSettingsLayer^ managed);
-            virtual ~PlacementManipulatorContextAdapter();
+            PlacementManipulatorSettingsAdapter(IPlacementManipulatorSettingsLayer^ managed);
+            virtual ~PlacementManipulatorSettingsAdapter();
         private:
             gcroot<IPlacementManipulatorSettingsLayer^> _managed;
         };
 
-        std::string PlacementManipulatorContextAdapter::GetSelectedModel() const
+        std::string PlacementManipulatorSettingsAdapter::GetSelectedModel() const
         {
             return clix::marshalString<clix::E_UTF8>(_managed->GetSelectedModel());
         }
-        void PlacementManipulatorContextAdapter::EnableSelectedModelDisplay(bool newState)
+        void PlacementManipulatorSettingsAdapter::EnableSelectedModelDisplay(bool newState)
         {
             return _managed->EnableSelectedModelDisplay(newState);
         }
-        void PlacementManipulatorContextAdapter::SelectModel(const char newModelName[])
+        void PlacementManipulatorSettingsAdapter::SelectModel(const char newModelName[])
         {
             _managed->SelectModel(
                 clix::marshalString<clix::E_UTF8>(newModelName));
         }
-        void PlacementManipulatorContextAdapter::SwitchToMode(Mode::Enum newMode)
+        void PlacementManipulatorSettingsAdapter::SwitchToMode(Mode::Enum newMode)
         {
             _managed->SwitchToMode((unsigned)newMode);
         }
 
-        PlacementManipulatorContextAdapter::PlacementManipulatorContextAdapter(
+        PlacementManipulatorSettingsAdapter::PlacementManipulatorSettingsAdapter(
             IPlacementManipulatorSettingsLayer^ managed)
         {
             _managed = managed;
         }
 
-        PlacementManipulatorContextAdapter::~PlacementManipulatorContextAdapter()
+        PlacementManipulatorSettingsAdapter::~PlacementManipulatorSettingsAdapter()
         {}
     }
 
@@ -286,7 +286,7 @@ namespace GUILayer
         
     IPlacementManipulatorSettingsLayer::IPlacementManipulatorSettingsLayer()
     {
-        _native.reset(new Internal::PlacementManipulatorContextAdapter(this));
+        _native.reset(new Internal::PlacementManipulatorSettingsAdapter(this));
     }
 
     IPlacementManipulatorSettingsLayer::~IPlacementManipulatorSettingsLayer()

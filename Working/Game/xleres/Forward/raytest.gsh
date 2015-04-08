@@ -17,7 +17,7 @@ struct GSOutput
 	uint	drawCallIndex : DRAWCALLINDEX;
 };
 
-cbuffer RayDefinition
+cbuffer RayDefinition : register(b1)
 {
 	float3	RayStart;
 	float	RayLength;

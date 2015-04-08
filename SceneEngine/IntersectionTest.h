@@ -117,6 +117,8 @@ namespace SceneEngine
             Int2 cursorPosition,
             Type::BitField filter = ~Type::BitField(0)) const;
 
+        const std::shared_ptr<TerrainManager>& GetTerrain() const { return _terrainManager; }
+
         IntersectionTestScene(
             std::shared_ptr<TerrainManager> terrainManager = std::shared_ptr<TerrainManager>(),
             std::shared_ptr<PlacementsEditor> placements = std::shared_ptr<PlacementsEditor>());

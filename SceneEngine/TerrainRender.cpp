@@ -3115,6 +3115,15 @@ namespace SceneEngine
     const TerrainCoordinateSystem&  TerrainManager::GetCoords() const       { return _pimpl->_coords; }
     TerrainUberSurfaceInterface* TerrainManager::GetUberSurfaceInterface()  { return _pimpl->_uberSurfaceInterface.get(); }
     ISurfaceHeightsProvider* TerrainManager::GetHeightsProvider()           { return _pimpl->_heightsProvider.get(); }
+
+    const TerrainConfig& TerrainManager::GetConfig() const
+    {
+        return _pimpl->_cfg;
+    }
+    const std::shared_ptr<ITerrainFormat>& TerrainManager::GetFormat() const
+    {
+        return _pimpl->_ioFormat;
+    }
 }
 
 

@@ -57,26 +57,66 @@ namespace XLELayer
             _manipContext->ManipulatorSet = NativeManipulatorLayer::SceneManager->CreatePlacementManipulators(_manipSettings);
             _controls->ActiveContext = _manipContext;
             _nativeManip = gcnew NativeManipulatorLayer(_manipContext);
+
+            if (_resourceLister) {
+                _resourceLister->SelectionChanged += 
+                    gcnew EventHandler(this, &PlacementManipulator::resourceLister_SelectionChanged);
+            }
         }
 
     private:
-        NativeManipulatorLayer^ _nativeManip;
-        ActiveManipulatorContext^ _manipContext;
-        GUILayer::IPlacementManipulatorSettingsLayer^ _manipSettings;
-
-        [Import(AllowDefault = false)] IPlacementControls^ _controls;
-
         ref class Settings : GUILayer::IPlacementManipulatorSettingsLayer
         {
         public:
-            virtual String^ GetSelectedModel() override
-            {
-                return "game/model/nature/bushtree/BushE";
-            }
+            virtual String^ GetSelectedModel() override { return _selectedModel; }
+            virtual void SelectModel(String^ newModelName) override  { _selectedModel = newModelName; }
             virtual void EnableSelectedModelDisplay(bool newState) override {}
-            virtual void SelectModel(String^ newModelName) override {}
             virtual void SwitchToMode(unsigned newMode) override {}
+
+            Settings()
+            {
+                _selectedModel = "game/model/nature/bushtree/BushE";
+            }
+
+            String^ _selectedModel;
         };
+
+        NativeManipulatorLayer^ _nativeManip;
+        ActiveManipulatorContext^ _manipContext;
+        Settings^ _manipSettings;
+
+        [Import(AllowDefault = false)] IPlacementControls^ _controls;
+        [Import(AllowDefault =  true)] LevelEditorCore::ResourceLister^ _resourceLister;
+
+        String^ AsResourcePathName(Uri^ uri);
+
+        String^ StripExtension(String^ input)
+        {
+            int dot = input->LastIndexOf('.');
+            int sep0 = input->LastIndexOf('/');
+            int sep1 = input->LastIndexOf('\\');
+            if (dot > 0 && dot > sep0 && dot > sep1) {
+                return input->Substring(0, dot);
+            }
+            return input;
+        }
+
+        void resourceLister_SelectionChanged(Object^ sender, EventArgs^ e)
+        {
+            auto resourceUri = _resourceLister->LastSelected;
+            if (resourceUri) {
+                _manipSettings->_selectedModel = 
+                    StripExtension(AsResourcePathName(resourceUri));
+            }
+        }
     };
+
+    String^ PlacementManipulator::AsResourcePathName(Uri^ uri)
+    {
+            // covert this uri into a string filename that is fit for the assets system
+        auto cwd = gcnew Uri(System::IO::Directory::GetCurrentDirectory()->TrimEnd('\\') + "\\");
+        auto relUri = cwd->MakeRelativeUri(uri);
+        return Uri::UnescapeDataString(relUri->ToString());
+    }
 }
 
