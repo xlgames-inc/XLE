@@ -6,6 +6,8 @@
 
 #include "GUILayerUtil.h"
 #include "MarshalString.h"
+#include "ExportedNativeTypes.h"
+#include "../../SceneEngine/IntersectionTest.h"
 #include "../../Utility/MemoryUtils.h"
 
 namespace GUILayer
@@ -41,6 +43,13 @@ namespace GUILayer
 	{
 		_scene = std::move(scene);
 	}
+
+    IntersectionTestSceneWrapper::IntersectionTestSceneWrapper(
+        std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
+        std::shared_ptr<SceneEngine::PlacementsEditor> placements)
+    {
+		_scene = std::make_shared<SceneEngine::IntersectionTestScene>(terrainManager, placements);
+    }
 
 	SceneEngine::IntersectionTestScene& IntersectionTestSceneWrapper::GetNative()
 	{

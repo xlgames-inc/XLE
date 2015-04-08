@@ -16,7 +16,7 @@ namespace LevelEditor.XLEControls
     [Export(typeof(XLELayer.IPlacementControls))]
     [Export(typeof(IInitializable))]
     [PartCreationPolicy(CreationPolicy.Shared)]
-    public class XLEPlacementControls : XLELayer.ITerrainControls, IInitializable
+    public class XLEPlacementControls : XLELayer.IPlacementControls, IInitializable
     {
         void IInitializable.Initialize()
         {

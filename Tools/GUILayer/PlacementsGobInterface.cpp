@@ -7,6 +7,9 @@
 #include "PlacementsGobInterface.h"
 #include "LevelEditorScene.h"
 #include "ExportedNativeTypes.h"
+#include "MarshalString.h"
+#include "../ToolsRig/PlacementsManipulators.h"
+#include "../ToolsRig/IManipulator.h"
 #include "../../SceneEngine/PlacementsManager.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Math/Transformations.h"
@@ -192,4 +195,104 @@ namespace GUILayer { namespace EditorDynamicInterface
 
 }}
 
+namespace GUILayer
+{
+    PlacementManipulatorsPimpl::RegisteredManipulator::~RegisteredManipulator() {}
+
+	clix::shared_ptr<ToolsRig::IManipulator> PlacementManipulators::GetManipulator(System::String^ name)
+	{
+		auto nativeName = clix::marshalString<clix::E_UTF8>(name);
+		for (auto i : _pimpl->_manipulators)
+			if (i._name == nativeName) return clix::shared_ptr<ToolsRig::IManipulator>(i._manipulator);
+		return clix::shared_ptr<ToolsRig::IManipulator>();
+	}
+
+	System::Collections::Generic::IEnumerable<System::String^>^ PlacementManipulators::GetManipulatorNames()
+	{
+		auto result = gcnew System::Collections::Generic::List<System::String^>();
+		for (auto i : _pimpl->_manipulators)
+			result->Add(clix::marshalString<clix::E_UTF8>(i._name));
+		return result;
+	}
+
+    PlacementManipulators::PlacementManipulators(
+        ToolsRig::IPlacementManipulatorSettings* context,
+        std::shared_ptr<SceneEngine::PlacementsEditor> editor)
+    {
+        _pimpl.reset(new PlacementManipulatorsPimpl);
+
+        auto manip = ToolsRig::CreatePlacementManipulators(context, editor);
+        for (auto& t : manip) {
+            _pimpl->_manipulators.push_back(
+                PlacementManipulatorsPimpl::RegisteredManipulator(t->GetName(), std::move(t)));
+        }
+    }
+
+    PlacementManipulators::~PlacementManipulators() 
+    {
+        _pimpl.reset();
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    namespace Internal
+    {
+        class PlacementManipulatorContextAdapter : public ToolsRig::IPlacementManipulatorSettings
+        {
+        public:
+            virtual std::string GetSelectedModel() const;
+            virtual void EnableSelectedModelDisplay(bool newState);
+            virtual void SelectModel(const char newModelName[]);
+            virtual void SwitchToMode(Mode::Enum newMode);
+
+            PlacementManipulatorContextAdapter(IPlacementManipulatorSettingsLayer^ managed);
+            virtual ~PlacementManipulatorContextAdapter();
+        private:
+            gcroot<IPlacementManipulatorSettingsLayer^> _managed;
+        };
+
+        std::string PlacementManipulatorContextAdapter::GetSelectedModel() const
+        {
+            return clix::marshalString<clix::E_UTF8>(_managed->GetSelectedModel());
+        }
+        void PlacementManipulatorContextAdapter::EnableSelectedModelDisplay(bool newState)
+        {
+            return _managed->EnableSelectedModelDisplay(newState);
+        }
+        void PlacementManipulatorContextAdapter::SelectModel(const char newModelName[])
+        {
+            _managed->SelectModel(
+                clix::marshalString<clix::E_UTF8>(newModelName));
+        }
+        void PlacementManipulatorContextAdapter::SwitchToMode(Mode::Enum newMode)
+        {
+            _managed->SwitchToMode((unsigned)newMode);
+        }
+
+        PlacementManipulatorContextAdapter::PlacementManipulatorContextAdapter(
+            IPlacementManipulatorSettingsLayer^ managed)
+        {
+            _managed = managed;
+        }
+
+        PlacementManipulatorContextAdapter::~PlacementManipulatorContextAdapter()
+        {}
+    }
+
+    ToolsRig::IPlacementManipulatorSettings* IPlacementManipulatorSettingsLayer::GetNative()
+    {
+        return _native.get();
+    }
+        
+    IPlacementManipulatorSettingsLayer::IPlacementManipulatorSettingsLayer()
+    {
+        _native.reset(new Internal::PlacementManipulatorContextAdapter(this));
+    }
+
+    IPlacementManipulatorSettingsLayer::~IPlacementManipulatorSettingsLayer()
+    {
+        _native.get();
+    }
+
+}
 

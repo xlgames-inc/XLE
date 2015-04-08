@@ -20,7 +20,8 @@ namespace XLELayer
     public interface class ITerrainControls
     {
     public:
-        property ActiveManipulatorContext^ ActiveContext { virtual void set(ActiveManipulatorContext^); }
+        property ActiveManipulatorContext^ ActiveContext 
+            { virtual void set(ActiveManipulatorContext^); }
     };
 
     [Export(LevelEditorCore::IManipulator::typeid)]
@@ -29,17 +30,10 @@ namespace XLELayer
     public ref class TerrainManipulator : public LevelEditorCore::IManipulator, public IInitializable
     {
     public:
-        virtual bool Pick(LevelEditorCore::ViewControl^ vc, Point scrPt)
-        {
-			return _nativeManip->MouseMove(vc, scrPt);
-        }
-
-        virtual void Render(LevelEditorCore::ViewControl^ vc) { _nativeManip->Render(vc); }
-        virtual void OnBeginDrag() { _nativeManip->OnBeginDrag(); }
-        virtual void OnDragging(LevelEditorCore::ViewControl^ vc, Point scrPt) 
-		{
-            _nativeManip->OnDragging(vc, scrPt);
-		}
+        virtual bool Pick(LevelEditorCore::ViewControl^ vc, Point scrPt)        { return _nativeManip->MouseMove(vc, scrPt); }
+        virtual void Render(LevelEditorCore::ViewControl^ vc)                   { _nativeManip->Render(vc); }
+        virtual void OnBeginDrag()                                              { _nativeManip->OnBeginDrag(); }
+        virtual void OnDragging(LevelEditorCore::ViewControl^ vc, Point scrPt)  { _nativeManip->OnDragging(vc, scrPt); }
 
         virtual void OnEndDrag(LevelEditorCore::ViewControl^ vc, Point scrPt) 
 		{

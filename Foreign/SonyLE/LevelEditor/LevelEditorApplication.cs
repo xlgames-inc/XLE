@@ -163,6 +163,7 @@ namespace LevelEditor
             // <<XLE
             TypeCatalog xleExtensionTypes = new TypeCatalog(
                 typeof(XLELayer.TerrainManipulator),
+                typeof(XLELayer.PlacementManipulator),
                 typeof(XLEControls.XLETerrainControls),
                 typeof(XLEControls.XLEPlacementControls)
                 );

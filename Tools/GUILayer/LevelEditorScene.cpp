@@ -5,30 +5,24 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "LevelEditorScene.h"
-#include "EditorDynamicInterface.h"
 #include "PlacementsGobInterface.h"
 #include "TerrainGobInterface.h"
-#include "CLIXAutoPtr.h"
 #include "MarshalString.h"
 #include "GUILayerUtil.h"
-#include "ManipulatorUtils.h"
+#include "IOverlaySystem.h"
+#include "UITypesBinding.h" // for VisCameraSettings
 #include "ExportedNativeTypes.h"
+#include "../ToolsRig/VisualisationUtils.h"     // for AsCameraDesc
+#include "../ToolsRig/PlacementsManipulators.h"     // just needed for destructors referenced in PlacementGobInterface.h
 #include "../../SceneEngine/PlacementsManager.h"
 #include "../../SceneEngine/Terrain.h"
 #include "../../SceneEngine/SceneParser.h"
 #include "../../SceneEngine/LightDesc.h"
-#include "../../SceneEngine/IntersectionTest.h"
-#include "../../SceneEngine/LightingParserContext.h"
-#include "../../RenderCore/Techniques/TechniqueUtils.h"
-#include "../../Core/Types.h"
-
-#include "IOverlaySystem.h"
-#include "UITypesBinding.h" // for VisCameraSettings
-#include "../ToolsRig/VisualisationUtils.h"
-#include "../ToolsRig/IManipulator.h"
 #include "../../SceneEngine/LightingParser.h"
+#include "../../SceneEngine/LightingParserContext.h"
+#include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/IThreadContext.h"
-
+#include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include <memory>
 
 namespace GUILayer
@@ -230,13 +224,22 @@ namespace GUILayer
         }
     }
 
+    IManipulatorSet^ EditorSceneManager::CreatePlacementManipulators(
+        IPlacementManipulatorSettingsLayer^ context)
+    {
+        if (_scene->_placementsEditor) {
+            return gcnew PlacementManipulators(context->GetNative(), _scene->_placementsEditor);
+        } else {
+            return nullptr;
+        }
+    }
+
 	IntersectionTestSceneWrapper^ EditorSceneManager::GetIntersectionScene()
 	{
-		auto native = std::make_shared<SceneEngine::IntersectionTestScene>(
+		return gcnew IntersectionTestSceneWrapper(
             (_scene->_terrainGob) ? _scene->_terrainGob->_terrainManager : nullptr,
             _scene->_placementsEditor);
-		return gcnew IntersectionTestSceneWrapper(native);
-	}
+    }
  
     EditorSceneManager::EditorSceneManager()
     {

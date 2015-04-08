@@ -51,12 +51,14 @@ namespace GUILayer
 
     ref class IOverlaySystem;
     ref class IManipulatorSet;
+    ref class IPlacementManipulatorSettingsLayer;
 
     public ref class EditorSceneManager
     {
     public:
             //// //// ////   U T I L S   //// //// ////
         IManipulatorSet^ CreateTerrainManipulators();
+        IManipulatorSet^ CreatePlacementManipulators(IPlacementManipulatorSettingsLayer^ context);
         IOverlaySystem^ CreateOverlaySystem(VisCameraSettings^ camera);
 		IntersectionTestSceneWrapper^ GetIntersectionScene();
 

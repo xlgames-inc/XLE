@@ -21,6 +21,7 @@ namespace SceneEngine
     class PlacementsManager;
     class IntersectionTestContext;
     class LightingParserContext;
+    class PlacementsEditor;
 }
 
 namespace ToolsRig
@@ -51,5 +52,24 @@ namespace ToolsRig
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
     };
+
+    class IManipulator;
+
+    class IPlacementManipulatorSettings
+    {
+    public:
+        virtual std::string GetSelectedModel() const = 0;
+        virtual void EnableSelectedModelDisplay(bool newState) = 0;
+        virtual void SelectModel(const char newModelName[]) = 0;
+
+        struct Mode { enum Enum { Select, PlaceSingle }; };
+        virtual void SwitchToMode(Mode::Enum newMode) = 0;
+
+        virtual ~IPlacementManipulatorSettings();
+    };
+
+    std::vector<std::unique_ptr<IManipulator>> CreatePlacementManipulators(
+        IPlacementManipulatorSettings* context,
+        std::shared_ptr<SceneEngine::PlacementsEditor> editor);
 }
 

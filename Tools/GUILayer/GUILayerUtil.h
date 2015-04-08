@@ -9,7 +9,13 @@
 #include "CLIXAutoPtr.h"
 
 namespace RenderCore { namespace Techniques { class TechniqueContext; } }
-namespace SceneEngine { class IntersectionTestContext; class IntersectionTestScene; }
+namespace SceneEngine 
+{
+    class IntersectionTestContext; 
+    class IntersectionTestScene; 
+    class TerrainManager;
+    class PlacementsEditor;
+}
 
 namespace GUILayer
 {
@@ -37,5 +43,8 @@ namespace GUILayer
 
 		SceneEngine::IntersectionTestScene& GetNative();
 		IntersectionTestSceneWrapper(std::shared_ptr<SceneEngine::IntersectionTestScene> scene);
+        IntersectionTestSceneWrapper(
+            std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
+            std::shared_ptr<SceneEngine::PlacementsEditor> placements);
 	};
 }

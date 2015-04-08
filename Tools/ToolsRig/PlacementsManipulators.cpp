@@ -34,31 +34,22 @@
 #include "../../Math/ProjectionMath.h"
 #include <iomanip>
 
-namespace Sample
-{
-    extern std::shared_ptr<SceneEngine::ITerrainFormat> MainTerrainFormat;
-    extern SceneEngine::TerrainCoordinateSystem MainTerrainCoords;
-    extern SceneEngine::TerrainConfig MainTerrainConfig;
-}
+// namespace Sample
+// {
+//     extern std::shared_ptr<SceneEngine::ITerrainFormat> MainTerrainFormat;
+//     extern SceneEngine::TerrainCoordinateSystem MainTerrainCoords;
+//     extern SceneEngine::TerrainConfig MainTerrainConfig;
+// }
 
 namespace ToolsRig
 {
     using namespace RenderOverlays::DebuggingDisplay;
 
+    IPlacementManipulatorSettings::~IPlacementManipulatorSettings() {}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class IPlacementManipManagerInterface
-    {
-    public:
-        virtual std::string GetSelectedModel() const = 0;
-        virtual void EnableSelectedModelDisplay(bool newState) = 0;
-        virtual void SelectModel(const char newModelName[]) = 0;
-
-        struct Mode { enum Enum { Select, PlaceSingle }; };
-        virtual void SwitchToMode(Mode::Enum newMode) = 0;
-    };
-
-    class PlacementsWidgets : public IWidget, public IPlacementManipManagerInterface
+    class PlacementsWidgets : public IWidget, public IPlacementManipulatorSettings
     {
     public:
         void    Render(         RenderOverlays::IOverlayContext* context, Layout& layout, 
@@ -86,7 +77,7 @@ namespace ToolsRig
         unsigned        _activeManipulatorIndex;
         bool            _drawSelectedModel;
 
-            // "IPlacementManipManagerInterface" interface
+            // "IPlacementManipulatorSettings" interface
         virtual std::string GetSelectedModel() const;
         virtual void EnableSelectedModelDisplay(bool newState);
         virtual void SelectModel(const char newModelName[]);
@@ -114,7 +105,7 @@ namespace ToolsRig
         void SetActivationState(bool);
 
         SelectAndEdit(
-            IPlacementManipManagerInterface* manInterface,
+            IPlacementManipulatorSettings* manInterface,
             std::shared_ptr<SceneEngine::PlacementsEditor> editor);
         ~SelectAndEdit();
 
@@ -139,7 +130,7 @@ namespace ToolsRig
         SubOperation _activeSubop;
 
         std::shared_ptr<SceneEngine::PlacementsEditor::ITransaction> _transaction;
-        IPlacementManipManagerInterface* _manInterface;
+        IPlacementManipulatorSettings* _manInterface;
         Float3 _anchorPoint;
 
         SceneEngine::PlacementsEditor::ObjTransDef TransformObject(
@@ -177,9 +168,10 @@ namespace ToolsRig
                 //  we have a 2d translation in XY. But then the Z values should be calculated
                 //  from the terrain height.
             Float2 finalXY = Truncate(ExtractTranslation(inputObj._localToWorld)) + Truncate(_activeSubop._parameter);
-            float terrainHeight = GetTerrainHeight(
-                *Sample::MainTerrainFormat.get(), Sample::MainTerrainConfig, Sample::MainTerrainCoords, 
-                finalXY);
+            // float terrainHeight = GetTerrainHeight(
+            //     *Sample::MainTerrainFormat.get(), Sample::MainTerrainConfig, Sample::MainTerrainCoords, 
+            //     finalXY);
+            float terrainHeight = 0.f;
             transform = AsFloat4x4(Float3(-ExtractTranslation(inputObj._localToWorld) + Expand(finalXY, terrainHeight)));
         } else {
             return inputObj;
@@ -469,7 +461,7 @@ namespace ToolsRig
                     auto tempTrans = _editor->Transaction_Begin(&hitTestResult._objectGuid, &hitTestResult._objectGuid + 1);
                     if (tempTrans->GetObjectCount() == 1) {
                         _manInterface->SelectModel(tempTrans->GetObject(0)._model.c_str());
-                        _manInterface->SwitchToMode(IPlacementManipManagerInterface::Mode::PlaceSingle);
+                        _manInterface->SwitchToMode(IPlacementManipulatorSettings::Mode::PlaceSingle);
                     }
                 }
             }
@@ -693,7 +685,7 @@ namespace ToolsRig
     }
 
     SelectAndEdit::SelectAndEdit(
-        IPlacementManipManagerInterface* manInterface,
+        IPlacementManipulatorSettings* manInterface,
         std::shared_ptr<SceneEngine::PlacementsEditor> editor)
     {
         _manInterface = manInterface;
@@ -724,13 +716,13 @@ namespace ToolsRig
         std::string GetStatusText() const { return std::string(); }
 
         PlaceSingle(
-            IPlacementManipManagerInterface* manInterface,
+            IPlacementManipulatorSettings* manInterface,
             std::shared_ptr<SceneEngine::PlacementsEditor> editor);
         ~PlaceSingle();
 
     protected:
         Millisecond                     _placeTimeout;
-        IPlacementManipManagerInterface* _manInterface;
+        IPlacementManipulatorSettings* _manInterface;
         std::shared_ptr<SceneEngine::PlacementsEditor> _editor;
         unsigned                        _rendersSinceHitTest;
 
@@ -821,7 +813,7 @@ namespace ToolsRig
         if (evnt.IsRelease_RButton() || evnt.IsPress(KeyId_Make("escape"))) {
             // cancel... tell the manager to change model
             if (_manInterface) {
-                _manInterface->SwitchToMode(IPlacementManipManagerInterface::Mode::Select);
+                _manInterface->SwitchToMode(IPlacementManipulatorSettings::Mode::Select);
             }
         }
 
@@ -870,7 +862,7 @@ namespace ToolsRig
     }
 
     PlaceSingle::PlaceSingle(
-        IPlacementManipManagerInterface* manInterface,
+        IPlacementManipulatorSettings* manInterface,
         std::shared_ptr<SceneEngine::PlacementsEditor> editor)
     {
         _placeTimeout = 0;
@@ -903,13 +895,13 @@ namespace ToolsRig
         std::string GetStatusText() const { return std::string(); }
 
         ScatterPlacements(
-            IPlacementManipManagerInterface* manInterface,
+            IPlacementManipulatorSettings* manInterface,
             std::shared_ptr<SceneEngine::PlacementsEditor> editor);
         ~ScatterPlacements();
 
     protected:
         Millisecond                         _spawnTimer;
-        IPlacementManipManagerInterface*    _manInterface;
+        IPlacementManipulatorSettings*    _manInterface;
         std::shared_ptr<SceneEngine::PlacementsEditor> _editor;
 
         float _radius;
@@ -942,7 +934,7 @@ namespace ToolsRig
             if (test._type == SceneEngine::IntersectionTestScene::Type::Terrain) {
                 auto selectedModel = _manInterface->GetSelectedModel();
                 if (now >= (_spawnTimer + spawnTimeOut) && !selectedModel.empty()) {
-                    PerformScatter(test._worldSpaceCollision, selectedModel.c_str(), "");
+                    PerformScatter(test._worldSpaceCollision, selectedModel.c_str(), selectedModel.c_str());
                     _spawnTimer = now;
                 }
                 return true;
@@ -956,7 +948,7 @@ namespace ToolsRig
         if (evnt.IsRelease_RButton() || evnt.IsPress(KeyId_Make("escape"))) {
             // cancel... tell the manager to change model
             if (_manInterface) {
-                _manInterface->SwitchToMode(IPlacementManipManagerInterface::Mode::Select);
+                _manInterface->SwitchToMode(IPlacementManipulatorSettings::Mode::Select);
             }
         }
 
@@ -1224,9 +1216,10 @@ namespace ToolsRig
 
         for (auto p=noisyPts.begin(); p!=noisyPts.end(); ++p) {
             Float2 pt = *p + Truncate(centre);
-            float height = SceneEngine::GetTerrainHeight(
-                *Sample::MainTerrainFormat.get(), Sample::MainTerrainConfig, Sample::MainTerrainCoords, 
-                pt);
+            // float height = SceneEngine::GetTerrainHeight(
+            //     *Sample::MainTerrainFormat.get(), Sample::MainTerrainConfig, Sample::MainTerrainCoords, 
+            //     pt);
+            float height = 0.f;
 
             auto objectToWorld = AsFloat4x4(Expand(pt, height));
             Combine_InPlace(RotationZ(rand() * 2.f * gPI / float(RAND_MAX)), objectToWorld);
@@ -1270,7 +1263,7 @@ namespace ToolsRig
     }
 
     ScatterPlacements::ScatterPlacements(
-        IPlacementManipManagerInterface* manInterface,
+        IPlacementManipulatorSettings* manInterface,
         std::shared_ptr<SceneEngine::PlacementsEditor> editor)
     {
         _spawnTimer = 0;
@@ -1283,6 +1276,19 @@ namespace ToolsRig
     }
     
     ScatterPlacements::~ScatterPlacements() {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    std::vector<std::unique_ptr<IManipulator>> CreatePlacementManipulators(
+        IPlacementManipulatorSettings* context,
+        std::shared_ptr<SceneEngine::PlacementsEditor> editor)
+    {
+        std::vector<std::unique_ptr<IManipulator>> result;
+        result.push_back(std::make_unique<SelectAndEdit>(context, editor));
+        result.push_back(std::make_unique<PlaceSingle>(context, editor));
+        result.push_back(std::make_unique<ScatterPlacements>(context, editor));
+        return result;
+    }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1581,11 +1587,7 @@ namespace ToolsRig
 
         std::string selectedModel = "game\\model\\nature\\lupinus\\lupinusb.DAE";
 
-        std::vector<std::unique_ptr<IManipulator>> manipulators;
-        manipulators.push_back(std::make_unique<SelectAndEdit>(this, editor));
-        manipulators.push_back(std::make_unique<PlaceSingle>(this, editor));
-        manipulators.push_back(std::make_unique<ScatterPlacements>(this, editor));
-
+        auto manipulators = CreatePlacementManipulators(this, editor);
         manipulators[0]->SetActivationState(true);
 
         _editor = std::move(editor);
@@ -1609,12 +1611,12 @@ namespace ToolsRig
     class PlacementsManipulatorsManager::Pimpl
     {
     public:
-        std::shared_ptr<SceneEngine::PlacementsManager>     _placementsManager;
-        std::shared_ptr<SceneEngine::PlacementsEditor>      _editor;
-        std::shared_ptr<DebugScreensSystem>     _screens;
-        std::shared_ptr<PlacementsWidgets>      _placementsDispl;
-        std::shared_ptr<SceneEngine::IntersectionTestContext> _intersectionTestContext;
-        std::shared_ptr<SceneEngine::IntersectionTestScene> _intersectionTestScene;
+        std::shared_ptr<SceneEngine::PlacementsManager> _placementsManager;
+        std::shared_ptr<SceneEngine::PlacementsEditor>  _editor;
+        std::shared_ptr<DebugScreensSystem>             _screens;
+        std::shared_ptr<PlacementsWidgets>              _placementsDispl;
+        std::shared_ptr<SceneEngine::IntersectionTestContext>   _intersectionTestContext;
+        std::shared_ptr<SceneEngine::IntersectionTestScene>     _intersectionTestScene;
     };
 
     void PlacementsManipulatorsManager::RenderWidgets(
