@@ -13,17 +13,17 @@ using LevelEditorCore;
 
 namespace LevelEditor.DomNodeAdapters
 {
-    class XLEPlacementObject : GenericTransformableObject, IGameObject
+    class XLEPlacementObject : GenericTransformableObject, IGameObject //, IReference<IResource>
     {
         #region IListable Members
         public void GetInfo(ItemInfo info)
         {
             info.ImageIndex = Util.GetTypeImageIndex(DomNode.Type, info.GetImageList());
-            info.Label = "Placement";
+            info.Label = "<" + Path.GetFileNameWithoutExtension(Model) + ">";
         }
         #endregion
 
-        public XLEPlacementObject() : base(Schema.placementObjectType.transform) {}
+        public XLEPlacementObject() : base(Schema.abstractPlacementObjectType.transform) {}
 
         #region INameable Members
         public string Name
@@ -49,20 +49,40 @@ namespace LevelEditor.DomNodeAdapters
         }
         #endregion
 
-        // public string Model
-        // {
-        //     get 
-        //     {
-        //         return GetAttribute<string>(Schema.placementObjectType.modelChild);
-        //     }
-        // }
-        // 
-        // public string Material
-        // {
-        //     get
-        //     {
-        //         return GetAttribute<string>(Schema.placementObjectType.materialChild);
-        //     }
-        // }
+        public string Model
+        {
+            get 
+            {
+                return GetAttribute<string>(Schema.placementObjectType.modelChild);
+            }
+        }
+        public string Material
+        {
+            get
+            {
+                return GetAttribute<string>(Schema.placementObjectType.materialChild);
+            }
+        }
+
+        public bool CanReference(IResource item)
+        {
+            if (item == null) return false;
+            if (DomNode == null || DomNode.Type == null) return false;
+
+            return CanReference(DomNode.Type, item);
+        }
+        public IResource Target
+        {
+            get { return null; }
+            set { SetAttribute(Schema.placementObjectType.modelChild, value.Uri.ToString()); }
+        }
+        private static bool CanReference(DomNodeType domtype, IResource resource)
+        {
+            var type = domtype.GetTag(Annotations.ReferenceConstraint.ResourceType) as string;
+            if (type != null) {
+                return type == resource.Type;
+            }
+            return false;
+        }
     }
 }

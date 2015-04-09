@@ -120,11 +120,10 @@ namespace RenderingInterop
             TransactionContextList.Clear();
             if (nodes == null) return;
 
-            var result = new List<ITransactionContext>();
             foreach (var n in nodes)
             {
                 var context = n.GetRoot().As<ITransactionContext>();
-                if (context != null && !result.Contains(context))
+                if (context != null && !TransactionContextList.Contains(context))
                 {
                     TransactionContextList.Add(context);
                 }

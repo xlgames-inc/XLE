@@ -69,13 +69,17 @@ namespace RenderingInterop
             if(multiSelect)
             {// frustum pick                
                 RectangleF rect = MakeRect(FirstMousePoint, CurrentMousePoint);
-                hits = GameEngine.FrustumPick(SurfaceId, Camera.ViewMatrix, Camera.ProjectionMatrix, rect);
+                var frustum = XLELayer.XLELayerUtils.MakeFrustumMatrix(Camera, rect, ClientSize);
+                hits = NativeInterop.Picking.FrustumPick(
+                    SceneManager, TechniqueContext, frustum,
+                    Camera, ClientSize.Width, ClientSize.Height, false);
             }
             else
             {// ray pick
                 Ray3F rayW = GetWorldRay(CurrentMousePoint);
                 hits = NativeInterop.Picking.RayPick(
-                    SceneManager, TechniqueContext, rayW, Camera, ClientSize.Width, ClientSize.Height, false);
+                    SceneManager, TechniqueContext, rayW, 
+                    Camera, ClientSize.Width, ClientSize.Height, false);
             }
 
             if (hits==null) return new List<object>();

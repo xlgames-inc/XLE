@@ -140,6 +140,10 @@ namespace SceneEngine
             const Float3& rayStart, const Float3& rayEnd,
             const std::function<bool(const ObjIntersectionDef&)>& predicate);
 
+        std::vector<PlacementGUID> Find_FrustumIntersection(
+            const Float4x4& worldToProjection,
+            const std::function<bool(const ObjIntersectionDef&)>& predicate);
+
         void RenderFiltered(
             RenderCore::Metal::DeviceContext* context,
             LightingParserContext& parserContext,

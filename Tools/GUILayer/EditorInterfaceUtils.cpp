@@ -97,6 +97,56 @@ namespace GUILayer
 
 			return nullptr;
 		}
+
+        static System::Collections::Generic::ICollection<HitRecord^>^
+			FrustumIntersection(
+				IntersectionTestSceneWrapper^ testScene,
+				IntersectionTestContextWrapper^ testContext,
+				const float matrix[],
+				unsigned filter)
+		{
+			TRY
+			{
+                Float4x4 worldToProjection = Transpose(AsFloat4x4(matrix));
+
+				auto nativeResults = testScene->_scene->FrustumIntersection(
+					*testContext->_context.get(),
+					worldToProjection, filter);
+
+				if (!nativeResults.empty()) {
+
+                    auto result = gcnew System::Collections::Generic::List<HitRecord^>();
+                    for (auto i: nativeResults) {
+					    auto record = gcnew HitRecord;
+					    record->_document = i._objectGuid.first;
+					    record->_object = i._objectGuid.second;
+					    record->_distance = i._distance;
+					    record->_worldSpaceCollisionX = i._worldSpaceCollision[0];
+					    record->_worldSpaceCollisionY = i._worldSpaceCollision[1];
+					    record->_worldSpaceCollisionZ = i._worldSpaceCollision[2];
+
+					        // hack -- for placement objects, we must strip off the top 32 bits
+					        //          from the object id.
+					    if (i._type == SceneEngine::IntersectionTestScene::Type::Placement) {
+						    record->_object &= 0x00000000ffffffffull;
+					    }
+					
+					    result->Add(record);
+                    }
+
+					return result;
+				}
+			}
+			CATCH(const ::Assets::Exceptions::InvalidResource& e)
+			{
+                (void)e;
+			    // LogWarning << "Invalid resource while performing ray intersection test: {" << e.what() << "}";
+			}
+			CATCH(const ::Assets::Exceptions::PendingResource&) {}
+			CATCH_END
+
+			return nullptr;
+		}
     };
 }
 

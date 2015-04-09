@@ -35,8 +35,10 @@ namespace GUILayer { namespace EditorDynamicInterface
         static const ObjectTypeId ObjectType_Placement = 1; // (ObjectTypeId)ConstHash64<'plac', 'emen', 't'>::Value;
         static const PropertyId Property_Transform = 100;
         static const PropertyId Property_Visible = 101;
-        static const PropertyId Property_Bounds = 102;
-        static const PropertyId Property_LocalBounds = 103;
+        static const PropertyId Property_Model = 102;
+        static const PropertyId Property_Material = 103;
+        static const PropertyId Property_Bounds = 104;
+        static const PropertyId Property_LocalBounds = 105;
     };
 }}
 

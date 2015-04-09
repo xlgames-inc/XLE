@@ -92,7 +92,7 @@ namespace GUILayer { namespace EditorDynamicInterface
             //  We need to create a transaction, make the change and then commit it back.
             //  If the transaction returns no results, then we must have got a bad object or document id.
         if (type != ObjectType_Placement) { assert(0); return false; }
-        if (prop != Property_Transform && prop != Property_Visible) { assert(0); return false; }
+        if (prop != Property_Transform && prop != Property_Visible  && prop != Property_Model && prop != Property_Material) { assert(0); return false; }
 
             // note --  This object search is quite slow! We might need a better way to
             //          record a handle to the object. Perhaps the "ObjectId" should not
@@ -114,6 +114,21 @@ namespace GUILayer { namespace EditorDynamicInterface
                     transaction->Commit();
                     return true;
                 }
+            } else if (prop == Property_Model || prop == Property_Material) {
+                Assets::ResChar buffer[MaxPath];
+                ucs2_2_utf8(
+                    (const ucs2*)src, XlStringLen((const ucs2*)src),
+                    (utf8*)buffer, dimof(buffer));
+
+                auto originalObject = transaction->GetObject(0);
+                if (prop == Property_Model) {
+                    originalObject._model = buffer;
+                } else {
+                    originalObject._material = buffer;
+                }
+                transaction->SetObject(0, originalObject);
+                transaction->Commit();
+                return true;
             }
         }
 
@@ -178,10 +193,12 @@ namespace GUILayer { namespace EditorDynamicInterface
 
     PropertyId PlacementObjectType::GetPropertyId(ObjectTypeId type, const char name[]) const
     {
-        if (!XlCompareString(name, "transform")) return Property_Transform;
-        if (!XlCompareString(name, "visible")) return Property_Visible;
-        if (!XlCompareString(name, "Bounds")) return Property_Bounds;
-        if (!XlCompareString(name, "LocalBounds")) return Property_LocalBounds;
+        if (!XlCompareString(name, "transform"))    return Property_Transform;
+        if (!XlCompareString(name, "visible"))      return Property_Visible;
+        if (!XlCompareString(name, "model"))        return Property_Model;
+        if (!XlCompareString(name, "material"))     return Property_Material;
+        if (!XlCompareString(name, "Bounds"))       return Property_Bounds;
+        if (!XlCompareString(name, "LocalBounds"))  return Property_LocalBounds;
         return 0;
     }
 

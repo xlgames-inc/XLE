@@ -112,6 +112,11 @@ namespace SceneEngine
             std::pair<Float3, Float3> worldSpaceRay,
             Type::BitField filter = ~Type::BitField(0)) const;
 
+        std::vector<Result> FrustumIntersection(
+            const IntersectionTestContext& context,
+            const Float4x4& worldToProjection,
+            Type::BitField filter = ~Type::BitField(0)) const;
+
         Result UnderCursor(
             const IntersectionTestContext& context,
             Int2 cursorPosition,

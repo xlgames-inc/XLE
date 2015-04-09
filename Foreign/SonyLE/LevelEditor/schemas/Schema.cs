@@ -445,12 +445,12 @@ namespace LevelEditor
             placementsDocumentType.nameAttribute = placementsDocumentType.Type.GetAttributeInfo("name");
             placementsDocumentType.placementsChild = placementsDocumentType.Type.GetChildInfo("placement");
 
-            abstractPlacementObjectType.Type = getNodeType("gap", "abstractPlacementObjectType"); 
+            abstractPlacementObjectType.Type = getNodeType("gap", "abstractPlacementObjectType");
+            abstractPlacementObjectType.transform = new transformAttributes(abstractPlacementObjectType.Type);
             
             placementObjectType.Type = getNodeType("gap", "placementObjectType");
-            placementObjectType.transform = new transformAttributes(placementObjectType.Type);
-            placementObjectType.modelChild = placementObjectType.Type.GetChildInfo("model");
-            placementObjectType.materialChild = placementObjectType.Type.GetChildInfo("material");
+            placementObjectType.modelChild = placementObjectType.Type.GetAttributeInfo("model");
+            placementObjectType.materialChild = placementObjectType.Type.GetAttributeInfo("material");
 
             terrainType.Type = getNodeType("gap", "terrainType");
 
@@ -1055,14 +1055,14 @@ namespace LevelEditor
         public static class abstractPlacementObjectType
         {
             public static DomNodeType Type;
+            public static transformAttributes transform;
         }
         
         public static class placementObjectType
         {
             public static DomNodeType Type;
-            public static transformAttributes transform;
-            public static ChildInfo modelChild;
-            public static ChildInfo materialChild;
+            public static AttributeInfo modelChild;
+            public static AttributeInfo materialChild;
         }
 
         public static class terrainType

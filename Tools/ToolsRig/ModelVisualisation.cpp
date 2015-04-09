@@ -518,9 +518,11 @@ namespace ToolsRig
             auto worldSpaceRay = IntersectionTestContext::CalculateWorldSpaceRay(
                 cam, evnt._mousePosition, PlatformRig::InputTranslator::s_hackWindowSize);
             
-            std::vector<RayVsModelStateContext::ResultEntry> results;
+            std::vector<ModelIntersectionStateContext::ResultEntry> results;
             TRY {
-                RayVsModelStateContext stateContext(_threadContext, *_techniqueContext, &cam);
+                ModelIntersectionStateContext stateContext(
+                ModelIntersectionStateContext::RayTest,
+                    _threadContext, *_techniqueContext, &cam);
                 LightingParserContext parserContext(*_techniqueContext);
                 stateContext.SetRay(worldSpaceRay);
                 model._sharedStateSet->CaptureState(metalContext.get());
@@ -537,7 +539,7 @@ namespace ToolsRig
 
             if (!results.empty()) {
                     // find the closest intersection, and let's get so information from that...
-                std::sort(results.begin(), results.end(), RayVsModelStateContext::ResultEntry::CompareDepth);
+                std::sort(results.begin(), results.end(), ModelIntersectionStateContext::ResultEntry::CompareDepth);
 
                 _mouseOver->_intersectionPt = 
                     worldSpaceRay.first + results[0]._intersectionDepth * Normalize(worldSpaceRay.second - worldSpaceRay.first);

@@ -956,8 +956,7 @@ namespace ToolsRig
         return false;
     }
 
-    static float TriangleSignedArea(
-        const Float2& pt1, const Float2& pt2, const Float2& pt3)
+    static float TriangleSignedArea(const Float2& pt1, const Float2& pt2, const Float2& pt3)
     {
         // reference:
         //  http://mathworld.wolfram.com/TriangleArea.html

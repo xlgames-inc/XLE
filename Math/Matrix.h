@@ -64,6 +64,7 @@ namespace XLEMath
 
     inline const float* AsFloatArray(const Float4x4& m)    { return &m(0,0); }
     inline float* AsFloatArray(Float4x4& m)                { return &m(0,0); }
+    Float4x4 AsFloat4x4(const float a[]);
 
     Float4x4 MakeFloat4x4(
         float m00, float m01, float m02, float m03,

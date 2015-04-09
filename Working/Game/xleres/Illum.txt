@@ -85,6 +85,8 @@ RayTest
             OUTPUT_WORLD_POSITION 1
         Material
             MAT_ALPHA_TEST
+        Runtime
+            INTERSECTION_TEST
     VertexShader
         game/xleres/forward/illum.vsh:main
     GeometryShader

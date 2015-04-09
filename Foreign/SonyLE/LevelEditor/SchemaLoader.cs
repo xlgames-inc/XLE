@@ -284,6 +284,10 @@ namespace LevelEditor
 
                     if(extSet != null)
                         nodeType.SetTag(Annotations.ReferenceConstraint.ValidResourceFileExts, extSet);
+
+                    nodeType.SetTag(
+                        Annotations.ReferenceConstraint.ResourceType,
+                        FindAttribute(rfNode, Annotations.ReferenceConstraint.ResourceType));
                 }
                              
                 // todo use schema annotation to mark  Palette types.                    

@@ -74,8 +74,8 @@ namespace SceneEngine
         return FindTerrainIntersection(devContext, parserContext, terrainManager, worldSpaceRay);
     }
 
-    static std::pair<unsigned, float> RayVsPlacements(
-        RenderCore::Metal::DeviceContext& metalContext, RayVsModelStateContext& stateContext,
+    static std::vector<ModelIntersectionStateContext::ResultEntry> PlacementsIntersection(
+        RenderCore::Metal::DeviceContext& metalContext, ModelIntersectionStateContext& stateContext,
         SceneEngine::PlacementsEditor& placementsEditor, SceneEngine::PlacementGUID object)
     {
             // Using the GPU, look for intersections between the ray
@@ -88,7 +88,6 @@ namespace SceneEngine
             //
             // This will require more complex threading support in the future!
         assert(metalContext.GetUnderlying()->GetType() == D3D11_DEVICE_CONTEXT_IMMEDIATE);
-        auto fnResult = std::make_pair(0, FLT_MAX);
 
             //  We need to invoke the render for the given object
             //  now. Afterwards we can query the buffers for the result
@@ -96,16 +95,7 @@ namespace SceneEngine
         placementsEditor.RenderFiltered(
             &metalContext, stateContext.GetParserContext(), techniqueIndex,
             &object, &object+1);
-
-        auto results = stateContext.GetResults();
-        fnResult.first = unsigned(results.size());
-        for (auto i=results.cbegin(); i!=results.cend(); ++i) {
-            if (i->_intersectionDepth < fnResult.second) {
-                fnResult.second = i->_intersectionDepth;
-            }
-        }
-
-        return fnResult;
+        return stateContext.GetResults();
     }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -150,7 +140,9 @@ namespace SceneEngine
                 float rayLength = Magnitude(worldSpaceRay.second - worldSpaceRay.first);
 
                 auto cam = context.GetCameraDesc();
-                RayVsModelStateContext stateContext(context.GetThreadContext(), context.GetTechniqueContext(), &cam);
+                ModelIntersectionStateContext stateContext(
+                    ModelIntersectionStateContext::RayTest,
+                    context.GetThreadContext(), context.GetTechniqueContext(), &cam);
                 stateContext.SetRay(worldSpaceRay);
 
                 // note --  we could do this all in a single render call, except that there
@@ -159,14 +151,23 @@ namespace SceneEngine
                 auto count = trans->GetObjectCount();
                 for (unsigned c=0; c<count; ++c) {
                     auto guid = trans->GetGuid(c);
-                    auto r = RayVsPlacements(*metalContext.get(), stateContext, *_placements, guid);
+                    auto results = PlacementsIntersection(*metalContext.get(), stateContext, *_placements, guid);
 
-                    if (r.first && r.second < result._distance) {
+                    bool gotGoodResult = false;
+                    float intersectionDistance = FLT_MAX;
+                    for (auto i=results.cbegin(); i!=results.cend(); ++i) {
+                        if (i->_intersectionDepth < intersectionDistance) {
+                            intersectionDistance = i->_intersectionDepth;
+                            gotGoodResult = true;
+                        }
+                    }
+
+                    if (gotGoodResult && intersectionDistance < result._distance) {
                         result = Result();
                         result._type = Type::Placement;
                         result._worldSpaceCollision = 
-                            LinearInterpolate(worldSpaceRay.first, worldSpaceRay.second, r.second / rayLength);
-                        result._distance = r.second;
+                            LinearInterpolate(worldSpaceRay.first, worldSpaceRay.second, intersectionDistance / rayLength);
+                        result._distance = intersectionDistance;
                         result._objectGuid = guid;
                     }
                 }
@@ -174,6 +175,62 @@ namespace SceneEngine
             } CATCH_END
 
             trans->Cancel();
+        }
+
+        return result;
+    }
+
+    auto IntersectionTestScene::FrustumIntersection(
+        const IntersectionTestContext& context,
+        const Float4x4& worldToProjection,
+        Type::BitField filter) const -> std::vector<Result>
+    {
+        std::vector<Result> result;
+
+        auto metalContext = RenderCore::Metal::DeviceContext::Get(*context.GetThreadContext());
+
+        if ((filter & Type::Placement) && _placements) {
+            auto roughIntersection = 
+                _placements->Find_FrustumIntersection(worldToProjection, nullptr);
+
+                // we can improve the intersection by doing ray-vs-triangle tests
+                // on the roughIntersection geometry
+
+            if (!roughIntersection.empty()) {
+                    //  we need to create a temporary transaction to get
+                    //  at the information for these objects.
+                auto trans = _placements->Transaction_Begin(
+                    AsPointer(roughIntersection.cbegin()), AsPointer(roughIntersection.cend()));
+
+                TRY
+                {
+                    auto cam = context.GetCameraDesc();
+                    ModelIntersectionStateContext stateContext(
+                        ModelIntersectionStateContext::FrustumTest,
+                        context.GetThreadContext(), context.GetTechniqueContext(), &cam);
+                    stateContext.SetFrustum(worldToProjection);
+
+                    // note --  we could do this all in a single render call, except that there
+                    //          is no way to associate a low level intersection result with a specific
+                    //          draw call.
+                    auto count = trans->GetObjectCount();
+                    for (unsigned c=0; c<count; ++c) {
+                        auto guid = trans->GetGuid(c);
+                        auto results = PlacementsIntersection(*metalContext.get(), stateContext, *_placements, guid);
+                        if (!results.empty()) {
+                            Result r;
+                            r._type = Type::Placement;
+                            r._worldSpaceCollision = Float3(0.f, 0.f, 0.f);
+                            r._distance = 0.f;
+                            r._objectGuid = guid;
+                            result.push_back(r);
+                        }
+                    }
+                } CATCH(...) {
+                } CATCH_END
+
+                trans->Cancel();
+            }
         }
 
         return result;

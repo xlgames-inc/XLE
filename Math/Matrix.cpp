@@ -59,6 +59,15 @@ namespace XLEMath
         return result;
     }
 
+    Float4x4 AsFloat4x4(const float a[])
+    {
+        return Float4x4(
+            a[ 0], a[ 1], a[ 2], a[ 3],
+            a[ 4], a[ 5], a[ 6], a[ 7],
+            a[ 8], a[ 9], a[10], a[11],
+            a[12], a[13], a[14], a[15]);
+    }
+
     #if MATHLIBRARY_ACTIVE == MATHLIBRARY_CML
         static Float3x4 MakeIdentity3x4() { Float3x4 temp; temp.identity(); return temp; }
         template<> const Float3x4& Identity<Float3x4>()

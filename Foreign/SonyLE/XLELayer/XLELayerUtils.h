@@ -9,6 +9,7 @@
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../Tools/ToolsRig/VisualisationUtils.h"
 #include "../../Math/Vector.h"
+#include "../../Math/Transformations.h"
 
 using namespace System;
 using namespace Sce::Atf;
@@ -42,6 +43,45 @@ namespace XLELayer
             return GUILayer::EditorInterfaceUtils::CreateIntersectionTestContext(
                 engineDevice, techniqueContext, 
                 AsCameraDesc(camera), viewportWidth, viewportHeight);
+        }
+
+        static Sce::Atf::VectorMath::Matrix4F^ MakeFrustumMatrix(
+            Sce::Atf::Rendering::Camera^ camera,
+            System::Drawing::RectangleF rectangle,
+            System::Drawing::Size viewportSize)
+        {
+                //  Given a camera and rectangle, calculate a
+                //  frustum matrix that will represents that area.
+            auto camDesc = AsCameraDesc(camera);
+            auto proj = RenderCore::Techniques::PerspectiveProjection(
+                camDesc, viewportSize.Width / float(viewportSize.Height));
+            auto worldToProj = Combine(
+                InvertOrthonormalTransform(camDesc._cameraToWorld), proj);
+
+            System::Drawing::RectangleF fRect(
+                rectangle.Left / float(viewportSize.Width), rectangle.Top / float(viewportSize.Height),
+                rectangle.Width / float(viewportSize.Width), rectangle.Height / float(viewportSize.Height));
+
+                // skew XY in the projection matrix to suit the rectangle
+            float sx = 1.f / (fRect.Width);
+            float sy = 1.f / (fRect.Height);
+            float tx = -(2.f * .5f * (fRect.Left + fRect.Right) - 1.f) * sx;
+            float ty = -(-2.f * .5f * (fRect.Top + fRect.Bottom) + 1.f) * sy;
+
+            Float4x4 rectangleAdj = MakeFloat4x4(
+                 sx, 0.f, 0.f,  tx,
+                0.f,  sy, 0.f,  ty,
+                0.f, 0.f, 1.f, 0.f,
+                0.f, 0.f, 0.f, 1.f);
+
+            worldToProj = Combine(worldToProj, rectangleAdj);
+
+                // note -- forcing a transpose here!
+            return gcnew Sce::Atf::VectorMath::Matrix4F(
+                worldToProj(0,0), worldToProj(1,0), worldToProj(2,0), worldToProj(3,0),
+                worldToProj(0,1), worldToProj(1,1), worldToProj(2,1), worldToProj(3,1),
+                worldToProj(0,2), worldToProj(1,2), worldToProj(2,2), worldToProj(3,2),
+                worldToProj(0,3), worldToProj(1,3), worldToProj(2,3), worldToProj(3,3));
         }
     };
 

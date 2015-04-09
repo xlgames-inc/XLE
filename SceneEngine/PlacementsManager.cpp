@@ -1150,6 +1150,63 @@ namespace SceneEngine
         return std::move(result);
     }
 
+    std::vector<PlacementGUID> PlacementsEditor::Find_FrustumIntersection(
+        const Float4x4& worldToProjection,
+        const std::function<bool(const ObjIntersectionDef&)>& predicate)
+    {
+        std::vector<PlacementGUID> result;
+        const float placementAssumedMaxRadius = 100.f;
+        for (auto i=_pimpl->_cells.cbegin(); i!=_pimpl->_cells.cend(); ++i) {
+            Float3 cellMin = i->_aabbMin - Float3(placementAssumedMaxRadius, placementAssumedMaxRadius, placementAssumedMaxRadius);
+            Float3 cellMax = i->_aabbMax + Float3(placementAssumedMaxRadius, placementAssumedMaxRadius, placementAssumedMaxRadius);
+            if (CullAABB(worldToProjection, cellMin, cellMax)) {
+                continue;
+            }
+
+            auto cellToProjection = Combine(i->_cellToWorld, worldToProjection);
+
+            TRY {
+                auto& p = _pimpl->_renderer->GetCachedPlacements(i->_filenameHash, i->_filename);
+                for (unsigned c=0; c<p.GetObjectReferenceCount(); ++c) {
+                    auto& obj = p.GetObjectReferences()[c];
+                        //  We're only doing a very rough world space bounding box vs ray test here...
+                        //  Ideally, we should follow up with a more accurate test using the object loca
+                        //  space bounding box
+                    if (CullAABB(cellToProjection, obj._cellSpaceBoundary.first, obj._cellSpaceBoundary.second)) {
+                        continue;
+                    }
+
+                    auto& model = _pimpl->_renderer->GetCachedModel(
+                        (const char*)PtrAdd(p.GetFilenamesBuffer(), obj._modelFilenameOffset + sizeof(uint64)));
+                    const auto& localBoundingBox = model.GetStaticBoundingBox();
+                    if (CullAABB(Combine(AsFloat4x4(obj._localToCell), cellToProjection), localBoundingBox.first, localBoundingBox.second)) {
+                        continue;
+                    }
+
+                    if (predicate) {
+                        ObjIntersectionDef def;
+                        def._localToWorld = Combine(obj._localToCell, i->_cellToWorld);
+
+                            // note -- we have access to the cell space bounding box. But the local
+                            //          space box would be better.
+                        def._localSpaceBoundingBox = localBoundingBox;
+                        def._model = *(uint64*)PtrAdd(p.GetFilenamesBuffer(), obj._modelFilenameOffset);
+                        def._material = *(uint64*)PtrAdd(p.GetFilenamesBuffer(), obj._materialFilenameOffset);
+
+                            // allow the predicate to exclude this item
+                        if (!predicate(def)) { continue; }
+                    }
+
+                    result.push_back(std::make_pair(i->_filenameHash, obj._guid));
+                }
+
+            } CATCH (...) {
+            } CATCH_END
+        }
+
+        return std::move(result);
+    }
+
     std::vector<PlacementGUID> PlacementsEditor::Find_BoxIntersection(
         const Float3& worldSpaceMins, const Float3& worldSpaceMaxs,
         const std::function<bool(const ObjIntersectionDef&)>& predicate)
@@ -1532,10 +1589,11 @@ namespace SceneEngine
         auto newIdTopPart = ObjectIdTopPart(newState._model, materialFilename);
         bool objectIdChanged = newIdTopPart != (guid.second & 0xffffffff00000000ull);
         if (objectIdChanged) {
+            auto id32 = uint32(guid.second);
             for (;;) {
-                auto id32 = BuildGuid32();
                 guid.second = newIdTopPart | uint64(id32);
                 if (!dynPlacements.HasObject(guid.second)) { break; }
+                id32 = BuildGuid32();
             }
 
                 // destroy & re-create

@@ -387,35 +387,22 @@
   
     <!-- the following are concrete types... They can be moved into another schema file -->
 
-  <xs:complexType name="placementModelRef">
-    <xs:complexContent>
-      <xs:extension base="resourceReferenceType">
-        <xs:attribute name="uri" type="xs:anyURI"/>
-      </xs:extension>
-    </xs:complexContent>
-  </xs:complexType>
-
-  <xs:complexType name="placementMaterialRef">
-    <xs:complexContent>
-      <xs:extension base="resourceReferenceType">
-        <xs:attribute name="uri" type="xs:anyURI"/>
-      </xs:extension>
-    </xs:complexContent>
-  </xs:complexType>
-
   <xs:complexType name="placementObjectType">
     <xs:annotation>
       <xs:appinfo>
+        <sce.atf.referenceConstraint resourceType ="Model"/>
+        <LeGe.NativeProperty name="model" nativeName="model" nativeType="whcar_t*" access="set"/>
+        <LeGe.NativeProperty name="material" nativeName="material" nativeType="whcar_t*" access="set"/>
         <scea.dom.editors name="Placement" category="Level Tools" image="LevelEditorCore.Resources.gameObject.png" menuText="Placement" description="Placement"/>
+        <scea.dom.editors.attribute name="model" displayName="Model" description="Bound model resource" category="Resource"/>
+        <scea.dom.editors.attribute name="material" displayName="Material" description="Bound material resource" category="Resource"/>
       </xs:appinfo>
     </xs:annotation>
     
     <xs:complexContent>
       <xs:extension base="abstractPlacementObjectType">
-        <xs:sequence>
-          <xs:element name="model" type="placementModelRef" minOccurs="0" maxOccurs="1"/>
-          <xs:element name="material" type="placementMaterialRef" minOccurs="0" maxOccurs="1"/>
-        </xs:sequence>
+        <xs:attribute name="model" type="xs:string" />
+        <xs:attribute name="material" type="xs:string" />
       </xs:extension>
     </xs:complexContent>
   </xs:complexType>
