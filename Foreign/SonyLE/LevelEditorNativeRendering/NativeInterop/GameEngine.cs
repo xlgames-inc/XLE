@@ -330,10 +330,14 @@ namespace RenderingInterop
 
         #endregion
 
-        #region picking and selection
-        public static void SetSelection(IEnumerable<NativeObjectAdapter> selection) {}
-        public static HitRecord[] FrustumPick(ulong renderSurface, Matrix4F viewxform, Matrix4F projxfrom, RectangleF rect) { return null; }
-        #endregion
+        public static GUILayer.ObjectSet CreateObjectSet(IEnumerable<NativeObjectAdapter> input)
+        {
+            var set = new GUILayer.ObjectSet();
+            foreach (var i in input) {
+                set.Add(i.DocumentId, i.InstanceId);
+            }
+            return set;
+        }
 
         #region basic rendering 
         // create vertex buffer with given vertex format from user data.

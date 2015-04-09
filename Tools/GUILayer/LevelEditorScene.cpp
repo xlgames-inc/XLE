@@ -10,6 +10,7 @@
 #include "MarshalString.h"
 #include "GUILayerUtil.h"
 #include "IOverlaySystem.h"
+#include "EditorInterfaceUtils.h"
 #include "UITypesBinding.h" // for VisCameraSettings
 #include "ExportedNativeTypes.h"
 #include "../ToolsRig/VisualisationUtils.h"     // for AsCameraDesc
@@ -247,6 +248,7 @@ namespace GUILayer
         _dynInterface = std::make_shared<EditorDynamicInterface::RegisteredTypes>();
         _dynInterface->RegisterType(std::make_shared<EditorDynamicInterface::PlacementObjectType>());
         _dynInterface->RegisterType(std::make_shared<EditorDynamicInterface::TerrainObjectType>());
+        _selection = gcnew ObjectSet;
     }
 
     EditorSceneManager::~EditorSceneManager()
@@ -272,10 +274,15 @@ namespace GUILayer
             const RenderCore::Techniques::ProjectionDesc& projectionDesc) override;
         void SetActivationState(bool newState) override;
 
-        EditorSceneOverlay(std::shared_ptr<SceneEngine::ISceneParser> sceneParser);
+        EditorSceneOverlay(
+            std::shared_ptr<SceneEngine::ISceneParser> sceneParser,
+            ObjectSet^ selection, 
+            std::shared_ptr<SceneEngine::PlacementsEditor> placementsEditor);
         ~EditorSceneOverlay();
     protected:
         clix::shared_ptr<SceneEngine::ISceneParser> _sceneParser;
+        ObjectSet^ _selection;
+        clix::shared_ptr<SceneEngine::PlacementsEditor> _placementsEditor;
     };
     
     void EditorSceneOverlay::RenderToScene(
@@ -287,6 +294,17 @@ namespace GUILayer
                 *threadContext, parserContext, *_sceneParser.get(), 
                 SceneEngine::RenderingQualitySettings(threadContext->GetStateDesc()._viewportDimensions));
         }
+
+        if (_selection) {
+            // Draw a selection highlight for these items
+            // at the moment, only placements can be selected... So we need to assume that 
+            // they are all placements.
+            auto devContext = RenderCore::Metal::DeviceContext::Get(*threadContext);
+            ToolsRig::RenderHighlight(
+                devContext.get(), parserContext, _placementsEditor.get(),
+                (const SceneEngine::PlacementGUID*)AsPointer(_selection->_underlying->cbegin()),
+                (const SceneEngine::PlacementGUID*)AsPointer(_selection->_underlying->cend()));
+        }
     }
 
     void EditorSceneOverlay::RenderWidgets(
@@ -295,15 +313,26 @@ namespace GUILayer
     {}
 
     void EditorSceneOverlay::SetActivationState(bool) {}
-    EditorSceneOverlay::EditorSceneOverlay(std::shared_ptr<SceneEngine::ISceneParser> sceneParser)
+    EditorSceneOverlay::EditorSceneOverlay(
+        std::shared_ptr<SceneEngine::ISceneParser> sceneParser,
+        ObjectSet^ selection, 
+        std::shared_ptr<SceneEngine::PlacementsEditor> placementsEditor)
     {
         _sceneParser = std::move(sceneParser);
+        _selection = selection;
+        _placementsEditor = placementsEditor;
     }
     EditorSceneOverlay::~EditorSceneOverlay() {}
 
     IOverlaySystem^ EditorSceneManager::CreateOverlaySystem(VisCameraSettings^ camera)
     {
         auto sceneParser = std::make_shared<EditorSceneParser>(_scene.GetNativePtr(), camera->GetUnderlying());
-        return gcnew EditorSceneOverlay(std::move(sceneParser));
+        return gcnew EditorSceneOverlay(
+            std::move(sceneParser), _selection, _scene->_placementsEditor);
+    }
+
+    void EditorSceneManager::SetSelection(ObjectSet^ objectSet)
+    {
+        *_selection->_underlying = *objectSet->_underlying;
     }
 }

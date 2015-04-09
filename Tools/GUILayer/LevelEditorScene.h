@@ -52,6 +52,7 @@ namespace GUILayer
     ref class IOverlaySystem;
     ref class IManipulatorSet;
     ref class IPlacementManipulatorSettingsLayer;
+    ref class ObjectSet;
 
     public ref class EditorSceneManager
     {
@@ -61,6 +62,7 @@ namespace GUILayer
         IManipulatorSet^ CreatePlacementManipulators(IPlacementManipulatorSettingsLayer^ context);
         IOverlaySystem^ CreateOverlaySystem(VisCameraSettings^ camera);
 		IntersectionTestSceneWrapper^ GetIntersectionScene();
+        void SetSelection(ObjectSet^ objectSet);
 
             //// //// ////   G O B   I N T E R F A C E   //// //// ////
         using DocumentTypeId = EditorDynamicInterface::DocumentTypeId;
@@ -92,6 +94,8 @@ namespace GUILayer
     protected:
         clix::shared_ptr<EditorScene> _scene;
         clix::shared_ptr<EditorDynamicInterface::RegisteredTypes> _dynInterface;
+
+        ObjectSet^ _selection;
     };
 }
 

@@ -4,6 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#include "EditorInterfaceUtils.h"
 #include "EditorDynamicInterface.h"
 #include "EngineDevice.h"
 #include "NativeEngineDevice.h"
@@ -27,6 +28,14 @@ namespace GUILayer
 		float _worldSpaceCollisionY;
 		float _worldSpaceCollisionZ;
 	};
+
+    void ObjectSet::Add(uint64 document, uint64 id)
+    {
+        _underlying->push_back(std::make_pair(document, id));
+    }
+
+    ObjectSet::ObjectSet()     { _underlying.reset(new UnderlyingArray); }
+    ObjectSet::~ObjectSet()    { _underlying.reset(); }
 
     public ref class EditorInterfaceUtils
     {

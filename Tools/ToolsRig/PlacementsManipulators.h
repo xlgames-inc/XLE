@@ -22,6 +22,7 @@ namespace SceneEngine
     class IntersectionTestContext;
     class LightingParserContext;
     class PlacementsEditor;
+    typedef std::pair<uint64, uint64> PlacementGUID;
 }
 
 namespace ToolsRig
@@ -71,5 +72,12 @@ namespace ToolsRig
     std::vector<std::unique_ptr<IManipulator>> CreatePlacementManipulators(
         IPlacementManipulatorSettings* context,
         std::shared_ptr<SceneEngine::PlacementsEditor> editor);
+
+    void RenderHighlight(
+        RenderCore::Metal::DeviceContext* context,
+        SceneEngine::LightingParserContext& parserContext,
+        SceneEngine::PlacementsEditor* editor,
+        const SceneEngine::PlacementGUID* filterBegin,
+        const SceneEngine::PlacementGUID* filterEnd);
 }
 

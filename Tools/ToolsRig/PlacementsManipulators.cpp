@@ -554,7 +554,7 @@ namespace ToolsRig
         _drawHighlightUniforms = std::move(uniforms);
     }
 
-    static void RenderHighlight(
+    void RenderHighlight(
         RenderCore::Metal::DeviceContext* context,
         SceneEngine::LightingParserContext& parserContext,
         SceneEngine::PlacementsEditor* editor,
