@@ -206,6 +206,7 @@ namespace RenderCore { namespace Assets
 
     MaterialScaffold::~MaterialScaffold()
     {
+        _data->~MaterialImmutableData();
     }
 
 }}
