@@ -15,6 +15,38 @@ using namespace System::Windows::Forms;
 
 namespace XLELayer
 {
+    public interface class IXLEAssetService
+    {
+    public:
+        virtual System::String^ AsAssetName(System::Uri^ uri) = 0;
+        virtual String^ StripExtension(String^ input) = 0;
+    };
+
+    [Export(IXLEAssetService::typeid)]
+    [PartCreationPolicy(CreationPolicy::Shared)]
+    public ref class XLEAssetService : public IXLEAssetService
+    {
+    public:
+        virtual System::String^ AsAssetName(System::Uri^ uri)
+        {
+                // covert this uri into a string filename that is fit for the assets system
+            auto cwd = gcnew Uri(System::IO::Directory::GetCurrentDirectory()->TrimEnd('\\') + "\\");
+            auto relUri = cwd->MakeRelativeUri(uri);
+            return Uri::UnescapeDataString(relUri->ToString());
+        }
+
+        virtual String^ StripExtension(String^ input)
+        {
+            int dot = input->LastIndexOf('.');
+            int sep0 = input->LastIndexOf('/');
+            int sep1 = input->LastIndexOf('\\');
+            if (dot > 0 && dot > sep0 && dot > sep1) {
+                return input->Substring(0, dot);
+            }
+            return input;
+        }
+    };
+
     public interface class IPlacementControls
     {
     public:
@@ -87,36 +119,16 @@ namespace XLELayer
 
         [Import(AllowDefault = false)] IPlacementControls^ _controls;
         [Import(AllowDefault =  true)] LevelEditorCore::ResourceLister^ _resourceLister;
-
-        String^ AsResourcePathName(Uri^ uri);
-
-        String^ StripExtension(String^ input)
-        {
-            int dot = input->LastIndexOf('.');
-            int sep0 = input->LastIndexOf('/');
-            int sep1 = input->LastIndexOf('\\');
-            if (dot > 0 && dot > sep0 && dot > sep1) {
-                return input->Substring(0, dot);
-            }
-            return input;
-        }
+        [Import(AllowDefault = false)] IXLEAssetService^ _assetService;
 
         void resourceLister_SelectionChanged(Object^ sender, EventArgs^ e)
         {
             auto resourceUri = _resourceLister->LastSelected;
             if (resourceUri) {
                 _manipSettings->_selectedModel = 
-                    StripExtension(AsResourcePathName(resourceUri));
+                    _assetService->StripExtension(_assetService->AsAssetName(resourceUri));
             }
         }
     };
-
-    String^ PlacementManipulator::AsResourcePathName(Uri^ uri)
-    {
-            // covert this uri into a string filename that is fit for the assets system
-        auto cwd = gcnew Uri(System::IO::Directory::GetCurrentDirectory()->TrimEnd('\\') + "\\");
-        auto relUri = cwd->MakeRelativeUri(uri);
-        return Uri::UnescapeDataString(relUri->ToString());
-    }
 }
 

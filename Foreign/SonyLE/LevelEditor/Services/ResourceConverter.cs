@@ -18,17 +18,25 @@ namespace LevelEditor
         IGameObject IResourceConverter.Convert(IResource resource)
         {
             if (resource == null) return null;
-
-            IGameObject gob = null;
             if (resource.Type == ResourceTypes.Model)
             {
+                // <<XLE
+                var newPlacement = XLEPlacementObject.Create();
+                if (newPlacement.CanReference(resource))
+                {
+                    newPlacement.Target = resource;
+                    return newPlacement;
+                }
+                // XLE>>
+
                 Locator locator = Locator.Create();
                 IReference<IResource> resRef = ResourceReference.Create(resource);                
                 locator.Reference = resRef;
                 locator.DomNode.InitializeExtensions();
-                gob = locator;                
-            }           
-            return gob;
+                return locator;
+            }
+ 
+            return null;
         }
 
         #endregion

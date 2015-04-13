@@ -13,7 +13,7 @@ using LevelEditorCore;
 
 namespace LevelEditor.DomNodeAdapters
 {
-    class XLEPlacementObject : GenericTransformableObject, IGameObject //, IReference<IResource>
+    class XLEPlacementObject : GenericTransformableObject, IGameObject, IReference<IResource>
     {
         #region IListable Members
         public void GetInfo(ItemInfo info)
@@ -74,7 +74,13 @@ namespace LevelEditor.DomNodeAdapters
         public IResource Target
         {
             get { return null; }
-            set { SetAttribute(Schema.placementObjectType.modelChild, value.Uri.ToString()); }
+            set {
+                var resService = Globals.MEFContainer.GetExportedValue<XLELayer.IXLEAssetService>();
+                var referenceName = resService.StripExtension(resService.AsAssetName(value.Uri));
+
+                SetAttribute(Schema.placementObjectType.modelChild, referenceName);
+                SetAttribute(Schema.placementObjectType.materialChild, referenceName); 
+            }
         }
         private static bool CanReference(DomNodeType domtype, IResource resource)
         {
@@ -83,6 +89,11 @@ namespace LevelEditor.DomNodeAdapters
                 return type == resource.Type;
             }
             return false;
+        }
+
+        public static XLEPlacementObject Create()
+        {
+            return new DomNode(Schema.placementObjectType.Type).As<XLEPlacementObject>();
         }
     }
 }
