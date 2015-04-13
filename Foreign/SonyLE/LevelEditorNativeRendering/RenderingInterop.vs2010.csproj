@@ -72,6 +72,7 @@
     <Compile Include="DomNodeAdapters\NativeGameWorldAdapter.cs" />
     <Compile Include="Manipulators\ExtensionManipulator.cs" />
     <Compile Include="Manipulators\Manipulator.cs" />
+    <Compile Include="Manipulators\MoveAcrossTerrainManipulator.cs" />
     <Compile Include="Manipulators\TranslatePivotManipulator.cs" />
     <Compile Include="Manipulators\RotateManipulator.cs" />
     <Compile Include="Manipulators\ScaleManipulator.cs" />

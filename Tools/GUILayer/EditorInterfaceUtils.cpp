@@ -11,6 +11,7 @@
 #include "GUILayerUtil.h"
 #include "ExportedNativeTypes.h"
 #include "../../SceneEngine/IntersectionTest.h"
+#include "../../SceneEngine/Terrain.h"
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../Assets/Assets.h"
@@ -45,7 +46,7 @@ namespace GUILayer
                 EngineDevice^ engineDevice,
                 TechniqueContextWrapper^ techniqueContext,
                 const RenderCore::Techniques::CameraDesc& camera,
-                int viewportWidth, int viewportHeight)
+                unsigned viewportWidth, unsigned viewportHeight)
         {
             std::shared_ptr<RenderCore::Techniques::TechniqueContext> nativeTC;
             if (techniqueContext) {
@@ -156,6 +157,18 @@ namespace GUILayer
 
 			return nullptr;
 		}
+
+        static bool GetTerrainHeight(
+            float% result,
+			IntersectionTestSceneWrapper^ testScene,
+            float worldX, float worldY)
+        {
+            auto& terrain = *testScene->GetNative().GetTerrain();
+            result = SceneEngine::GetTerrainHeight(
+                *terrain.GetFormat().get(), terrain.GetConfig(), terrain.GetCoords(),
+                Float2(worldX, worldY));
+            return true;
+        }
     };
 }
 

@@ -27,10 +27,20 @@ namespace GUILayer
         _techniqueContext = std::move(techniqueContext);
     }
 
+    TechniqueContextWrapper::~TechniqueContextWrapper()
+    {
+        _techniqueContext.reset();
+    }
+
     IntersectionTestContextWrapper::IntersectionTestContextWrapper(
         std::shared_ptr<SceneEngine::IntersectionTestContext> context)
     {
         _context = std::move(context);
+    }
+
+    IntersectionTestContextWrapper::~IntersectionTestContextWrapper()
+    {
+        _context.reset();
     }
 
 	SceneEngine::IntersectionTestContext& IntersectionTestContextWrapper::GetNative()
@@ -49,6 +59,11 @@ namespace GUILayer
         std::shared_ptr<SceneEngine::PlacementsEditor> placements)
     {
 		_scene = std::make_shared<SceneEngine::IntersectionTestScene>(terrainManager, placements);
+    }
+
+    IntersectionTestSceneWrapper::~IntersectionTestSceneWrapper()
+    {
+        _scene.reset();
     }
 
 	SceneEngine::IntersectionTestScene& IntersectionTestSceneWrapper::GetNative()

@@ -25,6 +25,7 @@ namespace GUILayer
         clix::shared_ptr<RenderCore::Techniques::TechniqueContext> _techniqueContext;
 
         TechniqueContextWrapper(std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext);
+        ~TechniqueContextWrapper();
     };
 
     public ref class IntersectionTestContextWrapper
@@ -34,6 +35,7 @@ namespace GUILayer
 
 		SceneEngine::IntersectionTestContext& GetNative();
         IntersectionTestContextWrapper(std::shared_ptr<SceneEngine::IntersectionTestContext> context);
+        ~IntersectionTestContextWrapper();
     };
 
 	public ref class IntersectionTestSceneWrapper
@@ -46,5 +48,6 @@ namespace GUILayer
         IntersectionTestSceneWrapper(
             std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
             std::shared_ptr<SceneEngine::PlacementsEditor> placements);
+        ~IntersectionTestSceneWrapper();
 	};
 }
