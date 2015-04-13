@@ -26,7 +26,7 @@ cbuffer RayDefinition : register(b1)
 
 cbuffer IntersectionFrustumDefinition : register(b2)
 {
-	float4x4 IntersectionFrustum;
+	row_major float4x4 IntersectionFrustum;
 }
 
 uint CurrentDrawCallIndex;

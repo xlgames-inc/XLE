@@ -1801,7 +1801,7 @@ namespace SceneEngine
             auto i2 = i+1;
             for (; i2!=copy.end() && i2->first == i->first; ++i2) {}
 
-            while (ci->_filenameHash < i->first && ci != _pimpl->_cells.end()) { ++ci; }
+			while (ci != _pimpl->_cells.end() && ci->_filenameHash < i->first) { ++ci; }
 
             if (ci != _pimpl->_cells.end() && ci->_filenameHash == i->first) {
 
@@ -1831,7 +1831,7 @@ namespace SceneEngine
 			auto i2 = i + 1;
 			for (; i2 != end && i2->first == i->first; ++i2) {}
 
-			while (ci->_filenameHash < i->first && ci != _pimpl->_cells.end()) { ++ci; }
+			while (ci != _pimpl->_cells.end() && ci->_filenameHash < i->first) { ++ci; }
 
 			if (ci != _pimpl->_cells.end() && ci->_filenameHash == i->first) {
 
