@@ -284,35 +284,12 @@ namespace RenderingInterop
             if (m_hitRegion == HitRegion.None)
                 return;
 
-            var selection = DesignView.Context.As<ISelectionContext>().Selection;
-            var transactionContext = DesignView.Context.As<ITransactionContext>();
-            NodeList.Clear();
+            m_activeOp = null;
 
-            m_isUniformScaling = false;
-
-            IEnumerable<DomNode> rootDomNodes = DomNode.GetRoots(selection.AsIEnumerable<DomNode>());
-            foreach (DomNode node in rootDomNodes)
-            {
-                ITransformable transNode = node.As<ITransformable>();
-                if (transNode == null || (transNode.TransformationType & TransformationTypes.Scale) == 0)
-                    continue;
-
-                IVisible vn = node.As<IVisible>();
-                if (!vn.Visible) continue;
-
-                ILockable lockable = node.As<ILockable>();
-                if (lockable.IsLocked) continue;
-
-                // force uniform scaling if any node requires it
-                if ((transNode.TransformationType & TransformationTypes.UniformScale) == TransformationTypes.UniformScale)
-                    m_isUniformScaling = true;                
-
-                NodeList.Add(transNode);
-
-                IManipulatorNotify notifier = transNode.As<IManipulatorNotify>();
-                if (notifier != null) notifier.OnBeginDrag();
-            }
-
+            var op = new ManipulatorActiveOperation(
+                "Extend", DesignView.Context.As<ISelectionContext>(),
+                (ITransformable node) => (node.TransformationType & TransformationTypes.Scale) != 0,
+                false);
 
             // to compute offset use bounding box in local space.
             Vec3F offset = Vec3F.ZeroVector;// 0.5f; // use bounding box in local space 
@@ -333,13 +310,19 @@ namespace RenderingInterop
                     break;
 
             }
-          
-            m_originalScales = new Vec3F[NodeList.Count];
-            m_originalTranslations = new Vec3F[NodeList.Count];
-            m_pivotOffset = new Vec3F[NodeList.Count];
+
+            m_isUniformScaling = false;
+            m_originalScales = new Vec3F[op.NodeList.Count];
+            m_originalTranslations = new Vec3F[op.NodeList.Count];
+            m_pivotOffset = new Vec3F[op.NodeList.Count];
             int k = 0;
-            foreach (ITransformable node in NodeList)
+            foreach (ITransformable node in op.NodeList)
             {
+                //  if any of the selected nodes are marked as "UniformScale", then the
+                //  entire operation must be a uniform scale operaion
+                if ((node.TransformationType & TransformationTypes.UniformScale) == TransformationTypes.UniformScale)
+                    m_isUniformScaling = true;                
+
                 IBoundable boundable = node.As<IBoundable>();
                 Vec3F pivot = Vec3F.Mul(boundable.LocalBoundingBox.Radius, offset);
                 m_pivotOffset[k] = pivot;
@@ -357,13 +340,12 @@ namespace RenderingInterop
                 k++;
             }
 
-            if(NodeList.Count > 0)
-                transactionContext.Begin("Extend".Localize());                
+            m_activeOp = op;
         }
 
         public override void OnDragging(ViewControl vc, Point scrPt)
         {
-            if (m_hitRegion == HitRegion.None || NodeList.Count == 0)
+            if (m_hitRegion == HitRegion.None || m_activeOp == null || m_activeOp.NodeList.Count == 0)
                 return;
 
             Matrix4F view = vc.Camera.ViewMatrix;
@@ -450,9 +432,9 @@ namespace RenderingInterop
 
             
             // scale 
-            for (int i = 0; i < NodeList.Count; i++)
+            for (int i = 0; i < m_activeOp.NodeList.Count; i++)
             {
-                ITransformable node = NodeList[i];               
+                ITransformable node = m_activeOp.NodeList[i];               
                 node.Scale = Vec3F.Mul(m_originalScales[i], m_scale);
 
                 Matrix4F mtrx = TransformUtils.CalcTransform(
@@ -467,31 +449,12 @@ namespace RenderingInterop
 
         public override void OnEndDrag(ViewControl vc, Point scrPt)
         {
-            if (NodeList.Count > 0)
+            if (m_activeOp != null)
             {
-                for (int k = 0; k < NodeList.Count; k++)
-                {
-                    IManipulatorNotify notifier = NodeList[k].As<IManipulatorNotify>();
-                    if (notifier != null) notifier.OnEndDrag();
-                }
-
-                var transactionContext = DesignView.Context.As<ITransactionContext>();
-                try
-                {
-                    if (transactionContext.InTransaction)
-                        transactionContext.End();
-                }
-                catch (InvalidTransactionException ex)
-                {
-                    if (transactionContext.InTransaction)
-                        transactionContext.Cancel();
-
-                    if (ex.ReportError)
-                        Outputs.WriteLine(OutputMessageType.Error, ex.Message);
-                }
+                m_activeOp.FinishTransaction();
+                m_activeOp = null;
             }
             
-            NodeList.Clear();
             m_originalScales = null;
             m_originalTranslations = null;
             m_hitRegion = HitRegion.None;
@@ -529,7 +492,8 @@ namespace RenderingInterop
         private Vec3F[] m_originalScales;
         private Vec3F[] m_originalTranslations;        
         private float m_hitScale;
-        private Vec3F m_scale;                
+        private Vec3F m_scale;
+        private ManipulatorActiveOperation m_activeOp = null;
         
         private enum HitRegion
         {            

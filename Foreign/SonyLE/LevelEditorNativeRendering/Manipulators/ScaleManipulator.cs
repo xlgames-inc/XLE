@@ -179,51 +179,32 @@ namespace RenderingInterop
 
         public override void OnBeginDrag()
         {
-            var selection = DesignView.Context.As<ISelectionContext>().Selection;
-            var transactionContext = DesignView.Context.As<ITransactionContext>();
-            NodeList.Clear();
+            m_activeOp = null;
+
+            var op = new ManipulatorActiveOperation(
+                "Scale", DesignView.Context.As<ISelectionContext>(),
+                (ITransformable node) => (node.TransformationType & TransformationTypes.Scale) != 0,
+                false);
 
             m_isUniformScaling = false;
-
-            IEnumerable<DomNode> rootDomNodes = DomNode.GetRoots(selection.AsIEnumerable<DomNode>());
-            foreach (DomNode node in rootDomNodes)
-            {
-                ITransformable transNode = node.As<ITransformable>();
-                if (transNode == null || (transNode.TransformationType & TransformationTypes.Scale) == 0)
-                    continue;
-
-                IVisible vn = node.As<IVisible>();
-                if (!vn.Visible) continue;
-
-                ILockable lockable = node.As<ILockable>();
-                if (lockable.IsLocked) continue;
-
-                // force uniform scaling if any node requires it
-                if ((transNode.TransformationType & TransformationTypes.UniformScale) == TransformationTypes.UniformScale)
-                    m_isUniformScaling = true;
-                
-                NodeList.Add(transNode);
-
-                IManipulatorNotify notifier = transNode.As<IManipulatorNotify>();
-                if (notifier != null) notifier.OnBeginDrag();
-
-            }
-            
-
-            m_originalValues = new Vec3F[NodeList.Count];
+            m_originalValues = new Vec3F[op.NodeList.Count];
             int k = 0;
-            foreach (ITransformable node in NodeList)
+            foreach (ITransformable node in op.NodeList)
             {
                 m_originalValues[k++] = node.Scale;
+
+                //  if any of the selected nodes are marked as "UniformScale", then the
+                //  entire operation must be a uniform scale operaion
+                if ((node.TransformationType & TransformationTypes.UniformScale) == TransformationTypes.UniformScale)
+                    m_isUniformScaling = true;        
             }
 
-            if(NodeList.Count > 0)
-                transactionContext.Begin("Scale".Localize());                
+            m_activeOp = op;
         }
 
         public override void OnDragging(ViewControl vc, Point scrPt)
         {
-            if (m_hitRegion == HitRegion.None || NodeList.Count == 0)
+            if (m_hitRegion == HitRegion.None || m_activeOp == null || m_activeOp.NodeList.Count == 0)
                 return;
                        
             Matrix4F view = vc.Camera.ViewMatrix;
@@ -308,39 +289,21 @@ namespace RenderingInterop
                 m_scale = new Vec3F(scale,scale,scale);
 
             // scale             
-            for (int i = 0; i < NodeList.Count; i++)
+            for (int i = 0; i < m_activeOp.NodeList.Count; i++)
             {
-                ITransformable transformable = NodeList[i];
+                ITransformable transformable = m_activeOp.NodeList[i];
                 transformable.Scale = Vec3F.Mul(m_originalValues[i], m_scale);
             }                                      
         }
 
         public override void OnEndDrag(ViewControl vc, Point scrPt)
         {
-            if (NodeList.Count > 0)
+            if (m_activeOp != null)
             {
-                for (int k = 0; k < NodeList.Count; k++)
-                {
-                    IManipulatorNotify notifier = NodeList[k].As<IManipulatorNotify>();
-                    if (notifier != null) notifier.OnEndDrag();
-                }
-                var transactionContext = DesignView.Context.As<ITransactionContext>();
-                try
-                {
-                    if (transactionContext.InTransaction)
-                        transactionContext.End();
-                }
-                catch (InvalidTransactionException ex)
-                {
-                    if (transactionContext.InTransaction)
-                        transactionContext.Cancel();
-
-                    if (ex.ReportError)
-                        Outputs.WriteLine(OutputMessageType.Error, ex.Message);
-                }
+                m_activeOp.FinishTransaction();
+                m_activeOp = null;
             }
             
-            NodeList.Clear();
             m_originalValues = null;
             m_hitRegion = HitRegion.None;
             m_scale = new Vec3F(1, 1, 1);
@@ -376,7 +339,8 @@ namespace RenderingInterop
         private Vec3F[] m_originalValues;        
         private float m_hitScale;
         private Vec3F m_scale;        
-        private const float CenterCubeSize = 1.0f / 6.0f;        
+        private const float CenterCubeSize = 1.0f / 6.0f;
+        private ManipulatorActiveOperation m_activeOp = null;
         private enum HitRegion
         {
             None,

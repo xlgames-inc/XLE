@@ -75,83 +75,27 @@ namespace RenderingInterop
             m_cancelDrag = false;
             Clear(); // cached values.
 
-            var selectionContext = DesignView.Context.As<ISelectionContext>();
-            var selection = selectionContext.Selection;
+            var op = new ManipulatorActiveOperation(
+                "Move", DesignView.Context.As<ISelectionContext>(),
+                (ITransformable node) => (node.TransformationType & TransformationTypes.Translation) != 0,
+                Control.ModifierKeys == m_duplicateKey);
 
-            IEnumerable<DomNode> rootDomNodes = DomNode.GetRoots(selection.AsIEnumerable<DomNode>());
-            m_duplicating = Control.ModifierKeys == m_duplicateKey;
-
-            SetupTransactionContexts(rootDomNodes);
-
-            if (m_duplicating)
-            { 
-                List<DomNode> originals = new List<DomNode>();
-                foreach (DomNode node in rootDomNodes)
-                {
-                    ITransformable transformable = node.As<ITransformable>();
-                    if (!CanManipulate(transformable)) continue;
-                    
-                    originals.Add(node);                    
-                }
-                if (originals.Count > 0)
-                {
-                    DomNode[] copies = DomNode.Copy(originals);
-
-                    foreach(var t in TransactionContextList)
-                        t.Begin("Copy And Move".Localize());
-
-                    List<object> newSelection = new List<object>();
-                    // re-parent copy
-                    for (int i = 0; i < copies.Length; i++)
-                    {
-                        DomNode copy = copies[i];
-                        DomNode original = originals[i];
-
-                        ChildInfo chInfo = original.ChildInfo;
-                        if (chInfo.IsList)
-                            original.Parent.GetChildList(chInfo).Add(copy);
-                        else
-                            original.Parent.SetChild(chInfo, copy);
-
-                        newSelection.Add(Util.AdaptDomPath(copy));
-                        copy.InitializeExtensions();
-                    }
-
-                    selectionContext.SetRange(newSelection);
-                    NodeList.AddRange(copies.AsIEnumerable<ITransformable>());
-                }
-                
-            }
-            else
+            m_originalValues = new Vec3F[op.NodeList.Count];
+            m_originalRotations = new Vec3F[op.NodeList.Count];
+            for (int k = 0; k < op.NodeList.Count; k++)
             {
-                foreach (DomNode node in rootDomNodes)
-                {
-                    ITransformable transformable = node.As<ITransformable>();
-                    if (!CanManipulate(transformable)) continue;                    
-                    NodeList.Add(transformable);
-                }
-
-                if (NodeList.Count > 0)
-                    foreach (var t in TransactionContextList)
-                        t.Begin("Move".Localize());
-            }
-
-            m_originalValues = new Vec3F[NodeList.Count];
-            m_originalRotations = new Vec3F[NodeList.Count];            
-            for(int k = 0; k < NodeList.Count; k++)
-            {
-                ITransformable node = NodeList[k];
-                IManipulatorNotify notifier = node.As<IManipulatorNotify>();
-                if (notifier != null) notifier.OnBeginDrag();
+                ITransformable node = op.NodeList[k];
                 m_originalValues[k] = node.Translation;
                 m_originalRotations[k] = node.Rotation;
-            }            
+            }
+
+            m_activeOp = op;
         }
 
 
         public override void OnDragging(ViewControl vc, Point scrPt)
         {
-            if (m_cancelDrag || m_hitRegion == HitRegion.None || NodeList.Count == 0)
+            if (m_cancelDrag || m_hitRegion == HitRegion.None || m_activeOp == null || m_activeOp.NodeList.Count == 0)
                 return;
 
             bool hitAxis = m_hitRegion == HitRegion.XAxis
@@ -190,9 +134,9 @@ namespace RenderingInterop
                     manipMove = rayW.ProjectPoint(manipPos) - manipPos;                                       
                 }
 
-                for (int i = 0; i < NodeList.Count; i++)
+                for (int i = 0; i < m_activeOp.NodeList.Count; i++)
                 {
-                    ITransformable node = NodeList[i];
+                    ITransformable node = m_activeOp.NodeList[i];
                     Vec3F snapOffset = TransformUtils.CalcSnapFromOffset(node, snapSettings.SnapFrom);
                     Path<DomNode> path = new Path<DomNode>(Adapters.Cast<DomNode>(node).GetPath());
                     Matrix4F parentLocalToWorld = TransformUtils.CalcPathTransform(path, path.Count - 2);
@@ -264,9 +208,9 @@ namespace RenderingInterop
                                  && vc.Camera.ViewType == ViewTypes.Perspective;
                 float gridHeight = grid.Height;
                 // translate.
-                for (int i = 0; i < NodeList.Count; i++)
+                for (int i = 0; i < m_activeOp.NodeList.Count; i++)
                 {
-                    ITransformable node = NodeList[i];
+                    ITransformable node = m_activeOp.NodeList[i];
                     Path<DomNode> path = new Path<DomNode>(Adapters.Cast<DomNode>(node).GetPath());
                     Matrix4F parentLocalToWorld = TransformUtils.CalcPathTransform(path, path.Count - 2);
                     Matrix4F parentWorldToLocal = new Matrix4F();
@@ -290,30 +234,9 @@ namespace RenderingInterop
 
         public override void OnEndDrag(ViewControl vc, Point scrPt)
         {
-            if (m_hitRegion != HitRegion.None && NodeList.Count > 0)
+            if (m_activeOp != null)
             {
-                for (int k = 0; k < NodeList.Count; k++)
-                {                    
-                    IManipulatorNotify notifier = NodeList[k].As<IManipulatorNotify>();
-                    if (notifier != null) notifier.OnEndDrag();
-                }
-
-                var transactionContexts = TransactionContextList;
-                foreach (var t in transactionContexts)
-                {
-                    try
-                    {
-                        if (t.InTransaction)
-                            t.End();
-                    }
-                    catch (InvalidTransactionException ex)
-                    {
-                        if (t.InTransaction)
-                            t.Cancel();
-                        if (ex.ReportError)
-                            Outputs.WriteLine(OutputMessageType.Error, ex.Message);
-                    }
-                }
+                m_activeOp.FinishTransaction();
             }
             m_hitRegion = HitRegion.None;
             m_cancelDrag = false;
@@ -365,9 +288,8 @@ namespace RenderingInterop
         /// <summary>
         /// Clear local cache</summary>
         private void Clear()
-        {            
-            NodeList.Clear();
-            TransactionContextList.Clear();
+        {
+            m_activeOp = null;
             m_originalValues = null;
             m_originalRotations = null;
         }
@@ -375,11 +297,10 @@ namespace RenderingInterop
         [Import(AllowDefault=false)]
         private ISnapFilter m_snapFilter;
 
-        
+        private ManipulatorActiveOperation m_activeOp = null;
         private TranslatorControl m_translatorControl;
         private HitRegion m_hitRegion = HitRegion.None;        
         private bool m_cancelDrag;
-        private bool m_duplicating;        
         private Vec3F[] m_originalValues;
         private Vec3F[] m_originalRotations;                
         private Keys m_snapGridKey = Keys.Control;

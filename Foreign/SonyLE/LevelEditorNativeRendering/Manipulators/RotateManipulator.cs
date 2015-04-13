@@ -153,44 +153,29 @@ namespace RenderingInterop
             var selection = selectionCntx.Selection;
             var transactionContext = DesignView.Context.As<ITransactionContext>();
 
-            NodeList.Clear();
+            m_activeOp = null;
 
-            IEnumerable<DomNode> rootDomNodes = DomNode.GetRoots(selection.AsIEnumerable<DomNode>());
-            foreach (DomNode domNode in rootDomNodes)
+            var op = new ManipulatorActiveOperation(
+                "Rotate", DesignView.Context.As<ISelectionContext>(),
+                (ITransformable node) => (node.TransformationType & TransformationTypes.Rotation) != 0,
+                false);
+
+            m_rotations = new Matrix4F[op.NodeList.Count];
+            for (int k = 0; k < op.NodeList.Count; k++)
             {
-                ITransformable node = domNode.As<ITransformable>();
-                                
-                if (node == null || (node.TransformationType & TransformationTypes.Rotation) == 0)
-                    continue;
-
-                IVisible vn = node.As<IVisible>();
-                if (!vn.Visible) continue;
-
-                ILockable lockable = node.As<ILockable>();
-                if (lockable.IsLocked) continue;
-                
-                NodeList.Add(node);
-                IManipulatorNotify notifier = node.As<IManipulatorNotify>();
-                if (notifier != null) notifier.OnBeginDrag();
-            }
-
-            m_rotations = new Matrix4F[NodeList.Count];            
-            for (int k = 0; k < NodeList.Count; k++)
-            {
-                ITransformable node = NodeList[k];                
+                ITransformable node = op.NodeList[k];                
                 Matrix4F m = new Matrix4F(node.Transform);
                 m.Translation = new Vec3F(0, 0, 0);
                 m.Normalize(m);
                 m_rotations[k] = m;
             }
 
-            if(NodeList.Count > 0)
-                transactionContext.Begin("Rotate".Localize());
+            m_activeOp = op;
         }
 
         public override void OnDragging(ViewControl vc, Point scrPt)
         {
-            if (m_hitRegion == HitRegion.None || NodeList.Count == 0)
+            if (m_hitRegion == HitRegion.None || m_activeOp == null || m_activeOp.NodeList.Count == 0)
                 return;
             Camera cam = vc.Camera;
 
@@ -249,10 +234,10 @@ namespace RenderingInterop
             AngleAxisF axf = new AngleAxisF(-theta, rotAxis);
             Matrix4F deltaMtrx = new Matrix4F(axf);                                   
             Matrix4F rotMtrx = new Matrix4F();
-           
-            for (int i = 0; i < NodeList.Count; i++)
-            {                                
-                ITransformable node = NodeList[i];                              
+
+            for (int i = 0; i < m_activeOp.NodeList.Count; i++)
+            {
+                ITransformable node = m_activeOp.NodeList[i];                              
                 rotMtrx.Mul(m_rotations[i], deltaMtrx);                
                 float ax, ay, az;
                 rotMtrx.GetEulerAngles(out ax, out ay, out az);                                
@@ -262,31 +247,12 @@ namespace RenderingInterop
 
         public override void OnEndDrag(ViewControl vc, Point scrPt)
         {
-            if (NodeList.Count > 0)
+            if (m_activeOp != null)
             {
-                for (int k = 0; k < NodeList.Count; k++)
-                {
-                    IManipulatorNotify notifier = NodeList[k].As<IManipulatorNotify>();
-                    if (notifier != null) notifier.OnEndDrag();
-                }
-
-                var transactionContext = DesignView.Context.As<ITransactionContext>();
-                try
-                {
-                    if (transactionContext.InTransaction)
-                        transactionContext.End();
-                }
-                catch (InvalidTransactionException ex)
-                {
-                    if (transactionContext.InTransaction)
-                        transactionContext.Cancel();
-
-                    if (ex.ReportError)
-                        Outputs.WriteLine(OutputMessageType.Error, ex.Message);
-                }
+                m_activeOp.FinishTransaction();
+                m_activeOp = null;
             }
             m_hitRegion = HitRegion.None;                        
-            NodeList.Clear();            
             m_rotations = null;
         }
         
@@ -369,7 +335,8 @@ namespace RenderingInterop
         
         private Matrix4F m_lookAxisHitMtrx = new Matrix4F();
         private HitRegion m_hitRegion = HitRegion.None;        
-        private Matrix4F[] m_rotations;        
+        private Matrix4F[] m_rotations;
+        private ManipulatorActiveOperation m_activeOp = null;
         private enum HitRegion
         {
             None,
