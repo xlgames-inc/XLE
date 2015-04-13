@@ -139,19 +139,9 @@ namespace RenderingInterop
             return paths;
         }
         
-        private IGameDocument TargetGame()
+        private IGame TargetGame()
         {
-            var selection = DesignView.Context.As<ISelectionContext>();
-            DomNode node = selection.GetLastSelected<DomNode>();
-                      
-            IReference<IGame> gameref = Adapters.As<IReference<IGame>>(node);
-            if (gameref != null && gameref.Target != null)
-                return gameref.Target.As<IGameDocument>();
-                      
-            if(node != null)
-                return node.GetRoot().As<IGameDocument>();
-
-            return DesignView.Context.As<IGameDocument>();
+            return DesignView.Context.As<IGame>();
         }
 
         private readonly List<DomNode> m_ghosts = new List<DomNode>();
@@ -161,20 +151,10 @@ namespace RenderingInterop
             base.OnDragEnter(drgevent);
             var dragDropTarget = TargetGame();
 
-            if (dragDropTarget.RootGameObjectFolder.IsLocked)
-            {
-                drgevent.Effect = DragDropEffects.None;                
-                return;
-            }
-
-            IGameObjectFolder rootFolder = dragDropTarget.RootGameObjectFolder;            
             m_ghosts.Clear();
 
             ResourceConverterService resourceConverter = Globals.MEFContainer.GetExportedValue<ResourceConverterService>();
-
-
             IEnumerable<object> nodes = Util.ConvertData(drgevent.Data, false);
-                                   
             foreach (object iterNode in nodes)
             {
                 DomNode node = iterNode as DomNode;
@@ -192,65 +172,73 @@ namespace RenderingInterop
                     continue;
                 
                 node.InitializeExtensions();
-                m_ghosts.Add(node);
-                rootFolder.GameObjects.Add(gob);                                             
+                if (dragDropTarget.AddChild(node))
+                {
+                    m_ghosts.Add(node);
+                }
             }
 
-            drgevent.Effect = m_ghosts.Count > 0 ? DragDropEffects.Move | DragDropEffects.Link
-            : DragDropEffects.None;
+            drgevent.Effect = (m_ghosts.Count > 0) ? (DragDropEffects.Move | DragDropEffects.Link) : DragDropEffects.None;
+        }
+
+        protected bool GetTerrainCollision(out Vec3F result, Point clientPt)
+        {
+            Ray3F ray = GetWorldRay(clientPt);
+            using (var testScene = GameEngine.GetEditorSceneManager().GetIntersectionScene())
+            {
+                using (var testContext = XLELayer.XLELayerUtils.CreateIntersectionTestContext(
+                    GameEngine.GetEngineDevice(), null,
+                    Camera, (uint)ClientSize.Width, (uint)ClientSize.Height))
+                {
+                    var endPt = ray.Origin + Camera.FarZ * ray.Direction;
+                    var results = GUILayer.EditorInterfaceUtils.RayIntersection(
+                        testScene,
+                        testContext,
+                        ray.Origin.X, ray.Origin.Y, ray.Origin.Z,
+                        endPt.X, endPt.Y, endPt.Z,
+                        1);
+
+                    if (results != null) 
+                    {
+                        using (var enumer = results.GetEnumerator()) 
+                        {
+                            if (enumer.MoveNext()) {
+                                var first = enumer.Current;
+                                result = new Vec3F(
+                                    first._worldSpaceCollisionX,
+                                    first._worldSpaceCollisionY,
+                                    first._worldSpaceCollisionZ);
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+
+            result = new Vec3F(0.0f, 0.0f, 0.0f);
+            return false;
         }
         
         protected override void OnDragOver(DragEventArgs drgevent)
         {        
             base.OnDragOver(drgevent);
-            if (DesignView.Context == null
-                || m_ghosts.Count == 0) return;
-
+            if (DesignView.Context == null || m_ghosts.Count == 0) return;
             
-            Point clientPoint = PointToClient(new Point(drgevent.X, drgevent.Y));
-            Ray3F rayw = GetWorldRay(clientPoint);
-
-            bool shiftPressed = Control.ModifierKeys == Keys.Shift;
-
-            DomNode hitnode = null;
-            HitRecord? hit = null;
-            if(shiftPressed)
-            {
-                Matrix4F v = Camera.ViewMatrix;
-                Matrix4F p = Camera.ProjectionMatrix;
-                HitRecord[] hits = NativeInterop.Picking.RayPick(SceneManager, TechniqueContext, rayw, Camera, ClientSize.Width, ClientSize.Height, false);
-                foreach (HitRecord ht in hits)
-                {
-                    hitnode = GameEngine.GetAdapterFromId(ht.documentId, ht.instanceId).Cast<DomNode>();
-                    if (hitnode == null) continue;
-
-                    bool skip = false;
-                    // ignore ghosts
-                    foreach (DomNode node in m_ghosts)
-                    {
-                        if (hitnode == node || hitnode.IsDescendantOf(node))
-                        {
-                            skip = true;
-                            break;
-                        }
+                //  Just do an intersection against the terrain to 
+                //  calculate basic insertion position
+            Vec3F terrainHit;
+            if (GetTerrainCollision(out terrainHit, PointToClient(new Point(drgevent.X, drgevent.Y)))) {
+                foreach (var ghost in m_ghosts) {
+                    var gameObject = ghost.As<IGameObject>();
+                    if (gameObject != null) {
+                        gameObject.Translation = terrainHit;
                     }
-                    if (skip) continue;                                        
-                    hit = ht;
-                    break;
                 }
-            }
-            
-            ISnapFilter snapFilter = Globals.MEFContainer.GetExportedValue<ISnapFilter>();
-            bool snap = (shiftPressed && hit.HasValue);
-            foreach (DomNode ghost in m_ghosts)
-            {
-                HitRecord? hr = (snap && ( snapFilter == null || snapFilter.CanSnapTo(ghost,hitnode))) ? hit : null;
-                ProjectGhost(ghost, rayw, hr);
-            }
 
-            GameLoop.Update();
-            GameLoop.Render();            
+                DesignView.InvalidateViews();
+            }
         }
+
         protected override void OnDragDrop(DragEventArgs drgevent)
         {
             base.OnDragDrop(drgevent);
@@ -258,16 +246,13 @@ namespace RenderingInterop
 
             if (m_ghosts.Count > 0)
             {
-                var dragDropTarget = TargetGame();
-                IGameObjectFolder rootFolder = dragDropTarget.RootGameObjectFolder;
-
                 foreach (DomNode ghost in m_ghosts)
-                {
-                    rootFolder.GameObjects.Remove(ghost.As<IGameObject>());
-                }                                
+                    ghost.RemoveFromParent();
+
+                var dragDropTarget = TargetGame();
                 ApplicationUtil.Insert(
                     dragDropTarget,
-                    rootFolder.Cast<DomNode>(),
+                    dragDropTarget,
                     m_ghosts,
                     "Drag and Drop",
                     null);
@@ -284,17 +269,7 @@ namespace RenderingInterop
 
             if (m_ghosts.Count > 0)
             {
-                var dragDropTarget = TargetGame();
-                IGameObjectFolder rootFolder = dragDropTarget.RootGameObjectFolder;
-                foreach (DomNode ghost in m_ghosts)
-                {
-                    // reset translation.
-                    ITransformable xformnode = ghost.As<ITransformable>();
-                    xformnode.Translation = new Vec3F(0, 0, 0);
-
-                    rootFolder.GameObjects.Remove(ghost.As<IGameObject>());
-                }      
-                
+                foreach (DomNode ghost in m_ghosts) { ghost.RemoveFromParent(); }
                 m_ghosts.Clear();                
                 DesignView.InvalidateViews();
             }
@@ -469,59 +444,6 @@ namespace RenderingInterop
             int w = maxx - minx;
             int h = maxy - miny;
             return new Rectangle(minx, miny, w, h);
-        }
-        
-        /// <summary>
-        /// Projects the ghost</summary>
-        private void ProjectGhost(DomNode ghost, 
-            Ray3F rayw,
-            HitRecord? hit)
-        {
-
-            ITransformable xformnode = ghost.Cast<ITransformable>();
-            IBoundable bnode  = ghost.As<IBoundable>();
-            AABB box = bnode.BoundingBox;
-            
-            Vec3F pt;
-            if (hit.HasValue && hit.Value.hasNormal)
-            {
-                Vec3F rad = box.Radius;
-                Vec3F norm = hit.Value.normal;
-                Vec3F absNorm = Vec3F.Abs(norm);
-                Vec3F offset = Vec3F.ZeroVector;
-                
-                if (absNorm.X > absNorm.Y)
-                {
-                    if (absNorm.X > absNorm.Z)
-                        offset.X = norm.X > 0 ? rad.X : -rad.X;
-                    else
-                        offset.Z = norm.Z > 0 ? rad.Z : -rad.Z;                        
-                }
-                else
-                {
-                    if (absNorm.Y > absNorm.Z)
-                        offset.Y = norm.Y > 0 ? rad.Y : -rad.Y;
-                    else
-                        offset.Z = norm.Z > 0 ? rad.Z : -rad.Z;                        
-                        
-                }                
-                Vec3F localCenter = box.Center - xformnode.Translation;
-                pt = hit.Value.hitPt + (offset - localCenter);
-            }
-            else
-            {
-                float offset = 6.0f * box.Radius.Length;
-                pt = rayw.Origin + offset * rayw.Direction;
-            }
-                                          
-            if (ViewType == ViewTypes.Front)
-                pt.Z = 0.0f;
-            else if (ViewType == ViewTypes.Top)
-                pt.Y = 0.0f;
-            else if (ViewType == ViewTypes.Left)
-                pt.X = 0.0f;           
-            xformnode.Translation = pt;
-
         }
         
         private static Pen s_marqueePen;

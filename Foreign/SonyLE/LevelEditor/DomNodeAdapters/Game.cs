@@ -57,7 +57,12 @@ namespace LevelEditor.DomNodeAdapters
 
             // <<XLE
             var domNode = child as DomNode;
-            if (domNode != null && domNode.Type == Schema.placementsFolderType.Type) return true;
+            if (domNode != null) {
+                foreach (var type in domNode.Type.Lineage) {
+                    if (type == Schema.placementsFolderType.Type) return true;
+                    if (type == Schema.abstractPlacementObjectType.Type) return true;
+                }
+            }
             // XLE>>
 
             return false;
@@ -83,10 +88,38 @@ namespace LevelEditor.DomNodeAdapters
             var domNode = child as DomNode;
             if (domNode != null)
             {
-                if (domNode.Type == Schema.placementsFolderType.Type)
+                foreach (var type in domNode.Type.Lineage)
                 {
-                    SetChild(Schema.gameType.placementsFolderChild, domNode);
-                    return true;
+                    if (domNode.Type == Schema.placementsFolderType.Type)
+                    {
+                        SetChild(Schema.gameType.placementsFolderChild, domNode);
+                        return true;
+                    }
+
+                    if (type == Schema.abstractPlacementObjectType.Type)
+                    {
+                        // We need to look for the appropriate placement cell to put this placement in...
+                        // If there are no placement cells, or if there isn't a cell that can contain this
+                        // object, then we have to abort
+                        var plc = domNode.As<XLEPlacementObject>();
+                        var keyPoint = (plc != null) ? plc.Translation : new Sce.Atf.VectorMath.Vec3F(0.0f, 0.0f, 0.0f);
+
+                        var placementsFolder = GetChild<PlacementsFolder>(Schema.gameType.placementsFolderChild);
+                        if (placementsFolder != null)
+                        {
+                            foreach (var cellRef in placementsFolder.Cells)
+                            {
+                                if (cellRef.IsResolved()
+                                    && keyPoint.X >= cellRef.Mins.X && keyPoint.X < cellRef.Maxs.X
+                                    && keyPoint.Y >= cellRef.Mins.Y && keyPoint.Y < cellRef.Maxs.Y
+                                    && keyPoint.Z >= cellRef.Mins.Z && keyPoint.Z < cellRef.Maxs.Z
+                                    && cellRef.Target.CanAddChild(domNode))
+                                {
+                                    return cellRef.Target.AddChild(domNode);
+                                }
+                            }
+                        }
+                    }
                 }
             }
             // XLE>>

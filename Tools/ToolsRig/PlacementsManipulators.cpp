@@ -571,7 +571,15 @@ namespace ToolsRig
                 CommonOffscreenTarget::Desc(unsigned(viewport.Width), unsigned(viewport.Height), 
                 Metal::NativeFormat::R8G8B8A8_UNORM));
 
-            context->Bind(MakeResourceList(offscreen._rtv), nullptr);
+			const bool doDepthTest = true;
+			if (constant_expression<doDepthTest>::result()) {
+				context->Bind(Techniques::CommonResources()._dssReadOnly);
+				Metal::DepthStencilView dsv(savedTargets.GetDepthStencilView());
+				context->Bind(MakeResourceList(offscreen._rtv), &dsv);
+			} else {
+				context->Bind(MakeResourceList(offscreen._rtv), nullptr);
+			}
+
             context->Clear(offscreen._rtv, Float4(0.f, 0.f, 0.f, 0.f));
             context->Bind(RenderCore::Metal::Topology::TriangleList);
             editor->RenderFiltered(context, parserContext, 0, filterBegin, filterEnd);
