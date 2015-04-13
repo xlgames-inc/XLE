@@ -1822,6 +1822,42 @@ namespace SceneEngine
         _pimpl->_renderer->EndRender(context, parserContext, techniqueIndex);
     }
 
+	void PlacementsEditor::PerformGUIDFixup(PlacementGUID* begin, PlacementGUID* end) const
+	{
+		std::sort(begin, end);
+
+		auto ci = _pimpl->_cells.begin();
+		for (auto i = begin; i != end;) {
+			auto i2 = i + 1;
+			for (; i2 != end && i2->first == i->first; ++i2) {}
+
+			while (ci->_filenameHash < i->first && ci != _pimpl->_cells.end()) { ++ci; }
+
+			if (ci != _pimpl->_cells.end() && ci->_filenameHash == i->first) {
+
+				// The ids will usually have their
+				// top 32 bit zeroed out. We must fix them by finding the match placements
+				// in our cached placements, and fill in the top 32 bits...
+				auto& cachedPlacements = _pimpl->_renderer->GetCachedPlacements(ci->_filenameHash, ci->_filename);
+				auto count = cachedPlacements.GetObjectReferenceCount();
+				auto* placements = cachedPlacements.GetObjectReferences();
+
+				for (auto i3 = i; i3 < i2; ++i3) {
+					auto p = std::find_if(placements, &placements[count],
+						[=](const Placements::ObjectReference& obj) { return uint32(obj._guid) == uint32(i3->second); });
+                    if (p != &placements[count])
+                        i3->second = p->_guid;
+				}
+
+			}
+            
+            i = i2;
+		}
+
+			// re-sort again
+		std::sort(begin, end);
+	}
+
     static void SavePlacements(const char outputFilename[], Placements& placements)
     {
         placements.Save(outputFilename);

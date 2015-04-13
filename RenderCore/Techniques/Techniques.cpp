@@ -133,15 +133,49 @@ namespace RenderCore { namespace Techniques
             }
         }
 
+        Technique::HashConflictTest::HashConflictTest(const ParameterBox globalState[ShaderParameters::Source::Max], uint64 rawHash, uint64 filteredHash, uint64 interfaceHash)
+        {
+            _rawHash = rawHash; _filteredHash = filteredHash; _interfaceHash = interfaceHash;
+            for (unsigned c=0; c<ShaderParameters::Source::Max; ++c) {
+                _globalState[c] = globalState[c];
+            }
+        }
+
         Technique::HashConflictTest::HashConflictTest() {}
 
-        void Technique::TestHashConflict(const ParameterBox* globalState[ShaderParameters::Source::Max], const HashConflictTest& comparison)
+        void Technique::TestHashConflict(const ParameterBox* globalState[ShaderParameters::Source::Max], const HashConflictTest& comparison) const
         {
                 // check to make sure the parameter names in both of these boxes is the same
                 // note -- this isn't exactly correctly. we need to filter out parameters that are not relevant to this technique
+            // for (unsigned c=0; c<ShaderParameters::Source::Max; ++c) {
+            //     assert(globalState[c]->ParameterNamesAreEqual(comparison._globalState[c]));
+            // }
+        }
+
+        static std::string BuildParamsAsString(
+            const ShaderParameters& baseParameters,
+            const ParameterBox globalState[ShaderParameters::Source::Max])
+        {
+            std::vector<std::pair<const char*, std::string>> defines;
+            baseParameters.BuildStringTable(defines);
             for (unsigned c=0; c<ShaderParameters::Source::Max; ++c) {
-                assert(globalState[c]->ParameterNamesAreEqual(comparison._globalState[c]));
+                globalState[c].OverrideStringTable(defines);
             }
+
+            std::string combinedStrings;
+            size_t size = 0;
+            std::for_each(defines.cbegin(), defines.cend(), 
+                [&size](const std::pair<std::string, std::string>& object) { size += 2 + object.first.size() + object.second.size(); });
+            combinedStrings.reserve(size);
+            std::for_each(defines.cbegin(), defines.cend(), 
+                [&combinedStrings](const std::pair<std::string, std::string>& object) 
+                {
+                    combinedStrings.insert(combinedStrings.end(), object.first.cbegin(), object.first.cend()); 
+                    combinedStrings.push_back('=');
+                    combinedStrings.insert(combinedStrings.end(), object.second.cbegin(), object.second.cend()); 
+                    combinedStrings.push_back(';');
+                });
+            return combinedStrings;
         }
     #endif
 
@@ -156,10 +190,19 @@ namespace RenderCore { namespace Techniques
             //                  about invoking redundant shader compiles.
             //
         uint64 inputHash = 0;
-        for (unsigned c=0; c<ShaderParameters::Source::Max; ++c) {
-            inputHash ^= globalState[c]->GetParameterNamesHash();
-            inputHash ^= globalState[c]->GetHash() << (c*6);    // we have to be careful of cases where the values in one box is very similar to the values in another
-        }
+		const bool simpleHash = false;
+		if (constant_expression<simpleHash>::result()) {
+			for (unsigned c = 0; c < ShaderParameters::Source::Max; ++c) {
+				inputHash ^= globalState[c]->GetParameterNamesHash();
+				inputHash ^= globalState[c]->GetHash() << (c * 6);    // we have to be careful of cases where the values in one box is very similar to the values in another
+			}
+		} else {
+			inputHash = HashCombine(globalState[0]->GetHash(), globalState[0]->GetParameterNamesHash());
+			for (unsigned c = 1; c < ShaderParameters::Source::Max; ++c) {
+				inputHash = HashCombine(globalState[c]->GetParameterNamesHash(), inputHash);
+				inputHash = HashCombine(globalState[c]->GetHash(), inputHash);
+			}
+		}
         
         uint64 globalHashWithInterface = inputHash ^ techniqueInterface.GetHashValue();
         auto i = std::lower_bound(_globalToResolved.begin(), _globalToResolved.end(), globalHashWithInterface, CompareFirst<uint64, ResolvedShader>());
@@ -172,6 +215,8 @@ namespace RenderCore { namespace Techniques
                 auto ti = std::lower_bound(_globalToResolvedTest.begin(), _globalToResolvedTest.end(), globalHashWithInterface, CompareFirst<uint64, HashConflictTest>());
                 assert(ti!=_globalToResolvedTest.cend() && ti->first == globalHashWithInterface);
                 TestHashConflict(globalState, ti->second);
+
+                OutputDebugString((BuildParamsAsString(_baseParameters, ti->second._globalState) + "\r\n").c_str());
             #endif
             return i->second;
         }
@@ -186,12 +231,14 @@ namespace RenderCore { namespace Techniques
             }
 
             #if defined(CHECK_TECHNIQUE_HASH_CONFLICTS)
-                auto gti = std::lower_bound(_globalToResolvedTest.begin(), _globalToResolvedTest.end(), globalHashWithInterface, CompareFirst<uint64, HashConflictTest>());
-                _globalToResolvedTest.insert(gti, std::make_pair(globalHashWithInterface, HashConflictTest(globalState, inputHash, filteredHashValue, techniqueInterface.GetHashValue())));
-
                 auto lti = std::lower_bound(_localToResolvedTest.begin(), _localToResolvedTest.end(), filteredHashWithInterface, CompareFirst<uint64, HashConflictTest>());
                 assert(lti!=_localToResolvedTest.cend() && lti->first == filteredHashWithInterface);
-                TestHashConflict(globalState, lti->second);
+				TestHashConflict(globalState, lti->second);
+
+                auto gti = std::lower_bound(_globalToResolvedTest.begin(), _globalToResolvedTest.end(), globalHashWithInterface, CompareFirst<uint64, HashConflictTest>());
+                _globalToResolvedTest.insert(gti, std::make_pair(globalHashWithInterface, HashConflictTest(lti->second._globalState, inputHash, filteredHashValue, techniqueInterface.GetHashValue())));
+
+                OutputDebugString((BuildParamsAsString(_baseParameters, lti->second._globalState) + "\r\n").c_str());
             #endif
             return i2->second;
         }
@@ -211,7 +258,7 @@ namespace RenderCore { namespace Techniques
         #endif
         return newResolvedShader;
     }
-    
+
     void        Technique::ResolveAndBind(  ResolvedShader& resolvedShader, 
                                             const ParameterBox* globalState[ShaderParameters::Source::Max],
                                             const TechniqueInterface& techniqueInterface) const
@@ -221,6 +268,20 @@ namespace RenderCore { namespace Techniques
         for (unsigned c=0; c<ShaderParameters::Source::Max; ++c) {
             globalState[c]->OverrideStringTable(defines);
         }
+
+        std::string combinedStrings;
+        size_t size = 0;
+        std::for_each(defines.cbegin(), defines.cend(), 
+            [&size](const std::pair<std::string, std::string>& object) { size += 2 + object.first.size() + object.second.size(); });
+        combinedStrings.reserve(size);
+        std::for_each(defines.cbegin(), defines.cend(), 
+            [&combinedStrings](const std::pair<std::string, std::string>& object) 
+            {
+                combinedStrings.insert(combinedStrings.end(), object.first.cbegin(), object.first.cend()); 
+                combinedStrings.push_back('=');
+                combinedStrings.insert(combinedStrings.end(), object.second.cbegin(), object.second.cend()); 
+                combinedStrings.push_back(';');
+            });
 
         std::string vsShaderModel, psShaderModel, gsShaderModel;
         auto vsi = std::lower_bound(defines.cbegin(), defines.cend(), "vs_", CompareFirst<std::string, std::string>());
@@ -250,20 +311,6 @@ namespace RenderCore { namespace Techniques
         } else {
             gsShaderModel = ":" GS_DefShaderModel;
         }
-
-        std::string combinedStrings;
-        size_t size = 0;
-        std::for_each(defines.cbegin(), defines.cend(), 
-            [&size](const std::pair<std::string, std::string>& object) { size += 2 + object.first.size() + object.second.size(); });
-        combinedStrings.reserve(size);
-        std::for_each(defines.cbegin(), defines.cend(), 
-            [&combinedStrings](const std::pair<std::string, std::string>& object) 
-            {
-                combinedStrings.insert(combinedStrings.end(), object.first.cbegin(), object.first.cend()); 
-                combinedStrings.push_back('=');
-                combinedStrings.insert(combinedStrings.end(), object.second.cbegin(), object.second.cend()); 
-                combinedStrings.push_back(';');
-            });
 
         using namespace Metal;
     
@@ -570,11 +617,13 @@ namespace RenderCore { namespace Techniques
 
         //////////////////////-------//////////////////////
 
-    uint64      ShaderParameters::CalculateFilteredState(const ParameterBox* globalState[Source::Max]) const
+    uint64      ShaderParameters::CalculateFilteredHash(const ParameterBox* globalState[Source::Max]) const
     {
-        uint64 filteredState = 0;
-        for (unsigned c=0; c<Source::Max; ++c) {
-              filteredState ^= _parameters[c].TranslateHash(*globalState[c]) << (c*6);     // we have to be careful of cases where 2 boxes have their filtered tables sort of swapped... Those cases should produce distinctive hashes
+		uint64 filteredState = _parameters[0].CalculateFilteredHashValue(*globalState[0]);
+        for (unsigned c=1; c<Source::Max; ++c) {
+              // filteredState ^= _parameters[c].TranslateHash(*globalState[c]) << (c*6);     // we have to be careful of cases where 2 boxes have their filtered tables sort of swapped... Those cases should produce distinctive hashes
+
+			filteredState = HashCombine(_parameters[c].CalculateFilteredHashValue(*globalState[c]), filteredState);
         }
         return filteredState;
     }
@@ -582,12 +631,15 @@ namespace RenderCore { namespace Techniques
     uint64      ShaderParameters::CalculateFilteredHash(uint64 inputHash, const ParameterBox* globalState[Source::Max]) const
     {
             //      Find a local state to match
-        auto i = std::lower_bound(_globalToFilteredTable.cbegin(), _globalToFilteredTable.cend(), inputHash, CompareFirst<uint64, uint64>());
+        auto i = LowerBound(_globalToFilteredTable, inputHash);
         if (i!=_globalToFilteredTable.cend() && i->first == inputHash) {
             return i->second;
         }
 
-        uint64 filteredState = CalculateFilteredState(globalState);
+            //  The call to "CalculateFilteredHash" here is quite expensive... Ideally we should only get here during
+            //  initialisation steps (or perhaps on the first few frames. We ideally don't want to be going through
+            //  all of this during normal frames.
+        uint64 filteredState = CalculateFilteredHash(globalState);
         _globalToFilteredTable.insert(i, std::make_pair(inputHash, filteredState));
         return filteredState;
     }

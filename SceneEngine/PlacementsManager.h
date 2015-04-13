@@ -160,6 +160,7 @@ namespace SceneEngine
             const Float2& mins, const Float2& maxs);
         void RemoveCell(PlacementsManager& manager, uint64 id);
         static uint64 GenerateObjectGUID();
+		void PerformGUIDFixup(PlacementGUID* begin, PlacementGUID* end) const;
 
         void Save();
 

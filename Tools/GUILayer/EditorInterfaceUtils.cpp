@@ -31,11 +31,11 @@ namespace GUILayer
 
     void ObjectSet::Add(uint64 document, uint64 id)
     {
-        _underlying->push_back(std::make_pair(document, id));
+        _nativePlacements->push_back(std::make_pair(document, id));
     }
 
-    ObjectSet::ObjectSet()     { _underlying.reset(new UnderlyingArray); }
-    ObjectSet::~ObjectSet()    { _underlying.reset(); }
+	ObjectSet::ObjectSet()     { _nativePlacements.reset(new NativePlacementSet); }
+	ObjectSet::~ObjectSet()    { _nativePlacements.reset(); }
 
     public ref class EditorInterfaceUtils
     {

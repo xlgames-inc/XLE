@@ -29,7 +29,7 @@ namespace RenderCore { namespace Techniques
         void        BuildStringTable(std::vector<std::pair<const char*, std::string>>& defines) const;
 
     private:
-        uint64      CalculateFilteredState(const ParameterBox* globalState[Source::Max]) const;
+        uint64      CalculateFilteredHash(const ParameterBox* globalState[Source::Max]) const;
         mutable std::vector<std::pair<uint64, uint64>>  _globalToFilteredTable;
 
         friend class Technique;
@@ -136,14 +136,15 @@ namespace RenderCore { namespace Techniques
                 uint64 _interfaceHash;
 
                 HashConflictTest(const ParameterBox* globalState[ShaderParameters::Source::Max], uint64 rawHash, uint64 filteredHash, uint64 interfaceHash);
+                HashConflictTest(const ParameterBox globalState[ShaderParameters::Source::Max], uint64 rawHash, uint64 filteredHash, uint64 interfaceHash);
                 HashConflictTest();
             };
-            std::vector<std::pair<uint64, HashConflictTest>>  _localToResolvedTest;
-            std::vector<std::pair<uint64, HashConflictTest>>  _globalToResolvedTest;
+            mutable std::vector<std::pair<uint64, HashConflictTest>>  _localToResolvedTest;
+            mutable std::vector<std::pair<uint64, HashConflictTest>>  _globalToResolvedTest;
 
             void TestHashConflict(
                 const ParameterBox* globalState[ShaderParameters::Source::Max], 
-                const HashConflictTest& comparison);
+                const HashConflictTest& comparison) const;
         #endif
 
         void        ResolveAndBind( 

@@ -302,8 +302,8 @@ namespace GUILayer
             auto devContext = RenderCore::Metal::DeviceContext::Get(*threadContext);
             ToolsRig::RenderHighlight(
                 devContext.get(), parserContext, _placementsEditor.get(),
-                (const SceneEngine::PlacementGUID*)AsPointer(_selection->_underlying->cbegin()),
-                (const SceneEngine::PlacementGUID*)AsPointer(_selection->_underlying->cend()));
+                (const SceneEngine::PlacementGUID*)AsPointer(_selection->_nativePlacements->cbegin()),
+                (const SceneEngine::PlacementGUID*)AsPointer(_selection->_nativePlacements->cend()));
         }
     }
 
@@ -333,6 +333,11 @@ namespace GUILayer
 
     void EditorSceneManager::SetSelection(ObjectSet^ objectSet)
     {
-        *_selection->_underlying = *objectSet->_underlying;
+        *_selection->_nativePlacements = *objectSet->_nativePlacements;
+        if (_scene->_placementsEditor) {
+            _scene->_placementsEditor->PerformGUIDFixup(
+                AsPointer(_selection->_nativePlacements->begin()),
+                AsPointer(_selection->_nativePlacements->end()));
+        }
     }
 }

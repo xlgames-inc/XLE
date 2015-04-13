@@ -8,6 +8,7 @@
 #include "NativeEngineDevice.h"
 #include "ExportedNativeTypes.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
+#include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Metal/Buffer.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/InputLayout.h"
@@ -215,6 +216,13 @@ namespace GUILayer
                 devContext.Bind(*ibuffer, RenderCore::Metal::NativeFormat::R32_UINT);   // Sony editor always uses 32 bit indices
                 devContext.DrawIndexed(indexCount, startIndex, startVertex);
             }
+        }
+
+        void InitState()
+        {
+            _devContext->Bind(RenderCore::Techniques::CommonResources()._dssReadWrite);
+            _devContext->Bind(RenderCore::Techniques::CommonResources()._blendStraightAlpha);
+            _devContext->Bind(RenderCore::Techniques::CommonResources()._defaultRasterizer);
         }
 
         SimpleRenderingContext(

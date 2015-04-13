@@ -18,8 +18,8 @@ namespace GUILayer
     public:
         void Add(uint64 document, uint64 id);
 
-        typedef std::vector<std::pair<uint64, uint64>> UnderlyingArray;
-        clix::auto_ptr<UnderlyingArray> _underlying;
+        typedef std::vector<std::pair<uint64, uint64>> NativePlacementSet;
+		clix::auto_ptr<NativePlacementSet> _nativePlacements;
 
         ObjectSet();
         ~ObjectSet();

@@ -75,8 +75,7 @@ float3 RayTriangleIntersection(float3 p, float3 d, float3 v0, float3 v1, float3 
 
 bool PtInFrustum(float4 pt)
 {
-	float3 p = pt.xyz;
-	float3 q = max(float3(p.x, p.y, p.z), float3(-p.x, -p.y, pt.w-pt.z));
+	float3 q = float3(abs(pt.xy), max(pt.z, pt.w-pt.z));
 	float m = max(max(q.x, q.y), q.z);
 	return m <= pt.w;
 }
@@ -93,7 +92,7 @@ bool PtInFrustum(float4 pt)
 	// We're going to ignore the winding order. So callers will get both front-face
 	// and back-face intersections.
 
-#if INTERSECTION_TEST == 0
+#if !defined(INTERSECTION_TEST) || (INTERSECTION_TEST == 0)
 
 	float3 intersectionResult =
 		RayTriangleIntersection(

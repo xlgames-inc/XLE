@@ -389,7 +389,10 @@ namespace RenderingInterop
         /// Sets render flags used for basic drawing.</summary>        
         public static void SetRendererFlag(BasicRendererFlags renderFlags)
         {
-            // NativeSetRendererFlag(renderFlags);
+            using (var context = XLELayer.NativeDesignControl.CreateSimpleRenderingContext(s_savedRenderResources))
+            {
+                context.InitState();
+            }
         }
 
         //Draw primitive with the given parameters.

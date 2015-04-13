@@ -606,7 +606,7 @@ namespace Utility
         return _cachedParameterNameHash;
     }
 
-    uint64      ParameterBox::TranslateHash(const ParameterBox& source) const
+    uint64      ParameterBox::CalculateFilteredHashValue(const ParameterBox& source) const
     {
         if (_values.size() > 1024) {
             assert(0);
@@ -633,6 +633,14 @@ namespace Utility
                         PtrAdd(temporaryValues, offsetDest), 
                         PtrAdd(AsPointer(source._values.cbegin()), offsetSrc),
                         typeDest.GetSize());
+                } else {
+                        // sometimes we get trival casting situations (like "unsigned int" to "int")
+                        //  -- even in those cases, we execute the casting function, which will effect performance
+                    bool castSucess = ImpliedTyping::Cast(
+                        PtrAdd(temporaryValues, offsetDest), sizeof(temporaryValues)-offsetDest, typeDest,
+                        PtrAdd(AsPointer(source._values.cbegin()), offsetSrc), typeSrc);
+
+                    assert(castSucess);  // type mis-match when attempting to build filtered hash value
                 }
 
                 ++i; ++i2;

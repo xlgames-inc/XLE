@@ -101,7 +101,7 @@ namespace Utility
 
         uint64  GetHash() const;
         uint64  GetParameterNamesHash() const;
-        uint64  TranslateHash(const ParameterBox& source) const;
+        uint64  CalculateFilteredHashValue(const ParameterBox& source) const;
 
         void    BuildStringTable(std::vector<std::pair<const char*, std::string>>& defines) const;
         void    OverrideStringTable(std::vector<std::pair<const char*, std::string>>& defines) const;
