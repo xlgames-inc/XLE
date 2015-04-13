@@ -454,6 +454,10 @@ namespace LevelEditor
 
             terrainType.Type = getNodeType("gap", "terrainType");
 
+            terrainBaseTextureStrataType.Type = getNodeType("gap", "terrainBaseTextureStrataType");
+            terrainBaseTextureType.Type = getNodeType("gap", "terrainBaseTextureType");
+            terrainBaseTextureType.strataChild = terrainBaseTextureType.Type.GetChildInfo("strata");
+
             placementsDocumentRootElement = getRootElement(NS, "placementsDocument");
             // XLE>>
         }
@@ -1068,6 +1072,17 @@ namespace LevelEditor
         public static class terrainType
         {
             public static DomNodeType Type;
+        }
+
+        public static class terrainBaseTextureStrataType
+        {
+            public static DomNodeType Type;
+        }
+
+        public static class terrainBaseTextureType
+        {
+            public static DomNodeType Type;
+            public static ChildInfo strataChild;
         }
 
         public static ChildInfo placementsDocumentRootElement;

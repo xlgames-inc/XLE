@@ -202,7 +202,64 @@ namespace LevelEditor
                                 "List of GameObject Components".Localize(),
                                 false,
                                 collectionEditor)
-                                }));                         
+                                }));
+
+            {
+                var strataCollectionEditor = new EmbeddedCollectionEditor();
+
+                strataCollectionEditor.GetItemInsertersFunc = (context) =>
+                {
+                    var list = context.GetValue() as IList<DomNode>;
+                    if (list == null) return EmptyArray<EmbeddedCollectionEditor.ItemInserter>.Instance;
+
+                    // create ItemInserter for each component type.
+                    var insertors = new EmbeddedCollectionEditor.ItemInserter[1]
+                    {
+                        new EmbeddedCollectionEditor.ItemInserter("Strata",
+                        delegate
+                        {
+                            DomNode node = new DomNode(Schema.terrainBaseTextureStrataType.Type);
+                            list.Add(node);
+                            return node;
+                        })
+                    };
+                    return insertors;
+                };
+
+                strataCollectionEditor.RemoveItemFunc = (context, item) =>
+                {
+                    var list = context.GetValue() as IList<DomNode>;
+                    if (list != null)
+                        list.Remove(item.Cast<DomNode>());
+                };
+
+                strataCollectionEditor.MoveItemFunc = (context, item, delta) =>
+                {
+                    var list = context.GetValue() as IList<DomNode>;
+                    if (list != null)
+                    {
+                        DomNode node = item.Cast<DomNode>();
+                        int index = list.IndexOf(node);
+                        int insertIndex = index + delta;
+                        if (insertIndex < 0 || insertIndex >= list.Count)
+                            return;
+                        list.RemoveAt(index);
+                        list.Insert(insertIndex, node);
+                    }
+                };
+
+                Schema.terrainBaseTextureType.Type.SetTag(
+                       new PropertyDescriptorCollection(
+                           new PropertyDescriptor[] {
+                            new ChildPropertyDescriptor(
+                                "Strata".Localize(),
+                                Schema.terrainBaseTextureType.strataChild,
+                                null,
+                                "List of texturing stratas".Localize(),
+                                false,
+                                strataCollectionEditor)
+                                }));
+            }
         }
 
         protected override void ParseAnnotations(
@@ -303,6 +360,20 @@ namespace LevelEditor
                     {
                         NodeTypePaletteItem item = new NodeTypePaletteItem(nodeType, name, description, image, category, menuText);
                         nodeType.SetTag<NodeTypePaletteItem>(item);
+                    }
+                }
+
+                // handle special extensions
+                foreach (XmlNode annot in kv.Value)
+                {
+                    if (annot.LocalName == "LeGe.OpaqueListable")
+                    {
+                        var labelAttrib = annot.Attributes["label"];
+                        if (labelAttrib != null) {
+                            string label = labelAttrib.Value;
+                            nodeType.SetTag("OpaqueListable", label);
+                        }
+                        nodeType.Define(new ExtensionInfo<DomNodeAdapters.OpaqueListable>());
                     }
                 }
             }           

@@ -372,6 +372,45 @@
  
   <xs:element name="placementsDocument" type="placementsDocumentType"/>
 
+  <xs:complexType name="terrainBaseTextureStrataType">
+    <xs:annotation>
+      <xs:appinfo>
+        <scea.dom.editors.attribute name="texture0" displayName="texture0" description="texture0" category="General"/>
+        <scea.dom.editors.attribute name="texture1" displayName="texture1" description="texture1" category="General"/>
+        <scea.dom.editors.attribute name="texture2" displayName="texture2" description="texture2" category="General"/>
+        <scea.dom.editors.attribute name="mapping0" displayName="mapping0" description="mapping0" category="General"/>
+        <scea.dom.editors.attribute name="mapping1" displayName="mapping1" description="mapping1" category="General"/>
+        <scea.dom.editors.attribute name="mapping2" displayName="mapping2" description="mapping2" category="General"/>
+      </xs:appinfo>
+    </xs:annotation>
+
+    <xs:attribute name="texture0" type="xs:string" default=""/>
+    <xs:attribute name="texture1" type="xs:string" default=""/>
+    <xs:attribute name="texture2" type="xs:string" default=""/>
+    <xs:attribute name="mapping0" type="xs:float" default="10.0"/>
+    <xs:attribute name="mapping1" type="xs:float" default="10.0"/>
+    <xs:attribute name="mapping2" type="xs:float" default="10.0"/>
+  </xs:complexType>
+
+  <xs:complexType name="terrainBaseTextureType">
+    <xs:annotation>
+      <xs:appinfo>
+        <LeGe.OpaqueListable label="basetexture"/>
+        <scea.dom.editors.attribute name="diffusedims" displayName="Diffuse Dims" description="Diffuse texture dimensions" category="General" editor="Sce.Atf.Controls.PropertyEditing.NumericTupleEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.FloatArrayConverter"/>
+        <scea.dom.editors.attribute name="normaldims" displayName="Normal Dims" description="Normal texture dimensions" category="General" editor="Sce.Atf.Controls.PropertyEditing.NumericTupleEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.FloatArrayConverter"/>
+        <scea.dom.editors.attribute name="paramdims" displayName="Parameter Dims" description="Parameter texture dimensions" category="General" editor="Sce.Atf.Controls.PropertyEditing.NumericTupleEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.FloatArrayConverter"/>
+      </xs:appinfo>
+    </xs:annotation>
+
+    <xs:sequence>
+      <xs:element name="strata" type="terrainBaseTextureStrataType" minOccurs="0" maxOccurs="6" />
+    </xs:sequence>
+    
+    <xs:attribute name="diffusedims" type="vector3Type" default="512 512 1"/>
+    <xs:attribute name="normaldims" type="vector3Type" default="512 512 1"/>
+    <xs:attribute name="paramdims" type="vector3Type" default="512 512 1"/>
+  </xs:complexType>
+  
   <xs:complexType name="terrainType">
     <xs:annotation>
       <xs:appinfo>
@@ -384,6 +423,9 @@
       </xs:appinfo>
     </xs:annotation>
 
+    <xs:sequence>
+      <xs:element name="baseTexture" type="terrainBaseTextureType" minOccurs="1" maxOccurs="1" />
+    </xs:sequence>
     <xs:attribute name="basedir" type="xs:string" />
     <xs:attribute name="offset" type="vector3Type" default="0 0 0"/>
   </xs:complexType>

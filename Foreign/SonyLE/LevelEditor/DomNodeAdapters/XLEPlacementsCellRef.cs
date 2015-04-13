@@ -121,11 +121,11 @@ namespace LevelEditor.DomNodeAdapters
 
         public Vec3F Mins
         {
-            get { return GetAttribute<Vec3F>(Schema.placementsCellReferenceType.minsAttribute); }
+            get { return new Vec3F(GetAttribute<float[]>(Schema.placementsCellReferenceType.minsAttribute)); }
         }
         public Vec3F Maxs
         {
-            get { return GetAttribute<Vec3F>(Schema.placementsCellReferenceType.maxsAttribute); }
+            get { return new Vec3F(GetAttribute<float[]>(Schema.placementsCellReferenceType.maxsAttribute)); }
         }
         public XLEPlacementDocument Target
         {
