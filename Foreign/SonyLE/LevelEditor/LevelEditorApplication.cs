@@ -67,7 +67,7 @@ namespace LevelEditor
                 typeof(CommandService),                 // menus and toolbars
                 typeof(ControlHostService),             // docking control host                        
                 typeof(AtfUsageLogger),                 // logs computer info to an ATF server
-                typeof(CrashLogger),                    // logs unhandled exceptions to an ATF server
+                // typeof(CrashLogger),                    // logs unhandled exceptions to an ATF server
                 typeof(PythonService),                  // scripting service for automated tests
                 typeof(ScriptConsole),
                 typeof(AtfScriptVariables),
