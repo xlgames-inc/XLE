@@ -246,40 +246,26 @@ namespace RenderingInterop
             throw new NotImplementedException();
         }
 
-        public static void SetObjectProperty(uint typeId, ulong documentId, ulong instanceId, uint propId, IntPtr data, int size)
+        public static void SetObjectProperty(
+            uint typeId, ulong documentId, ulong instanceId, uint propId, 
+            IntPtr data, Type elemType, int elemCount)
         {
             unsafe
             {
-                s_underlyingScene.SetProperty(documentId, instanceId, typeId, propId, data.ToPointer(), (ulong)size);
+                s_underlyingScene.SetProperty(
+                    documentId, instanceId, typeId, propId,
+                    data.ToPointer(), GUILayer.EditorInterfaceUtils.AsTypeId(elemType), (uint)elemCount);
             }
         }
 
-        public static void SetObjectProperty(uint typeid, ulong documentId, ulong instanceId, uint propId, Color color)
+        public static void SetObjectParent(
+            ulong documentId, ulong childInstanceId, uint childTypeId,
+            ulong parentInstanceId, uint parentTypeId,
+            int insertionPosition)
         {
-            Vec4F val = new Vec4F(color.R/255.0f, color.G/255.0f, color.B/255.0f, color.A/255.0f);
-            IntPtr ptr = new IntPtr(&val);
-            int sz = Marshal.SizeOf(val);
-            SetObjectProperty(typeid, documentId, instanceId, propId, ptr, sz);
-        }
-
-        public static void SetObjectProperty(uint typeid, ulong documentId, ulong instanceId, uint propId, uint val)
-        {
-            IntPtr ptr = new IntPtr(&val);
-            SetObjectProperty(typeid, documentId, instanceId, propId, ptr, sizeof(uint));
-        }
-
-        public static void SetObjectProperty(uint typeid, ulong documentId, ulong instanceId, uint propId, Vec4F val)
-        {
-            IntPtr ptr = new IntPtr(&val);
-            int sizeInBytes = Marshal.SizeOf(val);
-            SetObjectProperty(typeid, documentId, instanceId, propId, ptr, sizeInBytes);
-        }
-
-        public static void SetObjectProperty(uint typeid, ulong documentId, ulong instanceId, uint propId, Size sz)
-        {
-            IntPtr ptr = new IntPtr(&sz);
-            int sizeInBytes = Marshal.SizeOf(sz);
-            SetObjectProperty(typeid, documentId, instanceId, propId, ptr, sizeInBytes);
+            s_underlyingScene.SetObjectParent(documentId, 
+                childInstanceId, childTypeId,
+                parentInstanceId, parentTypeId, insertionPosition);
         }
 
         private static GCHandle s_savedBoundingBoxHandle;

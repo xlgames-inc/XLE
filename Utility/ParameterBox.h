@@ -17,7 +17,7 @@ namespace Utility
 {
     namespace ImpliedTyping
     {
-        enum class TypeCat : uint8 { Void, Bool, Int, UInt, Float };
+        enum class TypeCat : uint8 { Void, Bool, Int8, UInt8, Int16, UInt16, Int32, UInt32, Float };
         enum class TypeHint : uint8 { None, Vector, Color };
         class TypeDesc
         {
@@ -27,7 +27,7 @@ namespace Utility
             uint16      _arrayCount;
 
             void    Serialize(Serialization::NascentBlockSerializer& serializer) const;
-            TypeDesc(TypeCat cat = TypeCat::UInt, uint16 arrayCount = 1, TypeHint hint = TypeHint::None);
+            TypeDesc(TypeCat cat = TypeCat::UInt32, uint16 arrayCount = 1, TypeHint hint = TypeHint::None);
             uint32 GetSize() const;
             friend bool operator==(const TypeDesc& lhs, const TypeDesc& rhs);
         };

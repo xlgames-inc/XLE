@@ -10,16 +10,29 @@ namespace RenderingInterop
         protected override void OnNodeSet()
         {
             base.OnNodeSet();
-            DomNode node = this.DomNode;
+
+            // we must register this document and get an id for it
+            DomNode node = this.DomNode; 
+            var tag = node.Type.GetTag(NativeAnnotations.NativeDocumentType);
+            var typeId = (tag != null) ? (uint)tag : 0;
+            m_nativeDocId = GameEngine.CreateDocument(typeId);
+
+            ManageNativeObjectLifeTime = true;
+            foreach (var subnode in node.Subtree)
+            {
+                NativeObjectAdapter childObject = subnode.As<NativeObjectAdapter>();
+                if (childObject != null)
+                {
+                    childObject.OnAddToDocument(this);
+
+                    NativeObjectAdapter parentObject = subnode.Parent.As<NativeObjectAdapter>();
+                    if (parentObject != null)
+                        childObject.OnSetParent(parentObject, -1);
+                }
+            }
             
             node.ChildInserted += node_ChildInserted;
             node.ChildRemoved += node_ChildRemoved;
-            ManageNativeObjectLifeTime = true;
-
-                // we must register this document and get an id for it
-            var tag = node.Type.GetTag(NativeAnnotations.NativeDocumentType);
-            var typeId = (tag!=null) ? (uint)tag : 0;
-            m_nativeDocId = GameEngine.CreateDocument(typeId);
         }
 
         void node_ChildInserted(object sender, ChildEventArgs e)
@@ -28,6 +41,16 @@ namespace RenderingInterop
             if (childObject != null)
             {
                 childObject.OnAddToDocument(this);
+
+                NativeObjectAdapter parentObject = e.Parent.As<NativeObjectAdapter>();
+                if (parentObject != null)
+                {
+                    childObject.OnSetParent(parentObject, e.Index);
+                }
+                else
+                {
+                    childObject.OnSetParent(null, -1);
+                }
             }
         }
 
@@ -37,6 +60,8 @@ namespace RenderingInterop
             if (childObject != null)
             {
                 childObject.OnRemoveFromDocument(this);
+
+                childObject.OnSetParent(null, -1);
             }
         }
 

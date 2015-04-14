@@ -123,7 +123,7 @@ namespace GUILayer
 
 			if (parseSettings._toggles & SceneParseSettings::Toggles::Terrain && _editorScene->_terrainGob && _editorScene->_terrainGob->_terrainManager) {
 				TRY {
-                    _editorScene->_terrainGob->_terrainManager->Render(context, parserContext, techniqueIndex);
+                    // _editorScene->_terrainGob->_terrainManager->Render(context, parserContext, techniqueIndex);
                 }
                 CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
                 CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
@@ -205,8 +205,8 @@ namespace GUILayer
     bool EditorSceneManager::DeleteObject(DocumentId doc, ObjectId obj, ObjectTypeId objType)
         { return _dynInterface->DeleteObject(*_scene.get(), doc, obj, objType); }
 
-    bool EditorSceneManager::SetProperty(DocumentId doc, ObjectId obj, ObjectTypeId objType, PropertyId prop, const void* src, size_t srcSize)
-        { return _dynInterface->SetProperty(*_scene.get(), doc, obj, objType, prop, src, srcSize); }
+    bool EditorSceneManager::SetProperty(DocumentId doc, ObjectId obj, ObjectTypeId objType, PropertyId prop, const void* src, unsigned elementType, unsigned arrayCount)
+        { return _dynInterface->SetProperty(*_scene.get(), doc, obj, objType, prop, src, elementType, arrayCount); }
 
     bool EditorSceneManager::GetProperty(DocumentId doc, ObjectId obj, ObjectTypeId objType, PropertyId prop, void* dest, size_t* destSize)
         { return _dynInterface->GetProperty(*_scene.get(), doc, obj, objType, prop, dest, destSize); }
@@ -215,6 +215,15 @@ namespace GUILayer
     ObjectTypeId EditorSceneManager::GetTypeId(System::String^ name)                            { return _dynInterface->GetTypeId(clix::marshalString<clix::E_UTF8>(name).c_str()); }
     PropertyId EditorSceneManager::GetPropertyId(ObjectTypeId type, System::String^ name)       { return _dynInterface->GetPropertyId(type, clix::marshalString<clix::E_UTF8>(name).c_str()); }
     ChildListId EditorSceneManager::GetChildListId(ObjectTypeId type, System::String^ name)     { return _dynInterface->GetChildListId(type, clix::marshalString<clix::E_UTF8>(name).c_str()); }
+
+    bool EditorSceneManager::SetObjectParent(DocumentId doc, 
+            ObjectId childId, ObjectTypeId childTypeId, 
+            ObjectId parentId, ObjectTypeId parentTypeId, int insertionPosition)
+    {
+        return _dynInterface->SetParent(
+            *_scene.get(), doc, childId, childTypeId,
+            parentId, parentTypeId, insertionPosition);
+    }
 
     IManipulatorSet^ EditorSceneManager::CreateTerrainManipulators() 
     { 
@@ -241,6 +250,23 @@ namespace GUILayer
             (_scene->_terrainGob) ? _scene->_terrainGob->_terrainManager : nullptr,
             _scene->_placementsEditor);
     }
+
+    static void UpdateTerrainBaseTexture(
+        const EditorDynamicInterface::FlexObjectType& sys,
+        const EditorDynamicInterface::FlexObjectType::Object& obj)
+    {
+
+    }
+
+    static void TerrainBaseTextureCallback(
+        const EditorDynamicInterface::FlexObjectType& flexSys, 
+        EditorDynamicInterface::DocumentId doc, EditorDynamicInterface::ObjectId obj, EditorDynamicInterface::ObjectTypeId type)
+    {
+        auto* object = flexSys.GetObject(doc, obj);
+        if (object) {
+            UpdateTerrainBaseTexture(flexSys, *object);
+        }
+    }
  
     EditorSceneManager::EditorSceneManager()
     {
@@ -248,6 +274,17 @@ namespace GUILayer
         _dynInterface = std::make_shared<EditorDynamicInterface::RegisteredTypes>();
         _dynInterface->RegisterType(std::make_shared<EditorDynamicInterface::PlacementObjectType>());
         _dynInterface->RegisterType(std::make_shared<EditorDynamicInterface::TerrainObjectType>());
+
+        {
+            using namespace EditorDynamicInterface;
+            auto flexType = std::make_shared<FlexObjectType>();
+            flexType->RegisterCallback(
+                flexType->GetTypeId("TerrainBaseTexture"),
+                &TerrainBaseTextureCallback);
+
+            _dynInterface->RegisterType(flexType);
+        }
+
         _selection = gcnew ObjectSet;
     }
 

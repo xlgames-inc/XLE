@@ -169,6 +169,25 @@ namespace GUILayer
                 Float2(worldX, worldY));
             return true;
         }
+
+        static unsigned AsTypeId(System::Type^ type)
+        {
+            if (type == bool::typeid)                   { return (unsigned)ImpliedTyping::TypeCat::Bool; }
+            else if (type == System::Byte::typeid)      { return (unsigned)ImpliedTyping::TypeCat::UInt8; }
+            else if (type == System::SByte::typeid)     { return (unsigned)ImpliedTyping::TypeCat::Int8; }
+            else if (type == System::UInt16::typeid)    { return (unsigned)ImpliedTyping::TypeCat::UInt16; }
+            else if (type == System::Int16::typeid)     { return (unsigned)ImpliedTyping::TypeCat::Int16; }
+            else if (type == System::UInt32::typeid)    { return (unsigned)ImpliedTyping::TypeCat::UInt32; }
+            else if (type == System::Int32::typeid)     { return (unsigned)ImpliedTyping::TypeCat::Int32; }
+            else if (type == System::Single::typeid)    { return (unsigned)ImpliedTyping::TypeCat::Float; }
+
+            // else if (type == System::UInt64::typeid)    { return (unsigned)ImpliedTyping::TypeCat::UInt64; }
+            // else if (type == System::Int64::typeid)     { return (unsigned)ImpliedTyping::TypeCat::Int64; }
+            // else if (type == System::Double::typeid)    { return (unsigned)ImpliedTyping::TypeCat::Double; }
+            else if (type == System::Char::typeid)      { return (unsigned)ImpliedTyping::TypeCat::UInt16; }
+
+            return (unsigned)ImpliedTyping::TypeCat::Void;
+        }
     };
 }
 

@@ -36,7 +36,7 @@ namespace RenderingInterop
         {
             set
             {
-                GameEngine.SetObjectProperty(m_typeId, 0, m_intanceId, BkgColorPropId, value);
+                // GameEngine.SetObjectProperty(m_typeId, 0, m_intanceId, BkgColorPropId, value);
             }
         }
 

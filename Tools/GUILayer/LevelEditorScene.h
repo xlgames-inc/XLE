@@ -9,10 +9,9 @@
 #include "EditorDynamicInterface.h"
 #include "CLIXAutoPtr.h"
 #include "../../Assets/Assets.h"    // just for ResChar
-#include "../../Math/Vector.h"
 #include <memory>
 
-namespace SceneEngine { class PlacementsManager; class PlacementsEditor; class ISceneParser; class IntersectionTestScene; class TerrainManager; }
+namespace SceneEngine { class PlacementsManager; class PlacementsEditor; class ISceneParser; class IntersectionTestScene; }
 namespace Tools { class IManipulator; }
 
 namespace GUILayer
@@ -20,21 +19,7 @@ namespace GUILayer
     ref class VisCameraSettings;
     ref class IntersectionTestContextWrapper;
 	ref class IntersectionTestSceneWrapper;
-
-    class TerrainGob
-    {
-    public:
-        std::shared_ptr<SceneEngine::TerrainManager> _terrainManager;
-
-        void SetBaseDir(const Assets::ResChar dir[]);
-        void SetOffset(const Float3& offset);
-
-        TerrainGob();
-        ~TerrainGob();
-
-    protected:
-        Float3 _terrainOffset;
-    };
+    class TerrainGob;
 
     class EditorScene
     {
@@ -79,8 +64,12 @@ namespace GUILayer
         ObjectId AssignObjectId(DocumentId doc, ObjectTypeId type);
         bool CreateObject(DocumentId doc, ObjectId obj, ObjectTypeId objType);
         bool DeleteObject(DocumentId doc, ObjectId obj, ObjectTypeId objType);
-        bool SetProperty(DocumentId doc, ObjectId obj, ObjectTypeId objType, PropertyId prop, const void* src, size_t srcSize);
+        bool SetProperty(DocumentId doc, ObjectId obj, ObjectTypeId objType, PropertyId prop, const void* src, unsigned elementType, unsigned arrayCount);
         bool GetProperty(DocumentId doc, ObjectId obj, ObjectTypeId objType, PropertyId prop, void* dest, size_t* destSize);
+
+        bool SetObjectParent(DocumentId doc, 
+            ObjectId childId, ObjectTypeId childTypeId, 
+            ObjectId parentId, ObjectTypeId parentTypeId, int insertionPosition);
 
         ObjectTypeId GetTypeId(System::String^ name);
         DocumentTypeId GetDocumentTypeId(System::String^ name);

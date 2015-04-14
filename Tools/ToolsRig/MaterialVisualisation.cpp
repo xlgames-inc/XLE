@@ -365,10 +365,10 @@ namespace ToolsRig
         TypeDesc result;
         switch (typeDesc.Type) {
         case D3D_SVT_BOOL:  result._type = TypeCat::Bool;   break;
-        case D3D_SVT_INT:   result._type = TypeCat::Int;    break;
+        case D3D_SVT_INT:   result._type = TypeCat::Int32;  break;
         case D3D_SVT_FLOAT: result._type = TypeCat::Float;  break;
         case D3D_SVT_UINT:
-        case D3D_SVT_UINT8: result._type = TypeCat::UInt;   break;
+        case D3D_SVT_UINT8: result._type = TypeCat::UInt32; break;
 
         default:
         case D3D_SVT_VOID:  result._type = TypeCat::Void;   break;

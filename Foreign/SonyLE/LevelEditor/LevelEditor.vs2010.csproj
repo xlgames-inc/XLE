@@ -138,6 +138,7 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <Compile Include="PropertyEditing\AssetProperties.cs" />
     <Compile Include="Services\CustomFileSystemResourceFolder.cs" />
     <Compile Include="Services\GameLoopService.cs" />
     <Compile Include="Services\PrefabService.cs" />

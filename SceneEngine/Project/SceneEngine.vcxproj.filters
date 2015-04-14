@@ -196,6 +196,7 @@
     <ClInclude Include="..\LightInternal.h">
       <Filter>Lighting And Processing</Filter>
     </ClInclude>
+    <ClInclude Include="..\TerrainMaterial.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Lighting And Processing">

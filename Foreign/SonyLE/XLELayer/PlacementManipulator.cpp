@@ -20,6 +20,7 @@ namespace XLELayer
     public:
         virtual System::String^ AsAssetName(System::Uri^ uri) = 0;
         virtual String^ StripExtension(String^ input) = 0;
+        virtual String^ GetBaseTextureName(String^ input) = 0;
     };
 
     [Export(IXLEAssetService::typeid)]
@@ -30,9 +31,13 @@ namespace XLELayer
         virtual System::String^ AsAssetName(System::Uri^ uri)
         {
                 // covert this uri into a string filename that is fit for the assets system
-            auto cwd = gcnew Uri(System::IO::Directory::GetCurrentDirectory()->TrimEnd('\\') + "\\");
-            auto relUri = cwd->MakeRelativeUri(uri);
-            return Uri::UnescapeDataString(relUri->ToString());
+            if (uri->IsAbsoluteUri) {
+                auto cwd = gcnew Uri(System::IO::Directory::GetCurrentDirectory()->TrimEnd('\\') + "\\");
+                auto relUri = cwd->MakeRelativeUri(uri);
+                return Uri::UnescapeDataString(relUri->OriginalString);
+            } else {
+                return Uri::UnescapeDataString(uri->OriginalString);
+            }
         }
 
         virtual String^ StripExtension(String^ input)
@@ -44,6 +49,20 @@ namespace XLELayer
                 return input->Substring(0, dot);
             }
             return input;
+        }
+
+        virtual String^ GetBaseTextureName(String^ input)
+        {
+                // to get the "base texture name", we must strip off _ddn, _df and _sp suffixes
+            auto withoutExt = StripExtension(input);
+            if (withoutExt->EndsWith("_ddn", true, System::Globalization::CultureInfo::CurrentCulture)) {
+                return withoutExt->Substring(0, withoutExt->Length-4);
+            }
+            if (    withoutExt->EndsWith("_df", true, System::Globalization::CultureInfo::CurrentCulture)
+                ||  withoutExt->EndsWith("_sp", true, System::Globalization::CultureInfo::CurrentCulture)) {
+                return withoutExt->Substring(0, withoutExt->Length-3);
+            }
+            return withoutExt;
         }
     };
 

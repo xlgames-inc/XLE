@@ -263,6 +263,7 @@
     <ClInclude Include="..\SurfaceHeightsProvider.h" />
     <ClInclude Include="..\Terrain.h" />
     <ClInclude Include="..\TerrainInternal.h" />
+    <ClInclude Include="..\TerrainMaterial.h" />
     <ClInclude Include="..\TerrainUberSurface.h" />
     <ClInclude Include="..\TiledLighting.h" />
     <ClInclude Include="..\Tonemap.h" />

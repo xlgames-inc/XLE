@@ -29,16 +29,14 @@ namespace SceneEngine
         enum Filenames { XLE, Legacy };
 
         ::Assets::rstring _baseDir;
+        ::Assets::rstring _textureCfgName;
         UInt2       _cellCount;
         Filenames   _filenamesMode;
 
         TerrainConfig(
 			const ::Assets::rstring& baseDir, UInt2 cellCount,
             Filenames filenamesMode = XLE, 
-            unsigned nodeDimsInElements = 32u, unsigned cellTreeDepth = 5u, unsigned nodeOverlap = 2u)
-            : _baseDir(baseDir), _cellCount(cellCount), _filenamesMode(filenamesMode)
-            , _nodeDimsInElements(nodeDimsInElements), _cellTreeDepth(cellTreeDepth), _nodeOverlap(nodeOverlap) {}
-
+            unsigned nodeDimsInElements = 32u, unsigned cellTreeDepth = 5u, unsigned nodeOverlap = 2u);
 		TerrainConfig(const ::Assets::rstring& baseDir = ::Assets::rstring());
 
         struct FileType
@@ -51,7 +49,6 @@ namespace SceneEngine
         };
         void        GetCellFilename(char buffer[], unsigned cnt, UInt2 cellIndex, FileType::Enum) const;
         void        GetUberSurfaceFilename(char buffer[], unsigned bufferCount, FileType::Enum) const;
-        void        GetTexturingCfgFilename(char buffer[], unsigned bufferCount) const;
 
         Float2      TerrainCoordsToCellBasedCoords(const Float2& terrainCoords) const;
         Float2      CellBasedCoordsToTerrainCoords(const Float2& cellBasedCoords) const;

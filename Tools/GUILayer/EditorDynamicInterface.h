@@ -32,8 +32,9 @@ namespace GUILayer
             virtual ObjectId AssignObjectId(EditorScene& scene, DocumentId doc, ObjectTypeId objType) const = 0;
             virtual bool CreateObject(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId objType, const char initializer[]) const = 0;
             virtual bool DeleteObject(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId objType) const = 0;
-            virtual bool SetProperty(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId objType, PropertyId prop, const void* src, size_t srcSize) const = 0;
+            virtual bool SetProperty(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId objType, PropertyId prop, const void* src, unsigned elementType, unsigned arrayCount) const = 0;
             virtual bool GetProperty(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId type, PropertyId prop, void* dest, size_t* destSize) const = 0;
+            virtual bool SetParent(EditorScene& scene, DocumentId doc, ObjectId child, ObjectTypeId childType, ObjectId parent, ObjectTypeId parentType, int insertionPosition) const = 0;
 
             virtual ObjectTypeId GetTypeId(const char name[]) const = 0;
             virtual DocumentTypeId GetDocumentTypeId(const char name[]) const = 0;
@@ -52,8 +53,9 @@ namespace GUILayer
             ObjectId AssignObjectId(EditorScene& scene, DocumentId doc, ObjectTypeId objType) const;
             bool CreateObject(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId objType, const char initializer[]) const;
             bool DeleteObject(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId objType) const;
-            bool SetProperty(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId objType, PropertyId prop, const void* src, size_t srcSize) const;
+            bool SetProperty(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId objType, PropertyId prop, const void* src, unsigned elementType, unsigned arrayCount) const;
             bool GetProperty(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId type, PropertyId prop, void* dest, size_t* destSize) const;
+            bool SetParent(EditorScene& scene, DocumentId doc, ObjectId child, ObjectTypeId childType, ObjectId parent, ObjectTypeId parentType, int insertionPosition) const;
 
             ObjectTypeId GetTypeId(const char name[]) const;
             DocumentTypeId GetDocumentTypeId(const char name[]) const;

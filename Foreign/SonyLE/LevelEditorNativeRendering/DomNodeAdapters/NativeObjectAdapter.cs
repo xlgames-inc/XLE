@@ -74,6 +74,23 @@ namespace RenderingInterop
             System.Diagnostics.Debug.Assert(doc == docTest);
             CreateNativeObject();
         }
+
+        public void OnSetParent(NativeObjectAdapter newParent, int insertionPosition)
+        {
+            if (newParent != null) {
+                GameEngine.SetObjectParent(
+                    m_documentId,
+                    InstanceId, TypeId,
+                    newParent.InstanceId, newParent.TypeId, insertionPosition);
+            }
+            else
+            {
+                GameEngine.SetObjectParent(
+                    m_documentId,
+                    InstanceId, TypeId,
+                    0, 0, insertionPosition);
+            }
+        }
         
         void node_AttributeChanged(object sender, AttributeEventArgs e)
         {
@@ -162,7 +179,6 @@ namespace RenderingInterop
             Type elmentType = clrType.GetElementType();
 
             object data = this.DomNode.GetAttribute(attribInfo);
-            
             if (clrType.IsArray && elmentType.IsPrimitive)
             {
                 GCHandle pinHandle = new GCHandle();
@@ -170,9 +186,9 @@ namespace RenderingInterop
                 {
                     pinHandle = GCHandle.Alloc(data, GCHandleType.Pinned);
                     IntPtr ptr = pinHandle.AddrOfPinnedObject();
-                    int sz = Marshal.SizeOf(elmentType);
-                    GameEngine.SetObjectProperty(typeId, m_documentId, InstanceId, id, ptr, sz * attribInfo.Type.Length);
-
+                    GameEngine.SetObjectProperty(
+                        typeId, m_documentId, InstanceId, id,
+                        ptr, elmentType, attribInfo.Type.Length);
                 }
                 finally
                 {
@@ -183,7 +199,8 @@ namespace RenderingInterop
             else
             {
                 IntPtr ptr = IntPtr.Zero;
-                int sz = 0;
+                Type elemType = null;
+                int arrayCount = 1;
                 if (clrType == typeof(string))
                 {
                     string str = (string)data;
@@ -192,86 +209,78 @@ namespace RenderingInterop
                         fixed (char* chptr = str)
                         {
                             ptr = new IntPtr((void*)chptr);
-                            sz = str.Length * 2;
-                            GameEngine.SetObjectProperty(typeId, m_documentId, InstanceId, id, ptr, sz);
+                            GameEngine.SetObjectProperty(
+                                typeId, m_documentId, InstanceId, id, 
+                                ptr, typeof(char), str.Length);
                         }
                         return;
                     }
                 }
-                else if (clrType == typeof(DateTime))
-                {
-                    DateTime dt = (DateTime)data;
-                    float seconds = (float)(dt.Hour * 60 * 60 + dt.Minute * 60 + dt.Second);
-                    float secondsInADay = 60.0f * 60.0f * 24.0f; // sec per minute * min per hour * hour per day
-                    float normalizedTime =  seconds / secondsInADay; // normalize 0.0 to 1.0
-                    ptr = new IntPtr(&normalizedTime);
-                    sz = sizeof(float);
-                }
                 else if (clrType == typeof(bool))
-                {                  
+                {
                     bool val = (bool)data;
                     ptr = new IntPtr(&val);
-                    sz = sizeof(bool);
+                    elemType = typeof(bool);
                 }
                 else if (clrType == typeof(byte))
                 {
                     byte val = (byte)data;
                     ptr = new IntPtr(&val);
-                    sz = sizeof(byte);
+                    elemType = typeof(byte);
                 }
                 else if (clrType == typeof(sbyte))
                 {
                     sbyte val = (sbyte)data;
                     ptr = new IntPtr(&val);
-                    sz = sizeof(sbyte);
+                    elemType = typeof(sbyte);
                 }
                 else if (clrType == typeof(short))
                 {
                     short val = (short)data;
                     ptr = new IntPtr(&val);
-                    sz = sizeof(short);
+                    elemType = typeof(short);
                 }
                 else if (clrType == typeof(ushort))
                 {
                     ushort val = (ushort)data;
                     ptr = new IntPtr(&val);
-                    sz = sizeof(ushort);
+                    elemType = typeof(ushort);
                 }
                 else if (clrType == typeof(int))
                 {
                     int val = (int)data;
                     ptr = new IntPtr(&val);
-                    sz = sizeof(int);
+                    elemType = typeof(int);
                 }
                 else if (clrType == typeof(uint))
                 {
                     uint val = (uint)data;
                     ptr = new IntPtr(&val);
-                    sz = sizeof(uint);
+                    elemType = typeof(uint);
                 }
                 else if (clrType == typeof(long))
                 {
                     long val = (long)data;
                     ptr = new IntPtr(&val);
-                    sz = sizeof(long);
+                    elemType = typeof(long);
                 }
                 else if (clrType == typeof(ulong))
                 {
                     ulong val = (ulong)data;
                     ptr = new IntPtr(&val);
-                    sz = sizeof(ulong);
+                    elemType = typeof(ulong);
                 }
                 else if (clrType == typeof(float))
                 {
                     float val = (float)data;
                     ptr = new IntPtr(&val);
-                    sz = sizeof(float);
+                    elemType = typeof(float);
                 }
                 else if (clrType == typeof(double))
                 {
                     double val = (double)data;
                     ptr = new IntPtr(&val);
-                    sz = sizeof(double);
+                    elemType = typeof(double);
                 }
                 else if (clrType == typeof(System.Uri))
                 {
@@ -282,8 +291,7 @@ namespace RenderingInterop
                         fixed (char* chptr = str)
                         {
                             ptr = new IntPtr((void*)chptr);
-                            sz = str.Length * 2;
-                            GameEngine.SetObjectProperty(typeId, m_documentId, InstanceId, id, ptr, sz);
+                            GameEngine.SetObjectProperty(typeId, m_documentId, InstanceId, id, ptr, typeof(char), str.Length);
                         }
                         return;
                     }
@@ -296,11 +304,14 @@ namespace RenderingInterop
                     if(nativeGob != null)
                     {
                         ptr = new IntPtr((void*)nativeGob.InstanceId);
-                        sz = sizeof(ulong);                        
-                    }                    
+                        elemType = typeof(ulong);                        
+                    }
                 }
 
-                GameEngine.SetObjectProperty(typeId, m_documentId, InstanceId, id, ptr, sz);
+                if (elemType != null)
+                {
+                    GameEngine.SetObjectProperty(typeId, m_documentId, InstanceId, id, ptr, elemType, arrayCount);
+                }
             }
         }
 

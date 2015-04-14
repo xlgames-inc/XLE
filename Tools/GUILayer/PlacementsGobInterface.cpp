@@ -12,6 +12,7 @@
 #include "../ToolsRig/IManipulator.h"
 #include "../../SceneEngine/PlacementsManager.h"
 #include "../../Utility/StringFormat.h"
+#include "../../Utility/ParameterBox.h"
 #include "../../Math/Transformations.h"
 
 namespace GUILayer { namespace EditorDynamicInterface
@@ -86,7 +87,7 @@ namespace GUILayer { namespace EditorDynamicInterface
     bool PlacementObjectType::SetProperty(
         EditorScene& scene, DocumentId doc, ObjectId obj, 
         ObjectTypeId type, PropertyId prop, 
-        const void* src, size_t srcSize) const
+        const void* src, unsigned elementType, unsigned arrayCount) const
     {
             // find the object, and set the given property (as per the new value specified in the string)
             //  We need to create a transaction, make the change and then commit it back.
@@ -107,7 +108,7 @@ namespace GUILayer { namespace EditorDynamicInterface
             if (prop == Property_Transform) {
                     // note -- putting in a transpose here, because the level editor matrix
                     //          math uses a transposed form
-                if (srcSize >= sizeof(Float4x4)) {
+                if (elementType == (unsigned)ImpliedTyping::TypeCat::Float && arrayCount >= 16) {
                     auto originalObject = transaction->GetObject(0);
                     originalObject._localToWorld = AsFloat3x4(Transpose(*(const Float4x4*)src));
                     transaction->SetObject(0, originalObject);
@@ -176,6 +177,11 @@ namespace GUILayer { namespace EditorDynamicInterface
             }
         }
 
+        return false;
+    }
+
+    bool PlacementObjectType::SetParent(EditorScene& scene, DocumentId doc, ObjectId child, ObjectTypeId childType, ObjectId parent, ObjectTypeId parentType, int insertionPosition) const
+    {
         return false;
     }
 

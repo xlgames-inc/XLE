@@ -56,11 +56,11 @@ namespace GUILayer { namespace EditorDynamicInterface
         return false;
     }
 
-    bool RegisteredTypes::SetProperty(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId objType, PropertyId prop, const void* src, size_t srcSize) const
+    bool RegisteredTypes::SetProperty(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId objType, PropertyId prop, const void* src, unsigned elementType, unsigned arrayCount) const
     {
         if (objType > 0 && (objType-1) < _knownObjectTypes.size()) {
             auto& reg = _knownObjectTypes[objType-1];
-            return reg._owner->SetProperty(scene, doc, obj, reg._mappedTypeId, prop, src, srcSize);
+            return reg._owner->SetProperty(scene, doc, obj, reg._mappedTypeId, prop, src, elementType, arrayCount);
         }
         return false;
     }
@@ -71,6 +71,22 @@ namespace GUILayer { namespace EditorDynamicInterface
             auto& reg = _knownObjectTypes[objType-1];
             return reg._owner->GetProperty(scene, doc, obj, reg._mappedTypeId, prop, dest, destSize);
         }
+        return false;
+    }
+
+    bool RegisteredTypes::SetParent(EditorScene& scene, DocumentId doc, ObjectId child, ObjectTypeId childType, ObjectId parent, ObjectTypeId parentType, int insertionPosition) const
+    {
+        if (    childType > 0 && (childType-1) < _knownObjectTypes.size()
+            &&  parentType > 0 && (parentType-1) < _knownObjectTypes.size()) {
+
+            auto& reg0 = _knownObjectTypes[childType-1];
+            auto& reg1 = _knownObjectTypes[parentType-1];
+
+            if (reg0._owner == reg1._owner) {
+                return reg0._owner->SetParent(scene, doc, child, reg0._mappedTypeId, parent, reg1._mappedTypeId, insertionPosition);
+            }
+        }
+
         return false;
     }
 
@@ -120,7 +136,7 @@ namespace GUILayer { namespace EditorDynamicInterface
     {
         if (objType > 0 && (objType-1) < _knownObjectTypes.size()) {
             auto& reg = _knownObjectTypes[objType-1];
-            return reg._owner->GetPropertyId(objType, name);
+            return reg._owner->GetPropertyId(reg._mappedTypeId, name);
         }
         return 0;
     }
@@ -129,7 +145,7 @@ namespace GUILayer { namespace EditorDynamicInterface
     {
         if (objType > 0 && (objType-1) < _knownObjectTypes.size()) {
             auto& reg = _knownObjectTypes[objType-1];
-            return reg._owner->GetChildListId(objType, name);
+            return reg._owner->GetChildListId(reg._mappedTypeId, name);
         }
         return 0;
     }
