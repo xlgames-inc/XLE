@@ -2875,8 +2875,14 @@ namespace SceneEngine
 
         if (!_pimpl->_textures || _pimpl->_textures->GetDependencyValidation().GetValidationIndex() > 0) {
             _pimpl->_textures.reset();
-            auto& scaffold = Assets::GetAssetDep<TerrainMaterialScaffold>(_pimpl->_cfg._textureCfgName.c_str());
-            _pimpl->_textures = std::make_unique<TerrainMaterialTextures>(scaffold);
+
+            if (!_pimpl->_cfg._textureCfgName.empty()) {
+                auto& scaffold = Assets::GetAssetDep<TerrainMaterialScaffold>(_pimpl->_cfg._textureCfgName.c_str());
+                _pimpl->_textures = std::make_unique<TerrainMaterialTextures>(scaffold);
+            } else {
+                auto& scaffold = Assets::GetAssetDep<TerrainMaterialScaffold>();
+                _pimpl->_textures = std::make_unique<TerrainMaterialTextures>(scaffold);
+            }
         }
 
         context->BindPS(MakeResourceList(8, 

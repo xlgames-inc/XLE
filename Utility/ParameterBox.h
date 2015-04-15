@@ -96,8 +96,11 @@ namespace Utility
 
         template<typename Type> std::pair<bool, Type> GetParameter(const char name[]) const;
         template<typename Type> std::pair<bool, Type> GetParameter(ParameterNameHash name) const;
+        template<typename Type> Type GetParameter(const char name[], const Type& def) const;
+        template<typename Type> Type GetParameter(ParameterNameHash name, const Type& def) const;
         bool GetParameter(ParameterNameHash name, void* dest, const ImpliedTyping::TypeDesc& destType) const;
         bool HasParameter(ParameterNameHash name) const;
+        ImpliedTyping::TypeDesc GetParameterType(ParameterNameHash name) const;
 
         uint64  GetHash() const;
         uint64  GetParameterNamesHash() const;
@@ -136,6 +139,22 @@ namespace Utility
     };
 
     #pragma pack(pop)
+
+    template<typename Type> 
+        Type ParameterBox::GetParameter(const char name[], const Type& def) const
+    {
+        auto q = GetParameter<Type>(name);
+        if (q.first) return q.second;
+        return def;
+    }
+
+    template<typename Type> 
+        Type ParameterBox::GetParameter(ParameterNameHash name, const Type& def) const
+    {
+        auto q = GetParameter<Type>(name);
+        if (q.first) return q.second;
+        return def;
+    }
 
 }
 

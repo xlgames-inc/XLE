@@ -16,18 +16,6 @@ namespace LevelEditor.PropertyEditing
 
         public override object ConvertFrom(ITypeDescriptorContext context, CultureInfo culture, object value)
         {
-            string s = value as string;
-            if (s != null)
-                return s;
-            return base.ConvertFrom(context, culture, value);
-        }
-
-        public override object ConvertTo(
-            ITypeDescriptorContext context,
-            CultureInfo culture,
-            object value,
-            Type destinationType)
-        {
             var uri = value as Uri;
             if (uri != null)
                 return UriToAssetName(uri);
@@ -42,6 +30,15 @@ namespace LevelEditor.PropertyEditing
                 return str;
             }
 
+            return base.ConvertFrom(context, culture, value);
+        }
+
+        public override object ConvertTo(
+            ITypeDescriptorContext context,
+            CultureInfo culture,
+            object value,
+            Type destinationType)
+        {
             return base.ConvertTo(context, culture, value, destinationType);
         }
 

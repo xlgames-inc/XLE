@@ -382,13 +382,15 @@
         <LeGe.NativeProperty name="mapping0" nativeName="mapping0" nativeType="float" access="set"/>
         <LeGe.NativeProperty name="mapping1" nativeName="mapping1" nativeType="float" access="set"/>
         <LeGe.NativeProperty name="mapping2" nativeName="mapping2" nativeType="float" access="set"/>
+        <LeGe.NativeProperty name="endheight" nativeName="endheight" nativeType="float" access="set"/>
         
-        <scea.dom.editors.attribute name="texture0" displayName="texture0" description="texture0" category="General" editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" converter="LevelEditor.PropertyEditing.AssetNameConverter,LevelEditor"/>
-        <scea.dom.editors.attribute name="texture1" displayName="texture1" description="texture1" category="General" editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" converter="LevelEditor.PropertyEditing.AssetNameConverter,LevelEditor"/>
-        <scea.dom.editors.attribute name="texture2" displayName="texture2" description="texture2" category="General" editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" converter="LevelEditor.PropertyEditing.AssetNameConverter,LevelEditor"/>
+        <scea.dom.editors.attribute name="texture0" displayName="texture0" description="texture0" category="General" editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" converter="LevelEditor.PropertyEditing.BaseTextureNameConverter,LevelEditor"/>
+        <scea.dom.editors.attribute name="texture1" displayName="texture1" description="texture1" category="General" editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" converter="LevelEditor.PropertyEditing.BaseTextureNameConverter,LevelEditor"/>
+        <scea.dom.editors.attribute name="texture2" displayName="texture2" description="texture2" category="General" editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" converter="LevelEditor.PropertyEditing.BaseTextureNameConverter,LevelEditor"/>
         <scea.dom.editors.attribute name="mapping0" displayName="mapping0" description="mapping0" category="General"/>
         <scea.dom.editors.attribute name="mapping1" displayName="mapping1" description="mapping1" category="General"/>
         <scea.dom.editors.attribute name="mapping2" displayName="mapping2" description="mapping2" category="General"/>
+        <scea.dom.editors.attribute name="endheight" displayName="endheight" description="endheight" category="General"/>
       </xs:appinfo>
     </xs:annotation>
 
@@ -398,6 +400,7 @@
     <xs:attribute name="mapping0" type="xs:float" default="10.0"/>
     <xs:attribute name="mapping1" type="xs:float" default="10.0"/>
     <xs:attribute name="mapping2" type="xs:float" default="10.0"/>
+    <xs:attribute name="endheight" type="xs:float" default="1000.0"/>
   </xs:complexType>
 
   <xs:complexType name="terrainBaseTextureType">

@@ -39,5 +39,7 @@ namespace Assets
             }
         }
 
+        std::basic_string<ResChar> AsString() { return std::basic_string<ResChar>(); }
+
     }
 }

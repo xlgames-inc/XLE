@@ -14,7 +14,7 @@ Texture1D<float>        PermTexture     : register(t13);
 
     //
     //      Improved Perlin noise calculation
-    //      See GPU Gems 2 
+    //      See GPU Gems 2
     //          http://http.developer.nvidia.com/GPUGems2/gpugems2_chapter26.html
     //
     //      are fade/perm/grad names too generic for top level scope...?
@@ -69,6 +69,9 @@ float grad(float x, float2 p)
 float PerlinNoise3D(float3 p)
 {
     float3 P = fmod(floor(p), 256.f);
+    if (P.x < 0.0) P.x += 256.f;
+    if (P.y < 0.0) P.y += 256.f;
+    if (P.z < 0.0) P.z += 256.f;
     p -= floor(p);
     float3 f = fade(p);
 
@@ -81,7 +84,7 @@ float PerlinNoise3D(float3 p)
     float BB = perm(B + 1) + P.z;
 
         // AND ADD BLENDED RESULTS FROM 8 CORNERS OF CUBE
-    return 
+    return
         lerp(
             lerp(   lerp(   grad(perm(AA), p),
                             grad(perm(BA), p + float3(-1, 0, 0)), f.x),
@@ -113,7 +116,7 @@ float PerlinNoise3DDev(float3 p, out float3 derivative)
         derivative = float3(0,0,1);
 
             // AND ADD BLENDED RESULTS FROM 8 CORNERS OF CUBE
-        return 
+        return
             lerp(
                 lerp(   lerp(   grad(perm(AA), p),
                                 grad(perm(BA), p + float3(-1, 0, 0)), f.x),
@@ -167,7 +170,7 @@ float PerlinNoise3DDev(float3 p, out float3 derivative)
 
         float3 fDev = fadeDev(p);
 
-        derivative.x = 
+        derivative.x =
               g000.x
             + fDev.x *  (dot100 - dot000)
 
@@ -186,7 +189,7 @@ float PerlinNoise3DDev(float3 p, out float3 derivative)
             + f.x * f.y * f.z *    (g111.x - g011.x - g101.x + g001.x - g110.x + g010.x + g100.x - g000.x)
             ;
 
-        derivative.y = 
+        derivative.y =
               g000.y
             + f.x * (g100.y - g000.y)
 
@@ -205,7 +208,7 @@ float PerlinNoise3DDev(float3 p, out float3 derivative)
             + f.x * f.y * f.z * (g111.y - g011.y - g101.y + g001.y - g110.y + g010.y + g100.y - g000.y)
             ;
 
-        derivative.z = 
+        derivative.z =
               g000.z
             + f.x * (g100.z - g000.z)
 
@@ -233,6 +236,8 @@ float PerlinNoise3DDev(float3 p, out float3 derivative)
 float PerlinNoise2D(float2 p)
 {
     float2 P = fmod(floor(p), 256.f);
+    if (P.x < 0.0) P.x += 256.f;
+    if (P.y < 0.0) P.y += 256.f;
     p -= floor(p);
     float2 f = fade(p);
 
@@ -245,7 +250,7 @@ float PerlinNoise2D(float2 p)
     float BB = perm(B + 1);
 
         // AND ADD BLENDED RESULTS FROM 8 CORNERS OF CUBE
-    return 
+    return
         lerp(   lerp(   grad(perm(AA), p),
                         grad(perm(BA), p + float2(-1, 0)), f.x),
                 lerp(   grad(perm(AB), p + float2(0, -1)),
@@ -261,11 +266,11 @@ float fbmNoise2D(float2 position, float hgrid, float gain, float lacunarity, int
 
 	for (int i = 0; i < octaves; ++i)
 	{
-		total += PerlinNoise2D(position * frequency) * amplitude;         
+		total += PerlinNoise2D(position * frequency) * amplitude;
 		frequency *= lacunarity;
 		amplitude *= gain;
 	}
-                        
+
 	return total;
 }
 
@@ -278,13 +283,12 @@ float fbmNoise3D(float3 position, float hgrid, float gain, float lacunarity, int
 
 	for (int i = 0; i < octaves; ++i)
 	{
-		total += PerlinNoise3D(position * frequency) * amplitude;         
+		total += PerlinNoise3D(position * frequency) * amplitude;
 		frequency *= lacunarity;
 		amplitude *= gain;
 	}
-                        
+
 	return total;
 }
 
 #endif
-

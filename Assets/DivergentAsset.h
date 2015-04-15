@@ -141,6 +141,12 @@ namespace Assets
             return Internal::AsString(initialisers...);
         }
 
+    template<typename Asset>
+        std::basic_string<ResChar> BuildTargetFilename()
+        {
+            return std::basic_string<ResChar>();
+        }
+
     template<typename Asset, typename... Params>
         std::basic_string<ResChar> BuildTargetFilename(Params... initialisers)
         {

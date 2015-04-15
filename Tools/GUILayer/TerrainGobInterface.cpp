@@ -29,7 +29,7 @@ namespace GUILayer
         ucs2_2_utf8((const ucs2*)dir, XlStringLen((const ucs2*)dir), (utf8*)buffer, dimof(buffer));
 
 		SceneEngine::TerrainConfig cfg(buffer);
-        cfg._textureCfgName = "DynTerrainTextureCfg";
+        cfg._textureCfgName = "";
 		_terrainManager = std::make_shared<SceneEngine::TerrainManager>(
 			cfg, std::make_unique<RenderCore::Assets::TerrainFormat>(),
 			SceneEngine::GetBufferUploads(),
@@ -47,7 +47,7 @@ namespace GUILayer
 
     ::Assets::DivergentAsset<SceneEngine::TerrainMaterialScaffold>& TerrainGob::GetMaterial()
     {
-        return *Assets::GetDivergentAsset<SceneEngine::TerrainMaterialScaffold>("DynTerrainTextureCfg");
+        return *Assets::GetDivergentAsset<SceneEngine::TerrainMaterialScaffold>();
     }
 
     TerrainGob::TerrainGob()

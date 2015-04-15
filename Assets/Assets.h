@@ -123,6 +123,7 @@ namespace Assets
 
 		template <typename... Params> uint64 BuildHash(Params... initialisers);
 		template <typename... Params> std::basic_string<ResChar> AsString(Params... initialisers);
+        std::basic_string<ResChar> AsString();
 
 		template<bool DoCheckDependancy, bool DoBackgroundCompile, typename AssetType, typename... Params>
 			const AssetType& GetAsset(Params... initialisers)

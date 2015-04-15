@@ -405,8 +405,8 @@ namespace Utility
                 switch (desc._type) {
                 // case TypeCat::Bool:     if (!*(bool*)data) { result << "true"; } else { result << "true"; }; break;
                 case TypeCat::Bool:     result << *(bool*)data; break;
-                case TypeCat::Int8:     result << *(int8*)data; break;
-                case TypeCat::UInt8:    result << *(uint8*)data; break;
+                case TypeCat::Int8:     result << (int32)*(int8*)data; break;
+                case TypeCat::UInt8:    result << (uint32)*(uint8*)data; break;
                 case TypeCat::Int16:    result << *(int16*)data; break;
                 case TypeCat::UInt16:   result << *(uint16*)data; break;
                 case TypeCat::Int32:    result << *(int32*)data; break;
@@ -614,6 +614,15 @@ namespace Utility
     {
         auto i = std::lower_bound(_parameterHashValues.cbegin(), _parameterHashValues.cend(), name);
         return i!=_parameterHashValues.cend() && *i == name;
+    }
+
+    ImpliedTyping::TypeDesc ParameterBox::GetParameterType(ParameterNameHash name) const
+    {
+        auto i = std::lower_bound(_parameterHashValues.cbegin(), _parameterHashValues.cend(), name);
+        if (i!=_parameterHashValues.cend() && *i == name) {
+            return _types[std::distance(_parameterHashValues.cbegin(), i)];
+        }
+        return ImpliedTyping::TypeDesc(ImpliedTyping::TypeCat::Void, 0);
     }
 
     template void ParameterBox::SetParameter(const char name[], uint32 value);

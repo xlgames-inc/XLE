@@ -21,6 +21,7 @@
 #include "../../SceneEngine/LightDesc.h"
 #include "../../SceneEngine/LightingParser.h"
 #include "../../SceneEngine/LightingParserContext.h"
+#include "../../SceneEngine/TerrainMaterial.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/IThreadContext.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
@@ -123,7 +124,7 @@ namespace GUILayer
 
 			if (parseSettings._toggles & SceneParseSettings::Toggles::Terrain && _editorScene->_terrainGob && _editorScene->_terrainGob->_terrainManager) {
 				TRY {
-                    // _editorScene->_terrainGob->_terrainManager->Render(context, parserContext, techniqueIndex);
+                    _editorScene->_terrainGob->_terrainManager->Render(context, parserContext, techniqueIndex);
                 }
                 CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
                 CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
@@ -251,11 +252,72 @@ namespace GUILayer
             _scene->_placementsEditor);
     }
 
+    static ::Assets::rstring GetRString(const ParameterBox& paramBox, ParameterBox::ParameterNameHash name)
+    {
+        auto type = paramBox.GetParameterType(name);
+        if (type._type == ImpliedTyping::TypeCat::Int8 || type._type == ImpliedTyping::TypeCat::UInt8) {
+            ::Assets::rstring result;
+            result.resize(std::max(1u, (unsigned)type._arrayCount));
+            paramBox.GetParameter(name, AsPointer(result.begin()), type);
+            return std::move(result);
+        }
+
+        if (type._type == ImpliedTyping::TypeCat::Int16 || type._type == ImpliedTyping::TypeCat::UInt16) {
+            std::basic_string<wchar_t> wideResult;
+            wideResult.resize(std::max(1u, (unsigned)type._arrayCount));
+            paramBox.GetParameter(name, AsPointer(wideResult.begin()), type);
+
+            ::Assets::rstring result;
+            result.resize(std::max(1u, (unsigned)type._arrayCount));
+            ucs2_2_utf8(
+                (ucs2*)AsPointer(wideResult.begin()), wideResult.size(),
+                (utf8*)AsPointer(result.begin()), result.size());
+            return std::move(result);
+        }
+
+        return ::Assets::rstring();
+    }
+
     static void UpdateTerrainBaseTexture(
         const EditorDynamicInterface::FlexObjectType& sys,
         const EditorDynamicInterface::FlexObjectType::Object& obj)
     {
+        auto& divAsset = *Assets::GetDivergentAsset<SceneEngine::TerrainMaterialScaffold>();
+        auto trans = divAsset.Transaction_Begin("UpdateTextureProperties");
+        if (trans) {
+            static auto diffusedims = ParameterBox::MakeParameterNameHash("diffusedims");
+            static auto normaldims = ParameterBox::MakeParameterNameHash("normaldims");
+            static auto paramdims = ParameterBox::MakeParameterNameHash("paramdims");
+            static auto texture0 = ParameterBox::MakeParameterNameHash("texture0");
+            static auto texture1 = ParameterBox::MakeParameterNameHash("texture1");
+            static auto texture2 = ParameterBox::MakeParameterNameHash("texture2");
+            static auto mapping0 = ParameterBox::MakeParameterNameHash("mapping0");
+            static auto mapping1 = ParameterBox::MakeParameterNameHash("mapping1");
+            static auto mapping2 = ParameterBox::MakeParameterNameHash("mapping2");
+            static auto endheight = ParameterBox::MakeParameterNameHash("endheight");
 
+            auto& asset = trans->GetAsset();
+            asset._diffuseDims = obj._properties.GetParameter<UInt2>(diffusedims, UInt2(512, 512));
+            asset._normalDims = obj._properties.GetParameter<UInt2>(normaldims, UInt2(512, 512));
+            asset._paramDims = obj._properties.GetParameter<UInt2>(paramdims, UInt2(512, 512));
+            asset._strata.clear();
+            for (auto c=obj._children.begin(); c!=obj._children.end(); ++c) {
+                auto* strataObj = sys.GetObject(obj._doc, *c);
+                if (!strataObj) continue;
+
+                TerrainMaterialScaffold::Strata newStrata;
+                newStrata._texture[0] = GetRString(strataObj->_properties, texture0);
+                newStrata._texture[1] = GetRString(strataObj->_properties, texture1);
+                newStrata._texture[2] = GetRString(strataObj->_properties, texture2);
+                newStrata._mappingConstant[0] = strataObj->_properties.GetParameter<float>(mapping0, 10.f);
+                newStrata._mappingConstant[1] = strataObj->_properties.GetParameter<float>(mapping1, 10.f);
+                newStrata._mappingConstant[2] = strataObj->_properties.GetParameter<float>(mapping2, 10.f);
+                newStrata._endHeight = strataObj->_properties.GetParameter<float>(endheight, 1000.f);
+                asset._strata.push_back(newStrata);
+            }
+
+            trans->Commit();
+        }
     }
 
     static void TerrainBaseTextureCallback(
