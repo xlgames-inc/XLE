@@ -25,6 +25,7 @@
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/IThreadContext.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
+#include "../../RenderCore/Metal/DeviceContext.h"
 #include <memory>
 
 namespace GUILayer
@@ -250,6 +251,11 @@ namespace GUILayer
 		return gcnew IntersectionTestSceneWrapper(
             (_scene->_terrainGob) ? _scene->_terrainGob->_terrainManager : nullptr,
             _scene->_placementsEditor);
+    }
+
+    PlacementsEditorWrapper^ EditorSceneManager::GetPlacementsEditor()
+	{
+		return gcnew PlacementsEditorWrapper(_scene->_placementsEditor);
     }
 
     static ::Assets::rstring GetRString(const ParameterBox& paramBox, ParameterBox::ParameterNameHash name)

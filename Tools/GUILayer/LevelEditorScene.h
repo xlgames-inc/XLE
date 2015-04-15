@@ -19,6 +19,7 @@ namespace GUILayer
     ref class VisCameraSettings;
     ref class IntersectionTestContextWrapper;
 	ref class IntersectionTestSceneWrapper;
+    ref class PlacementsEditorWrapper;
     class TerrainGob;
 
     class EditorScene
@@ -47,6 +48,7 @@ namespace GUILayer
         IManipulatorSet^ CreatePlacementManipulators(IPlacementManipulatorSettingsLayer^ context);
         IOverlaySystem^ CreateOverlaySystem(VisCameraSettings^ camera);
 		IntersectionTestSceneWrapper^ GetIntersectionScene();
+        PlacementsEditorWrapper^ GetPlacementsEditor();
         void SetSelection(ObjectSet^ objectSet);
 
             //// //// ////   G O B   I N T E R F A C E   //// //// ////

@@ -6,6 +6,7 @@
     <ClCompile Include="..\TerrainManipulator.cpp" />
     <ClCompile Include="..\NativeManipulators.cpp" />
     <ClCompile Include="..\PlacementManipulator.cpp" />
+    <ClCompile Include="..\ScatterPlaceManipulatorHelper.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\ManipulatorOverlay.h" />

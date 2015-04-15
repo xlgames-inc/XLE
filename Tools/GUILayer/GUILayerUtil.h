@@ -50,4 +50,14 @@ namespace GUILayer
             std::shared_ptr<SceneEngine::PlacementsEditor> placements);
         ~IntersectionTestSceneWrapper();
 	};
+
+    public ref class PlacementsEditorWrapper
+	{
+	public:
+		clix::shared_ptr<SceneEngine::PlacementsEditor> _editor;
+
+		SceneEngine::PlacementsEditor& GetNative();
+		PlacementsEditorWrapper(std::shared_ptr<SceneEngine::PlacementsEditor> scene);
+        ~PlacementsEditorWrapper();
+	};
 }

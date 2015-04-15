@@ -7,7 +7,8 @@
 #pragma once
 
 #include "../../RenderCore/IDevice_Forward.h"
-#include "../../RenderCore/Metal/DeviceContext.h"
+#include "../../RenderCore/IThreadContext_Forward.h"
+#include "../../RenderCore/Metal/Forward.h"
 #include "../../Math/Matrix.h"
 #include "../../Core/Types.h"
 #include <memory>
@@ -23,6 +24,7 @@ namespace SceneEngine
     class LightingParserContext;
     class PlacementsEditor;
     typedef std::pair<uint64, uint64> PlacementGUID;
+    class IntersectionTestScene;
 }
 
 namespace ToolsRig
@@ -79,5 +81,13 @@ namespace ToolsRig
         SceneEngine::PlacementsEditor* editor,
         const SceneEngine::PlacementGUID* filterBegin,
         const SceneEngine::PlacementGUID* filterEnd);
+
+    void CalculateScatterOperation(
+        std::vector<SceneEngine::PlacementGUID>& _toBeDeleted,
+        std::vector<Float3>& _spawnPositions,
+        SceneEngine::PlacementsEditor& editor,
+        const SceneEngine::IntersectionTestScene& hitTestScene,
+        const char modelName[],
+        const Float3& centre, float radius, float density);
 }
 

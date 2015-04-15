@@ -85,7 +85,7 @@ namespace LevelEditor.DomNodeAdapters
             }
 
             // <<XLE
-            var domNode = child as DomNode;
+            var domNode = child.As<DomNode>();
             if (domNode != null)
             {
                 foreach (var type in domNode.Type.Lineage)

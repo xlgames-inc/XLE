@@ -15,7 +15,10 @@
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../Assets/Assets.h"
+#include "../ToolsRig/ManipulatorsUtil.h"
 // #include "../../ConsoleRig/Log.h"        (can't include in Win32 managed code)
+
+using namespace System::Runtime::InteropServices;
 
 namespace GUILayer
 {
@@ -168,6 +171,35 @@ namespace GUILayer
                 *terrain.GetFormat().get(), terrain.GetConfig(), terrain.GetCoords(),
                 Float2(worldX, worldY));
             return true;
+        }
+
+        static bool GetTerrainUnderCursor(
+            [Out] float% intersectionX,
+            [Out] float% intersectionY,
+            [Out] float% intersectionZ,
+            IntersectionTestContextWrapper^ context,
+            IntersectionTestSceneWrapper^ testScene,
+            unsigned ptx, unsigned pty)
+        {
+            auto test = testScene->_scene->UnderCursor(
+                *context->_context.get(), UInt2(ptx, pty),
+                SceneEngine::IntersectionTestScene::Type::Terrain);
+            if (test._type == SceneEngine::IntersectionTestScene::Type::Terrain) {
+                intersectionX = test._worldSpaceCollision[0];
+                intersectionY = test._worldSpaceCollision[1];
+                intersectionZ = test._worldSpaceCollision[2];
+                return true;
+            }
+            return false;
+        }
+
+        static void RenderCylinderHighlight(
+            SceneEngine::LightingParserContext& parsingContext, 
+            float centreX, float centreY, float centreZ, float radius)
+        {
+            ToolsRig::RenderCylinderHighlight(
+                EngineDevice::GetInstance()->GetNative().GetRenderDevice()->GetImmediateContext().get(),
+                parsingContext, Float3(centreX, centreY, centreZ), radius);
         }
 
         static unsigned AsTypeId(System::Type^ type)

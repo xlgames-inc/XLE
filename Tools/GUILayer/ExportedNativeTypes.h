@@ -10,7 +10,7 @@
 
 namespace GUILayer { class NativeEngineDevice; }
 namespace ToolsRig { class IManipulator; class VisCameraSettings; }
-namespace SceneEngine { class LightingParserContext; class IntersectionTestContext; class IntersectionTestScene; }
+namespace SceneEngine { class LightingParserContext; class IntersectionTestContext; class IntersectionTestScene; class PlacementsEditor; }
 namespace RenderCore { namespace Techniques { class ProjectionDesc; class CameraDesc; } }
 
 #pragma make_public(GUILayer::NativeEngineDevice)
@@ -19,6 +19,7 @@ namespace RenderCore { namespace Techniques { class ProjectionDesc; class Camera
 #pragma make_public(SceneEngine::LightingParserContext)
 #pragma make_public(SceneEngine::IntersectionTestContext)
 #pragma make_public(SceneEngine::IntersectionTestScene)
+#pragma make_public(SceneEngine::PlacementsEditor)
 #pragma make_public(RenderCore::Techniques::ProjectionDesc)
 #pragma make_public(RenderCore::Techniques::CameraDesc)
 #pragma make_public(RenderCore::IThreadContext)

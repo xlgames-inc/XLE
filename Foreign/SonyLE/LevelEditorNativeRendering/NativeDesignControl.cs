@@ -151,6 +151,7 @@ namespace RenderingInterop
             base.OnDragEnter(drgevent);
             var dragDropTarget = TargetGame();
 
+            foreach (DomNode ghost in m_ghosts) ghost.RemoveFromParent(); 
             m_ghosts.Clear();
 
             ResourceConverterService resourceConverter = Globals.MEFContainer.GetExportedValue<ResourceConverterService>();
@@ -172,7 +173,7 @@ namespace RenderingInterop
                     continue;
                 
                 node.InitializeExtensions();
-                if (dragDropTarget.AddChild(node))
+                if (dragDropTarget.AddChild(gob))
                 {
                     m_ghosts.Add(node);
                 }

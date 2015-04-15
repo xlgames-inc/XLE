@@ -1165,10 +1165,16 @@ namespace ToolsRig
         return std::move(workingSet);
     }
 
-    void ScatterPlacements::PerformScatter(
+    void CalculateScatterOperation(
+        std::vector<SceneEngine::PlacementGUID>& _toBeDeleted,
+        std::vector<Float3>& _spawnPositions,
+        SceneEngine::PlacementsEditor& editor,
         const SceneEngine::IntersectionTestScene& hitTestScene,
-        const Float3& centre, const char modelName[], const char materialName[])
+        const char modelName[],
+        const Float3& centre, float radius, float density)
     {
+        uint64 modelGuid = Hash64(modelName);
+
             // Our scatter algorithm is a little unique
             //  * find the number of objects with the same model & material within 
             //      a cylinder around the given point
@@ -1179,10 +1185,9 @@ namespace ToolsRig
             // This way items will usually get scattered around in a good distribution
             // But it's very random. So the artist has only limited control.
 
-        uint64 modelGuid = Hash64(modelName);
-        auto oldPlacements = _editor->Find_BoxIntersection(
-            centre - Float3(_radius, _radius, _radius),
-            centre + Float3(_radius, _radius, _radius),
+        _toBeDeleted = editor.Find_BoxIntersection(
+            centre - Float3(radius, radius, radius),
+            centre + Float3(radius, radius, radius),
             [=](const SceneEngine::PlacementsEditor::ObjIntersectionDef& objectDef) -> bool
             {
                 if (objectDef._model == modelGuid) {
@@ -1193,32 +1198,23 @@ namespace ToolsRig
                         // This won't produce the same result as cylinder vs box for the caps of the cylinder
                         //      -- but we don't really care in this case.
                     auto localToCircle = Combine(objectDef._localToWorld, AsFloat3x4(-centre));
-                    return AABBVsCircleInXY(_radius, objectDef._localSpaceBoundingBox, localToCircle);
+                    return AABBVsCircleInXY(radius, objectDef._localSpaceBoundingBox, localToCircle);
                 }
 
                 return false;
             });
 
-            //  We have a list of placements using the same model, and within the placement area.
-            //  We want to either add or remove one.
-
-        auto trans = _editor->Transaction_Begin(
-            AsPointer(oldPlacements.cbegin()), AsPointer(oldPlacements.cend()));
-        for (unsigned c=0; c<trans->GetObjectCount(); ++c) {
-            trans->Delete(c);
-        }
-            
             //  Note that the blur noise method we're using will probably not work 
             //  well with very small numbers of placements. So we're going to limit 
             //  the bottom range.
 
-        auto modelBoundingBox = _editor->GetModelBoundingBox(modelName);
+        auto modelBoundingBox = editor.GetModelBoundingBox(modelName);
         auto crossSectionArea = 
               (modelBoundingBox.second[0] - modelBoundingBox.first[0]) 
             * (modelBoundingBox.second[1] - modelBoundingBox.first[1]);
 
-        float bigCircleArea = gPI * _radius * _radius;
-        auto noisyPts = GenerateBlueNoisePlacements(_radius, unsigned(bigCircleArea*_density/crossSectionArea));
+        float bigCircleArea = gPI * radius * radius;
+        auto noisyPts = GenerateBlueNoisePlacements(radius, unsigned(bigCircleArea*density/crossSectionArea));
 
             //  Now add new placements for all of these pts.
             //  We need to clamp them to the terrain surface as we do this
@@ -1232,7 +1228,33 @@ namespace ToolsRig
                     *terrain->GetFormat().get(), terrain->GetConfig(), terrain->GetCoords(), pt);
             }
 
-            auto objectToWorld = AsFloat4x4(Expand(pt, height));
+            _spawnPositions.push_back(Expand(pt, height));
+        }
+    }
+
+    void ScatterPlacements::PerformScatter(
+        const SceneEngine::IntersectionTestScene& hitTestScene,
+        const Float3& centre, const char modelName[], const char materialName[])
+    {
+        std::vector<SceneEngine::PlacementGUID> toBeDeleted;
+        std::vector<Float3> spawnPositions;
+
+        CalculateScatterOperation(
+            toBeDeleted, spawnPositions, 
+            *_editor.get(), hitTestScene,
+            modelName, centre, _radius, _density);
+
+            //  We have a list of placements using the same model, and within the placement area.
+            //  We want to either add or remove one.
+
+        auto trans = _editor->Transaction_Begin(
+            AsPointer(toBeDeleted.cbegin()), AsPointer(toBeDeleted.cend()));
+        for (unsigned c=0; c<trans->GetObjectCount(); ++c) {
+            trans->Delete(c);
+        }
+            
+        for (auto p=spawnPositions.begin(); p!=spawnPositions.end(); ++p) {
+            auto objectToWorld = AsFloat4x4(*p);
             Combine_InPlace(RotationZ(rand() * 2.f * gPI / float(RAND_MAX)), objectToWorld);
             trans->Create(SceneEngine::PlacementsEditor::ObjTransDef(
                 AsFloat3x4(objectToWorld), modelName, materialName));

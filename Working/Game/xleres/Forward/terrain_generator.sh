@@ -532,7 +532,7 @@ struct ProceduralTextureOutput
 		const float slopeDarkness = .75f;
 
 		float slopeAlpha = pow(min(1.f,slopeFactor/slopeStart), slopeSoftness);
-		if (slopeAlpha > 0.05f) {
+		if (slopeAlpha > 0.05f) {	// can't branch here because of the texture lookups below... We would need to do 2 passes
 
 				//		slope texture coordinates should be based on worldPosition x or y,
 				//		depending on which is changing most quickly in screen space

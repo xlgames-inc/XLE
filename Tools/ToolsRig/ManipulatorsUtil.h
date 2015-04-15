@@ -67,7 +67,12 @@ namespace ToolsRig
     void RenderCylinderHighlight(
         RenderCore::Metal::DeviceContext* context, 
         SceneEngine::LightingParserContext& parserContext,
-        Float3& centre, float radius);
+        const Float3& centre, float radius);
+
+    void RenderCylinderHighlight(
+        RenderCore::IThreadContext* context, 
+        SceneEngine::LightingParserContext& parserContext,
+        const Float3& centre, float radius);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

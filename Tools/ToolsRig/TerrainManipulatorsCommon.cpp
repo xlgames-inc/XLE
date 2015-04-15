@@ -19,7 +19,7 @@
 
 #include "../../RenderCore/DX11/Metal/DX11Utils.h"
 
-extern unsigned FrameRenderCount;
+static unsigned FrameRenderCount;
 
 namespace ToolsRig
 {
@@ -93,7 +93,7 @@ namespace ToolsRig
     void RenderCylinderHighlight(
         RenderCore::Metal::DeviceContext* context, 
         SceneEngine::LightingParserContext& parserContext,
-        Float3& centre, float radius)
+        const Float3& centre, float radius)
     {
         using namespace RenderCore::Metal;
             // unbind the depth buffer
@@ -155,6 +155,15 @@ namespace ToolsRig
         CATCH_END
 
         savedTargets.ResetToOldTargets(context);
+    }
+
+    void RenderCylinderHighlight(
+        RenderCore::IThreadContext* context, 
+        SceneEngine::LightingParserContext& parserContext,
+        const Float3& centre, float radius)
+    {
+        auto devContext = RenderCore::Metal::DeviceContext::Get(*context);
+        RenderCylinderHighlight(devContext.get(), parserContext, centre, radius);
     }
 
     void    CommonManipulator::Render(

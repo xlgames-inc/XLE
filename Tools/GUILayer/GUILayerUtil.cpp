@@ -70,5 +70,21 @@ namespace GUILayer
 	{
 		return *_scene.get();
 	}
+
+    PlacementsEditorWrapper::PlacementsEditorWrapper(
+		std::shared_ptr<SceneEngine::PlacementsEditor> scene)
+	{
+		_editor = std::move(scene);
+	}
+
+    PlacementsEditorWrapper::~PlacementsEditorWrapper()
+    {
+        _editor.reset();
+    }
+
+	SceneEngine::PlacementsEditor& PlacementsEditorWrapper::GetNative()
+	{
+		return *_editor.get();
+	}
 }
 
