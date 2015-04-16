@@ -88,27 +88,38 @@ namespace RenderingInterop
                 "Scatter Placer manipulator".Localize(),
                 LevelEditorCore.Resources.CubesImage,
                 Keys.None);
-
-            m_helper = new XLELayer.ScatterPlaceManipulatorHelper();
         }
 
         public override bool Pick(ViewControl vc, Point scrPt)
         {
-            m_hasHoverPt = m_helper.HitTest(out m_hoverPt, scrPt, vc.ClientSize, vc.Camera);
+            m_hasHoverPt = HitTest(out m_hoverPt, scrPt, vc);
             return m_hasHoverPt;
         }
 
         public override void OnBeginDrag() {}
-        
         public override void OnDragging(ViewControl vc, Point scrPt)
         {
-            m_hasHoverPt = m_helper.HitTest(out m_hoverPt, scrPt, vc.ClientSize, vc.Camera);
+            m_hasHoverPt = HitTest(out m_hoverPt, scrPt, vc);
             if (!m_hasHoverPt) return;
 
             var game = (vc as NativeDesignControl).DesignView.Context.As<IGame>();
             if (game == null) return;
 
-            var op = m_helper.Perform(ManipulatorContext.ModelName, m_hoverPt, ManipulatorContext.Radius, ManipulatorContext.Density);
+            GUILayer.EditorInterfaceUtils.ScatterPlaceOperation op;
+
+            var sceneManager = GameEngine.GetEditorSceneManager();
+            using (var editor = sceneManager.GetPlacementsEditor())
+            {
+                using (var scene = sceneManager.GetIntersectionScene())
+                {
+                    op = GUILayer.EditorInterfaceUtils.CalculateScatterOperation(
+                        editor, scene,
+                        ManipulatorContext.ModelName,
+                        XLELayer.XLELayerUtils.AsVector3(m_hoverPt),
+                        ManipulatorContext.Radius, ManipulatorContext.Density);
+                }
+            }
+
             foreach (var d in op._toBeDeleted)
             {
                 var adapter = GameEngine.GetAdapterFromId(d.Item1, d.Item2);
@@ -145,14 +156,17 @@ namespace RenderingInterop
                 }
             }
         }
-
         public override void OnEndDrag(ViewControl vc, Point scrPt) {}
 
         public override void Render(ViewControl vc)
         {
             if (m_hasHoverPt)
             {
-                m_helper.Render(vc, m_hoverPt, ManipulatorContext.Radius);
+                using (var context = GameEngine.CreateRenderingContext())
+                {
+                    GUILayer.RenderingUtil.RenderCylinderHighlight(
+                        context, XLELayer.XLELayerUtils.AsVector3(m_hoverPt), ManipulatorContext.Radius);
+                }
             }
         }
 
@@ -167,11 +181,27 @@ namespace RenderingInterop
             private set;
         }
 
-        private XLELayer.ScatterPlaceManipulatorHelper m_helper;
         private Vec3F m_hoverPt;
         private bool m_hasHoverPt;
 
         private Random m_rng = new Random();
+
+        private bool HitTest(out Vec3F result, Point pt, ViewControl vc)
+        {
+            var ray = vc.GetWorldRay(pt);
+            var pick = NativeInterop.Picking.RayPick(
+                null, ray, vc.Camera, vc.ClientSize, 
+                NativeInterop.Picking.Flags.Terrain);
+
+            if (pick.Length > 0)
+            {
+                result = pick[0].hitPt;
+                return true;
+            }
+
+            result = new Vec3F(0.0f, 0.0f, 0.0f);
+            return false;
+        }
     }
 }
 

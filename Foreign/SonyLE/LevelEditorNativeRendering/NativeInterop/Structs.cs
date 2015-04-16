@@ -48,6 +48,8 @@ namespace RenderingInterop
         public bool hasNearestVert;
         private short pad;
 
+        public uint drawCallIndex;
+        public string materialName;
     }
 
 }

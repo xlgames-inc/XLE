@@ -11,14 +11,10 @@
 
 namespace SceneEngine 
 { 
-    class LightingParserContext; 
-    class TerrainManager; 
-    class ISceneParser; 
-    class TechniqueContext; 
     class IntersectionTestContext;
     class IntersectionTestScene;
 }
-namespace RenderCore { namespace Techniques { class CameraDesc; } }
+namespace RenderCore { namespace Techniques { class CameraDesc; class ParsingContext; } }
 
 namespace ToolsRig
 {
@@ -66,12 +62,7 @@ namespace ToolsRig
 
     void RenderCylinderHighlight(
         RenderCore::Metal::DeviceContext* context, 
-        SceneEngine::LightingParserContext& parserContext,
-        const Float3& centre, float radius);
-
-    void RenderCylinderHighlight(
-        RenderCore::IThreadContext* context, 
-        SceneEngine::LightingParserContext& parserContext,
+        RenderCore::Techniques::ParsingContext& parserContext,
         const Float3& centre, float radius);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

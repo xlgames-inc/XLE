@@ -6,7 +6,13 @@
 
 #include "EngineDevice.h"
 #include "NativeEngineDevice.h"
+#include "EditorInterfaceUtils.h"
+#include "GUILayerUtil.h"
+#include "LevelEditorScene.h"
+#include "MathLayer.h"
+#include "CLIXAutoPtr.h"
 #include "ExportedNativeTypes.h"
+#include "../ToolsRig/ManipulatorsUtil.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Metal/Buffer.h"
@@ -16,11 +22,12 @@
 #include "../../Math/Matrix.h"
 #include "../../Utility/IteratorUtils.h"
 #include "../../Core/Types.h"
-#include "../../Tools/GUILayer/CLIXAutoPtr.h"
 #include <vector>
 
 #include "../../Assets/Assets.h"
 #include "../../RenderCore/Techniques/Techniques.h"
+#include "../ToolsRig/PlacementsManipulators.h"
+#include "../../SceneEngine/LightingParserContext.h"
 
 namespace GUILayer
 {
@@ -225,6 +232,9 @@ namespace GUILayer
             _devContext->Bind(RenderCore::Techniques::CommonResources()._defaultRasterizer);
         }
 
+        RenderCore::Techniques::ParsingContext& GetParsingContext() { return *_parsingContext; }
+        RenderCore::Metal::DeviceContext& GetDevContext() { return *_devContext.get(); }
+
         SimpleRenderingContext(
             SavedRenderResources^ savedRes, 
             RenderCore::IThreadContext& threadContext,
@@ -316,6 +326,35 @@ namespace GUILayer
     }
     SimpleRenderingContext::~SimpleRenderingContext() { _devContext.reset(); }
     SimpleRenderingContext::!SimpleRenderingContext() { _devContext.reset(); }
+
+////////////////////////////////////////////////////////////////////////////////////////////////?//
+
+    public ref class RenderingUtil
+    {
+    public:
+        static void RenderCylinderHighlight(
+            SimpleRenderingContext^ renderingContext,
+            Vector3 centre, float radius)
+        {
+            ToolsRig::RenderCylinderHighlight(
+                &renderingContext->GetDevContext(), renderingContext->GetParsingContext(),
+                AsFloat3(centre), radius);
+        }
+
+        static void RenderHighlight(
+            SimpleRenderingContext^ context,
+            PlacementsEditorWrapper^ placements,
+            ObjectSet^ highlight, unsigned drawCallIndex)
+        {
+            if (highlight == nullptr || highlight->IsEmpty()) return;
+
+            SceneEngine::LightingParserContext lpc(context->GetParsingContext().GetTechniqueContext());
+            ToolsRig::RenderHighlight(
+                &context->GetDevContext(), lpc, &placements->GetNative(),
+                (const SceneEngine::PlacementGUID*)AsPointer(highlight->_nativePlacements->cbegin()),
+                (const SceneEngine::PlacementGUID*)AsPointer(highlight->_nativePlacements->cend()));
+        }
+    };
 
 }
 

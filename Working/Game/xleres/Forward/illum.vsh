@@ -87,5 +87,9 @@ VSOutput main(VSInput input)
 		output.ambientOcclusion = InstanceOffsets[input.instanceId].w;
 	#endif
 
+	#if (OUTPUT_INSTANCE_ID==1) && (GEO_HAS_INSTANCE_ID==1)
+		output.instanceId = input.instanceId;
+	#endif
+
 	return output;
 }

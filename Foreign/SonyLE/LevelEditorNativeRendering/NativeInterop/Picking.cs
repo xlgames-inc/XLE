@@ -10,28 +10,31 @@ namespace RenderingInterop.NativeInterop
 {
     static unsafe class Picking
     {
+        [Flags]
+        public enum Flags : uint { Terrain = 1 << 0, Objects = 1 << 1, IgnoreSelection = 1 << 2 };
+
         public static HitRecord[] FrustumPick(
-            GUILayer.EditorSceneManager sceneManager,
             GUILayer.TechniqueContextWrapper techniqueContext,
             Matrix4F pickingFrustum, 
             Sce.Atf.Rendering.Camera camera,
-            int viewportWidth, int viewportHeight,
-            bool ignoreSelection)
+            System.Drawing.Size viewportSize,
+            Flags flags)
         {
-            System.Diagnostics.Debug.Assert(!ignoreSelection);
+            System.Diagnostics.Debug.Assert((flags & Flags.IgnoreSelection) == 0);
+
+            var sceneManager = GameEngine.GetEditorSceneManager();
 
             ICollection<GUILayer.HitRecord> results; 
             using (var context = XLELayer.XLELayerUtils.CreateIntersectionTestContext(
-                GameEngine.GetEngineDevice(), techniqueContext, camera, (uint)viewportWidth, (uint)viewportHeight))
+                GameEngine.GetEngineDevice(), techniqueContext, camera, 
+                (uint)viewportSize.Width, (uint)viewportSize.Height))
             {
                 using (var scene = sceneManager.GetIntersectionScene())
                 {
                     fixed (float* ptr = &pickingFrustum.M11)
                     {
                         results = GUILayer.EditorInterfaceUtils.FrustumIntersection(
-                            scene,
-                            context,
-                            ptr, ~0u);
+                            scene, context, ptr, (uint)flags);
                     }
                 }
             }
@@ -50,10 +53,12 @@ namespace RenderingInterop.NativeInterop
                 hitRecords[index].instanceId = r._object;
                 hitRecords[index].index = 0;
                 hitRecords[index].distance = r._distance;
-                hitRecords[index].hitPt = new Vec3F(r._worldSpaceCollisionX, r._worldSpaceCollisionY, r._worldSpaceCollisionZ);
+                hitRecords[index].hitPt = XLELayer.XLELayerUtils.AsVec3F(r._worldSpaceCollision);
                 hitRecords[index].normal = new Vec3F(0.0f, 0.0f, 0.0f);
                 hitRecords[index].nearestVertex = new Vec3F(0.0f, 0.0f, 0.0f);
                 hitRecords[index].hasNormal = hitRecords[index].hasNearestVert = false;
+                hitRecords[index].drawCallIndex = r._drawCallIndex;
+                hitRecords[index].materialName = r._materialName;
                 index++;
             }
 
@@ -61,18 +66,18 @@ namespace RenderingInterop.NativeInterop
         }
 
         public static HitRecord[] RayPick(
-            GUILayer.EditorSceneManager sceneManager,
             GUILayer.TechniqueContextWrapper techniqueContext,
             Ray3F ray, Sce.Atf.Rendering.Camera camera, 
-            int viewportWidth, int viewportHeight,
-            bool ignoreSelection)
+            System.Drawing.Size viewportSize, Flags flags)
         {
-            System.Diagnostics.Debug.Assert(!ignoreSelection);
+            System.Diagnostics.Debug.Assert((flags & Flags.IgnoreSelection)==0);
+
+            var sceneManager = GameEngine.GetEditorSceneManager();
 
             ICollection<GUILayer.HitRecord> results; 
             var endPt = ray.Origin + camera.FarZ * ray.Direction;
             using (var context = XLELayer.XLELayerUtils.CreateIntersectionTestContext(
-                GameEngine.GetEngineDevice(), techniqueContext, camera, (uint)viewportWidth, (uint)viewportHeight))
+                GameEngine.GetEngineDevice(), techniqueContext, camera, (uint)viewportSize.Width, (uint)viewportSize.Height))
             {
                 using (var scene = sceneManager.GetIntersectionScene())
                 {
@@ -80,7 +85,7 @@ namespace RenderingInterop.NativeInterop
                         scene,
                         context,
                         XLELayer.XLELayerUtils.AsVector3(ray.Origin),
-                        XLELayer.XLELayerUtils.AsVector3(endPt), ~0u);
+                        XLELayer.XLELayerUtils.AsVector3(endPt), (uint)flags);
                 }
             }
 

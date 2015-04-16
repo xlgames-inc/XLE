@@ -71,15 +71,15 @@ namespace RenderingInterop
                 RectangleF rect = MakeRect(FirstMousePoint, CurrentMousePoint);
                 var frustum = XLELayer.XLELayerUtils.MakeFrustumMatrix(Camera, rect, ClientSize);
                 hits = NativeInterop.Picking.FrustumPick(
-                    SceneManager, TechniqueContext, frustum,
-                    Camera, ClientSize.Width, ClientSize.Height, false);
+                    TechniqueContext, frustum,
+                    Camera, ClientSize, NativeInterop.Picking.Flags.Objects);
             }
             else
             {// ray pick
                 Ray3F rayW = GetWorldRay(CurrentMousePoint);
                 hits = NativeInterop.Picking.RayPick(
-                    SceneManager, TechniqueContext, rayW, 
-                    Camera, ClientSize.Width, ClientSize.Height, false);
+                    TechniqueContext, rayW, Camera, ClientSize,
+                    NativeInterop.Picking.Flags.Terrain | NativeInterop.Picking.Flags.Objects);
             }
 
             if (hits==null) return new List<object>();
@@ -184,34 +184,13 @@ namespace RenderingInterop
 
         protected bool GetTerrainCollision(out Vec3F result, Point clientPt)
         {
-            Ray3F ray = GetWorldRay(clientPt);
-            using (var testScene = GameEngine.GetEditorSceneManager().GetIntersectionScene())
-            {
-                using (var testContext = XLELayer.XLELayerUtils.CreateIntersectionTestContext(
-                    GameEngine.GetEngineDevice(), null,
-                    Camera, (uint)ClientSize.Width, (uint)ClientSize.Height))
-                {
-                    var endPt = ray.Origin + Camera.FarZ * ray.Direction;
-                    var results = GUILayer.EditorInterfaceUtils.RayIntersection(
-                        testScene, testContext,
-                        XLELayer.XLELayerUtils.AsVector3(ray.Origin), XLELayer.XLELayerUtils.AsVector3(endPt),
-                        1);
+            var pick = NativeInterop.Picking.RayPick(
+                null, GetWorldRay(clientPt), Camera, ClientSize, NativeInterop.Picking.Flags.Terrain);
 
-                    if (results != null) 
-                    {
-                        using (var enumer = results.GetEnumerator()) 
-                        {
-                            if (enumer.MoveNext()) {
-                                var first = enumer.Current;
-                                result = new Vec3F(
-                                    first._worldSpaceCollisionX,
-                                    first._worldSpaceCollisionY,
-                                    first._worldSpaceCollisionZ);
-                                return true;
-                            }
-                        }
-                    }
-                }
+            if (pick.Length > 0)
+            {
+                result = pick[0].hitPt;
+                return true;
             }
 
             result = new Vec3F(0.0f, 0.0f, 0.0f);

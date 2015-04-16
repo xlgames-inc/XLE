@@ -99,12 +99,13 @@ namespace SceneEngine
             Float3                      _worldSpaceCollision;
             std::pair<uint64, uint64>   _objectGuid;
             float                       _distance;
+            unsigned                    _drawCallIndex;
+            std::string                 _materialName;
 
             Result() 
-            : _type(Type::Enum(0))
-            , _worldSpaceCollision(0.f, 0.f, 0.f)
-            , _objectGuid(0ull, 0ull)
-            , _distance(FLT_MAX) {}
+            : _type(Type::Enum(0)), _worldSpaceCollision(0.f, 0.f, 0.f)
+            , _objectGuid(0ull, 0ull), _distance(FLT_MAX)
+            , _drawCallIndex(0) {}
         };
 
         Result FirstRayIntersection(

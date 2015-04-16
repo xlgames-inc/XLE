@@ -11,12 +11,20 @@
 #include <vector>
 #include <utility>
 
+namespace SceneEngine { class PlacementsEditor; }
+
 namespace GUILayer
 {
+    ref class PlacementsEditorWrapper;
+
     public ref class ObjectSet
     {
     public:
         void Add(uint64 document, uint64 id);
+        void Clear();
+        bool IsEmpty();
+        void DoFixup(SceneEngine::PlacementsEditor& placements);
+        void DoFixup(PlacementsEditorWrapper^ placements);
 
         typedef std::vector<std::pair<uint64, uint64>> NativePlacementSet;
 		clix::auto_ptr<NativePlacementSet> _nativePlacements;

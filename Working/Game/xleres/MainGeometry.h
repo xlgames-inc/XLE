@@ -186,6 +186,10 @@ struct VSOutput /////////////////////////////////////////////////////
         float ambientOcclusion : AMBIENTOCCLUSION;
     #endif
 
+    #if (OUTPUT_INSTANCE_ID==1)
+        uint instanceId : SV_InstanceID;
+    #endif
+
     VSOUTPUT_EXTRA
 }; //////////////////////////////////////////////////////////////////
 

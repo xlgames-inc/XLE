@@ -316,7 +316,9 @@ namespace SceneEngine
 
         typedef ModelRenderer::SortedModelDrawCalls PreparedState;
         
-        auto GetCachedModel(const ResChar filename[]) -> const ModelScaffold&;
+        auto GetCachedModel(const ResChar filename[]) -> const ModelScaffold*;
+        auto GetCachedMaterial(const ResChar filename[]) -> const MaterialScaffold*;
+        auto GetCachedRenderer(const ResChar modelFilename[], const ResChar materialFilename[], unsigned LOD) -> const ModelRenderer*;
         auto GetCachedPlacements(uint64 hash, const ResChar filename[]) -> const Placements&;
         void SetOverride(uint64 guid, const Placements* placements);
         auto GetModelFormat() -> std::shared_ptr<RenderCore::Assets::IModelFormat>& { return _modelFormat; }
@@ -453,15 +455,40 @@ namespace SceneEngine
         }
     }
 
-    auto PlacementsRenderer::GetCachedModel(const ResChar filename[]) -> const ModelScaffold&
+    auto PlacementsRenderer::GetCachedModel(const ResChar filename[]) -> const ModelScaffold*
     {
         auto hash = Hash64(filename);
         auto model = _cache->_modelScaffolds.Get(hash);
         if (!model) {
             model = Internal::CreateModelScaffold(filename, *_modelFormat);
-            _cache->_modelScaffolds.Insert(hash, model);
+            if (model) {
+                _cache->_modelScaffolds.Insert(hash, model);
+            }
         }
-        return *model;
+        return model.get();
+    }
+
+    auto PlacementsRenderer::GetCachedMaterial(const ResChar filename[]) -> const MaterialScaffold*
+    {
+        auto hash = Hash64(filename);
+        auto material = _cache->_materialScaffolds.Get(hash);
+        if (!material) {
+            material = Internal::CreateMaterialScaffold(filename, *_modelFormat);
+            if (material) {
+                _cache->_materialScaffolds.Insert(hash, material);
+            }
+        }
+        return material.get();
+    }
+
+    auto PlacementsRenderer::GetCachedRenderer(const ResChar modelFilename[], const ResChar materialFilename[], unsigned LOD) -> const ModelRenderer*
+    {
+        auto model = GetCachedModel(modelFilename);
+        auto material = GetCachedMaterial(materialFilename);
+        if (!model || !material) return nullptr;
+
+        uint64 hashedRenderer = (uint64(model) << 2ull) | (uint64(material) << 48ull) | uint64(LOD);
+        return _cache->_modelRenderers.Get(hashedRenderer).get();
     }
 
     auto PlacementsRenderer::GetCachedPlacements(uint64 filenameHash, const ResChar filename[]) -> const Placements&
@@ -641,22 +668,12 @@ namespace SceneEngine
                 _currentModel = modelHash;
             }
 
-                // hack to skip things with empty material names
-            if (*(const ResChar*)PtrAdd(filenamesBuffer, obj._materialFilenameOffset + sizeof(uint64)) == '\0') {
-                // assert(0);
-                return;
-            }
-
             if (materialHash != _currentMaterial) {
                 _material = cache._materialScaffolds.Get(materialHash).get();
                 if (!_material) {
                     std::shared_ptr<MaterialScaffold> newMaterial;
-                    TRY {
-                        auto materialFilename = (const ResChar*)PtrAdd(filenamesBuffer, obj._materialFilenameOffset + sizeof(uint64));
-                        newMaterial = CreateMaterialScaffold(materialFilename, modelFormat);
-                    } CATCH (...) {    // sometimes get missing files
-                        return;
-                    } CATCH_END
+                    auto materialFilename = (const ResChar*)PtrAdd(filenamesBuffer, obj._materialFilenameOffset + sizeof(uint64));
+                    newMaterial = CreateMaterialScaffold(materialFilename, modelFormat);
                     _material = newMaterial.get();
                     cache._materialScaffolds.Insert(materialHash, std::move(newMaterial));
                 }
@@ -1118,7 +1135,7 @@ namespace SceneEngine
                         continue;
                     }
 
-                    auto& model = _pimpl->_renderer->GetCachedModel(
+                    auto& model = *_pimpl->_renderer->GetCachedModel(
                         (const char*)PtrAdd(p.GetFilenamesBuffer(), obj._modelFilenameOffset + sizeof(uint64)));
                     const auto& localBoundingBox = model.GetStaticBoundingBox();
                     if (!RayVsAABB( cellSpaceRay, AsFloat4x4(obj._localToCell), 
@@ -1176,7 +1193,7 @@ namespace SceneEngine
                         continue;
                     }
 
-                    auto& model = _pimpl->_renderer->GetCachedModel(
+                    auto& model = *_pimpl->_renderer->GetCachedModel(
                         (const char*)PtrAdd(p.GetFilenamesBuffer(), obj._modelFilenameOffset + sizeof(uint64)));
                     const auto& localBoundingBox = model.GetStaticBoundingBox();
                     if (CullAABB(Combine(AsFloat4x4(obj._localToCell), cellToProjection), localBoundingBox.first, localBoundingBox.second)) {
@@ -1259,14 +1276,16 @@ namespace SceneEngine
                         ObjIntersectionDef def;
                         def._localToWorld = Combine(obj._localToCell, i->_cellToWorld);
 
-                        auto& model = _pimpl->_renderer->GetCachedModel(
+                        auto* model = _pimpl->_renderer->GetCachedModel(
                             (const char*)PtrAdd(p.GetFilenamesBuffer(), obj._modelFilenameOffset + sizeof(uint64)));
 
                             // note -- we have access to the cell space bounding box. But the local
                             //          space box would be better.
-                        def._localSpaceBoundingBox = model.GetStaticBoundingBox();
+                        def._localSpaceBoundingBox = model ? model->GetStaticBoundingBox()
+                            : std::make_pair(Float3(FLT_MAX, FLT_MAX, FLT_MAX), Float3(-FLT_MAX, -FLT_MAX, -FLT_MAX));
                         def._model = *(uint64*)PtrAdd(p.GetFilenamesBuffer(), obj._modelFilenameOffset);
                         def._material = *(uint64*)PtrAdd(p.GetFilenamesBuffer(), obj._materialFilenameOffset);
+                        
 
                             // allow the predicate to exclude this item
                         if (!predicate(def)) { continue; }
@@ -1303,6 +1322,7 @@ namespace SceneEngine
         unsigned            GetObjectCount() const;
         std::pair<Float3, Float3>   GetLocalBoundingBox(unsigned index) const;
         std::pair<Float3, Float3>   GetWorldBoundingBox(unsigned index) const;
+        std::string         GetMaterialName(unsigned objectIndex, unsigned drawCallIndex) const;
 
         virtual void        SetObject(unsigned index, const ObjTransDef& newState);
 
@@ -1351,8 +1371,8 @@ namespace SceneEngine
 
     std::pair<Float3, Float3>   Transaction::GetLocalBoundingBox(unsigned index) const
     {
-        auto& model = _editorPimpl->_renderer->GetCachedModel(_objects[index]._model.c_str());
-        return model.GetStaticBoundingBox();
+        auto* model = _editorPimpl->_renderer->GetCachedModel(_objects[index]._model.c_str());
+        return model ? model->GetStaticBoundingBox() : std::make_pair(Float3(FLT_MAX, FLT_MAX, FLT_MAX), Float3(-FLT_MAX, -FLT_MAX, -FLT_MAX));
     }
 
     std::pair<Float3, Float3>   Transaction::GetWorldBoundingBox(unsigned index) const
@@ -1364,6 +1384,26 @@ namespace SceneEngine
 
         auto dst = std::lower_bound(objects.begin(), objects.end(), guid.second, CompareObjectId());
         return TransformBoundingBox(cellToWorld, dst->_cellSpaceBoundary);
+    }
+
+    std::string Transaction::GetMaterialName(unsigned objectIndex, unsigned drawCallIndex) const
+    {
+        if (objectIndex >= _objects.size()) return std::string();
+
+        const unsigned LOD = 0;
+        const auto* renderer = _editorPimpl->_renderer->GetCachedRenderer(
+            _objects[objectIndex]._model.c_str(), 
+            _objects[objectIndex]._material.c_str(), LOD);
+
+        auto binding = renderer->DrawCallToMaterialBinding();
+        if (drawCallIndex >= binding.size()) return std::string();
+
+        auto matGuid = binding[drawCallIndex];
+
+        const auto* material = _editorPimpl->_renderer->GetCachedMaterial(_objects[objectIndex]._material.c_str());
+        if (!material) return std::string();
+            
+        return material->GetMaterialName(matGuid);
     }
 
     void    Transaction::SetObject(unsigned index, const ObjTransDef& newState)
@@ -1415,7 +1455,7 @@ namespace SceneEngine
         //  Objects that straddle a cell boundary must be placed in only one of those
         //  cells -- so sometimes objects will stick out the side of a cell.
 
-        auto& model = _editorPimpl->_renderer->GetCachedModel(newState._model.c_str());
+        auto& model = *_editorPimpl->_renderer->GetCachedModel(newState._model.c_str());
         auto boundingBoxCentre = LinearInterpolate(model.GetStaticBoundingBox().first, model.GetStaticBoundingBox().second, 0.5f);
         auto worldSpaceCenter = TransformPoint(newState._localToWorld, boundingBoxCentre);
 
@@ -1484,7 +1524,7 @@ namespace SceneEngine
 
     bool    Transaction::Create(PlacementGUID guid, const ObjTransDef& newState)
     {
-        auto& model = _editorPimpl->_renderer->GetCachedModel(newState._model.c_str());
+        auto& model = *_editorPimpl->_renderer->GetCachedModel(newState._model.c_str());
         auto boundingBoxCentre = LinearInterpolate(model.GetStaticBoundingBox().first, model.GetStaticBoundingBox().second, 0.5f);
         auto worldSpaceCenter = TransformPoint(newState._localToWorld, boundingBoxCentre);
 
@@ -1564,8 +1604,10 @@ namespace SceneEngine
         if (newState._transaction != ObjTransDef::Deleted && newState._transaction != ObjTransDef::Error) {
             localToCell = Combine(newState._localToWorld, InvertOrthonormalTransform(cellToWorld));
 
-            auto& model = _editorPimpl->_renderer->GetCachedModel(newState._model.c_str());
-            cellSpaceBoundary = TransformBoundingBox(localToCell, model.GetStaticBoundingBox());
+            auto* model = _editorPimpl->_renderer->GetCachedModel(newState._model.c_str());
+            cellSpaceBoundary = model
+                ? TransformBoundingBox(localToCell, model->GetStaticBoundingBox())
+                : std::make_pair(Float3(FLT_MAX, FLT_MAX, FLT_MAX), Float3(-FLT_MAX, -FLT_MAX, -FLT_MAX));
 
             #if MODEL_FORMAT != MODEL_FORMAT_RUNTIME
                 if (materialFilename.empty()) {
@@ -1897,8 +1939,8 @@ namespace SceneEngine
 
     std::pair<Float3, Float3> PlacementsEditor::GetModelBoundingBox(const ResChar modelName[]) const
     {
-        auto& model = _pimpl->_renderer->GetCachedModel(modelName);
-        return model.GetStaticBoundingBox();
+        auto* model = _pimpl->_renderer->GetCachedModel(modelName);
+        return model ? model->GetStaticBoundingBox() : std::make_pair(Float3(FLT_MAX, FLT_MAX, FLT_MAX), Float3(-FLT_MAX, -FLT_MAX, -FLT_MAX));
     }
 
     auto PlacementsEditor::Transaction_Begin(

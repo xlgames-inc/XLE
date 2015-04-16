@@ -112,6 +112,7 @@
     <ClInclude Include="..\TerrainGobInterface.h" />
     <ClInclude Include="..\TestControl.h" />
     <ClInclude Include="..\UITypesBinding.h" />
+    <ClInclude Include="..\MathLayer.h" />
     <ClInclude Include="..\WindowRigInternal.h" />
   </ItemGroup>
   <ItemGroup>

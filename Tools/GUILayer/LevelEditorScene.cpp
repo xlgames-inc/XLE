@@ -439,10 +439,8 @@ namespace GUILayer
     void EditorSceneManager::SetSelection(ObjectSet^ objectSet)
     {
         *_selection->_nativePlacements = *objectSet->_nativePlacements;
-        if (_scene->_placementsEditor) {
-            _scene->_placementsEditor->PerformGUIDFixup(
-                AsPointer(_selection->_nativePlacements->begin()),
-                AsPointer(_selection->_nativePlacements->end()));
+        if (!!_scene->_placementsEditor) {
+            _selection->DoFixup(*_scene->_placementsEditor);
         }
     }
 }

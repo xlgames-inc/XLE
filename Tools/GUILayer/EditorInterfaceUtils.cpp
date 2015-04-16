@@ -9,14 +9,16 @@
 #include "EngineDevice.h"
 #include "NativeEngineDevice.h"
 #include "GUILayerUtil.h"
+#include "MathLayer.h"
 #include "MarshalString.h"
 #include "ExportedNativeTypes.h"
 #include "../../SceneEngine/IntersectionTest.h"
 #include "../../SceneEngine/Terrain.h"
+#include "../../SceneEngine/PlacementsManager.h"
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/IDevice.h"
+#include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../Assets/Assets.h"
-#include "../ToolsRig/ManipulatorsUtil.h"
 #include "../ToolsRig/PlacementsManipulators.h"
 // #include "../../ConsoleRig/Log.h"        (can't include in Win32 managed code)
 
@@ -26,36 +28,42 @@ using namespace System::Runtime::InteropServices;
 
 namespace GUILayer
 {
-	public ref class HitRecord
-	{
-	public:
-		EditorDynamicInterface::DocumentId _document;
-		EditorDynamicInterface::ObjectId _object;
-		float _distance;
-		float _worldSpaceCollisionX;
-		float _worldSpaceCollisionY;
-		float _worldSpaceCollisionZ;
-	};
-
-    public value struct Vector3 sealed
+    public ref class HitRecord
     {
-        property float X;
-        property float Y;
-        property float Z;
-
-        Vector3(float x, float y, float z) { X = x; Y = y; Z = z; }
+    public:
+        EditorDynamicInterface::DocumentId _document;
+        EditorDynamicInterface::ObjectId _object;
+        Vector3 _worldSpaceCollision;
+        float _distance;
+        String^ _materialName;
+        unsigned _drawCallIndex;
     };
-
-    static Float3 AsFloat3(Vector3 input) { return Float3(input.X, input.Y, input.Z); }
-    static Vector3 AsVector3(Float3 input) { return Vector3(input[0], input[1], input[2]); }
 
     void ObjectSet::Add(uint64 document, uint64 id)
     {
         _nativePlacements->push_back(std::make_pair(document, id));
     }
 
-	ObjectSet::ObjectSet()     { _nativePlacements.reset(new NativePlacementSet); }
-	ObjectSet::~ObjectSet()    { _nativePlacements.reset(); }
+    void ObjectSet::Clear() { _nativePlacements->clear(); }
+    bool ObjectSet::IsEmpty() { return _nativePlacements->empty(); }
+
+    void ObjectSet::DoFixup(SceneEngine::PlacementsEditor& placements)
+    {
+        placements.PerformGUIDFixup(
+            AsPointer(_nativePlacements->begin()),
+            AsPointer(_nativePlacements->end()));
+    }
+        
+    void ObjectSet::DoFixup(PlacementsEditorWrapper^ placements)
+    {
+        DoFixup(placements->GetNative());
+    }
+
+    ObjectSet::ObjectSet()
+    { 
+        _nativePlacements.reset(new NativePlacementSet); 
+    }
+    ObjectSet::~ObjectSet()    { _nativePlacements.reset(); }
 
     public ref class EditorInterfaceUtils
     {
@@ -81,104 +89,102 @@ namespace GUILayer
                     nativeTC));
         }
 
-		static System::Collections::Generic::ICollection<HitRecord^>^
-			RayIntersection(
-				IntersectionTestSceneWrapper^ testScene,
-				IntersectionTestContextWrapper^ testContext,
-				Vector3 start, Vector3 end,
-				unsigned filter)
-		{
-			TRY
-			{
-				auto firstResult = testScene->_scene->FirstRayIntersection(
-					*testContext->_context.get(),
-					std::make_pair(AsFloat3(start), AsFloat3(end)),
-					filter);
+        static System::Collections::Generic::ICollection<HitRecord^>^
+            RayIntersection(
+                IntersectionTestSceneWrapper^ testScene,
+                IntersectionTestContextWrapper^ testContext,
+                Vector3 start, Vector3 end, unsigned filter)
+        {
+            TRY
+            {
+                auto firstResult = testScene->_scene->FirstRayIntersection(
+                    *testContext->_context.get(),
+                    std::make_pair(AsFloat3(start), AsFloat3(end)),
+                    filter);
 
-				if (firstResult._type != 0) {
-					auto record = gcnew HitRecord;
-					record->_document = firstResult._objectGuid.first;
-					record->_object = firstResult._objectGuid.second;
-					record->_distance = firstResult._distance;
-					record->_worldSpaceCollisionX = firstResult._worldSpaceCollision[0];
-					record->_worldSpaceCollisionY = firstResult._worldSpaceCollision[1];
-					record->_worldSpaceCollisionZ = firstResult._worldSpaceCollision[2];
+                if (firstResult._type != 0) {
+                    auto record = gcnew HitRecord;
+                    record->_document = firstResult._objectGuid.first;
+                    record->_object = firstResult._objectGuid.second;
+                    record->_worldSpaceCollision = AsVector3(firstResult._worldSpaceCollision);
+                    record->_distance = firstResult._distance;
+                    record->_materialName = clix::marshalString<clix::E_UTF8>(firstResult._materialName);
+                    record->_drawCallIndex = firstResult._drawCallIndex;
 
-					// hack -- for placement objects, we must strip off the top 32 bits
-					//          from the object id.
-					if (firstResult._type == SceneEngine::IntersectionTestScene::Type::Placement) {
-						record->_object &= 0x00000000ffffffffull;
-					}
+                        // hack -- for placement objects, we must strip off the top 32 bits
+                        //          from the object id.
+                    if (firstResult._type == SceneEngine::IntersectionTestScene::Type::Placement) {
+                        record->_object &= 0x00000000ffffffffull;
+                    }
 
-					auto result = gcnew System::Collections::Generic::List<HitRecord^>();
-					result->Add(record);
-					return result;
-				}
-			}
-			CATCH(const ::Assets::Exceptions::InvalidResource& e)
-			{
+                    auto result = gcnew System::Collections::Generic::List<HitRecord^>();
+                    result->Add(record);
+                    return result;
+                }
+            }
+            CATCH(const ::Assets::Exceptions::InvalidResource& e)
+            {
                 (void)e;
-			    // LogWarning << "Invalid resource while performing ray intersection test: {" << e.what() << "}";
-			}
-			CATCH(const ::Assets::Exceptions::PendingResource&) {}
-			CATCH_END
+                // LogWarning << "Invalid resource while performing ray intersection test: {" << e.what() << "}";
+            }
+            CATCH(const ::Assets::Exceptions::PendingResource&) {}
+            CATCH_END
 
-			return nullptr;
-		}
+            return nullptr;
+        }
 
         static System::Collections::Generic::ICollection<HitRecord^>^
-			FrustumIntersection(
-				IntersectionTestSceneWrapper^ testScene,
-				IntersectionTestContextWrapper^ testContext,
-				const float matrix[],
-				unsigned filter)
-		{
-			TRY
-			{
+            FrustumIntersection(
+                IntersectionTestSceneWrapper^ testScene,
+                IntersectionTestContextWrapper^ testContext,
+                const float matrix[],
+                unsigned filter)
+        {
+            TRY
+            {
                 Float4x4 worldToProjection = Transpose(AsFloat4x4(matrix));
 
-				auto nativeResults = testScene->_scene->FrustumIntersection(
-					*testContext->_context.get(),
-					worldToProjection, filter);
+                auto nativeResults = testScene->_scene->FrustumIntersection(
+                    *testContext->_context.get(),
+                    worldToProjection, filter);
 
-				if (!nativeResults.empty()) {
+                if (!nativeResults.empty()) {
 
                     auto result = gcnew System::Collections::Generic::List<HitRecord^>();
                     for (auto i: nativeResults) {
-					    auto record = gcnew HitRecord;
-					    record->_document = i._objectGuid.first;
-					    record->_object = i._objectGuid.second;
-					    record->_distance = i._distance;
-					    record->_worldSpaceCollisionX = i._worldSpaceCollision[0];
-					    record->_worldSpaceCollisionY = i._worldSpaceCollision[1];
-					    record->_worldSpaceCollisionZ = i._worldSpaceCollision[2];
+                        auto record = gcnew HitRecord;
+                        record->_document = i._objectGuid.first;
+                        record->_object = i._objectGuid.second;
+                        record->_distance = i._distance;
+                        record->_worldSpaceCollision = AsVector3(i._worldSpaceCollision);
+                        record->_drawCallIndex = (unsigned)-1;
 
-					        // hack -- for placement objects, we must strip off the top 32 bits
-					        //          from the object id.
-					    if (i._type == SceneEngine::IntersectionTestScene::Type::Placement) {
-						    record->_object &= 0x00000000ffffffffull;
-					    }
-					
-					    result->Add(record);
+                            // hack -- for placement objects, we must strip off the top 32 bits
+                            //          from the object id.
+                        if (i._type == SceneEngine::IntersectionTestScene::Type::Placement) {
+                            record->_object &= 0x00000000ffffffffull;
+                        }
+                    
+                        result->Add(record);
                     }
 
-					return result;
-				}
-			}
-			CATCH(const ::Assets::Exceptions::InvalidResource& e)
-			{
+                    return result;
+                }
+            }
+            CATCH(const ::Assets::Exceptions::InvalidResource& e)
+            {
                 (void)e;
-			    // LogWarning << "Invalid resource while performing ray intersection test: {" << e.what() << "}";
-			}
-			CATCH(const ::Assets::Exceptions::PendingResource&) {}
-			CATCH_END
+                // LogWarning << "Invalid resource while performing ray intersection test: {" << e.what() << "}";
+            }
+            CATCH(const ::Assets::Exceptions::PendingResource&) {}
+            CATCH_END
 
-			return nullptr;
-		}
+            return nullptr;
+        }
 
         static bool GetTerrainHeight(
             [Out] float% result,
-			IntersectionTestSceneWrapper^ testScene,
+            IntersectionTestSceneWrapper^ testScene,
             float worldX, float worldY)
         {
             auto& terrain = *testScene->GetNative().GetTerrain();
@@ -202,15 +208,6 @@ namespace GUILayer
                 return true;
             }
             return false;
-        }
-
-        static void RenderCylinderHighlight(
-            SceneEngine::LightingParserContext& parsingContext, 
-            Vector3 centre, float radius)
-        {
-            ToolsRig::RenderCylinderHighlight(
-                EngineDevice::GetInstance()->GetNative().GetRenderDevice()->GetImmediateContext().get(),
-                parsingContext, AsFloat3(centre), radius);
         }
 
         ref class ScatterPlaceOperation

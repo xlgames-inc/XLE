@@ -433,6 +433,11 @@ namespace RenderingInterop
 
         #endregion
 
+        public static GUILayer.SimpleRenderingContext CreateRenderingContext()
+        {
+            return XLELayer.NativeDesignControl.CreateSimpleRenderingContext(s_savedRenderResources);
+        }
+
         #region private members
 
         private static ulong NativeCreateVertexBuffer(VertexFormat vf, void* buffer, uint vertexCount) 
@@ -457,7 +462,7 @@ namespace RenderingInterop
                                                         float* color,
                                                         float* xform) 
         {
-            using (var context = XLELayer.NativeDesignControl.CreateSimpleRenderingContext(s_savedRenderResources))
+            using (var context = CreateRenderingContext())
             {
                 context.DrawPrimitive((uint)pt, vb, StartVertex, vertexCount, color, xform);
             }
@@ -472,7 +477,7 @@ namespace RenderingInterop
                                                         float* color,
                                                         float* xform) 
         {
-            using (var context = XLELayer.NativeDesignControl.CreateSimpleRenderingContext(s_savedRenderResources))
+            using (var context = CreateRenderingContext())
             {
                 context.DrawIndexedPrimitive((uint)pt, vb, ib, startIndex, indexCount, startVertex, color, xform);
             }

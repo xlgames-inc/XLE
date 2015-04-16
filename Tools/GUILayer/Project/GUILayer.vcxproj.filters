@@ -61,6 +61,7 @@
     <ClInclude Include="..\EditorInterfaceUtils.h">
       <Filter>DynInterface</Filter>
     </ClInclude>
+    <ClInclude Include="..\MathLayer.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="DynInterface">

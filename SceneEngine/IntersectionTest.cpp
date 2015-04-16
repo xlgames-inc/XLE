@@ -151,13 +151,17 @@ namespace SceneEngine
                 auto count = trans->GetObjectCount();
                 for (unsigned c=0; c<count; ++c) {
                     auto guid = trans->GetGuid(c);
-                    auto results = PlacementsIntersection(*metalContext.get(), stateContext, *_placements, guid);
+                    auto results = PlacementsIntersection(
+                        *metalContext.get(), stateContext, 
+                        *_placements, guid);
 
                     bool gotGoodResult = false;
+                    unsigned drawCallIndex = 0;
                     float intersectionDistance = FLT_MAX;
                     for (auto i=results.cbegin(); i!=results.cend(); ++i) {
                         if (i->_intersectionDepth < intersectionDistance) {
                             intersectionDistance = i->_intersectionDepth;
+                            drawCallIndex = i->_drawCallIndex;
                             gotGoodResult = true;
                         }
                     }
@@ -169,6 +173,8 @@ namespace SceneEngine
                             LinearInterpolate(worldSpaceRay.first, worldSpaceRay.second, intersectionDistance / rayLength);
                         result._distance = intersectionDistance;
                         result._objectGuid = guid;
+                        result._drawCallIndex = drawCallIndex;
+                        result._materialName = trans->GetMaterialName(c, drawCallIndex);
                     }
                 }
             } CATCH(...) {

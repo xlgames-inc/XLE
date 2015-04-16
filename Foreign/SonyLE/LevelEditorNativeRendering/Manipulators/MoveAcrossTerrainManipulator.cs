@@ -234,25 +234,15 @@ namespace RenderingInterop
 
         private bool CalculateTerrainIntersection(ViewControl vc, Ray3F ray, GUILayer.IntersectionTestSceneWrapper testScene, out Vec3F result)
         {
-            using (var testContext = XLELayer.XLELayerUtils.CreateIntersectionTestContext(
-                GameEngine.GetEngineDevice(), null,
-                vc.Camera, (uint)vc.ClientSize.Width, (uint)vc.ClientSize.Height)) {
+            var pick = NativeInterop.Picking.RayPick(
+                null, ray, vc.Camera, vc.ClientSize, NativeInterop.Picking.Flags.Terrain);
 
-                var endPt = ray.Origin + vc.Camera.FarZ * ray.Direction;
-                var results = GUILayer.EditorInterfaceUtils.RayIntersection(
-                    testScene, testContext,
-                    XLELayer.XLELayerUtils.AsVector3(ray.Origin), XLELayer.XLELayerUtils.AsVector3(endPt),
-                    1);
-            
-                if (results != null)
-                {
-                    foreach (var r in results)
-                    {
-                        result = new Vec3F(r._worldSpaceCollisionX, r._worldSpaceCollisionY, r._worldSpaceCollisionZ);
-                        return true;
-                    }
-                }
+            if (pick.Length > 0)
+            {
+                result = pick[0].hitPt;
+                return true;
             }
+            
             result = new Vec3F(0.0f, 0.0f, 0.0f);
             return false;
         }

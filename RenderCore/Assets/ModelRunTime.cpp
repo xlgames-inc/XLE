@@ -1307,7 +1307,7 @@ namespace RenderCore { namespace Assets
         } else { return std::string("<<err>>"); }
     }
 
-    std::vector<MaterialGuid> ModelRenderer::DrawCallToMaterialBinding()
+    std::vector<MaterialGuid> ModelRenderer::DrawCallToMaterialBinding() const
     {
         std::vector<MaterialGuid> result;
         result.reserve(_pimpl->_drawCallRes.size());

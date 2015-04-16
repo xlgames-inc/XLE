@@ -92,7 +92,7 @@ namespace ToolsRig
 
     void RenderCylinderHighlight(
         RenderCore::Metal::DeviceContext* context, 
-        SceneEngine::LightingParserContext& parserContext,
+        RenderCore::Techniques::ParsingContext& parserContext,
         const Float3& centre, float radius)
     {
         using namespace RenderCore::Metal;
@@ -155,15 +155,6 @@ namespace ToolsRig
         CATCH_END
 
         savedTargets.ResetToOldTargets(context);
-    }
-
-    void RenderCylinderHighlight(
-        RenderCore::IThreadContext* context, 
-        SceneEngine::LightingParserContext& parserContext,
-        const Float3& centre, float radius)
-    {
-        auto devContext = RenderCore::Metal::DeviceContext::Get(*context);
-        RenderCylinderHighlight(devContext.get(), parserContext, centre, radius);
     }
 
     void    CommonManipulator::Render(
