@@ -256,7 +256,7 @@ namespace GUILayer
 
         property RenderStateSet^ StateSet { RenderStateSet^ get() { return _renderStateSet; } }
 
-        const RenderCore::Assets::RawMaterial* GetUnderlying() { return _underlying.get() ? &_underlying->GetAsset() : nullptr; }
+        const RenderCore::Assets::RawMaterial* GetUnderlying() { return (!!_underlying) ? &_underlying->GetAsset() : nullptr; }
 
         System::Collections::Generic::List<RawMaterial^>^ BuildInheritanceList();
         property System::String^ Filename { System::String^ get(); }

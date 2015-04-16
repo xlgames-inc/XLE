@@ -284,7 +284,7 @@ namespace GUILayer
     BindingList<BindingUtil::StringStringPair^>^ 
         RawMaterial::MaterialParameterBox::get()
     {
-        if (!_underlying.get()) { return nullptr; }
+        if (!_underlying) { return nullptr; }
         if (!_materialParameterBox) {
             _materialParameterBox = BindingConv::AsBindingList(_underlying->GetAsset()._matParamBox);
             _materialParameterBox->ListChanged += 
@@ -299,7 +299,7 @@ namespace GUILayer
     BindingList<BindingUtil::StringStringPair^>^ 
         RawMaterial::ShaderConstants::get()
     {
-        if (!_underlying.get()) { return nullptr; }
+        if (!_underlying) { return nullptr; }
         if (!_shaderConstants) {
             _shaderConstants = BindingConv::AsBindingList(_underlying->GetAsset()._constants);
             _shaderConstants->ListChanged += 
@@ -314,7 +314,7 @@ namespace GUILayer
     BindingList<BindingUtil::StringStringPair^>^ 
         RawMaterial::ResourceBindings::get()
     {
-        if (!_underlying.get()) { return nullptr; }
+        if (!_underlying) { return nullptr; }
         if (!_resourceBindings) {
             _resourceBindings = BindingConv::AsBindingList(_underlying->GetAsset()._resourceBindings);
             _resourceBindings->ListChanged += 
@@ -348,7 +348,7 @@ namespace GUILayer
             }
         }
 
-        if (_underlying.get()) {
+        if (!!_underlying) {
             if (obj == _materialParameterBox) {
                 auto transaction = _underlying->Transaction_Begin("Material parameter");
                 if (transaction)
@@ -376,7 +376,7 @@ namespace GUILayer
             }
         }
 
-        if (_underlying.get()) {
+        if (!!_underlying) {
             assert(obj == _resourceBindings);
             auto transaction = _underlying->Transaction_Begin("Resource Binding");
             if (transaction)
@@ -387,7 +387,7 @@ namespace GUILayer
     System::Collections::Generic::List<RawMaterial^>^ RawMaterial::BuildInheritanceList()
     {
             // create a RawMaterial wrapper object for all of the inheritted objects
-        if (_underlying.get()) {
+        if (!!_underlying) {
             auto result = gcnew System::Collections::Generic::List<RawMaterial^>();
 
             auto& asset = _underlying->GetAsset();
@@ -406,13 +406,13 @@ namespace GUILayer
 
     System::String^ RawMaterial::Filename::get()
     {
-        if (!_underlying.get()) { return DummyFilename; }
+        if (!_underlying) { return DummyFilename; }
         return clix::marshalString<clix::E_UTF8>(_underlying->GetAsset().GetInitializerFilename());
     }
 
     System::String^ RawMaterial::SettingName::get()
     {
-        if (!_underlying.get()) { return DummySettingName; }
+        if (!_underlying) { return DummySettingName; }
         return clix::marshalString<clix::E_UTF8>(_underlying->GetAsset().GetSettingName());
     }
 

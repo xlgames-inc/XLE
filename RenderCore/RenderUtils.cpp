@@ -43,7 +43,7 @@ namespace RenderCore
         }
     }
 
-    SharedPkt MakeSharedPkt(size_t size)
+    SharedPkt MakeSharedPktSize(size_t size)
     {
         auto& heap = SharedPkt::GetHeap();
         return SharedPkt(heap.Allocate((unsigned)size), size);

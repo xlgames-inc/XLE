@@ -326,7 +326,7 @@ namespace ToolsRig
         return false;
     }
 
-    static bool WriteSystemVariable(
+    static size_t WriteSystemVariable(
         const char name[], 
         const MaterialVisObject::SystemConstants& constants, 
         UInt2 viewportDims,
@@ -336,27 +336,27 @@ namespace ToolsRig
         if (!_stricmp(name, "SI_OutputDimensions") && size >= (sizeof(unsigned)*2)) {
             ((unsigned*)destination)[0] = viewportDims[0];
             ((unsigned*)destination)[1] = viewportDims[1];
-            return true;
+            return sizeof(unsigned)*2;
         } else if (!_stricmp(name, "SI_NegativeLightDirection") && size >= sizeof(Float3)) {
             *((Float3*)destination) = constants._lightNegativeDirection;
-            return true;
+            return sizeof(Float3);
         } else if (!_stricmp(name, "SI_LightColor") && size >= sizeof(Float3)) {
             *((Float3*)destination) = constants._lightColour;
-            return true;
+            return sizeof(Float3);
         } else if (!_stricmp(name, "MaterialDiffuse") && size >= sizeof(Float3)) {
             *((Float3*)destination) = Float3(1.f, 1.f, 1.f);
-            return true;
+            return sizeof(Float3);
         } else if (!_stricmp(name, "Opacity") && size >= sizeof(float)) {
             *((float*)destination) = 1.f;
-            return true;
+            return sizeof(float);
         } else if (!_stricmp(name, "MaterialSpecular") && size >= sizeof(Float3)) {
             *((Float3*)destination) = Float3(1.f, 1.f, 1.f);
-            return true;
+            return sizeof(Float3);
         } else if (!_stricmp(name, "AlphaThreshold") && size >= sizeof(float)) {
             *((float*)destination) = .33f;
-            return true;
+            return sizeof(float);
         }
-        return false;
+        return 0;
     }
 
     static ImpliedTyping::TypeDesc GetType(D3D11_SHADER_TYPE_DESC typeDesc)
@@ -413,10 +413,7 @@ namespace ToolsRig
                     D3D11_SHADER_BUFFER_DESC bufferDesc;
                     HRESULT hresult = cbuffer->GetDesc(&bufferDesc);
                     if (SUCCEEDED(hresult)) {
-
-                        auto result = RenderCore::MakeSharedPkt(bufferDesc.Size);
-                        std::fill((uint8*)result.begin(), (uint8*)result.end(), 0);
-                        bool foundAtLeastOneParameter = false;
+                        RenderCore::SharedPkt result;
 
                         for (unsigned c=0; c<bufferDesc.Variables; ++c) {
                             auto reflectionVariable = cbuffer->GetVariableByIndex(c);
@@ -450,26 +447,42 @@ namespace ToolsRig
                                         auto impliedType = GetType(typeDesc);
                                         assert((variableDesc.StartOffset + impliedType.GetSize()) <= bufferDesc.Size);
                                         if ((variableDesc.StartOffset + impliedType.GetSize()) <= bufferDesc.Size) {
+
+                                            if (!result.size()) {
+                                                result = RenderCore::MakeSharedPktSize(bufferDesc.Size);
+                                                std::fill((uint8*)result.begin(), (uint8*)result.end(), 0);
+                                            }
+
                                             constants.GetParameter(
                                                 nameHash,
                                                 PtrAdd(result.begin(), variableDesc.StartOffset),
                                                 impliedType);
-
                                         }
                                     }
 
                                 } else {
                                     
-                                    foundAtLeastOneParameter |= WriteSystemVariable(
-                                        variableDesc.Name, systemConstantsContext, viewportDims,
-                                        PtrAdd(result.begin(), variableDesc.StartOffset), result.end());
+                                    if (!result.size()) {
+                                        char buffer[4096];
+                                        if (size_t size = WriteSystemVariable(
+                                            variableDesc.Name, systemConstantsContext, viewportDims,
+                                            buffer, PtrAdd(buffer, std::min(sizeof(buffer), (size_t)(bufferDesc.Size - variableDesc.StartOffset))))) {
 
+                                            result = RenderCore::MakeSharedPktSize(bufferDesc.Size);
+                                            std::fill((uint8*)result.begin(), (uint8*)result.end(), 0);
+                                            XlCopyMemory(PtrAdd(result.begin(), variableDesc.StartOffset), buffer, size);
+                                        }
+                                    } else {
+                                        WriteSystemVariable(
+                                            variableDesc.Name, systemConstantsContext, viewportDims,
+                                            PtrAdd(result.begin(), variableDesc.StartOffset), result.end());
+                                    }
                                 }
 
                             }
                         }
 
-                        if (foundAtLeastOneParameter) {
+                        if (result.size()) {
                             finalResult.push_back(
                                 std::make_pair(Hash64(bindDesc.Name), std::move(result)));
                         }   

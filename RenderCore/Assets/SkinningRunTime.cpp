@@ -516,7 +516,7 @@ namespace RenderCore { namespace Assets
         TBufferTemporaryTexture tbufferTexture;
         if (bindingType == SkinningBindingBox::BindingType::cbuffer) {
 
-            constantBufferPackets[0] = RenderCore::MakeSharedPkt(sizeof(Float3x4) * packetCount);
+            constantBufferPackets[0] = RenderCore::MakeSharedPktSize(sizeof(Float3x4) * packetCount);
             Float3x4* jointTransforms = (Float3x4*)constantBufferPackets[0].begin();
             WriteJointTransforms(jointTransforms, packetCount, scaffold, transformationMachineResult, skeletonBinding);
 

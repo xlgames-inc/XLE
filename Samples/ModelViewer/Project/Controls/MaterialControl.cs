@@ -70,8 +70,7 @@ namespace ModelViewer.Controls
                     });
 
                 shaderConstants.Columns.Add(
-                    // new DataGridViewTextBoxColumn()
-                    new GUILayer.CalendarColumn
+                    new DataGridViewTextBoxColumn()
                     {
                         // CellTemplate = cell,
                         Name = "Value",

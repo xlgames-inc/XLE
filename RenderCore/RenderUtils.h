@@ -82,7 +82,7 @@ namespace RenderCore
         SharedPkt& operator=(SharedPkt&& moveFrom) never_throws;
         ~SharedPkt();
 
-        friend SharedPkt MakeSharedPkt(size_t size);
+        friend SharedPkt MakeSharedPktSize(size_t size);
         friend SharedPkt MakeSharedPkt(const void* begin, const void* end);
 
         void swap(SharedPkt& other) never_throws;
