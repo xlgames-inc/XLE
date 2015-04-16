@@ -17,13 +17,15 @@
 
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Assets/ColladaCompilerInterface.h"
+#include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../RenderCore/Metal/GPUProfiler.h"
 #include "../../RenderCore/Metal/State.h"
+#include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderOverlays/Font.h"
 #include "../../RenderOverlays/DebugHotKeys.h"
 #include "../../BufferUploads/IBufferUploads.h"
 
-#include "../../SceneEngine/SceneEngineUtility.h"
+#include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../SceneEngine/LightingParser.h"
 #include "../../SceneEngine/LightingParserStandardPlugin.h"
 #include "../../SceneEngine/LightingParserContext.h"
@@ -227,6 +229,9 @@ namespace Sample
         compilers.AddCompiler(ColladaCompiler::Type_Model, colladaProcessor);
         compilers.AddCompiler(ColladaCompiler::Type_AnimationSet, colladaProcessor);
         compilers.AddCompiler(ColladaCompiler::Type_Skeleton, colladaProcessor);
+        compilers.AddCompiler(
+            RenderCore::Assets::MaterialScaffold::CompileProcessType,
+            std::make_shared<RenderCore::Assets::MaterialScaffoldCompiler>());
     }
 
     PlatformRig::FrameRig::RenderResult RenderFrame(
@@ -242,7 +247,7 @@ namespace Sample
         scene->PrepareFrame(metalContext.get());
 
         using namespace SceneEngine;
-        auto presChainDesc = presentationChain->GetDesc();
+        auto presChainDims = presentationChain->GetViewportContext()->_dimensions;
 
             //  Execute the lighting parser!
             //      This is where most rendering actually happens.
@@ -250,7 +255,7 @@ namespace Sample
             LightingParser_ExecuteScene(
                 context, lightingParserContext, *scene,
                 RenderingQualitySettings(
-                    presChainDesc._dimensions, 
+                    presChainDims, 
                     (Tweakable("LightingModel", 0) == 0) ? RenderingQualitySettings::LightingModel::Deferred : RenderingQualitySettings::LightingModel::Forward,
                     Tweakable("SamplingCount", 1), Tweakable("SamplingQuality", 0)));
         }

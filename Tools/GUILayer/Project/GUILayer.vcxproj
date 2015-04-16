@@ -76,10 +76,18 @@
     <ClCompile Include="..\AssemblyInfo.cpp" />
     <ClCompile Include="..\CustomDataGridEditor.cpp" />
     <ClCompile Include="..\DivergentAssetList.cpp" />
+    <ClCompile Include="..\EditorDynamicInterface.cpp" />
+    <ClCompile Include="..\EditorInterfaceUtils.cpp" />
     <ClCompile Include="..\EngineDevice.cpp" />
     <ClCompile Include="..\EngineControl.cpp" />
+    <ClCompile Include="..\GUILayerUtil.cpp" />
     <ClCompile Include="..\LayerControl.cpp" />
+    <ClCompile Include="..\LevelEditorScene.cpp" />
+    <ClCompile Include="..\ManipulatorUtils.cpp" />
     <ClCompile Include="..\MaterialVisualisation.cpp" />
+    <ClCompile Include="..\PlacementsGobInterface.cpp" />
+    <ClCompile Include="..\SimpleRenderingContext.cpp" />
+    <ClCompile Include="..\TerrainGobInterface.cpp" />
     <ClCompile Include="..\TestControl.cpp" />
     <ClCompile Include="..\UITypesBinding.cpp" />
     <ClCompile Include="..\WindowRig.cpp" />
@@ -87,20 +95,28 @@
   <ItemGroup>
     <ClInclude Include="..\CLIXAutoPtr.h" />
     <ClInclude Include="..\DivergentAssetList.h" />
-    <ClInclude Include="..\EngineControlInternal.h" />
+    <ClInclude Include="..\EditorDynamicInterface.h" />
+    <ClInclude Include="..\EditorInterfaceUtils.h" />
     <ClInclude Include="..\EngineDevice.h" />
     <ClInclude Include="..\EngineControl.h" />
+    <ClInclude Include="..\ExportedNativeTypes.h" />
+    <ClInclude Include="..\GUILayerUtil.h" />
     <ClInclude Include="..\IOverlaySystem.h" />
     <ClInclude Include="..\IWindowRig.h" />
     <ClInclude Include="..\LayerControl.h" />
+    <ClInclude Include="..\LevelEditorScene.h" />
+    <ClInclude Include="..\ManipulatorUtils.h" />
     <ClInclude Include="..\MarshalString.h" />
     <ClInclude Include="..\MaterialVisualisation.h" />
+    <ClInclude Include="..\PlacementsGobInterface.h" />
+    <ClInclude Include="..\TerrainGobInterface.h" />
     <ClInclude Include="..\TestControl.h" />
     <ClInclude Include="..\UITypesBinding.h" />
     <ClInclude Include="..\WindowRigInternal.h" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="System" />
+    <Reference Include="System.Core" />
     <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />
@@ -145,6 +161,9 @@
     </ProjectReference>
     <ProjectReference Include="..\..\..\Utility\Project\Utility.vcxproj">
       <Project>{6b8011c1-2d1f-1ebb-b0ef-377b2e8e87ae}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\ToolsRig\Project\ToolsRig.vcxproj">
+      <Project>{f47f1b0a-ae7c-482a-baf8-d47a6b09b817}</Project>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Tonemap.h"
-#include "SceneEngineUtility.h"
+#include "SceneEngineUtils.h"
 #include "LightingParserContext.h"
 #include "SceneParser.h"
 #include "LightDesc.h"
@@ -18,6 +18,7 @@
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/Buffer.h"
+#include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/DeviceContextImpl.h"
 #include "../RenderCore/RenderUtils.h"
 #include "../BufferUploads/IBufferUploads.h"

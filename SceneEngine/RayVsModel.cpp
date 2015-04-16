@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "RayVsModel.h"
-#include "SceneEngineUtility.h"
+#include "SceneEngineUtils.h"
 #include "LightingParser.h"
 #include "LightingParserContext.h"
 #include "../RenderCore/IThreadContext_Forward.h"
@@ -13,6 +13,7 @@
 #include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/TechniqueUtils.h"
+#include "../RenderCore/Techniques/Techniques.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/DataPacket.h"
 
@@ -21,11 +22,11 @@
 
 namespace SceneEngine
 {
-    class RayVsModelStateContext::Pimpl
+    class ModelIntersectionStateContext::Pimpl
     {
     public:
         std::shared_ptr<RenderCore::IThreadContext> _threadContext;
-        RayVsModelResources* _res;
+        ModelIntersectionResources* _res;
         RenderCore::Metal::GeometryShader::StreamOutputInitializers _oldSO;
 
         LightingParserContext _parserContext;
@@ -34,7 +35,7 @@ namespace SceneEngine
             : _parserContext(techniqueContext) {}
     };
 
-    class RayVsModelResources
+    class ModelIntersectionResources
     {
     public:
         class Desc 
@@ -47,10 +48,10 @@ namespace SceneEngine
         intrusive_ptr<ID3D::Buffer> _streamOutputBuffer;
         intrusive_ptr<ID3D::Resource> _clearedBuffer;
         intrusive_ptr<ID3D::Resource> _cpuAccessBuffer;
-        RayVsModelResources(const Desc&);
+        ModelIntersectionResources(const Desc&);
     };
 
-    RayVsModelResources::RayVsModelResources(const Desc& desc)
+    ModelIntersectionResources::ModelIntersectionResources(const Desc& desc)
     {
         using namespace BufferUploads;
         using namespace RenderCore::Metal;
@@ -62,24 +63,24 @@ namespace SceneEngine
 
         BufferDesc bufferDesc = CreateDesc(
             BindFlag::StreamOutput, 0, GPUAccess::Read | GPUAccess::Write,
-            lbDesc, "RayVsModelBuffer");
+            lbDesc, "ModelIntersectionBuffer");
         
         auto soRes = uploads.Transaction_Immediate(bufferDesc, nullptr)->AdoptUnderlying();
         _streamOutputBuffer = QueryInterfaceCast<ID3D::Buffer>(soRes);
 
         _cpuAccessBuffer = uploads.Transaction_Immediate(
-            CreateDesc(0, CPUAccess::Read, 0, lbDesc, "RayVsModelCopyBuffer"), nullptr)->AdoptUnderlying();
+            CreateDesc(0, CPUAccess::Read, 0, lbDesc, "ModelIntersectionCopyBuffer"), nullptr)->AdoptUnderlying();
 
         auto pkt = CreateEmptyPacket(bufferDesc);
         XlSetMemory(pkt->GetData(), 0, pkt->GetDataSize());
         _clearedBuffer = uploads.Transaction_Immediate(
             CreateDesc(
                 BindFlag::StreamOutput, 0, GPUAccess::Read | GPUAccess::Write,
-                lbDesc, "RayVsModelClearingBuffer"), 
+                lbDesc, "ModelIntersectionClearingBuffer"), 
             pkt.get())->AdoptUnderlying();
     }
 
-    auto RayVsModelStateContext::GetResults() -> std::vector<ResultEntry>
+    auto ModelIntersectionStateContext::GetResults() -> std::vector<ResultEntry>
     {
         std::vector<ResultEntry> result;
 
@@ -116,7 +117,7 @@ namespace SceneEngine
         return result;
     }
 
-    void RayVsModelStateContext::SetRay(const std::pair<Float3, Float3> worldSpaceRay)
+    void ModelIntersectionStateContext::SetRay(const std::pair<Float3, Float3> worldSpaceRay)
     {
         float rayLength = Magnitude(worldSpaceRay.second - worldSpaceRay.first);
         struct RayDefinitionCBuffer
@@ -138,12 +139,28 @@ namespace SceneEngine
                 RenderCore::Metal::ConstantBuffer(&rayDefinitionCBuffer, sizeof(rayDefinitionCBuffer))));
     }
 
-    LightingParserContext& RayVsModelStateContext::GetParserContext()
+    void ModelIntersectionStateContext::SetFrustum(const Float4x4& frustum)
+    {
+        struct FrustumDefinitionCBuffer
+        {
+            Float4x4 _frustum;
+        } frustumDefinitionCBuffer = { frustum };
+
+        using namespace RenderCore;
+        using namespace RenderCore::Metal;
+        auto metalContext = DeviceContext::Get(*_pimpl->_threadContext);
+        metalContext->BindGS(
+            MakeResourceList(
+                2, ConstantBuffer(&frustumDefinitionCBuffer, sizeof(frustumDefinitionCBuffer))));
+    }
+
+    LightingParserContext& ModelIntersectionStateContext::GetParserContext()
     {
         return _pimpl->_parserContext;
     }
 
-    RayVsModelStateContext::RayVsModelStateContext(
+    ModelIntersectionStateContext::ModelIntersectionStateContext(
+        TestType testType,
         std::shared_ptr<RenderCore::IThreadContext> threadContext,
         const RenderCore::Techniques::TechniqueContext& techniqueContext,
         const RenderCore::Techniques::CameraDesc* cameraForLOD)
@@ -152,6 +169,9 @@ namespace SceneEngine
 
         _pimpl = std::make_unique<Pimpl>(techniqueContext);
         _pimpl->_threadContext = threadContext;
+
+        _pimpl->_parserContext.GetTechniqueContext()._runtimeState.SetParameter(
+            "INTERSECTION_TEST", unsigned(testType));
 
         auto metalContext = RenderCore::Metal::DeviceContext::Get(*threadContext);
 
@@ -200,8 +220,8 @@ namespace SceneEngine
         GeometryShader::SetDefaultStreamOutputInitializers(
             GeometryShader::StreamOutputInitializers(eles, dimof(eles), strides, dimof(strides)));
 
-        _pimpl->_res = &RenderCore::Techniques::FindCachedBox<RayVsModelResources>(
-            RayVsModelResources::Desc(sizeof(ResultEntry), s_maxResultCount));
+        _pimpl->_res = &RenderCore::Techniques::FindCachedBox<ModelIntersectionResources>(
+            ModelIntersectionResources::Desc(sizeof(ResultEntry), s_maxResultCount));
 
             // the only way to clear these things is copy from another buffer...
         metalContext->GetUnderlying()->CopyResource(
@@ -214,7 +234,7 @@ namespace SceneEngine
         metalContext->BindGS(RenderCore::MakeResourceList(RenderCore::Techniques::CommonResources()._defaultSampler));
     }
 
-    RayVsModelStateContext::~RayVsModelStateContext()
+    ModelIntersectionStateContext::~ModelIntersectionStateContext()
     {
         auto metalContext = RenderCore::Metal::DeviceContext::Get(*_pimpl->_threadContext);
         metalContext->GetUnderlying()->SOSetTargets(0, nullptr, nullptr);

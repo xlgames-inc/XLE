@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "LightingTargets.h"
-#include "SceneEngineUtility.h"
+#include "SceneEngineUtils.h"
 #include "LightingParserContext.h"
 
 #include "../RenderCore/Techniques/Techniques.h"

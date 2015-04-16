@@ -1,0 +1,494 @@
+﻿//Copyright © 2014 Sony Computer Entertainment America LLC. See License.txt.
+
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.Composition;
+using System.IO;
+using System.Xml;
+using System.Drawing;
+using System.Runtime.InteropServices;
+using System.Runtime.ConstrainedExecution;
+using System.Security;
+using System.Linq;
+using System.Threading;
+
+using Sce.Atf;
+using Sce.Atf.VectorMath;
+using Sce.Atf.Dom;
+using Sce.Atf.Adaptation;
+
+using LevelEditorCore;
+
+namespace RenderingInterop
+{
+    /// <summary>
+    /// Exposes a minimum set of game-engine functionalities 
+    /// for LevelEditor purpose.</summary>    
+    [Export(typeof(IGameEngineProxy))]
+    [PartCreationPolicy(CreationPolicy.Shared)]
+    [SuppressUnmanagedCodeSecurity()]
+    public unsafe class GameEngine : DisposableObject, IGameEngineProxy
+    {
+        public GameEngine()
+        {
+            CriticalError = s_notInitialized;
+            s_inist = this;
+            GameEngine.Init();
+        }
+
+        #region IGameEngineProxy Members
+        public EngineInfo Info
+        {
+            get { return m_engineInfo; }
+        }
+
+        /// <summary>
+        /// Updates game world</summary>
+        /// <param name="ft">Frame time</param>
+        /// <param name="updateType">Update type</param>        
+        public void Update(FrameTime ft, UpdateType updateType)
+        {
+            // NativeUpdate(&ft, updateType);
+        }
+
+        public void SetGameWorld(IGame game) {}
+        public void WaitForPendingResources() {}
+        #endregion
+
+        private EngineInfo m_engineInfo;        
+        private void PopulateEngineInfo(string engineInfoStr)
+        {
+            if (m_engineInfo != null) return;
+            if (!string.IsNullOrWhiteSpace(engineInfoStr))
+                m_engineInfo = new EngineInfo(engineInfoStr);
+        }
+
+        #region initialize and shutdown
+        private static GameEngine s_inist;
+        private static GUILayer.EngineDevice s_engineDevice;
+        private static GUILayer.SavedRenderResources s_savedRenderResources;
+        private static GUILayer.EditorSceneManager s_underlyingScene;
+
+        /// <summary>
+        /// init game engine 
+        /// call it one time during startup on the UI thread.</summary>        
+        public static void Init()
+        {
+            s_syncContext = SynchronizationContext.Current;
+            s_invalidateCallback = new InvalidateViewsDlg(InvalidateViews);
+            try
+            {
+                GUILayer.EngineDevice.SetDefaultWorkingDirectory();
+                s_engineDevice = new GUILayer.EngineDevice();
+                s_engineDevice.AttachDefaultCompilers();
+                s_savedRenderResources = new GUILayer.SavedRenderResources(s_engineDevice);
+                s_underlyingScene = new GUILayer.EditorSceneManager();
+                Util3D.Init();
+                XLELayer.NativeManipulatorLayer.SceneManager = s_underlyingScene;
+                CriticalError = "";
+                s_inist.PopulateEngineInfo(
+                    @"<EngineInfo>
+                        <SupportedResources>
+                            <ResourceDescriptor Type='Model' Name='Model' Description='Model' Ext='.dae' />
+                        </SupportedResources>
+                    </EngineInfo>");
+
+                // \todo -- hook up logging to "LogCallback"
+            }
+            catch (Exception e)
+            {
+                CriticalError = "Error while initialising engine device: " + e.Message;
+            }
+        }
+
+        public static bool IsInError { get { return CriticalError.Length > 0; } }
+        public static string CriticalError { get; private set; }
+
+        public static GUILayer.EditorSceneManager GetEditorSceneManager() { return s_underlyingScene; }
+        public static GUILayer.EngineDevice GetEngineDevice() { return s_engineDevice; }
+
+        /// <summary>
+        /// shutdown game engine.
+        /// call it one time on application exit.
+        /// </summary>
+        public static void Shutdown()
+        {
+            foreach (var keyValue in s_idToDomNode)
+            {
+                DestroyObject(
+                    keyValue.Key.Item1,
+                    keyValue.Key.Item2, 
+                    keyValue.Value.TypeId);
+            }
+            s_idToDomNode.Clear();
+
+            Util3D.Shutdown();
+            XLELayer.NativeManipulatorLayer.SceneManager = null;
+            s_underlyingScene.Dispose();
+            s_underlyingScene = null;
+            s_savedRenderResources.Dispose();
+            s_savedRenderResources = null;
+            s_engineDevice.Dispose();
+            s_engineDevice = null;
+            CriticalError = s_notInitialized;
+        }
+
+        public static event EventHandler RefreshView = delegate { };
+
+        #endregion
+
+        #region call back for invalidating views.
+        private delegate void InvalidateViewsDlg();
+        private static InvalidateViewsDlg s_invalidateCallback;
+        private static void InvalidateViews()
+        {
+            if (s_syncContext != null)
+            {
+                s_syncContext.Post(obj=>RefreshView(null, EventArgs.Empty),null);
+            }
+        }
+        private static SynchronizationContext s_syncContext;
+        #endregion
+
+        #region log callbacks
+
+        [UnmanagedFunctionPointer(CallingConvention.StdCall,CharSet = CharSet.Unicode)]
+        private delegate void LogCallbackType(int messageType, string text);
+        private static void LogCallback(int messageType, string text)
+        {
+            Console.Write(text);
+            if (messageType == (int)OutputMessageType.Warning
+                || messageType == (int)OutputMessageType.Error)
+                Outputs.Write((OutputMessageType)messageType, text);                            
+        }
+
+        #endregion
+
+        #region Object management.
+
+        public static uint GetObjectTypeId(string className)
+        {
+            if (IsInError) return 0;
+            uint id = s_underlyingScene.GetTypeId(className);
+            if (id == 0)
+            {
+                System.Diagnostics.Debug.WriteLine(className + " is not defined in runtime");
+            }
+            return id;
+        }
+
+        public static uint GetDocumentTypeId(string className)
+        {
+            if (IsInError) return 0;
+            uint id = s_underlyingScene.GetDocumentTypeId(className);
+            if (id == 0)
+            {
+                System.Diagnostics.Debug.WriteLine(className + " document type is not defined in runtime");
+            }
+            return id;
+        }
+
+        public static uint GetObjectPropertyId(uint typeId, string propertyName)
+        {
+            if (IsInError) return 0;
+            uint propId = s_underlyingScene.GetPropertyId(typeId, propertyName);
+            if (propId == 0)
+            {
+                System.Diagnostics.Debug.WriteLine(propertyName + " is not defined for typeid " + typeId);
+            }
+            return propId;
+        }
+
+        public static uint GetObjectChildListId(uint typeId, string listName)
+        {
+            if (IsInError) return 0;
+            uint propId = s_underlyingScene.GetChildListId(typeId, listName);
+            if (propId == 0)
+            {
+                System.Diagnostics.Debug.WriteLine(listName + " is not defined for typeid " + typeId);
+            }
+            return propId;
+        }
+
+        public static ulong CreateObject(ulong documentId, ulong existingId, uint typeId, IntPtr data, int size)
+        {
+            if (existingId == 0)
+                existingId = s_underlyingScene.AssignObjectId(documentId, typeId);
+
+            System.Diagnostics.Debug.Assert(size == 0);
+            if (s_underlyingScene.CreateObject(documentId, existingId, typeId))
+                return existingId;
+            return 0;
+        }
+
+        public static void DestroyObject(ulong documentId, ulong instanceId, uint typeId)
+        {
+            s_underlyingScene.DeleteObject(documentId, instanceId, typeId);
+        }
+
+        public static void RegisterGob(ulong documentId, ulong instanceId, NativeObjectAdapter gob)
+        {
+            s_idToDomNode.Add(Tuple.Create(documentId, instanceId), gob);
+        }
+
+        public static void DeregisterGob(ulong documentId, ulong instanceId, NativeObjectAdapter gob)
+        {
+            s_idToDomNode.Remove(Tuple.Create(documentId, instanceId));
+        }
+
+        public static ulong CreateDocument(uint typeId)
+        {
+            return s_underlyingScene.CreateDocument(typeId);
+        }
+
+        public static void InvokeMemberFn(ulong instanceId, string fn, IntPtr arg, out IntPtr retVal)
+        {
+            throw new NotImplementedException();
+        }
+
+        public static void SetObjectProperty(
+            uint typeId, ulong documentId, ulong instanceId, uint propId, 
+            IntPtr data, Type elemType, int elemCount)
+        {
+            unsafe
+            {
+                s_underlyingScene.SetProperty(
+                    documentId, instanceId, typeId, propId,
+                    data.ToPointer(), GUILayer.EditorInterfaceUtils.AsTypeId(elemType), (uint)elemCount);
+            }
+        }
+
+        public static void SetObjectParent(
+            ulong documentId, ulong childInstanceId, uint childTypeId,
+            ulong parentInstanceId, uint parentTypeId,
+            int insertionPosition)
+        {
+            s_underlyingScene.SetObjectParent(documentId, 
+                childInstanceId, childTypeId,
+                parentInstanceId, parentTypeId, insertionPosition);
+        }
+
+        private static GCHandle s_savedBoundingBoxHandle;
+        private static GCHandle s_temporaryNativeBuffer;
+        private static uint s_temporaryNativeBufferSize = 0;
+        private static bool s_builtSavedBoundingBox = false;
+
+        public static void GetObjectProperty(uint typeId, uint propId, ulong documentId, ulong instanceId, out IntPtr data, out int size)
+        {
+            if (!s_builtSavedBoundingBox)
+            {
+
+                Vec3F[] boundingBox = new Vec3F[2] { new Vec3F(-10.0f, -10.0f, -10.0f), new Vec3F(10.0f, 10.0f, 10.0f) };
+                s_savedBoundingBoxHandle = GCHandle.Alloc(boundingBox, GCHandleType.Pinned);
+                s_builtSavedBoundingBox = true;
+
+                var bufferInit = new uint[64];
+                s_temporaryNativeBuffer = GCHandle.Alloc(bufferInit, GCHandleType.Pinned);
+                s_temporaryNativeBufferSize = (uint)sizeof(uint) * 64;
+            }
+
+            unsafe
+            {
+                ulong bufferSize = s_temporaryNativeBufferSize;
+                IntPtr pinnedPtr = s_temporaryNativeBuffer.AddrOfPinnedObject();
+                if (s_underlyingScene.GetProperty(
+                    documentId, instanceId, typeId, propId,
+                    pinnedPtr.ToPointer(), &bufferSize))
+                {
+                    data = s_temporaryNativeBuffer.AddrOfPinnedObject();
+                    size = (int)bufferSize;
+                    return;
+                }
+            }
+
+            data = s_savedBoundingBoxHandle.AddrOfPinnedObject();
+            size = sizeof(float) * 6;
+        }
+
+        public static NativeObjectAdapter GetAdapterFromId(ulong documentId, ulong instanceId)
+        {
+            NativeObjectAdapter result;
+            if (s_idToDomNode.TryGetValue(Tuple.Create(documentId, instanceId), out result)) {
+                return result;
+            }
+            return null;
+        }
+
+        #endregion
+
+        public static GUILayer.ObjectSet CreateObjectSet(IEnumerable<NativeObjectAdapter> input)
+        {
+            var set = new GUILayer.ObjectSet();
+            foreach (var i in input) {
+                set.Add(i.DocumentId, i.InstanceId);
+            }
+            return set;
+        }
+
+        #region basic rendering 
+        // create vertex buffer with given vertex format from user data.
+        public static ulong CreateVertexBuffer(VertexPN[] buffer)
+        {
+            if (buffer == null || buffer.Length < 2)
+                return 0;
+
+            ulong vbId = 0;
+            fixed (float* ptr = &buffer[0].Position.X)
+            {
+                vbId = NativeCreateVertexBuffer(VertexFormat.VF_PN, ptr, (uint)buffer.Length);
+            }
+            return vbId;
+        }
+
+
+        // create vertex buffer with given vertex format from user data.
+        public static ulong CreateVertexBuffer(Vec3F[] buffer)
+        {
+            if (buffer == null || buffer.Length < 2)
+                return 0;
+
+            ulong vbId = 0;
+            fixed (float* ptr = &buffer[0].X)
+            {
+                vbId = NativeCreateVertexBuffer(VertexFormat.VF_P, ptr, (uint)buffer.Length);
+            }
+            return vbId;
+        }
+
+        // Create index buffer from user data.
+        public static ulong CreateIndexBuffer(uint[] buffer)
+        {            
+            fixed (uint* ptr = buffer)
+            {
+                return NativeCreateIndexBuffer(ptr, (uint)buffer.Length);
+            }            
+        }
+    
+        // deletes index/vertex buffer.
+        public static void DeleteBuffer(ulong bufferId)
+        {
+            if (bufferId == 0) return;
+            NativeDeleteBuffer(bufferId);
+        }
+
+        /// <summary>
+        /// Sets render flags used for basic drawing.</summary>        
+        public static void SetRendererFlag(BasicRendererFlags renderFlags)
+        {
+            using (var context = XLELayer.NativeDesignControl.CreateSimpleRenderingContext(s_savedRenderResources))
+            {
+                context.InitState();
+            }
+        }
+
+        //Draw primitive with the given parameters.
+        public static void DrawPrimitive(PrimitiveType pt,
+                                            ulong vb,
+                                            uint StartVertex,
+                                            uint vertexCount,
+                                            Color color,
+                                            Matrix4F xform)
+                                            
+        {
+            Vec4F vc;
+            vc.X = color.R / 255.0f;
+            vc.Y = color.G / 255.0f;
+            vc.Z = color.B / 255.0f;
+            vc.W = color.A / 255.0f;
+            fixed (float* mtrx = &xform.M11)
+            {
+                NativeDrawPrimitive(pt, vb, StartVertex, vertexCount, &vc.X, mtrx);
+            }
+
+        }
+
+        public static void DrawIndexedPrimitive(PrimitiveType pt,
+                                                ulong vb,
+                                                ulong ib,
+                                                uint startIndex,
+                                                uint indexCount,
+                                                uint startVertex,
+                                                Color color,
+                                                Matrix4F xform)
+                                                
+        {
+            Vec4F vc;
+            vc.X = color.R / 255.0f;
+            vc.Y = color.G / 255.0f;
+            vc.Z = color.B / 255.0f;
+            vc.W = color.A / 255.0f;
+            fixed (float* mtrx = &xform.M11)
+            {
+                NativeDrawIndexedPrimitive(pt, vb, ib, startIndex, indexCount, startVertex, &vc.X, mtrx);
+            }
+
+        }
+        #endregion
+
+        #region font and text rendering
+
+        public static ulong CreateFont(string fontName,float pixelHeight,FontStyle fontStyles) { return 0; }
+        public static void DeleteFont(ulong fontId) {}
+        public static void DrawText2D(string text, ulong fontId, int x, int y, Color color) {}
+
+        #endregion
+
+        #region private members
+
+        private static ulong NativeCreateVertexBuffer(VertexFormat vf, void* buffer, uint vertexCount) 
+        {
+            return s_savedRenderResources.CreateVertexBuffer(
+                buffer,
+                vertexCount * vf.GetSize(),
+                (uint)vf);
+        }
+        private static ulong NativeCreateIndexBuffer(uint* buffer, uint indexCount) 
+        {
+            return s_savedRenderResources.CreateIndexBuffer(buffer, sizeof(uint)*indexCount);
+        }
+        private static void NativeDeleteBuffer(ulong buffer) 
+        {
+            s_savedRenderResources.DeleteBuffer(buffer);
+        }
+        private static void NativeDrawPrimitive(PrimitiveType pt,
+                                                        ulong vb,
+                                                        uint StartVertex,
+                                                        uint vertexCount,
+                                                        float* color,
+                                                        float* xform) 
+        {
+            using (var context = XLELayer.NativeDesignControl.CreateSimpleRenderingContext(s_savedRenderResources))
+            {
+                context.DrawPrimitive((uint)pt, vb, StartVertex, vertexCount, color, xform);
+            }
+        }
+
+        private static void NativeDrawIndexedPrimitive(PrimitiveType pt,
+                                                        ulong vb,
+                                                        ulong ib,
+                                                        uint startIndex,
+                                                        uint indexCount,
+                                                        uint startVertex,
+                                                        float* color,
+                                                        float* xform) 
+        {
+            using (var context = XLELayer.NativeDesignControl.CreateSimpleRenderingContext(s_savedRenderResources))
+            {
+                context.DrawIndexedPrimitive((uint)pt, vb, ib, startIndex, indexCount, startVertex, color, xform);
+            }
+        }
+
+        private static string s_notInitialized = "Not initialized, please call Initialize()";
+        
+        private static void ThrowExceptionForLastError()
+        {
+            int hr = Marshal.GetHRForLastWin32Error();
+            Marshal.ThrowExceptionForHR(hr);
+        }
+
+        private static Dictionary<Tuple<ulong, ulong>, NativeObjectAdapter> s_idToDomNode 
+            = new Dictionary<Tuple<ulong, ulong>, NativeObjectAdapter>();
+        #endregion
+    }
+}
+

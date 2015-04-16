@@ -176,10 +176,10 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
     const unsigned cellTreeDepth = 5;
 
     auto cellCount = ConvertDEMData(
-        "game/demworld", "../../work/XLE/SampleSourceData/Elevation/n38w120/floatn38w120_13",
+        "game/centralcal", "../SampleSourceData/n38w120/floatn38w120_1",
         nodeDims, cellTreeDepth);
 
-    TerrainConfig cfg("game/demworld", cellCount, TerrainConfig::XLE, nodeDims, cellTreeDepth);
+    TerrainConfig cfg("game/centralcal", cellCount, TerrainConfig::XLE, nodeDims, cellTreeDepth);
     cfg.Save();
 
     ExecuteTerrainConversion(

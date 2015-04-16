@@ -299,14 +299,16 @@ namespace RenderCore { namespace Assets
 
     void MakeConcreteRawMaterialFilename(::Assets::ResChar dest[], unsigned dstCount, const ::Assets::ResChar inputName[])
     {
-        assert(dest != inputName);
-        XlCopyString(dest, dstCount, inputName);
+        if (dest != inputName) {
+            XlCopyString(dest, dstCount, inputName);
+        }
 
             //  If we're attempting to load from a .dae file, then we need to
             //  instead redirect the query towards the compiled version
         auto ext = XlExtension(dest);
-        if (ext && !XlCompareStringI(ext, "dae")) {
+        if (!XlFindStringI(dest, "-rawmat") && (!ext || !XlCompareStringI(ext, "dae"))) {
             auto& store = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateStore();
+            XlChopExtension(dest);
             XlCatString(dest, dstCount, "-rawmat");
             store.MakeIntermediateName(dest, dstCount, dest);
         }
@@ -373,26 +375,7 @@ namespace RenderCore { namespace Assets
         auto* inheritList = source->ChildWithValue("Inherit");
         if (inheritList) {
             for (auto i=inheritList->child; i; i=i->next) {
-                auto* colon = XlFindCharReverse(i->value, ':');
-                if (colon) {
-                    ::Assets::ResChar resolvedFile[MaxPath];
-                    XlCopyNString(resolvedFile, i->value, colon-i->value);
-                    if (!XlExtension(resolvedFile))
-                        XlCatString(resolvedFile, dimof(resolvedFile), ".material");
-                    searchRules.ResolveFile(resolvedFile, dimof(resolvedFile), resolvedFile);
-                    XlNormalizePath(resolvedFile, dimof(resolvedFile), resolvedFile);
-
-                    StringMeld<MaxPath, ::Assets::ResChar> finalRawMatName;
-                    finalRawMatName << resolvedFile << colon;
-
-                    _inherit.push_back(ResString(finalRawMatName));
-
-                    TRY {
-                        RegisterAssetDependency(
-                            _depVal, 
-                            &::Assets::GetAssetDep<RawMaterial>((const ::Assets::ResChar*)finalRawMatName).GetDependencyValidation());
-                    } CATCH (...) {} CATCH_END
-                }
+                _inherit.push_back(ResString(i->value));
             }
         }
 
@@ -522,7 +505,36 @@ namespace RenderCore { namespace Assets
         }
     }
 
-    ResolvedMaterial RawMaterial::Resolve(
+    auto RawMaterial::ResolveInherited(
+        const ::Assets::DirectorySearchRules& searchRules) const -> std::vector<ResString>
+    {
+        std::vector<ResString> result;
+
+        for (auto i=_inherit.cbegin(); i!=_inherit.cend(); ++i) {
+            auto name = *i;
+
+            auto* colon = XlFindCharReverse(name.c_str(), ':');
+            if (colon) {
+                ::Assets::ResChar resolvedFile[MaxPath];
+                XlCopyNString(resolvedFile, name.c_str(), colon-name.c_str());
+                if (!XlExtension(resolvedFile))
+                    XlCatString(resolvedFile, dimof(resolvedFile), ".material");
+                searchRules.ResolveFile(resolvedFile, dimof(resolvedFile), resolvedFile);
+                XlNormalizePath(resolvedFile, dimof(resolvedFile), resolvedFile);
+                
+                StringMeld<MaxPath, ::Assets::ResChar> finalRawMatName;
+                finalRawMatName << resolvedFile << colon;
+                result.push_back((ResString)finalRawMatName);
+            } else {
+                result.push_back(name);
+            }
+        }
+
+        return result;
+    }
+
+    void RawMaterial::Resolve(
+        ResolvedMaterial& result,
         const ::Assets::DirectorySearchRules& searchRules,
         std::vector<::Assets::DependentFileState>* deps) const
     {
@@ -530,26 +542,17 @@ namespace RenderCore { namespace Assets
             // ResolvedMaterial object. We need to start at the bottom of the
             // inheritance tree, and merge in new parameters as we come across them.
 
-        ResolvedMaterial result;
-        for (auto i=_inherit.cbegin(); i!=_inherit.cend(); ++i) {
+        auto inheritted = ResolveInherited(searchRules);
+        for (auto i=inheritted.cbegin(); i!=inheritted.cend(); ++i) {
             TRY {
-                RawMatSplitName splitName(i->c_str());
-
-                    // add a dependency to this file, even if it doesn't exist
-                if (deps) {
-                    auto existing = std::find_if(deps->cbegin(), deps->cend(),
-                        [&](const ::Assets::DependentFileState& test) 
-                        {
-                            return !XlCompareStringI(test._filename.c_str(), splitName._concreteFilename.c_str());
-                        });
-                    if (existing == deps->cend()) {
-                        auto& store = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateStore();
-                        deps->push_back(store.GetDependentFileState(splitName._concreteFilename.c_str()));
-                    }
-                }
-
                 auto& rawParams = ::Assets::GetAssetDep<RawMaterial>(i->c_str());
-                rawParams.MergeInto(result);
+
+                ::Assets::ResChar directory[MaxPath];
+                XlDirname(directory, dimof(directory), rawParams._splitName._concreteFilename.c_str());
+                ::Assets::DirectorySearchRules newSearchRules = searchRules;
+                newSearchRules.AddSearchDirectory(directory);
+
+                rawParams.Resolve(result, newSearchRules, deps);
             } 
             CATCH (...) {} 
             CATCH_END
@@ -567,8 +570,6 @@ namespace RenderCore { namespace Assets
                 deps->push_back(store.GetDependentFileState(_splitName._concreteFilename.c_str()));
             }
         }
-
-        return result;
     }
 
 

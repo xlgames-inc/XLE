@@ -25,7 +25,7 @@ namespace PlatformRig { namespace Overlays
     public:
         std::vector<Float2> _intr;
 
-        void operator()(Math::Int2 s0, Math::Int2 s1, float edgeAlpha)
+        void operator()(XLEMath::Int2 s0, XLEMath::Int2 s1, float edgeAlpha)
         {
             _intr.push_back(LinearInterpolate(Float2(s0), Float2(s1), edgeAlpha));
         }

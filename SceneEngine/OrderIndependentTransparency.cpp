@@ -6,7 +6,7 @@
 
 #include "OrderIndependentTransparency.h"
 #include "OITInternal.h"
-#include "SceneEngineUtility.h"
+#include "SceneEngineUtils.h"
 #include "SceneParser.h"
 #include "LightingParserContext.h"
 #include "Noise.h"

@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Noise.h"
-#include "SceneEngineUtility.h"
+#include "SceneEngineUtils.h"
 #include "../BufferUploads/DataPacket.h"
 #include "../Math/Vector.h"
 

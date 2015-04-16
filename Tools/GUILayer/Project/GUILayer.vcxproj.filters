@@ -11,6 +11,24 @@
     <ClCompile Include="..\AssemblyInfo.cpp" />
     <ClCompile Include="..\DivergentAssetList.cpp" />
     <ClCompile Include="..\CustomDataGridEditor.cpp" />
+    <ClCompile Include="..\GUILayerUtil.cpp" />
+    <ClCompile Include="..\SimpleRenderingContext.cpp" />
+    <ClCompile Include="..\EditorDynamicInterface.cpp">
+      <Filter>DynInterface</Filter>
+    </ClCompile>
+    <ClCompile Include="..\LevelEditorScene.cpp">
+      <Filter>DynInterface</Filter>
+    </ClCompile>
+    <ClCompile Include="..\EditorInterfaceUtils.cpp">
+      <Filter>DynInterface</Filter>
+    </ClCompile>
+    <ClCompile Include="..\TerrainGobInterface.cpp">
+      <Filter>DynInterface</Filter>
+    </ClCompile>
+    <ClCompile Include="..\PlacementsGobInterface.cpp">
+      <Filter>DynInterface</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ManipulatorUtils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\EngineDevice.h" />
@@ -21,10 +39,32 @@
     <ClInclude Include="..\WindowRigInternal.h" />
     <ClInclude Include="..\LayerControl.h" />
     <ClInclude Include="..\TestControl.h" />
-    <ClInclude Include="..\EngineControlInternal.h" />
     <ClInclude Include="..\UITypesBinding.h" />
     <ClInclude Include="..\MaterialVisualisation.h" />
     <ClInclude Include="..\IOverlaySystem.h" />
     <ClInclude Include="..\DivergentAssetList.h" />
+    <ClInclude Include="..\EditorDynamicInterface.h">
+      <Filter>DynInterface</Filter>
+    </ClInclude>
+    <ClInclude Include="..\LevelEditorScene.h">
+      <Filter>DynInterface</Filter>
+    </ClInclude>
+    <ClInclude Include="..\GUILayerUtil.h" />
+    <ClInclude Include="..\PlacementsGobInterface.h">
+      <Filter>DynInterface</Filter>
+    </ClInclude>
+    <ClInclude Include="..\TerrainGobInterface.h">
+      <Filter>DynInterface</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ExportedNativeTypes.h" />
+    <ClInclude Include="..\ManipulatorUtils.h" />
+    <ClInclude Include="..\EditorInterfaceUtils.h">
+      <Filter>DynInterface</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="DynInterface">
+      <UniqueIdentifier>{2e5a400c-56a8-4a39-ac39-d6829928e93f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
 </Project>

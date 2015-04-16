@@ -7,7 +7,7 @@
 #pragma once
 
 #include "IWindowRig.h"
-#include "../../RenderCore/IDevice_Forward.h"
+#include "EngineForward.h"
 #include <memory>
 #include <vector>
 

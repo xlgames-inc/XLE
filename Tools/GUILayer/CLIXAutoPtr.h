@@ -28,6 +28,7 @@
  
 #include <msclr\safebool.h>
 #include <assert.h>
+#include <memory>
  
 namespace clix
 {
@@ -48,9 +49,7 @@ namespace clix
    
         !auto_ptr() /*throw()*/
         {
-            using namespace std;
-            System::Diagnostics::Debugger::Log(0, "msclr::auto_ptr<>", "Finalizer used! The variable deleted in non-deterministic way.");
- 
+            System::Diagnostics::Debugger::Log(0, "clix::auto_ptr<>", "Finalizer used! The variable deleted in non-deterministic way.");
             delete p_;
         }
  
@@ -76,7 +75,7 @@ namespace clix
         static T& operator*(auto_ptr %ap) /*const throw()*/
         {
             if(!ap.p_)
-            throw gcnew System::NullReferenceException("msclr::auto_ptr<>");
+                throw gcnew System::NullReferenceException("clix::auto_ptr<>");
             return *ap.p_;
         }
  
@@ -124,6 +123,125 @@ namespace clix
         {
            lhs.swap(rhs);
         }
+
+    ///<summary>Wrap a std::shared_ptr<> for use in managed types</summary>
+    /// note  -- this code based on code shared in a stack-overflow page
+    /// Managed types can't have native members directly. And worse, we can't
+    /// return a templated native type from a managed function (like std::shared_ptr<>)
+    /// For reference counted objects that aren't derived from std::enabled_shared_from_this,
+    /// this presents some problems.
+    /// As a work-around, we can this this generic wrapper to get std::shared_ptr<> like
+    /// behaviour int the class definition and method signatures of managed types.
+    template <class T>
+        public ref class shared_ptr sealed
+    {
+    public:
+        shared_ptr() 
+            : pPtr(new std::shared_ptr<T>()) 
+        {}
+
+        shared_ptr(T* t) 
+        {
+            pPtr = new std::shared_ptr<T>(t);
+        }
+
+        shared_ptr(std::shared_ptr<T>&& t)
+        {
+            pPtr = new std::shared_ptr<T>(std::move(t));
+        }
+
+        shared_ptr(const std::shared_ptr<T>& copyFrom)
+        {
+            pPtr = new std::shared_ptr<T>(copyFrom);
+        }
+
+        shared_ptr(shared_ptr<T>% t) 
+        {
+            pPtr = new std::shared_ptr<T>(*t.pPtr);
+        }
+
+        !shared_ptr() 
+        {
+            System::Diagnostics::Debugger::Log(0, "clix::shared_ptr<>", "Finalizer used! The variable deleted in non-deterministic way.");
+            delete pPtr;
+        }
+
+        ~shared_ptr() 
+        {
+            delete pPtr;
+        }
+
+        operator std::shared_ptr<T>() 
+        {
+            return *pPtr;
+        }
+
+        std::shared_ptr<T>& GetNativePtr()
+        {
+            return *pPtr;
+        }
+
+        void* GetNativeOpaque()
+        {
+            return pPtr;
+        }
+
+        shared_ptr<T>% operator=(T* ptr) 
+        {
+            delete pPtr;
+            pPtr = new std::shared_ptr<T>(ptr);
+            return *this;
+        }
+
+        shared_ptr<T>% operator=(shared_ptr<T>% ptr) 
+        {
+            delete pPtr;
+            pPtr = new std::shared_ptr<T>(*ptr.pPtr);
+            return *this;
+        }
+
+        shared_ptr<T>% operator=(const std::shared_ptr<T>& copyFrom)
+        {
+            (*pPtr) = copyFrom;
+            return *this;
+        }
+
+        shared_ptr<T>% operator=(std::shared_ptr<T>&& moveFrom)
+        {
+            (*pPtr) = std::move(moveFrom);
+            return *this;
+        }
+
+        T* operator->() 
+        {
+            if(!(*pPtr).get())
+                throw gcnew System::NullReferenceException("clix::shared_ptr<>");
+            return (*pPtr).get();
+        }
+
+        T* get()
+        {
+            if(!(*pPtr).get())
+                throw gcnew System::NullReferenceException("clix::shared_ptr<>");
+            return (*pPtr).get();
+        }
+
+        void reset() 
+        {
+            pPtr->reset();
+        }
+
+        operator msclr::_detail_class::_safe_bool() /*throw()*/
+        {
+            return pPtr->get() != 0 ? msclr::_detail_class::_safe_true : msclr::_detail_class::_safe_false;
+        }
+ 
+        // for use when auto_ptr appears in a conditional
+        bool operator!() /*throw()*/        { return pPtr->get() == 0; }
+
+    private:
+        std::shared_ptr<T>* pPtr;
+    };
 
 }
 

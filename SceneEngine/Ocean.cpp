@@ -8,7 +8,7 @@
 
 #include "Ocean.h"
 #include "ShallowWater.h"
-#include "SceneEngineUtility.h"
+#include "SceneEngineUtils.h"
 #include "LightingParserContext.h"
 #include "SceneParser.h"
 #include "RefractionsBuffer.h"

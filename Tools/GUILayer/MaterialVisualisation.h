@@ -8,7 +8,9 @@
 
 #include "UITypesBinding.h"
 #include "IOverlaySystem.h"
-#include "../../PlatformRig/MaterialVisualisation.h"
+#include "EngineForward.h"
+#include "CLIXAutoPtr.h"
+#include "../ToolsRig/MaterialVisualisation.h"
 
 namespace GUILayer
 {
@@ -23,22 +25,22 @@ namespace GUILayer
 
         property VisCameraSettings^ Camera
         {
-            VisCameraSettings^ get() { return gcnew VisCameraSettings((*_object)->_camera); }
+            VisCameraSettings^ get() { return gcnew VisCameraSettings(_object->_camera); }
         }
 
         static MaterialVisSettings^ CreateDefault();
 
-        MaterialVisSettings(std::shared_ptr<PlatformRig::MaterialVisSettings> attached)
+        MaterialVisSettings(std::shared_ptr<ToolsRig::MaterialVisSettings> attached)
         {
-            _object.reset(new std::shared_ptr<PlatformRig::MaterialVisSettings>(std::move(attached)));
+            _object = std::move(attached);
         }
 
         ~MaterialVisSettings() { _object.reset(); }
 
-        const PlatformRig::MaterialVisSettings& GetUnderlying() { return *_object->get(); }
+        const ToolsRig::MaterialVisSettings& GetUnderlying() { return *_object.get(); }
 
     protected:
-        AutoToShared<PlatformRig::MaterialVisSettings> _object;
+        clix::shared_ptr<ToolsRig::MaterialVisSettings> _object;
     };
 
     public ref class MaterialVisLayer : public IOverlaySystem
@@ -51,7 +53,7 @@ namespace GUILayer
             RenderCore::IThreadContext* device, 
             const RenderCore::Techniques::ProjectionDesc& projectionDesc) override;
         virtual void SetActivationState(bool newState) override;
-        virtual std::shared_ptr<IInputListener> GetInputListener() override;
+        // virtual std::shared_ptr<IInputListener> GetInputListener() override;
 
         void SetConfig(RawMaterial^ config);
 

@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="..\TerrainManipulators.cpp" />
+    <ClCompile Include="..\BasicManipulators.cpp" />
+    <ClCompile Include="..\PlacementsManipulators.cpp" />
+    <ClCompile Include="..\ModelVisualisation.cpp" />
+    <ClCompile Include="..\MaterialVisualisation.cpp" />
+    <ClCompile Include="..\TerrainManipulatorsCommon.cpp" />
+    <ClCompile Include="..\TerrainManipulatorsInterface.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\BasicManipulators.h" />
+    <ClInclude Include="..\ManipulatorsUtil.h" />
+    <ClInclude Include="..\PlacementsManipulators.h" />
+    <ClInclude Include="..\ModelVisualisation.h" />
+    <ClInclude Include="..\MaterialVisualisation.h" />
+    <ClInclude Include="..\VisualisationUtils.h" />
+    <ClInclude Include="..\TerrainManipulatorsCommon.h" />
+    <ClInclude Include="..\IManipulator.h" />
+    <ClInclude Include="..\TerrainManipulatorsInterface.h" />
+    <ClInclude Include="..\TerrainManipulators.h" />
+  </ItemGroup>
+</Project>

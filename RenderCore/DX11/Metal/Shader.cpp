@@ -254,7 +254,7 @@ namespace RenderCore { namespace Metal_DX11
             initializer = temp;
         }
 
-		const auto& byteCode = ::Assets::GetAssetComp<CompiledShaderByteCode>(initializer, definesTable);
+		const auto& byteCode = ::Assets::GetAssetComp<CompiledShaderByteCode>(initializer, definesTable?definesTable:"");
         auto underlying = ObjectFactory().CreateComputeShader(byteCode.GetByteCode(), byteCode.GetSize());
 
         _validationCallback = std::make_shared<Assets::DependencyValidation>();

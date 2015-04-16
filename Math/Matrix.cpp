@@ -43,7 +43,7 @@
 
 */
 
-namespace Math
+namespace XLEMath
 {
     Float4x4 MakeFloat4x4(
         float m00, float m01, float m02, float m03,
@@ -57,6 +57,15 @@ namespace Math
         result(2,0) = m20; result(2,1) = m21; result(2,2) = m22; result(2,3) = m23;
         result(3,0) = m30; result(3,1) = m31; result(3,2) = m32; result(3,3) = m33;
         return result;
+    }
+
+    Float4x4 AsFloat4x4(const float a[])
+    {
+        return Float4x4(
+            a[ 0], a[ 1], a[ 2], a[ 3],
+            a[ 4], a[ 5], a[ 6], a[ 7],
+            a[ 8], a[ 9], a[10], a[11],
+            a[12], a[13], a[14], a[15]);
     }
 
     #if MATHLIBRARY_ACTIVE == MATHLIBRARY_CML

@@ -7,11 +7,13 @@
 #pragma once
 
 #include "../RenderCore/IThreadContext_Forward.h"
+#include "../RenderCore/Techniques/TechniqueUtils.h"        // for CameraDesc
 #include "../Core/Types.h"
 #include "../Math/Vector.h"
 #include <memory>
 
 namespace RenderCore { namespace Techniques { class CameraDesc; class TechniqueContext; }}
+namespace RenderCore { class ViewportContext; }
 
 namespace SceneEngine
 {
@@ -24,10 +26,18 @@ namespace SceneEngine
     /// Frequently we need to do "hit tests" and various projection and 
     /// unprojection operations. This context contains the minimal references
     /// to do this.
+    /// Note that we need some camera information for LOD calculations. We could
+    /// assume everything is at top LOD; but we will get a better match with 
+    /// the rendered result if we take into account LOD. We even need viewport
+    /// size -- because this can effect LOD as well. It's frustrating, but all 
+    /// this is required!
     /// <seealso cref="IntersectionResolver" />
     class IntersectionTestContext
     {
     public:
+
+            // "CameraDesc" member is only require for the following utility
+            //  methods
         std::pair<Float3, Float3> CalculateWorldSpaceRay(Int2 screenCoord) const;
         static std::pair<Float3, Float3> CalculateWorldSpaceRay(
             const RenderCore::Techniques::CameraDesc& sceneCamera,
@@ -35,19 +45,29 @@ namespace SceneEngine
         
         Float2 ProjectToScreenSpace(const Float3& worldSpaceCoord) const;
         RenderCore::Techniques::CameraDesc GetCameraDesc() const;
-        const RenderCore::Techniques::TechniqueContext& GetTechniqueContext() const { return *_techniqueContext.get(); }
         ISceneParser* GetSceneParser() const { return _sceneParser.get(); }
-        Int2 GetViewportSize() const;
+        UInt2 GetViewportSize() const;
+
+            // technique context & thread context is enough for most operations
+        const RenderCore::Techniques::TechniqueContext& GetTechniqueContext() const { return *_techniqueContext.get(); }
         const std::shared_ptr<RenderCore::IThreadContext>& GetThreadContext() const;
 
         IntersectionTestContext(
             std::shared_ptr<RenderCore::IThreadContext> threadContext,
-            std::shared_ptr<ISceneParser> sceneParser,
+            const RenderCore::Techniques::CameraDesc& cameraDesc,
+            std::shared_ptr<RenderCore::ViewportContext> viewportContext,
+            std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext);
+        IntersectionTestContext(
+            std::shared_ptr<RenderCore::IThreadContext> threadContext,
+            std::shared_ptr<SceneEngine::ISceneParser> sceneParser,
+            std::shared_ptr<RenderCore::ViewportContext> viewportContext,
             std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext);
         ~IntersectionTestContext();
     protected:
         std::shared_ptr<RenderCore::IThreadContext> _threadContext;
         std::shared_ptr<ISceneParser> _sceneParser;
+        std::shared_ptr<RenderCore::ViewportContext> _viewportContext;
+        RenderCore::Techniques::CameraDesc _cameraDesc;
         std::shared_ptr<RenderCore::Techniques::TechniqueContext>  _techniqueContext;
     };
 
@@ -92,10 +112,17 @@ namespace SceneEngine
             std::pair<Float3, Float3> worldSpaceRay,
             Type::BitField filter = ~Type::BitField(0)) const;
 
+        std::vector<Result> FrustumIntersection(
+            const IntersectionTestContext& context,
+            const Float4x4& worldToProjection,
+            Type::BitField filter = ~Type::BitField(0)) const;
+
         Result UnderCursor(
             const IntersectionTestContext& context,
             Int2 cursorPosition,
             Type::BitField filter = ~Type::BitField(0)) const;
+
+        const std::shared_ptr<TerrainManager>& GetTerrain() const { return _terrainManager; }
 
         IntersectionTestScene(
             std::shared_ptr<TerrainManager> terrainManager = std::shared_ptr<TerrainManager>(),

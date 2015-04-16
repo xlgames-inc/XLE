@@ -8,6 +8,7 @@
 #include "LightingParserContext.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Metal/DeviceContext.h"
+#include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/RenderUtils.h"
 #include "../Math/Transformations.h"
 

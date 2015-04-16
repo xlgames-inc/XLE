@@ -7,37 +7,11 @@
 #pragma once
 
 #include "CLIXAutoPtr.h"
-#include "../../RenderCore/IDevice_Forward.h"
-#include "../../RenderCore/IThreadContext_Forward.h"
-#include "../../BufferUploads/IBufferUploads_Forward.h"
 #include <memory>
-
-namespace Assets { class CompileAndAsyncManager; }
-namespace ConsoleRig { class Console; }
 
 namespace GUILayer
 {
-    class IWindowRig;
-
-    class NativeEngineDevice
-    {
-    public:
-        RenderCore::IDevice*        GetRenderDevice();
-        BufferUploads::IManager*    GetBufferUploads();
-        ::Assets::CompileAndAsyncManager* GetASyncManager();
-        std::unique_ptr<IWindowRig> CreateWindowRig(const void* nativeWindowHandle);
-        void                        AttachDefaultCompilers();
-
-        NativeEngineDevice();
-        ~NativeEngineDevice();
-
-    protected:
-        std::shared_ptr<RenderCore::IDevice> _renderDevice;
-        std::shared_ptr<RenderCore::IThreadContext> _immediateContext;
-        std::unique_ptr<::Assets::CompileAndAsyncManager> _asyncMan;
-        std::unique_ptr<ConsoleRig::Console> _console;
-        std::shared_ptr<BufferUploads::IManager> _bufferUploads;
-    };
+    class NativeEngineDevice;
 
     /// <summary>CLI layer to represent a rendering device</summary>
     ///

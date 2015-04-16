@@ -140,6 +140,7 @@ namespace RenderCore { namespace Assets
 
                 char matName[MaxPath];
                 destinationStore.MakeIntermediateName(matName, dimof(matName), initializers[0]);
+                XlChopExtension(matName);
                 XlCatString(matName, dimof(matName), "-rawmat");
                 SerializeToFileJustChunk(*model, _pimpl->_serializeMaterialsFunction, matName, _pimpl->_conversionDLLVersion);
             } else {

@@ -9,7 +9,7 @@
 #include "Vector.h"
 #include "Matrix.h"
 
-namespace Math
+namespace XLEMath
 {
     float       BezierInterpolate(float P0, float C0, float C1, float P1, float alpha);
     Float3      BezierInterpolate(Float3 P0, Float3 C0, Float3 C1, Float3 P1, float alpha);

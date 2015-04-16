@@ -152,7 +152,7 @@ namespace SceneEngine
             }
 
             assert(collisionObject);
-            return collisionObject->GetHeight(cellFrac);
+            return collisionObject->GetHeight(cellFrac) + coords.TerrainOffset()[2];
 
         } CATCH(const ::Assets::Exceptions::PendingResource&) {
         } CATCH(const std::exception&) {

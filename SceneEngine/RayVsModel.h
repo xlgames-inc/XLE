@@ -8,6 +8,7 @@
 
 #include "../RenderCore/IThreadContext_Forward.h"
 #include "../Math/Vector.h"
+#include "../Math/Matrix.h"
 #include <vector>
 
 namespace RenderCore { namespace Techniques 
@@ -17,10 +18,10 @@ namespace RenderCore { namespace Techniques
 
 namespace SceneEngine
 {
-    class RayVsModelResources;
+    class ModelIntersectionResources;
     class LightingParserContext;
 
-    class RayVsModelStateContext
+    class ModelIntersectionStateContext
     {
     public:
         struct ResultEntry
@@ -36,13 +37,17 @@ namespace SceneEngine
 
         std::vector<ResultEntry> GetResults();
         void SetRay(const std::pair<Float3, Float3> worldSpaceRay);
+        void SetFrustum(const Float4x4& frustum);
         LightingParserContext& GetParserContext();
 
-        RayVsModelStateContext(
+        enum TestType { RayTest = 0, FrustumTest = 1 };
+
+        ModelIntersectionStateContext(
+            TestType testType,
             std::shared_ptr<RenderCore::IThreadContext> threadContext,
             const RenderCore::Techniques::TechniqueContext& techniqueContext,
             const RenderCore::Techniques::CameraDesc* cameraForLOD = nullptr);
-        ~RayVsModelStateContext();
+        ~ModelIntersectionStateContext();
 
     protected:
         class Pimpl;

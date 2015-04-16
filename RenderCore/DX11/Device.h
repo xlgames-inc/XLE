@@ -35,14 +35,15 @@ namespace RenderCore
 
         void                AttachToContext(ID3D::DeviceContext* context, ID3D::Device* device);
 
-        PresentationChainDesc   GetDesc() const;
+        std::shared_ptr<ViewportContext> GetViewportContext() const;
 
         PresentationChain(intrusive_ptr<IDXGI::SwapChain> underlying, const void* attachedWindow);
         ~PresentationChain();
     private:
-        intrusive_ptr<IDXGI::SwapChain> _underlying;
-        const void*                     _attachedWindow;
-        intrusive_ptr<ID3D::Texture2D>  _defaultDepthTarget;
+        intrusive_ptr<IDXGI::SwapChain>     _underlying;
+        const void*                         _attachedWindow;
+        intrusive_ptr<ID3D::Texture2D>      _defaultDepthTarget;
+        std::shared_ptr<ViewportContext>    _viewportContext;
     };
 
 ////////////////////////////////////////////////////////////////////////////////

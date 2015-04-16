@@ -41,6 +41,9 @@ namespace RenderCore { namespace Techniques
         ParsingContext(const TechniqueContext& techniqueContext);
         ~ParsingContext();
 
+        ParsingContext& operator=(const ParsingContext&) = delete;
+        ParsingContext(const ParsingContext&) = delete;
+
     protected:
         Metal::ConstantBuffer   _globalCBs[5];
 

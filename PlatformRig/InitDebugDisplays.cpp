@@ -19,7 +19,7 @@
 #include "../SceneEngine/Ocean.h"
 #include "../SceneEngine/Tonemap.h"
 #include "../SceneEngine/VolumetricFog.h"
-#include "../SceneEngine/SceneEngineUtility.h"
+#include "../SceneEngine/SceneEngineUtils.h"
 
 #include "../ConsoleRig/Console.h"
 

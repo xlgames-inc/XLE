@@ -7,6 +7,10 @@
 #pragma once
 
 #include "EngineControl.h"
+#include <memory>
+
+namespace RenderCore { namespace Techniques { class  TechniqueContext; }}
+namespace SceneEngine { class LightingParserStandardPlugin; }
 
 namespace GUILayer 
 {
@@ -16,6 +20,7 @@ namespace GUILayer
     ref class IOverlaySystem;
     ref class VisCameraSettings;
     ref class VisMouseOver;
+    ref class TechniqueContextWrapper;
 
     public ref class LayerControl : public EngineControl
     {
@@ -26,13 +31,24 @@ namespace GUILayer
         void AddDefaultCameraHandler(VisCameraSettings^);
         void AddSystem(IOverlaySystem^ overlay);
 
+        TechniqueContextWrapper^ GetTechniqueContext();
+
         LayerControl(Control^ control);
         ~LayerControl();
+        !LayerControl();
     protected:
         clix::auto_ptr<LayerControlPimpl> _pimpl;
 
         virtual void Render(RenderCore::IThreadContext&, IWindowRig&) override;
     };
+
+    class LayerControlPimpl 
+    {
+    public:
+        std::shared_ptr<SceneEngine::LightingParserStandardPlugin> _stdPlugin;
+        std::shared_ptr<RenderCore::Techniques::TechniqueContext> _globalTechniqueContext;
+    };
+
 }
 
 

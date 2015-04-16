@@ -37,7 +37,7 @@ namespace Assets { namespace IntermediateResources
         if (buffer == firstInitializer) {
             assert(bufferMaxCount >= (_baseDirectory.size()+1));
             auto length = XlStringLen(firstInitializer);
-            auto moveSize = std::min(length, unsigned(bufferMaxCount-1-(_baseDirectory.size()+1)));
+            auto moveSize = std::min(unsigned(length), unsigned(bufferMaxCount-1-(_baseDirectory.size()+1)));
             XlMoveMemory(&buffer[_baseDirectory.size()+1], buffer, moveSize);
             buffer[_baseDirectory.size()+1+moveSize] = ResChar('\0');
             std::copy(_baseDirectory.begin(), _baseDirectory.end(), buffer);

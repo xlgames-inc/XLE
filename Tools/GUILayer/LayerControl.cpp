@@ -7,21 +7,24 @@
 #pragma warning(disable:4793) //  : function compiled as native :
 
 #include "LayerControl.h"
-#include "EngineControlInternal.h"
 #include "IWindowRig.h"
 #include "IOverlaySystem.h"
 #include "UITypesBinding.h"
 #include "EngineDevice.h"
+#include "NativeEngineDevice.h"
+#include "GUILayerUtil.h"
+#include "ExportedNativeTypes.h"
+#include "../ToolsRig/ModelVisualisation.h"
+#include "../ToolsRig/IManipulator.h"
+#include "../ToolsRig/BasicManipulators.h"
+#include "../ToolsRig/VisualisationUtils.h"
 #include "../../PlatformRig/InputTranslator.h"
 #include "../../PlatformRig/FrameRig.h"
 #include "../../PlatformRig/OverlaySystem.h"
-#include "../../PlatformRig/ModelVisualisation.h"
-#include "../../PlatformRig/ManipulatorsUtil.h"
-#include "../../PlatformRig/BasicManipulators.h"
 
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../RenderOverlays/Font.h"
-#include "../../SceneEngine/SceneEngineUtility.h"
+#include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../SceneEngine/LightingParserStandardPlugin.h"
 #include "../../SceneEngine/LightingParserContext.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
@@ -33,13 +36,7 @@ unsigned FrameRenderCount = 0;
 
 namespace GUILayer 
 {
-    class LayerControlPimpl 
-    {
-    public:
-        std::shared_ptr<SceneEngine::LightingParserStandardPlugin> _stdPlugin;
-        std::shared_ptr<RenderCore::Techniques::TechniqueContext> _globalTechniqueContext;
-    };
-
+    
     static PlatformRig::FrameRig::RenderResult RenderFrame(
         RenderCore::IThreadContext& context,
         LayerControlPimpl& pimpl,
@@ -83,7 +80,7 @@ namespace GUILayer
                 std::ref(*_pimpl), frameRig.GetMainOverlaySystem().get()));
     }
 
-    static std::shared_ptr<PlatformRig::ModelVisCache> s_visCache;
+    static std::shared_ptr<ToolsRig::ModelVisCache> s_visCache;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -91,15 +88,15 @@ namespace GUILayer
     {
     public:
         bool    OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt);
-        void    Register(uint64 id, std::shared_ptr<Tools::IManipulator> manipulator);
+        void    Register(uint64 id, std::shared_ptr<ToolsRig::IManipulator> manipulator);
 
         static const uint64 CameraManipulator = 256;
 
         ManipulatorStack();
         ~ManipulatorStack();
     protected:
-        std::vector<std::shared_ptr<Tools::IManipulator>> _activeManipulators;
-        std::vector<std::pair<uint64, std::shared_ptr<Tools::IManipulator>>> _registeredManipulators;
+        std::vector<std::shared_ptr<ToolsRig::IManipulator>> _activeManipulators;
+        std::vector<std::pair<uint64, std::shared_ptr<ToolsRig::IManipulator>>> _registeredManipulators;
     };
 
     bool    ManipulatorStack::OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
@@ -129,7 +126,7 @@ namespace GUILayer
         return false;
     }
 
-    void    ManipulatorStack::Register(uint64 id, std::shared_ptr<Tools::IManipulator> manipulator)
+    void    ManipulatorStack::Register(uint64 id, std::shared_ptr<ToolsRig::IManipulator> manipulator)
     {
         auto i = LowerBound(_registeredManipulators, id);
         if (i!=_registeredManipulators.end() && i->first == id) {
@@ -185,21 +182,22 @@ namespace GUILayer
     void LayerControl::SetupDefaultVis(ModelVisSettings^ settings, VisMouseOver^ mouseOver)
     {
         if (!s_visCache) {
-            s_visCache = std::make_shared<PlatformRig::ModelVisCache>(
+            s_visCache = std::make_shared<ToolsRig::ModelVisCache>(
                 std::shared_ptr<RenderCore::Assets::IModelFormat>());
         }
 
-        auto visLayer = std::make_unique<PlatformRig::ModelVisLayer>(settings->GetUnderlying(), s_visCache);
+        auto visLayer = std::make_unique<ToolsRig::ModelVisLayer>(settings->GetUnderlying(), s_visCache);
         auto& overlaySet = *GetWindowRig().GetFrameRig().GetMainOverlaySystem();
         overlaySet.AddSystem(std::move(visLayer));
         overlaySet.AddSystem(
-            std::make_shared<PlatformRig::VisualisationOverlay>(
-                settings->GetUnderlying(), s_visCache, mouseOver->GetUnderlying()));
+            std::make_shared<ToolsRig::VisualisationOverlay>(
+                settings->GetUnderlying(), s_visCache, 
+                mouseOver ? mouseOver->GetUnderlying() : nullptr));
 
         AddDefaultCameraHandler(settings->Camera);
 
         overlaySet.AddSystem(
-            std::make_shared<PlatformRig::MouseOverTrackingOverlay>(
+            std::make_shared<ToolsRig::MouseOverTrackingOverlay>(
                 mouseOver->GetUnderlying(),
                 EngineDevice::GetInstance()->GetNative().GetRenderDevice()->GetImmediateContext(),
                 _pimpl->_globalTechniqueContext,
@@ -209,12 +207,12 @@ namespace GUILayer
     VisMouseOver^ LayerControl::CreateVisMouseOver(ModelVisSettings^ settings)
     {
         if (!s_visCache) {
-            s_visCache = std::make_shared<PlatformRig::ModelVisCache>(
+            s_visCache = std::make_shared<ToolsRig::ModelVisCache>(
                 std::shared_ptr<RenderCore::Assets::IModelFormat>());
         }
 
         return gcnew VisMouseOver(
-            std::make_shared<PlatformRig::VisMouseOver>(), settings->GetUnderlying(), s_visCache);
+            std::make_shared<ToolsRig::VisMouseOver>(), settings->GetUnderlying(), s_visCache);
     }
 
     namespace Internal
@@ -226,7 +224,8 @@ namespace GUILayer
 
             std::shared_ptr<IInputListener> GetInputListener()
             {
-                return _managedOverlay->GetInputListener();
+                // return _managedOverlay->GetInputListener();
+                return nullptr;
             }
 
             void RenderToScene(
@@ -249,7 +248,7 @@ namespace GUILayer
             }
 
             OverlaySystemAdapter(::GUILayer::IOverlaySystem^ managedOverlay) : _managedOverlay(managedOverlay) {}
-            ~OverlaySystemAdapter() { delete _managedOverlay; }
+            ~OverlaySystemAdapter() {}
         protected:
             gcroot<::GUILayer::IOverlaySystem^> _managedOverlay;
         };
@@ -268,10 +267,15 @@ namespace GUILayer
         auto manipulators = std::make_unique<ManipulatorStack>();
         manipulators->Register(
             ManipulatorStack::CameraManipulator,
-            PlatformRig::CreateCameraManipulator(settings->GetUnderlying()));
+            ToolsRig::CreateCameraManipulator(settings->GetUnderlying()));
 
         auto& overlaySet = *GetWindowRig().GetFrameRig().GetMainOverlaySystem();
         overlaySet.AddSystem(std::make_shared<InputLayer>(std::move(manipulators)));
+    }
+
+    TechniqueContextWrapper^ LayerControl::GetTechniqueContext()
+    {
+        return gcnew TechniqueContextWrapper(_pimpl->_globalTechniqueContext);
     }
 
     LayerControl::LayerControl(Control^ control)
@@ -282,7 +286,14 @@ namespace GUILayer
         _pimpl->_globalTechniqueContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
     }
 
-	LayerControl::~LayerControl()
-    {}
+    LayerControl::~LayerControl()
+    {
+        _pimpl.reset();
+    }
+
+    LayerControl::!LayerControl()
+    {
+        _pimpl.reset();
+    }
 }
 

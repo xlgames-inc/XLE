@@ -7,9 +7,10 @@
 #pragma warning(disable:4793) //  : function compiled as native :
 
 #include "EngineControl.h"
-#include "EngineControlInternal.h"
 #include "EngineDevice.h"
+#include "NativeEngineDevice.h"
 #include "IWindowRig.h"
+#include "ExportedNativeTypes.h"
 #include "../../PlatformRig/FrameRig.h"
 #include "../../PlatformRig/OverlappedWindow.h"
 #include "../../PlatformRig/OverlaySystem.h"
@@ -29,21 +30,15 @@ namespace GUILayer
         //    https://msdn.microsoft.com/en-us/library/1e430ef4(v=vs.85).aspx
         // __super::OnPaint(pe);
 
+        Render();
+    }
+
+    void EngineControl::Render()
+    {
         auto engineDevice = EngineDevice::GetInstance();
         auto* renderDevice = engineDevice->GetNative().GetRenderDevice();
         auto immediateContext = renderDevice->GetImmediateContext();
         Render(*immediateContext.get(), *_pimpl->_windowRig.get());
-
-        // Invalidate();
-    }
-
-    void EngineControl::OnPaintBackground(PaintEventArgs^)
-    {
-        // never draw the background. We want to avoid cases where
-        // the background draws over a valid rendered surface (particularly
-        // since the rendering might be desynchronised from the normal window
-        // update process
-        // __super::OnPaintBackground(pe);
     }
 
     void EngineControl::OnResize(System::EventArgs^ e)
@@ -161,9 +156,17 @@ namespace GUILayer
         //     EngineDevice::GetInstance()->GetRenderDevice(), 
         //     _pimpl->_windowRig->GetPresentationChain().get());
 
-        delete _pimpl;
+        _pimpl.reset();
+    }
+
+    EngineControl::!EngineControl()
+    {
+        _pimpl.reset();
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    EngineControlPimpl::~EngineControlPimpl() {}
+
 }
 

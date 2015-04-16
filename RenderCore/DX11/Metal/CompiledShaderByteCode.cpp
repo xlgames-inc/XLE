@@ -396,11 +396,7 @@ namespace RenderCore { namespace Metal_DX11
             if (depVal) {
                 auto includeFiles = _includeHandler->GetIncludeFiles();
                 for (auto i=includeFiles.cbegin(); i!=includeFiles.cend(); ++i) {
-                    char buffer[MaxPath];
-                    XlCopyString(buffer, dimof(buffer), _includeHandler->GetBaseDirectory().c_str());
-                    XlCatString(buffer, dimof(buffer), i->_filename.c_str());
-                    XlSimplifyPath(buffer, dimof(buffer), buffer, "\\/");
-                    RegisterFileDependency(depVal, buffer);
+                    RegisterFileDependency(depVal, i->_filename.c_str());
                 }
             }
 

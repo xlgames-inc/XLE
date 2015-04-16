@@ -7,7 +7,7 @@
 #include "SampleInputHandler.h"
 #include "Character.h"
 #include "../../SceneEngine/IntersectionTest.h"
-#include "../../PlatformRig/ManipulatorsUtil.h"
+#include "../../Tools/ToolsRig/IManipulator.h"
 #include "../../Math/Transformations.h"
 #include "../../Utility/PtrUtils.h"
 

@@ -15,7 +15,7 @@
     #pragma warning(pop)
 #endif
 
-namespace Math
+namespace XLEMath
 {
     #if MATHLIBRARY_ACTIVE == MATHLIBRARY_CML
 

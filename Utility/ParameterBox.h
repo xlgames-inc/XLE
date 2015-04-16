@@ -17,7 +17,7 @@ namespace Utility
 {
     namespace ImpliedTyping
     {
-        enum class TypeCat : uint8 { Void, Bool, Int, UInt, Float };
+        enum class TypeCat : uint8 { Void, Bool, Int8, UInt8, Int16, UInt16, Int32, UInt32, Float };
         enum class TypeHint : uint8 { None, Vector, Color };
         class TypeDesc
         {
@@ -27,7 +27,7 @@ namespace Utility
             uint16      _arrayCount;
 
             void    Serialize(Serialization::NascentBlockSerializer& serializer) const;
-            TypeDesc(TypeCat cat = TypeCat::UInt, uint16 arrayCount = 1, TypeHint hint = TypeHint::None);
+            TypeDesc(TypeCat cat = TypeCat::UInt32, uint16 arrayCount = 1, TypeHint hint = TypeHint::None);
             uint32 GetSize() const;
             friend bool operator==(const TypeDesc& lhs, const TypeDesc& rhs);
         };
@@ -96,12 +96,15 @@ namespace Utility
 
         template<typename Type> std::pair<bool, Type> GetParameter(const char name[]) const;
         template<typename Type> std::pair<bool, Type> GetParameter(ParameterNameHash name) const;
+        template<typename Type> Type GetParameter(const char name[], const Type& def) const;
+        template<typename Type> Type GetParameter(ParameterNameHash name, const Type& def) const;
         bool GetParameter(ParameterNameHash name, void* dest, const ImpliedTyping::TypeDesc& destType) const;
         bool HasParameter(ParameterNameHash name) const;
+        ImpliedTyping::TypeDesc GetParameterType(ParameterNameHash name) const;
 
         uint64  GetHash() const;
         uint64  GetParameterNamesHash() const;
-        uint64  TranslateHash(const ParameterBox& source) const;
+        uint64  CalculateFilteredHashValue(const ParameterBox& source) const;
 
         void    BuildStringTable(std::vector<std::pair<const char*, std::string>>& defines) const;
         void    OverrideStringTable(std::vector<std::pair<const char*, std::string>>& defines) const;
@@ -136,6 +139,22 @@ namespace Utility
     };
 
     #pragma pack(pop)
+
+    template<typename Type> 
+        Type ParameterBox::GetParameter(const char name[], const Type& def) const
+    {
+        auto q = GetParameter<Type>(name);
+        if (q.first) return q.second;
+        return def;
+    }
+
+    template<typename Type> 
+        Type ParameterBox::GetParameter(ParameterNameHash name, const Type& def) const
+    {
+        auto q = GetParameter<Type>(name);
+        if (q.first) return q.second;
+        return def;
+    }
 
 }
 

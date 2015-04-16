@@ -5,9 +5,11 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "EngineDevice.h"
+#include "NativeEngineDevice.h"
 #include "MarshalString.h"
 #include "WindowRigInternal.h"
-#include "../../SceneEngine/SceneEngineUtility.h"
+#include "ExportedNativeTypes.h"
+#include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../PlatformRig/FrameRig.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Metal/Shader.h"
@@ -54,7 +56,8 @@ namespace GUILayer
             while (Active) {
                 Assets::CompileAndAsyncManager::GetInstance().Update();
                 #undef Yield
-                System::Threading::Thread::Yield();
+                // System::Threading::Thread::Yield();
+                System::Threading::Thread::Sleep(100);
             }
         }
 
@@ -82,10 +85,6 @@ namespace GUILayer
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-    RenderCore::IDevice* NativeEngineDevice::GetRenderDevice()              { return _renderDevice.get(); }
-    BufferUploads::IManager* NativeEngineDevice::GetBufferUploads()         { return _bufferUploads.get(); }
-    ::Assets::CompileAndAsyncManager* NativeEngineDevice::GetASyncManager() { return _asyncMan.get(); }
-    
     std::unique_ptr<IWindowRig> NativeEngineDevice::CreateWindowRig(const void* nativeWindowHandle)
     {
         std::unique_ptr<WindowRig> result(new WindowRig(*_renderDevice.get(), nativeWindowHandle));
@@ -155,7 +154,7 @@ namespace GUILayer
         RenderCore::Techniques::ResourceBoxes_Shutdown();
         RenderOverlays::CleanupFontSystem();
         ResourceCompilerThread_Hack::Shutdown();
-        delete _pimpl;
+        _pimpl.reset();
         TerminateFileSystemMonitoring();
     }
 }

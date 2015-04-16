@@ -19,7 +19,6 @@
     <ClCompile Include="..\DebuggingDisplays\GPUProfileDisplay.cpp">
       <Filter>DebuggingDisplays</Filter>
     </ClCompile>
-    <ClCompile Include="..\TerrainManipulators.cpp" />
     <ClCompile Include="..\DebuggingDisplays\TestDisplays.cpp">
       <Filter>DebuggingDisplays</Filter>
     </ClCompile>
@@ -38,14 +37,10 @@
     <ClCompile Include="..\MainInputHandler.cpp" />
     <ClCompile Include="..\InitDebugDisplays.cpp" />
     <ClCompile Include="..\PlatformRigUtil.cpp" />
-    <ClCompile Include="..\PlacementsManipulators.cpp" />
     <ClCompile Include="..\DebuggingDisplays\CPUProfileDisplay.cpp">
       <Filter>DebuggingDisplays</Filter>
     </ClCompile>
     <ClCompile Include="..\OverlaySystem.cpp" />
-    <ClCompile Include="..\ModelVisualisation.cpp" />
-    <ClCompile Include="..\BasicManipulators.cpp" />
-    <ClCompile Include="..\MaterialVisualisation.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="WinAPI">
@@ -74,7 +69,6 @@
     <ClInclude Include="..\DebuggingDisplays\GPUProfileDisplay.h">
       <Filter>DebuggingDisplays</Filter>
     </ClInclude>
-    <ClInclude Include="..\TerrainManipulators.h" />
     <ClInclude Include="..\DebuggingDisplays\TestDisplays.h">
       <Filter>DebuggingDisplays</Filter>
     </ClInclude>
@@ -88,14 +82,9 @@
     <ClInclude Include="..\AllocationProfiler.h" />
     <ClInclude Include="..\MainInputHandler.h" />
     <ClInclude Include="..\PlatformRigUtil.h" />
-    <ClInclude Include="..\ManipulatorsUtil.h" />
-    <ClInclude Include="..\PlacementsManipulators.h" />
     <ClInclude Include="..\DebuggingDisplays\CPUProfileDisplay.h">
       <Filter>DebuggingDisplays</Filter>
     </ClInclude>
     <ClInclude Include="..\OverlaySystem.h" />
-    <ClInclude Include="..\ModelVisualisation.h" />
-    <ClInclude Include="..\BasicManipulators.h" />
-    <ClInclude Include="..\MaterialVisualisation.h" />
   </ItemGroup>
 </Project>

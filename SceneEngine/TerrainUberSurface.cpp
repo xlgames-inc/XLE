@@ -7,7 +7,7 @@
 #include "TerrainUberSurface.h"
 #include "TerrainInternal.h"
 #include "Terrain.h"
-#include "SceneEngineUtility.h"
+#include "SceneEngineUtils.h"
 #include "LightingParserContext.h"
 #include "Noise.h"
 #include "ShallowWater.h"

@@ -17,11 +17,16 @@ struct GSOutput
 	uint	drawCallIndex : DRAWCALLINDEX;
 };
 
-cbuffer RayDefinition
+cbuffer RayDefinition : register(b1)
 {
 	float3	RayStart;
 	float	RayLength;
 	float3	RayDirection;
+}
+
+cbuffer IntersectionFrustumDefinition : register(b2)
+{
+	row_major float4x4 IntersectionFrustum;
 }
 
 uint CurrentDrawCallIndex;
@@ -68,6 +73,13 @@ float3 RayTriangleIntersection(float3 p, float3 d, float3 v0, float3 v1, float3 
 	float2 GetTexCoord(VSOutput input) { return 1.0.xx; }
 #endif
 
+bool PtInFrustum(float4 pt)
+{
+	float3 q = float3(abs(pt.xy), max(pt.z, pt.w-pt.z));
+	float m = max(max(q.x, q.y), q.z);
+	return m <= pt.w;
+}
+
 [maxvertexcount(1)]
 	void triangles(triangle VSOutput input[3], inout PointStream<GSOutput> outputStream)
 {
@@ -79,6 +91,8 @@ float3 RayTriangleIntersection(float3 p, float3 d, float3 v0, float3 v1, float3 
 	//
 	// We're going to ignore the winding order. So callers will get both front-face
 	// and back-face intersections.
+
+#if !defined(INTERSECTION_TEST) || (INTERSECTION_TEST == 0)
 
 	float3 intersectionResult =
 		RayTriangleIntersection(
@@ -113,4 +127,22 @@ float3 RayTriangleIntersection(float3 p, float3 d, float3 v0, float3 v1, float3 
 			outputStream.Append(result);
 		}
 	}
+
+#elif INTERSECTION_TEST == 1
+
+	float4 p0 = mul(IntersectionFrustum, float4(input[0].worldPosition, 1.f));
+	float4 p1 = mul(IntersectionFrustum, float4(input[1].worldPosition, 1.f));
+	float4 p2 = mul(IntersectionFrustum, float4(input[2].worldPosition, 1.f));
+	if (PtInFrustum(p0) || PtInFrustum(p1) || PtInFrustum(p2)) {
+		GSOutput result;
+		result.triangleA = float4(input[0].worldPosition, 0.f);
+		result.triangleB = float4(input[1].worldPosition, 0.f);
+		result.triangleC = float4(input[2].worldPosition,0.f);
+		result.drawCallIndex = CurrentDrawCallIndex;
+		result.intersectionDepth = 1.f;
+		outputStream.Append(result);
+	}
+
+#endif
+
 }

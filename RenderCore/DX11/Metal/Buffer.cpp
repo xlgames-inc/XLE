@@ -12,7 +12,7 @@
 namespace RenderCore { namespace Metal_DX11
 {
         
-    VertexBuffer::VertexBuffer(const void* data, size_t byteCount)
+    VertexBuffer::VertexBuffer(const ObjectFactory& factory, const void* data, size_t byteCount)
     {
         if (byteCount!=0) {
             D3D11_BUFFER_DESC desc;
@@ -29,9 +29,13 @@ namespace RenderCore { namespace Metal_DX11
             D3D11_SUBRESOURCE_DATA subresData;
             subresData.pSysMem = data;
             subresData.SysMemPitch = subresData.SysMemSlicePitch = 0;
-            _underlying = ObjectFactory().CreateBuffer(&desc, data?(&subresData):nullptr);
+            _underlying = factory.CreateBuffer(&desc, data?(&subresData):nullptr);
         }
     }
+
+    VertexBuffer::VertexBuffer(const void* data, size_t byteCount)
+        : VertexBuffer(ObjectFactory(), data, byteCount)
+    {}
 
     VertexBuffer::VertexBuffer() {}
 
@@ -52,7 +56,7 @@ namespace RenderCore { namespace Metal_DX11
 
     IndexBuffer::IndexBuffer() {}
     
-    IndexBuffer::IndexBuffer(const void* data, size_t byteCount)
+    IndexBuffer::IndexBuffer(const ObjectFactory& factory, const void* data, size_t byteCount)
     {
         if (byteCount!=0) {
             D3D11_BUFFER_DESC desc;
@@ -65,9 +69,13 @@ namespace RenderCore { namespace Metal_DX11
             D3D11_SUBRESOURCE_DATA subresData;
             subresData.pSysMem = data;
             subresData.SysMemPitch = subresData.SysMemSlicePitch = 0;
-            _underlying = ObjectFactory().CreateBuffer(&desc, &subresData);
+            _underlying = factory.CreateBuffer(&desc, &subresData);
         }
     }
+
+    IndexBuffer::IndexBuffer(const void* data, size_t byteCount)
+        : IndexBuffer(ObjectFactory(), data, byteCount)
+    {}
 
     IndexBuffer::~IndexBuffer() {}
 
@@ -81,6 +89,12 @@ namespace RenderCore { namespace Metal_DX11
 
     ConstantBuffer::ConstantBuffer() {}
     ConstantBuffer::ConstantBuffer(const void* data, size_t byteCount, bool immutable)
+        : ConstantBuffer(ObjectFactory(), data, byteCount, immutable)
+    {}
+
+    ConstantBuffer::ConstantBuffer(
+        const ObjectFactory& factory,
+        const void* data, size_t byteCount, bool immutable)
     {
         if (byteCount!=0) {
             D3D11_BUFFER_DESC desc;
@@ -99,7 +113,7 @@ namespace RenderCore { namespace Metal_DX11
             D3D11_SUBRESOURCE_DATA subresData;
             subresData.pSysMem = data;
             subresData.SysMemPitch = subresData.SysMemSlicePitch = 0;
-            _underlying = ObjectFactory().CreateBuffer(&desc, data?(&subresData):nullptr);
+            _underlying = factory.CreateBuffer(&desc, data?(&subresData):nullptr);
         }
     }
 

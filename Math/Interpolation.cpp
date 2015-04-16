@@ -7,7 +7,7 @@
 #include "Interpolation.h"
 #include "Transformations.h"
 
-namespace Math
+namespace XLEMath
 {
     float BezierInterpolate(float P0, float C0, float C1, float P1, float alpha)
     {

@@ -12,7 +12,7 @@
 #include <assert.h>
 #include <intrin.h>
 
-namespace Math
+namespace XLEMath
 {
     static Float4x4 InvertWorldToProjection(const Float4x4& input, bool useAccurateInverse)
     {

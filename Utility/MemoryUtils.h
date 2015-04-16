@@ -89,6 +89,24 @@ namespace Utility
     XL_UTILITY_API uint64 Hash64(const char str[], uint64 seed = DefaultSeed64);
     XL_UTILITY_API uint64 Hash64(const std::string& str, uint64 seed = DefaultSeed64);
 
+	inline uint64 HashCombine(uint64 high, uint64 low)
+	{
+		// This code based on "FarmHash"... which was in-turn
+		// inspired by Murmur Hash. See:
+		// https://code.google.com/p/farmhash/source/browse/trunk/src/farmhash.h
+		// We want to combine two 64 bit hash values to create a new hash value
+		// We could just return an xor of the two values. But this might not
+		// be perfectly reliable (for example, the xor of 2 equals values is zero,
+		// which could result in loss of information sometimes)
+		const auto kMul = 0x9ddfea08eb382d69ull;
+		auto a = (low ^ high) * kMul;
+		a ^= (a >> 47);
+		auto b = (high ^ a) * kMul;
+		b ^= (b >> 47);
+		b *= kMul;
+		return b;
+	}
+
         ////////////   C O M P I L E  -  T I M E  -  H A S H I N G   ////////////
 
     /// <summary>Generate a hash value at compile time</summary>

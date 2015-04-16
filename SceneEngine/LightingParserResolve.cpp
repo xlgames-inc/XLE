@@ -8,7 +8,7 @@
 #include "LightingParserContext.h"
 #include "LightingTargets.h"
 #include "SceneParser.h"
-#include "SceneEngineUtility.h"
+#include "SceneEngineUtils.h"
 #include "Shadows.h"
 #include "LightInternal.h"
 

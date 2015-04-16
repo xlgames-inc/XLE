@@ -8,7 +8,7 @@
 #include "DualContour.h"
 #include "OITInternal.h"
 #include "LightingParserContext.h"
-#include "SceneEngineUtility.h"
+#include "SceneEngineUtils.h"
 #include "RefractionsBuffer.h"  // for BuildDuplicatedDepthBuffer
 
 #include "../RenderCore/Techniques/Techniques.h"

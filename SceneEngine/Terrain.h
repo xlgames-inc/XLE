@@ -9,6 +9,7 @@
 #include "../RenderCore/Metal/Forward.h"
 #include "../BufferUploads/IBufferUploads_Forward.h"
 #include "../Math/Vector.h"
+#include "../Assets/Assets.h"
 #include "../Utility/Mixins.h"
 #include "../Core/Types.h"
 
@@ -27,18 +28,16 @@ namespace SceneEngine
     public:
         enum Filenames { XLE, Legacy };
 
-        std::string _baseDir;
+        ::Assets::rstring _baseDir;
+        ::Assets::rstring _textureCfgName;
         UInt2       _cellCount;
         Filenames   _filenamesMode;
 
         TerrainConfig(
-            const std::string& baseDir, UInt2 cellCount, 
+			const ::Assets::rstring& baseDir, UInt2 cellCount,
             Filenames filenamesMode = XLE, 
-            unsigned nodeDimsInElements = 32u, unsigned cellTreeDepth = 5u, unsigned nodeOverlap = 2u)
-            : _baseDir(baseDir), _cellCount(cellCount), _filenamesMode(filenamesMode)
-            , _nodeDimsInElements(nodeDimsInElements), _cellTreeDepth(cellTreeDepth), _nodeOverlap(nodeOverlap) {}
-
-        TerrainConfig(const std::string& baseDir = std::string());
+            unsigned nodeDimsInElements = 32u, unsigned cellTreeDepth = 5u, unsigned nodeOverlap = 2u);
+		TerrainConfig(const ::Assets::rstring& baseDir = ::Assets::rstring());
 
         struct FileType
         {
@@ -50,7 +49,6 @@ namespace SceneEngine
         };
         void        GetCellFilename(char buffer[], unsigned cnt, UInt2 cellIndex, FileType::Enum) const;
         void        GetUberSurfaceFilename(char buffer[], unsigned bufferCount, FileType::Enum) const;
-        void        GetTexturingCfgFilename(char buffer[], unsigned bufferCount) const;
 
         Float2      TerrainCoordsToCellBasedCoords(const Float2& terrainCoords) const;
         Float2      CellBasedCoordsToTerrainCoords(const Float2& cellBasedCoords) const;
@@ -74,9 +72,11 @@ namespace SceneEngine
         Float2      WorldSpaceToTerrainCoords(const Float2& worldSpacePosition) const;
         Float2      TerrainCoordsToWorldSpace(const Float2& terrainCoords) const;
         float       WorldSpaceDistanceToTerrainCoords(float distance) const;
+        Float3      TerrainOffset() const;
+        void        SetTerrainOffset(const Float3& newOffset);
 
         TerrainCoordinateSystem(
-            Float2 terrainOffset = Float2(0.f, 0.f),
+            Float3 terrainOffset = Float3(0.f, 0.f, 0.f),
             float nodeSizeMeters = 0.f,
             const TerrainConfig& config = TerrainConfig())
         : _terrainOffset(terrainOffset)
@@ -84,7 +84,7 @@ namespace SceneEngine
         , _config(config) {}
 
     protected:
-        Float2 _terrainOffset;
+        Float3 _terrainOffset;
         float _nodeSizeMeters;
         TerrainConfig _config;
     };
@@ -134,12 +134,15 @@ namespace SceneEngine
         ISurfaceHeightsProvider*        GetHeightsProvider();
 
         const TerrainCoordinateSystem&  GetCoords() const;
+        const TerrainConfig&            GetConfig() const;
+        const std::shared_ptr<ITerrainFormat>& GetFormat() const;
+        void SetWorldSpaceOrigin(const Float3& origin);
 
         TerrainManager( const TerrainConfig& cfg,
                         std::shared_ptr<ITerrainFormat> ioFormat, 
                         BufferUploads::IManager* bufferUploads,
                         Int2 cellMin, Int2 cellMax, // (not inclusive of cellMax)
-                        Float2 worldSpaceOrigin = Float2(0.f, 0.f));
+                        Float3 worldSpaceOrigin = Float3(0.f, 0.f, -1000.f));
         ~TerrainManager();
 
     private:

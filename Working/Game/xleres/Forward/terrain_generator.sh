@@ -143,9 +143,9 @@ HS_ConstantOutput PatchConstantFunction(
 	float mult = MaxTessellation / edgeThreshold;
 
 	float2 screenPts[4];
-	for (uint c=0; c<4; ++c) {
-		float4 clip = mul(WorldToClip, float4(ip[c].worldPosition, 1));
-		screenPts[c] = clip.xy / clip.w * halfViewport;
+	for (uint c2=0; c2<4; ++c2) {
+		float4 clip = mul(WorldToClip, float4(ip[c2].worldPosition, 1));
+		screenPts[c2] = clip.xy / clip.w * halfViewport;
 	}
 
 		// Edges:
@@ -483,58 +483,82 @@ struct ProceduralTextureOutput
 	float specularity;
 };
 
-
-#if !defined(STRATA_COUNT)
-	static const uint StrataCount = 6;
+#if STRATA_COUNT==0
+	ProceduralTextureOutput GetTextureForStrata(uint strataIndex, float3 worldPosition, float slopeFactor, float2 textureCoord, float noiseValue0)
+	{
+		ProceduralTextureOutput result;
+		result.diffuseAlbedo = 1.0.xxx;
+		result.tangentSpaceNormal = 0.0.xxx;
+		result.specularity = 0.0.xxx;
+		return result;
+	}
 #else
 	static const uint StrataCount = STRATA_COUNT;
+
+	cbuffer TexturingParameters : register(b5)
+	{
+		float4 StrataEndHeights[StrataCount];
+		float4 TextureFrequency[StrataCount];
+	}
+
+	ProceduralTextureOutput GetTextureForStrata(uint strataIndex, float3 worldPosition, float slopeFactor, float2 textureCoord, float noiseValue0)
+	{
+		float2 tc0 = worldPosition.xy * TextureFrequency[strataIndex].xx;
+		float2 tc1 = worldPosition.xy * TextureFrequency[strataIndex].yy;
+
+		float3 A = StrataDiffuse.Sample(MaybeAnisotropicSampler, float3(tc0, strataIndex*3+0)).rgb;
+		float3 An = StrataNormals.Sample(MaybeAnisotropicSampler, float3(tc0, strataIndex*3+0)).rgb;
+		float As = SRGBLuminance(StrataSpecularity.Sample(MaybeAnisotropicSampler, float3(tc0, strataIndex*3+0)).rgb);
+
+		float3 B = StrataDiffuse.Sample(MaybeAnisotropicSampler, float3(tc1, strataIndex*3+1)).rgb;
+		float3 Bn = StrataNormals.Sample(MaybeAnisotropicSampler, float3(tc1, strataIndex*3+1)).rgb;
+		float Bs = SRGBLuminance(StrataSpecularity.Sample(MaybeAnisotropicSampler, float3(tc1, strataIndex*3+1)).rgb);
+
+		float alpha = saturate(.5f + .7f * noiseValue0);
+		// alpha = min(1.f, exp(32.f * (alpha-.5f)));
+		// alpha = lerp(.25f, 0.75f, alpha);
+
+		float3 X = lerp(A, B, alpha);
+		float3 Xn = lerp(An, Bn, alpha);
+		float Xs = lerp(As, Bs, alpha);
+
+		ProceduralTextureOutput result;
+		result.diffuseAlbedo = X;
+		result.tangentSpaceNormal = Xn;
+		result.specularity = Xs;
+
+		const float slopeStart = .35f;
+		const float slopeSoftness = 3.f;
+		const float slopeDarkness = .75f;
+
+		float slopeAlpha = pow(min(1.f,slopeFactor/slopeStart), slopeSoftness);
+		if (slopeAlpha > 0.05f) {	// can't branch here because of the texture lookups below... We would need to do 2 passes
+
+				//		slope texture coordinates should be based on worldPosition x or y,
+				//		depending on which is changing most quickly in screen space
+				//		This is causing some artefacts!
+			float2 tcS0 = worldPosition.xz * TextureFrequency[strataIndex].zz;
+			// if (fwidth(worldPosition.y) > fwidth(worldPosition.x))
+
+				// soft darkening based on slope give a curiously effective approximation of ambient occlusion
+			float arrayIdx = strataIndex*3+2;
+			float3 S = StrataDiffuse.Sample(MaybeAnisotropicSampler, float3(tcS0, arrayIdx)).rgb;
+			float3 Sn = StrataNormals.Sample(MaybeAnisotropicSampler, float3(tcS0, arrayIdx)).rgb;
+			float3 Ss = SRGBLuminance(StrataSpecularity.Sample(MaybeAnisotropicSampler, float3(tcS0, arrayIdx)).rgb);
+
+			tcS0.x = worldPosition.y * TextureFrequency[strataIndex].z;
+			float3 S2 = StrataDiffuse.Sample(MaybeAnisotropicSampler, float3(tcS0, arrayIdx)).rgb;
+			float3 Sn2 = StrataNormals.Sample(MaybeAnisotropicSampler, float3(tcS0, arrayIdx)).rgb;
+			float3 Ss2 = SRGBLuminance(StrataSpecularity.Sample(MaybeAnisotropicSampler, float3(tcS0, arrayIdx)).rgb);
+
+			result.diffuseAlbedo = lerp(result.diffuseAlbedo, slopeDarkness * .5f * (S+S2), slopeAlpha);
+			result.tangentSpaceNormal = lerp(result.tangentSpaceNormal, .5f * (Sn + Sn2), slopeAlpha);
+			result.specularity = lerp(result.specularity, .5f * (Ss + Ss2), slopeAlpha);
+		}
+
+		return result;
+	}
 #endif
-
-cbuffer TexturingParameters : register(b5)
-{
-	float4 StrataEndHeights[StrataCount];
-	float4 TextureFrequency[StrataCount];
-}
-
-ProceduralTextureOutput GetTextureForStrata(uint strataIndex, float3 worldPosition, float slopeFactor, float2 textureCoord, float noiseValue0)
-{
-	float2 tc0 = worldPosition.xy * TextureFrequency[strataIndex].xx;
-	float2 tc1 = worldPosition.xy * TextureFrequency[strataIndex].yy;
-
-		//		slope texture coordinates should be based on worldPosition x or y,
-		//		depending on which is changing most quickly in screen space
-	float2 tcS0 = worldPosition.xz * TextureFrequency[strataIndex].zz;
-	if (fwidth(worldPosition.y) > fwidth(worldPosition.x))
-		tcS0.x = worldPosition.y * TextureFrequency[strataIndex].z;
-
-	float3 A = StrataDiffuse.Sample(MaybeAnisotropicSampler, float3(tc0, strataIndex*3+0)).rgb;
-	float3 An = StrataNormals.Sample(MaybeAnisotropicSampler, float3(tc0, strataIndex*3+0)).rgb;
-	float As = SRGBLuminance(StrataSpecularity.Sample(MaybeAnisotropicSampler, float3(tc0, strataIndex*3+0)).rgb);
-
-	float3 B = StrataDiffuse.Sample(MaybeAnisotropicSampler, float3(tc1, strataIndex*3+1)).rgb;
-	float3 Bn = StrataNormals.Sample(MaybeAnisotropicSampler, float3(tc1, strataIndex*3+1)).rgb;
-	float Bs = SRGBLuminance(StrataSpecularity.Sample(MaybeAnisotropicSampler, float3(tc1, strataIndex*3+1)).rgb);
-
-	float alpha = saturate(.5f + .7f * noiseValue0);
-	// alpha = min(1.f, exp(32.f * (alpha-.5f)));
-	// alpha = lerp(.25f, 0.75f, alpha);
-
-	float3 X = lerp(A, B, alpha);
-	float3 Xn = lerp(An, Bn, alpha);
-	float Xs = lerp(As, Bs, alpha);
-
-		// soft darkening based on slope give a curiously effective approximation of ambient occlusion
-	float3 S = .25f * StrataDiffuse.Sample(MaybeAnisotropicSampler, float3(tcS0, strataIndex*3+2)).rgb;
-	float3 Sn = StrataNormals.Sample(MaybeAnisotropicSampler, float3(tcS0, strataIndex*3+2)).rgb;
-	float3 Ss = SRGBLuminance(StrataSpecularity.Sample(MaybeAnisotropicSampler, float3(tcS0, strataIndex*3+2)).rgb);
-
-	float slopeAlpha = pow(min(1,slopeFactor/5.f), 0.25f);
-	ProceduralTextureOutput result;
-	result.diffuseAlbedo = lerp(X, S, slopeAlpha);
-	result.tangentSpaceNormal = lerp(Xn, Sn, slopeAlpha);
-	result.specularity = lerp(Xs, Ss, slopeAlpha);
-	return result;
-}
 
 ProceduralTextureOutput BuildProceduralTextureValue(float3 worldPosition, float slopeFactor, float2 textureCoord)
 {
@@ -549,17 +573,21 @@ ProceduralTextureOutput BuildProceduralTextureValue(float3 worldPosition, float 
 	noiseValue0 += .5f * fbmNoise2D(worldPosition.xy, 33.7f, .75f, 2.1042, 4);
 	noiseValue0 = clamp(noiseValue0, -1.f, 1.f);
 
-	float worldSpaceHeight = worldPosition.z - 25.f * noiseValue0; //  - 18.23f * noiseValue1;
-	uint strataBase0 = StrataCount-1, strataBase1 = StrataCount-1;
 	float strataAlpha = 0.f;
-	[unroll] for (uint c=0; c<(StrataCount-1); ++c) {
-		if (worldSpaceHeight < StrataEndHeights[c+1].x) {
-			strataBase0 = c;
-			strataBase1 = c+1;
-			strataAlpha = (worldSpaceHeight - StrataEndHeights[c].x) / (StrataEndHeights[c+1].x - StrataEndHeights[c].x);
-			break;
+	#if STRATA_COUNT!=0
+		float worldSpaceHeight = worldPosition.z - 25.f * noiseValue0; //  - 18.23f * noiseValue1;
+		uint strataBase0 = StrataCount-1, strataBase1 = StrataCount-1;
+		[unroll] for (uint c=0; c<(StrataCount-1); ++c) {
+			if (worldSpaceHeight < StrataEndHeights[c+1].x) {
+				strataBase0 = c;
+				strataBase1 = c+1;
+				strataAlpha = (worldSpaceHeight - StrataEndHeights[c].x) / (StrataEndHeights[c+1].x - StrataEndHeights[c].x);
+				break;
+			}
 		}
-	}
+	#else
+		uint strataBase0 = 0, strataBase1 = 0;
+	#endif
 
 	strataAlpha = exp(16.f * (strataAlpha-1.f));	// only blend in the last little bit
 

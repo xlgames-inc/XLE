@@ -123,6 +123,9 @@
     <Import Project="..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Tegra-Android'" />
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile-DX11|x64'">
+    <Import Project="..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
+  </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup />
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">
@@ -215,7 +218,7 @@
     <ClCompile Include="..\RefractionsBuffer.cpp" />
     <ClCompile Include="..\LightingParser.cpp" />
     <ClCompile Include="..\RenderingUtils.cpp" />
-    <ClCompile Include="..\SceneEngineUtility.cpp" />
+    <ClCompile Include="..\SceneEngineUtils.cpp" />
     <ClCompile Include="..\ScreenspaceReflections.cpp" />
     <ClCompile Include="..\Shadows.cpp" />
     <ClCompile Include="..\ShallowWater.cpp" />
@@ -249,7 +252,7 @@
     <ClInclude Include="..\RefractionsBuffer.h" />
     <ClInclude Include="..\RenderingUtils.h" />
     <ClInclude Include="..\LightingParser.h" />
-    <ClInclude Include="..\SceneEngineUtility.h" />
+    <ClInclude Include="..\SceneEngineUtils.h" />
     <ClInclude Include="..\SceneParser.h" />
     <ClInclude Include="..\ScreenspaceReflections.h" />
     <ClInclude Include="..\LightDesc.h" />
@@ -260,6 +263,7 @@
     <ClInclude Include="..\SurfaceHeightsProvider.h" />
     <ClInclude Include="..\Terrain.h" />
     <ClInclude Include="..\TerrainInternal.h" />
+    <ClInclude Include="..\TerrainMaterial.h" />
     <ClInclude Include="..\TerrainUberSurface.h" />
     <ClInclude Include="..\TiledLighting.h" />
     <ClInclude Include="..\Tonemap.h" />

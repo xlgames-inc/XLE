@@ -234,7 +234,7 @@ const char* XlExtension(const char* path)
 void XlChopExtension(char* path)
 {
     char* p = (char*)XlExtension(path);
-    if (!p[0])
+    if (!p || !p[0])
         return;
 
     // p points to the first character of the extension, so move one character

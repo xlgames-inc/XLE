@@ -28,6 +28,7 @@
 namespace Assets
 {
     typedef char ResChar;
+	using rstring = std::basic_string<ResChar>;
 
         ////////////////////////////////////////////////////////////////////////
 
@@ -122,6 +123,7 @@ namespace Assets
 
 		template <typename... Params> uint64 BuildHash(Params... initialisers);
 		template <typename... Params> std::basic_string<ResChar> AsString(Params... initialisers);
+        std::basic_string<ResChar> AsString();
 
 		template<bool DoCheckDependancy, bool DoBackgroundCompile, typename AssetType, typename... Params>
 			const AssetType& GetAsset(Params... initialisers)
@@ -299,6 +301,8 @@ namespace Assets
                     auto i = LowerBound(_assetNames, id);
                     if (i != _assetNames.end() && i->first == id)
                         return i->second;
+                    return std::string();
+                #else
                     return std::string();
                 #endif
             }

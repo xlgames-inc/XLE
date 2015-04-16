@@ -7,9 +7,11 @@
 #pragma warning(disable:4793) //  : function compiled as native :
 
 #include "TestControl.h"
-#include "EngineControlInternal.h"
+#include "IOverlaySystem.h"
 #include "EngineDevice.h"
+#include "NativeEngineDevice.h"
 #include "IWindowRig.h"
+#include "ExportedNativeTypes.h"
 #include "../../PlatformRig/FrameRig.h"
 #include "../../PlatformRig/InputTranslator.h"
 #include "../../RenderOverlays/OverlayContext.h"

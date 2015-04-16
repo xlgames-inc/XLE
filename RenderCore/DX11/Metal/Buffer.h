@@ -11,6 +11,7 @@
 
 namespace RenderCore { namespace Metal_DX11
 {
+    class ObjectFactory;
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -19,6 +20,7 @@ namespace RenderCore { namespace Metal_DX11
     public:
         VertexBuffer();
         VertexBuffer(const void* data, size_t byteCount);
+        VertexBuffer(const ObjectFactory& factory, const void* data, size_t byteCount);
         ~VertexBuffer();
 
         VertexBuffer(const VertexBuffer& cloneFrom);
@@ -40,6 +42,7 @@ namespace RenderCore { namespace Metal_DX11
     public:
         IndexBuffer();
         IndexBuffer(const void* data, size_t byteCount);
+        IndexBuffer(const ObjectFactory& factory, const void* data, size_t byteCount);
         ~IndexBuffer();
 
         IndexBuffer(const IndexBuffer& cloneFrom);
@@ -61,6 +64,9 @@ namespace RenderCore { namespace Metal_DX11
     {
     public:
         ConstantBuffer(const void* data, size_t byteCount, bool immutable=true);
+        ConstantBuffer(
+            const ObjectFactory& factory,
+            const void* data, size_t byteCount, bool immutable=true);
         ConstantBuffer();
         ~ConstantBuffer();
 

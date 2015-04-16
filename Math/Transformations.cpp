@@ -7,7 +7,7 @@
 #include "Transformations.h"
 #include <assert.h>
 
-namespace Math
+namespace XLEMath
 {
 
         //

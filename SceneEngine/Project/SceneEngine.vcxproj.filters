@@ -67,7 +67,7 @@
     <ClCompile Include="..\Ocean.cpp">
       <Filter>Objects\Water</Filter>
     </ClCompile>
-    <ClCompile Include="..\SceneEngineUtility.cpp">
+    <ClCompile Include="..\SceneEngineUtils.cpp">
       <Filter>Fundamentals</Filter>
     </ClCompile>
     <ClCompile Include="..\Terrain.cpp">
@@ -166,7 +166,7 @@
     <ClInclude Include="..\SurfaceHeightsProvider.h">
       <Filter>Objects\Terrain</Filter>
     </ClInclude>
-    <ClInclude Include="..\SceneEngineUtility.h">
+    <ClInclude Include="..\SceneEngineUtils.h">
       <Filter>Fundamentals</Filter>
     </ClInclude>
     <ClInclude Include="..\Terrain.h">
@@ -196,6 +196,7 @@
     <ClInclude Include="..\LightInternal.h">
       <Filter>Lighting And Processing</Filter>
     </ClInclude>
+    <ClInclude Include="..\TerrainMaterial.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Lighting And Processing">

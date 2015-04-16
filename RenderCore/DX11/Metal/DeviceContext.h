@@ -97,50 +97,50 @@ namespace RenderCore { namespace Metal_DX11
 
         /// @{
         /// Basic states
-        intrusive_ptr<ID3D::BlendState> CreateBlendState(const D3D11_BLEND_DESC*);
-        intrusive_ptr<ID3D::DepthStencilState> CreateDepthStencilState(const D3D11_DEPTH_STENCIL_DESC*);
-        intrusive_ptr<ID3D::RasterizerState> CreateRasterizerState(const D3D11_RASTERIZER_DESC*);
-        intrusive_ptr<ID3D::SamplerState> CreateSamplerState(const D3D11_SAMPLER_DESC*);
+        intrusive_ptr<ID3D::BlendState> CreateBlendState(const D3D11_BLEND_DESC*) const;
+        intrusive_ptr<ID3D::DepthStencilState> CreateDepthStencilState(const D3D11_DEPTH_STENCIL_DESC*) const;
+        intrusive_ptr<ID3D::RasterizerState> CreateRasterizerState(const D3D11_RASTERIZER_DESC*) const;
+        intrusive_ptr<ID3D::SamplerState> CreateSamplerState(const D3D11_SAMPLER_DESC*) const;
         /// @}
 
         /// @{
         /// Resources
-        intrusive_ptr<ID3D::Buffer> CreateBuffer(const D3D11_BUFFER_DESC*, const D3D11_SUBRESOURCE_DATA* = nullptr, const char name[] = nullptr);
-        intrusive_ptr<ID3D::Texture1D> CreateTexture1D(const D3D11_TEXTURE1D_DESC*, const D3D11_SUBRESOURCE_DATA* = nullptr, const char name[] = nullptr);
-        intrusive_ptr<ID3D::Texture2D> CreateTexture2D(const D3D11_TEXTURE2D_DESC*, const D3D11_SUBRESOURCE_DATA* = nullptr, const char name[] = nullptr);
-        intrusive_ptr<ID3D::Texture3D> CreateTexture3D(const D3D11_TEXTURE3D_DESC*, const D3D11_SUBRESOURCE_DATA* = nullptr, const char name[] = nullptr);
+        intrusive_ptr<ID3D::Buffer> CreateBuffer(const D3D11_BUFFER_DESC*, const D3D11_SUBRESOURCE_DATA* = nullptr, const char name[] = nullptr) const;
+        intrusive_ptr<ID3D::Texture1D> CreateTexture1D(const D3D11_TEXTURE1D_DESC*, const D3D11_SUBRESOURCE_DATA* = nullptr, const char name[] = nullptr) const;
+        intrusive_ptr<ID3D::Texture2D> CreateTexture2D(const D3D11_TEXTURE2D_DESC*, const D3D11_SUBRESOURCE_DATA* = nullptr, const char name[] = nullptr) const;
+        intrusive_ptr<ID3D::Texture3D> CreateTexture3D(const D3D11_TEXTURE3D_DESC*, const D3D11_SUBRESOURCE_DATA* = nullptr, const char name[] = nullptr) const;
         /// @}
 
         /// @{
         /// Resource views
-        intrusive_ptr<ID3D::RenderTargetView> CreateRenderTargetView(ID3D::Resource *, const D3D11_RENDER_TARGET_VIEW_DESC* = nullptr);
-        intrusive_ptr<ID3D::ShaderResourceView> CreateShaderResourceView(ID3D::Resource*, const D3D11_SHADER_RESOURCE_VIEW_DESC* = nullptr);
-        intrusive_ptr<ID3D::UnorderedAccessView> CreateUnorderedAccessView(ID3D11Resource*, const D3D11_UNORDERED_ACCESS_VIEW_DESC* = nullptr);
-        intrusive_ptr<ID3D::DepthStencilView> CreateDepthStencilView(ID3D::Resource*, const D3D11_DEPTH_STENCIL_VIEW_DESC* = nullptr);
+        intrusive_ptr<ID3D::RenderTargetView> CreateRenderTargetView(ID3D::Resource *, const D3D11_RENDER_TARGET_VIEW_DESC* = nullptr) const;
+        intrusive_ptr<ID3D::ShaderResourceView> CreateShaderResourceView(ID3D::Resource*, const D3D11_SHADER_RESOURCE_VIEW_DESC* = nullptr) const;
+        intrusive_ptr<ID3D::UnorderedAccessView> CreateUnorderedAccessView(ID3D11Resource*, const D3D11_UNORDERED_ACCESS_VIEW_DESC* = nullptr) const;
+        intrusive_ptr<ID3D::DepthStencilView> CreateDepthStencilView(ID3D::Resource*, const D3D11_DEPTH_STENCIL_VIEW_DESC* = nullptr) const;
         /// @}
 
         /// @{
         /// Shaders
-        intrusive_ptr<ID3D::VertexShader> CreateVertexShader(const void*, size_t, ID3D11ClassLinkage * = nullptr);
-        intrusive_ptr<ID3D::PixelShader> CreatePixelShader(const void*, size_t, ID3D11ClassLinkage * = nullptr);
-        intrusive_ptr<ID3D::ComputeShader> CreateComputeShader(const void*, size_t, ID3D::ClassLinkage* = nullptr);
-        intrusive_ptr<ID3D::GeometryShader> CreateGeometryShader(const void*, size_t, ID3D::ClassLinkage* = nullptr);
+        intrusive_ptr<ID3D::VertexShader> CreateVertexShader(const void*, size_t, ID3D11ClassLinkage * = nullptr) const;
+        intrusive_ptr<ID3D::PixelShader> CreatePixelShader(const void*, size_t, ID3D11ClassLinkage * = nullptr) const;
+        intrusive_ptr<ID3D::ComputeShader> CreateComputeShader(const void*, size_t, ID3D::ClassLinkage* = nullptr) const;
+        intrusive_ptr<ID3D::GeometryShader> CreateGeometryShader(const void*, size_t, ID3D::ClassLinkage* = nullptr) const;
         intrusive_ptr<ID3D::GeometryShader> CreateGeometryShaderWithStreamOutput(
             const void*, size_t,
             const D3D11_SO_DECLARATION_ENTRY* declEntries,
             unsigned declEntryCount, const unsigned bufferStrides[], unsigned stridesCount,
-            unsigned rasterizedStreamIndex, ID3D::ClassLinkage* = nullptr);
-        intrusive_ptr<ID3D::DomainShader> CreateDomainShader(const void*, size_t, ID3D::ClassLinkage* = nullptr);
-        intrusive_ptr<ID3D::HullShader> CreateHullShader(const void*, size_t, ID3D::ClassLinkage* = nullptr);
+            unsigned rasterizedStreamIndex, ID3D::ClassLinkage* = nullptr) const;
+        intrusive_ptr<ID3D::DomainShader> CreateDomainShader(const void*, size_t, ID3D::ClassLinkage* = nullptr) const;
+        intrusive_ptr<ID3D::HullShader> CreateHullShader(const void*, size_t, ID3D::ClassLinkage* = nullptr) const;
         /// @}
 
         /// @{
         /// Misc
-        intrusive_ptr<ID3D::DeviceContext> CreateDeferredContext();
+        intrusive_ptr<ID3D::DeviceContext> CreateDeferredContext() const;
         intrusive_ptr<ID3D::InputLayout> CreateInputLayout(
             const D3D11_INPUT_ELEMENT_DESC inputElements[], unsigned inputElementsCount,
-            const void *, size_t);
-        intrusive_ptr<ID3D::Query> CreateQuery(const D3D11_QUERY_DESC*);
+            const void *, size_t) const;
+        intrusive_ptr<ID3D::Query> CreateQuery(const D3D11_QUERY_DESC*) const;
         /// @}
 
         ObjectFactory(IDevice* device);

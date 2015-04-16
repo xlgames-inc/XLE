@@ -21,7 +21,7 @@
 #include "../../PlatformRig/PlatformRigUtil.h"
 #include "../../PlatformRig/OverlaySystem.h"
 
-#include "../../SceneEngine/SceneEngineUtility.h"
+#include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../SceneEngine/LightingParser.h"
 #include "../../SceneEngine/LightingParserStandardPlugin.h"
 #include "../../SceneEngine/LightingParserContext.h"
@@ -32,7 +32,9 @@
 
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Assets/ColladaCompilerInterface.h"
+#include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../RenderCore/Metal/GPUProfiler.h"
+#include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderOverlays/Font.h"
 #include "../../RenderOverlays/DebugHotKeys.h"
 #include "../../RenderOverlays/Overlays/ShadowFrustumDebugger.h"
@@ -197,7 +199,8 @@ namespace Sample
                 "[Placements] Culling");
 
             auto intersectionContext = std::make_shared<SceneEngine::IntersectionTestContext>(
-                primMan._rDevice->GetImmediateContext(), mainScene, primMan._globalTechContext);
+                primMan._rDevice->GetImmediateContext(), mainScene, 
+                primMan._presChain->GetViewportContext(), primMan._globalTechContext);
 
                 //  We also create some "overlay systems" in this sample. 
                 //  Again, it's optional. An overlay system will redirect all input
@@ -305,6 +308,9 @@ namespace Sample
         compilers.AddCompiler(ColladaCompiler::Type_Model, colladaProcessor);
         compilers.AddCompiler(ColladaCompiler::Type_AnimationSet, colladaProcessor);
         compilers.AddCompiler(ColladaCompiler::Type_Skeleton, colladaProcessor);
+        compilers.AddCompiler(
+            RenderCore::Assets::MaterialScaffold::CompileProcessType,
+            std::make_shared<RenderCore::Assets::MaterialScaffoldCompiler>());
     }
 
     PlatformRig::FrameRig::RenderResult RenderFrame(
@@ -322,11 +328,11 @@ namespace Sample
 
         using namespace SceneEngine;
         if (scene) {
-            auto presChainDesc = presentationChain->GetDesc();
+            auto presChainDims = presentationChain->GetViewportContext()->_dimensions;
             LightingParser_ExecuteScene(
                 context, lightingParserContext, *scene, 
                 RenderingQualitySettings(
-                    presChainDesc._dimensions, 
+                    presChainDims, 
                     (Tweakable("LightingModel", 0) == 0) ? RenderingQualitySettings::LightingModel::Deferred : RenderingQualitySettings::LightingModel::Forward,
                     Tweakable("SamplingCount", 1), Tweakable("SamplingQuality", 0)));
         }

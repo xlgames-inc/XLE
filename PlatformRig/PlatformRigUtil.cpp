@@ -14,6 +14,8 @@
 #include "../Math/Transformations.h"
 #include "../Math/ProjectionMath.h"
 
+#include "../RenderCore/DX11/Metal/IncludeDX11.h"
+
 namespace PlatformRig
 {
 

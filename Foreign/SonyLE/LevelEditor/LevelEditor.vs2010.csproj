@@ -1,0 +1,211 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>9.0.30729</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{7DA4D304-37A9-4CD2-B30E-032B1C92A14E}</ProjectGuid>
+    <OutputType>WinExe</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>LevelEditor</RootNamespace>
+    <AssemblyName>LevelEditor</AssemblyName>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <TargetFrameworkProfile />
+  </PropertyGroup>
+  <PropertyGroup>
+    <StartupObject>LevelEditor.LevelEditorApplication</StartupObject>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>..\..\..\Finals_Debug64\</OutputPath>
+    <IntermediateOutputPath>..\tmp\LevelEditor\Debug\</IntermediateOutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <NoWarn>1591,1572,1573,1570,1571,649</NoWarn>
+    <DebugType>full</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisIgnoreBuiltInRules>false</CodeAnalysisIgnoreBuiltInRules>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
+    <OutputPath>..\bin\Release\</OutputPath>
+    <IntermediateOutputPath>..\tmp\LevelEditor\Release\</IntermediateOutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Optimize>true</Optimize>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <NoWarn>1591,1572,1573,1570,1571,649</NoWarn>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Atf.Core, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\ATF\lib\Debug\Atf.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="Atf.Gui, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\ATF\lib\Debug\Atf.Gui.dll</HintPath>
+    </Reference>
+    <Reference Include="Atf.Gui.WinForms, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\ATF\lib\Debug\Atf.Gui.WinForms.dll</HintPath>
+    </Reference>
+    <Reference Include="Atf.IronPython, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\ATF\lib\Debug\Atf.IronPython.dll</HintPath>
+    </Reference>
+    <Reference Include="IronPython">
+      <HintPath>..\ATF\ThirdParty\IronPython\IronPython.dll</HintPath>
+    </Reference>
+    <Reference Include="IronPython.Modules">
+      <HintPath>..\ATF\ThirdParty\IronPython\IronPython.Modules.dll</HintPath>
+    </Reference>
+    <Reference Include="LevelEditorCore, Version=3.8.1.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\LevelEditorCore\lib\Debug\LevelEditorCore.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Dynamic">
+      <HintPath>..\ATF\ThirdParty\IronPython\Microsoft.Dynamic.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.ComponentModel.Composition" />
+    <Reference Include="System.Core">
+      <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="System.Data" />
+    <Reference Include="System.Deployment" />
+    <Reference Include="System.Design" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Commands\HelpAboutCommand.cs" />
+    <Compile Include="Commands\LayeringCommands.cs" />
+    <Compile Include="Commands\LevelEditorCommands.cs" />
+    <Compile Include="Commands\LevelEditorFileCommands.cs" />
+    <Compile Include="Commands\PaletteCommands.cs" />
+    <Compile Include="Commands\PivotCommands.cs" />
+    <Compile Include="Contexts\BookmarkingContext.cs" />
+    <Compile Include="Contexts\GameContext.cs" />
+    <Compile Include="Contexts\LayeringContext.cs" />
+    <Compile Include="Documents\GameDocument.cs" />
+    <Compile Include="Documents\GameDocumentRegistry.cs" />
+    <Compile Include="Documents\ResourceMetadataDocument.cs" />
+    <Compile Include="DomNodeAdapters\Billboard.cs" />
+    <Compile Include="DomNodeAdapters\Bookmark.cs" />
+    <Compile Include="DomNodeAdapters\ControlPoint.cs" />
+    <Compile Include="DomNodeAdapters\Curve.cs" />
+    <Compile Include="DomNodeAdapters\GameObjectReference.cs" />
+    <Compile Include="DomNodeAdapters\GameReference.cs" />
+    <Compile Include="DomNodeAdapters\Layer.cs" />
+    <Compile Include="DomNodeAdapters\Lights.cs" />
+    <Compile Include="DomNodeAdapters\MaterialGob.cs" />
+    <Compile Include="DomNodeAdapters\OpaqueAdapters.cs" />
+    <Compile Include="DomNodeAdapters\PrefabInstance.cs" />
+    <Compile Include="DomNodeAdapters\ResourceReference.cs" />
+    <Compile Include="DomNodeAdapters\Game.cs" />
+    <Compile Include="DomNodeAdapters\GameObject.cs" />
+    <Compile Include="DomNodeAdapters\GameObjectFolder.cs" />
+    <Compile Include="DomNodeAdapters\GameObjectGroup.cs" />
+    <Compile Include="DomNodeAdapters\GameObjectProperties.cs" />
+    <Compile Include="DomNodeAdapters\Grid.cs" />
+    <Compile Include="DomNodeAdapters\Locator.cs" />
+    <Compile Include="DomNodeAdapters\Slot.cs" />
+    <Compile Include="DomNodeAdapters\TransformUpdater.cs" />
+    <Compile Include="DomNodeAdapters\XLEPlacement.cs" />
+    <Compile Include="DomNodeAdapters\XLEPlacementsCellRef.cs" />
+    <Compile Include="DomNodeAdapters\XLEPlacementsDocument.cs" />
+    <Compile Include="DomNodeAdapters\XLETerrainGob.cs" />
+    <Compile Include="DomSerializers\CustomDomXmlReader.cs" />
+    <Compile Include="DomSerializers\CustomDomXmlWriter.cs" />
+    <Compile Include="GameAdapters.cs" />
+    <Compile Include="GameEditor.cs" />
+    <Compile Include="LevelEditorApplication.cs" />
+    <Compile Include="Listers\BookmarkLister.cs" />
+    <Compile Include="Listers\GameProjectLister.cs" />
+    <Compile Include="OSC\OscClient.cs" />
+    <Compile Include="PickFilters\GobPickFilter.cs" />
+    <Compile Include="PickFilters\SnapFilter.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+    <Compile Include="Services\CustomFileSystemResourceFolder.cs" />
+    <Compile Include="Services\GameLoopService.cs" />
+    <Compile Include="Services\PrefabService.cs" />
+    <Compile Include="Services\PrototypingService.cs" />
+    <Compile Include="Services\ResourceConverter.cs" />
+    <Compile Include="Services\ResourceMetadataService.cs" />
+    <Compile Include="Services\SplashForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="XLEControls\XLEManipCtrlWin.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="XLEControls\XLENativeManipControls.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="XLEControls\XLENativeManipControls.Designer.cs">
+      <DependentUpon>XLENativeManipControls.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Validators\CustomLockingValidator.cs" />
+    <EmbeddedResource Include="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+    <EmbeddedResource Include="schemas\gap.xsd">
+      <SubType>
+      </SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="XLEControls\XLENativeManipControls.resx">
+      <DependentUpon>XLENativeManipControls.cs</DependentUpon>
+    </EmbeddedResource>
+    <None Include="schemas\GenSchemaDef.bat" />
+    <EmbeddedResource Include="schemas\level_editor.xsd">
+      <SubType>
+      </SubType>
+    </EmbeddedResource>
+    <Compile Include="SchemaLoader.cs" />
+    <Compile Include="schemas\Schema.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Tools\GUILayer\Project\GUILayer.vcxproj">
+      <Project>{e1e9a4c1-97a8-44b7-8279-d287313c5b6b}</Project>
+      <Name>GUILayer</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\LevelEditorNativeRendering\RenderingInterop.vs2010.csproj">
+      <Project>{8FDEBB1D-43B9-4922-AD51-4E58A0D71FBC}</Project>
+      <Name>RenderingInterop.vs2010</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\XLELayer\Project\XLELayer.vcxproj">
+      <Project>{0556e85e-3cbd-4ac0-8842-01e1963312bd}</Project>
+      <Name>XLELayer</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\SplashImg.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\ja\Localization.xml" />
+  </ItemGroup>
+  <ItemGroup />
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+  <PropertyGroup>
+    <PostBuildEvent>rd /S /Q "$(ProjectDir)obj"</PostBuildEvent>
+  </PropertyGroup>
+</Project>

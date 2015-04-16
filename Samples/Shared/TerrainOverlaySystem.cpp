@@ -5,8 +5,10 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "TerrainOverlaySystem.h"
-#include "../../PlatformRig/TerrainManipulators.h"
+#include "../../Tools/ToolsRig/TerrainManipulatorsInterface.h"
 #include "../../PlatformRig/OverlaySystem.h"
+#include "../../RenderOverlays/DebuggingDisplay.h"
+#include <memory>
 
 namespace Sample
 {
@@ -22,8 +24,8 @@ namespace Sample
             std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
             std::shared_ptr<SceneEngine::IntersectionTestContext> intersectionContext)
         {
-            _manipulatorsInterface = std::make_shared<::Tools::ManipulatorsInterface>(terrainManager, intersectionContext);
-            _terrainManipulators = std::make_shared<::Tools::ManipulatorsDisplay>(_manipulatorsInterface);
+            _manipulatorsInterface = std::make_shared<::ToolsRig::ManipulatorsInterface>(terrainManager, intersectionContext);
+            _terrainManipulators = std::make_shared<::ToolsRig::ManipulatorsDisplay>(_manipulatorsInterface);
             _manipInputListener = _manipulatorsInterface->CreateInputListener();
 
             _screens = std::make_shared<DebugScreensSystem>();
@@ -58,10 +60,10 @@ namespace Sample
         void SetActivationState(bool) {}
 
     private:
-        std::shared_ptr<::Tools::ManipulatorsInterface> _manipulatorsInterface;
-        std::shared_ptr<::Tools::ManipulatorsDisplay>   _terrainManipulators;
-        std::shared_ptr<DebugScreensSystem>             _screens;
-        std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener>                 _manipInputListener;
+        std::shared_ptr<::ToolsRig::ManipulatorsInterface> _manipulatorsInterface;
+        std::shared_ptr<::ToolsRig::ManipulatorsDisplay> _terrainManipulators;
+        std::shared_ptr<DebugScreensSystem> _screens;
+        std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener> _manipInputListener;
     };
 
     std::shared_ptr<PlatformRig::IOverlaySystem> CreateTerrainEditorOverlaySystem(

@@ -4,7 +4,9 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#include "NativeEngineDevice.h"
 #include "DivergentAssetList.h"
+#include "ExportedNativeTypes.h"
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Assets/DivergentAsset.h"
 #include "MarshalString.h"
