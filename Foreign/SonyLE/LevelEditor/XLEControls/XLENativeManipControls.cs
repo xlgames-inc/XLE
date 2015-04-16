@@ -9,9 +9,9 @@ using System.Windows.Forms;
 
 namespace LevelEditor.XLEControls
 {
-    public partial class XLEManipControls : UserControl
+    public partial class XLENativeManipControls : UserControl
     {
-        public XLEManipControls()
+        public XLENativeManipControls()
         {
             InitializeComponent();
             Layout += XLETerrainManipControls_Layout;

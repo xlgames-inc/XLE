@@ -66,13 +66,6 @@ namespace XLELayer
         }
     };
 
-    public interface class IPlacementControls
-    {
-    public:
-        property ActiveManipulatorContext^ ActiveContext 
-            { virtual void set(ActiveManipulatorContext^); }
-    };
-
     [Export(LevelEditorCore::IManipulator::typeid)]
     [Export(IInitializable::typeid)]
     [PartCreationPolicy(CreationPolicy::Shared)]
@@ -104,15 +97,19 @@ namespace XLELayer
         virtual void Initialize()
         {
             _manipSettings = gcnew Settings();
-            _manipContext = gcnew ActiveManipulatorContext();
             _manipContext->ManipulatorSet = NativeManipulatorLayer::SceneManager->CreatePlacementManipulators(_manipSettings);
-            _controls->ActiveContext = _manipContext;
+            // _controls->ActiveContext = _manipContext;
             _nativeManip = gcnew NativeManipulatorLayer(_manipContext);
 
             if (_resourceLister) {
                 _resourceLister->SelectionChanged += 
                     gcnew EventHandler(this, &PlacementManipulator::resourceLister_SelectionChanged);
             }
+        }
+
+        PlacementManipulator()
+        {
+            _manipContext = gcnew ActiveManipulatorContext();
         }
 
     private:
@@ -136,7 +133,6 @@ namespace XLELayer
         ActiveManipulatorContext^ _manipContext;
         Settings^ _manipSettings;
 
-        [Import(AllowDefault = false)] IPlacementControls^ _controls;
         [Import(AllowDefault =  true)] LevelEditorCore::ResourceLister^ _resourceLister;
         [Import(AllowDefault = false)] IXLEAssetService^ _assetService;
 

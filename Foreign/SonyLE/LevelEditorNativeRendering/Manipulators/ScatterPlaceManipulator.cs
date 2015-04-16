@@ -10,6 +10,8 @@ using Sce.Atf.Applications;
 using Sce.Atf.Dom;
 using Sce.Atf.VectorMath;
 
+using Sce.Atf.Controls.PropertyEditing;
+
 using LevelEditorCore;
 using Camera = Sce.Atf.Rendering.Camera;
 
@@ -19,11 +21,69 @@ namespace RenderingInterop
     [PartCreationPolicy(CreationPolicy.Shared)]
     public class ScatterPlaceManipulator : Manipulator
     {
+        public class ManipulatorSettings : IPropertyEditingContext
+        {
+            public float Radius { get; set; }
+            public float Density { get; set; }
+            public string ModelName { get; set; }
+
+            public ManipulatorSettings()
+            {
+                Radius = 50.0f; Density = 0.1f;
+                ModelName = "Game/Model/Nature/BushTree/BushE";
+            }
+
+            #region IPropertyEditingContext items
+            IEnumerable<object> IPropertyEditingContext.Items
+            {
+                get
+                {
+                    var l = new List<object>();
+                    l.Add(this);
+                    return l;
+                }
+            }
+
+            /// <summary>
+            /// Gets an enumeration of the property descriptors for the items</summary>
+            IEnumerable<System.ComponentModel.PropertyDescriptor> IPropertyEditingContext.PropertyDescriptors
+            {
+                get
+                {
+                    if (_propertyDescriptors == null) {
+                        var category = "General";
+                        _propertyDescriptors = new List<System.ComponentModel.PropertyDescriptor>();
+                        _propertyDescriptors.Add(
+                            new UnboundPropertyDescriptor(
+                                GetType(), 
+                                "Radius", "Radius", category, 
+                                "Create and destroy objects within this range"));
+                        _propertyDescriptors.Add(
+                            new UnboundPropertyDescriptor(
+                                GetType(),
+                                "Density", "Density", category,
+                                "Higher numbers mean more objects are created within the same area"));
+                        _propertyDescriptors.Add(
+                            new UnboundPropertyDescriptor(
+                                GetType(),
+                                "ModelName", "Model Name", category,
+                                "Name of the model to create and destroy"));
+                    }
+
+                    return _propertyDescriptors;
+                }
+            }
+            List<System.ComponentModel.PropertyDescriptor> _propertyDescriptors;
+            #endregion
+        }
+
         public ScatterPlaceManipulator()
         {
+            ManipulatorContext = new ManipulatorSettings();
+
             ManipulatorInfo = new ManipulatorInfo(
-                "Scatter placements".Localize(),
-                "Scatter placements manipulator".Localize(),
+                "Scatter Placer".Localize(),
+                "Scatter Placer manipulator".Localize(),
                 LevelEditorCore.Resources.CubesImage,
                 Keys.None);
 
@@ -46,7 +106,7 @@ namespace RenderingInterop
             var game = (vc as NativeDesignControl).DesignView.Context.As<IGame>();
             if (game == null) return;
 
-            var op = m_helper.Perform(m_modelname, m_hoverPt, m_radius, m_density);
+            var op = m_helper.Perform(ManipulatorContext.ModelName, m_hoverPt, ManipulatorContext.Radius, ManipulatorContext.Density);
             foreach (var d in op._toBeDeleted)
             {
                 var adapter = GameEngine.GetAdapterFromId(d.Item1, d.Item2);
@@ -63,7 +123,7 @@ namespace RenderingInterop
             {
                 resource = d.Resolve(new Uri(
                     new Uri(Environment.CurrentDirectory + "\\"),
-                    m_modelname + ".dae"));
+                    ManipulatorContext.ModelName + ".dae"));
                 if (resource != null) break;
             }
 
@@ -84,16 +144,13 @@ namespace RenderingInterop
             }
         }
 
-        public override void OnEndDrag(ViewControl vc, Point scrPt)
-        {
-
-        }
+        public override void OnEndDrag(ViewControl vc, Point scrPt) {}
 
         public override void Render(ViewControl vc)
         {
             if (m_hasHoverPt)
             {
-                m_helper.Render(vc, m_hoverPt, m_radius);
+                m_helper.Render(vc, m_hoverPt, ManipulatorContext.Radius);
             }
         }
 
@@ -102,12 +159,16 @@ namespace RenderingInterop
             return null;
         }
 
+        public ManipulatorSettings ManipulatorContext
+        {
+            get;
+            private set;
+        }
+
         private XLELayer.ScatterPlaceManipulatorHelper m_helper;
-        private string m_modelname = "Game/Model/Nature/BushTree/BushE";
         private Vec3F m_hoverPt;
         private bool m_hasHoverPt;
-        private float m_radius = 50.0f;
-        private float m_density = 0.1f;
+
         private Random m_rng = new Random();
     }
 }

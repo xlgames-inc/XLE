@@ -17,13 +17,6 @@ namespace SceneEngine { class TerrainManager; }
 
 namespace XLELayer
 {
-    public interface class ITerrainControls
-    {
-    public:
-        property ActiveManipulatorContext^ ActiveContext 
-            { virtual void set(ActiveManipulatorContext^); }
-    };
-
     [Export(LevelEditorCore::IManipulator::typeid)]
     [Export(IInitializable::typeid)]
     [PartCreationPolicy(CreationPolicy::Shared)]
@@ -69,10 +62,17 @@ namespace XLELayer
             _domChangeInspector = gcnew DomChangeInspector(m_contextRegistry);
             _domChangeInspector->OnActiveContextChanged += gcnew DomChangeInspector::OnChangedDelegate(this, &TerrainManipulator::UpdateManipulatorContext);
             _domChangeInspector->OnDOMObjectChanged += gcnew DomChangeInspector::OnChangedDelegate(this, &TerrainManipulator::OnDOMChange);
-
-            _manipContext = gcnew ActiveManipulatorContext();
-            _controls->ActiveContext = _manipContext;
             _nativeManip = gcnew NativeManipulatorLayer(_manipContext);
+        }
+
+        TerrainManipulator()
+        {
+            _manipContext = gcnew ActiveManipulatorContext();
+        }
+
+        property ActiveManipulatorContext^ ManipulatorContext
+        {
+            ActiveManipulatorContext^ get() { return _manipContext; }
         }
 
     private:
@@ -106,12 +106,7 @@ namespace XLELayer
         NativeManipulatorLayer^ _nativeManip;
         ActiveManipulatorContext^ _manipContext;
         DomChangeInspector^ _domChangeInspector;
-
-        [Import(AllowDefault = false)]
-        ITerrainControls^ _controls;
-
-        [Import(AllowDefault = false)]
-        IContextRegistry^ m_contextRegistry;
+        [Import(AllowDefault = false)] IContextRegistry^ m_contextRegistry;
     };
 }
 

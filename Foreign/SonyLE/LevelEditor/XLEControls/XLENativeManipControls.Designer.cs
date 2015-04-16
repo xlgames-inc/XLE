@@ -1,6 +1,6 @@
 ﻿namespace LevelEditor.XLEControls
 {
-    partial class XLEManipControls
+    partial class XLENativeManipControls
     {
         /// <summary> 
         /// Required designer variable.
