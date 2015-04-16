@@ -4,7 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-namespace ModelViewer
+namespace ControlsLibrary.MaterialEditor
 {
     partial class HierchicalMaterialControl
     {
@@ -36,7 +36,7 @@ namespace ModelViewer
         {
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             this.treeView1 = new ComboTreeBox();
-            this.materialControl1 = new ModelViewer.Controls.MaterialControl();
+            this.materialControl1 = new MaterialControl();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
@@ -101,6 +101,6 @@ namespace ModelViewer
 
         private System.Windows.Forms.SplitContainer splitContainer1;
         private ComboTreeBox treeView1;
-        private Controls.MaterialControl materialControl1;
+        private MaterialControl materialControl1;
     }
 }

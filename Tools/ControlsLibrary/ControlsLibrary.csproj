@@ -1,0 +1,101 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{B7539653-6E9C-4493-8023-D4A2BFFCD8E2}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>ControlsLibrary</RootNamespace>
+    <AssemblyName>ControlsLibrary</AssemblyName>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <TargetFrameworkProfile>Client</TargetFrameworkProfile>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>..\..\Finals_DebugAny\</OutputPath>
+    <BaseIntermediateOutputPath>..\..\Output\ControlsLibrary\</BaseIntermediateOutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>..\..\Finals_ReleaseAny\</OutputPath>
+    <BaseIntermediateOutputPath>..\..\Output\ControlsLibrary\</BaseIntermediateOutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="DropDownControls">
+      <HintPath>..\..\Foreign\ForeignControls\Release\DropDownControls.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="MaterialEditor\HierchicalMaterialControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="MaterialEditor\HierchicalMaterialControl.Designer.cs">
+      <DependentUpon>HierchicalMaterialControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="LayerControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="LayerControl.Designer.cs">
+      <DependentUpon>LayerControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="MaterialEditor\MaterialControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="MaterialEditor\MaterialControl.Designer.cs">
+      <DependentUpon>MaterialControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="MaterialEditor\MaterialPreview.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="MaterialEditor\MaterialPreview.Designer.cs">
+      <DependentUpon>MaterialPreview.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="MaterialEditor\HierchicalMaterialControl.resx">
+      <DependentUpon>HierchicalMaterialControl.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="MaterialEditor\MaterialControl.resx">
+      <DependentUpon>MaterialControl.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="MaterialEditor\MaterialPreview.resx">
+      <DependentUpon>MaterialPreview.cs</DependentUpon>
+    </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\GUILayer\Project\GUILayer.vcxproj">
+      <Project>{e1e9a4c1-97a8-44b7-8279-d287313c5b6b}</Project>
+      <Name>GUILayer</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

@@ -4,7 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-namespace ModelViewer.Controls
+namespace ControlsLibrary.MaterialEditor
 {
     partial class MaterialPreview
     {

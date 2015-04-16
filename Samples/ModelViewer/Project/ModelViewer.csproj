@@ -29,42 +29,23 @@
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
-    <PlatformTarget>x86</PlatformTarget>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
     <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>..\..\..\Finals_Debug32\</OutputPath>
+    <OutputPath>..\..\..\Finals_DebugAny\</OutputPath>
     <BaseIntermediateOutputPath>..\..\..\Output\ModelViewer\</BaseIntermediateOutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
-    <PlatformTarget>x86</PlatformTarget>
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>..\..\..\Finals_Release32\</OutputPath>
-    <BaseIntermediateOutputPath>..\..\..\Output\ModelViewer\</BaseIntermediateOutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
-    <DebugSymbols>true</DebugSymbols>
-    <OutputPath>..\..\..\Finals_Debug64\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
     <DebugType>full</DebugType>
-    <PlatformTarget>x64</PlatformTarget>
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <ErrorReport>prompt</ErrorReport>
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
-    <OutputPath>bin\x64\Release\</OutputPath>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|AnyCPU'">
+    <OutputPath>..\..\..\Finals_ReleaseAny\</OutputPath>
+    <BaseIntermediateOutputPath>..\..\..\Output\ModelViewer\</BaseIntermediateOutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <Optimize>true</Optimize>
     <DebugType>pdbonly</DebugType>
-    <PlatformTarget>x64</PlatformTarget>
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <ErrorReport>prompt</ErrorReport>
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
@@ -100,29 +81,11 @@
     <Compile Include="..\MainForm.Designer.cs">
       <DependentUpon>MainForm.cs</DependentUpon>
     </Compile>
-    <Compile Include="Controls\MaterialControl.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="Controls\MaterialControl.Designer.cs">
-      <DependentUpon>MaterialControl.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Controls\MaterialPreview.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="Controls\MaterialPreview.Designer.cs">
-      <DependentUpon>MaterialPreview.cs</DependentUpon>
-    </Compile>
     <Compile Include="Form1.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Form1.Designer.cs">
       <DependentUpon>Form1.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Controls\HierchicalMaterialControl.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="Controls\HierchicalMaterialControl.Designer.cs">
-      <DependentUpon>HierchicalMaterialControl.cs</DependentUpon>
     </Compile>
     <Compile Include="LayerControl.cs">
       <SubType>UserControl</SubType>
@@ -157,17 +120,8 @@
     <EmbeddedResource Include="..\MainForm.resx">
       <DependentUpon>MainForm.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Controls\MaterialControl.resx">
-      <DependentUpon>MaterialControl.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Controls\MaterialPreview.resx">
-      <DependentUpon>MaterialPreview.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="Form1.resx">
       <DependentUpon>Form1.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Controls\HierchicalMaterialControl.resx">
-      <DependentUpon>HierchicalMaterialControl.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="ModalMaterialEditor.resx">
       <DependentUpon>ModalMaterialEditor.cs</DependentUpon>
@@ -210,6 +164,10 @@
     </BootstrapperPackage>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\..\Tools\ControlsLibrary\ControlsLibrary.csproj">
+      <Project>{b7539653-6e9c-4493-8023-d4a2bffcd8e2}</Project>
+      <Name>ControlsLibrary</Name>
+    </ProjectReference>
     <ProjectReference Include="..\..\..\Tools\GUILayer\Project\GUILayer.vcxproj">
       <Project>{e1e9a4c1-97a8-44b7-8279-d287313c5b6b}</Project>
       <Name>GUILayer</Name>

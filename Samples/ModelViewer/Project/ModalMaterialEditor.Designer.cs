@@ -34,7 +34,7 @@ namespace ModelViewer
         /// </summary>
         private void InitializeComponent()
         {
-            this.hierchicalMaterialControl1 = new ModelViewer.HierchicalMaterialControl();
+            this.hierchicalMaterialControl1 = new ControlsLibrary.MaterialEditor.HierchicalMaterialControl();
             this.SuspendLayout();
             // 
             // hierchicalMaterialControl1
@@ -59,6 +59,6 @@ namespace ModelViewer
 
         #endregion
 
-        private HierchicalMaterialControl hierchicalMaterialControl1;
+        private ControlsLibrary.MaterialEditor.HierchicalMaterialControl hierchicalMaterialControl1;
     }
 }

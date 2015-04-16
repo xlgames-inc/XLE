@@ -4,7 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-namespace ModelViewer.Controls
+namespace ControlsLibrary.MaterialEditor
 {
     partial class MaterialControl
     {
@@ -41,7 +41,7 @@ namespace ModelViewer.Controls
             this.shaderConstants = new System.Windows.Forms.DataGridView();
             this.materialParameterBox = new System.Windows.Forms.DataGridView();
             this.resourceBindings = new System.Windows.Forms.DataGridView();
-            this.materialPreview1 = new ModelViewer.Controls.MaterialPreview();
+            this.materialPreview1 = new MaterialPreview();
             this.splitContainer2 = new System.Windows.Forms.SplitContainer();
             this.splitContainer3 = new System.Windows.Forms.SplitContainer();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();

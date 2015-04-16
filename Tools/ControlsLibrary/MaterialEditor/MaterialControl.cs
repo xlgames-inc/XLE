@@ -13,7 +13,7 @@ using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 
-namespace ModelViewer.Controls
+namespace ControlsLibrary.MaterialEditor
 {
     public partial class MaterialControl : UserControl
     {
