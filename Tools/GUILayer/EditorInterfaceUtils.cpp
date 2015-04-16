@@ -9,6 +9,7 @@
 #include "EngineDevice.h"
 #include "NativeEngineDevice.h"
 #include "GUILayerUtil.h"
+#include "MarshalString.h"
 #include "ExportedNativeTypes.h"
 #include "../../SceneEngine/IntersectionTest.h"
 #include "../../SceneEngine/Terrain.h"
@@ -16,8 +17,11 @@
 #include "../../RenderCore/IDevice.h"
 #include "../../Assets/Assets.h"
 #include "../ToolsRig/ManipulatorsUtil.h"
+#include "../ToolsRig/PlacementsManipulators.h"
 // #include "../../ConsoleRig/Log.h"        (can't include in Win32 managed code)
 
+using namespace System;
+using namespace System::Collections::Generic;
 using namespace System::Runtime::InteropServices;
 
 namespace GUILayer
@@ -32,6 +36,18 @@ namespace GUILayer
 		float _worldSpaceCollisionY;
 		float _worldSpaceCollisionZ;
 	};
+
+    public value struct Vector3 sealed
+    {
+        property float X;
+        property float Y;
+        property float Z;
+
+        Vector3(float x, float y, float z) { X = x; Y = y; Z = z; }
+    };
+
+    static Float3 AsFloat3(Vector3 input) { return Float3(input.X, input.Y, input.Z); }
+    static Vector3 AsVector3(Float3 input) { return Vector3(input[0], input[1], input[2]); }
 
     void ObjectSet::Add(uint64 document, uint64 id)
     {
@@ -69,15 +85,14 @@ namespace GUILayer
 			RayIntersection(
 				IntersectionTestSceneWrapper^ testScene,
 				IntersectionTestContextWrapper^ testContext,
-				float startX, float startY, float startZ,
-				float endX, float endY, float endZ,
+				Vector3 start, Vector3 end,
 				unsigned filter)
 		{
 			TRY
 			{
 				auto firstResult = testScene->_scene->FirstRayIntersection(
 					*testContext->_context.get(),
-					std::make_pair(Float3(startX, startY, startZ), Float3(endX, endY, endZ)),
+					std::make_pair(AsFloat3(start), AsFloat3(end)),
 					filter);
 
 				if (firstResult._type != 0) {
@@ -162,7 +177,7 @@ namespace GUILayer
 		}
 
         static bool GetTerrainHeight(
-            float% result,
+            [Out] float% result,
 			IntersectionTestSceneWrapper^ testScene,
             float worldX, float worldY)
         {
@@ -174,9 +189,7 @@ namespace GUILayer
         }
 
         static bool GetTerrainUnderCursor(
-            [Out] float% intersectionX,
-            [Out] float% intersectionY,
-            [Out] float% intersectionZ,
+            [Out] Vector3% intersection,
             IntersectionTestContextWrapper^ context,
             IntersectionTestSceneWrapper^ testScene,
             unsigned ptx, unsigned pty)
@@ -185,9 +198,7 @@ namespace GUILayer
                 *context->_context.get(), UInt2(ptx, pty),
                 SceneEngine::IntersectionTestScene::Type::Terrain);
             if (test._type == SceneEngine::IntersectionTestScene::Type::Terrain) {
-                intersectionX = test._worldSpaceCollision[0];
-                intersectionY = test._worldSpaceCollision[1];
-                intersectionZ = test._worldSpaceCollision[2];
+                intersection = AsVector3(test._worldSpaceCollision);
                 return true;
             }
             return false;
@@ -195,13 +206,44 @@ namespace GUILayer
 
         static void RenderCylinderHighlight(
             SceneEngine::LightingParserContext& parsingContext, 
-            float centreX, float centreY, float centreZ, float radius)
+            Vector3 centre, float radius)
         {
             ToolsRig::RenderCylinderHighlight(
                 EngineDevice::GetInstance()->GetNative().GetRenderDevice()->GetImmediateContext().get(),
-                parsingContext, Float3(centreX, centreY, centreZ), radius);
+                parsingContext, AsFloat3(centre), radius);
         }
 
+        ref class ScatterPlaceOperation
+        {
+        public:
+            List<Tuple<uint64, uint64>^>^ _toBeDeleted;
+            List<Vector3>^ _creationPositions;
+        };
+
+        static ScatterPlaceOperation^ CalculateScatterOperation(
+            PlacementsEditorWrapper^ placements,
+            IntersectionTestSceneWrapper^ scene,
+            System::String^ modelName, 
+            Vector3 centre, float radius, float density)
+        {
+            std::vector<SceneEngine::PlacementGUID> toBeDeleted;
+            std::vector<Float3> spawnPositions;
+
+            ToolsRig::CalculateScatterOperation(
+                toBeDeleted, spawnPositions,
+                placements->GetNative(), scene->GetNative(), 
+                clix::marshalString<clix::E_UTF8>(modelName).c_str(),
+                AsFloat3(centre), radius, density);
+
+            auto result = gcnew ScatterPlaceOperation();
+            result->_toBeDeleted = gcnew List<Tuple<uint64, uint64>^>();
+            result->_creationPositions = gcnew List<Vector3>();
+            for (const auto& d:toBeDeleted) result->_toBeDeleted->Add(Tuple::Create(d.first, d.second & 0xffffffffull));
+            for (const auto& p:spawnPositions) result->_creationPositions->Add(Vector3(p[0], p[1], p[2]));
+
+            return result;
+        }
+        
         static unsigned AsTypeId(System::Type^ type)
         {
             if (type == bool::typeid)                   { return (unsigned)ImpliedTyping::TypeCat::Bool; }

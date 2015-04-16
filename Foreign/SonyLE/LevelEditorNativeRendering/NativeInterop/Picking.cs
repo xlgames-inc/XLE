@@ -79,8 +79,8 @@ namespace RenderingInterop.NativeInterop
                     results = GUILayer.EditorInterfaceUtils.RayIntersection(
                         scene,
                         context,
-                        ray.Origin.X, ray.Origin.Y, ray.Origin.Z,
-                        endPt.X, endPt.Y, endPt.Z, ~0u);
+                        XLELayer.XLELayerUtils.AsVector3(ray.Origin),
+                        XLELayer.XLELayerUtils.AsVector3(endPt), ~0u);
                 }
             }
 

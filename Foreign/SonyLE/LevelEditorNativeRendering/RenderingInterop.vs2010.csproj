@@ -55,6 +55,7 @@
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.Composition" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Design" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Drawing.Design" />
     <Reference Include="System.Windows.Forms" />
@@ -92,6 +93,7 @@
     <Compile Include="NativeInterop\RenderState.cs" />
     <Compile Include="NativeInterop\Structs.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="PropertyEditing\AssetProperties.cs" />
     <Compile Include="Resolvers\AssetResolver.cs" />
     <Compile Include="Resolvers\ResourcePreview.cs" />
     <Compile Include="Resolvers\TextureThumbnailResolver.cs" />

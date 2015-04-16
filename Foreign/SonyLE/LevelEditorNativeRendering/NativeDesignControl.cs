@@ -193,10 +193,8 @@ namespace RenderingInterop
                 {
                     var endPt = ray.Origin + Camera.FarZ * ray.Direction;
                     var results = GUILayer.EditorInterfaceUtils.RayIntersection(
-                        testScene,
-                        testContext,
-                        ray.Origin.X, ray.Origin.Y, ray.Origin.Z,
-                        endPt.X, endPt.Y, endPt.Z,
+                        testScene, testContext,
+                        XLELayer.XLELayerUtils.AsVector3(ray.Origin), XLELayer.XLELayerUtils.AsVector3(endPt),
                         1);
 
                     if (results != null) 

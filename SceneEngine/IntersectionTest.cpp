@@ -215,9 +215,25 @@ namespace SceneEngine
                     //          draw call.
                     auto count = trans->GetObjectCount();
                     for (unsigned c=0; c<count; ++c) {
+                        
+                            //  We only need to test the triangles if the bounding box is 
+                            //  intersecting the edge of the frustum... If the entire bounding
+                            //  box is within the frustum, then we must have a hit
+                        auto boundary = trans->GetLocalBoundingBox(c);
+                        auto boundaryTest = TestAABB(
+                            Combine(trans->GetObject(c)._localToWorld, worldToProjection),
+                            boundary.first, boundary.second);
+                        if (boundaryTest == AABBIntersection::Culled) continue; // (could happen because earlier tests were on the world space bounding box)
+
                         auto guid = trans->GetGuid(c);
-                        auto results = PlacementsIntersection(*metalContext.get(), stateContext, *_placements, guid);
-                        if (!results.empty()) {
+                        
+                        bool isInside = boundaryTest == AABBIntersection::Within;
+                        if (!isInside) {
+                            auto results = PlacementsIntersection(*metalContext.get(), stateContext, *_placements, guid);
+                            isInside = !results.empty();
+                        }
+
+                        if (isInside) {
                             Result r;
                             r._type = Type::Placement;
                             r._worldSpaceCollision = Float3(0.f, 0.f, 0.f);

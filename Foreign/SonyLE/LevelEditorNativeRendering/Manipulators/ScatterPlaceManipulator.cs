@@ -67,7 +67,9 @@ namespace RenderingInterop
                             new UnboundPropertyDescriptor(
                                 GetType(),
                                 "ModelName", "Model Name", category,
-                                "Name of the model to create and destroy"));
+                                "Name of the model to create and destroy",
+                                new Sce.Atf.Controls.PropertyEditing.FileUriEditor(),
+                                new PropertyEditing.AssetNameConverter()));
                     }
 
                     return _propertyDescriptors;
@@ -137,7 +139,7 @@ namespace RenderingInterop
                     {
                         resGob.As<DomNode>().InitializeExtensions();
                         game.AddChild(resGob);
-                        resGob.Translation = s;
+                        resGob.Translation = XLELayer.XLELayerUtils.AsVec3F(s);
                         resGob.Rotation = new Sce.Atf.VectorMath.Vec3F(0.0f, 0.0f, (float)(m_rng.NextDouble()) * 2.0f * 3.14159f);
                     }
                 }

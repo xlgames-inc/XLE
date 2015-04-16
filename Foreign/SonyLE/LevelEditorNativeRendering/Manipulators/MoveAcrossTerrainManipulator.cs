@@ -122,7 +122,7 @@ namespace RenderingInterop
                     float heightAboveTerrain = 0.0f;
                     float terrainHeight = 0.0f;
                     if (GUILayer.EditorInterfaceUtils.GetTerrainHeight(
-                        ref terrainHeight, intersectionScene, m_originalTranslations[k].X, m_originalTranslations[k].Y))
+                        out terrainHeight, intersectionScene, m_originalTranslations[k].X, m_originalTranslations[k].Y))
                     {
                         heightAboveTerrain = m_originalTranslations[k].Z - terrainHeight;
                     }
@@ -169,7 +169,7 @@ namespace RenderingInterop
                         Vec3F newWorldPos = m_originalTranslations[i] + translate;
                         float terrainHeight = 0.0f;
                         if (GUILayer.EditorInterfaceUtils.GetTerrainHeight(
-                            ref terrainHeight, intersectionScene, newWorldPos.X, newWorldPos.Y)) {
+                            out terrainHeight, intersectionScene, newWorldPos.X, newWorldPos.Y)) {
 
                             newWorldPos.Z = terrainHeight + (clampToSurface ? 0.0f : m_originalHeights[i]);
                             Vec3F localTranslation;
@@ -240,10 +240,8 @@ namespace RenderingInterop
 
                 var endPt = ray.Origin + vc.Camera.FarZ * ray.Direction;
                 var results = GUILayer.EditorInterfaceUtils.RayIntersection(
-                    testScene,
-                    testContext,
-                    ray.Origin.X, ray.Origin.Y, ray.Origin.Z,
-                    endPt.X, endPt.Y, endPt.Z,
+                    testScene, testContext,
+                    XLELayer.XLELayerUtils.AsVector3(ray.Origin), XLELayer.XLELayerUtils.AsVector3(endPt),
                     1);
             
                 if (results != null)

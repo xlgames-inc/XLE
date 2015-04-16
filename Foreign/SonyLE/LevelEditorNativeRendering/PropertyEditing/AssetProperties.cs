@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Design;
 
-namespace LevelEditor.PropertyEditing
+namespace RenderingInterop.PropertyEditing
 {
     public class AssetNameConverter : TypeConverter
     {

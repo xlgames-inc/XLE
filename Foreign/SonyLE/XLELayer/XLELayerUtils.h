@@ -17,11 +17,17 @@ using namespace Sce::Atf::Applications;
 
 namespace XLELayer
 {
-    static Float3 AsFloat3(Sce::Atf::VectorMath::Vec3F^ input) { return Float3(input->X, input->Y, input->Z); }
+    inline Float3 AsFloat3(Sce::Atf::VectorMath::Vec3F input) { return Float3(input.X, input.Y, input.Z); }
+
+    inline GUILayer::Vector3 AsVector3(Sce::Atf::VectorMath::Vec3F input) { return GUILayer::Vector3(input.X, input.Y, input.Z); }
+    inline Sce::Atf::VectorMath::Vec3F AsVec3F(GUILayer::Vector3 input) { return Sce::Atf::VectorMath::Vec3F(input.X, input.Y, input.Z); }
 
     public ref class XLELayerUtils
     {
     public:
+        static GUILayer::Vector3 AsVector3(Sce::Atf::VectorMath::Vec3F input) { return XLELayer::AsVector3(input); }
+        static Sce::Atf::VectorMath::Vec3F AsVec3F(GUILayer::Vector3 input)   { return XLELayer::AsVec3F(input); }
+
         static RenderCore::Techniques::CameraDesc AsCameraDesc(Sce::Atf::Rendering::Camera^ camera)
         {
             ToolsRig::VisCameraSettings visCam;
