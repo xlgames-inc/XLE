@@ -669,7 +669,7 @@ namespace SceneEngine
             auto materialHash = *(uint64*)PtrAdd(filenamesBuffer, obj._materialFilenameOffset);
             if (modelHash != _currentModel) {
                 _model = cache._modelScaffolds.Get(modelHash).get();
-                if (!_model) {
+                if (!_model || _model->GetDependencyValidation().GetValidationIndex() > 0) {
                     auto modelFilename = (const ResChar*)PtrAdd(filenamesBuffer, obj._modelFilenameOffset + sizeof(uint64));
                     auto newModel = CreateModelScaffold(modelFilename, modelFormat);
                     _model = newModel.get();
@@ -680,7 +680,7 @@ namespace SceneEngine
 
             if (materialHash != _currentMaterial) {
                 _material = cache._materialScaffolds.Get(materialHash).get();
-                if (!_material) {
+                if (!_material || _material->GetDependencyValidation().GetValidationIndex() > 0) {
                     std::shared_ptr<MaterialScaffold> newMaterial;
                     auto materialFilename = (const ResChar*)PtrAdd(filenamesBuffer, obj._materialFilenameOffset + sizeof(uint64));
                     newMaterial = CreateMaterialScaffold(materialFilename, modelFormat);

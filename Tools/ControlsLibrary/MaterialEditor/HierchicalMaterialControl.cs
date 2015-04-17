@@ -50,11 +50,8 @@ namespace ControlsLibrary.MaterialEditor
         {
                 //  When the selected node changes, we want to 
                 //  change the object that we're currently editing...
-            var mat = treeView1.SelectedNode.Tag as GUILayer.RawMaterial;
-            if (mat != null)
-            {
-                materialControl1.Object = mat;
-            }
+            var mat = (treeView1.SelectedNode!=null) ? (treeView1.SelectedNode.Tag as GUILayer.RawMaterial) : null;
+            materialControl1.Object = mat;
         }
 
         protected void AddComboBoxChildren(

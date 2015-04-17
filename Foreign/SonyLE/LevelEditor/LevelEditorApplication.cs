@@ -166,6 +166,7 @@ namespace LevelEditor
                 typeof(XLELayer.PlacementManipulator),
                 typeof(RenderingInterop.MoveAcrossTerrainManipulator),
                 typeof(XLEControls.XLEManipCtrlWin),
+                typeof(XLEControls.XLEMaterialInspector),
                 typeof(XLELayer.XLEAssetService),
                 typeof(RenderingInterop.ScatterPlaceManipulator),
                 typeof(RenderingInterop.ActiveMaterialContext),

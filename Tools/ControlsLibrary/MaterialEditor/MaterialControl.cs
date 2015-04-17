@@ -116,14 +116,23 @@ namespace ControlsLibrary.MaterialEditor
         {
             set
             {
-                materialParameterBox.DataSource = value.MaterialParameterBox;
-                shaderConstants.DataSource = value.ShaderConstants;
-                resourceBindings.DataSource = value.ResourceBindings;
+                if (value != null)
+                {
+                    materialParameterBox.DataSource = value.MaterialParameterBox;
+                    shaderConstants.DataSource = value.ShaderConstants;
+                    resourceBindings.DataSource = value.ResourceBindings;
+                }
+                else
+                {
+                    materialParameterBox.DataSource = null;
+                    shaderConstants.DataSource =  null;
+                    resourceBindings.DataSource = null;
+                }
                 materialPreview1.Object = value;
 
                 checkBox1.DataBindings.Clear();
                 checkBox2.DataBindings.Clear();
-                if (value.StateSet != null) 
+                if (value != null && value.StateSet != null) 
                 {
                     checkBox1.DataBindings.Add("CheckState", value.StateSet, "DoubleSided", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged);
                     checkBox2.DataBindings.Add("CheckState", value.StateSet, "Wireframe", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged);

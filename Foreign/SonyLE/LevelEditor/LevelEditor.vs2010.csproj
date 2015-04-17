@@ -150,6 +150,7 @@
     <Compile Include="XLEControls\XLEManipCtrlWin.cs">
       <SubType>UserControl</SubType>
     </Compile>
+    <Compile Include="XLEControls\XLEMaterialInspector.cs" />
     <Compile Include="XLEControls\XLENativeManipControls.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -177,6 +178,10 @@
     <Compile Include="schemas\Schema.cs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\..\Tools\ControlsLibrary\ControlsLibrary.csproj">
+      <Project>{b7539653-6e9c-4493-8023-d4a2bffcd8e2}</Project>
+      <Name>ControlsLibrary</Name>
+    </ProjectReference>
     <ProjectReference Include="..\..\..\Tools\GUILayer\Project\GUILayer.vcxproj">
       <Project>{e1e9a4c1-97a8-44b7-8279-d287313c5b6b}</Project>
       <Name>GUILayer</Name>

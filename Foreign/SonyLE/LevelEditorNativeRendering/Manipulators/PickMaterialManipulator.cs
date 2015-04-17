@@ -21,7 +21,21 @@ namespace RenderingInterop
     [PartCreationPolicy(CreationPolicy.Shared)]
     public class ActiveMaterialContext
     {
-        public string MaterialName { get; set; }
+        public string MaterialName 
+        { 
+            get { return m_materialName; }
+            set {
+                if (value != m_materialName) 
+                {
+                    m_materialName = value; 
+                    OnChange();
+                }
+            }
+        }
+        public delegate void OnChangeDelegate();
+        public event OnChangeDelegate OnChange;
+
+        private string m_materialName = null;
     }
 
     [Export(typeof(IManipulator))]
