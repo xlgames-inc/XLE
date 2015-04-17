@@ -31,7 +31,13 @@ static const uint3 ColourList[47] =
 	uint3(79,67,89), uint3(135,166,124)
 };
 
-Texture2D<uint>		StencilInput;
+#define INPUT_MODE 1
+
+#if INPUT_MODE == 0
+	Texture2D<uint>		StencilInput;
+#elif INPUT_MODE == 1
+ 	Texture2D		StencilInput;
+#endif
 
 static const uint DummyMarker = 0xffffffff;
 
@@ -42,7 +48,11 @@ uint GetHighlightMarker()
 
 uint Marker(uint2 pos)
 {
-	uint stencilValue = StencilInput.Load(uint3(pos, 0));
+	#if INPUT_MODE == 0
+		uint stencilValue = StencilInput.Load(uint3(pos, 0));
+	#elif INPUT_MODE == 1
+		uint stencilValue = uint(255.f * StencilInput.Load(uint3(pos, 0)).a);
+	#endif
 	if (stencilValue == 0) { return DummyMarker; }
 
 	uint result = StencilToMarkerMap[stencilValue%256].x;
@@ -88,5 +98,6 @@ float4 OutlineByStencil(float4 position : SV_Position, float2 texCoord : TEXCOOR
 	}
 
 	float alpha = max(abs(dhdp.x), abs(dhdp.y));
+	alpha = 1.0f - pow(1.0f-alpha, 8.f);
 	return float4(alpha * OutlineColour, alpha);
 }

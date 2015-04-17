@@ -181,6 +181,24 @@ namespace ToolsRig
         _pimpl->_srv = offscreen._srv;
     }
 
+    void BinaryHighlight::FinishWithOutlineAndOverlay(RenderCore::Metal::DeviceContext& metalContext, Float3 outlineColor, unsigned overlayColor)
+    {
+        static Float3 highlightColO(1.5f, 1.35f, .7f);
+        static unsigned overlayColO = 1;
+
+        outlineColor = highlightColO;
+        overlayColor = overlayColO;
+
+        using namespace RenderCore;
+        _pimpl->_savedTargets.ResetToOldTargets(&metalContext);
+
+        HighlightByStencilSettings settings;
+        settings._outlineColor = outlineColor;
+        for (unsigned c=1; c<dimof(settings._stencilToMarkerMap); ++c) settings._stencilToMarkerMap[c] = UInt4(overlayColor, overlayColor, overlayColor, overlayColor);
+
+        ExecuteHighlightByStencil(metalContext, _pimpl->_srv, settings, false);
+    }
+
     void BinaryHighlight::FinishWithOutline(RenderCore::Metal::DeviceContext& metalContext, Float3 outlineColor)
     {
         using namespace RenderCore;

@@ -29,6 +29,14 @@ namespace ToolsRig
         const SceneEngine::PlacementGUID* filterEnd,
         uint64 materialGuid = ~0ull);
 
+    void Placements_RenderFiltered(
+        RenderCore::Metal::DeviceContext& metalContext,
+        RenderCore::Techniques::ParsingContext& parserContext,
+        SceneEngine::PlacementsEditor* editor,
+        const SceneEngine::PlacementGUID* filterBegin,
+        const SceneEngine::PlacementGUID* filterEnd,
+        uint64 materialGuid = ~0ull);
+
     void RenderCylinderHighlight(
         RenderCore::IThreadContext& threadContext, 
         RenderCore::Techniques::ParsingContext& parserContext,

@@ -602,7 +602,8 @@ namespace ToolsRig
 
     ModelVisSettings::ModelVisSettings()
     {
-        _modelName = "game/model/galleon/galleon.dae";
+        // _modelName = "game/model/galleon/galleon.dae";
+        _modelName = "Game/Model/Nature/BushTree/BushE";
         _pendingCameraAlignToModel = true;
         _doHighlightWireframe = false;
         _highlightRay = std::make_pair(Zero<Float3>(), Zero<Float3>());

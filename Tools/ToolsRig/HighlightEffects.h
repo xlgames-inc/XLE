@@ -47,6 +47,9 @@ namespace ToolsRig
         void FinishWithOutline(
             RenderCore::Metal::DeviceContext& metalContext,
             Float3 outlineColor);
+        void FinishWithOutlineAndOverlay(
+            RenderCore::Metal::DeviceContext& metalContext, 
+            Float3 outlineColor, unsigned overlayColor);
         
         BinaryHighlight(RenderCore::Metal::DeviceContext& metalContext);
         ~BinaryHighlight();

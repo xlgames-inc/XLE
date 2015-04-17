@@ -13,6 +13,8 @@
 #include "CLIXAutoPtr.h"
 #include "ExportedNativeTypes.h"
 #include "../ToolsRig/ManipulatorsUtil.h"
+#include "../ToolsRig/ManipulatorsRender.h"
+#include "../ToolsRig/HighlightEffects.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/IDevice.h"
@@ -27,7 +29,6 @@
 
 #include "../../Assets/Assets.h"
 #include "../../RenderCore/Techniques/Techniques.h"
-#include "../ToolsRig/ManipulatorsRender.h"
 #include "../../SceneEngine/LightingParserContext.h"
 
 namespace GUILayer
@@ -350,9 +351,22 @@ namespace GUILayer
             ObjectSet^ highlight, uint64 materialGuid)
         {
             if (highlight == nullptr) {
-                ToolsRig::Placements_RenderHighlight(
-                    context->GetThreadContext(), context->GetParsingContext(), &placements->GetNative(),
-                    nullptr, nullptr, materialGuid);
+                TRY {
+                    auto& metalContext = context->GetDevContext();
+                    ToolsRig::BinaryHighlight highlight(metalContext);
+                    ToolsRig::Placements_RenderFiltered(
+                        metalContext, 
+                        context->GetParsingContext(), &placements->GetNative(), nullptr, nullptr, materialGuid);
+
+                    const Float3 highlightCol(.75f, .8f, 0.4f);
+                    const unsigned overlayCol = 2;
+
+                    highlight.FinishWithOutlineAndOverlay(metalContext, highlightCol, overlayCol);
+                }
+                CATCH (const ::Assets::Exceptions::InvalidResource&) {} 
+                CATCH (const ::Assets::Exceptions::PendingResource&) {} 
+                CATCH_END
+
             } else {
                 if (highlight->IsEmpty()) return;
 

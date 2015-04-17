@@ -20,7 +20,7 @@
 
 namespace ToolsRig
 {
-    void RenderFilteredPlacements(
+    void Placements_RenderFiltered(
         RenderCore::Metal::DeviceContext& metalContext,
         RenderCore::Techniques::ParsingContext& parserContext,
         SceneEngine::PlacementsEditor* editor,
@@ -47,8 +47,8 @@ namespace ToolsRig
         TRY {
             auto& metalContext = *RenderCore::Metal::DeviceContext::Get(threadContext);
             BinaryHighlight highlight(metalContext);
-            RenderFilteredPlacements(metalContext, parserContext, editor, filterBegin, filterEnd, materialGuid);
-            highlight.FinishWithOutline(metalContext, Float3(1.5f, 1.35f, .7f));
+            Placements_RenderFiltered(metalContext, parserContext, editor, filterBegin, filterEnd, materialGuid);
+            highlight.FinishWithOutline(metalContext, Float3(.65f, .8f, 1.5f));
         }
         CATCH (const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); } 
         CATCH (const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); } 

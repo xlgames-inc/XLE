@@ -8,6 +8,7 @@
 #include "../MainGeometry.h"
 #include "../Surface.h"
 #include "../TransformAlgorithm.h"
+#include "../Vegetation/WindAnim.h"
 
 	// HACK -- disabling this fog functionality for the time being
 #if OUTPUT_FOG_COLOR == 1
@@ -25,11 +26,11 @@ VSOutput main(VSInput input)
 
 	#if GEO_HAS_INSTANCE_ID==1
 		float3 worldPosition = InstanceOffsets[input.instanceId] + localPosition;
+		float3 objectCentreWorld = InstanceOffsets[input.instanceId];
 	#else
 		float3 worldPosition = mul(LocalToWorld, float4(localPosition,1)).xyz;
+		float3 objectCentreWorld = float3(LocalToWorld[0][3], LocalToWorld[1][3], LocalToWorld[2][3]);
 	#endif
-
-	output.position			= mul(WorldToClip, float4(worldPosition,1));
 
 	#if OUTPUT_COLOUR==1
 		output.colour = GetColour(input);
@@ -56,6 +57,10 @@ VSOutput main(VSInput input)
 	#if (OUTPUT_NORMAL==1)
 		output.normal = worldNormal;
 	#endif
+
+	worldPosition = PerformWindBending(worldPosition, worldNormal, objectCentreWorld, float3(1,0,0), GetColour(input));
+
+	output.position = mul(WorldToClip, float4(worldPosition,1));
 
 	#if OUTPUT_LOCAL_TANGENT_FRAME==1
 		output.localTangent = GetLocalTangent(input);
