@@ -94,6 +94,7 @@ namespace RenderCore { namespace Assets
 
     class AnimationImmutableData;
     class SkeletonBinding;
+    class PreparedModelDrawCalls;
 
     /// <summary>Creates platform resources and renders a model<summary>
     /// ModelRenderer is used to render a model. Though the two classes work together, it is 
@@ -132,24 +133,15 @@ namespace RenderCore { namespace Assets
             PreparedAnimation*      preparedAnimation = nullptr) const;
 
             ////////////////////////////////////////////////////////////
-        class SortedModelDrawCalls
-        {
-        public:
-            class Entry;
-            std::vector<Entry> _entries;
-            SortedModelDrawCalls();
-            ~SortedModelDrawCalls();
-            void Reset();
-        };
         void Prepare(
-            SortedModelDrawCalls& dest, 
+            PreparedModelDrawCalls& dest, 
             const SharedStateSet& sharedStateSet, 
             const Float4x4& modelToWorld,
             const MeshToModel*  transforms = nullptr);
         static void RenderPrepared(
             const ModelRendererContext& context,
             const SharedStateSet&       sharedStateSet,
-            SortedModelDrawCalls&       drawCalls);
+            PreparedModelDrawCalls&       drawCalls);
 
             ////////////////////////////////////////////////////////////
         class PreparedAnimation : noncopyable
@@ -186,7 +178,6 @@ namespace RenderCore { namespace Assets
     protected:
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
-        friend class SortedModelDrawCalls;
     };
 
 ////////////////////////////////////////////////////////////////////////////////////////////

@@ -35,6 +35,7 @@ namespace GUILayer
         EditorDynamicInterface::ObjectId _object;
         Vector3 _worldSpaceCollision;
         float _distance;
+        uint64 _materialGuid;
         String^ _materialName;
         unsigned _drawCallIndex;
     };
@@ -108,6 +109,7 @@ namespace GUILayer
                     record->_object = firstResult._objectGuid.second;
                     record->_worldSpaceCollision = AsVector3(firstResult._worldSpaceCollision);
                     record->_distance = firstResult._distance;
+                    record->_materialGuid = firstResult._materialGuid;
                     record->_materialName = clix::marshalString<clix::E_UTF8>(firstResult._materialName);
                     record->_drawCallIndex = firstResult._drawCallIndex;
 

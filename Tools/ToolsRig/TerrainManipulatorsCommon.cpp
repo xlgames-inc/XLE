@@ -6,18 +6,13 @@
 
 #include "TerrainManipulatorsCommon.h"
 #include "ManipulatorsUtil.h"
+#include "ManipulatorsRender.h"
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../SceneEngine/IntersectionTest.h"
 #include "../../SceneEngine/LightingParserContext.h"
 #include "../../SceneEngine/Terrain.h"
-#include "../../RenderCore/Techniques/Techniques.h"
-#include "../../RenderCore/Techniques/CommonResources.h"
-#include "../../RenderCore/Metal/Shader.h"
-#include "../../RenderCore/Metal/InputLayout.h"
 #include "../../Utility/TimeUtils.h"
-
-#include "../../RenderCore/DX11/Metal/DX11Utils.h"
 
 static unsigned FrameRenderCount;
 
@@ -90,73 +85,6 @@ namespace ToolsRig
         return false;
     }
 
-    void RenderCylinderHighlight(
-        RenderCore::Metal::DeviceContext* context, 
-        RenderCore::Techniques::ParsingContext& parserContext,
-        const Float3& centre, float radius)
-    {
-        using namespace RenderCore::Metal;
-            // unbind the depth buffer
-        SceneEngine::SavedTargets savedTargets(context);
-        context->GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr);
-
-            // create shader resource view for the depth buffer
-        ShaderResourceView depthSrv;
-        if (savedTargets.GetDepthStencilView())
-            depthSrv = ShaderResourceView(ExtractResource<ID3D::Resource>(
-                savedTargets.GetDepthStencilView()).get(), 
-                (NativeFormat::Enum)DXGI_FORMAT_R24_UNORM_X8_TYPELESS);     // note -- assuming D24S8 depth buffer! We need a better way to get the depth srv
-
-        TRY
-        {
-                // note -- we might need access to the MSAA defines for this shader
-            auto& shaderProgram = Assets::GetAssetDep<ShaderProgram>(
-                "game/xleres/basic2D.vsh:fullscreen_viewfrustumvector:vs_*",
-                "game/xleres/ui/terrainmanipulators.sh:ps_circlehighlight:ps_*");
-            
-            struct HighlightParameters
-            {
-                Float3 _center;
-                float _radius;
-            } highlightParameters = { centre, radius };
-            ConstantBufferPacket constantBufferPackets[2];
-            constantBufferPackets[0] = RenderCore::MakeSharedPkt(highlightParameters);
-
-            auto& circleHighlight = Assets::GetAssetDep<DeferredShaderResource>("game/xleres/DefaultResources/circlehighlight.png");
-            const ShaderResourceView* resources[] = { &depthSrv, &circleHighlight.GetShaderResource() };
-
-            BoundUniforms boundLayout(shaderProgram);
-            RenderCore::Techniques::TechniqueContext::BindGlobalUniforms(boundLayout);
-            boundLayout.BindConstantBuffer(Hash64("CircleHighlightParameters"), 0, 1);
-            boundLayout.BindShaderResource(Hash64("DepthTexture"), 0, 1);
-            boundLayout.BindShaderResource(Hash64("HighlightResource"), 1, 1);
-
-            context->Bind(shaderProgram);
-            boundLayout.Apply(*context, 
-                parserContext.GetGlobalUniformsStream(),
-                UniformsStream(constantBufferPackets, nullptr, dimof(constantBufferPackets), resources, dimof(resources)));
-
-            context->Bind(RenderCore::Techniques::CommonResources()._blendAlphaPremultiplied);
-            context->Bind(RenderCore::Techniques::CommonResources()._dssDisable);
-            context->Bind(Topology::TriangleStrip);
-            context->GetUnderlying()->IASetInputLayout(nullptr);
-
-                // note --  this will render a full screen quad. we could render cylinder geometry instead,
-                //          because this decal only affects the area within a cylinder. But it's just for
-                //          tools, so the easy way should be fine.
-            context->Draw(4);
-
-            ID3D::ShaderResourceView* srv = nullptr;
-            context->GetUnderlying()->PSSetShaderResources(3, 1, &srv);
-        } 
-        CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
-        CATCH(...) {} 
-        CATCH_END
-
-        savedTargets.ResetToOldTargets(context);
-    }
-
     void    CommonManipulator::Render(
                     RenderCore::IThreadContext* context, 
                     SceneEngine::LightingParserContext& parserContext)
@@ -168,8 +96,7 @@ namespace ToolsRig
             //  geometry.
         if (_currentWorldSpaceTarget.second) {
             RenderCylinderHighlight(
-                RenderCore::Metal::DeviceContext::Get(*context).get(), 
-                parserContext, _currentWorldSpaceTarget.first, _size);
+                *context, parserContext, _currentWorldSpaceTarget.first, _size);
         }
 		++FrameRenderCount;
     }
@@ -245,80 +172,19 @@ namespace ToolsRig
         using namespace RenderCore::Metal;
         if (_isDragging && _secondAnchor.second) {
 
-            auto devContext = RenderCore::Metal::DeviceContext::Get(*context);
-                
-                // unbind the depth buffer
-            SceneEngine::SavedTargets savedTargets(devContext.get());
-            devContext->GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr);
+                // clamp anchor values to the terrain coords size
+            auto& coords = _terrainManager->GetCoords();
+            Float2 faTerrain = coords.WorldSpaceToTerrainCoords(Truncate(_firstAnchor));
+            Float2 fsTerrain = coords.WorldSpaceToTerrainCoords(Truncate(_secondAnchor.first));
+            Float2 terrainCoordsMins(std::min(faTerrain[0], fsTerrain[0]), std::min(faTerrain[1], fsTerrain[1]));
+            Float2 terrainCoordsMaxs(std::max(faTerrain[0], fsTerrain[0]), std::max(faTerrain[1], fsTerrain[1]));
+            Float2 faWorld = coords.TerrainCoordsToWorldSpace(RoundDownToInteger(terrainCoordsMins));
+            Float2 fsWorld = coords.TerrainCoordsToWorldSpace(RoundUpToInteger(terrainCoordsMaxs));
 
-                // create shader resource view for the depth buffer
-            ShaderResourceView depthSrv;
-            if (savedTargets.GetDepthStencilView())
-                depthSrv = ShaderResourceView(ExtractResource<ID3D::Resource>(
-                    savedTargets.GetDepthStencilView()).get(), 
-                    (NativeFormat::Enum)DXGI_FORMAT_R24_UNORM_X8_TYPELESS);     // note -- assuming D24S8 depth buffer! We need a better way to get the depth srv
-
-            TRY
-            {
-                    // note -- we might need access to the MSAA defines for this shader
-                auto& shaderProgram = Assets::GetAssetDep<ShaderProgram>(
-                    "game/xleres/basic2D.vsh:fullscreen_viewfrustumvector:vs_*",
-                    "game/xleres/ui/terrainmanipulators.sh:ps_rectanglehighlight:ps_*");
-
-                    // clamp anchor values to the terrain coords size
-                auto& coords = _terrainManager->GetCoords();
-                Float2 faTerrain = coords.WorldSpaceToTerrainCoords(Truncate(_firstAnchor));
-                Float2 fsTerrain = coords.WorldSpaceToTerrainCoords(Truncate(_secondAnchor.first));
-                Float2 terrainCoordsMins(std::min(faTerrain[0], fsTerrain[0]), std::min(faTerrain[1], fsTerrain[1]));
-                Float2 terrainCoordsMaxs(std::max(faTerrain[0], fsTerrain[0]), std::max(faTerrain[1], fsTerrain[1]));
-                Float2 faWorld = coords.TerrainCoordsToWorldSpace(RoundDownToInteger(terrainCoordsMins));
-                Float2 fsWorld = coords.TerrainCoordsToWorldSpace(RoundUpToInteger(terrainCoordsMaxs));
-            
-                struct HighlightParameters
-                {
-                    Float3 _mins; float _dummy0;
-                    Float3 _maxs; float _dummy1;
-                } highlightParameters = { 
-                    Float3(std::min(faWorld[0], fsWorld[0]), std::min(faWorld[1], fsWorld[1]), 0.f), 0.f, 
-                    Float3(std::max(faWorld[0], fsWorld[0]), std::max(faWorld[1], fsWorld[1]), 0.f), 0.f
-                };
-                ConstantBufferPacket constantBufferPackets[2];
-                constantBufferPackets[0] = RenderCore::MakeSharedPkt(highlightParameters);
-
-                auto& circleHighlight = Assets::GetAssetDep<DeferredShaderResource>("game/xleres/DefaultResources/circlehighlight.png");
-                const ShaderResourceView* resources[] = { &depthSrv, &circleHighlight.GetShaderResource() };
-
-                BoundUniforms boundLayout(shaderProgram);
-                RenderCore::Techniques::TechniqueContext::BindGlobalUniforms(boundLayout);
-                boundLayout.BindConstantBuffer(Hash64("RectangleHighlightParameters"), 0, 1);
-                boundLayout.BindShaderResource(Hash64("DepthTexture"), 0, 1);
-                boundLayout.BindShaderResource(Hash64("HighlightResource"), 1, 1);
-
-                devContext->Bind(shaderProgram);
-                boundLayout.Apply(
-                    *devContext.get(), 
-                    parserContext.GetGlobalUniformsStream(),
-                    UniformsStream(constantBufferPackets, nullptr, dimof(constantBufferPackets), resources, dimof(resources)));
-
-                devContext->Bind(RenderCore::Techniques::CommonResources()._blendAlphaPremultiplied);
-                devContext->Bind(RenderCore::Techniques::CommonResources()._dssDisable);
-                devContext->Bind(Topology::TriangleStrip);
-                devContext->GetUnderlying()->IASetInputLayout(nullptr);
-
-                    // note --  this will render a full screen quad. we could render cylinder geometry instead,
-                    //          because this decal only affects the area within a cylinder. But it's just for
-                    //          tools, so the easy way should be fine.
-                devContext->Draw(4);
-
-                ID3D::ShaderResourceView* srv = nullptr;
-                devContext->GetUnderlying()->PSSetShaderResources(3, 1, &srv);
-            } 
-            CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
-            CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
-            CATCH(...) {} 
-            CATCH_END
-
-            savedTargets.ResetToOldTargets(devContext.get());
+            RenderRectangleHighlight(
+                *context, parserContext,
+                Float3(std::min(faWorld[0], fsWorld[0]), std::min(faWorld[1], fsWorld[1]), 0.f),
+                Float3(std::max(faWorld[0], fsWorld[0]), std::max(faWorld[1], fsWorld[1]), 0.f));
         }
     }
 

@@ -8,6 +8,8 @@
     <ClCompile Include="..\MaterialVisualisation.cpp" />
     <ClCompile Include="..\TerrainManipulatorsCommon.cpp" />
     <ClCompile Include="..\TerrainManipulatorsInterface.cpp" />
+    <ClCompile Include="..\HighlightEffects.cpp" />
+    <ClCompile Include="..\ManipulatorsRender.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\BasicManipulators.h" />
@@ -20,5 +22,7 @@
     <ClInclude Include="..\IManipulator.h" />
     <ClInclude Include="..\TerrainManipulatorsInterface.h" />
     <ClInclude Include="..\TerrainManipulators.h" />
+    <ClInclude Include="..\HighlightEffects.h" />
+    <ClInclude Include="..\ManipulatorsRender.h" />
   </ItemGroup>
 </Project>

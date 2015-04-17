@@ -6,6 +6,7 @@
 
 #include "ModelRunTime.h"
 #include "ModelRunTimeInternal.h"
+#include "PreparedModelDrawCalls.h"
 #include "MaterialScaffold.h"
 #include "TransformationCommands.h"
 #include "AssetUtils.h"     // maybe only needed for chunk ids
@@ -1040,36 +1041,7 @@ namespace RenderCore { namespace Assets
 
 ////////////////////////////////////////////////////////////////////////////////
 
-    class ModelRenderer::SortedModelDrawCalls::Entry
-    {
-    public:
-        unsigned        _shaderVariationHash;
-
-        ModelRenderer*  _renderer;
-        unsigned        _drawCallIndex;
-        Float4x4        _meshToWorld;
-
-        unsigned        _indexCount, _firstIndex, _firstVertex;
-        Metal::Topology::Enum        _topology;
-
-        uint64          _materialGuid;
-        
-        ModelRenderer::Pimpl::Mesh* _mesh;
-    };
-
-    void ModelRenderer::SortedModelDrawCalls::Reset() 
-    {
-        _entries.erase(_entries.begin(), _entries.end());
-    }
-
-    ModelRenderer::SortedModelDrawCalls::SortedModelDrawCalls() 
-    {
-        _entries.reserve(10*1000);
-    }
-
-    ModelRenderer::SortedModelDrawCalls::~SortedModelDrawCalls() {}
-
-    bool CompareDrawCall(const ModelRenderer::SortedModelDrawCalls::Entry& lhs, const ModelRenderer::SortedModelDrawCalls::Entry& rhs)
+    bool CompareDrawCall(const PreparedModelDrawCallEntry& lhs, const PreparedModelDrawCallEntry& rhs)
     {
         if (lhs._shaderVariationHash == rhs._shaderVariationHash) {
             if (lhs._renderer == rhs._renderer) {
@@ -1084,7 +1056,7 @@ namespace RenderCore { namespace Assets
     }
 
     void    ModelRenderer::Prepare(
-        SortedModelDrawCalls& dest, 
+        PreparedModelDrawCalls& dest, 
         const SharedStateSet& sharedStateSet, 
         const Float4x4& modelToWorld,
         const MeshToModel* transforms)
@@ -1108,7 +1080,7 @@ namespace RenderCore { namespace Assets
 
             unsigned techniqueInterface = mesh->_techniqueInterface;
 
-            SortedModelDrawCalls::Entry entry;
+            PreparedModelDrawCallEntry entry;
             entry._drawCallIndex = drawCallIndex;
             entry._renderer = this;
             if (transforms) {
@@ -1133,7 +1105,7 @@ namespace RenderCore { namespace Assets
         void WriteLocalTransform(
             void* dest, 
             const ModelRendererContext& context, 
-            const ModelRenderer::SortedModelDrawCalls::Entry& d)
+            const PreparedModelDrawCallEntry& d)
     {
         auto* dst = (Techniques::LocalTransformConstants*)dest;
 
@@ -1155,7 +1127,7 @@ namespace RenderCore { namespace Assets
     void ModelRenderer::RenderPrepared(
         const ModelRendererContext& context,
         const SharedStateSet&       sharedStateSet,
-        SortedModelDrawCalls&       drawCalls)
+        PreparedModelDrawCalls&       drawCalls)
     {
         if (drawCalls._entries.empty()) return;
 
@@ -1185,8 +1157,9 @@ namespace RenderCore { namespace Assets
                 //          sorting priority instead... That might reduce the API thrashing
                 //          in some cases.
             if (currentVariationHash != d->_shaderVariationHash) {
+                auto& mesh = *(const Pimpl::Mesh*)d->_mesh;
                 boundUniforms = sharedStateSet.BeginVariation(
-                    context, drawCallRes._shaderName, d->_mesh->_techniqueInterface, drawCallRes._geoParamBox, 
+                    context, drawCallRes._shaderName, mesh._techniqueInterface, drawCallRes._geoParamBox, 
                     drawCallRes._materialParamBox);
                 currentVariationHash = d->_shaderVariationHash;
                 currentTextureSet = ~unsigned(0x0);
@@ -1208,10 +1181,11 @@ namespace RenderCore { namespace Assets
             }
             
             if (currentMesh != d->_mesh) {
-                context._context->Bind(renderer._pimpl->_indexBuffer, Metal::NativeFormat::Enum(d->_mesh->_indexFormat), d->_mesh->_ibOffset);
+                auto& mesh = *(const Pimpl::Mesh*)d->_mesh;
+                context._context->Bind(renderer._pimpl->_indexBuffer, Metal::NativeFormat::Enum(mesh._indexFormat), mesh._ibOffset);
                 context._context->Bind(ResourceList<Metal::VertexBuffer, 1>(std::make_tuple(std::ref(renderer._pimpl->_vertexBuffer))), 
-                    d->_mesh->_vertexStride, d->_mesh->_vbOffset);
-                currentMesh = d->_mesh;
+                    mesh._vertexStride, mesh._vbOffset);
+                currentMesh = &mesh;
                 currentTextureSet = ~unsigned(0x0);
             }
 
@@ -1229,7 +1203,7 @@ namespace RenderCore { namespace Assets
                 currentConstantBufferIndex = constantBufferIndex;
             }
 
-            context._context->Bind(d->_topology);
+            context._context->Bind((Metal::Topology::Enum)d->_topology);
             context._context->DrawIndexed(d->_indexCount, d->_firstIndex, d->_firstVertex);
         }
     }

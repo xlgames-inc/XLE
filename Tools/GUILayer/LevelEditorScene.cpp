@@ -15,6 +15,7 @@
 #include "ExportedNativeTypes.h"
 #include "../ToolsRig/VisualisationUtils.h"     // for AsCameraDesc
 #include "../ToolsRig/PlacementsManipulators.h"     // just needed for destructors referenced in PlacementGobInterface.h
+#include "../ToolsRig/ManipulatorsRender.h"
 #include "../../SceneEngine/PlacementsManager.h"
 #include "../../SceneEngine/Terrain.h"
 #include "../../SceneEngine/SceneParser.h"
@@ -25,7 +26,7 @@
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/IThreadContext.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
-#include "../../RenderCore/Metal/DeviceContext.h"
+// #include "../../RenderCore/Metal/DeviceContext.h"
 #include <memory>
 
 namespace GUILayer
@@ -400,13 +401,12 @@ namespace GUILayer
                 SceneEngine::RenderingQualitySettings(threadContext->GetStateDesc()._viewportDimensions));
         }
 
-        if (_selection) {
+        if (_selection && _selection->_nativePlacements->size() > 0) {
             // Draw a selection highlight for these items
             // at the moment, only placements can be selected... So we need to assume that 
             // they are all placements.
-            auto devContext = RenderCore::Metal::DeviceContext::Get(*threadContext);
-            ToolsRig::RenderHighlight(
-                devContext.get(), parserContext, _placementsEditor.get(),
+            ToolsRig::Placements_RenderHighlight(
+                *threadContext, parserContext, _placementsEditor.get(),
                 (const SceneEngine::PlacementGUID*)AsPointer(_selection->_nativePlacements->cbegin()),
                 (const SceneEngine::PlacementGUID*)AsPointer(_selection->_nativePlacements->cend()));
         }

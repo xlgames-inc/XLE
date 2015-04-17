@@ -6,8 +6,9 @@
 
 #include "SharrFilter.h"
 
-uint4 HighlightMaterial;
-uint4 DrawCallToMaterialIndexMap[256];
+float3 OutlineColour;
+uint4 HighlightMarker;
+uint4 StencilToMarkerMap[256];
 
 // This is a random but distinct set of colours generated from
 // 		http://phrogz.net/css/distinct-colors.html
@@ -32,23 +33,23 @@ static const uint3 ColourList[47] =
 
 Texture2D<uint>		StencilInput;
 
-static const uint DummyMaterialIndex = 0xffffffff;
+static const uint DummyMarker = 0xffffffff;
 
-uint GetHighlightMaterial()
+uint GetHighlightMarker()
 {
-	return HighlightMaterial.x;
+	return HighlightMarker.x;
 }
 
-uint MaterialIndex(uint2 pos)
+uint Marker(uint2 pos)
 {
 	uint stencilValue = StencilInput.Load(uint3(pos, 0));
-	if (stencilValue == 0) { return DummyMaterialIndex; }
+	if (stencilValue == 0) { return DummyMarker; }
 
-	uint result = DrawCallToMaterialIndexMap[(stencilValue-1)%256].x;
-	#if COLOUR_BY_MAT==2
+	uint result = StencilToMarkerMap[stencilValue%256].x;
+	#if ONLY_HIGHLIGHTED!=0
 			// in this mode, we ignore every material except the highlighted one
-		if (result != GetHighlightMaterial()) {
-			result = DummyMaterialIndex;
+		if (result != GetHighlightMarker()) {
+			result = DummyMarker;
 		}
 	#endif
 	return result;
@@ -60,33 +61,32 @@ bool HatchFilter(uint2 position)
 	return ((p/4) % 3) == 0;
 }
 
-float4 HighlightDrawCalls(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
+float4 HighlightByStencil(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
 {
 	if (!HatchFilter(position.xy)) { discard; }
 
-	uint matIndex = MaterialIndex(uint2(position.xy));
-	if (matIndex == DummyMaterialIndex) { discard; }
+	uint marker = Marker(uint2(position.xy));
+	if (marker == DummyMarker) { discard; }
 
-	uint3 c = ColourList[matIndex%ColourListCount];
+	uint3 c = ColourList[marker%ColourListCount];
 	return float4(.5f*c.r/255.f, .5f*c.g/255.f, .5f*c.b/255.f, .5f*1.f);
 }
 
-float4 OutlineDrawCall(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
+float4 OutlineByStencil(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
 {
 	uint2 basePos = uint2(position.xy);
-	uint testMaterialIndex = MaterialIndex(int2(basePos));
+	uint testMarker = Marker(int2(basePos));
 
 	float2 dhdp = 0.0.xx;
 	[unroll] for (int y=0; y<5; ++y) {
 		[unroll] for (int x=0; x<5; ++x) {
-			uint matIndex = MaterialIndex(int2(basePos) + int2(x-2, y-2));
-			float value = (matIndex == testMaterialIndex);
+			uint marker = Marker(int2(basePos) + int2(x-2, y-2));
+			float value = (marker == testMarker);
 			dhdp.x += SharrHoriz5x5[x][y] * value;
 			dhdp.y += SharrVert5x5[x][y] * value;
 		}
 	}
 
 	float alpha = max(abs(dhdp.x), abs(dhdp.y));
-	float3 baseColor = float3(1.5f, 1.35f, .7f);
-	return float4(alpha * baseColor, alpha);
+	return float4(alpha * OutlineColour, alpha);
 }

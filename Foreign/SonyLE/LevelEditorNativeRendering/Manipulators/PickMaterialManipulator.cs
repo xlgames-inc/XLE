@@ -54,7 +54,7 @@ namespace RenderingInterop
             {
                 Context.MaterialName = pick[0].materialName;
 
-                m_highlightDrawIndex = pick[0].drawCallIndex;
+                m_highlightMaterialGUID = pick[0].materialGuid;
                 m_highlight.Add(pick[0].documentId, pick[0].instanceId);
 
                 using (var placements = GameEngine.GetEditorSceneManager().GetPlacementsEditor())
@@ -64,13 +64,15 @@ namespace RenderingInterop
             }
             else
             {
-                m_highlightDrawIndex = ~0u;
+                m_highlightMaterialGUID = ~0ul;
                 m_highlight.Clear();
             }
         }
 
         public override void Render(ViewControl vc)
         {
+            if (m_highlightMaterialGUID == ~0ul) return;
+
             // render highlight
             var sceneManager = GameEngine.GetEditorSceneManager();
             using (var context = GameEngine.CreateRenderingContext())
@@ -79,7 +81,7 @@ namespace RenderingInterop
                 {
                     GUILayer.RenderingUtil.RenderHighlight(
                         context, placements,
-                        m_highlight, m_highlightDrawIndex);
+                        null, m_highlightMaterialGUID);
                 }
             }
         }
@@ -91,7 +93,7 @@ namespace RenderingInterop
 
         [Import(AllowDefault = false)] private ActiveMaterialContext Context;
         private GUILayer.ObjectSet m_highlight = new GUILayer.ObjectSet();
-        private uint m_highlightDrawIndex;
+        private ulong m_highlightMaterialGUID = ~0ul;
     }
 }
 

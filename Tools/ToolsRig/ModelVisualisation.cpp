@@ -10,6 +10,7 @@
 
 #include "ModelVisualisation.h"
 #include "VisualisationUtils.h"
+#include "HighlightEffects.h"
 #include "../../PlatformRig/InputTranslator.h"
 #include "../../SceneEngine/SceneParser.h"
 #include "../../SceneEngine/LightDesc.h"
@@ -407,6 +408,8 @@ namespace ToolsRig
                 using namespace RenderCore;
                 auto metalContext = Metal::DeviceContext::Get(*context);
 
+                HighlightByStencilSettings settings;
+
                     //  We need to query the model to build a lookup table between draw call index
                     //  and material binding index. The shader reads a draw call index from the 
                     //  stencil buffer and remaps that into a material index using this table.
@@ -414,24 +417,15 @@ namespace ToolsRig
                     auto model = _pimpl->_cache->GetModel(_pimpl->_settings->_modelName.c_str());
                     assert(model._renderer && model._sharedStateSet);
 
-                    struct Constants
-                    {
-                        UInt4 HighlightMaterial;
-                        UInt4 DrawCallToMaterialIndexMap[256];
-                    } constants;
-                    XlSetMemory(&constants, sizeof(constants), 0xff);
-
                     auto bindingVec = model._renderer->DrawCallToMaterialBinding();
                     unsigned t = 0;
-                    for (auto i=bindingVec.cbegin(); i!=bindingVec.cend() && t < dimof(constants.DrawCallToMaterialIndexMap); ++i, ++t) {
-                        constants.DrawCallToMaterialIndexMap[t] = UInt4((unsigned)bindingVec[t], (unsigned)bindingVec[t], (unsigned)bindingVec[t], (unsigned)bindingVec[t]);
+                    settings._stencilToMarkerMap[t++] = UInt4(0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff);
+                    for (auto i=bindingVec.cbegin(); i!=bindingVec.cend() && t < dimof(settings._stencilToMarkerMap); ++i, ++t) {
+                        settings._stencilToMarkerMap[t] = UInt4((unsigned)*i, (unsigned)*i, (unsigned)*i, (unsigned)*i);
                     }
 
                     auto guid = _pimpl->_mouseOver->_materialGuid;
-                    constants.HighlightMaterial = UInt4(unsigned(guid), unsigned(guid), unsigned(guid), unsigned(guid));
-
-                    metalContext->BindPS(MakeResourceList(
-                        Metal::ConstantBuffer(&constants, sizeof(constants))));
+                    settings._highlightedMarker = UInt4(unsigned(guid), unsigned(guid), unsigned(guid), unsigned(guid));
                 }
 
                 SceneEngine::SavedTargets savedTargets(metalContext.get());
@@ -442,36 +436,8 @@ namespace ToolsRig
                         Metal::ExtractResource<ID3D::Resource>(savedTargets.GetDepthStencilView()).get(), 
                         (Metal::NativeFormat::Enum)DXGI_FORMAT_X24_TYPELESS_G8_UINT);
 
-                metalContext->GetUnderlying()->OMSetRenderTargets(
-                    1, savedTargets.GetRenderTargets(), nullptr);
-
-                metalContext->Bind(Metal::Topology::TriangleStrip);
-                metalContext->Unbind<Metal::BoundInputLayout>();
-                metalContext->BindPS(MakeResourceList(depthSrv));
-                metalContext->Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
-                
-                {
-                    auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                        "game/xleres/basic2D.vsh:fullscreen:vs_*", 
-                        "game/xleres/Effects/HighlightVis.psh:HighlightDrawCalls:ps_*",
-                        (const ::Assets::ResChar*)(StringMeld<64, ::Assets::ResChar>() << "COLOUR_BY_MAT=" << _pimpl->_settings->_colourByMaterial));
-                
-                    metalContext->Bind(shader);
-                    metalContext->Draw(4);
-                }
-
-                {
-                    auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                        "game/xleres/basic2D.vsh:fullscreen:vs_*", 
-                        "game/xleres/Effects/HighlightVis.psh:OutlineDrawCall:ps_*",
-                        (const ::Assets::ResChar*)(StringMeld<64, ::Assets::ResChar>() << "COLOUR_BY_MAT=" << _pimpl->_settings->_colourByMaterial));
-                
-                    metalContext->Bind(shader);
-                    metalContext->Draw(4);
-                }
-
-                metalContext->UnbindPS<Metal::ShaderResourceView>(0, 1);
-
+                metalContext->GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr); // (unbind depth)
+                ExecuteHighlightByStencil(*metalContext, depthSrv, settings, _pimpl->_settings->_colourByMaterial==2);
                 savedTargets.ResetToOldTargets(metalContext.get());
             }
             CATCH (const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); } 

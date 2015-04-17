@@ -15,6 +15,7 @@
 #include "../ToolsRig/ManipulatorsUtil.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
+#include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Metal/Buffer.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/InputLayout.h"
@@ -26,7 +27,7 @@
 
 #include "../../Assets/Assets.h"
 #include "../../RenderCore/Techniques/Techniques.h"
-#include "../ToolsRig/PlacementsManipulators.h"
+#include "../ToolsRig/ManipulatorsRender.h"
 #include "../../SceneEngine/LightingParserContext.h"
 
 namespace GUILayer
@@ -234,10 +235,10 @@ namespace GUILayer
 
         RenderCore::Techniques::ParsingContext& GetParsingContext() { return *_parsingContext; }
         RenderCore::Metal::DeviceContext& GetDevContext() { return *_devContext.get(); }
+        RenderCore::IThreadContext& GetThreadContext() { return *_threadContext.get(); }
 
         SimpleRenderingContext(
             SavedRenderResources^ savedRes, 
-            RenderCore::IThreadContext& threadContext,
             void* parsingContext);
         ~SimpleRenderingContext();
         !SimpleRenderingContext();
@@ -245,6 +246,7 @@ namespace GUILayer
         SavedRenderResources^ _savedRes;
         RenderCore::Techniques::ParsingContext* _parsingContext;
         clix::shared_ptr<RenderCore::Metal::DeviceContext> _devContext;
+        clix::shared_ptr<RenderCore::IThreadContext> _threadContext;
     };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////?//
@@ -318,11 +320,12 @@ namespace GUILayer
 
     SimpleRenderingContext::SimpleRenderingContext(
         SavedRenderResources^ savedRes, 
-        RenderCore::IThreadContext& threadContext,
         void* parsingContext)
     : _savedRes(savedRes), _parsingContext((RenderCore::Techniques::ParsingContext*)parsingContext)
     {
-        _devContext = RenderCore::Metal::DeviceContext::Get(threadContext);
+        auto threadContext = EngineDevice::GetInstance()->GetNative().GetRenderDevice()->GetImmediateContext();
+        _devContext = RenderCore::Metal::DeviceContext::Get(*threadContext.get());
+        _threadContext = std::move(threadContext);
     }
     SimpleRenderingContext::~SimpleRenderingContext() { _devContext.reset(); }
     SimpleRenderingContext::!SimpleRenderingContext() { _devContext.reset(); }
@@ -337,21 +340,28 @@ namespace GUILayer
             Vector3 centre, float radius)
         {
             ToolsRig::RenderCylinderHighlight(
-                &renderingContext->GetDevContext(), renderingContext->GetParsingContext(),
+                renderingContext->GetThreadContext(), renderingContext->GetParsingContext(),
                 AsFloat3(centre), radius);
         }
 
         static void RenderHighlight(
             SimpleRenderingContext^ context,
             PlacementsEditorWrapper^ placements,
-            ObjectSet^ highlight, unsigned drawCallIndex)
+            ObjectSet^ highlight, uint64 materialGuid)
         {
-            if (highlight == nullptr || highlight->IsEmpty()) return;
+            if (highlight == nullptr) {
+                ToolsRig::Placements_RenderHighlight(
+                    context->GetThreadContext(), context->GetParsingContext(), &placements->GetNative(),
+                    nullptr, nullptr, materialGuid);
+            } else {
+                if (highlight->IsEmpty()) return;
 
-            ToolsRig::RenderHighlight(
-                &context->GetDevContext(), context->GetParsingContext(), &placements->GetNative(),
-                (const SceneEngine::PlacementGUID*)AsPointer(highlight->_nativePlacements->cbegin()),
-                (const SceneEngine::PlacementGUID*)AsPointer(highlight->_nativePlacements->cend()));
+                ToolsRig::Placements_RenderHighlight(
+                    context->GetThreadContext(), context->GetParsingContext(), &placements->GetNative(),
+                    (const SceneEngine::PlacementGUID*)AsPointer(highlight->_nativePlacements->cbegin()),
+                    (const SceneEngine::PlacementGUID*)AsPointer(highlight->_nativePlacements->cend()),
+                    materialGuid);
+            }
         }
     };
 

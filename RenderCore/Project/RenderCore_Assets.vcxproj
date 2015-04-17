@@ -160,6 +160,7 @@
     <ClCompile Include="..\Assets\ModelSimpleRenderer.cpp" />
     <ClCompile Include="..\Assets\ModelRunTime.cpp" />
     <ClCompile Include="..\Assets\NascentTransformationMachine.cpp" />
+    <ClCompile Include="..\Assets\PreparedModelDrawCalls.cpp" />
     <ClCompile Include="..\Assets\SharedStateSet.cpp" />
     <ClCompile Include="..\Assets\SkinningRunTime.cpp" />
     <ClCompile Include="..\Assets\TerrainFormat.cpp" />
@@ -175,6 +176,7 @@
     <ClInclude Include="..\Assets\ModelSimple.h" />
     <ClInclude Include="..\Assets\ModelRunTime.h" />
     <ClInclude Include="..\Assets\NascentTransformationMachine.h" />
+    <ClInclude Include="..\Assets\PreparedModelDrawCalls.h" />
     <ClInclude Include="..\Assets\SharedStateSet.h" />
     <ClInclude Include="..\Assets\TerrainFormat.h" />
     <ClInclude Include="..\Assets\TransformationCommands.h" />

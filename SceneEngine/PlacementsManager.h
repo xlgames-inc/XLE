@@ -14,7 +14,7 @@
 #include <string>
 #include <functional>
 
-namespace RenderCore { namespace Assets { class IModelFormat; } }
+namespace RenderCore { namespace Assets { class IModelFormat; class PreparedModelDrawCallEntry; } }
 namespace RenderCore { namespace Techniques { class ParsingContext; } }
 
 namespace SceneEngine
@@ -144,11 +144,14 @@ namespace SceneEngine
             const Float4x4& worldToProjection,
             const std::function<bool(const ObjIntersectionDef&)>& predicate);
 
+        using DrawCallPredicate = std::function<bool(const RenderCore::Assets::PreparedModelDrawCallEntry&)>;
+
         void RenderFiltered(
             RenderCore::Metal::DeviceContext* context,
             RenderCore::Techniques::ParsingContext& parserContext,
             unsigned techniqueIndex,
-            const PlacementGUID* begin, const PlacementGUID* end);
+            const PlacementGUID* begin, const PlacementGUID* end,
+            const DrawCallPredicate& predicate = DrawCallPredicate(nullptr));
 
         void RegisterCell(
             const PlacementCell& cell,

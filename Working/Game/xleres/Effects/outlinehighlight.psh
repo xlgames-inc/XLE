@@ -6,6 +6,7 @@
 
 #include "SharrFilter.h"
 
+float3 OutlineColour;
 Texture2D InputTexture;
 
 float4 main(float4 pos : SV_Position) : SV_Target0
@@ -33,6 +34,6 @@ float4 main(float4 pos : SV_Position) : SV_Target0
 	}
 
 	float alpha = max(abs(dhdp.x), abs(dhdp.y));
-	float3 baseColor = float3(1.5f, 1.35f, .7f);
-	return float4(alpha * baseColor, alpha);
+	// float3 baseColor = float3(1.5f, 1.35f, .7f);
+	return float4(alpha * OutlineColour, alpha);
 }

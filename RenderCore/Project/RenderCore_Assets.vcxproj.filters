@@ -36,6 +36,9 @@
     <ClCompile Include="..\Assets\MaterialScaffold.cpp">
       <Filter>Assets</Filter>
     </ClCompile>
+    <ClCompile Include="..\Assets\PreparedModelDrawCalls.cpp">
+      <Filter>Assets</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Assets\ModelRunTime.h">
@@ -69,6 +72,9 @@
       <Filter>Assets</Filter>
     </ClInclude>
     <ClInclude Include="..\Assets\MaterialScaffold.h">
+      <Filter>Assets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Assets\PreparedModelDrawCalls.h">
       <Filter>Assets</Filter>
     </ClInclude>
   </ItemGroup>

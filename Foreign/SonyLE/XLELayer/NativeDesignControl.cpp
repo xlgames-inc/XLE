@@ -40,9 +40,7 @@ namespace XLELayer
             if (!ManipulatorOverlay::s_currentParsingContext) return nullptr;
 
             return gcnew GUILayer::SimpleRenderingContext(
-                savedRes, 
-                *GUILayer::EngineDevice::GetInstance()->GetNative().GetRenderDevice()->GetImmediateContext(),
-                ManipulatorOverlay::s_currentParsingContext);
+                savedRes, ManipulatorOverlay::s_currentParsingContext);
         }
 
         NativeDesignControl(

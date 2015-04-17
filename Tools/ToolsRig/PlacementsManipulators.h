@@ -8,7 +8,6 @@
 
 #include "../../RenderCore/IDevice_Forward.h"
 #include "../../RenderCore/IThreadContext_Forward.h"
-#include "../../RenderCore/Metal/Forward.h"
 #include "../../Math/Matrix.h"
 #include "../../Core/Types.h"
 #include <memory>
@@ -74,13 +73,6 @@ namespace ToolsRig
     std::vector<std::unique_ptr<IManipulator>> CreatePlacementManipulators(
         IPlacementManipulatorSettings* context,
         std::shared_ptr<SceneEngine::PlacementsEditor> editor);
-
-    void RenderHighlight(
-        RenderCore::Metal::DeviceContext* context,
-        RenderCore::Techniques::ParsingContext& parserContext,
-        SceneEngine::PlacementsEditor* editor,
-        const SceneEngine::PlacementGUID* filterBegin,
-        const SceneEngine::PlacementGUID* filterEnd);
 
     void CalculateScatterOperation(
         std::vector<SceneEngine::PlacementGUID>& _toBeDeleted,

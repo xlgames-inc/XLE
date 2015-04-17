@@ -486,6 +486,8 @@ namespace Overlays
 
         auto model = _pimpl->_cache->GetModel((const ::Assets::ResChar*)utf8Filename);
 
+        SceneEngine::SavedTargets savedTargets(metalContext.get());
+
             // draw this object to our off screen buffer
         const unsigned offscreenDims = ModelBrowserItemDimensions;
         metalContext->Bind(RenderCore::MakeResourceList(_pimpl->_rtv), &_pimpl->_dsv);
@@ -494,6 +496,8 @@ namespace Overlays
         metalContext->Clear(_pimpl->_dsv, 1.f, 0);
         metalContext->Bind(RenderCore::Metal::Topology::TriangleList);
         RenderModel(context, model);
+
+        savedTargets.ResetToOldTargets(metalContext.get());
 
         return std::make_pair(&_pimpl->_srv, hashedName);   // note, here, the hashedName only considered the model name, not the material name
     }

@@ -49,6 +49,7 @@ namespace RenderingInterop
         private short pad;
 
         public uint drawCallIndex;
+        public ulong materialGuid;
         public string materialName;
     }
 

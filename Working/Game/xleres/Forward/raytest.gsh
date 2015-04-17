@@ -31,7 +31,10 @@ cbuffer IntersectionFrustumDefinition : register(b9)
 	row_major float4x4 IntersectionFrustum;
 }
 
-uint CurrentDrawCallIndex;
+cbuffer SystemConstants : register(b0)
+{
+	uint CurrentDrawCallIndex;
+}
 
 float3 RayTriangleIntersection(float3 p, float3 d, float3 v0, float3 v1, float3 v2)
 {

@@ -7,20 +7,15 @@
 #include "PlacementsManipulators.h"
 #include "IManipulator.h"
 #include "ManipulatorsUtil.h"
+#include "ManipulatorsRender.h"
 
 #include "../../SceneEngine/PlacementsManager.h"
 #include "../../SceneEngine/Terrain.h"
-#include "../../SceneEngine/SceneParser.h"
 #include "../../SceneEngine/LightingParserContext.h"
 #include "../../SceneEngine/IntersectionTest.h"
 
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../RenderOverlays/IOverlayContext.h"
-#include "../../RenderCore/Techniques/Techniques.h"
-#include "../../RenderCore/Techniques/CommonResources.h"
-#include "../../RenderCore/Techniques/ResourceBox.h"
-#include "../../RenderCore/Metal/DeviceContext.h"
-#include "../../RenderCore/Metal/State.h"
 #include "../../RenderOverlays/OverlayContext.h"
 #include "../../RenderOverlays/Overlays/Browser.h"
 
@@ -28,10 +23,6 @@
 #include "../../Utility/StringFormat.h"
 #include "../../Math/Transformations.h"
 #include "../../Math/Geometry.h"
-
-#include "../../BufferUploads/IBufferUploads.h"
-#include "../../SceneEngine/SceneEngineUtils.h"
-#include "../../Math/ProjectionMath.h"
 #include <iomanip>
 
 namespace ToolsRig
@@ -480,132 +471,6 @@ namespace ToolsRig
         return consume;
     }
 
-    class CommonOffscreenTarget
-    {
-    public:
-        class Desc
-        {
-        public:
-            unsigned _width, _height;
-            RenderCore::Metal::NativeFormat::Enum _format;
-            Desc(unsigned width, unsigned height, RenderCore::Metal::NativeFormat::Enum format)
-                : _width(width), _height(height), _format(format) {}
-        };
-
-        RenderCore::Metal::RenderTargetView _rtv;
-        RenderCore::Metal::ShaderResourceView _srv;
-        intrusive_ptr<BufferUploads::ResourceLocator> _resource;
-
-        CommonOffscreenTarget(const Desc& desc);
-        ~CommonOffscreenTarget();
-    };
-
-    CommonOffscreenTarget::CommonOffscreenTarget(const Desc& desc)
-    {
-            //  Still some work involved to just create a texture
-            //  
-        using namespace BufferUploads;
-        auto bufferDesc = CreateDesc(
-            BindFlag::ShaderResource|BindFlag::RenderTarget, 0, GPUAccess::Write,
-            TextureDesc::Plain2D(desc._width, desc._height, desc._format),
-            "CommonOffscreen");
-
-        auto resource = SceneEngine::GetBufferUploads()->Transaction_Immediate(bufferDesc, nullptr);
-
-        RenderCore::Metal::RenderTargetView rtv(resource->GetUnderlying());
-        RenderCore::Metal::ShaderResourceView srv(resource->GetUnderlying());
-
-        _rtv = std::move(rtv);
-        _srv = std::move(srv);
-        _resource = std::move(resource);
-    }
-
-    CommonOffscreenTarget::~CommonOffscreenTarget() {}
-
-    class HighlightShaders
-    {
-    public:
-        class Desc {};
-
-        const RenderCore::Metal::ShaderProgram* _drawHighlight;
-        RenderCore::Metal::BoundUniforms _drawHighlightUniforms;
-
-        const Assets::DependencyValidation& GetDependencyValidation() const   { return *_validationCallback; }
-
-        HighlightShaders(const Desc&);
-    protected:
-        std::shared_ptr<Assets::DependencyValidation>  _validationCallback;
-    };
-
-    HighlightShaders::HighlightShaders(const Desc&)
-    {
-        auto* drawHighlight = &::Assets::GetAssetDep<RenderCore::Metal::ShaderProgram>(
-            "game/xleres/basic2D.vsh:fullscreen:vs_*", 
-            "game/xleres/effects/outlinehighlight.psh:main:ps_*");
-
-        RenderCore::Metal::BoundUniforms uniforms(*drawHighlight);
-        RenderCore::Techniques::TechniqueContext::BindGlobalUniforms(uniforms);
-
-        auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterAssetDependency(validationCallback, &drawHighlight->GetDependencyValidation());
-
-        _validationCallback = std::move(validationCallback);
-        _drawHighlight = std::move(drawHighlight);
-        _drawHighlightUniforms = std::move(uniforms);
-    }
-
-    void RenderHighlight(
-        RenderCore::Metal::DeviceContext* context,
-        RenderCore::Techniques::ParsingContext& parserContext,
-        SceneEngine::PlacementsEditor* editor,
-        const SceneEngine::PlacementGUID* filterBegin,
-        const SceneEngine::PlacementGUID* filterEnd)
-    {
-        TRY {
-            using namespace SceneEngine;
-            using namespace RenderCore;
-            SavedTargets savedTargets(context);
-            const auto& viewport = savedTargets.GetViewports()[0];
-
-            auto& offscreen = RenderCore::Techniques::FindCachedBox<CommonOffscreenTarget>(
-                CommonOffscreenTarget::Desc(unsigned(viewport.Width), unsigned(viewport.Height), 
-                Metal::NativeFormat::R8G8B8A8_UNORM));
-
-			const bool doDepthTest = true;
-			if (constant_expression<doDepthTest>::result()) {
-				context->Bind(Techniques::CommonResources()._dssReadOnly);
-				Metal::DepthStencilView dsv(savedTargets.GetDepthStencilView());
-				context->Bind(MakeResourceList(offscreen._rtv), &dsv);
-			} else {
-				context->Bind(MakeResourceList(offscreen._rtv), nullptr);
-			}
-
-            context->Clear(offscreen._rtv, Float4(0.f, 0.f, 0.f, 0.f));
-            context->Bind(RenderCore::Metal::Topology::TriangleList);
-            editor->RenderFiltered(context, parserContext, 0, filterBegin, filterEnd);
-
-            savedTargets.ResetToOldTargets(context);
-
-                //  now we can render these objects over the main image, 
-                //  using some filtering
-
-            context->BindPS(MakeResourceList(offscreen._srv));
-
-            auto& shaders = Techniques::FindCachedBoxDep<HighlightShaders>(HighlightShaders::Desc());
-            shaders._drawHighlightUniforms.Apply(
-                *context, 
-                parserContext.GetGlobalUniformsStream(), RenderCore::Metal::UniformsStream());
-            context->Bind(*shaders._drawHighlight);
-            context->Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
-            context->Bind(Techniques::CommonResources()._dssDisable);
-            context->Bind(Metal::Topology::TriangleStrip);
-            context->Draw(4);
-        } 
-        CATCH (const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); } 
-        CATCH (const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); } 
-        CATCH_END
-    }
-
     void SelectAndEdit::Render(
         RenderCore::IThreadContext* context,
         SceneEngine::LightingParserContext& parserContext)
@@ -628,8 +493,8 @@ namespace ToolsRig
                 //  this one placement at a time -- but we will most
                 //  likely get the most efficient results by rendering
                 //  all of objects that require highlights in one go.
-            RenderHighlight(
-                RenderCore::Metal::DeviceContext::Get(*context).get(), parserContext, _editor.get(),
+            Placements_RenderHighlight(
+                *context, parserContext, _editor.get(),
                 AsPointer(activeSelection.begin()), AsPointer(activeSelection.end()));
         }
     }
@@ -839,8 +704,8 @@ namespace ToolsRig
                 objects.push_back(_transaction->GetGuid(c));
             }
 
-            RenderHighlight(
-                RenderCore::Metal::DeviceContext::Get(*context).get(), parserContext, _editor.get(),
+            Placements_RenderHighlight(
+                *context, parserContext, _editor.get(),
                 AsPointer(objects.begin()), AsPointer(objects.end()));
         }
     }
@@ -1269,8 +1134,7 @@ namespace ToolsRig
     {
         if (_hasHoverPoint) {
             RenderCylinderHighlight(
-                RenderCore::Metal::DeviceContext::Get(*context).get(), 
-                parserContext, _hoverPoint, _radius);
+                *context, parserContext, _hoverPoint, _radius);
         }
     }
 
@@ -1324,57 +1188,6 @@ namespace ToolsRig
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-
-    static void DrawQuadDirect(
-        RenderCore::Metal::DeviceContext* context, const RenderCore::Metal::ShaderResourceView& srv, 
-        Float2 screenMins, Float2 screenMaxs)
-    {
-        using namespace RenderCore;
-        using namespace RenderCore::Metal;
-        
-        class Vertex
-        {
-        public:
-            Float2  _position;
-            Float2  _texCoord;
-        } vertices[] = {
-            { Float2(screenMins[0], screenMins[1]), Float2(0.f, 0.f) },
-            { Float2(screenMins[0], screenMaxs[1]), Float2(0.f, 1.f) },
-            { Float2(screenMaxs[0], screenMins[1]), Float2(1.f, 0.f) },
-            { Float2(screenMaxs[0], screenMaxs[1]), Float2(1.f, 1.f) }
-        };
-
-        InputElementDesc vertexInputLayout[] = {
-            InputElementDesc( "POSITION", 0, NativeFormat::R32G32_FLOAT ),
-            InputElementDesc( "TEXCOORD", 0, NativeFormat::R32G32_FLOAT )
-        };
-
-        VertexBuffer vertexBuffer(vertices, sizeof(vertices));
-        context->Bind(ResourceList<VertexBuffer, 1>(std::make_tuple(std::ref(vertexBuffer))), sizeof(Vertex), 0);
-
-        const auto& shaderProgram = ::Assets::GetAssetDep<ShaderProgram>(
-            "game/xleres/basic2D.vsh:P2T:" VS_DefShaderModel, 
-            "game/xleres/basic.psh:copy_bilinear:" PS_DefShaderModel);
-        BoundInputLayout boundVertexInputLayout(std::make_pair(vertexInputLayout, dimof(vertexInputLayout)), shaderProgram);
-        context->Bind(boundVertexInputLayout);
-        context->Bind(shaderProgram);
-
-        ViewportDesc viewport(*context);
-        float constants[] = { 1.f / viewport.Width, 1.f / viewport.Height, 0.f, 0.f };
-        ConstantBuffer reciprocalViewportDimensions(constants, sizeof(constants));
-        const ShaderResourceView* resources[] = { &srv };
-        const ConstantBuffer* cnsts[] = { &reciprocalViewportDimensions };
-        BoundUniforms boundLayout(shaderProgram);
-        boundLayout.BindConstantBuffer(Hash64("ReciprocalViewportDimensions"), 0, 1);
-        boundLayout.BindShaderResource(Hash64("DiffuseTexture"), 0, 1);
-        boundLayout.Apply(*context, UniformsStream(), UniformsStream(nullptr, cnsts, dimof(cnsts), resources, dimof(resources)));
-
-        context->Bind(BlendState(BlendOp::Add, Blend::SrcAlpha, Blend::InvSrcAlpha));
-        context->Bind(Topology::TriangleStrip);
-        context->Draw(dimof(vertices));
-
-        context->UnbindPS<ShaderResourceView>(0, 1);
-    }
 
     static const auto Id_SelectedModel = InteractableId_Make("SelectedModel");
     static const auto Id_PlacementsSave = InteractableId_Make("PlacementsSave");
@@ -1468,8 +1281,6 @@ namespace ToolsRig
 
                 if (_browser) {
                     auto* devContext = context->GetDeviceContext();
-                    auto metalContext = RenderCore::Metal::DeviceContext::Get(*devContext);
-                    SceneEngine::SavedTargets oldTargets(metalContext.get());
                     const RenderCore::Metal::ShaderResourceView* srv = nullptr;
                 
                     const char* errorMsg = nullptr;
@@ -1487,11 +1298,9 @@ namespace ToolsRig
                     CATCH(const ::Assets::Exceptions::PendingResource&) { errorMsg = "Pending"; } 
                     CATCH_END
 
-                    oldTargets.ResetToOldTargets(metalContext.get());
-
                     if (srv) {
                         DrawQuadDirect(
-                            metalContext.get(), *srv,
+                            *devContext, *srv,
                             Float2(float(previewRect._topLeft[0]), float(previewRect._topLeft[1])), 
                             Float2(float(previewRect._bottomRight[0]), float(previewRect._bottomRight[1])));
                     } else if (errorMsg) {
@@ -1689,6 +1498,9 @@ namespace ToolsRig
 
     PlacementsManipulatorsManager::~PlacementsManipulatorsManager()
     {}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
 }
 

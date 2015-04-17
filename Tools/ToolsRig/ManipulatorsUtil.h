@@ -60,11 +60,6 @@ namespace ToolsRig
         InterfaceState& interfaceState, const InputSnapshot& input, 
         IManipulator& manipulator);
 
-    void RenderCylinderHighlight(
-        RenderCore::Metal::DeviceContext* context, 
-        RenderCore::Techniques::ParsingContext& parserContext,
-        const Float3& centre, float radius);
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     template<typename T, typename T2> size_t ManipulatorParameterOffset(T2 T::*member)

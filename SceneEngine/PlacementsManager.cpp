@@ -21,6 +21,7 @@
     #include "../RenderCore/Assets/ModelSimple.h"
 #endif
 #include "../RenderCore/Assets/IModelFormat.h"
+#include "../RenderCore/Assets/PreparedModelDrawCalls.h"
 
 #include "../RenderCore/Techniques/ParsingContext.h"
 
@@ -310,6 +311,7 @@ namespace SceneEngine
         void EndRender(
             RenderCore::Metal::DeviceContext* context, 
             RenderCore::Techniques::ParsingContext& parserContext, unsigned techniqueIndex);
+        void FilterRenders(const std::function<bool(const RenderCore::Assets::PreparedModelDrawCallEntry&)>& predicate);
 
         void Render(
             RenderCore::Metal::DeviceContext* context,
@@ -317,7 +319,7 @@ namespace SceneEngine
             const PlacementCell& cell,
             const uint64* filterStart = nullptr, const uint64* filterEnd = nullptr);
 
-        typedef ModelRenderer::SortedModelDrawCalls PreparedState;
+        typedef RenderCore::Assets::PreparedModelDrawCalls PreparedState;
         
         auto GetCachedModel(const ResChar filename[]) -> const ModelScaffold*;
         auto GetCachedMaterial(const ResChar filename[]) -> const MaterialScaffold*;
@@ -425,6 +427,11 @@ namespace SceneEngine
         CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
         CATCH_END
         _cache->_sharedStates.ReleaseState(context);
+    }
+
+    void PlacementsRenderer::FilterRenders(const std::function<bool(const RenderCore::Assets::PreparedModelDrawCallEntry&)>& predicate)
+    {
+        _cache->_preparedRenders.Filter(predicate);
     }
 
     namespace Internal
@@ -1833,38 +1840,49 @@ namespace SceneEngine
         RenderCore::Metal::DeviceContext* context,
         RenderCore::Techniques::ParsingContext& parserContext,
         unsigned techniqueIndex,
-        const PlacementGUID* begin, const PlacementGUID* end)
+        const PlacementGUID* begin, const PlacementGUID* end,
+        const std::function<bool(const RenderCore::Assets::PreparedModelDrawCallEntry&)>& predicate)
     {
         _pimpl->_renderer->BeginRender(context);
 
             //  We need to take a copy, so we don't overwrite
             //  and reorder the caller's version.
-        std::vector<PlacementGUID> copy(begin, end);
-        std::sort(copy.begin(), copy.end());
+        if (begin || end) {
+            std::vector<PlacementGUID> copy(begin, end);
+            std::sort(copy.begin(), copy.end());
 
-        auto ci = _pimpl->_cells.begin();
-        for (auto i=copy.begin(); i!=copy.end();) {
-            auto i2 = i+1;
-            for (; i2!=copy.end() && i2->first == i->first; ++i2) {}
+            auto ci = _pimpl->_cells.begin();
+            for (auto i=copy.begin(); i!=copy.end();) {
+                auto i2 = i+1;
+                for (; i2!=copy.end() && i2->first == i->first; ++i2) {}
 
-			while (ci != _pimpl->_cells.end() && ci->_filenameHash < i->first) { ++ci; }
+			    while (ci != _pimpl->_cells.end() && ci->_filenameHash < i->first) { ++ci; }
 
-            if (ci != _pimpl->_cells.end() && ci->_filenameHash == i->first) {
+                if (ci != _pimpl->_cells.end() && ci->_filenameHash == i->first) {
 
-                    // re-write the object guids for the renderer's convenience
-                uint64* tStart = &i->first;
-                uint64* t = tStart;
-                while (i < i2) { *t++ = i->second; i++; }
+                        // re-write the object guids for the renderer's convenience
+                    uint64* tStart = &i->first;
+                    uint64* t = tStart;
+                    while (i < i2) { *t++ = i->second; i++; }
 
-                _pimpl->_renderer->Render(
-                    context, parserContext,
-                    *ci, tStart, t);
+                    _pimpl->_renderer->Render(
+                        context, parserContext,
+                        *ci, tStart, t);
 
-            } else {
-                i = i2;
+                } else {
+                    i = i2;
+                }
+            }
+        } else {
+                // in this case we're not filtering by object GUID (though we may apply a predicate on the prepared draw calls)
+            for (auto i=_pimpl->_cells.begin(); i!=_pimpl->_cells.end(); ++i) {
+                _pimpl->_renderer->Render(context, parserContext, *i);
             }
         }
 
+        if (predicate) {
+            _pimpl->_renderer->FilterRenders(predicate);
+        }
         _pimpl->_renderer->EndRender(context, parserContext, techniqueIndex);
     }
 

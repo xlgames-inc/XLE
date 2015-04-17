@@ -58,6 +58,7 @@ namespace RenderingInterop.NativeInterop
                 hitRecords[index].nearestVertex = new Vec3F(0.0f, 0.0f, 0.0f);
                 hitRecords[index].hasNormal = hitRecords[index].hasNearestVert = false;
                 hitRecords[index].drawCallIndex = r._drawCallIndex;
+                hitRecords[index].materialGuid = r._materialGuid;
                 hitRecords[index].materialName = r._materialName;
                 index++;
             }
