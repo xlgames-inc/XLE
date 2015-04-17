@@ -14,7 +14,7 @@
 #include <memory>
 
 namespace RenderOverlays { namespace DebuggingDisplay { class IInputListener; } }
-namespace RenderCore { namespace Techniques { class ProjectionDesc; } }
+namespace RenderCore { namespace Techniques { class ProjectionDesc; class ParsingContext; } }
 
 namespace SceneEngine
 {
@@ -77,7 +77,7 @@ namespace ToolsRig
 
     void RenderHighlight(
         RenderCore::Metal::DeviceContext* context,
-        SceneEngine::LightingParserContext& parserContext,
+        RenderCore::Techniques::ParsingContext& parserContext,
         SceneEngine::PlacementsEditor* editor,
         const SceneEngine::PlacementGUID* filterBegin,
         const SceneEngine::PlacementGUID* filterEnd);

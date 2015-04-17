@@ -556,7 +556,7 @@ namespace ToolsRig
 
     void RenderHighlight(
         RenderCore::Metal::DeviceContext* context,
-        SceneEngine::LightingParserContext& parserContext,
+        RenderCore::Techniques::ParsingContext& parserContext,
         SceneEngine::PlacementsEditor* editor,
         const SceneEngine::PlacementGUID* filterBegin,
         const SceneEngine::PlacementGUID* filterEnd)

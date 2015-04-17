@@ -11,7 +11,7 @@
 #include <string>
 #include <memory>
 
-namespace RenderCore { namespace Techniques { class TechniqueContext; } }
+namespace RenderCore { namespace Techniques { class TechniqueContext; class ParsingContext; } }
 namespace Utility { class ParameterBox; }
 
 namespace RenderCore { namespace Assets
@@ -37,6 +37,20 @@ namespace RenderCore { namespace Assets
         virtual ~IRenderStateSetResolver();
     };
 
+    class ModelRendererContext
+    {
+    public:
+        Metal::DeviceContext* _context;
+        Techniques::ParsingContext* _parserContext;
+        unsigned _techniqueIndex;
+
+        ModelRendererContext(
+            Metal::DeviceContext* context, 
+            Techniques::ParsingContext& parserContext,
+            unsigned techniqueIndex)
+            : _context(context), _parserContext(&parserContext), _techniqueIndex(techniqueIndex) {}
+    };
+
     class SharedStateSet
     {
     public:
@@ -49,17 +63,15 @@ namespace RenderCore { namespace Assets
         unsigned InsertRenderStateSet(const RenderStateSet& states);
 
         Metal::BoundUniforms* BeginVariation(
-            Metal::DeviceContext* context,
-            Techniques::TechniqueContext& parserContext,
-            unsigned techniqueIndex,
+            const ModelRendererContext& context, 
             unsigned shaderName, unsigned techniqueInterface,
             unsigned geoParamBox, unsigned materialParamBox) const;
 
         void BeginRenderState(
-            Metal::DeviceContext* context, 
+            const ModelRendererContext& context, 
             // IRenderStateSetResolver& resolver,
             const Utility::ParameterBox& globalStates,
-            unsigned techniqueIndex, unsigned renderStateSetIndex) const;
+            unsigned renderStateSetIndex) const;
 
         void CaptureState(Metal::DeviceContext* context);
         void ReleaseState(Metal::DeviceContext* context);

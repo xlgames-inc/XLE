@@ -685,7 +685,7 @@ namespace RenderCore { namespace Assets
     };
 
     Metal::BoundUniforms*    ModelRenderer::Pimpl::BeginVariation(
-            const Context&          context,
+            const ModelRendererContext& context,
             const SharedStateSet&   sharedStateSet,
             unsigned                drawCallIndex,
             TechniqueInterface      techniqueInterface) const
@@ -693,18 +693,17 @@ namespace RenderCore { namespace Assets
         static Utility::ParameterBox tempGlobalStatesBox;
 
         const auto& res = _drawCallRes[drawCallIndex];
-        sharedStateSet.BeginRenderState(context._context, tempGlobalStatesBox, context._techniqueIndex, res._renderStateSet);
+        sharedStateSet.BeginRenderState(context, tempGlobalStatesBox, res._renderStateSet);
         return sharedStateSet.BeginVariation(
-            context._context, context._parserContext->GetTechniqueContext(), context._techniqueIndex,
-            res._shaderName, techniqueInterface, res._geoParamBox, res._materialParamBox);
+            context, res._shaderName, techniqueInterface, res._geoParamBox, res._materialParamBox);
     }
 
     auto ModelRenderer::Pimpl::BeginGeoCall(
-            const Context&          context,
-            Metal::ConstantBuffer&  localTransformBuffer,
-            const MeshToModel*      transforms,
-            Float4x4                modelToWorld,
-            unsigned                geoCallIndex) const -> TechniqueInterface
+            const ModelRendererContext& context,
+            Metal::ConstantBuffer&      localTransformBuffer,
+            const MeshToModel*          transforms,
+            Float4x4                    modelToWorld,
+            unsigned                    geoCallIndex) const -> TechniqueInterface
     {
         auto& cmdStream = _scaffold->CommandStream();
         auto& geoCall = cmdStream.GetGeoCall(geoCallIndex);
@@ -730,12 +729,12 @@ namespace RenderCore { namespace Assets
     }
 
     auto ModelRenderer::Pimpl::BeginSkinCall(
-        const Context&          context,
-        Metal::ConstantBuffer&  localTransformBuffer,
-        const MeshToModel*      transforms,
-        Float4x4                modelToWorld,
-        unsigned                geoCallIndex,
-        PreparedAnimation*      preparedAnimation) const -> TechniqueInterface
+        const ModelRendererContext& context,
+        Metal::ConstantBuffer&      localTransformBuffer,
+        const MeshToModel*          transforms,
+        Float4x4                    modelToWorld,
+        unsigned                    geoCallIndex,
+        PreparedAnimation*          preparedAnimation) const -> TechniqueInterface
     {
         auto& cmdStream = _scaffold->CommandStream();
         auto& geoCall = cmdStream.GetSkinCall(geoCallIndex);
@@ -784,7 +783,7 @@ namespace RenderCore { namespace Assets
     }
 
     void ModelRenderer::Pimpl::ApplyBoundUnforms(
-        const Context&                  context,
+        const ModelRendererContext&     context,
         Metal::BoundUniforms&           boundUniforms,
         unsigned                        resourcesIndex,
         unsigned                        constantsIndex,
@@ -930,7 +929,8 @@ namespace RenderCore { namespace Assets
     }
 
     void    ModelRenderer::Render(
-            const Context&      context,
+            const ModelRendererContext& context,
+            const SharedStateSet&   sharedStateSet,
             const Float4x4&     modelToWorld,
             const MeshToModel*  transforms,
             PreparedAnimation*  preparedAnimation) const
@@ -968,7 +968,7 @@ namespace RenderCore { namespace Assets
                     currGeoCall = md->first;
                 }
 
-                auto* boundUniforms = _pimpl->BeginVariation(context, *context._sharedStateSet, drawCallIndex, currTechniqueInterface);
+                auto* boundUniforms = _pimpl->BeginVariation(context, sharedStateSet, drawCallIndex, currTechniqueInterface);
                 const auto& drawCallRes = _pimpl->_drawCallRes[drawCallIndex];
 
                 if (    boundUniforms != currUniforms 
@@ -1011,7 +1011,7 @@ namespace RenderCore { namespace Assets
                     currGeoCall = md->first;
                 }
 
-                auto* boundUniforms = _pimpl->BeginVariation(context, *context._sharedStateSet, drawCallIndex, currTechniqueInterface);
+                auto* boundUniforms = _pimpl->BeginVariation(context, sharedStateSet, drawCallIndex, currTechniqueInterface);
                 const auto& drawCallRes = _pimpl->_drawCallRes[drawCallIndex];
 
                 if (    boundUniforms != currUniforms 
@@ -1125,14 +1125,14 @@ namespace RenderCore { namespace Assets
     }
 
     void ModelRenderer::RenderPrepared(
-        const Context&          context,
-        SortedModelDrawCalls&   drawCalls)
+        const ModelRendererContext& context,
+        const SharedStateSet&       sharedStateSet,
+        SortedModelDrawCalls&       drawCalls)
     {
         if (drawCalls._entries.empty()) return;
 
         Techniques::LocalTransformConstants localTrans;
         localTrans._localSpaceView = Float3(0.f, 0.f, 0.f);
-        localTrans._localNegativeLightDirection = Float3(0.f, 0.f, 0.f);
         
         Metal::ConstantBuffer& localTransformBuffer = Techniques::CommonResources()._localTransformBuffer;
         const Metal::ConstantBuffer* pkts[] = { &localTransformBuffer, nullptr };
@@ -1157,9 +1157,8 @@ namespace RenderCore { namespace Assets
                 //          sorting priority instead... That might reduce the API thrashing
                 //          in some cases.
             if (currentVariationHash != d->_shaderVariationHash) {
-                boundUniforms = context._sharedStateSet->BeginVariation(
-                    context._context, context._parserContext->GetTechniqueContext(), context._techniqueIndex,
-                    drawCallRes._shaderName, d->_mesh->_techniqueInterface, drawCallRes._geoParamBox, 
+                boundUniforms = sharedStateSet.BeginVariation(
+                    context, drawCallRes._shaderName, d->_mesh->_techniqueInterface, drawCallRes._geoParamBox, 
                     drawCallRes._materialParamBox);
                 currentVariationHash = d->_shaderVariationHash;
                 currentTextureSet = ~unsigned(0x0);
@@ -1168,7 +1167,7 @@ namespace RenderCore { namespace Assets
             if (!boundUniforms) continue;
 
             static Utility::ParameterBox tempGlobalStatesBox;
-            context._sharedStateSet->BeginRenderState(context._context, tempGlobalStatesBox, context._techniqueIndex, drawCallRes._renderStateSet);
+            sharedStateSet.BeginRenderState(context, tempGlobalStatesBox, drawCallRes._renderStateSet);
 
                 // We have to do this transform update very frequently! isn't there a better way?
             {

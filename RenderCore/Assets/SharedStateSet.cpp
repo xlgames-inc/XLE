@@ -8,6 +8,7 @@
 #include "Material.h"
 #include "../Techniques/Techniques.h"
 #include "../Techniques/CommonResources.h"
+#include "../Techniques/ParsingContext.h"
 #include "../Metal/InputLayout.h"
 #include "../Metal/DeviceContext.h"
 #include "../Metal/Buffer.h"
@@ -145,9 +146,8 @@ namespace RenderCore { namespace Assets
     }
 
     RenderCore::Metal::BoundUniforms* SharedStateSet::BeginVariation(
-            Metal::DeviceContext* context, 
-            Techniques::TechniqueContext& techniqueContext,
-            unsigned techniqueIndex, unsigned shaderName, unsigned techniqueInterface, 
+            const ModelRendererContext& context,
+            unsigned shaderName, unsigned techniqueInterface, 
             unsigned geoParamBox, unsigned materialParamBox) const
     {
         if (    shaderName == _currentShaderName && techniqueInterface == _currentTechniqueInterface 
@@ -167,6 +167,7 @@ namespace RenderCore { namespace Assets
             XlCatString(buffer, dimof(buffer), ".txt");
         }
 
+        auto& techniqueContext = context._parserContext->GetTechniqueContext();
         auto& shaderType = ::Assets::GetAssetDep<Techniques::ShaderType>(buffer);
         const ParameterBox* state[] = {
             &_pimpl->_parameterBoxes[geoParamBox],
@@ -178,10 +179,10 @@ namespace RenderCore { namespace Assets
         auto& techniqueInterfaceObj = _pimpl->_techniqueInterfaces[techniqueInterface];
 
             // (FindVariation can throw pending/invalid resource)
-        auto variation = shaderType.FindVariation(techniqueIndex, state, techniqueInterfaceObj);
+        auto variation = shaderType.FindVariation(context._techniqueIndex, state, techniqueInterfaceObj);
         if (variation._shaderProgram && variation._boundLayout) {
-            context->Bind(*variation._shaderProgram);
-            context->Bind(*variation._boundLayout);
+            context._context->Bind(*variation._shaderProgram);
+            context._context->Bind(*variation._boundLayout);
         }
 
         _currentShaderName = shaderName;
@@ -282,12 +283,12 @@ namespace RenderCore { namespace Assets
     }
 
     void SharedStateSet::BeginRenderState(
-        Metal::DeviceContext* context, 
+        const ModelRendererContext& context,
         // IRenderStateSetResolver& resolver,
         const Utility::ParameterBox& globalStates,
-        unsigned techniqueIndex, unsigned renderStateSetIndex) const
+        unsigned renderStateSetIndex) const
     {
-        assert(_pimpl->_capturedContext == context);
+        assert(_pimpl->_capturedContext == context._context);
 
         auto globalHash = globalStates.GetHash() ^ globalStates.GetParameterNamesHash();
         if (    _currentRenderState == renderStateSetIndex
@@ -297,10 +298,10 @@ namespace RenderCore { namespace Assets
             DefaultRenderStateSetResolver::Desc());
 
         auto compiled = resolver.Compile(
-            _pimpl->_renderStateSets[renderStateSetIndex].second, globalStates, techniqueIndex);
+            _pimpl->_renderStateSets[renderStateSetIndex].second, globalStates, context._techniqueIndex);
         if (compiled) {
-            context->Bind(compiled->_blendState);
-            context->Bind(compiled->_rasterizerState);
+            context._context->Bind(compiled->_blendState);
+            context._context->Bind(compiled->_rasterizerState);
         }
 
         _currentRenderState = renderStateSetIndex;

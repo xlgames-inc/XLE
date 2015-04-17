@@ -337,8 +337,8 @@ namespace Sample
             //  Finally, we can render the object!
         const float x2ScaleFactor = 100.f;
         _modelRenderer->Render(
-            ModelRenderer::Context(context, parserContext, techniqueIndex, *_sharedStateSet),
-            AsFloat4x4(UniformScale(1.f/x2ScaleFactor)));
+            RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
+            *_sharedStateSet, AsFloat4x4(UniformScale(1.f/x2ScaleFactor)));
 
         _sharedStateSet->ReleaseState(context);
     }

@@ -383,17 +383,17 @@ namespace RenderCore { namespace Assets
         ~Pimpl() {}
 
         Metal::BoundUniforms* BeginVariation(
-            const Context&, const SharedStateSet&, unsigned, TechniqueInterface) const;
+            const ModelRendererContext&, const SharedStateSet&, unsigned, TechniqueInterface) const;
 
         TechniqueInterface BeginGeoCall(
-            const Context&          context,
+            const ModelRendererContext& context,
             Metal::ConstantBuffer&  localTransformBuffer,
             const MeshToModel*      transforms,
             Float4x4                modelToWorld,
             unsigned                geoCallIndex) const;
 
         TechniqueInterface BeginSkinCall(
-            const Context&          context,
+            const ModelRendererContext&     context,
             Metal::ConstantBuffer&  localTransformBuffer,
             const MeshToModel*      transforms,
             Float4x4                modelToWorld,
@@ -401,7 +401,7 @@ namespace RenderCore { namespace Assets
             PreparedAnimation*      preparedAnimation) const;
 
         void ApplyBoundUnforms(
-            const Context&                  context,
+            const ModelRendererContext&     context,
             Metal::BoundUniforms&           boundUniforms,
             unsigned                        resourcesIndex,
             unsigned                        constantsIndex,

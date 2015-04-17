@@ -28,6 +28,7 @@ namespace RenderCore { namespace Assets
     class TransformationMachine;
     class ResolvedMaterial;
     class MaterialScaffold;
+    class ModelRendererContext;
 
     typedef uint64 MaterialGuid;
 
@@ -109,21 +110,6 @@ namespace RenderCore { namespace Assets
     class ModelRenderer
     {
     public:
-        class Context
-        {
-        public:
-            Metal::DeviceContext* _context;
-            Techniques::ParsingContext* _parserContext;
-            unsigned _techniqueIndex;
-            const SharedStateSet* _sharedStateSet;
-
-            Context(
-                Metal::DeviceContext* context, 
-                Techniques::ParsingContext& parserContext,
-                unsigned techniqueIndex, const SharedStateSet& sharedStateSet)
-                : _context(context), _parserContext(&parserContext), _techniqueIndex(techniqueIndex), _sharedStateSet(&sharedStateSet) {}
-        };
-
         class MeshToModel
         {
         public:
@@ -139,10 +125,11 @@ namespace RenderCore { namespace Assets
             ////////////////////////////////////////////////////////////
         class PreparedAnimation;
         void Render(
-            const Context&      context,
-            const Float4x4&     modelToWorld,
-            const MeshToModel*  transforms = nullptr,
-            PreparedAnimation*  preparedAnimation = nullptr) const;
+            const ModelRendererContext& context,
+            const SharedStateSet&   sharedStateSet,
+            const Float4x4&         modelToWorld,
+            const MeshToModel*      transforms = nullptr,
+            PreparedAnimation*      preparedAnimation = nullptr) const;
 
             ////////////////////////////////////////////////////////////
         class SortedModelDrawCalls
@@ -160,8 +147,9 @@ namespace RenderCore { namespace Assets
             const Float4x4& modelToWorld,
             const MeshToModel*  transforms = nullptr);
         static void RenderPrepared(
-            const Context&          context,
-            SortedModelDrawCalls&   drawCalls);
+            const ModelRendererContext& context,
+            const SharedStateSet&       sharedStateSet,
+            SortedModelDrawCalls&       drawCalls);
 
             ////////////////////////////////////////////////////////////
         class PreparedAnimation : noncopyable

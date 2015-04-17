@@ -10,7 +10,6 @@
 
 #include "PlacementsManager.h"
 #include "PlacementsQuadTree.h"
-#include "LightingParserContext.h"
 #include "../RenderCore/Assets/SharedStateSet.h"
 
 #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
@@ -22,6 +21,8 @@
     #include "../RenderCore/Assets/ModelSimple.h"
 #endif
 #include "../RenderCore/Assets/IModelFormat.h"
+
+#include "../RenderCore/Techniques/ParsingContext.h"
 
 #include "../Assets/Assets.h"
 #include "../Assets/ChunkFile.h"
@@ -306,11 +307,13 @@ namespace SceneEngine
     {
     public:
         void BeginRender(RenderCore::Metal::DeviceContext* context);
-        void EndRender(RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, unsigned techniqueIndex);
+        void EndRender(
+            RenderCore::Metal::DeviceContext* context, 
+            RenderCore::Techniques::ParsingContext& parserContext, unsigned techniqueIndex);
 
         void Render(
             RenderCore::Metal::DeviceContext* context,
-            LightingParserContext& parserContext, 
+            RenderCore::Techniques::ParsingContext& parserContext,
             const PlacementCell& cell,
             const uint64* filterStart = nullptr, const uint64* filterEnd = nullptr);
 
@@ -381,7 +384,7 @@ namespace SceneEngine
 
         void Render(
             RenderCore::Metal::DeviceContext* context,
-            LightingParserContext& parserContext, 
+            RenderCore::Techniques::ParsingContext& parserContext,
             const CellRenderInfo& renderInfo,
             const Float3x4& cellToWorld,
             const uint64* filterStart, const uint64* filterEnd);
@@ -404,15 +407,15 @@ namespace SceneEngine
 
     void PlacementsRenderer::EndRender(
         RenderCore::Metal::DeviceContext* context,
-        LightingParserContext& parserContext, 
+        RenderCore::Techniques::ParsingContext& parserContext,
         unsigned techniqueIndex)
     {
         TRY 
         {
             #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
                 ModelRenderer::RenderPrepared(
-                    ModelRenderer::Context(context, parserContext, techniqueIndex, _cache->_sharedStates),
-                    _cache->_preparedRenders);
+                    RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
+                    _cache->_sharedStates, _cache->_preparedRenders);
             #else
                 ModelRenderer::RenderPrepared(
                     _cache->_preparedRenders, context, parserContext, techniqueIndex, _cache->_sharedStates);
@@ -543,7 +546,7 @@ namespace SceneEngine
 
     void PlacementsRenderer::Render(
         RenderCore::Metal::DeviceContext* context,
-        LightingParserContext& parserContext, 
+        RenderCore::Techniques::ParsingContext& parserContext,
         const PlacementCell& cell,
         const uint64* filterStart, const uint64* filterEnd)
     {
@@ -717,7 +720,7 @@ namespace SceneEngine
 
     void PlacementsRenderer::Render(
         RenderCore::Metal::DeviceContext* context,
-        LightingParserContext& parserContext, 
+        RenderCore::Techniques::ParsingContext& parserContext,
         const CellRenderInfo& renderInfo,
         const Float3x4& cellToWorld,
         const uint64* filterStart, const uint64* filterEnd)
@@ -836,7 +839,7 @@ namespace SceneEngine
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     void PlacementsManager::Render(
-        RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext,
+        RenderCore::Metal::DeviceContext* context, RenderCore::Techniques::ParsingContext& parserContext,
         unsigned techniqueIndex)
     {
             // render every registered cell
@@ -1827,7 +1830,7 @@ namespace SceneEngine
 
     void PlacementsEditor::RenderFiltered(
         RenderCore::Metal::DeviceContext* context,
-        LightingParserContext& parserContext,
+        RenderCore::Techniques::ParsingContext& parserContext,
         unsigned techniqueIndex,
         const PlacementGUID* begin, const PlacementGUID* end)
     {

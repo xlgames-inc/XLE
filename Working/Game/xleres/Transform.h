@@ -21,7 +21,6 @@ cbuffer LocalTransform : register(b1)
 {
 	row_major float3x4 LocalToWorld;
 	float3 LocalSpaceView;
-	float3 LocalNegativeLightDirection;
 }
 
 cbuffer GlobalState : register(b4)
@@ -46,7 +45,7 @@ cbuffer BoneTransforms : register(b6)
 {
 		//		We have multiple options for storing bone transformations:
 		//			1. float3x4 transforms	--			shader math for vector by matrix is simplier
-		//												and more efficient than quaternions. So this 
+		//												and more efficient than quaternions. So this
 		//												method creates more efficient vertex shaders than
 		//												method 2.
 		//												Also, scaling is supported
@@ -60,7 +59,7 @@ cbuffer BoneTransforms : register(b6)
 		//
 		//			4. Compressed Matrix?? --			It seems like we might be able to remove some elements
 		//												from the matrix representation. If we assume there is
-		//												no scale, some elements can be implied by the other 
+		//												no scale, some elements can be implied by the other
 		//												elements. This would reduce the constant usage, but
 		//												increase the shader instructions. It might be more efficient
 		//												than the Q+T method -- but it might not matter that

@@ -56,8 +56,6 @@ namespace RenderCore { namespace Techniques
         Float3x4    _localToWorld;
         Float3      _localSpaceView;
         float       _dummy;
-        Float3      _localNegativeLightDirection;
-        float       _dummy2;
     };
 
     namespace GeometricCoordinateSpace      { enum Enum { LeftHanded,       RightHanded };  }

@@ -348,9 +348,8 @@ namespace GUILayer
         {
             if (highlight == nullptr || highlight->IsEmpty()) return;
 
-            SceneEngine::LightingParserContext lpc(context->GetParsingContext().GetTechniqueContext());
             ToolsRig::RenderHighlight(
-                &context->GetDevContext(), lpc, &placements->GetNative(),
+                &context->GetDevContext(), context->GetParsingContext(), &placements->GetNative(),
                 (const SceneEngine::PlacementGUID*)AsPointer(highlight->_nativePlacements->cbegin()),
                 (const SceneEngine::PlacementGUID*)AsPointer(highlight->_nativePlacements->cend()));
         }

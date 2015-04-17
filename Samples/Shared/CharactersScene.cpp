@@ -109,8 +109,8 @@ namespace Sample
 
         _pimpl->_charactersSharedStateSet.CaptureState(context);
 
-        RenderCore::Assets::ModelRenderer::Context modelContext(
-            context, parserContext, techniqueIndex, _pimpl->_charactersSharedStateSet);
+        RenderCore::Assets::ModelRendererContext modelContext(
+            context, parserContext, techniqueIndex);
 
         if (!_pimpl->_preallocatedState.empty()) {
 
@@ -131,7 +131,7 @@ namespace Sample
                                 si->_finalMatrices.get(),
                                 model.GetPrepareMachine().GetSkeletonOutputCount(),
                                 &model.GetPrepareMachine().GetSkeletonBinding());
-                            model.GetRenderer().Render(modelContext, *i2, &meshToModel, AsPointer(si));
+                            model.GetRenderer().Render(modelContext, _pimpl->_charactersSharedStateSet, *i2, &meshToModel, AsPointer(si));
                         }
                     } CATCH(const std::exception&) {
                     } CATCH_END
@@ -164,7 +164,7 @@ namespace Sample
                                 &model.GetPrepareMachine().GetSkeletonBinding());
 
                             CPUProfileEvent pEvnt("CharacterModelRender", g_cpuProfiler);
-                            model.GetRenderer().Render(modelContext, *i2, &meshToModel, AsPointer(si));
+                            model.GetRenderer().Render(modelContext, _pimpl->_charactersSharedStateSet, *i2, &meshToModel, AsPointer(si));
                         }
                     } CATCH(const std::exception&) {
                     } CATCH_END

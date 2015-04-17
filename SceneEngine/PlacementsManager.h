@@ -15,11 +15,10 @@
 #include <functional>
 
 namespace RenderCore { namespace Assets { class IModelFormat; } }
+namespace RenderCore { namespace Techniques { class ParsingContext; } }
 
 namespace SceneEngine
 {
-    class LightingParserContext;
-
     class WorldPlacementsConfig
     {
     public:
@@ -44,7 +43,7 @@ namespace SceneEngine
     public:
         void Render(
             RenderCore::Metal::DeviceContext* context,
-            LightingParserContext& parserContext,
+            RenderCore::Techniques::ParsingContext& parserContext,
             unsigned techniqueIndex);
 
         auto GetVisibleQuadTrees(const Float4x4& worldToClip) const
@@ -147,7 +146,7 @@ namespace SceneEngine
 
         void RenderFiltered(
             RenderCore::Metal::DeviceContext* context,
-            LightingParserContext& parserContext,
+            RenderCore::Techniques::ParsingContext& parserContext,
             unsigned techniqueIndex,
             const PlacementGUID* begin, const PlacementGUID* end);
 

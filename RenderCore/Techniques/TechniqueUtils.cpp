@@ -371,7 +371,6 @@ namespace RenderCore { namespace Techniques
         CopyTransform(localTransform._localToWorld, localToWorld);
         auto worldToLocal = InvertOrthonormalTransform(localToWorld);
         localTransform._localSpaceView = TransformPoint(worldToLocal, worldSpaceCameraPosition);
-        localTransform._localNegativeLightDirection = TransformDirectionVector(worldToLocal, NegativeLightDirection);
         return localTransform;
     }
 

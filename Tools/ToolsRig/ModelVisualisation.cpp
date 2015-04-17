@@ -246,7 +246,8 @@ namespace ToolsRig
 
                 #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
                     _model->Render(
-                        ModelRenderer::Context(context, parserContext, techniqueIndex, *_sharedStateSet),
+                        RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
+                        *_sharedStateSet,
                         Identity<Float4x4>());
                 #else
                     _model->Render(context, parserContext, techniqueIndex, *_sharedStateSet, Identity<Float4x4>(), 0);
@@ -527,8 +528,8 @@ namespace ToolsRig
                 stateContext.SetRay(worldSpaceRay);
                 model._sharedStateSet->CaptureState(metalContext.get());
                 model._renderer->Render(
-                    ModelRenderer::Context(metalContext.get(), parserContext, 6, *model._sharedStateSet),
-                    Identity<Float4x4>());
+                    RenderCore::Assets::ModelRendererContext(metalContext.get(), parserContext, 6),
+                    *model._sharedStateSet, Identity<Float4x4>());
                 model._sharedStateSet->ReleaseState(metalContext.get());
 
                 results = stateContext.GetResults();
