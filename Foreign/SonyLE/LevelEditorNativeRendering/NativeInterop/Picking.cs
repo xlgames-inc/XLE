@@ -89,7 +89,7 @@ namespace RenderingInterop.NativeInterop
                 }
             }
 
-            if (results == null) { return null; }
+            if (results == null) { return new HitRecord[0]; }
             return AsHitRecordArray(results);
         }
     }

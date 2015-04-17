@@ -55,7 +55,9 @@ namespace RenderCore { namespace Techniques
     public:
         Float3x4    _localToWorld;
         Float3      _localSpaceView;
-        float       _dummy;
+        unsigned    _dummy0;
+        uint64      _materialGuid;
+        unsigned    _dummy1[2];
     };
 
     namespace GeometricCoordinateSpace      { enum Enum { LeftHanded,       RightHanded };  }

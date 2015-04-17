@@ -116,6 +116,7 @@ namespace XLEMath
     Float3          TransformDirectionVector(const Float3x3& transform, Float3 pt);
     Float3          TransformDirectionVector(const Float3x4& transform, Float3 pt);
     Float3          TransformDirectionVector(const Float4x4& transform, Float3 pt);
+    Float3          TransformPointByOrthonormalInverse(const Float4x4& transform, Float3 pt);
 
         //
         //      Orthonormal matrices have special properties. Use the following, instead

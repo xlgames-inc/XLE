@@ -21,6 +21,7 @@ cbuffer LocalTransform : register(b1)
 {
 	row_major float3x4 LocalToWorld;
 	float3 LocalSpaceView;
+	uint2 MaterialGuid;
 }
 
 cbuffer GlobalState : register(b4)

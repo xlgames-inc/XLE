@@ -135,8 +135,7 @@ namespace SceneEngine
         auto metalContext = RenderCore::Metal::DeviceContext::Get(*_pimpl->_threadContext);
         metalContext->BindGS(
             RenderCore::MakeResourceList(
-                1,
-                RenderCore::Metal::ConstantBuffer(&rayDefinitionCBuffer, sizeof(rayDefinitionCBuffer))));
+                8, RenderCore::Metal::ConstantBuffer(&rayDefinitionCBuffer, sizeof(rayDefinitionCBuffer))));
     }
 
     void ModelIntersectionStateContext::SetFrustum(const Float4x4& frustum)
@@ -151,7 +150,7 @@ namespace SceneEngine
         auto metalContext = DeviceContext::Get(*_pimpl->_threadContext);
         metalContext->BindGS(
             MakeResourceList(
-                2, ConstantBuffer(&frustumDefinitionCBuffer, sizeof(frustumDefinitionCBuffer))));
+                9, ConstantBuffer(&frustumDefinitionCBuffer, sizeof(frustumDefinitionCBuffer))));
     }
 
     LightingParserContext& ModelIntersectionStateContext::GetParserContext()
@@ -213,7 +212,8 @@ namespace SceneEngine
             InputElementDesc("POINT",               0, NativeFormat::R32G32B32A32_FLOAT),
             InputElementDesc("POINT",               1, NativeFormat::R32G32B32A32_FLOAT),
             InputElementDesc("POINT",               2, NativeFormat::R32G32B32A32_FLOAT),
-            InputElementDesc("DRAWCALLINDEX",       0, NativeFormat::R32_UINT)
+            InputElementDesc("DRAWCALLINDEX",       0, NativeFormat::R32_UINT),
+            InputElementDesc("MATERIALGUID",        0, NativeFormat::R32G32_UINT)
         };
 
         static const unsigned strides[] = { sizeof(ResultEntry) };

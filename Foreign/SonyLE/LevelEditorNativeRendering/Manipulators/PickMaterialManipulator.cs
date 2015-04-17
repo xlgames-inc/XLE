@@ -57,7 +57,10 @@ namespace RenderingInterop
                 m_highlightDrawIndex = pick[0].drawCallIndex;
                 m_highlight.Add(pick[0].documentId, pick[0].instanceId);
 
-                m_highlight.DoFixup(GameEngine.GetEditorSceneManager().GetPlacementsEditor());
+                using (var placements = GameEngine.GetEditorSceneManager().GetPlacementsEditor())
+                {
+                    m_highlight.DoFixup(placements);
+                }
             }
             else
             {
@@ -72,9 +75,12 @@ namespace RenderingInterop
             var sceneManager = GameEngine.GetEditorSceneManager();
             using (var context = GameEngine.CreateRenderingContext())
             {
-                GUILayer.RenderingUtil.RenderHighlight(
-                    context, sceneManager.GetPlacementsEditor(),
-                    m_highlight, m_highlightDrawIndex);
+                using (var placements = sceneManager.GetPlacementsEditor())
+                {
+                    GUILayer.RenderingUtil.RenderHighlight(
+                        context, placements,
+                        m_highlight, m_highlightDrawIndex);
+                }
             }
         }
 

@@ -1325,7 +1325,7 @@ namespace SceneEngine
         unsigned            GetObjectCount() const;
         std::pair<Float3, Float3>   GetLocalBoundingBox(unsigned index) const;
         std::pair<Float3, Float3>   GetWorldBoundingBox(unsigned index) const;
-        std::string         GetMaterialName(unsigned objectIndex, unsigned drawCallIndex) const;
+        std::string         GetMaterialName(unsigned objectIndex, uint64 materialGuid) const;
 
         virtual void        SetObject(unsigned index, const ObjTransDef& newState);
 
@@ -1389,24 +1389,25 @@ namespace SceneEngine
         return TransformBoundingBox(cellToWorld, dst->_cellSpaceBoundary);
     }
 
-    std::string Transaction::GetMaterialName(unsigned objectIndex, unsigned drawCallIndex) const
+    std::string Transaction::GetMaterialName(unsigned objectIndex, uint64 materialGuid) const
     {
         if (objectIndex >= _objects.size()) return std::string();
 
-        const unsigned LOD = 0;
-        const auto* renderer = _editorPimpl->_renderer->GetCachedRenderer(
-            _objects[objectIndex]._model.c_str(), 
-            _objects[objectIndex]._material.c_str(), LOD);
-
-        auto binding = renderer->DrawCallToMaterialBinding();
-        if (drawCallIndex >= binding.size()) return std::string();
-
-        auto matGuid = binding[drawCallIndex];
+        // const unsigned LOD = 0;
+        // const auto* renderer = _editorPimpl->_renderer->GetCachedRenderer(
+        //     _objects[objectIndex]._model.c_str(), 
+        //     _objects[objectIndex]._material.c_str(), LOD);
+        // 
+        // auto binding = renderer->DrawCallToMaterialBinding();
+        // if (drawCallIndex >= binding.size()) return std::string();
+        // 
+        // auto matGuid = binding[drawCallIndex];
 
         const auto* material = _editorPimpl->_renderer->GetCachedMaterial(_objects[objectIndex]._material.c_str());
         if (!material) return std::string();
             
-        return material->GetMaterialName(matGuid);
+        auto res = material->GetMaterialName(materialGuid);
+        return res ? std::string(res) : std::string();
     }
 
     void    Transaction::SetObject(unsigned index, const ObjTransDef& newState)

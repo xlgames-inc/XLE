@@ -475,6 +475,20 @@ namespace XLEMath
         return Truncate(transform * Expand(pt, 0.f));
     }
 
+    Float3          TransformPointByOrthonormalInverse(const Float4x4& transform, Float3 pt)
+    {
+        float t[3];
+        t[0] = transform(0,0) * -transform(0,3) + transform(1,0) * -transform(1,3) + transform(2,0) * -transform(2,3);
+        t[1] = transform(0,1) * -transform(0,3) + transform(1,1) * -transform(1,3) + transform(2,1) * -transform(2,3);
+        t[2] = transform(0,2) * -transform(0,3) + transform(1,2) * -transform(1,3) + transform(2,2) * -transform(2,3);
+
+        Float3 result;
+        result[0] = transform(0,0) * pt[0] + transform(1,0) * pt[1] + transform(2,0) * pt[2] + t[0];
+        result[1] = transform(0,1) * pt[0] + transform(1,1) * pt[1] + transform(2,1) * pt[2] + t[1];
+        result[2] = transform(0,2) * pt[0] + transform(1,2) * pt[1] + transform(2,2) * pt[2] + t[2];
+        return result;
+    }
+
 
     bool IsOrthonormal(const Float3x3& rotationMatrix, float tolerance)
     {

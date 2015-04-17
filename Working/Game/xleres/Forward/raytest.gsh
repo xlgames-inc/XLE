@@ -7,6 +7,7 @@
 #include "../MainGeometry.h"
 #include "../CommonResources.h"
 #include "../BasicMaterial.h"
+#include "../Transform.h"
 
 struct GSOutput
 {
@@ -15,16 +16,17 @@ struct GSOutput
 	float4	triangleB : POINT1;
 	float4	triangleC : POINT2;
 	uint	drawCallIndex : DRAWCALLINDEX;
+	uint2	materialGuid : MATERIALGUID;
 };
 
-cbuffer RayDefinition : register(b1)
+cbuffer RayDefinition : register(b8)
 {
 	float3	RayStart;
 	float	RayLength;
 	float3	RayDirection;
 }
 
-cbuffer IntersectionFrustumDefinition : register(b2)
+cbuffer IntersectionFrustumDefinition : register(b9)
 {
 	row_major float4x4 IntersectionFrustum;
 }
@@ -124,6 +126,7 @@ bool PtInFrustum(float4 pt)
 			result.triangleB = float4(input[1].worldPosition, barycentric.y);
 			result.triangleC = float4(input[2].worldPosition, barycentric.z);
 			result.drawCallIndex = CurrentDrawCallIndex;
+			result.materialGuid = MaterialGuid;
 			outputStream.Append(result);
 		}
 	}
@@ -139,10 +142,10 @@ bool PtInFrustum(float4 pt)
 		result.triangleB = float4(input[1].worldPosition, 0.f);
 		result.triangleC = float4(input[2].worldPosition,0.f);
 		result.drawCallIndex = CurrentDrawCallIndex;
+		result.materialGuid = MaterialGuid;
 		result.intersectionDepth = 1.f;
 		outputStream.Append(result);
 	}
 
 #endif
-
 }

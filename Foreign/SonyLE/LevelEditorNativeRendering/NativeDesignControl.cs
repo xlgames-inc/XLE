@@ -70,16 +70,22 @@ namespace RenderingInterop
             {// frustum pick                
                 RectangleF rect = MakeRect(FirstMousePoint, CurrentMousePoint);
                 var frustum = XLELayer.XLELayerUtils.MakeFrustumMatrix(Camera, rect, ClientSize);
-                hits = NativeInterop.Picking.FrustumPick(
-                    TechniqueContext, frustum,
-                    Camera, ClientSize, NativeInterop.Picking.Flags.Objects);
+                using (var techContext = TechniqueContext)
+                {
+                    hits = NativeInterop.Picking.FrustumPick(
+                        techContext, frustum,
+                        Camera, ClientSize, NativeInterop.Picking.Flags.Objects);
+                }
             }
             else
             {// ray pick
                 Ray3F rayW = GetWorldRay(CurrentMousePoint);
-                hits = NativeInterop.Picking.RayPick(
-                    TechniqueContext, rayW, Camera, ClientSize,
-                    NativeInterop.Picking.Flags.Terrain | NativeInterop.Picking.Flags.Objects);
+                using (var techContext = TechniqueContext)
+                {
+                    hits = NativeInterop.Picking.RayPick(
+                        techContext, rayW, Camera, ClientSize,
+                        NativeInterop.Picking.Flags.Terrain | NativeInterop.Picking.Flags.Objects);
+                }
             }
 
             if (hits==null) return new List<object>();

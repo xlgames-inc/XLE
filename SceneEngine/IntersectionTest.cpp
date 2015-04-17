@@ -157,11 +157,13 @@ namespace SceneEngine
 
                     bool gotGoodResult = false;
                     unsigned drawCallIndex = 0;
+                    uint64 materialGuid = 0;
                     float intersectionDistance = FLT_MAX;
                     for (auto i=results.cbegin(); i!=results.cend(); ++i) {
                         if (i->_intersectionDepth < intersectionDistance) {
                             intersectionDistance = i->_intersectionDepth;
                             drawCallIndex = i->_drawCallIndex;
+                            materialGuid = i->_materialGuid;
                             gotGoodResult = true;
                         }
                     }
@@ -174,7 +176,8 @@ namespace SceneEngine
                         result._distance = intersectionDistance;
                         result._objectGuid = guid;
                         result._drawCallIndex = drawCallIndex;
-                        result._materialName = trans->GetMaterialName(c, drawCallIndex);
+                        result._materialGuid = materialGuid;
+                        result._materialName = trans->GetMaterialName(c, materialGuid);
                     }
                 }
             } CATCH(...) {

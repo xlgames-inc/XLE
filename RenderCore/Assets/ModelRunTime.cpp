@@ -1051,6 +1051,8 @@ namespace RenderCore { namespace Assets
 
         unsigned        _indexCount, _firstIndex, _firstVertex;
         Metal::Topology::Enum        _topology;
+
+        uint64          _materialGuid;
         
         ModelRenderer::Pimpl::Mesh* _mesh;
     };
@@ -1119,8 +1121,34 @@ namespace RenderCore { namespace Assets
             entry._firstIndex = d._firstIndex;
             entry._firstVertex = d._firstVertex;
             entry._topology = Metal::Topology::Enum(d._topology);
+            entry._materialGuid = drawCallRes._materialBindingIndex;
             entry._mesh = AsPointer(mesh);
             dest._entries.push_back(entry);
+        }
+    }
+
+    namespace WLTFlags { enum Enum { LocalToWorld = 1<<0, LocalSpaceView = 1<<1, MaterialGuid = 1<<2 }; }
+
+    template<int Flags>
+        void WriteLocalTransform(
+            void* dest, 
+            const ModelRendererContext& context, 
+            const ModelRenderer::SortedModelDrawCalls::Entry& d)
+    {
+        auto* dst = (Techniques::LocalTransformConstants*)dest;
+
+            //  Write some system constants that are supposed
+            //  to be provided by the model renderer
+        if (constant_expression<!!(Flags&WLTFlags::LocalToWorld)>::result()) {
+            CopyTransform(dst->_localToWorld, d._meshToWorld);
+        }
+        if (constant_expression<!!(Flags&WLTFlags::LocalSpaceView)>::result()) {
+            auto worldSpaceView = ExtractTranslation(context._parserContext->GetProjectionDesc()._cameraToWorld);
+            TransformPointByOrthonormalInverse(d._meshToWorld, worldSpaceView);
+            dst->_localSpaceView = worldSpaceView;
+        }
+        if (constant_expression<!!(Flags&WLTFlags::MaterialGuid)>::result()) {
+            dst->_materialGuid = d._materialGuid;
         }
     }
 
@@ -1175,7 +1203,7 @@ namespace RenderCore { namespace Assets
                 HRESULT hresult = context._context->GetUnderlying()->Map(
                     localTransformBuffer.GetUnderlying(), 0, D3D11_MAP_WRITE_DISCARD, 0, &result);
                 assert(SUCCEEDED(hresult) && result.pData); (void)hresult;
-                CopyTransform(((Techniques::LocalTransformConstants*)result.pData)->_localToWorld, d->_meshToWorld);
+                WriteLocalTransform<WLTFlags::LocalToWorld|WLTFlags::MaterialGuid>(result.pData, context, *d);
                 context._context->GetUnderlying()->Unmap(localTransformBuffer.GetUnderlying(), 0);
             }
             

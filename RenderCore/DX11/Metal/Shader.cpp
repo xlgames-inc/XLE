@@ -125,12 +125,13 @@ namespace RenderCore { namespace Metal_DX11
             assert(soInitializers._outputBufferCount < D3D11_SO_BUFFER_SLOT_COUNT);
             D3D11_SO_DECLARATION_ENTRY nativeDeclaration[D3D11_SO_STREAM_COUNT * D3D11_SO_OUTPUT_COMPONENT_COUNT];
             for (unsigned c=0; c<std::min(unsigned(dimof(nativeDeclaration)), soInitializers._outputElementCount); ++c) {
+                auto& ele = soInitializers._outputElements[c];
                 nativeDeclaration[c].Stream = 0;
-                nativeDeclaration[c].SemanticName = soInitializers._outputElements[c]._semanticName.c_str();
-                nativeDeclaration[c].SemanticIndex = soInitializers._outputElements[c]._semanticIndex;
+                nativeDeclaration[c].SemanticName = ele._semanticName.c_str();
+                nativeDeclaration[c].SemanticIndex = ele._semanticIndex;
                 nativeDeclaration[c].StartComponent = 0;
-                nativeDeclaration[c].ComponentCount = 3;        // todo -- get the component count from the expected format (ie, typically either 3 or 4)
-                nativeDeclaration[c].OutputSlot = (BYTE)soInitializers._outputElements[c]._inputSlot;
+                nativeDeclaration[c].ComponentCount = (BYTE)GetComponentCount(GetComponents(ele._nativeFormat));
+                nativeDeclaration[c].OutputSlot = (BYTE)ele._inputSlot;
                 assert(nativeDeclaration[c].OutputSlot < soInitializers._outputBufferCount);
             }
 
@@ -152,27 +153,6 @@ namespace RenderCore { namespace Metal_DX11
         _underlying = std::move(underlying);
     }
 
-    static unsigned GetComponentCount(NativeFormat::Enum format)
-    {
-        using namespace FormatComponents;
-        auto type = GetComponents(format);
-        switch (type) {
-        case Unknown:
-        case Alpha:
-        case Luminance: 
-        case Depth: return 1;
-
-        case RG:
-        case LuminanceAlpha: return 2;
-        
-        case RGB: return 3;
-
-        case RGBE:
-        case RGBAlpha: return 4;
-        }
-        return 0;
-    }
-
     GeometryShader::GeometryShader(const CompiledShaderByteCode& byteCode, const StreamOutputInitializers& soInitializers)
     {
         if (byteCode.GetStage() != ShaderStage::Null) {
@@ -190,12 +170,13 @@ namespace RenderCore { namespace Metal_DX11
                     assert(soInitializers._outputBufferCount <= D3D11_SO_BUFFER_SLOT_COUNT);
                     D3D11_SO_DECLARATION_ENTRY nativeDeclaration[D3D11_SO_STREAM_COUNT * D3D11_SO_OUTPUT_COMPONENT_COUNT];
                     for (unsigned c=0; c<std::min(unsigned(dimof(nativeDeclaration)), soInitializers._outputElementCount); ++c) {
+                        auto& ele = soInitializers._outputElements[c];
                         nativeDeclaration[c].Stream = 0;
-                        nativeDeclaration[c].SemanticName = soInitializers._outputElements[c]._semanticName.c_str();
-                        nativeDeclaration[c].SemanticIndex = soInitializers._outputElements[c]._semanticIndex;
+                        nativeDeclaration[c].SemanticName = ele._semanticName.c_str();
+                        nativeDeclaration[c].SemanticIndex = ele._semanticIndex;
                         nativeDeclaration[c].StartComponent = 0;
-                        nativeDeclaration[c].ComponentCount = (BYTE)GetComponentCount(soInitializers._outputElements[c]._nativeFormat);        // todo -- get the component count from the expected format (ie, typically either 3 or 4)
-                        nativeDeclaration[c].OutputSlot = (BYTE)soInitializers._outputElements[c]._inputSlot;
+                        nativeDeclaration[c].ComponentCount = (BYTE)GetComponentCount(GetComponents(ele._nativeFormat));
+                        nativeDeclaration[c].OutputSlot = (BYTE)ele._inputSlot;
                         assert(nativeDeclaration[c].OutputSlot < soInitializers._outputBufferCount);
                     }
 

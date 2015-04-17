@@ -46,6 +46,12 @@ namespace UnitTests
 				auto trans1 = TransformDirectionVector(rotA, starterVector);
 				auto trans2 = TransformDirectionVector(rotB, trans1);
 				Assert::IsTrue(Equivalent(trans2, starterVector, tolerance));
+
+                auto trans1a = TransformPoint(rotA, starterVector);
+				auto trans2a = TransformPointByOrthonormalInverse(rotA, trans1a);
+                auto trans3a = TransformPoint(InvertOrthonormalTransform(rotA), trans1a);
+				Assert::IsTrue(Equivalent(trans2a, starterVector, tolerance));
+                Assert::IsTrue(Equivalent(trans3a, starterVector, tolerance));
 			}
 
 				// test different types of rotation construction

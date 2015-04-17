@@ -72,15 +72,13 @@ namespace RenderingInterop
             IEnumerable<DomNode> domNodes = m_selectionContext.Selection.AsIEnumerable<DomNode>();
             IEnumerable<DomNode> roots = DomNode.GetRoots(domNodes);
             IEnumerable<NativeObjectAdapter> nativeObjects = roots.AsIEnumerable<NativeObjectAdapter>();
-            m_nativeSelection = GameEngine.CreateObjectSet(nativeObjects);
-            GameEngine.GetEditorSceneManager().SetSelection(m_nativeSelection);
+            var nativeSelection = GameEngine.CreateObjectSet(nativeObjects);
+            GameEngine.GetEditorSceneManager().SetSelection(nativeSelection);
+            nativeSelection.Dispose();
             InvalidateViews();
         }
 
-        GUILayer.ObjectSet GetNativeSelection() { return m_nativeSelection; }
-
         private ISelectionContext m_selectionContext;
-        private GUILayer.ObjectSet m_nativeSelection;
 
         private void RenderCallback(DesignView designView, Sce.Atf.Rendering.Camera camera)
         {

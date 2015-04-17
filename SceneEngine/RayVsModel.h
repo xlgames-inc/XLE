@@ -9,6 +9,7 @@
 #include "../RenderCore/IThreadContext_Forward.h"
 #include "../Math/Vector.h"
 #include "../Math/Matrix.h"
+#include "../Core/Types.h"
 #include <vector>
 
 namespace RenderCore { namespace Techniques 
@@ -30,6 +31,7 @@ namespace SceneEngine
             union { unsigned _depthAsInt; float _intersectionDepth; };
             Float4 _pt[3];
             unsigned _drawCallIndex;
+            uint64 _materialGuid;
 
             static bool CompareDepth(const ResultEntry& lhs, const ResultEntry& rhs)
                 { return lhs._intersectionDepth < rhs._intersectionDepth; }
