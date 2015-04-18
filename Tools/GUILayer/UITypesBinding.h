@@ -268,8 +268,6 @@ namespace GUILayer
     protected:
         clix::shared_ptr<NativeConfig> _underlying;
         RenderStateSet^ _renderStateSet;
-        System::String^ DummyFilename;
-        System::String^ DummySettingName;
 
         BindingList<BindingUtil::StringStringPair^>^ _materialParameterBox;
         BindingList<BindingUtil::StringStringPair^>^ _shaderConstants;

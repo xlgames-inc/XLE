@@ -38,6 +38,8 @@ namespace SceneEngine
         TerrainMaterialScaffold(const char definitionFile[]);
         ~TerrainMaterialScaffold();
 
+        static std::unique_ptr<TerrainMaterialScaffold> CreateNew(const char definitionFile[] = nullptr);
+
         const Assets::DependencyValidation& GetDependencyValidation() const   { return *_validationCallback; }
     private:
         std::shared_ptr<Assets::DependencyValidation>  _validationCallback;

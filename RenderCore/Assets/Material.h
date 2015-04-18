@@ -233,6 +233,8 @@ namespace RenderCore { namespace Assets
         RawMaterial(const Data&);
         ~RawMaterial();
 
+        static std::unique_ptr<RawMaterial> CreateNew(const ::Assets::ResChar initialiser[]);
+
         class RawMatSplitName
         {
         public:

@@ -85,6 +85,20 @@ bool PtInFrustum(float4 pt)
 	return m <= pt.w;
 }
 
+bool TriangleInFrustum(float4 p0, float4 p1, float4 p2)
+{
+		// 	All points must be rejected by the same frustum plane.
+		//	Even if all of the points are outside of the frustum, the triangle must still be within
+		//	This is a brute force implementation... we could do better with
+	if (p0.x < -p0.w && p1.x < -p1.w && p2.x < -p2.w) return false;
+	if (p0.x >  p0.w && p1.x >  p1.w && p2.x >  p2.w) return false;
+	if (p0.y < -p0.w && p1.y < -p1.w && p2.y < -p2.w) return false;
+	if (p0.y >  p0.w && p1.y >  p1.w && p2.y >  p2.w) return false;
+	if (p0.z < 0.0f && p1.z < 0.0f && p2.z < -0.0f) return false;
+	if (p0.z >  p0.w && p1.z >  p1.w && p2.z >  p2.w) return false;
+	return true;
+}
+
 [maxvertexcount(1)]
 	void triangles(triangle VSOutput input[3], inout PointStream<GSOutput> outputStream)
 {
@@ -139,11 +153,11 @@ bool PtInFrustum(float4 pt)
 	float4 p0 = mul(IntersectionFrustum, float4(input[0].worldPosition, 1.f));
 	float4 p1 = mul(IntersectionFrustum, float4(input[1].worldPosition, 1.f));
 	float4 p2 = mul(IntersectionFrustum, float4(input[2].worldPosition, 1.f));
-	if (PtInFrustum(p0) || PtInFrustum(p1) || PtInFrustum(p2)) {
+	if (TriangleInFrustum(p0, p1, p2)) {
 		GSOutput result;
 		result.triangleA = float4(input[0].worldPosition, 0.f);
 		result.triangleB = float4(input[1].worldPosition, 0.f);
-		result.triangleC = float4(input[2].worldPosition,0.f);
+		result.triangleC = float4(input[2].worldPosition, 0.f);
 		result.drawCallIndex = CurrentDrawCallIndex;
 		result.materialGuid = MaterialGuid;
 		result.intersectionDepth = 1.f;

@@ -209,10 +209,42 @@ namespace Assets
                     identifier._targetFilename = BuildTargetFilename<AssetType>(initialisers...);
 
                     std::weak_ptr<UndoQueue> undoQueue;
-                    auto newDivAsset = std::make_shared<typename AssetTraits<AssetType>::DivAsset>(
-                        GetAsset<true, false, AssetType>(std::forward<Params>(initialisers)...), 
-                        hash, assetSet.GetTypeCode(), 
-                        identifier, undoQueue);
+                    std::shared_ptr<typename AssetTraits<AssetType>::DivAsset> newDivAsset;
+
+                    bool constructNewAsset = false;
+                    TRY {
+                        newDivAsset = std::make_shared<typename AssetTraits<AssetType>::DivAsset>(
+                            GetAsset<true, false, AssetType>(std::forward<Params>(initialisers)...), 
+                            hash, assetSet.GetTypeCode(), 
+                            identifier, undoQueue);
+                    } CATCH (const Assets::Exceptions::InvalidResource&) {
+                        constructNewAsset = true;
+                    } CATCH_END
+
+                    if (constructNewAsset) {
+
+                        auto hash = BuildHash(initialisers...);
+                        #if defined(ASSETS_STORE_NAMES)
+                            auto name = AsString(initialisers...);
+                        #endif
+
+                            //  If we get an invalid asset, we have to create a new one
+                            //  and assign it in place.
+                        auto newBlankAsset = AssetType::CreateNew(initialisers...);
+
+                        auto& assetSet = GetAssetSet<AssetType>();
+                        auto& assets = assetSet._assets;
+
+                        #if defined(ASSETS_STORE_NAMES)
+					        InsertAssetName(assetSet._assetNames, hash, name);
+                        #endif
+
+                        auto i = LowerBound(assets, hash);
+                        newDivAsset = std::make_shared<typename AssetTraits<AssetType>::DivAsset>(
+                            *assets.insert(i, std::make_pair(hash, std::move(newBlankAsset)))->second, 
+                            hash, assetSet.GetTypeCode(), 
+                            identifier, undoQueue);
+                    }
 
 						// Do we have to search for an insertion point here again?
 						// is it possible that constructing an asset could create a new divergent

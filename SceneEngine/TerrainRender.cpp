@@ -2370,6 +2370,7 @@ namespace SceneEngine
 
     TerrainMaterialScaffold::TerrainMaterialScaffold()
     {
+        _diffuseDims = _normalDims = _paramDims = UInt2(32, 32);
         _validationCallback = std::make_shared<Assets::DependencyValidation>();
         _cachedHashValue = ~0x0ull;
     }
@@ -2427,6 +2428,15 @@ namespace SceneEngine
     }
 
     TerrainMaterialScaffold::~TerrainMaterialScaffold() {}
+
+    std::unique_ptr<TerrainMaterialScaffold> TerrainMaterialScaffold::CreateNew(const char definitionFile[])
+    {
+        auto result = std::make_unique<TerrainMaterialScaffold>();
+        if (definitionFile)
+            result->_searchRules = ::Assets::DefaultDirectorySearchRules(definitionFile);
+        result->_validationCallback = std::make_shared<Assets::DependencyValidation>();
+        return result;
+    }
 
     TerrainMaterialTextures::TerrainMaterialTextures()
     {

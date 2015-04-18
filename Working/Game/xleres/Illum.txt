@@ -85,6 +85,7 @@ RayTest
             OUTPUT_WORLD_POSITION 1
         Material
             MAT_ALPHA_TEST
+            MAT_VCOLOR_IS_ANIM_PARAM
         Runtime
             INTERSECTION_TEST
     VertexShader

@@ -214,7 +214,7 @@ namespace GUILayer
         for each(auto i in input) {
                 //  We get items with null names when they are being added, but
                 //  not quite finished yet. We have to ignore in this case.
-            if (i->Name && i->Name->Length > 0) {
+            if (i->Name && i->Name->Length > 0 && i->Value) {
                 result.SetParameter(
                     clix::marshalString<clix::E_UTF8>(i->Name).c_str(),
                     clix::marshalString<clix::E_UTF8>(i->Value).c_str());
@@ -406,32 +406,20 @@ namespace GUILayer
 
     System::String^ RawMaterial::Filename::get()
     {
-        if (!_underlying) { return DummyFilename; }
         return clix::marshalString<clix::E_UTF8>(_underlying->GetAsset().GetInitializerFilename());
     }
 
     System::String^ RawMaterial::SettingName::get()
     {
-        if (!_underlying) { return DummySettingName; }
         return clix::marshalString<clix::E_UTF8>(_underlying->GetAsset().GetSettingName());
     }
 
     RawMaterial::RawMaterial(System::String^ initialiser)
     {
-        TRY {
-            auto nativeInit = clix::marshalString<clix::E_UTF8>(initialiser);
-            auto& source = ::Assets::GetDivergentAsset<RenderCore::Assets::RawMaterial>(nativeInit.c_str());
-            _underlying = source;
-            _renderStateSet = gcnew RenderStateSet(_underlying.GetNativePtr());
-        } CATCH (const Assets::Exceptions::InvalidResource&) {
-            auto colon = initialiser->IndexOf(':');
-            if (colon > 1) {
-                DummyFilename = initialiser->Substring(0, colon);
-                DummySettingName = initialiser->Substring(colon+1);
-            } else {
-                DummyFilename = initialiser;
-            }
-        } CATCH_END
+        auto nativeInit = clix::marshalString<clix::E_UTF8>(initialiser);
+        auto& source = ::Assets::GetDivergentAsset<RenderCore::Assets::RawMaterial>(nativeInit.c_str());
+        _underlying = source;
+        _renderStateSet = gcnew RenderStateSet(_underlying.GetNativePtr());
     }
 
     RawMaterial::RawMaterial(

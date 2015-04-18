@@ -89,13 +89,15 @@ namespace LevelEditor.DomNodeAdapters
         {
             if (m_target == null)
             {
-                Uri ur = Uri;
-                if (ur == null) { m_error = "ref attribute is null"; }
-                else if (!File.Exists(ur.LocalPath)) { m_error = "File not found: " + ur.LocalPath; }
-                else
+                try
                 {
-                    SchemaLoader schemaloader = Globals.MEFContainer.GetExportedValue<SchemaLoader>();
-                    m_target = XLEPlacementDocument.OpenOrCreate(ur, schemaloader);
+                    Uri ur = Uri;
+                    if (ur == null) { m_error = "ref attribute is null"; }
+                    else if (!File.Exists(ur.LocalPath)) { m_error = "File not found: " + ur.LocalPath; }
+                    else
+                    {
+                        SchemaLoader schemaloader = Globals.MEFContainer.GetExportedValue<SchemaLoader>();
+                        m_target = XLEPlacementDocument.OpenOrCreate(ur, schemaloader);
 
                         //  We can use "SubscribeToEvents" to feed changes to the sub-tree
                         //  into the tree that this cell belongs to.
@@ -103,9 +105,11 @@ namespace LevelEditor.DomNodeAdapters
                         //  the root node of the main document) needs to recieve change events.
                         //  Even though the placement document is a separate document, we still
                         //  need to use the same single selection and history context
-                    // m_target.DomNode.SubscribeToEvents(DomNode);
+                        // m_target.DomNode.SubscribeToEvents(DomNode);
+                    }
                 }
-            }            
+                catch (Exception e) { m_error = "Error during resolve: " + e.Message; }
+            }
         }
         public virtual void Unresolve()
         {

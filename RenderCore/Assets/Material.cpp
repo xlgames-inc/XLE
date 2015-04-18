@@ -438,6 +438,14 @@ namespace RenderCore { namespace Assets
         RegisterFileDependency(_depVal, _splitName._concreteFilename.c_str());
     }
 
+    std::unique_ptr<RawMaterial> RawMaterial::CreateNew(const ::Assets::ResChar initialiser[])
+    {
+        auto result = std::make_unique<RawMaterial>();
+        result->_splitName = RawMatSplitName(initialiser);
+        result->_depVal = std::make_shared<::Assets::DependencyValidation>();
+        return std::move(result);
+    }
+
     RawMaterial::~RawMaterial() {}
 
     static std::unique_ptr<Data> WriteStringTable(const char name[], const std::vector<std::pair<const char*, std::string>>& table)
