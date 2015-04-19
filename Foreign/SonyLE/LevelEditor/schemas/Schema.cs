@@ -28,6 +28,30 @@ namespace LevelEditor
 
         private static void Initialize(Func<string, string, DomNodeType> getNodeType, Func<string, string, ChildInfo> getRootElement)
         {
+            placementsDocumentType.Type = getNodeType("gap", "placementsDocumentType");
+            placementsDocumentType.nameAttribute = placementsDocumentType.Type.GetAttributeInfo("name");
+            placementsDocumentType.placementChild = placementsDocumentType.Type.GetChildInfo("placement");
+
+            abstractPlacementObjectType.Type = getNodeType("gap", "abstractPlacementObjectType");
+            abstractPlacementObjectType.transformAttribute = abstractPlacementObjectType.Type.GetAttributeInfo("transform");
+            abstractPlacementObjectType.translateAttribute = abstractPlacementObjectType.Type.GetAttributeInfo("translate");
+            abstractPlacementObjectType.rotateAttribute = abstractPlacementObjectType.Type.GetAttributeInfo("rotate");
+            abstractPlacementObjectType.scaleAttribute = abstractPlacementObjectType.Type.GetAttributeInfo("scale");
+            abstractPlacementObjectType.pivotAttribute = abstractPlacementObjectType.Type.GetAttributeInfo("pivot");
+            abstractPlacementObjectType.IDAttribute = abstractPlacementObjectType.Type.GetAttributeInfo("ID");
+            abstractPlacementObjectType.transformationTypeAttribute = abstractPlacementObjectType.Type.GetAttributeInfo("transformationType");
+            abstractPlacementObjectType.visibleAttribute = abstractPlacementObjectType.Type.GetAttributeInfo("visible");
+            abstractPlacementObjectType.lockedAttribute = abstractPlacementObjectType.Type.GetAttributeInfo("locked");
+
+            transformObjectType.Type = getNodeType("gap", "transformObjectType");
+            transformObjectType.transformAttribute = transformObjectType.Type.GetAttributeInfo("transform");
+            transformObjectType.translateAttribute = transformObjectType.Type.GetAttributeInfo("translate");
+            transformObjectType.rotateAttribute = transformObjectType.Type.GetAttributeInfo("rotate");
+            transformObjectType.scaleAttribute = transformObjectType.Type.GetAttributeInfo("scale");
+            transformObjectType.pivotAttribute = transformObjectType.Type.GetAttributeInfo("pivot");
+            transformObjectType.IDAttribute = transformObjectType.Type.GetAttributeInfo("ID");
+            transformObjectType.transformationTypeAttribute = transformObjectType.Type.GetAttributeInfo("transformationType");
+
             gameType.Type = getNodeType("gap", "gameType");
             gameType.nameAttribute = gameType.Type.GetAttributeInfo("name");
             gameType.fogEnabledAttribute = gameType.Type.GetAttributeInfo("fogEnabled");
@@ -39,7 +63,9 @@ namespace LevelEditor
             gameType.bookmarksChild = gameType.Type.GetChildInfo("bookmarks");
             gameType.gameReferenceChild = gameType.Type.GetChildInfo("gameReference");
             gameType.gridChild = gameType.Type.GetChildInfo("grid");
-            gameType.placementsFolderChild = gameType.Type.GetChildInfo("placements");
+            gameType.placementsChild = gameType.Type.GetChildInfo("placements");
+            gameType.terrainChild = gameType.Type.GetChildInfo("terrain");
+            gameType.environmentChild = gameType.Type.GetChildInfo("environment");
 
             gameObjectFolderType.Type = getNodeType("gap", "gameObjectFolderType");
             gameObjectFolderType.nameAttribute = gameObjectFolderType.Type.GetAttributeInfo("name");
@@ -49,7 +75,13 @@ namespace LevelEditor
             gameObjectFolderType.folderChild = gameObjectFolderType.Type.GetChildInfo("folder");
 
             gameObjectType.Type = getNodeType("gap", "gameObjectType");
-            gameObjectType.transform = new transformAttributes(gameObjectType.Type);
+            gameObjectType.transformAttribute = gameObjectType.Type.GetAttributeInfo("transform");
+            gameObjectType.translateAttribute = gameObjectType.Type.GetAttributeInfo("translate");
+            gameObjectType.rotateAttribute = gameObjectType.Type.GetAttributeInfo("rotate");
+            gameObjectType.scaleAttribute = gameObjectType.Type.GetAttributeInfo("scale");
+            gameObjectType.pivotAttribute = gameObjectType.Type.GetAttributeInfo("pivot");
+            gameObjectType.IDAttribute = gameObjectType.Type.GetAttributeInfo("ID");
+            gameObjectType.transformationTypeAttribute = gameObjectType.Type.GetAttributeInfo("transformationType");
             gameObjectType.nameAttribute = gameObjectType.Type.GetAttributeInfo("name");
             gameObjectType.visibleAttribute = gameObjectType.Type.GetAttributeInfo("visible");
             gameObjectType.lockedAttribute = gameObjectType.Type.GetAttributeInfo("locked");
@@ -100,6 +132,57 @@ namespace LevelEditor
             gridType.snapAttribute = gridType.Type.GetAttributeInfo("snap");
             gridType.visibleAttribute = gridType.Type.GetAttributeInfo("visible");
 
+            placementsFolderType.Type = getNodeType("gap", "placementsFolderType");
+            placementsFolderType.cellChild = placementsFolderType.Type.GetChildInfo("cell");
+
+            placementsCellReferenceType.Type = getNodeType("gap", "placementsCellReferenceType");
+            placementsCellReferenceType.refAttribute = placementsCellReferenceType.Type.GetAttributeInfo("ref");
+            placementsCellReferenceType.nameAttribute = placementsCellReferenceType.Type.GetAttributeInfo("name");
+            placementsCellReferenceType.minsAttribute = placementsCellReferenceType.Type.GetAttributeInfo("mins");
+            placementsCellReferenceType.maxsAttribute = placementsCellReferenceType.Type.GetAttributeInfo("maxs");
+
+            terrainType.Type = getNodeType("gap", "terrainType");
+            terrainType.basedirAttribute = terrainType.Type.GetAttributeInfo("basedir");
+            terrainType.offsetAttribute = terrainType.Type.GetAttributeInfo("offset");
+            terrainType.baseTextureChild = terrainType.Type.GetChildInfo("baseTexture");
+
+            terrainBaseTextureType.Type = getNodeType("gap", "terrainBaseTextureType");
+            terrainBaseTextureType.diffusedimsAttribute = terrainBaseTextureType.Type.GetAttributeInfo("diffusedims");
+            terrainBaseTextureType.normaldimsAttribute = terrainBaseTextureType.Type.GetAttributeInfo("normaldims");
+            terrainBaseTextureType.paramdimsAttribute = terrainBaseTextureType.Type.GetAttributeInfo("paramdims");
+            terrainBaseTextureType.strataChild = terrainBaseTextureType.Type.GetChildInfo("strata");
+
+            terrainBaseTextureStrataType.Type = getNodeType("gap", "terrainBaseTextureStrataType");
+            terrainBaseTextureStrataType.texture0Attribute = terrainBaseTextureStrataType.Type.GetAttributeInfo("texture0");
+            terrainBaseTextureStrataType.texture1Attribute = terrainBaseTextureStrataType.Type.GetAttributeInfo("texture1");
+            terrainBaseTextureStrataType.texture2Attribute = terrainBaseTextureStrataType.Type.GetAttributeInfo("texture2");
+            terrainBaseTextureStrataType.mapping0Attribute = terrainBaseTextureStrataType.Type.GetAttributeInfo("mapping0");
+            terrainBaseTextureStrataType.mapping1Attribute = terrainBaseTextureStrataType.Type.GetAttributeInfo("mapping1");
+            terrainBaseTextureStrataType.mapping2Attribute = terrainBaseTextureStrataType.Type.GetAttributeInfo("mapping2");
+            terrainBaseTextureStrataType.endheightAttribute = terrainBaseTextureStrataType.Type.GetAttributeInfo("endheight");
+
+            envSettingsFolderType.Type = getNodeType("gap", "envSettingsFolderType");
+            envSettingsFolderType.settingsChild = envSettingsFolderType.Type.GetChildInfo("settings");
+
+            envSettingsType.Type = getNodeType("gap", "envSettingsType");
+            envSettingsType.nameAttribute = envSettingsType.Type.GetAttributeInfo("name");
+            envSettingsType.objectsChild = envSettingsType.Type.GetChildInfo("objects");
+            envSettingsType.ambientChild = envSettingsType.Type.GetChildInfo("ambient");
+
+            envObjectType.Type = getNodeType("gap", "envObjectType");
+            envObjectType.transformAttribute = envObjectType.Type.GetAttributeInfo("transform");
+            envObjectType.translateAttribute = envObjectType.Type.GetAttributeInfo("translate");
+            envObjectType.rotateAttribute = envObjectType.Type.GetAttributeInfo("rotate");
+            envObjectType.scaleAttribute = envObjectType.Type.GetAttributeInfo("scale");
+            envObjectType.pivotAttribute = envObjectType.Type.GetAttributeInfo("pivot");
+            envObjectType.IDAttribute = envObjectType.Type.GetAttributeInfo("ID");
+            envObjectType.transformationTypeAttribute = envObjectType.Type.GetAttributeInfo("transformationType");
+
+            ambientSettingsType.Type = getNodeType("gap", "ambientSettingsType");
+            ambientSettingsType.ambientlightAttribute = ambientSettingsType.Type.GetAttributeInfo("ambientlight");
+            ambientSettingsType.skytextureAttribute = ambientSettingsType.Type.GetAttributeInfo("skytexture");
+            ambientSettingsType.dotonemapAttribute = ambientSettingsType.Type.GetAttributeInfo("dotonemap");
+
             prototypeType.Type = getNodeType("gap", "prototypeType");
             prototypeType.gameObjectChild = prototypeType.Type.GetChildInfo("gameObject");
 
@@ -120,6 +203,31 @@ namespace LevelEditor
             resourceReferenceType.Type = getNodeType("gap", "resourceReferenceType");
             resourceReferenceType.uriAttribute = resourceReferenceType.Type.GetAttributeInfo("uri");
 
+            placementObjectType.Type = getNodeType("gap", "placementObjectType");
+            placementObjectType.transformAttribute = placementObjectType.Type.GetAttributeInfo("transform");
+            placementObjectType.translateAttribute = placementObjectType.Type.GetAttributeInfo("translate");
+            placementObjectType.rotateAttribute = placementObjectType.Type.GetAttributeInfo("rotate");
+            placementObjectType.scaleAttribute = placementObjectType.Type.GetAttributeInfo("scale");
+            placementObjectType.pivotAttribute = placementObjectType.Type.GetAttributeInfo("pivot");
+            placementObjectType.IDAttribute = placementObjectType.Type.GetAttributeInfo("ID");
+            placementObjectType.transformationTypeAttribute = placementObjectType.Type.GetAttributeInfo("transformationType");
+            placementObjectType.visibleAttribute = placementObjectType.Type.GetAttributeInfo("visible");
+            placementObjectType.lockedAttribute = placementObjectType.Type.GetAttributeInfo("locked");
+            placementObjectType.modelAttribute = placementObjectType.Type.GetAttributeInfo("model");
+            placementObjectType.materialAttribute = placementObjectType.Type.GetAttributeInfo("material");
+
+            directionalLightType.Type = getNodeType("gap", "directionalLightType");
+            directionalLightType.transformAttribute = directionalLightType.Type.GetAttributeInfo("transform");
+            directionalLightType.translateAttribute = directionalLightType.Type.GetAttributeInfo("translate");
+            directionalLightType.rotateAttribute = directionalLightType.Type.GetAttributeInfo("rotate");
+            directionalLightType.scaleAttribute = directionalLightType.Type.GetAttributeInfo("scale");
+            directionalLightType.pivotAttribute = directionalLightType.Type.GetAttributeInfo("pivot");
+            directionalLightType.IDAttribute = directionalLightType.Type.GetAttributeInfo("ID");
+            directionalLightType.transformationTypeAttribute = directionalLightType.Type.GetAttributeInfo("transformationType");
+            directionalLightType.diffuseAttribute = directionalLightType.Type.GetAttributeInfo("diffuse");
+            directionalLightType.specularAttribute = directionalLightType.Type.GetAttributeInfo("specular");
+            directionalLightType.castshadowsAttribute = directionalLightType.Type.GetAttributeInfo("castshadows");
+
             transformComponentType.Type = getNodeType("gap", "transformComponentType");
             transformComponentType.nameAttribute = transformComponentType.Type.GetAttributeInfo("name");
             transformComponentType.activeAttribute = transformComponentType.Type.GetAttributeInfo("active");
@@ -128,7 +236,13 @@ namespace LevelEditor
             transformComponentType.scaleAttribute = transformComponentType.Type.GetAttributeInfo("scale");
 
             gameObjectGroupType.Type = getNodeType("gap", "gameObjectGroupType");
-            gameObjectGroupType.transform = new transformAttributes(gameObjectGroupType.Type);
+            gameObjectGroupType.transformAttribute = gameObjectGroupType.Type.GetAttributeInfo("transform");
+            gameObjectGroupType.translateAttribute = gameObjectGroupType.Type.GetAttributeInfo("translate");
+            gameObjectGroupType.rotateAttribute = gameObjectGroupType.Type.GetAttributeInfo("rotate");
+            gameObjectGroupType.scaleAttribute = gameObjectGroupType.Type.GetAttributeInfo("scale");
+            gameObjectGroupType.pivotAttribute = gameObjectGroupType.Type.GetAttributeInfo("pivot");
+            gameObjectGroupType.IDAttribute = gameObjectGroupType.Type.GetAttributeInfo("ID");
+            gameObjectGroupType.transformationTypeAttribute = gameObjectGroupType.Type.GetAttributeInfo("transformationType");
             gameObjectGroupType.nameAttribute = gameObjectGroupType.Type.GetAttributeInfo("name");
             gameObjectGroupType.visibleAttribute = gameObjectGroupType.Type.GetAttributeInfo("visible");
             gameObjectGroupType.lockedAttribute = gameObjectGroupType.Type.GetAttributeInfo("locked");
@@ -144,7 +258,13 @@ namespace LevelEditor
             attributeOverrideType.valueAttribute = attributeOverrideType.Type.GetAttributeInfo("value");
 
             prefabInstanceType.Type = getNodeType("gap", "prefabInstanceType");
-            prefabInstanceType.transform = new transformAttributes(prefabInstanceType.Type);
+            prefabInstanceType.transformAttribute = prefabInstanceType.Type.GetAttributeInfo("transform");
+            prefabInstanceType.translateAttribute = prefabInstanceType.Type.GetAttributeInfo("translate");
+            prefabInstanceType.rotateAttribute = prefabInstanceType.Type.GetAttributeInfo("rotate");
+            prefabInstanceType.scaleAttribute = prefabInstanceType.Type.GetAttributeInfo("scale");
+            prefabInstanceType.pivotAttribute = prefabInstanceType.Type.GetAttributeInfo("pivot");
+            prefabInstanceType.IDAttribute = prefabInstanceType.Type.GetAttributeInfo("ID");
+            prefabInstanceType.transformationTypeAttribute = prefabInstanceType.Type.GetAttributeInfo("transformationType");
             prefabInstanceType.nameAttribute = prefabInstanceType.Type.GetAttributeInfo("name");
             prefabInstanceType.visibleAttribute = prefabInstanceType.Type.GetAttributeInfo("visible");
             prefabInstanceType.lockedAttribute = prefabInstanceType.Type.GetAttributeInfo("locked");
@@ -186,7 +306,13 @@ namespace LevelEditor
             modelReferenceType.tagAttribute = modelReferenceType.Type.GetAttributeInfo("tag");
 
             locatorType.Type = getNodeType("gap", "locatorType");
-            locatorType.transform = new transformAttributes(locatorType.Type);
+            locatorType.transformAttribute = locatorType.Type.GetAttributeInfo("transform");
+            locatorType.translateAttribute = locatorType.Type.GetAttributeInfo("translate");
+            locatorType.rotateAttribute = locatorType.Type.GetAttributeInfo("rotate");
+            locatorType.scaleAttribute = locatorType.Type.GetAttributeInfo("scale");
+            locatorType.pivotAttribute = locatorType.Type.GetAttributeInfo("pivot");
+            locatorType.IDAttribute = locatorType.Type.GetAttributeInfo("ID");
+            locatorType.transformationTypeAttribute = locatorType.Type.GetAttributeInfo("transformationType");
             locatorType.nameAttribute = locatorType.Type.GetAttributeInfo("name");
             locatorType.visibleAttribute = locatorType.Type.GetAttributeInfo("visible");
             locatorType.lockedAttribute = locatorType.Type.GetAttributeInfo("locked");
@@ -214,19 +340,14 @@ namespace LevelEditor
             propertyType.categoryAttribute = propertyType.Type.GetAttributeInfo("category");
             propertyType.warningAttribute = propertyType.Type.GetAttributeInfo("warning");
 
-            DirLight.Type = getNodeType("gap", "DirLight");
-            DirLight.transform = new transformAttributes(DirLight.Type);
-            DirLight.nameAttribute = DirLight.Type.GetAttributeInfo("name");
-            DirLight.visibleAttribute = DirLight.Type.GetAttributeInfo("visible");
-            DirLight.lockedAttribute = DirLight.Type.GetAttributeInfo("locked");
-            DirLight.ambientAttribute = DirLight.Type.GetAttributeInfo("ambient");
-            DirLight.diffuseAttribute = DirLight.Type.GetAttributeInfo("diffuse");
-            DirLight.specularAttribute = DirLight.Type.GetAttributeInfo("specular");
-            DirLight.directionAttribute = DirLight.Type.GetAttributeInfo("direction");
-            DirLight.componentChild = DirLight.Type.GetChildInfo("component");
-
             BoxLight.Type = getNodeType("gap", "BoxLight");
-            BoxLight.transform = new transformAttributes(BoxLight.Type);
+            BoxLight.transformAttribute = BoxLight.Type.GetAttributeInfo("transform");
+            BoxLight.translateAttribute = BoxLight.Type.GetAttributeInfo("translate");
+            BoxLight.rotateAttribute = BoxLight.Type.GetAttributeInfo("rotate");
+            BoxLight.scaleAttribute = BoxLight.Type.GetAttributeInfo("scale");
+            BoxLight.pivotAttribute = BoxLight.Type.GetAttributeInfo("pivot");
+            BoxLight.IDAttribute = BoxLight.Type.GetAttributeInfo("ID");
+            BoxLight.transformationTypeAttribute = BoxLight.Type.GetAttributeInfo("transformationType");
             BoxLight.nameAttribute = BoxLight.Type.GetAttributeInfo("name");
             BoxLight.visibleAttribute = BoxLight.Type.GetAttributeInfo("visible");
             BoxLight.lockedAttribute = BoxLight.Type.GetAttributeInfo("locked");
@@ -238,7 +359,13 @@ namespace LevelEditor
             BoxLight.componentChild = BoxLight.Type.GetChildInfo("component");
 
             PointLight.Type = getNodeType("gap", "PointLight");
-            PointLight.transform = new transformAttributes(PointLight.Type);
+            PointLight.transformAttribute = PointLight.Type.GetAttributeInfo("transform");
+            PointLight.translateAttribute = PointLight.Type.GetAttributeInfo("translate");
+            PointLight.rotateAttribute = PointLight.Type.GetAttributeInfo("rotate");
+            PointLight.scaleAttribute = PointLight.Type.GetAttributeInfo("scale");
+            PointLight.pivotAttribute = PointLight.Type.GetAttributeInfo("pivot");
+            PointLight.IDAttribute = PointLight.Type.GetAttributeInfo("ID");
+            PointLight.transformationTypeAttribute = PointLight.Type.GetAttributeInfo("transformationType");
             PointLight.nameAttribute = PointLight.Type.GetAttributeInfo("name");
             PointLight.visibleAttribute = PointLight.Type.GetAttributeInfo("visible");
             PointLight.lockedAttribute = PointLight.Type.GetAttributeInfo("locked");
@@ -250,14 +377,26 @@ namespace LevelEditor
             PointLight.componentChild = PointLight.Type.GetChildInfo("component");
 
             controlPointType.Type = getNodeType("gap", "controlPointType");
-            controlPointType.transform = new transformAttributes(controlPointType.Type);
+            controlPointType.transformAttribute = controlPointType.Type.GetAttributeInfo("transform");
+            controlPointType.translateAttribute = controlPointType.Type.GetAttributeInfo("translate");
+            controlPointType.rotateAttribute = controlPointType.Type.GetAttributeInfo("rotate");
+            controlPointType.scaleAttribute = controlPointType.Type.GetAttributeInfo("scale");
+            controlPointType.pivotAttribute = controlPointType.Type.GetAttributeInfo("pivot");
+            controlPointType.IDAttribute = controlPointType.Type.GetAttributeInfo("ID");
+            controlPointType.transformationTypeAttribute = controlPointType.Type.GetAttributeInfo("transformationType");
             controlPointType.nameAttribute = controlPointType.Type.GetAttributeInfo("name");
             controlPointType.visibleAttribute = controlPointType.Type.GetAttributeInfo("visible");
             controlPointType.lockedAttribute = controlPointType.Type.GetAttributeInfo("locked");
             controlPointType.componentChild = controlPointType.Type.GetChildInfo("component");
 
             curveType.Type = getNodeType("gap", "curveType");
-            curveType.transform = new transformAttributes(curveType.Type);
+            curveType.transformAttribute = curveType.Type.GetAttributeInfo("transform");
+            curveType.translateAttribute = curveType.Type.GetAttributeInfo("translate");
+            curveType.rotateAttribute = curveType.Type.GetAttributeInfo("rotate");
+            curveType.scaleAttribute = curveType.Type.GetAttributeInfo("scale");
+            curveType.pivotAttribute = curveType.Type.GetAttributeInfo("pivot");
+            curveType.IDAttribute = curveType.Type.GetAttributeInfo("ID");
+            curveType.transformationTypeAttribute = curveType.Type.GetAttributeInfo("transformationType");
             curveType.nameAttribute = curveType.Type.GetAttributeInfo("name");
             curveType.visibleAttribute = curveType.Type.GetAttributeInfo("visible");
             curveType.lockedAttribute = curveType.Type.GetAttributeInfo("locked");
@@ -269,7 +408,13 @@ namespace LevelEditor
             curveType.pointChild = curveType.Type.GetChildInfo("point");
 
             catmullRomType.Type = getNodeType("gap", "catmullRomType");
-            catmullRomType.transform = new transformAttributes(catmullRomType.Type);
+            catmullRomType.transformAttribute = catmullRomType.Type.GetAttributeInfo("transform");
+            catmullRomType.translateAttribute = catmullRomType.Type.GetAttributeInfo("translate");
+            catmullRomType.rotateAttribute = catmullRomType.Type.GetAttributeInfo("rotate");
+            catmullRomType.scaleAttribute = catmullRomType.Type.GetAttributeInfo("scale");
+            catmullRomType.pivotAttribute = catmullRomType.Type.GetAttributeInfo("pivot");
+            catmullRomType.IDAttribute = catmullRomType.Type.GetAttributeInfo("ID");
+            catmullRomType.transformationTypeAttribute = catmullRomType.Type.GetAttributeInfo("transformationType");
             catmullRomType.nameAttribute = catmullRomType.Type.GetAttributeInfo("name");
             catmullRomType.visibleAttribute = catmullRomType.Type.GetAttributeInfo("visible");
             catmullRomType.lockedAttribute = catmullRomType.Type.GetAttributeInfo("locked");
@@ -281,7 +426,13 @@ namespace LevelEditor
             catmullRomType.pointChild = catmullRomType.Type.GetChildInfo("point");
 
             bezierType.Type = getNodeType("gap", "bezierType");
-            bezierType.transform = new transformAttributes(bezierType.Type);
+            bezierType.transformAttribute = bezierType.Type.GetAttributeInfo("transform");
+            bezierType.translateAttribute = bezierType.Type.GetAttributeInfo("translate");
+            bezierType.rotateAttribute = bezierType.Type.GetAttributeInfo("rotate");
+            bezierType.scaleAttribute = bezierType.Type.GetAttributeInfo("scale");
+            bezierType.pivotAttribute = bezierType.Type.GetAttributeInfo("pivot");
+            bezierType.IDAttribute = bezierType.Type.GetAttributeInfo("ID");
+            bezierType.transformationTypeAttribute = bezierType.Type.GetAttributeInfo("transformationType");
             bezierType.nameAttribute = bezierType.Type.GetAttributeInfo("name");
             bezierType.visibleAttribute = bezierType.Type.GetAttributeInfo("visible");
             bezierType.lockedAttribute = bezierType.Type.GetAttributeInfo("locked");
@@ -293,7 +444,13 @@ namespace LevelEditor
             bezierType.pointChild = bezierType.Type.GetChildInfo("point");
 
             skyDomeType.Type = getNodeType("gap", "skyDomeType");
-            skyDomeType.transform = new transformAttributes(skyDomeType.Type);
+            skyDomeType.transformAttribute = skyDomeType.Type.GetAttributeInfo("transform");
+            skyDomeType.translateAttribute = skyDomeType.Type.GetAttributeInfo("translate");
+            skyDomeType.rotateAttribute = skyDomeType.Type.GetAttributeInfo("rotate");
+            skyDomeType.scaleAttribute = skyDomeType.Type.GetAttributeInfo("scale");
+            skyDomeType.pivotAttribute = skyDomeType.Type.GetAttributeInfo("pivot");
+            skyDomeType.IDAttribute = skyDomeType.Type.GetAttributeInfo("ID");
+            skyDomeType.transformationTypeAttribute = skyDomeType.Type.GetAttributeInfo("transformationType");
             skyDomeType.nameAttribute = skyDomeType.Type.GetAttributeInfo("name");
             skyDomeType.visibleAttribute = skyDomeType.Type.GetAttributeInfo("visible");
             skyDomeType.lockedAttribute = skyDomeType.Type.GetAttributeInfo("locked");
@@ -301,7 +458,13 @@ namespace LevelEditor
             skyDomeType.componentChild = skyDomeType.Type.GetChildInfo("component");
 
             shapeTestType.Type = getNodeType("gap", "shapeTestType");
-            shapeTestType.transform = new transformAttributes(shapeTestType.Type);
+            shapeTestType.transformAttribute = shapeTestType.Type.GetAttributeInfo("transform");
+            shapeTestType.translateAttribute = shapeTestType.Type.GetAttributeInfo("translate");
+            shapeTestType.rotateAttribute = shapeTestType.Type.GetAttributeInfo("rotate");
+            shapeTestType.scaleAttribute = shapeTestType.Type.GetAttributeInfo("scale");
+            shapeTestType.pivotAttribute = shapeTestType.Type.GetAttributeInfo("pivot");
+            shapeTestType.IDAttribute = shapeTestType.Type.GetAttributeInfo("ID");
+            shapeTestType.transformationTypeAttribute = shapeTestType.Type.GetAttributeInfo("transformationType");
             shapeTestType.nameAttribute = shapeTestType.Type.GetAttributeInfo("name");
             shapeTestType.visibleAttribute = shapeTestType.Type.GetAttributeInfo("visible");
             shapeTestType.lockedAttribute = shapeTestType.Type.GetAttributeInfo("locked");
@@ -315,7 +478,13 @@ namespace LevelEditor
             shapeTestType.componentChild = shapeTestType.Type.GetChildInfo("component");
 
             cubeTestType.Type = getNodeType("gap", "cubeTestType");
-            cubeTestType.transform = new transformAttributes(cubeTestType.Type);
+            cubeTestType.transformAttribute = cubeTestType.Type.GetAttributeInfo("transform");
+            cubeTestType.translateAttribute = cubeTestType.Type.GetAttributeInfo("translate");
+            cubeTestType.rotateAttribute = cubeTestType.Type.GetAttributeInfo("rotate");
+            cubeTestType.scaleAttribute = cubeTestType.Type.GetAttributeInfo("scale");
+            cubeTestType.pivotAttribute = cubeTestType.Type.GetAttributeInfo("pivot");
+            cubeTestType.IDAttribute = cubeTestType.Type.GetAttributeInfo("ID");
+            cubeTestType.transformationTypeAttribute = cubeTestType.Type.GetAttributeInfo("transformationType");
             cubeTestType.nameAttribute = cubeTestType.Type.GetAttributeInfo("name");
             cubeTestType.visibleAttribute = cubeTestType.Type.GetAttributeInfo("visible");
             cubeTestType.lockedAttribute = cubeTestType.Type.GetAttributeInfo("locked");
@@ -329,7 +498,13 @@ namespace LevelEditor
             cubeTestType.componentChild = cubeTestType.Type.GetChildInfo("component");
 
             TorusTestType.Type = getNodeType("gap", "TorusTestType");
-            TorusTestType.transform = new transformAttributes(TorusTestType.Type);
+            TorusTestType.transformAttribute = TorusTestType.Type.GetAttributeInfo("transform");
+            TorusTestType.translateAttribute = TorusTestType.Type.GetAttributeInfo("translate");
+            TorusTestType.rotateAttribute = TorusTestType.Type.GetAttributeInfo("rotate");
+            TorusTestType.scaleAttribute = TorusTestType.Type.GetAttributeInfo("scale");
+            TorusTestType.pivotAttribute = TorusTestType.Type.GetAttributeInfo("pivot");
+            TorusTestType.IDAttribute = TorusTestType.Type.GetAttributeInfo("ID");
+            TorusTestType.transformationTypeAttribute = TorusTestType.Type.GetAttributeInfo("transformationType");
             TorusTestType.nameAttribute = TorusTestType.Type.GetAttributeInfo("name");
             TorusTestType.visibleAttribute = TorusTestType.Type.GetAttributeInfo("visible");
             TorusTestType.lockedAttribute = TorusTestType.Type.GetAttributeInfo("locked");
@@ -343,7 +518,13 @@ namespace LevelEditor
             TorusTestType.componentChild = TorusTestType.Type.GetChildInfo("component");
 
             sphereTestType.Type = getNodeType("gap", "sphereTestType");
-            sphereTestType.transform = new transformAttributes(sphereTestType.Type);
+            sphereTestType.transformAttribute = sphereTestType.Type.GetAttributeInfo("transform");
+            sphereTestType.translateAttribute = sphereTestType.Type.GetAttributeInfo("translate");
+            sphereTestType.rotateAttribute = sphereTestType.Type.GetAttributeInfo("rotate");
+            sphereTestType.scaleAttribute = sphereTestType.Type.GetAttributeInfo("scale");
+            sphereTestType.pivotAttribute = sphereTestType.Type.GetAttributeInfo("pivot");
+            sphereTestType.IDAttribute = sphereTestType.Type.GetAttributeInfo("ID");
+            sphereTestType.transformationTypeAttribute = sphereTestType.Type.GetAttributeInfo("transformationType");
             sphereTestType.nameAttribute = sphereTestType.Type.GetAttributeInfo("name");
             sphereTestType.visibleAttribute = sphereTestType.Type.GetAttributeInfo("visible");
             sphereTestType.lockedAttribute = sphereTestType.Type.GetAttributeInfo("locked");
@@ -357,7 +538,13 @@ namespace LevelEditor
             sphereTestType.componentChild = sphereTestType.Type.GetChildInfo("component");
 
             coneTestType.Type = getNodeType("gap", "coneTestType");
-            coneTestType.transform = new transformAttributes(coneTestType.Type);
+            coneTestType.transformAttribute = coneTestType.Type.GetAttributeInfo("transform");
+            coneTestType.translateAttribute = coneTestType.Type.GetAttributeInfo("translate");
+            coneTestType.rotateAttribute = coneTestType.Type.GetAttributeInfo("rotate");
+            coneTestType.scaleAttribute = coneTestType.Type.GetAttributeInfo("scale");
+            coneTestType.pivotAttribute = coneTestType.Type.GetAttributeInfo("pivot");
+            coneTestType.IDAttribute = coneTestType.Type.GetAttributeInfo("ID");
+            coneTestType.transformationTypeAttribute = coneTestType.Type.GetAttributeInfo("transformationType");
             coneTestType.nameAttribute = coneTestType.Type.GetAttributeInfo("name");
             coneTestType.visibleAttribute = coneTestType.Type.GetAttributeInfo("visible");
             coneTestType.lockedAttribute = coneTestType.Type.GetAttributeInfo("locked");
@@ -371,7 +558,13 @@ namespace LevelEditor
             coneTestType.componentChild = coneTestType.Type.GetChildInfo("component");
 
             cylinderTestType.Type = getNodeType("gap", "cylinderTestType");
-            cylinderTestType.transform = new transformAttributes(cylinderTestType.Type);
+            cylinderTestType.transformAttribute = cylinderTestType.Type.GetAttributeInfo("transform");
+            cylinderTestType.translateAttribute = cylinderTestType.Type.GetAttributeInfo("translate");
+            cylinderTestType.rotateAttribute = cylinderTestType.Type.GetAttributeInfo("rotate");
+            cylinderTestType.scaleAttribute = cylinderTestType.Type.GetAttributeInfo("scale");
+            cylinderTestType.pivotAttribute = cylinderTestType.Type.GetAttributeInfo("pivot");
+            cylinderTestType.IDAttribute = cylinderTestType.Type.GetAttributeInfo("ID");
+            cylinderTestType.transformationTypeAttribute = cylinderTestType.Type.GetAttributeInfo("transformationType");
             cylinderTestType.nameAttribute = cylinderTestType.Type.GetAttributeInfo("name");
             cylinderTestType.visibleAttribute = cylinderTestType.Type.GetAttributeInfo("visible");
             cylinderTestType.lockedAttribute = cylinderTestType.Type.GetAttributeInfo("locked");
@@ -385,7 +578,13 @@ namespace LevelEditor
             cylinderTestType.componentChild = cylinderTestType.Type.GetChildInfo("component");
 
             planeTestType.Type = getNodeType("gap", "planeTestType");
-            planeTestType.transform = new transformAttributes(planeTestType.Type);
+            planeTestType.transformAttribute = planeTestType.Type.GetAttributeInfo("transform");
+            planeTestType.translateAttribute = planeTestType.Type.GetAttributeInfo("translate");
+            planeTestType.rotateAttribute = planeTestType.Type.GetAttributeInfo("rotate");
+            planeTestType.scaleAttribute = planeTestType.Type.GetAttributeInfo("scale");
+            planeTestType.pivotAttribute = planeTestType.Type.GetAttributeInfo("pivot");
+            planeTestType.IDAttribute = planeTestType.Type.GetAttributeInfo("ID");
+            planeTestType.transformationTypeAttribute = planeTestType.Type.GetAttributeInfo("transformationType");
             planeTestType.nameAttribute = planeTestType.Type.GetAttributeInfo("name");
             planeTestType.visibleAttribute = planeTestType.Type.GetAttributeInfo("visible");
             planeTestType.lockedAttribute = planeTestType.Type.GetAttributeInfo("locked");
@@ -399,7 +598,13 @@ namespace LevelEditor
             planeTestType.componentChild = planeTestType.Type.GetChildInfo("component");
 
             billboardTestType.Type = getNodeType("gap", "billboardTestType");
-            billboardTestType.transform = new transformAttributes(billboardTestType.Type);
+            billboardTestType.transformAttribute = billboardTestType.Type.GetAttributeInfo("transform");
+            billboardTestType.translateAttribute = billboardTestType.Type.GetAttributeInfo("translate");
+            billboardTestType.rotateAttribute = billboardTestType.Type.GetAttributeInfo("rotate");
+            billboardTestType.scaleAttribute = billboardTestType.Type.GetAttributeInfo("scale");
+            billboardTestType.pivotAttribute = billboardTestType.Type.GetAttributeInfo("pivot");
+            billboardTestType.IDAttribute = billboardTestType.Type.GetAttributeInfo("ID");
+            billboardTestType.transformationTypeAttribute = billboardTestType.Type.GetAttributeInfo("transformationType");
             billboardTestType.nameAttribute = billboardTestType.Type.GetAttributeInfo("name");
             billboardTestType.visibleAttribute = billboardTestType.Type.GetAttributeInfo("visible");
             billboardTestType.lockedAttribute = billboardTestType.Type.GetAttributeInfo("locked");
@@ -408,8 +613,29 @@ namespace LevelEditor
             billboardTestType.textureTransformAttribute = billboardTestType.Type.GetAttributeInfo("textureTransform");
             billboardTestType.componentChild = billboardTestType.Type.GetChildInfo("component");
 
+            materialTestType.Type = getNodeType("gap", "materialTestType");
+            materialTestType.transformAttribute = materialTestType.Type.GetAttributeInfo("transform");
+            materialTestType.translateAttribute = materialTestType.Type.GetAttributeInfo("translate");
+            materialTestType.rotateAttribute = materialTestType.Type.GetAttributeInfo("rotate");
+            materialTestType.scaleAttribute = materialTestType.Type.GetAttributeInfo("scale");
+            materialTestType.pivotAttribute = materialTestType.Type.GetAttributeInfo("pivot");
+            materialTestType.IDAttribute = materialTestType.Type.GetAttributeInfo("ID");
+            materialTestType.transformationTypeAttribute = materialTestType.Type.GetAttributeInfo("transformationType");
+            materialTestType.nameAttribute = materialTestType.Type.GetAttributeInfo("name");
+            materialTestType.visibleAttribute = materialTestType.Type.GetAttributeInfo("visible");
+            materialTestType.lockedAttribute = materialTestType.Type.GetAttributeInfo("locked");
+            materialTestType.materialnameAttribute = materialTestType.Type.GetAttributeInfo("materialname");
+            materialTestType.propertyAttribute = materialTestType.Type.GetAttributeInfo("property");
+            materialTestType.componentChild = materialTestType.Type.GetChildInfo("component");
+
             orcType.Type = getNodeType("gap", "orcType");
-            orcType.transform = new transformAttributes(orcType.Type);
+            orcType.transformAttribute = orcType.Type.GetAttributeInfo("transform");
+            orcType.translateAttribute = orcType.Type.GetAttributeInfo("translate");
+            orcType.rotateAttribute = orcType.Type.GetAttributeInfo("rotate");
+            orcType.scaleAttribute = orcType.Type.GetAttributeInfo("scale");
+            orcType.pivotAttribute = orcType.Type.GetAttributeInfo("pivot");
+            orcType.IDAttribute = orcType.Type.GetAttributeInfo("ID");
+            orcType.transformationTypeAttribute = orcType.Type.GetAttributeInfo("transformationType");
             orcType.nameAttribute = orcType.Type.GetAttributeInfo("name");
             orcType.visibleAttribute = orcType.Type.GetAttributeInfo("visible");
             orcType.lockedAttribute = orcType.Type.GetAttributeInfo("locked");
@@ -425,41 +651,104 @@ namespace LevelEditor
             orcType.friendsChild = orcType.Type.GetChildInfo("friends");
             orcType.childrenChild = orcType.Type.GetChildInfo("children");
 
+            terrainMapType.Type = getNodeType("gap", "terrainMapType");
+            terrainMapType.nameAttribute = terrainMapType.Type.GetAttributeInfo("name");
+            terrainMapType.visibleAttribute = terrainMapType.Type.GetAttributeInfo("visible");
+            terrainMapType.minHeightAttribute = terrainMapType.Type.GetAttributeInfo("minHeight");
+            terrainMapType.maxHeightAttribute = terrainMapType.Type.GetAttributeInfo("maxHeight");
+            terrainMapType.minSlopeAttribute = terrainMapType.Type.GetAttributeInfo("minSlope");
+            terrainMapType.maxSlopeAttribute = terrainMapType.Type.GetAttributeInfo("maxSlope");
+            terrainMapType.diffuseAttribute = terrainMapType.Type.GetAttributeInfo("diffuse");
+            terrainMapType.normalAttribute = terrainMapType.Type.GetAttributeInfo("normal");
+            terrainMapType.specularAttribute = terrainMapType.Type.GetAttributeInfo("specular");
+            terrainMapType.maskAttribute = terrainMapType.Type.GetAttributeInfo("mask");
+
+            decorationMapType.Type = getNodeType("gap", "decorationMapType");
+            decorationMapType.nameAttribute = decorationMapType.Type.GetAttributeInfo("name");
+            decorationMapType.visibleAttribute = decorationMapType.Type.GetAttributeInfo("visible");
+            decorationMapType.minHeightAttribute = decorationMapType.Type.GetAttributeInfo("minHeight");
+            decorationMapType.maxHeightAttribute = decorationMapType.Type.GetAttributeInfo("maxHeight");
+            decorationMapType.minSlopeAttribute = decorationMapType.Type.GetAttributeInfo("minSlope");
+            decorationMapType.maxSlopeAttribute = decorationMapType.Type.GetAttributeInfo("maxSlope");
+            decorationMapType.diffuseAttribute = decorationMapType.Type.GetAttributeInfo("diffuse");
+            decorationMapType.normalAttribute = decorationMapType.Type.GetAttributeInfo("normal");
+            decorationMapType.specularAttribute = decorationMapType.Type.GetAttributeInfo("specular");
+            decorationMapType.maskAttribute = decorationMapType.Type.GetAttributeInfo("mask");
+            decorationMapType.scaleAttribute = decorationMapType.Type.GetAttributeInfo("scale");
+            decorationMapType.numOfDecoratorsAttribute = decorationMapType.Type.GetAttributeInfo("numOfDecorators");
+            decorationMapType.lodDistanceAttribute = decorationMapType.Type.GetAttributeInfo("lodDistance");
+            decorationMapType.useBillboardAttribute = decorationMapType.Type.GetAttributeInfo("useBillboard");
+
+            layerMapType.Type = getNodeType("gap", "layerMapType");
+            layerMapType.nameAttribute = layerMapType.Type.GetAttributeInfo("name");
+            layerMapType.visibleAttribute = layerMapType.Type.GetAttributeInfo("visible");
+            layerMapType.minHeightAttribute = layerMapType.Type.GetAttributeInfo("minHeight");
+            layerMapType.maxHeightAttribute = layerMapType.Type.GetAttributeInfo("maxHeight");
+            layerMapType.minSlopeAttribute = layerMapType.Type.GetAttributeInfo("minSlope");
+            layerMapType.maxSlopeAttribute = layerMapType.Type.GetAttributeInfo("maxSlope");
+            layerMapType.diffuseAttribute = layerMapType.Type.GetAttributeInfo("diffuse");
+            layerMapType.normalAttribute = layerMapType.Type.GetAttributeInfo("normal");
+            layerMapType.specularAttribute = layerMapType.Type.GetAttributeInfo("specular");
+            layerMapType.maskAttribute = layerMapType.Type.GetAttributeInfo("mask");
+            layerMapType.lodTextureAttribute = layerMapType.Type.GetAttributeInfo("lodTexture");
+            layerMapType.textureScaleAttribute = layerMapType.Type.GetAttributeInfo("textureScale");
+
+            terrainGobType.Type = getNodeType("gap", "terrainGobType");
+            terrainGobType.transformAttribute = terrainGobType.Type.GetAttributeInfo("transform");
+            terrainGobType.translateAttribute = terrainGobType.Type.GetAttributeInfo("translate");
+            terrainGobType.rotateAttribute = terrainGobType.Type.GetAttributeInfo("rotate");
+            terrainGobType.scaleAttribute = terrainGobType.Type.GetAttributeInfo("scale");
+            terrainGobType.pivotAttribute = terrainGobType.Type.GetAttributeInfo("pivot");
+            terrainGobType.IDAttribute = terrainGobType.Type.GetAttributeInfo("ID");
+            terrainGobType.transformationTypeAttribute = terrainGobType.Type.GetAttributeInfo("transformationType");
+            terrainGobType.nameAttribute = terrainGobType.Type.GetAttributeInfo("name");
+            terrainGobType.visibleAttribute = terrainGobType.Type.GetAttributeInfo("visible");
+            terrainGobType.lockedAttribute = terrainGobType.Type.GetAttributeInfo("locked");
+            terrainGobType.cellSizeAttribute = terrainGobType.Type.GetAttributeInfo("cellSize");
+            terrainGobType.heightMapAttribute = terrainGobType.Type.GetAttributeInfo("heightMap");
+            terrainGobType.componentChild = terrainGobType.Type.GetChildInfo("component");
+            terrainGobType.layerMapChild = terrainGobType.Type.GetChildInfo("layerMap");
+            terrainGobType.decorationMapChild = terrainGobType.Type.GetChildInfo("decorationMap");
+
+            placementsDocumentRootElement = getRootElement(NS, "placementsDocument");
             gameRootElement = getRootElement(NS, "game");
             prototypeRootElement = getRootElement(NS, "prototype");
             prefabRootElement = getRootElement(NS, "prefab");
             textureMetadataRootElement = getRootElement(NS, "textureMetadata");
             resourceMetadataRootElement = getRootElement(NS, "resourceMetadata");
+        }
 
-            // <<XLE
-            placementsCellReferenceType.Type = getNodeType("gap", "placementsCellReference");
-            placementsCellReferenceType.refAttribute = placementsCellReferenceType.Type.GetAttributeInfo("ref");
-            placementsCellReferenceType.nameAttribute = placementsCellReferenceType.Type.GetAttributeInfo("name");
-            placementsCellReferenceType.minsAttribute = placementsCellReferenceType.Type.GetAttributeInfo("mins");
-            placementsCellReferenceType.maxsAttribute = placementsCellReferenceType.Type.GetAttributeInfo("maxs");
+        public static class placementsDocumentType
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo nameAttribute;
+            public static ChildInfo placementChild;
+        }
 
-            placementsFolderType.Type = getNodeType("gap", "placementsFolderType");
-            placementsFolderType.cellChild = placementsFolderType.Type.GetChildInfo("cell");
+        public static class abstractPlacementObjectType
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo transformAttribute;
+            public static AttributeInfo translateAttribute;
+            public static AttributeInfo rotateAttribute;
+            public static AttributeInfo scaleAttribute;
+            public static AttributeInfo pivotAttribute;
+            public static AttributeInfo IDAttribute;
+            public static AttributeInfo transformationTypeAttribute;
+            public static AttributeInfo visibleAttribute;
+            public static AttributeInfo lockedAttribute;
+        }
 
-            placementsDocumentType.Type = getNodeType("gap", "placementsDocumentType");
-            placementsDocumentType.nameAttribute = placementsDocumentType.Type.GetAttributeInfo("name");
-            placementsDocumentType.placementsChild = placementsDocumentType.Type.GetChildInfo("placement");
-
-            abstractPlacementObjectType.Type = getNodeType("gap", "abstractPlacementObjectType");
-            abstractPlacementObjectType.transform = new transformAttributes(abstractPlacementObjectType.Type);
-            
-            placementObjectType.Type = getNodeType("gap", "placementObjectType");
-            placementObjectType.modelChild = placementObjectType.Type.GetAttributeInfo("model");
-            placementObjectType.materialChild = placementObjectType.Type.GetAttributeInfo("material");
-
-            terrainType.Type = getNodeType("gap", "terrainType");
-
-            terrainBaseTextureStrataType.Type = getNodeType("gap", "terrainBaseTextureStrataType");
-            terrainBaseTextureType.Type = getNodeType("gap", "terrainBaseTextureType");
-            terrainBaseTextureType.strataChild = terrainBaseTextureType.Type.GetChildInfo("strata");
-
-            placementsDocumentRootElement = getRootElement(NS, "placementsDocument");
-            // XLE>>
+        public static class transformObjectType
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo transformAttribute;
+            public static AttributeInfo translateAttribute;
+            public static AttributeInfo rotateAttribute;
+            public static AttributeInfo scaleAttribute;
+            public static AttributeInfo pivotAttribute;
+            public static AttributeInfo IDAttribute;
+            public static AttributeInfo transformationTypeAttribute;
         }
 
         public static class gameType
@@ -475,10 +764,9 @@ namespace LevelEditor
             public static ChildInfo bookmarksChild;
             public static ChildInfo gameReferenceChild;
             public static ChildInfo gridChild;
-            
-            // <<<XLE
-            public static ChildInfo placementsFolderChild;
-            // XLE>>
+            public static ChildInfo placementsChild;
+            public static ChildInfo terrainChild;
+            public static ChildInfo environmentChild;
         }
 
         public static class gameObjectFolderType
@@ -491,30 +779,16 @@ namespace LevelEditor
             public static ChildInfo folderChild;
         }
 
-        public class transformAttributes
-        {
-            public AttributeInfo transformAttribute;
-            public AttributeInfo translateAttribute;
-            public AttributeInfo rotateAttribute;
-            public AttributeInfo scaleAttribute;
-            public AttributeInfo pivotAttribute;
-            public AttributeInfo transformationTypeAttribute;
-
-            public transformAttributes(DomNodeType type)
-            {
-                transformAttribute = type.GetAttributeInfo("transform");
-                translateAttribute = type.GetAttributeInfo("translate");
-                rotateAttribute = type.GetAttributeInfo("rotate");
-                scaleAttribute = type.GetAttributeInfo("scale");
-                pivotAttribute = type.GetAttributeInfo("pivot");
-                transformationTypeAttribute = type.GetAttributeInfo("transformationType");
-            }
-        }
-
         public static class gameObjectType
         {
             public static DomNodeType Type;
-            public static transformAttributes transform;
+            public static AttributeInfo transformAttribute;
+            public static AttributeInfo translateAttribute;
+            public static AttributeInfo rotateAttribute;
+            public static AttributeInfo scaleAttribute;
+            public static AttributeInfo pivotAttribute;
+            public static AttributeInfo IDAttribute;
+            public static AttributeInfo transformationTypeAttribute;
             public static AttributeInfo nameAttribute;
             public static AttributeInfo visibleAttribute;
             public static AttributeInfo lockedAttribute;
@@ -593,6 +867,84 @@ namespace LevelEditor
             public static AttributeInfo visibleAttribute;
         }
 
+        public static class placementsFolderType
+        {
+            public static DomNodeType Type;
+            public static ChildInfo cellChild;
+        }
+
+        public static class placementsCellReferenceType
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo refAttribute;
+            public static AttributeInfo nameAttribute;
+            public static AttributeInfo minsAttribute;
+            public static AttributeInfo maxsAttribute;
+        }
+
+        public static class terrainType
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo basedirAttribute;
+            public static AttributeInfo offsetAttribute;
+            public static ChildInfo baseTextureChild;
+        }
+
+        public static class terrainBaseTextureType
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo diffusedimsAttribute;
+            public static AttributeInfo normaldimsAttribute;
+            public static AttributeInfo paramdimsAttribute;
+            public static ChildInfo strataChild;
+        }
+
+        public static class terrainBaseTextureStrataType
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo texture0Attribute;
+            public static AttributeInfo texture1Attribute;
+            public static AttributeInfo texture2Attribute;
+            public static AttributeInfo mapping0Attribute;
+            public static AttributeInfo mapping1Attribute;
+            public static AttributeInfo mapping2Attribute;
+            public static AttributeInfo endheightAttribute;
+        }
+
+        public static class envSettingsFolderType
+        {
+            public static DomNodeType Type;
+            public static ChildInfo settingsChild;
+        }
+
+        public static class envSettingsType
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo nameAttribute;
+            public static ChildInfo objectsChild;
+            public static ChildInfo ambientChild;
+        }
+
+        public static class envObjectType
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo transformAttribute;
+            public static AttributeInfo translateAttribute;
+            public static AttributeInfo rotateAttribute;
+            public static AttributeInfo scaleAttribute;
+            public static AttributeInfo pivotAttribute;
+            public static AttributeInfo IDAttribute;
+            public static AttributeInfo transformationTypeAttribute;
+        }
+
+        public static class ambientSettingsType
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo ambientlightAttribute;
+            public static AttributeInfo skytextureAttribute;
+            public static AttributeInfo dotonemapAttribute;
+        }
+
         public static class prototypeType
         {
             public static DomNodeType Type;
@@ -628,6 +980,37 @@ namespace LevelEditor
             public static AttributeInfo uriAttribute;
         }
 
+        public static class placementObjectType
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo transformAttribute;
+            public static AttributeInfo translateAttribute;
+            public static AttributeInfo rotateAttribute;
+            public static AttributeInfo scaleAttribute;
+            public static AttributeInfo pivotAttribute;
+            public static AttributeInfo IDAttribute;
+            public static AttributeInfo transformationTypeAttribute;
+            public static AttributeInfo visibleAttribute;
+            public static AttributeInfo lockedAttribute;
+            public static AttributeInfo modelAttribute;
+            public static AttributeInfo materialAttribute;
+        }
+
+        public static class directionalLightType
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo transformAttribute;
+            public static AttributeInfo translateAttribute;
+            public static AttributeInfo rotateAttribute;
+            public static AttributeInfo scaleAttribute;
+            public static AttributeInfo pivotAttribute;
+            public static AttributeInfo IDAttribute;
+            public static AttributeInfo transformationTypeAttribute;
+            public static AttributeInfo diffuseAttribute;
+            public static AttributeInfo specularAttribute;
+            public static AttributeInfo castshadowsAttribute;
+        }
+
         public static class transformComponentType
         {
             public static DomNodeType Type;
@@ -637,11 +1020,17 @@ namespace LevelEditor
             public static AttributeInfo rotationAttribute;
             public static AttributeInfo scaleAttribute;
         }
-        
+
         public static class gameObjectGroupType
         {
             public static DomNodeType Type;
-            public static transformAttributes transform;
+            public static AttributeInfo transformAttribute;
+            public static AttributeInfo translateAttribute;
+            public static AttributeInfo rotateAttribute;
+            public static AttributeInfo scaleAttribute;
+            public static AttributeInfo pivotAttribute;
+            public static AttributeInfo IDAttribute;
+            public static AttributeInfo transformationTypeAttribute;
             public static AttributeInfo nameAttribute;
             public static AttributeInfo visibleAttribute;
             public static AttributeInfo lockedAttribute;
@@ -666,7 +1055,13 @@ namespace LevelEditor
         public static class prefabInstanceType
         {
             public static DomNodeType Type;
-            public static transformAttributes transform;
+            public static AttributeInfo transformAttribute;
+            public static AttributeInfo translateAttribute;
+            public static AttributeInfo rotateAttribute;
+            public static AttributeInfo scaleAttribute;
+            public static AttributeInfo pivotAttribute;
+            public static AttributeInfo IDAttribute;
+            public static AttributeInfo transformationTypeAttribute;
             public static AttributeInfo nameAttribute;
             public static AttributeInfo visibleAttribute;
             public static AttributeInfo lockedAttribute;
@@ -723,7 +1118,13 @@ namespace LevelEditor
         public static class locatorType
         {
             public static DomNodeType Type;
-            public static transformAttributes transform;
+            public static AttributeInfo transformAttribute;
+            public static AttributeInfo translateAttribute;
+            public static AttributeInfo rotateAttribute;
+            public static AttributeInfo scaleAttribute;
+            public static AttributeInfo pivotAttribute;
+            public static AttributeInfo IDAttribute;
+            public static AttributeInfo transformationTypeAttribute;
             public static AttributeInfo nameAttribute;
             public static AttributeInfo visibleAttribute;
             public static AttributeInfo lockedAttribute;
@@ -761,24 +1162,16 @@ namespace LevelEditor
             public static AttributeInfo warningAttribute;
         }
 
-        public static class DirLight
-        {
-            public static DomNodeType Type;
-            public static transformAttributes transform;
-            public static AttributeInfo nameAttribute;
-            public static AttributeInfo visibleAttribute;
-            public static AttributeInfo lockedAttribute;
-            public static AttributeInfo ambientAttribute;
-            public static AttributeInfo diffuseAttribute;
-            public static AttributeInfo specularAttribute;
-            public static AttributeInfo directionAttribute;
-            public static ChildInfo componentChild;
-        }
-
         public static class BoxLight
         {
             public static DomNodeType Type;
-            public static transformAttributes transform;
+            public static AttributeInfo transformAttribute;
+            public static AttributeInfo translateAttribute;
+            public static AttributeInfo rotateAttribute;
+            public static AttributeInfo scaleAttribute;
+            public static AttributeInfo pivotAttribute;
+            public static AttributeInfo IDAttribute;
+            public static AttributeInfo transformationTypeAttribute;
             public static AttributeInfo nameAttribute;
             public static AttributeInfo visibleAttribute;
             public static AttributeInfo lockedAttribute;
@@ -793,7 +1186,13 @@ namespace LevelEditor
         public static class PointLight
         {
             public static DomNodeType Type;
-            public static transformAttributes transform;
+            public static AttributeInfo transformAttribute;
+            public static AttributeInfo translateAttribute;
+            public static AttributeInfo rotateAttribute;
+            public static AttributeInfo scaleAttribute;
+            public static AttributeInfo pivotAttribute;
+            public static AttributeInfo IDAttribute;
+            public static AttributeInfo transformationTypeAttribute;
             public static AttributeInfo nameAttribute;
             public static AttributeInfo visibleAttribute;
             public static AttributeInfo lockedAttribute;
@@ -808,7 +1207,13 @@ namespace LevelEditor
         public static class controlPointType
         {
             public static DomNodeType Type;
-            public static transformAttributes transform;
+            public static AttributeInfo transformAttribute;
+            public static AttributeInfo translateAttribute;
+            public static AttributeInfo rotateAttribute;
+            public static AttributeInfo scaleAttribute;
+            public static AttributeInfo pivotAttribute;
+            public static AttributeInfo IDAttribute;
+            public static AttributeInfo transformationTypeAttribute;
             public static AttributeInfo nameAttribute;
             public static AttributeInfo visibleAttribute;
             public static AttributeInfo lockedAttribute;
@@ -818,7 +1223,13 @@ namespace LevelEditor
         public static class curveType
         {
             public static DomNodeType Type;
-            public static transformAttributes transform;
+            public static AttributeInfo transformAttribute;
+            public static AttributeInfo translateAttribute;
+            public static AttributeInfo rotateAttribute;
+            public static AttributeInfo scaleAttribute;
+            public static AttributeInfo pivotAttribute;
+            public static AttributeInfo IDAttribute;
+            public static AttributeInfo transformationTypeAttribute;
             public static AttributeInfo nameAttribute;
             public static AttributeInfo visibleAttribute;
             public static AttributeInfo lockedAttribute;
@@ -833,7 +1244,13 @@ namespace LevelEditor
         public static class catmullRomType
         {
             public static DomNodeType Type;
-            public static transformAttributes transform;
+            public static AttributeInfo transformAttribute;
+            public static AttributeInfo translateAttribute;
+            public static AttributeInfo rotateAttribute;
+            public static AttributeInfo scaleAttribute;
+            public static AttributeInfo pivotAttribute;
+            public static AttributeInfo IDAttribute;
+            public static AttributeInfo transformationTypeAttribute;
             public static AttributeInfo nameAttribute;
             public static AttributeInfo visibleAttribute;
             public static AttributeInfo lockedAttribute;
@@ -848,7 +1265,13 @@ namespace LevelEditor
         public static class bezierType
         {
             public static DomNodeType Type;
-            public static transformAttributes transform;
+            public static AttributeInfo transformAttribute;
+            public static AttributeInfo translateAttribute;
+            public static AttributeInfo rotateAttribute;
+            public static AttributeInfo scaleAttribute;
+            public static AttributeInfo pivotAttribute;
+            public static AttributeInfo IDAttribute;
+            public static AttributeInfo transformationTypeAttribute;
             public static AttributeInfo nameAttribute;
             public static AttributeInfo visibleAttribute;
             public static AttributeInfo lockedAttribute;
@@ -863,7 +1286,13 @@ namespace LevelEditor
         public static class skyDomeType
         {
             public static DomNodeType Type;
-            public static transformAttributes transform;
+            public static AttributeInfo transformAttribute;
+            public static AttributeInfo translateAttribute;
+            public static AttributeInfo rotateAttribute;
+            public static AttributeInfo scaleAttribute;
+            public static AttributeInfo pivotAttribute;
+            public static AttributeInfo IDAttribute;
+            public static AttributeInfo transformationTypeAttribute;
             public static AttributeInfo nameAttribute;
             public static AttributeInfo visibleAttribute;
             public static AttributeInfo lockedAttribute;
@@ -874,7 +1303,13 @@ namespace LevelEditor
         public static class shapeTestType
         {
             public static DomNodeType Type;
-            public static transformAttributes transform;
+            public static AttributeInfo transformAttribute;
+            public static AttributeInfo translateAttribute;
+            public static AttributeInfo rotateAttribute;
+            public static AttributeInfo scaleAttribute;
+            public static AttributeInfo pivotAttribute;
+            public static AttributeInfo IDAttribute;
+            public static AttributeInfo transformationTypeAttribute;
             public static AttributeInfo nameAttribute;
             public static AttributeInfo visibleAttribute;
             public static AttributeInfo lockedAttribute;
@@ -891,7 +1326,13 @@ namespace LevelEditor
         public static class cubeTestType
         {
             public static DomNodeType Type;
-            public static transformAttributes transform;
+            public static AttributeInfo transformAttribute;
+            public static AttributeInfo translateAttribute;
+            public static AttributeInfo rotateAttribute;
+            public static AttributeInfo scaleAttribute;
+            public static AttributeInfo pivotAttribute;
+            public static AttributeInfo IDAttribute;
+            public static AttributeInfo transformationTypeAttribute;
             public static AttributeInfo nameAttribute;
             public static AttributeInfo visibleAttribute;
             public static AttributeInfo lockedAttribute;
@@ -908,7 +1349,13 @@ namespace LevelEditor
         public static class TorusTestType
         {
             public static DomNodeType Type;
-            public static transformAttributes transform;
+            public static AttributeInfo transformAttribute;
+            public static AttributeInfo translateAttribute;
+            public static AttributeInfo rotateAttribute;
+            public static AttributeInfo scaleAttribute;
+            public static AttributeInfo pivotAttribute;
+            public static AttributeInfo IDAttribute;
+            public static AttributeInfo transformationTypeAttribute;
             public static AttributeInfo nameAttribute;
             public static AttributeInfo visibleAttribute;
             public static AttributeInfo lockedAttribute;
@@ -925,7 +1372,13 @@ namespace LevelEditor
         public static class sphereTestType
         {
             public static DomNodeType Type;
-            public static transformAttributes transform;
+            public static AttributeInfo transformAttribute;
+            public static AttributeInfo translateAttribute;
+            public static AttributeInfo rotateAttribute;
+            public static AttributeInfo scaleAttribute;
+            public static AttributeInfo pivotAttribute;
+            public static AttributeInfo IDAttribute;
+            public static AttributeInfo transformationTypeAttribute;
             public static AttributeInfo nameAttribute;
             public static AttributeInfo visibleAttribute;
             public static AttributeInfo lockedAttribute;
@@ -942,7 +1395,13 @@ namespace LevelEditor
         public static class coneTestType
         {
             public static DomNodeType Type;
-            public static transformAttributes transform;
+            public static AttributeInfo transformAttribute;
+            public static AttributeInfo translateAttribute;
+            public static AttributeInfo rotateAttribute;
+            public static AttributeInfo scaleAttribute;
+            public static AttributeInfo pivotAttribute;
+            public static AttributeInfo IDAttribute;
+            public static AttributeInfo transformationTypeAttribute;
             public static AttributeInfo nameAttribute;
             public static AttributeInfo visibleAttribute;
             public static AttributeInfo lockedAttribute;
@@ -959,7 +1418,13 @@ namespace LevelEditor
         public static class cylinderTestType
         {
             public static DomNodeType Type;
-            public static transformAttributes transform;
+            public static AttributeInfo transformAttribute;
+            public static AttributeInfo translateAttribute;
+            public static AttributeInfo rotateAttribute;
+            public static AttributeInfo scaleAttribute;
+            public static AttributeInfo pivotAttribute;
+            public static AttributeInfo IDAttribute;
+            public static AttributeInfo transformationTypeAttribute;
             public static AttributeInfo nameAttribute;
             public static AttributeInfo visibleAttribute;
             public static AttributeInfo lockedAttribute;
@@ -976,7 +1441,13 @@ namespace LevelEditor
         public static class planeTestType
         {
             public static DomNodeType Type;
-            public static transformAttributes transform;
+            public static AttributeInfo transformAttribute;
+            public static AttributeInfo translateAttribute;
+            public static AttributeInfo rotateAttribute;
+            public static AttributeInfo scaleAttribute;
+            public static AttributeInfo pivotAttribute;
+            public static AttributeInfo IDAttribute;
+            public static AttributeInfo transformationTypeAttribute;
             public static AttributeInfo nameAttribute;
             public static AttributeInfo visibleAttribute;
             public static AttributeInfo lockedAttribute;
@@ -993,7 +1464,13 @@ namespace LevelEditor
         public static class billboardTestType
         {
             public static DomNodeType Type;
-            public static transformAttributes transform;
+            public static AttributeInfo transformAttribute;
+            public static AttributeInfo translateAttribute;
+            public static AttributeInfo rotateAttribute;
+            public static AttributeInfo scaleAttribute;
+            public static AttributeInfo pivotAttribute;
+            public static AttributeInfo IDAttribute;
+            public static AttributeInfo transformationTypeAttribute;
             public static AttributeInfo nameAttribute;
             public static AttributeInfo visibleAttribute;
             public static AttributeInfo lockedAttribute;
@@ -1003,10 +1480,34 @@ namespace LevelEditor
             public static ChildInfo componentChild;
         }
 
+        public static class materialTestType
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo transformAttribute;
+            public static AttributeInfo translateAttribute;
+            public static AttributeInfo rotateAttribute;
+            public static AttributeInfo scaleAttribute;
+            public static AttributeInfo pivotAttribute;
+            public static AttributeInfo IDAttribute;
+            public static AttributeInfo transformationTypeAttribute;
+            public static AttributeInfo nameAttribute;
+            public static AttributeInfo visibleAttribute;
+            public static AttributeInfo lockedAttribute;
+            public static AttributeInfo materialnameAttribute;
+            public static AttributeInfo propertyAttribute;
+            public static ChildInfo componentChild;
+        }
+
         public static class orcType
         {
             public static DomNodeType Type;
-            public static transformAttributes transform;
+            public static AttributeInfo transformAttribute;
+            public static AttributeInfo translateAttribute;
+            public static AttributeInfo rotateAttribute;
+            public static AttributeInfo scaleAttribute;
+            public static AttributeInfo pivotAttribute;
+            public static AttributeInfo IDAttribute;
+            public static AttributeInfo transformationTypeAttribute;
             public static AttributeInfo nameAttribute;
             public static AttributeInfo visibleAttribute;
             public static AttributeInfo lockedAttribute;
@@ -1023,6 +1524,79 @@ namespace LevelEditor
             public static ChildInfo childrenChild;
         }
 
+        public static class terrainMapType
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo nameAttribute;
+            public static AttributeInfo visibleAttribute;
+            public static AttributeInfo minHeightAttribute;
+            public static AttributeInfo maxHeightAttribute;
+            public static AttributeInfo minSlopeAttribute;
+            public static AttributeInfo maxSlopeAttribute;
+            public static AttributeInfo diffuseAttribute;
+            public static AttributeInfo normalAttribute;
+            public static AttributeInfo specularAttribute;
+            public static AttributeInfo maskAttribute;
+        }
+
+        public static class decorationMapType
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo nameAttribute;
+            public static AttributeInfo visibleAttribute;
+            public static AttributeInfo minHeightAttribute;
+            public static AttributeInfo maxHeightAttribute;
+            public static AttributeInfo minSlopeAttribute;
+            public static AttributeInfo maxSlopeAttribute;
+            public static AttributeInfo diffuseAttribute;
+            public static AttributeInfo normalAttribute;
+            public static AttributeInfo specularAttribute;
+            public static AttributeInfo maskAttribute;
+            public static AttributeInfo scaleAttribute;
+            public static AttributeInfo numOfDecoratorsAttribute;
+            public static AttributeInfo lodDistanceAttribute;
+            public static AttributeInfo useBillboardAttribute;
+        }
+
+        public static class layerMapType
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo nameAttribute;
+            public static AttributeInfo visibleAttribute;
+            public static AttributeInfo minHeightAttribute;
+            public static AttributeInfo maxHeightAttribute;
+            public static AttributeInfo minSlopeAttribute;
+            public static AttributeInfo maxSlopeAttribute;
+            public static AttributeInfo diffuseAttribute;
+            public static AttributeInfo normalAttribute;
+            public static AttributeInfo specularAttribute;
+            public static AttributeInfo maskAttribute;
+            public static AttributeInfo lodTextureAttribute;
+            public static AttributeInfo textureScaleAttribute;
+        }
+
+        public static class terrainGobType
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo transformAttribute;
+            public static AttributeInfo translateAttribute;
+            public static AttributeInfo rotateAttribute;
+            public static AttributeInfo scaleAttribute;
+            public static AttributeInfo pivotAttribute;
+            public static AttributeInfo IDAttribute;
+            public static AttributeInfo transformationTypeAttribute;
+            public static AttributeInfo nameAttribute;
+            public static AttributeInfo visibleAttribute;
+            public static AttributeInfo lockedAttribute;
+            public static AttributeInfo cellSizeAttribute;
+            public static AttributeInfo heightMapAttribute;
+            public static ChildInfo componentChild;
+            public static ChildInfo layerMapChild;
+            public static ChildInfo decorationMapChild;
+        }
+
+        public static ChildInfo placementsDocumentRootElement;
+
         public static ChildInfo gameRootElement;
 
         public static ChildInfo prototypeRootElement;
@@ -1032,60 +1606,5 @@ namespace LevelEditor
         public static ChildInfo textureMetadataRootElement;
 
         public static ChildInfo resourceMetadataRootElement;
-
-        // <<XLE
-        public static class placementsCellReferenceType
-        {
-            public static DomNodeType Type;
-            public static AttributeInfo refAttribute;
-            public static AttributeInfo nameAttribute;
-            public static AttributeInfo minsAttribute;
-            public static AttributeInfo maxsAttribute;
-        }
-
-        public static class placementsFolderType
-        {
-            public static DomNodeType Type;
-            public static ChildInfo cellChild;
-        }
-
-        public static class placementsDocumentType
-        {
-            public static DomNodeType Type;
-            public static AttributeInfo nameAttribute;
-            public static ChildInfo placementsChild;
-        }
-
-        public static class abstractPlacementObjectType
-        {
-            public static DomNodeType Type;
-            public static transformAttributes transform;
-        }
-        
-        public static class placementObjectType
-        {
-            public static DomNodeType Type;
-            public static AttributeInfo modelChild;
-            public static AttributeInfo materialChild;
-        }
-
-        public static class terrainType
-        {
-            public static DomNodeType Type;
-        }
-
-        public static class terrainBaseTextureStrataType
-        {
-            public static DomNodeType Type;
-        }
-
-        public static class terrainBaseTextureType
-        {
-            public static DomNodeType Type;
-            public static ChildInfo strataChild;
-        }
-
-        public static ChildInfo placementsDocumentRootElement;
-        // XLE>>
     }
 }

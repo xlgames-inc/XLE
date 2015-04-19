@@ -165,16 +165,23 @@ namespace RenderingInterop
       
         unsafe private void UpdateNativeProperty(AttributeInfo attribInfo)
         {
+                // the "attribInfo" given to us may not belong this this exact
+                // object type. It might belong to a base class (or even, possibly, to a super class). 
+                // We need to check for these cases, and remap to the exact attribute that
+                // belongs our concrete class.
+            var type = DomNode.Type;
+            if (attribInfo.DefiningType != type) {
+                attribInfo = DomNode.Type.GetAttributeInfo(attribInfo.Name);
+                if (attribInfo == null) return;
+            }
+
             object idObj = attribInfo.GetTag(NativeAnnotations.NativeProperty);
             if (idObj == null) return;
             uint id = (uint)idObj;
             if (this.InstanceId == 0)
                 return;
 
-            AttributeInfo mappedAttribute = attribInfo.GetTag(NativeAnnotations.MappedAttribute) as AttributeInfo;
-            DomNodeType definingType = (mappedAttribute != null) ? mappedAttribute.DefiningType : attribInfo.DefiningType;
-            uint typeId = (uint)definingType.GetTag(NativeAnnotations.NativeType);
-            
+            uint typeId = TypeId;
             Type clrType = attribInfo.Type.ClrType;
             Type elmentType = clrType.GetElementType();
 

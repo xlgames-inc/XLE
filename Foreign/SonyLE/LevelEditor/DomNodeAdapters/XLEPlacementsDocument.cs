@@ -34,7 +34,7 @@ namespace LevelEditor.DomNodeAdapters
             var placement = child.As<XLEPlacementObject>();
             if (placement != null)
             {
-                GetChildList<XLEPlacementObject>(Schema.placementsDocumentType.placementsChild).Add(placement);
+                GetChildList<XLEPlacementObject>(Schema.placementsDocumentType.placementChild).Add(placement);
                 return true;
             }
             return false;
@@ -75,7 +75,7 @@ namespace LevelEditor.DomNodeAdapters
         /// Gets the list of game objects</summary>
         public IList<IGameObject> GameObjects
         {
-            get { return GetChildList<IGameObject>(Schema.placementsDocumentType.placementsChild); }
+            get { return GetChildList<IGameObject>(Schema.placementsDocumentType.placementChild); }
         }
 
         /// <summary>

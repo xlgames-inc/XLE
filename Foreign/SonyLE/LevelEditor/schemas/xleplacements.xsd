@@ -2,13 +2,13 @@
 <xs:schema
   elementFormDefault="qualified"
   targetNamespace="gap"
-	xmlns="gap"
-  xmlns:xs="http://www.w3.org/2001/XMLSchema"
-  >
-  
-  <xs:include schemaLocation="basictypes.xsd"/>
+  xmlns="gap"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema">
 
-  <xs:complexType name="placementsCellReference">
+  <xs:include schemaLocation="basictypes.xsd"/>
+  <xs:include schemaLocation="transformobject.xsd"/>
+
+  <xs:complexType name="placementsCellReferenceType">
     <xs:annotation>
       <xs:appinfo>
         <scea.dom.editors.attribute name="mins" displayName="Mins" description="Minimum point of this cell" category="Bounds" editor="Sce.Atf.Controls.PropertyEditing.NumericTupleEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.FloatArrayConverter"/>
@@ -26,7 +26,7 @@
 
   <xs:complexType name="placementsFolderType">
     <xs:sequence>
-      <xs:element name="cell" type="placementsCellReference" minOccurs="0" maxOccurs="unbounded" />
+      <xs:element name="cell" type="placementsCellReferenceType" minOccurs="0" maxOccurs="unbounded" />
     </xs:sequence>
   </xs:complexType>
 
@@ -44,18 +44,12 @@
       </xs:appinfo>
     </xs:annotation>
 
-    <xs:attribute name="transform" type="matrixType" default="1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1"/>
-    <xs:attribute name="translate" type="vector3Type" default="0 0 0"/>
-    <xs:attribute name="rotate" type="vector3Type" default="0 0 0"/>
-    <xs:attribute name="scale" type="vector3Type" default="1 1 1"/>
-    <xs:attribute name="pivot" type="vector3Type" default="0 0 0"/>
-    <xs:attribute name="ID" type="xs:unsignedLong" default="0"/>
-
-    <xs:attribute name="visible" type="xs:boolean" default="true" />
-    <xs:attribute name="locked" type="xs:boolean" default="false" />
-
-    <!-- see public enum TransformationTypes in LevelEditorCore -->
-    <xs:attribute name="transformationType" type="xs:integer" default="15"/>
+    <xs:complexContent>
+      <xs:extension base="transformObjectType">
+        <xs:attribute name="visible" type="xs:boolean" default="true" />
+        <xs:attribute name="locked" type="xs:boolean" default="false" />
+      </xs:extension>
+    </xs:complexContent>
   </xs:complexType>
 
   <xs:complexType name="placementsDocumentType">

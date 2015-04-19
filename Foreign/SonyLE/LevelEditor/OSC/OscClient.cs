@@ -38,25 +38,6 @@ namespace LevelEditor.OSC
             get { return m_designView.Context.As<DomNode>(); }
         }
 
-        /// <summary>
-        /// Gets active directional light if it exists or null</summary>
-        public DirLight ActiveDirLight
-        {
-            get
-            {
-                DirLight dirlight = null;
-                if (MasterNode != null)
-                {
-                    foreach (DomNode node in MasterNode.Subtree)
-                    {
-                        dirlight = node.As<DirLight>();
-                        if (dirlight != null) break;
-                    }
-                }
-                return dirlight;
-            }
-        }
-
         protected override object SelectedToCommon(object selected)
         {
             return selected.As<DomNode>();
@@ -151,31 +132,16 @@ namespace LevelEditor.OSC
                         RecallSelectedLight(1);
                     return;
             }
-            if (args.Address.Contains("GlobalAmbient"))
-            {
-                SetGlobalAmbientComponent(ActiveDirLight, args.Address, args.Data);
-                return;
-            }
-            if (args.Address.Contains("GlobalSpecular"))
-            {
-                SetGlobalSpecularComponent(ActiveDirLight, args.Address, args.Data);
-                return;
-            }
-            if (args.Address.Contains("GlobalDiffuse"))
-            {
-                SetGlobalDiffuseComponent(ActiveDirLight, args.Address, args.Data);
-                return;
-            }
             base.OnMessageRecieved(args);
         }
 
         private class LightingInfo
         {
-            public LightingInfo(DirLight light)
+            public LightingInfo()
             {
-                m_ambient = light.Ambient;
-                m_specular = light.Specular;
-                m_diffuse = light.Diffuse;
+                // m_ambient = light.Ambient;
+                // m_specular = light.Specular;
+                // m_diffuse = light.Diffuse;
             }
 
             public static LightingInfo TryCreate(DomNode domNode)
@@ -193,13 +159,6 @@ namespace LevelEditor.OSC
                         Color.FromArgb((int) domNode.GetAttribute(diffuseInfo)));
                 }
                 return null;
-            }
-
-            public void Recall(DirLight light)
-            {
-                light.Ambient = m_ambient;
-                light.Specular = m_specular;
-                light.Diffuse = m_diffuse;
             }
 
             public void Recall(DomNode domNode)
@@ -231,25 +190,10 @@ namespace LevelEditor.OSC
 
         private void RecallGlobalLighting(int i)
         {
-            if (m_globalLightInfos[i] != null)
-            {
-                DirLight light = ActiveDirLight;
-                if (light != null)
-                {
-                    //We don't want to set m_settingGlobalLighting to false because the sliders
-                    // on OSC display need to be updated in response to the recall button being pressed
-                    m_domNode.As<ITransactionContext>().DoTransaction(
-                        () => m_globalLightInfos[i].Recall(light),
-                        "OSC Input".Localize("The name of a command"));
-                }
-            }
         }
 
         private void RecordGlobalLighting(int i)
         {
-            DirLight light = ActiveDirLight;
-            if (light != null)
-                m_globalLightInfos[i] = new LightingInfo(light);
         }
 
         private void RecallSelectedLight(int i)
@@ -290,45 +234,6 @@ namespace LevelEditor.OSC
             }
         }
 
-        private void SetGlobalAmbientComponent(DirLight activeDirLight, string address, object data)
-        {
-            if (activeDirLight == null)
-                return;
-            Color origColor = activeDirLight.Ambient;
-            m_settingGlobalLighting = true;
-            m_domNode.As<ITransactionContext>().DoTransaction(() =>
-                activeDirLight.Ambient = ReplaceComponent(origColor, address, data),
-                "OSC Input".Localize("The name of a command"));
-            m_settingGlobalLighting = false;
-            m_designView.ActiveView.Invalidate();
-        }
-
-        private void SetGlobalSpecularComponent(DirLight activeDirLight, string address, object data)
-        {
-            if (activeDirLight == null)
-                return;
-            Color origColor = activeDirLight.Specular;
-            m_settingGlobalLighting = true;
-            m_domNode.As<ITransactionContext>().DoTransaction(() =>
-                activeDirLight.Specular = ReplaceComponent(origColor, address, data),
-                "OSC Input".Localize("The name of a command"));
-            m_settingGlobalLighting = false;
-            m_designView.ActiveView.Invalidate();
-        }
-
-        private void SetGlobalDiffuseComponent(DirLight activeDirLight, string address, object data)
-        {
-            if (activeDirLight == null)
-                return;
-            Color origColor = activeDirLight.Diffuse;
-            m_settingGlobalLighting = true;
-            m_domNode.As<ITransactionContext>().DoTransaction(() =>
-                activeDirLight.Diffuse = ReplaceComponent(origColor, address, data),
-                "OSC Input".Localize("The name of a command"));
-            m_settingGlobalLighting = false;
-            m_designView.ActiveView.Invalidate();
-        }
-
         private Color ReplaceComponent(Color origColor, string address, object data)
         {
             int newComponent;
@@ -348,10 +253,10 @@ namespace LevelEditor.OSC
 
         private void DomNodeOnAttributeChanged(object sender, AttributeEventArgs attributeEventArgs)
         {
-            if (attributeEventArgs.DomNode.Type == Schema.DirLight.Type)
-            {
-                SendGlobalLightingData();
-            }
+            // if (attributeEventArgs.DomNode.Type == Schema.DirLight.Type)
+            // {
+            //     SendGlobalLightingData();
+            // }
         }
 
         private void RenderStateChanged(object sender, EventArgs eventArgs)
@@ -518,23 +423,6 @@ namespace LevelEditor.OSC
         {
             if (m_settingGlobalLighting)
                 return;
-
-            DirLight dirLight = ActiveDirLight;
-            if (dirLight == null)
-                return;
-            var data = new[]
-            {
-                new Tuple<string, object>(GlobalAmbientRed, (float)dirLight.Ambient.R), 
-                new Tuple<string, object>(GlobalAmbientBlue, (float)dirLight.Ambient.B), 
-                new Tuple<string, object>(GlobalAmbientGreen, (float)dirLight.Ambient.G), 
-                new Tuple<string, object>(GlobalSpecularRed, (float)dirLight.Specular.R), 
-                new Tuple<string, object>(GlobalSpecularBlue, (float)dirLight.Specular.B), 
-                new Tuple<string, object>(GlobalSpecularGreen, (float)dirLight.Specular.G), 
-                new Tuple<string, object>(GlobalDiffuseRed, (float)dirLight.Diffuse.R), 
-                new Tuple<string, object>(GlobalDiffuseBlue, (float)dirLight.Diffuse.B), 
-                new Tuple<string, object>(GlobalDiffuseGreen, (float)dirLight.Diffuse.G), 
-            };
-            Send(data);
         }
 
         private const string SolidAddress = "/1/solid";

@@ -64,7 +64,6 @@ namespace LevelEditor
 
             // lights            
             Schema.PointLight.Type.Define(new ExtensionInfo<PointLight>());            
-            Schema.DirLight.Type.Define(new ExtensionInfo<DirLight>());
             Schema.BoxLight.Type.Define(new ExtensionInfo<BoxLight>());
 
             // Billboard

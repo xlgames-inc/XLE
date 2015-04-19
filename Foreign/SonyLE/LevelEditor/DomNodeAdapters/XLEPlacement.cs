@@ -23,7 +23,7 @@ namespace LevelEditor.DomNodeAdapters
         }
         #endregion
 
-        public XLEPlacementObject() : base(Schema.abstractPlacementObjectType.transform) {}
+        public XLEPlacementObject() {}
 
         #region INameable Members
         public string Name
@@ -53,14 +53,14 @@ namespace LevelEditor.DomNodeAdapters
         {
             get 
             {
-                return GetAttribute<string>(Schema.placementObjectType.modelChild);
+                return GetAttribute<string>(Schema.placementObjectType.modelAttribute);
             }
         }
         public string Material
         {
             get
             {
-                return GetAttribute<string>(Schema.placementObjectType.materialChild);
+                return GetAttribute<string>(Schema.placementObjectType.materialAttribute);
             }
         }
 
@@ -78,8 +78,8 @@ namespace LevelEditor.DomNodeAdapters
                 var resService = Globals.MEFContainer.GetExportedValue<XLELayer.IXLEAssetService>();
                 var referenceName = resService.StripExtension(resService.AsAssetName(value.Uri));
 
-                SetAttribute(Schema.placementObjectType.modelChild, referenceName);
-                SetAttribute(Schema.placementObjectType.materialChild, referenceName); 
+                SetAttribute(Schema.placementObjectType.modelAttribute, referenceName);
+                SetAttribute(Schema.placementObjectType.materialAttribute, referenceName); 
             }
         }
         private static bool CanReference(DomNodeType domtype, IResource resource)

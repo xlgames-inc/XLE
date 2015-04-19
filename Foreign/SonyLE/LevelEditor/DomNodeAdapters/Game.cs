@@ -61,6 +61,8 @@ namespace LevelEditor.DomNodeAdapters
                 foreach (var type in domNode.Type.Lineage) {
                     if (type == Schema.placementsFolderType.Type) return true;
                     if (type == Schema.abstractPlacementObjectType.Type) return true;
+                    if (type == Schema.envSettingsFolderType.Type) return true;
+                    if (type == Schema.envSettingsType.Type) return true;
                 }
             }
             // XLE>>
@@ -92,7 +94,7 @@ namespace LevelEditor.DomNodeAdapters
                 {
                     if (domNode.Type == Schema.placementsFolderType.Type)
                     {
-                        SetChild(Schema.gameType.placementsFolderChild, domNode);
+                        SetChild(Schema.gameType.placementsChild, domNode);
                         return true;
                     }
 
@@ -104,7 +106,7 @@ namespace LevelEditor.DomNodeAdapters
                         var plc = domNode.As<XLEPlacementObject>();
                         var keyPoint = (plc != null) ? plc.Translation : new Sce.Atf.VectorMath.Vec3F(0.0f, 0.0f, 0.0f);
 
-                        var placementsFolder = GetChild<PlacementsFolder>(Schema.gameType.placementsFolderChild);
+                        var placementsFolder = GetChild<PlacementsFolder>(Schema.gameType.placementsChild);
                         if (placementsFolder != null)
                         {
                             foreach (var cellRef in placementsFolder.Cells)
@@ -118,6 +120,22 @@ namespace LevelEditor.DomNodeAdapters
                                     return cellRef.Target.AddChild(domNode);
                                 }
                             }
+                        }
+                    }
+
+                    if (domNode.Type == Schema.envSettingsFolderType.Type)
+                    {
+                        SetChild(Schema.gameType.environmentChild, domNode);
+                        return true;
+                    }
+
+                    if (domNode.Type == Schema.envSettingsType.Type)
+                    {
+                        var folder = GetChild<DomNode>(Schema.gameType.environmentChild);
+                        if (folder != null)
+                        {
+                            folder.GetChildList(Schema.envSettingsFolderType.settingsChild).Add(domNode);
+                            return true;
                         }
                     }
                 }

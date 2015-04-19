@@ -9,6 +9,7 @@
   <xs:include schemaLocation="gameobject.xsd"/>
   <xs:include schemaLocation="prototypes.xsd"/>
   <xs:include schemaLocation="editorobjects.xsd"/>
+  <xs:include schemaLocation="env.xsd"/>
   
   <!-- Render component, a game component that contains or generate renderable geometry-->
     <xs:complexType name="renderComponentType" abstract="true">
@@ -102,6 +103,8 @@
   
   
     <!-- lights-->
+  
+  <!--
     <xs:complexType name="DirLight">
         <xs:annotation>
             <xs:appinfo>
@@ -126,6 +129,7 @@
             </xs:extension>
         </xs:complexContent>
     </xs:complexType>
+  -->
 
     <xs:complexType name="BoxLight">
         <xs:annotation>

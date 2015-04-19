@@ -39,7 +39,7 @@ namespace LevelEditor.DomNodeAdapters
 
         private void DomNode_AttributeChanged(object sender, AttributeEventArgs e)
         {
-            if (!m_manipulating && e.AttributeInfo.Equivalent(Schema.controlPointType.transform.translateAttribute))
+            if (!m_manipulating && e.AttributeInfo.Equivalent(Schema.controlPointType.translateAttribute))
             {
                 Curve curve = GetParentAs<Curve>();
                 if (curve != null)

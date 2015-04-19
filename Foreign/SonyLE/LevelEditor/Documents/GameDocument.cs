@@ -69,7 +69,7 @@ namespace LevelEditor
 
             // <<XLE
                 // also save other reference types
-            var placementsFolder = GetChild<PlacementsFolder>(Schema.gameType.placementsFolderChild);
+            var placementsFolder = GetChild<PlacementsFolder>(Schema.gameType.placementsChild);
             if (placementsFolder!=null) {
                 foreach (var cellRef in placementsFolder.Cells)
                 {
@@ -229,7 +229,7 @@ namespace LevelEditor
 
                 // <<XLE
                 // resolve other types of document references
-                var placementsFolder = document.GetChild<PlacementsFolder>(Schema.gameType.placementsFolderChild);
+                var placementsFolder = document.GetChild<PlacementsFolder>(Schema.gameType.placementsChild);
                 if (placementsFolder != null) {
                     foreach (var cell in placementsFolder.Cells) {
                         cell.Resolve();
