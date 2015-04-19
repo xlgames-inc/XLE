@@ -7,6 +7,7 @@
 #include "LevelEditorScene.h"
 #include "PlacementsGobInterface.h"
 #include "TerrainGobInterface.h"
+#include "FlexGobInterface.h"
 #include "MarshalString.h"
 #include "GUILayerUtil.h"
 #include "IOverlaySystem.h"
@@ -102,6 +103,8 @@ namespace GUILayer
         SceneEngine::GlobalLightingDesc GetGlobalLightingDesc() const;
         float                           GetTimeValue() const;
 
+        void PrepareEnvironmentalSettings(const char envSettings[], EditorDynamicInterface::FlexObjectType& flexGobInterface);
+
         EditorSceneParser(
             std::shared_ptr<EditorScene> editorScene,
             std::shared_ptr<ToolsRig::VisCameraSettings> camera);
@@ -109,6 +112,12 @@ namespace GUILayer
     protected:
         std::shared_ptr<EditorScene> _editorScene;
         std::shared_ptr<ToolsRig::VisCameraSettings> _camera;
+
+        std::vector<SceneEngine::LightDesc> _lights;
+        std::vector<SceneEngine::ShadowProjectionDesc> _shadowProj;
+        SceneEngine::GlobalLightingDesc _globalLightingDesc;
+
+        ::Assets::ResChar _skyTextureBuffer[MaxPath];
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -154,25 +163,13 @@ namespace GUILayer
         ExecuteScene(context, parserContext, parseSettings, techniqueIndex);
     }
 
-    unsigned EditorSceneParser::GetShadowProjectionCount() const { return 0; }
+    unsigned EditorSceneParser::GetShadowProjectionCount() const { return (unsigned)_shadowProj.size(); }
 
     ShadowProjectionDesc EditorSceneParser::GetShadowProjectionDesc(
         unsigned index, const RenderCore::Techniques::ProjectionDesc& mainSceneProjectionDesc) const 
-    { return ShadowProjectionDesc(); }
+    { return _shadowProj[index]; }
 
-    unsigned           EditorSceneParser::GetLightCount() const { return 1; }
-    const LightDesc&   EditorSceneParser::GetLightDesc(unsigned index) const
-    {
-        static LightDesc light;
-        light._type = LightDesc::Directional;
-        light._lightColour = Float3(1.f, 1.f, 1.f);
-        light._negativeLightDirection = Normalize(Float3(-.1f, 0.33f, 1.f));
-        light._radius = 10000.f;
-        light._shadowFrustumIndex = ~unsigned(0x0);
-        return light;
-    }
-
-    GlobalLightingDesc EditorSceneParser::GetGlobalLightingDesc() const
+    static GlobalLightingDesc DefaultGlobalLightingDesc()
     {
         GlobalLightingDesc result;
         result._ambientLight = .03f * Float3(1.f, 1.f, 1.f);
@@ -181,13 +178,82 @@ namespace GUILayer
         return result;
     }
 
+    unsigned           EditorSceneParser::GetLightCount() const { return (unsigned)_lights.size(); }
+    const LightDesc&   EditorSceneParser::GetLightDesc(unsigned index) const
+    {
+        return _lights[index];
+    }
+
+    GlobalLightingDesc EditorSceneParser::GetGlobalLightingDesc() const
+    {
+        return _globalLightingDesc;
+    }
+
     float EditorSceneParser::GetTimeValue() const { return 0.f; }
+
+    void EditorSceneParser::PrepareEnvironmentalSettings(const char envSettings[], EditorDynamicInterface::FlexObjectType& flexGobInterface)
+    {
+        _lights.clear();
+        _shadowProj.clear();
+        _globalLightingDesc = DefaultGlobalLightingDesc();
+
+        using namespace EditorDynamicInterface;
+        const FlexObjectType::Object* settings = nullptr;
+
+        const auto typeSettings = flexGobInterface.GetTypeId("EnvSettings");
+        const auto typeAmbient = flexGobInterface.GetTypeId("AmbientSettings");
+
+        {
+            static const auto nameHash = ParameterBox::MakeParameterNameHash("name");
+            auto allSettings = flexGobInterface.FindObjectsOfType(typeSettings);
+            for (auto s : allSettings) {
+                char buffer[MaxPath];
+                if (s->_properties.GetParameter(nameHash, buffer, ImpliedTyping::TypeDesc(ImpliedTyping::TypeCat::UInt8, dimof(buffer)))) {
+                    if (!XlCompareStringI(buffer, envSettings)) {
+                        settings = s;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (settings) {
+            for (auto cid : settings->_children) {
+                const auto* child = flexGobInterface.GetObject(settings->_doc, cid);
+                if (!child) continue;
+
+                if (child->_type == typeAmbient) {
+                    static const auto ambientHash = ParameterBox::MakeParameterNameHash("ambientlight");
+                    static const auto skyTextureHash = ParameterBox::MakeParameterNameHash("skytexture");
+                    static const auto doToneMapHash = ParameterBox::MakeParameterNameHash("dotonemap");
+
+                    _globalLightingDesc._ambientLight = child->_properties.GetParameter<Float3>(ambientHash, _globalLightingDesc._ambientLight);
+                    _globalLightingDesc._doToneMap = child->_properties.GetParameter<bool>(doToneMapHash, _globalLightingDesc._doToneMap);
+
+                    if (child->_properties.GetParameter(skyTextureHash, _skyTextureBuffer, ImpliedTyping::TypeDesc(ImpliedTyping::TypeCat::UInt8, dimof(_skyTextureBuffer)))) {
+                        _globalLightingDesc._skyTexture = _skyTextureBuffer;
+                    }
+                }
+            }
+        } else {
+            LightDesc light;
+            light._type = LightDesc::Directional;
+            light._lightColour = Float3(1.f, 1.f, 1.f);
+            light._negativeLightDirection = Normalize(Float3(-.1f, 0.33f, 1.f));
+            light._radius = 10000.f;
+            light._shadowFrustumIndex = ~unsigned(0x0);
+            _lights.push_back(light);
+        }
+    }
 
     EditorSceneParser::EditorSceneParser(
         std::shared_ptr<EditorScene> editorScene,
         std::shared_ptr<ToolsRig::VisCameraSettings> camera)
-        : _editorScene(std::move(editorScene)), _camera(std::move(camera))
-    {}
+        : _editorScene(std::move(editorScene))
+        , _camera(std::move(camera))
+    {
+        _globalLightingDesc = DefaultGlobalLightingDesc();
+    }
     EditorSceneParser::~EditorSceneParser() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -346,12 +412,12 @@ namespace GUILayer
 
         {
             using namespace EditorDynamicInterface;
-            auto flexType = std::make_shared<FlexObjectType>();
-            flexType->RegisterCallback(
-                flexType->GetTypeId("TerrainBaseTexture"),
+            _flexGobInterface = std::make_shared<FlexObjectType>();
+            _flexGobInterface->RegisterCallback(
+                _flexGobInterface->GetTypeId("TerrainBaseTexture"),
                 &TerrainBaseTextureCallback);
 
-            _dynInterface->RegisterType(flexType);
+            _dynInterface->RegisterType(_flexGobInterface.GetNativePtr());
         }
 
         _selection = gcnew ObjectSet;
@@ -381,13 +447,17 @@ namespace GUILayer
         void SetActivationState(bool newState) override;
 
         EditorSceneOverlay(
-            std::shared_ptr<SceneEngine::ISceneParser> sceneParser,
+            std::shared_ptr<EditorSceneParser> sceneParser,
+            EditorSceneRenderSettings^ renderSettings,
+            std::shared_ptr<EditorDynamicInterface::FlexObjectType> flexGobInterface,
             ObjectSet^ selection, 
             std::shared_ptr<SceneEngine::PlacementsEditor> placementsEditor);
         ~EditorSceneOverlay();
     protected:
-        clix::shared_ptr<SceneEngine::ISceneParser> _sceneParser;
+        clix::shared_ptr<EditorSceneParser> _sceneParser;
         ObjectSet^ _selection;
+        EditorSceneRenderSettings^ _renderSettings;
+        clix::shared_ptr<EditorDynamicInterface::FlexObjectType> _flexGobInterface;
         clix::shared_ptr<SceneEngine::PlacementsEditor> _placementsEditor;
     };
     
@@ -396,6 +466,9 @@ namespace GUILayer
         SceneEngine::LightingParserContext& parserContext)
     {
         if (_sceneParser.get()) {
+            _sceneParser->PrepareEnvironmentalSettings(
+                clix::marshalString<clix::E_UTF8>(_renderSettings->_activeEnvironmentSettings).c_str(),
+                *_flexGobInterface.GetNativePtr());
             SceneEngine::LightingParser_ExecuteScene(
                 *threadContext, parserContext, *_sceneParser.get(), 
                 SceneEngine::RenderingQualitySettings(threadContext->GetStateDesc()._viewportDimensions));
@@ -419,21 +492,26 @@ namespace GUILayer
 
     void EditorSceneOverlay::SetActivationState(bool) {}
     EditorSceneOverlay::EditorSceneOverlay(
-        std::shared_ptr<SceneEngine::ISceneParser> sceneParser,
+        std::shared_ptr<EditorSceneParser> sceneParser,
+        EditorSceneRenderSettings^ renderSettings,
+        std::shared_ptr<EditorDynamicInterface::FlexObjectType> flexGobInterface,
         ObjectSet^ selection, 
         std::shared_ptr<SceneEngine::PlacementsEditor> placementsEditor)
     {
         _sceneParser = std::move(sceneParser);
         _selection = selection;
+        _renderSettings = renderSettings;
         _placementsEditor = placementsEditor;
+        _flexGobInterface = flexGobInterface;
     }
     EditorSceneOverlay::~EditorSceneOverlay() {}
 
-    IOverlaySystem^ EditorSceneManager::CreateOverlaySystem(VisCameraSettings^ camera)
+    IOverlaySystem^ EditorSceneManager::CreateOverlaySystem(VisCameraSettings^ camera, EditorSceneRenderSettings^ renderSettings)
     {
-        auto sceneParser = std::make_shared<EditorSceneParser>(_scene.GetNativePtr(), camera->GetUnderlying());
         return gcnew EditorSceneOverlay(
-            std::move(sceneParser), _selection, _scene->_placementsEditor);
+            std::make_shared<EditorSceneParser>(_scene.GetNativePtr(), camera->GetUnderlying()), 
+            renderSettings, _flexGobInterface.GetNativePtr(),
+            _selection, _scene->_placementsEditor);
     }
 
     void EditorSceneManager::SetSelection(ObjectSet^ objectSet)

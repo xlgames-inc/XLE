@@ -33,7 +33,7 @@ namespace RenderingInterop
             m_renderState.WireFrameColor = Color.DarkBlue;
             m_renderState.SelectionColor = Color.FromArgb(66, 255, 161);
             BackColor = SystemColors.ControlDark;
-            m_renderState.Changed += (sender, e) => Invalidate();
+            m_renderState.OnChanged += (sender, e) => Invalidate();
 
             base.AddRenderCallback(RenderExtras);
         }
@@ -291,6 +291,8 @@ namespace RenderingInterop
 
             if (skipRender)
                 return;
+
+            _renderSettings._activeEnvironmentSettings = RenderState.EnvironmentSettings;
 
             m_clk.Start();
             base.Render();

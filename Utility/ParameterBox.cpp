@@ -57,21 +57,22 @@ namespace Utility
         , _arrayCount(arrayCount)
         {}
 
-        template<> TypeDesc TypeOf<uint32>()    { return TypeDesc(TypeCat::UInt32); }
-        template<> TypeDesc TypeOf<int32>()     { return TypeDesc(TypeCat::Int32); }
-        template<> TypeDesc TypeOf<uint16>()    { return TypeDesc(TypeCat::UInt16); }
-        template<> TypeDesc TypeOf<int16>()     { return TypeDesc(TypeCat::Int16); }
-        template<> TypeDesc TypeOf<uint8>()     { return TypeDesc(TypeCat::UInt8); }
-        template<> TypeDesc TypeOf<int8>()      { return TypeDesc(TypeCat::Int8); }
-        template<> TypeDesc TypeOf<bool>()      { return TypeDesc(TypeCat::Bool); }
-        template<> TypeDesc TypeOf<float>()     { return TypeDesc(TypeCat::Float); }
-        template<> TypeDesc TypeOf<void>()      { return TypeDesc(TypeCat::Void); }
-        template<> TypeDesc TypeOf<Float2>()    { return TypeDesc(TypeCat::Float, 2, TypeHint::Vector); }
-        template<> TypeDesc TypeOf<Float3>()    { return TypeDesc(TypeCat::Float, 3, TypeHint::Vector); }
-        template<> TypeDesc TypeOf<Float4>()    { return TypeDesc(TypeCat::Float, 4, TypeHint::Vector); }
-        template<> TypeDesc TypeOf<UInt2>()     { return TypeDesc(TypeCat::UInt32, 2, TypeHint::Vector); }
-        template<> TypeDesc TypeOf<UInt3>()     { return TypeDesc(TypeCat::UInt32, 3, TypeHint::Vector); }
-        template<> TypeDesc TypeOf<UInt4>()     { return TypeDesc(TypeCat::UInt32, 4, TypeHint::Vector); }
+        template<> TypeDesc TypeOf<uint32>()        { return TypeDesc(TypeCat::UInt32); }
+        template<> TypeDesc TypeOf<int32>()         { return TypeDesc(TypeCat::Int32); }
+        template<> TypeDesc TypeOf<uint16>()        { return TypeDesc(TypeCat::UInt16); }
+        template<> TypeDesc TypeOf<int16>()         { return TypeDesc(TypeCat::Int16); }
+        template<> TypeDesc TypeOf<uint8>()         { return TypeDesc(TypeCat::UInt8); }
+        template<> TypeDesc TypeOf<int8>()          { return TypeDesc(TypeCat::Int8); }
+        template<> TypeDesc TypeOf<bool>()          { return TypeDesc(TypeCat::Bool); }
+        template<> TypeDesc TypeOf<float>()         { return TypeDesc(TypeCat::Float); }
+        template<> TypeDesc TypeOf<void>()          { return TypeDesc(TypeCat::Void); }
+        template<> TypeDesc TypeOf<Float2>()        { return TypeDesc(TypeCat::Float, 2, TypeHint::Vector); }
+        template<> TypeDesc TypeOf<Float3>()        { return TypeDesc(TypeCat::Float, 3, TypeHint::Vector); }
+        template<> TypeDesc TypeOf<Float4>()        { return TypeDesc(TypeCat::Float, 4, TypeHint::Vector); }
+        template<> TypeDesc TypeOf<UInt2>()         { return TypeDesc(TypeCat::UInt32, 2, TypeHint::Vector); }
+        template<> TypeDesc TypeOf<UInt3>()         { return TypeDesc(TypeCat::UInt32, 3, TypeHint::Vector); }
+        template<> TypeDesc TypeOf<UInt4>()         { return TypeDesc(TypeCat::UInt32, 4, TypeHint::Vector); }
+        template<> TypeDesc TypeOf<const char*>()   { return TypeDesc(TypeCat::UInt8, (uint16)~uint16(0), TypeHint::String); }
 
         TypeDesc TypeOf(const char expression[]) 
         {

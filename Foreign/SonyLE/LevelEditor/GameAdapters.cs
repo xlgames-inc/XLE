@@ -139,6 +139,9 @@ namespace LevelEditor
             Schema.placementObjectType.Type.Define(new ExtensionInfo<TransformUpdater>());
 
             Schema.terrainType.Type.Define(new ExtensionInfo<XLETerrainGob>());
+
+            Schema.envSettingsFolderType.Type.Define(new ExtensionInfo<XLEEnvSettingsFolder>());
+            Schema.envSettingsType.Type.Define(new ExtensionInfo<XLEEnvSettings>());
             // XLE>>
         }
     }

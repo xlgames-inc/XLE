@@ -33,7 +33,13 @@ namespace GUILayer
 		~EditorScene();
     };
 
-    namespace EditorDynamicInterface { class RegisteredTypes; }
+    public ref class EditorSceneRenderSettings
+    {
+    public:
+        System::String^ _activeEnvironmentSettings;
+    };
+
+    namespace EditorDynamicInterface { class RegisteredTypes; class FlexObjectType; }
 
     ref class IOverlaySystem;
     ref class IManipulatorSet;
@@ -46,7 +52,7 @@ namespace GUILayer
             //// //// ////   U T I L S   //// //// ////
         IManipulatorSet^ CreateTerrainManipulators();
         IManipulatorSet^ CreatePlacementManipulators(IPlacementManipulatorSettingsLayer^ context);
-        IOverlaySystem^ CreateOverlaySystem(VisCameraSettings^ camera);
+        IOverlaySystem^ CreateOverlaySystem(VisCameraSettings^ camera, EditorSceneRenderSettings^ renderSettings);
 		IntersectionTestSceneWrapper^ GetIntersectionScene();
         PlacementsEditorWrapper^ GetPlacementsEditor();
         void SetSelection(ObjectSet^ objectSet);
@@ -85,6 +91,7 @@ namespace GUILayer
     protected:
         clix::shared_ptr<EditorScene> _scene;
         clix::shared_ptr<EditorDynamicInterface::RegisteredTypes> _dynInterface;
+        clix::shared_ptr<EditorDynamicInterface::FlexObjectType> _flexGobInterface;
 
         ObjectSet^ _selection;
     };

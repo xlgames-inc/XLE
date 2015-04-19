@@ -62,9 +62,9 @@ namespace LevelEditor.DomNodeAdapters
                     if (type == Schema.placementsFolderType.Type) return true;
                     if (type == Schema.abstractPlacementObjectType.Type) return true;
                     if (type == Schema.envSettingsFolderType.Type) return true;
-                    if (type == Schema.envSettingsType.Type) return true;
                 }
             }
+            if (EnvSettingsFolder.CanAddChild(child)) return true;
             // XLE>>
 
             return false;
@@ -87,6 +87,9 @@ namespace LevelEditor.DomNodeAdapters
             }
 
             // <<XLE
+            if (EnvSettingsFolder.AddChild(child))
+                return true;
+
             var domNode = child.As<DomNode>();
             if (domNode != null)
             {
@@ -127,16 +130,6 @@ namespace LevelEditor.DomNodeAdapters
                     {
                         SetChild(Schema.gameType.environmentChild, domNode);
                         return true;
-                    }
-
-                    if (domNode.Type == Schema.envSettingsType.Type)
-                    {
-                        var folder = GetChild<DomNode>(Schema.gameType.environmentChild);
-                        if (folder != null)
-                        {
-                            folder.GetChildList(Schema.envSettingsFolderType.settingsChild).Add(domNode);
-                            return true;
-                        }
                     }
                 }
             }
@@ -179,7 +172,20 @@ namespace LevelEditor.DomNodeAdapters
                 }
                 return rootFolder;              
             }
+        }
 
+        public XLEEnvSettingsFolder EnvSettingsFolder
+        {
+            get
+            {
+                var result = GetChild<XLEEnvSettingsFolder>(Schema.gameType.environmentChild);
+                if (result == null)
+                {
+                    result = new DomNode(Schema.envSettingsFolderType.Type).Cast<XLEEnvSettingsFolder>();
+                    SetChild(Schema.gameType.environmentChild, result);
+                }
+                return result;
+            }
         }
 
         public IGameObjectGroup CreateGameObjectGroup()

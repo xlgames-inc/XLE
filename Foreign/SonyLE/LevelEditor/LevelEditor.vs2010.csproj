@@ -118,6 +118,7 @@
     <Compile Include="DomNodeAdapters\Locator.cs" />
     <Compile Include="DomNodeAdapters\Slot.cs" />
     <Compile Include="DomNodeAdapters\TransformUpdater.cs" />
+    <Compile Include="DomNodeAdapters\XLEEnvAdapter.cs" />
     <Compile Include="DomNodeAdapters\XLEPlacement.cs" />
     <Compile Include="DomNodeAdapters\XLEPlacementsCellRef.cs" />
     <Compile Include="DomNodeAdapters\XLEPlacementsDocument.cs" />

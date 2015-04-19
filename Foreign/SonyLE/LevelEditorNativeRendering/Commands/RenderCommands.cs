@@ -394,7 +394,8 @@ namespace RenderingInterop
                             new UnboundPropertyDescriptor(typeof(RenderState),"SelectionColor","Selection Color".Localize(),category,"Wireframe color for selected objects".Localize(),colorEd),
                             new UnboundPropertyDescriptor(typeof(RenderState),"DisplayCaption","Display Caption".Localize(),category,"Display object name".Localize()),
                             new UnboundPropertyDescriptor(typeof(RenderState),"DisplayBound","Display Bound".Localize(),category,"Display objects' bounding volume".Localize()),
-                            new UnboundPropertyDescriptor(typeof(RenderState),"DisplayPivot","Display Pivot".Localize(),category,"Display object pivot".Localize())
+                            new UnboundPropertyDescriptor(typeof(RenderState),"DisplayPivot","Display Pivot".Localize(),category,"Display object pivot".Localize()),
+                            new UnboundPropertyDescriptor(typeof(RenderState),"EnvironmentSettings","Environment Settings".Localize(),category,"Environment settings config to use".Localize())
                         };
                     }
                     return s_propertyDescriptor;

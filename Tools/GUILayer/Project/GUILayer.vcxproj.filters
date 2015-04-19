@@ -29,6 +29,9 @@
       <Filter>DynInterface</Filter>
     </ClCompile>
     <ClCompile Include="..\ManipulatorUtils.cpp" />
+    <ClCompile Include="..\FlexGobInterface.cpp">
+      <Filter>DynInterface</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\EngineDevice.h" />
@@ -62,6 +65,9 @@
       <Filter>DynInterface</Filter>
     </ClInclude>
     <ClInclude Include="..\MathLayer.h" />
+    <ClInclude Include="..\FlexGobInterface.h">
+      <Filter>DynInterface</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="DynInterface">

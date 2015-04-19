@@ -15,23 +15,9 @@ namespace RenderingInterop
     /// </summary>
     public class RenderState : DisposableObject
     {
-        public RenderState()
-        {
-            if (!s_propertyIdsSet)
-            {
-                string typeName = typeof(RenderState).Name;
-                s_typeId = GameEngine.GetObjectTypeId(typeName);
-                s_renderFlagId = GameEngine.GetObjectPropertyId(s_typeId, "GlobalRenderFlags");
-                s_wirecolorId = GameEngine.GetObjectPropertyId(s_typeId, "WireframeColor");
-                s_selColorId = GameEngine.GetObjectPropertyId(s_typeId, "SelectionColor");
-                s_propertyIdsSet = true;
-            }
-            m_intanceId = GameEngine.CreateObject(0, 0, s_typeId, IntPtr.Zero, 0);
-        }
-
         /// <summary>
         /// Event that is raised when any properties of this RenderState change</summary>
-        public event EventHandler Changed;
+        public event EventHandler OnChanged;
           
         private GlobalRenderFlags m_renderflags;
         
@@ -41,11 +27,10 @@ namespace RenderingInterop
             get { return m_renderflags; }
             set 
             { 
-                // GameEngine.SetObjectProperty(s_typeId, 0, m_intanceId, s_renderFlagId, (uint)value);
                 if (value != m_renderflags)
                 {
                     m_renderflags = value;
-                    Changed.Raise(this, EventArgs.Empty);
+                    OnChanged.Raise(this, EventArgs.Empty);
                 }
             }
         }
@@ -60,11 +45,10 @@ namespace RenderingInterop
             get { return m_wireColor; }
             set 
             {
-                // GameEngine.SetObjectProperty(s_typeId, 0, m_intanceId, s_wirecolorId, value);
                 if (value != m_wireColor)
                 {
                     m_wireColor = value;
-                    Changed.Raise(this, EventArgs.Empty);
+                    OnChanged.Raise(this, EventArgs.Empty);
                 }
             }
         }
@@ -78,19 +62,12 @@ namespace RenderingInterop
             get { return m_selectionColor; }
             set
             {
-                // GameEngine.SetObjectProperty(s_typeId, 0, m_intanceId, s_selColorId, value);
                 if (value != m_selectionColor)
                 {
                     m_selectionColor = value;
-                    Changed.Raise(this, EventArgs.Empty);
+                    OnChanged.Raise(this, EventArgs.Empty);
                 }
             }
-        }
-
-        [Browsable(false)]
-        public ulong InstanceId
-        {
-            get { return m_intanceId; }
         }
 
         private DisplayFlagModes m_displayCaption;
@@ -107,7 +84,7 @@ namespace RenderingInterop
                 if (m_displayCaption != value)
                 {
                     m_displayCaption = value;
-                    Changed.Raise(this, EventArgs.Empty);
+                    OnChanged.Raise(this, EventArgs.Empty);
                 }
             }
         }
@@ -126,7 +103,7 @@ namespace RenderingInterop
                 if (m_displayBound != value)
                 {
                     m_displayBound = value;
-                    Changed.Raise(this, EventArgs.Empty);
+                    OnChanged.Raise(this, EventArgs.Empty);
                 }
             }
         }
@@ -145,30 +122,27 @@ namespace RenderingInterop
                 if (m_displayPivot != value)
                 {
                     m_displayPivot = value;
-                    Changed.Raise(this, EventArgs.Empty);
+                    OnChanged.Raise(this, EventArgs.Empty);
                 }
             }
         }
-        
-        protected override void Dispose(bool disposing)
+
+        private string m_activeEnvironmentSettings = "environment";
+
+        [CategoryAttribute("Environment"),
+         DescriptionAttribute("Active environments settings")]
+        public string EnvironmentSettings
         {
-            if(m_intanceId != 0)
+            get { return m_activeEnvironmentSettings; }
+            set
             {
-                GameEngine.DestroyObject(0, m_intanceId, s_typeId);
-                m_intanceId = 0;
+                if (m_activeEnvironmentSettings != value)
+                {
+                    m_activeEnvironmentSettings = value;
+                    OnChanged.Raise(this, EventArgs.Empty);
+                }
             }
-            base.Dispose(disposing);
         }
-
-        // native property ids
-        private static uint s_renderFlagId;
-        private static uint s_wirecolorId;
-        private static uint s_selColorId;
-        private static bool s_propertyIdsSet = false;
-
-        // instance id
-        private static uint s_typeId;
-        private ulong m_intanceId;
     }
 
     public enum DisplayFlagModes

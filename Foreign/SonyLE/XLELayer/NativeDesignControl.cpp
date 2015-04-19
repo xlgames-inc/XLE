@@ -50,8 +50,9 @@ namespace XLELayer
         {
             _layerControl = gcnew GUILayer::LayerControl(this);
             _cameraSettings = gcnew GUILayer::VisCameraSettings();
+            _renderSettings = gcnew GUILayer::EditorSceneRenderSettings();
             _sceneManager = sceneManager;
-            _layerControl->AddSystem(sceneManager->CreateOverlaySystem(_cameraSettings));
+            _layerControl->AddSystem(sceneManager->CreateOverlaySystem(_cameraSettings, _renderSettings));
             _manipulatorOverlay = gcnew ManipulatorOverlay(designView, this);
             _layerControl->AddSystem(_manipulatorOverlay);
 
@@ -74,7 +75,7 @@ namespace XLELayer
 
         ~NativeDesignControl() { delete _layerControl; _layerControl = nullptr; delete _cameraSettings; _cameraSettings = nullptr; }
 
-        void Render() override 
+        void Render() override
         {
                 //  "_cameraSettings" should match the camera set in 
                 //  the view control
@@ -124,6 +125,7 @@ namespace XLELayer
         GUILayer::LayerControl^ _layerControl;
         GUILayer::VisCameraSettings^ _cameraSettings;
         GUILayer::EditorSceneManager^ _sceneManager;
+        GUILayer::EditorSceneRenderSettings^ _renderSettings;
 
     private:
         ManipulatorOverlay^ _manipulatorOverlay;

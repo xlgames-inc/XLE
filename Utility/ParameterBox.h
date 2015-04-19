@@ -18,7 +18,7 @@ namespace Utility
     namespace ImpliedTyping
     {
         enum class TypeCat : uint8 { Void, Bool, Int8, UInt8, Int16, UInt16, Int32, UInt32, Float };
-        enum class TypeHint : uint8 { None, Vector, Color };
+        enum class TypeHint : uint8 { None, Vector, Color, String };
         class TypeDesc
         {
         public:

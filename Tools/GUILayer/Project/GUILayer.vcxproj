@@ -80,6 +80,7 @@
     <ClCompile Include="..\EditorInterfaceUtils.cpp" />
     <ClCompile Include="..\EngineDevice.cpp" />
     <ClCompile Include="..\EngineControl.cpp" />
+    <ClCompile Include="..\FlexGobInterface.cpp" />
     <ClCompile Include="..\GUILayerUtil.cpp" />
     <ClCompile Include="..\LayerControl.cpp" />
     <ClCompile Include="..\LevelEditorScene.cpp" />
@@ -100,6 +101,7 @@
     <ClInclude Include="..\EngineDevice.h" />
     <ClInclude Include="..\EngineControl.h" />
     <ClInclude Include="..\ExportedNativeTypes.h" />
+    <ClInclude Include="..\FlexGobInterface.h" />
     <ClInclude Include="..\GUILayerUtil.h" />
     <ClInclude Include="..\IOverlaySystem.h" />
     <ClInclude Include="..\IWindowRig.h" />
