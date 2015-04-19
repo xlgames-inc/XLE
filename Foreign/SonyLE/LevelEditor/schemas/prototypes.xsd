@@ -1,0 +1,58 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<xs:schema
+  elementFormDefault="qualified"
+  targetNamespace="gap"
+	xmlns="gap"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  >
+
+  <xs:include schemaLocation="basictypes.xsd"/>
+  <xs:include schemaLocation="gameobject.xsd"/>
+  
+  <!-- objectOverrideType 
+  It stores all the overridden attributes of an object.-->
+  <xs:complexType name="objectOverrideType">
+    <xs:sequence>
+      <xs:element name="attributeOverride" type="attributeOverrideType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="objectName" type="xs:string" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="attributeOverrideType">
+    <xs:attribute name="name" type="xs:string" use="required"/>
+    <xs:attribute name="value" type="xs:string"/>
+  </xs:complexType>
+
+
+  <xs:complexType name="prefabInstanceType">
+    <xs:annotation>
+      <xs:appinfo>
+        <scea.dom.editors name="PrefabInstance"/>
+      </xs:appinfo>
+    </xs:annotation>
+    <xs:complexContent>
+      <xs:extension base="gameObjectGroupType">
+        <xs:sequence>
+          <xs:element name="objectOverride" type="objectOverrideType" minOccurs="0" maxOccurs="unbounded" />
+        </xs:sequence>
+        <xs:attribute name="prefabRef" type="xs:anyURI" />
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name ="prototypeType" >
+    <xs:sequence>
+      <xs:element name="gameObject" type="gameObjectType" minOccurs="1" maxOccurs="1" />
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name ="prefabType" >
+    <xs:sequence>
+      <xs:element name="gameObject" type="gameObjectType" minOccurs="1" maxOccurs="unbounded" />
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:element name="prototype" type="prototypeType"/>
+  <xs:element name="prefab" type="prefabType"/>
+
+</xs:schema>

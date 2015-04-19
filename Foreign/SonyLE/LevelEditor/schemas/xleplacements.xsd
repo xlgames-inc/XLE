@@ -1,0 +1,98 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<xs:schema
+  elementFormDefault="qualified"
+  targetNamespace="gap"
+	xmlns="gap"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  >
+  
+  <xs:include schemaLocation="basictypes.xsd"/>
+
+  <xs:complexType name="placementsCellReference">
+    <xs:annotation>
+      <xs:appinfo>
+        <scea.dom.editors.attribute name="mins" displayName="Mins" description="Minimum point of this cell" category="Bounds" editor="Sce.Atf.Controls.PropertyEditing.NumericTupleEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.FloatArrayConverter"/>
+        <scea.dom.editors.attribute name="maxs" displayName="Maxs" description="Maximum point of this cell" category="Bounds" editor="Sce.Atf.Controls.PropertyEditing.NumericTupleEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.FloatArrayConverter"/>
+        <scea.dom.editors.attribute name="ref" displayName="Ref" description="Placements document file"/>
+        <scea.dom.editors.attribute name="name" displayName="Name" description="Display name"/>
+      </xs:appinfo>
+    </xs:annotation>
+
+    <xs:attribute name="ref" type="xs:anyURI" />
+    <xs:attribute name="name" type="xs:string" />
+    <xs:attribute name="mins" type="vector3Type" default="-1000 -1000 -1000"/>
+    <xs:attribute name="maxs" type="vector3Type" default="1000 1000 1000"/>
+  </xs:complexType>
+
+  <xs:complexType name="placementsFolderType">
+    <xs:sequence>
+      <xs:element name="cell" type="placementsCellReference" minOccurs="0" maxOccurs="unbounded" />
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="abstractPlacementObjectType">
+    <xs:annotation>
+      <xs:appinfo>
+        <LeGe.NativeType nativeName="PlacementObject"/>
+        <LeGe.NativeProperty name="transform" nativeName="transform" nativeType="Float4x4" access="set"/>
+        <LeGe.NativeProperty name="visible" nativeName="visible" nativeType="bool" access="set,get"/>
+        <LeGe.NativeProperty nativeName="Bounds" nativeType="AABB" access="get"/>
+        <LeGe.NativeProperty nativeName="LocalBounds" nativeType="AABB" access="get"/>
+
+        <scea.dom.editors.attribute name="locked" displayName="Locked" description="Lock this object" category="General" editor="Sce.Atf.Controls.PropertyEditing.BoolEditor,Atf.Gui.WinForms"/>
+        <scea.dom.editors.attribute name="visible" displayName="Visibility" description="Whether item is visible in Design View" category="Display" editor="Sce.Atf.Controls.PropertyEditing.BoolEditor,Atf.Gui.WinForms"/>
+      </xs:appinfo>
+    </xs:annotation>
+
+    <xs:attribute name="transform" type="matrixType" default="1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1"/>
+    <xs:attribute name="translate" type="vector3Type" default="0 0 0"/>
+    <xs:attribute name="rotate" type="vector3Type" default="0 0 0"/>
+    <xs:attribute name="scale" type="vector3Type" default="1 1 1"/>
+    <xs:attribute name="pivot" type="vector3Type" default="0 0 0"/>
+    <xs:attribute name="ID" type="xs:unsignedLong" default="0"/>
+
+    <xs:attribute name="visible" type="xs:boolean" default="true" />
+    <xs:attribute name="locked" type="xs:boolean" default="false" />
+
+    <!-- see public enum TransformationTypes in LevelEditorCore -->
+    <xs:attribute name="transformationType" type="xs:integer" default="15"/>
+  </xs:complexType>
+
+  <xs:complexType name="placementsDocumentType">
+    <xs:annotation>
+      <xs:appinfo>
+        <LeGe.NativeDocumentType nativeName="PlacementsDocument"/>
+      </xs:appinfo>
+    </xs:annotation>
+
+    <xs:sequence>
+      <xs:element name="placement" type="abstractPlacementObjectType" minOccurs="0" maxOccurs="unbounded" />
+    </xs:sequence>
+    <xs:attribute name="name" type="xs:string" />
+  </xs:complexType>
+
+  <xs:element name="placementsDocument" type="placementsDocumentType"/>
+
+  <!-- the following are concrete types... They can be moved into another schema file -->
+
+  <xs:complexType name="placementObjectType">
+    <xs:annotation>
+      <xs:appinfo>
+        <sce.atf.referenceConstraint resourceType ="Model"/>
+        <LeGe.NativeProperty name="model" nativeName="model" nativeType="whcar_t*" access="set"/>
+        <LeGe.NativeProperty name="material" nativeName="material" nativeType="whcar_t*" access="set"/>
+        <scea.dom.editors name="Placement" category="Level Tools" image="LevelEditorCore.Resources.gameObject.png" menuText="Placement" description="Placement"/>
+        <scea.dom.editors.attribute name="model" displayName="Model" description="Bound model resource" category="Resource"/>
+        <scea.dom.editors.attribute name="material" displayName="Material" description="Bound material resource" category="Resource"/>
+      </xs:appinfo>
+    </xs:annotation>
+
+    <xs:complexContent>
+      <xs:extension base="abstractPlacementObjectType">
+        <xs:attribute name="model" type="xs:string" />
+        <xs:attribute name="material" type="xs:string" />
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+</xs:schema>

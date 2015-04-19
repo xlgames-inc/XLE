@@ -5,10 +5,12 @@
   xmlns="gap"
   xmlns:xs="http://www.w3.org/2001/XMLSchema">
 
-  <xs:include schemaLocation="gap.xsd"/>
-
-
-    <!-- Render component, a game component that contains or generate renderable geometry-->
+  <xs:include schemaLocation="basictypes.xsd"/>
+  <xs:include schemaLocation="gameobject.xsd"/>
+  <xs:include schemaLocation="prototypes.xsd"/>
+  <xs:include schemaLocation="editorobjects.xsd"/>
+  
+  <!-- Render component, a game component that contains or generate renderable geometry-->
     <xs:complexType name="renderComponentType" abstract="true">
         <xs:annotation>
             <xs:appinfo>

@@ -1,0 +1,65 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<xs:schema
+  elementFormDefault="qualified"
+  targetNamespace="gap"
+	xmlns="gap"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  >
+
+  <xs:include schemaLocation="basictypes.xsd"/>
+  
+  <xs:complexType name="layerType">
+    <xs:annotation>
+      <xs:appinfo>
+        <scea.dom.editors description="Layer" />
+      </xs:appinfo>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="gameObjectReference" type="gameObjectReferenceType" minOccurs="0" maxOccurs="unbounded" />
+      <xs:element name="layer" type="layerType" minOccurs="0" maxOccurs="unbounded" />
+    </xs:sequence>
+    <xs:attribute name="name" type="xs:string" />
+  </xs:complexType>
+
+  <!-- Corresponds to Camera class in Camera.cs, so that we can save and restore its state. -->
+  <xs:complexType name="cameraType">
+    <xs:attribute name="eye" type="vector3Type" default="1 1 1"/>
+    <xs:attribute name="lookAtPoint" type="vector3Type" default="0 0 0"/>
+    <xs:attribute name="upVector" type="vector3Type" default ="0 1 0"/>
+    <xs:attribute name="viewType" type="xs:int" default="6"/>
+    <xs:attribute name="yFov" type="xs:float" default ="0.7853982"/>
+    <xs:attribute name="nearZ" type="xs:float" default="0.01"/>
+    <xs:attribute name="farZ" type="xs:float" default="2048"/>
+    <xs:attribute name="focusRadius" type="xs:float" default="1"/>
+  </xs:complexType>
+
+  <!-- A named camera view that the user can save and recall from the Bookmark Lister. -->
+  <xs:complexType name="bookmarkType">
+    <xs:sequence>
+      <xs:element name="camera" type="cameraType" minOccurs="1" maxOccurs="1"/>
+      <xs:element name="bookmark" type="bookmarkType" minOccurs="0" maxOccurs="unbounded" />
+    </xs:sequence>
+    <xs:attribute name="name" type="xs:string" />
+  </xs:complexType>
+
+  <xs:complexType name="bookmarksType">
+    <xs:sequence>
+      <xs:element name="bookmark" type="bookmarkType" minOccurs="0" maxOccurs="unbounded" />
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="layersType">
+    <xs:sequence>
+      <xs:element name="layer" type="layerType" minOccurs="0" maxOccurs="unbounded" />
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="gridType">
+    <xs:attribute name="size" type="xs:float" default="20"/>
+    <xs:attribute name="subdivisions" type="xs:int" default="20"/>
+    <xs:attribute name="height" type="xs:float" default="0" />
+    <xs:attribute name="snap" type="xs:boolean" default="false" />
+    <xs:attribute name="visible" type="xs:boolean" default="true" />
+  </xs:complexType>
+
+</xs:schema>

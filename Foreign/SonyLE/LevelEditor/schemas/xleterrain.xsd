@@ -1,0 +1,85 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<xs:schema
+  elementFormDefault="qualified"
+  targetNamespace="gap"
+	xmlns="gap"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  >
+
+  <xs:include schemaLocation="basictypes.xsd"/>
+
+  <xs:complexType name="terrainBaseTextureStrataType">
+    <xs:annotation>
+      <xs:appinfo>
+        <LeGe.NativeType nativeName="TerrainBaseTextureStrata"/>
+        <LeGe.NativeProperty name="texture0" nativeName="texture0" nativeType="wchar_t*" access="set"/>
+        <LeGe.NativeProperty name="texture1" nativeName="texture1" nativeType="wchar_t*" access="set"/>
+        <LeGe.NativeProperty name="texture2" nativeName="texture2" nativeType="wchar_t*" access="set"/>
+        <LeGe.NativeProperty name="mapping0" nativeName="mapping0" nativeType="float" access="set"/>
+        <LeGe.NativeProperty name="mapping1" nativeName="mapping1" nativeType="float" access="set"/>
+        <LeGe.NativeProperty name="mapping2" nativeName="mapping2" nativeType="float" access="set"/>
+        <LeGe.NativeProperty name="endheight" nativeName="endheight" nativeType="float" access="set"/>
+
+        <scea.dom.editors.attribute name="texture0" displayName="texture0" description="texture0" category="General" editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" converter="RenderingInterop.PropertyEditing.BaseTextureNameConverter,RenderingInterop"/>
+        <scea.dom.editors.attribute name="texture1" displayName="texture1" description="texture1" category="General" editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" converter="RenderingInterop.PropertyEditing.BaseTextureNameConverter,RenderingInterop"/>
+        <scea.dom.editors.attribute name="texture2" displayName="texture2" description="texture2" category="General" editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" converter="RenderingInterop.PropertyEditing.BaseTextureNameConverter,RenderingInterop"/>
+        <scea.dom.editors.attribute name="mapping0" displayName="mapping0" description="mapping0" category="General"/>
+        <scea.dom.editors.attribute name="mapping1" displayName="mapping1" description="mapping1" category="General"/>
+        <scea.dom.editors.attribute name="mapping2" displayName="mapping2" description="mapping2" category="General"/>
+        <scea.dom.editors.attribute name="endheight" displayName="endheight" description="endheight" category="General"/>
+      </xs:appinfo>
+    </xs:annotation>
+
+    <xs:attribute name="texture0" type="xs:string" default=""/>
+    <xs:attribute name="texture1" type="xs:string" default=""/>
+    <xs:attribute name="texture2" type="xs:string" default=""/>
+    <xs:attribute name="mapping0" type="xs:float" default="10.0"/>
+    <xs:attribute name="mapping1" type="xs:float" default="10.0"/>
+    <xs:attribute name="mapping2" type="xs:float" default="10.0"/>
+    <xs:attribute name="endheight" type="xs:float" default="1000.0"/>
+  </xs:complexType>
+
+  <xs:complexType name="terrainBaseTextureType">
+    <xs:annotation>
+      <xs:appinfo>
+        <LeGe.NativeType nativeName="TerrainBaseTexture"/>
+        <LeGe.NativeProperty name="diffusedims" nativeName="diffusedims" nativeType="Float2" access="set"/>
+        <LeGe.NativeProperty name="normaldims" nativeName="normaldims" nativeType="Float2" access="set"/>
+        <LeGe.NativeProperty name="paramdims" nativeName="paramdims" nativeType="Float2" access="set"/>
+
+        <LeGe.OpaqueListable label="basetexture"/>
+        <scea.dom.editors.attribute name="diffusedims" displayName="Diffuse Dims" description="Diffuse texture dimensions" category="General" editor="Sce.Atf.Controls.PropertyEditing.NumericTupleEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.FloatArrayConverter"/>
+        <scea.dom.editors.attribute name="normaldims" displayName="Normal Dims" description="Normal texture dimensions" category="General" editor="Sce.Atf.Controls.PropertyEditing.NumericTupleEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.FloatArrayConverter"/>
+        <scea.dom.editors.attribute name="paramdims" displayName="Parameter Dims" description="Parameter texture dimensions" category="General" editor="Sce.Atf.Controls.PropertyEditing.NumericTupleEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.FloatArrayConverter"/>
+      </xs:appinfo>
+    </xs:annotation>
+
+    <xs:sequence>
+      <xs:element name="strata" type="terrainBaseTextureStrataType" minOccurs="0" maxOccurs="6" />
+    </xs:sequence>
+
+    <xs:attribute name="diffusedims" type="vector3Type" default="512 512 1"/>
+    <xs:attribute name="normaldims" type="vector3Type" default="512 512 1"/>
+    <xs:attribute name="paramdims" type="vector3Type" default="512 512 1"/>
+  </xs:complexType>
+
+  <xs:complexType name="terrainType">
+    <xs:annotation>
+      <xs:appinfo>
+        <LeGe.NativeType nativeName="Terrain"/>
+        <LeGe.NativeProperty name="basedir" nativeName="basedir" nativeType="wchar_t*" access="set"/>
+        <LeGe.NativeProperty name="offset" nativeName="offset" nativeType="float3" access="set"/>
+
+        <scea.dom.editors.attribute name="basedir" displayName="Base Directory" description="Directory containing terrain files" category="General"/>
+        <scea.dom.editors.attribute name="offset" displayName="Offset" description="World space origin for terrain" category="General" editor="Sce.Atf.Controls.PropertyEditing.NumericTupleEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.FloatArrayConverter"/>
+      </xs:appinfo>
+    </xs:annotation>
+
+    <xs:sequence>
+      <xs:element name="baseTexture" type="terrainBaseTextureType" minOccurs="1" maxOccurs="1" />
+    </xs:sequence>
+    <xs:attribute name="basedir" type="xs:string" />
+    <xs:attribute name="offset" type="vector3Type" default="0 0 0"/>
+  </xs:complexType>
+  
+</xs:schema>

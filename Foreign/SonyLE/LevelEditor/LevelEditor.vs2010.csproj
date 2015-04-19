@@ -162,20 +162,33 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
-    <EmbeddedResource Include="schemas\gap.xsd">
-      <SubType>
-      </SubType>
+    <EmbeddedResource Include="schemas\gameobject.xsd">
+      <SubType>Designer</SubType>
     </EmbeddedResource>
     <EmbeddedResource Include="XLEControls\XLENativeManipControls.resx">
       <DependentUpon>XLENativeManipControls.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="schemas\basictypes.xsd">
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="schemas\editorobjects.xsd">
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
     <None Include="schemas\GenSchemaDef.bat" />
     <EmbeddedResource Include="schemas\level_editor.xsd">
-      <SubType>
-      </SubType>
+      <SubType>Designer</SubType>
     </EmbeddedResource>
     <Compile Include="SchemaLoader.cs" />
     <Compile Include="schemas\Schema.cs" />
+    <EmbeddedResource Include="schemas\prototypes.xsd">
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="schemas\xleplacements.xsd">
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="schemas\xleterrain.xsd">
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\Tools\ControlsLibrary\ControlsLibrary.csproj">
