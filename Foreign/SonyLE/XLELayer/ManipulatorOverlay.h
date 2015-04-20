@@ -6,7 +6,8 @@
 
 #pragma once
 
-namespace RenderCore { class IThreadContext; }
+#include "../../../RenderCore/IThreadContext_Forward.h"
+
 namespace RenderCore { namespace Techniques { class ProjectionDesc; class ParsingContext; } }
 namespace SceneEngine { class LightingParserContext; }
 

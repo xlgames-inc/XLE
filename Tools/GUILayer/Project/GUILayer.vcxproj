@@ -72,6 +72,11 @@
       </DelayLoadDLLs>
     </Link>
   </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+    </ClCompile>
+  </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\AssemblyInfo.cpp" />
     <ClCompile Include="..\CustomDataGridEditor.cpp" />

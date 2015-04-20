@@ -20,7 +20,6 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <FunctionLevelLinking>false</FunctionLevelLinking>
-      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <AdditionalOptions>/MP %(AdditionalOptions)</AdditionalOptions>
       <DisableSpecificWarnings>4100</DisableSpecificWarnings>

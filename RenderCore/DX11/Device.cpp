@@ -498,11 +498,11 @@ namespace RenderCore
         return _underlying->IsImmediate();
     }
 
-    auto ThreadContext::GetStateDesc() const -> StateDesc
+    auto ThreadContext::GetStateDesc() const -> ThreadContextStateDesc
     {
         Metal_DX11::ViewportDesc viewport(*_underlying.get());
 
-        StateDesc result;
+        ThreadContextStateDesc result;
         result._viewportDimensions = Int2(int(viewport.Width), int(viewport.Height));
         return result;
     }

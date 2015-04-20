@@ -22,6 +22,11 @@ typedef struct _GUID GUID;
 
 namespace RenderCore
 {
+    class ThreadContextStateDesc
+    {
+    public:
+        Int2 _viewportDimensions;
+    };
 
 #define FLEX_INTERFACE ThreadContext
 /*-----------------*/ #include "FlexBegin.h" /*-----------------*/
@@ -60,12 +65,7 @@ namespace RenderCore
         IMETHOD std::shared_ptr<IDevice>    GetDevice() const IPURE;
         IMETHOD void            ClearAllBoundTargets() const IPURE;
 
-        class StateDesc
-        {
-        public:
-            Int2 _viewportDimensions;
-        };
-        IMETHOD StateDesc       GetStateDesc() const IPURE;
+        IMETHOD ThreadContextStateDesc  GetStateDesc() const IPURE;
         IDESTRUCTOR
     };
 

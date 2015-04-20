@@ -20,7 +20,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
     <DebugSymbols>true</DebugSymbols>
     <OutputPath>..\..\..\Finals_Debug64\</OutputPath>
-    <IntermediateOutputPath>..\tmp\LevelEditor\Debug\</IntermediateOutputPath>
+    <BaseIntermediateOutputPath>..\..\..\Output\LevelEditor\</BaseIntermediateOutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
@@ -31,8 +31,8 @@
     <CodeAnalysisIgnoreBuiltInRules>false</CodeAnalysisIgnoreBuiltInRules>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
-    <OutputPath>..\bin\Release\</OutputPath>
-    <IntermediateOutputPath>..\tmp\LevelEditor\Release\</IntermediateOutputPath>
+    <OutputPath>..\..\..\Finals_Release64\</OutputPath>
+    <BaseIntermediateOutputPath>..\..\..\Output\LevelEditor\</BaseIntermediateOutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Optimize>true</Optimize>

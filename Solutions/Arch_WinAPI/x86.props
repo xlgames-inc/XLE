@@ -11,6 +11,10 @@
   <PropertyGroup>
     <SourcePath>$(XTP_DIR)\Source;$(SourcePath)</SourcePath>
   </PropertyGroup>
-  <ItemDefinitionGroup />
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
+    </ClCompile>
+  </ItemDefinitionGroup>
   <ItemGroup />
 </Project>

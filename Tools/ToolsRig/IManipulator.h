@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "../../RenderCore/IThreadContext_Forward.h"
 #include <string>
 
 namespace SceneEngine 
@@ -14,8 +15,6 @@ namespace SceneEngine
     class IntersectionTestScene;
     class LightingParserContext;
 }
-
-namespace RenderCore { class IThreadContext; }
 
 namespace RenderOverlays { namespace DebuggingDisplay { class InputSnapshot; } }
 

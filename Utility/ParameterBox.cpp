@@ -737,11 +737,12 @@ namespace Utility
                 } else {
                         // sometimes we get trival casting situations (like "unsigned int" to "int")
                         //  -- even in those cases, we execute the casting function, which will effect performance
-                    bool castSucess = ImpliedTyping::Cast(
+                    bool castSuccess = ImpliedTyping::Cast(
                         PtrAdd(temporaryValues, offsetDest), sizeof(temporaryValues)-offsetDest, typeDest,
                         PtrAdd(AsPointer(source._values.cbegin()), offsetSrc), typeSrc);
 
-                    assert(castSucess);  // type mis-match when attempting to build filtered hash value
+                    assert(castSuccess);  // type mis-match when attempting to build filtered hash value
+                    (void)castSuccess;
                 }
 
                 ++i; ++i2;

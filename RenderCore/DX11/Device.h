@@ -52,7 +52,7 @@ namespace RenderCore
     {
     public:
         bool                        IsImmediate() const;
-        StateDesc                   GetStateDesc() const;
+        ThreadContextStateDesc      GetStateDesc() const;
         std::shared_ptr<IDevice>    GetDevice() const;
         void                        ClearAllBoundTargets() const;
 
