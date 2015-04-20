@@ -21,6 +21,8 @@ using LevelEditorCore;
 
 namespace RenderingInterop
 {
+    using PropertyInitializer = GUILayer.EditorSceneManager.PropertyInitializer;
+
     /// <summary>
     /// Exposes a minimum set of game-engine functionalities 
     /// for LevelEditor purpose.</summary>    
@@ -210,13 +212,21 @@ namespace RenderingInterop
             return propId;
         }
 
-        public static ulong CreateObject(ulong documentId, ulong existingId, uint typeId, IntPtr data, int size)
+        public static PropertyInitializer CreateInitializer(uint prop, IntPtr src, Type elementType, uint arrayCount)
+        {
+            return new PropertyInitializer(
+                prop, src.ToPointer(), 
+                GUILayer.EditorInterfaceUtils.AsTypeId(elementType), arrayCount);
+        }
+
+        public static ulong CreateObject(
+            ulong documentId, ulong existingId, uint typeId,
+            IEnumerable<PropertyInitializer> initializers)
         {
             if (existingId == 0)
                 existingId = s_underlyingScene.AssignObjectId(documentId, typeId);
 
-            System.Diagnostics.Debug.Assert(size == 0);
-            if (s_underlyingScene.CreateObject(documentId, existingId, typeId))
+            if (s_underlyingScene.CreateObject(documentId, existingId, typeId, initializers))
                 return existingId;
             return 0;
         }
@@ -247,14 +257,13 @@ namespace RenderingInterop
         }
 
         public static void SetObjectProperty(
-            uint typeId, ulong documentId, ulong instanceId, uint propId, 
-            IntPtr data, Type elemType, int elemCount)
+            uint typeId, ulong documentId, ulong instanceId,
+            IEnumerable<PropertyInitializer> initializers)
         {
             unsafe
             {
                 s_underlyingScene.SetProperty(
-                    documentId, instanceId, typeId, propId,
-                    data.ToPointer(), GUILayer.EditorInterfaceUtils.AsTypeId(elemType), (uint)elemCount);
+                    documentId, instanceId, typeId, initializers);
             }
         }
 

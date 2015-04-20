@@ -38,11 +38,11 @@ namespace GUILayer { namespace EditorDynamicInterface
         return 0;
     }
 
-    bool RegisteredTypes::CreateObject(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId objType, const char initializer[]) const
+    bool RegisteredTypes::CreateObject(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId objType, const PropertyInitializer initializers[], size_t initializerCount) const
     {
         if (objType > 0 && (objType-1) < _knownObjectTypes.size()) {
             auto& reg = _knownObjectTypes[objType-1];
-            return reg._owner->CreateObject(scene, doc, obj, reg._mappedTypeId, initializer);
+            return reg._owner->CreateObject(scene, doc, obj, reg._mappedTypeId, initializers, initializerCount);
         }
         return false;
     }
@@ -56,11 +56,11 @@ namespace GUILayer { namespace EditorDynamicInterface
         return false;
     }
 
-    bool RegisteredTypes::SetProperty(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId objType, PropertyId prop, const void* src, unsigned elementType, unsigned arrayCount) const
+    bool RegisteredTypes::SetProperty(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId objType, const PropertyInitializer initializers[], size_t initializerCount) const
     {
         if (objType > 0 && (objType-1) < _knownObjectTypes.size()) {
             auto& reg = _knownObjectTypes[objType-1];
-            return reg._owner->SetProperty(scene, doc, obj, reg._mappedTypeId, prop, src, elementType, arrayCount);
+            return reg._owner->SetProperty(scene, doc, obj, reg._mappedTypeId, initializers, initializerCount);
         }
         return false;
     }

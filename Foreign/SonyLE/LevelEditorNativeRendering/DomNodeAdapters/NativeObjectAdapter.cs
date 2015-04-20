@@ -8,8 +8,12 @@ using Sce.Atf.Adaptation;
 
 using LevelEditorCore;
 
+using System.Collections.Generic;
+
 namespace RenderingInterop
 {
+    using PropertyInitializer = GUILayer.EditorSceneManager.PropertyInitializer;
+
     /// <summary>
     /// Adapter for DomNode that have runtime counterpart.
     /// It hold native object id and pushes dom changes to native object</summary>
@@ -97,7 +101,38 @@ namespace RenderingInterop
             // process events only for the DomNode attached to this adapter.
             if (this.DomNode != e.DomNode)
                 return;
-            UpdateNativeProperty(e.AttributeInfo);
+
+            // the "attribInfo" given to us may not belong this this exact
+            // object type. It might belong to a base class (or even, possibly, to a super class). 
+            // We need to check for these cases, and remap to the exact attribute that
+            // belongs our concrete class.
+            var type = DomNode.Type;
+            var attribInfo = e.AttributeInfo;
+            if (attribInfo.DefiningType != type)
+            {
+                attribInfo = DomNode.Type.GetAttributeInfo(attribInfo.Name);
+                if (attribInfo == null) return;
+            }
+
+            var properties = new List<PropertyInitializer>();
+            var handles = new List<GCHandle>();
+
+            unsafe
+            {
+                UpdateNativeProperty(attribInfo, properties, handles);
+
+                if (properties.Count > 0)
+                {
+                    GameEngine.SetObjectProperty(
+                        TypeId, DocumentId, InstanceId,
+                        properties);
+                }
+
+                foreach (var i in handles)
+                {
+                    i.Free();
+                }
+            }
         }
         
         /// <summary>
@@ -107,9 +142,24 @@ namespace RenderingInterop
         /// </summary>
         public void UpdateNativeObject()
         {
-            foreach (AttributeInfo attribInfo in this.DomNode.Type.Attributes)
+            var properties = new List<PropertyInitializer>();
+            var handles = new List<GCHandle>();
+
+            try
             {
-                UpdateNativeProperty(attribInfo);
+                foreach (AttributeInfo attribInfo in this.DomNode.Type.Attributes)
+                    UpdateNativeProperty(attribInfo, properties, handles);
+
+                if (properties.Count > 0)
+                {
+                    GameEngine.SetObjectProperty(
+                        TypeId, DocumentId, InstanceId,
+                        properties);
+                }
+            }
+            finally
+            {
+                foreach (var i in handles) i.Free();
             }
         }
 
@@ -151,156 +201,101 @@ namespace RenderingInterop
                     }
                 }
 
-                m_instanceId = GameEngine.CreateObject(doc.NativeDocumentId, existingId, TypeId, IntPtr.Zero, 0);
+                var properties = new List<PropertyInitializer>();
+                var handles = new List<GCHandle>();
+
+                try
+                {
+                    foreach (AttributeInfo attribInfo in this.DomNode.Type.Attributes)
+                        UpdateNativeProperty(attribInfo, properties, handles);
+
+                    m_instanceId = GameEngine.CreateObject(doc.NativeDocumentId, existingId, TypeId, properties);
+                }
+                finally
+                {
+                    foreach (var i in handles) i.Free();
+                }
 
                 if (m_instanceId != 0)
                 {
                     m_documentId = doc.NativeDocumentId;
                     GameEngine.RegisterGob(m_documentId, m_instanceId, this);
-
-                    UpdateNativeObject();
                 }
             }
         }
       
-        unsafe private void UpdateNativeProperty(AttributeInfo attribInfo)
+        unsafe private static void SetStringProperty(
+            uint propId, string str,
+            IList<PropertyInitializer> properties,
+            IList<GCHandle> handles)
         {
-                // the "attribInfo" given to us may not belong this this exact
-                // object type. It might belong to a base class (or even, possibly, to a super class). 
-                // We need to check for these cases, and remap to the exact attribute that
-                // belongs our concrete class.
-            var type = DomNode.Type;
-            if (attribInfo.DefiningType != type) {
-                attribInfo = DomNode.Type.GetAttributeInfo(attribInfo.Name);
-                if (attribInfo == null) return;
-            }
+            if (!string.IsNullOrEmpty(str))
+            {
+                GCHandle pinHandle = GCHandle.Alloc(str, GCHandleType.Pinned);
+                handles.Add(pinHandle);
 
+                properties.Add(GameEngine.CreateInitializer(
+                    propId, pinHandle.AddrOfPinnedObject(), 
+                    typeof(char), (uint)str.Length));
+            }
+        }
+
+        unsafe private static void SetBasicProperty<T>(
+            uint propId, T obj,
+            IList<PropertyInitializer> properties,
+            IList<GCHandle> handles)
+        {
+            GCHandle pinHandle = GCHandle.Alloc(obj, GCHandleType.Pinned);
+            handles.Add(pinHandle);
+
+            properties.Add(GameEngine.CreateInitializer(
+                propId, pinHandle.AddrOfPinnedObject(), 
+                typeof(T), 1));
+        }
+
+        unsafe private void UpdateNativeProperty(
+            AttributeInfo attribInfo,
+            IList<PropertyInitializer> properties,
+            IList<GCHandle> handles)
+        {
             object idObj = attribInfo.GetTag(NativeAnnotations.NativeProperty);
             if (idObj == null) return;
             uint id = (uint)idObj;
-            if (this.InstanceId == 0)
-                return;
 
-            uint typeId = TypeId;
             Type clrType = attribInfo.Type.ClrType;
             Type elmentType = clrType.GetElementType();
 
             object data = this.DomNode.GetAttribute(attribInfo);
             if (clrType.IsArray && elmentType.IsPrimitive)
             {
-                GCHandle pinHandle = new GCHandle();
-                try
-                {
-                    pinHandle = GCHandle.Alloc(data, GCHandleType.Pinned);
-                    IntPtr ptr = pinHandle.AddrOfPinnedObject();
-                    GameEngine.SetObjectProperty(
-                        typeId, m_documentId, InstanceId, id,
-                        ptr, elmentType, attribInfo.Type.Length);
-                }
-                finally
-                {
-                    if (pinHandle.IsAllocated)
-                        pinHandle.Free();
-                }                
+                GCHandle pinHandle = GCHandle.Alloc(data, GCHandleType.Pinned);
+                handles.Add(pinHandle);
+
+                properties.Add(GameEngine.CreateInitializer(
+                    id, pinHandle.AddrOfPinnedObject(), 
+                    elmentType, (uint)attribInfo.Type.Length));
             }
             else
             {
-                IntPtr ptr = IntPtr.Zero;
-                Type elemType = null;
-                int arrayCount = 1;
-                if (clrType == typeof(string))
-                {
-                    string str = (string)data;
-                    if (!string.IsNullOrEmpty(str))
-                    {
-                        fixed (char* chptr = str)
-                        {
-                            ptr = new IntPtr((void*)chptr);
-                            GameEngine.SetObjectProperty(
-                                typeId, m_documentId, InstanceId, id, 
-                                ptr, typeof(char), str.Length);
-                        }
-                        return;
-                    }
-                }
-                else if (clrType == typeof(bool))
-                {
-                    bool val = (bool)data;
-                    ptr = new IntPtr(&val);
-                    elemType = typeof(bool);
-                }
-                else if (clrType == typeof(byte))
-                {
-                    byte val = (byte)data;
-                    ptr = new IntPtr(&val);
-                    elemType = typeof(byte);
-                }
-                else if (clrType == typeof(sbyte))
-                {
-                    sbyte val = (sbyte)data;
-                    ptr = new IntPtr(&val);
-                    elemType = typeof(sbyte);
-                }
-                else if (clrType == typeof(short))
-                {
-                    short val = (short)data;
-                    ptr = new IntPtr(&val);
-                    elemType = typeof(short);
-                }
-                else if (clrType == typeof(ushort))
-                {
-                    ushort val = (ushort)data;
-                    ptr = new IntPtr(&val);
-                    elemType = typeof(ushort);
-                }
-                else if (clrType == typeof(int))
-                {
-                    int val = (int)data;
-                    ptr = new IntPtr(&val);
-                    elemType = typeof(int);
-                }
-                else if (clrType == typeof(uint))
-                {
-                    uint val = (uint)data;
-                    ptr = new IntPtr(&val);
-                    elemType = typeof(uint);
-                }
-                else if (clrType == typeof(long))
-                {
-                    long val = (long)data;
-                    ptr = new IntPtr(&val);
-                    elemType = typeof(long);
-                }
-                else if (clrType == typeof(ulong))
-                {
-                    ulong val = (ulong)data;
-                    ptr = new IntPtr(&val);
-                    elemType = typeof(ulong);
-                }
-                else if (clrType == typeof(float))
-                {
-                    float val = (float)data;
-                    ptr = new IntPtr(&val);
-                    elemType = typeof(float);
-                }
-                else if (clrType == typeof(double))
-                {
-                    double val = (double)data;
-                    ptr = new IntPtr(&val);
-                    elemType = typeof(double);
-                }
+                if (clrType == typeof(string))      SetStringProperty(id, (string)data, properties, handles);
+                else if (clrType == typeof(bool))   SetBasicProperty(id, Convert.ToUInt32((bool)data), properties, handles);
+                else if (clrType == typeof(byte))   SetBasicProperty(id, (byte)data, properties, handles);
+                else if (clrType == typeof(sbyte))  SetBasicProperty(id, (sbyte)data, properties, handles);
+                else if (clrType == typeof(short))  SetBasicProperty(id, (short)data, properties, handles);
+                else if (clrType == typeof(ushort)) SetBasicProperty(id, (ushort)data, properties, handles);
+                else if (clrType == typeof(int))    SetBasicProperty(id, (int)data, properties, handles);
+                else if (clrType == typeof(uint))   SetBasicProperty(id, (uint)data, properties, handles);
+                else if (clrType == typeof(long))   SetBasicProperty(id, (long)data, properties, handles);
+                else if (clrType == typeof(ulong))  SetBasicProperty(id, (ulong)data, properties, handles);
+                else if (clrType == typeof(float))  SetBasicProperty(id, (float)data, properties, handles);
+                else if (clrType == typeof(double)) SetBasicProperty(id, (double)data, properties, handles);
                 else if (clrType == typeof(System.Uri))
                 {
                     if(data != null && !string.IsNullOrWhiteSpace(data.ToString()))
                     {
                         Uri uri = (Uri)data;                        
                         string str = uri.LocalPath;
-                        fixed (char* chptr = str)
-                        {
-                            ptr = new IntPtr((void*)chptr);
-                            GameEngine.SetObjectProperty(typeId, m_documentId, InstanceId, id, ptr, typeof(char), str.Length);
-                        }
-                        return;
+                        SetStringProperty(id, str, properties, handles);
                     }
                 }
                 else if (clrType == typeof(DomNode))
@@ -310,14 +305,8 @@ namespace RenderingInterop
                     NativeObjectAdapter nativeGob = node.As<NativeObjectAdapter>();
                     if(nativeGob != null)
                     {
-                        ptr = new IntPtr((void*)nativeGob.InstanceId);
-                        elemType = typeof(ulong);                        
+                        SetBasicProperty(id, (ulong)nativeGob.InstanceId, properties, handles);
                     }
-                }
-
-                if (elemType != null)
-                {
-                    GameEngine.SetObjectProperty(typeId, m_documentId, InstanceId, id, ptr, elemType, arrayCount);
                 }
             }
         }
@@ -326,17 +315,7 @@ namespace RenderingInterop
         {
             get;
             private set;
-            // get
-            // {
-            //     var node = DomNode;
-            //     if (node != null)
-            //     {
-            //         var tag = node.Type.GetTag(NativeAnnotations.NativeType);
-            //         if (tag != null) { return (uint)tag; }
-            //     }
-            //     return 0;
-            // }
-        }        
+        }
 
         /// <summary>
         /// this method is exclusively used by GameEngine class.                

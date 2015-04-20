@@ -23,8 +23,7 @@ namespace RenderingInterop
             m_typeId = GameEngine.GetObjectTypeId(typeName);
             BkgColorPropId = GameEngine.GetObjectPropertyId(m_typeId, "BkgColor");
 
-            m_intanceId = GameEngine.CreateObject(0, 0, m_typeId, ptr, sizeInBytes);
-
+            m_intanceId = GameEngine.CreateObject(0, 0, m_typeId, null);
         }
 
         public ulong InstanceId

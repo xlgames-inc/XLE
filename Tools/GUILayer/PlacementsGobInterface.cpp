@@ -43,10 +43,38 @@ namespace GUILayer { namespace EditorDynamicInterface
         return scene._placementsEditor->GenerateObjectGUID();
     }
 
+    static bool SetObjProperty(
+        SceneEngine::PlacementsEditor::ObjTransDef& obj, 
+        const IObjectType::PropertyInitializer& prop)
+    {
+        if (prop._prop == PlacementObjectType::Property_Transform) {
+                // note -- putting in a transpose here, because the level editor matrix
+                //          math uses a transposed form
+            if (prop._elementType == (unsigned)ImpliedTyping::TypeCat::Float && prop._arrayCount >= 16) {
+                obj._localToWorld = AsFloat3x4(Transpose(*(const Float4x4*)prop._src));
+                return true;
+            }
+
+        } else if (prop._prop == PlacementObjectType::Property_Model || prop._prop == PlacementObjectType::Property_Material) {
+            Assets::ResChar buffer[MaxPath];
+            ucs2_2_utf8(
+                (const ucs2*)prop._src, XlStringLen((const ucs2*)prop._src),
+                (utf8*)buffer, dimof(buffer));
+
+            if (prop._prop == PlacementObjectType::Property_Model) {
+                obj._model = buffer;
+            } else {
+                obj._material = buffer;
+            }
+            return true;
+        }
+        return false;
+    }
+
     bool PlacementObjectType::CreateObject(
         EditorScene& scene, DocumentId doc, 
         ObjectId obj, ObjectTypeId type, 
-        const char initializer[]) const
+        const PropertyInitializer initializers[], size_t initializerCount) const
     {
         if (type != ObjectType_Placement) { assert(0); return false; }
 
@@ -58,6 +86,18 @@ namespace GUILayer { namespace EditorDynamicInterface
         auto guid = SceneEngine::PlacementGUID(doc, obj);
         auto transaction = scene._placementsEditor->Transaction_Begin(nullptr, nullptr);
         if (transaction->Create(guid, newObj)) {
+
+            if (initializerCount) {
+                auto originalObject = transaction->GetObject(0);
+
+                bool result = false;
+                for (size_t c=0; c<initializerCount; ++c) 
+                    result |= SetObjProperty(originalObject, initializers[c]);
+
+                if (result)
+                    transaction->SetObject(0, originalObject);
+            }
+
             transaction->Commit();
             return true;
         }
@@ -86,14 +126,13 @@ namespace GUILayer { namespace EditorDynamicInterface
 
     bool PlacementObjectType::SetProperty(
         EditorScene& scene, DocumentId doc, ObjectId obj, 
-        ObjectTypeId type, PropertyId prop, 
-        const void* src, unsigned elementType, unsigned arrayCount) const
+        ObjectTypeId type, 
+        const PropertyInitializer initializers[], size_t initializerCount) const
     {
             // find the object, and set the given property (as per the new value specified in the string)
             //  We need to create a transaction, make the change and then commit it back.
             //  If the transaction returns no results, then we must have got a bad object or document id.
         if (type != ObjectType_Placement) { assert(0); return false; }
-        if (prop != Property_Transform && prop != Property_Visible  && prop != Property_Model && prop != Property_Material) { assert(0); return false; }
 
             // note --  This object search is quite slow! We might need a better way to
             //          record a handle to the object. Perhaps the "ObjectId" should not
@@ -105,28 +144,14 @@ namespace GUILayer { namespace EditorDynamicInterface
             &guid, &guid+1, 
             SceneEngine::PlacementsEditor::TransactionFlags::IgnoreIdTop32Bits);
         if (transaction->GetObjectCount()==1) {
-            if (prop == Property_Transform) {
-                    // note -- putting in a transpose here, because the level editor matrix
-                    //          math uses a transposed form
-                if (elementType == (unsigned)ImpliedTyping::TypeCat::Float && arrayCount >= 16) {
-                    auto originalObject = transaction->GetObject(0);
-                    originalObject._localToWorld = AsFloat3x4(Transpose(*(const Float4x4*)src));
-                    transaction->SetObject(0, originalObject);
-                    transaction->Commit();
-                    return true;
-                }
-            } else if (prop == Property_Model || prop == Property_Material) {
-                Assets::ResChar buffer[MaxPath];
-                ucs2_2_utf8(
-                    (const ucs2*)src, XlStringLen((const ucs2*)src),
-                    (utf8*)buffer, dimof(buffer));
+            auto originalObject = transaction->GetObject(0);
 
-                auto originalObject = transaction->GetObject(0);
-                if (prop == Property_Model) {
-                    originalObject._model = buffer;
-                } else {
-                    originalObject._material = buffer;
-                }
+            bool result = false;
+            for (size_t c=0; c<initializerCount; ++c) {
+                result |= SetObjProperty(originalObject, initializers[c]);
+            }
+
+            if (result) {
                 transaction->SetObject(0, originalObject);
                 transaction->Commit();
                 return true;

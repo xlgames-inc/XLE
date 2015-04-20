@@ -17,7 +17,8 @@ namespace GUILayer { namespace EditorDynamicInterface
         return _nextObjectId++;
     }
 
-	bool FlexObjectType::CreateObject(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId typeId, const char initializer[]) const
+	bool FlexObjectType::CreateObject(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId typeId, 
+        const PropertyInitializer initializers[], size_t initializerCount) const
     {
         auto type = GetObjectType(typeId);
         if (!type) return false;
@@ -30,6 +31,10 @@ namespace GUILayer { namespace EditorDynamicInterface
         newObject._id = obj;
         newObject._type = typeId;
         newObject._parent = 0;
+
+        for (size_t c=0; c<initializerCount; ++c)
+            SetSingleProperties(newObject, *type, initializers[c]);
+
         _objects.push_back(std::move(newObject));
 
         InvokeOnChange(*type, _objects[_objects.size()-1]);
@@ -48,24 +53,34 @@ namespace GUILayer { namespace EditorDynamicInterface
         return false;
     }
 
+    bool FlexObjectType::SetSingleProperties(
+        Object& dest, const RegisteredObjectType& type, const PropertyInitializer& prop) const
+    {
+        if (prop._prop == 0 || prop._prop > type._properties.size()) return false;
+        if (!prop._src) return false;
+
+        const auto& propertyName = type._properties[prop._prop-1];
+        dest._properties.SetParameter(
+            propertyName.c_str(), prop._src, 
+            ImpliedTyping::TypeDesc((ImpliedTyping::TypeCat)prop._elementType, (uint16)prop._arrayCount));
+        return true;
+    }
+
 	bool FlexObjectType::SetProperty(
-        EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId typeId, PropertyId prop, 
-        const void* src, unsigned elementType, unsigned arrayCount) const
+        EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId typeId, 
+        const PropertyInitializer initializers[], size_t initializerCount) const
     {
         auto type = GetObjectType(typeId);
         if (!type) return false;
-        if (prop == 0 || prop > type->_properties.size()) return false;
-        if (!src) return false;
-
-        const auto& propertyName = type->_properties[prop-1];
 
         for (auto i=_objects.begin(); i!=_objects.end(); ++i)
             if (i->_doc == doc && i->_id == obj) {
-                i->_properties.SetParameter(
-                    propertyName.c_str(), src, 
-                    ImpliedTyping::TypeDesc((ImpliedTyping::TypeCat)elementType, (uint16)arrayCount));
-
-                InvokeOnChange(*type, *i);
+                bool gotChange = false;
+                for (size_t c=0; c<initializerCount; ++c) {
+                    auto& prop = initializers[c];
+                    gotChange |= SetSingleProperties(*i, *type, prop);
+                }
+                if (gotChange) InvokeOnChange(*type, *i);
                 return true;
             }
 
@@ -129,6 +144,8 @@ namespace GUILayer { namespace EditorDynamicInterface
                 child);
         }
         childObj->_parent = parentObj->_id;
+
+        InvokeOnChange(*parentType, *parentObj);
         return true;
     }
 

@@ -25,9 +25,9 @@ namespace GUILayer { namespace EditorDynamicInterface
 		bool DeleteDocument(EditorScene& scene, DocumentId doc, DocumentTypeId docType) const;
 
 		ObjectId AssignObjectId(EditorScene& scene, DocumentId doc, ObjectTypeId type) const;
-		bool CreateObject(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId type, const char initializer[]) const;
+		bool CreateObject(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId type, const PropertyInitializer initializers[], size_t initializerCount) const;
 		bool DeleteObject(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId objType) const;
-		bool SetProperty(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId type, PropertyId prop, const void* src, unsigned elementType, unsigned arrayCount) const;
+		bool SetProperty(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId type, const PropertyInitializer initializers[], size_t initializerCount) const;
 		bool GetProperty(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId type, PropertyId prop, void* dest, size_t* destSize) const;
         bool SetParent(EditorScene& scene, DocumentId doc, ObjectId child, ObjectTypeId childType, ObjectId parent, ObjectTypeId parentType, int insertionPosition) const;
 
@@ -43,6 +43,8 @@ namespace GUILayer { namespace EditorDynamicInterface
 		static const ObjectTypeId ObjectType_Terrain = 1;
 		static const PropertyId Property_BaseDir = 200;
         static const PropertyId Property_Offset = 201;
+
+        bool SetTerrainProperty(EditorScene& scene, const PropertyInitializer& prop) const;
 	};
 
     class FlexObjectType;

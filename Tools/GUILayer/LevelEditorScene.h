@@ -11,6 +11,8 @@
 #include "../../Assets/Assets.h"    // just for ResChar
 #include <memory>
 
+using namespace System::Collections::Generic;
+
 namespace SceneEngine { class PlacementsManager; class PlacementsEditor; class ISceneParser; class IntersectionTestScene; }
 namespace Tools { class IManipulator; }
 
@@ -69,10 +71,21 @@ namespace GUILayer
         DocumentId CreateDocument(DocumentTypeId docType);
         bool DeleteDocument(DocumentId doc, DocumentTypeId docType);
 
+        value struct PropertyInitializer
+        {
+            PropertyId _prop;
+            const void* _src;
+            unsigned _elementType;
+            unsigned _arrayCount;
+
+            PropertyInitializer(PropertyId prop, const void* src, unsigned elementType, unsigned arrayCount)
+                : _prop(prop), _src(src), _elementType(elementType), _arrayCount(arrayCount) {}
+        };
+
         ObjectId AssignObjectId(DocumentId doc, ObjectTypeId type);
-        bool CreateObject(DocumentId doc, ObjectId obj, ObjectTypeId objType);
+        bool CreateObject(DocumentId doc, ObjectId obj, ObjectTypeId objType, IEnumerable<PropertyInitializer>^ initializers);
         bool DeleteObject(DocumentId doc, ObjectId obj, ObjectTypeId objType);
-        bool SetProperty(DocumentId doc, ObjectId obj, ObjectTypeId objType, PropertyId prop, const void* src, unsigned elementType, unsigned arrayCount);
+        bool SetProperty(DocumentId doc, ObjectId obj, ObjectTypeId objType, IEnumerable<PropertyInitializer>^ initializers);
         bool GetProperty(DocumentId doc, ObjectId obj, ObjectTypeId objType, PropertyId prop, void* dest, size_t* destSize);
 
         bool SetObjectParent(DocumentId doc, 

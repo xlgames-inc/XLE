@@ -190,10 +190,12 @@ namespace GUILayer { namespace EditorDynamicInterface
 	bool TerrainObjectType::CreateObject(
 		EditorScene& scene, DocumentId doc,
 		ObjectId obj, ObjectTypeId type,
-		const char initializer[]) const
+		const PropertyInitializer initializers[], size_t initializerCount) const
 	{
 		if (type == ObjectType_Terrain) {
 		    scene._terrainGob = std::make_unique<TerrainGob>();
+            for (size_t c=0; c<initializerCount; ++c)
+                SetTerrainProperty(scene, initializers[c]);
 		    return true;
         }
         return false;
@@ -212,31 +214,35 @@ namespace GUILayer { namespace EditorDynamicInterface
 
 	bool TerrainObjectType::SetProperty(
 		EditorScene& scene, DocumentId doc, ObjectId obj,
-		ObjectTypeId type, PropertyId prop,
-		const void* src, unsigned elementType, unsigned arrayCount) const
+		ObjectTypeId type,
+		const PropertyInitializer initializers[], size_t initializerCount) const
 	{
 		if (type == ObjectType_Terrain) {
-            if (!scene._terrainGob) {
-                assert(0);
-                return false;
-            }
-		
-            if (prop == Property_BaseDir) {
-                scene._terrainGob->SetBaseDir((const Assets::ResChar*)src);
-                return true;
-            } else if (prop == Property_Offset) {
-                scene._terrainGob->SetOffset(*(const Float3*)src);
-                return true;
-            }
-        // } else if (type == ObjectType_BaseTexture) {
-        //     return false;
-        // } else if (type == ObjectType_BaseTextureStrata) {
-        //     return false;
+            for (size_t c=0; c<initializerCount; ++c)
+                SetTerrainProperty(scene, initializers[c]);
+            return true;
         }
 
-		// assert(0);
 		return false;
 	}
+
+    bool TerrainObjectType::SetTerrainProperty(EditorScene& scene, const PropertyInitializer& prop) const
+    {
+        if (!scene._terrainGob) {
+            assert(0);
+            return false;
+        }
+		
+        if (prop._prop == Property_BaseDir) {
+            scene._terrainGob->SetBaseDir((const Assets::ResChar*)prop._src);
+            return true;
+        } else if (prop._prop == Property_Offset) {
+            scene._terrainGob->SetOffset(*(const Float3*)prop._src);
+            return true;
+        }
+
+        return false;
+    }
 
 	bool TerrainObjectType::GetProperty(
 		EditorScene& scene, DocumentId doc, ObjectId obj,
@@ -255,8 +261,6 @@ namespace GUILayer { namespace EditorDynamicInterface
 	ObjectTypeId TerrainObjectType::GetTypeId(const char name[]) const
 	{
 		if (!XlCompareString(name, "Terrain")) return ObjectType_Terrain;
-        // if (!XlCompareString(name, "TerrainBaseTexture")) return ObjectType_BaseTexture;
-        // if (!XlCompareString(name, "TerrainBaseTextureStrata")) return ObjectType_BaseTextureStrata;
 		return 0;
 	}
 
@@ -271,21 +275,6 @@ namespace GUILayer { namespace EditorDynamicInterface
 		    if (!XlCompareString(name, "basedir")) return Property_BaseDir;
             if (!XlCompareString(name, "offset")) return Property_Offset;
         }
-
-        // if (type == ObjectType_BaseTexture) {
-        //     if (!XlCompareString(name, "diffusedims")) return Property_DiffuseDims;
-        //     if (!XlCompareString(name, "normaldims")) return Property_NormalDims;
-        //     if (!XlCompareString(name, "paramdims")) return Property_ParamDims;
-        // }
-        // 
-        // if (type == ObjectType_BaseTextureStrata) {
-        //     if (!XlCompareString(name, "texture0")) return Property_Texture0;
-        //     if (!XlCompareString(name, "texture1")) return Property_Texture1;
-        //     if (!XlCompareString(name, "texture2")) return Property_Texture2;
-        //     if (!XlCompareString(name, "mapping0")) return Property_Mapping0;
-        //     if (!XlCompareString(name, "mapping1")) return Property_Mapping1;
-        //     if (!XlCompareString(name, "mapping2")) return Property_Mapping2;
-        // }
 
 		return 0;
 	}

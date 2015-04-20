@@ -71,14 +71,38 @@ namespace GUILayer
     ObjectId EditorSceneManager::AssignObjectId(DocumentId doc, ObjectTypeId type)
         { return _dynInterface->AssignObjectId(*_scene.get(), doc, type); }
 
-    bool EditorSceneManager::CreateObject(DocumentId doc, ObjectId obj, ObjectTypeId objType)
-        { return _dynInterface->CreateObject(*_scene.get(), doc, obj, objType, ""); }
+    static std::vector<EditorDynamicInterface::IObjectType::PropertyInitializer> AsNative(
+        IEnumerable<EditorSceneManager::PropertyInitializer>^ initializers)
+    {
+        using NativeInitializer = EditorDynamicInterface::IObjectType::PropertyInitializer;
+        std::vector<NativeInitializer> native;
+        if (initializers) {
+            for each(auto i in initializers) {
+                NativeInitializer n;
+                n._prop = i._prop;
+                n._src = i._src;
+                n._elementType = i._elementType;
+                n._arrayCount = i._arrayCount;
+                native.push_back(n);
+            }
+        }
+        return std::move(native);
+    }
+
+    bool EditorSceneManager::CreateObject(DocumentId doc, ObjectId obj, ObjectTypeId objType, IEnumerable<PropertyInitializer>^ initializers)
+    {
+        auto native = AsNative(initializers);
+        return _dynInterface->CreateObject(*_scene.get(), doc, obj, objType, AsPointer(native.cbegin()), native.size()); 
+    }
 
     bool EditorSceneManager::DeleteObject(DocumentId doc, ObjectId obj, ObjectTypeId objType)
         { return _dynInterface->DeleteObject(*_scene.get(), doc, obj, objType); }
 
-    bool EditorSceneManager::SetProperty(DocumentId doc, ObjectId obj, ObjectTypeId objType, PropertyId prop, const void* src, unsigned elementType, unsigned arrayCount)
-        { return _dynInterface->SetProperty(*_scene.get(), doc, obj, objType, prop, src, elementType, arrayCount); }
+    bool EditorSceneManager::SetProperty(DocumentId doc, ObjectId obj, ObjectTypeId objType, IEnumerable<PropertyInitializer>^ initializers)
+    { 
+        auto native = AsNative(initializers);
+        return _dynInterface->SetProperty(*_scene.get(), doc, obj, objType, AsPointer(native.cbegin()), native.size()); 
+    }
 
     bool EditorSceneManager::GetProperty(DocumentId doc, ObjectId obj, ObjectTypeId objType, PropertyId prop, void* dest, size_t* destSize)
         { return _dynInterface->GetProperty(*_scene.get(), doc, obj, objType, prop, dest, destSize); }
