@@ -8,6 +8,7 @@
 
 #include "EditorDynamicInterface.h"
 #include "../../Utility/ParameterBox.h"
+#include "../../Assets/Assets.h"        // for rstring
 #include <string>
 #include <vector>
 #include <functional>
@@ -77,6 +78,8 @@ namespace GUILayer { namespace EditorDynamicInterface
 
         Object* GetObjectInt(DocumentId doc, ObjectId obj) const;
     };
+
+    ::Assets::rstring GetRString(const ParameterBox& paramBox, ParameterBox::ParameterNameHash name);
 }}
 
 

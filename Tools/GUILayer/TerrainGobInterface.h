@@ -44,6 +44,8 @@ namespace GUILayer { namespace EditorDynamicInterface
 		static const PropertyId Property_BaseDir = 200;
         static const PropertyId Property_Offset = 201;
 	};
+
+    class FlexObjectType;
 }}
 
 namespace GUILayer
@@ -95,4 +97,6 @@ namespace GUILayer
     protected:
         clix::auto_ptr<TerrainManipulatorsPimpl> _pimpl;
     };
+
+    namespace Internal { void RegisterTerrainFlexObjects(EditorDynamicInterface::FlexObjectType& flexSys); }
 }

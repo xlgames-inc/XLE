@@ -251,5 +251,31 @@ namespace GUILayer { namespace EditorDynamicInterface
     {}
 
 
+    ::Assets::rstring GetRString(const ParameterBox& paramBox, ParameterBox::ParameterNameHash name)
+    {
+        auto type = paramBox.GetParameterType(name);
+        if (type._type == ImpliedTyping::TypeCat::Int8 || type._type == ImpliedTyping::TypeCat::UInt8) {
+            ::Assets::rstring result;
+            result.resize(std::max(1u, (unsigned)type._arrayCount));
+            paramBox.GetParameter(name, AsPointer(result.begin()), type);
+            return std::move(result);
+        }
+
+        if (type._type == ImpliedTyping::TypeCat::Int16 || type._type == ImpliedTyping::TypeCat::UInt16) {
+            std::basic_string<wchar_t> wideResult;
+            wideResult.resize(std::max(1u, (unsigned)type._arrayCount));
+            paramBox.GetParameter(name, AsPointer(wideResult.begin()), type);
+
+            ::Assets::rstring result;
+            result.resize(std::max(1u, (unsigned)type._arrayCount));
+            ucs2_2_utf8(
+                (ucs2*)AsPointer(wideResult.begin()), wideResult.size(),
+                (utf8*)AsPointer(result.begin()), result.size());
+            return std::move(result);
+        }
+
+        return ::Assets::rstring();
+    }
+
 }}
 

@@ -78,6 +78,7 @@
     <ClCompile Include="..\DivergentAssetList.cpp" />
     <ClCompile Include="..\EditorDynamicInterface.cpp" />
     <ClCompile Include="..\EditorInterfaceUtils.cpp" />
+    <ClCompile Include="..\EditorSceneParser.cpp" />
     <ClCompile Include="..\EngineDevice.cpp" />
     <ClCompile Include="..\EngineControl.cpp" />
     <ClCompile Include="..\FlexGobInterface.cpp" />

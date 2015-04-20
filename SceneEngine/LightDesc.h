@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../RenderCore/Metal/Forward.h"
+#include "../Assets/Assets.h"
 #include "../Math/Matrix.h"
 #include "../Math/Vector.h"
 #include "../Core/Types.h"
@@ -128,8 +129,8 @@ namespace SceneEngine
     class GlobalLightingDesc
     {
     public:
-        Float3          _ambientLight;
-        const char*     _skyTexture;            ///< use "<texturename>_XX" when using a half cube style sky texture
+        Float3                      _ambientLight;
+        const ::Assets::ResChar*    _skyTexture;            ///< use "<texturename>_XX" when using a half cube style sky texture
 
         bool _doAtmosphereBlur;
         bool _doOcean;

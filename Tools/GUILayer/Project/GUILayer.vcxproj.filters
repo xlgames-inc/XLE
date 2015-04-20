@@ -32,6 +32,9 @@
     <ClCompile Include="..\FlexGobInterface.cpp">
       <Filter>DynInterface</Filter>
     </ClCompile>
+    <ClCompile Include="..\EditorSceneParser.cpp">
+      <Filter>DynInterface</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\EngineDevice.h" />
