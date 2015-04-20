@@ -57,7 +57,7 @@ namespace GUILayer
     public:
         std::shared_ptr<SceneEngine::TerrainManager> _terrainManager;
 
-        void SetBaseDir(const Assets::ResChar dir[]);
+        void SetBaseDir(const ucs2 dir[], unsigned length);
         void SetOffset(const Float3& offset);
 
         ::Assets::DivergentAsset<SceneEngine::TerrainMaterialScaffold>& GetMaterial();

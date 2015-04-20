@@ -58,7 +58,7 @@ namespace GUILayer { namespace EditorDynamicInterface
         } else if (prop._prop == PlacementObjectType::Property_Model || prop._prop == PlacementObjectType::Property_Material) {
             Assets::ResChar buffer[MaxPath];
             ucs2_2_utf8(
-                (const ucs2*)prop._src, XlStringLen((const ucs2*)prop._src),
+                (const ucs2*)prop._src, prop._arrayCount,
                 (utf8*)buffer, dimof(buffer));
 
             if (prop._prop == PlacementObjectType::Property_Model) {

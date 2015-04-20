@@ -212,10 +212,10 @@ namespace RenderingInterop
             return propId;
         }
 
-        public static PropertyInitializer CreateInitializer(uint prop, IntPtr src, Type elementType, uint arrayCount)
+        public static PropertyInitializer CreateInitializer(uint prop, void* ptr, Type elementType, uint arrayCount)
         {
             return new PropertyInitializer(
-                prop, src.ToPointer(), 
+                prop, ptr, 
                 GUILayer.EditorInterfaceUtils.AsTypeId(elementType), arrayCount);
         }
 

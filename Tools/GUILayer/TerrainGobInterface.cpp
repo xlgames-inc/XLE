@@ -21,12 +21,12 @@ namespace GUILayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    void TerrainGob::SetBaseDir(const Assets::ResChar dir[])
+    void TerrainGob::SetBaseDir(const ucs2 dir[], unsigned length)
     {
         _terrainManager.reset();
 
         ::Assets::ResChar buffer[MaxPath];
-        ucs2_2_utf8((const ucs2*)dir, XlStringLen((const ucs2*)dir), (utf8*)buffer, dimof(buffer));
+        ucs2_2_utf8(dir, length, (utf8*)buffer, dimof(buffer));
 
 		SceneEngine::TerrainConfig cfg(buffer);
         cfg._textureCfgName = "";
@@ -234,7 +234,7 @@ namespace GUILayer { namespace EditorDynamicInterface
         }
 		
         if (prop._prop == Property_BaseDir) {
-            scene._terrainGob->SetBaseDir((const Assets::ResChar*)prop._src);
+            scene._terrainGob->SetBaseDir((const ucs2*)prop._src, prop._arrayCount);
             return true;
         } else if (prop._prop == Property_Offset) {
             scene._terrainGob->SetOffset(*(const Float3*)prop._src);
