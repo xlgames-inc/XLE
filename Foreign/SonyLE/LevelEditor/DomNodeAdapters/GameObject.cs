@@ -111,7 +111,11 @@ namespace LevelEditor.DomNodeAdapters
         /// Gets and sets the name</summary>
         public virtual string Name
         {
-            get { return GetAttribute<string>(Schema.gameObjectType.nameAttribute); }
+            get { 
+                var result = GetAttribute<string>(Schema.gameObjectType.nameAttribute);
+                if (string.IsNullOrEmpty(result)) return "<<unnamed>>";
+                return result;
+            }
             set { SetAttribute(Schema.gameObjectType.nameAttribute, value); }
         }
 

@@ -192,12 +192,12 @@ namespace LevelEditor
             };
 
             // add child property descriptors gameObjectType
-            Schema.gameObjectType.Type.SetTag(
+            Schema.gameObjectWithComponentType.Type.SetTag(
                    new PropertyDescriptorCollection(
                        new PropertyDescriptor[] {
                             new ChildPropertyDescriptor(
                                 "Components".Localize(),
-                                Schema.gameObjectType.componentChild,
+                                Schema.gameObjectWithComponentType.componentChild,
                                 null,
                                 "List of GameObject Components".Localize(),
                                 false,

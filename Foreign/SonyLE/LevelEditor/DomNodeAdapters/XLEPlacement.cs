@@ -64,6 +64,7 @@ namespace LevelEditor.DomNodeAdapters
             }
         }
 
+        #region IReference Members
         public bool CanReference(IResource item)
         {
             if (item == null) return false;
@@ -90,6 +91,7 @@ namespace LevelEditor.DomNodeAdapters
             }
             return false;
         }
+        #endregion
 
         public static XLEPlacementObject Create()
         {

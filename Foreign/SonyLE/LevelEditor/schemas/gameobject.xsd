@@ -48,16 +48,13 @@
     <xs:annotation>
       <xs:appinfo>
         <LeGe.NativeType nativeName="GameObject"/>
-        <!--LeGe.NativeProperty annotation used for tagging a property as having native counter part.
-        Name is the name of dom attribute 
-        nativeName is the name of the property on the native c++ class -->
-        <LeGe.NativeProperty name="transform" nativeName="Transform" nativeType="Matrix" access="set"/>
-        <LeGe.NativeProperty name="name" nativeName="Name" nativeType="wchar_t*" access="set"/>
-        <LeGe.NativeProperty name="visible" nativeName="Visible" nativeType="bool" access="set,get"/>
+        
+        <LeGe.NativeProperty name="transform" nativeName="Transform" access="set"/>
+        <LeGe.NativeProperty name="name" nativeName="Name" access="set"/>
+        <LeGe.NativeProperty name="visible" nativeName="Visible" access="set,get"/>
         <LeGe.NativeProperty nativeName="Bounds" nativeType="AABB" access="get"/>
         <LeGe.NativeProperty nativeName="LocalBounds" nativeType="AABB" access="get"/>
-        <LeGe.NativeElement  name="component" nativeName="Component" nativeType="GameObjectComponent" />
-        <scea.dom.editors name="GameObject" category="Level Tools" image="LevelEditorCore.Resources.gameObject.png" menuText="Game Object" description="Game Object"/>
+        
         <scea.dom.editors.attribute name="name" displayName="Name" description="Unique name of Game Object" category="General"/>
         <scea.dom.editors.attribute name="locked" displayName="Locked" description="Lock this object" category="General" editor="Sce.Atf.Controls.PropertyEditing.BoolEditor,Atf.Gui.WinForms"/>
         <scea.dom.editors.attribute name="visible" displayName="Visibility" description="Whether item is visible in Design View" category="Display" editor="Sce.Atf.Controls.PropertyEditing.BoolEditor,Atf.Gui.WinForms"/>
@@ -65,9 +62,6 @@
     </xs:annotation>
     <xs:complexContent>
       <xs:extension base="transformObjectType">
-        <xs:sequence>
-            <xs:element name="component" type="gameObjectComponentType" minOccurs="0" maxOccurs="unbounded"/>
-        </xs:sequence>
         <xs:attribute name="name" type="xs:ID" />
         <xs:attribute name="visible" type="xs:boolean" default="true" />
         <xs:attribute name="locked" type="xs:boolean" default="false" />
@@ -75,12 +69,26 @@
     </xs:complexContent>
   </xs:complexType>
 
+  <xs:complexType name="gameObjectWithComponentType">
+    <xs:annotation>
+      <xs:appinfo>
+        <LeGe.NativeType nativeName="GameObjectWithComponent"/>
+        <LeGe.NativeElement  name="component" nativeName="Component" nativeType="GameObjectComponent" />
+        <scea.dom.editors name="GameObjectWithComponent" category="Level Tools" image="LevelEditorCore.Resources.gameObject.png" menuText="Game Object" description="Game Object"/>
+      </xs:appinfo>
+    </xs:annotation>
+    <xs:complexContent>
+      <xs:extension base="gameObjectType">
+        <xs:sequence>
+          <xs:element name="component" type="gameObjectComponentType" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
   <xs:complexType name="gameObjectGroupType">
     <xs:annotation>
       <xs:appinfo>
-        <!-- LeGe.NativeType annotation used for tagging a type as having native counter part 
-        the id will be auto generated using crc-32 hash
-        nativeName the name of the C++ class for this type.-->
         <LeGe.NativeType nativeName="GameObjectGroup"/>
         <LeGe.NativeElement name="gameObject" nativeName="Child" nativeType="GameObject" />
         <scea.dom.editors name="GameObjectGroup" category="Level Tools" image="LevelEditorCore.Resources.group.png" menuText="Game Object Group" description="Game Object Group"/>

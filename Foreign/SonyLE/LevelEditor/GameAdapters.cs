@@ -142,6 +142,7 @@ namespace LevelEditor
 
             Schema.envSettingsFolderType.Type.Define(new ExtensionInfo<XLEEnvSettingsFolder>());
             Schema.envSettingsType.Type.Define(new ExtensionInfo<XLEEnvSettings>());
+            Schema.envObjectType.Type.Define(new ExtensionInfo<GameObject>());
             // XLE>>
         }
     }
