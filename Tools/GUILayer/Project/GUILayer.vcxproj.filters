@@ -38,6 +38,7 @@
     <ClCompile Include="..\ObjectPlaceholders.cpp">
       <Filter>DynInterface</Filter>
     </ClCompile>
+    <ClCompile Include="..\TweakableBridge.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\EngineDevice.h" />

@@ -508,12 +508,31 @@ namespace ConsoleRig
             #define new DEBUG_NEW
         #endif
 
+        template <typename Type>
+            Type*       FindTweakable(const char name[])
+        {
+                    // this version only find an existing tweakable, and returns null if it can't be found
+            auto& table  = GetConsoleVariableTable<Type>();
+            auto i       = std::lower_bound(table.cbegin(), table.cend(), name, CompareConsoleVariable<Type>());
+            if (i!=table.cend() && !XlCompareString((*i)->second.Name().c_str(), name)) {
+                return &(*i)->first;
+            }
+            return nullptr;
+        }
+
         template int&           FindTweakable<int>(const char name[], int defaultValue);
         template float&         FindTweakable<float>(const char name[], float defaultValue);
         template std::string&   FindTweakable<std::string>(const char name[], std::string defaultValue);
         template bool&          FindTweakable<bool>(const char name[], bool defaultValue);
         template Float3&        FindTweakable<Float3>(const char name[], Float3 defaultValue);
         template Float4&        FindTweakable<Float4>(const char name[], Float4 defaultValue);
+
+        template int*           FindTweakable<int>(const char name[]);
+        template float*         FindTweakable<float>(const char name[]);
+        template std::string*   FindTweakable<std::string>(const char name[]);
+        template bool*          FindTweakable<bool>(const char name[]);
+        template Float3*        FindTweakable<Float3>(const char name[]);
+        template Float4*        FindTweakable<Float4>(const char name[]);
 
         template<   class Type,
                     class MemFn,

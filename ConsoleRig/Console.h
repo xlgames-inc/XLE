@@ -42,6 +42,8 @@ namespace ConsoleRig
     {
         template <typename Type>
             Type&       FindTweakable(const char name[], Type defaultValue);
+        template <typename Type>
+            Type*       FindTweakable(const char name[]);
     }
 }
 

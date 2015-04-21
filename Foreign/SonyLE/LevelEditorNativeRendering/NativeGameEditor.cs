@@ -214,6 +214,11 @@ namespace RenderingInterop
 
             #endregion
 
+            // set up scripting bindings
+            if (m_scriptingService != null)
+            {
+                m_scriptingService.SetVariable("cv", new GUILayer.TweakableBridge());
+            }
         }
 
         #endregion
@@ -315,6 +320,9 @@ namespace RenderingInterop
 
         [Import(AllowDefault = false)]
         private IGameDocumentRegistry m_gameDocumentRegistry = null;
+
+        [Import(AllowDefault = true)]
+        private ScriptingService m_scriptingService = null;
 
         private ControlInfo m_controlInfo;
                

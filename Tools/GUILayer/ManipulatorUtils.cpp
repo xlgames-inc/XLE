@@ -69,7 +69,7 @@ namespace GUILayer
 
         bool TrySetMember(System::Dynamic::SetMemberBinder^ binder, Object^ value) override
         {
-            return TryGetMember(binder->Name, binder->IgnoreCase, value);
+            return TrySetMember(binder->Name, binder->IgnoreCase, value);
         }
 
         bool TryGetMember(System::String^ name, bool ignoreCase, Object^% result)

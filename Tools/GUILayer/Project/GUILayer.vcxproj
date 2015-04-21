@@ -97,6 +97,7 @@
     <ClCompile Include="..\SimpleRenderingContext.cpp" />
     <ClCompile Include="..\TerrainGobInterface.cpp" />
     <ClCompile Include="..\TestControl.cpp" />
+    <ClCompile Include="..\TweakableBridge.cpp" />
     <ClCompile Include="..\UITypesBinding.cpp" />
     <ClCompile Include="..\WindowRig.cpp" />
   </ItemGroup>
