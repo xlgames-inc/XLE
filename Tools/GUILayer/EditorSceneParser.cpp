@@ -15,6 +15,7 @@
 
 #include "../ToolsRig/VisualisationUtils.h"     // for AsCameraDesc
 #include "../ToolsRig/ManipulatorsRender.h"
+#include "../../PlatformRig/PlatformRigUtil.h"
 
 #include "../../SceneEngine/SceneParser.h"
 #include "../../SceneEngine/LightDesc.h"
@@ -26,6 +27,7 @@
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/IThreadContext.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
+#include "../../Math/Transformations.h"
 
 namespace GUILayer
 {
@@ -75,8 +77,15 @@ namespace GUILayer
         std::shared_ptr<ToolsRig::VisCameraSettings> _camera;
 
         std::vector<SceneEngine::LightDesc> _lights;
-        std::vector<SceneEngine::ShadowProjectionDesc> _shadowProj;
         SceneEngine::GlobalLightingDesc _globalLightingDesc;
+
+        class ShadowProj
+        {
+        public:
+            SceneEngine::LightDesc _light;
+            PlatformRig::DefaultShadowFrustumSettings _shadowFrustumSettings;
+        };
+        std::vector<ShadowProj> _shadowProj;
 
         ::Assets::rstring _skyTextureBuffer;
     };
@@ -134,7 +143,12 @@ namespace GUILayer
 
     ShadowProjectionDesc EditorSceneParser::GetShadowProjectionDesc(
         unsigned index, const RenderCore::Techniques::ProjectionDesc& mainSceneProjectionDesc) const 
-    { return _shadowProj[index]; }
+    {
+        return PlatformRig::CalculateDefaultShadowCascades(
+            _shadowProj[index]._light,
+            mainSceneProjectionDesc,
+            _shadowProj[index]._shadowFrustumSettings);
+    }
 
     static GlobalLightingDesc DefaultGlobalLightingDesc()
     {
@@ -158,6 +172,14 @@ namespace GUILayer
 
     float EditorSceneParser::GetTimeValue() const { return 0.f; }
 
+    static Float3 AsFloat3Color(unsigned packedColor)
+    {
+        return Float3(
+            (float)((packedColor >> 16) & 0xff) / 255.f,
+            (float)((packedColor >>  8) & 0xff) / 255.f,
+            (float)(packedColor & 0xff) / 255.f);
+    }
+
     void EditorSceneParser::PrepareEnvironmentalSettings(const char envSettings[], EditorDynamicInterface::FlexObjectType& flexGobInterface)
     {
         _lights.clear();
@@ -169,6 +191,7 @@ namespace GUILayer
 
         const auto typeSettings = flexGobInterface.GetTypeId("EnvSettings");
         const auto typeAmbient = flexGobInterface.GetTypeId("AmbientSettings");
+        const auto typeDirectionalLight = flexGobInterface.GetTypeId("DirectionalLight");
 
         {
             static const auto nameHash = ParameterBox::MakeParameterNameHash("name");
@@ -191,20 +214,53 @@ namespace GUILayer
 
                 if (child->_type == typeAmbient) {
                     static const auto ambientHash = ParameterBox::MakeParameterNameHash("ambientlight");
+                    static const auto ambientBrightnessHash = ParameterBox::MakeParameterNameHash("ambientbrightness");
                     static const auto skyTextureHash = ParameterBox::MakeParameterNameHash("skytexture");
                     static const auto flagsHash = ParameterBox::MakeParameterNameHash("flags");
 
-                    _globalLightingDesc._ambientLight = child->_properties.GetParameter<Float3>(ambientHash, _globalLightingDesc._ambientLight);
+                    const auto& props = child->_properties;
 
-                    auto flags = child->_properties.GetParameter<int>(flagsHash);
+                    _globalLightingDesc._ambientLight = 
+                        props.GetParameter(ambientBrightnessHash, 1.f) * AsFloat3Color(props.GetParameter(ambientHash, ~0x0u));
+
+                    auto flags = props.GetParameter<int>(flagsHash);
                     if (flags.first) {
                         _globalLightingDesc._doToneMap = flags.second & (1<<0);
                     }
 
-                    _skyTextureBuffer = GetRString(child->_properties, skyTextureHash);
+                    _skyTextureBuffer = GetRString(props, skyTextureHash);
                     if (!_skyTextureBuffer.empty()) {
                         _globalLightingDesc._skyTexture = _skyTextureBuffer.c_str();
                     }
+                }
+
+                if (child->_type == typeDirectionalLight) {
+                    static const auto diffuseHash = ParameterBox::MakeParameterNameHash("diffuse");
+                    static const auto diffuseBrightnessHash = ParameterBox::MakeParameterNameHash("diffusebrightness");
+                    static const auto specularHash = ParameterBox::MakeParameterNameHash("specular");
+                    static const auto specularBrightnessHash = ParameterBox::MakeParameterNameHash("specularbrightness");
+                    static const auto flagsHash = ParameterBox::MakeParameterNameHash("flags");
+                    static const auto transformHash = ParameterBox::MakeParameterNameHash("Transform");
+
+                    const auto& props = child->_properties;
+
+                    auto transform = Transpose(props.GetParameter(transformHash, Identity<Float4x4>()));
+                    auto translation = ExtractTranslation(transform);
+
+                    LightDesc light;
+                    light._type = LightDesc::Directional;
+                    light._lightColour = props.GetParameter(diffuseBrightnessHash, 1.f) * AsFloat3Color(props.GetParameter(diffuseHash, ~0x0u));
+                    light._negativeLightDirection = (MagnitudeSquared(translation) > 0.01f) ? Normalize(translation) : Float3(0.f, 0.f, 0.f);
+                    light._radius = 10000.f;
+                    light._shadowFrustumIndex = ~unsigned(0x0);
+
+                    if (props.GetParameter(flagsHash, 0u) & (1<<0)) {
+                        light._shadowFrustumIndex = (unsigned)_shadowProj.size();
+                        _shadowProj.push_back(
+                            ShadowProj { light, PlatformRig::DefaultShadowFrustumSettings() });
+                    }
+
+                    _lights.push_back(light);
                 }
             }
         } else {
