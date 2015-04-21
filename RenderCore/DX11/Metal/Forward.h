@@ -15,7 +15,7 @@ namespace RenderCore { namespace Metal_DX11
     class ShaderProgram;
     class CompiledShaderByteCode;
 
-    class VertexBufer;
+    class VertexBuffer;
     class IndexBuffer;
     class ConstantBuffer;
 

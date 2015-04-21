@@ -92,6 +92,7 @@
     <ClCompile Include="..\LevelEditorScene.cpp" />
     <ClCompile Include="..\ManipulatorUtils.cpp" />
     <ClCompile Include="..\MaterialVisualisation.cpp" />
+    <ClCompile Include="..\ObjectPlaceholders.cpp" />
     <ClCompile Include="..\PlacementsGobInterface.cpp" />
     <ClCompile Include="..\SimpleRenderingContext.cpp" />
     <ClCompile Include="..\TerrainGobInterface.cpp" />
@@ -116,6 +117,7 @@
     <ClInclude Include="..\ManipulatorUtils.h" />
     <ClInclude Include="..\MarshalString.h" />
     <ClInclude Include="..\MaterialVisualisation.h" />
+    <ClInclude Include="..\ObjectPlaceholders.h" />
     <ClInclude Include="..\PlacementsGobInterface.h" />
     <ClInclude Include="..\TerrainGobInterface.h" />
     <ClInclude Include="..\TestControl.h" />

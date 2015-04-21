@@ -17,6 +17,7 @@ namespace RenderingInterop
         public const string Name = "name";
         public const string NativeProperty = "LeGe.NativeProperty";
         public const string NativeElement = "LeGe.NativeElement";
+        public const string NativeVis = "LeGe.NativeVis";
 
         public const string MappedAttribute = "MappedAttribute";
     }

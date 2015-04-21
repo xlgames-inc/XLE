@@ -97,6 +97,32 @@ namespace RenderingInterop
                     0, 0, insertionPosition);
             }
         }
+
+        internal class NativePropertyTransfer : IDisposable
+        {
+            public IList<PropertyInitializer> Properties { get { return m_properties;  } }
+
+            void IDisposable.Dispose()
+            {
+                Marshal.FreeHGlobal(m_bufferHandle);
+            }
+
+            public unsafe System.IO.UnmanagedMemoryStream CreateStream()
+            {
+                return new System.IO.UnmanagedMemoryStream(
+                    (byte*)m_bufferHandle.ToPointer(), 0, s_bufferSize, FileAccess.Write);
+            }
+
+            public NativePropertyTransfer()
+            {
+                m_properties = new List<PropertyInitializer>();
+                m_bufferHandle = Marshal.AllocHGlobal(s_bufferSize);
+            }
+
+            private IntPtr m_bufferHandle;
+            private List<PropertyInitializer> m_properties;
+            private const int s_bufferSize = 2048;
+        }
         
         void node_AttributeChanged(object sender, AttributeEventArgs e)
         {
@@ -116,31 +142,16 @@ namespace RenderingInterop
                 if (attribInfo == null) return;
             }
 
-            var properties = new List<PropertyInitializer>();
-            
-            var bufferSize = 2048;
-            var bufferHandle = Marshal.AllocHGlobal(bufferSize);
-            try
+            using (var transfer = new NativePropertyTransfer())
             {
-                unsafe
-                {
-                    using (var stream = new System.IO.UnmanagedMemoryStream(
-                        (byte*)bufferHandle.ToPointer(), 0, bufferSize, FileAccess.Write))
-                    {
-                        UpdateNativeProperty(attribInfo, properties, stream);
-                    }
-                }
-
-                if (properties.Count > 0)
+                using (var stream = transfer.CreateStream())
+                    UpdateNativeProperty(DomNode, attribInfo, transfer.Properties, stream);
+                if (transfer.Properties.Count > 0)
                 {
                     GameEngine.SetObjectProperty(
                         TypeId, DocumentId, InstanceId,
-                        properties);
+                        transfer.Properties);
                 }
-            }
-            finally
-            {
-                Marshal.FreeHGlobal(bufferHandle);
             }
         }
         
@@ -151,29 +162,18 @@ namespace RenderingInterop
         /// </summary>
         public unsafe void UpdateNativeObject()
         {
-            var properties = new List<PropertyInitializer>();
-
-            var bufferSize = 2048;
-            var bufferHandle = Marshal.AllocHGlobal(bufferSize);
-            try
+            using (var transfer = new NativePropertyTransfer())
             {
-                using (var stream = new System.IO.UnmanagedMemoryStream(
-                    (byte*)bufferHandle.ToPointer(), 0, bufferSize, FileAccess.Write))
-                {
+                using (var stream = transfer.CreateStream())
                     foreach (AttributeInfo attribInfo in this.DomNode.Type.Attributes)
-                        UpdateNativeProperty(attribInfo, properties, stream);
-                }
+                        UpdateNativeProperty(DomNode, attribInfo, transfer.Properties, stream);
 
-                if (properties.Count > 0)
+                if (transfer.Properties.Count > 0)
                 {
                     GameEngine.SetObjectProperty(
                         TypeId, DocumentId, InstanceId,
-                        properties);
+                        transfer.Properties);
                 }
-            }
-            finally
-            {
-                Marshal.FreeHGlobal(bufferHandle);
             }
         }
 
@@ -215,27 +215,13 @@ namespace RenderingInterop
                     }
                 }
 
-                var properties = new List<PropertyInitializer>();
-
-                var bufferSize = 2048;
-                var bufferHandle = Marshal.AllocHGlobal(bufferSize);
-                try
+                using (var transfer = new NativePropertyTransfer())
                 {
-                    unsafe
-                    {
-                        using (var stream = new UnmanagedMemoryStream(
-                            (byte*)bufferHandle.ToPointer(), 0, bufferSize, FileAccess.Write))
-                        {
-                            foreach (AttributeInfo attribInfo in this.DomNode.Type.Attributes)
-                                UpdateNativeProperty(attribInfo, properties, stream);
-                        }
-                    }
+                    using (var stream = transfer.CreateStream())
+                        foreach (AttributeInfo attribInfo in this.DomNode.Type.Attributes)
+                            UpdateNativeProperty(DomNode, attribInfo, transfer.Properties, stream);
 
-                    m_instanceId = GameEngine.CreateObject(doc.NativeDocumentId, existingId, TypeId, properties);
-                }
-                finally
-                {
-                    Marshal.FreeHGlobal(bufferHandle);
+                    m_instanceId = GameEngine.CreateObject(doc.NativeDocumentId, existingId, TypeId, transfer.Properties);
                 }
 
                 if (m_instanceId != 0)
@@ -278,7 +264,8 @@ namespace RenderingInterop
                 typeof(T), 1));
         }
 
-        unsafe private void UpdateNativeProperty(
+        unsafe internal static void UpdateNativeProperty(
+            DomNode node,
             AttributeInfo attribInfo,
             IList<PropertyInitializer> properties, 
             System.IO.UnmanagedMemoryStream stream)
@@ -287,17 +274,28 @@ namespace RenderingInterop
             if (idObj == null) return;
             uint id = (uint)idObj;
 
-            Type clrType = attribInfo.Type.ClrType;
-            Type elmentType = clrType.GetElementType();
+            PushAttribute(
+                id, 
+                attribInfo.Type.ClrType, attribInfo.Type.Length,
+                node.GetAttribute(attribInfo),
+                properties, stream);
+        }
 
-            object data = this.DomNode.GetAttribute(attribInfo);
+        unsafe internal static void PushAttribute(
+            uint propertyId,
+            Type clrType, int arrayLength,
+            object data,
+            IList<PropertyInitializer> properties, 
+            System.IO.UnmanagedMemoryStream stream)
+        {
+            Type elmentType = clrType.GetElementType();
             if (clrType.IsArray && elmentType.IsPrimitive)
             {
                 if (elmentType == typeof(float))
                 {
-                    var count = attribInfo.Type.Length;
+                    var count = arrayLength;
                     properties.Add(GameEngine.CreateInitializer(
-                        id, stream.PositionPointer,
+                        propertyId, stream.PositionPointer,
                         elmentType, (uint)count));
 
                     fixed (float* d = (float[])data)
@@ -307,9 +305,9 @@ namespace RenderingInterop
                 }
                 else if (elmentType == typeof(int))
                 {
-                    var count = attribInfo.Type.Length;
+                    var count = arrayLength;
                     properties.Add(GameEngine.CreateInitializer(
-                        id, stream.PositionPointer,
+                        propertyId, stream.PositionPointer,
                         elmentType, (uint)count));
 
                     fixed (int* d = (int[])data)
@@ -320,9 +318,9 @@ namespace RenderingInterop
 
                 else if (elmentType == typeof(uint))
                 {
-                    var count = attribInfo.Type.Length;
+                    var count = arrayLength;
                     properties.Add(GameEngine.CreateInitializer(
-                        id, stream.PositionPointer,
+                        propertyId, stream.PositionPointer,
                         elmentType, (uint)count));
 
                     fixed (uint* d = (uint[])data)
@@ -338,71 +336,71 @@ namespace RenderingInterop
             else
             {
                 if (clrType == typeof(string)) {
-                    SetStringProperty(id, (string)data, properties, stream);
+                    SetStringProperty(propertyId, (string)data, properties, stream);
                 }
 
                 else if (clrType == typeof(bool))   {
-                    SetBasicProperty(id, Convert.ToUInt32((bool)data), properties, stream);
+                    SetBasicProperty(propertyId, Convert.ToUInt32((bool)data), properties, stream);
                     *(bool*)stream.PositionPointer = (bool)data; 
                     stream.Position += sizeof(bool);
                 }
 
-                else if (clrType == typeof(byte))   { 
-                    SetBasicProperty(id, (byte)data, properties, stream);
+                else if (clrType == typeof(byte))   {
+                    SetBasicProperty(propertyId, (byte)data, properties, stream);
                     *(byte*)stream.PositionPointer = (byte)data;
                     stream.Position += sizeof(byte);
                 }
 
-                else if (clrType == typeof(sbyte))  { 
-                    SetBasicProperty(id, (sbyte)data, properties, stream);
+                else if (clrType == typeof(sbyte))  {
+                    SetBasicProperty(propertyId, (sbyte)data, properties, stream);
                     *(sbyte*)stream.PositionPointer = (sbyte)data;
                     stream.Position += sizeof(sbyte);
                 }
 
-                else if (clrType == typeof(short))  { 
-                    SetBasicProperty(id, (short)data, properties, stream);
+                else if (clrType == typeof(short))  {
+                    SetBasicProperty(propertyId, (short)data, properties, stream);
                     *(short*)stream.PositionPointer = (short)data;
                     stream.Position += sizeof(short);
                 }
 
-                else if (clrType == typeof(ushort)) { 
-                    SetBasicProperty(id, (ushort)data, properties, stream);
+                else if (clrType == typeof(ushort)) {
+                    SetBasicProperty(propertyId, (ushort)data, properties, stream);
                     *(ushort*)stream.PositionPointer = (ushort)data;
                     stream.Position += sizeof(ushort);
                 }
 
-                else if (clrType == typeof(int)) { 
-                    SetBasicProperty(id, (int)data, properties, stream);
+                else if (clrType == typeof(int)) {
+                    SetBasicProperty(propertyId, (int)data, properties, stream);
                     *(int*)stream.PositionPointer = (int)data;
                     stream.Position += sizeof(int);
                 }
 
-                else if (clrType == typeof(uint)) { 
-                    SetBasicProperty(id, (uint)data, properties, stream);
+                else if (clrType == typeof(uint)) {
+                    SetBasicProperty(propertyId, (uint)data, properties, stream);
                     *(uint*)stream.PositionPointer = (uint)data;
                     stream.Position += sizeof(uint);
                 }
 
-                else if (clrType == typeof(long)) { 
-                    SetBasicProperty(id, (long)data, properties, stream);
+                else if (clrType == typeof(long)) {
+                    SetBasicProperty(propertyId, (long)data, properties, stream);
                     *(long*)stream.PositionPointer = (long)data;
                     stream.Position += sizeof(long);
                 }
 
-                else if (clrType == typeof(ulong)) { 
-                    SetBasicProperty(id, (ulong)data, properties, stream);
+                else if (clrType == typeof(ulong)) {
+                    SetBasicProperty(propertyId, (ulong)data, properties, stream);
                     *(ulong*)stream.PositionPointer = (ulong)data;
                     stream.Position += sizeof(ulong);
                 }
 
-                else if (clrType == typeof(float)) { 
-                    SetBasicProperty(id, (float)data, properties, stream);
+                else if (clrType == typeof(float)) {
+                    SetBasicProperty(propertyId, (float)data, properties, stream);
                     *(float*)stream.PositionPointer = (float)data;
                     stream.Position += sizeof(float);
                 }
 
-                else if (clrType == typeof(double)) { 
-                    SetBasicProperty(id, (double)data, properties, stream);
+                else if (clrType == typeof(double)) {
+                    SetBasicProperty(propertyId, (double)data, properties, stream);
                     *(double*)stream.PositionPointer = (double)data;
                     stream.Position += sizeof(double);
                 }
@@ -412,17 +410,17 @@ namespace RenderingInterop
                     {
                         Uri uri = (Uri)data;                        
                         string str = uri.LocalPath;
-                        SetStringProperty(id, str, properties, stream);
+                        SetStringProperty(propertyId, str, properties, stream);
                     }
                 }
 
                 else if (clrType == typeof(DomNode)) {
                     // this is a 'reference' to an object
-                    DomNode node = (DomNode)data;
-                    NativeObjectAdapter nativeGob = node.As<NativeObjectAdapter>();
+                    DomNode refNode = (DomNode)data;
+                    NativeObjectAdapter nativeGob = refNode.As<NativeObjectAdapter>();
                     if(nativeGob != null)
                     {
-                        SetBasicProperty(id, (ulong)nativeGob.InstanceId, properties, stream);
+                        SetBasicProperty(propertyId, (ulong)nativeGob.InstanceId, properties, stream);
                         *(ulong*)stream.PositionPointer = (ulong)nativeGob.InstanceId;
                         stream.Position += sizeof(ulong);
                     }

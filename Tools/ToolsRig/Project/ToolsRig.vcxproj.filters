@@ -10,6 +10,7 @@
     <ClCompile Include="..\TerrainManipulatorsInterface.cpp" />
     <ClCompile Include="..\HighlightEffects.cpp" />
     <ClCompile Include="..\ManipulatorsRender.cpp" />
+    <ClCompile Include="..\VisualisationGeo.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\BasicManipulators.h" />
@@ -24,5 +25,6 @@
     <ClInclude Include="..\TerrainManipulators.h" />
     <ClInclude Include="..\HighlightEffects.h" />
     <ClInclude Include="..\ManipulatorsRender.h" />
+    <ClInclude Include="..\VisualisationGeo.h" />
   </ItemGroup>
 </Project>

@@ -23,6 +23,9 @@ namespace GUILayer
 	ref class IntersectionTestSceneWrapper;
     ref class PlacementsEditorWrapper;
     class TerrainGob;
+    class ObjectPlaceholders;
+
+    namespace EditorDynamicInterface { class RegisteredTypes; class FlexObjectType; }
 
     class EditorScene
     {
@@ -30,8 +33,9 @@ namespace GUILayer
         std::shared_ptr<SceneEngine::PlacementsManager> _placementsManager;
         std::shared_ptr<SceneEngine::PlacementsEditor> _placementsEditor;
         std::unique_ptr<TerrainGob> _terrainGob;
+        std::unique_ptr<ObjectPlaceholders> _placeholders;
 
-        EditorScene();
+        EditorScene(std::shared_ptr<EditorDynamicInterface::FlexObjectType> flexObjects);
 		~EditorScene();
     };
 
@@ -40,8 +44,6 @@ namespace GUILayer
     public:
         System::String^ _activeEnvironmentSettings;
     };
-
-    namespace EditorDynamicInterface { class RegisteredTypes; class FlexObjectType; }
 
     ref class IOverlaySystem;
     ref class IManipulatorSet;
@@ -96,6 +98,8 @@ namespace GUILayer
         DocumentTypeId GetDocumentTypeId(System::String^ name);
         PropertyId GetPropertyId(ObjectTypeId type, System::String^ name);
         ChildListId GetChildListId(ObjectTypeId type, System::String^ name);
+
+        void SetTypeAnnotation(uint typeId, System::String^ annotationName, IEnumerable<PropertyInitializer>^ initializers);
 
             //// //// ////   C O N S T R U C T O R S   //// //// ////
         EditorSceneManager();

@@ -84,9 +84,7 @@ namespace RenderingInterop
                     }
                     else if (elm.LocalName == NativeAnnotations.NativeProperty)
                     {
-                        // find a prop name and added to the attribute.
-                        
-                        
+                            // find a prop name and added to the attribute.
                         string nativePropName = elm.GetAttribute(NativeAnnotations.NativeName);
                         string attribName = elm.GetAttribute(NativeAnnotations.Name);
                         uint typeId = (uint)domType.GetTag(NativeAnnotations.NativeType);
@@ -106,7 +104,6 @@ namespace RenderingInterop
                         {
                             isBoundableType = true;
                         }
-                        
                     }
                     else if (elm.LocalName == NativeAnnotations.NativeElement)
                     {                        
@@ -114,6 +111,29 @@ namespace RenderingInterop
                         uint typeId = (uint)domType.GetTag(NativeAnnotations.NativeType);
                         string name = elm.GetAttribute(NativeAnnotations.NativeName);
                         info.SetTag(NativeAnnotations.NativeElement, GameEngine.GetObjectChildListId(typeId, name));
+                    }
+                    else if (elm.LocalName == NativeAnnotations.NativeVis)
+                    {
+                        uint typeId = (uint)domType.GetTag(NativeAnnotations.NativeType);
+
+                        using (var transfer = new NativeObjectAdapter.NativePropertyTransfer())
+                        {
+                            using (var stream = transfer.CreateStream())
+                                foreach (var a in elm.Attributes)
+                                {
+                                    var attrib = a as XmlAttribute;
+                                    if (attrib.Name == "geo")
+                                    {
+                                        NativeObjectAdapter.PushAttribute(
+                                            0,
+                                            typeof(string), 1,
+                                            attrib.Value,
+                                            transfer.Properties, stream);
+                                    }
+                                }
+
+                            GameEngine.SetTypeAnnotation(typeId, "vis", transfer.Properties);
+                        }
                     }
                 }
 

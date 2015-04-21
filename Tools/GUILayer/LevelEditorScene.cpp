@@ -8,6 +8,7 @@
 #include "PlacementsGobInterface.h"
 #include "TerrainGobInterface.h"
 #include "FlexGobInterface.h"
+#include "ObjectPlaceholders.h"
 #include "MarshalString.h"
 #include "GUILayerUtil.h"
 #include "IOverlaySystem.h"
@@ -48,12 +49,13 @@ namespace GUILayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    EditorScene::EditorScene()
+    EditorScene::EditorScene(std::shared_ptr<EditorDynamicInterface::FlexObjectType> flexObjects)
     {
         _placementsManager = std::make_shared<SceneEngine::PlacementsManager>(
             SceneEngine::WorldPlacementsConfig(),
             std::shared_ptr<RenderCore::Assets::IModelFormat>(), Float2(0.f, 0.f));
         _placementsEditor = _placementsManager->CreateEditor();
+        _placeholders = std::make_unique<ObjectPlaceholders>(std::move(flexObjects));
     }
 
 	EditorScene::~EditorScene()
@@ -112,6 +114,15 @@ namespace GUILayer
     PropertyId EditorSceneManager::GetPropertyId(ObjectTypeId type, System::String^ name)       { return _dynInterface->GetPropertyId(type, clix::marshalString<clix::E_UTF8>(name).c_str()); }
     ChildListId EditorSceneManager::GetChildListId(ObjectTypeId type, System::String^ name)     { return _dynInterface->GetChildListId(type, clix::marshalString<clix::E_UTF8>(name).c_str()); }
 
+    void EditorSceneManager::SetTypeAnnotation(uint typeId, String^ annotationName, IEnumerable<PropertyInitializer>^ initializers)
+    {
+        if (!_scene->_placeholders) return ;
+
+        if (annotationName == "vis") {
+            _scene->_placeholders->AddAnnotation(typeId);
+        }
+    }
+
     bool EditorSceneManager::SetObjectParent(DocumentId doc, 
             ObjectId childId, ObjectTypeId childTypeId, 
             ObjectId parentId, ObjectTypeId parentTypeId, int insertionPosition)
@@ -154,7 +165,6 @@ namespace GUILayer
 
     EditorSceneManager::EditorSceneManager()
     {
-        _scene = std::make_shared<EditorScene>();
         _dynInterface = std::make_shared<EditorDynamicInterface::RegisteredTypes>();
         _dynInterface->RegisterType(std::make_shared<EditorDynamicInterface::PlacementObjectType>());
         _dynInterface->RegisterType(std::make_shared<EditorDynamicInterface::TerrainObjectType>());
@@ -163,6 +173,7 @@ namespace GUILayer
         Internal::RegisterTerrainFlexObjects(*_flexGobInterface.get());
         _dynInterface->RegisterType(_flexGobInterface.GetNativePtr());
 
+        _scene = std::make_shared<EditorScene>(_flexGobInterface.GetNativePtr());
         _selection = gcnew ObjectSet;
     }
 

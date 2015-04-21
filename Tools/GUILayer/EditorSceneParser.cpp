@@ -7,6 +7,7 @@
 #include "LevelEditorScene.h"
 #include "FlexGobInterface.h"
 #include "TerrainGobInterface.h"
+#include "ObjectPlaceholders.h"
 #include "EditorInterfaceUtils.h"
 #include "IOverlaySystem.h"
 #include "MarshalString.h"
@@ -104,6 +105,14 @@ namespace GUILayer
                 TRY {
                     _editorScene->_placementsManager->Render(
                         context, parserContext, techniqueIndex);
+                }
+                CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
+                CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
+                CATCH_END
+
+                TRY {
+                    _editorScene->_placeholders->Render(
+                        *context, parserContext, techniqueIndex);
                 }
                 CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
                 CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }

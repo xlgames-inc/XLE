@@ -123,6 +123,7 @@
     <ClCompile Include="..\TerrainManipulators.cpp" />
     <ClCompile Include="..\TerrainManipulatorsCommon.cpp" />
     <ClCompile Include="..\TerrainManipulatorsInterface.cpp" />
+    <ClCompile Include="..\VisualisationGeo.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\BasicManipulators.h" />
@@ -136,6 +137,7 @@
     <ClInclude Include="..\TerrainManipulators.h" />
     <ClInclude Include="..\TerrainManipulatorsInterface.h" />
     <ClInclude Include="..\TerrainManipulatorsCommon.h" />
+    <ClInclude Include="..\VisualisationGeo.h" />
     <ClInclude Include="..\VisualisationUtils.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

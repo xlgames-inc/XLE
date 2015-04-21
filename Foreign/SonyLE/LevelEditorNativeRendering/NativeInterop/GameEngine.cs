@@ -236,6 +236,12 @@ namespace RenderingInterop
             s_underlyingScene.DeleteObject(documentId, instanceId, typeId);
         }
 
+        public static void SetTypeAnnotation(
+            uint typeId, string annotationName, IEnumerable<PropertyInitializer> initializers)
+        {
+            s_underlyingScene.SetTypeAnnotation(typeId, annotationName, initializers);
+        }
+
         public static void RegisterGob(ulong documentId, ulong instanceId, NativeObjectAdapter gob)
         {
             s_idToDomNode.Add(Tuple.Create(documentId, instanceId), gob);

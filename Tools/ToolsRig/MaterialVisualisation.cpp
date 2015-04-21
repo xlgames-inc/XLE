@@ -6,6 +6,7 @@
 
 #include "MaterialVisualisation.h"
 #include "VisualisationUtils.h"
+#include "VisualisationGeo.h"
 #include "../../SceneEngine/LightingParserContext.h"
 #include "../../SceneEngine/LightingParser.h"
 #include "../../SceneEngine/SceneParser.h"
@@ -80,167 +81,6 @@ namespace ToolsRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    namespace Internal
-    {
-        #pragma pack(push)
-        #pragma pack(1)
-        class Vertex2D
-        {
-        public:
-            Float2      _position;
-            Float2      _texCoord;
-        };
-
-        class Vertex3D
-        {
-        public:
-            Float3      _position;
-            Float3      _normal;
-            Float2      _texCoord;
-            Float3      _tangent;
-            Float3      _bitangent;
-        };
-        #pragma pack(pop)
-
-        static RenderCore::Metal::InputElementDesc Vertex2D_InputLayout[] = {
-            RenderCore::Metal::InputElementDesc( "POSITION", 0, RenderCore::Metal::NativeFormat::R32G32_FLOAT ),
-            RenderCore::Metal::InputElementDesc( "TEXCOORD", 0, RenderCore::Metal::NativeFormat::R32G32_FLOAT )
-        };
-
-        static RenderCore::Metal::InputElementDesc Vertex3D_InputLayout[] = {
-            RenderCore::Metal::InputElementDesc( "POSITION", 0, RenderCore::Metal::NativeFormat::R32G32B32_FLOAT ),
-            RenderCore::Metal::InputElementDesc(   "NORMAL", 0, RenderCore::Metal::NativeFormat::R32G32B32_FLOAT ),
-            RenderCore::Metal::InputElementDesc( "TEXCOORD", 0, RenderCore::Metal::NativeFormat::R32G32_FLOAT ),
-            RenderCore::Metal::InputElementDesc( "TANGENT", 0, RenderCore::Metal::NativeFormat::R32G32B32_FLOAT ),
-            RenderCore::Metal::InputElementDesc( "BITANGENT", 0, RenderCore::Metal::NativeFormat::R32G32B32_FLOAT )
-        };
-    }
-
-    static void GeodesicSphere_Subdivide(const Float3 &v1, const Float3 &v2, const Float3 &v3, std::vector<Float3> &sphere_points, unsigned int depth) 
-    {
-        if(depth == 0) 
-        {
-            sphere_points.push_back(v1);
-            sphere_points.push_back(v2);
-            sphere_points.push_back(v3);
-            return;
-        }
-
-        Float3 v12 = Normalize(v1 + v2);
-        Float3 v23 = Normalize(v2 + v3);
-        Float3 v31 = Normalize(v3 + v1);
-        GeodesicSphere_Subdivide( v1, v12, v31, sphere_points, depth - 1);
-        GeodesicSphere_Subdivide( v2, v23, v12, sphere_points, depth - 1);
-        GeodesicSphere_Subdivide( v3, v31, v23, sphere_points, depth - 1);
-        GeodesicSphere_Subdivide(v12, v23, v31, sphere_points, depth - 1);
-    }
-
-    static std::vector<Float3>     BuildGeodesicSpherePts(int detail = 4)
-    {
-
-            //  
-            //      Basic geodesic sphere generation code
-            //          Based on a document from http://www.opengl.org.ru/docs/pg/0208.html
-            //
-        const float X = 0.525731112119133606f;
-        const float Z = 0.850650808352039932f;
-        const Float3 vdata[12] = 
-        {
-            Float3(  -X, 0.0,   Z ), Float3(   X, 0.0,   Z ), Float3(  -X, 0.0,  -Z ), Float3(   X, 0.0,  -Z ),
-            Float3( 0.0,   Z,   X ), Float3( 0.0,   Z,  -X ), Float3( 0.0,  -Z,   X ), Float3( 0.0,  -Z,  -X ),
-            Float3(   Z,   X, 0.0 ), Float3(  -Z,   X, 0.0 ), Float3(   Z,  -X, 0.0 ), Float3(  -Z,  -X, 0.0 )
-        };
-
-        int tindices[20][3] = 
-        {
-            { 0,  4,  1 }, { 0, 9,  4 }, { 9,  5, 4 }, {  4, 5, 8 }, { 4, 8,  1 },
-            { 8, 10,  1 }, { 8, 3, 10 }, { 5,  3, 8 }, {  5, 2, 3 }, { 2, 7,  3 },
-            { 7, 10,  3 }, { 7, 6, 10 }, { 7, 11, 6 }, { 11, 0, 6 }, { 0, 1,  6 },
-            { 6,  1, 10 }, { 9, 0, 11 }, { 9, 11, 2 }, {  9, 2, 5 }, { 7, 2, 11 }
-        };
-
-        std::vector<Float3> spherePoints;
-        for(int i = 0; i < 20; i++) {
-                // note -- flip here to flip the winding
-            GeodesicSphere_Subdivide(
-                vdata[tindices[i][0]], vdata[tindices[i][2]], 
-                vdata[tindices[i][1]], spherePoints, detail);
-        }
-        return spherePoints;
-    }
-
-    static std::vector<Internal::Vertex3D>   BuildGeodesicSphere()
-    {
-            //      build a geodesic sphere at the origin with radius 1     //
-        auto pts = BuildGeodesicSpherePts();
-
-        std::vector<Internal::Vertex3D> result;
-        result.reserve(pts.size());
-
-        for (auto i=pts.cbegin(); i!=pts.cend(); ++i) {
-            Internal::Vertex3D vertex;
-            vertex._position    = *i;
-            vertex._normal      = Normalize(*i);        // centre is the origin, so normal points towards the position
-
-                //  Texture coordinates based on longitude / latitude
-                //  2 texture wraps horizontally, and 1 wrap vertically
-                //      let's map [-0.5f*pi, .5f*pi] -> [0.f, 1.f];
-
-            float latitude  = XlASin((*i)[2]);
-            float longitude = XlATan2((*i)[1], (*i)[0]);
-            latitude = 1.f - (latitude + .5f * gPI) / gPI;
-            longitude = (longitude + .5f * gPI) / gPI;
-
-            vertex._texCoord = Float2(longitude, latitude);
-
-            vertex._tangent = Float3((*i)[1], -(*i)[0], 0.f);
-            vertex._bitangent = Cross(vertex._tangent, vertex._normal);
-
-            result.push_back(vertex);
-        }
-        return result;
-    }
-
-    static std::vector<Internal::Vertex3D> BuildCube()
-    {
-            // build a basic cube at the origing with radius 1. All edges are "sharp" edges //
-        Float3 normals[] = { 
-            Float3(0.f, 0.f, -1.f), Float3(0.f, 0.f, 1.f),
-            Float3(1.f, 0.f, 0.f), Float3(-1.f, 0.f, 0.f),
-            Float3(0.f, 1.f, 0.f), Float3(0.f, -1.f, 0.f)
-        };
-        Float3 Us[] = {
-            Float3(1.f, 0.f, 0.f), Float3(-1.f, 0.f, 0.f),
-            Float3(0.f, 1.f, 0.f), Float3(0.f, -1.f, 0.f),
-            Float3(-1.f, 0.f, 0.f), Float3(1.f, 0.f,  0.f)
-        };
-        Float3 Vs[] = {
-            Float3(0.f, 1.f, 0.f), Float3(0.f, 1.f, 0.f),
-            Float3(0.f, 0.f, -1.f), Float3(0.f, 0.f, -1.f),
-            Float3(0.f, 0.f, -1.f), Float3(0.f, 0.f, -1.f)
-        };
-
-        float faceCoord[4][2] = {{ -1.f, -1.f }, { -1.f, 1.f }, { 1.f, -1.f }, { 1.f, 1.f }};
-
-        std::vector<Internal::Vertex3D> result;
-        for (unsigned c=0; c<6; ++c) {
-            auto normal = normals[c], u = Us[c], v = Vs[c];
-
-            Internal::Vertex3D a[4];
-            for (unsigned q=0; q<4; ++q) {
-                a[q]._position = normal + faceCoord[q][0] * u + faceCoord[q][1] * v;
-                a[q]._normal = normal;
-                a[q]._texCoord = Float2(.5f * faceCoord[q][0] + .5f, .5f * faceCoord[q][1] + .5f);
-                a[q]._tangent = u;
-                a[q]._bitangent = v;
-            }
-            result.push_back(a[0]); result.push_back(a[1]); result.push_back(a[2]);
-            result.push_back(a[2]); result.push_back(a[1]); result.push_back(a[3]);
-        }
-
-        return result;
-    }
-
     static void DrawPreviewGeometry(
         RenderCore::Metal::DeviceContext* metalContext,
         MaterialVisSettings::GeometryType::Enum geoType,
@@ -259,7 +99,7 @@ namespace ToolsRig
         if (geoType == MaterialVisSettings::GeometryType::Plane2D) {
 
             Metal::BoundInputLayout boundVertexInputLayout(
-                std::make_pair(Internal::Vertex2D_InputLayout, dimof(Internal::Vertex2D_InputLayout)), shaderProgram);
+                Vertex2D_InputLayout, shaderProgram);
             metalContext->Bind(boundVertexInputLayout);
         
             const Internal::Vertex2D    vertices[] = 
@@ -278,7 +118,7 @@ namespace ToolsRig
         } else {
 
             Metal::BoundInputLayout boundVertexInputLayout(
-                std::make_pair(Internal::Vertex3D_InputLayout, dimof(Internal::Vertex3D_InputLayout)), shaderProgram);
+                Vertex3D_InputLayout, shaderProgram);
             metalContext->Bind(boundVertexInputLayout);
             
             Metal::VertexBuffer vertexBuffer;
