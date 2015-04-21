@@ -69,6 +69,9 @@ namespace Utility
         template<> TypeDesc TypeOf<Float2>()        { return TypeDesc(TypeCat::Float, 2, TypeHint::Vector); }
         template<> TypeDesc TypeOf<Float3>()        { return TypeDesc(TypeCat::Float, 3, TypeHint::Vector); }
         template<> TypeDesc TypeOf<Float4>()        { return TypeDesc(TypeCat::Float, 4, TypeHint::Vector); }
+        template<> TypeDesc TypeOf<Float3x3>()      { return TypeDesc(TypeCat::Float, 9, TypeHint::Matrix); }
+        template<> TypeDesc TypeOf<Float3x4>()      { return TypeDesc(TypeCat::Float, 12, TypeHint::Matrix); }
+        template<> TypeDesc TypeOf<Float4x4>()      { return TypeDesc(TypeCat::Float, 16, TypeHint::Matrix); }
         template<> TypeDesc TypeOf<UInt2>()         { return TypeDesc(TypeCat::UInt32, 2, TypeHint::Vector); }
         template<> TypeDesc TypeOf<UInt3>()         { return TypeDesc(TypeCat::UInt32, 3, TypeHint::Vector); }
         template<> TypeDesc TypeOf<UInt4>()         { return TypeDesc(TypeCat::UInt32, 4, TypeHint::Vector); }
@@ -439,6 +442,9 @@ namespace Utility
         template std::pair<bool, Float2> Parse(const char expression[]);
         template std::pair<bool, Float3> Parse(const char expression[]);
         template std::pair<bool, Float4> Parse(const char expression[]);
+        template std::pair<bool, Float3x3> Parse(const char expression[]);
+        template std::pair<bool, Float3x4> Parse(const char expression[]);
+        template std::pair<bool, Float4x4> Parse(const char expression[]);
         template std::pair<bool, UInt2> Parse(const char expression[]);
         template std::pair<bool, UInt3> Parse(const char expression[]);
         template std::pair<bool, UInt4> Parse(const char expression[]);
@@ -642,6 +648,7 @@ namespace Utility
     template std::pair<bool, float> ParameterBox::GetParameter(const char name[]) const;
     template std::pair<bool, float> ParameterBox::GetParameter(ParameterNameHash name) const;
 
+
     template void ParameterBox::SetParameter(const char name[], Float2 value);
     template std::pair<bool, Float2> ParameterBox::GetParameter(const char name[]) const;
     template std::pair<bool, Float2> ParameterBox::GetParameter(ParameterNameHash name) const;
@@ -653,6 +660,20 @@ namespace Utility
     template void ParameterBox::SetParameter(const char name[], Float4 value);
     template std::pair<bool, Float4> ParameterBox::GetParameter(const char name[]) const;
     template std::pair<bool, Float4> ParameterBox::GetParameter(ParameterNameHash name) const;
+
+
+    template void ParameterBox::SetParameter(const char name[], Float3x3 value);
+    template std::pair<bool, Float3x3> ParameterBox::GetParameter(const char name[]) const;
+    template std::pair<bool, Float3x3> ParameterBox::GetParameter(ParameterNameHash name) const;
+    
+    template void ParameterBox::SetParameter(const char name[], Float3x4 value);
+    template std::pair<bool, Float3x4> ParameterBox::GetParameter(const char name[]) const;
+    template std::pair<bool, Float3x4> ParameterBox::GetParameter(ParameterNameHash name) const;
+
+    template void ParameterBox::SetParameter(const char name[], Float4x4 value);
+    template std::pair<bool, Float4x4> ParameterBox::GetParameter(const char name[]) const;
+    template std::pair<bool, Float4x4> ParameterBox::GetParameter(ParameterNameHash name) const;
+
 
     template void ParameterBox::SetParameter(const char name[], UInt2 value);
     template std::pair<bool, UInt2> ParameterBox::GetParameter(const char name[]) const;

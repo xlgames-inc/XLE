@@ -340,9 +340,10 @@ namespace RenderingInterop
                 }
 
                 else if (clrType == typeof(bool))   {
-                    SetBasicProperty(propertyId, Convert.ToUInt32((bool)data), properties, stream);
-                    *(bool*)stream.PositionPointer = (bool)data; 
-                    stream.Position += sizeof(bool);
+                    uint d = Convert.ToUInt32((bool)data);
+                    SetBasicProperty(propertyId, d, properties, stream);
+                    *(uint*)stream.PositionPointer = d;
+                    stream.Position += sizeof(uint);
                 }
 
                 else if (clrType == typeof(byte))   {

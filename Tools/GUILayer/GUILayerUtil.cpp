@@ -56,9 +56,10 @@ namespace GUILayer
 
     IntersectionTestSceneWrapper::IntersectionTestSceneWrapper(
         std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
-        std::shared_ptr<SceneEngine::PlacementsEditor> placements)
+        std::shared_ptr<SceneEngine::PlacementsEditor> placements,
+        std::initializer_list<std::shared_ptr<SceneEngine::IIntersectionTester>> extraTesters)
     {
-		_scene = std::make_shared<SceneEngine::IntersectionTestScene>(terrainManager, placements);
+		_scene = std::make_shared<SceneEngine::IntersectionTestScene>(terrainManager, placements, extraTesters);
     }
 
     IntersectionTestSceneWrapper::~IntersectionTestSceneWrapper()

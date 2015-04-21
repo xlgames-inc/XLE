@@ -74,7 +74,7 @@ namespace RenderingInterop
                 {
                     hits = NativeInterop.Picking.FrustumPick(
                         techContext, frustum,
-                        Camera, ClientSize, NativeInterop.Picking.Flags.Objects);
+                        Camera, ClientSize, NativeInterop.Picking.Flags.Objects | NativeInterop.Picking.Flags.Helpers);
                 }
             }
             else
@@ -84,7 +84,7 @@ namespace RenderingInterop
                 {
                     hits = NativeInterop.Picking.RayPick(
                         techContext, rayW, Camera, ClientSize,
-                        NativeInterop.Picking.Flags.Terrain | NativeInterop.Picking.Flags.Objects);
+                        NativeInterop.Picking.Flags.Terrain | NativeInterop.Picking.Flags.Objects | NativeInterop.Picking.Flags.Helpers);
                 }
             }
 

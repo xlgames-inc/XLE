@@ -33,7 +33,7 @@ namespace GUILayer
         std::shared_ptr<SceneEngine::PlacementsManager> _placementsManager;
         std::shared_ptr<SceneEngine::PlacementsEditor> _placementsEditor;
         std::unique_ptr<TerrainGob> _terrainGob;
-        std::unique_ptr<ObjectPlaceholders> _placeholders;
+        std::shared_ptr<ObjectPlaceholders> _placeholders;
 
         EditorScene(std::shared_ptr<EditorDynamicInterface::FlexObjectType> flexObjects);
 		~EditorScene();

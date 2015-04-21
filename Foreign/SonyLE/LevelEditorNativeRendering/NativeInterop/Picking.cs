@@ -11,7 +11,7 @@ namespace RenderingInterop.NativeInterop
     static unsafe class Picking
     {
         [Flags]
-        public enum Flags : uint { Terrain = 1 << 0, Objects = 1 << 1, IgnoreSelection = 1 << 2 };
+        public enum Flags : uint { Terrain = 1 << 0, Objects = 1 << 1, Helpers = 1 << 6, IgnoreSelection = 1 << 10 };
 
         public static HitRecord[] FrustumPick(
             GUILayer.TechniqueContextWrapper techniqueContext,

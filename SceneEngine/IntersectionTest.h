@@ -71,6 +71,8 @@ namespace SceneEngine
         std::shared_ptr<RenderCore::Techniques::TechniqueContext>  _techniqueContext;
     };
 
+    class IIntersectionTester;
+
     /// <summary>Resolves ray and box intersections for tools</summary>
     /// This object can calculate intersections of basic primitives against
     /// the scene. This is intended for tools to perform interactive operations
@@ -87,7 +89,9 @@ namespace SceneEngine
             enum Enum 
             {
                 Terrain = 1<<0, 
-                Placement = 1<<1
+                Placement = 1<<1,
+
+                Extra = 1<<6
             };
             typedef unsigned BitField;
         };
@@ -127,12 +131,33 @@ namespace SceneEngine
         const std::shared_ptr<TerrainManager>& GetTerrain() const { return _terrainManager; }
 
         IntersectionTestScene(
-            std::shared_ptr<TerrainManager> terrainManager = std::shared_ptr<TerrainManager>(),
-            std::shared_ptr<PlacementsEditor> placements = std::shared_ptr<PlacementsEditor>());
+            std::shared_ptr<TerrainManager> terrainManager = nullptr,
+            std::shared_ptr<PlacementsEditor> placements = nullptr,
+            std::initializer_list<std::shared_ptr<IIntersectionTester>> extraTesters = std::initializer_list<std::shared_ptr<IIntersectionTester>>());
         ~IntersectionTestScene();
     protected:
         std::shared_ptr<TerrainManager> _terrainManager;
         std::shared_ptr<PlacementsEditor> _placements;
+        std::vector<std::shared_ptr<IIntersectionTester>> _extraTesters;
+    };
+
+    /// <summary>Resolves ray and box intersections for tools</summary>
+    /// Interface class for extending IntersectionTestScene to support intersections
+    /// against other types of objects.
+    class IIntersectionTester
+    {
+    public:
+        using Result = IntersectionTestScene::Result;
+        virtual Result FirstRayIntersection(
+            const IntersectionTestContext& context,
+            std::pair<Float3, Float3> worldSpaceRay) const = 0;
+
+        virtual void FrustumIntersection(
+            std::vector<Result>& results,
+            const IntersectionTestContext& context,
+            const Float4x4& worldToProjection) const = 0;
+
+        virtual ~IIntersectionTester();
     };
 }
 

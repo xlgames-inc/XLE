@@ -15,13 +15,21 @@
 #include "../../RenderCore/Techniques/CommonBindings.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/Buffer.h"
+#include "../../SceneEngine/IntersectionTest.h"
 #include "../../Assets/Assets.h"
 #include "../../Math/Transformations.h"
+#include "../../Math/Geometry.h"
 
 namespace GUILayer
 {
     using namespace RenderCore;
     using namespace RenderCore::Techniques;
+
+    namespace Parameters
+    {
+        static const auto Transform = ParameterBox::MakeParameterNameHash("Transform");
+        static const auto Visible = ParameterBox::MakeParameterNameHash("Visible");
+    }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -65,9 +73,13 @@ namespace GUILayer
         const VisGeoBox& visBox,
         const ResolvedShader& shader, const FlexObjectType::Object& obj)
     {
+        if (!obj._properties.GetParameter(Parameters::Visible, true)) return;
+
         shader.Apply(devContext, parserContext,
             {
-                MakeLocalTransformPacket(Identity<Float4x4>(), ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld)),
+                MakeLocalTransformPacket(
+                    Transpose(obj._properties.GetParameter(Parameters::Transform, Identity<Float4x4>())),
+                    ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld)),
                 MakeSharedPkt(BasicMaterialConstants())
             });
         
@@ -97,6 +109,68 @@ namespace GUILayer
         Annotation newAnnotation;
         newAnnotation._typeId = typeId;
         _annotations.push_back(newAnnotation);
+    }
+
+    class ObjectPlaceholders::IntersectionTester : public SceneEngine::IIntersectionTester
+    {
+    public:
+        Result FirstRayIntersection(
+            const SceneEngine::IntersectionTestContext& context,
+            std::pair<Float3, Float3> worldSpaceRay) const;
+
+        void FrustumIntersection(
+            std::vector<Result>& results,
+            const SceneEngine::IntersectionTestContext& context,
+            const Float4x4& worldToProjection) const;
+
+        IntersectionTester(std::shared_ptr<ObjectPlaceholders> placeHolders);
+        ~IntersectionTester();
+    protected:
+        std::shared_ptr<ObjectPlaceholders> _placeHolders;
+    };
+
+    auto ObjectPlaceholders::IntersectionTester::FirstRayIntersection(
+        const SceneEngine::IntersectionTestContext& context,
+        std::pair<Float3, Float3> worldSpaceRay) const -> Result
+    {
+        using namespace SceneEngine;
+
+        for (auto a=_placeHolders->_annotations.cbegin(); a!=_placeHolders->_annotations.cend(); ++a) {
+            auto objects = _placeHolders->_objects->FindObjectsOfType(a->_typeId);
+            for (auto o=objects.cbegin(); o!=objects.cend(); ++o) {
+
+                auto transform = Transpose((*o)->_properties.GetParameter(Parameters::Transform, Identity<Float4x4>()));
+                if (RayVsAABB(worldSpaceRay, transform, Float3(-1.f, -1.f, -1.f), Float3(1.f, 1.f, 1.f))) {
+                    Result result;
+                    result._type = IntersectionTestScene::Type::Extra;
+                    result._worldSpaceCollision = worldSpaceRay.first;
+                    result._distance = 0.f;
+                    result._objectGuid = std::make_pair((*o)->_doc, (*o)->_id);
+                    result._drawCallIndex = 0;
+                    result._materialGuid =0;
+                    return result;
+                }
+            }
+        }
+
+        return Result();
+    }
+
+    void ObjectPlaceholders::IntersectionTester::FrustumIntersection(
+        std::vector<Result>& results,
+        const SceneEngine::IntersectionTestContext& context,
+        const Float4x4& worldToProjection) const
+    {}
+
+    ObjectPlaceholders::IntersectionTester::IntersectionTester(std::shared_ptr<ObjectPlaceholders> placeHolders)
+    : _placeHolders(placeHolders)
+    {}
+
+    ObjectPlaceholders::IntersectionTester::~IntersectionTester() {}
+
+    std::shared_ptr<SceneEngine::IIntersectionTester> ObjectPlaceholders::CreateIntersectionTester()
+    {
+        return std::make_shared<IntersectionTester>(shared_from_this());
     }
 
     ObjectPlaceholders::ObjectPlaceholders(std::shared_ptr<FlexObjectType> objects)

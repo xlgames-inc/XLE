@@ -55,7 +55,7 @@ namespace GUILayer
             SceneEngine::WorldPlacementsConfig(),
             std::shared_ptr<RenderCore::Assets::IModelFormat>(), Float2(0.f, 0.f));
         _placementsEditor = _placementsManager->CreateEditor();
-        _placeholders = std::make_unique<ObjectPlaceholders>(std::move(flexObjects));
+        _placeholders = std::make_shared<ObjectPlaceholders>(std::move(flexObjects));
     }
 
 	EditorScene::~EditorScene()
@@ -155,7 +155,8 @@ namespace GUILayer
 	{
 		return gcnew IntersectionTestSceneWrapper(
             (_scene->_terrainGob) ? _scene->_terrainGob->_terrainManager : nullptr,
-            _scene->_placementsEditor);
+            _scene->_placementsEditor,
+            {_scene->_placeholders->CreateIntersectionTester()} );
     }
 
     PlacementsEditorWrapper^ EditorSceneManager::GetPlacementsEditor()

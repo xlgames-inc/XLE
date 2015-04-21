@@ -23,6 +23,7 @@
 #include "../Math/Transformations.h"
 #include "../Math/Vector.h"
 #include "../Math/ProjectionMath.h"
+#include "../Utility/BitUtils.h"
 
 
 namespace SceneEngine
@@ -186,6 +187,16 @@ namespace SceneEngine
             trans->Cancel();
         }
 
+        unsigned firstExtraBit = IntegerLog2(uint32(Type::Extra));
+        for (size_t c=0; c<_extraTesters.size(); ++c) {
+            if (!(filter & 1<<uint32(c+firstExtraBit))) continue;
+            auto res = _extraTesters[c]->FirstRayIntersection(context, worldSpaceRay);
+            if (res._distance >= 0.f && res._distance <result._distance) {
+                result = res;
+                result._type = (Type::Enum)(1<<uint32(c+firstExtraBit));
+            }
+        }
+
         return result;
     }
 
@@ -258,6 +269,12 @@ namespace SceneEngine
             }
         }
 
+        unsigned firstExtraBit = IntegerLog2(uint32(Type::Extra));
+        for (size_t c=0; c<_extraTesters.size(); ++c) {
+            if (!(filter & 1<<uint32(c+firstExtraBit))) continue;
+            _extraTesters[c]->FrustumIntersection(result, context, worldToProjection);
+        }
+
         return result;
     }
 
@@ -271,15 +288,21 @@ namespace SceneEngine
 
     IntersectionTestScene::IntersectionTestScene(
         std::shared_ptr<TerrainManager> terrainManager,
-        std::shared_ptr<PlacementsEditor> placements)
+        std::shared_ptr<PlacementsEditor> placements,
+        std::initializer_list<std::shared_ptr<IIntersectionTester>> extraTesters)
     : _terrainManager(std::move(terrainManager))
     , _placements(std::move(placements))
-    {}
+    {
+        for (size_t c=0; c<extraTesters.size(); ++c) 
+            _extraTesters.push_back(std::move(extraTesters.begin()[c]));
+    }
 
     IntersectionTestScene::~IntersectionTestScene()
     {}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
+    
+    IIntersectionTester::~IIntersectionTester() {}
     
     static Float4x4 CalculateWorldToProjection(const RenderCore::Techniques::CameraDesc& sceneCamera, float viewportAspect)
     {
