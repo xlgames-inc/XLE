@@ -73,7 +73,9 @@ namespace RenderCore
 
         void* begin() { return _allocation; }
         void* end() { return PtrAdd(_allocation, _size); }
-        size_t size() { return _size; }
+        const void* begin() const { return _allocation; }
+        const void* end() const { return PtrAdd(_allocation, _size); }
+        size_t size() const { return _size; }
 
         SharedPkt() never_throws;
         SharedPkt(const SharedPkt& cloneFrom);

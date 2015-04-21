@@ -5,8 +5,10 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Techniques.h"
+#include "ParsingContext.h"
 #include "../Metal/Shader.h"
 #include "../Metal/InputLayout.h"
+#include "../Metal/DeviceContext.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Math/Vector.h"
 #include "../../Math/Matrix.h"
@@ -649,6 +651,19 @@ namespace RenderCore { namespace Techniques
         for (unsigned c=0; c<dimof(_parameters); ++c) {
             _parameters[c].BuildStringTable(defines);
         }
+    }
+
+    void ResolvedShader::Apply(
+        Metal::DeviceContext& devContext,
+        ParsingContext& parserContext,
+        const std::initializer_list<Metal::ConstantBufferPacket>& pkts) const
+    {
+        _boundUniforms->Apply(
+            devContext, 
+            parserContext.GetGlobalUniformsStream(),
+            Metal::UniformsStream(pkts.begin(), nullptr, pkts.size()));
+        devContext.Bind(*_boundLayout);
+        devContext.Bind(*_shaderProgram);
     }
 
     ResolvedShader::ResolvedShader()

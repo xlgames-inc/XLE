@@ -9,6 +9,7 @@
 #include "../Techniques/Techniques.h"
 #include "../Techniques/CommonResources.h"
 #include "../Techniques/ParsingContext.h"
+#include "../Techniques/CommonBindings.h"
 #include "../Metal/InputLayout.h"
 #include "../Metal/DeviceContext.h"
 #include "../Metal/Buffer.h"
@@ -67,10 +68,8 @@ namespace RenderCore { namespace Assets
             Techniques::TechniqueInterface techniqueInterface(
                 Metal::InputLayout(vertexElements, count));
 
-            static const auto HashLocalTransform = Hash64("LocalTransform");
-            static const auto HashBasicMaterial = Hash64("BasicMaterialConstants");
-            techniqueInterface.BindConstantBuffer(HashLocalTransform, 0, 1);
-            techniqueInterface.BindConstantBuffer(HashBasicMaterial, 1, 1);
+            techniqueInterface.BindConstantBuffer(Techniques::ObjectCBs::LocalTransform, 0, 1);
+            techniqueInterface.BindConstantBuffer(Techniques::ObjectCBs::BasicMaterialConstants, 1, 1);
             Techniques::TechniqueContext::BindGlobalUniforms(techniqueInterface);
             for (unsigned c=0; c<textureBindPointsCount; ++c) {
                 techniqueInterface.BindShaderResource(textureBindPoints[c], c, 1);

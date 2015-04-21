@@ -131,7 +131,7 @@ namespace RenderCore { namespace Metal_DX11
     {
     public:
         UniformsStream();
-        UniformsStream( ConstantBufferPacket packets[], const ConstantBuffer* prebuiltBuffers[], size_t packetCount,
+        UniformsStream( const ConstantBufferPacket packets[], const ConstantBuffer* prebuiltBuffers[], size_t packetCount,
                         const ShaderResourceView* resources[] = nullptr, size_t resourceCount = 0);
 
         template <int Count0, int Count1>
@@ -139,7 +139,7 @@ namespace RenderCore { namespace Metal_DX11
                             const ConstantBuffer* (&prebuiltBuffers)[Count1]);
 
     protected:
-        ConstantBufferPacket*           _packets;
+        const ConstantBufferPacket*     _packets;
         const ConstantBuffer**          _prebuiltBuffers;
         size_t                          _packetCount;
         const ShaderResourceView**      _resources;
@@ -217,7 +217,7 @@ namespace RenderCore { namespace Metal_DX11
         _resourceCount = 0;
     }
 
-    inline UniformsStream::UniformsStream(  ConstantBufferPacket packets[], const ConstantBuffer* prebuiltBuffers[], size_t packetCount,
+    inline UniformsStream::UniformsStream(  const ConstantBufferPacket packets[], const ConstantBuffer* prebuiltBuffers[], size_t packetCount,
                                             const ShaderResourceView* resources[], size_t resourceCount)
     {
         _packets = packets;

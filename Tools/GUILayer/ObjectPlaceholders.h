@@ -10,7 +10,7 @@
 #include "../../RenderCore/Metal/Forward.h"
 #include <memory>
 
-namespace SceneEngine { class LightingParserContext; }
+namespace RenderCore { namespace Techniques { class ParsingContext; } }
 
 namespace GUILayer
 {
@@ -21,7 +21,7 @@ namespace GUILayer
     public:
         void Render(
             RenderCore::Metal::DeviceContext& threadContext, 
-            SceneEngine::LightingParserContext& parserContext,
+            RenderCore::Techniques::ParsingContext& parserContext,
             unsigned techniqueIndex);
 
         void AddAnnotation(EditorDynamicInterface::ObjectTypeId typeId);

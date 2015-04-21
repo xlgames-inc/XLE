@@ -44,6 +44,8 @@ namespace RenderCore { namespace Techniques
             //      index and a set of parameters in ParameterBoxes
             //          -- that is transformed into a concrete shader
 
+    class ParsingContext;
+
     class ResolvedShader
     {
     public:
@@ -52,6 +54,11 @@ namespace RenderCore { namespace Techniques
         Metal::BoundUniforms*           _boundUniforms;
         Metal::BoundInputLayout*        _boundLayout;
         Metal::ConstantBufferLayout*    _materialConstantsLayout;
+
+        void Apply(
+            Metal::DeviceContext& devContext,
+            ParsingContext& parserContext,
+            const std::initializer_list<Metal::ConstantBufferPacket>& pkts) const;
 
         ResolvedShader();
     };

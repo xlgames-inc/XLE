@@ -17,6 +17,8 @@
 #include "../ToolsRig/HighlightEffects.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
+#include "../../RenderCore/Techniques/TechniqueMaterial.h"
+#include "../../RenderCore/Techniques/CommonBindings.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Metal/Buffer.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
@@ -106,14 +108,6 @@ namespace GUILayer
         clix::auto_ptr<SavedRenderResourcesPimpl> _pimpl;
     };
 
-    class BasicMaterialConstants
-    {
-    public:
-            // fixed set of material parameters currently.
-        Float3 _materialDiffuse;    float _opacity;
-        Float3 _materialSpecular;   float _alphaThreshold;
-    };
-
     static bool SetupState(
         RenderCore::Metal::DeviceContext& devContext, 
         RenderCore::Techniques::ParsingContext& parsingContext,
@@ -125,39 +119,27 @@ namespace GUILayer
             using namespace RenderCore;
             const auto techniqueIndex = 0u;
 
-            Techniques::TechniqueInterface techniqueInterface(vf._inputLayout);
-            Techniques::TechniqueContext::BindGlobalUniforms(techniqueInterface);
-            techniqueInterface.BindConstantBuffer(Hash64("LocalTransform"), 0, 1);
-            techniqueInterface.BindConstantBuffer(Hash64("BasicMaterialConstants"), 1, 1);
-
             static ParameterBox materialParameters({std::make_pair("MAT_SKIP_LIGHTING_SCALE", "1")});
-            const ParameterBox* state[] = {
-                &vf._geoParams, &parsingContext.GetTechniqueContext()._globalEnvironmentState,
-                &parsingContext.GetTechniqueContext()._runtimeState, &materialParameters
-            };
+            Techniques::TechniqueMaterial material(
+                vf._inputLayout,
+                {Techniques::ObjectCBs::LocalTransform, Techniques::ObjectCBs::BasicMaterialConstants},
+                materialParameters);
 
-            auto& shaderType = ::Assets::GetAssetDep<Techniques::ShaderType>("game/xleres/illum.txt");
-            auto variation = shaderType.FindVariation(techniqueIndex, state, techniqueInterface);
+            auto variation = material.FindVariation(parsingContext, techniqueIndex,"game/xleres/illum.txt");
             if (variation._shaderProgram == nullptr) {
                 return false; // we can't render because we couldn't resolve a good shader variation
             }
 
-            BasicMaterialConstants matConstants = 
-            {
-                Float3(color[0], color[1], color[2]), 1.f,
-                Float3(0.f, 0.f, 0.f), 0.33f
-            };
-
-            RenderCore::Metal::ConstantBufferPacket cpkts[] = { 
-                Techniques::MakeLocalTransformPacket(Transpose(*(Float4x4*)xform), Float3(0.f, 0.f, 0.f)),
-                MakeSharedPkt(matConstants)
-            };
-
-            devContext.Bind(*variation._shaderProgram);
-            devContext.Bind(*variation._boundLayout);
-            variation._boundUniforms->Apply(devContext,
-                parsingContext.GetGlobalUniformsStream(), 
-                Metal::UniformsStream(cpkts, nullptr, dimof(cpkts)));
+            variation.Apply(
+                devContext, parsingContext,
+                {
+                    Techniques::MakeLocalTransformPacket(Transpose(*(Float4x4*)xform), Float3(0.f, 0.f, 0.f)),
+                    MakeSharedPkt(
+                        Techniques::BasicMaterialConstants 
+                        { 
+                            Float3(color[0], color[1], color[2]), 1.f, Float3(0.f, 0.f, 0.f), 0.33f 
+                        })
+                });
             return true;
         }
         CATCH (const ::Assets::Exceptions::InvalidResource&) {}

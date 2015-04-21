@@ -13,6 +13,8 @@
 #include "../../SceneEngine/LightDesc.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Techniques/Techniques.h"
+#include "../../RenderCore/Techniques/TechniqueMaterial.h"
+#include "../../RenderCore/Techniques/CommonBindings.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/InputLayout.h"
 #include "../../RenderCore/IThreadContext.h"
@@ -486,7 +488,7 @@ namespace ToolsRig
             std::vector<RenderCore::Metal::ConstantBufferPacket> constantBufferPackets;
             constantBufferPackets.push_back(
                 Techniques::MakeLocalTransformPacket(Identity<Float4x4>(), GetCameraDesc()));
-            boundLayout.BindConstantBuffer(Hash64("LocalTransform"), 0, 1);
+            boundLayout.BindConstantBuffer(Techniques::ObjectCBs::LocalTransform, 0, 1);
             for (auto i=materialConstants.cbegin(); i!=materialConstants.cend(); ++i) {
                 boundLayout.BindConstantBuffer(i->first, unsigned(constantBufferPackets.size()), 1);
                 constantBufferPackets.push_back(std::move(i->second));

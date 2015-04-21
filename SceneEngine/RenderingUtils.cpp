@@ -7,6 +7,7 @@
 #include "RenderingUtils.h"
 #include "LightingParserContext.h"
 #include "../RenderCore/Techniques/Techniques.h"
+#include "../RenderCore/Techniques/CommonBindings.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/RenderUtils.h"
@@ -66,8 +67,7 @@ namespace SceneEngine
                                 sizeof(Vertex), 0);
 
             BoundUniforms boundLayout(shaderProgram);
-            static const auto HashLocalTransform = Hash64("LocalTransform");
-            boundLayout.BindConstantBuffer(HashLocalTransform, 0, 1); // , RenderCore::Assets::LocalTransform_Elements, RenderCore::Assets::LocalTransform_ElementsCount);
+            boundLayout.BindConstantBuffer(ObjectCBs::LocalTransform, 0, 1);
             TechniqueContext::BindGlobalUniforms(boundLayout);
             boundLayout.Apply(*context, 
                 parserContext.GetGlobalUniformsStream(),

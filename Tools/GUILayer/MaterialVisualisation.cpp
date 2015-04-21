@@ -10,6 +10,7 @@
 #include "../../RenderCore/Assets/Material.h"
 #include "../../RenderCore/Assets/AssetUtils.h"
 #include "../../RenderCore/Techniques/Techniques.h"
+#include "../../RenderCore/Techniques/TechniqueMaterial.h"
 #include "../../SceneEngine/LightingParserContext.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Utility/StringFormat.h"
@@ -34,7 +35,7 @@ namespace GUILayer
 
         {
             using namespace RenderCore;
-            Techniques::TechniqueInterface techniqueInterface(Metal::GlobalInputLayouts::PNTT);
+            using namespace RenderCore::Techniques;
 
             static const auto DefaultNormalsTextureBindingHash = Hash64("NormalsTexture");
             ParameterBox materialParameters = obj._parameters._matParams;
@@ -48,20 +49,14 @@ namespace GUILayer
                 }
             }
 
-            ParameterBox geoParameters;
-            geoParameters.SetParameter("GEO_HAS_NORMAL", 1);
-            geoParameters.SetParameter("GEO_HAS_TEXCOORD", 1);
-            geoParameters.SetParameter("GEO_HAS_TANGENT_FRAME", 1);
-            const ParameterBox* state[] = {
-                &geoParameters, &parserContext.GetTechniqueContext()._globalEnvironmentState,
-                &parserContext.GetTechniqueContext()._runtimeState, &materialParameters
-            };
+            TechniqueMaterial material(
+                Metal::GlobalInputLayouts::PNTT,
+                {}, materialParameters);
 
             const unsigned techniqueIndex = 
                 (_settings->Lighting == MaterialVisSettings::LightingType::Deferred) ? 2 : 0;
 
-            auto& shaderType = ::Assets::GetAssetDep<Techniques::ShaderType>("game/xleres/illum.txt");
-            auto variation = shaderType.FindVariation(techniqueIndex, state, techniqueInterface);
+            auto variation = material.FindVariation(parserContext, techniqueIndex, "game/xleres/illum.txt");
             if (variation._shaderProgram == nullptr) {
                 return; // we can't render because we couldn't resolve a good shader variation
             }
