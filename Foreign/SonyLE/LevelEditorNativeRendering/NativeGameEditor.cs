@@ -50,22 +50,16 @@ namespace RenderingInterop
             // register NativeGameWorldAdapter on game type.
             m_schemaLoader.GameType.Define(new ExtensionInfo<NativeDocumentAdapter>());
 
-            var knownBoundableTypes = new List<DomNodeType>();
-
             // parse schema annotation.
             foreach (DomNodeType domType in m_schemaLoader.TypeCollection.GetNodeTypes())
             {
-                IEnumerable<XmlNode> annotations = domType.GetTagLocal<IEnumerable<XmlNode>>();
-                if (annotations == null)
+                var topLevelAnnotations = domType.GetTagLocal<IEnumerable<XmlNode>>();
+                if (topLevelAnnotations == null)
                     continue;
 
-
-                bool isBoundableType = false;
-
-                // collect all the properties that only exist in native side.
+                    // First, go through and interpret the annotations that are not inherited
                 List<NativeAttributeInfo> nativeAttribs = new List<NativeAttributeInfo>();
-
-                foreach (XmlNode annot in annotations)
+                foreach (XmlNode annot in topLevelAnnotations)
                 {
                     XmlElement elm = annot as XmlElement;
                     if (elm.LocalName == NativeAnnotations.NativeType)
@@ -82,57 +76,75 @@ namespace RenderingInterop
                         if (domType.IsAbstract == false)
                             domType.Define(new ExtensionInfo<NativeDocumentAdapter>());
                     }
-                    else if (elm.LocalName == NativeAnnotations.NativeProperty)
+                }
+
+                if (domType.GetTag(NativeAnnotations.NativeType) == null) continue;
+                uint typeId = (uint)domType.GetTag(NativeAnnotations.NativeType);
+                bool isBoundableType = false;
+
+                // Now, go through and interpret annotations that can be inheritted from base clases.
+                // Sometimes a native property can be inheritted from a base class. In this model, we
+                // will create a separate "property id" for each concrete class. When a property is 
+                // inheritted, the "property ids" for each type in the inheritance chain will be different
+                // and unrelated.
+
+                foreach (var inherittedType in domType.Lineage)
+                {
+                    var annotations = inherittedType.GetTagLocal<IEnumerable<XmlNode>>();
+                    if (annotations == null)
+                        continue;
+
+                    foreach (XmlNode annot in annotations)
                     {
+                        XmlElement elm = annot as XmlElement;
+                        if (elm.LocalName == NativeAnnotations.NativeProperty)
+                        {
                             // find a prop name and added to the attribute.
-                        string nativePropName = elm.GetAttribute(NativeAnnotations.NativeName);
-                        string attribName = elm.GetAttribute(NativeAnnotations.Name);
-                        uint typeId = (uint)domType.GetTag(NativeAnnotations.NativeType);
-                        uint propId = GameEngine.GetObjectPropertyId(typeId, nativePropName);
-                        if(!string.IsNullOrEmpty(attribName))
-                        {
-                            AttributeInfo attribInfo = domType.GetAttributeInfo(elm.GetAttribute(NativeAnnotations.Name));
-                            attribInfo.SetTag(NativeAnnotations.NativeProperty, propId);                            
-                        }
-                        else
-                        {
-                            NativeAttributeInfo attribInfo = new NativeAttributeInfo(domType,nativePropName,typeId,propId);
-                            nativeAttribs.Add(attribInfo);
-                        }
+                            string nativePropName = elm.GetAttribute(NativeAnnotations.NativeName);
+                            string attribName = elm.GetAttribute(NativeAnnotations.Name);
+                            uint propId = GameEngine.GetObjectPropertyId(typeId, nativePropName);
+                            if (!string.IsNullOrEmpty(attribName))
+                            {
+                                AttributeInfo attribInfo = domType.GetAttributeInfo(elm.GetAttribute(NativeAnnotations.Name));
+                                attribInfo.SetTag(NativeAnnotations.NativeProperty, propId);
+                            }
+                            else
+                            {
+                                NativeAttributeInfo attribInfo = new NativeAttributeInfo(domType, nativePropName, typeId, propId);
+                                nativeAttribs.Add(attribInfo);
+                            }
 
-                        if (nativePropName == "Bounds" || nativePropName == "LocalBounds")
-                        {
-                            isBoundableType = true;
+                            if (nativePropName == "Bounds" || nativePropName == "LocalBounds")
+                            {
+                                isBoundableType = true;
+                            }
                         }
-                    }
-                    else if (elm.LocalName == NativeAnnotations.NativeElement)
-                    {                        
-                        ChildInfo info = domType.GetChildInfo(elm.GetAttribute(NativeAnnotations.Name));
-                        uint typeId = (uint)domType.GetTag(NativeAnnotations.NativeType);
-                        string name = elm.GetAttribute(NativeAnnotations.NativeName);
-                        info.SetTag(NativeAnnotations.NativeElement, GameEngine.GetObjectChildListId(typeId, name));
-                    }
-                    else if (elm.LocalName == NativeAnnotations.NativeVis)
-                    {
-                        uint typeId = (uint)domType.GetTag(NativeAnnotations.NativeType);
-
-                        using (var transfer = new NativeObjectAdapter.NativePropertyTransfer())
+                        else if (elm.LocalName == NativeAnnotations.NativeElement)
                         {
-                            using (var stream = transfer.CreateStream())
-                                foreach (var a in elm.Attributes)
-                                {
-                                    var attrib = a as XmlAttribute;
-                                    if (attrib.Name == "geo")
+                            ChildInfo info = domType.GetChildInfo(elm.GetAttribute(NativeAnnotations.Name));
+                            string name = elm.GetAttribute(NativeAnnotations.NativeName);
+                            info.SetTag(NativeAnnotations.NativeElement, GameEngine.GetObjectChildListId(typeId, name));
+                        }
+                        else if (elm.LocalName == NativeAnnotations.NativeVis)
+                        {
+                            using (var transfer = new NativeObjectAdapter.NativePropertyTransfer())
+                            {
+                                using (var stream = transfer.CreateStream())
+                                    foreach (var a in elm.Attributes)
                                     {
-                                        NativeObjectAdapter.PushAttribute(
-                                            0,
-                                            typeof(string), 1,
-                                            attrib.Value,
-                                            transfer.Properties, stream);
+                                        var attrib = a as XmlAttribute;
+                                        if (attrib.Name == "geo")
+                                        {
+                                            NativeObjectAdapter.PushAttribute(
+                                                0,
+                                                typeof(string), 1,
+                                                attrib.Value,
+                                                transfer.Properties, stream);
+                                        }
                                     }
-                                }
 
-                            GameEngine.SetTypeAnnotation(typeId, "vis", transfer.Properties);
+                                GameEngine.SetTypeAnnotation(typeId, "vis", transfer.Properties);
+                            }
                         }
                     }
                 }
@@ -142,25 +154,8 @@ namespace RenderingInterop
                     domType.SetTag(nativeAttribs.ToArray());
                 }
 
-                    // if we have any boundable types in our lineage, then we should be boundable ourselves
-                if (!isBoundableType)
-                {
-                    foreach(var type in domType.Lineage)
-                    {
-                        if (knownBoundableTypes.Contains(type))
-                        {
-                            isBoundableType = true;
-                            break;
-                        }
-                    }
-                }
-
-                if (isBoundableType)
-                {
-                    if (domType.IsAbstract == false)
-                        domType.Define(new ExtensionInfo<BoundableObject>());
-                    knownBoundableTypes.Add(domType);
-                }
+                if (isBoundableType && domType.IsAbstract == false)
+                    domType.Define(new ExtensionInfo<BoundableObject>());
             }
 
             
