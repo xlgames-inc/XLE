@@ -80,8 +80,6 @@ namespace GUILayer { namespace EditorDynamicInterface
 
         bool SetSingleProperties(Object& dest, const RegisteredObjectType& type, const PropertyInitializer& initializer) const;
     };
-
-    ::Assets::rstring GetRString(const ParameterBox& paramBox, ParameterBox::ParameterNameHash name);
 }}
 
 

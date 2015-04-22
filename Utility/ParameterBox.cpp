@@ -10,6 +10,7 @@
 #include "StringUtils.h"
 #include "IteratorUtils.h"
 #include "StringFormat.h"
+#include "Conversion.h"
 #include "../ConsoleRig/Log.h"
 #include <algorithm>
 #include <utility>
@@ -632,6 +633,54 @@ namespace Utility
         return ImpliedTyping::TypeDesc(ImpliedTyping::TypeCat::Void, 0);
     }
 
+    template<typename CharType> std::basic_string<CharType> ParameterBox::GetString(ParameterNameHash name) const
+    {
+        auto type = GetParameterType(name);
+        if (type._type == ImpliedTyping::TypeCat::Int8 || type._type == ImpliedTyping::TypeCat::UInt8) {
+            std::basic_string<char> result;
+            result.resize(std::max(1u, (unsigned)type._arrayCount));
+            GetParameter(name, AsPointer(result.begin()), type);
+            return Conversion::Convert<std::basic_string<CharType>>(result);
+        }
+
+        if (type._type == ImpliedTyping::TypeCat::Int16 || type._type == ImpliedTyping::TypeCat::UInt16) {
+            std::basic_string<wchar_t> wideResult;
+            wideResult.resize(std::max(1u, (unsigned)type._arrayCount));
+            GetParameter(name, AsPointer(wideResult.begin()), type);
+            return Conversion::Convert<std::basic_string<CharType>>(wideResult);
+        }
+
+        return std::basic_string<CharType>();
+    }
+
+    template<typename CharType> bool ParameterBox::GetString(ParameterNameHash name, CharType dest[], size_t destCount) const
+    {
+        auto type = GetParameterType(name);
+        if (type._type == ImpliedTyping::TypeCat::Int8 || type._type == ImpliedTyping::TypeCat::UInt8) {
+            std::basic_string<char> intermediate;
+            intermediate.resize(std::max(1u, (unsigned)type._arrayCount));
+            GetParameter(name, AsPointer(intermediate.begin()), type);
+
+            bool result = Conversion::Convert(dest, destCount-1,
+                AsPointer(intermediate.begin()), AsPointer(intermediate.end()));
+            dest[std::min(destCount-1, intermediate.size())] = CharType(0);
+            return result;
+        }
+
+        if (type._type == ImpliedTyping::TypeCat::Int16 || type._type == ImpliedTyping::TypeCat::UInt16) {
+            std::basic_string<wchar_t> intermediate;
+            intermediate.resize(std::max(1u, (unsigned)type._arrayCount));
+            GetParameter(name, AsPointer(intermediate.begin()), type);
+
+            bool result = Conversion::Convert(dest, destCount-1,
+                AsPointer(intermediate.begin()), AsPointer(intermediate.end()));
+            dest[std::min(destCount-1, intermediate.size())] = CharType(0);
+            return result;
+        }
+
+        return false;
+    }
+
     template void ParameterBox::SetParameter(const char name[], uint32 value);
     template std::pair<bool, uint32> ParameterBox::GetParameter(const char name[]) const;
     template std::pair<bool, uint32> ParameterBox::GetParameter(ParameterNameHash name) const;
@@ -687,6 +736,17 @@ namespace Utility
     template std::pair<bool, UInt4> ParameterBox::GetParameter(const char name[]) const;
     template std::pair<bool, UInt4> ParameterBox::GetParameter(ParameterNameHash name) const;
 
+    template std::basic_string<char> ParameterBox::GetString(ParameterNameHash name) const;
+    template std::basic_string<wchar_t> ParameterBox::GetString(ParameterNameHash name) const;
+    template std::basic_string<utf8> ParameterBox::GetString(ParameterNameHash name) const;
+    template std::basic_string<ucs2> ParameterBox::GetString(ParameterNameHash name) const;
+    template std::basic_string<ucs4> ParameterBox::GetString(ParameterNameHash name) const;
+
+    template bool ParameterBox::GetString(ParameterNameHash name, char dest[], size_t destCount) const;
+    template bool ParameterBox::GetString(ParameterNameHash name, wchar_t dest[], size_t destCount) const;
+    template bool ParameterBox::GetString(ParameterNameHash name, utf8 dest[], size_t destCount) const;
+    template bool ParameterBox::GetString(ParameterNameHash name, ucs2 dest[], size_t destCount) const;
+    template bool ParameterBox::GetString(ParameterNameHash name, ucs4 dest[], size_t destCount) const;
 
     uint64      ParameterBox::CalculateParameterNamesHash() const
     {

@@ -6,48 +6,82 @@
 
 #pragma once
 
-#include "StringUtils.h"
 #include "../Core/Types.h"
+#include "UTFUtils.h"
+#include "StringUtils.h"
+#include <string>
 
 namespace Conversion
 {
-    template<typename Output, typename Input>
-        Output Convert(Input input);
+    template<typename Output> Output Convert(uint64);
+    template<typename Output> Output Convert(const char[]);
+    template<typename Type> const Type& Convert(const Type& input) { return input; }
 
-    template<> inline std::basic_string<char> Convert(uint64 input)
+    template<typename Output> Output Convert(const std::basic_string<wchar_t>& input);
+    template<typename Output> Output Convert(const std::basic_string<utf8>& input);
+    template<typename Output> Output Convert(const std::basic_string<ucs2>& input);
+    template<typename Output> Output Convert(const std::basic_string<ucs4>& input);
+
+    template<typename OutputElement, typename InputElement>
+        bool Convert(
+            OutputElement output[], size_t outputDim,
+            const InputElement* begin, const InputElement* end);
+
+    template<typename OutputElement, typename InputElement>
+        bool Convert(
+            OutputElement output[], size_t outputDim,
+            const std::basic_string<InputElement>& str);
+
+    template<typename OutputElement, typename InputElement>
+        bool ConvertNullTerminated(
+            OutputElement output[], size_t outputDim,
+            const InputElement* begin);
+
+    template<typename OutputElement, typename InputElement>
+        bool ConvertNullTerminated(
+            OutputElement output[], size_t outputDim,
+            const InputElement* begin)
+        {
+            if (outputDim <= 1) return false;
+            return Convert(output, outputDim-1, begin, begin+inputLen);
+        }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+        // We want "char" and "wchar_t" to behave as "utf8" and "uc2", respectively
+
+    template<typename Output> Output Convert(const std::basic_string<char>& input)
     {
-        char buffer[64];
-        XlUI64toA(input, buffer, dimof(buffer), 10);
-        return buffer;
+        return Convert<Output>(reinterpret_cast<const std::basic_string<utf8>&>(input));
     }
 
-    template<> inline std::basic_string<wchar_t> Convert(uint64 input)
+    template<typename Output> Output Convert(const std::basic_string<wchar_t>& input)
     {
-        wchar_t buffer[64];
-        _ui64tow_s(input, buffer, dimof(buffer), 10);
-        return buffer;
+        return Convert<Output>(reinterpret_cast<const std::basic_string<ucs2>&>(input));
     }
 
-    template<> inline float Convert<float, const char*>(const char input[])    { return XlAtoF32(input); }
-    template<> inline uint32 Convert<uint32, const char*>(const char input[])  { return XlAtoUI32(input); }
-    template<> inline int32 Convert<int32, const char*>(const char input[])    { return XlAtoI32(input); }
+    template<> inline std::basic_string<char> Convert(const std::basic_string<char>& input) { return input; }
+    template<> inline std::basic_string<wchar_t> Convert(const std::basic_string<wchar_t>& input) { return input; }
+    template<> inline std::basic_string<utf8> Convert(const std::basic_string<utf8>& input) { return input; }
+    template<> inline std::basic_string<ucs2> Convert(const std::basic_string<ucs2>& input) { return input; }
+    template<> inline std::basic_string<ucs4> Convert(const std::basic_string<ucs4>& input) { return input; }
 
-    template<> inline float Convert<float, char*>(char input[])    { return XlAtoF32(input); }
-    template<> inline uint32 Convert<uint32, char*>(char input[])  { return XlAtoUI32(input); }
-    template<> inline int32 Convert<int32, char*>(char input[])    { return XlAtoI32(input); }
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    template<> inline bool Convert<bool, const char*>(const char input[])    
+    template<typename OutputElement, typename InputElement>
+        bool Convert(
+            OutputElement output[], size_t outputDim,
+            const std::basic_string<InputElement>& str)
     {
-        if (    !XlCompareStringI(input, "true")
-            ||  !XlCompareStringI(input, "yes")
-            ||  !XlCompareStringI(input, "t")
-            ||  !XlCompareStringI(input, "y")) {
-            return true;
-        }
-        int asInt = 0;
-        if (XlSafeAtoi(input, &asInt)) {
-            return !!asInt;
-        }
-        return false;
+        return Convert(output, outputDim, AsPointer(str.cbegin()), AsPointer(str.cend()));
+    }
+
+    template<typename Element>
+        bool Convert(
+            Element output[], size_t outputDim,
+            const Element* begin, const Element* end)
+    {
+        XlCopyNString(output, outputDim, begin, end-begin);
+        return true;
     }
 }

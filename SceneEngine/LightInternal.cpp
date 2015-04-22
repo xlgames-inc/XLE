@@ -4,6 +4,7 @@
 #include "../Math/Transformations.h"
 #include "../Math/ProjectionMath.h"
 #include "../Utility/MemoryUtils.h"
+#include "../Utility/ParameterBox.h"
 
 namespace SceneEngine
 {
@@ -142,9 +143,41 @@ namespace SceneEngine
     }
 
     GlobalLightingDesc::GlobalLightingDesc() 
-    : _ambientLight(0.f, 0.f, 0.f), _skyTexture(nullptr)
+    : _ambientLight(0.f, 0.f, 0.f), _skyReflectionScale(1.0f)
     , _doAtmosphereBlur(false), _doOcean(false), _doToneMap(false), _doVegetationSpawn(false) 
-    {}
+    {
+        _skyTexture[0] = '\0';
+    }
+
+    static Float3 AsFloat3Color(unsigned packedColor)
+    {
+        return Float3(
+            (float)((packedColor >> 16) & 0xff) / 255.f,
+            (float)((packedColor >>  8) & 0xff) / 255.f,
+            (float)(packedColor & 0xff) / 255.f);
+    }
+
+    GlobalLightingDesc::GlobalLightingDesc(const ParameterBox& props)
+    : GlobalLightingDesc()
+    {
+        static const auto ambientHash = ParameterBox::MakeParameterNameHash("ambientlight");
+        static const auto ambientBrightnessHash = ParameterBox::MakeParameterNameHash("ambientbrightness");
+        static const auto skyTextureHash = ParameterBox::MakeParameterNameHash("skytexture");
+        static const auto skyReflectionScaleHash = ParameterBox::MakeParameterNameHash("skyreflectionscale");
+        static const auto flagsHash = ParameterBox::MakeParameterNameHash("flags");
+
+        _ambientLight = 
+            props.GetParameter(ambientBrightnessHash, 1.f) * AsFloat3Color(props.GetParameter(ambientHash, ~0x0u));
+
+        _skyReflectionScale = props.GetParameter(skyReflectionScaleHash, 1.f);
+
+        auto flags = props.GetParameter<int>(flagsHash);
+        if (flags.first) {
+            _doToneMap = flags.second & (1<<0);
+        }
+
+        props.GetString(skyTextureHash, _skyTexture, dimof(_skyTexture));
+    }
 
     ShadowProjectionDesc::ShadowProjectionDesc()
     {

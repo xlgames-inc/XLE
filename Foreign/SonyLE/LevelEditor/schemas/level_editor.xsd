@@ -9,7 +9,7 @@
   <xs:include schemaLocation="gameobject.xsd"/>
   <xs:include schemaLocation="prototypes.xsd"/>
   <xs:include schemaLocation="editorobjects.xsd"/>
-  <xs:include schemaLocation="env.xsd"/>
+  <xs:include schemaLocation="xleenv.xsd"/>
   
   <!-- Render component, a game component that contains or generate renderable geometry-->
     <xs:complexType name="renderComponentType" abstract="true">

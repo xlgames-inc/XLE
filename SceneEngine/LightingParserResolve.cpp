@@ -187,7 +187,7 @@ namespace SceneEngine
 
             auto skyTexture = parserContext.GetSceneParser()->GetGlobalLightingDesc()._skyTexture;
             unsigned skyTextureProjection = 0;
-            if (skyTexture) {
+            if (skyTexture[0]) {
                 SkyTextureParts parts(skyTexture);
                 skyTextureProjection = parts._projectionType;
                 SkyTexture_BindPS(context, parserContext, parts, 11);
@@ -207,8 +207,10 @@ namespace SceneEngine
                 // note -- if we do ambient first, we can avoid this clear (by rendering the ambient opaque)
             float clearColour[] = { 0.f, 0.f, 0.f, 1.f };
             context->Clear(lightingResTargets._lightingResolveRTV, clearColour);
-            auto skyColour = parserContext.GetSceneParser()->GetGlobalLightingDesc()._ambientLight;
-            struct AmbientLightBuffer { Float3 AmbientColour; float dummy; } ambientLightBuffer = { Float3(skyColour[0], skyColour[1], skyColour[2]), 0.f };
+            const auto& desc = parserContext.GetSceneParser()->GetGlobalLightingDesc();
+            struct AmbientLightBuffer { Float3 AmbientColour; float skyReflectionScale; } ambientLightBuffer = { 
+                desc._ambientLight, desc._skyReflectionScale
+            };
             auto ambientLightPacket = MakeSharedPkt(ambientLightBuffer);
                        
             const unsigned passCount = (doSampleFrequencyOptimisation && samplingCount > 1)?2:1;

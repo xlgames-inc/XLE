@@ -128,9 +128,9 @@ namespace GUILayer
                 if (!strataObj) continue;
 
                 SceneEngine::TerrainMaterialScaffold::Strata newStrata;
-                newStrata._texture[0] = GetRString(strataObj->_properties, texture0);
-                newStrata._texture[1] = GetRString(strataObj->_properties, texture1);
-                newStrata._texture[2] = GetRString(strataObj->_properties, texture2);
+                newStrata._texture[0] = strataObj->_properties.GetString<::Assets::ResChar>(texture0);
+                newStrata._texture[1] = strataObj->_properties.GetString<::Assets::ResChar>(texture1);
+                newStrata._texture[2] = strataObj->_properties.GetString<::Assets::ResChar>(texture2);
                 newStrata._mappingConstant[0] = strataObj->_properties.GetParameter<float>(mapping0, 10.f);
                 newStrata._mappingConstant[1] = strataObj->_properties.GetParameter<float>(mapping1, 10.f);
                 newStrata._mappingConstant[2] = strataObj->_properties.GetParameter<float>(mapping2, 10.f);

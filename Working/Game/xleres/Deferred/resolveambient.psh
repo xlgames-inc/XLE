@@ -14,6 +14,7 @@
 cbuffer AmbientLightBuffer
 {
 	float3	AmbientColour;
+	float 	SkyReflectionScale;
 }
 
 #if defined(TILED_LIGHTS_RESOLVE_MS)
@@ -69,8 +70,6 @@ float CalculateReflectionFresnel(GBufferValues sample, float3 viewDirection)
 {
 	float F0 = Material_GetF0_0(sample);
 
-	// return saturate(sample.worldSpaceNormal);
-
 	float3 worldSpaceReflection = reflect(-viewDirection, sample.worldSpaceNormal);
 	float3 halfVector = normalize(worldSpaceReflection + viewDirection);
 	float fresnel = SchlickFresnelF0(viewDirection, halfVector, F0);
@@ -79,8 +78,6 @@ float CalculateReflectionFresnel(GBufferValues sample, float3 viewDirection)
 
 float3 CalculateSkyReflections(GBufferValues sample, float3 viewDirection, float fresnel)
 {
-	// sample.cookedAmbientOcclusion = 3.f * (sample.cookedAmbientOcclusion - .66f);
-	float3 specularColor = 1.0.xxx;
 	float3 worldSpaceReflection = reflect(-viewDirection, sample.worldSpaceNormal);
 
 	float roughness = Material_GetRoughness(sample);
@@ -91,7 +88,7 @@ float3 CalculateSkyReflections(GBufferValues sample, float3 viewDirection, float
 	reflSampl = SRGBToLinear(reflSampl);
 	reflSampl += Material_GetReflectionBoost(sample).xxx;
 
-	return reflSampl * lerp(1.0.xxx, specularColor, metal) * (specular * fresnel * sample.cookedAmbientOcclusion);
+	return reflSampl * lerp(sample.diffuseAlbedo, 1.0.xxx, metal) * (specular * fresnel * sample.cookedAmbientOcclusion);
 }
 
 /////////////////////////////////////////
@@ -152,12 +149,14 @@ float4 ResolveAmbient(	float4 position : SV_Position,
 						float3 viewFrustumVector : VIEWFRUSTUMVECTOR,
 						SystemInputs sys) : SV_Target0
 {
-	int2 pixelCoords	= position.xy;
+	int2 pixelCoords = position.xy;
 	GBufferValues sample = LoadGBuffer(position, sys);
 	float3 result = BasicAmbient(pixelCoords, sys, sample);
+	float3 viewDirection = -normalize(viewFrustumVector);
 
-	float fresnel = CalculateReflectionFresnel(sample, normalize(-viewFrustumVector));
-	float3 skyReflections = 0.25f * LightingScale * CalculateSkyReflections(sample, normalize(-viewFrustumVector), fresnel);
+	float fresnel = CalculateReflectionFresnel(sample, viewDirection);
+
+	float3 skyReflections = SkyReflectionScale * LightingScale * CalculateSkyReflections(sample, viewDirection, fresnel);
 	#if CALCULATE_SCREENSPACE_REFLECTIONS==1
 			//	The "screen space" reflections block out the sky reflections.
 			//	If we get a collision with the screen space reflections, then we need

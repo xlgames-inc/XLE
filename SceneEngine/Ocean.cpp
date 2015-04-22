@@ -1047,9 +1047,9 @@ namespace SceneEngine
         //////////////////////////////////////////////////////////////////////////////
         
         unsigned skyProjectionType = 0;
-        if (parserContext.GetSceneParser()->GetGlobalLightingDesc()._skyTexture) {
-            skyProjectionType = SkyTexture_BindPS(context, parserContext, 
-                parserContext.GetSceneParser()->GetGlobalLightingDesc()._skyTexture, 6);
+        auto skyTexture = parserContext.GetSceneParser()->GetGlobalLightingDesc()._skyTexture;
+        if (skyTexture[0]) {
+            skyProjectionType = SkyTexture_BindPS(context, parserContext, skyTexture, 6);
         }
 
         bool doDynamicReflection = OceanReflectionResource.GetUnderlying() != nullptr;

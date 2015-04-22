@@ -10,7 +10,7 @@
   <xs:include schemaLocation="xleplacements.xsd"/>
   <xs:include schemaLocation="xleterrain.xsd"/>
   <xs:include schemaLocation="transformobject.xsd"/>
-  <xs:include schemaLocation="env.xsd"/>
+  <xs:include schemaLocation="xleenv.xsd"/>
 
   <!--  base type of all the components that can be added to game object-->
     <xs:complexType name="gameObjectComponentType" abstract="true">

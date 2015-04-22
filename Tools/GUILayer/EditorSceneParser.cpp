@@ -86,8 +86,6 @@ namespace GUILayer
             PlatformRig::DefaultShadowFrustumSettings _shadowFrustumSettings;
         };
         std::vector<ShadowProj> _shadowProj;
-
-        ::Assets::rstring _skyTextureBuffer;
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -154,7 +152,7 @@ namespace GUILayer
     {
         GlobalLightingDesc result;
         result._ambientLight = .03f * Float3(1.f, 1.f, 1.f);
-        result._skyTexture = "game/xleres/DefaultResources/sky/desertsky.jpg";
+        XlCopyString(result._skyTexture, "game/xleres/DefaultResources/sky/desertsky.jpg");
         result._doToneMap = true;
         return result;
     }
@@ -213,25 +211,7 @@ namespace GUILayer
                 if (!child) continue;
 
                 if (child->_type == typeAmbient) {
-                    static const auto ambientHash = ParameterBox::MakeParameterNameHash("ambientlight");
-                    static const auto ambientBrightnessHash = ParameterBox::MakeParameterNameHash("ambientbrightness");
-                    static const auto skyTextureHash = ParameterBox::MakeParameterNameHash("skytexture");
-                    static const auto flagsHash = ParameterBox::MakeParameterNameHash("flags");
-
-                    const auto& props = child->_properties;
-
-                    _globalLightingDesc._ambientLight = 
-                        props.GetParameter(ambientBrightnessHash, 1.f) * AsFloat3Color(props.GetParameter(ambientHash, ~0x0u));
-
-                    auto flags = props.GetParameter<int>(flagsHash);
-                    if (flags.first) {
-                        _globalLightingDesc._doToneMap = flags.second & (1<<0);
-                    }
-
-                    _skyTextureBuffer = GetRString(props, skyTextureHash);
-                    if (!_skyTextureBuffer.empty()) {
-                        _globalLightingDesc._skyTexture = _skyTextureBuffer.c_str();
-                    }
+                    _globalLightingDesc = GlobalLightingDesc(child->_properties);
                 }
 
                 if (child->_type == typeDirectionalLight) {

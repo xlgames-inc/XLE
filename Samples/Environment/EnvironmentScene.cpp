@@ -156,7 +156,7 @@ namespace Sample
         GlobalLightingDesc result;
         auto ambientScale = Tweakable("AmbientScale", 0.03f);
         result._ambientLight = Float3(1.f * ambientScale, 1.f * ambientScale, 1.f * ambientScale);
-        result._skyTexture = "game/xleres/DefaultResources/sky/desertsky.jpg";
+        XlCopyString(result._skyTexture, "game/xleres/DefaultResources/sky/desertsky.jpg");
         result._doToneMap = true;
         return result;
     }

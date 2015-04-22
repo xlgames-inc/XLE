@@ -21,6 +21,7 @@
 
 #include "../../Utility/TimeUtils.h"
 #include "../../Utility/StringFormat.h"
+#include "../../Utility/Conversion.h"
 #include "../../Math/Transformations.h"
 #include "../../Math/Geometry.h"
 #include <iomanip>
@@ -1287,9 +1288,7 @@ namespace ToolsRig
 
                     TRY {
                         ucs2 ucs2Filename[MaxPath];
-                        utf8_2_ucs2(
-                            (const utf8*)AsPointer(_selectedModel.cbegin()), _selectedModel.size(), 
-                            ucs2Filename, dimof(ucs2Filename));
+                        Conversion::Convert(ucs2Filename, dimof(ucs2Filename), _selectedModel);
 
                         auto browserSRV = _browser->GetSRV(*devContext, ucs2Filename);
                         srv = browserSRV.first;

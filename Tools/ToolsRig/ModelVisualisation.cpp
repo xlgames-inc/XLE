@@ -289,7 +289,6 @@ namespace ToolsRig
         {
             SceneEngine::GlobalLightingDesc result;
             result._ambientLight = 5.f * Float3(0.25f, 0.25f, 0.25f);
-            result._skyTexture = nullptr;
             result._doAtmosphereBlur = false;
             result._doOcean = false;
             result._doToneMap = false;

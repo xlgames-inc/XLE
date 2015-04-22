@@ -440,7 +440,7 @@ namespace SceneEngine
             context->BindPS(MakeResourceList(5, resources._maskShaderResource, resources._downsampledNormalsShaderResource));
             context->BindPS(MakeResourceList(10, resources._downsampledDepthShaderResource, resources._reflectionsShaderResource));
             auto skyTexture = parserContext.GetSceneParser()->GetGlobalLightingDesc()._skyTexture;
-            if (skyTexture) {
+            if (skyTexture[0]) {
                 SkyTexture_BindPS(context, parserContext, skyTexture, 7);
             }
 

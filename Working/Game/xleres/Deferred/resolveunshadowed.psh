@@ -10,7 +10,7 @@
 #include "resolveutil.h"
 
 float4 ResolveLightUnshadowed(	float4 position : SV_Position,
-								float2 texCoord : TEXCOORD0, 
+								float2 texCoord : TEXCOORD0,
 								float3 viewFrustumVector : VIEWFRUSTUMVECTOR,
 								SystemInputs sys) : SV_Target0
 {
@@ -19,7 +19,7 @@ float4 ResolveLightUnshadowed(	float4 position : SV_Position,
 
 	GBufferValues sample = LoadGBuffer(position, sys);
 	float3 diffuse = (1.0f - MO_Metallic) * CalculateDiffuse(sample, NegativeLightDirection, LightColour);
-	float3 specular = CalculateSpecular(sample, normalize(-viewFrustumVector), NegativeLightDirection, LightColour);
+	float3 specular = CalculateSpecularColor(sample, normalize(-viewFrustumVector), NegativeLightDirection, LightColour);
 
 	const float lightScale = LightingScale;
 	return float4((lightScale*sample.cookedAmbientOcclusion)*(diffuse + specular), 1.f);
@@ -27,7 +27,7 @@ float4 ResolveLightUnshadowed(	float4 position : SV_Position,
 
 
 float4 ResolvePointLightUnshadowed(	float4 position : SV_Position,
-									float2 texCoord : TEXCOORD0, 
+									float2 texCoord : TEXCOORD0,
 									float3 viewFrustumVector : VIEWFRUSTUMVECTOR,
 									SystemInputs sys) : SV_Target0
 {
@@ -36,7 +36,7 @@ float4 ResolvePointLightUnshadowed(	float4 position : SV_Position,
 	int2 pixelCoords = position.xy;
 	float3 worldPosition = CalculateWorldPosition(pixelCoords, GetSampleIndex(sys), viewFrustumVector);
 	GBufferValues sample = LoadGBuffer(position, sys);
-	
+
 	float3 lightVector = (NegativeLightDirection - worldPosition);
 	float distanceSq = dot(lightVector, lightVector);
 	float attenuation = DistanceAttenuation(distanceSq, LightPower);
@@ -45,10 +45,9 @@ float4 ResolvePointLightUnshadowed(	float4 position : SV_Position,
 	float D = distanceSq; D *= D; D *= D;
 	float R = LightRadius; R *= R; R *= R; R *= R;
 	float radiusDropOff = 1.f - saturate(3.f * D / R);
-	
+
 	float3 light	 = LightColour * directionalAttenuation;
 	return float4((attenuation*radiusDropOff)*sample.diffuseAlbedo.rgb*light, 1.f);
 }
 
 #endif
-

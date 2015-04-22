@@ -102,6 +102,9 @@ namespace Utility
         bool HasParameter(ParameterNameHash name) const;
         ImpliedTyping::TypeDesc GetParameterType(ParameterNameHash name) const;
 
+        template<typename CharType> std::basic_string<CharType> GetString(ParameterNameHash name) const;
+        template<typename CharType> bool GetString(ParameterNameHash name, CharType dest[], size_t destCount) const;
+
         uint64  GetHash() const;
         uint64  GetParameterNamesHash() const;
         uint64  CalculateFilteredHashValue(const ParameterBox& source) const;

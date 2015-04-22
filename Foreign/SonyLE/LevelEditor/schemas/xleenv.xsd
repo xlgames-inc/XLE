@@ -18,7 +18,9 @@
           editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,20"/>
         <scea.dom.editors.attribute category="Light" name="skytexture" displayName="Sky Texture"
           editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" 
-          converter="RenderingInterop.PropertyEditing.BaseTextureNameConverter,RenderingInterop"/>
+          converter="RenderingInterop.PropertyEditing.AssetNameConverter,RenderingInterop"/>
+        <scea.dom.editors.attribute category="Light" name="skyreflectionscale" displayName="Sky Reflection Scale" description="Scale for the reflection of the static sky image"
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,2"/>
         <scea.dom.editors.attribute category="Light" name="flags" displayName="Flags"
           editor="Sce.Atf.Controls.PropertyEditing.FlagsUITypeEditor,Atf.Gui.WinForms:DoToneMap"
           converter="Sce.Atf.Controls.PropertyEditing.FlagsTypeConverter:DoToneMap"/>
@@ -27,6 +29,7 @@
         <LeGe.NativeProperty name="ambientlight" nativeName="ambientlight"/>
         <LeGe.NativeProperty name="ambientbrightness" nativeName="ambientbrightness"/>
         <LeGe.NativeProperty name="skytexture" nativeName="skytexture"/>
+        <LeGe.NativeProperty name="skyreflectionscale" nativeName="skyreflectionscale"/>
         <LeGe.NativeProperty name="flags" nativeName="flags"/>
         <LeGe.NativeVis geo="sphere"/>
 
@@ -37,6 +40,7 @@
     <xs:attribute name="ambientlight" type="xs:int" default="-1"/>
     <xs:attribute name="ambientbrightness" type="xs:float" default="1"/>
     <xs:attribute name="skytexture" type="xs:string"/>
+    <xs:attribute name="skyreflectionscale" type="xs:float" default="1"/>
     <xs:attribute name="flags" type="xs:int" default="0"/>
   </xs:complexType>
 

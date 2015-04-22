@@ -397,7 +397,7 @@ float4 ResolveLight(	float4 position : SV_Position,
 	GBufferValues sample = LoadGBuffer(position, sys);
 	float metal = Material_GetMetal(sample);
 	float3 diffuse = (1.0f - metal) * CalculateDiffuse(sample, NegativeLightDirection, LightColour);
-	float3 specular = CalculateSpecular(sample, normalize(-viewFrustumVector), NegativeLightDirection, LightColour);
+	float3 specular = CalculateSpecularColor(sample, normalize(-viewFrustumVector), NegativeLightDirection, LightColour);
 
 	const float lightScale = LightingScale;
 	return float4((lightScale*shadow*sample.cookedAmbientOcclusion)*(diffuse + specular), 1.f);

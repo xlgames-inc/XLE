@@ -198,7 +198,7 @@ namespace SceneEngine
         {
             using namespace RenderCore;
             auto skyTextureName = parserContext.GetSceneParser()->GetGlobalLightingDesc()._skyTexture;
-            if (!skyTextureName) return;
+            if (!skyTextureName[0]) return;
 
             SkyTextureParts textureParts(skyTextureName);
 
@@ -235,7 +235,7 @@ namespace SceneEngine
         {
             using namespace RenderCore;
             auto skyTextureName = parserContext.GetSceneParser()->GetGlobalLightingDesc()._skyTexture;
-            if (!skyTextureName) return;
+            if (!skyTextureName[0]) return;
 
             SkyTextureParts textureParts(skyTextureName);
 

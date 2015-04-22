@@ -315,9 +315,25 @@ void     XlCopyString        (utf8* dst, size_t size, const utf8* src)
     XlCopyString((char*)dst, size, (const char*)src);
 }
 
+void     XlCopyNString        (utf8* dst, size_t count, const utf8*src, size_t length)
+{
+    XlCopyNString((char*)dst, count, (const char*)src, length);
+}
+
 #if CLIBRARIES_ACTIVE == CLIBRARIES_MSVC
 
     #pragma warning(disable: 4995)
+
+    void XlCopyString(wchar_t* dst, size_t size, const wchar_t* src)
+    {
+        wcscpy_s((wchar_t*)dst, size, (const wchar_t*)src);
+    }
+
+    void XlCopyNString(wchar_t* dst, size_t count, const wchar_t*src, size_t length)
+    {
+        wcsncpy_s((wchar_t*)dst, count, (const wchar_t*)src, length);
+    }
+
     void XlCopyString(ucs2* dst, size_t count, const ucs2* src)
     {
         wcscpy_s((wchar_t*)dst, count, (const wchar_t*)src);

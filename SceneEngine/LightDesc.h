@@ -12,6 +12,7 @@
 #include "../Math/Vector.h"
 #include "../Core/Types.h"
 
+namespace Utility { class ParameterBox; }
 namespace SceneEngine
 {
 
@@ -129,8 +130,9 @@ namespace SceneEngine
     class GlobalLightingDesc
     {
     public:
-        Float3                      _ambientLight;
-        const ::Assets::ResChar*    _skyTexture;            ///< use "<texturename>_XX" when using a half cube style sky texture
+        Float3              _ambientLight;
+        ::Assets::ResChar   _skyTexture[MaxPath];            ///< use "<texturename>_XX" when using a half cube style sky texture
+        float               _skyReflectionScale;
 
         bool _doAtmosphereBlur;
         bool _doOcean;
@@ -138,6 +140,7 @@ namespace SceneEngine
         bool _doVegetationSpawn;
 
         GlobalLightingDesc();
+        GlobalLightingDesc(const Utility::ParameterBox& paramBox);
     };
 
     

@@ -43,6 +43,9 @@ namespace Utility
 
     XL_UTILITY_API uint32   XlHashString        (const char* x);
 
+    XL_UTILITY_API void     XlCopyString        (wchar_t* dst, size_t size, const wchar_t* src);
+    XL_UTILITY_API void     XlCopyNString       (wchar_t* dst, size_t count, const wchar_t*src, size_t length);
+
         ////////////   S T R I N G   C O M P A R I S O N S   ////////////
     XL_UTILITY_API int      XlComparePrefix     (const char* x, const char* y, size_t size);
     XL_UTILITY_API int      XlComparePrefixI    (const char* x, const char* y, size_t size);
@@ -80,6 +83,7 @@ namespace Utility
 
         ////////////   U T F 8   O V E R R I D E S   ////////////
     XL_UTILITY_API void     XlCopyString        (utf8* dst, size_t size, const utf8* src);
+    XL_UTILITY_API void     XlCopyNString       (utf8* dst, size_t count, const utf8*src, size_t length);
 
         ////////////   U C S 2   O V E R R I D E S   ////////////
     XL_UTILITY_API void     XlCopyString        (ucs2* dst, size_t size, const ucs2* src);

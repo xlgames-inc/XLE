@@ -45,6 +45,15 @@ namespace RenderingInterop.PropertyEditing
         protected virtual string UriToAssetName(Uri uri)
         {
             var resService = LevelEditorCore.Globals.MEFContainer.GetExportedValue<XLELayer.IXLEAssetService>();
+            return resService.AsAssetName(uri);
+        }
+    }
+
+    public class AssetNameNoExtConverter : TypeConverter
+    {
+        protected virtual string UriToAssetName(Uri uri)
+        {
+            var resService = LevelEditorCore.Globals.MEFContainer.GetExportedValue<XLELayer.IXLEAssetService>();
             return resService.StripExtension(resService.AsAssetName(uri));
         }
     }

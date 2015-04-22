@@ -175,7 +175,7 @@
     <EmbeddedResource Include="schemas\editorobjects.xsd">
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="schemas\env.xsd">
+    <EmbeddedResource Include="schemas\xleenv.xsd">
       <SubType>Designer</SubType>
     </EmbeddedResource>
     <None Include="schemas\GenSchemaDef.bat" />

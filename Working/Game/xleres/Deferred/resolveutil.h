@@ -54,10 +54,11 @@ float3 CalculateDiffuse(GBufferValues sample, float3 negativeLightDirection, flo
 	return light * lightColor * sample.diffuseAlbedo.rgb;
 }
 
-float3 CalculateSpecular(	GBufferValues sample,
-							float3 viewDirection,
-							float3 negativeLightDirection,
-							float3 lightColor)
+float3 CalculateSpecularColor(
+	GBufferValues sample,
+	float3 viewDirection,
+	float3 negativeLightDirection,
+	float3 lightColor)
 {
 	float roughnessValue = Material_GetRoughness(sample);
 

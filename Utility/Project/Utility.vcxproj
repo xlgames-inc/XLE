@@ -153,6 +153,7 @@
   <ItemGroup>
     <ClCompile Include="..\ArithmeticUtils.cpp" />
     <ClCompile Include="..\BitUtils.cpp" />
+    <ClCompile Include="..\Conversion.cpp" />
     <ClCompile Include="..\ExceptionUtils.cpp" />
     <ClCompile Include="..\HashUtils.cpp" />
     <ClCompile Include="..\HeapUtils.cpp" />

@@ -142,7 +142,7 @@ namespace SceneEngine
 
         TRY {
             auto skyTexture = parserContext.GetSceneParser()->GetGlobalLightingDesc()._skyTexture;
-            if (skyTexture) {
+            if (skyTexture[0]) {
                 SkyTexture_BindPS(context, parserContext, skyTexture, 7);
             }
 

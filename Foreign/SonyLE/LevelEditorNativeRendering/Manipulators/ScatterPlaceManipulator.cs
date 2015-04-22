@@ -69,7 +69,7 @@ namespace RenderingInterop
                                 "ModelName", "Model Name", category,
                                 "Name of the model to create and destroy",
                                 new Sce.Atf.Controls.PropertyEditing.FileUriEditor(),
-                                new PropertyEditing.AssetNameConverter()));
+                                new PropertyEditing.AssetNameNoExtConverter()));
                     }
 
                     return _propertyDescriptors;
