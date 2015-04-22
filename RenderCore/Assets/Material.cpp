@@ -23,12 +23,6 @@ namespace RenderCore { namespace Assets
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
     
-    void ResourceBinding::Serialize(Serialization::NascentBlockSerializer& serializer) const
-    {
-        Serialization::Serialize(serializer, _bindHash);
-        Serialization::Serialize(serializer, _resourceName);
-    }
-    
     void ResolvedMaterial::Serialize(Serialization::NascentBlockSerializer& serializer) const
     {
         Serialization::Serialize(serializer, _bindings);
@@ -401,30 +395,9 @@ namespace RenderCore { namespace Assets
 
         const auto* resourceBindings = source->ChildWithValue("ResourceBindings");
         if (resourceBindings) {
-            for (auto i=resourceBindings->child; i; i=i->next) {
-                if (i->value && i->value[0] && i->child) {
-                    const char* resource = i->child->value;
-                    if (resource && resource[0]) {
-                        uint64 hash = ~0ull;
-
-                            //  if we can parse the the name as hex, then well and good...
-                            //  otherwise, treat it as a string
-                        const char* endptr = nullptr;
-                        hash = XlAtoI64(i->value, &endptr, 16);
-                        if (!endptr || *endptr != '\0') {
-                            hash = Hash64(i->value, &i->value[XlStringLen(i->value)]);
-                        }
-
-                        auto i = std::lower_bound(
-                            _resourceBindings.begin(), _resourceBindings.end(),
-                            hash, ResourceBinding::Compare());
-
-                        if (i!=_resourceBindings.end() && i->_bindHash==hash) {
-                            i->_resourceName = resource;
-                        } else {
-                            _resourceBindings.insert(i, ResourceBinding(hash, resource));
-                        }
-                    }
+            for (auto child=resourceBindings->child; child; child=child->next) {
+                if (child->ChildAt(0)) {
+                    _resourceBindings.SetParameter(child->StrValue(), child->ChildAt(0)->StrValue());
                 }
             }
         }
@@ -482,12 +455,10 @@ namespace RenderCore { namespace Assets
             result->Add(WriteStringTable("Constants", constantsStringTable).release());
         }
 
-        if (!_resourceBindings.empty()) {
-            auto block = std::make_unique<Data>("ResourceBindings");
-            for (auto i=_resourceBindings.cbegin(); i!=_resourceBindings.cend(); ++i) {
-                block->SetAttribute(StringMeld<64>() << std::hex << i->_bindHash, i->_resourceName.c_str());
-            }
-            result->Add(block.release());
+        std::vector<std::pair<const char*, std::string>> resourceBindingsStringTable;
+        _resourceBindings.BuildStringTable(resourceBindingsStringTable);
+        if (!resourceBindingsStringTable.empty()) {
+            result->Add(WriteStringTable("ResourceBindings", resourceBindingsStringTable).release());
         }
 
         result->Add(SerializeStateSet("States", _stateSet).release());
@@ -499,18 +470,7 @@ namespace RenderCore { namespace Assets
         dest._matParams.MergeIn(_matParamBox);
         dest._stateSet = Merge(dest._stateSet, _stateSet);
         dest._constants.MergeIn(_constants);
-
-        auto desti = dest._bindings.begin();
-        for (auto i=_resourceBindings.begin(); i!=_resourceBindings.end(); ++i) {
-            desti = std::lower_bound(
-                desti, dest._bindings.end(),
-                i->_bindHash, ResourceBinding::Compare());
-            if (desti!=dest._bindings.end() && desti->_bindHash == i->_bindHash) {
-                desti->_resourceName = i->_resourceName;
-            } else {
-                desti = dest._bindings.insert(desti, *i);
-            }
-        }
+        dest._bindings.MergeIn(_resourceBindings);
     }
 
     auto RawMaterial::ResolveInherited(

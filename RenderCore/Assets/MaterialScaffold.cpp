@@ -172,7 +172,9 @@ namespace RenderCore { namespace Assets
 
     MaterialScaffold::MaterialScaffold(std::shared_ptr<::Assets::PendingCompileMarker>&& marker)
     {
-        assert(marker && marker->GetState() == ::Assets::AssetState::Ready);
+        if (!marker || marker->GetState() == ::Assets::AssetState::Invalid) {
+            ThrowException(::Assets::Exceptions::InvalidResource("", "MaterialScaffold not ready"));
+        }
 
         const auto* filename = marker->_sourceID0;
         BasicFile file(filename, "rb");

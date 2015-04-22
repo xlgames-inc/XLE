@@ -187,9 +187,6 @@ namespace GUILayer
         static BindingList<BindingUtil::StringStringPair^>^ AsBindingList(const ParameterBox& paramBox);
         static ParameterBox AsParameterBox(BindingList<BindingUtil::StringStringPair^>^);
         static ParameterBox AsParameterBox(BindingList<BindingUtil::StringIntPair^>^);
-
-        static BindingList<BindingUtil::StringStringPair^>^ AsBindingList(const RenderCore::Assets::ResourceBindingSet& bindingSet);
-        static RenderCore::Assets::ResourceBindingSet AsResourceBindingList(BindingList<BindingUtil::StringStringPair^>^);
     };
 
     BindingList<BindingUtil::StringStringPair^>^ BindingConv::AsBindingList(const ParameterBox& paramBox)
@@ -235,47 +232,6 @@ namespace GUILayer
                     i->Value);
             }
         }
-        return result;
-    }
-
-    BindingList<BindingUtil::StringStringPair^>^ BindingConv::AsBindingList(
-        const RenderCore::Assets::ResourceBindingSet& bindingSet)
-    {
-        auto result = gcnew BindingList<BindingUtil::StringStringPair^>();
-
-        for (auto i=bindingSet.cbegin(); i!=bindingSet.cend(); ++i) {
-            StringMeld<64> nameTemp;
-            nameTemp << std::hex << i->_bindHash;
-
-            result->Add(
-                gcnew BindingUtil::StringStringPair(
-                    clix::marshalString<clix::E_UTF8>((const char*)nameTemp),
-                    clix::marshalString<clix::E_UTF8>(i->_resourceName)));
-        }
-
-        return result;
-    }
-
-    RenderCore::Assets::ResourceBindingSet BindingConv::AsResourceBindingList(BindingList<BindingUtil::StringStringPair^>^ input)
-    {
-        using namespace RenderCore::Assets;
-        ResourceBindingSet result;
-
-        for each(auto i in input) {
-            if (i->Name && i->Name->Length > 0) {
-                MaterialGuid guid = XlAtoI64(clix::marshalString<clix::E_UTF8>(i->Name).c_str(), nullptr, 16);
-                auto ins = std::lower_bound(
-                    result.begin(), result.end(), 
-                    guid, ResourceBinding::Compare());
-                if (ins==result.end() || ins->_bindHash != guid) {
-                    std::string value;
-                    if (i->Value) { value = clix::marshalString<clix::E_UTF8>(i->Value); }
-                    result.insert(ins, 
-                        ResourceBinding(guid, value));
-                }
-            }
-        }
-
         return result;
     }
 
@@ -380,7 +336,7 @@ namespace GUILayer
             assert(obj == _resourceBindings);
             auto transaction = _underlying->Transaction_Begin("Resource Binding");
             if (transaction)
-                transaction->GetAsset()._resourceBindings = BindingConv::AsResourceBindingList(_resourceBindings);
+                transaction->GetAsset()._resourceBindings = BindingConv::AsParameterBox(_resourceBindings);
         }
     }
 

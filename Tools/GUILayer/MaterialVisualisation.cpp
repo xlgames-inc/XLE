@@ -37,13 +37,16 @@ namespace GUILayer
             using namespace RenderCore;
             using namespace RenderCore::Techniques;
 
-            static const auto DefaultNormalsTextureBindingHash = Hash64("NormalsTexture");
+            static const auto DefaultNormalsTextureBindingHash = ParameterBox::MakeParameterNameHash("NormalsTexture");
+
             ParameterBox materialParameters = obj._parameters._matParams;
-            for (auto i=obj._parameters._bindings.cbegin(); i!=obj._parameters._bindings.cend(); ++i) {
-                materialParameters.SetParameter(StringMeld<64>() << "RES_HAS_" << std::hex << i->_bindHash, 1);
-                if (i->_bindHash == DefaultNormalsTextureBindingHash) {
+            const auto& resBindings = obj._parameters._bindings;
+            for (unsigned c=0; c<resBindings.GetParameterCount(); ++c) {
+                materialParameters.SetParameter(StringMeld<64>() << "RES_HAS_" << resBindings.GetFullNameAtIndex(c), 1);
+                if (resBindings.GetParameterAtIndex(c) == DefaultNormalsTextureBindingHash) {
+                    auto resourceName = resBindings.GetString<::Assets::ResChar>(DefaultNormalsTextureBindingHash);
                     ResChar resolvedName[MaxPath];
-                    obj._searchRules.ResolveFile(resolvedName, dimof(resolvedName), i->_resourceName.c_str());
+                    obj._searchRules.ResolveFile(resolvedName, dimof(resolvedName), resourceName.c_str());
                     materialParameters.SetParameter("RES_HAS_NormalsTexture_DXT", 
                         RenderCore::Assets::IsDXTNormalMap(resolvedName));
                 }

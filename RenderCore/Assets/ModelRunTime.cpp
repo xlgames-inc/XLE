@@ -283,7 +283,7 @@ namespace RenderCore { namespace Assets
 
                 // configure the texture bind points array & material parameters box
             for (auto i=materialResources.begin(); i!=materialResources.end(); ++i) {
-                std::string boundNormalMapName;
+                ::Assets::rstring boundNormalMapName;
                 ParameterBox materialParamBox;
                 RenderStateSet stateSet;
 
@@ -296,17 +296,20 @@ namespace RenderCore { namespace Assets
                     materialParamBox = matData->_matParams;
                     stateSet = matData->_stateSet;
                 
-                    for (auto i=matData->_bindings.cbegin(); i!=matData->_bindings.cend(); ++i) {
-                        auto bindName = i->_bindHash;
+                    for (unsigned c=0; c<matData->_bindings.GetParameterCount(); ++c) {
+                        auto bindName = matData->_bindings.GetFullNameAtIndex(c);
+                        auto bindNameHash = Hash64(bindName);
                 
-                        materialParamBox.SetParameter((const char*)(StringMeld<64>() << "RES_HAS_" << std::hex << bindName), 1);
-                        if (bindName == DefaultNormalsTextureBindingHash) {
-                            boundNormalMapName = i->_resourceName;
+                        materialParamBox.SetParameter(
+                            (const char*)(StringMeld<64>() << "RES_HAS_" << bindName), 1);
+                        if (bindNameHash == DefaultNormalsTextureBindingHash) {
+                            boundNormalMapName = matData->_bindings.GetString<::Assets::ResChar>(
+                                ParameterBox::MakeParameterNameHash(bindName));
                         }
                 
-                        auto q = std::lower_bound(textureBindPoints.begin(), textureBindPoints.end(), bindName);
-                        if (q != textureBindPoints.end() && *q == bindName) { continue; }
-                        textureBindPoints.insert(q, bindName);
+                        auto q = std::lower_bound(textureBindPoints.begin(), textureBindPoints.end(), bindNameHash);
+                        if (q != textureBindPoints.end() && *q == bindNameHash) { continue; }
+                        textureBindPoints.insert(q, bindNameHash);
                     }
                 }
 
@@ -334,7 +337,7 @@ namespace RenderCore { namespace Assets
             const ::Assets::DirectorySearchRules* searchRules,
             const std::vector<std::pair<MaterialGuid, SubMatResources>>& materialResources,
             const std::vector<uint64>& textureBindPoints, unsigned textureSetCount,
-            std::vector<std::string>& boundTextureNames)
+            std::vector<::Assets::rstring>& boundTextureNames)
         {
             auto texturesPerMaterial = textureBindPoints.size();
 
@@ -348,11 +351,17 @@ namespace RenderCore { namespace Assets
                 auto* matData = matScaffold.GetMaterial(i->first);
                 if (!matData) { continue; }
 
-                for (auto t=matData->_bindings.cbegin(); t!=matData->_bindings.cend(); ++t) {
-                    auto bindName = t->_bindHash;
-                    auto i = std::find(textureBindPoints.cbegin(), textureBindPoints.cend(), bindName);
-                    assert(i!=textureBindPoints.cend());
+                for (unsigned c=0; c<matData->_bindings.GetParameterCount(); ++c) {
+                    auto bindName = matData->_bindings.GetFullNameAtIndex(c);
+                    auto bindNameHash = Hash64(bindName);
+
+                    auto i = std::find(textureBindPoints.cbegin(), textureBindPoints.cend(), bindNameHash);
+                    assert(i!=textureBindPoints.cend() && *i == bindNameHash);
                     auto index = std::distance(textureBindPoints.cbegin(), i);
+
+                    auto resourceName = matData->_bindings.GetString<::Assets::ResChar>(
+                        ParameterBox::MakeParameterNameHash(bindName));
+                    if (resourceName.empty()) continue;
                 
                     TRY {
                             // note --  Ideally we want to do this filename resolve in a background thread
@@ -364,15 +373,15 @@ namespace RenderCore { namespace Assets
                         auto dsti = textureSetIndex*texturesPerMaterial + index;
                         if (searchRules) {
                             ResChar resolvedPath[MaxPath];
-                            searchRules->ResolveFile(resolvedPath, dimof(resolvedPath), t->_resourceName.c_str());
+                            searchRules->ResolveFile(resolvedPath, dimof(resolvedPath), resourceName.c_str());
                             boundTextures[dsti] = &::Assets::GetAsset<Metal::DeferredShaderResource>(resolvedPath);
                             DEBUG_ONLY(boundTextureNames[dsti] = resolvedPath);
                         } else {
-                            boundTextures[dsti] = &::Assets::GetAsset<Metal::DeferredShaderResource>(t->_resourceName.c_str());
-                            DEBUG_ONLY(boundTextureNames[dsti] = t->_resourceName);
+                            boundTextures[dsti] = &::Assets::GetAsset<Metal::DeferredShaderResource>(resourceName.c_str());
+                            DEBUG_ONLY(boundTextureNames[dsti] = resourceName);
                         }
                     } CATCH (const ::Assets::Exceptions::InvalidResource&) {
-                        LogWarning << "Warning -- shader resource (" << t->_resourceName << ") couldn't be found";
+                        LogWarning << "Warning -- shader resource (" << resourceName << ") couldn't be found";
                     } CATCH_END
                 }
             }
@@ -616,7 +625,7 @@ namespace RenderCore { namespace Assets
             ////////////////////////////////////////////////////////////////////////
                 //  now that we have a list of all of the sub materials used, and we know how large the resource 
                 //  interface is, we build an array of deferred shader resources for shader inputs.
-        std::vector<std::string> boundTextureNames;
+        std::vector<::Assets::rstring> boundTextureNames;
         auto boundTextures = BuildBoundTextures(
             scaffold, matScaffold, searchRules,
             materialResources, textureBindPoints, textureSetCount,

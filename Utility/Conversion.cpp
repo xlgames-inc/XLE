@@ -33,6 +33,8 @@ namespace Conversion
     template<> float Convert(const char input[])    { return XlAtoF32(input); }
     template<> uint32 Convert(const char input[])   { return XlAtoUI32(input); }
     template<> int32 Convert(const char input[])    { return XlAtoI32(input); }
+    template<> int64 Convert(const char input[])    { return XlAtoI64(input); }
+    template<> uint64 Convert(const char input[])   { return XlAtoUI64(input); }
 
     template<> bool Convert(const char input[])
     {
@@ -48,6 +50,13 @@ namespace Conversion
         }
         return false;
     }
+
+    template<> float Convert(const std::basic_string<utf8>& input)      { return Convert<float>((const char*)input.c_str()); }
+    template<> uint32 Convert(const std::basic_string<utf8>& input)     { return Convert<uint32>((const char*)input.c_str()); }
+    template<> int32 Convert(const std::basic_string<utf8>& input)      { return Convert<int32>((const char*)input.c_str()); }
+    template<> int64 Convert(const std::basic_string<utf8>& input)      { return Convert<int64>((const char*)input.c_str()); }
+    template<> uint64 Convert(const std::basic_string<utf8>& input)     { return Convert<uint64>((const char*)input.c_str()); }
+    template<> bool Convert(const std::basic_string<utf8>& input)       { return Convert<bool>((const char*)input.c_str()); }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

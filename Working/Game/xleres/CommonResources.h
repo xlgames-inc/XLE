@@ -25,7 +25,4 @@ Texture2D       NormalsFittingTexture   : register(t14);
     #define MaybeAnisotropicSampler   AnisotropicSampler
 #endif
 
-#define RES_HAS_NormalsTexture RES_HAS_bfbf327ee9403009
-#define RES_HAS_ParametersTexture RES_HAS_c3a97fd4218f2a04
-
 #endif

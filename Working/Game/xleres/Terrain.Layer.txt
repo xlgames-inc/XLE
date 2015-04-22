@@ -12,8 +12,8 @@ Illum
                 1
             MAT_BLEND_FOG
                 1
-            RES_HAS_bfbf327ee9403009
-            RES_HAS_c3a97fd4218f2a04
+            RES_HAS_NormalsTexture
+            RES_HAS_ParametersTexture
         Geometry
             GEO_HAS_COLOUR
             GEO_HAS_TEXCOORD
@@ -42,8 +42,8 @@ Deferred
             GBUFFER_TYPE
                 1
         Material
-            RES_HAS_bfbf327ee9403009
-            RES_HAS_c3a97fd4218f2a04
+            RES_HAS_NormalsTexture
+            RES_HAS_ParametersTexture
     VertexShader
         game/xleres/deferred/terrainlayer.vsh:main
     PixelShader

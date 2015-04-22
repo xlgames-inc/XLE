@@ -95,13 +95,13 @@ namespace RenderCore { namespace ColladaConversion
     class ImportConfiguration
     {
     public:
-        uint64 AsNativeBindingHash(const std::string& input) const;
+        std::string AsNativeBinding(const std::string& input) const;
         const ::Assets::DependencyValidation& GetDependencyValidation() const { return *_depVal; }
 
         ImportConfiguration(const ResChar filename[]);
         ~ImportConfiguration();
     private:
-        std::vector<std::pair<std::string, uint64>> _exportNameToBindingHash;
+        std::vector<std::pair<std::string, std::string>> _exportNameToBinding;
         std::shared_ptr<::Assets::DependencyValidation> _depVal;
     };
 
@@ -294,49 +294,42 @@ namespace RenderCore { namespace ColladaConversion
         return false;
 	}
 
-    static const auto DefaultDiffuseTextureBindingHash = Hash64("DiffuseTexture");
+    static const char DefaultDiffuseTextureBinding[] = "DiffuseTexture";
 
     static void AddBoundTexture( 
         const COLLADAFW::Effect* effect, unsigned commonEffectIndex,
         const TableOfObjects& objects,
-        RenderCore::Assets::ResourceBindingSet& bindings,
-        uint64 bindingHash,
-        COLLADAFW::SamplerID samplerId)
+        ParameterBox& bindings, const char bindingName[], COLLADAFW::SamplerID samplerId)
     {
-        auto i = std::find_if(bindings.cbegin(), bindings.cend(),
-            [=](const Assets::ResourceBinding&b) 
-                { return b._bindHash == bindingHash; });
-        if (i==bindings.cend()) {
+        auto hash = ParameterBox::MakeParameterNameHash(bindingName);
+        if (bindings.HasParameter(hash)) return;
 
-                //
-                //      Note that Collada has a method for associating texture coords
-                //      with the bound textures. We're ignoring this currently,
-                //      it only really useful if we want different texture coordinates
-                //      for diffuse and specular parameters map (which we don't normally)
-                //
-                //      Only really need the diffuse map texture from here. Collada
-                //      isn't good for passing the other parameters from Max. Some of
-                //      the specular parameters come through -- but it isn't great.
-                //
+            //
+            //      Note that Collada has a method for associating texture coords
+            //      with the bound textures. We're ignoring this currently,
+            //      it only really useful if we want different texture coordinates
+            //      for diffuse and specular parameters map (which we don't normally)
+            //
+            //      Only really need the diffuse map texture from here. Collada
+            //      isn't good for passing the other parameters from Max. Some of
+            //      the specular parameters come through -- but it isn't great.
+            //
 
-            auto& effectCommons = effect->getCommonEffects();
-            if (commonEffectIndex >= effectCommons.getCount() || !effectCommons[commonEffectIndex]) { return; }
+        auto& effectCommons = effect->getCommonEffects();
+        if (commonEffectIndex >= effectCommons.getCount() || !effectCommons[commonEffectIndex]) { return; }
 
-            auto& ec = *effectCommons[commonEffectIndex];
-            if (    samplerId < ec.getSamplerPointerArray().getCount()
-                &&  ec.getSamplerPointerArray()[samplerId]) {
+        auto& ec = *effectCommons[commonEffectIndex];
+        if (    samplerId < ec.getSamplerPointerArray().getCount()
+            &&  ec.getSamplerPointerArray()[samplerId]) {
 
-                const auto& sampler = *ec.getSamplerPointerArray()[samplerId];
-                const ReferencedTexture* refTexture = nullptr;
-                ObjectId tableId = objects.GetObjectId<ReferencedTexture>(sampler.getSourceImage());
-                if (tableId != ObjectId_Invalid) {
-                    refTexture = objects.GetFromObjectId<ReferencedTexture>(tableId);
-                }
-                if (refTexture) {
-                    bindings.push_back(
-                        Assets::ResourceBinding(
-                            bindingHash, refTexture->_resourceName));
-                }
+            const auto& sampler = *ec.getSamplerPointerArray()[samplerId];
+            const ReferencedTexture* refTexture = nullptr;
+            ObjectId tableId = objects.GetObjectId<ReferencedTexture>(sampler.getSourceImage());
+            if (tableId != ObjectId_Invalid) {
+                refTexture = objects.GetFromObjectId<ReferencedTexture>(tableId);
+            }
+            if (refTexture) {
+                bindings.SetParameter(bindingName, refTexture->_resourceName);
             }
         }
     }
@@ -359,8 +352,7 @@ namespace RenderCore { namespace ColladaConversion
                 for (; child; child = child->next) {
                     if (child->child) {
                         std::string exportName = child->StrValue();
-                        auto bindingHash = Hash64(child->child->StrValue());
-                        _exportNameToBindingHash.push_back(std::make_pair(exportName, bindingHash));
+                        _exportNameToBinding.push_back(std::make_pair(exportName, child->child->StrValue()));
                     }
                 }
             }
@@ -370,15 +362,15 @@ namespace RenderCore { namespace ColladaConversion
     ImportConfiguration::~ImportConfiguration()
     {}
 
-    uint64 ImportConfiguration::AsNativeBindingHash(const std::string& input) const
+    std::string ImportConfiguration::AsNativeBinding(const std::string& input) const
     {
             //  we need to define a mapping between the names used by the max exporter
             //  and the native XLE shader names. The meaning might not match perfectly
             //  but let's try to get as close as possible
         auto i = std::find_if(
-            _exportNameToBindingHash.cbegin(), _exportNameToBindingHash.cend(),
-            [=](const std::pair<std::string, uint64>& e) { return e.first == input; });
-        if (i == _exportNameToBindingHash.cend()) {
+            _exportNameToBinding.cbegin(), _exportNameToBinding.cend(),
+            [=](const std::pair<std::string, std::string>& e) { return e.first == input; });
+        if (i == _exportNameToBinding.cend()) {
             return 0;
         }
         return i->second;
@@ -409,7 +401,7 @@ namespace RenderCore { namespace ColladaConversion
                 if (diffuse.getType() == ColorOrTexture::TEXTURE) {
                     AddBoundTexture(
                         effect, c, _objects, matSettings._resourceBindings,
-                        DefaultDiffuseTextureBindingHash, 
+                        DefaultDiffuseTextureBinding, 
                         diffuse.getTexture().getSamplerId());
                 }
             }
@@ -429,11 +421,11 @@ namespace RenderCore { namespace ColladaConversion
                 std::smatch match;
                 auto r = std::regex_match(xt->texCoord, match, decode);
                 if (r && match.size() >= 2) {
-                    auto bindPoint = _importConfig.AsNativeBindingHash(match[2]);
-                    if (bindPoint != 0) {
+                    auto bindPoint = _importConfig.AsNativeBinding(match[2]);
+                    if (!bindPoint.empty()) {
                         AddBoundTexture(
                             effect, 0, _objects, matSettings._resourceBindings,
-                            bindPoint, xt->samplerId);
+                            bindPoint.c_str(), xt->samplerId);
                     }
                 }
             }

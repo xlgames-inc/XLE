@@ -19,6 +19,7 @@
 #include "../../RenderCore/Metal/Shader.h"
 #include "../../Math/Transformations.h"
 #include "../../RenderCore/DX11/Metal/IncludeDX11.h"
+#include "../../Utility/Conversion.h"
 
 namespace PreviewRender
 {
@@ -216,10 +217,9 @@ namespace PreviewRender
             for each (auto i in doc->PreviewMaterialState) {
                 auto str = dynamic_cast<String^>(i.Value);
                 if (str) {
-                    visObject._parameters._bindings.push_back(
-                        RenderCore::Assets::ResourceBinding(
-                            Hash64(clix::marshalString<clix::E_UTF8>(i.Key)),
-                            clix::marshalString<clix::E_UTF8>(str)));
+                    visObject._parameters._bindings.SetParameter(
+                            clix::marshalString<clix::E_UTF8>(i.Key).c_str(),
+                            clix::marshalString<clix::E_UTF8>(str));
                 }
             }
 

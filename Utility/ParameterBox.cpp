@@ -400,6 +400,15 @@ namespace Utility
 
         std::string AsString(const void* data, size_t dataSize, const TypeDesc& desc)
         {
+            if (desc._typeHint == TypeHint::String) {
+                if (desc._type == TypeCat::UInt8 || desc._type == TypeCat::Int8) {
+                    return std::string((const char*)data, (const char*)PtrAdd(data, desc._arrayCount * sizeof(char)));
+                }
+                if (desc._type == TypeCat::UInt16 || desc._type == TypeCat::Int16) {
+                    return Conversion::Convert<std::string>(std::basic_string<wchar_t>((const wchar_t*)data, (const wchar_t*)PtrAdd(data, desc._arrayCount * sizeof(wchar_t))));
+                }
+            }
+
             std::stringstream result;
             assert(dataSize >= desc.GetSize());
             auto arrayCount = std::max(unsigned(desc._arrayCount), 1u);
@@ -467,8 +476,31 @@ namespace Utility
     void ParameterBox::SetParameter(const char name[], const char data[])
     {
         uint8 buffer[128];
-        auto typeDesc = ImpliedTyping::Parse(data, &data[XlStringLen(data)], buffer, sizeof(buffer));
-        SetParameter(name, buffer, typeDesc);
+        auto len = XlStringLen(data);
+        auto typeDesc = ImpliedTyping::Parse(data, &data[len], buffer, sizeof(buffer));
+        if (typeDesc._type != ImpliedTyping::TypeCat::Void) {
+            SetParameter(name, buffer, typeDesc);
+        } else {
+            // no conversion... just store a string
+            using namespace ImpliedTyping;
+            SetParameter(
+                name, data,
+                TypeDesc(TypeCat::UInt8, (uint16)len, TypeHint::String));
+        }
+    }
+
+    void ParameterBox::SetParameter(const char name[], const std::string& data)
+    {
+        uint8 buffer[128];
+        auto typeDesc = ImpliedTyping::Parse(AsPointer(data.cbegin()), AsPointer(data.cend()), buffer, sizeof(buffer));
+        if (typeDesc._type != ImpliedTyping::TypeCat::Void) {
+            SetParameter(name, buffer, typeDesc);
+        } else {
+            using namespace ImpliedTyping;
+            SetParameter(
+                name, data.c_str(),
+                TypeDesc(TypeCat::UInt8, (uint16)data.size(), TypeHint::String));
+        }
     }
 
     template<typename Type>
@@ -770,6 +802,23 @@ namespace Utility
             return &_values[offset];
         }
         return 0;    
+    }
+
+    unsigned ParameterBox::GetParameterCount() const
+    {
+        return (unsigned)_parameterHashValues.size();
+    }
+
+    auto ParameterBox::GetParameterAtIndex(unsigned index) const -> ParameterNameHash
+    {
+        assert(index < _parameterHashValues.size());
+        return _parameterHashValues[index];
+    }
+
+    const char* ParameterBox::GetFullNameAtIndex(unsigned index) const
+    {
+        assert(index < _offsets.size());
+        return &_names[_offsets[index].first];
     }
 
     uint64      ParameterBox::GetHash() const

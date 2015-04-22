@@ -374,7 +374,7 @@ namespace RenderCore { namespace Assets
         ///////////////////////////////////////////////////////////////////////////////
         #if defined(_DEBUG)
             unsigned _vbSize, _ibSize;
-            std::vector<std::string> _boundTextureNames;
+            std::vector<::Assets::rstring> _boundTextureNames;
             std::vector<std::pair<unsigned,std::string>> _paramBoxDesc;
         #endif
 

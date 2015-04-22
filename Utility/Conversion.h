@@ -17,7 +17,6 @@ namespace Conversion
     template<typename Output> Output Convert(const char[]);
     template<typename Type> const Type& Convert(const Type& input) { return input; }
 
-    template<typename Output> Output Convert(const std::basic_string<wchar_t>& input);
     template<typename Output> Output Convert(const std::basic_string<utf8>& input);
     template<typename Output> Output Convert(const std::basic_string<ucs2>& input);
     template<typename Output> Output Convert(const std::basic_string<ucs4>& input);

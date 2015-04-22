@@ -13,8 +13,8 @@ Illum
                 1
             MAT_BLEND_FOG
                 0
-            RES_HAS_bfbf327ee9403009
-            RES_HAS_c3a97fd4218f2a04
+            RES_HAS_NormalsTexture
+            RES_HAS_ParametersTexture
             RES_HAS_NormalsTexture_DXT
             RES_HAS_CUSTOM_MAP
             RES_HAS_OPACITY_MAP
@@ -52,8 +52,8 @@ Deferred
                 1
             MAT_MODULATE_VERTEX_ALPHA
                 1
-            RES_HAS_bfbf327ee9403009
-            RES_HAS_c3a97fd4218f2a04
+            RES_HAS_NormalsTexture
+            RES_HAS_ParametersTexture
             RES_HAS_NormalsTexture_DXT
     VertexShader
         game/xleres/particles/Particle.vsh:nogs
@@ -82,8 +82,8 @@ OrderIndependentTransparency
             MAT_PREMULTIPLIED_ALPHA
             MAT_MODULATE_VERTEX_ALPHA
                 1
-            RES_HAS_bfbf327ee9403009
-            RES_HAS_c3a97fd4218f2a04
+            RES_HAS_NormalsTexture
+            RES_HAS_ParametersTexture
             RES_HAS_NormalsTexture_DXT
     VertexShader
         game/xleres/particles/Particle.vsh:nogs

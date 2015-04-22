@@ -125,36 +125,6 @@ namespace RenderCore { namespace Assets
 
     typedef uint64 MaterialGuid;
 
-    class ResourceBinding
-    {
-    public:
-        uint64          _bindHash;
-        std::string     _resourceName;
-
-        ResourceBinding(uint64 bindHash, const std::string& resourceName)
-            : _bindHash(bindHash), _resourceName(resourceName) {}
-        void Serialize(Serialization::NascentBlockSerializer& serializer) const;
-
-        class Compare
-        {
-        public:
-            bool operator()(const ResourceBinding& lhs, uint64 rhs)
-            {
-                return lhs._bindHash < rhs;
-            }
-            bool operator()(uint64 lhs, const ResourceBinding& rhs)
-            {
-                return lhs < rhs._bindHash;
-            }
-            bool operator()(const ResourceBinding& lhs, 
-                            const ResourceBinding& rhs)
-            {
-                return lhs._bindHash < rhs._bindHash;
-            }
-        };
-    };
-    typedef Serialization::Vector<ResourceBinding> ResourceBindingSet;
-
     /// <summary>Final material settings</summary>
     /// These are some material parameters that can be attached to a 
     /// ModelRunTime. This is the "resolved" format. Material settings
@@ -179,7 +149,7 @@ namespace RenderCore { namespace Assets
     class ResolvedMaterial : noncopyable
     {
     public:
-        ResourceBindingSet _bindings;
+        ParameterBox _bindings;
         ParameterBox _matParams;
         RenderStateSet _stateSet;
         ParameterBox _constants;
@@ -206,7 +176,7 @@ namespace RenderCore { namespace Assets
     class RawMaterial
     {
     public:
-        ResourceBindingSet _resourceBindings;
+        ParameterBox _resourceBindings;
         ParameterBox _matParamBox;
         Assets::RenderStateSet _stateSet;
         ParameterBox _constants;

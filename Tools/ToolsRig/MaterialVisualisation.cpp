@@ -336,22 +336,14 @@ namespace ToolsRig
         return finalResult;
     }
 
-    static inline bool CompareRB(
-        const RenderCore::Assets::ResourceBinding& lhs,
-        const RenderCore::Assets::ResourceBinding& rhs)
-    {
-        return lhs._bindHash  < rhs._bindHash;
-    }
-
     static std::vector<const RenderCore::Metal::ShaderResourceView*>
         BuildBoundTextures(
             RenderCore::Metal::BoundUniforms& boundUniforms,
             RenderCore::Metal::ShaderProgram& shaderProgram,
-            const RenderCore::Assets::ResourceBindingSet& bindings,
+            const ParameterBox& bindings,
             const Assets::DirectorySearchRules& searchRules)
     {
         using namespace RenderCore;
-        typedef RenderCore::Assets::ResourceBinding ResourceBinding;
         std::vector<const Metal::ShaderResourceView*> result;
         std::vector<uint64> alreadyBound;
 
@@ -383,17 +375,11 @@ namespace ToolsRig
                 reflection->GetResourceBindingDesc(c, &bindDesc);
                 if  (bindDesc.Type == D3D10_SIT_TEXTURE) {
 
-                    std::string str;
-                    auto hash = Hash64(bindDesc.Name);
-                    auto i = std::lower_bound(
-                        bindings.begin(), bindings.end(), 
-                        ResourceBinding(hash, std::string()), CompareRB);
-                    if (i != bindings.end() && i->_bindHash == hash) {
-                        str = i->_resourceName;
-                    } else {
+                    auto str = bindings.GetString<::Assets::ResChar>(ParameterBox::MakeParameterNameHash(bindDesc.Name));
+                    if (str.empty()) {
                             //  It's not mentioned in the material resources. try to look
                             //  for a default resource for this bind point
-                        str = std::string("game/xleres/DefaultResources/") + bindDesc.Name + ".dds";
+                        str = ::Assets::rstring("game/xleres/DefaultResources/") + bindDesc.Name + ".dds";
                     }
 
                     auto bindingHash = Hash64(bindDesc.Name, &bindDesc.Name[XlStringLen(bindDesc.Name)]);
