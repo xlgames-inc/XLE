@@ -415,12 +415,15 @@ namespace LevelEditor
                 foreach (GameContext subContext in m_gameDocumentRegistry.SubDocuments.AsIEnumerable<GameContext>())
                 {
                     folderNode = subContext.RootGameObjectFolder.Cast<DomNode>();
-                    descendants = folderNode.Subtree.Skip(1);
-                    foreach (DomNode childNode in descendants)
+                    if (folderNode != null)
                     {
-                        if (childNode.Is<IReference<IResource>>()) continue;
-                        yield return Util.AdaptDomPath(childNode);
-                    }                    
+                        descendants = folderNode.Subtree.Skip(1);
+                        foreach (DomNode childNode in descendants)
+                        {
+                            if (childNode.Is<IReference<IResource>>()) continue;
+                            yield return Util.AdaptDomPath(childNode);
+                        }
+                    }
                 }                
             }
         }
@@ -857,7 +860,9 @@ namespace LevelEditor
         {
             get
             {
-                return this.As<IGame>().RootGameObjectFolder;
+                var game = this.Cast<IGame>();
+                if (game == null) return null;
+                return game.RootGameObjectFolder;
             }
         }
         private object m_activeItem;

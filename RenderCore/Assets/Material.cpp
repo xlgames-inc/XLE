@@ -489,6 +489,7 @@ namespace RenderCore { namespace Assets
                     XlCatString(resolvedFile, dimof(resolvedFile), ".material");
                 searchRules.ResolveFile(resolvedFile, dimof(resolvedFile), resolvedFile);
                 XlNormalizePath(resolvedFile, dimof(resolvedFile), resolvedFile);
+                XlSimplifyPath(resolvedFile, dimof(resolvedFile), resolvedFile, "\\/");
                 
                 StringMeld<MaxPath, ::Assets::ResChar> finalRawMatName;
                 finalRawMatName << resolvedFile << colon;
@@ -499,6 +500,19 @@ namespace RenderCore { namespace Assets
         }
 
         return result;
+    }
+
+    static void AddDep(std::vector<::Assets::DependentFileState>& deps, const RawMaterial::RawMatSplitName& splitName)
+    {
+        auto existing = std::find_if(deps.cbegin(), deps.cend(),
+            [&](const ::Assets::DependentFileState& test) 
+            {
+                return !XlCompareStringI(test._filename.c_str(), splitName._concreteFilename.c_str());
+            });
+        if (existing == deps.cend()) {
+            auto& store = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateStore();
+            deps.push_back(store.GetDependentFileState(splitName._concreteFilename.c_str()));
+        }
     }
 
     void RawMaterial::Resolve(
@@ -521,23 +535,14 @@ namespace RenderCore { namespace Assets
                 newSearchRules.AddSearchDirectory(directory);
 
                 rawParams.Resolve(result, newSearchRules, deps);
-            } 
-            CATCH (...) {} 
-            CATCH_END
+            } CATCH (const ::Assets::Exceptions::InvalidResource&) {
+                // we still need to add a dependency, even if it's a missing file
+                if (deps) AddDep(*deps, RawMatSplitName(i->c_str()));
+            } CATCH_END
         }
 
         MergeInto(result);
-        if (deps) {
-            auto existing = std::find_if(deps->cbegin(), deps->cend(),
-                [&](const ::Assets::DependentFileState& test) 
-                {
-                    return !XlCompareStringI(test._filename.c_str(), _splitName._concreteFilename.c_str());
-                });
-            if (existing == deps->cend()) {
-                auto& store = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateStore();
-                deps->push_back(store.GetDependentFileState(_splitName._concreteFilename.c_str()));
-            }
-        }
+        if (deps) AddDep(*deps, _splitName);
     }
 
 

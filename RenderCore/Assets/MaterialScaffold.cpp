@@ -27,7 +27,9 @@ namespace RenderCore { namespace Assets
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static void CompileMaterialScaffold(const char source[], const char destination[], std::vector<::Assets::DependentFileState>* outDeps)
+    static void CompileMaterialScaffold(
+        const char source[], const char destination[], 
+        std::vector<::Assets::DependentFileState>* outDeps)
     {
             //  get associated "raw" material information. This is should contain the material information attached
             //  to the geometry export (eg, .dae file). Note -- maybe the name of the raw file should come
@@ -84,6 +86,19 @@ namespace RenderCore { namespace Assets
             } CATCH (const ::Assets::Exceptions::InvalidResource& e) {
                 LogWarning << "Got an invalid resource exception while compiling material scaffold for " << source;
                 LogWarning << "Exception follows: " << e;
+
+                    // we need need a dependency (even if it's a missing file)
+                if (outDeps) {
+                    auto existing = std::find_if(outDeps->cbegin(), outDeps->cend(),
+                        [&](const ::Assets::DependentFileState& test) 
+                        {
+                            return !XlCompareStringI(test._filename.c_str(), concreteFilename);
+                        });
+                    if (existing == outDeps->cend()) {
+                        auto& store = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateStore();
+                        outDeps->push_back(store.GetDependentFileState(concreteFilename));
+                    }
+                }
             } CATCH_END
         }
 

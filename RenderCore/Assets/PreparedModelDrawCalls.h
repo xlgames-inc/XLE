@@ -29,6 +29,7 @@ namespace RenderCore { namespace Assets
         unsigned        _topology;  // (Metal::Topology::Enum)
 
         uint64          _materialGuid;
+        unsigned        _techniqueInterface;
         
         const void*     _mesh;
     };

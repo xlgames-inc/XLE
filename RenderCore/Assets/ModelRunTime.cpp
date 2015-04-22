@@ -1104,6 +1104,43 @@ namespace RenderCore { namespace Assets
             entry._topology = Metal::Topology::Enum(d._topology);
             entry._materialGuid = drawCallRes._materialBindingIndex;
             entry._mesh = AsPointer(mesh);
+            entry._techniqueInterface = techniqueInterface;
+            dest._entries.push_back(entry);
+        }
+
+            //  Also try to render skinned geometry... But we want to render this with skinning disabled 
+            //  (this path is intended for rendering many static objects)
+        for (auto md=_pimpl->_skinnedDrawCalls.cbegin(); md!=_pimpl->_skinnedDrawCalls.cend(); ++md, ++drawCallIndex) {
+            const auto& drawCallRes = _pimpl->_drawCallRes[drawCallIndex];
+            const auto& d = md->second;
+
+            auto geoParamIndex = drawCallRes._geoParamBox;
+            auto matParamIndex = drawCallRes._materialParamBox;
+            auto shaderNameIndex = drawCallRes._shaderName;
+
+            auto& cmdStream = _pimpl->_scaffold->CommandStream();
+            auto& geoCall = cmdStream.GetSkinCall(md->first);
+            auto mesh = FindIf(_pimpl->_skinnedMeshes, [=](const Pimpl::Mesh& mesh) { return mesh._id == geoCall._geoId; });
+            assert(mesh != _pimpl->_skinnedMeshes.end());
+
+            unsigned techniqueInterface = mesh->_skinnedTechniqueInterface;
+
+            PreparedModelDrawCallEntry entry;
+            entry._drawCallIndex = drawCallIndex;
+            entry._renderer = this;
+            if (transforms) {
+                entry._meshToWorld = Combine(transforms->GetMeshToModel(geoCall._transformMarker), modelToWorld);
+            } else {
+                entry._meshToWorld = modelToWorld;
+            }
+            entry._shaderVariationHash = techniqueInterface ^ (geoParamIndex << 12) ^ (matParamIndex << 15) ^ (shaderNameIndex << 24);  // simple hash of these indices. Note that collisions might be possible
+            entry._indexCount = d._indexCount;
+            entry._firstIndex = d._firstIndex;
+            entry._firstVertex = d._firstVertex;
+            entry._topology = Metal::Topology::Enum(d._topology) | 0x100;
+            entry._materialGuid = drawCallRes._materialBindingIndex;
+            entry._mesh = AsPointer(mesh);
+            entry._techniqueInterface = techniqueInterface;
             dest._entries.push_back(entry);
         }
     }
@@ -1168,7 +1205,7 @@ namespace RenderCore { namespace Assets
             if (currentVariationHash != d->_shaderVariationHash) {
                 auto& mesh = *(const Pimpl::Mesh*)d->_mesh;
                 boundUniforms = sharedStateSet.BeginVariation(
-                    context, drawCallRes._shaderName, mesh._techniqueInterface, drawCallRes._geoParamBox, 
+                    context, drawCallRes._shaderName, d->_techniqueInterface, drawCallRes._geoParamBox, 
                     drawCallRes._materialParamBox);
                 currentVariationHash = d->_shaderVariationHash;
                 currentTextureSet = ~unsigned(0x0);
@@ -1190,11 +1227,21 @@ namespace RenderCore { namespace Assets
             }
             
             if (currentMesh != d->_mesh) {
-                auto& mesh = *(const Pimpl::Mesh*)d->_mesh;
-                context._context->Bind(renderer._pimpl->_indexBuffer, Metal::NativeFormat::Enum(mesh._indexFormat), mesh._ibOffset);
-                context._context->Bind(ResourceList<Metal::VertexBuffer, 1>(std::make_tuple(std::ref(renderer._pimpl->_vertexBuffer))), 
-                    mesh._vertexStride, mesh._vbOffset);
-                currentMesh = &mesh;
+                if (d->_topology > 0xff) {
+                    auto& mesh = *(const Pimpl::SkinnedMesh*)d->_mesh;
+                    context._context->Bind(renderer._pimpl->_indexBuffer, Metal::NativeFormat::Enum(mesh._indexFormat), mesh._ibOffset);
+
+                    const Metal::VertexBuffer* vbs[] = { &renderer._pimpl->_vertexBuffer, &renderer._pimpl->_vertexBuffer };
+                    unsigned strides[] = { mesh._extraVbStride[0], mesh._vertexStride };
+                    unsigned offsets[] = { mesh._extraVbOffset[0], mesh._vbOffset };
+                    context._context->Bind(0, 2, vbs, strides, offsets);
+                    currentMesh = &mesh;
+                } else {
+                    auto& mesh = *(const Pimpl::Mesh*)d->_mesh;
+                    context._context->Bind(renderer._pimpl->_indexBuffer, Metal::NativeFormat::Enum(mesh._indexFormat), mesh._ibOffset);
+                    context._context->Bind(MakeResourceList(renderer._pimpl->_vertexBuffer), mesh._vertexStride, mesh._vbOffset);
+                    currentMesh = &mesh;
+                }
                 currentTextureSet = ~unsigned(0x0);
             }
 
@@ -1212,7 +1259,7 @@ namespace RenderCore { namespace Assets
                 currentConstantBufferIndex = constantBufferIndex;
             }
 
-            context._context->Bind((Metal::Topology::Enum)d->_topology);
+            context._context->Bind((Metal::Topology::Enum)(d->_topology & 0xff));
             context._context->DrawIndexed(d->_indexCount, d->_firstIndex, d->_firstVertex);
         }
     }
