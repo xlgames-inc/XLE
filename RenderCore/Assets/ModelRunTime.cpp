@@ -41,6 +41,7 @@
 #include "../../Utility/StringFormat.h"
 
 #include <string>
+#include <regex> // for ConstantBufferLayout
 
 #pragma warning(disable:4189)
 
@@ -214,6 +215,105 @@ namespace RenderCore { namespace Assets
         static const auto DefaultNormalsTextureBindingHash = Hash64("NormalsTexture");
         static const auto DefaultParametersTextureBindingHash = Hash64("ParametersTexture");
 
+        class ConstantBufferLayout
+        {
+        public:
+            unsigned _cbSize;
+            class Element
+            {
+            public:
+                std::string _name;
+                ImpliedTyping::TypeDesc _type;
+                unsigned _offset;
+            };
+            std::vector<Element> elements;
+
+            ConstantBufferLayout(const ::Assets::ResChar initializer[]);
+            ~ConstantBufferLayout();
+        };
+
+        static ImpliedTyping::TypeDesc AsTypeDesc(const char hlslTypeName[])
+        {
+            using namespace ImpliedTyping;
+            std::pair<const char*, ImpliedTyping::TypeCat> baseTypes[] = 
+            {
+                { "float", TypeCat::Float },
+                { "uint", TypeCat::UInt32 },
+                { "dword", TypeCat::UInt32 },
+                { "int", TypeCat::Int32 },
+                { "byte", TypeCat::UInt8 }
+                // "half", "double" not supported
+            };
+            for (unsigned c=0; c<dimof(baseTypes); ++c) {
+                auto len = XlStringLen(baseTypes[c].first);
+                if (!XlComparePrefix(baseTypes[c].first, hlslTypeName, len)) {
+                    const auto matrixMarker = XlFindChar(&hlslTypeName[len], 'x');
+                    if (matrixMarker != nullptr) {
+                        auto count0 = XlAtoUI32(&hlslTypeName[len]);
+                        auto count1 = XlAtoUI32(matrixMarker+1);
+
+                        TypeDesc result;
+                        result._arrayCount = (uint16)std::max(1u, count0 * count1);
+                        result._type = baseTypes[c].second;
+                        result._typeHint = TypeHint::Matrix;
+                        return result;
+                    } else {
+                        auto count = XlAtoUI32(&hlslTypeName[len]);
+                        if (count == 0 || count > 4) count = 1;
+                        TypeDesc result;
+                        result._arrayCount = (uint16)count;
+                        result._type = baseTypes[c].second;
+                        result._typeHint = (count > 1) ? TypeHint::Vector : TypeHint::None;
+                        return result;
+                    }
+                }
+            }
+
+            return TypeDesc();
+        }
+
+        ConstantBufferLayout::ConstantBufferLayout(const ::Assets::ResChar initializer[])
+        {
+            // Here, we will read a simple configuration file that will define the layout
+            // of a constant buffer. Sometimes we need to get the layout of a constant 
+            // buffer without compiling any shader code, or really touching the HLSL at all.
+            std::regex lineMatch(R"--((\w*)\s+(\w*);?.*)--");
+            
+            size_t size;
+            auto file = LoadFileAsMemoryBlock(initializer, &size);
+
+            unsigned cbIterator = 0;
+
+            const char* iterator = (const char*)file.get();
+            const char* end = PtrAdd(iterator, size);
+            for (;;) {
+                while (iterator < end && (*iterator == '\n' || *iterator != '\r' || *iterator != ' '|| *iterator != '\t')) ++iterator;
+                const char* lineStart = iterator;
+                if (lineStart >= end) break;
+
+                while (iterator < end && *iterator != '\n' && *iterator != '\r') ++iterator;
+
+                    // double slash at the start of a line means ignore the reset of the line
+                if (*lineStart == '/' && (lineStart+1) < iterator && *(iterator+1) == '/')
+                    continue;
+
+                std::smatch match;
+                bool a = std::regex_match(std::string(lineStart, iterator), match, lineMatch);
+                if (a && match.size() >= 3) {
+                    Element e;
+                    e._name = match[2];
+                    e._type = AsTypeDesc(match[1].str().c_str());
+                    e._offset = cbIterator;
+                        // todo --  HLSL adds padding so that vectors don't straddle 16 byte boundaries!
+                        //          ignoring that here! -- 
+                    cbIterator += e._type.GetSize();
+                }
+            }
+            
+        }
+
+        ConstantBufferLayout::~ConstantBufferLayout() {}
+
         static std::vector<std::pair<MaterialGuid, SubMatResources>> BuildMaterialResources(
             const ModelScaffold& scaffold, const MaterialScaffold& matScaffold,
             SharedStateSet& sharedStateSet, unsigned levelOfDetail,
@@ -254,7 +354,10 @@ namespace RenderCore { namespace Assets
             for (auto i=materialResources.begin(); i!=materialResources.end(); ++i) {
                 const float alphaThreshold = .33f;
                 BasicMaterialConstants basicConstants = 
-                    { Float3(1.f, 1.f, 1.f), 1.f, Float3(1.f, 1.f, 1.f), alphaThreshold };
+                {
+                    Float3(1.f, 1.f, 1.f), 1.f,
+                    Float3(1.f, 1.f, 1.f), alphaThreshold
+                };
 
                 static const auto HashMaterialDiffuse = ParameterBox::MakeParameterNameHash("MaterialDiffuse");
                 static const auto HashOpacity = ParameterBox::MakeParameterNameHash("Opacity");
@@ -264,16 +367,10 @@ namespace RenderCore { namespace Assets
                 auto* matData = matScaffold.GetMaterial(i->first);
                 if (matData) {
                     auto& constants = matData->_constants;
-                    auto matDiffuse = constants.GetParameter<Float3>(HashMaterialDiffuse);
-                    if (matDiffuse.first) { 
-                        basicConstants._materialDiffuse = matDiffuse.second; 
-                    }
-                    auto matOpacity = constants.GetParameter<float>(HashOpacity);
-                    if (matOpacity.first) { basicConstants._opacity = matOpacity.second; }
-                    auto matSpecular = constants.GetParameter<Float3>(HashMaterialSpecular);
-                    if (matSpecular.first) { basicConstants._materialSpecular = matSpecular.second; }
-                    auto matAlphaTreshold = constants.GetParameter<float>(HashAlphaThreshold);
-                    if (matAlphaTreshold.first) { basicConstants._alphaThreshold = matAlphaTreshold.second; }
+                    basicConstants._materialDiffuse     = constants.GetParameter<Float3>(HashMaterialDiffuse,   basicConstants._materialDiffuse);
+                    basicConstants._opacity             = constants.GetParameter<float> (HashOpacity,           basicConstants._opacity);
+                    basicConstants._materialSpecular    = constants.GetParameter<Float3>(HashMaterialSpecular,  basicConstants._materialSpecular);
+                    basicConstants._alphaThreshold      = constants.GetParameter<float> (HashAlphaThreshold,    basicConstants._alphaThreshold);
                 }
 
                 std::vector<uint8> constants((uint8*)&basicConstants, (uint8*)PtrAdd(&basicConstants, sizeof(basicConstants)));
