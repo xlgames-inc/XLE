@@ -56,6 +56,27 @@ namespace Utility
             // (same as count-trailing-zeroes)
         return xl_ctz8(input);
     }
+
+    inline uint32 CeilToMultiplePow2(uint32 input, uint32 multiple)
+    {
+            // returns "input", or the next largest multiple of the number "multiple"
+            // Here, we assume "multiple" is a power of 2
+        assert(IsPowerOfTwo(multiple));
+        return (input + multiple - 1) & ~(multiple - 1);
+    }
+
+    inline uint32 FloorToMultiplePow2(uint32 input, uint32 multiple)
+    {
+        assert(IsPowerOfTwo(multiple));
+        return input & ~(multiple - 1);
+    }
+
+    inline uint32 CeilToMultiple(uint32 input, uint32 multiple)
+    {
+        assert(multiple > 0);
+        return input + multiple - 1 - (input - 1) % multiple;
+    }
+
 }
 
 using namespace Utility;

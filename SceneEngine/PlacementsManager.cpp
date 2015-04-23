@@ -703,7 +703,7 @@ namespace SceneEngine
                     //  We could potentially have more than one shared state set for this renderer
                     //  and separate the objects into their correct state set, as required...
                 _renderer = cache._modelRenderers.Get(hashedRenderer).get();
-                if (!_renderer) {
+                if (!_renderer || _renderer->GetDependencyValidation().GetValidationIndex() > 0) {
                     #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
                         auto modelFilename = (const ResChar*)PtrAdd(filenamesBuffer, obj._modelFilenameOffset + sizeof(uint64));
                         auto searchRules = ::Assets::DefaultDirectorySearchRules(modelFilename);

@@ -8,6 +8,7 @@
     <ClInclude Include="..\Techniques\TechniqueUtils.h" />
     <ClInclude Include="..\Techniques\TechniqueMaterial.h" />
     <ClInclude Include="..\Techniques\CommonBindings.h" />
+    <ClInclude Include="..\Techniques\PredefinedCBLayout.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Techniques\Techniques.cpp" />
@@ -15,5 +16,6 @@
     <ClCompile Include="..\Techniques\ParsingContext.cpp" />
     <ClCompile Include="..\Techniques\TechniqueUtils.cpp" />
     <ClCompile Include="..\Techniques\TechniqueMaterial.cpp" />
+    <ClCompile Include="..\Techniques\PredefinedCBLayout.cpp" />
   </ItemGroup>
 </Project>

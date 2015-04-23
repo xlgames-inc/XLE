@@ -169,6 +169,8 @@ namespace RenderCore { namespace Assets
         std::vector<MaterialGuid> DrawCallToMaterialBinding() const;
         void LogReport() const;
 
+        const ::Assets::DependencyValidation& GetDependencyValidation() const { return *_validationCallback; }
+
             ////////////////////////////////////////////////////////////
         ModelRenderer(
             const ModelScaffold& scaffold, const MaterialScaffold& matScaffold,
@@ -178,6 +180,8 @@ namespace RenderCore { namespace Assets
     protected:
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
+
+        std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
     };
 
 ////////////////////////////////////////////////////////////////////////////////////////////

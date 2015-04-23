@@ -7,7 +7,7 @@
 #if !defined(BASIC_MATERIAL_H)
 #define BASIC_MATERIAL_H
 
-    //  This cbuffer contains basic constants are used frequently enough that 
+    //  This cbuffer contains basic constants are used frequently enough that
     //  we can add support for them in most shaders.
 cbuffer BasicMaterialConstants
 {
@@ -15,6 +15,13 @@ cbuffer BasicMaterialConstants
     float   Opacity;
     float3  MaterialSpecular;
     float   AlphaThreshold;
+
+	float   RoughnessMin;
+	float   RoughnessMax;
+	float   SpecularMin;
+	float   SpecularMax;
+	float   MetalMin;
+	float   MetalMax;
 }
 
 #endif
