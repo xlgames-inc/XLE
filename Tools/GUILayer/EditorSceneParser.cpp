@@ -134,7 +134,10 @@ namespace GUILayer
         const SceneParseSettings& parseSettings,
         unsigned index, unsigned techniqueIndex) const
     {
-        ExecuteScene(context, parserContext, parseSettings, techniqueIndex);
+            // disable terrain rendering when writing shadow
+        auto newSettings = parseSettings;
+        newSettings._toggles &= ~SceneParseSettings::Toggles::Terrain;
+        ExecuteScene(context, parserContext, newSettings, techniqueIndex);
     }
 
     unsigned EditorSceneParser::GetShadowProjectionCount() const { return (unsigned)_shadowProj.size(); }
