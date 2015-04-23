@@ -186,6 +186,17 @@ namespace SceneEngine
         _worldToClip = Identity<Float4x4>();
     }
 
+    LightDesc::LightDesc()
+    {
+        _type = Directional;
+        _negativeLightDirection = Normalize(Float3(-.1f, 0.33f, 1.f));
+        _radius = 10000.f;
+        _shadowFrustumIndex = ~unsigned(0x0);
+        _diffuseColor = Float3(1.f, 1.f, 1.f);
+        _specularColor = Float3(1.f, 1.f, 1.f);
+        _nonMetalSpecularBrightness = 1.f;
+    }
+
 
     RenderCore::SharedPkt BuildScreenToShadowConstants(
         unsigned frustumCount,

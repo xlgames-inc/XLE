@@ -9,6 +9,7 @@
 #include "../../Math/Vector.h"
 
 namespace RenderCore { namespace Techniques { class CameraDesc; } }
+namespace SceneEngine { class LightDesc; class GlobalLightingDesc; }
 
 namespace ToolsRig
 {
@@ -24,5 +25,8 @@ namespace ToolsRig
     };
 
     RenderCore::Techniques::CameraDesc AsCameraDesc(const VisCameraSettings& camSettings);
+
+    SceneEngine::LightDesc DefaultDominantLight();
+    SceneEngine::GlobalLightingDesc DefaultGlobalLightingDesc();
 }
 

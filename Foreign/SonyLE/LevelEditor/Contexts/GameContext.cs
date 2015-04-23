@@ -414,7 +414,7 @@ namespace LevelEditor
 
                 foreach (GameContext subContext in m_gameDocumentRegistry.SubDocuments.AsIEnumerable<GameContext>())
                 {
-                    folderNode = subContext.RootGameObjectFolder.Cast<DomNode>();
+                    folderNode = subContext.RootGameObjectFolder.As<DomNode>();
                     if (folderNode != null)
                     {
                         descendants = folderNode.Subtree.Skip(1);
@@ -860,7 +860,7 @@ namespace LevelEditor
         {
             get
             {
-                var game = this.Cast<IGame>();
+                var game = this.As<IGame>();
                 if (game == null) return null;
                 return game.RootGameObjectFolder;
             }

@@ -18,8 +18,8 @@ float4 ResolveLightUnshadowed(	float4 position : SV_Position,
 	float3 worldPosition = CalculateWorldPosition(pixelCoords, GetSampleIndex(sys), viewFrustumVector);
 
 	GBufferValues sample = LoadGBuffer(position, sys);
-	float3 diffuse = (1.0f - MO_Metallic) * CalculateDiffuse(sample, NegativeLightDirection, LightColour);
-	float3 specular = CalculateSpecularColor(sample, normalize(-viewFrustumVector), NegativeLightDirection, LightColour);
+	float3 diffuse = (1.0f - MO_Metallic) * LightResolve_Diffuse(sample, NegativeLightDirection, LightColor);
+	float3 specular = LightResolve_Specular(sample, normalize(-viewFrustumVector), NegativeLightDirection, LightColor);
 
 	const float lightScale = LightingScale;
 	return float4((lightScale*sample.cookedAmbientOcclusion)*(diffuse + specular), 1.f);
@@ -46,7 +46,7 @@ float4 ResolvePointLightUnshadowed(	float4 position : SV_Position,
 	float R = LightRadius; R *= R; R *= R; R *= R;
 	float radiusDropOff = 1.f - saturate(3.f * D / R);
 
-	float3 light	 = LightColour * directionalAttenuation;
+	float3 light	 = LightColor.diffuse * directionalAttenuation;
 	return float4((attenuation*radiusDropOff)*sample.diffuseAlbedo.rgb*light, 1.f);
 }
 

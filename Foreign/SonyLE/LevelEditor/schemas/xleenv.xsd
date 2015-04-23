@@ -93,6 +93,7 @@
         <LeGe.NativeProperty name="diffusebrightness" nativeName="diffusebrightness"/>
         <LeGe.NativeProperty name="specular" nativeName="specular"/>
         <LeGe.NativeProperty name="specularbrightness" nativeName="specularbrightness"/>
+        <LeGe.NativeProperty name="specularnonmetalbrightness" nativeName="specularnonmetalbrightness"/>
         <LeGe.NativeProperty name="flags" nativeName="flags"/>
 
         <scea.dom.editors.attribute category="Light" name="diffuse" displayName="Diffuse" description="Diffuse Color" 
@@ -102,6 +103,8 @@
         <scea.dom.editors.attribute category="Light" name="specular" displayName="Specular" description="Specular Color" 
           editor="Sce.Atf.Controls.PropertyEditing.ColorPickerEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.IntColorConverter"/>
         <scea.dom.editors.attribute category="Light" name="specularbrightness" displayName="Specular Brightness" description="Brightness of the specular part of the light"
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,20"/>
+        <scea.dom.editors.attribute category="Light" name="specularnonmetalbrightness" displayName="Specular Non-Metal Brightness" description="Brightness of specular on non-metal"
           editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,20"/>
         <scea.dom.editors.attribute category="Light" name="flags" displayName="Flags"
           editor="Sce.Atf.Controls.PropertyEditing.FlagsUITypeEditor,Atf.Gui.WinForms:CastShadows"
@@ -117,6 +120,7 @@
         <xs:attribute name="diffusebrightness" type="xs:float" default="1"/>
         <xs:attribute name="specular" type="xs:int" default="-1"/>
         <xs:attribute name="specularbrightness" type="xs:float" default="1"/>
+        <xs:attribute name="specularnonmetalbrightness" type="xs:float" default="1"/>
         <xs:attribute name="flags" type="xs:int" default="0"/>
       </xs:extension>
     </xs:complexContent>

@@ -11,6 +11,7 @@
     <ClCompile Include="..\HighlightEffects.cpp" />
     <ClCompile Include="..\ManipulatorsRender.cpp" />
     <ClCompile Include="..\VisualisationGeo.cpp" />
+    <ClCompile Include="..\VisualisationUtils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\BasicManipulators.h" />

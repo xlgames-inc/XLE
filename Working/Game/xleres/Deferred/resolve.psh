@@ -396,8 +396,8 @@ float4 ResolveLight(	float4 position : SV_Position,
 
 	GBufferValues sample = LoadGBuffer(position, sys);
 	float metal = Material_GetMetal(sample);
-	float3 diffuse = (1.0f - metal) * CalculateDiffuse(sample, NegativeLightDirection, LightColour);
-	float3 specular = CalculateSpecularColor(sample, normalize(-viewFrustumVector), NegativeLightDirection, LightColour);
+	float3 diffuse = (1.0f - metal) * LightResolve_Diffuse(sample, NegativeLightDirection, LightColor);
+	float3 specular = LightResolve_Specular(sample, normalize(-viewFrustumVector), NegativeLightDirection, LightColor);
 
 	const float lightScale = LightingScale;
 	return float4((lightScale*shadow*sample.cookedAmbientOcclusion)*(diffuse + specular), 1.f);
@@ -413,7 +413,7 @@ float4 ResolvePointLight(	float4 position : SV_Position,
 
 	int2 pixelCoords = position.xy;
 	float3 worldPosition = CalculateWorldPosition(pixelCoords, GetSampleIndex(sys), viewFrustumVector);
-	float shadow	 = ResolvePointLightShadows(worldPosition, pixelCoords, GetSampleIndex(sys));
+	float shadow = ResolvePointLightShadows(worldPosition, pixelCoords, GetSampleIndex(sys));
 	GBufferValues sample = LoadGBuffer(position, sys);
 
 	float3 lightVector = (NegativeLightDirection - worldPosition);
@@ -425,7 +425,7 @@ float4 ResolvePointLight(	float4 position : SV_Position,
 	float R = LightRadius; R *= R; R *= R; R *= R;
 	float radiusDropOff = 1.f - saturate(3.f * D / R);
 
-	float3 light	 = LightColour * directionalAttenuation;
+	float3 light = LightColor.diffuse * directionalAttenuation;
 	return float4((attenuation*radiusDropOff*shadow)*sample.diffuseAlbedo.rgb*light, 1.f);
 }
 

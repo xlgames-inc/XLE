@@ -124,6 +124,7 @@
     <ClCompile Include="..\TerrainManipulatorsCommon.cpp" />
     <ClCompile Include="..\TerrainManipulatorsInterface.cpp" />
     <ClCompile Include="..\VisualisationGeo.cpp" />
+    <ClCompile Include="..\VisualisationUtils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\BasicManipulators.h" />

@@ -124,7 +124,11 @@ namespace SceneEngine
         float       _radius;
         Type        _type;
         unsigned    _shadowFrustumIndex;
-        Float3      _lightColour;
+        Float3      _diffuseColor;
+        Float3      _specularColor;
+        float       _nonMetalSpecularBrightness;
+
+        LightDesc();
     };
 
     class GlobalLightingDesc

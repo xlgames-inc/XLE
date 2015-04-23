@@ -153,7 +153,6 @@ namespace Sample
         dummy._radius = 10000.f;
         dummy._type = LightDesc::Directional;
         dummy._shadowFrustumIndex = 0;
-        dummy._lightColour = Float3(1.f, 1.f, 1.f);
 
             // sun direction based on angle in the sky
         Float2 sunDirectionOfMovement = Normalize(Float2(1.f, 0.33f));

@@ -63,6 +63,15 @@ PerPixelMaterialParam DecodeParametersTexture(float4 paramTextureSample, float4 
 	}
 }
 
+PerPixelMaterialParam DefaultMaterialValues()
+{
+	PerPixelMaterialParam result;
+	result.roughness = RoughnessMin;
+	result.specular = SpecularMin;
+	result.metal = MetalMin;
+	return result;
+}
+
 #if !((OUTPUT_TEXCOORD==1) && (MAT_ALPHA_TEST==1))
 	[earlydepthstencil]
 #endif
@@ -128,6 +137,8 @@ GBufferEncoded main(VSOutput geo)
 			//	Just using a trilinear sample for this. Anisotropy disabled.
 		result.material = DecodeParametersTexture(
 			ParametersTexture.Sample(DefaultSampler, geo.texCoord), diffuseTextureSample);
+	#else
+		result.material = DefaultMaterialValues();
 	#endif
 
 	#if (RES_HAS_CUSTOM_MAP==1)

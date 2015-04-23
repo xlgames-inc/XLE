@@ -492,9 +492,16 @@ namespace SceneEngine
         {
         public:
             Float3 NegativeLightDirection; float LightRadius;
-            Float3 LightColour; float LightPower;
+            Float3 diffuse; float dummy;
+            Float3 specular; float nonMetalSpecularBrightness;
+            float LightPower; float dummy1[3];
         } lightBuffer = {
-            light._negativeLightDirection, light._radius, light._lightColour, PowerForHalfRadius(light._radius, 0.05f)
+            light._negativeLightDirection, 
+            light._radius, 
+            light._diffuseColor, 0.f,
+            light._specularColor,
+            light._nonMetalSpecularBrightness,
+            PowerForHalfRadius(light._radius, 0.05f)
         };
         return MakeSharedPkt(lightBuffer);
     }

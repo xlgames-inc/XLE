@@ -40,25 +40,32 @@ float3 CalculateWorldPosition(int2 pixelCoords, uint sampleIndex, float3 viewFru
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+struct LightColors
+{
+	float3 diffuse;
+	float3 specular;
+	float nonMetalSpecularBrightness;
+};
+
 cbuffer LightBuffer
 {
-	float3 	NegativeLightDirection;
-	float	LightRadius;
-	float3	LightColour;
-	float	LightPower;
+	float3 		NegativeLightDirection;
+	float		LightRadius;
+	LightColors LightColor;
+	float		LightPower;
 }
 
-float3 CalculateDiffuse(GBufferValues sample, float3 negativeLightDirection, float3 lightColor)
+float3 LightResolve_Diffuse(GBufferValues sample, float3 negativeLightDirection, LightColors lightColor)
 {
 	float light = MO_DiffuseScale * saturate(dot(negativeLightDirection, sample.worldSpaceNormal.xyz));
-	return light * lightColor * sample.diffuseAlbedo.rgb;
+	return light * lightColor.diffuse * sample.diffuseAlbedo.rgb;
 }
 
-float3 CalculateSpecularColor(
+float3 LightResolve_Specular(
 	GBufferValues sample,
 	float3 viewDirection,
 	float3 negativeLightDirection,
-	float3 lightColor)
+	LightColors lightColor)
 {
 	float roughnessValue = Material_GetRoughness(sample);
 
@@ -87,8 +94,8 @@ float3 CalculateSpecularColor(
 	float scale = sample.cookedAmbientOcclusion;
 	float3 result =
 		(saturate(spec0) * scale)
-		* lerp(lightColor, specularColor0, Material_GetMetal(sample));
-	result += (saturate(spec1) * scale) * specularColor1;
+		* lerp(lightColor.nonMetalSpecularBrightness.xxx, lightColor.specular, Material_GetMetal(sample));
+	// result += (saturate(spec1) * scale) * specularColor1;
 	return result;
 }
 

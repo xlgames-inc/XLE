@@ -51,23 +51,13 @@ namespace ToolsRig
         unsigned                        GetLightCount() const { return 1; }
         const SceneEngine::LightDesc&   GetLightDesc(unsigned index) const
         {
-            static SceneEngine::LightDesc light;
-            light._type = SceneEngine::LightDesc::Directional;
-            light._lightColour = 5.f * Float3(5.f, 5.f, 5.f);
-            light._negativeLightDirection = Normalize(Float3(-.1f, 0.33f, 1.f));
-            light._radius = 10000.f;
-            light._shadowFrustumIndex = ~unsigned(0x0);
+            static SceneEngine::LightDesc light = DefaultDominantLight();
             return light;
         }
 
         SceneEngine::GlobalLightingDesc GetGlobalLightingDesc() const
         {
-            SceneEngine::GlobalLightingDesc result;
-            result._ambientLight = 5.f * Float3(0.25f, 0.25f, 0.25f);
-            result._doAtmosphereBlur = false;
-            result._doOcean = false;
-            result._doToneMap = false;
-            return result;
+            return DefaultGlobalLightingDesc();
         }
 
         float GetTimeValue() const { return 0.f; }

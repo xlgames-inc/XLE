@@ -219,6 +219,7 @@ namespace GUILayer
                     static const auto diffuseBrightnessHash = ParameterBox::MakeParameterNameHash("diffusebrightness");
                     static const auto specularHash = ParameterBox::MakeParameterNameHash("specular");
                     static const auto specularBrightnessHash = ParameterBox::MakeParameterNameHash("specularbrightness");
+                    static const auto specularNonMetalBrightnessHash = ParameterBox::MakeParameterNameHash("specularnonmetalbrightness");
                     static const auto flagsHash = ParameterBox::MakeParameterNameHash("flags");
                     static const auto transformHash = ParameterBox::MakeParameterNameHash("Transform");
 
@@ -229,7 +230,9 @@ namespace GUILayer
 
                     LightDesc light;
                     light._type = LightDesc::Directional;
-                    light._lightColour = props.GetParameter(diffuseBrightnessHash, 1.f) * AsFloat3Color(props.GetParameter(diffuseHash, ~0x0u));
+                    light._diffuseColor = props.GetParameter(diffuseBrightnessHash, 1.f) * AsFloat3Color(props.GetParameter(diffuseHash, ~0x0u));
+                    light._specularColor = props.GetParameter(specularBrightnessHash, 1.f) * AsFloat3Color(props.GetParameter(specularHash, ~0x0u));
+                    light._nonMetalSpecularBrightness = props.GetParameter(specularNonMetalBrightnessHash, 1.f);
                     light._negativeLightDirection = (MagnitudeSquared(translation) > 0.01f) ? Normalize(translation) : Float3(0.f, 0.f, 0.f);
                     light._radius = 10000.f;
                     light._shadowFrustumIndex = ~unsigned(0x0);
@@ -244,13 +247,7 @@ namespace GUILayer
                 }
             }
         } else {
-            LightDesc light;
-            light._type = LightDesc::Directional;
-            light._lightColour = Float3(1.f, 1.f, 1.f);
-            light._negativeLightDirection = Normalize(Float3(-.1f, 0.33f, 1.f));
-            light._radius = 10000.f;
-            light._shadowFrustumIndex = ~unsigned(0x0);
-            _lights.push_back(light);
+            _lights.push_back(LightDesc());
         }
     }
 
