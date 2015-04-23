@@ -24,14 +24,13 @@ namespace ModelViewer
         {
             if (disposing)
             {
-                if (components != null)
-                {
-                    components.Dispose();
-                }
-                if (visSettings != null)
-                {
-                    visSettings.Dispose();
-                }
+                viewSettings.SelectedObject = null;
+                mouseOverDetails.SelectedObject = null;
+
+                if (components != null)     components.Dispose();
+                if (visSettings != null)    visSettings.Dispose();
+                if (visMouseOver != null)   visMouseOver.Dispose();
+                if (visResources != null)   visResources.Dispose();
             }
             base.Dispose(disposing);
         }

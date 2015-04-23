@@ -22,8 +22,13 @@ namespace RenderCore { namespace Metal_DX11
                 #include "../../Metal/Detail/DXGICompatibleFormats.h"
             #undef _EXP
 
-            Matrix4x4,
-            Matrix3x4
+            R24G8_TYPELESS = DXGI_FORMAT_R24G8_TYPELESS,
+            D24_UNORM_S8_UINT = DXGI_FORMAT_D24_UNORM_S8_UINT,
+            R24_UNORM_X8_TYPELESS = DXGI_FORMAT_R24_UNORM_X8_TYPELESS,
+            X24_TYPELESS_G8_UINT = DXGI_FORMAT_R24_UNORM_X8_TYPELESS,
+
+            Matrix4x4 = 150,
+            Matrix3x4 = 151
         };
     }
 

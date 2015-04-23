@@ -31,7 +31,9 @@ static const uint3 ColourList[47] =
 	uint3(79,67,89), uint3(135,166,124)
 };
 
-#define INPUT_MODE 1
+#if !defined(INPUT_MODE)
+	#define INPUT_MODE 1
+#endif
 
 #if INPUT_MODE == 0
 	Texture2D<uint>		StencilInput;

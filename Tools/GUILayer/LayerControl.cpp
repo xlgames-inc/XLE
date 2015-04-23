@@ -80,8 +80,6 @@ namespace GUILayer
                 std::ref(*_pimpl), frameRig.GetMainOverlaySystem().get()));
     }
 
-    static std::shared_ptr<ToolsRig::ModelVisCache> s_visCache;
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     class ManipulatorStack : public RenderOverlays::DebuggingDisplay::IInputListener
@@ -179,19 +177,33 @@ namespace GUILayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
     
-    void LayerControl::SetupDefaultVis(ModelVisSettings^ settings, VisMouseOver^ mouseOver)
+    public ref class VisResources
     {
-        if (!s_visCache) {
-            s_visCache = std::make_shared<ToolsRig::ModelVisCache>(
-                std::shared_ptr<RenderCore::Assets::IModelFormat>());
-        }
+    public:
+        clix::shared_ptr<ToolsRig::ModelVisCache> _visCache;
 
-        auto visLayer = std::make_unique<ToolsRig::ModelVisLayer>(settings->GetUnderlying(), s_visCache);
+        VisResources();
+        ~VisResources();
+        !VisResources();
+    };
+
+    VisResources::VisResources()
+    {
+        _visCache = std::make_shared<ToolsRig::ModelVisCache>(
+                std::shared_ptr<RenderCore::Assets::IModelFormat>());
+    }
+
+    VisResources::~VisResources() {}
+    VisResources::!VisResources() { System::Diagnostics::Debug::Assert(false, "Non deterministic delete of VisResources"); }
+
+    void LayerControl::SetupDefaultVis(ModelVisSettings^ settings, VisMouseOver^ mouseOver, VisResources^ resources)
+    {
+        auto visLayer = std::make_unique<ToolsRig::ModelVisLayer>(settings->GetUnderlying(), resources->_visCache.GetNativePtr());
         auto& overlaySet = *GetWindowRig().GetFrameRig().GetMainOverlaySystem();
         overlaySet.AddSystem(std::move(visLayer));
         overlaySet.AddSystem(
             std::make_shared<ToolsRig::VisualisationOverlay>(
-                settings->GetUnderlying(), s_visCache, 
+                settings->GetUnderlying(), resources->_visCache.GetNativePtr(), 
                 mouseOver ? mouseOver->GetUnderlying() : nullptr));
 
         AddDefaultCameraHandler(settings->Camera);
@@ -201,18 +213,18 @@ namespace GUILayer
                 mouseOver->GetUnderlying(),
                 EngineDevice::GetInstance()->GetNative().GetRenderDevice()->GetImmediateContext(),
                 _pimpl->_globalTechniqueContext,
-                settings->GetUnderlying(), s_visCache));
+                settings->GetUnderlying(), resources->_visCache.GetNativePtr()));
     }
 
-    VisMouseOver^ LayerControl::CreateVisMouseOver(ModelVisSettings^ settings)
+    VisMouseOver^ LayerControl::CreateVisMouseOver(ModelVisSettings^ settings, VisResources^ resources)
     {
-        if (!s_visCache) {
-            s_visCache = std::make_shared<ToolsRig::ModelVisCache>(
-                std::shared_ptr<RenderCore::Assets::IModelFormat>());
-        }
-
         return gcnew VisMouseOver(
-            std::make_shared<ToolsRig::VisMouseOver>(), settings->GetUnderlying(), s_visCache);
+            std::make_shared<ToolsRig::VisMouseOver>(), settings->GetUnderlying(), resources->_visCache.GetNativePtr());
+    }
+
+    VisResources^ LayerControl::CreateVisResources()
+    {
+        return gcnew VisResources();
     }
 
     namespace Internal

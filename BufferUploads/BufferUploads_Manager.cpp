@@ -2174,7 +2174,7 @@ namespace BufferUploads
             //
         using namespace PlatformInterface;
         if (RequiresStagingResourceReadBack) {
-            BufferDesc stagingDesc = AsStagingDesc(ExtractDesc(*resource));
+            BufferDesc stagingDesc = AsStagingDesc(PlatformInterface::ExtractDesc(*resource));
             ObjectFactory tempFactory(*resource);
             stagingResource = CreateResource(tempFactory, stagingDesc);
             if (stagingResource.get()) {
@@ -2184,9 +2184,9 @@ namespace BufferUploads
         }
         
         if (CanDoPartialMaps) {
-            _mappedBuffer = context.MapPartial(*resource, PlatformInterface::UnderlyingDeviceContext::MapType::ReadOnly, locator.Offset(), locator.Size());
+            _mappedBuffer = context.MapPartial(*resource, UnderlyingDeviceContext::MapType::ReadOnly, locator.Offset(), locator.Size());
         } else {
-            _mappedBuffer = context.Map(*resource, PlatformInterface::UnderlyingDeviceContext::MapType::ReadOnly);
+            _mappedBuffer = context.Map(*resource, UnderlyingDeviceContext::MapType::ReadOnly);
             _dataOffset = (locator.Offset() != ~unsigned(0x0))?locator.Offset():0;
         }
     }
@@ -2455,6 +2455,11 @@ namespace BufferUploads
     std::unique_ptr<IManager>       CreateManager(RenderCore::IDevice* renderDevice)
     {
         return std::make_unique<Manager>(renderDevice);
+    }
+
+    BufferDesc ExtractDesc(const RenderCore::Metal::Underlying::Resource& resource)
+    {
+        return PlatformInterface::ExtractDesc(resource);
     }
 }
 

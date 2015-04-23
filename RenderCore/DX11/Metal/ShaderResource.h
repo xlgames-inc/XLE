@@ -23,7 +23,7 @@ namespace RenderCore { namespace Metal_DX11
     class ShaderResourceView
     {
     public:
-        typedef ID3D::Resource*                 UnderlyingResource;
+        typedef ID3D::Resource* UnderlyingResource;
         explicit ShaderResourceView(UnderlyingResource resource, NativeFormat::Enum format = NativeFormat::Unknown, int arrayCount=0, bool forceSingleSample=false);
         explicit ShaderResourceView(UnderlyingResource resource, NativeFormat::Enum format, const MipSlice& mipSlice);
         explicit ShaderResourceView(ID3D::ShaderResourceView* resource);
@@ -35,6 +35,8 @@ namespace RenderCore { namespace Metal_DX11
         ShaderResourceView(ShaderResourceView&& moveFrom) never_throws;
         ShaderResourceView& operator=(const ShaderResourceView& cloneFrom);
         ShaderResourceView& operator=(ShaderResourceView&& moveFrom) never_throws;
+
+        intrusive_ptr<ID3D::Resource>           GetResource() const;
         
         typedef ID3D::ShaderResourceView*       UnderlyingType;
         UnderlyingType                          GetUnderlying() const { return _underlying.get(); }

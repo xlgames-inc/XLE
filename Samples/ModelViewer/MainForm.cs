@@ -22,8 +22,9 @@ namespace ModelViewer
             InitializeComponent();
 
             visSettings = GUILayer.ModelVisSettings.CreateDefault();
-            visMouseOver = viewerControl.Underlying.CreateVisMouseOver(visSettings);
-            viewerControl.Underlying.SetupDefaultVis(visSettings, visMouseOver);
+            visResources = viewerControl.Underlying.CreateVisResources();
+            visMouseOver = viewerControl.Underlying.CreateVisMouseOver(visSettings, visResources);
+            viewerControl.Underlying.SetupDefaultVis(visSettings, visMouseOver, visResources);
 
             viewSettings.SelectedObject = visSettings;
             visSettings.AttachCallback(mouseOverDetails);
@@ -41,8 +42,11 @@ namespace ModelViewer
                 var matName = visMouseOver.FullMaterialName;
                 if (matName != null) {
                     using (var editor = new ModalMaterialEditor()) {
-                        editor.Object = new GUILayer.RawMaterial(matName);
-                        editor.ShowDialog();
+                        using (var mat = new GUILayer.RawMaterial(matName)) {
+                            editor.Object = mat;
+                            editor.ShowDialog();
+                            editor.Object = null;
+                        }
                     }
                 }
             }
@@ -69,5 +73,6 @@ namespace ModelViewer
 
         private GUILayer.ModelVisSettings visSettings;
         private GUILayer.VisMouseOver visMouseOver;
+        private GUILayer.VisResources visResources;
     }
 }

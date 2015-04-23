@@ -152,7 +152,7 @@ namespace GUILayer
     {
         GlobalLightingDesc result;
         result._ambientLight = .03f * Float3(1.f, 1.f, 1.f);
-        XlCopyString(result._skyTexture, "game/xleres/DefaultResources/sky/desertsky.jpg");
+        XlCopyString(result._skyTexture, "game/xleres/DefaultResources/sky/desertsky.dds");
         result._doToneMap = true;
         return result;
     }

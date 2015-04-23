@@ -591,6 +591,8 @@ namespace RenderCore { namespace Metal_DX11
         #endif
     };
 
+    static HMODULE ShaderCompilerModule = (HMODULE)INVALID_HANDLE_VALUE;
+
     static HRESULT D3DReflect_Wrapper(
         const void* pSrcData, size_t SrcDataSize, 
         const IID& pInterface, void** ppReflector)
@@ -599,21 +601,20 @@ namespace RenderCore { namespace Metal_DX11
         // for a similar function.
         // Note that if we open the module successfully, we will never close it!
 
-        static HMODULE module = (HMODULE)INVALID_HANDLE_VALUE;
-        if (module == INVALID_HANDLE_VALUE) {
-            module = (*Windows::Fn_LoadLibrary)("d3dcompiler_47.dll");
+        if (ShaderCompilerModule == INVALID_HANDLE_VALUE) {
+            ShaderCompilerModule = (*Windows::Fn_LoadLibrary)("d3dcompiler_47.dll");
         }
-        if (!module || module == INVALID_HANDLE_VALUE) {
+        if (!ShaderCompilerModule || ShaderCompilerModule == INVALID_HANDLE_VALUE) {
 			assert(0 && "d3dcompiler_47.dll is missing. Please make sure this dll is in the same directory as your executable, or reachable path");
             return E_NOINTERFACE;
         }
 
         typedef HRESULT WINAPI D3DReflect_Fn(LPCVOID, SIZE_T, REFIID, void**);
 
-        auto fn = (D3DReflect_Fn*)(*Windows::Fn_GetProcAddress)(module, "D3DReflect");
+        auto fn = (D3DReflect_Fn*)(*Windows::Fn_GetProcAddress)(ShaderCompilerModule, "D3DReflect");
         if (!fn) {
-            (*Windows::FreeLibrary)(module);
-            module = (HMODULE)INVALID_HANDLE_VALUE;
+            (*Windows::FreeLibrary)(ShaderCompilerModule);
+            ShaderCompilerModule = (HMODULE)INVALID_HANDLE_VALUE;
             return E_NOINTERFACE;
         }
 
@@ -810,6 +811,7 @@ namespace RenderCore { namespace Metal_DX11
         static const uint64 Type_ShaderCompile = ConstHash64<'Shad', 'erCo', 'mpil', 'e'>::Value;
 
         OfflineCompileProcess();
+        ~OfflineCompileProcess();
     protected:
         std::unique_ptr<ShaderCacheSet> _shaderCacheSet;
     };
@@ -922,6 +924,21 @@ namespace RenderCore { namespace Metal_DX11
     {
         auto shaderCacheSet = std::make_unique<ShaderCacheSet>();
         _shaderCacheSet = std::move(shaderCacheSet);
+    }
+
+    OfflineCompileProcess::~OfflineCompileProcess()
+    {
+            // note --  we have to be careful when unloading this DLL!
+            //          We may have created ID3D11Reflection objects using
+            //          this dll. If any of them are still alive when we unload
+            //          the DLL, then they will cause a crash if we attempt to
+            //          use them, or call the destructor. The only way to be
+            //          safe is to make sure all reflection objects are destroyed
+            //          before unloading the dll
+        if (ShaderCompilerModule != INVALID_HANDLE_VALUE) {
+            (*Windows::FreeLibrary)(ShaderCompilerModule);
+            ShaderCompilerModule = (HMODULE)INVALID_HANDLE_VALUE;
+        }
     }
 
         ////////////////////////////////////////////////////////////

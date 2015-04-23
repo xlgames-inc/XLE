@@ -43,12 +43,26 @@ namespace ToolsRig
         metalContext.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
         metalContext.Bind(Metal::Topology::TriangleStrip);
         metalContext.Unbind<Metal::BoundInputLayout>();
+
+        auto desc = BufferUploads::ExtractDesc(*inputStencil.GetResource());
+        if (desc._type != BufferUploads::BufferDesc::Type::Texture) return;
+
+        bool stencilInput = 
+                desc._textureDesc._nativePixelFormat == Metal::NativeFormat::R24G8_TYPELESS
+            ||  desc._textureDesc._nativePixelFormat == Metal::NativeFormat::D24_UNORM_S8_UINT
+            ||  desc._textureDesc._nativePixelFormat == Metal::NativeFormat::R24_UNORM_X8_TYPELESS
+            ||  desc._textureDesc._nativePixelFormat == Metal::NativeFormat::X24_TYPELESS_G8_UINT
+            ;
                 
+        StringMeld<64, ::Assets::ResChar> params;
+        params << "ONLY_HIGHLIGHTED=" << unsigned(onlyHighlighted);
+        params << ";INPUT_MODE=" << (stencilInput?0:1);
+
         {
             auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
                 "game/xleres/basic2D.vsh:fullscreen:vs_*", 
                 "game/xleres/Effects/HighlightVis.psh:HighlightByStencil:ps_*",
-                (const ::Assets::ResChar*)(StringMeld<64, ::Assets::ResChar>() << "ONLY_HIGHLIGHTED=" << unsigned(onlyHighlighted)));
+                (const ::Assets::ResChar*)params);
                 
             metalContext.Bind(shader);
             metalContext.Draw(4);
@@ -58,7 +72,7 @@ namespace ToolsRig
             auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
                 "game/xleres/basic2D.vsh:fullscreen:vs_*", 
                 "game/xleres/Effects/HighlightVis.psh:OutlineByStencil:ps_*",
-                (const ::Assets::ResChar*)(StringMeld<64, ::Assets::ResChar>() << "ONLY_HIGHLIGHTED=" << unsigned(onlyHighlighted)));
+                (const ::Assets::ResChar*)params);
                 
             metalContext.Bind(shader);
             metalContext.Draw(4);

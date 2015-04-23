@@ -382,6 +382,7 @@ namespace RenderCore { namespace Techniques
 
         ParameterBoxTable(const ::Assets::ResChar filename[]);
         ParameterBoxTable(ParameterBoxTable&& moveFrom);
+        ~ParameterBoxTable();
         ParameterBoxTable& operator=(ParameterBoxTable&& moveFrom);
 
         const ::Assets::DependencyValidation& GetDependencyValidation() const { return *_depVal; }
@@ -512,6 +513,10 @@ namespace RenderCore { namespace Techniques
         _settings = std::move(moveFrom._settings);
         _depVal = std::move(moveFrom._depVal);
         return *this;
+    }
+
+    ParameterBoxTable::~ParameterBoxTable()
+    {
     }
 
     Technique::Technique(

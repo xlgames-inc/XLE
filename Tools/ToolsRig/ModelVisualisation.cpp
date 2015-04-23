@@ -260,7 +260,7 @@ namespace ToolsRig
         { return SceneEngine::ShadowProjectionDesc(); }
         
 
-        unsigned                        GetLightCount() const { return 0; }
+        unsigned                        GetLightCount() const { return 1; }
         const SceneEngine::LightDesc&   GetLightDesc(unsigned index) const
         {
             static SceneEngine::LightDesc light = DefaultDominantLight();

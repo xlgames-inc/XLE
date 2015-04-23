@@ -606,7 +606,8 @@ namespace BufferUploads
         typedef IManager Base_Manager;
     #endif
 
-    buffer_upload_dll_export std::unique_ptr<IManager>       CreateManager(RenderCore::IDevice* renderDevice);
+    buffer_upload_dll_export std::unique_ptr<IManager>      CreateManager(RenderCore::IDevice* renderDevice);
+    buffer_upload_dll_export BufferDesc                     ExtractDesc(const RenderCore::Metal::Underlying::Resource& resource);
 
 /*-----------------*/ #include "../RenderCore/FlexEnd.h" /*-----------------*/
 

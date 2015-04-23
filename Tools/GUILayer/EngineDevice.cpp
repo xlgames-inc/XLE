@@ -20,6 +20,7 @@
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../ConsoleRig/Log.h"
+#include "../../Assets/AssetUtils.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/SystemUtils.h"
@@ -153,9 +154,14 @@ namespace GUILayer
         
         RenderCore::Techniques::ResourceBoxes_Shutdown();
         RenderOverlays::CleanupFontSystem();
+        if (_pimpl->GetASyncManager())
+            _pimpl->GetASyncManager()->GetAssetSets().Clear();
         ResourceCompilerThread_Hack::Shutdown();
+        Assets::Dependencies_Shutdown();
         _pimpl.reset();
         TerminateFileSystemMonitoring();
+
+        ConsoleRig::Logging_Shutdown();
     }
 }
 

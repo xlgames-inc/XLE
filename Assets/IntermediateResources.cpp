@@ -313,7 +313,11 @@ namespace Assets { namespace IntermediateResources
         _baseDirectory = goodBranchDir;
     }
 
-    Store::~Store() {}
+    Store::~Store() 
+    {
+        decltype(RetainedRecords) temp;
+        temp.swap(RetainedRecords);
+    }
 
     ////////////////////////////////////////////////////////////////////////////////////////
 
@@ -372,6 +376,8 @@ namespace Assets { namespace IntermediateResources
     CompilerSet::~CompilerSet()
     {
     }
+
+    IResourceCompiler::~IResourceCompiler() {}
 }}
 
             ////////////////////////////////////////////////////////////

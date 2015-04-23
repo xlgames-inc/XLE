@@ -149,6 +149,7 @@ namespace ConsoleRig
     /// The configuration file should be defined in the format defined by the 
     /// "easylogging++" library
     void Logging_Startup(const char configFile[] = nullptr, const char logFileName[] = nullptr);
+    void Logging_Shutdown();
 }
 
 namespace LogUtilMethods

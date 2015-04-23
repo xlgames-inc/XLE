@@ -30,14 +30,12 @@ namespace ControlsLibrary.MaterialEditor
 
                     // Build a hierarchical of nodes in the combo box
                     // representing the inheritance tree in the material object
-                treeView1.Nodes.Clear();
+                ClearComboBoxNodes();
                 if (value!=null) {
                     var parentNode = treeView1.Nodes.Add(
                         value.Filename + ":" + value.SettingName);
-                    parentNode.Tag = value;
-                    AddComboBoxChildren(
-                        parentNode,
-                        value.BuildInheritanceList());
+                    parentNode.Tag = new GUILayer.RawMaterial(value);
+                    AddComboBoxChildren(parentNode, value.BuildInheritanceList());
                     parentNode.Expanded = true;
                     treeView1.SelectedNode = parentNode;
 
@@ -52,6 +50,19 @@ namespace ControlsLibrary.MaterialEditor
                 //  change the object that we're currently editing...
             var mat = (treeView1.SelectedNode!=null) ? (treeView1.SelectedNode.Tag as GUILayer.RawMaterial) : null;
             materialControl1.Object = mat;
+        }
+
+        protected void ClearComboBoxNodes()
+        {
+                //  hack to explicitly dispose all of the RawMaterial objects that have
+                //  been attached to 
+            foreach(var node in treeView1.AllNodes)
+            {
+                var mat = node.Tag as GUILayer.RawMaterial;
+                if (mat != null)
+                    mat.Dispose();
+            }
+            treeView1.Nodes.Clear();
         }
 
         protected void AddComboBoxChildren(

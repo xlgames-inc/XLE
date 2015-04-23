@@ -25,7 +25,7 @@ namespace GUILayer
 
         property VisCameraSettings^ Camera
         {
-            VisCameraSettings^ get() { return gcnew VisCameraSettings(_object->_camera); }
+            VisCameraSettings^ get() { return _camSettings; }
         }
 
         static MaterialVisSettings^ CreateDefault();
@@ -33,14 +33,21 @@ namespace GUILayer
         MaterialVisSettings(std::shared_ptr<ToolsRig::MaterialVisSettings> attached)
         {
             _object = std::move(attached);
+            _camSettings = gcnew VisCameraSettings(_object->_camera);
         }
 
-        ~MaterialVisSettings() { _object.reset(); }
+        ~MaterialVisSettings() { delete _camSettings; _object.reset(); }
+
+        !MaterialVisSettings()
+        {
+            System::Diagnostics::Debug::Assert(false, "Non deterministic delete of MaterialVisSettings");
+        }
 
         const ToolsRig::MaterialVisSettings& GetUnderlying() { return *_object.get(); }
 
     protected:
         clix::shared_ptr<ToolsRig::MaterialVisSettings> _object;
+        VisCameraSettings^ _camSettings;
     };
 
     public ref class MaterialVisLayer : public IOverlaySystem

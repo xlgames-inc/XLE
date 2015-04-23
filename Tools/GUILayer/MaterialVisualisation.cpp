@@ -89,16 +89,20 @@ namespace GUILayer
 
     void MaterialVisLayer::SetConfig(RawMaterial^ config)
     {
-        _config = config;
+        delete _config;
+        _config = config ? (gcnew RawMaterial(config)) : nullptr;
     }
 
     MaterialVisLayer::MaterialVisLayer(
         MaterialVisSettings^ settings,
         RawMaterial^ config)
-    : _settings(settings), _config(config)
+    : _settings(settings), _config(gcnew RawMaterial(config))
     {}
 
-    MaterialVisLayer::~MaterialVisLayer() {}
+    MaterialVisLayer::~MaterialVisLayer() 
+    {
+        delete _config;
+    }
 
     
     static MaterialVisSettings::GeometryType AsManaged(

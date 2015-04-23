@@ -365,6 +365,9 @@ namespace ToolsRig
                 reflection->GetResourceBindingDesc(c, &bindDesc);
                 if  (bindDesc.Type == D3D10_SIT_TEXTURE) {
 
+                        // skip "NormalsFittingTexture" -- system use
+                    if (!XlCompareString(bindDesc.Name, "NormalsFittingTexture")) continue;
+
                     auto str = bindings.GetString<::Assets::ResChar>(ParameterBox::MakeParameterNameHash(bindDesc.Name));
                     if (str.empty()) {
                             //  It's not mentioned in the material resources. try to look

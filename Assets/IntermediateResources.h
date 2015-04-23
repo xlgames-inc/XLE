@@ -83,6 +83,7 @@ namespace Assets { namespace IntermediateResources
         virtual std::shared_ptr<PendingCompileMarker> PrepareResource(
             uint64 typeCode, const ResChar* initializers[], unsigned initializerCount,
             const Store& destinationStore) = 0;
+        virtual ~IResourceCompiler();
     };
 
     class CompilerSet

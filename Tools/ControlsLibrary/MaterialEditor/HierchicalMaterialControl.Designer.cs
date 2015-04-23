@@ -22,6 +22,7 @@ namespace ControlsLibrary.MaterialEditor
             if (disposing && (components != null))
             {
                 components.Dispose();
+                ClearComboBoxNodes();
             }
             base.Dispose(disposing);
         }

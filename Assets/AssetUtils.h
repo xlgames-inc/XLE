@@ -54,5 +54,7 @@ namespace Assets
     {
         enum Enum { Pending, Ready, Invalid };
     };
+
+    void Dependencies_Shutdown();
 }
 

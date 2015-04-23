@@ -107,6 +107,11 @@ namespace RenderCore { namespace Metal_DX11
         _underlying = std::move(srv);
     }
 
+    auto ShaderResourceView::GetResource() const -> intrusive_ptr<ID3D::Resource>
+    {
+        return ExtractResource<ID3D::Resource>(_underlying.get());
+    }
+
     ShaderResourceView::ShaderResourceView(ID3D::ShaderResourceView* resource)
     : _underlying(resource)
     {

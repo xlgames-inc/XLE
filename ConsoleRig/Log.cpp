@@ -39,6 +39,11 @@ namespace ConsoleRig
                 "trivial", easyloggingpp::internal::registeredLoggers->constants(), c));
         }
     }
+
+    void Logging_Shutdown()
+    {
+        easyloggingpp::internal::registeredLoggers = decltype(easyloggingpp::internal::registeredLoggers)();
+    }
 }
 
 namespace LogUtilMethods

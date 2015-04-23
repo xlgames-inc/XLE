@@ -385,6 +385,12 @@ namespace GUILayer
         _renderStateSet = gcnew RenderStateSet(_underlying.GetNativePtr());
     }
 
+    RawMaterial::RawMaterial(RawMaterial^ cloneFrom)
+    {
+        _underlying = cloneFrom->_underlying;
+        _renderStateSet = gcnew RenderStateSet(_underlying.GetNativePtr());
+    }
+
     RawMaterial::~RawMaterial()
     {
         _underlying.reset();

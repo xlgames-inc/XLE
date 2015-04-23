@@ -67,13 +67,12 @@ namespace GUILayer
         {
             _object = std::move(attached);
         }
-        VisCameraSettings()
+        VisCameraSettings()     { _object = std::make_shared<ToolsRig::VisCameraSettings>(); }
+        ~VisCameraSettings()    { _object.reset(); }
+
+        !VisCameraSettings()
         {
-            _object = std::make_shared<ToolsRig::VisCameraSettings>();
-        }
-        ~VisCameraSettings()
-        {
-            _object.reset();
+            System::Diagnostics::Debug::Assert(false, "Non deterministic delete of VisCameraSettings");
         }
     protected:
         clix::shared_ptr<ToolsRig::VisCameraSettings> _object;
@@ -135,7 +134,7 @@ namespace GUILayer
 
         property VisCameraSettings^ Camera
         {
-            VisCameraSettings^ get() { return gcnew VisCameraSettings(_object->_camera); }
+            VisCameraSettings^ get() { return _camSettings; }
         }
 
         void AttachCallback(PropertyGrid^ callback);
@@ -144,19 +143,27 @@ namespace GUILayer
         ModelVisSettings(std::shared_ptr<ToolsRig::ModelVisSettings> attached)
         {
             _object = std::move(attached);
+            _camSettings = gcnew VisCameraSettings(_object->_camera);
         }
 
         ModelVisSettings() 
         {
             _object = std::make_shared<ToolsRig::ModelVisSettings>();
+            _camSettings = gcnew VisCameraSettings(_object->_camera);
         }
 
-        ~ModelVisSettings() { _object.reset(); }
+        ~ModelVisSettings() { delete _camSettings; _object.reset(); }
+
+        !ModelVisSettings()
+        {
+            System::Diagnostics::Debug::Assert(false, "Non deterministic delete of ModelVisSettings");
+        }
 
         static ModelVisSettings^ CreateDefault();
 
     protected:
         clix::shared_ptr<ToolsRig::ModelVisSettings> _object;
+        VisCameraSettings^ _camSettings;
     };
 
     public ref class VisMouseOver
@@ -183,6 +190,11 @@ namespace GUILayer
             std::shared_ptr<ToolsRig::ModelVisCache> cache);
         VisMouseOver();
         ~VisMouseOver();
+
+        !VisMouseOver()
+        {
+            System::Diagnostics::Debug::Assert(false, "Non deterministic delete of ModelVisSettings");
+        }
 
     protected:
         clix::shared_ptr<ToolsRig::VisMouseOver> _object;
@@ -231,6 +243,11 @@ namespace GUILayer
 
         RenderStateSet(std::shared_ptr<::Assets::DivergentAsset<RenderCore::Assets::RawMaterial>> underlying);
         ~RenderStateSet();
+
+        !RenderStateSet()
+        {
+            System::Diagnostics::Debug::Assert(false, "Non deterministic delete of RenderStateSet");
+        }
     protected:
         clix::shared_ptr<::Assets::DivergentAsset<RenderCore::Assets::RawMaterial>> _underlying;
 
@@ -264,7 +281,13 @@ namespace GUILayer
 
         RawMaterial(System::String^ initialiser);
         RawMaterial(std::shared_ptr<NativeConfig> underlying);
+        RawMaterial(RawMaterial^ cloneFrom);
         ~RawMaterial();
+
+        !RawMaterial()
+        {
+            System::Diagnostics::Debug::Assert(false, "Non deterministic delete of RawMaterial");
+        }
     protected:
         clix::shared_ptr<NativeConfig> _underlying;
         RenderStateSet^ _renderStateSet;

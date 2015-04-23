@@ -22,6 +22,8 @@ namespace ControlsLibrary.MaterialEditor
             if (disposing && (components != null))
             {
                 components.Dispose();
+                visSettings.Dispose();
+                visLayer.Dispose();
             }
             base.Dispose(disposing);
         }
