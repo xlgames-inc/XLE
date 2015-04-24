@@ -33,6 +33,10 @@ namespace ModelViewer
             visMouseOver.AttachCallback(mouseOverDetails);
 
             viewerControl.MouseClick += OnViewerMouseClick;
+
+            using (var saveDlg = new ControlsLibrary.SaveAssetsDialog()) {
+                saveDlg.ShowDialog();
+            }
         }
 
         protected void ContextMenu_EditMaterial(object sender, EventArgs e)

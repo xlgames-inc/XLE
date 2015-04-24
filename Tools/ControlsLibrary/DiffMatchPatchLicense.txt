@@ -1,0 +1,2 @@
+DiffMatchPatch is covered under the Apache License 2.0
+See Foreign\DiffMatchPatch\COPYING for more information
