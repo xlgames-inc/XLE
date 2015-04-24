@@ -11,52 +11,92 @@
 #include "../../Assets/DivergentAsset.h"
 #include "../../Assets/Assets.h"
 #include "../../Utility/Streams/FileUtils.h"
+#include "../../Utility/Streams/StreamTypes.h"
+#include "../../Utility/Streams/Data.h"
+// #include "../../ConsoleRig/Console.h"
 #include "MarshalString.h"
 
 #include "../../RenderCore/Assets/Material.h"
 
+using namespace System::Collections::Generic;
+
 namespace GUILayer
 {
-    private ref class AssetTypeItem
+    public ref class AssetItem
     {
     public:
-        property System::String^ Label;
-
-        const Assets::IAssetSet* _set;
-
-        AssetTypeItem(const Assets::IAssetSet& set) : _set(&set)
-        { 
-            Label = clix::marshalString<clix::E_UTF8>(set.GetTypeName());
-        }
-    };
-
-    private ref class AssetItem
-    {
-    public:
-        property System::String^ Label;
+        property virtual System::String^ Label;
 
         const Assets::IAssetSet* _set; 
         uint64 _id;
 
         PendingSaveList::Entry^ _pendingSave;
-        property bool SaveQueued;
+        property virtual System::Windows::Forms::CheckState SaveQueuedState
+        {
+            System::Windows::Forms::CheckState get() 
+            { 
+                bool queued = _pendingSave ? _pendingSave->_saveQueued : false;
+                return queued ? System::Windows::Forms::CheckState::Checked : System::Windows::Forms::CheckState::Unchecked; 
+            }
+            void set(System::Windows::Forms::CheckState check) 
+            {
+                if (_pendingSave) {
+                    _pendingSave->_saveQueued  = (check==System::Windows::Forms::CheckState::Checked); 
+                }
+            }
+        }
 
         AssetItem(const Assets::IAssetSet& set, uint64 id) : _set(&set), _id(id)
         {
             Label = clix::marshalString<clix::E_UTF8>(set.GetAssetName(id));
             _pendingSave = nullptr;
-            SaveQueued = false;
         }
     };
 
-    private ref class TransactionItem
+    public ref class AssetTypeItem
     {
     public:
-        property System::String^ Description;
+        property virtual System::String^ Label;
+
+        const Assets::IAssetSet* _set;
+        List<AssetItem^>^ _children;
+
+        System::Windows::Forms::CheckState _checkState;
+
+        property virtual System::Windows::Forms::CheckState SaveQueuedState
+        {
+            System::Windows::Forms::CheckState get() 
+            { 
+                return _checkState;
+            }
+
+            void set(System::Windows::Forms::CheckState check) 
+            {
+                _checkState = check;
+                if (_children!=nullptr)
+                {
+                    for each(auto child in _children)
+                        child->SaveQueuedState = check;
+                }
+            }
+        }
+
+        AssetTypeItem(const Assets::IAssetSet& set) : _set(&set)
+        { 
+            _children = nullptr;
+            Label = clix::marshalString<clix::E_UTF8>(set.GetTypeName());
+            _checkState = System::Windows::Forms::CheckState::Checked;
+        }
+    };
+
+    public ref class TransactionItem
+    {
+    public:
+        property virtual System::String^ Label;
 
         TransactionItem(const Assets::ITransaction& transaction)
         {
-            Description = clix::marshalString<clix::E_UTF8>(transaction.GetName());
+            Label = clix::marshalString<clix::E_UTF8>(transaction.GetName());
         }
     };
 
@@ -74,7 +114,7 @@ namespace GUILayer
 
         if (treePath->IsEmpty()) {
 
-            auto result = gcnew System::Collections::Generic::List<AssetTypeItem^>();
+            auto result = gcnew List<AssetTypeItem^>();
 
                 // root node should be the list of asset types that have divergent assets
             auto count = _assetSets->GetAssetSetCount();
@@ -96,21 +136,26 @@ namespace GUILayer
             {
                 auto item = dynamic_cast<AssetTypeItem^>(lastItem);
                 if (item) {
-                        // expecting the list of divergent assets of this type
-                    auto result = gcnew System::Collections::Generic::List<AssetItem^>();
-                    auto divCount = item->_set->GetDivergentCount();
-                    for (unsigned d = 0; d < divCount; ++d) {
-                        auto assetId = item->_set->GetDivergentId(d);
-                        auto assetItem = gcnew AssetItem(*item->_set, assetId);
+                    if (!item->_children) {
+                            // expecting the list of divergent assets of this type
+                        item->_children = gcnew List<AssetItem^>();
+                        auto divCount = item->_set->GetDivergentCount();
+                        for (unsigned d = 0; d < divCount; ++d) {
+                            if (!item->_set->DivergentHasChanges(d)) continue;
 
-                            // if we have a "pending save" for this item
-                            // then we have to hook it up
-                        assetItem->_pendingSave = _saveList->GetEntry(*item->_set, assetId);
-                        assetItem->SaveQueued = (assetItem->_pendingSave != nullptr);
+                            auto assetId = item->_set->GetDivergentId(d);
+                            auto assetItem = gcnew AssetItem(*item->_set, assetId);
 
-                        result->Add(assetItem);
+                                // if we have a "pending save" for this item
+                                // then we have to hook it up
+                            assetItem->_pendingSave = _saveList->GetEntry(*item->_set, assetId);
+
+                            item->_children->Add(assetItem);
+                        }
                     }
-                    return result;
+
+
+                    return item->_children;
                 }
             }
 
@@ -121,7 +166,7 @@ namespace GUILayer
                         // we need to search through the undo queue for all of the transactions
                         // that match this asset type code and id. We'll add the most recent
                         // one first.
-                    auto result = gcnew System::Collections::Generic::List<TransactionItem^>();
+                    auto result = gcnew List<TransactionItem^>();
                     auto id = item->_id;
                     auto typeCode = item->_set->GetTypeCode();
                     auto undoQueueCount = _undoQueue->GetCount();
@@ -219,13 +264,41 @@ namespace GUILayer
         using System::Runtime::InteropServices::Marshal;
 
         array<Byte>^ result = gcnew array<Byte>(end-begin);
-        Marshal::Copy(result, 0, IntPtr(const_cast<uint8*>(begin)), result->Length);
+        Marshal::Copy(IntPtr(const_cast<uint8*>(begin)), result, 0, result->Length);
         return result;
     }
 
-    PendingSaveList^ BuildPendingSaveList()
+    static void SerializeInto(::Utility::Data& originalFile, const RenderCore::Assets::RawMaterial& material)
     {
-        // auto result = gcnew PendingSaveList();
+        auto asData = material.SerializeAsData();
+                    
+        auto* replacedEntry = originalFile.ChildWithValue(asData->StrValue());
+        if (replacedEntry) { 
+            if (replacedEntry->prev)
+                replacedEntry->prev->next = asData.get();
+            else
+                replacedEntry->parent->child = asData.get();
+
+            if (replacedEntry->next)
+                replacedEntry->next->prev = asData.get();
+                        
+            asData->prev = replacedEntry->prev;
+            asData->next = replacedEntry->next;
+            asData->parent = replacedEntry->parent;
+
+            replacedEntry->next = nullptr;
+            replacedEntry->prev = nullptr;
+            replacedEntry->parent = nullptr;
+            delete replacedEntry;
+            asData.release();
+        } else {
+            originalFile.Add(asData.release());
+        }
+    }
+
+    PendingSaveList^ PendingSaveList::Create()
+    {
+        auto result = gcnew PendingSaveList();
 
             //  Find all divergent assets that can be saved, and 
             //  add in an entry for them here. Each entry should
@@ -237,20 +310,91 @@ namespace GUILayer
 
         #if defined(ASSETS_STORE_DIVERGENT)
 
-            // using namespace RenderCore::Assets;
-            // auto& materials = ::Assets::Internal::GetAssetSet<RawMaterial>();
-            // for (auto a = materials._divergentAssets.cbegin(); a!=materials._divergentAssets.cend(); ++a) {
-            //     if (!a->second->HasChanges()) continue;
-            // 
-            //     auto filename = a->second->GetIdentifier()._targetFilename;
-            //     auto originalFile = LoadFileAsByteArray(filename.c_str());
-            // 
-            //     
-            // }
+            using namespace RenderCore::Assets;
+            auto& materials = ::Assets::Internal::GetAssetSet<RawMaterial>();
+            for (auto a = materials._divergentAssets.cbegin(); a!=materials._divergentAssets.cend(); ++a) {
+                if (!a->second->HasChanges()) continue;
+            
+                    //  Sometimes mutliple assets will write to different parts of the same
+                    //  file. It's a bit wierd, but we want the before and after parts to
+                    //  only show changes related to this particular asset
+                auto filename = a->second->GetIdentifier()._targetFilename;
+                auto originalFile = LoadFileAsByteArray(filename.c_str());
+            
+                array<Byte>^ newFile;
+                {
+                    ::Utility::Data fullData;
+                    pin_ptr<uint8> pinnedAddress(&originalFile[0]);
+                    fullData.Load((const char*)pinnedAddress, originalFile->Length);
+
+                    SerializeInto(fullData, a->second->GetAsset());
+
+                    MemoryOutputStream<utf8> strm;
+                    fullData.SaveToOutputStream(strm);
+                    newFile = AsByteArray(strm.GetBuffer().Begin(), strm.GetBuffer().End());
+                }
+
+                result->Add(
+                    materials, a->first,
+                    gcnew PendingSaveList::Entry(
+                        clix::marshalString<clix::E_UTF8>(filename), 
+                        originalFile, newFile));
+            }
 
         #endif
 
-        return nullptr;
+        return result;
+    }
+
+    void PendingSaveList::Commit()
+    {
+        #if defined(ASSETS_STORE_DIVERGENT)
+
+            using namespace RenderCore::Assets;
+            auto& materials = ::Assets::Internal::GetAssetSet<RawMaterial>();
+            for (auto a = materials._divergentAssets.cbegin(); a!=materials._divergentAssets.cend(); ++a) {
+                if (!a->second->HasChanges()) continue;
+
+                auto entry = GetEntry(materials, a->first);
+                if (!entry || !entry->_saveQueued) continue;
+            
+                    //  Sometimes mutliple assets will write to different parts of the same
+                    //  file. It's a bit wierd, but we want the before and after parts to
+                    //  only show changes related to this particular asset
+                auto filename = a->second->GetIdentifier()._targetFilename;
+                auto originalFile = LoadFileAsByteArray(filename.c_str());
+            
+                {
+                    ::Utility::Data fullData;
+                    pin_ptr<uint8> pinnedAddress(&originalFile[0]);
+                    fullData.Load((const char*)pinnedAddress, originalFile->Length);
+
+                    SerializeInto(fullData, a->second->GetAsset());
+
+                    MemoryOutputStream<utf8> strm;
+                    fullData.SaveToOutputStream(strm);
+
+                    TRY
+                    {
+                        BasicFile outputFile(filename.c_str(), "wb");
+                        outputFile.Write(strm.GetBuffer().Begin(), 1, size_t(strm.GetBuffer().End()) - size_t(strm.GetBuffer().Begin()));
+                    } CATCH (...) {
+                        // LogAlwaysError << "Problem when writing out to file: " << filename;
+                    } CATCH_END
+                }
+            }
+
+                // reset all divergent assets... Underneath, the real file should have changed
+            for (auto a = materials._divergentAssets.cbegin(); a!=materials._divergentAssets.cend();) {
+                auto entry = GetEntry(materials, a->first);
+                if (!entry || !entry->_saveQueued) { 
+                    ++a; 
+                } else {
+                    a = materials._divergentAssets.erase(a);
+                }
+            }
+
+        #endif
     }
 }
 

@@ -119,12 +119,6 @@
     <Compile Include="ModalMaterialEditor.Designer.cs">
       <DependentUpon>ModalMaterialEditor.cs</DependentUpon>
     </Compile>
-    <Compile Include="ModalModifications.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="ModalModifications.Designer.cs">
-      <DependentUpon>ModalModifications.cs</DependentUpon>
-    </Compile>
     <EmbeddedResource Include="..\Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
@@ -145,9 +139,6 @@
     </EmbeddedResource>
     <EmbeddedResource Include="ModalMaterialEditor.resx">
       <DependentUpon>ModalMaterialEditor.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="ModalModifications.resx">
-      <DependentUpon>ModalModifications.cs</DependentUpon>
     </EmbeddedResource>
     <None Include="..\Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>

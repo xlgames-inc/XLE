@@ -17,17 +17,24 @@ namespace ControlsLibrary
             InitializeComponent();
         }
 
-        public Tuple<string, string> Comparison
+        public Tuple<object, object> Comparison
         {
             set 
             {
+                if (value==null)
+                {
+                    _originalVersion.Clear();
+                    _newVersion.Clear();
+                    return;
+                }
+
                     //  Given to versions of the same file, use
                     //  the DiffMatchPatch library to generate a
                     //  list of difference. Then we can write those
                     //  differences to some RichEditControls using some
                     //  basic highlighting
-                string original = value.Item1;
-                string changed = value.Item2;
+                string original = value.Item1.ToString();
+                string changed = value.Item2.ToString();
 
                 var comparer = new DiffMatchPatch.diff_match_patch();
                 var diffs = comparer.diff_main(original, changed);
@@ -69,6 +76,6 @@ namespace ControlsLibrary
             }
         }
 
-        static string FixLineBreaks(string input) { return Regex.Replace(input, @"\r\n?|\n", @"\par"); }
+        static string FixLineBreaks(string input) { return Regex.Replace(input, @"\r\n?|\n", @"\par "); }
     }
 }

@@ -1,6 +1,6 @@
 ﻿namespace ControlsLibrary
 {
-    partial class SaveAssetsDialog
+    partial class ModifiedAssetsDialog
     {
         /// <summary>
         /// Required designer variable.
@@ -32,6 +32,8 @@
             this._compareWindow = new FileCompare();
             this._saveButton = new System.Windows.Forms.Button();
             this._cancelButton = new System.Windows.Forms.Button();
+            this._label = new Aga.Controls.Tree.NodeControls.NodeTextBox();
+            this._nodeCheckBox = new Aga.Controls.Tree.NodeControls.NodeCheckBox();
             this.SuspendLayout();
             // 
             // _assetList
@@ -46,10 +48,24 @@
             this._assetList.Location = new System.Drawing.Point(12, 12);
             this._assetList.Model = null;
             this._assetList.Name = "_assetList";
+            this._assetList.NodeControls.Add(this._nodeCheckBox);
+            this._assetList.NodeControls.Add(this._label);
             this._assetList.SelectedNode = null;
             this._assetList.Size = new System.Drawing.Size(586, 122);
             this._assetList.TabIndex = 0;
             this._assetList.Text = "treeViewAdv1";
+            this._assetList.SelectionChanged += new System.EventHandler(this._tree_SelectionChanged);
+            // 
+            // _label
+            // 
+            this._label.DataPropertyName = "Label";
+            this._label.IncrementalSearchEnabled = true;
+            this._label.LeftMargin = 3;
+            // 
+            // _nodeCheckBox
+            // 
+            this._nodeCheckBox.DataPropertyName = "SaveQueuedState";
+            this._nodeCheckBox.EditEnabled = true;
             // 
             // _compareWindow
             // 
@@ -106,6 +122,8 @@
         private FileCompare _compareWindow;
         private System.Windows.Forms.Button _saveButton;
         private System.Windows.Forms.Button _cancelButton;
+        private Aga.Controls.Tree.NodeControls.NodeCheckBox _nodeCheckBox;
+        private Aga.Controls.Tree.NodeControls.NodeTextBox _label;
 
     }
 }

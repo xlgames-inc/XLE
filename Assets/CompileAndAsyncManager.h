@@ -53,6 +53,7 @@ namespace Assets
         virtual const char*     GetTypeName() const = 0;
         virtual unsigned        GetDivergentCount() const = 0;
         virtual uint64          GetDivergentId(unsigned index) const = 0;
+        virtual bool            DivergentHasChanges(unsigned index) const = 0;
         virtual std::string     GetAssetName(uint64 id) const = 0;
         virtual ~IAssetSet();
     };

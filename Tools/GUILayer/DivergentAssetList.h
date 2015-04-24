@@ -22,16 +22,25 @@ namespace GUILayer
         ref class Entry
         {
         public:
-            String^ filename;
-            array<Byte>^ oldFileData;
-            array<Byte>^ newFileData;
+            String^ _filename;
+            array<Byte>^ _oldFileData;
+            array<Byte>^ _newFileData;
+            bool _saveQueued;
+
+            Entry() { _saveQueued = false; }
+            Entry(String^ filename, array<Byte>^ oldFileData, array<Byte>^ newFileData)
+                : _filename(filename), _oldFileData(oldFileData), _newFileData(newFileData), _saveQueued(true) {}
         };
 
         void Add(const Assets::IAssetSet& set, uint64 id, Entry^ entry);
         Entry^ GetEntry(const Assets::IAssetSet& set, uint64 id);
 
+        void Commit();
+
         PendingSaveList();
         ~PendingSaveList();
+
+        static PendingSaveList^ Create();
     internal:
         value class E
         {
@@ -67,7 +76,4 @@ namespace GUILayer
         Assets::UndoQueue* _undoQueue;
         PendingSaveList^ _saveList;
     };
-
-
-    PendingSaveList^ BuildPendingSaveList();
 }

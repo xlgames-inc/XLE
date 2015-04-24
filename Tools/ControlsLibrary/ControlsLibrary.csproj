@@ -105,11 +105,11 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
-    <Compile Include="SaveAssetsDialog.cs">
+    <Compile Include="ModifiedAssetsDialog.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="SaveAssetsDialog.Designer.cs">
-      <DependentUpon>SaveAssetsDialog.cs</DependentUpon>
+    <Compile Include="ModifiedAssetsDialog.Designer.cs">
+      <DependentUpon>ModifiedAssetsDialog.cs</DependentUpon>
     </Compile>
   </ItemGroup>
   <ItemGroup>
@@ -129,8 +129,8 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
-    <EmbeddedResource Include="SaveAssetsDialog.resx">
-      <DependentUpon>SaveAssetsDialog.cs</DependentUpon>
+    <EmbeddedResource Include="ModifiedAssetsDialog.resx">
+      <DependentUpon>ModifiedAssetsDialog.cs</DependentUpon>
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>

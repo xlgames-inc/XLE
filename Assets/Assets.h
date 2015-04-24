@@ -52,6 +52,7 @@ namespace Assets
             const char*     GetTypeName() const;
             unsigned        GetDivergentCount() const;
             uint64          GetDivergentId(unsigned index) const;
+            bool            DivergentHasChanges(unsigned index) const;
             std::string     GetAssetName(uint64 id) const;
 
             static std::vector<std::pair<uint64, std::unique_ptr<AssetType>>> _assets;
@@ -70,6 +71,9 @@ namespace Assets
         void LogHeader(unsigned count, const char typeName[]);
         void LogAssetName(unsigned index, const char name[]);
         void InsertAssetName(   
+            std::vector<std::pair<uint64, std::string>>& assetNames, 
+            uint64 hash, const std::string& name);
+        void InsertAssetNameNoCollision(   
             std::vector<std::pair<uint64, std::string>>& assetNames, 
             uint64 hash, const std::string& name);
 
@@ -236,7 +240,7 @@ namespace Assets
                         auto& assets = assetSet._assets;
 
                         #if defined(ASSETS_STORE_NAMES)
-					        InsertAssetName(assetSet._assetNames, hash, name);
+					        InsertAssetNameNoCollision(assetSet._assetNames, hash, name);
                         #endif
 
                         auto i = LowerBound(assets, hash);
@@ -324,6 +328,13 @@ namespace Assets
             {
                 if (index < _divergentAssets.size()) return _divergentAssets[index].first;
                 return ~0x0ull;
+            }
+
+        template <typename AssetType>
+            bool            AssetSet<AssetType>::DivergentHasChanges(unsigned index) const
+            {
+                if (index < _divergentAssets.size()) return _divergentAssets[index].second->HasChanges();
+                return false;
             }
 
         template <typename AssetType>

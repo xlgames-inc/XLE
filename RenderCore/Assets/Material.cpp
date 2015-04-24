@@ -462,6 +462,8 @@ namespace RenderCore { namespace Assets
         }
 
         result->Add(SerializeStateSet("States", _stateSet).release());
+
+        result->SetValue(GetSettingName().c_str());
         return std::move(result);
     }
 

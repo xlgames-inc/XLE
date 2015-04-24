@@ -39,6 +39,15 @@ namespace Assets
             }
         }
 
+        void InsertAssetNameNoCollision(   
+            std::vector<std::pair<uint64, std::string>>& assetNames, 
+            uint64 hash, const std::string& name)
+        {
+            auto ni = LowerBound(assetNames, hash);
+            if (ni == assetNames.cend() || ni->first != hash)
+                assetNames.insert(ni, std::make_pair(hash, name));
+        }
+
         std::basic_string<ResChar> AsString() { return std::basic_string<ResChar>(); }
 
     }

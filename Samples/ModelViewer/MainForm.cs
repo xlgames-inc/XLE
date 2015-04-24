@@ -33,10 +33,6 @@ namespace ModelViewer
             visMouseOver.AttachCallback(mouseOverDetails);
 
             viewerControl.MouseClick += OnViewerMouseClick;
-
-            using (var saveDlg = new ControlsLibrary.SaveAssetsDialog()) {
-                saveDlg.ShowDialog();
-            }
         }
 
         protected void ContextMenu_EditMaterial(object sender, EventArgs e)
@@ -58,8 +54,18 @@ namespace ModelViewer
 
         protected void ContextMenu_ShowModifications(object sender, EventArgs e)
         {
-            using (var dialog = new ModalModifications(GUILayer.EngineDevice.GetInstance())) {
-                dialog.ShowDialog();
+            var pendingAssetList = GUILayer.PendingSaveList.Create();
+            var assetList = new GUILayer.DivergentAssetList(GUILayer.EngineDevice.GetInstance(), pendingAssetList);
+
+            using (var dialog = new ControlsLibrary.ModifiedAssetsDialog()) 
+            {
+                dialog.AssetList = assetList;
+                var result = dialog.ShowDialog();
+
+                if (result == DialogResult.OK)
+                {
+                    pendingAssetList.Commit();
+                }
             }
         }
 
