@@ -88,7 +88,7 @@ namespace GUILayer
         bool CreateObject(DocumentId doc, ObjectId obj, ObjectTypeId objType, IEnumerable<PropertyInitializer>^ initializers);
         bool DeleteObject(DocumentId doc, ObjectId obj, ObjectTypeId objType);
         bool SetProperty(DocumentId doc, ObjectId obj, ObjectTypeId objType, IEnumerable<PropertyInitializer>^ initializers);
-        bool GetProperty(DocumentId doc, ObjectId obj, ObjectTypeId objType, PropertyId prop, void* dest, size_t* destSize);
+        bool GetProperty(DocumentId doc, ObjectId obj, ObjectTypeId objType, PropertyId prop, void* dest, unsigned* destSize);
 
         bool SetObjectParent(DocumentId doc, 
             ObjectId childId, ObjectTypeId childTypeId, 

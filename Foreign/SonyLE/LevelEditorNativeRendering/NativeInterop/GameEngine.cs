@@ -304,7 +304,7 @@ namespace RenderingInterop
 
             unsafe
             {
-                ulong bufferSize = s_temporaryNativeBufferSize;
+                uint bufferSize = s_temporaryNativeBufferSize;
                 IntPtr pinnedPtr = s_temporaryNativeBuffer.AddrOfPinnedObject();
                 if (s_underlyingScene.GetProperty(
                     documentId, instanceId, typeId, propId,

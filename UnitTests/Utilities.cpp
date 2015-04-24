@@ -7,6 +7,8 @@
 #include "../Utility/ParameterBox.h"
 #include "../Utility/SystemUtils.h"
 #include "../Utility/StringFormat.h"
+#include "../Utility/Streams/Stream.h"
+#include "../Utility/Streams/StreamTypes.h"
 #include "../Math/Vector.h"
 #include <CppUnitTest.h>
 
@@ -67,6 +69,40 @@ namespace UnitTests
 
             Assert::AreEqual(ImpliedTyping::Parse<signed>("true").second, 1, L"bool to signed cast");
             Assert::AreEqual(ImpliedTyping::Parse<signed>("{true, 60, 1.f}").second, 1, L"bool array to signed cast");
+        }
+
+        template<typename CharType>
+            static void FillStream(StreamBuf<CharType>& stream)
+            {
+                stream.WriteChar((utf8)'B');
+                stream.WriteChar((ucs2)L'D');
+                stream.WriteString((const utf8*)"<<StringB>>");
+                stream.WriteString((const ucs2*)L"<<StringD>>");
+            }
+
+        TEST_METHOD(MemoryStreamTest)
+        {
+            auto memStreamA = std::make_unique<MemoryOutputStream<char>>();
+            auto memStreamB = std::make_unique<MemoryOutputStream<wchar_t>>();
+            auto memStreamC = std::make_unique<MemoryOutputStream<utf8>>();
+            auto memStreamD = std::make_unique<MemoryOutputStream<ucs2>>();
+            auto memStreamE = std::make_unique<MemoryOutputStream<ucs4>>();
+            FillStream(*memStreamA);
+            FillStream(*memStreamB);
+            FillStream(*memStreamC);
+            FillStream(*memStreamD);
+            FillStream(*memStreamE);
+
+            auto stringA = memStreamA->AsString();
+            auto stringB = memStreamB->AsString();
+            auto stringC = memStreamC->AsString();
+            auto stringD = memStreamD->AsString();
+            auto stringE = memStreamE->AsString();
+
+            Assert::AreEqual(stringA.c_str(), "BD<<StringB>><<StringD>>");
+            Assert::AreEqual((wchar_t*)stringB.c_str(), L"BD<<StringB>><<StringD>>");
+            Assert::AreEqual((char*)stringC.c_str(), "BD<<StringB>><<StringD>>");
+            Assert::AreEqual((wchar_t*)stringD.c_str(), L"BD<<StringB>><<StringD>>");
         }
     };
 }

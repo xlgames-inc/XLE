@@ -106,7 +106,7 @@ namespace GUILayer
         return _dynInterface->SetProperty(*_scene.get(), doc, obj, objType, AsPointer(native.cbegin()), native.size()); 
     }
 
-    bool EditorSceneManager::GetProperty(DocumentId doc, ObjectId obj, ObjectTypeId objType, PropertyId prop, void* dest, size_t* destSize)
+    bool EditorSceneManager::GetProperty(DocumentId doc, ObjectId obj, ObjectTypeId objType, PropertyId prop, void* dest, unsigned* destSize)
         { return _dynInterface->GetProperty(*_scene.get(), doc, obj, objType, prop, dest, destSize); }
 
     DocumentTypeId EditorSceneManager::GetDocumentTypeId(System::String^ name)                  { return _dynInterface->GetDocumentTypeId(clix::marshalString<clix::E_UTF8>(name).c_str()); }

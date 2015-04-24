@@ -431,32 +431,8 @@ template<typename T>
             val.f_ustring = va_arg(args, const ucs4*);
             // TODO support width!
 
-            if (sizeof(ucs4) != sizeof(T)) {
-                size_t len = XlStringLen(val.f_ustring) + 1;
-                if (stream->GetType() == OutputStream::OSTRM_FILE) {
-                    utf8 tmp[4096];
-                    if (len >= dimof(tmp)) {
-                        return 0;
-                    }
-                    XlWideToMulti(tmp, len, val.f_ustring);
-
-                    stream->WriteString(tmp);
-                    nchars += XlStringLen(tmp);
-                } else { // either memory or string
-                    MemoryOutputStream* mstream = (MemoryOutputStream*)stream;
-                    auto* tmp = (utf8*)mstream->Cursor();
-                    if (!mstream->Seek(SST_CUR, len)) {
-                        return 0;
-                    }
-
-                    size_t ml = XlWideToMulti(tmp, len, val.f_ustring);
-                    mstream->Seek(SST_CUR, ml - len); // rewind
-                    nchars += ml;
-                }
-            } else {
-                stream->WriteString(val.f_ustring);
-                nchars += XlStringLen(val.f_ustring);
-            }
+            stream->WriteString(val.f_ustring);
+            nchars += XlStringLen(val.f_ustring);
 
         } else {
             // build format spec and use system provided sprintf
@@ -618,11 +594,10 @@ int PrintFormat(OutputStream* stream, const char* fmt, ...)
 
 int XlFormatStringV(char* buf, int count, const char* fmt, va_list args) never_throws
 {
-    // char b[sizeof(StringOutputStream<char>)];
-    auto stream = std::make_unique<StringOutputStream<char> >(buf, count); // OpenStringOutput(b, dimof(b), buf, count);
-    int n = PrintFormatV(stream.get(), fmt, args);
-    stream.reset();
-    if (n >= count) { 
+    FixedMemoryOutputStream<utf8> stream((utf8*)buf, count);
+    int n = PrintFormatV(&stream, fmt, args);
+    stream.WriteChar(decltype(stream)::CharType(0));
+    if (n >= count) {
         n = std::max<int>(count - 1, 0);
     }
     return n;

@@ -8,6 +8,7 @@
 
 #include "../../Core/Types.h"
 #include "Stream.h"
+#include <streambuf>
 
 namespace Utility
 {
@@ -32,21 +33,10 @@ namespace Utility
     // Memory Output
     // --------------------------------------------------------------------------
 
-    class XL_UTILITY_API MemoryOutputStream : public OutputStream 
+    template<typename BufferType>
+        class XL_UTILITY_API StreamBuf : public OutputStream 
     {
     public:
-        uint8* _ptr;
-        const uint8* _begin;
-        uint8* _end;
-
-        MemoryOutputStream(void* s, int len);
-
-        uint8* Cursor() { return _ptr; }
-        const uint8* Begin() const { return _begin; }
-        uint8* End() const { return _end; }
-
-
-        virtual Type GetType() const { return OSTRM_MEM; }
         virtual int64 Tell();
         virtual int64 Write(const void* p, int len);
 
@@ -57,50 +47,90 @@ namespace Utility
         virtual void WriteString(const ucs2* s);
         virtual void WriteString(const ucs4* s);
 
-        virtual void Flush() {}
+        virtual void Flush();
 
-        // type := naturally SEEK_CUR
-        bool Seek(StreamSeekType /*type*/, int64 offset)
-        {
-            uint8* p = _ptr + offset;
-            if (p < _begin || p >= _end)
-                return false;
-            _ptr = p;
-            return true;
-        }
+    private:
+        template <typename C> static unsigned StrTest(decltype(&C::str)*);
+        template <typename C> static char StrTest(...);
+        template <typename C> static unsigned IsFullTest(decltype(&C::str)*);
+        template <typename C> static char IsFullTest(...);
 
-    };
-
-    // --------------------------------------------------------------------------
-    // String Output
-    // --------------------------------------------------------------------------
-
-    template<typename T>
-        class StringOutputStream : public MemoryOutputStream 
-    {
+        template<typename U, void (U::*)(typename U::char_type*, size_t) const> struct FunctionSignature {};
+        template <typename C> static unsigned ConstructorTest(FunctionSignature<C, &C::C>*);
+        template <typename C> static char ConstructorTest(...);
     public:
-        StringOutputStream(T* s, int len);
-        ~StringOutputStream();
 
-        virtual Type GetType() const        { return OSTRM_STR; }
-        inline operator bool() const        { return (bool)(_ptr < _end); }
+            //  If the "BufferType" type has a method called str(), then we
+            //  should have an AsString() method that calls str(). 
+            //  if str() is missing, then AsString() is also missing.
+        
+        template<
+            typename Buffer = BufferType,
+            typename std::enable_if<(sizeof(StrTest<Buffer>(0)) > 1)>::type* = nullptr>
+        auto AsString() const -> decltype(((Buffer*)nullptr)->str()) { return _buffer.str(); }
+
+            //  If the "BufferType" type has a method called str(), then we
+            //  should have an AsString() method that calls str(). 
+            //  if str() is missing, then AsString() is also missing.
+        template<
+            typename Buffer = BufferType,
+            typename std::enable_if<(sizeof(IsFullTest<Buffer>(0)) > 1)>::type* = nullptr>
+        bool IsFull() const { return _buffer.IsFull(); }
+
+        const BufferType& GetBuffer() const { return _buffer; }
+
+        using CharType = typename BufferType::char_type;
+
+        StreamBuf();
+        ~StreamBuf();
+
+        template<
+            typename Buffer = BufferType,
+            typename std::enable_if<(sizeof(ConstructorTest<Buffer>(0)) > 1)>::type* = nullptr>
+            StreamBuf(CharType* buffer, size_t bufferCharCount)
+            : _buffer(buffer, bufferCharCount) {}
+
+    protected:
+        BufferType _buffer;
     };
 
-    template<typename T> StringOutputStream<T>::StringOutputStream(T* s, int len) 
-    : MemoryOutputStream(s, sizeof(T) * len)
+    namespace Internal
     {
+        template<typename CharType>
+            struct FixedMemoryBuffer2 : public std::basic_streambuf<CharType>
+        {
+            typedef typename std::basic_streambuf<CharType>::char_type char_type;
+
+            bool IsFull() const { return pptr() >= epptr(); }
+            unsigned Length() const { return pptr() - pbase(); }
+
+            FixedMemoryBuffer2(CharType buffer[], size_t bufferCharCount) 
+            {
+                this->setp(buffer, &buffer[bufferCharCount-1]);
+                for (unsigned c=0; c<bufferCharCount; ++c) buffer[c] = 0;
+            }
+            FixedMemoryBuffer2() {}
+            ~FixedMemoryBuffer2() {}
+        };
+
+        template<typename CharType>
+            struct ResizeableMemoryBuffer : public std::basic_stringbuf<CharType>
+        {
+            typedef typename std::basic_stringbuf<CharType>::char_type char_type;
+
+            CharType* Begin() const { return pbase(); }
+            CharType* End() const   { return pptr(); }
+
+            ResizeableMemoryBuffer() {}
+            ~ResizeableMemoryBuffer() {}
+        };
     }
 
-    template<typename T> StringOutputStream<T>::~StringOutputStream()
-    {
-            // (string terminator)
-        if (_ptr + sizeof(T) <= _end) {
-            *(T*)_ptr = '\0';
-        } else {
-            ((T*)_end)[-1] = '\0';
-        }
-    }
+    template<typename CharType = char>
+        using MemoryOutputStream = StreamBuf<Internal::ResizeableMemoryBuffer<CharType>>;
 
+    template<typename CharType = char>
+        using FixedMemoryOutputStream = StreamBuf<Internal::FixedMemoryBuffer2<CharType>>;
 }
 
 using namespace Utility;

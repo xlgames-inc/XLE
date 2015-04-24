@@ -65,7 +65,7 @@ namespace GUILayer { namespace EditorDynamicInterface
         return false;
     }
 
-    bool RegisteredTypes::GetProperty(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId objType, PropertyId prop, void* dest, size_t* destSize) const
+    bool RegisteredTypes::GetProperty(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId objType, PropertyId prop, void* dest, unsigned* destSize) const
     {
         if (objType > 0 && (objType-1) < _knownObjectTypes.size()) {
             auto& reg = _knownObjectTypes[objType-1];

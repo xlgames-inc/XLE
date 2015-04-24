@@ -87,7 +87,7 @@ namespace GUILayer { namespace EditorDynamicInterface
         return false;
     }
 
-	bool FlexObjectType::GetProperty(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId typeId, PropertyId prop, void* dest, size_t* destSize) const
+	bool FlexObjectType::GetProperty(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId typeId, PropertyId prop, void* dest, unsigned* destSize) const
     {
         auto type = GetObjectType(typeId);
         if (!type) return false;

@@ -247,7 +247,7 @@ namespace GUILayer { namespace EditorDynamicInterface
 	bool TerrainObjectType::GetProperty(
 		EditorScene& scene, DocumentId doc, ObjectId obj,
 		ObjectTypeId type, PropertyId prop,
-		void* dest, size_t* destSize) const
+		void* dest, unsigned* destSize) const
 	{
 		assert(0);		
 		return false;

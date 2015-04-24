@@ -42,7 +42,7 @@ namespace GUILayer
             virtual bool CreateObject(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId objType, const PropertyInitializer initializers[], size_t initializerCount) const = 0;
             virtual bool DeleteObject(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId objType) const = 0;
             virtual bool SetProperty(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId objType, const PropertyInitializer initializers[], size_t initializerCount) const = 0;
-            virtual bool GetProperty(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId type, PropertyId prop, void* dest, size_t* destSize) const = 0;
+            virtual bool GetProperty(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId type, PropertyId prop, void* dest, unsigned* destSize) const = 0;
             virtual bool SetParent(EditorScene& scene, DocumentId doc, ObjectId child, ObjectTypeId childType, ObjectId parent, ObjectTypeId parentType, int insertionPosition) const = 0;
 
             virtual ObjectTypeId GetTypeId(const char name[]) const = 0;
@@ -63,7 +63,7 @@ namespace GUILayer
             bool CreateObject(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId objType, const PropertyInitializer initializers[], size_t initializerCount) const;
             bool DeleteObject(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId objType) const;
             bool SetProperty(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId objType, const PropertyInitializer initializers[], size_t initializerCount) const;
-            bool GetProperty(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId type, PropertyId prop, void* dest, size_t* destSize) const;
+            bool GetProperty(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId type, PropertyId prop, void* dest, unsigned* destSize) const;
             bool SetParent(EditorScene& scene, DocumentId doc, ObjectId child, ObjectTypeId childType, ObjectId parent, ObjectTypeId parentType, int insertionPosition) const;
 
             ObjectTypeId GetTypeId(const char name[]) const;

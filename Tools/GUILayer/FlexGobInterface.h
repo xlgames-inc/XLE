@@ -25,7 +25,7 @@ namespace GUILayer { namespace EditorDynamicInterface
 		bool CreateObject(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId typeId, const PropertyInitializer initializers[], size_t initializerCount) const;
 		bool DeleteObject(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId objType) const;
 		bool SetProperty(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId typeId, const PropertyInitializer initializers[], size_t initializerCount) const;
-		bool GetProperty(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId typeId, PropertyId prop, void* dest, size_t* destSize) const;
+		bool GetProperty(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId typeId, PropertyId prop, void* dest, unsigned* destSize) const;
         bool SetParent(EditorScene& scene, DocumentId doc, ObjectId child, ObjectTypeId childType, ObjectId parent, ObjectTypeId parentType, int insertionPosition) const;
 
 		ObjectTypeId GetTypeId(const char name[]) const;

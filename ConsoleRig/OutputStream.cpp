@@ -27,7 +27,6 @@ namespace ConsoleRig
     class BufferedOutputStream : public Utility::OutputStream
     {
     public:
-        virtual Type    GetType() const;
         virtual int64   Tell();
         virtual int64   Write(const void* p, int len);
         virtual void    WriteChar(utf8 ch);
@@ -49,7 +48,6 @@ namespace ConsoleRig
         std::shared_ptr<Utility::OutputStream>      _nextStream;
     };
 
-    auto    BufferedOutputStream::GetType() const -> Type   { return OSTRM_MEM; }
     int64   BufferedOutputStream::Tell()                    { return ~int64(0x0); }
 
     int64   BufferedOutputStream::Write(const void* p, int len)
@@ -122,7 +120,6 @@ namespace ConsoleRig
     class ForkOutputStream : public Utility::OutputStream
     {
     public:
-        virtual Type    GetType() const;
         virtual int64   Tell();
         virtual int64   Write(const void* p, int len);
         virtual void    WriteChar(utf8 ch);
@@ -143,7 +140,6 @@ namespace ConsoleRig
         std::shared_ptr<Utility::OutputStream>      _second;
     };
 
-    auto    ForkOutputStream::GetType() const -> Type   { return _first->GetType(); }
     int64   ForkOutputStream::Tell()                    { return _first->Tell(); }
 
     int64   ForkOutputStream::Write(const void* p, int len)
@@ -181,7 +177,6 @@ namespace ConsoleRig
     class ConsoleOutputStream : public Utility::OutputStream
     {
     public:
-        virtual Type    GetType() const;
         virtual int64   Tell();
         virtual int64   Write(const void* p, int len);
         virtual void    WriteChar(utf8 ch);
@@ -198,7 +193,6 @@ namespace ConsoleRig
         virtual ~ConsoleOutputStream();
     };
 
-    auto    ConsoleOutputStream::GetType() const -> Type   { return OSTRM_MEM; }
     int64   ConsoleOutputStream::Tell()                    { return ~int64(0x0); }
 
     int64   ConsoleOutputStream::Write(const void* p, int len)
@@ -232,7 +226,6 @@ namespace ConsoleRig
         class DebuggerConsoleOutput : public Utility::OutputStream
         {
         public:
-            virtual Type    GetType() const;
             virtual int64   Tell();
             virtual int64   Write(const void* p, int len);
             virtual void    WriteChar(utf8 ch);
@@ -249,8 +242,6 @@ namespace ConsoleRig
             virtual ~DebuggerConsoleOutput();
         };
 
-
-        auto    DebuggerConsoleOutput::GetType() const -> Type              { return OSTRM_MEM; }
         int64   DebuggerConsoleOutput::Tell()                               { return ~int64(0x0); }
 
         int64   DebuggerConsoleOutput::Write(const void* p, int len)

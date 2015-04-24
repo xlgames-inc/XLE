@@ -164,7 +164,7 @@ namespace GUILayer { namespace EditorDynamicInterface
     bool PlacementObjectType::GetProperty(
         EditorScene& scene, DocumentId doc, ObjectId obj, 
         ObjectTypeId type, PropertyId prop, 
-        void* dest, size_t* destSize) const
+        void* dest, unsigned* destSize) const
     {
         if (type != ObjectType_Placement) { assert(0); return false; }
         if (prop != Property_Transform && prop != Property_Visible

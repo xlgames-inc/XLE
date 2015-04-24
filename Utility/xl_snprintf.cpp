@@ -938,11 +938,11 @@ int xl_vsnprintf(char* buf, int count, const char* fmt, va_list& args)
     int precision;        // Min. # of digits for integers; max number of chars for from string
     int qualifier;        // 'h', 'l', or 'L' for integer fields
 
-    StringOutputStream<char> stream(buf, count);
+    FixedMemoryOutputStream<char> stream(buf, count);
 
     char numbuf[CVTBUFSIZE]; // number buffer
 
-    for (; *fmt && (bool)stream ; fmt++)
+    for (; *fmt && !stream.IsFull() ; fmt++)
     {
         if (*fmt != '%')
         {
@@ -1130,7 +1130,7 @@ repeat:
         stream.WriteString((const utf8*)numbuf); 
     }
 
-    *stream.Cursor() = '\0';
+    stream.WriteChar(utf8(0));
 
     return (int)stream.Tell();
 }

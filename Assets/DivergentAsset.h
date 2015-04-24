@@ -109,6 +109,9 @@ namespace Assets
 	public:
 		const Asset& GetAsset() const;
 
+        bool HasChanges() const;
+        const AssetIdentifier& GetIdentifier() const;
+
         TransactionPtr<DivergentTransaction<Asset>> Transaction_Begin(const char name[]);
 
 		DivergentAsset(

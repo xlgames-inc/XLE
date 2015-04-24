@@ -11,9 +11,11 @@
 #include "../StringUtils.h"
 #include "../Mixins.h"
 #include "../PtrUtils.h"
+#include "../Conversion.h"
 #include <stdio.h>
 #include <wchar.h>
 #include <assert.h>
+#include <sstream>
 
 namespace Utility
 {
@@ -64,7 +66,6 @@ class FileOutputStream : public OutputStream, noncopyable
 public:
     FileOutputStream(const char filename[], const char openMode[]);
 
-    virtual Type GetType() const { return OSTRM_FILE; }
     virtual int64 Tell();
     virtual int64 Write(const void* p, int len);
 
@@ -176,89 +177,121 @@ std::unique_ptr<InputStream> OpenMemoryInput(const void* s, int len)
     return std::make_unique<MemoryInputStream>(s, len);
 }
 
-MemoryOutputStream::MemoryOutputStream(void* s, int len) :
-_ptr((uint8*)s),
-    _begin((uint8*)s),
-    _end((uint8*)s + len)
+template<typename BufferType>
+    int64 StreamBuf<BufferType>::Tell()
 {
+    return _buffer.pubseekoff(0, std::ios_base::cur, std::ios_base::out);
 }
 
-int64 MemoryOutputStream::Tell()
+template<typename BufferType>
+    int64 StreamBuf<BufferType>::Write(const void* p, int len)
 {
-    return (int64)(_ptr - _begin);
-}
-
-int64 MemoryOutputStream::Write(const void* p, int len)
-{
-    int avail = (int)(_end - _ptr);
-    if (len > avail) len = avail;
-    XlCopyMemory(_ptr, p, len);
-    _ptr += len;
+    assert((len % sizeof(typename BufferType::char_type)) == 0);
+    _buffer.sputn((const typename BufferType::char_type*)p, len / sizeof(BufferType::char_type));
     return len;
 }
 
-void MemoryOutputStream::WriteChar(utf8 ch)
+template<typename BufferType>
+    void StreamBuf<BufferType>::WriteChar(utf8 ch)
 {
-    if (_ptr < _end)
-        *_ptr++ = ch;
+    BufferType::char_type buffer[4];
+    auto count = Conversion::Convert(buffer, ch);
+    if (count < 0) _buffer.sputc((BufferType::char_type)"?");
+    for (int c=0; c<count; ++c) _buffer.sputc(buffer[c]);
 }
 
-void MemoryOutputStream::WriteChar(ucs2 ch)
+template<typename BufferType>
+    void StreamBuf<BufferType>::WriteChar(ucs2 ch)
 {
-    if ((_ptr+1) < _end) {
-        *(ucs2*)_ptr = ch;
-        _ptr += 2;
+    BufferType::char_type buffer[4];
+    auto count = Conversion::Convert(buffer, ch);
+    if (count < 0) _buffer.sputc((BufferType::char_type)"?");
+    for (int c=0; c<count; ++c) _buffer.sputc(buffer[c]);
+}
+
+template<typename BufferType>
+    void StreamBuf<BufferType>::WriteChar(ucs4 ch)
+{
+    BufferType::char_type buffer[4];
+    auto count = Conversion::Convert(buffer, ch);
+    if (count < 0) _buffer.sputc((BufferType::char_type)"?");
+    for (int c=0; c<count; ++c) _buffer.sputc(buffer[c]);
+}
+
+template<typename OutChar, typename InChar> struct CompatibleCharTypes { static const bool compatible = false; };
+template<typename CharType> struct CompatibleCharTypes<CharType, CharType> { static const bool compatible = true; };
+template<> struct CompatibleCharTypes<utf8, char> { static const bool compatible = true; };
+template<> struct CompatibleCharTypes<char, utf8> { static const bool compatible = true; };
+template<> struct CompatibleCharTypes<wchar_t, ucs2> { static const bool compatible = true; };
+template<> struct CompatibleCharTypes<ucs2, wchar_t> { static const bool compatible = true; };
+
+template<typename OutChar, typename InChar, typename std::enable_if<CompatibleCharTypes<OutChar, InChar>::compatible>::type* = nullptr>
+    void PushString(
+        std::basic_streambuf<OutChar>& stream,
+        const InChar input[])
+    {
+        stream.sputn((const OutChar*)input, XlStringLen(input));
     }
-}
 
-void MemoryOutputStream::WriteChar(ucs4 ch)
-{
-    if (_ptr + 3 < _end) {
-        *(ucs4*)_ptr = ch;
-        _ptr += 4;
+template<typename OutChar, typename InChar, typename typename std::enable_if<!CompatibleCharTypes<OutChar, InChar>::compatible>::type* = nullptr>
+    void PushString(
+        std::basic_streambuf<OutChar>& stream,
+        const InChar input[])
+    {
+            //  String conversion process results in several redundant allocations. It's not perfectly
+            //  efficient
+        using InputString = std::basic_string<InChar>;
+        using OutputString = std::basic_string<OutChar>;
+        auto converted = Conversion::Convert<OutputString>(InputString(input));
+        stream.sputn(AsPointer(converted.begin()), converted.size());    
     }
-}
 
-void MemoryOutputStream::WriteString(const utf8* s)
+template<typename BufferType>
+    void StreamBuf<BufferType>::WriteString(const utf8* s)
 {
-    while (_ptr < _end && *s)
-        *_ptr++ = *s++;
+    PushString(_buffer, s);
 }
-
-void MemoryOutputStream::WriteString(const ucs2* s)
+template<typename BufferType>
+    void StreamBuf<BufferType>::WriteString(const ucs2* s)
 {
-    while (_ptr + 1 < _end && *s) {
-        *(ucs2*)_ptr = *s++;
-        _ptr += 2;
-    }
+    PushString(_buffer, s);
 }
 
-void MemoryOutputStream::WriteString(const ucs4* s)
+template<typename BufferType>
+    void StreamBuf<BufferType>::WriteString(const ucs4* s)
 {
-    while (_ptr + 3 < _end && *s) {
-        *(ucs4*)_ptr = *s++;
-        _ptr += 4;
-    }
+    PushString(_buffer, s);
 }
 
-std::unique_ptr<OutputStream> OpenMemoryOutput(void *s, int len)
+template<typename BufferType>
+    void StreamBuf<BufferType>::Flush()
+{}
+
+template<typename BufferType> StreamBuf<BufferType>::StreamBuf() {}
+
+template<typename BufferType> StreamBuf<BufferType>::~StreamBuf() {}
+
+template class StreamBuf<Internal::ResizeableMemoryBuffer<char>>;
+template class StreamBuf<Internal::ResizeableMemoryBuffer<wchar_t>>;
+template class StreamBuf<Internal::ResizeableMemoryBuffer<utf8>>;
+template class StreamBuf<Internal::ResizeableMemoryBuffer<ucs2>>;
+template class StreamBuf<Internal::ResizeableMemoryBuffer<ucs4>>;
+
+template class StreamBuf<Internal::FixedMemoryBuffer2<char>>;
+template class StreamBuf<Internal::FixedMemoryBuffer2<wchar_t>>;
+template class StreamBuf<Internal::FixedMemoryBuffer2<utf8>>;
+template class StreamBuf<Internal::FixedMemoryBuffer2<ucs2>>;
+template class StreamBuf<Internal::FixedMemoryBuffer2<ucs4>>;
+
+std::unique_ptr<OutputStream> OpenFixedMemoryOutput(void *s, int len)
 {
-    return std::make_unique<MemoryOutputStream>(s, len);
+    return std::make_unique<StreamBuf<Internal::FixedMemoryBuffer2<char>>>((char*)s, len);
 }
 
-// #undef new
-// 
-// OutputStream* OpenStringOutput(char* b, int bl, char *s, int sl)
-// {
-//     if (bl < sizeof(StringOutputStream<char>)) {
-//         return 0;
-//     }
-//     return new (b) StringOutputStream<char>(s, sl);
-// }
-// 
-// #if defined(DEBUG_NEW)
-//     #define new DEBUG_NEW
-// #endif
+std::unique_ptr<OutputStream> OpenMemoryOutput()
+{
+    return std::make_unique<StreamBuf<std::basic_stringbuf<char>>>();
+}
 
 }
 

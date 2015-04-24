@@ -16,7 +16,7 @@ namespace ModelViewer
             InitializeComponent();
 
             _modifiedAssets.LoadOnDemand = true;
-            _modifiedAssets.Model = new GUILayer.DivergentAssetList(engine);
+            _modifiedAssets.Model = new GUILayer.DivergentAssetList(engine, null);
         }
     }
 }

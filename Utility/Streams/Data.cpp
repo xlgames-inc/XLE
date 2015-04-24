@@ -1444,17 +1444,10 @@ static void PrettyPrint(OutputStream&f, int level, const Data* data, bool includ
 
 bool Data::SavePrettyValue(char* s, int* len) const
 {
-    // char b[sizeof(StringOutputStream<char>)];
-    auto f = std::make_unique<StringOutputStream<char> >(s, *len); // OpenStringOutput(b, dimof(b), s, *len);
-    if (!f) {
-        //LOG_ERROR("Cannot open string stream");
-        return false;
-    }
-
-    PrintText(*f, this);
-
-    *len = (int)f->Tell();
-
+    FixedMemoryOutputStream<char> stream(s, *len);
+    PrintText(stream, this);
+    stream.WriteChar(utf8(0));
+    *len = (int)stream.GetBuffer().Length();
     return true;
 }
 
@@ -1494,15 +1487,9 @@ bool Data::Save(const char* filename, bool includeComment) const
 
 bool Data::SaveToBuffer(char* s, int* len) const
 {
-    //char b[sizeof(StringOutputStream<char>)];
-    auto f = std::make_unique<StringOutputStream<char> >(s, *len); // OpenStringOutput(b, dimof(b), s, *len);
-    if (!f) {
-        //LOG_ERROR("Cannot open string stream");
-        return false;
-    }
-
-    SaveToOutputStream(*f);
-
+    FixedMemoryOutputStream<char> stream(s, *len);
+    SaveToOutputStream(stream);
+    stream.WriteChar(utf8(0));
     return true;
 }
 

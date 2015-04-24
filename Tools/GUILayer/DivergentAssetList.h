@@ -7,11 +7,43 @@
 #pragma once
 
 #include "EngineDevice.h"
+#include "../../Core/Types.h"
 
-namespace Assets { class AssetSetManager; class UndoQueue; }
+using namespace System;
+using namespace System::Collections::Generic;
+
+namespace Assets { class AssetSetManager; class UndoQueue; class IAssetSet; }
 
 namespace GUILayer
 {
+    public ref class PendingSaveList
+    {
+    public:
+        ref class Entry
+        {
+        public:
+            String^ filename;
+            array<Byte>^ oldFileData;
+            array<Byte>^ newFileData;
+        };
+
+        void Add(const Assets::IAssetSet& set, uint64 id, Entry^ entry);
+        Entry^ GetEntry(const Assets::IAssetSet& set, uint64 id);
+
+        PendingSaveList();
+        ~PendingSaveList();
+    internal:
+        value class E
+        {
+        public:
+            const Assets::IAssetSet* _assetSet;
+            uint64 _id;
+            Entry^ _entry;
+        };
+        
+        List<E>^   _entries;
+    };
+
     public ref class DivergentAssetList : public Aga::Controls::Tree::ITreeModel
     {
     public:
@@ -27,10 +59,15 @@ namespace GUILayer
         virtual event System::EventHandler<TreeModelEventArgs^>^ NodesRemoved;
         virtual event System::EventHandler<TreePathEventArgs^>^ StructureChanged;
 
-        DivergentAssetList(EngineDevice^ engine);
+        DivergentAssetList(EngineDevice^ engine, PendingSaveList^ saveList);
+        ~DivergentAssetList();
 
     protected:
         Assets::AssetSetManager* _assetSets;
         Assets::UndoQueue* _undoQueue;
+        PendingSaveList^ _saveList;
     };
+
+
+    PendingSaveList^ BuildPendingSaveList();
 }

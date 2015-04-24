@@ -1283,9 +1283,7 @@ namespace RenderCore { namespace ColladaConversion
 
         auto table = _objects.SerializeMaterial(matSettingsFile);
 
-        const unsigned size = 64*1024;
-        auto buffer = std::make_unique<uint8[]>(size);
-        MemoryOutputStream strm(buffer.get(), size);
+        MemoryOutputStream<uint8> strm;
         auto root = std::make_unique<Data>();
         for (auto i=table.begin(); i!=table.end(); ++i) {
             root->Add(i->release());
@@ -1294,7 +1292,7 @@ namespace RenderCore { namespace ColladaConversion
 
             // convert into a chunk...
 
-        auto finalSize = std::min(size, unsigned(strm.Cursor() - strm.Begin()));
+        auto finalSize = size_t(strm.GetBuffer().End()) - size_t(strm.GetBuffer().Begin());
 
         Serialization::ChunkFile::ChunkHeader scaffoldChunk(
             RenderCore::Assets::ChunkType_RawMat, 0, _name.c_str(), finalSize);
@@ -1303,7 +1301,9 @@ namespace RenderCore { namespace ColladaConversion
             std::unique_ptr<NascentChunk[], Internal::CrossDLLDeletor>(
                 new NascentChunk[1], Internal::CrossDLLDeletor(&DestroyChunkArray)),
             1);
-        result.first[0] = NascentChunk(scaffoldChunk, std::vector<uint8>(buffer.get(), PtrAdd(buffer.get(), finalSize)));
+        result.first[0] = NascentChunk(
+            scaffoldChunk, 
+            std::vector<uint8>(strm.GetBuffer().Begin(), strm.GetBuffer().End()));
         return std::move(result);
     }
 

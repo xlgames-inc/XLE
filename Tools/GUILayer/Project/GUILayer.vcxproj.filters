@@ -2,13 +2,6 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="..\EngineDevice.cpp" />
-    <ClCompile Include="..\EngineControl.cpp" />
-    <ClCompile Include="..\WindowRig.cpp" />
-    <ClCompile Include="..\LayerControl.cpp" />
-    <ClCompile Include="..\TestControl.cpp" />
-    <ClCompile Include="..\UITypesBinding.cpp" />
-    <ClCompile Include="..\MaterialVisualisation.cpp" />
-    <ClCompile Include="..\AssemblyInfo.cpp" />
     <ClCompile Include="..\DivergentAssetList.cpp" />
     <ClCompile Include="..\CustomDataGridEditor.cpp" />
     <ClCompile Include="..\GUILayerUtil.cpp" />
@@ -39,19 +32,30 @@
       <Filter>DynInterface</Filter>
     </ClCompile>
     <ClCompile Include="..\TweakableBridge.cpp" />
+    <ClCompile Include="..\AssemblyInfo.cpp">
+      <Filter>Fundamental</Filter>
+    </ClCompile>
+    <ClCompile Include="..\EngineControl.cpp">
+      <Filter>BasicControls</Filter>
+    </ClCompile>
+    <ClCompile Include="..\LayerControl.cpp">
+      <Filter>BasicControls</Filter>
+    </ClCompile>
+    <ClCompile Include="..\WindowRig.cpp">
+      <Filter>BasicControls</Filter>
+    </ClCompile>
+    <ClCompile Include="..\MaterialVisualisation.cpp">
+      <Filter>Vis</Filter>
+    </ClCompile>
+    <ClCompile Include="..\UITypesBinding.cpp">
+      <Filter>Vis</Filter>
+    </ClCompile>
+    <ClCompile Include="..\TestControl.cpp">
+      <Filter>BasicControls</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\EngineDevice.h" />
-    <ClInclude Include="..\CLIXAutoPtr.h" />
-    <ClInclude Include="..\EngineControl.h" />
-    <ClInclude Include="..\MarshalString.h" />
-    <ClInclude Include="..\IWindowRig.h" />
-    <ClInclude Include="..\WindowRigInternal.h" />
-    <ClInclude Include="..\LayerControl.h" />
-    <ClInclude Include="..\TestControl.h" />
-    <ClInclude Include="..\UITypesBinding.h" />
-    <ClInclude Include="..\MaterialVisualisation.h" />
-    <ClInclude Include="..\IOverlaySystem.h" />
     <ClInclude Include="..\DivergentAssetList.h" />
     <ClInclude Include="..\EditorDynamicInterface.h">
       <Filter>DynInterface</Filter>
@@ -66,22 +70,65 @@
     <ClInclude Include="..\TerrainGobInterface.h">
       <Filter>DynInterface</Filter>
     </ClInclude>
-    <ClInclude Include="..\ExportedNativeTypes.h" />
     <ClInclude Include="..\ManipulatorUtils.h" />
     <ClInclude Include="..\EditorInterfaceUtils.h">
       <Filter>DynInterface</Filter>
     </ClInclude>
-    <ClInclude Include="..\MathLayer.h" />
     <ClInclude Include="..\FlexGobInterface.h">
       <Filter>DynInterface</Filter>
     </ClInclude>
     <ClInclude Include="..\ObjectPlaceholders.h">
       <Filter>DynInterface</Filter>
     </ClInclude>
+    <ClInclude Include="..\EngineControl.h">
+      <Filter>BasicControls</Filter>
+    </ClInclude>
+    <ClInclude Include="..\LayerControl.h">
+      <Filter>BasicControls</Filter>
+    </ClInclude>
+    <ClInclude Include="..\IWindowRig.h">
+      <Filter>BasicControls</Filter>
+    </ClInclude>
+    <ClInclude Include="..\CLIXAutoPtr.h">
+      <Filter>Fundamental</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ExportedNativeTypes.h">
+      <Filter>Fundamental</Filter>
+    </ClInclude>
+    <ClInclude Include="..\MarshalString.h">
+      <Filter>Fundamental</Filter>
+    </ClInclude>
+    <ClInclude Include="..\MathLayer.h">
+      <Filter>Fundamental</Filter>
+    </ClInclude>
+    <ClInclude Include="..\WindowRigInternal.h">
+      <Filter>BasicControls</Filter>
+    </ClInclude>
+    <ClInclude Include="..\MaterialVisualisation.h">
+      <Filter>Vis</Filter>
+    </ClInclude>
+    <ClInclude Include="..\UITypesBinding.h">
+      <Filter>Vis</Filter>
+    </ClInclude>
+    <ClInclude Include="..\TestControl.h">
+      <Filter>BasicControls</Filter>
+    </ClInclude>
+    <ClInclude Include="..\IOverlaySystem.h">
+      <Filter>BasicControls</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="DynInterface">
       <UniqueIdentifier>{2e5a400c-56a8-4a39-ac39-d6829928e93f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="BasicControls">
+      <UniqueIdentifier>{8e4546f3-2c66-4123-81ff-7db4d9198af7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Fundamental">
+      <UniqueIdentifier>{4b2c1011-be8d-4d95-aae2-e151e5dc8973}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Vis">
+      <UniqueIdentifier>{7541df4e-faad-454d-a943-1ae5d710d0ea}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

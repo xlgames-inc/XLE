@@ -194,13 +194,13 @@ namespace RenderCore { namespace Assets
         std::vector<ResString> ResolveInherited(
             const ::Assets::DirectorySearchRules& searchRules) const;
 
-        std::unique_ptr<Data> SerializeAsData() const;
+        std::unique_ptr<Utility::Data> SerializeAsData() const;
         ResString GetInitializerFilename() const    { return _splitName._initializerFilename; }
         ResString GetSettingName() const            { return _splitName._settingName; }
         
         RawMaterial();
         RawMaterial(const ::Assets::ResChar initialiser[]);
-        RawMaterial(const Data&);
+        RawMaterial(const Utility::Data&);
         ~RawMaterial();
 
         static std::unique_ptr<RawMaterial> CreateNew(const ::Assets::ResChar initialiser[]);

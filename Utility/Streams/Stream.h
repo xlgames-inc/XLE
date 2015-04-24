@@ -27,11 +27,9 @@ namespace Utility
     };
 
 
-    class XL_UTILITY_API OutputStream {
+    class XL_UTILITY_API OutputStream 
+    {
     public:
-        enum Type { OSTRM_FILE = 0, OSTRM_MEM, OSTRM_STR };    
-    public:
-        virtual Type GetType() const = 0;
         virtual int64 Tell() = 0;
         virtual int64 Write(const void* p, int len) = 0;
         virtual void WriteChar(utf8 ch) = 0;
@@ -51,7 +49,8 @@ namespace Utility
     std::unique_ptr<OutputStream>   OpenFileOutput(const char* path, const char* mode);
 
     std::unique_ptr<InputStream>    OpenMemoryInput(const void* s, int len);
-    std::unique_ptr<OutputStream>   OpenMemoryOutput(void* s, int len);
+    std::unique_ptr<OutputStream>   OpenFixedMemoryOutput(void* s, int len);
+    std::unique_ptr<OutputStream>   OpenMemoryOutput();
 
 }
 

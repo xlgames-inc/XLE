@@ -94,7 +94,7 @@ namespace Utility
         }
 
     protected:
-        Internal::FixedMemoryBuffer<Count*sizeof(char)> _buffer;
+        Internal::FixedMemoryBuffer<Count*sizeof(CharType)> _buffer;
 
         StringMeld(const StringMeld&);
         StringMeld& operator=(const StringMeld&);
