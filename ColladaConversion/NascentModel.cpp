@@ -1295,7 +1295,7 @@ namespace RenderCore { namespace ColladaConversion
         auto finalSize = size_t(strm.GetBuffer().End()) - size_t(strm.GetBuffer().Begin());
 
         Serialization::ChunkFile::ChunkHeader scaffoldChunk(
-            RenderCore::Assets::ChunkType_RawMat, 0, _name.c_str(), finalSize);
+            RenderCore::Assets::ChunkType_RawMat, 0, _name.c_str(), Serialization::ChunkFile::SizeType(finalSize));
 
         NascentChunkArray result(
             std::unique_ptr<NascentChunk[], Internal::CrossDLLDeletor>(

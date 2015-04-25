@@ -247,7 +247,7 @@ namespace GUILayer
             size_t size = file.TellP();
             file.Seek(0, SEEK_SET);
 
-            auto block = gcnew array<Byte>(size+1);
+            auto block = gcnew array<Byte>(int(size+1));
             {
                 pin_ptr<unsigned char> pinned = &block[0];
                 file.Read((uint8*)pinned, 1, size);
@@ -263,7 +263,7 @@ namespace GUILayer
     {
         using System::Runtime::InteropServices::Marshal;
 
-        array<Byte>^ result = gcnew array<Byte>(end-begin);
+        array<Byte>^ result = gcnew array<Byte>(int(end-begin));
         Marshal::Copy(IntPtr(const_cast<uint8*>(begin)), result, 0, result->Length);
         return result;
     }

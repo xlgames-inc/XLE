@@ -102,7 +102,7 @@ namespace Utility
             typedef typename std::basic_streambuf<CharType>::char_type char_type;
 
             bool IsFull() const { return pptr() >= epptr(); }
-            unsigned Length() const { return pptr() - pbase(); }
+            unsigned Length() const { return unsigned(pptr() - pbase()); }
 
             FixedMemoryBuffer2(CharType buffer[], size_t bufferCharCount) 
             {
