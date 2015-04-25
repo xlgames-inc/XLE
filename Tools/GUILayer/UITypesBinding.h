@@ -16,6 +16,7 @@
 using namespace System::ComponentModel;
 using namespace System::Windows::Forms;
 using namespace System::Drawing::Design;
+using namespace System::Collections::Generic;
 
 namespace RenderCore { namespace Assets { class RawMaterial; class RenderStateSet; }}
 
@@ -275,7 +276,9 @@ namespace GUILayer
 
         const RenderCore::Assets::RawMaterial* GetUnderlying() { return (!!_underlying) ? &_underlying->GetAsset() : nullptr; }
 
-        System::Collections::Generic::List<RawMaterial^>^ BuildInheritanceList();
+        List<System::String^>^ BuildInheritanceList();
+        static List<System::String^>^ BuildInheritanceList(System::String^ topMost);
+
         property System::String^ Filename { System::String^ get(); }
         property System::String^ SettingName { System::String^ get(); }
 

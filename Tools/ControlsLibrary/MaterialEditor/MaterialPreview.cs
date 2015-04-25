@@ -31,7 +31,7 @@ namespace ControlsLibrary.MaterialEditor
             comboBox2.SelectedIndexChanged += ComboBoxSelectedIndexChanged;
         }
 
-        public GUILayer.RawMaterial Object
+        public IEnumerable<GUILayer.RawMaterial> Object
         {
             set 
             {

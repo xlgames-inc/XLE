@@ -49,7 +49,8 @@ namespace ToolsRig
         };
         SystemConstants _systemConstants;
 
-        MaterialVisObject() { _shaderProgram = nullptr; }
+        MaterialVisObject();
+        ~MaterialVisObject();
     };
 
     /// <summary>Renders a visualisation of a material</summary>

@@ -21,6 +21,7 @@ namespace ControlsLibrary.MaterialEditor
         {
             if (disposing && (components != null))
             {
+                ClearAndDispose();
                 components.Dispose();
             }
             base.Dispose(disposing);

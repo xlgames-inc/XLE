@@ -112,35 +112,53 @@ namespace ControlsLibrary.MaterialEditor
             }
         }
 
-        public GUILayer.RawMaterial Object
+        protected List<GUILayer.RawMaterial> _objectsPendingDispose;
+
+        protected void ClearAndDispose()
+        {
+            materialParameterBox.DataSource = null;
+            shaderConstants.DataSource =  null;
+            resourceBindings.DataSource = null;
+            materialPreview1.Object = null;
+            checkBox1.DataBindings.Clear();
+            checkBox2.DataBindings.Clear();
+            checkBox1.CheckState = CheckState.Indeterminate;
+            checkBox2.CheckState = CheckState.Indeterminate;
+
+            if (_objectsPendingDispose != null)
+            {
+                foreach (var mat in _objectsPendingDispose)
+                    mat.Dispose();
+                _objectsPendingDispose.Clear();
+            }
+        }
+
+        public IEnumerable<string> Object
         {
             set
             {
-                if (value != null)
-                {
-                    materialParameterBox.DataSource = value.MaterialParameterBox;
-                    shaderConstants.DataSource = value.ShaderConstants;
-                    resourceBindings.DataSource = value.ResourceBindings;
-                }
-                else
-                {
-                    materialParameterBox.DataSource = null;
-                    shaderConstants.DataSource =  null;
-                    resourceBindings.DataSource = null;
-                }
-                materialPreview1.Object = value;
+                ClearAndDispose();
 
-                checkBox1.DataBindings.Clear();
-                checkBox2.DataBindings.Clear();
-                if (value != null && value.StateSet != null) 
+                var mats = new List<GUILayer.RawMaterial>();
+                if (value != null)
+                    foreach (var s in value)
+                        mats.Add(new GUILayer.RawMaterial(s));
+
+                materialPreview1.Object = mats; 
+                _objectsPendingDispose = mats;
+
+                var focusMat = (mats.Count > 0) ? mats[mats.Count-1] : null;
+                if (focusMat != null)
                 {
-                    checkBox1.DataBindings.Add("CheckState", value.StateSet, "DoubleSided", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged);
-                    checkBox2.DataBindings.Add("CheckState", value.StateSet, "Wireframe", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged);
-                }
-                else
-                {
-                    checkBox1.CheckState = CheckState.Indeterminate;
-                    checkBox2.CheckState = CheckState.Indeterminate;
+                    materialParameterBox.DataSource = focusMat.MaterialParameterBox;
+                    shaderConstants.DataSource = focusMat.ShaderConstants;
+                    resourceBindings.DataSource = focusMat.ResourceBindings;
+
+                    if (focusMat.StateSet != null)
+                    {
+                        checkBox1.DataBindings.Add("CheckState", focusMat.StateSet, "DoubleSided", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged);
+                        checkBox2.DataBindings.Add("CheckState", focusMat.StateSet, "Wireframe", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged);
+                    }
                 }
             }
         }

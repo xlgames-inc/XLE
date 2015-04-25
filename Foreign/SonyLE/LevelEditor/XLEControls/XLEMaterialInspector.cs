@@ -35,8 +35,7 @@ namespace LevelEditor.XLEControls
             var name = Context.MaterialName;
             if (name != null)
             {
-                using (var mat = new GUILayer.RawMaterial(name))
-                    m_controls.Object = mat;
+                m_controls.Object = name;
             }
             else 
             {

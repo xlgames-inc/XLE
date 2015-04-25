@@ -37,16 +37,14 @@ namespace ModelViewer
 
         protected void ContextMenu_EditMaterial(object sender, EventArgs e)
         {
-            if (visMouseOver.HasMouseOver) {
+            if (visMouseOver.HasMouseOver) 
+            {
                     // pop-up a modal version of the material editor (for testing/prototyping)
-                var matName = visMouseOver.FullMaterialName;
-                if (matName != null) {
+                if (visMouseOver.FullMaterialName != null)
+                {
                     using (var editor = new ModalMaterialEditor()) {
-                        using (var mat = new GUILayer.RawMaterial(matName)) {
-                            editor.Object = mat;
-                            editor.ShowDialog();
-                            editor.Object = null;
-                        }
+                        editor.Object = visMouseOver.FullMaterialName;
+                        editor.ShowDialog();
                     }
                 }
             }

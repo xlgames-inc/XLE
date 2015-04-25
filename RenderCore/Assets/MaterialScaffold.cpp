@@ -106,6 +106,7 @@ namespace RenderCore { namespace Assets
         for (auto i=modelMat._configurations.cbegin(); i!=modelMat._configurations.cend(); ++i) {
 
             ResolvedMaterial resMat;
+            std::basic_stringstream<::Assets::ResChar> resName;
             auto guid = MakeMaterialGuid(i->c_str());
 
                 // Our resolved material comes from 3 separate inputs:
@@ -130,6 +131,7 @@ namespace RenderCore { namespace Assets
 
             TRY {
                     // resolve in model:configuration
+                resName << sourceModel << ":" << *i;
                 auto& rawMat = ::Assets::GetAssetDep<RawMaterial>((Meld() << modelMat._rawModelMaterial << ":" << *i).get());
                 rawMat.Resolve(resMat, searchRules, &deps);
             } CATCH (const ::Assets::Exceptions::InvalidResource&) {
@@ -138,22 +140,26 @@ namespace RenderCore { namespace Assets
 
             TRY {
                     // resolve in material:*
-                auto& rawMat = ::Assets::GetAssetDep<RawMaterial>((Meld() << resolvedSourceMaterial << ":*").get());
+                Meld meld; meld << resolvedSourceMaterial << ":*";
+                resName << ";" << meld;
+                auto& rawMat = ::Assets::GetAssetDep<RawMaterial>(meld.get());
                 rawMat.Resolve(resMat, searchRules, &deps);
             } CATCH (const ::Assets::Exceptions::InvalidResource&) {
-                AddDep(outDeps, sourceMaterial);        // we need need a dependency (even if it's a missing file)
+                AddDep(outDeps, resolvedSourceMaterial);        // we need need a dependency (even if it's a missing file)
             } CATCH_END
 
             TRY {
                     // resolve in material:configuration
-                auto& rawMat = ::Assets::GetAssetDep<RawMaterial>((Meld() << resolvedSourceMaterial << ":" << *i).get());
+                Meld meld; meld << resolvedSourceMaterial << ":" << *i;
+                resName << ";" << meld;
+                auto& rawMat = ::Assets::GetAssetDep<RawMaterial>(meld.get());
                 rawMat.Resolve(resMat, searchRules, &deps);
             } CATCH (const ::Assets::Exceptions::InvalidResource&) {
-                AddDep(outDeps, sourceMaterial);        // we need need a dependency (even if it's a missing file)
+                AddDep(outDeps, resolvedSourceMaterial);        // we need need a dependency (even if it's a missing file)
             } CATCH_END
 
             resolved.push_back(std::make_pair(guid, std::move(resMat)));
-            resolvedNames.push_back(std::make_pair(guid, (Meld() << sourceMaterial << ":" << *i).get()));
+            resolvedNames.push_back(std::make_pair(guid, resName.str()));
         }
 
         std::sort(resolved.begin(), resolved.end(), CompareFirst<MaterialGuid, ResolvedMaterial>());

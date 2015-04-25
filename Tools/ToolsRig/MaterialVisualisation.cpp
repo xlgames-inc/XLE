@@ -597,5 +597,14 @@ namespace ToolsRig
         _lightColour = Float3(1.f, 1.f, 1.f);
     }
 
+    MaterialVisObject::MaterialVisObject()
+    {
+        _shaderProgram = nullptr;
+    }
+
+    MaterialVisObject::~MaterialVisObject()
+    {
+    }
+
 }
 

@@ -22,24 +22,22 @@ namespace ControlsLibrary.MaterialEditor
             InitializeComponent();
         }
 
-        public GUILayer.RawMaterial Object
+        public string Object
         {
             set
             {
-                materialControl1.Object = value;
-
                     // Build a hierarchical of nodes in the combo box
                     // representing the inheritance tree in the material object
                 ClearComboBoxNodes();
                 if (value!=null) {
-                    var parentNode = treeView1.Nodes.Add(
-                        value.Filename + ":" + value.SettingName);
-                    parentNode.Tag = new GUILayer.RawMaterial(value);
-                    AddComboBoxChildren(parentNode, value.BuildInheritanceList());
-                    parentNode.Expanded = true;
-                    treeView1.SelectedNode = parentNode;
+                    ComboTreeNode firstNode = null;
 
-                    treeView1.SelectedNodeChanged += SubMatSelectedNodeChanged;
+                    var split = value.Split(';').ToList();
+                    for (int c = 0; c < split.Count; ++c)
+                        firstNode = AddNode(split.GetRange(0, c+1));
+
+                    treeView1.SelectedNodeChanged += SubMatSelectedNodeChanged; 
+                    treeView1.SelectedNode = firstNode;
                 }
             }
         }
@@ -48,33 +46,34 @@ namespace ControlsLibrary.MaterialEditor
         {
                 //  When the selected node changes, we want to 
                 //  change the object that we're currently editing...
-            var mat = (treeView1.SelectedNode!=null) ? (treeView1.SelectedNode.Tag as GUILayer.RawMaterial) : null;
+            var mat = (treeView1.SelectedNode!=null) ? (treeView1.SelectedNode.Tag as IEnumerable<string>) : null;
             materialControl1.Object = mat;
         }
 
         protected void ClearComboBoxNodes()
         {
-                //  hack to explicitly dispose all of the RawMaterial objects that have
-                //  been attached to 
-            foreach(var node in treeView1.AllNodes)
-            {
-                var mat = node.Tag as GUILayer.RawMaterial;
-                if (mat != null)
-                    mat.Dispose();
-            }
             treeView1.Nodes.Clear();
+        }
+
+        protected ComboTreeNode AddNode(IList<string> names)
+        {
+            string topItem = names[names.Count - 1];
+            var parentNode = treeView1.Nodes.Add(topItem);
+            parentNode.Tag = names;
+            AddComboBoxChildren(parentNode, GUILayer.RawMaterial.BuildInheritanceList(topItem));
+            return parentNode;
         }
 
         protected void AddComboBoxChildren(
             ComboTreeNode parentNode, 
-            List<GUILayer.RawMaterial> childMats)
+            List<string> childMats)
         {
             if (childMats == null) return;
             foreach (var mat in childMats)
             {
-                var newNode = parentNode.Nodes.Add(mat.Filename + ":" + mat.SettingName);
-                newNode.Tag = mat;
-                AddComboBoxChildren(newNode, mat.BuildInheritanceList());
+                var newNode = parentNode.Nodes.Add(mat);
+                newNode.Tag = new List<string>() { mat };
+                AddComboBoxChildren(newNode, GUILayer.RawMaterial.BuildInheritanceList(mat));
             }
         }
     }

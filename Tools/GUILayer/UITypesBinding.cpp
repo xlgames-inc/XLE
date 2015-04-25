@@ -340,11 +340,11 @@ namespace GUILayer
         }
     }
 
-    System::Collections::Generic::List<RawMaterial^>^ RawMaterial::BuildInheritanceList()
+    List<System::String^>^ RawMaterial::BuildInheritanceList()
     {
             // create a RawMaterial wrapper object for all of the inheritted objects
         if (!!_underlying) {
-            auto result = gcnew System::Collections::Generic::List<RawMaterial^>();
+            auto result = gcnew List<System::String^>();
 
             auto& asset = _underlying->GetAsset();
             auto searchRules = ::Assets::DefaultDirectorySearchRules(
@@ -352,12 +352,19 @@ namespace GUILayer
             
             auto inheritted = asset.ResolveInherited(searchRules);
             for (auto i = inheritted.cbegin(); i != inheritted.cend(); ++i) {
-                result->Add(gcnew RawMaterial(
-                    clix::marshalString<clix::E_UTF8>(*i)));
+                result->Add(clix::marshalString<clix::E_UTF8>(*i));
             }
             return result;
         }
         return nullptr;
+    }
+
+    List<System::String^>^ RawMaterial::BuildInheritanceList(System::String^ topMost)
+    {
+        auto temp = gcnew RawMaterial(topMost);
+        auto result = temp->BuildInheritanceList();
+        delete temp;
+        return result;
     }
 
     System::String^ RawMaterial::Filename::get()

@@ -12,6 +12,10 @@
 #include "CLIXAutoPtr.h"
 #include "../ToolsRig/MaterialVisualisation.h"
 
+using namespace System::Collections::Generic;
+
+namespace ToolsRig { class MaterialVisObject; }
+
 namespace GUILayer
 {
     public ref class MaterialVisSettings
@@ -60,18 +64,23 @@ namespace GUILayer
             RenderCore::IThreadContext* device, 
             const RenderCore::Techniques::ProjectionDesc& projectionDesc) override;
         virtual void SetActivationState(bool newState) override;
-        // virtual std::shared_ptr<IInputListener> GetInputListener() override;
 
-        void SetConfig(RawMaterial^ config);
+        void SetConfig(IEnumerable<RawMaterial^>^ config);
 
         MaterialVisLayer(
             MaterialVisSettings^ settings,
-            RawMaterial^ config);
+            IEnumerable<RawMaterial^>^ config);
         ~MaterialVisLayer();
         
     protected:
-        RawMaterial^ _config;
+        clix::shared_ptr<ToolsRig::MaterialVisObject> _visObject;
+        IEnumerable<RawMaterial^>^ _config;
         MaterialVisSettings^ _settings;
+
+        void Resolve();
+        void ChangeHandler(System::Object^ sender, System::EventArgs^ args);
+        void ListChangeHandler(System::Object^ sender, ListChangedEventArgs^ args);
+        void PropChangeHandler(System::Object^ sender, PropertyChangedEventArgs^ args);
     };
 }
 

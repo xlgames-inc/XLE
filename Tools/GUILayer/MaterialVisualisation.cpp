@@ -21,12 +21,8 @@ namespace GUILayer
         RenderCore::IThreadContext* context, 
         SceneEngine::LightingParserContext& parserContext)
     {
-        if (!_config->GetUnderlying()) { return; }
-
-        ToolsRig::MaterialVisObject obj;
-        obj._searchRules = ::Assets::DefaultDirectorySearchRules(_config->GetUnderlying()->GetInitializerFilename().c_str());
-        _config->GetUnderlying()->Resolve(obj._parameters, obj._searchRules);
-        // obj._systemConstants = 
+        if (!_visObject) { Resolve(); }
+        if (!_visObject) { return; }
 
             // We must build a shader program to render this preview
             // We can assume input vertices have position, normal and texture coordinates
@@ -39,14 +35,14 @@ namespace GUILayer
 
             static const auto DefaultNormalsTextureBindingHash = ParameterBox::MakeParameterNameHash("NormalsTexture");
 
-            ParameterBox materialParameters = obj._parameters._matParams;
-            const auto& resBindings = obj._parameters._bindings;
+            ParameterBox materialParameters = _visObject->_parameters._matParams;
+            const auto& resBindings = _visObject->_parameters._bindings;
             for (unsigned c=0; c<resBindings.GetParameterCount(); ++c) {
                 materialParameters.SetParameter(StringMeld<64>() << "RES_HAS_" << resBindings.GetFullNameAtIndex(c), 1);
                 if (resBindings.GetParameterAtIndex(c) == DefaultNormalsTextureBindingHash) {
                     auto resourceName = resBindings.GetString<::Assets::ResChar>(DefaultNormalsTextureBindingHash);
                     ResChar resolvedName[MaxPath];
-                    obj._searchRules.ResolveFile(resolvedName, dimof(resolvedName), resourceName.c_str());
+                    _visObject->_searchRules.ResolveFile(resolvedName, dimof(resolvedName), resourceName.c_str());
                     materialParameters.SetParameter("RES_HAS_NormalsTexture_DXT", 
                         RenderCore::Assets::IsDXTNormalMap(resolvedName));
                 }
@@ -64,44 +60,94 @@ namespace GUILayer
                 return; // we can't render because we couldn't resolve a good shader variation
             }
 
-            obj._shaderProgram = variation._shaderProgram;
+            _visObject->_shaderProgram = variation._shaderProgram;
         }
 
         ToolsRig::MaterialVisLayer::Draw(
             *context, parserContext,
-            _settings->GetUnderlying(), obj);
+            _settings->GetUnderlying(), *_visObject.get());
     }
 
     void MaterialVisLayer::RenderWidgets(
         RenderCore::IThreadContext* device, 
         const RenderCore::Techniques::ProjectionDesc& projectionDesc)
+    {}
+
+    void MaterialVisLayer::SetActivationState(bool newState) {}
+
+    void MaterialVisLayer::Resolve()
     {
+        if (!_config) { _visObject.reset(); return; }
+
+        clix::shared_ptr<ToolsRig::MaterialVisObject> visObject(
+            std::make_shared<ToolsRig::MaterialVisObject>());
+
+        auto& resMat = visObject->_parameters;
+        auto& searchRules = visObject->_searchRules;
+        
+        if (_config) {
+            for each(auto c in _config)
+                searchRules.AddSearchDirectoryFromFilename(c->GetUnderlying()->GetInitializerFilename().c_str());
+
+            for each(auto c in _config)
+                c->GetUnderlying()->Resolve(resMat, searchRules);
+        }
+
+        _visObject = visObject;
     }
 
-    void MaterialVisLayer::SetActivationState(bool newState)
+    void MaterialVisLayer::ChangeHandler(System::Object^ sender, System::EventArgs^ args)
     {
+        _visObject.reset();
     }
 
-    // auto MaterialVisLayer::GetInputListener() -> std::shared_ptr<IInputListener>
-    // {
-    //     return nullptr;
-    // }
-
-    void MaterialVisLayer::SetConfig(RawMaterial^ config)
+    void MaterialVisLayer::ListChangeHandler(System::Object^ sender, ListChangedEventArgs^ args)
     {
-        delete _config;
-        _config = config ? (gcnew RawMaterial(config)) : nullptr;
+        _visObject.reset();
+    }
+
+    void MaterialVisLayer::PropChangeHandler(System::Object^ sender, PropertyChangedEventArgs^ args)
+    {
+        _visObject.reset();
+    }
+
+    void MaterialVisLayer::SetConfig(IEnumerable<RawMaterial^>^ config)
+    {
+        _visObject.reset();
+
+        auto listChangeHandler = gcnew ListChangedEventHandler(this, &MaterialVisLayer::ListChangeHandler);
+        auto propChangeHandler = gcnew PropertyChangedEventHandler(this, &MaterialVisLayer::PropChangeHandler);
+
+        if (_config) {
+            for each(auto mat in _config) {
+                mat->MaterialParameterBox->ListChanged -= listChangeHandler;
+                mat->ShaderConstants->ListChanged -= listChangeHandler;
+                mat->ResourceBindings->ListChanged -= listChangeHandler;
+                mat->StateSet->PropertyChanged -= propChangeHandler;
+            }
+        }
+        _config = config;
+        if (_config) {
+            for each(auto mat in _config) {
+                mat->MaterialParameterBox->ListChanged += listChangeHandler;
+                mat->ShaderConstants->ListChanged += listChangeHandler;
+                mat->ResourceBindings->ListChanged += listChangeHandler;
+                mat->StateSet->PropertyChanged += propChangeHandler;
+            }
+        }
     }
 
     MaterialVisLayer::MaterialVisLayer(
         MaterialVisSettings^ settings,
-        RawMaterial^ config)
-    : _settings(settings), _config(gcnew RawMaterial(config))
-    {}
+        IEnumerable<RawMaterial^>^ config)
+    : _settings(settings)
+    {
+        SetConfig(config);
+    }
 
     MaterialVisLayer::~MaterialVisLayer() 
     {
-        delete _config;
+        SetConfig(nullptr);
     }
 
     
