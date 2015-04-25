@@ -79,6 +79,10 @@ namespace Assets
             return; 
         }
 
+            // Check for duplicates
+            //  Duplicates are bad because they will increase the number of search operations
+        if (HasDirectory(dir)) return;
+
         unsigned allocationLength = (unsigned)XlStringLen(dir) + 1;
         if (_bufferOverflow.empty() && (_bufferUsed + allocationLength <= dimof(_buffer))) {
                 // just append this new string to our buffer, and add a new start offset
@@ -96,6 +100,33 @@ namespace Assets
 
         _startOffsets[_startPointCount++] = _bufferUsed;
         _bufferUsed += allocationLength;
+    }
+
+    void DirectorySearchRules::AddSearchDirectoryFromFilename(const ResChar filename[])
+    {
+        char path[MaxPath];
+        XlDirname(path, dimof(path), filename);
+        AddSearchDirectory(path);
+    }
+
+    bool DirectorySearchRules::HasDirectory(const ResChar dir[])
+    {
+        const ResChar* b = _buffer;
+        if (!_bufferOverflow.empty()) {
+            b = AsPointer(_bufferOverflow.begin());
+        }
+
+            // note --  just doing a string insensitive compare here...
+            //          we should really do a more sophisticated path compare
+            //          to get a more accurate result
+            //          Actually, it might be better to store the paths in some
+            //          format that is more convenient for comparisons and combining
+            //          paths.
+        for (unsigned c=0; c<_startPointCount; ++c)
+            if (!XlCompareStringI(&b[_startOffsets[c]], dir)) 
+                return true;
+
+        return false;
     }
 
     void DirectorySearchRules::ResolveFile(ResChar destination[], unsigned destinationCount, const ResChar baseName[]) const
@@ -147,10 +178,8 @@ namespace Assets
 
     DirectorySearchRules DefaultDirectorySearchRules(const ResChar baseFile[])
     {
-        char skinPath[MaxPath];
-        XlDirname(skinPath, dimof(skinPath), baseFile);
         Assets::DirectorySearchRules searchRules;
-        searchRules.AddSearchDirectory(skinPath);
+        searchRules.AddSearchDirectoryFromFilename(baseFile);
         return searchRules;
     }
 

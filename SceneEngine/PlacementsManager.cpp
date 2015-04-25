@@ -322,7 +322,7 @@ namespace SceneEngine
         typedef RenderCore::Assets::PreparedModelDrawCalls PreparedState;
         
         auto GetCachedModel(const ResChar filename[]) -> const ModelScaffold*;
-        auto GetCachedMaterial(const ResChar filename[]) -> const MaterialScaffold*;
+        auto GetCachedMaterial(const ResChar model[], const ResChar material[]) -> const MaterialScaffold*;
         auto GetCachedRenderer(const ResChar modelFilename[], const ResChar materialFilename[], unsigned LOD) -> const ModelRenderer*;
         auto GetCachedPlacements(uint64 hash, const ResChar filename[]) -> const Placements&;
         void SetOverride(uint64 guid, const Placements* placements);
@@ -450,14 +450,15 @@ namespace SceneEngine
             #endif
         }
 
-        std::shared_ptr<MaterialScaffold> CreateMaterialScaffold(const ResChar filename[], RenderCore::Assets::IModelFormat& modelFormat)
+        std::shared_ptr<MaterialScaffold> CreateMaterialScaffold(const ResChar model[], const ResChar material[], RenderCore::Assets::IModelFormat& modelFormat)
         {
             #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
                 auto& compilers = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateCompilers();
                 auto& store = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateStore();
+                const ResChar* inits[] = { material, model };
                 auto marker = compilers.PrepareResource(
                     MaterialScaffold::CompileProcessType, 
-                    (const char**)&filename, 1, store);
+                    inits, dimof(inits), store);
                 return std::make_shared<MaterialScaffold>(std::move(marker));
             #else
                 return modelFormat.CreateMaterial(filename);
@@ -478,23 +479,23 @@ namespace SceneEngine
         return model.get();
     }
 
-    auto PlacementsRenderer::GetCachedMaterial(const ResChar filename[]) -> const MaterialScaffold*
+    auto PlacementsRenderer::GetCachedMaterial(const ResChar model[], const ResChar material[]) -> const MaterialScaffold*
     {
-        auto hash = Hash64(filename);
-        auto material = _cache->_materialScaffolds.Get(hash);
-        if (!material) {
-            material = Internal::CreateMaterialScaffold(filename, *_modelFormat);
-            if (material) {
-                _cache->_materialScaffolds.Insert(hash, material);
+        auto hash = Hash64(material) ^ Hash64(model);
+        auto materialScaffold = _cache->_materialScaffolds.Get(hash);
+        if (!materialScaffold) {
+            materialScaffold = Internal::CreateMaterialScaffold(model, material, *_modelFormat);
+            if (materialScaffold) {
+                _cache->_materialScaffolds.Insert(hash, materialScaffold);
             }
         }
-        return material.get();
+        return materialScaffold.get();
     }
 
     auto PlacementsRenderer::GetCachedRenderer(const ResChar modelFilename[], const ResChar materialFilename[], unsigned LOD) -> const ModelRenderer*
     {
         auto model = GetCachedModel(modelFilename);
-        auto material = GetCachedMaterial(materialFilename);
+        auto material = GetCachedMaterial(modelFilename, materialFilename);
         if (!model || !material) return nullptr;
 
         uint64 hashedRenderer = (uint64(model) << 2ull) | (uint64(material) << 48ull) | uint64(LOD);
@@ -666,7 +667,6 @@ namespace SceneEngine
                 //  may be repeated many times. In these cases, we want to minimize the
                 //  workload for every repeat.
             auto modelHash = *(uint64*)PtrAdd(filenamesBuffer, obj._modelFilenameOffset);
-            auto materialHash = *(uint64*)PtrAdd(filenamesBuffer, obj._materialFilenameOffset);
             if (modelHash != _currentModel) {
                 _model = cache._modelScaffolds.Get(modelHash).get();
                 if (!_model || _model->GetDependencyValidation().GetValidationIndex() > 0) {
@@ -678,12 +678,15 @@ namespace SceneEngine
                 _currentModel = modelHash;
             }
 
+            auto materialHash = *(uint64*)PtrAdd(filenamesBuffer, obj._materialFilenameOffset);
+            materialHash ^= modelHash;
             if (materialHash != _currentMaterial) {
                 _material = cache._materialScaffolds.Get(materialHash).get();
                 if (!_material || _material->GetDependencyValidation().GetValidationIndex() > 0) {
                     std::shared_ptr<MaterialScaffold> newMaterial;
+                    auto modelFilename = (const ResChar*)PtrAdd(filenamesBuffer, obj._modelFilenameOffset + sizeof(uint64));
                     auto materialFilename = (const ResChar*)PtrAdd(filenamesBuffer, obj._materialFilenameOffset + sizeof(uint64));
-                    newMaterial = CreateMaterialScaffold(materialFilename, modelFormat);
+                    newMaterial = CreateMaterialScaffold(modelFilename, materialFilename, modelFormat);
                     _material = newMaterial.get();
                     cache._materialScaffolds.Insert(materialHash, std::move(newMaterial));
                 }
@@ -1410,7 +1413,7 @@ namespace SceneEngine
         // 
         // auto matGuid = binding[drawCallIndex];
 
-        const auto* material = _editorPimpl->_renderer->GetCachedMaterial(_objects[objectIndex]._material.c_str());
+        const auto* material = _editorPimpl->_renderer->GetCachedMaterial(_objects[objectIndex]._model.c_str(), _objects[objectIndex]._material.c_str());
         if (!material) return std::string();
             
         auto res = material->GetMaterialName(materialGuid);

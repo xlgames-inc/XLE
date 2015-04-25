@@ -82,7 +82,7 @@ namespace Sample
         _skeleton = &Assets::GetAsset<SkeletonScaffold>(skelMarker->_sourceID0);
         _animationSet = &Assets::GetAsset<AnimationSetScaffold>(animMarker->_sourceID0);
 
-        auto& matScaffold = Assets::GetAssetComp<MaterialScaffold>(skin);
+        auto& matScaffold = Assets::GetAssetComp<MaterialScaffold>(skin, skin);
 
         const unsigned levelOfDetail = 0;
         auto renderer = std::make_unique<ModelRenderer>(std::ref(*_model), std::ref(matScaffold), std::ref(sharedStates), &searchRules, levelOfDetail);

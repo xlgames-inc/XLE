@@ -99,14 +99,15 @@ namespace ToolsRig
             #endif
         }
 
-        std::shared_ptr<MaterialScaffold> CreateMaterialScaffold(const ::Assets::ResChar filename[], RenderCore::Assets::IModelFormat& modelFormat)
+        std::shared_ptr<MaterialScaffold> CreateMaterialScaffold(const ::Assets::ResChar model[], const ::Assets::ResChar material[], RenderCore::Assets::IModelFormat& modelFormat)
         {
             #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
                 auto& compilers = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateCompilers();
                 auto& store = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateStore();
+                const ::Assets::ResChar* inits[] = {material, model};
                 auto marker = compilers.PrepareResource(
                     MaterialScaffold::CompileProcessType, 
-                    (const char**)&filename, 1, store);
+                    inits, dimof(inits), store);
                 return std::make_shared<MaterialScaffold>(std::move(marker));
             #else
                 return modelFormat.CreateMaterial(filename);
@@ -137,7 +138,7 @@ namespace ToolsRig
 
         result._material = _pimpl->_materialScaffolds.Get(hashedMaterial);
         if (!result._material || result._material->GetDependencyValidation().GetValidationIndex() > 0) {
-            result._material = Internal::CreateMaterialScaffold(matNamePtr, *_pimpl->_format);
+            result._material = Internal::CreateMaterialScaffold(filename, matNamePtr, *_pimpl->_format);
             _pimpl->_materialScaffolds.Insert(hashedMaterial, result._material);
         }
 
@@ -453,18 +454,18 @@ namespace ToolsRig
         {
             using namespace SceneEngine;
 
-            auto model = _cache->GetModel(_settings->_modelName.c_str());
-            assert(model._renderer && model._sharedStateSet);
-
             auto metalContext = RenderCore::Metal::DeviceContext::Get(*_threadContext);
             auto cam = AsCameraDesc(*_settings->_camera);
             auto worldSpaceRay = IntersectionTestContext::CalculateWorldSpaceRay(
                 cam, evnt._mousePosition, PlatformRig::InputTranslator::s_hackWindowSize);
-            
+                
             std::vector<ModelIntersectionStateContext::ResultEntry> results;
             TRY {
+                auto model = _cache->GetModel(_settings->_modelName.c_str());
+                assert(model._renderer && model._sharedStateSet);
+            
                 ModelIntersectionStateContext stateContext(
-                ModelIntersectionStateContext::RayTest,
+                    ModelIntersectionStateContext::RayTest,
                     _threadContext, *_techniqueContext, &cam);
                 LightingParserContext parserContext(*_techniqueContext);
                 stateContext.SetRay(worldSpaceRay);
@@ -475,43 +476,43 @@ namespace ToolsRig
                 model._sharedStateSet->ReleaseState(metalContext.get());
 
                 results = stateContext.GetResults();
+
+                if (!results.empty()) {
+                        // find the closest intersection, and let's get so information from that...
+                    std::sort(results.begin(), results.end(), ModelIntersectionStateContext::ResultEntry::CompareDepth);
+
+                    _mouseOver->_intersectionPt = 
+                        worldSpaceRay.first + results[0]._intersectionDepth * Normalize(worldSpaceRay.second - worldSpaceRay.first);
+
+                    auto drawCallIndex = results[0]._drawCallIndex;
+                    auto matBinding = model._renderer->DrawCallToMaterialBinding();
+                    uint64 materialGuid; 
+                    if (results[0]._drawCallIndex < matBinding.size()) {
+                        materialGuid = matBinding[results[0]._drawCallIndex];
+                    } else {
+                        materialGuid = ~0x0ull;
+                    }
+
+                    if (    drawCallIndex != _mouseOver->_drawCallIndex
+                        ||  materialGuid != _mouseOver->_materialGuid
+                        ||  !_mouseOver->_hasMouseOver) {
+
+                        _mouseOver->_hasMouseOver = true;
+                        _mouseOver->_drawCallIndex = drawCallIndex;
+                        _mouseOver->_materialGuid = materialGuid;
+                        _mouseOver->_changeEvent.Trigger();
+                    }
+
+                } else {
+                    if (_mouseOver->_hasMouseOver) {
+                        _mouseOver->_hasMouseOver = false;
+                        _mouseOver->_changeEvent.Trigger();
+                    }
+                }
             }
             CATCH (const ::Assets::Exceptions::InvalidResource&) {}
             CATCH (const ::Assets::Exceptions::PendingResource&) {}
             CATCH_END
-
-            if (!results.empty()) {
-                    // find the closest intersection, and let's get so information from that...
-                std::sort(results.begin(), results.end(), ModelIntersectionStateContext::ResultEntry::CompareDepth);
-
-                _mouseOver->_intersectionPt = 
-                    worldSpaceRay.first + results[0]._intersectionDepth * Normalize(worldSpaceRay.second - worldSpaceRay.first);
-
-                auto drawCallIndex = results[0]._drawCallIndex;
-                auto matBinding = model._renderer->DrawCallToMaterialBinding();
-                uint64 materialGuid; 
-                if (results[0]._drawCallIndex < matBinding.size()) {
-                    materialGuid = matBinding[results[0]._drawCallIndex];
-                } else {
-                    materialGuid = ~0x0ull;
-                }
-
-                if (    drawCallIndex != _mouseOver->_drawCallIndex
-                    ||  materialGuid != _mouseOver->_materialGuid
-                    ||  !_mouseOver->_hasMouseOver) {
-
-                    _mouseOver->_hasMouseOver = true;
-                    _mouseOver->_drawCallIndex = drawCallIndex;
-                    _mouseOver->_materialGuid = materialGuid;
-                    _mouseOver->_changeEvent.Trigger();
-                }
-
-            } else {
-                if (_mouseOver->_hasMouseOver) {
-                    _mouseOver->_hasMouseOver = false;
-                    _mouseOver->_changeEvent.Trigger();
-                }
-            }
 
             return false;
         }

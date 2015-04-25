@@ -27,39 +27,67 @@ namespace RenderCore { namespace Assets
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static void CompileMaterialScaffold(
-        const char source[], const char destination[], 
-        std::vector<::Assets::DependentFileState>* outDeps)
+    class RawMatConfigurations
+    {
+    public:
+        Serialization::Vector<std::string> _configurations;
+        ::Assets::ResChar _rawModelMaterial[MaxPath];
+
+        RawMatConfigurations(const char sourceModel[]);
+    };
+
+    RawMatConfigurations::RawMatConfigurations(const char sourceModel[])
     {
             //  get associated "raw" material information. This is should contain the material information attached
             //  to the geometry export (eg, .dae file). Note -- maybe the name of the raw file should come
             //  from the .material name (ie, to make it easier to have multiple material files with the same dae file)
-        ::Assets::ResChar concreteFilename[MaxPath];
-        XlCopyString(concreteFilename, dimof(concreteFilename), source);
-        XlChopExtension(concreteFilename);
-        MakeConcreteRawMaterialFilename(concreteFilename, dimof(concreteFilename), concreteFilename);
-
-        Serialization::Vector<std::string> configurations;
+        XlCopyString(_rawModelMaterial, dimof(_rawModelMaterial), sourceModel);
+        XlChopExtension(_rawModelMaterial);
+        MakeConcreteRawMaterialFilename(_rawModelMaterial, dimof(_rawModelMaterial), _rawModelMaterial);
 
         {
                 //  We need to load the "-rawmat" file first to get the list
                 //  of configurations within
             size_t sourceFileSize = 0;
-            auto sourceFile = LoadFileAsMemoryBlock(concreteFilename, &sourceFileSize);
+            auto sourceFile = LoadFileAsMemoryBlock(_rawModelMaterial, &sourceFileSize);
             if (!sourceFile)
-                ThrowException(::Assets::Exceptions::InvalidResource(source, 
-                    StringMeld<128>() << "Missing or empty file: " << concreteFilename));
+                ThrowException(::Assets::Exceptions::InvalidResource(sourceModel, 
+                    StringMeld<128>() << "Missing or empty file: " << _rawModelMaterial));
 
             Data data;
             data.Load((const char*)sourceFile.get(), (int)sourceFileSize);
 
             for (auto config=data.child; config; config=config->next) {
                 if (!config->value) continue;
-                configurations.push_back(config->value);
+                _configurations.push_back(config->value);
             }
         }
+    }
 
-        auto searchRules = ::Assets::DefaultDirectorySearchRules(source);
+    static void AddDep(
+        std::vector<::Assets::DependentFileState>* outDeps,
+        const char newDep[])
+    {
+        if (outDeps) {
+            auto existing = std::find_if(outDeps->cbegin(), outDeps->cend(),
+                [&](const ::Assets::DependentFileState& test) 
+                {
+                    return !XlCompareStringI(test._filename.c_str(), newDep);
+                });
+            if (existing == outDeps->cend()) {
+                auto& store = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateStore();
+                outDeps->push_back(store.GetDependentFileState(newDep));
+            }
+        }
+    }
+
+    static void CompileMaterialScaffold(
+        const char sourceMaterial[], const char sourceModel[],
+        const char destination[], 
+        std::vector<::Assets::DependentFileState>* outDeps)
+    {
+        RawMatConfigurations modelMat(sourceModel);
+            
         std::vector<::Assets::DependentFileState> deps;
 
             //  for each configuration, we want to build a resolved material
@@ -67,39 +95,65 @@ namespace RenderCore { namespace Assets
             //  and re-parsing the same files over and over again!
         Serialization::Vector<std::pair<MaterialGuid, ResolvedMaterial>> resolved;
         Serialization::Vector<std::pair<MaterialGuid, std::string>> resolvedNames;
-        resolved.reserve(configurations.size());
+        resolved.reserve(modelMat._configurations.size());
 
-        // StringMeld<MaxPath, ::Assets::ResChar> materialFilename;
-        // materialFilename << source;
-        // if (!XlExtension(source)) materialFilename << ".material";
+        auto searchRules = ::Assets::DefaultDirectorySearchRules(sourceModel);
+        ::Assets::ResChar resolvedSourceMaterial[MaxPath];
+        ResolveMaterialFilename(resolvedSourceMaterial, dimof(resolvedSourceMaterial), searchRules, sourceMaterial);
+        searchRules.AddSearchDirectoryFromFilename(resolvedSourceMaterial);
 
-        for (auto i=configurations.cbegin(); i!=configurations.cend(); ++i) {
+        using Meld = StringMeld<MaxPath, ::Assets::ResChar>;
+        for (auto i=modelMat._configurations.cbegin(); i!=modelMat._configurations.cend(); ++i) {
+
+            ResolvedMaterial resMat;
             auto guid = MakeMaterialGuid(i->c_str());
-            StringMeld<MaxPath, ::Assets::ResChar> matName;
-            matName << concreteFilename << ":" << *i;
-            TRY {
-                auto& rawMat = ::Assets::GetAssetDep<RawMaterial>((const ::Assets::ResChar*)matName);
-                ResolvedMaterial resMat;
-                rawMat.Resolve(resMat, searchRules, &deps);
-                resolved.push_back(std::make_pair(guid, std::move(resMat)));
-                resolvedNames.push_back(std::make_pair(guid, std::string(StringMeld<MaxPath, ::Assets::ResChar>() << source << ":" << *i)));
-            } CATCH (const ::Assets::Exceptions::InvalidResource& e) {
-                LogWarning << "Got an invalid resource exception while compiling material scaffold for " << source;
-                LogWarning << "Exception follows: " << e;
 
-                    // we need need a dependency (even if it's a missing file)
-                if (outDeps) {
-                    auto existing = std::find_if(outDeps->cbegin(), outDeps->cend(),
-                        [&](const ::Assets::DependentFileState& test) 
-                        {
-                            return !XlCompareStringI(test._filename.c_str(), concreteFilename);
-                        });
-                    if (existing == outDeps->cend()) {
-                        auto& store = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateStore();
-                        outDeps->push_back(store.GetDependentFileState(concreteFilename));
-                    }
-                }
+                // Our resolved material comes from 3 separate inputs:
+                //  1) model:configuration
+                //  2) material:*
+                //  3) material:configuration
+                //
+                // Some material information is actually stored in the model
+                // source data. This is just for art-pipeline convenience --
+                // generally texture assignments (and other settings) are 
+                // set in the model authoring tool (eg, 3DS Max). The .material
+                // files actually only provide overrides for settings that can't
+                // be set within 3rd party tools.
+                // 
+                // We don't combine the model and material information until
+                // this step -- this gives us some flexibility to use the same
+                // model with different material files. The material files can
+                // also override settings from 3DS Max (eg, change texture assignments
+                // etc). This provides a path for reusing the same model with
+                // different material settings (eg, when we want one thing to have
+                // a red version and a blue version)
+
+            TRY {
+                    // resolve in model:configuration
+                auto& rawMat = ::Assets::GetAssetDep<RawMaterial>((Meld() << modelMat._rawModelMaterial << ":" << *i).get());
+                rawMat.Resolve(resMat, searchRules, &deps);
+            } CATCH (const ::Assets::Exceptions::InvalidResource&) {
+                AddDep(outDeps, modelMat._rawModelMaterial);        // we need need a dependency (even if it's a missing file)
             } CATCH_END
+
+            TRY {
+                    // resolve in material:*
+                auto& rawMat = ::Assets::GetAssetDep<RawMaterial>((Meld() << resolvedSourceMaterial << ":*").get());
+                rawMat.Resolve(resMat, searchRules, &deps);
+            } CATCH (const ::Assets::Exceptions::InvalidResource&) {
+                AddDep(outDeps, sourceMaterial);        // we need need a dependency (even if it's a missing file)
+            } CATCH_END
+
+            TRY {
+                    // resolve in material:configuration
+                auto& rawMat = ::Assets::GetAssetDep<RawMaterial>((Meld() << resolvedSourceMaterial << ":" << *i).get());
+                rawMat.Resolve(resMat, searchRules, &deps);
+            } CATCH (const ::Assets::Exceptions::InvalidResource&) {
+                AddDep(outDeps, sourceMaterial);        // we need need a dependency (even if it's a missing file)
+            } CATCH_END
+
+            resolved.push_back(std::make_pair(guid, std::move(resMat)));
+            resolvedNames.push_back(std::make_pair(guid, (Meld() << sourceMaterial << ":" << *i).get()));
         }
 
         std::sort(resolved.begin(), resolved.end(), CompareFirst<MaterialGuid, ResolvedMaterial>());
@@ -118,7 +172,7 @@ namespace RenderCore { namespace Assets
                 1, destination, "wb", 0,
                 VersionString, BuildDateString);
 
-            output.BeginChunk(ChunkType_ResolvedMat, 0, source);
+            output.BeginChunk(ChunkType_ResolvedMat, 0, Meld() << sourceModel << "&" << sourceMaterial);
             output.Write(block.get(), 1, blockSize);
             output.FinishCurrentChunk();
         }
@@ -135,10 +189,15 @@ namespace RenderCore { namespace Assets
         const ::Assets::ResChar* initializers[], unsigned initializerCount,
         const ::Assets::IntermediateResources::Store& destinationStore)
     {
-        if (!initializerCount || !initializers[0][0]) return nullptr;
+        if (initializerCount < 2 || !initializers[0][0] || !initializers[1][0]) return nullptr;
 
-        char outputName[MaxPath];
-        destinationStore.MakeIntermediateName(outputName, dimof(outputName), initializers[0]);
+        ::Assets::ResChar materialBaseName[MaxPath];
+        XlBasename(materialBaseName, dimof(materialBaseName), initializers[1]);
+
+        ::Assets::ResChar outputName[MaxPath];
+        destinationStore.MakeIntermediateName(
+            outputName, dimof(outputName), 
+            StringMeld<MaxPath, ::Assets::ResChar>() << initializers[0] << "-" << materialBaseName);
         XlCatString(outputName, dimof(outputName), "-resmat");
 
         if (DoesFileExist(outputName)) {
@@ -152,7 +211,7 @@ namespace RenderCore { namespace Assets
         }
 
         std::vector<::Assets::DependentFileState> deps;
-        CompileMaterialScaffold(initializers[0], outputName, &deps);
+        CompileMaterialScaffold(initializers[0], initializers[1], outputName, &deps);
 
         auto newDepVal = destinationStore.WriteDependencies(outputName, "", deps);
         return std::make_unique<::Assets::PendingCompileMarker>(

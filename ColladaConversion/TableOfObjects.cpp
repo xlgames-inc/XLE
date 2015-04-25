@@ -199,20 +199,7 @@ namespace RenderCore { namespace ColladaConversion
             if (objectId != ObjectId_Invalid) {
                 const auto* obj = GetFromObjectId<Assets::RawMaterial>(objectId);
                 if (obj) {
-                    Assets::RawMaterial matCopy = *obj;
-
-                        //  We must set the inherit settings here, because we are
-                        //  triggering these off the material name, not the effect
-                        //  name.
-                        //  When we first constructed the RawMaterial object in Writer::writeEffect,
-                        //  we don't know what materials will use the effect, and so we
-                        //  don't know the material names to use. We could use the effect
-                        //  name, I guess. We want to use the name that most closely matches
-                        //  the names set in Max -- and that seems to be the material name.
-                    matCopy._inherit.push_back(matSettingsFile + ":*");
-                    matCopy._inherit.push_back(matSettingsFile + ":" + i->_name.c_str());
-
-                    auto newBlock = matCopy.SerializeAsData();
+                    auto newBlock = obj->SerializeAsData();
                     newBlock->SetValue(i->_name.c_str());
                     result.push_back(std::move(newBlock));
                 }

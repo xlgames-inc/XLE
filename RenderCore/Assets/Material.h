@@ -226,6 +226,9 @@ namespace RenderCore { namespace Assets
 
     void MakeConcreteRawMaterialFilename(
         ::Assets::ResChar dest[], unsigned dstCount, const ::Assets::ResChar inputName[]);
+    void ResolveMaterialFilename(
+        ::Assets::ResChar resolvedFile[], unsigned resolvedFileCount,
+        const ::Assets::DirectorySearchRules& searchRules, const char baseMatName[]);
     uint64 MakeMaterialGuid(const char name[]);
 
 }}

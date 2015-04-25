@@ -299,8 +299,9 @@ namespace Sample
                 //  We can also get a Assets::Exceptions::InvalidResource if asset can
                 //  never be correctly loaded (eg, missing file or something)
             const char sampleAsset[] = "game/model/galleon/galleon.dae";
+            const char sampleMaterial[] = "game/model/galleon/galleon.material";
             auto& scaffold = Assets::GetAssetComp<ModelScaffold>(sampleAsset);
-            auto& matScaffold = Assets::GetAssetComp<MaterialScaffold>(sampleAsset);
+            auto& matScaffold = Assets::GetAssetComp<MaterialScaffold>(sampleMaterial, sampleAsset);
 
                 //  We want to create a Assets::DirectorySearchRules object before we
                 //  make the ModelRenderer. This is used when we need to find the 

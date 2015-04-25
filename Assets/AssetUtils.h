@@ -14,7 +14,9 @@ namespace Assets
     {
     public:
         void AddSearchDirectory(const ResChar dir[]);
+        void AddSearchDirectoryFromFilename(const ResChar filename[]);
         void ResolveFile(ResChar destination[], unsigned destinationCount, const ResChar baseName[]) const;
+        bool HasDirectory(const ResChar dir[]);
 
         DirectorySearchRules();
         DirectorySearchRules(const DirectorySearchRules&);

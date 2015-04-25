@@ -93,6 +93,11 @@ namespace Utility
             return (const CharType*)_buffer._buffer;
         }
 
+        const CharType* get() const
+        {
+            return (const CharType*)_buffer._buffer;
+        }
+
     protected:
         Internal::FixedMemoryBuffer<Count*sizeof(CharType)> _buffer;
 

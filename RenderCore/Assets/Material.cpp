@@ -308,6 +308,19 @@ namespace RenderCore { namespace Assets
         }
     }
 
+    void ResolveMaterialFilename(
+        ::Assets::ResChar resolvedFile[], unsigned resolvedFileCount,
+        const ::Assets::DirectorySearchRules& searchRules, const char baseMatName[])
+    {
+        if (baseMatName != resolvedFile)
+            XlCopyString(resolvedFile, resolvedFileCount, baseMatName);
+        if (!XlExtension(resolvedFile))
+            XlCatString(resolvedFile, resolvedFileCount, ".material");
+        searchRules.ResolveFile(resolvedFile, resolvedFileCount, resolvedFile);
+        XlNormalizePath(resolvedFile, resolvedFileCount, resolvedFile);
+        XlSimplifyPath(resolvedFile, resolvedFileCount, resolvedFile, "\\/");
+    }
+
     uint64 MakeMaterialGuid(const char name[])
     {
             //  If the material name is just a number, then we will use that
@@ -487,11 +500,7 @@ namespace RenderCore { namespace Assets
             if (colon) {
                 ::Assets::ResChar resolvedFile[MaxPath];
                 XlCopyNString(resolvedFile, name.c_str(), colon-name.c_str());
-                if (!XlExtension(resolvedFile))
-                    XlCatString(resolvedFile, dimof(resolvedFile), ".material");
-                searchRules.ResolveFile(resolvedFile, dimof(resolvedFile), resolvedFile);
-                XlNormalizePath(resolvedFile, dimof(resolvedFile), resolvedFile);
-                XlSimplifyPath(resolvedFile, dimof(resolvedFile), resolvedFile, "\\/");
+                ResolveMaterialFilename(resolvedFile, dimof(resolvedFile), searchRules, resolvedFile);
                 
                 StringMeld<MaxPath, ::Assets::ResChar> finalRawMatName;
                 finalRawMatName << resolvedFile << colon;
