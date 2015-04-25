@@ -324,8 +324,10 @@ namespace GUILayer
                 array<Byte>^ newFile;
                 {
                     ::Utility::Data fullData;
-                    pin_ptr<uint8> pinnedAddress(&originalFile[0]);
-                    fullData.Load((const char*)pinnedAddress, originalFile->Length);
+                    if (originalFile->Length) {
+                        pin_ptr<uint8> pinnedAddress(&originalFile[0]);
+                        fullData.Load((const char*)pinnedAddress, originalFile->Length);
+                    }
 
                     SerializeInto(fullData, a->second->GetAsset());
 
@@ -366,8 +368,10 @@ namespace GUILayer
             
                 {
                     ::Utility::Data fullData;
-                    pin_ptr<uint8> pinnedAddress(&originalFile[0]);
-                    fullData.Load((const char*)pinnedAddress, originalFile->Length);
+                    if (originalFile->Length) {
+                        pin_ptr<uint8> pinnedAddress(&originalFile[0]);
+                        fullData.Load((const char*)pinnedAddress, originalFile->Length);
+                    }
 
                     SerializeInto(fullData, a->second->GetAsset());
 
@@ -395,6 +399,20 @@ namespace GUILayer
             }
 
         #endif
+    }
+
+    bool PendingSaveList::HasModifiedAssets()
+    {
+        #if defined(ASSETS_STORE_DIVERGENT)
+
+            auto& materials = ::Assets::Internal::GetAssetSet<RenderCore::Assets::RawMaterial>();
+            (void)materials; // compiler incorrectly thinking that this is unreferenced
+            for (auto a = materials._divergentAssets.cbegin(); a!=materials._divergentAssets.cend(); ++a)
+                if (a->second->HasChanges()) return true;
+
+        #endif
+
+        return true;
     }
 }
 

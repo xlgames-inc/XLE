@@ -41,6 +41,7 @@ namespace GUILayer
         ~PendingSaveList();
 
         static PendingSaveList^ Create();
+        static bool HasModifiedAssets();
     internal:
         value class E
         {

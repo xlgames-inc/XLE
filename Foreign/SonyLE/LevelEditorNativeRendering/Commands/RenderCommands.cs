@@ -137,6 +137,19 @@ namespace RenderingInterop
                 null,
                 CommandVisibility.Menu,
                 this);
+
+            // <<XLE
+            m_commandService.RegisterCommand(
+                Command.SaveModifiedAssets,
+                StandardMenu.File,
+                "Save",
+                "Modified Assets...".Localize(),
+                "View and save any assets that have been modified".Localize(),
+                Keys.None,
+                Resources.CubesImage,
+                CommandVisibility.Menu,
+                this);
+            // XLE>>
           
             //cmdInfo = m_commandService.RegisterCommand(
             //  Command.RealTime,
@@ -181,7 +194,6 @@ namespace RenderingInterop
                 context = new RenderStateEditingContext(rs);                
                 m_propertyGrid.Bind(context);
             }
-            
                       
             switch ((Command)commandTag)
             {
@@ -198,6 +210,8 @@ namespace RenderingInterop
                 case Command.RenderTextured:
                     return (rs.RenderFlag & GlobalRenderFlags.Solid) != 0;
                 
+                case Command.SaveModifiedAssets:
+                    return GUILayer.PendingSaveList.HasModifiedAssets();
             }
 
             return false;
@@ -276,6 +290,10 @@ namespace RenderingInterop
                   //  case Command.RealTime:
                   //      m_designView.RealTime = !m_designView.RealTime;
                   //      break;
+
+                    case Command.SaveModifiedAssets:
+                        PerformSaveModifiedAssets();
+                        break;
                 }
                 m_designView.ActiveView.Invalidate();                
             }
@@ -344,6 +362,10 @@ namespace RenderingInterop
             RenderNormals,
             RenderCycle,
           //  RealTime
+
+            // <<XLE
+            SaveModifiedAssets,
+            // XLE>>
         }
 
         private Sce.Atf.Controls.PropertyEditing.PropertyGrid m_propertyGrid;
@@ -405,6 +427,24 @@ namespace RenderingInterop
             #endregion
             private readonly object[] m_items = new object[1];
             private static PropertyDescriptor[] s_propertyDescriptor;
+        }
+
+
+        private void PerformSaveModifiedAssets()
+        {
+            var pendingAssetList = GUILayer.PendingSaveList.Create();
+            var assetList = new GUILayer.DivergentAssetList(GUILayer.EngineDevice.GetInstance(), pendingAssetList);
+
+            using (var dialog = new ControlsLibrary.ModifiedAssetsDialog())
+            {
+                dialog.AssetList = assetList;
+                var result = dialog.ShowDialog();
+
+                if (result == DialogResult.OK)
+                {
+                    pendingAssetList.Commit();
+                }
+            }
         }
     }
 }
