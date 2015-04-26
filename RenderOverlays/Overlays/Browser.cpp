@@ -484,7 +484,7 @@ namespace Overlays
             _pimpl->_modelNames.insert(ni, std::make_pair(hashedName, std::string((const char*)utf8Filename)));
         }
 
-        auto model = _pimpl->_cache->GetModel((const ::Assets::ResChar*)utf8Filename);
+        auto model = _pimpl->_cache->GetModel((const ::Assets::ResChar*)utf8Filename, (const ::Assets::ResChar*)utf8Filename);
 
         SceneEngine::SavedTargets savedTargets(metalContext.get());
 

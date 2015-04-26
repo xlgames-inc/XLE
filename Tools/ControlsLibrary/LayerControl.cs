@@ -17,13 +17,13 @@ namespace ControlsLibrary
 {
     // internal class LayerControlHack : IDisposable
     // {
-    //     public LayerControlHack(Control c) {}
-    //     public void OnPaint(PaintEventArgs pe) {}
-    //     public void OnPaintBackground(PaintEventArgs pe) {}
-    //     public void OnResize(EventArgs pe) {}
-    //     public void SetupDefaultVis(GUILayer.ModelVisSettings settings) {}
-    //     public void AddDefaultCameraHandler(GUILayer.VisCameraSettings settings) {}
-    //     public void AddSystem(GUILayer.IOverlaySystem overlay) {}
+    //     public LayerControlHack(Control c) { }
+    //     public void OnPaint(PaintEventArgs pe) { }
+    //     public void OnPaintBackground(PaintEventArgs pe) { }
+    //     public void OnResize(EventArgs pe) { }
+    //     public void SetupDefaultVis(GUILayer.ModelVisSettings settings) { }
+    //     public void AddDefaultCameraHandler(GUILayer.VisCameraSettings settings) { }
+    //     public void AddSystem(GUILayer.IOverlaySystem overlay) { }
     //     public GUILayer.VisMouseOver CreateVisMouseOver(GUILayer.ModelVisSettings settings) { return null; }
     // 
     //     public void Dispose() { }
@@ -31,7 +31,7 @@ namespace ControlsLibrary
     // }
 
     using LayerControlHack = GUILayer.LayerControl;
-
+    
     public partial class LayerControl : UserControl
     {
         public LayerControl()
@@ -46,7 +46,7 @@ namespace ControlsLibrary
             SetStyle(ControlStyles.Opaque, true);
         }
 
-        internal LayerControlHack Underlying { get { return layerControl; } }
+        public LayerControlHack Underlying { get { return layerControl; } }
 
         protected override void OnPaint(PaintEventArgs pe)
         {

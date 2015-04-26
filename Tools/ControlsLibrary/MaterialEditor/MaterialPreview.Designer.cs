@@ -40,7 +40,8 @@ namespace ControlsLibrary.MaterialEditor
             this.checkBox1 = new System.Windows.Forms.CheckBox();
             this._lightingType = new System.Windows.Forms.ComboBox();
             this._geoType = new System.Windows.Forms.ComboBox();
-            this.preview = new LayerControl();
+            this.preview = new LayerControl(); 
+            this._resetCamera = new System.Windows.Forms.Button();
             this.groupBox1.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -48,6 +49,7 @@ namespace ControlsLibrary.MaterialEditor
             // 
             this.groupBox1.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Right)));
+            this.groupBox1.Controls.Add(this._resetCamera);
             this.groupBox1.Controls.Add(this.checkBox1);
             this.groupBox1.Controls.Add(this._lightingType);
             this.groupBox1.Controls.Add(this._geoType);
@@ -70,7 +72,7 @@ namespace ControlsLibrary.MaterialEditor
             this.checkBox1.Text = "Draw Grid";
             this.checkBox1.UseVisualStyleBackColor = true;
             // 
-            // comboBox2
+            // _lightingType
             // 
             this._lightingType.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this._lightingType.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
@@ -79,11 +81,11 @@ namespace ControlsLibrary.MaterialEditor
             "Lighting Env 1",
             "Lighting Env 2"});
             this._lightingType.Location = new System.Drawing.Point(5, 46);
-            this._lightingType.Name = "comboBox2";
+            this._lightingType.Name = "_lightingType";
             this._lightingType.Size = new System.Drawing.Size(155, 21);
             this._lightingType.TabIndex = 1;
             // 
-            // comboBox1
+            // _geoType
             // 
             this._geoType.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this._geoType.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
@@ -92,7 +94,7 @@ namespace ControlsLibrary.MaterialEditor
             "GeoType: Sphere",
             "GeoType: Cube"});
             this._geoType.Location = new System.Drawing.Point(5, 19);
-            this._geoType.Name = "comboBox1";
+            this._geoType.Name = "_geoType";
             this._geoType.Size = new System.Drawing.Size(155, 21);
             this._geoType.TabIndex = 0;
             // 
@@ -104,6 +106,16 @@ namespace ControlsLibrary.MaterialEditor
             this.preview.TabIndex = 1;
             this.preview.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right | System.Windows.Forms.AnchorStyles.Top)));
+            // 
+            // _resetCamera
+            // 
+            this._resetCamera.Location = new System.Drawing.Point(5, 97);
+            this._resetCamera.Name = "_resetCamera";
+            this._resetCamera.Size = new System.Drawing.Size(155, 23);
+            this._resetCamera.TabIndex = 3;
+            this._resetCamera.Text = "Reset Camera";
+            this._resetCamera.UseVisualStyleBackColor = true;
+            this._resetCamera.Click += new System.EventHandler(this._resetCamera_Click);
             // 
             // MaterialPreview
             // 
@@ -126,5 +138,6 @@ namespace ControlsLibrary.MaterialEditor
         private System.Windows.Forms.CheckBox checkBox1;
         private System.Windows.Forms.ComboBox _lightingType;
         private LayerControl preview;
+        private System.Windows.Forms.Button _resetCamera;
     }
 }

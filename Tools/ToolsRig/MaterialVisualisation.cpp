@@ -395,6 +395,8 @@ namespace ToolsRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    VisCameraSettings AlignCameraToBoundingBox(float verticalFieldOfView, const std::pair<Float3, Float3>& box);
+
     bool MaterialVisLayer::Draw(
         IThreadContext& context,
         SceneEngine::LightingParserContext& parserContext,
@@ -402,6 +404,26 @@ namespace ToolsRig
         const MaterialVisObject& object)
     {
         TRY {
+
+                // if we need to reset the camera, do so now...
+            if (settings._pendingCameraAlignToModel) {
+                if (settings._geometryType == MaterialVisSettings::GeometryType::Model && !object._previewModelFile.empty()) {
+                        // this is more tricky... when using a model, we have to get the bounding box for the model
+                    using namespace RenderCore::Assets;
+                    auto& compilers = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateCompilers();
+                    auto& store = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateStore();
+                    const ::Assets::ResChar* modelFile = object._previewModelFile.c_str();
+                    auto skinMarker = compilers.PrepareResource(RenderCore::Assets::ColladaCompiler::Type_Model, &modelFile, 1, store);
+                    const auto& model = ::Assets::GetAsset<ModelScaffold>(skinMarker->_sourceID0);
+                    *settings._camera = AlignCameraToBoundingBox(settings._camera->_verticalFieldOfView, model.GetStaticBoundingBox());
+                } else {
+                        // just reset camera to the default
+                    *settings._camera = VisCameraSettings();
+                    settings._camera->_position = Float3(-5.f, 0.f, 0.f);
+                }
+
+                settings._pendingCameraAlignToModel = false;
+            }
 
             MaterialSceneParser sceneParser(settings, object);
             SceneEngine::RenderingQualitySettings qualSettings(context.GetStateDesc()._viewportDimensions);
@@ -479,6 +501,7 @@ namespace ToolsRig
         _lightingType = LightingType::NoLightingParser;
         _camera = std::make_shared<VisCameraSettings>();
         _camera->_position = Float3(-5.f, 0.f, 0.f);
+        _pendingCameraAlignToModel = false;
     }
 
     MaterialVisObject::MaterialVisObject()

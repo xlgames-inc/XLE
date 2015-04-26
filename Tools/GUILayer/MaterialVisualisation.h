@@ -26,6 +26,7 @@ namespace GUILayer
 
         property GeometryType Geometry { GeometryType get(); void set(GeometryType); }
         property LightingType Lighting { LightingType get(); void set(LightingType); }
+        property bool ResetCamera { void set(bool); }
 
         property VisCameraSettings^ Camera
         {

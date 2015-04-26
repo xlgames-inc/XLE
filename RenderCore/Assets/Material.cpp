@@ -515,14 +515,18 @@ namespace RenderCore { namespace Assets
 
     static void AddDep(std::vector<::Assets::DependentFileState>& deps, const RawMaterial::RawMatSplitName& splitName)
     {
+            // we need to call "GetDependentFileState" first, because this can change the
+            // format of the filename. String compares alone aren't working well for us here
+        auto& store = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateStore();
+        auto depState = store.GetDependentFileState(splitName._concreteFilename.c_str());
+
         auto existing = std::find_if(deps.cbegin(), deps.cend(),
             [&](const ::Assets::DependentFileState& test) 
             {
-                return !XlCompareStringI(test._filename.c_str(), splitName._concreteFilename.c_str());
+                return !XlCompareStringI(test._filename.c_str(), depState._filename.c_str());
             });
         if (existing == deps.cend()) {
-            auto& store = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateStore();
-            deps.push_back(store.GetDependentFileState(splitName._concreteFilename.c_str()));
+            deps.push_back(depState);
         }
     }
 

@@ -104,7 +104,7 @@ namespace ToolsRig
             #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
                 auto& compilers = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateCompilers();
                 auto& store = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateStore();
-                const ::Assets::ResChar* inits[] = {material, model};
+                const ::Assets::ResChar* inits[] = { material, model };
                 auto marker = compilers.PrepareResource(
                     MaterialScaffold::CompileProcessType, 
                     inits, dimof(inits), store);
@@ -115,46 +115,47 @@ namespace ToolsRig
         }
     }
 
-    auto ModelVisCache::GetScaffolds(const Assets::ResChar filename[]) -> Scaffolds
+    auto ModelVisCache::GetScaffolds(const Assets::ResChar modelFilename[], const Assets::ResChar materialFilename[]) -> Scaffolds
     {
         Scaffolds result;
 
-        result._hashedModelName = Hash64(filename);
+        result._hashedModelName = Hash64(modelFilename);
         result._model = _pimpl->_modelScaffolds.Get(result._hashedModelName);
         if (!result._model || result._model->GetDependencyValidation().GetValidationIndex() > 0) {
-            result._model = Internal::CreateModelScaffold(filename, *_pimpl->_format);
+            result._model = Internal::CreateModelScaffold(modelFilename, *_pimpl->_format);
             _pimpl->_modelScaffolds.Insert(result._hashedModelName, result._model);
         }
             
         #if MODEL_FORMAT != MODEL_FORMAT_RUNTIME
             auto defMatName = _pimpl->_format->DefaultMaterialName(*model);
             if (defMatName.empty()) { return std::make_pair(nullptr, 0); }
-            uint64 hashedMaterial = Hash64(defMatName);
+            result._hashedMaterialName = Hash64(defMatName);
             auto matNamePtr = defMatName.c_str();
         #else
-            uint64 hashedMaterial = result._hashedModelName;
-            auto matNamePtr = filename;
+            result._hashedMaterialName = Hash64(materialFilename) ^ result._hashedModelName;
+            auto matNamePtr = materialFilename;
         #endif
 
-        result._material = _pimpl->_materialScaffolds.Get(hashedMaterial);
+        result._material = _pimpl->_materialScaffolds.Get(result._hashedMaterialName);
         if (!result._material || result._material->GetDependencyValidation().GetValidationIndex() > 0) {
-            result._material = Internal::CreateMaterialScaffold(filename, matNamePtr, *_pimpl->_format);
-            _pimpl->_materialScaffolds.Insert(hashedMaterial, result._material);
+            result._material = Internal::CreateMaterialScaffold(modelFilename, matNamePtr, *_pimpl->_format);
+            _pimpl->_materialScaffolds.Insert(result._hashedMaterialName, result._material);
         }
 
         return result;
     }
 
-    auto ModelVisCache::GetModel(const Assets::ResChar filename[]) -> Model
+    auto ModelVisCache::GetModel(const Assets::ResChar modelFilename[], const Assets::ResChar materialFilename[]) -> Model
     {
-        auto scaffold = GetScaffolds(filename);
+        auto scaffold = GetScaffolds(modelFilename, materialFilename);
         if (!scaffold._model || !scaffold._material) { return Model(); }
 
         uint64 hashedModel = uint64(scaffold._model.get()) | (uint64(scaffold._material.get()) << 48);
         auto renderer = _pimpl->_modelRenderers.Get(hashedModel);
         if (!renderer) {
             #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
-                auto searchRules = ::Assets::DefaultDirectorySearchRules(filename);
+                auto searchRules = ::Assets::DefaultDirectorySearchRules(modelFilename);
+                searchRules.AddSearchDirectoryFromFilename(materialFilename);
                 renderer = std::make_shared<ModelRenderer>(
                     std::ref(*scaffold._model), std::ref(*scaffold._material), std::ref(*_pimpl->_sharedStateSet), &searchRules, 0);
             #else
@@ -180,6 +181,7 @@ namespace ToolsRig
         result._sharedStateSet = _pimpl->_sharedStateSet.get();
         result._boundingBox = boundingBox;
         result._hashedModelName = scaffold._hashedModelName;
+        result._hashedMaterialName = scaffold._hashedMaterialName;
         return result;
     }
 
@@ -316,7 +318,7 @@ namespace ToolsRig
     {
         using namespace SceneEngine;
 
-        auto model = _pimpl->_cache->GetModel(_pimpl->_settings->_modelName.c_str());
+        auto model = _pimpl->_cache->GetModel(_pimpl->_settings->_modelName.c_str(), _pimpl->_settings->_materialName.c_str());
         assert(model._renderer && model._sharedStateSet);
 
         if (_pimpl->_settings->_pendingCameraAlignToModel) {
@@ -391,7 +393,7 @@ namespace ToolsRig
                     //  and material binding index. The shader reads a draw call index from the 
                     //  stencil buffer and remaps that into a material index using this table.
                 if (_pimpl->_cache) {
-                    auto model = _pimpl->_cache->GetModel(_pimpl->_settings->_modelName.c_str());
+                    auto model = _pimpl->_cache->GetModel(_pimpl->_settings->_modelName.c_str(), _pimpl->_settings->_materialName.c_str());
                     assert(model._renderer && model._sharedStateSet);
 
                     auto bindingVec = model._renderer->DrawCallToMaterialBinding();
@@ -461,7 +463,7 @@ namespace ToolsRig
                 
             std::vector<ModelIntersectionStateContext::ResultEntry> results;
             TRY {
-                auto model = _cache->GetModel(_settings->_modelName.c_str());
+                auto model = _cache->GetModel(_settings->_modelName.c_str(), _settings->_materialName.c_str());
                 assert(model._renderer && model._sharedStateSet);
             
                 ModelIntersectionStateContext stateContext(
@@ -579,8 +581,8 @@ namespace ToolsRig
 
     ModelVisSettings::ModelVisSettings()
     {
-        // _modelName = "game/model/galleon/galleon.dae";
-        _modelName = "Game/Model/Nature/BushTree/BushE";
+        _modelName = "game/model/galleon/galleon.dae";
+        _materialName = "game/model/galleon/galleon.material";
         _pendingCameraAlignToModel = true;
         _doHighlightWireframe = false;
         _highlightRay = std::make_pair(Zero<Float3>(), Zero<Float3>());

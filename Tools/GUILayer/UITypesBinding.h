@@ -41,7 +41,7 @@ namespace GUILayer
             XlDirname(dirName, dimof(dirName), clix::marshalString<clix::E_UTF8>(ofd->FileName).c_str());
 
             ofd->InitialDirectory = clix::marshalString<clix::E_UTF8>(dirName);
-            ofd->Filter = "Model files|*.dae|All Files|*.*";
+            ofd->Filter = "Model files|*.dae|Material files|*.material|All Files|*.*";
             if (ofd->ShowDialog() == DialogResult::OK) {
                 return ofd->FileName;
             }
@@ -89,7 +89,7 @@ namespace GUILayer
         {
             System::String^ get()
             {
-                return clix::marshalString<clix::E_UTF8>(_object->_modelName.c_str());
+                return clix::marshalString<clix::E_UTF8>(_object->_modelName);
             }
 
             void set(System::String^ value)
@@ -102,7 +102,35 @@ namespace GUILayer
                 XlMakeRelPath(directory, dimof(directory), directory, nativeName.c_str());
                 _object->_modelName = directory;
 
+                    // also set the material name (the old material file probably won't match the new model file)
+                XlChopExtension(directory);
+                XlCatString(directory, dimof(directory), ".material");
+                _object->_materialName = directory;
+
                 _object->_pendingCameraAlignToModel = true; 
+                _object->_changeEvent.Trigger(); 
+            }
+        }
+
+        [Category("Model")]
+        [Description("Active material file")]
+        [EditorAttribute(FileNameEditor::typeid, UITypeEditor::typeid)]
+        property System::String^ MaterialName
+        {
+            System::String^ get()
+            {
+                return clix::marshalString<clix::E_UTF8>(_object->_materialName);
+            }
+
+            void set(System::String^ value)
+            {
+                    //  we need to make a filename relative to the current working
+                    //  directory
+                auto nativeName = clix::marshalString<clix::E_UTF8>(value);
+                char directory[MaxPath];
+                XlGetCurrentDirectory(dimof(directory), directory);
+                XlMakeRelPath(directory, dimof(directory), directory, nativeName.c_str());
+                _object->_materialName = directory;
                 _object->_changeEvent.Trigger(); 
             }
         }

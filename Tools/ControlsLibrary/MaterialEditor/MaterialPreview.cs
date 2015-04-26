@@ -66,10 +66,17 @@ namespace ControlsLibrary.MaterialEditor
             {
                 visSettings.Lighting = newLighting;
             }
+            preview.Invalidate();
         }
 
         protected GUILayer.MaterialVisLayer visLayer;
         protected GUILayer.MaterialVisSettings visSettings;
         protected Tuple<string, string> previewModel = null;
+
+        private void _resetCamera_Click(object sender, EventArgs e)
+        {
+            visSettings.ResetCamera = true;
+            preview.Invalidate();
+        }
     }
 }

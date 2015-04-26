@@ -7,7 +7,7 @@
 namespace ModelViewer
 {
     // using LayerControlType = System.Windows.Forms.Button;
-    using LayerControlType = LayerControl;
+    using LayerControlType = ControlsLibrary.LayerControl;
 
     partial class MainForm
     {
@@ -43,7 +43,7 @@ namespace ModelViewer
         /// </summary>
         private void InitializeComponent()
         {
-            this.viewerControl = new ModelViewer.LayerControl();
+            this.viewerControl = new ControlsLibrary.LayerControl();
             this.viewSettings = new System.Windows.Forms.PropertyGrid();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             this.mouseOverDetails = new System.Windows.Forms.PropertyGrid();

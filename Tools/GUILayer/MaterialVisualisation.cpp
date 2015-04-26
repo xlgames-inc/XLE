@@ -197,6 +197,11 @@ namespace GUILayer
         _object->_lightingType = AsNative(value);
     }
 
+    void MaterialVisSettings::ResetCamera::set(bool value)
+    {
+        _object->_pendingCameraAlignToModel = value;
+    }
+
     MaterialVisSettings^ MaterialVisSettings::CreateDefault()
     {
         return gcnew MaterialVisSettings(std::make_shared<ToolsRig::MaterialVisSettings>());

@@ -31,6 +31,8 @@ namespace ToolsRig
         };
         LightingType::Enum _lightingType;
 
+        mutable bool _pendingCameraAlignToModel;
+
         MaterialVisSettings();
     };
 

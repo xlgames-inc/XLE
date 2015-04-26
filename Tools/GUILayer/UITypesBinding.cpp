@@ -119,7 +119,7 @@ namespace GUILayer
     System::String^ VisMouseOver::FullMaterialName::get()
     {
         if (_object->_hasMouseOver) {
-            auto scaffolds = _modelCache->GetScaffolds(_modelSettings->_modelName.c_str());
+            auto scaffolds = _modelCache->GetScaffolds(_modelSettings->_modelName.c_str(), _modelSettings->_materialName.c_str());
             if (scaffolds._material) {
                 auto matName = scaffolds._material->GetMaterialName(_object->_materialGuid);
                 if (matName) {

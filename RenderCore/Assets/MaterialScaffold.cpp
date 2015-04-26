@@ -65,19 +65,21 @@ namespace RenderCore { namespace Assets
     }
 
     static void AddDep(
-        std::vector<::Assets::DependentFileState>* outDeps,
+        std::vector<::Assets::DependentFileState>& deps,
         const char newDep[])
     {
-        if (outDeps) {
-            auto existing = std::find_if(outDeps->cbegin(), outDeps->cend(),
-                [&](const ::Assets::DependentFileState& test) 
-                {
-                    return !XlCompareStringI(test._filename.c_str(), newDep);
-                });
-            if (existing == outDeps->cend()) {
-                auto& store = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateStore();
-                outDeps->push_back(store.GetDependentFileState(newDep));
-            }
+            // we need to call "GetDependentFileState" first, because this can change the
+            // format of the filename. String compares alone aren't working well for us here
+        auto& store = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateStore();
+        auto depState = store.GetDependentFileState(newDep);
+
+        auto existing = std::find_if(deps.cbegin(), deps.cend(),
+            [&](const ::Assets::DependentFileState& test) 
+            {
+                return !XlCompareStringI(test._filename.c_str(), depState._filename.c_str());
+            });
+        if (existing == deps.cend()) {
+            deps.push_back(depState);
         }
     }
 
@@ -135,7 +137,7 @@ namespace RenderCore { namespace Assets
                 auto& rawMat = ::Assets::GetAssetDep<RawMaterial>((Meld() << modelMat._rawModelMaterial << ":" << *i).get());
                 rawMat.Resolve(resMat, searchRules, &deps);
             } CATCH (const ::Assets::Exceptions::InvalidResource&) {
-                AddDep(outDeps, modelMat._rawModelMaterial);        // we need need a dependency (even if it's a missing file)
+                AddDep(deps, modelMat._rawModelMaterial);        // we need need a dependency (even if it's a missing file)
             } CATCH_END
 
             TRY {
@@ -145,7 +147,7 @@ namespace RenderCore { namespace Assets
                 auto& rawMat = ::Assets::GetAssetDep<RawMaterial>(meld.get());
                 rawMat.Resolve(resMat, searchRules, &deps);
             } CATCH (const ::Assets::Exceptions::InvalidResource&) {
-                AddDep(outDeps, resolvedSourceMaterial);        // we need need a dependency (even if it's a missing file)
+                AddDep(deps, resolvedSourceMaterial);        // we need need a dependency (even if it's a missing file)
             } CATCH_END
 
             TRY {
@@ -155,7 +157,7 @@ namespace RenderCore { namespace Assets
                 auto& rawMat = ::Assets::GetAssetDep<RawMaterial>(meld.get());
                 rawMat.Resolve(resMat, searchRules, &deps);
             } CATCH (const ::Assets::Exceptions::InvalidResource&) {
-                AddDep(outDeps, resolvedSourceMaterial);        // we need need a dependency (even if it's a missing file)
+                AddDep(deps, resolvedSourceMaterial);        // we need need a dependency (even if it's a missing file)
             } CATCH_END
 
             resolved.push_back(std::make_pair(guid, std::move(resMat)));

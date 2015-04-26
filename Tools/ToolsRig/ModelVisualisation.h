@@ -40,8 +40,9 @@ namespace ToolsRig
             RenderCore::Assets::SharedStateSet* _sharedStateSet;
             std::pair<Float3, Float3> _boundingBox;
             uint64 _hashedModelName;
+            uint64 _hashedMaterialName;
 
-            Model() : _renderer(nullptr), _sharedStateSet(nullptr), _hashedModelName(0) {}
+            Model() : _renderer(nullptr), _sharedStateSet(nullptr), _hashedModelName(0), _hashedMaterialName(0) {}
         };
 
         class Scaffolds
@@ -50,10 +51,11 @@ namespace ToolsRig
             std::shared_ptr<RenderCore::Assets::ModelScaffold> _model;
             std::shared_ptr<RenderCore::Assets::MaterialScaffold> _material;
             uint64 _hashedModelName;
+            uint64 _hashedMaterialName;
         };
 
-        Model GetModel(const Assets::ResChar filename[]);
-        Scaffolds GetScaffolds(const Assets::ResChar filename[]);
+        Model GetModel(const Assets::ResChar modelFilename[], const Assets::ResChar materialFilename[]);
+        Scaffolds GetScaffolds(const Assets::ResChar modelFilename[], const Assets::ResChar materialFilename[]);
         std::string HashToModelName(uint64 hash);
 
         ModelVisCache(std::shared_ptr<RenderCore::Assets::IModelFormat> format);
@@ -84,6 +86,7 @@ namespace ToolsRig
     {
     public:
         std::string _modelName;
+        std::string _materialName;
         std::shared_ptr<VisCameraSettings> _camera;
         bool _pendingCameraAlignToModel;
 
