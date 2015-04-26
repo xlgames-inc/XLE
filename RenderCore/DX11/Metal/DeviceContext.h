@@ -163,7 +163,7 @@ namespace RenderCore { namespace Metal_DX11
     class DeviceContext : noncopyable
     {
     public:
-        template<int Count> void    Bind(const ResourceList<VertexBuffer, Count>& VBs, unsigned stride, unsigned offset);
+        template<int Count> void    Bind(const ResourceList<VertexBuffer, Count>& VBs, unsigned stride, unsigned offset=0);
 
         template<int Count> void    BindVS(const ResourceList<ShaderResourceView, Count>& shaderResources);
         template<int Count> void    BindPS(const ResourceList<ShaderResourceView, Count>& shaderResources);

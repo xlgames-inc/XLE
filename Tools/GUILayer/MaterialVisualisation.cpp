@@ -57,6 +57,9 @@ namespace GUILayer
         visObject->_materialBinder = std::make_shared<ToolsRig::MaterialBinder>(
             "game/xleres/illum.txt");
 
+        visObject->_previewModelFile = clix::marshalString<clix::E_UTF8>(_previewModel);
+        visObject->_previewMaterialBinding = Hash64(clix::marshalString<clix::E_UTF8>(_materialBinding));
+
         _visObject = visObject;
     }
 
@@ -75,7 +78,7 @@ namespace GUILayer
         _visObject.reset();
     }
 
-    void MaterialVisLayer::SetConfig(IEnumerable<RawMaterial^>^ config)
+    void MaterialVisLayer::SetConfig(IEnumerable<RawMaterial^>^ config, System::String^ previewModel, System::String^ materialBinding)
     {
         _visObject.reset();
 
@@ -91,6 +94,8 @@ namespace GUILayer
             }
         }
         _config = config;
+        _previewModel = previewModel;
+        _materialBinding = materialBinding;
         if (_config) {
             for each(auto mat in _config) {
                 mat->MaterialParameterBox->ListChanged += listChangeHandler;
@@ -103,15 +108,16 @@ namespace GUILayer
 
     MaterialVisLayer::MaterialVisLayer(
         MaterialVisSettings^ settings,
-        IEnumerable<RawMaterial^>^ config)
+        IEnumerable<RawMaterial^>^ config,
+        System::String^ previewModel, System::String^ materialBinding)
     : _settings(settings)
     {
-        SetConfig(config);
+        SetConfig(config, previewModel, materialBinding);
     }
 
     MaterialVisLayer::~MaterialVisLayer() 
     {
-        SetConfig(nullptr);
+        SetConfig(nullptr, "", "");
     }
 
     
@@ -123,6 +129,8 @@ namespace GUILayer
             return MaterialVisSettings::GeometryType::Sphere;
         case ToolsRig::MaterialVisSettings::GeometryType::Cube:
             return MaterialVisSettings::GeometryType::Cube;
+        case ToolsRig::MaterialVisSettings::GeometryType::Model:
+            return MaterialVisSettings::GeometryType::Model;
         default:
             return MaterialVisSettings::GeometryType::Plane2D;
         }
@@ -136,6 +144,8 @@ namespace GUILayer
             return ToolsRig::MaterialVisSettings::GeometryType::Sphere;
         case MaterialVisSettings::GeometryType::Cube:
             return ToolsRig::MaterialVisSettings::GeometryType::Cube;
+        case MaterialVisSettings::GeometryType::Model:
+            return ToolsRig::MaterialVisSettings::GeometryType::Model;
         default:
             return ToolsRig::MaterialVisSettings::GeometryType::Plane2D;
         }

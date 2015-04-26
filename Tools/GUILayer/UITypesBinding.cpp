@@ -96,10 +96,19 @@ namespace GUILayer
     {
         auto fullName = FullMaterialName;
         if (fullName) {
-            int index = fullName->IndexOf(':');
-            return fullName->Substring((index>=0) ? (index+1) : 0);
+            auto split = fullName->Split(';');
+            if (split && split->Length > 0) {
+                auto s = split[split->Length-1];
+                int index = s->IndexOf(':');
+                return s->Substring((index>=0) ? (index+1) : 0);
+            }
         }
         return "<<no material>>";
+    }
+
+    System::String^ VisMouseOver::ModelName::get() 
+    {
+        return clix::marshalString<clix::E_UTF8>(_modelSettings->_modelName);
     }
 
     bool VisMouseOver::HasMouseOver::get()

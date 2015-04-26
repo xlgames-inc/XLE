@@ -207,7 +207,7 @@ namespace PreviewRender
 
         try {
             MaterialVisObject visObject;
-            visObject._shaderProgram = &builder.GetShaderProgram();
+            // visObject._shaderProgram = &builder.GetShaderProgram();
             visObject._systemConstants._lightNegativeDirection = Normalize(doc->NegativeLightDirection);
             visObject._systemConstants._lightColour = Float3(1,1,1);
 

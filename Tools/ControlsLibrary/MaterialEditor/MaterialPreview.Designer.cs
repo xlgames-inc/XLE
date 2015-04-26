@@ -38,8 +38,8 @@ namespace ControlsLibrary.MaterialEditor
         {
             this.groupBox1 = new System.Windows.Forms.GroupBox();
             this.checkBox1 = new System.Windows.Forms.CheckBox();
-            this.comboBox2 = new System.Windows.Forms.ComboBox();
-            this.comboBox1 = new System.Windows.Forms.ComboBox();
+            this._lightingType = new System.Windows.Forms.ComboBox();
+            this._geoType = new System.Windows.Forms.ComboBox();
             this.preview = new LayerControl();
             this.groupBox1.SuspendLayout();
             this.SuspendLayout();
@@ -49,8 +49,8 @@ namespace ControlsLibrary.MaterialEditor
             this.groupBox1.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.groupBox1.Controls.Add(this.checkBox1);
-            this.groupBox1.Controls.Add(this.comboBox2);
-            this.groupBox1.Controls.Add(this.comboBox1);
+            this.groupBox1.Controls.Add(this._lightingType);
+            this.groupBox1.Controls.Add(this._geoType);
             this.groupBox1.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.groupBox1.Location = new System.Drawing.Point(554, 3);
             this.groupBox1.Name = "groupBox1";
@@ -72,29 +72,29 @@ namespace ControlsLibrary.MaterialEditor
             // 
             // comboBox2
             // 
-            this.comboBox2.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.comboBox2.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.comboBox2.FormattingEnabled = true;
-            this.comboBox2.Items.AddRange(new object[] {
+            this._lightingType.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this._lightingType.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._lightingType.FormattingEnabled = true;
+            this._lightingType.Items.AddRange(new object[] {
             "Lighting Env 1",
             "Lighting Env 2"});
-            this.comboBox2.Location = new System.Drawing.Point(5, 46);
-            this.comboBox2.Name = "comboBox2";
-            this.comboBox2.Size = new System.Drawing.Size(155, 21);
-            this.comboBox2.TabIndex = 1;
+            this._lightingType.Location = new System.Drawing.Point(5, 46);
+            this._lightingType.Name = "comboBox2";
+            this._lightingType.Size = new System.Drawing.Size(155, 21);
+            this._lightingType.TabIndex = 1;
             // 
             // comboBox1
             // 
-            this.comboBox1.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.comboBox1.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.comboBox1.FormattingEnabled = true;
-            this.comboBox1.Items.AddRange(new object[] {
+            this._geoType.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this._geoType.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._geoType.FormattingEnabled = true;
+            this._geoType.Items.AddRange(new object[] {
             "GeoType: Sphere",
             "GeoType: Cube"});
-            this.comboBox1.Location = new System.Drawing.Point(5, 19);
-            this.comboBox1.Name = "comboBox1";
-            this.comboBox1.Size = new System.Drawing.Size(155, 21);
-            this.comboBox1.TabIndex = 0;
+            this._geoType.Location = new System.Drawing.Point(5, 19);
+            this._geoType.Name = "comboBox1";
+            this._geoType.Size = new System.Drawing.Size(155, 21);
+            this._geoType.TabIndex = 0;
             // 
             // preview
             // 
@@ -122,9 +122,9 @@ namespace ControlsLibrary.MaterialEditor
         #endregion
 
         private System.Windows.Forms.GroupBox groupBox1;
-        private System.Windows.Forms.ComboBox comboBox1;
+        private System.Windows.Forms.ComboBox _geoType;
         private System.Windows.Forms.CheckBox checkBox1;
-        private System.Windows.Forms.ComboBox comboBox2;
+        private System.Windows.Forms.ComboBox _lightingType;
         private LayerControl preview;
     }
 }

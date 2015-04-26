@@ -22,39 +22,47 @@ namespace ControlsLibrary.MaterialEditor
             InitializeComponent();
             visSettings = GUILayer.MaterialVisSettings.CreateDefault();
 
-            comboBox1.DataSource = Enum.GetValues(typeof(GUILayer.MaterialVisSettings.GeometryType));
-            comboBox1.SelectedItem = visSettings.Geometry;
-            comboBox1.SelectedIndexChanged += ComboBoxSelectedIndexChanged;
+            _geoType.DataSource = Enum.GetValues(typeof(GUILayer.MaterialVisSettings.GeometryType));
+            _geoType.SelectedItem = visSettings.Geometry;
+            _geoType.SelectedIndexChanged += ComboBoxSelectedIndexChanged;
 
-            comboBox2.DataSource = Enum.GetValues(typeof(GUILayer.MaterialVisSettings.LightingType));
-            comboBox2.SelectedItem = visSettings.Lighting;
-            comboBox2.SelectedIndexChanged += ComboBoxSelectedIndexChanged;
+            _lightingType.DataSource = Enum.GetValues(typeof(GUILayer.MaterialVisSettings.LightingType));
+            _lightingType.SelectedItem = visSettings.Lighting;
+            _lightingType.SelectedIndexChanged += ComboBoxSelectedIndexChanged;
         }
 
         public IEnumerable<GUILayer.RawMaterial> Object
         {
             set 
             {
+                string model = "", binding = "";
+                if (previewModel != null) { model = previewModel.Item1; binding = previewModel.Item2; }
+
                 if (visLayer == null) {
-                    visLayer = new GUILayer.MaterialVisLayer(visSettings, value);
+                    visLayer = new GUILayer.MaterialVisLayer(visSettings, value, model, binding);
                     preview.Underlying.AddSystem(visLayer);
                     preview.Underlying.AddDefaultCameraHandler(visSettings.Camera);
                 } else {
-                    visLayer.SetConfig(value);
+                    visLayer.SetConfig(value, model, binding);
                 }
             }
+        }
+
+        public Tuple<string, string> PreviewModel
+        {
+            set { previewModel = value; }
         }
 
         private void ComboBoxSelectedIndexChanged(object sender, System.EventArgs e)
         {
             GUILayer.MaterialVisSettings.GeometryType newGeometry;
-            if (Enum.TryParse<GUILayer.MaterialVisSettings.GeometryType>(comboBox1.SelectedValue.ToString(), out newGeometry))
+            if (Enum.TryParse<GUILayer.MaterialVisSettings.GeometryType>(_geoType.SelectedValue.ToString(), out newGeometry))
             {
                 visSettings.Geometry = newGeometry;
             }
 
             GUILayer.MaterialVisSettings.LightingType newLighting;
-            if (Enum.TryParse<GUILayer.MaterialVisSettings.LightingType>(comboBox2.SelectedValue.ToString(), out newLighting))
+            if (Enum.TryParse<GUILayer.MaterialVisSettings.LightingType>(_lightingType.SelectedValue.ToString(), out newLighting))
             {
                 visSettings.Lighting = newLighting;
             }
@@ -62,5 +70,6 @@ namespace ControlsLibrary.MaterialEditor
 
         protected GUILayer.MaterialVisLayer visLayer;
         protected GUILayer.MaterialVisSettings visSettings;
+        protected Tuple<string, string> previewModel = null;
     }
 }

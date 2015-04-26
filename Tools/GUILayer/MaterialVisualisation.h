@@ -21,7 +21,7 @@ namespace GUILayer
     public ref class MaterialVisSettings
     {
     public:
-        enum class GeometryType { Sphere, Cube, Plane2D };
+        enum class GeometryType { Sphere, Cube, Plane2D, Model };
         enum class LightingType { Deferred, Forward, NoLightingParser };
 
         property GeometryType Geometry { GeometryType get(); void set(GeometryType); }
@@ -65,16 +65,19 @@ namespace GUILayer
             const RenderCore::Techniques::ProjectionDesc& projectionDesc) override;
         virtual void SetActivationState(bool newState) override;
 
-        void SetConfig(IEnumerable<RawMaterial^>^ config);
+        void SetConfig(IEnumerable<RawMaterial^>^ config, System::String^ previewModel, System::String^ materialBinding);
 
         MaterialVisLayer(
             MaterialVisSettings^ settings,
-            IEnumerable<RawMaterial^>^ config);
+            IEnumerable<RawMaterial^>^ config,
+            System::String^ previewModel, System::String^ materialBinding);
         ~MaterialVisLayer();
         
     protected:
         clix::shared_ptr<ToolsRig::MaterialVisObject> _visObject;
         IEnumerable<RawMaterial^>^ _config;
+        System::String^ _previewModel;
+        System::String^ _materialBinding;
         MaterialVisSettings^ _settings;
 
         void Resolve();

@@ -21,7 +21,7 @@ namespace ToolsRig
         
         struct GeometryType
         {
-            enum Enum { Sphere, Cube, Plane2D };
+            enum Enum { Sphere, Cube, Plane2D, Model };
         };
         GeometryType::Enum _geometryType;
 
@@ -38,9 +38,12 @@ namespace ToolsRig
     {
     public:
         RenderCore::Assets::ResolvedMaterial _parameters;
-        Assets::DirectorySearchRules _searchRules;
+        ::Assets::DirectorySearchRules _searchRules;
         IMaterialBinder::SystemConstants _systemConstants;
         std::shared_ptr<IMaterialBinder> _materialBinder;
+
+        ::Assets::rstring _previewModelFile;
+        uint64 _previewMaterialBinding;
 
         MaterialVisObject();
         ~MaterialVisObject();

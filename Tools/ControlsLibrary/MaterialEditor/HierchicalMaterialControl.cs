@@ -42,6 +42,11 @@ namespace ControlsLibrary.MaterialEditor
             }
         }
 
+        public Tuple<string, string> PreviewModel
+        {
+            set { materialControl1.PreviewModel = value; }
+        }
+
         protected void SubMatSelectedNodeChanged(object sender, EventArgs e)
         {
                 //  When the selected node changes, we want to 

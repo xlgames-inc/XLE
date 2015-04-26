@@ -162,5 +162,10 @@ namespace ControlsLibrary.MaterialEditor
                 }
             }
         }
+
+        public Tuple<string, string> PreviewModel
+        {
+            set { materialPreview1.PreviewModel = value; }
+        }
     }
 }

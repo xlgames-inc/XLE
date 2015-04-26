@@ -348,12 +348,10 @@ namespace ToolsRig
         Metal::BoundUniforms boundLayout(shaderProgram);
         Techniques::TechniqueContext::BindGlobalUniforms(boundLayout);
             
-        auto objectToWorld = Identity<Float4x4>();
-
         std::vector<RenderCore::Metal::ConstantBufferPacket> constantBufferPackets;
         constantBufferPackets.push_back(
             Techniques::MakeLocalTransformPacket(
-                objectToWorld, ExtractTranslation(parsingContext.GetProjectionDesc()._cameraToWorld)));
+                sysConstants._objectToWorld, ExtractTranslation(parsingContext.GetProjectionDesc()._cameraToWorld)));
         boundLayout.BindConstantBuffer(Techniques::ObjectCBs::LocalTransform, 0, 1);
         for (auto i=materialConstants.cbegin(); i!=materialConstants.cend(); ++i) {
             boundLayout.BindConstantBuffer(i->first, unsigned(constantBufferPackets.size()), 1);
@@ -375,5 +373,6 @@ namespace ToolsRig
     {
         _lightNegativeDirection = Float3(0.f, 0.f, 1.f);
         _lightColour = Float3(1.f, 1.f, 1.f);
+        _objectToWorld = Identity<Float4x4>();
     }
 }

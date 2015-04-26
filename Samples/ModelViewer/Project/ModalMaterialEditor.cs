@@ -29,5 +29,13 @@ namespace ModelViewer
                 hierchicalMaterialControl1.Object = value;
             }
         }
+
+        public Tuple<string, string> PreviewModel
+        {
+            set
+            {
+                hierchicalMaterialControl1.PreviewModel = value;
+            }
+        }
     }
 }

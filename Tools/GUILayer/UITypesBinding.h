@@ -176,6 +176,9 @@ namespace GUILayer
         [Description("Draw call index")]
         property unsigned DrawCallIndex { unsigned get(); }
 
+        [Description("Model file name")]
+        property System::String^ ModelName { System::String^ get(); }
+
         [Category("Material")]
         property System::String^ MaterialName { System::String^ get(); }
 

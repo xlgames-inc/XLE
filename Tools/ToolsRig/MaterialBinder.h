@@ -9,6 +9,7 @@
 #include "../../RenderCore/Metal/Forward.h"
 #include "../../Assets/Assets.h"
 #include "../../Math/Vector.h"
+#include "../../Math/Matrix.h"
 
 namespace RenderCore { namespace Assets { class ResolvedMaterial; } }
 namespace RenderCore { namespace Techniques { class ParsingContext; } }
@@ -33,6 +34,7 @@ namespace ToolsRig
         public:
             Float3      _lightNegativeDirection;
             Float3      _lightColour;
+            Float4x4    _objectToWorld;
             SystemConstants();
         };
 
