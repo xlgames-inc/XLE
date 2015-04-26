@@ -7,6 +7,7 @@
 #pragma once
 
 #include "ModelVisualisation.h"
+#include "MaterialBinder.h"
 #include "../../RenderCore/Assets/Material.h"
 #include "../../RenderCore/Metal/Forward.h"
 #include "../../Assets/AssetUtils.h"
@@ -36,18 +37,10 @@ namespace ToolsRig
     class MaterialVisObject
     {
     public:
-        RenderCore::Metal::ShaderProgram* _shaderProgram;
         RenderCore::Assets::ResolvedMaterial _parameters;
         Assets::DirectorySearchRules _searchRules;
-
-        class SystemConstants
-        {
-        public:
-            Float3      _lightNegativeDirection;
-            Float3      _lightColour;
-            SystemConstants();
-        };
-        SystemConstants _systemConstants;
+        IMaterialBinder::SystemConstants _systemConstants;
+        std::shared_ptr<IMaterialBinder> _materialBinder;
 
         MaterialVisObject();
         ~MaterialVisObject();

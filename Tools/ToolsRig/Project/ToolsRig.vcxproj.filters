@@ -12,6 +12,7 @@
     <ClCompile Include="..\ManipulatorsRender.cpp" />
     <ClCompile Include="..\VisualisationGeo.cpp" />
     <ClCompile Include="..\VisualisationUtils.cpp" />
+    <ClCompile Include="..\MaterialBinder.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\BasicManipulators.h" />
@@ -27,5 +28,6 @@
     <ClInclude Include="..\HighlightEffects.h" />
     <ClInclude Include="..\ManipulatorsRender.h" />
     <ClInclude Include="..\VisualisationGeo.h" />
+    <ClInclude Include="..\MaterialBinder.h" />
   </ItemGroup>
 </Project>

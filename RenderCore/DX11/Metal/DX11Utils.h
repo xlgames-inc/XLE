@@ -11,6 +11,10 @@
 #include "../../Utility/IntrusivePtr.h"
 #include <assert.h>
 
+typedef struct _D3D11_SHADER_TYPE_DESC D3D11_SHADER_TYPE_DESC;
+
+namespace Utility { namespace ImpliedTyping { class TypeDesc; }}
+
 namespace RenderCore { namespace Metal_DX11
 {
         ////////////////////////////////////////////////////////////////
@@ -241,6 +245,12 @@ namespace RenderCore { namespace Metal_DX11
 
         return nullptr;
     }
+
+            ////////////////////////////////////////////////////////////////
+                //      H L S L   U T I L S
+            ////////////////////////////////////////////////////////////////
+
+    Utility::ImpliedTyping::TypeDesc GetType(D3D11_SHADER_TYPE_DESC typeDesc);
 
 }}
 

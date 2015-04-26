@@ -24,45 +24,6 @@ namespace GUILayer
         if (!_visObject) { Resolve(); }
         if (!_visObject) { return; }
 
-            // We must build a shader program to render this preview
-            // We can assume input vertices have position, normal and texture coordinates
-            // Let's use a technique so we can generate shaders that work with
-            // different lighting models
-
-        {
-            using namespace RenderCore;
-            using namespace RenderCore::Techniques;
-
-            static const auto DefaultNormalsTextureBindingHash = ParameterBox::MakeParameterNameHash("NormalsTexture");
-
-            ParameterBox materialParameters = _visObject->_parameters._matParams;
-            const auto& resBindings = _visObject->_parameters._bindings;
-            for (unsigned c=0; c<resBindings.GetParameterCount(); ++c) {
-                materialParameters.SetParameter(StringMeld<64>() << "RES_HAS_" << resBindings.GetFullNameAtIndex(c), 1);
-                if (resBindings.GetParameterAtIndex(c) == DefaultNormalsTextureBindingHash) {
-                    auto resourceName = resBindings.GetString<::Assets::ResChar>(DefaultNormalsTextureBindingHash);
-                    ResChar resolvedName[MaxPath];
-                    _visObject->_searchRules.ResolveFile(resolvedName, dimof(resolvedName), resourceName.c_str());
-                    materialParameters.SetParameter("RES_HAS_NormalsTexture_DXT", 
-                        RenderCore::Assets::IsDXTNormalMap(resolvedName));
-                }
-            }
-
-            TechniqueMaterial material(
-                Metal::GlobalInputLayouts::PNTT,
-                {}, materialParameters);
-
-            const unsigned techniqueIndex = 
-                (_settings->Lighting == MaterialVisSettings::LightingType::Deferred) ? 2 : 0;
-
-            auto variation = material.FindVariation(parserContext, techniqueIndex, "game/xleres/illum.txt");
-            if (variation._shaderProgram == nullptr) {
-                return; // we can't render because we couldn't resolve a good shader variation
-            }
-
-            _visObject->_shaderProgram = variation._shaderProgram;
-        }
-
         ToolsRig::MaterialVisLayer::Draw(
             *context, parserContext,
             _settings->GetUnderlying(), *_visObject.get());
@@ -92,6 +53,9 @@ namespace GUILayer
             for each(auto c in _config)
                 c->GetUnderlying()->Resolve(resMat, searchRules);
         }
+
+        visObject->_materialBinder = std::make_shared<ToolsRig::MaterialBinder>(
+            "game/xleres/illum.txt");
 
         _visObject = visObject;
     }

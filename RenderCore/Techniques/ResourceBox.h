@@ -58,6 +58,11 @@ namespace RenderCore { namespace Techniques
         return *i2->second;
     }
 
+    template <typename Box, typename... Params> Box& FindCachedBox2(Params... params)
+    {
+        return FindCachedBox<Box>(Box::Desc(std::forward<Params>(params)...));
+    }
+
     template <typename Desc> uint64 CalculateCachedBoxHash(const Desc& desc)
     {
         return Hash64(&desc, PtrAdd(&desc, sizeof(Desc)));
