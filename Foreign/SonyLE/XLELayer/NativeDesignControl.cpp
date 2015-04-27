@@ -45,12 +45,14 @@ namespace XLELayer
 
         NativeDesignControl(
             LevelEditorCore::DesignView^ designView, 
-            GUILayer::EditorSceneManager^ sceneManager)
+            GUILayer::EditorSceneManager^ sceneManager,
+            GUILayer::ObjectSet^ selection)
         : DesignViewControl(designView)
         {
             _layerControl = gcnew GUILayer::LayerControl(this);
             _cameraSettings = gcnew GUILayer::VisCameraSettings();
             _renderSettings = gcnew GUILayer::EditorSceneRenderSettings();
+            _renderSettings->_selection = selection;
             _sceneManager = sceneManager;
             _layerControl->AddSystem(sceneManager->CreateOverlaySystem(_cameraSettings, _renderSettings));
             _manipulatorOverlay = gcnew ManipulatorOverlay(designView, this);

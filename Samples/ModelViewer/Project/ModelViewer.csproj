@@ -101,12 +101,6 @@
     <Compile Include="..\MainForm.Designer.cs">
       <DependentUpon>MainForm.cs</DependentUpon>
     </Compile>
-    <Compile Include="Form1.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Form1.Designer.cs">
-      <DependentUpon>Form1.cs</DependentUpon>
-    </Compile>
     <Compile Include="ModalMaterialEditor.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -127,9 +121,6 @@
     </Compile>
     <EmbeddedResource Include="..\MainForm.resx">
       <DependentUpon>MainForm.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Form1.resx">
-      <DependentUpon>Form1.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="ModalMaterialEditor.resx">
       <DependentUpon>ModalMaterialEditor.cs</DependentUpon>

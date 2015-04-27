@@ -132,7 +132,7 @@ namespace ToolsRig
             result._hashedMaterialName = Hash64(defMatName);
             auto matNamePtr = defMatName.c_str();
         #else
-            result._hashedMaterialName = Hash64(materialFilename) ^ result._hashedModelName;
+            result._hashedMaterialName = HashCombine(Hash64(materialFilename), result._hashedModelName);
             auto matNamePtr = materialFilename;
         #endif
 
@@ -215,14 +215,9 @@ namespace ToolsRig
         return result;
     }
     
-    class ModelSceneParser : public SceneEngine::ISceneParser
+    class ModelSceneParser : public VisSceneParser
     {
     public:
-        RenderCore::Techniques::CameraDesc  GetCameraDesc() const
-        {
-            return AsCameraDesc(*_settings->_camera);
-        }
-
         void ExecuteScene(  RenderCore::Metal::DeviceContext* context, 
                             SceneEngine::LightingParserContext& parserContext, 
                             const SceneEngine::SceneParseSettings& parseSettings,
@@ -258,29 +253,13 @@ namespace ToolsRig
             ExecuteScene(context, parserContext, parseSettings, techniqueIndex);
         }
 
-        unsigned GetShadowProjectionCount() const { return 0; }
-        SceneEngine::ShadowProjectionDesc GetShadowProjectionDesc(unsigned index, const RenderCore::Techniques::ProjectionDesc& mainSceneProjectionDesc) const 
-        { return SceneEngine::ShadowProjectionDesc(); }
-        
-
-        unsigned                        GetLightCount() const { return 1; }
-        const SceneEngine::LightDesc&   GetLightDesc(unsigned index) const
-        {
-            static SceneEngine::LightDesc light = DefaultDominantLight();
-            return light;
-        }
-
-        SceneEngine::GlobalLightingDesc GetGlobalLightingDesc() const
-        {
-            return DefaultGlobalLightingDesc();
-        }
-
-        float GetTimeValue() const { return 0.f; }
-
         ModelSceneParser(
             const ModelVisSettings& settings,
+            const VisEnvSettings& envSettings,
             ModelRenderer& model, const std::pair<Float3, Float3>& boundingBox, SharedStateSet& sharedStateSet)
-            : _model(&model), _boundingBox(boundingBox), _sharedStateSet(&sharedStateSet), _settings(&settings) {}
+            : VisSceneParser(settings._camera, envSettings)
+            , _model(&model), _boundingBox(boundingBox), _sharedStateSet(&sharedStateSet)
+            , _settings(&settings) {}
         ~ModelSceneParser() {}
 
     protected:
@@ -295,7 +274,8 @@ namespace ToolsRig
         ModelVisSettings settings;
         *settings._camera = AlignCameraToBoundingBox(40.f, model._boundingBox);
         return std::make_unique<ModelSceneParser>(
-            settings, *model._renderer, model._boundingBox, *model._sharedStateSet);
+            settings, VisEnvSettings(),
+            *model._renderer, model._boundingBox, *model._sharedStateSet);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -305,6 +285,7 @@ namespace ToolsRig
     public:
         std::shared_ptr<ModelVisCache> _cache;
         std::shared_ptr<ModelVisSettings> _settings;
+        std::shared_ptr<VisEnvSettings> _envSettings;
     };
 
     auto ModelVisLayer::GetInputListener() -> std::shared_ptr<IInputListener>
@@ -333,8 +314,9 @@ namespace ToolsRig
         }
 
         ModelSceneParser sceneParser(
-            *_pimpl->_settings,
+            *_pimpl->_settings, *_pimpl->_envSettings,
             *model._renderer, model._boundingBox, *model._sharedStateSet);
+        sceneParser.Prepare();
         LightingParser_ExecuteScene(
             *context, parserContext, sceneParser,
             RenderingQualitySettings(context->GetStateDesc()._viewportDimensions));
@@ -351,11 +333,13 @@ namespace ToolsRig
 
     ModelVisLayer::ModelVisLayer(
         std::shared_ptr<ModelVisSettings> settings,
+        std::shared_ptr<VisEnvSettings> envSettings,
         std::shared_ptr<ModelVisCache> cache) 
     {
         _pimpl = std::make_unique<Pimpl>();
         _pimpl->_settings = std::move(settings);
         _pimpl->_cache = std::move(cache);
+        _pimpl->_envSettings = std::move(envSettings);
     }
 
     ModelVisLayer::~ModelVisLayer() {}

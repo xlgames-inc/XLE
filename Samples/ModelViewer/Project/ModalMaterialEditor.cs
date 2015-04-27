@@ -30,7 +30,7 @@ namespace ModelViewer
             }
         }
 
-        public Tuple<string, string> PreviewModel
+        public Tuple<string, ulong> PreviewModel
         {
             set
             {

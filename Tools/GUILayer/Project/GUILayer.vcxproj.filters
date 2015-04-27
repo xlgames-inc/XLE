@@ -53,6 +53,9 @@
     <ClCompile Include="..\TestControl.cpp">
       <Filter>BasicControls</Filter>
     </ClCompile>
+    <ClCompile Include="..\EnvironmentSettings.cpp">
+      <Filter>DynInterface</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\EngineDevice.h" />
@@ -115,6 +118,9 @@
     </ClInclude>
     <ClInclude Include="..\IOverlaySystem.h">
       <Filter>BasicControls</Filter>
+    </ClInclude>
+    <ClInclude Include="..\EnvironmentSettings.h">
+      <Filter>DynInterface</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

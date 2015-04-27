@@ -32,6 +32,8 @@ namespace RenderingInterop
                 }
             }
         }
+        public string PreviewModelName { get; set; }
+        public ulong PreviewModelBinding { get; set; }
         public delegate void OnChangeDelegate();
         public event OnChangeDelegate OnChange;
 
@@ -51,7 +53,32 @@ namespace RenderingInterop
                 Keys.None);
         }
 
-        public override bool Pick(ViewControl vc, Point scrPt) { return true; }
+        public override bool Pick(ViewControl vc, Point scrPt) 
+        {
+            m_highlightMaterialGUID = ~0ul;
+            m_highlight.Clear();
+
+            var ray = vc.GetWorldRay(scrPt);
+            var endPt = ray.Origin + vc.Camera.FarZ * ray.Direction;
+
+            // do an intersection test here, and find the material under the cursor
+            var pick = NativeInterop.Picking.RayPick(
+                null, ray, vc.Camera, vc.ClientSize, NativeInterop.Picking.Flags.Objects);
+
+            if (pick.Length > 0)
+            {
+                m_highlightMaterialGUID = pick[0].materialGuid;
+                m_highlight.Add(pick[0].documentId, pick[0].instanceId);
+
+                using (var placements = GameEngine.GetEditorSceneManager().GetPlacementsEditor())
+                {
+                    m_highlight.DoFixup(placements);
+                }
+            }
+
+            return true;
+        }
+
         public override void OnBeginDrag() { }
         public override void OnDragging(ViewControl vc, Point scrPt) {}
 
@@ -66,21 +93,13 @@ namespace RenderingInterop
 
             if (pick.Length > 0)
             {
+                Context.PreviewModelName = pick[0].modelName;
+                Context.PreviewModelBinding = pick[0].materialGuid; 
                 Context.MaterialName = pick[0].materialName;
-
-                m_highlightMaterialGUID = pick[0].materialGuid;
-                m_highlight.Add(pick[0].documentId, pick[0].instanceId);
-
-                using (var placements = GameEngine.GetEditorSceneManager().GetPlacementsEditor())
-                {
-                    m_highlight.DoFixup(placements);
-                }
             }
-            else
-            {
-                m_highlightMaterialGUID = ~0ul;
-                m_highlight.Clear();
-            }
+
+            m_highlightMaterialGUID = ~0ul;
+            m_highlight.Clear();
         }
 
         public override void Render(ViewControl vc)

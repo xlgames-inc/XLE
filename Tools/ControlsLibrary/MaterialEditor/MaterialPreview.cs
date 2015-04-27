@@ -21,6 +21,9 @@ namespace ControlsLibrary.MaterialEditor
         {
             InitializeComponent();
             visSettings = GUILayer.MaterialVisSettings.CreateDefault();
+            visLayer = new GUILayer.MaterialVisLayer(visSettings);
+            preview.Underlying.AddSystem(visLayer);
+            preview.Underlying.AddDefaultCameraHandler(visSettings.Camera);
 
             _geoType.DataSource = Enum.GetValues(typeof(GUILayer.MaterialVisSettings.GeometryType));
             _geoType.SelectedItem = visSettings.Geometry;
@@ -29,28 +32,33 @@ namespace ControlsLibrary.MaterialEditor
             _lightingType.DataSource = Enum.GetValues(typeof(GUILayer.MaterialVisSettings.LightingType));
             _lightingType.SelectedItem = visSettings.Lighting;
             _lightingType.SelectedIndexChanged += ComboBoxSelectedIndexChanged;
+
+            _environment.SelectedIndexChanged += SelectedEnvironmentChanged;
         }
 
         public IEnumerable<GUILayer.RawMaterial> Object
         {
             set 
             {
-                string model = "", binding = "";
-                if (previewModel != null) { model = previewModel.Item1; binding = previewModel.Item2; }
-
-                if (visLayer == null) {
-                    visLayer = new GUILayer.MaterialVisLayer(visSettings, value, model, binding);
-                    preview.Underlying.AddSystem(visLayer);
-                    preview.Underlying.AddDefaultCameraHandler(visSettings.Camera);
-                } else {
-                    visLayer.SetConfig(value, model, binding);
-                }
+                string model = ""; ulong binding = 0;
+                if (previewModel != null && previewModel.Item1 != null) { model = previewModel.Item1; binding = previewModel.Item2; }
+                visLayer.SetConfig(value, model, binding);
+                Invalidate();
             }
         }
 
-        public Tuple<string, string> PreviewModel
+        public GUILayer.EnvironmentSettingsSet EnvironmentSet
         {
-            set { previewModel = value; }
+            set 
+            {
+                envSettings = value;
+                _environment.DataSource = value.Names;
+            }
+        }
+
+        public Tuple<string, ulong> PreviewModel
+        {
+            set { previewModel = value; }   // note -- this doesn't have an effect until the "Object" property is set
         }
 
         private void ComboBoxSelectedIndexChanged(object sender, System.EventArgs e)
@@ -69,9 +77,16 @@ namespace ControlsLibrary.MaterialEditor
             preview.Invalidate();
         }
 
+        private void SelectedEnvironmentChanged(object sender, System.EventArgs e)
+        {
+            visLayer.SetEnvironment(envSettings, _environment.SelectedValue.ToString());
+            Invalidate();
+        }
+
         protected GUILayer.MaterialVisLayer visLayer;
         protected GUILayer.MaterialVisSettings visSettings;
-        protected Tuple<string, string> previewModel = null;
+        protected GUILayer.EnvironmentSettingsSet envSettings;
+        protected Tuple<string, ulong> previewModel = null;
 
         private void _resetCamera_Click(object sender, EventArgs e)
         {

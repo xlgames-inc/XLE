@@ -331,14 +331,7 @@ namespace RenderingInterop
 
         #endregion
 
-        public static GUILayer.ObjectSet CreateObjectSet(IEnumerable<NativeObjectAdapter> input)
-        {
-            var set = new GUILayer.ObjectSet();
-            foreach (var i in input) {
-                set.Add(i.DocumentId, i.InstanceId);
-            }
-            return set;
-        }
+        public static GUILayer.ObjectSet GlobalSelection = new GUILayer.ObjectSet();
 
         #region basic rendering 
         // create vertex buffer with given vertex format from user data.

@@ -51,6 +51,7 @@ namespace RenderingInterop
         public uint drawCallIndex;
         public ulong materialGuid;
         public string materialName;
+        public string modelName;
     }
 
 }

@@ -55,6 +55,8 @@ namespace GUILayer
         VisCameraSettings^ _camSettings;
     };
 
+    ref class EnvironmentSettingsSet;
+
     public ref class MaterialVisLayer : public IOverlaySystem
     {
     public:
@@ -66,19 +68,23 @@ namespace GUILayer
             const RenderCore::Techniques::ProjectionDesc& projectionDesc) override;
         virtual void SetActivationState(bool newState) override;
 
-        void SetConfig(IEnumerable<RawMaterial^>^ config, System::String^ previewModel, System::String^ materialBinding);
+        void SetConfig(
+            IEnumerable<RawMaterial^>^ config, 
+            System::String^ previewModel, uint64 materialBinding);
 
-        MaterialVisLayer(
-            MaterialVisSettings^ settings,
-            IEnumerable<RawMaterial^>^ config,
-            System::String^ previewModel, System::String^ materialBinding);
+        void SetEnvironment(
+            EnvironmentSettingsSet^ settingsSet,
+            System::String^ name);
+
+        MaterialVisLayer(MaterialVisSettings^ settings);
         ~MaterialVisLayer();
         
     protected:
         clix::shared_ptr<ToolsRig::MaterialVisObject> _visObject;
+        clix::shared_ptr<ToolsRig::VisEnvSettings> _envSettings;
         IEnumerable<RawMaterial^>^ _config;
         System::String^ _previewModel;
-        System::String^ _materialBinding;
+        uint64 _materialBinding;
         MaterialVisSettings^ _settings;
 
         void Resolve();

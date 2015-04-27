@@ -123,6 +123,11 @@ namespace GUILayer
         }
     }
 
+    const EditorDynamicInterface::FlexObjectType& EditorSceneManager::GetFlexObjects()
+    {
+        return *_flexGobInterface.get();
+    }
+
     bool EditorSceneManager::SetObjectParent(DocumentId doc, 
             ObjectId childId, ObjectTypeId childTypeId, 
             ObjectId parentId, ObjectTypeId parentTypeId, int insertionPosition)
@@ -175,7 +180,6 @@ namespace GUILayer
         _dynInterface->RegisterType(_flexGobInterface.GetNativePtr());
 
         _scene = std::make_shared<EditorScene>(_flexGobInterface.GetNativePtr());
-        _selection = gcnew ObjectSet;
     }
 
     EditorSceneManager::~EditorSceneManager()
@@ -195,7 +199,6 @@ namespace GUILayer
         IOverlaySystem^ CreateOverlaySystem(
             std::shared_ptr<EditorScene> scene, 
             std::shared_ptr<EditorDynamicInterface::FlexObjectType> flexGobInterface,
-            ObjectSet^ selection, 
             std::shared_ptr<ToolsRig::VisCameraSettings> camera, 
             EditorSceneRenderSettings^ renderSettings);
     }
@@ -204,14 +207,6 @@ namespace GUILayer
     {
         return Internal::CreateOverlaySystem(
             _scene.GetNativePtr(), _flexGobInterface.GetNativePtr(),
-            _selection, camera->GetUnderlying(), renderSettings);
-    }
-
-    void EditorSceneManager::SetSelection(ObjectSet^ objectSet)
-    {
-        *_selection->_nativePlacements = *objectSet->_nativePlacements;
-        if (!!_scene->_placementsEditor) {
-            _selection->DoFixup(*_scene->_placementsEditor);
-        }
+            camera->GetUnderlying(), renderSettings);
     }
 }

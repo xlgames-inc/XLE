@@ -37,6 +37,7 @@ namespace GUILayer
         float _distance;
         uint64 _materialGuid;
         String^ _materialName;
+        String^ _modelName;
         unsigned _drawCallIndex;
     };
 
@@ -111,6 +112,7 @@ namespace GUILayer
                     record->_distance = firstResult._distance;
                     record->_materialGuid = firstResult._materialGuid;
                     record->_materialName = clix::marshalString<clix::E_UTF8>(firstResult._materialName);
+                    record->_modelName = clix::marshalString<clix::E_UTF8>(firstResult._modelName);
                     record->_drawCallIndex = firstResult._drawCallIndex;
 
                         // hack -- for placement objects, we must strip off the top 32 bits

@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "MaterialVisualisation.h"
+#include "EnvironmentSettings.h"
 #include "ExportedNativeTypes.h"
 #include "../ToolsRig/VisualisationUtils.h"
 #include "../../RenderCore/Assets/Material.h"
@@ -25,8 +26,8 @@ namespace GUILayer
         if (!_visObject) { return; }
 
         ToolsRig::MaterialVisLayer::Draw(
-            *context, parserContext,
-            _settings->GetUnderlying(), *_visObject.get());
+            *context, parserContext, _settings->GetUnderlying(), 
+            *_envSettings.get(), *_visObject.get());
     }
 
     void MaterialVisLayer::RenderWidgets(
@@ -58,7 +59,7 @@ namespace GUILayer
             "game/xleres/illum.txt");
 
         visObject->_previewModelFile = clix::marshalString<clix::E_UTF8>(_previewModel);
-        visObject->_previewMaterialBinding = Hash64(clix::marshalString<clix::E_UTF8>(_materialBinding));
+        visObject->_previewMaterialBinding = _materialBinding;
 
         _visObject = visObject;
     }
@@ -78,7 +79,7 @@ namespace GUILayer
         _visObject.reset();
     }
 
-    void MaterialVisLayer::SetConfig(IEnumerable<RawMaterial^>^ config, System::String^ previewModel, System::String^ materialBinding)
+    void MaterialVisLayer::SetConfig(IEnumerable<RawMaterial^>^ config, System::String^ previewModel, uint64 materialBinding)
     {
         _visObject.reset();
 
@@ -106,18 +107,25 @@ namespace GUILayer
         }
     }
 
-    MaterialVisLayer::MaterialVisLayer(
-        MaterialVisSettings^ settings,
-        IEnumerable<RawMaterial^>^ config,
-        System::String^ previewModel, System::String^ materialBinding)
+    void MaterialVisLayer::SetEnvironment(
+        EnvironmentSettingsSet^ settingsSet,
+        System::String^ name)
+    {
+        _envSettings->_activeSetting = settingsSet->GetSettings(name);
+    }
+
+    MaterialVisLayer::MaterialVisLayer(MaterialVisSettings^ settings)
     : _settings(settings)
     {
-        SetConfig(config, previewModel, materialBinding);
+        _config = nullptr;
+        _previewModel = "";
+        _materialBinding = 0;
+        _envSettings = std::make_shared<ToolsRig::VisEnvSettings>();
     }
 
     MaterialVisLayer::~MaterialVisLayer() 
     {
-        SetConfig(nullptr, "", "");
+        SetConfig(nullptr, "", 0);
     }
 
     

@@ -22,6 +22,7 @@ namespace GUILayer
     ref class IntersectionTestContextWrapper;
 	ref class IntersectionTestSceneWrapper;
     ref class PlacementsEditorWrapper;
+    ref class ObjectSet;
     class TerrainGob;
     class ObjectPlaceholders;
 
@@ -43,12 +44,12 @@ namespace GUILayer
     {
     public:
         System::String^ _activeEnvironmentSettings;
+        ObjectSet^ _selection;
     };
 
     ref class IOverlaySystem;
     ref class IManipulatorSet;
     ref class IPlacementManipulatorSettingsLayer;
-    ref class ObjectSet;
 
     public ref class EditorSceneManager
     {
@@ -59,7 +60,6 @@ namespace GUILayer
         IOverlaySystem^ CreateOverlaySystem(VisCameraSettings^ camera, EditorSceneRenderSettings^ renderSettings);
 		IntersectionTestSceneWrapper^ GetIntersectionScene();
         PlacementsEditorWrapper^ GetPlacementsEditor();
-        void SetSelection(ObjectSet^ objectSet);
 
             //// //// ////   G O B   I N T E R F A C E   //// //// ////
         using DocumentTypeId = EditorDynamicInterface::DocumentTypeId;
@@ -101,6 +101,8 @@ namespace GUILayer
 
         void SetTypeAnnotation(uint typeId, System::String^ annotationName, IEnumerable<PropertyInitializer>^ initializers);
 
+        const EditorDynamicInterface::FlexObjectType& GetFlexObjects();
+
             //// //// ////   C O N S T R U C T O R S   //// //// ////
         EditorSceneManager();
         ~EditorSceneManager();
@@ -109,8 +111,6 @@ namespace GUILayer
         clix::shared_ptr<EditorScene> _scene;
         clix::shared_ptr<EditorDynamicInterface::RegisteredTypes> _dynInterface;
         clix::shared_ptr<EditorDynamicInterface::FlexObjectType> _flexGobInterface;
-
-        ObjectSet^ _selection;
     };
 }
 

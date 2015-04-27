@@ -43,7 +43,7 @@ namespace ModelViewer
                 if (visMouseOver.FullMaterialName != null)
                 {
                     using (var editor = new ModalMaterialEditor()) {
-                        editor.PreviewModel = Tuple.Create(visMouseOver.ModelName, visMouseOver.MaterialName); 
+                        editor.PreviewModel = Tuple.Create(visMouseOver.ModelName, visMouseOver.MaterialBindingGuid); 
                         editor.Object = visMouseOver.FullMaterialName;
                         editor.ShowDialog();
                     }

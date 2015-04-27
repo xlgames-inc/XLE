@@ -241,7 +241,7 @@ namespace PreviewRender
 
             bool result = ToolsRig::MaterialVisLayer::Draw(
                 context, parserContext, 
-                visSettings, visObject);
+                visSettings, VisEnvSettings(), visObject);
 
             if (result) return DrawPreviewResult_Success;
             if (!parserContext._pendingResources.empty()) return DrawPreviewResult_Pending;

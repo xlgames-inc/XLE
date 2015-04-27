@@ -481,7 +481,7 @@ namespace SceneEngine
 
     auto PlacementsRenderer::GetCachedMaterial(const ResChar model[], const ResChar material[]) -> const MaterialScaffold*
     {
-        auto hash = Hash64(material) ^ Hash64(model);
+        auto hash = HashCombine(Hash64(material), Hash64(model));
         auto materialScaffold = _cache->_materialScaffolds.Get(hash);
         if (!materialScaffold) {
             materialScaffold = Internal::CreateMaterialScaffold(model, material, *_modelFormat);
@@ -679,7 +679,7 @@ namespace SceneEngine
             }
 
             auto materialHash = *(uint64*)PtrAdd(filenamesBuffer, obj._materialFilenameOffset);
-            materialHash ^= modelHash;
+            materialHash = HashCombine(materialHash, modelHash);
             if (materialHash != _currentMaterial) {
                 _material = cache._materialScaffolds.Get(materialHash).get();
                 if (!_material || _material->GetDependencyValidation().GetValidationIndex() > 0) {
@@ -688,6 +688,7 @@ namespace SceneEngine
                     auto materialFilename = (const ResChar*)PtrAdd(filenamesBuffer, obj._materialFilenameOffset + sizeof(uint64));
                     newMaterial = CreateMaterialScaffold(modelFilename, materialFilename, modelFormat);
                     _material = newMaterial.get();
+                    assert(_material);
                     cache._materialScaffolds.Insert(materialHash, std::move(newMaterial));
                 }
                 _currentMaterial = materialHash;

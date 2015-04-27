@@ -130,6 +130,15 @@ namespace GUILayer
         return nullptr;
     }
 
+    uint64 VisMouseOver::MaterialBindingGuid::get()
+    {
+        if (_object->_hasMouseOver) {
+            return _object->_materialGuid;
+        } else {
+            return ~uint64(0x0);
+        }
+    }
+
     void VisMouseOver::AttachCallback(PropertyGrid^ callback)
     {
         _object->_changeEvent._callbacks.push_back(

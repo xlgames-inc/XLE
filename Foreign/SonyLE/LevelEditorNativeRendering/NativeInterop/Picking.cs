@@ -60,6 +60,7 @@ namespace RenderingInterop.NativeInterop
                 hitRecords[index].drawCallIndex = r._drawCallIndex;
                 hitRecords[index].materialGuid = r._materialGuid;
                 hitRecords[index].materialName = r._materialName;
+                hitRecords[index].modelName = r._modelName;
                 index++;
             }
 

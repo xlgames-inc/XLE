@@ -19,8 +19,8 @@ namespace RenderingInterop
 {
     public class NativeDesignControl : XLELayer.NativeDesignControl
     {
-        public NativeDesignControl(DesignView designView, GUILayer.EditorSceneManager sceneManager) :
-            base(designView, sceneManager)
+        public NativeDesignControl(DesignView designView, GUILayer.EditorSceneManager sceneManager, GUILayer.ObjectSet selection) :
+            base(designView, sceneManager, selection)
         {
             if (s_marqueePen == null)
             {

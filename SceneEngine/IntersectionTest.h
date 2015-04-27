@@ -8,6 +8,7 @@
 
 #include "../RenderCore/IThreadContext_Forward.h"
 #include "../RenderCore/Techniques/TechniqueUtils.h"        // for CameraDesc
+#include "../Assets/Assets.h"   // for rstring
 #include "../Core/Types.h"
 #include "../Math/Vector.h"
 #include <memory>
@@ -105,7 +106,8 @@ namespace SceneEngine
             float                       _distance;
             unsigned                    _drawCallIndex;
             uint64                      _materialGuid;
-            std::string                 _materialName;
+            ::Assets::rstring           _materialName;
+            ::Assets::rstring           _modelName;
 
             Result() 
             : _type(Type::Enum(0)), _worldSpaceCollision(0.f, 0.f, 0.f)

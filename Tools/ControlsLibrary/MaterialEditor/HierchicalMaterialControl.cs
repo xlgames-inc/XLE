@@ -42,9 +42,14 @@ namespace ControlsLibrary.MaterialEditor
             }
         }
 
-        public Tuple<string, string> PreviewModel
+        public Tuple<string, ulong> PreviewModel
         {
             set { materialControl1.PreviewModel = value; }
+        }
+
+        public GUILayer.EnvironmentSettingsSet EnvironmentSet
+        {
+            set { materialControl1.EnvironmentSet = value; }
         }
 
         protected void SubMatSelectedNodeChanged(object sender, EventArgs e)

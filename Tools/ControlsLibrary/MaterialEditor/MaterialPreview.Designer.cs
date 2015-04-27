@@ -42,6 +42,7 @@ namespace ControlsLibrary.MaterialEditor
             this._geoType = new System.Windows.Forms.ComboBox();
             this.preview = new LayerControl(); 
             this._resetCamera = new System.Windows.Forms.Button();
+            this._environment = new System.Windows.Forms.ComboBox();
             this.groupBox1.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -53,6 +54,7 @@ namespace ControlsLibrary.MaterialEditor
             this.groupBox1.Controls.Add(this.checkBox1);
             this.groupBox1.Controls.Add(this._lightingType);
             this.groupBox1.Controls.Add(this._geoType);
+            this.groupBox1.Controls.Add(this._environment);
             this.groupBox1.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.groupBox1.Location = new System.Drawing.Point(554, 3);
             this.groupBox1.Name = "groupBox1";
@@ -77,11 +79,7 @@ namespace ControlsLibrary.MaterialEditor
             this._lightingType.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this._lightingType.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._lightingType.FormattingEnabled = true;
-            this._lightingType.Items.AddRange(new object[] {
-            "Lighting Env 1",
-            "Lighting Env 2"});
             this._lightingType.Location = new System.Drawing.Point(5, 46);
-            this._lightingType.Name = "_lightingType";
             this._lightingType.Size = new System.Drawing.Size(155, 21);
             this._lightingType.TabIndex = 1;
             // 
@@ -90,11 +88,7 @@ namespace ControlsLibrary.MaterialEditor
             this._geoType.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this._geoType.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this._geoType.FormattingEnabled = true;
-            this._geoType.Items.AddRange(new object[] {
-            "GeoType: Sphere",
-            "GeoType: Cube"});
             this._geoType.Location = new System.Drawing.Point(5, 19);
-            this._geoType.Name = "_geoType";
             this._geoType.Size = new System.Drawing.Size(155, 21);
             this._geoType.TabIndex = 0;
             // 
@@ -116,6 +110,15 @@ namespace ControlsLibrary.MaterialEditor
             this._resetCamera.Text = "Reset Camera";
             this._resetCamera.UseVisualStyleBackColor = true;
             this._resetCamera.Click += new System.EventHandler(this._resetCamera_Click);
+            // 
+            // _environment
+            // 
+            this._environment.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this._environment.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this._environment.FormattingEnabled = true;
+            this._environment.Location = new System.Drawing.Point(5, 123);
+            this._environment.Size = new System.Drawing.Size(155, 21);
+            this._environment.TabIndex = 4;
             // 
             // MaterialPreview
             // 
@@ -139,5 +142,6 @@ namespace ControlsLibrary.MaterialEditor
         private System.Windows.Forms.ComboBox _lightingType;
         private LayerControl preview;
         private System.Windows.Forms.Button _resetCamera;
+        private System.Windows.Forms.ComboBox _environment;
     }
 }

@@ -32,15 +32,11 @@ namespace LevelEditor.XLEControls
 
         void OnActiveMaterialChange()
         {
-            var name = Context.MaterialName;
-            if (name != null)
-            {
-                m_controls.Object = name;
-            }
-            else 
-            {
-                m_controls.Object = null;
-            }
+            var env = new GUILayer.EnvironmentSettingsSet(RenderingInterop.GameEngine.GetEditorSceneManager());
+            env.AddDefault();
+            m_controls.EnvironmentSet = env;
+            m_controls.PreviewModel = Tuple.Create(Context.PreviewModelName, Context.PreviewModelBinding); 
+            m_controls.Object = Context.MaterialName;
         }
 
         [Import(AllowDefault = false)] private IControlHostService m_controlHostService;

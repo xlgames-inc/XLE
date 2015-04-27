@@ -51,6 +51,8 @@ namespace ToolsRig
         ~MaterialVisObject();
     };
 
+    class VisEnvSettings;
+
     /// <summary>Renders a visualisation of a material</summary>
     /// Designed for tools, this layer will render a material on a 
     /// generic piece of geometry, with generic environment settings.
@@ -69,6 +71,7 @@ namespace ToolsRig
 
         MaterialVisLayer(
             std::shared_ptr<MaterialVisSettings> settings,
+            std::shared_ptr<VisEnvSettings> envSettings,
             std::shared_ptr<MaterialVisObject> object);
         ~MaterialVisLayer();
 
@@ -76,6 +79,7 @@ namespace ToolsRig
             RenderCore::IThreadContext& context,
             SceneEngine::LightingParserContext& lightingParser,
             const MaterialVisSettings& settings,
+            const VisEnvSettings& envSettings,
             const MaterialVisObject& object);
     protected:
         class Pimpl;

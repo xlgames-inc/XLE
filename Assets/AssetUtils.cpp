@@ -138,15 +138,25 @@ namespace Assets
                 b = AsPointer(_bufferOverflow.begin());
             }
 
+                // We want to support the case were destination == baseName
+                // But that cases requires another temporary buffer, because we
+                // don't want to trash "baseName" while searching for matches
+            ResChar tempBuffer[MaxPath];
+            ResChar* workingBuffer = (baseName!=destination) ? destination : tempBuffer;
+            unsigned workingBufferSize = (baseName!=destination) ? destinationCount : unsigned(dimof(tempBuffer));
+
             for (unsigned c=0; c<_startPointCount; ++c) {
-                XlConcatPath(destination, destinationCount, &b[_startOffsets[c]], baseName);
-                if (DoesFileExist(destination)) {
+                XlConcatPath(workingBuffer, workingBufferSize, &b[_startOffsets[c]], baseName);
+                if (DoesFileExist(workingBuffer)) {
+                    if (workingBuffer != destination)
+                        XlCopyString(destination, destinationCount, workingBuffer);
                     return;
                 }
             }
         }
 
-        XlCopyString(destination, destinationCount, baseName);
+        if (baseName != destination)
+            XlCopyString(destination, destinationCount, baseName);
     }
 
     DirectorySearchRules::DirectorySearchRules()

@@ -35,50 +35,6 @@ namespace ToolsRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class VisSceneParser : public SceneEngine::ISceneParser
-    {
-    public:
-        Techniques::CameraDesc  GetCameraDesc() const
-        {
-            Techniques::CameraDesc result;
-            result._cameraToWorld = MakeCameraToWorld(
-                Normalize(_settings->_focus - _settings->_position),
-                Float3(0.f, 0.f, 1.f), _settings->_position);
-            result._farClip = _settings->_farClip;
-            result._nearClip = _settings->_nearClip;
-            result._verticalFieldOfView = Deg2Rad(_settings->_verticalFieldOfView);
-            result._temporaryMatrix = Identity<Float4x4>();
-            return result;
-        }
-
-        unsigned GetShadowProjectionCount() const { return 0; }
-        SceneEngine::ShadowProjectionDesc GetShadowProjectionDesc(unsigned index, const Techniques::ProjectionDesc& mainSceneProjectionDesc) const 
-            { return SceneEngine::ShadowProjectionDesc(); }
-
-        unsigned                        GetLightCount() const { return 1; }
-        const SceneEngine::LightDesc&   GetLightDesc(unsigned index) const
-        {
-            static SceneEngine::LightDesc light = DefaultDominantLight();
-            return light;
-        }
-
-        SceneEngine::GlobalLightingDesc GetGlobalLightingDesc() const
-        {
-            return DefaultGlobalLightingDesc();
-        }
-
-        float GetTimeValue() const { return 0.f; }
-
-        VisSceneParser(std::shared_ptr<VisCameraSettings> settings)
-            : _settings(std::move(settings)) {}
-        ~VisSceneParser() {}
-
-    protected:
-        std::shared_ptr<VisCameraSettings> _settings;
-    };
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
     class CachedVisGeo
     {
     public:
@@ -199,8 +155,9 @@ namespace ToolsRig
 
         MaterialSceneParser(
             const MaterialVisSettings& settings,
+            const VisEnvSettings& envSettings,
             const MaterialVisObject& object)
-        : VisSceneParser(settings._camera), _settings(&settings), _object(&object) {}
+        : VisSceneParser(settings._camera, std::move(envSettings)), _settings(&settings), _object(&object) {}
 
     protected:
         const MaterialVisSettings*  _settings;
@@ -401,6 +358,7 @@ namespace ToolsRig
         IThreadContext& context,
         SceneEngine::LightingParserContext& parserContext,
         const MaterialVisSettings& settings,
+        const VisEnvSettings& envSettings,
         const MaterialVisObject& object)
     {
         TRY {
@@ -425,7 +383,8 @@ namespace ToolsRig
                 settings._pendingCameraAlignToModel = false;
             }
 
-            MaterialSceneParser sceneParser(settings, object);
+            MaterialSceneParser sceneParser(settings, envSettings, object);
+            sceneParser.Prepare();
             SceneEngine::RenderingQualitySettings qualSettings(context.GetStateDesc()._viewportDimensions);
 
             if (settings._lightingType == MaterialVisSettings::LightingType::NoLightingParser) {
@@ -460,6 +419,7 @@ namespace ToolsRig
     {
     public:
         std::shared_ptr<MaterialVisSettings> _settings;
+        std::shared_ptr<VisEnvSettings> _envSettings;
         std::shared_ptr<MaterialVisObject> _object;
     };
 
@@ -471,7 +431,7 @@ namespace ToolsRig
         SceneEngine::LightingParserContext& parserContext)
     {
         assert(context);
-        Draw(*context, parserContext, *_pimpl->_settings, *_pimpl->_object);
+        Draw(*context, parserContext, *_pimpl->_settings, *_pimpl->_envSettings, *_pimpl->_object);
     }
 
     void MaterialVisLayer::RenderWidgets(
@@ -483,11 +443,13 @@ namespace ToolsRig
 
     MaterialVisLayer::MaterialVisLayer(
         std::shared_ptr<MaterialVisSettings> settings,
+        std::shared_ptr<VisEnvSettings> envSettings,
         std::shared_ptr<MaterialVisObject> object)
     {
         _pimpl = std::make_unique<Pimpl>();
-        _pimpl->_settings = settings;
-        _pimpl->_object = object;
+        _pimpl->_settings = std::move(settings);
+        _pimpl->_envSettings = std::move(envSettings);
+        _pimpl->_object = std::move(object);
     }
 
     MaterialVisLayer::~MaterialVisLayer()

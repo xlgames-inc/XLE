@@ -179,6 +179,7 @@ namespace SceneEngine
                         result._drawCallIndex = drawCallIndex;
                         result._materialGuid = materialGuid;
                         result._materialName = trans->GetMaterialName(c, materialGuid);
+                        result._modelName = trans->GetObject(c)._model;
                     }
                 }
             } CATCH(...) {

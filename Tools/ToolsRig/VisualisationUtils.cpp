@@ -24,24 +24,38 @@ namespace ToolsRig
         return result;
     }
 
-    SceneEngine::LightDesc DefaultDominantLight()
+
+    RenderCore::Techniques::CameraDesc  VisSceneParser::GetCameraDesc() const { return AsCameraDesc(*_settings); }
+    float VisSceneParser::GetTimeValue() const { return 0.f; }
+
+    VisSceneParser::VisSceneParser(
+        std::shared_ptr<VisCameraSettings> settings, 
+        const VisEnvSettings& envSettings)
+    : _settings(std::move(settings)) 
+    , _envSettings(&envSettings)
+    {}
+    VisSceneParser::~VisSceneParser() {}
+
+    void VisSceneParser::Prepare()
     {
-        SceneEngine::LightDesc light;
-        light._type = SceneEngine::LightDesc::Directional;
-        light._negativeLightDirection = Normalize(Float3(-.1f, 0.33f, 1.f));
-        light._radius = 10000.f;
-        light._shadowFrustumIndex = ~unsigned(0x0);
-        return light;
+        // const PlatformRig::EnvironmentSettings* settings = nullptr;
+        // for (auto i=_envSettings->_settings.cbegin(); i!=_envSettings->_settings.cend(); ++i) {
+        //     if (i->first == _envSettings->_activeSetting) {
+        //         settings = &i->second;
+        //         break;
+        //     }
+        // }
+        // if (settings) { _activeEnv = *settings; }
+        // else { _activeEnv = PlatformRig::DefaultEnvironmentSettings(); }
     }
 
-    SceneEngine::GlobalLightingDesc DefaultGlobalLightingDesc()
+    const PlatformRig::EnvironmentSettings& VisSceneParser::GetEnvSettings() const { return _envSettings->_activeSetting; }
+
+    VisEnvSettings::VisEnvSettings()
     {
-        SceneEngine::GlobalLightingDesc result;
-        result._ambientLight = 5.f * Float3(0.25f, 0.25f, 0.25f);
-        result._doAtmosphereBlur = false;
-        result._doOcean = false;
-        result._doToneMap = false;
-        return result;
+        _activeSetting = PlatformRig::DefaultEnvironmentSettings();
     }
+
+    VisEnvSettings::~VisEnvSettings() {}
 }
 

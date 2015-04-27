@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "../../PlatformRig/BasicSceneParser.h"
 #include "../../Math/Vector.h"
 
 namespace RenderCore { namespace Techniques { class CameraDesc; } }
@@ -24,9 +25,32 @@ namespace ToolsRig
         VisCameraSettings();
     };
 
+    class VisEnvSettings
+    {
+    public:
+        PlatformRig::EnvironmentSettings _activeSetting;
+
+        VisEnvSettings();
+        ~VisEnvSettings();
+    };
+
     RenderCore::Techniques::CameraDesc AsCameraDesc(const VisCameraSettings& camSettings);
 
-    SceneEngine::LightDesc DefaultDominantLight();
-    SceneEngine::GlobalLightingDesc DefaultGlobalLightingDesc();
+    class VisSceneParser : public PlatformRig::BasicSceneParser
+    {
+    public:
+        RenderCore::Techniques::CameraDesc  GetCameraDesc() const;
+        float GetTimeValue() const;
+        void Prepare();
+
+        VisSceneParser(
+            std::shared_ptr<VisCameraSettings> settings, 
+            const VisEnvSettings& envSettings);
+        ~VisSceneParser();
+    protected:
+        std::shared_ptr<VisCameraSettings> _settings;
+        const VisEnvSettings* _envSettings;
+        virtual const PlatformRig::EnvironmentSettings& GetEnvSettings() const;
+    };
 }
 

@@ -198,7 +198,10 @@ namespace GUILayer
 
     void LayerControl::SetupDefaultVis(ModelVisSettings^ settings, VisMouseOver^ mouseOver, VisResources^ resources)
     {
-        auto visLayer = std::make_unique<ToolsRig::ModelVisLayer>(settings->GetUnderlying(), resources->_visCache.GetNativePtr());
+        auto visLayer = std::make_unique<ToolsRig::ModelVisLayer>(
+            settings->GetUnderlying(), 
+            std::make_shared<ToolsRig::VisEnvSettings>(),
+            resources->_visCache.GetNativePtr());
         auto& overlaySet = *GetWindowRig().GetFrameRig().GetMainOverlaySystem();
         overlaySet.AddSystem(std::move(visLayer));
         overlaySet.AddSystem(

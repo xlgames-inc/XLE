@@ -29,6 +29,7 @@ namespace SceneEngine { class ISceneParser; }
 namespace ToolsRig
 {
     class VisCameraSettings;
+    class VisEnvSettings;
 
     class ModelVisCache
     {
@@ -132,6 +133,7 @@ namespace ToolsRig
 
         ModelVisLayer(
             std::shared_ptr<ModelVisSettings> settings,
+            std::shared_ptr<VisEnvSettings> envSettings,
             std::shared_ptr<ModelVisCache> cache);
         ~ModelVisLayer();
     protected:

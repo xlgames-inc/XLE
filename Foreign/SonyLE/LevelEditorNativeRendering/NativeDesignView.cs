@@ -26,10 +26,10 @@ namespace RenderingInterop
         {
             NativeDesignControl[] views = new NativeDesignControl[]
             {
-                new NativeDesignControl(this, GameEngine.GetEditorSceneManager()) { ViewType = ViewTypes.Perspective },
-                new NativeDesignControl(this, GameEngine.GetEditorSceneManager()) { ViewType = ViewTypes.Right },
-                new NativeDesignControl(this, GameEngine.GetEditorSceneManager()) { ViewType = ViewTypes.Top },
-                new NativeDesignControl(this, GameEngine.GetEditorSceneManager()) { ViewType = ViewTypes.Front }
+                new NativeDesignControl(this, GameEngine.GetEditorSceneManager(), GameEngine.GlobalSelection) { ViewType = ViewTypes.Perspective },
+                new NativeDesignControl(this, GameEngine.GetEditorSceneManager(), GameEngine.GlobalSelection) { ViewType = ViewTypes.Right },
+                new NativeDesignControl(this, GameEngine.GetEditorSceneManager(), GameEngine.GlobalSelection) { ViewType = ViewTypes.Top },
+                new NativeDesignControl(this, GameEngine.GetEditorSceneManager(), GameEngine.GlobalSelection) { ViewType = ViewTypes.Front }
             };
             foreach (var v in views)
             {
@@ -72,9 +72,13 @@ namespace RenderingInterop
             IEnumerable<DomNode> domNodes = m_selectionContext.Selection.AsIEnumerable<DomNode>();
             IEnumerable<DomNode> roots = DomNode.GetRoots(domNodes);
             IEnumerable<NativeObjectAdapter> nativeObjects = roots.AsIEnumerable<NativeObjectAdapter>();
-            var nativeSelection = GameEngine.CreateObjectSet(nativeObjects);
-            GameEngine.GetEditorSceneManager().SetSelection(nativeSelection);
-            nativeSelection.Dispose();
+
+            var sel = GameEngine.GlobalSelection;
+            sel.Clear();
+            foreach (var adapter in nativeObjects)
+                sel.Add(adapter.DocumentId, adapter.InstanceId);
+            sel.DoFixup(GameEngine.GetEditorSceneManager().GetPlacementsEditor());
+
             InvalidateViews();
         }
 

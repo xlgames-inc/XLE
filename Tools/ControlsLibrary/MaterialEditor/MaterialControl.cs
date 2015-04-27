@@ -163,9 +163,14 @@ namespace ControlsLibrary.MaterialEditor
             }
         }
 
-        public Tuple<string, string> PreviewModel
+        public Tuple<string, ulong> PreviewModel
         {
             set { materialPreview1.PreviewModel = value; }
+        }
+
+        public GUILayer.EnvironmentSettingsSet EnvironmentSet
+        {
+            set { materialPreview1.EnvironmentSet = value; }
         }
     }
 }
