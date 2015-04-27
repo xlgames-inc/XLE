@@ -74,13 +74,13 @@ float3 ApplyToneMap(float3 colour)
 		return postToneMap.rgb;
 
 	} else if (toneMapOperator==2) {
-		
+
 		#if OPERATOR==2
 			return CryToneMapOperator(colour, scale);
 		#endif
-			
+
 	}
-	
+
 	return scale * colour;
 }
 
@@ -94,18 +94,21 @@ float4 main(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Tar
 {
 	float4 input = InputTexture.Load(int3(position.xy,0));
 
-		//	Should the bloom colour go through the
-		//	tonemapping, also?... It seems to work much
-		//	better when it does. (plus, SRGB is handled correctly).
-	float3 bloomValue = BloomScale * BloomMap.SampleLevel(ClampingSampler, texCoord, 0).rgb;
+	#if ENABLE_BLOOM==1
+			//	Should the bloom colour go through the
+			//	tonemapping, also?... It seems to work much
+			//	better when it does. (plus, SRGB is handled correctly).
+		float3 bloomValue = BloomScale * BloomMap.SampleLevel(ClampingSampler, texCoord, 0).rgb;
 
-		// note --	should the bloom value go through the tone map
-		//			operator? If, so, add the bloom value before ApplyToneMap
-		//			this causes some wierd problems though -- the bloom
-		//			seems to get exponentially stronger. The result seems to be
-		//			better, visually, applying the tonemap afterwards
+			// note --	should the bloom value go through the tone map
+			//			operator? If, so, add the bloom value before ApplyToneMap
+			//			this causes some wierd problems though -- the bloom
+			//			seems to get exponentially stronger. The result seems to be
+			//			better, visually, applying the tonemap afterwards
 
-	input.rgb += bloomValue;
+		input.rgb += 20.f * bloomValue;
+	#endif
+
 	input.rgb = ApplyToneMap(input.rgb);
 
 	bool writeOutLinearSpaceValue = (HARDWARE_SRGB_DISABLED!=1);
@@ -150,7 +153,6 @@ float4 main(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Tar
 		}
 
 	#endif
-	
+
 	return input;		// probably an implied saturate here
 }
-

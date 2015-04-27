@@ -163,6 +163,7 @@ namespace LevelEditor
             envSettingsType.nameAttribute = envSettingsType.Type.GetAttributeInfo("name");
             envSettingsType.objectsChild = envSettingsType.Type.GetChildInfo("objects");
             envSettingsType.ambientChild = envSettingsType.Type.GetChildInfo("ambient");
+            envSettingsType.tonemapChild = envSettingsType.Type.GetChildInfo("tonemap");
 
             envObjectType.Type = getNodeType("gap", "envObjectType");
             envObjectType.transformAttribute = envObjectType.Type.GetAttributeInfo("transform");
@@ -180,7 +181,19 @@ namespace LevelEditor
             ambientSettingsType.ambientlightAttribute = ambientSettingsType.Type.GetAttributeInfo("ambientlight");
             ambientSettingsType.ambientbrightnessAttribute = ambientSettingsType.Type.GetAttributeInfo("ambientbrightness");
             ambientSettingsType.skytextureAttribute = ambientSettingsType.Type.GetAttributeInfo("skytexture");
+            ambientSettingsType.skyreflectionscaleAttribute = ambientSettingsType.Type.GetAttributeInfo("skyreflectionscale");
             ambientSettingsType.flagsAttribute = ambientSettingsType.Type.GetAttributeInfo("flags");
+
+            toneMapSettingsType.Type = getNodeType("gap", "toneMapSettingsType");
+            toneMapSettingsType.BloomScaleAttribute = toneMapSettingsType.Type.GetAttributeInfo("BloomScale");
+            toneMapSettingsType.BloomThresholdAttribute = toneMapSettingsType.Type.GetAttributeInfo("BloomThreshold");
+            toneMapSettingsType.BloomRampingFactorAttribute = toneMapSettingsType.Type.GetAttributeInfo("BloomRampingFactor");
+            toneMapSettingsType.BloomDesaturationFactorAttribute = toneMapSettingsType.Type.GetAttributeInfo("BloomDesaturationFactor");
+            toneMapSettingsType.SceneKeyAttribute = toneMapSettingsType.Type.GetAttributeInfo("SceneKey");
+            toneMapSettingsType.LuminanceMinAttribute = toneMapSettingsType.Type.GetAttributeInfo("LuminanceMin");
+            toneMapSettingsType.LuminanceMaxAttribute = toneMapSettingsType.Type.GetAttributeInfo("LuminanceMax");
+            toneMapSettingsType.WhitePointAttribute = toneMapSettingsType.Type.GetAttributeInfo("WhitePoint");
+            toneMapSettingsType.FlagsAttribute = toneMapSettingsType.Type.GetAttributeInfo("Flags");
 
             prototypeType.Type = getNodeType("gap", "prototypeType");
             prototypeType.gameObjectChild = prototypeType.Type.GetChildInfo("gameObject");
@@ -230,6 +243,7 @@ namespace LevelEditor
             directionalLightType.diffusebrightnessAttribute = directionalLightType.Type.GetAttributeInfo("diffusebrightness");
             directionalLightType.specularAttribute = directionalLightType.Type.GetAttributeInfo("specular");
             directionalLightType.specularbrightnessAttribute = directionalLightType.Type.GetAttributeInfo("specularbrightness");
+            directionalLightType.specularnonmetalbrightnessAttribute = directionalLightType.Type.GetAttributeInfo("specularnonmetalbrightness");
             directionalLightType.flagsAttribute = directionalLightType.Type.GetAttributeInfo("flags");
 
             gameObjectComponentType.Type = getNodeType("gap", "gameObjectComponentType");
@@ -915,6 +929,7 @@ namespace LevelEditor
             public static AttributeInfo nameAttribute;
             public static ChildInfo objectsChild;
             public static ChildInfo ambientChild;
+            public static ChildInfo tonemapChild;
         }
 
         public static class envObjectType
@@ -938,7 +953,22 @@ namespace LevelEditor
             public static AttributeInfo ambientlightAttribute;
             public static AttributeInfo ambientbrightnessAttribute;
             public static AttributeInfo skytextureAttribute;
+            public static AttributeInfo skyreflectionscaleAttribute;
             public static AttributeInfo flagsAttribute;
+        }
+
+        public static class toneMapSettingsType
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo BloomScaleAttribute;
+            public static AttributeInfo BloomThresholdAttribute;
+            public static AttributeInfo BloomRampingFactorAttribute;
+            public static AttributeInfo BloomDesaturationFactorAttribute;
+            public static AttributeInfo SceneKeyAttribute;
+            public static AttributeInfo LuminanceMinAttribute;
+            public static AttributeInfo LuminanceMaxAttribute;
+            public static AttributeInfo WhitePointAttribute;
+            public static AttributeInfo FlagsAttribute;
         }
 
         public static class prototypeType
@@ -1009,6 +1039,7 @@ namespace LevelEditor
             public static AttributeInfo diffusebrightnessAttribute;
             public static AttributeInfo specularAttribute;
             public static AttributeInfo specularbrightnessAttribute;
+            public static AttributeInfo specularnonmetalbrightnessAttribute;
             public static AttributeInfo flagsAttribute;
         }
 

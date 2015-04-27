@@ -25,6 +25,7 @@
 #include "../BufferUploads/DataPacket.h"
 #include "../ConsoleRig/Console.h"
 #include "../Utility/BitUtils.h"
+#include "../Utility/ParameterBox.h"
 
 #include "../RenderCore/DX11/Metal/DX11Utils.h"
 
@@ -36,8 +37,6 @@ namespace SceneEngine
     using namespace RenderCore::Metal;
 
     ColorGradingSettings        DefaultColorGradingSettings();
-    ToneMapSettings             DefaultToneMapSettings();
-    extern ToneMapSettings      GlobalToneMapSettings = DefaultToneMapSettings();
     extern ColorGradingSettings GlobalColorGradingSettings = DefaultColorGradingSettings();
 
     struct ColorGradingShaderConstants
@@ -57,6 +56,20 @@ namespace SceneEngine
         int _doFilterColor;
     };
     ColorGradingShaderConstants BuildColorGradingShaderConstants(const ColorGradingSettings& settings);
+
+    struct ToneMapSettingsConstants
+    {
+        Float3  _bloomScale;
+        float   _bloomThreshold;
+        float   _bloomRampingFactor;
+        float   _bloomDesaturationFactor;
+        float   _sceneKey;
+	    float   _luminanceMin;
+	    float   _luminanceMax;
+	    float   _whitepoint;
+        float   _dummy[2];
+    };
+    ToneMapSettingsConstants AsConstants(const ToneMapSettings& settings);
 
     class BloomStepBuffer
     {
@@ -295,8 +308,8 @@ namespace SceneEngine
                 int     _buffer;
             } luminanceConstants = { frameIndex, resources._firstStepWidth*resources._firstStepHeight, 1.0f/60.f, 0 };
 
-            auto& toneMapConstants = GlobalToneMapSettings;
-
+            auto toneMapSettings = parserContext.GetSceneParser()->GetToneMapSettings();;
+            auto toneMapConstants = AsConstants(toneMapSettings);
             context->BindCS(MakeResourceList(
                 ConstantBuffer(&toneMapConstants, sizeof(toneMapConstants)),
                 ConstantBuffer(&luminanceConstants, sizeof(luminanceConstants))));
@@ -352,11 +365,10 @@ namespace SceneEngine
                 //      We blur each one, and add it to the next higher resolution one
                 //
 
-            {
+            if (toneMapSettings._flags & ToneMapSettings::Flags::EnableBloom) {
                 float filteringWeights[12];
-                static const float standardDeviationForBlur = 2.2f;
                 XlSetMemory(filteringWeights, 0, sizeof(filteringWeights));
-                BuildGaussianFilteringWeights(filteringWeights, standardDeviationForBlur, 11);
+                BuildGaussianFilteringWeights(filteringWeights, toneMapSettings._bloomBlurStdDev, 11);
                 context->BindPS(MakeResourceList(Metal::ConstantBuffer(filteringWeights, sizeof(filteringWeights))));
 
                 context->Bind(Techniques::CommonResources()._dssDisable);
@@ -469,9 +481,10 @@ namespace SceneEngine
         {
         public:
             unsigned _operator;
+            bool _enableBloom;
             bool _hardwareSRGBDisabled, _doColorGrading, _doLevelsAdjustment, _doSelectiveColour, _doFilterColour;
-            Desc(unsigned opr, bool hardwareSRGBDisabled, bool doColorGrading, bool doLevelsAdjustments, bool doSelectiveColour, bool doFilterColour)
-                : _operator(opr), _hardwareSRGBDisabled(hardwareSRGBDisabled), _doColorGrading(doColorGrading)
+            Desc(unsigned opr, bool enableBloom, bool hardwareSRGBDisabled, bool doColorGrading, bool doLevelsAdjustments, bool doSelectiveColour, bool doFilterColour)
+                : _operator(opr), _enableBloom(enableBloom), _hardwareSRGBDisabled(hardwareSRGBDisabled), _doColorGrading(doColorGrading)
                 , _doLevelsAdjustment(doLevelsAdjustments), _doSelectiveColour(doSelectiveColour), _doFilterColour(doFilterColour) {}
         };
 
@@ -490,8 +503,8 @@ namespace SceneEngine
         char shaderDefines[256];
         sprintf_s(
             shaderDefines, dimof(shaderDefines), 
-            "OPERATOR=%i;HARDWARE_SRGB_DISABLED=%i;DO_COLOR_GRADING=%i;MAT_LEVELS_ADJUSTMENT=%i;MAT_SELECTIVE_COLOR=%i;MAT_PHOTO_FILTER=%i",
-            Tweakable("ToneMapOperator", 1), desc._hardwareSRGBDisabled, desc._doColorGrading, desc._doLevelsAdjustment, desc._doSelectiveColour, desc._doFilterColour);
+            "OPERATOR=%i;ENABLE_BLOOM=%i;HARDWARE_SRGB_DISABLED=%i;DO_COLOR_GRADING=%i;MAT_LEVELS_ADJUSTMENT=%i;MAT_SELECTIVE_COLOR=%i;MAT_PHOTO_FILTER=%i",
+            Tweakable("ToneMapOperator", 1), desc._enableBloom, desc._hardwareSRGBDisabled, desc._doColorGrading, desc._doLevelsAdjustment, desc._doSelectiveColour, desc._doFilterColour);
         auto& shaderProgram = Assets::GetAssetDep<Metal::ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen:vs_*",
             "game/xleres/postprocess/tonemap.psh:main:ps_*", 
@@ -531,7 +544,8 @@ namespace SceneEngine
             SetupVertexGeneratorShader(context);
             context->Bind(Techniques::CommonResources()._blendOpaque);
             bool bindCopyShader = true;
-            if (Tweakable("DoToneMap", true) && parserContext.GetSceneParser()->GetGlobalLightingDesc()._doToneMap) {
+            auto settings = parserContext.GetSceneParser()->GetToneMapSettings();
+            if (Tweakable("DoToneMap", true) && (settings._flags & ToneMapSettings::Flags::EnableToneMap)) {
                 auto& toneMapRes = GetResources(inputResource, sampleCount);
                 if (toneMapRes._calculateInputsSucceeded) {
                         //  Bind a pixel shader that will do the tonemap operation
@@ -540,21 +554,23 @@ namespace SceneEngine
                     TRY {
 
                         bool doColorGrading = Tweakable("DoColorGrading", false);
-                        auto& toneMapSettings = GlobalToneMapSettings;
                         auto colorGradingSettings = BuildColorGradingShaderConstants(GlobalColorGradingSettings);
 
                         auto& box = Techniques::FindCachedBoxDep<ToneMapShaderBox>(
-                            ToneMapShaderBox::Desc( Tweakable("ToneMapOperator", 1), hardwareSRGBDisabled, doColorGrading, !!(colorGradingSettings._doLevelsAdustment), 
-                                                    !!(colorGradingSettings._doSelectiveColor), !!(colorGradingSettings._doFilterColor)));
+                            ToneMapShaderBox::Desc(
+                                Tweakable("ToneMapOperator", 1), !!(settings._flags & ToneMapSettings::Flags::EnableBloom),
+                                hardwareSRGBDisabled, doColorGrading, !!(colorGradingSettings._doLevelsAdustment), 
+                                !!(colorGradingSettings._doSelectiveColor), !!(colorGradingSettings._doFilterColor)));
 
                         context->Bind(*box._shaderProgram);
                         context->BindPS(MakeResourceList(1, toneMapRes._propertiesBufferSRV, toneMapRes._bloomBuffers[0]._bloomBufferSRV));
                         bindCopyShader = false;
 
-                        ConstantBuffer cb0(&toneMapSettings, sizeof(ToneMapSettings));
-                        ConstantBuffer cb1(&colorGradingSettings, sizeof(ColorGradingShaderConstants));
-                        const ConstantBuffer* cbs[] = { &cb0, &cb1 };
-                        box._uniforms.Apply( *context, UniformsStream(), UniformsStream(nullptr, cbs, dimof(cbs)));
+                        const RenderCore::SharedPkt cbs[] = { 
+                            MakeSharedPkt(AsConstants(settings)), 
+                            MakeSharedPkt(colorGradingSettings) 
+                        };
+                        box._uniforms.Apply( *context, UniformsStream(), UniformsStream(cbs, nullptr, dimof(cbs)));
 
                         if (Tweakable("ToneMapDebugging", false)) {
                             parserContext._pendingOverlays.push_back(
@@ -809,6 +825,7 @@ namespace SceneEngine
     ToneMapSettings DefaultToneMapSettings()
     {
         ToneMapSettings result;
+        result._flags = ToneMapSettings::Flags::EnableToneMap | ToneMapSettings::Flags::EnableBloom;
         result._bloomScale = Float3(1.f, 1.f, 1.f);
         result._bloomThreshold = 4.5f;
         result._bloomRampingFactor = .33f;
@@ -817,8 +834,7 @@ namespace SceneEngine
         result._luminanceMin = .18f / 3.f;
         result._luminanceMax = .25f / .25f;
         result._whitepoint = 8.f;
-        result._dummy[0] = 0.f;
-        result._dummy[1] = 0.f;
+        result._bloomBlurStdDev = 2.2f;
         return result;
     }
 
@@ -850,6 +866,65 @@ namespace SceneEngine
             // colour grading not currently supported...!
         ColorGradingShaderConstants result;
         return result;
+    }
+
+    ToneMapSettingsConstants AsConstants(const ToneMapSettings& settings)
+    { 
+        ToneMapSettingsConstants result;
+        result._bloomScale = settings._bloomScale;
+        result._bloomThreshold = settings._bloomThreshold;
+        result._bloomRampingFactor = settings._bloomRampingFactor;
+        result._bloomDesaturationFactor = settings._bloomDesaturationFactor;
+        result._sceneKey = settings._sceneKey;
+	    result._luminanceMin = settings._luminanceMin;
+	    result._luminanceMax = settings._luminanceMax;
+	    result._whitepoint = settings._whitepoint;
+        result._dummy[0] = 0.f;
+        result._dummy[1] = 0.f;
+        return result;
+    }
+
+    ToneMapSettings::ToneMapSettings() {}
+
+    static Float3 AsFloat3Color(unsigned packedColor)
+    {
+        return Float3(
+            (float)((packedColor >> 16) & 0xff) / 255.f,
+            (float)((packedColor >>  8) & 0xff) / 255.f,
+            (float)(packedColor & 0xff) / 255.f);
+    }
+
+    ToneMapSettings::ToneMapSettings(const ParameterBox& paramBox)
+    {
+        auto defaults = DefaultToneMapSettings();
+
+        static const auto bloomScale = ParameterBox::MakeParameterNameHash("BloomScale");
+        static const auto bloomThreshold = ParameterBox::MakeParameterNameHash("BloomThreshold");
+        static const auto bloomRampingFactor = ParameterBox::MakeParameterNameHash("BloomRampingFactor");
+        static const auto bloomDesaturationFactor = ParameterBox::MakeParameterNameHash("BloomDesaturationFactor");
+        static const auto sceneKey = ParameterBox::MakeParameterNameHash("SceneKey");
+        static const auto luminanceMin = ParameterBox::MakeParameterNameHash("LuminanceMin");
+        static const auto luminanceMax = ParameterBox::MakeParameterNameHash("LuminanceMax");
+        static const auto whitePoint = ParameterBox::MakeParameterNameHash("WhitePoint");
+        static const auto bloomBlurStdDev = ParameterBox::MakeParameterNameHash("BloomBlurStdDev");
+        static const auto flags = ParameterBox::MakeParameterNameHash("Flags");
+
+        auto flagsV = paramBox.GetParameter<unsigned>(flags);
+        if (flagsV.first) _flags = flagsV.second;
+        else              _flags = defaults._flags;
+
+        auto scale = paramBox.GetParameter<unsigned>(bloomScale);
+        if (scale.first)    _bloomScale = AsFloat3Color(scale.second);
+        else                _bloomScale = defaults._bloomScale;
+
+        _bloomThreshold = paramBox.GetParameter<float>(bloomThreshold, defaults._bloomThreshold);
+        _bloomRampingFactor = paramBox.GetParameter<float>(bloomRampingFactor, defaults._bloomRampingFactor);
+        _bloomDesaturationFactor = paramBox.GetParameter<float>(bloomDesaturationFactor, defaults._bloomDesaturationFactor);
+        _sceneKey = paramBox.GetParameter<float>(sceneKey, defaults._sceneKey);
+	    _luminanceMin = paramBox.GetParameter<float>(luminanceMin, defaults._luminanceMin);
+	    _luminanceMax = paramBox.GetParameter<float>(luminanceMax, defaults._luminanceMax);
+	    _whitepoint = paramBox.GetParameter<float>(whitePoint, defaults._whitepoint);
+        _bloomBlurStdDev = paramBox.GetParameter<float>(bloomBlurStdDev, defaults._bloomBlurStdDev);
     }
 
 }

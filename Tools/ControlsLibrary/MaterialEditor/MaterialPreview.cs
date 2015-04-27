@@ -53,6 +53,7 @@ namespace ControlsLibrary.MaterialEditor
             {
                 envSettings = value;
                 _environment.DataSource = value.Names;
+                _environment.Visible = true;
             }
         }
 

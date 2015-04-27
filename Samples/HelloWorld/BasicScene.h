@@ -25,6 +25,7 @@ namespace Sample
         typedef SceneEngine::SceneParseSettings     SceneParseSettings;
         typedef SceneEngine::LightDesc              LightDesc;
         typedef SceneEngine::GlobalLightingDesc     GlobalLightingDesc;
+        typedef SceneEngine::ToneMapSettings        ToneMapSettings;
 
         RenderCore::Techniques::CameraDesc GetCameraDesc() const;
 
@@ -46,6 +47,7 @@ namespace Sample
         const LightDesc& GetLightDesc(unsigned index) const;
 
         GlobalLightingDesc GetGlobalLightingDesc() const;
+        ToneMapSettings GetToneMapSettings() const;
         float GetTimeValue() const;
 
         BasicSceneParser();

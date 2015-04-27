@@ -32,6 +32,11 @@ namespace PlatformRig
         return GetEnvSettings()._globalLightingDesc;
     }
 
+    ToneMapSettings BasicSceneParser::GetToneMapSettings() const
+    {
+        return GetEnvSettings()._toneMapSettings;
+    }
+
 
 
     SceneEngine::LightDesc DefaultDominantLight()
@@ -41,16 +46,19 @@ namespace PlatformRig
         light._negativeLightDirection = Normalize(Float3(-.1f, 0.33f, 1.f));
         light._radius = 10000.f;
         light._shadowFrustumIndex = ~unsigned(0x0);
+        light._diffuseColor = 3.f * Float3(1.f, 1.f, 1.f);
+        light._nonMetalSpecularBrightness = 5.f;
+        light._specularColor = 30.f * Float3(1.f, 1.f, 1.f);
         return light;
     }
 
     SceneEngine::GlobalLightingDesc DefaultGlobalLightingDesc()
     {
         SceneEngine::GlobalLightingDesc result;
-        result._ambientLight = .03f * Float3(1.f, 1.f, 1.f);
+        result._ambientLight = .33f * Float3(1.f, 1.f, 1.f);
+        result._skyReflectionScale = 1.f;
         result._doAtmosphereBlur = false;
         result._doOcean = false;
-        result._doToneMap = false;
         return result;
     }
 
@@ -59,6 +67,7 @@ namespace PlatformRig
         EnvironmentSettings result;
         result._globalLightingDesc = DefaultGlobalLightingDesc();
         result._lights.push_back(DefaultDominantLight());
+        result._toneMapSettings = DefaultToneMapSettings();
         return std::move(result);
     }
 }

@@ -144,7 +144,7 @@ namespace SceneEngine
 
     GlobalLightingDesc::GlobalLightingDesc() 
     : _ambientLight(0.f, 0.f, 0.f), _skyReflectionScale(1.0f)
-    , _doAtmosphereBlur(false), _doOcean(false), _doToneMap(false), _doVegetationSpawn(false) 
+    , _doAtmosphereBlur(false), _doOcean(false), _doVegetationSpawn(false) 
     {
         _skyTexture[0] = '\0';
     }
@@ -164,18 +164,9 @@ namespace SceneEngine
         static const auto ambientBrightnessHash = ParameterBox::MakeParameterNameHash("ambientbrightness");
         static const auto skyTextureHash = ParameterBox::MakeParameterNameHash("skytexture");
         static const auto skyReflectionScaleHash = ParameterBox::MakeParameterNameHash("skyreflectionscale");
-        static const auto flagsHash = ParameterBox::MakeParameterNameHash("flags");
 
-        _ambientLight = 
-            props.GetParameter(ambientBrightnessHash, 1.f) * AsFloat3Color(props.GetParameter(ambientHash, ~0x0u));
-
+        _ambientLight = props.GetParameter(ambientBrightnessHash, 1.f) * AsFloat3Color(props.GetParameter(ambientHash, ~0x0u));
         _skyReflectionScale = props.GetParameter(skyReflectionScaleHash, 1.f);
-
-        auto flags = props.GetParameter<int>(flagsHash);
-        if (flags.first) {
-            _doToneMap = flags.second & (1<<0);
-        }
-
         props.GetString(skyTextureHash, _skyTexture, dimof(_skyTexture));
     }
 
@@ -195,6 +186,23 @@ namespace SceneEngine
         _diffuseColor = Float3(1.f, 1.f, 1.f);
         _specularColor = Float3(1.f, 1.f, 1.f);
         _nonMetalSpecularBrightness = 1.f;
+    }
+
+    LightDesc::LightDesc(const Utility::ParameterBox& props)
+    {
+        static const auto diffuseHash = ParameterBox::MakeParameterNameHash("diffuse");
+        static const auto diffuseBrightnessHash = ParameterBox::MakeParameterNameHash("diffusebrightness");
+        static const auto specularHash = ParameterBox::MakeParameterNameHash("specular");
+        static const auto specularBrightnessHash = ParameterBox::MakeParameterNameHash("specularbrightness");
+        static const auto specularNonMetalBrightnessHash = ParameterBox::MakeParameterNameHash("specularnonmetalbrightness");
+
+        _type = LightDesc::Directional;
+        _diffuseColor = props.GetParameter(diffuseBrightnessHash, 1.f) * AsFloat3Color(props.GetParameter(diffuseHash, ~0x0u));
+        _specularColor = props.GetParameter(specularBrightnessHash, 1.f) * AsFloat3Color(props.GetParameter(specularHash, ~0x0u));
+        _nonMetalSpecularBrightness = props.GetParameter(specularNonMetalBrightnessHash, 1.f);
+                
+        _radius = 10000.f;
+        _shadowFrustumIndex = ~unsigned(0x0);
     }
 
 

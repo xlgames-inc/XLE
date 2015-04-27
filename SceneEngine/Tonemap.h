@@ -9,6 +9,8 @@
 #include "../RenderCore/Metal/Forward.h"
 #include "../Math/Vector.h"
 
+namespace Utility { class ParameterBox; }
+
 namespace SceneEngine
 {
     class LightingParserContext;
@@ -27,6 +29,12 @@ namespace SceneEngine
     class ToneMapSettings 
     { 
     public:
+        struct Flags
+        {
+            enum Enum { EnableToneMap = 1<<0, EnableBloom = 1<<1 };
+            typedef unsigned BitField;
+        };
+        Flags::BitField _flags;
         Float3  _bloomScale;
         float   _bloomThreshold;
         float   _bloomRampingFactor;
@@ -35,7 +43,10 @@ namespace SceneEngine
 	    float   _luminanceMin;
 	    float   _luminanceMax;
 	    float   _whitepoint;
-        float   _dummy[2];
+        float   _bloomBlurStdDev;
+
+        ToneMapSettings();
+        ToneMapSettings(const Utility::ParameterBox&);
     };
 
     class ColorGradingSettings
@@ -60,6 +71,7 @@ namespace SceneEngine
         float _selectiveColorBlacks;
     };
 
-    extern ToneMapSettings      GlobalToneMapSettings;
     extern ColorGradingSettings GlobalColorGradingSettings;
+
+    ToneMapSettings DefaultToneMapSettings();
 }

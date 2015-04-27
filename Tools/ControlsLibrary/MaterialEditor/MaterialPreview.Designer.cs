@@ -119,6 +119,7 @@ namespace ControlsLibrary.MaterialEditor
             this._environment.Location = new System.Drawing.Point(5, 123);
             this._environment.Size = new System.Drawing.Size(155, 21);
             this._environment.TabIndex = 4;
+            this._environment.Visible = false;
             // 
             // MaterialPreview
             // 

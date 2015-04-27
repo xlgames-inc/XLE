@@ -582,7 +582,7 @@ namespace SceneEngine
         {
             GPUProfiler::DebugAnnotation anno(*context, L"Resolve-MSAA-HDR");
 
-            if (parserContext.GetSceneParser()->GetGlobalLightingDesc()._doToneMap) {
+            if (parserContext.GetSceneParser()->GetToneMapSettings()._flags & ToneMapSettings::Flags::EnableToneMap) {
                 ToneMap_SampleLuminance(context, parserContext, postLightingResolveSRV, qualitySettings._samplingCount);   //  (must resolve luminance early, because we use it during the MSAA resolve)
             }
 

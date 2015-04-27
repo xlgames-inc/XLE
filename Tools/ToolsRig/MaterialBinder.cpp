@@ -12,6 +12,7 @@
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/CommonBindings.h"
+#include "../../RenderCore/Techniques/PredefinedCBLayout.h"
 #include "../../RenderCore/Assets/Material.h"
 #include "../../RenderCore/Assets/AssetUtils.h"
 #include "../../Assets/AssetUtils.h"
@@ -112,21 +113,47 @@ namespace ToolsRig
         } else if (!_stricmp(name, "SI_LightColor") && size >= sizeof(Float3)) {
             *((Float3*)destination) = constants._lightColour;
             return sizeof(Float3);
-        } else if (!_stricmp(name, "MaterialDiffuse") && size >= sizeof(Float3)) {
-            *((Float3*)destination) = Float3(1.f, 1.f, 1.f);
-            return sizeof(Float3);
-        } else if (!_stricmp(name, "Opacity") && size >= sizeof(float)) {
-            *((float*)destination) = 1.f;
-            return sizeof(float);
-        } else if (!_stricmp(name, "MaterialSpecular") && size >= sizeof(Float3)) {
-            *((Float3*)destination) = Float3(1.f, 1.f, 1.f);
-            return sizeof(Float3);
-        } else if (!_stricmp(name, "AlphaThreshold") && size >= sizeof(float)) {
-            *((float*)destination) = .33f;
-            return sizeof(float);
         }
         return 0;
     }
+
+    static void WriteParameter(
+        RenderCore::SharedPkt& result,
+        const ParameterBox& constants,
+        ParameterBox::ParameterNameHash nameHash,
+        ID3D11ShaderReflectionVariable& reflectionVariable,
+        const D3D11_SHADER_VARIABLE_DESC& variableDesc,
+        unsigned bufferSize)
+    {
+        auto type = reflectionVariable.GetType();
+        D3D11_SHADER_TYPE_DESC typeDesc;
+        auto hresult = type->GetDesc(&typeDesc);
+        if (SUCCEEDED(hresult)) {
+
+                //
+                //      Finally, copy whatever the material object
+                //      is, into the destination position in the 
+                //      constant buffer;
+                //
+
+            auto impliedType = RenderCore::Metal::GetType(typeDesc);
+            assert((variableDesc.StartOffset + impliedType.GetSize()) <= bufferSize);
+            if ((variableDesc.StartOffset + impliedType.GetSize()) <= bufferSize) {
+
+                if (!result.size()) {
+                    result = RenderCore::MakeSharedPktSize(bufferSize);
+                    std::fill((uint8*)result.begin(), (uint8*)result.end(), 0);
+                }
+
+                constants.GetParameter(
+                    nameHash,
+                    PtrAdd(result.begin(), variableDesc.StartOffset),
+                    impliedType);
+            }
+        }
+    }
+
+
 
     static std::vector<std::pair<uint64, RenderCore::Metal::ConstantBufferPacket>> 
         BuildMaterialConstants(
@@ -142,6 +169,9 @@ namespace ToolsRig
             //      from the current previewing material state
             //
         std::vector<std::pair<uint64, RenderCore::Metal::ConstantBufferPacket>> finalResult;
+
+        const auto& cbLayout = ::Assets::GetAssetDep<RenderCore::Techniques::PredefinedCBLayout>(
+            "game/xleres/BasicMaterialConstants.txt");
 
         D3D11_SHADER_DESC shaderDesc;
         reflection.GetDesc(&shaderDesc);
@@ -173,38 +203,15 @@ namespace ToolsRig
                                     //
 
                                 auto nameHash = ParameterBox::MakeParameterNameHash(variableDesc.Name);
-                                auto hasParam = constants.HasParameter(nameHash);
-                                if (hasParam) {
-
-                                    auto type = reflectionVariable->GetType();
-                                    D3D11_SHADER_TYPE_DESC typeDesc;
-                                    hresult = type->GetDesc(&typeDesc);
-                                    if (SUCCEEDED(hresult)) {
-
-                                            //
-                                            //      Finally, copy whatever the material object
-                                            //      is, into the destination position in the 
-                                            //      constant buffer;
-                                            //
-
-                                        auto impliedType = RenderCore::Metal::GetType(typeDesc);
-                                        assert((variableDesc.StartOffset + impliedType.GetSize()) <= bufferDesc.Size);
-                                        if ((variableDesc.StartOffset + impliedType.GetSize()) <= bufferDesc.Size) {
-
-                                            if (!result.size()) {
-                                                result = RenderCore::MakeSharedPktSize(bufferDesc.Size);
-                                                std::fill((uint8*)result.begin(), (uint8*)result.end(), 0);
-                                            }
-
-                                            constants.GetParameter(
-                                                nameHash,
-                                                PtrAdd(result.begin(), variableDesc.StartOffset),
-                                                impliedType);
-                                        }
-                                    }
-
+                                if (constants.HasParameter(nameHash)) {
+                                    WriteParameter(
+                                        result, constants, nameHash, *reflectionVariable, 
+                                        variableDesc, bufferDesc.Size);
+                                } else if (cbLayout._defaults.HasParameter(nameHash)) {
+                                    WriteParameter(
+                                        result, cbLayout._defaults, nameHash, *reflectionVariable, 
+                                        variableDesc, bufferDesc.Size);
                                 } else {
-                                    
                                     if (!result.size()) {
                                         char buffer[4096];
                                         if (size_t size = WriteSystemVariable(

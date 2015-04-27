@@ -129,6 +129,7 @@ namespace SceneEngine
         float       _nonMetalSpecularBrightness;
 
         LightDesc();
+        LightDesc(const Utility::ParameterBox& paramBox);
     };
 
     class GlobalLightingDesc
@@ -140,7 +141,6 @@ namespace SceneEngine
 
         bool _doAtmosphereBlur;
         bool _doOcean;
-        bool _doToneMap;
         bool _doVegetationSpawn;
 
         GlobalLightingDesc();

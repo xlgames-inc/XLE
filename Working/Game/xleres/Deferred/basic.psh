@@ -47,7 +47,8 @@ PerPixelMaterialParam DecodeParametersTexture_ColoredSpecular(float4 paramTexSam
 	PerPixelMaterialParam result = PerPixelMaterialParam_Default();
 	result.roughness = RoughnessMin;
 	result.specular = lerp(SpecularMin, SpecularMax, SRGBLuminance(paramTexSample.rgb));
-	result.metal = lerp(MetalMin, MetalMax, saturate(8.f * dot(diffuseDiverge, diffuseDiverge)));
+	float div = dot(diffuseDiverge, diffuseDiverge);
+	result.metal = lerp(MetalMin, MetalMax, saturate(32.f * div * div));
 	return result;
 }
 

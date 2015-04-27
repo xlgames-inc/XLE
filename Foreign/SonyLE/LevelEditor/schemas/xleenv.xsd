@@ -21,16 +21,12 @@
           converter="RenderingInterop.PropertyEditing.AssetNameConverter,RenderingInterop"/>
         <scea.dom.editors.attribute category="Light" name="skyreflectionscale" displayName="Sky Reflection Scale" description="Scale for the reflection of the static sky image"
           editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,2"/>
-        <scea.dom.editors.attribute category="Light" name="flags" displayName="Flags"
-          editor="Sce.Atf.Controls.PropertyEditing.FlagsUITypeEditor,Atf.Gui.WinForms:DoToneMap"
-          converter="Sce.Atf.Controls.PropertyEditing.FlagsTypeConverter:DoToneMap"/>
 
         <LeGe.NativeType nativeName="AmbientSettings"/>
         <LeGe.NativeProperty name="ambientlight" nativeName="ambientlight"/>
         <LeGe.NativeProperty name="ambientbrightness" nativeName="ambientbrightness"/>
         <LeGe.NativeProperty name="skytexture" nativeName="skytexture"/>
         <LeGe.NativeProperty name="skyreflectionscale" nativeName="skyreflectionscale"/>
-        <LeGe.NativeProperty name="flags" nativeName="flags"/>
         <LeGe.NativeVis geo="sphere"/>
 
         <scea.dom.editors category="Lights" name="AmbientSettings" menuText="Lights/AmbientSettings" description="Global ambient settings"/>
@@ -42,6 +38,65 @@
     <xs:attribute name="skytexture" type="xs:string"/>
     <xs:attribute name="skyreflectionscale" type="xs:float" default="1"/>
     <xs:attribute name="flags" type="xs:int" default="0"/>
+  </xs:complexType>
+
+      <!-- T O N E   M A P   S E T T I N G S -->
+  <xs:complexType name="toneMapSettingsType">
+    <xs:annotation>
+      <xs:appinfo>
+        <LeGe.NativeType nativeName="ToneMapSettings"/>
+        <LeGe.NativeProperty name="BloomScale" nativeName="BloomScale"/>
+        <LeGe.NativeProperty name="BloomThreshold" nativeName="BloomThreshold"/>
+        <LeGe.NativeProperty name="BloomRampingFactor" nativeName="BloomRampingFactor"/>
+        <LeGe.NativeProperty name="BloomDesaturationFactor" nativeName="BloomDesaturationFactor"/>
+        <LeGe.NativeProperty name="BloomBlurStdDev" nativeName="BloomBlurStdDev"/>
+        <LeGe.NativeProperty name="SceneKey" nativeName="SceneKey"/>
+        <LeGe.NativeProperty name="LuminanceMin" nativeName="LuminanceMin"/>
+        <LeGe.NativeProperty name="LuminanceMax" nativeName="LuminanceMax"/>
+        <LeGe.NativeProperty name="WhitePoint" nativeName="WhitePoint"/>
+        <LeGe.NativeProperty name="Flags" nativeName="Flags"/>
+
+        <scea.dom.editors.attribute category="Bloom" name="BloomScale" displayName="Bloom Scale" description="Use to change the color of the bloom effect"
+          editor="Sce.Atf.Controls.PropertyEditing.ColorPickerEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.IntColorConverter"/>
+        <scea.dom.editors.attribute category="Bloom" name="BloomThreshold" displayName="Bloom Threshold" description="Brightness values above this point will start to bloom"
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,20"/>
+        <scea.dom.editors.attribute category="Bloom" name="BloomRampingFactor" displayName="Bloom Ramping Factor" description="How rapidly highlights start to bloom out"
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
+        <scea.dom.editors.attribute category="Bloom" name="BloomDesaturationFactor" displayName="Bloom Desaturation Factor" description="Controls how much of the underlying colour the bloom should pick up"
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
+        <scea.dom.editors.attribute category="Bloom" name="BloomBlurStdDev" displayName="Bloom Blur Standard Deviation" description="Controls the sharpness of the blur applied to the bloom"
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:1,3"/>
+
+        <scea.dom.editors.attribute category="Tonemap" name="SceneKey" displayName="Scene Key" description="Higher values result in an overall brighter look to the final image"
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,.5"/>
+
+        <scea.dom.editors.attribute category="Tonemap" name="LuminanceMin" displayName="Luminance Min" description="Clamps range of valid exposures"
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
+        <scea.dom.editors.attribute category="Tonemap" name="LuminanceMax" displayName="Luminance Max" description="Clamps range of valid exposures"
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,5"/>
+
+        <scea.dom.editors.attribute category="Tonemap" name="WhitePoint" displayName="White Point" description="This brightness value will appear true white after exposure"
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,20"/>
+
+        <scea.dom.editors.attribute category="Tonemap" name="Flags" displayName="Flags"
+          editor="Sce.Atf.Controls.PropertyEditing.FlagsUITypeEditor,Atf.Gui.WinForms:EnableToneMap,EnableBloom"
+          converter="Sce.Atf.Controls.PropertyEditing.FlagsTypeConverter:EnableToneMap,EnableBloom"/>
+        
+        <scea.dom.editors category="Lights" name="ToneMapSettings" menuText="Lights/ToneMapSettings" description="Tone map and bloom settings"/>
+        <LeGe.OpaqueListable label="ToneMapSettings"/>
+      </xs:appinfo>
+    </xs:annotation>
+
+    <xs:attribute name="BloomScale" type="xs:int" default="-1"/>
+    <xs:attribute name="BloomThreshold" type="xs:float" default="4.5"/>
+    <xs:attribute name="BloomRampingFactor" type="xs:float" default=".33"/>
+    <xs:attribute name="BloomDesaturationFactor" type="xs:float" default=".5"/>
+    <xs:attribute name="BloomBlurStdDev" type="xs:float" default="2.2"/>
+    <xs:attribute name="SceneKey" type="xs:float" default=".18"/>
+    <xs:attribute name="LuminanceMin" type="xs:float" default="0.06"/>
+    <xs:attribute name="LuminanceMax" type="xs:float" default="1"/>
+    <xs:attribute name="WhitePoint" type="xs:float" default="8"/>
+    <xs:attribute name="Flags" type="xs:int" default="3"/>
   </xs:complexType>
 
       <!-- E N V   O B J E C T -->
@@ -67,6 +122,7 @@
     <xs:sequence>
       <xs:element name="objects" type="envObjectType" minOccurs="0" maxOccurs="unbounded"/>
       <xs:element name="ambient" type="ambientSettingsType" minOccurs="1" maxOccurs="1"/>
+      <xs:element name="tonemap" type="toneMapSettingsType" minOccurs="1" maxOccurs="1"/>
     </xs:sequence>
     <xs:attribute name="name" type="xs:string" default="environment"/>
   </xs:complexType>
@@ -103,9 +159,9 @@
         <scea.dom.editors.attribute category="Light" name="specular" displayName="Specular" description="Specular Color" 
           editor="Sce.Atf.Controls.PropertyEditing.ColorPickerEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.IntColorConverter"/>
         <scea.dom.editors.attribute category="Light" name="specularbrightness" displayName="Specular Brightness" description="Brightness of the specular part of the light"
-          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,20"/>
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,100"/>
         <scea.dom.editors.attribute category="Light" name="specularnonmetalbrightness" displayName="Specular Non-Metal Brightness" description="Brightness of specular on non-metal"
-          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,20"/>
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,100"/>
         <scea.dom.editors.attribute category="Light" name="flags" displayName="Flags"
           editor="Sce.Atf.Controls.PropertyEditing.FlagsUITypeEditor,Atf.Gui.WinForms:CastShadows"
           converter="Sce.Atf.Controls.PropertyEditing.FlagsTypeConverter:CastShadows"/>

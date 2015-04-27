@@ -16,6 +16,7 @@ namespace SceneEngine
     class ShadowProjectionDesc;
     class GlobalLightingDesc;
     class LightDesc;
+    class ToneMapSettings;
 
     class SceneParseSettings
     {
@@ -74,6 +75,7 @@ namespace SceneEngine
         virtual const LightDesc&        GetLightDesc(unsigned index) const = 0;
 
         virtual GlobalLightingDesc      GetGlobalLightingDesc() const = 0;
+        virtual ToneMapSettings         GetToneMapSettings() const = 0;
 
         virtual float                   GetTimeValue() const = 0;
     };

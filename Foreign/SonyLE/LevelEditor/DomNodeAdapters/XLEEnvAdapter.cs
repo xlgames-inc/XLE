@@ -24,6 +24,7 @@ namespace LevelEditor.DomNodeAdapters
                 {
                     if (type == Schema.envObjectType.Type) return true;
                     if (type == Schema.ambientSettingsType.Type) return true;
+                    if (type == Schema.toneMapSettingsType.Type) return true;
                 }
             }
             return false;
@@ -44,6 +45,11 @@ namespace LevelEditor.DomNodeAdapters
                     if (type == Schema.ambientSettingsType.Type)
                     {
                         SetChild(Schema.envSettingsType.ambientChild, domNode);
+                        return true;
+                    }
+                    if (type == Schema.toneMapSettingsType.Type)
+                    {
+                        SetChild(Schema.envSettingsType.tonemapChild, domNode);
                         return true;
                     }
                 }

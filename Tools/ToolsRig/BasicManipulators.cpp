@@ -77,6 +77,7 @@ namespace ToolsRig
         if (!_visCameraSettings) { return false; }
 
         static auto alt = RenderOverlays::DebuggingDisplay::KeyId_Make("alt");
+        static auto shift = RenderOverlays::DebuggingDisplay::KeyId_Make("shift");
         enum ModifierMode
         {
             Translate, Orbit
@@ -119,11 +120,16 @@ namespace ToolsRig
                     //  to clamp the maximum pitch.
                     //
 
-                auto spherical = CartesianToSpherical(_visCameraSettings->_focus - _visCameraSettings->_position);
+                Float4 plane = Expand(Float3(_visCameraSettings->_focus - _visCameraSettings->_position), 0.f);
+                float t = RayVsPlane(_visCameraSettings->_position, _visCameraSettings->_focus, plane);
+
+                Float3 orbitCenter = _visCameraSettings->_position + t * (_visCameraSettings->_focus - _visCameraSettings->_position);
+                auto spherical = CartesianToSpherical(orbitCenter - _visCameraSettings->_position);
                 spherical[0] += evnt._mouseDelta[1] * _orbitRotationSpeed;
                 spherical[0] = Clamp(spherical[0], gPI * 0.02f, gPI * 0.98f);
                 spherical[1] -= evnt._mouseDelta[0] * _orbitRotationSpeed;
-                _visCameraSettings->_position = _visCameraSettings->_focus - SphericalToCartesian(spherical);
+                _visCameraSettings->_position = orbitCenter - SphericalToCartesian(spherical);
+                _visCameraSettings->_focus = orbitCenter;
 
             }
         }
@@ -150,18 +156,9 @@ namespace ToolsRig
     const char* CameraMovementManipulator::GetName() const { return "Camera Movement"; }
     std::string CameraMovementManipulator::GetStatusText() const { return std::string(); }
 
-    auto CameraMovementManipulator::GetFloatParameters() const -> std::pair<FloatParameter*, size_t>
-    {
-        return std::make_pair(nullptr, 0);
-    }
-
-    auto CameraMovementManipulator::GetBoolParameters() const -> std::pair<BoolParameter*, size_t>
-    {
-        return std::make_pair(nullptr, 0);
-    }
-
-    void CameraMovementManipulator::SetActivationState(bool)
-    {}
+    auto CameraMovementManipulator::GetFloatParameters() const -> std::pair<FloatParameter*, size_t> { return std::make_pair(nullptr, 0); }
+    auto CameraMovementManipulator::GetBoolParameters() const -> std::pair<BoolParameter*, size_t> { return std::make_pair(nullptr, 0); }
+    void CameraMovementManipulator::SetActivationState(bool) {}
 
     CameraMovementManipulator::CameraMovementManipulator(std::shared_ptr<VisCameraSettings> visCameraSettings)
     : _visCameraSettings(visCameraSettings)

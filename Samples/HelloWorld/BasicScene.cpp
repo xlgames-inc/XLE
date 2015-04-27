@@ -13,6 +13,7 @@
 #include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../SceneEngine/LightDesc.h"
 #include "../../SceneEngine/LightingParserContext.h"
+#include "../../SceneEngine/Tonemap.h"
 #include "../../Assets/Assets.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/IntermediateResources.h"
@@ -178,8 +179,12 @@ namespace Sample
         auto ambientScale = Tweakable("AmbientScale", .5f * 0.075f);
         result._ambientLight = Float3(.65f * ambientScale, .7f * ambientScale, 1.f * ambientScale);
         XlCopyString(result._skyTexture, "game/xleres/defaultresources/sky/samplesky.dds");
-        result._doToneMap = true;
         return result;
+    }
+
+    auto BasicSceneParser::GetToneMapSettings() const -> ToneMapSettings
+    {
+        return SceneEngine::DefaultToneMapSettings();
     }
 
     unsigned BasicSceneParser::GetShadowProjectionCount() const

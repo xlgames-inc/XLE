@@ -9,6 +9,7 @@
 #include "PlatformRigUtil.h"
 #include "../SceneEngine/LightDesc.h"
 #include "../SceneEngine/SceneParser.h"
+#include "../SceneEngine/ToneMap.h"
 
 namespace PlatformRig
 {
@@ -22,6 +23,7 @@ namespace PlatformRig
     public:
         std::vector<SceneEngine::LightDesc> _lights;
         SceneEngine::GlobalLightingDesc _globalLightingDesc;
+        SceneEngine::ToneMapSettings _toneMapSettings;
 
         class ShadowProj
         {
@@ -47,6 +49,7 @@ namespace PlatformRig
         unsigned                            GetLightCount() const;
         const SceneEngine::LightDesc&       GetLightDesc(unsigned index) const;
         SceneEngine::GlobalLightingDesc     GetGlobalLightingDesc() const;
+        SceneEngine::ToneMapSettings        GetToneMapSettings() const;
 
     protected:
         virtual const EnvironmentSettings&  GetEnvSettings() const = 0;

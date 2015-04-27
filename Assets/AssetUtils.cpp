@@ -18,7 +18,7 @@
 namespace Assets
 {
     static Utility::Threading::RecursiveMutex ResourceDependenciesLock;
-    static std::vector<std::pair<const OnChangeCallback*, std::weak_ptr<DependencyValidation>>> ResourceDependencies;       // DependencyValidation objects never really get removed from this list...
+    static std::vector<std::pair<const OnChangeCallback*, std::shared_ptr<DependencyValidation>>> ResourceDependencies;       // DependencyValidation objects never really get removed from this list...
 
     void Dependencies_Shutdown()
     {
@@ -32,11 +32,9 @@ namespace Assets
         ResourceDependenciesLock.lock();
         auto range = std::equal_range(
             ResourceDependencies.begin(), ResourceDependencies.end(), 
-            this, CompareFirst<const OnChangeCallback*, std::weak_ptr<DependencyValidation>>());
-        for (auto i=range.first; i!=range.second; ++i) {
-            auto l = i->second.lock();
-            if (l) l->OnChange();
-        }
+            this, CompareFirst<const OnChangeCallback*, std::shared_ptr<DependencyValidation>>());
+        for (auto i=range.first; i!=range.second; ++i)
+            i->second->OnChange();
         ResourceDependenciesLock.unlock();
     }
 
@@ -60,7 +58,7 @@ namespace Assets
         ResourceDependenciesLock.lock();
         auto i = std::lower_bound(
             ResourceDependencies.begin(), ResourceDependencies.end(), 
-            dependency, CompareFirst<const OnChangeCallback*, std::weak_ptr<DependencyValidation>>());
+            dependency, CompareFirst<const OnChangeCallback*, std::shared_ptr<DependencyValidation>>());
         ResourceDependencies.insert(i, std::make_pair(dependency, std::move(dependentResource)));
         ResourceDependenciesLock.unlock();
     }

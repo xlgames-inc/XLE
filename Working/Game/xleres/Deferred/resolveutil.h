@@ -72,7 +72,6 @@ float3 LightResolve_Specular(
 		////////////////////////////////////////////////
 
 	float F0_0 = Material_GetF0_0(sample);
-	float3 specularColor0 = 1.0.xxx;
 	SpecularParameters param0 = SpecularParameters_RoughF0(roughnessValue, F0_0);
 	float spec0 = Material_GetSpecularScale0(sample)
 		* CalculateSpecular(
@@ -81,13 +80,13 @@ float3 LightResolve_Specular(
 
 		////////////////////////////////////////////////
 
-	float F0_1 = Material_GetF0_1(sample);
-	float3 specularColor1 = 1.0.xxx;
-	SpecularParameters param1 = SpecularParameters_RoughF0(3.f * roughnessValue, F0_1);
-	float spec1 = Material_GetSpecularScale1(sample)
-		* CalculateSpecular(
-			sample.worldSpaceNormal, viewDirection,
-			negativeLightDirection, param1);
+	// float F0_1 = Material_GetF0_1(sample);
+	// float3 specularColor1 = 1.0.xxx;
+	// SpecularParameters param1 = SpecularParameters_RoughF0(3.f * roughnessValue, F0_1);
+	// float spec1 = Material_GetSpecularScale1(sample)
+	// 	* CalculateSpecular(
+	// 		sample.worldSpaceNormal, viewDirection,
+	// 		negativeLightDirection, param1);
 
 		////////////////////////////////////////////////
 

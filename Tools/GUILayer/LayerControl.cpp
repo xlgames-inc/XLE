@@ -301,14 +301,10 @@ namespace GUILayer
         _pimpl->_globalTechniqueContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
     }
 
-    LayerControl::~LayerControl()
-    {
-        _pimpl.reset();
-    }
-
+    LayerControl::~LayerControl() {}
     LayerControl::!LayerControl()
     {
-        _pimpl.reset();
+        System::Diagnostics::Debug::Assert(false, "Non deterministic delete of LayerControl");
     }
 }
 
