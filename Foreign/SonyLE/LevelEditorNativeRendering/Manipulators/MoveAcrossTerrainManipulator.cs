@@ -213,12 +213,14 @@ namespace RenderingInterop
                 toworld.Translation = localToWorld.Translation;                
             }
 
-            Vec3F offset = TransformUtils.CalcSnapFromOffset(node, snapSettings.SnapFrom);
-          
-            // Offset by pivot
-            Matrix4F P = new Matrix4F();
-            P.Translation = offset;
-            toworld.Mul(toworld,P);
+                //  DavidJ --   note -- this "pivot" behaviour was inherited from another manipulator
+            //                  but appears to be broken! Check coordinate space of value returned from CalcSnapFromOffset
+            // Vec3F offset = TransformUtils.CalcSnapFromOffset(node, snapSettings.SnapFrom);
+            // 
+            // // Offset by pivot
+            // Matrix4F P = new Matrix4F();
+            // P.Translation = offset;
+            // toworld.Mul(toworld,P);
                         
             return toworld;
         }

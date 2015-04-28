@@ -26,8 +26,11 @@ namespace GUILayer
         const auto typeAmbient = flexGobInterface.GetTypeId("AmbientSettings");
         const auto typeDirectionalLight = flexGobInterface.GetTypeId("DirectionalLight");
         const auto typeToneMapSettings = flexGobInterface.GetTypeId("ToneMapSettings");
+        const auto shadowFrustumSettings = flexGobInterface.GetTypeId("ShadowFrustumSettings");
 
-        EnvironmentSettings result = DefaultEnvironmentSettings();
+        EnvironmentSettings result;
+        result._globalLightingDesc = DefaultGlobalLightingDesc();
+        result._toneMapSettings = DefaultToneMapSettings();
         for (auto cid : obj._children) {
             const auto* child = flexGobInterface.GetObject(obj._doc, cid);
             if (!child) continue;
@@ -42,15 +45,34 @@ namespace GUILayer
                 LightDesc light(props);
                 static const auto flagsHash = ParameterBox::MakeParameterNameHash("flags");
                 static const auto transformHash = ParameterBox::MakeParameterNameHash("Transform");
+                static const auto shadowFrustumSettingsHash = ParameterBox::MakeParameterNameHash("ShadowFrustumSettings");
                 
                 auto transform = Transpose(props.GetParameter(transformHash, Identity<Float4x4>()));
                 auto translation = ExtractTranslation(transform);
                 light._negativeLightDirection = (MagnitudeSquared(translation) > 0.01f) ? Normalize(translation) : Float3(0.f, 0.f, 0.f);
 
                 if (props.GetParameter(flagsHash, 0u) & (1<<0)) {
+
+                        // look for frustum settings that match the "name" parameter
+                    auto frustumSettings = PlatformRig::DefaultShadowFrustumSettings();
+                    auto fsRef = props.GetString<char>(shadowFrustumSettingsHash);
+                    if (!fsRef.empty()) {
+                        for (auto cid2 : obj._children) {
+                            const auto* fsSetObj = flexGobInterface.GetObject(obj._doc, cid2);
+                            if (!fsSetObj || fsSetObj->_type != shadowFrustumSettings) continue;
+                            
+                            static const auto nameHash = ParameterBox::MakeParameterNameHash("Name");
+                            auto settingsName = fsSetObj->_properties.GetString<char>(nameHash);
+                            if (XlCompareStringI(settingsName.c_str(), fsRef.c_str())!=0) continue;
+
+                            frustumSettings = PlatformRig::DefaultShadowFrustumSettings(fsSetObj->_properties);
+                            break;
+                        }
+                    }
+
                     light._shadowFrustumIndex = (unsigned)result._shadowProj.size();
                     result._shadowProj.push_back(
-                        EnvironmentSettings::ShadowProj { light, PlatformRig::DefaultShadowFrustumSettings() });
+                        EnvironmentSettings::ShadowProj { light, frustumSettings });
                 }
 
                 result._lights.push_back(light);

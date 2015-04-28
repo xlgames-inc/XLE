@@ -37,6 +37,15 @@ namespace SceneEngine
         Float4      _cascadeTrans[MaxShadowTexturesPerLight];
     };
 
+    class CB_ShadowResolveParameters
+    {
+    public:
+        float       _worldSpaceBias;
+        float       _tanBlurAngle;
+        float       _minBlurSearch, _maxBlurSearch;
+        CB_ShadowResolveParameters();
+    };
+
     /// <summary>Contains the result of a shadow prepare operation</summary>
     /// Typically shadows are prepared as one of the first steps of while rendering
     /// a frame. (though, I guess, the prepare step could happen at any time).
@@ -57,6 +66,7 @@ namespace SceneEngine
         ShadowProjectionDesc::Projections::Mode::Enum _mode;
         CB_ArbitraryShadowProjection    _arbitraryCBSource;
         CB_OrthoShadowProjection        _orthoCBSource;
+        CB_ShadowResolveParameters      _resolveParameters;
 
         void InitialiseConstants(
             RenderCore::Metal::DeviceContext* devContext,

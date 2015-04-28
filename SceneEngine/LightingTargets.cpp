@@ -249,11 +249,12 @@ namespace SceneEngine
 
         for (unsigned c=0; c<dimof(bu); ++c) {
             Techniques::TechniqueContext::BindGlobalUniforms(*bu[c]);
-            bu[c]->BindConstantBuffer(Hash64("ArbitraryShadowProjection"), 0, 1);
-            bu[c]->BindConstantBuffer(Hash64("LightBuffer"), 1, 1);
-            bu[c]->BindConstantBuffer(Hash64("ShadowParameters"), 2, 1);
-            bu[c]->BindConstantBuffer(Hash64("ScreenToShadowProjection"), 3, 1);
+            bu[c]->BindConstantBuffer(Hash64("ArbitraryShadowProjection"),  0, 1);
+            bu[c]->BindConstantBuffer(Hash64("LightBuffer"),                1, 1);
+            bu[c]->BindConstantBuffer(Hash64("ShadowParameters"),           2, 1);
+            bu[c]->BindConstantBuffer(Hash64("ScreenToShadowProjection"),   3, 1);
             bu[c]->BindConstantBuffer(Hash64("OrthogonalShadowProjection"), 4, 1);
+            bu[c]->BindConstantBuffer(Hash64("ShadowResolveParameters"),    5, 1);
         }
 
         _validationCallback = std::make_shared<::Assets::DependencyValidation>();
@@ -280,8 +281,8 @@ namespace SceneEngine
         char definesTable[256];
         Utility::XlFormatString(
             definesTable, dimof(definesTable), 
-            "MSAA_SAMPLES=%i;MAT_SKY_PROJECTION=%i;CALCULATE_AMBIENT_OCCLUSION=%i;CALCULATE_TILED_LIGHTS=%i;CALCULATE_SCREENSPACE_REFLECTIONS=%i", 
-            (desc._msaaSampleCount<=1)?0:desc._msaaSampleCount,
+            "GBUFFER_TYPE=%i;MSAA_SAMPLES=%i;MAT_SKY_PROJECTION=%i;CALCULATE_AMBIENT_OCCLUSION=%i;CALCULATE_TILED_LIGHTS=%i;CALCULATE_SCREENSPACE_REFLECTIONS=%i", 
+            desc._gbufferType, (desc._msaaSampleCount<=1)?0:desc._msaaSampleCount,
             desc._skyProjectionType, desc._hasAO, desc._hasTiledLighting,desc._hasSRR);
 
         if (desc._msaaSamplers) {

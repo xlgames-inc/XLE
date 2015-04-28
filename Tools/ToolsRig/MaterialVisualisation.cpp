@@ -88,7 +88,8 @@ namespace ToolsRig
         {
             TRY
             {
-                metalContext.Bind(Techniques::CommonResources()._defaultRasterizer);
+                if (techniqueIndex!=3)
+                    metalContext.Bind(Techniques::CommonResources()._defaultRasterizer);
 
                     // disable blending to avoid problem when rendering single component stuff 
                     //  (ie, nodes that output "float", not "float4")

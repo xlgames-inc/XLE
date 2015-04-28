@@ -20,7 +20,7 @@
           editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" 
           converter="RenderingInterop.PropertyEditing.AssetNameConverter,RenderingInterop"/>
         <scea.dom.editors.attribute category="Light" name="skyreflectionscale" displayName="Sky Reflection Scale" description="Scale for the reflection of the static sky image"
-          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,2"/>
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,20"/>
 
         <LeGe.NativeType nativeName="AmbientSettings"/>
         <LeGe.NativeProperty name="ambientlight" nativeName="ambientlight"/>
@@ -50,6 +50,7 @@
         <LeGe.NativeProperty name="BloomRampingFactor" nativeName="BloomRampingFactor"/>
         <LeGe.NativeProperty name="BloomDesaturationFactor" nativeName="BloomDesaturationFactor"/>
         <LeGe.NativeProperty name="BloomBlurStdDev" nativeName="BloomBlurStdDev"/>
+        <LeGe.NativeProperty name="BloomBrightness" nativeName="BloomBrightness"/>
         <LeGe.NativeProperty name="SceneKey" nativeName="SceneKey"/>
         <LeGe.NativeProperty name="LuminanceMin" nativeName="LuminanceMin"/>
         <LeGe.NativeProperty name="LuminanceMax" nativeName="LuminanceMax"/>
@@ -58,6 +59,8 @@
 
         <scea.dom.editors.attribute category="Bloom" name="BloomScale" displayName="Bloom Scale" description="Use to change the color of the bloom effect"
           editor="Sce.Atf.Controls.PropertyEditing.ColorPickerEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.IntColorConverter"/>
+        <scea.dom.editors.attribute category="Bloom" name="BloomBrightness" displayName="Bloom Brightness" description="Brightness scale factor for bloom"
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:1,100"/>
         <scea.dom.editors.attribute category="Bloom" name="BloomThreshold" displayName="Bloom Threshold" description="Brightness values above this point will start to bloom"
           editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,20"/>
         <scea.dom.editors.attribute category="Bloom" name="BloomRampingFactor" displayName="Bloom Ramping Factor" description="How rapidly highlights start to bloom out"
@@ -92,6 +95,7 @@
     <xs:attribute name="BloomRampingFactor" type="xs:float" default=".33"/>
     <xs:attribute name="BloomDesaturationFactor" type="xs:float" default=".5"/>
     <xs:attribute name="BloomBlurStdDev" type="xs:float" default="2.2"/>
+    <xs:attribute name="BloomBrightness" type="xs:float" default="20"/>
     <xs:attribute name="SceneKey" type="xs:float" default=".18"/>
     <xs:attribute name="LuminanceMin" type="xs:float" default="0.06"/>
     <xs:attribute name="LuminanceMax" type="xs:float" default="1"/>
@@ -105,6 +109,10 @@
       <xs:extension base="gameObjectType">
       </xs:extension>
     </xs:complexContent>
+  </xs:complexType>
+
+      <!-- E N V   S E T T I N G -->
+  <xs:complexType name="envMiscType">
   </xs:complexType>
 
       <!-- E N V   S E T T I N G S -->
@@ -121,6 +129,7 @@
 
     <xs:sequence>
       <xs:element name="objects" type="envObjectType" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="settings" type="envMiscType" minOccurs="0" maxOccurs="unbounded"/>
       <xs:element name="ambient" type="ambientSettingsType" minOccurs="1" maxOccurs="1"/>
       <xs:element name="tonemap" type="toneMapSettingsType" minOccurs="1" maxOccurs="1"/>
     </xs:sequence>
@@ -151,6 +160,7 @@
         <LeGe.NativeProperty name="specularbrightness" nativeName="specularbrightness"/>
         <LeGe.NativeProperty name="specularnonmetalbrightness" nativeName="specularnonmetalbrightness"/>
         <LeGe.NativeProperty name="flags" nativeName="flags"/>
+        <LeGe.NativeProperty name="ShadowFrustumSettings" nativeName="ShadowFrustumSettings"/>
 
         <scea.dom.editors.attribute category="Light" name="diffuse" displayName="Diffuse" description="Diffuse Color" 
           editor="Sce.Atf.Controls.PropertyEditing.ColorPickerEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.IntColorConverter"/>
@@ -166,6 +176,8 @@
           editor="Sce.Atf.Controls.PropertyEditing.FlagsUITypeEditor,Atf.Gui.WinForms:CastShadows"
           converter="Sce.Atf.Controls.PropertyEditing.FlagsTypeConverter:CastShadows"/>
 
+        <scea.dom.editors.attribute category="Shadows" name="ShadowFrustumSettings" displayName="Shadow Frustum Settings"/>
+
         <scea.dom.editors category="Lights" name="DirLight" menuText="Lights/DirLight" description="A directional light"/>
       </xs:appinfo>
     </xs:annotation>
@@ -178,9 +190,85 @@
         <xs:attribute name="specularbrightness" type="xs:float" default="1"/>
         <xs:attribute name="specularnonmetalbrightness" type="xs:float" default="1"/>
         <xs:attribute name="flags" type="xs:int" default="0"/>
+        <xs:attribute name="ShadowFrustumSettings" type="xs:string" default="shadows"/>
       </xs:extension>
     </xs:complexContent>
   </xs:complexType>
 
+      <!-- S H A D O W   F R U S T U M   S E T T I N G S -->
+  <xs:complexType name="shadowFrustumSettings">
+    <xs:annotation>
+      <xs:appinfo>
+        <LeGe.NativeType nativeName="ShadowFrustumSettings"/>
+        <LeGe.NativeProperty name="Name" nativeName="Name"/>
+        <LeGe.NativeProperty name="Flags" nativeName="Flags"/>
+        <LeGe.NativeProperty name="FrustumCount" nativeName="FrustumCount"/>
+        <LeGe.NativeProperty name="MaxDistanceFromCamera" nativeName="MaxDistanceFromCamera"/>
+        <LeGe.NativeProperty name="FrustumSizeFactor" nativeName="FrustumSizeFactor"/>
+        <LeGe.NativeProperty name="FocusDistance" nativeName="FocusDistance"/>
+        <LeGe.NativeProperty name="TextureSize" nativeName="TextureSize"/>
+        <LeGe.NativeProperty name="ShadowSlopeScaledBias" nativeName="ShadowSlopeScaledBias"/>
+        <LeGe.NativeProperty name="ShadowDepthBiasClamp" nativeName="ShadowDepthBiasClamp"/>
+        <LeGe.NativeProperty name="ShadowRasterDepthBias" nativeName="ShadowRasterDepthBias"/>
+        <LeGe.NativeProperty name="WorldSpaceResolveBias" nativeName="WorldSpaceResolveBias"/>
+        <LeGe.NativeProperty name="BlurAngleDegrees" nativeName="BlurAngleDegrees"/>
+        <LeGe.NativeProperty name="MinBlurSearch" nativeName="MinBlurSearch"/>
+        <LeGe.NativeProperty name="MaxBlurSearch" nativeName="MaxBlurSearch"/>
+
+        <scea.dom.editors.attribute category="Projection" name="FrustumCount" displayName="Frustum Count" description="Number of separate shadow frustums (1 to 6)"/>
+        <scea.dom.editors.attribute category="Projection" name="MaxDistanceFromCamera" displayName="Max Distance From Camera" description="Furtherest distance from camera for objects to cast shadows"/>
+        <scea.dom.editors.attribute category="Projection" name="FrustumSizeFactor" displayName="Frustum Size Factor" description="Factor controlling the size of the shadow frustums"
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,8"/>
+        <scea.dom.editors.attribute category="Projection" name="FocusDistance" displayName="Focus Distance" description="The highest precision shadows are at this number of units in front of the camera"
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,20"/>
+
+        <scea.dom.editors.attribute category="Precision" name="TextureSize" displayName="Texture Size" description="Size of the shadow projection texture (use a power of 2, normally 1024, 2048 or 4096)"/>
+        <scea.dom.editors.attribute category="Precision" name="ShadowSlopeScaledBias" displayName="Slope Scaled Bias factor" description="Raise to reduce 'acne' artefacts at glancing angles to the shadow projection"
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,2"/>
+        <scea.dom.editors.attribute category="Precision" name="ShadowDepthBiasClamp" displayName="Depth Bias Clamp" description="Low-level depth bias clamp value"
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
+        <scea.dom.editors.attribute category="Precision" name="ShadowRasterDepthBias" displayName="Depth Bias" description="Low-level depth bias value (in integer zbuffer units)"/>
+        <scea.dom.editors.attribute category="Precision" name="WorldSpaceResolveBias" displayName="World Space Resolve Bias" description="Resolve bias (world space)"
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:-0.2,0.2"/>
+        
+        <scea.dom.editors.attribute category="Flags" name="Flags" displayName="Flags"
+          editor="Sce.Atf.Controls.PropertyEditing.FlagsUITypeEditor,Atf.Gui.WinForms:HighPrecisionDepths,ArbitraryCascades"
+          converter="Sce.Atf.Controls.PropertyEditing.FlagsTypeConverter:HighPrecisionDepths,ArbitraryCascades"/>
+
+        <scea.dom.editors.attribute category="Resolve" name="BlurAngleDegrees" displayName="Blur Angle" description="Angle of the penumbra of the light (higher numbers mean softer shadows)"
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
+
+        <scea.dom.editors.attribute category="Resolve" name="MinBlurSearch" displayName="Min Blur Search" description="Minimum pixel radius blur for shadows. Increase if there is a lot of scintillation in the shadows."
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,128"/>
+        <scea.dom.editors.attribute category="Resolve" name="MaxBlurSearch" displayName="Max Blur Search" description="Maximum pixel radius blur for shadows. Decrease if shadows appear grainy and excessively blurred. Try Blur Angle as well."
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,128"/>
+
+        <scea.dom.editors.attribute category="Name" name="Name" displayName="Name"/>
+
+        <scea.dom.editors category="Lights" name="ShadowFrustumSettings" menuText="Lights/ShadowFrustumSettings" description="Shadow frustum settings"/>
+        <LeGe.OpaqueListable label="ShadowFrustumSettings"/>
+      </xs:appinfo>
+    </xs:annotation>
+
+    <xs:complexContent>
+      <xs:extension base="envMiscType">
+        <xs:attribute name="Name" type="xs:string" default="shadows"/>
+        <xs:attribute name="Flags" type="xs:int" default="1"/>
+        <xs:attribute name="FrustumCount" type="xs:int" default="5"/>
+        <xs:attribute name="MaxDistanceFromCamera" type="xs:float" default="1000"/>
+        <xs:attribute name="FrustumSizeFactor" type="xs:float" default="3.8"/>
+        <xs:attribute name="FocusDistance" type="xs:float" default="3"/>
+        <xs:attribute name="TextureSize" type="xs:int" default="1024"/>
+        <xs:attribute name="ShadowSlopeScaledBias" type="xs:float" default="1"/>
+        <xs:attribute name="ShadowDepthBiasClamp" type="xs:float" default="0"/>
+        <xs:attribute name="ShadowRasterDepthBias" type="xs:int" default="300"/>
+        <xs:attribute name="WorldSpaceResolveBias" type="xs:float" default="0"/>
+        <xs:attribute name="BlurAngleDegrees" type="xs:float" default=".25"/>
+        <xs:attribute name="MinBlurSearch" type="xs:float" default=".5"/>
+        <xs:attribute name="MaxBlurSearch" type="xs:float" default="25"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  
 </xs:schema>
 

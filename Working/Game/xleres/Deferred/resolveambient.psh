@@ -107,14 +107,14 @@ float3 BasicAmbient(int2 pixelCoords, SystemInputs sys, GBufferValues sample)
 		#else
 			float3 tiledLights	= TiledLightsResolve.Load(int3(pixelCoords, 0)).xyz;
 		#endif
-		tiledLights *= 5.f * LightingScale;
+		tiledLights *= LightingScale;
 	#else
 		float3 tiledLights = 0.0.xxx;
 	#endif
 
 	const float ambientScale = LightingScale;
 	float metal = Material_GetMetal(sample);
-	return (((1.0f - metal)*ambientScale*ambientOcclusionSample)*AmbientColour + LightingScale*tiledLights)*sample.diffuseAlbedo.rgb;
+	return ((1.0f - metal)*ambientScale*ambientOcclusionSample)*(AmbientColour + tiledLights)*sample.diffuseAlbedo.rgb;
 }
 
 /////////////////////////////////////////
@@ -139,7 +139,7 @@ float4 CalculateScreenSpaceReflections(float2 texCoord, float fresnel, float coo
 	GBufferValues sample = LoadGBuffer(samplePosition, SystemInputs_Default());
 	litSample += BasicAmbient(int2(samplePosition.xy), SystemInputs_Default(), sample);
 
-	return float4(litSample.rgb * (4.f * fresnel * cookedAmbientOcclusion), min(1.f, intersectionQuality * pixelReflectivity));
+	return float4(litSample.rgb * (fresnel * cookedAmbientOcclusion), min(1.f, intersectionQuality * pixelReflectivity));
 }
 
 /////////////////////////////////////////

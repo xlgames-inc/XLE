@@ -51,6 +51,14 @@ cbuffer ShadowParameters : register(b8)
 	#endif
 }
 
+cbuffer ShadowResolveParameters
+{
+	float ShadowBiasWorldSpace;
+	float TanBlurAngle;
+	float MinBlurRadius;
+	float MaxBlurRadius;
+}
+
 float2 GetRawShadowSampleFilter(uint index)
 {
 #if MSAA_SAMPLES > 1		// hack -- shader optimiser causes a problem with shadow filtering...
@@ -67,7 +75,10 @@ float2 GetRawShadowSampleFilter(uint index)
 #endif
 }
 
-float CalculateShadowCasterDistance(float2 texCoords, float comparisonDistance, uint arrayIndex, uint msaaSampleIndex, float ditherPatternValue)
+float CalculateShadowCasterDistance(
+	float2 texCoords, float comparisonDistance,
+	uint arrayIndex, uint msaaSampleIndex,
+	float ditherPatternValue)
 {
 	float accumulatedDistance = 0.0f;
 	float accumulatedSampleCount = 0.0001f;
@@ -75,7 +86,9 @@ float CalculateShadowCasterDistance(float2 texCoords, float comparisonDistance, 
 	float angle = 2.f * pi * ditherPatternValue;
 	float2 sinCosAngle;
 	sincos(angle, sinCosAngle.x, sinCosAngle.y);
-	float2x2 rotationMatrix = float2x2(float2(sinCosAngle.x, sinCosAngle.y), float2(-sinCosAngle.y, sinCosAngle.x));
+	float2x2 rotationMatrix = float2x2(
+		float2(sinCosAngle.x, sinCosAngle.y),
+		float2(-sinCosAngle.y, sinCosAngle.x));
 
 	// const float filterSize = 16.f / 1024.f;
 	const float filterSize = 12.f / 1024.f;
@@ -122,7 +135,7 @@ float CalculateShadowCasterDistance(float2 texCoords, float comparisonDistance, 
 		float4 sampleCount 		 = difference > 0.0f;					// array of 1s for pixels in the shadow texture closer to the light
 		accumulatedSampleCount 	+= dot(sampleCount, 1.0.xxxx);			// count number of 1s in "sampleCount"
 			// Clamp maximum distance considered here?
-		accumulatedDistance 	+= dot(difference, sampleCount);		// accumulate only the samples closer to the light
+		accumulatedDistance += dot(difference, sampleCount);		// accumulate only the samples closer to the light
 	}
 
 		//
@@ -153,7 +166,7 @@ float CalculateFilteredShadows(
 		//	In "ShadowsPerspectiveProjection", casterDistance is the difference between 2 NDC depths
 		//	Otherwise, casterDistance is world space distance between the sample and caster.
 	float filterSize, filterSizePixels;
-	if (ShadowsPerspectiveProjection) {
+	if (false) { // ShadowsPerspectiveProjection) {
 		filterSize = lerp(0.001f, 0.015f, saturate(casterDistance*30.f));
 		filterSize *= .03f * projectionScale.x;		// (note -- projectionScale.y is ignored. We need to have uniform x/y scale to rotate the filter correctly)
 		filterSizePixels = filterSize * 1024.f;
@@ -162,16 +175,13 @@ float CalculateFilteredShadows(
 			//	For example, we can assume the light source is an area light source, and
 			//	calculate the appropriate penumbra for that object. But let's just use
 			//	a simple method and calculate a fixed penumbra angle
-		const float tanBlurRadius = 1.191753593f;		// tan(50 degrees)
-		filterSizePixels  = tanBlurRadius * min(casterDistance, 30.f);
-		filterSizePixels *= projectionScale.x;
-		if (usePoissonDiskMethod) {
-			filterSizePixels = max(filterSizePixels, 2.5f);			// must do some searching, just to avoid steppiness along edges
-		} else {
-			filterSizePixels = max(filterSizePixels, 1.f);
-			filterSizePixels = min(filterSizePixels, 128.f);
-		}
-		filterSize = filterSizePixels / 1024.f;	// calibrated for 1024x1024 shadow texture
+		const float calibratedTextureWidth = 1024.f; // calibrated for 1024x1024 shadow texture
+		filterSizePixels  = TanBlurAngle * casterDistance;
+		filterSizePixels *= projectionScale.x * (calibratedTextureWidth / 2.f);
+
+		filterSizePixels = min(max(filterSizePixels, MinBlurRadius), MaxBlurRadius);
+
+		filterSize = filterSizePixels / calibratedTextureWidth;
 	}
 
 	if (usePoissonDiskMethod) {
@@ -257,7 +267,6 @@ float ResolveShadows(	uint projection, float2 shadowTexCoord, float comparisonDi
 		//	of depth ranges.
 		//	With perspective projection, it is more expensive than biasing in NDC depth space.
 		//	But with orthogonal shadows, it should be very similar
-	const float ShadowBiasWorldSpace = -0.03f;
 	MiniProjZW miniP = AsMiniProjZW(ShadowProjection_GetMiniProj(projection));
 	if (shadowsPerspectiveProj) {
 		float worldSpaceDepth = NDCDepthToWorldSpace_Perspective(comparisonDistance, miniP);
@@ -277,7 +286,7 @@ float ResolveShadows(	uint projection, float2 shadowTexCoord, float comparisonDi
 			// In orthogonal projection mode, NDC depths are actually linear. So, we can convert a difference
 			// of depths in NDC space (like casterDistance) into world space depth easily. Linear depth values
 			// are more convenient for calculating the shadow filter radius
-		casterDistance = NDCDepthDifferenceToWorldSpace_Ortho(casterDistance, miniP);
+		casterDistance = -NDCDepthDifferenceToWorldSpace_Ortho(casterDistance, miniP);
 	}
 
 	if (DoShadowFiltering) {
@@ -302,7 +311,6 @@ float ResolveShadows_Cascade(uint cascadeIndex, float4 cascadeNormCoords, int2 r
 
 float ResolvePointLightShadows(float3 worldPosition, int2 randomizerValue, uint msaaSampleIndex)
 {
-	const float sampleScale = 10000.f;
 		// simplified version of ResolveShadows for point lights
 	float4 frustumCoordinates;
 	float2 texCoords;
@@ -325,12 +333,23 @@ float ResolvePointLightShadows(float3 worldPosition, int2 randomizerValue, uint 
 	texCoords = float2(0.5f + 0.5f * texCoords.x, 0.5f - 0.5f * texCoords.y);
 	float comparisonDistance = frustumCoordinates.z / frustumCoordinates.w;
 	float biasedDepth = comparisonDistance - 0.0005f;
-	float casterDistance = CalculateShadowCasterDistance(texCoords, comparisonDistance, c, msaaSampleIndex, DitherPatternValue(randomizerValue));
+	float casterDistance = CalculateShadowCasterDistance(
+		texCoords, comparisonDistance, c, msaaSampleIndex,
+		DitherPatternValue(randomizerValue));
+
+	float4 miniProj = ShadowProjection_GetMiniProj(c);
+	if (!ShadowsPerspectiveProjection) {
+			// In orthogonal projection mode, NDC depths are actually linear. So, we can convert a difference
+			// of depths in NDC space (like casterDistance) into world space depth easily. Linear depth values
+			// are more convenient for calculating the shadow filter radius
+		casterDistance = -NDCDepthDifferenceToWorldSpace_Ortho(casterDistance,
+			AsMiniProjZW(miniProj));
+	}
 
 	if (DoShadowFiltering) {
 		return CalculateFilteredShadows(
 			texCoords, biasedDepth, c, casterDistance, randomizerValue,
-			ShadowProjection_GetMiniProj(c).xy*sampleScale, msaaSampleIndex);
+			miniProj.xy, msaaSampleIndex);
 	} else {
 		return TestShadow(texCoords, c, biasedDepth);
 	}

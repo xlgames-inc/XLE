@@ -48,12 +48,28 @@ namespace PlatformRig
     class DefaultShadowFrustumSettings
     {
     public:
-        unsigned    _frustumCount;
-        bool        _arbitraryCascades;
-        float       _maxDistanceFromCamera;
-        float       _frustumSizeFactor;
-        float       _focusDistance;
+        struct Flags 
+        { 
+            enum Enum { HighPrecisionDepths = 1<<0, ArbitraryCascades = 1<<1 }; 
+            typedef unsigned BitField;
+        };
+        unsigned        _frustumCount;
+        float           _maxDistanceFromCamera;
+        float           _frustumSizeFactor;
+        float           _focusDistance;
+        Flags::BitField _flags;
+        unsigned        _textureSize;
+
+        float           _shadowSlopeScaledBias;
+        float           _shadowDepthBiasClamp;
+        unsigned        _shadowRasterDepthBias;
+
+        float           _worldSpaceResolveBias;
+        float           _tanBlurAngle;
+        float           _minBlurSearch, _maxBlurSearch;
+
         DefaultShadowFrustumSettings();
+        DefaultShadowFrustumSettings(const Utility::ParameterBox& paramBox);
     };
 
     /// <summary>Calculate a default set of shadow cascades for the sun<summary>

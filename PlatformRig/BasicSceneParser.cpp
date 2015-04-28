@@ -56,6 +56,7 @@ namespace PlatformRig
     {
         SceneEngine::GlobalLightingDesc result;
         result._ambientLight = .33f * Float3(1.f, 1.f, 1.f);
+        XlCopyString(result._skyTexture, "Game\\xleres\\defaultresources\\sky\\desertsky.dds");
         result._skyReflectionScale = 1.f;
         result._doAtmosphereBlur = false;
         result._doOcean = false;
@@ -66,8 +67,15 @@ namespace PlatformRig
     {
         EnvironmentSettings result;
         result._globalLightingDesc = DefaultGlobalLightingDesc();
-        result._lights.push_back(DefaultDominantLight());
         result._toneMapSettings = DefaultToneMapSettings();
+
+        auto defLight = DefaultDominantLight();
+        defLight._shadowFrustumIndex = 0;
+        result._lights.push_back(defLight);
+
+        auto frustumSettings = PlatformRig::DefaultShadowFrustumSettings();
+        result._shadowProj.push_back(EnvironmentSettings::ShadowProj { defLight, frustumSettings });
+
         return std::move(result);
     }
 }

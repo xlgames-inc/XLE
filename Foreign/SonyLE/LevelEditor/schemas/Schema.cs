@@ -162,6 +162,7 @@ namespace LevelEditor
             envSettingsType.Type = getNodeType("gap", "envSettingsType");
             envSettingsType.nameAttribute = envSettingsType.Type.GetAttributeInfo("name");
             envSettingsType.objectsChild = envSettingsType.Type.GetChildInfo("objects");
+            envSettingsType.settingsChild = envSettingsType.Type.GetChildInfo("settings");
             envSettingsType.ambientChild = envSettingsType.Type.GetChildInfo("ambient");
             envSettingsType.tonemapChild = envSettingsType.Type.GetChildInfo("tonemap");
 
@@ -177,6 +178,8 @@ namespace LevelEditor
             envObjectType.visibleAttribute = envObjectType.Type.GetAttributeInfo("visible");
             envObjectType.lockedAttribute = envObjectType.Type.GetAttributeInfo("locked");
 
+            envMiscType.Type = getNodeType("gap", "envMiscType");
+
             ambientSettingsType.Type = getNodeType("gap", "ambientSettingsType");
             ambientSettingsType.ambientlightAttribute = ambientSettingsType.Type.GetAttributeInfo("ambientlight");
             ambientSettingsType.ambientbrightnessAttribute = ambientSettingsType.Type.GetAttributeInfo("ambientbrightness");
@@ -189,6 +192,8 @@ namespace LevelEditor
             toneMapSettingsType.BloomThresholdAttribute = toneMapSettingsType.Type.GetAttributeInfo("BloomThreshold");
             toneMapSettingsType.BloomRampingFactorAttribute = toneMapSettingsType.Type.GetAttributeInfo("BloomRampingFactor");
             toneMapSettingsType.BloomDesaturationFactorAttribute = toneMapSettingsType.Type.GetAttributeInfo("BloomDesaturationFactor");
+            toneMapSettingsType.BloomBlurStdDevAttribute = toneMapSettingsType.Type.GetAttributeInfo("BloomBlurStdDev");
+            toneMapSettingsType.BloomBrightnessAttribute = toneMapSettingsType.Type.GetAttributeInfo("BloomBrightness");
             toneMapSettingsType.SceneKeyAttribute = toneMapSettingsType.Type.GetAttributeInfo("SceneKey");
             toneMapSettingsType.LuminanceMinAttribute = toneMapSettingsType.Type.GetAttributeInfo("LuminanceMin");
             toneMapSettingsType.LuminanceMaxAttribute = toneMapSettingsType.Type.GetAttributeInfo("LuminanceMax");
@@ -245,6 +250,19 @@ namespace LevelEditor
             directionalLightType.specularbrightnessAttribute = directionalLightType.Type.GetAttributeInfo("specularbrightness");
             directionalLightType.specularnonmetalbrightnessAttribute = directionalLightType.Type.GetAttributeInfo("specularnonmetalbrightness");
             directionalLightType.flagsAttribute = directionalLightType.Type.GetAttributeInfo("flags");
+            directionalLightType.ShadowFrustumSettingsAttribute = directionalLightType.Type.GetAttributeInfo("ShadowFrustumSettings");
+
+            shadowFrustumSettings.Type = getNodeType("gap", "shadowFrustumSettings");
+            shadowFrustumSettings.NameAttribute = shadowFrustumSettings.Type.GetAttributeInfo("Name");
+            shadowFrustumSettings.FlagsAttribute = shadowFrustumSettings.Type.GetAttributeInfo("Flags");
+            shadowFrustumSettings.FrustumCountAttribute = shadowFrustumSettings.Type.GetAttributeInfo("FrustumCount");
+            shadowFrustumSettings.MaxDistanceFromCameraAttribute = shadowFrustumSettings.Type.GetAttributeInfo("MaxDistanceFromCamera");
+            shadowFrustumSettings.FrustumSizeFactorAttribute = shadowFrustumSettings.Type.GetAttributeInfo("FrustumSizeFactor");
+            shadowFrustumSettings.FocusDistanceAttribute = shadowFrustumSettings.Type.GetAttributeInfo("FocusDistance");
+            shadowFrustumSettings.TextureSizeAttribute = shadowFrustumSettings.Type.GetAttributeInfo("TextureSize");
+            shadowFrustumSettings.ShadowSlopeScaledBiasAttribute = shadowFrustumSettings.Type.GetAttributeInfo("ShadowSlopeScaledBias");
+            shadowFrustumSettings.ShadowDepthBiasClampAttribute = shadowFrustumSettings.Type.GetAttributeInfo("ShadowDepthBiasClamp");
+            shadowFrustumSettings.ShadowRasterDepthBiasAttribute = shadowFrustumSettings.Type.GetAttributeInfo("ShadowRasterDepthBias");
 
             gameObjectComponentType.Type = getNodeType("gap", "gameObjectComponentType");
             gameObjectComponentType.nameAttribute = gameObjectComponentType.Type.GetAttributeInfo("name");
@@ -928,6 +946,7 @@ namespace LevelEditor
             public static DomNodeType Type;
             public static AttributeInfo nameAttribute;
             public static ChildInfo objectsChild;
+            public static ChildInfo settingsChild;
             public static ChildInfo ambientChild;
             public static ChildInfo tonemapChild;
         }
@@ -947,6 +966,11 @@ namespace LevelEditor
             public static AttributeInfo lockedAttribute;
         }
 
+        public static class envMiscType
+        {
+            public static DomNodeType Type;
+        }
+
         public static class ambientSettingsType
         {
             public static DomNodeType Type;
@@ -964,6 +988,8 @@ namespace LevelEditor
             public static AttributeInfo BloomThresholdAttribute;
             public static AttributeInfo BloomRampingFactorAttribute;
             public static AttributeInfo BloomDesaturationFactorAttribute;
+            public static AttributeInfo BloomBlurStdDevAttribute;
+            public static AttributeInfo BloomBrightnessAttribute;
             public static AttributeInfo SceneKeyAttribute;
             public static AttributeInfo LuminanceMinAttribute;
             public static AttributeInfo LuminanceMaxAttribute;
@@ -1041,6 +1067,22 @@ namespace LevelEditor
             public static AttributeInfo specularbrightnessAttribute;
             public static AttributeInfo specularnonmetalbrightnessAttribute;
             public static AttributeInfo flagsAttribute;
+            public static AttributeInfo ShadowFrustumSettingsAttribute;
+        }
+
+        public static class shadowFrustumSettings
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo NameAttribute;
+            public static AttributeInfo FlagsAttribute;
+            public static AttributeInfo FrustumCountAttribute;
+            public static AttributeInfo MaxDistanceFromCameraAttribute;
+            public static AttributeInfo FrustumSizeFactorAttribute;
+            public static AttributeInfo FocusDistanceAttribute;
+            public static AttributeInfo TextureSizeAttribute;
+            public static AttributeInfo ShadowSlopeScaledBiasAttribute;
+            public static AttributeInfo ShadowDepthBiasClampAttribute;
+            public static AttributeInfo ShadowRasterDepthBiasAttribute;
         }
 
         public static class gameObjectComponentType

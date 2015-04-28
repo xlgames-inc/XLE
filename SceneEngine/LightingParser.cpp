@@ -669,6 +669,10 @@ namespace SceneEngine
         preparedResult.InitialiseConstants(context, frustum._projections);
         parserContext.SetGlobalCB(3, context, &preparedResult._arbitraryCBSource, sizeof(preparedResult._arbitraryCBSource));
         parserContext.SetGlobalCB(4, context, &preparedResult._orthoCBSource, sizeof(preparedResult._orthoCBSource));
+        preparedResult._resolveParameters._worldSpaceBias = frustum._worldSpaceResolveBias;
+        preparedResult._resolveParameters._tanBlurAngle = frustum._tanBlurAngle;
+        preparedResult._resolveParameters._minBlurSearch = frustum._minBlurSearch;
+        preparedResult._resolveParameters._maxBlurSearch = frustum._maxBlurSearch;
 
             //  we need to set the "shadow cascade mode" settings to the right
             //  mode for this prepare step;
@@ -684,8 +688,7 @@ namespace SceneEngine
                 FormatStack(frustum._typelessFormat, frustum._readFormat, frustum._writeFormat)));
         auto& resources = Techniques::FindCachedBox<ShadowWriteResources>(
             ShadowWriteResources::Desc(
-                Tweakable("ShadowSlopeScaledBias", 0.7f), Tweakable("ShadowDepthBiasClamp", 0.f), 
-                Tweakable("ShadowRasterDepthBias", 0)));
+                frustum._shadowSlopeScaledBias, frustum._shadowDepthBiasClamp, frustum._shadowRasterDepthBias));
 
         preparedResult._shadowTextureResource = targetsBox._shaderResource;
 

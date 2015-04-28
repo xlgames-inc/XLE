@@ -106,7 +106,7 @@ float4 main(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Tar
 			//			seems to get exponentially stronger. The result seems to be
 			//			better, visually, applying the tonemap afterwards
 
-		input.rgb += 20.f * bloomValue;
+		input.rgb += bloomValue;
 	#endif
 
 	input.rgb = ApplyToneMap(input.rgb);

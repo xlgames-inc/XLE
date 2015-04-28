@@ -85,7 +85,9 @@ float4 ShadowProjection_GetMiniProj(uint cascadeIndex)
 	#if SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ARBITRARY
         return ShadowMinimalProjection[cascadeIndex];
     #elif SHADOW_CASCADE_MODE==SHADOW_CASCADE_MODE_ORTHOGONAL
-        return OrthoShadowMinimalProjection;
+        float4 result = OrthoShadowMinimalProjection;
+		result.xy = OrthoShadowCascadeScale[cascadeIndex].xy;
+		return result;
     #else
         return 1.0.xxxx;
     #endif

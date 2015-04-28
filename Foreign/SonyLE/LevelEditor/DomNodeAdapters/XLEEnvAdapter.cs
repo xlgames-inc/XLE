@@ -23,6 +23,7 @@ namespace LevelEditor.DomNodeAdapters
                 foreach (var type in domNode.Type.Lineage)
                 {
                     if (type == Schema.envObjectType.Type) return true;
+                    if (type == Schema.envMiscType.Type) return true;
                     if (type == Schema.ambientSettingsType.Type) return true;
                     if (type == Schema.toneMapSettingsType.Type) return true;
                 }
@@ -40,6 +41,11 @@ namespace LevelEditor.DomNodeAdapters
                     if (type == Schema.envObjectType.Type)
                     {
                         GetChildList<DomNode>(Schema.envSettingsType.objectsChild).Add(domNode);
+                        return true;
+                    }
+                    if (type == Schema.envMiscType.Type)
+                    {
+                        GetChildList<DomNode>(Schema.envSettingsType.settingsChild).Add(domNode);
                         return true;
                     }
                     if (type == Schema.ambientSettingsType.Type)

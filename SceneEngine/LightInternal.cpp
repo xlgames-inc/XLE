@@ -128,6 +128,7 @@ namespace SceneEngine
     , _orthoCB(std::move(moveFrom._orthoCB))
     , _frustumCount(moveFrom._frustumCount)
     , _mode(moveFrom._mode)
+    , _resolveParameters(moveFrom._resolveParameters)
     {}
 
     PreparedShadowFrustum& PreparedShadowFrustum::operator=(PreparedShadowFrustum&& moveFrom)
@@ -139,6 +140,7 @@ namespace SceneEngine
         _orthoCB = std::move(moveFrom._orthoCB);
         _frustumCount = moveFrom._frustumCount;
         _mode = moveFrom._mode;
+        _resolveParameters = moveFrom._resolveParameters;
         return *this;
     }
 
@@ -175,6 +177,12 @@ namespace SceneEngine
         _width = _height = 0;
         _typelessFormat = _writeFormat = _readFormat = RenderCore::Metal::NativeFormat::Unknown;
         _worldToClip = Identity<Float4x4>();
+        _shadowSlopeScaledBias = 0.f;
+        _shadowDepthBiasClamp = 0.f;
+        _shadowRasterDepthBias = 0;
+        _worldSpaceResolveBias = 0.f;
+        _tanBlurAngle = 0.f;
+        _minBlurSearch = _maxBlurSearch = 0.f;
     }
 
     LightDesc::LightDesc()
@@ -227,6 +235,14 @@ namespace SceneEngine
         auto& worldToShadowProj = orthoCB._worldToProj;
         basis._orthoCameraToShadow = Combine(cameraToWorld, worldToShadowProj);
         return RenderCore::MakeSharedPkt(basis);
+    }
+
+    CB_ShadowResolveParameters::CB_ShadowResolveParameters()
+    {
+        _worldSpaceBias = -0.03f;
+        _tanBlurAngle = 0.00436f;		// tan(.25 degrees)
+        _minBlurSearch = 0.5f;
+        _maxBlurSearch = 25.f;
     }
 
 }

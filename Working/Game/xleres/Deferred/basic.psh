@@ -98,7 +98,7 @@ GBufferEncoded main(VSOutput geo)
 	#endif
 
 	float4 diffuseTextureSample = 1.0.xxxx;
-	#if (OUTPUT_TEXCOORD==1)
+	#if (OUTPUT_TEXCOORD==1) && (RES_HAS_DiffuseTexture!=0)
 		#if (USE_CLAMPING_SAMPLER_FOR_DIFFUSE==1)
 			diffuseTextureSample = DiffuseTexture.Sample(ClampingSampler, geo.texCoord);
 		#else
@@ -106,10 +106,10 @@ GBufferEncoded main(VSOutput geo)
 		#endif
 		result.diffuseAlbedo = diffuseTextureSample.rgb;
 		result.blendingAlpha = diffuseTextureSample.a;
+	#endif
 
-		#if (SKIP_MATERIAL_DIFFUSE!=1)
-			result.diffuseAlbedo *= MaterialDiffuse;
-		#endif
+	#if (SKIP_MATERIAL_DIFFUSE!=1)
+		result.diffuseAlbedo *= MaterialDiffuse;
 	#endif
 
 	#if (OUTPUT_COLOUR==1)

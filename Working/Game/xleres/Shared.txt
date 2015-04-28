@@ -5,6 +5,7 @@ CommonMaterial
             MAT_PREMULTIPLIED_ALPHA
             MAT_REFLECTIVENESS
             RES_HAS_CUSTOM_MAP
+            RES_HAS_DiffuseTexture
             RES_HAS_NormalsTexture
             RES_HAS_ParametersTexture
             RES_HAS_NormalsTexture_DXT

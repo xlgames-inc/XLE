@@ -96,6 +96,8 @@ namespace SceneEngine
     }
 
         ////////////////////////////////////////////////////////////////////////
+    
+    static unsigned GBufferType(MainTargetsBox& mainTargets) { return (mainTargets._gbufferTextures[2]) ? 1 : 2; }
 
     void LightingParser_ResolveGBuffer( DeviceContext* context,
                                         LightingParserContext& parserContext,
@@ -234,6 +236,7 @@ namespace SceneEngine
                     auto& ambientResolveShaders = 
                         Techniques::FindCachedBoxDep<AmbientResolveShaders>(
                             AmbientResolveShaders::Desc(
+                                GBufferType(mainTargets),
                                 (c==0)?samplingCount:1, useMsaaSamplers, c==1,
                                 lightingResolveContext._ambientOcclusionResult.IsGood(),
                                 lightingResolveContext._tiledLightingResult.IsGood(),
@@ -315,7 +318,6 @@ namespace SceneEngine
         }
     }
 
-
     static void ResolveLights(  DeviceContext* context,
                                 LightingParserContext& parserContext,
                                 MainTargetsBox& mainTargets,
@@ -326,17 +328,16 @@ namespace SceneEngine
         const unsigned samplingCount = resolveContext.GetSamplingCount();
         const bool useMsaaSamplers = resolveContext.UseMsaaSamplers();
 
-        ConstantBufferPacket constantBufferPackets[5];
-        const Metal::ConstantBuffer* prebuiltConstantBuffers[5] = { nullptr, nullptr, nullptr, nullptr, nullptr };
-        prebuiltConstantBuffers[2] = &Techniques::FindCachedBox<ShadowResourcesBox>(ShadowResourcesBox::Desc())._sampleKernel32;
+        ConstantBufferPacket constantBufferPackets[6];
+        const Metal::ConstantBuffer* prebuiltConstantBuffers[6] = { nullptr, nullptr, nullptr, nullptr, nullptr };
+        prebuiltConstantBuffers[2] = &Techniques::FindCachedBox2<ShadowResourcesBox>()._sampleKernel32;
 
             ////////////////////////////////////////////////////////////////////////
 
-        unsigned gbufferType = (mainTargets._gbufferTextures[2]) ? 1 : 2;
         auto& lightingResolveShaders = 
             Techniques::FindCachedBoxDep<LightingResolveShaders>(
                 LightingResolveShaders::Desc(
-                    gbufferType,
+                    GBufferType(mainTargets),
                     (resolveContext.GetCurrentPass()==LightingResolveContext::Pass::PerSample)?samplingCount:1, useMsaaSamplers, 
                     resolveContext.GetCurrentPass()==LightingResolveContext::Pass::PerPixel));
 
@@ -361,6 +362,7 @@ namespace SceneEngine
                     context->BindPS(MakeResourceList(3, preparedShadows._shadowTextureResource));
                     prebuiltConstantBuffers[0] = &preparedShadows._arbitraryCB;
                     prebuiltConstantBuffers[4] = &preparedShadows._orthoCB;
+                    constantBufferPackets[5] = MakeSharedPkt(preparedShadows._resolveParameters);
 
                         //
                         //      We need an accurate way to get from screen coords into 

@@ -375,10 +375,12 @@ namespace SceneEngine
 
                 auto& horizBlur = Assets::GetAssetDep<Metal::ShaderProgram>(
                     "game/xleres/basic2D.vsh:fullscreen:vs_*", 
-                    "game/xleres/Effects/SeparableFilter.psh:HorizontalBlur11:ps_*");
+                    "game/xleres/Effects/SeparableFilter.psh:HorizontalBlur11:ps_*",
+                    "USE_CLAMPING_WINDOW=1");
                 auto& vertBlur = Assets::GetAssetDep<Metal::ShaderProgram>(
                     "game/xleres/basic2D.vsh:fullscreen:vs_*", 
-                    "game/xleres/Effects/SeparableFilter.psh:VerticalBlur11:ps_*");
+                    "game/xleres/Effects/SeparableFilter.psh:VerticalBlur11:ps_*",
+                    "USE_CLAMPING_WINDOW=1");
                 auto& copyShader = Assets::GetAssetDep<Metal::ShaderProgram>(
                     "game/xleres/basic2D.vsh:fullscreen:vs_*", 
                     "game/xleres/basic.psh:copy_bilinear:ps_*");
@@ -391,6 +393,9 @@ namespace SceneEngine
 
                     ViewportDesc newViewport(0, 0, (float)i->_width, (float)i->_height, 0.f, 1.f);
                     context->Bind(newViewport);
+
+                    Float4 clampingWindow(0.f, 0.f, (float)i->_width - 1.f, (float)i->_height - 1.f);
+                    context->BindPS(MakeResourceList(1, Metal::ConstantBuffer(&clampingWindow, sizeof(clampingWindow))));
 
                     context->Bind(Techniques::CommonResources()._blendOpaque);
                     context->Bind(MakeResourceList(resources._bloomTempBuffer._bloomBufferRTV), nullptr);
@@ -907,6 +912,7 @@ namespace SceneEngine
         static const auto luminanceMax = ParameterBox::MakeParameterNameHash("LuminanceMax");
         static const auto whitePoint = ParameterBox::MakeParameterNameHash("WhitePoint");
         static const auto bloomBlurStdDev = ParameterBox::MakeParameterNameHash("BloomBlurStdDev");
+        static const auto bloomBrightness = ParameterBox::MakeParameterNameHash("BloomBrightness");
         static const auto flags = ParameterBox::MakeParameterNameHash("Flags");
 
         auto flagsV = paramBox.GetParameter<unsigned>(flags);
@@ -914,7 +920,7 @@ namespace SceneEngine
         else              _flags = defaults._flags;
 
         auto scale = paramBox.GetParameter<unsigned>(bloomScale);
-        if (scale.first)    _bloomScale = AsFloat3Color(scale.second);
+        if (scale.first)    _bloomScale = AsFloat3Color(scale.second) * paramBox.GetParameter<float>(bloomBrightness, 1.f);
         else                _bloomScale = defaults._bloomScale;
 
         _bloomThreshold = paramBox.GetParameter<float>(bloomThreshold, defaults._bloomThreshold);

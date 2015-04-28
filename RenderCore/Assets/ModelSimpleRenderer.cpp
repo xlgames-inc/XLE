@@ -472,7 +472,7 @@ namespace RenderCore { namespace Assets { namespace Simple
 
                     // build a material parameter box and look for it in our list
                 ParameterBox materialParamBox;
-                materialParamBox.SetParameter("RES_HAS_bfbf327ee9403009", !normalMapTextureName.empty());
+                materialParamBox.SetParameter("RES_HAS_NormalsTexture", !normalMapTextureName.empty());
                 if (subMaterial && subMaterial->_alphaThreshold < 1.f) {
                     materialParamBox.SetParameter("MAT_ALPHA_TEST", 1);
                 }

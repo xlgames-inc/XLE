@@ -11,6 +11,8 @@
 #include "../RenderCore/Techniques/TechniqueUtils.h"
 #include "../ConsoleRig/Console.h"
 #include "../ConsoleRig/IncludeLUA.h"
+#include "../Utility/ParameterBox.h"
+#include "../Utility/BitUtils.h"
 #include "../Math/Transformations.h"
 #include "../Math/ProjectionMath.h"
 
@@ -65,17 +67,70 @@ namespace PlatformRig
 
     DefaultShadowFrustumSettings::DefaultShadowFrustumSettings()
     {
-        static unsigned frustumCount = 5;
-        static bool arbitraryCascades = false;
-        static float maxDistanceFromCamera = 1000.f;
-        static float frustumSizeFactor = 3.25f;
-        static float focusDistance = 3.f;
+        const unsigned frustumCount = 5;
+        const float maxDistanceFromCamera = 10000.f;        // need really large distance because some models have a 100.f scale factor!
+        const float frustumSizeFactor = 3.8f;
+        const float focusDistance = 3.f;
 
         _frustumCount = frustumCount;
-        _arbitraryCascades = arbitraryCascades;
         _maxDistanceFromCamera = maxDistanceFromCamera;
         _frustumSizeFactor = frustumSizeFactor;
         _focusDistance = focusDistance;
+        _flags = Flags::HighPrecisionDepths;
+        _textureSize = 1024;
+
+        _shadowSlopeScaledBias = Tweakable("ShadowSlopeScaledBias", 1.f);
+        _shadowDepthBiasClamp = Tweakable("ShadowDepthBiasClamp", 0.f);
+        _shadowRasterDepthBias = Tweakable("ShadowRasterDepthBias", 300);
+
+        _worldSpaceResolveBias = 0.f;   // (-.3f)
+        _tanBlurAngle = 0.00436f;
+        _minBlurSearch = 0.5f;
+        _maxBlurSearch = 25.f;
+    }
+
+    DefaultShadowFrustumSettings::DefaultShadowFrustumSettings(const Utility::ParameterBox& paramBox)
+        : DefaultShadowFrustumSettings()
+    {
+        static const auto frustumCount = ParameterBox::MakeParameterNameHash("FrustumCount");
+        static const auto maxDistanceFromCamera = ParameterBox::MakeParameterNameHash("MaxDistanceFromCamera");
+        static const auto frustumSizeFactor = ParameterBox::MakeParameterNameHash("FrustumSizeFactor");
+        static const auto focusDistance = ParameterBox::MakeParameterNameHash("FocusDistance");
+        static const auto flags = ParameterBox::MakeParameterNameHash("Flags");
+        static const auto textureSize = ParameterBox::MakeParameterNameHash("TextureSize");
+
+        static const auto shadowSlopeScaledBias = ParameterBox::MakeParameterNameHash("ShadowSlopeScaledBias");
+        static const auto shadowDepthBiasClamp = ParameterBox::MakeParameterNameHash("ShadowDepthBiasClamp");
+        static const auto shadowRasterDepthBias = ParameterBox::MakeParameterNameHash("ShadowRasterDepthBias");
+
+        static const auto worldSpaceResolveBias = ParameterBox::MakeParameterNameHash("WorldSpaceResolveBias");
+        static const auto blurAngleDegrees = ParameterBox::MakeParameterNameHash("BlurAngleDegrees");
+
+        static const auto minBlurSearch = ParameterBox::MakeParameterNameHash("MinBlurSearch");
+        static const auto maxBlurSearch = ParameterBox::MakeParameterNameHash("MaxBlurSearch");
+
+        _frustumCount = paramBox.GetParameter(frustumCount, _frustumCount);
+        _maxDistanceFromCamera = paramBox.GetParameter(maxDistanceFromCamera, _maxDistanceFromCamera);
+        _frustumSizeFactor = paramBox.GetParameter(frustumSizeFactor, _frustumSizeFactor);
+        _focusDistance = paramBox.GetParameter(focusDistance, _focusDistance);
+        _flags = paramBox.GetParameter(flags, _flags);
+        _textureSize = paramBox.GetParameter(textureSize, _textureSize);
+
+            // ceil to a power of two
+        _textureSize = 1<<(IntegerLog2(_textureSize-1)+1);
+
+        _frustumCount = Clamp(_frustumCount, 1u, SceneEngine::MaxShadowTexturesPerLight);
+
+        _shadowSlopeScaledBias = paramBox.GetParameter(shadowSlopeScaledBias, _shadowSlopeScaledBias);
+        _shadowDepthBiasClamp = paramBox.GetParameter(shadowDepthBiasClamp, _shadowDepthBiasClamp);
+        _shadowRasterDepthBias = paramBox.GetParameter(shadowRasterDepthBias, _shadowRasterDepthBias);
+
+        _worldSpaceResolveBias = paramBox.GetParameter(worldSpaceResolveBias, _worldSpaceResolveBias);
+        auto blurAngle = paramBox.GetParameter<float>(blurAngleDegrees);
+        if (blurAngle.first) _tanBlurAngle = XlTan(Deg2Rad(blurAngle.second));
+
+        _minBlurSearch = paramBox.GetParameter<float>(minBlurSearch, _minBlurSearch);
+        _maxBlurSearch = paramBox.GetParameter<float>(maxBlurSearch, _maxBlurSearch);
     }
 
     static Float4x4 MakeWorldToLight(
@@ -310,12 +365,11 @@ namespace PlatformRig
             //          Still, it's just a placeholder.
 
         using namespace SceneEngine;
-        ShadowProjectionDesc result;
 
-        result._width   = 1024;
-        result._height  = 1024;
-        const bool useHighPrecisionDepths = false;
-        if (constant_expression<useHighPrecisionDepths>::result()) {
+        ShadowProjectionDesc result;
+        result._width   = settings._textureSize;
+        result._height  = settings._textureSize;
+        if (settings._flags & DefaultShadowFrustumSettings::Flags::HighPrecisionDepths) {
             result._typelessFormat  = (RenderCore::Metal::NativeFormat::Enum)DXGI_FORMAT_R24G8_TYPELESS;
             result._writeFormat     = (RenderCore::Metal::NativeFormat::Enum)DXGI_FORMAT_D24_UNORM_S8_UINT;
             result._readFormat      = (RenderCore::Metal::NativeFormat::Enum)DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
@@ -325,7 +379,7 @@ namespace PlatformRig
             result._readFormat      = (RenderCore::Metal::NativeFormat::Enum)DXGI_FORMAT_R16_UNORM;
         }
         
-        if (settings._arbitraryCascades) {
+        if (settings._flags & DefaultShadowFrustumSettings::Flags::ArbitraryCascades) {
             auto t = BuildBasicShadowProjections(lightDesc, mainSceneProjectionDesc, settings);
             result._projections = t.first;
             result._worldToClip = t.second;
@@ -334,6 +388,15 @@ namespace PlatformRig
             result._projections = t.first;
             result._worldToClip = t.second;
         }
+
+        result._shadowSlopeScaledBias = settings._shadowSlopeScaledBias;
+        result._shadowDepthBiasClamp = settings._shadowDepthBiasClamp;
+        result._shadowRasterDepthBias = settings._shadowRasterDepthBias;
+
+        result._worldSpaceResolveBias = settings._worldSpaceResolveBias;
+        result._tanBlurAngle = settings._tanBlurAngle;
+        result._minBlurSearch = settings._minBlurSearch;
+        result._maxBlurSearch = settings._maxBlurSearch;
 
         return result;
     }

@@ -107,8 +107,16 @@ namespace SceneEngine
 
         typedef MultiProjection<MaxShadowTexturesPerLight> Projections;
 
-        Projections _projections;
-        Float4x4    _worldToClip;   ///< Intended for use in CPU-side culling. Objects culled by this transform will be culled from all projections
+        Projections     _projections;
+        Float4x4        _worldToClip;   ///< Intended for use in CPU-side culling. Objects culled by this transform will be culled from all projections
+
+        float           _shadowSlopeScaledBias;
+        float           _shadowDepthBiasClamp;
+        unsigned        _shadowRasterDepthBias;
+
+        float           _worldSpaceResolveBias;
+        float           _tanBlurAngle;
+        float           _minBlurSearch, _maxBlurSearch;
 
         ShadowProjectionDesc();
     };

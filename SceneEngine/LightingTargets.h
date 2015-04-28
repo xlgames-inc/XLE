@@ -178,13 +178,16 @@ namespace SceneEngine
             bool _flipDirection;
             bool _hasAO, _hasTiledLighting, _hasSRR;
             unsigned _skyProjectionType;
+            unsigned _gbufferType;
 
-            Desc(   unsigned msaaSampleCount, bool msaaSamplers, bool flipDirection,
+            Desc(   unsigned gbufferType,
+                    unsigned msaaSampleCount, bool msaaSamplers, bool flipDirection,
                     bool hasAO, bool hasTiledLighting, bool hasSSR, unsigned skyProjectionType)
             {
                     //  we have to "memset" this -- because padding adds random values in 
                     //  profile mode
                 std::fill((char*)this, PtrAdd((char*)this, sizeof(*this)), 0);
+                _gbufferType = gbufferType;
                 _msaaSampleCount = msaaSampleCount;
                 _msaaSamplers = msaaSamplers;
                 _flipDirection = flipDirection;

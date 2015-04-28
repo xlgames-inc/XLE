@@ -230,7 +230,12 @@ namespace RenderCore { namespace Assets
         const Utility::ParameterBox& globalStates,
         unsigned techniqueIndex) -> const CompiledRenderStateSet*
     {
-        if (techniqueIndex == 0 || techniqueIndex == 3 || techniqueIndex == 4 || techniqueIndex == 2) {
+            // HACK --  when rendering shadows we can't do this.
+            //          (techniqueIndex == 3)
+            //          This is because shadow rendering conflicts with some of the states
+            //          in the RasterizerState object. We need to merge local states and
+            //          global states together to get the final true rasterizer state
+        if (techniqueIndex == 0 || techniqueIndex == 4 || techniqueIndex == 2) {
             auto hash = states.GetHash();
             auto i = LowerBound(_forwardStates, hash);
             if (i != _forwardStates.end() && i->first == hash) {
