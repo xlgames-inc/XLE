@@ -15,6 +15,7 @@
 #include "../../SceneEngine/Terrain.h"
 #include "../../SceneEngine/PlacementsManager.h"
 #include "../../SceneEngine/SceneEngineUtils.h"
+#include "../../SceneEngine/Tonemap.h"
 
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../RenderCore/Metal/State.h"
@@ -155,9 +156,13 @@ namespace Sample
         GlobalLightingDesc result;
         auto ambientScale = Tweakable("AmbientScale", 0.03f);
         result._ambientLight = Float3(1.f * ambientScale, 1.f * ambientScale, 1.f * ambientScale);
-        XlCopyString(result._skyTexture, "game/xleres/DefaultResources/sky/desertsky.jpg");
-        result._doToneMap = true;
+        XlCopyString(result._skyTexture, "game/xleres/DefaultResources/sky/desertsky.dds");
         return result;
+    }
+
+    auto EnvironmentSceneParser::GetToneMapSettings() const -> ToneMapSettings
+    {
+        return SceneEngine::DefaultToneMapSettings();
     }
 
     unsigned EnvironmentSceneParser::GetShadowProjectionCount() const

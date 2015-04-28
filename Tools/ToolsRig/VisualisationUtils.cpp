@@ -36,19 +36,7 @@ namespace ToolsRig
     {}
     VisSceneParser::~VisSceneParser() {}
 
-    void VisSceneParser::Prepare()
-    {
-        // const PlatformRig::EnvironmentSettings* settings = nullptr;
-        // for (auto i=_envSettings->_settings.cbegin(); i!=_envSettings->_settings.cend(); ++i) {
-        //     if (i->first == _envSettings->_activeSetting) {
-        //         settings = &i->second;
-        //         break;
-        //     }
-        // }
-        // if (settings) { _activeEnv = *settings; }
-        // else { _activeEnv = PlatformRig::DefaultEnvironmentSettings(); }
-    }
-
+    void VisSceneParser::Prepare() {}
     const PlatformRig::EnvironmentSettings& VisSceneParser::GetEnvSettings() const { return _envSettings->_activeSetting; }
 
     VisEnvSettings::VisEnvSettings()

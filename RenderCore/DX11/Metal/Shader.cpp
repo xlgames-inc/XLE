@@ -131,6 +131,9 @@ namespace RenderCore { namespace Metal_DX11
                 nativeDeclaration[c].SemanticIndex = ele._semanticIndex;
                 nativeDeclaration[c].StartComponent = 0;
                 nativeDeclaration[c].ComponentCount = (BYTE)GetComponentCount(GetComponents(ele._nativeFormat));
+                    // hack -- treat "R16G16B16A16_FLOAT" as a 3 dimensional vector
+                if (ele._nativeFormat == NativeFormat::Enum::R16G16B16A16_FLOAT)
+                    nativeDeclaration[c].ComponentCount = 3;
                 nativeDeclaration[c].OutputSlot = (BYTE)ele._inputSlot;
                 assert(nativeDeclaration[c].OutputSlot < soInitializers._outputBufferCount);
             }

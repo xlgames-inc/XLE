@@ -329,13 +329,13 @@ namespace SceneEngine
 
     std::pair<Float3, Float3> IntersectionTestContext::CalculateWorldSpaceRay(Int2 screenCoord) const
     {
-        return CalculateWorldSpaceRay(_cameraDesc, screenCoord, GetViewportSize());
+        return CalculateWorldSpaceRay(GetCameraDesc(), screenCoord, GetViewportSize());
     }
 
     Float2 IntersectionTestContext::ProjectToScreenSpace(const Float3& worldSpaceCoord) const
     {
         auto viewport = GetViewportSize();
-        auto worldToProjection = CalculateWorldToProjection(_cameraDesc, viewport[0] / float(viewport[1]));
+        auto worldToProjection = CalculateWorldToProjection(GetCameraDesc(), viewport[0] / float(viewport[1]));
         auto projCoords = worldToProjection * Expand(worldSpaceCoord, 1.f);
 
         return Float2(

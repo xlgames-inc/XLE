@@ -232,7 +232,6 @@ namespace RenderCore
 
     void    Device::BeginFrame(IPresentationChain* presentationChain)
     {
-        Assets::CompileAndAsyncManager::GetInstance().Update(); // todo -- move this update somewhere else!
         PresentationChain* swapChain = checked_cast<PresentationChain*>(presentationChain);
         swapChain->AttachToContext(_immediateContext.get(), _underlying.get());
     }

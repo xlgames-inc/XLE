@@ -78,6 +78,7 @@ namespace PlatformRig
         unsigned    _frameRenderCount;
         uint64      _frameLimiter;
         uint64      _timerFrequency;
+        bool        _updateAsyncMan;
 
         std::shared_ptr<OverlaySystemSet> _mainOverlaySys;
         std::shared_ptr<DebugScreensSystem> _debugSystem;
@@ -88,6 +89,7 @@ namespace PlatformRig
         , _timerFrequency(GetPerformanceCounterFrequency())
         , _frameRenderCount(0)
         , _frameLimiter(0)
+        , _updateAsyncMan(false)
         {
             _timerToSeconds = 1.0f / float(_timerFrequency);
         }
@@ -186,6 +188,10 @@ namespace PlatformRig
         if (gpuProfiler) {
             RenderCore::Metal::GPUProfiler::Frame_Begin(*metalContext, gpuProfiler, _pimpl->_frameRenderCount);
         }
+
+        if (_pimpl->_updateAsyncMan)
+            Assets::CompileAndAsyncManager::GetInstance().Update();
+
         auto device = context.GetDevice();
         assert(device);
         device->BeginFrame(presChain);
@@ -279,6 +285,7 @@ namespace PlatformRig
         _pimpl = std::make_unique<Pimpl>();
 
         _pimpl->_mainOverlaySys = std::make_shared<OverlaySystemSet>();
+        _pimpl->_updateAsyncMan = isMainFrameRig;   // only the main frame rig should update the async man (in gui tools the async man update happens in a background thread)
 
         {
             _pimpl->_debugSystem = std::make_shared<DebugScreensSystem>();

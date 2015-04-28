@@ -273,8 +273,9 @@ namespace ToolsRig
     {
         ModelVisSettings settings;
         *settings._camera = AlignCameraToBoundingBox(40.f, model._boundingBox);
+        static VisEnvSettings tempHack;
         return std::make_unique<ModelSceneParser>(
-            settings, VisEnvSettings(),
+            settings, tempHack,
             *model._renderer, model._boundingBox, *model._sharedStateSet);
     }
 
