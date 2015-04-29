@@ -122,7 +122,7 @@ namespace RenderCore
 
     inline SharedPkt& SharedPkt::operator=(SharedPkt&& moveFrom) never_throws
     {
-        SharedPkt(moveFrom).swap(*this);
+        SharedPkt(std::forward<SharedPkt>(moveFrom)).swap(*this);
         return *this;
     }
 

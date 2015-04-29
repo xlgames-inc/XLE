@@ -119,7 +119,9 @@ namespace GUILayer
         if (!_scene->_placeholders) return ;
 
         if (annotationName == "vis") {
-            _scene->_placeholders->AddAnnotation(typeId);
+            auto mappedId = _dynInterface->MapTypeId(typeId, *_flexGobInterface.get());
+            if (mappedId != 0)
+                _scene->_placeholders->AddAnnotation(mappedId);
         }
     }
 

@@ -13,6 +13,7 @@
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../RenderCore/Techniques/TechniqueMaterial.h"
 #include "../../RenderCore/Techniques/CommonBindings.h"
+#include "../../RenderCore/Techniques/PredefinedCBLayout.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/Buffer.h"
 #include "../../SceneEngine/IntersectionTest.h"
@@ -75,12 +76,15 @@ namespace GUILayer
     {
         if (!obj._properties.GetParameter(Parameters::Visible, true)) return;
 
+        const auto& cbLayout = ::Assets::GetAssetDep<Techniques::PredefinedCBLayout>(
+            "game/xleres/BasicMaterialConstants.txt");
+
         shader.Apply(devContext, parserContext,
             {
                 MakeLocalTransformPacket(
                     Transpose(obj._properties.GetParameter(Parameters::Transform, Identity<Float4x4>())),
                     ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld)),
-                MakeSharedPkt(BasicMaterialConstants())
+                cbLayout.BuildCBDataAsPkt(ParameterBox())
             });
         
         devContext.Bind(MakeResourceList(visBox._cubeVB), visBox._cubeVBStride, 0);

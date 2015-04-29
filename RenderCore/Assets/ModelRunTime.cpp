@@ -50,14 +50,6 @@ namespace RenderCore { namespace Assets
     /// These functions are normally used within the constructor of ModelRenderer
     namespace ModelConstruction
     {
-        class BasicMaterialConstants
-        {
-        public:
-                // fixed set of material parameters currently.
-            Float3 _materialDiffuse;    float _opacity;
-            Float3 _materialSpecular;   float _alphaThreshold;
-        };
-
         static const std::string DefaultShader = "illum";
 
         static size_t InsertOrCombine(std::vector<std::vector<uint8>>& dest, std::vector<uint8>&& compare)
@@ -253,7 +245,7 @@ namespace RenderCore { namespace Assets
                 // build material constants
             for (auto i=materialResources.begin(); i!=materialResources.end(); ++i) {
                 auto* matData = matScaffold.GetMaterial(i->first);
-                auto cbData = matData ? cbLayout.BuildCBData(matData->_constants) : std::vector<uint8>(cbLayout._cbSize, uint8(0));
+                auto cbData = matData ? cbLayout.BuildCBDataAsVector(matData->_constants) : std::vector<uint8>(cbLayout._cbSize, uint8(0));
 
                 i->second._constantBuffer = 
                     (unsigned)InsertOrCombine(

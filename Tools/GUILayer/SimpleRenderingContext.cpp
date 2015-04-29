@@ -19,6 +19,7 @@
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Techniques/TechniqueMaterial.h"
 #include "../../RenderCore/Techniques/CommonBindings.h"
+#include "../../RenderCore/Techniques/PredefinedCBLayout.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Metal/Buffer.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
@@ -130,15 +131,17 @@ namespace GUILayer
                 return false; // we can't render because we couldn't resolve a good shader variation
             }
 
+            const auto& cbLayout = ::Assets::GetAssetDep<Techniques::PredefinedCBLayout>(
+                "game/xleres/BasicMaterialConstants.txt");
+
+            ParameterBox matConstants;
+            matConstants.SetParameter("MaterialDiffuse", Float3(color[0], color[1], color[2]));
+
             variation.Apply(
                 devContext, parsingContext,
                 {
                     Techniques::MakeLocalTransformPacket(Transpose(*(Float4x4*)xform), Float3(0.f, 0.f, 0.f)),
-                    MakeSharedPkt(
-                        Techniques::BasicMaterialConstants 
-                        { 
-                            Float3(color[0], color[1], color[2]), 1.f, Float3(0.f, 0.f, 0.f), 0.33f 
-                        })
+                    cbLayout.BuildCBDataAsPkt(matConstants)
                 });
             return true;
         }

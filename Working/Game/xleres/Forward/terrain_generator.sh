@@ -501,18 +501,38 @@ struct ProceduralTextureOutput
 		float4 TextureFrequency[StrataCount];
 	}
 
+	float3 AsStackCoord(float2 tc, uint strata, uint textureType)
+	{
+		return float3(tc, strata*3+textureType);
+	}
+
+	float3 StrataDiffuseSample(float2 tc, uint strata, uint textureType)
+	{
+		float3 result = StrataDiffuse.Sample(MaybeAnisotropicSampler, AsStackCoord(tc, strata, textureType)).rgb;
+			// Compenstate for wierd SRGB behaviour in archeage assets
+			// ideally we should configure the texture samplers to do this automatically,
+			// rather than with an explicit call here
+		result = SRGBToLinear(result);
+		return result;
+	}
+
+	float StrataSpecularSample(float2 tc, uint strata, uint textureType)
+	{
+		return SRGBLuminance(StrataSpecularity.Sample(MaybeAnisotropicSampler, AsStackCoord(tc, strata, textureType)).rgb);
+	}
+
 	ProceduralTextureOutput GetTextureForStrata(uint strataIndex, float3 worldPosition, float slopeFactor, float2 textureCoord, float noiseValue0)
 	{
 		float2 tc0 = worldPosition.xy * TextureFrequency[strataIndex].xx;
 		float2 tc1 = worldPosition.xy * TextureFrequency[strataIndex].yy;
 
-		float3 A = StrataDiffuse.Sample(MaybeAnisotropicSampler, float3(tc0, strataIndex*3+0)).rgb;
+		float3 A = StrataDiffuseSample(tc0, strataIndex, 0);
 		float3 An = StrataNormals.Sample(MaybeAnisotropicSampler, float3(tc0, strataIndex*3+0)).rgb;
-		float As = SRGBLuminance(StrataSpecularity.Sample(MaybeAnisotropicSampler, float3(tc0, strataIndex*3+0)).rgb);
+		float As = StrataSpecularSample(tc0, strataIndex, 0);
 
-		float3 B = StrataDiffuse.Sample(MaybeAnisotropicSampler, float3(tc1, strataIndex*3+1)).rgb;
+		float3 B = StrataDiffuseSample(tc0, strataIndex, 1);
 		float3 Bn = StrataNormals.Sample(MaybeAnisotropicSampler, float3(tc1, strataIndex*3+1)).rgb;
-		float Bs = SRGBLuminance(StrataSpecularity.Sample(MaybeAnisotropicSampler, float3(tc1, strataIndex*3+1)).rgb);
+		float Bs = StrataSpecularSample(tc0, strataIndex, 1);
 
 		float alpha = saturate(.5f + .7f * noiseValue0);
 		// alpha = min(1.f, exp(32.f * (alpha-.5f)));
@@ -542,14 +562,14 @@ struct ProceduralTextureOutput
 
 				// soft darkening based on slope give a curiously effective approximation of ambient occlusion
 			float arrayIdx = strataIndex*3+2;
-			float3 S = StrataDiffuse.Sample(MaybeAnisotropicSampler, float3(tcS0, arrayIdx)).rgb;
+			float3 S = StrataDiffuseSample(tcS0, strataIndex, 2);
 			float3 Sn = StrataNormals.Sample(MaybeAnisotropicSampler, float3(tcS0, arrayIdx)).rgb;
-			float3 Ss = SRGBLuminance(StrataSpecularity.Sample(MaybeAnisotropicSampler, float3(tcS0, arrayIdx)).rgb);
+			float3 Ss = StrataSpecularSample(tcS0, strataIndex, 2);
 
 			tcS0.x = worldPosition.y * TextureFrequency[strataIndex].z;
-			float3 S2 = StrataDiffuse.Sample(MaybeAnisotropicSampler, float3(tcS0, arrayIdx)).rgb;
+			float3 S2 = StrataDiffuseSample(tcS0, strataIndex, 2);
 			float3 Sn2 = StrataNormals.Sample(MaybeAnisotropicSampler, float3(tcS0, arrayIdx)).rgb;
-			float3 Ss2 = SRGBLuminance(StrataSpecularity.Sample(MaybeAnisotropicSampler, float3(tcS0, arrayIdx)).rgb);
+			float3 Ss2 = StrataSpecularSample(tcS0, strataIndex, 2);
 
 			result.diffuseAlbedo = lerp(result.diffuseAlbedo, slopeDarkness * .5f * (S+S2), slopeAlpha);
 			result.tangentSpaceNormal = lerp(result.tangentSpaceNormal, .5f * (Sn + Sn2), slopeAlpha);
@@ -599,16 +619,12 @@ ProceduralTextureOutput BuildProceduralTextureValue(float3 worldPosition, float 
 	result.tangentSpaceNormal = lerp(value0.tangentSpaceNormal, value1.tangentSpaceNormal, strataAlpha);
 	result.specularity = lerp(value0.specularity, value1.specularity, strataAlpha);
 
-	result.diffuseAlbedo = pow(result.diffuseAlbedo, 2.2);
-
 	float2 nxy = 2.f * result.tangentSpaceNormal.xy - 1.0.xx;
-	nxy *= 0.5f;	// reduce normal map slightly -- make things slightly softer and cleaner
+	// nxy *= 0.5f;	// reduce normal map slightly -- make things slightly softer and cleaner
 	result.tangentSpaceNormal = float3(nxy, sqrt(saturate(1.f + dot(nxy, -nxy))));
 
 	return result;
 }
-
-// struct PSOutput { float4 diffuse : SV_Target0; float4 normal : SV_target1; };
 
 struct TerrainPixel
 {
@@ -666,12 +682,12 @@ TerrainPixel CalculateTerrain(SW_GStoPS geo)
 		+ procTexture.tangentSpaceNormal.y * vaxis
 		+ procTexture.tangentSpaceNormal.z * normal);
 
-	float emulatedAmbientOcclusion = lerp(0.5f, 1.f, SRGBLuminance(result.rgb));
+	float emulatedAmbientOcclusion = 1.f; // lerp(0.5f, 1.f, SRGBLuminance(result.rgb));
 
 	TerrainPixel output;
 	output.diffuseAlbedo = result;
 	output.worldSpaceNormal = deformedNormal;
-	output.specularity = .125f * procTexture.specularity;
+	output.specularity = .25f * procTexture.specularity;
 	output.cookedAmbientOcclusion = shadowing * emulatedAmbientOcclusion;
 	return output;
 }
@@ -684,7 +700,8 @@ GBufferEncoded ps_main(SW_GStoPS geo)
 	output.diffuseAlbedo = p.diffuseAlbedo;
 	output.worldSpaceNormal = p.worldSpaceNormal;
 	output.material.specular = p.specularity;
-	output.material.roughness = 0.8f;
+	output.material.roughness = 0.75f;
+	output.material.metal = 0.f;
 	output.cookedAmbientOcclusion = p.cookedAmbientOcclusion;
 	return Encode(output);
 }

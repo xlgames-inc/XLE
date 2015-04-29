@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "PredefinedCBLayout.h"
+#include "../RenderUtils.h"
 #include "../../Utility/BitUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include <regex>
@@ -136,22 +137,30 @@ namespace RenderCore { namespace Techniques
 
     PredefinedCBLayout::~PredefinedCBLayout() {}
 
-    std::vector<uint8> PredefinedCBLayout::BuildCBData(const ParameterBox& parameters) const
+    void PredefinedCBLayout::WriteBuffer(void* dst, const ParameterBox& parameters) const
     {
-        std::vector<uint8> cbData(_cbSize, uint8(0));
-
         for (auto c=_elements.cbegin(); c!=_elements.cend(); ++c) {
             bool gotValue = parameters.GetParameter(
-                c->_hash, PtrAdd(AsPointer(cbData.begin()), c->_offset),
+                c->_hash, PtrAdd(dst, c->_offset),
                 c->_type);
 
-            if (!gotValue) {
-                _defaults.GetParameter(
-                    c->_hash, PtrAdd(AsPointer(cbData.begin()), c->_offset),
-                    c->_type);
-            }
+            if (!gotValue)
+                _defaults.GetParameter(c->_hash, PtrAdd(dst, c->_offset), c->_type);
         }
+    }
 
+    std::vector<uint8> PredefinedCBLayout::BuildCBDataAsVector(const ParameterBox& parameters) const
+    {
+        std::vector<uint8> cbData(_cbSize, uint8(0));
+        WriteBuffer(AsPointer(cbData.begin()), parameters);
         return std::move(cbData);
+    }
+
+    SharedPkt PredefinedCBLayout::BuildCBDataAsPkt(const ParameterBox& parameters) const
+    {
+        SharedPkt result = MakeSharedPktSize(_cbSize);
+        XlSetMemory(result.begin(), 0, _cbSize);
+        WriteBuffer(result.begin(), parameters);
+        return std::move(result);
     }
 }}

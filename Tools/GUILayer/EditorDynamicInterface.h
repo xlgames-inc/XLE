@@ -71,6 +71,8 @@ namespace GUILayer
             PropertyId GetPropertyId(ObjectTypeId type, const char name[]) const;
             ChildListId GetChildListId(ObjectTypeId type, const char name[]) const;
 
+            uint32 MapTypeId(ObjectTypeId type, const IObjectType& owner);
+
             void RegisterType(std::shared_ptr<IObjectType> type);
             RegisteredTypes();
             ~RegisteredTypes();

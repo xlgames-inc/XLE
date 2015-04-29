@@ -150,10 +150,19 @@ namespace GUILayer { namespace EditorDynamicInterface
         return 0;
     }
 
+    uint32 RegisteredTypes::MapTypeId(ObjectTypeId objType, const IObjectType& owner)
+    {
+        if (objType > 0 && (objType-1) < _knownObjectTypes.size())
+            if (_knownObjectTypes[objType-1]._owner.get() == &owner)
+                return _knownObjectTypes[objType-1]._mappedTypeId;
+        return 0;
+    }
+
     void RegisteredTypes::RegisterType(std::shared_ptr<IObjectType> type)
     {
         _types.push_back(std::move(type));
     }
+
     RegisteredTypes::RegisteredTypes() {}
     RegisteredTypes::~RegisteredTypes() {}
     

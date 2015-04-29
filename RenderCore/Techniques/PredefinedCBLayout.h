@@ -9,6 +9,7 @@
 #include "../../Assets/AssetUtils.h"
 #include "../../Utility/ParameterBox.h"
 
+namespace RenderCore { class SharedPkt; }
 namespace RenderCore { namespace Techniques
 {
     class PredefinedCBLayout
@@ -26,7 +27,8 @@ namespace RenderCore { namespace Techniques
         std::vector<Element> _elements;
         ParameterBox _defaults;
 
-        std::vector<uint8> BuildCBData(const ParameterBox& parameters) const;
+        std::vector<uint8> BuildCBDataAsVector(const ParameterBox& parameters) const;
+        SharedPkt BuildCBDataAsPkt(const ParameterBox& parameters) const;
 
         PredefinedCBLayout(const ::Assets::ResChar initializer[]);
         ~PredefinedCBLayout();
@@ -36,5 +38,7 @@ namespace RenderCore { namespace Techniques
 
     private:
         std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
+
+        void WriteBuffer(void* dst, const ParameterBox& parameters) const;
     };
 }}

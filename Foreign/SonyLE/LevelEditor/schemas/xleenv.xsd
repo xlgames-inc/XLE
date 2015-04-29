@@ -27,7 +27,6 @@
         <LeGe.NativeProperty name="ambientbrightness" nativeName="ambientbrightness"/>
         <LeGe.NativeProperty name="skytexture" nativeName="skytexture"/>
         <LeGe.NativeProperty name="skyreflectionscale" nativeName="skyreflectionscale"/>
-        <LeGe.NativeVis geo="sphere"/>
 
         <scea.dom.editors category="Lights" name="AmbientSettings" menuText="Lights/AmbientSettings" description="Global ambient settings"/>
         <LeGe.OpaqueListable label="Ambient"/>
@@ -161,6 +160,7 @@
         <LeGe.NativeProperty name="specularnonmetalbrightness" nativeName="specularnonmetalbrightness"/>
         <LeGe.NativeProperty name="flags" nativeName="flags"/>
         <LeGe.NativeProperty name="ShadowFrustumSettings" nativeName="ShadowFrustumSettings"/>
+        <LeGe.NativeVis geo="sphere"/>
 
         <scea.dom.editors.attribute category="Light" name="diffuse" displayName="Diffuse" description="Diffuse Color" 
           editor="Sce.Atf.Controls.PropertyEditing.ColorPickerEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.IntColorConverter"/>

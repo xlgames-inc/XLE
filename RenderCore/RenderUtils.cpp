@@ -40,6 +40,7 @@ namespace RenderCore
     {
         if (_allocation != nullptr) {
             GetHeap().Release(*this);
+            _allocation = nullptr;      // getting a wierd case were the destructor for one object was called twice...? Unclear why
         }
     }
 
