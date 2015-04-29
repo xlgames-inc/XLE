@@ -2501,7 +2501,7 @@ namespace SceneEngine
     public:
         std::shared_ptr<TerrainCellRenderer> _renderer;
         std::unique_ptr<TerrainSurfaceHeightsProvider> _heightsProvider;
-        std::unique_ptr<TerrainUberSurfaceInterface> _uberSurfaceInterface;
+        std::unique_ptr<HeightsUberSurfaceInterface> _uberSurfaceInterface;
         std::shared_ptr<ITerrainFormat> _ioFormat;
 
         std::vector<TerrainCellId> _cells;
@@ -2667,7 +2667,7 @@ namespace SceneEngine
         ::Assets::ResChar uberSurfaceFile[MaxPath];
         outputConfig.GetUberSurfaceFilename(uberSurfaceFile, dimof(uberSurfaceFile), CoverageId_Heights);
         TerrainUberHeightsSurface heightsData(uberSurfaceFile);
-        TerrainUberSurfaceInterface uberSurfaceInterface(heightsData, outputIOFormat);
+        HeightsUberSurfaceInterface uberSurfaceInterface(heightsData, outputIOFormat);
 
         //////////////////////////////////////////////////////////////////////////////////////
         for (unsigned y=0; y<outputConfig._cellCount[1]; ++y) {
@@ -2714,7 +2714,7 @@ namespace SceneEngine
                 cfg.GetUberSurfaceFilename(uberHeightsFile, dimof(uberHeightsFile), CoverageId_Heights);
 
                 TerrainUberHeightsSurface heightsData(uberHeightsFile);
-                TerrainUberSurfaceInterface uberSurfaceInterface(heightsData, outputIOFormat);
+                HeightsUberSurfaceInterface uberSurfaceInterface(heightsData, outputIOFormat);
 
                 //////////////////////////////////////////////////////////////////////////////////////
                     // build the uber shadowing file, and then write out the shadowing textures for each node
@@ -2730,7 +2730,7 @@ namespace SceneEngine
                     uberLayer, interestingMins, interestingMaxs, sunDirectionOfMovement, xyScale);
 
             } else {
-                TerrainUberSurfaceInterface::BuildEmptyFile(
+                HeightsUberSurfaceInterface::BuildEmptyFile(
                     uberLayer, 
                     cfg._cellCount[0] * cfg.CellDimensionsInNodes()[0] * (layer._dimensions[0]+1),
                     cfg._cellCount[1] * cfg.CellDimensionsInNodes()[1] * (layer._dimensions[1]+1),
@@ -2741,7 +2741,7 @@ namespace SceneEngine
 
     static void RegisterShortCircuitUpdate(
         const TerrainConfig& terrainCfg, unsigned overlap,
-        TerrainUberSurfaceInterface* uberInterface,
+        HeightsUberSurfaceInterface* uberInterface,
         std::shared_ptr<TerrainCellRenderer> renderer)
     {
             //  Register cells for short-circuit update... Do we need to do this for every single cell
@@ -2806,7 +2806,7 @@ namespace SceneEngine
 
             // uber-surface is a special-case asset, because we can edit it without a "DivergentAsset". But to do that, we must const_cast here
         auto& uberSurface = const_cast<TerrainUberHeightsSurface&>(Assets::GetAsset<TerrainUberHeightsSurface>(uberSurfaceFile));
-        pimpl->_uberSurfaceInterface = std::make_unique<TerrainUberSurfaceInterface>(std::ref(uberSurface), ioFormat);
+        pimpl->_uberSurfaceInterface = std::make_unique<HeightsUberSurfaceInterface>(std::ref(uberSurface), ioFormat);
 
         ////////////////////////////////////////////////////////////////////////////
             // decide on the list of terrain cells we're going to render
@@ -3268,7 +3268,7 @@ namespace SceneEngine
     }
 
     const TerrainCoordinateSystem&  TerrainManager::GetCoords() const       { return _pimpl->_coords; }
-    TerrainUberSurfaceInterface* TerrainManager::GetUberSurfaceInterface()  { return _pimpl->_uberSurfaceInterface.get(); }
+    HeightsUberSurfaceInterface* TerrainManager::GetHeightsInterface()      { return _pimpl->_uberSurfaceInterface.get(); }
     ISurfaceHeightsProvider* TerrainManager::GetHeightsProvider()           { return _pimpl->_heightsProvider.get(); }
 
     const TerrainConfig& TerrainManager::GetConfig() const

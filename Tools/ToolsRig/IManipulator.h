@@ -50,6 +50,7 @@ namespace ToolsRig
         };
 
         typedef Parameter<float> FloatParameter;
+        typedef Parameter<int> IntParameter;
 
         class BoolParameter
         {
@@ -66,6 +67,7 @@ namespace ToolsRig
             // (warning -- result will probably contain pointers to internal memory within this manipulator)
         virtual std::pair<FloatParameter*, size_t>  GetFloatParameters() const = 0;     
         virtual std::pair<BoolParameter*, size_t>   GetBoolParameters() const = 0;
+        virtual std::pair<IntParameter*, size_t>   GetIntParameters() const = 0;
         virtual void SetActivationState(bool newState) = 0;
 
         virtual ~IManipulator();

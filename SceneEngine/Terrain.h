@@ -19,7 +19,7 @@ namespace SceneEngine
 {
     class LightingParserContext;
     class TechniqueContext;
-    class TerrainUberSurfaceInterface;
+    class HeightsUberSurfaceInterface;
     class ITerrainFormat;
     class ISurfaceHeightsProvider;
     
@@ -144,7 +144,7 @@ namespace SceneEngine
             RenderCore::Metal::DeviceContext* context,
             LightingParserContext& parserContext);
 
-        TerrainUberSurfaceInterface*    GetUberSurfaceInterface();
+        HeightsUberSurfaceInterface*    GetHeightsInterface();
         ISurfaceHeightsProvider*        GetHeightsProvider();
 
         const TerrainCoordinateSystem&  GetCoords() const;

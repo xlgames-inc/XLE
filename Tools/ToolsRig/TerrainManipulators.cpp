@@ -51,6 +51,7 @@ namespace ToolsRig
 
         virtual std::pair<FloatParameter*, size_t>  GetFloatParameters() const;
         virtual std::pair<BoolParameter*, size_t>   GetBoolParameters() const { return std::make_pair(nullptr, 0); }
+        virtual std::pair<IntParameter*, size_t>   GetIntParameters() const { return std::make_pair(nullptr, 0); }
 
         RaiseLowerManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager);
     private:
@@ -63,7 +64,7 @@ namespace ToolsRig
             //      Use the uber surface interface to change these values
             //          -- this will make sure all of the cells get updated as needed
             //
-        auto *i = _terrainManager->GetUberSurfaceInterface();
+        auto *i = _terrainManager->GetHeightsInterface();
         if (i) {
             i->AdjustHeights(
                 _terrainManager->GetCoords().WorldSpaceToTerrainCoords(Truncate(worldSpacePosition)), 
@@ -99,6 +100,7 @@ namespace ToolsRig
 
         virtual std::pair<FloatParameter*, size_t>  GetFloatParameters() const;
         virtual std::pair<BoolParameter*, size_t>   GetBoolParameters() const;
+        virtual std::pair<IntParameter*, size_t>   GetIntParameters() const { return std::make_pair(nullptr, 0); }
 
         SmoothManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager);
     private:
@@ -109,7 +111,7 @@ namespace ToolsRig
 
     void    SmoothManipulator::PerformAction(const Float3& worldSpacePosition, float size, float strength)
     {
-        auto *i = _terrainManager->GetUberSurfaceInterface();
+        auto *i = _terrainManager->GetHeightsInterface();
         if (i) {
             i->Smooth(
                 _terrainManager->GetCoords().WorldSpaceToTerrainCoords(Truncate(worldSpacePosition)), 
@@ -159,13 +161,14 @@ namespace ToolsRig
 
         virtual std::pair<FloatParameter*, size_t>  GetFloatParameters() const;
         virtual std::pair<BoolParameter*, size_t>   GetBoolParameters() const { return std::make_pair(nullptr, 0); }
+        virtual std::pair<IntParameter*, size_t>   GetIntParameters() const { return std::make_pair(nullptr, 0); }
 
         NoiseManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager);
     };
 
     void    NoiseManipulator::PerformAction(const Float3& worldSpacePosition, float size, float strength)
     {
-        auto *i = _terrainManager->GetUberSurfaceInterface();
+        auto *i = _terrainManager->GetHeightsInterface();
         if (i) {
             i->AddNoise(
                 _terrainManager->GetCoords().WorldSpaceToTerrainCoords(Truncate(worldSpacePosition)), 
@@ -198,6 +201,7 @@ namespace ToolsRig
 
         virtual std::pair<FloatParameter*, size_t>  GetFloatParameters() const;
         virtual std::pair<BoolParameter*, size_t>   GetBoolParameters() const;
+        virtual std::pair<IntParameter*, size_t>   GetIntParameters() const { return std::make_pair(nullptr, 0); }
 
         CopyHeight(std::shared_ptr<SceneEngine::TerrainManager> terrainManager);
     private:
@@ -207,7 +211,7 @@ namespace ToolsRig
 
     void CopyHeight::PerformAction(const Float3& worldSpacePosition, float size, float strength)
     {
-        auto *i = _terrainManager->GetUberSurfaceInterface();
+        auto *i = _terrainManager->GetHeightsInterface();
         if (i && _targetOnMouseDown.second) {
             i->CopyHeight(
                 _terrainManager->GetCoords().WorldSpaceToTerrainCoords(Truncate(worldSpacePosition)), 
@@ -254,6 +258,7 @@ namespace ToolsRig
         virtual const char* GetName() const { return "Fill noise"; }
         virtual std::pair<FloatParameter*, size_t>  GetFloatParameters() const;
         virtual std::pair<BoolParameter*, size_t>   GetBoolParameters() const { return std::make_pair(nullptr, 0); }
+        virtual std::pair<IntParameter*, size_t>   GetIntParameters() const { return std::make_pair(nullptr, 0); }
 
         FillNoiseManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager);
 
@@ -263,7 +268,7 @@ namespace ToolsRig
 
     void    FillNoiseManipulator::PerformAction(const Float3& anchor0, const Float3& anchor1)
     {
-        auto *i = _terrainManager->GetUberSurfaceInterface();
+        auto *i = _terrainManager->GetHeightsInterface();
         if (i) {
             i->FillWithNoise(
                 _terrainManager->GetCoords().WorldSpaceToTerrainCoords(Truncate(anchor0)), 
@@ -295,6 +300,45 @@ namespace ToolsRig
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+    class PaintCoverageManipulator : public RectangleManipulator
+    {
+    public:
+        virtual void    PerformAction(const Float3& anchor0, const Float3& anchor1);
+        virtual const char* GetName() const { return "Paint Coverage"; }
+        virtual std::pair<FloatParameter*, size_t>  GetFloatParameters() const { return std::make_pair(nullptr, 0); }
+        virtual std::pair<BoolParameter*, size_t>   GetBoolParameters() const { return std::make_pair(nullptr, 0); }
+        virtual std::pair<IntParameter*, size_t>   GetIntParameters() const;
+
+        PaintCoverageManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager);
+
+    private:
+        unsigned _coverageLayer;
+        unsigned _paintValue;
+    };
+
+    void PaintCoverageManipulator::PerformAction(const Float3& anchor0, const Float3& anchor1)
+    {
+    }
+
+    auto PaintCoverageManipulator::GetIntParameters() const -> std::pair < IntParameter*, size_t >
+    {
+        static IntParameter parameters[] = 
+        {
+            IntParameter(ManipulatorParameterOffset(&PaintCoverageManipulator::_coverageLayer), 0i32, INT32_MAX, IntParameter::Linear, "CoverageLayer"),
+            IntParameter(ManipulatorParameterOffset(&PaintCoverageManipulator::_paintValue), 0i32, INT32_MAX, IntParameter::Linear, "PaintValue"),
+        };
+        return std::make_pair(parameters, dimof(parameters));
+    }
+
+    PaintCoverageManipulator::PaintCoverageManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager)
+        : RectangleManipulator(terrainManager)
+    {
+        _coverageLayer = 1000;
+        _paintValue = 1;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
     class ErosionManipulator : public RectangleManipulator
     {
     public:
@@ -304,6 +348,7 @@ namespace ToolsRig
 
         virtual std::pair<FloatParameter*, size_t>  GetFloatParameters() const;
         virtual std::pair<BoolParameter*, size_t>   GetBoolParameters() const;
+        virtual std::pair<IntParameter*, size_t>   GetIntParameters() const { return std::make_pair(nullptr, 0); }
         
         ErosionManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager);
 
@@ -317,7 +362,7 @@ namespace ToolsRig
 
     void    ErosionManipulator::PerformAction(const Float3& anchor0, const Float3& anchor1)
     {
-        auto *i = _terrainManager->GetUberSurfaceInterface();
+        auto *i = _terrainManager->GetHeightsInterface();
         if (i) {
             _activeMins = _terrainManager->GetCoords().WorldSpaceToTerrainCoords(Truncate(anchor0));
             _activeMaxs = _terrainManager->GetCoords().WorldSpaceToTerrainCoords(Truncate(anchor1));
@@ -333,20 +378,20 @@ namespace ToolsRig
             //  Doing the erosion tick here is most convenient (because this is the 
             //  only place we get regular updates).
         if (_flags & (1<<0)) {
-            auto *i = _terrainManager->GetUberSurfaceInterface();
+            auto *i = _terrainManager->GetHeightsInterface();
             if (i) {
                 if (!i->Erosion_IsPrepared()) {
                     i->Erosion_Begin(_activeMins, _activeMaxs);
                 }
 
-                SceneEngine::TerrainUberSurfaceInterface::ErosionParameters params(
+                SceneEngine::HeightsUberSurfaceInterface::ErosionParameters params(
                     _rainQuantityPerFrame, _changeToSoftConstant, _softFlowConstant, _softChangeBackConstant);
                 i->Erosion_Tick(params);
             }
         }
 
         if (_flags & (1<<1)) {
-            auto *i = _terrainManager->GetUberSurfaceInterface();
+            auto *i = _terrainManager->GetHeightsInterface();
             if (i && i->Erosion_IsPrepared()) {
                 i->Erosion_RenderDebugging(
                     RenderCore::Metal::DeviceContext::Get(*context).get(), 
@@ -397,6 +442,7 @@ namespace ToolsRig
         virtual const char* GetName() const { return "Rotate"; }
         virtual std::pair<FloatParameter*, size_t>  GetFloatParameters() const;
         virtual std::pair<BoolParameter*, size_t>   GetBoolParameters() const { return std::make_pair(nullptr, 0); }
+        virtual std::pair<IntParameter*, size_t>   GetIntParameters() const { return std::make_pair(nullptr, 0); }
         RotateManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager);
 
     private:
@@ -405,7 +451,7 @@ namespace ToolsRig
 
     void    RotateManipulator::PerformAction(const Float3&, const Float3&)
     {
-        auto *i = _terrainManager->GetUberSurfaceInterface();
+        auto *i = _terrainManager->GetHeightsInterface();
         if (i) {
                 // we can't use the parameters passed into this function (because they've
                 //  been adjusted to the mins/maxs of a rectangular area, and we've lost

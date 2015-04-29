@@ -33,6 +33,24 @@ namespace SceneEngine
         ITerrainFormat* ioFormat,
         unsigned xStart, unsigned yStart, unsigned xDims, unsigned yDims);
 
+    class ITerrainUberSurface
+    {
+    public:
+        virtual unsigned GetWidth() const = 0;
+        virtual unsigned GetHeight() const = 0;
+
+        virtual void* GetData(UInt2 coord) = 0;
+        virtual unsigned GetStride() const = 0;
+        virtual unsigned BitsPerPixel() const = 0;
+
+        virtual void WriteCell(
+            const ITerrainFormat& ioFormat,
+            const char destinationFile[],
+            UInt2 cellMins, UInt2 cellMaxs, unsigned treeDepth, unsigned overlapElements) = 0;
+
+        virtual ~ITerrainUberSurface();
+    };
+
     /// <summary>Represents a single "uber" field of terrain data</summary>
     /// Normally the terrain is separated into many cells, each with limited
     /// dimensions. But while editing, it's useful to see the terrain as
@@ -50,7 +68,7 @@ namespace SceneEngine
     /// be able to manipulate it in full precision, whatever true format it is.
     /// That means we can't just cast all data to a Float4... we probably need
     /// something a little nicer than that.
-    template <typename Type> class TerrainUberSurface
+    template <typename Type> class TerrainUberSurface : public ITerrainUberSurface
     {
     public:
         Type GetValue(unsigned x, unsigned y) const;
@@ -58,6 +76,15 @@ namespace SceneEngine
         Type GetValueFast(unsigned x, unsigned y) const;
         unsigned GetWidth() const { return _width; }
         unsigned GetHeight() const { return _height; }
+
+        virtual void* GetData(UInt2 coord);
+        virtual unsigned GetStride() const;
+        virtual unsigned BitsPerPixel() const;
+
+        void WriteCell(
+            const ITerrainFormat& ioFormat,
+            const char destinationFile[],
+            UInt2 cellMins, UInt2 cellMaxs, unsigned treeDepth, unsigned overlapElements);
 
         TerrainUberSurface(const char filename[]);
         ~TerrainUberSurface();
@@ -71,7 +98,7 @@ namespace SceneEngine
         unsigned _width, _height;
         Type* _dataStart;
 
-        friend class TerrainUberSurfaceInterface;
+        friend class HeightsUberSurfaceInterface;
     };
 
     class ShortCircuitUpdate
@@ -85,7 +112,35 @@ namespace SceneEngine
 
     class TerrainCoordinateSystem;
 
-    class TerrainUberSurfaceInterface
+    class GenericUberSurfaceInterface
+    {
+    public:
+        static void    BuildEmptyFile(
+            const ::Assets::ResChar destinationFile[], 
+            unsigned width, unsigned height, unsigned bitsPerElement);
+
+        void    RegisterCell(
+                    const char destinationFile[], UInt2 mins, UInt2 maxs, unsigned overlap,
+                    std::function<void(const ShortCircuitUpdate&)> shortCircuitUpdate);
+        void    RenderDebugging(RenderCore::Metal::DeviceContext* devContext, SceneEngine::LightingParserContext& context);
+
+        virtual ~GenericUberSurfaceInterface();
+    protected:
+        class Pimpl;
+        std::unique_ptr<Pimpl> _pimpl;
+
+        void    FlushGPUCache();
+        void    BuildGPUCache(UInt2 mins, UInt2 maxs);
+        void    PrepareCache(UInt2 adjMin, UInt2 adjMax);
+        void    ApplyTool(  UInt2 adjMins, UInt2 adjMaxs, const char shaderName[],
+                            Float2 center, float radius, float adjustment, 
+                            std::tuple<uint64, void*, size_t> extraPackets[], unsigned extraPacketCount);
+        void    DoShortCircuitUpdate(RenderCore::Metal::DeviceContext* context, UInt2 adjMins, UInt2 adjMaxs);
+
+        virtual void CancelActiveOperations();
+    };
+
+    class HeightsUberSurfaceInterface : public GenericUberSurfaceInterface
     {
     public:
         void    AdjustHeights(Float2 center, float radius, float adjustment, float powerValue);
@@ -112,35 +167,19 @@ namespace SceneEngine
         bool    Erosion_IsPrepared() const;
         void    Erosion_RenderDebugging(RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, const TerrainCoordinateSystem& coords);
 
-        void    RegisterCell(
-                    const char destinationFile[], UInt2 mins, UInt2 maxs, unsigned overlap,
-                    std::function<void(const ShortCircuitUpdate&)> shortCircuitUpdate);
-        void    RenderDebugging(RenderCore::Metal::DeviceContext* devContext, SceneEngine::LightingParserContext& context);
         void    BuildShadowingSurface(const char destinationFile[], Int2 interestingMins, Int2 interestingMaxs, Float2 sunDirectionOfMovement, float xyScale);
-
-        static void    BuildEmptyFile(
-            const ::Assets::ResChar destinationFile[], 
-            unsigned width, unsigned height, unsigned bitsPerElement);
 
         TerrainUberHeightsSurface* GetUberSurface();
 
-        TerrainUberSurfaceInterface(
+        HeightsUberSurfaceInterface(
             TerrainUberHeightsSurface& uberSurface,
             std::shared_ptr<ITerrainFormat> ioFormat);
-        ~TerrainUberSurfaceInterface();
+        ~HeightsUberSurfaceInterface();
     private:
-        class Pimpl;
-        std::unique_ptr<Pimpl> _pimpl;
-
-        void    FlushGPUCache();
-        void    BuildGPUCache(UInt2 mins, UInt2 maxs);
-        void    PrepareCache(UInt2 adjMin, UInt2 adjMax);
-        void    ApplyTool(  UInt2 adjMins, UInt2 adjMaxs, const char shaderName[],
-                            Float2 center, float radius, float adjustment, 
-                            std::tuple<uint64, void*, size_t> extraPackets[], unsigned extraPacketCount);
-        void    DoShortCircuitUpdate(RenderCore::Metal::DeviceContext* context, UInt2 adjMins, UInt2 adjMaxs);
-
         float   CalculateShadowingAngle(Float2 samplePt, float sampleHeight, Float2 sunDirectionOfMovement, float xyScale);
+        void CancelActiveOperations();
+
+        TerrainUberHeightsSurface*      _uberSurface;
     };
 
         ///////////////   I N L I N E   I M P L E M E N T A T I O N S   ///////////////

@@ -33,6 +33,7 @@ namespace ToolsRig
 
         std::pair<FloatParameter*, size_t>  GetFloatParameters() const;
         std::pair<BoolParameter*, size_t>   GetBoolParameters() const;
+        std::pair<IntParameter*, size_t>   GetIntParameters() const { return std::make_pair(nullptr, 0); }
         void SetActivationState(bool newState);
 
         CameraMovementManipulator(std::shared_ptr<VisCameraSettings> visCameraSettings);

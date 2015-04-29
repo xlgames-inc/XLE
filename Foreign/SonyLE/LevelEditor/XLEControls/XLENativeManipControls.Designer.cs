@@ -29,9 +29,10 @@
         private void InitializeComponent()
         {
             this.manipulatorSelection = new System.Windows.Forms.ListBox();
-            this.manipulatorProperties = new Sce.Atf.Controls.PropertyEditing.PropertyGrid(
-                Sce.Atf.Controls.PropertyEditing.PropertyGridMode.DisableSearchControls
-                | Sce.Atf.Controls.PropertyEditing.PropertyGridMode.HideResetAllButton);
+            /*this.manipulatorProperties = new Sce.Atf.Controls.PropertyEditing.PropertyGrid(
+                Sce.Atf.Controls.PropertyEditing.PropertyGridMode.DisableSearchControls       causes a crash within ATF currently... null ptr exception whenever an option is selected
+                | Sce.Atf.Controls.PropertyEditing.PropertyGridMode.HideResetAllButton);*/
+            this.manipulatorProperties = new Sce.Atf.Controls.PropertyEditing.PropertyGrid();
             this.SuspendLayout();
             // 
             // manipulatorSelection

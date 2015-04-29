@@ -202,6 +202,30 @@ namespace SceneEngine
     }
 
     template <typename Type>
+        void TerrainUberSurface<Type>::WriteCell(
+            const ITerrainFormat& ioFormat,
+            const char destinationFile[],
+            UInt2 cellMins, UInt2 cellMaxs, unsigned treeDepth, unsigned overlapElements)
+    {
+        ioFormat.WriteCell(destinationFile, *this, cellMins, cellMaxs, treeDepth, overlapElements);
+    }
+
+    template <typename Type>
+        void* TerrainUberSurface<Type>::GetData(UInt2 coord)
+    {
+        return &_dataStart[coord[1] * _width + coord[0]];
+    }
+
+    template <typename Type>
+        unsigned TerrainUberSurface<Type>::GetStride() const { return _width*sizeof(Type); }
+
+    template <typename Type>
+        unsigned TerrainUberSurface<Type>::BitsPerPixel() const
+    {
+        return sizeof(Type)*8;
+    }
+
+    template <typename Type>
         TerrainUberSurface<Type>::TerrainUberSurface(const char filename[])
     {
         _width = _height = 0;
@@ -258,6 +282,8 @@ namespace SceneEngine
         return *this;
     }
 
+    ITerrainUberSurface::~ITerrainUberSurface() {}
+
     ////////////////////////////////////////////////////////////////////////////////////////////////
 
     namespace Internal { class SurfaceHeightsProvider; }
@@ -278,7 +304,7 @@ namespace SceneEngine
         UInt2 _gpuCacheOffset, _simSize;
     };
 
-    class TerrainUberSurfaceInterface::Pimpl
+    class GenericUberSurfaceInterface::Pimpl
     {
     public:
         class RegisteredCell
@@ -290,8 +316,8 @@ namespace SceneEngine
             std::function<void(const ShortCircuitUpdate&)> _shortCircuitUpdate;
         };
 
-        std::vector<RegisteredCell> _registeredCells;
-        TerrainUberHeightsSurface*  _uberSurface;
+        std::vector<RegisteredCell>     _registeredCells;
+        ITerrainUberSurface*            _uberSurface;
 
         UInt2                           _gpuCacheMins, _gpuCacheMaxs;
         intrusive_ptr<ID3D::Resource>   _gpucache[2];
@@ -325,10 +351,10 @@ namespace SceneEngine
             virtual size_t GetDataSize(unsigned mipIndex, unsigned arrayIndex) const;
             virtual std::pair<unsigned,unsigned> GetRowAndSlicePitch(unsigned mipIndex, unsigned arrayIndex) const;
 
-            UberSurfacePacket(float sourceData[], unsigned stride, UInt2 dims);
+            UberSurfacePacket(void* sourceData, unsigned stride, UInt2 dims);
 
         private:
-            float* _sourceData;
+            void* _sourceData;
             unsigned _stride;
             UInt2 _dims;
         };
@@ -350,7 +376,7 @@ namespace SceneEngine
             return std::make_pair(_stride, _stride*_dims[1]);
         }
 
-        UberSurfacePacket::UberSurfacePacket(float sourceData[], unsigned stride, UInt2 dims)
+        UberSurfacePacket::UberSurfacePacket(void* sourceData, unsigned stride, UInt2 dims)
         {
             _sourceData = sourceData;
             _stride = stride;
@@ -400,7 +426,7 @@ namespace SceneEngine
         bool SurfaceHeightsProvider::IsFloatFormat() const { return true; }
     }
 
-    void    TerrainUberSurfaceInterface::FlushGPUCache()
+    void    GenericUberSurfaceInterface::FlushGPUCache()
     {
         if (_pimpl->_gpucache[0]) {
                 // readback data from the gpu asset (often requires a staging-style resource)
@@ -408,21 +434,24 @@ namespace SceneEngine
                 using namespace BufferUploads;
                 auto& bufferUploads = *GetBufferUploads();
 
-                auto readback = bufferUploads.Resource_ReadBack(BufferUploads::ResourceLocator(_pimpl->_gpucache[0].get()));
+                auto readback = bufferUploads.Resource_ReadBack(
+                    BufferUploads::ResourceLocator(_pimpl->_gpucache[0].get()));
                 assert(readback.get());
 
                 auto readbackStride = readback->GetRowAndSlicePitch(0,0).first;
-                auto readbackData = (float*)readback->GetData(0, 0);
+                auto readbackData = readback->GetData(0, 0);
 
-                auto uberWidth = _pimpl->_uberSurface->_width;
-                auto dstStart = &_pimpl->_uberSurface->_dataStart[_pimpl->_gpuCacheMins[1]*uberWidth+_pimpl->_gpuCacheMins[0]];
+                auto dstStart = _pimpl->_uberSurface->GetData(_pimpl->_gpuCacheMins);
+                auto dstStride = _pimpl->_uberSurface->GetStride();
+                auto bbp = _pimpl->_uberSurface->BitsPerPixel();
 
                 UInt2 dims( _pimpl->_gpuCacheMaxs[0]-_pimpl->_gpuCacheMins[0]+1, 
                             _pimpl->_gpuCacheMaxs[1]-_pimpl->_gpuCacheMins[1]+1);
-                for (unsigned y=0; y<dims[1]; ++y)
-                    for (unsigned x=0; x<dims[0]; ++x) {
-                            dstStart[y*uberWidth+x] = *PtrAdd(readbackData, y*readbackStride + x*sizeof(float));
-                        }
+                for (unsigned y = 0; y<dims[1]; ++y)
+                    XlCopyMemory(
+                        PtrAdd(dstStart, y*dstStride),
+                        PtrAdd(readbackData, y*readbackStride),
+                        dims[0] * bbp / 8);
             }
 
                 //  Destroy the gpu cache
@@ -438,8 +467,9 @@ namespace SceneEngine
 
                     TRY {
                         const auto treeDepth = 5u;
-                        _pimpl->_ioFormat->WriteCell(
-                            i->_filename.c_str(), *_pimpl->_uberSurface,
+                        _pimpl->_uberSurface->WriteCell(
+                            *_pimpl->_ioFormat,
+                            i->_filename.c_str(),
                             i->_mins, i->_maxs, treeDepth, i->_overlap);
                     } CATCH (...) {
                     } CATCH_END     // if the directory for the output file doesn't exist, we can get an exception here
@@ -450,7 +480,7 @@ namespace SceneEngine
         }
     }
 
-    void    TerrainUberSurfaceInterface::BuildGPUCache(UInt2 mins, UInt2 maxs)
+    void    GenericUberSurfaceInterface::BuildGPUCache(UInt2 mins, UInt2 maxs)
     {
             //  if there's an existing GPU cache, we need to flush it out, and copy
             //  the results back to system memory
@@ -463,9 +493,8 @@ namespace SceneEngine
 
         UInt2 dims(maxs[0]-mins[0]+1, maxs[1]-mins[1]+1);
         auto desc = Internal::BuildCacheDesc(dims);
-        auto uberWidth = _pimpl->_uberSurface->_width;
         auto pkt = make_intrusive<Internal::UberSurfacePacket>(
-            &_pimpl->_uberSurface->_dataStart[mins[1]*uberWidth+mins[0]], unsigned(uberWidth*sizeof(float)), dims);
+            _pimpl->_uberSurface->GetData(mins), _pimpl->_uberSurface->GetStride(), dims);
 
             // create a texture on the GPU with some cached data from the uber surface.
             //      we need 2 copies of the gpu cache for update operations
@@ -479,10 +508,10 @@ namespace SceneEngine
         _pimpl->_gpuCacheMaxs = maxs;
     }
 
-    void    TerrainUberSurfaceInterface::PrepareCache(UInt2 adjMins, UInt2 adjMaxs)
+    void    GenericUberSurfaceInterface::PrepareCache(UInt2 adjMins, UInt2 adjMaxs)
     {
-        unsigned fieldWidth = _pimpl->_uberSurface->_width;
-        unsigned fieldHeight = _pimpl->_uberSurface->_height;
+        unsigned fieldWidth = _pimpl->_uberSurface->GetWidth();
+        unsigned fieldHeight = _pimpl->_uberSurface->GetHeight();
 
             // see if this fits within the existing GPU cache
         if (_pimpl->_gpucache[0]) {
@@ -517,13 +546,15 @@ namespace SceneEngine
         return RenderCore::Metal::DeviceContext(std::move(immContext));
     }
 
-    void    TerrainUberSurfaceInterface::ApplyTool( UInt2 adjMins, UInt2 adjMaxs, const char shaderName[],
-                                                    Float2 center, float radius, float adjustment, 
-                                                    std::tuple<uint64, void*, size_t> extraPackets[], unsigned extraPacketCount)
-    {
-                // (if we're currently running erosion, cancel it now...)
-        Erosion_End();
+    void GenericUberSurfaceInterface::CancelActiveOperations()
+    {}
 
+    void    GenericUberSurfaceInterface::ApplyTool( 
+        UInt2 adjMins, UInt2 adjMaxs, const char shaderName[],
+        Float2 center, float radius, float adjustment, 
+        std::tuple<uint64, void*, size_t> extraPackets[], unsigned extraPacketCount)
+    {
+        CancelActiveOperations();
         TRY 
         {
             using namespace RenderCore::Metal;
@@ -587,7 +618,7 @@ namespace SceneEngine
         CATCH_END
     }
 
-    void    TerrainUberSurfaceInterface::DoShortCircuitUpdate(RenderCore::Metal::DeviceContext* context, UInt2 adjMins, UInt2 adjMaxs)
+    void    GenericUberSurfaceInterface::DoShortCircuitUpdate(RenderCore::Metal::DeviceContext* context, UInt2 adjMins, UInt2 adjMaxs)
     {
         TRY 
         {
@@ -617,15 +648,79 @@ namespace SceneEngine
         CATCH_END
     }
 
-    void    TerrainUberSurfaceInterface::AdjustHeights(Float2 center, float radius, float adjustment, float powerValue)
+    void    GenericUberSurfaceInterface::BuildEmptyFile(
+        const ::Assets::ResChar destinationFile[], 
+        unsigned width, unsigned height, unsigned bitsPerElement)
+    {
+        BasicFile outputFile(destinationFile, "wb");
+
+        TerrainUberHeader hdr;
+        hdr._magic = TerrainUberHeader::Magic;
+        hdr._width = width;
+        hdr._height = height;
+        hdr._dummy = 0;
+        outputFile.Write(&hdr, sizeof(hdr), 1);
+
+        unsigned lineSize = width*bitsPerElement/8;
+        auto lineOfSamples = std::make_unique<uint8[]>(lineSize);
+        std::fill(lineOfSamples.get(), &lineOfSamples[lineSize], 0);
+        for (int y=0; y<int(height); ++y) {
+            outputFile.Write(lineOfSamples.get(), 1, lineSize);
+        }
+    }
+
+    void    GenericUberSurfaceInterface::RegisterCell(
+                    const char destinationFile[], UInt2 mins, UInt2 maxs, unsigned overlap,
+                    std::function<void(const ShortCircuitUpdate&)> shortCircuitUpdate)
+    {
+            //      Register the given cell... When there are any modifications, 
+            //      we'll write over this cell's cached file
+
+        Pimpl::RegisteredCell registeredCell;
+        registeredCell._mins = mins;
+        registeredCell._maxs = maxs;
+        registeredCell._overlap = overlap;
+        registeredCell._filename = destinationFile;
+        registeredCell._shortCircuitUpdate = shortCircuitUpdate;
+        _pimpl->_registeredCells.push_back(registeredCell);
+    }
+
+    void    GenericUberSurfaceInterface::RenderDebugging(RenderCore::Metal::DeviceContext* context, SceneEngine::LightingParserContext& parserContext)
+    {
+        if (!_pimpl->_gpucache[0])
+            return;
+
+        TRY {
+            using namespace RenderCore;
+            Metal::ShaderResourceView  gpuCacheSRV(_pimpl->_gpucache[0].get());
+            context->BindPS(MakeResourceList(5, gpuCacheSRV));
+            auto& debuggingShader = Assets::GetAssetDep<Metal::ShaderProgram>(
+                "game/xleres/basic2D.vsh:fullscreen:vs_*", 
+                "game/xleres/ui/terrainmodification.sh:GpuCacheDebugging:ps_*",
+                "");
+            context->Bind(debuggingShader);
+            context->Bind(Techniques::CommonResources()._blendStraightAlpha);
+            SetupVertexGeneratorShader(context);
+            context->Draw(4);
+        } 
+        CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
+        CATCH_END
+
+        context->UnbindPS<RenderCore::Metal::ShaderResourceView>(5, 1);
+    }
+
+    GenericUberSurfaceInterface::~GenericUberSurfaceInterface() {}
+
+    void    HeightsUberSurfaceInterface::AdjustHeights(Float2 center, float radius, float adjustment, float powerValue)
     {
         if (!_pimpl || !_pimpl->_uberSurface)
             return;
 
         UInt2 adjMins(  (unsigned)std::max(0.f, XlFloor(center[0] - radius)),
                         (unsigned)std::max(0.f, XlFloor(center[1] - radius)));
-        UInt2 adjMaxs(  std::min(_pimpl->_uberSurface->_width-1, (unsigned)XlCeil(center[0] + radius)),
-                        std::min(_pimpl->_uberSurface->_height-1, (unsigned)XlCeil(center[1] + radius)));
+        UInt2 adjMaxs(  std::min(_pimpl->_uberSurface->GetWidth()-1, (unsigned)XlCeil(center[0] + radius)),
+                        std::min(_pimpl->_uberSurface->GetHeight()-1, (unsigned)XlCeil(center[1] + radius)));
 
         PrepareCache(adjMins, adjMaxs);
 
@@ -644,15 +739,15 @@ namespace SceneEngine
         ApplyTool(adjMins, adjMaxs, "RaiseLower", center, radius, adjustment, extraPackets, dimof(extraPackets));
     }
 
-    void    TerrainUberSurfaceInterface::AddNoise(Float2 center, float radius, float adjustment)
+    void    HeightsUberSurfaceInterface::AddNoise(Float2 center, float radius, float adjustment)
     {
         if (!_pimpl || !_pimpl->_uberSurface)
             return;
 
         UInt2 adjMins(  (unsigned)std::max(0.f, XlFloor(center[0] - radius)),
                         (unsigned)std::max(0.f, XlFloor(center[1] - radius)));
-        UInt2 adjMaxs(  std::min(_pimpl->_uberSurface->_width-1, (unsigned)XlCeil(center[0] + radius)),
-                        std::min(_pimpl->_uberSurface->_height-1, (unsigned)XlCeil(center[1] + radius)));
+        UInt2 adjMaxs(  std::min(_pimpl->_uberSurface->GetWidth()-1, (unsigned)XlCeil(center[0] + radius)),
+                        std::min(_pimpl->_uberSurface->GetHeight()-1, (unsigned)XlCeil(center[1] + radius)));
 
         PrepareCache(adjMins, adjMaxs);
 
@@ -661,15 +756,15 @@ namespace SceneEngine
         ApplyTool(adjMins, adjMaxs, "AddNoise", center, radius, adjustment, nullptr, 0);
     }
 
-    void    TerrainUberSurfaceInterface::CopyHeight(Float2 center, Float2 source, float radius, float adjustment, float powerValue, unsigned flags)
+    void    HeightsUberSurfaceInterface::CopyHeight(Float2 center, Float2 source, float radius, float adjustment, float powerValue, unsigned flags)
     {
         if (!_pimpl || !_pimpl->_uberSurface)
             return;
 
         UInt2 adjMins(  (unsigned)std::max(0.f, XlFloor(center[0] - radius)),
                         (unsigned)std::max(0.f, XlFloor(center[1] - radius)));
-        UInt2 adjMaxs(  std::min(_pimpl->_uberSurface->_width-1, (unsigned)XlCeil(center[0] + radius)),
-                        std::min(_pimpl->_uberSurface->_height-1, (unsigned)XlCeil(center[1] + radius)));
+        UInt2 adjMaxs(  std::min(_pimpl->_uberSurface->GetWidth()-1, (unsigned)XlCeil(center[0] + radius)),
+                        std::min(_pimpl->_uberSurface->GetHeight()-1, (unsigned)XlCeil(center[1] + radius)));
 
         PrepareCache(adjMins, adjMaxs);
 
@@ -689,7 +784,7 @@ namespace SceneEngine
         ApplyTool(adjMins, adjMaxs, "CopyHeight", center, radius, adjustment, extraPackets, dimof(extraPackets));
     }
 
-    void    TerrainUberSurfaceInterface::Rotate(Float2 center, float radius, Float3 rotationAxis, float rotationAngle)
+    void    HeightsUberSurfaceInterface::Rotate(Float2 center, float radius, Float3 rotationAxis, float rotationAngle)
     {
         if (!_pimpl || !_pimpl->_uberSurface)
             return;
@@ -697,8 +792,8 @@ namespace SceneEngine
         const float extend = 1.2f;
         UInt2 adjMins(  (unsigned)std::max(0.f, XlFloor(center[0] - extend * radius)),
                         (unsigned)std::max(0.f, XlFloor(center[1] - extend * radius)));
-        UInt2 adjMaxs(  std::min(_pimpl->_uberSurface->_width-1, (unsigned)XlCeil(center[0] + extend * radius)),
-                        std::min(_pimpl->_uberSurface->_height-1, (unsigned)XlCeil(center[1] + extend * radius)));
+        UInt2 adjMaxs(  std::min(_pimpl->_uberSurface->GetWidth()-1, (unsigned)XlCeil(center[0] + extend * radius)),
+                        std::min(_pimpl->_uberSurface->GetHeight()-1, (unsigned)XlCeil(center[1] + extend * radius)));
 
         PrepareCache(adjMins, adjMaxs);
 
@@ -719,13 +814,13 @@ namespace SceneEngine
         ApplyTool(adjMins, adjMaxs, "Rotate", center, radius, 1.f, extraPackets, dimof(extraPackets));
     }
 
-    void    TerrainUberSurfaceInterface::Smooth(Float2 center, float radius, unsigned filterRadius, float standardDeviation, float strength, unsigned flags)
+    void    HeightsUberSurfaceInterface::Smooth(Float2 center, float radius, unsigned filterRadius, float standardDeviation, float strength, unsigned flags)
     {
         if (!_pimpl || !_pimpl->_uberSurface)
             return;
 
-        auto fieldWidth = _pimpl->_uberSurface->_width-1;
-        auto fieldHeight = _pimpl->_uberSurface->_height-1;
+        auto fieldWidth = _pimpl->_uberSurface->GetWidth()-1;
+        auto fieldHeight = _pimpl->_uberSurface->GetHeight()-1;
 
         UInt2 adjMins(  (unsigned)std::max(0.f, XlFloor(center[0] - radius)),
                         (unsigned)std::max(0.f, XlFloor(center[1] - radius)));
@@ -762,13 +857,13 @@ namespace SceneEngine
         ApplyTool(adjMins, adjMaxs, "Smooth", center, radius, strength, extraPackets, dimof(extraPackets));
     }
 
-    void    TerrainUberSurfaceInterface::FillWithNoise(Float2 mins, Float2 maxs, float baseHeight, float noiseHeight, float roughness, float fractalDetail)
+    void    HeightsUberSurfaceInterface::FillWithNoise(Float2 mins, Float2 maxs, float baseHeight, float noiseHeight, float roughness, float fractalDetail)
     {
         if (!_pimpl || !_pimpl->_uberSurface)
             return;
 
-        auto fieldWidth = _pimpl->_uberSurface->_width-1;
-        auto fieldHeight = _pimpl->_uberSurface->_height-1;
+        auto fieldWidth = _pimpl->_uberSurface->GetWidth()-1;
+        auto fieldHeight = _pimpl->_uberSurface->GetHeight()-1;
 
         UInt2 adjMins((unsigned)std::max(0.f, mins[0]), (unsigned)std::max(0.f, mins[1]));
         UInt2 adjMaxs(std::min(fieldWidth, (unsigned)maxs[0]), std::min(fieldHeight, (unsigned)maxs[1]));
@@ -793,7 +888,7 @@ namespace SceneEngine
     static const float TerrainScale = 2.f;
     static const float ErosionWaterTilePhysicalDimension = TerrainScale * ErosionWaterTileDimension / ErosionWaterTileScale;   // the physical dimension is important for getting correct water movement. It should be in meters
 
-    void    TerrainUberSurfaceInterface::Erosion_Begin(Float2 mins, Float2 maxs)
+    void    HeightsUberSurfaceInterface::Erosion_Begin(Float2 mins, Float2 maxs)
     {
             //  We're going to do an erosion simulation over the given points
             //  First we need to allocate the buffers we need:
@@ -885,7 +980,7 @@ namespace SceneEngine
         _pimpl->_erosionSim._simSize = UInt2(unsigned(size[0]), unsigned(size[1]));
     }
 
-    void    TerrainUberSurfaceInterface::Erosion_Tick(const ErosionParameters& params)
+    void    HeightsUberSurfaceInterface::Erosion_Tick(const ErosionParameters& params)
     {
             //      Update the shallow water simulation
         if (!Erosion_IsPrepared()) {
@@ -944,7 +1039,7 @@ namespace SceneEngine
         ++_pimpl->_erosionSim._bufferCount;
     }
 
-    void    TerrainUberSurfaceInterface::Erosion_End()
+    void    HeightsUberSurfaceInterface::Erosion_End()
     {
             //      Finish the erosion sim, and delete all of the related objects
 
@@ -961,12 +1056,12 @@ namespace SceneEngine
         _pimpl->_erosionSim._simSize = UInt2(0,0);
     }
 
-    bool    TerrainUberSurfaceInterface::Erosion_IsPrepared() const
+    bool    HeightsUberSurfaceInterface::Erosion_IsPrepared() const
     {
         return _pimpl->_erosionSim._hardMaterials.get() != nullptr;
     }
 
-    void    TerrainUberSurfaceInterface::Erosion_RenderDebugging(
+    void    HeightsUberSurfaceInterface::Erosion_RenderDebugging(
         RenderCore::Metal::DeviceContext* context, 
         LightingParserContext& parserContext,
         const TerrainCoordinateSystem& coords)
@@ -984,47 +1079,6 @@ namespace SceneEngine
         CATCH (const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
         CATCH (const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
         CATCH_END
-    }
-
-    void    TerrainUberSurfaceInterface::RegisterCell(
-                    const char destinationFile[], UInt2 mins, UInt2 maxs, unsigned overlap,
-                    std::function<void(const ShortCircuitUpdate&)> shortCircuitUpdate)
-    {
-            //      Register the given cell... When there are any modifications, 
-            //      we'll write over this cell's cached file
-
-        Pimpl::RegisteredCell registeredCell;
-        registeredCell._mins = mins;
-        registeredCell._maxs = maxs;
-        registeredCell._overlap = overlap;
-        registeredCell._filename = destinationFile;
-        registeredCell._shortCircuitUpdate = shortCircuitUpdate;
-        _pimpl->_registeredCells.push_back(registeredCell);
-    }
-
-    void    TerrainUberSurfaceInterface::RenderDebugging(RenderCore::Metal::DeviceContext* context, SceneEngine::LightingParserContext& parserContext)
-    {
-        if (!_pimpl->_gpucache[0])
-            return;
-
-        TRY {
-            using namespace RenderCore;
-            Metal::ShaderResourceView  gpuCacheSRV(_pimpl->_gpucache[0].get());
-            context->BindPS(MakeResourceList(5, gpuCacheSRV));
-            auto& debuggingShader = Assets::GetAssetDep<Metal::ShaderProgram>(
-                "game/xleres/basic2D.vsh:fullscreen:vs_*", 
-                "game/xleres/ui/terrainmodification.sh:GpuCacheDebugging:ps_*",
-                "");
-            context->Bind(debuggingShader);
-            context->Bind(Techniques::CommonResources()._blendStraightAlpha);
-            SetupVertexGeneratorShader(context);
-            context->Draw(4);
-        } 
-        CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
-        CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
-        CATCH_END
-
-        context->UnbindPS<RenderCore::Metal::ShaderResourceView>(5, 1);
     }
 
     class ShadowingAngleOperator
@@ -1058,13 +1112,13 @@ namespace SceneEngine
         float _xyScale;
     };
 
-    float TerrainUberSurfaceInterface::CalculateShadowingAngle(Float2 samplePt, float sampleHeight, Float2 sunDirectionOfMovement, float xyScale)
+    float HeightsUberSurfaceInterface::CalculateShadowingAngle(Float2 samplePt, float sampleHeight, Float2 sunDirectionOfMovement, float xyScale)
     {
             //  Travel forward along the sunDirectionOfMovement and find the shadowing angle.
             //  It's important here that integer coordinates are on corners of the "pixels"
             //      -- ie, not the centers. This will keep the height map correctly aligned
             //  with the shadowing samples
-        auto& surface = *_pimpl->_uberSurface;
+        auto& surface = *_uberSurface;
 
             //  limit the maximum shadow distance (for efficiency while calculating the angles)
             //  As we get further away from the sample point, we're less likely to find the shadow
@@ -1102,28 +1156,7 @@ namespace SceneEngine
         return shadowingAngle;
     }
 
-    void    TerrainUberSurfaceInterface::BuildEmptyFile(
-        const ::Assets::ResChar destinationFile[], 
-        unsigned width, unsigned height, unsigned bitsPerElement)
-    {
-        BasicFile outputFile(destinationFile, "wb");
-
-        TerrainUberHeader hdr;
-        hdr._magic = TerrainUberHeader::Magic;
-        hdr._width = width;
-        hdr._height = height;
-        hdr._dummy = 0;
-        outputFile.Write(&hdr, sizeof(hdr), 1);
-
-        unsigned lineSize = width*bitsPerElement/8;
-        auto lineOfSamples = std::make_unique<uint8[]>(lineSize);
-        std::fill(lineOfSamples.get(), &lineOfSamples[lineSize], 0);
-        for (int y=0; y<int(height); ++y) {
-            outputFile.Write(lineOfSamples.get(), 1, lineSize);
-        }
-    }
-
-    void    TerrainUberSurfaceInterface::BuildShadowingSurface(const char destinationFile[], Int2 interestingMins, Int2 interestingMaxs, Float2 sunDirectionOfMovement, float xyScale)
+    void    HeightsUberSurfaceInterface::BuildShadowingSurface(const char destinationFile[], Int2 interestingMins, Int2 interestingMaxs, Float2 sunDirectionOfMovement, float xyScale)
     {
             //      There are some limitations on the way the sun can move.
             //      It must move in a perfect circle arc, and pass through a
@@ -1184,8 +1217,8 @@ namespace SceneEngine
 
                         //  first values is in the opposite direction of the sun movement. This will be a negative number
                         //  (but we'll store it as a positive value to increase precision)
-                    float a0 =  CalculateShadowingAngle(Float2(float(x), float(y)), _pimpl->_uberSurface->GetValue(x, y), -sunDirectionOfMovement, xyScale);
-                    float a1 =  CalculateShadowingAngle(Float2(float(x), float(y)), _pimpl->_uberSurface->GetValue(x, y),  sunDirectionOfMovement, xyScale);
+                    float a0 =  CalculateShadowingAngle(Float2(float(x), float(y)), _uberSurface->GetValue(x, y), -sunDirectionOfMovement, xyScale);
+                    float a1 =  CalculateShadowingAngle(Float2(float(x), float(y)), _uberSurface->GetValue(x, y),  sunDirectionOfMovement, xyScale);
 
                         // Both a0 and a1 should be positive. But we'll negate a0 before we use it for a comparison
                     assert(a0 > 0.f && a1 > 0.f);
@@ -1202,10 +1235,18 @@ namespace SceneEngine
         }
     }
 
-    TerrainUberHeightsSurface* TerrainUberSurfaceInterface::GetUberSurface() { return _pimpl->_uberSurface; }
-
-    TerrainUberSurfaceInterface::TerrainUberSurfaceInterface(TerrainUberHeightsSurface& uberSurface, std::shared_ptr<ITerrainFormat> ioFormat)
+    void HeightsUberSurfaceInterface::CancelActiveOperations()
     {
+            // (if we're currently running erosion, cancel it now...)
+        Erosion_End();
+    }
+
+    TerrainUberHeightsSurface* HeightsUberSurfaceInterface::GetUberSurface() { return _uberSurface; }
+
+    HeightsUberSurfaceInterface::HeightsUberSurfaceInterface(TerrainUberHeightsSurface& uberSurface, std::shared_ptr<ITerrainFormat> ioFormat)
+    {
+        _uberSurface = &uberSurface;
+
         auto pimpl = std::make_unique<Pimpl>();
         pimpl->_uberSurface = &uberSurface;     // no protection on this pointer (assuming it's coming from a resource)
         pimpl->_ioFormat = std::move(ioFormat);
@@ -1213,7 +1254,7 @@ namespace SceneEngine
         _pimpl = std::move(pimpl);
     }
 
-    TerrainUberSurfaceInterface::~TerrainUberSurfaceInterface()
+    HeightsUberSurfaceInterface::~HeightsUberSurfaceInterface()
     {}
 
 
