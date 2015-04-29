@@ -300,10 +300,10 @@ namespace ToolsRig
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class PaintCoverageManipulator : public RectangleManipulator
+    class PaintCoverageManipulator : public CommonManipulator
     {
     public:
-        virtual void    PerformAction(const Float3& anchor0, const Float3& anchor1);
+        virtual void PerformAction(const Float3& worldSpacePosition, float size, float strength);
         virtual const char* GetName() const { return "Paint Coverage"; }
         virtual std::pair<FloatParameter*, size_t>  GetFloatParameters() const { return std::make_pair(nullptr, 0); }
         virtual std::pair<BoolParameter*, size_t>   GetBoolParameters() const { return std::make_pair(nullptr, 0); }
@@ -316,8 +316,23 @@ namespace ToolsRig
         unsigned _paintValue;
     };
 
-    void PaintCoverageManipulator::PerformAction(const Float3& anchor0, const Float3& anchor1)
+    unsigned FindLayerIndex(const SceneEngine::TerrainConfig& cfg, SceneEngine::TerrainCoverageId layerId)
     {
+        for (unsigned c = 0; c<cfg.GetCoverageLayerCount(); ++c)
+            if (cfg.GetCoverageLayer(c)._id == layerId) return c;
+        return ~unsigned(0x0);
+    }
+
+    void PaintCoverageManipulator::PerformAction(const Float3& worldSpacePosition, float size, float strength)
+    {
+        auto* i = _terrainManager->GetCoverageInterface(_coverageLayer);
+        if (i) {
+            auto layerIndex = FindLayerIndex(_terrainManager->GetConfig(), _coverageLayer);
+            i->Paint(
+                _terrainManager->GetCoords().WorldSpaceToLayerCoords(layerIndex, Truncate(worldSpacePosition)), 
+                _terrainManager->GetCoords().WorldSpaceDistanceToLayerCoords(layerIndex, size),
+                _paintValue);
+        }
     }
 
     auto PaintCoverageManipulator::GetIntParameters() const -> std::pair < IntParameter*, size_t >
@@ -331,7 +346,7 @@ namespace ToolsRig
     }
 
     PaintCoverageManipulator::PaintCoverageManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager)
-        : RectangleManipulator(terrainManager)
+        : CommonManipulator(terrainManager)
     {
         _coverageLayer = 1000;
         _paintValue = 1;
@@ -492,6 +507,7 @@ namespace ToolsRig
         result.emplace_back(std::make_unique<CopyHeight>(terrainManager));
         result.emplace_back(std::make_unique<RotateManipulator>(terrainManager));
         result.emplace_back(std::make_unique<ErosionManipulator>(terrainManager));
+        result.emplace_back(std::make_unique<PaintCoverageManipulator>(terrainManager));
         return result;
     }
 }

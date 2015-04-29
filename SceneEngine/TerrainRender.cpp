@@ -477,7 +477,7 @@ namespace SceneEngine
         void QueueUploads(TerrainRenderingContext& terrainContext);
         void Render(DeviceContext* context, LightingParserContext& parserContext, TerrainRenderingContext& terrainContext);
 
-        void HeightMapShortCircuit(std::string cellName, UInt2 cellOrigin, UInt2 cellMax, const ShortCircuitUpdate& upd);
+        void ShortCircuit(std::string cellName, TerrainCoverageId layerId, UInt2 cellOrigin, UInt2 cellMax, const ShortCircuitUpdate& upd);
 
         Int2 GetHeightsElementSize() const { return _heightMapTileSet->GetTileSize(); }
 
@@ -1741,61 +1741,67 @@ namespace SceneEngine
         } CATCH_END
     }
 
-    void    TerrainCellRenderer::HeightMapShortCircuit(std::string cellName, UInt2 cellOrigin, UInt2 cellMax, const ShortCircuitUpdate& upd)
+    void    TerrainCellRenderer::ShortCircuit(std::string cellName, TerrainCoverageId layerId, UInt2 cellOrigin, UInt2 cellMax, const ShortCircuitUpdate& upd)
     {
             //      We need to find the CellRenderInfo objects associated with the terrain cell with this name.
             //      Then, for any completed height map tiles within that object, we must copy in the data
             //      from our update information (sometimes doing the downsample along the way).
             //      This will update the tiles with new data, without hitting the disk or requiring a re-upload
 
-            //  Don't use GetResourceDep here -- we don't want to destroy the TerrainCell, because there
-            //  maybe be CellRenderInfo's pointing to it. We need some better way to handle this case
-        auto& sourceCell = _ioFormat->LoadHeights(cellName.c_str(), true);
-        for (auto i=_renderInfos.begin(); i!=_renderInfos.end(); ++i) {
-            if (i->second->_sourceCell == &sourceCell) {
-                auto& tileSet = *_heightMapTileSet;
+        if (layerId == CoverageId_Heights) {
+                //  Don't use GetResourceDep here -- we don't want to destroy the TerrainCell, because there
+                //  maybe be CellRenderInfo's pointing to it. We need some better way to handle this case
+            auto& sourceCell = _ioFormat->LoadHeights(cellName.c_str(), true);
+            for (auto i=_renderInfos.begin(); i!=_renderInfos.end(); ++i) {
+                if (i->second->_sourceCell == &sourceCell) {
+                    auto& tileSet = *_heightMapTileSet;
 
-                    //  Got a match. Find all with completed tiles (ignoring the pending tiles) and 
-                    //  write over that data.
-                auto& cri = *i->second;
-                for (auto ni=cri._heightTiles.begin(); ni!=cri._heightTiles.end(); ++ni) {
+                        //  Got a match. Find all with completed tiles (ignoring the pending tiles) and 
+                        //  write over that data.
+                    auto& cri = *i->second;
+                    for (auto ni=cri._heightTiles.begin(); ni!=cri._heightTiles.end(); ++ni) {
 
-                        // todo -- cancel any pending tiles, because they can cause problems
+                            // todo -- cancel any pending tiles, because they can cause problems
 
-                    if (tileSet.IsValid(ni->_tile)) {
-                        auto nodeIndex = std::distance(cri._heightTiles.begin(), ni);
-                        auto& sourceNode = sourceCell._nodes[nodeIndex];
+                        if (tileSet.IsValid(ni->_tile)) {
+                            auto nodeIndex = std::distance(cri._heightTiles.begin(), ni);
+                            auto& sourceNode = sourceCell._nodes[nodeIndex];
 
-                            //  We need to transform the coordinates for this node into
-                            //  the uber-surface coordinate system. If there's an overlap
-                            //  between the node coords and the update box, we need to do
-                            //  a copy.
+                                //  We need to transform the coordinates for this node into
+                                //  the uber-surface coordinate system. If there's an overlap
+                                //  between the node coords and the update box, we need to do
+                                //  a copy.
 
-                        Float3 nodeMinInCell = TransformPoint(sourceNode->_localToCell, Float3(0.f, 0.f, 0.f));
-                        Float3 nodeMaxInCell = TransformPoint(sourceNode->_localToCell, Float3(1.f, 1.f, float(0xffff)));
+                            Float3 nodeMinInCell = TransformPoint(sourceNode->_localToCell, Float3(0.f, 0.f, 0.f));
+                            Float3 nodeMaxInCell = TransformPoint(sourceNode->_localToCell, Float3(1.f, 1.f, float(0xffff)));
 
-                        UInt2 nodeMin(
-                            (unsigned)LinearInterpolate(float(cellOrigin[0]), float(cellMax[0]), nodeMinInCell[0]),
-                            (unsigned)LinearInterpolate(float(cellOrigin[1]), float(cellMax[1]), nodeMinInCell[1]));
-                        UInt2 nodeMax(
-                            (unsigned)LinearInterpolate(float(cellOrigin[0]), float(cellMax[0]), nodeMaxInCell[0]),
-                            (unsigned)LinearInterpolate(float(cellOrigin[1]), float(cellMax[1]), nodeMaxInCell[1]));
+                            UInt2 nodeMin(
+                                (unsigned)LinearInterpolate(float(cellOrigin[0]), float(cellMax[0]), nodeMinInCell[0]),
+                                (unsigned)LinearInterpolate(float(cellOrigin[1]), float(cellMax[1]), nodeMinInCell[1]));
+                            UInt2 nodeMax(
+                                (unsigned)LinearInterpolate(float(cellOrigin[0]), float(cellMax[0]), nodeMaxInCell[0]),
+                                (unsigned)LinearInterpolate(float(cellOrigin[1]), float(cellMax[1]), nodeMaxInCell[1]));
 
-                        if (    nodeMin[0] <= upd._updateAreaMaxs[0] && nodeMax[0] >= upd._updateAreaMins[0]
-                            &&  nodeMin[1] <= upd._updateAreaMaxs[1] && nodeMax[1] >= upd._updateAreaMins[1]) {
+                            if (    nodeMin[0] <= upd._updateAreaMaxs[0] && nodeMax[0] >= upd._updateAreaMins[0]
+                                &&  nodeMin[1] <= upd._updateAreaMaxs[1] && nodeMax[1] >= upd._updateAreaMins[1]) {
 
-                                // downsampling required depends on which field we're in.
-                            auto fi = std::find_if(sourceCell._nodeFields.cbegin(), sourceCell._nodeFields.cend(),
-                                [=](const TerrainCell::NodeField& field) { return unsigned(nodeIndex) >= field._nodeBegin && unsigned(nodeIndex) < field._nodeEnd; });
-                            size_t fieldIndex = std::distance(sourceCell._nodeFields.cbegin(), fi);
-                            unsigned downsample = unsigned(4-fieldIndex);
+                                    // downsampling required depends on which field we're in.
+                                auto fi = std::find_if(sourceCell._nodeFields.cbegin(), sourceCell._nodeFields.cend(),
+                                    [=](const TerrainCell::NodeField& field) { return unsigned(nodeIndex) >= field._nodeBegin && unsigned(nodeIndex) < field._nodeEnd; });
+                                size_t fieldIndex = std::distance(sourceCell._nodeFields.cbegin(), fi);
+                                unsigned downsample = unsigned(4-fieldIndex);
 
-                            ShortCircuitTileUpdate(ni->_tile, nodeMin, nodeMax, downsample, sourceNode->_localToCell, upd);
+                                ShortCircuitTileUpdate(ni->_tile, nodeMin, nodeMax, downsample, sourceNode->_localToCell, upd);
 
+                            }
                         }
                     }
                 }
             }
+        } else {
+
+            // we have to support short curcuit for coverage layers as well
+
         }
     }
 
@@ -2000,11 +2006,11 @@ namespace SceneEngine
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////
-    static void DoHeightMapShortCircuitUpdate(
-        std::string cellName, std::shared_ptr<TerrainCellRenderer> renderer,
+    static void DoShortCircuitUpdate(
+        std::string cellName, TerrainCoverageId layerId, std::shared_ptr<TerrainCellRenderer> renderer,
         UInt2 cellOrigin, UInt2 cellMax, const ShortCircuitUpdate& upd)
     {
-        renderer->HeightMapShortCircuit(cellName, cellOrigin, cellMax, upd);
+        renderer->ShortCircuit(cellName, layerId, cellOrigin, cellMax, upd);
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////
@@ -2504,6 +2510,23 @@ namespace SceneEngine
         std::unique_ptr<HeightsUberSurfaceInterface> _uberSurfaceInterface;
         std::shared_ptr<ITerrainFormat> _ioFormat;
 
+        class CoverageInterface
+        {
+        public:
+            TerrainCoverageId _id;
+            std::unique_ptr<CoverageUberSurfaceInterface> _interface;
+
+            CoverageInterface() {}
+            CoverageInterface(CoverageInterface&& moveFrom) : _id(moveFrom._id), _interface(std::move(moveFrom._interface)) {}
+            CoverageInterface& operator=(CoverageInterface&& moveFrom) 
+            {
+                _id = moveFrom._id;
+                _interface = std::move(moveFrom._interface);
+                return *this;
+            }
+        };
+        std::vector<CoverageInterface> _coverageInterfaces;
+
         std::vector<TerrainCellId> _cells;
         TerrainCoordinateSystem _coords;
         TerrainConfig _cfg;
@@ -2741,22 +2764,36 @@ namespace SceneEngine
 
     static void RegisterShortCircuitUpdate(
         const TerrainConfig& terrainCfg, unsigned overlap,
-        HeightsUberSurfaceInterface* uberInterface,
-        std::shared_ptr<TerrainCellRenderer> renderer)
+        GenericUberSurfaceInterface* uberInterface,
+        std::shared_ptr<TerrainCellRenderer> renderer,
+        TerrainCoverageId layerId)
     {
+        unsigned layerIndex = ~unsigned(0x0);
+
+        for (unsigned c = 0; c<terrainCfg.GetCoverageLayerCount(); ++c)
+            if (terrainCfg.GetCoverageLayer(c)._id == layerId) 
+                layerIndex = c;
+
             //  Register cells for short-circuit update... Do we need to do this for every single cell
             //  or just those that are within the limited area we're going to load?
         for (unsigned y=0; y<terrainCfg._cellCount[1]; ++y) {
             for (unsigned x=0; x<terrainCfg._cellCount[0]; ++x) {
-                char heightMapFile[256];
-                terrainCfg.GetCellFilename(heightMapFile, dimof(heightMapFile), UInt2(x, y), CoverageId_Heights);
-                std::string filename = heightMapFile;
+                char cellFile[256];
+                terrainCfg.GetCellFilename(cellFile, dimof(cellFile), UInt2(x, y), layerId);
+                std::string filename = cellFile;
 
-                auto cellOrigin = AsUInt2(terrainCfg.CellBasedCoordsToTerrainCoords(Float2(float(x), float(y))));
-                auto cellMax = AsUInt2(terrainCfg.CellBasedCoordsToTerrainCoords(Float2(float(x+1), float(y+1))));
+                UInt2 cellOrigin, cellMax;
+                if (layerId == CoverageId_Heights) {
+                    cellOrigin = AsUInt2(terrainCfg.CellBasedCoordsToTerrainCoords(Float2(float(x), float(y))));
+                    cellMax = AsUInt2(terrainCfg.CellBasedCoordsToTerrainCoords(Float2(float(x+1), float(y+1))));
+                } else {
+                    cellOrigin = AsUInt2(terrainCfg.CellBasedCoordsToLayerCoords(layerIndex, Float2(float(x), float(y))));
+                    cellMax = AsUInt2(terrainCfg.CellBasedCoordsToLayerCoords(layerIndex, Float2(float(x+1), float(y+1))));
+                }
+
                 uberInterface->RegisterCell(
-                    heightMapFile, cellOrigin, cellMax, overlap,
-                    std::bind(&DoHeightMapShortCircuitUpdate, filename, renderer, cellOrigin, cellMax, std::placeholders::_1));
+                    filename.c_str(), cellOrigin, cellMax, overlap,
+                    std::bind(&DoShortCircuitUpdate, filename, layerId, renderer, cellOrigin, cellMax, std::placeholders::_1));
             }
         }
     }
@@ -2798,15 +2835,7 @@ namespace SceneEngine
         const unsigned overlap = cfg.NodeOverlap();
         const auto cellNodeSize = cellSize * std::pow(2.f, -float(cfg.CellTreeDepth()-1));      // size, in m, of a single node
         
-        pimpl->_coords = TerrainCoordinateSystem(
-            worldSpaceOrigin, cellNodeSize, cfg);
-
-        char uberSurfaceFile[MaxPath];
-        cfg.GetUberSurfaceFilename(uberSurfaceFile, dimof(uberSurfaceFile), CoverageId_Heights);
-
-            // uber-surface is a special-case asset, because we can edit it without a "DivergentAsset". But to do that, we must const_cast here
-        auto& uberSurface = const_cast<TerrainUberHeightsSurface&>(Assets::GetAsset<TerrainUberHeightsSurface>(uberSurfaceFile));
-        pimpl->_uberSurfaceInterface = std::make_unique<HeightsUberSurfaceInterface>(std::ref(uberSurface), ioFormat);
+        pimpl->_coords = TerrainCoordinateSystem(worldSpaceOrigin, cellNodeSize, cfg);
 
         ////////////////////////////////////////////////////////////////////////////
             // decide on the list of terrain cells we're going to render
@@ -2869,9 +2898,43 @@ namespace SceneEngine
         pimpl->_heightsProvider = std::make_unique<TerrainSurfaceHeightsProvider>(pimpl->_renderer, cfg, pimpl->_coords);
         pimpl->_ioFormat = std::move(ioFormat);
         pimpl->_cfg = cfg;
-        RegisterShortCircuitUpdate(
-            cfg, overlap,
-            pimpl->_uberSurfaceInterface.get(), pimpl->_renderer);
+
+        const bool buildUberInterfaces = true;
+
+        if (buildUberInterfaces) {
+            ::Assets::ResChar uberSurfaceFile[MaxPath];
+            {
+                cfg.GetUberSurfaceFilename(uberSurfaceFile, dimof(uberSurfaceFile), CoverageId_Heights);
+
+                    // uber-surface is a special-case asset, because we can edit it without a "DivergentAsset". But to do that, we must const_cast here
+                auto& uberSurface = const_cast<TerrainUberHeightsSurface&>(Assets::GetAsset<TerrainUberHeightsSurface>(uberSurfaceFile));
+                pimpl->_uberSurfaceInterface = std::make_unique<HeightsUberSurfaceInterface>(std::ref(uberSurface), ioFormat);
+
+                RegisterShortCircuitUpdate(
+                    cfg, overlap,
+                    pimpl->_uberSurfaceInterface.get(), pimpl->_renderer, CoverageId_Heights);
+            }
+
+            for (unsigned c=0; c<cfg.GetCoverageLayerCount(); ++c) {
+                const auto& l = cfg.GetCoverageLayer(c);
+                if (l._id == CoverageId_AngleBasedShadows) continue;
+                if (l._format != 62) continue;
+
+                cfg.GetUberSurfaceFilename(uberSurfaceFile, dimof(uberSurfaceFile), l._id);
+
+                Pimpl::CoverageInterface ci;
+                ci._id = l._id;
+                
+                auto& uberSurface = const_cast<TerrainUberSurface<uint8>&>(Assets::GetAsset<TerrainUberSurface<uint8>>(uberSurfaceFile));
+                ci._interface = std::make_unique<CoverageUberSurfaceInterface>(std::ref(uberSurface), ioFormat);
+
+                RegisterShortCircuitUpdate(
+                    cfg, overlap,
+                    ci._interface.get(), pimpl->_renderer, l._id);
+
+                pimpl->_coverageInterfaces.push_back(std::move(ci));
+            }
+        }
         
         MainSurfaceHeightsProvider = pimpl->_heightsProvider.get();
         _pimpl = std::move(pimpl);
@@ -3128,6 +3191,27 @@ namespace SceneEngine
             terrainCoords[1] * _nodeSizeMeters / float(_config.NodeDimensionsInElements()[1]) + _terrainOffset[1]);
     }
 
+    Float2      TerrainCoordinateSystem::WorldSpaceToLayerCoords(unsigned layerIndex, const Float2& worldSpacePosition) const
+    {
+        assert(layerIndex < _config.GetCoverageLayerCount());
+        auto nodeDims = _config.GetCoverageLayer(layerIndex)._dimensions;
+        return Float2(
+            (worldSpacePosition[0] - _terrainOffset[0]) * float(nodeDims[0]) / _nodeSizeMeters, 
+            (worldSpacePosition[1] - _terrainOffset[1]) * float(nodeDims[1]) / _nodeSizeMeters);
+    }
+
+    float       TerrainCoordinateSystem::WorldSpaceDistanceToLayerCoords(unsigned layerIndex, float distance) const
+    {
+        assert(layerIndex < _config.GetCoverageLayerCount());
+        auto nodeDims = _config.GetCoverageLayer(layerIndex)._dimensions;
+
+        float scale = std::min(
+            float(nodeDims[0]) / _nodeSizeMeters, 
+            float(nodeDims[1]) / _nodeSizeMeters);
+
+        return scale * distance;
+    }
+
     Float3      TerrainCoordinateSystem::TerrainOffset() const { return _terrainOffset; }
     void        TerrainCoordinateSystem::SetTerrainOffset(const Float3& newOffset) { _terrainOffset = newOffset; }
 
@@ -3270,6 +3354,13 @@ namespace SceneEngine
     const TerrainCoordinateSystem&  TerrainManager::GetCoords() const       { return _pimpl->_coords; }
     HeightsUberSurfaceInterface* TerrainManager::GetHeightsInterface()      { return _pimpl->_uberSurfaceInterface.get(); }
     ISurfaceHeightsProvider* TerrainManager::GetHeightsProvider()           { return _pimpl->_heightsProvider.get(); }
+
+    CoverageUberSurfaceInterface*   TerrainManager::GetCoverageInterface(TerrainCoverageId id)
+    {
+        for (auto i = _pimpl->_coverageInterfaces.begin(); i != _pimpl->_coverageInterfaces.end(); ++i)
+            if (i->_id == id) return i->_interface.get();
+        return nullptr;
+    }
 
     const TerrainConfig& TerrainManager::GetConfig() const
     {

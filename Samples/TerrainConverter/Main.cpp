@@ -173,7 +173,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
     auto fmt = std::make_shared<RenderCore::Assets::TerrainFormat>();
 
-    TerrainConfig cfg("game/demworld");
+    TerrainConfig cfg("game/centralcal");
     GenerateMissingUberSurfaceFiles(cfg, fmt);
     GenerateMissingCellFiles(cfg, fmt);
 

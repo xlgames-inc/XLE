@@ -42,6 +42,7 @@ namespace SceneEngine
         virtual void* GetData(UInt2 coord) = 0;
         virtual unsigned GetStride() const = 0;
         virtual unsigned BitsPerPixel() const = 0;
+        virtual unsigned Format() const = 0;
 
         virtual void WriteCell(
             const ITerrainFormat& ioFormat,
@@ -80,6 +81,7 @@ namespace SceneEngine
         virtual void* GetData(UInt2 coord);
         virtual unsigned GetStride() const;
         virtual unsigned BitsPerPixel() const;
+        virtual unsigned Format() const;
 
         void WriteCell(
             const ITerrainFormat& ioFormat,
@@ -124,6 +126,7 @@ namespace SceneEngine
                     std::function<void(const ShortCircuitUpdate&)> shortCircuitUpdate);
         void    RenderDebugging(RenderCore::Metal::DeviceContext* devContext, SceneEngine::LightingParserContext& context);
 
+        GenericUberSurfaceInterface(ITerrainUberSurface& uberSurface, std::shared_ptr<ITerrainFormat> ioFormat);
         virtual ~GenericUberSurfaceInterface();
     protected:
         class Pimpl;
@@ -177,9 +180,23 @@ namespace SceneEngine
         ~HeightsUberSurfaceInterface();
     private:
         float   CalculateShadowingAngle(Float2 samplePt, float sampleHeight, Float2 sunDirectionOfMovement, float xyScale);
-        void CancelActiveOperations();
+        void    CancelActiveOperations();
 
         TerrainUberHeightsSurface*      _uberSurface;
+    };
+
+    class CoverageUberSurfaceInterface : public GenericUberSurfaceInterface
+    {
+    public:
+        void Paint(Float2 centre, float radius, unsigned paintValue);
+
+        CoverageUberSurfaceInterface(
+            ITerrainUberSurface& uberSurface,
+            std::shared_ptr<ITerrainFormat> ioFormat);
+        ~CoverageUberSurfaceInterface();
+
+    protected:
+        void CancelActiveOperations();
     };
 
         ///////////////   I N L I N E   I M P L E M E N T A T I O N S   ///////////////

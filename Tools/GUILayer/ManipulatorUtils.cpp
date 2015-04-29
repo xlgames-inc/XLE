@@ -81,9 +81,16 @@ namespace GUILayer
                 return true;
             }
 
+            auto intParam = FindParameter(nativeName.c_str(), _manipulator->GetIntParameters(), ignoreCase);
+            if (intParam) {
+                result = gcnew Int32(*(int*)PtrAdd(_manipulator.get(), intParam->_valueOffset));
+                return true;
+            }
+
             auto boolParam = FindParameter(nativeName.c_str(), _manipulator->GetBoolParameters(), ignoreCase);
             if (boolParam) {
-                result = gcnew Boolean(*(bool*)PtrAdd(_manipulator.get(), floatParam->_valueOffset));
+                unsigned* i = (unsigned*)PtrAdd(_manipulator.get(), boolParam->_valueOffset);
+                result = gcnew Boolean(!!((*i) & (1<<boolParam->_bitIndex)));
                 return true;
             }
 
@@ -99,9 +106,21 @@ namespace GUILayer
                 *(float*)PtrAdd(_manipulator.get(), floatParam->_valueOffset) = (float)value;
                 return true;
             }
+
+            auto intParam = FindParameter(nativeName.c_str(), _manipulator->GetIntParameters(), ignoreCase);
+            if (intParam) {
+                *(int*)PtrAdd(_manipulator.get(), intParam->_valueOffset) = (int)value;
+                return true;
+            }
+
             auto boolParam = FindParameter(nativeName.c_str(), _manipulator->GetBoolParameters(), ignoreCase);
             if (boolParam) {
-                *(bool*)PtrAdd(_manipulator.get(), floatParam->_valueOffset) = (bool)value;
+                unsigned* i = (unsigned*)PtrAdd(_manipulator.get(), boolParam->_valueOffset);
+                if ((bool)value) {
+                    *i |= (1<<boolParam->_bitIndex);
+                } else {
+                    *i &= ~(1<<boolParam->_bitIndex);
+                }
                 return true;
             }
             return false;
@@ -189,6 +208,32 @@ namespace GUILayer
                                 param._min, param._max, 
                                 (param._scaleType == ToolsRig::IManipulator::FloatParameter::Linear)?"Linear":"Logarithmic"))
                     });
+            result->Add(descriptor);
+        }
+
+        auto iParams = _manipulator->GetIntParameters();
+        for (size_t c=0; c<iParams.second; ++c) {
+            const auto& param = iParams.first[c];
+            auto descriptor = 
+                gcnew DynamicPropertyDescriptor(
+                    clix::marshalString<clix::E_UTF8>(param._name),
+                    System::Int32::typeid, 
+                    gcnew array<Attribute^, 1> {
+                        gcnew DescriptionAttribute(
+                            String::Format("{0} to {1} ({2})",
+                                param._min, param._max, 
+                                (param._scaleType == ToolsRig::IManipulator::IntParameter::Linear)?"Linear":"Logarithmic"))
+                    });
+            result->Add(descriptor);
+        }
+
+        auto bParams = _manipulator->GetBoolParameters();
+        for (size_t c=0; c<bParams.second; ++c) {
+            const auto& param = bParams.first[c];
+            auto descriptor = 
+                gcnew DynamicPropertyDescriptor(
+                    clix::marshalString<clix::E_UTF8>(param._name),
+                    System::Boolean::typeid, nullptr);
             result->Add(descriptor);
         }
 

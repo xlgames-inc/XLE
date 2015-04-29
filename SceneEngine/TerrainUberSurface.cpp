@@ -225,6 +225,10 @@ namespace SceneEngine
         return sizeof(Type)*8;
     }
 
+    template<> unsigned TerrainUberSurface<float>::Format() const { return (unsigned)RenderCore::Metal::NativeFormat::R32_FLOAT; }
+    template<> unsigned TerrainUberSurface<uint8>::Format() const { return (unsigned)RenderCore::Metal::NativeFormat::R8_UINT; }
+    template<> unsigned TerrainUberSurface<ShadowSample>::Format() const { return (unsigned)RenderCore::Metal::NativeFormat::R16G16_UNORM; }
+
     template <typename Type>
         TerrainUberSurface<Type>::TerrainUberSurface(const char filename[])
     {
@@ -330,7 +334,7 @@ namespace SceneEngine
 
     namespace Internal
     {
-        static BufferUploads::BufferDesc BuildCacheDesc(UInt2 dims)
+        static BufferUploads::BufferDesc BuildCacheDesc(UInt2 dims, RenderCore::Metal::NativeFormat::Enum format)
         {
             using namespace BufferUploads;
             BufferDesc desc;
@@ -339,7 +343,7 @@ namespace SceneEngine
             desc._cpuAccess = 0;
             desc._gpuAccess = GPUAccess::Read|GPUAccess::Write;
             desc._allocationRules = 0;
-            desc._textureDesc = TextureDesc::Plain2D(dims[0], dims[1], RenderCore::Metal::NativeFormat::R32_FLOAT);
+            desc._textureDesc = TextureDesc::Plain2D(dims[0], dims[1], format);
             XlCopyString(desc._name, "TerrainWorkingCache");
             return desc;
         }
@@ -492,7 +496,7 @@ namespace SceneEngine
         auto& bufferUploads = *GetBufferUploads();
 
         UInt2 dims(maxs[0]-mins[0]+1, maxs[1]-mins[1]+1);
-        auto desc = Internal::BuildCacheDesc(dims);
+        auto desc = Internal::BuildCacheDesc(dims, (RenderCore::Metal::NativeFormat::Enum)_pimpl->_uberSurface->Format());
         auto pkt = make_intrusive<Internal::UberSurfacePacket>(
             _pimpl->_uberSurface->GetData(mins), _pimpl->_uberSurface->GetStride(), dims);
 
@@ -569,7 +573,7 @@ namespace SceneEngine
             context.BindCS(RenderCore::MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
 
             char fullShaderName[256];
-            _snprintf_s(fullShaderName, dimof(fullShaderName), "game/xleres/ui/terrainmodification.sh:%s:cs_*", shaderName);
+            _snprintf_s(fullShaderName, dimof(fullShaderName), "%s:cs_*", shaderName);
 
             auto& cbBytecode = Assets::GetAssetDep<CompiledShaderByteCode>(fullShaderName);
             auto& cs = Assets::GetAssetDep<ComputeShader>(fullShaderName);
@@ -710,7 +714,20 @@ namespace SceneEngine
         context->UnbindPS<RenderCore::Metal::ShaderResourceView>(5, 1);
     }
 
+    GenericUberSurfaceInterface::GenericUberSurfaceInterface(ITerrainUberSurface& uberSurface, std::shared_ptr<ITerrainFormat> ioFormat)
+    {
+        auto pimpl = std::make_unique<Pimpl>();
+        pimpl->_uberSurface = &uberSurface;     // no protection on this pointer (assuming it's coming from a resource)
+        pimpl->_ioFormat = std::move(ioFormat);
+
+        _pimpl = std::move(pimpl);
+    }
+
     GenericUberSurfaceInterface::~GenericUberSurfaceInterface() {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    #define baseShader "game/xleres/ui/terrainmodification.sh:"
 
     void    HeightsUberSurfaceInterface::AdjustHeights(Float2 center, float radius, float adjustment, float powerValue)
     {
@@ -736,7 +753,7 @@ namespace SceneEngine
             std::make_tuple(Hash64("RaiseLowerParameters"), &raiseLowerParameters, sizeof(RaiseLowerParameters))
         };
 
-        ApplyTool(adjMins, adjMaxs, "RaiseLower", center, radius, adjustment, extraPackets, dimof(extraPackets));
+        ApplyTool(adjMins, adjMaxs, baseShader "RaiseLower", center, radius, adjustment, extraPackets, dimof(extraPackets));
     }
 
     void    HeightsUberSurfaceInterface::AddNoise(Float2 center, float radius, float adjustment)
@@ -781,7 +798,7 @@ namespace SceneEngine
             std::make_tuple(Hash64("CopyHeightParameters"), &copyHeightParameters, sizeof(CopyHeightParameters))
         };
 
-        ApplyTool(adjMins, adjMaxs, "CopyHeight", center, radius, adjustment, extraPackets, dimof(extraPackets));
+        ApplyTool(adjMins, adjMaxs, baseShader "CopyHeight", center, radius, adjustment, extraPackets, dimof(extraPackets));
     }
 
     void    HeightsUberSurfaceInterface::Rotate(Float2 center, float radius, Float3 rotationAxis, float rotationAngle)
@@ -811,7 +828,7 @@ namespace SceneEngine
             std::make_tuple(Hash64("RotateParameters"), &rotateParameters, sizeof(RotateParamaters))
         };
 
-        ApplyTool(adjMins, adjMaxs, "Rotate", center, radius, 1.f, extraPackets, dimof(extraPackets));
+        ApplyTool(adjMins, adjMaxs, baseShader "Rotate", center, radius, 1.f, extraPackets, dimof(extraPackets));
     }
 
     void    HeightsUberSurfaceInterface::Smooth(Float2 center, float radius, unsigned filterRadius, float standardDeviation, float strength, unsigned flags)
@@ -854,7 +871,7 @@ namespace SceneEngine
             std::make_tuple(Hash64("GaussianParameters"), &blurParameters, sizeof(BlurParameters))
         };
             
-        ApplyTool(adjMins, adjMaxs, "Smooth", center, radius, strength, extraPackets, dimof(extraPackets));
+        ApplyTool(adjMins, adjMaxs, baseShader "Smooth", center, radius, strength, extraPackets, dimof(extraPackets));
     }
 
     void    HeightsUberSurfaceInterface::FillWithNoise(Float2 mins, Float2 maxs, float baseHeight, float noiseHeight, float roughness, float fractalDetail)
@@ -880,7 +897,7 @@ namespace SceneEngine
             std::make_tuple(Hash64("FillWithNoiseParameters"), &fillWithNoiseParameters, sizeof(FillWithNoiseParameters))
         };
             
-        ApplyTool(adjMins, adjMaxs, "FillWithNoise", LinearInterpolate(mins, maxs, 0.5f), 1.f, 1.f, extraPackets, dimof(extraPackets));
+        ApplyTool(adjMins, adjMaxs, baseShader "FillWithNoise", LinearInterpolate(mins, maxs, 0.5f), 1.f, 1.f, extraPackets, dimof(extraPackets));
     }
 
     static const unsigned ErosionWaterTileDimension = 256;
@@ -938,7 +955,7 @@ namespace SceneEngine
         /////////////////////////////////////////////////////////////////////////////////////
 
         auto& bufferUploads = *GetBufferUploads();
-        auto desc = Internal::BuildCacheDesc(UInt2(unsigned(size[0]), unsigned(size[1])));
+        auto desc = Internal::BuildCacheDesc(UInt2(unsigned(size[0]), unsigned(size[1])), (RenderCore::Metal::NativeFormat::Enum)_pimpl->_uberSurface->Format());
         auto hardMaterials = bufferUploads.Transaction_Immediate(desc, nullptr)->AdoptUnderlying();
         auto softMaterials = bufferUploads.Transaction_Immediate(desc, nullptr)->AdoptUnderlying();
         auto softMaterialsCopy = bufferUploads.Transaction_Immediate(desc, nullptr)->AdoptUnderlying();
@@ -1244,19 +1261,56 @@ namespace SceneEngine
     TerrainUberHeightsSurface* HeightsUberSurfaceInterface::GetUberSurface() { return _uberSurface; }
 
     HeightsUberSurfaceInterface::HeightsUberSurfaceInterface(TerrainUberHeightsSurface& uberSurface, std::shared_ptr<ITerrainFormat> ioFormat)
+        : GenericUberSurfaceInterface(uberSurface, std::move(ioFormat))
     {
         _uberSurface = &uberSurface;
-
-        auto pimpl = std::make_unique<Pimpl>();
-        pimpl->_uberSurface = &uberSurface;     // no protection on this pointer (assuming it's coming from a resource)
-        pimpl->_ioFormat = std::move(ioFormat);
-
-        _pimpl = std::move(pimpl);
     }
 
     HeightsUberSurfaceInterface::~HeightsUberSurfaceInterface()
     {}
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    void CoverageUberSurfaceInterface::Paint(Float2 centre, float radius, unsigned paintValue)
+    {
+        if (!_pimpl || !_pimpl->_uberSurface)
+            return;
+
+        UInt2 adjMins(  (unsigned)std::max(0.f, XlFloor(centre[0] - radius)),
+                        (unsigned)std::max(0.f, XlFloor(centre[1] - radius)));
+        UInt2 adjMaxs(  std::min(_pimpl->_uberSurface->GetWidth()-1, (unsigned)XlCeil(centre[0] + radius)),
+                        std::min(_pimpl->_uberSurface->GetHeight()-1, (unsigned)XlCeil(centre[1] + radius)));
+
+        PrepareCache(adjMins, adjMaxs);
+
+            //  run a shader that will modify the gpu-cached part of the uber surface as we need
+        struct PaintParameters
+        {
+            unsigned _newValue;
+            float dummy[3];
+        } params = { paintValue, 0.f, 0.f, 0.f };
+
+        std::tuple<uint64, void*, size_t> extraPackets[] = 
+        {
+            std::make_tuple(Hash64("PaintParameters"), &params, sizeof(params))
+        };
+
+        ApplyTool(adjMins, adjMaxs, "game/xleres/ui/terrainmodification_int.sh:Paint", centre, radius, 0.f, extraPackets, dimof(extraPackets));
+    }
+
+    void CoverageUberSurfaceInterface::CancelActiveOperations()
+    {
+    }
+
+    CoverageUberSurfaceInterface::CoverageUberSurfaceInterface(
+        ITerrainUberSurface& uberSurface,
+        std::shared_ptr<ITerrainFormat> ioFormat)
+        : GenericUberSurfaceInterface(uberSurface, std::move(ioFormat))
+    {
+    }
+    CoverageUberSurfaceInterface::~CoverageUberSurfaceInterface() {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     template TerrainUberHeightsSurface;
     template TerrainUberSurface<ShadowSample>;

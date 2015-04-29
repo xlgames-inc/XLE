@@ -20,6 +20,7 @@ namespace SceneEngine
     class LightingParserContext;
     class TechniqueContext;
     class HeightsUberSurfaceInterface;
+    class CoverageUberSurfaceInterface;
     class ITerrainFormat;
     class ISurfaceHeightsProvider;
     
@@ -86,6 +87,10 @@ namespace SceneEngine
         Float2      WorldSpaceToTerrainCoords(const Float2& worldSpacePosition) const;
         Float2      TerrainCoordsToWorldSpace(const Float2& terrainCoords) const;
         float       WorldSpaceDistanceToTerrainCoords(float distance) const;
+
+        Float2      WorldSpaceToLayerCoords(unsigned layerIndex, const Float2& worldSpacePosition) const;
+        float       WorldSpaceDistanceToLayerCoords(unsigned layerIndex, float distance) const;
+
         Float3      TerrainOffset() const;
         void        SetTerrainOffset(const Float3& newOffset);
 
@@ -145,6 +150,7 @@ namespace SceneEngine
             LightingParserContext& parserContext);
 
         HeightsUberSurfaceInterface*    GetHeightsInterface();
+        CoverageUberSurfaceInterface*   GetCoverageInterface(TerrainCoverageId id);
         ISurfaceHeightsProvider*        GetHeightsProvider();
 
         const TerrainCoordinateSystem&  GetCoords() const;
