@@ -50,19 +50,22 @@ namespace SceneEngine
         TerrainConfig(
 			const ::Assets::rstring& baseDir, UInt2 cellCount,
             Filenames filenamesMode = XLE, 
-            unsigned nodeDimsInElements = 32u, unsigned cellTreeDepth = 5u, unsigned nodeOverlap = 2u);
+            unsigned nodeDimsInElements = 32u, unsigned cellTreeDepth = 5u, unsigned nodeOverlap = 2u,
+            float elementSpacing = 10.f);
 		TerrainConfig(const ::Assets::rstring& baseDir = ::Assets::rstring());
 
-        void        GetCellFilename(char buffer[], unsigned cnt, UInt2 cellIndex, TerrainCoverageId id) const;
-        void        GetUberSurfaceFilename(char buffer[], unsigned bufferCount, TerrainCoverageId id) const;
+        void        GetCellFilename(::Assets::ResChar buffer[], unsigned cnt, UInt2 cellIndex, TerrainCoverageId id) const;
+        void        GetUberSurfaceFilename(::Assets::ResChar buffer[], unsigned bufferCount, TerrainCoverageId id) const;
 
         Float2      TerrainCoordsToCellBasedCoords(const Float2& terrainCoords) const;
         Float2      CellBasedCoordsToTerrainCoords(const Float2& cellBasedCoords) const;
+        Float2      CellBasedCoordsToLayerCoords(unsigned layerIndex, const Float2& cellBasedCoords) const;
 
         UInt2       CellDimensionsInNodes() const;
         UInt2       NodeDimensionsInElements() const;       // (ignoring overlap)
         unsigned    CellTreeDepth() const { return _cellTreeDepth; }
         unsigned    NodeOverlap() const { return _nodeOverlap; }
+        float       ElementSpacing() const { return _elementSpacing; }
 
         unsigned    GetCoverageLayerCount() const;
         const CoverageLayer& GetCoverageLayer(unsigned index) const;
@@ -73,6 +76,7 @@ namespace SceneEngine
         unsigned    _nodeDimsInElements;
         unsigned    _cellTreeDepth;
         unsigned    _nodeOverlap;
+        float       _elementSpacing;
         std::vector<CoverageLayer> _coverageLayers;
     };
 
@@ -183,14 +187,22 @@ namespace SceneEngine
         virtual void WriteCell( 
             const char destinationFile[], TerrainUberSurface<float>& surface, 
             UInt2 cellMins, UInt2 cellMaxs, unsigned treeDepth, unsigned overlapElements) const = 0;
-        virtual void WriteCellCoverage_Shadow(
+        virtual void WriteCell(
             const char destinationFile[], TerrainUberSurface<ShadowSample>& surface, 
+            UInt2 cellMins, UInt2 cellMaxs, unsigned treeDepth, unsigned overlapElements) const = 0;
+        virtual void WriteCell(
+            const char destinationFile[], TerrainUberSurface<uint8>& surface, 
             UInt2 cellMins, UInt2 cellMaxs, unsigned treeDepth, unsigned overlapElements) const = 0;
     };
 
     void ExecuteTerrainConversion(
         const TerrainConfig& outputConfig, 
-        std::shared_ptr<ITerrainFormat> outputIOFormat,
         const TerrainConfig& inputConfig, 
         std::shared_ptr<ITerrainFormat> inputIOFormat);
+    void GenerateMissingUberSurfaceFiles(
+        const TerrainConfig& outputConfig, 
+        std::shared_ptr<ITerrainFormat> outputIOFormat);
+    void GenerateMissingCellFiles(
+        const TerrainConfig& outputConfig, 
+        std::shared_ptr<ITerrainFormat> outputIOFormat);
 }

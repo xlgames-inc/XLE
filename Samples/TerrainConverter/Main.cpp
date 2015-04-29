@@ -21,6 +21,8 @@
 
 #include "../../Core/WinAPI/IncludeWindows.h"
 
+#pragma warning(disable:4505)   // unreferenced local function has been removed
+
 static void SetWorkingDirectory()
 {
         //
@@ -74,14 +76,14 @@ DEMConfig::DEMConfig(const char inputHdr[])
 }
 
 class TerrainUberHeader
-    {
-    public:
-        unsigned _magic;
-        unsigned _width, _height;
-        unsigned _dummy;
+{
+public:
+    unsigned _magic;
+    unsigned _width, _height;
+    unsigned _dummy;
 
-        static const unsigned Magic = 0xa3d3e3c3;
-    };
+    static const unsigned Magic = 0xa3d3e3c3;
+};
 
 static UInt2 ConvertDEMData(
     const char outputDir[], const char input[], 
@@ -168,23 +170,25 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
     auto compileAndAsync = std::make_unique<::Assets::CompileAndAsyncManager>();
 
     using namespace SceneEngine;
-    // ExecuteTerrainConversion(
-    //     TerrainConfig("game/mainworld/", UInt2(37, 34), TerrainConfig::XLE, 32, 5, 2), std::make_shared<RenderCore::Assets::TerrainFormat>(),
-    //     TerrainConfig("game/worlds/main_world", UInt2(37, 34), TerrainConfig::Legacy, 32, 5), std::make_shared<CryCompat::TerrainFormat>());
 
-    const unsigned nodeDims = 32;
-    const unsigned cellTreeDepth = 5;
+    auto fmt = std::make_shared<RenderCore::Assets::TerrainFormat>();
 
-    auto cellCount = ConvertDEMData(
-        "game/centralcal", "../SampleSourceData/n38w120/floatn38w120_1",
-        nodeDims, cellTreeDepth);
+    TerrainConfig cfg("game/demworld");
+    GenerateMissingUberSurfaceFiles(cfg, fmt);
+    GenerateMissingCellFiles(cfg, fmt);
 
-    TerrainConfig cfg("game/centralcal", cellCount, TerrainConfig::XLE, nodeDims, cellTreeDepth);
-    cfg.Save();
-
-    ExecuteTerrainConversion(
-        cfg, std::make_shared<RenderCore::Assets::TerrainFormat>(),
-        TerrainConfig(), nullptr);
+    // const unsigned nodeDims = 32;
+    // const unsigned cellTreeDepth = 5;
+    // 
+    // auto cellCount = ConvertDEMData(
+    //     "game/centralcal", "../SampleSourceData/n38w120/floatn38w120_1",
+    //     nodeDims, cellTreeDepth);
+    // 
+    // TerrainConfig cfg("game/centralcal", cellCount, TerrainConfig::XLE, nodeDims, cellTreeDepth);
+    // cfg.Save();
+    // 
+    // GenerateMissingUberSurfaceFiles(cfg, fmt);
+    // GenerateMissingCellFiles(cfg, fmt);
 
     return 0;
 }

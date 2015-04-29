@@ -272,7 +272,7 @@ namespace RenderCore { namespace Assets
     ////////////////////////////////////////////////////////////////////////////////////////////////
 
     template<typename Element> Element Add(Element lhs, Element rhs)            { return lhs + rhs; }
-    template<typename Element> Element Divide(Element lhs, unsigned rhs)        { return lhs / rhs; }
+    template<typename Element> Element Divide(Element lhs, unsigned rhs)        { return Element(lhs / rhs); }
     template<typename Element> float AsScalar(Element in)                       { return float(in); }
     template<typename Element> void Zero(Element& dst)                          { dst = Element(0); }
 
@@ -493,8 +493,18 @@ namespace RenderCore { namespace Assets
             Compression::QuantRange, std::make_pair(VersionString, BuildDateString));
     }
 
-    void TerrainFormat::WriteCellCoverage_Shadow(
+    void TerrainFormat::WriteCell(
         const char destinationFile[], TerrainUberSurface<ShadowSample>& surface, 
+        UInt2 cellMins, UInt2 cellMaxs, unsigned treeDepth, unsigned overlapElements) const
+    {
+        WriteCellFromUberSurface(
+            destinationFile, surface, 
+            cellMins, cellMaxs, treeDepth, overlapElements,
+            Compression::None, std::make_pair(VersionString, BuildDateString));
+    }
+
+    void TerrainFormat::WriteCell(
+        const char destinationFile[], TerrainUberSurface<uint8>& surface, 
         UInt2 cellMins, UInt2 cellMaxs, unsigned treeDepth, unsigned overlapElements) const
     {
         WriteCellFromUberSurface(

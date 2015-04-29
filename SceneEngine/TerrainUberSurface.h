@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../RenderCore/Metal/Forward.h"
+#include "../Assets/Assets.h"
 #include "../Math/Vector.h"
 #include "../Core/Types.h"
 #include <memory>
@@ -22,7 +23,6 @@ namespace SceneEngine
 
     typedef std::pair<uint16, uint16> ShadowSample;
     typedef TerrainUberSurface<float> TerrainUberHeightsSurface;
-    typedef TerrainUberSurface<ShadowSample> TerrainUberShadowingSurface;
 
     class ITerrainFormat;
     class TerrainConfig;
@@ -117,6 +117,10 @@ namespace SceneEngine
                     std::function<void(const ShortCircuitUpdate&)> shortCircuitUpdate);
         void    RenderDebugging(RenderCore::Metal::DeviceContext* devContext, SceneEngine::LightingParserContext& context);
         void    BuildShadowingSurface(const char destinationFile[], Int2 interestingMins, Int2 interestingMaxs, Float2 sunDirectionOfMovement, float xyScale);
+
+        static void    BuildEmptyFile(
+            const ::Assets::ResChar destinationFile[], 
+            unsigned width, unsigned height, unsigned bitsPerElement);
 
         TerrainUberHeightsSurface* GetUberSurface();
 

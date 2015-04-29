@@ -36,8 +36,11 @@ namespace RenderCore { namespace Assets
         virtual void WriteCell( 
             const char destinationFile[], SceneEngine::TerrainUberSurface<float>& surface, 
             UInt2 cellMins, UInt2 cellMaxs, unsigned treeDepth, unsigned overlapElements) const;
-        virtual void WriteCellCoverage_Shadow(
+        virtual void WriteCell(
             const char destinationFile[], SceneEngine::TerrainUberSurface<SceneEngine::ShadowSample>& surface, 
+            UInt2 cellMins, UInt2 cellMaxs, unsigned treeDepth, unsigned overlapElements) const;
+        virtual void WriteCell(
+            const char destinationFile[], SceneEngine::TerrainUberSurface<uint8>& surface, 
             UInt2 cellMins, UInt2 cellMaxs, unsigned treeDepth, unsigned overlapElements) const;
     };
 }}

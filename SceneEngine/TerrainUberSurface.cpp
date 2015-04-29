@@ -1102,6 +1102,27 @@ namespace SceneEngine
         return shadowingAngle;
     }
 
+    void    TerrainUberSurfaceInterface::BuildEmptyFile(
+        const ::Assets::ResChar destinationFile[], 
+        unsigned width, unsigned height, unsigned bitsPerElement)
+    {
+        BasicFile outputFile(destinationFile, "wb");
+
+        TerrainUberHeader hdr;
+        hdr._magic = TerrainUberHeader::Magic;
+        hdr._width = width;
+        hdr._height = height;
+        hdr._dummy = 0;
+        outputFile.Write(&hdr, sizeof(hdr), 1);
+
+        unsigned lineSize = width*bitsPerElement/8;
+        auto lineOfSamples = std::make_unique<uint8[]>(lineSize);
+        std::fill(lineOfSamples.get(), &lineOfSamples[lineSize], 0);
+        for (int y=0; y<int(height); ++y) {
+            outputFile.Write(lineOfSamples.get(), 1, lineSize);
+        }
+    }
+
     void    TerrainUberSurfaceInterface::BuildShadowingSurface(const char destinationFile[], Int2 interestingMins, Int2 interestingMaxs, Float2 sunDirectionOfMovement, float xyScale)
     {
             //      There are some limitations on the way the sun can move.
@@ -1197,7 +1218,8 @@ namespace SceneEngine
 
 
     template TerrainUberHeightsSurface;
-    template TerrainUberShadowingSurface;
+    template TerrainUberSurface<ShadowSample>;
+    template TerrainUberSurface<uint8>;
 }
 
 

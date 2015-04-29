@@ -42,6 +42,7 @@
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/Conversion.h"
 #include "../ConsoleRig/Console.h"
+#include "../ConsoleRig/Log.h"
 
 #include "../../RenderCore/DX11/Metal/DX11.h"
 #include "../../RenderCore/DX11/Metal/DX11Utils.h"
@@ -2515,7 +2516,7 @@ namespace SceneEngine
     };
 
     void TerrainConfig::GetCellFilename(
-        char buffer[], unsigned bufferCount,
+        ::Assets::ResChar buffer[], unsigned bufferCount,
         UInt2 cellIndex, TerrainCoverageId fileType) const
     {
         if (_filenamesMode == Legacy) {
@@ -2560,7 +2561,7 @@ namespace SceneEngine
     }
 
     void TerrainConfig::GetUberSurfaceFilename(
-        char buffer[], unsigned bufferCount,
+        ::Assets::ResChar buffer[], unsigned bufferCount,
         TerrainCoverageId fileType) const
     {
         XlCopyString(buffer, bufferCount, _baseDir.c_str());
@@ -2581,19 +2582,46 @@ namespace SceneEngine
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////
+    template<typename Sample>
+        static void WriteCellCoverageData(
+            const TerrainConfig& cfg, ITerrainFormat& ioFormat, 
+            const ::Assets::ResChar uberSurfaceName[], unsigned layerIndex)
+    {
+        ::Assets::ResChar path[MaxPath];
+
+        auto layerId = cfg.GetCoverageLayer(layerIndex)._id;
+
+        TerrainUberSurface<Sample> uberSurface(uberSurfaceName);
+        for (unsigned y=0; y<cfg._cellCount[1]; ++y)
+            for (unsigned x=0; x<cfg._cellCount[0]; ++x) {
+                char cellFile[MaxPath];
+                cfg.GetCellFilename(cellFile, dimof(cellFile), UInt2(x, y), layerId);
+                if (!DoesFileExist(cellFile)) {
+                    XlDirname(path, dimof(path), cellFile);
+                    CreateDirectoryRecursive(path);
+                    TRY {
+                        auto cellOrigin = cfg.CellBasedCoordsToLayerCoords(layerIndex, Float2(float(x), float(y)));
+                        auto cellMaxs = cfg.CellBasedCoordsToLayerCoords(layerIndex, Float2(float(x+1), float(y+1)));
+                        ioFormat.WriteCell(
+                            cellFile, uberSurface, 
+                            AsUInt2(cellOrigin), AsUInt2(cellMaxs), cfg.CellTreeDepth(), 1);
+                    } CATCH(...) {
+                        LogAlwaysError << "Error while writing cell coverage file to: " << cellFile;
+                    } CATCH_END
+                }
+            }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////////////////
     void ExecuteTerrainConversion(
         const TerrainConfig& outputConfig, 
-        std::shared_ptr<ITerrainFormat> outputIOFormat,
         const TerrainConfig& inputConfig, 
         std::shared_ptr<ITerrainFormat> inputIOFormat)
     {
-        assert(outputIOFormat);
-
-        char uberSurfaceFile[MaxPath], uberShadowingFile[MaxPath];
+        ::Assets::ResChar uberSurfaceFile[MaxPath];
         outputConfig.GetUberSurfaceFilename(uberSurfaceFile, dimof(uberSurfaceFile), CoverageId_Heights);
-        outputConfig.GetUberSurfaceFilename(uberShadowingFile, dimof(uberShadowingFile), CoverageId_AngleBasedShadows);
 
-        char path[MaxPath];
+        ::Assets::ResChar path[MaxPath];
         XlDirname(path, dimof(path), uberSurfaceFile);
         CreateDirectoryRecursive(path);
 
@@ -2604,36 +2632,40 @@ namespace SceneEngine
                 uberSurfaceFile, inputConfig, inputIOFormat.get(), 
                 0, 0, inputConfig._cellCount[0], inputConfig._cellCount[1]);
         }
+    }
+
+    void GenerateMissingCellFiles(
+        const TerrainConfig& outputConfig, 
+        std::shared_ptr<ITerrainFormat> outputIOFormat)
+    {
+        assert(outputIOFormat);
 
         //////////////////////////////////////////////////////////////////////////////////////
-            // write all of the shadow.ctc shadow layers from the "uber shadowing file"
-        if (DoesFileExist(uberShadowingFile)) {
-                //  open and destroy the uber shadowing surface before we open the uber heights surface
-                //  (opening them both at the same time requires too much memory)
-            TerrainUberShadowingSurface uberShadowingSurface(uberShadowingFile);
-            for (unsigned y=0; y<outputConfig._cellCount[1]; ++y)
-                for (unsigned x=0; x<outputConfig._cellCount[0]; ++x) {
-                    char shadowFile[MaxPath];
-                    outputConfig.GetCellFilename(shadowFile, dimof(shadowFile), 
-                        UInt2(x, y), CoverageId_AngleBasedShadows);
-                    if (!DoesFileExist(shadowFile)) {
-                        XlDirname(path, dimof(path), shadowFile);
-                        CreateDirectoryRecursive(path);
-                        TRY {
-                            auto cellOrigin = outputConfig.CellBasedCoordsToTerrainCoords(Float2(float(x), float(y)));
-                            auto cellMaxs = outputConfig.CellBasedCoordsToTerrainCoords(Float2(float(x+1), float(y+1)));
-                            outputIOFormat->WriteCellCoverage_Shadow(
-                                shadowFile, uberShadowingSurface, 
-                                AsUInt2(cellOrigin), AsUInt2(cellMaxs), outputConfig.CellTreeDepth(), 1);
-                        } CATCH(...) { // sometimes throws (eg, if the directory doesn't exist)
-                        } CATCH_END
-                    }
+            // for each coverage layer, we must write all of the component parts
+        for (unsigned l=0; l<outputConfig.GetCoverageLayerCount(); ++l) {
+            const auto& layer = outputConfig.GetCoverageLayer(l);
+
+            char layerUberSurface[MaxPath];
+            outputConfig.GetUberSurfaceFilename(layerUberSurface, dimof(layerUberSurface), layer._id);
+
+            if (DoesFileExist(layerUberSurface)) {
+                    //  open and destroy these coverage uber shadowing surface before we open the uber heights surface
+                    //  (opening them both at the same time requires too much memory)
+                if (layer._format == 35) {
+                    WriteCellCoverageData<ShadowSample>(outputConfig, *outputIOFormat, layerUberSurface, l);
+                } else if (layer._format == 62) {
+                    WriteCellCoverageData<uint8>(outputConfig, *outputIOFormat, layerUberSurface, l);
+                } else {
+                    LogAlwaysError << "Unknown format (" << layer._format << ") for terrain coverage file for layer: " << layer._name;
                 }
+            }
         }
 
         //////////////////////////////////////////////////////////////////////////////////////
             //  load the uber height surface, and uber surface interface (but only temporarily
             //  while we initialise the data)
+        ::Assets::ResChar uberSurfaceFile[MaxPath];
+        outputConfig.GetUberSurfaceFilename(uberSurfaceFile, dimof(uberSurfaceFile), CoverageId_Heights);
         TerrainUberHeightsSurface heightsData(uberSurfaceFile);
         TerrainUberSurfaceInterface uberSurfaceInterface(heightsData, outputIOFormat);
 
@@ -2641,9 +2673,9 @@ namespace SceneEngine
         for (unsigned y=0; y<outputConfig._cellCount[1]; ++y) {
             for (unsigned x=0; x<outputConfig._cellCount[0]; ++x) {
                 char heightMapFile[MaxPath];
-                outputConfig.GetCellFilename(heightMapFile, dimof(heightMapFile), 
-                    UInt2(x, y), CoverageId_Heights);
+                outputConfig.GetCellFilename(heightMapFile, dimof(heightMapFile), UInt2(x, y), CoverageId_Heights);
                 if (!DoesFileExist(heightMapFile)) {
+                    char path[MaxPath];
                     XlDirname(path, dimof(path), heightMapFile);
                     CreateDirectoryRecursive(path);
                     TRY {
@@ -2657,20 +2689,53 @@ namespace SceneEngine
                 }
             }
         }
+    }
 
-        //////////////////////////////////////////////////////////////////////////////////////
-            // build the uber shadowing file, and then write out the shadowing textures for each node
-        // auto uberShadowingFile = terrainConfig._baseDir + "/ubershadowingsurface.dat";
-        if (!DoesFileExist(uberShadowingFile)) {
-            // Int2 interestingMins((9-1) * 16 * 32, (19-1) * 16 * 32), interestingMaxs((9+4) * 16 * 32, (19+4) * 16 * 32);
-            Int2 interestingMins(0, 0);
-            Int2 interestingMaxs = UInt2(
-                outputConfig._cellCount[0] * outputConfig.CellDimensionsInNodes()[0] * outputConfig.NodeDimensionsInElements()[0],
-                outputConfig._cellCount[1] * outputConfig.CellDimensionsInNodes()[1] * outputConfig.NodeDimensionsInElements()[1]);
+    void GenerateMissingUberSurfaceFiles(
+        const TerrainConfig& cfg, 
+        std::shared_ptr<ITerrainFormat> outputIOFormat)
+    {
+        for (unsigned l=0; l<cfg.GetCoverageLayerCount(); ++l) {
+            const auto& layer = cfg.GetCoverageLayer(l);
 
-            float xyScale = 10.f;
-            Float2 sunDirectionOfMovement = Normalize(Float2(1.f, 0.33f));
-            uberSurfaceInterface.BuildShadowingSurface(uberShadowingFile, interestingMins, interestingMaxs, sunDirectionOfMovement, xyScale);
+            // bool hasShadows = false;
+            // for (unsigned c=0; c<outputConfig.GetCoverageLayerCount(); ++c)
+            //     hasShadows |= outputConfig.GetCoverageLayer(c)._id == CoverageId_AngleBasedShadows;
+            // if (!hasShadows) return;
+
+            ::Assets::ResChar uberLayer[MaxPath];
+            cfg.GetUberSurfaceFilename(uberLayer, dimof(uberLayer), layer._id);
+            if (DoesFileExist(uberLayer)) continue;
+
+            if (layer._id == CoverageId_AngleBasedShadows) {
+
+                    // this is the shadows layer... We need to build the shadows procedurally
+                ::Assets::ResChar uberHeightsFile[MaxPath];
+                cfg.GetUberSurfaceFilename(uberHeightsFile, dimof(uberHeightsFile), CoverageId_Heights);
+
+                TerrainUberHeightsSurface heightsData(uberHeightsFile);
+                TerrainUberSurfaceInterface uberSurfaceInterface(heightsData, outputIOFormat);
+
+                //////////////////////////////////////////////////////////////////////////////////////
+                    // build the uber shadowing file, and then write out the shadowing textures for each node
+                // Int2 interestingMins((9-1) * 16 * 32, (19-1) * 16 * 32), interestingMaxs((9+4) * 16 * 32, (19+4) * 16 * 32);
+                Int2 interestingMins(0, 0);
+                Int2 interestingMaxs = UInt2(
+                    cfg._cellCount[0] * cfg.CellDimensionsInNodes()[0] * cfg.NodeDimensionsInElements()[0],
+                    cfg._cellCount[1] * cfg.CellDimensionsInNodes()[1] * cfg.NodeDimensionsInElements()[1]);
+
+                float xyScale = cfg.ElementSpacing();
+                Float2 sunDirectionOfMovement = Normalize(Float2(1.f, 0.33f));
+                uberSurfaceInterface.BuildShadowingSurface(
+                    uberLayer, interestingMins, interestingMaxs, sunDirectionOfMovement, xyScale);
+
+            } else {
+                TerrainUberSurfaceInterface::BuildEmptyFile(
+                    uberLayer, 
+                    cfg._cellCount[0] * cfg.CellDimensionsInNodes()[0] * (layer._dimensions[0]+1),
+                    cfg._cellCount[1] * cfg.CellDimensionsInNodes()[1] * (layer._dimensions[1]+1),
+                    BitsPerPixel((NativeFormat::Enum)layer._format));
+            }
         }
     }
 
@@ -2729,7 +2794,7 @@ namespace SceneEngine
             //      The "uber-surface" is effectively the "master" data for the terrain. These variables determine
             //      how we break the uber surface down into separate cells. As a result, the cell data is almost
             //      just a cached version of the uber surface, with these configuration values.
-        const auto cellSize = cfg.CellDimensionsInNodes()[0] * cfg.NodeDimensionsInElements()[0] * 10.f;
+        const auto cellSize = cfg.CellDimensionsInNodes()[0] * cfg.NodeDimensionsInElements()[0] * cfg.ElementSpacing();
         const unsigned overlap = cfg.NodeOverlap();
         const auto cellNodeSize = cellSize * std::pow(2.f, -float(cfg.CellTreeDepth()-1));      // size, in m, of a single node
         
@@ -2797,7 +2862,7 @@ namespace SceneEngine
             const auto& l = cfg.GetCoverageLayer(c);
             rendererCfg._coverageLayers.push_back(std::make_pair(
                 l._id, 
-                TerrainRendererConfig::Layer { l._dimensions, cachedTileCount, NativeFormat::Enum(l._format) } ));
+                TerrainRendererConfig::Layer { (l._dimensions+UInt2(1,1)), cachedTileCount, NativeFormat::Enum(l._format) } ));
         }
 
         pimpl->_renderer = std::make_shared<TerrainCellRenderer>(rendererCfg, ioFormat, bufferUploads);
@@ -3080,6 +3145,15 @@ namespace SceneEngine
         return Float2(cellBasedCoords[0] * float(t[0]*t2[0]), cellBasedCoords[1] * float(t[1]*t2[1]));
     }
 
+    Float2 TerrainConfig::CellBasedCoordsToLayerCoords(unsigned layerIndex, const Float2& cellBasedCoords) const
+    {
+        auto t = _coverageLayers[layerIndex]._dimensions;
+        auto t2 = CellDimensionsInNodes();
+        return Float2(
+            cellBasedCoords[0] * float(t[0]*t2[0]), 
+            cellBasedCoords[1] * float(t[1]*t2[1]));
+    }
+
     UInt2 TerrainConfig::CellDimensionsInNodes() const
     {
         unsigned t = 1<<(_cellTreeDepth-1);
@@ -3104,9 +3178,10 @@ namespace SceneEngine
     TerrainConfig::TerrainConfig(
 		const ::Assets::rstring& baseDir, UInt2 cellCount,
         Filenames filenamesMode, 
-        unsigned nodeDimsInElements, unsigned cellTreeDepth, unsigned nodeOverlap)
+        unsigned nodeDimsInElements, unsigned cellTreeDepth, unsigned nodeOverlap, float elementSpacing)
     : _baseDir(baseDir), _cellCount(cellCount), _filenamesMode(filenamesMode)
     , _nodeDimsInElements(nodeDimsInElements), _cellTreeDepth(cellTreeDepth), _nodeOverlap(nodeOverlap) 
+    , _elementSpacing(elementSpacing)
     {
         ::Assets::ResChar buffer[MaxPath];
         XlConcatPath(buffer, dimof(buffer), _baseDir.c_str(), "terraintextures/textures.txt");
@@ -3116,7 +3191,7 @@ namespace SceneEngine
     TerrainConfig::TerrainConfig(const std::string& baseDir)
     : _baseDir(baseDir), _filenamesMode(XLE)
     , _cellCount(0,0), _nodeDimsInElements(0)
-    , _cellTreeDepth(0)
+    , _cellTreeDepth(0), _elementSpacing(0.f)
     {
         size_t fileSize = 0;
         auto sourceFile = LoadFileAsMemoryBlock(StringMeld<MaxPath>() << baseDir << "\\world.cfg", &fileSize);
@@ -3131,6 +3206,7 @@ namespace SceneEngine
             _nodeDimsInElements = c->IntAttribute("NodeDims", _nodeDimsInElements);
             _cellTreeDepth = c->IntAttribute("CellTreeDepth", _cellTreeDepth);
             _nodeOverlap = c->IntAttribute("NodeOverlap", _nodeOverlap);
+            _elementSpacing = Deserialize(c, "ElementSpacing", 10.f);
 
             _cellCount = Deserialize(c, "CellCount", _cellCount);
 
@@ -3164,11 +3240,27 @@ namespace SceneEngine
         terrainConfig->SetAttribute("NodeDims", _nodeDimsInElements);
         terrainConfig->SetAttribute("CellTreeDepth", _cellTreeDepth);
         terrainConfig->SetAttribute("NodeOverlap", _nodeOverlap);
+        terrainConfig->SetAttribute("ElementSpacing", _elementSpacing);
 
         auto cellCount = std::make_unique<Data>("CellCount");
         cellCount->Add(new Data(StringMeld<32>() << _cellCount[0]));
         cellCount->Add(new Data(StringMeld<32>() << _cellCount[1]));
         terrainConfig->Add(cellCount.release());
+
+        auto coveragePart = std::make_unique<Data>("Coverage");
+        for (auto l=_coverageLayers.cbegin(); l!=_coverageLayers.cend(); ++l) {
+            auto element = std::make_unique<Data>(l->_name.c_str());
+            element->SetAttribute("Id", l->_id);
+
+            auto dims = std::make_unique<Data>("Dims");
+            dims->Add(new Data(StringMeld<32>() << l->_dimensions[0]));
+            dims->Add(new Data(StringMeld<32>() << l->_dimensions[1]));
+            element->Add(dims.release());
+
+            element->SetAttribute("Format", l->_format);
+            coveragePart->Add(element.release());
+        }
+        terrainConfig->Add(coveragePart.release());
 
         auto parentNode = std::make_unique<Data>();
         parentNode->Add(terrainConfig.release());
