@@ -53,7 +53,7 @@
 
 namespace SceneEngine
 {
-    float SunDirectionAngle = 1.0821046f;
+    float SunDirectionAngle = .33f; // 1.0821046f;
 
     using namespace RenderCore;
     using namespace RenderCore::Metal;
@@ -144,6 +144,8 @@ namespace SceneEngine
         BufferUploads::IManager&    GetBufferUploads() { return *_bufferUploads; }
         ShaderResourceView&         GetShaderResource() { return _shaderResource; }
         UnorderedAccessView&        GetUnorderedAccessView() { return _uav; }
+
+        Int2      GetTileSize() const { return _elementSize; }
         
         TextureTileSet( BufferUploads::IManager& bufferUploads,
                         Int2 elementSize, unsigned elementCount,
@@ -177,6 +179,9 @@ namespace SceneEngine
         BufferUploads::TransactionID    _creationTransaction;
 
         void    CompleteCreation();
+
+        TextureTileSet(const TextureTileSet& cloneFrom) = delete;
+        TextureTileSet& operator=(const TextureTileSet& cloneFrom) = delete;
     };
 
     static Int3 LinearToCoords(unsigned linearAddress, Int2 elesPerSlice)
@@ -409,9 +414,10 @@ namespace SceneEngine
     class TerrainCellId
     {
     public:
-        static const unsigned CoverageCount = 1;
+        static const unsigned MaxCoverageCount = 5;
         char        _heightMapFilename[256];
-        char        _coverageFilename[CoverageCount][256];
+        char        _coverageFilename[MaxCoverageCount][256];
+        TerrainCoverageId  _coverageIds[MaxCoverageCount];
         Float4x4    _cellToWorld;
         Float3      _aabbMin, _aabbMax;
 
@@ -420,8 +426,10 @@ namespace SceneEngine
         TerrainCellId()
         {
             _heightMapFilename[0] = '\0';
-            for (unsigned c=0; c<CoverageCount; ++c)
+            for (unsigned c=0; c<MaxCoverageCount; ++c) {
                 _coverageFilename[c][0] = '\0';
+                _coverageIds[c] = ~TerrainCoverageId(0x0);
+            }
             _cellToWorld = Identity<Float4x4>();
             _aabbMin = _aabbMax = Float3(0.f, 0.f, 0.f);
         }
@@ -430,7 +438,7 @@ namespace SceneEngine
     uint64      TerrainCellId::BuildHash() const
     {
         uint64 result = Hash64(_heightMapFilename);
-        for (unsigned c=0; c<CoverageCount; ++c) {
+        for (unsigned c=0; c<dimof(_coverageFilename); ++c) {
             if (_coverageFilename[c] && _coverageFilename[c][0]) {
                 result = Hash64(
                     _coverageFilename[c], &_coverageFilename[c][XlStringLen(_coverageFilename[c])], 
@@ -440,29 +448,21 @@ namespace SceneEngine
         return result;
     }
 
-    static const RenderCore::Metal::NativeFormat::Enum CoverageFileFormat[TerrainCellId::CoverageCount] = {
-        // RenderCore::Metal::NativeFormat::BC1_UNORM
-        RenderCore::Metal::NativeFormat::R16G16_UNORM
-    };
-
     class TerrainRenderingContext;
     class TerrainCollapseContext;
 
     class TerrainRendererConfig
     {
     public:
-        Int2 _heightMapNodeElementWidth;
-        unsigned _tileMapSize;
-            
-        class CoverageLayer
+        class Layer
         {
         public:
-            uint32 _id;
-            Int2 _nodeElementWidth;
-            unsigned _tileMapSize;
+            Int2 _tileSize;
+            unsigned _cachedTileCount;
             NativeFormat::Enum _format;
         };
-        std::vector<CoverageLayer> _coverageLayers;
+        Layer _heights;
+        std::vector<std::pair<TerrainCoverageId, Layer>> _coverageLayers;
     };
 
     class TerrainCellRenderer
@@ -478,11 +478,11 @@ namespace SceneEngine
 
         void HeightMapShortCircuit(std::string cellName, UInt2 cellOrigin, UInt2 cellMax, const ShortCircuitUpdate& upd);
 
-        Int2 GetElementSize() const { return _elementSize; }
+        Int2 GetHeightsElementSize() const { return _heightMapTileSet->GetTileSize(); }
 
         TerrainCellRenderer(
-            std::shared_ptr<ITerrainFormat> ioFormat, BufferUploads::IManager* bufferUploads, 
-            Int2 heightMapNodeElementWidth);
+            const TerrainRendererConfig& cfg,
+            std::shared_ptr<ITerrainFormat> ioFormat, BufferUploads::IManager* bufferUploads);
         ~TerrainCellRenderer();
 
     private:
@@ -504,7 +504,7 @@ namespace SceneEngine
         class CellRenderInfo
         {
         public:
-            CellRenderInfo(const TerrainCell& cell, const TerrainCellTexture** cellCoverageBegin, const TerrainCellTexture** cellCoverageEnd);
+            CellRenderInfo(const TerrainCell& cell, const TerrainCellTexture* const* cellCoverageBegin, const TerrainCellTexture* const* cellCoverageEnd);
             CellRenderInfo(CellRenderInfo&& moveFrom);
             CellRenderInfo& operator=(CellRenderInfo&& moveFrom) throw();
             ~CellRenderInfo();
@@ -536,9 +536,10 @@ namespace SceneEngine
 
         std::unique_ptr<TextureTileSet> _heightMapTileSet;
         std::vector<std::unique_ptr<TextureTileSet>> _coverageTileSet;
+        std::vector<TerrainCoverageId>         _coverageIds;
         std::vector<CRIPair>            _renderInfos;
-        Int2                            _elementSize;
-        Int2                            _coverageElementSize;
+        // Int2                            _elementSize;
+        // Int2                            _coverageElementSize;
 
         typedef std::pair<CellRenderInfo*, uint32> UploadPair;
         std::vector<UploadPair>         _pendingUploads;
@@ -851,6 +852,27 @@ namespace SceneEngine
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////
+    static std::vector<TerrainCellTexture const*> BuildMappedCoverageTextures(
+        LightingParserContext& parserContext, const TerrainCellId& cell, 
+        const std::vector<TerrainCoverageId>& ids, const ITerrainFormat& ioFormat)
+    {
+        std::vector<TerrainCellTexture const*> tex;
+        tex.resize(ids.size(), nullptr);
+        for (unsigned c=0; c<unsigned(ids.size()); ++c) {
+            auto end = &cell._coverageIds[dimof(cell._coverageIds)];
+            auto i = std::find(cell._coverageIds, end, ids[c]);
+            if (i != end) {
+                TRY {
+                    tex[c] = &ioFormat.LoadCoverage(cell._coverageFilename[i-cell._coverageIds]);
+                } CATCH (const ::Assets::Exceptions::InvalidResource& e) {
+                    parserContext.Process(e);
+                } CATCH_END
+            }
+        }
+        return std::move(tex);
+    }
+
+    //////////////////////////////////////////////////////////////////////////////////////////
     void    TerrainCellRenderer::CullNodes( 
         DeviceContext* context, LightingParserContext& parserContext, 
         TerrainRenderingContext& terrainContext, TerrainCollapseContext& collapseContext,
@@ -887,25 +909,18 @@ namespace SceneEngine
                     _pendingUploads.end());
                 i->second.reset();
 
-                TerrainCellTexture const* tex[TerrainCellId::CoverageCount];
-                for (unsigned c=0; c<TerrainCellId::CoverageCount; ++c) {
-                    tex[c] = &_ioFormat->LoadCoverage(cell._coverageFilename[c]);
-                }
-
+                auto tex = BuildMappedCoverageTextures(parserContext, cell, _coverageIds, *_ioFormat);
                 i->second = std::make_unique<CellRenderInfo>(
                     std::ref(_ioFormat->LoadHeights(cell._heightMapFilename)), 
-                    tex, &tex[dimof(tex)]);
+                    AsPointer(tex.cbegin()), AsPointer(tex.cend()));
             }
 
             renderInfo = i->second.get();
 
         } else {
 
-            TerrainCellTexture const* tex[TerrainCellId::CoverageCount];
-            for (unsigned c=0; c<TerrainCellId::CoverageCount; ++c) {
-                tex[c] = &_ioFormat->LoadCoverage(cell._coverageFilename[c]);
-            }
-            auto newRenderInfo = std::make_unique<CellRenderInfo>(std::ref(_ioFormat->LoadHeights(cell._heightMapFilename)), tex, &tex[dimof(tex)]);
+            auto tex = BuildMappedCoverageTextures(parserContext, cell, _coverageIds, *_ioFormat);
+            auto newRenderInfo = std::make_unique<CellRenderInfo>(std::ref(_ioFormat->LoadHeights(cell._heightMapFilename)), AsPointer(tex.cbegin()), AsPointer(tex.cend()));
             auto newIterator = _renderInfos.insert(i, CRIPair(hash, std::move(newRenderInfo)));
             assert(newIterator->first == hash);
             renderInfo = newIterator->second.get();
@@ -1451,7 +1466,7 @@ namespace SceneEngine
         Float3 cellPositionMinusViewPosition = ExtractTranslation(localToWorld) - ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld);
 
         auto& sourceCell = *cellRenderInfo._sourceCell;
-        const unsigned startLod = Tweakable("TerrainLOD", 1);
+        const unsigned startLod = Tweakable("TerrainMinLOD", 1);
         const unsigned maxLod = unsigned(sourceCell._nodeFields.size()-1);      // sometimes the coverage doesn't have all of the LODs. In these cases, we have to clamp the LOD number (for both heights and coverage...!)
         const float screenSpaceEdgeThreshold = Tweakable("TerrainEdgeThreshold", 384.f);
         auto& field = sourceCell._nodeFields[startLod];
@@ -1515,7 +1530,8 @@ namespace SceneEngine
             queuedNode._priority = MagnitudeSquared(ExtractTranslation(sourceNode->_localToCell) + cellPositionMinusViewPosition);
             queuedNode._flags = flags;
             queuedNode._cellToWorld = localToWorld;    // note -- it's a pity we have to store this for every node (it's a per-cell property)
-            queuedNode._neighbourLODDiff[0] = queuedNode._neighbourLODDiff[1] = queuedNode._neighbourLODDiff[2] = queuedNode._neighbourLODDiff[3] = 0;
+            queuedNode._neighbourLODDiff[0] = queuedNode._neighbourLODDiff[1] = 
+                queuedNode._neighbourLODDiff[2] = queuedNode._neighbourLODDiff[3] = 0;
             terrainContext._queuedNodes.push_back(queuedNode);
         }
     }
@@ -1525,7 +1541,7 @@ namespace SceneEngine
     {
         context->BindVS(MakeResourceList(_heightMapTileSet->GetShaderResource()));
         context->BindDS(MakeResourceList(_heightMapTileSet->GetShaderResource()));
-        for (unsigned c=0; c<TerrainCellId::CoverageCount; ++c) {
+        for (unsigned c=0; c<unsigned(_coverageTileSet.size()); ++c) {
             context->BindPS(MakeResourceList(c, _coverageTileSet[c]->GetShaderResource()));
                 //  for instance spawn mode, we also need the coverage resources in the geometry shader. Perhaps
                 //  we could use techniques to make this a little more reliable...?
@@ -1563,7 +1579,7 @@ namespace SceneEngine
     {
         const bool isTextured = !cellRenderInfo._coverage.empty();
         assert(  isTextured == terrainContext._isTextured); (void)isTextured;
-        assert(_elementSize == terrainContext._elementSize);
+        assert(GetHeightsElementSize() == terrainContext._elementSize);
 
         auto& sourceCell = *cellRenderInfo._sourceCell;
         auto& sourceNode = sourceCell._nodes[absNodeIndex];
@@ -1595,7 +1611,7 @@ namespace SceneEngine
             tileConstants._coverageOrigin = Int3(0, 0, 0);
         }
 
-        tileConstants._tileDimensionsInVertices = _elementSize[1];
+        tileConstants._tileDimensionsInVertices = GetHeightsElementSize()[1];
         tileConstants._neighbourLodDiffs = Int4(neighbourLodDiffs[0], neighbourLodDiffs[1], neighbourLodDiffs[2], neighbourLodDiffs[3]);
         terrainContext._tileConstantsBuffer.Update(*context, &tileConstants, sizeof(tileConstants));
 
@@ -1782,24 +1798,24 @@ namespace SceneEngine
         }
     }
 
-    TerrainCellRenderer::TerrainCellRenderer(std::shared_ptr<ITerrainFormat> ioFormat, BufferUploads::IManager* bufferUploads, Int2 heightMapNodeElementWidth)
+    TerrainCellRenderer::TerrainCellRenderer(
+        const TerrainRendererConfig& cfg,
+        std::shared_ptr<ITerrainFormat> ioFormat, BufferUploads::IManager* bufferUploads)
     {
-        auto heightMapTextureTileSet = std::unique_ptr<TextureTileSet>(
-            new TextureTileSet(*bufferUploads, heightMapNodeElementWidth, 16*1024, RenderCore::Metal::NativeFormat::R16_UINT, true));
-        Int2 coverageElementSize(33, 33);
-        std::unique_ptr<TextureTileSet> coverageTileSets[TerrainCellId::CoverageCount];
-        for (unsigned c=0; c<TerrainCellId::CoverageCount; ++c) {
-            coverageTileSets[c] = std::unique_ptr<TextureTileSet>(
-                new TextureTileSet(*bufferUploads, coverageElementSize, 16*1024, CoverageFileFormat[c], false));
+        _heightMapTileSet = std::make_unique<TextureTileSet>(
+            *bufferUploads, cfg._heights._tileSize, cfg._heights._cachedTileCount, cfg._heights._format, true);
+
+        _coverageTileSet.reserve(unsigned(cfg._coverageLayers.size()));
+        _coverageIds.reserve(unsigned(cfg._coverageLayers.size()));
+
+        for (unsigned c=0; c<unsigned(cfg._coverageLayers.size()); ++c) {
+            const auto& layer = cfg._coverageLayers[c];
+            _coverageTileSet.push_back(std::make_unique<TextureTileSet>(
+                *bufferUploads, layer.second._tileSize, layer.second._cachedTileCount, layer.second._format, false));
+            _coverageIds.push_back(cfg._coverageLayers[c].first);
         }
 
         _renderInfos.reserve(64);
-        _heightMapTileSet = std::move(heightMapTextureTileSet);
-        for (unsigned c=0; c<TerrainCellId::CoverageCount; ++c) {
-            _coverageTileSet.push_back(std::move(coverageTileSets[c]));
-        }
-        _elementSize = heightMapNodeElementWidth;
-        _coverageElementSize = coverageElementSize;
         _ioFormat = std::move(ioFormat);
     }
 
@@ -1827,7 +1843,7 @@ namespace SceneEngine
 
     TerrainCellRenderer::CellRenderInfo::CellRenderInfo(
         const TerrainCell& cell, 
-        const TerrainCellTexture** cellCoverageBegin, const TerrainCellTexture** cellCoverageEnd)
+        const TerrainCellTexture* const* cellCoverageBegin, const TerrainCellTexture* const* cellCoverageEnd)
     {
             //  we need to create a "NodeRenderInfo" for each node.
             //  this will keep track of texture uploads, etc
@@ -1859,6 +1875,8 @@ namespace SceneEngine
 
             std::vector<CoverageLayer> coverage;
             for (auto q=cellCoverageBegin; q<cellCoverageEnd; ++q) {
+                if (!*q) continue;
+
                 CoverageLayer layer;
                 layer._source = *q;
                 layer._streamingFilePtr = INVALID_HANDLE_VALUE;
@@ -2046,8 +2064,8 @@ namespace SceneEngine
             //  for those names in the TerrainCellRenderer's cache
             //      -- maybe there's a better way to go directly to a hash value?
         char heightMapFile[MaxPath], coverageFile[MaxPath];
-        _terrainConfig.GetCellFilename(heightMapFile, dimof(heightMapFile), UInt2(cellIndex), TerrainConfig::FileType::Heightmap);
-        _terrainConfig.GetCellFilename(coverageFile, dimof(coverageFile), UInt2(cellIndex), TerrainConfig::FileType::ShadowCoverage);
+        _terrainConfig.GetCellFilename(heightMapFile, dimof(heightMapFile), UInt2(cellIndex), CoverageId_Heights);
+        _terrainConfig.GetCellFilename(coverageFile, dimof(coverageFile), UInt2(cellIndex), CoverageId_AngleBasedShadows);
 
         auto hash = Hash64(heightMapFile);
         hash = Hash64(coverageFile, &coverageFile[XlStringLen(coverageFile)], hash);
@@ -2477,7 +2495,6 @@ namespace SceneEngine
     TerrainMaterialTextures::~TerrainMaterialTextures() {}
 
     //////////////////////////////////////////////////////////////////////////////////////////
-    class CellAndPosition { public: TerrainCellId _id; };
     class TerrainManager::Pimpl
     {
     public:
@@ -2486,7 +2503,7 @@ namespace SceneEngine
         std::unique_ptr<TerrainUberSurfaceInterface> _uberSurfaceInterface;
         std::shared_ptr<ITerrainFormat> _ioFormat;
 
-        std::vector<CellAndPosition> _cells;
+        std::vector<TerrainCellId> _cells;
         TerrainCoordinateSystem _coords;
         TerrainConfig _cfg;
 
@@ -2499,21 +2516,21 @@ namespace SceneEngine
 
     void TerrainConfig::GetCellFilename(
         char buffer[], unsigned bufferCount,
-        UInt2 cellIndex, FileType::Enum fileType) const
+        UInt2 cellIndex, TerrainCoverageId fileType) const
     {
         if (_filenamesMode == Legacy) {
                 // note -- cell xy flipped
                 //      This is a related to the terrain format used in Archeage
             switch (fileType) {
-            case FileType::Heightmap:
+            case CoverageId_Heights:
                 _snprintf_s(buffer, bufferCount, _TRUNCATE, "%s/cells/%03i_%03i/client/terrain/heightmap.dat_new", 
                     _baseDir.c_str(), cellIndex[1], cellIndex[0]);
                 break;
-            case FileType::ShadowCoverage:
+            case CoverageId_AngleBasedShadows:
                 _snprintf_s(buffer, bufferCount, _TRUNCATE, "%s/cells/%03i_%03i/client/terrain/shadow.ctc", 
                     _baseDir.c_str(), cellIndex[1], cellIndex[0]);
                 break;
-            case FileType::ArchiveHeightmap:
+            case CoverageId_ArchiveHeights:
                 _snprintf_s(buffer, bufferCount, _TRUNCATE, "%s/cells/%03i_%03i/client/terrain/heightmap.dat", 
                     _baseDir.c_str(), cellIndex[1], cellIndex[0]);
                 break;
@@ -2522,40 +2539,43 @@ namespace SceneEngine
                 break;
             }
         } else if (_filenamesMode == XLE) {
+            const char* knownName = nullptr;
+
             switch (fileType) {
-            case FileType::Heightmap:
-                _snprintf_s(buffer, bufferCount, _TRUNCATE, "%s/c%02i_%02i/height.terr", 
-                    _baseDir.c_str(), cellIndex[0], cellIndex[1]);
-                break;
-            case FileType::ShadowCoverage:
-                _snprintf_s(buffer, bufferCount, _TRUNCATE, "%s/c%02i_%02i/shadow.terr", 
-                    _baseDir.c_str(), cellIndex[0], cellIndex[1]);
-                break;
-            case FileType::ArchiveHeightmap:
-                _snprintf_s(buffer, bufferCount, _TRUNCATE, "%s/c%02i_%02i/archiveheights.terr", 
-                    _baseDir.c_str(), cellIndex[0], cellIndex[1]);
-                break;
-            default:
-                buffer[0] = '\0';
-                break;
+            case CoverageId_Heights: knownName = "height"; break;
+            case CoverageId_AngleBasedShadows: knownName = "shadow"; break;
+            case CoverageId_ArchiveHeights: knownName = "archiveheights"; break;
+            }
+
+            if (knownName) {
+               _snprintf_s(
+                    buffer, bufferCount, _TRUNCATE, "%s/c%02i_%02i/%s.terr", 
+                    _baseDir.c_str(), cellIndex[0], cellIndex[1], knownName);
+            } else {
+                _snprintf_s(
+                    buffer, bufferCount, _TRUNCATE, "%s/c%02i_%02i/%08x.terr", 
+                    _baseDir.c_str(), cellIndex[0], cellIndex[1], fileType);
             }
         }
     }
 
     void TerrainConfig::GetUberSurfaceFilename(
         char buffer[], unsigned bufferCount,
-        FileType::Enum fileType) const
+        TerrainCoverageId fileType) const
     {
         XlCopyString(buffer, bufferCount, _baseDir.c_str());
         switch (fileType) {
-        case FileType::Heightmap:
+        case CoverageId_Heights:
             XlCatString(buffer, bufferCount, "/ubersurface.dat");
             break;
-        case FileType::ShadowCoverage:
+        case CoverageId_AngleBasedShadows:
             XlCatString(buffer, bufferCount, "/ubershadowingsurface.dat");
             break;
         default:
-            buffer[0] = '\0';
+            {
+                auto len = XlStringLen(buffer);
+                _snprintf_s(&buffer[len], bufferCount-len, _TRUNCATE, "/uber_%08x.dat", fileType);
+            }
             break;
         }
     }
@@ -2570,8 +2590,8 @@ namespace SceneEngine
         assert(outputIOFormat);
 
         char uberSurfaceFile[MaxPath], uberShadowingFile[MaxPath];
-        outputConfig.GetUberSurfaceFilename(uberSurfaceFile, dimof(uberSurfaceFile), TerrainConfig::FileType::Heightmap);
-        outputConfig.GetUberSurfaceFilename(uberShadowingFile, dimof(uberShadowingFile), TerrainConfig::FileType::ShadowCoverage);
+        outputConfig.GetUberSurfaceFilename(uberSurfaceFile, dimof(uberSurfaceFile), CoverageId_Heights);
+        outputConfig.GetUberSurfaceFilename(uberShadowingFile, dimof(uberShadowingFile), CoverageId_AngleBasedShadows);
 
         char path[MaxPath];
         XlDirname(path, dimof(path), uberSurfaceFile);
@@ -2595,7 +2615,7 @@ namespace SceneEngine
                 for (unsigned x=0; x<outputConfig._cellCount[0]; ++x) {
                     char shadowFile[MaxPath];
                     outputConfig.GetCellFilename(shadowFile, dimof(shadowFile), 
-                        UInt2(x, y), TerrainConfig::FileType::ShadowCoverage);
+                        UInt2(x, y), CoverageId_AngleBasedShadows);
                     if (!DoesFileExist(shadowFile)) {
                         XlDirname(path, dimof(path), shadowFile);
                         CreateDirectoryRecursive(path);
@@ -2622,7 +2642,7 @@ namespace SceneEngine
             for (unsigned x=0; x<outputConfig._cellCount[0]; ++x) {
                 char heightMapFile[MaxPath];
                 outputConfig.GetCellFilename(heightMapFile, dimof(heightMapFile), 
-                    UInt2(x, y), TerrainConfig::FileType::Heightmap);
+                    UInt2(x, y), CoverageId_Heights);
                 if (!DoesFileExist(heightMapFile)) {
                     XlDirname(path, dimof(path), heightMapFile);
                     CreateDirectoryRecursive(path);
@@ -2664,7 +2684,7 @@ namespace SceneEngine
         for (unsigned y=0; y<terrainCfg._cellCount[1]; ++y) {
             for (unsigned x=0; x<terrainCfg._cellCount[0]; ++x) {
                 char heightMapFile[256];
-                terrainCfg.GetCellFilename(heightMapFile, dimof(heightMapFile), UInt2(x, y), TerrainConfig::FileType::Heightmap);
+                terrainCfg.GetCellFilename(heightMapFile, dimof(heightMapFile), UInt2(x, y), CoverageId_Heights);
                 std::string filename = heightMapFile;
 
                 auto cellOrigin = AsUInt2(terrainCfg.CellBasedCoordsToTerrainCoords(Float2(float(x), float(y))));
@@ -2717,7 +2737,7 @@ namespace SceneEngine
             worldSpaceOrigin, cellNodeSize, cfg);
 
         char uberSurfaceFile[MaxPath];
-        cfg.GetUberSurfaceFilename(uberSurfaceFile, dimof(uberSurfaceFile), TerrainConfig::FileType::Heightmap);
+        cfg.GetUberSurfaceFilename(uberSurfaceFile, dimof(uberSurfaceFile), CoverageId_Heights);
 
             // uber-surface is a special-case asset, because we can edit it without a "DivergentAsset". But to do that, we must const_cast here
         auto& uberSurface = const_cast<TerrainUberHeightsSurface&>(Assets::GetAsset<TerrainUberHeightsSurface>(uberSurfaceFile));
@@ -2728,13 +2748,20 @@ namespace SceneEngine
             //  The caller should be deciding this -- what cells to prepare, and any offset information
         for (int cellY=cellMin[1]; cellY<cellMax[1]; ++cellY) {
             for (int cellX=cellMin[0]; cellX<cellMax[0]; ++cellX) {
-                CellAndPosition cell;
-                cfg.GetCellFilename(cell._id._heightMapFilename, dimof(cell._id._heightMapFilename), UInt2(cellX, cellY), TerrainConfig::FileType::Heightmap);
-                cfg.GetCellFilename(cell._id._coverageFilename[0], dimof(cell._id._coverageFilename[0]), UInt2(cellX, cellY), TerrainConfig::FileType::ShadowCoverage);
+                TerrainCellId cell;
+                cfg.GetCellFilename(cell._heightMapFilename, dimof(cell._heightMapFilename), UInt2(cellX, cellY), CoverageId_Heights);
+
+                for (unsigned c=0; c<std::min(cfg.GetCoverageLayerCount(), TerrainCellId::MaxCoverageCount); ++c) {
+                    const auto& l = cfg.GetCoverageLayer(c);
+                    cfg.GetCellFilename(
+                        cell._coverageFilename[c], dimof(cell._coverageFilename[0]), 
+                        UInt2(cellX, cellY), l._id);
+                    cell._coverageIds[c] = l._id;
+                }
 
                 auto t = cfg.CellBasedCoordsToTerrainCoords(Float2(float(cellX), float(cellY)));
                 auto cellOrigin = pimpl->_coords.TerrainCoordsToWorldSpace(t);
-                cell._id._cellToWorld = Float4x4(
+                cell._cellToWorld = Float4x4(
                     cellSize, 0.f, 0.f, cellOrigin[0],
                     0.f, cellSize, 0.f, cellOrigin[1],
                     0.f, 0.f, 1.f, pimpl->_coords.TerrainOffset()[2],
@@ -2744,7 +2771,7 @@ namespace SceneEngine
                     //  height map file to get this information. Perhaps we can cache this
                     //  somewhere, to avoid having to load the scaffold for every cell on
                     //  startup
-                auto& heights = ioFormat->LoadHeights(cell._id._heightMapFilename);
+                auto& heights = ioFormat->LoadHeights(cell._heightMapFilename);
                 float minHeight = FLT_MAX, maxHeight = -FLT_MAX;
                 for (auto i=heights._nodes.cbegin(); i!=heights._nodes.cend(); ++i) {
                     float zScale = (*i)->_localToCell(2, 2);
@@ -2753,15 +2780,27 @@ namespace SceneEngine
                     maxHeight = std::max(maxHeight, zOffset + zScale);
                 }
 
-                cell._id._aabbMin = Expand(cellOrigin, minHeight + pimpl->_coords.TerrainOffset()[2]);
-                cell._id._aabbMax = Expand(Float2(cellOrigin + Float2(cellSize, cellSize)), maxHeight + pimpl->_coords.TerrainOffset()[2]);
+                cell._aabbMin = Expand(cellOrigin, minHeight + pimpl->_coords.TerrainOffset()[2]);
+                cell._aabbMax = Expand(Float2(cellOrigin + Float2(cellSize, cellSize)), maxHeight + pimpl->_coords.TerrainOffset()[2]);
                 pimpl->_cells.push_back(cell);
             }
         }
         ////////////////////////////////////////////////////////////////////////////
 
         const Int2 heightMapElementSize = cfg.NodeDimensionsInElements() + Int2(overlap, overlap);
-        pimpl->_renderer = std::make_shared<TerrainCellRenderer>(ioFormat, bufferUploads, heightMapElementSize);
+        const unsigned cachedTileCount = 1024;
+
+        TerrainRendererConfig rendererCfg;
+        rendererCfg._heights = TerrainRendererConfig::Layer { heightMapElementSize, cachedTileCount, NativeFormat::R16_UINT };
+
+        for (unsigned c=0; c<cfg.GetCoverageLayerCount(); ++c) {
+            const auto& l = cfg.GetCoverageLayer(c);
+            rendererCfg._coverageLayers.push_back(std::make_pair(
+                l._id, 
+                TerrainRendererConfig::Layer { l._dimensions, cachedTileCount, NativeFormat::Enum(l._format) } ));
+        }
+
+        pimpl->_renderer = std::make_shared<TerrainCellRenderer>(rendererCfg, ioFormat, bufferUploads);
         pimpl->_heightsProvider = std::make_unique<TerrainSurfaceHeightsProvider>(pimpl->_renderer, cfg, pimpl->_coords);
         pimpl->_ioFormat = std::move(ioFormat);
         pimpl->_cfg = cfg;
@@ -2783,10 +2822,10 @@ namespace SceneEngine
         LightingParserContext& parserContext, TerrainRenderingContext& terrainContext)
     {
         TerrainCollapseContext collapseContext;
-        collapseContext._startLod = Tweakable("TerrainLOD", 1);
+        collapseContext._startLod = Tweakable("TerrainMinLOD", 1);
         collapseContext._screenSpaceEdgeThreshold = Tweakable("TerrainEdgeThreshold", 384.f);
         for (auto i=_cells.begin(); i!=_cells.end(); i++) {
-            _renderer->CullNodes(context, parserContext, terrainContext, collapseContext, i->_id);
+            _renderer->CullNodes(context, parserContext, terrainContext, collapseContext, *i);
         }
 
         for (unsigned c=collapseContext._startLod; c<(TerrainCollapseContext::MaxLODLevels-1); ++c) {
@@ -2803,7 +2842,7 @@ namespace SceneEngine
 
             //  we need to enable the rendering state once, for all cells. The state should be
             //  more or less the same for every cell, so we don't need to do it every time
-        TerrainRenderingContext state(true, renderer->GetElementSize());
+        TerrainRenderingContext state(true, renderer->GetHeightsElementSize());
         state._queuedNodes.erase(state._queuedNodes.begin(), state._queuedNodes.end());
         state._queuedNodes.reserve(2048);
         state._currentViewport = ViewportDesc(*context);
@@ -2861,7 +2900,7 @@ namespace SceneEngine
             //  we can use the same culling as the rendering part. But ideally we want to cull nodes
             //  that are outside of the camera frustum, or that don't intersect the ray
             //      first pass -- normal culling
-        TerrainRenderingContext state(true, _pimpl->_renderer->GetElementSize());
+        TerrainRenderingContext state(true, _pimpl->_renderer->GetHeightsElementSize());
         state._queuedNodes.erase(state._queuedNodes.begin(), state._queuedNodes.end());
         state._queuedNodes.reserve(2048);
         state._currentViewport = ViewportDesc(*context);        // (accurate viewport is required to get the lodding right)
@@ -2989,9 +3028,9 @@ namespace SceneEngine
             //  could be a problem if attempting to move the terrain origin
             //  in-game.
         for (auto& i:_pimpl->_cells) {
-            Combine_InPlace(i._id._cellToWorld, change);
-            i._id._aabbMin += change;
-            i._id._aabbMax += change;
+            Combine_InPlace(i._cellToWorld, change);
+            i._aabbMin += change;
+            i._aabbMax += change;
         }
     }
 
@@ -3052,6 +3091,16 @@ namespace SceneEngine
         return UInt2(_nodeDimsInElements, _nodeDimsInElements);
     }
 
+    unsigned TerrainConfig::GetCoverageLayerCount() const 
+    { 
+        return unsigned(_coverageLayers.size()); 
+    }
+
+    auto TerrainConfig::GetCoverageLayer(unsigned index) const -> const CoverageLayer&
+    { 
+        return _coverageLayers[index]; 
+    }
+
     TerrainConfig::TerrainConfig(
 		const ::Assets::rstring& baseDir, UInt2 cellCount,
         Filenames filenamesMode, 
@@ -3059,11 +3108,9 @@ namespace SceneEngine
     : _baseDir(baseDir), _cellCount(cellCount), _filenamesMode(filenamesMode)
     , _nodeDimsInElements(nodeDimsInElements), _cellTreeDepth(cellTreeDepth), _nodeOverlap(nodeOverlap) 
     {
-        {
-            ::Assets::ResChar buffer[MaxPath];
-            XlConcatPath(buffer, dimof(buffer), _baseDir.c_str(), "terraintextures/textures.txt");
-            _textureCfgName = buffer;
-        }
+        ::Assets::ResChar buffer[MaxPath];
+        XlConcatPath(buffer, dimof(buffer), _baseDir.c_str(), "terraintextures/textures.txt");
+        _textureCfgName = buffer;
     }
 
     TerrainConfig::TerrainConfig(const std::string& baseDir)
@@ -3086,6 +3133,18 @@ namespace SceneEngine
             _nodeOverlap = c->IntAttribute("NodeOverlap", _nodeOverlap);
 
             _cellCount = Deserialize(c, "CellCount", _cellCount);
+
+            auto* coverage = c->ChildWithValue("Coverage");
+            if (coverage) {
+                for (auto*l = coverage->child; l; l=l->next) {
+                    CoverageLayer layer;
+                    layer._name = l->value ? l->value : "<<unnamed>>";
+                    layer._id = Deserialize(l, "Id", 0);
+                    layer._dimensions = Deserialize(l, "Dims", UInt2(0, 0));
+                    layer._format = Deserialize(l, "Format", 35);
+                    _coverageLayers.push_back(layer);
+                }
+            }
         }
 
         {

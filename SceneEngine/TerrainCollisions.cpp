@@ -146,7 +146,7 @@ namespace SceneEngine
             auto collisionObject = CollisionCache.Get(cellHash);
             if (!collisionObject) {
                 char cellFilename[MaxPath];
-                cfg.GetCellFilename(cellFilename, dimof(cellFilename), UInt2(unsigned(cellIndex[0]), unsigned(cellIndex[1])), TerrainConfig::FileType::Heightmap);
+                cfg.GetCellFilename(cellFilename, dimof(cellFilename), UInt2(unsigned(cellIndex[0]), unsigned(cellIndex[1])), CoverageId_Heights);
                 collisionObject = std::make_shared<TerrainNodeHeightCollision>(cellFilename, ioFormat, nodeIndex);
                 CollisionCache.Insert(cellHash, collisionObject);
             }

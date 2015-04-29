@@ -152,7 +152,7 @@ namespace SceneEngine
 
                     char buffer[MaxPath];
                     config.GetCellFilename(buffer, dimof(buffer), UInt2(cx, cy),
-                        TerrainConfig::FileType::ArchiveHeightmap);
+                        CoverageId_Heights);
                     auto& cell = ioFormat->LoadHeights(buffer);
 
                         //  the last "field" in the input data should be the resolution that we want

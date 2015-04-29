@@ -208,60 +208,64 @@ namespace RenderCore { namespace Assets
         _fieldCount = 0;
         auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
 
-        BasicFile file(filename, "rb");
+        TRY {
+            BasicFile file(filename, "rb");
 
-            // Load the chunks. We should have 2 chunks:
-            //  . cell scaffold
-            //  . coverage data
-        auto chunks = Serialization::ChunkFile::LoadChunkTable(file);
+                // Load the chunks. We should have 2 chunks:
+                //  . cell scaffold
+                //  . coverage data
+            auto chunks = Serialization::ChunkFile::LoadChunkTable(file);
 
-        Serialization::ChunkFile::ChunkHeader scaffoldChunk;
-        Serialization::ChunkFile::ChunkHeader coverageDataChunk;
-        for (auto i=chunks.begin(); i!=chunks.end(); ++i) {
-            if (i->_type == ChunkType_CoverageScaffold && !scaffoldChunk._fileOffset) { scaffoldChunk = *i; }
-            if (i->_type == ChunkType_CoverageData && !coverageDataChunk._fileOffset) { coverageDataChunk = *i; }
-        }
+            Serialization::ChunkFile::ChunkHeader scaffoldChunk;
+            Serialization::ChunkFile::ChunkHeader coverageDataChunk;
+            for (auto i=chunks.begin(); i!=chunks.end(); ++i) {
+                if (i->_type == ChunkType_CoverageScaffold && !scaffoldChunk._fileOffset) { scaffoldChunk = *i; }
+                if (i->_type == ChunkType_CoverageData && !coverageDataChunk._fileOffset) { coverageDataChunk = *i; }
+            }
 
-        if (!scaffoldChunk._fileOffset || !coverageDataChunk._fileOffset) {
-            throw ::Assets::Exceptions::FormatError("Missing correct terrain chunks: %s", filename);
-        }
+            if (!scaffoldChunk._fileOffset || !coverageDataChunk._fileOffset) {
+                throw ::Assets::Exceptions::FormatError("Missing correct terrain chunks: %s", filename);
+            }
 
-        CellDesc cellDesc;
-        file.Seek(scaffoldChunk._fileOffset, SEEK_SET);
-        file.Read(&cellDesc._hdr, sizeof(cellDesc._hdr), 1);
+            CellDesc cellDesc;
+            file.Seek(scaffoldChunk._fileOffset, SEEK_SET);
+            file.Read(&cellDesc._hdr, sizeof(cellDesc._hdr), 1);
 
-        std::vector<unsigned> fileOffsetsBreadthFirst;
+            std::vector<unsigned> fileOffsetsBreadthFirst;
         
-        {
-            //  nodes are stored as a breadth-first quad tree, starting with
-            //  a single node. The amount of data stored in each node may not
-            //  be constant, so we can't predict where every node will be stored
-            //  in the file.
+            {
+                //  nodes are stored as a breadth-first quad tree, starting with
+                //  a single node. The amount of data stored in each node may not
+                //  be constant, so we can't predict where every node will be stored
+                //  in the file.
 
-            auto nodeCount = NodeCountFromTreeDepth(cellDesc._hdr._treeDepth);
-            fileOffsetsBreadthFirst.reserve(nodeCount);
-            for (unsigned l=0; l<cellDesc._hdr._treeDepth; ++l) {
-                for (unsigned y=0; y<(1u<<l); ++y) {
-                    for (unsigned x=0; x<(1u<<l); ++x) {
-                        auto loadInfo = LoadNodeStructure(file);
-                        fileOffsetsBreadthFirst.push_back(loadInfo._hdr._dataOffset + coverageDataChunk._fileOffset);
-                        if (!_nodeTextureByteCount) {
-                            _nodeTextureByteCount = loadInfo._hdr._dataSize;
-                        } else {
-                                // assert all nodes have the same size data
-                            assert(loadInfo._hdr._dataSize == _nodeTextureByteCount);
+                auto nodeCount = NodeCountFromTreeDepth(cellDesc._hdr._treeDepth);
+                fileOffsetsBreadthFirst.reserve(nodeCount);
+                for (unsigned l=0; l<cellDesc._hdr._treeDepth; ++l) {
+                    for (unsigned y=0; y<(1u<<l); ++y) {
+                        for (unsigned x=0; x<(1u<<l); ++x) {
+                            auto loadInfo = LoadNodeStructure(file);
+                            fileOffsetsBreadthFirst.push_back(loadInfo._hdr._dataOffset + coverageDataChunk._fileOffset);
+                            if (!_nodeTextureByteCount) {
+                                _nodeTextureByteCount = loadInfo._hdr._dataSize;
+                            } else {
+                                    // assert all nodes have the same size data
+                                assert(loadInfo._hdr._dataSize == _nodeTextureByteCount);
+                            }
                         }
                     }
                 }
             }
-        }
 
-        ::Assets::RegisterFileDependency(validationCallback, filename);
+            ::Assets::RegisterFileDependency(validationCallback, filename);
 
-        _fieldCount = (unsigned)cellDesc._hdr._treeDepth;
-        _sourceFileName = filename;
-        _nodeFileOffsets = std::move(fileOffsetsBreadthFirst);
-        _validationCallback = std::move(validationCallback);
+            _fieldCount = (unsigned)cellDesc._hdr._treeDepth;
+            _sourceFileName = filename;
+            _nodeFileOffsets = std::move(fileOffsetsBreadthFirst);
+            _validationCallback = std::move(validationCallback);
+        } 
+        CATCH (const Utility::Exceptions::IOException&) { ThrowException(::Assets::Exceptions::InvalidResource(filename, "Missing terrain texture")); }
+        CATCH_END
     }
 
 
