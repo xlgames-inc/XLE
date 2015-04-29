@@ -139,7 +139,7 @@ namespace SceneEngine
                     TextureTile& tile,
                     const void* fileHandle, size_t offset, size_t dataSize);
 
-        bool    IsValid(TextureTile& tile);
+        bool    IsValid(const TextureTile& tile) const;
 
         BufferUploads::IManager&    GetBufferUploads() { return *_bufferUploads; }
         ShaderResourceView&         GetShaderResource() { return _shaderResource; }
@@ -169,7 +169,7 @@ namespace SceneEngine
         bool                        _allowModification;
 
         std::vector<unsigned>       _uploadIds;
-        LRUQueue                    _lruQueue;
+        mutable LRUQueue            _lruQueue;
 
         intrusive_ptr<BufferUploads::ResourceLocator>      _resource;
         ShaderResourceView              _shaderResource;
@@ -275,7 +275,7 @@ namespace SceneEngine
             BufferUploads::PartialResource(destinationBox, 0, 0, address[2]));
     }
 
-    bool    TextureTileSet::IsValid(TextureTile& tile)
+    bool    TextureTileSet::IsValid(const TextureTile& tile) const
     {
         if (tile._width == ~unsigned(0x0) || tile._height == ~unsigned(0x0))
             return false;
@@ -447,6 +447,24 @@ namespace SceneEngine
 
     class TerrainRenderingContext;
     class TerrainCollapseContext;
+
+    class TerrainRendererConfig
+    {
+    public:
+        Int2 _heightMapNodeElementWidth;
+        unsigned _tileMapSize;
+            
+        class CoverageLayer
+        {
+        public:
+            uint32 _id;
+            Int2 _nodeElementWidth;
+            unsigned _tileMapSize;
+            NativeFormat::Enum _format;
+        };
+        std::vector<CoverageLayer> _coverageLayers;
+    };
+
     class TerrainCellRenderer
     {
     public:
@@ -462,64 +480,68 @@ namespace SceneEngine
 
         Int2 GetElementSize() const { return _elementSize; }
 
-        TerrainCellRenderer(std::shared_ptr<ITerrainFormat> ioFormat, BufferUploads::IManager* bufferUploads, Int2 heightMapNodeElementWidth);
+        TerrainCellRenderer(
+            std::shared_ptr<ITerrainFormat> ioFormat, BufferUploads::IManager* bufferUploads, 
+            Int2 heightMapNodeElementWidth);
         ~TerrainCellRenderer();
 
     private:
-        class NodeRenderInfo
+        class NodeCoverageInfo
         {
         public:
-            TextureTile _heightMapTile;
-            TextureTile _heightMapPendingTile;
+            TextureTile _tile;
+            TextureTile _pendingTile;
 
-            TextureTile _coverageTile[TerrainCellId::CoverageCount];
-            TextureTile _coveragePendingTile[TerrainCellId::CoverageCount];
+            void Queue(TextureTileSet& coverageTileSet, const void* filePtr, unsigned fileOffset, unsigned fileSize);
+            bool CompleteUpload(BufferUploads::IManager& bufferUploads);
+            void EndTransactions(BufferUploads::IManager& bufferUploads);
 
-            void QueueHeightMapUpload(      TextureTileSet& heightMapTileSet, 
-                                            const void* filePtr, const void* cacheFilePtr,
-                                            const TerrainCell::Node& sourceNode);
-            void QueueCoverageUpload(       unsigned index, TextureTileSet& coverageTileSet, 
-                                            const void* filePtr, unsigned fileOffset, unsigned fileSize);
-            bool CompleteHeightMapUpload(   BufferUploads::IManager& bufferUploads);
-            bool CompleteCoverageUpload(    BufferUploads::IManager& bufferUploads);
-
-            NodeRenderInfo();
-            NodeRenderInfo(const TerrainCell::Node& node);
-            NodeRenderInfo(NodeRenderInfo&& moveFrom);
-            NodeRenderInfo& operator=(NodeRenderInfo&& moveFrom);
+            NodeCoverageInfo();
+            NodeCoverageInfo(NodeCoverageInfo&& moveFrom);
+            NodeCoverageInfo& operator=(NodeCoverageInfo&& moveFrom);
         };
 
         class CellRenderInfo
         {
         public:
-            CellRenderInfo(const TerrainCell& cell, const TerrainCellTexture* cellCoverage[TerrainCellId::CoverageCount]);
+            CellRenderInfo(const TerrainCell& cell, const TerrainCellTexture** cellCoverageBegin, const TerrainCellTexture** cellCoverageEnd);
             CellRenderInfo(CellRenderInfo&& moveFrom);
             CellRenderInfo& operator=(CellRenderInfo&& moveFrom) throw();
             ~CellRenderInfo();
 
-            std::vector<NodeRenderInfo> _nodes;
-            const TerrainCell*          _sourceCell;       // unguarded ptr... Perhaps keep a reference count?
-            const TerrainCellTexture*   _sourceCoverage[TerrainCellId::CoverageCount];
-            const void*                 _heightMapStreamingFilePtr;
-            const void*                 _heightMapCacheStreamingFilePtr;
-            const void*                 _coverageStreamingFilePtr[TerrainCellId::CoverageCount];
+            bool CompleteUpload(uint32 uploadId, BufferUploads::IManager& bufferUploads);
+
+            const TerrainCell* _sourceCell;       // unguarded ptr... Perhaps keep a reference count?
+
+                // height map
+            const void* _heightMapStreamingFilePtr;
+            std::vector<NodeCoverageInfo> _heightTiles;
+
+                // coverage layers
+            class CoverageLayer
+            {
+            public:
+                const TerrainCellTexture*       _source;
+                const void*                     _streamingFilePtr;
+                std::vector<NodeCoverageInfo>   _tiles;
+            };
+            std::vector<CoverageLayer> _coverage;
 
         private:
-            CellRenderInfo(const CellRenderInfo& );
-            CellRenderInfo& operator=(const CellRenderInfo& );
+            CellRenderInfo(const CellRenderInfo&) = delete;
+            CellRenderInfo& operator=(const CellRenderInfo& ) = delete;
         };
 
         typedef std::pair<uint64, std::unique_ptr<CellRenderInfo>> CRIPair;
 
         std::unique_ptr<TextureTileSet> _heightMapTileSet;
-        std::unique_ptr<TextureTileSet> _coverageTileSet[TerrainCellId::CoverageCount];
+        std::vector<std::unique_ptr<TextureTileSet>> _coverageTileSet;
         std::vector<CRIPair>            _renderInfos;
         Int2                            _elementSize;
         Int2                            _coverageElementSize;
 
-        typedef std::pair<CellRenderInfo*, unsigned> UploadPair;
-        std::vector<UploadPair>         _pendingHeightMapUploads;
-        std::vector<UploadPair>         _pendingCoverageUploads;
+        typedef std::pair<CellRenderInfo*, uint32> UploadPair;
+        std::vector<UploadPair>         _pendingUploads;
 
         std::shared_ptr<ITerrainFormat> _ioFormat;
 
@@ -536,6 +558,8 @@ namespace SceneEngine
             CellRenderInfo& cellRenderInfo, const Float4x4& cellToWorld);
 
         void    ShortCircuitTileUpdate(const TextureTile& tile, UInt2 nodeMin, UInt2 nodeMax, unsigned downsample, Float4x4& localToCell, const ShortCircuitUpdate& upd);
+
+        auto    BuildQueuedNodeFlags(const CellRenderInfo& cellRenderInfo, unsigned nodeIndex, unsigned lodField) const -> unsigned;
 
         TerrainCellRenderer(const TerrainCellRenderer&);
         TerrainCellRenderer& operator=(const TerrainCellRenderer&);
@@ -618,7 +642,13 @@ namespace SceneEngine
             Float4x4    _cellToWorld;
             int8        _neighbourLODDiff[4];   // top, left, bottom, right
 
-            struct Flags { enum Enum { HasValidData = 1<<0, NeedsHeightMapUpload = 1<<1, NeedsCoverageUpload0 = 1<<2, NeedsCoverageUpload1 = 1<<3, NeedsCoverageUpload2 = 1<<4, NeedsCoverageUpload3 = 1<<5 }; typedef unsigned BitField; };
+            struct Flags { 
+                enum Enum { 
+                    HasValidData = 1<<0, NeedsHeightMapUpload = 1<<1, 
+                    NeedsCoverageUpload0 = 1<<2, NeedsCoverageUpload1 = 1<<3, NeedsCoverageUpload2 = 1<<4, NeedsCoverageUpload3 = 1<<5,
+                    NeedsCoverageUploadMask = 0xFC }; 
+                typedef unsigned BitField; 
+            };
             Flags::BitField _flags;
         };
         static std::vector<QueuedNode> _queuedNodes;        // HACK -- static to avoid allocation!
@@ -837,9 +867,7 @@ namespace SceneEngine
             //  this. It means we can overlapping cells, or switch cells in and our as
             //  time or situation changes.
         auto hash = cell.BuildHash();
-        auto i = std::lower_bound(
-            _renderInfos.begin(), _renderInfos.end(), 
-            hash, CompareFirst<uint64, std::unique_ptr<CellRenderInfo>>());
+        auto i = LowerBound(_renderInfos, hash);
 
         CellRenderInfo* renderInfo = nullptr;
         if (i != _renderInfos.end() && i->first == hash) {
@@ -847,22 +875,16 @@ namespace SceneEngine
                 // if it's been invalidated on disk, reload
             bool invalidation = false;
             if (i->second->_sourceCell) {
-                invalidation |= (i->second->_sourceCell->GetDependencyValidation().GetValidationIndex()!=0);
-                for (unsigned c=0; c<TerrainCellId::CoverageCount; ++c)
-                    invalidation |= (i->second->_sourceCoverage[c]->GetDependencyValidation().GetValidationIndex()!=0);
+                const auto& cell = *i->second;
+                invalidation |= (cell._sourceCell->GetDependencyValidation().GetValidationIndex()!=0);
+                for (auto q=cell._coverage.cbegin(); q!=cell._coverage.cend(); ++q)
+                    invalidation |= (q->_source->GetDependencyValidation().GetValidationIndex()!=0);
             }
             if (invalidation) {
                     // before we delete it, we need to erase it from the pending uploads
-                for (;;) {
-                    auto pi = std::find_if(_pendingHeightMapUploads.begin(), _pendingHeightMapUploads.end(), [=](const UploadPair& p) { return p.first == i->second.get(); });
-                    if (pi == _pendingHeightMapUploads.end()) break;
-                    _pendingHeightMapUploads.erase(pi);
-                }
-                for (;;) {
-                    auto pi = std::find_if(_pendingCoverageUploads.begin(), _pendingCoverageUploads.end(), [=](const UploadPair& p) { return p.first == i->second.get(); });
-                    if (pi == _pendingCoverageUploads.end()) break;
-                    _pendingCoverageUploads.erase(pi);
-                }
+                _pendingUploads.erase(
+                    std::remove_if(_pendingUploads.begin(), _pendingUploads.end(), [=](const UploadPair& p) { return p.first == i->second.get(); }),
+                    _pendingUploads.end());
                 i->second.reset();
 
                 TerrainCellTexture const* tex[TerrainCellId::CoverageCount];
@@ -870,7 +892,9 @@ namespace SceneEngine
                     tex[c] = &_ioFormat->LoadCoverage(cell._coverageFilename[c]);
                 }
 
-                i->second = std::make_unique<CellRenderInfo>(std::ref(_ioFormat->LoadHeights(cell._heightMapFilename)), tex);
+                i->second = std::make_unique<CellRenderInfo>(
+                    std::ref(_ioFormat->LoadHeights(cell._heightMapFilename)), 
+                    tex, &tex[dimof(tex)]);
             }
 
             renderInfo = i->second.get();
@@ -881,7 +905,7 @@ namespace SceneEngine
             for (unsigned c=0; c<TerrainCellId::CoverageCount; ++c) {
                 tex[c] = &_ioFormat->LoadCoverage(cell._coverageFilename[c]);
             }
-            auto newRenderInfo = std::make_unique<CellRenderInfo>(std::ref(_ioFormat->LoadHeights(cell._heightMapFilename)), tex);
+            auto newRenderInfo = std::make_unique<CellRenderInfo>(std::ref(_ioFormat->LoadHeights(cell._heightMapFilename)), tex, &tex[dimof(tex)]);
             auto newIterator = _renderInfos.insert(i, CRIPair(hash, std::move(newRenderInfo)));
             assert(newIterator->first == hash);
             renderInfo = newIterator->second.get();
@@ -908,19 +932,10 @@ namespace SceneEngine
             // note; ideally we want an erase/remove that will reorder the vector here... That is on erase,
             // just do a std::swap between the erased item and the last item.
             // that should be most efficient when we complete multiple operations per frame (which will be normal)
-        {
-            auto i = std::remove_if(_pendingHeightMapUploads.begin(), _pendingHeightMapUploads.end(),
-                    [=](const UploadPair& p) { return p.first->_nodes[p.second].CompleteHeightMapUpload(_heightMapTileSet->GetBufferUploads()); });
-            if (i != _pendingHeightMapUploads.end())
-                _pendingHeightMapUploads.erase(i);
-        }
-
-        {
-            auto i = std::remove_if(_pendingCoverageUploads.begin(), _pendingCoverageUploads.end(),
-                    [=](const UploadPair& p) { return p.first->_nodes[p.second].CompleteCoverageUpload(_coverageTileSet[0]->GetBufferUploads()); });
-            if (i != _pendingCoverageUploads.end())
-                _pendingCoverageUploads.erase(i);
-        }
+        auto i = std::remove_if(
+            _pendingUploads.begin(), _pendingUploads.end(),
+            [=](const UploadPair& p) { return p.first->CompleteUpload(p.second, _heightMapTileSet->GetBufferUploads()); });
+        _pendingUploads.erase(i, _pendingUploads.end());
     }
 
     void        TerrainCellRenderer::QueueUploads(TerrainRenderingContext& terrainContext)
@@ -940,42 +955,42 @@ namespace SceneEngine
         unsigned uploadsThisFrame = 0;
         typedef TerrainRenderingContext::QueuedNode::Flags Flags;
         for (auto i = terrainContext._queuedNodes.begin(); i!=terrainContext._queuedNodes.end(); ++i) {
-            if (uploadsThisFrame >= frameUploadLimit)
-                break;
-            if ((_pendingHeightMapUploads.size() + _pendingCoverageUploads.size()) >= totalActiveUploadLimit)
-                break;
+            if (uploadsThisFrame >= frameUploadLimit) break;
+            if (_pendingUploads.size() >= totalActiveUploadLimit) break;
 
+            auto& cellRenderInfo = *i->_cell;
+            unsigned n = i->_absNodeIndex;
             if (i->_flags & Flags::NeedsHeightMapUpload) {
-                auto& cellRenderInfo = *i->_cell;
                 auto& sourceCell = *cellRenderInfo._sourceCell;
-                unsigned n = i->_absNodeIndex;
-                auto& renderNode = cellRenderInfo._nodes[n];
                 auto& sourceNode = sourceCell._nodes[n];
-                renderNode.QueueHeightMapUpload(
-                    *_heightMapTileSet, 
-                    cellRenderInfo._heightMapStreamingFilePtr, cellRenderInfo._heightMapCacheStreamingFilePtr, *sourceNode);
+
+                auto& heightTile = cellRenderInfo._heightTiles[n];
+                heightTile.Queue(
+                    *_heightMapTileSet, cellRenderInfo._heightMapStreamingFilePtr,
+                    unsigned(sourceNode->_heightMapFileOffset), unsigned(sourceNode->_heightMapFileSize));
                 ++uploadsThisFrame;
-                _pendingHeightMapUploads.push_back(UploadPair(&cellRenderInfo, n));
+
+                _pendingUploads.push_back(UploadPair(&cellRenderInfo, n));
             }
             
-            for (unsigned c=0; c<TerrainCellId::CoverageCount; ++c) {
-                auto& cellRenderInfo = *i->_cell;
-                auto n = i->_absNodeIndex;
-                bool anyCoverageUploads = false;
-                if (i->_flags & (Flags::NeedsCoverageUpload0<<c)) {
-                    auto& sourceCoverage = *cellRenderInfo._sourceCoverage[c];
-                    auto& renderNode = cellRenderInfo._nodes[n];
-                    renderNode.QueueCoverageUpload(
-                        c, *_coverageTileSet[c], 
-                        cellRenderInfo._coverageStreamingFilePtr[c], 
-                        sourceCoverage._nodeFileOffsets[n],
-                        sourceCoverage._nodeTextureByteCount);
-                    ++uploadsThisFrame;
-                    anyCoverageUploads = true;
-                }
+            if (i->_flags & Flags::NeedsCoverageUploadMask) {
+                for (unsigned covIndex=0; covIndex<unsigned(cellRenderInfo._coverage.size()); ++covIndex) {
+                    auto n = i->_absNodeIndex;
+                    bool anyCoverageUploads = false;
 
-                if (anyCoverageUploads) {
-                    _pendingCoverageUploads.push_back(UploadPair(&cellRenderInfo, n));
+                    if (i->_flags & (Flags::NeedsCoverageUpload0<<covIndex)) {
+                        auto& c = cellRenderInfo._coverage[covIndex];
+                        c._tiles[n].Queue(
+                            *_coverageTileSet[covIndex], c._streamingFilePtr, 
+                            c._source->_nodeFileOffsets[n], c._source->_nodeTextureByteCount);
+
+                        ++uploadsThisFrame;
+                        anyCoverageUploads = true;
+                    }
+
+                    if (anyCoverageUploads) {
+                        _pendingUploads.push_back(UploadPair(&cellRenderInfo, n | (1u<<31u)));
+                    }
                 }
             }
         }
@@ -1248,44 +1263,53 @@ namespace SceneEngine
         _activeNodes[startLod+1] = std::move(collapsedField);
     }
 
+    auto TerrainCellRenderer::BuildQueuedNodeFlags(const CellRenderInfo& cellRenderInfo, unsigned nodeIndex, unsigned lodField) const -> unsigned
+    {
+        typedef TerrainRenderingContext::QueuedNode::Flags Flags;
+        Flags::BitField flags = 0;
+        auto& heightTile = cellRenderInfo._heightTiles[nodeIndex];
+        bool validHeightMap = _heightMapTileSet->IsValid(heightTile._tile);
+        flags |= Flags::HasValidData * unsigned(validHeightMap);    // (we can render without valid coverage)
+
+            //  if there's no valid data, and no currently pending data, we need to queue a 
+            //  new upload
+        if (!validHeightMap && !_heightMapTileSet->IsValid(heightTile._pendingTile))
+            flags |= Flags::NeedsHeightMapUpload;
+
+        for (unsigned covIndex=0; covIndex < unsigned(cellRenderInfo._coverage.size()); ++covIndex) {
+            auto& sourceCoverage = *cellRenderInfo._coverage[covIndex]._source;
+            auto& covTile = cellRenderInfo._coverage[covIndex]._tiles[nodeIndex];
+
+            bool validCoverage = _coverageTileSet[covIndex]->IsValid(covTile._tile);
+            if (!validCoverage) {
+                    // some tiles don't have any coverage information. 
+                flags |= (Flags::NeedsCoverageUpload0<<covIndex) * 
+                    unsigned( 
+                            lodField < sourceCoverage._fieldCount 
+                        &&  sourceCoverage._nodeFileOffsets[nodeIndex] != ~unsigned(0x0)
+                        && !_coverageTileSet[covIndex]->IsValid(covTile._pendingTile));
+            }
+        }
+
+        return flags;
+    }
+
     void TerrainCellRenderer::WriteQueuedNodes(TerrainRenderingContext& renderingContext, TerrainCollapseContext& collapseContext)
     {
         // After calculating the correct LOD level and neighbours for each cell, we need to do 2 final things
         //      * queue texture updates
         //      * queue the node for actual rendering
 
-        for (unsigned c=0; c<TerrainCollapseContext::MaxLODLevels; ++c) {
-            for (auto n=collapseContext._activeNodes[c].cbegin(); n!=collapseContext._activeNodes[c].cend(); ++n) {
+        for (unsigned l=0; l<TerrainCollapseContext::MaxLODLevels; ++l) {
+            for (auto n=collapseContext._activeNodes[l].cbegin(); n!=collapseContext._activeNodes[l].cend(); ++n) {
 
                 if (n->_lodPromoted) { continue; }        // collapsed into larger LOD
 
                 auto& cellRenderInfo = *collapseContext._cells[n->_id._cellId];
                 auto& sourceCell = *cellRenderInfo._sourceCell;
-                auto& sourceCoverage = *cellRenderInfo._sourceCoverage;
                 auto& sourceNode = sourceCell._nodes[n->_id._nodeId];
-                auto& renderNode = cellRenderInfo._nodes[n->_id._nodeId];
 
-                typedef TerrainRenderingContext::QueuedNode::Flags Flags;
-                Flags::BitField flags = 0;
-                bool validHeightMap = _heightMapTileSet->IsValid(renderNode._heightMapTile);
-                bool validCoverage = true;
-                for (unsigned c=0; c<TerrainCellId::CoverageCount; ++c)
-                    validCoverage &= _coverageTileSet[c]->IsValid(renderNode._coverageTile[c]);
-                flags |= Flags::HasValidData * unsigned(validHeightMap);    // (we can render without valid coverage)
-
-                    //  if there's no valid data, and no currently pending data, we need to queue a 
-                    //  new upload
-                if (!validHeightMap && !_heightMapTileSet->IsValid(renderNode._heightMapPendingTile))
-                    flags |= Flags::NeedsHeightMapUpload;
-
-                if (!validCoverage) {
-                        // some tiles don't have any coverage information. 
-                    for (unsigned c=0; c<TerrainCellId::CoverageCount; ++c) {
-                        if (n->_id._lodField < sourceCoverage[c]._fieldCount && sourceCoverage[c]._nodeFileOffsets[n->_id._nodeId] != ~unsigned(0x0))
-                            if (!_coverageTileSet[c]->IsValid(renderNode._coveragePendingTile[c]))
-                                flags |= Flags::NeedsCoverageUpload0<<c;
-                    }
-                }
+                auto flags = BuildQueuedNodeFlags(cellRenderInfo, n->_id._nodeId, n->_id._lodField);
 
                 auto& minusViewPosition = collapseContext._cellPositionMinusViewPosition[n->_id._cellId];
                 auto& cellToWorld = collapseContext._cellToWorlds[n->_id._cellId];
@@ -1325,8 +1349,8 @@ namespace SceneEngine
         TerrainRenderingContext& terrainContext, TerrainCollapseContext& collapseContext,
         const Float4x4& worldToProjection, const Float3& viewPositionWorld, CellRenderInfo& cellRenderInfo, const Float4x4& cellToWorld)
     {
-        if (cellRenderInfo._nodes.empty()) { return; }
-        if (cellRenderInfo._heightMapStreamingFilePtr == INVALID_HANDLE_VALUE || cellRenderInfo._coverageStreamingFilePtr == INVALID_HANDLE_VALUE)
+        if (cellRenderInfo._heightTiles.empty()) { return; }
+        if (cellRenderInfo._heightMapStreamingFilePtr == INVALID_HANDLE_VALUE)
             return;
 
         auto& sourceCell = *cellRenderInfo._sourceCell;
@@ -1416,18 +1440,17 @@ namespace SceneEngine
         DeviceContext* context, LightingParserContext& parserContext, TerrainRenderingContext& terrainContext,
         CellRenderInfo& cellRenderInfo, const Float4x4& localToWorld)
     {
-        if (cellRenderInfo._nodes.empty())
+        if (cellRenderInfo._heightTiles.empty())
             return;
 
             // any cells that are missing either the height map or coverage map should just be excluded
-        if (cellRenderInfo._heightMapStreamingFilePtr == INVALID_HANDLE_VALUE || cellRenderInfo._coverageStreamingFilePtr == INVALID_HANDLE_VALUE)
+        if (cellRenderInfo._heightMapStreamingFilePtr == INVALID_HANDLE_VALUE)
             return;
 
         auto cellToProjection = Combine(localToWorld, parserContext.GetProjectionDesc()._worldToProjection);
         Float3 cellPositionMinusViewPosition = ExtractTranslation(localToWorld) - ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld);
 
         auto& sourceCell = *cellRenderInfo._sourceCell;
-        auto& sourceCoverage = *cellRenderInfo._sourceCoverage;
         const unsigned startLod = Tweakable("TerrainLOD", 1);
         const unsigned maxLod = unsigned(sourceCell._nodeFields.size()-1);      // sometimes the coverage doesn't have all of the LODs. In these cases, we have to clamp the LOD number (for both heights and coverage...!)
         const float screenSpaceEdgeThreshold = Tweakable("TerrainEdgeThreshold", 384.f);
@@ -1444,7 +1467,6 @@ namespace SceneEngine
             unsigned n = field._nodeBegin + nodeRef.second;
 
             auto& sourceNode = sourceCell._nodes[n];
-            auto& renderNode = cellRenderInfo._nodes[n];
 
                 //  do a culling step first... If the node is completely outside
                 //  of the frustum, let's cull it quickly
@@ -1484,27 +1506,7 @@ namespace SceneEngine
 
                 //  we should check for valid data & required uploads. Mark the flags now, and we'll 
                 //  do the processing later.
-            typedef TerrainRenderingContext::QueuedNode::Flags Flags;
-            Flags::BitField flags = 0;
-            bool validHeightMap = _heightMapTileSet->IsValid(renderNode._heightMapTile);
-            bool validCoverage = true;
-            for (unsigned c=0; c<TerrainCellId::CoverageCount; ++c)
-                validCoverage &= _coverageTileSet[c]->IsValid(renderNode._coverageTile[c]);
-            flags |= Flags::HasValidData * unsigned(validHeightMap);    // (we can render without valid coverage)
-
-                //  if there's no valid data, and no currently pending data, we need to queue a 
-                //  new upload
-            if (!validHeightMap && !_heightMapTileSet->IsValid(renderNode._heightMapPendingTile))
-                flags |= Flags::NeedsHeightMapUpload;
-
-            if (!validCoverage) {
-                    // some tiles don't have any coverage information. 
-                for (unsigned c=0; c<TerrainCellId::CoverageCount; ++c) {
-                    if (nodeRef.first < sourceCoverage[c]._fieldCount && sourceCoverage[c]._nodeFileOffsets[n] != ~unsigned(0x0))
-                        if (!_coverageTileSet[c]->IsValid(renderNode._coveragePendingTile[c]))
-                            flags |= Flags::NeedsCoverageUpload0<<c;
-                }
-            }
+            auto flags = BuildQueuedNodeFlags(cellRenderInfo, n, nodeRef.first);
 
             TerrainRenderingContext::QueuedNode queuedNode;
             queuedNode._cell = &cellRenderInfo;
@@ -1559,30 +1561,34 @@ namespace SceneEngine
                                                     CellRenderInfo& cellRenderInfo, unsigned absNodeIndex,
                                                     int8 neighbourLodDiffs[4])
     {
-        const bool isTextured = cellRenderInfo._coverageStreamingFilePtr != INVALID_HANDLE_VALUE;
+        const bool isTextured = !cellRenderInfo._coverage.empty();
         assert(  isTextured == terrainContext._isTextured); (void)isTextured;
         assert(_elementSize == terrainContext._elementSize);
 
         auto& sourceCell = *cellRenderInfo._sourceCell;
         auto& sourceNode = sourceCell._nodes[absNodeIndex];
-        auto& renderNode = cellRenderInfo._nodes[absNodeIndex];
+        auto& heightTile = cellRenderInfo._heightTiles[absNodeIndex]._tile;
 
         /////////////////////////////////////////////////////////////////////////////
             //  if we've got some texture data, we can go ahead and
             //  render this object
-        assert(renderNode._heightMapTile._width && renderNode._heightMapTile._height);
+        assert(heightTile._width && heightTile._height);
 
         TileConstants tileConstants;
         tileConstants._localToCell = sourceNode->_localToCell;
-        tileConstants._heightMapOrigin = Int3(renderNode._heightMapTile._x, renderNode._heightMapTile._y, renderNode._heightMapTile._arrayIndex);
+        tileConstants._heightMapOrigin = Int3(heightTile._x, heightTile._y, heightTile._arrayIndex);
 
-        if (renderNode._coverageTile[0]._width != ~unsigned(0x0) && renderNode._coverageTile[0]._height != ~unsigned(0x0)) {
+        if (!cellRenderInfo._coverage.empty()
+            && cellRenderInfo._coverage[0]._tiles[absNodeIndex]._tile._width != ~unsigned(0x0) 
+            && cellRenderInfo._coverage[0]._tiles[absNodeIndex]._tile._height != ~unsigned(0x0)) {
+
+            const auto& covTile = cellRenderInfo._coverage[0]._tiles[absNodeIndex]._tile;
             const unsigned overlap = 1;
-            tileConstants._coverageTexCoordMins[0]  = (.5f / 2048.f) + renderNode._coverageTile[0]._x / 2048.f;
-            tileConstants._coverageTexCoordMins[1]  = (.5f / 2048.f) + renderNode._coverageTile[0]._y / 2048.f;
-            tileConstants._coverageTexCoordMaxs[0]  = (.5f / 2048.f) + (renderNode._coverageTile[0]._x + (renderNode._coverageTile[0]._width-overlap)) / 2048.f;
-            tileConstants._coverageTexCoordMaxs[1]  = (.5f / 2048.f) + (renderNode._coverageTile[0]._y + (renderNode._coverageTile[0]._height-overlap)) / 2048.f;
-            tileConstants._coverageOrigin           = Int3(renderNode._coverageTile[0]._x, renderNode._coverageTile[0]._y, renderNode._coverageTile[0]._arrayIndex);
+            tileConstants._coverageTexCoordMins[0]  = (.5f / 2048.f) + covTile._x / 2048.f;
+            tileConstants._coverageTexCoordMins[1]  = (.5f / 2048.f) + covTile._y / 2048.f;
+            tileConstants._coverageTexCoordMaxs[0]  = (.5f / 2048.f) + (covTile._x + (covTile._width-overlap)) / 2048.f;
+            tileConstants._coverageTexCoordMaxs[1]  = (.5f / 2048.f) + (covTile._y + (covTile._height-overlap)) / 2048.f;
+            tileConstants._coverageOrigin           = Int3(covTile._x, covTile._y, covTile._arrayIndex);
         } else {
             tileConstants._coverageTexCoordMins = Float4(0.f, 0.f, 0.f, 0.f);
             tileConstants._coverageTexCoordMaxs = Float4(0.f, 0.f, 0.f, 0.f);
@@ -1681,11 +1687,9 @@ namespace SceneEngine
             const ShaderResourceView* srv[] = { upd._srv.get(), &_heightMapTileSet->GetShaderResource() };
 
             BoundUniforms boundLayout(byteCode);
-            boundLayout.BindConstantBuffer(Hash64("Parameters"), 0, 1);
-            boundLayout.BindShaderResource(Hash64("Input"), 0, 1);
-            boundLayout.BindShaderResource(Hash64("OldHeights"), 1, 1);
-
-            boundLayout.Apply(context, UniformsStream(), UniformsStream(pkts, nullptr, dimof(pkts), srv, dimof(srv)));
+            boundLayout.BindConstantBuffers(1, {"Parameters"});
+            boundLayout.BindShaderResources(1, {"Input", "OldHeights"});
+            boundLayout.Apply(context, UniformsStream(), UniformsStream(pkts, srv));
 
             context.BindCS(MakeResourceList(1, tileCoordsUAV, midwayBufferUAV));
 
@@ -1707,17 +1711,16 @@ namespace SceneEngine
             auto readback = uploads.Resource_ReadBack(BufferUploads::ResourceLocator(tileCoordsBuffer.get()));
             float* readbackData = (float*)readback->GetData(0,0);
             if (readbackData) {
-                float newHeightOffset   = readbackData[2];
-                float newHeightScale    = (readbackData[3] - readbackData[2]) / float(0xffff);
+                float newHeightOffset = readbackData[2];
+                float newHeightScale = (readbackData[3] - readbackData[2]) / float(0xffff);
                 localToCell(2,2) = newHeightScale;
                 localToCell(2,3) = newHeightOffset;
             }
 
             context.UnbindCS<UnorderedAccessView>(0, 1);
-        }
-        CATCH (...) {
-            // note, it's a real problem when we get a invalid resource get... We should ideally stall until all the required
-            // resources are loaded
+        } CATCH (...) {
+            // note, it's a real problem when we get a invalid resource get... 
+            //  We should ideally stall until all the required resources are loaded
         } CATCH_END
     }
 
@@ -1733,18 +1736,17 @@ namespace SceneEngine
         auto& sourceCell = _ioFormat->LoadHeights(cellName.c_str(), true);
         for (auto i=_renderInfos.begin(); i!=_renderInfos.end(); ++i) {
             if (i->second->_sourceCell == &sourceCell) {
-
                 auto& tileSet = *_heightMapTileSet;
+
                     //  Got a match. Find all with completed tiles (ignoring the pending tiles) and 
                     //  write over that data.
                 auto& cri = *i->second;
-                for (auto ni=cri._nodes.begin(); ni!=cri._nodes.end(); ++ni) {
+                for (auto ni=cri._heightTiles.begin(); ni!=cri._heightTiles.end(); ++ni) {
 
                         // todo -- cancel any pending tiles, because they can cause problems
 
-                    if (tileSet.IsValid(ni->_heightMapTile)) {
-
-                        auto nodeIndex = std::distance(cri._nodes.begin(), ni);
+                    if (tileSet.IsValid(ni->_tile)) {
+                        auto nodeIndex = std::distance(cri._heightTiles.begin(), ni);
                         auto& sourceNode = sourceCell._nodes[nodeIndex];
 
                             //  We need to transform the coordinates for this node into
@@ -1771,7 +1773,7 @@ namespace SceneEngine
                             size_t fieldIndex = std::distance(sourceCell._nodeFields.cbegin(), fi);
                             unsigned downsample = unsigned(4-fieldIndex);
 
-                            ShortCircuitTileUpdate(ni->_heightMapTile, nodeMin, nodeMax, downsample, sourceNode->_localToCell, upd);
+                            ShortCircuitTileUpdate(ni->_tile, nodeMin, nodeMax, downsample, sourceNode->_localToCell, upd);
 
                         }
                     }
@@ -1794,7 +1796,7 @@ namespace SceneEngine
         _renderInfos.reserve(64);
         _heightMapTileSet = std::move(heightMapTextureTileSet);
         for (unsigned c=0; c<TerrainCellId::CoverageCount; ++c) {
-            _coverageTileSet[c] = std::move(coverageTileSets[c]);
+            _coverageTileSet.push_back(std::move(coverageTileSets[c]));
         }
         _elementSize = heightMapNodeElementWidth;
         _coverageElementSize = coverageElementSize;
@@ -1806,28 +1808,36 @@ namespace SceneEngine
         CompletePendingUploads();
             // note;    there's no protection to make sure these get completed. If we want to release
             //          the upload transaction, we should complete them all
-        assert(_pendingHeightMapUploads.empty());
-        assert(_pendingCoverageUploads.empty());
+        assert(_pendingUploads.empty());
     }
 
 
     //////////////////////////////////////////////////////////////////////////////////////////
-    TerrainCellRenderer::CellRenderInfo::CellRenderInfo(const TerrainCell& cell, const TerrainCellTexture* cellCoverage[TerrainCellId::CoverageCount])
+    bool TerrainCellRenderer::CellRenderInfo::CompleteUpload(uint32 uploadId, BufferUploads::IManager& bufferUploads)
+    {
+        if (uploadId & (1u<<31u)) {
+            bool result = true;
+            for (auto i=_coverage.begin(); i!=_coverage.end(); ++i)
+                result &= i->_tiles[uploadId & ~(1u<<31u)].CompleteUpload(bufferUploads);
+            return result;
+        } else {
+            return _heightTiles[uploadId].CompleteUpload(bufferUploads);
+        }
+    }
+
+    TerrainCellRenderer::CellRenderInfo::CellRenderInfo(
+        const TerrainCell& cell, 
+        const TerrainCellTexture** cellCoverageBegin, const TerrainCellTexture** cellCoverageEnd)
     {
             //  we need to create a "NodeRenderInfo" for each node.
             //  this will keep track of texture uploads, etc
         size_t nodeCount = cell._nodes.size();
         _sourceCell = nullptr;
-        std::fill(_sourceCoverage, &_sourceCoverage[dimof(_sourceCoverage)], nullptr);
-        _heightMapStreamingFilePtr = _heightMapCacheStreamingFilePtr = INVALID_HANDLE_VALUE;
-        std::fill(_coverageStreamingFilePtr, &_coverageStreamingFilePtr[dimof(_coverageStreamingFilePtr)], INVALID_HANDLE_VALUE);
+        _heightMapStreamingFilePtr = INVALID_HANDLE_VALUE;
 
         if (nodeCount && !cell.SourceFile().empty()) {
-            std::vector<NodeRenderInfo> nodes;
-            nodes.reserve(nodeCount);
-            for (size_t c=0; c<nodeCount; ++c) {
-                nodes.push_back(NodeRenderInfo(*cell._nodes[c]));
-            }
+            std::vector<NodeCoverageInfo> heightTiles;
+            heightTiles.resize(nodeCount);
 
                 //  we also need to open a file for streaming access. 
                 //  we should open this file here, and keep it open permanently.
@@ -1847,212 +1857,132 @@ namespace SceneEngine
                 ThrowException(::Exceptions::BasicLabel("Failed opening terrain height-map file for streaming"));
             }
 
-            auto heightMapCacheFileHandle = ::CreateFile(
-                cell.SecondaryCacheFile().c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE,
-                nullptr, OPEN_EXISTING,
-                FILE_FLAG_OVERLAPPED|FILE_FLAG_RANDOM_ACCESS, nullptr);
-            // height map cache file can be invalid -- it's not always required
+            std::vector<CoverageLayer> coverage;
+            for (auto q=cellCoverageBegin; q<cellCoverageEnd; ++q) {
+                CoverageLayer layer;
+                layer._source = *q;
+                layer._streamingFilePtr = INVALID_HANDLE_VALUE;
+                layer._tiles.resize(layer._source->_nodeFileOffsets.size());
 
-            void* coverageFileHandle[TerrainCellId::CoverageCount];
-            std::fill(coverageFileHandle, &coverageFileHandle[dimof(coverageFileHandle)], INVALID_HANDLE_VALUE);
-            if (cellCoverage) {
-                for (unsigned c=0; c<TerrainCellId::CoverageCount; ++c) {
-                    coverageFileHandle[c] = ::CreateFile(
-                        cellCoverage[c]->SourceFile().c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE,
-                        nullptr, OPEN_EXISTING,
-                        FILE_FLAG_OVERLAPPED|FILE_FLAG_RANDOM_ACCESS, nullptr);
-                    assert(coverageFileHandle[c] != INVALID_HANDLE_VALUE);
-                }
+                layer._streamingFilePtr = ::CreateFile(
+                    (*q)->SourceFile().c_str(), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE,
+                    nullptr, OPEN_EXISTING,
+                    FILE_FLAG_OVERLAPPED|FILE_FLAG_RANDOM_ACCESS, nullptr);
+                assert(layer._streamingFilePtr != INVALID_HANDLE_VALUE);
+
+                coverage.push_back(layer);
             }
 
-            _nodes = std::move(nodes);
+            _heightTiles = std::move(heightTiles);
             _sourceCell = &cell;
             _heightMapStreamingFilePtr = heightMapFileHandle;
-            _heightMapCacheStreamingFilePtr = heightMapCacheFileHandle;
-            
-			if (cellCoverage) {
-				for (unsigned c = 0; c < TerrainCellId::CoverageCount; ++c) {
-					_sourceCoverage[c] = cellCoverage[c];
-					_coverageStreamingFilePtr[c] = coverageFileHandle[c];
-				}
-			} else {
-				std::fill(_sourceCoverage, &_sourceCoverage[TerrainCellId::CoverageCount], nullptr);
-				std::fill(_coverageStreamingFilePtr, &_coverageStreamingFilePtr[TerrainCellId::CoverageCount], INVALID_HANDLE_VALUE);
-			}
+            _coverage = std::move(coverage);
         }
     }
 
     TerrainCellRenderer::CellRenderInfo::CellRenderInfo(CellRenderInfo&& moveFrom)
     {
-        _nodes = std::move(moveFrom._nodes);
+        _heightTiles = std::move(moveFrom._heightTiles);
         _sourceCell = std::move(moveFrom._sourceCell);
         _heightMapStreamingFilePtr = std::move(moveFrom._heightMapStreamingFilePtr);
-        _heightMapCacheStreamingFilePtr = std::move(moveFrom._heightMapCacheStreamingFilePtr);
-
-        for (unsigned c=0; c<TerrainCellId::CoverageCount; ++c) {
-            _sourceCoverage[c] = std::move(moveFrom._sourceCoverage[c]);
-            _coverageStreamingFilePtr[c] = std::move(moveFrom._coverageStreamingFilePtr[c]);
-        }
+        _coverage = std::move(moveFrom._coverage);
 
         moveFrom._heightMapStreamingFilePtr = INVALID_HANDLE_VALUE;
-        moveFrom._heightMapCacheStreamingFilePtr = INVALID_HANDLE_VALUE;
-        std::fill(moveFrom._coverageStreamingFilePtr, &moveFrom._coverageStreamingFilePtr[dimof(moveFrom._coverageStreamingFilePtr)], INVALID_HANDLE_VALUE);
     }
 
     auto TerrainCellRenderer::CellRenderInfo::operator=(CellRenderInfo&& moveFrom) throw() -> CellRenderInfo&
     {
-        _nodes = std::move(moveFrom._nodes);
+        _heightTiles = std::move(moveFrom._heightTiles);
         _sourceCell = std::move(moveFrom._sourceCell);
         _heightMapStreamingFilePtr = std::move(moveFrom._heightMapStreamingFilePtr);
-        _heightMapCacheStreamingFilePtr = std::move(moveFrom._heightMapCacheStreamingFilePtr);
-
-        for (unsigned c=0; c<TerrainCellId::CoverageCount; ++c) {
-            _sourceCoverage[c] = std::move(moveFrom._sourceCoverage[c]);
-            _coverageStreamingFilePtr[c] = std::move(moveFrom._coverageStreamingFilePtr[c]);
-        }
+        _coverage = std::move(moveFrom._coverage);
 
         moveFrom._heightMapStreamingFilePtr = INVALID_HANDLE_VALUE;
-        moveFrom._heightMapCacheStreamingFilePtr = INVALID_HANDLE_VALUE;
-        std::fill(moveFrom._coverageStreamingFilePtr, &moveFrom._coverageStreamingFilePtr[dimof(moveFrom._coverageStreamingFilePtr)], INVALID_HANDLE_VALUE);
         return *this;
     }
+
 
     TerrainCellRenderer::CellRenderInfo::~CellRenderInfo()
     {
             //  we need to cancel any buffer uploads transactions that are still active
             //      -- note they may still complete in a background thread
         auto& bufferUploads = *GetBufferUploads();
-        for (auto i = _nodes.begin(); i!=_nodes.end(); ++i) {
-                //  note that when we complete the transaction like this, we might
-                //  leave the tile in an invalid state, because it may still point
-                //  to some allocated space in the tile set. In other words, the 
-                //  destination area in the tile set is not deallocated during when
-                //  the transaction ends.
-            for (unsigned c=0; c<TerrainCellId::CoverageCount; ++c) {
-                if (i->_coveragePendingTile[c]._transaction != ~BufferUploads::TransactionID(0x0)) {
-                    bufferUploads.Transaction_End(i->_coveragePendingTile[c]._transaction);
-                    i->_coveragePendingTile[c]._transaction = ~BufferUploads::TransactionID(0x0);
-                }
-                if (i->_coverageTile[c]._transaction != ~BufferUploads::TransactionID(0x0)) {
-                    bufferUploads.Transaction_End(i->_coverageTile[c]._transaction);
-                    i->_coverageTile[c]._transaction = ~BufferUploads::TransactionID(0x0);
-                }
-            }
-            if (i->_heightMapTile._transaction != ~BufferUploads::TransactionID(0x0)) {
-                bufferUploads.Transaction_End(i->_heightMapTile._transaction);
-                i->_heightMapTile._transaction = ~BufferUploads::TransactionID(0x0);
-            }
-            if (i->_heightMapPendingTile._transaction != ~BufferUploads::TransactionID(0x0)) {
-                bufferUploads.Transaction_End(i->_heightMapPendingTile._transaction);
-                i->_heightMapPendingTile._transaction = ~BufferUploads::TransactionID(0x0);
-            }
-        }
+        for (auto i = _heightTiles.begin(); i!=_heightTiles.end(); ++i)
+            i->EndTransactions(bufferUploads);
 
-        if (_heightMapStreamingFilePtr && _heightMapStreamingFilePtr!=INVALID_HANDLE_VALUE) {
+        for (auto i = _coverage.begin(); i!=_coverage.end(); ++i)
+            for (auto t = i->_tiles.begin(); t!=i->_tiles.end(); ++t)
+                t->EndTransactions(bufferUploads);
+
+        if (_heightMapStreamingFilePtr && _heightMapStreamingFilePtr!=INVALID_HANDLE_VALUE)
             CloseHandle((HANDLE)_heightMapStreamingFilePtr);
-        }
-        if (_heightMapCacheStreamingFilePtr && _heightMapCacheStreamingFilePtr!=INVALID_HANDLE_VALUE) {
-            CloseHandle((HANDLE)_heightMapCacheStreamingFilePtr);
-        }
-        for (unsigned c=0; c<TerrainCellId::CoverageCount; ++c) {
-            if (_coverageStreamingFilePtr[c] && _coverageStreamingFilePtr[c]!=INVALID_HANDLE_VALUE) {
-                CloseHandle((HANDLE)_coverageStreamingFilePtr[c]);
-            }
-        }
+        
+        for (auto i = _coverage.begin(); i!=_coverage.end(); ++i)
+            if (i->_streamingFilePtr && i->_streamingFilePtr!=INVALID_HANDLE_VALUE)
+                CloseHandle((HANDLE)i->_streamingFilePtr);
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////
-    bool        TerrainCellRenderer::NodeRenderInfo::CompleteHeightMapUpload(BufferUploads::IManager& bufferUploads)
+    bool TerrainCellRenderer::NodeCoverageInfo::CompleteUpload(BufferUploads::IManager& bufferUploads)
     {
-        if (_heightMapPendingTile._transaction != ~BufferUploads::TransactionID(0x0)) {
-            if (!bufferUploads.IsCompleted(_heightMapPendingTile._transaction))
+        if (_pendingTile._transaction != ~BufferUploads::TransactionID(0x0)) {
+            if (!bufferUploads.IsCompleted(_pendingTile._transaction))
                 return false;
 
-            bufferUploads.Transaction_End(_heightMapPendingTile._transaction);
-            _heightMapPendingTile._transaction = ~BufferUploads::TransactionID(0x0);
-            _heightMapTile = std::move(_heightMapPendingTile);
+            bufferUploads.Transaction_End(_pendingTile._transaction);
+            _pendingTile._transaction = ~BufferUploads::TransactionID(0x0);
+            _tile = std::move(_pendingTile);
         }
         return true;
     }
 
-    bool        TerrainCellRenderer::NodeRenderInfo::CompleteCoverageUpload(BufferUploads::IManager& bufferUploads)
-    {
-        bool result = true;
-        for (unsigned c=0; c<TerrainCellId::CoverageCount; ++c) {
-            if (_coveragePendingTile[c]._transaction != ~BufferUploads::TransactionID(0x0)) {
-                if (!bufferUploads.IsCompleted(_coveragePendingTile[c]._transaction)) {
-                    result = false;
-                    continue;
-                }
-
-                bufferUploads.Transaction_End(_coveragePendingTile[c]._transaction);
-                _coveragePendingTile[c]._transaction = ~BufferUploads::TransactionID(0x0);
-                _coverageTile[c] = std::move(_coveragePendingTile[c]);
-            }
-        }
-        return result;
-    }
-
-    void        TerrainCellRenderer::NodeRenderInfo::QueueHeightMapUpload(
-                        TextureTileSet& heightMapTileSet,
-                        const void* filePtr, const void* cacheFilePtr, const TerrainCell::Node& sourceNode)
+    void TerrainCellRenderer::NodeCoverageInfo::Queue(
+        TextureTileSet& coverageTileSet,
+        const void* filePtr, unsigned fileOffset, unsigned fileSize)
     {
             // the caller should check to see if we need an upload before calling this
-        assert(!heightMapTileSet.IsValid(_heightMapTile));
-        assert(!heightMapTileSet.IsValid(_heightMapPendingTile));
-
-        if (sourceNode._heightMapFileSize) {
-            heightMapTileSet.Transaction_Begin(_heightMapPendingTile, filePtr, 
-                sourceNode._heightMapFileOffset, sourceNode._heightMapFileSize);
-        } else {
-            assert(sourceNode._secondaryCacheSize);
-            heightMapTileSet.Transaction_Begin(_heightMapPendingTile, cacheFilePtr, 
-                sourceNode._secondaryCacheOffset, sourceNode._secondaryCacheSize);
-        }
-    }
-
-    void        TerrainCellRenderer::NodeRenderInfo::QueueCoverageUpload(
-                        unsigned index, TextureTileSet& coverageTileSet,
-                        const void* filePtr, unsigned fileOffset, unsigned fileSize)
-    {
-            // the caller should check to see if we need an upload before calling this
-        assert(!coverageTileSet.IsValid(_coverageTile[index]));
-        assert(!coverageTileSet.IsValid(_coveragePendingTile[index]));
+        assert(!coverageTileSet.IsValid(_tile));
+        assert(!coverageTileSet.IsValid(_pendingTile));
         coverageTileSet.Transaction_Begin(
-            _coveragePendingTile[index], filePtr, fileOffset, fileSize);
+            _pendingTile, filePtr, fileOffset, fileSize);
     }
 
-    TerrainCellRenderer::NodeRenderInfo::NodeRenderInfo()
-    {}
-
-    TerrainCellRenderer::NodeRenderInfo::NodeRenderInfo(const TerrainCell::Node& node)
-    {}
-
-    TerrainCellRenderer::NodeRenderInfo::NodeRenderInfo(NodeRenderInfo&& moveFrom)
+    void TerrainCellRenderer::NodeCoverageInfo::EndTransactions(BufferUploads::IManager& bufferUploads)
     {
-        _heightMapTile = std::move(moveFrom._heightMapTile);
-        _heightMapPendingTile = std::move(moveFrom._heightMapPendingTile);
-        for (unsigned c=0; c<TerrainCellId::CoverageCount; ++c) {
-            _coverageTile[c] = std::move(moveFrom._coverageTile[c]);
-            _coveragePendingTile[c] = std::move(moveFrom._coveragePendingTile[c]);
+            //  note that when we complete the transaction like this, we might
+            //  leave the tile in an invalid state, because it may still point
+            //  to some allocated space in the tile set. In other words, the 
+            //  destination area in the tile set is not deallocated during when
+            //  the transaction ends.
+        if (_tile._transaction != ~BufferUploads::TransactionID(0x0)) {
+            bufferUploads.Transaction_End(_tile._transaction);
+            _tile._transaction = ~BufferUploads::TransactionID(0x0);
+        }
+        if (_pendingTile._transaction != ~BufferUploads::TransactionID(0x0)) {
+            bufferUploads.Transaction_End(_pendingTile._transaction);
+            _pendingTile._transaction = ~BufferUploads::TransactionID(0x0);
         }
     }
 
-    auto TerrainCellRenderer::NodeRenderInfo::operator=(NodeRenderInfo&& moveFrom) -> NodeRenderInfo& 
+    TerrainCellRenderer::NodeCoverageInfo::NodeCoverageInfo()
+    {}
+
+    TerrainCellRenderer::NodeCoverageInfo::NodeCoverageInfo(NodeCoverageInfo&& moveFrom)
     {
-        _heightMapTile = std::move(moveFrom._heightMapTile);
-        _heightMapPendingTile = std::move(moveFrom._heightMapPendingTile);
-        for (unsigned c=0; c<TerrainCellId::CoverageCount; ++c) {
-            _coverageTile[c] = std::move(moveFrom._coverageTile[c]);
-            _coveragePendingTile[c] = std::move(moveFrom._coveragePendingTile[c]);
-        }
+        _tile = std::move(moveFrom._tile);
+        _pendingTile = std::move(moveFrom._pendingTile);
+    }
+
+    auto TerrainCellRenderer::NodeCoverageInfo::operator=(NodeCoverageInfo&& moveFrom) -> NodeCoverageInfo& 
+    {
+        _tile = std::move(moveFrom._tile);
+        _pendingTile = std::move(moveFrom._pendingTile);
         return *this;
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////
     static void DoHeightMapShortCircuitUpdate(
-        std::string cellName, 
-        std::shared_ptr<TerrainCellRenderer> renderer,
+        std::string cellName, std::shared_ptr<TerrainCellRenderer> renderer,
         UInt2 cellOrigin, UInt2 cellMax, const ShortCircuitUpdate& upd)
     {
         renderer->HeightMapShortCircuit(cellName, cellOrigin, cellMax, upd);
@@ -2161,17 +2091,17 @@ namespace SceneEngine
                 if (    PointInside(cellSpaceSearchMin, Truncate(mins), Truncate(maxs)) 
                     &&  PointInside(cellSpaceSearchMax, Truncate(mins), Truncate(maxs))) {
 
-                    auto& node = i->second->_nodes[n];
-                    if (node._heightMapTile._width > 0) {
+                    auto& node = i->second->_heightTiles[n];
+                    if (node._tile._width > 0) {
 
                             //  This node is a valid result.
                             //  But it may not be the best result.
                             //      we can attempt to search deeper in the tree
                             //      to find a better result
 
-                        result._baseCoordinate[0] = node._heightMapTile._x;
-                        result._baseCoordinate[1] = node._heightMapTile._y;
-                        result._baseCoordinate[2] = node._heightMapTile._arrayIndex;
+                        result._baseCoordinate[0] = node._tile._x;
+                        result._baseCoordinate[1] = node._tile._y;
+                        result._baseCoordinate[2] = node._tile._arrayIndex;
                         result._heightScale = sourceNode->_localToCell(2,2);
                         result._heightOffset = sourceNode->_localToCell(2,3) + _coordSystem.TerrainOffset()[2];
 
@@ -2725,8 +2655,7 @@ namespace SceneEngine
     }
 
     static void RegisterShortCircuitUpdate(
-        const TerrainConfig& terrainCfg,
-        unsigned overlap,
+        const TerrainConfig& terrainCfg, unsigned overlap,
         TerrainUberSurfaceInterface* uberInterface,
         std::shared_ptr<TerrainCellRenderer> renderer)
     {

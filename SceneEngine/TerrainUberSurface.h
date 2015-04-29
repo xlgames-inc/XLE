@@ -77,7 +77,7 @@ namespace SceneEngine
     class ShortCircuitUpdate
     {
     public:
-        std::unique_ptr<RenderCore::Metal::ShaderResourceView>  _srv;
+        std::unique_ptr<RenderCore::Metal::ShaderResourceView> _srv;
         UInt2 _updateAreaMins, _updateAreaMaxs;
         UInt2 _resourceMins, _resourceMaxs;
         RenderCore::Metal::DeviceContext* _context;
@@ -102,25 +102,20 @@ namespace SceneEngine
             float _softFlowConstant, _softChangeBackConstant;
 
             ErosionParameters(float rainQuantityPerFrame, float changeToSoftConstant, float softFlowConstant, float softChangeBackConstant)
-                :   _rainQuantityPerFrame(rainQuantityPerFrame), _changeToSoftConstant(changeToSoftConstant)
-                ,   _softFlowConstant(softFlowConstant), _softChangeBackConstant(softChangeBackConstant) {}
+            : _rainQuantityPerFrame(rainQuantityPerFrame), _changeToSoftConstant(changeToSoftConstant)
+            , _softFlowConstant(softFlowConstant), _softChangeBackConstant(softChangeBackConstant) {}
         };
 
         void    Erosion_Begin(Float2 mins, Float2 maxs);
         void    Erosion_Tick(const ErosionParameters& params);
         void    Erosion_End();
         bool    Erosion_IsPrepared() const;
-        void    Erosion_RenderDebugging(
-            RenderCore::Metal::DeviceContext* context, 
-            LightingParserContext& parserContext,
-            const TerrainCoordinateSystem& coords);
+        void    Erosion_RenderDebugging(RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, const TerrainCoordinateSystem& coords);
 
         void    RegisterCell(
                     const char destinationFile[], UInt2 mins, UInt2 maxs, unsigned overlap,
                     std::function<void(const ShortCircuitUpdate&)> shortCircuitUpdate);
-
         void    RenderDebugging(RenderCore::Metal::DeviceContext* devContext, SceneEngine::LightingParserContext& context);
-
         void    BuildShadowingSurface(const char destinationFile[], Int2 interestingMins, Int2 interestingMaxs, Float2 sunDirectionOfMovement, float xyScale);
 
         TerrainUberHeightsSurface* GetUberSurface();

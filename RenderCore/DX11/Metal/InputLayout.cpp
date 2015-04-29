@@ -312,6 +312,58 @@ namespace RenderCore { namespace Metal_DX11
         return NativeFormat::Unknown;
     }
 
+    bool BoundUniforms::BindConstantBuffers(unsigned uniformsStream, std::initializer_list<const char*> cbs)
+    {
+            // expecting this method to be called before any other BindConstantBuffers 
+            // operations for this uniformsStream (because we start from a zero index)
+        for (unsigned c=0; c<ShaderStage::Max; ++c)
+            for (auto i:_stageBindings[c]._shaderConstantBindings)
+                assert((i._inputInterfaceSlot>>16) != uniformsStream);
+
+        bool result = true;
+        for (auto c=cbs.begin(); c<cbs.end(); ++c)
+            result &= BindConstantBuffer(Hash64(*c), unsigned(c-cbs.begin()), uniformsStream);
+        return result;
+    }
+
+    bool BoundUniforms::BindConstantBuffers(unsigned uniformsStream, std::initializer_list<uint64> cbs)
+    {
+            // expecting this method to be called before any other BindConstantBuffers 
+            // operations for this uniformsStream (because we start from a zero index)
+        for (unsigned c=0; c<ShaderStage::Max; ++c)
+            for (auto i:_stageBindings[c]._shaderConstantBindings)
+                assert((i._inputInterfaceSlot>>16) != uniformsStream);
+
+        bool result = true;
+        for (auto c=cbs.begin(); c<cbs.end(); ++c)
+            result &= BindConstantBuffer(*c, unsigned(c-cbs.begin()), uniformsStream);
+        return result;
+    }
+
+    bool BoundUniforms::BindShaderResources(unsigned uniformsStream, std::initializer_list<const char*> res)
+    {
+        for (unsigned c=0; c<ShaderStage::Max; ++c)
+            for (auto i:_stageBindings[c]._shaderResourceBindings)
+                assert((i._inputInterfaceSlot>>16) != uniformsStream);
+
+        bool result = true;
+        for (auto c=res.begin(); c<res.end(); ++c)
+            result &= BindShaderResource(Hash64(*c), unsigned(c-res.begin()), uniformsStream);
+        return result;
+    }
+
+    bool BoundUniforms::BindShaderResources(unsigned uniformsStream, std::initializer_list<uint64> res)
+    {
+        for (unsigned c=0; c<ShaderStage::Max; ++c)
+            for (auto i:_stageBindings[c]._shaderResourceBindings)
+                assert((i._inputInterfaceSlot>>16) != uniformsStream);
+
+        bool result = true;
+        for (auto c=res.begin(); c<res.end(); ++c)
+            result &= BindShaderResource(*c, unsigned(c-res.begin()), uniformsStream);
+        return result;
+    }
+
     unsigned CalculateVertexStride(
         const InputElementDesc* start, const InputElementDesc* end,
         unsigned slot)

@@ -137,7 +137,9 @@ namespace RenderCore { namespace Metal_DX11
         template <int Count0, int Count1>
             UniformsStream( ConstantBufferPacket (&packets)[Count0],
                             const ConstantBuffer* (&prebuiltBuffers)[Count1]);
-
+        template <int Count0, int Count1>
+            UniformsStream( ConstantBufferPacket (&packets)[Count0],
+                            const ShaderResourceView* (&resources)[Count1]);
     protected:
         const ConstantBufferPacket*     _packets;
         const ConstantBuffer**          _prebuiltBuffers;
@@ -163,6 +165,12 @@ namespace RenderCore { namespace Metal_DX11
                                     const ConstantBufferLayoutElement elements[] = nullptr, 
                                     size_t elementCount = 0);
         bool BindShaderResource(    uint64 hashName, unsigned slot, unsigned uniformsStream);
+
+        bool BindConstantBuffers(unsigned uniformsStream, std::initializer_list<const char*> cbs);
+        bool BindConstantBuffers(unsigned uniformsStream, std::initializer_list<uint64> cbs);
+
+        bool BindShaderResources(unsigned uniformsStream, std::initializer_list<const char*> res);
+        bool BindShaderResources(unsigned uniformsStream, std::initializer_list<uint64> res);
 
         ConstantBufferLayout                                GetConstantBufferLayout(const char name[]);
         std::vector<std::pair<ShaderStage::Enum,unsigned>>  GetConstantBufferBinding(const char name[]);
@@ -231,12 +239,23 @@ namespace RenderCore { namespace Metal_DX11
         UniformsStream::UniformsStream( ConstantBufferPacket (&packets)[Count0],
                                         const ConstantBuffer* (&prebuildBuffers)[Count1])
         {
-            assert(Count0 == Count1);
+            static_assert(Count0 == Count1, "Expecting equal length arrays in UniformsStream constructor");
             _packets = packets;
             _prebuiltBuffers = prebuildBuffers;
             _packetCount = Count0;
             _resources = nullptr;
             _resourceCount = 0;
+        }
+
+    template <int Count0, int Count1>
+        UniformsStream::UniformsStream( ConstantBufferPacket (&packets)[Count0],
+                                        const ShaderResourceView* (&resources)[Count1])
+        {
+            _packets = packets;
+            _prebuiltBuffers = nullptr;
+            _packetCount = Count0;
+            _resources = resources;
+            _resourceCount = Count1;
         }
 
 }}
