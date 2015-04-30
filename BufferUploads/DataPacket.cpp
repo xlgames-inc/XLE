@@ -46,7 +46,7 @@ namespace BufferUploads
         return _rowAndSlicePitch; 
     }
 
-    intrusive_ptr<BasicRawDataPacket> CreateBasicPacket(
+    intrusive_ptr<RawDataPacket> CreateBasicPacket(
         size_t dataSize, const void* data, std::pair<unsigned,unsigned> rowAndSlicePitch)
     {
         return make_intrusive<BasicRawDataPacket>(dataSize, data, rowAndSlicePitch);
@@ -61,7 +61,7 @@ namespace BufferUploads
         return result;
     }
 
-    intrusive_ptr<BasicRawDataPacket> CreateEmptyPacket(const BufferDesc& desc)
+    intrusive_ptr<RawDataPacket> CreateEmptyPacket(const BufferDesc& desc)
     {
             // Create an empty packet of the appropriate size for the given desc
             // Linear buffers are simple, but textures need a little more detail...

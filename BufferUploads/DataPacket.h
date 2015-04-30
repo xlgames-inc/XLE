@@ -29,14 +29,16 @@ namespace BufferUploads
         BasicRawDataPacket& operator=(const BasicRawDataPacket&);
     };
 
-    buffer_upload_dll_export intrusive_ptr<BasicRawDataPacket> CreateBasicPacket(
+    buffer_upload_dll_export intrusive_ptr<RawDataPacket> CreateBasicPacket(
         size_t dataSize, const void* data = nullptr, 
         std::pair<unsigned,unsigned> rowAndSlicePitch = std::make_pair(0,0));
 
-    buffer_upload_dll_export intrusive_ptr<BasicRawDataPacket> CreateEmptyPacket(
+    buffer_upload_dll_export intrusive_ptr<RawDataPacket> CreateEmptyPacket(
         const BufferDesc& desc);
 
     buffer_upload_dll_export intrusive_ptr<RawDataPacket> CreateFileDataSource(
-        const void* fileHandle, size_t offset, size_t dataSize);
+        const void* fileHandle, size_t offset, size_t dataSize,
+        unsigned rowPitch, unsigned slicePitch);
 
 }
+

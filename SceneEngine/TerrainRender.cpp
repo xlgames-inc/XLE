@@ -144,7 +144,7 @@ namespace SceneEngine
 
         BufferUploads::IManager&    GetBufferUploads() { return *_bufferUploads; }
         ShaderResourceView&         GetShaderResource() { return _shaderResource; }
-        UnorderedAccessView&        GetUnorderedAccessView() { return _uav; }
+        UnorderedAccessView&        GetUnorderedAccessView() { assert(_uav.GetUnderlying()); return _uav; }
 
         Int2      GetTileSize() const { return _elementSize; }
         NativeFormat::Enum GetFormat() const { return _format; }
@@ -278,7 +278,13 @@ namespace SceneEngine
         tile._uploadId = uploadId;
         assert(tile._width != ~unsigned(0x0) && tile._height != ~unsigned(0x0));
 
-        auto dataPacket = BufferUploads::CreateFileDataSource(fileHandle, offset, dataSize);
+            // rowPitch calculation here won't work correctly for DXT compressed formats
+        assert(GetCompressionType(_format) == FormatCompressionType::None);
+        const unsigned rowPitch = BitsPerPixel(_format) * _elementSize[0] / 8;
+        const unsigned slicePitch = rowPitch * _elementSize[1];
+
+        auto dataPacket = BufferUploads::CreateFileDataSource(
+            fileHandle, offset, dataSize, rowPitch, slicePitch);
         _bufferUploads->UpdateData(
             tile._transaction, dataPacket.get(),
             BufferUploads::PartialResource(destinationBox, 0, 0, address[2]));
@@ -492,10 +498,13 @@ namespace SceneEngine
         void ShortCircuit(uint64 cellHash, TerrainCoverageId layerId, UInt2 cellOrigin, UInt2 cellMax, const ShortCircuitUpdate& upd);
 
         Int2 GetHeightsElementSize() const { return _heightMapTileSet->GetTileSize(); }
+        const TerrainCoverageId* GetCoverageIdBegin() const { return AsPointer(_coverageIds.cbegin()); }
+        const TerrainCoverageId* GetCoverageIdEnd() const { return AsPointer(_coverageIds.cend()); }
 
         TerrainCellRenderer(
             const TerrainRendererConfig& cfg,
-            std::shared_ptr<ITerrainFormat> ioFormat, BufferUploads::IManager* bufferUploads);
+            std::shared_ptr<ITerrainFormat> ioFormat, BufferUploads::IManager* bufferUploads,
+            bool allowShortCircuitModification);
         ~TerrainCellRenderer();
 
     private:
@@ -608,11 +617,12 @@ namespace SceneEngine
     {
     public:
         Float4x4 _localToCell;
-        Int3 _heightMapOrigin; float _dummy;
-        Float4 _coverageTexCoordMins, _coverageTexCoordMaxs;
-        Int3 _coverageOrigin;
+        Int3 _heightMapOrigin;
         int _tileDimensionsInVertices;
         Int4 _neighbourLodDiffs;
+
+        Float4  _coverageCoordMins[TerrainCellId::MaxCoverageCount], _coverageCoordMaxs[TerrainCellId::MaxCoverageCount];
+        Int4    _coverageOrigin[TerrainCellId::MaxCoverageCount];
     };
 
     class TerrainMaterialTextures
@@ -641,9 +651,11 @@ namespace SceneEngine
         ViewportDesc    _currentViewport;
         unsigned        _indexDrawCount;
 
-        bool            _isTextured;
-        Int2            _elementSize;
+        // Int2            _elementSize;
         bool            _dynamicTessellation;
+
+        TerrainCoverageId   _coverageLayerIds[TerrainCellId::MaxCoverageCount];
+        unsigned            _coverageLayerCount;
         
         struct QueuedNode
         {
@@ -665,23 +677,27 @@ namespace SceneEngine
         };
         static std::vector<QueuedNode> _queuedNodes;        // HACK -- static to avoid allocation!
 
-        TerrainRenderingContext(bool isTextured, Int2 elementSize);
+        TerrainRenderingContext(const TerrainCoverageId* coverageLayerBegin, const TerrainCoverageId* coverageLayerEnd);
 
         enum Mode { Mode_Normal, Mode_RayTest, Mode_VegetationPrepare };
 
-        void    EnterState(DeviceContext* context, LightingParserContext& parserContext, const TerrainMaterialTextures& materials, Mode mode = Mode_Normal);
+        void    EnterState(DeviceContext* context, LightingParserContext& parserContext, const TerrainMaterialTextures& materials, UInt2 elementSize, Mode mode = Mode_Normal);
         void    ExitState(DeviceContext* context, LightingParserContext& parserContext);
     };
 
     std::vector<TerrainRenderingContext::QueuedNode> TerrainRenderingContext::_queuedNodes;        // HACK -- static to avoid allocation!
 
-    TerrainRenderingContext::TerrainRenderingContext(bool isTextured, Int2 elementSize)
+    TerrainRenderingContext::TerrainRenderingContext(const TerrainCoverageId* coverageLayerBegin, const TerrainCoverageId* coverageLayerEnd)
     : _currentViewport(0.f, 0.f, 0.f, 0.f, 0.f, 0.f)
     {
         _indexDrawCount = 0;
-        _isTextured = isTextured;
-        _elementSize = elementSize;
+        // _isTextured = isTextured;
+        // _elementSize = elementSize;
         _dynamicTessellation = false;
+
+        _coverageLayerCount = std::min(unsigned(coverageLayerEnd-coverageLayerBegin), TerrainCellId::MaxCoverageCount);
+        for (unsigned c=0; c<_coverageLayerCount; ++c)
+            _coverageLayerIds[c] = coverageLayerBegin[c];
 
         ConstantBuffer tileConstantsBuffer(nullptr, sizeof(TileConstants));
         ConstantBuffer localTransformConstantsBuffer(nullptr, sizeof(Techniques::LocalTransformConstants));
@@ -697,21 +713,26 @@ namespace SceneEngine
         {
         public:
             TerrainRenderingContext::Mode _mode;
-            bool _doExtraSmoothing, _noisyTerrain, _isTextured;
+            bool _doExtraSmoothing, _noisyTerrain;
             bool _drawWireframe;
             unsigned _strataCount;
 
+            TerrainCoverageId _coverageIds[TerrainCellId::MaxCoverageCount];
+
             Desc(   TerrainRenderingContext::Mode mode,
-                    bool doExtraSmoothing, bool noisyTerrain, bool isTextured,
+                    const TerrainCoverageId* coverageIdsBegin, const TerrainCoverageId* coverageIdsEnd,
+                    bool doExtraSmoothing, bool noisyTerrain,
                     bool drawWireframe, unsigned strataCount)
             {
                 std::fill((uint8*)this, (uint8*)PtrAdd(this, sizeof(*this)), 0);
                 _mode = mode;
                 _doExtraSmoothing = doExtraSmoothing;
                 _noisyTerrain = noisyTerrain;
-                _isTextured = isTextured;
                 _drawWireframe = drawWireframe;
                 _strataCount = strataCount;
+
+                for (unsigned c=0; c<std::min(unsigned(coverageIdsEnd-coverageIdsBegin), TerrainCellId::MaxCoverageCount); ++c)
+                    _coverageIds[c] = coverageIdsBegin[c];
             }
         };
 
@@ -727,13 +748,23 @@ namespace SceneEngine
 
     TerrainRenderingResources::TerrainRenderingResources(const Desc& desc)
     {
-        char definesBuffer[256];
-        _snprintf_s(definesBuffer, _TRUNCATE, 
-            "DO_EXTRA_SMOOTHING=%i;SOLIDWIREFRAME_TEXCOORD=%i;DO_ADD_NOISE=%i;OUTPUT_WORLD_POSITION=1;SOLIDWIREFRAME_WORLDPOSITION=1;DRAW_WIREFRAME=%i;STRATA_COUNT=%i", 
-            int(desc._doExtraSmoothing), int(desc._isTextured), int(desc._noisyTerrain), int(desc._drawWireframe), desc._strataCount);
-        const char* ps = desc._isTextured ? "game/xleres/forward/terrain_generator.sh:ps_main:ps_*" : "game/xleres/solidwireframe.psh:main:ps_*";
+        const bool isTextured = true;
 
-        if (Tweakable("LightingModel", 0) == 1 && desc._isTextured) {
+        StringMeld<256, char> definesBuffer;
+        definesBuffer << "DO_EXTRA_SMOOTHING=" << int(desc._doExtraSmoothing);
+        definesBuffer << ";SOLIDWIREFRAME_TEXCOORD=" << int(isTextured);
+        definesBuffer << ";DO_ADD_NOISE=" << int(desc._noisyTerrain);
+        definesBuffer << ";OUTPUT_WORLD_POSITION=1;SOLIDWIREFRAME_WORLDPOSITION=1";
+        definesBuffer << ";DRAW_WIREFRAME=" << int(desc._drawWireframe);
+        definesBuffer << ";STRATA_COUNT=" << desc._strataCount;
+
+        for (unsigned c=0; c<dimof(desc._coverageIds); ++c)
+            if (desc._coverageIds[c])
+                definesBuffer << ";COVERAGE_" << desc._coverageIds[c] << "=" << c;
+
+        const char* ps = isTextured ? "game/xleres/forward/terrain_generator.sh:ps_main:ps_*" : "game/xleres/solidwireframe.psh:main:ps_*";
+
+        if (Tweakable("LightingModel", 0) == 1 && isTextured) {
                 // manually switch to the forward shading pixel shader depending on the lighting model
             ps = "game/xleres/forward/terrain_generator.sh:ps_main_forward:ps_*";
         }
@@ -763,7 +794,7 @@ namespace SceneEngine
                 gs, ps, 
                 "game/xleres/forward/terrain_generator.sh:hs_main:hs_*",
                 "game/xleres/forward/terrain_generator.sh:ds_main:ds_*",
-                definesBuffer);
+                definesBuffer.get());
         } CATCH (...) {
             GeometryShader::SetDefaultStreamOutputInitializers(GeometryShader::StreamOutputInitializers());
             throw;
@@ -784,7 +815,7 @@ namespace SceneEngine
         _validationCallback = std::move(validationCallback);
     }
 
-    void        TerrainRenderingContext::EnterState(DeviceContext* context, LightingParserContext& parserContext, const TerrainMaterialTextures& texturing, Mode mode)
+    void        TerrainRenderingContext::EnterState(DeviceContext* context, LightingParserContext& parserContext, const TerrainMaterialTextures& texturing, UInt2 elementSize, Mode mode)
     {
         _dynamicTessellation = Tweakable("TerrainDynamicTessellation", true);
         if (_dynamicTessellation) {
@@ -793,7 +824,9 @@ namespace SceneEngine
             const bool drawWireframe = Tweakable("TerrainWireframe", false);
 
             auto& box = Techniques::FindCachedBoxDep<TerrainRenderingResources>(
-                TerrainRenderingResources::Desc(mode, doExtraSmoothing, noisyTerrain, _isTextured, drawWireframe, texturing._strataCount));
+                TerrainRenderingResources::Desc(
+                    mode, _coverageLayerIds, &_coverageLayerIds[_coverageLayerCount],
+                    doExtraSmoothing, noisyTerrain, drawWireframe, texturing._strataCount));
 
             context->Bind(*box._shaderProgram);
             context->Bind(Topology::PatchList4);
@@ -827,7 +860,7 @@ namespace SceneEngine
             uniforms.Apply(*context, parserContext.GetGlobalUniformsStream(), UniformsStream());
 
             auto& simplePatchBox = Techniques::FindCachedBox<SimplePatchBox>(
-                SimplePatchBox::Desc(_elementSize[0], _elementSize[1], true));
+                SimplePatchBox::Desc(elementSize[0], elementSize[1], true));
             context->Bind(simplePatchBox._simplePatchIndexBuffer, NativeFormat::R32_UINT);
             context->Bind(RenderCore::Metal::Topology::TriangleList);
             _indexDrawCount = simplePatchBox._simplePatchIndexCount;
@@ -859,6 +892,8 @@ namespace SceneEngine
     {
         context->Unbind<HullShader>();
         context->Unbind<DomainShader>();
+        context->UnbindGS<ShaderResourceView>(0, 5);
+        context->UnbindPS<ShaderResourceView>(0, 5);
         context->Bind(Topology::TriangleList);
     }
 
@@ -1588,10 +1623,6 @@ namespace SceneEngine
                                                     CellRenderInfo& cellRenderInfo, unsigned absNodeIndex,
                                                     int8 neighbourLodDiffs[4])
     {
-        const bool isTextured = !cellRenderInfo._coverage.empty();
-        assert(  isTextured == terrainContext._isTextured); (void)isTextured;
-        assert(GetHeightsElementSize() == terrainContext._elementSize);
-
         auto& sourceCell = *cellRenderInfo._sourceCell;
         auto& sourceNode = sourceCell._nodes[absNodeIndex];
         auto& heightTile = cellRenderInfo._heightTiles[absNodeIndex]._tile;
@@ -1602,24 +1633,20 @@ namespace SceneEngine
         assert(heightTile._width && heightTile._height);
 
         TileConstants tileConstants;
+        XlSetMemory(&tileConstants, 0, sizeof(tileConstants));
         tileConstants._localToCell = sourceNode->_localToCell;
         tileConstants._heightMapOrigin = Int3(heightTile._x, heightTile._y, heightTile._arrayIndex);
 
-        if (!cellRenderInfo._coverage.empty()
-            && cellRenderInfo._coverage[0]._tiles[absNodeIndex]._tile._width != ~unsigned(0x0) 
-            && cellRenderInfo._coverage[0]._tiles[absNodeIndex]._tile._height != ~unsigned(0x0)) {
-
-            const auto& covTile = cellRenderInfo._coverage[0]._tiles[absNodeIndex]._tile;
+        for (unsigned covIndex=0; covIndex<cellRenderInfo._coverage.size(); ++covIndex) {
+            const auto& covTile = cellRenderInfo._coverage[covIndex]._tiles[absNodeIndex]._tile;
+            if (covTile._width == ~unsigned(0x0) || covTile._height == ~unsigned(0x0)) continue;
+            
             const unsigned overlap = 1;
-            tileConstants._coverageTexCoordMins[0]  = (.5f / 2048.f) + covTile._x / 2048.f;
-            tileConstants._coverageTexCoordMins[1]  = (.5f / 2048.f) + covTile._y / 2048.f;
-            tileConstants._coverageTexCoordMaxs[0]  = (.5f / 2048.f) + (covTile._x + (covTile._width-overlap)) / 2048.f;
-            tileConstants._coverageTexCoordMaxs[1]  = (.5f / 2048.f) + (covTile._y + (covTile._height-overlap)) / 2048.f;
-            tileConstants._coverageOrigin           = Int3(covTile._x, covTile._y, covTile._arrayIndex);
-        } else {
-            tileConstants._coverageTexCoordMins = Float4(0.f, 0.f, 0.f, 0.f);
-            tileConstants._coverageTexCoordMaxs = Float4(0.f, 0.f, 0.f, 0.f);
-            tileConstants._coverageOrigin = Int3(0, 0, 0);
+            tileConstants._coverageCoordMins[covIndex][1]  = (float)covTile._y; //(.5f / 2048.f) + covTile._y / 2048.f;
+            tileConstants._coverageCoordMins[covIndex][0]  = (float)covTile._x; //(.5f / 2048.f) + covTile._x / 2048.f;
+            tileConstants._coverageCoordMaxs[covIndex][0]  = (float)(covTile._x + (covTile._width-overlap)); // (.5f / 2048.f) + (covTile._x + (covTile._width-overlap)) / 2048.f;
+            tileConstants._coverageCoordMaxs[covIndex][1]  = (float)(covTile._y + (covTile._height-overlap)); // (.5f / 2048.f) + (covTile._y + (covTile._height-overlap)) / 2048.f;
+            tileConstants._coverageOrigin[covIndex] = Int4(covTile._x, covTile._y, covTile._arrayIndex, 0);
         }
 
         tileConstants._tileDimensionsInVertices = GetHeightsElementSize()[1];
@@ -1680,12 +1707,18 @@ namespace SceneEngine
             }
             if (!tileSet) return;
 
+            const auto Filter_Bilinear = 1u;
+            const auto Filter_Max = 2u;
+            unsigned filterType = Filter_Bilinear;
+            if (format == 62) filterType = Filter_Max;      // (use "max" filter for integer types)
+
             const ::Assets::ResChar firstPassShader[] = "game/xleres/ui/copyterraintile.sh:WriteToMidway:cs_*";
             const ::Assets::ResChar secondPassShader[] = "game/xleres/ui/copyterraintile.sh:CommitToFinal:cs_*";
-            StringMeld<64, char> defines; defines << "VALUE_FORMAT=" << format;
+            StringMeld<64, char> defines; defines << "VALUE_FORMAT=" << format << ";FILTER_TYPE=" << filterType;
             auto& byteCode = Assets::GetAssetDep<CompiledShaderByteCode>(firstPassShader, defines.get());
             auto& cs0 = Assets::GetAssetDep<ComputeShader>(firstPassShader, defines.get());
             auto& cs1 = Assets::GetAssetDep<ComputeShader>(secondPassShader, defines.get());
+            auto& cs2 = Assets::GetAssetDep<ComputeShader>("game/xleres/ui/copyterraintile.sh:DirectToFinal:cs_*", defines.get());
 
             struct TileCoords
             {
@@ -1694,30 +1727,26 @@ namespace SceneEngine
             } tileCoords = { localToCell(2, 3), localToCell(2, 2), 0xffffffffu, 0x0u };
 
             auto& uploads = tileSet->GetBufferUploads();
-            auto tileCoordsBuffer = uploads.Transaction_Immediate(RWBufferDesc(sizeof(TileCoords), sizeof(TileCoords)), 
+            auto tileCoordsBuffer = uploads.Transaction_Immediate(
+                RWBufferDesc(sizeof(TileCoords), sizeof(TileCoords)), 
                 BufferUploads::CreateBasicPacket(sizeof(tileCoords), &tileCoords).get())->AdoptUnderlying();
             UnorderedAccessView tileCoordsUAV(tileCoordsBuffer.get());
 
-            auto midwayBuffer = uploads.Transaction_Immediate(RWTexture2DDesc(tile._width, tile._height, (format==0)?NativeFormat::R32_FLOAT:NativeFormat::Enum(format)), nullptr)->AdoptUnderlying();
-            UnorderedAccessView midwayBufferUAV(midwayBuffer.get());
-
             struct Parameters
             {
-                Int2 _sourceMin;
-                Int2 _sourceMax;
-                Int2 _updateMin;
-                Int2 _updateMax;
+                Int2 _sourceMin, _sourceMax;
+                Int2 _updateMin, _updateMax;
                 Int3 _dstTileAddress;
                 int _sampleArea;
-            }
-            parameters = 
-            { 
-                upd._resourceMins - Int2(nodeMin),
-                upd._resourceMaxs - Int2(nodeMax),
-                upd._updateAreaMins - Int2(nodeMin),
-                upd._updateAreaMaxs - Int2(nodeMax),
+                UInt2 _tileSize;
+                unsigned _dummy[2];
+            } parameters = {
+                Int2(upd._resourceMins) - Int2(nodeMin),
+                Int2(upd._resourceMaxs) - Int2(nodeMin),
+                Int2(upd._updateAreaMins) - Int2(nodeMin),
+                Int2(upd._updateAreaMaxs) - Int2(nodeMin),
                 Int3(tile._x, tile._y, tile._arrayIndex),
-                1<<downsample
+                1<<downsample, Int2(tile._width, tile._height)
             };
             ConstantBufferPacket pkts[] = { RenderCore::MakeSharedPkt(parameters) };
             const ShaderResourceView* srv[] = { upd._srv.get(), &tileSet->GetShaderResource() };
@@ -1727,33 +1756,47 @@ namespace SceneEngine
             boundLayout.BindShaderResources(1, {"Input", "OldHeights"});
             boundLayout.Apply(context, UniformsStream(), UniformsStream(pkts, srv));
 
-            context.BindCS(MakeResourceList(1, midwayBufferUAV, tileCoordsUAV));
-
             const unsigned threadGroupWidth = 6;
-            context.Bind(cs0);
-            context.Dispatch(   unsigned(XlCeil(tile._width /float(threadGroupWidth))), 
-                                unsigned(XlCeil(tile._height/float(threadGroupWidth))));
+            if (format == 0) {
+                    // go via a midway buffer and handle the min/max quantization
+                auto midwayBuffer = uploads.Transaction_Immediate(
+                    RWTexture2DDesc(tile._width, tile._height, NativeFormat::R32_FLOAT), 
+                    nullptr)->AdoptUnderlying();
+                UnorderedAccessView midwayBufferUAV(midwayBuffer.get());
 
-                //  if everything is ok up to this point, we can commit to the final
-                //  output --
-            context.BindCS(MakeResourceList(tileSet->GetUnorderedAccessView()));
-            context.Bind(cs1);
-            context.Dispatch(   unsigned(XlCeil(tile._width /float(threadGroupWidth))), 
-                                unsigned(XlCeil(tile._height/float(threadGroupWidth))));
+                context.BindCS(MakeResourceList(1, midwayBufferUAV, tileCoordsUAV));
 
-                //  We need to read back the new min/max heights
-                //  we could write these back to the original terrain cell -- but it
-                //  would be better to keep them cached only in the NodeRenderInfo
-            auto readback = uploads.Resource_ReadBack(BufferUploads::ResourceLocator(tileCoordsBuffer.get()));
-            float* readbackData = (float*)readback->GetData(0,0);
-            if (readbackData) {
-                float newHeightOffset = readbackData[2];
-                float newHeightScale = (readbackData[3] - readbackData[2]) / float(0xffff);
-                localToCell(2,2) = newHeightScale;
-                localToCell(2,3) = newHeightOffset;
+                context.Bind(cs0);
+                context.Dispatch(   unsigned(XlCeil(tile._width /float(threadGroupWidth))), 
+                                    unsigned(XlCeil(tile._height/float(threadGroupWidth))));
+
+                    //  if everything is ok up to this point, we can commit to the final
+                    //  output --
+                context.BindCS(MakeResourceList(tileSet->GetUnorderedAccessView()));
+                context.Bind(cs1);
+                context.Dispatch(   unsigned(XlCeil(tile._width /float(threadGroupWidth))), 
+                                    unsigned(XlCeil(tile._height/float(threadGroupWidth))));
+
+                    //  We need to read back the new min/max heights
+                    //  we could write these back to the original terrain cell -- but it
+                    //  would be better to keep them cached only in the NodeRenderInfo
+                auto readback = uploads.Resource_ReadBack(BufferUploads::ResourceLocator(tileCoordsBuffer.get()));
+                float* readbackData = (float*)readback->GetData(0,0);
+                if (readbackData) {
+                    float newHeightOffset = readbackData[2];
+                    float newHeightScale = (readbackData[3] - readbackData[2]) / float(0xffff);
+                    localToCell(2,2) = newHeightScale;
+                    localToCell(2,3) = newHeightOffset;
+                }
+            } else {
+                    // just write directly
+                context.BindCS(MakeResourceList(tileSet->GetUnorderedAccessView()));
+                context.Bind(cs2);
+                context.Dispatch(   unsigned(XlCeil(tile._width /float(threadGroupWidth))), 
+                                    unsigned(XlCeil(tile._height/float(threadGroupWidth))));
             }
 
-            context.UnbindCS<UnorderedAccessView>(0, 1);
+            context.UnbindCS<UnorderedAccessView>(0, 3);
         } CATCH (...) {
             // note, it's a real problem when we get a invalid resource get... 
             //  We should ideally stall until all the required resources are loaded
@@ -1782,7 +1825,7 @@ namespace SceneEngine
             tiles = &cri._heightTiles;
         } else {
             for (unsigned c=0; c<_coverageIds.size(); ++c)
-                if (_coverageIds[c] == layerId) break;
+                if (_coverageIds[c] == layerId) { coverageLayerIndex = c; break; }
             if (coverageLayerIndex >= unsigned(_coverageTileSet.size())) return;
             tileSet = _coverageTileSet[coverageLayerIndex].get();
             tiles = &cri._coverage[coverageLayerIndex]._tiles;
@@ -1815,8 +1858,9 @@ namespace SceneEngine
                     (unsigned)LinearInterpolate(float(cellOrigin[0]), float(cellMax[0]), nodeMaxInCell[0]),
                     (unsigned)LinearInterpolate(float(cellOrigin[1]), float(cellMax[1]), nodeMaxInCell[1]));
 
-                if (    nodeMin[0] <= upd._updateAreaMaxs[0] && nodeMax[0] >= upd._updateAreaMins[0]
-                    &&  nodeMin[1] <= upd._updateAreaMaxs[1] && nodeMax[1] >= upd._updateAreaMins[1]) {
+                const unsigned overlap = 1;
+                if (    (nodeMin[0]-overlap) <= upd._updateAreaMaxs[0] && (nodeMax[0]+overlap) >= upd._updateAreaMins[0]
+                    &&  (nodeMin[1]-overlap) <= upd._updateAreaMaxs[1] && (nodeMax[1]+overlap) >= upd._updateAreaMins[1]) {
 
                         // downsampling required depends on which field we're in.
                     auto fi = std::find_if(sourceCell._nodeFields.cbegin(), sourceCell._nodeFields.cend(),
@@ -1833,10 +1877,11 @@ namespace SceneEngine
 
     TerrainCellRenderer::TerrainCellRenderer(
         const TerrainRendererConfig& cfg,
-        std::shared_ptr<ITerrainFormat> ioFormat, BufferUploads::IManager* bufferUploads)
+        std::shared_ptr<ITerrainFormat> ioFormat, BufferUploads::IManager* bufferUploads,
+        bool allowShortCircuitModification)
     {
         _heightMapTileSet = std::make_unique<TextureTileSet>(
-            *bufferUploads, cfg._heights._tileSize, cfg._heights._cachedTileCount, cfg._heights._format, true);
+            *bufferUploads, cfg._heights._tileSize, cfg._heights._cachedTileCount, cfg._heights._format, allowShortCircuitModification);
 
         _coverageTileSet.reserve(unsigned(cfg._coverageLayers.size()));
         _coverageIds.reserve(unsigned(cfg._coverageLayers.size()));
@@ -1844,7 +1889,7 @@ namespace SceneEngine
         for (unsigned c=0; c<unsigned(cfg._coverageLayers.size()); ++c) {
             const auto& layer = cfg._coverageLayers[c];
             _coverageTileSet.push_back(std::make_unique<TextureTileSet>(
-                *bufferUploads, layer.second._tileSize, layer.second._cachedTileCount, layer.second._format, false));
+                *bufferUploads, layer.second._tileSize, layer.second._cachedTileCount, layer.second._format, allowShortCircuitModification));
             _coverageIds.push_back(cfg._coverageLayers[c].first);
         }
 
@@ -2332,20 +2377,39 @@ namespace SceneEngine
                 }
 
                 context.GetUnderlying()->CopySubresourceRegion(
-                    destinationArray, 
-                    D3D11CalcSubresource(m, arrayIndex, mipCount),
+                    destinationArray, D3D11CalcSubresource(m, arrayIndex, mipCount),
                     0, 0, 0, resamplingBuffer->GetUnderlying(), 0, nullptr);
 
             } else {
 
                 context.GetUnderlying()->CopySubresourceRegion(
-                    destinationArray, 
-                    D3D11CalcSubresource(m, arrayIndex, mipCount),
-                    0, 0, 0, 
-                    inputTexture.get(), D3D11CalcSubresource(sourceMip, 0, mipCount),
-                    nullptr);
+                    destinationArray, D3D11CalcSubresource(m, arrayIndex, mipCount),
+                    0, 0, 0, inputTexture.get(), D3D11CalcSubresource(sourceMip, 0, mipCount), nullptr);
 
             }
+        }
+    }
+
+    static void FillWhite(ID3D::Resource* destinationArray, ID3D::Resource* sourceResource, unsigned arrayIndex)
+    {
+            // copy dummy white data into all of the mip levels of the given array index in the
+            // destination resource
+        TextureDesc2D destinationDesc(destinationArray);
+        const auto mipCount = destinationDesc.MipLevels;
+
+        auto context = GetImmediateContext();
+        for (unsigned m=0; m<mipCount; ++m) {
+            const unsigned mipWidth = std::max(destinationDesc.Width >> m, 4u);
+            const unsigned mipHeight = std::max(destinationDesc.Height >> m, 4u);
+
+            D3D11_BOX srcBox;
+            srcBox.left = srcBox.top = srcBox.front = 0;
+            srcBox.right = mipWidth;
+            srcBox.bottom = mipHeight;
+            srcBox.back = 1;
+            context.GetUnderlying()->CopySubresourceRegion(
+                destinationArray, D3D11CalcSubresource(m, arrayIndex, mipCount),
+                0, 0, 0, sourceResource, 0, &srcBox);
         }
     }
 
@@ -2462,6 +2526,21 @@ namespace SceneEngine
             (uint8)IntegerLog2(std::max(scaffold._paramDims[0], scaffold._paramDims[1]))+1, uint8(texturesPerStrata * strataCount));
         auto specularityTextureArray = GetBufferUploads()->Transaction_Immediate(desc, nullptr)->AdoptUnderlying();
 
+        desc._textureDesc = BufferUploads::TextureDesc::Plain2D(
+            scaffold._paramDims[0], scaffold._paramDims[1], NativeFormat::BC1_UNORM);
+        auto tempBuffer = CreateEmptyPacket(desc);
+        {
+            uint16 blankColor = ((0x1f/2) << 11) | ((0x3f/2) << 5) | (0x1f/2);
+            struct BC1Block { uint16 c0; uint16 c1; uint32 t; } block { blankColor, blankColor, 0 };
+
+            auto dataSize = tempBuffer->GetDataSize(0,0);
+            assert((dataSize % sizeof(BC1Block))==0);
+            auto blockCount = dataSize / sizeof(BC1Block);
+            auto data = (BC1Block*)tempBuffer->GetData(0,0);
+            for (unsigned c=0; c<blockCount; ++c) data[c] = block;
+        }
+        auto dummyWhiteBuffer = GetBufferUploads()->Transaction_Immediate(desc, tempBuffer.get())->AdoptUnderlying();
+
         _validationCallback = std::make_shared<Assets::DependencyValidation>();
         Assets::RegisterAssetDependency(_validationCallback, &scaffold.GetDependencyValidation());
 
@@ -2491,6 +2570,7 @@ namespace SceneEngine
                 } CATCH (const ::Assets::Exceptions::InvalidResource&) {}
                 CATCH_END
                                 
+                bool fillInWhiteSpecular = false;
                 TRY { 
                     ::Assets::ResChar resolvedFile[MaxPath];
                     scaffold._searchRules.ResolveFile(resolvedFile, dimof(resolvedFile), StringMeld<MaxPath, ::Assets::ResChar>() << s->_texture[t] << "_sp.dds");
@@ -2498,8 +2578,12 @@ namespace SceneEngine
                         LoadTextureIntoArray(specularityTextureArray.get(), resolvedFile, (strataIndex * texturesPerStrata) + t, true);
                         RegisterFileDependency(_validationCallback, resolvedFile);
                     }
-                } CATCH (const ::Assets::Exceptions::InvalidResource&) {}
-                CATCH_END
+                } CATCH (const ::Assets::Exceptions::InvalidResource&) {
+                    fillInWhiteSpecular = true;
+                } CATCH_END
+
+                if (fillInWhiteSpecular)
+                    FillWhite(specularityTextureArray.get(), dummyWhiteBuffer.get(), (strataIndex * texturesPerStrata) + t);
             }
 
             texturingConstants[strataIndex] = Float4(s->_endHeight, s->_endHeight, s->_endHeight, s->_endHeight);
@@ -2890,13 +2974,14 @@ namespace SceneEngine
                 TerrainRendererConfig::Layer { (l._dimensions+UInt2(1,1)), cachedTileCount, NativeFormat::Enum(l._format) } ));
         }
 
-        pimpl->_renderer = std::make_shared<TerrainCellRenderer>(rendererCfg, ioFormat, bufferUploads);
+        const bool allowTerrainModification = true;
+        const bool buildUberInterfaces = allowTerrainModification;
+        const bool registerShortCircuit = allowTerrainModification;
+
+        pimpl->_renderer = std::make_shared<TerrainCellRenderer>(rendererCfg, ioFormat, bufferUploads, allowTerrainModification);
         pimpl->_heightsProvider = std::make_unique<TerrainSurfaceHeightsProvider>(pimpl->_renderer, cfg, pimpl->_coords);
         pimpl->_ioFormat = std::move(ioFormat);
         pimpl->_cfg = cfg;
-
-        const bool buildUberInterfaces = true;
-        const bool registerShortCircuit = true;
 
         if (buildUberInterfaces) {
             ::Assets::ResChar uberSurfaceFile[MaxPath];
@@ -2979,7 +3064,7 @@ namespace SceneEngine
 
             //  we need to enable the rendering state once, for all cells. The state should be
             //  more or less the same for every cell, so we don't need to do it every time
-        TerrainRenderingContext state(true, renderer->GetHeightsElementSize());
+        TerrainRenderingContext state(renderer->GetCoverageIdBegin(), renderer->GetCoverageIdEnd());
         state._queuedNodes.erase(state._queuedNodes.begin(), state._queuedNodes.end());
         state._queuedNodes.reserve(2048);
         state._currentViewport = ViewportDesc(*context);
@@ -3019,9 +3104,15 @@ namespace SceneEngine
             context->BindGS(MakeResourceList(6, lightingConstantsBuffer));  
         }
 
-        state.EnterState(context, parserContext, *_pimpl->_textures, mode);
+        state.EnterState(context, parserContext, *_pimpl->_textures, renderer->GetHeightsElementSize(), mode);
         renderer->Render(context, parserContext, state);
         state.ExitState(context, parserContext);
+
+        // if (_pimpl->_coverageInterfaces.size() > 0)
+        //     parserContext._pendingOverlays.push_back(
+        //         std::bind(
+        //             &GenericUberSurfaceInterface::RenderDebugging, _pimpl->_coverageInterfaces[0]._interface.get(), 
+        //             std::placeholders::_1, std::placeholders::_2));
     }
 
     unsigned TerrainManager::CalculateIntersections(
@@ -3037,7 +3128,7 @@ namespace SceneEngine
             //  we can use the same culling as the rendering part. But ideally we want to cull nodes
             //  that are outside of the camera frustum, or that don't intersect the ray
             //      first pass -- normal culling
-        TerrainRenderingContext state(true, _pimpl->_renderer->GetHeightsElementSize());
+        TerrainRenderingContext state(_pimpl->_renderer->GetCoverageIdBegin(), _pimpl->_renderer->GetCoverageIdEnd());
         state._queuedNodes.erase(state._queuedNodes.begin(), state._queuedNodes.end());
         state._queuedNodes.reserve(2048);
         state._currentViewport = ViewportDesc(*context);        // (accurate viewport is required to get the lodding right)
@@ -3109,7 +3200,7 @@ namespace SceneEngine
         } rayTestBuffer = { ray.first, 0.f, ray.second, 0.f };
         context->BindGS(MakeResourceList(2, ConstantBuffer(&rayTestBuffer, sizeof(rayTestBuffer))));
 
-        state.EnterState(context, parserContext, TerrainMaterialTextures(), TerrainRenderingContext::Mode_RayTest);
+        state.EnterState(context, parserContext, TerrainMaterialTextures(), _pimpl->_renderer->GetHeightsElementSize(), TerrainRenderingContext::Mode_RayTest);
         _pimpl->_renderer->Render(context, parserContext, state);
         state.ExitState(context, parserContext);
 

@@ -56,7 +56,7 @@ namespace BufferUploads
         virtual size_t                          GetDataSize         (unsigned mipIndex, unsigned arrayIndex) const;
         virtual std::pair<unsigned,unsigned>    GetRowAndSlicePitch (unsigned mipIndex, unsigned arrayIndex) const;
 
-        FileDataSource(const void* fileHandle, size_t offset, size_t dataSize);
+        FileDataSource(const void* fileHandle, size_t offset, size_t dataSize, unsigned rowPitch, unsigned slicePitch);
         virtual ~FileDataSource();
 
     protected:
@@ -64,9 +64,11 @@ namespace BufferUploads
         HANDLE      _fileHandle;
         OVERLAPPED  _overlappedStatus;
         size_t      _dataSize;
+
+        std::pair<unsigned,unsigned> _rowAndSlicePitch;
     };
 
-    void*                     FileDataSource::GetData             (unsigned mipIndex, unsigned arrayIndex)
+    void* FileDataSource::GetData(unsigned mipIndex, unsigned arrayIndex)
     {
         if (mipIndex == 0) {
             while (!HasOverlappedIoCompleted(&_overlappedStatus)) {
@@ -78,27 +80,10 @@ namespace BufferUploads
         return nullptr;
     }
 
-    size_t                          FileDataSource::GetDataSize         (unsigned mipIndex, unsigned arrayIndex) const
-    {
-        return _dataSize;
-    }
+    size_t FileDataSource::GetDataSize(unsigned mipIndex, unsigned arrayIndex) const { return _dataSize; }
+    std::pair<unsigned,unsigned> FileDataSource::GetRowAndSlicePitch (unsigned mipIndex, unsigned arrayIndex) const { return _rowAndSlicePitch; }
 
-    std::pair<unsigned,unsigned>    FileDataSource::GetRowAndSlicePitch (unsigned mipIndex, unsigned arrayIndex) const
-    {
-            // hack -- hard coded values for terrain upload
-        if (_dataSize == 8192) {
-            int pixelWidth = 128;
-            return std::make_pair(pixelWidth * 64 / 8 / 4, unsigned(_dataSize));
-        } else if (_dataSize == 2312) { 
-            return std::make_pair(34*2, unsigned(_dataSize));
-        } else if (_dataSize == 4356) { 
-            return std::make_pair(33*4, unsigned(_dataSize));
-        } else {
-            return std::make_pair(33*2, unsigned(_dataSize));
-        }
-    }
-
-    FileDataSource::FileDataSource(const void* fileHandle, size_t offset, size_t dataSize)
+    FileDataSource::FileDataSource(const void* fileHandle, size_t offset, size_t dataSize, unsigned rowPitch, unsigned slicePitch)
     {
         assert(dataSize);
         assert(fileHandle != INVALID_HANDLE_VALUE);
@@ -132,6 +117,7 @@ namespace BufferUploads
         _pkt = std::move(pkt);
         _fileHandle = duplicatedFileHandle;
         _dataSize = dataSize;
+        _rowAndSlicePitch = std::make_pair(rowPitch, slicePitch);
     }
 
     FileDataSource::~FileDataSource()
@@ -141,9 +127,9 @@ namespace BufferUploads
         }
     }
 
-    intrusive_ptr<RawDataPacket> CreateFileDataSource(const void* fileHandle, size_t offset, size_t dataSize)
+    intrusive_ptr<RawDataPacket> CreateFileDataSource(const void* fileHandle, size_t offset, size_t dataSize, unsigned rowPitch, unsigned slicePitch)
     {
-        return make_intrusive<FileDataSource>(fileHandle, offset, dataSize);
+        return make_intrusive<FileDataSource>(fileHandle, offset, dataSize, rowPitch, slicePitch);
     }
     
         ///////////////////////////////////////////////////////////////////////////////////////////////////

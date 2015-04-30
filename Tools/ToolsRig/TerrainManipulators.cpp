@@ -305,7 +305,7 @@ namespace ToolsRig
     public:
         virtual void PerformAction(const Float3& worldSpacePosition, float size, float strength);
         virtual const char* GetName() const { return "Paint Coverage"; }
-        virtual std::pair<FloatParameter*, size_t>  GetFloatParameters() const { return std::make_pair(nullptr, 0); }
+        virtual std::pair<FloatParameter*, size_t>  GetFloatParameters() const;
         virtual std::pair<BoolParameter*, size_t>   GetBoolParameters() const { return std::make_pair(nullptr, 0); }
         virtual std::pair<IntParameter*, size_t>   GetIntParameters() const;
 
@@ -341,6 +341,15 @@ namespace ToolsRig
         {
             IntParameter(ManipulatorParameterOffset(&PaintCoverageManipulator::_coverageLayer), 0i32, INT32_MAX, IntParameter::Linear, "CoverageLayer"),
             IntParameter(ManipulatorParameterOffset(&PaintCoverageManipulator::_paintValue), 0i32, INT32_MAX, IntParameter::Linear, "PaintValue"),
+        };
+        return std::make_pair(parameters, dimof(parameters));
+    }
+
+    auto PaintCoverageManipulator::GetFloatParameters() const -> std::pair < FloatParameter*, size_t >
+    {
+        static FloatParameter parameters[] = 
+        {
+            FloatParameter(ManipulatorParameterOffset(&PaintCoverageManipulator::_size), 0.1f, 500.f, FloatParameter::Linear, "Size")
         };
         return std::make_pair(parameters, dimof(parameters));
     }

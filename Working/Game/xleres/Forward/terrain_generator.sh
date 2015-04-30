@@ -19,6 +19,7 @@
 #include "../MainGeometry.h"
 #include "../CommonResources.h"
 #include "../Utility/perlinnoise.h"
+#include "../Utility/DistinctColors.h"
 #include "../gbuffer.h"
 #include "../Colour.h"
 
@@ -649,18 +650,31 @@ uint GetEdgeIndex(float2 texCoord)
 	else						{ return (t.y < 0.f) ? 0 : 2; }
 }
 
+#define MakeCoverageTileSet(index) CoverageTileSet ## index
+
+// #define VISUALIZE_COVERAGE 1
+
 TerrainPixel CalculateTerrain(SW_GStoPS geo)
 {
 	float4 result = 1.0.xxxx;
 	float2 finalTexCoord = 0.0.xx;
 	float shadowing = 0.f;
-	#if (OUTPUT_TEXCOORD==1) && (SOLIDWIREFRAME_TEXCOORD==1)
-			// todo -- we need special interpolation to avoid wrapping into neighbour coverage tiles
-		finalTexCoord = lerp(TexCoordMins.xy, TexCoordMaxs.xy, geo.texCoord.xy);
-		// result.rgb = MassageTerrainBaseColour(CoverageTileSet.Sample(MaybeAnisotropicSampler, float3(finalTexCoord.xy, CoverageOrigin.z)).rgb);
 
-		float2 shadowSample = CoverageTileSet.SampleLevel(DefaultSampler, float3(finalTexCoord.xy, CoverageOrigin.z), 0).rg;
-		shadowing = saturate(ShadowSoftness * (SunAngle + shadowSample.r)) * saturate(ShadowSoftness * (shadowSample.g - SunAngle));
+	#if (OUTPUT_TEXCOORD==1) && (SOLIDWIREFRAME_TEXCOORD==1)
+
+			// "COVERAGE_2" is the angle based shadows layer.
+			// if it exists, we will have this define
+		#if defined(COVERAGE_2)
+				// todo -- we need special interpolation to avoid wrapping into neighbour coverage tiles
+			finalTexCoord = lerp(CoverageCoordMins[COVERAGE_2].xy, CoverageCoordMaxs[COVERAGE_2].xy, geo.texCoord.xy);
+
+			uint3 dims;
+			MakeCoverageTileSet(COVERAGE_2).GetDimensions(dims.x, dims.y, dims.z);
+
+			float2 shadowSample = MakeCoverageTileSet(COVERAGE_2).SampleLevel(DefaultSampler, float3(finalTexCoord.xy / float2(dims.xy), CoverageOrigin[COVERAGE_2].z), 0).rg;
+			shadowing = saturate(ShadowSoftness * (SunAngle + shadowSample.r)) * saturate(ShadowSoftness * (shadowSample.g - SunAngle));
+		#endif
+
 	#endif
 
 	float slopeFactor = max(abs(geo.dhdxy.x), abs(geo.dhdxy.y));
@@ -697,6 +711,13 @@ TerrainPixel CalculateTerrain(SW_GStoPS geo)
 	output.worldSpaceNormal = deformedNormal;
 	output.specularity = .25f * procTexture.specularity;
 	output.cookedAmbientOcclusion = shadowing * emulatedAmbientOcclusion;
+
+	#if (OUTPUT_TEXCOORD==1) && defined(VISUALIZE_COVERAGE)
+		float2 coverageTC = lerp(CoverageCoordMins[VISUALIZE_COVERAGE].xy, CoverageCoordMaxs[VISUALIZE_COVERAGE].xy, geo.texCoord.xy);
+		uint sample = MakeCoverageTileSet(VISUALIZE_COVERAGE).Load(uint4(uint2(coverageTC.xy), CoverageOrigin[VISUALIZE_COVERAGE].z, 0));
+		output.diffuseAlbedo = GetDistinctFloatColour(sample);
+	#endif
+
 	return output;
 }
 

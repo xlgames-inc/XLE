@@ -13,18 +13,24 @@ cbuffer TerrainLighting : register(b6)
 	float ShadowSoftness;		// (around 50.f)
 }
 
+static const uint MaxCoverageLayers = 5;
+
 cbuffer TileBuffer : register(b7)
 {
 	row_major float4x4 LocalToCell;
 	int3	HeightMapOrigin;
-	float4	TexCoordMins;
-	float4	TexCoordMaxs;
-	int3	CoverageOrigin;
 	int		TileDimensionsInVertices;
     int4    NeighbourLodDiffs;
+
+	float4	CoverageCoordMins[MaxCoverageLayers];
+	float4	CoverageCoordMaxs[MaxCoverageLayers];
+	int4	CoverageOrigin[MaxCoverageLayers];
 }
 
-Texture2DArray CoverageTileSet : register(t0);
+Texture2DArray CoverageTileSet0 : register(t0);
+Texture2DArray<uint> CoverageTileSet1 : register(t1);
+Texture2DArray CoverageTileSet2 : register(t2);
+Texture2DArray CoverageTileSet3 : register(t3);
+Texture2DArray CoverageTileSet4 : register(t4);
 
 #endif
-

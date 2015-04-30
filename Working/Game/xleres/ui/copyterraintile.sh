@@ -4,7 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-cbuffer Parameters
+cbuffer Parameters : register(b0)
 {
 	int2 SourceMin;
 	int2 SourceMax;
@@ -12,6 +12,7 @@ cbuffer Parameters
 	int2 UpdateMax;
 	int3 DstTileAddress;
 	int SampleArea;
+	uint2 TileSize;
 }
 
 struct TileCoords
@@ -39,31 +40,50 @@ RWTexture2D<ValueType>			MidwayOutput : register(u1);
 	RWStructuredBuffer<TileCoords>	TileCoordsBuffer : register(u2);
 #endif
 
+#if !defined(FILTER_TYPE)
+	#define FILTER_TYPE 1
+#endif
+
 ValueType CalculateNewValue(uint3 dispatchThreadId)
 {
 	int2 origin = SampleArea * dispatchThreadId.xy;
-	//if (	origin.x >= UpdateMin.x && (origin.x + SampleArea - 1) <= UpdateMax.x
-	//	&&	origin.y >= UpdateMin.y && (origin.y + SampleArea - 1) <= UpdateMax.y) {
 
-			//	simple box filter for downsampling to the correct LOD
-		ValueType sampleTotal = 0;
-		for (int y=0; y<SampleArea; ++y)
-			for (int x=0; x<SampleArea; ++x) {
-				sampleTotal += Input[origin + int2(x,y) - SourceMin];
-			}
-		sampleTotal /= SampleArea * SampleArea;
+		// SourceMins / SourceMaxs defines the area that we can read from
+		// The system should ensure that the source area is much bigger than
+		// the "update area" with borders on all sides. We need area around
+		// the update area to do downsampling and filtering
+		// We need to make sure we don't attempt to read outside of this region.
+	if (	origin.x >= SourceMin.x && (origin.x + SampleArea - 1) <= SourceMax.x
+		&&	origin.y >= SourceMin.y && (origin.y + SampleArea - 1) <= SourceMax.y) {
 
-		// sampleTotal += 100.f;
+		#if FILTER_TYPE == 1
+				//	simple box filter for downsampling to the correct LOD
+			ValueType sampleTotal = 0;
+			for (int y=0; y<SampleArea; ++y)
+				for (int x=0; x<SampleArea; ++x)
+					sampleTotal += Input[origin + int2(x,y) - SourceMin];
+			sampleTotal /= SampleArea * SampleArea;
+		#elif FILTER_TYPE == 2
+				//	max filter (good for samples that we can't interpolate between)
+			ValueType sampleTotal = 0;
+			for (int y=0; y<SampleArea; ++y)
+				for (int x=0; x<SampleArea; ++x)
+					sampleTotal = max(sampleTotal, Input[origin + int2(x,y) - SourceMin]);
+		#endif
 
 		return sampleTotal;
-	// }
+	}
 
-		//	note that we can't read from a uint16 RWTexture, unfortunately...
-		//	that means we need to do 2 steps:
-		//		first step --	read from old heights as a SRV
-		//		second step --	write to output UAV
-	uint compressedHeight = OldHeights[DstTileAddress + uint3(dispatchThreadId.xy, 0)];
-	return TileCoordsBuffer[0].MinHeight + float(compressedHeight) * TileCoordsBuffer[0].HeightScale;
+	#if defined(QUANTIZE_HEIGHTS)
+			//	note that we can't read from a uint16 RWTexture, unfortunately...
+			//	that means we need to do 2 steps:
+			//		first step --	read from old heights as a SRV
+			//		second step --	write to output UAV
+		uint compressedHeight = OldHeights[DstTileAddress + uint3(dispatchThreadId.xy, 0)];
+		return TileCoordsBuffer[0].MinHeight + float(compressedHeight) * TileCoordsBuffer[0].HeightScale;
+	#else
+		return 0;
+	#endif
 }
 
 uint HeightValueToUInt(float height)
@@ -112,12 +132,13 @@ RWTexture2DArray<uint>			Destination : register(u0);
 {
 	ValueType newHeight = MidwayOutput[dispatchThreadId.xy];
 
-	uint2 midwayDims;
-	MidwayOutput.GetDimensions(midwayDims.x, midwayDims.y);
+	if (dispatchThreadId.x < TileSize.x && dispatchThreadId.y < TileSize.y) {
 
-	if (dispatchThreadId.x < midwayDims.x && dispatchThreadId.y < midwayDims.y) {
+			// When doing QUANTIZE_HEIGHTS, we need to re-write the entire tile...
+			// this is because the min/max values will have changed. That means every
+			// height value needs to adapter to the new min/max values.
 		#if defined(QUANTIZE_HEIGHTS)
-				// finally calculate the new compressed height & write to the buffer
+					// finally calculate the new compressed height & write to the buffer
 			float minHeight = UIntToHeightValue(TileCoordsBuffer[0].WorkingMinHeight);
 			float maxHeight = UIntToHeightValue(TileCoordsBuffer[0].WorkingMaxHeight);
 
@@ -126,7 +147,25 @@ RWTexture2DArray<uint>			Destination : register(u0);
 
 			Destination[DstTileAddress + uint3(dispatchThreadId.xy, 0)] = finalCompressedHeight;
 		#else
-			Destination[DstTileAddress + uint3(dispatchThreadId.xy, 0)] = newHeight;
+			if (	(int)dispatchThreadId.x >= UpdateMin.x && (int)dispatchThreadId.x <= UpdateMax.x
+				&& 	(int)dispatchThreadId.y >= UpdateMin.y && (int)dispatchThreadId.y <= UpdateMax.y) {
+
+				Destination[DstTileAddress + uint3(dispatchThreadId.xy, 0)] = newHeight;
+			}
 		#endif
+
+	}
+}
+
+[numthreads(6, 6, 1)]
+	void DirectToFinal(uint3 dispatchThreadId : SV_DispatchThreadID)
+{
+	if (	dispatchThreadId.x < TileSize.x && dispatchThreadId.y < TileSize.y
+		&&	(int)dispatchThreadId.x * SampleArea >= UpdateMin.x && (int)dispatchThreadId.x * SampleArea <= UpdateMax.x
+		&& 	(int)dispatchThreadId.y * SampleArea >= UpdateMin.y && (int)dispatchThreadId.y * SampleArea <= UpdateMax.y) {
+//	) {
+
+		ValueType newValue = CalculateNewValue(dispatchThreadId);
+		Destination[DstTileAddress + uint3(dispatchThreadId.xy, 0)] = newValue;
 	}
 }
