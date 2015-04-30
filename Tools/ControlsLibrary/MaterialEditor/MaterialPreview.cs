@@ -43,7 +43,7 @@ namespace ControlsLibrary.MaterialEditor
                 string model = ""; ulong binding = 0;
                 if (previewModel != null && previewModel.Item1 != null) { model = previewModel.Item1; binding = previewModel.Item2; }
                 visLayer.SetConfig(value, model, binding);
-                Invalidate();
+                InvalidatePreview();
             }
         }
 
@@ -75,14 +75,16 @@ namespace ControlsLibrary.MaterialEditor
             {
                 visSettings.Lighting = newLighting;
             }
-            preview.Invalidate();
+            InvalidatePreview();
         }
 
         private void SelectedEnvironmentChanged(object sender, System.EventArgs e)
         {
             visLayer.SetEnvironment(envSettings, _environment.SelectedValue.ToString());
-            Invalidate();
+            InvalidatePreview();
         }
+
+        public void InvalidatePreview() { preview.Invalidate(); }
 
         protected GUILayer.MaterialVisLayer visLayer;
         protected GUILayer.MaterialVisSettings visSettings;

@@ -112,7 +112,8 @@ namespace ControlsLibrary.MaterialEditor
             }
         }
 
-        protected List<GUILayer.RawMaterial> _objectsPendingDispose;
+        protected List<GUILayer.RawMaterial> _objectsPendingDispose = null;
+        protected GUILayer.RawMaterial _currentFocusMat = null;
 
         protected void ClearAndDispose()
         {
@@ -124,6 +125,15 @@ namespace ControlsLibrary.MaterialEditor
             checkBox2.DataBindings.Clear();
             checkBox1.CheckState = CheckState.Indeterminate;
             checkBox2.CheckState = CheckState.Indeterminate;
+
+            if (_currentFocusMat != null)
+            {
+                    // unbind our callbacks... We don't need to leave behind redundant callbacks everywhere
+                _currentFocusMat.MaterialParameterBox.ListChanged -= OnParameterChanged;
+                _currentFocusMat.ShaderConstants.ListChanged -= OnParameterChanged;
+                _currentFocusMat.ResourceBindings.ListChanged -= OnParameterChanged;
+                _currentFocusMat = null;
+            }
 
             if (_objectsPendingDispose != null)
             {
@@ -159,8 +169,18 @@ namespace ControlsLibrary.MaterialEditor
                         checkBox1.DataBindings.Add("CheckState", focusMat.StateSet, "DoubleSided", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged);
                         checkBox2.DataBindings.Add("CheckState", focusMat.StateSet, "Wireframe", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged);
                     }
+
+                    focusMat.MaterialParameterBox.ListChanged += OnParameterChanged;
+                    focusMat.ShaderConstants.ListChanged += OnParameterChanged;
+                    focusMat.ResourceBindings.ListChanged += OnParameterChanged;
+                    _currentFocusMat = focusMat;
                 }
             }
+        }
+
+        void OnParameterChanged(object sender, ListChangedEventArgs e)
+        {
+            materialPreview1.InvalidatePreview();
         }
 
         public Tuple<string, ulong> PreviewModel

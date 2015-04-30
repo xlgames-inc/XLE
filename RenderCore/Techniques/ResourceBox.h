@@ -91,6 +91,11 @@ namespace RenderCore { namespace Techniques
         return *i2->second;
     }
 
+    template <typename Box, typename... Params> Box& FindCachedBoxDep2(Params... params)
+    {
+        return FindCachedBoxDep<Box>(Box::Desc(std::forward<Params>(params)...));
+    }
+
     void ResourceBoxes_Shutdown();
 
     ///////////////////////////////////////////////////////////////////////////////////////////////

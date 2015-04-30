@@ -552,6 +552,9 @@ struct ProceduralTextureOutput
 		const float slopeSoftness = 3.f;
 		const float slopeDarkness = 1.f; // .75f;
 
+		float a = fwidth(worldPosition.x);
+		float b = fwidth(worldPosition.y);
+
 		float slopeAlpha = pow(min(1.f,slopeFactor/slopeStart), slopeSoftness);
 		if (slopeAlpha > 0.05f) {	// can't branch here because of the texture lookups below... We would need to do 2 passes
 
@@ -572,8 +575,6 @@ struct ProceduralTextureOutput
 			float3 Sn2 = StrataNormals.Sample(MaybeAnisotropicSampler, float3(tcS0, arrayIdx)).rgb;
 			float3 Ss2 = StrataSpecularSample(tcS0, strataIndex, 2);
 
-			float a = fwidth(worldPosition.x);
-			float b = fwidth(worldPosition.y);
 			float A = a / (a+b);
 			float B = b / (a+b);
 			S = S * A + S2 * B;

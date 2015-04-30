@@ -716,13 +716,15 @@ namespace SceneEngine
             bool _doExtraSmoothing, _noisyTerrain;
             bool _drawWireframe;
             unsigned _strataCount;
+            TerrainCoverageId _visLayer;
 
             TerrainCoverageId _coverageIds[TerrainCellId::MaxCoverageCount];
 
             Desc(   TerrainRenderingContext::Mode mode,
                     const TerrainCoverageId* coverageIdsBegin, const TerrainCoverageId* coverageIdsEnd,
                     bool doExtraSmoothing, bool noisyTerrain,
-                    bool drawWireframe, unsigned strataCount)
+                    bool drawWireframe, unsigned strataCount,
+                    TerrainCoverageId visLayer)
             {
                 std::fill((uint8*)this, (uint8*)PtrAdd(this, sizeof(*this)), 0);
                 _mode = mode;
@@ -730,6 +732,7 @@ namespace SceneEngine
                 _noisyTerrain = noisyTerrain;
                 _drawWireframe = drawWireframe;
                 _strataCount = strataCount;
+                _visLayer = visLayer;
 
                 for (unsigned c=0; c<std::min(unsigned(coverageIdsEnd-coverageIdsBegin), TerrainCellId::MaxCoverageCount); ++c)
                     _coverageIds[c] = coverageIdsBegin[c];
@@ -759,8 +762,11 @@ namespace SceneEngine
         definesBuffer << ";STRATA_COUNT=" << desc._strataCount;
 
         for (unsigned c=0; c<dimof(desc._coverageIds); ++c)
-            if (desc._coverageIds[c])
+            if (desc._coverageIds[c]) {
                 definesBuffer << ";COVERAGE_" << desc._coverageIds[c] << "=" << c;
+                if (desc._coverageIds[c] == desc._visLayer)
+                    definesBuffer << ";VISUALIZE_COVERAGE=" << c;
+            }
 
         const char* ps = isTextured ? "game/xleres/forward/terrain_generator.sh:ps_main:ps_*" : "game/xleres/solidwireframe.psh:main:ps_*";
 
@@ -819,14 +825,15 @@ namespace SceneEngine
     {
         _dynamicTessellation = Tweakable("TerrainDynamicTessellation", true);
         if (_dynamicTessellation) {
-            const bool doExtraSmoothing = Tweakable("TerrainExtraSmoothing", false);
-            const bool noisyTerrain = Tweakable("TerrainNoise", false);
-            const bool drawWireframe = Tweakable("TerrainWireframe", false);
+            const auto doExtraSmoothing = Tweakable("TerrainExtraSmoothing", false);
+            const auto noisyTerrain = Tweakable("TerrainNoise", false);
+            const auto drawWireframe = Tweakable("TerrainWireframe", false);
+            const auto visLayer = Tweakable("TerrainVisCoverage", 0);
 
-            auto& box = Techniques::FindCachedBoxDep<TerrainRenderingResources>(
-                TerrainRenderingResources::Desc(
-                    mode, _coverageLayerIds, &_coverageLayerIds[_coverageLayerCount],
-                    doExtraSmoothing, noisyTerrain, drawWireframe, texturing._strataCount));
+            auto& box = Techniques::FindCachedBoxDep2<TerrainRenderingResources>(
+                mode, _coverageLayerIds, &_coverageLayerIds[_coverageLayerCount],
+                doExtraSmoothing, noisyTerrain, drawWireframe, texturing._strataCount,
+                visLayer);
 
             context->Bind(*box._shaderProgram);
             context->Bind(Topology::PatchList4);
@@ -2941,7 +2948,9 @@ namespace SceneEngine
                 }
 
                 cell._heightsToUber._mins = AsUInt2(t);
-                cell._heightsToUber._maxs = cell._heightsToUber._mins + UInt2(cfg.CellDimensionsInNodes()[0] * cfg.NodeDimensionsInElements()[0], cfg.CellDimensionsInNodes()[1] * cfg.NodeDimensionsInElements()[1]);
+                cell._heightsToUber._maxs = cell._heightsToUber._mins + 
+                    UInt2(  cfg.CellDimensionsInNodes()[0] * cfg.NodeDimensionsInElements()[0], 
+                            cfg.CellDimensionsInNodes()[1] * cfg.NodeDimensionsInElements()[1]);
 
                 for (unsigned c=0; c<std::min(cfg.GetCoverageLayerCount(), TerrainCellId::MaxCoverageCount); ++c) {
                     const auto& l = cfg.GetCoverageLayer(c);

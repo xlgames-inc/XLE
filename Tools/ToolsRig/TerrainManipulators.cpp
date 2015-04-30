@@ -29,6 +29,7 @@
 #include "../../Math/ProjectionMath.h"
 #include "../../Math/Transformations.h"
 #include "../../Utility/TimeUtils.h"
+#include "../../ConsoleRig/Console.h"
 
 #include "../../RenderCore/DX11/Metal/DX11Utils.h"
 
@@ -308,6 +309,7 @@ namespace ToolsRig
         virtual std::pair<FloatParameter*, size_t>  GetFloatParameters() const;
         virtual std::pair<BoolParameter*, size_t>   GetBoolParameters() const { return std::make_pair(nullptr, 0); }
         virtual std::pair<IntParameter*, size_t>   GetIntParameters() const;
+        virtual void SetActivationState(bool newState);
 
         PaintCoverageManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager);
 
@@ -352,6 +354,11 @@ namespace ToolsRig
             FloatParameter(ManipulatorParameterOffset(&PaintCoverageManipulator::_size), 0.1f, 500.f, FloatParameter::Linear, "Size")
         };
         return std::make_pair(parameters, dimof(parameters));
+    }
+
+    void PaintCoverageManipulator::SetActivationState(bool newState)
+    {
+        Tweakable("TerrainVisCoverage", 0) = newState ? _coverageLayer : 0;
     }
 
     PaintCoverageManipulator::PaintCoverageManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager)

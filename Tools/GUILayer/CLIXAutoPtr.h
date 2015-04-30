@@ -221,8 +221,6 @@ namespace clix
 
         T* get()
         {
-            if(!(*pPtr).get())
-                throw gcnew System::NullReferenceException("clix::shared_ptr<>");
             return (*pPtr).get();
         }
 

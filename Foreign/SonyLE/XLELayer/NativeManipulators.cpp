@@ -130,7 +130,14 @@ namespace XLELayer
     void ActiveManipulatorContext::ActiveManipulator::set(String^ value)
     {
         if (value != _activeManipulator) {
+            auto oldNativeManip = GetNativeManipulator();
             _activeManipulator = value;
+            auto newNativeManip = GetNativeManipulator();
+
+            if (oldNativeManip != newNativeManip) {
+                if (oldNativeManip) oldNativeManip->SetActivationState(false);
+                if (newNativeManip) newNativeManip->SetActivationState(true);
+            }
             OnActiveManipulatorChange(this, nullptr);
         }
     }
