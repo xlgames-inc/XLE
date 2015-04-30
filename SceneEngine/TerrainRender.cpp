@@ -147,6 +147,7 @@ namespace SceneEngine
         UnorderedAccessView&        GetUnorderedAccessView() { return _uav; }
 
         Int2      GetTileSize() const { return _elementSize; }
+        NativeFormat::Enum GetFormat() const { return _format; }
         
         TextureTileSet( BufferUploads::IManager& bufferUploads,
                         Int2 elementSize, unsigned elementCount,
@@ -178,6 +179,8 @@ namespace SceneEngine
         ShaderResourceView              _shaderResource;
         UnorderedAccessView             _uav;
         BufferUploads::TransactionID    _creationTransaction;
+
+        NativeFormat::Enum _format;
 
         void    CompleteCreation();
 
@@ -387,6 +390,7 @@ namespace SceneEngine
         _uav = std::move(uav);
         _uploadIds = std::move(uploadIds);
         _lruQueue = std::move(lruQueue);
+        _format = format;
     }
 
     TextureTileSet::ArraySlice::ArraySlice(int count)
@@ -416,11 +420,19 @@ namespace SceneEngine
     {
     public:
         static const unsigned MaxCoverageCount = 5;
-        char        _heightMapFilename[256];
-        char        _coverageFilename[MaxCoverageCount][256];
-        TerrainCoverageId  _coverageIds[MaxCoverageCount];
-        Float4x4    _cellToWorld;
-        Float3      _aabbMin, _aabbMax;
+        char                _heightMapFilename[256];
+        char                _coverageFilename[MaxCoverageCount][256];
+        TerrainCoverageId   _coverageIds[MaxCoverageCount];
+        Float4x4            _cellToWorld;
+        Float3              _aabbMin, _aabbMax;
+
+        class UberSurfaceAddress
+        {
+        public:
+            UInt2 _mins, _maxs;
+        };
+        UberSurfaceAddress  _heightsToUber;
+        UberSurfaceAddress  _coverageToUber[MaxCoverageCount];
 
         uint64      BuildHash() const;
         
@@ -477,7 +489,7 @@ namespace SceneEngine
         void QueueUploads(TerrainRenderingContext& terrainContext);
         void Render(DeviceContext* context, LightingParserContext& parserContext, TerrainRenderingContext& terrainContext);
 
-        void ShortCircuit(std::string cellName, TerrainCoverageId layerId, UInt2 cellOrigin, UInt2 cellMax, const ShortCircuitUpdate& upd);
+        void ShortCircuit(uint64 cellHash, TerrainCoverageId layerId, UInt2 cellOrigin, UInt2 cellMax, const ShortCircuitUpdate& upd);
 
         Int2 GetHeightsElementSize() const { return _heightMapTileSet->GetTileSize(); }
 
@@ -537,10 +549,8 @@ namespace SceneEngine
 
         std::unique_ptr<TextureTileSet> _heightMapTileSet;
         std::vector<std::unique_ptr<TextureTileSet>> _coverageTileSet;
-        std::vector<TerrainCoverageId>         _coverageIds;
+        std::vector<TerrainCoverageId>  _coverageIds;
         std::vector<CRIPair>            _renderInfos;
-        // Int2                            _elementSize;
-        // Int2                            _coverageElementSize;
 
         typedef std::pair<CellRenderInfo*, uint32> UploadPair;
         std::vector<UploadPair>         _pendingUploads;
@@ -559,7 +569,7 @@ namespace SceneEngine
             const Float4x4& worldToProjection, const Float3& viewPositionWorld,
             CellRenderInfo& cellRenderInfo, const Float4x4& cellToWorld);
 
-        void    ShortCircuitTileUpdate(const TextureTile& tile, UInt2 nodeMin, UInt2 nodeMax, unsigned downsample, Float4x4& localToCell, const ShortCircuitUpdate& upd);
+        void    ShortCircuitTileUpdate(const TextureTile& tile, unsigned layerIndex, UInt2 nodeMin, UInt2 nodeMax, unsigned downsample, Float4x4& localToCell, const ShortCircuitUpdate& upd);
 
         auto    BuildQueuedNodeFlags(const CellRenderInfo& cellRenderInfo, unsigned nodeIndex, unsigned lodField) const -> unsigned;
 
@@ -1656,17 +1666,26 @@ namespace SceneEngine
         return result;
     }
 
-    void    TerrainCellRenderer::ShortCircuitTileUpdate(const TextureTile& tile, UInt2 nodeMin, UInt2 nodeMax, unsigned downsample, Float4x4& localToCell, const ShortCircuitUpdate& upd)
+    void    TerrainCellRenderer::ShortCircuitTileUpdate(const TextureTile& tile, unsigned coverageLayerIndex, UInt2 nodeMin, UInt2 nodeMax, unsigned downsample, Float4x4& localToCell, const ShortCircuitUpdate& upd)
     {
         auto& context = *upd._context;
 
         TRY 
         {
-            const char firstPassShader[] = "game/xleres/ui/copyterraintile.sh:WriteToMidway:cs_*";
-            const char secondPassShader[] = "game/xleres/ui/copyterraintile.sh:CommitToFinal:cs_*";
-            auto& byteCode = Assets::GetAssetDep<CompiledShaderByteCode>(firstPassShader);
-            auto& cs0 = Assets::GetAssetDep<ComputeShader>(firstPassShader);
-            auto& cs1 = Assets::GetAssetDep<ComputeShader>(secondPassShader);
+            unsigned format = 0;
+            TextureTileSet* tileSet = _heightMapTileSet.get();
+            if (coverageLayerIndex < _coverageTileSet.size()) {
+                tileSet = _coverageTileSet[coverageLayerIndex].get();
+                format = tileSet->GetFormat();
+            }
+            if (!tileSet) return;
+
+            const ::Assets::ResChar firstPassShader[] = "game/xleres/ui/copyterraintile.sh:WriteToMidway:cs_*";
+            const ::Assets::ResChar secondPassShader[] = "game/xleres/ui/copyterraintile.sh:CommitToFinal:cs_*";
+            StringMeld<64, char> defines; defines << "VALUE_FORMAT=" << format;
+            auto& byteCode = Assets::GetAssetDep<CompiledShaderByteCode>(firstPassShader, defines.get());
+            auto& cs0 = Assets::GetAssetDep<ComputeShader>(firstPassShader, defines.get());
+            auto& cs1 = Assets::GetAssetDep<ComputeShader>(secondPassShader, defines.get());
 
             struct TileCoords
             {
@@ -1674,12 +1693,12 @@ namespace SceneEngine
                 unsigned workingMinHeight, workingMaxHeight;
             } tileCoords = { localToCell(2, 3), localToCell(2, 2), 0xffffffffu, 0x0u };
 
-            auto& uploads = _heightMapTileSet->GetBufferUploads();
+            auto& uploads = tileSet->GetBufferUploads();
             auto tileCoordsBuffer = uploads.Transaction_Immediate(RWBufferDesc(sizeof(TileCoords), sizeof(TileCoords)), 
                 BufferUploads::CreateBasicPacket(sizeof(tileCoords), &tileCoords).get())->AdoptUnderlying();
             UnorderedAccessView tileCoordsUAV(tileCoordsBuffer.get());
 
-            auto midwayBuffer = uploads.Transaction_Immediate(RWTexture2DDesc(tile._width, tile._height, NativeFormat::R32_FLOAT), nullptr)->AdoptUnderlying();
+            auto midwayBuffer = uploads.Transaction_Immediate(RWTexture2DDesc(tile._width, tile._height, (format==0)?NativeFormat::R32_FLOAT:NativeFormat::Enum(format)), nullptr)->AdoptUnderlying();
             UnorderedAccessView midwayBufferUAV(midwayBuffer.get());
 
             struct Parameters
@@ -1701,14 +1720,14 @@ namespace SceneEngine
                 1<<downsample
             };
             ConstantBufferPacket pkts[] = { RenderCore::MakeSharedPkt(parameters) };
-            const ShaderResourceView* srv[] = { upd._srv.get(), &_heightMapTileSet->GetShaderResource() };
+            const ShaderResourceView* srv[] = { upd._srv.get(), &tileSet->GetShaderResource() };
 
             BoundUniforms boundLayout(byteCode);
             boundLayout.BindConstantBuffers(1, {"Parameters"});
             boundLayout.BindShaderResources(1, {"Input", "OldHeights"});
             boundLayout.Apply(context, UniformsStream(), UniformsStream(pkts, srv));
 
-            context.BindCS(MakeResourceList(1, tileCoordsUAV, midwayBufferUAV));
+            context.BindCS(MakeResourceList(1, midwayBufferUAV, tileCoordsUAV));
 
             const unsigned threadGroupWidth = 6;
             context.Bind(cs0);
@@ -1717,7 +1736,7 @@ namespace SceneEngine
 
                 //  if everything is ok up to this point, we can commit to the final
                 //  output --
-            context.BindCS(MakeResourceList(_heightMapTileSet->GetUnorderedAccessView()));
+            context.BindCS(MakeResourceList(tileSet->GetUnorderedAccessView()));
             context.Bind(cs1);
             context.Dispatch(   unsigned(XlCeil(tile._width /float(threadGroupWidth))), 
                                 unsigned(XlCeil(tile._height/float(threadGroupWidth))));
@@ -1741,67 +1760,74 @@ namespace SceneEngine
         } CATCH_END
     }
 
-    void    TerrainCellRenderer::ShortCircuit(std::string cellName, TerrainCoverageId layerId, UInt2 cellOrigin, UInt2 cellMax, const ShortCircuitUpdate& upd)
+    void    TerrainCellRenderer::ShortCircuit(uint64 cellHash, TerrainCoverageId layerId, UInt2 cellOrigin, UInt2 cellMax, const ShortCircuitUpdate& upd)
     {
             //      We need to find the CellRenderInfo objects associated with the terrain cell with this name.
             //      Then, for any completed height map tiles within that object, we must copy in the data
             //      from our update information (sometimes doing the downsample along the way).
             //      This will update the tiles with new data, without hitting the disk or requiring a re-upload
 
+        auto i = LowerBound(_renderInfos, cellHash);
+        if (i == _renderInfos.end() || i->first != cellHash) return;
+
+        auto& cri = *i->second;
+        auto& sourceCell = *i->second->_sourceCell;
+
+        TextureTileSet* tileSet = nullptr;
+        std::vector<NodeCoverageInfo>* tiles = nullptr;
+        unsigned coverageLayerIndex = ~unsigned(0);
+        
         if (layerId == CoverageId_Heights) {
-                //  Don't use GetResourceDep here -- we don't want to destroy the TerrainCell, because there
-                //  maybe be CellRenderInfo's pointing to it. We need some better way to handle this case
-            auto& sourceCell = _ioFormat->LoadHeights(cellName.c_str(), true);
-            for (auto i=_renderInfos.begin(); i!=_renderInfos.end(); ++i) {
-                if (i->second->_sourceCell == &sourceCell) {
-                    auto& tileSet = *_heightMapTileSet;
+            tileSet = _heightMapTileSet.get();
+            tiles = &cri._heightTiles;
+        } else {
+            for (unsigned c=0; c<_coverageIds.size(); ++c)
+                if (_coverageIds[c] == layerId) break;
+            if (coverageLayerIndex >= unsigned(_coverageTileSet.size())) return;
+            tileSet = _coverageTileSet[coverageLayerIndex].get();
+            tiles = &cri._coverage[coverageLayerIndex]._tiles;
+        }
 
-                        //  Got a match. Find all with completed tiles (ignoring the pending tiles) and 
-                        //  write over that data.
-                    auto& cri = *i->second;
-                    for (auto ni=cri._heightTiles.begin(); ni!=cri._heightTiles.end(); ++ni) {
+        if (!tileSet || !tiles) return;
 
-                            // todo -- cancel any pending tiles, because they can cause problems
+            //  Got a match. Find all with completed tiles (ignoring the pending tiles) and 
+            //  write over that data.
+        for (auto ni=tiles->begin(); ni!=tiles->end(); ++ni) {
 
-                        if (tileSet.IsValid(ni->_tile)) {
-                            auto nodeIndex = std::distance(cri._heightTiles.begin(), ni);
-                            auto& sourceNode = sourceCell._nodes[nodeIndex];
+                // todo -- cancel any pending tiles, because they can cause problems
 
-                                //  We need to transform the coordinates for this node into
-                                //  the uber-surface coordinate system. If there's an overlap
-                                //  between the node coords and the update box, we need to do
-                                //  a copy.
+            if (tileSet->IsValid(ni->_tile)) {
+                auto nodeIndex = std::distance(tiles->begin(), ni);
+                auto& sourceNode = sourceCell._nodes[nodeIndex];
 
-                            Float3 nodeMinInCell = TransformPoint(sourceNode->_localToCell, Float3(0.f, 0.f, 0.f));
-                            Float3 nodeMaxInCell = TransformPoint(sourceNode->_localToCell, Float3(1.f, 1.f, float(0xffff)));
+                    //  We need to transform the coordinates for this node into
+                    //  the uber-surface coordinate system. If there's an overlap
+                    //  between the node coords and the update box, we need to do
+                    //  a copy.
 
-                            UInt2 nodeMin(
-                                (unsigned)LinearInterpolate(float(cellOrigin[0]), float(cellMax[0]), nodeMinInCell[0]),
-                                (unsigned)LinearInterpolate(float(cellOrigin[1]), float(cellMax[1]), nodeMinInCell[1]));
-                            UInt2 nodeMax(
-                                (unsigned)LinearInterpolate(float(cellOrigin[0]), float(cellMax[0]), nodeMaxInCell[0]),
-                                (unsigned)LinearInterpolate(float(cellOrigin[1]), float(cellMax[1]), nodeMaxInCell[1]));
+                Float3 nodeMinInCell = TransformPoint(sourceNode->_localToCell, Float3(0.f, 0.f, 0.f));
+                Float3 nodeMaxInCell = TransformPoint(sourceNode->_localToCell, Float3(1.f, 1.f, float(0xffff)));
 
-                            if (    nodeMin[0] <= upd._updateAreaMaxs[0] && nodeMax[0] >= upd._updateAreaMins[0]
-                                &&  nodeMin[1] <= upd._updateAreaMaxs[1] && nodeMax[1] >= upd._updateAreaMins[1]) {
+                UInt2 nodeMin(
+                    (unsigned)LinearInterpolate(float(cellOrigin[0]), float(cellMax[0]), nodeMinInCell[0]),
+                    (unsigned)LinearInterpolate(float(cellOrigin[1]), float(cellMax[1]), nodeMinInCell[1]));
+                UInt2 nodeMax(
+                    (unsigned)LinearInterpolate(float(cellOrigin[0]), float(cellMax[0]), nodeMaxInCell[0]),
+                    (unsigned)LinearInterpolate(float(cellOrigin[1]), float(cellMax[1]), nodeMaxInCell[1]));
 
-                                    // downsampling required depends on which field we're in.
-                                auto fi = std::find_if(sourceCell._nodeFields.cbegin(), sourceCell._nodeFields.cend(),
-                                    [=](const TerrainCell::NodeField& field) { return unsigned(nodeIndex) >= field._nodeBegin && unsigned(nodeIndex) < field._nodeEnd; });
-                                size_t fieldIndex = std::distance(sourceCell._nodeFields.cbegin(), fi);
-                                unsigned downsample = unsigned(4-fieldIndex);
+                if (    nodeMin[0] <= upd._updateAreaMaxs[0] && nodeMax[0] >= upd._updateAreaMins[0]
+                    &&  nodeMin[1] <= upd._updateAreaMaxs[1] && nodeMax[1] >= upd._updateAreaMins[1]) {
 
-                                ShortCircuitTileUpdate(ni->_tile, nodeMin, nodeMax, downsample, sourceNode->_localToCell, upd);
+                        // downsampling required depends on which field we're in.
+                    auto fi = std::find_if(sourceCell._nodeFields.cbegin(), sourceCell._nodeFields.cend(),
+                        [=](const TerrainCell::NodeField& field) { return unsigned(nodeIndex) >= field._nodeBegin && unsigned(nodeIndex) < field._nodeEnd; });
+                    size_t fieldIndex = std::distance(sourceCell._nodeFields.cbegin(), fi);
+                    unsigned downsample = unsigned(4-fieldIndex);
 
-                            }
-                        }
-                    }
+                    ShortCircuitTileUpdate(ni->_tile, coverageLayerIndex, nodeMin, nodeMax, downsample, sourceNode->_localToCell, upd);
+
                 }
             }
-        } else {
-
-            // we have to support short curcuit for coverage layers as well
-
         }
     }
 
@@ -2007,10 +2033,10 @@ namespace SceneEngine
 
     //////////////////////////////////////////////////////////////////////////////////////////
     static void DoShortCircuitUpdate(
-        std::string cellName, TerrainCoverageId layerId, std::shared_ptr<TerrainCellRenderer> renderer,
-        UInt2 cellOrigin, UInt2 cellMax, const ShortCircuitUpdate& upd)
+        uint64 cellHash, TerrainCoverageId layerId, std::shared_ptr<TerrainCellRenderer> renderer,
+        TerrainCellId::UberSurfaceAddress uberAddress, const ShortCircuitUpdate& upd)
     {
-        renderer->ShortCircuit(cellName, layerId, cellOrigin, cellMax, upd);
+        renderer->ShortCircuit(cellHash, layerId, uberAddress._mins, uberAddress._maxs, upd);
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////
@@ -2762,42 +2788,6 @@ namespace SceneEngine
         }
     }
 
-    static void RegisterShortCircuitUpdate(
-        const TerrainConfig& terrainCfg, unsigned overlap,
-        GenericUberSurfaceInterface* uberInterface,
-        std::shared_ptr<TerrainCellRenderer> renderer,
-        TerrainCoverageId layerId)
-    {
-        unsigned layerIndex = ~unsigned(0x0);
-
-        for (unsigned c = 0; c<terrainCfg.GetCoverageLayerCount(); ++c)
-            if (terrainCfg.GetCoverageLayer(c)._id == layerId) 
-                layerIndex = c;
-
-            //  Register cells for short-circuit update... Do we need to do this for every single cell
-            //  or just those that are within the limited area we're going to load?
-        for (unsigned y=0; y<terrainCfg._cellCount[1]; ++y) {
-            for (unsigned x=0; x<terrainCfg._cellCount[0]; ++x) {
-                char cellFile[256];
-                terrainCfg.GetCellFilename(cellFile, dimof(cellFile), UInt2(x, y), layerId);
-                std::string filename = cellFile;
-
-                UInt2 cellOrigin, cellMax;
-                if (layerId == CoverageId_Heights) {
-                    cellOrigin = AsUInt2(terrainCfg.CellBasedCoordsToTerrainCoords(Float2(float(x), float(y))));
-                    cellMax = AsUInt2(terrainCfg.CellBasedCoordsToTerrainCoords(Float2(float(x+1), float(y+1))));
-                } else {
-                    cellOrigin = AsUInt2(terrainCfg.CellBasedCoordsToLayerCoords(layerIndex, Float2(float(x), float(y))));
-                    cellMax = AsUInt2(terrainCfg.CellBasedCoordsToLayerCoords(layerIndex, Float2(float(x+1), float(y+1))));
-                }
-
-                uberInterface->RegisterCell(
-                    filename.c_str(), cellOrigin, cellMax, overlap,
-                    std::bind(&DoShortCircuitUpdate, filename, layerId, renderer, cellOrigin, cellMax, std::placeholders::_1));
-            }
-        }
-    }
-
     //////////////////////////////////////////////////////////////////////////////////////////
     TerrainManager::TerrainManager(
         const TerrainConfig& cfg,
@@ -2845,14 +2835,6 @@ namespace SceneEngine
                 TerrainCellId cell;
                 cfg.GetCellFilename(cell._heightMapFilename, dimof(cell._heightMapFilename), UInt2(cellX, cellY), CoverageId_Heights);
 
-                for (unsigned c=0; c<std::min(cfg.GetCoverageLayerCount(), TerrainCellId::MaxCoverageCount); ++c) {
-                    const auto& l = cfg.GetCoverageLayer(c);
-                    cfg.GetCellFilename(
-                        cell._coverageFilename[c], dimof(cell._coverageFilename[0]), 
-                        UInt2(cellX, cellY), l._id);
-                    cell._coverageIds[c] = l._id;
-                }
-
                 auto t = cfg.CellBasedCoordsToTerrainCoords(Float2(float(cellX), float(cellY)));
                 auto cellOrigin = pimpl->_coords.TerrainCoordsToWorldSpace(t);
                 cell._cellToWorld = Float4x4(
@@ -2872,6 +2854,20 @@ namespace SceneEngine
                     float zOffset = (*i)->_localToCell(2, 3);
                     minHeight = std::min(minHeight, zOffset);
                     maxHeight = std::max(maxHeight, zOffset + zScale);
+                }
+
+                cell._heightsToUber._mins = AsUInt2(t);
+                cell._heightsToUber._maxs = cell._heightsToUber._mins + UInt2(cfg.CellDimensionsInNodes()[0] * cfg.NodeDimensionsInElements()[0], cfg.CellDimensionsInNodes()[1] * cfg.NodeDimensionsInElements()[1]);
+
+                for (unsigned c=0; c<std::min(cfg.GetCoverageLayerCount(), TerrainCellId::MaxCoverageCount); ++c) {
+                    const auto& l = cfg.GetCoverageLayer(c);
+                    cfg.GetCellFilename(
+                        cell._coverageFilename[c], dimof(cell._coverageFilename[0]), 
+                        UInt2(cellX, cellY), l._id);
+                    cell._coverageIds[c] = l._id;
+
+                    cell._coverageToUber[c]._mins = AsUInt2(cfg.CellBasedCoordsToLayerCoords(c, Float2(float(cellX), float(cellY))));
+                    cell._coverageToUber[c]._maxs = AsUInt2(cfg.CellBasedCoordsToLayerCoords(c, Float2(float(cellX+1), float(cellY+1))));
                 }
 
                 cell._aabbMin = Expand(cellOrigin, minHeight + pimpl->_coords.TerrainOffset()[2]);
@@ -2900,6 +2896,7 @@ namespace SceneEngine
         pimpl->_cfg = cfg;
 
         const bool buildUberInterfaces = true;
+        const bool registerShortCircuit = true;
 
         if (buildUberInterfaces) {
             ::Assets::ResChar uberSurfaceFile[MaxPath];
@@ -2910,9 +2907,15 @@ namespace SceneEngine
                 auto& uberSurface = const_cast<TerrainUberHeightsSurface&>(Assets::GetAsset<TerrainUberHeightsSurface>(uberSurfaceFile));
                 pimpl->_uberSurfaceInterface = std::make_unique<HeightsUberSurfaceInterface>(std::ref(uberSurface), ioFormat);
 
-                RegisterShortCircuitUpdate(
-                    cfg, overlap,
-                    pimpl->_uberSurfaceInterface.get(), pimpl->_renderer, CoverageId_Heights);
+                if (registerShortCircuit) {
+                        //  Register cells for short-circuit update... Do we need to do this for every single cell
+                        //  or just those that are within the limited area we're going to load?
+                    for (auto c=pimpl->_cells.cbegin(); c!=pimpl->_cells.cend(); ++c) {
+                        pimpl->_uberSurfaceInterface->RegisterCell(
+                            c->_heightMapFilename, c->_heightsToUber._mins, c->_heightsToUber._maxs, overlap,
+                            std::bind(&DoShortCircuitUpdate, c->BuildHash(), CoverageId_Heights, pimpl->_renderer, c->_heightsToUber, std::placeholders::_1));
+                    }
+                }
             }
 
             for (unsigned c=0; c<cfg.GetCoverageLayerCount(); ++c) {
@@ -2928,9 +2931,15 @@ namespace SceneEngine
                 auto& uberSurface = const_cast<TerrainUberSurface<uint8>&>(Assets::GetAsset<TerrainUberSurface<uint8>>(uberSurfaceFile));
                 ci._interface = std::make_unique<CoverageUberSurfaceInterface>(std::ref(uberSurface), ioFormat);
 
-                RegisterShortCircuitUpdate(
-                    cfg, overlap,
-                    ci._interface.get(), pimpl->_renderer, l._id);
+                if (registerShortCircuit) {
+                        //  Register cells for short-circuit update... Do we need to do this for every single cell
+                        //  or just those that are within the limited area we're going to load?
+                    for (auto cell=pimpl->_cells.cbegin(); cell!=pimpl->_cells.cend(); ++cell) {
+                        ci._interface->RegisterCell(
+                            cell->_coverageFilename[c], cell->_coverageToUber[c]._mins, cell->_coverageToUber[c]._maxs, overlap,
+                            std::bind(&DoShortCircuitUpdate, cell->BuildHash(), l._id, pimpl->_renderer, cell->_coverageToUber[c], std::placeholders::_1));
+                    }
+                }
 
                 pimpl->_coverageInterfaces.push_back(std::move(ci));
             }

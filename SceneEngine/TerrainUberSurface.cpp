@@ -770,7 +770,7 @@ namespace SceneEngine
 
             //  run a shader that will modify the gpu-cached part of the uber surface as we need
 
-        ApplyTool(adjMins, adjMaxs, "AddNoise", center, radius, adjustment, nullptr, 0);
+        ApplyTool(adjMins, adjMaxs, baseShader "AddNoise", center, radius, adjustment, nullptr, 0);
     }
 
     void    HeightsUberSurfaceInterface::CopyHeight(Float2 center, Float2 source, float radius, float adjustment, float powerValue, unsigned flags)
