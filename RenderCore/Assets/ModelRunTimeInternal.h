@@ -283,6 +283,8 @@ namespace RenderCore { namespace Assets
 
     namespace ModelConstruction { class BuffersUnderConstruction; class ParamBoxDescriptions; }
 
+    class DeferredShaderResource;
+
     class ModelRenderer::Pimpl
     {
     public:
@@ -328,7 +330,7 @@ namespace RenderCore { namespace Assets
             unsigned    _vertexStride;
         };
 
-        std::vector<const Metal::DeferredShaderResource*> _boundTextures;
+        std::vector<const DeferredShaderResource*> _boundTextures;
         size_t  _texturesPerMaterial;
 
         ///////////////////////////////////////////////////////////////////////////////

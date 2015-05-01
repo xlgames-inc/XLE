@@ -9,12 +9,14 @@
 #include "RawAnimationCurve.h"
 #include "SharedStateSet.h"
 #include "AssetUtils.h"     // actually just needed for chunk id
+#include "DeferredShaderResource.h"
 #include "../RenderUtils.h"
 
 #include "../Metal/Shader.h"
 #include "../Metal/InputLayout.h"
 #include "../Metal/DeviceContext.h"
 #include "../Metal/DeviceContextImpl.h"
+#include "../Metal/ShaderResource.h"
 
 #include "../Techniques/ResourceBox.h"
 #include "../Techniques/Techniques.h"

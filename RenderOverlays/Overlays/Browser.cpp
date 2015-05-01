@@ -13,6 +13,7 @@
 #include "../../RenderCore/Metal/InputLayout.h"
 #include "../../RenderCore/Assets/SharedStateSet.h"
 #include "../../RenderCore/Assets/IModelFormat.h"
+#include "../../RenderCore/Assets/DeferredShaderResource.h"
 #include "../../RenderCore/Metal/DeviceContextImpl.h"
 #include "../../RenderCore/IThreadContext.h"
 
@@ -567,7 +568,7 @@ namespace Overlays
     class TextureBrowser::Pimpl
     {
     public:
-        LRUCache<RenderCore::Metal::DeferredShaderResource> _resources;
+        LRUCache<RenderCore::Assets::DeferredShaderResource> _resources;
         Pimpl();
     };
 
@@ -588,7 +589,7 @@ namespace Overlays
         if (!res) {
             utf8 utf8Filename[MaxPath];
             ucs2_2_utf8(AsPointer(filename.cbegin()), filename.size(), utf8Filename, dimof(utf8Filename));
-            res = std::make_shared<RenderCore::Metal::DeferredShaderResource>((const char*)utf8Filename);
+            res = std::make_shared<RenderCore::Assets::DeferredShaderResource>((const char*)utf8Filename);
             _pimpl->_resources.Insert(hashedName, res);
         }
 

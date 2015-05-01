@@ -8,8 +8,14 @@
 #include "PlatformInterface.h"
 #include "../Utility/Threading/Mutex.h"
 #include "../Utility/Threading/LockFree.h"
+#include "../Utility/Streams/PathUtils.h"
+#include "../Utility/Conversion.h"
+#include "../Utility/StringUtils.h"
 #include <queue>
 #include <thread>
+
+#include "../Foreign/DirectXTex/DirectXTex/DirectXTex.h"
+
 
 namespace BufferUploads
 {
@@ -201,6 +207,7 @@ namespace BufferUploads
                                 // when after we complete a task, let's encourage this thread to go back into
                                 // a stall (unless all of our threads are saturated)
                             Threading::YieldTimeSlice();
+                            continue;
                         }
 
                             // Wait for the event with the "alertable" flag set true
@@ -210,7 +217,6 @@ namespace BufferUploads
                         XlWaitForMultipleSyncObjects(
                             2, this->_events,
                             false, XL_INFINITE, true);
-                        if (this->_workerQuit) break;
                     }
                 }
             );
@@ -267,7 +273,7 @@ namespace BufferUploads
 
     static CompletionThreadPool& GetThreadPool()
     {
-        static CompletionThreadPool s_threadPool(4);
+        static CompletionThreadPool s_threadPool(2);
         return s_threadPool;
     }
 
@@ -296,10 +302,11 @@ namespace BufferUploads
 
         // Queue read operation begin (it will happen asynchronously)...
 
+        _marker = std::make_shared<Marker>();
+        
         XlSetMemory(&_overlappedStatus._internal, 0, sizeof(_overlappedStatus._internal));
         _overlappedStatus._internal.Pointer = (void*)_offset;
         _overlappedStatus._returnPointer = this;
-        _marker = std::make_shared<Marker>();
 
         auto* o = &_overlappedStatus;
         GetThreadPool().Enqueue(
@@ -319,8 +326,8 @@ namespace BufferUploads
                     auto lastError = GetLastError();
                     (void)lastError;
 
-                    o->_returnPointer.reset();
                     pkt->_marker->SetState(Assets::AssetState::Invalid);
+                    o->_returnPointer.reset();
                 }
             });
         
@@ -353,6 +360,142 @@ namespace BufferUploads
     intrusive_ptr<DataPacket> CreateFileDataSource(const void* fileHandle, size_t offset, size_t dataSize, TexturePitches pitches)
     {
         return make_intrusive<FileDataSource>(fileHandle, offset, dataSize, pitches);
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class StreamingTexture : public DataPacket
+    {
+    public:
+        virtual void*           GetData         (SubResource subRes);
+        virtual size_t          GetDataSize     (SubResource subRes) const;
+        virtual TexturePitches  GetPitches      (SubResource subRes) const;
+
+        virtual std::shared_ptr<Marker>     BeginBackgroundLoad();
+
+        StreamingTexture(const ::Assets::ResChar filename[]);
+        virtual ~StreamingTexture();
+
+    protected:
+        wchar_t _filename[MaxPath];
+        
+        DirectX::ScratchImage _image;
+        DirectX::TexMetadata _texMetadata;
+
+        intrusive_ptr<StreamingTexture> _returnPointer;
+        std::shared_ptr<Marker> _marker;
+    };
+
+    void* StreamingTexture::GetData(SubResource subRes)
+    {
+        auto arrayIndex = subRes >> 16u, mip = subRes & 0xffffu;
+        auto* image = _image.GetImage(mip, arrayIndex, 0);
+        if (image) return image->pixels;
+        return nullptr;
+    }
+
+    size_t StreamingTexture::GetDataSize(SubResource subRes) const
+    {
+        auto arrayIndex = subRes >> 16u, mip = subRes & 0xffffu;
+        auto* image = _image.GetImage(mip, arrayIndex, 0);
+        if (image) return image->slicePitch;
+        return 0;
+    }
+
+    TexturePitches StreamingTexture::GetPitches(SubResource subRes) const
+    {
+        auto arrayIndex = subRes >> 16u, mip = subRes & 0xffffu;
+        auto* image = _image.GetImage(mip, arrayIndex, 0);
+        if (image) return TexturePitches(unsigned(image->rowPitch), unsigned(image->slicePitch));
+        return TexturePitches();
+    }
+
+    static CompletionThreadPool& GetTextureProcessingPool()
+    {
+        static CompletionThreadPool s_threadPool(4);
+        return s_threadPool;
+    }
+
+    auto StreamingTexture::BeginBackgroundLoad() -> std::shared_ptr < Marker >
+    {
+        assert(!_marker && !_returnPointer);
+
+        _marker = std::make_shared<Marker>();
+        _returnPointer = this;      // hold a reference while the background operation is occurring
+
+        GetTextureProcessingPool().Enqueue(
+            [this]()
+            {
+                using namespace DirectX;
+                HRESULT hresult = -1;
+                auto* ext = XlExtension((const ucs2*)this->_filename);
+                assert(ext);
+                if (ext && !XlCompareStringI(ext, (const ucs2*)L"dds")) {
+                    hresult = LoadFromDDSFile(
+                        this->_filename, DDS_FLAGS_NONE,
+                        &_texMetadata, _image);
+                } else if (ext && !XlCompareStringI(ext, (const ucs2*)L"tga")) {
+                    hresult = LoadFromTGAFile(
+                        this->_filename, &_texMetadata, _image);
+                } else {
+                    hresult = LoadFromWICFile(
+                        this->_filename, WIC_FLAGS_NONE,
+                        &_texMetadata, _image);
+                }
+
+                if (SUCCEEDED(hresult)) {
+                    auto& desc = this->_marker->_desc;
+                    desc._type = BufferDesc::Type::Texture;
+                    desc._textureDesc._width = uint32(this->_texMetadata.width);
+                    desc._textureDesc._height = uint32(this->_texMetadata.height);
+                    desc._textureDesc._depth = uint32(this->_texMetadata.depth);
+                    desc._textureDesc._arrayCount = uint8(this->_texMetadata.arraySize);
+                    desc._textureDesc._mipCount = uint8(this->_texMetadata.mipLevels);
+                    desc._textureDesc._samples = TextureSamples();
+                    desc._textureDesc._nativePixelFormat = (unsigned)this->_texMetadata.format;
+                    switch (this->_texMetadata.dimension) {
+                    case TEX_DIMENSION_TEXTURE1D: desc._textureDesc._dimensionality = TextureDesc::Dimensionality::T1D; break;
+                    default:
+                    case TEX_DIMENSION_TEXTURE2D: desc._textureDesc._dimensionality = TextureDesc::Dimensionality::T2D; break;
+                    case TEX_DIMENSION_TEXTURE3D: desc._textureDesc._dimensionality = TextureDesc::Dimensionality::T3D; break;
+                    }
+                    if (this->_texMetadata.IsCubemap())
+                        desc._textureDesc._dimensionality = TextureDesc::Dimensionality::CubeMap;
+
+                    if (this->_texMetadata.mipLevels <= 1) {
+                        DirectX::ScratchImage newImage;
+                        hresult = GenerateMipMaps(*this->_image.GetImage(0,0,0), (DWORD)TEX_FILTER_DEFAULT, 0, newImage);
+                        if (SUCCEEDED(hresult)) {
+                            this->_image = std::move(newImage);
+                            desc._textureDesc._mipCount = uint8(this->_image.GetMetadata().mipLevels);
+                        }
+                    }
+
+                    if (SUCCEEDED(hresult)) {
+                        this->_marker->SetState(Assets::AssetState::Ready);
+                        return;
+                    }
+                }
+
+                this->_marker->SetState(Assets::AssetState::Invalid);
+                this->_returnPointer.reset();
+            });
+        
+        return _marker;
+    }
+
+    StreamingTexture::StreamingTexture(const ::Assets::ResChar filename[])
+    {
+        XlZeroMemory(_texMetadata);
+        Conversion::Convert(_filename, dimof(_filename), filename, &filename[XlStringLen(filename)]);
+    }
+
+    StreamingTexture::~StreamingTexture()
+    {}
+
+    intrusive_ptr<DataPacket> CreateStreamingTextureSource(const ::Assets::ResChar filename[])
+    {
+        return make_intrusive<StreamingTexture>(filename);
     }
 
 }

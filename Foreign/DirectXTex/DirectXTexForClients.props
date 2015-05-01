@@ -11,6 +11,9 @@
     <Lib>
       <AdditionalDependencies>$(ForeignDir)\DirectXTex\DirectXTex\Bin\$(DXTexDir)\$(Platform)\$(RawConfiguration)\DirectXTex.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Lib>
+    <Link>
+      <AdditionalDependencies>$(ForeignDir)\DirectXTex\DirectXTex\Bin\$(DXTexDir)\$(Platform)\$(RawConfiguration)\DirectXTex.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
   </ItemDefinitionGroup>
   <ItemGroup />
 </Project>

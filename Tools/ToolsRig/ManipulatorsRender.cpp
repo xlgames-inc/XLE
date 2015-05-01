@@ -11,6 +11,8 @@
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/InputLayout.h"
 #include "../../RenderCore/Metal/State.h"
+#include "../../RenderCore/Metal/ShaderResource.h"
+#include "../../RenderCore/Assets/DeferredShaderResource.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
@@ -90,7 +92,7 @@ namespace ToolsRig
             ConstantBufferPacket constantBufferPackets[2];
             constantBufferPackets[0] = RenderCore::MakeSharedPkt(highlightParameters);
 
-            auto& circleHighlight = Assets::GetAssetDep<DeferredShaderResource>("game/xleres/DefaultResources/circlehighlight.png");
+            auto& circleHighlight = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/circlehighlight.png");
             const ShaderResourceView* resources[] = { &depthSrv, &circleHighlight.GetShaderResource() };
 
             BoundUniforms boundLayout(shaderProgram);
@@ -161,7 +163,7 @@ namespace ToolsRig
             ConstantBufferPacket constantBufferPackets[2];
             constantBufferPackets[0] = RenderCore::MakeSharedPkt(highlightParameters);
 
-            auto& circleHighlight = Assets::GetAssetDep<DeferredShaderResource>("game/xleres/DefaultResources/circlehighlight.png");
+            auto& circleHighlight = Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/circlehighlight.png");
             const ShaderResourceView* resources[] = { &depthSrv, &circleHighlight.GetShaderResource() };
 
             BoundUniforms boundLayout(shaderProgram);

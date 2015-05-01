@@ -13,6 +13,7 @@
 #include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/Techniques.h"
+#include "../RenderCore/Assets/DeferredShaderResource.h"
 #include "../RenderCore/Metal/RenderTargetView.h"
 #include "../RenderCore/Metal/ShaderResource.h"
 #include "../RenderCore/Metal/State.h"
@@ -72,20 +73,20 @@ namespace SceneEngine
         VolumetricFogShaders(const Desc& desc);
         ~VolumetricFogShaders();
 
-        const Assets::DependencyValidation& GetDependencyValidation() const   { return *_validationCallback; }
+        const ::Assets::DependencyValidation& GetDependencyValidation() const   { return *_validationCallback; }
     private:
-        std::shared_ptr<Assets::DependencyValidation>  _validationCallback;
+        std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
     };
 
     VolumetricFogShaders::VolumetricFogShaders(const Desc& desc)
     {
         char defines[256];
         _snprintf_s(defines, _TRUNCATE, "ESM_SHADOW_MAPS=%i;DO_NOISE_OFFSET=%i", int(desc._esmShadowMaps), int(desc._doNoiseOffset));
-        auto* buildExponentialShadowMap = &Assets::GetAssetDep<ShaderProgram>(
+        auto* buildExponentialShadowMap = &::Assets::GetAssetDep<ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen:vs_*", "game/xleres/VolumetricEffect/shadowsfilter.psh:BuildExponentialShadowMap:ps_*", defines);
-        auto* horizontalFilter = &Assets::GetAssetDep<ShaderProgram>(
+        auto* horizontalFilter = &::Assets::GetAssetDep<ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen:vs_*", "game/xleres/VolumetricEffect/shadowsfilter.psh:HorizontalBoxFilter11:ps_*");
-        auto* verticalFilter = &Assets::GetAssetDep<ShaderProgram>(
+        auto* verticalFilter = &::Assets::GetAssetDep<ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen:vs_*", "game/xleres/VolumetricEffect/shadowsfilter.psh:VerticalBoxFilter11:ps_*");
 
         auto buildExponentialShadowMapBinding = std::make_unique<BoundUniforms>(std::ref(*buildExponentialShadowMap));
@@ -101,15 +102,15 @@ namespace SceneEngine
         verticalFilterBinding->BindConstantBuffer(Hash64("$Globals"), 0, 1);
         verticalFilterBinding->BindConstantBuffer(Hash64("Filtering"), 1, 1);
 
-        auto* injectLight = &Assets::GetAssetDep<ComputeShader>("game/xleres/volumetriceffect/injectlight.csh:InjectLighting:cs_*", defines);
-        auto* propagateLight = &Assets::GetAssetDep<ComputeShader>("game/xleres/volumetriceffect/injectlight.csh:PropagateLighting:cs_*", defines);
+        auto* injectLight = &::Assets::GetAssetDep<ComputeShader>("game/xleres/volumetriceffect/injectlight.csh:InjectLighting:cs_*", defines);
+        auto* propagateLight = &::Assets::GetAssetDep<ComputeShader>("game/xleres/volumetriceffect/injectlight.csh:PropagateLighting:cs_*", defines);
 
-        auto injectLightBinding = std::make_unique<BoundUniforms>(std::ref(Assets::GetAssetDep<CompiledShaderByteCode>("game/xleres/volumetriceffect/injectlight.csh:InjectLighting:cs_*", defines)));
+        auto injectLightBinding = std::make_unique<BoundUniforms>(std::ref(::Assets::GetAssetDep<CompiledShaderByteCode>("game/xleres/volumetriceffect/injectlight.csh:InjectLighting:cs_*", defines)));
         Techniques::TechniqueContext::BindGlobalUniforms(*injectLightBinding);
         injectLightBinding->BindConstantBuffer(Hash64("VolumetricFogConstants"), 0, 1);
         injectLightBinding->BindConstantBuffer(Hash64("ArbitraryShadowProjection"), 2, 1);
 
-        auto propagateLightBinding = std::make_unique<BoundUniforms>(std::ref(Assets::GetAssetDep<CompiledShaderByteCode>("game/xleres/volumetriceffect/injectlight.csh:PropagateLighting:cs_*", defines)));
+        auto propagateLightBinding = std::make_unique<BoundUniforms>(std::ref(::Assets::GetAssetDep<CompiledShaderByteCode>("game/xleres/volumetriceffect/injectlight.csh:PropagateLighting:cs_*", defines)));
         Techniques::TechniqueContext::BindGlobalUniforms(*propagateLightBinding);
         propagateLightBinding->BindConstantBuffer(Hash64("VolumetricFogConstants"), 0, 1);
         injectLightBinding->BindConstantBuffer(Hash64("ArbitraryShadowProjection"), 2, 1);
@@ -127,19 +128,19 @@ namespace SceneEngine
         if (desc._useMsaaSamplers) {
             XlCatString(definesTable, dimof(definesTable), ";MSAA_SAMPLERS=1");
         }
-        auto* resolveLight = &Assets::GetAssetDep<ShaderProgram>(
+        auto* resolveLight = &::Assets::GetAssetDep<ShaderProgram>(
             vertexShader, "game/xleres/VolumetricEffect/resolvefog.psh:ResolveFog:ps_*", definesTable);
 
         auto resolveLightBinding = std::make_unique<BoundUniforms>(std::ref(*resolveLight));
         resolveLightBinding->BindConstantBuffer(Hash64("GlobalTransform"), 0, 0);
 
-        auto validationCallback = std::make_shared<Assets::DependencyValidation>();
-        Assets::RegisterAssetDependency(validationCallback, &buildExponentialShadowMap->GetDependencyValidation());
-        Assets::RegisterAssetDependency(validationCallback, &horizontalFilter->GetDependencyValidation());
-        Assets::RegisterAssetDependency(validationCallback, &verticalFilter->GetDependencyValidation());
-        Assets::RegisterAssetDependency(validationCallback, &injectLight->GetDependencyValidation());
-        Assets::RegisterAssetDependency(validationCallback, &propagateLight->GetDependencyValidation());
-        Assets::RegisterAssetDependency(validationCallback, &resolveLight->GetDependencyValidation());
+        auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
+        ::Assets::RegisterAssetDependency(validationCallback, &buildExponentialShadowMap->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(validationCallback, &horizontalFilter->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(validationCallback, &verticalFilter->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(validationCallback, &injectLight->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(validationCallback, &propagateLight->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(validationCallback, &resolveLight->GetDependencyValidation());
 
             //  Commit pointers
         _buildExponentialShadowMap = std::move(buildExponentialShadowMap);
@@ -393,7 +394,7 @@ namespace SceneEngine
                 fogRes._inscatterShadowingValuesUnorderedAccess, fogRes._transmissionValuesUnorderedAccess,
                 fogRes._densityValuesUnorderedAccess, fogRes._inscatterFinalsValuesUnorderedAccess));
             context->BindCS(MakeResourceList(2, fogRes._shadowMapShaderResource));
-            context->BindCS(MakeResourceList(9, Assets::GetAssetDep<Metal::DeferredShaderResource>("game/xleres/DefaultResources/balanced_noise.dds").GetShaderResource()));
+            context->BindCS(MakeResourceList(9, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/balanced_noise.dds").GetShaderResource()));
             // context->BindCS(MakeResourceList(
             //     lightingParserContext.GetGlobalTransformCB(), Metal::ConstantBuffer(), Metal::ConstantBuffer(), 
             //     *shadowFrustum._projectConstantBuffer, lightingParserContext.GetGlobalStateCB()));

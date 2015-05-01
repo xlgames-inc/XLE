@@ -8,6 +8,8 @@
 
 #include "../RenderCore/Metal/Forward.h"
 
+namespace RenderCore { namespace Assets { class DeferredShaderResource; } }
+
 namespace SceneEngine
 {
     class LightingParserContext;
@@ -20,9 +22,9 @@ namespace SceneEngine
     class SkyTextureParts
     {
     public:
-        const RenderCore::Metal::DeferredShaderResource*      _faces12;
-        const RenderCore::Metal::DeferredShaderResource*      _faces34;
-        const RenderCore::Metal::DeferredShaderResource*      _face5;
+        const RenderCore::Assets::DeferredShaderResource*      _faces12;
+        const RenderCore::Assets::DeferredShaderResource*      _faces34;
+        const RenderCore::Assets::DeferredShaderResource*      _face5;
         int                                             _projectionType;
 
         SkyTextureParts(const char skyTextureName[]);

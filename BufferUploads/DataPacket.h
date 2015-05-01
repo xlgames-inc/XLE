@@ -86,6 +86,9 @@ namespace BufferUploads
         const void* fileHandle, size_t offset, size_t dataSize,
         TexturePitches pitches);
 
+    buffer_upload_dll_export intrusive_ptr<DataPacket> CreateStreamingTextureSource(
+        const ::Assets::ResChar filename[]);
+
     inline TexturePitches::TexturePitches(unsigned rowPitch, unsigned slicePitch)
     : _rowPitch(rowPitch), _slicePitch(slicePitch) {}
     inline TexturePitches::TexturePitches()

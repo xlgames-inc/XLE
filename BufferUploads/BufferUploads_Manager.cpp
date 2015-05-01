@@ -435,24 +435,12 @@ namespace BufferUploads
         } else {
             lodLevelMin = 0;
         }
-        return PartialResource(Box2D(), 0, lodLevelMax, 1);
+        return PartialResource(Box2D(), 0, lodLevelMax, 0);
     }
 
     TransactionID AssemblyLine::Transaction_Begin(const BufferDesc& desc, DataPacket* initialisationData, TransactionOptions::BitField flags)
     {
         assert(desc._name[0]);
-        #if defined(XL_DEBUG)
-            if (desc._type == BufferDesc::Type::Texture) {
-                assert(desc._textureDesc._mipCount <= (IntegerLog2(std::max(desc._textureDesc._width, desc._textureDesc._height))+1));
-                assert(desc._textureDesc._width && desc._textureDesc._height);
-            }
-            #if defined(DIRECT3D9)
-                if (desc._type == BufferDesc::Type::Texture) {
-                    assert(desc._textureDesc._nativePixelFormat != 0);
-                }
-            #endif
-            assert(desc._type != BufferDesc::Type::Unknown);
-        #endif
         
         TransactionID result     = AllocateTransaction(desc, flags);
         Transaction* transaction = GetTransaction(result);
@@ -471,7 +459,7 @@ namespace BufferUploads
                     // load step. When the load operation is finished, the other steps (such as
                     // resource creation and data upload) will be added
 
-                PushStep(*transaction, PrepareDataStep(result, initialisationData, std::move(bkgrndMarker), DefaultPartialResource(desc, *initialisationData)));
+                PushStep(*transaction, PrepareDataStep(result, initialisationData, std::move(bkgrndMarker), PartialResource()));
                 return result;
             }
 
@@ -1700,9 +1688,17 @@ namespace BufferUploads
                     // object. That means we can create the resource creation and 
                     // upload operations.
 
-                    if (step._marker->_desc._type != BufferDesc::Type::Unknown)
-                        transaction->_desc = step._marker->_desc;
-                    UpdateData_PostBackground(*transaction, step._id, step._packet.get(), step._part);
+                    auto part = step._part;
+                    if (step._marker->_desc._type == BufferDesc::Type::Texture) {
+                        transaction->_desc._type = step._marker->_desc._type;
+                        transaction->_desc._textureDesc = step._marker->_desc._textureDesc;
+
+                        part = DefaultPartialResource(transaction->_desc, *step._packet);
+                    } else if (step._marker->_desc._type == BufferDesc::Type::LinearBuffer) {
+                        transaction->_desc._type = step._marker->_desc._type;
+                        transaction->_desc._linearBufferDesc = step._marker->_desc._linearBufferDesc;
+                    } // else if step._marker->_desc._type == BufferDesc::Type::Unknown, do nothing
+                    UpdateData_PostBackground(*transaction, step._id, step._packet.get(), part);
                 } else {
                     assert(currentState == Assets::AssetState::Invalid);
 

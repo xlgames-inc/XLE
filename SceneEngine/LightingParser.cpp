@@ -26,6 +26,7 @@
 #include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/Techniques.h"
+#include "../RenderCore/Assets/DeferredShaderResource.h"
 #include "../RenderCore/Metal/GPUProfiler.h"
 #include "../RenderCore/Metal/DeviceContextImpl.h"
 #include "../ConsoleRig/Console.h"
@@ -68,7 +69,7 @@ namespace SceneEngine
             context->BindVS(RenderCore::MakeResourceList(samplerDefault, samplerClamp, samplerAnisotrophic, samplerPoint));
             context->BindPS(RenderCore::MakeResourceList(6, samplerWrapU));
 
-            auto normalsFittingResource = Assets::GetAssetDep<RenderCore::Metal::DeferredShaderResource>("game/xleres/DefaultResources/normalsfitting.dds").GetShaderResource();
+            auto normalsFittingResource = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/normalsfitting.dds").GetShaderResource();
             context->BindPS(RenderCore::MakeResourceList(14, normalsFittingResource));
             context->BindCS(RenderCore::MakeResourceList(14, normalsFittingResource));
 
@@ -281,14 +282,14 @@ namespace SceneEngine
 
                 using namespace RenderCore;
                 using namespace RenderCore::Metal;
-                auto& metricsShader = Assets::GetAssetDep<Metal::ShaderProgram>(
+                auto& metricsShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
                         "game/xleres/utility/metricsrender.vsh:main:vs_*", 
                         "game/xleres/utility/metricsrender.gsh:main:gs_*",
                         "game/xleres/utility/metricsrender.psh:main:ps_*",
                         "");
                 context->Bind(metricsShader);
                 context->BindPS(MakeResourceList(
-                    3, Assets::GetAssetDep<DeferredShaderResource>("game/xleres/DefaultResources/metricsdigits.dds").GetShaderResource()));
+                    3, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/metricsdigits.dds").GetShaderResource()));
                 context->Bind(BlendState(BlendOp::Add, Blend::One, Blend::InvSrcAlpha));
                 context->Bind(DepthStencilState(false));
                 context->BindVS(MakeResourceList(parserContext.GetMetricsBox()->_metricsBufferSRV));

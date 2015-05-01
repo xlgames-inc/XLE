@@ -8,6 +8,7 @@
 #include "../../RenderCore/Metal/InputLayout.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/State.h"
+#include "../../RenderCore/Assets/DeferredShaderResource.h"
 #include "../../RenderCore/Techniques/TechniqueMaterial.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
@@ -307,8 +308,8 @@ namespace ToolsRig
                                 resolvedFile, dimof(resolvedFile),
                                 str.c_str());
 
-                            const Metal::DeferredShaderResource& texture = 
-                                ::Assets::GetAssetDep<Metal::DeferredShaderResource>(resolvedFile);
+                            const RenderCore::Assets::DeferredShaderResource& texture = 
+                                ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(resolvedFile);
 
                             result.push_back(&texture.GetShaderResource());
                             boundUniforms.BindShaderResource(

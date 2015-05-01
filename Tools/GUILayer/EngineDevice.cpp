@@ -26,6 +26,8 @@
 #include "../../Utility/SystemUtils.h"
 #include "../../Utility/StringFormat.h"
 
+namespace RenderCore { namespace Assets { void SetBufferUploads(BufferUploads::IManager* bufferUploads); }}
+
 namespace GUILayer
 {
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -119,6 +121,7 @@ namespace GUILayer
         _asyncMan = RenderCore::Metal::CreateCompileAndAsyncManager();
         _bufferUploads = BufferUploads::CreateManager(_renderDevice.get());
         SceneEngine::SetBufferUploads(_bufferUploads.get());
+        RenderCore::Assets::SetBufferUploads(_bufferUploads.get());
     }
 
     NativeEngineDevice::~NativeEngineDevice()

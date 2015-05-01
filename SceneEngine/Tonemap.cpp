@@ -12,6 +12,7 @@
 #include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Assets/DeferredShaderResource.h"
 #include "../RenderCore/Metal/Format.h"
 #include "../RenderCore/Metal/RenderTargetView.h"
 #include "../RenderCore/Metal/ShaderResource.h"
@@ -152,13 +153,13 @@ namespace SceneEngine
         unsigned _firstStepHeight;
         bool _calculateInputsSucceeded;
 
-        const Assets::DependencyValidation& GetDependencyValidation() const   { return *_validationCallback; }
+        const ::Assets::DependencyValidation& GetDependencyValidation() const   { return *_validationCallback; }
 
         ToneMappingResources(const Desc& desc);
         ~ToneMappingResources();
 
     private:
-        std::shared_ptr<Assets::DependencyValidation>  _validationCallback;
+        std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
     };
 
     ToneMappingResources::ToneMappingResources(const Desc& desc)
@@ -242,10 +243,10 @@ namespace SceneEngine
             shaderDefines, dimof(shaderDefines), "MSAA_SAMPLES=%i%s", 
             desc._sampleCount, desc._useMSAASamplers?";MSAA_SAMPLERS=1":"");
 
-        auto* sampleInitialLuminance    = &Assets::GetAssetDep<ComputeShader>("game/xleres/postprocess/hdrluminance.csh:SampleInitialLuminance:cs_*", shaderDefines);
-        auto* luminanceStepDown         = &Assets::GetAssetDep<ComputeShader>("game/xleres/postprocess/hdrluminance.csh:LuminanceStepDown:cs_*");
-        auto* updateOverallLuminance    = &Assets::GetAssetDep<ComputeShader>("game/xleres/postprocess/hdrluminance.csh:UpdateOverallLuminance:cs_*");
-        auto* brightPassStepDown        = &Assets::GetAssetDep<ComputeShader>("game/xleres/postprocess/hdrluminance.csh:BrightPassStepDown:cs_*");
+        auto* sampleInitialLuminance    = &::Assets::GetAssetDep<ComputeShader>("game/xleres/postprocess/hdrluminance.csh:SampleInitialLuminance:cs_*", shaderDefines);
+        auto* luminanceStepDown         = &::Assets::GetAssetDep<ComputeShader>("game/xleres/postprocess/hdrluminance.csh:LuminanceStepDown:cs_*");
+        auto* updateOverallLuminance    = &::Assets::GetAssetDep<ComputeShader>("game/xleres/postprocess/hdrluminance.csh:UpdateOverallLuminance:cs_*");
+        auto* brightPassStepDown        = &::Assets::GetAssetDep<ComputeShader>("game/xleres/postprocess/hdrluminance.csh:BrightPassStepDown:cs_*");
 
         _validationCallback = std::make_shared<::Assets::DependencyValidation>();
         ::Assets::RegisterAssetDependency(_validationCallback, &sampleInitialLuminance->GetDependencyValidation());
@@ -374,15 +375,15 @@ namespace SceneEngine
 
                 context->Bind(Techniques::CommonResources()._dssDisable);
 
-                auto& horizBlur = Assets::GetAssetDep<Metal::ShaderProgram>(
+                auto& horizBlur = ::Assets::GetAssetDep<Metal::ShaderProgram>(
                     "game/xleres/basic2D.vsh:fullscreen:vs_*", 
                     "game/xleres/Effects/SeparableFilter.psh:HorizontalBlur11:ps_*",
                     "USE_CLAMPING_WINDOW=1");
-                auto& vertBlur = Assets::GetAssetDep<Metal::ShaderProgram>(
+                auto& vertBlur = ::Assets::GetAssetDep<Metal::ShaderProgram>(
                     "game/xleres/basic2D.vsh:fullscreen:vs_*", 
                     "game/xleres/Effects/SeparableFilter.psh:VerticalBlur11:ps_*",
                     "USE_CLAMPING_WINDOW=1");
-                auto& copyShader = Assets::GetAssetDep<Metal::ShaderProgram>(
+                auto& copyShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
                     "game/xleres/basic2D.vsh:fullscreen:vs_*", 
                     "game/xleres/basic.psh:copy_bilinear:ps_*");
 
@@ -499,9 +500,9 @@ namespace SceneEngine
 
         ToneMapShaderBox(const Desc& descs);
 
-        const Assets::DependencyValidation& GetDependencyValidation() const   { return *_validationCallback; }
+        const ::Assets::DependencyValidation& GetDependencyValidation() const   { return *_validationCallback; }
     private:
-        std::shared_ptr<Assets::DependencyValidation>  _validationCallback;
+        std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
     };
 
     ToneMapShaderBox::ToneMapShaderBox(const Desc& desc)
@@ -511,7 +512,7 @@ namespace SceneEngine
             shaderDefines, dimof(shaderDefines), 
             "OPERATOR=%i;ENABLE_BLOOM=%i;HARDWARE_SRGB_DISABLED=%i;DO_COLOR_GRADING=%i;MAT_LEVELS_ADJUSTMENT=%i;MAT_SELECTIVE_COLOR=%i;MAT_PHOTO_FILTER=%i",
             Tweakable("ToneMapOperator", 1), desc._enableBloom, desc._hardwareSRGBDisabled, desc._doColorGrading, desc._doLevelsAdjustment, desc._doSelectiveColour, desc._doFilterColour);
-        auto& shaderProgram = Assets::GetAssetDep<Metal::ShaderProgram>(
+        auto& shaderProgram = ::Assets::GetAssetDep<Metal::ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen:vs_*",
             "game/xleres/postprocess/tonemap.psh:main:ps_*", 
             shaderDefines);
@@ -599,7 +600,7 @@ namespace SceneEngine
             if (bindCopyShader) {
                     // If tone mapping is disabled (or if tonemapping failed for any reason)
                     //      -- then we have to bind a copy shader
-                context->Bind(Assets::GetAssetDep<Metal::ShaderProgram>(
+                context->Bind(::Assets::GetAssetDep<Metal::ShaderProgram>(
                     "game/xleres/basic2D.vsh:fullscreen:vs_*", "game/xleres/basic.psh:fake_tonemap:ps_*"));
             }
             context->Draw(4);
@@ -623,11 +624,11 @@ namespace SceneEngine
         for (unsigned c=0; c<std::min(size_t(3),resources._bloomBuffers.size()); ++c) {
             context->BindPS(MakeResourceList(4+c, resources._bloomBuffers[c]._bloomBufferSRV));
         }
-        context->Bind(Assets::GetAssetDep<ShaderProgram>(
+        context->Bind(::Assets::GetAssetDep<ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen:vs_*", "game/xleres/postprocess/debugging.psh:HDRDebugging:ps_*"));
         context->Draw(4);
 
-        context->Bind(Assets::GetAssetDep<Metal::ShaderProgram>(
+        context->Bind(::Assets::GetAssetDep<Metal::ShaderProgram>(
             "game/xleres/postprocess/debugging.psh:LuminanceValue:vs_*", 
             "game/xleres/utility/metricsrender.gsh:main:gs_*",
             "game/xleres/utility/metricsrender.psh:main:ps_*", ""));
@@ -635,7 +636,7 @@ namespace SceneEngine
         unsigned dimensions[4] = { (unsigned)mainViewportDesc.Width, (unsigned)mainViewportDesc.Height, 0, 0 };
         context->BindGS(MakeResourceList(ConstantBuffer(dimensions, sizeof(dimensions))));
         context->BindVS(MakeResourceList(resources._propertiesBufferSRV));
-        context->BindPS(MakeResourceList(3, Assets::GetAssetDep<DeferredShaderResource>("game/xleres/DefaultResources/metricsdigits.dds").GetShaderResource()));
+        context->BindPS(MakeResourceList(3, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/metricsdigits.dds").GetShaderResource()));
         context->Bind(Topology::PointList);
         context->Draw(1);
     }
@@ -672,9 +673,9 @@ namespace SceneEngine
         const RenderCore::Metal::ShaderProgram*       _integrateDistantBlur;
         std::unique_ptr<RenderCore::Metal::BoundUniforms>   _integrateDistantBlurBinding;
 
-        const Assets::DependencyValidation& GetDependencyValidation() const   { return *_validationCallback; }
+        const ::Assets::DependencyValidation& GetDependencyValidation() const   { return *_validationCallback; }
     private:
-        std::shared_ptr<Assets::DependencyValidation>  _validationCallback;
+        std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
     };
 
     AtmosphereBlurResources::Desc::Desc(unsigned width, unsigned height, NativeFormat::Enum format)
@@ -701,10 +702,10 @@ namespace SceneEngine
         RenderCore::Metal::RenderTargetView     bloomBufferRTV1(bloomBuffer1.get());
         RenderCore::Metal::ShaderResourceView   bloomBufferSRV1(bloomBuffer1.get());
 
-        auto* horizontalFilter = &Assets::GetAssetDep<ShaderProgram>(
+        auto* horizontalFilter = &::Assets::GetAssetDep<ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen:vs_*", 
             "game/xleres/Effects/separablefilter.psh:HorizontalBlur:ps_*");
-        auto* verticalFilter = &Assets::GetAssetDep<ShaderProgram>(
+        auto* verticalFilter = &::Assets::GetAssetDep<ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen:vs_*", 
             "game/xleres/Effects/separablefilter.psh:VerticalBlur:ps_*");
 
@@ -714,7 +715,7 @@ namespace SceneEngine
         auto verticalFilterBinding = std::make_unique<BoundUniforms>(std::ref(*verticalFilter));
         verticalFilterBinding->BindConstantBuffer(Hash64("Constants"), 0, 1);
 
-        auto* integrateDistantBlur = &Assets::GetAssetDep<ShaderProgram>(
+        auto* integrateDistantBlur = &::Assets::GetAssetDep<ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen:vs_*", 
             "game/xleres/Effects/distantblur.psh:integrate:ps_*");
         auto integrateDistantBlurBinding = std::make_unique<BoundUniforms>(std::ref(*integrateDistantBlur));

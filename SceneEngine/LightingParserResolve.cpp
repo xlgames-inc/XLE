@@ -18,6 +18,7 @@
 #include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/RenderUtils.h"
+#include "../RenderCore/Assets/DeferredShaderResource.h"
 #include "../RenderCore/Metal/DeviceContextImpl.h"
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/GPUProfiler.h"
@@ -50,11 +51,11 @@ namespace SceneEngine
         SamplerState        _shadowComparisonSampler;
         SamplerState        _shadowDepthSampler;
 
-        const Assets::DependencyValidation& GetDependencyValidation() const { return *_validationCallback; }
+        const ::Assets::DependencyValidation& GetDependencyValidation() const { return *_validationCallback; }
 
         LightingResolveResources(const Desc& desc);
     private:
-        std::shared_ptr<Assets::DependencyValidation>  _validationCallback;
+        std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
     };
 
     static ConstantBufferPacket BuildScreenToShadowConstants(LightingParserContext& parserContext, unsigned shadowFrustumIndex);
@@ -196,8 +197,8 @@ namespace SceneEngine
             }
 
             TRY {
-                context->BindPS(MakeResourceList(10, Assets::GetAssetDep<Metal::DeferredShaderResource>("game/xleres/DefaultResources/balanced_noise.dds").GetShaderResource()));
-                context->BindPS(MakeResourceList(16, Assets::GetAssetDep<Metal::DeferredShaderResource>("game/xleres/DefaultResources/GGXTable.dds").GetShaderResource()));
+                context->BindPS(MakeResourceList(10, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/balanced_noise.dds").GetShaderResource()));
+                context->BindPS(MakeResourceList(16, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/GGXTable.dds").GetShaderResource()));
             }
             CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
             CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
@@ -435,12 +436,12 @@ namespace SceneEngine
 
         char definesTable[256];
         Utility::XlFormatString(definesTable, dimof(definesTable), "MSAA_SAMPLES=%i", desc._samplingCount);
-        auto* perSampleMask = &Assets::GetAssetDep<ShaderProgram>(
+        auto* perSampleMask = &::Assets::GetAssetDep<ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen:vs_*", 
             "game/xleres/deferred/persamplemask.psh:main:ps_*", definesTable);
 
-        auto validationCallback = std::make_shared<Assets::DependencyValidation>();
-        Assets::RegisterAssetDependency(validationCallback, &perSampleMask->GetDependencyValidation());
+        auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
+        ::Assets::RegisterAssetDependency(validationCallback, &perSampleMask->GetDependencyValidation());
 
         _alwaysWriteToStencil = std::move(alwaysWriteToStencil);
         _perSampleMask = std::move(perSampleMask);

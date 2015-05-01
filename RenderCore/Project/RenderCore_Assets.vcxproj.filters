@@ -39,6 +39,7 @@
     <ClCompile Include="..\Assets\PreparedModelDrawCalls.cpp">
       <Filter>Assets</Filter>
     </ClCompile>
+    <ClCompile Include="..\Assets\DeferredShaderResource.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Assets\ModelRunTime.h">
@@ -77,5 +78,6 @@
     <ClInclude Include="..\Assets\PreparedModelDrawCalls.h">
       <Filter>Assets</Filter>
     </ClInclude>
+    <ClInclude Include="..\Assets\DeferredShaderResource.h" />
   </ItemGroup>
 </Project>

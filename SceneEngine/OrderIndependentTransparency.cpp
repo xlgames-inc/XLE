@@ -15,6 +15,7 @@
 #include "Sky.h"
 
 #include "../RenderCore/Techniques/ResourceBox.h"
+#include "../RenderCore/Assets/DeferredShaderResource.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/ResourceLocator.h"
@@ -112,9 +113,9 @@ namespace SceneEngine
             //      Bind some resources required by the glass shader
             //
 
-        auto box5   = Assets::GetAssetDep<RenderCore::Metal::DeferredShaderResource>("game/xleres/refltexture/boxc_5.dds", Metal::DeferredShaderResource::SRGBSpace).GetShaderResource();
-        auto box12  = Assets::GetAssetDep<RenderCore::Metal::DeferredShaderResource>("game/xleres/refltexture/boxc_12.dds", Metal::DeferredShaderResource::SRGBSpace).GetShaderResource();
-        auto box34  = Assets::GetAssetDep<RenderCore::Metal::DeferredShaderResource>("game/xleres/refltexture/boxc_34.dds", Metal::DeferredShaderResource::SRGBSpace).GetShaderResource();
+        auto box5   = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/refltexture/boxc_5.dds", RenderCore::Assets::DeferredShaderResource::SRGBSpace).GetShaderResource();
+        auto box12  = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/refltexture/boxc_12.dds", RenderCore::Assets::DeferredShaderResource::SRGBSpace).GetShaderResource();
+        auto box34  = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/refltexture/boxc_34.dds", RenderCore::Assets::DeferredShaderResource::SRGBSpace).GetShaderResource();
         context->BindPS(MakeResourceList(8, box12, box34, box5));
 
         auto& perlinNoiseRes = Techniques::FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());
@@ -155,7 +156,7 @@ namespace SceneEngine
             context->Bind(Metal::BlendState(
                 Metal::BlendOp::Add, Metal::Blend::One, Metal::Blend::InvSrcAlpha));
             context->Bind(Metal::DepthStencilState(false));
-            auto& resolveShader = Assets::GetAssetDep<Metal::ShaderProgram>(
+            auto& resolveShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
                 "game/xleres/basic2D.vsh:fullscreen:vs_*", 
                 "game/xleres/forward/transparency/resolve.psh:main:ps_*");
             context->Bind(resolveShader);

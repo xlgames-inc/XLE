@@ -43,6 +43,8 @@
 
 unsigned FrameRenderCount = 0;
 
+namespace RenderCore { namespace Assets { void SetBufferUploads(BufferUploads::IManager* bufferUploads); }}
+
 namespace Sample
 {
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -104,6 +106,7 @@ namespace Sample
             //  * the global technique context contains some global rendering settings
         SetupCompilers(*asyncMan);
         SceneEngine::SetBufferUploads(bufferUploads.get());
+        RenderCore::Assets::SetBufferUploads(bufferUploads.get());
         g_gpuProfiler = RenderCore::Metal::GPUProfiler::CreateProfiler();
         RenderOverlays::InitFontSystem(renderDevice.get(), bufferUploads.get());
         auto globalTechniqueContext = std::make_shared<PlatformRig::GlobalTechniqueContext>();

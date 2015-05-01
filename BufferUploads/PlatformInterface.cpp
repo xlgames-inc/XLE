@@ -34,8 +34,7 @@ namespace BufferUploads { namespace PlatformInterface
     static const unsigned BlockCompDim = 4;
     static unsigned    RoundBCDim(unsigned input)
     {
-        uint32 part = input%BlockCompDim;
-        auto result = input + part?(BlockCompDim-part):0;
+        auto result = (input + 3) & ~3;
         assert(!(result%BlockCompDim));
         return result;
     }

@@ -10,6 +10,7 @@
 #include "ModelRunTimeInternal.h"
 #include "SharedStateSet.h"
 #include "AssetUtils.h"
+#include "DeferredShaderResource.h"
 
 #include "../Metal/InputLayout.h"
 #include "../Metal/DeviceContext.h"
@@ -48,7 +49,7 @@ namespace RenderCore { namespace Assets { namespace Simple
             std::vector<ScaffoldDrawCall>   _drawCalls;
         };
 
-        std::vector<const Metal::DeferredShaderResource*> _boundTextures;
+        std::vector<const DeferredShaderResource*> _boundTextures;
         size_t                  _texturesPerMaterial;
         
             //  Ordered by draw calls, as we encounter them while rendering
@@ -668,7 +669,7 @@ namespace RenderCore { namespace Assets { namespace Simple
 
             //  now that we have a list of all of the sub materials used, and we know how large the resource interface is, we
             //  build an array of deferred shader resources for shader inputs.
-        std::vector<const Metal::DeferredShaderResource*> boundTextures;
+        std::vector<const DeferredShaderResource*> boundTextures;
         auto texturesPerMaterial = textureBindPoints.size();
         boundTextures.resize(subMaterialIndexToResourceIndex.size() * texturesPerMaterial);
         unsigned workingIndex = 0;
@@ -688,7 +689,7 @@ namespace RenderCore { namespace Assets { namespace Simple
 
                 TRY {
                     boundTextures[workingIndex*texturesPerMaterial + index] = 
-                        &::Assets::GetAsset<Metal::DeferredShaderResource>(t->second.c_str());
+                        &::Assets::GetAsset<DeferredShaderResource>(t->second.c_str());
                 } CATCH (const ::Assets::Exceptions::InvalidResource&) {
                     LogWarning << "Warning -- shader resource (" << t->second << ") couldn't be found";
                 } CATCH_END

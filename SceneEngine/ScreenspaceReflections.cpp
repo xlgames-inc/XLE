@@ -16,6 +16,7 @@
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Assets/DeferredShaderResource.h"
 #include "../RenderCore/Metal/RenderTargetView.h"
 #include "../RenderCore/Metal/ShaderResource.h"
 #include "../RenderCore/Metal/State.h"
@@ -79,9 +80,9 @@ namespace SceneEngine
         ScreenSpaceReflectionsResources(const Desc& desc);
         ~ScreenSpaceReflectionsResources();
 
-        const Assets::DependencyValidation& GetDependencyValidation() const   { return *_validationCallback; }
+        const ::Assets::DependencyValidation& GetDependencyValidation() const   { return *_validationCallback; }
     private:
-        std::shared_ptr<Assets::DependencyValidation>  _validationCallback;
+        std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
     };
 
     ScreenSpaceReflectionsResources::ScreenSpaceReflectionsResources(const Desc& desc)
@@ -206,39 +207,39 @@ namespace SceneEngine
 		ConstantBuffer samplingPatternConstants(samplingPattern.get(), sizeof(SamplingPattern));
 
             ////////////
-        auto* buildMask = &Assets::GetAssetDep<ComputeShader>(
+        auto* buildMask = &::Assets::GetAssetDep<ComputeShader>(
             "game/xleres/screenspacerefl/buildmask.csh:BuildMask:cs_*");
 
         char definesBuffer[256];
         sprintf_s(definesBuffer, dimof(definesBuffer), "%sDOWNSAMPLE_SCALE=%i;INTERPOLATE_SAMPLES=%i", 
             desc._useMsaaSamplers?"MSAA_SAMPLERS=1;":"", desc._downsampleScale, int(desc._interpolateSamples));
 
-        auto* buildReflections = &Assets::GetAssetDep<ComputeShader>(
+        auto* buildReflections = &::Assets::GetAssetDep<ComputeShader>(
             "game/xleres/screenspacerefl/buildreflection.csh:BuildReflection:cs_*",
             definesBuffer);
     
-        auto* downsampleTargets = &Assets::GetAssetDep<ShaderProgram>(
+        auto* downsampleTargets = &::Assets::GetAssetDep<ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen:vs_*",
             "game/xleres/screenspacerefl/DownsampleStep.psh:main:ps_*",
             definesBuffer);
 
-        auto* horizontalBlur = &Assets::GetAssetDep<ShaderProgram>(
+        auto* horizontalBlur = &::Assets::GetAssetDep<ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen:vs_*",
             "game/xleres/screenspacerefl/BlurStep.psh:HorizontalBlur:ps_*",
             definesBuffer);
 
-        auto* verticalBlur = &Assets::GetAssetDep<ShaderProgram>(
+        auto* verticalBlur = &::Assets::GetAssetDep<ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen:vs_*",
             "game/xleres/screenspacerefl/BlurStep.psh:VerticalBlur:ps_*",
             definesBuffer);
 
             ////////////
-        auto validationCallback = std::make_shared<Assets::DependencyValidation>();
-        Assets::RegisterAssetDependency(validationCallback, &buildMask->GetDependencyValidation());
-        Assets::RegisterAssetDependency(validationCallback, &buildReflections->GetDependencyValidation());
-        Assets::RegisterAssetDependency(validationCallback, &downsampleTargets->GetDependencyValidation());
-        Assets::RegisterAssetDependency(validationCallback, &horizontalBlur->GetDependencyValidation());
-        Assets::RegisterAssetDependency(validationCallback, &verticalBlur->GetDependencyValidation());
+        auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
+        ::Assets::RegisterAssetDependency(validationCallback, &buildMask->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(validationCallback, &buildReflections->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(validationCallback, &downsampleTargets->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(validationCallback, &horizontalBlur->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(validationCallback, &verticalBlur->GetDependencyValidation());
 
         _maskTexture = std::move(maskTexture);
         _maskUnorderedAccess = std::move(maskUnorderedAccess);
@@ -357,7 +358,7 @@ namespace SceneEngine
             //
         context->Bind(ResourceList<RenderTargetView, 0>(), nullptr);
         context->BindCS(MakeResourceList(gbufferDiffuse, res._downsampledNormalsShaderResource, res._downsampledDepthShaderResource));
-        context->BindCS(MakeResourceList(4, Assets::GetAssetDep<RenderCore::Metal::DeferredShaderResource>("game/xleres/DefaultResources/balanced_noise.dds").GetShaderResource()));
+        context->BindCS(MakeResourceList(4, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/balanced_noise.dds").GetShaderResource()));
         context->BindCS(MakeResourceList(res._maskUnorderedAccess));
         context->BindCS(MakeResourceList(parserContext.GetGlobalTransformCB(), Metal::ConstantBuffer(&viewProjParam, sizeof(viewProjParam)), res._samplingPatternConstants, parserContext.GetGlobalStateCB()));
         context->BindCS(MakeResourceList(   Metal::SamplerState(Metal::FilterMode::Trilinear, Metal::AddressMode::Wrap, Metal::AddressMode::Wrap, Metal::AddressMode::Wrap),
@@ -431,7 +432,7 @@ namespace SceneEngine
             char definesBuffer[256];
             sprintf_s(definesBuffer, dimof(definesBuffer), "%sDOWNSAMPLE_SCALE=%i;INTERPOLATE_SAMPLES=%i", 
                 resources._desc._useMsaaSamplers?"MSAA_SAMPLERS=1;":"", resources._desc._downsampleScale, int(resources._desc._interpolateSamples));
-            auto& debuggingShader = Assets::GetAssetDep<Metal::ShaderProgram>(
+            auto& debuggingShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
                 "game/xleres/basic2D.vsh:fullscreen_viewfrustumvector:vs_*", 
                 "game/xleres/screenspacerefl/debugging.psh:main:ps_*",
                 definesBuffer);

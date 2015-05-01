@@ -218,11 +218,12 @@ void XlResolveRelPath(char* dst, int count, const char* base, const char* rel)
     XlConcatPath(dst, count, tmp, rel);
 }
 
-const char* XlExtension(const char* path)
+template<typename CharType>
+    const CharType* XlExtension(const CharType* path)
 {
     auto len = XlStringLen(path);
     if (!len) return nullptr;
-    const char* p = &path[len-1];
+    const auto* p = &path[len-1];
     while (p >= path) {
         if (*p == '\\' || *p == '/') return nullptr;
         if (*p == '.') return p + 1;
@@ -230,6 +231,11 @@ const char* XlExtension(const char* path)
     }
     return nullptr;
 }
+
+template const char* XlExtension(const char* path);
+template const utf8* XlExtension(const utf8* path);
+template const ucs2* XlExtension(const ucs2* path);
+template const ucs4* XlExtension(const ucs4* path);
 
 void XlChopExtension(char* path)
 {

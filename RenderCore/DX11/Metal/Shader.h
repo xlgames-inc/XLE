@@ -6,11 +6,12 @@
 
 #pragma once
 
+#include "DX11.h"
 #include "../../Resource.h"
 #include "../../../Utility/Mixins.h"
 #include "../../../Utility/IntrusivePtr.h"
-#include "ShaderResource.h"
-#include "DX11.h"
+// #include "ShaderResource.h"
+// #include "DX11.h"
 
 #if DX_VERSION == DX_VERSION_11_1
     typedef struct _D3D_SHADER_MACRO D3D_SHADER_MACRO;
@@ -118,27 +119,6 @@ namespace RenderCore { namespace Metal_DX11
         
     private:
         intrusive_ptr<ID3D::PixelShader>      _underlying;
-    };
-
-        ////////////////////////////////////////////////////////////////////////////////////////////////
-
-    class DeferredShaderResource
-    {
-    public:
-        static const ResChar* LinearSpace; 
-        static const ResChar* SRGBSpace; 
-        explicit DeferredShaderResource(const ResChar resourceName[], const ResChar sourceSpace[] = LinearSpace);
-        ~DeferredShaderResource();
-        const ShaderResourceView&       GetShaderResource() const;
-        const ::Assets::DependencyValidation&     GetDependencyValidation() const     { return *_validationCallback; }
-        const char*                     Initializer() const;
-    private:
-        mutable ShaderResourceView      _finalResource;
-        mutable ID3D::Resource *        _futureResource;
-        mutable HRESULT                 _futureResult;
-        std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
-        bool                            _sourceInSRGBSpace;
-        DEBUG_ONLY(char _initializer[512];)
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -365,6 +345,7 @@ namespace RenderCore { namespace Metal_DX11
         DeepShaderProgram& operator=(const DeepShaderProgram&);
     };
 
+    namespace NativeFormat { enum Enum; }
 
     intrusive_ptr<ID3D::Resource> LoadTextureImmediately(const char initializer[], bool sourceIsLinearSpace = false);
     NativeFormat::Enum LoadTextureFormat(const char initializer[]);

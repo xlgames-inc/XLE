@@ -35,8 +35,6 @@ namespace RenderCore { namespace Metal_DX11
     class BlendState;
     class DepthStencilState;
 
-    class DeferredShaderResource;
-
     class DeviceContext;
     class ObjectFactory;
 

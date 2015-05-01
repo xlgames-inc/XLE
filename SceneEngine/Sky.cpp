@@ -11,10 +11,12 @@
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Assets/DeferredShaderResource.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/DeviceContext.h"
+#include "../RenderCore/Metal/ShaderResource.h"
 
 #pragma warning(disable:4702)       // warning C4702: unreachable code
 
@@ -142,14 +144,14 @@ namespace SceneEngine
 
         if (desc._geoType == Plane) {
             _snprintf_s(definesBuffer, _TRUNCATE, "MAT_SKY_PROJECTION=%i;BLEND_FOG=%i", desc._projectionType, int(desc._blendFog));
-            _shader = &Assets::GetAssetDep<Metal::ShaderProgram>(
+            _shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
                 "game/xleres/basic2D.vsh:fullscreen_viewfrustumvector_deep:vs_*",
                 "game/xleres/effects/sky.psh:main:ps_*",
                 definesBuffer);
         } else {
             assert(desc._geoType == HalfCube);
             _snprintf_s(definesBuffer, _TRUNCATE, "GEO_HAS_TEXCOORD=1;OUTPUT_WORLD_POSITION=1;MAT_SKY_PROJECTION=2;BLEND_FOG=%i", int(desc._blendFog));
-            _shader = &Assets::GetAssetDep<Metal::ShaderProgram>(
+            _shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
                 "game/xleres/effects/sky.psh:vs_main:vs_*",
                 "game/xleres/effects/sky.psh:ps_HalfCube:ps_*",
                 definesBuffer);
@@ -164,7 +166,7 @@ namespace SceneEngine
             _postFogShader = nullptr;
         } else {
             assert(desc._geoType == HalfCube);
-            _postFogShader = &Assets::GetAssetDep<Metal::ShaderProgram>(
+            _postFogShader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
                 "game/xleres/effects/sky.psh:vs_main:vs_*",
                 "game/xleres_cry/effects/skypostfog.psh:ps_HalfCube_PostFogPass:ps_*",
                 "GEO_HAS_TEXCOORD=1;OUTPUT_WORLD_POSITION=1;MAT_SKY_PROJECTION=2");
@@ -300,18 +302,18 @@ namespace SceneEngine
             XlCopyNString(nameBuffer, skyTextureName, beforePart);
             XlCopyString(&nameBuffer[beforePart], MaxPath-beforePart, "_12");
             XlCopyString(&nameBuffer[beforePart+3], MaxPath-beforePart-3, &skyTextureName[beforePart+3]);
-            _faces12 = &Assets::GetAssetDep<Metal::DeferredShaderResource>(nameBuffer, Metal::DeferredShaderResource::LinearSpace);
+            _faces12 = &::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(nameBuffer, RenderCore::Assets::DeferredShaderResource::LinearSpace);
 
             XlCopyString(&nameBuffer[beforePart], MaxPath-beforePart, "_34");
             XlCopyString(&nameBuffer[beforePart+3], MaxPath-beforePart-3, &skyTextureName[beforePart+3]);
-            _faces34 = &Assets::GetAssetDep<Metal::DeferredShaderResource>(nameBuffer, Metal::DeferredShaderResource::LinearSpace);
+            _faces34 = &::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(nameBuffer, RenderCore::Assets::DeferredShaderResource::LinearSpace);
 
             XlCopyString(&nameBuffer[beforePart], MaxPath-beforePart, "_5");
             XlCopyString(&nameBuffer[beforePart+2], MaxPath-beforePart-2, &skyTextureName[beforePart+3]);
-            _face5 = &Assets::GetAssetDep<Metal::DeferredShaderResource>(nameBuffer, Metal::DeferredShaderResource::LinearSpace);
+            _face5 = &::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(nameBuffer, RenderCore::Assets::DeferredShaderResource::LinearSpace);
         } else {
             _projectionType = 3;
-            _face5 = &Assets::GetAssetDep<Metal::DeferredShaderResource>(skyTextureName, Metal::DeferredShaderResource::LinearSpace);
+            _face5 = &::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(skyTextureName, RenderCore::Assets::DeferredShaderResource::LinearSpace);
         }
     }
 

@@ -157,6 +157,24 @@
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release-OpenGL|x64'">
     <Import Project="..\..\Foreign\angleproject\AngleForClients.props" />
   </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug-DX11|Win32'">
+    <Import Project="..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug-DX11|x64'">
+    <Import Project="..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile-DX11|Win32'">
+    <Import Project="..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile-DX11|x64'">
+    <Import Project="..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release-DX11|Win32'">
+    <Import Project="..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release-DX11|x64'">
+    <Import Project="..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
+  </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup />
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">
@@ -216,14 +234,6 @@
     </ProjectReference>
     <ProjectReference Include="..\..\RenderCore\Project\RenderCore.vcxproj">
       <Project>{116fe083-50bc-1393-470f-f834ef6e02ff}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\..\RenderCore\Project\RenderCore_DX11.vcxproj">
-      <Project>{e43e10b8-7cd4-a5d0-6270-17c50cb74adf}</Project>
-      <Private>true</Private>
-      <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
-      <CopyLocalSatelliteAssemblies>false</CopyLocalSatelliteAssemblies>
-      <LinkLibraryDependencies>true</LinkLibraryDependencies>
-      <UseLibraryDependencyInputs>false</UseLibraryDependencyInputs>
     </ProjectReference>
     <ProjectReference Include="..\..\Utility\Project\Utility.vcxproj">
       <Project>{6b8011c1-2d1f-1ebb-b0ef-377b2e8e87ae}</Project>

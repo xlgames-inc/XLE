@@ -152,6 +152,7 @@ namespace BufferUploads
             uint8 mipCount=1, uint8 arrayCount=0, const TextureSamples& samples = TextureSamples::Create());
         static TextureDesc Plain3D(
             uint32 width, uint32 height, uint32 depth, unsigned nativePixelFormat, uint8 mipCount=1);
+        static TextureDesc Empty();
     };
 
     /// <summary>Description of a buffer</summary>
@@ -493,6 +494,20 @@ namespace BufferUploads
         result._nativePixelFormat = nativePixelFormat;
         result._dimensionality = Dimensionality::T3D;
         result._mipCount = mipCount;
+        result._arrayCount = 0;
+        result._samples = TextureSamples::Create();
+        return result;
+    }
+
+    inline TextureDesc TextureDesc::Empty()
+    {
+        TextureDesc result;
+        result._width = 0;
+        result._height = 0;
+        result._depth = 0;
+        result._nativePixelFormat = 0;
+        result._dimensionality = Dimensionality::T1D;
+        result._mipCount = 0;
         result._arrayCount = 0;
         result._samples = TextureSamples::Create();
         return result;

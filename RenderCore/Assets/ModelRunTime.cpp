@@ -13,6 +13,7 @@
 #include "Material.h"
 #include "RawAnimationCurve.h"
 #include "SharedStateSet.h"
+#include "DeferredShaderResource.h"
 
 #include "../Techniques/Techniques.h"
 #include "../Techniques/ResourceBox.h"
@@ -304,7 +305,7 @@ namespace RenderCore { namespace Assets
             return materialResources;
         }
 
-        std::vector<const Metal::DeferredShaderResource*> BuildBoundTextures(
+        std::vector<const DeferredShaderResource*> BuildBoundTextures(
             const ModelScaffold& scaffold, const MaterialScaffold& matScaffold,
             const ::Assets::DirectorySearchRules* searchRules,
             const std::vector<std::pair<MaterialGuid, SubMatResources>>& materialResources,
@@ -313,7 +314,7 @@ namespace RenderCore { namespace Assets
         {
             auto texturesPerMaterial = textureBindPoints.size();
 
-            std::vector<const Metal::DeferredShaderResource*> boundTextures;
+            std::vector<const DeferredShaderResource*> boundTextures;
             boundTextures.resize(textureSetCount * texturesPerMaterial, nullptr);
             DEBUG_ONLY(boundTextureNames.resize(textureSetCount * texturesPerMaterial));
 
@@ -346,10 +347,10 @@ namespace RenderCore { namespace Assets
                         if (searchRules) {
                             ResChar resolvedPath[MaxPath];
                             searchRules->ResolveFile(resolvedPath, dimof(resolvedPath), resourceName.c_str());
-                            boundTextures[dsti] = &::Assets::GetAsset<Metal::DeferredShaderResource>(resolvedPath);
+                            boundTextures[dsti] = &::Assets::GetAsset<DeferredShaderResource>(resolvedPath);
                             DEBUG_ONLY(boundTextureNames[dsti] = resolvedPath);
                         } else {
-                            boundTextures[dsti] = &::Assets::GetAsset<Metal::DeferredShaderResource>(resourceName.c_str());
+                            boundTextures[dsti] = &::Assets::GetAsset<DeferredShaderResource>(resourceName.c_str());
                             DEBUG_ONLY(boundTextureNames[dsti] = resourceName);
                         }
                     } CATCH (const ::Assets::Exceptions::InvalidResource&) {

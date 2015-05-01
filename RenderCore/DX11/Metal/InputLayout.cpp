@@ -7,6 +7,7 @@
 #include "InputLayout.h"
 #include "Shader.h"
 #include "Buffer.h"
+#include "ShaderResource.h"
 #include "DeviceContext.h"
 #include "DX11Utils.h"
 #include "../../RenderUtils.h"

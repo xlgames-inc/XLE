@@ -35,7 +35,7 @@ namespace Utility
     XL_UTILITY_API void XlMakeRelPath(char* dst, int count, const char* root, const char* path);
     XL_UTILITY_API void XlResolveRelPath(char* dst, int count, const char* base, const char* rel);
 
-    XL_UTILITY_API const char* XlExtension(const char* path);
+    XL_UTILITY_API template<typename CharType> const CharType* XlExtension(const CharType* path);
     XL_UTILITY_API void XlChopExtension(char* path);
     XL_UTILITY_API void XlDirname(char* dst, int count, const char* path);
     XL_UTILITY_API void XlDirname(ucs2* dst, int count, const ucs2* path);

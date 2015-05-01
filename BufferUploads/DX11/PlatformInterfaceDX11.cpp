@@ -43,7 +43,6 @@
                                 D3D11_TEXTURE2D_DESC desc;
                                 texture->GetDesc(&desc);
                                 assert(desc.Usage == D3D11_USAGE_DEFAULT);
-                                assert(((desc.Height-1) * rowAndSlicePitch._rowPitch + desc.Width) <= dataSize);
                             }
                         }
                     #endif

@@ -9,13 +9,10 @@
 #include "InputLayout.h"
 #include "../../RenderUtils.h"
 #include "../../../Assets/IntermediateResources.h"
-#include "../../../Assets/CompileAndAsyncManager.h"
 #include "../../../Core/Exceptions.h"
 
-#include "DX11Utils.h"
 #include "IncludeDX11.h"
 #include <D3DX11.h>
-#include <functional>
 
 namespace RenderCore { namespace Metal_DX11
 {
@@ -432,9 +429,6 @@ namespace RenderCore { namespace Metal_DX11
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    const ResChar* DeferredShaderResource::LinearSpace = "linear"; 
-    const ResChar* DeferredShaderResource::SRGBSpace = "srgb"; 
-
     static D3DX11_IMAGE_INFO    LoadInfoFromTexture(const char textureName[])
     {
         D3DX11_IMAGE_INFO imageInfo;
@@ -444,157 +438,6 @@ namespace RenderCore { namespace Metal_DX11
             throw Assets::Exceptions::InvalidResource(textureName, "Failure loading info from texture");
         }
         return imageInfo;
-    }
-
-    DeferredShaderResource::DeferredShaderResource(const ResChar initializer[], const ResChar sourceSpace[])
-    {
-        _futureResource = nullptr;
-        _futureResult = ~HRESULT(0x0);
-        _sourceInSRGBSpace = sourceSpace == SRGBSpace;
-        DEBUG_ONLY(XlCopyString(_initializer, dimof(_initializer), initializer);)
-
-        D3DX11_IMAGE_LOAD_INFO loadInfo;
-        loadInfo.Width = D3DX11_DEFAULT;
-        loadInfo.Height = D3DX11_DEFAULT;
-        loadInfo.Depth = D3DX11_DEFAULT;
-        loadInfo.FirstMipLevel = D3DX11_DEFAULT;
-        loadInfo.MipLevels = D3DX11_DEFAULT;
-        loadInfo.Usage = (D3D11_USAGE) D3DX11_DEFAULT;
-        loadInfo.BindFlags = D3DX11_DEFAULT;
-        loadInfo.CpuAccessFlags = D3DX11_DEFAULT;
-        loadInfo.MiscFlags = D3DX11_DEFAULT;
-        loadInfo.Format = DXGI_FORMAT_FROM_FILE;
-        loadInfo.Filter = D3DX11_DEFAULT;
-        loadInfo.MipFilter = D3DX11_DEFAULT;
-        loadInfo.pSrcInfo = NULL;
-
-            //  we have to hit the disk and get the texture info. This is the only
-            //  way to prevent the system from building new mips (if those mips don't
-            //  already exist)
-        auto infoOnDisk = LoadInfoFromTexture(initializer);
-
-        if (_sourceInSRGBSpace) {
-
-            // assert(0);  // DavidJ --    this isn't working. We need to write a custom DDS loader. the DX11 utils one
-                        //              doesn't seem to have a way to mark the texture as an SRGB texture..?
-
-                //     Hack --  we have to do a synchronous read of the file here. We need
-                //              to get the real format, so that we can feed the SRGB format
-                //              into "D3DX11CreateTextureFromFile"
-
-            auto srgbFormat = AsSRGBFormat(infoOnDisk.Format);
-            if (srgbFormat != infoOnDisk.Format) {
-                loadInfo.Format = srgbFormat;       // it doesn't work! Seems to invoke a conversion within the loading code
-            }
-
-            auto hresult = D3DX11CreateTextureFromFile(
-                ObjectFactory().GetUnderlying(),
-                initializer, &loadInfo,
-                GetThreadPump(), &_futureResource, &_futureResult);
-
-            if (!SUCCEEDED(hresult)) {
-                throw Assets::Exceptions::InvalidResource(initializer, "Failure creating texture resource");
-            }
-
-        } else {
-
-                //
-                //      The resource name should give us some hints as
-                //      to what this object is. Typically, it should be a texture
-                //          -- so it should be easy to load the texture and return
-                //      a shader resource view.
-                //
-                //      We need to do 2 things -- load the texture off disk, and push the
-                //      data into a GPU object.
-                //
-                //      There are a bunch of ways to do this. But the easiest is just to
-                //      use "D3DX11CreateTextureFromFile" with a thread pump!
-                //
-            
-            loadInfo.MipLevels = infoOnDisk.MipLevels;        // (prevent the system from building new mips, if they don't exist in the file already)
-
-            auto hresult = D3DX11CreateTextureFromFile(
-                ObjectFactory().GetUnderlying(),
-                initializer, &loadInfo,
-                GetThreadPump(), &_futureResource, &_futureResult);
-
-            if (!SUCCEEDED(hresult)) {
-                throw Assets::Exceptions::InvalidResource(initializer, "Failure creating texture resource");
-            }
-        }
-
-        _validationCallback = std::make_shared<Assets::DependencyValidation>();
-        RegisterFileDependency(_validationCallback, initializer);
-    }
-
-    DeferredShaderResource::~DeferredShaderResource()
-    {
-           //      We need to cancel the background compilation process, also
-        while (_futureResult == HRESULT(~0)) { FlushThreadPump(); } // (best we can do now is just stall until we get a result)
-
-            //      If the processing was completed since the last call to GetShaderResource(),
-            //      then _futureResource might not be null. We have to delete free it in this
-            //      case (it can't be protected by a intrusive_ptr, because of the way to pass
-            //      the address of the pointer to the D3D thread pump.
-        if (_futureResource) {
-            _futureResource->Release();
-        }
-    }
-
-    const ShaderResourceView&       DeferredShaderResource::GetShaderResource() const
-    {
-        if (_finalResource.GetUnderlying()) {
-            return _finalResource;
-        }
-
-        if (_futureResult!=~HRESULT(0x0)) {
-            if (!SUCCEEDED(_futureResult) || !_futureResource) {
-                ThrowException(Assets::Exceptions::InvalidResource(Initializer(), "Unknown error during loading"));
-            }
-
-            //if (_sourceInSRGBSpace) {
-            //        // we have to create a SRV desc so we can change the pixel format to an SRGB mode
-            //         //  Note -- this doesn't work because the texture is created with a fully specified
-            //         //          pixel format
-            //    if (auto texture = QueryInterfaceCast<ID3D::Texture2D>(_futureResource)) {
-            //        TextureDesc2D inputDesc(texture);
-            //        auto srgbFormat = AsSRGBFormat(inputDesc.Format);
-            //        if (srgbFormat != inputDesc.Format) {
-            //            D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
-            //            srvDesc.Format = srgbFormat;
-            //            srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-            //            srvDesc.Texture2D.MostDetailedMip = 0;
-            //            srvDesc.Texture2D.MipLevels = (UINT)-1;
-            //            
-            //            hresult = ObjectFactory::GetDefaultUnderlying()->CreateShaderResourceView(
-            //                _futureResource, &srvDesc, &tempView);
-            //        }
-            //    }
-            //}
-                
-            TRY {
-                _finalResource = ShaderResourceView(_futureResource);
-            } CATCH(RenderCore::Exceptions::GenericFailure&) {
-                ThrowException(Assets::Exceptions::InvalidResource(Initializer(), "Failure while creating shader resource view."));
-            } CATCH_END
-
-            _futureResource->Release(); 
-            _futureResource = nullptr;
-            return _finalResource;
-        }
-
-#pragma warning(disable:4702)   // unreachable code
-        ThrowException(Assets::Exceptions::PendingResource(Initializer(), ""));
-        return _finalResource;
-    }
-
-    const char*                     DeferredShaderResource::Initializer() const
-    {
-        #if defined(_DEBUG)
-            return _initializer;
-        #else
-            return "";
-        #endif
     }
 
     NativeFormat::Enum LoadTextureFormat(const char initializer[])
