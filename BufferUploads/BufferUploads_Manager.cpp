@@ -1700,7 +1700,8 @@ namespace BufferUploads
                     // object. That means we can create the resource creation and 
                     // upload operations.
 
-                    transaction->_desc = step._marker->_desc;
+                    if (step._marker->_desc._type != BufferDesc::Type::Unknown)
+                        transaction->_desc = step._marker->_desc;
                     UpdateData_PostBackground(*transaction, step._id, step._packet.get(), step._part);
                 } else {
                     assert(currentState == Assets::AssetState::Invalid);

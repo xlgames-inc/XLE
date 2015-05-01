@@ -6,6 +6,10 @@
 
 #include "DataPacket.h"
 #include "PlatformInterface.h"
+#include "../Utility/Threading/Mutex.h"
+#include "../Utility/Threading/LockFree.h"
+#include <queue>
+#include <thread>
 
 namespace BufferUploads
 {
@@ -117,6 +121,108 @@ namespace BufferUploads
 ///////////////////////////////////////////////////////////////////////////////////////////////////
             //      S T R E A M I N G   P A C K E T
 
+    class CompletionThreadPool
+    {
+    public:
+        template<class Fn, class... Args>
+            void Enqueue(Fn&& fn, Args&&... args);
+
+        CompletionThreadPool(unsigned threadCount);
+        ~CompletionThreadPool();
+
+    private:
+        std::vector<std::thread> _workerThreads;
+        
+        Threading::Mutex _pendingsTaskLock;
+        typedef std::function<void()> PendingTask;
+        LockFree::FixedSizeQueue<PendingTask, 256> _pendingTasks;
+
+        XlHandle _events[2];
+        bool _workerQuit;
+    };
+
+    template<class Fn, class... Args>
+        void CompletionThreadPool::Enqueue(Fn&& fn, Args&&... args)
+        {
+            _pendingTasks.push_overflow(
+                std::bind(std::forward<Fn>(fn), std::forward<Args>(args)...));
+
+                // set event should wake one thread -- and that thread should
+                // then take over and execute the task
+            XlSetEvent(_events[0]);
+        }
+
+    CompletionThreadPool::CompletionThreadPool(unsigned threadCount)
+    {
+            // once event is an "auto-reset" event, which should wake a single thread
+            // another event is a "manual-reset" event. This should 
+        _events[0] = XlCreateEvent(false);
+        _events[1] = XlCreateEvent(true);
+        _workerQuit = false;
+
+        for (unsigned i = 0; i<threadCount; ++i)
+            _workerThreads.emplace_back(
+                [this]
+                {
+                    while (!this->_workerQuit) {
+                        bool gotTask = false;
+                        std::function<void()> task;
+
+                        {
+                                // note that _pendingTasks is safe for multiple pushing threads,
+                                // but not safe for multiple popping threads. So we have to
+                                // lock to prevent more than one thread from attempt to pop
+                                // from it at the same time.
+                            ScopedLock(this->_pendingsTaskLock);
+
+                            std::function<void()>*t = nullptr;
+                            if (_pendingTasks.try_front(t)) {
+                                task = std::move(*t);
+                                _pendingTasks.pop();
+                                gotTask = true;
+                            }
+                        }
+
+                        if (gotTask) {
+                                // if we got this far, we can execute the task....
+                            TRY
+                            {
+                                task();
+                            } CATCH(const std::exception& e) {
+                                LogAlwaysError << "Suppressing exception in thread pool thread: " << e.what();
+                            } CATCH(...) {
+                                LogAlwaysError << "Suppressing unknown exception in thread pool thread.";
+                            } CATCH_END
+
+                                // That that when using completion routines, we want to attempt to
+                                // distribute the tasks evenly between threads (so that the completion
+                                // routines will also be distributed evenly between threads.). To achieve
+                                // this, let's not attempt to search for another task immediately... Instead
+                                // when after we complete a task, let's encourage this thread to go back into
+                                // a stall (unless all of our threads are saturated)
+                            Threading::YieldTimeSlice();
+                        }
+
+                            // Wait for the event with the "alertable" flag set true
+                            // note -- this is why we can't use std::condition_variable
+                            //      (because threads waiting on a condition variable won't
+                            //      be woken to execute completion routines)
+                        XlWaitForMultipleSyncObjects(
+                            2, this->_events,
+                            false, XL_INFINITE, true);
+                        if (this->_workerQuit) break;
+                    }
+                }
+            );
+    }
+
+    CompletionThreadPool::~CompletionThreadPool()
+    {
+        _workerQuit = true;
+        XlSetEvent(this->_events[1]);   // should wake all threads
+        for (auto&t : _workerThreads) t.join();
+    }
+
     class FileDataSource : public DataPacket
     {
     public:
@@ -152,12 +258,18 @@ namespace BufferUploads
 
     void* FileDataSource::GetData(SubResource subRes)
     {
-        assert(subRes == 0);
+        // assert(subRes == 0);
         return _pkt.get();
     }
 
-    size_t FileDataSource::GetDataSize(SubResource subRes) const           { assert(subRes == 0); return _dataSize; }
-    TexturePitches FileDataSource::GetPitches(SubResource subRes) const    { assert(subRes == 0); return _pitches; }
+    size_t FileDataSource::GetDataSize(SubResource subRes) const           { /*assert(subRes == 0);*/ return _dataSize; }
+    TexturePitches FileDataSource::GetPitches(SubResource subRes) const    { /*assert(subRes == 0);*/ return _pitches; }
+
+    static CompletionThreadPool& GetThreadPool()
+    {
+        static CompletionThreadPool s_threadPool(4);
+        return s_threadPool;
+    }
 
     void CALLBACK FileDataSource::CompletionRoutine(
         DWORD dwErrorCode, DWORD dwNumberOfBytesTransfered,
@@ -167,14 +279,10 @@ namespace BufferUploads
         assert(o && o->_returnPointer && o->_returnPointer->_marker);
         assert(o->_returnPointer->_marker->GetState() == Assets::AssetState::Pending);
 
-        if (dwErrorCode == ERROR_SUCCESS) {
-                // Transfer complete.
-                // We don't have to do any extra processing right now. Just mark the asset as ready
-            o->_returnPointer->_marker->SetState(Assets::AssetState::Invalid);
-        } else {
-                // failed somehow... this is now an invalid resource
-            o->_returnPointer->_marker->SetState(Assets::AssetState::Invalid);
-        }
+            // We don't have to do any extra processing right now. Just mark the asset as ready
+            // or invalid, based on the result...
+        o->_returnPointer->_marker->SetState(
+            (dwErrorCode == ERROR_SUCCESS) ? Assets::AssetState::Ready : Assets::AssetState::Invalid);
 
             // we can reset the "_returnPointer", which will also decrease the reference
             // count on the FileDataSource object
@@ -186,27 +294,36 @@ namespace BufferUploads
         assert(!_marker);
         assert(_fileHandle && _fileHandle != INVALID_HANDLE_VALUE);
 
-        // start the read operation now (it will happen asynchronously)
-        //
-        // We allocate the buffer here, to remove malloc costs from the caller thread
+        // Queue read operation begin (it will happen asynchronously)...
 
-        _pkt.reset((byte*)XlMemAlign(_dataSize, 16));
         XlSetMemory(&_overlappedStatus._internal, 0, sizeof(_overlappedStatus._internal));
         _overlappedStatus._internal.Pointer = (void*)_offset;
         _overlappedStatus._returnPointer = this;
-
-        auto result = ReadFileEx(
-            _fileHandle, _pkt.get(), (DWORD)_dataSize, 
-            &_overlappedStatus._internal, &CompletionRoutine);
-
         _marker = std::make_shared<Marker>();
-        if (!result) {
-            auto lastError = GetLastError();
-            (void)lastError;
 
-            _overlappedStatus._returnPointer.reset();
-            _marker->SetState(Assets::AssetState::Invalid);
-        }
+        auto* o = &_overlappedStatus;
+        GetThreadPool().Enqueue(
+            [o]()
+            {
+                auto* pkt = o->_returnPointer.get();
+                assert(pkt);
+
+                    // We allocate the buffer here, to remove malloc costs from the caller thread
+                pkt->_pkt.reset((byte*)XlMemAlign(pkt->_dataSize, 16));
+
+                auto result = ReadFileEx(
+                    pkt->_fileHandle, pkt->_pkt.get(), (DWORD)pkt->_dataSize, 
+                    &pkt->_overlappedStatus._internal, &CompletionRoutine);
+
+                if (!result) {
+                    auto lastError = GetLastError();
+                    (void)lastError;
+
+                    o->_returnPointer.reset();
+                    pkt->_marker->SetState(Assets::AssetState::Invalid);
+                }
+            });
+        
         return _marker;
     }
 
