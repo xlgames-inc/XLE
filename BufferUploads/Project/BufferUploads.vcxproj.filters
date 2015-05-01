@@ -10,6 +10,8 @@
     <ClInclude Include="..\IBufferUploads_Forward.h" />
     <ClInclude Include="..\Documentation.h" />
     <ClInclude Include="..\DataPacket.h" />
+    <ClInclude Include="..\ResourceLocator.h" />
+    <ClInclude Include="..\Metrics.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\BufferUploads_Manager.cpp" />

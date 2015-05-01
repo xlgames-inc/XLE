@@ -25,20 +25,20 @@ namespace BufferUploads
     class Manager : public Base_Manager
     {
     public:
-        void                    UpdateData(TransactionID id, RawDataPacket* rawData, const PartialResource&);
+        void                    UpdateData(TransactionID id, DataPacket* rawData, const PartialResource&);
 
-        TransactionID           Transaction_Begin(const BufferDesc& desc, RawDataPacket* initialisationData = NULL, TransactionOptions::BitField flags=0);
+        TransactionID           Transaction_Begin(const BufferDesc& desc, DataPacket* initialisationData = NULL, TransactionOptions::BitField flags=0);
         TransactionID           Transaction_Begin(intrusive_ptr<ResourceLocator>& locator, TransactionOptions::BitField flags=0);
         void                    Transaction_End(TransactionID id);
         void                    Transaction_Validate(TransactionID id);
 
         intrusive_ptr<ResourceLocator>         Transaction_Immediate(
-                                        const BufferDesc& desc, RawDataPacket* initialisationData, 
+                                        const BufferDesc& desc, DataPacket* initialisationData, 
                                         const PartialResource&);
         
         intrusive_ptr<ResourceLocator>         GetResource(TransactionID id);
         void                    Resource_Validate(const ResourceLocator& locator);
-        intrusive_ptr<RawDataPacket>  Resource_ReadBack(const ResourceLocator& locator);
+        intrusive_ptr<DataPacket>  Resource_ReadBack(const ResourceLocator& locator);
         void                    AddRef(TransactionID id);
         bool                    IsCompleted(TransactionID id);
 

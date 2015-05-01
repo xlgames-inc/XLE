@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "AssetsCore.h"
 #include "../Core/Prefix.h"
 #include "../Core/Types.h"
 #include <memory>
@@ -17,7 +18,6 @@ namespace Assets
 {
     class DependencyValidation; class DependentFileState; 
     namespace IntermediateResources { class CompilerSet; class Store; }
-    namespace AssetState { enum Enum; }
     class ArchiveCache;
 
     class IPollingAsyncProcess
@@ -27,12 +27,12 @@ namespace Assets
         virtual Result::Enum Update() = 0;
 
         typedef std::function<void(
-            AssetState::Enum newState,
+            AssetState newState,
             const std::vector<DependentFileState>&)> CallbackFn;
         IPollingAsyncProcess(CallbackFn&& fn);
         virtual ~IPollingAsyncProcess();
     protected:
-        void FireTrigger(AssetState::Enum, const std::vector<DependentFileState>& = std::vector<DependentFileState>());
+        void FireTrigger(AssetState, const std::vector<DependentFileState>& = std::vector<DependentFileState>());
     private:
         CallbackFn _fn;
     };

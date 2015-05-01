@@ -93,6 +93,7 @@
   <ItemGroup>
     <ClInclude Include="..\ArchiveCache.h" />
     <ClInclude Include="..\Assets.h" />
+    <ClInclude Include="..\AssetsCore.h" />
     <ClInclude Include="..\AssetUtils.h" />
     <ClInclude Include="..\BlockSerializer.h" />
     <ClInclude Include="..\ChunkFile.h" />

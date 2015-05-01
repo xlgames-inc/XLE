@@ -7,6 +7,7 @@
 #include "SceneEngineUtils.h"
 
 #include "LightingParserContext.h"
+#include "../BufferUploads/ResourceLocator.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderOverlays/Font.h"
 
@@ -124,7 +125,7 @@ namespace SceneEngine
 
     ResourcePtr CreateResourceImmediate(const BufferUploads::BufferDesc& desc)
     {
-        return GetBufferUploads()->Transaction_Immediate(desc, nullptr)->AdoptUnderlying();
+        return GetBufferUploads()->Transaction_Immediate(desc)->AdoptUnderlying();
     }
 
 

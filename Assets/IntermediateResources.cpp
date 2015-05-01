@@ -384,37 +384,16 @@ namespace Assets { namespace IntermediateResources
 
 namespace Assets
 {
-    PendingCompileMarker::PendingCompileMarker() : _state(AssetState::Pending), _sourceID1(0) 
+    PendingCompileMarker::PendingCompileMarker() : _sourceID1(0) 
     {
         DEBUG_ONLY(_initializer[0] = '\0');
     }
-    PendingCompileMarker::PendingCompileMarker(AssetState::Enum state, const char sourceID0[], uint64 sourceID1, std::shared_ptr<Assets::DependencyValidation>&& depVal)
-    : _state(state), _sourceID1(sourceID1)
-    , _dependencyValidation(std::forward<std::shared_ptr<Assets::DependencyValidation>>(depVal))
+
+    PendingCompileMarker::PendingCompileMarker(AssetState state, const char sourceID0[], uint64 sourceID1, std::shared_ptr<Assets::DependencyValidation> depVal)
+    : PendingOperationMarker(state, std::move(depVal)), _sourceID1(sourceID1)
     {
         XlCopyString(_sourceID0, sourceID0);
-        DEBUG_ONLY(_initializer[0] = '\0');
     }
 
     PendingCompileMarker::~PendingCompileMarker() {}
-
-    const char* PendingCompileMarker::Initializer() const
-    {
-        #if defined(_DEBUG)
-            return _initializer;
-        #else
-            return "";
-        #endif
-    }
-
-    void PendingCompileMarker::SetInitializer(const char initializer[])
-    {
-        DEBUG_ONLY(XlCopyString(_initializer, initializer));
-    }
-
-    void PendingCompileMarker::SetState(AssetState::Enum newState)
-    {
-        _state = newState;
-    }
-
 }

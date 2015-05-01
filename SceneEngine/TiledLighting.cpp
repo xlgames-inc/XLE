@@ -21,6 +21,7 @@
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/DeviceContextImpl.h"
 #include "../RenderCore/RenderUtils.h"
+#include "../BufferUploads/ResourceLocator.h"
 #include "../Math/Matrix.h"
 #include "../Math/Transformations.h"
 #include "../ConsoleRig/Console.h"
@@ -64,20 +65,17 @@ namespace SceneEngine
             BuildRenderTargetDesc(
                 BufferUploads::BindFlag::UnorderedAccess | BufferUploads::BindFlag::ShaderResource, 
                 BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, NativeFormat::R32_TYPELESS, 1),
-                "TileLighting"),
-            nullptr)->AdoptUnderlying();
+                "TileLighting"))->AdoptUnderlying();
         auto resLocator1 = uploads.Transaction_Immediate(
             BuildRenderTargetDesc(
                 BufferUploads::BindFlag::UnorderedAccess | BufferUploads::BindFlag::ShaderResource, 
                 BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, NativeFormat::R32_TYPELESS, 1),
-                "TileLighting"),
-            nullptr)->AdoptUnderlying();
+                "TileLighting"))->AdoptUnderlying();
         auto resLocator2 = uploads.Transaction_Immediate(
             BuildRenderTargetDesc(
                 BufferUploads::BindFlag::UnorderedAccess | BufferUploads::BindFlag::ShaderResource, 
                 BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, NativeFormat::R16_TYPELESS, 1),
-                "TileLighting"),
-            nullptr)->AdoptUnderlying();
+                "TileLighting"))->AdoptUnderlying();
 
         ShaderResourceView srv0(resLocator0.get(), NativeFormat::R32_FLOAT);
         ShaderResourceView srv1(resLocator1.get(), NativeFormat::R32_FLOAT);

@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "AssetsCore.h"
 #include "Assets.h"
 
 namespace Assets
@@ -52,10 +53,27 @@ namespace Assets
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    namespace AssetState
+    class PendingOperationMarker
     {
-        enum Enum { Pending, Ready, Invalid };
+    public:
+        std::shared_ptr<DependencyValidation> _dependencyValidation;
+
+        AssetState  GetState() const { return _state; }
+        void        SetState(AssetState newState);
+
+            // "initializer" interface only provided in debug builds, and only intended for debugging
+        const char*         Initializer() const;
+        void                SetInitializer(const char initializer[]);
+
+        PendingOperationMarker();
+        PendingOperationMarker(AssetState state, std::shared_ptr<DependencyValidation> depVal);
+        ~PendingOperationMarker();
+    protected:
+        AssetState _state;
+        DEBUG_ONLY(char _initializer[MaxPath];)
     };
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////
 
     void Dependencies_Shutdown();
 }

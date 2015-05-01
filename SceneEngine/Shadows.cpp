@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Shadows.h"
+#include "../BufferUploads/ResourceLocator.h"
 
 namespace SceneEngine
 {

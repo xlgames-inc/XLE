@@ -314,7 +314,7 @@ namespace BufferUploads
         _size = 0;
     }
 
-    CommitStep::DeferredCopy::DeferredCopy(intrusive_ptr<ResourceLocator> destination, unsigned size, intrusive_ptr<RawDataPacket> pkt)
+    CommitStep::DeferredCopy::DeferredCopy(intrusive_ptr<ResourceLocator> destination, unsigned size, intrusive_ptr<DataPacket> pkt)
     : _destination(std::move(destination)), _size(size), _temporaryBuffer(std::move(pkt))
     {
     }
@@ -363,10 +363,10 @@ namespace BufferUploads
                 const bool useMapPath = true;
                 if (useMapPath) {
                     PlatformInterface::UnderlyingDeviceContext::MappedBuffer mappedBuffer = immediateContext.Map(*i->_destination->GetUnderlying(), PlatformInterface::UnderlyingDeviceContext::MapType::NoOverwrite);
-                    XlCopyMemoryAlign16(PtrAdd(mappedBuffer.GetData(), i->_destination->Offset()), i->_temporaryBuffer->GetData(0,0), i->_size);
+                    XlCopyMemoryAlign16(PtrAdd(mappedBuffer.GetData(), i->_destination->Offset()), i->_temporaryBuffer->GetData(), i->_size);
                 } else {
                     immediateContext.PushToResource(
-                        *i->_destination->GetUnderlying(), BufferDesc(), i->_destination->Offset(), i->_temporaryBuffer->GetData(0,0), i->_size, std::make_pair(0,0), Box2D(), 0, 0);
+                        *i->_destination->GetUnderlying(), BufferDesc(), i->_destination->Offset(), i->_temporaryBuffer->GetData(), i->_size, TexturePitches(), Box2D(), 0, 0);
                 }
             }
         }

@@ -7,15 +7,14 @@
 #pragma once
 
 #include "Assets.h"
+#include "AssetUtils.h"
 
 namespace Assets 
 {
     class PendingCompileMarker; 
     class DependentFileState; 
     class DependencyValidation; 
-    namespace AssetState { enum Enum; }
     class ArchiveCache;
-
 
     /// <summary>Records the state of a resource being compiled</summary>
     /// When a resource compile operation begins, we need some generic way
@@ -31,26 +30,16 @@ namespace Assets
     /// Other times, objects are stored in a "ArchiveCache" object. For example,
     /// shader compiles are typically combined together into archives of a few
     /// different configurations. So a pointer to an optional ArchiveCache is provided.
-    class PendingCompileMarker
+    class PendingCompileMarker : public PendingOperationMarker
     {
     public:
         char    _sourceID0[MaxPath];
         uint64  _sourceID1;
         std::shared_ptr<ArchiveCache> _archive;
-        std::shared_ptr<DependencyValidation> _dependencyValidation;
-
-        AssetState::Enum    GetState() const { return _state; }
-        void                SetState(AssetState::Enum newState);
-        const char*         Initializer() const;
-        void                SetInitializer(const char initializer[]);
 
         PendingCompileMarker();
-        PendingCompileMarker(AssetState::Enum state, const char sourceID0[], uint64 sourceID1, std::shared_ptr<DependencyValidation>&& depVal);
+        PendingCompileMarker(AssetState state, const char sourceID0[], uint64 sourceID1, std::shared_ptr<DependencyValidation> depVal);
         ~PendingCompileMarker();
-
-    protected:
-        AssetState::Enum _state;
-        DEBUG_ONLY(char _initializer[MaxPath];)
     };
 }
 

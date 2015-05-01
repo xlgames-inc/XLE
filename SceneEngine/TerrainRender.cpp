@@ -21,6 +21,7 @@
 
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/DataPacket.h"
+#include "../BufferUploads/ResourceLocator.h"
 #include "../RenderCore/Metal/Format.h"
 #include "../RenderCore/Resource.h"
 #include "../RenderCore/Metal/DeviceContext.h"
@@ -284,7 +285,7 @@ namespace SceneEngine
         const unsigned slicePitch = rowPitch * _elementSize[1];
 
         auto dataPacket = BufferUploads::CreateFileDataSource(
-            fileHandle, offset, dataSize, rowPitch, slicePitch);
+            fileHandle, offset, dataSize, BufferUploads::TexturePitches(rowPitch, slicePitch));
         _bufferUploads->UpdateData(
             tile._transaction, dataPacket.get(),
             BufferUploads::PartialResource(destinationBox, 0, 0, address[2]));
@@ -376,11 +377,11 @@ namespace SceneEngine
         #pragma warning(disable:4127)       // warning C4127: conditional expression is constant
         const bool immediateCreate = false;
         if (immediateCreate) {
-            resource            = bufferUploads.Transaction_Immediate(desc, nullptr);
+            resource            = bufferUploads.Transaction_Immediate(desc);
             shaderResource      = ShaderResourceView(resource->GetUnderlying());
             uav                 = UnorderedAccessView(resource->GetUnderlying());
         } else {
-            _creationTransaction = bufferUploads.Transaction_Begin(desc, (RawDataPacket*)nullptr, TransactionOptions::ForceCreate);
+            _creationTransaction = bufferUploads.Transaction_Begin(desc, (DataPacket*)nullptr, TransactionOptions::ForceCreate);
         }
 
         LRUQueue lruQueue(elementsPerPage * pageCount);
@@ -1767,8 +1768,7 @@ namespace SceneEngine
             if (format == 0) {
                     // go via a midway buffer and handle the min/max quantization
                 auto midwayBuffer = uploads.Transaction_Immediate(
-                    RWTexture2DDesc(tile._width, tile._height, NativeFormat::R32_FLOAT), 
-                    nullptr)->AdoptUnderlying();
+                    RWTexture2DDesc(tile._width, tile._height, NativeFormat::R32_FLOAT))->AdoptUnderlying();
                 UnorderedAccessView midwayBufferUAV(midwayBuffer.get());
 
                 context.BindCS(MakeResourceList(1, midwayBufferUAV, tileCoordsUAV));
@@ -1788,7 +1788,7 @@ namespace SceneEngine
                     //  we could write these back to the original terrain cell -- but it
                     //  would be better to keep them cached only in the NodeRenderInfo
                 auto readback = uploads.Resource_ReadBack(BufferUploads::ResourceLocator(tileCoordsBuffer.get()));
-                float* readbackData = (float*)readback->GetData(0,0);
+                float* readbackData = (float*)readback->GetData();
                 if (readbackData) {
                     float newHeightOffset = readbackData[2];
                     float newHeightScale = (readbackData[3] - readbackData[2]) / float(0xffff);
@@ -2339,7 +2339,7 @@ namespace SceneEngine
                 desc._allocationRules = 0;
                 desc._textureDesc = BufferUploads::TextureDesc::Plain2D(expectedWidth, expectedHeight, resamplingFormat);
                 XlCopyString(desc._name, "ResamplingTexture");
-                auto resamplingBuffer = bufferUploads.Transaction_Immediate(desc, nullptr);
+                auto resamplingBuffer = bufferUploads.Transaction_Immediate(desc);
                 RenderCore::Metal::UnorderedAccessView uav(resamplingBuffer->GetUnderlying());
                 RenderCore::Metal::ShaderResourceView srv(inputTexture.get());
 
@@ -2357,9 +2357,9 @@ namespace SceneEngine
                     image.width = expectedWidth;
                     image.height = expectedHeight;
                     image.format = resamplingFormat;
-                    image.rowPitch = rawData->GetRowAndSlicePitch(0,0).first;
-                    image.slicePitch = rawData->GetRowAndSlicePitch(0,0).second;
-                    image.pixels = (uint8_t*)rawData->GetData(0,0);
+                    image.rowPitch = rawData->GetPitches()._rowPitch;
+                    image.slicePitch = rawData->GetPitches()._slicePitch;
+                    image.pixels = (uint8_t*)rawData->GetData();
 
                     intrusive_ptr<ID3D::Device> device;
                     {
@@ -2378,7 +2378,7 @@ namespace SceneEngine
                     desc._bindFlags = BindFlag::ShaderResource;
                     desc._textureDesc._nativePixelFormat = destFormat;
                     auto compressedBuffer = bufferUploads.Transaction_Immediate(
-                            desc, BufferUploads::CreateBasicPacket(final.slicePitch, final.pixels, std::make_pair(unsigned(final.rowPitch), unsigned(final.slicePitch))).get());
+                            desc, BufferUploads::CreateBasicPacket(final.slicePitch, final.pixels, TexturePitches(unsigned(final.rowPitch), unsigned(final.slicePitch))).get());
 
                     resamplingBuffer = compressedBuffer;   
                 }
@@ -2521,17 +2521,17 @@ namespace SceneEngine
         desc._textureDesc = BufferUploads::TextureDesc::Plain2D(
             scaffold._diffuseDims[0], scaffold._diffuseDims[1], NativeFormat::BC1_UNORM, 
             (uint8)IntegerLog2(std::max(scaffold._diffuseDims[0], scaffold._diffuseDims[1]))+1, uint8(texturesPerStrata * strataCount));
-        auto diffuseTextureArray = GetBufferUploads()->Transaction_Immediate(desc, nullptr)->AdoptUnderlying();
+        auto diffuseTextureArray = GetBufferUploads()->Transaction_Immediate(desc)->AdoptUnderlying();
 
         desc._textureDesc = BufferUploads::TextureDesc::Plain2D(
             scaffold._normalDims[0], scaffold._normalDims[1], NativeFormat::BC5_UNORM, 
             (uint8)IntegerLog2(std::max(scaffold._normalDims[0], scaffold._normalDims[1]))+1, uint8(texturesPerStrata * strataCount));
-        auto normalTextureArray = GetBufferUploads()->Transaction_Immediate(desc, nullptr)->AdoptUnderlying();
+        auto normalTextureArray = GetBufferUploads()->Transaction_Immediate(desc)->AdoptUnderlying();
 
         desc._textureDesc = BufferUploads::TextureDesc::Plain2D(
             scaffold._paramDims[0], scaffold._paramDims[1], NativeFormat::BC1_UNORM, 
             (uint8)IntegerLog2(std::max(scaffold._paramDims[0], scaffold._paramDims[1]))+1, uint8(texturesPerStrata * strataCount));
-        auto specularityTextureArray = GetBufferUploads()->Transaction_Immediate(desc, nullptr)->AdoptUnderlying();
+        auto specularityTextureArray = GetBufferUploads()->Transaction_Immediate(desc)->AdoptUnderlying();
 
         desc._textureDesc = BufferUploads::TextureDesc::Plain2D(
             scaffold._paramDims[0], scaffold._paramDims[1], NativeFormat::BC1_UNORM);
@@ -2540,10 +2540,10 @@ namespace SceneEngine
             uint16 blankColor = ((0x1f/2) << 11) | ((0x3f/2) << 5) | (0x1f/2);
             struct BC1Block { uint16 c0; uint16 c1; uint32 t; } block { blankColor, blankColor, 0 };
 
-            auto dataSize = tempBuffer->GetDataSize(0,0);
+            auto dataSize = tempBuffer->GetDataSize();
             assert((dataSize % sizeof(BC1Block))==0);
             auto blockCount = dataSize / sizeof(BC1Block);
-            auto data = (BC1Block*)tempBuffer->GetData(0,0);
+            auto data = (BC1Block*)tempBuffer->GetData();
             for (unsigned c=0; c<blockCount; ++c) data[c] = block;
         }
         auto dummyWhiteBuffer = GetBufferUploads()->Transaction_Immediate(desc, tempBuffer.get())->AdoptUnderlying();

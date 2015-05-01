@@ -22,6 +22,7 @@
 #include "../RenderCore/Metal/DeviceContextImpl.h"
 #include "../RenderCore/RenderUtils.h"
 #include "../BufferUploads/IBufferUploads.h"
+#include "../BufferUploads/ResourceLocator.h"
 #include "../ConsoleRig/Console.h"
 
 #include "../Utility/StringFormat.h"
@@ -213,7 +214,7 @@ namespace SceneEngine
             BufferUploads::TextureDesc::Plain2D(256, 256, shadowMapFormat, 0, uint8(desc._frustumCount)), "VolFog");
         auto& uploads = *GetBufferUploads();
 
-        auto shadowMapTexture = uploads.Transaction_Immediate(renderTargetDesc, nullptr)->AdoptUnderlying();
+        auto shadowMapTexture = uploads.Transaction_Immediate(renderTargetDesc)->AdoptUnderlying();
         auto shadowMapShaderResource = ShaderResourceView(shadowMapTexture.get(), shadowMapFormat, desc._frustumCount);
         std::vector<RenderTargetView> shadowMapRenderTargets;
         for (int c=0; c<desc._frustumCount; ++c) {
@@ -221,7 +222,7 @@ namespace SceneEngine
                 RenderTargetView(shadowMapTexture.get(), shadowMapFormat, ArraySlice(1, c)));
         }
 
-        auto shadowMapTextureTemp = uploads.Transaction_Immediate(renderTargetDesc, nullptr)->AdoptUnderlying();
+        auto shadowMapTextureTemp = uploads.Transaction_Immediate(renderTargetDesc)->AdoptUnderlying();
         auto shadowMapShaderResourceTemp = ShaderResourceView(shadowMapTextureTemp.get(), shadowMapFormat, desc._frustumCount);
         std::vector<RenderTargetView> shadowMapRenderTargetsTemp;
         for (int c=0; c<desc._frustumCount; ++c) {
@@ -231,25 +232,25 @@ namespace SceneEngine
 
         auto densityTextureDesc = BuildRenderTargetDesc(BufferUploads::BindFlag::UnorderedAccess|BufferUploads::BindFlag::ShaderResource,
             BufferUploads::TextureDesc::Plain3D(160, 90, 128, NativeFormat::R32_TYPELESS), "VolFog");
-        auto densityTexture = uploads.Transaction_Immediate(densityTextureDesc, nullptr)->AdoptUnderlying();
+        auto densityTexture = uploads.Transaction_Immediate(densityTextureDesc)->AdoptUnderlying();
         UnorderedAccessView densityUnorderedAccess(densityTexture.get(), NativeFormat::R32_FLOAT);
         ShaderResourceView densityShaderResource(densityTexture.get(), NativeFormat::R32_FLOAT);
 
-        auto inscatterShadowingTexture = uploads.Transaction_Immediate(densityTextureDesc, nullptr)->AdoptUnderlying();
+        auto inscatterShadowingTexture = uploads.Transaction_Immediate(densityTextureDesc)->AdoptUnderlying();
         UnorderedAccessView inscatterShadowingUnorderedAccess(inscatterShadowingTexture.get(), NativeFormat::R32_FLOAT);
         ShaderResourceView inscatterShadowingShaderResource(inscatterShadowingTexture.get(), NativeFormat::R32_FLOAT);
     
-        auto transmissionTexture = uploads.Transaction_Immediate(densityTextureDesc, nullptr)->AdoptUnderlying();
+        auto transmissionTexture = uploads.Transaction_Immediate(densityTextureDesc)->AdoptUnderlying();
         UnorderedAccessView transmissionUnorderedAccess(transmissionTexture.get(), NativeFormat::R32_FLOAT);
         ShaderResourceView transmissionShaderResource(transmissionTexture.get(), NativeFormat::R32_FLOAT);
 
         auto scatteringTextureDesc = BuildRenderTargetDesc(BufferUploads::BindFlag::UnorderedAccess|BufferUploads::BindFlag::ShaderResource,
             BufferUploads::TextureDesc::Plain3D(160, 90, 128, NativeFormat::R32G32B32A32_TYPELESS), "VolFog");
-        auto inscatterFinalsTexture = uploads.Transaction_Immediate(scatteringTextureDesc, nullptr)->AdoptUnderlying();
+        auto inscatterFinalsTexture = uploads.Transaction_Immediate(scatteringTextureDesc)->AdoptUnderlying();
         UnorderedAccessView inscatterFinalsUnorderedAccess(inscatterFinalsTexture.get(), NativeFormat::R32G32B32A32_FLOAT);
         ShaderResourceView inscatterFinalsShaderResource(inscatterFinalsTexture.get(), NativeFormat::R32G32B32A32_FLOAT);
 
-        auto inscatterPointLightsTexture = uploads.Transaction_Immediate(scatteringTextureDesc, nullptr)->AdoptUnderlying();
+        auto inscatterPointLightsTexture = uploads.Transaction_Immediate(scatteringTextureDesc)->AdoptUnderlying();
         UnorderedAccessView inscatterPointLightsUnorderedAccess(inscatterPointLightsTexture.get(), NativeFormat::R32G32B32A32_FLOAT);
         ShaderResourceView inscatterPointLightsShaderResource(inscatterPointLightsTexture.get(), NativeFormat::R32G32B32A32_FLOAT);
 

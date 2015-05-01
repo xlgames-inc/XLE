@@ -4,6 +4,8 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#include "ResourceLocator.h"
+#include "Metrics.h"
 #include "IBufferUploads.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Core/Prefix.h"  // for dimof

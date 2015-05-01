@@ -24,6 +24,8 @@
 #include "..\RenderCore\Metal\InputLayout.h"
 #include "..\RenderCore\RenderUtils.h"
 #include "..\BufferUploads\IBufferUploads.h"
+#include "..\BufferUploads\ResourceLocator.h"
+#include "..\BufferUploads\DataPacket.h"
 
 #include "..\Math\Geometry.h"
 
@@ -348,12 +350,14 @@ namespace SceneEngine
             return desc;
         }
 
-        class UberSurfacePacket : public BufferUploads::RawDataPacket
+        class UberSurfacePacket : public BufferUploads::DataPacket
         {
         public:
-            virtual void* GetData(unsigned mipIndex, unsigned arrayIndex);
-            virtual size_t GetDataSize(unsigned mipIndex, unsigned arrayIndex) const;
-            virtual std::pair<unsigned,unsigned> GetRowAndSlicePitch(unsigned mipIndex, unsigned arrayIndex) const;
+            virtual void* GetData(SubResource subRes);
+            virtual size_t GetDataSize(SubResource subRes) const;
+            virtual BufferUploads::TexturePitches GetPitches(SubResource subRes) const;
+
+            virtual std::shared_ptr<Marker> BeginBackgroundLoad() const;
 
             UberSurfacePacket(void* sourceData, unsigned stride, UInt2 dims);
 
@@ -363,22 +367,25 @@ namespace SceneEngine
             UInt2 _dims;
         };
 
-        void* UberSurfacePacket::GetData(unsigned mipIndex, unsigned arrayIndex)
+        void* UberSurfacePacket::GetData(SubResource subRes)
         {
-            assert(mipIndex == 0 && arrayIndex==0);
+            assert(subRes==0);
             return _sourceData;
         }
 
-        size_t UberSurfacePacket::GetDataSize(unsigned mipIndex, unsigned arrayIndex) const
+        size_t UberSurfacePacket::GetDataSize(SubResource subRes) const
         {
-            assert(mipIndex == 0 && arrayIndex==0);
+            assert(subRes==0);
             return _stride*_dims[1];
         }
 
-        std::pair<unsigned,unsigned> UberSurfacePacket::GetRowAndSlicePitch(unsigned mipIndex, unsigned arrayIndex) const
+        BufferUploads::TexturePitches UberSurfacePacket::GetPitches(SubResource subRes) const
         {
-            return std::make_pair(_stride, _stride*_dims[1]);
+            assert(subRes==0);
+            return BufferUploads::TexturePitches(_stride, _stride*_dims[1]);
         }
+
+        auto UberSurfacePacket::BeginBackgroundLoad() const -> std::shared_ptr<Marker> { return nullptr; }
 
         UberSurfacePacket::UberSurfacePacket(void* sourceData, unsigned stride, UInt2 dims)
         {
@@ -442,8 +449,8 @@ namespace SceneEngine
                     BufferUploads::ResourceLocator(_pimpl->_gpucache[0].get()));
                 assert(readback.get());
 
-                auto readbackStride = readback->GetRowAndSlicePitch(0,0).first;
-                auto readbackData = readback->GetData(0, 0);
+                auto readbackStride = readback->GetPitches()._rowPitch;
+                auto readbackData = readback->GetData();
 
                 auto dstStart = _pimpl->_uberSurface->GetData(_pimpl->_gpuCacheMins);
                 auto dstStride = _pimpl->_uberSurface->GetStride();
@@ -956,9 +963,9 @@ namespace SceneEngine
 
         auto& bufferUploads = *GetBufferUploads();
         auto desc = Internal::BuildCacheDesc(UInt2(unsigned(size[0]), unsigned(size[1])), (RenderCore::Metal::NativeFormat::Enum)_pimpl->_uberSurface->Format());
-        auto hardMaterials = bufferUploads.Transaction_Immediate(desc, nullptr)->AdoptUnderlying();
-        auto softMaterials = bufferUploads.Transaction_Immediate(desc, nullptr)->AdoptUnderlying();
-        auto softMaterialsCopy = bufferUploads.Transaction_Immediate(desc, nullptr)->AdoptUnderlying();
+        auto hardMaterials = bufferUploads.Transaction_Immediate(desc)->AdoptUnderlying();
+        auto softMaterials = bufferUploads.Transaction_Immediate(desc)->AdoptUnderlying();
+        auto softMaterialsCopy = bufferUploads.Transaction_Immediate(desc)->AdoptUnderlying();
 
         RenderCore::Metal::UnorderedAccessView hardMaterialsUAV(hardMaterials.get());
         RenderCore::Metal::UnorderedAccessView softMaterialsUAV(softMaterials.get());

@@ -16,6 +16,7 @@
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/DataPacket.h"
+#include "../BufferUploads/ResourceLocator.h"
 
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/DX11/Metal/DX11Utils.h"
@@ -65,11 +66,11 @@ namespace SceneEngine
             BindFlag::StreamOutput, 0, GPUAccess::Read | GPUAccess::Write,
             lbDesc, "ModelIntersectionBuffer");
         
-        auto soRes = uploads.Transaction_Immediate(bufferDesc, nullptr)->AdoptUnderlying();
+        auto soRes = uploads.Transaction_Immediate(bufferDesc)->AdoptUnderlying();
         _streamOutputBuffer = QueryInterfaceCast<ID3D::Buffer>(soRes);
 
         _cpuAccessBuffer = uploads.Transaction_Immediate(
-            CreateDesc(0, CPUAccess::Read, 0, lbDesc, "ModelIntersectionCopyBuffer"), nullptr)->AdoptUnderlying();
+            CreateDesc(0, CPUAccess::Read, 0, lbDesc, "ModelIntersectionCopyBuffer"))->AdoptUnderlying();
 
         auto pkt = CreateEmptyPacket(bufferDesc);
         XlSetMemory(pkt->GetData(), 0, pkt->GetDataSize());

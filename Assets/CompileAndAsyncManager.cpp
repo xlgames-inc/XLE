@@ -18,7 +18,7 @@ namespace Assets
 
         ////////////////////////////////////////////////////////////
 
-    void IPollingAsyncProcess::FireTrigger( AssetState::Enum newState,
+    void IPollingAsyncProcess::FireTrigger( AssetState newState,
                                             const std::vector<Assets::DependentFileState>& dependencies) 
     {
         _fn(newState, dependencies); 

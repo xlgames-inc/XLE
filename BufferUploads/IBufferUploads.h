@@ -6,26 +6,22 @@
 
 #pragma once
 
-#include "../Core/Types.h"
-#include "../Utility/Threading/ThreadingUtils.h"     // for RefCountedObject
+#include "IBufferUploads_Forward.h"
+
+#include "../RenderCore/IDevice_Forward.h"
+#include "../RenderCore/IThreadContext_Forward.h"
+
 #include "../Utility/IntrusivePtr.h"
 #include "../Utility/Mixins.h"
 #include "../Utility/StringUtils.h"
-#include "../RenderCore/IDevice_Forward.h"
-#include "../RenderCore/IThreadContext_Forward.h"
-#include "../RenderCore/Metal/Resource.h"
-#include "IBufferUploads_Forward.h"
-#include <vector>
+#include "../Core/Types.h"
 #include <memory>
-#include <assert.h>
 
 #if OUTPUT_DLL
     #define buffer_upload_dll_export       dll_export
 #else
     #define buffer_upload_dll_export
 #endif
-
-namespace Utility { class DefragStep; }
 
 namespace BufferUploads
 {
@@ -227,175 +223,18 @@ namespace BufferUploads
 
         /////////////////////////////////////////////////
 
-    class RawDataPacket : public RefCountedObject
-    {
-    public:
-            //  
-            //      Note RawDataPacket will be initialised with a ref count of 1 
-            //      after the constructor.
-            //      so:
-            //          RawDataPacket* p = new RawDataPacket_Type();
-            //          p->AddRef();
-            //          p->Release();
-            //          p->Release();
-            //
-            //      will not destroy the object until the second Release();
-            //
-        virtual void*                           GetData             (unsigned mipIndex=0, unsigned arrayIndex=0) = 0;
-        virtual size_t                          GetDataSize         (unsigned mipIndex=0, unsigned arrayIndex=0) const = 0;
-        virtual std::pair<unsigned,unsigned>    GetRowAndSlicePitch (unsigned mipIndex=0, unsigned arrayIndex=0) const = 0;
-    };
-
-        /////////////////////////////////////////////////
-
-    typedef int64 TimeMarker;
-
-    namespace UploadDataType
-    {
-        enum Enum
-        {
-            Texture, Vertex, Index,
-            Max
-        };
-    }
-
-    struct AssemblyLineMetrics
-    {
-        unsigned _transactionCount, _temporaryTransactionsAllocated, _longTermTransactionsAllocated;
-        unsigned _queuedCreates, _queuedUploads, _queuedStagingCreates;
-        unsigned _queuedPeakCreates, _queuedPeakUploads, _queuedPeakStagingCreates;
-        unsigned _queuedBytes[UploadDataType::Max];
-        AssemblyLineMetrics();
-    };
-
-    struct AssemblyLineRetirement
-    {
-        BufferDesc _desc;
-        TimeMarker _requestTime, _retirementTime;
-    };
-
-    struct CommandListMetrics
-    {
-        unsigned _bytesUploaded[UploadDataType::Max];
-        unsigned _bytesCreated[UploadDataType::Max];
-        unsigned _bytesUploadedDuringCreation[UploadDataType::Max];
-        unsigned _bytesUploadTotal;
-        unsigned _countCreations[UploadDataType::Max];
-        unsigned _countDeviceCreations[UploadDataType::Max];
-        unsigned _countUploaded[UploadDataType::Max];
-        unsigned _contextOperations, _nonContextOperations, _deviceCreateOperations;
-        AssemblyLineMetrics _assemblyLineMetrics;
-        AssemblyLineRetirement _retirements[16];
-        unsigned _retirementCount;
-        std::vector<AssemblyLineRetirement> _retirementsOverflow;
-        TimeMarker _resolveTime, _commitTime;
-        TimeMarker _waitTime, _processingStart, _processingEnd;
-        TimeMarker _framePriorityStallTime;
-        unsigned _batchedCopyBytes, _batchedCopyCount;
-        unsigned _wakeCount, _frameId;
-
-        buffer_upload_dll_export CommandListMetrics();
-        buffer_upload_dll_export CommandListMetrics(const CommandListMetrics& cloneFrom);
-        buffer_upload_dll_export const CommandListMetrics& operator=(const CommandListMetrics& cloneFrom);
-
-        unsigned RetirementCount() const                                { return unsigned(_retirementCount + _retirementsOverflow.size()); }
-        const AssemblyLineRetirement& Retirement(unsigned index) const  { if (index<_retirementCount) {return _retirements[index];} return _retirementsOverflow[index-_retirementCount]; }
-    };
-
-        /////////////////////////////////////////////////
-
-    struct PoolMetrics
-    {
-        BufferDesc _desc;
-        unsigned _currentSize, _peakSize;
-        unsigned _topMostAge;
-        unsigned _recentDeviceCreateCount;
-        unsigned _recentPoolCreateCount;
-        unsigned _recentReleaseCount;
-        unsigned _totalRealSize, _totalCreateSize, _totalCreateCount;
-    };
-
-    struct BatchedHeapMetrics
-    {
-        std::vector<unsigned> _markers;
-        unsigned _allocatedSpace, _unallocatedSpace;
-        unsigned _heapSize;
-        unsigned _largestFreeBlock;
-        unsigned _spaceInReferencedCountedBlocks;
-        unsigned _referencedCountedBlockCount;
-    };
-
-    struct BatchingSystemMetrics
-    {
-        std::vector<BatchedHeapMetrics> _heaps;
-    };
-
-    struct PoolSystemMetrics
-    {
-        std::vector<PoolMetrics> _resourcePools;
-        std::vector<PoolMetrics> _stagingPools;
-        BatchingSystemMetrics _batchingSystemMetrics;
-    };
+    class DataPacket;
+    class ResourceLocator;
 
         /////////////////////////////////////////////////
 
     typedef uint64 TransactionID;
-    typedef RenderCore::Metal::Underlying::Resource UnderlyingResource;
+    class Event_ResourceReposition;
 
-    class IResourcePool
-    {
-    public:
-        virtual void AddRef(
-            uint64 resourceMarker, UnderlyingResource* resource, 
-            unsigned offset, unsigned size) = 0;
-        virtual void ReturnToPool(
-            uint64 resourceMarker, intrusive_ptr<UnderlyingResource>&& resource, 
-            unsigned offset, unsigned size) = 0;
-        virtual ~IResourcePool() {}
-    };
-
-    class ResourceLocator : public RefCountedObject
-    {
-    public:
-        intrusive_ptr<UnderlyingResource> AdoptUnderlying();
-
-        bool IsEmpty() const { return !_resource; }
-        unsigned Offset() const { return _offset; }
-        unsigned Size() const { return _size; }
-        UnderlyingResource* GetUnderlying() const { return _resource.get(); }
-        std::shared_ptr<IResourcePool> Pool() { return _pool; }
-        uint64 PoolMarker() { return _poolMarker; }
-
-        ResourceLocator(
-            intrusive_ptr<UnderlyingResource>&& moveFrom, unsigned offset=~unsigned(0x0), unsigned size=~unsigned(0x0), 
-            std::shared_ptr<IResourcePool> pool = nullptr, uint64 poolMarker = 0);
-        ResourceLocator(ResourceLocator&& moveFrom);
-        ResourceLocator& operator=(ResourceLocator&& moveFrom);
-        ResourceLocator();
-        ~ResourceLocator();
-
-        void swap(ResourceLocator& other);
-    protected:
-        intrusive_ptr<UnderlyingResource> _resource;
-        unsigned _offset, _size;
-        std::shared_ptr<IResourcePool> _pool;
-        uint64 _poolMarker;
-
-        ResourceLocator(const ResourceLocator& resource);
-        ResourceLocator& operator=(const ResourceLocator& resource);
-    };
-
-        /////////////////////////////////////////////////
-
-    class Event_ResourceReposition
-    {
-    public:
-        UnderlyingResource* _originalResource;
-        UnderlyingResource* _newResource;
-        std::shared_ptr<IResourcePool> _pool;
-        uint64 _poolMarker;
-        std::vector<Utility::DefragStep> _defragSteps;
-    };
+    struct BatchedHeapMetrics;
+    struct BatchingSystemMetrics;
+    struct PoolSystemMetrics;
+    struct CommandListMetrics;
 
     class Box2D
     {
@@ -476,7 +315,7 @@ namespace BufferUploads
             /// Upload data for buffer uploads can be provided either to the Transaction_Begin
             /// call, or to UploadData. Use UploadData when you want to update an existing resource,
             /// or change the data that's already present.
-        IMETHOD void            UpdateData  (TransactionID id, RawDataPacket* rawData, const PartialResource& = PartialResource()) IPURE;
+        IMETHOD void            UpdateData  (TransactionID id, DataPacket* rawData, const PartialResource& = PartialResource()) IPURE;
             /// @}
 
             /// \name Begin and End transactions
@@ -485,7 +324,7 @@ namespace BufferUploads
             /// <summary>Begin a new transaction</summary>
             /// Begin a new transaction, either by creating a new resource, or by attaching
             /// to an existing resource.
-        IMETHOD TransactionID   Transaction_Begin    (const BufferDesc& desc, RawDataPacket* initialisationData = nullptr, TransactionOptions::BitField flags=0) IPURE;
+        IMETHOD TransactionID   Transaction_Begin    (const BufferDesc& desc, DataPacket* initialisationData = nullptr, TransactionOptions::BitField flags=0) IPURE;
         IMETHOD TransactionID   Transaction_Begin    (intrusive_ptr<ResourceLocator> & locator, TransactionOptions::BitField flags=0) IPURE;
 
             /// <summary>Ends a transaction</summary>
@@ -509,7 +348,7 @@ namespace BufferUploads
             /// execute in the current thread, and a new resource will be returned from
             /// the call. Use these methods when uploads can't be delayed.
         IMETHOD intrusive_ptr<ResourceLocator>
-            Transaction_Immediate(  const BufferDesc& desc, RawDataPacket* initialisationData, 
+            Transaction_Immediate(  const BufferDesc& desc, DataPacket* initialisationData = nullptr, 
                                     const PartialResource& = PartialResource()) IPURE;
             /// @}
 
@@ -554,7 +393,7 @@ namespace BufferUploads
             /// If the resource is currently in use by the GPU, it can result in a store.
             /// Whenever possible, it's recommended to avoid using this method. It's provided for
             /// compatibility and debugging.
-        IMETHOD intrusive_ptr<RawDataPacket>  Resource_ReadBack           (const ResourceLocator& locator) IPURE;
+        IMETHOD intrusive_ptr<DataPacket>  Resource_ReadBack           (const ResourceLocator& locator) IPURE;
             /// @}
 
             /// \name Frame management
@@ -607,7 +446,6 @@ namespace BufferUploads
     #endif
 
     buffer_upload_dll_export std::unique_ptr<IManager>      CreateManager(RenderCore::IDevice* renderDevice);
-    buffer_upload_dll_export BufferDesc                     ExtractDesc(const RenderCore::Metal::Underlying::Resource& resource);
 
 /*-----------------*/ #include "../RenderCore/FlexEnd.h" /*-----------------*/
 
@@ -660,56 +498,5 @@ namespace BufferUploads
         return result;
     }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    inline intrusive_ptr<RenderCore::Metal::Underlying::Resource> ResourceLocator::AdoptUnderlying()
-    {
-        _offset = _size = 0;
-        _pool.reset();
-        _poolMarker = 0;
-        return std::move(_resource);
-    }
-
-    inline ResourceLocator::ResourceLocator(
-        intrusive_ptr<RenderCore::Metal::Underlying::Resource>&& moveFrom, 
-        unsigned offset, unsigned size,
-        std::shared_ptr<IResourcePool> pool, uint64 poolMarker)
-    : _resource(std::forward<intrusive_ptr<RenderCore::Metal::Underlying::Resource>>(moveFrom))
-    , _offset(offset), _size(size), _pool(pool), _poolMarker(poolMarker)
-    {
-        if (_pool) {
-            _pool->AddRef(_poolMarker, _resource.get(), _offset, _size);
-        }
-    }
-
-    inline ResourceLocator::ResourceLocator(ResourceLocator&& moveFrom) 
-        : _resource(std::move(moveFrom._resource))
-        , _offset(moveFrom._offset), _size(moveFrom._size)
-        , _pool(std::move(moveFrom._pool)), _poolMarker(moveFrom._poolMarker)
-    {}
-
-    inline ResourceLocator& ResourceLocator::operator=(ResourceLocator&& moveFrom)
-    {
-        ResourceLocator(moveFrom).swap(*this);
-        return *this;
-    }
-
-    inline ResourceLocator::ResourceLocator() : _pool(nullptr), _poolMarker(0), _offset(0), _size(0) {}
-    inline ResourceLocator::~ResourceLocator()
-    {
-            // attempt to return our resource to the pool
-        if (_pool) {
-            _pool->ReturnToPool(_poolMarker, std::move(_resource), _offset, _size);
-        }
-    }
-
-    inline void ResourceLocator::swap(ResourceLocator& other)
-    {
-        std::swap(_resource, other._resource);
-        std::swap(_size, other._size);
-        std::swap(_offset, other._offset);
-        std::swap(_pool, other._pool);
-        std::swap(_poolMarker, other._poolMarker);
-    }
 }
 

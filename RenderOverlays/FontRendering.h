@@ -21,7 +21,7 @@ public:
 
     void*   GetUnderlying() const;
     void    UpdateGlyphToTexture(FT_GlyphSlot glyph, int offX, int offY, int width, int height);
-    void    UpdateToTexture(BufferUploads::RawDataPacket* packet, int offX, int offY, int width, int height);
+    void    UpdateToTexture(BufferUploads::DataPacket* packet, int offX, int offY, int width, int height);
 
 private:
     mutable BufferUploads::TransactionID    _transaction;

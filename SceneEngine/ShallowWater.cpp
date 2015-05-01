@@ -20,6 +20,7 @@
 #include "../RenderCore/Metal/DeviceContextImpl.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/DataPacket.h"
+#include "../BufferUploads/ResourceLocator.h"
 #include "../Math/ProjectionMath.h"
 #include "../Math/Transformations.h"
 #include "../ConsoleRig/Console.h"
@@ -100,7 +101,7 @@ namespace SceneEngine
         unsigned heightsTextureCount = pipeModel?1:3;
 
         for (unsigned c=0; c<heightsTextureCount; ++c) {
-            waterHeightsTextures[c] = uploads.Transaction_Immediate(targetDesc, nullptr)->AdoptUnderlying();
+            waterHeightsTextures[c] = uploads.Transaction_Immediate(targetDesc)->AdoptUnderlying();
             waterHeightsUAV[c] = UnorderedAccessView(waterHeightsTextures[c].get(), NativeFormat::R32_FLOAT, 0, false, true);
             waterHeightsSRV[c] = ShaderResourceView(waterHeightsTextures[c].get(), NativeFormat::R32_FLOAT, maxSimulationGrids);
         }
@@ -111,7 +112,7 @@ namespace SceneEngine
 
         if (pipeModel || calculateVelocities) {
             targetDesc._textureDesc._nativePixelFormat = NativeFormat::R32_TYPELESS;
-            auto velBuffer = BufferUploads::CreateBasicPacket(sizeof(float)*width*height, nullptr, std::make_pair(width*4, width*height*4));
+            auto velBuffer = BufferUploads::CreateBasicPacket(sizeof(float)*width*height, nullptr, BufferUploads::TexturePitches(width*4, width*height*4));
             std::fill((float*)velBuffer->GetData(), (float*)PtrAdd(velBuffer->GetData(), width*height*sizeof(float)), 0.f);
             for (unsigned c=0; c<4; ++c) {
                 waterVelocitiesTexture[c] = uploads.Transaction_Immediate(targetDesc, velBuffer.get())->AdoptUnderlying();
@@ -123,7 +124,7 @@ namespace SceneEngine
         if (!pipeModel && calculateVelocities) {
             targetDesc._textureDesc._nativePixelFormat = NativeFormat::R32_TYPELESS;
             for (unsigned c=0; c<2; ++c) {
-                slopesBuffer[c] = uploads.Transaction_Immediate(targetDesc, nullptr)->AdoptUnderlying();
+                slopesBuffer[c] = uploads.Transaction_Immediate(targetDesc)->AdoptUnderlying();
                 slopesBufferUAV[c] = UnorderedAccessView(slopesBuffer[c].get(), NativeFormat::R32_FLOAT, 0, false, true);
             }
         }

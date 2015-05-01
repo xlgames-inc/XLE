@@ -7,38 +7,91 @@
 #pragma once
 
 #include "IBufferUploads.h"
+#include "../Assets/AssetUtils.h"                   // for ::Assets::PendingOperationMarker
+#include "../Utility/Threading/ThreadingUtils.h"    // for RefCountedObject
 #include "../Utility/MemoryUtils.h"
 
 namespace BufferUploads
 {
-    class BasicRawDataPacket : public RawDataPacket
+    class TexturePitches
     {
     public:
-        virtual void* GetData(unsigned mipIndex=0, unsigned arrayIndex=0);
-        virtual std::pair<unsigned,unsigned> GetRowAndSlicePitch(unsigned mipIndex=0, unsigned arrayIndex=0) const;
-        virtual size_t GetDataSize(unsigned mipIndex=0, unsigned arrayIndex=0) const;
+        unsigned _rowPitch;
+        unsigned _slicePitch;
+        buffer_upload_dll_export TexturePitches(const TextureDesc& desc);
+        TexturePitches(unsigned rowPitch, unsigned slicePitch);
+        TexturePitches();
+    };
 
-        BasicRawDataPacket(size_t dataSize, const void* data = nullptr, std::pair<unsigned,unsigned> rowAndSlicePitch = std::make_pair(0,0));
+    class DataPacket : public RefCountedObject
+    {
+    public:
+            //  
+            //      Note DataPacket will be initialised with a ref count of 1 
+            //      after the constructor.
+            //      so:
+            //          DataPacket* p = new RawDataPacket_Type();
+            //          p->AddRef();
+            //          p->Release();
+            //          p->Release();
+            //
+            //      will not destroy the object until the second Release();
+            //
+        typedef unsigned SubResource;
+
+        virtual void*           GetData         (SubResource subRes = 0) = 0;
+        virtual size_t          GetDataSize     (SubResource subRes = 0) const = 0;
+        virtual TexturePitches  GetPitches      (SubResource subRes = 0) const = 0;
+
+        class Marker : public ::Assets::PendingOperationMarker
+        {
+        public:
+            BufferDesc  _desc;
+        };
+
+        virtual std::shared_ptr<Marker>     BeginBackgroundLoad() const = 0;
+
+        static SubResource      TexSubRes(unsigned mipIndex, unsigned arrayIndex = 0);
+    };
+
+        /////////////////////////////////////////////////
+
+    class BasicRawDataPacket : public DataPacket
+    {
+    public:
+        virtual void* GetData(SubResource subRes = 0);
+        virtual size_t GetDataSize(SubResource subRes = 0) const;
+        virtual TexturePitches GetPitches(SubResource subRes = 0) const;
+        virtual std::shared_ptr<Marker> BeginBackgroundLoad() const;
+
+        BasicRawDataPacket(size_t dataSize, const void* data = nullptr, TexturePitches pitches = TexturePitches());
         virtual ~BasicRawDataPacket();
     protected:
         std::unique_ptr<uint8, PODAlignedDeletor> _data; 
         size_t _dataSize;
-        std::pair<unsigned,unsigned> _rowAndSlicePitch;
+        TexturePitches _pitches;
 
         BasicRawDataPacket(const BasicRawDataPacket&);
         BasicRawDataPacket& operator=(const BasicRawDataPacket&);
     };
 
-    buffer_upload_dll_export intrusive_ptr<RawDataPacket> CreateBasicPacket(
+    buffer_upload_dll_export intrusive_ptr<DataPacket> CreateBasicPacket(
         size_t dataSize, const void* data = nullptr, 
-        std::pair<unsigned,unsigned> rowAndSlicePitch = std::make_pair(0,0));
+        TexturePitches pitches = TexturePitches());
 
-    buffer_upload_dll_export intrusive_ptr<RawDataPacket> CreateEmptyPacket(
+    buffer_upload_dll_export intrusive_ptr<DataPacket> CreateEmptyPacket(
         const BufferDesc& desc);
 
-    buffer_upload_dll_export intrusive_ptr<RawDataPacket> CreateFileDataSource(
+    buffer_upload_dll_export intrusive_ptr<DataPacket> CreateFileDataSource(
         const void* fileHandle, size_t offset, size_t dataSize,
-        unsigned rowPitch, unsigned slicePitch);
+        TexturePitches pitches);
+
+    inline TexturePitches::TexturePitches(unsigned rowPitch, unsigned slicePitch)
+    : _rowPitch(rowPitch), _slicePitch(slicePitch) {}
+    inline TexturePitches::TexturePitches()
+    {
+        _rowPitch = _slicePitch = 0;
+    }
 
 }
 

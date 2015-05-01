@@ -17,6 +17,7 @@
 #include "../RenderCore/Metal/DeviceContextImpl.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/DataPacket.h"
+#include "../BufferUploads/ResourceLocator.h"
 #include "../Math/Transformations.h"
 #include "../Math/ProjectionMath.h"
 #include "../ConsoleRig/Console.h"

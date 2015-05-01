@@ -31,6 +31,7 @@
 #include "../RenderCore/RenderUtils.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/DataPacket.h"
+#include "../BufferUploads/ResourceLocator.h"
 #include "../Math/Transformations.h"
 #include "../Math/ProjectionMath.h"
 #include "../Math/Geometry.h"
@@ -160,31 +161,31 @@ namespace SceneEngine
             "FFT");
 
             ////
-        auto workingTextureReal = uploads.Transaction_Immediate(bufferUploadsDesc, nullptr)->AdoptUnderlying();
+        auto workingTextureReal = uploads.Transaction_Immediate(bufferUploadsDesc)->AdoptUnderlying();
         UnorderedAccessView workingTextureRealUVA(workingTextureReal.get(), NativeFormat::R32_UINT);
         RenderTargetView workingTextureRealTarget(workingTextureReal.get(), NativeFormat::R32_UINT);
         ShaderResourceView workingTextureRealShaderResource(workingTextureReal.get(), NativeFormat::R32_FLOAT);
 
-        auto workingTextureImaginary = uploads.Transaction_Immediate(bufferUploadsDesc, nullptr)->AdoptUnderlying();
+        auto workingTextureImaginary = uploads.Transaction_Immediate(bufferUploadsDesc)->AdoptUnderlying();
         UnorderedAccessView workingTextureImaginaryUVA(workingTextureImaginary.get(), NativeFormat::R32_UINT);
         RenderTargetView workingTextureImaginaryTarget(workingTextureImaginary.get(), NativeFormat::R32_UINT);
         ShaderResourceView workingTextureImaginaryShaderResource(workingTextureImaginary.get(), NativeFormat::R32_FLOAT);
 
             ////
-        auto workingTextureXReal = uploads.Transaction_Immediate(bufferUploadsDesc, nullptr)->AdoptUnderlying();
+        auto workingTextureXReal = uploads.Transaction_Immediate(bufferUploadsDesc)->AdoptUnderlying();
         UnorderedAccessView workingTextureXRealUVA(workingTextureXReal.get(), NativeFormat::R32_UINT);
         ShaderResourceView workingTextureXRealShaderResource(workingTextureXReal.get(), NativeFormat::R32_FLOAT);
 
-        auto workingTextureXImaginary = uploads.Transaction_Immediate(bufferUploadsDesc, nullptr)->AdoptUnderlying();
+        auto workingTextureXImaginary = uploads.Transaction_Immediate(bufferUploadsDesc)->AdoptUnderlying();
         UnorderedAccessView workingTextureXImaginaryUVA(workingTextureXImaginary.get(), NativeFormat::R32_UINT);
         ShaderResourceView workingTextureXImaginaryShaderResource(workingTextureXImaginary.get(), NativeFormat::R32_FLOAT);
 
             ////
-        auto workingTextureYReal = uploads.Transaction_Immediate(bufferUploadsDesc, nullptr)->AdoptUnderlying();
+        auto workingTextureYReal = uploads.Transaction_Immediate(bufferUploadsDesc)->AdoptUnderlying();
         UnorderedAccessView workingTextureYRealUVA(workingTextureYReal.get(), NativeFormat::R32_UINT);
         ShaderResourceView workingTextureYRealShaderResource(workingTextureYReal.get(), NativeFormat::R32_FLOAT);
 
-        auto workingTextureYImaginary = uploads.Transaction_Immediate(bufferUploadsDesc, nullptr)->AdoptUnderlying();
+        auto workingTextureYImaginary = uploads.Transaction_Immediate(bufferUploadsDesc)->AdoptUnderlying();
         UnorderedAccessView workingTextureYImaginaryUVA(workingTextureYImaginary.get(), NativeFormat::R32_UINT);
         ShaderResourceView workingTextureYImaginaryShaderResource(workingTextureYImaginary.get(), NativeFormat::R32_FLOAT);
 
@@ -197,7 +198,7 @@ namespace SceneEngine
             BindFlag::UnorderedAccess|BindFlag::ShaderResource,
             BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, typelessNormalFormat, uint8(normalsMipCount)),
             "OceanNormals");
-        auto normalsTexture = uploads.Transaction_Immediate(normalsBufferUploadsDesc, nullptr)->AdoptUnderlying();
+        auto normalsTexture = uploads.Transaction_Immediate(normalsBufferUploadsDesc)->AdoptUnderlying();
         std::vector<UnorderedAccessView> normalsTextureUVA;
         std::vector<ShaderResourceView> normalsSingleMipSRV;
         normalsTextureUVA.reserve(normalsMipCount);
@@ -455,11 +456,11 @@ namespace SceneEngine
             "FFTWorking");
         auto inputReal = uploads.Transaction_Immediate(
             bufferUploadsDesc, 
-            BufferUploads::CreateBasicPacket(desc._width*desc._height*sizeof(float), realValues.get(), std::make_pair(unsigned(desc._width*sizeof(float)), unsigned(desc._width*desc._height*sizeof(float)))).get()
+            BufferUploads::CreateBasicPacket(desc._width*desc._height*sizeof(float), realValues.get(), TexturePitches(unsigned(desc._width*sizeof(float)), unsigned(desc._width*desc._height*sizeof(float)))).get()
             )->AdoptUnderlying();
         auto inputImaginary = uploads.Transaction_Immediate(
             bufferUploadsDesc, 
-            BufferUploads::CreateBasicPacket(desc._width*desc._height*sizeof(float), imaginaryValues.get(), std::make_pair(unsigned(desc._width*sizeof(float)), unsigned(desc._width*desc._height*sizeof(float)))).get()
+            BufferUploads::CreateBasicPacket(desc._width*desc._height*sizeof(float), imaginaryValues.get(), TexturePitches(unsigned(desc._width*sizeof(float)), unsigned(desc._width*desc._height*sizeof(float)))).get()
             )->AdoptUnderlying();
 
         RenderCore::Metal::ShaderResourceView inputRealShaderResource(inputReal.get());

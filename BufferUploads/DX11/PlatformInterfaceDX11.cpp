@@ -10,6 +10,7 @@
 #if GFXAPI_ACTIVE == GFXAPI_DX11
 
     #include "../PlatformInterface.h"
+    #include "../DataPacket.h"
     #include "../../RenderCore/DX11/IDeviceDX11.h"
     #include "../../RenderCore/DX11/Metal/DX11Utils.h"
     #include "../../RenderCore/DX11/Metal/IncludeDX11.h"
@@ -23,9 +24,11 @@
         static bool IsDXTCompressed(unsigned format) { return GetCompressionType(NativeFormat::Enum(format)) == FormatCompressionType::BlockCompression; }
         static Underlying::Resource*        ResPtr(const Underlying::Resource& resource) { return const_cast<Underlying::Resource*>(&resource); }
 
+        static DataPacket::SubResource SubR(unsigned mipIndex, unsigned arrayIndex) { return DataPacket::TexSubRes(mipIndex, arrayIndex); }
+
         void UnderlyingDeviceContext::PushToResource(   const Underlying::Resource& resource, const BufferDesc& desc, 
                                                         unsigned resourceOffsetValue, const void* data, size_t dataSize,
-                                                        std::pair<unsigned,unsigned> rowAndSlicePitch, 
+                                                        TexturePitches rowAndSlicePitch, 
                                                         const Box2D& box, unsigned lodLevel, unsigned arrayIndex)
         {
             switch (desc._type) {
@@ -40,7 +43,7 @@
                                 D3D11_TEXTURE2D_DESC desc;
                                 texture->GetDesc(&desc);
                                 assert(desc.Usage == D3D11_USAGE_DEFAULT);
-                                assert(((desc.Height-1) * rowAndSlicePitch.first + desc.Width) <= dataSize);
+                                assert(((desc.Height-1) * rowAndSlicePitch._rowPitch + desc.Width) <= dataSize);
                             }
                         }
                     #endif
@@ -48,7 +51,7 @@
                     uint32 subResource = D3D11CalcSubresource(lodLevel, arrayIndex, desc._textureDesc._mipCount);
                     if (isFullUpdate) {
 
-                        _devContext->GetUnderlying()->UpdateSubresource(ResPtr(resource), subResource, NULL, data, rowAndSlicePitch.first, rowAndSlicePitch.second);
+                        _devContext->GetUnderlying()->UpdateSubresource(ResPtr(resource), subResource, NULL, data, rowAndSlicePitch._rowPitch, rowAndSlicePitch._slicePitch);
 
                     } else {
 
@@ -63,9 +66,9 @@
                             intrusive_ptr<ID3D11DeviceContext1> devContext1(devContext1Temp, false);
                             if (SUCCEEDED(hresult) && devContext1) {
 
-                                assert(!IsBadReadPtr(data, rowAndSlicePitch.second));
+                                assert(!IsBadReadPtr(data, rowAndSlicePitch._slicePitch));
                                 unsigned copyFlags = 0; // (can be no_overwrite / discard on Win8)
-                                devContext1->UpdateSubresource1(ResPtr(resource), subResource, &d3dBox, data, rowAndSlicePitch.first, rowAndSlicePitch.second, copyFlags);
+                                devContext1->UpdateSubresource1(ResPtr(resource), subResource, &d3dBox, data, rowAndSlicePitch._rowPitch, rowAndSlicePitch._slicePitch, copyFlags);
                             
                             } else 
                         #endif
@@ -92,7 +95,7 @@
                                       srcBitsPerElement   *= 16;
                                  }
                              
-                                 pAdjustedSrcData = ((const BYTE*)data) - (alignedBox.front * rowAndSlicePitch.second) - (alignedBox.top * rowAndSlicePitch.first) - (alignedBox.left * (srcBitsPerElement/8));
+                                 pAdjustedSrcData = ((const BYTE*)data) - (alignedBox.front * rowAndSlicePitch._slicePitch) - (alignedBox.top * rowAndSlicePitch._rowPitch) - (alignedBox.left * (srcBitsPerElement/8));
                             }
 
                             TextureDesc2D destinationDesc(ResPtr(resource));
@@ -106,8 +109,8 @@
                             // }
 
                             assert(pAdjustedSrcData != nullptr);
-                            assert(!IsBadReadPtr(data, rowAndSlicePitch.second));
-                            _devContext->GetUnderlying()->UpdateSubresource(ResPtr(resource), subResource, &d3dBox, pAdjustedSrcData, rowAndSlicePitch.first, rowAndSlicePitch.second);
+                            assert(!IsBadReadPtr(data, rowAndSlicePitch._slicePitch));
+                            _devContext->GetUnderlying()->UpdateSubresource(ResPtr(resource), subResource, &d3dBox, pAdjustedSrcData, rowAndSlicePitch._rowPitch, rowAndSlicePitch._slicePitch);
 
                         }
                     }
@@ -161,7 +164,7 @@
 
         void UnderlyingDeviceContext::PushToStagingResource(    const Underlying::Resource& resource, const BufferDesc&desc, 
                                                                 unsigned resourceOffsetValue, const void* data, size_t dataSize, 
-                                                                std::pair<unsigned,unsigned> rowAndSlicePitch, 
+                                                                TexturePitches rowAndSlicePitch, 
                                                                 const Box2D& box, unsigned lodLevel, unsigned arrayIndex)
         {
             assert(box == Box2D());
@@ -272,7 +275,7 @@
             }
             HRESULT hresult = _devContext->GetUnderlying()->Map(ResPtr(resource), subResource, platformMap, 0/*D3D11_MAP_FLAG_DO_NOT_WAIT*/, &result);
             if (SUCCEEDED(hresult)) {
-                return MappedBuffer(*this, resource, subResource, result.pData, result.RowPitch, result.DepthPitch);
+                return MappedBuffer(*this, resource, subResource, result.pData, TexturePitches(result.RowPitch, result.DepthPitch));
             }
             return MappedBuffer();
         }
@@ -403,7 +406,7 @@
             return result;
         }
 
-        intrusive_ptr<ID3D::Resource> CreateResource(ObjectFactory& device, const BufferDesc& desc, RawDataPacket* initialisationData)
+        intrusive_ptr<ID3D::Resource> CreateResource(ObjectFactory& device, const BufferDesc& desc, DataPacket* initialisationData)
         {
             D3D11_SUBRESOURCE_DATA subResources[128];
             TRY {
@@ -414,10 +417,10 @@
                             for (unsigned l=0; l<desc._textureDesc._mipCount; ++l) {
                                 for (unsigned a=0; a<std::max(desc._textureDesc._arrayCount,uint8(1)); ++a) {
                                     uint32 subresourceIndex = D3D11CalcSubresource(l, a, desc._textureDesc._mipCount);
-                                    subResources[subresourceIndex].pSysMem = initialisationData->GetData(l,a);
-                                    std::pair<unsigned,unsigned> rowAndSlicePitch = initialisationData->GetRowAndSlicePitch(l,a);
-                                    subResources[subresourceIndex].SysMemPitch = rowAndSlicePitch.first;
-                                    subResources[subresourceIndex].SysMemSlicePitch = rowAndSlicePitch.second;
+                                    subResources[subresourceIndex].pSysMem = initialisationData->GetData(SubR(l,a));
+                                    auto rowAndSlicePitch = initialisationData->GetPitches(SubR(l,a));
+                                    subResources[subresourceIndex].SysMemPitch = rowAndSlicePitch._rowPitch;
+                                    subResources[subresourceIndex].SysMemSlicePitch = rowAndSlicePitch._slicePitch;
                                 }
                             }
                         }
@@ -481,10 +484,10 @@
                 case BufferDesc::Type::LinearBuffer:
                     {
                         if (initialisationData) {
-                            subResources[0].pSysMem = initialisationData->GetData(0,0);
+                            subResources[0].pSysMem = initialisationData->GetData();
                             subResources[0].SysMemPitch = 
                                 subResources[0].SysMemSlicePitch = 
-                                    (UINT)initialisationData->GetDataSize(0,0);
+                                    (UINT)initialisationData->GetDataSize();
                         }
 
                         D3D11_BUFFER_DESC d3dDesc;

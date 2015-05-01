@@ -14,6 +14,7 @@
 #include "../RenderCore/Metal/Buffer.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../BufferUploads/IBufferUploads.h"
+#include "../BufferUploads/ResourceLocator.h"
 
 #include "../RenderCore/DX11/Metal/DX11Utils.h"
 
@@ -35,8 +36,8 @@ namespace SceneEngine
             BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, NativeFormat::R8G8B8A8_TYPELESS),
             "Refractions");
 
-        auto _refractionsTexture0 = uploads.Transaction_Immediate(targetDesc, nullptr)->AdoptUnderlying();
-        auto _refractionsTexture1 = uploads.Transaction_Immediate(targetDesc, nullptr)->AdoptUnderlying();
+        auto _refractionsTexture0 = uploads.Transaction_Immediate(targetDesc)->AdoptUnderlying();
+        auto _refractionsTexture1 = uploads.Transaction_Immediate(targetDesc)->AdoptUnderlying();
 
         RenderTargetView refractionsFrontTarget(_refractionsTexture0.get(), NativeFormat::R8G8B8A8_UNORM);
         RenderTargetView refractionsBackTarget(_refractionsTexture1.get(), NativeFormat::R8G8B8A8_UNORM);
@@ -150,7 +151,7 @@ namespace SceneEngine
             BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, desc._format, 1, 1, desc._sampling),
             "DepthDupe");
 
-        auto texture = uploads.Transaction_Immediate(targetDesc, nullptr)->AdoptUnderlying();
+        auto texture = uploads.Transaction_Immediate(targetDesc)->AdoptUnderlying();
 
         ShaderResourceView srv(texture.get(), AsResolvableFormat(desc._format));
 

@@ -903,7 +903,7 @@ namespace RenderCore { namespace Metal_DX11
                     std::make_shared<ShaderCompileProcess>(
                         shaderId,  definesTable,
                         std::move(archive), archiveId, 
-                        [=](::Assets::AssetState::Enum newState, const std::vector<Assets::DependentFileState>& deps)
+                        [=](::Assets::AssetState newState, const std::vector<Assets::DependentFileState>& deps)
                         {
                                 //  note -- we're accessing an unprotected pointer to the "destinationStore"
                                 //  The list of dependencies here should mostly be path names relative

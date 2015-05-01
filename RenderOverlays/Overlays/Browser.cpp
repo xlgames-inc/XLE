@@ -26,6 +26,7 @@
 
 #include "../../Assets/AssetUtils.h"
 #include "../../BufferUploads/IBufferUploads.h"
+#include "../../BufferUploads/ResourceLocator.h"
 #include "../../Math/Transformations.h"
 
 #include "../../Utility/StringUtils.h"
@@ -546,10 +547,10 @@ namespace Overlays
         offscreenDesc._gpuAccess = GPUAccess::Read | GPUAccess::Write;
         offscreenDesc._allocationRules = 0;
         offscreenDesc._textureDesc = TextureDesc::Plain2D(offscreenDims, offscreenDims, RenderCore::Metal::NativeFormat::R8G8B8A8_UNORM);
-        auto offscreenResource = uploads.Transaction_Immediate(offscreenDesc, nullptr)->AdoptUnderlying();
+        auto offscreenResource = uploads.Transaction_Immediate(offscreenDesc)->AdoptUnderlying();
         offscreenDesc._bindFlags = BindFlag::DepthStencil;
         offscreenDesc._textureDesc = TextureDesc::Plain2D(offscreenDims, offscreenDims, (RenderCore::Metal::NativeFormat::Enum)DXGI_FORMAT_D24_UNORM_S8_UINT);
-        auto depthResource = uploads.Transaction_Immediate(offscreenDesc, nullptr)->AdoptUnderlying();
+        auto depthResource = uploads.Transaction_Immediate(offscreenDesc)->AdoptUnderlying();
         pimpl->_rtv =RenderCore::Metal::RenderTargetView(offscreenResource.get());
         pimpl->_dsv = RenderCore::Metal::DepthStencilView(depthResource.get());
         pimpl->_srv = RenderCore::Metal::ShaderResourceView(offscreenResource.get());

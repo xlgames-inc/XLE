@@ -1004,7 +1004,7 @@ namespace BufferUploads
 
         /////   R E S O U R C E   S O U R C E   /////
 
-    ResourceSource::ResourceConstruction        ResourceSource::Create(const BufferDesc& desc, RawDataPacket* initialisationData, CreationOptions::BitField options)
+    ResourceSource::ResourceConstruction        ResourceSource::Create(const BufferDesc& desc, DataPacket* initialisationData, CreationOptions::BitField options)
     {
         bool deviceCreation          = !!(options & CreationOptions::AllowDeviceCreation);
         // const UploadDataType::Enum uploadDataType = AsUploadDataType(desc);

@@ -184,7 +184,9 @@
     <ClInclude Include="..\IBufferUploads.h" />
     <ClInclude Include="..\IBufferUploads_Forward.h" />
     <ClInclude Include="..\MemoryManagement.h" />
+    <ClInclude Include="..\Metrics.h" />
     <ClInclude Include="..\PlatformInterface.h" />
+    <ClInclude Include="..\ResourceLocator.h" />
     <ClInclude Include="..\ResourceSource.h" />
     <ClInclude Include="..\ThreadContext.h" />
   </ItemGroup>

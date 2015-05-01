@@ -180,7 +180,6 @@ namespace BufferUploads { namespace PlatformInterface
         _sourceContext = 0;
         _subResourceIndex = 0;
         _data = 0;
-        _rowPitch = _slicePitch = 0;
     }
 
     UnderlyingDeviceContext::MappedBuffer::MappedBuffer(MappedBuffer&& moveFrom) never_throws
@@ -189,12 +188,11 @@ namespace BufferUploads { namespace PlatformInterface
         _resource = std::move(moveFrom._resource);
         _subResourceIndex = std::move(moveFrom._subResourceIndex);
         _data = std::move(moveFrom._data);
-        _rowPitch = moveFrom._rowPitch;
-        _slicePitch = moveFrom._slicePitch;
+        _pitches = moveFrom._pitches;
         moveFrom._data = nullptr;
         moveFrom._subResourceIndex = 0;
         moveFrom._sourceContext = nullptr;
-        moveFrom._rowPitch = moveFrom._slicePitch = 0;
+        moveFrom._pitches = TexturePitches();
     }
 
     const UnderlyingDeviceContext::MappedBuffer& UnderlyingDeviceContext::MappedBuffer::operator=(UnderlyingDeviceContext::MappedBuffer&& moveFrom)
@@ -207,25 +205,24 @@ namespace BufferUploads { namespace PlatformInterface
         _resource = std::move(moveFrom._resource);
         _subResourceIndex = std::move(moveFrom._subResourceIndex);
         _data = std::move(moveFrom._data);
-        _rowPitch = moveFrom._rowPitch;
-        _slicePitch = moveFrom._slicePitch;
+        _pitches = moveFrom._pitches;
         moveFrom._data = nullptr;
         moveFrom._subResourceIndex = 0;
         moveFrom._sourceContext = nullptr;
-        moveFrom._rowPitch = moveFrom._slicePitch = 0;
+        moveFrom._pitches = TexturePitches();
         return *this;
     }
 
     UnderlyingDeviceContext::MappedBuffer::MappedBuffer(
         UnderlyingDeviceContext& context, const Underlying::Resource& resource, 
         unsigned subResourceIndex, void* data,
-        unsigned rowPitch, unsigned slicePitch)
+        TexturePitches pitches)
     {
         _sourceContext = &context;
         _resource.reset(const_cast<Underlying::Resource*>(&resource));
         _subResourceIndex = subResourceIndex;
         _data = data;
-        _rowPitch = rowPitch; _slicePitch = slicePitch;
+        _pitches = pitches;
     }
 
     UnderlyingDeviceContext::~UnderlyingDeviceContext() {}

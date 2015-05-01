@@ -21,6 +21,7 @@
 #include "../RenderCore/DX11/Metal/DX11Utils.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/DataPacket.h"
+#include "../BufferUploads/ResourceLocator.h"
 
 #pragma warning(disable:4127)       // warning C4127: conditional expression is constant
 
@@ -75,11 +76,11 @@ namespace SceneEngine
         bufferDesc._linearBufferDesc._structureByteSize = 4*4;
         XlCopyString(bufferDesc._name, dimof(bufferDesc._name), "SpawningInstancesBuffer");
 
-        intrusive_ptr<ID3D::Resource> so0r = uploads.Transaction_Immediate(bufferDesc, nullptr)->AdoptUnderlying();
+        intrusive_ptr<ID3D::Resource> so0r = uploads.Transaction_Immediate(bufferDesc)->AdoptUnderlying();
         intrusive_ptr<ID3D::Buffer> so0b = QueryInterfaceCast<ID3D::Buffer>(so0r);
         bufferDesc._linearBufferDesc._sizeInBytes = 4*StreamOutputMaxCount;
         bufferDesc._linearBufferDesc._structureByteSize = 4;
-        intrusive_ptr<ID3D::Resource> so1r = uploads.Transaction_Immediate(bufferDesc, nullptr)->AdoptUnderlying();
+        intrusive_ptr<ID3D::Resource> so1r = uploads.Transaction_Immediate(bufferDesc)->AdoptUnderlying();
         intrusive_ptr<ID3D::Buffer> so1b = QueryInterfaceCast<ID3D::Buffer>(so1r);
 
         auto clearedBufferData = BufferUploads::CreateEmptyPacket(bufferDesc);

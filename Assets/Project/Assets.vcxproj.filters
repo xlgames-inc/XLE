@@ -9,6 +9,7 @@
     <ClInclude Include="..\IntermediateResources.h" />
     <ClInclude Include="..\ArchiveCache.h" />
     <ClInclude Include="..\DivergentAsset.h" />
+    <ClInclude Include="..\AssetsCore.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Assets.cpp" />

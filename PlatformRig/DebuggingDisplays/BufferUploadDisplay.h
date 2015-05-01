@@ -8,6 +8,7 @@
 
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../BufferUploads/IBufferUploads.h"
+#include "../../BufferUploads/Metrics.h"
 #include "../../Utility/Threading/Mutex.h"
 #include <deque>
 

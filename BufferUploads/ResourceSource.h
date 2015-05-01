@@ -232,7 +232,7 @@ namespace BufferUploads
             typedef unsigned BitField;
         };
 
-        ResourceConstruction    Create(const BufferDesc& desc, RawDataPacket* initialisationData=NULL, CreationOptions::BitField options=CreationOptions::AllowDeviceCreation);
+        ResourceConstruction    Create(const BufferDesc& desc, DataPacket* initialisationData=NULL, CreationOptions::BitField options=CreationOptions::AllowDeviceCreation);
         void                    Validate(const ResourceLocator& locator);
 
         BatchedResources&       GetBatchedResources()             { return *_batchedIndexBuffers; }

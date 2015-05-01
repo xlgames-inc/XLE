@@ -7,19 +7,22 @@
 #pragma once
 
 #include "IBufferUploads.h"
+#include "DataPacket.h"     // (actually just for TexturePitches)
 #include "../Utility/IntrusivePtr.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/ShaderResource.h"
 #include "../RenderCore/Metal/Types.h"
 #include "../RenderCore/Metal/Resource.h"
 
+namespace Utility { class DefragStep; }
+
 namespace BufferUploads { namespace PlatformInterface
 {
     using namespace RenderCore::Metal;
-
+    
         /////////////////////////////////////////////////////////////////////
 
-    intrusive_ptr<Underlying::Resource> CreateResource(ObjectFactory& device, const BufferDesc& desc, RawDataPacket* initialisationData = NULL);
+    intrusive_ptr<Underlying::Resource> CreateResource(ObjectFactory& device, const BufferDesc& desc, DataPacket* initialisationData = NULL);
     BufferDesc      ExtractDesc(const Underlying::Resource& resource);
 
     unsigned        ByteCount(const BufferDesc& desc);
@@ -51,18 +54,18 @@ namespace BufferUploads { namespace PlatformInterface
             ////////   P U S H   T O   R E S O U R C E   ////////
         void PushToResource(    const Underlying::Resource& resource, const BufferDesc& desc, unsigned resourceOffsetValue,
                                 const void* data, size_t dataSize,
-                                std::pair<unsigned,unsigned> rowAndSlicePitch,
+                                TexturePitches rowAndSlicePitch,
                                 const Box2D& box, unsigned lodLevel, unsigned arrayIndex);
 
         void PushToStagingResource( const Underlying::Resource& resource, const BufferDesc& desc, unsigned resourceOffsetValue,
-                                    const void* data, size_t dataSize, std::pair<unsigned,unsigned> rowAndSlicePitch,
+                                    const void* data, size_t dataSize, TexturePitches rowAndSlicePitch,
                                     const Box2D& box, unsigned lodLevel, unsigned arrayIndex);
 
         void UpdateFinalResourceFromStaging(const Underlying::Resource& finalResource, const Underlying::Resource& staging, 
                                             const BufferDesc& destinationDesc, unsigned lodLevelMin=~unsigned(0x0), unsigned lodLevelMax=~unsigned(0x0), unsigned stagingLODOffset=0);
 
             ////////   R E S O U R C E   C O P Y   ////////
-        void ResourceCopy_DefragSteps(const Underlying::Resource& destination, const Underlying::Resource& source, const std::vector<DefragStep>& steps);
+        void ResourceCopy_DefragSteps(const Underlying::Resource& destination, const Underlying::Resource& source, const std::vector<Utility::DefragStep>& steps);
         void ResourceCopy(const Underlying::Resource& destination, const Underlying::Resource& source);
 
             ////////   M A P   /   L O C K   ////////
@@ -76,21 +79,20 @@ namespace BufferUploads { namespace PlatformInterface
         public:
             void*           GetData()               { return _data; }
             const void*     GetData() const         { return _data; }
-            unsigned        GetRowPitch() const     { return _rowPitch; }
-            unsigned        GetSlicePitch() const   { return _slicePitch; }
+            TexturePitches  GetPitches() const      { return _pitches; }
 
             MappedBuffer();
             MappedBuffer(MappedBuffer&& moveFrom) never_throws;
             const MappedBuffer& operator=(MappedBuffer&& moveFrom) never_throws;
             ~MappedBuffer();
         private:
-            MappedBuffer(UnderlyingDeviceContext&, const Underlying::Resource&, unsigned, void*, unsigned rowPitch, unsigned slicePitch);
+            MappedBuffer(UnderlyingDeviceContext&, const Underlying::Resource&, unsigned, void*, TexturePitches pitches);
 
             UnderlyingDeviceContext* _sourceContext;
             intrusive_ptr<Underlying::Resource> _resource;
             unsigned _subResourceIndex;
             void* _data;
-            unsigned _rowPitch, _slicePitch;
+            TexturePitches _pitches;
 
             friend class UnderlyingDeviceContext;
         };

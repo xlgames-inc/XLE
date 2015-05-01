@@ -7,6 +7,7 @@
 #include "Noise.h"
 #include "SceneEngineUtils.h"
 #include "../BufferUploads/DataPacket.h"
+#include "../BufferUploads/ResourceLocator.h"
 #include "../Math/Vector.h"
 
 namespace SceneEngine

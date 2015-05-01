@@ -9,6 +9,8 @@
 #include "IBufferUploads.h"
 
 #include "PlatformInterface.h"
+#include "Metrics.h"
+#include "ResourceLocator.h"
 #include "../RenderCore/IThreadContext_Forward.h"
 #include "../RenderCore/Metal/Resource.h"
 #include "../RenderCore/Metal/DeviceContext.h"
@@ -26,12 +28,12 @@ namespace BufferUploads
         class DeferredCopy
         {
         public:
-            intrusive_ptr<RawDataPacket> _temporaryBuffer;
+            intrusive_ptr<DataPacket> _temporaryBuffer;
             intrusive_ptr<ResourceLocator> _destination;
             unsigned _size;
 
             DeferredCopy();
-            DeferredCopy(intrusive_ptr<ResourceLocator> destination, unsigned size, intrusive_ptr<RawDataPacket> pkt);
+            DeferredCopy(intrusive_ptr<ResourceLocator> destination, unsigned size, intrusive_ptr<DataPacket> pkt);
             DeferredCopy(DeferredCopy&& moveFrom);
             const DeferredCopy& operator=(DeferredCopy&& moveFrom);
             ~DeferredCopy();

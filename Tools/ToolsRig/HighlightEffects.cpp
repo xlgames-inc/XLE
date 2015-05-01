@@ -12,6 +12,7 @@
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Techniques/ResourceBox.h"
 #include "../../BufferUploads/IBufferUploads.h"
+#include "../../BufferUploads/ResourceLocator.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Utility/StringFormat.h"
 
@@ -114,7 +115,7 @@ namespace ToolsRig
             TextureDesc::Plain2D(desc._width, desc._height, desc._format),
             "CommonOffscreen");
 
-        auto resource = SceneEngine::GetBufferUploads()->Transaction_Immediate(bufferDesc, nullptr);
+        auto resource = SceneEngine::GetBufferUploads()->Transaction_Immediate(bufferDesc);
 
         RenderCore::Metal::RenderTargetView rtv(resource->GetUnderlying());
         RenderCore::Metal::ShaderResourceView srv(resource->GetUnderlying());

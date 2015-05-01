@@ -15,6 +15,7 @@
 
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/DataPacket.h"
+#include "../BufferUploads/ResourceLocator.h"
 
 #include <assert.h>
 #include <algorithm>
@@ -375,7 +376,7 @@ FontTexture2D::FontTexture2D(unsigned width, unsigned height, unsigned pixelForm
     desc._textureDesc = TextureDesc::Plain2D(width, height, pixelFormat, 1);
     XlCopyString(desc._name, "Font");
     _transaction = gBufferUploads->Transaction_Begin(
-        desc, (BufferUploads::RawDataPacket*)nullptr, BufferUploads::TransactionOptions::ForceCreate|BufferUploads::TransactionOptions::LongTerm);
+        desc, (BufferUploads::DataPacket*)nullptr, BufferUploads::TransactionOptions::ForceCreate|BufferUploads::TransactionOptions::LongTerm);
 }
 
 FontTexture2D::~FontTexture2D()
@@ -389,8 +390,8 @@ FontTexture2D::~FontTexture2D()
 void FontTexture2D::UpdateGlyphToTexture(FT_GlyphSlot glyph, int offX, int offY, int width, int height)
 {
     auto packet = BufferUploads::CreateBasicPacket(
-        width*height, nullptr, std::make_pair(width, width*height));
-    uint8* data = (uint8*)packet->GetData(0,0);
+        width*height, nullptr, BufferUploads::TexturePitches(width, width*height));
+    uint8* data = (uint8*)packet->GetData();
 
     int widthCursor = 0;
     for (int j = 0; j < height; ++j) {
@@ -409,7 +410,7 @@ void FontTexture2D::UpdateGlyphToTexture(FT_GlyphSlot glyph, int offX, int offY,
     UpdateToTexture(packet.get(), offX, offY, width, height);
 }
 
-void FontTexture2D::UpdateToTexture(BufferUploads::RawDataPacket* packet, int offX, int offY, int width, int height)
+void FontTexture2D::UpdateToTexture(BufferUploads::DataPacket* packet, int offX, int offY, int width, int height)
 {
     if (_transaction == ~BufferUploads::TransactionID(0x0)) {
         _transaction = gBufferUploads->Transaction_Begin(_locator);
@@ -705,8 +706,8 @@ void FT_FontTextureMgr::ClearFontTextureRegion(int height, int heightEnd)
         return;
     }
 
-    auto blankBuf = BufferUploads::CreateBasicPacket(_texWidth * texHeight, nullptr, std::make_pair(_texWidth, _texWidth*texHeight));
-    XlSetMemory(const_cast<void*>(blankBuf->GetData(0,0)), 0, _texWidth * texHeight);
+    auto blankBuf = BufferUploads::CreateBasicPacket(_texWidth * texHeight, nullptr, BufferUploads::TexturePitches(_texWidth, _texWidth*texHeight));
+    XlSetMemory(const_cast<void*>(blankBuf->GetData()), 0, _texWidth * texHeight);
     _texture->UpdateToTexture(blankBuf.get(), 0, height, _texWidth, texHeight);
 }
 

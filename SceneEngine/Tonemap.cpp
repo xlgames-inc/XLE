@@ -23,6 +23,7 @@
 #include "../RenderCore/RenderUtils.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/DataPacket.h"
+#include "../BufferUploads/ResourceLocator.h"
 #include "../ConsoleRig/Console.h"
 #include "../Utility/BitUtils.h"
 #include "../Utility/ParameterBox.h"
@@ -94,7 +95,7 @@ namespace SceneEngine
             BindFlag::ShaderResource|BindFlag::UnorderedAccess|BindFlag::RenderTarget,
             BufferUploads::TextureDesc::Plain2D(width, height, AsDXGIFormat(format)),
             "BloomLumin");
-        auto bloomBuffer = uploads.Transaction_Immediate(basicLuminanceBufferDesc, nullptr)->AdoptUnderlying();
+        auto bloomBuffer = uploads.Transaction_Immediate(basicLuminanceBufferDesc)->AdoptUnderlying();
 
         RenderCore::Metal::UnorderedAccessView  bloomBufferUAV(bloomBuffer.get());
         RenderCore::Metal::RenderTargetView     bloomBufferRTV(bloomBuffer.get());
@@ -204,7 +205,7 @@ namespace SceneEngine
         for (signed s=firstStep; s>XlAbs(heightDifference); --s) {
             basicLuminanceBufferDesc._textureDesc._width    = 1<<s;
             basicLuminanceBufferDesc._textureDesc._height   = 1<<(s+heightDifference);
-            auto newBuffer = uploads.Transaction_Immediate(basicLuminanceBufferDesc, nullptr)->AdoptUnderlying();
+            auto newBuffer = uploads.Transaction_Immediate(basicLuminanceBufferDesc)->AdoptUnderlying();
             luminanceBuffers.push_back(newBuffer);
             luminanceBuffersUAV.push_back(UnorderedAccessView(newBuffer.get()));
             luminanceBuffersSRV.push_back(ShaderResourceView(newBuffer.get()));
@@ -692,8 +693,8 @@ namespace SceneEngine
             BindFlag::ShaderResource|BindFlag::RenderTarget,
             BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, desc._format),
             "AtmosBlur");
-        auto bloomBuffer0 = uploads.Transaction_Immediate(bufferDesc, nullptr)->AdoptUnderlying();
-        auto bloomBuffer1 = uploads.Transaction_Immediate(bufferDesc, nullptr)->AdoptUnderlying();
+        auto bloomBuffer0 = uploads.Transaction_Immediate(bufferDesc)->AdoptUnderlying();
+        auto bloomBuffer1 = uploads.Transaction_Immediate(bufferDesc)->AdoptUnderlying();
 
         RenderCore::Metal::RenderTargetView     bloomBufferRTV0(bloomBuffer0.get());
         RenderCore::Metal::ShaderResourceView   bloomBufferSRV0(bloomBuffer0.get());

@@ -221,5 +221,38 @@ namespace Assets
             va_end(args);
         }
     }
+
+
+    PendingOperationMarker::PendingOperationMarker() : _state(AssetState::Pending)
+    {
+        DEBUG_ONLY(_initializer[0] = '\0');
+    }
+
+    PendingOperationMarker::PendingOperationMarker(AssetState state, std::shared_ptr<DependencyValidation> depVal) 
+    : _state(state), _dependencyValidation(std::move(depVal))
+    {
+        DEBUG_ONLY(_initializer[0] = '\0');
+    }
+
+    PendingOperationMarker::~PendingOperationMarker() {}
+
+    const char* PendingOperationMarker::Initializer() const
+    {
+        #if defined(_DEBUG)
+            return _initializer;
+        #else
+            return "";
+        #endif
+    }
+
+    void PendingOperationMarker::SetInitializer(const char initializer[])
+    {
+        DEBUG_ONLY(XlCopyString(_initializer, initializer));
+    }
+
+    void PendingOperationMarker::SetState(AssetState newState)
+    {
+        _state = newState;
+    }
 }
 

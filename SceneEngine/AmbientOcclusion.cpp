@@ -134,7 +134,7 @@ namespace SceneEngine
             BufferUploads::TextureDesc::Plain2D(
                 desc._width, desc._height, AsDXGIFormat(desc._destinationFormat)));
 
-        auto aoTexture = uploads.Transaction_Immediate(bufferUploadsDesc, nullptr)->AdoptUnderlying();
+        auto aoTexture = uploads.Transaction_Immediate(bufferUploadsDesc)->AdoptUnderlying();
         RenderTargetView aoTarget(aoTexture.get());
         ShaderResourceView aoSRV(aoTexture.get());
 

@@ -291,7 +291,7 @@
             ///////////////////////////////////////
 
         intrusive_ptr<Underlying::Resource>    CreateResource( ObjectFactory&, const BufferDesc& bufferDesc, 
-                                                            RawDataPacket* initialisationData)
+                                                            DataPacket* initialisationData)
         {
             switch (bufferDesc._type) {
             case BufferDesc::Type::Texture:

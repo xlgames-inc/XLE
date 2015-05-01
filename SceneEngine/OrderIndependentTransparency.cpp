@@ -17,6 +17,7 @@
 #include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../BufferUploads/IBufferUploads.h"
+#include "../BufferUploads/ResourceLocator.h"
 
 namespace SceneEngine
 {
@@ -41,7 +42,7 @@ namespace SceneEngine
             BindFlag::UnorderedAccess|BindFlag::ShaderResource,
             BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, NativeFormat::R32_UINT),
             "Trans");
-        auto fragmentIdsTexture = uploads.Transaction_Immediate(textureIdsDesc, nullptr)->AdoptUnderlying();
+        auto fragmentIdsTexture = uploads.Transaction_Immediate(textureIdsDesc)->AdoptUnderlying();
 
         BufferUploads::BufferDesc nodeListBufferDesc;
         nodeListBufferDesc._type = BufferUploads::BufferDesc::Type::LinearBuffer;
@@ -51,7 +52,7 @@ namespace SceneEngine
         nodeListBufferDesc._allocationRules = 0;
         nodeListBufferDesc._linearBufferDesc._structureByteSize = (desc._storeColour)?(sizeof(float)*3):(sizeof(float)*2);
         nodeListBufferDesc._linearBufferDesc._sizeInBytes = 16*1024*1024*nodeListBufferDesc._linearBufferDesc._structureByteSize;
-        auto nodeListBuffer = uploads.Transaction_Immediate(nodeListBufferDesc, nullptr)->AdoptUnderlying();
+        auto nodeListBuffer = uploads.Transaction_Immediate(nodeListBufferDesc)->AdoptUnderlying();
 
         RenderCore::Metal::UnorderedAccessView fragmentIdsTextureUAV(fragmentIdsTexture.get());
         RenderCore::Metal::UnorderedAccessView nodeListBufferUAV(nodeListBuffer.get(),

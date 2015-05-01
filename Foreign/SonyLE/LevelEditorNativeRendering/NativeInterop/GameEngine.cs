@@ -92,6 +92,7 @@ namespace RenderingInterop
                     @"<EngineInfo>
                         <SupportedResources>
                             <ResourceDescriptor Type='Model' Name='Model' Description='Model' Ext='.dae' />
+                            <ResourceDescriptor Type='Texture' Name='Texture' Description='Texture' Ext='.dds,.tga' />
                         </SupportedResources>
                     </EngineInfo>");
 

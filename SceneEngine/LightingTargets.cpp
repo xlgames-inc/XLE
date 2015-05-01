@@ -8,6 +8,7 @@
 #include "SceneEngineUtils.h"
 #include "LightingParserContext.h"
 
+#include "../BufferUploads/ResourceLocator.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../Utility/PtrUtils.h"
@@ -337,7 +338,7 @@ namespace SceneEngine
             auto& bufferUploads = *GetBufferUploads();
             for (unsigned c=0; c<3; ++c) {
                 if (mainTargets._gbufferTextures[c]) {
-                    auto stagingTexture = bufferUploads.Transaction_Immediate(stagingDesc[c], nullptr)->AdoptUnderlying();
+                    auto stagingTexture = bufferUploads.Transaction_Immediate(stagingDesc[c])->AdoptUnderlying();
                     context->GetUnderlying()->CopyResource(stagingTexture.get(), mainTargets._gbufferTextures[c].get());
                     D3DX11SaveTextureToFile(context->GetUnderlying(), stagingTexture.get(), D3DX11_IFF_DDS, outputNames[c]);
                 }

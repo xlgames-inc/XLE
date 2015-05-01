@@ -6,6 +6,7 @@
 
 #include "MetricsBox.h"
 #include "SceneEngineUtils.h"
+#include "../BufferUploads/ResourceLocator.h"
 
 namespace SceneEngine
 {
@@ -24,7 +25,7 @@ namespace SceneEngine
         metricsBufferDesc._allocationRules = 0;
         metricsBufferDesc._linearBufferDesc._structureByteSize = sizeof(unsigned)*16;
         metricsBufferDesc._linearBufferDesc._sizeInBytes = metricsBufferDesc._linearBufferDesc._structureByteSize;
-        auto metricsBuffer = uploads.Transaction_Immediate(metricsBufferDesc, nullptr)->AdoptUnderlying();
+        auto metricsBuffer = uploads.Transaction_Immediate(metricsBufferDesc)->AdoptUnderlying();
 
         UnorderedAccessView  metricsBufferUAV(metricsBuffer.get());
         ShaderResourceView   metricsBufferSRV(metricsBuffer.get());
