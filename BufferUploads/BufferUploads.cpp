@@ -63,8 +63,8 @@ namespace BufferUploads
 
     AssemblyLineMetrics::AssemblyLineMetrics()
     {
-        _transactionCount = _temporaryTransactionsAllocated = _longTermTransactionsAllocated = _queuedCreates = _queuedUploads = _queuedStagingCreates = 0;
-        _queuedPeakCreates = _queuedPeakUploads = _queuedPeakStagingCreates = 0;
+        _transactionCount = _temporaryTransactionsAllocated = _longTermTransactionsAllocated = _queuedCreates = _queuedUploads = _queuedStagingCreates = _queuedPrepares = 0;
+        _queuedPeakCreates = _queuedPeakUploads = _queuedPeakStagingCreates = _queuedPeakPrepares = 0;
         XlZeroMemory(_queuedBytes);
     }
 

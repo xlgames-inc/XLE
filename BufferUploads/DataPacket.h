@@ -49,7 +49,7 @@ namespace BufferUploads
             BufferDesc  _desc;
         };
 
-        virtual std::shared_ptr<Marker>     BeginBackgroundLoad() const = 0;
+        virtual std::shared_ptr<Marker>     BeginBackgroundLoad() = 0;
 
         static SubResource      TexSubRes(unsigned mipIndex, unsigned arrayIndex = 0);
     };
@@ -62,7 +62,7 @@ namespace BufferUploads
         virtual void* GetData(SubResource subRes = 0);
         virtual size_t GetDataSize(SubResource subRes = 0) const;
         virtual TexturePitches GetPitches(SubResource subRes = 0) const;
-        virtual std::shared_ptr<Marker> BeginBackgroundLoad() const;
+        virtual std::shared_ptr<Marker> BeginBackgroundLoad();
 
         BasicRawDataPacket(size_t dataSize, const void* data = nullptr, TexturePitches pitches = TexturePitches());
         virtual ~BasicRawDataPacket();

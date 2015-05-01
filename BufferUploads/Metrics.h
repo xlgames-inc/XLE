@@ -26,8 +26,8 @@ namespace BufferUploads
     struct AssemblyLineMetrics
     {
         unsigned _transactionCount, _temporaryTransactionsAllocated, _longTermTransactionsAllocated;
-        unsigned _queuedCreates, _queuedUploads, _queuedStagingCreates;
-        unsigned _queuedPeakCreates, _queuedPeakUploads, _queuedPeakStagingCreates;
+        unsigned _queuedCreates, _queuedUploads, _queuedStagingCreates, _queuedPrepares;
+        unsigned _queuedPeakCreates, _queuedPeakUploads, _queuedPeakStagingCreates, _queuedPeakPrepares;
         unsigned _queuedBytes[UploadDataType::Max];
         AssemblyLineMetrics();
     };

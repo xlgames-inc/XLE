@@ -357,7 +357,7 @@ namespace SceneEngine
             virtual size_t GetDataSize(SubResource subRes) const;
             virtual BufferUploads::TexturePitches GetPitches(SubResource subRes) const;
 
-            virtual std::shared_ptr<Marker> BeginBackgroundLoad() const;
+            virtual std::shared_ptr<Marker> BeginBackgroundLoad();
 
             UberSurfacePacket(void* sourceData, unsigned stride, UInt2 dims);
 
@@ -385,7 +385,7 @@ namespace SceneEngine
             return BufferUploads::TexturePitches(_stride, _stride*_dims[1]);
         }
 
-        auto UberSurfacePacket::BeginBackgroundLoad() const -> std::shared_ptr<Marker> { return nullptr; }
+        auto UberSurfacePacket::BeginBackgroundLoad() -> std::shared_ptr<Marker> { return nullptr; }
 
         UberSurfacePacket::UberSurfacePacket(void* sourceData, unsigned stride, UInt2 dims)
         {
