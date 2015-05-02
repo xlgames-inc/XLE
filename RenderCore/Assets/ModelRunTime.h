@@ -73,6 +73,7 @@ namespace RenderCore { namespace Assets
         unsigned                    LargeBlocksOffset() const   { return _largeBlocksOffset; }
         const ModelCommandStream&   CommandStream() const;
         const ModelImmutableData&   ImmutableData() const       { return *_data; };
+        const TransformationMachine& EmbeddedSkeleton() const;
         std::pair<Float3, Float3>   GetStaticBoundingBox(unsigned lodIndex = 0) const;
         unsigned                    GetMaxLOD() const { return 1; }
 

@@ -165,30 +165,6 @@ namespace RenderCore { namespace Assets
         BoundSkinnedGeometry();
     };
 
-    class ModelImmutableData
-    {
-    public:
-        ModelCommandStream      _visualScene;
-        
-        RawGeometry*            _geos;
-        size_t                  _geoCount;
-        BoundSkinnedGeometry*   _boundSkinnedControllers;
-        size_t                  _boundSkinnedControllerCount;
-        MaterialGuid*           _materialReferences;
-        size_t                  _materialReferencesCount;
-
-        std::pair<Float3, Float3>   _boundingBox;
-
-        ~ModelImmutableData();
-    };
-
-    class MaterialImmutableData
-    {
-    public:
-        Serialization::Vector<std::pair<MaterialGuid, ResolvedMaterial>> _materials;
-        Serialization::Vector<std::pair<MaterialGuid, std::string>> _materialNames;
-    };
-
 ////////////////////////////////////////////////////////////////////////////////////////////
     //      s k e l e t o n         //
 
@@ -229,8 +205,8 @@ namespace RenderCore { namespace Assets
             size_t      _outputMatrixNameCount;
         };
 
-        const InputInterface&           GetInputInterface() const   { return _inputInterface; }
-        const OutputInterface&          GetOutputInterface() const  { return _outputInterface; }
+        const InputInterface&   GetInputInterface() const   { return _inputInterface; }
+        const OutputInterface&  GetOutputInterface() const  { return _outputInterface; }
 
         TransformationMachine();
         ~TransformationMachine();
@@ -252,6 +228,37 @@ namespace RenderCore { namespace Assets
                 const TransformationParameterSet*   parameterSet,
                 IteratorType                        debugIterator,
                 const void*                         iteratorUserData) const;
+    };
+
+////////////////////////////////////////////////////////////////////////////////////////////
+    //      i m m u t a b l e   d a t a         //
+
+    class ModelImmutableData
+    {
+    public:
+        ModelCommandStream          _visualScene;
+        
+        RawGeometry*                _geos;
+        size_t                      _geoCount;
+        BoundSkinnedGeometry*       _boundSkinnedControllers;
+        size_t                      _boundSkinnedControllerCount;
+        MaterialGuid*               _materialReferences;
+        size_t                      _materialReferencesCount;
+
+        TransformationMachine       _embeddedSkeleton;
+        Float4x4*                   _defaultTransforms;
+        size_t                      _defaultTransformCount;        
+
+        std::pair<Float3, Float3>   _boundingBox;
+
+        ~ModelImmutableData();
+    };
+
+    class MaterialImmutableData
+    {
+    public:
+        Serialization::Vector<std::pair<MaterialGuid, ResolvedMaterial>> _materials;
+        Serialization::Vector<std::pair<MaterialGuid, std::string>> _materialNames;
     };
 
     #pragma pack(pop)

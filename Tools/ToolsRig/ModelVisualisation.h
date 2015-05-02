@@ -24,7 +24,7 @@ namespace RenderCore { namespace Techniques
     class CameraDesc;
 }}
 
-namespace SceneEngine { class ISceneParser; }
+namespace SceneEngine { class ISceneParser; class IntersectionTestScene; }
 
 namespace ToolsRig
 {
@@ -181,13 +181,16 @@ namespace ToolsRig
             std::shared_ptr<VisMouseOver> mouseOver,
             std::shared_ptr<RenderCore::IThreadContext> threadContext,
             std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext,
-            std::shared_ptr<ModelVisSettings> settings,
-            std::shared_ptr<ModelVisCache> cache);
+            std::shared_ptr<VisCameraSettings> camera,
+            std::shared_ptr<SceneEngine::IntersectionTestScene> scene);
         ~MouseOverTrackingOverlay();
     protected:
         std::shared_ptr<IInputListener> _inputListener;
+        std::shared_ptr<VisCameraSettings> _camera;
     };
 
     std::unique_ptr<SceneEngine::ISceneParser> CreateModelScene(const ModelVisCache::Model& model);
+    std::shared_ptr<SceneEngine::IntersectionTestScene> CreateModelIntersectionScene(
+        std::shared_ptr<ModelVisSettings> settings, std::shared_ptr<ModelVisCache> cache);
 }
 

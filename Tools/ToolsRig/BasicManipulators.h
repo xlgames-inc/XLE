@@ -13,7 +13,6 @@ namespace ToolsRig
     class IManipulator;
     class VisCameraSettings;
 
-    std::shared_ptr<IManipulator> CreateCameraManipulator(
-        std::shared_ptr<VisCameraSettings> visCameraSettings);
+    std::shared_ptr<IManipulator> CreateCameraManipulator(std::shared_ptr<VisCameraSettings> visCameraSettings);
 }
 

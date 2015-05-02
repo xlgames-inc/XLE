@@ -23,6 +23,7 @@ namespace PlatformRig
         void    OnKeyChange         (unsigned keyCode,  bool newState);
         void    OnChar              (ucs2 chr);
         void    OnMouseWheel        (signed wheelDelta);
+        void    OnFocusChange       ();
 
         void    AddListener         (std::weak_ptr<RenderOverlays::DebuggingDisplay::IInputListener> listener);
 

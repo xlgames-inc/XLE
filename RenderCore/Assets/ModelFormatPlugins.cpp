@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "ModelFormatPlugins.h"
-#include "ModelSimple.h"
+#include "ModelRunTime.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/WinApI/WinAPIWrapper.h"
@@ -40,7 +40,8 @@ namespace RenderCore { namespace Assets
             auto res = p->_pluginInterface->CreateRenderer(scaffold, material, sharedStateSet, levelOfDetail);
             if (res) return res;
         }
-        return std::make_shared<ModelRenderer>(scaffold, material, sharedStateSet, levelOfDetail);
+        // return std::make_shared<ModelRenderer>(scaffold, material, sharedStateSet, levelOfDetail);
+        return nullptr;
     }
 
     std::string ModelFormat_Plugins::DefaultMaterialName(const ModelScaffold& model)

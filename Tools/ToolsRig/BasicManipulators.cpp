@@ -9,6 +9,7 @@
 #include "ModelVisualisation.h"
 #include "VisualisationUtils.h"
 #include "../../RenderOverlays/DebuggingDisplay.h"
+#include "../../SceneEngine/IntersectionTest.h"
 #include "../../Math/Transformations.h"
 #include "../../Math/Geometry.h"
 #include <memory>
@@ -36,16 +37,14 @@ namespace ToolsRig
         std::pair<IntParameter*, size_t>   GetIntParameters() const { return std::make_pair(nullptr, 0); }
         void SetActivationState(bool newState);
 
-        CameraMovementManipulator(std::shared_ptr<VisCameraSettings> visCameraSettings);
+        CameraMovementManipulator(
+            std::shared_ptr<VisCameraSettings> visCameraSettings);
         ~CameraMovementManipulator();
 
     protected:
         std::shared_ptr<VisCameraSettings> _visCameraSettings;
-        float _translateSpeed;
-        float _orbitRotationSpeed;
-        float _wheelTranslateSpeed;
+        float _translateSpeed, _orbitRotationSpeed, _wheelTranslateSpeed;
     };
-
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -72,10 +71,26 @@ namespace ToolsRig
             //  because it tends to conflict with other key-binds.
             //  However, we could make a rule that keyboard input is 
             //  directed to the camera when the middle mouse button is down.
+        if (!_visCameraSettings) { return false; }
+
+        static auto ctrl = RenderOverlays::DebuggingDisplay::KeyId_Make("control");
+        if (evnt.IsHeld(ctrl) && evnt.IsPress_LButton()) {
+
+            if (!&hitTestContext || !&hitTestScene) return false;
+
+            auto worldSpaceRay = SceneEngine::IntersectionTestContext::CalculateWorldSpaceRay(
+                AsCameraDesc(*_visCameraSettings), evnt._mousePosition, hitTestContext.GetViewportSize());
+
+            auto intr = hitTestScene.FirstRayIntersection(hitTestContext, worldSpaceRay);
+            if (intr._type != 0) {
+                _visCameraSettings->_focus = intr._worldSpaceCollision;
+            }
+
+            return false;
+        }
 
             // cancel manipulator when the middle mouse button is released
         if (evnt.IsRelease_MButton()) { return false; }
-        if (!_visCameraSettings) { return false; }
 
         static auto alt = RenderOverlays::DebuggingDisplay::KeyId_Make("alt");
         static auto shift = RenderOverlays::DebuggingDisplay::KeyId_Make("shift");
@@ -121,10 +136,10 @@ namespace ToolsRig
                     //  to clamp the maximum pitch.
                     //
 
-                Float4 plane = Expand(Float3(_visCameraSettings->_focus - _visCameraSettings->_position), 0.f);
-                float t = RayVsPlane(_visCameraSettings->_position, _visCameraSettings->_focus, plane);
+                // Float4 plane = Expand(Float3(_visCameraSettings->_focus - _visCameraSettings->_position), 0.f);
+                // float t = RayVsPlane(_visCameraSettings->_position, _visCameraSettings->_focus, plane);
 
-                Float3 orbitCenter = _visCameraSettings->_position + t * (_visCameraSettings->_focus - _visCameraSettings->_position);
+                Float3 orbitCenter = _visCameraSettings->_focus; // _visCameraSettings->_position + t * (_visCameraSettings->_focus - _visCameraSettings->_position);
                 auto spherical = CartesianToSpherical(orbitCenter - _visCameraSettings->_position);
                 spherical[0] += evnt._mouseDelta[1] * _orbitRotationSpeed;
                 spherical[0] = Clamp(spherical[0], gPI * 0.02f, gPI * 0.98f);
@@ -161,7 +176,8 @@ namespace ToolsRig
     auto CameraMovementManipulator::GetBoolParameters() const -> std::pair<BoolParameter*, size_t> { return std::make_pair(nullptr, 0); }
     void CameraMovementManipulator::SetActivationState(bool) {}
 
-    CameraMovementManipulator::CameraMovementManipulator(std::shared_ptr<VisCameraSettings> visCameraSettings)
+    CameraMovementManipulator::CameraMovementManipulator(
+        std::shared_ptr<VisCameraSettings> visCameraSettings)
     : _visCameraSettings(visCameraSettings)
     {
         _translateSpeed = 0.002f;

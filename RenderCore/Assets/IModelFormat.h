@@ -4,20 +4,14 @@
 
 namespace RenderCore { namespace Assets
 {
-    namespace Simple {
-        class ModelScaffold;
-        class MaterialScaffold;
-        class ModelRenderer;
-    }
     class SharedStateSet;
+    class ModelScaffold;
+    class MaterialScaffold;
+    class ModelRenderer;
 
     class IModelFormat
     {
     public:
-        typedef Simple::ModelScaffold ModelScaffold;
-        typedef Simple::MaterialScaffold MaterialScaffold;
-        typedef Simple::ModelRenderer ModelRenderer;
-
         virtual std::shared_ptr<ModelScaffold>      CreateModel(const ::Assets::ResChar initializer[]) = 0;
         virtual std::shared_ptr<MaterialScaffold>   CreateMaterial(const ::Assets::ResChar initializer[]) = 0;
         virtual std::shared_ptr<ModelRenderer>      CreateRenderer(

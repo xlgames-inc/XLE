@@ -30,7 +30,7 @@ namespace RenderCore { namespace Metal_DX11
                         } else {
                             viewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
                             viewDesc.Texture2D.MostDetailedMip = 0;
-                            viewDesc.Texture2D.MipLevels = 1;
+                            viewDesc.Texture2D.MipLevels = (UINT)-1;
                         }
                     } else {
                         if (textureDesc.SampleDesc.Count > 1 && !forceSingleSample) {
@@ -40,7 +40,7 @@ namespace RenderCore { namespace Metal_DX11
                         } else {
                             viewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
                             viewDesc.Texture2DArray.MostDetailedMip = 0;
-                            viewDesc.Texture2DArray.MipLevels = 1;
+                            viewDesc.Texture2DArray.MipLevels = (UINT)-1;
                             viewDesc.Texture2DArray.FirstArraySlice = 0;
                             viewDesc.Texture2DArray.ArraySize = arrayCount;
                         }
@@ -51,14 +51,14 @@ namespace RenderCore { namespace Metal_DX11
                     if (textureDesc.Width > 0) {
                         viewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE3D;
                         viewDesc.Texture3D.MostDetailedMip = 0;
-                        viewDesc.Texture3D.MipLevels = textureDesc.MipLevels;
+                        viewDesc.Texture3D.MipLevels = (UINT)-1;
                     } else {
 
                         TextureDesc1D textureDesc(resource);
                         if (textureDesc.Width > 0) {
                             viewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE1D;
                             viewDesc.Texture1D.MostDetailedMip = 0;
-                            viewDesc.Texture1D.MipLevels = textureDesc.MipLevels;
+                            viewDesc.Texture1D.MipLevels = (UINT)-1;
                         } else {
                             D3DBufferDesc bufferDesc(resource);
                             viewDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFEREX;

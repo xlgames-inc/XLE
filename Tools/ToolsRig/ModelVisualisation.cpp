@@ -20,6 +20,7 @@
 #include "../../SceneEngine/IntersectionTest.h"
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../RenderCore/IThreadContext.h"
+#include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
@@ -434,6 +435,104 @@ namespace ToolsRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    class SingleModelIntersectionResolver : public SceneEngine::IIntersectionTester
+    {
+    public:
+        virtual Result FirstRayIntersection(
+            const SceneEngine::IntersectionTestContext& context,
+            std::pair<Float3, Float3> worldSpaceRay) const;
+
+        virtual void FrustumIntersection(
+            std::vector<Result>& results,
+            const SceneEngine::IntersectionTestContext& context,
+            const Float4x4& worldToProjection) const;
+
+        SingleModelIntersectionResolver(
+            std::shared_ptr<ModelVisSettings> settings,
+            std::shared_ptr<ModelVisCache> cache);
+        ~SingleModelIntersectionResolver();
+    protected:
+        std::shared_ptr<ModelVisSettings>   _settings;
+        std::shared_ptr<ModelVisCache>      _cache;
+    };
+
+    auto SingleModelIntersectionResolver::FirstRayIntersection(
+        const SceneEngine::IntersectionTestContext& context,
+        std::pair<Float3, Float3> worldSpaceRay) const -> Result
+    {
+        using namespace SceneEngine;
+
+        auto model = _cache->GetModel(_settings->_modelName.c_str(), _settings->_materialName.c_str());
+        assert(model._renderer && model._sharedStateSet);
+
+        auto metalContext = RenderCore::Metal::DeviceContext::Get(*context.GetThreadContext());
+
+        auto cam = context.GetCameraDesc();
+        ModelIntersectionStateContext stateContext(
+            ModelIntersectionStateContext::RayTest,
+            context.GetThreadContext(), context.GetTechniqueContext(), 
+            &cam);
+        LightingParserContext parserContext(context.GetTechniqueContext());
+        stateContext.SetRay(worldSpaceRay);
+
+        model._sharedStateSet->CaptureState(metalContext.get());
+        model._renderer->Render(
+            RenderCore::Assets::ModelRendererContext(metalContext.get(), parserContext, 6),
+            *model._sharedStateSet, Identity<Float4x4>());
+        model._sharedStateSet->ReleaseState(metalContext.get());
+
+        auto results = stateContext.GetResults();
+        if (!results.empty()) {
+            const auto& r = results[0];
+
+            Result result;
+            result._type = IntersectionTestScene::Type::Extra;
+            result._worldSpaceCollision = 
+                worldSpaceRay.first + r._intersectionDepth * Normalize(worldSpaceRay.second - worldSpaceRay.first);
+            result._distance = r._intersectionDepth;
+            result._drawCallIndex = r._drawCallIndex;
+            result._materialGuid = r._materialGuid;
+            result._materialName = _settings->_materialName;
+            result._modelName = _settings->_modelName;
+
+                // fill in the material guid if it wasn't correctly set by the shader
+            if (result._materialGuid == ~0x0ull) {
+                auto matBinding = model._renderer->DrawCallToMaterialBinding();
+                if (result._drawCallIndex < matBinding.size())
+                    result._materialGuid = matBinding[result._drawCallIndex];
+            }
+            return result;
+        }
+
+        return Result();
+    }
+
+    void SingleModelIntersectionResolver::FrustumIntersection(
+        std::vector<Result>& results,
+        const SceneEngine::IntersectionTestContext& context,
+        const Float4x4& worldToProjection) const
+    {}
+
+    SingleModelIntersectionResolver::SingleModelIntersectionResolver(
+        std::shared_ptr<ModelVisSettings> settings,
+        std::shared_ptr<ModelVisCache> cache)
+    : _settings(settings), _cache(cache)
+    {}
+
+    SingleModelIntersectionResolver::~SingleModelIntersectionResolver()
+    {}
+
+    std::shared_ptr<SceneEngine::IntersectionTestScene> CreateModelIntersectionScene(
+        std::shared_ptr<ModelVisSettings> settings, std::shared_ptr<ModelVisCache> cache)
+    {
+        std::shared_ptr<SceneEngine::IIntersectionTester> resolver = 
+            std::make_shared<SingleModelIntersectionResolver>(std::move(settings), std::move(cache));
+        return std::shared_ptr<SceneEngine::IntersectionTestScene>(
+            new SceneEngine::IntersectionTestScene(nullptr, nullptr, { resolver }));
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
     class MouseOverTrackingListener : public RenderOverlays::DebuggingDisplay::IInputListener
     {
     public:
@@ -441,65 +540,31 @@ namespace ToolsRig
         {
             using namespace SceneEngine;
 
-            auto metalContext = RenderCore::Metal::DeviceContext::Get(*_threadContext);
-            auto cam = AsCameraDesc(*_settings->_camera);
-            auto worldSpaceRay = IntersectionTestContext::CalculateWorldSpaceRay(
-                cam, evnt._mousePosition, PlatformRig::InputTranslator::s_hackWindowSize);
+            auto cam = AsCameraDesc(*_camera);
+            IntersectionTestContext testContext(
+                _threadContext, cam, 
+                std::make_shared<RenderCore::ViewportContext>(PlatformRig::InputTranslator::s_hackWindowSize),
+                _techniqueContext);
+            auto worldSpaceRay = testContext.CalculateWorldSpaceRay(
+                evnt._mousePosition);
                 
-            std::vector<ModelIntersectionStateContext::ResultEntry> results;
-            TRY {
-                auto model = _cache->GetModel(_settings->_modelName.c_str(), _settings->_materialName.c_str());
-                assert(model._renderer && model._sharedStateSet);
-            
-                ModelIntersectionStateContext stateContext(
-                    ModelIntersectionStateContext::RayTest,
-                    _threadContext, *_techniqueContext, &cam);
-                LightingParserContext parserContext(*_techniqueContext);
-                stateContext.SetRay(worldSpaceRay);
-                model._sharedStateSet->CaptureState(metalContext.get());
-                model._renderer->Render(
-                    RenderCore::Assets::ModelRendererContext(metalContext.get(), parserContext, 6),
-                    *model._sharedStateSet, Identity<Float4x4>());
-                model._sharedStateSet->ReleaseState(metalContext.get());
-
-                results = stateContext.GetResults();
-
-                if (!results.empty()) {
-                        // find the closest intersection, and let's get so information from that...
-                    std::sort(results.begin(), results.end(), ModelIntersectionStateContext::ResultEntry::CompareDepth);
-
-                    _mouseOver->_intersectionPt = 
-                        worldSpaceRay.first + results[0]._intersectionDepth * Normalize(worldSpaceRay.second - worldSpaceRay.first);
-
-                    auto drawCallIndex = results[0]._drawCallIndex;
-                    auto matBinding = model._renderer->DrawCallToMaterialBinding();
-                    uint64 materialGuid; 
-                    if (results[0]._drawCallIndex < matBinding.size()) {
-                        materialGuid = matBinding[results[0]._drawCallIndex];
-                    } else {
-                        materialGuid = ~0x0ull;
-                    }
-
-                    if (    drawCallIndex != _mouseOver->_drawCallIndex
-                        ||  materialGuid != _mouseOver->_materialGuid
+            auto intr = _scene->FirstRayIntersection(testContext, worldSpaceRay);
+            if (intr._type != 0) {
+                if (        intr._drawCallIndex != _mouseOver->_drawCallIndex
+                        ||  intr._materialGuid != _mouseOver->_materialGuid
                         ||  !_mouseOver->_hasMouseOver) {
 
-                        _mouseOver->_hasMouseOver = true;
-                        _mouseOver->_drawCallIndex = drawCallIndex;
-                        _mouseOver->_materialGuid = materialGuid;
-                        _mouseOver->_changeEvent.Trigger();
-                    }
-
-                } else {
-                    if (_mouseOver->_hasMouseOver) {
-                        _mouseOver->_hasMouseOver = false;
-                        _mouseOver->_changeEvent.Trigger();
-                    }
+                    _mouseOver->_hasMouseOver = true;
+                    _mouseOver->_drawCallIndex = intr._drawCallIndex;
+                    _mouseOver->_materialGuid = intr._materialGuid;
+                    _mouseOver->_changeEvent.Trigger();
+                }
+            } else {
+                if (_mouseOver->_hasMouseOver) {
+                    _mouseOver->_hasMouseOver = false;
+                    _mouseOver->_changeEvent.Trigger();
                 }
             }
-            CATCH (const ::Assets::Exceptions::InvalidResource&) {}
-            CATCH (const ::Assets::Exceptions::PendingResource&) {}
-            CATCH_END
 
             return false;
         }
@@ -508,13 +573,13 @@ namespace ToolsRig
             std::shared_ptr<VisMouseOver> mouseOver,
             std::shared_ptr<RenderCore::IThreadContext> threadContext,
             std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext,
-            std::shared_ptr<ModelVisSettings> settings,
-            std::shared_ptr<ModelVisCache> cache)
+            std::shared_ptr<VisCameraSettings> camera,
+            std::shared_ptr<SceneEngine::IntersectionTestScene> scene)
             : _mouseOver(std::move(mouseOver))
             , _threadContext(std::move(threadContext))
             , _techniqueContext(std::move(techniqueContext))
-            , _settings(std::move(settings))
-            , _cache(std::move(cache))
+            , _camera(std::move(camera))
+            , _scene(std::move(scene))
         {}
         MouseOverTrackingListener::~MouseOverTrackingListener() {}
 
@@ -522,8 +587,8 @@ namespace ToolsRig
         std::shared_ptr<VisMouseOver> _mouseOver;
         std::shared_ptr<RenderCore::IThreadContext> _threadContext;
         std::shared_ptr<RenderCore::Techniques::TechniqueContext> _techniqueContext;
-        std::shared_ptr<ModelVisSettings> _settings;
-        std::shared_ptr<ModelVisCache> _cache;
+        std::shared_ptr<VisCameraSettings> _camera;
+        std::shared_ptr<SceneEngine::IntersectionTestScene> _scene;
     };
 
     auto MouseOverTrackingOverlay::GetInputListener() -> std::shared_ptr<IInputListener>
@@ -543,13 +608,13 @@ namespace ToolsRig
         std::shared_ptr<VisMouseOver> mouseOver,
         std::shared_ptr<RenderCore::IThreadContext> threadContext,
         std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext,
-        std::shared_ptr<ModelVisSettings> settings,
-        std::shared_ptr<ModelVisCache> cache)
+        std::shared_ptr<VisCameraSettings> camera,
+        std::shared_ptr<SceneEngine::IntersectionTestScene> scene)
     {
         _inputListener = std::make_shared<MouseOverTrackingListener>(
             std::move(mouseOver),
             std::move(threadContext), std::move(techniqueContext), 
-            std::move(settings), std::move(cache));
+            std::move(camera), std::move(scene));
     }
 
     MouseOverTrackingOverlay::~MouseOverTrackingOverlay() {}

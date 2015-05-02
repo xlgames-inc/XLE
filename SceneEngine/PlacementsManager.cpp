@@ -14,6 +14,7 @@
 
 #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
     #include "../RenderCore/Assets/ModelRunTime.h"
+    #include "../RenderCore/Assets/ModelRunTimeInternal.h"
     #include "../Assets/CompileAndAsyncManager.h"
     #include "../Assets/IntermediateResources.h"
     #include "../RenderCore/Assets/ColladaCompilerInterface.h"
@@ -725,7 +726,9 @@ namespace SceneEngine
             }
 
             auto localToWorld = Combine(obj._localToCell, cellToWorld);
-            _renderer->Prepare(cache._preparedRenders, cache._sharedStates, AsFloat4x4(localToWorld));
+
+            ModelRenderer::MeshToModel mtm(_model->ImmutableData()._defaultTransforms, (unsigned)_model->ImmutableData()._defaultTransformCount);
+            _renderer->Prepare(cache._preparedRenders, cache._sharedStates, AsFloat4x4(localToWorld), &mtm);
         }
     }
 

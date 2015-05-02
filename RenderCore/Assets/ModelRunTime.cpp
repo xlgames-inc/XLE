@@ -1558,8 +1558,9 @@ namespace RenderCore { namespace Assets
         _data->~ModelImmutableData();
     }
 
-    const ModelCommandStream&   ModelScaffold::CommandStream() const       { return _data->_visualScene; }
-    std::pair<Float3, Float3>   ModelScaffold::GetStaticBoundingBox(unsigned) const { return _data->_boundingBox; }
+    const ModelCommandStream&       ModelScaffold::CommandStream() const        { return _data->_visualScene; }
+    const TransformationMachine&    ModelScaffold::EmbeddedSkeleton() const     { return _data->_embeddedSkeleton; }
+    std::pair<Float3, Float3>       ModelScaffold::GetStaticBoundingBox(unsigned) const { return _data->_boundingBox; }
 
 }}
 

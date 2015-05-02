@@ -22,6 +22,7 @@
 #include "../RenderCore/Assets/RawAnimationCurve.h"
 #include "../RenderCore/Assets/Material.h"
 #include "../RenderCore/Assets/AssetUtils.h"
+#include "../RenderCore/Assets/ModelRunTimeInternal.h"
 #include "../RenderCore/Techniques/TechniqueUtils.h"    // for CameraDesc
 
 #include "../RenderCore/Metal/Buffer.h"
@@ -403,6 +404,10 @@ namespace RenderCore { namespace ColladaConversion
                         effect, c, _objects, matSettings._resourceBindings,
                         DefaultDiffuseTextureBinding, 
                         diffuse.getTexture().getSamplerId());
+                } else if (diffuse.getType() == ColorOrTexture::COLOR) {
+                    matSettings._constants.SetParameter(
+                        "MaterialDiffuse", 
+                        Float3((float)diffuse.getColor().getRed(), (float)diffuse.getColor().getGreen(), (float)diffuse.getColor().getBlue()));
                 }
             }
 
@@ -1204,6 +1209,48 @@ namespace RenderCore { namespace ColladaConversion
 
         Serialization::Serialize(serializer, _visualScene);
         _objects.SerializeSkin(serializer, largeResourcesBlock);
+
+        Serialization::Serialize(serializer, _skeleton);
+
+            // Generate the default transforms and serialize them out
+            // unfortunately this requires we use the run-time types to
+            // work out the transforms.
+            // And that requires a bit of hack to get pointers to those 
+            // run-time types
+        {
+            auto tempBlock = serializer.AsMemoryBlock();
+            using namespace RenderCore::Assets;
+
+            Serialization::Block_Initialize(tempBlock.get());
+            auto* immData = (const ModelImmutableData*)Serialization::Block_GetFirstObject(tempBlock.get());
+
+            const auto& transMachine = immData->_embeddedSkeleton;
+            auto defTransformCount = transMachine.GetOutputMatrixCount();
+            auto skeletonOutput = std::make_unique<Float4x4[]>(defTransformCount);
+            transMachine.GenerateOutputTransforms(
+                skeletonOutput.get(), defTransformCount,
+                &transMachine.GetDefaultParameters());
+
+            RenderCore::Assets::SkeletonBinding skelBinding(
+                transMachine.GetOutputInterface(), 
+                immData->_visualScene.GetInputInterface());
+
+            auto finalMatrixCount = immData->_visualScene.GetInputInterface()._jointCount;
+            auto reordered = std::make_unique<Float4x4[]>(finalMatrixCount);
+            for (size_t c = 0; c < finalMatrixCount; ++c) {
+                auto machineOutputIndex = skelBinding._modelJointIndexToMachineOutput[c];
+                if (machineOutputIndex == ~unsigned(0x0)) {
+                    reordered[c] = Identity<Float4x4>();
+                } else {
+                    reordered[c] = skeletonOutput[machineOutputIndex];
+                }
+            }
+
+            serializer.SerializeSubBlock(reordered.get(), &reordered[finalMatrixCount]);
+            serializer.SerializeValue(finalMatrixCount);
+
+            immData->~ModelImmutableData();
+        }
 
         auto boundingBox = CalculateBoundingBox();
         Serialization::Serialize(serializer, boundingBox.first);

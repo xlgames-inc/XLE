@@ -27,6 +27,7 @@
 #include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../SceneEngine/LightingParserStandardPlugin.h"
 #include "../../SceneEngine/LightingParserContext.h"
+#include "../../SceneEngine/IntersectionTest.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../Utility/PtrUtils.h"
@@ -90,16 +91,21 @@ namespace GUILayer
 
         static const uint64 CameraManipulator = 256;
 
-        ManipulatorStack();
+        ManipulatorStack(
+            std::shared_ptr<SceneEngine::IntersectionTestContext> intrContext = nullptr,
+            std::shared_ptr<SceneEngine::IntersectionTestScene> intrScene = nullptr);
         ~ManipulatorStack();
     protected:
         std::vector<std::shared_ptr<ToolsRig::IManipulator>> _activeManipulators;
         std::vector<std::pair<uint64, std::shared_ptr<ToolsRig::IManipulator>>> _registeredManipulators;
+        std::shared_ptr<SceneEngine::IntersectionTestContext> _intrContext;
+        std::shared_ptr<SceneEngine::IntersectionTestScene> _intrScene;
     };
 
     bool    ManipulatorStack::OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
     {
-        if (evnt.IsPress_MButton()) {
+        static auto ctrl = RenderOverlays::DebuggingDisplay::KeyId_Make("control");
+        if (evnt.IsPress_MButton() || (evnt.IsHeld(ctrl) && evnt.IsPress_LButton())) {
             auto i = LowerBound(_registeredManipulators, CameraManipulator);
             if (i!=_registeredManipulators.end() && i->first == CameraManipulator) {
                     // remove this manipulator if it already is on the active manipulators list...
@@ -112,9 +118,7 @@ namespace GUILayer
 
         if (!_activeManipulators.empty()) {
             bool r = _activeManipulators[_activeManipulators.size()-1]->OnInputEvent(
-                evnt,
-                *(const SceneEngine::IntersectionTestContext*)nullptr,
-                *(const SceneEngine::IntersectionTestScene*)nullptr);
+                evnt, *_intrContext, *_intrScene);
 
             if (!r) { 
                 _activeManipulators.erase(_activeManipulators.begin() + (_activeManipulators.size()-1));
@@ -134,7 +138,11 @@ namespace GUILayer
         }
     }
 
-    ManipulatorStack::ManipulatorStack() {}
+    ManipulatorStack::ManipulatorStack(
+        std::shared_ptr<SceneEngine::IntersectionTestContext> intrContext,
+        std::shared_ptr<SceneEngine::IntersectionTestScene> intrScene)
+    : _intrContext(intrContext), _intrScene(intrScene)
+    {}
     ManipulatorStack::~ManipulatorStack()
     {}
 
@@ -209,14 +217,29 @@ namespace GUILayer
                 settings->GetUnderlying(), resources->_visCache.GetNativePtr(), 
                 mouseOver ? mouseOver->GetUnderlying() : nullptr));
 
-        AddDefaultCameraHandler(settings->Camera);
+        auto intersectionScene = CreateModelIntersectionScene(
+            settings->GetUnderlying(), resources->_visCache.GetNativePtr());
+        auto intersectionContext = std::make_shared<SceneEngine::IntersectionTestContext>(
+            EngineDevice::GetInstance()->GetNative().GetRenderDevice()->GetImmediateContext(),
+            RenderCore::Techniques::CameraDesc(), 
+            GetWindowRig().GetPresentationChain()->GetViewportContext(),
+            _pimpl->_globalTechniqueContext);
+
+        // AddDefaultCameraHandler(settings->Camera);
+        {
+            auto manipulators = std::make_unique<ManipulatorStack>(intersectionContext, intersectionScene);
+            manipulators->Register(
+                ManipulatorStack::CameraManipulator,
+                ToolsRig::CreateCameraManipulator(settings->Camera->GetUnderlying()));
+            overlaySet.AddSystem(std::make_shared<InputLayer>(std::move(manipulators)));
+        }
 
         overlaySet.AddSystem(
             std::make_shared<ToolsRig::MouseOverTrackingOverlay>(
                 mouseOver->GetUnderlying(),
                 EngineDevice::GetInstance()->GetNative().GetRenderDevice()->GetImmediateContext(),
                 _pimpl->_globalTechniqueContext,
-                settings->GetUnderlying(), resources->_visCache.GetNativePtr()));
+                settings->Camera->GetUnderlying(), intersectionScene));
     }
 
     VisMouseOver^ LayerControl::CreateVisMouseOver(ModelVisSettings^ settings, VisResources^ resources)
@@ -278,7 +301,7 @@ namespace GUILayer
 
     void LayerControl::AddDefaultCameraHandler(VisCameraSettings^ settings)
     {
-        // create an input listener that feeds into a stack of manipulators
+            // create an input listener that feeds into a stack of manipulators
         auto manipulators = std::make_unique<ManipulatorStack>();
         manipulators->Register(
             ManipulatorStack::CameraManipulator,

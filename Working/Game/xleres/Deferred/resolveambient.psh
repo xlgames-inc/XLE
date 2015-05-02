@@ -8,6 +8,7 @@
 #define RESOLVE_AMBIENT_PSH
 
 #include "resolveutil.h"
+#include "../Lighting/LightingAlgorithm.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -58,8 +59,9 @@ float3 ReadSkyTexture(float3 reflectionVector, float roughness)
 			reflectionTextureDims, uint(mipMap));
 	#elif MAT_SKY_PROJECTION == 3
 		float2 skyReflectionCoord = HemisphericalMappingCoord(reflectionVector);
-		// return SkyReflectionTexture[0].Load(
-		// 	int3(skyReflectionCoord.xy * float2(reflectionTextureDims.xy >> mipMap), mipMap)).rgb;
+		uint2 dims;
+		SkyReflectionTexture[0].GetDimensions(dims.x, dims.y);
+		mipMap = max(mipMap, CalculateMipmapLevel(skyReflectionCoord.xy, dims));
 		return SkyReflectionTexture[0].SampleLevel(ClampingSampler, skyReflectionCoord.xy, mipMap).rgb;
 	#else
 		return 0.0.xxx;
@@ -81,14 +83,13 @@ float3 CalculateSkyReflections(GBufferValues sample, float3 viewDirection, float
 	float3 worldSpaceReflection = reflect(-viewDirection, sample.worldSpaceNormal);
 
 	float roughness = Material_GetRoughness(sample);
-	float metal = Material_GetMetal(sample);
 	float specular = Material_GetSpecular0(sample);
 
 	float3 reflSampl = ReadSkyTexture(worldSpaceReflection, roughness);
 	reflSampl = SRGBToLinear(reflSampl);
 	reflSampl += Material_GetReflectionBoost(sample).xxx;
 
-	return reflSampl * lerp(sample.diffuseAlbedo, 1.0.xxx, metal) * (specular * fresnel * sample.cookedAmbientOcclusion);
+	return reflSampl * (specular * fresnel * sample.cookedAmbientOcclusion);
 }
 
 /////////////////////////////////////////
@@ -168,6 +169,9 @@ float4 ResolveAmbient(	float4 position : SV_Position,
 	#else
 		float3 finalReflection = skyReflections;
 	#endif
+
+	finalReflection *= lerp(sample.diffuseAlbedo, 1.0.xxx, Material_GetMetal(sample));
+
 	result += Material_GetReflectionScale(sample) * finalReflection;
 
 	return float4(result, 1.f);

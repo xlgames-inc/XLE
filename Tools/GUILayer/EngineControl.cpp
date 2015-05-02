@@ -126,6 +126,16 @@ namespace GUILayer
         }
     }
 
+    void EngineControl::Evnt_FocusChange(Object ^sender, System::EventArgs ^e)
+    {
+        // when we've lost or gained the focus, we need to reset the input translator 
+        //  (because we might miss key up/down message when not focused)
+        if (_pimpl->_inputTranslator) {
+            _pimpl->_inputTranslator->OnFocusChange();
+        }
+    }
+
+
     IWindowRig& EngineControl::GetWindowRig()
     {
         assert(_pimpl->_windowRig);
@@ -148,6 +158,8 @@ namespace GUILayer
         control->MouseUp += gcnew System::Windows::Forms::MouseEventHandler(this, &EngineControl::Evnt_MouseUp);
         control->MouseWheel += gcnew System::Windows::Forms::MouseEventHandler(this, &EngineControl::Evnt_MouseWheel);
         control->MouseDoubleClick += gcnew System::Windows::Forms::MouseEventHandler(this, &EngineControl::Evnt_DoubleClick);
+        control->GotFocus += gcnew System::EventHandler(this, &GUILayer::EngineControl::Evnt_FocusChange);
+        control->LostFocus += gcnew System::EventHandler(this, &GUILayer::EngineControl::Evnt_FocusChange);
     }
 
     EngineControl::~EngineControl()

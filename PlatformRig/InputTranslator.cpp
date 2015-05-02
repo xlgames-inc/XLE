@@ -124,6 +124,16 @@ namespace PlatformRig
         Publish(snapShot);
     }
 
+    void    InputTranslator::OnFocusChange()
+    {
+            // we have to reset the "_passiveButtonState" set when we gain or loose focus.
+            // this is because we will miss key up messages when not focussed...
+            // We could also generate input messages focus releasing those buttons
+            // (otherwise clients will get key down, but not key up)
+        using namespace RenderOverlays::DebuggingDisplay;
+        _pimpl->_passiveButtonState.clear();
+    }
+
     const char*     InputTranslator::AsKeyName(unsigned keyCode)
     {
         switch (keyCode) {
