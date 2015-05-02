@@ -130,8 +130,6 @@ namespace RenderCore { namespace Metal_DX11
     typedef TextureDesc<ID3D::Texture2D>    TextureDesc2D;
     typedef TextureDesc<ID3D::Texture3D>    TextureDesc3D;
     typedef TextureDesc<ID3D::Buffer>       D3DBufferDesc;
-
-    DXGI_FORMAT AsSRGBFormat(DXGI_FORMAT inputFormat);
     
             ////////////////////////////////////////////////////////////////
                 //      Q U E R Y   I N T E R F A C E

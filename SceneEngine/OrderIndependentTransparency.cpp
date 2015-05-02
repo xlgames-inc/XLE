@@ -113,9 +113,9 @@ namespace SceneEngine
             //      Bind some resources required by the glass shader
             //
 
-        auto box5   = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/refltexture/boxc_5.dds", RenderCore::Assets::DeferredShaderResource::SRGBSpace).GetShaderResource();
-        auto box12  = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/refltexture/boxc_12.dds", RenderCore::Assets::DeferredShaderResource::SRGBSpace).GetShaderResource();
-        auto box34  = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/refltexture/boxc_34.dds", RenderCore::Assets::DeferredShaderResource::SRGBSpace).GetShaderResource();
+        auto box5   = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/refltexture/boxc_5.dds").GetShaderResource();
+        auto box12  = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/refltexture/boxc_12.dds").GetShaderResource();
+        auto box34  = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/refltexture/boxc_34.dds").GetShaderResource();
         context->BindPS(MakeResourceList(8, box12, box34, box5));
 
         auto& perlinNoiseRes = Techniques::FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());

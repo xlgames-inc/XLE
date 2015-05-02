@@ -86,8 +86,13 @@ namespace BufferUploads
         const void* fileHandle, size_t offset, size_t dataSize,
         TexturePitches pitches);
 
+    namespace TextureLoadFlags { 
+        enum Enum { GenerateMipmaps = 1<<0 };
+        typedef unsigned BitField;
+    }
     buffer_upload_dll_export intrusive_ptr<DataPacket> CreateStreamingTextureSource(
-        const ::Assets::ResChar filename[]);
+        const ::Assets::ResChar filename[], const ::Assets::ResChar filenameEnd[],
+        TextureLoadFlags::BitField flags = 0);
 
     inline TexturePitches::TexturePitches(unsigned rowPitch, unsigned slicePitch)
     : _rowPitch(rowPitch), _slicePitch(slicePitch) {}

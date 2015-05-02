@@ -687,6 +687,12 @@
           description="Generate Mip Maps"
           category="Metadata"
           editor="Sce.Atf.Controls.PropertyEditing.BoolEditor,Atf.Gui.WinForms"/>
+        <scea.dom.editors.attribute
+          name="colorSpace"
+          displayName="Color Space"
+          description="Color Space"
+          category="Metadata"
+          editor="Sce.Atf.Controls.PropertyEditing.EnumUITypeEditor,Atf.Gui.WinForms:SRGB,Linear,Unspecified"/>
       </xs:appinfo>
     </xs:annotation>
     <xs:complexContent>
@@ -694,6 +700,7 @@
         <xs:attribute name="compressionSetting" type="xs:string" default="BC1" />
         <xs:attribute name="memoryLayout" type="xs:string" default="Linear" />
         <xs:attribute name="mipMap" type="xs:boolean" default="true" />
+        <xs:attribute name="colorSpace" type="xs:string" default="Unspecified" />
       </xs:extension>
     </xs:complexContent>
   </xs:complexType>

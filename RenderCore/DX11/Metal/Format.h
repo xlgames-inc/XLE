@@ -80,6 +80,10 @@ namespace RenderCore { namespace Metal_DX11
         FormatComponentType::Enum componentType,
         unsigned precision);
 
-    inline DXGI_FORMAT              AsDXGIFormat(NativeFormat::Enum format) { return DXGI_FORMAT(format); }
+    NativeFormat::Enum      AsSRGBFormat(NativeFormat::Enum inputFormat);
+    NativeFormat::Enum      AsLinearFormat(NativeFormat::Enum inputFormat);
+    NativeFormat::Enum      AsTypelessFormat(NativeFormat::Enum inputFormat);
+
+    inline DXGI_FORMAT      AsDXGIFormat(NativeFormat::Enum format) { return DXGI_FORMAT(format); }
 }}
 

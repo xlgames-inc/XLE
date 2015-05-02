@@ -81,6 +81,9 @@
     </ClInclude>
     <ClInclude Include="..\ParameterBox.h" />
     <ClInclude Include="..\ExceptionLogging.h" />
+    <ClInclude Include="..\Threading\CompletionThreadPool.h">
+      <Filter>Threading</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\StringFormat.cpp" />
@@ -127,5 +130,8 @@
     </ClCompile>
     <ClCompile Include="..\ParameterBox.cpp" />
     <ClCompile Include="..\Conversion.cpp" />
+    <ClCompile Include="..\Threading\CompletionThreadPool.cpp">
+      <Filter>Threading</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

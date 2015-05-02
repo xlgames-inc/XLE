@@ -358,7 +358,7 @@ namespace SceneEngine
             //
         context->Bind(ResourceList<RenderTargetView, 0>(), nullptr);
         context->BindCS(MakeResourceList(gbufferDiffuse, res._downsampledNormalsShaderResource, res._downsampledDepthShaderResource));
-        context->BindCS(MakeResourceList(4, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/balanced_noise.dds").GetShaderResource()));
+        context->BindCS(MakeResourceList(4, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/balanced_noise.dds:LT").GetShaderResource()));
         context->BindCS(MakeResourceList(res._maskUnorderedAccess));
         context->BindCS(MakeResourceList(parserContext.GetGlobalTransformCB(), Metal::ConstantBuffer(&viewProjParam, sizeof(viewProjParam)), res._samplingPatternConstants, parserContext.GetGlobalStateCB()));
         context->BindCS(MakeResourceList(   Metal::SamplerState(Metal::FilterMode::Trilinear, Metal::AddressMode::Wrap, Metal::AddressMode::Wrap, Metal::AddressMode::Wrap),

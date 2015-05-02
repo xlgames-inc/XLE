@@ -69,7 +69,7 @@ namespace SceneEngine
             context->BindVS(RenderCore::MakeResourceList(samplerDefault, samplerClamp, samplerAnisotrophic, samplerPoint));
             context->BindPS(RenderCore::MakeResourceList(6, samplerWrapU));
 
-            auto normalsFittingResource = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/normalsfitting.dds").GetShaderResource();
+            auto normalsFittingResource = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/normalsfitting.dds:LT").GetShaderResource();
             context->BindPS(RenderCore::MakeResourceList(14, normalsFittingResource));
             context->BindCS(RenderCore::MakeResourceList(14, normalsFittingResource));
 
@@ -78,8 +78,8 @@ namespace SceneEngine
             context->BindPS(MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
 
                 // procedural scratch texture for scratches test
-            // context->BindPS(MakeResourceList(17, Assets::GetAssetDep<Metal::DeferredShaderResource>("game/xleres/scratchnorm.dds").GetShaderResource()));
-            // context->BindPS(MakeResourceList(18, Assets::GetAssetDep<Metal::DeferredShaderResource>("game/xleres/scratchocc.dds").GetShaderResource()));
+            // context->BindPS(MakeResourceList(17, Assets::GetAssetDep<Metal::DeferredShaderResource>("game/xleres/scratchnorm.dds:L").GetShaderResource()));
+            // context->BindPS(MakeResourceList(18, Assets::GetAssetDep<Metal::DeferredShaderResource>("game/xleres/scratchocc.dds:L").GetShaderResource()));
         }
         CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
         CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
@@ -289,7 +289,7 @@ namespace SceneEngine
                         "");
                 context->Bind(metricsShader);
                 context->BindPS(MakeResourceList(
-                    3, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/metricsdigits.dds").GetShaderResource()));
+                    3, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/metricsdigits.dds:T").GetShaderResource()));
                 context->Bind(BlendState(BlendOp::Add, Blend::One, Blend::InvSrcAlpha));
                 context->Bind(DepthStencilState(false));
                 context->BindVS(MakeResourceList(parserContext.GetMetricsBox()->_metricsBufferSRV));

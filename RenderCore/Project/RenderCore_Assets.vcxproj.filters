@@ -12,12 +12,6 @@
     <ClCompile Include="..\Assets\NascentTransformationMachine.cpp">
       <Filter>Assets</Filter>
     </ClCompile>
-    <ClCompile Include="..\Assets\ModelSimple.cpp">
-      <Filter>Assets</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Assets\ModelSimpleRenderer.cpp">
-      <Filter>Assets</Filter>
-    </ClCompile>
     <ClCompile Include="..\Assets\SharedStateSet.cpp" />
     <ClCompile Include="..\Assets\SkinningRunTime.cpp">
       <Filter>Assets</Filter>
@@ -49,9 +43,6 @@
       <Filter>Assets</Filter>
     </ClInclude>
     <ClInclude Include="..\Assets\NascentTransformationMachine.h">
-      <Filter>Assets</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Assets\ModelSimple.h">
       <Filter>Assets</Filter>
     </ClInclude>
     <ClInclude Include="..\Assets\SharedStateSet.h" />

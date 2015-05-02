@@ -288,7 +288,7 @@ namespace SceneEngine
         context->Bind(::Assets::GetAssetDep<Metal::ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen:vs_*", "game/xleres/Ocean/FFTDebugging.psh:copy:ps_*"));
         context->Bind(MakeResourceList(box._workingTextureRealTarget, box._workingTextureImaginaryTarget), nullptr);
-        context->BindPS(MakeResourceList(::Assets::GetAsset<RenderCore::Assets::DeferredShaderResource>("game/objects/env/nature/grassland/plant/co_gland_weed_a_df.dds").GetShaderResource()));
+        context->BindPS(MakeResourceList(::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/objects/env/nature/grassland/plant/co_gland_weed_a_df.dds").GetShaderResource()));
         SetupVertexGeneratorShader(context);
         context->Draw(4);
         savedTargets.ResetToOldTargets(context);
@@ -1139,7 +1139,7 @@ namespace SceneEngine
         context->BindPS(MakeResourceList(1, fftBuffer._normalsTextureShaderResource));
         context->BindPS(MakeResourceList(3, 
             fftBuffer._foamQuantitySRV[OceanBufferCounter&1], 
-            ::Assets::GetAsset<RenderCore::Assets::DeferredShaderResource>("game/xleres_cry/waterfoam.dds").GetShaderResource()));
+            ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres_cry/waterfoam.dds").GetShaderResource()));
         if (shallowWater) {
             ShallowWater_BindForOceanRender(context, *shallowWater, OceanBufferCounter);
         }

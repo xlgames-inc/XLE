@@ -11,26 +11,6 @@
 
 namespace RenderCore { namespace Metal_DX11
 {
-    DXGI_FORMAT AsSRGBFormat(DXGI_FORMAT inputFormat)
-    {
-        switch (inputFormat) {
-        case DXGI_FORMAT_R8G8B8A8_TYPELESS:
-        case DXGI_FORMAT_R8G8B8A8_UNORM: return DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-        case DXGI_FORMAT_BC1_TYPELESS:
-        case DXGI_FORMAT_BC1_UNORM: return DXGI_FORMAT_BC1_UNORM_SRGB;
-        case DXGI_FORMAT_BC2_TYPELESS:
-        case DXGI_FORMAT_BC2_UNORM: return DXGI_FORMAT_BC2_UNORM_SRGB;
-        case DXGI_FORMAT_BC3_TYPELESS:
-        case DXGI_FORMAT_BC3_UNORM: return DXGI_FORMAT_BC3_UNORM_SRGB;
-        case DXGI_FORMAT_BC7_UNORM: return DXGI_FORMAT_BC7_UNORM_SRGB;
-        case DXGI_FORMAT_B8G8R8A8_TYPELESS:
-        case DXGI_FORMAT_B8G8R8A8_UNORM: return DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
-        case DXGI_FORMAT_B8G8R8X8_TYPELESS:
-        case DXGI_FORMAT_B8G8R8X8_UNORM: return DXGI_FORMAT_B8G8R8X8_UNORM_SRGB;
-        }
-        return inputFormat; // no SRGB version of this format exists
-    }
-
     ImpliedTyping::TypeDesc GetType(D3D11_SHADER_TYPE_DESC typeDesc)
     {
         using namespace Utility::ImpliedTyping;

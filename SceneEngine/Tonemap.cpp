@@ -636,7 +636,7 @@ namespace SceneEngine
         unsigned dimensions[4] = { (unsigned)mainViewportDesc.Width, (unsigned)mainViewportDesc.Height, 0, 0 };
         context->BindGS(MakeResourceList(ConstantBuffer(dimensions, sizeof(dimensions))));
         context->BindVS(MakeResourceList(resources._propertiesBufferSRV));
-        context->BindPS(MakeResourceList(3, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/metricsdigits.dds").GetShaderResource()));
+        context->BindPS(MakeResourceList(3, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/metricsdigits.dds:T").GetShaderResource()));
         context->Bind(Topology::PointList);
         context->Draw(1);
     }

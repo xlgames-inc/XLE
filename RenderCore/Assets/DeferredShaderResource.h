@@ -11,22 +11,51 @@
 
 namespace RenderCore { namespace Assets 
 {
+    /// <summary>Prepares a shader resource from a file source</summary>
+    /// This is used to load a file from disk, as use as a shader resource (eg, a texture).
+    /// Disk access and GPU upload are performed in background threads. While
+    /// the resource is being loaded and upload, GetShaderResource() will throw
+    /// PendingResource().
+    ///
+    /// The filename can have flags appended after a colon. For example:
+    ///   texture.dds:l1
+    /// each character after the colon represents one flag or setting.
+    /// Valid flags are:
+    ///   'L' -- the data in this texture is in linear color space
+    ///   'S' -- the data in this texture is in SRGB color space
+    ///   'T' -- do not generate mipmaps (however, if mipmaps are already present in the file, they will be used)
+    ///
+    /// Because all disk access is performed in background threads, the constructor will
+    /// not know immediately if the requested file is missing (or invalid). So, if you
+    /// attempt to load a texture, but the texture file is missing, the construction will
+    /// appear to complete successfully. However, eventually GetShaderResource() will
+    /// throw an InvalidResource() exception.
+    ///
+    /// The system can load a variety of texture formats, and can perform data massaging as
+    /// necessary (for example, building mip-map). This work will happen within the buffer
+    /// uploads system, and in background threads.
+    ///
+    /// However, note that some texture file formats (like tga, tif, etc) cannot contain
+    /// precomputed mipmaps. This means the mip-map generation must occur while the texture
+    /// is loaded. Building mipmaps for a lot of textures can end up being a large amount of
+    /// work -- so it is recommended to use .dds files with precompiled mip maps (.dds files
+    /// also allow compressed texture formats).
     class DeferredShaderResource
     {
     public:
-        static const ::Assets::ResChar* LinearSpace; 
-        static const ::Assets::ResChar* SRGBSpace; 
-        explicit DeferredShaderResource(const ::Assets::ResChar resourceName[], const ::Assets::ResChar sourceSpace[] = LinearSpace);
+        const Metal::ShaderResourceView&        GetShaderResource() const;
+        const ::Assets::DependencyValidation&   GetDependencyValidation() const     { return *_validationCallback; }
+        const ::Assets::ResChar*                Initializer() const;
+
+        explicit DeferredShaderResource(const ::Assets::ResChar resourceName[]);
         ~DeferredShaderResource();
-        const Metal::ShaderResourceView&       GetShaderResource() const;
-        const ::Assets::DependencyValidation&     GetDependencyValidation() const     { return *_validationCallback; }
-        const char*                     Initializer() const;
     private:
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
         std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
         
-        DEBUG_ONLY(char _initializer[512];)
+        DEBUG_ONLY(::Assets::ResChar _initializer[MaxPath];)
     };
 
 }}
+

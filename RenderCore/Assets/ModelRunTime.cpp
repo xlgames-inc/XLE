@@ -347,10 +347,10 @@ namespace RenderCore { namespace Assets
                         if (searchRules) {
                             ResChar resolvedPath[MaxPath];
                             searchRules->ResolveFile(resolvedPath, dimof(resolvedPath), resourceName.c_str());
-                            boundTextures[dsti] = &::Assets::GetAsset<DeferredShaderResource>(resolvedPath);
+                            boundTextures[dsti] = &::Assets::GetAssetDep<DeferredShaderResource>(resolvedPath);
                             DEBUG_ONLY(boundTextureNames[dsti] = resolvedPath);
                         } else {
-                            boundTextures[dsti] = &::Assets::GetAsset<DeferredShaderResource>(resourceName.c_str());
+                            boundTextures[dsti] = &::Assets::GetAssetDep<DeferredShaderResource>(resourceName.c_str());
                             DEBUG_ONLY(boundTextureNames[dsti] = resourceName);
                         }
                     } CATCH (const ::Assets::Exceptions::InvalidResource&) {
@@ -622,6 +622,7 @@ namespace RenderCore { namespace Assets
 
         _validationCallback = std::make_shared<::Assets::DependencyValidation>();
         ::Assets::RegisterAssetDependency(_validationCallback, &cbLayout.GetDependencyValidation());
+        for (auto t:boundTextures) if (t) ::Assets::RegisterAssetDependency(_validationCallback, &t->GetDependencyValidation());       // rebuild the entire renderer if any texture changes
 
         auto pimpl = std::make_unique<Pimpl>();
 

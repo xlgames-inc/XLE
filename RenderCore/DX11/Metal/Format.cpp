@@ -183,6 +183,84 @@ namespace RenderCore { namespace Metal_DX11
 
         return NativeFormat::Unknown;
     }
+
+
+    NativeFormat::Enum AsSRGBFormat(NativeFormat::Enum inputFormat)
+    {
+        using namespace NativeFormat;
+        switch (inputFormat) {
+        case R8G8B8A8_TYPELESS:
+        case R8G8B8A8_UNORM: return R8G8B8A8_UNORM_SRGB;
+        case BC1_TYPELESS:
+        case BC1_UNORM: return BC1_UNORM_SRGB;
+        case BC2_TYPELESS:
+        case BC2_UNORM: return BC2_UNORM_SRGB;
+        case BC3_TYPELESS:
+        case BC3_UNORM: return BC3_UNORM_SRGB;
+        case BC7_TYPELESS:
+        case BC7_UNORM: return BC7_UNORM_SRGB;
+
+        case B8G8R8A8_TYPELESS:
+        case B8G8R8A8_UNORM: return B8G8R8A8_UNORM_SRGB;
+        case B8G8R8X8_TYPELESS:
+        case B8G8R8X8_UNORM: return B8G8R8X8_UNORM_SRGB;
+        }
+        return inputFormat; // no linear/srgb version of this format exists
+    }
+
+    NativeFormat::Enum AsLinearFormat(NativeFormat::Enum inputFormat)
+    {
+        using namespace NativeFormat;
+        switch (inputFormat) {
+        case R8G8B8A8_TYPELESS:
+        case R8G8B8A8_UNORM_SRGB: return R8G8B8A8_UNORM;
+        case BC1_TYPELESS:
+        case BC1_UNORM_SRGB: return BC1_UNORM;
+        case BC2_TYPELESS:
+        case BC2_UNORM_SRGB: return BC2_UNORM;
+        case BC3_TYPELESS:
+        case BC3_UNORM_SRGB: return BC3_UNORM;
+        case BC7_TYPELESS:
+        case BC7_UNORM_SRGB: return BC7_UNORM;
+
+        case B8G8R8A8_TYPELESS:
+        case B8G8R8A8_UNORM_SRGB: return B8G8R8A8_UNORM;
+        case B8G8R8X8_TYPELESS:
+        case B8G8R8X8_UNORM_SRGB: return B8G8R8X8_UNORM;
+        }
+        return inputFormat; // no linear/srgb version of this format exists
+    }
+
+    NativeFormat::Enum      AsTypelessFormat(NativeFormat::Enum inputFormat)
+    {
+            // note -- currently this only modifies formats that are also
+            //          modified by AsSRGBFormat and AsLinearFormat. This is
+            //          important, because this function is used to convert
+            //          a pixel format for a texture that might be used by
+            //          either a linear or srgb shader resource view.
+            //          If this function changes formats aren't also changed
+            //          by AsSRGBFormat and AsLinearFormat, it will cause some
+            //          sources to fail to load correctly.
+        using namespace NativeFormat;
+        switch (inputFormat) {
+        case R8G8B8A8_UNORM:
+        case R8G8B8A8_UNORM_SRGB: return R8G8B8A8_TYPELESS;
+        case BC1_UNORM:
+        case BC1_UNORM_SRGB: return BC1_TYPELESS;
+        case BC2_UNORM:
+        case BC2_UNORM_SRGB: return BC2_TYPELESS;
+        case BC3_UNORM:
+        case BC3_UNORM_SRGB: return BC3_TYPELESS;
+        case BC7_UNORM:
+        case BC7_UNORM_SRGB: return BC7_TYPELESS;
+
+        case B8G8R8A8_UNORM:
+        case B8G8R8A8_UNORM_SRGB: return B8G8R8A8_TYPELESS;
+        case B8G8R8X8_UNORM:
+        case B8G8R8X8_UNORM_SRGB: return B8G8R8X8_TYPELESS;
+        }
+        return inputFormat; // no linear/srgb version of this format exists
+    }
 }}
 
 

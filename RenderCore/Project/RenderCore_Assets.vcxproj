@@ -157,8 +157,6 @@
     <ClCompile Include="..\Assets\Material.cpp" />
     <ClCompile Include="..\Assets\MaterialScaffold.cpp" />
     <ClCompile Include="..\Assets\ModelFormatPlugins.cpp" />
-    <ClCompile Include="..\Assets\ModelSimple.cpp" />
-    <ClCompile Include="..\Assets\ModelSimpleRenderer.cpp" />
     <ClCompile Include="..\Assets\ModelRunTime.cpp" />
     <ClCompile Include="..\Assets\NascentTransformationMachine.cpp" />
     <ClCompile Include="..\Assets\PreparedModelDrawCalls.cpp" />
@@ -175,7 +173,6 @@
     <ClInclude Include="..\Assets\MaterialScaffold.h" />
     <ClInclude Include="..\Assets\ModelFormatPlugins.h" />
     <ClInclude Include="..\Assets\ModelRunTimeInternal.h" />
-    <ClInclude Include="..\Assets\ModelSimple.h" />
     <ClInclude Include="..\Assets\ModelRunTime.h" />
     <ClInclude Include="..\Assets\NascentTransformationMachine.h" />
     <ClInclude Include="..\Assets\PreparedModelDrawCalls.h" />

@@ -138,7 +138,7 @@ namespace SceneEngine
         TRY {
             context->BindPS(MakeResourceList(tileLightingResources._lightOutputTextureSRV));
             context->BindPS(MakeResourceList(1, tileLightingResources._debuggingTextureSRV[0], tileLightingResources._debuggingTextureSRV[1], tileLightingResources._debuggingTextureSRV[2]));
-            context->BindPS(MakeResourceList(4, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/digits.dds").GetShaderResource()));
+            context->BindPS(MakeResourceList(4, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/digits.dds:T").GetShaderResource()));
             auto& debuggingShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
                 "game/xleres/basic2D.vsh:fullscreen:vs_*", 
                 "game/xleres/deferred/debugging.psh:DepthsDebuggingTexture:ps_*");

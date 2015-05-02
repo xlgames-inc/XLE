@@ -135,22 +135,18 @@ _EXP( BC7,            UNORM_SRGB, BlockCompression,   8 )
 
 _EXP( B5G6R5,         UNORM,      None,               16 )
 _EXP( B5G5R5A1,       UNORM,      None,               16 )
+
+_EXP( B8G8R8A8,       TYPELESS,   None,               8*4 )
 _EXP( B8G8R8A8,       UNORM,      None,               8*4 )
+_EXP( B8G8R8A8,       UNORM_SRGB, None,               8*4 )
+
+_EXP( B8G8R8X8,       TYPELESS,   None,               8*4 )
 _EXP( B8G8R8X8,       UNORM,      None,               8*4 )
+_EXP( B8G8R8X8,       UNORM_SRGB, None,               8*4 )
 
     //
     //      Some less common types
     //
     //    DXGI_FORMAT_R10G10B10_XR_BIAS_A2_UNORM  = 89,
-    //    DXGI_FORMAT_B8G8R8A8_TYPELESS           = 90,
-    //    DXGI_FORMAT_B8G8R8A8_UNORM_SRGB         = 91,
-    //    DXGI_FORMAT_B8G8R8X8_TYPELESS           = 92,
-    //    DXGI_FORMAT_B8G8R8X8_UNORM_SRGB         = 93,
-    //    DXGI_FORMAT_BC6H_TYPELESS               = 94,
-    //    DXGI_FORMAT_BC6H_UF16                   = 95,
-    //    DXGI_FORMAT_BC6H_SF16                   = 96,
-    //    DXGI_FORMAT_BC7_TYPELESS                = 97,
-    //    DXGI_FORMAT_BC7_UNORM                   = 98,
-    //    DXGI_FORMAT_BC7_UNORM_SRGB              = 99,
     //
 

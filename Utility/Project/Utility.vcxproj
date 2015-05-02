@@ -141,6 +141,7 @@
     <ClInclude Include="..\StringFormat.h" />
     <ClInclude Include="..\StringUtils.h" />
     <ClInclude Include="..\SystemUtils.h" />
+    <ClInclude Include="..\Threading\CompletionThreadPool.h" />
     <ClInclude Include="..\Threading\LockFree.h" />
     <ClInclude Include="..\Threading\Mutex.h" />
     <ClInclude Include="..\Threading\ThreadingUtils.h" />
@@ -170,6 +171,7 @@
     <ClCompile Include="..\StringFormat.cpp" />
     <ClCompile Include="..\StringFormatTime.cpp" />
     <ClCompile Include="..\StringUtils.cpp" />
+    <ClCompile Include="..\Threading\CompletionThreadPool.cpp" />
     <ClCompile Include="..\Threading\WinAPI\ThreadObject_WinAPI.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'">true</ExcludedFromBuild>

@@ -98,7 +98,7 @@ namespace SceneEngine
             uniforms.BindShaderResource(HashRandomValuesTexture, 0, 1);
 
             auto& balancedNoise 
-                = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/balanced_noise.dds");
+                = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/balanced_noise.dds:LT");
 
             const Metal::ConstantBuffer* cbs[]      = { &cb0 };
             const Metal::ShaderResourceView* srvs[] = { &balancedNoise.GetShaderResource() };
@@ -260,7 +260,7 @@ namespace SceneEngine
             Metal::ConstantBuffer cb0(&simParam, sizeof(simParam));
 
             auto& balancedNoise 
-                = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/balanced_noise.dds");
+                = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/balanced_noise.dds:LT");
             const Metal::ConstantBuffer* cbs[]      = { &cb0 };
             const Metal::ShaderResourceView* srvs[] = { &balancedNoise.GetShaderResource(), &resources._simParticlesSRV, &depthsSRV, &normalsSRV };
             
@@ -413,7 +413,7 @@ namespace SceneEngine
             Metal::ConstantBuffer cb0(&simParam, sizeof(simParam));
 
             auto& balancedNoise 
-                = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/balanced_noise.dds");
+                = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/balanced_noise.dds:LT");
             const Metal::ConstantBuffer* cbs[]      = { &cb0 };
             const Metal::ShaderResourceView* srvs[] = { &balancedNoise.GetShaderResource(), &resources._simParticlesSRV, &depthsSRV, &normalsSRV };
             

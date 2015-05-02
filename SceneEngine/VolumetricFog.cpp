@@ -394,7 +394,7 @@ namespace SceneEngine
                 fogRes._inscatterShadowingValuesUnorderedAccess, fogRes._transmissionValuesUnorderedAccess,
                 fogRes._densityValuesUnorderedAccess, fogRes._inscatterFinalsValuesUnorderedAccess));
             context->BindCS(MakeResourceList(2, fogRes._shadowMapShaderResource));
-            context->BindCS(MakeResourceList(9, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/balanced_noise.dds").GetShaderResource()));
+            context->BindCS(MakeResourceList(9, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/balanced_noise.dds:LT").GetShaderResource()));
             // context->BindCS(MakeResourceList(
             //     lightingParserContext.GetGlobalTransformCB(), Metal::ConstantBuffer(), Metal::ConstantBuffer(), 
             //     *shadowFrustum._projectConstantBuffer, lightingParserContext.GetGlobalStateCB()));

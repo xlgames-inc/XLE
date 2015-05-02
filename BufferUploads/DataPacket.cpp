@@ -6,8 +6,7 @@
 
 #include "DataPacket.h"
 #include "PlatformInterface.h"
-#include "../Utility/Threading/Mutex.h"
-#include "../Utility/Threading/LockFree.h"
+#include "../Utility/Threading/CompletionThreadPool.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/Conversion.h"
 #include "../Utility/StringUtils.h"
@@ -127,108 +126,6 @@ namespace BufferUploads
 ///////////////////////////////////////////////////////////////////////////////////////////////////
             //      S T R E A M I N G   P A C K E T
 
-    class CompletionThreadPool
-    {
-    public:
-        template<class Fn, class... Args>
-            void Enqueue(Fn&& fn, Args&&... args);
-
-        CompletionThreadPool(unsigned threadCount);
-        ~CompletionThreadPool();
-
-    private:
-        std::vector<std::thread> _workerThreads;
-        
-        Threading::Mutex _pendingsTaskLock;
-        typedef std::function<void()> PendingTask;
-        LockFree::FixedSizeQueue<PendingTask, 256> _pendingTasks;
-
-        XlHandle _events[2];
-        bool _workerQuit;
-    };
-
-    template<class Fn, class... Args>
-        void CompletionThreadPool::Enqueue(Fn&& fn, Args&&... args)
-        {
-            _pendingTasks.push_overflow(
-                std::bind(std::forward<Fn>(fn), std::forward<Args>(args)...));
-
-                // set event should wake one thread -- and that thread should
-                // then take over and execute the task
-            XlSetEvent(_events[0]);
-        }
-
-    CompletionThreadPool::CompletionThreadPool(unsigned threadCount)
-    {
-            // once event is an "auto-reset" event, which should wake a single thread
-            // another event is a "manual-reset" event. This should 
-        _events[0] = XlCreateEvent(false);
-        _events[1] = XlCreateEvent(true);
-        _workerQuit = false;
-
-        for (unsigned i = 0; i<threadCount; ++i)
-            _workerThreads.emplace_back(
-                [this]
-                {
-                    while (!this->_workerQuit) {
-                        bool gotTask = false;
-                        std::function<void()> task;
-
-                        {
-                                // note that _pendingTasks is safe for multiple pushing threads,
-                                // but not safe for multiple popping threads. So we have to
-                                // lock to prevent more than one thread from attempt to pop
-                                // from it at the same time.
-                            ScopedLock(this->_pendingsTaskLock);
-
-                            std::function<void()>*t = nullptr;
-                            if (_pendingTasks.try_front(t)) {
-                                task = std::move(*t);
-                                _pendingTasks.pop();
-                                gotTask = true;
-                            }
-                        }
-
-                        if (gotTask) {
-                                // if we got this far, we can execute the task....
-                            TRY
-                            {
-                                task();
-                            } CATCH(const std::exception& e) {
-                                LogAlwaysError << "Suppressing exception in thread pool thread: " << e.what();
-                            } CATCH(...) {
-                                LogAlwaysError << "Suppressing unknown exception in thread pool thread.";
-                            } CATCH_END
-
-                                // That that when using completion routines, we want to attempt to
-                                // distribute the tasks evenly between threads (so that the completion
-                                // routines will also be distributed evenly between threads.). To achieve
-                                // this, let's not attempt to search for another task immediately... Instead
-                                // when after we complete a task, let's encourage this thread to go back into
-                                // a stall (unless all of our threads are saturated)
-                            Threading::YieldTimeSlice();
-                            continue;
-                        }
-
-                            // Wait for the event with the "alertable" flag set true
-                            // note -- this is why we can't use std::condition_variable
-                            //      (because threads waiting on a condition variable won't
-                            //      be woken to execute completion routines)
-                        XlWaitForMultipleSyncObjects(
-                            2, this->_events,
-                            false, XL_INFINITE, true);
-                    }
-                }
-            );
-    }
-
-    CompletionThreadPool::~CompletionThreadPool()
-    {
-        _workerQuit = true;
-        XlSetEvent(this->_events[1]);   // should wake all threads
-        for (auto&t : _workerThreads) t.join();
-    }
-
     class FileDataSource : public DataPacket
     {
     public:
@@ -259,7 +156,7 @@ namespace BufferUploads
 
         static void CALLBACK CompletionRoutine(
             DWORD dwErrorCode, DWORD dwNumberOfBytesTransfered,
-            LPOVERLAPPED lpOverlapped );
+            LPOVERLAPPED lpOverlapped);
     };
 
     void* FileDataSource::GetData(SubResource subRes)
@@ -279,7 +176,7 @@ namespace BufferUploads
 
     void CALLBACK FileDataSource::CompletionRoutine(
         DWORD dwErrorCode, DWORD dwNumberOfBytesTransfered,
-        LPOVERLAPPED lpOverlapped )
+        LPOVERLAPPED lpOverlapped)
     {
         auto* o = (SpecialOverlapped*)lpOverlapped;
         assert(o && o->_returnPointer && o->_returnPointer->_marker);
@@ -373,7 +270,9 @@ namespace BufferUploads
 
         virtual std::shared_ptr<Marker>     BeginBackgroundLoad();
 
-        StreamingTexture(const ::Assets::ResChar filename[]);
+        StreamingTexture(
+            const ::Assets::ResChar filename[], const ::Assets::ResChar filenameEnd[],
+            TextureLoadFlags::BitField flags);
         virtual ~StreamingTexture();
 
     protected:
@@ -384,6 +283,8 @@ namespace BufferUploads
 
         intrusive_ptr<StreamingTexture> _returnPointer;
         std::shared_ptr<Marker> _marker;
+
+        TextureLoadFlags::BitField _flags;
     };
 
     void* StreamingTexture::GetData(SubResource subRes)
@@ -453,7 +354,12 @@ namespace BufferUploads
                     desc._textureDesc._arrayCount = uint8(this->_texMetadata.arraySize);
                     desc._textureDesc._mipCount = uint8(this->_texMetadata.mipLevels);
                     desc._textureDesc._samples = TextureSamples();
-                    desc._textureDesc._nativePixelFormat = (unsigned)this->_texMetadata.format;
+
+                        // we need to use a "typeless" format for any pixel formats that can
+                        // cast to to SRGB or linear versions. This allows the caller to use
+                        // both SRGB and linear ShaderResourceView(s)
+                    desc._textureDesc._nativePixelFormat = (unsigned)RenderCore::Metal::AsTypelessFormat((RenderCore::Metal::NativeFormat::Enum)this->_texMetadata.format);
+
                     switch (this->_texMetadata.dimension) {
                     case TEX_DIMENSION_TEXTURE1D: desc._textureDesc._dimensionality = TextureDesc::Dimensionality::T1D; break;
                     default:
@@ -463,7 +369,7 @@ namespace BufferUploads
                     if (this->_texMetadata.IsCubemap())
                         desc._textureDesc._dimensionality = TextureDesc::Dimensionality::CubeMap;
 
-                    if (this->_texMetadata.mipLevels <= 1) {
+                    if ((this->_texMetadata.mipLevels <= 1) && (this->_flags & TextureLoadFlags::GenerateMipmaps)) {
                         DirectX::ScratchImage newImage;
                         auto mipmapHresult = GenerateMipMaps(*this->_image.GetImage(0,0,0), (DWORD)TEX_FILTER_DEFAULT, 0, newImage);
                         if (SUCCEEDED(mipmapHresult)) {
@@ -487,18 +393,23 @@ namespace BufferUploads
         return _marker;
     }
 
-    StreamingTexture::StreamingTexture(const ::Assets::ResChar filename[])
+    StreamingTexture::StreamingTexture(
+        const ::Assets::ResChar filename[], const ::Assets::ResChar filenameEnd[],
+        TextureLoadFlags::BitField flags)
+    : _flags(flags)
     {
         XlZeroMemory(_texMetadata);
-        Conversion::Convert(_filename, dimof(_filename), filename, &filename[XlStringLen(filename)]);
+        Conversion::Convert(_filename, dimof(_filename), filename, filenameEnd);
     }
 
     StreamingTexture::~StreamingTexture()
     {}
 
-    intrusive_ptr<DataPacket> CreateStreamingTextureSource(const ::Assets::ResChar filename[])
+    intrusive_ptr<DataPacket> CreateStreamingTextureSource(
+        const ::Assets::ResChar filename[], const ::Assets::ResChar filenameEnd[],
+        TextureLoadFlags::BitField flags)
     {
-        return make_intrusive<StreamingTexture>(filename);
+        return make_intrusive<StreamingTexture>(filename, filenameEnd, flags);
     }
 
 }
