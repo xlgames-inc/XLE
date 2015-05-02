@@ -125,6 +125,14 @@ _EXP( BC5,            TYPELESS,   BlockCompression,   8 )
 _EXP( BC5,            UNORM,      BlockCompression,   8 )
 _EXP( BC5,            SNORM,      BlockCompression,   8 )
 
+_EXP( BC6H,           TYPELESS,   BlockCompression,   8 )
+_EXP( BC6H,           UF16,       BlockCompression,   8 )
+_EXP( BC6H,           SF16,       BlockCompression,   8 )
+
+_EXP( BC7,            TYPELESS,   BlockCompression,   8 )
+_EXP( BC7,            UNORM,      BlockCompression,   8 )
+_EXP( BC7,            UNORM_SRGB, BlockCompression,   8 )
+
 _EXP( B5G6R5,         UNORM,      None,               16 )
 _EXP( B5G5R5A1,       UNORM,      None,               16 )
 _EXP( B8G8R8A8,       UNORM,      None,               8*4 )

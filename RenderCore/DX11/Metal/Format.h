@@ -62,7 +62,8 @@ namespace RenderCore { namespace Metal_DX11
             Typeless,
             Float, UInt, SInt,
             UNorm, SNorm, UNorm_SRGB,
-            Exponential
+            Exponential,
+            UnsignedFloat16, SignedFloat16
         };
     }
 

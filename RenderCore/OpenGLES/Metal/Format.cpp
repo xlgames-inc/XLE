@@ -31,7 +31,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             R8G8, R16, D16, 
             R8, A8, A1, R1,
             R9G9B9E5, R8G8_B8G8, G8R8_G8B8,
-            BC1, BC2, BC3, BC4, BC5,
+            BC1, BC2, BC3, BC4, BC5, BC6H, BC7,
             B5G6R5, B5G5R5A1, B8G8R8A8, B8G8R8X8
         };
     }
@@ -81,11 +81,13 @@ namespace RenderCore { namespace Metal_OpenGLES
         case R8G8:              return FormatComponents::RG;
             
         
-        case BC1:               return FormatComponents::RGB;
+        case BC1:
+        case BC6H:              return FormatComponents::RGB;
         case BC2:
         case BC3:
         case BC4: 
-        case BC5:               return FormatComponents::RGBAlpha;
+        case BC5:               
+        case BC7:               return FormatComponents::RGBAlpha;
 
         case R8G8_B8G8: 
         case G8R8_G8B8:         return FormatComponents::RGB;
@@ -98,7 +100,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     {
         enum InputComponentType
         {
-            TYPELESS, FLOAT, UINT, SINT, UNORM, SNORM, UNORM_SRGB, SHAREDEXP
+            TYPELESS, FLOAT, UINT, SINT, UNORM, SNORM, UNORM_SRGB, SHAREDEXP, UF16, SF16
         };
         InputComponentType input;
         switch (format) {
@@ -120,6 +122,8 @@ namespace RenderCore { namespace Metal_OpenGLES
         case SNORM:         return FormatComponentType::SNorm;
         case UNORM_SRGB:    return FormatComponentType::UNorm_SRGB;
         case SHAREDEXP:     return FormatComponentType::Exponential;
+        case UF16:          return FormatComponentType::UnsignedFloat16;
+        case SF16:          return FormatComponentType::SignedFloat16;
         }
     }
 

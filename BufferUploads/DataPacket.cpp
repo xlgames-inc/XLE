@@ -428,18 +428,19 @@ namespace BufferUploads
             {
                 using namespace DirectX;
                 HRESULT hresult = -1;
-                auto* ext = XlExtension((const ucs2*)this->_filename);
+                const auto* filename = this->_filename;
+                auto* ext = XlExtension((const ucs2*)filename);
                 assert(ext);
                 if (ext && !XlCompareStringI(ext, (const ucs2*)L"dds")) {
                     hresult = LoadFromDDSFile(
-                        this->_filename, DDS_FLAGS_NONE,
+                        filename, DDS_FLAGS_NONE,
                         &_texMetadata, _image);
                 } else if (ext && !XlCompareStringI(ext, (const ucs2*)L"tga")) {
                     hresult = LoadFromTGAFile(
-                        this->_filename, &_texMetadata, _image);
+                        filename, &_texMetadata, _image);
                 } else {
                     hresult = LoadFromWICFile(
-                        this->_filename, WIC_FLAGS_NONE,
+                        filename, WIC_FLAGS_NONE,
                         &_texMetadata, _image);
                 }
 
@@ -464,10 +465,12 @@ namespace BufferUploads
 
                     if (this->_texMetadata.mipLevels <= 1) {
                         DirectX::ScratchImage newImage;
-                        hresult = GenerateMipMaps(*this->_image.GetImage(0,0,0), (DWORD)TEX_FILTER_DEFAULT, 0, newImage);
-                        if (SUCCEEDED(hresult)) {
+                        auto mipmapHresult = GenerateMipMaps(*this->_image.GetImage(0,0,0), (DWORD)TEX_FILTER_DEFAULT, 0, newImage);
+                        if (SUCCEEDED(mipmapHresult)) {
                             this->_image = std::move(newImage);
                             desc._textureDesc._mipCount = uint8(this->_image.GetMetadata().mipLevels);
+                        } else {
+                            LogWarning << "Failed while building mip-maps for texture: " << filename;
                         }
                     }
 

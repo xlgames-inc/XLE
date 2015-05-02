@@ -53,7 +53,8 @@ namespace RenderCore { namespace Metal_OpenGLES
             Typeless,
             Float, UInt, SInt,
             UNorm, SNorm, UNorm_SRGB,
-            Exponential
+            Exponential,
+            UnsignedFloat16, SignedFloat16
         };
     }
 
