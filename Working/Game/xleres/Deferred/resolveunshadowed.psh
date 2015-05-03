@@ -18,7 +18,7 @@ float4 ResolveLightUnshadowed(	float4 position : SV_Position,
 	float3 worldPosition = CalculateWorldPosition(pixelCoords, GetSampleIndex(sys), viewFrustumVector);
 
 	GBufferValues sample = LoadGBuffer(position, sys);
-	float3 diffuse = (1.0f - MO_Metallic) * LightResolve_Diffuse(sample, NegativeLightDirection, LightColor);
+	float3 diffuse = LightResolve_Diffuse(sample, normalize(-viewFrustumVector), NegativeLightDirection, LightColor);
 	float3 specular = LightResolve_Specular(sample, normalize(-viewFrustumVector), NegativeLightDirection, LightColor);
 
 	const float lightScale = LightingScale;

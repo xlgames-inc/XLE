@@ -243,6 +243,8 @@ namespace SceneEngine
         _tanBlurAngle = 0.00436f;		// tan(.25 degrees)
         _minBlurSearch = 0.5f;
         _maxBlurSearch = 25.f;
+        _shadowTextureSize = 1024.f;
+        XlZeroMemory(_dummy);
     }
 
 }

@@ -43,6 +43,8 @@ namespace SceneEngine
         float       _worldSpaceBias;
         float       _tanBlurAngle;
         float       _minBlurSearch, _maxBlurSearch;
+        float       _shadowTextureSize;
+        unsigned    _dummy[3];
         CB_ShadowResolveParameters();
     };
 

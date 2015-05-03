@@ -663,6 +663,7 @@ const char* XlFindStringI(const char* s, const char* x)
 {
     size_t sb = XlStringSize(s);
     size_t xb = XlStringSize(x);
+    if (sb < xb) return 0;
 
     for (size_t i = 0; i <= sb - xb; ++i) {
         if (XlComparePrefixI(s + i, x, xb) == 0) {
@@ -714,6 +715,7 @@ const ucs4* XlFindStringI(const ucs4* s, const ucs4* x)
 
     size_t sn = XlStringLen(s);
     size_t xn = XlStringLen(x);
+    if (sn < xn) return 0;
 
     for (size_t i = 0; i <= sn - xn; ++i) {
         if (XlComparePrefixI(s + i, x, xn) == 0) {

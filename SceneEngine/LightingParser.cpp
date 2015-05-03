@@ -674,6 +674,8 @@ namespace SceneEngine
         preparedResult._resolveParameters._tanBlurAngle = frustum._tanBlurAngle;
         preparedResult._resolveParameters._minBlurSearch = frustum._minBlurSearch;
         preparedResult._resolveParameters._maxBlurSearch = frustum._maxBlurSearch;
+        preparedResult._resolveParameters._shadowTextureSize = (float)std::min(frustum._width, frustum._height);
+        XlZeroMemory(preparedResult._resolveParameters._dummy);
 
             //  we need to set the "shadow cascade mode" settings to the right
             //  mode for this prepare step;

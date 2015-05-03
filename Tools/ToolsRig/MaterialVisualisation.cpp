@@ -255,9 +255,10 @@ namespace ToolsRig
             skeleton.GetTransformationMachine().GetOutputInterface(),
             model.CommandStream().GetInputInterface());
 
-        Float4x4 skelTransforms[256];
+        auto transformCount = skeleton.GetTransformationMachine().GetOutputMatrixCount();
+        auto skelTransforms = std::make_unique<Float4x4[]>(transformCount);
         skeleton.GetTransformationMachine().GenerateOutputTransforms(
-            skelTransforms, dimof(skelTransforms),
+            skelTransforms.get(), transformCount,
             &skeleton.GetTransformationMachine().GetDefaultParameters());
 
         const auto& cmdStream = model.CommandStream();

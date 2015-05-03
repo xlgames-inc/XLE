@@ -57,6 +57,7 @@ cbuffer ShadowResolveParameters
 	float TanBlurAngle;
 	float MinBlurRadius;
 	float MaxBlurRadius;
+	float ShadowTextureSize;
 }
 
 float2 GetRawShadowSampleFilter(uint index)
@@ -90,8 +91,7 @@ float CalculateShadowCasterDistance(
 		float2(sinCosAngle.x, sinCosAngle.y),
 		float2(-sinCosAngle.y, sinCosAngle.x));
 
-	// const float filterSize = 16.f / 1024.f;
-	const float filterSize = 12.f / 1024.f;
+	const float filterSize = 12.f / ShadowTextureSize;
 	#if MSAA_SAMPLES <= 1
 			//	Undersampling here can cause some horrible artefacts.
 			//		In many cases, 4 samples is enough.
@@ -169,19 +169,18 @@ float CalculateFilteredShadows(
 	if (ShadowsPerspectiveProjection) {
 		filterSize = lerp(0.001f, 0.015f, saturate(casterDistance*30.f));
 		filterSize *= .03f * projectionScale.x;		// (note -- projectionScale.y is ignored. We need to have uniform x/y scale to rotate the filter correctly)
-		filterSizePixels = filterSize * 1024.f;
+		filterSizePixels = filterSize * ShadowTextureSize;
 	} else {
 			//	There are various ways to calculate the filtering distance here...
 			//	For example, we can assume the light source is an area light source, and
 			//	calculate the appropriate penumbra for that object. But let's just use
 			//	a simple method and calculate a fixed penumbra angle
-		const float calibratedTextureWidth = 1024.f; // calibrated for 1024x1024 shadow texture
 		filterSizePixels  = TanBlurAngle * casterDistance;
-		filterSizePixels *= projectionScale.x * (calibratedTextureWidth / 2.f);
+		filterSizePixels *= projectionScale.x * (ShadowTextureSize / 2.f);
 
 		filterSizePixels = min(max(filterSizePixels, MinBlurRadius), MaxBlurRadius);
 
-		filterSize = filterSizePixels / calibratedTextureWidth;
+		filterSize = filterSizePixels / ShadowTextureSize;
 	}
 
 	if (usePoissonDiskMethod) {
@@ -414,9 +413,9 @@ float4 ResolveLight(	float4 position : SV_Position,
 	}
 
 	GBufferValues sample = LoadGBuffer(position, sys);
-	float metal = Material_GetMetal(sample);
-	float3 diffuse = (1.0f - metal) * LightResolve_Diffuse(sample, NegativeLightDirection, LightColor);
-	float3 specular = LightResolve_Specular(sample, normalize(-viewFrustumVector), NegativeLightDirection, LightColor);
+	float3 viewDirection = normalize(-viewFrustumVector);
+	float3 diffuse = LightResolve_Diffuse(sample, viewDirection, NegativeLightDirection, LightColor);
+	float3 specular = LightResolve_Specular(sample, viewDirection, NegativeLightDirection, LightColor);
 
 	const float lightScale = LightingScale;
 	return float4((lightScale*shadow*sample.cookedAmbientOcclusion)*(diffuse + specular), 1.f);

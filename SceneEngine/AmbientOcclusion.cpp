@@ -14,6 +14,7 @@
 #include "../RenderCore/DX11/Metal/DX11.h"
 #include "../RenderCore/RenderUtils.h"
 #include "../BufferUploads/IBufferUploads.h"
+#include "../BufferUploads/ResourceLocator.h"
 #include "../ConsoleRig/Console.h"
 #include "../ConsoleRig/Log.h"
 #include "../Utility/PtrUtils.h"
@@ -39,6 +40,7 @@
     //                      xle/ForeignNonDist/GFSDK/HBAO
     //              3) In AmbientOcclusion.cpp, set the define:
     //                      "AO_IMPLEMENTATION" to "AO_IMPLEMENTATION_GFSDK"
+    //              4) copy the dlls to the /Finals_* directories
     //
     //          If you use the nvidia Gameworks libraries for any projects, you must 
     //          abide by the licensing rules set by nvidia. Refer to nvidia's website
@@ -48,7 +50,7 @@
 #define AO_IMPLEMENTATION_NONE      0
 #define AO_IMPLEMENTATION_GFSDK     1
 
-#if 0 // defined(USER_djewsbury)
+#if defined(USER_djewsbury) || defined(USER_David)
     #define AO_IMPLEMENTATION       AO_IMPLEMENTATION_GFSDK
 #else
     #define AO_IMPLEMENTATION       AO_IMPLEMENTATION_NONE
@@ -117,7 +119,8 @@ namespace SceneEngine
         }
         std::unique_ptr<GFSDK_SSAO_Context_D3D11, ContextDeletor> aoContext(tempPtr);
 
-        auto version = aoContext->GetVersion();
+        GFSDK_SSAO_Version version;
+        GFSDK_SSAO_GetVersion(&version);
         LogInfo << "GFSDK AO initialized with version: " << version.Major << "." << version.Minor << "." << version.Branch << "." << version.Revision;
 
         auto params = BuildAOParameters();
@@ -132,7 +135,8 @@ namespace SceneEngine
         auto bufferUploadsDesc = BuildRenderTargetDesc(
             BindFlag::ShaderResource|BindFlag::RenderTarget,
             BufferUploads::TextureDesc::Plain2D(
-                desc._width, desc._height, AsDXGIFormat(desc._destinationFormat)));
+                desc._width, desc._height, AsDXGIFormat(desc._destinationFormat)),
+            "AOTarget");
 
         auto aoTexture = uploads.Transaction_Immediate(bufferUploadsDesc)->AdoptUnderlying();
         RenderTargetView aoTarget(aoTexture.get());
@@ -143,7 +147,8 @@ namespace SceneEngine
         if (desc._useNormals && desc._normalsResolveFormat != NativeFormat::Unknown) {
             auto bufferUploadsDesc = BuildRenderTargetDesc(
                 BindFlag::ShaderResource,
-                BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, AsDXGIFormat(desc._normalsResolveFormat)));
+                BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, AsDXGIFormat(desc._normalsResolveFormat)),
+                "AONormalResolve");
 
             resolvedNormals = uploads.Transaction_Immediate(bufferUploadsDesc, nullptr)->AdoptUnderlying();
             resolvedNormalsSRV = ShaderResourceView(resolvedNormals.get());
@@ -200,11 +205,17 @@ namespace SceneEngine
         GFSDK_SSAO_InputData_D3D11 inputData;
         auto projectionMatrixTranspose = parserContext.GetProjectionDesc()._cameraToProjection;
         inputData.DepthData.DepthTextureType = GFSDK_SSAO_HARDWARE_DEPTHS;
-        inputData.DepthData.pProjectionMatrix = (const float*)&projectionMatrixTranspose;
+        inputData.DepthData.ProjectionMatrix.Data = GFSDK_SSAO_Float4x4((const float*)&projectionMatrixTranspose);
+        inputData.DepthData.ProjectionMatrix.Layout = GFSDK_SSAO_COLUMN_MAJOR_ORDER;
         inputData.DepthData.pFullResDepthTextureSRV = depthBuffer.GetUnderlying();
-        inputData.DepthData.ProjectionMatrixLayout = GFSDK_SSAO_COLUMN_MAJOR_ORDER;
         inputData.DepthData.MetersToViewSpaceUnits = SceneScale;
-        inputData.DepthData.pViewport = (const D3D11_VIEWPORT*)&mainViewport;
+        inputData.DepthData.Viewport.Enable = true;
+        inputData.DepthData.Viewport.TopLeftX = (GFSDK_SSAO_UINT)mainViewport.TopLeftX;
+        inputData.DepthData.Viewport.TopLeftY = (GFSDK_SSAO_UINT)mainViewport.TopLeftY;
+        inputData.DepthData.Viewport.Width = (GFSDK_SSAO_UINT)mainViewport.Width;
+        inputData.DepthData.Viewport.Height = (GFSDK_SSAO_UINT)mainViewport.Height;
+        inputData.DepthData.Viewport.MinDepth = mainViewport.MinDepth;
+        inputData.DepthData.Viewport.MaxDepth = mainViewport.MaxDepth;
 
         if (resources._useNormals && normalsBuffer) {
             if (resources._normalsResolveFormat != NativeFormat::Unknown) {
@@ -225,8 +236,8 @@ namespace SceneEngine
             worldToView(2, 1) = -worldToView(2, 1);
             worldToView(2, 2) = -worldToView(2, 2);
             worldToView(2, 3) = -worldToView(2, 3);
-            inputData.NormalData.pWorldToViewMatrix = (float*)&worldToView;
-            inputData.NormalData.WorldToViewMatrixLayout = GFSDK_SSAO_COLUMN_MAJOR_ORDER;
+            inputData.NormalData.WorldToViewMatrix.Data = GFSDK_SSAO_Float4x4((float*)&worldToView);
+            inputData.NormalData.WorldToViewMatrix.Layout = GFSDK_SSAO_COLUMN_MAJOR_ORDER;
             inputData.NormalData.Enable = true;
         }
 

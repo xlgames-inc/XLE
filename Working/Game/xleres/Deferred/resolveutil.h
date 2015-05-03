@@ -15,6 +15,7 @@
 #include "../System/LoadGBuffer.h"
 #include "../Lighting/LightingAlgorithm.h"
 #include "../Lighting/SpecularMethods.h"
+#include "../Lighting/DiffuseMethods.h"
 #include "../TransformAlgorithm.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -55,9 +56,18 @@ cbuffer LightBuffer
 	float		LightPower;
 }
 
-float3 LightResolve_Diffuse(GBufferValues sample, float3 negativeLightDirection, LightColors lightColor)
+float3 LightResolve_Diffuse(
+	GBufferValues sample,
+	float3 viewDirection,
+	float3 negativeLightDirection,
+	LightColors lightColor)
 {
-	float light = MO_DiffuseScale * saturate(dot(negativeLightDirection, sample.worldSpaceNormal.xyz));
+	float rawDiffuse = CalculateDiffuse(sample.worldSpaceNormal,
+		viewDirection, negativeLightDirection,
+		DiffuseParameters_Roughness(Material_GetRoughness(sample)));
+
+  float metal = Material_GetMetal(sample);
+	float light = MO_DiffuseScale * rawDiffuse * (1.0f - metal);
 	return light * lightColor.diffuse * sample.diffuseAlbedo.rgb;
 }
 
@@ -93,7 +103,7 @@ float3 LightResolve_Specular(
 	float scale = sample.cookedAmbientOcclusion;
 	float3 result =
 		(saturate(spec0) * scale)
-		* lerp(lightColor.nonMetalSpecularBrightness.xxx, lightColor.specular, Material_GetMetal(sample));
+		* lerp(lightColor.nonMetalSpecularBrightness.xxx * sample.diffuseAlbedo, lightColor.specular, Material_GetMetal(sample));
 	// result += (saturate(spec1) * scale) * specularColor1;
 	return result;
 }
