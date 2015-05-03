@@ -170,7 +170,8 @@ namespace LevelEditor
                 typeof(XLELayer.XLEAssetService),
                 typeof(RenderingInterop.ScatterPlaceManipulator),
                 typeof(RenderingInterop.ActiveMaterialContext),
-                typeof(RenderingInterop.PickMaterialManipulator)
+                typeof(RenderingInterop.PickMaterialManipulator),
+                typeof(XLEControls.XLECamera)
                 );
             // XLE>>
             
