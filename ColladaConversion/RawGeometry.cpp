@@ -185,6 +185,8 @@ namespace RenderCore { namespace ColladaConversion
         size_t                              _start, _end, _stride;      // (in elements)
         std::vector<Param>                  _params;
 
+        bool            _doTextureCoordinateFlip;
+
         MeshVertexSourceData();
 
         static std::vector<Param>   DefaultPosition     (const COLLADAFW::MeshVertexData& vd, size_t stride);
@@ -199,6 +201,7 @@ namespace RenderCore { namespace ColladaConversion
     {
         _vertexData = nullptr;
         _start = _end = _stride = 0;
+        _doTextureCoordinateFlip = false;
     }
 
     auto MeshVertexSourceData::DefaultPosition  (const COLLADAFW::MeshVertexData& vd, size_t stride) -> std::vector<Param>
@@ -271,6 +274,7 @@ namespace RenderCore { namespace ColladaConversion
                 result._stride      = vertexData.getInputInfosArray()[0]->mStride;
             }
             result._params      = MeshVertexSourceData::DefaultPosition(vertexData, result._stride);
+            result._doTextureCoordinateFlip = attribute._doTextureCoordinateFlip;
             return std::move(result);
 
         } else if (attribute._basicSemantic == COLLADASaxFWL::InputSemantic::NORMAL) {
@@ -291,6 +295,7 @@ namespace RenderCore { namespace ColladaConversion
                 result._stride      = vertexData.getInputInfosArray()[0]->mStride;
             }
             result._params      = MeshVertexSourceData::DefaultNormal(vertexData, result._stride);
+            result._doTextureCoordinateFlip = attribute._doTextureCoordinateFlip;
             return std::move(result);
 
         } else if (attribute._basicSemantic == COLLADASaxFWL::InputSemantic::TANGENT) {
@@ -311,6 +316,7 @@ namespace RenderCore { namespace ColladaConversion
                 result._stride      = vertexData.getInputInfosArray()[0]->mStride;
             }
             result._params      = MeshVertexSourceData::DefaultTangent(vertexData, result._stride);
+            result._doTextureCoordinateFlip = attribute._doTextureCoordinateFlip;
             return std::move(result);
 
         } else if (attribute._basicSemantic == COLLADASaxFWL::InputSemantic::BINORMAL) {
@@ -331,6 +337,7 @@ namespace RenderCore { namespace ColladaConversion
                 result._stride      = vertexData.getInputInfosArray()[0]->mStride;
             }
             result._params      = MeshVertexSourceData::DefaultBitangent(vertexData, result._stride);
+            result._doTextureCoordinateFlip = attribute._doTextureCoordinateFlip;
             return std::move(result);
 
         } else if (attribute._basicSemantic == COLLADASaxFWL::InputSemantic::COLOR) {
@@ -357,6 +364,7 @@ namespace RenderCore { namespace ColladaConversion
             result._end         = vertexData.getInputInfosArray()[sourceIndex]->mLength + sourceOffset;
             result._stride      = vertexData.getInputInfosArray()[sourceIndex]->mStride;
             result._params      = MeshVertexSourceData::DefaultColor(vertexData, result._stride);
+            result._doTextureCoordinateFlip = attribute._doTextureCoordinateFlip;
             return std::move(result);
 
         } else if (attribute._basicSemantic == COLLADASaxFWL::InputSemantic::TEXCOORD) {
@@ -382,6 +390,7 @@ namespace RenderCore { namespace ColladaConversion
             result._end         = vertexData.getInputInfosArray()[sourceIndex]->mLength + sourceOffset;
             result._stride      = vertexData.getInputInfosArray()[sourceIndex]->mStride;
             result._params      = MeshVertexSourceData::DefaultTexCoord(vertexData, result._stride);
+            result._doTextureCoordinateFlip = attribute._doTextureCoordinateFlip;
             return std::move(result);
         }
         return MeshVertexSourceData();
@@ -620,6 +629,182 @@ namespace RenderCore { namespace ColladaConversion
         return "<<unknown>>";
     }
 
+    class MeshDatabaseAdapter
+    {
+    public:
+        std::vector<Metal::InputElementDesc>        _nativeElements;
+        size_t _nativeVertexSize;
+        size_t _vertexCount;
+
+        std::unique_ptr<MeshVertexSourceData[]>     _sourceData;
+        std::unique_ptr<DestinationFormat[]>        _destinationFormats;
+
+        typedef std::vector<unsigned>       PendingIndexBuffer;
+        std::vector<PendingIndexBuffer>     _vertexMap;
+
+        size_t                      FinalNativeBufferSize() const { return _nativeVertexSize * _vertexCount; }
+        std::unique_ptr<uint8[]>    BuildNativeVertexBuffer() const;
+        std::unique_ptr<uint32[]>   BuildUnifiedVertexIndexToPositionIndex() const;
+
+        MeshDatabaseAdapter(
+            const COLLADAFW::Mesh& meshh, std::vector<PendingIndexBuffer> vertexMap,
+            const VertexAttribute* vertexSemanticsBegin, const VertexAttribute* vertexSemanticsEnd);
+        ~MeshDatabaseAdapter();
+
+    protected:
+        const COLLADAFW::Mesh* _mesh;
+    };
+
+    std::unique_ptr<uint32[]> MeshDatabaseAdapter::BuildUnifiedVertexIndexToPositionIndex() const
+    {
+            //      Collada has this idea of "vertex index"; which is used to map
+            //      on the vertex weight information. But that seems to be lost in OpenCollada.
+            //      All we can do is use the position index as a subtitute.
+
+        auto unifiedVertexIndexToPositionIndex = std::make_unique<uint32[]>(_vertexCount);
+        
+        for (size_t v=0; v<_vertexCount; ++v) {
+            // assuming the first element is the position
+            auto attributeIndex = _vertexMap[0][v];
+            assert(attributeIndex < _mesh->getPositions().getValuesCount());
+            unifiedVertexIndexToPositionIndex[v] = (uint32)attributeIndex;
+        }
+
+        return std::move(unifiedVertexIndexToPositionIndex);
+    }
+
+    std::unique_ptr<uint8[]>  MeshDatabaseAdapter::BuildNativeVertexBuffer() const
+    {
+            //
+            //      Write the data into the vertex buffer
+            //
+        const unsigned short half0 = AsFloat16(0.f);
+        const unsigned short half1 = AsFloat16(1.f);
+        auto finalVertexBuffer = std::make_unique<uint8[]>(_nativeVertexSize * _vertexCount);
+
+        for (unsigned elementIndex = 0; elementIndex <_nativeElements.size(); ++elementIndex) {
+            const auto& nativeElement     = _nativeElements[elementIndex];
+            const auto& sourceData        = _sourceData[elementIndex];
+            const auto& destinationFormat = _destinationFormats[elementIndex];
+
+            if (sourceData._params[0]._type == MeshVertexSourceData::Param::Float) {
+
+                    //      This could be be made more efficient with a smarter loop..
+                for (size_t v=0; v<_vertexCount; ++v) {
+                    auto vertexDestination = &finalVertexBuffer.get()[v*_nativeVertexSize];
+                    auto attributeIndex = _vertexMap[elementIndex][v];
+
+                        //
+                        //      Input is float data.
+                        //          output maybe float, float16 -- or maybe UNORM type...?
+                        //
+                        //      note that the "sourceData._start" offset is already included
+                        //      into the attributeIndex value, so we don't have to add it again
+                        //
+                    auto sourceStart    = &sourceData._vertexData->getFloatValues()->getData()
+                        [/*sourceData._start +*/ attributeIndex * sourceData._stride];
+                    auto destination    = PtrAdd(vertexDestination, nativeElement._alignedByteOffset);
+
+                    if (destinationFormat._type == DestinationFormat::Float32) {
+
+                        for (unsigned c=0; c<destinationFormat._componentCount; ++c) {
+                            if (c < sourceData._stride) {
+                                ((float*)destination)[c] = ((float*)sourceStart)[c];
+                            } else {
+                                ((float*)destination)[c] = (c < 3)?0.f:1.f; // default for values not set in Collada
+                            }
+                        }
+
+                        if (sourceData._doTextureCoordinateFlip && destinationFormat._componentCount >= 2) {
+                            ((float*)destination)[1] = 1.0f - ((float*)sourceStart)[1];
+                        }
+
+                    } else if (destinationFormat._type == DestinationFormat::Float16) {
+
+                        for (unsigned c=0; c<destinationFormat._componentCount; ++c) {
+                            if (c < sourceData._stride) {
+                                ((unsigned short*)destination)[c] = AsFloat16(((float*)sourceStart)[c]);
+                            } else {
+                                ((unsigned short*)destination)[c] = (c < 3)?half0:half1;    // default for values not set in Collada
+                            }
+                        }
+
+                        if (sourceData._doTextureCoordinateFlip && destinationFormat._componentCount >= 2) {
+                            ((unsigned short*)destination)[1] = AsFloat16(1.0f - ((float*)sourceStart)[1]);
+                        }
+
+                    } else if (destinationFormat._type == DestinationFormat::UNorm8) {
+
+                        for (unsigned c=0; c<destinationFormat._componentCount; ++c) {
+                            if (c < sourceData._stride) {
+                                ((unsigned char*)destination)[c] = (unsigned char)Clamp(((float*)sourceStart)[c]*255.f, 0.f, 255.f);
+                            } else {
+                                ((unsigned char*)destination)[c] = (c < 3)?0x0:0xff;    // default for values not set in Collada
+                            }
+                        }
+
+                        if (sourceData._doTextureCoordinateFlip && destinationFormat._componentCount >= 2) {
+                            auto t = 1.0f - ((float*)sourceStart)[1];
+                            ((unsigned char*)destination)[1] = (unsigned char)(std::max(0.f, std::max(1.f, t/255.f)));
+                        }
+
+                    }
+                }
+            }
+        }
+
+        return std::move(finalVertexBuffer);
+    }
+
+    MeshDatabaseAdapter::MeshDatabaseAdapter(
+        const COLLADAFW::Mesh& mesh, std::vector<PendingIndexBuffer> vertexMap,
+        const VertexAttribute* vertexSemanticsBegin, const VertexAttribute* vertexSemanticsEnd)
+    : _nativeElements(vertexSemanticsEnd - vertexSemanticsBegin)
+    , _vertexMap(std::move(vertexMap)), _mesh(&mesh)
+    {
+        auto elementCount = vertexSemanticsEnd - vertexSemanticsBegin;
+
+        auto meshVertexSourceData    = std::make_unique<MeshVertexSourceData[]>(elementCount);
+        auto destinationFormats      = std::make_unique<DestinationFormat[]>(elementCount);
+
+        size_t accumulatingOffset = 0;
+        for (auto i=vertexSemanticsBegin; i!=vertexSemanticsEnd; ++i) {
+            auto index = i-vertexSemanticsBegin;
+            auto& nativeElement  = _nativeElements[index];
+            auto& sourceData     = meshVertexSourceData[index];
+            sourceData = GetVertexData(mesh, *i);
+
+                // Note --  There's a problem here with texture coordinates. Sometimes texture coordinates
+                //          have 3 components in the Collada file. But only 2 components are actually used
+                //          by mapping. The last component might just be redundant. The only way to know 
+                //          for sure that the final component is redundant is to look at where the geometry
+                //          is used, and how this vertex element is bound to materials. But in this function
+                //          call we only have access to the "Geometry" object, without any context information.
+                //          We don't yet know how it will be bound to materials.
+            destinationFormats[index] = AsNativeFormat(AsPointer(sourceData._params.begin()), sourceData._params.size());
+
+            nativeElement._semanticName         = i->_semanticName;
+            nativeElement._semanticIndex        = i->_index;
+            nativeElement._nativeFormat         = destinationFormats[index]._format;
+            nativeElement._inputSlot            = 0;
+            nativeElement._alignedByteOffset    = (unsigned)accumulatingOffset;
+            nativeElement._inputSlotClass       = Metal::InputClassification::PerVertex;
+            nativeElement._instanceDataStepRate = 0;
+
+            accumulatingOffset += Metal::BitsPerPixel(nativeElement._nativeFormat)/8;
+        }
+
+        _nativeVertexSize = accumulatingOffset;
+
+        auto vertexCount = std::numeric_limits<size_t>::max();
+        for (auto i = vertexMap.cbegin(); i!=vertexMap.cend(); ++i) {
+            if (i!=vertexMap.cbegin()) { assert(i->size() == vertexCount); }    // check for missized arrays. They should all be the same length
+            vertexCount = std::min(vertexCount, i->size());
+        }
+
+        _vertexCount = vertexCount;
+    }
+
     NascentRawGeometry Convert(const COLLADAFW::Geometry* geometry)
     {
             //  
@@ -690,10 +875,10 @@ namespace RenderCore { namespace ColladaConversion
             //      just use separate draw commands for each material.
             //  
 
-        std::vector<VertexAttribute>        vertexSemantics;
-        typedef std::vector<unsigned>       PendingIndexBuffer;
-        std::vector<PendingIndexBuffer>     vertexMap;
-        VertexHashTable                     vertexHashTable;
+        std::vector<VertexAttribute> vertexSemantics;
+        using PendingIndexBuffer = MeshDatabaseAdapter::PendingIndexBuffer;
+        std::vector<PendingIndexBuffer> vertexMap;
+        VertexHashTable vertexHashTable;
 
         size_t unifiedVertexCountGuess = 0;
         {
@@ -867,134 +1052,11 @@ namespace RenderCore { namespace ColladaConversion
             //      use that to determine how we write the vertices into our nascent vertex buffer.
             //
 
-        auto meshVertexSourceData    = std::make_unique<MeshVertexSourceData[]>(vertexAttributes.size());
-        auto destinationFormats      = std::make_unique<DestinationFormat[]>(vertexAttributes.size());
+        MeshDatabaseAdapter database(
+            *mesh, std::move(vertexMap), AsPointer(vertexSemantics.cbegin()), AsPointer(vertexSemantics.end()));
 
-        std::vector<Metal::InputElementDesc> nativeElements(vertexAttributes.size());
-        size_t vertexSize, vertexCount;
-        {
-            size_t accumulatingOffset = 0;
-            for (auto i=vertexSemantics.cbegin(); i!=vertexSemantics.cend(); ++i) {
-                auto& nativeElement  = nativeElements[std::distance(vertexSemantics.cbegin(), i)];
-                auto& sourceData     = meshVertexSourceData[std::distance(vertexSemantics.cbegin(), i)];
-                sourceData = GetVertexData(*mesh, *i);
-
-                    // Note --  There's a problem here with texture coordinates. Sometimes texture coordinates
-                    //          have 3 components in the Collada file. But only 2 components are actually used
-                    //          by mapping. The last component might just be redundant. The only way to know 
-                    //          for sure that the final component is redundant is to look at where the geometry
-                    //          is used, and how this vertex element is bound to materials. But in this function
-                    //          call we only have access to the "Geometry" object, without any context information.
-                    //          We don't yet know how it will be bound to materials.
-                destinationFormats[std::distance(vertexSemantics.cbegin(), i)] = AsNativeFormat(AsPointer(sourceData._params.begin()), sourceData._params.size());
-
-                nativeElement._semanticName         = i->_semanticName;
-                nativeElement._semanticIndex        = i->_index;
-                nativeElement._nativeFormat         = destinationFormats[std::distance(vertexSemantics.cbegin(), i)]._format;
-                nativeElement._inputSlot            = 0;
-                nativeElement._alignedByteOffset    = (unsigned)accumulatingOffset;
-                nativeElement._inputSlotClass       = Metal::InputClassification::PerVertex;
-                nativeElement._instanceDataStepRate = 0;
-
-                accumulatingOffset += Metal::BitsPerPixel(nativeElement._nativeFormat)/8;
-            }
-
-            vertexSize = accumulatingOffset;
-            vertexCount = std::numeric_limits<size_t>::max();
-            for (auto i = vertexMap.cbegin(); i!=vertexMap.cend(); ++i) {
-                if (i!=vertexMap.cbegin()) { assert(i->size() == vertexCount); }    // check for missized arrays. They should all be the same length
-                vertexCount = std::min(vertexCount, i->size());
-            }
-        }
-
-            //
-            //      Write the data into the vertex buffer
-            //
-        const unsigned short half0 = AsFloat16(0.f);
-        const unsigned short half1 = AsFloat16(1.f);
-        auto finalVertexBuffer = std::make_unique<uint8[]>(vertexSize*vertexCount);
-        auto unifiedVertexIndexToPositionIndex = std::make_unique<uint32[]>(vertexCount);
-
-        for (auto i=vertexSemantics.cbegin(); i!=vertexSemantics.cend(); ++i) {
-            auto semanticIndex            = std::distance(vertexSemantics.cbegin(), i);
-            const auto& nativeElement     = nativeElements[semanticIndex];
-            const auto& sourceData        = meshVertexSourceData[semanticIndex];
-            const auto& destinationFormat = destinationFormats[semanticIndex];
-
-            if (sourceData._params[0]._type == MeshVertexSourceData::Param::Float) {
-
-                    //      This could be be made more efficient with a smarter loop..
-                for (size_t v=0; v<vertexCount; ++v) {
-                    auto vertexDestination = &finalVertexBuffer.get()[v*vertexSize];
-                    auto attributeIndex = vertexMap[semanticIndex][v];
-
-                        //      Collada has this idea of "vertex index"; which is used to map
-                        //      on the vertex weight information. But that seems to be lost in OpenCollada.
-                        //      All we can do is use the position index as a subtitute.
-                    if (semanticIndex == 0) {
-                        assert(i->_basicSemantic == COLLADASaxFWL::InputSemantic::POSITION);    // assuming the first is position, for simplicity
-                        assert(attributeIndex < mesh->getPositions().getValuesCount());
-                        unifiedVertexIndexToPositionIndex[v] = (uint32)attributeIndex;
-                    }
-
-                        //
-                        //      Input is float data.
-                        //          output maybe float, float16 -- or maybe UNORM type...?
-                        //
-                        //      note that the "sourceData._start" offset is already included
-                        //      into the attributeIndex value, so we don't have to add it again
-                        //
-                    auto sourceStart    = &sourceData._vertexData->getFloatValues()->getData()
-                        [/*sourceData._start +*/ attributeIndex * sourceData._stride];
-                    auto destination    = PtrAdd(vertexDestination, nativeElement._alignedByteOffset);
-
-                    if (destinationFormat._type == DestinationFormat::Float32) {
-
-                        for (unsigned c=0; c<destinationFormat._componentCount; ++c) {
-                            if (c < sourceData._stride) {
-                                ((float*)destination)[c] = ((float*)sourceStart)[c];
-                            } else {
-                                ((float*)destination)[c] = (c < 3)?0.f:1.f; // default for values not set in Collada
-                            }
-
-                            if (i->_doTextureCoordinateFlip && destinationFormat._componentCount >= 2) {
-                                ((float*)destination)[1] = 1.0f - ((float*)sourceStart)[1];
-                            }
-                        }
-
-                    } else if (destinationFormat._type == DestinationFormat::Float16) {
-
-                        for (unsigned c=0; c<destinationFormat._componentCount; ++c) {
-                            if (c < sourceData._stride) {
-                                ((unsigned short*)destination)[c] = AsFloat16(((float*)sourceStart)[c]);
-                            } else {
-                                ((unsigned short*)destination)[c] = (c < 3)?half0:half1;    // default for values not set in Collada
-                            }
-                        }
-
-                        if (i->_doTextureCoordinateFlip && destinationFormat._componentCount >= 2) {
-                            ((unsigned short*)destination)[1] = AsFloat16(1.0f - ((float*)sourceStart)[1]);
-                        }
-
-                    } else if (destinationFormat._type == DestinationFormat::UNorm8) {
-
-                        for (unsigned c=0; c<destinationFormat._componentCount; ++c) {
-                            if (c < sourceData._stride) {
-                                ((unsigned char*)destination)[c] = (unsigned char)Clamp(((float*)sourceStart)[c]*255.f, 0.f, 255.f);
-                            } else {
-                                ((unsigned char*)destination)[c] = (c < 3)?0x0:0xff;    // default for values not set in Collada
-                            }
-                        }
-
-                        if (i->_doTextureCoordinateFlip && destinationFormat._componentCount >= 2) {
-                            auto t = 1.0f - ((float*)sourceStart)[1];
-                            ((unsigned char*)destination)[1] = (unsigned char)(std::max(0.f, std::max(1.f, t/255.f)));
-                        }
-
-                    }
-                }
-            }
-        }
+        auto finalVertexBuffer = database.BuildNativeVertexBuffer();
+        auto unifiedVertexIndexToPositionIndex = database.BuildUnifiedVertexIndexToPositionIndex();
 
             //
             //      Write data into the index buffer. Note we can select 16 bit or 32 bit index buffer
@@ -1076,12 +1138,12 @@ namespace RenderCore { namespace ColladaConversion
             //
 
         return NascentRawGeometry(
-            DynamicArray<uint8>(std::move(finalVertexBuffer), vertexSize*vertexCount), 
+            DynamicArray<uint8>(std::move(finalVertexBuffer), database.FinalNativeBufferSize()), 
             DynamicArray<uint8>(std::move(finalIndexBuffer), finalIndexBufferSize),
-            GeometryInputAssembly(std::move(nativeElements), (unsigned)vertexSize),
+            GeometryInputAssembly(std::move(database._nativeElements), (unsigned)database._nativeVertexSize),
             indexFormat,
             std::move(finalDrawOperations),
-            DynamicArray<uint32>(std::move(unifiedVertexIndexToPositionIndex), vertexCount),
+            DynamicArray<uint32>(std::move(unifiedVertexIndexToPositionIndex), database._vertexCount),
             std::move(materialIds));
     }
 
