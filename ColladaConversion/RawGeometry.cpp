@@ -791,7 +791,7 @@ namespace RenderCore { namespace ColladaConversion
         auto& stream = _streams[elementIndex];
         auto indexInStream = stream._vertexMap[vertexIndex];
         auto& sourceData = stream._sourceData;
-        assert((indexInStream * sourceData._stride) < sourceData._vertexData->getFloatValues()->getCount());
+        assert(((indexInStream+1) * sourceData._stride) <= sourceData._vertexData->getFloatValues()->getCount());
         const auto* sourceStart = &sourceData._vertexData->getFloatValues()->getData()[indexInStream * sourceData._stride];
         Float3 result;
         result[0] = sourceStart[0];
@@ -809,7 +809,7 @@ namespace RenderCore { namespace ColladaConversion
         auto& stream = _streams[elementIndex];
         auto indexInStream = stream._vertexMap[vertexIndex];
         auto& sourceData = stream._sourceData;
-        assert((indexInStream * sourceData._stride) < sourceData._vertexData->getFloatValues()->getCount());
+        assert(((indexInStream+1) * sourceData._stride) <= sourceData._vertexData->getFloatValues()->getCount());
         const auto* sourceStart = &sourceData._vertexData->getFloatValues()->getData()[indexInStream * sourceData._stride];
         Float2 result;
         result[0] = sourceStart[0];
@@ -983,6 +983,27 @@ namespace RenderCore { namespace ColladaConversion
         return std::move(finalVertexBuffer);
     }
 
+    Float3 CorrectAxisDirection(const Float3& input, const Float3& p0, const Float3& p1, const Float3& p2, float t0, float t1, float t2)
+    {
+        float A0 = Dot(p0 - p1, input);
+        float A1 = Dot(p1 - p2, input);
+        float A2 = Dot(p2 - p0, input);
+        float a0 = t0 - t1;
+        float a1 = t1 - t2;
+        float a2 = t2 - t0;
+
+        float w0 = XlAbs(A0 * a0);
+        float w1 = XlAbs(A1 * a1);
+        float w2 = XlAbs(A2 * a2);
+        if (w0 > w1) {
+            if (w0 > w2) return ((A0 > 0.f) == (a0 > 0.f)) ? input : -input;
+            return ((A2 > 0.f) == (a2 > 0.f)) ? input : -input;
+        } else {
+            if (w1 > w2) return ((A1 > 0.f) == (a1 > 0.f)) ? input : -input;
+            return ((A2 > 0.f) == (a2 > 0.f)) ? input : -input;
+        }
+    }
+
     void GenerateNormalsAndTangents( 
         MeshDatabaseAdapter& mesh, 
         unsigned normalMapTextureCoordinateSemanticIndex,
@@ -1007,11 +1028,11 @@ namespace RenderCore { namespace ColladaConversion
         if ((hasNormals && hasTangents) || (hasTangents && hasBitangents)) return;
 
             // testing -- remove existing tangents & normals
-        mesh.RemoveStream(mesh.FindElement("NORMAL"));
-        mesh.RemoveStream(mesh.FindElement("TANGENT"));
-        mesh.RemoveStream(mesh.FindElement("BITANGENT"));
-        tcElement = mesh.FindElement("TEXCOORD", normalMapTextureCoordinateSemanticIndex);
-        hasNormals = false; hasTangents = false;
+        // mesh.RemoveStream(mesh.FindElement("NORMAL"));
+        // mesh.RemoveStream(mesh.FindElement("TANGENT"));
+        // mesh.RemoveStream(mesh.FindElement("BITANGENT"));
+        // tcElement = mesh.FindElement("TEXCOORD", normalMapTextureCoordinateSemanticIndex);
+        // hasNormals = false; hasTangents = false; hasBitangents = false;
 
         auto posElement = mesh.FindElement("POSITION");
 
@@ -1087,6 +1108,12 @@ namespace RenderCore { namespace ColladaConversion
 					Float3 sAxis( (st2[1] * Q1 - st1[1] * Q2) * r );
 					Float3 tAxis( (st1[0] * Q2 - st2[0] * Q1) * r );
 
+                        // We may need to flip the direction of the s or t axis
+                        // check the texture coordinates to find the correct direction
+                        // for these axes...
+                    sAxis = CorrectAxisDirection(sAxis, p0, p1, p2, UV0[0], UV1[0], UV2[0]);
+                    tAxis = CorrectAxisDirection(tAxis, p0, p1, p2, UV0[1], UV1[1], UV2[1]);
+
                     auto sMagSq = MagnitudeSquared(sAxis);
                     auto tMagSq = MagnitudeSquared(tAxis);
                     
@@ -1097,6 +1124,9 @@ namespace RenderCore { namespace ColladaConversion
                     } else {
                         tri.tangent = tri.bitangent = Zero<Float3>();
                     }
+
+                    tri.tangent = sAxis;
+                    tri.bitangent = tAxis;
 				}
 
 				assert( tri.tangent[0] == tri.tangent[0] );
@@ -1115,16 +1145,16 @@ namespace RenderCore { namespace ColladaConversion
             //  Create new streams for the normal & tangent, and write the results to the mesh database
             //  If we already have tangents or normals, don't write the new ones
 
-        // if (!hasNormals) {
-        //     for (size_t c=0; c<mesh._unifiedVertexCount; c++)
-        //         normals[c] = Normalize(normals[c]);
-        // 
-        //     mesh.AddStream(
-        //         AsPointer(normals.cbegin()), AsPointer(normals.cend()),
-        //         Metal::NativeFormat::R32G32B32_FLOAT,
-        //         Use16BitFloats ? Metal::NativeFormat::R16G16B16A16_FLOAT : Metal::NativeFormat::R32G32B32_FLOAT,
-        //         "NORMAL", 0);
-        // }
+        if (!hasNormals) {
+            for (size_t c=0; c<mesh._unifiedVertexCount; c++)
+                normals[c] = Normalize(normals[c]);
+        
+            mesh.AddStream(
+                AsPointer(normals.cbegin()), AsPointer(normals.cend()),
+                Metal::NativeFormat::R32G32B32_FLOAT,
+                Use16BitFloats ? Metal::NativeFormat::R16G16B16A16_FLOAT : Metal::NativeFormat::R32G32B32_FLOAT,
+                "NORMAL", 0);
+        }
 
         if (!hasTangents) {
 
@@ -1162,32 +1192,32 @@ namespace RenderCore { namespace ColladaConversion
 
         }
 
-        if (!hasBitangents) {
-        
-            unsigned normalsElement = mesh.FindElement("NORMAL");
-        
-            for (size_t c=0; c<mesh._unifiedVertexCount; c++) {
-                auto t3 = bitangents[c];
-        
-                    // if we already had normals in the mesh, we should prefex
-                    // those normals (over the ones we generated here)
-                auto n = normals[c];
-                if (hasNormals) n = mesh.GetUnifiedElement<Float3>(c, normalsElement);
-        
-                if (Normalize_Checked(&t3, Float3(t3 - n * Dot(n, t3)))) {
-                } else {
-                    t3 = Zero<Float3>();
-                }
-        
-                bitangents[c] = t3;
-            }
-        
-            mesh.AddStream(
-                AsPointer(bitangents.begin()), AsPointer(bitangents.cend()), Metal::NativeFormat::R32G32B32_FLOAT,
-                Use16BitFloats ? Metal::NativeFormat::R16G16B16A16_FLOAT : Metal::NativeFormat::R32G32B32_FLOAT,
-                "BITANGENT", 0);
-        
-        }
+        // if (!hasBitangents) {
+        // 
+        //     unsigned normalsElement = mesh.FindElement("NORMAL");
+        // 
+        //     for (size_t c=0; c<mesh._unifiedVertexCount; c++) {
+        //         auto t3 = bitangents[c];
+        // 
+        //             // if we already had normals in the mesh, we should prefex
+        //             // those normals (over the ones we generated here)
+        //         auto n = normals[c];
+        //         if (hasNormals) n = mesh.GetUnifiedElement<Float3>(c, normalsElement);
+        // 
+        //         if (Normalize_Checked(&t3, Float3(t3 - n * Dot(n, t3)))) {
+        //         } else {
+        //             t3 = Zero<Float3>();
+        //         }
+        // 
+        //         bitangents[c] = t3;
+        //     }
+        // 
+        //     mesh.AddStream(
+        //         AsPointer(bitangents.begin()), AsPointer(bitangents.cend()), Metal::NativeFormat::R32G32B32_FLOAT,
+        //         Use16BitFloats ? Metal::NativeFormat::R16G16B16A16_FLOAT : Metal::NativeFormat::R32G32B32_FLOAT,
+        //         "BITANGENT", 0);
+        // 
+        // }
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

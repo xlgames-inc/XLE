@@ -113,6 +113,8 @@ namespace SceneEngine
             }
 
             metalContext->GetUnderlying()->Unmap(_pimpl->_res->_cpuAccessBuffer.get(), 0);
+
+            std::sort(result.begin(), result.end(), &ResultEntry::CompareDepth);
         }
 
         return result;
