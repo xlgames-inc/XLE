@@ -588,10 +588,18 @@ namespace RenderOverlays
         return _globalUniformsStream;
     }
 
+    class DefaultFontBox
+    {
+    public:
+        class Desc {};
+        intrusive_ptr<Font> _font;
+        DefaultFontBox(const Desc&) : _font(GetX2Font("Raleway", 16)) {}
+    };
+
     ImmediateOverlayContext::ImmediateOverlayContext(
         RenderCore::IThreadContext* threadContext, 
         const RenderCore::Techniques::ProjectionDesc& projDesc)
-    : _font(GetX2Font("Raleway", 16))
+    : _font(RenderCore::Techniques::FindCachedBox2<DefaultFontBox>()._font)
     , _defaultTextStyle(*_font.get())
     , _projDesc(projDesc)
     , _deviceContext(threadContext)

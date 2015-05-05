@@ -43,6 +43,7 @@ namespace RenderCore { namespace Techniques
         if (HasElement(inputLayout, "NORMAL"))      _geometryParameters.SetParameter("GEO_HAS_NORMAL", 1);
         if (HasElement(inputLayout, "TEXCOORD"))    _geometryParameters.SetParameter("GEO_HAS_TEXCOORD", 1);
         if (HasElement(inputLayout, "TANGENT"))     _geometryParameters.SetParameter("GEO_HAS_TANGENT_FRAME", 1);
+        if (HasElement(inputLayout, "BITANGENT"))   _geometryParameters.SetParameter("GEO_HAS_BITANGENT", 1);
         if (HasElement(inputLayout, "COLOR"))       _geometryParameters.SetParameter("GEO_HAS_COLOUR", 1);
     }
 

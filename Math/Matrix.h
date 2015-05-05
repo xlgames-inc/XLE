@@ -8,6 +8,7 @@
 
 #include "Math.h"
 #include "Vector.h"
+#include "../Core/Prefix.h"
 
 #if MATHLIBRARY_ACTIVE == MATHLIBRARY_CML
     #pragma warning(push)
@@ -20,9 +21,13 @@ namespace XLEMath
 {
     #if MATHLIBRARY_ACTIVE == MATHLIBRARY_CML
 
-        typedef cml::matrix< float, cml::fixed<3,3>, cml::col_basis>      Float3x3;
-        typedef cml::matrix< float, cml::fixed<3,4>, cml::col_basis>      Float3x4;
-        typedef cml::matrix< float, cml::fixed<4,4>, cml::col_basis>      Float4x4;
+        using Float3x3 = cml::matrix< float, cml::fixed<3,3>, cml::col_basis>;
+        using Float3x4 = cml::matrix< float, cml::fixed<3,4>, cml::col_basis>;
+        using Float4x4 = cml::matrix< float, cml::fixed<4,4>, cml::col_basis>;
+
+        T1(Primitive) using Matrix3x3T = cml::matrix< Primitive, cml::fixed<3,3>, cml::col_basis>;
+        T1(Primitive) using Matrix3x4T = cml::matrix< Primitive, cml::fixed<3,4>, cml::col_basis>;
+        T1(Primitive) using Matrix4x4T = cml::matrix< Primitive, cml::fixed<4,4>, cml::col_basis>;
 
         Float4x4        Expand(const Float3x3& rotationScalePart, const Float3& translationPart);
 

@@ -91,6 +91,7 @@
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\EigenVector.h" />
     <ClInclude Include="..\Geometry.h" />
     <ClInclude Include="..\Interpolation.h" />
     <ClInclude Include="..\Math.h" />
@@ -102,6 +103,7 @@
     <ClInclude Include="..\Vector.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\EigenVector.cpp" />
     <ClCompile Include="..\Geometry.cpp" />
     <ClCompile Include="..\Interpolation.cpp" />
     <ClCompile Include="..\Matrix.cpp" />

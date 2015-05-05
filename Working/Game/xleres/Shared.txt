@@ -29,7 +29,7 @@ System
         GlobalEnvironment
             AUTO_COTANGENT
             PREFER_ANISOTROPIC 1
-            TANGENT_PROCESS_IN_PS 1
+            TANGENT_PROCESS_IN_PS 0
             LOCAL_TO_WORLD_HAS_FLIP
 Deferred
     Parameters

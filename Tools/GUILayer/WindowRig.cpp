@@ -11,6 +11,9 @@
 #include "../../Utility/PtrUtils.h"
 #include "../../Core/WinAPI/IncludeWindows.h"
 
+#include "../../PlatformRig/OverlaySystem.h"
+#include "../../RenderOverlays/DebuggingDisplay.h"
+
 namespace GUILayer
 {
 
@@ -66,6 +69,13 @@ namespace GUILayer
             platformWindowHandle,
             clientRect.right - clientRect.left, clientRect.bottom - clientRect.top);
         _frameRig = std::make_shared<PlatformRig::FrameRig>(false); // (not "main" frame rig by default)
+
+        {
+            auto overlaySwitch = std::make_shared<PlatformRig::OverlaySystemSwitch>();
+            using RenderOverlays::DebuggingDisplay::KeyId_Make;
+            overlaySwitch->AddSystem(KeyId_Make("~"), PlatformRig::CreateConsoleOverlaySystem());
+            _frameRig->GetMainOverlaySystem()->AddSystem(overlaySwitch);
+        }
 
         AddWindowHandler(std::make_shared<ResizePresentationChain>(_presentationChain));
     }

@@ -191,12 +191,12 @@ namespace RenderCore { namespace Assets
         {
                 //  Build a parameter box for this geometry configuration. The input assembly
             ParameterBox geoParameters;
-            if (HasElement(ia, "TEXCOORD")) { geoParameters.SetParameter("GEO_HAS_TEXCOORD", 1); }
-            if (HasElement(ia, "COLOR"))    { geoParameters.SetParameter("GEO_HAS_COLOUR", 1); }
+            if (HasElement(ia, "TEXCOORD"))     { geoParameters.SetParameter("GEO_HAS_TEXCOORD", 1); }
+            if (HasElement(ia, "COLOR"))        { geoParameters.SetParameter("GEO_HAS_COLOUR", 1); }
             if (HasElement(ia, "NORMAL") || normalFromSkinning) 
                 { geoParameters.SetParameter("GEO_HAS_NORMAL", 1); }
-            if (HasElement(ia, "TANGENT") && HasElement(ia, "BITANGENT"))
-                { geoParameters.SetParameter("GEO_HAS_TANGENT_FRAME", 1); }
+            if (HasElement(ia, "TANGENT"))      { geoParameters.SetParameter("GEO_HAS_TANGENT_FRAME", 1); }
+            if (HasElement(ia, "BITANGENT"))    { geoParameters.SetParameter("GEO_HAS_BITANGENT", 1); }
             if (HasElement(ia, "BONEINDICES") && HasElement(ia, "BONEWEIGHTS"))
                 { geoParameters.SetParameter("GEO_HAS_SKIN_WEIGHTS", 1); }
             auto result = sharedStateSet.InsertParameterBox(geoParameters);

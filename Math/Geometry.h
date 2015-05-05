@@ -8,6 +8,7 @@
 
 #include "Vector.h"
 #include "Matrix.h"
+#include "../Core/Prefix.h"
 #include <utility>
 
 namespace XLEMath
@@ -21,6 +22,20 @@ namespace XLEMath
     bool    RayVsAABB(const std::pair<Float3, Float3>& localSpaceRay, const Float3& mins, const Float3& maxs);
 
     std::pair<Float3, Float3> TransformBoundingBox(const Float3x4& transformation, std::pair<Float3, Float3> boundingBox);
+
+		/*
+			Returns the parameters of the standard plane equation, eg:
+				0 = A * x + B * y + C * z + D
+			( so the result is a Vector4( A, B, C, D ) )
+		*/
+	T1(Primitive) auto PlaneFit(const Vector3T<Primitive> pts[], size_t ptCount ) -> Vector4T<Primitive>;
+	T1(Primitive) auto PlaneFit(const Vector3T<Primitive> & pt0,
+								const Vector3T<Primitive> & pt1,
+								const Vector3T<Primitive> & pt2 ) -> Vector4T<Primitive>;
+    T1(Primitive) bool PlaneFit_Checked(Vector4T<Primitive>* result,
+                                        const Vector3T<Primitive>& pt0,
+		                                const Vector3T<Primitive>& pt1,
+		                                const Vector3T<Primitive>& pt2);
 
     /// <summary>Conversion from cartesian to spherical polar coordinates</summary>
     /// Returns a 3 component vector with:

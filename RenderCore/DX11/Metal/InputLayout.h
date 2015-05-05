@@ -52,6 +52,9 @@ namespace RenderCore { namespace Metal_DX11
         const InputElementDesc* start, const InputElementDesc* end,
         unsigned slot);
 
+    unsigned HasElement(const InputElementDesc* begin, const InputElementDesc* end, const char elementSemantic[]);
+    unsigned FindElement(const InputElementDesc* begin, const InputElementDesc* end, const char elementSemantic[], unsigned semanticIndex = 0);
+
     /// Contains some common reusable vertex input layouts
     namespace GlobalInputLayouts
     {

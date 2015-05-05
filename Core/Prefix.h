@@ -157,3 +157,9 @@ template<typename Type>
 
 template<bool B> struct constant_expression    { static bool result() { return true; } };
 template<> struct constant_expression<false>   { static bool result() { return false; } };
+
+#define T1(A) template<typename A>
+#define T2(A, B) template<typename A, typename B>
+#define T3(A, B, C) template<typename A, typename B, typename C>
+#define T4(A, B, C, D) template<typename A, typename B, typename C, typename D>
+

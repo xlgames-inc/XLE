@@ -5,8 +5,10 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Geometry.h"
+#include "EigenVector.h"
 #include "Transformations.h"
 #include "../Core/Prefix.h"
+#include <assert.h>
 
 namespace XLEMath
 {
@@ -124,5 +126,118 @@ namespace XLEMath
 
         return std::make_pair(mins, maxs);
     }
+
+    T1(PrimitiveType)
+		Vector4T<PrimitiveType> PlaneFit(const Vector3T<PrimitiveType> pts[], size_t ptCount)
+	{
+			/*
+					Given a set of points in 3 space, find a plane that best matches them, using least
+					squares regression.
+
+					The algorithm and base implementation here is from Geometric Tools, LLC
+					Copyright (c) 1998-2010
+					Distributed under the Boost Software License, Version 1.0.
+					http://www.boost.org/LICENSE_1_0.txt
+					http://www.geometrictools.com/License/Boost/LICENSE_1_0.txt
+
+					see http://www.geometrictools.com/Documentation/LeastSquaresFitting.pdf for a
+					description. Note that this is the orthogonal regression version. There is also
+					a version for dealing with points of the form (x,y, f(x,y)) -- this is less
+					general (as it seeks to minimize delta z), but may provide suitable results in
+					most cases.
+			*/
+
+
+		// compute the mean of the points
+		auto kOrigin = Zero<Vector3T<PrimitiveType>>();
+		for (size_t i = 0; i < ptCount; i++)
+			kOrigin += pts[i];
+		PrimitiveType reciprocalCount = ((PrimitiveType)1.0)/ptCount;
+		kOrigin *= reciprocalCount;
+
+		// compute sums of products
+		PrimitiveType fSumXX = (PrimitiveType)0.0, fSumXY = (PrimitiveType)0.0, fSumXZ = (PrimitiveType)0.0;
+		PrimitiveType fSumYY = (PrimitiveType)0.0, fSumYZ = (PrimitiveType)0.0, fSumZZ = (PrimitiveType)0.0;
+		for (size_t i = 0; i < ptCount; i++) 
+		{
+			auto kDiff = pts[i] - kOrigin;
+			fSumXX += kDiff[0]*kDiff[0];
+			fSumXY += kDiff[0]*kDiff[1];
+			fSumXZ += kDiff[0]*kDiff[2];
+			fSumYY += kDiff[1]*kDiff[1];
+			fSumYZ += kDiff[1]*kDiff[2];
+			fSumZZ += kDiff[2]*kDiff[2];
+		}
+
+		fSumXX *= reciprocalCount;
+		fSumXY *= reciprocalCount;
+		fSumXZ *= reciprocalCount;
+		fSumYY *= reciprocalCount;
+		fSumYZ *= reciprocalCount;
+		fSumZZ *= reciprocalCount;
+
+		// setup the eigensolver
+		Eigen<PrimitiveType> kES(3);
+		kES(0,0) = fSumXX;
+		kES(0,1) = fSumXY;
+		kES(0,2) = fSumXZ;
+		kES(1,0) = fSumXY;
+		kES(1,1) = fSumYY;
+		kES(1,2) = fSumYZ;
+		kES(2,0) = fSumXZ;
+		kES(2,1) = fSumYZ;
+		kES(2,2) = fSumZZ;
+
+		// compute eigenstuff, smallest eigenvalue is in last position
+		kES.DecrSortEigenStuff3();
+
+		// get plane normal
+		Vector3T<PrimitiveType> kNormal;
+		kES.GetEigenvector(2,kNormal);
+
+		// the minimum energy
+		return Expand( kNormal, -Dot( kNormal, kOrigin ) );
+	}
+
+
+	T1(Primitive) Vector4T<Primitive> PlaneFit(
+        const Vector3T<Primitive>& pt0,
+		const Vector3T<Primitive>& pt1,
+		const Vector3T<Primitive>& pt2)
+	{
+			/*
+				Note -- this the most straightforward fashion to calculate a plane, but unfortunately it's inaccurate
+						(particularly if the points are close together). There are better methods, but they require
+						more complex math (see, for example, the Triangle library)
+			*/
+		auto normal = Normalize( Cross( pt0 - pt1, pt2 - pt1 ) );
+		Primitive w = (-Dot( pt0, normal ) - Dot( pt1, normal ) - Dot( pt2, normal )) * Primitive(1./3.);
+		return Expand( normal, w );
+	}
+
+    T1(Primitive) bool PlaneFit_Checked(
+        Vector4T<Primitive>* result,
+        const Vector3T<Primitive>& pt0,
+		const Vector3T<Primitive>& pt1,
+		const Vector3T<Primitive>& pt2)
+	{
+        assert(result);
+			/*
+				Note -- this the most straightforward fashion to calculate a plane, but unfortunately it's inaccurate
+						(particularly if the points are close together). There are better methods, but they require
+						more complex math (see, for example, the Triangle library)
+			*/
+		Vector3T<Primitive> normal;
+        if (!Normalize_Checked(&normal, Cross(pt0 - pt1, pt2 - pt1)))
+            return false;
+
+        auto w = (-Dot( pt0, normal ) - Dot( pt1, normal ) - Dot( pt2, normal )) * Primitive(1./3.);
+		*result = Expand( normal, w );
+        return true;
+	}
+
+    template auto PlaneFit(const Vector3T<float> pts[], size_t ptCount ) -> Vector4T<float>;
+	template auto PlaneFit(const Vector3T<float> & pt0, const Vector3T<float> & pt1, const Vector3T<float> & pt2 ) -> Vector4T<float>;
+    template bool PlaneFit_Checked(Vector4T<float>* result, const Vector3T<float>& pt0, const Vector3T<float>& pt1, const Vector3T<float>& pt2);
 
 }

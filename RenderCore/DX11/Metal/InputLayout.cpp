@@ -624,5 +624,25 @@ namespace RenderCore { namespace Metal_DX11
         }
     }
 
+    unsigned HasElement(const InputElementDesc* begin, const InputElementDesc* end, const char elementSemantic[])
+    {
+        unsigned result = 0;
+        for (auto i = begin; i != end; ++i) {
+            if (!XlCompareStringI(i->_semanticName.c_str(), elementSemantic)) {
+                assert((result & (1 << i->_semanticIndex)) == 0);
+                result |= (1 << i->_semanticIndex);
+            }
+        }
+        return result;
+    }
+
+    unsigned FindElement(const InputElementDesc* begin, const InputElementDesc* end, const char elementSemantic[], unsigned semanticIndex)
+    {
+        for (auto i = begin; i != end; ++i)
+            if (i->_semanticIndex == semanticIndex && !XlCompareStringI(i->_semanticName.c_str(), elementSemantic))
+                return unsigned(i - begin);
+        return ~0u;
+    }
+
 }}
 

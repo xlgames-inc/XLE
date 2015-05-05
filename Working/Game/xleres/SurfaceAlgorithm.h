@@ -10,14 +10,16 @@
 struct TangentFrameStruct
 {
     float3 tangent, bitangent, normal;
+    float handiness;
 };
 
-TangentFrameStruct BuildTangentFrame(float3 tangent, float3 bitangent, float3 normal)
+TangentFrameStruct BuildTangentFrame(float3 tangent, float3 bitangent, float3 normal, float handiness)
 {
     TangentFrameStruct result;
     result.tangent = tangent;
     result.bitangent = bitangent;
     result.normal = normal;
+    result.handiness = handiness;
     return result;
 }
 
@@ -34,14 +36,14 @@ float3 SampleNormalMap(Texture2D normalMap, SamplerState samplerObject, bool dxt
 float3 NormalMapAlgorithm(  Texture2D normalMap, SamplerState samplerObject, bool dxtFormatNormalMap,
                             float2 texCoord, TangentFrameStruct tangentFrame)
 {
-    float3x3 normalsTextureToWorld = float3x3(tangentFrame.tangent, tangentFrame.bitangent, tangentFrame.normal);
+    float3x3 normalsTextureToWorld = float3x3(tangentFrame.tangent.xyz, tangentFrame.bitangent, tangentFrame.normal);
 	float3 normalTextureSample = SampleNormalMap(normalMap, samplerObject, dxtFormatNormalMap, texCoord);
-		// Note -- matrix multiply opposite from normal 
+		// Note -- matrix multiply opposite from normal
         //          (so we can initialise normalsTextureToWorld easily)
 	return mul(normalTextureSample, normalsTextureToWorld);
 }
 
-void AlphaTestAlgorithm(Texture2D textureObject, SamplerState samplerObject, 
+void AlphaTestAlgorithm(Texture2D textureObject, SamplerState samplerObject,
                         float2 texCoord, float alphaThreshold)
 {
 	if (textureObject.Sample(samplerObject, texCoord).a < alphaThreshold) {
@@ -63,7 +65,7 @@ float3x3 AutoCotangentFrame(float3 inputNormal, float3 negativeViewVector, float
 	float3 T = dp2perp * duv1.x + dp1perp * duv2.x;
 	float3 B = dp2perp * duv1.y + dp1perp * duv2.y;
 
-		// construct a scale-invariant frame 
+		// construct a scale-invariant frame
 	float invmax = rsqrt( max( dot(T,T), dot(B,B) ) );
 	return float3x3(T * invmax, B * invmax, inputNormal);
 }

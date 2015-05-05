@@ -5,6 +5,7 @@ Illum
             GEO_HAS_COLOUR
             GEO_HAS_TEXCOORD
             GEO_HAS_TANGENT_FRAME
+            GEO_HAS_BITANGENT
             GEO_HAS_NORMAL
         GlobalEnvironment
             SKIP_MATERIAL_DIFFUSE 0
@@ -33,6 +34,7 @@ Deferred
             GEO_HAS_COLOUR
             GEO_HAS_TEXCOORD
             GEO_HAS_TANGENT_FRAME
+            GEO_HAS_BITANGENT
             GEO_HAS_NORMAL
         GlobalEnvironment
             CLASSIFY_NORMAL_MAP
@@ -67,6 +69,7 @@ OrderIndependentTransparency
             GEO_HAS_COLOUR
             GEO_HAS_TEXCOORD
             GEO_HAS_TANGENT_FRAME
+            GEO_HAS_BITANGENT
             GEO_HAS_NORMAL
             OUTPUT_LOCAL_NORMAL 1
             OUTPUT_LOCAL_VIEW_VECTOR 1

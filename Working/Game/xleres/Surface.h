@@ -113,33 +113,40 @@ float3 GetLocalPosition(VSInput input)
     TangentFrameStruct BuildTangentFrameFromGeo(VSOutput geo)
     {
         TangentFrameStruct result;
-        result.tangent = normalize(geo.tangent);
+        result.tangent = normalize(geo.tangent.xyz);
         result.bitangent = normalize(geo.bitangent);
         result.normal = normalize(geo.normal);
+		result.handiness = 1.f; // (handiness value is lost in this case)
         return result;
     }
 #endif
 
-float3 NormalFromTangents(float3 tangent, float3 bitangent)
+float GetTangentFrameHandiness(float4 tangent)
+{
+	#if LOCAL_TO_WORLD_HAS_FLIP==1
+		return sign(-tangent.w);
+	#else
+		return sign(tangent.w);
+	#endif
+}
+
+float3 NormalFromTangents(float3 tangent, float3 bitangent, float handiness)
 {
 		// Note -- the order of this cross product
 		// 		depends on whether we have a right handed or
 		//		left handed tangent frame. That should depend
 		//		on how the tangent frame is generated, and
 		//		whether there is a flip on any transforms applied.
-	float3 normal = cross(bitangent, tangent);
-	#if LOCAL_TO_WORLD_HAS_FLIP==1
-		normal = -normal;
-	#endif
-	return normal;
+	return cross(bitangent, tangent) * handiness;
 }
 
 #if (OUTPUT_LOCAL_TANGENT_FRAME==1)
     TangentFrameStruct BuildLocalTangentFrameFromGeo(VSOutput geo)
     {
         TangentFrameStruct result;
-        result.tangent      = normalize(geo.localTangent.xyz);
+        result.tangent	 	= normalize(geo.localTangent.xyz);
         result.bitangent    = normalize(geo.localBitangent);
+		result.handiness 	= GetTangentFrameHandiness(geo.localTangent);
         #if (OUTPUT_LOCAL_NORMAL)
             result.normal   = normalize(geo.localNormal);
         #else
@@ -149,7 +156,7 @@ float3 NormalFromTangents(float3 tangent, float3 bitangent)
                 //          (but it would also result in other subtle artefacts in
                 //          the normal map. Let's try to cheat and avoid the normalize,
                 //          (and just assume it's close to unit length)
-            result.normal   = NormalFromTangents(result.tangent, result.bitangent) * geo.localTangent.w;
+            result.normal   = NormalFromTangents(result.tangent, result.bitangent, result.handiness);
         #endif
         return result;
     }
@@ -164,34 +171,46 @@ float4 GetLocalTangent(VSInput input)
     #endif
 }
 
+#if GEO_HAS_NORMAL==1
+	float3 GetLocalNormal(VSInput input)
+	{
+		#if GEO_V_NORMAL_UNSIGNED==1
+            return TransformDirectionVectorThroughSkinning(input, input.normal * 2.0.xxx - 1.0.xxx);
+        #else
+            return TransformDirectionVectorThroughSkinning(input, input.normal);
+        #endif
+	}
+#endif
+
 float3 GetLocalBitangent(VSInput input)
 {
-    #if (GEO_HAS_TANGENT_FRAME==1)
-        return TransformDirectionVectorThroughSkinning(input, input.bitangent.xyz);
+	#if (GEO_HAS_BITANGENT==1)
+		return TransformDirectionVectorThroughSkinning(input, input.bitangent.xyz);
+    #elif (GEO_HAS_TANGENT_FRAME==1) && (GEO_HAS_NORMAL==1)
+		float4 tangent = GetLocalTangent(input);
+		float3 normal = GetLocalNormal(input);
+		return GetTangentFrameHandiness(tangent).xxx;
+		return cross(tangent.xyz, normal) * GetTangentFrameHandiness(tangent);
     #else
         return 0.0.xxx;
     #endif
 }
 
-float3 GetLocalNormal(VSInput input)
-{
-    #if GEO_HAS_NORMAL==1
-        #if GEO_V_NORMAL_UNSIGNED==1
-            return input.normal * 2.0.xxx - 1.0.xxx;
-        #else
-            return input.normal;
-        #endif
-    #elif GEO_HAS_TANGENT_FRAME==1
-            //  if the tangent and bitangent are unit-length and perpendicular, then we
-            //  shouldn't have to normalize here. Since the inputs are coming from the
-            //  vertex buffer, let's assume it's ok
-        float4 localTangent = GetLocalTangent(input);
-        float3 localBitangent = GetLocalBitangent(input);
-        return NormalFromTangents(localTangent.xyz, localBitangent.xyz) * localTangent.w;
-    #else
-        return float3(0,0,1);
-    #endif
-}
+#if GEO_HAS_NORMAL!=1
+	float3 GetLocalNormal(VSInput input)
+	{
+	    #if GEO_HAS_TANGENT_FRAME==1
+	            //  if the tangent and bitangent are unit-length and perpendicular, then we
+	            //  shouldn't have to normalize here. Since the inputs are coming from the
+	            //  vertex buffer, let's assume it's ok
+	        float4 localTangent = GetLocalTangent(input);
+	        float3 localBitangent = GetLocalBitangent(input);
+	        return NormalFromTangents(localTangent.xyz, localBitangent.xyz, GetTangentFrameHandiness(localTangent));
+	    #else
+	        return float3(0,0,1);
+	    #endif
+	}
+#endif
 
 float3 LocalToWorldUnitVector(float3 localSpaceVector)
 {
@@ -209,14 +228,19 @@ float3 LocalToWorldUnitVector(float3 localSpaceVector)
         float4 localTangent     = GetLocalTangent(input);
 		float3 worldTangent 	= LocalToWorldUnitVector(localTangent.xyz);
 		float3 worldBitangent 	= LocalToWorldUnitVector(GetLocalBitangent(input));
+		float handiness 		= GetTangentFrameHandiness(localTangent);
 
             //  There's some issues here. If local-to-world has a flip on it, it might flip
             //  the direction we get from the cross product here... That's probably not
             //  what's expected.
             //  (worldNormal shouldn't need to be normalized, so long as worldTangent
             //  and worldNormal are perpendicular to each other)
-		float3 worldNormal		= NormalFromTangents(worldTangent, worldBitangent) * localTangent.w;
-        return BuildTangentFrame(worldTangent, worldBitangent, worldNormal);
+		#if GEO_HAS_NORMAL==1
+			float3 worldNormal	= LocalToWorldUnitVector(GetLocalNormal(input));
+		#else
+			float3 worldNormal  = NormalFromTangents(worldTangent, worldBitangent, handiness);
+		#endif
+        return BuildTangentFrame(worldTangent, worldBitangent, worldNormal, handiness);
     }
 #endif
 

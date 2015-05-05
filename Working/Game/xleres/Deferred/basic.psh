@@ -207,6 +207,9 @@ GBufferEncoded main(VSOutput geo)
 		#endif
 	}
 
+	// result.diffuseAlbedo.xyz = 0.5f + 0.5f * result.worldSpaceNormal.xyz;
+	// result.diffuseAlbedo.xyz = geo.localTangent.www;
+
 	#if RES_HAS_NormalsTexture && CLASSIFY_NORMAL_MAP
 		#if (RES_HAS_NormalsTexture_DXT==1)
 			result.diffuseAlbedo = float3(1,0,0);

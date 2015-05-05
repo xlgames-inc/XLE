@@ -76,7 +76,7 @@ namespace GUILayer
         _vfRecord[2]._geoParams = ParameterBox({std::make_pair("GEO_HAS_NORMAL", "1")});
         _vfRecord[3]._geoParams = ParameterBox({std::make_pair("GEO_HAS_TEXCOORD", "1")});
         _vfRecord[5]._geoParams = ParameterBox({std::make_pair("GEO_HAS_NORMAL", "1"), std::make_pair("GEO_HAS_TEXCOORD", "1")});
-        _vfRecord[6]._geoParams = ParameterBox({std::make_pair("GEO_HAS_NORMAL", "1"), std::make_pair("GEO_HAS_TEXCOORD", "1"), std::make_pair("GEO_HAS_TANGENT_FRAME", "1")});
+        _vfRecord[6]._geoParams = ParameterBox({std::make_pair("GEO_HAS_NORMAL", "1"), std::make_pair("GEO_HAS_TEXCOORD", "1"), std::make_pair("GEO_HAS_TANGENT_FRAME", "1"), std::make_pair("GEO_HAS_BITANGENT", "1")});
 
         _vfRecord[0]._vertexStride = 3*4;
         _vfRecord[1]._vertexStride = 3*4 + 4;

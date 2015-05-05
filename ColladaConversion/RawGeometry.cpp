@@ -11,6 +11,7 @@
 #include "ColladaConversion.h"
 #include "../Assets/BlockSerializer.h"
 #include "../RenderCore/RenderUtils.h"
+#include "../Math/Geometry.h"
 
 
 #pragma warning(push)
@@ -169,7 +170,7 @@ namespace RenderCore { namespace ColladaConversion
         return nullptr;
     }
 
-    class MeshVertexSourceData
+    class VertexSourceDataAdapter
     {
     public:
         class Param
@@ -181,13 +182,13 @@ namespace RenderCore { namespace ColladaConversion
             Param(Type type, const std::string& name) : _type(type), _name(name) {}
         };
         const COLLADAFW::MeshVertexData*    _vertexData;
-        std::string                         _name;
-        size_t                              _start, _end, _stride;      // (in elements)
-        std::vector<Param>                  _params;
+        std::string         _name;
+        size_t              _start, _end, _stride;      // (in elements)
+        std::vector<Param>  _params;
+        bool                _doTextureCoordinateFlip;
 
-        bool            _doTextureCoordinateFlip;
-
-        MeshVertexSourceData();
+        bool IsValid() const { return _vertexData != nullptr; }
+        VertexSourceDataAdapter();
 
         static std::vector<Param>   DefaultPosition     (const COLLADAFW::MeshVertexData& vd, size_t stride);
         static std::vector<Param>   DefaultNormal       (const COLLADAFW::MeshVertexData& vd, size_t stride);
@@ -197,57 +198,57 @@ namespace RenderCore { namespace ColladaConversion
         static std::vector<Param>   DefaultTexCoord     (const COLLADAFW::MeshVertexData& vd, size_t stride);
     };
 
-    MeshVertexSourceData::MeshVertexSourceData()
+    VertexSourceDataAdapter::VertexSourceDataAdapter()
     {
         _vertexData = nullptr;
         _start = _end = _stride = 0;
         _doTextureCoordinateFlip = false;
     }
 
-    auto MeshVertexSourceData::DefaultPosition  (const COLLADAFW::MeshVertexData& vd, size_t stride) -> std::vector<Param>
+    auto VertexSourceDataAdapter::DefaultPosition  (const COLLADAFW::MeshVertexData& vd, size_t stride) -> std::vector<Param>
     {
         std::vector<Param> result;
         auto type = 
             (vd.getType() == COLLADAFW::FloatOrDoubleArray::DATA_TYPE_FLOAT)
-            ? MeshVertexSourceData::Param::Float
-            : MeshVertexSourceData::Param::Double;
+            ? VertexSourceDataAdapter::Param::Float
+            : VertexSourceDataAdapter::Param::Double;
         const char* defaultNames[] = { "X", "Y", "Z", "W" };
         for (unsigned c=0; c<std::min(dimof(defaultNames), stride); ++c)
-            result.push_back(MeshVertexSourceData::Param(type, defaultNames[c]));
+            result.push_back(VertexSourceDataAdapter::Param(type, defaultNames[c]));
         return std::move(result);
     }
 
-    auto MeshVertexSourceData::DefaultNormal    (const COLLADAFW::MeshVertexData& vd, size_t stride) -> std::vector<Param>     { return DefaultPosition(vd, stride); }
-    auto MeshVertexSourceData::DefaultTangent   (const COLLADAFW::MeshVertexData& vd, size_t stride) -> std::vector<Param>     { return DefaultPosition(vd, stride); }
-    auto MeshVertexSourceData::DefaultBitangent (const COLLADAFW::MeshVertexData& vd, size_t stride) -> std::vector<Param>     { return DefaultPosition(vd, stride); }
+    auto VertexSourceDataAdapter::DefaultNormal    (const COLLADAFW::MeshVertexData& vd, size_t stride) -> std::vector<Param>     { return DefaultPosition(vd, stride); }
+    auto VertexSourceDataAdapter::DefaultTangent   (const COLLADAFW::MeshVertexData& vd, size_t stride) -> std::vector<Param>     { return DefaultPosition(vd, stride); }
+    auto VertexSourceDataAdapter::DefaultBitangent (const COLLADAFW::MeshVertexData& vd, size_t stride) -> std::vector<Param>     { return DefaultPosition(vd, stride); }
 
-    auto MeshVertexSourceData::DefaultColor     (const COLLADAFW::MeshVertexData& vd, size_t stride) -> std::vector<Param>
+    auto VertexSourceDataAdapter::DefaultColor     (const COLLADAFW::MeshVertexData& vd, size_t stride) -> std::vector<Param>
     {
         std::vector<Param> result;
         auto type = 
             (vd.getType() == COLLADAFW::FloatOrDoubleArray::DATA_TYPE_FLOAT)
-            ? MeshVertexSourceData::Param::Float
-            : MeshVertexSourceData::Param::Double;
+            ? VertexSourceDataAdapter::Param::Float
+            : VertexSourceDataAdapter::Param::Double;
         const char* defaultNames[] = { "R", "G", "B", "A", "A2", "A3", "A4", "A5", "A6", "A7", "A8" };
         for (unsigned c=0; c<std::min(dimof(defaultNames), stride); ++c)
-            result.push_back(MeshVertexSourceData::Param(type, defaultNames[c]));
+            result.push_back(VertexSourceDataAdapter::Param(type, defaultNames[c]));
         return std::move(result);
     }
 
-    auto MeshVertexSourceData::DefaultTexCoord  (const COLLADAFW::MeshVertexData& vd, size_t stride) -> std::vector<Param>
+    auto VertexSourceDataAdapter::DefaultTexCoord  (const COLLADAFW::MeshVertexData& vd, size_t stride) -> std::vector<Param>
     {
         std::vector<Param> result;
         auto type = 
             (vd.getType() == COLLADAFW::FloatOrDoubleArray::DATA_TYPE_FLOAT)
-            ? MeshVertexSourceData::Param::Float
-            : MeshVertexSourceData::Param::Double;
+            ? VertexSourceDataAdapter::Param::Float
+            : VertexSourceDataAdapter::Param::Double;
         const char* defaultNames[] = { "S", "T", "U", "V", "W", "X", "Y", "Z" };
         for (unsigned c=0; c<std::min(dimof(defaultNames), stride); ++c)
-            result.push_back(MeshVertexSourceData::Param(type, defaultNames[c]));
+            result.push_back(VertexSourceDataAdapter::Param(type, defaultNames[c]));
         return std::move(result);
     }
 
-    static MeshVertexSourceData GetVertexData(const COLLADAFW::Mesh& primitive, const VertexAttribute& attribute)
+    static VertexSourceDataAdapter GetVertexData(const COLLADAFW::Mesh& primitive, const VertexAttribute& attribute)
     {
         using namespace COLLADAFW;
         if (attribute._basicSemantic == COLLADASaxFWL::InputSemantic::POSITION) {
@@ -259,7 +260,7 @@ namespace RenderCore { namespace ColladaConversion
                 //      Let's try to reconstruct the <accessor> part!
                 //
             auto& vertexData        = primitive.getPositions();
-            MeshVertexSourceData result;
+            VertexSourceDataAdapter result;
             result._vertexData      = &vertexData;
             result._start           = 0;
             if (vertexData.getNumInputInfos() == 0) {
@@ -273,14 +274,14 @@ namespace RenderCore { namespace ColladaConversion
                 result._end         = vertexData.getInputInfosArray()[0]->mLength;
                 result._stride      = vertexData.getInputInfosArray()[0]->mStride;
             }
-            result._params      = MeshVertexSourceData::DefaultPosition(vertexData, result._stride);
+            result._params      = VertexSourceDataAdapter::DefaultPosition(vertexData, result._stride);
             result._doTextureCoordinateFlip = attribute._doTextureCoordinateFlip;
             return std::move(result);
 
         } else if (attribute._basicSemantic == COLLADASaxFWL::InputSemantic::NORMAL) {
 
             auto& vertexData        = primitive.getNormals();
-            MeshVertexSourceData result;
+            VertexSourceDataAdapter result;
             result._vertexData      = &vertexData;
             result._start           = 0;
             if (vertexData.getNumInputInfos() == 0) {
@@ -294,14 +295,14 @@ namespace RenderCore { namespace ColladaConversion
                 result._end         = vertexData.getInputInfosArray()[0]->mLength;
                 result._stride      = vertexData.getInputInfosArray()[0]->mStride;
             }
-            result._params      = MeshVertexSourceData::DefaultNormal(vertexData, result._stride);
+            result._params      = VertexSourceDataAdapter::DefaultNormal(vertexData, result._stride);
             result._doTextureCoordinateFlip = attribute._doTextureCoordinateFlip;
             return std::move(result);
 
         } else if (attribute._basicSemantic == COLLADASaxFWL::InputSemantic::TANGENT) {
 
             auto& vertexData        = primitive.getTangents();
-            MeshVertexSourceData result;
+            VertexSourceDataAdapter result;
             result._vertexData      = &vertexData;
             result._start           = 0;
             if (vertexData.getNumInputInfos() == 0) {
@@ -315,14 +316,14 @@ namespace RenderCore { namespace ColladaConversion
                 result._end         = vertexData.getInputInfosArray()[0]->mLength;
                 result._stride      = vertexData.getInputInfosArray()[0]->mStride;
             }
-            result._params      = MeshVertexSourceData::DefaultTangent(vertexData, result._stride);
+            result._params      = VertexSourceDataAdapter::DefaultTangent(vertexData, result._stride);
             result._doTextureCoordinateFlip = attribute._doTextureCoordinateFlip;
             return std::move(result);
 
         } else if (attribute._basicSemantic == COLLADASaxFWL::InputSemantic::BINORMAL) {
 
             auto& vertexData        = primitive.getBinormals();
-            MeshVertexSourceData result;
+            VertexSourceDataAdapter result;
             result._vertexData      = &vertexData;
             result._start           = 0;
             if (vertexData.getNumInputInfos() == 0) {
@@ -336,7 +337,7 @@ namespace RenderCore { namespace ColladaConversion
                 result._end         = vertexData.getInputInfosArray()[0]->mLength;
                 result._stride      = vertexData.getInputInfosArray()[0]->mStride;
             }
-            result._params      = MeshVertexSourceData::DefaultBitangent(vertexData, result._stride);
+            result._params      = VertexSourceDataAdapter::DefaultBitangent(vertexData, result._stride);
             result._doTextureCoordinateFlip = attribute._doTextureCoordinateFlip;
             return std::move(result);
 
@@ -357,13 +358,13 @@ namespace RenderCore { namespace ColladaConversion
                 sourceIndex = 0;
             }
 
-            MeshVertexSourceData result;
+            VertexSourceDataAdapter result;
             result._vertexData  = &vertexData;
             result._start       = sourceOffset;
             result._name        = vertexData.getInputInfosArray()[sourceIndex]->mName;
             result._end         = vertexData.getInputInfosArray()[sourceIndex]->mLength + sourceOffset;
             result._stride      = vertexData.getInputInfosArray()[sourceIndex]->mStride;
-            result._params      = MeshVertexSourceData::DefaultColor(vertexData, result._stride);
+            result._params      = VertexSourceDataAdapter::DefaultColor(vertexData, result._stride);
             result._doTextureCoordinateFlip = attribute._doTextureCoordinateFlip;
             return std::move(result);
 
@@ -383,37 +384,82 @@ namespace RenderCore { namespace ColladaConversion
                 sourceIndex = 0;
             }
 
-            MeshVertexSourceData result;
+            VertexSourceDataAdapter result;
             result._vertexData  = &vertexData;
             result._start       = sourceOffset;
             result._name        = vertexData.getInputInfosArray()[sourceIndex]->mName;
             result._end         = vertexData.getInputInfosArray()[sourceIndex]->mLength + sourceOffset;
             result._stride      = vertexData.getInputInfosArray()[sourceIndex]->mStride;
-            result._params      = MeshVertexSourceData::DefaultTexCoord(vertexData, result._stride);
+            result._params      = VertexSourceDataAdapter::DefaultTexCoord(vertexData, result._stride);
             result._doTextureCoordinateFlip = attribute._doTextureCoordinateFlip;
             return std::move(result);
         }
-        return MeshVertexSourceData();
+        return VertexSourceDataAdapter();
     }
 
-    class DestinationFormat
+    enum class ComponentType { Float32, Float16, UNorm8 };
+    static std::pair<ComponentType, unsigned> BreakdownFormat(Metal::NativeFormat::Enum fmt)
     {
-    public:
-        enum ComponentType {
-            Float32, Float16, UNorm8
-        };
-        ComponentType               _type;
-        unsigned                    _componentCount;
-        Metal::NativeFormat::Enum   _format;
-            
-        DestinationFormat(ComponentType type, unsigned componentCount, Metal::NativeFormat::Enum format) : _type(type), _componentCount(componentCount), _format(format) {}
-        DestinationFormat() { _type = Float32; _componentCount = 0; _format = Metal::NativeFormat::Unknown; }
-    };
+        if (fmt == Metal::NativeFormat::Unknown) return std::make_pair(ComponentType::Float32, 0);
 
-    static DestinationFormat AsNativeFormat(const MeshVertexSourceData::Param parameters[], size_t parameterCount)
+        auto componentType = ComponentType::Float32;
+        unsigned componentCount = Metal::GetComponentCount(Metal::GetComponents(fmt));
+
+        auto type = Metal::GetComponentType(fmt);
+        unsigned prec = Metal::GetComponentPrecision(fmt);
+
+        switch (type) {
+        case Metal::FormatComponentType::Float:
+            assert(prec == 16 || prec == 32);
+            componentType = (prec > 16) ? ComponentType::Float32 : ComponentType::Float16; 
+            break;
+
+        case Metal::FormatComponentType::UnsignedFloat16:
+        case Metal::FormatComponentType::SignedFloat16:
+            componentType = ComponentType::Float16;
+            break;
+
+        case Metal::FormatComponentType::UNorm:
+        case Metal::FormatComponentType::SNorm:
+        case Metal::FormatComponentType::UNorm_SRGB:
+            assert(prec==8);
+            componentType = ComponentType::UNorm8;
+            break;
+        }
+
+        return std::make_pair(componentType, componentCount);
+    }
+
+    static const bool Use16BitFloats = true;
+
+    static Metal::NativeFormat::Enum AsNativeFormat(const VertexSourceDataAdapter::Param parameters[], size_t parameterCount)
     {
         if (parameterCount == 0 || !parameters) {
-            return DestinationFormat(DestinationFormat::Float32, 0, Metal::NativeFormat::Unknown);
+            return Metal::NativeFormat::Unknown;
+        }
+
+        for (unsigned c = 1; c<parameterCount; ++c) {
+                // make sure all 
+            if (parameters[c]._type != parameters[0]._type)
+                ThrowException(FormatError("Collada format contains components with mixed types. All components of the same vertex element must be the same type (normally either float or double)"));
+        }
+
+        if (parameters[0]._type == VertexSourceDataAdapter::Param::Float) {
+            switch (parameterCount) {
+            case 1: return Metal::NativeFormat::R32_FLOAT;
+            case 2: return Metal::NativeFormat::R32G32_FLOAT;
+            case 3: return Metal::NativeFormat::R32G32B32_FLOAT;
+            default: return Metal::NativeFormat::R32G32B32A32_FLOAT;
+            }
+        } else {
+            ThrowException(FormatError("Found non-float type while reading collada file. Only float type components supported currently."));
+        }
+    }
+
+    static Metal::NativeFormat::Enum AsFinalVBFormat(const VertexSourceDataAdapter::Param parameters[], size_t parameterCount)
+    {
+        if (parameterCount == 0 || !parameters) {
+            return Metal::NativeFormat::Unknown;
         }
 
             //
@@ -453,25 +499,21 @@ namespace RenderCore { namespace ColladaConversion
         if (parameters[0]._name == "R") {
                 //  (assume this is vertex colour. Choose an 8 bit type)
                 //  only supporting R, G, B, A order (not B, G, R, A order)
-            if (parameterCount == 1)        return DestinationFormat(DestinationFormat::UNorm8, 1, Metal::NativeFormat::R8_UNORM);
-            else if (parameterCount == 2)   return DestinationFormat(DestinationFormat::UNorm8, 2, Metal::NativeFormat::R8G8_UNORM);
-            else                            return DestinationFormat(DestinationFormat::UNorm8, 4, Metal::NativeFormat::R8G8B8A8_UNORM);
+            if (parameterCount == 1)        return Metal::NativeFormat::R8_UNORM;
+            else if (parameterCount == 2)   return Metal::NativeFormat::R8G8_UNORM;
+            else                            return Metal::NativeFormat::R8G8B8A8_UNORM;
         }
             
-            //  OpenGL doesn't seem to support 16 bit floats in vertex buffers normally. 
-            //  We have to use fixed point? 
-            //      \todo --    this should be configurable. We need some why to specific
-            //                  configuration settings for model conversion
-        const bool use16BitFloats = true;
-        if (use16BitFloats) {
-            if (parameterCount == 1)        return DestinationFormat(DestinationFormat::Float16, 1, Metal::NativeFormat::R16_FLOAT);
-            else if (parameterCount == 2)   return DestinationFormat(DestinationFormat::Float16, 2, Metal::NativeFormat::R16G16_FLOAT);
-            else                            return DestinationFormat(DestinationFormat::Float16, 4, Metal::NativeFormat::R16G16B16A16_FLOAT);
+           
+        if (Use16BitFloats) {
+            if (parameterCount == 1)        return Metal::NativeFormat::R16_FLOAT;
+            else if (parameterCount == 2)   return Metal::NativeFormat::R16G16_FLOAT;
+            else                            return Metal::NativeFormat::R16G16B16A16_FLOAT;
         } else {
-            if (parameterCount == 1)        return DestinationFormat(DestinationFormat::Float32, 1, Metal::NativeFormat::R32_FLOAT);
-            else if (parameterCount == 2)   return DestinationFormat(DestinationFormat::Float32, 2, Metal::NativeFormat::R32G32_FLOAT);
-            else if (parameterCount == 3)   return DestinationFormat(DestinationFormat::Float32, 3, Metal::NativeFormat::R32G32B32_FLOAT);
-            else                            return DestinationFormat(DestinationFormat::Float32, 4, Metal::NativeFormat::R32G32B32A32_FLOAT);
+            if (parameterCount == 1)        return Metal::NativeFormat::R32_FLOAT;
+            else if (parameterCount == 2)   return Metal::NativeFormat::R32G32_FLOAT;
+            else if (parameterCount == 3)   return Metal::NativeFormat::R32G32B32_FLOAT;
+            else                            return Metal::NativeFormat::R32G32B32A32_FLOAT;
         }
     }
 
@@ -629,31 +671,155 @@ namespace RenderCore { namespace ColladaConversion
         return "<<unknown>>";
     }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class NativeVBLayout
+    {
+    public:
+        std::vector<Metal::InputElementDesc> _elements;
+        unsigned _vertexStride;
+    };
+
+    class RawVertexSourceDataAdapter
+    {
+    public:
+        std::vector<uint8>          _rawData;
+        Metal::NativeFormat::Enum   _fmt;
+        Metal::NativeFormat::Enum   _dstFmt;
+
+        bool IsValid() const { return !_rawData.empty(); }
+
+        RawVertexSourceDataAdapter() { _fmt = Metal::NativeFormat::Unknown; }
+        RawVertexSourceDataAdapter(const void* start, const void* end, Metal::NativeFormat::Enum fmt, Metal::NativeFormat::Enum dstFmt)
+        : _fmt(fmt), _dstFmt(dstFmt), _rawData((const uint8*)start, (const uint8*)end) {}
+    };
+
     class MeshDatabaseAdapter
     {
     public:
-        std::vector<Metal::InputElementDesc>        _nativeElements;
-        size_t _nativeVertexSize;
-        size_t _vertexCount;
+        size_t _unifiedVertexCount;
 
-        std::unique_ptr<MeshVertexSourceData[]>     _sourceData;
-        std::unique_ptr<DestinationFormat[]>        _destinationFormats;
+        class Stream
+        {
+        public:
+            VertexSourceDataAdapter     _sourceData;
+            RawVertexSourceDataAdapter  _rawSourceData;
+            std::vector<unsigned>       _vertexMap;
+            std::string                 _semanticName;
+            unsigned                    _semanticIndex;
+        };
+        std::vector<Stream> _streams;
 
-        typedef std::vector<unsigned>       PendingIndexBuffer;
-        std::vector<PendingIndexBuffer>     _vertexMap;
+        unsigned    HasElement(const char name[]) const;
+        unsigned    FindElement(const char name[], unsigned semanticIndex = 0) const;
+        void        RemoveStream(unsigned elementIndex);
 
-        size_t                      FinalNativeBufferSize() const { return _nativeVertexSize * _vertexCount; }
-        std::unique_ptr<uint8[]>    BuildNativeVertexBuffer() const;
-        std::unique_ptr<uint32[]>   BuildUnifiedVertexIndexToPositionIndex() const;
+        template<typename OutputType>
+            OutputType GetUnifiedElement(size_t vertexIndex, unsigned elementIndex) const;
+
+        auto    BuildNativeVertexBuffer(NativeVBLayout& outputLayout) const -> std::unique_ptr<uint8[]>;
+        auto    BuildUnifiedVertexIndexToPositionIndex() const -> std::unique_ptr<uint32[]>;
+
+        void    AddStream(  const void* dataBegin, const void* dataEnd, 
+                            Metal::NativeFormat::Enum srcFormat,
+                            Metal::NativeFormat::Enum finalVBFormat,
+                            const char semantic[], unsigned semanticIndex);
 
         MeshDatabaseAdapter(
-            const COLLADAFW::Mesh& meshh, std::vector<PendingIndexBuffer> vertexMap,
+            const COLLADAFW::Mesh& mesh, 
+            std::vector<unsigned>* vertexMapBegin, std::vector<unsigned>* vertexMapEnd,
             const VertexAttribute* vertexSemanticsBegin, const VertexAttribute* vertexSemanticsEnd);
         ~MeshDatabaseAdapter();
 
     protected:
         const COLLADAFW::Mesh* _mesh;
+
+        NativeVBLayout BuildDefaultLayout() const;
+
+        void WriteColladaStream(const Stream& stream, const void* dst, Metal::NativeFormat::Enum dstFormat, size_t dstStride) const;
+        void WriteRawStream(const Stream& stream, const void* dst, Metal::NativeFormat::Enum dstFormat, size_t dstStride) const;
     };
+
+    unsigned    MeshDatabaseAdapter::HasElement(const char name[]) const
+    {
+        unsigned result = 0;
+        for (auto i = _streams.cbegin(); i != _streams.cend(); ++i) {
+            if (!XlCompareStringI(i->_semanticName.c_str(), name)) {
+                assert((result & (1 << i->_semanticIndex)) == 0);
+                result |= (1 << i->_semanticIndex);
+            }
+        }
+        return result;
+    }
+
+    unsigned    MeshDatabaseAdapter::FindElement(const char name[], unsigned semanticIndex) const
+    {
+        for (auto i = _streams.cbegin(); i != _streams.cend(); ++i)
+            if (i->_semanticIndex == semanticIndex && !XlCompareStringI(i->_semanticName.c_str(), name))
+                return unsigned(std::distance(_streams.cbegin(), i));
+        return ~0u;
+    }
+
+    void        MeshDatabaseAdapter::RemoveStream(unsigned elementIndex)
+    {
+        if (elementIndex < _streams.size())
+            _streams.erase(_streams.begin() + elementIndex);
+    }
+
+    void MeshDatabaseAdapter::AddStream(
+        const void* dataBegin, const void* dataEnd, 
+        Metal::NativeFormat::Enum srcFormat,
+        Metal::NativeFormat::Enum finalVBFormat,
+        const char semantic[], unsigned semanticIndex)
+    {
+            // create a new stream with the given data and format
+            // we're assuming a 1:1 mapping with unified vertices (so the _vertexMap member will be left empty)
+        Stream newStream;
+        newStream._semanticName = semantic;
+        newStream._semanticIndex = semanticIndex;
+        newStream._rawSourceData = RawVertexSourceDataAdapter(dataBegin, dataEnd, srcFormat, finalVBFormat);
+        _streams.push_back(std::move(newStream));
+
+            // verify correct data size
+        size_t dataSize = size_t(dataEnd) - size_t(dataBegin);
+        auto elementSize = Metal::BitsPerPixel(srcFormat) / 8;
+        assert(((dataSize % elementSize) == 0) && ((dataSize / elementSize) == _unifiedVertexCount));
+    }
+
+    template<> Float3 MeshDatabaseAdapter::GetUnifiedElement(size_t vertexIndex, unsigned elementIndex) const
+    {
+        auto& stream = _streams[elementIndex];
+        auto indexInStream = stream._vertexMap[vertexIndex];
+        auto& sourceData = stream._sourceData;
+        assert((indexInStream * sourceData._stride) < sourceData._vertexData->getFloatValues()->getCount());
+        const auto* sourceStart = &sourceData._vertexData->getFloatValues()->getData()[indexInStream * sourceData._stride];
+        Float3 result;
+        result[0] = sourceStart[0];
+        result[1] = (sourceData._stride > 1) ? sourceStart[1] : 0.f;
+        result[2] = (sourceData._stride > 2) ? sourceStart[2] : 0.f;
+
+        if (stream._sourceData._doTextureCoordinateFlip && sourceData._stride > 1)
+            result[1] = 1.0f - result[1];
+
+        return result;
+    }
+
+    template<> Float2 MeshDatabaseAdapter::GetUnifiedElement(size_t vertexIndex, unsigned elementIndex) const
+    {
+        auto& stream = _streams[elementIndex];
+        auto indexInStream = stream._vertexMap[vertexIndex];
+        auto& sourceData = stream._sourceData;
+        assert((indexInStream * sourceData._stride) < sourceData._vertexData->getFloatValues()->getCount());
+        const auto* sourceStart = &sourceData._vertexData->getFloatValues()->getData()[indexInStream * sourceData._stride];
+        Float2 result;
+        result[0] = sourceStart[0];
+        result[1] = (sourceData._stride > 1) ? sourceStart[1] : 0.f;
+
+        if (stream._sourceData._doTextureCoordinateFlip && sourceData._stride > 1)
+            result[1] = 1.0f - result[1];
+
+        return result;
+    }
 
     std::unique_ptr<uint32[]> MeshDatabaseAdapter::BuildUnifiedVertexIndexToPositionIndex() const
     {
@@ -661,118 +827,383 @@ namespace RenderCore { namespace ColladaConversion
             //      on the vertex weight information. But that seems to be lost in OpenCollada.
             //      All we can do is use the position index as a subtitute.
 
-        auto unifiedVertexIndexToPositionIndex = std::make_unique<uint32[]>(_vertexCount);
+        auto unifiedVertexIndexToPositionIndex = std::make_unique<uint32[]>(_unifiedVertexCount);
         
-        for (size_t v=0; v<_vertexCount; ++v) {
-            // assuming the first element is the position
-            auto attributeIndex = _vertexMap[0][v];
-            assert(attributeIndex < _mesh->getPositions().getValuesCount());
-            unifiedVertexIndexToPositionIndex[v] = (uint32)attributeIndex;
+        if (!_streams[0]._vertexMap.empty()) {
+            for (size_t v=0; v<_unifiedVertexCount; ++v) {
+                // assuming the first element is the position
+                auto attributeIndex = _streams[0]._vertexMap[v];
+                assert(!_streams[0]._sourceData.IsValid() || attributeIndex < _mesh->getPositions().getValuesCount());
+                unifiedVertexIndexToPositionIndex[v] = (uint32)attributeIndex;
+            }
+        } else {
+            for (size_t v=0; v<_unifiedVertexCount; ++v) {
+                unifiedVertexIndexToPositionIndex[v] = (uint32)v;
+            }
         }
 
         return std::move(unifiedVertexIndexToPositionIndex);
     }
 
-    std::unique_ptr<uint8[]>  MeshDatabaseAdapter::BuildNativeVertexBuffer() const
+    static void CopyVertexData(
+        const void* dst, Metal::NativeFormat::Enum dstFmt, size_t dstStride,
+        const void* src, Metal::NativeFormat::Enum srcFmt, size_t srcStride,
+        std::vector<unsigned> mapping,
+        unsigned count, bool doTextureCoordinateFlip)
     {
+        auto dstFormat = BreakdownFormat(dstFmt);
+        auto srcFormat = BreakdownFormat(srcFmt);
+
+        doTextureCoordinateFlip &= dstFormat.second >= 2;
+
+        const unsigned short half0 = AsFloat16(0.f);
+        const unsigned short half1 = AsFloat16(1.f);
+        
+            //      This could be be made more efficient with a smarter loop..
+        if (srcFormat.first == ComponentType::Float32) {
+            if (dstFormat.first == ComponentType::Float32) {  ////////////////////////////////////////////////
+
+                for (unsigned v = 0; v<count; ++v, dst = PtrAdd(dst, dstStride)) {
+                    auto srcIndex = (v < mapping.size()) ? mapping[v] : v;
+                    auto* srcV = PtrAdd(src, srcIndex * srcStride);
+                    for (unsigned c=0; c<dstFormat.second; ++c) {
+                        if (c < srcFormat.second) {
+                            ((float*)dst)[c] = ((float*)srcV)[c];
+                        } else {
+                            ((float*)dst)[c] = (c < 3)?0.f:1.f; // default for values not set in Collada
+                        }
+                    }
+
+                    if (doTextureCoordinateFlip) {
+                        ((float*)dst)[1] = 1.0f - ((float*)srcV)[1];
+                    }
+                }
+
+            } else if (dstFormat.first == ComponentType::Float16) {  ////////////////////////////////////////////////
+
+                for (unsigned v = 0; v<count; ++v, dst = PtrAdd(dst, dstStride)) {
+                    auto srcIndex = (v < mapping.size()) ? mapping[v] : v;
+                    auto* srcV = PtrAdd(src, srcIndex * srcStride);
+                    for (unsigned c=0; c<dstFormat.second; ++c) {
+                        if (c < srcFormat.second) {
+                            ((unsigned short*)dst)[c] = AsFloat16(((float*)srcV)[c]);
+                        } else {
+                            ((unsigned short*)dst)[c] = (c < 3)?half0:half1;    // default for values not set in Collada
+                        }
+                    }
+
+                    if (doTextureCoordinateFlip) {
+                        ((unsigned short*)dst)[1] = AsFloat16(1.0f - ((float*)srcV)[1]);
+                    }
+                }
+
+            } else if (dstFormat.first == ComponentType::UNorm8) {  ////////////////////////////////////////////////
+
+                for (unsigned v = 0; v<count; ++v, dst = PtrAdd(dst, dstStride)) {
+                    auto srcIndex = (v < mapping.size()) ? mapping[v] : v;
+                    auto* srcV = PtrAdd(src, srcIndex * srcStride);
+                    for (unsigned c=0; c<dstFormat.second; ++c) {
+                        if (c < srcFormat.second) {
+                            ((unsigned char*)dst)[c] = (unsigned char)Clamp(((float*)srcV)[c]*255.f, 0.f, 255.f);
+                        } else {
+                            ((unsigned char*)dst)[c] = (c < 3)?0x0:0xff;    // default for values not set in Collada
+                        }
+                    }
+
+                    if (doTextureCoordinateFlip) {
+                        auto t = 1.0f - ((float*)srcV)[1];
+                        ((unsigned char*)dst)[1] = (unsigned char)(Clamp(t*255.f, 0.f, 255.f));
+                    }
+                }
+
+            } else {
+                ThrowException(FormatError("Error while copying vertex data. Unexpected format for destination parameter."));
+            }
+        } else {
+            ThrowException(FormatError("Error while copying vertex data. Only float type data is supported."));
+        }
+    }
+
+    void MeshDatabaseAdapter::WriteColladaStream(
+        const Stream& stream,
+        const void* dst, Metal::NativeFormat::Enum dstFormat, size_t dstStride) const
+    {
+        const auto& sourceData = stream._sourceData;
+        auto srcFormat = AsNativeFormat(AsPointer(stream._sourceData._params.cbegin()), stream._sourceData._params.size());
+
+        if (sourceData._params[0]._type == VertexSourceDataAdapter::Param::Float) {
+            CopyVertexData(
+                dst, dstFormat, dstStride,
+                sourceData._vertexData->getFloatValues()->getData(), srcFormat, sourceData._stride * sizeof(float),
+                stream._vertexMap, (unsigned)_unifiedVertexCount, stream._sourceData._doTextureCoordinateFlip);
+        } else {
+            ThrowException(FormatError("Error while copying vertex data. Only float type data is supported."));
+        }
+    }
+
+    void MeshDatabaseAdapter::WriteRawStream(
+        const Stream& stream,
+        const void* dst, Metal::NativeFormat::Enum dstFormat, size_t dstStride) const
+    {
+        const auto& sourceData = stream._rawSourceData;
+        auto stride = Metal::BitsPerPixel(sourceData._fmt)/8;
+        assert((stride * _unifiedVertexCount) == sourceData._rawData.size());
+        CopyVertexData(
+            dst, dstFormat, dstStride,
+            AsPointer(sourceData._rawData.cbegin()), sourceData._fmt, stride,
+            stream._vertexMap, (unsigned)_unifiedVertexCount, false);
+    }
+
+    std::unique_ptr<uint8[]>  MeshDatabaseAdapter::BuildNativeVertexBuffer(NativeVBLayout& outputLayout) const
+    {
+        outputLayout = BuildDefaultLayout();
+
             //
             //      Write the data into the vertex buffer
             //
-        const unsigned short half0 = AsFloat16(0.f);
-        const unsigned short half1 = AsFloat16(1.f);
-        auto finalVertexBuffer = std::make_unique<uint8[]>(_nativeVertexSize * _vertexCount);
+        auto finalVertexBuffer = std::make_unique<uint8[]>(outputLayout._vertexStride * _unifiedVertexCount);
 
-        for (unsigned elementIndex = 0; elementIndex <_nativeElements.size(); ++elementIndex) {
-            const auto& nativeElement     = _nativeElements[elementIndex];
-            const auto& sourceData        = _sourceData[elementIndex];
-            const auto& destinationFormat = _destinationFormats[elementIndex];
+        for (unsigned elementIndex = 0; elementIndex <_streams.size(); ++elementIndex) {
+            const auto& nativeElement     = outputLayout._elements[elementIndex];
+            const auto& stream            = _streams[elementIndex];
 
-            if (sourceData._params[0]._type == MeshVertexSourceData::Param::Float) {
-
-                    //      This could be be made more efficient with a smarter loop..
-                for (size_t v=0; v<_vertexCount; ++v) {
-                    auto vertexDestination = &finalVertexBuffer.get()[v*_nativeVertexSize];
-                    auto attributeIndex = _vertexMap[elementIndex][v];
-
-                        //
-                        //      Input is float data.
-                        //          output maybe float, float16 -- or maybe UNORM type...?
-                        //
-                        //      note that the "sourceData._start" offset is already included
-                        //      into the attributeIndex value, so we don't have to add it again
-                        //
-                    auto sourceStart    = &sourceData._vertexData->getFloatValues()->getData()
-                        [/*sourceData._start +*/ attributeIndex * sourceData._stride];
-                    auto destination    = PtrAdd(vertexDestination, nativeElement._alignedByteOffset);
-
-                    if (destinationFormat._type == DestinationFormat::Float32) {
-
-                        for (unsigned c=0; c<destinationFormat._componentCount; ++c) {
-                            if (c < sourceData._stride) {
-                                ((float*)destination)[c] = ((float*)sourceStart)[c];
-                            } else {
-                                ((float*)destination)[c] = (c < 3)?0.f:1.f; // default for values not set in Collada
-                            }
-                        }
-
-                        if (sourceData._doTextureCoordinateFlip && destinationFormat._componentCount >= 2) {
-                            ((float*)destination)[1] = 1.0f - ((float*)sourceStart)[1];
-                        }
-
-                    } else if (destinationFormat._type == DestinationFormat::Float16) {
-
-                        for (unsigned c=0; c<destinationFormat._componentCount; ++c) {
-                            if (c < sourceData._stride) {
-                                ((unsigned short*)destination)[c] = AsFloat16(((float*)sourceStart)[c]);
-                            } else {
-                                ((unsigned short*)destination)[c] = (c < 3)?half0:half1;    // default for values not set in Collada
-                            }
-                        }
-
-                        if (sourceData._doTextureCoordinateFlip && destinationFormat._componentCount >= 2) {
-                            ((unsigned short*)destination)[1] = AsFloat16(1.0f - ((float*)sourceStart)[1]);
-                        }
-
-                    } else if (destinationFormat._type == DestinationFormat::UNorm8) {
-
-                        for (unsigned c=0; c<destinationFormat._componentCount; ++c) {
-                            if (c < sourceData._stride) {
-                                ((unsigned char*)destination)[c] = (unsigned char)Clamp(((float*)sourceStart)[c]*255.f, 0.f, 255.f);
-                            } else {
-                                ((unsigned char*)destination)[c] = (c < 3)?0x0:0xff;    // default for values not set in Collada
-                            }
-                        }
-
-                        if (sourceData._doTextureCoordinateFlip && destinationFormat._componentCount >= 2) {
-                            auto t = 1.0f - ((float*)sourceStart)[1];
-                            ((unsigned char*)destination)[1] = (unsigned char)(std::max(0.f, std::max(1.f, t/255.f)));
-                        }
-
-                    }
-                }
+                //  Our source data can actually be coming from a collada based stream, or from raw
+                //  data. Both paths just end up calling "CopyVertexData"
+            if (stream._sourceData.IsValid()) {
+                WriteColladaStream(
+                    stream, PtrAdd(finalVertexBuffer.get(), nativeElement._alignedByteOffset),
+                    nativeElement._nativeFormat, outputLayout._vertexStride);
+            } else {
+                WriteRawStream(
+                    stream, PtrAdd(finalVertexBuffer.get(), nativeElement._alignedByteOffset),
+                    nativeElement._nativeFormat, outputLayout._vertexStride);
             }
         }
 
         return std::move(finalVertexBuffer);
     }
 
-    MeshDatabaseAdapter::MeshDatabaseAdapter(
-        const COLLADAFW::Mesh& mesh, std::vector<PendingIndexBuffer> vertexMap,
-        const VertexAttribute* vertexSemanticsBegin, const VertexAttribute* vertexSemanticsEnd)
-    : _nativeElements(vertexSemanticsEnd - vertexSemanticsBegin)
-    , _vertexMap(std::move(vertexMap)), _mesh(&mesh)
+    void GenerateNormalsAndTangents( 
+        MeshDatabaseAdapter& mesh, 
+        unsigned normalMapTextureCoordinateSemanticIndex,
+        const void* rawIb, size_t indexCount, Metal::NativeFormat::Enum ibFormat)
+	{
+        using namespace RenderCore::Metal;
+
+        // std::vector<Float3> originalNormals;
+        // originalNormals.reserve(mesh._unifiedVertexCount);
+        // {
+        //     auto normalsElement = mesh.FindElement("NORMAL");
+        //     for (unsigned c=0; c<mesh._unifiedVertexCount; ++c)
+        //         originalNormals.push_back(mesh.GetUnifiedElement<Float3>(c, normalsElement));
+        // }
+
+        auto tcElement = mesh.FindElement("TEXCOORD", normalMapTextureCoordinateSemanticIndex);
+        if (tcElement == ~0u) return;   // if there are no texture coordinates, we could generate normals, but we can't generate tangents
+
+        bool hasNormals = !!(mesh.HasElement("NORMAL") & 0x1);
+        bool hasTangents = !!(mesh.HasElement("TANGENT") & 0x1);
+        bool hasBitangents = !!(mesh.HasElement("BITANGENT") & 0x1);
+        if ((hasNormals && hasTangents) || (hasTangents && hasBitangents)) return;
+
+            // testing -- remove existing tangents & normals
+        mesh.RemoveStream(mesh.FindElement("NORMAL"));
+        mesh.RemoveStream(mesh.FindElement("TANGENT"));
+        mesh.RemoveStream(mesh.FindElement("BITANGENT"));
+        tcElement = mesh.FindElement("TEXCOORD", normalMapTextureCoordinateSemanticIndex);
+        hasNormals = false; hasTangents = false;
+
+        auto posElement = mesh.FindElement("POSITION");
+
+		struct Triangle
+		{
+			Float3 normal;
+			Float3 tangent;
+			Float3 bitangent;
+		};
+		
+            //
+            //      Note that when building normals and tangents, there are some
+            //      cases were we might want to split a vertex into two...
+            //      This can happen if we want to create a sharp edge in the model,
+            //      or a seam in the texturing.
+            //      However, this method never splits vertices... We only modify the
+            //      input vertices. This can create stretching or warping in some 
+            //      models -- that can only be fixed by changing the input data.
+            //
+            //      Also note that this is an unweighted method... Which means that
+            //      each vertex is influenced by all triangles it is part of evenly.
+            //      Some other methods will weight the influence of triangles such
+            //      that larger or more important triangles have a larger influence.
+            //
+        std::vector<Float3> normals(mesh._unifiedVertexCount, Zero<Float3>());
+		std::vector<Float4> tangents(mesh._unifiedVertexCount, Zero<Float4>());
+		std::vector<Float3> bitangents(mesh._unifiedVertexCount, Zero<Float3>());
+
+        unsigned indexStride = 2;
+        unsigned indexMask = 0xffff;
+        if (ibFormat == Metal::NativeFormat::R32_UINT) { indexStride = 4; indexMask = 0xffffffff; }
+        auto* ib = (const uint32*)rawIb;
+
+		auto triangleCount = indexCount / 3;   // assuming index buffer is triangle-list format
+		for (size_t c=0; c<triangleCount; c++) {
+            unsigned v0 = (*ib) & indexMask; ib = PtrAdd(ib, indexStride);
+            unsigned v1 = (*ib) & indexMask; ib = PtrAdd(ib, indexStride);
+            unsigned v2 = (*ib) & indexMask; ib = PtrAdd(ib, indexStride);
+
+            assert(v0 != v1 && v1 != v2 && v1 != v2);
+
+			auto p0 = mesh.GetUnifiedElement<Float3>(v0, posElement);
+			auto p1 = mesh.GetUnifiedElement<Float3>(v1, posElement);
+			auto p2 = mesh.GetUnifiedElement<Float3>(v2, posElement);
+
+            Float4 plane;
+            if (PlaneFit_Checked(&plane, p0, p1, p2)) {
+				Triangle tri;
+                tri.normal = -Truncate(plane);
+
+					/*	There is one natural tangent and one natural bitangent for each triangle, on the v=0 and u=0 axes 
+						in 3 space. We'll calculate them for this triangle here and then use a composite of triangle tangents
+						for the vertex tangents below.
+
+						Here's a good reference:
+						http://www.terathon.com/code/tangent.html
+						from "Mathematics for 3D Game Programming and Computer Graphics, 2nd ed."
+
+						These equations just solve for v=0 and u=0 on the triangle surface.
+					*/
+				const auto UV0 = mesh.GetUnifiedElement<Float2>(v0, tcElement);
+				const auto UV1 = mesh.GetUnifiedElement<Float2>(v1, tcElement);
+				const auto UV2 = mesh.GetUnifiedElement<Float2>(v2, tcElement);
+				auto Q1 = p1 - p0;
+				auto Q2 = p2 - p0;
+				auto st1 = UV1 - UV0;
+				auto st2 = UV2 - UV0;
+				float rr = (st1[0] * st2[1] + st2[0] * st1[1]);
+				if (Equivalent(rr, 0.f, 1e-10f)) { tri.tangent = tri.bitangent = Zero<Float3>(); }
+				else
+				{
+					float r = 1.f / rr;
+					Float3 sAxis( (st2[1] * Q1 - st1[1] * Q2) * r );
+					Float3 tAxis( (st1[0] * Q2 - st2[0] * Q1) * r );
+
+                    auto sMagSq = MagnitudeSquared(sAxis);
+                    auto tMagSq = MagnitudeSquared(tAxis);
+                    
+                    float recipSMag, recipTMag;
+                    if (XlRSqrt_Checked(&recipSMag, sMagSq) && XlRSqrt_Checked(&recipTMag, tMagSq)) {
+                        tri.tangent = sAxis * recipSMag;
+						tri.bitangent = tAxis * recipTMag;
+                    } else {
+                        tri.tangent = tri.bitangent = Zero<Float3>();
+                    }
+				}
+
+				assert( tri.tangent[0] == tri.tangent[0] );
+
+                    // We add the influence of this triangle to all vertices
+                    // each vertex should get an even balance of influences from
+                    // all triangles it is part of.
+                normals[v0] += tri.normal; normals[v1] += tri.normal; normals[v2] += tri.normal;
+                tangents[v0] += Expand(tri.tangent, 0.f); tangents[v1] += Expand(tri.tangent, 0.f); tangents[v2] += Expand(tri.tangent, 0.f);
+                bitangents[v0] += tri.bitangent; bitangents[v1] += tri.bitangent; bitangents[v2] += tri.bitangent;
+			} else {
+				    /* this triangle is so small we can't derive any useful information from it */
+			}
+		}
+
+            //  Create new streams for the normal & tangent, and write the results to the mesh database
+            //  If we already have tangents or normals, don't write the new ones
+
+        // if (!hasNormals) {
+        //     for (size_t c=0; c<mesh._unifiedVertexCount; c++)
+        //         normals[c] = Normalize(normals[c]);
+        // 
+        //     mesh.AddStream(
+        //         AsPointer(normals.cbegin()), AsPointer(normals.cend()),
+        //         Metal::NativeFormat::R32G32B32_FLOAT,
+        //         Use16BitFloats ? Metal::NativeFormat::R16G16B16A16_FLOAT : Metal::NativeFormat::R32G32B32_FLOAT,
+        //         "NORMAL", 0);
+        // }
+
+        if (!hasTangents) {
+
+            unsigned normalsElement = mesh.FindElement("NORMAL");
+
+                //  normals and tangents will have fallen out of orthogonality by the blending above.
+			    //  we can re-orthogonalize using the Gram-Schmidt process -- we won't modify the normal, we'd rather lift the tangent and bitangent
+			    //  off the triangle surface that distort the normal direction too much.
+                //  Note that we don't need to touch the bitangent here... We're not going to write the bitangent
+                //  to the output, so it doesn't matter right now. All we need to do is calculate the "handiness"
+                //  value and write it to the "w" part of the tangent vector.
+            for (size_t c=0; c<mesh._unifiedVertexCount; c++) {
+                auto t3 = Truncate(tangents[c]);
+                auto handinessValue = 0.f;
+
+                    // if we already had normals in the mesh, we should prefex
+                    // those normals (over the ones we generated here)
+                auto n = normals[c];
+                if (hasNormals) n = mesh.GetUnifiedElement<Float3>(c, normalsElement);
+
+                if (Normalize_Checked(&t3, Float3(t3 - n * Dot(n, t3)))) {
+                    // handinessValue = Dot( Cross( bitangents[c], t3 ), n ) < 0.f ? -1.f : 1.f;
+                    handinessValue = Dot( Cross( t3, n ), bitangents[c] ) < 0.f ? -1.f : 1.f;
+                } else {
+                    t3 = Zero<Float3>();
+                }
+
+                tangents[c] = Expand(t3, handinessValue);
+            }
+
+            mesh.AddStream(
+                AsPointer(tangents.begin()), AsPointer(tangents.cend()), Metal::NativeFormat::R32G32B32A32_FLOAT,
+                Use16BitFloats ? Metal::NativeFormat::R16G16B16A16_FLOAT : Metal::NativeFormat::R32G32B32A32_FLOAT,
+                "TANGENT", 0);
+
+        }
+
+        if (!hasBitangents) {
+        
+            unsigned normalsElement = mesh.FindElement("NORMAL");
+        
+            for (size_t c=0; c<mesh._unifiedVertexCount; c++) {
+                auto t3 = bitangents[c];
+        
+                    // if we already had normals in the mesh, we should prefex
+                    // those normals (over the ones we generated here)
+                auto n = normals[c];
+                if (hasNormals) n = mesh.GetUnifiedElement<Float3>(c, normalsElement);
+        
+                if (Normalize_Checked(&t3, Float3(t3 - n * Dot(n, t3)))) {
+                } else {
+                    t3 = Zero<Float3>();
+                }
+        
+                bitangents[c] = t3;
+            }
+        
+            mesh.AddStream(
+                AsPointer(bitangents.begin()), AsPointer(bitangents.cend()), Metal::NativeFormat::R32G32B32_FLOAT,
+                Use16BitFloats ? Metal::NativeFormat::R16G16B16A16_FLOAT : Metal::NativeFormat::R32G32B32_FLOAT,
+                "BITANGENT", 0);
+        
+        }
+	}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    NativeVBLayout MeshDatabaseAdapter::BuildDefaultLayout() const
     {
-        auto elementCount = vertexSemanticsEnd - vertexSemanticsBegin;
+        unsigned accumulatingOffset = 0;
 
-        auto meshVertexSourceData    = std::make_unique<MeshVertexSourceData[]>(elementCount);
-        auto destinationFormats      = std::make_unique<DestinationFormat[]>(elementCount);
+        NativeVBLayout result;
+        result._elements.resize(_streams.size());
 
-        size_t accumulatingOffset = 0;
-        for (auto i=vertexSemanticsBegin; i!=vertexSemanticsEnd; ++i) {
-            auto index = i-vertexSemanticsBegin;
-            auto& nativeElement  = _nativeElements[index];
-            auto& sourceData     = meshVertexSourceData[index];
-            sourceData = GetVertexData(mesh, *i);
+        for (size_t c = 0; c<_streams.size(); ++c) {
+            auto& nativeElement = result._elements[c];
+            auto& stream = _streams[c];
+            nativeElement._semanticName         = stream._semanticName;
+            nativeElement._semanticIndex        = stream._semanticIndex;
 
                 // Note --  There's a problem here with texture coordinates. Sometimes texture coordinates
                 //          have 3 components in the Collada file. But only 2 components are actually used
@@ -781,29 +1212,56 @@ namespace RenderCore { namespace ColladaConversion
                 //          is used, and how this vertex element is bound to materials. But in this function
                 //          call we only have access to the "Geometry" object, without any context information.
                 //          We don't yet know how it will be bound to materials.
-            destinationFormats[index] = AsNativeFormat(AsPointer(sourceData._params.begin()), sourceData._params.size());
-
-            nativeElement._semanticName         = i->_semanticName;
-            nativeElement._semanticIndex        = i->_index;
-            nativeElement._nativeFormat         = destinationFormats[index]._format;
+            if (stream._sourceData.IsValid()) {
+                nativeElement._nativeFormat = AsFinalVBFormat(AsPointer(stream._sourceData._params.begin()), stream._sourceData._params.size());
+            } else {
+                nativeElement._nativeFormat = stream._rawSourceData._dstFmt;
+            }
             nativeElement._inputSlot            = 0;
-            nativeElement._alignedByteOffset    = (unsigned)accumulatingOffset;
+            nativeElement._alignedByteOffset    = accumulatingOffset;
             nativeElement._inputSlotClass       = Metal::InputClassification::PerVertex;
             nativeElement._instanceDataStepRate = 0;
 
             accumulatingOffset += Metal::BitsPerPixel(nativeElement._nativeFormat)/8;
         }
 
-        _nativeVertexSize = accumulatingOffset;
+        result._vertexStride = accumulatingOffset;
+        return std::move(result);
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    MeshDatabaseAdapter::MeshDatabaseAdapter(
+        const COLLADAFW::Mesh& mesh, 
+        std::vector<unsigned>* vertexMapBegin, std::vector<unsigned>* vertexMapEnd,
+        const VertexAttribute* vertexSemanticsBegin, const VertexAttribute* vertexSemanticsEnd)
+    : _mesh(&mesh)
+    {
+        auto elementCount = vertexSemanticsEnd - vertexSemanticsBegin;
+        assert(elementCount == (vertexMapEnd - vertexMapBegin));
+
+        _streams.resize(elementCount);
 
         auto vertexCount = std::numeric_limits<size_t>::max();
-        for (auto i = vertexMap.cbegin(); i!=vertexMap.cend(); ++i) {
-            if (i!=vertexMap.cbegin()) { assert(i->size() == vertexCount); }    // check for missized arrays. They should all be the same length
-            vertexCount = std::min(vertexCount, i->size());
+        for (auto i=vertexSemanticsBegin; i!=vertexSemanticsEnd; ++i) {
+            auto index = i-vertexSemanticsBegin;
+            auto& stream = _streams[index];
+
+            stream._sourceData = GetVertexData(mesh, *i);
+            stream._vertexMap = std::move(*(vertexMapBegin+index));
+            stream._semanticName = i->_semanticName;
+            stream._semanticIndex = i->_index;
+
+            if (i!=vertexSemanticsBegin) { assert(stream._vertexMap.size() == vertexCount); }    // check for missized arrays. They should all be the same length
+            vertexCount = std::min(vertexCount, stream._vertexMap.size());
         }
 
-        _vertexCount = vertexCount;
+        _unifiedVertexCount = vertexCount;
     }
+
+    MeshDatabaseAdapter::~MeshDatabaseAdapter() {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     NascentRawGeometry Convert(const COLLADAFW::Geometry* geometry)
     {
@@ -876,7 +1334,7 @@ namespace RenderCore { namespace ColladaConversion
             //  
 
         std::vector<VertexAttribute> vertexSemantics;
-        using PendingIndexBuffer = MeshDatabaseAdapter::PendingIndexBuffer;
+        using PendingIndexBuffer = std::vector<unsigned>;
         std::vector<PendingIndexBuffer> vertexMap;
         VertexHashTable vertexHashTable;
 
@@ -1053,10 +1511,9 @@ namespace RenderCore { namespace ColladaConversion
             //
 
         MeshDatabaseAdapter database(
-            *mesh, std::move(vertexMap), AsPointer(vertexSemantics.cbegin()), AsPointer(vertexSemantics.end()));
-
-        auto finalVertexBuffer = database.BuildNativeVertexBuffer();
-        auto unifiedVertexIndexToPositionIndex = database.BuildUnifiedVertexIndexToPositionIndex();
+            *mesh, 
+            AsPointer(vertexMap.begin()), AsPointer(vertexMap.end()), 
+            AsPointer(vertexSemantics.cbegin()), AsPointer(vertexSemantics.end()));
 
             //
             //      Write data into the index buffer. Note we can select 16 bit or 32 bit index buffer
@@ -1081,6 +1538,7 @@ namespace RenderCore { namespace ColladaConversion
 
         size_t finalIndexCount = 0;
         for (auto i=drawOperations.cbegin(); i!=drawOperations.cend(); ++i) {
+            assert(i->_topology == Metal::Topology::TriangleList);  // tangent generation assumes triangle list currently... We need to modify GenerateNormalsAndTangents() to support other types
             finalDrawOperations.push_back(
                 NascentDrawCallDesc(
                     (unsigned)finalIndexCount, (unsigned)i->_indexBuffer.size(), 0, 
@@ -1127,6 +1585,20 @@ namespace RenderCore { namespace ColladaConversion
 
         }
 
+            //  Once we have the index buffer, we can generate tangent vectors (if we need to)
+            //  We need the triangulation in order to build the tangents, so it must be done
+            //  after the index buffer is finalized
+        const bool generateMissingTangentsAndNormals = true;
+        if (generateMissingTangentsAndNormals) {
+            GenerateNormalsAndTangents(
+                database, 0,
+                finalIndexBuffer.get(), finalIndexCount, indexFormat);
+        }
+
+        NativeVBLayout vbLayout;
+        auto nativeVB = database.BuildNativeVertexBuffer(vbLayout);
+        auto unifiedVertexIndexToPositionIndex = database.BuildUnifiedVertexIndexToPositionIndex();
+
             //
             //      We've built everything:
             //          vertex buffer
@@ -1137,13 +1609,14 @@ namespace RenderCore { namespace ColladaConversion
             //      Create the final RawGeometry object with all this stuff
             //
 
+
         return NascentRawGeometry(
-            DynamicArray<uint8>(std::move(finalVertexBuffer), database.FinalNativeBufferSize()), 
+            DynamicArray<uint8>(std::move(nativeVB), vbLayout._vertexStride * database._unifiedVertexCount), 
             DynamicArray<uint8>(std::move(finalIndexBuffer), finalIndexBufferSize),
-            GeometryInputAssembly(std::move(database._nativeElements), (unsigned)database._nativeVertexSize),
+            GeometryInputAssembly(std::move(vbLayout._elements), (unsigned)vbLayout._vertexStride),
             indexFormat,
             std::move(finalDrawOperations),
-            DynamicArray<uint32>(std::move(unifiedVertexIndexToPositionIndex), database._vertexCount),
+            DynamicArray<uint32>(std::move(unifiedVertexIndexToPositionIndex), database._unifiedVertexCount),
             std::move(materialIds));
     }
 

@@ -7,8 +7,10 @@
 #pragma once
 
 #include "../Core/SelectConfiguration.h"
+#include "../Core/Prefix.h"
 #include <tuple>
 #include <cmath>
+#include <assert.h>
 
 #define MATHLIBRARY_CML         2
 #define MATHLIBRARY_ACTIVE      MATHLIBRARY_CML
@@ -58,11 +60,23 @@ namespace XLEMath
     inline float XlCeil(float value)                    { return std::ceil(value); }
     inline float XlExp(float value)                     { return std::exp(value); }
     inline float XlLog(float value)                     { return std::log(value); }
-    inline float XlSqrt(float value)                    { return std::sqrt(value); }
-    inline float XlRSqrt(float value)                   { return 1.f / std::sqrt(value); }  // no standard reciprocal sqrt?
 
-    template <typename Type>
-        inline Type XlAbs(Type value)                   { return std::abs(value); }
+    T1(Primitive) inline Primitive XlSqrt(Primitive value)      { return std::sqrt(value); }
+    T1(Primitive) inline Primitive XlRSqrt(Primitive value)     { return Primitive(1) / std::sqrt(value); }  // no standard reciprocal sqrt?
+
+    T1(Primitive) inline bool XlRSqrt_Checked(Primitive* output, Primitive value)                   
+    {
+        assert(output);
+            // this is used by Normalize_Checked to check for vectors
+            // that are too small to be normalized correctly (and other
+            // situations where floating point accuracy becomes questionable)
+            // The epsilon value is a little arbitrary
+        if (value > Primitive(-1e-15) && value < Primitive(1e-15)) return false;
+        *output = 1.f / std::sqrt(value); 
+        return true;
+    }
+
+    T1(Primitive) inline Primitive XlAbs(Primitive value)     { return std::abs(value); }
 
     inline std::tuple<float, float> XlSinCos(float angle)
     {

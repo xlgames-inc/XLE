@@ -19,17 +19,25 @@ namespace XLEMath
 {
     #if MATHLIBRARY_ACTIVE == MATHLIBRARY_CML
 
-        typedef cml::vector< float, cml::fixed<2> >     Float2;
-        typedef cml::vector< float, cml::fixed<3> >     Float3;
-        typedef cml::vector< float, cml::fixed<4> >     Float4;
+        using Float2 = cml::vector< float, cml::fixed<2> >;
+        using Float3 = cml::vector< float, cml::fixed<3> >;
+        using Float4 = cml::vector< float, cml::fixed<4> >;
 
-        typedef cml::vector< int, cml::fixed<2> >       Int2;
-        typedef cml::vector< int, cml::fixed<3> >       Int3;
-        typedef cml::vector< int, cml::fixed<4> >       Int4;
+        using Double2 = cml::vector< double, cml::fixed<2> >;
+        using Double3 = cml::vector< double, cml::fixed<3> >;
+        using Double4 = cml::vector< double, cml::fixed<4> >;
 
-        typedef cml::vector< unsigned, cml::fixed<2> >  UInt2;
-        typedef cml::vector< unsigned, cml::fixed<3> >  UInt3;
-        typedef cml::vector< unsigned, cml::fixed<4> >  UInt4;
+        using Int2 = cml::vector< int, cml::fixed<2> >;
+        using Int3 = cml::vector< int, cml::fixed<3> >;
+        using Int4 = cml::vector< int, cml::fixed<4> >;
+
+        using UInt2 = cml::vector< unsigned, cml::fixed<2> >;
+        using UInt3 = cml::vector< unsigned, cml::fixed<3> >;
+        using UInt4 = cml::vector< unsigned, cml::fixed<4> >;
+
+        template<typename Type> using Vector2T = cml::vector<Type, cml::fixed<2>>;
+        template<typename Type> using Vector3T = cml::vector<Type, cml::fixed<3>>;
+        template<typename Type> using Vector4T = cml::vector<Type, cml::fixed<4>>;
 
         template <typename Type, size_t N>
             cml::vector<Type, cml::fixed<N+1>>      Expand(const cml::vector<Type, cml::fixed<N>>& input, Type extra);
@@ -77,6 +85,16 @@ namespace XLEMath
             inline auto Normalize(const Vector& vector) -> decltype(cml::normalize(vector))
                 { return cml::normalize(vector); }
 
+        template <typename Vector>
+            inline bool Normalize_Checked(Vector* result, const Vector& vector)
+        { 
+            auto magSquared = MagnitudeSquared(vector);
+            float rsqrtMSq;
+            if (!XlRSqrt_Checked(&rsqrtMSq, magSquared)) return false;
+            *result = vector * rsqrtMSq;
+            return true;
+        }
+
         template <typename LHSType, typename RHSType>
             inline auto Cross(const LHSType& lhs, const RHSType& rhs) -> decltype(cml::cross(lhs, rhs))
                 { return cml::cross(lhs, rhs); }
@@ -106,6 +124,13 @@ namespace XLEMath
 
     #endif
 
+    template<> inline const Float2& Zero<Float2>()
+    {
+        const Float2::value_type zero = Float2::value_type(0);
+        static Float2 result(zero, zero);
+        return result;
+    }
+    
     template<> inline const Float3& Zero<Float3>()
     {
         const Float3::value_type zero = Float3::value_type(0);
@@ -119,6 +144,28 @@ namespace XLEMath
         static Float4 result(zero, zero, zero, zero);
         return result;
     }
+
+    template<> inline const Double2& Zero<Double2>()
+    {
+        const Double2::value_type zero = Double2::value_type(0);
+        static Double2 result(zero, zero);
+        return result;
+    }
+    
+    template<> inline const Double3& Zero<Double3>()
+    {
+        const Double3::value_type zero = Double3::value_type(0);
+        static Double3 result(zero, zero, zero);
+        return result;
+    }
+
+    template<> inline const Double4& Zero<Double4>()
+    {
+        const Double4::value_type zero = Double4::value_type(0);
+        static Double4 result(zero, zero, zero, zero);
+        return result;
+    }
+    
 
 }
 

@@ -78,18 +78,6 @@ namespace RenderCore { namespace Assets
         std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
     };
 
-    static bool HasElement(     const Metal::InputElementDesc* begin,
-                                const Metal::InputElementDesc* end,
-                                const char elementSemantic[])
-    {
-        return std::find_if
-            (
-                begin, end, 
-                [=](const Metal::InputElementDesc& element)
-                    { return !XlCompareStringI(element._semanticName.c_str(), elementSemantic); }
-            ) != end;
-    }
-
     SkinningBindingBox::SkinningBindingBox(const Desc& desc)
     {
         auto& ai = Techniques::FindCachedBox<HashedInputAssemblies>(HashedInputAssemblies::Desc(desc._iaHash));
@@ -114,7 +102,7 @@ namespace RenderCore { namespace Assets
         const char* skinningVertexShaderSourcePN0   = (desc._bindingType==BindingType::cbuffer) ? ("game/xleres/animation/skinning.vsh:PN0:" VS_DefShaderModel) : ("game/xleres/animation/skinning_viatbuffer.vsh:PN0:" VS_DefShaderModel);
         const char* geometryShaderSourcePN          = "game/xleres/animation/skinning.gsh:PN:" GS_DefShaderModel;
 
-        const bool hasNormals = HasElement(AsPointer(skinningOutputLayout.cbegin()), AsPointer(skinningOutputLayout.cend()), "NORMAL");
+        const bool hasNormals = !!HasElement(AsPointer(skinningOutputLayout.cbegin()), AsPointer(skinningOutputLayout.cend()), "NORMAL");
 
             //  outputs from skinning are always float3's currently. So, we can get the vertex stride
             //  just from the outputs count
