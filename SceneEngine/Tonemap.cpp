@@ -833,15 +833,15 @@ namespace SceneEngine
     {
         ToneMapSettings result;
         result._flags = ToneMapSettings::Flags::EnableToneMap | ToneMapSettings::Flags::EnableBloom;
-        result._bloomScale = Float3(1.f, 1.f, 1.f);
-        result._bloomThreshold = 4.5f;
-        result._bloomRampingFactor = .33f;
-        result._bloomDesaturationFactor = .5f;
-        result._sceneKey = .18f;
-        result._luminanceMin = .18f / 3.f;
-        result._luminanceMax = .25f / .25f;
+        result._bloomScale = Float3(19.087036f, 11.582731f, 6.6070509f);
+        result._bloomThreshold = 10.f;
+        result._bloomRampingFactor = .8f;
+        result._bloomDesaturationFactor = .6f;
+        result._sceneKey = .23f;
+        result._luminanceMin = 0.06f;
+        result._luminanceMax = 3.f;
         result._whitepoint = 8.f;
-        result._bloomBlurStdDev = 2.2f;
+        result._bloomBlurStdDev = 1.32f;
         return result;
     }
 

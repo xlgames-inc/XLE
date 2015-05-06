@@ -74,7 +74,7 @@ namespace RenderCore { namespace ColladaConversion
         NascentModel(const ResChar identifier[]);
         ~NascentModel();
 
-        std::pair<Float3, Float3>   CalculateBoundingBox() const;
+        std::pair<Float3, Float3>   CalculateBoundingBox(const Float4x4* transformsBegin, const Float4x4* transformsEnd) const;
         unsigned                    CameraCount() const;
         Techniques::CameraDesc      Camera(unsigned index) const;
 

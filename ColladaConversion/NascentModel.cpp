@@ -1100,7 +1100,7 @@ namespace RenderCore { namespace ColladaConversion
     {
     }
 
-    std::pair<Float3, Float3>       NascentModel::CalculateBoundingBox() const
+    std::pair<Float3, Float3>       NascentModel::CalculateBoundingBox(const Float4x4* transformsBegin, const Float4x4* transformsEnd) const
     {
             //
             //      For all the parts of the model, calculate the bounding box.
@@ -1110,9 +1110,9 @@ namespace RenderCore { namespace ColladaConversion
             //
         using namespace ColladaConversion;
         auto result = InvalidBoundingBox();
-        const auto finalMatrices = 
-            _skeleton.GetTransformationMachine().GenerateOutputTransforms(
-                _animationSet.BuildTransformationParameterSet(0.f, nullptr, _skeleton, _objects));
+        // const auto finalMatrices = 
+        //     _skeleton.GetTransformationMachine().GenerateOutputTransforms(
+        //         _animationSet.BuildTransformationParameterSet(0.f, nullptr, _skeleton, _objects));
 
             //
             //      Do the unskinned geometry first
@@ -1124,7 +1124,10 @@ namespace RenderCore { namespace ColladaConversion
             const NascentRawGeometry*  geo = _objects.GetFromObjectId<NascentRawGeometry>(inst._id);
             if (!geo) continue;
 
-            const Float4x4&     localToWorld = finalMatrices[inst._localToWorldId];
+            Float4x4 localToWorld = Identity<Float4x4>();
+            if ((transformsBegin + inst._localToWorldId) < transformsEnd)
+                localToWorld = *(transformsBegin + inst._localToWorldId);
+
             const void*         vertexBuffer = geo->_vertices.get();
             const unsigned      vertexStride = geo->_mainDrawInputAssembly._vertexStride;
 
@@ -1151,7 +1154,9 @@ namespace RenderCore { namespace ColladaConversion
             const NascentBoundSkinnedGeometry* controller = _objects.GetFromObjectId<NascentBoundSkinnedGeometry>(inst._id);
             if (!controller) continue;
 
-            const Float4x4& localToWorld = finalMatrices[inst._localToWorldId];
+            Float4x4 localToWorld = Identity<Float4x4>();
+            if ((transformsBegin + inst._localToWorldId) < transformsEnd)
+                localToWorld = *(transformsBegin + inst._localToWorldId);
 
                 //  We can't get the vertex position data directly from the vertex buffer, because
                 //  the "bound" object is already using an opaque hardware object. However, we can
@@ -1249,12 +1254,13 @@ namespace RenderCore { namespace ColladaConversion
             serializer.SerializeSubBlock(reordered.get(), &reordered[finalMatrixCount]);
             serializer.SerializeValue(finalMatrixCount);
 
+            auto boundingBox = CalculateBoundingBox(reordered.get(), &reordered[finalMatrixCount]);
+            Serialization::Serialize(serializer, boundingBox.first);
+            Serialization::Serialize(serializer, boundingBox.second);
+            
             immData->~ModelImmutableData();
         }
 
-        auto boundingBox = CalculateBoundingBox();
-        Serialization::Serialize(serializer, boundingBox.first);
-        Serialization::Serialize(serializer, boundingBox.second);
         ConsoleRig::GetWarningStream().Flush();
 
         auto block = serializer.AsMemoryBlock();
