@@ -14,7 +14,9 @@
 float Sq(float x) { return x*x; }
 float RaiseTo5(float x) { float x2 = x*x; return x2*x2*x; }
 
-float DiffuseMethod_Disney(float3 normal, float3 directionToEye, float3 negativeLightDirection, float roughness)
+float DiffuseMethod_Disney(
+    float3 normal, float3 directionToEye, float3 negativeLightDirection,
+    float roughness, float wideningMin, float wideningMax)
 {
 		// This is the Disney diffuse model:
 		//		http://disney-animation.s3.amazonaws.com/library/s2012_pbs_disney_brdf_notes_v2.pdf
@@ -45,9 +47,7 @@ float DiffuseMethod_Disney(float3 normal, float3 directionToEye, float3 negative
         // become more obvious.
         // The two factors here, seem to be arbitrarily picked by Disney. So we should
         // make them flexible, and reduce the overall impact slightly.
-    const float factorA = 0.33f * 0.5f;
-    const float factorB = 0.33f * 2.f;
-	float FD90 = factorA + factorB * cosThetaD * cosThetaD * roughness;
+	float FD90 = lerp(wideningMin, wideningMax, cosThetaD * cosThetaD * roughness);
 
 	float result = (1.f + (FD90 - 1.f) * RaiseTo5(1.f - cosThetaL)) * (1.f + (FD90 - 1.f) * RaiseTo5(1.f - cosThetaV)) / pi;
     return max(result, 0);
@@ -65,12 +65,16 @@ float DiffuseMethod_Lambert(float3 normal, float3 negativeLightDirection)
 struct DiffuseParameters
 {
     float roughness;
+    float diffuseWideningMin;
+    float diffuseWideningMax;
 };
 
-DiffuseParameters DiffuseParameters_Roughness(float roughness)
+DiffuseParameters DiffuseParameters_Roughness(float roughness, float diffuseWideningMin, float diffuseWideningMax)
 {
   DiffuseParameters result;
   result.roughness = roughness;
+  result.diffuseWideningMin = diffuseWideningMin;
+  result.diffuseWideningMax = diffuseWideningMax;
   return result;
 }
 
@@ -84,7 +88,7 @@ float CalculateDiffuse( float3 normal, float3 directionToEye,
     #elif DIFFUSE_METHOD==1
         return DiffuseMethod_Disney(
             normal, directionToEye, negativeLightDirection,
-            parameters.roughness);
+            parameters.roughness, parameters.diffuseWideningMin, parameters.diffuseWideningMax);
     #endif
 }
 

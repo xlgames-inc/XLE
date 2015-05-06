@@ -199,19 +199,41 @@ namespace SceneEngine
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    LightingResolveShaders::LightingResolveShaders(const Desc& desc)
+    unsigned LightingResolveShaders::LightShaderType::ReservedIndexCount()
+    {
+        return 0x1F + 1;
+    }
+
+    unsigned LightingResolveShaders::LightShaderType::AsIndex() const
+    {
+            // We must compress the information in this object down
+            // into a single unique id. We want to make sure each configuration
+            // produces a unique id. But ids must be (close to) contiguous, and we want to
+            // reserve as few id numbers as possible.
+        auto shadows = _shadows;
+        if (_projection == Point && shadows == OrthShadows) { shadows = PerspectiveShadows; }
+        auto shadowResolveModel = _shadowResolveModel;
+        if (shadows == NoShadows) { shadowResolveModel = 0; }
+
+        return 
+              ((_projection & 0x1) << 0)
+            | ((shadows & 0x3) << 1)
+            | ((_diffuseModel & 0x1) << 3)
+            | ((shadowResolveModel & 0x1) << 4)
+            ;
+    }
+
+    void LightingResolveShaders::BuildShader(const Desc& desc, const LightShaderType& type)
     {
         using namespace RenderCore;
 
-        char definesTable[256];
-        Utility::XlFormatString(
-            definesTable, dimof(definesTable), 
-            "GBUFFER_TYPE=%i;MSAA_SAMPLES=%i", 
-            desc._gbufferType, (desc._msaaSampleCount<=1)?0:desc._msaaSampleCount);
-
-        if (desc._msaaSamplers) {
-            XlCatString(definesTable, dimof(definesTable), ";MSAA_SAMPLERS=1");
-        }
+        StringMeld<256, ::Assets::ResChar> definesTable;
+        definesTable << "GBUFFER_TYPE=" << desc._gbufferType;
+        definesTable << ";MSAA_SAMPLES=" << (desc._msaaSampleCount<=1)?0:desc._msaaSampleCount;
+        if (desc._msaaSamplers) definesTable << ";MSAA_SAMPLERS=1";
+        definesTable << ";SHADOW_CASCADE_MODE=" << ((type._shadows == OrthShadows) ? 2u : 1u);
+        definesTable << ";DIFFUSE_METHOD=" << unsigned(type._diffuseModel);
+        definesTable << ";SHADOW_RESOLVE_MODEL=" << unsigned(type._shadowResolveModel);
 
         const char* vertexShader_viewFrustumVector = 
             desc._flipDirection
@@ -219,57 +241,83 @@ namespace SceneEngine
                 : "game/xleres/basic2D.vsh:fullscreen_viewfrustumvector:vs_*"
                 ;
 
-        _shadowedDirectionalLight = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-            vertexShader_viewFrustumVector, 
-            "game/xleres/deferred/resolve.psh:ResolveLight:ps_*",
-            (const ::Assets::ResChar*)(StringMeld<256, ::Assets::ResChar>() << definesTable << ";SHADOW_CASCADE_MODE=1"));
-        _shadowedDirectionalOrthoLight = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-            vertexShader_viewFrustumVector, 
-            "game/xleres/deferred/resolve.psh:ResolveLight:ps_*",
-			(const ::Assets::ResChar*)(StringMeld<256, ::Assets::ResChar>() << definesTable << ";SHADOW_CASCADE_MODE=2"));
-        _shadowedPointLight = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-            vertexShader_viewFrustumVector, 
-            "game/xleres/deferred/resolve.psh:ResolvePointLight:ps_*",
-			(const ::Assets::ResChar*)(StringMeld<256, ::Assets::ResChar>() << definesTable << ";SHADOW_CASCADE_MODE=1"));
+        LightShader& dest = _shaders[type.AsIndex()];
+        assert(!dest._shader);
 
-        _unshadowedDirectionalLight = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-            vertexShader_viewFrustumVector, 
-            "game/xleres/deferred/resolveunshadowed.psh:ResolveLightUnshadowed:ps_*",
-            definesTable);
-        _unshadowedPointLight = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-            vertexShader_viewFrustumVector, 
-            "game/xleres/deferred/resolveunshadowed.psh:ResolvePointLightUnshadowed:ps_*",
-            definesTable);
+        if (type._projection == Point) {
 
-        std::unique_ptr<BoundUniforms> bu[5];
-        bu[0] = std::make_unique<Metal::BoundUniforms>(std::ref(*_shadowedDirectionalLight));
-        bu[1] = std::make_unique<Metal::BoundUniforms>(std::ref(*_shadowedDirectionalOrthoLight));
-        bu[2] = std::make_unique<Metal::BoundUniforms>(std::ref(*_shadowedPointLight));
-        bu[3] = std::make_unique<Metal::BoundUniforms>(std::ref(*_unshadowedDirectionalLight));
-        bu[4] = std::make_unique<Metal::BoundUniforms>(std::ref(*_unshadowedPointLight));
+            if (type._shadows == NoShadows) {
+                dest._shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+                    vertexShader_viewFrustumVector, 
+                    "game/xleres/deferred/resolveunshadowed.psh:ResolvePointLightUnshadowed:ps_*",
+                    definesTable.get());
+            } else {
+                dest._shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+                    vertexShader_viewFrustumVector, 
+                    "game/xleres/deferred/resolve.psh:ResolvePointLight:ps_*",
+			        definesTable.get());
+            }
 
-        for (unsigned c=0; c<dimof(bu); ++c) {
-            Techniques::TechniqueContext::BindGlobalUniforms(*bu[c]);
-            bu[c]->BindConstantBuffer(Hash64("ArbitraryShadowProjection"),  0, 1);
-            bu[c]->BindConstantBuffer(Hash64("LightBuffer"),                1, 1);
-            bu[c]->BindConstantBuffer(Hash64("ShadowParameters"),           2, 1);
-            bu[c]->BindConstantBuffer(Hash64("ScreenToShadowProjection"),   3, 1);
-            bu[c]->BindConstantBuffer(Hash64("OrthogonalShadowProjection"), 4, 1);
-            bu[c]->BindConstantBuffer(Hash64("ShadowResolveParameters"),    5, 1);
+        } else if (type._projection == Directional) {
+
+            if (type._shadows == NoShadows) {
+                dest._shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+                    vertexShader_viewFrustumVector, 
+                    "game/xleres/deferred/resolveunshadowed.psh:ResolveLightUnshadowed:ps_*",
+                    definesTable.get());
+            } else {
+                dest._shader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+                    vertexShader_viewFrustumVector, 
+                    "game/xleres/deferred/resolve.psh:ResolveLight:ps_*",
+                    definesTable.get());
+            }
+
         }
 
-        _validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterAssetDependency(_validationCallback, &_shadowedDirectionalLight->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(_validationCallback, &_shadowedDirectionalOrthoLight->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(_validationCallback, &_shadowedPointLight->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(_validationCallback, &_unshadowedDirectionalLight->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(_validationCallback, &_unshadowedPointLight->GetDependencyValidation());
+        dest._uniforms = Metal::BoundUniforms(std::ref(*dest._shader));
 
-        _shadowedDirectionalLightUniforms = std::move(bu[0]);
-        _shadowedDirectionalOrthoLightUniforms = std::move(bu[1]);
-        _shadowedPointLightUniforms = std::move(bu[2]);
-        _unshadowedDirectionalLightUniforms = std::move(bu[3]);
-        _unshadowedPointLightUniforms = std::move(bu[4]);
+        Techniques::TechniqueContext::BindGlobalUniforms(dest._uniforms);
+        dest._uniforms.BindConstantBuffer(Hash64("ArbitraryShadowProjection"),  0, 1);
+        dest._uniforms.BindConstantBuffer(Hash64("LightBuffer"),                1, 1);
+        dest._uniforms.BindConstantBuffer(Hash64("ShadowParameters"),           2, 1);
+        dest._uniforms.BindConstantBuffer(Hash64("ScreenToShadowProjection"),   3, 1);
+        dest._uniforms.BindConstantBuffer(Hash64("OrthogonalShadowProjection"), 4, 1);
+        dest._uniforms.BindConstantBuffer(Hash64("ShadowResolveParameters"),    5, 1);
+
+        ::Assets::RegisterAssetDependency(_validationCallback, &dest._shader->GetDependencyValidation());
+    }
+
+    auto LightingResolveShaders::GetShader(const LightShaderType& type) -> const LightShader*
+    {
+        auto index = type.AsIndex();
+        if (index < _shaders.size()) return &_shaders[index];
+        return nullptr; 
+    }
+
+    LightingResolveShaders::LightingResolveShaders(const Desc& desc)
+    {
+        using namespace RenderCore;
+        _validationCallback = std::make_shared<::Assets::DependencyValidation>();
+        _shaders.resize(LightShaderType::ReservedIndexCount());
+
+            // find every sensible configuration, and build a new shader
+            // and bound uniforms
+        BuildShader(desc, LightShaderType(Directional, NoShadows, 0, 0));
+        BuildShader(desc, LightShaderType(Directional, NoShadows, 1, 0));
+        BuildShader(desc, LightShaderType(Directional, PerspectiveShadows, 0, 0));
+        BuildShader(desc, LightShaderType(Directional, PerspectiveShadows, 1, 0));
+        BuildShader(desc, LightShaderType(Directional, PerspectiveShadows, 0, 1));
+        BuildShader(desc, LightShaderType(Directional, PerspectiveShadows, 1, 1));
+        BuildShader(desc, LightShaderType(Directional, OrthShadows, 0, 0));
+        BuildShader(desc, LightShaderType(Directional, OrthShadows, 1, 0));
+        BuildShader(desc, LightShaderType(Directional, OrthShadows, 0, 1));
+        BuildShader(desc, LightShaderType(Directional, OrthShadows, 1, 1));
+        BuildShader(desc, LightShaderType(Point, NoShadows, 0, 0));
+        BuildShader(desc, LightShaderType(Point, NoShadows, 1, 0));
+        BuildShader(desc, LightShaderType(Point, PerspectiveShadows, 0, 0));
+        BuildShader(desc, LightShaderType(Point, PerspectiveShadows, 1, 0));
+        BuildShader(desc, LightShaderType(Point, PerspectiveShadows, 0, 1));
+        BuildShader(desc, LightShaderType(Point, PerspectiveShadows, 1, 1));
     }
 
     LightingResolveShaders::~LightingResolveShaders() {}

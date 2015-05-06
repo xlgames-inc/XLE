@@ -179,7 +179,7 @@ namespace RenderCore { namespace Metal_DX11
         std::vector<std::pair<ShaderStage::Enum,unsigned>>  GetConstantBufferBinding(const char name[]);
 
         void Apply( DeviceContext& context, 
-                    const UniformsStream& stream0, const UniformsStream& stream1);
+                    const UniformsStream& stream0, const UniformsStream& stream1) const;
     private:
 
         class StageBinding
@@ -189,9 +189,9 @@ namespace RenderCore { namespace Metal_DX11
             class Binding
             {
             public:
-                unsigned            _shaderSlot;
-                unsigned            _inputInterfaceSlot;
-                ConstantBuffer      _savedCB;
+                unsigned _shaderSlot;
+                unsigned _inputInterfaceSlot;
+                mutable ConstantBuffer _savedCB;
             };
             std::vector<Binding>    _shaderConstantBindings;
             std::vector<Binding>    _shaderResourceBindings;

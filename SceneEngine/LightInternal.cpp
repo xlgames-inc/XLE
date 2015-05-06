@@ -145,7 +145,7 @@ namespace SceneEngine
     }
 
     GlobalLightingDesc::GlobalLightingDesc() 
-    : _ambientLight(0.f, 0.f, 0.f), _skyReflectionScale(1.0f)
+    : _ambientLight(0.f, 0.f, 0.f), _skyReflectionScale(1.0f), _skyReflectionBlurriness(2.f), _skyBrightness(1.f)
     , _doAtmosphereBlur(false), _doOcean(false), _doVegetationSpawn(false) 
     {
         _skyTexture[0] = '\0';
@@ -162,13 +162,17 @@ namespace SceneEngine
     GlobalLightingDesc::GlobalLightingDesc(const ParameterBox& props)
     : GlobalLightingDesc()
     {
-        static const auto ambientHash = ParameterBox::MakeParameterNameHash("ambientlight");
-        static const auto ambientBrightnessHash = ParameterBox::MakeParameterNameHash("ambientbrightness");
-        static const auto skyTextureHash = ParameterBox::MakeParameterNameHash("skytexture");
-        static const auto skyReflectionScaleHash = ParameterBox::MakeParameterNameHash("skyreflectionscale");
+        static const auto ambientHash = ParameterBox::MakeParameterNameHash("AmbientLight");
+        static const auto ambientBrightnessHash = ParameterBox::MakeParameterNameHash("AmbientBrightness");
+        static const auto skyTextureHash = ParameterBox::MakeParameterNameHash("SkyTexture");
+        static const auto skyReflectionScaleHash = ParameterBox::MakeParameterNameHash("SkyReflectionScale");
+        static const auto skyReflectionBlurriness = ParameterBox::MakeParameterNameHash("SkyReflectionBlurriness");
+        static const auto skyBrightness = ParameterBox::MakeParameterNameHash("SkyBrightness");
 
         _ambientLight = props.GetParameter(ambientBrightnessHash, 1.f) * AsFloat3Color(props.GetParameter(ambientHash, ~0x0u));
-        _skyReflectionScale = props.GetParameter(skyReflectionScaleHash, 1.f);
+        _skyReflectionScale = props.GetParameter(skyReflectionScaleHash, _skyReflectionScale);
+        _skyReflectionBlurriness = props.GetParameter(skyReflectionBlurriness, _skyReflectionBlurriness);
+        _skyBrightness = props.GetParameter(skyBrightness, _skyBrightness);
         props.GetString(skyTextureHash, _skyTexture, dimof(_skyTexture));
     }
 
@@ -194,25 +198,40 @@ namespace SceneEngine
         _diffuseColor = Float3(1.f, 1.f, 1.f);
         _specularColor = Float3(1.f, 1.f, 1.f);
         _nonMetalSpecularBrightness = 1.f;
+
+        _diffuseWideningMin = 0.33f * 0.5f;
+        _diffuseWideningMax = 0.33f * 2.5f;
+        _diffuseModel = 1;
+
+        _shadowResolveModel = 0;
     }
 
     LightDesc::LightDesc(const Utility::ParameterBox& props)
     {
-        static const auto diffuseHash = ParameterBox::MakeParameterNameHash("diffuse");
-        static const auto diffuseBrightnessHash = ParameterBox::MakeParameterNameHash("diffusebrightness");
-        static const auto specularHash = ParameterBox::MakeParameterNameHash("specular");
-        static const auto specularBrightnessHash = ParameterBox::MakeParameterNameHash("specularbrightness");
-        static const auto specularNonMetalBrightnessHash = ParameterBox::MakeParameterNameHash("specularnonmetalbrightness");
+        static const auto diffuseHash = ParameterBox::MakeParameterNameHash("Diffuse");
+        static const auto diffuseBrightnessHash = ParameterBox::MakeParameterNameHash("DiffuseBrightness");
+        static const auto diffuseModel = ParameterBox::MakeParameterNameHash("DiffuseModel");
+        static const auto diffuseWideningMin = ParameterBox::MakeParameterNameHash("DiffuseWideningMin");
+        static const auto diffuseWideningMax = ParameterBox::MakeParameterNameHash("DiffuseWideningMax");
+        static const auto specularHash = ParameterBox::MakeParameterNameHash("Specular");
+        static const auto specularBrightnessHash = ParameterBox::MakeParameterNameHash("SpecularBrightness");
+        static const auto specularNonMetalBrightnessHash = ParameterBox::MakeParameterNameHash("SpecularNonMetalBrightness");
+        static const auto shadowResolveModel = ParameterBox::MakeParameterNameHash("ShadowResolveModel");
 
         _type = LightDesc::Directional;
         _diffuseColor = props.GetParameter(diffuseBrightnessHash, 1.f) * AsFloat3Color(props.GetParameter(diffuseHash, ~0x0u));
         _specularColor = props.GetParameter(specularBrightnessHash, 1.f) * AsFloat3Color(props.GetParameter(specularHash, ~0x0u));
         _nonMetalSpecularBrightness = props.GetParameter(specularNonMetalBrightnessHash, 1.f);
+
+        _diffuseWideningMin = props.GetParameter(diffuseWideningMin, 0.33f * 0.5f);
+        _diffuseWideningMax = props.GetParameter(diffuseWideningMax, 0.33f * 2.5f);
+        _diffuseModel = props.GetParameter(diffuseModel, 1);
                 
+        _shadowResolveModel = props.GetParameter(shadowResolveModel, 0);
+
         _radius = 10000.f;
         _shadowFrustumIndex = ~unsigned(0x0);
     }
-
 
     RenderCore::SharedPkt BuildScreenToShadowConstants(
         unsigned frustumCount,

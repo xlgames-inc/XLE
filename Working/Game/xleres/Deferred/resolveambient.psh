@@ -16,6 +16,7 @@ cbuffer AmbientLightBuffer
 {
 	float3	AmbientColour;
 	float 	SkyReflectionScale;
+	float	SkyReflectionBlurriness;
 }
 
 #if defined(TILED_LIGHTS_RESOLVE_MS)
@@ -38,7 +39,7 @@ float3 ReadSkyTexture(float3 reflectionVector, float roughness)
 	uint2 reflectionTextureDims;
 	SkyReflectionTexture[0].GetDimensions(reflectionTextureDims.x, reflectionTextureDims.y);
 
-	float mipMap = 4.f + saturate(roughness) * 10.f;
+	float mipMap = SkyReflectionBlurriness + saturate(roughness) * 5.f;
 
 	// #define DEBUG_REFLECTION_MIPMAPS 1
 	#if DEBUG_REFLECTION_MIPMAPS==1

@@ -178,6 +178,7 @@ namespace SceneEngine
             postFogUniforms = RenderCore::Metal::BoundUniforms(*_postFogShader);
         }
         Techniques::TechniqueContext::BindGlobalUniforms(uniforms);
+        uniforms.BindConstantBuffer(Hash64("SkySettings"), 0, 1);
         Techniques::TechniqueContext::BindGlobalUniforms(postFogUniforms);
         postFogUniforms.BindConstantBuffer(Hash64("SkySettings"), 0, 1);
 
@@ -192,21 +193,24 @@ namespace SceneEngine
         _validationCallback = std::move(validationCallback);
     }
 
-    void    Sky_Render( RenderCore::Metal::DeviceContext* context, 
-                        LightingParserContext& parserContext,
-                        bool blendFog)
+    void    Sky_Render(RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, bool blendFog)
     {
         TRY 
         {
             using namespace RenderCore;
-            auto skyTextureName = parserContext.GetSceneParser()->GetGlobalLightingDesc()._skyTexture;
+            auto globalLightingDesc = parserContext.GetSceneParser()->GetGlobalLightingDesc();
+            auto skyTextureName = globalLightingDesc._skyTexture;
             if (!skyTextureName[0]) return;
 
             SkyTextureParts textureParts(skyTextureName);
+            auto& res = Techniques::FindCachedBoxDep2<SkyShaderRes>(textureParts._projectionType, blendFog, CurrentSkyGeometryType);
 
-            auto& res = Techniques::FindCachedBoxDep<SkyShaderRes>(SkyShaderRes::Desc(textureParts._projectionType, blendFog, CurrentSkyGeometryType));
+            struct SkyRenderSettings { float _brightness; unsigned _dummy[3]; } settings = { globalLightingDesc._skyBrightness };
+            RenderCore::SharedPkt pkts[] = { MakeSharedPkt(settings) };
 
-            res._uniforms.Apply(*context, parserContext.GetGlobalUniformsStream(), Metal::UniformsStream());
+            res._uniforms.Apply(
+                *context, parserContext.GetGlobalUniformsStream(), 
+                Metal::UniformsStream(pkts, nullptr, dimof(pkts)));
             context->Bind(*res._shader);
             context->Bind(Techniques::CommonResources()._blendOpaque);
 

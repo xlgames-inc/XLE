@@ -135,6 +135,10 @@ namespace SceneEngine
         Float3      _diffuseColor;
         Float3      _specularColor;
         float       _nonMetalSpecularBrightness;
+        float       _diffuseWideningMin;
+        float       _diffuseWideningMax;
+        unsigned    _diffuseModel;
+        unsigned    _shadowResolveModel;
 
         LightDesc();
         LightDesc(const Utility::ParameterBox& paramBox);
@@ -143,13 +147,16 @@ namespace SceneEngine
     class GlobalLightingDesc
     {
     public:
-        Float3              _ambientLight;
-        ::Assets::ResChar   _skyTexture[MaxPath];            ///< use "<texturename>_XX" when using a half cube style sky texture
-        float               _skyReflectionScale;
+        ::Assets::ResChar   _skyTexture[MaxPath];   ///< use "<texturename>_XX" when using a half cube style sky texture
 
-        bool _doAtmosphereBlur;
-        bool _doOcean;
-        bool _doVegetationSpawn;
+        Float3  _ambientLight;
+        float   _skyBrightness;
+        float   _skyReflectionScale;
+        float   _skyReflectionBlurriness;
+
+        bool    _doAtmosphereBlur;
+        bool    _doOcean;
+        bool    _doVegetationSpawn;
 
         GlobalLightingDesc();
         GlobalLightingDesc(const Utility::ParameterBox& paramBox);

@@ -76,11 +76,12 @@ float3 CalculateBaseSkyColor(float2 texCoord, float3 viewFrustumVector)
 	#endif
 }
 
+cbuffer SkySettings { float SkyBrightness; }
 
 float4 CalculateColour0(	float2 texCoord,
 							float3 viewFrustumVector, float3 worldSpacePosition)
 {
-	float3 color = CalculateBaseSkyColor(texCoord, viewFrustumVector);
+	float3 color = SkyBrightness * CalculateBaseSkyColor(texCoord, viewFrustumVector);
 
 	#if (BLEND_FOG==1)
 		float4 fog = CalculateDistantFog(worldSpacePosition, NegativeDominantLightDirection);

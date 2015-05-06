@@ -142,28 +142,51 @@ namespace SceneEngine
             }
         };
 
-        typedef RenderCore::Metal::ShaderProgram ShaderProgram;
-        typedef RenderCore::Metal::BoundUniforms BoundUniforms;
+        using ShaderProgram = RenderCore::Metal::ShaderProgram;
+        using BoundUniforms = RenderCore::Metal::BoundUniforms;
 
-        const ShaderProgram*  _shadowedDirectionalLight;
-        const ShaderProgram*  _shadowedDirectionalOrthoLight;
-        const ShaderProgram*  _shadowedPointLight;
-        const ShaderProgram*  _unshadowedPointLight;
-        const ShaderProgram*  _unshadowedDirectionalLight;
+        enum Projection : uint8 { Directional, Point };
+        enum Shadowing : uint8 { NoShadows, PerspectiveShadows, OrthShadows };
+            
+        class LightShaderType
+        {
+        public:
+            Projection  _projection;
+            Shadowing   _shadows;
+            uint8       _diffuseModel;
+            uint8       _shadowResolveModel;
 
-        std::unique_ptr<BoundUniforms>  _shadowedDirectionalLightUniforms;
-        std::unique_ptr<BoundUniforms>  _shadowedDirectionalOrthoLightUniforms;
-        std::unique_ptr<BoundUniforms>  _shadowedPointLightUniforms;
-        std::unique_ptr<BoundUniforms>  _unshadowedPointLightUniforms;
-        std::unique_ptr<BoundUniforms>  _unshadowedDirectionalLightUniforms;
+            unsigned AsIndex() const;
+            static unsigned ReservedIndexCount();
+
+            LightShaderType(
+                Projection projection, Shadowing shadows, 
+                uint8 diffuseModel, uint8 shadowResolveModel)
+                : _projection(projection), _shadows(shadows), _diffuseModel(diffuseModel), _shadowResolveModel(shadowResolveModel) {}
+            LightShaderType()
+                : _projection(Directional), _shadows(NoShadows), _diffuseModel(0), _shadowResolveModel(0) {}
+        };
+
+        class LightShader
+        {
+        public:
+            const ShaderProgram*    _shader;
+            BoundUniforms           _uniforms;
+
+            LightShader() : _shader(nullptr) {}
+        };
+
+        const LightShader* GetShader(const LightShaderType& type);
 
         const Assets::DependencyValidation& GetDependencyValidation() const   { return *_validationCallback; }
 
         LightingResolveShaders(const Desc& desc);
         ~LightingResolveShaders();
-
     private:
         std::shared_ptr<Assets::DependencyValidation>  _validationCallback;
+        std::vector<LightShader> _shaders;
+
+        void BuildShader(const Desc& desc, const LightShaderType& type);
     };
 
 

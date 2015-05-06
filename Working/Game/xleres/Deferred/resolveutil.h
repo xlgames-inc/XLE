@@ -54,6 +54,8 @@ cbuffer LightBuffer
 	float		LightRadius;
 	LightColors LightColor;
 	float		LightPower;
+	float		DiffuseWideningMin;
+	float		DiffuseWideningMax;
 }
 
 float3 LightResolve_Diffuse(
@@ -62,9 +64,9 @@ float3 LightResolve_Diffuse(
 	float3 negativeLightDirection,
 	LightColors lightColor)
 {
-	float rawDiffuse = CalculateDiffuse(sample.worldSpaceNormal,
-		directionToEye, negativeLightDirection,
-		DiffuseParameters_Roughness(Material_GetRoughness(sample)));
+	float rawDiffuse = CalculateDiffuse(
+		sample.worldSpaceNormal, directionToEye, negativeLightDirection,
+		DiffuseParameters_Roughness(Material_GetRoughness(sample), DiffuseWideningMin, DiffuseWideningMax));
 
   float metal = Material_GetMetal(sample);
 	float light = MO_DiffuseScale * rawDiffuse * (1.0f - metal);

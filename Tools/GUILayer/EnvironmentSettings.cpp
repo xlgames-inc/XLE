@@ -43,7 +43,7 @@ namespace GUILayer
                 const auto& props = child->_properties;
 
                 LightDesc light(props);
-                static const auto flagsHash = ParameterBox::MakeParameterNameHash("flags");
+                static const auto flagsHash = ParameterBox::MakeParameterNameHash("Flags");
                 static const auto transformHash = ParameterBox::MakeParameterNameHash("Transform");
                 static const auto shadowFrustumSettingsHash = ParameterBox::MakeParameterNameHash("ShadowFrustumSettings");
                 

@@ -510,7 +510,7 @@ namespace RenderCore { namespace Metal_DX11
 
     void BoundUniforms::Apply(  DeviceContext& context, 
                                 const UniformsStream& stream0, 
-                                const UniformsStream& stream1)
+                                const UniformsStream& stream1) const
     {
         typedef void (__stdcall ID3D::DeviceContext::*SetConstantBuffers)(UINT, UINT, ID3D::Buffer *const *);
         typedef void (__stdcall ID3D::DeviceContext::*SetShaderResources)(UINT, UINT, ID3D11ShaderResourceView *const *);
@@ -538,7 +538,7 @@ namespace RenderCore { namespace Metal_DX11
         const UniformsStream* streams[] = { &stream0, &stream1 };
 
         for (unsigned s=0; s<dimof(_stageBindings); ++s) {
-            StageBinding& stage = _stageBindings[s];
+            const StageBinding& stage = _stageBindings[s];
 
             {
                 unsigned lowestShaderSlot = ~unsigned(0x0), highestShaderSlot = 0;

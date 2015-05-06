@@ -211,8 +211,8 @@ namespace SceneEngine
             float clearColour[] = { 0.f, 0.f, 0.f, 1.f };
             context->Clear(lightingResTargets._lightingResolveRTV, clearColour);
             const auto& desc = parserContext.GetSceneParser()->GetGlobalLightingDesc();
-            struct AmbientLightBuffer { Float3 AmbientColour; float skyReflectionScale; } ambientLightBuffer = { 
-                desc._ambientLight, desc._skyReflectionScale
+            struct AmbientLightBuffer { Float3 AmbientColour; float skyReflectionScale; float skyReflectionBlurriness; unsigned dummy[3]; } ambientLightBuffer = { 
+                desc._ambientLight, desc._skyReflectionScale, desc._skyReflectionBlurriness
             };
             auto ambientLightPacket = MakeSharedPkt(ambientLightBuffer);
                        
@@ -336,11 +336,10 @@ namespace SceneEngine
             ////////////////////////////////////////////////////////////////////////
 
         auto& lightingResolveShaders = 
-            Techniques::FindCachedBoxDep<LightingResolveShaders>(
-                LightingResolveShaders::Desc(
-                    GBufferType(mainTargets),
-                    (resolveContext.GetCurrentPass()==LightingResolveContext::Pass::PerSample)?samplingCount:1, useMsaaSamplers, 
-                    resolveContext.GetCurrentPass()==LightingResolveContext::Pass::PerPixel));
+            Techniques::FindCachedBoxDep2<LightingResolveShaders>(
+                GBufferType(mainTargets),
+                (resolveContext.GetCurrentPass()==LightingResolveContext::Pass::PerSample)?samplingCount:1, useMsaaSamplers, 
+                resolveContext.GetCurrentPass()==LightingResolveContext::Pass::PerPixel);
 
         const bool allowOrthoShadowResolve = Tweakable("AllowOrthoShadowResolve", true);
 
@@ -351,7 +350,8 @@ namespace SceneEngine
             constantBufferPackets[1] = BuildLightConstants(i);
 
             TRY {
-                RenderCore::Metal::BoundUniforms* boundUniforms = nullptr;
+                LightingResolveShaders::LightShaderType shaderType;
+                shaderType._projection = (i._type == LightDesc::Directional) ? LightingResolveShaders::Directional : LightingResolveShaders::Point;
 
                     //  We only support a limited set of different light types so far.
                     //  Perhaps this will be extended to support more lights with custom
@@ -380,34 +380,22 @@ namespace SceneEngine
                     
                     constantBufferPackets[3] = BuildScreenToShadowConstants(parserContext, i._shadowFrustumIndex);
 
-                    if (i._type == LightDesc::Directional) {
-                        if (preparedShadows._mode == ShadowProjectionDesc::Projections::Mode::Ortho && allowOrthoShadowResolve) {
-                            boundUniforms = lightingResolveShaders._shadowedDirectionalOrthoLightUniforms.get();
-                            context->Bind(*lightingResolveShaders._shadowedDirectionalOrthoLight);
-                        } else {
-                            boundUniforms = lightingResolveShaders._shadowedDirectionalLightUniforms.get();
-                            context->Bind(*lightingResolveShaders._shadowedDirectionalLight);
-                        }
-                    } else {
-                        assert(i._type == LightDesc::Point);
-                        boundUniforms = lightingResolveShaders._shadowedPointLightUniforms.get();
-                        context->Bind(*lightingResolveShaders._shadowedPointLight);
-                    }
+                    if (preparedShadows._mode == ShadowProjectionDesc::Projections::Mode::Ortho && allowOrthoShadowResolve) {
+                        shaderType._shadows = LightingResolveShaders::OrthShadows;
+                    } else 
+                        shaderType._shadows = LightingResolveShaders::PerspectiveShadows;
 
-                } else {
+                } else
+                    shaderType._shadows = LightingResolveShaders::NoShadows;
 
-                    if (i._type == LightDesc::Directional) {
-                        boundUniforms = lightingResolveShaders._unshadowedDirectionalLightUniforms.get();
-                        context->Bind(*lightingResolveShaders._unshadowedDirectionalLight);
-                    } else {
-                        assert(i._type == LightDesc::Point);
-                        boundUniforms = lightingResolveShaders._unshadowedPointLightUniforms.get();
-                        context->Bind(*lightingResolveShaders._unshadowedPointLight);
-                    }
+                shaderType._diffuseModel = (uint8)i._diffuseModel;
+                shaderType._shadowResolveModel = (uint8)i._shadowResolveModel;
 
-                }
+                const auto* shader = lightingResolveShaders.GetShader(shaderType);
+                assert(shader && shader->_shader);
 
-                boundUniforms->Apply(*context, parserContext.GetGlobalUniformsStream(), UniformsStream(constantBufferPackets, prebuiltConstantBuffers));
+                shader->_uniforms.Apply(*context, parserContext.GetGlobalUniformsStream(), UniformsStream(constantBufferPackets, prebuiltConstantBuffers));
+                context->Bind(*shader->_shader);
                 context->Draw(4);
             } 
             CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
@@ -497,14 +485,17 @@ namespace SceneEngine
             Float3 NegativeLightDirection; float LightRadius;
             Float3 diffuse; float dummy;
             Float3 specular; float nonMetalSpecularBrightness;
-            float LightPower; float dummy1[3];
+            float LightPower; 
+            float DiffuseWideningMin, DiffuseWideningMax;
+            float dummy1[1];
         } lightBuffer = {
             light._negativeLightDirection, 
             light._radius, 
             light._diffuseColor, 0.f,
             light._specularColor,
             light._nonMetalSpecularBrightness,
-            PowerForHalfRadius(light._radius, 0.05f)
+            PowerForHalfRadius(light._radius, 0.05f),
+            light._diffuseWideningMin, light._diffuseWideningMax
         };
         return MakeSharedPkt(lightBuffer);
     }

@@ -13,6 +13,10 @@
 #include "../Utility/Misc.h"
 #include "../Lighting/SampleFiltering.h"
 
+#if !defined(SHADOW_RESOLVE_MODEL)
+	#define SHADOW_RESOLVE_MODEL 0
+#endif
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 Texture2D		NoiseTexture	: register(t10);
@@ -161,7 +165,7 @@ float CalculateFilteredShadows(
 	float casterDistance, int2 randomizerValue,
 	float2 projectionScale, uint msaaSampleIndex)
 {
-	const bool usePoissonDiskMethod = true;
+	const bool usePoissonDiskMethod = SHADOW_RESOLVE_MODEL == 0;
 
 		//	In "ShadowsPerspectiveProjection", casterDistance is the difference between 2 NDC depths
 		//	Otherwise, casterDistance is world space distance between the sample and caster.

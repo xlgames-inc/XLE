@@ -730,7 +730,7 @@ GBufferEncoded ps_main(SW_GStoPS geo)
 	output.diffuseAlbedo = p.diffuseAlbedo;
 	output.worldSpaceNormal = p.worldSpaceNormal;
 	output.material.specular = p.specularity;
-	output.material.roughness = 0.75f;
+	output.material.roughness = 0.85f;
 	output.material.metal = 0.f;
 	output.cookedAmbientOcclusion = p.cookedAmbientOcclusion;
 	return Encode(output);
