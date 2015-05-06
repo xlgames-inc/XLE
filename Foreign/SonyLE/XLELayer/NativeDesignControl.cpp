@@ -145,8 +145,15 @@ namespace XLELayer
         try
         {
             OnRender(_designView, _viewControl->Camera);
-            if (_designView->Manipulator != nullptr)
+            if (_designView->Manipulator != nullptr) {
+
+                    // disable depth write and depth read
+                auto context = gcnew GUILayer::SimpleRenderingContext(nullptr, ManipulatorOverlay::s_currentParsingContext);
+                context->InitState(false, false);
+                delete context;
+
                 _designView->Manipulator->Render(_viewControl);
+            }
         }
         catch (...)
         {

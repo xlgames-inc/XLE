@@ -14,7 +14,7 @@
 float Sq(float x) { return x*x; }
 float RaiseTo5(float x) { float x2 = x*x; return x2*x2*x; }
 
-float DiffuseMethod_Disney(float3 normal, float3 viewDirection, float3 negativeLightDirection, float roughness)
+float DiffuseMethod_Disney(float3 normal, float3 directionToEye, float3 negativeLightDirection, float roughness)
 {
 		// This is the Disney diffuse model:
 		//		http://disney-animation.s3.amazonaws.com/library/s2012_pbs_disney_brdf_notes_v2.pdf
@@ -29,13 +29,28 @@ float DiffuseMethod_Disney(float3 normal, float3 viewDirection, float3 negativeL
     // roughness values should result in a more flattened look (like the Oren-Nayar roughness).
 
 	float cosThetaL = dot(normal, negativeLightDirection);
-	float cosThetaV = dot(normal, viewDirection);
-	float3 halfVector = lerp(negativeLightDirection, viewDirection, .5f);
-  // float3 halfVector = normalize(negativeLightDirection + viewDirection);
-	float cosThetaD = dot(halfVector, negativeLightDirection);
-	float FD90 = .5f + 2.f * cosThetaD * cosThetaD * roughness;
+	float cosThetaV = dot(normal, directionToEye);
 
-	return max(0.f, (1.f + (FD90 - 1.f) * RaiseTo5(1.f - cosThetaL)) * (1.f + (FD90 - 1.f) * RaiseTo5(1.f - cosThetaV)) / pi);
+	float3 halfVector = lerp(negativeLightDirection, directionToEye, .5f);
+	float cosThetaD = max(dot(halfVector, negativeLightDirection), 0);     // (disney calls this the "difference angle")
+
+        // the following factor controls how broad the diffusing effect is
+        // at grazing angles. The problem is, with high levels of "roughness"
+        // this will end up producing an extra highlight in the opposite direction
+        // of the light (eg, in the shadowed area).
+        // Disney artists liked it, so they used it. But it seems to cause problems
+        // for us, because it also affects the edge of the shadowed area. With basic
+        // lambert shading, this edge becomes blurred by the lambert shading falling
+        // off. But if that edge is too bright, flaws in the shadowing algorithm can
+        // become more obvious.
+        // The two factors here, seem to be arbitrarily picked by Disney. So we should
+        // make them flexible, and reduce the overall impact slightly.
+    const float factorA = 0.33f * 0.5f;
+    const float factorB = 0.33f * 2.f;
+	float FD90 = factorA + factorB * cosThetaD * cosThetaD * roughness;
+
+	float result = (1.f + (FD90 - 1.f) * RaiseTo5(1.f - cosThetaL)) * (1.f + (FD90 - 1.f) * RaiseTo5(1.f - cosThetaV)) / pi;
+    return max(result, 0);
 }
 
 float DiffuseMethod_Lambert(float3 normal, float3 negativeLightDirection)
@@ -59,7 +74,7 @@ DiffuseParameters DiffuseParameters_Roughness(float roughness)
   return result;
 }
 
-float CalculateDiffuse( float3 normal, float3 viewDirection,
+float CalculateDiffuse( float3 normal, float3 directionToEye,
                         float3 negativeLightDirection,
                         DiffuseParameters parameters)
 {
@@ -68,7 +83,7 @@ float CalculateDiffuse( float3 normal, float3 viewDirection,
             normal, negativeLightDirection);
     #elif DIFFUSE_METHOD==1
         return DiffuseMethod_Disney(
-            normal, viewDirection, negativeLightDirection,
+            normal, directionToEye, negativeLightDirection,
             parameters.roughness);
     #endif
 }

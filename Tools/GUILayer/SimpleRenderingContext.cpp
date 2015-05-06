@@ -212,10 +212,12 @@ namespace GUILayer
             }
         }
 
-        void InitState()
+        void InitState(bool depthTest, bool depthWrite)
         {
-                // note -- defaulting to disabling depth buffer (for rendering manipulator controls for level editor)
-            _devContext->Bind(RenderCore::Techniques::CommonResources()._dssDisable);
+            if (depthWrite) _devContext->Bind(RenderCore::Techniques::CommonResources()._dssReadWrite);
+            else if (depthTest) _devContext->Bind(RenderCore::Techniques::CommonResources()._dssReadOnly);
+            else _devContext->Bind(RenderCore::Techniques::CommonResources()._dssDisable);
+                
             _devContext->Bind(RenderCore::Techniques::CommonResources()._blendStraightAlpha);
             _devContext->Bind(RenderCore::Techniques::CommonResources()._defaultRasterizer);
         }

@@ -386,7 +386,9 @@ namespace RenderingInterop
         {
             using (var context = XLELayer.NativeDesignControl.CreateSimpleRenderingContext(s_savedRenderResources))
             {
-                context.InitState();
+                context.InitState(
+                    (renderFlags & BasicRendererFlags.DisableDepthTest)==0,
+                    (renderFlags & BasicRendererFlags.DisableDepthWrite) == 0);
             }
         }
 

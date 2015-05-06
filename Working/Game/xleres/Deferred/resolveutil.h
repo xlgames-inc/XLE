@@ -58,12 +58,12 @@ cbuffer LightBuffer
 
 float3 LightResolve_Diffuse(
 	GBufferValues sample,
-	float3 viewDirection,
+	float3 directionToEye,
 	float3 negativeLightDirection,
 	LightColors lightColor)
 {
 	float rawDiffuse = CalculateDiffuse(sample.worldSpaceNormal,
-		viewDirection, negativeLightDirection,
+		directionToEye, negativeLightDirection,
 		DiffuseParameters_Roughness(Material_GetRoughness(sample)));
 
   float metal = Material_GetMetal(sample);
@@ -73,7 +73,7 @@ float3 LightResolve_Diffuse(
 
 float3 LightResolve_Specular(
 	GBufferValues sample,
-	float3 viewDirection,
+	float3 directionToEye,
 	float3 negativeLightDirection,
 	LightColors lightColor)
 {
@@ -85,7 +85,7 @@ float3 LightResolve_Specular(
 	SpecularParameters param0 = SpecularParameters_RoughF0(roughnessValue, F0_0);
 	float spec0 = Material_GetSpecularScale0(sample)
 		* CalculateSpecular(
-			sample.worldSpaceNormal, viewDirection,
+			sample.worldSpaceNormal, directionToEye,
 			negativeLightDirection, param0);
 
 		////////////////////////////////////////////////
@@ -95,7 +95,7 @@ float3 LightResolve_Specular(
 	// SpecularParameters param1 = SpecularParameters_RoughF0(3.f * roughnessValue, F0_1);
 	// float spec1 = Material_GetSpecularScale1(sample)
 	// 	* CalculateSpecular(
-	// 		sample.worldSpaceNormal, viewDirection,
+	// 		sample.worldSpaceNormal, directionToEye,
 	// 		negativeLightDirection, param1);
 
 		////////////////////////////////////////////////

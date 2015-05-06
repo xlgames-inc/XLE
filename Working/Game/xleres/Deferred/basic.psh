@@ -190,7 +190,7 @@ GBufferEncoded main(VSOutput geo)
 			float3x3 normalsTextureToWorld = float3x3(tangentFrame.tangent, tangentFrame.bitangent, tangentFrame.normal);
 			result.worldSpaceNormal = mul(finalNormal, normalsTextureToWorld);
 
-			result.reflectivity = 1.f - scratchiness;
+			result.material.roughness = 1.f - scratchiness;
 
 			float scratchOcc = ScratchOccl.Sample(MaybeAnisotropicSampler, scratchTexCoords).r;
 			result.cookedAmbientOcclusion *= lerp(1.f, scratchOcc, .5f * scratchiness);

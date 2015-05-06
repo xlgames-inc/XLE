@@ -24,7 +24,7 @@ float CookTorrenceSpecular(float NdotL, float NdotH, float NdotV, float VdotH, f
 
 	float geo_numerator   = 2.0f * NdotH;
     float geo_denominator = VdotH;
- 
+
     float geo_b = (geo_numerator * NdotV) / geo_denominator;
     float geo_c = (geo_numerator * NdotL) / geo_denominator;
     float geo   = min(1.0f, min(geo_b, geo_c));
@@ -45,16 +45,16 @@ float CookTorrenceSpecular(float NdotL, float NdotH, float NdotV, float VdotH, f
 	return saturate(NdotL) * Rs;
 }
 
-float CalculateSpecular_CookTorrence(float3 normal, float3 viewDirection, float3 negativeLightDirection, float roughness, float F0)
+float CalculateSpecular_CookTorrence(float3 normal, float3 directionToEye, float3 negativeLightDirection, float roughness, float F0)
 {
-    float3 worldSpaceReflection = reflect(-viewDirection, normal);
-	float3 halfVector = normalize(negativeLightDirection + viewDirection);
-	float fresnel = SchlickFresnelF0(viewDirection, halfVector, F0);
+    float3 worldSpaceReflection = reflect(-directionToEye, normal);
+	float3 halfVector = normalize(negativeLightDirection + directionToEye);
+	float fresnel = SchlickFresnelF0(directionToEye, halfVector, F0);
 
 	float NdotL = saturate(dot(negativeLightDirection, normal.xyz));
 	float NdotH = saturate(dot(halfVector, normal.xyz));
-	float NdotV = saturate(dot(viewDirection, normal.xyz));
-	float VdotH = saturate(dot(halfVector, viewDirection));
+	float NdotV = saturate(dot(directionToEye, normal.xyz));
+	float VdotH = saturate(dot(halfVector, directionToEye));
 
     return fresnel * CookTorrenceSpecular(NdotL, NdotH, NdotV, VdotH, roughness*roughness);
 }
@@ -63,10 +63,10 @@ float CalculateSpecular_CookTorrence(float3 normal, float3 viewDirection, float3
         //   G G X                                                      //
     //////////////////////////////////////////////////////////////////////////
 
-float CalculateSpecular_GGX(float3 normal, float3 viewDirection, float3 negativeLightDirection, float roughness, float F0)
+float CalculateSpecular_GGX(float3 normal, float3 directionToEye, float3 negativeLightDirection, float roughness, float F0)
 {
-    // return LightingFuncGGX_REF(normal, viewDirection, negativeLightDirection, roughness, F0);
-    return LightingFuncGGX_OPT5(normal, viewDirection, negativeLightDirection, roughness, F0);
+    // return LightingFuncGGX_REF(normal, directionToEye, negativeLightDirection, roughness, F0);
+    return LightingFuncGGX_OPT5(normal, directionToEye, negativeLightDirection, roughness, F0);
 }
 
     //////////////////////////////////////////////////////////////////////////
@@ -95,22 +95,20 @@ SpecularParameters SpecularParameters_RoughF0(float roughness, float F0)
     return result;
 }
 
-float CalculateSpecular(float3 normal, float3 viewDirection, 
-                        float3 negativeLightDirection, 
+float CalculateSpecular(float3 normal, float3 directionToEye,
+                        float3 negativeLightDirection,
                         SpecularParameters parameters)
 {
     #if SPECULAR_METHOD==0
         return CalculateSpecular_CookTorrence(
-            normal, viewDirection, negativeLightDirection, 
+            normal, directionToEye, negativeLightDirection,
             parameters.roughness, parameters.F0);
     #elif SPECULAR_METHOD==1
         return CalculateSpecular_GGX(
-            normal, viewDirection, negativeLightDirection, 
+            normal, directionToEye, negativeLightDirection,
             parameters.roughness, parameters.F0);
     #endif
 }
 
 
 #endif
-
-

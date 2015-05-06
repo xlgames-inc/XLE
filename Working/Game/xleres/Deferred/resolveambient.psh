@@ -38,7 +38,7 @@ float3 ReadSkyTexture(float3 reflectionVector, float roughness)
 	uint2 reflectionTextureDims;
 	SkyReflectionTexture[0].GetDimensions(reflectionTextureDims.x, reflectionTextureDims.y);
 
-	float mipMap = 2.f + saturate(roughness) * 8.f;
+	float mipMap = 4.f + saturate(roughness) * 10.f;
 
 	// #define DEBUG_REFLECTION_MIPMAPS 1
 	#if DEBUG_REFLECTION_MIPMAPS==1
