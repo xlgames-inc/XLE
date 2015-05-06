@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "WindowRigInternal.h"
+#include "ExportedNativeTypes.h"
 #include "../../PlatformRig/OverlappedWindow.h"
 #include "../../PlatformRig/FrameRig.h"
 #include "../../RenderCore/IDevice.h"
