@@ -121,6 +121,7 @@ namespace ControlsLibrary.MaterialEditor
             shaderConstants.DataSource =  null;
             resourceBindings.DataSource = null;
             materialPreview1.Object = null;
+            foreach (var o in _controls) o.Object = null;
             checkBox1.DataBindings.Clear();
             checkBox2.DataBindings.Clear();
             checkBox1.CheckState = CheckState.Indeterminate;
@@ -160,6 +161,7 @@ namespace ControlsLibrary.MaterialEditor
                 var focusMat = (mats.Count > 0) ? mats[mats.Count-1] : null;
                 if (focusMat != null)
                 {
+                    foreach (var o in _controls) o.Object = focusMat;
                     materialParameterBox.DataSource = focusMat.MaterialParameterBox;
                     shaderConstants.DataSource = focusMat.ShaderConstants;
                     resourceBindings.DataSource = focusMat.ResourceBindings;
@@ -191,6 +193,24 @@ namespace ControlsLibrary.MaterialEditor
         public GUILayer.EnvironmentSettingsSet EnvironmentSet
         {
             set { materialPreview1.EnvironmentSet = value; }
+        }
+
+        public abstract class ExtraControls : UserControl
+        {
+            public abstract GUILayer.RawMaterial Object { set; }
+        }
+
+        protected IList<ExtraControls> _controls = new List<ExtraControls>();
+
+        public void AddExtraControls(string name, ExtraControls c)
+        {
+            _controls.Add(c);
+            var page = new TabPage(name);
+            page.Padding = new System.Windows.Forms.Padding(3);
+            page.UseVisualStyleBackColor = true;
+            page.Controls.Add(c);
+            _pages.TabPages.Add(page);
+            _pages.SelectedTab = page;
         }
     }
 }

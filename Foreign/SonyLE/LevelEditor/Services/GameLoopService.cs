@@ -43,11 +43,15 @@ namespace LevelEditor
         #endregion
 
         private void Application_Idle(object sender, EventArgs e)
-        {            
-            while (IsIdle())
-            {                
-                Update();
-                Render();                
+        {
+            bool animateMainWindow = false;
+            if (animateMainWindow)
+            {
+                while (IsIdle())
+                {
+                    Update();
+                    Render();
+                }
             }
         }
 

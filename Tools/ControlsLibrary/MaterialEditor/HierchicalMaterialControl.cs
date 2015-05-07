@@ -52,6 +52,8 @@ namespace ControlsLibrary.MaterialEditor
             set { materialControl1.EnvironmentSet = value; }
         }
 
+        public MaterialControl FocusedMatControls { get { return materialControl1; } }
+
         protected void SubMatSelectedNodeChanged(object sender, EventArgs e)
         {
                 //  When the selected node changes, we want to 
