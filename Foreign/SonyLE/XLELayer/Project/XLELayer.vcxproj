@@ -60,6 +60,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Link>
       <AdditionalDependencies>d3dx11.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <EmbedManagedResourceFile>../Schemas/material.xsd;%(EmbedManagedResourceFile)</EmbedManagedResourceFile>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -163,6 +164,9 @@
     <ProjectReference Include="..\..\..\..\Utility\Project\Utility.vcxproj">
       <Project>{6b8011c1-2d1f-1ebb-b0ef-377b2e8e87ae}</Project>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Xsd Include="..\Schemas\material.xsd" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

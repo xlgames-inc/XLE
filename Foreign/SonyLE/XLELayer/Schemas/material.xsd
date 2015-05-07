@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<xs:schema
+  elementFormDefault="qualified"
+  targetNamespace="gap"
+  xmlns="gap"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+  <xs:complexType name="RawMaterial">
+    <xs:annotation>
+      <xs:appinfo>
+        
+        <scea.dom.editors.attribute category="Basic" name="MetalMin" displayName="Metal Min" 
+          description="Minimum value for the metal parameter"
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
+        <scea.dom.editors.attribute category="Basic" name="MetalMax" displayName="Metal Max"
+          description="Maximum value for the metal parameter"
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
+
+        <scea.dom.editors.attribute category="Basic" name="SpecularMin" displayName="Specular Min"
+          description="Minimum value for the specular parameter"
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
+        <scea.dom.editors.attribute category="Basic" name="SpecularMax" displayName="Specular Max"
+          description="Maximum value for the specular parameter"
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
+
+        <scea.dom.editors.attribute category="Basic" name="RoughnessMin" displayName="Roughness Min"
+          description="Minimum value for the roughness parameter"
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
+        <scea.dom.editors.attribute category="Basic" name="RoughnessMax" displayName="Roughness Max"
+          description="Maximum value for the roughness parameter"
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
+        
+      </xs:appinfo>
+    </xs:annotation>
+    <xs:attribute name="MetalMin" type="xs:float" default="0"/>
+    <xs:attribute name="MetalMax" type="xs:float" default="1"/>
+    <xs:attribute name="SpecularMin" type="xs:float" default="0"/>
+    <xs:attribute name="SpecularMax" type="xs:float" default="1"/>
+    <xs:attribute name="RoughnessMin" type="xs:float" default="0"/>
+    <xs:attribute name="RoughnessMax" type="xs:float" default="1"/>
+  </xs:complexType>
+</xs:schema>
+

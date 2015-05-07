@@ -235,32 +235,28 @@ namespace GUILayer
         clix::shared_ptr<ToolsRig::ModelVisCache> _modelCache;
     };
 
-    public ref class BindingUtil
+    template<typename NameType, typename ValueType>
+        public ref class PropertyPair : public INotifyPropertyChanged
     {
     public:
-        template<typename NameType, typename ValueType>
-            ref class PropertyPair : public INotifyPropertyChanged
-        {
-        public:
-            property NameType Name { NameType get(); void set(NameType); }
-            property ValueType Value { ValueType get(); void set(ValueType); }
+        property NameType Name { NameType get(); void set(NameType); }
+        property ValueType Value { ValueType get(); void set(ValueType); }
 
-            PropertyPair() { _propertyChangedContext = System::Threading::SynchronizationContext::Current; }
-            PropertyPair(NameType name, ValueType value) : PropertyPair() { Name = name; Value = value; }
+        PropertyPair() { _propertyChangedContext = System::Threading::SynchronizationContext::Current; }
+        PropertyPair(NameType name, ValueType value) : PropertyPair() { Name = name; Value = value; }
 
-            virtual event PropertyChangedEventHandler^ PropertyChanged;
+        virtual event PropertyChangedEventHandler^ PropertyChanged;
 
-        protected:
-            void NotifyPropertyChanged(/*[CallerMemberName]*/ System::String^ propertyName);
-            System::Threading::SynchronizationContext^ _propertyChangedContext;
+    protected:
+        void NotifyPropertyChanged(/*[CallerMemberName]*/ System::String^ propertyName);
+        System::Threading::SynchronizationContext^ _propertyChangedContext;
 
-            NameType _name;
-            ValueType _value;
-        };
-
-        typedef PropertyPair<System::String^, unsigned> StringIntPair;
-        typedef PropertyPair<System::String^, System::String^> StringStringPair;
+        NameType _name;
+        ValueType _value;
     };
+
+    using StringIntPair = PropertyPair<System::String^, unsigned> ;
+    using StringStringPair = PropertyPair<System::String^, System::String^>;
 
     public ref class RenderStateSet : System::ComponentModel::INotifyPropertyChanged
     {
@@ -292,17 +288,19 @@ namespace GUILayer
     {
     public:
         using NativeConfig = ::Assets::DivergentAsset<RenderCore::Assets::RawMaterial>;
-        property BindingList<BindingUtil::StringStringPair^>^ MaterialParameterBox {
-            BindingList<BindingUtil::StringStringPair^>^ get();
+        property BindingList<StringStringPair^>^ MaterialParameterBox {
+            BindingList<StringStringPair^>^ get();
         }
 
-        property BindingList<BindingUtil::StringStringPair^>^ ShaderConstants {
-            BindingList<BindingUtil::StringStringPair^>^ get();
+        property BindingList<StringStringPair^>^ ShaderConstants {
+            BindingList<StringStringPair^>^ get();
         }
 
-        property BindingList<BindingUtil::StringStringPair^>^ ResourceBindings {
-            BindingList<BindingUtil::StringStringPair^>^ get();
+        property BindingList<StringStringPair^>^ ResourceBindings {
+            BindingList<StringStringPair^>^ get();
         }
+        
+        static StringStringPair^ MakePropertyPair(System::String^ name, System::String^ value) { return gcnew StringStringPair(name, value); }
 
         property RenderStateSet^ StateSet { RenderStateSet^ get() { return _renderStateSet; } }
 
@@ -327,9 +325,9 @@ namespace GUILayer
         clix::shared_ptr<NativeConfig> _underlying;
         RenderStateSet^ _renderStateSet;
 
-        BindingList<BindingUtil::StringStringPair^>^ _materialParameterBox;
-        BindingList<BindingUtil::StringStringPair^>^ _shaderConstants;
-        BindingList<BindingUtil::StringStringPair^>^ _resourceBindings;
+        BindingList<StringStringPair^>^ _materialParameterBox;
+        BindingList<StringStringPair^>^ _shaderConstants;
+        BindingList<StringStringPair^>^ _resourceBindings;
         void ParameterBox_Changed(System::Object^, ListChangedEventArgs^);
         void ResourceBinding_Changed(System::Object^, ListChangedEventArgs^);
     };

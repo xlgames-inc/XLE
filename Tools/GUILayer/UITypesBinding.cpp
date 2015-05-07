@@ -170,27 +170,27 @@ namespace GUILayer
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     template<typename NameType, typename ValueType>
-        NameType BindingUtil::PropertyPair<NameType, ValueType>::Name::get() { return _name; }
+        NameType PropertyPair<NameType, ValueType>::Name::get() { return _name; }
 
     template<typename NameType, typename ValueType>
-        void BindingUtil::PropertyPair<NameType, ValueType>::Name::set(NameType newValue)
+        void PropertyPair<NameType, ValueType>::Name::set(NameType newValue)
     {
         _name = newValue;
         NotifyPropertyChanged("Name");
     }
 
     template<typename NameType, typename ValueType>
-        ValueType BindingUtil::PropertyPair<NameType, ValueType>::Value::get() { return _value; } 
+        ValueType PropertyPair<NameType, ValueType>::Value::get() { return _value; } 
 
     template<typename NameType, typename ValueType>
-        void BindingUtil::PropertyPair<NameType, ValueType>::Value::set(ValueType newValue)
+        void PropertyPair<NameType, ValueType>::Value::set(ValueType newValue)
     {
         _value = newValue;
         NotifyPropertyChanged("Value");
     }
 
     template<typename NameType, typename ValueType>
-        void BindingUtil::PropertyPair<NameType, ValueType>::NotifyPropertyChanged(System::String^ propertyName)
+        void PropertyPair<NameType, ValueType>::NotifyPropertyChanged(System::String^ propertyName)
     {
         PropertyChanged(this, gcnew PropertyChangedEventArgs(propertyName));
         // _propertyChangedContext->Send(
@@ -202,20 +202,20 @@ namespace GUILayer
     public ref class BindingConv
     {
     public:
-        static BindingList<BindingUtil::StringStringPair^>^ AsBindingList(const ParameterBox& paramBox);
-        static ParameterBox AsParameterBox(BindingList<BindingUtil::StringStringPair^>^);
-        static ParameterBox AsParameterBox(BindingList<BindingUtil::StringIntPair^>^);
+        static BindingList<StringStringPair^>^ AsBindingList(const ParameterBox& paramBox);
+        static ParameterBox AsParameterBox(BindingList<StringStringPair^>^);
+        static ParameterBox AsParameterBox(BindingList<StringIntPair^>^);
     };
 
-    BindingList<BindingUtil::StringStringPair^>^ BindingConv::AsBindingList(const ParameterBox& paramBox)
+    BindingList<StringStringPair^>^ BindingConv::AsBindingList(const ParameterBox& paramBox)
     {
-        auto result = gcnew BindingList<BindingUtil::StringStringPair^>();
+        auto result = gcnew BindingList<StringStringPair^>();
         std::vector<std::pair<const char*, std::string>> stringTable;
         paramBox.BuildStringTable(stringTable);
 
         for (auto i=stringTable.cbegin(); i!=stringTable.cend(); ++i) {
             result->Add(
-                gcnew BindingUtil::StringStringPair(
+                gcnew StringStringPair(
                     clix::marshalString<clix::E_UTF8>(i->first),
                     clix::marshalString<clix::E_UTF8>(i->second)));
         }
@@ -223,7 +223,7 @@ namespace GUILayer
         return result;
     }
 
-    ParameterBox BindingConv::AsParameterBox(BindingList<BindingUtil::StringStringPair^>^ input)
+    ParameterBox BindingConv::AsParameterBox(BindingList<StringStringPair^>^ input)
     {
         ParameterBox result;
         for each(auto i in input) {
@@ -238,7 +238,7 @@ namespace GUILayer
         return result;
     }
 
-    ParameterBox BindingConv::AsParameterBox(BindingList<BindingUtil::StringIntPair^>^ input)
+    ParameterBox BindingConv::AsParameterBox(BindingList<StringIntPair^>^ input)
     {
         ParameterBox result;
         for each(auto i in input) {
@@ -255,7 +255,7 @@ namespace GUILayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    BindingList<BindingUtil::StringStringPair^>^ 
+    BindingList<StringStringPair^>^ 
         RawMaterial::MaterialParameterBox::get()
     {
         if (!_underlying) { return nullptr; }
@@ -270,7 +270,7 @@ namespace GUILayer
         return _materialParameterBox;
     }
 
-    BindingList<BindingUtil::StringStringPair^>^ 
+    BindingList<StringStringPair^>^ 
         RawMaterial::ShaderConstants::get()
     {
         if (!_underlying) { return nullptr; }
@@ -285,7 +285,7 @@ namespace GUILayer
         return _shaderConstants;
     }
 
-    BindingList<BindingUtil::StringStringPair^>^ 
+    BindingList<StringStringPair^>^ 
         RawMaterial::ResourceBindings::get()
     {
         if (!_underlying) { return nullptr; }
@@ -313,7 +313,7 @@ namespace GUILayer
             return;
         }
 
-        using Box = BindingList<BindingUtil::StringStringPair^>;
+        using Box = BindingList<StringStringPair^>;
 
         if (e->ListChangedType == ListChangedType::ItemAdded) {
             assert(e->NewIndex < ((Box^)obj)->Count);
@@ -341,7 +341,7 @@ namespace GUILayer
             return;
         }
 
-        using Box = BindingList<BindingUtil::StringStringPair^>;
+        using Box = BindingList<StringStringPair^>;
 
         if (e->ListChangedType == ListChangedType::ItemAdded) {
             assert(e->NewIndex < ((Box^)obj)->Count);
@@ -509,7 +509,7 @@ namespace GUILayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    template BindingUtil::PropertyPair<System::String^, unsigned>;
-    template BindingUtil::PropertyPair<System::String^, System::String^>;
+    template PropertyPair<System::String^, unsigned>;
+    template PropertyPair<System::String^, System::String^>;
 }
 

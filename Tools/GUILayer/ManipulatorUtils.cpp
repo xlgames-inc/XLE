@@ -36,103 +36,58 @@ namespace GUILayer
         return nullptr;
     }
 
+    public interface class IGetAndSetProperties
+    {
+    public:
+        virtual bool TryGetMember(System::String^ name, bool caseInsensitive, System::Type^ type, Object^% result);
+        virtual bool TrySetMember(System::String^ name, bool caseInsensitive, Object^ value);
+    };
+
     public ref class ManipulatorPropertyContext : public IPropertySource
     {
     public:
-        property IEnumerable<Object^>^ Items
-        {
-            virtual IEnumerable<Object^>^ get() override;
-        }
+        using PropertyDescriptorSet = IEnumerable<System::ComponentModel::PropertyDescriptor^>;
 
-        property IEnumerable<System::ComponentModel::PropertyDescriptor^>^ PropertyDescriptors
-        {
-            virtual IEnumerable<System::ComponentModel::PropertyDescriptor^>^ get() override;
-        }
+        property PropertyDescriptorSet^ PropertyDescriptors { virtual PropertyDescriptorSet^ get() override; }
+        property IEnumerable<Object^>^ Items { virtual IEnumerable<Object^>^ get() override; }
 
-        ManipulatorPropertyContext(std::shared_ptr<ToolsRig::IManipulator> manipulator);
-        ~ManipulatorPropertyContext();
-
-    protected:
-        ref class Helper;
         ref class DynamicPropertyDescriptor;
-        clix::shared_ptr<ToolsRig::IManipulator> _manipulator;
-        Helper^ _helper;
-    };
 
-    ref class ManipulatorPropertyContext::Helper : public ::System::Dynamic::DynamicObject
-    {
-    public:
-        bool TryGetMember(System::Dynamic::GetMemberBinder^ binder, Object^% result) override
-        {
-            return TryGetMember(binder->Name, binder->IgnoreCase, result);
-        }
-
-        bool TrySetMember(System::Dynamic::SetMemberBinder^ binder, Object^ value) override
-        {
-            return TrySetMember(binder->Name, binder->IgnoreCase, value);
-        }
-
-        bool TryGetMember(System::String^ name, bool ignoreCase, Object^% result)
-        {
-            auto nativeName = clix::marshalString<clix::E_UTF8>(name);
-            auto floatParam = FindParameter(nativeName.c_str(), _manipulator->GetFloatParameters(), ignoreCase);
-            if (floatParam) {
-                result = gcnew Single(*(float*)PtrAdd(_manipulator.get(), floatParam->_valueOffset));
-                return true;
-            }
-
-            auto intParam = FindParameter(nativeName.c_str(), _manipulator->GetIntParameters(), ignoreCase);
-            if (intParam) {
-                result = gcnew Int32(*(int*)PtrAdd(_manipulator.get(), intParam->_valueOffset));
-                return true;
-            }
-
-            auto boolParam = FindParameter(nativeName.c_str(), _manipulator->GetBoolParameters(), ignoreCase);
-            if (boolParam) {
-                unsigned* i = (unsigned*)PtrAdd(_manipulator.get(), boolParam->_valueOffset);
-                result = gcnew Boolean(!!((*i) & (1<<boolParam->_bitIndex)));
-                return true;
-            }
-
-            result = nullptr;
-            return false;
-        }
-
-        bool TrySetMember(System::String^ name, bool ignoreCase, Object^ value)
-        {
-            auto nativeName = clix::marshalString<clix::E_UTF8>(name);
-            auto floatParam = FindParameter(nativeName.c_str(), _manipulator->GetFloatParameters(), ignoreCase);
-            if (floatParam) {
-                *(float*)PtrAdd(_manipulator.get(), floatParam->_valueOffset) = (float)value;
-                return true;
-            }
-
-            auto intParam = FindParameter(nativeName.c_str(), _manipulator->GetIntParameters(), ignoreCase);
-            if (intParam) {
-                *(int*)PtrAdd(_manipulator.get(), intParam->_valueOffset) = (int)value;
-                return true;
-            }
-
-            auto boolParam = FindParameter(nativeName.c_str(), _manipulator->GetBoolParameters(), ignoreCase);
-            if (boolParam) {
-                unsigned* i = (unsigned*)PtrAdd(_manipulator.get(), boolParam->_valueOffset);
-                if ((bool)value) {
-                    *i |= (1<<boolParam->_bitIndex);
-                } else {
-                    *i &= ~(1<<boolParam->_bitIndex);
-                }
-                return true;
-            }
-            return false;
-        }
-
-        Helper(std::shared_ptr<ToolsRig::IManipulator> manipulator)
-            : _manipulator(manipulator)
-        {
-        }
+        ManipulatorPropertyContext(IGetAndSetProperties^ getAndSet, PropertyDescriptorSet^ propertyDescriptors);
+        ~ManipulatorPropertyContext();
     protected:
-        clix::shared_ptr<ToolsRig::IManipulator> _manipulator;
+        // ref class Helper;
+        IGetAndSetProperties^ _helper;
+        PropertyDescriptorSet^ _propertyDescriptors;
     };
+
+    // ref class ManipulatorPropertyContext::Helper : public ::System::Dynamic::DynamicObject
+    // {
+    // public:
+    //     bool TryGetMember(System::Dynamic::GetMemberBinder^ binder, Object^% result) override
+    //     {
+    //         return TryGetMember(binder->Name, binder->IgnoreCase, result);
+    //     }
+    // 
+    //     bool TrySetMember(System::Dynamic::SetMemberBinder^ binder, Object^ value) override
+    //     {
+    //         return TrySetMember(binder->Name, binder->IgnoreCase, value);
+    //     }
+    // 
+    //     bool TryGetMember(System::String^ name, bool ignoreCase, Object^% result)
+    //     {
+    //         return _getAndSet->TryGetMember(name, ignoreCase, result);
+    //     }
+    // 
+    //     bool TrySetMember(System::String^ name, bool ignoreCase, Object^ value)
+    //     {
+    //         return _getAndSet->TrySetMember(name, ignoreCase, value);
+    //     }
+    // 
+    //     Helper(IGetAndSetProperties^ getAndSet) : _getAndSet(getAndSet) {}
+    // protected:
+    //     IGetAndSetProperties^ _getAndSet;
+    // };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -150,10 +105,10 @@ namespace GUILayer
 
         System::Object^ GetValue(System::Object^ component) override
         {
-            auto dynObject = dynamic_cast<Helper^>(component);
+            auto dynObject = dynamic_cast<IGetAndSetProperties^>(component);
             if (dynObject) {
                 System::Object^ result = nullptr;
-                if (dynObject->TryGetMember(Name, false, result)) {
+                if (dynObject->TryGetMember(Name, false, _propertyType, result)) {
                     return result;
                 }
             }
@@ -162,7 +117,7 @@ namespace GUILayer
 
         void SetValue(System::Object^ component, System::Object^ value) override
         {
-            auto dynObject = dynamic_cast<Helper^>(component);
+            auto dynObject = dynamic_cast<IGetAndSetProperties^>(component);
             if (dynObject) {
                 dynObject->TrySetMember(Name, false, value);
             }
@@ -172,7 +127,7 @@ namespace GUILayer
         void ResetValue(System::Object^ component) override {}
 
         bool ShouldSerializeValue(System::Object^ component) override { return false; }
-        property Type^ ComponentType    { Type^ get() override { return Helper::typeid; } } 
+        property Type^ ComponentType    { Type^ get() override { return IGetAndSetProperties::typeid; } } 
         property bool IsReadOnly        { bool get() override { return false; } }
         property Type^ PropertyType     { Type^ get() override { return _propertyType; } }
     };
@@ -186,8 +141,109 @@ namespace GUILayer
         return result; 
     }
 
+    auto ManipulatorPropertyContext::PropertyDescriptors::get() -> PropertyDescriptorSet^
+    {
+        return _propertyDescriptors;
+    }
+    
+            // note --  no protection on this pointer. Caller must ensure the
+            //          native manipulator stays around for the life-time of 
+            //          this object.
+    ManipulatorPropertyContext::ManipulatorPropertyContext(
+        IGetAndSetProperties^ getAndSet, PropertyDescriptorSet^ propertyDescriptors)
+    : _propertyDescriptors(propertyDescriptors)
+    {
+        _helper = getAndSet;
+    }
+
+    ManipulatorPropertyContext::~ManipulatorPropertyContext()
+    {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    IManipulatorSet::~IManipulatorSet() {}
+
+    public ref class Manipulator_GetAndSet : public IGetAndSetProperties
+    {
+    public:
+        static IEnumerable<System::ComponentModel::PropertyDescriptor^>^ 
+            CreatePropertyDescriptors(ToolsRig::IManipulator& manipulators);
+
+        virtual bool TryGetMember(System::String^ name, bool caseInsensitive, System::Type^ type, Object^% result) 
+        {
+            auto nativeName = clix::marshalString<clix::E_UTF8>(name);
+            auto floatParam = FindParameter(nativeName.c_str(), _manipulator->GetFloatParameters(), caseInsensitive);
+            if (floatParam) {
+                if (type == Single::typeid) {
+                    result = gcnew Single(*(float*)PtrAdd(_manipulator.get(), floatParam->_valueOffset));
+                    return true;
+                }
+            }
+
+            auto intParam = FindParameter(nativeName.c_str(), _manipulator->GetIntParameters(), caseInsensitive);
+            if (intParam) {
+                if (type == Int32::typeid) {
+                    result = gcnew Int32(*(int*)PtrAdd(_manipulator.get(), intParam->_valueOffset));
+                    return true;
+                }
+            }
+
+            auto boolParam = FindParameter(nativeName.c_str(), _manipulator->GetBoolParameters(), caseInsensitive);
+            if (boolParam) {
+                if (type == Boolean::typeid) {
+                    unsigned* i = (unsigned*)PtrAdd(_manipulator.get(), boolParam->_valueOffset);
+                    result = gcnew Boolean(!!((*i) & (1<<boolParam->_bitIndex)));
+                    return true;
+                }
+            }
+
+            result = nullptr;
+            return false;
+        }
+
+        virtual bool TrySetMember(System::String^ name, bool caseInsensitive, Object^ value)
+        {
+            auto nativeName = clix::marshalString<clix::E_UTF8>(name);
+            auto floatParam = FindParameter(nativeName.c_str(), _manipulator->GetFloatParameters(), caseInsensitive);
+            if (floatParam) {
+                if (dynamic_cast<Single^>(value)) {
+                    *(float*)PtrAdd(_manipulator.get(), floatParam->_valueOffset) = *dynamic_cast<Single^>(value);
+                    return true;
+                }
+            }
+
+            auto intParam = FindParameter(nativeName.c_str(), _manipulator->GetIntParameters(), caseInsensitive);
+            if (intParam) {
+                if (dynamic_cast<Int32^>(value)) {
+                    *(int*)PtrAdd(_manipulator.get(), intParam->_valueOffset) = *dynamic_cast<Int32^>(value);
+                    return true;
+                }
+            }
+
+            auto boolParam = FindParameter(nativeName.c_str(), _manipulator->GetBoolParameters(), caseInsensitive);
+            if (boolParam) {
+                if (dynamic_cast<Boolean^>(value)) {
+                    unsigned* i = (unsigned*)PtrAdd(_manipulator.get(), boolParam->_valueOffset);
+                    if (*dynamic_cast<Boolean^>(value)) {
+                        *i |= (1<<boolParam->_bitIndex);
+                    } else {
+                        *i &= ~(1<<boolParam->_bitIndex);
+                    }
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        Manipulator_GetAndSet(std::shared_ptr<ToolsRig::IManipulator> manipulator)
+            : _manipulator(std::move(manipulator)) {}
+        ~Manipulator_GetAndSet() {}
+    protected:
+        clix::shared_ptr<ToolsRig::IManipulator> _manipulator;
+    };
+
     IEnumerable<System::ComponentModel::PropertyDescriptor^>^ 
-        ManipulatorPropertyContext::PropertyDescriptors::get()
+        Manipulator_GetAndSet::CreatePropertyDescriptors(ToolsRig::IManipulator& manipulators)
     {
             // We must convert each property in the manipulator 
             // into a property descriptor that can be used with 
@@ -195,11 +251,11 @@ namespace GUILayer
         using System::ComponentModel::PropertyDescriptor;
         auto result = gcnew List<PropertyDescriptor^>();
 
-        auto fParams = _manipulator->GetFloatParameters();
+        auto fParams = manipulators.GetFloatParameters();
         for (size_t c=0; c<fParams.second; ++c) {
             const auto& param = fParams.first[c];
             auto descriptor = 
-                gcnew DynamicPropertyDescriptor(
+                gcnew ManipulatorPropertyContext::DynamicPropertyDescriptor(
                     clix::marshalString<clix::E_UTF8>(param._name),
                     System::Single::typeid, 
                     gcnew array<Attribute^, 1> {
@@ -211,11 +267,11 @@ namespace GUILayer
             result->Add(descriptor);
         }
 
-        auto iParams = _manipulator->GetIntParameters();
+        auto iParams = manipulators.GetIntParameters();
         for (size_t c=0; c<iParams.second; ++c) {
             const auto& param = iParams.first[c];
             auto descriptor = 
-                gcnew DynamicPropertyDescriptor(
+                gcnew ManipulatorPropertyContext::DynamicPropertyDescriptor(
                     clix::marshalString<clix::E_UTF8>(param._name),
                     System::Int32::typeid, 
                     gcnew array<Attribute^, 1> {
@@ -227,11 +283,11 @@ namespace GUILayer
             result->Add(descriptor);
         }
 
-        auto bParams = _manipulator->GetBoolParameters();
+        auto bParams = manipulators.GetBoolParameters();
         for (size_t c=0; c<bParams.second; ++c) {
             const auto& param = bParams.first[c];
             auto descriptor = 
-                gcnew DynamicPropertyDescriptor(
+                gcnew ManipulatorPropertyContext::DynamicPropertyDescriptor(
                     clix::marshalString<clix::E_UTF8>(param._name),
                     System::Boolean::typeid, nullptr);
             result->Add(descriptor);
@@ -239,31 +295,18 @@ namespace GUILayer
 
         return result;
     }
-    
-            // note --  no protection on this pointer. Caller must ensure the
-            //          native manipulator stays around for the life-time of 
-            //          this object.
-    ManipulatorPropertyContext::ManipulatorPropertyContext(std::shared_ptr<ToolsRig::IManipulator> manipulator)
-        : _manipulator(manipulator)
-    {
-        _helper = gcnew Helper(_manipulator);
-    }
 
-    ManipulatorPropertyContext::~ManipulatorPropertyContext()
-    {
-        delete _helper;
-    }
-
-
-    IManipulatorSet::~IManipulatorSet() {}
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     IPropertySource^ IManipulatorSet::GetProperties(System::String^ name)
     {
         auto m = GetManipulator(name);
-        if (m) return gcnew ManipulatorPropertyContext(m.GetNativePtr());
+        if (m)
+            return gcnew ManipulatorPropertyContext(
+                gcnew Manipulator_GetAndSet(m.GetNativePtr()),
+                Manipulator_GetAndSet::CreatePropertyDescriptors(*m.GetNativePtr()));
         return nullptr;
     }
-
 
     template clix::shared_ptr<ToolsRig::IManipulator>;
 }

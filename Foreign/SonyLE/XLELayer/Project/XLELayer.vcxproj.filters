@@ -12,4 +12,14 @@
     <ClInclude Include="..\XLELayerUtils.h" />
     <ClInclude Include="..\NativeManipulators.h" />
   </ItemGroup>
+  <ItemGroup>
+    <Filter Include="schemas">
+      <UniqueIdentifier>{624269bd-72c1-4ba0-90dd-1058398a53c9}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <Xsd Include="..\Schemas\material.xsd">
+      <Filter>schemas</Filter>
+    </Xsd>
+  </ItemGroup>
 </Project>
