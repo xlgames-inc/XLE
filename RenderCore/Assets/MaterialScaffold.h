@@ -26,7 +26,7 @@ namespace RenderCore { namespace Assets
         const ResolvedMaterial*         GetMaterial(MaterialGuid guid) const;
         const char*                     GetMaterialName(MaterialGuid guid) const;
 
-        const ::Assets::DependencyValidation& GetDependencyValidation() const { return *_validationCallback; }
+        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _validationCallback; }
 
         static const auto CompileProcessType = ConstHash64<'ResM', 'at'>::Value;
 

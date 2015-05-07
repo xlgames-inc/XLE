@@ -122,7 +122,7 @@ namespace ToolsRig
 
         result._hashedModelName = Hash64(modelFilename);
         result._model = _pimpl->_modelScaffolds.Get(result._hashedModelName);
-        if (!result._model || result._model->GetDependencyValidation().GetValidationIndex() > 0) {
+        if (!result._model || result._model->GetDependencyValidation()->GetValidationIndex() > 0) {
             result._model = Internal::CreateModelScaffold(modelFilename, *_pimpl->_format);
             _pimpl->_modelScaffolds.Insert(result._hashedModelName, result._model);
         }
@@ -138,7 +138,7 @@ namespace ToolsRig
         #endif
 
         result._material = _pimpl->_materialScaffolds.Get(result._hashedMaterialName);
-        if (!result._material || result._material->GetDependencyValidation().GetValidationIndex() > 0) {
+        if (!result._material || result._material->GetDependencyValidation()->GetValidationIndex() > 0) {
             result._material = Internal::CreateMaterialScaffold(modelFilename, matNamePtr, *_pimpl->_format);
             _pimpl->_materialScaffolds.Insert(result._hashedMaterialName, result._material);
         }

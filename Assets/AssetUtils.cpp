@@ -18,7 +18,7 @@
 namespace Assets
 {
     static Utility::Threading::RecursiveMutex ResourceDependenciesLock;
-    static std::vector<std::pair<const OnChangeCallback*, std::shared_ptr<DependencyValidation>>> ResourceDependencies;       // DependencyValidation objects never really get removed from this list...
+    static std::vector<std::pair<const OnChangeCallback*, std::weak_ptr<DependencyValidation>>> ResourceDependencies;
 
     void Dependencies_Shutdown()
     {
@@ -30,18 +30,83 @@ namespace Assets
     { 
         ++_validationIndex;
         ResourceDependenciesLock.lock();
-        auto range = std::equal_range(
-            ResourceDependencies.begin(), ResourceDependencies.end(), 
-            this, CompareFirst<const OnChangeCallback*, std::shared_ptr<DependencyValidation>>());
-        for (auto i=range.first; i!=range.second; ++i)
-            i->second->OnChange();
+
+        #if (STL_ACTIVE == STL_MSVC) && (_ITERATOR_DEBUG_LEVEL >= 2)
+            auto range = std::_Equal_range(
+                ResourceDependencies.begin(), ResourceDependencies.end(), this, 
+                CompareFirst<const OnChangeCallback*, std::weak_ptr<DependencyValidation>>(),
+                _Dist_type(ResourceDependencies.begin()));
+        #else
+            auto range = std::equal_range(
+                ResourceDependencies.begin(), ResourceDependencies.end(), 
+                this, CompareFirst<const OnChangeCallback*, std::weak_ptr<DependencyValidation>>());
+        #endif
+
+        bool foundExpired = false;
+        for (auto i=range.first; i!=range.second; ++i) {
+            auto l = i->second.lock();
+            if (l) l->OnChange();
+            else foundExpired = true;
+        }
+
+        if (foundExpired) {
+                // Remove any pointers that have expired
+                // (note that we only check matching pointers. Non-matching pointers
+                // that have expired are untouched)
+            ResourceDependencies.erase(
+                std::remove_if(range.first, range.second, 
+                    [](std::pair<const OnChangeCallback*, std::weak_ptr<DependencyValidation>>& i)
+                    { return i.second.expired(); }),
+                range.second);
+        }
+
         ResourceDependenciesLock.unlock();
     }
 
-    void RegisterFileDependency(std::shared_ptr<Utility::OnChangeCallback> validationIndex, const char filename[])
+    void    DependencyValidation::RegisterDependency(const std::shared_ptr<Utility::OnChangeCallback>& dependency)
+    {
+        ResourceDependenciesLock.lock();
+        auto i = LowerBound(ResourceDependencies, (const OnChangeCallback*)dependency.get());
+        ResourceDependencies.insert(i, std::make_pair(dependency.get(), shared_from_this()));
+        ResourceDependenciesLock.unlock();
+
+            // We must hold a reference to the dependency -- otherwise it can be destroyed,
+            // and links to downstream assets/files might be lost
+            // It's a little awkward to hold it here, but it's the only way
+            // to make sure that it gets destroyed when "this" gets destroyed
+
+        for (unsigned c=0; c<dimof(_dependencies); ++c)
+            if (!_dependencies[c]) { _dependencies[c] = dependency; return; }
+        
+        _dependenciesOverflow.push_back(dependency);
+    }
+
+    DependencyValidation::DependencyValidation(DependencyValidation&& moveFrom) never_throws
+    {
+        _validationIndex = moveFrom._validationIndex;
+        for (unsigned c=0; c<dimof(_dependencies); ++c)
+            _dependencies[c] = std::move(moveFrom._dependencies[c]);
+        _dependenciesOverflow = std::move(moveFrom._dependenciesOverflow);
+    }
+
+    DependencyValidation& DependencyValidation::operator=(DependencyValidation&& moveFrom) never_throws
+    {
+        _validationIndex = moveFrom._validationIndex;
+        for (unsigned c=0; c<dimof(_dependencies); ++c)
+            _dependencies[c] = std::move(moveFrom._dependencies[c]);
+        _dependenciesOverflow = std::move(moveFrom._dependenciesOverflow);
+        return *this;
+    }
+
+    DependencyValidation::~DependencyValidation() {}
+
+    void RegisterFileDependency(
+        const std::shared_ptr<Utility::OnChangeCallback>& validationIndex, 
+        const char filename[])
     {
         ResChar directoryName[MaxPath], baseName[MaxPath];
         XlNormalizePath(baseName, dimof(baseName), filename);
+        XlSimplifyPath(baseName, dimof(baseName), baseName, "\\/");
         XlDirname(directoryName, dimof(directoryName), baseName);
         auto len = XlStringLen(directoryName);
         if (len > 0 && (directoryName[len-1] == '\\' || directoryName[len-1] == '/')) {
@@ -49,18 +114,15 @@ namespace Assets
         }
         XlBasename(baseName, dimof(baseName), baseName);
         if (!directoryName[0]) XlCopyString(directoryName, "./");
-        Utility::AttachFileSystemMonitor(directoryName, baseName, std::move(validationIndex));
+        Utility::AttachFileSystemMonitor(directoryName, baseName, validationIndex);
     }
 
-    void RegisterAssetDependency(std::shared_ptr<DependencyValidation> dependentResource, const Utility::OnChangeCallback* dependency)
+    void RegisterAssetDependency(
+        const std::shared_ptr<DependencyValidation>& dependentResource, 
+        const std::shared_ptr<Utility::OnChangeCallback>& dependency)
     {
         assert(dependentResource && dependency);
-        ResourceDependenciesLock.lock();
-        auto i = std::lower_bound(
-            ResourceDependencies.begin(), ResourceDependencies.end(), 
-            dependency, CompareFirst<const OnChangeCallback*, std::shared_ptr<DependencyValidation>>());
-        ResourceDependencies.insert(i, std::make_pair(dependency, std::move(dependentResource)));
-        ResourceDependenciesLock.unlock();
+        dependentResource->RegisterDependency(dependency);
     }
 
     void DirectorySearchRules::AddSearchDirectory(const ResChar dir[])

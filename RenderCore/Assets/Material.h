@@ -184,7 +184,7 @@ namespace RenderCore { namespace Assets
         using ResString = std::basic_string<::Assets::ResChar>;
         std::vector<ResString> _inherit;
 
-        const ::Assets::DependencyValidation& GetDependencyValidation() const { return *_depVal; }
+        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _depVal; }
 
         void Resolve(
             ResolvedMaterial& result,

@@ -74,7 +74,7 @@ namespace RenderCore { namespace Assets
 
         const Metal::CompiledShaderByteCode* _vbByteCode;
 
-        const ::Assets::DependencyValidation& GetDependencyValidation() const   { return *_validationCallback; }
+        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
         std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
     };
 
@@ -137,12 +137,12 @@ namespace RenderCore { namespace Assets
         /////////////////////////////////////////////////////////////////////////////
 
         auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        // ::Assets::RegisterAssetDependency(validationCallback, &_skinningVertexShaderP4->GetDependencyValidation());
-        // ::Assets::RegisterAssetDependency(validationCallback, &_skinningVertexShaderP2->GetDependencyValidation());
-        // ::Assets::RegisterAssetDependency(validationCallback, &_skinningVertexShaderP1->GetDependencyValidation());
-        // ::Assets::RegisterAssetDependency(validationCallback, &_skinningVertexShaderP0->GetDependencyValidation());
-        // ::Assets::RegisterAssetDependency(validationCallback, &_geometryShader->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(validationCallback, &_vbByteCode->GetDependencyValidation());
+        // ::Assets::RegisterAssetDependency(validationCallback, _skinningVertexShaderP4->GetDependencyValidation());
+        // ::Assets::RegisterAssetDependency(validationCallback, _skinningVertexShaderP2->GetDependencyValidation());
+        // ::Assets::RegisterAssetDependency(validationCallback, _skinningVertexShaderP1->GetDependencyValidation());
+        // ::Assets::RegisterAssetDependency(validationCallback, _skinningVertexShaderP0->GetDependencyValidation());
+        // ::Assets::RegisterAssetDependency(validationCallback, _geometryShader->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(validationCallback, _vbByteCode->GetDependencyValidation());
 
         _validationCallback = std::move(validationCallback);
         _boundUniforms = std::move(boundUniforms);

@@ -903,7 +903,7 @@ namespace RenderCore { namespace Metal_DX11
                     std::make_shared<ShaderCompileProcess>(
                         shaderId,  definesTable,
                         std::move(archive), archiveId, 
-                        [=](::Assets::AssetState newState, const std::vector<Assets::DependentFileState>& deps)
+                        [depNameAsString, baseDir, marker, &destinationStore](::Assets::AssetState newState, const std::vector<Assets::DependentFileState>& deps)
                         {
                                 //  note -- we're accessing an unprotected pointer to the "destinationStore"
                                 //  The list of dependencies here should mostly be path names relative
@@ -1002,7 +1002,7 @@ namespace RenderCore { namespace Metal_DX11
                 }
 
                 if (marker->_dependencyValidation) {
-                    Assets::RegisterAssetDependency(validationCallback, marker->_dependencyValidation.get());
+                    Assets::RegisterAssetDependency(validationCallback, marker->_dependencyValidation);
                 }
                 marker.reset();
             }
@@ -1073,7 +1073,7 @@ namespace RenderCore { namespace Metal_DX11
                 //  the marker. This way we will be recompiled if the asset is changed (eg, to fix
                 //  the compile error)
             if (_marker->_dependencyValidation) {
-                Assets::RegisterAssetDependency(_validationCallback, _marker->_dependencyValidation.get());
+                Assets::RegisterAssetDependency(_validationCallback, _marker->_dependencyValidation);
             }
             _marker.reset();
         }

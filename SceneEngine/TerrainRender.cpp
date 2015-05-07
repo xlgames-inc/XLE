@@ -639,7 +639,7 @@ namespace SceneEngine
         TerrainMaterialTextures(const TerrainMaterialScaffold& scaffold);
         ~TerrainMaterialTextures();
 
-        const Assets::DependencyValidation& GetDependencyValidation() const   { return *_validationCallback; }
+        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
     private:
         std::shared_ptr<Assets::DependencyValidation>  _validationCallback;
     };
@@ -745,7 +745,7 @@ namespace SceneEngine
 
         TerrainRenderingResources(const Desc& desc);
 
-        const Assets::DependencyValidation& GetDependencyValidation() const   { return *_validationCallback; }
+        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
     private:
         std::shared_ptr<Assets::DependencyValidation>  _validationCallback;
     };
@@ -815,7 +815,7 @@ namespace SceneEngine
         Techniques::TechniqueContext::BindGlobalUniforms(boundUniforms);
 
         auto validationCallback = std::make_shared<Assets::DependencyValidation>();
-        Assets::RegisterAssetDependency(validationCallback, &shaderProgram->GetDependencyValidation());
+        Assets::RegisterAssetDependency(validationCallback, shaderProgram->GetDependencyValidation());
 
         _shaderProgram = shaderProgram;
         _boundUniforms = std::move(boundUniforms);
@@ -952,9 +952,9 @@ namespace SceneEngine
             bool invalidation = false;
             if (i->second->_sourceCell) {
                 const auto& cell = *i->second;
-                invalidation |= (cell._sourceCell->GetDependencyValidation().GetValidationIndex()!=0);
+                invalidation |= (cell._sourceCell->GetDependencyValidation()->GetValidationIndex()!=0);
                 for (auto q=cell._coverage.cbegin(); q!=cell._coverage.cend(); ++q)
-                    invalidation |= (q->_source->GetDependencyValidation().GetValidationIndex()!=0);
+                    invalidation |= (q->_source->GetDependencyValidation()->GetValidationIndex()!=0);
             }
             if (invalidation) {
                     // before we delete it, we need to erase it from the pending uploads
@@ -2549,7 +2549,7 @@ namespace SceneEngine
         auto dummyWhiteBuffer = GetBufferUploads()->Transaction_Immediate(desc, tempBuffer.get())->AdoptUnderlying();
 
         _validationCallback = std::make_shared<Assets::DependencyValidation>();
-        Assets::RegisterAssetDependency(_validationCallback, &scaffold.GetDependencyValidation());
+        Assets::RegisterAssetDependency(_validationCallback, scaffold.GetDependencyValidation());
 
         unsigned strataIndex = 0;
         for (auto s=scaffold._strata.cbegin(); s!=scaffold._strata.cend(); ++s, ++strataIndex) {
@@ -3082,7 +3082,7 @@ namespace SceneEngine
         renderer->CompletePendingUploads();
         renderer->QueueUploads(state);
 
-        if (!_pimpl->_textures || _pimpl->_textures->GetDependencyValidation().GetValidationIndex() > 0) {
+        if (!_pimpl->_textures || _pimpl->_textures->GetDependencyValidation()->GetValidationIndex() > 0) {
             _pimpl->_textures.reset();
 
             if (!_pimpl->_cfg._textureCfgName.empty()) {

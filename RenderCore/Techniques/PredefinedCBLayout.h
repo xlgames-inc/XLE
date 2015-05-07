@@ -33,8 +33,8 @@ namespace RenderCore { namespace Techniques
         PredefinedCBLayout(const ::Assets::ResChar initializer[]);
         ~PredefinedCBLayout();
 
-        const ::Assets::DependencyValidation&     GetDependencyValidation() const     
-            { return *_validationCallback; }
+        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const     
+            { return _validationCallback; }
 
     private:
         std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;

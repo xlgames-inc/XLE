@@ -108,15 +108,19 @@ namespace Assets { namespace IntermediateResources
         record->_state._status = DependentFileState::Status::Shadowed;
 
             // propagate change messages...
-        ResChar path[MaxPath];
-        ResChar basename[MaxPath];
-        XlDirname(path, dimof(path), record->_state._filename.c_str());
-        XlBasename(basename, dimof(basename), record->_state._filename.c_str());
-        auto len = XlStringLen(path);
-        if (len > 0 && (path[len-1] == '\\' || path[len-1] == '/')) {
-            path[len-1] = '\0'; 
+            // (duplicating processing from RegisterFileDependency)
+        ResChar directoryName[MaxPath], baseName[MaxPath];
+        XlNormalizePath(baseName, dimof(baseName), record->_state._filename.c_str());
+        XlSimplifyPath(baseName, dimof(baseName), baseName, "\\/");
+        XlDirname(directoryName, dimof(directoryName), baseName);
+        auto len = XlStringLen(directoryName);
+        if (len > 0 && (directoryName[len-1] == '\\' || directoryName[len-1] == '/')) {
+            directoryName[len-1] = '\0'; 
         }
-        FakeFileChange(path, basename);
+        XlBasename(baseName, dimof(baseName), baseName);
+        if (!directoryName[0]) XlCopyString(directoryName, "./");
+        
+        FakeFileChange(directoryName, baseName);
 
         record->OnChange();
     }
@@ -149,11 +153,13 @@ namespace Assets { namespace IntermediateResources
                     const RetainedFileRecord* record;
                     if (basePath && basePath[0]) {
                         XlConcatPath(buffer, dimof(buffer), basePath, depName);
-                        record = GetRetainedFileRecord(buffer).get();
-                        RegisterAssetDependency(validation, record);
+                        auto& ptr = GetRetainedFileRecord(buffer);
+                        RegisterAssetDependency(validation, ptr);
+                        record = ptr.get();
                     } else {
-                        record = GetRetainedFileRecord(depName).get();
-                        RegisterAssetDependency(validation, record);
+                        auto& ptr = GetRetainedFileRecord(depName);
+                        RegisterAssetDependency(validation, ptr);
+                        record = ptr.get();
                     }
 
                     if (record->_state._status == DependentFileState::Status::Shadowed) {

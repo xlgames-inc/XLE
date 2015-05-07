@@ -97,7 +97,7 @@ namespace RenderCore { namespace ColladaConversion
     {
     public:
         std::string AsNativeBinding(const std::string& input) const;
-        const ::Assets::DependencyValidation& GetDependencyValidation() const { return *_depVal; }
+        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _depVal; }
 
         ImportConfiguration(const ResChar filename[]);
         ~ImportConfiguration();

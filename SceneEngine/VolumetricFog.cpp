@@ -73,7 +73,7 @@ namespace SceneEngine
         VolumetricFogShaders(const Desc& desc);
         ~VolumetricFogShaders();
 
-        const ::Assets::DependencyValidation& GetDependencyValidation() const   { return *_validationCallback; }
+        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
     private:
         std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
     };
@@ -135,12 +135,12 @@ namespace SceneEngine
         resolveLightBinding->BindConstantBuffer(Hash64("GlobalTransform"), 0, 0);
 
         auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterAssetDependency(validationCallback, &buildExponentialShadowMap->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(validationCallback, &horizontalFilter->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(validationCallback, &verticalFilter->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(validationCallback, &injectLight->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(validationCallback, &propagateLight->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(validationCallback, &resolveLight->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(validationCallback, buildExponentialShadowMap->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(validationCallback, horizontalFilter->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(validationCallback, verticalFilter->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(validationCallback, injectLight->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(validationCallback, propagateLight->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(validationCallback, resolveLight->GetDependencyValidation());
 
             //  Commit pointers
         _buildExponentialShadowMap = std::move(buildExponentialShadowMap);

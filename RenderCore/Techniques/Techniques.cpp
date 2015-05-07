@@ -209,7 +209,7 @@ namespace RenderCore { namespace Techniques
         uint64 globalHashWithInterface = inputHash ^ techniqueInterface.GetHashValue();
         auto i = std::lower_bound(_globalToResolved.begin(), _globalToResolved.end(), globalHashWithInterface, CompareFirst<uint64, ResolvedShader>());
         if (i!=_globalToResolved.cend() && i->first == globalHashWithInterface) {
-            if (i->second._shaderProgram && (i->second._shaderProgram->GetDependencyValidation().GetValidationIndex()!=0)) {
+            if (i->second._shaderProgram && (i->second._shaderProgram->GetDependencyValidation()->GetValidationIndex()!=0)) {
                 ResolveAndBind(i->second, globalState, techniqueInterface);
             }
 
@@ -228,7 +228,7 @@ namespace RenderCore { namespace Techniques
         auto i2 = std::lower_bound(_filteredToResolved.begin(), _filteredToResolved.end(), filteredHashWithInterface, CompareFirst<uint64, ResolvedShader>());
         if (i2!=_filteredToResolved.cend() && i2->first == filteredHashWithInterface) {
             _globalToResolved.insert(i, std::make_pair(globalHashWithInterface, i2->second));
-            if (i2->second._shaderProgram && (i2->second._shaderProgram->GetDependencyValidation().GetValidationIndex()!=0)) {
+            if (i2->second._shaderProgram && (i2->second._shaderProgram->GetDependencyValidation()->GetValidationIndex()!=0)) {
                 ResolveAndBind(i2->second, globalState, techniqueInterface);
             }
 
@@ -385,7 +385,7 @@ namespace RenderCore { namespace Techniques
         ~ParameterBoxTable();
         ParameterBoxTable& operator=(ParameterBoxTable&& moveFrom);
 
-        const ::Assets::DependencyValidation& GetDependencyValidation() const { return *_depVal; }
+        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _depVal; }
     protected:
         std::shared_ptr<::Assets::DependencyValidation> _depVal;
     };
@@ -408,7 +408,7 @@ namespace RenderCore { namespace Techniques
     static void LoadInteritedParameterBoxes(
         Data& source, ParameterBox dst[4],
         ::Assets::DirectorySearchRules* searchRules,
-        std::vector<const ::Assets::DependencyValidation*>* inherited)
+        std::vector<const std::shared_ptr<::Assets::DependencyValidation>>* inherited)
     {
             //  Find the child called "Inherit". This will provide a list of 
             //  shareable settings that we can inherit from
@@ -438,13 +438,8 @@ namespace RenderCore { namespace Techniques
                         }
                     }
 
-                    if (inherited) {
-                        if (std::find(  inherited->begin(), inherited->end(),
-                                        &settingsTable.GetDependencyValidation())
-                            == inherited->end()) {
-
-                            inherited->push_back(&settingsTable.GetDependencyValidation());
-                        }
+                    if (inherited && std::find(inherited->begin(), inherited->end(), settingsTable.GetDependencyValidation()) == inherited->end()) {
+                        inherited->push_back(settingsTable.GetDependencyValidation());
                     }
                 }
             }
@@ -480,7 +475,7 @@ namespace RenderCore { namespace Techniques
 
         if (sourceFile) {
             auto searchRules = ::Assets::DefaultDirectorySearchRules(filename);
-            std::vector<const ::Assets::DependencyValidation*> inherited;
+            std::vector<const std::shared_ptr<::Assets::DependencyValidation>> inherited;
 
             data.Load((const char*)sourceFile.get(), (int)sourceFileSize);
             
@@ -522,7 +517,7 @@ namespace RenderCore { namespace Techniques
     Technique::Technique(
         Data& source, 
         ::Assets::DirectorySearchRules* searchRules,
-        std::vector<const ::Assets::DependencyValidation*>* inherited)
+        std::vector<const std::shared_ptr<::Assets::DependencyValidation>>* inherited)
     {
             //
             //      There are some parameters that will we always have an effect on the
@@ -603,7 +598,7 @@ namespace RenderCore { namespace Techniques
         
         if (sourceFile) {
             auto searchRules = ::Assets::DefaultDirectorySearchRules(resourceName);
-            std::vector<const ::Assets::DependencyValidation*> inheritedAssets;
+            std::vector<const std::shared_ptr<::Assets::DependencyValidation>> inheritedAssets;
 
             data.Load((const char*)sourceFile.get(), (int)sourceFileSize);
             for (int c=0; c<data.Size(); ++c) {

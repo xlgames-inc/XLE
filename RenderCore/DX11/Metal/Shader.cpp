@@ -239,7 +239,7 @@ namespace RenderCore { namespace Metal_DX11
         auto underlying = ObjectFactory().CreateComputeShader(byteCode.GetByteCode(), byteCode.GetSize());
 
         _validationCallback = std::make_shared<Assets::DependencyValidation>();
-        Assets::RegisterAssetDependency(_validationCallback, &byteCode.GetDependencyValidation());
+        Assets::RegisterAssetDependency(_validationCallback, byteCode.GetDependencyValidation());
 
             //  (creation successful; we can commit to member now)
         _underlying = std::move(underlying);
@@ -254,7 +254,7 @@ namespace RenderCore { namespace Metal_DX11
         }
 
         _validationCallback = std::make_shared<Assets::DependencyValidation>();
-        Assets::RegisterAssetDependency(_validationCallback, &byteCode.GetDependencyValidation());
+        Assets::RegisterAssetDependency(_validationCallback, byteCode.GetDependencyValidation());
     }
 
     ComputeShader::~ComputeShader() {}
@@ -275,7 +275,7 @@ namespace RenderCore { namespace Metal_DX11
         auto underlying = ObjectFactory().CreateDomainShader(byteCode.GetByteCode(), byteCode.GetSize());
 
         _validationCallback = std::make_shared<Assets::DependencyValidation>();
-        Assets::RegisterAssetDependency(_validationCallback, &byteCode.GetDependencyValidation());
+        Assets::RegisterAssetDependency(_validationCallback, byteCode.GetDependencyValidation());
 
             //  (creation successful; we can commit to member now)
         _underlying = std::move(underlying);
@@ -290,7 +290,7 @@ namespace RenderCore { namespace Metal_DX11
         }
 
         _validationCallback = std::make_shared<Assets::DependencyValidation>();
-        Assets::RegisterAssetDependency(_validationCallback, &byteCode.GetDependencyValidation());
+        Assets::RegisterAssetDependency(_validationCallback, byteCode.GetDependencyValidation());
     }
 
     DomainShader::~DomainShader() {}
@@ -311,7 +311,7 @@ namespace RenderCore { namespace Metal_DX11
         auto underlying = ObjectFactory().CreateHullShader(byteCode.GetByteCode(), byteCode.GetSize());
 
         _validationCallback = std::make_shared<Assets::DependencyValidation>();
-        Assets::RegisterAssetDependency(_validationCallback, &byteCode.GetDependencyValidation());
+        Assets::RegisterAssetDependency(_validationCallback, byteCode.GetDependencyValidation());
 
             //  (creation successful; we can commit to member now)
         _underlying = std::move(underlying);
@@ -326,7 +326,7 @@ namespace RenderCore { namespace Metal_DX11
         }
 
         _validationCallback = std::make_shared<Assets::DependencyValidation>();
-        Assets::RegisterAssetDependency(_validationCallback, &byteCode.GetDependencyValidation());
+        Assets::RegisterAssetDependency(_validationCallback, byteCode.GetDependencyValidation());
     }
 
     HullShader::~HullShader() {}
@@ -342,8 +342,8 @@ namespace RenderCore { namespace Metal_DX11
     ,   _compiledGeometryShader(nullptr)
     {
         _validationCallback = std::make_shared<Assets::DependencyValidation>();
-        Assets::RegisterAssetDependency(_validationCallback, &_compiledVertexShader.GetDependencyValidation());
-        Assets::RegisterAssetDependency(_validationCallback, &_compiledPixelShader.GetDependencyValidation());
+        Assets::RegisterAssetDependency(_validationCallback, _compiledVertexShader.GetDependencyValidation());
+        Assets::RegisterAssetDependency(_validationCallback, _compiledPixelShader.GetDependencyValidation());
     }
     
     ShaderProgram::ShaderProgram(   const ResChar vertexShaderInitializer[], 
@@ -356,8 +356,8 @@ namespace RenderCore { namespace Metal_DX11
     ,   _compiledGeometryShader(nullptr)
     {
         _validationCallback = std::make_shared<Assets::DependencyValidation>();
-        Assets::RegisterAssetDependency(_validationCallback, &_compiledVertexShader.GetDependencyValidation());
-        Assets::RegisterAssetDependency(_validationCallback, &_compiledPixelShader.GetDependencyValidation());
+        Assets::RegisterAssetDependency(_validationCallback, _compiledVertexShader.GetDependencyValidation());
+        Assets::RegisterAssetDependency(_validationCallback, _compiledPixelShader.GetDependencyValidation());
     }
 
     ShaderProgram::ShaderProgram(   const ResChar vertexShaderInitializer[], 
@@ -375,10 +375,10 @@ namespace RenderCore { namespace Metal_DX11
             _geometryShader = GeometryShader(*_compiledGeometryShader);
         }
         _validationCallback = std::make_shared<Assets::DependencyValidation>();
-        Assets::RegisterAssetDependency(_validationCallback, &_compiledVertexShader.GetDependencyValidation());
-        Assets::RegisterAssetDependency(_validationCallback, &_compiledPixelShader.GetDependencyValidation());
+        Assets::RegisterAssetDependency(_validationCallback, _compiledVertexShader.GetDependencyValidation());
+        Assets::RegisterAssetDependency(_validationCallback, _compiledPixelShader.GetDependencyValidation());
         if (_compiledGeometryShader) {
-            Assets::RegisterAssetDependency(_validationCallback, &_compiledGeometryShader->GetDependencyValidation());
+            Assets::RegisterAssetDependency(_validationCallback, _compiledGeometryShader->GetDependencyValidation());
         }
     }
 
@@ -400,8 +400,8 @@ namespace RenderCore { namespace Metal_DX11
         _vertexShader = std::move(vertexShader);
         _pixelShader = std::move(pixelShader);
         _validationCallback = std::make_shared<Assets::DependencyValidation>();
-        Assets::RegisterAssetDependency(_validationCallback, &_compiledVertexShader.GetDependencyValidation());
-        Assets::RegisterAssetDependency(_validationCallback, &_compiledPixelShader.GetDependencyValidation());
+        Assets::RegisterAssetDependency(_validationCallback, _compiledVertexShader.GetDependencyValidation());
+        Assets::RegisterAssetDependency(_validationCallback, _compiledPixelShader.GetDependencyValidation());
     }
 
     ShaderProgram::~ShaderProgram() {}
@@ -421,8 +421,8 @@ namespace RenderCore { namespace Metal_DX11
     ,   _hullShader(_compiledHullShader)
     ,   _domainShader(_compiledDomainShader)
     {
-        Assets::RegisterAssetDependency(_validationCallback, &_compiledHullShader.GetDependencyValidation());
-        Assets::RegisterAssetDependency(_validationCallback, &_compiledDomainShader.GetDependencyValidation());
+        Assets::RegisterAssetDependency(_validationCallback, _compiledHullShader.GetDependencyValidation());
+        Assets::RegisterAssetDependency(_validationCallback, _compiledDomainShader.GetDependencyValidation());
     }
 
     DeepShaderProgram::~DeepShaderProgram() {}

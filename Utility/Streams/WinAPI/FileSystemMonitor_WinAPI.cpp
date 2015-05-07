@@ -37,7 +37,7 @@ namespace Utility
 
         void OnChange(const char filename[]);
     private:
-        std::vector<std::pair<uint64, std::shared_ptr<OnChangeCallback>>>  _callbacks;
+        std::vector<std::pair<uint64, std::weak_ptr<OnChangeCallback>>>  _callbacks;
         Threading::Mutex  _callbacksLock;
         XlHandle        _directoryHandle;
         uint8           _resultBuffer[1024];
@@ -96,9 +96,8 @@ namespace Utility
     {
         ScopedLock(_callbacksLock);
         _callbacks.insert(
-            std::lower_bound(   _callbacks.cbegin(), _callbacks.cend(), 
-                                filenameHash, CompareFirst<uint64, std::shared_ptr<OnChangeCallback>>()),
-            std::make_pair(filenameHash, callback));
+            LowerBound(_callbacks, filenameHash),
+            std::make_pair(filenameHash, std::move(callback)));
     }
 
     void            MonitoredDirectory::OnTriggered()
@@ -143,12 +142,34 @@ namespace Utility
     {
         auto hash = MonitoredDirectory::HashFilename(filename);
         ScopedLock(_callbacksLock);
-        auto i = std::equal_range(
-            _callbacks.cbegin(), _callbacks.cend(), 
-            hash, CompareFirst<uint64, std::shared_ptr<OnChangeCallback>>());
-        for (auto i2=i.first; i2!=i.second; ++i2) {
+        #if (STL_ACTIVE == STL_MSVC) && (_ITERATOR_DEBUG_LEVEL >= 2)
+            auto range = std::_Equal_range(
+                _callbacks.begin(), _callbacks.end(), hash, 
+                CompareFirst<uint64, std::weak_ptr<OnChangeCallback>>(),
+                _Dist_type(_callbacks.begin()));
+        #else
+            auto range = std::equal_range(
+                _callbacks.cbegin(), _callbacks.cend(), 
+                hash, CompareFirst<uint64, std::shared_ptr<OnChangeCallback>>());
+        #endif
+
+        bool foundExpired = false;
+        for (auto i2=range.first; i2!=range.second; ++i2) {
                 // todo -- what happens if OnChange() results in a change to _callbacks?
-            i2->second->OnChange();
+            auto l = i2->second.lock();
+            if (l) l->OnChange();
+            else foundExpired = true;
+        }
+
+        if (foundExpired) {
+                // Remove any pointers that have expired
+                // (note that we only check matching pointers. Non-matching pointers
+                // that have expired are untouched)
+            _callbacks.erase(
+                std::remove_if(range.first, range.second, 
+                    [](std::pair<uint64, std::weak_ptr<OnChangeCallback>>& i)
+                    { return i.second.expired(); }),
+                range.second);
         }
     }
 

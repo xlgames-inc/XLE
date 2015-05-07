@@ -25,7 +25,7 @@ namespace SceneEngine
 
         const std::string & SourceFile() const          { return _sourceFileName; }
         const std::string & SecondaryCacheFile() const  { return _secondaryCacheName; }
-        const Assets::DependencyValidation& GetDependencyValidation() const   { return *_validationCallback; }
+        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
 
         //////////////////////////////////////////////////////////////////
         class Node
@@ -78,7 +78,7 @@ namespace SceneEngine
     {
     public:
         const std::string & SourceFile() const  { return _sourceFileName; }
-        const Assets::DependencyValidation& GetDependencyValidation() const   { return *_validationCallback; }
+        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
 
         TerrainCellTexture();
         ~TerrainCellTexture();

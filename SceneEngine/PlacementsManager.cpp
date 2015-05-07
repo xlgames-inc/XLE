@@ -95,7 +95,7 @@ namespace SceneEngine
         unsigned                GetObjectReferenceCount() const;
         const void*             GetFilenamesBuffer() const;
 
-        const ::Assets::DependencyValidation& GetDependencyValidation() const { return *_dependencyValidation; }
+        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _dependencyValidation; }
 
         void Save(const ResChar filename[]) const;
         void LogDetails(const char title[]) const;
@@ -516,7 +516,7 @@ namespace SceneEngine
                 i2 = _cells.insert(i2, std::make_pair(filenameHash, std::move(newRenderInfo)));
             } else {
                     // check if we need to reload placements
-                if (i2->second._placements->GetDependencyValidation().GetValidationIndex() != 0) {
+                if (i2->second._placements->GetDependencyValidation()->GetValidationIndex() != 0) {
                     i2->second._placements = &::Assets::GetAssetDep<Placements>(filename);
                 }
             }
@@ -597,7 +597,7 @@ namespace SceneEngine
                     i2 = _cells.insert(i2, std::make_pair(cell._filenameHash, std::move(newRenderInfo)));
                 } else {
                         // check if we need to reload placements
-                    if (i2->second._placements->GetDependencyValidation().GetValidationIndex() != 0) {
+                    if (i2->second._placements->GetDependencyValidation()->GetValidationIndex() != 0) {
                         i2->second._placements = &::Assets::GetAssetDep<Placements>(cell._filename);
                         i2->second._quadTree.reset();
                     }
@@ -670,7 +670,7 @@ namespace SceneEngine
             auto modelHash = *(uint64*)PtrAdd(filenamesBuffer, obj._modelFilenameOffset);
             if (modelHash != _currentModel) {
                 _model = cache._modelScaffolds.Get(modelHash).get();
-                if (!_model || _model->GetDependencyValidation().GetValidationIndex() > 0) {
+                if (!_model || _model->GetDependencyValidation()->GetValidationIndex() > 0) {
                     auto modelFilename = (const ResChar*)PtrAdd(filenamesBuffer, obj._modelFilenameOffset + sizeof(uint64));
                     auto newModel = CreateModelScaffold(modelFilename, modelFormat);
                     _model = newModel.get();
@@ -683,7 +683,7 @@ namespace SceneEngine
             materialHash = HashCombine(materialHash, modelHash);
             if (materialHash != _currentMaterial) {
                 _material = cache._materialScaffolds.Get(materialHash).get();
-                if (!_material || _material->GetDependencyValidation().GetValidationIndex() > 0) {
+                if (!_material || _material->GetDependencyValidation()->GetValidationIndex() > 0) {
                     std::shared_ptr<MaterialScaffold> newMaterial;
                     auto modelFilename = (const ResChar*)PtrAdd(filenamesBuffer, obj._modelFilenameOffset + sizeof(uint64));
                     auto materialFilename = (const ResChar*)PtrAdd(filenamesBuffer, obj._materialFilenameOffset + sizeof(uint64));
@@ -708,7 +708,7 @@ namespace SceneEngine
                     //  We could potentially have more than one shared state set for this renderer
                     //  and separate the objects into their correct state set, as required...
                 _renderer = cache._modelRenderers.Get(hashedRenderer).get();
-                if (!_renderer || _renderer->GetDependencyValidation().GetValidationIndex() > 0) {
+                if (!_renderer || _renderer->GetDependencyValidation()->GetValidationIndex() > 0) {
                     #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
                         auto modelFilename = (const ResChar*)PtrAdd(filenamesBuffer, obj._modelFilenameOffset + sizeof(uint64));
                         auto searchRules = ::Assets::DefaultDirectorySearchRules(modelFilename);

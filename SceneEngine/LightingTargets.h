@@ -178,7 +178,7 @@ namespace SceneEngine
 
         const LightShader* GetShader(const LightShaderType& type);
 
-        const Assets::DependencyValidation& GetDependencyValidation() const   { return *_validationCallback; }
+        const std::shared_ptr<Assets::DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
 
         LightingResolveShaders(const Desc& desc);
         ~LightingResolveShaders();
@@ -222,7 +222,7 @@ namespace SceneEngine
         const RenderCore::Metal::ShaderProgram*   _ambientLight;
         std::unique_ptr<RenderCore::Metal::BoundUniforms>   _ambientLightUniforms;
 
-        const Assets::DependencyValidation& GetDependencyValidation() const   { return *_validationCallback; }
+        const std::shared_ptr<Assets::DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
 
         AmbientResolveShaders(const Desc& desc);
         ~AmbientResolveShaders();

@@ -284,7 +284,7 @@ namespace SceneEngine
         dest._uniforms.BindConstantBuffer(Hash64("OrthogonalShadowProjection"), 4, 1);
         dest._uniforms.BindConstantBuffer(Hash64("ShadowResolveParameters"),    5, 1);
 
-        ::Assets::RegisterAssetDependency(_validationCallback, &dest._shader->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(_validationCallback, dest._shader->GetDependencyValidation());
     }
 
     auto LightingResolveShaders::GetShader(const LightShaderType& type) -> const LightShader*
@@ -353,7 +353,7 @@ namespace SceneEngine
         ambientLightUniforms->BindConstantBuffer(Hash64("AmbientLightBuffer"), 0, 1);
 
         auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterAssetDependency(validationCallback, &ambientLight->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(validationCallback, ambientLight->GetDependencyValidation());
 
         _ambientLight = std::move(ambientLight);
         _ambientLightUniforms = std::move(ambientLightUniforms);

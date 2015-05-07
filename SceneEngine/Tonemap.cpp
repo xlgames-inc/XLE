@@ -153,7 +153,7 @@ namespace SceneEngine
         unsigned _firstStepHeight;
         bool _calculateInputsSucceeded;
 
-        const ::Assets::DependencyValidation& GetDependencyValidation() const   { return *_validationCallback; }
+        const std::shared_ptr<::Assets::DependencyValidation>&  GetDependencyValidation() const   { return _validationCallback; }
 
         ToneMappingResources(const Desc& desc);
         ~ToneMappingResources();
@@ -249,9 +249,9 @@ namespace SceneEngine
         auto* brightPassStepDown        = &::Assets::GetAssetDep<ComputeShader>("game/xleres/postprocess/hdrluminance.csh:BrightPassStepDown:cs_*");
 
         _validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterAssetDependency(_validationCallback, &sampleInitialLuminance->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(_validationCallback, &luminanceStepDown->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(_validationCallback, &updateOverallLuminance->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(_validationCallback, sampleInitialLuminance->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(_validationCallback, luminanceStepDown->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(_validationCallback, updateOverallLuminance->GetDependencyValidation());
 
         _luminanceBuffers       = std::move(luminanceBuffers);
         _luminanceBufferUAV     = std::move(luminanceBuffersUAV);
@@ -500,7 +500,7 @@ namespace SceneEngine
 
         ToneMapShaderBox(const Desc& descs);
 
-        const ::Assets::DependencyValidation& GetDependencyValidation() const   { return *_validationCallback; }
+        const std::shared_ptr<::Assets::DependencyValidation>&  GetDependencyValidation() const   { return _validationCallback; }
     private:
         std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
     };
@@ -522,7 +522,7 @@ namespace SceneEngine
         uniforms.BindConstantBuffer(Hash64("ColorGradingSettings"), 1, 1);
 
         auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterAssetDependency(validationCallback, &shaderProgram.GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(validationCallback, shaderProgram.GetDependencyValidation());
 
         _shaderProgram = &shaderProgram;
         _uniforms = std::move(uniforms);
@@ -673,7 +673,7 @@ namespace SceneEngine
         const RenderCore::Metal::ShaderProgram*       _integrateDistantBlur;
         std::unique_ptr<RenderCore::Metal::BoundUniforms>   _integrateDistantBlurBinding;
 
-        const ::Assets::DependencyValidation& GetDependencyValidation() const   { return *_validationCallback; }
+        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
     private:
         std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
     };
@@ -727,9 +727,9 @@ namespace SceneEngine
         RenderCore::Metal::BlendState noBlending = RenderCore::Metal::BlendOp::NoBlending;
 
         auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterAssetDependency(validationCallback, &horizontalFilter->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(validationCallback, &verticalFilter->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(validationCallback, &integrateDistantBlur->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(validationCallback, horizontalFilter->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(validationCallback, verticalFilter->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(validationCallback, integrateDistantBlur->GetDependencyValidation());
 
         _blurBuffer[0]                  = std::move(bloomBuffer0);
         _blurBuffer[1]                  = std::move(bloomBuffer1);

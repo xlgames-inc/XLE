@@ -467,8 +467,8 @@ namespace RenderOverlays
         RenderCore::Metal::BoundInputLayout _boundInputLayout;
         RenderCore::Metal::BoundUniforms _boundUniforms;
 
-        const Assets::DependencyValidation&     GetDependencyValidation() const     
-            { return *_validationCallback; }
+        const std::shared_ptr<Assets::DependencyValidation>& GetDependencyValidation() const     
+            { return _validationCallback; }
         
         ShaderBox(const Desc&);
 
@@ -543,7 +543,7 @@ namespace RenderOverlays
                 ReciprocalViewportDimensions_Elements, dimof(ReciprocalViewportDimensions_Elements));
             RenderCore::Techniques::TechniqueContext::BindGlobalUniforms(boundUniforms);
 
-            Assets::RegisterAssetDependency(validationCallback, &_shaderProgram->GetDependencyValidation());
+            Assets::RegisterAssetDependency(validationCallback, _shaderProgram->GetDependencyValidation());
 
             _boundInputLayout = std::move(boundInputLayout);
             _boundUniforms = std::move(boundUniforms);

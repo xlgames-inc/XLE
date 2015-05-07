@@ -19,7 +19,7 @@ namespace SceneEngine
     public:
         float GetHeight(Float2 cellBasedCoord) const;
 
-        const Assets::DependencyValidation& GetDependencyValidation() const   { return *_validationCallback; }
+        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
 
         TerrainNodeHeightCollision(const char cellFilename[], ITerrainFormat& ioFormat, unsigned nodeIndex);
         ~TerrainNodeHeightCollision();
@@ -94,7 +94,7 @@ namespace SceneEngine
         }
 
         auto validCallback = std::make_shared<Assets::DependencyValidation>();
-        ::Assets::RegisterAssetDependency(validCallback, &cell.GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(validCallback, cell.GetDependencyValidation());
         ::Assets::RegisterFileDependency(validCallback, cellFilename);
 
         _heightData = std::move(heightData);

@@ -31,8 +31,8 @@ namespace RenderOverlays
         TableOfKeys(const char filename[]);
         const std::vector<std::pair<uint32, std::string>>& GetTable() const { return _table; }
 
-        const Assets::DependencyValidation&     GetDependencyValidation() const     
-            { return *_validationCallback; }
+        const std::shared_ptr<Assets::DependencyValidation>& GetDependencyValidation() const     
+            { return _validationCallback; }
 
     private:
         std::shared_ptr<Assets::DependencyValidation>   _validationCallback;

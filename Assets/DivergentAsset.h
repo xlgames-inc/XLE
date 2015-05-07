@@ -178,7 +178,7 @@ namespace Assets
             *_originalCopy = std::move(temp);
 			_state = State::Committed;
 
-            const_cast<::Assets::DependencyValidation&>(_liveCopy->GetDependencyValidation()).OnChange();
+            const_cast<::Assets::DependencyValidation*>(_liveCopy->GetDependencyValidation().get())->OnChange();
             _identifer.OnChange();
 		}
 	}

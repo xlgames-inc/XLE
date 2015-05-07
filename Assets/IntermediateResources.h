@@ -62,6 +62,9 @@ namespace Assets { namespace IntermediateResources
 
         Store(const ResChar baseDirectory[], const ResChar versionString[]);
         ~Store();
+
+        Store(const Store&) = delete;
+        Store& operator=(const Store&) = delete;
     protected:
         std::string _baseDirectory;
     };

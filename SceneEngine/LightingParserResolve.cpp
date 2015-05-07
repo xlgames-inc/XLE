@@ -51,7 +51,7 @@ namespace SceneEngine
         SamplerState        _shadowComparisonSampler;
         SamplerState        _shadowDepthSampler;
 
-        const ::Assets::DependencyValidation& GetDependencyValidation() const { return *_validationCallback; }
+        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _validationCallback; }
 
         LightingResolveResources(const Desc& desc);
     private:
@@ -429,7 +429,7 @@ namespace SceneEngine
             "game/xleres/deferred/persamplemask.psh:main:ps_*", definesTable);
 
         auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterAssetDependency(validationCallback, &perSampleMask->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(validationCallback, perSampleMask->GetDependencyValidation());
 
         _alwaysWriteToStencil = std::move(alwaysWriteToStencil);
         _perSampleMask = std::move(perSampleMask);

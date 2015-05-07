@@ -80,7 +80,7 @@ namespace SceneEngine
         ScreenSpaceReflectionsResources(const Desc& desc);
         ~ScreenSpaceReflectionsResources();
 
-        const ::Assets::DependencyValidation& GetDependencyValidation() const   { return *_validationCallback; }
+        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
     private:
         std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
     };
@@ -235,11 +235,11 @@ namespace SceneEngine
 
             ////////////
         auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterAssetDependency(validationCallback, &buildMask->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(validationCallback, &buildReflections->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(validationCallback, &downsampleTargets->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(validationCallback, &horizontalBlur->GetDependencyValidation());
-        ::Assets::RegisterAssetDependency(validationCallback, &verticalBlur->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(validationCallback, buildMask->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(validationCallback, buildReflections->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(validationCallback, downsampleTargets->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(validationCallback, horizontalBlur->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(validationCallback, verticalBlur->GetDependencyValidation());
 
         _maskTexture = std::move(maskTexture);
         _maskUnorderedAccess = std::move(maskUnorderedAccess);

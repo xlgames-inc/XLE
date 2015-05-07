@@ -44,7 +44,7 @@ namespace RenderCore { namespace Assets
     {
     public:
         const Metal::ShaderResourceView&        GetShaderResource() const;
-        const ::Assets::DependencyValidation&   GetDependencyValidation() const     { return *_validationCallback; }
+        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const     { return _validationCallback; }
         const ::Assets::ResChar*                Initializer() const;
 
         explicit DeferredShaderResource(const ::Assets::ResChar resourceName[]);

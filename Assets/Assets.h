@@ -95,7 +95,7 @@ namespace Assets
         template<typename AssetType> using Ptr = std::unique_ptr<AssetType>;
 
         template <int DoCheckDependancy> struct CheckDependancy { template<typename Resource> static bool NeedsRefresh(const Resource* resource); };
-        template<> struct CheckDependancy<1>   { template <typename Resource> static bool NeedsRefresh(const Resource* resource)   { return !resource || (resource->GetDependencyValidation().GetValidationIndex()!=0); } };
+        template<> struct CheckDependancy<1>   { template <typename Resource> static bool NeedsRefresh(const Resource* resource)   { return !resource || (resource->GetDependencyValidation()->GetValidationIndex()!=0); } };
         template<> struct CheckDependancy<0>   { template <typename Resource> static bool NeedsRefresh(const Resource* resource)   { return !resource; } };
 
         template <int BoBackgroundCompile> struct ConstructAsset {};
@@ -403,14 +403,28 @@ namespace Assets
     /// </example>
     /// <seealso cref="RegisterFileDependency" />
     /// <seealso cref="RegisterResourceDependency" />
-    class DependencyValidation : public Utility::OnChangeCallback
+    class DependencyValidation : public Utility::OnChangeCallback, public std::enable_shared_from_this<DependencyValidation>
     {
     public:
         virtual void    OnChange();
         unsigned        GetValidationIndex() const        { return _validationIndex; }
+
+        void    RegisterDependency(const std::shared_ptr<Utility::OnChangeCallback>& dependency);
+
         DependencyValidation() : _validationIndex(0)  {}
+        DependencyValidation(DependencyValidation&&) never_throws;
+        DependencyValidation& operator=(DependencyValidation&&) never_throws;
+        ~DependencyValidation();
+
+        DependencyValidation(const DependencyValidation&) = delete;
+        DependencyValidation& operator=(const DependencyValidation&) = delete;
     private:
         unsigned _validationIndex;
+
+            // store a fixed number of dependencies (with room to grow)
+            // this is just to avoid extra allocation where possible
+        std::shared_ptr<Utility::OnChangeCallback> _dependencies[4];
+        std::vector<std::shared_ptr<Utility::OnChangeCallback>> _dependenciesOverflow;
     };
 
     /// <summary>Registers a dependency on a file on disk</summary>
@@ -422,14 +436,18 @@ namespace Assets
     /// already been destroyed).
     /// <param name="validationIndex">Callback to receive invalidation events</param>
     /// <param name="filename">Normally formatted filename</param>
-    void RegisterFileDependency(std::shared_ptr<Utility::OnChangeCallback> validationIndex, const char filename[]);
+    void RegisterFileDependency(
+        const std::shared_ptr<Utility::OnChangeCallback>& validationIndex, 
+        const char filename[]);
 
     /// <summary>Registers a dependency on another resource</summary>
     /// Sometimes resources are dependent on other resources. This function helps registers a 
     /// dependency between resources.
     /// If <paramref name="dependency"/> ever gets a OnChange() message, then <paramref name="dependentResource"/> 
     /// will also receive the OnChange() message.
-    void RegisterAssetDependency(std::shared_ptr<DependencyValidation> dependentResource, const Utility::OnChangeCallback* dependency);
+    void RegisterAssetDependency(
+        const std::shared_ptr<DependencyValidation>& dependentResource, 
+        const std::shared_ptr<Utility::OnChangeCallback>& dependency);
 
 }
 

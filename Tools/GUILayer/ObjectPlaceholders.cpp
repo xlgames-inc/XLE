@@ -46,7 +46,7 @@ namespace GUILayer
         unsigned                _cubeVBStride;
         TechniqueMaterial       _material;
 
-        const Assets::DependencyValidation& GetDependencyValidation() const   { return *_depVal; }
+        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _depVal; }
         VisGeoBox(const Desc&);
         ~VisGeoBox();
     protected:

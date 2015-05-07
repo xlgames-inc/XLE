@@ -136,7 +136,7 @@ namespace ToolsRig
         const RenderCore::Metal::ShaderProgram* _drawHighlight;
         RenderCore::Metal::BoundUniforms _drawHighlightUniforms;
 
-        const Assets::DependencyValidation& GetDependencyValidation() const   { return *_validationCallback; }
+        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
 
         HighlightShaders(const Desc&);
     protected:
@@ -153,7 +153,7 @@ namespace ToolsRig
         uniforms.BindConstantBuffer(Hash64("$Globals"), 0, 1);
 
         auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterAssetDependency(validationCallback, &drawHighlight->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(validationCallback, drawHighlight->GetDependencyValidation());
 
         _validationCallback = std::move(validationCallback);
         _drawHighlight = std::move(drawHighlight);
