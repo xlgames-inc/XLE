@@ -47,10 +47,8 @@ namespace LevelEditor.XLEControls
 
             var schemaLoader = Globals.MEFContainer.GetExportedValue<XLELayer.MaterialSchemaLoader>();
             m_controls.Bind(
-                new XLELayer.MaterialPropertyContext(
-                    // new GUILayer.RawMaterial("game\\chr\\nu_f\\skin\\dragon003.material:nu_f_sk_dragon003"),
-                    new GUILayer.RawMaterial(Context.MaterialName),
-                    schemaLoader));
+                schemaLoader.CreatePropertyContext(
+                    new GUILayer.RawMaterial("game\\chr\\nu_f\\skin\\dragon003.material:nu_f_sk_dragon003")));
         }
 
         [Import(AllowDefault = false)] private IControlHostService m_controlHostService;

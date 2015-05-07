@@ -43,7 +43,7 @@ namespace GUILayer
         virtual bool TrySetMember(System::String^ name, bool caseInsensitive, Object^ value);
     };
 
-    public ref class ManipulatorPropertyContext : public IPropertySource
+    public ref class BasicPropertySource : public IPropertySource
     {
     public:
         using PropertyDescriptorSet = IEnumerable<System::ComponentModel::PropertyDescriptor^>;
@@ -51,47 +51,16 @@ namespace GUILayer
         property PropertyDescriptorSet^ PropertyDescriptors { virtual PropertyDescriptorSet^ get() override; }
         property IEnumerable<Object^>^ Items { virtual IEnumerable<Object^>^ get() override; }
 
-        ref class DynamicPropertyDescriptor;
-
-        ManipulatorPropertyContext(IGetAndSetProperties^ getAndSet, PropertyDescriptorSet^ propertyDescriptors);
-        ~ManipulatorPropertyContext();
+        BasicPropertySource(IGetAndSetProperties^ getAndSet, PropertyDescriptorSet^ propertyDescriptors);
+        ~BasicPropertySource();
     protected:
-        // ref class Helper;
         IGetAndSetProperties^ _helper;
         PropertyDescriptorSet^ _propertyDescriptors;
     };
 
-    // ref class ManipulatorPropertyContext::Helper : public ::System::Dynamic::DynamicObject
-    // {
-    // public:
-    //     bool TryGetMember(System::Dynamic::GetMemberBinder^ binder, Object^% result) override
-    //     {
-    //         return TryGetMember(binder->Name, binder->IgnoreCase, result);
-    //     }
-    // 
-    //     bool TrySetMember(System::Dynamic::SetMemberBinder^ binder, Object^ value) override
-    //     {
-    //         return TrySetMember(binder->Name, binder->IgnoreCase, value);
-    //     }
-    // 
-    //     bool TryGetMember(System::String^ name, bool ignoreCase, Object^% result)
-    //     {
-    //         return _getAndSet->TryGetMember(name, ignoreCase, result);
-    //     }
-    // 
-    //     bool TrySetMember(System::String^ name, bool ignoreCase, Object^ value)
-    //     {
-    //         return _getAndSet->TrySetMember(name, ignoreCase, value);
-    //     }
-    // 
-    //     Helper(IGetAndSetProperties^ getAndSet) : _getAndSet(getAndSet) {}
-    // protected:
-    //     IGetAndSetProperties^ _getAndSet;
-    // };
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    ref class ManipulatorPropertyContext::DynamicPropertyDescriptor : public PropertyDescriptor
+    ref class DynamicPropertyDescriptor : public PropertyDescriptor
     {
     public:
         Type^ _propertyType;
@@ -134,14 +103,14 @@ namespace GUILayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    IEnumerable<Object^>^ ManipulatorPropertyContext::Items::get()
+    IEnumerable<Object^>^ BasicPropertySource::Items::get()
     {
         auto result = gcnew List<Object^>();
         result->Add(_helper);
         return result; 
     }
 
-    auto ManipulatorPropertyContext::PropertyDescriptors::get() -> PropertyDescriptorSet^
+    auto BasicPropertySource::PropertyDescriptors::get() -> PropertyDescriptorSet^
     {
         return _propertyDescriptors;
     }
@@ -149,14 +118,14 @@ namespace GUILayer
             // note --  no protection on this pointer. Caller must ensure the
             //          native manipulator stays around for the life-time of 
             //          this object.
-    ManipulatorPropertyContext::ManipulatorPropertyContext(
+    BasicPropertySource::BasicPropertySource(
         IGetAndSetProperties^ getAndSet, PropertyDescriptorSet^ propertyDescriptors)
     : _propertyDescriptors(propertyDescriptors)
     {
         _helper = getAndSet;
     }
 
-    ManipulatorPropertyContext::~ManipulatorPropertyContext()
+    BasicPropertySource::~BasicPropertySource()
     {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -255,7 +224,7 @@ namespace GUILayer
         for (size_t c=0; c<fParams.second; ++c) {
             const auto& param = fParams.first[c];
             auto descriptor = 
-                gcnew ManipulatorPropertyContext::DynamicPropertyDescriptor(
+                gcnew DynamicPropertyDescriptor(
                     clix::marshalString<clix::E_UTF8>(param._name),
                     System::Single::typeid, 
                     gcnew array<Attribute^, 1> {
@@ -271,7 +240,7 @@ namespace GUILayer
         for (size_t c=0; c<iParams.second; ++c) {
             const auto& param = iParams.first[c];
             auto descriptor = 
-                gcnew ManipulatorPropertyContext::DynamicPropertyDescriptor(
+                gcnew DynamicPropertyDescriptor(
                     clix::marshalString<clix::E_UTF8>(param._name),
                     System::Int32::typeid, 
                     gcnew array<Attribute^, 1> {
@@ -287,7 +256,7 @@ namespace GUILayer
         for (size_t c=0; c<bParams.second; ++c) {
             const auto& param = bParams.first[c];
             auto descriptor = 
-                gcnew ManipulatorPropertyContext::DynamicPropertyDescriptor(
+                gcnew DynamicPropertyDescriptor(
                     clix::marshalString<clix::E_UTF8>(param._name),
                     System::Boolean::typeid, nullptr);
             result->Add(descriptor);
@@ -302,7 +271,7 @@ namespace GUILayer
     {
         auto m = GetManipulator(name);
         if (m)
-            return gcnew ManipulatorPropertyContext(
+            return gcnew BasicPropertySource(
                 gcnew Manipulator_GetAndSet(m.GetNativePtr()),
                 Manipulator_GetAndSet::CreatePropertyDescriptors(*m.GetNativePtr()));
         return nullptr;

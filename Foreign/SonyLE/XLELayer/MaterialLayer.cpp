@@ -4,6 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#include "NativeManipulators.h"
 #include "../../Assets/Assets.h"
 #include "../../RenderCore/Assets/Material.h"
 #include "../../Tools/GUILayer/MarshalString.h"
@@ -79,6 +80,10 @@ namespace XLELayer
     public ref class MaterialSchemaLoader : public XmlSchemaTypeLoader
     {
     public:
+        DomNodeType^ GetMaterialType() { return GetNodeType("gap:RawMaterial"); }
+
+        IPropertyEditingContext^ CreatePropertyContext(GUILayer::RawMaterial^ material);
+
         MaterialSchemaLoader()
         {
             auto resourceNames = Assembly::GetExecutingAssembly()->GetManifestResourceNames();
@@ -90,8 +95,6 @@ namespace XLELayer
             SchemaResolver = gcnew ResourceStreamResolver(Assembly::GetExecutingAssembly(), ".");
             Load("material.xsd");
         }
-
-        DomNodeType^ GetMaterialType() { return GetNodeType("gap:RawMaterial"); }
 
     protected:
         void ParseAnnotations(
@@ -127,7 +130,11 @@ namespace XLELayer
             auto rawDescriptors = Sce::Atf::Dom::PropertyDescriptor::ParseXml(type, annotations);
 
                 //  Convert these descriptors into our adapter types
-                //  
+                //  The ATF adapters are only made to be used with Dom Node types... But we
+                //  want to do something very similar with a non-dom-node type.
+                //  This is sort of awkward... But actually it reuses all of the
+                //  code in ATF really well. It's a quite effective solution, even
+                //  though it's a bit wierd.
 
             auto descriptors = gcnew PropertyDescriptorCollection(
                 EmptyArray<Sce::Atf::Dom::PropertyDescriptor^>::Instance);
@@ -162,221 +169,6 @@ namespace XLELayer
                 result[c] = collection[c];
             return result;
         }
-
-#if 0
-        static PropertyDescriptorCollection^ ParseXml(DomNodeType^ type, IEnumerable<XmlNode^>^ annotations)
-        {
-                // based on Sce.Atf.Dom.PropertyDescriptor
-                //      --  but we can't use the default one, because that create
-                //          property description objects that only work with dom nodes
-                //          We want to create a special case "PropertyDescriptor" objects
-                //
-                //      Unfortunately it requires copying a lot of code!
-            auto descriptors = gcnew PropertyDescriptorCollection(
-                EmptyArray<Sce::Atf::Dom::PropertyDescriptor^>::Instance);
-
-            for each (XmlNode^ annotation in annotations) {
-                try {
-                    // Get name, try to parse it as a path
-                    auto nameAttr = annotation->Attributes["name"];
-                    System::String^ name = nullptr;
-                    array<System::String^>^ segments = nullptr;
-                    if (nameAttr != nullptr) {
-                        name = nameAttr->Value;
-                        segments = name->Split(
-                            gcnew array<System::Char>(3) {'/', '\\', '.'}, 
-                            System::StringSplitOptions::RemoveEmptyEntries);
-                    }
-
-                    auto descriptor = GetDescriptor(type, annotation, name, segments);
-                    if (descriptor != nullptr)
-                        descriptors->Add(descriptor);
-                }
-                catch (AnnotationException^ ex)
-                {
-                    Outputs::WriteLine(OutputMessageType::Warning, ex->Message);
-                }
-            }
-
-            return descriptors;
-        }
-
-        static System::ComponentModel::PropertyDescriptor^ GetDescriptor(
-            DomNodeType^ type, XmlNode^ annotation, System::String^ name,
-            array<System::String^>^ segments)
-        {
-            System::ComponentModel::PropertyDescriptor^ desc = nullptr;
-
-                // Get mandatory display name
-            auto displayNameAttr = annotation->Attributes["displayName"];
-            if (displayNameAttr != nullptr) {
-                if (System::String::IsNullOrEmpty(name))
-                    throw gcnew AnnotationException(System::String::Format(
-                        "Required name attribute is null or empty.\r\nType: {0}\r\nElement: {1}",
-                        type->Name, annotation->Name));
-                
-                auto displayName = displayNameAttr->Value;
-                if (System::String::IsNullOrEmpty(displayName))
-                    displayName = name;
-
-                // Get optional annotations
-                auto category = GetAnnotation(annotation, "category");
-                auto description = GetAnnotation(annotation, "description");
-                bool readOnly = GetAnnotation(annotation, "readOnly") == "true";
-                auto editor = CreateObject<System::Object^>(type, annotation, "editor");
-                auto typeConverter = CreateObject<TypeConverter^>(type, annotation, "converter");
-
-                if (annotation->Name == "scea.dom.editors.attribute")
-                {
-                    // Attribute annotation
-                    if (segments == nullptr)
-                        throw gcnew AnnotationException("Unnamed attribute");
-
-                    if (segments->Length == 1) // local attribute
-                    {
-                        auto metaAttr = type->GetAttributeInfo(name);
-                        if (metaAttr == nullptr)
-                            throw gcnew AnnotationException("Type doesn't have this attribute");
-
-                        desc = gcnew AttributePropertyDescriptor(
-                            displayName, metaAttr,
-                            category, description, readOnly, editor, typeConverter);
-                    }
-                    else // descendant attribute
-                    {
-                        auto metaElements = GetPath(type, segments, segments->Length - 1);
-                        DomNodeType^ childType = metaElements[segments->Length - 2]->Type;
-                        AttributeInfo^ metaAttr = childType->GetAttributeInfo(segments[segments->Length - 1]);
-                        if (metaAttr == nullptr)
-                            throw gcnew AnnotationException("Descendant type doesn't have this attribute");
-
-                        desc = gcnew ChildAttributePropertyDescriptor(
-                            displayName, metaAttr, metaElements,
-                            category, description, readOnly, editor, typeConverter);
-                    }
-                }
-                else if (annotation->Name == "scea.dom.editors.child")
-                {
-                    // Child value annotation
-                    auto element = type->GetChildInfo(name);
-                    if (element == nullptr)
-                        throw gcnew AnnotationException("Type doesn't have this element");
-
-                    desc = gcnew ChildPropertyDescriptor(
-                        displayName, element,
-                        category, description, readOnly, editor, typeConverter);
-                }
-            }
-            return desc;
-        }
-
-        template<typename T>
-            static T CreateObject(DomNodeType^ domNodeType, XmlNode^ annotation, System::String^ attribute)
-        {
-            auto typeName = GetAnnotation(annotation, attribute);
-            auto paramString = System::String::Empty;
-            if (typeName != nullptr) {
-                // check for params
-                int colonIndex = typeName->IndexOf(':');
-                if (colonIndex >= 0) {
-                    int paramsIndex = colonIndex + 1;
-                    paramString = typeName->Substring(paramsIndex, typeName->Length - paramsIndex);
-                    typeName = typeName->Substring(0, colonIndex);
-                }
-
-                // create object from type name
-                auto objectType = System::Type::GetType(typeName);
-                if (objectType == nullptr)
-                    throw gcnew AnnotationException("Couldn't find type " + typeName);
-
-                // initialize with params
-                auto obj = Activator.CreateInstance(objectType);
-                auto annotatedObj = dynamic_cast<IAnnotatedParams^>(obj);
-                if (annotatedObj != null) {
-                    array<System::String^>^ parameters;
-
-                    if (!System::String::IsNullOrEmpty(paramString))
-                        parameters = paramString->Split(',');
-                    else
-                        parameters = TryGetEnumeration(domNodeType, annotation);
-
-                    if (parameters != null)
-                        annotatedObj->Initialize(parameters);
-                }
-
-                auto result = dynamic_cast<T>(obj);
-                if (!result)
-                    throw gcnew AnnotationException("Object must be " + T::typeid);
-                return result;
-            }
-            else
-            {
-                return nullptr;
-            }
-        }
-
-        static System::String^ AnnotationsNameAttribute = "name";
-        static System::String^ AnnotationsDisplayNameAttribute = "displayName";
-        static System::String^ AnnotationsLegacyEnumeration = "scea.dom.editors.enumeration";
-
-        static array<System::String^>^ TryGetEnumeration(DomNodeType^ domNodeType, XmlNode^ annotation)
-        {
-            array<System::String^>^ enumeration = nullptr;
-            auto targetDomAttribute = annotation->Attributes[AnnotationsNameAttribute];
-            if (targetDomAttribute != nullptr)
-            {
-                auto domObjectAttribute = domNodeType->GetAttributeInfo(targetDomAttribute->Value);
-                if (domObjectAttribute != nullptr)
-                {
-                    auto attributeType = domObjectAttribute->Type;
-                    auto xmlAnnotation = attributeType->GetTag<IEnumerable<XmlNode^>^>();
-                    if (xmlAnnotation != nullptr) {
-                        auto enumerationList = gcnew List<System::String^>();
-                        for each (auto enumAnnotation in xmlAnnotation) {
-                            if (enumAnnotation->Name == AnnotationsLegacyEnumeration) {
-                                auto name = enumAnnotation->Attributes[AnnotationsNameAttribute]->Value;
-                                auto displayNode =
-                                    enumAnnotation->Attributes->GetNamedItem(AnnotationsDisplayNameAttribute);
-                                if (displayNode != nullptr)
-                                    enumerationList->Add(name + "==" + displayNode->Value);
-                                else
-                                    enumerationList->Add(name);
-                            }
-                            enumeration = enumerationList->ToArray();
-                        }
-                    }
-                }
-            }
-           
-            return enumeration;
-        }
-
-        static System::String^ GetAnnotation(XmlNode^ annotation, System::String^ attributeName)
-        {
-            System::String^ result = nullptr;
-            if (annotation != nullptr) {
-                auto attribute = annotation->Attributes[attributeName];
-                if (attribute != nullptr)
-                    result = attribute->Value;
-            }
-            return result;
-        }
-
-        static array<ChildInfo^>^ GetPath(DomNodeType^ type, array<System::String^>^ segments, int length)
-        {
-            auto result = gcnew array<ChildInfo^>(length);
-            for (int i = 0; i < length; i++) {
-                auto metaElement = type->GetChildInfo(segments[i]);
-                if (metaElement == nullptr)
-                    throw gcnew AnnotationException("Invalid path");
-
-                result[i] = metaElement;
-                type = metaElement->Type;
-            }
-
-            return result;
-        }
-#endif
     };
 
     public ref class RawMaterialShaderConstants_GetAndSet : public GUILayer::IGetAndSetProperties
@@ -392,8 +184,6 @@ namespace XLELayer
             for each(auto v in list) {
                 if (System::String::Compare(name, v->Name) == 0) {
                     try {
-                        // result = TypeDescriptor::GetConverter(System::String::typeid)->ConvertTo(v->Value, type);
-                        // return result != nullptr;
                         result = System::Convert::ChangeType(v->Value, type);
                         return result != nullptr;
                     } catch (System::NotSupportedException^) {}
@@ -423,45 +213,20 @@ namespace XLELayer
         GUILayer::RawMaterial^ _material;
     };
 
-    public ref class MaterialPropertyContext : IPropertyEditingContext
+    IPropertyEditingContext^ MaterialSchemaLoader::CreatePropertyContext(GUILayer::RawMaterial^ material)
     {
-    public:
-        property IEnumerable<System::Object^>^ Items
-        {
-            virtual IEnumerable<System::Object^>^ get()
-            {
-                auto result = gcnew List<Object^>();
-                result->Add(_helper);
-                return result; 
-            }
+        List<System::ComponentModel::PropertyDescriptor^>^ propertyDescriptors = nullptr;
+        auto descriptors = GetMaterialType()->GetTag<PropertyDescriptorCollection^>();
+        if (descriptors && descriptors->Count > 0) {
+            propertyDescriptors = gcnew List<System::ComponentModel::PropertyDescriptor^>(descriptors->Count);
+            for each(System::ComponentModel::PropertyDescriptor^ d in descriptors)
+                propertyDescriptors->Add(d);
         }
 
-        /// <summary>
-        /// Gets an enumeration of the property descriptors for the items</summary>
-        property IEnumerable<System::ComponentModel::PropertyDescriptor^>^ PropertyDescriptors
-        {
-            virtual IEnumerable<System::ComponentModel::PropertyDescriptor^>^ get() 
-            {
-                return _propertyDescriptors;
-            }
-        }
-
-        MaterialPropertyContext(GUILayer::RawMaterial^ material, MaterialSchemaLoader^ schema)
-        {
-            _helper = gcnew RawMaterialShaderConstants_GetAndSet(material);
-            
-            _propertyDescriptors = nullptr;
-            auto descriptors = schema->GetMaterialType()->GetTag<PropertyDescriptorCollection^>();
-            if (descriptors && descriptors->Count > 0) {
-                _propertyDescriptors = gcnew List<System::ComponentModel::PropertyDescriptor^>(descriptors->Count);
-                for each(System::ComponentModel::PropertyDescriptor^ d in descriptors)
-                    _propertyDescriptors->Add(d);
-            }
-        }
-
-    protected:
-        List<System::ComponentModel::PropertyDescriptor^>^ _propertyDescriptors;
-        GUILayer::IGetAndSetProperties^ _helper;
-    };
+        auto ps = gcnew GUILayer::BasicPropertySource(
+            gcnew RawMaterialShaderConstants_GetAndSet(material),
+            propertyDescriptors);
+        return gcnew PropertyBridge(ps);
+    }
 }
 
