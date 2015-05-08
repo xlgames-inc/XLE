@@ -9,35 +9,65 @@
     <xs:annotation>
       <xs:appinfo>
         
-        <scea.dom.editors.attribute category="Basic" name="MetalMin" displayName="Metal Min" 
+        <scea.dom.editors.attribute category="Basic" name="C-MetalMin" displayName="Metal Min" 
           description="Minimum value for the metal parameter"
           editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
-        <scea.dom.editors.attribute category="Basic" name="MetalMax" displayName="Metal Max"
+        <scea.dom.editors.attribute category="Basic" name="C-MetalMax" displayName="Metal Max"
           description="Maximum value for the metal parameter"
           editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
 
-        <scea.dom.editors.attribute category="Basic" name="SpecularMin" displayName="Specular Min"
+        <scea.dom.editors.attribute category="Basic" name="C-SpecularMin" displayName="Specular Min"
           description="Minimum value for the specular parameter"
           editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
-        <scea.dom.editors.attribute category="Basic" name="SpecularMax" displayName="Specular Max"
+        <scea.dom.editors.attribute category="Basic" name="C-SpecularMax" displayName="Specular Max"
           description="Maximum value for the specular parameter"
           editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
 
-        <scea.dom.editors.attribute category="Basic" name="RoughnessMin" displayName="Roughness Min"
+        <scea.dom.editors.attribute category="Basic" name="C-RoughnessMin" displayName="Roughness Min"
           description="Minimum value for the roughness parameter"
           editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
-        <scea.dom.editors.attribute category="Basic" name="RoughnessMax" displayName="Roughness Max"
+        <scea.dom.editors.attribute category="Basic" name="C-RoughnessMax" displayName="Roughness Max"
           description="Maximum value for the roughness parameter"
           editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
+
+        <scea.dom.editors.attribute category="Alpha" name="C-Opacity" displayName="Opacity"
+          description="Scales the opacity of the object (smaller values are more transparent)"
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
+        <scea.dom.editors.attribute category="Alpha" name="C-AlphaThreshold" displayName="Alpha Threshold"
+          description="Cut-off alpha value for alpha test materials"
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
+
+        <scea.dom.editors.attribute category="Alpha" name="P-MAT_ALPHA_TEST" displayName="Alpha Test"
+          description="Enables alpha test"
+          editor="Sce.Atf.Controls.PropertyEditing.BoolEditor,Atf.Gui.WinForms" />
+        <scea.dom.editors.attribute category="Alpha" name="P-MAT_PREMULTIPLIED_ALPHA" displayName="Premultiplied Alpha"
+          description="Texture is created with pre-multiplied alpha"
+          editor="Sce.Atf.Controls.PropertyEditing.BoolEditor,Atf.Gui.WinForms" />
+
+        <scea.dom.editors.attribute category="Vegetation" name="P-MAT_VCOLOR_IS_ANIM_PARAM" displayName="Wind animated"
+          description="Enables wind animation, using parameters in vertex colors"
+          editor="Sce.Atf.Controls.PropertyEditing.BoolEditor,Atf.Gui.WinForms" />
+        <scea.dom.editors.attribute category="Vegetation" name="P-MAT_DOUBLE_SIDED_LIGHTING" displayName="Double sided lighting"
+          description="Enables lighting on both sides of the polygons"
+          editor="Sce.Atf.Controls.PropertyEditing.BoolEditor,Atf.Gui.WinForms" />
         
       </xs:appinfo>
     </xs:annotation>
-    <xs:attribute name="MetalMin" type="xs:float" default="0"/>
-    <xs:attribute name="MetalMax" type="xs:float" default="1"/>
-    <xs:attribute name="SpecularMin" type="xs:float" default="0"/>
-    <xs:attribute name="SpecularMax" type="xs:float" default="1"/>
-    <xs:attribute name="RoughnessMin" type="xs:float" default="0"/>
-    <xs:attribute name="RoughnessMax" type="xs:float" default="1"/>
+    
+    <xs:attribute name="C-MetalMin" type="xs:float" default="0"/>
+    <xs:attribute name="C-MetalMax" type="xs:float" default="1"/>
+    <xs:attribute name="C-SpecularMin" type="xs:float" default=".2"/>
+    <xs:attribute name="C-SpecularMax" type="xs:float" default=".5"/>
+    <xs:attribute name="C-RoughnessMin" type="xs:float" default=".33"/>
+    <xs:attribute name="C-RoughnessMax" type="xs:float" default=".33"/>
+    <xs:attribute name="C-Opacity" type="xs:float" default="1"/>
+    <xs:attribute name="C-AlphaThreshold" type="xs:float" default=".33"/>
+
+    <xs:attribute name="P-MAT_VCOLOR_IS_ANIM_PARAM" type="xs:boolean" default="false"/>
+    <xs:attribute name="P-MAT_DOUBLE_SIDED_LIGHTING" type="xs:boolean" default="false"/>
+    <xs:attribute name="P-MAT_ALPHA_TEST" type="xs:boolean" default="false"/>
+    <xs:attribute name="P-MAT_PREMULTIPLIED_ALPHA" type="xs:boolean" default="false"/>
+    
   </xs:complexType>
 </xs:schema>
 

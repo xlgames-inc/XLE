@@ -15,13 +15,5 @@ namespace RenderCore { namespace Techniques
         static const auto LocalTransform = Hash64("LocalTransform");
         static const auto BasicMaterialConstants = Hash64("BasicMaterialConstants");
     }
-
-    class BasicMaterialConstants
-    {
-    public:
-            // fixed set of material parameters currently.
-        Float3 _materialDiffuse;    float _opacity;
-        Float3 _materialSpecular;   float _alphaThreshold;
-    };
 }}
 

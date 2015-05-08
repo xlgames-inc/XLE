@@ -44,7 +44,7 @@ namespace LevelEditor
 
         private void Application_Idle(object sender, EventArgs e)
         {
-            bool animateMainWindow = false;
+            bool animateMainWindow = true;
             if (animateMainWindow)
             {
                 while (IsIdle())
