@@ -6,7 +6,7 @@
 
 #include "ModelRunTime.h"
 #include "ModelRunTimeInternal.h"
-#include "PreparedModelDrawCalls.h"
+#include "DelayedDrawCall.h"
 #include "MaterialScaffold.h"
 #include "TransformationCommands.h"
 #include "AssetUtils.h"     // maybe only needed for chunk ids
@@ -73,6 +73,7 @@ namespace RenderCore { namespace Assets
             unsigned _constantBuffer; 
             unsigned _texturesIndex; 
             unsigned _renderStateSet;
+            DelayStep _delayStep;
         };
 
         static const ModelCommandStream::GeoCall& GetGeoCall(const ModelScaffold& scaffold, unsigned geoCallIndex)
@@ -299,6 +300,9 @@ namespace RenderCore { namespace Assets
                 i->second._matParams = sharedStateSet.InsertParameterBox(materialParamBox);
                 i->second._renderStateSet = sharedStateSet.InsertRenderStateSet(stateSet);
 
+                i->second._delayStep = 
+                    (stateSet._forwardBlendOp == Metal::BlendOp::NoBlending) ? DelayStep::OpaqueRender : DelayStep::PostDeferred;
+
                 paramBoxDesc.Add(i->second._matParams, materialParamBox);
             }
 
@@ -512,7 +516,7 @@ namespace RenderCore { namespace Assets
                     matRes._shaderName,
                     mesh->_geoParamBox, matRes._matParams, 
                     matRes._texturesIndex, matRes._constantBuffer,
-                    matRes._renderStateSet, scaffoldMatIndex);
+                    matRes._renderStateSet, matRes._delayStep, scaffoldMatIndex);
                 drawCallRes.push_back(res);
                 drawCalls.push_back(std::make_pair(gi, d));
             }
@@ -564,7 +568,7 @@ namespace RenderCore { namespace Assets
                     matRes._shaderName,
                     mesh->_geoParamBox, matRes._matParams, 
                     matRes._texturesIndex, matRes._constantBuffer,
-                    matRes._renderStateSet, scaffoldMatIndex);
+                    matRes._renderStateSet, matRes._delayStep, scaffoldMatIndex);
 
                 drawCallRes.push_back(res);
                 skinnedDrawCalls.push_back(std::make_pair(gi, d));
@@ -899,6 +903,7 @@ namespace RenderCore { namespace Assets
     {
         _shaderName = _geoParamBox = _materialParamBox = 0;
         _textureSet = _constantBuffer = _renderStateSet = 0;
+        _delayStep = DelayStep::OpaqueRender;
         _materialBindingIndex = 0;
     }
 
@@ -906,7 +911,7 @@ namespace RenderCore { namespace Assets
         unsigned shaderName,
         unsigned geoParamBox, unsigned matParamBox,
         unsigned textureSet, unsigned constantBuffer,
-        unsigned renderStateSet, MaterialGuid materialBindingIndex)
+        unsigned renderStateSet, DelayStep delayStep, MaterialGuid materialBindingIndex)
     {
         _shaderName = shaderName;
         _geoParamBox = geoParamBox;
@@ -914,6 +919,7 @@ namespace RenderCore { namespace Assets
         _textureSet = textureSet;
         _constantBuffer = constantBuffer;
         _renderStateSet = renderStateSet;
+        _delayStep = delayStep;
         _materialBindingIndex = materialBindingIndex;
     }
 
@@ -1029,14 +1035,14 @@ namespace RenderCore { namespace Assets
 
 ////////////////////////////////////////////////////////////////////////////////
 
-    bool CompareDrawCall(const PreparedModelDrawCallEntry& lhs, const PreparedModelDrawCallEntry& rhs)
+    bool CompareDrawCall(const DelayedDrawCall& lhs, const DelayedDrawCall& rhs)
     {
         if (lhs._shaderVariationHash == rhs._shaderVariationHash) {
             if (lhs._renderer == rhs._renderer) {
-                if (lhs._mesh == rhs._mesh) {
+                if (lhs._subMesh == rhs._subMesh) {
                     return lhs._drawCallIndex < rhs._drawCallIndex;
                 }
-                return lhs._mesh < rhs._mesh;
+                return lhs._subMesh < rhs._subMesh;
             }
             return lhs._renderer < rhs._renderer;
         }
@@ -1044,11 +1050,17 @@ namespace RenderCore { namespace Assets
     }
 
     void    ModelRenderer::Prepare(
-        PreparedModelDrawCalls& dest, 
+        DelayedDrawCallSet& dest, 
         const SharedStateSet& sharedStateSet, 
         const Float4x4& modelToWorld,
         const MeshToModel* transforms)
     {
+        unsigned mainTransformIndex = ~unsigned(0x0);
+        if (!transforms) {
+            mainTransformIndex = (unsigned)dest._transforms.size();
+            dest._transforms.push_back(modelToWorld);
+        }
+
             //  After culling; submit all of the draw-calls in this mesh to a list to be sorted
             //  Note -- only unskinned geometry supported currently. In theory, we might be able
             //          to do the same with skinned geometry (at least, when not using the "prepare" step
@@ -1063,28 +1075,33 @@ namespace RenderCore { namespace Assets
 
             auto& cmdStream = _pimpl->_scaffold->CommandStream();
             auto& geoCall = cmdStream.GetGeoCall(md->first);
-            auto mesh = FindIf(_pimpl->_meshes, [=](const Pimpl::Mesh& mesh) { return mesh._id == geoCall._geoId; });
+            auto mesh = FindIf(
+                _pimpl->_meshes, [=](const Pimpl::Mesh& mesh) 
+                { return mesh._id == geoCall._geoId; });
             assert(mesh != _pimpl->_meshes.end());
 
-            unsigned techniqueInterface = mesh->_techniqueInterface;
+            auto step = unsigned(drawCallRes._delayStep);
 
-            PreparedModelDrawCallEntry entry;
+            DelayedDrawCall entry;
             entry._drawCallIndex = drawCallIndex;
             entry._renderer = this;
             if (transforms) {
-                entry._meshToWorld = Combine(transforms->GetMeshToModel(geoCall._transformMarker), modelToWorld);
+                auto trans = Combine(
+                    transforms->GetMeshToModel(geoCall._transformMarker), 
+                    modelToWorld);
+                entry._meshToWorld = (unsigned)dest._transforms.size();
+                dest._transforms.push_back(trans);
             } else {
-                entry._meshToWorld = modelToWorld;
+                entry._meshToWorld = mainTransformIndex;
             }
+            unsigned techniqueInterface = mesh->_techniqueInterface;
             entry._shaderVariationHash = techniqueInterface ^ (geoParamIndex << 12) ^ (matParamIndex << 15) ^ (shaderNameIndex << 24);  // simple hash of these indices. Note that collisions might be possible
             entry._indexCount = d._indexCount;
             entry._firstIndex = d._firstIndex;
             entry._firstVertex = d._firstVertex;
             entry._topology = Metal::Topology::Enum(d._topology);
-            entry._materialGuid = drawCallRes._materialBindingIndex;
-            entry._mesh = AsPointer(mesh);
-            entry._techniqueInterface = techniqueInterface;
-            dest._entries.push_back(entry);
+            entry._subMesh = AsPointer(mesh);
+            dest._entries[step].push_back(entry);
         }
 
             //  Also try to render skinned geometry... But we want to render this with skinning disabled 
@@ -1099,28 +1116,33 @@ namespace RenderCore { namespace Assets
 
             auto& cmdStream = _pimpl->_scaffold->CommandStream();
             auto& geoCall = cmdStream.GetSkinCall(md->first);
-            auto mesh = FindIf(_pimpl->_skinnedMeshes, [=](const Pimpl::Mesh& mesh) { return mesh._id == geoCall._geoId; });
+            auto mesh = FindIf(
+                _pimpl->_skinnedMeshes, 
+                [=](const Pimpl::Mesh& mesh) { return mesh._id == geoCall._geoId; });
             assert(mesh != _pimpl->_skinnedMeshes.end());
 
-            unsigned techniqueInterface = mesh->_skinnedTechniqueInterface;
+            auto step = unsigned(drawCallRes._delayStep);
 
-            PreparedModelDrawCallEntry entry;
+            DelayedDrawCall entry;
             entry._drawCallIndex = drawCallIndex;
             entry._renderer = this;
             if (transforms) {
-                entry._meshToWorld = Combine(transforms->GetMeshToModel(geoCall._transformMarker), modelToWorld);
+                auto trans = Combine(
+                    transforms->GetMeshToModel(geoCall._transformMarker), 
+                    modelToWorld);
+                entry._meshToWorld = (unsigned)dest._transforms.size();
+                dest._transforms.push_back(trans);
             } else {
-                entry._meshToWorld = modelToWorld;
+                entry._meshToWorld = mainTransformIndex;
             }
+            unsigned techniqueInterface = mesh->_skinnedTechniqueInterface;
             entry._shaderVariationHash = techniqueInterface ^ (geoParamIndex << 12) ^ (matParamIndex << 15) ^ (shaderNameIndex << 24);  // simple hash of these indices. Note that collisions might be possible
             entry._indexCount = d._indexCount;
             entry._firstIndex = d._firstIndex;
             entry._firstVertex = d._firstVertex;
             entry._topology = Metal::Topology::Enum(d._topology) | 0x100;
-            entry._materialGuid = drawCallRes._materialBindingIndex;
-            entry._mesh = AsPointer(mesh);
-            entry._techniqueInterface = techniqueInterface;
-            dest._entries.push_back(entry);
+            entry._subMesh = AsPointer(mesh);
+            dest._entries[step].push_back(entry);
         }
     }
 
@@ -1130,31 +1152,36 @@ namespace RenderCore { namespace Assets
         void WriteLocalTransform(
             void* dest, 
             const ModelRendererContext& context, 
-            const PreparedModelDrawCallEntry& d)
+            const Float4x4& t, uint64 materialGuid)
     {
         auto* dst = (Techniques::LocalTransformConstants*)dest;
 
             //  Write some system constants that are supposed
             //  to be provided by the model renderer
         if (constant_expression<!!(Flags&WLTFlags::LocalToWorld)>::result()) {
-            CopyTransform(dst->_localToWorld, d._meshToWorld);
+            CopyTransform(dst->_localToWorld, t);
         }
         if (constant_expression<!!(Flags&WLTFlags::LocalSpaceView)>::result()) {
             auto worldSpaceView = ExtractTranslation(context._parserContext->GetProjectionDesc()._cameraToWorld);
-            TransformPointByOrthonormalInverse(d._meshToWorld, worldSpaceView);
+            TransformPointByOrthonormalInverse(t, worldSpaceView);
             dst->_localSpaceView = worldSpaceView;
         }
         if (constant_expression<!!(Flags&WLTFlags::MaterialGuid)>::result()) {
-            dst->_materialGuid = d._materialGuid;
+            dst->_materialGuid = materialGuid;
         }
     }
 
     void ModelRenderer::RenderPrepared(
         const ModelRendererContext& context,
         const SharedStateSet&       sharedStateSet,
-        PreparedModelDrawCalls&       drawCalls)
+        DelayedDrawCallSet&         drawCalls,
+        DelayStep                   delayStep)
     {
-        if (drawCalls._entries.empty()) return;
+        if (drawCalls.GetRendererGUID() != __uuidof(ModelRenderer))
+            ThrowException(::Exceptions::BasicLabel("Delayed draw call set matched with wrong renderer type"));
+
+        auto& entries = drawCalls._entries[(unsigned)delayStep];
+        if (entries.empty()) return;
 
         Techniques::LocalTransformConstants localTrans;
         localTrans._localSpaceView = Float3(0.f, 0.f, 0.f);
@@ -1162,17 +1189,40 @@ namespace RenderCore { namespace Assets
         Metal::ConstantBuffer& localTransformBuffer = Techniques::CommonResources()._localTransformBuffer;
         const Metal::ConstantBuffer* pkts[] = { &localTransformBuffer, nullptr };
 
-        std::sort(drawCalls._entries.begin(), drawCalls._entries.end(), CompareDrawCall);
+        std::sort(entries.begin(), entries.end(), CompareDrawCall);
 
         const ModelRenderer::Pimpl::Mesh* currentMesh = nullptr;
         RenderCore::Metal::BoundUniforms* boundUniforms = nullptr;
         unsigned currentVariationHash = ~unsigned(0x0);
         unsigned currentTextureSet = ~unsigned(0x0);
         unsigned currentConstantBufferIndex = ~unsigned(0x0);
+        unsigned currentTechniqueInterface = ~unsigned(0x0);
 
-        for (auto d=drawCalls._entries.cbegin(); d!=drawCalls._entries.cend(); ++d) {
-            auto& renderer = *d->_renderer;
+        for (auto d=entries.cbegin(); d!=entries.cend(); ++d) {
+            auto& renderer = *(const ModelRenderer*)d->_renderer;
             const auto& drawCallRes = renderer._pimpl->_drawCallRes[d->_drawCallIndex];
+
+            if (currentMesh != d->_subMesh) {
+                if (d->_topology > 0xff) {
+                    auto& mesh = *(const Pimpl::SkinnedMesh*)d->_subMesh;
+                    context._context->Bind(renderer._pimpl->_indexBuffer, Metal::NativeFormat::Enum(mesh._indexFormat), mesh._ibOffset);
+
+                    const Metal::VertexBuffer* vbs[] = { &renderer._pimpl->_vertexBuffer, &renderer._pimpl->_vertexBuffer };
+                    unsigned strides[] = { mesh._extraVbStride[0], mesh._vertexStride };
+                    unsigned offsets[] = { mesh._extraVbOffset[0], mesh._vbOffset };
+                    context._context->Bind(0, 2, vbs, strides, offsets);
+                    currentMesh = &mesh;
+
+                    currentTechniqueInterface = mesh._skinnedTechniqueInterface;
+                } else {
+                    auto& mesh = *(const Pimpl::Mesh*)d->_subMesh;
+                    context._context->Bind(renderer._pimpl->_indexBuffer, Metal::NativeFormat::Enum(mesh._indexFormat), mesh._ibOffset);
+                    context._context->Bind(MakeResourceList(renderer._pimpl->_vertexBuffer), mesh._vertexStride, mesh._vbOffset);
+                    currentMesh = &mesh;
+                    currentTechniqueInterface = mesh._techniqueInterface;
+                }
+                currentTextureSet = ~unsigned(0x0);
+            }
 
                 // Note -- at the moment, shader variation hash is the sorting priority.
                 //          This reduces the shader changes to a minimum. It also means we
@@ -1182,9 +1232,9 @@ namespace RenderCore { namespace Assets
                 //          sorting priority instead... That might reduce the API thrashing
                 //          in some cases.
             if (currentVariationHash != d->_shaderVariationHash) {
-                auto& mesh = *(const Pimpl::Mesh*)d->_mesh;
+                auto& mesh = *(const Pimpl::Mesh*)d->_subMesh;
                 boundUniforms = sharedStateSet.BeginVariation(
-                    context, drawCallRes._shaderName, d->_techniqueInterface, drawCallRes._geoParamBox, 
+                    context, drawCallRes._shaderName, currentTechniqueInterface, drawCallRes._geoParamBox, 
                     drawCallRes._materialParamBox);
                 currentVariationHash = d->_shaderVariationHash;
                 currentTextureSet = ~unsigned(0x0);
@@ -1201,29 +1251,11 @@ namespace RenderCore { namespace Assets
                 HRESULT hresult = context._context->GetUnderlying()->Map(
                     localTransformBuffer.GetUnderlying(), 0, D3D11_MAP_WRITE_DISCARD, 0, &result);
                 assert(SUCCEEDED(hresult) && result.pData); (void)hresult;
-                WriteLocalTransform<WLTFlags::LocalToWorld|WLTFlags::MaterialGuid>(result.pData, context, *d);
+                WriteLocalTransform<WLTFlags::LocalToWorld|WLTFlags::MaterialGuid>(
+                    result.pData, context, drawCalls._transforms[d->_meshToWorld], drawCallRes._materialBindingIndex);
                 context._context->GetUnderlying()->Unmap(localTransformBuffer.GetUnderlying(), 0);
             }
             
-            if (currentMesh != d->_mesh) {
-                if (d->_topology > 0xff) {
-                    auto& mesh = *(const Pimpl::SkinnedMesh*)d->_mesh;
-                    context._context->Bind(renderer._pimpl->_indexBuffer, Metal::NativeFormat::Enum(mesh._indexFormat), mesh._ibOffset);
-
-                    const Metal::VertexBuffer* vbs[] = { &renderer._pimpl->_vertexBuffer, &renderer._pimpl->_vertexBuffer };
-                    unsigned strides[] = { mesh._extraVbStride[0], mesh._vertexStride };
-                    unsigned offsets[] = { mesh._extraVbOffset[0], mesh._vbOffset };
-                    context._context->Bind(0, 2, vbs, strides, offsets);
-                    currentMesh = &mesh;
-                } else {
-                    auto& mesh = *(const Pimpl::Mesh*)d->_mesh;
-                    context._context->Bind(renderer._pimpl->_indexBuffer, Metal::NativeFormat::Enum(mesh._indexFormat), mesh._ibOffset);
-                    context._context->Bind(MakeResourceList(renderer._pimpl->_vertexBuffer), mesh._vertexStride, mesh._vbOffset);
-                    currentMesh = &mesh;
-                }
-                currentTextureSet = ~unsigned(0x0);
-            }
-
             auto textureSet = drawCallRes._textureSet;
             auto constantBufferIndex = drawCallRes._constantBuffer;
 
@@ -1351,6 +1383,13 @@ namespace RenderCore { namespace Assets
             result.push_back(i->_materialBindingIndex);
         }
         return std::move(result);
+    }
+
+    MaterialGuid ModelRenderer::GetMaterialBindingForDrawCall(unsigned drawCallIndex) const
+    {
+        if (drawCallIndex < _pimpl->_drawCallRes.size())
+            return _pimpl->_drawCallRes[drawCallIndex]._materialBindingIndex;
+        return ~0ull;
     }
 
     void ModelRenderer::LogReport() const

@@ -69,7 +69,6 @@ namespace RenderCore { namespace Assets
 
         void BeginRenderState(
             const ModelRendererContext& context, 
-            // IRenderStateSetResolver& resolver,
             const Utility::ParameterBox& globalStates,
             unsigned renderStateSetIndex) const;
 

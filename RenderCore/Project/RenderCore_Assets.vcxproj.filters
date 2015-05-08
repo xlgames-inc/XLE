@@ -30,10 +30,10 @@
     <ClCompile Include="..\Assets\MaterialScaffold.cpp">
       <Filter>Assets</Filter>
     </ClCompile>
-    <ClCompile Include="..\Assets\PreparedModelDrawCalls.cpp">
+    <ClCompile Include="..\Assets\DeferredShaderResource.cpp" />
+    <ClCompile Include="..\Assets\DelayedDrawCall.cpp">
       <Filter>Assets</Filter>
     </ClCompile>
-    <ClCompile Include="..\Assets\DeferredShaderResource.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Assets\ModelRunTime.h">
@@ -66,9 +66,9 @@
     <ClInclude Include="..\Assets\MaterialScaffold.h">
       <Filter>Assets</Filter>
     </ClInclude>
-    <ClInclude Include="..\Assets\PreparedModelDrawCalls.h">
+    <ClInclude Include="..\Assets\DeferredShaderResource.h" />
+    <ClInclude Include="..\Assets\DelayedDrawCall.h">
       <Filter>Assets</Filter>
     </ClInclude>
-    <ClInclude Include="..\Assets\DeferredShaderResource.h" />
   </ItemGroup>
 </Project>

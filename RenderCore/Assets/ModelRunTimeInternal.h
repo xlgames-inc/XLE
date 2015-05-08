@@ -353,6 +353,7 @@ namespace RenderCore { namespace Assets
             unsigned _constantBuffer;
             unsigned _renderStateSet;
 
+            DelayStep _delayStep;
             MaterialGuid _materialBindingIndex;
 
             DrawCallResources();
@@ -360,7 +361,7 @@ namespace RenderCore { namespace Assets
                 unsigned shaderName,
                 unsigned geoParamBox, unsigned matParamBox,
                 unsigned textureSet, unsigned constantBuffer,
-                unsigned renderStateSet, MaterialGuid materialBindingIndex);
+                unsigned renderStateSet, DelayStep delayStep, MaterialGuid materialBindingIndex);
         };
         std::vector<DrawCallResources>   _drawCallRes;
 

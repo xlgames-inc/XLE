@@ -1251,6 +1251,18 @@ namespace RenderCore { namespace ColladaConversion
                 }
             }
 
+                // if we have any non-identity internal transforms, then we should 
+                // write a default set of transformations. But many models don't have any
+                // internal transforms -- in this case all of the generated transforms
+                // will be identity. If we find this case, they we should write zero
+                // default transforms.
+            bool hasNonIdentity = false;
+            const float tolerance = 1e-6f;
+            for (unsigned c=0; c<finalMatrixCount; ++c)
+                hasNonIdentity |= !Equivalent(reordered[c], Identity<Float4x4>(), tolerance);
+            if (!hasNonIdentity)
+                finalMatrixCount = 0;
+
             serializer.SerializeSubBlock(reordered.get(), &reordered[finalMatrixCount]);
             serializer.SerializeValue(finalMatrixCount);
 

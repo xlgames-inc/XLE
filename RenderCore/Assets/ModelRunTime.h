@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "DelayedDrawCall.h"
 #include "../Metal/Format.h"
 #include "../Metal/Buffer.h"
 #include "../Resource.h"
@@ -14,6 +15,7 @@
 #include "../../Math/Matrix.h"
 #include "../../Utility/Mixins.h"
 #include "../../Core/Types.h"
+#include "../../Core/SelectConfiguration.h"
 #include <vector>
 
 namespace RenderCore { namespace Techniques { class ParsingContext; } }
@@ -29,6 +31,7 @@ namespace RenderCore { namespace Assets
     class ResolvedMaterial;
     class MaterialScaffold;
     class ModelRendererContext;
+    class DelayedDrawCallSet;
 
     typedef uint64 MaterialGuid;
 
@@ -97,6 +100,12 @@ namespace RenderCore { namespace Assets
     class SkeletonBinding;
     class PreparedModelDrawCalls;
 
+    #if COMPILER_ACTIVE == COMPILER_TYPE_MSVC
+        #define ATTACHED_GUID(X) __declspec( uuid(X) )
+    #else
+        #define ATTACHED_GUID(X)
+    #endif
+
     /// <summary>Creates platform resources and renders a model<summary>
     /// ModelRenderer is used to render a model. Though the two classes work together, it is 
     /// a more heavy-weight object than ModelScaffold. When the ModelRenderer is created, it
@@ -109,7 +118,7 @@ namespace RenderCore { namespace Assets
     ///     </list>
     ///
     /// <seealso cref="ModelScaffold" />
-    class ModelRenderer
+    class ATTACHED_GUID("{7AC31110-B5B9-4E72-ABE2-A8014C49783E}") ModelRenderer
     {
     public:
         class MeshToModel
@@ -135,14 +144,15 @@ namespace RenderCore { namespace Assets
 
             ////////////////////////////////////////////////////////////
         void Prepare(
-            PreparedModelDrawCalls& dest, 
+            DelayedDrawCallSet& dest, 
             const SharedStateSet& sharedStateSet, 
             const Float4x4& modelToWorld,
-            const MeshToModel*  transforms = nullptr);
+            const MeshToModel* transforms = nullptr);
         static void RenderPrepared(
             const ModelRendererContext& context,
-            const SharedStateSet&       sharedStateSet,
-            PreparedModelDrawCalls&       drawCalls);
+            const SharedStateSet& sharedStateSet,
+            DelayedDrawCallSet& drawCalls,
+            DelayStep delayStep);
 
             ////////////////////////////////////////////////////////////
         class PreparedAnimation : noncopyable
@@ -168,6 +178,7 @@ namespace RenderCore { namespace Assets
         static bool CanDoPrepareAnimation(Metal::DeviceContext* context);
 
         std::vector<MaterialGuid> DrawCallToMaterialBinding() const;
+        MaterialGuid GetMaterialBindingForDrawCall(unsigned drawCallIndex) const;
         void LogReport() const;
 
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _validationCallback; }

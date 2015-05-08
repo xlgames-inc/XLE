@@ -13,10 +13,10 @@
 #include "../../RenderCore/Metal/State.h"
 #include "../../RenderCore/Metal/ShaderResource.h"
 #include "../../RenderCore/Assets/DeferredShaderResource.h"
+#include "../../RenderCore/Assets/ModelRunTime.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
-#include "../../RenderCore/Assets/PreparedModelDrawCalls.h"
 
 #include "../../RenderCore/DX11/Metal/DX11Utils.h"
 
@@ -30,11 +30,16 @@ namespace ToolsRig
         const SceneEngine::PlacementGUID* filterEnd,
         uint64 materialGuid)
     {
+        using namespace RenderCore::Assets;
         if (materialGuid == ~0ull) {
             editor->RenderFiltered(&metalContext, parserContext, 0, filterBegin, filterEnd);
         } else {
+                //  render with a predicate to compare the material binding index to
+                //  the given value
             editor->RenderFiltered(&metalContext, parserContext, 0, filterBegin, filterEnd,
-                [=](const RenderCore::Assets::PreparedModelDrawCallEntry& e) { return e._materialGuid == materialGuid; });
+                [=](const DelayedDrawCall& e) { 
+                    return ((const ModelRenderer*)e._renderer)->GetMaterialBindingForDrawCall(e._drawCallIndex) == materialGuid; 
+                });
         }
     }
 

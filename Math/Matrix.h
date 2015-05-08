@@ -31,6 +31,18 @@ namespace XLEMath
 
         Float4x4        Expand(const Float3x3& rotationScalePart, const Float3& translationPart);
 
+        template<typename BasicType, int I, int J>
+			inline bool Equivalent(
+				cml::matrix<BasicType, cml::fixed<I, J>, cml::col_basis> lhs, 
+				cml::matrix<BasicType, cml::fixed<I, J>, cml::col_basis> rhs, BasicType tolerance)
+			{
+                for (unsigned j=0; j<J; ++j)
+				    for (unsigned i=0; i<I; ++i)
+				    	if (!Equivalent(lhs(i, j), rhs(i, j), tolerance))
+				    		return false;
+				return true;
+			}
+
     #endif
 
     inline Float4x4 LinearInterpolate(const Float4x4& lhs, const Float4x4& rhs, float alpha)

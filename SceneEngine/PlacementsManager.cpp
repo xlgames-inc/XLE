@@ -4,25 +4,17 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#define MODEL_FORMAT_RUNTIME 1
-#define MODEL_FORMAT_SIMPLE 2
-#define MODEL_FORMAT MODEL_FORMAT_RUNTIME
-
 #include "PlacementsManager.h"
 #include "PlacementsQuadTree.h"
 #include "../RenderCore/Assets/SharedStateSet.h"
 
-#if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
-    #include "../RenderCore/Assets/ModelRunTime.h"
-    #include "../RenderCore/Assets/ModelRunTimeInternal.h"
-    #include "../Assets/CompileAndAsyncManager.h"
-    #include "../Assets/IntermediateResources.h"
-    #include "../RenderCore/Assets/ColladaCompilerInterface.h"
-#else
-    #include "../RenderCore/Assets/ModelSimple.h"
-#endif
+#include "../RenderCore/Assets/ModelRunTime.h"
+#include "../RenderCore/Assets/ModelRunTimeInternal.h"
+#include "../Assets/CompileAndAsyncManager.h"
+#include "../Assets/IntermediateResources.h"
+#include "../RenderCore/Assets/ColladaCompilerInterface.h"
 #include "../RenderCore/Assets/IModelFormat.h"
-#include "../RenderCore/Assets/PreparedModelDrawCalls.h"
+#include "../RenderCore/Assets/DelayedDrawCall.h"
 
 #include "../RenderCore/Techniques/ParsingContext.h"
 
@@ -61,15 +53,9 @@ namespace SceneEngine
 {
     using Assets::ResChar;
 
-    #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
-        using RenderCore::Assets::ModelRenderer;
-        using RenderCore::Assets::ModelScaffold;
-        using RenderCore::Assets::MaterialScaffold;
-    #else
-        using RenderCore::Assets::Simple::ModelRenderer;
-        using RenderCore::Assets::Simple::ModelScaffold;
-        using RenderCore::Assets::Simple::MaterialScaffold;
-    #endif
+    using RenderCore::Assets::ModelRenderer;
+    using RenderCore::Assets::ModelScaffold;
+    using RenderCore::Assets::MaterialScaffold;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -312,7 +298,7 @@ namespace SceneEngine
         void EndRender(
             RenderCore::Metal::DeviceContext* context, 
             RenderCore::Techniques::ParsingContext& parserContext, unsigned techniqueIndex);
-        void FilterRenders(const std::function<bool(const RenderCore::Assets::PreparedModelDrawCallEntry&)>& predicate);
+        void FilterRenders(const std::function<bool(const RenderCore::Assets::DelayedDrawCall&)>& predicate);
 
         void Render(
             RenderCore::Metal::DeviceContext* context,
@@ -320,7 +306,7 @@ namespace SceneEngine
             const PlacementCell& cell,
             const uint64* filterStart = nullptr, const uint64* filterEnd = nullptr);
 
-        typedef RenderCore::Assets::PreparedModelDrawCalls PreparedState;
+        typedef RenderCore::Assets::DelayedDrawCallSet PreparedState;
         
         auto GetCachedModel(const ResChar filename[]) -> const ModelScaffold*;
         auto GetCachedMaterial(const ResChar model[], const ResChar material[]) -> const MaterialScaffold*;
@@ -346,7 +332,8 @@ namespace SceneEngine
             Cache()
             : _modelScaffolds(2000)
             , _materialScaffolds(2000)
-            , _modelRenderers(500) {}
+            , _modelRenderers(500)
+            , _preparedRenders(__uuidof(ModelRenderer)) {}
         };
 
         PlacementsRenderer(std::shared_ptr<RenderCore::Assets::IModelFormat> modelFormat);
@@ -413,16 +400,11 @@ namespace SceneEngine
         RenderCore::Techniques::ParsingContext& parserContext,
         unsigned techniqueIndex)
     {
-        TRY 
+        TRY
         {
-            #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
-                ModelRenderer::RenderPrepared(
-                    RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
-                    _cache->_sharedStates, _cache->_preparedRenders);
-            #else
-                ModelRenderer::RenderPrepared(
-                    _cache->_preparedRenders, context, parserContext, techniqueIndex, _cache->_sharedStates);
-            #endif
+            ModelRenderer::RenderPrepared(
+                RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
+                _cache->_sharedStates, _cache->_preparedRenders, RenderCore::Assets::DelayStep::OpaqueRender);
         }
         CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
         CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
@@ -430,7 +412,8 @@ namespace SceneEngine
         _cache->_sharedStates.ReleaseState(context);
     }
 
-    void PlacementsRenderer::FilterRenders(const std::function<bool(const RenderCore::Assets::PreparedModelDrawCallEntry&)>& predicate)
+    void PlacementsRenderer::FilterRenders(
+        const std::function<bool(const RenderCore::Assets::DelayedDrawCall&)>& predicate)
     {
         _cache->_preparedRenders.Filter(predicate);
     }
@@ -439,31 +422,23 @@ namespace SceneEngine
     {
         std::shared_ptr<ModelScaffold> CreateModelScaffold(const ResChar filename[], RenderCore::Assets::IModelFormat& modelFormat)
         {
-            #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
-                auto& compilers = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateCompilers();
-                auto& store = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateStore();
-                auto marker = compilers.PrepareResource(
-                    RenderCore::Assets::ColladaCompiler::Type_Model, 
-                    (const char**)&filename, 1, store);
-                return std::make_shared<ModelScaffold>(std::move(marker));
-            #else
-                return modelFormat.CreateModel(filename);
-            #endif
+            auto& compilers = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateCompilers();
+            auto& store = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateStore();
+            auto marker = compilers.PrepareResource(
+                RenderCore::Assets::ColladaCompiler::Type_Model, 
+                (const char**)&filename, 1, store);
+            return std::make_shared<ModelScaffold>(std::move(marker));
         }
 
         std::shared_ptr<MaterialScaffold> CreateMaterialScaffold(const ResChar model[], const ResChar material[], RenderCore::Assets::IModelFormat& modelFormat)
         {
-            #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
-                auto& compilers = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateCompilers();
-                auto& store = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateStore();
-                const ResChar* inits[] = { material, model };
-                auto marker = compilers.PrepareResource(
-                    MaterialScaffold::CompileProcessType, 
-                    inits, dimof(inits), store);
-                return std::make_shared<MaterialScaffold>(std::move(marker));
-            #else
-                return modelFormat.CreateMaterial(filename);
-            #endif
+            auto& compilers = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateCompilers();
+            auto& store = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateStore();
+            const ResChar* inits[] = { material, model };
+            auto marker = compilers.PrepareResource(
+                MaterialScaffold::CompileProcessType, 
+                inits, dimof(inits), store);
+            return std::make_shared<MaterialScaffold>(std::move(marker));
         }
     }
 
@@ -709,16 +684,11 @@ namespace SceneEngine
                     //  and separate the objects into their correct state set, as required...
                 _renderer = cache._modelRenderers.Get(hashedRenderer).get();
                 if (!_renderer || _renderer->GetDependencyValidation()->GetValidationIndex() > 0) {
-                    #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
-                        auto modelFilename = (const ResChar*)PtrAdd(filenamesBuffer, obj._modelFilenameOffset + sizeof(uint64));
-                        auto searchRules = ::Assets::DefaultDirectorySearchRules(modelFilename);
+                    auto modelFilename = (const ResChar*)PtrAdd(filenamesBuffer, obj._modelFilenameOffset + sizeof(uint64));
+                    auto searchRules = ::Assets::DefaultDirectorySearchRules(modelFilename);
 
-                        auto newRenderer = std::make_shared<ModelRenderer>(
-                            std::ref(*_model), std::ref(*_material), std::ref(cache._sharedStates), &searchRules, LOD);
-                    #else
-                        auto newRenderer = modelFormat.CreateRenderer(
-                            std::ref(*_model), std::ref(*_material), std::ref(cache._sharedStates), LOD);
-                    #endif
+                    auto newRenderer = std::make_shared<ModelRenderer>(
+                        std::ref(*_model), std::ref(*_material), std::ref(cache._sharedStates), &searchRules, LOD);
                     _renderer = newRenderer.get();
                     cache._modelRenderers.Insert(hashedRenderer, std::move(newRenderer));
                 }
@@ -727,8 +697,15 @@ namespace SceneEngine
 
             auto localToWorld = Combine(obj._localToCell, cellToWorld);
 
-            ModelRenderer::MeshToModel mtm(_model->ImmutableData()._defaultTransforms, (unsigned)_model->ImmutableData()._defaultTransformCount);
-            _renderer->Prepare(cache._preparedRenders, cache._sharedStates, AsFloat4x4(localToWorld), &mtm);
+                //  if we have internal transforms, we must use them.
+                //  But some models don't have any internal transforms -- in these
+                //  cases, the _defaultTransformCount will be zero
+            if (_model->ImmutableData()._defaultTransformCount) {
+                ModelRenderer::MeshToModel mtm(_model->ImmutableData()._defaultTransforms, (unsigned)_model->ImmutableData()._defaultTransformCount);
+                _renderer->Prepare(cache._preparedRenders, cache._sharedStates, AsFloat4x4(localToWorld), &mtm);
+            } else {
+                _renderer->Prepare(cache._preparedRenders, cache._sharedStates, AsFloat4x4(localToWorld));
+            }
         }
     }
 
@@ -1478,11 +1455,6 @@ namespace SceneEngine
         auto worldSpaceCenter = TransformPoint(newState._localToWorld, boundingBoxCentre);
 
         std::string materialFilename = newState._material;
-        #if MODEL_FORMAT != MODEL_FORMAT_RUNTIME
-            if (materialFilename.empty()) {
-                materialFilename = _editorPimpl->_renderer->GetModelFormat()->DefaultMaterialName(model);
-            }
-        #endif
 
         PlacementGUID guid(0, 0);
         PlacementsTransform localToCell = Identity<PlacementsTransform>();
@@ -1547,11 +1519,6 @@ namespace SceneEngine
         auto worldSpaceCenter = TransformPoint(newState._localToWorld, boundingBoxCentre);
 
         std::string materialFilename = newState._material;
-        #if MODEL_FORMAT != MODEL_FORMAT_RUNTIME
-            if (materialFilename.empty()) {
-                materialFilename = _editorPimpl->_renderer->GetModelFormat()->DefaultMaterialName(model);
-            }
-        #endif
 
         PlacementsTransform localToCell = Identity<PlacementsTransform>();
         bool foundCell = false;
@@ -1626,12 +1593,6 @@ namespace SceneEngine
             cellSpaceBoundary = model
                 ? TransformBoundingBox(localToCell, model->GetStaticBoundingBox())
                 : std::make_pair(Float3(FLT_MAX, FLT_MAX, FLT_MAX), Float3(-FLT_MAX, -FLT_MAX, -FLT_MAX));
-
-            #if MODEL_FORMAT != MODEL_FORMAT_RUNTIME
-                if (materialFilename.empty()) {
-                    materialFilename = _editorPimpl->_renderer->GetModelFormat()->DefaultMaterialName(model);
-                }
-            #endif
         }
 
             // todo --  handle the case where an object should move to another cell!
@@ -1848,7 +1809,7 @@ namespace SceneEngine
         RenderCore::Techniques::ParsingContext& parserContext,
         unsigned techniqueIndex,
         const PlacementGUID* begin, const PlacementGUID* end,
-        const std::function<bool(const RenderCore::Assets::PreparedModelDrawCallEntry&)>& predicate)
+        const std::function<bool(const RenderCore::Assets::DelayedDrawCall&)>& predicate)
     {
         _pimpl->_renderer->BeginRender(context);
 
