@@ -328,6 +328,13 @@ namespace RenderingInterop
                     RenderState.DisplayPivot == DisplayFlagModes.Selection);
             }
 
+            if (RenderState.GridMode == RenderState.GridModes.Enabled)
+            {
+                var game = designView.Context.As<IGame>();
+                GridRenderer gridRender = game.Grid.Cast<GridRenderer>();
+                gridRender.Render(camera);
+            }
+
             RenderProperties(Items,
                 RenderState.DisplayCaption == DisplayFlagModes.Always,
                 RenderState.DisplayBound == DisplayFlagModes.Always,

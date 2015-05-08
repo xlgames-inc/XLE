@@ -85,11 +85,7 @@ namespace RenderingInterop
         private ISelectionContext m_selectionContext;
 
         private void RenderCallback(DesignView designView, Sce.Atf.Rendering.Camera camera)
-        {
-            var game = designView.Context.As<IGame>();
-            GridRenderer gridRender = game.Grid.Cast<GridRenderer>();
-            gridRender.Render(camera);
-        }
+        {}
         
     }
 

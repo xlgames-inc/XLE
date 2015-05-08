@@ -118,7 +118,7 @@ namespace GUILayer
         ExecuteScene(context, parserContext, newSettings, techniqueIndex);
     }
 
-    float EditorSceneParser::GetTimeValue() const { return 0.f; }
+    float EditorSceneParser::GetTimeValue() const { return _editorScene->_currentTime; }
 
     void EditorSceneParser::PrepareEnvironmentalSettings(const char envSettings[], EditorDynamicInterface::FlexObjectType& flexGobInterface)
     {

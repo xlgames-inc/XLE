@@ -36,6 +36,9 @@ namespace GUILayer
         std::unique_ptr<TerrainGob> _terrainGob;
         std::shared_ptr<ObjectPlaceholders> _placeholders;
 
+        void    IncrementTime(float increment) { _currentTime += increment; }
+        float   _currentTime;
+
         EditorScene(std::shared_ptr<EditorDynamicInterface::FlexObjectType> flexObjects);
 		~EditorScene();
     };
@@ -102,6 +105,8 @@ namespace GUILayer
         void SetTypeAnnotation(uint typeId, System::String^ annotationName, IEnumerable<PropertyInitializer>^ initializers);
 
         const EditorDynamicInterface::FlexObjectType& GetFlexObjects();
+
+        void IncrementTime(float increment);
 
             //// //// ////   C O N S T R U C T O R S   //// //// ////
         EditorSceneManager();

@@ -56,6 +56,7 @@ namespace GUILayer
             std::shared_ptr<RenderCore::Assets::IModelFormat>(), Float2(0.f, 0.f));
         _placementsEditor = _placementsManager->CreateEditor();
         _placeholders = std::make_shared<ObjectPlaceholders>(std::move(flexObjects));
+        _currentTime = 0.f;
     }
 
 	EditorScene::~EditorScene()
@@ -169,6 +170,11 @@ namespace GUILayer
     PlacementsEditorWrapper^ EditorSceneManager::GetPlacementsEditor()
 	{
 		return gcnew PlacementsEditorWrapper(_scene->_placementsEditor);
+    }
+
+    void EditorSceneManager::IncrementTime(float increment)
+    {
+        _scene->IncrementTime(increment);
     }
 
     EditorSceneManager::EditorSceneManager()

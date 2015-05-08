@@ -44,13 +44,23 @@ namespace RenderingInterop
             get { return m_engineInfo; }
         }
 
-        /// <summary>
-        /// Updates game world</summary>
-        /// <param name="ft">Frame time</param>
-        /// <param name="updateType">Update type</param>        
         public void Update(FrameTime ft, UpdateType updateType)
         {
-            // NativeUpdate(&ft, updateType);
+                // There are 3 update types defined by Sony.
+                //  Here they are:
+            // Editing: in this mode physics and AI 
+            // should not be updated.
+            // While particle system and other editing related effects
+            // should be updated
+    
+            // GamePlay: update all the subsystems.
+            // Some editing related effects shoult not updated.
+
+            // Paused: none of the time based effects are simulated.
+            // Delta time should be zero.
+
+            if (updateType != UpdateType.Paused)
+                s_underlyingScene.IncrementTime(ft.ElapsedTime);
         }
 
         public void SetGameWorld(IGame game) {}

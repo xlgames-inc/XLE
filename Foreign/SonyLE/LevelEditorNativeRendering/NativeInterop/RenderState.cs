@@ -143,6 +143,28 @@ namespace RenderingInterop
                 }
             }
         }
+
+        public enum GridModes
+        {
+            Disabled,
+            Enabled
+        }
+        private GridModes m_gridMode = GridModes.Enabled;
+
+        [CategoryAttribute("Render Settings"),
+         DescriptionAttribute("Grid rendering mode")]
+        public GridModes GridMode
+        {
+            get { return m_gridMode; }
+            set
+            {
+                if (m_gridMode != value)
+                {
+                    m_gridMode = value;
+                    OnChanged.Raise(this, EventArgs.Empty);
+                }
+            }
+        }
     }
 
     public enum DisplayFlagModes

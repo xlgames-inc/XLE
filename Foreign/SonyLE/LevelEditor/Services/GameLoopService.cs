@@ -44,14 +44,16 @@ namespace LevelEditor
 
         private void Application_Idle(object sender, EventArgs e)
         {
-            bool animateMainWindow = true;
-            if (animateMainWindow)
+                // DavidJ --    Don't do this refresh when update type is
+                //              paused. When paused, only refresh in response
+                //              to input events.
+            if (UpdateType == UpdateType.Paused)
+                return;
+
+            while (IsIdle())
             {
-                while (IsIdle())
-                {
-                    Update();
-                    Render();
-                }
+                Update();
+                Render();
             }
         }
 
