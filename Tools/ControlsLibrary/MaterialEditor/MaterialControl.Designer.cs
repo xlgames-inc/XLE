@@ -37,20 +37,23 @@ namespace ControlsLibrary.MaterialEditor
         {
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             this.materialPreview1 = new MaterialPreview();
+            this._pages = new System.Windows.Forms.TabControl();
+            this._technicalPage = new System.Windows.Forms.TabPage();
             this.splitContainer2 = new System.Windows.Forms.SplitContainer();
             this.shaderConstants = new System.Windows.Forms.DataGridView();
             this.splitContainer3 = new System.Windows.Forms.SplitContainer();
             this.resourceBindings = new System.Windows.Forms.DataGridView();
             this.materialParameterBox = new System.Windows.Forms.DataGridView();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
+            this._blendMode = new System.Windows.Forms.ComboBox();
             this.checkBox2 = new System.Windows.Forms.CheckBox();
             this.checkBox1 = new System.Windows.Forms.CheckBox();
-            this._pages = new System.Windows.Forms.TabControl();
-            this._technicalPage = new System.Windows.Forms.TabPage();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
             this.splitContainer1.SuspendLayout();
+            this._pages.SuspendLayout();
+            this._technicalPage.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer2)).BeginInit();
             this.splitContainer2.Panel1.SuspendLayout();
             this.splitContainer2.Panel2.SuspendLayout();
@@ -63,8 +66,6 @@ namespace ControlsLibrary.MaterialEditor
             ((System.ComponentModel.ISupportInitialize)(this.resourceBindings)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.materialParameterBox)).BeginInit();
             this.groupBox1.SuspendLayout();
-            this._pages.SuspendLayout();
-            this._technicalPage.SuspendLayout();
             this.SuspendLayout();
             // 
             // splitContainer1
@@ -82,8 +83,8 @@ namespace ControlsLibrary.MaterialEditor
             // 
             this.splitContainer1.Panel2.Controls.Add(this._pages);
             this.splitContainer1.Panel2.Controls.Add(this.groupBox1);
-            this.splitContainer1.Size = new System.Drawing.Size(275, 515);
-            this.splitContainer1.SplitterDistance = 209;
+            this.splitContainer1.Size = new System.Drawing.Size(272, 512);
+            this.splitContainer1.SplitterDistance = 207;
             this.splitContainer1.TabIndex = 0;
             // 
             // materialPreview1
@@ -91,8 +92,31 @@ namespace ControlsLibrary.MaterialEditor
             this.materialPreview1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.materialPreview1.Location = new System.Drawing.Point(0, 0);
             this.materialPreview1.Name = "materialPreview1";
-            this.materialPreview1.Size = new System.Drawing.Size(275, 209);
+            this.materialPreview1.Size = new System.Drawing.Size(272, 207);
             this.materialPreview1.TabIndex = 0;
+            // 
+            // _pages
+            // 
+            this._pages.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this._pages.Controls.Add(this._technicalPage);
+            this._pages.Location = new System.Drawing.Point(0, 0);
+            this._pages.Name = "_pages";
+            this._pages.SelectedIndex = 0;
+            this._pages.Size = new System.Drawing.Size(272, 245);
+            this._pages.TabIndex = 3;
+            // 
+            // _technicalPage
+            // 
+            this._technicalPage.Controls.Add(this.splitContainer2);
+            this._technicalPage.Location = new System.Drawing.Point(4, 22);
+            this._technicalPage.Name = "_technicalPage";
+            this._technicalPage.Padding = new System.Windows.Forms.Padding(3);
+            this._technicalPage.Size = new System.Drawing.Size(264, 219);
+            this._technicalPage.TabIndex = 0;
+            this._technicalPage.Text = "Technical";
+            this._technicalPage.UseVisualStyleBackColor = true;
             // 
             // splitContainer2
             // 
@@ -108,8 +132,8 @@ namespace ControlsLibrary.MaterialEditor
             // splitContainer2.Panel2
             // 
             this.splitContainer2.Panel2.Controls.Add(this.splitContainer3);
-            this.splitContainer2.Size = new System.Drawing.Size(261, 214);
-            this.splitContainer2.SplitterDistance = 67;
+            this.splitContainer2.Size = new System.Drawing.Size(258, 213);
+            this.splitContainer2.SplitterDistance = 66;
             this.splitContainer2.TabIndex = 4;
             // 
             // shaderConstants
@@ -123,7 +147,7 @@ namespace ControlsLibrary.MaterialEditor
             this.shaderConstants.Location = new System.Drawing.Point(0, 0);
             this.shaderConstants.Name = "shaderConstants";
             this.shaderConstants.RowHeadersBorderStyle = System.Windows.Forms.DataGridViewHeaderBorderStyle.None;
-            this.shaderConstants.Size = new System.Drawing.Size(261, 67);
+            this.shaderConstants.Size = new System.Drawing.Size(258, 66);
             this.shaderConstants.TabIndex = 2;
             // 
             // splitContainer3
@@ -140,7 +164,7 @@ namespace ControlsLibrary.MaterialEditor
             // splitContainer3.Panel2
             // 
             this.splitContainer3.Panel2.Controls.Add(this.materialParameterBox);
-            this.splitContainer3.Size = new System.Drawing.Size(261, 143);
+            this.splitContainer3.Size = new System.Drawing.Size(258, 143);
             this.splitContainer3.SplitterDistance = 71;
             this.splitContainer3.TabIndex = 0;
             // 
@@ -156,7 +180,7 @@ namespace ControlsLibrary.MaterialEditor
             this.resourceBindings.Name = "resourceBindings";
             this.resourceBindings.RowHeadersBorderStyle = System.Windows.Forms.DataGridViewHeaderBorderStyle.None;
             this.resourceBindings.RowHeadersWidthSizeMode = System.Windows.Forms.DataGridViewRowHeadersWidthSizeMode.DisableResizing;
-            this.resourceBindings.Size = new System.Drawing.Size(261, 71);
+            this.resourceBindings.Size = new System.Drawing.Size(258, 71);
             this.resourceBindings.TabIndex = 0;
             // 
             // materialParameterBox
@@ -169,22 +193,34 @@ namespace ControlsLibrary.MaterialEditor
             this.materialParameterBox.Dock = System.Windows.Forms.DockStyle.Fill;
             this.materialParameterBox.Location = new System.Drawing.Point(0, 0);
             this.materialParameterBox.Name = "materialParameterBox";
-            this.materialParameterBox.Size = new System.Drawing.Size(261, 68);
+            this.materialParameterBox.Size = new System.Drawing.Size(258, 68);
             this.materialParameterBox.TabIndex = 1;
             // 
             // groupBox1
             // 
             this.groupBox1.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
+            this.groupBox1.Controls.Add(this._blendMode);
             this.groupBox1.Controls.Add(this.checkBox2);
             this.groupBox1.Controls.Add(this.checkBox1);
             this.groupBox1.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.groupBox1.Location = new System.Drawing.Point(3, 252);
+            this.groupBox1.Location = new System.Drawing.Point(3, 251);
             this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(269, 47);
+            this.groupBox1.Size = new System.Drawing.Size(266, 47);
             this.groupBox1.TabIndex = 3;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "States";
+            // 
+            // _blendMode
+            // 
+            this._blendMode.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this._blendMode.FormattingEnabled = true;
+            this._blendMode.Location = new System.Drawing.Point(175, 16);
+            this._blendMode.Name = "_blendMode";
+            this._blendMode.Size = new System.Drawing.Size(84, 21);
+            this._blendMode.TabIndex = 2;
+            this._blendMode.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             // 
             // checkBox2
             // 
@@ -210,40 +246,19 @@ namespace ControlsLibrary.MaterialEditor
             this.checkBox1.ThreeState = true;
             this.checkBox1.UseVisualStyleBackColor = true;
             // 
-            // _pages
-            // 
-            this._pages.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this._pages.Controls.Add(this._technicalPage);
-            this._pages.Location = new System.Drawing.Point(0, 0);
-            this._pages.Name = "_pages";
-            this._pages.SelectedIndex = 0;
-            this._pages.Size = new System.Drawing.Size(275, 246);
-            this._pages.TabIndex = 3;
-            // 
-            // _technicalPage
-            // 
-            this._technicalPage.Controls.Add(this.splitContainer2);
-            this._technicalPage.Location = new System.Drawing.Point(4, 22);
-            this._technicalPage.Name = "_technicalPage";
-            this._technicalPage.Padding = new System.Windows.Forms.Padding(3);
-            this._technicalPage.Size = new System.Drawing.Size(267, 220);
-            this._technicalPage.TabIndex = 0;
-            this._technicalPage.Text = "Technical";
-            this._technicalPage.UseVisualStyleBackColor = true;
-            // 
             // MaterialControl
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.Controls.Add(this.splitContainer1);
             this.Name = "MaterialControl";
-            this.Size = new System.Drawing.Size(275, 515);
+            this.Size = new System.Drawing.Size(272, 512);
             this.splitContainer1.Panel1.ResumeLayout(false);
             this.splitContainer1.Panel2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).EndInit();
             this.splitContainer1.ResumeLayout(false);
+            this._pages.ResumeLayout(false);
+            this._technicalPage.ResumeLayout(false);
             this.splitContainer2.Panel1.ResumeLayout(false);
             this.splitContainer2.Panel2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer2)).EndInit();
@@ -257,8 +272,6 @@ namespace ControlsLibrary.MaterialEditor
             ((System.ComponentModel.ISupportInitialize)(this.materialParameterBox)).EndInit();
             this.groupBox1.ResumeLayout(false);
             this.groupBox1.PerformLayout();
-            this._pages.ResumeLayout(false);
-            this._technicalPage.ResumeLayout(false);
             this.ResumeLayout(false);
 
         }
@@ -278,5 +291,6 @@ namespace ControlsLibrary.MaterialEditor
         private System.Windows.Forms.SplitContainer splitContainer3;
         private System.Windows.Forms.TabControl _pages;
         private System.Windows.Forms.TabPage _technicalPage;
+        private System.Windows.Forms.ComboBox _blendMode;
     }
 }

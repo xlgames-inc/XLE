@@ -13,6 +13,7 @@
 #include "../ToolsRig/VisualisationUtils.h"
 #include "../../RenderCore/Assets/Material.h"
 #include "../../RenderCore/Assets/MaterialScaffold.h"
+#include "../../RenderCore/Metal/State.h"
 #include "../../Assets/DivergentAsset.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Utility/StringFormat.h"
@@ -478,6 +479,114 @@ namespace GUILayer
     void RenderStateSet::DeferredBlend::set(DeferredBlendState)
     {
         NotifyPropertyChanged("DeferredBlend");
+    }
+
+    class StandardBlendDef
+    {
+    public:
+        StandardBlendModes _standardMode;
+        RenderCore::Metal::BlendOp::Enum    _op;
+        RenderCore::Metal::Blend::Enum      _src;
+        RenderCore::Metal::Blend::Enum      _dst;
+    };
+
+    namespace BlendOp = RenderCore::Metal::BlendOp;
+    using namespace RenderCore::Metal::Blend;
+
+    static const StandardBlendDef s_standardBlendDefs[] = 
+    {
+        { StandardBlendModes::NoBlending, BlendOp::NoBlending, One, RenderCore::Metal::Blend::Zero },
+        { StandardBlendModes::Decal, BlendOp::NoBlending, One, RenderCore::Metal::Blend::Zero },
+        
+        { StandardBlendModes::Transparent, BlendOp::Add, SrcAlpha, InvSrcAlpha },
+        { StandardBlendModes::TransparentPremultiplied, BlendOp::Add, One, InvSrcAlpha },
+
+        { StandardBlendModes::Add, BlendOp::Add, One, One },
+        { StandardBlendModes::AddAlpha, BlendOp::Add, SrcAlpha, One },
+        { StandardBlendModes::Subtract, BlendOp::Subtract, One, One },
+        { StandardBlendModes::SubtractAlpha, BlendOp::Subtract, SrcAlpha, One },
+
+        { StandardBlendModes::Min, BlendOp::Min, One, One },
+        { StandardBlendModes::Max, BlendOp::Max, One, One }
+    };
+
+    StandardBlendModes AsStandardBlendMode(
+        const RenderCore::Assets::RenderStateSet& stateSet)
+    {
+        auto op = stateSet._forwardBlendOp;
+        auto src = stateSet._forwardBlendSrc;
+        auto dst = stateSet._forwardBlendDst;
+
+        if (!(stateSet._flag & RenderCore::Assets::RenderStateSet::Flag::ForwardBlend)) {
+            if (stateSet._flag & RenderCore::Assets::RenderStateSet::Flag::DeferredBlend) {
+                if (stateSet._deferredBlend == RenderCore::Assets::RenderStateSet::DeferredBlend::Decal)
+                    return StandardBlendModes::Decal;
+                return StandardBlendModes::NoBlending;
+            }
+
+            return StandardBlendModes::Inherit;
+        }
+
+        if (op == BlendOp::NoBlending) {
+            if (stateSet._flag & RenderCore::Assets::RenderStateSet::Flag::DeferredBlend)
+                if (stateSet._deferredBlend == RenderCore::Assets::RenderStateSet::DeferredBlend::Decal)
+                    return StandardBlendModes::Decal;
+            return StandardBlendModes::NoBlending;
+        }
+
+        for (unsigned c=0; c<dimof(s_standardBlendDefs); ++c)
+            if (    op == s_standardBlendDefs[c]._op == op
+                &&  op == s_standardBlendDefs[c]._src == src
+                &&  op == s_standardBlendDefs[c]._dst == dst)
+                return s_standardBlendDefs[c]._standardMode;
+
+        return StandardBlendModes::Complex;
+    }
+
+    auto RenderStateSet::StandardBlendMode::get() -> StandardBlendModes
+    {
+        const auto& underlying = _underlying->GetAsset();
+        return AsStandardBlendMode(underlying._stateSet);
+    }
+    
+    void RenderStateSet::StandardBlendMode::set(StandardBlendModes newMode)
+    {
+        if (newMode == StandardBlendModes::Complex) return;
+        if (newMode == StandardBlendMode) return;
+
+        if (newMode == StandardBlendModes::Inherit) {
+            auto transaction = _underlying->Transaction_Begin("RenderState");
+            auto& stateSet = transaction->GetAsset()._stateSet;
+            stateSet._forwardBlendOp = BlendOp::NoBlending;
+            stateSet._forwardBlendSrc = One;
+            stateSet._forwardBlendDst = RenderCore::Metal::Blend::Zero;
+            stateSet._deferredBlend = RenderCore::Assets::RenderStateSet::DeferredBlend::Opaque;
+            stateSet._flag &= ~RenderCore::Assets::RenderStateSet::Flag::ForwardBlend;
+            stateSet._flag &= ~RenderCore::Assets::RenderStateSet::Flag::DeferredBlend;
+            NotifyPropertyChanged("StandardBlendMode");
+            return;
+        }
+
+        for (unsigned c=0; c<dimof(s_standardBlendDefs); ++c)
+            if (s_standardBlendDefs[c]._standardMode == newMode) {
+                auto transaction = _underlying->Transaction_Begin("RenderState");
+                auto& stateSet = transaction->GetAsset()._stateSet;
+
+                stateSet._forwardBlendOp = s_standardBlendDefs[c]._op;
+                stateSet._forwardBlendSrc = s_standardBlendDefs[c]._src;
+                stateSet._forwardBlendDst = s_standardBlendDefs[c]._src;
+                stateSet._deferredBlend = RenderCore::Assets::RenderStateSet::DeferredBlend::Opaque;
+                stateSet._flag |= RenderCore::Assets::RenderStateSet::Flag::ForwardBlend;
+                stateSet._flag &= ~RenderCore::Assets::RenderStateSet::Flag::DeferredBlend;
+
+                if (newMode == StandardBlendModes::Decal) {
+                    stateSet._deferredBlend = RenderCore::Assets::RenderStateSet::DeferredBlend::Decal;
+                    stateSet._flag |= RenderCore::Assets::RenderStateSet::Flag::DeferredBlend;
+                }
+
+                NotifyPropertyChanged("StandardBlendMode");
+                return;
+            }
     }
 
     RenderStateSet::RenderStateSet(std::shared_ptr<::Assets::DivergentAsset<RenderCore::Assets::RawMaterial>> underlying)

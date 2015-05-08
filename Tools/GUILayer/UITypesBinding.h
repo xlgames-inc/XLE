@@ -258,6 +258,22 @@ namespace GUILayer
     using StringIntPair = PropertyPair<System::String^, unsigned> ;
     using StringStringPair = PropertyPair<System::String^, System::String^>;
 
+    public enum class StandardBlendModes
+    {
+        Inherit,
+        NoBlending,
+        Decal,
+        Transparent,
+        TransparentPremultiplied,
+        Add, 
+        AddAlpha,
+        Subtract,
+        SubtractAlpha,
+        Min, 
+        Max,
+        Complex     // some mode other than one of the standard modes
+    };
+
     public ref class RenderStateSet : System::ComponentModel::INotifyPropertyChanged
     {
     public:
@@ -267,6 +283,8 @@ namespace GUILayer
 
         enum class DeferredBlendState { Opaque, Decal, Unset };
         property DeferredBlendState DeferredBlend { DeferredBlendState get(); void set(DeferredBlendState); }
+
+        property StandardBlendModes StandardBlendMode { StandardBlendModes get(); void set(StandardBlendModes); }
 
         virtual event System::ComponentModel::PropertyChangedEventHandler^ PropertyChanged;
 

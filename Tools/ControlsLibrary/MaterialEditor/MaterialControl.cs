@@ -110,6 +110,9 @@ namespace ControlsLibrary.MaterialEditor
                         AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill
                     });
             }
+
+            _blendMode.DataSource = Enum.GetValues(typeof(GUILayer.StandardBlendModes));
+            _blendMode.SelectedIndexChanged += OnBlendModeChanged;
         }
 
         protected List<GUILayer.RawMaterial> _objectsPendingDispose = null;
@@ -144,6 +147,17 @@ namespace ControlsLibrary.MaterialEditor
             }
         }
 
+        private void OnBlendModeChanged(object sender, EventArgs e)
+        {
+            if (_currentFocusMat==null) return;
+
+            GUILayer.StandardBlendModes mode;
+            if (Enum.TryParse<GUILayer.StandardBlendModes>(_blendMode.SelectedValue.ToString(), out mode))
+            {
+                _currentFocusMat.StateSet.StandardBlendMode = mode;
+            }
+        }
+
         public IEnumerable<string> Object
         {
             set
@@ -170,6 +184,8 @@ namespace ControlsLibrary.MaterialEditor
                     {
                         checkBox1.DataBindings.Add("CheckState", focusMat.StateSet, "DoubleSided", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged);
                         checkBox2.DataBindings.Add("CheckState", focusMat.StateSet, "Wireframe", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged);
+
+                        _blendMode.SelectedItem = focusMat.StateSet.StandardBlendMode;
                     }
 
                     focusMat.MaterialParameterBox.ListChanged += OnParameterChanged;

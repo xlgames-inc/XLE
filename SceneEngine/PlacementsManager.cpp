@@ -298,6 +298,10 @@ namespace SceneEngine
         void EndRender(
             RenderCore::Metal::DeviceContext* context, 
             RenderCore::Techniques::ParsingContext& parserContext, unsigned techniqueIndex);
+        void CommitTranslucent(
+            RenderCore::Metal::DeviceContext* context,
+            RenderCore::Techniques::ParsingContext& parserContext,
+            unsigned techniqueIndex, RenderCore::Assets::DelayStep delayStep);
         void FilterRenders(const std::function<bool(const RenderCore::Assets::DelayedDrawCall&)>& predicate);
 
         void Render(
@@ -400,11 +404,31 @@ namespace SceneEngine
         RenderCore::Techniques::ParsingContext& parserContext,
         unsigned techniqueIndex)
     {
+            // we can commit the opaque-render part now...
         TRY
         {
             ModelRenderer::RenderPrepared(
                 RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
                 _cache->_sharedStates, _cache->_preparedRenders, RenderCore::Assets::DelayStep::OpaqueRender);
+        }
+        CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
+        CATCH_END
+        _cache->_sharedStates.ReleaseState(context);
+    }
+
+    void PlacementsRenderer::CommitTranslucent(
+        RenderCore::Metal::DeviceContext* context,
+        RenderCore::Techniques::ParsingContext& parserContext,
+        unsigned techniqueIndex, RenderCore::Assets::DelayStep delayStep)
+    {
+            // draw the translucent parts of models that were previously prepared
+        _cache->_sharedStates.CaptureState(context);
+        TRY
+        {
+            ModelRenderer::RenderPrepared(
+                RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
+                _cache->_sharedStates, _cache->_preparedRenders, delayStep);
         }
         CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
         CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
@@ -830,15 +854,37 @@ namespace SceneEngine
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     void PlacementsManager::Render(
-        RenderCore::Metal::DeviceContext* context, RenderCore::Techniques::ParsingContext& parserContext,
+        RenderCore::Metal::DeviceContext* context, 
+        RenderCore::Techniques::ParsingContext& parserContext,
         unsigned techniqueIndex)
     {
-            // render every registered cell
-        _pimpl->_renderer->BeginRender(context);
-        for (auto i=_pimpl->_cells.begin(); i!=_pimpl->_cells.end(); ++i) {
-            _pimpl->_renderer->Render(context, parserContext, *i);
+        TRY 
+        {
+                // render every registered cell
+            _pimpl->_renderer->BeginRender(context);
+            for (auto i=_pimpl->_cells.begin(); i!=_pimpl->_cells.end(); ++i) {
+                _pimpl->_renderer->Render(context, parserContext, *i);
+            }
+            _pimpl->_renderer->EndRender(context, parserContext, techniqueIndex);
         }
-        _pimpl->_renderer->EndRender(context, parserContext, techniqueIndex);
+        CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
+        CATCH_END
+    }
+
+    void PlacementsManager::RenderTransparent(
+        RenderCore::Metal::DeviceContext* context, 
+        RenderCore::Techniques::ParsingContext& parserContext,
+        unsigned techniqueIndex)
+    {
+            // assuming that we previously called "Render" to render
+            // the main opaque part of the placements, let's now go
+            // over each cell and render the transluent parts.
+            // we don't need to cull the cells again, because the previous
+            // render should have prepared a list of all the draw calls we
+            // need for this step
+        _pimpl->_renderer->CommitTranslucent(
+            context, parserContext, techniqueIndex, RenderCore::Assets::DelayStep::PostDeferred);
     }
 
     auto PlacementsManager::GetVisibleQuadTrees(const Float4x4& worldToClip) const

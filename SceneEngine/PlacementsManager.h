@@ -45,6 +45,10 @@ namespace SceneEngine
             RenderCore::Metal::DeviceContext* context,
             RenderCore::Techniques::ParsingContext& parserContext,
             unsigned techniqueIndex);
+        void RenderTransparent(
+            RenderCore::Metal::DeviceContext* context,
+            RenderCore::Techniques::ParsingContext& parserContext,
+            unsigned techniqueIndex);
 
         auto GetVisibleQuadTrees(const Float4x4& worldToClip) const
             -> std::vector<std::pair<Float3x4, const PlacementsQuadTree*>>;

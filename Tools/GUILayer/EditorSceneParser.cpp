@@ -87,13 +87,8 @@ namespace GUILayer
 			}
 
             if (parseSettings._toggles & SceneParseSettings::Toggles::NonTerrain) {
-                TRY {
-                    _editorScene->_placementsManager->Render(
-                        context, parserContext, techniqueIndex);
-                }
-                CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
-                CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
-                CATCH_END
+                _editorScene->_placementsManager->Render(
+                    context, parserContext, techniqueIndex);
 
                 TRY {
                     _editorScene->_placeholders->Render(
@@ -103,6 +98,12 @@ namespace GUILayer
                 CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
                 CATCH_END
             }
+        }
+        else 
+        if (parseSettings._batchFilter == SceneParseSettings::BatchFilter::Transparent)
+        {
+            _editorScene->_placementsManager->RenderTransparent(
+                context, parserContext, techniqueIndex);
         }
     }
 
