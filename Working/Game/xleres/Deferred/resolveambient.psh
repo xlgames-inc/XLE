@@ -8,15 +8,17 @@
 #define RESOLVE_AMBIENT_PSH
 
 #include "resolveutil.h"
-#include "../Lighting/LightingAlgorithm.h"
+#include "../Lighting/LightDesc.h"
+#include "../Lighting/BasicResolve.h"
+#include "../Lighting/MaterialQuery.h"
+#include "../System/LoadGBuffer.h"
+#include "../Colour.h"	// for LightingScale
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 cbuffer AmbientLightBuffer
 {
-	float3	AmbientColour;
-	float 	SkyReflectionScale;
-	float	SkyReflectionBlurriness;
+	AmbientDesc Ambient;
 }
 
 #if defined(TILED_LIGHTS_RESOLVE_MS)
@@ -39,7 +41,7 @@ float3 ReadSkyTexture(float3 reflectionVector, float roughness)
 	uint2 reflectionTextureDims;
 	SkyReflectionTexture[0].GetDimensions(reflectionTextureDims.x, reflectionTextureDims.y);
 
-	float mipMap = SkyReflectionBlurriness + saturate(roughness) * 5.f;
+	float mipMap = Ambient.SkyReflectionBlurriness + saturate(roughness) * 5.f;
 
 	// #define DEBUG_REFLECTION_MIPMAPS 1
 	#if DEBUG_REFLECTION_MIPMAPS==1
@@ -87,7 +89,7 @@ float3 CalculateSkyReflections(GBufferValues sample, float3 viewDirection, float
 	float specular = Material_GetSpecular0(sample);
 
 	float3 reflSampl = ReadSkyTexture(worldSpaceReflection, roughness);
-	reflSampl = SRGBToLinear(reflSampl);
+	// reflSampl = SRGBToLinear(reflSampl);
 	reflSampl += Material_GetReflectionBoost(sample).xxx;
 
 	return reflSampl * (specular * fresnel * sample.cookedAmbientOcclusion);
@@ -116,7 +118,7 @@ float3 BasicAmbient(int2 pixelCoords, SystemInputs sys, GBufferValues sample)
 
 	const float ambientScale = LightingScale;
 	float metal = Material_GetMetal(sample);
-	return ((1.0f - metal)*ambientScale*ambientOcclusionSample)*(AmbientColour + tiledLights)*sample.diffuseAlbedo.rgb;
+	return ((1.0f - metal)*ambientScale*ambientOcclusionSample)*(Ambient.Colour + tiledLights)*sample.diffuseAlbedo.rgb;
 }
 
 /////////////////////////////////////////
@@ -158,7 +160,7 @@ float4 ResolveAmbient(	float4 position : SV_Position,
 
 	float fresnel = CalculateReflectionFresnel(sample, viewDirection);
 
-	float3 skyReflections = SkyReflectionScale * LightingScale * CalculateSkyReflections(sample, viewDirection, fresnel);
+	float3 skyReflections = Ambient.SkyReflectionScale * LightingScale * CalculateSkyReflections(sample, viewDirection, fresnel);
 	#if CALCULATE_SCREENSPACE_REFLECTIONS==1
 			//	The "screen space" reflections block out the sky reflections.
 			//	If we get a collision with the screen space reflections, then we need

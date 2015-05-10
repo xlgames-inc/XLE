@@ -12,6 +12,10 @@
 #include "../CommonResources.h"
 #include "../Utility/Misc.h"
 #include "../Lighting/SampleFiltering.h"
+#include "../Lighting/BasicResolve.h"
+#include "../Lighting/LightDesc.h"
+#include "../System/LoadGBuffer.h"
+#include "../Colour.h"	// for LightingScale
 
 #if !defined(SHADOW_RESOLVE_MODEL)
 	#define SHADOW_RESOLVE_MODEL 0
@@ -360,6 +364,11 @@ float ResolvePointLightShadows(float3 worldPosition, int2 randomizerValue, uint 
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+cbuffer LightBuffer
+{
+	LightDesc Light;
+}
+
 float4 ResolveLight(	float4 position : SV_Position,
 						float2 texCoord : TEXCOORD0,
 						float3 viewFrustumVector : VIEWFRUSTUMVECTOR,
@@ -418,8 +427,8 @@ float4 ResolveLight(	float4 position : SV_Position,
 
 	GBufferValues sample = LoadGBuffer(position, sys);
 	float3 directionToEye = normalize(-viewFrustumVector);
-	float3 diffuse = LightResolve_Diffuse(sample, directionToEye, NegativeLightDirection, LightColor);
-	float3 specular = LightResolve_Specular(sample, directionToEye, NegativeLightDirection, LightColor);
+	float3 diffuse = LightResolve_Diffuse(sample, directionToEye, Light.NegativeDirection, Light.Color, Light.DiffuseWideningMin, Light.DiffuseWideningMax);
+	float3 specular = LightResolve_Specular(sample, directionToEye, Light.NegativeDirection, Light.Color);
 
 	const float lightScale = LightingScale;
 	return float4((lightScale*shadow*sample.cookedAmbientOcclusion)*(diffuse + specular), 1.f);
@@ -438,16 +447,16 @@ float4 ResolvePointLight(	float4 position : SV_Position,
 	float shadow = ResolvePointLightShadows(worldPosition, pixelCoords, GetSampleIndex(sys));
 	GBufferValues sample = LoadGBuffer(position, sys);
 
-	float3 lightVector = (NegativeLightDirection - worldPosition);
+	float3 lightVector = (Light.NegativeDirection - worldPosition);
 	float distanceSq = dot(lightVector, lightVector);
-	float attenuation = DistanceAttenuation(distanceSq, LightPower);
+	float attenuation = DistanceAttenuation(distanceSq, Light.Power);
 	float directionalAttenuation = saturate(dot(lightVector, sample.worldSpaceNormal.xyz) / sqrt(distanceSq));
 
 	float D = distanceSq; D *= D; D *= D;
-	float R = LightRadius; R *= R; R *= R; R *= R;
+	float R = Light.Radius; R *= R; R *= R; R *= R;
 	float radiusDropOff = 1.f - saturate(3.f * D / R);
 
-	float3 light = LightColor.diffuse * directionalAttenuation;
+	float3 light = Light.Color.diffuse * directionalAttenuation;
 	return float4((attenuation*radiusDropOff*shadow)*sample.diffuseAlbedo.rgb*light, 1.f);
 }
 

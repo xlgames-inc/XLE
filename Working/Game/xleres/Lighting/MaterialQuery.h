@@ -7,8 +7,8 @@
 #if !defined(MATERIAL_QUERY_H)
 #define MATERIAL_QUERY_H
 
+#include "LightingAlgorithm.h"
 #include "../gbuffer.h"
-#include "../Lighting/LightingAlgorithm.h"
 
 cbuffer MaterialOverride : register(b9)
 {
@@ -65,6 +65,12 @@ float Material_GetF0_1(GBufferValues gbuffer)
 {
     float specularParameter = Material_GetSpecular1(gbuffer);
     return RefractiveIndexToF0(lerp(1.0f, 2.5f, specularParameter));
+}
+
+float Material_GetDiffuseScale(GBufferValues gbuffer)
+{
+    if (UseMaterialOverride) { return MO_DiffuseScale; }
+    else { return 1.f; }
 }
 
 float Material_GetSpecularScale0(GBufferValues gbuffer)

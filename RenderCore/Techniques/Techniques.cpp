@@ -681,32 +681,36 @@ namespace RenderCore { namespace Techniques
     {
             //  We need to specify the order of resources as they appear in 
             //  _globalUniformsStream
-        static auto HashGlobalTransform         = Hash64("GlobalTransform");
-        static auto HashGlobalState             = Hash64("GlobalState");
-        static auto HashFogSettings             = Hash64("FogSettings");
-        static auto HashShadowProjection        = Hash64("ArbitraryShadowProjection");
-        static auto HashOrthoShadowProjection   = Hash64("OrthogonalShadowProjection");
+        static auto HashGlobalTransform             = Hash64("GlobalTransform");
+        static auto HashGlobalState                 = Hash64("GlobalState");
+        static auto HashFogSettings                 = Hash64("FogSettings");
+        static auto HashShadowProjection            = Hash64("ArbitraryShadowProjection");
+        static auto HashOrthoShadowProjection       = Hash64("OrthogonalShadowProjection");
+        static auto HashBasicLightingEnvironment    = Hash64("HashBasicLightingEnvironment");
         binding.BindConstantBuffer(HashGlobalTransform, 0, 0);
         binding.BindConstantBuffer(HashGlobalState, 1, 0);
         binding.BindConstantBuffer(HashFogSettings, 2, 0);
         binding.BindConstantBuffer(HashShadowProjection, 3, 0);
         binding.BindConstantBuffer(HashOrthoShadowProjection, 4, 0);
+        binding.BindConstantBuffer(HashBasicLightingEnvironment, 5, 0);
     }
 
     void     TechniqueContext::BindGlobalUniforms(Metal::BoundUniforms& binding)
     {
             //  We need to specify the order of resources as they appear in 
             //  _globalUniformsStream
-        static auto HashGlobalTransform         = Hash64("GlobalTransform");
-        static auto HashGlobalState             = Hash64("GlobalState");
-        static auto HashFogSettings             = Hash64("FogSettings");
-        static auto HashShadowProjection        = Hash64("ShadowProjection");
-        static auto HashOrthoShadowProjection   = Hash64("OrthogonalShadowProjection");
+        static auto HashGlobalTransform             = Hash64("GlobalTransform");
+        static auto HashGlobalState                 = Hash64("GlobalState");
+        static auto HashFogSettings                 = Hash64("FogSettings");
+        static auto HashShadowProjection            = Hash64("ShadowProjection");
+        static auto HashOrthoShadowProjection       = Hash64("OrthogonalShadowProjection");
+        static auto HashBasicLightingEnvironment    = Hash64("HashBasicLightingEnvironment");
         binding.BindConstantBuffer(HashGlobalTransform, 0, 0);
         binding.BindConstantBuffer(HashGlobalState, 1, 0);
         binding.BindConstantBuffer(HashFogSettings, 2, 0);
         binding.BindConstantBuffer(HashShadowProjection, 3, 0);
         binding.BindConstantBuffer(HashOrthoShadowProjection, 4, 0);
+        binding.BindConstantBuffer(HashBasicLightingEnvironment, 5, 0);
     }
 
 }}

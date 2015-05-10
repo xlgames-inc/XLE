@@ -32,6 +32,8 @@ namespace SceneEngine
     using namespace RenderCore;
     using namespace RenderCore::Metal;
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
     MaterialOverride GlobalMaterialOverride = { 0.f, 0.6f, 0.05f, 0.f, 1.f, 1.f, 1.f, 0.f, 0.f, 1.f, 0.f, 0.f };
 
     class LightingResolveResources
@@ -44,12 +46,12 @@ namespace SceneEngine
             Desc(unsigned samplingCount) : _samplingCount(samplingCount) {}
         };
 
-        DepthStencilState   _alwaysWriteToStencil;
-        DepthStencilState   _writePixelFrequencyPixels;
-        const ShaderProgram*      _perSampleMask;
+        DepthStencilState       _alwaysWriteToStencil;
+        DepthStencilState       _writePixelFrequencyPixels;
+        const ShaderProgram*    _perSampleMask;
 
-        SamplerState        _shadowComparisonSampler;
-        SamplerState        _shadowDepthSampler;
+        SamplerState            _shadowComparisonSampler;
+        SamplerState            _shadowDepthSampler;
 
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _validationCallback; }
 
@@ -58,14 +60,57 @@ namespace SceneEngine
         std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
     };
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    namespace ShaderLightDesc
+    {
+        struct Ambient
+        { 
+            Float3      _ambientColour; 
+            float       _skyReflectionScale; 
+            float       _skyReflectionBlurriness; 
+            unsigned    _dummy[3]; 
+        };
+
+        class Light
+        {
+        public:
+            Float3 _negativeDirection; float _radius;
+            Float3 _diffuse; float dummy;
+            Float3 _specular; float nonMetalSpecularBrightness;
+            float _lightPower; 
+            float _diffuseWideningMin, _diffuseWideningMax;
+            float dummy1[1];
+        };
+    }
+
+    static ShaderLightDesc::Ambient AsShaderDesc(const GlobalLightingDesc& desc)
+    {
+        return ShaderLightDesc::Ambient { desc._ambientLight, desc._skyReflectionScale, desc._skyReflectionBlurriness };
+    }
+
+    static ShaderLightDesc::Light AsShaderDesc(const LightDesc& light)
+    {
+        return ShaderLightDesc::Light 
+            {
+                light._negativeLightDirection, 
+                light._radius, 
+                light._diffuseColor, 0.f,
+                light._specularColor,
+                light._nonMetalSpecularBrightness,
+                PowerForHalfRadius(light._radius, 0.05f),
+                light._diffuseWideningMin, light._diffuseWideningMax
+            };
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
     static ConstantBufferPacket BuildScreenToShadowConstants(LightingParserContext& parserContext, unsigned shadowFrustumIndex);
     static ConstantBufferPacket BuildLightConstants(const LightDesc& light);
     static void ResolveLights(  DeviceContext* context,
                                 LightingParserContext& parserContext,
                                 MainTargetsBox& mainTargets,
                                 LightingResolveContext& resolveContext);
-
-        ////////////////////////////////////////////////////////////////////////
 
     static void SetupStateForLightingResolve(   DeviceContext* context, 
                                                 MainTargetsBox& mainTargets, 
@@ -96,7 +141,7 @@ namespace SceneEngine
             Metal::ShaderResourceView(), mainTargets._msaaDepthBufferSRV));
     }
 
-        ////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
     
     static unsigned GBufferType(MainTargetsBox& mainTargets) { return (mainTargets._gbufferTextures[2]) ? 1 : 2; }
 
@@ -210,11 +255,7 @@ namespace SceneEngine
                 // note -- if we do ambient first, we can avoid this clear (by rendering the ambient opaque)
             float clearColour[] = { 0.f, 0.f, 0.f, 1.f };
             context->Clear(lightingResTargets._lightingResolveRTV, clearColour);
-            const auto& desc = parserContext.GetSceneParser()->GetGlobalLightingDesc();
-            struct AmbientLightBuffer { Float3 AmbientColour; float skyReflectionScale; float skyReflectionBlurriness; unsigned dummy[3]; } ambientLightBuffer = { 
-                desc._ambientLight, desc._skyReflectionScale, desc._skyReflectionBlurriness
-            };
-            auto ambientLightPacket = MakeSharedPkt(ambientLightBuffer);
+            auto ambientLightPacket = MakeSharedPkt(AsShaderDesc(parserContext.GetSceneParser()->GetGlobalLightingDesc()));
                        
             const unsigned passCount = (doSampleFrequencyOptimisation && samplingCount > 1)?2:1;
             for (unsigned c=0; c<passCount; ++c) {
@@ -404,7 +445,7 @@ namespace SceneEngine
         }
     }
 
-        ////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     LightingResolveResources::LightingResolveResources(const Desc& desc)
     {
@@ -439,8 +480,6 @@ namespace SceneEngine
         _validationCallback = std::move(validationCallback);
     }
 
-        ////////////////////////////////////////////////////////////////////////
-
     auto            LightingResolveContext::GetCurrentPass() const -> Pass::Enum { return _pass; }
     bool            LightingResolveContext::UseMsaaSamplers() const     { return _useMsaaSamplers; }
     unsigned        LightingResolveContext::GetSamplingCount() const    { return _samplingCount; }
@@ -465,7 +504,7 @@ namespace SceneEngine
     }
     LightingResolveContext::~LightingResolveContext() {}
 
-        ////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     static ConstantBufferPacket BuildScreenToShadowConstants(
         LightingParserContext& parserContext, unsigned shadowFrustumIndex)
@@ -479,25 +518,39 @@ namespace SceneEngine
 
     static ConstantBufferPacket BuildLightConstants(const LightDesc& light)
     {
-        class LightBuffer
-        {
-        public:
-            Float3 NegativeLightDirection; float LightRadius;
-            Float3 diffuse; float dummy;
-            Float3 specular; float nonMetalSpecularBrightness;
-            float LightPower; 
-            float DiffuseWideningMin, DiffuseWideningMax;
-            float dummy1[1];
-        } lightBuffer = {
-            light._negativeLightDirection, 
-            light._radius, 
-            light._diffuseColor, 0.f,
-            light._specularColor,
-            light._nonMetalSpecularBrightness,
-            PowerForHalfRadius(light._radius, 0.05f),
-            light._diffuseWideningMin, light._diffuseWideningMax
-        };
-        return MakeSharedPkt(lightBuffer);
+        return MakeSharedPkt(AsShaderDesc(light));
     }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    void LightingParser_InitBasicLightEnv(  
+        DeviceContext* context,
+        LightingParserContext& parserContext,
+        ISceneParser& sceneParser)
+    {
+        const unsigned lightCount = 1;
+        struct BasicEnv
+        {
+            ShaderLightDesc::Ambient _ambient;
+            ShaderLightDesc::Light _dominant[lightCount];
+        } env;
+
+        env._ambient = AsShaderDesc(sceneParser.GetGlobalLightingDesc());
+
+        for (unsigned l=0; l<lightCount; ++l)
+            if (sceneParser.GetLightCount() > l) {
+                env._dominant[l] = AsShaderDesc(sceneParser.GetLightDesc(l));
+            } else {
+                env._dominant[l] = ShaderLightDesc::Light
+                    {   Float3(0.f, 0.f, 0.f), 0.f, Float3(0.f, 0.f, 0.f), 0.f,
+                        Float3(0.f, 0.f, 0.f), 0.f,
+                        0.f, 0.f, 0.f, { 0.f } };
+            }
+
+        parserContext.SetGlobalCB(5, context, &env, sizeof(env));
+    }
+
 }
+
+
 

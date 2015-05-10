@@ -26,7 +26,6 @@ cbuffer LocalTransform : register(b1)
 
 cbuffer GlobalState : register(b4)
 {
-	float3 NegativeDominantLightDirection;
 	float Time;
 }
 
@@ -34,7 +33,6 @@ float3x3 GetLocalToWorldUniformScale()
 {
 	return (float3x3)LocalToWorld;
 }
-
 
 #define SKIN_TRANSFORMS_MATRICES	0
 #define SKIN_TRANSFORMS_QT			1

@@ -58,7 +58,7 @@ float3 CalculateBaseSkyColor(float2 texCoord, float3 viewFrustumVector)
 			if (tddx.x >  0.5f) { tddx.x -= 1.f; }
 			if (tddy.x < -0.5f) { tddy.x += 1.f; }
 			if (tddy.x >  0.5f) { tddy.x -= 1.f; }
-			return float4(2.5f * DiffuseTexture.SampleGrad(WrapUSampler, t, tddx, tddy).rgb, 1.f);
+			return 2.5f * DiffuseTexture.SampleGrad(WrapUSampler, t, tddx, tddy).rgb;
 
 			// int2 dimensions;
 			// DiffuseTexture.GetDimensions(dimensions.x, dimensions.y);
@@ -67,11 +67,11 @@ float3 CalculateBaseSkyColor(float2 texCoord, float3 viewFrustumVector)
 			// return result;
 		}
 
-		return 0.0.xxxx;
+		return 0.0.xxx;
 
 	#else
 
-		return 0.0.xxxx;
+		return 0.0.xxx;
 
 	#endif
 }
@@ -83,10 +83,10 @@ float4 CalculateColour0(	float2 texCoord,
 {
 	float3 color = SkyBrightness * CalculateBaseSkyColor(texCoord, viewFrustumVector);
 
-	#if (BLEND_FOG==1)
-		float4 fog = CalculateDistantFog(worldSpacePosition, NegativeDominantLightDirection);
-		color = lerp(fog.rgb, color, fog.a);
-	#endif
+	// #if (BLEND_FOG==1)
+	//	float4 fog = CalculateDistantFog(worldSpacePosition, NegativeDominantLightDirection);
+	//	color = lerp(fog.rgb, color, fog.a);
+	// #endif
 
 	return float4(LightingScale * color, 1.f);
 }

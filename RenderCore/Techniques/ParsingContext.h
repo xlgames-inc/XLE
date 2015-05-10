@@ -45,7 +45,7 @@ namespace RenderCore { namespace Techniques
         ParsingContext(const ParsingContext&) = delete;
 
     protected:
-        Metal::ConstantBuffer   _globalCBs[5];
+        Metal::ConstantBuffer   _globalCBs[6];
 
         std::unique_ptr<TechniqueContext>   _techniqueContext;
         std::unique_ptr<ProjectionDesc, AlignedDeletor<ProjectionDesc>> _projectionDesc;

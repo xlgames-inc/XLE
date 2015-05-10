@@ -28,7 +28,7 @@ namespace ControlsLibrary
             _errorDetails.Clear();
             foreach (var a in _list.AssetList)
                 if (a.Item1.Equals(_assetList.SelectedItem))
-                    _errorDetails.Text = a.Item2;
+                    _errorDetails.Lines = a.Item2.Split(new string[] { "\n", "\r\n" }, StringSplitOptions.None);
         }
 
         protected GUILayer.InvalidAssetList _list;

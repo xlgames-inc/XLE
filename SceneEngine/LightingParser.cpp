@@ -754,6 +754,11 @@ namespace SceneEngine
         return std::move(result);
     }
 
+    void LightingParser_InitBasicLightEnv(  
+        DeviceContext* context,
+        LightingParserContext& parserContext,
+        ISceneParser& sceneParser);
+
     void LightingParser_SetupScene( DeviceContext* context, 
                                     LightingParserContext& parserContext,
                                     ISceneParser* sceneParser,
@@ -765,15 +770,12 @@ namespace SceneEngine
             ReturnToSteadyState(context);
 
             Float4 time(0.f, 0.f, 0.f, 0.f);
-            if (sceneParser) {
-                time[3] = sceneParser->GetTimeValue();
-                if (sceneParser->GetLightCount() > 0) {
-                    time[0] = sceneParser->GetLightDesc(0)._negativeLightDirection[0];
-                    time[1] = sceneParser->GetLightDesc(0)._negativeLightDirection[1];
-                    time[2] = sceneParser->GetLightDesc(0)._negativeLightDirection[2];
-                }
-            }
+            if (sceneParser)
+                time[0] = sceneParser->GetTimeValue();
             parserContext.SetGlobalCB(1, context, &time, sizeof(time));
+
+            if (sceneParser)
+                LightingParser_InitBasicLightEnv(context, parserContext, *sceneParser);
 
             auto& metricsBox = Techniques::FindCachedBox<MetricsBox>(MetricsBox::Desc());
             unsigned clearValues[] = {0,0,0,0};

@@ -5,24 +5,34 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "../MainGeometry.h"
-#include "../CommonResources.h"
-#include "../Surface.h"
-#include "../Colour.h"
-#include "../BasicMaterial.h"
+#include "../IllumShader/PerPixel.h"
 
-Texture2D<float> OpacityTexture;
-Texture2D<float> CustomTexture;
+#include "../Lighting/LightDesc.h"
+#include "../Lighting/BasicResolve.h"
+#include "../Lighting/BasicLightingEnvironment.h"
 
-cbuffer BasicLightingEnvironment
+float3 ResolveLitColor(GBufferValues sample, float3 directionToEye)
 {
-	float3 SunLightNegativeDirection;
-	float3 SunLightColor;
-	float3 Ambient;
-}
+	float3 diffusePart = 0.0.xxx;
+	float3 specularPart = 0.0.xxx;
 
-cbuffer ObjectAmbientBuffer : register(b7)
-{
-	float4 PerObjectAmbient;
+	for (uint c=0; c<BASIC_LIGHT_COUNT; ++c) {
+		diffusePart += LightResolve_Diffuse(
+			sample, directionToEye,
+			BasicLight[c].NegativeDirection,
+			BasicLight[c].Color,
+			BasicLight[c].DiffuseWideningMin,
+			BasicLight[c].DiffuseWideningMax);
+
+		specularPart += LightResolve_Specular(
+			sample, directionToEye,
+			BasicLight[c].NegativeDirection,
+			BasicLight[c].Color);
+	}
+
+		// todo -- also add in ambient part
+
+	return diffusePart + specularPart;
 }
 
 #if !((OUTPUT_TEXCOORD==1) && (MAT_ALPHA_TEST==1))
@@ -31,73 +41,22 @@ cbuffer ObjectAmbientBuffer : register(b7)
 float4 main(VSOutput geo) : SV_Target0
 {
 	DoAlphaTest(geo);
-	float4 result = 1.0.xxxx;
-	float opacityTextureValue = 1.f;
-	#if OUTPUT_TEXCOORD==1
-		result = DiffuseTexture.Sample(MaybeAnisotropicSampler, geo.texCoord);
 
-		#if OUTPUT_BLEND_TEXCOORD==1
-			float4 secondarySample = DiffuseTexture.Sample(MaybeAnisotropicSampler, geo.blendTexCoord.xy);
-			result = lerp(result, secondarySample, geo.blendTexCoord.z);
-		#endif
+	GBufferValues sample = IllumShader_PerPixel(geo);
 
-		#if RES_HAS_OPACITY_MAP==1
-			opacityTextureValue = OpacityTexture.Sample(DefaultSampler, geo.texCoord);
-		#endif
-	#endif
-	#if OUTPUT_COLOUR==1
-		#if MAT_IGNORE_TEXTURE_COLOR==1
-			result.rgb = geo.colour.rgb;
-		#else
-			result *= float4(geo.colour.rgb,1);
-		#endif
-		#if MAT_MODULATE_VERTEX_ALPHA
-			result.a *= geo.colour.a;
-		#endif
+	float3 directionToEye = 0.0.xxx;
+	#if (OUTPUT_WORLD_VIEW_VECTOR==1)
+		directionToEye = -normalize(geo.worldViewVector);
 	#endif
 
-  result.rgb *= MaterialDiffuse.rgb;
-
-	#if MAT_DO_PARTICLE_LIGHTING==1
-		float4 baseColor = result;
-
-			// Very basic lighting (from the sun only)
-		float3 normal = GetNormal(geo);
-		float lambert = saturate(dot(normal, SunLightNegativeDirection));
-		float3 diffuseLightingColor = SunLightColor * lambert;
-		float3 diffuseAndAmbient = (diffuseLightingColor + PerObjectAmbient);
-
-		float3 finalColor = (diffuseLightingColor * PerObjectAmbient.a) + PerObjectAmbient;
-		finalColor *= baseColor.rgb;
-		// finalColor *= baseColor.a;
-
-		#if RES_HAS_CUSTOM_MAP==1
-			float3 vView	= normalize(-geo.worldViewVector);
-			float fNdotE	= dot(vView.xyz, normal.xyz);
-			float3 vReflVec = (2.f * fNdotE * normal.xyz) - vView.xyz;
-			float3 specular = CustomTexture.Sample(DefaultSampler, SpecBumpScale * vReflVec.xy);
-			finalColor.rgb += specular * SpecMultiplier * MaterialSpecular * diffuseAndAmbient;
-		#endif
-
-		result.rgb = finalColor;
-
-	#else
-
-			// basic stand-in lighting
-		result.rgb *= .25f + 0.75f * saturate(dot(GetNormal(geo), NegativeDominantLightDirection));
-
-	#endif
+	float4 result = float4(ResolveLitColor(sample, directionToEye), 1.f);
 
 	#if OUTPUT_FOG_COLOR == 1
 		result.rgb = lerp(geo.fogColor.rgb, result.rgb, geo.fogColor.a);
 	#endif
 
-	result.a *= opacityTextureValue;
+	result.a = sample.blendingAlpha;
 
-		//	scale up the values to get a better result
-		//	with particles. Normally particles go through
-		//	lighting at this stage.
-	result.a = saturate(result.a);
 	#if MAT_SKIP_LIGHTING_SCALE==0
 		result.rgb *= LightingScale;		// (note -- should we scale by this here? when using this shader with a basic lighting pipeline [eg, for material preview], the scale is unwanted)
 	#endif
