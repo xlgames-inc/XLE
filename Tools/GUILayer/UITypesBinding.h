@@ -13,6 +13,7 @@
 #include "../../Utility/SystemUtils.h"
 #include "../../Utility/ParameterBox.h"
 
+using namespace System;
 using namespace System::ComponentModel;
 using namespace System::Windows::Forms;
 using namespace System::Drawing::Design;
@@ -85,14 +86,14 @@ namespace GUILayer
         [Category("Model")]
         [Description("Active model file")]
         [EditorAttribute(FileNameEditor::typeid, UITypeEditor::typeid)]
-        property System::String^ ModelName
+        property String^ ModelName
         {
-            System::String^ get()
+            String^ get()
             {
                 return clix::marshalString<clix::E_UTF8>(_object->_modelName);
             }
 
-            void set(System::String^ value)
+            void set(String^ value)
             {
                     //  we need to make a filename relative to the current working
                     //  directory
@@ -115,14 +116,14 @@ namespace GUILayer
         [Category("Model")]
         [Description("Active material file")]
         [EditorAttribute(FileNameEditor::typeid, UITypeEditor::typeid)]
-        property System::String^ MaterialName
+        property String^ MaterialName
         {
-            System::String^ get()
+            String^ get()
             {
                 return clix::marshalString<clix::E_UTF8>(_object->_materialName);
             }
 
-            void set(System::String^ value)
+            void set(String^ value)
             {
                     //  we need to make a filename relative to the current working
                     //  directory
@@ -199,19 +200,19 @@ namespace GUILayer
     {
     public:
         [Description("Intersection coordinate")]
-        property System::String^ IntersectionPt { System::String^ get(); }
+        property String^ IntersectionPt { String^ get(); }
 
         [Description("Draw call index")]
         property unsigned DrawCallIndex { unsigned get(); }
 
         [Description("Model file name")]
-        property System::String^ ModelName { System::String^ get(); }
+        property String^ ModelName { String^ get(); }
 
         [Category("Material")]
-        property System::String^ MaterialName { System::String^ get(); }
+        property String^ MaterialName { String^ get(); }
 
         [Browsable(false)] property bool HasMouseOver { bool get(); }
-        [Browsable(false)] property System::String^ FullMaterialName { System::String^ get(); }
+        [Browsable(false)] property String^ FullMaterialName { String^ get(); }
         [Browsable(false)] property uint64 MaterialBindingGuid { uint64 get(); }
 
         void AttachCallback(PropertyGrid^ callback);
@@ -248,15 +249,15 @@ namespace GUILayer
         virtual event PropertyChangedEventHandler^ PropertyChanged;
 
     protected:
-        void NotifyPropertyChanged(/*[CallerMemberName]*/ System::String^ propertyName);
+        void NotifyPropertyChanged(/*[CallerMemberName]*/ String^ propertyName);
         System::Threading::SynchronizationContext^ _propertyChangedContext;
 
         NameType _name;
         ValueType _value;
     };
 
-    using StringIntPair = PropertyPair<System::String^, unsigned> ;
-    using StringStringPair = PropertyPair<System::String^, System::String^>;
+    using StringIntPair = PropertyPair<String^, unsigned> ;
+    using StringStringPair = PropertyPair<String^, String^>;
 
     public enum class StandardBlendModes
     {
@@ -298,7 +299,7 @@ namespace GUILayer
     protected:
         clix::shared_ptr<::Assets::DivergentAsset<RenderCore::Assets::RawMaterial>> _underlying;
 
-        void NotifyPropertyChanged(/*[CallerMemberName]*/ System::String^ propertyName);
+        void NotifyPropertyChanged(/*[CallerMemberName]*/ String^ propertyName);
         System::Threading::SynchronizationContext^ _propertyChangedContext;
     };
 
@@ -318,19 +319,19 @@ namespace GUILayer
             BindingList<StringStringPair^>^ get();
         }
         
-        static StringStringPair^ MakePropertyPair(System::String^ name, System::String^ value) { return gcnew StringStringPair(name, value); }
+        static StringStringPair^ MakePropertyPair(String^ name, String^ value) { return gcnew StringStringPair(name, value); }
 
         property RenderStateSet^ StateSet { RenderStateSet^ get() { return _renderStateSet; } }
 
         const RenderCore::Assets::RawMaterial* GetUnderlying() { return (!!_underlying) ? &_underlying->GetAsset() : nullptr; }
 
-        List<System::String^>^ BuildInheritanceList();
-        static List<System::String^>^ BuildInheritanceList(System::String^ topMost);
+        List<String^>^ BuildInheritanceList();
+        static List<String^>^ BuildInheritanceList(String^ topMost);
 
-        property System::String^ Filename { System::String^ get(); }
-        property System::String^ SettingName { System::String^ get(); }
+        property String^ Filename { String^ get(); }
+        property String^ SettingName { String^ get(); }
 
-        RawMaterial(System::String^ initialiser);
+        RawMaterial(String^ initialiser);
         RawMaterial(std::shared_ptr<NativeConfig> underlying);
         RawMaterial(RawMaterial^ cloneFrom);
         ~RawMaterial();
@@ -348,5 +349,18 @@ namespace GUILayer
         BindingList<StringStringPair^>^ _resourceBindings;
         void ParameterBox_Changed(System::Object^, ListChangedEventArgs^);
         void ResourceBinding_Changed(System::Object^, ListChangedEventArgs^);
+    };
+
+    public ref class InvalidAssetList
+    {
+    public:
+        property IEnumerable<Tuple<String^, String^>^>^ AssetList 
+        {
+            IEnumerable<Tuple<String^, String^>^>^ get() { return _assetList; }
+        }
+
+        InvalidAssetList();
+    protected:
+        List<Tuple<String^, String^>^>^ _assetList;
     };
 }

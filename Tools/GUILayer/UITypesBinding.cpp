@@ -16,6 +16,8 @@
 #include "../../RenderCore/Metal/State.h"
 #include "../../Assets/DivergentAsset.h"
 #include "../../Assets/AssetUtils.h"
+#include "../../Assets/AssetServices.h"
+#include "../../Assets/InvalidAssetManager.h"
 #include "../../Utility/StringFormat.h"
 #include <msclr\auto_gcroot.h>
 #include <iomanip>
@@ -574,7 +576,7 @@ namespace GUILayer
 
                 stateSet._forwardBlendOp = s_standardBlendDefs[c]._op;
                 stateSet._forwardBlendSrc = s_standardBlendDefs[c]._src;
-                stateSet._forwardBlendDst = s_standardBlendDefs[c]._src;
+                stateSet._forwardBlendDst = s_standardBlendDefs[c]._dst;
                 stateSet._deferredBlend = RenderCore::Assets::RenderStateSet::DeferredBlend::Opaque;
                 stateSet._flag |= RenderCore::Assets::RenderStateSet::Flag::ForwardBlend;
                 stateSet._flag &= ~RenderCore::Assets::RenderStateSet::Flag::DeferredBlend;
@@ -614,6 +616,21 @@ namespace GUILayer
         //     gcnew System::Threading::SendOrPostCallback(
         //         o => PropertyChanged(this, gcnew PropertyChangedEventArgs(propertyName))
         //     ), nullptr);
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    InvalidAssetList::InvalidAssetList()
+    {
+        _assetList = gcnew List<Tuple<String^, String^>^>();
+
+            // get the list of assets from the underlying manager
+        auto list = ::Assets::Services::GetInvalidAssetMan().GetAssets();
+        for (auto i : list) {
+            _assetList->Add(gcnew Tuple<String^, String^>(
+                clix::marshalString<clix::E_UTF8>(i._name),
+                clix::marshalString<clix::E_UTF8>(i._errorString)));
+        }
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

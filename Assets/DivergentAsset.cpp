@@ -7,6 +7,7 @@
 #include "DivergentAsset.h"
 #include "CompileAndAsyncManager.h"
 #include "IntermediateResources.h"
+#include "AssetServices.h"
 
 namespace Assets
 {
@@ -23,7 +24,7 @@ namespace Assets
 
         if (_targetFilename.empty()) return;
 
-        CompileAndAsyncManager::GetInstance().GetIntermediateStore().ShadowFile(
+        Services::GetAsyncMan().GetIntermediateStore().ShadowFile(
             _targetFilename.c_str());
     }
 

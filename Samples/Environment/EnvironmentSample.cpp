@@ -73,7 +73,7 @@ namespace Sample
         std::unique_ptr<BufferUploads::IManager> _bufferUploads;
         PlatformRig::OverlappedWindow _window;
 
-        std::unique_ptr<Assets::CompileAndAsyncManager> _asyncMan;
+        std::unique_ptr<Assets::Services> _assetServices;
 
         std::shared_ptr<PlatformRig::GlobalTechniqueContext> _globalTechContext;
 
@@ -87,7 +87,8 @@ namespace Sample
                 renderDevice->CreatePresentationChain(_window.GetUnderlyingHandle(), 
                     clientRect.second[0] - clientRect.first[0], clientRect.second[1] - clientRect.first[1]);
             auto bufferUploads = BufferUploads::CreateManager(renderDevice.get());
-            auto asyncMan = RenderCore::Metal::CreateCompileAndAsyncManager();
+            auto assetServices = std::make_unique<::Assets::Services>(0);
+            RenderCore::Metal::InitCompileAndAsyncManager();
 
             _window.AddWindowHandler(std::make_shared<PlatformRig::ResizePresentationChain>(presentationChain));
             auto v = renderDevice->GetVersionInformation();
@@ -100,7 +101,7 @@ namespace Sample
             _rDevice = std::move(renderDevice);
             _presChain = std::move(presentationChain);
             _bufferUploads = std::move(bufferUploads);
-            _asyncMan = std::move(asyncMan);
+            _assetServices = std::move(assetServices);
             _globalTechContext = std::move(globalTechniqueContext);
             SceneEngine::SetBufferUploads(_bufferUploads.get());
             RenderCore::Assets::SetBufferUploads(_bufferUploads.get());
@@ -169,7 +170,7 @@ namespace Sample
         PrimaryManagers primMan;
 
             // Some secondary initalisation:
-        SetupCompilers(*primMan._asyncMan);
+        SetupCompilers(primMan._assetServices->GetAsyncMan());
         g_gpuProfiler = RenderCore::Metal::GPUProfiler::CreateProfiler();
         RenderOverlays::InitFontSystem(primMan._rDevice.get(), primMan._bufferUploads.get());
 
@@ -248,7 +249,7 @@ namespace Sample
 
             primMan._window.GetInputTranslator().AddListener(mainInputHandler);
             auto stdPlugin = std::make_shared<SceneEngine::LightingParserStandardPlugin>();
-            primMan._asyncMan->GetAssetSets().LogReport();
+            primMan._assetServices->GetAssetSets().LogReport();
 
                 //  One last object required for rendering:
                 //      *   the DeviceContext provides the methods for directly 
@@ -286,15 +287,15 @@ namespace Sample
         }
 
         LogInfo << "Starting shutdown";
-        primMan._asyncMan->GetAssetSets().LogReport();
+        primMan._assetServices->GetAssetSets().LogReport();
         RenderCore::Metal::DeviceContext::PrepareForDestruction(primMan._rDevice.get(), primMan._presChain.get());
 
         mainScene.reset();
         g_gpuProfiler.reset();
         RenderCore::Techniques::ResourceBoxes_Shutdown();
         RenderOverlays::CleanupFontSystem();
-        primMan._asyncMan->GetAssetSets().Clear();
-        primMan._asyncMan.reset();
+        primMan._assetServices->GetAssetSets().Clear();
+        primMan._assetServices.reset();
         TerminateFileSystemMonitoring();
     }
 

@@ -205,9 +205,19 @@ namespace RenderingInterop
             m_commandService.RegisterCommand(
                 Command.SaveModifiedAssets,
                 StandardMenu.File,
-                "Save",
+                "Assets",
                 "Modified Assets...".Localize(),
                 "View and save any assets that have been modified".Localize(),
+                Keys.None,
+                Resources.CubesImage,
+                CommandVisibility.Menu,
+                this);
+            m_commandService.RegisterCommand(
+                Command.ViewInvalidAssets,
+                StandardMenu.File,
+                "Assets",
+                "View Invalid Assets...".Localize(),
+                "View any assets at are marked as invalid".Localize(),
                 Keys.None,
                 Resources.CubesImage,
                 CommandVisibility.Menu,
@@ -286,6 +296,9 @@ namespace RenderingInterop
 
                 case Command.SaveModifiedAssets:
                     return GUILayer.PendingSaveList.HasModifiedAssets();
+
+                case Command.ViewInvalidAssets:
+                    return true;
             }
 
             return false;
@@ -368,6 +381,10 @@ namespace RenderingInterop
                     case Command.SaveModifiedAssets:
                         PerformSaveModifiedAssets();
                         break;
+
+                    case Command.ViewInvalidAssets:
+                        PerformViewInvalidAssets();
+                        break;
                 }
                 m_designView.ActiveView.Invalidate();                
             }
@@ -439,6 +456,7 @@ namespace RenderingInterop
 
             // <<XLE
             SaveModifiedAssets,
+            ViewInvalidAssets
             // XLE>>
         }
 
@@ -568,6 +586,14 @@ namespace RenderingInterop
                 {
                     pendingAssetList.Commit();
                 }
+            }
+        }
+
+        private void PerformViewInvalidAssets()
+        {
+            using (var dialog = new ControlsLibrary.InvalidAssetDialog())
+            {
+                dialog.ShowDialog();
             }
         }
     }

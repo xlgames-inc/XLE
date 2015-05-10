@@ -345,6 +345,6 @@ namespace RenderCore { namespace Metal_DX11
         DeepShaderProgram& operator=(const DeepShaderProgram&);
     };
 
-    std::unique_ptr<::Assets::CompileAndAsyncManager> CreateCompileAndAsyncManager();
+    void InitCompileAndAsyncManager();
 
 }}

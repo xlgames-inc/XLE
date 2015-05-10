@@ -8,6 +8,8 @@
 
 #include "AssetsCore.h"
 #include "CompileAndAsyncManager.h"
+#include "AssetServices.h"
+#include "AssetSetManager.h"
 #include "../Utility/Streams/FileSystemMonitor.h"       // (for OnChangeCallback base class)
 #include "../Utility/IteratorUtils.h"
 #include "../Utility/MemoryUtils.h"
@@ -81,10 +83,10 @@ namespace Assets
             if (!set) {
                 auto s = std::make_unique<AssetSet<AssetType>>();
                 set = s.get();
-                auto& assetSets = CompileAndAsyncManager::GetInstance().GetAssetSets();
+                auto& assetSets = Services::GetAssetSets();
                 assetSets.Add(std::move(s));
             }
-            assert(CompileAndAsyncManager::GetInstance().GetAssetSets().IsBoundThread());  // currently not thread safe; we have to check the thread ids
+            assert(Services::GetAssetSets().IsBoundThread());  // currently not thread safe; we have to check the thread ids
             #if defined(ASSETS_STORE_NAMES)
                     // These should agree. If there's a mismatch, there may be a threading problem
                 assert(set->_assets.size() == set->_assetNames.size());
@@ -114,8 +116,8 @@ namespace Assets
             template<typename AssetType, typename... Params> 
 				static typename Ptr<AssetType> Create(Params... initialisers)
             {
-                auto& compilers = CompileAndAsyncManager::GetInstance().GetIntermediateCompilers();
-                auto& store = CompileAndAsyncManager::GetInstance().GetIntermediateStore();
+                auto& compilers = Services::GetAsyncMan().GetIntermediateCompilers();
+                auto& store = Services::GetAsyncMan().GetIntermediateStore();
 				const char* inits[] = { ((const char*)initialisers)... };
 				auto marker = compilers.PrepareResource(GetCompileProcessType<AssetType>(), inits, dimof(inits), store);
                 return std::make_unique<AssetType>(std::move(marker));

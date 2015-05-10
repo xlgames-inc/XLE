@@ -301,7 +301,7 @@ namespace RenderCore { namespace Assets
             //  instead redirect the query towards the compiled version
         auto ext = XlExtension(dest);
         if (!XlFindStringI(dest, "-rawmat") && (!ext || !XlCompareStringI(ext, "dae"))) {
-            auto& store = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateStore();
+            auto& store = ::Assets::Services::GetAsyncMan().GetIntermediateStore();
             XlChopExtension(dest);
             XlCatString(dest, dstCount, "-rawmat");
             store.MakeIntermediateName(dest, dstCount, dest);
@@ -517,7 +517,7 @@ namespace RenderCore { namespace Assets
     {
             // we need to call "GetDependentFileState" first, because this can change the
             // format of the filename. String compares alone aren't working well for us here
-        auto& store = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateStore();
+        auto& store = ::Assets::Services::GetAsyncMan().GetIntermediateStore();
         auto depState = store.GetDependentFileState(splitName._concreteFilename.c_str());
 
         auto existing = std::find_if(deps.cbegin(), deps.cend(),

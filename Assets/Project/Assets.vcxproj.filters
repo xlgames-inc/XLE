@@ -10,6 +10,9 @@
     <ClInclude Include="..\ArchiveCache.h" />
     <ClInclude Include="..\DivergentAsset.h" />
     <ClInclude Include="..\AssetsCore.h" />
+    <ClInclude Include="..\AssetServices.h" />
+    <ClInclude Include="..\AssetSetManager.h" />
+    <ClInclude Include="..\InvalidAssetManager.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Assets.cpp" />
@@ -20,6 +23,9 @@
     <ClCompile Include="..\IntermediateResources.cpp" />
     <ClCompile Include="..\ArchiveCache.cpp" />
     <ClCompile Include="..\DivergentAsset.cpp" />
+    <ClCompile Include="..\AssetServices.cpp" />
+    <ClCompile Include="..\AssetSetManager.cpp" />
+    <ClCompile Include="..\InvalidAssetManager.cpp" />
   </ItemGroup>
   <ItemGroup>
   </ItemGroup>

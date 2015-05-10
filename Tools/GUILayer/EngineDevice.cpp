@@ -57,7 +57,7 @@ namespace GUILayer
         static void BackgroundThreadFunction()
         {
             while (Active) {
-                Assets::CompileAndAsyncManager::GetInstance().Update();
+                Assets::Services::GetAsyncMan().Update();
                 #undef Yield
                 // System::Threading::Thread::Yield();
                 System::Threading::Thread::Sleep(100);
@@ -102,7 +102,7 @@ namespace GUILayer
 
     void NativeEngineDevice::AttachDefaultCompilers()
     {
-        auto& compilers = _asyncMan->GetIntermediateCompilers();
+        auto& compilers = _assetServices->GetAsyncMan().GetIntermediateCompilers();
         using RenderCore::Assets::ColladaCompiler;
 		auto colladaProcessor = std::make_shared<ColladaCompiler>();
 		compilers.AddCompiler(ColladaCompiler::Type_Model, colladaProcessor);
@@ -118,7 +118,8 @@ namespace GUILayer
         _console = std::make_unique<ConsoleRig::Console>();
         _renderDevice = RenderCore::CreateDevice();
         _immediateContext = _renderDevice->GetImmediateContext();
-        _asyncMan = RenderCore::Metal::CreateCompileAndAsyncManager();
+        _assetServices = std::make_unique<::Assets::Services>(::Assets::Services::Flags::RecordInvalidAssets);
+        RenderCore::Metal::InitCompileAndAsyncManager();
         _bufferUploads = BufferUploads::CreateManager(_renderDevice.get());
         SceneEngine::SetBufferUploads(_bufferUploads.get());
         RenderCore::Assets::SetBufferUploads(_bufferUploads.get());
@@ -157,8 +158,8 @@ namespace GUILayer
         
         RenderCore::Techniques::ResourceBoxes_Shutdown();
         RenderOverlays::CleanupFontSystem();
-        if (_pimpl->GetASyncManager())
-            _pimpl->GetASyncManager()->GetAssetSets().Clear();
+        if (_pimpl->GetAssetServices())
+            _pimpl->GetAssetServices()->GetAssetSets().Clear();
         ResourceCompilerThread_Hack::Shutdown();
         Assets::Dependencies_Shutdown();
         _pimpl.reset();

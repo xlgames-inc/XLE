@@ -446,8 +446,8 @@ namespace SceneEngine
     {
         std::shared_ptr<ModelScaffold> CreateModelScaffold(const ResChar filename[], RenderCore::Assets::IModelFormat& modelFormat)
         {
-            auto& compilers = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateCompilers();
-            auto& store = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateStore();
+            auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
+            auto& store = ::Assets::Services::GetAsyncMan().GetIntermediateStore();
             auto marker = compilers.PrepareResource(
                 RenderCore::Assets::ColladaCompiler::Type_Model, 
                 (const char**)&filename, 1, store);
@@ -456,8 +456,8 @@ namespace SceneEngine
 
         std::shared_ptr<MaterialScaffold> CreateMaterialScaffold(const ResChar model[], const ResChar material[], RenderCore::Assets::IModelFormat& modelFormat)
         {
-            auto& compilers = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateCompilers();
-            auto& store = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateStore();
+            auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
+            auto& store = ::Assets::Services::GetAsyncMan().GetIntermediateStore();
             const ResChar* inits[] = { material, model };
             auto marker = compilers.PrepareResource(
                 MaterialScaffold::CompileProcessType, 

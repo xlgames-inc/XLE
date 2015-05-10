@@ -65,8 +65,8 @@ namespace Sample
             //  Process if we need to...
             //  Note;   ideally this should happen in the background, and we would construct the
             //          objects only after everything is ready
-        auto& compilers = Assets::CompileAndAsyncManager::GetInstance().GetIntermediateCompilers();
-        auto& store = Assets::CompileAndAsyncManager::GetInstance().GetIntermediateStore();
+        auto& compilers = Assets::Services::GetAsyncMan().GetIntermediateCompilers();
+        auto& store = Assets::Services::GetAsyncMan().GetIntermediateStore();
         auto skinMarker = compilers.PrepareResource(RenderCore::Assets::ColladaCompiler::Type_Model, &skin, 1, store);
         auto skelMarker = compilers.PrepareResource(RenderCore::Assets::ColladaCompiler::Type_Skeleton, &skeleton, 1, store);
         auto animMarker = compilers.PrepareResource(RenderCore::Assets::ColladaCompiler::Type_AnimationSet, &animationSet, 1, store);

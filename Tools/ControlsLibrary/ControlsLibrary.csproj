@@ -75,6 +75,12 @@
     <Compile Include="FileCompare.Designer.cs">
       <DependentUpon>FileCompare.cs</DependentUpon>
     </Compile>
+    <Compile Include="InvalidAssetDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="InvalidAssetDialog.Designer.cs">
+      <DependentUpon>InvalidAssetDialog.cs</DependentUpon>
+    </Compile>
     <Compile Include="MaterialEditor\HierchicalMaterialControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -115,6 +121,9 @@
   <ItemGroup>
     <EmbeddedResource Include="FileCompare.resx">
       <DependentUpon>FileCompare.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="InvalidAssetDialog.resx">
+      <DependentUpon>InvalidAssetDialog.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="MaterialEditor\HierchicalMaterialControl.resx">
       <DependentUpon>HierchicalMaterialControl.cs</DependentUpon>

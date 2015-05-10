@@ -12,9 +12,12 @@
 #include "../../../Assets/CompileAndAsyncManager.h"
 #include "../../../Assets/AssetUtils.h"
 #include "../../../Assets/ArchiveCache.h"
+#include "../../../Assets/AssetServices.h"
+#include "../../../Assets/InvalidAssetManager.h"
 #include "../../../Utility/Streams/PathUtils.h"
 #include "../../../Utility/Streams/FileUtils.h"
 #include "../../../Utility/SystemUtils.h"
+#include "../../../Utility/StringFormat.h"
 #include "../../../Utility/IteratorUtils.h"
 #include "../../../Utility/WinAPI/WinAPIWrapper.h"
 #include "../../../ConsoleRig/Log.h"
@@ -256,6 +259,81 @@ namespace RenderCore { namespace Metal_DX11
         ShaderCompileHelper(ShaderCompileHelper&);
         ShaderCompileHelper& operator=(const ShaderCompileHelper&);
     };
+
+    #define RECORD_INVALID_ASSETS
+    #if defined(RECORD_INVALID_ASSETS)
+
+        static void RegisterInvalidAsset(const ResChar assetName[], const std::basic_string<ResChar>& errorString)
+        {
+            ::Assets::Services::GetInvalidAssetMan().MarkInvalid(assetName, errorString);
+        }
+
+        static void RegisterValidAsset(const ResChar assetName[])
+        {
+            ::Assets::Services::GetInvalidAssetMan().MarkValid(assetName);
+        }
+
+    #else
+
+        static void RegisterInvalidAsset(const ResChar resourceName[], const std::basic_string<ResChar>& errorString) {}
+        static void RegisterValidAsset(const ResChar resourceName[]) {}
+
+    #endif
+
+    enum class ShaderFailureReason { FileNotFound, MissingDLL, ReflectionFailed };
+
+    static void ThrowInvalidAsset(
+        const ResChar initializer[],
+        ShaderFailureReason reason)
+    {
+        const char* errorString;
+        switch (reason) {
+        case ShaderFailureReason::FileNotFound: errorString = "File not found"; break;
+        case ShaderFailureReason::MissingDLL: errorString = "Could not find d3dcompiler_47.dll"; break;
+        case ShaderFailureReason::ReflectionFailed: errorString = "Failure while creating reflection"; break;
+        default: errorString = "Unknown Error"; break;
+        }
+        ThrowException(Assets::Exceptions::InvalidResource(initializer, errorString));
+    }
+
+    static void ThrowInvalidAsset(
+        const ResChar initializer[],
+        HRESULT hresult,
+        ID3D::Blob* errorsBlob)
+    {
+        if (errorsBlob && errorsBlob->GetBufferPointer()) {
+            const auto* errors = (const char*)errorsBlob->GetBufferPointer();
+
+            std::basic_stringstream<ResChar> stream;
+            stream << "Encountered errors while compiling shader: " << initializer << std::endl;
+            stream << "Errors as follows:" << std::endl;
+            stream << errors;
+
+            RegisterInvalidAsset(initializer, stream.str());
+            ThrowException(Assets::Exceptions::InvalidResource(initializer, errors));
+        } else
+            ThrowException(Assets::Exceptions::InvalidResource(initializer, "Unknown error"));
+    }
+
+    static void ThrowInvalidAsset(
+        const ShaderResId& shaderPath,
+        HRESULT hresult,
+        ID3D::Blob* errorsBlob)
+    {
+        ThrowInvalidAsset(
+            StringMeld<MaxPath, ::Assets::ResChar>() << shaderPath._filename << ':' << shaderPath._entryPoint << ':' << shaderPath._shaderModel,
+            hresult, errorsBlob);
+    }
+
+    static void ClearInvalidMarkers(const ResChar initializer[])
+    {
+        RegisterValidAsset(initializer);
+    }
+    
+    static void ClearInvalidMarkers(const ShaderResId& shaderPath)
+    {
+        RegisterValidAsset(StringMeld<MaxPath, ::Assets::ResChar>() << shaderPath._filename << ':' << shaderPath._entryPoint << ':' << shaderPath._shaderModel);
+    }
     
     CompiledShaderByteCode::ShaderCompileHelper::ShaderCompileHelper(
         const ShaderResId& shaderPath, const ResChar definesTable[], 
@@ -274,7 +352,7 @@ namespace RenderCore { namespace Metal_DX11
         XlDirname(directoryName, dimof(directoryName), normalizedPath);
         auto includeHandler = std::make_unique<IncludeHandler>(
             directoryName, 
-            ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateStore().GetDependentFileState(normalizedPath));
+            ::Assets::Services::GetInstance().GetAsyncMan().GetIntermediateStore().GetDependentFileState(normalizedPath));
 
         std::string definesCopy;
         auto arrayOfDefines = MakeDefinesTable(definesTable, shaderPath._shaderModel, definesCopy);
@@ -299,17 +377,9 @@ namespace RenderCore { namespace Metal_DX11
         }
 
         if (!SUCCEEDED(hresult)) {
-            if (_futureErrors && _futureErrors->GetBufferPointer()) {
-                const char* errors = (const char*)_futureErrors->GetBufferPointer();
-                OutputDebugString("Shader compile errors -- ");
-                OutputDebugString(errors);
-                    
-                char buffer[512];
-                _snprintf_s(buffer, _TRUNCATE, "Encountered shader compile errors for file (%s): \n%s", shaderPath._filename, errors);
-                ThrowException(Assets::Exceptions::InvalidResource(shaderPath._filename, buffer));
-            }
-            ThrowException(Assets::Exceptions::InvalidResource(shaderPath._filename, "Unknown error"));
-        }
+            ThrowInvalidAsset(shaderPath, hresult, _futureErrors);
+        } else if (!constant_expression<CompileInBackground>::result())
+            ClearInvalidMarkers(shaderPath);
     }
 
     CompiledShaderByteCode::ShaderCompileHelper::ShaderCompileHelper(
@@ -335,18 +405,11 @@ namespace RenderCore { namespace Metal_DX11
             0, CompileInBackground ? GetThreadPump() : nullptr,
             &_futureShader, &_futureErrors, &_futureResult);
 
+        uint64 hashName = Hash64(shaderInMemory, &shaderInMemory[shaderBufferSize]);
         if (!SUCCEEDED(hresult)) {
-            if (_futureErrors && _futureErrors->GetBufferPointer()) {
-                const char* errors = (const char*)_futureErrors->GetBufferPointer();
-                OutputDebugString("Shader compile errors -- ");
-                OutputDebugString(errors);
-                
-                char buffer[512];
-                _snprintf_s(buffer, _TRUNCATE, "Encountered shader compile errors: \n%s", errors);
-                ThrowException(Assets::Exceptions::InvalidResource("ShaderInMemory", buffer));
-            }
-            ThrowException(Assets::Exceptions::InvalidResource("ShaderInMemory", shaderInMemory));
-        }
+            ThrowInvalidAsset(StringMeld<64>() << "ShaderInMemory_" << hashName, hresult, _futureErrors);
+        } else if (!constant_expression<CompileInBackground>::result())
+            ClearInvalidMarkers(StringMeld<64>() << "ShaderInMemory_" << hashName);
 
         _temporaryCompilingBuffer = std::move(memoryBuffer);
         _includeHandler = std::move(includeHandler);
@@ -372,20 +435,15 @@ namespace RenderCore { namespace Metal_DX11
         const char initializer[], const std::shared_ptr<Assets::DependencyValidation>& depVal) const
     {
         if (!_futureShader) {
-            if (_futureResult == D3D11_ERROR_FILE_NOT_FOUND) {
-                ThrowException(Assets::Exceptions::InvalidResource(initializer, "File not found"));
-            }
-            if (_futureResult!=~HRESULT(0x0)) {
-                const char* errors = _futureErrors?((const char*)_futureErrors->GetBufferPointer()):nullptr;
-                OutputDebugString("Shader compile errors -- ");
-                OutputDebugString(errors);
+            if (_futureResult == D3D11_ERROR_FILE_NOT_FOUND)
+                ThrowInvalidAsset(initializer, ShaderFailureReason::FileNotFound);
 
-                char buffer[512];
-                _snprintf_s(buffer, _TRUNCATE, "Encountered shader compile errors: \n%s", errors);
-                ThrowException(Assets::Exceptions::InvalidResource(initializer, buffer));
-            }
+            if (_futureResult!=~HRESULT(0x0))
+                ThrowInvalidAsset(initializer, _futureResult, _futureErrors);
+            
             ThrowException(Assets::Exceptions::PendingResource(initializer, "Unknown error"));
-        }
+        } else
+            ClearInvalidMarkers(initializer);
 
         if (_includeHandler) {
 
@@ -847,7 +905,7 @@ namespace RenderCore { namespace Metal_DX11
             //  same file at the same time (particularly if one is doing a read, and another is doing
             //  a write that changes the offsets within the file).
 
-        auto& man = ::Assets::CompileAndAsyncManager::GetInstance();
+        auto& man = ::Assets::Services::GetInstance().GetAsyncMan();
 
         ShaderResId shaderId(initializers[0]);
 
@@ -943,16 +1001,16 @@ namespace RenderCore { namespace Metal_DX11
 
         ////////////////////////////////////////////////////////////
 
-    std::unique_ptr<::Assets::CompileAndAsyncManager> CreateCompileAndAsyncManager()
+    void InitCompileAndAsyncManager()
     {
-        auto result = std::make_unique<::Assets::CompileAndAsyncManager>();
+        auto& asyncMan = Assets::Services::GetInstance().GetAsyncMan();
+
         auto newProc = std::make_unique<OfflineCompileProcess>();
         // newProc->GetCacheSet().LogStats(result->GetIntermediateStore());
-        result->GetIntermediateCompilers().AddCompiler(
-            OfflineCompileProcess::Type_ShaderCompile, std::move(newProc));
-        result->Add(std::make_unique<ThreadPump_D3D>());
 
-        return std::move(result);
+        asyncMan.GetIntermediateCompilers().AddCompiler(
+            OfflineCompileProcess::Type_ShaderCompile, std::move(newProc));
+        asyncMan.Add(std::make_unique<ThreadPump_D3D>());
     }
 
         ////////////////////////////////////////////////////////////
@@ -1109,14 +1167,14 @@ namespace RenderCore { namespace Metal_DX11
 
         ID3D::ShaderReflection* reflectionTemp = nullptr;
         HRESULT hresult = D3DReflect_Wrapper(GetByteCode(), GetSize(), __uuidof(ID3D::ShaderReflection), (void**)&reflectionTemp);
-        if (!SUCCEEDED(hresult) || !reflectionTemp) {
-            ThrowException(Assets::Exceptions::InvalidResource(Initializer(), 
-                (hresult == E_NOINTERFACE)?"Could not find d3dcompiler_47.dll":"Failure creating reflection"));
-        }
+        if (!SUCCEEDED(hresult) || !reflectionTemp)
+            ThrowInvalidAsset(
+                Initializer(), 
+                (hresult == E_NOINTERFACE)?ShaderFailureReason::MissingDLL:ShaderFailureReason::ReflectionFailed);
         return moveptr(reflectionTemp);
     }
 
-    const char*                     CompiledShaderByteCode::Initializer() const
+    const char* CompiledShaderByteCode::Initializer() const
     {
         #if defined(_DEBUG)
             return _initializer;

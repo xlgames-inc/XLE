@@ -10,5 +10,5 @@
 #include "../../RenderCore/IThreadContext_Forward.h"
 #include "../../BufferUploads/IBufferUploads_Forward.h"
 
-namespace Assets { class CompileAndAsyncManager; }
+namespace Assets { class Services; }
 namespace ConsoleRig { class Console; }

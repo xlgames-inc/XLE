@@ -2286,7 +2286,7 @@ namespace SceneEngine
             TRY {
                 return ::Assets::GetAsset<Type>(initializer);
             } CATCH (::Assets::Exceptions::PendingResource&) {
-                ::Assets::CompileAndAsyncManager::GetInstance().Update();
+                ::Assets::Services::GetAsyncMan().Update();
             } CATCH_END
         }
     }

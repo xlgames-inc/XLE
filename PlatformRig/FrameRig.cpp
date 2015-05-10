@@ -190,7 +190,7 @@ namespace PlatformRig
         }
 
         if (_pimpl->_updateAsyncMan)
-            Assets::CompileAndAsyncManager::GetInstance().Update();
+            Assets::Services::GetAsyncMan().Update();
 
         auto device = context.GetDevice();
         assert(device);

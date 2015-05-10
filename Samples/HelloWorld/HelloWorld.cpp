@@ -87,7 +87,8 @@ namespace Sample
             renderDevice->CreatePresentationChain(window.GetUnderlyingHandle(), 
                 clientRect.second[0] - clientRect.first[0], clientRect.second[1] - clientRect.first[1]);
         auto bufferUploads = BufferUploads::CreateManager(renderDevice.get());
-        auto asyncMan = RenderCore::Metal::CreateCompileAndAsyncManager();
+        auto assetServices = std::make_unique<::Assets::Services>(0);
+        RenderCore::Metal::InitCompileAndAsyncManager();
 
             //  Tie in the window handler so we get presentation chain resizes, and give our
             //  window a title
@@ -104,7 +105,7 @@ namespace Sample
             //  * init the gpu profiler (this init step will probably change someday)
             //  * the font system needs an explicit init (and shutdown)
             //  * the global technique context contains some global rendering settings
-        SetupCompilers(*asyncMan);
+        SetupCompilers(assetServices->GetAsyncMan());
         SceneEngine::SetBufferUploads(bufferUploads.get());
         RenderCore::Assets::SetBufferUploads(bufferUploads.get());
         g_gpuProfiler = RenderCore::Metal::GPUProfiler::CreateProfiler();
@@ -166,7 +167,7 @@ namespace Sample
 
                 //  We can log the active assets at any time using this method.
                 //  At this point during startup, we should only have a few assets loaded.
-            asyncMan->GetAssetSets().LogReport();
+            assetServices->GetAssetSets().LogReport();
 
                 //  We need 2 final objects for rendering:
                 //      * the FrameRig schedules continuous rendering. It will take care
@@ -207,15 +208,15 @@ namespace Sample
             //  an unhandled exception)
             //  Before we go too far, though, let's log a list of active assets.
         LogInfo << "Starting shutdown";
-        asyncMan->GetAssetSets().LogReport();
+        assetServices->GetAssetSets().LogReport();
         RenderCore::Metal::DeviceContext::PrepareForDestruction(renderDevice.get(), presentationChain.get());
 
         mainScene.reset();
         g_gpuProfiler.reset();
         RenderCore::Techniques::ResourceBoxes_Shutdown();
         RenderOverlays::CleanupFontSystem();
-        asyncMan->GetAssetSets().Clear();
-        asyncMan.reset();
+        assetServices->GetAssetSets().Clear();
+        assetServices.reset();
         TerminateFileSystemMonitoring();
     }
 

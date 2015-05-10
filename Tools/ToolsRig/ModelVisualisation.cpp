@@ -89,8 +89,8 @@ namespace ToolsRig
         std::shared_ptr<ModelScaffold> CreateModelScaffold(const ::Assets::ResChar filename[], RenderCore::Assets::IModelFormat& modelFormat)
         {
             #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
-                auto& compilers = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateCompilers();
-                auto& store = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateStore();
+                auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
+                auto& store = ::Assets::Services::GetAsyncMan().GetIntermediateStore();
                 auto marker = compilers.PrepareResource(
                     RenderCore::Assets::ColladaCompiler::Type_Model, 
                     (const char**)&filename, 1, store);
@@ -103,8 +103,8 @@ namespace ToolsRig
         std::shared_ptr<MaterialScaffold> CreateMaterialScaffold(const ::Assets::ResChar model[], const ::Assets::ResChar material[], RenderCore::Assets::IModelFormat& modelFormat)
         {
             #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
-                auto& compilers = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateCompilers();
-                auto& store = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateStore();
+                auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
+                auto& store = ::Assets::Services::GetAsyncMan().GetIntermediateStore();
                 const ::Assets::ResChar* inits[] = { material, model };
                 auto marker = compilers.PrepareResource(
                     MaterialScaffold::CompileProcessType, 

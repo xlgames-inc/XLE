@@ -44,39 +44,6 @@ namespace Assets
         virtual ~IThreadPump();
     };
 
-    class IAssetSet
-    {
-    public:
-        virtual void            Clear() = 0;
-        virtual void            LogReport() const = 0;
-        virtual uint64          GetTypeCode() const = 0;
-        virtual const char*     GetTypeName() const = 0;
-        virtual unsigned        GetDivergentCount() const = 0;
-        virtual uint64          GetDivergentId(unsigned index) const = 0;
-        virtual bool            DivergentHasChanges(unsigned index) const = 0;
-        virtual std::string     GetAssetName(uint64 id) const = 0;
-        virtual ~IAssetSet();
-    };
-
-    class AssetSetManager
-    {
-    public:
-        void Add(std::unique_ptr<IAssetSet>&& set);
-        void Clear();
-        void LogReport();
-        unsigned BoundThreadId() const;
-		bool IsBoundThread() const;
-
-        unsigned GetAssetSetCount();
-        const IAssetSet* GetAssetSet(unsigned index);
-
-        AssetSetManager();
-        ~AssetSetManager();
-    protected:
-        class Pimpl;
-        std::unique_ptr<Pimpl> _pimpl;
-    };
-
     class CompileAndAsyncManager
     {
     public:
@@ -87,17 +54,12 @@ namespace Assets
 
         IntermediateResources::Store&       GetIntermediateStore();
         IntermediateResources::CompilerSet& GetIntermediateCompilers();
-        AssetSetManager&                    GetAssetSets();
 
         CompileAndAsyncManager();
         ~CompileAndAsyncManager();
-
-        static CompileAndAsyncManager& GetInstance() { assert(_instance); return *_instance; }
     protected:
 		class Pimpl;
 		std::unique_ptr<Pimpl> _pimpl;
-
-        static CompileAndAsyncManager* _instance;
     };
 
 }

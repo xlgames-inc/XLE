@@ -30,58 +30,6 @@ namespace Assets
 
         ////////////////////////////////////////////////////////////
 
-    IAssetSet::~IAssetSet() {}
-
-    class AssetSetManager::Pimpl
-    {
-    public:
-        std::vector<std::unique_ptr<IAssetSet>> _sets;
-        unsigned _boundThreadId;
-    };
-
-    void AssetSetManager::Add(std::unique_ptr<IAssetSet>&& set)
-    {
-        _pimpl->_sets.push_back(std::forward<std::unique_ptr<IAssetSet>>(set));
-    }
-
-    void AssetSetManager::Clear()
-    {
-        for (auto i=_pimpl->_sets.begin(); i!=_pimpl->_sets.end(); ++i) {
-            (*i)->Clear();
-        }
-    }
-
-    void AssetSetManager::LogReport()
-    {
-        for (auto i=_pimpl->_sets.begin(); i!=_pimpl->_sets.end(); ++i) {
-            (*i)->LogReport();
-        }
-    }
-
-	bool AssetSetManager::IsBoundThread() const
-	{
-		return _pimpl->_boundThreadId == Threading::CurrentThreadId();
-	}
-
-    unsigned AssetSetManager::GetAssetSetCount()
-    {
-        return unsigned(_pimpl->_sets.size());
-    }
-
-    const IAssetSet* AssetSetManager::GetAssetSet(unsigned index)
-    {
-        return _pimpl->_sets[index].get();
-    }
-
-    AssetSetManager::AssetSetManager()
-    {
-        auto pimpl = std::make_unique<Pimpl>();
-        pimpl->_boundThreadId = Threading::CurrentThreadId();
-        _pimpl = std::move(pimpl);
-    }
-
-    AssetSetManager::~AssetSetManager()
-    {}
 
         ////////////////////////////////////////////////////////////
 
@@ -92,7 +40,6 @@ namespace Assets
 		std::unique_ptr<IntermediateResources::Store> _intStore;
 		std::vector<std::shared_ptr<IPollingAsyncProcess>> _pollingProcesses;
 		std::unique_ptr<IThreadPump> _threadPump;
-		std::unique_ptr<AssetSetManager> _assetSets;
 
 		Utility::Threading::Mutex _pollingProcessesLock;
 	};
@@ -139,18 +86,11 @@ namespace Assets
 		return *_pimpl->_intMan.get();
     }
 
-    AssetSetManager& CompileAndAsyncManager::GetAssetSets() 
-    { 
-		return *_pimpl->_assetSets.get();
-    }
-
     void CompileAndAsyncManager::Add(std::unique_ptr<IThreadPump>&& threadPump)
     {
 		assert(!_pimpl->_threadPump);
 		_pimpl->_threadPump = std::move(threadPump);
     }
-
-    CompileAndAsyncManager* CompileAndAsyncManager::_instance = nullptr;
 
     CompileAndAsyncManager::CompileAndAsyncManager()
     {
@@ -179,21 +119,15 @@ namespace Assets
             #endif
         #endif
         auto intStore = std::make_unique<IntermediateResources::Store>("Int", storeVersionString);
-        auto assetSets = std::make_unique<AssetSetManager>();
 
 		_pimpl = std::make_unique<Pimpl>();
 
         _pimpl->_intMan = std::move(intMan);
         _pimpl->_intStore = std::move(intStore);
-        _pimpl->_assetSets = std::move(assetSets);
-        assert(!_instance);
-        _instance = this;
     }
 
     CompileAndAsyncManager::~CompileAndAsyncManager()
     {
-        assert(_instance == this);
-        _instance = nullptr;
     }
 
 }

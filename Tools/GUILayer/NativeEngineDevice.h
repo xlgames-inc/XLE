@@ -18,7 +18,7 @@ namespace GUILayer
     public:
         RenderCore::IDevice*        GetRenderDevice() { return _renderDevice.get(); }
         BufferUploads::IManager*    GetBufferUploads() { return _bufferUploads.get(); }
-        ::Assets::CompileAndAsyncManager* GetASyncManager() { return _asyncMan.get(); }
+        ::Assets::Services*         GetAssetServices() { return _assetServices.get(); }
         std::unique_ptr<IWindowRig> CreateWindowRig(const void* nativeWindowHandle);
         void                        AttachDefaultCompilers();
 
@@ -28,7 +28,7 @@ namespace GUILayer
     protected:
         std::shared_ptr<RenderCore::IDevice> _renderDevice;
         std::shared_ptr<RenderCore::IThreadContext> _immediateContext;
-        std::unique_ptr<::Assets::CompileAndAsyncManager> _asyncMan;
+        std::unique_ptr<::Assets::Services> _assetServices;
         std::unique_ptr<ConsoleRig::Console> _console;
         std::shared_ptr<BufferUploads::IManager> _bufferUploads;
     };

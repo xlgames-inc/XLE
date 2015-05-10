@@ -243,8 +243,8 @@ namespace ToolsRig
         const ::Assets::ResChar* modelFile = _object->_previewModelFile.c_str();
         const uint64 boundMaterial = _object->_previewMaterialBinding;
 
-        auto& compilers = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateCompilers();
-        auto& store = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateStore();
+        auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
+        auto& store = ::Assets::Services::GetAsyncMan().GetIntermediateStore();
         auto skinMarker = compilers.PrepareResource(RenderCore::Assets::ColladaCompiler::Type_Model, &modelFile, 1, store);
         auto skelMarker = compilers.PrepareResource(RenderCore::Assets::ColladaCompiler::Type_Skeleton, &modelFile, 1, store);
 
@@ -370,8 +370,8 @@ namespace ToolsRig
                 if (settings._geometryType == MaterialVisSettings::GeometryType::Model && !object._previewModelFile.empty()) {
                         // this is more tricky... when using a model, we have to get the bounding box for the model
                     using namespace RenderCore::Assets;
-                    auto& compilers = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateCompilers();
-                    auto& store = ::Assets::CompileAndAsyncManager::GetInstance().GetIntermediateStore();
+                    auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
+                    auto& store = ::Assets::Services::GetAsyncMan().GetIntermediateStore();
                     const ::Assets::ResChar* modelFile = object._previewModelFile.c_str();
                     auto skinMarker = compilers.PrepareResource(RenderCore::Assets::ColladaCompiler::Type_Model, &modelFile, 1, store);
                     const auto& model = ::Assets::GetAsset<ModelScaffold>(skinMarker->_sourceID0);
