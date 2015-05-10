@@ -686,7 +686,7 @@ namespace RenderCore { namespace Techniques
         static auto HashFogSettings                 = Hash64("FogSettings");
         static auto HashShadowProjection            = Hash64("ArbitraryShadowProjection");
         static auto HashOrthoShadowProjection       = Hash64("OrthogonalShadowProjection");
-        static auto HashBasicLightingEnvironment    = Hash64("HashBasicLightingEnvironment");
+        static auto HashBasicLightingEnvironment    = Hash64("BasicLightingEnvironment");
         binding.BindConstantBuffer(HashGlobalTransform, 0, 0);
         binding.BindConstantBuffer(HashGlobalState, 1, 0);
         binding.BindConstantBuffer(HashFogSettings, 2, 0);
@@ -704,7 +704,7 @@ namespace RenderCore { namespace Techniques
         static auto HashFogSettings                 = Hash64("FogSettings");
         static auto HashShadowProjection            = Hash64("ShadowProjection");
         static auto HashOrthoShadowProjection       = Hash64("OrthogonalShadowProjection");
-        static auto HashBasicLightingEnvironment    = Hash64("HashBasicLightingEnvironment");
+        static auto HashBasicLightingEnvironment    = Hash64("BasicLightingEnvironment");
         binding.BindConstantBuffer(HashGlobalTransform, 0, 0);
         binding.BindConstantBuffer(HashGlobalState, 1, 0);
         binding.BindConstantBuffer(HashFogSettings, 2, 0);

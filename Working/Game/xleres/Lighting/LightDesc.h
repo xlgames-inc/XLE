@@ -12,6 +12,7 @@ struct AmbientDesc
 	float3	Colour;
 	float 	SkyReflectionScale;
 	float	SkyReflectionBlurriness;
+	float	Dummy0, Dummy1, Dummy2;
 };
 
 struct LightColors
@@ -29,6 +30,7 @@ struct LightDesc
 	float		Power;
 	float		DiffuseWideningMin;
 	float		DiffuseWideningMax;
+	float		Dummy;
 };
 
 #endif

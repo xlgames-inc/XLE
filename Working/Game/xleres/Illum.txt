@@ -10,7 +10,7 @@ Illum
         GlobalEnvironment
             SKIP_MATERIAL_DIFFUSE 0
         Material
-            MAT_BLEND_FOG 1
+            MAT_BLEND_FOG 0
             MAT_SKIP_LIGHTING_SCALE 0
         Runtime
             BASIC_LIGHT_COUNT 1

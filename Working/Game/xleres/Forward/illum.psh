@@ -4,6 +4,8 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#define OUTPUT_WORLD_VIEW_VECTOR 1
+
 #include "../MainGeometry.h"
 #include "../IllumShader/PerPixel.h"
 
@@ -16,6 +18,7 @@ float3 ResolveLitColor(GBufferValues sample, float3 directionToEye)
 	float3 diffusePart = 0.0.xxx;
 	float3 specularPart = 0.0.xxx;
 
+#if (OUTPUT_TANGENT_FRAME==1) || (OUTPUT_NORMAL==1)
 	for (uint c=0; c<BASIC_LIGHT_COUNT; ++c) {
 		diffusePart += LightResolve_Diffuse(
 			sample, directionToEye,
@@ -29,8 +32,10 @@ float3 ResolveLitColor(GBufferValues sample, float3 directionToEye)
 			BasicLight[c].NegativeDirection,
 			BasicLight[c].Color);
 	}
+#endif
 
-		// todo -- also add in ambient part
+		// todo -- full ambient resolve
+	diffusePart += BasicAmbient.Colour;
 
 	return diffusePart + specularPart;
 }

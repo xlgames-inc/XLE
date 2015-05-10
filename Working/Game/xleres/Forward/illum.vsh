@@ -4,6 +4,8 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#define OUTPUT_WORLD_VIEW_VECTOR 1
+
 #include "../Transform.h"
 #include "../MainGeometry.h"
 #include "../Surface.h"
