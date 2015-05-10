@@ -213,7 +213,8 @@ namespace RenderCore { namespace Assets
             SharedStateSet& sharedStateSet, unsigned levelOfDetail,
             std::vector<uint64>& textureBindPoints,
             std::vector<std::vector<uint8>>& prescientMaterialConstantBuffers,
-            ParamBoxDescriptions& paramBoxDesc, const Techniques::PredefinedCBLayout& cbLayout)
+            ParamBoxDescriptions& paramBoxDesc, const Techniques::PredefinedCBLayout& cbLayout,
+            const ::Assets::DirectorySearchRules* searchRules)
         {
             std::vector<std::pair<MaterialGuid, SubMatResources>> materialResources;
 
@@ -294,7 +295,14 @@ namespace RenderCore { namespace Assets
                         //  to see what format it is. Unfortunately that means
                         //  opening the texture file to read it's header. However
                         //  we can accelerate it a bit by caching the result
-                    materialParamBox.SetParameter("RES_HAS_NormalsTexture_DXT", IsDXTNormalMap(boundNormalMapName));
+                    bool isDxtNormalMap = false;
+                    if (searchRules) {
+                        ::Assets::ResChar resolvedPath[MaxPath];
+                        searchRules->ResolveFile(resolvedPath, dimof(resolvedPath), boundNormalMapName.c_str());
+                        isDxtNormalMap = IsDXTNormalMap(resolvedPath);
+                    } else 
+                        isDxtNormalMap = IsDXTNormalMap(boundNormalMapName);
+                    materialParamBox.SetParameter("RES_HAS_NormalsTexture_DXT", isDxtNormalMap);
                 }
 
                 i->second._matParams = sharedStateSet.InsertParameterBox(materialParamBox);
@@ -435,7 +443,7 @@ namespace RenderCore { namespace Assets
         auto materialResources = BuildMaterialResources(
             scaffold, matScaffold, sharedStateSet, levelOfDetail,
             textureBindPoints, prescientMaterialConstantBuffers,
-            paramBoxDesc, cbLayout);
+            paramBoxDesc, cbLayout, searchRules);
 
             // one "textureset" for each sub material (though, in theory, we could 
             // combine texture sets for materials that share the same textures

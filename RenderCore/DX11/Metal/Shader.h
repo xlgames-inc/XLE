@@ -345,11 +345,6 @@ namespace RenderCore { namespace Metal_DX11
         DeepShaderProgram& operator=(const DeepShaderProgram&);
     };
 
-    namespace NativeFormat { enum Enum; }
-
-    intrusive_ptr<ID3D::Resource> LoadTextureImmediately(const char initializer[], bool sourceIsLinearSpace = false);
-    NativeFormat::Enum LoadTextureFormat(const char initializer[]);
-
     std::unique_ptr<::Assets::CompileAndAsyncManager> CreateCompileAndAsyncManager();
 
 }}

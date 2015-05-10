@@ -16,6 +16,7 @@
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Assets/DeferredShaderResource.h"
 #include "../Utility/Streams/DataSerialize.h"
 #include "../Utility/StringFormat.h"
 
@@ -641,7 +642,7 @@ namespace SceneEngine
 
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
     private:
-        std::shared_ptr<Assets::DependencyValidation>  _validationCallback;
+        std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
     };
 
     class TerrainRenderingContext
@@ -747,7 +748,7 @@ namespace SceneEngine
 
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
     private:
-        std::shared_ptr<Assets::DependencyValidation>  _validationCallback;
+        std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
     };
 
     TerrainRenderingResources::TerrainRenderingResources(const Desc& desc)
@@ -796,7 +797,7 @@ namespace SceneEngine
 
         const DeepShaderProgram* shaderProgram;
         TRY {
-            shaderProgram = &Assets::GetAssetDep<DeepShaderProgram>(
+            shaderProgram = &::Assets::GetAssetDep<DeepShaderProgram>(
                 "game/xleres/forward/terrain_generator.sh:vs_dyntess_main:vs_*", 
                 gs, ps, 
                 "game/xleres/forward/terrain_generator.sh:hs_main:hs_*",
@@ -814,8 +815,8 @@ namespace SceneEngine
         BoundUniforms boundUniforms(*shaderProgram);
         Techniques::TechniqueContext::BindGlobalUniforms(boundUniforms);
 
-        auto validationCallback = std::make_shared<Assets::DependencyValidation>();
-        Assets::RegisterAssetDependency(validationCallback, shaderProgram->GetDependencyValidation());
+        auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
+        ::Assets::RegisterAssetDependency(validationCallback, shaderProgram->GetDependencyValidation());
 
         _shaderProgram = shaderProgram;
         _boundUniforms = std::move(boundUniforms);
@@ -845,17 +846,17 @@ namespace SceneEngine
         } else {
             const ShaderProgram* shaderProgram;
             if (mode == Mode_Normal) {
-                shaderProgram = &Assets::GetAssetDep<ShaderProgram>(
+                shaderProgram = &::Assets::GetAssetDep<ShaderProgram>(
                     "game/xleres/forward/terrain_generator.sh:vs_main:vs_*", 
                     "game/xleres/solidwireframe.gsh:main:gs_*", 
                     "game/xleres/solidwireframe.psh:main:ps_*", "");
             } else if (mode == Mode_VegetationPrepare) {
-                shaderProgram = &Assets::GetAssetDep<ShaderProgram>(
+                shaderProgram = &::Assets::GetAssetDep<ShaderProgram>(
                     "game/xleres/forward/terrain_generator.sh:vs_main:vs_*", 
                     "game/xleres/Vegetation/InstanceSpawn.gsh:main:gs_*", 
                     "", "OUTPUT_WORLD_POSITION=1");
             } else {
-                shaderProgram = &Assets::GetAssetDep<ShaderProgram>(
+                shaderProgram = &::Assets::GetAssetDep<ShaderProgram>(
                     "game/xleres/forward/terrain_generator.sh:vs_main:vs_*", 
                     "game/xleres/forward/terrain_generator.sh:gs_intersectiontest:gs_*", 
                     "", "OUTPUT_WORLD_POSITION=1");
@@ -1723,10 +1724,10 @@ namespace SceneEngine
             const ::Assets::ResChar firstPassShader[] = "game/xleres/ui/copyterraintile.sh:WriteToMidway:cs_*";
             const ::Assets::ResChar secondPassShader[] = "game/xleres/ui/copyterraintile.sh:CommitToFinal:cs_*";
             StringMeld<64, char> defines; defines << "VALUE_FORMAT=" << format << ";FILTER_TYPE=" << filterType;
-            auto& byteCode = Assets::GetAssetDep<CompiledShaderByteCode>(firstPassShader, defines.get());
-            auto& cs0 = Assets::GetAssetDep<ComputeShader>(firstPassShader, defines.get());
-            auto& cs1 = Assets::GetAssetDep<ComputeShader>(secondPassShader, defines.get());
-            auto& cs2 = Assets::GetAssetDep<ComputeShader>("game/xleres/ui/copyterraintile.sh:DirectToFinal:cs_*", defines.get());
+            auto& byteCode = ::Assets::GetAssetDep<CompiledShaderByteCode>(firstPassShader, defines.get());
+            auto& cs0 = ::Assets::GetAssetDep<ComputeShader>(firstPassShader, defines.get());
+            auto& cs1 = ::Assets::GetAssetDep<ComputeShader>(secondPassShader, defines.get());
+            auto& cs2 = ::Assets::GetAssetDep<ComputeShader>("game/xleres/ui/copyterraintile.sh:DirectToFinal:cs_*", defines.get());
 
             struct TileCoords
             {
@@ -2283,14 +2284,14 @@ namespace SceneEngine
     {
         for (;;) {
             TRY {
-                return Assets::GetAsset<Type>(initializer);
+                return ::Assets::GetAsset<Type>(initializer);
             } CATCH (::Assets::Exceptions::PendingResource&) {
                 ::Assets::CompileAndAsyncManager::GetInstance().Update();
             } CATCH_END
         }
     }
 
-    static void LoadTextureIntoArray(ID3D::Resource* destinationArray, const char sourceFile[], unsigned arrayIndex, bool sourceIsLinearFormat=false)
+    static void LoadTextureIntoArray(ID3D::Resource* destinationArray, const char sourceFile[], unsigned arrayIndex)
     {
             //      We want to load the given texture, and merge it into
             //      the texture array. We have to do this synchronously, otherwise the scheduling
@@ -2299,12 +2300,13 @@ namespace SceneEngine
             //      the main rendering thread (or whatever thread is associated with the 
             //      immediate context)
 
-        auto inputTexture = LoadTextureImmediately(sourceFile, sourceIsLinearFormat);
+        auto inputTexture = RenderCore::Assets::DeferredShaderResource::LoadImmediately(sourceFile);
+        auto inputRes = ExtractResource<Metal::Underlying::Resource>(inputTexture.GetUnderlying());
 
         TextureDesc2D destinationDesc(destinationArray);
         const auto mipCount = destinationDesc.MipLevels;
 
-        TextureDesc2D sourceDesc(inputTexture.get());
+        TextureDesc2D sourceDesc(inputRes.get());
         int mipDifference = sourceDesc.MipLevels - mipCount;
 
         auto context = GetImmediateContext();
@@ -2341,12 +2343,11 @@ namespace SceneEngine
                 XlCopyString(desc._name, "ResamplingTexture");
                 auto resamplingBuffer = bufferUploads.Transaction_Immediate(desc);
                 RenderCore::Metal::UnorderedAccessView uav(resamplingBuffer->GetUnderlying());
-                RenderCore::Metal::ShaderResourceView srv(inputTexture.get());
 
                 auto& resamplingShader = GetAssetImmediate<RenderCore::Metal::ComputeShader>("game/xleres/basic.csh:Resample:cs_*");
                 context.Bind(resamplingShader);
                 context.BindCS(MakeResourceList(uav));
-                context.BindCS(MakeResourceList(srv));
+                context.BindCS(MakeResourceList(inputTexture));
                 context.Dispatch(expectedWidth/8, expectedHeight/8);
                 context.UnbindCS<UnorderedAccessView>(0, 1);
 
@@ -2391,7 +2392,7 @@ namespace SceneEngine
 
                 context.GetUnderlying()->CopySubresourceRegion(
                     destinationArray, D3D11CalcSubresource(m, arrayIndex, mipCount),
-                    0, 0, 0, inputTexture.get(), D3D11CalcSubresource(sourceMip, 0, mipCount), nullptr);
+                    0, 0, 0, inputRes.get(), D3D11CalcSubresource(sourceMip, 0, mipCount), nullptr);
 
             }
         }
@@ -2423,7 +2424,7 @@ namespace SceneEngine
     TerrainMaterialScaffold::TerrainMaterialScaffold()
     {
         _diffuseDims = _normalDims = _paramDims = UInt2(32, 32);
-        _validationCallback = std::make_shared<Assets::DependencyValidation>();
+        _validationCallback = std::make_shared<::Assets::DependencyValidation>();
         _cachedHashValue = ~0x0ull;
     }
 
@@ -2475,8 +2476,8 @@ namespace SceneEngine
         _searchRules = ::Assets::DefaultDirectorySearchRules(definitionFile);
         _cachedHashValue = 0ull;
 
-        _validationCallback = std::make_shared<Assets::DependencyValidation>();
-        Assets::RegisterFileDependency(_validationCallback, definitionFile);
+        _validationCallback = std::make_shared<::Assets::DependencyValidation>();
+        ::Assets::RegisterFileDependency(_validationCallback, definitionFile);
     }
 
     TerrainMaterialScaffold::~TerrainMaterialScaffold() {}
@@ -2486,7 +2487,7 @@ namespace SceneEngine
         auto result = std::make_unique<TerrainMaterialScaffold>();
         if (definitionFile)
             result->_searchRules = ::Assets::DefaultDirectorySearchRules(definitionFile);
-        result->_validationCallback = std::make_shared<Assets::DependencyValidation>();
+        result->_validationCallback = std::make_shared<::Assets::DependencyValidation>();
         return result;
     }
 
@@ -2520,17 +2521,17 @@ namespace SceneEngine
             //          should we be using SRGB input texture format?
         desc._textureDesc = BufferUploads::TextureDesc::Plain2D(
             scaffold._diffuseDims[0], scaffold._diffuseDims[1], NativeFormat::BC1_UNORM, 
-            (uint8)IntegerLog2(std::max(scaffold._diffuseDims[0], scaffold._diffuseDims[1]))+1, uint8(texturesPerStrata * strataCount));
+            (uint8)IntegerLog2(std::max(scaffold._diffuseDims[0], scaffold._diffuseDims[1]))-1, uint8(texturesPerStrata * strataCount));
         auto diffuseTextureArray = GetBufferUploads()->Transaction_Immediate(desc)->AdoptUnderlying();
 
         desc._textureDesc = BufferUploads::TextureDesc::Plain2D(
             scaffold._normalDims[0], scaffold._normalDims[1], NativeFormat::BC5_UNORM, 
-            (uint8)IntegerLog2(std::max(scaffold._normalDims[0], scaffold._normalDims[1]))+1, uint8(texturesPerStrata * strataCount));
+            (uint8)IntegerLog2(std::max(scaffold._normalDims[0], scaffold._normalDims[1]))-1, uint8(texturesPerStrata * strataCount));
         auto normalTextureArray = GetBufferUploads()->Transaction_Immediate(desc)->AdoptUnderlying();
 
         desc._textureDesc = BufferUploads::TextureDesc::Plain2D(
             scaffold._paramDims[0], scaffold._paramDims[1], NativeFormat::BC1_UNORM, 
-            (uint8)IntegerLog2(std::max(scaffold._paramDims[0], scaffold._paramDims[1]))+1, uint8(texturesPerStrata * strataCount));
+            (uint8)IntegerLog2(std::max(scaffold._paramDims[0], scaffold._paramDims[1]))-1, uint8(texturesPerStrata * strataCount));
         auto specularityTextureArray = GetBufferUploads()->Transaction_Immediate(desc)->AdoptUnderlying();
 
         desc._textureDesc = BufferUploads::TextureDesc::Plain2D(
@@ -2548,8 +2549,8 @@ namespace SceneEngine
         }
         auto dummyWhiteBuffer = GetBufferUploads()->Transaction_Immediate(desc, tempBuffer.get())->AdoptUnderlying();
 
-        _validationCallback = std::make_shared<Assets::DependencyValidation>();
-        Assets::RegisterAssetDependency(_validationCallback, scaffold.GetDependencyValidation());
+        _validationCallback = std::make_shared<::Assets::DependencyValidation>();
+        ::Assets::RegisterAssetDependency(_validationCallback, scaffold.GetDependencyValidation());
 
         unsigned strataIndex = 0;
         for (auto s=scaffold._strata.cbegin(); s!=scaffold._strata.cend(); ++s, ++strataIndex) {
@@ -2571,7 +2572,7 @@ namespace SceneEngine
                     ::Assets::ResChar resolvedFile[MaxPath];
                     scaffold._searchRules.ResolveFile(resolvedFile, dimof(resolvedFile), StringMeld<MaxPath, ::Assets::ResChar>() << s->_texture[t] << "_ddn.dds");
                     if (resolvedFile[0]) {
-                        LoadTextureIntoArray(normalTextureArray.get(), resolvedFile, (strataIndex * texturesPerStrata) + t, true);
+                        LoadTextureIntoArray(normalTextureArray.get(), resolvedFile, (strataIndex * texturesPerStrata) + t);
                         RegisterFileDependency(_validationCallback, resolvedFile);
                     }
                 } CATCH (const ::Assets::Exceptions::InvalidResource&) {}
@@ -2582,7 +2583,7 @@ namespace SceneEngine
                     ::Assets::ResChar resolvedFile[MaxPath];
                     scaffold._searchRules.ResolveFile(resolvedFile, dimof(resolvedFile), StringMeld<MaxPath, ::Assets::ResChar>() << s->_texture[t] << "_sp.dds");
                     if (resolvedFile[0]) {
-                        LoadTextureIntoArray(specularityTextureArray.get(), resolvedFile, (strataIndex * texturesPerStrata) + t, true);
+                        LoadTextureIntoArray(specularityTextureArray.get(), resolvedFile, (strataIndex * texturesPerStrata) + t);
                         RegisterFileDependency(_validationCallback, resolvedFile);
                     }
                 } CATCH (const ::Assets::Exceptions::InvalidResource&) {
@@ -2998,7 +2999,7 @@ namespace SceneEngine
                 cfg.GetUberSurfaceFilename(uberSurfaceFile, dimof(uberSurfaceFile), CoverageId_Heights);
 
                     // uber-surface is a special-case asset, because we can edit it without a "DivergentAsset". But to do that, we must const_cast here
-                auto& uberSurface = const_cast<TerrainUberHeightsSurface&>(Assets::GetAsset<TerrainUberHeightsSurface>(uberSurfaceFile));
+                auto& uberSurface = const_cast<TerrainUberHeightsSurface&>(::Assets::GetAsset<TerrainUberHeightsSurface>(uberSurfaceFile));
                 pimpl->_uberSurfaceInterface = std::make_unique<HeightsUberSurfaceInterface>(std::ref(uberSurface), ioFormat);
 
                 if (registerShortCircuit) {
@@ -3022,7 +3023,7 @@ namespace SceneEngine
                 Pimpl::CoverageInterface ci;
                 ci._id = l._id;
                 
-                auto& uberSurface = const_cast<TerrainUberSurface<uint8>&>(Assets::GetAsset<TerrainUberSurface<uint8>>(uberSurfaceFile));
+                auto& uberSurface = const_cast<TerrainUberSurface<uint8>&>(::Assets::GetAsset<TerrainUberSurface<uint8>>(uberSurfaceFile));
                 ci._interface = std::make_unique<CoverageUberSurfaceInterface>(std::ref(uberSurface), ioFormat);
 
                 if (registerShortCircuit) {
@@ -3086,10 +3087,10 @@ namespace SceneEngine
             _pimpl->_textures.reset();
 
             if (!_pimpl->_cfg._textureCfgName.empty()) {
-                auto& scaffold = Assets::GetAssetDep<TerrainMaterialScaffold>(_pimpl->_cfg._textureCfgName.c_str());
+                auto& scaffold = ::Assets::GetAssetDep<TerrainMaterialScaffold>(_pimpl->_cfg._textureCfgName.c_str());
                 _pimpl->_textures = std::make_unique<TerrainMaterialTextures>(scaffold);
             } else {
-                auto& scaffold = Assets::GetAssetDep<TerrainMaterialScaffold>();
+                auto& scaffold = ::Assets::GetAssetDep<TerrainMaterialScaffold>();
                 _pimpl->_textures = std::make_unique<TerrainMaterialTextures>(scaffold);
             }
         }

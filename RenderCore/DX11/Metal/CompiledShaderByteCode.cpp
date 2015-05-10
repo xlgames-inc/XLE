@@ -1079,7 +1079,7 @@ namespace RenderCore { namespace Metal_DX11
         }
 
         if ((!_shader1 || _shader1->empty()) && !_shader) {
-            throw Assets::Exceptions::InvalidResource(Initializer(), "");
+            ThrowException(Assets::Exceptions::InvalidResource(Initializer(), ""));
         }
     }
 

@@ -8,6 +8,7 @@
 
 #include "AssetUtils.h"
 #include "TransformationCommands.h"
+#include "DeferredShaderResource.h"
 #include "../RenderUtils.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../ConsoleRig/OutputStream.h"
@@ -336,7 +337,7 @@ namespace RenderCore { namespace Assets
             std::move_backward(i, end, end+1);
             i->first = hashName;
             TRY {
-                i->second = (uint32)RenderCore::Metal::LoadTextureFormat(textureName.c_str());
+                i->second = (uint32)DeferredShaderResource::LoadFormat(textureName.c_str());
             } CATCH (const ::Assets::Exceptions::InvalidResource&) {
                 i->second = RenderCore::Metal::NativeFormat::Unknown;
             } CATCH_END

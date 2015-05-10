@@ -317,6 +317,53 @@ namespace BufferUploads
         return s_threadPool;
     }
 
+    enum class TexFmt
+    {
+        DDS, TGA, WIC, Unknown
+    };
+
+    static TexFmt GetTexFmt(const ucs2 filename[])
+    {
+        auto* ext = XlExtension(filename);
+        if (!ext) return TexFmt::Unknown;
+
+        if (!XlCompareStringI(ext, (const ucs2*)L"dds")) {
+            return TexFmt::DDS;
+        } else if (ext && !XlCompareStringI(ext, (const ucs2*)L"tga")) {
+            return TexFmt::TGA;
+        } else {
+            return TexFmt::WIC;     // try "WIC" for anything else
+        }
+    }
+
+    static TextureDesc BuildTextureDesc(const DirectX::TexMetadata& metadata)
+    {
+        TextureDesc desc = TextureDesc::Empty();
+        
+        desc._width = uint32(metadata.width);
+        desc._height = uint32(metadata.height);
+        desc._depth = uint32(metadata.depth);
+        desc._arrayCount = uint8(metadata.arraySize);
+        desc._mipCount = uint8(metadata.mipLevels);
+        desc._samples = TextureSamples();
+
+            // we need to use a "typeless" format for any pixel formats that can
+            // cast to to SRGB or linear versions. This allows the caller to use
+            // both SRGB and linear ShaderResourceView(s)
+        desc._nativePixelFormat = (unsigned)RenderCore::Metal::AsTypelessFormat((RenderCore::Metal::NativeFormat::Enum)metadata.format);
+
+        using namespace DirectX;
+        switch (metadata.dimension) {
+        case TEX_DIMENSION_TEXTURE1D: desc._dimensionality = TextureDesc::Dimensionality::T1D; break;
+        default:
+        case TEX_DIMENSION_TEXTURE2D: desc._dimensionality = TextureDesc::Dimensionality::T2D; break;
+        case TEX_DIMENSION_TEXTURE3D: desc._dimensionality = TextureDesc::Dimensionality::T3D; break;
+        }
+        if (metadata.IsCubemap())
+            desc._dimensionality = TextureDesc::Dimensionality::CubeMap;
+        return desc;
+    }
+
     auto StreamingTexture::BeginBackgroundLoad() -> std::shared_ptr < Marker >
     {
         assert(!_marker && !_returnPointer);
@@ -330,44 +377,22 @@ namespace BufferUploads
                 using namespace DirectX;
                 HRESULT hresult = -1;
                 const auto* filename = this->_filename;
-                auto* ext = XlExtension((const ucs2*)filename);
-                assert(ext);
-                if (ext && !XlCompareStringI(ext, (const ucs2*)L"dds")) {
-                    hresult = LoadFromDDSFile(
-                        filename, DDS_FLAGS_NONE,
-                        &_texMetadata, _image);
-                } else if (ext && !XlCompareStringI(ext, (const ucs2*)L"tga")) {
-                    hresult = LoadFromTGAFile(
-                        filename, &_texMetadata, _image);
+                auto fmt = GetTexFmt((const ucs2*)filename);
+                
+                if (fmt == TexFmt::DDS) {
+                    hresult = LoadFromDDSFile(filename, DDS_FLAGS_NONE, &_texMetadata, _image);
+                } else if (fmt == TexFmt::TGA) {
+                    hresult = LoadFromTGAFile(filename, &_texMetadata, _image);
+                } else if (fmt == TexFmt::WIC) {
+                    hresult = LoadFromWICFile(filename, WIC_FLAGS_NONE, &_texMetadata, _image);
                 } else {
-                    hresult = LoadFromWICFile(
-                        filename, WIC_FLAGS_NONE,
-                        &_texMetadata, _image);
+                    LogWarning << "Texture format not apparent from filename (" << filename << ")";
                 }
 
                 if (SUCCEEDED(hresult)) {
                     auto& desc = this->_marker->_desc;
                     desc._type = BufferDesc::Type::Texture;
-                    desc._textureDesc._width = uint32(this->_texMetadata.width);
-                    desc._textureDesc._height = uint32(this->_texMetadata.height);
-                    desc._textureDesc._depth = uint32(this->_texMetadata.depth);
-                    desc._textureDesc._arrayCount = uint8(this->_texMetadata.arraySize);
-                    desc._textureDesc._mipCount = uint8(this->_texMetadata.mipLevels);
-                    desc._textureDesc._samples = TextureSamples();
-
-                        // we need to use a "typeless" format for any pixel formats that can
-                        // cast to to SRGB or linear versions. This allows the caller to use
-                        // both SRGB and linear ShaderResourceView(s)
-                    desc._textureDesc._nativePixelFormat = (unsigned)RenderCore::Metal::AsTypelessFormat((RenderCore::Metal::NativeFormat::Enum)this->_texMetadata.format);
-
-                    switch (this->_texMetadata.dimension) {
-                    case TEX_DIMENSION_TEXTURE1D: desc._textureDesc._dimensionality = TextureDesc::Dimensionality::T1D; break;
-                    default:
-                    case TEX_DIMENSION_TEXTURE2D: desc._textureDesc._dimensionality = TextureDesc::Dimensionality::T2D; break;
-                    case TEX_DIMENSION_TEXTURE3D: desc._textureDesc._dimensionality = TextureDesc::Dimensionality::T3D; break;
-                    }
-                    if (this->_texMetadata.IsCubemap())
-                        desc._textureDesc._dimensionality = TextureDesc::Dimensionality::CubeMap;
+                    desc._textureDesc = BuildTextureDesc(_texMetadata);
 
                     if ((this->_texMetadata.mipLevels <= 1) && (this->_flags & TextureLoadFlags::GenerateMipmaps)) {
                         DirectX::ScratchImage newImage;
@@ -410,6 +435,34 @@ namespace BufferUploads
         TextureLoadFlags::BitField flags)
     {
         return make_intrusive<StreamingTexture>(filename, filenameEnd, flags);
+    }
+
+    TextureDesc LoadTextureFormat(const ::Assets::ResChar filename[], const ::Assets::ResChar filenameEnd[])
+    {
+        ucs2 wfilename[MaxPath];
+        Conversion::Convert(wfilename, dimof(wfilename), filename, filenameEnd);
+
+        auto fmt = GetTexFmt(wfilename);
+                
+        using namespace DirectX;
+        TexMetadata metadata;
+
+        HRESULT hresult = -1;
+        if (fmt == TexFmt::DDS) {
+            hresult = GetMetadataFromDDSFile((const wchar_t*)wfilename, DDS_FLAGS_NONE, metadata);
+        } else if (fmt == TexFmt::TGA) {
+            hresult = GetMetadataFromTGAFile((const wchar_t*)wfilename, metadata);
+        } else if (fmt == TexFmt::WIC) {
+            hresult = GetMetadataFromWICFile((const wchar_t*)wfilename, WIC_FLAGS_NONE, metadata);
+        } else {
+            LogWarning << "Texture format not apparent from filename (" << filename << ")";
+        }
+
+        if (SUCCEEDED(hresult)) {
+            return BuildTextureDesc(metadata);
+        }
+
+        return TextureDesc::Empty();
     }
 
 }

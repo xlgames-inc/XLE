@@ -10,6 +10,7 @@
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/Threading/Mutex.h"
+#include "../Utility/Threading/ThreadingUtils.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/Streams/FileUtils.h"
 #include <vector>
@@ -315,6 +316,16 @@ namespace Assets
     void PendingOperationMarker::SetState(AssetState newState)
     {
         _state = newState;
+    }
+
+    void PendingOperationMarker::StallWhilePending() const
+    {
+            // Stall until the _state variable changes
+            // in another thread.
+            // there is no semaphore, so we must poll
+        volatile AssetState* state = const_cast<AssetState*>(&_state);
+        while (*state == AssetState::Pending)
+            Threading::YieldTimeSlice();
     }
 }
 

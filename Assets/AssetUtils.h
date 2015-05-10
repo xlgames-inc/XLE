@@ -60,6 +60,7 @@ namespace Assets
 
         AssetState  GetState() const { return _state; }
         void        SetState(AssetState newState);
+        void        StallWhilePending() const;
 
             // "initializer" interface only provided in debug builds, and only intended for debugging
         const char*         Initializer() const;

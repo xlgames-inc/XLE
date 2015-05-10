@@ -94,6 +94,8 @@ namespace BufferUploads
         const ::Assets::ResChar filename[], const ::Assets::ResChar filenameEnd[],
         TextureLoadFlags::BitField flags = 0);
 
+    buffer_upload_dll_export TextureDesc LoadTextureFormat(const ::Assets::ResChar filename[], const ::Assets::ResChar filenameEnd[]);
+
     inline TexturePitches::TexturePitches(unsigned rowPitch, unsigned slicePitch)
     : _rowPitch(rowPitch), _slicePitch(slicePitch) {}
     inline TexturePitches::TexturePitches()

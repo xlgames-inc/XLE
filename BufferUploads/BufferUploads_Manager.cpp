@@ -657,21 +657,39 @@ namespace BufferUploads
     }
 
     intrusive_ptr<ResourceLocator> AssemblyLine::Transaction_Immediate(
-        const BufferDesc& desc, DataPacket* initialisationData, 
-        const PartialResource& part)
+        const BufferDesc& descInit, DataPacket* initialisationData, 
+        const PartialResource& partInit)
     {
         // if (!initialisationData) {
         //     return ResourceLocator();
         // }
     
-        unsigned requestedStagingLODOffset = 0;
-        if (desc._type == BufferDesc::Type::Texture) {
-            unsigned maxLodOffset = IntegerLog2(std::min(desc._textureDesc._width, desc._textureDesc._height))-2;
-            requestedStagingLODOffset = std::min(part._lodLevelMin, maxLodOffset);
-        }
-    
+        PartialResource part = partInit;
+        BufferDesc desc = descInit;
+
         bool allowUploadByInitialisation = true;
         if (initialisationData) {
+
+                // if the initialisation data has a "prepare" step, 
+                // we must begin that step and stall waiting for completion
+            auto prepareStep = initialisationData->BeginBackgroundLoad();
+            if (prepareStep) {
+                prepareStep->StallWhilePending();
+                if (prepareStep->GetState() != ::Assets::AssetState::Ready)
+                    return nullptr;
+
+                    // update the PartialResource and BufferDesc based on the data we've just loaded
+                if (prepareStep->_desc._type == BufferDesc::Type::Texture) {
+                    desc._type = prepareStep->_desc._type;
+                    desc._textureDesc = prepareStep->_desc._textureDesc;
+
+                    part = DefaultPartialResource(desc, *initialisationData);
+                } else if (prepareStep->_desc._type == BufferDesc::Type::LinearBuffer) {
+                    desc._type = prepareStep->_desc._type;
+                    desc._linearBufferDesc = prepareStep->_desc._linearBufferDesc;
+                } // else if step._marker->_desc._type == BufferDesc::Type::Unknown, do nothing
+            }
+
             for (unsigned a=0; a<desc._textureDesc._arrayCount && allowUploadByInitialisation; ++a) {
                 for (unsigned m=0; m<desc._textureDesc._mipCount; ++m) {
                     if (!initialisationData->GetData(SubR(m,a))) {
@@ -680,6 +698,12 @@ namespace BufferUploads
                     }
                 }
             }
+        }
+
+        unsigned requestedStagingLODOffset = 0;
+        if (desc._type == BufferDesc::Type::Texture) {
+            unsigned maxLodOffset = IntegerLog2(std::min(desc._textureDesc._width, desc._textureDesc._height))-2;
+            requestedStagingLODOffset = std::min(part._lodLevelMin, maxLodOffset);
         }
     
         auto finalResourceConstruction = _resourceSource.Create(

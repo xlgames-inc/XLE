@@ -47,6 +47,9 @@ namespace RenderCore { namespace Assets
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const     { return _validationCallback; }
         const ::Assets::ResChar*                Initializer() const;
 
+        static Metal::ShaderResourceView LoadImmediately(const char initializer[]);
+        static Metal::NativeFormat::Enum LoadFormat(const char initializer[]);
+
         explicit DeferredShaderResource(const ::Assets::ResChar resourceName[]);
         ~DeferredShaderResource();
     private:
@@ -56,6 +59,7 @@ namespace RenderCore { namespace Assets
         
         DEBUG_ONLY(::Assets::ResChar _initializer[MaxPath];)
     };
+    
 
 }}
 
