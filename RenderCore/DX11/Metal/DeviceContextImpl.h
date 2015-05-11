@@ -19,31 +19,43 @@ namespace RenderCore { namespace Metal_DX11
 
     template<int Count> void DeviceContext::BindVS(const ResourceList<ShaderResourceView, Count>& shaderResources)
     {
+        for (unsigned c=0; c<Count; ++c)
+            _currentSRVs[0][shaderResources._startingPoint+c] = shaderResources._buffers[c];
         _underlying->VSSetShaderResources(shaderResources._startingPoint, Count, shaderResources._buffers);
     }
     
     template<int Count> void DeviceContext::BindPS(const ResourceList<ShaderResourceView, Count>& shaderResources)
     {
+        for (unsigned c=0; c<Count; ++c)
+            _currentSRVs[1][shaderResources._startingPoint+c] = shaderResources._buffers[c];
         _underlying->PSSetShaderResources(shaderResources._startingPoint, Count, shaderResources._buffers);
     }
 
     template<int Count> void DeviceContext::BindCS(const ResourceList<ShaderResourceView, Count>& shaderResources)
     {
+        for (unsigned c=0; c<Count; ++c)
+            _currentSRVs[5][shaderResources._startingPoint+c] = shaderResources._buffers[c];
         _underlying->CSSetShaderResources(shaderResources._startingPoint, Count, shaderResources._buffers);
     }
 
     template<int Count> void DeviceContext::BindGS(const ResourceList<ShaderResourceView, Count>& shaderResources)
     {
+        for (unsigned c=0; c<Count; ++c)
+            _currentSRVs[2][shaderResources._startingPoint+c] = shaderResources._buffers[c];
         _underlying->GSSetShaderResources(shaderResources._startingPoint, Count, shaderResources._buffers);
     }
 
     template<int Count> void DeviceContext::BindHS(const ResourceList<ShaderResourceView, Count>& shaderResources)
     {
+        for (unsigned c=0; c<Count; ++c)
+            _currentSRVs[3][shaderResources._startingPoint+c] = shaderResources._buffers[c];
         _underlying->HSSetShaderResources(shaderResources._startingPoint, Count, shaderResources._buffers);
     }
 
     template<int Count> void DeviceContext::BindDS(const ResourceList<ShaderResourceView, Count>& shaderResources)
     {
+        for (unsigned c=0; c<Count; ++c)
+            _currentSRVs[4][shaderResources._startingPoint+c] = shaderResources._buffers[c];
         _underlying->DSSetShaderResources(shaderResources._startingPoint, Count, shaderResources._buffers);
     }
 

@@ -68,6 +68,12 @@ namespace ModelViewer
             }
         }
 
+        protected void ContextMenu_ShowInvalidAssets(object sender, EventArgs e)
+        {
+            using (var dialog = new ControlsLibrary.InvalidAssetDialog())
+                dialog.ShowDialog();
+        }
+
         protected void OnViewerMouseClick(object sender, MouseEventArgs e)
         {
             if (e.Button == MouseButtons.Right) {
@@ -75,6 +81,7 @@ namespace ModelViewer
                     ContextMenu cm = new ContextMenu();
                     cm.MenuItems.Add("Edit &Material", new EventHandler(ContextMenu_EditMaterial));
                     cm.MenuItems.Add("Show Modifications", new EventHandler(ContextMenu_ShowModifications));
+                    cm.MenuItems.Add("Show Invalid Assets", new EventHandler(ContextMenu_ShowInvalidAssets));
                     cm.Show(this, e.Location);
                 }
             }

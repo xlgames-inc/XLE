@@ -222,13 +222,13 @@ namespace SceneEngine
         const RenderCore::Metal::ShaderProgram*   _ambientLight;
         std::unique_ptr<RenderCore::Metal::BoundUniforms>   _ambientLightUniforms;
 
-        const std::shared_ptr<Assets::DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
+        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
 
         AmbientResolveShaders(const Desc& desc);
         ~AmbientResolveShaders();
 
     private:
-        std::shared_ptr<Assets::DependencyValidation>  _validationCallback;
+        std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
     };
 
 

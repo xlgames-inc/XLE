@@ -237,7 +237,8 @@ namespace RenderCore { namespace Metal_DX11
 
         void        InvalidateCachedState();
 
-        ID3D::Buffer* _currentCBs[6][14];
+        ID3D::Buffer*               _currentCBs[6][14];
+        ID3D::ShaderResourceView*   _currentSRVs[6][32];
 
         DeviceContext(ID3D::DeviceContext* context);
         DeviceContext(intrusive_ptr<ID3D::DeviceContext>&& context);

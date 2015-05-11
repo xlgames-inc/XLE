@@ -63,10 +63,31 @@ float CalculateSpecular_CookTorrence(float3 normal, float3 directionToEye, float
         //   G G X                                                      //
     //////////////////////////////////////////////////////////////////////////
 
-float CalculateSpecular_GGX(float3 normal, float3 directionToEye, float3 negativeLightDirection, float roughness, float F0)
+    // When using "Disney" diffuse, the diffuse lighting equator is different than
+    // standard lambert.
+    // This causes a discontinuity with the specular model, because "N dot L" is used in
+    // basic GGX model. That leaves an area where "N dot L" is 0 (resulting in zero specular)
+    // but diffuse is greater than zero. In other words, the specular equator is tighter
+    // than the diffuse equator.
+    // We can get around it by replacing the "N dot L" value with the raw diffuse
+    // value we got from our earlier diffuse calculation.
+    // However, since it widens the specular equator, we might get exaggerated results in
+    // that extra space.
+#if !defined(USE_DISNEY_EQUATOR)
+    #define USE_DISNEY_EQUATOR 1
+#endif
+
+float CalculateSpecular_GGX(
+    float3 normal, float3 directionToEye, float3 negativeLightDirection,
+    float roughness, float F0, float rawDiffuse)
 {
     // return LightingFuncGGX_REF(normal, directionToEye, negativeLightDirection, roughness, F0);
-    return LightingFuncGGX_OPT5(normal, directionToEye, negativeLightDirection, roughness, F0);
+
+    #if (USE_DISNEY_EQUATOR == 1)
+        return LightingFuncGGX_OPT5_XLE(normal, directionToEye, negativeLightDirection, roughness, F0, rawDiffuse);
+    #else
+        return LightingFuncGGX_OPT5(normal, directionToEye, negativeLightDirection, roughness, F0, dotNL);
+    #endif
 }
 
     //////////////////////////////////////////////////////////////////////////
@@ -97,7 +118,8 @@ SpecularParameters SpecularParameters_RoughF0(float roughness, float F0)
 
 float CalculateSpecular(float3 normal, float3 directionToEye,
                         float3 negativeLightDirection,
-                        SpecularParameters parameters)
+                        SpecularParameters parameters,
+                        float rawDiffuse)
 {
     #if SPECULAR_METHOD==0
         return CalculateSpecular_CookTorrence(
@@ -106,7 +128,7 @@ float CalculateSpecular(float3 normal, float3 directionToEye,
     #elif SPECULAR_METHOD==1
         return CalculateSpecular_GGX(
             normal, directionToEye, negativeLightDirection,
-            parameters.roughness, parameters.F0);
+            parameters.roughness, parameters.F0, rawDiffuse);
     #endif
 }
 

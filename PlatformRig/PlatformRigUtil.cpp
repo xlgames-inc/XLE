@@ -81,7 +81,7 @@ namespace PlatformRig
 
         _shadowSlopeScaledBias = Tweakable("ShadowSlopeScaledBias", 1.f);
         _shadowDepthBiasClamp = Tweakable("ShadowDepthBiasClamp", 0.f);
-        _shadowRasterDepthBias = Tweakable("ShadowRasterDepthBias", 300);
+        _shadowRasterDepthBias = Tweakable("ShadowRasterDepthBias", 400);
 
         _worldSpaceResolveBias = 0.f;   // (-.3f)
         _tanBlurAngle = 0.00436f;

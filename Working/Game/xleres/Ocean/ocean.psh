@@ -137,15 +137,15 @@ struct OceanSurfaceSample
 };
 
 OceanSurfaceSample BuildOceanSurfaceSample(
-	float2 texCoord, 
+	float2 texCoord,
 	float3 shallowWaterTexCoord, float shallowWaterWeight,
-	float4 dynamicReflectionTexCoord, float2 specularityTC, 
+	float4 dynamicReflectionTexCoord, float2 specularityTC,
 	float distanceToViewerSq)
 {
 	OceanSurfaceSample result;
 
-		//	The normals texture is a little unusual, because it's stored in 
-		//	world space coordinates (not tangent space coordinates). 
+		//	The normals texture is a little unusual, because it's stored in
+		//	world space coordinates (not tangent space coordinates).
 		//	Also, we use the same normal compression scheme as the gbuffer (so
 		//	we have to normalize after lookup)
 	#if MAT_USE_DERIVATIVES_MAP
@@ -183,7 +183,7 @@ OceanSurfaceSample BuildOceanSurfaceSample(
 					//	are not continuous from pixel to pixel. So, on the edges, the wrong mipmap is selected
 					//	by the default mipmap logic. So we need to manually calculate the correct mipmap level
 					//	level.
-				
+
 				uint3 derivativesTextureSize;
 				ShallowDerivatives.GetDimensions(derivativesTextureSize.x, derivativesTextureSize.y, derivativesTextureSize.z);
 				float mipmapLevel = CalculateMipmapLevel(shallowWaterTexCoord.xy, derivativesTextureSize.xy);
@@ -193,7 +193,7 @@ OceanSurfaceSample BuildOceanSurfaceSample(
 					1.0.xxx);
 			}
 
-			// float2 shallowDerivativesValues = 
+			// float2 shallowDerivativesValues =
 			// 	DecompressDerivatives(ShallowDerivatives.Load(uint4(frac(shallowWaterTexCoord.xy)*64, shallowWaterArrayIndex, 0)).xy);
 
 			derivativesValues = lerp(derivativesValues, shallowDerivativesValues, shallowWaterWeight);
@@ -203,7 +203,7 @@ OceanSurfaceSample BuildOceanSurfaceSample(
 
 		derivativesValues +=
 			DecompressDerivatives(
-				NormalsTexture.Sample(DefaultSampler, /*float2(0.37, 0.59f) +*/ texCoord.xy * -DetailNormalFrequency).xy, 
+				NormalsTexture.Sample(DefaultSampler, /*float2(0.37, 0.59f) +*/ texCoord.xy * -DetailNormalFrequency).xy,
 				strengthDistanceScale * DetailNormalsStrength.xxx);
 
 		result.worldSpaceNormal = BuildNormalFromDerivatives(derivativesValues);
@@ -246,18 +246,18 @@ float CalculateFoamFromFoamQuantity(float2 texCoord, float foamQuantity)
 				//		todo -- foam should fade off with distance, because the tiling becomes too obvious
 			float texAmount;
 			float4 foamDiffuse = Foam_Diffuse.Sample(DefaultSampler, 23.72f*texCoord + Time * float2(0.01f, 0.005f));
-			if (foamQuantity > .666f)		{ texAmount = lerp(foamDiffuse.g, foamDiffuse.r, (foamQuantity-.666f)/.333f); } 
-			else if (foamQuantity > .333f)	{ texAmount = lerp(foamDiffuse.b, foamDiffuse.g, (foamQuantity-.333f)/.333f); } 
+			if (foamQuantity > .666f)		{ texAmount = lerp(foamDiffuse.g, foamDiffuse.r, (foamQuantity-.666f)/.333f); }
+			else if (foamQuantity > .333f)	{ texAmount = lerp(foamDiffuse.b, foamDiffuse.g, (foamQuantity-.333f)/.333f); }
 			else							{ texAmount = foamDiffuse.b * foamQuantity/.333f; }
 
 			foamDiffuse = Foam_Diffuse.Sample(DefaultSampler, 6.72f*-texCoord + Time * float2(0.023f, -0.015f));
-			if (foamQuantity > .666f)		{ texAmount += lerp(foamDiffuse.g, foamDiffuse.r, (foamQuantity-.666f)/.333f); } 
-			else if (foamQuantity > .333f)	{ texAmount += lerp(foamDiffuse.b, foamDiffuse.g, (foamQuantity-.333f)/.333f); } 
+			if (foamQuantity > .666f)		{ texAmount += lerp(foamDiffuse.g, foamDiffuse.r, (foamQuantity-.666f)/.333f); }
+			else if (foamQuantity > .333f)	{ texAmount += lerp(foamDiffuse.b, foamDiffuse.g, (foamQuantity-.333f)/.333f); }
 			else							{ texAmount += foamDiffuse.b * foamQuantity/.333f; }
 
 			foamDiffuse = Foam_Diffuse.Sample(DefaultSampler, 19.12f*-texCoord + Time * float2(-0.0132f, 0.0094f));
-			if (foamQuantity > .666f)		{ texAmount += lerp(foamDiffuse.g, foamDiffuse.r, (foamQuantity-.666f)/.333f); } 
-			else if (foamQuantity > .333f)	{ texAmount += lerp(foamDiffuse.b, foamDiffuse.g, (foamQuantity-.333f)/.333f); } 
+			if (foamQuantity > .666f)		{ texAmount += lerp(foamDiffuse.g, foamDiffuse.r, (foamQuantity-.666f)/.333f); }
+			else if (foamQuantity > .333f)	{ texAmount += lerp(foamDiffuse.b, foamDiffuse.g, (foamQuantity-.333f)/.333f); }
 			else							{ texAmount += foamDiffuse.b * foamQuantity/.333f; }
 
 			return foamQuantity*foamQuantity*min(1, texAmount);
@@ -268,8 +268,8 @@ float CalculateFoamFromFoamQuantity(float2 texCoord, float foamQuantity)
 				//	second tap
 
 			float4 foamFirstTap = Foam_Diffuse.Sample(DefaultSampler, 2.5f*texCoord + Time * float2(0.01f, 0.005f));
-			float4 foamSecondTap = Foam_Diffuse.Sample(DefaultSampler, 
-				23.7f*-texCoord 
+			float4 foamSecondTap = Foam_Diffuse.Sample(DefaultSampler,
+				23.7f*-texCoord
 				+ 0.007f * (-1.0.xx + 2.f * foamFirstTap.xy)
 				+ Time * float2(0.023f, -0.015f)).r;
 
@@ -315,7 +315,7 @@ float CalculateFresnel(float3 worldSpaceNormal, float3 worldViewVector)
 	#endif
 	float distanceToViewerSq = dot(geo.worldViewVector, geo.worldViewVector);
 	OceanSurfaceSample oceanSurface = BuildOceanSurfaceSample(
-		geo.texCoord, shallowWaterCoords, shallowWaterWeight, 
+		geo.texCoord, shallowWaterCoords, shallowWaterWeight,
 		dynamicReflectionTexCoord, geo.specularityTC, distanceToViewerSq);
 	result.diffuseAlbedo = lerp(0.0.xxx/*oceanSurface.diffuseAlbedo*/, oceanSurface.foamAlbedo, oceanSurface.foamQuantity);
 
@@ -334,7 +334,7 @@ float PhysicalBlinnPhong(float3 normal, float3 viewDirection, float3 negativeInc
 		//			Also taken from http://blog.selfshadow.com/publications/s2012-shading-course/gotanda/s2012_pbs_beyond_blinn_notes_v3.pdf
 		//			and http://research.tri-ace.com/Data/course_note_practical_implementation_at_triace.pdf
 		//
-		
+
 			// (it seems a little awkward to calculate both the half vector and reflected vector. Couldn't
 			//	this be done better?)
 	const float3 halfVector			 = normalize(negativeIncidentLightDirection + viewDirection);
@@ -377,7 +377,7 @@ float DoSpecular(float3 worldSpaceNormal, float3 worldViewDirection, float shini
 		//			let's jitter the normal a bit. This has a different
 		//			affect on the shape of the highlight than changing
 		//			the specular power -- and can make the highlight feel
-		//			longer when the sun is low. If the jittering is too 
+		//			longer when the sun is low. If the jittering is too
 		//			much, however -- it will break apart into a U shape.
 		//
 		// todo --	maybe only do the normal jittering around the specular
@@ -389,11 +389,11 @@ float DoSpecular(float3 worldSpaceNormal, float3 worldViewDirection, float shini
 		float result = 0.f;
 		const float scale = 2.f * pi / float(Specular_JitterNormalCount);
 		for (uint c=0; c<Specular_JitterNormalCount; ++c) {
-			float angle = (float(c)+dither) * scale; 
+			float angle = (float(c)+dither) * scale;
 			float2 sinecosine;
 			sincos(angle, sinecosine.x, sinecosine.y);
 
-			float3 jitteredNormal = 
+			float3 jitteredNormal =
 				worldSpaceNormal + float3(Specular_JitterNormalStrength * sinecosine.yx, 0.f);
 			const bool doNormalize = true;
 			if (doNormalize) {
@@ -444,7 +444,7 @@ ReflectionAndTransmission CalculateReflectionAndTransmission(float3 incidentDire
 	float thetai = acos(dot(-normal, incidentDirection));
 	float sinthetat = sin(thetai)/RefractiveIndex;
 	float thetat = asin(sinthetat);
-		
+
 		//	Using full expansion of snell's law
 		//	(can be approximated with schlick fresnel)
 	float A = sin(thetat - thetai) / sin(thetat + thetai);
@@ -473,7 +473,7 @@ float3 CalculateUpwelling(float angle, OceanLightingParts parts)
 	float hDistance = distanceToSimulate;
 	float xDistance = cos(angle) * distanceToSimulate;
 	float dDistance = sin(angle) * distanceToSimulate;
-	
+
 	float3 result = 0.f;
 	const float surfaceBrightness = 1.f;
 	for (uint c=0; c<steps; ++c) {
@@ -519,11 +519,11 @@ void CalculateRefractionValue(	inout OceanLightingParts parts,
 
 	float3 worldSpaceOceanSurface = WorldSpaceView - parameters.worldViewVector;
 
-		//	Using equal triangles, we can find the vertical depth through the 
-		//	water by multiplying the depth along the worldViewDirection by 
+		//	Using equal triangles, we can find the vertical depth through the
+		//	water by multiplying the depth along the worldViewDirection by
 		//	the z component of the worldViewDirection. Here, we're assuming
 		//	"parameters.worldViewDirection" is unit length.
-	float zDistanceThroughWater = parameters.worldViewDirection.z * linearDepthThroughWater; 
+	float zDistanceThroughWater = parameters.worldViewDirection.z * linearDepthThroughWater;
 
 	zDistanceThroughWater = min(zDistanceThroughWater, MaxDistanceToSimulate);
 	float3 refractedOceanBottom = worldSpaceOceanSurface + refractedVector * (-zDistanceThroughWater/refractedVector.z);
@@ -534,7 +534,7 @@ void CalculateRefractionValue(	inout OceanLightingParts parts,
 
 		//	imagine a V pattern -- light travels straight down
 		//	to the point on the bottom of the ocean, then back in
-		//	the direction to the viewer. We can cause attenuation 
+		//	the direction to the viewer. We can cause attenuation
 		//	all along this line.
 		//		(Separate optical thickness values for R, G, B?)
 	parts.refractionAttenuationDepth = linearDepthThroughWater + zDistanceThroughWater;
@@ -612,15 +612,15 @@ void CalculateSkyReflection(inout OceanLightingParts parts,
 
 	uint2 reflectionTextureDims;
 	SkyReflectionTexture[0].GetDimensions(
-		reflectionTextureDims.x, 
+		reflectionTextureDims.x,
 		reflectionTextureDims.y);
-			
-	#if MAT_SKY_PROJECTION == 1
+
+	#if SKY_PROJECTION == 1
 		parts.skyReflection = ReadReflectionHemiBox(
-			reflectionVector, 
-			SkyReflectionTexture[0], SkyReflectionTexture[1], SkyReflectionTexture[2], 
+			reflectionVector,
+			SkyReflectionTexture[0], SkyReflectionTexture[1], SkyReflectionTexture[2],
 			reflectionTextureDims, 2);
-	#elif MAT_SKY_PROJECTION == 3
+	#elif SKY_PROJECTION == 3
 		float2 skyReflectionCoord = HemisphericalMappingCoord(reflectionVector);
 		parts.skyReflection = SkyReflectionTexture[0].Load(
 			int3(skyReflectionCoord.xy * float2(reflectionTextureDims.xy), 0)).rgb;
@@ -638,7 +638,7 @@ void CalculateSpecular(	inout OceanLightingParts parts,
 						OceanParameters parameters)
 {
 	float specular = DoSpecular(
-		oceanSurface.worldSpaceNormal, parameters.worldViewDirection, SpecularPower, parameters.pixelPosition.xy, 
+		oceanSurface.worldSpaceNormal, parameters.worldViewDirection, SpecularPower, parameters.pixelPosition.xy,
 		parts.reflectivity);
 	parts.specular = SpecularReflectionBrightness * specular;
 }
@@ -658,7 +658,7 @@ void CalculateSpecular(	inout OceanLightingParts parts,
 	#endif
 	float distanceToViewerSq = dot(geo.worldViewVector, geo.worldViewVector);
 	OceanSurfaceSample oceanSurface = BuildOceanSurfaceSample(
-		geo.texCoord, shallowWaterCoords, shallowWaterWeight, 
+		geo.texCoord, shallowWaterCoords, shallowWaterWeight,
 		dynamicReflectionTexCoord, geo.specularityTC, distanceToViewerSq);
 
 	// return float4(.5f + .5f * oceanSurface.worldSpaceNormal.xyz, 1.f);
@@ -717,7 +717,7 @@ void CalculateSpecular(	inout OceanLightingParts parts,
 		return float4(LightingScale * refractedAttenuation.xxx, 1.f);
 	#endif
 
-	float3 colour = 
+	float3 colour =
 		  parts.transmission * refractedAttenuation * parts.refracted
 		+ parts.transmission * parts.upwelling
 		+ ((1.f-parts.foamQuantity)*parts.reflectivity) * parts.skyReflection
@@ -734,6 +734,3 @@ void CalculateSpecular(	inout OceanLightingParts parts,
 
 	return float4(LightingScale * colour, 1.f);
 }
-
-
-

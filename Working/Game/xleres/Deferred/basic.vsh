@@ -48,7 +48,7 @@ VSOutput main(VSInput input)
 		#endif
 	#endif
 
-	#if (OUTPUT_TANGENT_FRAME==1) || (OUTPUT_NORMAL==1)
+	#if (OUTPUT_NORMAL==1)
 		output.normal = worldNormal;
 	#endif
 

@@ -1898,6 +1898,10 @@ namespace SceneEngine
             _pimpl->_renderer->FilterRenders(predicate);
         }
         _pimpl->_renderer->EndRender(context, parserContext, techniqueIndex);
+
+            // we also have to commit translucent steps. We must use the geometry from all translucent steps
+        for (unsigned c=unsigned(RenderCore::Assets::DelayStep::OpaqueRender)+1; c<unsigned(RenderCore::Assets::DelayStep::Max); ++c)
+            _pimpl->_renderer->CommitTranslucent(context, parserContext, techniqueIndex, RenderCore::Assets::DelayStep(c));
     }
 
 	void PlacementsEditor::PerformGUIDFixup(PlacementGUID* begin, PlacementGUID* end) const

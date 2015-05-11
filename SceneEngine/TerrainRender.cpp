@@ -2304,14 +2304,25 @@ namespace SceneEngine
         auto inputRes = ExtractResource<Metal::Underlying::Resource>(inputTexture.GetUnderlying());
 
         TextureDesc2D destinationDesc(destinationArray);
-        const auto mipCount = destinationDesc.MipLevels;
+        const auto dstMipCount = destinationDesc.MipLevels;
+        auto dstWidthPower = (int)IntegerLog2(destinationDesc.Width);
+
+        if (!IsPowerOfTwo(destinationDesc.Width) || !IsPowerOfTwo(destinationDesc.Height)) {
+            // only power-of-two textures supported (too difficult to merge them into a atlas otherwise)
+            ThrowException(::Assets::Exceptions::InvalidResource(sourceFile, "Expecting power of two texture for terrain texturing"));
+        }
+        if (destinationDesc.Width != destinationDesc.Height) {
+            ThrowException(::Assets::Exceptions::InvalidResource(sourceFile, "Expecting square texture for terrain texturing"));
+        }
 
         TextureDesc2D sourceDesc(inputRes.get());
-        int mipDifference = sourceDesc.MipLevels - mipCount;
+        auto srcWidthPower = (int)IntegerLog2(sourceDesc.Width);
+        auto mipDifference = srcWidthPower - dstWidthPower;
 
         auto context = GetImmediateContext();
-        for (unsigned m=0; m<mipCount; ++m) {
-            int sourceMip = m + mipDifference;
+        for (unsigned m=0; m<dstMipCount; ++m) {
+            
+            auto sourceMip = m + mipDifference;
             if (sourceMip < 0) {
 
                 PrintFormat(&ConsoleRig::GetWarningStream(), 
@@ -2385,14 +2396,14 @@ namespace SceneEngine
                 }
 
                 context.GetUnderlying()->CopySubresourceRegion(
-                    destinationArray, D3D11CalcSubresource(m, arrayIndex, mipCount),
+                    destinationArray, D3D11CalcSubresource(m, arrayIndex, dstMipCount),
                     0, 0, 0, resamplingBuffer->GetUnderlying(), 0, nullptr);
 
             } else {
 
                 context.GetUnderlying()->CopySubresourceRegion(
-                    destinationArray, D3D11CalcSubresource(m, arrayIndex, mipCount),
-                    0, 0, 0, inputRes.get(), D3D11CalcSubresource(sourceMip, 0, mipCount), nullptr);
+                    destinationArray, D3D11CalcSubresource(m, arrayIndex, dstMipCount),
+                    0, 0, 0, inputRes.get(), D3D11CalcSubresource(sourceMip, 0, sourceDesc.MipLevels), nullptr);
 
             }
         }

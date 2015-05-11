@@ -20,6 +20,7 @@ namespace Assets
 {
     static Utility::Threading::RecursiveMutex ResourceDependenciesLock;
     static std::vector<std::pair<const OnChangeCallback*, std::weak_ptr<DependencyValidation>>> ResourceDependencies;
+    static unsigned ResourceDepsChangeId = 0;
 
     void Dependencies_Shutdown()
     {
@@ -32,21 +33,39 @@ namespace Assets
         ++_validationIndex;
         ResourceDependenciesLock.lock();
 
-        #if (STL_ACTIVE == STL_MSVC) && (_ITERATOR_DEBUG_LEVEL >= 2)
-            auto range = std::_Equal_range(
-                ResourceDependencies.begin(), ResourceDependencies.end(), this, 
-                CompareFirst<const OnChangeCallback*, std::weak_ptr<DependencyValidation>>(),
-                _Dist_type(ResourceDependencies.begin()));
-        #else
-            auto range = std::equal_range(
-                ResourceDependencies.begin(), ResourceDependencies.end(), 
-                this, CompareFirst<const OnChangeCallback*, std::weak_ptr<DependencyValidation>>());
-        #endif
+        auto range = std::equal_range(
+            ResourceDependencies.begin(), ResourceDependencies.end(), 
+            this, CompareFirst<const OnChangeCallback*, std::weak_ptr<DependencyValidation>>());
+
+        unsigned changeIdStart = ResourceDepsChangeId;
 
         bool foundExpired = false;
         for (auto i=range.first; i!=range.second; ++i) {
             auto l = i->second.lock();
-            if (l) l->OnChange();
+            if (l) { 
+                l->OnChange();
+
+                if (ResourceDepsChangeId != changeIdStart) {
+                    // another object may have changed the list of objects 
+                    // during the OnChange() call. If this happens,
+                    // we need to search through and find the range again.
+                    // then we need to set 'i' to the position of the 
+                    // same element in the new range (it's guaranteed to
+                    // be there, because we have a lock on it!
+                    // Oh, it's a wierd hack... But it should work well.
+
+                    range = std::equal_range(
+                        ResourceDependencies.begin(), ResourceDependencies.end(), 
+                        this, CompareFirst<const OnChangeCallback*, std::weak_ptr<DependencyValidation>>());
+
+                    for (i=range.first;; ++i) {
+                        assert(i!=range.second);
+                        if (Equivalent(i->second, l)) break;
+                    }
+
+                    changeIdStart = ResourceDepsChangeId;
+                }
+            }
             else foundExpired = true;
         }
 
@@ -59,6 +78,7 @@ namespace Assets
                     [](std::pair<const OnChangeCallback*, std::weak_ptr<DependencyValidation>>& i)
                     { return i.second.expired(); }),
                 range.second);
+            ++ResourceDepsChangeId; // signal to callers that this has changed
         }
 
         ResourceDependenciesLock.unlock();

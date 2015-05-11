@@ -49,8 +49,8 @@ namespace PlatformRig
         light._diffuseColor = Float3(3.2803922f, 2.2372551f, 1.9627452f);
         light._nonMetalSpecularBrightness = 7.5f;
         light._specularColor = Float3(6.7647061f, 6.4117646f, 4.7647061f);
-        light._diffuseWideningMax = 2.f;
-        light._diffuseWideningMin = 0.5f;
+        light._diffuseWideningMax = .9f;
+        light._diffuseWideningMin = 0.2f;
         light._diffuseModel = 1;
         return light;
     }

@@ -287,6 +287,10 @@ namespace ToolsRig
 
                         // skip "NormalsFittingTexture" -- system use
                     if (!XlCompareString(bindDesc.Name, "NormalsFittingTexture")) continue;
+                    if (!XlCompareString(bindDesc.Name, "SkyReflectionTexture[0]")) continue;
+                    if (!XlCompareString(bindDesc.Name, "SkyReflectionTexture[1]")) continue;
+                    if (!XlCompareString(bindDesc.Name, "SkyReflectionTexture[2]")) continue;
+                    if (!XlCompareString(bindDesc.Name, "GGXTable")) continue;
 
                     auto str = bindings.GetString<::Assets::ResChar>(ParameterBox::MakeParameterNameHash(bindDesc.Name));
                     if (str.empty()) {

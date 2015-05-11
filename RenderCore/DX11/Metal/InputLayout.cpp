@@ -580,11 +580,9 @@ namespace RenderCore { namespace Metal_DX11
                         //  We have to clear out the pointers to CBs that aren't explicit set. This is because
                         //  we don't know if those pointers are still valid currently -- they may have been deleted
                         //  somewhere else in the pipeline
-                    for (unsigned c=lowestShaderSlot; c<=highestShaderSlot; ++c) {
-                        if (!(setMask & (1<<c))) {
+                    for (unsigned c=lowestShaderSlot; c<=highestShaderSlot; ++c)
+                        if (!(setMask & (1<<c)))
                             currentCBS[c] = nullptr;
-                        }
-                    }
 
                     SetConstantBuffers fn = scb[s];
                     (context.GetUnderlying()->*fn)(lowestShaderSlot, highestShaderSlot-lowestShaderSlot+1, &currentCBS[lowestShaderSlot]);
@@ -593,14 +591,14 @@ namespace RenderCore { namespace Metal_DX11
 
             {
                 unsigned lowestShaderSlot = ~unsigned(0x0), highestShaderSlot = 0;
-                ID3D::ShaderResourceView* srvs[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
+                auto* currentSRVs = context._currentSRVs[s];
                 uint32 setMask = 0;
                 for (auto   i =stage._shaderResourceBindings.cbegin(); 
                             i!=stage._shaderResourceBindings.cend(); ++i) {
                     unsigned slot = i->_inputInterfaceSlot & 0xff;
                     unsigned streamIndex = i->_inputInterfaceSlot >> 16;
                     if (streamIndex < dimof(streams) && slot < streams[streamIndex]->_resourceCount && streams[streamIndex]->_resources[slot]) {
-                        srvs[i->_shaderSlot] = streams[streamIndex]->_resources[slot]->GetUnderlying();
+                        currentSRVs[i->_shaderSlot] = streams[streamIndex]->_resources[slot]->GetUnderlying();
                         lowestShaderSlot = std::min(lowestShaderSlot, i->_shaderSlot);
                         highestShaderSlot = std::max(highestShaderSlot, i->_shaderSlot);
                         setMask |= 1<<(i->_shaderSlot);
@@ -609,16 +607,14 @@ namespace RenderCore { namespace Metal_DX11
 
                 if (lowestShaderSlot <= highestShaderSlot) {
 
-                    for (unsigned c=lowestShaderSlot; c<=highestShaderSlot; ++c) {
-                        if (!(setMask & (1<<c))) {
-                            srvs[c] = nullptr;
-                        }
-                    }
+                    for (unsigned c=lowestShaderSlot; c<=highestShaderSlot; ++c)
+                        if (!(setMask & (1<<c)))
+                            currentSRVs[c] = nullptr;
 
                     SetShaderResources fn = scr[s];
                     (context.GetUnderlying()->*fn)(
                         lowestShaderSlot, highestShaderSlot-lowestShaderSlot+1,
-                        &srvs[lowestShaderSlot]);
+                        &currentSRVs[lowestShaderSlot]);
                 }
             }
         }

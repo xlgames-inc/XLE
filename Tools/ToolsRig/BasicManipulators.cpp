@@ -152,11 +152,12 @@ namespace ToolsRig
 
         if (evnt._wheelDelta) {
             float distanceToFocus = Magnitude(_visCameraSettings->_focus -_visCameraSettings->_position);
-            float speedScale = distanceToFocus * XlTan(0.5f * Deg2Rad(_visCameraSettings->_verticalFieldOfView));
 
-            Float3 translation = (evnt._wheelDelta * speedScale * _wheelTranslateSpeed) * forward;
+            float speedScale = distanceToFocus * XlTan(0.5f * Deg2Rad(_visCameraSettings->_verticalFieldOfView));
+            auto movement = std::min(evnt._wheelDelta * speedScale * _wheelTranslateSpeed, distanceToFocus - 0.1f);
+
+            Float3 translation = movement * forward;
             _visCameraSettings->_position += translation;
-            _visCameraSettings->_focus += translation;
         }
 
         return true;

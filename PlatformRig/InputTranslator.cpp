@@ -265,15 +265,6 @@ namespace PlatformRig
         }
     }
 
-    template<typename T>
-        static bool Equivalent(const std::weak_ptr<T>& lhs, const std::weak_ptr<T>& rhs)
-        {
-                //  "owner_before" should compare the control block of these pointers in
-                //  most cases. We want to check to see if both pointers have the same
-                //  control block (and then consider them equivalent)
-            return !lhs.owner_before(rhs) && !rhs.owner_before(lhs);
-        }
-
     void            InputTranslator::AddListener(std::weak_ptr<IInputListener> listener)
     {
         if (std::find_if(_pimpl->_listeners.begin(), _pimpl->_listeners.end(), 

@@ -4,8 +4,8 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#if !defined(BASIC_RESOLVE_H)
-#define BASIC_RESOLVE_H
+#if !defined(DIRECTIONAL_RESOLVE_H)
+#define DIRECTIONAL_RESOLVE_H
 
 #include "SpecularMethods.h"
 #include "DiffuseMethods.h"
@@ -17,35 +17,36 @@
 float3 LightResolve_Diffuse(
 	GBufferValues sample,
 	float3 directionToEye,
-	float3 negativeLightDirection,
-	LightColors lightColor,
-    float wideningMin, float wideningMax)
+	LightDesc light)
 {
 	float rawDiffuse = CalculateDiffuse(
-		sample.worldSpaceNormal, directionToEye, negativeLightDirection,
-		DiffuseParameters_Roughness(Material_GetRoughness(sample), wideningMin, wideningMax));
+		sample.worldSpaceNormal, directionToEye, light.NegativeDirection,
+		DiffuseParameters_Roughness(Material_GetRoughness(sample), light.DiffuseWideningMin, light.DiffuseWideningMax));
 
     float metal = Material_GetMetal(sample);
-	float light = Material_GetDiffuseScale(sample) * rawDiffuse * (1.0f - metal);
-	return light * lightColor.diffuse * sample.diffuseAlbedo.rgb;
+	float result = Material_GetDiffuseScale(sample) * rawDiffuse * (1.0f - metal);
+	return result * light.Color.diffuse * sample.diffuseAlbedo.rgb;
 }
 
 float3 LightResolve_Specular(
 	GBufferValues sample,
 	float3 directionToEye,
-	float3 negativeLightDirection,
-	LightColors lightColor)
+	LightDesc light)
 {
 	float roughnessValue = Material_GetRoughness(sample);
 
 		////////////////////////////////////////////////
+
+	float rawDiffuse = CalculateDiffuse(
+		sample.worldSpaceNormal, directionToEye, light.NegativeDirection,
+		DiffuseParameters_Roughness(Material_GetRoughness(sample), light.DiffuseWideningMin, light.DiffuseWideningMax));
 
 	float F0_0 = Material_GetF0_0(sample);
 	SpecularParameters param0 = SpecularParameters_RoughF0(roughnessValue, F0_0);
 	float spec0 = Material_GetSpecularScale0(sample)
 		* CalculateSpecular(
 			sample.worldSpaceNormal, directionToEye,
-			negativeLightDirection, param0);
+			light.NegativeDirection, param0, rawDiffuse);
 
 		////////////////////////////////////////////////
 
@@ -62,7 +63,7 @@ float3 LightResolve_Specular(
 	float scale = sample.cookedAmbientOcclusion;
 	float3 result =
 		(saturate(spec0) * scale)
-		* lerp(lightColor.nonMetalSpecularBrightness.xxx * sample.diffuseAlbedo, lightColor.specular, Material_GetMetal(sample));
+		* lerp(light.Color.nonMetalSpecularBrightness.xxx * sample.diffuseAlbedo, light.Color.specular, Material_GetMetal(sample));
 	// result += (saturate(spec1) * scale) * specularColor1;
 	return result;
 }

@@ -4,10 +4,10 @@ Illum
             MAT_USE_DERIVATIVES_MAP
             MAT_USE_SHALLOW_WATER
             MAT_DO_REFRACTION
-            MAT_SKY_PROJECTION
             MAT_DYNAMIC_REFLECTION
             SHALLOW_WATER_TILE_DIMENSION
                 32
+            SKY_PROJECTION
         GlobalEnvironment
             OCEAN_SEPARATE
                 0
@@ -22,10 +22,10 @@ Deferred
             MAT_USE_DERIVATIVES_MAP
             MAT_USE_SHALLOW_WATER
             MAT_DO_REFRACTION
-            MAT_SKY_PROJECTION
             MAT_DYNAMIC_REFLECTION
             SHALLOW_WATER_TILE_DIMENSION
                 32
+            SKY_PROJECTION
         GlobalEnvironment
             OCEAN_SEPARATE
                 0

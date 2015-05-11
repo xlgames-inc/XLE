@@ -330,7 +330,7 @@ namespace SceneEngine
         char definesTable[256];
         Utility::XlFormatString(
             definesTable, dimof(definesTable), 
-            "GBUFFER_TYPE=%i;MSAA_SAMPLES=%i;MAT_SKY_PROJECTION=%i;CALCULATE_AMBIENT_OCCLUSION=%i;CALCULATE_TILED_LIGHTS=%i;CALCULATE_SCREENSPACE_REFLECTIONS=%i", 
+            "GBUFFER_TYPE=%i;MSAA_SAMPLES=%i;SKY_PROJECTION=%i;CALCULATE_AMBIENT_OCCLUSION=%i;CALCULATE_TILED_LIGHTS=%i;CALCULATE_SCREENSPACE_REFLECTIONS=%i", 
             desc._gbufferType, (desc._msaaSampleCount<=1)?0:desc._msaaSampleCount,
             desc._skyProjectionType, desc._hasAO, desc._hasTiledLighting,desc._hasSRR);
 

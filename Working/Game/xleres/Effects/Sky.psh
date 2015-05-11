@@ -11,13 +11,13 @@
 #include "../Surface.h"
 #include "../Colour.h"
 
-#if MAT_SKY_PROJECTION==1
+#if SKY_PROJECTION==1
 	Texture2D ReflectionBox[3]	: register(t0);
 #endif
 
 float3 CalculateBaseSkyColor(float2 texCoord, float3 viewFrustumVector)
 {
-	#if MAT_SKY_PROJECTION==1
+	#if SKY_PROJECTION==1
 
 		uint2 reflectionTextureDims;
 		ReflectionBox[0].GetDimensions(
@@ -31,7 +31,7 @@ float3 CalculateBaseSkyColor(float2 texCoord, float3 viewFrustumVector)
 		result.rgb = SRGBToLinear(result.rgb);
 		return result;
 
-	#elif MAT_SKY_PROJECTION == 2
+	#elif SKY_PROJECTION == 2
 
 			// projection is already in the texture coordinates. Just sample
 			// from the texture coordinate position
@@ -39,7 +39,7 @@ float3 CalculateBaseSkyColor(float2 texCoord, float3 viewFrustumVector)
 		result.rgb = SRGBToLinear(result.rgb);
 		return result;
 
-	#elif MAT_SKY_PROJECTION == 3
+	#elif SKY_PROJECTION == 3
 
 			//	this is "panoramic projection."
 		float2 t = HemisphericalMappingCoord(viewFrustumVector);

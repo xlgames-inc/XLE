@@ -229,20 +229,23 @@ namespace RenderCore { namespace Metal_DX11
 
     void        DeviceContext::InvalidateCachedState()
     {
-        std::fill((const ConstantBuffer**)_currentCBs, &((const ConstantBuffer**)_currentCBs)[6*14], nullptr);
+        XlZeroMemory(_currentCBs);
+        XlZeroMemory(_currentSRVs);
     }
 
     DeviceContext::DeviceContext(ID3D::DeviceContext* context)
     : _underlying(context)
     {
-        std::fill((const ConstantBuffer**)_currentCBs, &((const ConstantBuffer**)_currentCBs)[6*14], nullptr);
+        XlZeroMemory(_currentCBs);
+        XlZeroMemory(_currentSRVs);
         _annotations = QueryInterfaceCast<ID3D::UserDefinedAnnotation>(_underlying);
     }
 
     DeviceContext::DeviceContext(intrusive_ptr<ID3D::DeviceContext>&& context)
     : _underlying(std::forward<intrusive_ptr<ID3D::DeviceContext>>(context))
     {
-        std::fill((const ConstantBuffer**)_currentCBs, &((const ConstantBuffer**)_currentCBs)[6*14], nullptr);
+        XlZeroMemory(_currentCBs);
+        XlZeroMemory(_currentSRVs);
         _annotations = QueryInterfaceCast<ID3D::UserDefinedAnnotation>(_underlying);
     }
 

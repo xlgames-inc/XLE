@@ -153,7 +153,7 @@ struct VSOutput /////////////////////////////////////////////////////
         float3 localBitangent : LOCALBITANGENT;
     #endif
 
-    #if (OUTPUT_TANGENT_FRAME==1) || (OUTPUT_NORMAL==1)
+    #if (OUTPUT_NORMAL==1)
         float3 normal : NORMAL;
     #endif
 

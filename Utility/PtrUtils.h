@@ -260,6 +260,28 @@ namespace Utility
             #endif
         }
 
+    template<typename T>
+        static bool Equivalent(const std::weak_ptr<T>& lhs, const std::weak_ptr<T>& rhs)
+        {
+                //  "owner_before" should compare the control block of these pointers in
+                //  most cases. We want to check to see if both pointers have the same
+                //  control block (and then consider them equivalent)
+            return !lhs.owner_before(rhs) && !rhs.owner_before(lhs);
+        }
+
+    template<typename T>
+        static bool Equivalent(const std::shared_ptr<T>& lhs, const std::weak_ptr<T>& rhs)
+        {
+            return !lhs.owner_before(rhs) && !rhs.owner_before(lhs);
+        }
+
+    template<typename T>
+        static bool Equivalent(const std::weak_ptr<T>& lhs, const std::shared_ptr<T>& rhs)
+        {
+            return !lhs.owner_before(rhs) && !rhs.owner_before(lhs);
+        }
+
+
             ////////////////////////////////////////////////////////
 
     template<typename Type, typename Deletor = std::default_delete<Type[]>> class DynamicArray

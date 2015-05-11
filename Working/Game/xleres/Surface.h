@@ -189,7 +189,6 @@ float3 GetLocalBitangent(VSInput input)
     #elif (GEO_HAS_TANGENT_FRAME==1) && (GEO_HAS_NORMAL==1)
 		float4 tangent = GetLocalTangent(input);
 		float3 normal = GetLocalNormal(input);
-		return GetTangentFrameHandiness(tangent).xxx;
 		return cross(tangent.xyz, normal) * GetTangentFrameHandiness(tangent);
     #else
         return 0.0.xxx;

@@ -38,10 +38,15 @@ namespace SceneEngine
     using namespace RenderCore;
     using namespace RenderCore::Metal;
 
-    void LightingParser_ResolveGBuffer( DeviceContext* context,
-                                        LightingParserContext& parserContext,
-                                        MainTargetsBox& mainTargets,
-                                        LightingResolveTextureBox& lightingResTargets);
+    void LightingParser_ResolveGBuffer( 
+        DeviceContext* context,
+        LightingParserContext& parserContext,
+        MainTargetsBox& mainTargets,
+        LightingResolveTextureBox& lightingResTargets);
+
+    unsigned LightingParser_BindLightResolveResources( 
+        DeviceContext* context,
+        LightingParserContext& parserContext);
 
         //
         //      Reserve some states as global states
@@ -317,6 +322,9 @@ namespace SceneEngine
                                             ForwardTargetsBox& targetsBox,
                                             unsigned sampleCount)
     {
+        auto skyProj = LightingParser_BindLightResolveResources(context, parserContext);
+        parserContext.GetTechniqueContext()._globalEnvironmentState.SetParameter("SKY_PROJECTION", skyProj);
+
             //  Order independent transparency disabled when
             //  using MSAA modes... Still some problems in related to MSAA buffers
         const bool useOrderIndependentTransparency = Tweakable("UseOrderIndependentTransparency", false) && (sampleCount <= 1);
@@ -445,13 +453,15 @@ namespace SceneEngine
         ViewportDesc mainViewport(  
             0.f, 0.f, float(qualitySettings._dimensions[0]), float(qualitySettings._dimensions[1]), 0.f, 1.f);
         
+        bool precisionTargets = Tweakable("PrecisionTargets", false);
+
         typedef Metal::NativeFormat::Enum NativeFormat;
         auto sampling = BufferUploads::TextureSamples::Create(
             uint8(std::max(qualitySettings._samplingCount, 1u)), uint8(qualitySettings._samplingQuality));
         auto& lightingResTargets = Techniques::FindCachedBox<LightingResolveTextureBox>(
             LightingResolveTextureBox::Desc(
                 unsigned(mainViewport.Width), unsigned(mainViewport.Height),
-                FormatStack(NativeFormat::R16G16B16A16_FLOAT),
+                (!precisionTargets) ? FormatStack(NativeFormat::R16G16B16A16_FLOAT) : FormatStack(NativeFormat::R32G32B32A32_FLOAT),
                 sampling));
 
         if (qualitySettings._lightingModel == RenderingQualitySettings::LightingModel::Deferred) {
@@ -461,13 +471,21 @@ namespace SceneEngine
                 //      Get the gbuffer render targets for this frame
                 //
 
+                // Generally the deferred pixel shader will just copy information from the albedo
+                // texture into the first deferred buffer. So the first deferred buffer should
+                // have the same pixel format as much input textures.
+                // Usually this is an 8 bit SRGB format, so the first deferred buffer should also
+                // be 8 bit SRGB. So long as we don't do a lot of processing in the deferred pixel shader
+                // that should be enough precision.
+                //      .. however, it possible some clients might prefer 10 or 16 bit albedo textures
+                //      In these cases, the first buffer should be a matching format.
             const bool enableParametersBuffer = Tweakable("EnableParametersBuffer", true);
             auto& mainTargets = Techniques::FindCachedBox<MainTargetsBox>(
                 MainTargetsBox::Desc(
                     unsigned(mainViewport.Width), unsigned(mainViewport.Height),
-                    FormatStack(NativeFormat::R8G8B8A8_UNORM),
-                    FormatStack(NativeFormat::R8G8B8A8_UNORM),
-                    FormatStack(enableParametersBuffer ? NativeFormat::R8G8B8A8_UNORM : NativeFormat::Unknown),
+                    (!precisionTargets) ? FormatStack(NativeFormat::R8G8B8A8_UNORM_SRGB) : FormatStack(NativeFormat::R32G32B32A32_FLOAT),
+                    (!precisionTargets) ? FormatStack(NativeFormat::R8G8B8A8_UNORM) : FormatStack(NativeFormat::R32G32B32A32_FLOAT),
+                    FormatStack(enableParametersBuffer ? ((!precisionTargets) ? FormatStack(NativeFormat::R8G8B8A8_UNORM) : FormatStack(NativeFormat::R32G32B32A32_FLOAT)) : NativeFormat::Unknown),
                     FormatStack(
                         NativeFormat(DXGI_FORMAT_R24G8_TYPELESS), 
                         NativeFormat(DXGI_FORMAT_R24_UNORM_X8_TYPELESS), 

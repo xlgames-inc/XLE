@@ -12,7 +12,7 @@
 #include "../CommonResources.h"
 #include "../Utility/Misc.h"
 #include "../Lighting/SampleFiltering.h"
-#include "../Lighting/BasicResolve.h"
+#include "../Lighting/DirectionalResolve.h"
 #include "../Lighting/LightDesc.h"
 #include "../System/LoadGBuffer.h"
 #include "../Colour.h"	// for LightingScale
@@ -427,8 +427,8 @@ float4 ResolveLight(	float4 position : SV_Position,
 
 	GBufferValues sample = LoadGBuffer(position, sys);
 	float3 directionToEye = normalize(-viewFrustumVector);
-	float3 diffuse = LightResolve_Diffuse(sample, directionToEye, Light.NegativeDirection, Light.Color, Light.DiffuseWideningMin, Light.DiffuseWideningMax);
-	float3 specular = LightResolve_Specular(sample, directionToEye, Light.NegativeDirection, Light.Color);
+	float3 diffuse = LightResolve_Diffuse(sample, directionToEye, Light);
+	float3 specular = LightResolve_Specular(sample, directionToEye, Light);
 
 	const float lightScale = LightingScale;
 	return float4((lightScale*shadow*sample.cookedAmbientOcclusion)*(diffuse + specular), 1.f);

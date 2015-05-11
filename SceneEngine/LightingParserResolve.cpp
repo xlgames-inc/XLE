@@ -112,7 +112,7 @@ namespace SceneEngine
                                 MainTargetsBox& mainTargets,
                                 LightingResolveContext& resolveContext);
 
-    static void SetupStateForLightingResolve(   DeviceContext* context, 
+    static void SetupStateForDeferredLightingResolve(   DeviceContext* context, 
                                                 MainTargetsBox& mainTargets, 
                                                 LightingResolveTextureBox& lightingResTargets,
                                                 LightingResolveResources& resolveRes,
@@ -144,6 +144,34 @@ namespace SceneEngine
 ///////////////////////////////////////////////////////////////////////////////////////////////////
     
     static unsigned GBufferType(MainTargetsBox& mainTargets) { return (mainTargets._gbufferTextures[2]) ? 1 : 2; }
+
+    unsigned LightingParser_BindLightResolveResources( 
+        DeviceContext* context,
+        LightingParserContext& parserContext)
+    {
+            // bind resources and constants that are required for lighting resolve operations
+            // these are needed in both deferred and forward shading modes... But they are
+            // bound at different times in different modes
+
+        auto skyTexture = parserContext.GetSceneParser()->GetGlobalLightingDesc()._skyTexture;
+        unsigned skyTextureProjection = 0;
+        if (skyTexture[0]) {
+            SkyTextureParts parts(skyTexture);
+            skyTextureProjection = SkyTexture_BindPS(context, parserContext, parts, 11);
+        }
+
+        TRY {
+            context->BindPS(MakeResourceList(10, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/balanced_noise.dds:LT").GetShaderResource()));
+            context->BindPS(MakeResourceList(16, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/GGXTable.dds:LT").GetShaderResource()));
+        }
+        CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
+        CATCH_END
+
+        context->BindPS(MakeResourceList(9, ConstantBuffer(&GlobalMaterialOverride, sizeof(GlobalMaterialOverride))));
+
+        return skyTextureProjection;
+    }
 
     void LightingParser_ResolveGBuffer( DeviceContext* context,
                                         LightingParserContext& parserContext,
@@ -231,25 +259,9 @@ namespace SceneEngine
                 //
 
         TRY {
-            SetupStateForLightingResolve(context, mainTargets, lightingResTargets, resolveRes, doSampleFrequencyOptimisation);
+            SetupStateForDeferredLightingResolve(context, mainTargets, lightingResTargets, resolveRes, doSampleFrequencyOptimisation);
+            auto skyTextureProjection = LightingParser_BindLightResolveResources(context, parserContext);
 
-            auto skyTexture = parserContext.GetSceneParser()->GetGlobalLightingDesc()._skyTexture;
-            unsigned skyTextureProjection = 0;
-            if (skyTexture[0]) {
-                SkyTextureParts parts(skyTexture);
-                skyTextureProjection = parts._projectionType;
-                SkyTexture_BindPS(context, parserContext, parts, 11);
-            }
-
-            TRY {
-                context->BindPS(MakeResourceList(10, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/balanced_noise.dds:LT").GetShaderResource()));
-                context->BindPS(MakeResourceList(16, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/GGXTable.dds:LT").GetShaderResource()));
-            }
-            CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
-            CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
-            CATCH_END
-
-            context->BindPS(MakeResourceList(9, ConstantBuffer(&GlobalMaterialOverride, sizeof(GlobalMaterialOverride))));
             context->BindPS(MakeResourceList(4, resolveRes._shadowComparisonSampler, resolveRes._shadowDepthSampler));
 
                 // note -- if we do ambient first, we can avoid this clear (by rendering the ambient opaque)
@@ -276,14 +288,13 @@ namespace SceneEngine
 
                         //-------- ambient light shader --------
                     auto& ambientResolveShaders = 
-                        Techniques::FindCachedBoxDep<AmbientResolveShaders>(
-                            AmbientResolveShaders::Desc(
-                                GBufferType(mainTargets),
-                                (c==0)?samplingCount:1, useMsaaSamplers, c==1,
-                                lightingResolveContext._ambientOcclusionResult.IsGood(),
-                                lightingResolveContext._tiledLightingResult.IsGood(),
-                                lightingResolveContext._screenSpaceReflectionsResult.IsGood(),
-                                skyTextureProjection));
+                        Techniques::FindCachedBoxDep2<AmbientResolveShaders>(
+                            GBufferType(mainTargets),
+                            (c==0)?samplingCount:1, useMsaaSamplers, c==1,
+                            lightingResolveContext._ambientOcclusionResult.IsGood(),
+                            lightingResolveContext._tiledLightingResult.IsGood(),
+                            lightingResolveContext._screenSpaceReflectionsResult.IsGood(),
+                            skyTextureProjection);
 
                     ambientResolveShaders._ambientLightUniforms->Apply(
                         *context, parserContext.GetGlobalUniformsStream(),
@@ -322,7 +333,7 @@ namespace SceneEngine
                     Sky_Render(context, parserContext, false);     // we do a first pass of the sky here, and then follow up with a second pass after lighting resolve
 
                         // have to reset our state (because Sky_Render changed everything)
-                    SetupStateForLightingResolve(context, mainTargets, lightingResTargets, resolveRes, doSampleFrequencyOptimisation);
+                    SetupStateForDeferredLightingResolve(context, mainTargets, lightingResTargets, resolveRes, doSampleFrequencyOptimisation);
                 }
 
                     //-------- do volumetric fog --------

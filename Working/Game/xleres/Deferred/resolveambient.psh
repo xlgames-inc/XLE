@@ -7,146 +7,14 @@
 #if !defined(RESOLVE_AMBIENT_PSH)
 #define RESOLVE_AMBIENT_PSH
 
-#include "resolveutil.h"
-#include "../Lighting/LightDesc.h"
-#include "../Lighting/BasicResolve.h"
-#include "../Lighting/MaterialQuery.h"
+#include "../Lighting/AmbientResolve.h"
 #include "../System/LoadGBuffer.h"
 #include "../Colour.h"	// for LightingScale
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 cbuffer AmbientLightBuffer
 {
 	AmbientDesc Ambient;
 }
-
-#if defined(TILED_LIGHTS_RESOLVE_MS)
-	Texture2D_MaybeMS<float4>	TiledLightsResolve	 	: register(t5);
-#else
-	Texture2D<float4>			TiledLightsResolve	 	: register(t5);
-#endif
-
-Texture2D<float>				AmbientOcclusion		: register(t6);
-Texture2D<float4>				ScreenSpaceReflResult	: register(t7);
-Texture2D<float4>				LightBufferCopy			: register(t8);
-Texture2D						SkyReflectionTexture[3] : register(t11);
-
-#if !defined(MAT_SKY_PROJECTION)
-	#define MAT_SKY_PROJECTION 3
-#endif
-
-float3 ReadSkyTexture(float3 reflectionVector, float roughness)
-{
-	uint2 reflectionTextureDims;
-	SkyReflectionTexture[0].GetDimensions(reflectionTextureDims.x, reflectionTextureDims.y);
-
-	float mipMap = Ambient.SkyReflectionBlurriness + saturate(roughness) * 5.f;
-
-	// #define DEBUG_REFLECTION_MIPMAPS 1
-	#if DEBUG_REFLECTION_MIPMAPS==1
-	if (uint(mipMap)==0) return float3(1, 0, 0);
-	if (uint(mipMap)==1) return float3(0, 1, 0);
-	if (uint(mipMap)==2) return float3(0, 0, 1);
-	if (uint(mipMap)==3) return float3(1, 1, 0);
-	if (uint(mipMap)==4) return float3(1, 0, 1);
-	if (uint(mipMap)==5) return float3(0, 1, 1);
-	if (uint(mipMap)==6) return float3(0, .5, 1);
-	if (uint(mipMap)==7) return float3(1, 0, .5);
-	#endif
-
-	#if MAT_SKY_PROJECTION == 1
-		return ReadReflectionHemiBox(
-			reflectionVector,
-			SkyReflectionTexture[0], SkyReflectionTexture[1], SkyReflectionTexture[2],
-			reflectionTextureDims, uint(mipMap));
-	#elif MAT_SKY_PROJECTION == 3
-		float2 skyReflectionCoord = HemisphericalMappingCoord(reflectionVector);
-		uint2 dims;
-		SkyReflectionTexture[0].GetDimensions(dims.x, dims.y);
-		mipMap = max(mipMap, CalculateMipmapLevel(skyReflectionCoord.xy, dims));
-		return SkyReflectionTexture[0].SampleLevel(ClampingSampler, skyReflectionCoord.xy, mipMap).rgb;
-	#else
-		return 0.0.xxx;
-	#endif
-}
-
-float CalculateReflectionFresnel(GBufferValues sample, float3 viewDirection)
-{
-	float F0 = Material_GetF0_0(sample);
-
-	float3 worldSpaceReflection = reflect(-viewDirection, sample.worldSpaceNormal);
-	float3 halfVector = normalize(worldSpaceReflection + viewDirection);
-	float fresnel = SchlickFresnelF0(viewDirection, halfVector, F0);
-	return fresnel;
-}
-
-float3 CalculateSkyReflections(GBufferValues sample, float3 viewDirection, float fresnel)
-{
-	float3 worldSpaceReflection = reflect(-viewDirection, sample.worldSpaceNormal);
-
-	float roughness = Material_GetRoughness(sample);
-	float specular = Material_GetSpecular0(sample);
-
-	float3 reflSampl = ReadSkyTexture(worldSpaceReflection, roughness);
-	// reflSampl = SRGBToLinear(reflSampl);
-	reflSampl += Material_GetReflectionBoost(sample).xxx;
-
-	return reflSampl * (specular * fresnel * sample.cookedAmbientOcclusion);
-}
-
-/////////////////////////////////////////
-
-float3 BasicAmbient(int2 pixelCoords, SystemInputs sys, GBufferValues sample)
-{
-	#if CALCULATE_AMBIENT_OCCLUSION==1
-		float ambientOcclusionSample = LoadFloat1(AmbientOcclusion, pixelCoords, GetSampleIndex(sys));
-	#else
-		float ambientOcclusionSample = 1.f;
-	#endif
-
-	#if CALCULATE_TILED_LIGHTS==1
-		#if defined(TILED_LIGHTS_RESOLVE_MS)
-			float3 tiledLights	= LoadFloat4(TiledLightsResolve, pixelCoords, GetSampleIndex(sys)).xyz;
-		#else
-			float3 tiledLights	= TiledLightsResolve.Load(int3(pixelCoords, 0)).xyz;
-		#endif
-		tiledLights *= LightingScale;
-	#else
-		float3 tiledLights = 0.0.xxx;
-	#endif
-
-	const float ambientScale = LightingScale;
-	float metal = Material_GetMetal(sample);
-	return ((1.0f - metal)*ambientScale*ambientOcclusionSample)*(Ambient.Colour + tiledLights)*sample.diffuseAlbedo.rgb;
-}
-
-/////////////////////////////////////////
-
-float4 CalculateScreenSpaceReflections(float2 texCoord, float fresnel, float cookedAmbientOcclusion)
-{
-		//	the screen space refl sampler should contain a texture coordinate
-		//	and an alpha value. We need a copy of the "lighting buffer"
-		//	render target for this step -- because we want to read from a texture
-		//	that can the direct lighting already calculated.
-	float4 reflectionValue = ScreenSpaceReflResult.SampleLevel(ClampingSampler, texCoord, 0);
-
-	float intersectionQuality = reflectionValue.z;
-	float pixelReflectivity = reflectionValue.a;
-	float2 reflectionSourceCoords = reflectionValue.xy;
-	float3 litSample = LightBufferCopy.SampleLevel(ClampingSampler, reflectionSourceCoords, 0).rgb;
-
-		//	we need to predict the ambient light on this point, also (because integration occurs
-		//	in the ambient shader, the amient integrating hasn't happened)
-	uint2 dims; LightBufferCopy.GetDimensions(dims.x, dims.y);
-	float4 samplePosition = float4(reflectionSourceCoords * float2(dims), 0.f, 1.f);
-	GBufferValues sample = LoadGBuffer(samplePosition, SystemInputs_Default());
-	litSample += BasicAmbient(int2(samplePosition.xy), SystemInputs_Default(), sample);
-
-	return float4(litSample.rgb * (fresnel * cookedAmbientOcclusion), min(1.f, intersectionQuality * pixelReflectivity));
-}
-
-/////////////////////////////////////////
 
 float4 ResolveAmbient(	float4 position : SV_Position,
 						float2 texCoord : TEXCOORD0,
@@ -155,29 +23,9 @@ float4 ResolveAmbient(	float4 position : SV_Position,
 {
 	int2 pixelCoords = position.xy;
 	GBufferValues sample = LoadGBuffer(position, sys);
-	float3 result = BasicAmbient(pixelCoords, sys, sample);
 	float3 viewDirection = -normalize(viewFrustumVector);
-
-	float fresnel = CalculateReflectionFresnel(sample, viewDirection);
-
-	float3 skyReflections = Ambient.SkyReflectionScale * LightingScale * CalculateSkyReflections(sample, viewDirection, fresnel);
-	#if CALCULATE_SCREENSPACE_REFLECTIONS==1
-			//	The "screen space" reflections block out the sky reflections.
-			//	If we get a collision with the screen space reflections, then we need
-			//	to blend from the sky reflection colour into that colour.
-			// note... if we want fogging on the reflections, we need to perform the fog calculations here, on the
-			// reflected pixel
-		float4 dynamicReflections = CalculateScreenSpaceReflections(texCoord, fresnel, sample.cookedAmbientOcclusion);
-		float3 finalReflection = lerp(skyReflections, dynamicReflections.rgb, dynamicReflections.a);
-	#else
-		float3 finalReflection = skyReflections;
-	#endif
-
-	finalReflection *= lerp(sample.diffuseAlbedo, 1.0.xxx, Material_GetMetal(sample));
-
-	result += Material_GetReflectionScale(sample) * finalReflection;
-
-	return float4(result, 1.f);
+	float3 result = LightResolve_Ambient(sample, viewDirection, Ambient, pixelCoords, GetSampleIndex(sys));
+	return float4(LightingScale * result, 1.f);
 }
 
 #endif
