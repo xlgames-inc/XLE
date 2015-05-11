@@ -68,7 +68,7 @@ namespace PlatformRig
     DefaultShadowFrustumSettings::DefaultShadowFrustumSettings()
     {
         const unsigned frustumCount = 5;
-        const float maxDistanceFromCamera = 1000.f;        // need really large distance because some models have a 100.f scale factor!
+        const float maxDistanceFromCamera = 500.f;        // need really large distance because some models have a 100.f scale factor!
         const float frustumSizeFactor = 3.8f;
         const float focusDistance = 3.f;
 

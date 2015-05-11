@@ -29,8 +29,8 @@ namespace ToolsRig
             Float3      _position;
             Float3      _normal;
             Float2      _texCoord;
-            Float3      _tangent;
-            Float3      _bitangent;
+            Float4      _tangent;
+            // Float3      _bitangent;
         };
         #pragma pack(pop)
     }

@@ -36,7 +36,11 @@ float3 SampleNormalMap(Texture2D normalMap, SamplerState samplerObject, bool dxt
 float3 NormalMapAlgorithm(  Texture2D normalMap, SamplerState samplerObject, bool dxtFormatNormalMap,
                             float2 texCoord, TangentFrameStruct tangentFrame)
 {
+        // the following seems to give the best results on the "nyra" model currently...
+        // but it doesn't work with geometry with tangents generated in max
+    // float3x3 normalsTextureToWorld = float3x3(-tangentFrame.tangent.xyz, -tangentFrame.bitangent, tangentFrame.normal);
     float3x3 normalsTextureToWorld = float3x3(tangentFrame.tangent.xyz, tangentFrame.bitangent, tangentFrame.normal);
+
 	float3 normalTextureSample = SampleNormalMap(normalMap, samplerObject, dxtFormatNormalMap, texCoord);
 		// Note -- matrix multiply opposite from normal
         //          (so we can initialise normalsTextureToWorld easily)

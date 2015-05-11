@@ -21,8 +21,8 @@ namespace ToolsRig
             RenderCore::Metal::InputElementDesc( "POSITION", 0, RenderCore::Metal::NativeFormat::R32G32B32_FLOAT ),
             RenderCore::Metal::InputElementDesc(   "NORMAL", 0, RenderCore::Metal::NativeFormat::R32G32B32_FLOAT ),
             RenderCore::Metal::InputElementDesc( "TEXCOORD", 0, RenderCore::Metal::NativeFormat::R32G32_FLOAT ),
-            RenderCore::Metal::InputElementDesc( "TANGENT", 0, RenderCore::Metal::NativeFormat::R32G32B32_FLOAT ),
-            RenderCore::Metal::InputElementDesc( "BITANGENT", 0, RenderCore::Metal::NativeFormat::R32G32B32_FLOAT )
+            RenderCore::Metal::InputElementDesc( "TANGENT", 0, RenderCore::Metal::NativeFormat::R32G32B32A32_FLOAT )//,
+            //RenderCore::Metal::InputElementDesc( "BITANGENT", 0, RenderCore::Metal::NativeFormat::R32G32B32_FLOAT )
         };
     }
 
@@ -90,6 +90,9 @@ namespace ToolsRig
         std::vector<Internal::Vertex3D> result;
         result.reserve(pts.size());
 
+        const float texWrapsX = 8.f;
+        const float texWrapsY = 4.f;
+
         for (auto i=pts.cbegin(); i!=pts.cend(); ++i) {
             Internal::Vertex3D vertex;
             vertex._position    = *i;
@@ -101,16 +104,83 @@ namespace ToolsRig
 
             float latitude  = XlASin((*i)[2]);
             float longitude = XlATan2((*i)[1], (*i)[0]);
-            latitude = 1.f - (latitude + .5f * gPI) / gPI;
-            longitude = (longitude + .5f * gPI) / gPI;
+            latitude = 1.f - (latitude + .5f * gPI) / gPI * texWrapsY;
+            longitude = (longitude + .5f * gPI) / gPI * (texWrapsX / 2.f);
 
             vertex._texCoord = Float2(longitude, latitude);
 
-            vertex._tangent = Float3((*i)[1], -(*i)[0], 0.f);
-            vertex._bitangent = Cross(vertex._tangent, vertex._normal);
+            Float3 bt(0.f, 0.f, -1.f);
+            bt = bt - vertex._normal * Dot(vertex._normal, bt);
+            if (MagnitudeSquared(bt) < 1e-3f) {
+                    // this a vertex on a singularity (straight up or straight down)
+                vertex._tangent = Float4(0.f, 0.f, 0.f, 0.f);
+                // vertex._bitangent = Float3(0.f, 0.f, 0.f);
+            } else {
+                bt = Normalize(bt);
+                // vertex._bitangent = bt;
+                    // cross(bitangent, tangent) * handiness == normal, so...
+                Float3 t = Normalize(Cross(vertex._normal, bt));
+                vertex._tangent = Expand(t, 1.f);
+            
+                auto test = Float3(Cross(bt, Truncate(vertex._tangent)) * vertex._tangent[3]);
+                assert(Equivalent(test, vertex._normal, 1e-4f));
+
+                    // tangent should also be the 2d cross product of the XY position (according to the shape of a sphere)
+                auto test2 = Normalize(Float3(-(*i)[1], (*i)[0], 0.f));
+                assert(Equivalent(test2, Truncate(vertex._tangent), 1e-4f));
+
+                    // make sure handiness is right
+                // assert(Equivalent(vertex._bitangent[2], 0.f, 1e-4f));
+                // auto testLong = XlATan2((*i)[1] + 0.05f * vertex._bitangent[1], (*i)[0] + 0.05f * vertex._bitangent[0]);
+                // testLong = (testLong + .5f * gPI) / gPI;
+                // assert(testLong > longitude);
+            }
 
             result.push_back(vertex);
         }
+
+            // there is a problem case on triangles that wrap around in longitude. Along these triangles, the
+            // texture coordinates will appear to wrap backwards through the entire texture. We can use the
+            // tangents to find these triangles, because the tangents will appear to be in the wrong direction
+            // for these triangles.
+        unsigned triCount = unsigned(result.size() / 3);
+        for (unsigned t=0; t<triCount; ++t) {
+            auto& A = result[t*3+0];
+            auto& B = result[t*3+1];
+            auto& C = result[t*3+2];
+
+                // problems around the singularity straight up or straight down
+            if (MagnitudeSquared(A._tangent) < 1e-4f || MagnitudeSquared(B._tangent) < 1e-4f || MagnitudeSquared(C._tangent) < 1e-4f)
+                continue;
+
+            if (XlAbs(B._texCoord[0] - A._texCoord[0]) > 1e-3f) {
+                assert(Dot(Truncate(B._tangent), Truncate(A._tangent)) > 0.f);  // both tangents should point in roughly the same direction
+                bool rightWay1 = (Dot(B._position - A._position, Truncate(A._tangent)) < 0.f) == ((B._texCoord[0] - A._texCoord[0]) < 0.f);
+                if (!rightWay1) {
+                    if (B._texCoord[0] < A._texCoord[0]) B._texCoord[0] += texWrapsX;
+                    else A._texCoord[0] += texWrapsX;
+                }
+            }
+
+            if (XlAbs(C._texCoord[0] - A._texCoord[0]) > 1e-3f) {
+                assert(Dot(Truncate(C._tangent), Truncate(A._tangent)) > 0.f);  // both tangents should point in roughly the same direction
+                bool rightWay1 = (Dot(C._position - A._position, Truncate(A._tangent)) < 0.f) == ((C._texCoord[0] - A._texCoord[0]) < 0.f);
+                if (!rightWay1) {
+                    if (C._texCoord[0] < A._texCoord[0]) C._texCoord[0] += texWrapsX;
+                    else A._texCoord[0] += texWrapsX;
+                }
+            }
+
+            if (XlAbs(C._texCoord[0] - B._texCoord[0]) > 1e-3f) {
+                assert(Dot(Truncate(C._tangent), Truncate(B._tangent)) > 0.f);  // both tangents should point in roughly the same direction
+                bool rightWay1 = (Dot(C._position - B._position, Truncate(B._tangent)) < 0.f) == ((C._texCoord[0] - B._texCoord[0]) < 0.f);
+                if (!rightWay1) {
+                    if (C._texCoord[0] < B._texCoord[0]) C._texCoord[0] += texWrapsX;
+                    else B._texCoord[0] += texWrapsX;
+                }
+            }
+        }
+
         return result;
     }
 
@@ -144,8 +214,9 @@ namespace ToolsRig
                 a[q]._position = normal + faceCoord[q][0] * u + faceCoord[q][1] * v;
                 a[q]._normal = normal;
                 a[q]._texCoord = Float2(.5f * faceCoord[q][0] + .5f, .5f * faceCoord[q][1] + .5f);
-                a[q]._tangent = u;
-                a[q]._bitangent = v;
+                a[q]._tangent = Expand(u, 1.f);
+                a[q]._tangent[3] = (Dot(Cross(v, u), normal) < 0.f) ? -1.f : 1.f;
+                // a[q]._bitangent = v;
             }
             result.push_back(a[0]); result.push_back(a[1]); result.push_back(a[2]);
             result.push_back(a[2]); result.push_back(a[1]); result.push_back(a[3]);
