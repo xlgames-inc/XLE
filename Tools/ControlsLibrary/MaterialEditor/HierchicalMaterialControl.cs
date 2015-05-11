@@ -36,41 +36,41 @@ namespace ControlsLibrary.MaterialEditor
                     for (int c = 0; c < split.Count; ++c)
                         firstNode = AddNode(split.GetRange(0, c+1));
 
-                    treeView1.SelectedNodeChanged += SubMatSelectedNodeChanged; 
-                    treeView1.SelectedNode = firstNode;
+                    _hierachyTree.SelectedNodeChanged += SubMatSelectedNodeChanged; 
+                    _hierachyTree.SelectedNode = firstNode;
                 }
             }
         }
 
         public Tuple<string, ulong> PreviewModel
         {
-            set { materialControl1.PreviewModel = value; }
+            set { _materialControl.PreviewModel = value; }
         }
 
         public GUILayer.EnvironmentSettingsSet EnvironmentSet
         {
-            set { materialControl1.EnvironmentSet = value; }
+            set { _materialControl.EnvironmentSet = value; }
         }
 
-        public MaterialControl FocusedMatControls { get { return materialControl1; } }
+        public MaterialControl FocusedMatControls { get { return _materialControl; } }
 
         protected void SubMatSelectedNodeChanged(object sender, EventArgs e)
         {
                 //  When the selected node changes, we want to 
                 //  change the object that we're currently editing...
-            var mat = (treeView1.SelectedNode!=null) ? (treeView1.SelectedNode.Tag as IEnumerable<string>) : null;
-            materialControl1.Object = mat;
+            var mat = (_hierachyTree.SelectedNode!=null) ? (_hierachyTree.SelectedNode.Tag as IEnumerable<string>) : null;
+            _materialControl.Object = mat;
         }
 
         protected void ClearComboBoxNodes()
         {
-            treeView1.Nodes.Clear();
+            _hierachyTree.Nodes.Clear();
         }
 
         protected ComboTreeNode AddNode(IList<string> names)
         {
             string topItem = names[names.Count - 1];
-            var parentNode = treeView1.Nodes.Add(topItem);
+            var parentNode = _hierachyTree.Nodes.Add(topItem);
             parentNode.Tag = names;
             AddComboBoxChildren(parentNode, GUILayer.RawMaterial.BuildInheritanceList(topItem));
             return parentNode;

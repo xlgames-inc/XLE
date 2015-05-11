@@ -22,8 +22,8 @@ namespace ControlsLibrary.MaterialEditor
             InitializeComponent();
             visSettings = GUILayer.MaterialVisSettings.CreateDefault();
             visLayer = new GUILayer.MaterialVisLayer(visSettings);
-            preview.Underlying.AddSystem(visLayer);
-            preview.Underlying.AddDefaultCameraHandler(visSettings.Camera);
+            _preview.Underlying.AddSystem(visLayer);
+            _preview.Underlying.AddDefaultCameraHandler(visSettings.Camera);
 
             _geoType.DataSource = Enum.GetValues(typeof(GUILayer.MaterialVisSettings.GeometryType));
             _geoType.SelectedItem = visSettings.Geometry;
@@ -84,7 +84,7 @@ namespace ControlsLibrary.MaterialEditor
             InvalidatePreview();
         }
 
-        public void InvalidatePreview() { preview.Invalidate(); }
+        public void InvalidatePreview() { _preview.Invalidate(); }
 
         protected GUILayer.MaterialVisLayer visLayer;
         protected GUILayer.MaterialVisSettings visSettings;
@@ -94,7 +94,7 @@ namespace ControlsLibrary.MaterialEditor
         private void _resetCamera_Click(object sender, EventArgs e)
         {
             visSettings.ResetCamera = true;
-            preview.Invalidate();
+            _preview.Invalidate();
         }
     }
 }

@@ -31,6 +31,11 @@ namespace ControlsLibrary
                     _errorDetails.Lines = a.Item2.Split(new string[] { "\n", "\r\n" }, StringSplitOptions.None);
         }
 
+        private void _closeButton_Click(object sender, EventArgs e)
+        {
+            DialogResult = DialogResult.OK;
+        }
+
         protected GUILayer.InvalidAssetList _list;
     }
 }

@@ -25,10 +25,10 @@ namespace ControlsLibrary.MaterialEditor
             //  automatic generation seems to get the columns in
             //  the wrong order).
             {
-                materialParameterBox.AutoGenerateColumns = false;
+                _materialParameterBox.AutoGenerateColumns = false;
                 // var cell = new DataGridViewTextBoxCell();
 
-                materialParameterBox.Columns.Add(
+                _materialParameterBox.Columns.Add(
                     new DataGridViewTextBoxColumn()
                     {
                         // CellTemplate = cell,
@@ -40,7 +40,7 @@ namespace ControlsLibrary.MaterialEditor
                         AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill
                     });
 
-                materialParameterBox.Columns.Add(
+                _materialParameterBox.Columns.Add(
                     new DataGridViewTextBoxColumn()
                     {
                         // CellTemplate = cell,
@@ -54,10 +54,10 @@ namespace ControlsLibrary.MaterialEditor
             }
 
             {
-                shaderConstants.AutoGenerateColumns = false;
+                _shaderConstants.AutoGenerateColumns = false;
                 // var cell = new DataGridViewTextBoxCell();
 
-                shaderConstants.Columns.Add(
+                _shaderConstants.Columns.Add(
                     new DataGridViewTextBoxColumn()
                     {
                         // CellTemplate = cell,
@@ -69,7 +69,7 @@ namespace ControlsLibrary.MaterialEditor
                         AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill
                     });
 
-                shaderConstants.Columns.Add(
+                _shaderConstants.Columns.Add(
                     new DataGridViewTextBoxColumn()
                     {
                         // CellTemplate = cell,
@@ -83,10 +83,10 @@ namespace ControlsLibrary.MaterialEditor
             }
 
             {
-                resourceBindings.AutoGenerateColumns = false;
+                _resourceBindings.AutoGenerateColumns = false;
                 // var cell = new DataGridViewTextBoxCell();
 
-                resourceBindings.Columns.Add(
+                _resourceBindings.Columns.Add(
                     new DataGridViewTextBoxColumn()
                     {
                         // CellTemplate = cell,
@@ -98,7 +98,7 @@ namespace ControlsLibrary.MaterialEditor
                         AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill
                     });
 
-                resourceBindings.Columns.Add(
+                _resourceBindings.Columns.Add(
                     new DataGridViewTextBoxColumn()
                     {
                         // CellTemplate = cell,
@@ -120,15 +120,15 @@ namespace ControlsLibrary.MaterialEditor
 
         protected void ClearAndDispose()
         {
-            materialParameterBox.DataSource = null;
-            shaderConstants.DataSource =  null;
-            resourceBindings.DataSource = null;
-            materialPreview1.Object = null;
+            _materialParameterBox.DataSource = null;
+            _shaderConstants.DataSource =  null;
+            _resourceBindings.DataSource = null;
+            _materialPreview1.Object = null;
             foreach (var o in _controls) o.Object = null;
-            checkBox1.DataBindings.Clear();
-            checkBox2.DataBindings.Clear();
-            checkBox1.CheckState = CheckState.Indeterminate;
-            checkBox2.CheckState = CheckState.Indeterminate;
+            _doubleSidedCheck.DataBindings.Clear();
+            _wireframeGroup.DataBindings.Clear();
+            _doubleSidedCheck.CheckState = CheckState.Indeterminate;
+            _wireframeGroup.CheckState = CheckState.Indeterminate;
 
             if (_currentFocusMat != null)
             {
@@ -169,21 +169,21 @@ namespace ControlsLibrary.MaterialEditor
                     foreach (var s in value)
                         mats.Add(new GUILayer.RawMaterial(s));
 
-                materialPreview1.Object = mats; 
+                _materialPreview1.Object = mats; 
                 _objectsPendingDispose = mats;
 
                 var focusMat = (mats.Count > 0) ? mats[mats.Count-1] : null;
                 if (focusMat != null)
                 {
                     foreach (var o in _controls) o.Object = focusMat;
-                    materialParameterBox.DataSource = focusMat.MaterialParameterBox;
-                    shaderConstants.DataSource = focusMat.ShaderConstants;
-                    resourceBindings.DataSource = focusMat.ResourceBindings;
+                    _materialParameterBox.DataSource = focusMat.MaterialParameterBox;
+                    _shaderConstants.DataSource = focusMat.ShaderConstants;
+                    _resourceBindings.DataSource = focusMat.ResourceBindings;
 
                     if (focusMat.StateSet != null)
                     {
-                        checkBox1.DataBindings.Add("CheckState", focusMat.StateSet, "DoubleSided", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged);
-                        checkBox2.DataBindings.Add("CheckState", focusMat.StateSet, "Wireframe", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged);
+                        _doubleSidedCheck.DataBindings.Add("CheckState", focusMat.StateSet, "DoubleSided", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged);
+                        _wireframeGroup.DataBindings.Add("CheckState", focusMat.StateSet, "Wireframe", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged);
 
                         _blendMode.SelectedItem = focusMat.StateSet.StandardBlendMode;
                     }
@@ -198,17 +198,17 @@ namespace ControlsLibrary.MaterialEditor
 
         void OnParameterChanged(object sender, ListChangedEventArgs e)
         {
-            materialPreview1.InvalidatePreview();
+            _materialPreview1.InvalidatePreview();
         }
 
         public Tuple<string, ulong> PreviewModel
         {
-            set { materialPreview1.PreviewModel = value; }
+            set { _materialPreview1.PreviewModel = value; }
         }
 
         public GUILayer.EnvironmentSettingsSet EnvironmentSet
         {
-            set { materialPreview1.EnvironmentSet = value; }
+            set { _materialPreview1.EnvironmentSet = value; }
         }
 
         public abstract class ExtraControls : UserControl

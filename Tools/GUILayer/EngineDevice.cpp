@@ -155,6 +155,12 @@ namespace GUILayer
     {
         assert(s_instance == this);
         s_instance = nullptr;
+
+            // it's a good idea to force a GC collect here...
+            // it will help flush out managed references to native objects
+            // before we go through the shutdown steps
+        System::GC::Collect();
+        System::GC::WaitForPendingFinalizers();
         
         RenderCore::Techniques::ResourceBoxes_Shutdown();
         RenderOverlays::CleanupFontSystem();
