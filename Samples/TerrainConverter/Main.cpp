@@ -36,7 +36,8 @@ static void SetWorkingDirectory()
     XlGetProcessPath    (appPath, dimof(appPath));
     XlSimplifyPath      (appPath, dimof(appPath), appPath, a2n("\\/"));
     XlDirname           (appDir, dimof(appDir), appPath);
-    XlConcatPath        (workingDir, dimof(workingDir), appDir, a2n("..\\Working"));
+    const auto* fn = a2n("..\\Working");
+    XlConcatPath        (workingDir, dimof(workingDir), appDir, fn, &fn[XlStringLen(fn)]);
     XlSimplifyPath      (workingDir, dimof(workingDir), workingDir, a2n("\\/"));
     XlChDir             (workingDir);
 }

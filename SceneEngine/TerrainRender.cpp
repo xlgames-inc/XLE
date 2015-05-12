@@ -3389,7 +3389,8 @@ namespace SceneEngine
     , _elementSpacing(elementSpacing)
     {
         ::Assets::ResChar buffer[MaxPath];
-        XlConcatPath(buffer, dimof(buffer), _baseDir.c_str(), "terraintextures/textures.txt");
+        const auto* fn = "terraintextures/textures.txt";
+        XlConcatPath(buffer, dimof(buffer), _baseDir.c_str(), fn, &fn[XlStringLen(fn)]);
         _textureCfgName = buffer;
     }
 
@@ -3430,7 +3431,8 @@ namespace SceneEngine
 
         {
             ::Assets::ResChar buffer[MaxPath];
-            XlConcatPath(buffer, dimof(buffer), _baseDir.c_str(), "terraintextures/textures.txt");
+            const auto* fn = "terraintextures/textures.txt";
+            XlConcatPath(buffer, dimof(buffer), _baseDir.c_str(), fn, &fn[XlStringLen(fn)]);
             _textureCfgName = buffer;
         }
     }

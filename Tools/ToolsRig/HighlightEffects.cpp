@@ -63,7 +63,7 @@ namespace ToolsRig
         {
             auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
                 "game/xleres/basic2D.vsh:fullscreen:vs_*", 
-                "game/xleres/Effects/HighlightVis.psh:HighlightByStencil:ps_*",
+                "game/xleres/Vis/HighlightVis.psh:HighlightByStencil:ps_*",
                 (const ::Assets::ResChar*)params);
                 
             metalContext.Bind(shader);
@@ -73,7 +73,7 @@ namespace ToolsRig
         {
             auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
                 "game/xleres/basic2D.vsh:fullscreen:vs_*", 
-                "game/xleres/Effects/HighlightVis.psh:OutlineByStencil:ps_*",
+                "game/xleres/Vis/HighlightVis.psh:OutlineByStencil:ps_*",
                 (const ::Assets::ResChar*)params);
                 
             metalContext.Bind(shader);

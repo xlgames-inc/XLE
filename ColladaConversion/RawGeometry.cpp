@@ -48,6 +48,12 @@ namespace RenderCore { namespace ColladaConversion
 {
     using ::Assets::Exceptions::FormatError;
 
+    namespace ProcessingFlags 
+    { 
+        enum Enum { TexCoordFlip = 1<<0, TangentHandinessFlip = 1<<1, BitangentFlip = 1<<2, Renormalize = 1<<3 };
+        typedef unsigned BitField;
+    }
+
     class VertexAttribute 
     { 
     public:
@@ -55,13 +61,13 @@ namespace RenderCore { namespace ColladaConversion
         unsigned        _index;
         std::string     _semanticName;
         std::string     _sourceName;
-        bool            _doTextureCoordinateFlip;
+        ProcessingFlags::BitField        _processingFlags;
 
         VertexAttribute(COLLADASaxFWL::InputSemantic::Semantic basicSemantic, unsigned index, 
-                        const std::string& semanticName, const std::string& sourceName, bool doTextureCoordinateFlip)
+                        const std::string& semanticName, const std::string& sourceName, ProcessingFlags::BitField processingFlags = 0)
         :   _basicSemantic(basicSemantic), _index(index)
         ,   _semanticName(semanticName), _sourceName(sourceName)
-        ,   _doTextureCoordinateFlip(doTextureCoordinateFlip)
+        ,   _processingFlags(processingFlags)
         {}
     };
 
@@ -103,23 +109,32 @@ namespace RenderCore { namespace ColladaConversion
             //
             //          Can't seem to the get the "source" id for positions, normals, tangents and bitangents...?
             //
-        result.push_back(VertexAttribute(COLLADASaxFWL::InputSemantic::POSITION, 0, "POSITION", "Source-Position", false));
+            //      Doing some processing on the input elements:
+            //          flip 't' component of texture coordinates
+            //          for some reason, collada defines this upside down. But the bitangent isn't flipped to match...?
+            //
+            //          Also, renormalising tangents and bitangents. Getting unnormalised vectors sometimes.
+            //          That could be done intentionally to adjust the shape of tangent space... But it's
+            //          a little wierd (and it could mean that normals come out unnormalized after being transformed
+            //          by the normal map). So let's renormalize here...
+            //
+        result.push_back(VertexAttribute(COLLADASaxFWL::InputSemantic::POSITION, 0, "POSITION", "Source-Position"));
         if (primitive.hasNormalIndices()) {
-            result.push_back(VertexAttribute(COLLADASaxFWL::InputSemantic::NORMAL, 0, "NORMAL", "Source-Normals", false));
+            result.push_back(VertexAttribute(COLLADASaxFWL::InputSemantic::NORMAL, 0, "NORMAL", "Source-Normals"));
         }
         if (primitive.hasTangentIndices()) {
-            result.push_back(VertexAttribute(COLLADASaxFWL::InputSemantic::TANGENT, 0, "TANGENT", "Source-Tangents", false));
+            result.push_back(VertexAttribute(COLLADASaxFWL::InputSemantic::TANGENT, 0, "TANGENT", "Source-Tangents", ProcessingFlags::Renormalize));
         }
         if (primitive.hasBinormalIndices()) {
-            result.push_back(VertexAttribute(COLLADASaxFWL::InputSemantic::BINORMAL, 0, "BITANGENT", "Source-Bitangents", false));
+            result.push_back(VertexAttribute(COLLADASaxFWL::InputSemantic::BINORMAL, 0, "BITANGENT", "Source-Bitangents", ProcessingFlags::Renormalize));
         }
         for (unsigned c=0; c<primitive.getColorIndicesArray().getCount(); c++) {
             assert(primitive.getColorIndices(c));
-            result.push_back(VertexAttribute(COLLADASaxFWL::InputSemantic::COLOR, c, "COLOR", primitive.getColorIndices(c)->getName(), false));
+            result.push_back(VertexAttribute(COLLADASaxFWL::InputSemantic::COLOR, c, "COLOR", primitive.getColorIndices(c)->getName()));
         }
         for (unsigned c=0; c<primitive.getUVCoordIndicesArray().getCount(); c++) {
             assert(primitive.getUVCoordIndices(c));
-            result.push_back(VertexAttribute(COLLADASaxFWL::InputSemantic::TEXCOORD, c, "TEXCOORD", primitive.getUVCoordIndices(c)->getName(), true));
+            result.push_back(VertexAttribute(COLLADASaxFWL::InputSemantic::TEXCOORD, c, "TEXCOORD", primitive.getUVCoordIndices(c)->getName(), ProcessingFlags::TexCoordFlip));
         }
         return result;
     }
@@ -185,7 +200,7 @@ namespace RenderCore { namespace ColladaConversion
         std::string         _name;
         size_t              _start, _end, _stride;      // (in elements)
         std::vector<Param>  _params;
-        bool                _doTextureCoordinateFlip;
+        ProcessingFlags::BitField   _processingFlags;
 
         bool IsValid() const { return _vertexData != nullptr; }
         VertexSourceDataAdapter();
@@ -202,7 +217,7 @@ namespace RenderCore { namespace ColladaConversion
     {
         _vertexData = nullptr;
         _start = _end = _stride = 0;
-        _doTextureCoordinateFlip = false;
+        _processingFlags = 0;
     }
 
     auto VertexSourceDataAdapter::DefaultPosition  (const COLLADAFW::MeshVertexData& vd, size_t stride) -> std::vector<Param>
@@ -275,7 +290,7 @@ namespace RenderCore { namespace ColladaConversion
                 result._stride      = vertexData.getInputInfosArray()[0]->mStride;
             }
             result._params      = VertexSourceDataAdapter::DefaultPosition(vertexData, result._stride);
-            result._doTextureCoordinateFlip = attribute._doTextureCoordinateFlip;
+            result._processingFlags = attribute._processingFlags;
             return std::move(result);
 
         } else if (attribute._basicSemantic == COLLADASaxFWL::InputSemantic::NORMAL) {
@@ -296,7 +311,7 @@ namespace RenderCore { namespace ColladaConversion
                 result._stride      = vertexData.getInputInfosArray()[0]->mStride;
             }
             result._params      = VertexSourceDataAdapter::DefaultNormal(vertexData, result._stride);
-            result._doTextureCoordinateFlip = attribute._doTextureCoordinateFlip;
+            result._processingFlags = attribute._processingFlags;
             return std::move(result);
 
         } else if (attribute._basicSemantic == COLLADASaxFWL::InputSemantic::TANGENT) {
@@ -317,7 +332,7 @@ namespace RenderCore { namespace ColladaConversion
                 result._stride      = vertexData.getInputInfosArray()[0]->mStride;
             }
             result._params      = VertexSourceDataAdapter::DefaultTangent(vertexData, result._stride);
-            result._doTextureCoordinateFlip = attribute._doTextureCoordinateFlip;
+            result._processingFlags = attribute._processingFlags;
             return std::move(result);
 
         } else if (attribute._basicSemantic == COLLADASaxFWL::InputSemantic::BINORMAL) {
@@ -338,7 +353,7 @@ namespace RenderCore { namespace ColladaConversion
                 result._stride      = vertexData.getInputInfosArray()[0]->mStride;
             }
             result._params      = VertexSourceDataAdapter::DefaultBitangent(vertexData, result._stride);
-            result._doTextureCoordinateFlip = attribute._doTextureCoordinateFlip;
+            result._processingFlags = attribute._processingFlags;
             return std::move(result);
 
         } else if (attribute._basicSemantic == COLLADASaxFWL::InputSemantic::COLOR) {
@@ -365,7 +380,7 @@ namespace RenderCore { namespace ColladaConversion
             result._end         = vertexData.getInputInfosArray()[sourceIndex]->mLength + sourceOffset;
             result._stride      = vertexData.getInputInfosArray()[sourceIndex]->mStride;
             result._params      = VertexSourceDataAdapter::DefaultColor(vertexData, result._stride);
-            result._doTextureCoordinateFlip = attribute._doTextureCoordinateFlip;
+            result._processingFlags = attribute._processingFlags;
             return std::move(result);
 
         } else if (attribute._basicSemantic == COLLADASaxFWL::InputSemantic::TEXCOORD) {
@@ -391,7 +406,7 @@ namespace RenderCore { namespace ColladaConversion
             result._end         = vertexData.getInputInfosArray()[sourceIndex]->mLength + sourceOffset;
             result._stride      = vertexData.getInputInfosArray()[sourceIndex]->mStride;
             result._params      = VertexSourceDataAdapter::DefaultTexCoord(vertexData, result._stride);
-            result._doTextureCoordinateFlip = attribute._doTextureCoordinateFlip;
+            result._processingFlags = attribute._processingFlags;
             return std::move(result);
         }
         return VertexSourceDataAdapter();
@@ -786,6 +801,33 @@ namespace RenderCore { namespace ColladaConversion
         assert(((dataSize % elementSize) == 0) && ((dataSize / elementSize) == _unifiedVertexCount));
     }
 
+    static inline void GetVertData(
+        float* dst, 
+        const float* src, unsigned srcComponentCount,
+        ProcessingFlags::BitField processingFlags)
+    {
+            // In Collada, the default for values not set is 0.f (or 1. for components 3 or greater)
+        dst[0] = (srcComponentCount > 0) ? src[0] : 0.f;
+        dst[1] = (srcComponentCount > 1) ? src[1] : 0.f;
+        dst[2] = (srcComponentCount > 2) ? src[2] : 0.f;
+        dst[3] = (srcComponentCount > 3) ? src[3] : 1.f;
+        if (processingFlags & ProcessingFlags::Renormalize) {
+            float scale;
+            if (XlRSqrt_Checked(&scale, dst[0] * dst[0] + dst[1] * dst[1] + dst[2] * dst[2]))
+                dst[0] *= scale; dst[1] *= scale; dst[2] *= scale;
+        }
+
+        if (processingFlags & ProcessingFlags::TexCoordFlip) {
+            dst[1] = 1.0f - dst[1];
+        } else if (processingFlags & ProcessingFlags::BitangentFlip) {
+            dst[0] = -dst[0];
+            dst[1] = -dst[1];
+            dst[2] = -dst[2];
+        } else if (processingFlags & ProcessingFlags::TangentHandinessFlip) {
+            dst[3] = -dst[3];
+        }
+    }
+
     template<> Float3 MeshDatabaseAdapter::GetUnifiedElement(size_t vertexIndex, unsigned elementIndex) const
     {
         auto& stream = _streams[elementIndex];
@@ -793,15 +835,10 @@ namespace RenderCore { namespace ColladaConversion
         auto& sourceData = stream._sourceData;
         assert(((indexInStream+1) * sourceData._stride) <= sourceData._vertexData->getFloatValues()->getCount());
         const auto* sourceStart = &sourceData._vertexData->getFloatValues()->getData()[indexInStream * sourceData._stride];
-        Float3 result;
-        result[0] = sourceStart[0];
-        result[1] = (sourceData._stride > 1) ? sourceStart[1] : 0.f;
-        result[2] = (sourceData._stride > 2) ? sourceStart[2] : 0.f;
-
-        if (stream._sourceData._doTextureCoordinateFlip && sourceData._stride > 1)
-            result[1] = 1.0f - result[1];
-
-        return result;
+        
+        float input[4];
+        GetVertData(input, sourceStart, (unsigned)sourceData._stride, stream._sourceData._processingFlags);
+        return Float3(input[0], input[1], input[2]);
     }
 
     template<> Float2 MeshDatabaseAdapter::GetUnifiedElement(size_t vertexIndex, unsigned elementIndex) const
@@ -811,14 +848,10 @@ namespace RenderCore { namespace ColladaConversion
         auto& sourceData = stream._sourceData;
         assert(((indexInStream+1) * sourceData._stride) <= sourceData._vertexData->getFloatValues()->getCount());
         const auto* sourceStart = &sourceData._vertexData->getFloatValues()->getData()[indexInStream * sourceData._stride];
-        Float2 result;
-        result[0] = sourceStart[0];
-        result[1] = (sourceData._stride > 1) ? sourceStart[1] : 0.f;
 
-        if (stream._sourceData._doTextureCoordinateFlip && sourceData._stride > 1)
-            result[1] = 1.0f - result[1];
-
-        return result;
+        float input[4];
+        GetVertData(input, sourceStart, (unsigned)sourceData._stride, stream._sourceData._processingFlags);
+        return Float2(input[0], input[1]);
     }
 
     std::unique_ptr<uint32[]> MeshDatabaseAdapter::BuildUnifiedVertexIndexToPositionIndex() const
@@ -849,34 +882,25 @@ namespace RenderCore { namespace ColladaConversion
         const void* dst, Metal::NativeFormat::Enum dstFmt, size_t dstStride,
         const void* src, Metal::NativeFormat::Enum srcFmt, size_t srcStride,
         std::vector<unsigned> mapping,
-        unsigned count, bool doTextureCoordinateFlip)
+        unsigned count, ProcessingFlags::BitField processingFlags)
     {
         auto dstFormat = BreakdownFormat(dstFmt);
         auto srcFormat = BreakdownFormat(srcFmt);
 
-        doTextureCoordinateFlip &= dstFormat.second >= 2;
-
-        const unsigned short half0 = AsFloat16(0.f);
-        const unsigned short half1 = AsFloat16(1.f);
-        
             //      This could be be made more efficient with a smarter loop..
         if (srcFormat.first == ComponentType::Float32) {
+
             if (dstFormat.first == ComponentType::Float32) {  ////////////////////////////////////////////////
 
                 for (unsigned v = 0; v<count; ++v, dst = PtrAdd(dst, dstStride)) {
                     auto srcIndex = (v < mapping.size()) ? mapping[v] : v;
                     auto* srcV = PtrAdd(src, srcIndex * srcStride);
-                    for (unsigned c=0; c<dstFormat.second; ++c) {
-                        if (c < srcFormat.second) {
-                            ((float*)dst)[c] = ((float*)srcV)[c];
-                        } else {
-                            ((float*)dst)[c] = (c < 3)?0.f:1.f; // default for values not set in Collada
-                        }
-                    }
 
-                    if (doTextureCoordinateFlip) {
-                        ((float*)dst)[1] = 1.0f - ((float*)srcV)[1];
-                    }
+                    float input[4];
+                    GetVertData(input, (const float*)srcV, srcFormat.second, processingFlags);
+
+                    for (unsigned c=0; c<dstFormat.second; ++c)
+                        ((float*)dst)[c] = input[c];
                 }
 
             } else if (dstFormat.first == ComponentType::Float16) {  ////////////////////////////////////////////////
@@ -884,17 +908,12 @@ namespace RenderCore { namespace ColladaConversion
                 for (unsigned v = 0; v<count; ++v, dst = PtrAdd(dst, dstStride)) {
                     auto srcIndex = (v < mapping.size()) ? mapping[v] : v;
                     auto* srcV = PtrAdd(src, srcIndex * srcStride);
-                    for (unsigned c=0; c<dstFormat.second; ++c) {
-                        if (c < srcFormat.second) {
-                            ((unsigned short*)dst)[c] = AsFloat16(((float*)srcV)[c]);
-                        } else {
-                            ((unsigned short*)dst)[c] = (c < 3)?half0:half1;    // default for values not set in Collada
-                        }
-                    }
 
-                    if (doTextureCoordinateFlip) {
-                        ((unsigned short*)dst)[1] = AsFloat16(1.0f - ((float*)srcV)[1]);
-                    }
+                    float input[4];
+                    GetVertData(input, (const float*)srcV, srcFormat.second, processingFlags);
+
+                    for (unsigned c=0; c<dstFormat.second; ++c)
+                        ((unsigned short*)dst)[c] = AsFloat16(input[c]);
                 }
 
             } else if (dstFormat.first == ComponentType::UNorm8) {  ////////////////////////////////////////////////
@@ -902,18 +921,12 @@ namespace RenderCore { namespace ColladaConversion
                 for (unsigned v = 0; v<count; ++v, dst = PtrAdd(dst, dstStride)) {
                     auto srcIndex = (v < mapping.size()) ? mapping[v] : v;
                     auto* srcV = PtrAdd(src, srcIndex * srcStride);
-                    for (unsigned c=0; c<dstFormat.second; ++c) {
-                        if (c < srcFormat.second) {
-                            ((unsigned char*)dst)[c] = (unsigned char)Clamp(((float*)srcV)[c]*255.f, 0.f, 255.f);
-                        } else {
-                            ((unsigned char*)dst)[c] = (c < 3)?0x0:0xff;    // default for values not set in Collada
-                        }
-                    }
 
-                    if (doTextureCoordinateFlip) {
-                        auto t = 1.0f - ((float*)srcV)[1];
-                        ((unsigned char*)dst)[1] = (unsigned char)(Clamp(t*255.f, 0.f, 255.f));
-                    }
+                    float input[4];
+                    GetVertData(input, (const float*)srcV, srcFormat.second, processingFlags);
+
+                    for (unsigned c=0; c<dstFormat.second; ++c)
+                        ((unsigned char*)dst)[c] = (unsigned char)Clamp(((float*)input)[c]*255.f, 0.f, 255.f);
                 }
 
             } else {
@@ -935,7 +948,7 @@ namespace RenderCore { namespace ColladaConversion
             CopyVertexData(
                 dst, dstFormat, dstStride,
                 sourceData._vertexData->getFloatValues()->getData(), srcFormat, sourceData._stride * sizeof(float),
-                stream._vertexMap, (unsigned)_unifiedVertexCount, stream._sourceData._doTextureCoordinateFlip);
+                stream._vertexMap, (unsigned)_unifiedVertexCount, stream._sourceData._processingFlags);
         } else {
             ThrowException(FormatError("Error while copying vertex data. Only float type data is supported."));
         }
@@ -951,7 +964,7 @@ namespace RenderCore { namespace ColladaConversion
         CopyVertexData(
             dst, dstFormat, dstStride,
             AsPointer(sourceData._rawData.cbegin()), sourceData._fmt, stride,
-            stream._vertexMap, (unsigned)_unifiedVertexCount, false);
+            stream._vertexMap, (unsigned)_unifiedVertexCount, 0);
     }
 
     std::unique_ptr<uint8[]>  MeshDatabaseAdapter::BuildNativeVertexBuffer(NativeVBLayout& outputLayout) const
@@ -1011,13 +1024,10 @@ namespace RenderCore { namespace ColladaConversion
 	{
         using namespace RenderCore::Metal;
 
-        // std::vector<Float3> originalNormals;
-        // originalNormals.reserve(mesh._unifiedVertexCount);
-        // {
-        //     auto normalsElement = mesh.FindElement("NORMAL");
-        //     for (unsigned c=0; c<mesh._unifiedVertexCount; ++c)
-        //         originalNormals.push_back(mesh.GetUnifiedElement<Float3>(c, normalsElement));
-        // }
+            // testing -- remove existing tangents & normals
+        // mesh.RemoveStream(mesh.FindElement("NORMAL"));
+        // mesh.RemoveStream(mesh.FindElement("TANGENT"));
+        // mesh.RemoveStream(mesh.FindElement("BITANGENT"));
 
         auto tcElement = mesh.FindElement("TEXCOORD", normalMapTextureCoordinateSemanticIndex);
         if (tcElement == ~0u) return;   // if there are no texture coordinates, we could generate normals, but we can't generate tangents
@@ -1026,13 +1036,6 @@ namespace RenderCore { namespace ColladaConversion
         bool hasTangents = !!(mesh.HasElement("TANGENT") & 0x1);
         bool hasBitangents = !!(mesh.HasElement("BITANGENT") & 0x1);
         if ((hasNormals && hasTangents) || (hasTangents && hasBitangents)) return;
-
-            // testing -- remove existing tangents & normals
-        // mesh.RemoveStream(mesh.FindElement("NORMAL"));
-        // mesh.RemoveStream(mesh.FindElement("TANGENT"));
-        // mesh.RemoveStream(mesh.FindElement("BITANGENT"));
-        // tcElement = mesh.FindElement("TEXCOORD", normalMapTextureCoordinateSemanticIndex);
-        // hasNormals = false; hasTangents = false; hasBitangents = false;
 
         auto posElement = mesh.FindElement("POSITION");
 

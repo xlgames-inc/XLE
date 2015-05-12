@@ -96,6 +96,7 @@ namespace ToolsRig
         float _highlightRayWidth;
 
         unsigned _colourByMaterial;
+        bool _drawNormals;
 
         ChangeEvent _changeEvent;
 

@@ -212,8 +212,20 @@ namespace Assets
 
     void DirectorySearchRules::ResolveFile(ResChar destination[], unsigned destinationCount, const ResChar baseName[]) const
     {
+        ResChar tempBuffer[MaxPath];
+
+        const auto* colon = XlFindChar(baseName, ':');
+        bool baseFileExist = false;
+        if (colon) {
+            XlCopyNString(tempBuffer, dimof(tempBuffer), baseName, colon - baseName);
+            baseFileExist = DoesFileExist(tempBuffer);
+        } else {
+            baseFileExist = DoesFileExist(baseName);
+            colon = &baseName[XlStringLen(baseName)];
+        }
+
             // by definition, we always check the unmodified file name first
-        if (!DoesFileExist(baseName)) {
+        if (!baseFileExist) {
             const ResChar* b = _buffer;
             if (!_bufferOverflow.empty()) {
                 b = AsPointer(_bufferOverflow.begin());
@@ -222,15 +234,25 @@ namespace Assets
                 // We want to support the case were destination == baseName
                 // But that cases requires another temporary buffer, because we
                 // don't want to trash "baseName" while searching for matches
-            ResChar tempBuffer[MaxPath];
             ResChar* workingBuffer = (baseName!=destination) ? destination : tempBuffer;
             unsigned workingBufferSize = (baseName!=destination) ? destinationCount : unsigned(dimof(tempBuffer));
 
             for (unsigned c=0; c<_startPointCount; ++c) {
-                XlConcatPath(workingBuffer, workingBufferSize, &b[_startOffsets[c]], baseName);
+                XlConcatPath(workingBuffer, workingBufferSize, &b[_startOffsets[c]], baseName, colon);
                 if (DoesFileExist(workingBuffer)) {
-                    if (workingBuffer != destination)
-                        XlCopyString(destination, destinationCount, workingBuffer);
+                    if (workingBuffer != destination) {
+                        auto workingBufferLen = std::min((ptrdiff_t)XlStringLen(workingBuffer), ptrdiff_t(destinationCount) - 1);
+                        auto colonLen = (ptrdiff_t)XlStringLen(colon);
+                        auto colonCopy = std::min(ptrdiff_t(destinationCount) - workingBufferLen - 1, colonLen);
+                        assert((workingBufferLen + colonCopy) < destinationCount);
+                        if (colonCopy > 0)
+                            XlMoveMemory(&destination[workingBufferLen], colon, colonCopy);
+                        destination[workingBufferLen + colonCopy] = '\0';
+                        assert(workingBufferLen < (destinationCount-1));
+                        XlCopyMemory(destination, workingBuffer, workingBufferLen);
+                    } else {
+                        XlCatString(destination, destinationCount, colon);
+                    }
                     return;
                 }
             }

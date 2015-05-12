@@ -29,8 +29,8 @@ namespace Utility
     XL_UTILITY_API void XlToDosPath(char* dst, int count, const char* path);
     XL_UTILITY_API void XlToDosPath(ucs2* dst, int count, const ucs2* path);
 
-    XL_UTILITY_API void XlConcatPath(char* dst, int count, const char* a, const char* b);
-    XL_UTILITY_API void XlConcatPath(ucs2* dst, int count, const ucs2* a, const ucs2* b);
+    XL_UTILITY_API void XlConcatPath(char* dst, int count, const char* a, const char* b, const char* bEnd);
+    XL_UTILITY_API void XlConcatPath(ucs2* dst, int count, const ucs2* a, const ucs2* b, const ucs2* bEnd);
 
     XL_UTILITY_API void XlMakeRelPath(char* dst, int count, const char* root, const char* path);
     XL_UTILITY_API void XlResolveRelPath(char* dst, int count, const char* base, const char* rel);

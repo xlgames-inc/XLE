@@ -162,6 +162,18 @@ namespace GUILayer
             }
         }
 
+        [Category("Visualisation")]
+        [Description("Draw Normals, tangents and bitangents")]
+        property bool DrawNormals
+        {
+            bool get() { return _object->_drawNormals; }
+            void set(bool value)
+            {
+                _object->_drawNormals = value; 
+                _object->_changeEvent.Trigger(); 
+            }
+        }
+
         property VisCameraSettings^ Camera
         {
             VisCameraSettings^ get() { return _camSettings; }

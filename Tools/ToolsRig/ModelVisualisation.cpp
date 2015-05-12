@@ -4,10 +4,6 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#define MODEL_FORMAT_RUNTIME 1
-#define MODEL_FORMAT_SIMPLE 2
-#define MODEL_FORMAT MODEL_FORMAT_RUNTIME
-
 #include "ModelVisualisation.h"
 #include "VisualisationUtils.h"
 #include "HighlightEffects.h"
@@ -30,15 +26,11 @@
 #include "../../Utility/HeapUtils.h"
 #include "../../Utility/StringFormat.h"
 
-#if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
-    #include "../../RenderCore/Assets/ModelRunTime.h"
-    #include "../../RenderCore/Assets/MaterialScaffold.h"
-    #include "../../Assets/CompileAndAsyncManager.h"
-    #include "../../Assets/IntermediateResources.h"
-    #include "../../RenderCore/Assets/ColladaCompilerInterface.h"
-#else
-    #include "../../RenderCore/Assets/ModelSimple.h"
-#endif
+#include "../../RenderCore/Assets/ModelRunTime.h"
+#include "../../RenderCore/Assets/MaterialScaffold.h"
+#include "../../Assets/CompileAndAsyncManager.h"
+#include "../../Assets/IntermediateResources.h"
+#include "../../RenderCore/Assets/ColladaCompilerInterface.h"
 
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/Shader.h"
@@ -49,15 +41,9 @@
 
 namespace ToolsRig
 {
-    #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
-        using RenderCore::Assets::ModelRenderer;
-        using RenderCore::Assets::ModelScaffold;
-        using RenderCore::Assets::MaterialScaffold;
-    #else
-        using RenderCore::Assets::Simple::ModelRenderer;
-        using RenderCore::Assets::Simple::ModelScaffold;
-        using RenderCore::Assets::Simple::MaterialScaffold;
-    #endif
+    using RenderCore::Assets::ModelRenderer;
+    using RenderCore::Assets::ModelScaffold;
+    using RenderCore::Assets::MaterialScaffold;
     using RenderCore::Assets::SharedStateSet;
 
     typedef std::pair<Float3, Float3> BoundingBox;
@@ -88,31 +74,23 @@ namespace ToolsRig
     {
         std::shared_ptr<ModelScaffold> CreateModelScaffold(const ::Assets::ResChar filename[], RenderCore::Assets::IModelFormat& modelFormat)
         {
-            #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
-                auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
-                auto& store = ::Assets::Services::GetAsyncMan().GetIntermediateStore();
-                auto marker = compilers.PrepareResource(
-                    RenderCore::Assets::ColladaCompiler::Type_Model, 
-                    (const char**)&filename, 1, store);
-                return std::make_shared<ModelScaffold>(std::move(marker));
-            #else
-                return modelFormat.CreateModel(filename);
-            #endif
+            auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
+            auto& store = ::Assets::Services::GetAsyncMan().GetIntermediateStore();
+            auto marker = compilers.PrepareResource(
+                RenderCore::Assets::ColladaCompiler::Type_Model, 
+                (const char**)&filename, 1, store);
+            return std::make_shared<ModelScaffold>(std::move(marker));
         }
 
         std::shared_ptr<MaterialScaffold> CreateMaterialScaffold(const ::Assets::ResChar model[], const ::Assets::ResChar material[], RenderCore::Assets::IModelFormat& modelFormat)
         {
-            #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
-                auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
-                auto& store = ::Assets::Services::GetAsyncMan().GetIntermediateStore();
-                const ::Assets::ResChar* inits[] = { material, model };
-                auto marker = compilers.PrepareResource(
-                    MaterialScaffold::CompileProcessType, 
-                    inits, dimof(inits), store);
-                return std::make_shared<MaterialScaffold>(std::move(marker));
-            #else
-                return modelFormat.CreateMaterial(filename);
-            #endif
+            auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
+            auto& store = ::Assets::Services::GetAsyncMan().GetIntermediateStore();
+            const ::Assets::ResChar* inits[] = { material, model };
+            auto marker = compilers.PrepareResource(
+                MaterialScaffold::CompileProcessType, 
+                inits, dimof(inits), store);
+            return std::make_shared<MaterialScaffold>(std::move(marker));
         }
     }
 
@@ -127,15 +105,8 @@ namespace ToolsRig
             _pimpl->_modelScaffolds.Insert(result._hashedModelName, result._model);
         }
             
-        #if MODEL_FORMAT != MODEL_FORMAT_RUNTIME
-            auto defMatName = _pimpl->_format->DefaultMaterialName(*model);
-            if (defMatName.empty()) { return std::make_pair(nullptr, 0); }
-            result._hashedMaterialName = Hash64(defMatName);
-            auto matNamePtr = defMatName.c_str();
-        #else
-            result._hashedMaterialName = HashCombine(Hash64(materialFilename), result._hashedModelName);
-            auto matNamePtr = materialFilename;
-        #endif
+        result._hashedMaterialName = HashCombine(Hash64(materialFilename), result._hashedModelName);
+        auto matNamePtr = materialFilename;
 
         result._material = _pimpl->_materialScaffolds.Get(result._hashedMaterialName);
         if (!result._material || result._material->GetDependencyValidation()->GetValidationIndex() > 0) {
@@ -154,15 +125,10 @@ namespace ToolsRig
         uint64 hashedModel = uint64(scaffold._model.get()) | (uint64(scaffold._material.get()) << 48);
         auto renderer = _pimpl->_modelRenderers.Get(hashedModel);
         if (!renderer) {
-            #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
-                auto searchRules = ::Assets::DefaultDirectorySearchRules(modelFilename);
-                searchRules.AddSearchDirectoryFromFilename(materialFilename);
-                renderer = std::make_shared<ModelRenderer>(
-                    std::ref(*scaffold._model), std::ref(*scaffold._material), std::ref(*_pimpl->_sharedStateSet), &searchRules, 0);
-            #else
-                renderer = _pimpl->_format->CreateRenderer(
-                    std::ref(*model), std::ref(*material), std::ref(_pimpl->_sharedStateSet), 0);
-            #endif
+            auto searchRules = ::Assets::DefaultDirectorySearchRules(modelFilename);
+            searchRules.AddSearchDirectoryFromFilename(materialFilename);
+            renderer = std::make_shared<ModelRenderer>(
+                std::ref(*scaffold._model), std::ref(*scaffold._material), std::ref(*_pimpl->_sharedStateSet), &searchRules, 0);
 
             _pimpl->_modelRenderers.Insert(hashedModel, renderer);
         }
@@ -231,14 +197,10 @@ namespace ToolsRig
                     _sharedStateSet->CaptureState(context);
                 }
 
-                #if MODEL_FORMAT == MODEL_FORMAT_RUNTIME
-                    _model->Render(
-                        RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
-                        *_sharedStateSet,
-                        Identity<Float4x4>());
-                #else
-                    _model->Render(context, parserContext, techniqueIndex, *_sharedStateSet, Identity<Float4x4>(), 0);
-                #endif
+                _model->Render(
+                    RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
+                    *_sharedStateSet,
+                    Identity<Float4x4>());
 
                 if (_sharedStateSet) {
                     _sharedStateSet->ReleaseState(context);
@@ -404,6 +366,37 @@ namespace ToolsRig
                 metalContext->GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr); // (unbind depth)
                 ExecuteHighlightByStencil(*metalContext, depthSrv, settings, _pimpl->_settings->_colourByMaterial==2);
                 savedTargets.ResetToOldTargets(metalContext.get());
+            }
+            CATCH (const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); } 
+            CATCH (const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); } 
+            CATCH_END
+        }
+
+        if (_pimpl->_settings->_drawNormals) {
+
+            TRY 
+            {
+                using namespace RenderCore;
+                auto metalContext = Metal::DeviceContext::Get(*context);
+
+                auto model = _pimpl->_cache->GetModel(_pimpl->_settings->_modelName.c_str(), _pimpl->_settings->_materialName.c_str());
+                assert(model._renderer && model._sharedStateSet);
+
+                if (model._sharedStateSet) {
+                    model._sharedStateSet->CaptureState(metalContext.get());
+                }
+
+                const auto techniqueIndex = 7u;
+
+                model._renderer->Render(
+                    RenderCore::Assets::ModelRendererContext(metalContext.get(), parserContext, techniqueIndex),
+                    *model._sharedStateSet,
+                    Identity<Float4x4>());
+
+                if (model._sharedStateSet) {
+                    model._sharedStateSet->ReleaseState(metalContext.get());
+                }
+
             }
             CATCH (const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); } 
             CATCH (const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); } 
@@ -639,6 +632,7 @@ namespace ToolsRig
         _highlightRayWidth = 0.f;
         _colourByMaterial = 0;
         _camera = std::make_shared<VisCameraSettings>();
+        _drawNormals = false;
     }
     
     VisCameraSettings::VisCameraSettings()

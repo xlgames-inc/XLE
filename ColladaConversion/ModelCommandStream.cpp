@@ -881,6 +881,11 @@ namespace RenderCore { namespace ColladaConversion
                                 i->_alignedByteOffset = elementOffset;
                                 elementOffset += Metal::BitsPerPixel(i->_nativeFormat)/8;
                             }
+                            elementOffset = 0;
+                            for (auto i=animatedVertexLayout.begin(); i!=animatedVertexLayout.end();++i) {
+                                i->_alignedByteOffset = elementOffset;
+                                elementOffset += Metal::BitsPerPixel(i->_nativeFormat)/8;
+                            }
                         }
 
                         unsigned unanimatedVertexStride  = CalculateVertexSize(AsPointer(unanimatedVertexLayout.begin()), AsPointer(unanimatedVertexLayout.end()));

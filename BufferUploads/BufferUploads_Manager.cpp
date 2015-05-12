@@ -275,7 +275,7 @@ namespace BufferUploads
         void    UpdateData_PostBackground(Transaction& transaction, TransactionID id, DataPacket* rawData, const PartialResource& part);
 
         void    ResolveBatchOperation(BatchPreparation& batchOperation, ThreadContext& context, unsigned stepMask);
-        void    ReleaseTransaction(Transaction* transaction, ThreadContext& context);
+        void    ReleaseTransaction(Transaction* transaction, ThreadContext& context, bool abort = false);
         void    ClientReleaseTransaction(Transaction* transaction);
 
         bool    Process(const ResourceCreateStep& resourceCreateStep, unsigned stepMask, ThreadContext& context, const CommandListBudget& budgetUnderConstruction);
@@ -561,7 +561,7 @@ namespace BufferUploads
         return result;
     }
 
-    void AssemblyLine::ReleaseTransaction(Transaction* transaction, ThreadContext& context)
+    void AssemblyLine::ReleaseTransaction(Transaction* transaction, ThreadContext& context, bool abort)
     {
         AssemblyLineRetirement retirementBuffer;
         AssemblyLineRetirement* retirement = &retirementBuffer;
@@ -579,7 +579,7 @@ namespace BufferUploads
         retirement->_desc = transaction->_desc;
         retirement->_requestTime = transaction->_requestTime;
 
-        transaction->_completionCommandList = context.CommandList_GetUnderConstruction();
+        transaction->_completionCommandList = abort ? 0 : context.CommandList_GetUnderConstruction();
         Interlocked::Value newRefCount = Interlocked::Decrement(&transaction->_referenceCount) - 1;
         assert(newRefCount>=0);
 
@@ -1469,7 +1469,7 @@ namespace BufferUploads
 
             if (!(transaction->_referenceCount & 0xff000000)) {
                     //  If there are no client references, we can consider this cancelled...
-                ReleaseTransaction(transaction, context);
+                ReleaseTransaction(transaction, context, true);
                 return true;
             }
 
@@ -1547,7 +1547,7 @@ namespace BufferUploads
         assert(transaction && !transaction->_stagingResource);
 
         if (!(transaction->_referenceCount & 0xff000000) && !transaction->_finalResource.get()) {
-            ReleaseTransaction(transaction, context);
+            ReleaseTransaction(transaction, context, true);
             return true;
         }
 
@@ -1583,7 +1583,7 @@ namespace BufferUploads
             assert(transaction);
 
             if (!(transaction->_referenceCount & 0xff000000) && (!transaction->_finalResource.get() || transaction->_finalResource->IsEmpty())) {
-                ReleaseTransaction(transaction, context);
+                ReleaseTransaction(transaction, context, true);
                 return true;
             }
 
@@ -1699,7 +1699,7 @@ namespace BufferUploads
                     // Cancelling because the client dropped the last transaction reference
                     // We should ideally also cancel the bkground operation here... If we don't
                     // cancel it, it should complete as normally, but the result will go unused
-                ReleaseTransaction(transaction, context);
+                ReleaseTransaction(transaction, context, true);
                 return true;
             }
 
@@ -1730,7 +1730,7 @@ namespace BufferUploads
                     // this should complete the transaction -- but leave it in an invalid state
                 }
 
-                ReleaseTransaction(transaction, context);
+                ReleaseTransaction(transaction, context, true);
                 return true;
             }
         }

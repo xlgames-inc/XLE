@@ -102,3 +102,18 @@ RayTest
         game/xleres/forward/raytest.gsh:triangles
     PixelShader
         null
+VisNormals
+    Parameters
+        Geometry
+            OUTPUT_WORLD_POSITION 1
+            OUTPUT_NORMAL 1
+            OUTPUT_TANGENT_FRAME 1
+            GEO_HAS_TANGENT_FRAME
+            GEO_HAS_BITANGENT
+            GEO_HAS_NORMAL
+    VertexShader
+        game/xleres/forward/illum.vsh:main
+    GeometryShader
+        game/xleres/vis/geowires.gsh:NormalsAndTangents
+    PixelShader
+        game/xleres/basic.psh:PC

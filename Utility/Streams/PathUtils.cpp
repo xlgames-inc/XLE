@@ -128,7 +128,7 @@ void XlToDosPath(ucs2* dst, int count, const ucs2* path)
 }
 
 template <class T>
-void concat_path(T* dst, int count, const T* a, const T* b)
+void concat_path(T* dst, int count, const T* a, const T* b, const T* bEnd)
 {
     // do simple concatenation first
     T tmp[MaxPath];
@@ -141,7 +141,7 @@ void concat_path(T* dst, int count, const T* a, const T* b)
         XlCatString(tmp, dimof(tmp), slash);
     }
     if (b) {
-        XlCatString(tmp, dimof(tmp), b);
+        XlCatNString(tmp, dimof(tmp), b, bEnd - b);
     }
     // XlNormalizePath(dst, count, tmp);        DavidJ -- this has a problem with network paths. \\NetworkServer\path\... -> /NetworkServer/path/... so skip this step (caller can always normalize afterwards)
     XlCopyString(dst, count, tmp);
@@ -152,14 +152,14 @@ void concat_path(T* dst, int count, const T* a, const T* b)
     }
 }
 
-void XlConcatPath(char* dst, int count, const char* a, const char* b)
+void XlConcatPath(char* dst, int count, const char* a, const char* b, const char* bEnd)
 {
-    concat_path<char>(dst, count, a, b);
+    concat_path<char>(dst, count, a, b, bEnd);
 }
 
-void XlConcatPath(ucs2* dst, int count, const ucs2* a, const ucs2* b)
+void XlConcatPath(ucs2* dst, int count, const ucs2* a, const ucs2* b, const ucs2* bEnd)
 {
-    concat_path<ucs2>(dst, count, a, b);
+    concat_path<ucs2>(dst, count, a, b, bEnd);
 }
 
 void XlMakeRelPath(char* dst, int count, const char* root, const char* path)
@@ -215,7 +215,7 @@ void XlResolveRelPath(char* dst, int count, const char* base, const char* rel)
 {
     char tmp[MaxPath];
     XlDirname(tmp, dimof(tmp), base);
-    XlConcatPath(dst, count, tmp, rel);
+    XlConcatPath(dst, count, tmp, rel, &rel[XlStringLen(rel)]);
 }
 
 template<typename CharType>

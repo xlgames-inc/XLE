@@ -349,6 +349,11 @@ void     XlCopyNString        (utf8* dst, size_t count, const utf8*src, size_t l
         wcscat_s((wchar_t*)dst, size, (const wchar_t*)src);
     }
 
+    void XlCatNString(ucs2* dst, size_t size, const ucs2* src, size_t length)
+    {
+        wcsncat_s((wchar_t*)dst, size, (const wchar_t*)src, length);
+    }
+
     size_t XlStringSize(const ucs2* str)
     {
         return wcslen((const wchar_t*)str);
@@ -416,6 +421,23 @@ void XlCatString(char* dst, size_t size, const char* src)
     }
     dst[size - 1] = 0;
 #endif
+}
+
+void XlCatNString(char* dst, size_t size, const char* src, size_t length)
+{
+    for (size_t i = 0; i < size - 1; ++i) {
+        if (dst[i] == 0) {
+            size_t c=0;
+            for (; (i < size - 1); ++i, ++c) {
+                if (c >= length) { dst[i] = '\0'; return; }
+                dst[i] = *src;
+                if (*src == 0) return;
+                src++;
+            }
+            break;
+        }
+    }
+    dst[size - 1] = 0;
 }
 
 void XlCatSafeUtf(char* dst, size_t size, const char* src)

@@ -36,6 +36,7 @@ namespace Utility
     XL_UTILITY_API void     XlCopySafeUtfN      (char* dst, size_t size, const char* src, const uint32 numSeq);
 
     XL_UTILITY_API void     XlCatString         (char* dst, size_t size, const char* src);
+    XL_UTILITY_API void     XlCatNString        (char* dst, size_t size, const char* src, size_t length);
     XL_UTILITY_API void     XlCatString         (char* dst, size_t size, char src);
     XL_UTILITY_API void     XlCatSafeUtf        (char* dst, size_t size, const char* src);
 
@@ -90,6 +91,7 @@ namespace Utility
     XL_UTILITY_API void     XlCopyNString       (ucs2* dst, size_t count, const ucs2*src, size_t length);
     XL_UTILITY_API void     XlCatString         (ucs2* dst, size_t size, const ucs2* src);
     XL_UTILITY_API void     XlCatString         (ucs2* dst, size_t size, ucs2 src);
+    XL_UTILITY_API void     XlCatNString        (ucs2* dst, size_t size, const ucs2* src, size_t length);
     XL_UTILITY_API size_t   XlStringSize        (const ucs2* str);
     XL_UTILITY_API size_t   XlStringLen         (const ucs2* str);
     XL_UTILITY_API size_t   XlCompareString     (const ucs2* x, const ucs2* y);

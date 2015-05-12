@@ -152,7 +152,7 @@ namespace Assets { namespace IntermediateResources
                     
                     const RetainedFileRecord* record;
                     if (basePath && basePath[0]) {
-                        XlConcatPath(buffer, dimof(buffer), basePath, depName);
+                        XlConcatPath(buffer, dimof(buffer), basePath, depName, &depName[XlStringLen(depName)]);
                         auto& ptr = GetRetainedFileRecord(buffer);
                         RegisterAssetDependency(validation, ptr);
                         record = ptr.get();

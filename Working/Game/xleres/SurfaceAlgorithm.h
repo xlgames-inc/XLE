@@ -29,19 +29,19 @@ float3 SampleNormalMap(Texture2D normalMap, SamplerState samplerObject, bool dxt
 		return normalMap.Sample(samplerObject, texCoord).xyz * 2.f - 1.0.xxx;
     } else {
 		float2 result = normalMap.Sample(samplerObject, texCoord).xy * 2.f - 1.0.xx;
-		return float3(result, sqrt(saturate(1.f + dot(result.xy, -result.xy))));
+
+            // The following seems to give the best results on the "nyra" model currently...
+            // It seems that maybe that model is using a wierd coordinate scheme in the normal map?
+        float2 coordTwiddle = float2(result.x, -result.y);
+		return float3(coordTwiddle, sqrt(saturate(1.f + dot(result.xy, -result.xy))));
     }
 }
 
 float3 NormalMapAlgorithm(  Texture2D normalMap, SamplerState samplerObject, bool dxtFormatNormalMap,
                             float2 texCoord, TangentFrameStruct tangentFrame)
 {
-        // the following seems to give the best results on the "nyra" model currently...
-        // but it doesn't work with geometry with tangents generated in max
-    // float3x3 normalsTextureToWorld = float3x3(-tangentFrame.tangent.xyz, -tangentFrame.bitangent, tangentFrame.normal);
     float3x3 normalsTextureToWorld = float3x3(tangentFrame.tangent.xyz, tangentFrame.bitangent, tangentFrame.normal);
-
-	float3 normalTextureSample = SampleNormalMap(normalMap, samplerObject, dxtFormatNormalMap, texCoord);
+    float3 normalTextureSample = SampleNormalMap(normalMap, samplerObject, dxtFormatNormalMap, texCoord);
 		// Note -- matrix multiply opposite from normal
         //          (so we can initialise normalsTextureToWorld easily)
 	return mul(normalTextureSample, normalsTextureToWorld);

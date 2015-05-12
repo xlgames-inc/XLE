@@ -11,6 +11,7 @@ CommonMaterial
             RES_HAS_NormalsTexture_DXT
             MAT_VCOLOR_IS_ANIM_PARAM
             MAT_DOUBLE_SIDED_LIGHTING
+            MAT_AO_IN_NORMAL_BLUE
         GlobalEnvironment
             VIS_ANIM_PARAM
 Skinnable

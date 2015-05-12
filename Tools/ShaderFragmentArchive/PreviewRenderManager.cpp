@@ -27,7 +27,7 @@ namespace PreviewRender
     {
     public:
         std::shared_ptr<RenderCore::IDevice>   _device;
-        std::unique_ptr<::Assets::CompileAndAsyncManager> _asyncMan;
+        std::unique_ptr<::Assets::Services> _assetServices;
         std::shared_ptr<RenderCore::Techniques::TechniqueContext> _globalTechniqueContext;
     };
 
@@ -466,7 +466,8 @@ namespace PreviewRender
     {
         _pimpl = new ManagerPimpl;
         _pimpl->_device = RenderCore::CreateDevice();
-        _pimpl->_asyncMan = RenderCore::Metal::CreateCompileAndAsyncManager();
+        _pimpl->_assetServices = std::make_unique<::Assets::Services>(::Assets::Services::Flags::RecordInvalidAssets);
+        RenderCore::Metal::InitCompileAndAsyncManager();
         _pimpl->_globalTechniqueContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
     }
 

@@ -105,6 +105,14 @@ GBufferValues IllumShader_PerPixel(VSOutput geo)
         result.cookedAmbientOcclusion *= geo.ambientOcclusion;
     #endif
 
+    #if (MAT_AO_IN_NORMAL_BLUE!=0) && (RES_HAS_NormalsTexture!=0) && (RES_HAS_NormalsTexture_DXT==0) && (OUTPUT_TEXCOORD==1)
+            // some pipelines put a AO term in the blue channel of the normal map
+            // we can factor it in here...
+        float cookedAO = NormalsTexture.Sample(DefaultSampler, geo.texCoord).z;
+        cookedAO *= cookedAO; // testing with the Nyra model, it's too weak... giving a little extra punch
+        result.cookedAmbientOcclusion *= cookedAO;
+    #endif
+
     #if (OUTPUT_TANGENT_FRAME==1) && (OUTPUT_WORLD_VIEW_VECTOR==1)
         const bool scratchMapTest = false;
         if (scratchMapTest) {
