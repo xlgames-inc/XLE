@@ -19,6 +19,7 @@
 #undef min
 #undef DrawText
 #undef GetObject
+#undef ERROR        // causes problems with easylogging++
 #endif
 
 

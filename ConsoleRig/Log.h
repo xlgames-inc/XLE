@@ -11,6 +11,12 @@
 #pragma push_macro("ScopedLock")
 #undef ScopedLock
 
+    // Easy logging++ configuration variables -- 
+    //      Disable the default crash handing behaviour
+    //      
+#define ELPP_DISABLE_DEFAULT_CRASH_HANDLING
+#define ELPP_NO_DEFAULT_LOG_FILE
+
     // using "easylogging++" library for simple logging output
     //  Hacks to prevent inclusion of windows.h via "easylogging++.h"
     //  (it's ugly, but in this case, it might worth it. Log.h should
@@ -22,11 +28,6 @@
     //  better functionality for redirecting log messages to different
     //  places!)
 #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
-
-    #if TARGET_64BIT
-            // 64 bit version of easylogging++ requires windows.h!
-        #include "../Core/WinAPI/IncludeWindows.h"
-    #endif
 
     #pragma push_macro("WINAPI")
     #pragma push_macro("WINBASEAPI")
@@ -54,6 +55,8 @@
     extern "C" WINBASEAPI DWORD WINAPI GetEnvironmentVariableA(const char*, char*, DWORD);
     extern "C" WINBASEAPI DWORD WINAPI GetFileAttributesA(const char*);
     extern "C" WINBASEAPI DWORD WINAPI GetTickCount(void);
+
+    #undef ERROR
 
     #include "../Foreign/easyloggingpp/easylogging++.h"
 
@@ -102,13 +105,13 @@ namespace ConsoleRig
 
     #if defined(DEBUG_LOGGING_ENABLED)
 
-        #define LogVerbose(L)   LVERBOSE(L)
-        #define LogInfo         LINFO
-        #define LogWarning      LWARNING
+        #define LogVerbose(L)   VLOG(L)
+        #define LogInfo         LOG(INFO)
+        #define LogWarning      LOG(WARNING)
         
-        #define LogVerboseEveryN(L)   LVERBOSE_EVERY_N(L)
-        #define LogInfoEveryN         LINFO_EVERY_N
-        #define LogWarningEveryN      LWARNING_EVERY_N
+        #define LogVerboseEveryN(L)   LOG_EVERY_N(8, L)
+        #define LogInfoEveryN         LOG_EVERY_N(8, INFO)
+        #define LogWarningEveryN      LOG_EVERY_N(8, WARNING)
 
     #else
 
@@ -132,17 +135,17 @@ namespace ConsoleRig
 
     #endif
 
-    #define LogAlwaysVerbose(L)   LVERBOSE(L)
-    #define LogAlwaysInfo         LINFO
-    #define LogAlwaysWarning      LWARNING
-    #define LogAlwaysError        LERROR
-    #define LogAlwaysFatal        LFATAL
+    #define LogAlwaysVerbose(L)   VLOG(L)
+    #define LogAlwaysInfo         LOG(INFO)
+    #define LogAlwaysWarning      LOG(WARNING)
+    #define LogAlwaysError        LOG(ERROR)
+    #define LogAlwaysFatal        LOG(FATAL)
 
-    #define LogAlwaysVerboseEveryN(L)   LVERBOSE_EVERY_N(L)
-    #define LogAlwaysInfoEveryN         LINFO_EVERY_N
-    #define LogAlwaysWarningEveryN      LWARNING_EVERY_N
-    #define LogAlwaysErrorEveryN        LERROR_EVERY_N
-    #define LogAlwaysFatalEveryN        LFATAL_EVERY_N
+    #define LogAlwaysVerboseEveryN(L)   VLOG_EVERY_N(8, L)
+    #define LogAlwaysInfoEveryN         LOG_EVERY_N(8, INFO)
+    #define LogAlwaysWarningEveryN      LOG_EVERY_N(8, WARNING)
+    #define LogAlwaysErrorEveryN        LOG_EVERY_N(8, ERROR)
+    #define LogAlwaysFatalEveryN        LOG_EVERY_N(8, FATAL)
 
     /// <summary>Initialise the logging system</summary>
     /// No shutdown necessary. Provide a filename for an optional configuration file.

@@ -5,23 +5,92 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Log.h"
+#include "OutputStream.h"
 #include "../Utility/Streams/FileUtils.h"
-#include "../Core/WinAPI/IncludeWindows.h"
+#include "../Utility/Streams/Stream.h"
+#include <assert.h>
 
-_INITIALIZE_EASYLOGGINGPP
+    // We can't use the default initialisation method for easylogging++
+    // because is causes a "LoaderLock" exception when used with C++/CLI dlls.
+    // It also doesn't work well when sharing a single log file across dlls.
+    // Anyway, the default behaviour isn't great for our needs.
+    // So, we need to use "INITIALIZE_NULL" here, and manually construct
+    // a "GlobalStorage" object below...
+INITIALIZE_NULL_EASYLOGGINGPP
+
+#if defined(_DEBUG)
+    #define REDIRECT_COUT
+#endif
 
 namespace ConsoleRig
 {
+    #if defined(REDIRECT_COUT)
+        template <typename CharType>
+            class StdCToXLEStreamAdapter : public std::basic_streambuf<CharType>
+        {
+        public:
+            void Reset(std::shared_ptr<Utility::OutputStream> chain) { _chain = chain; }
+            StdCToXLEStreamAdapter(std::shared_ptr<Utility::OutputStream> chain);
+            ~StdCToXLEStreamAdapter();
+        protected:
+            std::shared_ptr<Utility::OutputStream> _chain;
+
+            virtual std::streamsize xsputn(const CharType* s, std::streamsize count);
+            virtual int sync();
+        };
+
+        template <typename CharType>
+            StdCToXLEStreamAdapter<CharType>::StdCToXLEStreamAdapter(std::shared_ptr<Utility::OutputStream> chain) : _chain(chain) {}
+        template <typename CharType>
+            StdCToXLEStreamAdapter<CharType>::~StdCToXLEStreamAdapter() {}
+
+        template <typename CharType>
+            std::streamsize StdCToXLEStreamAdapter<CharType>::xsputn(const CharType* s, std::streamsize count)
+        {
+            assert(_chain);
+            _chain->Write(s, int(sizeof(CharType) * count));
+            return count;
+        }
+
+        template <typename CharType>
+            int StdCToXLEStreamAdapter<CharType>::sync()
+        {
+            _chain->Flush();
+            return 0;
+        }
+
+        std::shared_ptr<Utility::OutputStream>      GetSharedDebuggerWarningStream();
+
+        static StdCToXLEStreamAdapter<char> s_coutAdapter(nullptr);
+        static std::basic_streambuf<char>* s_oldCoutStreamBuf = nullptr;
+    #endif
+
     void Logging_Startup(const char configFile[], const char logFileName[])
     {
+            // It can be handy to redirect std::cout to the debugger output
+            // window in Visual Studio (etc)
+            // We can do this with an adapter to connect out DebufferWarningStream
+            // object to a c++ std::stream_buf
+        #if defined(REDIRECT_COUT)
+            {
+                s_coutAdapter.Reset(GetSharedDebuggerWarningStream());
+                s_oldCoutStreamBuf = std::cout.rdbuf();
+                std::cout.rdbuf(&s_coutAdapter);
+            }
+        #endif
+
+        el::Helpers::setStorage(
+            std::make_shared<el::base::Storage>(
+                el::LogBuilderPtr(new el::base::DefaultLogBuilder())));
+
             // -- note --   if we're inside a DLL, we can cause the logging system
             //              to use the same logging as the main executable. (Well, at
             //              least it's supported in the newest version of easy logging,
             //              it's possible it won't work with the version we're using)
         if (!logFileName) { logFileName = "int/log.txt"; }
-        easyloggingpp::Configurations c;
+        el::Configurations c;
         c.setToDefault();
-        c.setAll(easyloggingpp::ConfigurationType::Filename, logFileName);
+        c.setGlobally(el::ConfigurationType::Filename, logFileName);
 
             // if a configuration file exists, 
         if (configFile) {
@@ -32,17 +101,18 @@ namespace ConsoleRig
             }
         }
 
-        // easyloggingpp::Loggers::reconfigureAllLoggers(c);
-
-        if (easyloggingpp::internal::registeredLoggers.pointer()) {
-            easyloggingpp::internal::registeredLoggers->registerNew(new easyloggingpp::Logger(
-                "trivial", easyloggingpp::internal::registeredLoggers->constants(), c));
-        }
+        el::Loggers::reconfigureAllLoggers(c);
     }
 
     void Logging_Shutdown()
     {
-        easyloggingpp::internal::registeredLoggers = decltype(easyloggingpp::internal::registeredLoggers)();
+        el::Loggers::flushAll();
+        el::Helpers::setStorage(nullptr);
+
+        #if defined(REDIRECT_COUT)
+            if (s_oldCoutStreamBuf)
+                std::cout.rdbuf(s_oldCoutStreamBuf);
+        #endif
     }
 }
 
@@ -144,98 +214,35 @@ namespace LogUtilMethods
 }
 
 
+#include "../Core/WinAPI/IncludeWindows.h"
 
-namespace easyloggingpp { namespace internal { namespace utilities
+namespace el { namespace base { namespace utils
 {
+#define _ELPP_OS_WINDOWS 1
+#define ELPP_COMPILER_MSVC 1
+
 #if _ELPP_OS_WINDOWS
-    void DateUtils::gettimeofday(struct TimeType *tv) {
-        if (tv != NULL) {
-#   if defined(_MSC_EXTENSIONS)
+    void DateTime::gettimeofday(struct timeval *tv) {
+        if (tv != nullptr) {
+#   if ELPP_COMPILER_MSVC || defined(_MSC_EXTENSIONS)
             const unsigned __int64 delta_ = 11644473600000000Ui64;
 #   else
             const unsigned __int64 delta_ = 11644473600000000ULL;
-#   endif // defined(_MSC_EXTENSIONS)
+#   endif  // ELPP_COMPILER_MSVC || defined(_MSC_EXTENSIONS)
             const double secOffSet = 0.000001;
             const unsigned long usecOffSet = 1000000;
-            FILETIME fileTime_;
-            GetSystemTimeAsFileTime(&fileTime_);
-            unsigned __int64 present_ = 0;
-            present_ |= fileTime_.dwHighDateTime;
-            present_ = present_ << 32;
-            present_ |= fileTime_.dwLowDateTime;
-            present_ /= 10; // mic-sec
-            // Subtract the difference
-            present_ -= delta_;
-            tv->tv_sec = static_cast<long>(present_ * secOffSet);
-            tv->tv_usec = static_cast<long>(present_ % usecOffSet);
+            FILETIME fileTime;
+            GetSystemTimeAsFileTime(&fileTime);
+            unsigned __int64 present = 0;
+            present |= fileTime.dwHighDateTime;
+            present = present << 32;
+            present |= fileTime.dwLowDateTime;
+            present /= 10;  // mic-sec
+           // Subtract the difference
+            present -= delta_;
+            tv->tv_sec = static_cast<long>(present * secOffSet);
+            tv->tv_usec = static_cast<long>(present % usecOffSet);
         }
     }
 #endif // _ELPP_OS_WINDOWS
-
-    // Gets current date and time with milliseconds.
-    std::string DateUtils::getDateTime(const std::string& bufferFormat_, unsigned int type_, internal::Constants* constants_, std::size_t milliSecondOffset_) {
-        long milliSeconds = 0;
-        const int kDateBuffSize_ = 30;
-        char dateBuffer_[kDateBuffSize_] = "";
-        char dateBufferOut_[kDateBuffSize_] = "";
-#if _ELPP_OS_UNIX
-        bool hasTime_ = ((type_ & constants_->kDateTime) || (type_ & constants_->kTimeOnly));
-        timeval currTime;
-        gettimeofday(&currTime, NULL);
-        if (hasTime_) {
-            milliSeconds = currTime.tv_usec / milliSecondOffset_ ;
-        }
-        struct tm * timeInfo = localtime(&currTime.tv_sec);
-        strftime(dateBuffer_, sizeof(dateBuffer_), bufferFormat_.c_str(), timeInfo);
-        if (hasTime_) {
-            SPRINTF(dateBufferOut_, "%s.%03ld", dateBuffer_, milliSeconds);
-        } else {
-            SPRINTF(dateBufferOut_, "%s", dateBuffer_);
-        }
-#elif _ELPP_OS_WINDOWS
-        const char* kTimeFormatLocal_ = "HH':'mm':'ss";
-        const char* kDateFormatLocal_ = "dd/MM/yyyy";
-        if ((type_ & constants_->kDateTime) || (type_ & constants_->kDateOnly)) {
-            if (GetDateFormatA(LOCALE_USER_DEFAULT, 0, 0, kDateFormatLocal_, dateBuffer_, kDateBuffSize_) != 0) {
-                SPRINTF(dateBufferOut_, "%s", dateBuffer_);
-            }
-        }
-        if ((type_ & constants_->kDateTime) || (type_ & constants_->kTimeOnly)) {
-            if (GetTimeFormatA(LOCALE_USER_DEFAULT, 0, 0, kTimeFormatLocal_, dateBuffer_, kDateBuffSize_) != 0) {
-                milliSeconds = static_cast<long>(GetTickCount()) % milliSecondOffset_;
-                if (type_ & constants_->kDateTime) {
-                    SPRINTF(dateBufferOut_, "%s %s.%03ld", dateBufferOut_, dateBuffer_, milliSeconds);
-                } else {
-                    SPRINTF(dateBufferOut_, "%s.%03ld", dateBuffer_, milliSeconds);
-                }
-            }
-        }
-#endif // _ELPP_OS_UNIX
-        return std::string(dateBufferOut_);
-    }
-
-    std::string DateUtils::formatMilliSeconds(double milliSeconds_) {
-        double result = milliSeconds_;
-        std::string unit = "ms";
-        std::stringstream stream_;
-        if (result > 1000.0f) {
-            result /= 1000; unit = "seconds";
-            if (result > 60.0f) {
-                result /= 60; unit = "minutes";
-                if (result > 60.0f) {
-                    result /= 60; unit = "hours";
-                    if (result > 24.0f) {
-                        result /= 24; unit = "days";
-                    }
-                }
-            }
-        }
-        stream_ << result << " " << unit;
-        return stream_.str();
-    }
-
-    double DateUtils::getTimeDifference(const TimeType& endTime_, const TimeType& startTime_) {
-        return static_cast<double>((((endTime_.tv_sec - startTime_.tv_sec) * 1000000) + (endTime_.tv_usec - startTime_.tv_usec)) / 1000);
-    }
-
 }}}

@@ -14,6 +14,8 @@
 #include "../../Utility/Threading/CompletionThreadPool.h"
 #include "../../Foreign/tinyxml2-master/tinyxml2.h"
 
+#include "../../Core/WinAPI/IncludeWindows.h"
+
 namespace RenderCore { namespace Assets 
 {
     using ResChar = ::Assets::ResChar;

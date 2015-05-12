@@ -312,7 +312,7 @@ namespace ConsoleRig
 
 
 
-    static std::shared_ptr<Utility::OutputStream>      GetSharedDebuggerWarningStream()
+    std::shared_ptr<Utility::OutputStream>      GetSharedDebuggerWarningStream()
     {
         static auto result = std::make_shared<BufferedOutputStream>(std::make_shared<DebuggerConsoleOutput>());
         return result;

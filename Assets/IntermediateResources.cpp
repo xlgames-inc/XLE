@@ -361,7 +361,7 @@ namespace Assets { namespace IntermediateResources
             TRY {
                 return i->second->PrepareResource(typeCode, initializers, initializerCount, store);
             } CATCH (const std::exception& e) {
-                LogAlwaysError << "Exception during processing of (" << initializers[0] << "). Exception details: (" << e << ")";
+                LogAlwaysError << "Exception during processing of (" << initializers[0] << "). Exception details: (" << e.what() << ")";
             } CATCH (...) {
                 LogAlwaysError << "Unknown exception during processing of (" << initializers[0] << ").";
             } CATCH_END
