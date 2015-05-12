@@ -10,6 +10,10 @@
 #include "../Utility/Streams/Stream.h"
 #include <assert.h>
 
+#include "../Utility/PtrUtils.h"
+#include "../Utility/IteratorUtils.h"
+
+
     // We can't use the default initialisation method for easylogging++
     // because is causes a "LoaderLock" exception when used with C++/CLI dlls.
     // It also doesn't work well when sharing a single log file across dlls.
@@ -65,6 +69,81 @@ namespace ConsoleRig
         static std::basic_streambuf<char>* s_oldCoutStreamBuf = nullptr;
     #endif
 
+    template<typename Type> Type DefaultValue() { return Type(0); }
+
+    class StoredFunctionSet
+    {
+    public:
+        template<typename Fn>
+            void StoreFunction(uint64 guid, std::function<Fn>&& fn);
+
+        template<typename Result, typename... Args>
+            Result CallFunction(uint64 guid, Args... args);
+
+        StoredFunctionSet();
+        ~StoredFunctionSet();
+    protected:
+        class StoredFunction
+        {
+        public:
+            size_t      _offset;
+            size_t      _size;
+            void (*_destructor) (void*);
+        };
+        std::vector<uint8> _buffer;
+        std::vector<std::pair<uint64, StoredFunction>> _fns;
+    };
+
+    template<typename Type>
+        static void DestroyObject(void* obj)
+        {
+            reinterpret_cast<Type*>(obj)->~Type();
+        }
+
+    template<typename Fn>
+        void StoredFunctionSet::StoreFunction(uint64 guid, std::function<Fn>&& fn)
+    {
+        auto i = LowerBound(_fns, guid);
+        if (i != _fns.end() && i->first == guid) { assert(0); return; } // duplicate of one already here!
+
+        StoredFunction sfn;
+        sfn._offset = _buffer.size();
+        sfn._size = sizeof(std::function<Fn>);
+        sfn._destructor = &DestroyObject<Fn>;
+        _fns.insert(i, std::make_pair(guid, sfn));
+        _buffer.insert(_buffer.end(), sfn._size, uint8(0));
+
+        auto* dst = (Fn*)PtrAdd(AsPointer(_buffer.begin()), sfn._offset);
+
+        (*dst) = std::move(fn);
+    }
+
+    template<typename Result, typename... Args>
+        Result StoredFunctionSet::CallFunction(uint64 guid, Args... args)
+    {
+        auto i = LowerBound(_fns, guid);
+        if (i == _fns.end() || i->first != guid)
+            return DefaultValue<Result>();
+        
+        auto* obj = (void*)PtrAdd(AsPointer(_buffer.begin()), i->second._offset);
+        auto* fn = reinterpret_cast<std::function<Result(Args...)>*>(obj);
+
+        return (*fn)(args...);
+    }
+
+    StoredFunctionSet::StoredFunctionSet() {}
+    StoredFunctionSet::~StoredFunctionSet()
+    {
+        // Ok, here's the crazy part.. we want to call the destructors
+        // of all of the types we've stored in here... But we don't know their
+        // types! But we have a pointer to a function that will call their
+        // destructor. So we just need to call that.
+        for (auto i=_fns.begin(); i!=_fns.end(); ++i) {
+            auto* obj = (void*)PtrAdd(AsPointer(_buffer.begin()), i->second._offset);
+            (*i->second._destructor)(obj);
+        }
+    }
+
     void Logging_Startup(const char configFile[], const char logFileName[])
     {
             // It can be handy to redirect std::cout to the debugger output
@@ -78,6 +157,14 @@ namespace ConsoleRig
                 std::cout.rdbuf(&s_coutAdapter);
             }
         #endif
+
+        // StoredFunctionSet storedFns;
+        // storedFns.StoreFunction(0, [](int lhs, int rhs) -> int { return lhs + rhs; });
+        // storedFns.StoreFunction(1, [](int lhs, int rhs) -> int { return lhs * rhs; });
+        // 
+        // auto res = storedFns.CallFunction<int>(0, 10, 20);
+        // auto res2 = storedFns.CallFunction<int>(1, 6, 6);
+        // (void)res; (void)res2;
 
         el::Helpers::setStorage(
             std::make_shared<el::base::Storage>(
