@@ -10,6 +10,7 @@
 #include "../Assets/CompileAndAsyncManager.h"
 #include "../ConsoleRig/Console.h"
 #include "../ConsoleRig/Log.h"
+#include "../ConsoleRig/GlobalServices.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/SystemUtils.h"
@@ -57,6 +58,7 @@ namespace UnitTests
 				srand(std::random_device().operator()());
 
 				CreateDirectoryRecursive("int");
+                ConsoleRig::GlobalServices services;
 				ConsoleRig::Logging_Startup("log.cfg", "int/unittest.txt");
 
 				{

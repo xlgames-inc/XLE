@@ -106,13 +106,18 @@ namespace Utility
             bool Has(Id id) const;
 
         template<typename Fn>
-            void Store(Id guid, std::function<Fn>&& fn);
+            void Add(Id guid, std::function<Fn>&& fn);
 
         template<typename ReturnType, typename... Args>
-            void Store(Id id, ReturnType (*p) (Args...));
+            void Add(Id id, ReturnType (*p) (Args...));
 
         template <typename L> 
-            void Store(Id id, L&& l);
+            void Add(Id id, L&& l);
+
+        template<typename ReturnType, typename... Args, typename ClassType>
+            void Add(Id id, ReturnType(ClassType::*p)(Args...));
+
+        bool Remove(Id id);
 
         class DuplicateFunction;
         class NoFunction;
@@ -178,7 +183,7 @@ namespace Utility
     };
 
     template<typename Fn>
-        void VariantFunctions::Store(Id id, std::function<Fn>&& fn)
+        void VariantFunctions::Add(Id id, std::function<Fn>&& fn)
     {
         auto i = LowerBound(_fns, id);
         if (i != _fns.end() && i->first == id) { ThrowException(DuplicateFunction()); } // duplicate of one already here!
@@ -295,15 +300,21 @@ namespace Utility
     }
 
     template<typename ReturnType, typename... Args>
-        void VariantFunctions::Store(Id id, ReturnType (*p) (Args...))
+        void VariantFunctions::Add(Id id, ReturnType (*p) (Args...))
     {
-        Store(id, std::function<ReturnType(Args...)(p));
+        Add(id, std::function<ReturnType(Args...)>(p));
+    }
+
+    template<typename ReturnType, typename... Args, typename ClassType>
+        void VariantFunctions::Add(Id id, ReturnType(ClassType::*p)(Args...))
+    {
+        Add(id, std::function<ReturnType(Args...)>(p));
     }
 
     template <typename L> 
-        void VariantFunctions::Store(Id id, L&& l)
+        void VariantFunctions::Add(Id id, L&& l)
     {
-        Store(id, (typename FunctionTraits<L>::f_type)(l));
+        Add(id, (typename FunctionTraits<L>::f_type)(l));
     }
 
 }

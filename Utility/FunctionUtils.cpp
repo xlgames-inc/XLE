@@ -37,6 +37,61 @@ namespace Utility
         _buffer = std::move(newBuffer);
     }
 
+    bool VariantFunctions::Remove(Id id)
+    {
+        // if the given function exists, we need to remove it from our buffer
+        // we're going to do a reallocation of the buffer for every call here.
+        // We can't implement a normal form of "erase", because the objects are
+        // all different sizes... 
+        // This means, when we attempt to call the move constructor while moving
+        // objects to fill the new space, we can get situations where there is an
+        // overlap between the src and the destination of the move operation.
+        // Consider what happens if we have a small object in the buffer, followed
+        // by a larger object. If we erase the small object, we can't rearrange the
+        // buffer safely.
+        // So, let's just reallocate each time...
+
+        auto i = LowerBound(_fns, id);
+        if (i == _fns.end() || i->first != id)
+            return false;
+
+        if (_fns.size() == 1) {
+                // if we're erasing our last one, we can just destroy it, and
+                // erase our buffers completely
+            assert(i->second._offset == 0);
+            i->second._destructor(AsPointer(_buffer.begin()));
+            std::vector<uint8_t>().swap(_buffer);
+            std::vector<std::pair<Id, StoredFunction>>().swap(_fns);
+            return true;
+        }
+
+        std::vector<uint8_t> newBuffer;
+        auto newSize = _buffer.size() - i->second._size;
+        newBuffer.reserve(newSize * 2);
+        newBuffer.insert(newBuffer.begin(), newSize, uint8_t(0xcd));
+
+        ptrdiff_t offsetAdjust = 0;
+        for (auto q=_fns.begin(); q!=_fns.end(); ++q) {
+            auto& f = q->second;
+            if (q == i) {
+                    // this is the one to destroy
+                f._destructor(PtrAdd(AsPointer(_buffer.begin()), f._offset));
+                offsetAdjust = -ptrdiff_t(i->second._size);
+            } else {
+                f._moveConstructor(
+                    PtrAdd(AsPointer(newBuffer.begin()), f._offset + offsetAdjust), 
+                    PtrAdd(AsPointer(_buffer.begin()), f._offset));
+                f._destructor(PtrAdd(AsPointer(_buffer.begin()), f._offset));
+                f._offset += offsetAdjust;
+            }
+        }
+
+        _buffer = std::move(newBuffer);
+        _fns.erase(i);
+
+        return true;
+    }
+
     VariantFunctions::VariantFunctions() {}
     VariantFunctions::~VariantFunctions()
     {

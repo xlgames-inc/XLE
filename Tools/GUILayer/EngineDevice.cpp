@@ -116,6 +116,11 @@ namespace GUILayer
 
     NativeEngineDevice::NativeEngineDevice()
     {
+            // initialise logging first...
+        auto appName = clix::marshalString<clix::E_UTF8>(System::Windows::Forms::Application::ProductName);
+        CreateDirectoryRecursive("int");
+        ConsoleRig::Logging_Startup("log.cfg", StringMeld<128>() << "int/" << appName << ".txt");
+
         _console = std::make_unique<ConsoleRig::Console>();
         _renderDevice = RenderCore::CreateDevice();
         _immediateContext = _renderDevice->GetImmediateContext();
@@ -127,7 +132,14 @@ namespace GUILayer
     }
 
     NativeEngineDevice::~NativeEngineDevice()
-    {}
+    {
+        _bufferUploads.reset();
+        _assetServices.reset();
+        _immediateContext.reset();
+        _renderDevice.reset();
+        _console.reset();
+        ConsoleRig::Logging_Shutdown();
+    }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
     void EngineDevice::AttachDefaultCompilers()
@@ -138,11 +150,6 @@ namespace GUILayer
     EngineDevice::EngineDevice()
     {
         assert(s_instance == nullptr);
-
-            // initialise logging first...
-        auto appName = clix::marshalString<clix::E_UTF8>(System::Windows::Forms::Application::ProductName);
-        CreateDirectoryRecursive("int");
-        ConsoleRig::Logging_Startup("log.cfg", StringMeld<128>() << "int/" << appName << ".txt");
 
         _pimpl.reset(new NativeEngineDevice);
         
@@ -171,8 +178,6 @@ namespace GUILayer
         Assets::Dependencies_Shutdown();
         _pimpl.reset();
         TerminateFileSystemMonitoring();
-
-        ConsoleRig::Logging_Shutdown();
     }
 }
 

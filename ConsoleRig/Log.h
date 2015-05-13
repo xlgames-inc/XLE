@@ -147,10 +147,13 @@ namespace ConsoleRig
     #define LogAlwaysErrorEveryN        LOG_EVERY_N(8, ERROR)
     #define LogAlwaysFatalEveryN        LOG_EVERY_N(8, FATAL)
 
+    class GlobalServices;
+
     /// <summary>Initialise the logging system</summary>
-    /// No shutdown necessary. Provide a filename for an optional configuration file.
+    /// Provide a filename for an optional configuration file.
     /// The configuration file should be defined in the format defined by the 
-    /// "easylogging++" library
+    /// "easylogging++" library.
+    /// Logging_Shutdown() is optional, but helps shutdown cleanly
     void Logging_Startup(const char configFile[] = nullptr, const char logFileName[] = nullptr);
     void Logging_Shutdown();
 }

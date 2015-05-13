@@ -6,6 +6,7 @@
 
 #include "../ConsoleRig/Console.h"
 #include "../ConsoleRig/Log.h"
+#include "../ConsoleRig/GlobalServices.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/SystemUtils.h"
@@ -39,6 +40,7 @@ namespace UnitTests
 		{
 			SetWorkingDirectory();
 			CreateDirectoryRecursive("int");
+            ConsoleRig::GlobalServices services;
 			ConsoleRig::Logging_Startup("log.cfg", "int/unittest.txt");
 
 			auto library = (*Windows::Fn_LoadLibrary)("..\\Finals_Debug32\\TestDLL.dll");

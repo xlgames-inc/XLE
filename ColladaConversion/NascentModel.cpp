@@ -37,6 +37,7 @@
 
 #include "../ConsoleRig/Console.h"
 #include "../ConsoleRig/OutputStream.h"
+#include "../ConsoleRig/GlobalServices.h"
 
 #include "../Utility/Streams/FileUtils.h"        // (for materials stuff)
 #include "../Utility/Streams/Data.h"             // (for materials stuff)
@@ -1385,18 +1386,32 @@ namespace RenderCore { namespace ColladaConversion
             std::make_unique<NascentModel>(identifier).release(), 
             Internal::CrossDLLDeletor(&DestroyModel));
     }
-
-    extern char VersionString[];
-    extern char BuildDateString[];
-
-    CONVERSION_API std::pair<const char*, const char*>    GetVersionInformation()
-    {
-        return std::make_pair(VersionString, BuildDateString);
-    }
-
-	CONVERSION_API void ShutdownLibrary()
-	{
-		TerminateFileSystemMonitoring();
-	}
 }}
 
+namespace RenderCore { namespace ColladaConversion
+{
+    extern char VersionString[];
+    extern char BuildDateString[];
+}}
+
+LibVersionDesc GetVersionInformation()
+{
+    LibVersionDesc result;
+    result._versionString = RenderCore::ColladaConversion::VersionString;
+    result._buildDateString = RenderCore::ColladaConversion::BuildDateString;
+    return result;
+}
+
+void AttachLibrary(ConsoleRig::GlobalServices& services)
+{
+    ConsoleRig::GlobalServices::SetInstance(&services);
+    ConsoleRig::Logging_Startup();
+    LogInfo << "Attached Collada Compiler DLL: {" << RenderCore::ColladaConversion::VersionString << "} -- {" << RenderCore::ColladaConversion::BuildDateString << "}";
+}
+
+void DeattachLibrary(ConsoleRig::GlobalServices& services)
+{
+    ConsoleRig::Logging_Shutdown();
+    TerminateFileSystemMonitoring();
+    ConsoleRig::GlobalServices::SetInstance(nullptr);
+}

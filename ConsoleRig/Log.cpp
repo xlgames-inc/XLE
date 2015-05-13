@@ -6,10 +6,14 @@
 
 #include "Log.h"
 #include "OutputStream.h"
+#include "GlobalServices.h"
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/Streams/Stream.h"
 #include "../Utility/FunctionUtils.h"
+#include "../Utility/MemoryUtils.h"
 #include <assert.h>
+
+#include "../Core/WinAPI/IncludeWindows.h"
 
     // We can't use the default initialisation method for easylogging++
     // because is causes a "LoaderLock" exception when used with C++/CLI dlls.
@@ -24,6 +28,32 @@ INITIALIZE_NULL_EASYLOGGINGPP
 #endif
 
 //////////////////////////////////
+
+static auto Fn_GetStorage = ConstHash64<'getl', 'ogst', 'orag', 'e'>::Value;
+static auto Fn_CoutRedirectModule = ConstHash64<'cout', 'redi', 'rect'>::Value;
+static auto Fn_LogMainModule = ConstHash64<'logm', 'ainm', 'odul', 'e'>::Value;
+
+extern "C" IMAGE_DOS_HEADER __ImageBase;
+
+typedef size_t ModuleId;
+ModuleId GetCurrentModuleId() 
+{ 
+        // We want to return a value that is unique to the current 
+        // module (considering DLLs as separate modules from the main
+        // executable). It's value doesn't matter, so long as it is
+        // unique from other modules, and won't change over the lifetime
+        // of the proces.
+        //
+        // When compiling under visual studio/windows, the __ImageBase
+        // global points to the base of memory. Since the static global
+        // is unique to each dll module, and the address it points to
+        // will also be unique to each module, we can use it as a id
+        // for the current module.
+        // Actually, we could probably do the same thing with any
+        // static global pointer... Just declare a char, and return
+        // a pointer to it...?
+    return (ModuleId)&__ImageBase; 
+}
 
 namespace ConsoleRig
 {
@@ -68,61 +98,90 @@ namespace ConsoleRig
         static std::basic_streambuf<char>* s_oldCoutStreamBuf = nullptr;
     #endif
 
-    void Logging_Startup(const char configFile[], const char logFileName[])
+    void Logging_Startup(
+        const char configFile[], const char logFileName[])
     {
+        auto& globalServices = GlobalServices::GetInstance();
+        auto currentModule = GetCurrentModuleId();
+
             // It can be handy to redirect std::cout to the debugger output
             // window in Visual Studio (etc)
             // We can do this with an adapter to connect out DebufferWarningStream
             // object to a c++ std::stream_buf
         #if defined(REDIRECT_COUT)
-            {
+            
+            if (!globalServices._services.Has<ModuleId()>(Fn_CoutRedirectModule)) {
                 s_coutAdapter.Reset(GetSharedDebuggerWarningStream());
                 s_oldCoutStreamBuf = std::cout.rdbuf();
                 std::cout.rdbuf(&s_coutAdapter);
+
+                globalServices._services.Add(Fn_CoutRedirectModule, [=](){ return currentModule; });
             }
+
         #endif
 
-        el::Helpers::setStorage(
-            std::make_shared<el::base::Storage>(
-                el::LogBuilderPtr(new el::base::DefaultLogBuilder())));
+        using StoragePtr = decltype(el::Helpers::storage());
 
-            // -- note --   if we're inside a DLL, we can cause the logging system
-            //              to use the same logging as the main executable. (Well, at
-            //              least it's supported in the newest version of easy logging,
-            //              it's possible it won't work with the version we're using)
-        if (!logFileName) { logFileName = "int/log.txt"; }
-        el::Configurations c;
-        c.setToDefault();
-        c.setGlobally(el::ConfigurationType::Filename, logFileName);
+            //
+            //  Check to see if there is an existing logging object in the
+            //  global services. If there is, it will have been created by
+            //  another module.
+            //  If it's there, we can just re-use it. Otherwise we need to
+            //  create a new one and set it up...
+            //
+        if (!globalServices._services.Has<StoragePtr()>(Fn_GetStorage)) {
 
-            // if a configuration file exists, 
-        if (configFile) {
-            size_t configFileLength = 0;
-            auto configFileData = LoadFileAsMemoryBlock(configFile, &configFileLength);
-            if (configFileData && configFileLength) {
-                c.parseFromText(std::string(configFileData.get(), &configFileData[configFileLength]));
+            el::Helpers::setStorage(
+                std::make_shared<el::base::Storage>(
+                    el::LogBuilderPtr(new el::base::DefaultLogBuilder())));
+
+            if (!logFileName) { logFileName = "int/log.txt"; }
+            el::Configurations c;
+            c.setToDefault();
+            c.setGlobally(el::ConfigurationType::Filename, logFileName);
+
+                // if a configuration file exists, 
+            if (configFile) {
+                size_t configFileLength = 0;
+                auto configFileData = LoadFileAsMemoryBlock(configFile, &configFileLength);
+                if (configFileData && configFileLength) {
+                    c.parseFromText(std::string(configFileData.get(), &configFileData[configFileLength]));
+                }
             }
+
+            el::Loggers::reconfigureAllLoggers(c);
+
+            globalServices._services.Add(Fn_GetStorage, el::Helpers::storage);
+            globalServices._services.Add(Fn_LogMainModule, [=](){ return currentModule; });
+
+        } else {
+
+            auto storage = globalServices._services.Call<StoragePtr>(Fn_GetStorage);
+            el::Helpers::setStorage(storage);
+
         }
-
-        el::Loggers::reconfigureAllLoggers(c);
-
-        #if defined(_DEBUG)
-            VariantFunctions storedFns;
-            storedFns.Store(2, []() { return el::Helpers::storage(); });
-
-            auto res3 = storedFns.Call<decltype(el::Helpers::storage())>(2);
-            assert(res3.get() == el::Helpers::storage().get());
-        #endif
     }
 
     void Logging_Shutdown()
     {
-        el::Loggers::flushAll();
-        el::Helpers::setStorage(nullptr);
+        auto& globalServices = GlobalServices::GetInstance();
+        auto currentModule = GetCurrentModuleId();
+
+            // this will throw an exception if no module has successfully initialised
+            // logging
+        if (globalServices._services.Call<ModuleId>(Fn_LogMainModule) == currentModule) {
+            el::Loggers::flushAll();
+            el::Helpers::setStorage(nullptr);
+            globalServices._services.Remove(Fn_LogMainModule);
+        }
 
         #if defined(REDIRECT_COUT)
-            if (s_oldCoutStreamBuf)
-                std::cout.rdbuf(s_oldCoutStreamBuf);
+            ModuleId testModule = 0;
+            if (globalServices._services.TryCall<ModuleId>(testModule, Fn_CoutRedirectModule) && (testModule == currentModule)) {
+                if (s_oldCoutStreamBuf)
+                    std::cout.rdbuf(s_oldCoutStreamBuf);
+                globalServices._services.Remove(Fn_CoutRedirectModule);
+            }
         #endif
     }
 }

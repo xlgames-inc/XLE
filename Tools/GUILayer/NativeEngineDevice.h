@@ -7,6 +7,7 @@
 #pragma once
 
 #include "EngineForward.h"
+#include "../../ConsoleRig/GlobalServices.h"
 #include <memory>
 
 namespace GUILayer
@@ -31,5 +32,6 @@ namespace GUILayer
         std::unique_ptr<::Assets::Services> _assetServices;
         std::unique_ptr<ConsoleRig::Console> _console;
         std::shared_ptr<BufferUploads::IManager> _bufferUploads;
+        ConsoleRig::GlobalServices _services;
     };
 }

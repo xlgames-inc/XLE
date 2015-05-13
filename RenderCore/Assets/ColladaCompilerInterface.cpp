@@ -7,6 +7,7 @@
 #include "ColladaCompilerInterface.h"
 #include "../../ColladaConversion/NascentModel.h"
 #include "../../Assets/AssetUtils.h"
+#include "../../ConsoleRig/GlobalServices.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
 
@@ -26,7 +27,7 @@ namespace RenderCore { namespace Assets
 
         HMODULE _conversionLibrary;
         bool _attemptedLibraryLoad;
-        std::pair<const char*, const char*> _conversionDLLVersion;
+        LibVersionDesc _conversionDLLVersion;
 
         Pimpl()
         {
@@ -38,7 +39,7 @@ namespace RenderCore { namespace Assets
             _serializeMaterialsFunction = nullptr;
             _mergeAnimationDataFunction = nullptr;
             _createModel = nullptr;
-            _conversionDLLVersion = std::make_pair("Unknown", "Unknown");
+            _conversionDLLVersion = LibVersionDesc { "Unknown", "Unknown" };
         }
     };
 
@@ -46,7 +47,7 @@ namespace RenderCore { namespace Assets
         RenderCore::ColladaConversion::NascentModel& model, 
         RenderCore::ColladaConversion::ModelSerializeFunction fn,
         const char destinationFilename[],
-        std::pair<const char*, const char*> versionInfo)
+        const LibVersionDesc& versionInfo)
     {
         auto chunks = (model.*fn)();
 
@@ -61,8 +62,8 @@ namespace RenderCore { namespace Assets
         XlZeroMemory(header);
         header._magic = MagicHeader;
         header._fileVersionNumber = 0;
-        XlCopyString(header._buildVersion, dimof(header._buildVersion), versionInfo.first);
-        XlCopyString(header._buildDate, dimof(header._buildDate), versionInfo.second);
+        XlCopyString(header._buildVersion, dimof(header._buildVersion), versionInfo._versionString);
+        XlCopyString(header._buildDate, dimof(header._buildDate), versionInfo._buildDateString);
         header._chunkCount = chunks.second;
             
         BasicFile outputFile(destinationFilename, "wb");
@@ -87,7 +88,7 @@ namespace RenderCore { namespace Assets
         RenderCore::ColladaConversion::NascentModel& model, 
         RenderCore::ColladaConversion::ModelSerializeFunction fn,
         const char destinationFilename[],
-        std::pair<const char*, const char*> versionInfo)
+        const LibVersionDesc& versionInfo)
     {
         auto chunks = (model.*fn)();
 
@@ -208,10 +209,9 @@ namespace RenderCore { namespace Assets
     {
 		if (_pimpl->_conversionLibrary && _pimpl->_conversionLibrary != INVALID_HANDLE_VALUE) {
 				// we need to call the "Shutdown" function before we can unload the DLL
-			const char ShutdownLibraryName[] = "?ShutdownLibrary@ColladaConversion@RenderCore@@YAXXZ";
-			auto shutdownLibraryFn = (void(*)())(*Windows::Fn_GetProcAddress)(_pimpl->_conversionLibrary, ShutdownLibraryName);
-			if (shutdownLibraryFn) {
-				(*shutdownLibraryFn)();
+			auto detachFn = (void (*)(ConsoleRig::GlobalServices&))(*Windows::Fn_GetProcAddress)(_pimpl->_conversionLibrary, "DeattachLibrary");
+			if (detachFn) {
+				(*detachFn)(ConsoleRig::GlobalServices::GetInstance());
 			}
 
 			(*Windows::FreeLibrary)(_pimpl->_conversionLibrary);
@@ -226,6 +226,12 @@ namespace RenderCore { namespace Assets
             if (_pimpl->_conversionLibrary && _pimpl->_conversionLibrary != INVALID_HANDLE_VALUE) {
                 using namespace RenderCore::ColladaConversion;
 
+                auto attachFn = (void (*)(ConsoleRig::GlobalServices&))(*Windows::Fn_GetProcAddress)(_pimpl->_conversionLibrary, "AttachLibrary");
+                auto getVersionInfoFn = (LibVersionDesc (*)())(*Windows::Fn_GetProcAddress)(_pimpl->_conversionLibrary, "GetVersionInformation");
+                if (attachFn) {
+				    (*attachFn)(ConsoleRig::GlobalServices::GetInstance());
+			    }
+
                     //  Find and set the function pointers we need
                     //  Note the function names have been decorated by the compiler
                     //      ... we could consider a better method for doing this... Maybe the DLL should just
@@ -237,7 +243,6 @@ namespace RenderCore { namespace Assets
                     const char ModelSerializeSkeletonName[]     = "?SerializeSkeleton@NascentModel@ColladaConversion@RenderCore@@QBE?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk@ColladaConversion@RenderCore@@VCrossDLLDeletor@Internal@23@@std@@I@std@@XZ";
                     const char ModelSerializeMaterialsName[]    = "?SerializeMaterials@NascentModel@ColladaConversion@RenderCore@@QBE?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk@ColladaConversion@RenderCore@@VCrossDLLDeletor@Internal@23@@std@@I@std@@XZ";
                     const char ModelMergeAnimationDataName[]    = "?MergeAnimationData@NascentModel@ColladaConversion@RenderCore@@QAEXABV123@QBD@Z";
-                    const char VersionInformationName[] = "?GetVersionInformation@ColladaConversion@RenderCore@@YA?AU?$pair@PBDPBD@std@@XZ";
                 #else
                     const char CreateModelName[]                = "?CreateModel@ColladaConversion@RenderCore@@YA?AV?$unique_ptr@VNascentModel@ColladaConversion@RenderCore@@VCrossDLLDeletor@Internal@23@@std@@QEBD@Z";
                     const char ModelSerializeSkinName[]         = "?SerializeSkin@NascentModel@ColladaConversion@RenderCore@@QEBA?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk@ColladaConversion@RenderCore@@VCrossDLLDeletor@Internal@23@@std@@I@std@@XZ";
@@ -245,7 +250,6 @@ namespace RenderCore { namespace Assets
                     const char ModelSerializeSkeletonName[]     = "?SerializeSkeleton@NascentModel@ColladaConversion@RenderCore@@QEBA?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk@ColladaConversion@RenderCore@@VCrossDLLDeletor@Internal@23@@std@@I@std@@XZ";
                     const char ModelSerializeMaterialsName[]    = "?SerializeMaterials@NascentModel@ColladaConversion@RenderCore@@QEBA?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk@ColladaConversion@RenderCore@@VCrossDLLDeletor@Internal@23@@std@@I@std@@XZ";
                     const char ModelMergeAnimationDataName[]    = "?MergeAnimationData@NascentModel@ColladaConversion@RenderCore@@QEAAXAEBV123@QEBD@Z";
-                    const char VersionInformationName[] = "?GetVersionInformation@ColladaConversion@RenderCore@@YA?AU?$pair@PEBDPEBD@std@@XZ";
                 #endif
 
                 _pimpl->_createModel = (CreateModelFunction*)((*Windows::Fn_GetProcAddress)(_pimpl->_conversionLibrary, CreateModelName));
@@ -256,10 +260,8 @@ namespace RenderCore { namespace Assets
                 *(FARPROC*)&_pimpl->_mergeAnimationDataFunction  = (*Windows::Fn_GetProcAddress)(_pimpl->_conversionLibrary, ModelMergeAnimationDataName);
 
                     // get version information
-                typedef std::pair<const char*, const char*> VersionQueryFn();
-                auto queryFn = (VersionQueryFn*)(*Windows::Fn_GetProcAddress)(_pimpl->_conversionLibrary, VersionInformationName);
-                if (queryFn) {
-                    _pimpl->_conversionDLLVersion = (*queryFn)();
+                if (getVersionInfoFn) {
+                    _pimpl->_conversionDLLVersion = (*getVersionInfoFn)();
                 }
             }
         }

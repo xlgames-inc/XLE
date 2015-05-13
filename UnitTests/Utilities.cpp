@@ -12,6 +12,7 @@
 #include "../Utility/FunctionUtils.h"
 #include "../Math/Vector.h"
 #include <CppUnitTest.h>
+#include <stdexcept>
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
@@ -20,6 +21,17 @@ namespace UnitTests
     static int foo(int x, int y, int z) { return x + y + z; }
     static int foo1(int x, int y, int z) { return x + y + z; }
     static float foo1(int x, int y, float z) { return x + y + z; }
+
+    class ThrowOnDestructor
+    {
+    public:
+        static bool s_expectingDestroy;
+        static unsigned s_destroyCount;
+        ~ThrowOnDestructor() { ++s_destroyCount; if (!s_expectingDestroy) ThrowException(std::runtime_error("Object was destroyed at unexpected time")); }
+    };
+
+    bool ThrowOnDestructor::s_expectingDestroy = false;
+    unsigned ThrowOnDestructor::s_destroyCount = 0;
 
     TEST_CLASS(Utilities)
     {
@@ -138,14 +150,38 @@ namespace UnitTests
             using namespace std::placeholders;
 
             VariantFunctions fns;
-            fns.Store(0, [](int x, int y) { return x+y; });
+
+            fns.Add(0, foo);
+            Assert::AreEqual(fns.Call<int>(0, 10, 20, 30), 60);
+            fns.Remove(0);
+
+            fns.Add(0, [](int x, int y) { return x+y; });
             Assert::AreEqual(fns.Call<int>(0, 10, 20), 30);
+
+            {
+                    // test holding a reference along with the function ptr
+                {
+                    auto obj = std::make_shared<ThrowOnDestructor>();
+                    fns.Add(1000, [obj]() { return obj;});
+                }
+
+                auto ptr = fns.Call<std::shared_ptr<ThrowOnDestructor>>(1000);
+                ptr.reset();
+
+                    // the actual object should only be destroyed during
+                    // this "Remove" call
+                ThrowOnDestructor::s_expectingDestroy = true;
+                fns.Remove(1000);
+                ThrowOnDestructor::s_expectingDestroy = false;
+            
+                Assert::AreEqual(ThrowOnDestructor::s_destroyCount, 1u);
+            }
 
             auto bindFn = MakeFunction<int, int>(
                 std::bind(
                     [](int x, int y) { return x+y; },
                     _1, 20));
-            fns.Store(1, std::move(bindFn));
+            fns.Add(1, std::move(bindFn));
             Assert::AreEqual(fns.Call<int>(1, 10), 30);
             Assert::AreEqual(fns.Get<int(int)>(1)(10), 30);
 
@@ -166,7 +202,7 @@ namespace UnitTests
 
                 // heavy load test (will crash if there are any failures)
             for (auto i=0u; i<100; ++i)
-                fns.Store(100+i, [](int x, int y) { return x+y; });
+                fns.Add(100+i, [](int x, int y) { return x+y; });
         }
     };
 }
