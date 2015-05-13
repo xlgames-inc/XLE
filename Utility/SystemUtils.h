@@ -26,6 +26,9 @@ namespace Utility
 
     void XlOutputDebugString(const char* format);
     void XlMessageBox(const char* content, const char* title);
+
+    typedef size_t ModuleId;
+    ModuleId GetCurrentModuleId();
 }
 
 

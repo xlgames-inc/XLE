@@ -93,12 +93,14 @@
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\AttachableLibrary.cpp" />
     <ClCompile Include="..\Console.cpp" />
     <ClCompile Include="..\GlobalServices.cpp" />
     <ClCompile Include="..\Log.cpp" />
     <ClCompile Include="..\OutputStream.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\AttachableLibrary.h" />
     <ClInclude Include="..\Console.h" />
     <ClInclude Include="..\GlobalServices.h" />
     <ClInclude Include="..\IncludeLUA.h" />

@@ -1394,9 +1394,9 @@ namespace RenderCore { namespace ColladaConversion
     extern char BuildDateString[];
 }}
 
-LibVersionDesc GetVersionInformation()
+ConsoleRig::LibVersionDesc GetVersionInformation()
 {
-    LibVersionDesc result;
+    ConsoleRig::LibVersionDesc result;
     result._versionString = RenderCore::ColladaConversion::VersionString;
     result._buildDateString = RenderCore::ColladaConversion::BuildDateString;
     return result;

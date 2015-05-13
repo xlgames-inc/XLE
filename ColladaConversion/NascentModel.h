@@ -14,6 +14,7 @@
 #include "../RenderCore/IDevice_Forward.h"
 #include "../Assets/ChunkFile.h"
 #include "../Assets/BlockSerializer.h"
+#include "../ConsoleRig/AttachableLibrary.h"
 #include "../Utility/Mixins.h"
 #include "../Math/Transformations.h"
 #include <tuple>
@@ -103,14 +104,7 @@ namespace RenderCore { namespace ColladaConversion
     typedef void (NascentModel::*MergeAnimationDataFunction)(const NascentModel& source, const char animationName[]);
 }}
 
-class LibVersionDesc
-{
-public:
-    const char* _versionString;
-    const char* _buildDateString;
-};
-
-extern "C" CONVERSION_API LibVersionDesc GetVersionInformation();
+extern "C" CONVERSION_API ConsoleRig::LibVersionDesc GetVersionInformation();
 extern "C" CONVERSION_API void AttachLibrary(ConsoleRig::GlobalServices&);
 extern "C" CONVERSION_API void DeattachLibrary(ConsoleRig::GlobalServices&);
 

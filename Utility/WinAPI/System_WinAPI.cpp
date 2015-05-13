@@ -9,6 +9,7 @@
 #include "../Threading/LockFree.h"
 #include "../StringUtils.h"
 #include "../StringFormat.h"
+#include "../SystemUtils.h"
 #include "../TimeUtils.h"
 #include "../../Core/WinAPI/IncludeWindows.h"
 #include <process.h>
@@ -73,6 +74,28 @@ double XlDiffTime(uint64 endTime, uint64 beginTime)
 {
     return _difftime64(endTime, beginTime);
 }
+
+//////////////////////////////////////////////////////////////////////////
+extern "C" IMAGE_DOS_HEADER __ImageBase;
+ModuleId GetCurrentModuleId() 
+{ 
+        // We want to return a value that is unique to the current 
+        // module (considering DLLs as separate modules from the main
+        // executable). It's value doesn't matter, so long as it is
+        // unique from other modules, and won't change over the lifetime
+        // of the proces.
+        //
+        // When compiling under visual studio/windows, the __ImageBase
+        // global points to the base of memory. Since the static global
+        // is unique to each dll module, and the address it points to
+        // will also be unique to each module, we can use it as a id
+        // for the current module.
+        // Actually, we could probably do the same thing with any
+        // static global pointer... Just declare a char, and return
+        // a pointer to it...?
+    return (ModuleId)&__ImageBase; 
+}
+
 
 //////////////////////////////////////////////////////////////////////////
 uint32 XlGetCurrentThreadId()

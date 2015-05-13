@@ -7,14 +7,14 @@
 #include "ColladaCompilerInterface.h"
 #include "../../ColladaConversion/NascentModel.h"
 #include "../../Assets/AssetUtils.h"
-#include "../../ConsoleRig/GlobalServices.h"
+#include "../../ConsoleRig/AttachableLibrary.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
 
-#include "../../Utility/WinAPI/WinAPIWrapper.h"
-
 namespace RenderCore { namespace Assets 
 {
+    static const auto* ColladaLibraryName = "ColladaConversion.dll";
+
     class ColladaCompiler::Pimpl
     {
     public:
@@ -25,21 +25,19 @@ namespace RenderCore { namespace Assets
         ColladaConversion::MergeAnimationDataFunction _mergeAnimationDataFunction;
         ColladaConversion::CreateModelFunction* _createModel;
 
-        HMODULE _conversionLibrary;
-        bool _attemptedLibraryLoad;
-        LibVersionDesc _conversionDLLVersion;
+        ConsoleRig::AttachableLibrary _library;
+        bool _isAttached;
+        bool _attemptedAttach;
 
-        Pimpl()
+        Pimpl() : _library(ColladaLibraryName)
         {
-            _conversionLibrary = (HMODULE)INVALID_HANDLE_VALUE;
-            _attemptedLibraryLoad = false;
             _serializeSkinFunction = nullptr;
             _serializeAnimationFunction = nullptr;
             _serializeSkeletonFunction = nullptr;
             _serializeMaterialsFunction = nullptr;
             _mergeAnimationDataFunction = nullptr;
             _createModel = nullptr;
-            _conversionDLLVersion = LibVersionDesc { "Unknown", "Unknown" };
+            _isAttached = _attemptedAttach = false;
         }
     };
 
@@ -47,7 +45,7 @@ namespace RenderCore { namespace Assets
         RenderCore::ColladaConversion::NascentModel& model, 
         RenderCore::ColladaConversion::ModelSerializeFunction fn,
         const char destinationFilename[],
-        const LibVersionDesc& versionInfo)
+        const ConsoleRig::LibVersionDesc& versionInfo)
     {
         auto chunks = (model.*fn)();
 
@@ -88,7 +86,7 @@ namespace RenderCore { namespace Assets
         RenderCore::ColladaConversion::NascentModel& model, 
         RenderCore::ColladaConversion::ModelSerializeFunction fn,
         const char destinationFilename[],
-        const LibVersionDesc& versionInfo)
+        const ConsoleRig::LibVersionDesc& versionInfo)
     {
         auto chunks = (model.*fn)();
 
@@ -126,6 +124,9 @@ namespace RenderCore { namespace Assets
 
         AttachLibrary();
 
+        ConsoleRig::LibVersionDesc libVersionDesc;
+        _pimpl->_library.TryGetVersion(libVersionDesc);
+
         if (typeCode == Type_Model || typeCode == Type_Skeleton) {
                 // append an extension if it doesn't already exist
             char colladaFile[MaxPath];
@@ -137,15 +138,15 @@ namespace RenderCore { namespace Assets
 
             auto model = (*_pimpl->_createModel)(colladaFile);
             if (typeCode == Type_Model) {
-                SerializeToFile(*model, _pimpl->_serializeSkinFunction, outputName, _pimpl->_conversionDLLVersion);
+                SerializeToFile(*model, _pimpl->_serializeSkinFunction, outputName, libVersionDesc);
 
                 char matName[MaxPath];
                 destinationStore.MakeIntermediateName(matName, dimof(matName), initializers[0]);
                 XlChopExtension(matName);
                 XlCatString(matName, dimof(matName), "-rawmat");
-                SerializeToFileJustChunk(*model, _pimpl->_serializeMaterialsFunction, matName, _pimpl->_conversionDLLVersion);
+                SerializeToFileJustChunk(*model, _pimpl->_serializeMaterialsFunction, matName, libVersionDesc);
             } else {
-                SerializeToFile(*model, _pimpl->_serializeSkeletonFunction, outputName, _pimpl->_conversionDLLVersion);
+                SerializeToFile(*model, _pimpl->_serializeSkeletonFunction, outputName, libVersionDesc);
             }
 
                 // write new dependencies
@@ -189,7 +190,7 @@ namespace RenderCore { namespace Assets
                 deps.push_back(destinationStore.GetDependentFileState(i->c_str()));
             }
 
-            SerializeToFile(*mergedAnimationSet, _pimpl->_serializeAnimationFunction, outputName, _pimpl->_conversionDLLVersion);
+            SerializeToFile(*mergedAnimationSet, _pimpl->_serializeAnimationFunction, outputName, libVersionDesc);
             auto newDepVal = destinationStore.WriteDependencies(outputName, baseDir, deps);
 
             return std::make_unique<::Assets::PendingCompileMarker>(
@@ -207,30 +208,16 @@ namespace RenderCore { namespace Assets
 
     ColladaCompiler::~ColladaCompiler()
     {
-		if (_pimpl->_conversionLibrary && _pimpl->_conversionLibrary != INVALID_HANDLE_VALUE) {
-				// we need to call the "Shutdown" function before we can unload the DLL
-			auto detachFn = (void (*)(ConsoleRig::GlobalServices&))(*Windows::Fn_GetProcAddress)(_pimpl->_conversionLibrary, "DeattachLibrary");
-			if (detachFn) {
-				(*detachFn)(ConsoleRig::GlobalServices::GetInstance());
-			}
-
-			(*Windows::FreeLibrary)(_pimpl->_conversionLibrary);
-		}
     }
 
     void ColladaCompiler::AttachLibrary()
     {
-        if (!_pimpl->_attemptedLibraryLoad && _pimpl->_conversionLibrary == INVALID_HANDLE_VALUE) {
-            _pimpl->_attemptedLibraryLoad = true;
-            _pimpl->_conversionLibrary = (*Windows::Fn_LoadLibrary)("ColladaConversion.dll");
-            if (_pimpl->_conversionLibrary && _pimpl->_conversionLibrary != INVALID_HANDLE_VALUE) {
-                using namespace RenderCore::ColladaConversion;
+        if (!_pimpl->_attemptedAttach && !_pimpl->_isAttached) {
+            _pimpl->_attemptedAttach = true;
 
-                auto attachFn = (void (*)(ConsoleRig::GlobalServices&))(*Windows::Fn_GetProcAddress)(_pimpl->_conversionLibrary, "AttachLibrary");
-                auto getVersionInfoFn = (LibVersionDesc (*)())(*Windows::Fn_GetProcAddress)(_pimpl->_conversionLibrary, "GetVersionInformation");
-                if (attachFn) {
-				    (*attachFn)(ConsoleRig::GlobalServices::GetInstance());
-			    }
+            _pimpl->_isAttached = _pimpl->_library.TryAttach();
+            if (_pimpl->_isAttached) {
+                using namespace RenderCore::ColladaConversion;
 
                     //  Find and set the function pointers we need
                     //  Note the function names have been decorated by the compiler
@@ -251,18 +238,14 @@ namespace RenderCore { namespace Assets
                     const char ModelSerializeMaterialsName[]    = "?SerializeMaterials@NascentModel@ColladaConversion@RenderCore@@QEBA?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk@ColladaConversion@RenderCore@@VCrossDLLDeletor@Internal@23@@std@@I@std@@XZ";
                     const char ModelMergeAnimationDataName[]    = "?MergeAnimationData@NascentModel@ColladaConversion@RenderCore@@QEAAXAEBV123@QEBD@Z";
                 #endif
-
-                _pimpl->_createModel = (CreateModelFunction*)((*Windows::Fn_GetProcAddress)(_pimpl->_conversionLibrary, CreateModelName));
-                *(FARPROC*)&_pimpl->_serializeSkinFunction       = (*Windows::Fn_GetProcAddress)(_pimpl->_conversionLibrary, ModelSerializeSkinName);
-                *(FARPROC*)&_pimpl->_serializeAnimationFunction  = (*Windows::Fn_GetProcAddress)(_pimpl->_conversionLibrary, ModelSerializeAnimationName);
-                *(FARPROC*)&_pimpl->_serializeSkeletonFunction   = (*Windows::Fn_GetProcAddress)(_pimpl->_conversionLibrary, ModelSerializeSkeletonName);
-                *(FARPROC*)&_pimpl->_serializeMaterialsFunction  = (*Windows::Fn_GetProcAddress)(_pimpl->_conversionLibrary, ModelSerializeMaterialsName);
-                *(FARPROC*)&_pimpl->_mergeAnimationDataFunction  = (*Windows::Fn_GetProcAddress)(_pimpl->_conversionLibrary, ModelMergeAnimationDataName);
-
-                    // get version information
-                if (getVersionInfoFn) {
-                    _pimpl->_conversionDLLVersion = (*getVersionInfoFn)();
-                }
+                
+                auto& lib = _pimpl->_library;
+                _pimpl->_createModel                = lib.GetFunction<decltype(_pimpl->_createModel)>(CreateModelName);
+                _pimpl->_serializeSkinFunction      = lib.GetFunction<decltype(_pimpl->_serializeSkinFunction)>(ModelSerializeSkinName);
+                _pimpl->_serializeAnimationFunction = lib.GetFunction<decltype(_pimpl->_serializeAnimationFunction)>(ModelSerializeAnimationName);
+                _pimpl->_serializeSkeletonFunction  = lib.GetFunction<decltype(_pimpl->_serializeSkeletonFunction)>(ModelSerializeSkeletonName);
+                _pimpl->_serializeMaterialsFunction = lib.GetFunction<decltype(_pimpl->_serializeMaterialsFunction)>(ModelSerializeMaterialsName);
+                _pimpl->_mergeAnimationDataFunction = lib.GetFunction<decltype(_pimpl->_mergeAnimationDataFunction)>(ModelMergeAnimationDataName);
             }
         }
 

@@ -11,9 +11,8 @@
 #include "../Utility/Streams/Stream.h"
 #include "../Utility/FunctionUtils.h"
 #include "../Utility/MemoryUtils.h"
+#include "../Utility/SystemUtils.h"
 #include <assert.h>
-
-#include "../Core/WinAPI/IncludeWindows.h"
 
     // We can't use the default initialisation method for easylogging++
     // because is causes a "LoaderLock" exception when used with C++/CLI dlls.
@@ -32,28 +31,6 @@ INITIALIZE_NULL_EASYLOGGINGPP
 static auto Fn_GetStorage = ConstHash64<'getl', 'ogst', 'orag', 'e'>::Value;
 static auto Fn_CoutRedirectModule = ConstHash64<'cout', 'redi', 'rect'>::Value;
 static auto Fn_LogMainModule = ConstHash64<'logm', 'ainm', 'odul', 'e'>::Value;
-
-extern "C" IMAGE_DOS_HEADER __ImageBase;
-
-typedef size_t ModuleId;
-ModuleId GetCurrentModuleId() 
-{ 
-        // We want to return a value that is unique to the current 
-        // module (considering DLLs as separate modules from the main
-        // executable). It's value doesn't matter, so long as it is
-        // unique from other modules, and won't change over the lifetime
-        // of the proces.
-        //
-        // When compiling under visual studio/windows, the __ImageBase
-        // global points to the base of memory. Since the static global
-        // is unique to each dll module, and the address it points to
-        // will also be unique to each module, we can use it as a id
-        // for the current module.
-        // Actually, we could probably do the same thing with any
-        // static global pointer... Just declare a char, and return
-        // a pointer to it...?
-    return (ModuleId)&__ImageBase; 
-}
 
 namespace ConsoleRig
 {
@@ -98,8 +75,7 @@ namespace ConsoleRig
         static std::basic_streambuf<char>* s_oldCoutStreamBuf = nullptr;
     #endif
 
-    void Logging_Startup(
-        const char configFile[], const char logFileName[])
+    void Logging_Startup(const char configFile[], const char logFileName[])
     {
         auto& globalServices = GlobalServices::GetInstance();
         auto currentModule = GetCurrentModuleId();
