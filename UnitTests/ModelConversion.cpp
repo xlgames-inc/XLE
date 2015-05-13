@@ -42,7 +42,8 @@ namespace UnitTests
 
 		XlGetCurrentDirectory(dimof(appDir), appDir);
 		XlSimplifyPath(appDir, dimof(appDir), appDir, a2n("\\/"));
-		XlConcatPath(workingDir, dimof(workingDir), appDir, a2n("..\\Working"));
+		auto* catPath = a2n("..\\Working");
+		XlConcatPath(workingDir, dimof(workingDir), appDir, catPath, &catPath[XlStringLen(catPath)]);
 		XlSimplifyPath(workingDir, dimof(workingDir), workingDir, a2n("\\/"));
 		XlChDir(workingDir);
 	}
@@ -86,8 +87,10 @@ namespace UnitTests
 			auto console = std::make_unique<ConsoleRig::Console>();
 
 			{
-				auto asyncMan = RenderCore::Metal::CreateCompileAndAsyncManager();
-				SetupColladaCompilers(*asyncMan);
+                auto aservices = std::make_shared<::Assets::Services>(0);
+				auto& asyncMan = aservices->GetAsyncMan();
+                RenderCore::Metal::InitCompileAndAsyncManager();
+				SetupColladaCompilers(asyncMan);
 
 				const char sampleAsset[] = "game/model/galleon/galleon.dae";
 				using RenderCore::Assets::ModelScaffold;
@@ -95,7 +98,7 @@ namespace UnitTests
 				{
 					using ::Assets::ResChar;
 					ResChar intermediateFile[256];
-					asyncMan->GetIntermediateStore().MakeIntermediateName(
+					asyncMan.GetIntermediateStore().MakeIntermediateName(
 						intermediateFile, dimof(intermediateFile),
 						StringMeld<256, ResChar>() << sampleAsset << "-skin");
 					XlDeleteFile((utf8*)intermediateFile);
@@ -116,10 +119,8 @@ namespace UnitTests
 					}
 
 					Threading::YieldTimeSlice();
-					asyncMan->Update();
+					asyncMan.Update();
 				}
-
-				asyncMan.reset();
 			}
 		}
 

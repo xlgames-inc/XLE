@@ -122,6 +122,7 @@
     <ClInclude Include="..\BitUtils.h" />
     <ClInclude Include="..\Conversion.h" />
     <ClInclude Include="..\ExceptionLogging.h" />
+    <ClInclude Include="..\FunctionUtils.h" />
     <ClInclude Include="..\HeapUtils.h" />
     <ClInclude Include="..\IteratorUtils.h" />
     <ClInclude Include="..\MemoryUtils.h" />
@@ -156,6 +157,7 @@
     <ClCompile Include="..\BitUtils.cpp" />
     <ClCompile Include="..\Conversion.cpp" />
     <ClCompile Include="..\ExceptionUtils.cpp" />
+    <ClCompile Include="..\FunctionUtils.cpp" />
     <ClCompile Include="..\HashUtils.cpp" />
     <ClCompile Include="..\HeapUtils.cpp" />
     <ClCompile Include="..\MiniHeap.cpp" />

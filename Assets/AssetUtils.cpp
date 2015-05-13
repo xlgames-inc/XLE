@@ -244,11 +244,11 @@ namespace Assets
                         auto workingBufferLen = std::min((ptrdiff_t)XlStringLen(workingBuffer), ptrdiff_t(destinationCount) - 1);
                         auto colonLen = (ptrdiff_t)XlStringLen(colon);
                         auto colonCopy = std::min(ptrdiff_t(destinationCount) - workingBufferLen - 1, colonLen);
-                        assert((workingBufferLen + colonCopy) < destinationCount);
+                        assert((workingBufferLen + colonCopy) < ptrdiff_t(destinationCount));
                         if (colonCopy > 0)
                             XlMoveMemory(&destination[workingBufferLen], colon, colonCopy);
                         destination[workingBufferLen + colonCopy] = '\0';
-                        assert(workingBufferLen < (destinationCount-1));
+                        assert(workingBufferLen < (ptrdiff_t(destinationCount)-1));
                         XlCopyMemory(destination, workingBuffer, workingBufferLen);
                     } else {
                         XlCatString(destination, destinationCount, colon);

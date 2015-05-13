@@ -9,6 +9,7 @@
 #include "../Utility/StringFormat.h"
 #include "../Utility/Streams/Stream.h"
 #include "../Utility/Streams/StreamTypes.h"
+#include "../Utility/FunctionUtils.h"
 #include "../Math/Vector.h"
 #include <CppUnitTest.h>
 
@@ -16,6 +17,10 @@ using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
 namespace UnitTests
 {
+    static int foo(int x, int y, int z) { return x + y + z; }
+    static int foo1(int x, int y, int z) { return x + y + z; }
+    static float foo1(int x, int y, float z) { return x + y + z; }
+
     TEST_CLASS(Utilities)
     {
     public:
@@ -103,6 +108,65 @@ namespace UnitTests
             Assert::AreEqual((wchar_t*)stringB.c_str(), L"BD<<StringB>><<StringD>>");
             Assert::AreEqual((char*)stringC.c_str(), "BD<<StringB>><<StringD>>");
             Assert::AreEqual((wchar_t*)stringD.c_str(), L"BD<<StringB>><<StringD>>");
+        }
+            
+        TEST_METHOD(MakeFunctionTest)
+        {
+            using namespace std::placeholders;
+             
+                // unambuiguous
+            auto f0 = MakeFunction(foo);
+            auto f1 = MakeFunction([](int x, int y, int z) { return x + y + z;});
+            Assert::AreEqual(MakeFunction([](int x, int y, int z) { return x + y + z;})(1,2,3), 6);
+                
+            int first = 4;
+            auto lambda_state = [=](int y, int z) { return first + y + z;}; //lambda with states
+            Assert::AreEqual(MakeFunction(lambda_state)(1,2), 7);
+                
+                // ambuiguous cases
+            auto f2 = MakeFunction<int,int,int,int>(std::bind(foo,_1,_2,_3)); //bind results has multiple operator() overloads
+            Assert::AreEqual(f2(1,2,3), 6);
+            auto f3 = MakeFunction<int,int,int,int>(foo1);     //overload1
+            auto f4 = MakeFunction<float,int,int,float>(foo1); //overload2
+
+            Assert::AreEqual(f3(1,2,3), 6);
+            Assert::AreEqual(f4(1,2,3.5f), 6.5f, 0.001f);
+        }
+
+        TEST_METHOD(VariationFunctionsTest)
+        {
+            using namespace std::placeholders;
+
+            VariantFunctions fns;
+            fns.Store(0, [](int x, int y) { return x+y; });
+            Assert::AreEqual(fns.Call<int>(0, 10, 20), 30);
+
+            auto bindFn = MakeFunction<int, int>(
+                std::bind(
+                    [](int x, int y) { return x+y; },
+                    _1, 20));
+            fns.Store(1, std::move(bindFn));
+            Assert::AreEqual(fns.Call<int>(1, 10), 30);
+            Assert::AreEqual(fns.Get<int(int)>(1)(10), 30);
+
+                // attempting to call functions that don't exist
+            Assert::AreEqual(fns.CallDefault<int>(3, 10), 10);
+            int res = 0;
+            Assert::IsFalse(fns.TryCall<int>(res, 3));
+
+            Assert::IsTrue(fns.Has<int(int)>(1));
+            Assert::IsFalse(fns.Has<int(int)>(2));
+
+            bool hitException = false;
+            TRY { fns.Has<int(int, int)>(1); }
+            CATCH(const VariantFunctions::SignatureMismatch&) { hitException = true; }
+            CATCH_END
+
+            Assert::IsTrue(hitException);
+
+                // heavy load test (will crash if there are any failures)
+            for (auto i=0u; i<100; ++i)
+                fns.Store(100+i, [](int x, int y) { return x+y; });
         }
     };
 }

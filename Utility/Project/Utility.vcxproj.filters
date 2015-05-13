@@ -84,6 +84,7 @@
     <ClInclude Include="..\Threading\CompletionThreadPool.h">
       <Filter>Threading</Filter>
     </ClInclude>
+    <ClInclude Include="..\FunctionUtils.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\StringFormat.cpp" />
@@ -133,5 +134,6 @@
     <ClCompile Include="..\Threading\CompletionThreadPool.cpp">
       <Filter>Threading</Filter>
     </ClCompile>
+    <ClCompile Include="..\FunctionUtils.cpp" />
   </ItemGroup>
 </Project>

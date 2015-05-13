@@ -31,7 +31,8 @@ namespace UnitTests
 
 		XlGetCurrentDirectory(dimof(appDir), appDir);
 		XlSimplifyPath(appDir, dimof(appDir), appDir, a2n("\\/"));
-		XlConcatPath(workingDir, dimof(workingDir), appDir, a2n("..\\Working"));
+		auto* catPath = a2n("..\\Working");
+		XlConcatPath(workingDir, dimof(workingDir), appDir, catPath, &catPath[XlStringLen(catPath)]);
 		XlSimplifyPath(workingDir, dimof(workingDir), workingDir, a2n("\\/"));
 		XlChDir(workingDir);
 	}
@@ -62,7 +63,8 @@ namespace UnitTests
 					auto console = std::make_unique<ConsoleRig::Console>();
 					auto renderDevice = RenderCore::CreateDevice();
 					auto bufferUploads = BufferUploads::CreateManager(renderDevice.get());
-					auto asyncMan = RenderCore::Metal::CreateCompileAndAsyncManager();
+					auto asyncMan = std::make_shared<::Assets::Services>(0);
+                    RenderCore::Metal::InitCompileAndAsyncManager();
 
 					auto renderVersion = renderDevice->GetVersionInformation();
 					LogInfo << "RenderCore version (" << renderVersion.first << ") and date (" << renderVersion.second << ")";
