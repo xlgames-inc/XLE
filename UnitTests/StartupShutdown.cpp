@@ -64,6 +64,7 @@ namespace UnitTests
 				{
 					auto console = std::make_unique<ConsoleRig::Console>();
 					auto renderDevice = RenderCore::CreateDevice();
+                    BufferUploads::Attach(services);
 					auto bufferUploads = BufferUploads::CreateManager(renderDevice.get());
 					auto asyncMan = std::make_shared<::Assets::Services>(0);
                     RenderCore::Metal::InitCompileAndAsyncManager();
@@ -71,6 +72,9 @@ namespace UnitTests
 					auto renderVersion = renderDevice->GetVersionInformation();
 					LogInfo << "RenderCore version (" << renderVersion.first << ") and date (" << renderVersion.second << ")";
 				}
+
+                BufferUploads::Detach(services);
+                ConsoleRig::Logging_Shutdown();
 			}
 		}
 

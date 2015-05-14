@@ -221,7 +221,7 @@ namespace RenderCore { namespace Assets
         std::vector<::Assets::DependentFileState> deps;
         CompileMaterialScaffold(initializers[0], initializers[1], outputName, &deps);
 
-        auto newDepVal = destinationStore.WriteDependencies(outputName, "", deps);
+        auto newDepVal = destinationStore.WriteDependencies(outputName, "", AsPointer(deps.cbegin()), AsPointer(deps.cend()));
         return std::make_unique<::Assets::PendingCompileMarker>(
             ::Assets::AssetState::Ready, outputName, ~0ull, std::move(newDepVal));
     }

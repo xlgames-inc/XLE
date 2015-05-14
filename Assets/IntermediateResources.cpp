@@ -200,7 +200,7 @@ namespace Assets { namespace IntermediateResources
 
     std::shared_ptr<DependencyValidation> Store::WriteDependencies(
         const ResChar intermediateFileName[], const ResChar baseDir[], 
-        const std::vector<DependentFileState>& dependencies) const
+        const DependentFileState* depsBegin, const DependentFileState* depsEnd) const
     {
         Data data;
 
@@ -212,7 +212,7 @@ namespace Assets { namespace IntermediateResources
         data.SetAttribute("BasePath", baseDir);
 
         auto dependenciesBlock = std::make_unique<Data>("Dependencies");
-        for (auto s=dependencies.cbegin(); s!=dependencies.cend(); ++s) {
+        for (auto s=depsBegin; s!=depsEnd; ++s) {
             auto c = std::make_unique<Data>();
 
             ResChar normalizedPath[MaxPath];

@@ -34,6 +34,7 @@ namespace RenderCore
         ResChar     _entryPoint[64];
         ResChar     _shaderModel[32];
         ShaderResId(const ResChar initializer[]);
+        ShaderResId(const ResChar filename[], const ResChar entryPoint[], const ResChar shaderModel[]);
         ShaderResId();
     };
 
@@ -61,6 +62,13 @@ namespace RenderCore
         if (!startShaderModel) {
             XlCopyString(_shaderModel, PS_DefShaderModel);
         }
+    }
+
+    inline ShaderResId::ShaderResId(const ResChar filename[], const ResChar entryPoint[], const ResChar shaderModel[])
+    {
+        XlCopyString(_filename, filename);
+        XlCopyString(_entryPoint, entryPoint);
+        XlCopyString(_shaderModel, shaderModel);
     }
 
     inline ShaderResId::ShaderResId()

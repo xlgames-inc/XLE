@@ -152,7 +152,7 @@ namespace RenderCore { namespace Assets
                 // write new dependencies
             std::vector<::Assets::DependentFileState> deps;
             deps.push_back(destinationStore.GetDependentFileState(colladaFile));
-            auto newDepVal = destinationStore.WriteDependencies(outputName, baseDir, deps);
+            auto newDepVal = destinationStore.WriteDependencies(outputName, baseDir, AsPointer(deps.cbegin()), AsPointer(deps.cend()));
         
                 // we can return a "ready" resource
             return std::make_unique<::Assets::PendingCompileMarker>(
@@ -191,7 +191,7 @@ namespace RenderCore { namespace Assets
             }
 
             SerializeToFile(*mergedAnimationSet, _pimpl->_serializeAnimationFunction, outputName, libVersionDesc);
-            auto newDepVal = destinationStore.WriteDependencies(outputName, baseDir, deps);
+            auto newDepVal = destinationStore.WriteDependencies(outputName, baseDir, AsPointer(deps.cbegin()), AsPointer(deps.cend()));
 
             return std::make_unique<::Assets::PendingCompileMarker>(
                 ::Assets::AssetState::Ready, outputName, ~uint64(0x0), std::move(newDepVal));

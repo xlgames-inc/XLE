@@ -53,7 +53,7 @@ namespace Assets { namespace IntermediateResources
         std::shared_ptr<DependencyValidation>    MakeDependencyValidation(const ResChar intermediateFileName[]) const;
         std::shared_ptr<DependencyValidation>    WriteDependencies(
             const ResChar intermediateFileName[], const ResChar baseDir[], 
-            const std::vector<DependentFileState>& dependencies) const;
+            const DependentFileState* depsBegin, const DependentFileState* depsEnd) const;
 
         void    MakeIntermediateName(ResChar buffer[], unsigned bufferMaxCount, const ResChar firstInitializer[]) const;
 

@@ -46,12 +46,6 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup />
   <ItemDefinitionGroup>
-    <Lib>
-      <AdditionalDependencies>d3dx11.lib;%(AdditionalDependencies)</AdditionalDependencies>
-    </Lib>
-    <Link>
-      <AdditionalDependencies>d3dx11.lib;%(AdditionalDependencies)</AdditionalDependencies>
-    </Link>
     <ClCompile />
   </ItemDefinitionGroup>
   <ItemGroup>

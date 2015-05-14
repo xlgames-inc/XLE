@@ -51,7 +51,6 @@
 #include <stack>
 
 #include "../../RenderCore/DX11/Metal/IncludeDX11.h"
-#include <D3DX11.h>
 #include "../../../Foreign/DirectXTex/DirectXTex/DirectXTex.h"
 
 namespace SceneEngine

@@ -12,13 +12,9 @@
 #include "../../../Core/Exceptions.h"
 
 #include "IncludeDX11.h"
-#include <D3DX11.h>
 
 namespace RenderCore { namespace Metal_DX11
 {
-    ID3DX11ThreadPump* GetThreadPump();
-    void FlushThreadPump();
-
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
     VertexShader::VertexShader(const ResChar initializer[])

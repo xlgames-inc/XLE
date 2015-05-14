@@ -113,7 +113,7 @@ namespace Assets
                 thisOp->_overlapped = std::make_unique<SpecialOverlapped>();
                 XlSetMemory(thisOp->_overlapped.get(), 0, sizeof(OVERLAPPED));
                 thisOp->_overlapped->_fileHandle = INVALID_HANDLE_VALUE;
-                thisOp->_overlapped->_returnPointer = std::move(thisOp);
+                thisOp->_overlapped->_returnPointer = thisOp;
 
                 auto readResult = ReadFileEx(
                     h, thisOp->_buffer.get(), fileSize, 

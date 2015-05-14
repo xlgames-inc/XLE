@@ -31,7 +31,6 @@
 #include <D3D11Shader.h>
 #include <D3Dcompiler.h>
 #include <DxErr.h>
-#include <D3DX11.h>
 
 namespace RenderCore { 
     extern char VersionString[];
@@ -42,8 +41,18 @@ namespace RenderCore { namespace Metal_DX11
 {
     static const bool CompileInBackground = true;
 
-    ID3DX11ThreadPump* GetThreadPump();
-    void FlushThreadPump();
+    static HRESULT D3DCompile_Wrapper(
+        LPCVOID pSrcData,
+        SIZE_T SrcDataSize,
+        LPCSTR pSourceName,
+        const D3D_SHADER_MACRO* pDefines,
+        ID3DInclude* pInclude,
+        LPCSTR pEntrypoint,
+        LPCSTR pTarget,
+        UINT Flags1,
+        UINT Flags2,
+        ID3DBlob** ppCode,
+        ID3DBlob** ppErrorMsgs);
 
         ////////////////////////////////////////////////////////////
 
@@ -244,48 +253,45 @@ namespace RenderCore { namespace Metal_DX11
 
         ////////////////////////////////////////////////////////////
 
-    class CompiledShaderByteCode::ShaderCompileHelper : public ::Assets::AsyncLoadOperation
+    class CompiledShaderByteCode::CompileHelper : public ::Assets::AsyncLoadOperation
     {
     public:
-        intrusive_ptr<ID3D::Blob> Resolve(
+        using Payload = std::shared_ptr<std::vector<uint8>>;
+        using ChainFn = std::function<void(
+            ::Assets::AssetState, const Payload& payload,
+            const Assets::DependentFileState*, const Assets::DependentFileState*)>;
+
+        const Payload& Resolve(
             const char initializer[],
             const std::shared_ptr<Assets::DependencyValidation>& depVal = nullptr) const;
 
-        const std::vector<Assets::DependentFileState>& GetDependencies() const     
-        { 
-            if (_includeHandler) {
-                return _includeHandler->GetIncludeFiles(); 
-            } else {
-                static std::vector<Assets::DependentFileState> blank;
-                return blank;
-            }
-        }
+        const std::vector<Assets::DependentFileState>& GetDependencies() const;
 
-        ShaderCompileHelper(
+        void Enqueue(
             const ShaderResId& shaderPath, const ResChar definesTable[], 
-            std::function<void(::Assets::AssetState, const void*, size_t)> chain = nullptr,
+            ChainFn chain = nullptr,
             const std::shared_ptr<Assets::DependencyValidation>& depVal = nullptr);
-        ShaderCompileHelper(
+        void Enqueue(
             const char shaderInMemory[], const char entryPoint[], 
             const char shaderModel[], const ResChar definesTable[]);
-        ~ShaderCompileHelper();
 
-        ShaderCompileHelper(ShaderCompileHelper&) = delete;
-        ShaderCompileHelper& operator=(const ShaderCompileHelper&) = delete;
+        CompileHelper();
+        ~CompileHelper();
+
+        CompileHelper(CompileHelper&) = delete;
+        CompileHelper& operator=(const CompileHelper&) = delete;
     protected:
         mutable std::unique_ptr<IncludeHandler> _includeHandler;
-        mutable std::unique_ptr<char[]>         _temporaryCompilingBuffer;
 
         virtual ::Assets::AssetState Complete(const void* buffer, size_t bufferSize);
         void CommitToArchive();
 
-        intrusive_ptr<ID3DBlob> _codeResult;
+        std::shared_ptr<std::vector<uint8>> _payload;
         intrusive_ptr<ID3DBlob> _errorResult;
         HRESULT _compileHResult;
         ::Assets::rstring _definesTable;
 
-        std::function<void(::Assets::AssetState, const void*, size_t)> _chain;
-
+        ChainFn _chain;
         ShaderResId _shaderPath;
     };
 
@@ -367,17 +373,34 @@ namespace RenderCore { namespace Metal_DX11
     static CompletionThreadPool& GetShaderCompileThreadPool()
     {
             // todo -- should go into reusable location
+            //          there are a few places that all have thread pools... we don't need
+            //          so many separate ones; let's combine them
         static CompletionThreadPool s_threadPool(4);
         return s_threadPool;
     }
     
-    CompiledShaderByteCode::ShaderCompileHelper::ShaderCompileHelper(
+    const std::vector<Assets::DependentFileState>& CompiledShaderByteCode::CompileHelper::GetDependencies() const     
+    { 
+        if (_includeHandler) {
+            return _includeHandler->GetIncludeFiles(); 
+        } else {
+            static std::vector<Assets::DependentFileState> blank;
+            return blank;
+        }
+    }
+
+    void CompiledShaderByteCode::CompileHelper::Enqueue(
         const ShaderResId& shaderPath, const ResChar definesTable[], 
-        std::function<void(::Assets::AssetState, const void*, size_t)> chain,
+        ChainFn chain,
         const std::shared_ptr<Assets::DependencyValidation>& depVal)
-    : _shaderPath(shaderPath), _definesTable(definesTable), _chain(std::move(chain))
     {
+        _shaderPath = shaderPath;
+        if (definesTable) _definesTable = definesTable;
+        _chain = std::move(chain);
         _compileHResult = -1;
+        _payload.reset();
+        _errorResult.reset();
+        _includeHandler.reset();
 
             // DavidJ --    The normalize path steps here don't work for network
             //              paths. The first "\\" gets removed in the process
@@ -396,7 +419,9 @@ namespace RenderCore { namespace Metal_DX11
         if (constant_expression<CompileInBackground>::result()) {
 
                 // invoke a background load and compile...
-            Enqueue(
+                // note that Enqueue can't be called from a constructor, because it
+                // calls shared_from_this()
+            AsyncLoadOperation::Enqueue(
                 _shaderPath._filename,
                 GetShaderCompileThreadPool());
 
@@ -419,39 +444,53 @@ namespace RenderCore { namespace Metal_DX11
         }
     }
 
-    CompiledShaderByteCode::ShaderCompileHelper::ShaderCompileHelper(
-        const char shaderInMemory[], const char entryPoint[], const char shaderModel[], const ResChar definesTable[])
+    void CompiledShaderByteCode::CompileHelper::Enqueue(
+        const char shaderInMemory[], 
+        const char entryPoint[], const char shaderModel[], const ResChar definesTable[])
     {
-        auto includeHandler = std::make_unique<IncludeHandler>("");
-
-        std::string definesCopy;
-        auto arrayOfDefines = MakeDefinesTable(definesTable, shaderModel, definesCopy);
-
         size_t shaderBufferSize = XlStringLen(shaderInMemory);
-        auto memoryBuffer = std::make_unique<char[]>(shaderBufferSize);
-        XlCopyMemory(memoryBuffer.get(), shaderInMemory, shaderBufferSize);
-        HRESULT hresult = D3DX11CompileFromMemory(
-            memoryBuffer.get(), shaderBufferSize,
-            "memory", AsPointer(arrayOfDefines.cbegin()), includeHandler.get(), 
-            entryPoint, AdaptShaderModel(shaderModel),
-            GetShaderCompilationFlags(),
-            0, CompileInBackground ? GetThreadPump() : nullptr,
-            &_futureShader, &_futureErrors, &_futureResult);
 
-        uint64 hashName = Hash64(shaderInMemory, &shaderInMemory[shaderBufferSize]);
-        if (!SUCCEEDED(hresult)) {
-            ThrowInvalidAsset(StringMeld<64>() << "ShaderInMemory_" << hashName, hresult, _futureErrors);
-        } else if (!constant_expression<CompileInBackground>::result())
-            ClearInvalidMarkers(StringMeld<64>() << "ShaderInMemory_" << hashName);
+        _shaderPath = ShaderResId(
+            StringMeld<64>() << "ShaderInMemory_" << Hash64(shaderInMemory, &shaderInMemory[shaderBufferSize]), 
+            entryPoint, shaderModel);;
+        if (definesTable) _definesTable = definesTable;
+        _chain = nullptr;
+        _compileHResult = -1;
+        _payload.reset();
+        _errorResult.reset();
+        _includeHandler.reset();
 
-        _temporaryCompilingBuffer = std::move(memoryBuffer);
-        _includeHandler = std::move(includeHandler);
+        if (constant_expression<CompileInBackground>::result()) {
+
+            auto sharedToThis = shared_from_this();
+            std::string sourceCopy(shaderInMemory, &shaderInMemory[shaderBufferSize]);
+            GetShaderCompileThreadPool().Enqueue(
+                [sourceCopy, sharedToThis, this]()
+                {
+                    auto state = this->Complete(AsPointer(sourceCopy.cbegin()), sourceCopy.size());
+                    sharedToThis->SetState(state);
+                });
+
+        } else {
+            auto state = Complete(shaderInMemory, shaderBufferSize);
+            SetState(state);
+
+            if (state == ::Assets::AssetState::Invalid) {
+                ThrowInvalidAsset(_shaderPath, _compileHResult, _errorResult.get());
+            } else
+                ClearInvalidMarkers(_shaderPath);
+        }
     }
 
-    CompiledShaderByteCode::ShaderCompileHelper::~ShaderCompileHelper()
+    CompiledShaderByteCode::CompileHelper::CompileHelper()
+    {
+        _compileHResult = -1;
+    }
+
+    CompiledShaderByteCode::CompileHelper::~CompileHelper()
     {}
 
-    ::Assets::AssetState CompiledShaderByteCode::ShaderCompileHelper::Complete(
+    ::Assets::AssetState CompiledShaderByteCode::CompileHelper::Complete(
         const void* buffer, size_t bufferSize)
     {
             // This is called (typically in a background thread)
@@ -464,7 +503,7 @@ namespace RenderCore { namespace Metal_DX11
         std::string definesCopy;
         auto arrayOfDefines = MakeDefinesTable(_definesTable.c_str(), _shaderPath._shaderModel, definesCopy);
 
-        _compileHResult = D3DCompile_Wrapper(
+        auto hresult = D3DCompile_Wrapper(
             buffer, bufferSize,
             _shaderPath._filename,
 
@@ -474,51 +513,55 @@ namespace RenderCore { namespace Metal_DX11
             GetShaderCompilationFlags(), 0, 
             &codeResult, &errorResult);
 
-        _codeResult = moveptr(codeResult);
+            // we get a "blob" from D3D. But we need to copy it into
+            // a shared_ptr<vector> so we can pass to it our clients
+        _payload.reset();
+        if (codeResult && codeResult->GetBufferPointer() && codeResult->GetBufferSize()) {
+            _payload = std::make_shared<std::vector<uint8>>(
+                (uint8*)codeResult->GetBufferPointer(), 
+                PtrAdd((uint8*)codeResult->GetBufferPointer(), codeResult->GetBufferSize()));
+        }
+
         _errorResult = moveptr(errorResult);
+        _compileHResult = hresult;
 
             // before we can finish the "complete" step, we need to commit
             // to archive output
-        auto result = SUCCEEDED(_compileHResult) ? ::Assets::AssetState::Ready : ::Assets::AssetState::Pending;
-        _chain(result, buffer, bufferSize);
+        auto result = SUCCEEDED(hresult) ? ::Assets::AssetState::Ready : ::Assets::AssetState::Pending;
+        auto deps = GetDependencies();
+        _chain(result, _payload, AsPointer(deps.cbegin()), AsPointer(deps.cend()));
         return result;
     }
 
-    intrusive_ptr<ID3D::Blob> CompiledShaderByteCode::ShaderCompileHelper::Resolve(
-        const char initializer[], const std::shared_ptr<Assets::DependencyValidation>& depVal) const
+    auto CompiledShaderByteCode::CompileHelper::Resolve(
+        const char initializer[], 
+        const std::shared_ptr<Assets::DependencyValidation>& depVal) const -> const Payload&
     {
-        if (!_futureShader) {
-            if (_futureResult == D3D11_ERROR_FILE_NOT_FOUND)
+        auto state = GetState();
+        if (state == ::Assets::AssetState::Invalid) {
+            if (_compileHResult == D3D11_ERROR_FILE_NOT_FOUND)
                 ThrowInvalidAsset(initializer, ShaderFailureReason::FileNotFound);
+            ThrowInvalidAsset(initializer, _compileHResult, _errorResult.get());
+        }
 
-            if (_futureResult!=~HRESULT(0x0))
-                ThrowInvalidAsset(initializer, _futureResult, _futureErrors);
-            
-            ThrowException(Assets::Exceptions::PendingResource(initializer, "Unknown error"));
-        } else
-            ClearInvalidMarkers(initializer);
+        if (state == ::Assets::AssetState::Pending) ThrowException(Assets::Exceptions::PendingResource(initializer, ""));
 
+        ClearInvalidMarkers(initializer);
         if (_includeHandler) {
-
                 //      If we've completed compiling, get the names of
                 //      #included headers from the include handler, and setup
                 //      dependency lists
 
             if (depVal) {
-                auto includeFiles = _includeHandler->GetIncludeFiles();
-                for (auto i=includeFiles.cbegin(); i!=includeFiles.cend(); ++i) {
-                    RegisterFileDependency(depVal, i->_filename.c_str());
-                }
+                auto deps = GetDependencies();
+                for (auto i:deps)
+                    RegisterFileDependency(depVal, i._filename.c_str());
             }
 
-            // _includeHandler.reset();
+            _includeHandler.reset();
         }
-        _temporaryCompilingBuffer.reset();
 
-            // we can "move" our pointer into the returned pointer -- we no longer need it in this class
-        intrusive_ptr<ID3D::Blob> result(_futureShader, false);
-        _futureShader = nullptr;
-        return result;
+        return _payload;
     }
 
         ////////////////////////////////////////////////////////////
@@ -679,29 +722,6 @@ namespace RenderCore { namespace Metal_DX11
 
         ////////////////////////////////////////////////////////////
 
-    class ShaderCompileProcess : public ::Assets::IPollingAsyncProcess
-    {
-    public:
-        Result::Enum Update();
-
-        typedef CompiledShaderByteCode::ShaderCompileHelper CompileHelper;
-        ShaderCompileProcess(
-            const ShaderResId& initializer, const ResChar definesTable[], 
-            std::shared_ptr<::Assets::ArchiveCache>&& archive, uint64 archiveId, CallbackFn&& fn);
-        ~ShaderCompileProcess();
-    protected:
-        CompileHelper _compileHelper;
-        std::shared_ptr<::Assets::ArchiveCache> _archive;
-        uint64 _archiveId;
-
-        DEBUG_ONLY(std::string _initializer;)
-        const char* Initializer() const;
-
-        #if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
-            std::string _archiveCacheAttachment;
-        #endif
-    };
-
     static HMODULE ShaderCompilerModule = (HMODULE)INVALID_HANDLE_VALUE;
     static HMODULE GetShaderCompileModule()
     {
@@ -827,125 +847,6 @@ namespace RenderCore { namespace Metal_DX11
         return str.str();
     }
 
-    auto ShaderCompileProcess::Update() -> Result::Enum
-    {
-        TRY {
-                //  Resolve the compilation process. Then write the
-                //  result to the archive file. Finally, fire the trigger.
-            auto resolved = _compileHelper.Resolve(Initializer());
-
-                //  Write the results to the archive cache. The archive 
-                //  probably won't flush to disk immediately, meaning that
-                //  the pointer to the payload data should be retained in
-                //  memory until the shader needs to load it.
-            std::shared_ptr<std::vector<uint8>> payload;
-            if (resolved) {
-                auto ptr = resolved->GetBufferPointer();
-                auto size = resolved->GetBufferSize();
-
-                if (ptr && size) {
-                    payload = std::make_shared<std::vector<uint8>>(
-                        (const uint8*)ptr, PtrAdd((const uint8*)ptr, size));
-                }
-            }
-
-            const bool isValid = payload && !payload->empty();
-            _archive->Commit(
-                _archiveId, Assets::ArchiveCache::BlockAndSize(payload),
-                #if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
-                    _archiveCacheAttachment + " [" + MakeShaderMetricsString(AsPointer(payload->begin()), payload->size()) + "]"
-                #else
-                    std::string()
-                #endif
-                );
-
-            FireTrigger(isValid ? ::Assets::AssetState::Ready : ::Assets::AssetState::Invalid, _compileHelper.GetDependencies());
-            return Result::Finish;
-        } CATCH (const Assets::Exceptions::PendingResource&) {
-        } CATCH (const Assets::Exceptions::InvalidResource&) {
-            FireTrigger(::Assets::AssetState::Invalid, _compileHelper.GetDependencies());
-            return Result::Finish;
-        } CATCH_END
-
-        return Result::KeepPolling;
-    }
-
-    const char* ShaderCompileProcess::Initializer() const
-    {
-        #if defined(_DEBUG)
-            return _initializer.c_str();
-        #else
-            return "";
-        #endif
-    }
-
-    ShaderCompileProcess::ShaderCompileProcess(
-        const ShaderResId& initializer, const ResChar definesTable[], 
-        std::shared_ptr<::Assets::ArchiveCache>&& archive, uint64 archiveId, CallbackFn&& fn)
-        : IPollingAsyncProcess(std::forward<CallbackFn>(fn))
-        , _compileHelper(initializer, definesTable)
-    {
-        DEBUG_ONLY(_initializer = initializer._filename;)
-        _archive = std::move(archive);
-        _archiveId = archiveId;
-
-        #if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
-                //  When we have archive attachments enabled, we can write
-                //  some information to help identify this shader object
-                //  We'll start with something to define the object...
-            _archiveCacheAttachment = 
-                std::string("[") + initializer._filename
-                + ":" + initializer._entryPoint
-                + ":" + initializer._shaderModel
-                + "] [" + (definesTable?definesTable:"") + "]";
-        #endif
-    }
-
-    ShaderCompileProcess::~ShaderCompileProcess()
-    {}
-
-        ////////////////////////////////////////////////////////////
-
-    namespace Internal { static ID3DX11ThreadPump* GlobalThreadPump = nullptr; }
-    ID3DX11ThreadPump* GetThreadPump() { return Internal::GlobalThreadPump; }
-    void FlushThreadPump()
-    {
-        Internal::GlobalThreadPump->WaitForAllItems();
-        Internal::GlobalThreadPump->ProcessDeviceWorkItems(10000);
-    }
-
-    class ThreadPump_D3D : public ::Assets::IThreadPump
-    {
-    public:
-        void Update();
-
-        ThreadPump_D3D();
-        ~ThreadPump_D3D();
-    protected:
-        intrusive_ptr<ID3DX11ThreadPump> _underlying;
-    };
-
-    void ThreadPump_D3D::Update()
-    {
-        _underlying->ProcessDeviceWorkItems(10);
-    }
-
-    ThreadPump_D3D::ThreadPump_D3D()
-    {
-        assert(Internal::GlobalThreadPump == nullptr);
-        ID3DX11ThreadPump* temp = nullptr;
-        D3DX11CreateThreadPump(0, 0, &temp);
-        _underlying = moveptr(temp);
-
-        Internal::GlobalThreadPump = _underlying.get();
-    }
-
-    ThreadPump_D3D::~ThreadPump_D3D() 
-    {
-        assert(Internal::GlobalThreadPump == _underlying.get());
-        Internal::GlobalThreadPump = nullptr;
-    }
-
         ////////////////////////////////////////////////////////////
 
     class OfflineCompileProcess 
@@ -998,8 +899,6 @@ namespace RenderCore { namespace Metal_DX11
             //  same file at the same time (particularly if one is doing a read, and another is doing
             //  a write that changes the offsets within the file).
 
-        auto& man = ::Assets::Services::GetAsyncMan();
-
         ShaderResId shaderId(initializers[0]);
 
         {
@@ -1047,22 +946,62 @@ namespace RenderCore { namespace Metal_DX11
             if (!marker) {
                 marker = std::make_shared<::Assets::PendingCompileMarker>(::Assets::AssetState::Pending, archiveName, archiveId, nullptr);
                 marker->_archive = archive;
+
+                #if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
+                        //  When we have archive attachments enabled, we can write
+                        //  some information to help identify this shader object
+                        //  We'll start with something to define the object...
+                    std::stringstream builder;
+                    builder << "[" << shaderId._filename
+                            << ":" << shaderId._entryPoint
+                            << ":" << shaderId._shaderModel
+                            << "] [" << (definesTable?definesTable:"") << "]";
+                    auto archiveCacheAttachment = builder.str();
+                #else
+                    int archiveCacheAttachment;
+                #endif
+
+                using Payload = CompiledShaderByteCode::CompileHelper::Payload;
+
                 std::string depNameAsString = depName;
-                XlDirname(depName, dimof(depName), archiveName);
-                std::string baseDir = depName;
-                man.Add(
-                    std::make_shared<ShaderCompileProcess>(
-                        shaderId,  definesTable,
-                        std::move(archive), archiveId, 
-                        [depNameAsString, baseDir, marker, &destinationStore](::Assets::AssetState newState, const std::vector<Assets::DependentFileState>& deps)
-                        {
-                                //  note -- we're accessing an unprotected pointer to the "destinationStore"
-                                //  The list of dependencies here should mostly be path names relative
-                                //  to the base file...
-                            assert(!deps.empty());
-                            marker->_dependencyValidation = destinationStore.WriteDependencies(depNameAsString.c_str(), baseDir.c_str(), deps);
-                            marker->SetState(newState);
-                        }));
+                auto compileHelper = std::make_shared<CompiledShaderByteCode::CompileHelper>();
+                
+                
+                static std::vector<std::shared_ptr<CompiledShaderByteCode::CompileHelper>> s_activeCompileOperations;
+                s_activeCompileOperations.push_back(compileHelper);
+                auto tempPtr = compileHelper.get();
+
+                compileHelper->Enqueue(
+                    shaderId, definesTable,
+                    [marker, archiveCacheAttachment, depNameAsString, &destinationStore, tempPtr](
+                        ::Assets::AssetState newState, const Payload& payload, 
+                        const ::Assets::DependentFileState* depsBegin, const ::Assets::DependentFileState* depsEnd)
+                    {
+                        if (newState == ::Assets::AssetState::Ready && marker->_archive) {
+                            assert(payload.get() && payload->size() > 0);
+                            marker->_archive->Commit(
+                                marker->_sourceID1, Payload(payload),
+                                #if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
+                                    (archiveCacheAttachment + " [" + MakeShaderMetricsString(AsPointer(payload->cbegin()), payload->size()) + "]")
+                                #else
+                                    std::string()
+                                #endif
+                                );
+                            (void)archiveCacheAttachment;
+                        }
+
+                            // todo -- we should delay writing the deps file until we flush the cache to disk
+                            //   -- todo -- "destinationStore" can be destroyed before we get here (if we shut down the game)
+                        char baseDir[MaxPath];
+                        XlDirname(baseDir, dimof(baseDir), marker->_sourceID0);
+                        marker->_dependencyValidation = destinationStore.WriteDependencies(depNameAsString.c_str(), baseDir, depsBegin, depsEnd);
+
+                            // give the PendingCompileMarker object the same state
+                        marker->SetState(newState);
+
+                        auto i = std::find_if(s_activeCompileOperations.begin(), s_activeCompileOperations.end(), [tempPtr](std::shared_ptr<CompiledShaderByteCode::CompileHelper>& test) { return test.get() == tempPtr; });
+                        if (i != s_activeCompileOperations.end()) s_activeCompileOperations.erase(i);
+                    });
             }
 
             DEBUG_ONLY(marker->SetInitializer(initializers[0]));
@@ -1073,8 +1012,7 @@ namespace RenderCore { namespace Metal_DX11
 
     OfflineCompileProcess::OfflineCompileProcess()
     {
-        auto shaderCacheSet = std::make_unique<ShaderCacheSet>();
-        _shaderCacheSet = std::move(shaderCacheSet);
+        _shaderCacheSet = std::make_unique<ShaderCacheSet>();
     }
 
     OfflineCompileProcess::~OfflineCompileProcess()
@@ -1097,13 +1035,11 @@ namespace RenderCore { namespace Metal_DX11
     void InitCompileAndAsyncManager()
     {
         auto& asyncMan = Assets::Services::GetAsyncMan();
-
         auto newProc = std::make_unique<OfflineCompileProcess>();
         // newProc->GetCacheSet().LogStats(result->GetIntermediateStore());
 
         asyncMan.GetIntermediateCompilers().AddCompiler(
             OfflineCompileProcess::Type_ShaderCompile, std::move(newProc));
-        asyncMan.Add(std::make_unique<ThreadPump_D3D>());
     }
 
         ////////////////////////////////////////////////////////////
@@ -1127,54 +1063,36 @@ namespace RenderCore { namespace Metal_DX11
             //  Maybe the shader stage should be encoded in the intermediate file name
         _stage = ShaderStage::Null;
         DEBUG_ONLY(_initializer[0] = '\0');
-        auto validationCallback = std::make_shared<Assets::DependencyValidation>();
+        _validationCallback = std::make_shared<Assets::DependencyValidation>();
 
         if (marker) {
             auto i = strrchr(marker->_sourceID0, '-');
-            if (i) {
-                _stage = AsShaderStage(i+1);
-            }
+            if (i) _stage = AsShaderStage(i+1);
             DEBUG_ONLY(XlCopyString(_initializer, marker->Initializer()));
+            _marker = std::move(marker);
 
                 // if immediately ready, we can do a resolve right now.
-            if (marker->GetState() == ::Assets::AssetState::Invalid) {
-                ThrowException(Assets::Exceptions::InvalidResource(Initializer(), ""));
-            } else if (marker->GetState() == ::Assets::AssetState::Ready) {
-                if (marker->_archive) {
-                    TRY {
-                        _shader1 = marker->_archive->OpenFromCache(marker->_sourceID1);
-                    } CATCH (...) {
-                        ThrowException(Assets::Exceptions::InvalidResource(Initializer(), ""));
-                    } CATCH_END
-                }
-
-                if (!_shader1 || _shader1->empty()) {
+            if (_marker->GetState() != ::Assets::AssetState::Pending) {
+                ResolveFromCompileMarker();
+                if (!_shader || _shader->empty())
                     ThrowException(Assets::Exceptions::InvalidResource(Initializer(), ""));
-                }
-
-                if (marker->_dependencyValidation) {
-                    Assets::RegisterAssetDependency(validationCallback, marker->_dependencyValidation);
-                }
-                marker.reset();
             }
         }
-
-        _marker = std::move(marker);
-        _validationCallback = std::move(validationCallback);
     }
 
     CompiledShaderByteCode::CompiledShaderByteCode(const ResChar initializer[], const ResChar definesTable[])
     {
         _stage = ShaderStage::Null;
         auto validationCallback = std::make_shared<Assets::DependencyValidation>();
-        std::unique_ptr<ShaderCompileHelper> compileHelper;
+        std::shared_ptr<CompileHelper> compileHelper;
         DEBUG_ONLY(XlCopyString(_initializer, initializer);)
 
         if (initializer && initializer[0] != '\0') {
             ShaderResId shaderPath(initializer);
             if (XlCompareStringI(shaderPath._filename, "null")!=0) {
                 _stage = AsShaderStage(shaderPath._shaderModel);
-                compileHelper = std::make_unique<ShaderCompileHelper>(shaderPath, definesTable, validationCallback);
+                compileHelper = std::make_shared<CompileHelper>();
+                compileHelper->Enqueue(shaderPath, definesTable, nullptr, validationCallback);
             }
         }
 
@@ -1187,7 +1105,8 @@ namespace RenderCore { namespace Metal_DX11
         _stage = AsShaderStage(shaderModel);
         auto validationCallback = std::make_shared<Assets::DependencyValidation>();
         DEBUG_ONLY(XlCopyString(_initializer, "ShaderInMemory");)
-        auto compileHelper = std::make_unique<ShaderCompileHelper>(shaderInMemory, entryPoint, shaderModel, definesTable);
+        auto compileHelper = std::make_shared<CompileHelper>();
+        compileHelper->Enqueue(shaderInMemory, entryPoint, shaderModel, definesTable);
 
         _validationCallback = std::move(validationCallback);
         _compileHelper = std::move(compileHelper);
@@ -1205,51 +1124,53 @@ namespace RenderCore { namespace Metal_DX11
             _shader = _compileHelper->Resolve(Initializer(), _validationCallback);
             _compileHelper.reset();
         } else if (_marker) {
-            if (_marker->GetState() == ::Assets::AssetState::Pending) {
-                throw Assets::Exceptions::PendingResource(Initializer(), "");
-            } else if (_marker->GetState() != ::Assets::AssetState::Invalid) {
-                    //  Our shader should be stored in a shader cache file
-                    //  Find that file, and get the completed shader.
-                    //  Note that this might hit the disk currently...?
-                if (_marker->_archive) {
-                    TRY {
-                        _shader1 = _marker->_archive->OpenFromCache(_marker->_sourceID1);
-                    } CATCH (...) {
-                        LogWarning << "Compilation marker is finished, but shader couldn't be opened from cache (" << _marker->_sourceID0 << ":" <<_marker->_sourceID1 << ")";
-                    } CATCH_END
-                }
-            }
-
-                //  Even when we're considered invalid, we must register a dependency, and release
-                //  the marker. This way we will be recompiled if the asset is changed (eg, to fix
-                //  the compile error)
-            if (_marker->_dependencyValidation) {
-                Assets::RegisterAssetDependency(_validationCallback, _marker->_dependencyValidation);
-            }
-            _marker.reset();
+            if (_marker->GetState() == ::Assets::AssetState::Pending)
+                ThrowException(Assets::Exceptions::PendingResource(Initializer(), ""));
+            
+            ResolveFromCompileMarker();
         }
 
-        if ((!_shader1 || _shader1->empty()) && !_shader) {
+        if (!_shader || _shader->empty())
             ThrowException(Assets::Exceptions::InvalidResource(Initializer(), ""));
+    }
+
+    void CompiledShaderByteCode::ResolveFromCompileMarker() const
+    {
+        if (_marker->GetState() != ::Assets::AssetState::Invalid) {
+                //  Our shader should be stored in a shader cache file
+                //  Find that file, and get the completed shader.
+                //  Note that this might hit the disk currently...?
+            if (_marker->_archive) {
+                TRY {
+                    _shader = _marker->_archive->OpenFromCache(_marker->_sourceID1);
+                } CATCH (...) {
+                    LogWarning << "Compilation marker is finished, but shader couldn't be opened from cache (" << _marker->_sourceID0 << ":" <<_marker->_sourceID1 << ")";
+                } CATCH_END
+            }
         }
+
+            //  Even when we're considered invalid, we must register a dependency, and release
+            //  the marker. This way we will be recompiled if the asset is changed (eg, to fix
+            //  the compile error)
+        if (_marker->_dependencyValidation)
+            Assets::RegisterAssetDependency(_validationCallback, _marker->_dependencyValidation);
+
+        if (_marker->GetState() == ::Assets::AssetState::Invalid)
+            ThrowException(Assets::Exceptions::InvalidResource(Initializer(), ""));
+
+        _marker.reset();
     }
 
     const void* CompiledShaderByteCode::GetByteCode() const
     {
         Resolve();
-        if (_shader1) {
-            return AsPointer(_shader1->begin());    
-        }
-        return _shader->GetBufferPointer();
+        return AsPointer(_shader->begin());
     }
 
     size_t CompiledShaderByteCode::GetSize() const
     {
         Resolve();
-        if (_shader1) {
-            return _shader1->size();
-        }
-        return _shader->GetBufferSize();
+        return _shader->size();
     }
 
     intrusive_ptr<ID3D::ShaderReflection> CompiledShaderByteCode::GetReflection() const

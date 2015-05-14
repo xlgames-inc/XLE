@@ -170,8 +170,8 @@ namespace RenderCore { namespace Assets
             XlCatString(filename, dimof(filename), ".metadata");
             RegisterFileDependency(_validationCallback, filename);
 
-            _pimpl->_metadataMarker = std::make_shared<MetadataLoadMarker>(filename);
-            _pimpl->_metadataMarker->Enqueue(GetUtilityThreadPool());
+            _pimpl->_metadataMarker = std::make_shared<MetadataLoadMarker>();
+            _pimpl->_metadataMarker->Enqueue(filename, GetUtilityThreadPool());
         }
 
         using namespace BufferUploads;

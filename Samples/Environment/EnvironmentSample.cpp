@@ -43,6 +43,7 @@
 
 #include "../../ConsoleRig/Log.h"
 #include "../../ConsoleRig/Console.h"
+#include "../../ConsoleRig/GlobalServices.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/Profiling/CPUProfiler.h"
 
@@ -86,6 +87,7 @@ namespace Sample
             std::shared_ptr<RenderCore::IPresentationChain> presentationChain = 
                 renderDevice->CreatePresentationChain(_window.GetUnderlyingHandle(), 
                     clientRect.second[0] - clientRect.first[0], clientRect.second[1] - clientRect.first[1]);
+            BufferUploads::Attach(ConsoleRig::GlobalServices::GetInstance());
             auto bufferUploads = BufferUploads::CreateManager(renderDevice.get());
             auto assetServices = std::make_unique<::Assets::Services>(0);
             RenderCore::Metal::InitCompileAndAsyncManager();

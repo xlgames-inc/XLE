@@ -24,7 +24,7 @@ namespace Assets
         void Enqueue(const ResChar filename[], CompletionThreadPool& pool);
 
         AsyncLoadOperation();
-        ~AsyncLoadOperation();
+        virtual ~AsyncLoadOperation();
 
         AsyncLoadOperation(const AsyncLoadOperation&) = delete;
         AsyncLoadOperation& operator=(const AsyncLoadOperation&) = delete;

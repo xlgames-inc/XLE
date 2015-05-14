@@ -66,19 +66,20 @@ namespace RenderCore { namespace Metal_DX11
 
         static const uint64         CompileProcessType;
 
-        class ShaderCompileHelper;
+        class CompileHelper;
     private:
-        mutable intrusive_ptr<ID3D::Blob>           _shader;
-        mutable std::shared_ptr<std::vector<uint8>> _shader1;
+        mutable std::shared_ptr<std::vector<uint8>> _shader;
 
-        ShaderStage::Enum                       _stage;
+        ShaderStage::Enum _stage;
         std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
         
-        void                Resolve() const;
-        mutable std::unique_ptr<ShaderCompileHelper> _compileHelper;
+        void Resolve() const;
+        mutable std::shared_ptr<CompileHelper> _compileHelper;
         mutable std::shared_ptr<::Assets::PendingCompileMarker> _marker;
 
         DEBUG_ONLY(char _initializer[512];)
+
+        void ResolveFromCompileMarker() const;
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
