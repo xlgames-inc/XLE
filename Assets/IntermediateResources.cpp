@@ -15,6 +15,7 @@
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/Streams/Data.h"
 #include "../Utility/Streams/PathUtils.h"
+#include "../Utility/Threading/Mutex.h"
 #include "../Utility/IteratorUtils.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/ExceptionLogging.h"
@@ -74,6 +75,7 @@ namespace Assets { namespace IntermediateResources
     };
 
     static std::vector<std::pair<uint64, std::shared_ptr<RetainedFileRecord>>> RetainedRecords;
+    static Threading::Mutex RetainedRecordsLock;
 
     static std::shared_ptr<RetainedFileRecord>& GetRetainedFileRecord(const char filename[])
     {
@@ -81,20 +83,23 @@ namespace Assets { namespace IntermediateResources
             //  case insensitivity and slash differences
         char buffer[MaxPath];
         XlNormalizePath(buffer, dimof(buffer), filename);
-
         auto hash = Hash64(buffer);
-        auto i = LowerBound(RetainedRecords, hash);
-        if (i!=RetainedRecords.end() && i->first == hash) {
-            return i->second;
+
+        {
+            ScopedLock(RetainedRecordsLock);
+            auto i = LowerBound(RetainedRecords, hash);
+            if (i!=RetainedRecords.end() && i->first == hash) {
+                return i->second;
+            }
+
+                //  we should call "AttachFileSystemMonitor" before we query for the
+                //  file's current modification time
+            auto newRecord = std::make_shared<RetainedFileRecord>(buffer);
+            RegisterFileDependency(newRecord, buffer);
+            newRecord->_state._timeMarker = GetFileModificationTime(buffer);
+
+            return RetainedRecords.insert(i, std::make_pair(hash, std::move(newRecord)))->second;
         }
-
-            //  we should call "AttachFileSystemMonitor" before we query for the
-            //  file's current modification time
-        auto newRecord = std::make_shared<RetainedFileRecord>(buffer);
-        RegisterFileDependency(newRecord, buffer);
-        newRecord->_state._timeMarker = GetFileModificationTime(buffer);
-
-        return RetainedRecords.insert(i, std::make_pair(hash, std::move(newRecord)))->second;
     }
 
     const DependentFileState& Store::GetDependentFileState(const ResChar filename[]) const

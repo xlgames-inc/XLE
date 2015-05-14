@@ -23,6 +23,8 @@
     #define buffer_upload_dll_export
 #endif
 
+namespace ConsoleRig { class GlobalServices; }
+
 namespace BufferUploads
 {
     /// Container for CPUAccess::Enum
@@ -447,6 +449,9 @@ namespace BufferUploads
     #endif
 
     buffer_upload_dll_export std::unique_ptr<IManager>      CreateManager(RenderCore::IDevice* renderDevice);
+
+    buffer_upload_dll_export void Attach(ConsoleRig::GlobalServices&);
+    buffer_upload_dll_export void Detach(ConsoleRig::GlobalServices&);
 
 /*-----------------*/ #include "../RenderCore/FlexEnd.h" /*-----------------*/
 

@@ -97,6 +97,7 @@ namespace ToolsRig
 
         unsigned _colourByMaterial;
         bool _drawNormals;
+        bool _drawWireframe;
 
         ChangeEvent _changeEvent;
 

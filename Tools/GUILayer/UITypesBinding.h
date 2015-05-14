@@ -174,6 +174,18 @@ namespace GUILayer
             }
         }
 
+        [Category("Visualisation")]
+        [Description("Draw wireframe")]
+        property bool DrawWireframe
+        {
+            bool get() { return _object->_drawWireframe; }
+            void set(bool value)
+            {
+                _object->_drawWireframe = value; 
+                _object->_changeEvent.Trigger(); 
+            }
+        }
+
         property VisCameraSettings^ Camera
         {
             VisCameraSettings^ get() { return _camSettings; }

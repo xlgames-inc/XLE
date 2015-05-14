@@ -13,6 +13,7 @@
 #include "../RenderCore/IDevice.h"
 #include "../RenderCore/IThreadContext.h"
 #include "../ConsoleRig/Log.h"
+#include "../ConsoleRig/GlobalServices.h"
 #include "../Utility/Threading/ThreadingUtils.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/PtrUtils.h"
@@ -2623,6 +2624,25 @@ namespace BufferUploads
     {
         return PlatformInterface::ExtractDesc(resource);
     }
+
+    #if OUTPUT_DLL
+        void Attach(ConsoleRig::GlobalServices& globalServices)
+        {
+            ConsoleRig::GlobalServices::SetInstance(&globalServices);
+            ConsoleRig::Logging_Startup();
+        }
+
+        void Detach(ConsoleRig::GlobalServices&)
+        {
+            ConsoleRig::Logging_Shutdown();
+        }
+    #else
+        void Attach(ConsoleRig::GlobalServices& globalServices)
+        {
+            assert(&globalServices == &ConsoleRig::GlobalServices::GetInstance());
+        }
+        void Detach(ConsoleRig::GlobalServices&) {}
+    #endif
 }
 
 

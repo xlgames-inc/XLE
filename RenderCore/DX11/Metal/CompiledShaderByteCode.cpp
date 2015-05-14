@@ -14,11 +14,13 @@
 #include "../../../Assets/ArchiveCache.h"
 #include "../../../Assets/AssetServices.h"
 #include "../../../Assets/InvalidAssetManager.h"
+#include "../../../Assets/AsyncLoadOperation.h"
 #include "../../../Utility/Streams/PathUtils.h"
 #include "../../../Utility/Streams/FileUtils.h"
 #include "../../../Utility/SystemUtils.h"
 #include "../../../Utility/StringFormat.h"
 #include "../../../Utility/IteratorUtils.h"
+#include "../../../Utility/Threading/CompletionThreadPool.h"
 #include "../../../Utility/WinAPI/WinAPIWrapper.h"
 #include "../../../ConsoleRig/Log.h"
 #include <functional>
@@ -176,12 +178,15 @@ namespace RenderCore { namespace Metal_DX11
         return S_OK;
     }
 
+    static const char s_shaderModelDef_V[] = "VSH";
+    static const char s_shaderModelDef_P[] = "PSH";
+    static const char s_shaderModelDef_G[] = "GSH";
+    static const char s_shaderModelDef_H[] = "HSH";
+    static const char s_shaderModelDef_D[] = "DSH";
+    static const char s_shaderModelDef_C[] = "CSH";
+
     static std::vector<D3D10_SHADER_MACRO> MakeDefinesTable(const char definesTable[], const char shaderModel[], std::string& definesCopy)
     {
-        char shaderModelDef[4] = "_SH";
-        if (shaderModel)
-            shaderModelDef[1] = (char)toupper(shaderModel[0]);
-
         definesCopy = definesTable?definesTable:std::string();
         unsigned definesCount = 1;
         size_t offset = 0;
@@ -195,7 +200,18 @@ namespace RenderCore { namespace Metal_DX11
         #if defined(_DEBUG)
             arrayOfDefines.push_back(MakeShaderMacro("_DEBUG", "1"));
         #endif
-        arrayOfDefines.push_back(MakeShaderMacro(shaderModelDef, "1"));
+
+        const char* shaderModelStr = nullptr;
+        switch (tolower(shaderModel[0])) {
+        case 'v': shaderModelStr = s_shaderModelDef_V; break;
+        case 'p': shaderModelStr = s_shaderModelDef_P; break;
+        case 'g': shaderModelStr = s_shaderModelDef_G; break;
+        case 'h': shaderModelStr = s_shaderModelDef_H; break;
+        case 'd': shaderModelStr = s_shaderModelDef_D; break;
+        case 'c': shaderModelStr = s_shaderModelDef_C; break;
+        }
+        if (shaderModelStr)
+            arrayOfDefines.push_back(MakeShaderMacro(shaderModelStr, "1"));
 
         offset = 0;
         if (!definesCopy.empty()) {
@@ -228,10 +244,12 @@ namespace RenderCore { namespace Metal_DX11
 
         ////////////////////////////////////////////////////////////
 
-    class CompiledShaderByteCode::ShaderCompileHelper
+    class CompiledShaderByteCode::ShaderCompileHelper : public ::Assets::AsyncLoadOperation
     {
     public:
-        intrusive_ptr<ID3D::Blob> Resolve(const char initializer[], const std::shared_ptr<Assets::DependencyValidation>& depVal = nullptr) const;
+        intrusive_ptr<ID3D::Blob> Resolve(
+            const char initializer[],
+            const std::shared_ptr<Assets::DependencyValidation>& depVal = nullptr) const;
 
         const std::vector<Assets::DependentFileState>& GetDependencies() const     
         { 
@@ -243,21 +261,32 @@ namespace RenderCore { namespace Metal_DX11
             }
         }
 
-        ShaderCompileHelper(    const ShaderResId& shaderPath, const ResChar definesTable[], 
-                                const std::shared_ptr<Assets::DependencyValidation>& depVal = nullptr);
-        ShaderCompileHelper(    const char shaderInMemory[], const char entryPoint[], 
-                                const char shaderModel[], const ResChar definesTable[]);
+        ShaderCompileHelper(
+            const ShaderResId& shaderPath, const ResChar definesTable[], 
+            std::function<void(::Assets::AssetState, const void*, size_t)> chain = nullptr,
+            const std::shared_ptr<Assets::DependencyValidation>& depVal = nullptr);
+        ShaderCompileHelper(
+            const char shaderInMemory[], const char entryPoint[], 
+            const char shaderModel[], const ResChar definesTable[]);
         ~ShaderCompileHelper();
-    protected:
-        mutable ID3D::Blob* _futureShader;      // (can't be intrusive_ptr because of use with D3DX11CompileFromFile)
-        ID3D::Blob*         _futureErrors;
-        HRESULT             _futureResult;
 
+        ShaderCompileHelper(ShaderCompileHelper&) = delete;
+        ShaderCompileHelper& operator=(const ShaderCompileHelper&) = delete;
+    protected:
         mutable std::unique_ptr<IncludeHandler> _includeHandler;
         mutable std::unique_ptr<char[]>         _temporaryCompilingBuffer;
 
-        ShaderCompileHelper(ShaderCompileHelper&);
-        ShaderCompileHelper& operator=(const ShaderCompileHelper&);
+        virtual ::Assets::AssetState Complete(const void* buffer, size_t bufferSize);
+        void CommitToArchive();
+
+        intrusive_ptr<ID3DBlob> _codeResult;
+        intrusive_ptr<ID3DBlob> _errorResult;
+        HRESULT _compileHResult;
+        ::Assets::rstring _definesTable;
+
+        std::function<void(::Assets::AssetState, const void*, size_t)> _chain;
+
+        ShaderResId _shaderPath;
     };
 
     #define RECORD_INVALID_ASSETS
@@ -334,61 +363,65 @@ namespace RenderCore { namespace Metal_DX11
     {
         RegisterValidAsset(StringMeld<MaxPath, ::Assets::ResChar>() << shaderPath._filename << ':' << shaderPath._entryPoint << ':' << shaderPath._shaderModel);
     }
+
+    static CompletionThreadPool& GetShaderCompileThreadPool()
+    {
+            // todo -- should go into reusable location
+        static CompletionThreadPool s_threadPool(4);
+        return s_threadPool;
+    }
     
     CompiledShaderByteCode::ShaderCompileHelper::ShaderCompileHelper(
         const ShaderResId& shaderPath, const ResChar definesTable[], 
+        std::function<void(::Assets::AssetState, const void*, size_t)> chain,
         const std::shared_ptr<Assets::DependencyValidation>& depVal)
+    : _shaderPath(shaderPath), _definesTable(definesTable), _chain(std::move(chain))
     {
-        _futureErrors = nullptr;
-        _futureShader = nullptr;
-        _futureResult = ~HRESULT(0x0);
+        _compileHResult = -1;
 
-            // DavidJ --    the normalize path steps here don't work for network
+            // DavidJ --    The normalize path steps here don't work for network
             //              paths. The first "\\" gets removed in the process
-        ResChar normalizedPath  [MaxPath];
-        XlNormalizePath(normalizedPath, dimof(normalizedPath), shaderPath._filename);
+        XlNormalizePath(_shaderPath._filename, dimof(_shaderPath._filename), shaderPath._filename);
         
         ResChar directoryName[MaxPath];
-        XlDirname(directoryName, dimof(directoryName), normalizedPath);
-        auto includeHandler = std::make_unique<IncludeHandler>(
+        XlDirname(directoryName, dimof(directoryName), _shaderPath._filename);
+        auto& intStore = ::Assets::Services::GetAsyncMan().GetIntermediateStore();
+        _includeHandler = std::make_unique<IncludeHandler>(
             directoryName, 
-            ::Assets::Services::GetInstance().GetAsyncMan().GetIntermediateStore().GetDependentFileState(normalizedPath));
+            intStore.GetDependentFileState(_shaderPath._filename));
 
-        std::string definesCopy;
-        auto arrayOfDefines = MakeDefinesTable(definesTable, shaderPath._shaderModel, definesCopy);
+        if (depVal)
+            RegisterFileDependency(depVal, _shaderPath._filename);
 
-            //
-            //    Background compilation causes problem with GPA
-            //        If we attempt to compile in the background with a
-            //        thread pump, GPA will report that it can't find the HLSL
-            //        source.
-            //
-        HRESULT hresult = D3DX11CompileFromFile(
-            shaderPath._filename, AsPointer(arrayOfDefines.cbegin()), includeHandler.get(), 
-            shaderPath._entryPoint, AdaptShaderModel(shaderPath._shaderModel),
-            GetShaderCompilationFlags(),
-            0, CompileInBackground ? GetThreadPump() : nullptr,
-            &_futureShader, &_futureErrors, &_futureResult);
+        if (constant_expression<CompileInBackground>::result()) {
 
-        _includeHandler = std::move(includeHandler);
+                // invoke a background load and compile...
+            Enqueue(
+                _shaderPath._filename,
+                GetShaderCompileThreadPool());
 
-        if (depVal) {
-            RegisterFileDependency(depVal, normalizedPath);
+        } else {
+
+                // push file load & compile into this (foreground) thread
+            size_t fileSize = 0;
+            auto fileData = LoadFileAsMemoryBlock(_shaderPath._filename, &fileSize);
+            ::Assets::AssetState state = ::Assets::AssetState::Invalid;
+
+            if (fileData.get() && fileSize)
+                state = Complete(fileData.get(), fileSize);
+
+            SetState(state);
+
+            if (state == ::Assets::AssetState::Invalid) {
+                ThrowInvalidAsset(shaderPath, _compileHResult, _errorResult.get());
+            } else
+                ClearInvalidMarkers(shaderPath);
         }
-
-        if (!SUCCEEDED(hresult)) {
-            ThrowInvalidAsset(shaderPath, hresult, _futureErrors);
-        } else if (!constant_expression<CompileInBackground>::result())
-            ClearInvalidMarkers(shaderPath);
     }
 
     CompiledShaderByteCode::ShaderCompileHelper::ShaderCompileHelper(
         const char shaderInMemory[], const char entryPoint[], const char shaderModel[], const ResChar definesTable[])
     {
-        _futureErrors = nullptr;
-        _futureShader = nullptr;
-        _futureResult = ~HRESULT(0x0);
-
         auto includeHandler = std::make_unique<IncludeHandler>("");
 
         std::string definesCopy;
@@ -416,19 +449,39 @@ namespace RenderCore { namespace Metal_DX11
     }
 
     CompiledShaderByteCode::ShaderCompileHelper::~ShaderCompileHelper()
+    {}
+
+    ::Assets::AssetState CompiledShaderByteCode::ShaderCompileHelper::Complete(
+        const void* buffer, size_t bufferSize)
     {
-            //      We need to cancel the background compilation process, also
-        while (_futureResult == HRESULT(~0)) { FlushThreadPump(); } // (best we can do now is just stall until we get a result)
+            // This is called (typically in a background thread)
+            // after the shader data has been loaded from disk.
+            // Here we will invoke the D3D compiler. It will block
+            // in this thread (so we should normally only call this from
+            // a background thread (often one in a thread pool)
+        ID3DBlob* codeResult = nullptr, *errorResult = nullptr;
 
-        if (_futureShader) {
-            _futureShader->Release();
-            _futureShader = nullptr;
-        }
+        std::string definesCopy;
+        auto arrayOfDefines = MakeDefinesTable(_definesTable.c_str(), _shaderPath._shaderModel, definesCopy);
 
-        if (_futureErrors) {
-            _futureErrors->Release();
-            _futureErrors = nullptr;
-        }
+        _compileHResult = D3DCompile_Wrapper(
+            buffer, bufferSize,
+            _shaderPath._filename,
+
+            AsPointer(arrayOfDefines.cbegin()), _includeHandler.get(), 
+            _shaderPath._entryPoint, AdaptShaderModel(_shaderPath._shaderModel),
+
+            GetShaderCompilationFlags(), 0, 
+            &codeResult, &errorResult);
+
+        _codeResult = moveptr(codeResult);
+        _errorResult = moveptr(errorResult);
+
+            // before we can finish the "complete" step, we need to commit
+            // to archive output
+        auto result = SUCCEEDED(_compileHResult) ? ::Assets::AssetState::Ready : ::Assets::AssetState::Pending;
+        _chain(result, buffer, bufferSize);
+        return result;
     }
 
     intrusive_ptr<ID3D::Blob> CompiledShaderByteCode::ShaderCompileHelper::Resolve(
@@ -650,33 +703,73 @@ namespace RenderCore { namespace Metal_DX11
     };
 
     static HMODULE ShaderCompilerModule = (HMODULE)INVALID_HANDLE_VALUE;
+    static HMODULE GetShaderCompileModule()
+    {
+        if (ShaderCompilerModule == INVALID_HANDLE_VALUE)
+            ShaderCompilerModule = (*Windows::Fn_LoadLibrary)("d3dcompiler_47.dll");
+        return ShaderCompilerModule;
+    }
 
     static HRESULT D3DReflect_Wrapper(
         const void* pSrcData, size_t SrcDataSize, 
         const IID& pInterface, void** ppReflector)
     {
-        // This is a wrapper for the D3DReflect(). See D3D11CreateDevice_Wrapper in Device.cpp
-        // for a similar function.
-        // Note that if we open the module successfully, we will never close it!
+            // This is a wrapper for the D3DReflect(). See D3D11CreateDevice_Wrapper in Device.cpp
+            // for a similar function.
 
-        if (ShaderCompilerModule == INVALID_HANDLE_VALUE) {
-            ShaderCompilerModule = (*Windows::Fn_LoadLibrary)("d3dcompiler_47.dll");
-        }
-        if (!ShaderCompilerModule || ShaderCompilerModule == INVALID_HANDLE_VALUE) {
+        auto compiler = GetShaderCompileModule();
+        if (!compiler || compiler == INVALID_HANDLE_VALUE) {
 			assert(0 && "d3dcompiler_47.dll is missing. Please make sure this dll is in the same directory as your executable, or reachable path");
             return E_NOINTERFACE;
         }
 
         typedef HRESULT WINAPI D3DReflect_Fn(LPCVOID, SIZE_T, REFIID, void**);
 
-        auto fn = (D3DReflect_Fn*)(*Windows::Fn_GetProcAddress)(ShaderCompilerModule, "D3DReflect");
+        auto fn = (D3DReflect_Fn*)(*Windows::Fn_GetProcAddress)(compiler, "D3DReflect");
         if (!fn) {
-            (*Windows::FreeLibrary)(ShaderCompilerModule);
-            ShaderCompilerModule = (HMODULE)INVALID_HANDLE_VALUE;
+            (*Windows::FreeLibrary)(compiler);
+            compiler = (HMODULE)INVALID_HANDLE_VALUE;
             return E_NOINTERFACE;
         }
 
         return (*fn)(pSrcData, SrcDataSize, pInterface, ppReflector);
+    }
+
+    static HRESULT D3DCompile_Wrapper(
+        LPCVOID pSrcData,
+        SIZE_T SrcDataSize,
+        LPCSTR pSourceName,
+        const D3D_SHADER_MACRO* pDefines,
+        ID3DInclude* pInclude,
+        LPCSTR pEntrypoint,
+        LPCSTR pTarget,
+        UINT Flags1,
+        UINT Flags2,
+        ID3DBlob** ppCode,
+        ID3DBlob** ppErrorMsgs)
+    {
+            // This is a wrapper for the D3DReflect(). See D3D11CreateDevice_Wrapper in Device.cpp
+            // for a similar function.
+
+        auto compiler = GetShaderCompileModule();
+        if (!compiler || compiler == INVALID_HANDLE_VALUE) {
+			assert(0 && "d3dcompiler_47.dll is missing. Please make sure this dll is in the same directory as your executable, or reachable path");
+            return E_NOINTERFACE;
+        }
+
+        typedef HRESULT WINAPI D3DCompile_Fn(
+            LPCVOID, SIZE_T, LPCSTR,
+            const D3D_SHADER_MACRO*, ID3DInclude*, LPCSTR, LPCSTR,
+            UINT, UINT, ID3DBlob**, ID3DBlob**);
+
+        auto fn = (D3DCompile_Fn*)(*Windows::Fn_GetProcAddress)(compiler, "D3DCompile");
+        if (!fn) {
+            (*Windows::FreeLibrary)(compiler);
+            compiler = (HMODULE)INVALID_HANDLE_VALUE;
+            return E_NOINTERFACE;
+        }
+
+        return (*fn)(pSrcData, SrcDataSize, pSourceName, pDefines, pInclude, pEntrypoint, pTarget, Flags1, Flags2, ppCode, ppErrorMsgs);
     }
 
     static std::string MakeShaderMetricsString(const void* data, size_t dataSize)
@@ -905,7 +998,7 @@ namespace RenderCore { namespace Metal_DX11
             //  same file at the same time (particularly if one is doing a read, and another is doing
             //  a write that changes the offsets within the file).
 
-        auto& man = ::Assets::Services::GetInstance().GetAsyncMan();
+        auto& man = ::Assets::Services::GetAsyncMan();
 
         ShaderResId shaderId(initializers[0]);
 
@@ -1003,7 +1096,7 @@ namespace RenderCore { namespace Metal_DX11
 
     void InitCompileAndAsyncManager()
     {
-        auto& asyncMan = Assets::Services::GetInstance().GetAsyncMan();
+        auto& asyncMan = Assets::Services::GetAsyncMan();
 
         auto newProc = std::make_unique<OfflineCompileProcess>();
         // newProc->GetCacheSet().LogStats(result->GetIntermediateStore());

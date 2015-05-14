@@ -328,12 +328,16 @@ namespace GUILayer
         if (!!_underlying) {
             if (obj == _materialParameterBox) {
                 auto transaction = _underlying->Transaction_Begin("Material parameter");
-                if (transaction)
+                if (transaction) {
                     transaction->GetAsset()._matParamBox = BindingConv::AsParameterBox(_materialParameterBox);
+                    transaction->Commit();
+                }
             } else if (obj == _shaderConstants) {
                 auto transaction = _underlying->Transaction_Begin("Material constant");
-                if (transaction)
+                if (transaction) {
                     transaction->GetAsset()._constants = BindingConv::AsParameterBox(_shaderConstants);
+                    transaction->Commit();
+                }
             }
         }
     }
@@ -356,8 +360,10 @@ namespace GUILayer
         if (!!_underlying) {
             assert(obj == _resourceBindings);
             auto transaction = _underlying->Transaction_Begin("Resource Binding");
-            if (transaction)
+            if (transaction) {
                 transaction->GetAsset()._resourceBindings = BindingConv::AsParameterBox(_resourceBindings);
+                transaction->Commit();
+            }
         }
     }
 
@@ -447,6 +453,7 @@ namespace GUILayer
             stateSet._flag |= RenderCore::Assets::RenderStateSet::Flag::DoubleSided;
             stateSet._doubleSided = (checkState == CheckState::Checked);
         }
+        transaction->Commit();
         NotifyPropertyChanged("DoubleSided");
     }
 
@@ -470,6 +477,7 @@ namespace GUILayer
             stateSet._flag |= RenderCore::Assets::RenderStateSet::Flag::Wireframe;
             stateSet._wireframe = (checkState == CheckState::Checked);
         }
+        transaction->Commit();
         NotifyPropertyChanged("Wireframe");
     }
 
@@ -566,6 +574,7 @@ namespace GUILayer
             stateSet._flag &= ~RenderCore::Assets::RenderStateSet::Flag::ForwardBlend;
             stateSet._flag &= ~RenderCore::Assets::RenderStateSet::Flag::DeferredBlend;
             NotifyPropertyChanged("StandardBlendMode");
+            transaction->Commit();
             return;
         }
 
@@ -586,6 +595,7 @@ namespace GUILayer
                     stateSet._flag |= RenderCore::Assets::RenderStateSet::Flag::DeferredBlend;
                 }
 
+                transaction->Commit();
                 NotifyPropertyChanged("StandardBlendMode");
                 return;
             }

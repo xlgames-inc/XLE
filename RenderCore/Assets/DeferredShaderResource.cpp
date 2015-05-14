@@ -6,6 +6,7 @@
 
 #include "DeferredShaderResource.h"
 #include "../Metal/ShaderResource.h"
+#include "../../Assets/AsyncLoadOperation.h"
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../BufferUploads/DataPacket.h"
 #include "../../BufferUploads/ResourceLocator.h"
@@ -34,64 +35,13 @@ namespace RenderCore { namespace Assets
         static CompletionThreadPool s_threadPool(4);
         return s_threadPool;
     }
-    
-    class AsyncLoadOperation : public ::Assets::PendingOperationMarker
-    {
-    public:
-        ::Assets::ResChar           _filename[MaxPath];
-        std::unique_ptr<uint8[], PODAlignedDeletor>    _buffer;
-        size_t                      _bufferLength;
 
-        struct SpecialOverlapped : OVERLAPPED
-        {
-            std::shared_ptr<AsyncLoadOperation> _returnPointer;
-            HANDLE _fileHandle;
-        };
-        SpecialOverlapped   _overlapped;
-
-        virtual ::Assets::AssetState Complete() = 0;
-
-        static void CALLBACK CompletionRoutine(
-            DWORD dwErrorCode, DWORD dwNumberOfBytesTransfered,
-            LPOVERLAPPED lpOverlapped);
-
-        AsyncLoadOperation()
-        {
-            _filename[0] = '\0';
-            _bufferLength = 0;
-        }
-    };
-
-    void CALLBACK AsyncLoadOperation::CompletionRoutine(
-        DWORD dwErrorCode, DWORD dwNumberOfBytesTransfered,
-        LPOVERLAPPED lpOverlapped)
-    {
-        auto* o = (SpecialOverlapped*)lpOverlapped;
-        assert(o && o->_returnPointer);
-        assert(o->_returnPointer->GetState() == ::Assets::AssetState::Pending);
-
-        if (o->_fileHandle != INVALID_HANDLE_VALUE)
-            CloseHandle(o->_fileHandle);
-
-            // We don't have to do any extra processing right now. Just mark the asset as ready
-            // or invalid, based on the result...
-        TRY {
-            o->_returnPointer->SetState(o->_returnPointer->Complete());
-        } CATCH(...) {
-            o->_returnPointer->SetState(::Assets::AssetState::Invalid);
-        } CATCH_END
-
-            // we can reset the "_returnPointer", which will also decrease the reference
-            // count on the marker object
-        o->_returnPointer.reset();
-    }
-
-    class MetadataLoadMarker : public AsyncLoadOperation
+    class MetadataLoadMarker : public ::Assets::AsyncLoadOperation
     {
     public:
         SourceColorSpace _colorSpace;
 
-        virtual ::Assets::AssetState Complete();
+        virtual ::Assets::AssetState Complete(const void* buffer, size_t bufferSize);
         MetadataLoadMarker() : _colorSpace(SourceColorSpace::Unspecified) {}
     };
 
@@ -124,13 +74,10 @@ namespace RenderCore { namespace Assets
         return true;
     }
 
-    ::Assets::AssetState MetadataLoadMarker::Complete()
+    ::Assets::AssetState MetadataLoadMarker::Complete(const void* buffer, size_t bufferSize)
     {
             // Attempt to parse the xml in our data buffer...
-        const auto* start = _buffer.get();
-        auto length = _bufferLength;
-
-        if (!LoadColorSpaceFromMetadataFile(_colorSpace, start, length))
+        if (!LoadColorSpaceFromMetadataFile(_colorSpace, buffer, bufferSize))
             return ::Assets::AssetState::Invalid;
 
         return ::Assets::AssetState::Ready;
@@ -217,56 +164,14 @@ namespace RenderCore { namespace Assets
 
                 // trigger a load of the metadata file (which should proceed in the background)
             
-            auto md = std::make_shared<MetadataLoadMarker>();
-            XlCopyNString(md->_filename, dimof(md->_filename), init._filenameStart, init._filenameEnd - init._filenameStart);
-            XlCatString(md->_filename, dimof(md->_filename), ".metadata");
-            RegisterFileDependency(_validationCallback, md->_filename);
+            ::Assets::ResChar filename[MaxPath];
+            XlCopyNString(filename, dimof(filename), 
+                init._filenameStart, init._filenameEnd - init._filenameStart);
+            XlCatString(filename, dimof(filename), ".metadata");
+            RegisterFileDependency(_validationCallback, filename);
 
-            _pimpl->_metadataMarker = md;
-
-            GetUtilityThreadPool().Enqueue(
-                [md]()
-                {
-                    auto h = CreateFile(
-                        md->_filename, GENERIC_READ, FILE_SHARE_READ,
-                        nullptr, OPEN_EXISTING, FILE_FLAG_OVERLAPPED,
-                        nullptr);
-
-                    if (h == INVALID_HANDLE_VALUE) {
-                            // failed to load the file -- probably because it's missing
-                        md->SetState(::Assets::AssetState::Invalid);
-                        return;
-                    }
-                    
-                    auto fileSize = GetFileSize(h, nullptr);
-                    if (!fileSize || fileSize == INVALID_FILE_SIZE) {
-                        md->SetState(::Assets::AssetState::Invalid);
-                        CloseHandle(h);
-                        return;
-                    }
-
-                    md->_buffer.reset((uint8*)XlMemAlign(fileSize, 16));
-                    md->_bufferLength = fileSize;
-
-                    XlSetMemory(&md->_overlapped, 0, sizeof(OVERLAPPED));
-                    md->_overlapped._fileHandle = INVALID_HANDLE_VALUE;
-                    md->_overlapped._returnPointer = std::move(md);
-
-                    auto readResult = ReadFileEx(
-                        h, md->_buffer.get(), fileSize, 
-                        &md->_overlapped, &AsyncLoadOperation::CompletionRoutine);
-                    if (!readResult) {
-                        CloseHandle(h);
-                        md->SetState(::Assets::AssetState::Invalid);
-                        md->_overlapped._returnPointer.reset();
-                        return;
-                    }
-
-                    md->_overlapped._fileHandle = h;
-
-                    // execution will pass to AsyncLoadOperation::CompletionRoutine, which
-                    // will complete the load operation
-                });
+            _pimpl->_metadataMarker = std::make_shared<MetadataLoadMarker>(filename);
+            _pimpl->_metadataMarker->Enqueue(GetUtilityThreadPool());
         }
 
         using namespace BufferUploads;

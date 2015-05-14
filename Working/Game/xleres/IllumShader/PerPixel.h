@@ -69,7 +69,7 @@ GBufferValues IllumShader_PerPixel(VSOutput geo)
         if (result.blendingAlpha < AlphaThreshold) discard;
     #endif
 
-    #if (RES_HAS_ParametersTexture!=0)
+    #if (OUTPUT_TEXCOORD==1) && (RES_HAS_ParametersTexture!=0)
             // 	We're expecting to find just roughness & specular in our parameter map.
             //	We can't do colored specular in this way, except by using
             //	the metal parameter.
@@ -80,7 +80,7 @@ GBufferValues IllumShader_PerPixel(VSOutput geo)
         result.material = DefaultMaterialValues();
     #endif
 
-    #if (RES_HAS_CUSTOM_MAP==1)
+    #if (OUTPUT_TEXCOORD==1) && (RES_HAS_CUSTOM_MAP==1)
             // use the "custom map" slot for a parameters texture (ambient occlusion, gloss, etc)
         result.cookedAmbientOcclusion = CustomTexture.Sample(MaybeAnisotropicSampler, geo.texCoord).r;
 
@@ -109,7 +109,7 @@ GBufferValues IllumShader_PerPixel(VSOutput geo)
             // some pipelines put a AO term in the blue channel of the normal map
             // we can factor it in here...
         float cookedAO = NormalsTexture.Sample(DefaultSampler, geo.texCoord).z;
-        cookedAO *= cookedAO; // testing with the Nyra model, it's too weak... giving a little extra punch
+        // cookedAO *= cookedAO; // testing with the Nyra model, it's too weak... giving a little extra punch
         result.cookedAmbientOcclusion *= cookedAO;
     #endif
 

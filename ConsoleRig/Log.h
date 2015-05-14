@@ -13,9 +13,11 @@
 
     // Easy logging++ configuration variables -- 
     //      Disable the default crash handing behaviour
+    //      We need to enable "thread safe" mode (because we call logging functions from multiple threads)
     //      
 #define ELPP_DISABLE_DEFAULT_CRASH_HANDLING
 #define ELPP_NO_DEFAULT_LOG_FILE
+#define ELPP_THREAD_SAFE
 
     // using "easylogging++" library for simple logging output
     //  Hacks to prevent inclusion of windows.h via "easylogging++.h"

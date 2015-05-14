@@ -143,11 +143,12 @@ namespace ConsoleRig
         auto& globalServices = GlobalServices::GetInstance();
         auto currentModule = GetCurrentModuleId();
 
+        el::Loggers::flushAll();
+        el::Helpers::setStorage(nullptr);
+
             // this will throw an exception if no module has successfully initialised
             // logging
         if (globalServices._services.Call<ModuleId>(Fn_LogMainModule) == currentModule) {
-            el::Loggers::flushAll();
-            el::Helpers::setStorage(nullptr);
             globalServices._services.Remove(Fn_LogMainModule);
         }
 

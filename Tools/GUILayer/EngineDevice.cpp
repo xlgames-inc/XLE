@@ -126,6 +126,7 @@ namespace GUILayer
         _immediateContext = _renderDevice->GetImmediateContext();
         _assetServices = std::make_unique<::Assets::Services>(::Assets::Services::Flags::RecordInvalidAssets);
         RenderCore::Metal::InitCompileAndAsyncManager();
+        BufferUploads::Attach(ConsoleRig::GlobalServices::GetInstance());
         _bufferUploads = BufferUploads::CreateManager(_renderDevice.get());
         SceneEngine::SetBufferUploads(_bufferUploads.get());
         RenderCore::Assets::SetBufferUploads(_bufferUploads.get());
@@ -138,6 +139,7 @@ namespace GUILayer
         _immediateContext.reset();
         _renderDevice.reset();
         _console.reset();
+        BufferUploads::Detach(ConsoleRig::GlobalServices::GetInstance());
         ConsoleRig::Logging_Shutdown();
     }
 

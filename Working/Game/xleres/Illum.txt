@@ -117,3 +117,14 @@ VisNormals
         game/xleres/vis/geowires.gsh:NormalsAndTangents
     PixelShader
         game/xleres/basic.psh:PC
+VisWireframe
+    Parameters
+        Geometry
+            GEO_HAS_TEXCOORD
+            OUTPUT_WORLD_POSITION 1
+    VertexShader
+        game/xleres/forward/illum.vsh:main
+    GeometryShader
+        game/xleres/solidwireframe.gsh:main
+    PixelShader
+        game/xleres/solidwireframe.psh:main

@@ -8,6 +8,7 @@
 
 #include "../../RenderCore/IThreadContext_Forward.h"
 #include "../../SceneEngine/SceneParser.h"
+#include "../../PlatformRig/BasicSceneParser.h"
 #include <memory>
 
 namespace SceneEngine { class TerrainManager; class PlacementsManager; }
@@ -15,7 +16,7 @@ namespace SceneEngine { class TerrainManager; class PlacementsManager; }
 namespace Sample
 {
     class PlayerCharacter;
-    class EnvironmentSceneParser : public SceneEngine::ISceneParser
+    class EnvironmentSceneParser : public PlatformRig::BasicSceneParser
     {
     public:
         void PrepareFrame(RenderCore::IThreadContext& context);
@@ -36,20 +37,12 @@ namespace Sample
             const SceneParseSettings& parseSettings,
             unsigned techniqueIndex) const;
 
-        unsigned GetShadowProjectionCount() const;
-        ShadowProjectionDesc GetShadowProjectionDesc(
-            unsigned index, const RenderCore::Techniques::ProjectionDesc& mainSceneProjectionDesc) const;
         void ExecuteShadowScene( 
             RenderCore::Metal::DeviceContext* context, 
             LightingParserContext& parserContext, 
             const SceneParseSettings& parseSettings,
             unsigned frustumIndex, unsigned techniqueIndex) const;
 
-        unsigned GetLightCount() const;
-        const LightDesc& GetLightDesc(unsigned index) const;
-
-        GlobalLightingDesc GetGlobalLightingDesc() const;
-        ToneMapSettings GetToneMapSettings() const;
         float GetTimeValue() const;
 
         std::shared_ptr<PlayerCharacter> GetPlayerCharacter();
@@ -63,6 +56,8 @@ namespace Sample
     protected:
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
+
+        const PlatformRig::EnvironmentSettings& GetEnvSettings() const;
     };
 
 }

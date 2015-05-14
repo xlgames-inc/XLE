@@ -13,6 +13,7 @@
     <ClInclude Include="..\AssetServices.h" />
     <ClInclude Include="..\AssetSetManager.h" />
     <ClInclude Include="..\InvalidAssetManager.h" />
+    <ClInclude Include="..\AsyncLoadOperation.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Assets.cpp" />
@@ -26,6 +27,7 @@
     <ClCompile Include="..\AssetServices.cpp" />
     <ClCompile Include="..\AssetSetManager.cpp" />
     <ClCompile Include="..\InvalidAssetManager.cpp" />
+    <ClCompile Include="..\AsyncLoadOperation.cpp" />
   </ItemGroup>
   <ItemGroup>
   </ItemGroup>

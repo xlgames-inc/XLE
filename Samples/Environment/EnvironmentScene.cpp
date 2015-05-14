@@ -45,6 +45,7 @@ namespace Sample
         std::shared_ptr<SceneEngine::PlacementsManager> _placementsManager;
         std::shared_ptr<RenderCore::Techniques::CameraDesc> _cameraDesc;
         std::shared_ptr<RenderCore::Assets::IModelFormat>   _modelFormat;
+        PlatformRig::EnvironmentSettings _envSettings;
 
         float _time;
     };
@@ -116,83 +117,6 @@ namespace Sample
         return *_pimpl->_cameraDesc;
     }
 
-    unsigned EnvironmentSceneParser::GetLightCount() const 
-    {
-        return 1; 
-    }
-
-    auto EnvironmentSceneParser::GetLightDesc(unsigned index) const -> const LightDesc&
-    { 
-            //  This method just returns a properties for the lights in the scene. 
-            //
-            //  The lighting parser will take care of the actual lighting calculations 
-            //  required. All we have to do is return the properties of the lights
-            //  we want.
-        static LightDesc dummy;
-        dummy._radius = 10000.f;
-        dummy._type = LightDesc::Directional;
-        dummy._shadowFrustumIndex = 0;
-
-            // sun direction based on angle in the sky
-        Float2 sunDirectionOfMovement = Normalize(Float2(1.f, 0.33f));
-        Float2 sunRotationAxis(-sunDirectionOfMovement[1], sunDirectionOfMovement[0]);
-        dummy._negativeLightDirection = 
-            Normalize(TransformDirectionVector(
-                MakeRotationMatrix(Expand(sunRotationAxis, 0.f), SceneEngine::SunDirectionAngle), Float3(0.f, 0.f, 1.f)));
-
-        return dummy;
-    }
-
-    auto EnvironmentSceneParser::GetGlobalLightingDesc() const -> GlobalLightingDesc
-    { 
-            //  There are some "global" lighting parameters that apply to
-            //  the entire rendered scene 
-            //      (or, at least, to one area of the scene -- eg, indoors/outdoors)
-            //  Here, we can fill in these properties.
-            //
-            //  Note that the scene parser "desc" functions can be called multiple
-            //  times in a single frame. Generally the properties can be animated in
-            //  any way, but they should stay constant over the course of a single frame.
-        GlobalLightingDesc result;
-        auto ambientScale = Tweakable("AmbientScale", 0.03f);
-        result._ambientLight = Float3(1.f * ambientScale, 1.f * ambientScale, 1.f * ambientScale);
-        XlCopyString(result._skyTexture, "game/xleres/DefaultResources/sky/desertsky.dds");
-        return result;
-    }
-
-    auto EnvironmentSceneParser::GetToneMapSettings() const -> ToneMapSettings
-    {
-        return SceneEngine::DefaultToneMapSettings();
-    }
-
-    unsigned EnvironmentSceneParser::GetShadowProjectionCount() const
-    { 
-        return 1; 
-    }
-
-    auto EnvironmentSceneParser::GetShadowProjectionDesc(unsigned index, const RenderCore::Techniques::ProjectionDesc& mainSceneProjectionDesc) const 
-        -> ShadowProjectionDesc
-    {
-            //  Shadowing lights can have a ShadowProjectionDesc object associated.
-            //  This object determines the shadow "projections" or "cascades" we use 
-            //  for calculating shadows.
-            //
-            //  Normally, we want multiple shadow cascades per light. There are a few
-            //  different methods for deciding on the cascades for a scene.
-            //
-            //  In this case, we're just using a default implementation -- this
-            //  implementation is very basic. The results are ok, but not optimal.
-            //  Specialised scenes may some specialised algorithm for calculating shadow
-            //  cascades.
-        if (index >= GetShadowProjectionCount()) {
-            throw Exceptions::BasicLabel("Bad shadow frustum index");
-        }
-
-        return PlatformRig::CalculateDefaultShadowCascades(
-            GetLightDesc(index), mainSceneProjectionDesc,
-            PlatformRig::DefaultShadowFrustumSettings());
-    }
-
     float EnvironmentSceneParser::GetTimeValue() const      
     { 
             //  The scene parser can also provide a time value, in seconds.
@@ -227,6 +151,11 @@ namespace Sample
         return _pimpl->_cameraDesc;
     }
 
+    const PlatformRig::EnvironmentSettings& EnvironmentSceneParser::GetEnvSettings() const 
+    { 
+        return _pimpl->_envSettings; 
+    }
+
     EnvironmentSceneParser::EnvironmentSceneParser()
     {
         auto pimpl = std::make_unique<Pimpl>();
@@ -255,6 +184,8 @@ namespace Sample
         pimpl->_cameraDesc->_cameraToWorld = pimpl->_characters->DefaultCameraToWorld();
         pimpl->_cameraDesc->_nearClip = 0.5f;
         pimpl->_cameraDesc->_farClip = 6000.f;
+
+        pimpl->_envSettings = PlatformRig::DefaultEnvironmentSettings();
 
         _pimpl = std::move(pimpl);
     }

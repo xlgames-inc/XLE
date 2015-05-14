@@ -372,6 +372,37 @@ namespace ToolsRig
             CATCH_END
         }
 
+        if (_pimpl->_settings->_drawWireframe) {
+
+            TRY 
+            {
+                using namespace RenderCore;
+                auto metalContext = Metal::DeviceContext::Get(*context);
+
+                auto model = _pimpl->_cache->GetModel(_pimpl->_settings->_modelName.c_str(), _pimpl->_settings->_materialName.c_str());
+                assert(model._renderer && model._sharedStateSet);
+
+                if (model._sharedStateSet) {
+                    model._sharedStateSet->CaptureState(metalContext.get());
+                }
+
+                const auto techniqueIndex = 8u;
+
+                model._renderer->Render(
+                    RenderCore::Assets::ModelRendererContext(metalContext.get(), parserContext, techniqueIndex),
+                    *model._sharedStateSet,
+                    Identity<Float4x4>());
+
+                if (model._sharedStateSet) {
+                    model._sharedStateSet->ReleaseState(metalContext.get());
+                }
+
+            }
+            CATCH (const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); } 
+            CATCH (const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); } 
+            CATCH_END
+        }
+
         if (_pimpl->_settings->_drawNormals) {
 
             TRY 
@@ -633,6 +664,7 @@ namespace ToolsRig
         _colourByMaterial = 0;
         _camera = std::make_shared<VisCameraSettings>();
         _drawNormals = false;
+        _drawWireframe = false;
     }
     
     VisCameraSettings::VisCameraSettings()

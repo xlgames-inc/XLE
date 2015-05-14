@@ -70,19 +70,28 @@ namespace Utility
         newBuffer.reserve(newSize * 2);
         newBuffer.insert(newBuffer.begin(), newSize, uint8_t(0xcd));
 
-        ptrdiff_t offsetAdjust = 0;
+        ptrdiff_t offsetAdjust =-ptrdiff_t(i->second._size);
+        size_t displaceStart = i->second._offset;
         for (auto q=_fns.begin(); q!=_fns.end(); ++q) {
             auto& f = q->second;
             if (q == i) {
                     // this is the one to destroy
                 f._destructor(PtrAdd(AsPointer(_buffer.begin()), f._offset));
-                offsetAdjust = -ptrdiff_t(i->second._size);
             } else {
+                auto newOffset = f._offset;
+                if (newOffset > displaceStart) {
+                    assert((ptrdiff_t(newOffset) + offsetAdjust) >= ptrdiff_t(displaceStart));
+                    newOffset += offsetAdjust;
+                }
+
+                assert((newOffset + f._size) <= newBuffer.size());
+                assert((f._offset + f._size) <= _buffer.size());
+
                 f._moveConstructor(
-                    PtrAdd(AsPointer(newBuffer.begin()), f._offset + offsetAdjust), 
+                    PtrAdd(AsPointer(newBuffer.begin()), newOffset), 
                     PtrAdd(AsPointer(_buffer.begin()), f._offset));
                 f._destructor(PtrAdd(AsPointer(_buffer.begin()), f._offset));
-                f._offset += offsetAdjust;
+                f._offset = newOffset;
             }
         }
 
