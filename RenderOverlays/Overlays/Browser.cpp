@@ -539,7 +539,7 @@ namespace Overlays
         auto pimpl = std::make_unique<Pimpl>();
 
         const unsigned offscreenDims = ModelBrowserItemDimensions;
-        auto& uploads = *SceneEngine::GetBufferUploads();
+        auto& uploads = SceneEngine::GetBufferUploads();
         using namespace BufferUploads;
         BufferDesc offscreenDesc;
         offscreenDesc._type = BufferDesc::Type::Texture;

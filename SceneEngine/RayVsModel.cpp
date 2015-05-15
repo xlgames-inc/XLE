@@ -56,7 +56,7 @@ namespace SceneEngine
     {
         using namespace BufferUploads;
         using namespace RenderCore::Metal;
-        auto& uploads = *SceneEngine::GetBufferUploads();
+        auto& uploads = SceneEngine::GetBufferUploads();
 
         LinearBufferDesc lbDesc;
         lbDesc._structureByteSize = desc._elementSize;

@@ -152,6 +152,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\Assets\AssetUtils.cpp" />
+    <ClCompile Include="..\Assets\Services.cpp" />
     <ClCompile Include="..\Assets\ColladaCompilerInterface.cpp" />
     <ClCompile Include="..\Assets\DeferredShaderResource.cpp" />
     <ClCompile Include="..\Assets\Material.cpp" />
@@ -162,11 +163,11 @@
     <ClCompile Include="..\Assets\DelayedDrawCall.cpp" />
     <ClCompile Include="..\Assets\SharedStateSet.cpp" />
     <ClCompile Include="..\Assets\SkinningRunTime.cpp" />
-    <ClCompile Include="..\Assets\TerrainFormat.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Assets\AnimationRunTime.h" />
     <ClInclude Include="..\Assets\AssetUtils.h" />
+    <ClInclude Include="..\Assets\Services.h" />
     <ClInclude Include="..\Assets\ColladaCompilerInterface.h" />
     <ClInclude Include="..\Assets\DeferredShaderResource.h" />
     <ClInclude Include="..\Assets\Material.h" />
@@ -177,7 +178,6 @@
     <ClInclude Include="..\Assets\NascentTransformationMachine.h" />
     <ClInclude Include="..\Assets\DelayedDrawCall.h" />
     <ClInclude Include="..\Assets\SharedStateSet.h" />
-    <ClInclude Include="..\Assets\TerrainFormat.h" />
     <ClInclude Include="..\Assets\TransformationCommands.h" />
   </ItemGroup>
   <ItemGroup>

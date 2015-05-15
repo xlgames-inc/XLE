@@ -116,7 +116,7 @@ namespace ToolsRig
             TextureDesc::Plain2D(desc._width, desc._height, desc._format),
             "CommonOffscreen");
 
-        auto resource = SceneEngine::GetBufferUploads()->Transaction_Immediate(bufferDesc);
+        auto resource = SceneEngine::GetBufferUploads().Transaction_Immediate(bufferDesc);
 
         RenderCore::Metal::RenderTargetView rtv(resource->GetUnderlying());
         RenderCore::Metal::ShaderResourceView srv(resource->GetUnderlying());

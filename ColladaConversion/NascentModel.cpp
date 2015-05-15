@@ -1402,16 +1402,16 @@ ConsoleRig::LibVersionDesc GetVersionInformation()
     return result;
 }
 
+static ConsoleRig::AttachRef<ConsoleRig::GlobalServices> s_attachRef;
+
 void AttachLibrary(ConsoleRig::GlobalServices& services)
 {
-    ConsoleRig::GlobalServices::SetInstance(&services);
-    ConsoleRig::Logging_Startup();
+    s_attachRef = services.Attach();
     LogInfo << "Attached Collada Compiler DLL: {" << RenderCore::ColladaConversion::VersionString << "} -- {" << RenderCore::ColladaConversion::BuildDateString << "}";
 }
 
-void DeattachLibrary(ConsoleRig::GlobalServices& services)
+void DeattachLibrary()
 {
-    ConsoleRig::Logging_Shutdown();
+    s_attachRef.Detach();
     TerminateFileSystemMonitoring();
-    ConsoleRig::GlobalServices::SetInstance(nullptr);
 }

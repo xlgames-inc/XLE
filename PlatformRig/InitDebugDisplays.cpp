@@ -9,6 +9,7 @@
 #include "DebuggingDisplays/TestDisplays.h"
 
 #include "../RenderCore/Assets/IModelFormat.h"
+#include "../RenderCore/Assets/Services.h"
 
 #include "../RenderOverlays/Overlays/Browser.h"
 #include "../RenderOverlays/Overlays/OceanSettings.h"
@@ -51,9 +52,8 @@ namespace PlatformRig
         debugSystem.Register(gridIteratorDisplay, "[Test] Grid iterator test");
         debugSystem.Register(dualContouringTest, "[Test] Dual Contouring Test");
 
-        auto* bufferUploads = SceneEngine::GetBufferUploads();
-        if (bufferUploads) {
-            auto bufferUploadDisplay = std::make_shared<PlatformRig::Overlays::BufferUploadDisplay>(bufferUploads);
+        if (RenderCore::Assets::Services::HasInstance()) {
+            auto bufferUploadDisplay = std::make_shared<PlatformRig::Overlays::BufferUploadDisplay>(&RenderCore::Assets::Services::GetBufferUploads());
             debugSystem.Register(bufferUploadDisplay, "[Profiler] Buffer Uploads Display");
         }
     }

@@ -71,7 +71,7 @@ namespace SceneEngine
     ShallowWaterGrid::ShallowWaterGrid(unsigned width, unsigned height, unsigned maxSimulationGrids, bool pipeModel, bool calculateVelocities)
     {
         using namespace BufferUploads;
-        auto& uploads = *GetBufferUploads();
+        auto& uploads = GetBufferUploads();
 
         auto tDesc = BufferUploads::TextureDesc::Plain2D(width, height, NativeFormat::R32_TYPELESS, 1, uint8(maxSimulationGrids));
         if (height<=1) {
@@ -205,7 +205,7 @@ namespace SceneEngine
     ShallowWaterSim::ShallowWaterSim(const Desc& desc)
     {
         using namespace BufferUploads;
-        auto& uploads = *GetBufferUploads();
+        auto& uploads = GetBufferUploads();
 
         auto simulationGrid = std::make_unique<ShallowWaterGrid>(desc._gridDimension, desc._gridDimension, desc._maxSimulationGrid, desc._usePipeModel, desc._buildVelocities);
 

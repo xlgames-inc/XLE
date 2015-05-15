@@ -156,7 +156,7 @@ namespace SceneEngine
     {
         using namespace RenderCore::Metal;
         using namespace BufferUploads;
-        auto& uploads = *GetBufferUploads();
+        auto& uploads = GetBufferUploads();
 
         BufferDesc structuredBufferDesc;
         structuredBufferDesc._type = BufferDesc::Type::LinearBuffer;

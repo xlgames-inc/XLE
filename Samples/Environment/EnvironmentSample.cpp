@@ -51,8 +51,6 @@
 
 unsigned FrameRenderCount = 0;
 
-namespace RenderCore { namespace Assets { void SetBufferUploads(BufferUploads::IManager* bufferUploads); }}
-
 namespace Sample
 {
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -101,8 +99,6 @@ namespace Sample
             _bufferUploads = std::move(bufferUploads);
             _assetServices = std::move(assetServices);
             _globalTechContext = std::move(globalTechniqueContext);
-            SceneEngine::SetBufferUploads(_bufferUploads.get());
-            RenderCore::Assets::SetBufferUploads(_bufferUploads.get());
         }
     };
 

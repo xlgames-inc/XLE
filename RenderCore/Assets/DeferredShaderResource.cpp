@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "DeferredShaderResource.h"
+#include "Services.h"
 #include "../Metal/ShaderResource.h"
 #include "../../Assets/AsyncLoadOperation.h"
 #include "../../BufferUploads/IBufferUploads.h"
@@ -20,12 +21,6 @@
 namespace RenderCore { namespace Assets 
 {
     using ResChar = ::Assets::ResChar;
-
-    static BufferUploads::IManager* s_bufferUploads = nullptr;
-    void SetBufferUploads(BufferUploads::IManager* bufferUploads)
-    {
-        s_bufferUploads = bufferUploads;
-    }
 
     enum class SourceColorSpace { SRGB, Linear, Unspecified };
 
@@ -177,7 +172,7 @@ namespace RenderCore { namespace Assets
         using namespace BufferUploads;
         TextureLoadFlags::BitField flags = init._generateMipmaps ? TextureLoadFlags::GenerateMipmaps : 0;
         auto pkt = CreateStreamingTextureSource(init._filenameStart, init._filenameEnd, flags);
-        _pimpl->_transaction = s_bufferUploads->Transaction_Begin(
+        _pimpl->_transaction = Services::GetBufferUploads().Transaction_Begin(
             CreateDesc(
                 BindFlag::ShaderResource,
                 0, GPUAccess::Read,
@@ -190,7 +185,7 @@ namespace RenderCore { namespace Assets
     DeferredShaderResource::~DeferredShaderResource()
     {
         if (_pimpl->_transaction != ~BufferUploads::TransactionID(0))
-            s_bufferUploads->Transaction_End(_pimpl->_transaction);
+            Services::GetBufferUploads().Transaction_End(_pimpl->_transaction);
     }
 
     const Metal::ShaderResourceView&       DeferredShaderResource::GetShaderResource() const
@@ -199,11 +194,12 @@ namespace RenderCore { namespace Assets
             if (_pimpl->_transaction == ~BufferUploads::TransactionID(0))
                 ThrowException(::Assets::Exceptions::InvalidResource(Initializer(), "Unknown error during loading"));
 
-            if (!s_bufferUploads->IsCompleted(_pimpl->_transaction))
+            auto& bu = Services::GetBufferUploads();
+            if (!bu.IsCompleted(_pimpl->_transaction))
                 ThrowException(::Assets::Exceptions::PendingResource(Initializer(), ""));
 
-            _pimpl->_locator = s_bufferUploads->GetResource(_pimpl->_transaction);
-            s_bufferUploads->Transaction_End(_pimpl->_transaction);
+            _pimpl->_locator = bu.GetResource(_pimpl->_transaction);
+            bu.Transaction_End(_pimpl->_transaction);
             _pimpl->_transaction = ~BufferUploads::TransactionID(0);
 
             if (!_pimpl->_locator || !_pimpl->_locator->GetUnderlying())
@@ -291,7 +287,7 @@ namespace RenderCore { namespace Assets
         using namespace BufferUploads;
         TextureLoadFlags::BitField flags = init._generateMipmaps ? TextureLoadFlags::GenerateMipmaps : 0;
         auto pkt = CreateStreamingTextureSource(init._filenameStart, init._filenameEnd, flags);
-        auto result = s_bufferUploads->Transaction_Immediate(
+        auto result = Services::GetBufferUploads().Transaction_Immediate(
             CreateDesc(
                 BindFlag::ShaderResource,
                 0, GPUAccess::Read,

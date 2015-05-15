@@ -443,7 +443,7 @@ namespace SceneEngine
                 // readback data from the gpu asset (often requires a staging-style resource)
             {
                 using namespace BufferUploads;
-                auto& bufferUploads = *GetBufferUploads();
+                auto& bufferUploads = GetBufferUploads();
 
                 auto readback = bufferUploads.Resource_ReadBack(
                     BufferUploads::ResourceLocator(_pimpl->_gpucache[0].get()));
@@ -500,7 +500,7 @@ namespace SceneEngine
         }
 
         using namespace BufferUploads;
-        auto& bufferUploads = *GetBufferUploads();
+        auto& bufferUploads = GetBufferUploads();
 
         UInt2 dims(maxs[0]-mins[0]+1, maxs[1]-mins[1]+1);
         auto desc = Internal::BuildCacheDesc(dims, (RenderCore::Metal::NativeFormat::Enum)_pimpl->_uberSurface->Format());
@@ -961,7 +961,7 @@ namespace SceneEngine
 
         /////////////////////////////////////////////////////////////////////////////////////
 
-        auto& bufferUploads = *GetBufferUploads();
+        auto& bufferUploads = GetBufferUploads();
         auto desc = Internal::BuildCacheDesc(UInt2(unsigned(size[0]), unsigned(size[1])), (RenderCore::Metal::NativeFormat::Enum)_pimpl->_uberSurface->Format());
         auto hardMaterials = bufferUploads.Transaction_Immediate(desc)->AdoptUnderlying();
         auto softMaterials = bufferUploads.Transaction_Immediate(desc)->AdoptUnderlying();

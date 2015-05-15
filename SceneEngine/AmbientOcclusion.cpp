@@ -131,7 +131,7 @@ namespace SceneEngine
 
             // note -- always writing to non-MSAA texture
         using namespace BufferUploads;
-        auto& uploads = *GetBufferUploads();
+        auto& uploads = GetBufferUploads();
         auto bufferUploadsDesc = BuildRenderTargetDesc(
             BindFlag::ShaderResource|BindFlag::RenderTarget,
             BufferUploads::TextureDesc::Plain2D(

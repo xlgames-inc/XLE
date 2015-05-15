@@ -154,7 +154,7 @@ namespace SceneEngine
     FFTBufferBox::FFTBufferBox(const Desc& desc) 
     {
         using namespace BufferUploads;
-        auto& uploads = *GetBufferUploads();
+        auto& uploads = GetBufferUploads();
 
         auto bufferUploadsDesc = BuildRenderTargetDesc(
             BindFlag::UnorderedAccess|BindFlag::RenderTarget|BindFlag::ShaderResource,
@@ -384,7 +384,7 @@ namespace SceneEngine
     StartingSpectrumBox::StartingSpectrumBox(const Desc& desc) 
     {
         using namespace BufferUploads;
-        auto& uploads = *GetBufferUploads();
+        auto& uploads = GetBufferUploads();
 
         auto realValues      = std::unique_ptr<float[]>(new float[desc._width*desc._height]);
         auto imaginaryValues = std::unique_ptr<float[]>(new float[desc._width*desc._height]);

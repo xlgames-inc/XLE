@@ -225,6 +225,7 @@
     <ClCompile Include="..\Sky.cpp" />
     <ClCompile Include="..\Terrain.cpp" />
     <ClCompile Include="..\TerrainCollisions.cpp" />
+    <ClCompile Include="..\TerrainFormat.cpp" />
     <ClCompile Include="..\TerrainRender.cpp" />
     <ClCompile Include="..\TerrainUberSurface.cpp" />
     <ClCompile Include="..\TiledLighting.cpp" />
@@ -262,6 +263,7 @@
     <ClInclude Include="..\Sky.h" />
     <ClInclude Include="..\SurfaceHeightsProvider.h" />
     <ClInclude Include="..\Terrain.h" />
+    <ClInclude Include="..\TerrainFormat.h" />
     <ClInclude Include="..\TerrainInternal.h" />
     <ClInclude Include="..\TerrainMaterial.h" />
     <ClInclude Include="..\TerrainUberSurface.h" />

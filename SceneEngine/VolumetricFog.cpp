@@ -213,7 +213,7 @@ namespace SceneEngine
         auto shadowMapFormat = desc._esmShadowMaps?NativeFormat::R32_FLOAT:NativeFormat::R16_UNORM;
         auto renderTargetDesc = BuildRenderTargetDesc(BufferUploads::BindFlag::RenderTarget|BufferUploads::BindFlag::ShaderResource,
             BufferUploads::TextureDesc::Plain2D(256, 256, shadowMapFormat, 0, uint8(desc._frustumCount)), "VolFog");
-        auto& uploads = *GetBufferUploads();
+        auto& uploads = GetBufferUploads();
 
         auto shadowMapTexture = uploads.Transaction_Immediate(renderTargetDesc)->AdoptUnderlying();
         auto shadowMapShaderResource = ShaderResourceView(shadowMapTexture.get(), shadowMapFormat, desc._frustumCount);

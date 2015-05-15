@@ -91,7 +91,7 @@ namespace SceneEngine
         using namespace RenderCore;
         using namespace RenderCore::Metal;
         using namespace BufferUploads;
-        auto& uploads = *GetBufferUploads();
+        auto& uploads = GetBufferUploads();
     
             ////////////
         auto maskTexture = uploads.Transaction_Immediate(

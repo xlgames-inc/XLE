@@ -7,7 +7,7 @@
 #define _SCL_SECURE_NO_WARNINGS
 
 #include "../../SceneEngine/Terrain.h"
-#include "../../RenderCore/Assets/TerrainFormat.h"
+#include "../../SceneEngine/TerrainFormat.h"
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../ConsoleRig/GlobalServices.h"
@@ -171,7 +171,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
     using namespace SceneEngine;
 
-    auto fmt = std::make_shared<RenderCore::Assets::TerrainFormat>();
+    auto fmt = std::make_shared<TerrainFormat>();
 
     TerrainConfig cfg("game/centralcal");
     GenerateMissingUberSurfaceFiles(cfg, fmt);

@@ -2615,7 +2615,7 @@ namespace BufferUploads
         XlCloseSyncObject(_waitingForDeviceResetEvent);
     }
 
-    std::unique_ptr<IManager>       CreateManager(RenderCore::IDevice* renderDevice)
+    std::unique_ptr<IManager> CreateManager(RenderCore::IDevice* renderDevice)
     {
         return std::make_unique<Manager>(renderDevice);
     }
@@ -2626,22 +2626,22 @@ namespace BufferUploads
     }
 
     #if OUTPUT_DLL
-        static ConsoleRig::GlobalServices::AttachReference s_attachRef;
-        void Attach(ConsoleRig::GlobalServices& globalServices)
+        static ConsoleRig::AttachRef<ConsoleRig::GlobalServices> s_attachRef;
+        void AttachLibrary(ConsoleRig::GlobalServices& globalServices)
         {
             s_attachRef = globalServices.Attach();
         }
 
-        void Detach()
+        void DetachLibrary()
         {
             s_attachRef.Detach();
         }
     #else
-        void Attach(ConsoleRig::GlobalServices& globalServices)
+        void AttachLibrary(ConsoleRig::GlobalServices& globalServices)
         {
             assert(&globalServices == &ConsoleRig::GlobalServices::GetInstance());
         }
-        void Detach(ConsoleRig::GlobalServices&) {}
+        void DetachLibrary(ConsoleRig::GlobalServices&) {}
     #endif
 }
 

@@ -38,7 +38,7 @@ namespace SceneEngine
         using namespace RenderCore::Metal;
         using namespace BufferUploads;
 
-        auto& uploads = *GetBufferUploads();
+        auto& uploads = GetBufferUploads();
         auto textureIdsDesc = BuildRenderTargetDesc(
             BindFlag::UnorderedAccess|BindFlag::ShaderResource,
             BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, NativeFormat::R32_UINT),

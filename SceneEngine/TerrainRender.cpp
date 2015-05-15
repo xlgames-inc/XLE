@@ -504,7 +504,7 @@ namespace SceneEngine
 
         TerrainCellRenderer(
             const TerrainRendererConfig& cfg,
-            std::shared_ptr<ITerrainFormat> ioFormat, BufferUploads::IManager* bufferUploads,
+            std::shared_ptr<ITerrainFormat> ioFormat,
             bool allowShortCircuitModification);
         ~TerrainCellRenderer();
 
@@ -1884,11 +1884,12 @@ namespace SceneEngine
 
     TerrainCellRenderer::TerrainCellRenderer(
         const TerrainRendererConfig& cfg,
-        std::shared_ptr<ITerrainFormat> ioFormat, BufferUploads::IManager* bufferUploads,
+        std::shared_ptr<ITerrainFormat> ioFormat,
         bool allowShortCircuitModification)
     {
+        auto& bufferUploads = GetBufferUploads();
         _heightMapTileSet = std::make_unique<TextureTileSet>(
-            *bufferUploads, cfg._heights._tileSize, cfg._heights._cachedTileCount, cfg._heights._format, allowShortCircuitModification);
+            bufferUploads, cfg._heights._tileSize, cfg._heights._cachedTileCount, cfg._heights._format, allowShortCircuitModification);
 
         _coverageTileSet.reserve(unsigned(cfg._coverageLayers.size()));
         _coverageIds.reserve(unsigned(cfg._coverageLayers.size()));
@@ -1896,7 +1897,7 @@ namespace SceneEngine
         for (unsigned c=0; c<unsigned(cfg._coverageLayers.size()); ++c) {
             const auto& layer = cfg._coverageLayers[c];
             _coverageTileSet.push_back(std::make_unique<TextureTileSet>(
-                *bufferUploads, layer.second._tileSize, layer.second._cachedTileCount, layer.second._format, allowShortCircuitModification));
+                bufferUploads, layer.second._tileSize, layer.second._cachedTileCount, layer.second._format, allowShortCircuitModification));
             _coverageIds.push_back(cfg._coverageLayers[c].first);
         }
 
@@ -2009,7 +2010,7 @@ namespace SceneEngine
     {
             //  we need to cancel any buffer uploads transactions that are still active
             //      -- note they may still complete in a background thread
-        auto& bufferUploads = *GetBufferUploads();
+        auto& bufferUploads = GetBufferUploads();
         for (auto i = _heightTiles.begin(); i!=_heightTiles.end(); ++i)
             i->EndTransactions(bufferUploads);
 
@@ -2341,7 +2342,7 @@ namespace SceneEngine
                     resamplingFormat = (DXGI_FORMAT)RenderCore::Metal::NativeFormat::R16G16B16A16_FLOAT;
                 }
 
-                auto& bufferUploads = *GetBufferUploads();
+                auto& bufferUploads = GetBufferUploads();
                 using namespace BufferUploads;
                 BufferDesc desc;
                 desc._type = BufferDesc::Type::Texture;
@@ -2532,17 +2533,17 @@ namespace SceneEngine
         desc._textureDesc = BufferUploads::TextureDesc::Plain2D(
             scaffold._diffuseDims[0], scaffold._diffuseDims[1], NativeFormat::BC1_UNORM, 
             (uint8)IntegerLog2(std::max(scaffold._diffuseDims[0], scaffold._diffuseDims[1]))-1, uint8(texturesPerStrata * strataCount));
-        auto diffuseTextureArray = GetBufferUploads()->Transaction_Immediate(desc)->AdoptUnderlying();
+        auto diffuseTextureArray = GetBufferUploads().Transaction_Immediate(desc)->AdoptUnderlying();
 
         desc._textureDesc = BufferUploads::TextureDesc::Plain2D(
             scaffold._normalDims[0], scaffold._normalDims[1], NativeFormat::BC5_UNORM, 
             (uint8)IntegerLog2(std::max(scaffold._normalDims[0], scaffold._normalDims[1]))-1, uint8(texturesPerStrata * strataCount));
-        auto normalTextureArray = GetBufferUploads()->Transaction_Immediate(desc)->AdoptUnderlying();
+        auto normalTextureArray = GetBufferUploads().Transaction_Immediate(desc)->AdoptUnderlying();
 
         desc._textureDesc = BufferUploads::TextureDesc::Plain2D(
             scaffold._paramDims[0], scaffold._paramDims[1], NativeFormat::BC1_UNORM, 
             (uint8)IntegerLog2(std::max(scaffold._paramDims[0], scaffold._paramDims[1]))-1, uint8(texturesPerStrata * strataCount));
-        auto specularityTextureArray = GetBufferUploads()->Transaction_Immediate(desc)->AdoptUnderlying();
+        auto specularityTextureArray = GetBufferUploads().Transaction_Immediate(desc)->AdoptUnderlying();
 
         desc._textureDesc = BufferUploads::TextureDesc::Plain2D(
             scaffold._paramDims[0], scaffold._paramDims[1], NativeFormat::BC1_UNORM);
@@ -2557,7 +2558,7 @@ namespace SceneEngine
             auto data = (BC1Block*)tempBuffer->GetData();
             for (unsigned c=0; c<blockCount; ++c) data[c] = block;
         }
-        auto dummyWhiteBuffer = GetBufferUploads()->Transaction_Immediate(desc, tempBuffer.get())->AdoptUnderlying();
+        auto dummyWhiteBuffer = GetBufferUploads().Transaction_Immediate(desc, tempBuffer.get())->AdoptUnderlying();
 
         _validationCallback = std::make_shared<::Assets::DependencyValidation>();
         ::Assets::RegisterAssetDependency(_validationCallback, scaffold.GetDependencyValidation());
@@ -2894,7 +2895,6 @@ namespace SceneEngine
     TerrainManager::TerrainManager(
         const TerrainConfig& cfg,
         std::shared_ptr<ITerrainFormat> ioFormat, 
-        BufferUploads::IManager* bufferUploads,
         Int2 cellMin, Int2 cellMax, Float3 worldSpaceOrigin)
     {
         auto pimpl = std::make_unique<Pimpl>();
@@ -2998,7 +2998,7 @@ namespace SceneEngine
         const bool buildUberInterfaces = allowTerrainModification;
         const bool registerShortCircuit = allowTerrainModification;
 
-        pimpl->_renderer = std::make_shared<TerrainCellRenderer>(rendererCfg, ioFormat, bufferUploads, allowTerrainModification);
+        pimpl->_renderer = std::make_shared<TerrainCellRenderer>(rendererCfg, ioFormat, allowTerrainModification);
         pimpl->_heightsProvider = std::make_unique<TerrainSurfaceHeightsProvider>(pimpl->_renderer, cfg, pimpl->_coords);
         pimpl->_ioFormat = std::move(ioFormat);
         pimpl->_cfg = cfg;
@@ -3193,7 +3193,7 @@ namespace SceneEngine
             auto pkt = BufferUploads::CreateEmptyPacket(desc);
             XlSetMemory(pkt->GetData(), 0x0, pkt->GetDataSize());
 
-            auto& uploads = *GetBufferUploads();
+            auto& uploads = GetBufferUploads();
             auto resource = uploads.Transaction_Immediate(desc, pkt.get())->AdoptUnderlying();
 
             gpuOutput = QueryInterfaceCast<ID3D::Buffer>(resource.get());

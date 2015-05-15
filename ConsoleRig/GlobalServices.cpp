@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "GlobalServices.h"
+#include "AttachableInternal.h"
 #include "Log.h"
 #include "Console.h"
 #include "../Utility/Streams/FileUtils.h"
@@ -16,6 +17,9 @@
 
 namespace ConsoleRig
 {
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
     static void SetWorkingDirectory()
     {
             //
@@ -81,7 +85,7 @@ namespace ConsoleRig
 
     static void MainRig_Attach()
     {
-        auto& serv = GlobalServices::GetInstance()._services;
+        auto& serv = GlobalServices::GetCrossModule()._services;
 
         Logging_Startup(
             serv.Call<std::string>(Fn_LogCfg).c_str(), 
@@ -105,7 +109,7 @@ namespace ConsoleRig
     {
             // this will throw an exception if no module has successfully initialised
             // logging
-        auto& serv = GlobalServices::GetInstance()._services;
+        auto& serv = GlobalServices::GetCrossModule()._services;
         if (serv.Call<ModuleId>(Fn_ConsoleMainModule) == GetCurrentModuleId()) {
             serv.Remove(Fn_GetConsole);
             serv.Remove(Fn_ConsoleMainModule);
@@ -118,89 +122,36 @@ namespace ConsoleRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    GlobalServices::AttachReference::AttachReference(AttachReference&& moveFrom)
-    {
-        _isAttached = moveFrom._isAttached;
-        _attachedServices = moveFrom._attachedServices;
-        moveFrom._isAttached = false;
-        moveFrom._attachedServices = nullptr;
-    }
-
-    auto GlobalServices::AttachReference::operator=(AttachReference&& moveFrom)
-        -> GlobalServices::AttachReference&
-    {
-        _isAttached = moveFrom._isAttached;
-        _attachedServices = moveFrom._attachedServices;
-        moveFrom._isAttached = false;
-        moveFrom._attachedServices = nullptr;
-        return *this;
-    }
-
-    GlobalServices::AttachReference::AttachReference()
-    {
-        _isAttached = false;
-        _attachedServices = nullptr;
-    }
-
-    GlobalServices::AttachReference::AttachReference(GlobalServices& services)
-        : _attachedServices(&services)
-    {
-        GlobalServices::SetInstance(&services);
-        ++services._attachReferenceCount;
-        _isAttached = true;
-
-        MainRig_Attach();
-    }
-    
-    void GlobalServices::AttachReference::Detach()
-    {
-        if (_isAttached) {
-            MainRig_Detach();
-
-            assert(_attachedServices == &GlobalServices::GetInstance());
-            assert(_attachedServices->_attachReferenceCount > 0);
-            --_attachedServices->_attachReferenceCount;
-            _isAttached = false;
-            _attachedServices = nullptr;
-            GlobalServices::SetInstance(nullptr);
-        }
-    }
-
-    GlobalServices::AttachReference::~AttachReference()
-    {
-        Detach();
-    }
-    
-    static bool CurrentModuleIsAttached = false;
-
-    auto GlobalServices::Attach() -> AttachReference 
-    {
-        assert(!CurrentModuleIsAttached);
-        CurrentModuleIsAttached = true;
-        return AttachReference(*this);
-    }
-
     GlobalServices* GlobalServices::s_instance = nullptr;
 
     GlobalServices::GlobalServices(const StartupConfig& cfg) 
     {
-        MainRig_Startup(cfg, _services);
-
-        _attachReferenceCount = 0;
-            // we automatically attach for the main module
-        _mainAttachReference = Attach();
+        MainRig_Startup(cfg, _crossModule._services);
+        _crossModule.Publish(*this);
     }
 
     GlobalServices::~GlobalServices() 
     {
-        _mainAttachReference.Detach();
-        assert(_attachReferenceCount == 0);
+        _crossModule.Withhold(*this);
     }
 
-    void GlobalServices::SetInstance(GlobalServices* instance)
+    void GlobalServices::AttachCurrentModule()
     {
-        assert(instance == nullptr || s_instance == nullptr);
-        s_instance = instance;
+        assert(s_instance == nullptr);
+        s_instance = this;
+        MainRig_Attach();
+    }
+
+    void GlobalServices::DetachCurrentModule()
+    {
+        MainRig_Detach();
+        assert(s_instance == this);
+        s_instance = nullptr;
+    }
+
+    AttachRef<GlobalServices> GlobalServices::Attach()
+    {
+        return _crossModule.Attach<GlobalServices>();
     }
 
 }

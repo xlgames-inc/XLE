@@ -9,21 +9,16 @@
 #include "LightingParserContext.h"
 #include "../BufferUploads/ResourceLocator.h"
 #include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Assets/Services.h"
 #include "../RenderOverlays/Font.h"
 
 #include "../RenderCore/DX11/Metal/IncludeDX11.h"
 
 namespace SceneEngine
 {
-    BufferUploads::IManager* g_ActiveBufferUploads = nullptr;
-    BufferUploads::IManager* GetBufferUploads()
+    BufferUploads::IManager& GetBufferUploads()
     {
-        return g_ActiveBufferUploads;
-    }
-
-    void SetBufferUploads(BufferUploads::IManager* bufferUploads)
-    {
-        g_ActiveBufferUploads = bufferUploads;
+        return RenderCore::Assets::Services::GetBufferUploads();
     }
 
     SavedTargets::SavedTargets(RenderCore::Metal::DeviceContext* context)
@@ -125,7 +120,7 @@ namespace SceneEngine
 
     ResourcePtr CreateResourceImmediate(const BufferUploads::BufferDesc& desc)
     {
-        return GetBufferUploads()->Transaction_Immediate(desc)->AdoptUnderlying();
+        return GetBufferUploads().Transaction_Immediate(desc)->AdoptUnderlying();
     }
 
 

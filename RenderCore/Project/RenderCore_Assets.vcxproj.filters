@@ -20,9 +20,6 @@
     <ClCompile Include="..\Assets\ColladaCompilerInterface.cpp">
       <Filter>Assets</Filter>
     </ClCompile>
-    <ClCompile Include="..\Assets\TerrainFormat.cpp">
-      <Filter>Assets</Filter>
-    </ClCompile>
     <ClCompile Include="..\Assets\ModelFormatPlugins.cpp" />
     <ClCompile Include="..\Assets\Material.cpp">
       <Filter>Assets</Filter>
@@ -34,6 +31,7 @@
     <ClCompile Include="..\Assets\DelayedDrawCall.cpp">
       <Filter>Assets</Filter>
     </ClCompile>
+    <ClCompile Include="..\Assets\Services.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Assets\ModelRunTime.h">
@@ -53,9 +51,6 @@
     <ClInclude Include="..\Assets\ColladaCompilerInterface.h">
       <Filter>Assets</Filter>
     </ClInclude>
-    <ClInclude Include="..\Assets\TerrainFormat.h">
-      <Filter>Assets</Filter>
-    </ClInclude>
     <ClInclude Include="..\Assets\AnimationRunTime.h">
       <Filter>Assets</Filter>
     </ClInclude>
@@ -70,5 +65,6 @@
     <ClInclude Include="..\Assets\DelayedDrawCall.h">
       <Filter>Assets</Filter>
     </ClInclude>
+    <ClInclude Include="..\Assets\Services.h" />
   </ItemGroup>
 </Project>

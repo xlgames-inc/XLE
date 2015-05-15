@@ -90,7 +90,7 @@ namespace SceneEngine
     BloomStepBuffer::BloomStepBuffer(unsigned width, unsigned height, RenderCore::Metal::NativeFormat::Enum format)
     {
         using namespace BufferUploads;
-        auto& uploads = *GetBufferUploads();
+        auto& uploads = GetBufferUploads();
 
         auto basicLuminanceBufferDesc = BuildRenderTargetDesc(
             BindFlag::ShaderResource|BindFlag::UnorderedAccess|BindFlag::RenderTarget,
@@ -165,7 +165,7 @@ namespace SceneEngine
     ToneMappingResources::ToneMappingResources(const Desc& desc)
     {
         using namespace BufferUploads;
-        auto& uploads = *GetBufferUploads();
+        auto& uploads = GetBufferUploads();
 
             //
             //      We do the luminance calculation in a number of steps.
@@ -688,7 +688,7 @@ namespace SceneEngine
     AtmosphereBlurResources::AtmosphereBlurResources(const Desc& desc)
     {
         using namespace BufferUploads;
-        auto& uploads = *GetBufferUploads();
+        auto& uploads = GetBufferUploads();
 
         auto bufferDesc = BuildRenderTargetDesc(
             BindFlag::ShaderResource|BindFlag::RenderTarget,

@@ -40,7 +40,7 @@ namespace SceneEngine
             138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180
         };
 
-        auto& uploads = *GetBufferUploads();
+        auto& uploads = GetBufferUploads();
         auto gradDesc = BuildRenderTargetDesc(BufferUploads::BindFlag::ShaderResource, BufferUploads::TextureDesc::Plain1D(dimof(g), NativeFormat::R32G32B32_TYPELESS), "NoiseGrad");
         auto permDesc = BuildRenderTargetDesc(BufferUploads::BindFlag::ShaderResource, BufferUploads::TextureDesc::Plain1D(dimof(perm), NativeFormat::R8_TYPELESS), "NoisePerm");
         auto gradPkt = BufferUploads::CreateEmptyPacket(gradDesc);

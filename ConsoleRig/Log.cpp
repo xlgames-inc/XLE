@@ -77,8 +77,8 @@ namespace ConsoleRig
 
     void Logging_Startup(const char configFile[], const char logFileName[])
     {
-        auto& globalServices = GlobalServices::GetInstance();
         auto currentModule = GetCurrentModuleId();
+        auto& serv = GlobalServices::GetCrossModule()._services;
 
             // It can be handy to redirect std::cout to the debugger output
             // window in Visual Studio (etc)
@@ -86,12 +86,12 @@ namespace ConsoleRig
             // object to a c++ std::stream_buf
         #if defined(REDIRECT_COUT)
             
-            if (!globalServices._services.Has<ModuleId()>(Fn_CoutRedirectModule)) {
+            if (!serv.Has<ModuleId()>(Fn_CoutRedirectModule)) {
                 s_coutAdapter.Reset(GetSharedDebuggerWarningStream());
                 s_oldCoutStreamBuf = std::cout.rdbuf();
                 std::cout.rdbuf(&s_coutAdapter);
 
-                globalServices._services.Add(Fn_CoutRedirectModule, [=](){ return currentModule; });
+                serv.Add(Fn_CoutRedirectModule, [=](){ return currentModule; });
             }
 
         #endif
@@ -105,7 +105,7 @@ namespace ConsoleRig
             //  If it's there, we can just re-use it. Otherwise we need to
             //  create a new one and set it up...
             //
-        if (!globalServices._services.Has<StoragePtr()>(Fn_GetStorage)) {
+        if (!serv.Has<StoragePtr()>(Fn_GetStorage)) {
 
             el::Helpers::setStorage(
                 std::make_shared<el::base::Storage>(
@@ -127,12 +127,12 @@ namespace ConsoleRig
 
             el::Loggers::reconfigureAllLoggers(c);
 
-            globalServices._services.Add(Fn_GetStorage, el::Helpers::storage);
-            globalServices._services.Add(Fn_LogMainModule, [=](){ return currentModule; });
+            serv.Add(Fn_GetStorage, el::Helpers::storage);
+            serv.Add(Fn_LogMainModule, [=](){ return currentModule; });
 
         } else {
 
-            auto storage = globalServices._services.Call<StoragePtr>(Fn_GetStorage);
+            auto storage = serv.Call<StoragePtr>(Fn_GetStorage);
             el::Helpers::setStorage(storage);
 
         }
@@ -140,7 +140,7 @@ namespace ConsoleRig
 
     void Logging_Shutdown()
     {
-        auto& serv = GlobalServices::GetInstance()._services;
+        auto& serv = GlobalServices::GetCrossModule()._services;
         auto currentModule = GetCurrentModuleId();
 
         el::Loggers::flushAll();

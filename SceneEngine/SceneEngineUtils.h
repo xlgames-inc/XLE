@@ -50,8 +50,7 @@ namespace SceneEngine
         float _oldBlendFactor[4]; unsigned _oldSampleMask;
     };
 
-    BufferUploads::IManager* GetBufferUploads();
-    void SetBufferUploads(BufferUploads::IManager* bufferUploads);
+    BufferUploads::IManager& GetBufferUploads();
 
     BufferUploads::BufferDesc BuildRenderTargetDesc( 
         BufferUploads::BindFlag::BitField bindFlags, 

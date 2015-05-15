@@ -17,7 +17,7 @@ namespace SceneEngine
     ShadowTargetsBox::ShadowTargetsBox(const Desc& desc)
     {
         using namespace BufferUploads;
-        auto& uploads = *GetBufferUploads();
+        auto& uploads = GetBufferUploads();
         auto uploadsDesc = BuildRenderTargetDesc(
             BindFlag::ShaderResource|BindFlag::DepthStencil,
             BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, desc._formats._resourceFormat, 1, uint8(desc._targetCount)),

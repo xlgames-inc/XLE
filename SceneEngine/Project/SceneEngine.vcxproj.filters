@@ -91,6 +91,9 @@
     <ClCompile Include="..\LightInternal.cpp">
       <Filter>Lighting And Processing</Filter>
     </ClCompile>
+    <ClCompile Include="..\TerrainFormat.cpp">
+      <Filter>Objects\Terrain</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\AmbientOcclusion.h">
@@ -197,6 +200,9 @@
       <Filter>Lighting And Processing</Filter>
     </ClInclude>
     <ClInclude Include="..\TerrainMaterial.h" />
+    <ClInclude Include="..\TerrainFormat.h">
+      <Filter>Objects\Terrain</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Lighting And Processing">

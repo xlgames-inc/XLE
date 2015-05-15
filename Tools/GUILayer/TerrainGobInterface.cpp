@@ -12,7 +12,7 @@
 #include "../../SceneEngine/Terrain.h"
 #include "../../SceneEngine/TerrainMaterial.h"
 #include "../../SceneEngine/SceneEngineUtils.h"
-#include "../../RenderCore/Assets/TerrainFormat.h"
+#include "../../SceneEngine/TerrainFormat.h"
 #include "../../Tools/ToolsRig/TerrainManipulators.h"
 #include "../../Tools/ToolsRig/IManipulator.h"
 
@@ -31,8 +31,7 @@ namespace GUILayer
 		SceneEngine::TerrainConfig cfg(buffer);
         cfg._textureCfgName = "";
 		_terrainManager = std::make_shared<SceneEngine::TerrainManager>(
-			cfg, std::make_unique<RenderCore::Assets::TerrainFormat>(),
-			SceneEngine::GetBufferUploads(),
+			cfg, std::make_unique<SceneEngine::TerrainFormat>(),
 			Int2(0, 0), cfg._cellCount,
             _terrainOffset);
     }

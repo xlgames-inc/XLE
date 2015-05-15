@@ -21,6 +21,7 @@
 #include "../../RenderCore/Metal/GPUProfiler.h"
 #include "../../RenderCore/Metal/State.h"
 #include "../../RenderCore/Metal/Shader.h"
+#include "../../RenderCore/Assets/Services.h"
 #include "../../RenderOverlays/Font.h"
 #include "../../RenderOverlays/DebugHotKeys.h"
 #include "../../BufferUploads/IBufferUploads.h"
@@ -43,8 +44,6 @@
 #include <functional>
 
 unsigned FrameRenderCount = 0;
-
-namespace RenderCore { namespace Assets { void SetBufferUploads(BufferUploads::IManager* bufferUploads); }}
 
 namespace Sample
 {
@@ -84,10 +83,12 @@ namespace Sample
         PlatformRig::OverlappedWindow window;
         auto clientRect = window.GetRect();
         std::shared_ptr<RenderCore::IPresentationChain> presentationChain = 
-            renderDevice->CreatePresentationChain(window.GetUnderlyingHandle(), 
+            renderDevice->CreatePresentationChain(
+                window.GetUnderlyingHandle(), 
                 clientRect.second[0] - clientRect.first[0], clientRect.second[1] - clientRect.first[1]);
-        BufferUploads::Attach(ConsoleRig::GlobalServices::GetInstance());
-        auto bufferUploads = BufferUploads::CreateManager(renderDevice.get());
+
+        RenderCore::Assets::Services renderAssetServices(*renderDevice);
+
         auto assetServices = std::make_unique<::Assets::Services>(0);
         RenderCore::Metal::InitCompileAndAsyncManager();
 
@@ -107,10 +108,8 @@ namespace Sample
             //  * the font system needs an explicit init (and shutdown)
             //  * the global technique context contains some global rendering settings
         SetupCompilers(assetServices->GetAsyncMan());
-        SceneEngine::SetBufferUploads(bufferUploads.get());
-        RenderCore::Assets::SetBufferUploads(bufferUploads.get());
         g_gpuProfiler = RenderCore::Metal::GPUProfiler::CreateProfiler();
-        RenderOverlays::InitFontSystem(renderDevice.get(), bufferUploads.get());
+        RenderOverlays::InitFontSystem(renderDevice.get(), &renderAssetServices.GetBufferUploads());
         auto globalTechniqueContext = std::make_shared<PlatformRig::GlobalTechniqueContext>();
 
             //  We need a ISceneParser object to define the scene we want to 
@@ -197,7 +196,7 @@ namespace Sample
                         frameRig.GetMainOverlaySystem().get()));
 
                     // ------- Update ----------------------------------------
-                bufferUploads->Update(*context);
+                RenderCore::Assets::Services::GetBufferUploads().Update(*context);
                 mainScene->Update(frameResult._elapsedTime);
                 g_cpuProfiler.EndFrame();
                 ++FrameRenderCount;

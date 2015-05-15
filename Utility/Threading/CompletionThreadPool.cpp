@@ -86,8 +86,11 @@ namespace Utility
     CompletionThreadPool::~CompletionThreadPool()
     {
         _workerQuit = true;
-        XlSetEvent(this->_events[1]);   // should wake all threads
+        XlSetEvent(_events[1]);   // should wake all threads
         for (auto&t : _workerThreads) t.join();
+
+        XlCloseSyncObject(_events[0]);
+        XlCloseSyncObject(_events[1]);
     }
 }
 

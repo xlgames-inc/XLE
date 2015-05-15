@@ -61,7 +61,7 @@ namespace SceneEngine
 
     TileLightingResources::TileLightingResources(const Desc& desc)
     {
-        auto& uploads = *GetBufferUploads();
+        auto& uploads = GetBufferUploads();
         auto resLocator0 = uploads.Transaction_Immediate(
             BuildRenderTargetDesc(
                 BufferUploads::BindFlag::UnorderedAccess | BufferUploads::BindFlag::ShaderResource, 
@@ -199,7 +199,7 @@ namespace SceneEngine
                 static ShaderResourceView lightBuffer;
                 static intrusive_ptr<ID3D::Resource> lightBufferResource;
                 if (!lightBufferResource) {
-                    auto& uploads = *GetBufferUploads();
+                    auto& uploads = GetBufferUploads();
                     BufferUploads::BufferDesc desc;
                     desc._type = BufferUploads::BufferDesc::Type::LinearBuffer;
                     desc._bindFlags = BufferUploads::BindFlag::ShaderResource | BufferUploads::BindFlag::StructuredBuffer;

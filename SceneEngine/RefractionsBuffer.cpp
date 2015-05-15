@@ -29,7 +29,7 @@ namespace SceneEngine
     : _width(desc._width), _height(desc._height)
     {
         using namespace BufferUploads;
-        auto& uploads = *GetBufferUploads();
+        auto& uploads = GetBufferUploads();
 
         auto targetDesc = BuildRenderTargetDesc(
             BindFlag::ShaderResource|BindFlag::RenderTarget,
@@ -144,7 +144,7 @@ namespace SceneEngine
     DuplicateDepthBuffer::DuplicateDepthBuffer(const Desc& desc)
     {
         using namespace BufferUploads;
-        auto& uploads = *GetBufferUploads();
+        auto& uploads = GetBufferUploads();
 
         auto targetDesc = BuildRenderTargetDesc(
             BindFlag::ShaderResource,

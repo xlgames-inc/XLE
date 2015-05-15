@@ -16,7 +16,7 @@ namespace SceneEngine
         using namespace RenderCore::Metal;
         using namespace BufferUploads;
 
-        auto& uploads = *GetBufferUploads();
+        auto& uploads = GetBufferUploads();
         BufferUploads::BufferDesc metricsBufferDesc;
         metricsBufferDesc._type = BufferUploads::BufferDesc::Type::LinearBuffer;
         metricsBufferDesc._bindFlags = BindFlag::UnorderedAccess|BindFlag::StructuredBuffer|BindFlag::ShaderResource;

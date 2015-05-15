@@ -16,10 +16,10 @@
 #include "../../SceneEngine/PlacementsManager.h"
 #include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../SceneEngine/Tonemap.h"
+#include "../../SceneEngine/TerrainFormat.h"
 
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../RenderCore/Metal/State.h"
-#include "../../RenderCore/Assets/TerrainFormat.h"
 #include "../../RenderCore/Assets/ModelFormatPlugins.h"
 
 #include "../../ConsoleRig/Console.h"
@@ -165,11 +165,11 @@ namespace Sample
         Float3 worldOffset(-11200.f - 7000.f, -11200.f + 700.f, 0.f);
 
         #if defined(ENABLE_TERRAIN)
-            MainTerrainFormat = std::make_shared<RenderCore::Assets::TerrainFormat>();
+            MainTerrainFormat = std::make_shared<SceneEngine::TerrainFormat>();
             MainTerrainConfig = SceneEngine::TerrainConfig(WorldDirectory);
             pimpl->_terrainManager = std::make_shared<SceneEngine::TerrainManager>(
                 MainTerrainConfig, MainTerrainFormat, 
-                SceneEngine::GetBufferUploads(), Int2(0, 0), MainTerrainConfig._cellCount,
+                Int2(0, 0), MainTerrainConfig._cellCount,
                 worldOffset);
             MainTerrainCoords = pimpl->_terrainManager->GetCoords();
         #endif

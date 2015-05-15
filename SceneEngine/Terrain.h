@@ -160,7 +160,6 @@ namespace SceneEngine
 
         TerrainManager( const TerrainConfig& cfg,
                         std::shared_ptr<ITerrainFormat> ioFormat, 
-                        BufferUploads::IManager* bufferUploads,
                         Int2 cellMin, Int2 cellMax, // (not inclusive of cellMax)
                         Float3 worldSpaceOrigin = Float3(0.f, 0.f, -1000.f));
         ~TerrainManager();

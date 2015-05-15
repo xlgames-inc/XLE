@@ -70,13 +70,21 @@ namespace Utility
         newBuffer.reserve(newSize * 2);
         newBuffer.insert(newBuffer.begin(), newSize, uint8_t(0xcd));
 
+        auto tempBuffer = std::make_unique<uint8_t[]>(i->second._size);
+
         ptrdiff_t offsetAdjust =-ptrdiff_t(i->second._size);
         size_t displaceStart = i->second._offset;
         for (auto q=_fns.begin(); q!=_fns.end(); ++q) {
             auto& f = q->second;
             if (q == i) {
                     // this is the one to destroy
-                f._destructor(PtrAdd(AsPointer(_buffer.begin()), f._offset));
+                    // we're getting some problems where destructors called from
+                    // this point are accessing this same object and recursively
+                    // calling this function. So let's copy to a temporary buffer
+                    // first, and then call the destructor afterwards.
+                f._moveConstructor(
+                    tempBuffer.get(), 
+                    PtrAdd(AsPointer(_buffer.begin()), f._offset));
             } else {
                 auto newOffset = f._offset;
                 if (newOffset > displaceStart) {
@@ -95,8 +103,13 @@ namespace Utility
             }
         }
 
+        auto* destr = i->second._destructor;
+
         _buffer = std::move(newBuffer);
         _fns.erase(i);
+
+            // after we've completed changing our buffers -- call the destructor to destroy the object we've removed
+        destr(tempBuffer.get());
 
         return true;
     }

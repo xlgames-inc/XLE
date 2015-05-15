@@ -11,6 +11,82 @@
 
 namespace ConsoleRig
 {
+    template<typename Obj>
+        class Attachable
+    {
+    public:
+        class AttachRef;
+        AttachRef Attach();
+
+        class AttachRef
+        {
+        public:
+            void Detach();
+            Obj& Get();
+
+            AttachRef();
+            AttachRef(AttachRef&& moveFrom);
+            AttachRef& operator=(AttachRef&& moveFrom);
+            ~AttachRef();
+
+            AttachRef(const AttachRef&) = delete;
+            AttachRef& operator=(const AttachRef&) = delete;
+        protected:
+            AttachRef(Attachable<Obj>&);
+            bool _isAttached;
+            Attachable<Obj>* _attachedServices;
+            friend class Attachable<Obj>;
+        };
+
+        Attachable(Obj& obj);
+        ~Attachable();
+
+        Attachable(const Attachable&) = delete;
+        Attachable& operator=(const Attachable&) = delete;
+    protected:
+        signed _attachReferenceCount;
+        AttachRef _mainAttachReference;
+        Obj* _object;
+    };
+
+    template<typename Object>
+        using AttachRef = typename Attachable<Object>::AttachRef;
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class CrossModule
+    {
+    public:
+        VariantFunctions _services;
+
+        template<typename Object> auto Attach() -> typename Attachable<Object>::AttachRef;
+        template<typename Object> void Publish(Object& obj);
+        template<typename Object> void Withhold(Object& obj);
+    };
+
+    template<typename Object>
+        auto CrossModule::Attach() -> typename Attachable<Object>::AttachRef
+    {
+        return _services.Call<Attachable<Object>*>(typeid(Object).hash_code())->Attach();
+    }
+
+    template<typename Object> 
+        void CrossModule::Publish(Object& obj)
+    {
+        auto attachable = std::make_shared<Attachable<Object>>(obj);
+        _services.Add(
+            typeid(Object).hash_code(), 
+            [attachable]() -> Attachable<Object>* { return attachable.get(); });
+    }
+
+    template<typename Object> 
+        void CrossModule::Withhold(Object& obj)
+    {
+        _services.Remove(typeid(Object).hash_code());
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
     class StartupConfig
     {
     public:
@@ -25,42 +101,24 @@ namespace ConsoleRig
     class GlobalServices
     {
     public:
-        VariantFunctions _services;
+        static CrossModule& GetCrossModule() { return s_instance->_crossModule; }
+        static GlobalServices& GetInstance() { return *s_instance; }
 
-        class AttachReference
-        {
-        public:
-            void Detach();
+        AttachRef<GlobalServices> Attach();
 
-            AttachReference();
-            AttachReference(AttachReference&& moveFrom);
-            AttachReference& operator=(AttachReference&& moveFrom);
-            ~AttachReference();
-
-            AttachReference(const AttachReference&) = delete;
-            AttachReference& operator=(const AttachReference&) = delete;
-        protected:
-            AttachReference(GlobalServices&);
-            bool _isAttached;
-            GlobalServices* _attachedServices;
-            friend class GlobalServices;
-        };
-
-        AttachReference Attach();
-        
         GlobalServices(const StartupConfig& cfg = StartupConfig());
         ~GlobalServices();
-
-        static GlobalServices& GetInstance() { return *s_instance; }
-        static void SetInstance(GlobalServices* instance);
 
         GlobalServices(const GlobalServices&) = delete;
         GlobalServices& operator=(const GlobalServices&) = delete;
 
+        void AttachCurrentModule();
+        void DetachCurrentModule();
+
     protected:
         static GlobalServices* s_instance;
-        signed _attachReferenceCount;
-        AttachReference _mainAttachReference;
+        CrossModule _crossModule;
     };
+
 }
 
