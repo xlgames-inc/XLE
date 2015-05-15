@@ -31,10 +31,10 @@ namespace PlatformRig { namespace Camera
             //      Our "camera" coordinate space:
             //          (different from Crytek camera space)
             //      
-            //      •	Right handed
-            //      •	+X to the right
-            //      •	+Y up
-            //      •	-Z into the screen
+            //      *	Right handed
+            //      *	+X to the right
+            //      *	+Y up
+            //      *	-Z into the screen
             //
 
         using namespace RenderOverlays::DebuggingDisplay;

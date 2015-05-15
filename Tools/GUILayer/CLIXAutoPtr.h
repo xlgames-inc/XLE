@@ -17,7 +17,7 @@
 *      This code is provided "as is" without express
 *      or implied warranty. 
 *
-*      Copyright © Denis N. Shevchenko, 2006.
+*      Copyright (c) Denis N. Shevchenko, 2006.
 *
 *    From the comments at:
 *       http://www.codeproject.com/Articles/12771/CAutoNativePtr-A-managed-smart-pointer-for-using-n
