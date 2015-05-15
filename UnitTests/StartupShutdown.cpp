@@ -7,6 +7,7 @@
 #include "UnitTestHelper.h"
 #include "../RenderCore/IDevice.h"
 #include "../RenderCore/Metal/Shader.h"		// for CreateCompileAndAsyncManager
+#include "../RenderCore/Assets/Services.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../Assets/CompileAndAsyncManager.h"
 #include "../ConsoleRig/Console.h"
@@ -41,16 +42,13 @@ namespace UnitTests
 
 				{
 					auto renderDevice = RenderCore::CreateDevice();
-                    BufferUploads::Attach(services);
-					auto bufferUploads = BufferUploads::CreateManager(renderDevice.get());
+                    auto renderAssetsServices = std::make_shared<RenderCore::Assets::Services>(*renderDevice);
 					auto asyncMan = std::make_shared<::Assets::Services>(0);
                     RenderCore::Metal::InitCompileAndAsyncManager();
 
 					auto renderVersion = renderDevice->GetVersionInformation();
 					LogInfo << "RenderCore version (" << renderVersion.first << ") and date (" << renderVersion.second << ")";
 				}
-
-                BufferUploads::Detach();
 			}
 		}
 

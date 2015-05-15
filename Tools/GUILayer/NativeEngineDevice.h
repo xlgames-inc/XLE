@@ -10,6 +10,8 @@
 #include "../../ConsoleRig/GlobalServices.h"
 #include <memory>
 
+namespace RenderCore { namespace Assets { class Services; } }
+
 namespace GUILayer
 {
     class IWindowRig;
@@ -18,7 +20,7 @@ namespace GUILayer
     {
     public:
         RenderCore::IDevice*        GetRenderDevice() { return _renderDevice.get(); }
-        BufferUploads::IManager*    GetBufferUploads() { return _bufferUploads.get(); }
+        BufferUploads::IManager*    GetBufferUploads();
         ::Assets::Services*         GetAssetServices() { return _assetServices.get(); }
         std::unique_ptr<IWindowRig> CreateWindowRig(const void* nativeWindowHandle);
         void                        AttachDefaultCompilers();
@@ -31,7 +33,7 @@ namespace GUILayer
         std::shared_ptr<RenderCore::IThreadContext> _immediateContext;
         std::unique_ptr<::Assets::Services> _assetServices;
         std::unique_ptr<ConsoleRig::Console> _console;
-        std::shared_ptr<BufferUploads::IManager> _bufferUploads;
+        std::unique_ptr<RenderCore::Assets::Services> _renderAssetsServices;
         std::unique_ptr<ConsoleRig::GlobalServices> _services;
     };
 }

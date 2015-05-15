@@ -22,6 +22,10 @@ namespace Utility
         CompletionThreadPool(unsigned threadCount);
         ~CompletionThreadPool();
 
+        CompletionThreadPool(const CompletionThreadPool&) = delete;
+        CompletionThreadPool& operator=(const CompletionThreadPool&) = delete;
+        CompletionThreadPool(CompletionThreadPool&&) = delete;
+        CompletionThreadPool& operator=(CompletionThreadPool&&) = delete;
     private:
         std::vector<std::thread> _workerThreads;
         
@@ -30,7 +34,7 @@ namespace Utility
         LockFree::FixedSizeQueue<PendingTask, 256> _pendingTasks;
 
         XlHandle _events[2];
-        bool _workerQuit;
+        volatile bool _workerQuit;
 
         void EnqueueInternal(PendingTask&& task);
     };
@@ -42,3 +46,4 @@ namespace Utility
         }
 }
 
+using namespace Utility;

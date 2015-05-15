@@ -35,6 +35,7 @@
 #include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../RenderCore/Metal/GPUProfiler.h"
 #include "../../RenderCore/Metal/Shader.h"
+#include "../../RenderCore/Assets/Services.h"
 #include "../../RenderOverlays/Font.h"
 #include "../../RenderOverlays/DebugHotKeys.h"
 #include "../../RenderOverlays/Overlays/ShadowFrustumDebugger.h"
@@ -78,27 +79,19 @@ namespace Sample
         {
             auto clientRect = _window.GetRect();
 
-            auto renderDevice = RenderCore::CreateDevice();
-            std::shared_ptr<RenderCore::IPresentationChain> presentationChain = 
-                renderDevice->CreatePresentationChain(_window.GetUnderlyingHandle(), 
+            _rDevice = RenderCore::CreateDevice();
+            _presChain = _rDevice->CreatePresentationChain(_window.GetUnderlyingHandle(), 
                     clientRect.second[0] - clientRect.first[0], clientRect.second[1] - clientRect.first[1]);
-            BufferUploads::Attach(ConsoleRig::GlobalServices::GetInstance());
-            auto bufferUploads = BufferUploads::CreateManager(renderDevice.get());
-            auto assetServices = std::make_unique<::Assets::Services>(0);
+
+            RenderCore::Assets::Services renderAssetsServices(*_rDevice);
+            _assetServices = std::make_unique<::Assets::Services>(0);
             RenderCore::Metal::InitCompileAndAsyncManager();
 
-            _window.AddWindowHandler(std::make_shared<PlatformRig::ResizePresentationChain>(presentationChain));
-            auto v = renderDevice->GetVersionInformation();
+            _window.AddWindowHandler(std::make_shared<PlatformRig::ResizePresentationChain>(_presChain));
+            auto v = _rDevice->GetVersionInformation();
             _window.SetTitle(StringMeld<128>() << "XLE sample [RenderCore: " << v.first << ", " << v.second << "]");
 
-            auto globalTechniqueContext = std::make_shared<PlatformRig::GlobalTechniqueContext>();
-
-                // commit ptrs
-            _rDevice = std::move(renderDevice);
-            _presChain = std::move(presentationChain);
-            _bufferUploads = std::move(bufferUploads);
-            _assetServices = std::move(assetServices);
-            _globalTechContext = std::move(globalTechniqueContext);
+            _globalTechContext = std::make_shared<PlatformRig::GlobalTechniqueContext>();
         }
     };
 

@@ -24,13 +24,6 @@ namespace RenderCore { namespace Assets
 
     enum class SourceColorSpace { SRGB, Linear, Unspecified };
 
-    static CompletionThreadPool& GetUtilityThreadPool()
-    {
-            // todo -- should go into reusable location
-        static CompletionThreadPool s_threadPool(4);
-        return s_threadPool;
-    }
-
     class MetadataLoadMarker : public ::Assets::AsyncLoadOperation
     {
     public:
@@ -166,7 +159,7 @@ namespace RenderCore { namespace Assets
             RegisterFileDependency(_validationCallback, filename);
 
             _pimpl->_metadataMarker = std::make_shared<MetadataLoadMarker>();
-            _pimpl->_metadataMarker->Enqueue(filename, GetUtilityThreadPool());
+            _pimpl->_metadataMarker->Enqueue(filename, ConsoleRig::GlobalServices::GetShortTaskThreadPool());
         }
 
         using namespace BufferUploads;

@@ -6,6 +6,7 @@
 
 #include "CompletionThreadPool.h"
 #include "../../ConsoleRig/Log.h"
+#include "../../Utility/SystemUtils.h"
 #include "../../Core/Exceptions.h"
 
 namespace Utility
@@ -86,7 +87,7 @@ namespace Utility
     CompletionThreadPool::~CompletionThreadPool()
     {
         _workerQuit = true;
-        XlSetEvent(_events[1]);   // should wake all threads
+        XlSetEvent(_events[1]);   // trigger a manual reset event should wake all threads (and keep them awake)
         for (auto&t : _workerThreads) t.join();
 
         XlCloseSyncObject(_events[0]);

@@ -16,10 +16,10 @@
 #include "../../RenderCore/Techniques/ResourceBox.h"
 #include "../../RenderCore/Assets/ColladaCompilerInterface.h"
 #include "../../RenderCore/Assets/MaterialScaffold.h"
+#include "../../RenderCore/Assets/Services.h"
 #include "../../RenderOverlays/Font.h"
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../ConsoleRig/Console.h"
-// #include "../../ConsoleRig/Log.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
@@ -91,9 +91,9 @@ namespace GUILayer
     {
         std::unique_ptr<WindowRig> result(new WindowRig(*_renderDevice.get(), nativeWindowHandle));
 
-        std::shared_ptr<BufferUploads::IManager> bufferUploads = _bufferUploads;
+        BufferUploads::IManager* bufferUploads = &_renderAssetsServices->GetBufferUploads();
         result->GetFrameRig().AddPostPresentCallback(
-            [=](RenderCore::IThreadContext& threadContext)
+            [bufferUploads](RenderCore::IThreadContext& threadContext)
             { bufferUploads->Update(threadContext); });
 
         return std::move(result);
@@ -112,6 +112,11 @@ namespace GUILayer
             std::make_shared<RenderCore::Assets::MaterialScaffoldCompiler>());
     }
 
+    BufferUploads::IManager*    NativeEngineDevice::GetBufferUploads()
+    {
+        return &_renderAssetsServices->GetBufferUploads();
+    }
+
     NativeEngineDevice::NativeEngineDevice()
     {
         ConsoleRig::StartupConfig cfg;
@@ -122,17 +127,13 @@ namespace GUILayer
         _immediateContext = _renderDevice->GetImmediateContext();
 
         _assetServices = std::make_unique<::Assets::Services>(::Assets::Services::Flags::RecordInvalidAssets);
+        _renderAssetsServices = std::make_unique<RenderCore::Assets::Services>(*_renderDevice);
         RenderCore::Metal::InitCompileAndAsyncManager();
-
-        BufferUploads::Attach(ConsoleRig::GlobalServices::GetInstance());
-        _bufferUploads = BufferUploads::CreateManager(_renderDevice.get());
     }
 
     NativeEngineDevice::~NativeEngineDevice()
     {
-        _bufferUploads.reset();
-        BufferUploads::Detach();
-
+        _renderAssetsServices.reset();
         _assetServices.reset();
         _immediateContext.reset();
         _renderDevice.reset();

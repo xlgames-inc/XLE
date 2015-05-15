@@ -19,7 +19,6 @@
 #include "../../RenderCore/Assets/ColladaCompilerInterface.h"
 #include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../RenderCore/Metal/GPUProfiler.h"
-#include "../../RenderCore/Metal/State.h"
 #include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderOverlays/Font.h"
@@ -30,10 +29,7 @@
 #include "../../SceneEngine/LightingParser.h"
 #include "../../SceneEngine/LightingParserStandardPlugin.h"
 #include "../../SceneEngine/LightingParserContext.h"
-#include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Techniques/ResourceBox.h"
-#include "../../SceneEngine/SceneParser.h"
-#include "../../SceneEngine/LightDesc.h"
 
 #include "../../ConsoleRig/Console.h"
 #include "../../ConsoleRig/Log.h"
@@ -87,9 +83,8 @@ namespace Sample
                 window.GetUnderlyingHandle(), 
                 clientRect.second[0] - clientRect.first[0], clientRect.second[1] - clientRect.first[1]);
 
-        RenderCore::Assets::Services renderAssetServices(*renderDevice);
-
         auto assetServices = std::make_unique<::Assets::Services>(0);
+        RenderCore::Assets::Services renderAssetServices(*renderDevice);
         RenderCore::Metal::InitCompileAndAsyncManager();
 
             //  Tie in the window handler so we get presentation chain resizes, and give our

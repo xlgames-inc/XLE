@@ -8,6 +8,7 @@
 #include "AttachableInternal.h"
 #include "Log.h"
 #include "Console.h"
+#include "../Utility/Threading/CompletionThreadPool.h"
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/SystemUtils.h"
@@ -76,6 +77,8 @@ namespace ConsoleRig
         _applicationName = "XLEApp";
         _logConfigFile = "log.cfg";
         _setWorkingDir = true;
+        _longTaskThreadPoolCount = 4;
+        _shortTaskThreadPoolCount = 2;
     }
 
     StartupConfig::StartupConfig(const char applicationName[]) : StartupConfig()
@@ -124,8 +127,11 @@ namespace ConsoleRig
 
     GlobalServices* GlobalServices::s_instance = nullptr;
 
-    GlobalServices::GlobalServices(const StartupConfig& cfg) 
+    GlobalServices::GlobalServices(const StartupConfig& cfg)
     {
+        _shortTaskPool = std::make_unique<CompletionThreadPool>(cfg._shortTaskThreadPoolCount);
+        _longTaskPool = std::make_unique<CompletionThreadPool>(cfg._longTaskThreadPoolCount);
+
         MainRig_Startup(cfg, _crossModule._services);
         _crossModule.Publish(*this);
     }

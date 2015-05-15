@@ -7,6 +7,7 @@
 #include "DataPacket.h"
 #include "PlatformInterface.h"
 #include "../ConsoleRig/Log.h"
+#include "../ConsoleRig/GlobalServices.h"
 #include "../Utility/Threading/CompletionThreadPool.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/Conversion.h"
@@ -169,12 +170,6 @@ namespace BufferUploads
     size_t FileDataSource::GetDataSize(SubResource subRes) const           { /*assert(subRes == 0);*/ return _dataSize; }
     TexturePitches FileDataSource::GetPitches(SubResource subRes) const    { /*assert(subRes == 0);*/ return _pitches; }
 
-    static CompletionThreadPool& GetThreadPool()
-    {
-        static CompletionThreadPool s_threadPool(2);
-        return s_threadPool;
-    }
-
     void CALLBACK FileDataSource::CompletionRoutine(
         DWORD dwErrorCode, DWORD dwNumberOfBytesTransfered,
         LPOVERLAPPED lpOverlapped)
@@ -207,7 +202,9 @@ namespace BufferUploads
         _overlappedStatus._returnPointer = this;
 
         auto* o = &_overlappedStatus;
-        GetThreadPool().Enqueue(
+            // this should be a very quick operation -- it might be best to put it in a
+            // separate thread pool from the long operations
+        ConsoleRig::GlobalServices::GetShortTaskThreadPool().Enqueue(
             [o]()
             {
                 auto* pkt = o->_returnPointer.get();
@@ -312,12 +309,6 @@ namespace BufferUploads
         return TexturePitches();
     }
 
-    static CompletionThreadPool& GetTextureProcessingPool()
-    {
-        static CompletionThreadPool s_threadPool(4);
-        return s_threadPool;
-    }
-
     enum class TexFmt
     {
         DDS, TGA, WIC, Unknown
@@ -372,7 +363,7 @@ namespace BufferUploads
         _marker = std::make_shared<Marker>();
         _returnPointer = this;      // hold a reference while the background operation is occurring
 
-        GetTextureProcessingPool().Enqueue(
+        ConsoleRig::GlobalServices::GetLongTaskThreadPool().Enqueue(
             [this]()
             {
                 using namespace DirectX;

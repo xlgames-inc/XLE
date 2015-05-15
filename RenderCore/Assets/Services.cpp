@@ -22,6 +22,7 @@ namespace RenderCore { namespace Assets
 
     Services::~Services()
     {
+        _bufferUploads.reset();
         BufferUploads::DetachLibrary();
         ConsoleRig::GlobalServices::GetCrossModule().Withhold(*this);
     }

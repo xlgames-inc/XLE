@@ -23,6 +23,7 @@
 #include "../../../Utility/Threading/CompletionThreadPool.h"
 #include "../../../Utility/WinAPI/WinAPIWrapper.h"
 #include "../../../ConsoleRig/Log.h"
+#include "../../../ConsoleRig/GlobalServices.h"
 #include <functional>
 #include <deque>
 #include <regex>
@@ -369,15 +370,6 @@ namespace RenderCore { namespace Metal_DX11
     {
         RegisterValidAsset(StringMeld<MaxPath, ::Assets::ResChar>() << shaderPath._filename << ':' << shaderPath._entryPoint << ':' << shaderPath._shaderModel);
     }
-
-    static CompletionThreadPool& GetShaderCompileThreadPool()
-    {
-            // todo -- should go into reusable location
-            //          there are a few places that all have thread pools... we don't need
-            //          so many separate ones; let's combine them
-        static CompletionThreadPool s_threadPool(4);
-        return s_threadPool;
-    }
     
     const std::vector<Assets::DependentFileState>& CompiledShaderByteCode::CompileHelper::GetDependencies() const     
     { 
@@ -423,7 +415,7 @@ namespace RenderCore { namespace Metal_DX11
                 // calls shared_from_this()
             AsyncLoadOperation::Enqueue(
                 _shaderPath._filename,
-                GetShaderCompileThreadPool());
+                ConsoleRig::GlobalServices::GetLongTaskThreadPool());
 
         } else {
 
@@ -464,7 +456,7 @@ namespace RenderCore { namespace Metal_DX11
 
             auto sharedToThis = shared_from_this();
             std::string sourceCopy(shaderInMemory, &shaderInMemory[shaderBufferSize]);
-            GetShaderCompileThreadPool().Enqueue(
+            ConsoleRig::GlobalServices::GetLongTaskThreadPool().Enqueue(
                 [sourceCopy, sharedToThis, this]()
                 {
                     auto state = this->Complete(AsPointer(sourceCopy.cbegin()), sourceCopy.size());

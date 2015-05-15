@@ -8,6 +8,9 @@
 
 #include "../Utility/FunctionUtils.h"
 #include <string>
+#include <memory>
+
+namespace Utility { class CompletionThreadPool; }
 
 namespace ConsoleRig
 {
@@ -93,6 +96,8 @@ namespace ConsoleRig
         std::string _applicationName;
         std::string _logConfigFile;
         bool _setWorkingDir;
+        unsigned _longTaskThreadPoolCount;
+        unsigned _shortTaskThreadPoolCount;
 
         StartupConfig();
         StartupConfig(const char applicationName[]);
@@ -102,6 +107,8 @@ namespace ConsoleRig
     {
     public:
         static CrossModule& GetCrossModule() { return s_instance->_crossModule; }
+        static CompletionThreadPool& GetShortTaskThreadPool() { return *s_instance->_shortTaskPool; }
+        static CompletionThreadPool& GetLongTaskThreadPool() { return *s_instance->_longTaskPool; }
         static GlobalServices& GetInstance() { return *s_instance; }
 
         AttachRef<GlobalServices> Attach();
@@ -118,6 +125,9 @@ namespace ConsoleRig
     protected:
         static GlobalServices* s_instance;
         CrossModule _crossModule;
+
+        std::unique_ptr<CompletionThreadPool> _shortTaskPool;
+        std::unique_ptr<CompletionThreadPool> _longTaskPool;
     };
 
 }
