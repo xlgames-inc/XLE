@@ -6,8 +6,10 @@
 
 #include "AssetSetManager.h"
 #include "../Utility/Threading/ThreadingUtils.h"
+#include "../Utility/IteratorUtils.h"
 #include <vector>
 #include <memory>
+#include <assert.h>
 
 namespace Assets
 {
@@ -17,26 +19,40 @@ namespace Assets
     class AssetSetManager::Pimpl
     {
     public:
-        std::vector<std::unique_ptr<IAssetSet>> _sets;
+        std::vector<std::pair<size_t, std::unique_ptr<IAssetSet>>> _sets;
         unsigned _boundThreadId;
     };
 
-    void AssetSetManager::Add(std::unique_ptr<IAssetSet>&& set)
+    IAssetSet* AssetSetManager::GetSetForTypeCode(size_t typeCode)
     {
-        _pimpl->_sets.push_back(std::forward<std::unique_ptr<IAssetSet>>(set));
+        auto i = LowerBound(_pimpl->_sets, typeCode);
+        if (i != _pimpl->_sets.end() && i->first == typeCode)
+            return i->second.get();
+        return nullptr;
+    }
+
+    void AssetSetManager::Add(size_t typeCode, std::unique_ptr<IAssetSet>&& set)
+    {
+        auto i = LowerBound(_pimpl->_sets, typeCode);
+        assert(i == _pimpl->_sets.end() || i->first != typeCode);
+        _pimpl->_sets.insert(
+            i,
+            std::make_pair(
+                typeCode,
+                std::forward<std::unique_ptr<IAssetSet>>(set)));
     }
 
     void AssetSetManager::Clear()
     {
         for (auto i=_pimpl->_sets.begin(); i!=_pimpl->_sets.end(); ++i) {
-            (*i)->Clear();
+            i->second->Clear();
         }
     }
 
     void AssetSetManager::LogReport()
     {
         for (auto i=_pimpl->_sets.begin(); i!=_pimpl->_sets.end(); ++i) {
-            (*i)->LogReport();
+            i->second->LogReport();
         }
     }
 
@@ -52,7 +68,7 @@ namespace Assets
 
     const IAssetSet* AssetSetManager::GetAssetSet(unsigned index)
     {
-        return _pimpl->_sets[index].get();
+        return _pimpl->_sets[index].second.get();
     }
 
     AssetSetManager::AssetSetManager()

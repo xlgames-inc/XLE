@@ -31,6 +31,12 @@ namespace Assets
 
         Services(Flags::BitField flags);
         ~Services();
+
+        void AttachCurrentModule();
+        void DetachCurrentModule();
+
+        Services(const Services&) = delete;
+        const Services& operator=(const Services&) = delete;
     protected:
         std::unique_ptr<AssetSetManager> _assetSets;
         std::unique_ptr<CompileAndAsyncManager> _asyncMan;

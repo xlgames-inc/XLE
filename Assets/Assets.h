@@ -81,12 +81,9 @@ namespace Assets
             AssetSet<AssetType>& GetAssetSet() 
         {
             static AssetSet<AssetType>* set = nullptr;
-            if (!set) {
-                auto s = std::make_unique<AssetSet<AssetType>>();
-                set = s.get();
-                auto& assetSets = Services::GetAssetSets();
-                assetSets.Add(std::move(s));
-            }
+            if (!set)
+                set = Services::GetAssetSets().GetSetForType<AssetType>();
+            
             assert(Services::GetAssetSets().IsBoundThread());  // currently not thread safe; we have to check the thread ids
             #if defined(ASSETS_STORE_NAMES)
                     // These should agree. If there's a mismatch, there may be a threading problem

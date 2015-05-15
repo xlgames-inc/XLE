@@ -8,6 +8,8 @@
 #include "AssetSetManager.h"
 #include "CompileAndAsyncManager.h"
 #include "InvalidAssetManager.h"
+#include "../ConsoleRig/GlobalServices.h"
+#include "../ConsoleRig/AttachableInternal.h"
 
 namespace Assets
 {
@@ -19,16 +21,26 @@ namespace Assets
         _asyncMan = std::make_unique<CompileAndAsyncManager>();
         _invalidAssetMan = std::make_unique<InvalidAssetManager>(!!(flags & Flags::RecordInvalidAssets));
 
-        assert(!s_instance);
-        s_instance = this;
+        ConsoleRig::GlobalServices::GetCrossModule().Publish(*this);
     }
 
     Services::~Services() 
     {
-        assert(s_instance == this);
         _invalidAssetMan.reset();
         _assetSets.reset();
         _asyncMan.reset();
+        ConsoleRig::GlobalServices::GetCrossModule().Withhold(*this);
+    }
+
+    void Services::AttachCurrentModule()
+    {
+        assert(s_instance==nullptr);
+        s_instance = this;
+    }
+
+    void Services::DetachCurrentModule()
+    {
+        assert(s_instance==this);
         s_instance = nullptr;
     }
 }
