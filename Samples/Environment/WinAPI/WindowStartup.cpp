@@ -7,12 +7,11 @@
 #include "../../../PlatformRig/AllocationProfiler.h"
 #include "../../../ConsoleRig/Log.h"
 #include "../../../ConsoleRig/GlobalServices.h"
-#include "../../../Utility/Streams/PathUtils.h"
-#include "../../../Utility/Streams/FileUtils.h"
+// #include "../../../Utility/Streams/PathUtils.h"
+// #include "../../../Utility/Streams/FileUtils.h"
 #include "../../../Utility/SystemUtils.h"
 #include "../../../Core/Exceptions.h"
 #include <stdio.h>
-#include <random>
 
     // Note --  when you need to include <windows.h>, generally
     //          prefer to to use the following header ---
@@ -24,25 +23,6 @@
 namespace Sample
 {
     void ExecuteSample();
-
-    static void SetWorkingDirectory()
-    {
-            //
-            //      For convenience, set the working directory to be ../Working 
-            //              (relative to the application path)
-            //
-        nchar_t appPath     [MaxPath];
-        nchar_t appDir      [MaxPath];
-        nchar_t workingDir  [MaxPath];
-
-        XlGetProcessPath    (appPath, dimof(appPath));
-        XlSimplifyPath      (appPath, dimof(appPath), appPath, a2n("\\/"));
-        XlDirname           (appDir, dimof(appDir), appPath);
-        const auto* fn = a2n("..\\Working");
-        XlConcatPath        (workingDir, dimof(workingDir), appDir, fn, &fn[XlStringLen(fn)]);
-        XlSimplifyPath      (workingDir, dimof(workingDir), workingDir, a2n("\\/"));
-        XlChDir             (workingDir);
-    }
 }
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, int nCmdShow)
@@ -54,11 +34,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
 
     using namespace Sample;
 
-        //  There maybe a few basic platform-specific initialisation steps we might need to
-        //  perform. We can do these here, before calling into platform-specific code.
-    SetWorkingDirectory();
-    srand(std::random_device().operator()());
-
         //  Initialize the "AccumulatedAllocations" profiler as soon as possible, to catch
         //  startup allocation counts.
     PlatformRig::AccumulatedAllocations accumulatedAllocations;
@@ -69,9 +44,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
         //  But it's also a convenient place for log files (since it's excluded from
         //  git and it contains only temporary data).
         //  Note that we overwrite the log file every time, destroying previous data.
-    CreateDirectoryRecursive("int");
-    ConsoleRig::GlobalServices services;
-    ConsoleRig::Logging_Startup("log.cfg", "int/environmentsamplelog.txt");
+    ConsoleRig::GlobalServices services("environmentsample");
     LogInfo << "------------------------------------------------------------------------------------------";
 
     TRY {

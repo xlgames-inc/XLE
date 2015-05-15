@@ -261,6 +261,12 @@ namespace ConsoleRig
         return (lua_State*)*g_ConsoleLUA;
     }
 
+    void Console::SetInstance(Console* newInstance)
+    {
+        assert(!s_instance || !newInstance);
+        s_instance = newInstance;
+    }
+
     Console::Console()  
     {
         _lastLineComplete = false;

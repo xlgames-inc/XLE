@@ -13,6 +13,8 @@
 #include "../../SceneEngine/PlacementsManager.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/ParameterBox.h"
+#include "../../Utility/UTFUtils.h"
+#include "../../Utility/StringUtils.h"
 #include "../../Math/Transformations.h"
 
 namespace GUILayer { namespace EditorDynamicInterface

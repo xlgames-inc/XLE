@@ -451,7 +451,7 @@ namespace BufferUploads
     buffer_upload_dll_export std::unique_ptr<IManager>      CreateManager(RenderCore::IDevice* renderDevice);
 
     buffer_upload_dll_export void Attach(ConsoleRig::GlobalServices&);
-    buffer_upload_dll_export void Detach(ConsoleRig::GlobalServices&);
+    buffer_upload_dll_export void Detach();
 
 /*-----------------*/ #include "../RenderCore/FlexEnd.h" /*-----------------*/
 

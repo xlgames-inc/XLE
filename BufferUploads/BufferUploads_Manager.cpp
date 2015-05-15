@@ -2626,15 +2626,15 @@ namespace BufferUploads
     }
 
     #if OUTPUT_DLL
+        static ConsoleRig::GlobalServices::AttachReference s_attachRef;
         void Attach(ConsoleRig::GlobalServices& globalServices)
         {
-            ConsoleRig::GlobalServices::SetInstance(&globalServices);
-            ConsoleRig::Logging_Startup();
+            s_attachRef = globalServices.Attach();
         }
 
-        void Detach(ConsoleRig::GlobalServices&)
+        void Detach()
         {
-            ConsoleRig::Logging_Shutdown();
+            s_attachRef.Detach();
         }
     #else
         void Attach(ConsoleRig::GlobalServices& globalServices)

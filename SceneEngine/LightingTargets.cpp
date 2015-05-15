@@ -15,9 +15,6 @@
 #include "../Utility/StringFormat.h"
 
 #include "../RenderCore/DX11/Metal/IncludeDX11.h"
-#if defined(_DEBUG)
-    #include <D3DX11tex.h>      // for saving the gbuffer
-#endif
 
 namespace SceneEngine
 {
@@ -368,29 +365,31 @@ namespace SceneEngine
     #if defined(_DEBUG)
         void SaveGBuffer(RenderCore::Metal::DeviceContext* context, MainTargetsBox& mainTargets)
         {
-            using namespace BufferUploads;
-            BufferDesc stagingDesc[3];
-            for (unsigned c=0; c<3; ++c) {
-                stagingDesc[c]._type = BufferDesc::Type::Texture;
-                stagingDesc[c]._bindFlags = 0;
-                stagingDesc[c]._cpuAccess = CPUAccess::Read;
-                stagingDesc[c]._gpuAccess = 0;
-                stagingDesc[c]._allocationRules = 0;
-                stagingDesc[c]._textureDesc = BufferUploads::TextureDesc::Plain2D(
-                    mainTargets._desc._width, mainTargets._desc._height,
-                    mainTargets._desc._gbufferFormats[c]._shaderReadFormat, 1, 0, 
-                    mainTargets._desc._sampling);
-            }
-
-            const char* outputNames[] = { "gbuffer_diffuse.dds", "gbuffer_normals.dds", "gbuffer_parameters.dds" };
-            auto& bufferUploads = *GetBufferUploads();
-            for (unsigned c=0; c<3; ++c) {
-                if (mainTargets._gbufferTextures[c]) {
-                    auto stagingTexture = bufferUploads.Transaction_Immediate(stagingDesc[c])->AdoptUnderlying();
-                    context->GetUnderlying()->CopyResource(stagingTexture.get(), mainTargets._gbufferTextures[c].get());
-                    D3DX11SaveTextureToFile(context->GetUnderlying(), stagingTexture.get(), D3DX11_IFF_DDS, outputNames[c]);
+            #if 0
+                using namespace BufferUploads;
+                BufferDesc stagingDesc[3];
+                for (unsigned c=0; c<3; ++c) {
+                    stagingDesc[c]._type = BufferDesc::Type::Texture;
+                    stagingDesc[c]._bindFlags = 0;
+                    stagingDesc[c]._cpuAccess = CPUAccess::Read;
+                    stagingDesc[c]._gpuAccess = 0;
+                    stagingDesc[c]._allocationRules = 0;
+                    stagingDesc[c]._textureDesc = BufferUploads::TextureDesc::Plain2D(
+                        mainTargets._desc._width, mainTargets._desc._height,
+                        mainTargets._desc._gbufferFormats[c]._shaderReadFormat, 1, 0, 
+                        mainTargets._desc._sampling);
                 }
-            }
+
+                const char* outputNames[] = { "gbuffer_diffuse.dds", "gbuffer_normals.dds", "gbuffer_parameters.dds" };
+                auto& bufferUploads = *GetBufferUploads();
+                for (unsigned c=0; c<3; ++c) {
+                    if (mainTargets._gbufferTextures[c]) {
+                        auto stagingTexture = bufferUploads.Transaction_Immediate(stagingDesc[c])->AdoptUnderlying();
+                        context->GetUnderlying()->CopyResource(stagingTexture.get(), mainTargets._gbufferTextures[c].get());
+                        D3DX11SaveTextureToFile(context->GetUnderlying(), stagingTexture.get(), D3DX11_IFF_DDS, outputNames[c]);
+                    }
+                }
+            #endif
         }
     #endif
 

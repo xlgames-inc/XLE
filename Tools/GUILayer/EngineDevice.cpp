@@ -19,7 +19,7 @@
 #include "../../RenderOverlays/Font.h"
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../ConsoleRig/Console.h"
-#include "../../ConsoleRig/Log.h"
+// #include "../../ConsoleRig/Log.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
@@ -116,16 +116,16 @@ namespace GUILayer
 
     NativeEngineDevice::NativeEngineDevice()
     {
-            // initialise logging first...
-        auto appName = clix::marshalString<clix::E_UTF8>(System::Windows::Forms::Application::ProductName);
-        CreateDirectoryRecursive("int");
-        ConsoleRig::Logging_Startup("log.cfg", StringMeld<128>() << "int/" << appName << ".txt");
+        ConsoleRig::StartupConfig cfg;
+        cfg._applicationName = clix::marshalString<clix::E_UTF8>(System::Windows::Forms::Application::ProductName);
+        _services = std::make_unique<ConsoleRig::GlobalServices>(cfg);
 
-        _console = std::make_unique<ConsoleRig::Console>();
         _renderDevice = RenderCore::CreateDevice();
         _immediateContext = _renderDevice->GetImmediateContext();
+
         _assetServices = std::make_unique<::Assets::Services>(::Assets::Services::Flags::RecordInvalidAssets);
         RenderCore::Metal::InitCompileAndAsyncManager();
+
         BufferUploads::Attach(ConsoleRig::GlobalServices::GetInstance());
         _bufferUploads = BufferUploads::CreateManager(_renderDevice.get());
         SceneEngine::SetBufferUploads(_bufferUploads.get());
@@ -135,12 +135,14 @@ namespace GUILayer
     NativeEngineDevice::~NativeEngineDevice()
     {
         _bufferUploads.reset();
+        BufferUploads::Detach();
+
         _assetServices.reset();
         _immediateContext.reset();
         _renderDevice.reset();
         _console.reset();
-        BufferUploads::Detach(ConsoleRig::GlobalServices::GetInstance());
-        ConsoleRig::Logging_Shutdown();
+
+        _services.reset();
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

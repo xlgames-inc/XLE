@@ -250,9 +250,10 @@ namespace RenderCore { namespace Assets
         }
 
             // check for problems (missing functions or bad version number)
-        if (!_pimpl->_createModel || !_pimpl->_serializeSkinFunction || !_pimpl->_serializeAnimationFunction || !_pimpl->_serializeSkeletonFunction || !_pimpl->_mergeAnimationDataFunction) {
-            throw ::Exceptions::BasicLabel("Error while linking collada conversion DLL. Some interface functions are missing");
-        }
+        if (!_pimpl->_isAttached)
+            ThrowException(::Exceptions::BasicLabel("Error while linking collada conversion DLL. Could not find DLL (%s)", ColladaLibraryName));
+        if (!_pimpl->_createModel || !_pimpl->_serializeSkinFunction || !_pimpl->_serializeAnimationFunction || !_pimpl->_serializeSkeletonFunction || !_pimpl->_mergeAnimationDataFunction)
+            ThrowException(::Exceptions::BasicLabel("Error while linking collada conversion DLL. Some interface functions are missing"));
     }
 
 }}

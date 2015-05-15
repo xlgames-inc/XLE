@@ -4,6 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#include "UnitTestHelper.h"
 #include "../Utility/ParameterBox.h"
 #include "../Utility/SystemUtils.h"
 #include "../Utility/StringFormat.h"
@@ -74,6 +75,9 @@ namespace UnitTests
 
         TEST_METHOD(ImpliedTypingTest)
         {
+            UnitTest_SetWorkingDirectory();
+            ConsoleRig::GlobalServices services(GetStartupConfig());
+
             auto t0 = ImpliedTyping::Parse<Float4>("{.5f, 10, true}");
             Assert::IsTrue(
                 t0.first && Equivalent(t0.second, Float4(.5f, 10.f, 1.f, 1.f), 0.001f),

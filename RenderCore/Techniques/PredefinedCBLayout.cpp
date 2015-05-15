@@ -6,8 +6,10 @@
 
 #include "PredefinedCBLayout.h"
 #include "../RenderUtils.h"
+#include "../../ConsoleRig/Log.h"
 #include "../../Utility/BitUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
+#include "../../Utility/StringUtils.h"
 #include <regex>
 
 namespace RenderCore { namespace Techniques

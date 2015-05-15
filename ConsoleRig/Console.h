@@ -16,24 +16,26 @@ namespace ConsoleRig
     class Console
     {
     public:
-        void                            Execute(const std::string& str);
-        std::vector<std::string>        AutoComplete(const std::string& input);
+        void        Execute(const std::string& str);
+        auto        AutoComplete(const std::string& input) -> std::vector<std::string>;
 
-        void                            Print(const char message[]);
-        void                            Print(const std::string& message);
-        void                            Print(const std::u16string& message);
+        void        Print(const char message[]);
+        void        Print(const std::string& message);
+        void        Print(const std::u16string& message);
 
-        std::vector<std::u16string>     GetLines(unsigned lineCount, unsigned scrollback=0);
-        unsigned                        GetLineCount() const;
-        static Console&                 GetInstance() { return *s_instance; }
-        lua_State*                      GetLuaState();
+        auto        GetLines(unsigned lineCount, unsigned scrollback=0) -> std::vector<std::u16string>;
+        unsigned    GetLineCount() const;
+
+        static Console&     GetInstance() { return *s_instance; }
+        static void         SetInstance(Console* newInstance);
+        lua_State*          GetLuaState();
 
         Console();
         ~Console();
     private:
         std::vector<std::u16string>     _lines;
-        bool                            _lastLineComplete;
-        static Console*                 s_instance;
+        bool                _lastLineComplete;
+        static Console*     s_instance;
     };
 
     template <typename Type> class ConsoleVariable;

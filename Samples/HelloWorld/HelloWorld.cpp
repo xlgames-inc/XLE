@@ -79,7 +79,6 @@ namespace Sample
             // Note that the render device should be created first, so that the window
             // object is destroyed before the device is destroyed.
         LogInfo << "Building primary managers";
-        auto console = std::make_unique<ConsoleRig::Console>();
         auto renderDevice = RenderCore::CreateDevice();
 
         PlatformRig::OverlappedWindow window;

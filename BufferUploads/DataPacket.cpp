@@ -6,6 +6,7 @@
 
 #include "DataPacket.h"
 #include "PlatformInterface.h"
+#include "../ConsoleRig/Log.h"
 #include "../Utility/Threading/CompletionThreadPool.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/Conversion.h"

@@ -9,7 +9,6 @@
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/StringUtils.h"
 #include "../ConsoleRig/Log.h"
-#include <sstream>
 
 namespace Assets 
 {

@@ -4,41 +4,23 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#include "UnitTestHelper.h"
 #include "../RenderCore/IDevice.h"
 #include "../RenderCore/Metal/Shader.h"		// for CreateCompileAndAsyncManager
 #include "../BufferUploads/IBufferUploads.h"
 #include "../Assets/CompileAndAsyncManager.h"
 #include "../ConsoleRig/Console.h"
 #include "../ConsoleRig/Log.h"
-#include "../ConsoleRig/GlobalServices.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/SystemUtils.h"
 #include <CppUnitTest.h>
-#include <random>
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
 namespace UnitTests
 {
-	static void SetWorkingDirectory()
-	{
-		//
-		//      For convenience, set the working directory to be ../Working 
-		//              (relative to the application path)
-		//
-		nchar_t appDir[MaxPath];
-		nchar_t workingDir[MaxPath];
-
-		XlGetCurrentDirectory(dimof(appDir), appDir);
-		XlSimplifyPath(appDir, dimof(appDir), appDir, a2n("\\/"));
-		auto* catPath = a2n("..\\Working");
-		XlConcatPath(workingDir, dimof(workingDir), appDir, catPath, &catPath[XlStringLen(catPath)]);
-		XlSimplifyPath(workingDir, dimof(workingDir), workingDir, a2n("\\/"));
-		XlChDir(workingDir);
-	}
-
-	TEST_CLASS(StartupShutdown)
+    TEST_CLASS(StartupShutdown)
 	{
 	public:
 
@@ -54,15 +36,10 @@ namespace UnitTests
 			#endif
 
 			{
-				SetWorkingDirectory();
-				srand(std::random_device().operator()());
-
-				CreateDirectoryRecursive("int");
-                ConsoleRig::GlobalServices services;
-				ConsoleRig::Logging_Startup("log.cfg", "int/unittest.txt");
+                UnitTest_SetWorkingDirectory();
+                ConsoleRig::GlobalServices services(GetStartupConfig());
 
 				{
-					auto console = std::make_unique<ConsoleRig::Console>();
 					auto renderDevice = RenderCore::CreateDevice();
                     BufferUploads::Attach(services);
 					auto bufferUploads = BufferUploads::CreateManager(renderDevice.get());
@@ -73,8 +50,7 @@ namespace UnitTests
 					LogInfo << "RenderCore version (" << renderVersion.first << ") and date (" << renderVersion.second << ")";
 				}
 
-                BufferUploads::Detach(services);
-                ConsoleRig::Logging_Shutdown();
+                BufferUploads::Detach();
 			}
 		}
 

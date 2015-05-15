@@ -4,6 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#include "UnitTestHelper.h"
 #include "../ConsoleRig/Console.h"
 #include "../ConsoleRig/Log.h"
 #include "../ConsoleRig/GlobalServices.h"
@@ -16,32 +17,13 @@
 
 namespace UnitTests
 {
-	static void SetWorkingDirectory()
-	{
-		//
-		//      For convenience, set the working directory to be ../Working 
-		//              (relative to the application path)
-		//
-		nchar_t appDir[MaxPath];
-		nchar_t workingDir[MaxPath];
-
-		XlGetCurrentDirectory(dimof(appDir), appDir);
-		XlSimplifyPath(appDir, dimof(appDir), appDir, a2n("\\/"));
-        auto* catPath = a2n("..\\Working");
-		XlConcatPath(workingDir, dimof(workingDir), appDir, catPath, &catPath[XlStringLen(catPath)]);
-		XlSimplifyPath(workingDir, dimof(workingDir), workingDir, a2n("\\/"));
-		XlChDir(workingDir);
-	}
-
 	TEST_CLASS(DLLBinding)
 	{
 	public:
 		TEST_METHOD(DLLStartupShutdown)
 		{
-			SetWorkingDirectory();
-			CreateDirectoryRecursive("int");
-            ConsoleRig::GlobalServices services;
-			ConsoleRig::Logging_Startup("log.cfg", "int/unittest.txt");
+            UnitTest_SetWorkingDirectory();
+            ConsoleRig::GlobalServices services(GetStartupConfig());
 
 			auto library = (*Windows::Fn_LoadLibrary)("..\\Finals_Debug32\\TestDLL.dll");
             if (library && library != INVALID_HANDLE_VALUE) {

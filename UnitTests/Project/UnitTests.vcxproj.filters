@@ -7,4 +7,7 @@
     <ClCompile Include="..\DLLBinding.cpp" />
     <ClCompile Include="..\Utilities.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\UnitTestHelper.h" />
+  </ItemGroup>
 </Project>

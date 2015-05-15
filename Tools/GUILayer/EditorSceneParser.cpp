@@ -24,6 +24,7 @@
 #include "../../SceneEngine/PlacementsManager.h"
 
 #include "../../RenderCore/IThreadContext.h"
+#include "../../Utility/StringUtils.h"
 
 namespace GUILayer
 {

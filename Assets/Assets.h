@@ -17,6 +17,7 @@
 #include <vector>
 #include <utility>
 #include <string>
+#include <sstream>
 
 #if defined(_DEBUG)
     #define ASSETS_STORE_NAMES
@@ -452,12 +453,6 @@ namespace Assets
         const std::shared_ptr<Utility::OnChangeCallback>& dependency);
 
 }
-
-
-#include "../Utility/MemoryUtils.h"
-#include "../Utility/StringUtils.h"
-#include "../ConsoleRig/Log.h"
-#include <sstream>
 
 namespace Assets 
 {

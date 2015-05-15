@@ -9,6 +9,7 @@
 #include "MarshalString.h"
 #include "../../PlatformRig/BasicSceneParser.h"
 #include "../../Math/Transformations.h"
+#include "../../Utility/StringUtils.h"
 
 namespace GUILayer
 {

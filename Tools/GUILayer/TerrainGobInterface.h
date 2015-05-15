@@ -11,6 +11,7 @@
 #include "CLIXAutoPtr.h"
 #include "../../Assets/Assets.h"
 #include "../../Math/Vector.h"
+#include "../../Utility/UTFUtils.h"
 #include <vector>
 
 namespace Tools { class IManipulator; }

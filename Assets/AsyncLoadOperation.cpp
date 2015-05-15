@@ -6,6 +6,7 @@
 
 #include "AsyncLoadOperation.h"
 #include "../Utility/Threading/CompletionThreadPool.h"
+#include "../Utility/StringUtils.h"
 #include "../Core/SelectConfiguration.h"
 
 #if PLATFORMOS_ACTIVE != PLATFORMOS_WINDOWS

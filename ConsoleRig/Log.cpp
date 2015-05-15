@@ -140,7 +140,7 @@ namespace ConsoleRig
 
     void Logging_Shutdown()
     {
-        auto& globalServices = GlobalServices::GetInstance();
+        auto& serv = GlobalServices::GetInstance()._services;
         auto currentModule = GetCurrentModuleId();
 
         el::Loggers::flushAll();
@@ -148,16 +148,17 @@ namespace ConsoleRig
 
             // this will throw an exception if no module has successfully initialised
             // logging
-        if (globalServices._services.Call<ModuleId>(Fn_LogMainModule) == currentModule) {
-            globalServices._services.Remove(Fn_LogMainModule);
+        if (serv.Call<ModuleId>(Fn_LogMainModule) == currentModule) {
+            serv.Remove(Fn_GetStorage);
+            serv.Remove(Fn_LogMainModule);
         }
 
         #if defined(REDIRECT_COUT)
             ModuleId testModule = 0;
-            if (globalServices._services.TryCall<ModuleId>(testModule, Fn_CoutRedirectModule) && (testModule == currentModule)) {
+            if (serv.TryCall<ModuleId>(testModule, Fn_CoutRedirectModule) && (testModule == currentModule)) {
                 if (s_oldCoutStreamBuf)
                     std::cout.rdbuf(s_oldCoutStreamBuf);
-                globalServices._services.Remove(Fn_CoutRedirectModule);
+                serv.Remove(Fn_CoutRedirectModule);
             }
         #endif
     }

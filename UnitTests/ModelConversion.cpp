@@ -4,6 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#include "UnitTestHelper.h"
 #include "../RenderCore/Metal/Shader.h"		// for CreateCompileAndAsyncManager
 #include "../RenderCore/Assets/ModelRunTime.h"
 #include "../RenderCore/Assets/ModelRunTimeInternal.h"
@@ -12,8 +13,6 @@
 #include "../ConsoleRig/Console.h"
 #include "../ConsoleRig/Log.h"
 #include "../ConsoleRig/GlobalServices.h"
-#include "../Utility/Streams/PathUtils.h"
-#include "../Utility/Streams/FileUtils.h"
 #include "../Utility/SystemUtils.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/TimeUtils.h"
@@ -32,23 +31,6 @@ namespace Assets
 
 namespace UnitTests
 {
-	static void SetWorkingDirectory()
-	{
-		//
-		//      For convenience, set the working directory to be ../Working 
-		//              (relative to the application path)
-		//
-		nchar_t appDir[MaxPath];
-		nchar_t workingDir[MaxPath];
-
-		XlGetCurrentDirectory(dimof(appDir), appDir);
-		XlSimplifyPath(appDir, dimof(appDir), appDir, a2n("\\/"));
-		auto* catPath = a2n("..\\Working");
-		XlConcatPath(workingDir, dimof(workingDir), appDir, catPath, &catPath[XlStringLen(catPath)]);
-		XlSimplifyPath(workingDir, dimof(workingDir), workingDir, a2n("\\/"));
-		XlChDir(workingDir);
-	}
-
 	void SetupColladaCompilers(::Assets::CompileAndAsyncManager& asyncMan)
 	{
 		//  Here, we can attach whatever asset compilers we might need
@@ -82,11 +64,8 @@ namespace UnitTests
 				//	Note that don't have to do any RenderCore initialisation, and
 				//	particularly, we don't need to create a RenderCore::IDevice
 
-			SetWorkingDirectory();
-			CreateDirectoryRecursive("int");
-            ConsoleRig::GlobalServices services;
-			ConsoleRig::Logging_Startup("log.cfg", "int/unittest.txt");
-			auto console = std::make_unique<ConsoleRig::Console>();
+            UnitTest_SetWorkingDirectory();
+            ConsoleRig::GlobalServices services(GetStartupConfig());
 
 			{
                 auto aservices = std::make_shared<::Assets::Services>(0);

@@ -67,8 +67,6 @@ namespace Sample
     class PrimaryManagers
     {
     public:
-        std::unique_ptr<ConsoleRig::Console> _console;
-
         std::shared_ptr<RenderCore::IDevice> _rDevice;
         std::shared_ptr<RenderCore::IPresentationChain> _presChain;
         std::unique_ptr<BufferUploads::IManager> _bufferUploads;
@@ -81,7 +79,6 @@ namespace Sample
         PrimaryManagers()
         {
             auto clientRect = _window.GetRect();
-            auto console = std::make_unique<ConsoleRig::Console>();
 
             auto renderDevice = RenderCore::CreateDevice();
             std::shared_ptr<RenderCore::IPresentationChain> presentationChain = 
@@ -99,7 +96,6 @@ namespace Sample
             auto globalTechniqueContext = std::make_shared<PlatformRig::GlobalTechniqueContext>();
 
                 // commit ptrs
-            _console = std::move(console);
             _rDevice = std::move(renderDevice);
             _presChain = std::move(presentationChain);
             _bufferUploads = std::move(bufferUploads);

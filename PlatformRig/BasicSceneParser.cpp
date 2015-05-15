@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "BasicSceneParser.h"
+#include "../../Utility/StringUtils.h"
 
 namespace PlatformRig
 {

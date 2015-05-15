@@ -33,6 +33,8 @@ namespace ConsoleRig
             assert(_pimpl->_library == LibraryHandle_Invalid);
             _pimpl->_library = (*Windows::Fn_LoadLibrary)(_pimpl->_filename.c_str());
 
+            if (!_pimpl->_library) _pimpl->_library = LibraryHandle_Invalid;
+
                 // if LoadLibrary failed, the attach must also fail
                 // this is most often caused by a missing dll file
             if (_pimpl->_library == LibraryHandle_Invalid)
