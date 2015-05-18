@@ -14,7 +14,6 @@
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderCore/Techniques/ResourceBox.h"
-#include "../../RenderCore/Assets/ColladaCompilerInterface.h"
 #include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderOverlays/Font.h"
@@ -101,15 +100,7 @@ namespace GUILayer
 
     void NativeEngineDevice::AttachDefaultCompilers()
     {
-        auto& compilers = _assetServices->GetAsyncMan().GetIntermediateCompilers();
-        using RenderCore::Assets::ColladaCompiler;
-		auto colladaProcessor = std::make_shared<ColladaCompiler>();
-		compilers.AddCompiler(ColladaCompiler::Type_Model, colladaProcessor);
-		compilers.AddCompiler(ColladaCompiler::Type_AnimationSet, colladaProcessor);
-		compilers.AddCompiler(ColladaCompiler::Type_Skeleton, colladaProcessor);
-        compilers.AddCompiler(
-            RenderCore::Assets::MaterialScaffold::CompileProcessType,
-            std::make_shared<RenderCore::Assets::MaterialScaffoldCompiler>());
+        _renderAssetsServices->InitColladaCompilers();
     }
 
     BufferUploads::IManager*    NativeEngineDevice::GetBufferUploads()
@@ -127,8 +118,7 @@ namespace GUILayer
         _immediateContext = _renderDevice->GetImmediateContext();
 
         _assetServices = std::make_unique<::Assets::Services>(::Assets::Services::Flags::RecordInvalidAssets);
-        _renderAssetsServices = std::make_unique<RenderCore::Assets::Services>(*_renderDevice);
-        RenderCore::Metal::InitCompileAndAsyncManager();
+        _renderAssetsServices = std::make_unique<RenderCore::Assets::Services>(_renderDevice.get());
     }
 
     NativeEngineDevice::~NativeEngineDevice()

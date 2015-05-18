@@ -16,7 +16,6 @@
 #include "../../PlatformRig/OverlaySystem.h"
 
 #include "../../RenderCore/IDevice.h"
-#include "../../RenderCore/Assets/ColladaCompilerInterface.h"
 #include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../RenderCore/Metal/GPUProfiler.h"
 #include "../../RenderCore/Metal/Shader.h"
@@ -52,7 +51,6 @@ namespace Sample
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static void SetupCompilers(::Assets::CompileAndAsyncManager& asyncMan);
     static PlatformRig::FrameRig::RenderResult RenderFrame(
         RenderCore::IThreadContext& context,
         SceneEngine::LightingParserContext& lightingParserContext, BasicSceneParser* scene,
@@ -84,7 +82,7 @@ namespace Sample
                 clientRect.second[0] - clientRect.first[0], clientRect.second[1] - clientRect.first[1]);
 
         auto assetServices = std::make_unique<::Assets::Services>(0);
-        RenderCore::Assets::Services renderAssetServices(*renderDevice);
+        auto renderAssetServices = std::make_unique<RenderCore::Assets::Services>(renderDevice.get());
 
             //  Tie in the window handler so we get presentation chain resizes, and give our
             //  window a title
@@ -101,9 +99,9 @@ namespace Sample
             //  * init the gpu profiler (this init step will probably change someday)
             //  * the font system needs an explicit init (and shutdown)
             //  * the global technique context contains some global rendering settings
-        SetupCompilers(assetServices->GetAsyncMan());
+        renderAssetServices->InitColladaCompilers();
         g_gpuProfiler = RenderCore::Metal::GPUProfiler::CreateProfiler();
-        RenderOverlays::InitFontSystem(renderDevice.get(), &renderAssetServices.GetBufferUploads());
+        RenderOverlays::InitFontSystem(renderDevice.get(), &renderAssetServices->GetBufferUploads());
         auto globalTechniqueContext = std::make_shared<PlatformRig::GlobalTechniqueContext>();
 
             //  We need a ISceneParser object to define the scene we want to 
@@ -207,31 +205,17 @@ namespace Sample
 
         mainScene.reset();
         g_gpuProfiler.reset();
+
+        assetServices->GetAssetSets().Clear();
         RenderCore::Techniques::ResourceBoxes_Shutdown();
         RenderOverlays::CleanupFontSystem();
-        assetServices->GetAssetSets().Clear();
+
+        renderAssetServices.reset();
         assetServices.reset();
         TerminateFileSystemMonitoring();
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void SetupCompilers(::Assets::CompileAndAsyncManager& asyncMan)
-    {
-            //  Here, we can attach whatever asset compilers we might need
-            //  A common compiler is used for converting Collada data into
-            //  our native run-time format.
-        auto& compilers = asyncMan.GetIntermediateCompilers();
-
-        typedef RenderCore::Assets::ColladaCompiler ColladaCompiler;
-        auto colladaProcessor = std::make_shared<ColladaCompiler>();
-        compilers.AddCompiler(ColladaCompiler::Type_Model, colladaProcessor);
-        compilers.AddCompiler(ColladaCompiler::Type_AnimationSet, colladaProcessor);
-        compilers.AddCompiler(ColladaCompiler::Type_Skeleton, colladaProcessor);
-        compilers.AddCompiler(
-            RenderCore::Assets::MaterialScaffold::CompileProcessType,
-            std::make_shared<RenderCore::Assets::MaterialScaffoldCompiler>());
-    }
-
     PlatformRig::FrameRig::RenderResult RenderFrame(
         RenderCore::IThreadContext& context,
         SceneEngine::LightingParserContext& lightingParserContext,

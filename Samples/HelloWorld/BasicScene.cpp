@@ -9,7 +9,6 @@
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Assets/ModelRunTime.h"
 #include "../../RenderCore/Assets/SharedStateSet.h"
-#include "../../RenderCore/Assets/ColladaCompilerInterface.h"
 #include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../SceneEngine/LightDesc.h"
 #include "../../SceneEngine/LightingParserContext.h"
@@ -23,14 +22,6 @@
 #include "../../Utility/Streams/PathUtils.h"
 
 namespace SceneEngine { extern float SunDirectionAngle; }
-
-namespace Assets
-{
-    template<> uint64 GetCompileProcessType<RenderCore::Assets::ModelScaffold>() 
-    { 
-        return RenderCore::Assets::ColladaCompiler::Type_Model; 
-    }
-}
 
 namespace Sample
 {

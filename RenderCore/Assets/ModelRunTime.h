@@ -14,7 +14,7 @@
 #include "../../Assets/AssetsCore.h"
 #include "../../Math/Vector.h"
 #include "../../Math/Matrix.h"
-#include "../../Utility/Mixins.h"
+#include "../../Utility/MemoryUtils.h"
 #include "../../Core/Types.h"
 #include "../../Core/SelectConfiguration.h"
 #include <vector>
@@ -82,6 +82,8 @@ namespace RenderCore { namespace Assets
         unsigned                    GetMaxLOD() const { return 1; }
 
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _validationCallback; }
+
+        static const auto CompileProcessType = ConstHash64<'Mode', 'l'>::Value;
 
         ModelScaffold(const ::Assets::ResChar filename[]);
         ModelScaffold(std::shared_ptr<::Assets::PendingCompileMarker>&& marker);
@@ -156,7 +158,7 @@ namespace RenderCore { namespace Assets
             DelayStep delayStep);
 
             ////////////////////////////////////////////////////////////
-        class PreparedAnimation : noncopyable
+        class PreparedAnimation
         {
         public:
             std::unique_ptr<Float4x4[]> _finalMatrices;
@@ -167,6 +169,8 @@ namespace RenderCore { namespace Assets
             PreparedAnimation();
             PreparedAnimation(PreparedAnimation&&);
             PreparedAnimation& operator=(PreparedAnimation&&);
+            PreparedAnimation(const PreparedAnimation&) = delete;
+            PreparedAnimation& operator=(const PreparedAnimation&) = delete;
         };
 
         PreparedAnimation CreatePreparedAnimation() const;
@@ -231,6 +235,8 @@ namespace RenderCore { namespace Assets
         const std::string&              Filename() const                    { return _filename; }
         const TransformationMachine&    GetTransformationMachine() const    { return *_data; };
 
+        static const auto CompileProcessType = ConstHash64<'Skel', 'eton'>::Value;
+
         SkeletonScaffold(const ::Assets::ResChar filename[]);
         SkeletonScaffold(SkeletonScaffold&& moveFrom);
         SkeletonScaffold& operator=(SkeletonScaffold&& moveFrom);
@@ -253,6 +259,8 @@ namespace RenderCore { namespace Assets
     public:
         const std::string&              Filename() const        { return _filename; }
         const AnimationImmutableData&   ImmutableData() const   { return *_data; };
+
+        static const auto CompileProcessType = ConstHash64<'Anim', 'Set'>::Value;
 
         AnimationSetScaffold(const ::Assets::ResChar filename[]);
         AnimationSetScaffold(AnimationSetScaffold&& moveFrom);

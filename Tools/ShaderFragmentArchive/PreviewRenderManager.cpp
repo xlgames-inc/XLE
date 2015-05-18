@@ -467,7 +467,6 @@ namespace PreviewRender
         _pimpl = new ManagerPimpl;
         _pimpl->_device = RenderCore::CreateDevice();
         _pimpl->_assetServices = std::make_unique<::Assets::Services>(::Assets::Services::Flags::RecordInvalidAssets);
-        RenderCore::Metal::InitCompileAndAsyncManager();
         _pimpl->_globalTechniqueContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
     }
 

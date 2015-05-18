@@ -31,7 +31,6 @@
 #include "../../SceneEngine/IntersectionTest.h"
 
 #include "../../RenderCore/IDevice.h"
-#include "../../RenderCore/Assets/ColladaCompilerInterface.h"
 #include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../RenderCore/Metal/GPUProfiler.h"
 #include "../../RenderCore/Metal/Shader.h"
@@ -84,7 +83,7 @@ namespace Sample
                     clientRect.second[0] - clientRect.first[0], clientRect.second[1] - clientRect.first[1]);
 
             _assetServices = std::make_unique<::Assets::Services>(0);
-            _renderAssetServices = std::make_unique<RenderCore::Assets::Services>(*_rDevice);
+            _renderAssetServices = std::make_unique<RenderCore::Assets::Services>(_rDevice.get());
 
             _window.AddWindowHandler(std::make_shared<PlatformRig::ResizePresentationChain>(_presChain));
             auto v = _rDevice->GetVersionInformation();
@@ -135,7 +134,6 @@ namespace Sample
         return std::move(mainInputHandler);
     }
 
-    static void SetupCompilers(::Assets::CompileAndAsyncManager& asyncMan);
     static PlatformRig::FrameRig::RenderResult RenderFrame(
         RenderCore::IThreadContext& context,
         SceneEngine::LightingParserContext& lightingParserContext, EnvironmentSceneParser* scene,
@@ -156,9 +154,11 @@ namespace Sample
         PrimaryManagers primMan;
 
             // Some secondary initalisation:
-        SetupCompilers(primMan._assetServices->GetAsyncMan());
+        primMan._renderAssetServices->InitColladaCompilers();
         g_gpuProfiler = RenderCore::Metal::GPUProfiler::CreateProfiler();
-        RenderOverlays::InitFontSystem(primMan._rDevice.get(), &RenderCore::Assets::Services::GetBufferUploads());
+        RenderOverlays::InitFontSystem(
+            primMan._rDevice.get(), 
+            &RenderCore::Assets::Services::GetBufferUploads());
 
             // main scene
         LogInfo << "Creating main scene";
@@ -289,22 +289,6 @@ namespace Sample
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-    void SetupCompilers(::Assets::CompileAndAsyncManager& asyncMan)
-    {
-            //  Here, we can attach whatever asset compilers we might need
-            //  A common compiler is used for converting Collada data into
-            //  our native run-time format.
-        auto& compilers = asyncMan.GetIntermediateCompilers();
-
-        typedef RenderCore::Assets::ColladaCompiler ColladaCompiler;
-        auto colladaProcessor = std::make_shared<ColladaCompiler>();
-        compilers.AddCompiler(ColladaCompiler::Type_Model, colladaProcessor);
-        compilers.AddCompiler(ColladaCompiler::Type_AnimationSet, colladaProcessor);
-        compilers.AddCompiler(ColladaCompiler::Type_Skeleton, colladaProcessor);
-        compilers.AddCompiler(
-            RenderCore::Assets::MaterialScaffold::CompileProcessType,
-            std::make_shared<RenderCore::Assets::MaterialScaffoldCompiler>());
-    }
 
     PlatformRig::FrameRig::RenderResult RenderFrame(
         RenderCore::IThreadContext& context,

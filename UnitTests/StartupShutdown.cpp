@@ -10,6 +10,7 @@
 #include "../RenderCore/Assets/Services.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../Assets/CompileAndAsyncManager.h"
+#include "../Assets/AssetServices.h"
 #include "../ConsoleRig/Console.h"
 #include "../ConsoleRig/Log.h"
 #include "../Utility/Streams/PathUtils.h"
@@ -42,9 +43,8 @@ namespace UnitTests
 
 				{
 					auto renderDevice = RenderCore::CreateDevice();
-                    auto renderAssetsServices = std::make_shared<RenderCore::Assets::Services>(*renderDevice);
-					auto asyncMan = std::make_shared<::Assets::Services>(0);
-                    RenderCore::Metal::InitCompileAndAsyncManager();
+                    auto asyncMan = std::make_shared<::Assets::Services>(0);
+                    auto renderAssetsServices = std::make_shared<RenderCore::Assets::Services>(renderDevice.get());
 
 					auto renderVersion = renderDevice->GetVersionInformation();
 					LogInfo << "RenderCore version (" << renderVersion.first << ") and date (" << renderVersion.second << ")";

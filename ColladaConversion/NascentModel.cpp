@@ -1074,6 +1074,8 @@ namespace RenderCore { namespace ColladaConversion
 
             ////////////////////
         if (identifier) {
+                // note --  libxml is allocating some globals that never get
+                //          cleaned up properly. eg, we can't call "xmlCleanupCharEncodingHandlers" from here!
             ValidationErrorHandler  errorHandler;
             COLLADASaxFWL::Loader   loader(&errorHandler);
 	        loader.registerExtraDataCallbackHandler(extraDataCallback.get());
@@ -1411,7 +1413,7 @@ void AttachLibrary(ConsoleRig::GlobalServices& services)
     LogInfo << "Attached Collada Compiler DLL: {" << RenderCore::ColladaConversion::VersionString << "} -- {" << RenderCore::ColladaConversion::BuildDateString << "}";
 }
 
-void DeattachLibrary()
+void DetachLibrary()
 {
     s_attachRef.Detach();
     TerminateFileSystemMonitoring();

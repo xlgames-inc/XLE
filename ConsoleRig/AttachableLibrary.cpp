@@ -71,9 +71,9 @@ namespace ConsoleRig
 
                 // If there is a "DetachLibrary" function, we should
                 // call it now.
-			auto detachFn = (void (*)(ConsoleRig::GlobalServices&))(*Windows::Fn_GetProcAddress)(_pimpl->_library, "DeattachLibrary");
+			auto detachFn = (void (*)())(*Windows::Fn_GetProcAddress)(_pimpl->_library, "DetachLibrary");
 			if (detachFn) {
-				(*detachFn)(ConsoleRig::GlobalServices::GetInstance());
+				(*detachFn)();
 			}
 
 			(*Windows::FreeLibrary)(_pimpl->_library);

@@ -10,7 +10,6 @@
 #include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../RenderCore/Assets/AnimationRunTime.h"
 #include "../../RenderCore/Assets/SharedStateSet.h"
-#include "../../RenderCore/Assets/ColladaCompilerInterface.h"
 #include "../../Assets/Assets.h"
 #include "../../Assets/IntermediateResources.h"
 #include "../../Assets/AssetUtils.h"
@@ -67,9 +66,9 @@ namespace Sample
             //          objects only after everything is ready
         auto& compilers = Assets::Services::GetAsyncMan().GetIntermediateCompilers();
         auto& store = Assets::Services::GetAsyncMan().GetIntermediateStore();
-        auto skinMarker = compilers.PrepareResource(RenderCore::Assets::ColladaCompiler::Type_Model, &skin, 1, store);
-        auto skelMarker = compilers.PrepareResource(RenderCore::Assets::ColladaCompiler::Type_Skeleton, &skeleton, 1, store);
-        auto animMarker = compilers.PrepareResource(RenderCore::Assets::ColladaCompiler::Type_AnimationSet, &animationSet, 1, store);
+        auto skinMarker = compilers.PrepareResource(RenderCore::Assets::ModelScaffold::CompileProcessType, &skin, 1, store);
+        auto skelMarker = compilers.PrepareResource(RenderCore::Assets::SkeletonScaffold::CompileProcessType, &skeleton, 1, store);
+        auto animMarker = compilers.PrepareResource(RenderCore::Assets::AnimationSetScaffold::CompileProcessType, &animationSet, 1, store);
         assert(skinMarker->GetState() == Assets::AssetState::Ready);
         assert(skelMarker->GetState() == Assets::AssetState::Ready);
         assert(animMarker->GetState() == Assets::AssetState::Ready);

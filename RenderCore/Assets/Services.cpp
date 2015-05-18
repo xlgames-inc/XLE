@@ -6,6 +6,8 @@
 
 #include "Services.h"
 #include "LocalCompiledShaderSource.h"
+#include "MaterialScaffold.h"
+#include "ColladaCompilerInterface.h"
 #include "../Metal/Shader.h"
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Assets/IntermediateResources.h"
@@ -16,7 +18,7 @@ namespace RenderCore { namespace Assets
 {
     Services* Services::s_instance = nullptr;
 
-    Services::Services(RenderCore::IDevice& device)
+    Services::Services(RenderCore::IDevice* device)
     {
         _shaderService = std::make_unique<Metal::ShaderService>();
         _shaderService->SetLowLevelCompiler(Metal::CreateLowLevelShaderCompiler());
@@ -28,8 +30,17 @@ namespace RenderCore { namespace Assets
         asyncMan.GetIntermediateCompilers().AddCompiler(
             Metal::CompiledShaderByteCode::CompileProcessType, shaderSource);
 
-        BufferUploads::AttachLibrary(ConsoleRig::GlobalServices::GetInstance());
-        _bufferUploads = BufferUploads::CreateManager(&device);
+        if (device) {
+            BufferUploads::AttachLibrary(ConsoleRig::GlobalServices::GetInstance());
+            _bufferUploads = BufferUploads::CreateManager(device);
+        }
+
+            // Setup required compilers.
+            //  * material scaffold compiler
+        auto& compilers = asyncMan.GetIntermediateCompilers();
+        compilers.AddCompiler(
+            RenderCore::Assets::MaterialScaffold::CompileProcessType,
+            std::make_shared<RenderCore::Assets::MaterialScaffoldCompiler>());
 
         ConsoleRig::GlobalServices::GetCrossModule().Publish(*this);
     }
@@ -40,9 +51,26 @@ namespace RenderCore { namespace Assets
         auto& asyncMan = ::Assets::Services::GetAsyncMan();
         asyncMan.GetIntermediateCompilers().StallOnPendingOperations(true);
 
-        _bufferUploads.reset();
-        BufferUploads::DetachLibrary();
+        if (_bufferUploads) {
+            _bufferUploads.reset();
+            BufferUploads::DetachLibrary();
+        }
+
         ConsoleRig::GlobalServices::GetCrossModule().Withhold(*this);
+    }
+
+    void Services::InitColladaCompilers()
+    {
+            // attach the collada compilers to the assert services
+            // this is optional -- not all applications will need these compilers
+        auto& asyncMan = ::Assets::Services::GetAsyncMan();
+        auto& compilers = asyncMan.GetIntermediateCompilers();
+
+        typedef RenderCore::Assets::ColladaCompiler ColladaCompiler;
+        auto colladaProcessor = std::make_shared<ColladaCompiler>();
+        compilers.AddCompiler(ColladaCompiler::Type_Model, colladaProcessor);
+        compilers.AddCompiler(ColladaCompiler::Type_AnimationSet, colladaProcessor);
+        compilers.AddCompiler(ColladaCompiler::Type_Skeleton, colladaProcessor);
     }
 
     void Services::AttachCurrentModule()

@@ -30,7 +30,6 @@
 #include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Assets/IntermediateResources.h"
-#include "../../RenderCore/Assets/ColladaCompilerInterface.h"
 
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/Shader.h"
@@ -77,7 +76,7 @@ namespace ToolsRig
             auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
             auto& store = ::Assets::Services::GetAsyncMan().GetIntermediateStore();
             auto marker = compilers.PrepareResource(
-                RenderCore::Assets::ColladaCompiler::Type_Model, 
+                ModelScaffold::CompileProcessType, 
                 (const char**)&filename, 1, store);
             return std::make_shared<ModelScaffold>(std::move(marker));
         }

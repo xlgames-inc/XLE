@@ -21,7 +21,9 @@ namespace RenderCore { namespace Assets
         static BufferUploads::IManager& GetBufferUploads() { return *s_instance->_bufferUploads; }
         static bool HasInstance() { return s_instance != nullptr; }
 
-        Services(RenderCore::IDevice& device);
+        void InitColladaCompilers();
+
+        Services(RenderCore::IDevice* device);
         ~Services();
 
         void AttachCurrentModule();

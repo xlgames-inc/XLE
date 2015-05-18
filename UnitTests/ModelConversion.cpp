@@ -8,7 +8,8 @@
 #include "../RenderCore/Metal/Shader.h"		// for CreateCompileAndAsyncManager
 #include "../RenderCore/Assets/ModelRunTime.h"
 #include "../RenderCore/Assets/ModelRunTimeInternal.h"
-#include "../RenderCore/Assets/ColladaCompilerInterface.h"
+#include "../RenderCore/Assets/Services.h"
+#include "../Assets/IntermediateResources.h"
 #include "../Assets/Assets.h"
 #include "../ConsoleRig/Console.h"
 #include "../ConsoleRig/Log.h"
@@ -21,30 +22,8 @@
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
-namespace Assets
-{
-	template<> uint64 GetCompileProcessType<RenderCore::Assets::ModelScaffold>()
-	{
-		return RenderCore::Assets::ColladaCompiler::Type_Model;
-	}
-}
-
 namespace UnitTests
 {
-	void SetupColladaCompilers(::Assets::CompileAndAsyncManager& asyncMan)
-	{
-		//  Here, we can attach whatever asset compilers we might need
-		//  A common compiler is used for converting Collada data into
-		//  our native run-time format.
-		auto& compilers = asyncMan.GetIntermediateCompilers();
-
-		using RenderCore::Assets::ColladaCompiler;
-		auto colladaProcessor = std::make_shared<ColladaCompiler>();
-		compilers.AddCompiler(ColladaCompiler::Type_Model, colladaProcessor);
-		compilers.AddCompiler(ColladaCompiler::Type_AnimationSet, colladaProcessor);
-		compilers.AddCompiler(ColladaCompiler::Type_Skeleton, colladaProcessor);
-	}
-
 	TEST_CLASS(ModelConversion)
 	{
 	public:
@@ -70,8 +49,8 @@ namespace UnitTests
 			{
                 auto aservices = std::make_shared<::Assets::Services>(0);
 				auto& asyncMan = aservices->GetAsyncMan();
-                RenderCore::Metal::InitCompileAndAsyncManager();
-				SetupColladaCompilers(asyncMan);
+                auto raservices = std::make_shared<RenderCore::Assets::Services>(nullptr);
+                raservices->InitColladaCompilers();
 
 				const char sampleAsset[] = "game/model/galleon/galleon.dae";
 				using RenderCore::Assets::ModelScaffold;

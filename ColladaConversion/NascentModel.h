@@ -106,5 +106,5 @@ namespace RenderCore { namespace ColladaConversion
 
 extern "C" CONVERSION_API ConsoleRig::LibVersionDesc GetVersionInformation();
 extern "C" CONVERSION_API void AttachLibrary(ConsoleRig::GlobalServices&);
-extern "C" CONVERSION_API void DeattachLibrary(ConsoleRig::GlobalServices&);
+extern "C" CONVERSION_API void DetachLibrary();
 

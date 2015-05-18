@@ -22,7 +22,6 @@
 #include "../../RenderCore/Assets/ModelRunTime.h"
 #include "../../RenderCore/Assets/ModelRunTimeInternal.h"
 
-#include "../../RenderCore/Assets/ColladaCompilerInterface.h"
 #include "../../Assets/IntermediateResources.h"
 
 #include "../../RenderCore/IThreadContext.h"
@@ -245,8 +244,8 @@ namespace ToolsRig
 
         auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
         auto& store = ::Assets::Services::GetAsyncMan().GetIntermediateStore();
-        auto skinMarker = compilers.PrepareResource(RenderCore::Assets::ColladaCompiler::Type_Model, &modelFile, 1, store);
-        auto skelMarker = compilers.PrepareResource(RenderCore::Assets::ColladaCompiler::Type_Skeleton, &modelFile, 1, store);
+        auto skinMarker = compilers.PrepareResource(RenderCore::Assets::ModelScaffold::CompileProcessType, &modelFile, 1, store);
+        auto skelMarker = compilers.PrepareResource(RenderCore::Assets::SkeletonScaffold::CompileProcessType, &modelFile, 1, store);
 
         const auto& model = ::Assets::GetAsset<ModelScaffold>(skinMarker->_sourceID0);
         const auto& skeleton = ::Assets::GetAsset<SkeletonScaffold>(skelMarker->_sourceID0);
@@ -373,7 +372,7 @@ namespace ToolsRig
                     auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
                     auto& store = ::Assets::Services::GetAsyncMan().GetIntermediateStore();
                     const ::Assets::ResChar* modelFile = object._previewModelFile.c_str();
-                    auto skinMarker = compilers.PrepareResource(RenderCore::Assets::ColladaCompiler::Type_Model, &modelFile, 1, store);
+                    auto skinMarker = compilers.PrepareResource(RenderCore::Assets::ModelScaffold::CompileProcessType, &modelFile, 1, store);
                     const auto& model = ::Assets::GetAsset<ModelScaffold>(skinMarker->_sourceID0);
                     *settings._camera = AlignCameraToBoundingBox(settings._camera->_verticalFieldOfView, model.GetStaticBoundingBox());
                 } else {
