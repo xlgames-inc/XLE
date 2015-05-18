@@ -367,6 +367,13 @@ namespace BufferUploads
             [this]()
             {
                 using namespace DirectX;
+
+                    // We want to release the reference in this->_returnPointer at the
+                    // end of this function, no matter what happens (successful return,
+                    // failure return, or exception). Let's move the reference into a 
+                    // local variable to ensure that happens.
+                decltype(this->_returnPointer) releaseReference = std::move(this->_returnPointer);
+
                 HRESULT hresult = -1;
                 const auto* filename = this->_filename;
                 auto fmt = GetTexFmt((const ucs2*)filename);
@@ -404,7 +411,6 @@ namespace BufferUploads
                 }
 
                 this->_marker->SetState(Assets::AssetState::Invalid);
-                this->_returnPointer.reset();
             });
         
         return _marker;
