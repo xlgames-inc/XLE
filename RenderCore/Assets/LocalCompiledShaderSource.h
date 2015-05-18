@@ -36,7 +36,7 @@ namespace RenderCore { namespace Assets
             const char shaderInMemory[], const char entryPoint[], 
             const char shaderModel[], const ::Assets::ResChar definesTable[]) const;
 
-        void StallOnPendingOperations(bool cancelAll) const;
+        void StallOnPendingOperations(bool cancelAll);
 
         ShaderCacheSet& GetCacheSet() { return *_shaderCacheSet; }
 

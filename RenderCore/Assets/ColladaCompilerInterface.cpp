@@ -8,12 +8,23 @@
 #include "../../ColladaConversion/NascentModel.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../ConsoleRig/AttachableLibrary.h"
+#include "../../Utility/Threading/LockFree.h"
+#include "../../Utility/Threading/ThreadObject.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
 
 namespace RenderCore { namespace Assets 
 {
     static const auto* ColladaLibraryName = "ColladaConversion.dll";
+
+    class QueuedCompileOperation : public ::Assets::PendingCompileMarker
+    {
+    public:
+        uint64 _typeCode;
+        ::Assets::ResChar _initializer[MaxPath];
+
+        const ::Assets::IntermediateResources::Store* _destinationStore;
+    };
 
     class ColladaCompiler::Pimpl
     {
@@ -28,6 +39,13 @@ namespace RenderCore { namespace Assets
         ConsoleRig::AttachableLibrary _library;
         bool _isAttached;
         bool _attemptedAttach;
+
+        void PerformCompile(QueuedCompileOperation& op);
+        void AttachLibrary();
+
+        class CompilationThread;
+        Threading::Mutex _threadLock;   // (used while initialising _thread for the first time)
+        std::unique_ptr<CompilationThread> _thread;
 
         Pimpl() : _library(ColladaLibraryName)
         {
@@ -97,6 +115,157 @@ namespace RenderCore { namespace Assets
         }
     }
 
+    class ColladaCompiler::Pimpl::CompilationThread
+    {
+    public:
+        void Push(std::shared_ptr<QueuedCompileOperation> op);
+        void StallOnPendingOperations(bool cancelAll);
+
+        CompilationThread(ColladaCompiler::Pimpl* pimpl);
+        ~CompilationThread();
+    protected:
+        std::thread _thread;
+        XlHandle _events[2];
+        volatile bool _workerQuit;
+        LockFree::FixedSizeQueue<std::shared_ptr<QueuedCompileOperation>, 256> _queue;
+
+        ColladaCompiler::Pimpl* _pimpl; // (unprotected because it owns us)
+
+        void ThreadFunction();
+    };
+
+    void ColladaCompiler::Pimpl::CompilationThread::StallOnPendingOperations(bool cancelAll)
+    {
+        if (!_workerQuit) {
+            _workerQuit = true;
+            XlSetEvent(_events[1]);   // trigger a manual reset event should wake all threads (and keep them awake)
+            _thread.join();
+        }
+    }
+    
+    void ColladaCompiler::Pimpl::CompilationThread::Push(std::shared_ptr<QueuedCompileOperation> op)
+    {
+        if (!_workerQuit) {
+            _queue.push_overflow(std::move(op));
+            XlSetEvent(_events[0]);
+        }
+    }
+
+    void ColladaCompiler::Pimpl::CompilationThread::ThreadFunction()
+    {
+        while (!_workerQuit) {
+            std::shared_ptr<QueuedCompileOperation>* op;
+            if (_queue.try_front(op)) {
+                _pimpl->PerformCompile(**op);
+                _queue.pop();
+            } else {
+                XlWaitForMultipleSyncObjects(
+                    2, this->_events,
+                    false, XL_INFINITE, true);
+            }
+        }
+    }
+
+    ColladaCompiler::Pimpl::CompilationThread::CompilationThread(ColladaCompiler::Pimpl* pimpl)
+    : _pimpl(pimpl)
+    {
+        _events[0] = XlCreateEvent(false);
+        _events[1] = XlCreateEvent(true);
+        _workerQuit = false;
+
+        _thread = std::thread(std::bind(&CompilationThread::ThreadFunction, this));
+    }
+
+    ColladaCompiler::Pimpl::CompilationThread::~CompilationThread()
+    {
+        StallOnPendingOperations(true);
+        XlCloseSyncObject(_events[0]);
+        XlCloseSyncObject(_events[1]);
+    }
+
+    void ColladaCompiler::Pimpl::PerformCompile(QueuedCompileOperation& op)
+    {
+        TRY
+        {
+            char baseDir[MaxPath];
+            XlDirname(baseDir, dimof(baseDir), op._initializer);
+
+            AttachLibrary();
+
+            ConsoleRig::LibVersionDesc libVersionDesc;
+            _library.TryGetVersion(libVersionDesc);
+
+            if (op._typeCode == Type_Model || op._typeCode == Type_Skeleton) {
+                    // append an extension if it doesn't already exist
+                char colladaFile[MaxPath];
+                XlCopyString(colladaFile, op._initializer);
+                auto* extPtr = XlExtension(colladaFile);
+                if (!extPtr || !*extPtr) {
+                    XlCatString(colladaFile, dimof(colladaFile), ".dae");
+                }
+
+                auto model = (*_createModel)(colladaFile);
+                if (op._typeCode == Type_Model) {
+                    SerializeToFile(*model, _serializeSkinFunction, op._sourceID0, libVersionDesc);
+
+                    char matName[MaxPath];
+                    op._destinationStore->MakeIntermediateName(matName, dimof(matName), op._initializer);
+                    XlChopExtension(matName);
+                    XlCatString(matName, dimof(matName), "-rawmat");
+                    SerializeToFileJustChunk(*model, _serializeMaterialsFunction, matName, libVersionDesc);
+                } else {
+                    SerializeToFile(*model, _serializeSkeletonFunction, op._sourceID0, libVersionDesc);
+                }
+
+                    // write new dependencies
+                std::vector<::Assets::DependentFileState> deps;
+                deps.push_back(op._destinationStore->GetDependentFileState(colladaFile));
+                op._dependencyValidation = op._destinationStore->WriteDependencies(op._sourceID0, baseDir, AsPointer(deps.cbegin()), AsPointer(deps.cend()));
+        
+                op.SetState(::Assets::AssetState::Ready);
+            }
+
+            if (op._typeCode == Type_AnimationSet) {
+                    //  source for the animation set should actually be a directory name, and
+                    //  we'll use all of the dae files in that directory as animation inputs
+                auto sourceFiles = FindFiles(std::string(op._initializer) + "/*.dae");
+                std::vector<::Assets::DependentFileState> deps;
+
+                auto mergedAnimationSet = (*_createModel)(nullptr);
+                for (auto i=sourceFiles.begin(); i!=sourceFiles.end(); ++i) {
+                    char baseName[MaxPath]; // get the base name of the file (without the extension)
+                    XlBasename(baseName, dimof(baseName), i->c_str());
+                    XlChopExtension(baseName);
+
+                    TRY {
+                            //
+                            //      First; load the animation file as a model
+                            //          note that this will do geometry processing; etc -- but all that geometry
+                            //          information will be ignored.
+                            //
+                        auto model = (*_createModel)(i->c_str());
+
+                            //
+                            //      Now, merge the animation data into 
+                        (mergedAnimationSet.get()->*_mergeAnimationDataFunction)(*model.get(), baseName);
+                    } CATCH (const std::exception& e) {
+                            // on exception, ignore this animation file and move on to the next
+                        LogAlwaysError << "Exception while processing animation: (" << baseName << "). Exception is: (" << e.what() << ")";
+                    } CATCH_END
+
+                    deps.push_back(op._destinationStore->GetDependentFileState(i->c_str()));
+                }
+
+                SerializeToFile(*mergedAnimationSet, _serializeAnimationFunction, op._sourceID0, libVersionDesc);
+                op._dependencyValidation = op._destinationStore->WriteDependencies(op._sourceID0, baseDir, AsPointer(deps.cbegin()), AsPointer(deps.cend()));
+
+                op.SetState(::Assets::AssetState::Ready);
+            }
+        } CATCH(...) {
+            op.SetState(::Assets::AssetState::Invalid);
+        } CATCH_END
+    }
+    
     std::shared_ptr<::Assets::PendingCompileMarker> ColladaCompiler::PrepareResource(
         uint64 typeCode, 
         const ::Assets::ResChar* initializers[], unsigned initializerCount, 
@@ -108,7 +277,12 @@ namespace RenderCore { namespace Assets
         case Type_Model: XlCatString(outputName, dimof(outputName), "-skin"); break;
         case Type_Skeleton: XlCatString(outputName, dimof(outputName), "-skel"); break;
         case Type_AnimationSet: XlCatString(outputName, dimof(outputName), "-anim"); break;
+
+        default:
+            assert(0);
+            return nullptr;   // unknown asset type!
         }
+
         if (DoesFileExist(outputName)) {
                 // MakeDependencyValidation returns an object only if dependencies are currently good
              auto depVal = destinationStore.MakeDependencyValidation(outputName);
@@ -119,110 +293,50 @@ namespace RenderCore { namespace Assets
              }
         }
 
-        char baseDir[MaxPath];
-        XlDirname(baseDir, dimof(baseDir), initializers[0]);
+            // Queue this compilation operation to occur in the background thread.
+            // We can't do multiple Collada compilation at the same time. So let's just
+            // use a single thread
+        auto backgroundOp = std::make_shared<QueuedCompileOperation>();
+        XlCopyString(backgroundOp->_initializer, initializers[0]);
+        XlCopyString(backgroundOp->_sourceID0, outputName);
+        backgroundOp->_destinationStore = &destinationStore;
+        backgroundOp->_typeCode = typeCode;
 
-        AttachLibrary();
-
-        ConsoleRig::LibVersionDesc libVersionDesc;
-        _pimpl->_library.TryGetVersion(libVersionDesc);
-
-        if (typeCode == Type_Model || typeCode == Type_Skeleton) {
-                // append an extension if it doesn't already exist
-            char colladaFile[MaxPath];
-            XlCopyString(colladaFile, initializers[0]);
-            auto* extPtr = XlExtension(colladaFile);
-            if (!extPtr || !*extPtr) {
-                XlCatString(colladaFile, dimof(colladaFile), ".dae");
-            }
-
-            auto model = (*_pimpl->_createModel)(colladaFile);
-            if (typeCode == Type_Model) {
-                SerializeToFile(*model, _pimpl->_serializeSkinFunction, outputName, libVersionDesc);
-
-                char matName[MaxPath];
-                destinationStore.MakeIntermediateName(matName, dimof(matName), initializers[0]);
-                XlChopExtension(matName);
-                XlCatString(matName, dimof(matName), "-rawmat");
-                SerializeToFileJustChunk(*model, _pimpl->_serializeMaterialsFunction, matName, libVersionDesc);
-            } else {
-                SerializeToFile(*model, _pimpl->_serializeSkeletonFunction, outputName, libVersionDesc);
-            }
-
-                // write new dependencies
-            std::vector<::Assets::DependentFileState> deps;
-            deps.push_back(destinationStore.GetDependentFileState(colladaFile));
-            auto newDepVal = destinationStore.WriteDependencies(outputName, baseDir, AsPointer(deps.cbegin()), AsPointer(deps.cend()));
+        {
+            ScopedLock(_pimpl->_threadLock);
+            if (!_pimpl->_thread)
+                _pimpl->_thread = std::make_unique<Pimpl::CompilationThread>(_pimpl.get());
+        }
+        _pimpl->_thread->Push(backgroundOp);
         
-                // we can return a "ready" resource
-            return std::make_unique<::Assets::PendingCompileMarker>(
-                ::Assets::AssetState::Ready, outputName, ~uint64(0x0), std::move(newDepVal));
-        }
-
-        if (typeCode == Type_AnimationSet) {
-                //  source for the animation set should actually be a directory name, and
-                //  we'll use all of the dae files in that directory as animation inputs
-            auto sourceFiles = FindFiles(std::string(initializers[0]) + "/*.dae");
-            std::vector<::Assets::DependentFileState> deps;
-
-            auto mergedAnimationSet = (*_pimpl->_createModel)(nullptr);
-            for (auto i=sourceFiles.begin(); i!=sourceFiles.end(); ++i) {
-                char baseName[MaxPath]; // get the base name of the file (without the extension)
-                XlBasename(baseName, dimof(baseName), i->c_str());
-                XlChopExtension(baseName);
-
-                TRY {
-                        //
-                        //      First; load the animation file as a model
-                        //          note that this will do geometry processing; etc -- but all that geometry
-                        //          information will be ignored.
-                        //
-                    auto model = (*_pimpl->_createModel)(i->c_str());
-
-                        //
-                        //      Now, merge the animation data into 
-                    (mergedAnimationSet.get()->*_pimpl->_mergeAnimationDataFunction)(*model.get(), baseName);
-                } CATCH (const std::exception& e) {
-                        // on exception, ignore this animation file and move on to the next
-                    LogAlwaysError << "Exception while processing animation: (" << baseName << "). Exception is: (" << e.what() << ")";
-                } CATCH_END
-
-                deps.push_back(destinationStore.GetDependentFileState(i->c_str()));
-            }
-
-            SerializeToFile(*mergedAnimationSet, _pimpl->_serializeAnimationFunction, outputName, libVersionDesc);
-            auto newDepVal = destinationStore.WriteDependencies(outputName, baseDir, AsPointer(deps.cbegin()), AsPointer(deps.cend()));
-
-            return std::make_unique<::Assets::PendingCompileMarker>(
-                ::Assets::AssetState::Ready, outputName, ~uint64(0x0), std::move(newDepVal));
-        }
-
-        assert(0);
-        return false;   // unknown asset type!
+        return std::move(backgroundOp);
     }
 
-    void ColladaCompiler::StallOnPendingOperations(bool cancelAll) const
+    void ColladaCompiler::StallOnPendingOperations(bool cancelAll)
     {
-        // processing occurs in the foreground currently
-        //   .. so nothing to stall on
+        {
+            ScopedLock(_pimpl->_threadLock);
+            if (!_pimpl->_thread) return;
+        }
+        _pimpl->_thread->StallOnPendingOperations(cancelAll);
     }
 
     ColladaCompiler::ColladaCompiler()
     {
-        _pimpl = std::make_unique<Pimpl>();
+        _pimpl = std::make_shared<Pimpl>();
     }
 
     ColladaCompiler::~ColladaCompiler()
     {
     }
 
-    void ColladaCompiler::AttachLibrary()
+    void ColladaCompiler::Pimpl::AttachLibrary()
     {
-        if (!_pimpl->_attemptedAttach && !_pimpl->_isAttached) {
-            _pimpl->_attemptedAttach = true;
+        if (!_attemptedAttach && !_isAttached) {
+            _attemptedAttach = true;
 
-            _pimpl->_isAttached = _pimpl->_library.TryAttach();
-            if (_pimpl->_isAttached) {
+            _isAttached = _library.TryAttach();
+            if (_isAttached) {
                 using namespace RenderCore::ColladaConversion;
 
                     //  Find and set the function pointers we need
@@ -245,20 +359,20 @@ namespace RenderCore { namespace Assets
                     const char ModelMergeAnimationDataName[]    = "?MergeAnimationData@NascentModel@ColladaConversion@RenderCore@@QEAAXAEBV123@QEBD@Z";
                 #endif
                 
-                auto& lib = _pimpl->_library;
-                _pimpl->_createModel                = lib.GetFunction<decltype(_pimpl->_createModel)>(CreateModelName);
-                _pimpl->_serializeSkinFunction      = lib.GetFunction<decltype(_pimpl->_serializeSkinFunction)>(ModelSerializeSkinName);
-                _pimpl->_serializeAnimationFunction = lib.GetFunction<decltype(_pimpl->_serializeAnimationFunction)>(ModelSerializeAnimationName);
-                _pimpl->_serializeSkeletonFunction  = lib.GetFunction<decltype(_pimpl->_serializeSkeletonFunction)>(ModelSerializeSkeletonName);
-                _pimpl->_serializeMaterialsFunction = lib.GetFunction<decltype(_pimpl->_serializeMaterialsFunction)>(ModelSerializeMaterialsName);
-                _pimpl->_mergeAnimationDataFunction = lib.GetFunction<decltype(_pimpl->_mergeAnimationDataFunction)>(ModelMergeAnimationDataName);
+                auto& lib = _library;
+                _createModel                = lib.GetFunction<decltype(_createModel)>(CreateModelName);
+                _serializeSkinFunction      = lib.GetFunction<decltype(_serializeSkinFunction)>(ModelSerializeSkinName);
+                _serializeAnimationFunction = lib.GetFunction<decltype(_serializeAnimationFunction)>(ModelSerializeAnimationName);
+                _serializeSkeletonFunction  = lib.GetFunction<decltype(_serializeSkeletonFunction)>(ModelSerializeSkeletonName);
+                _serializeMaterialsFunction = lib.GetFunction<decltype(_serializeMaterialsFunction)>(ModelSerializeMaterialsName);
+                _mergeAnimationDataFunction = lib.GetFunction<decltype(_mergeAnimationDataFunction)>(ModelMergeAnimationDataName);
             }
         }
 
             // check for problems (missing functions or bad version number)
-        if (!_pimpl->_isAttached)
+        if (!_isAttached)
             ThrowException(::Exceptions::BasicLabel("Error while linking collada conversion DLL. Could not find DLL (%s)", ColladaLibraryName));
-        if (!_pimpl->_createModel || !_pimpl->_serializeSkinFunction || !_pimpl->_serializeAnimationFunction || !_pimpl->_serializeSkeletonFunction || !_pimpl->_mergeAnimationDataFunction)
+        if (!_createModel || !_serializeSkinFunction || !_serializeAnimationFunction || !_serializeSkeletonFunction || !_mergeAnimationDataFunction)
             ThrowException(::Exceptions::BasicLabel("Error while linking collada conversion DLL. Some interface functions are missing"));
     }
 

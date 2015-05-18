@@ -532,7 +532,7 @@ namespace RenderCore { namespace Assets
         return compileHelper;
     }
 
-    void LocalCompiledShaderSource::StallOnPendingOperations(bool cancelAll) const
+    void LocalCompiledShaderSource::StallOnPendingOperations(bool cancelAll)
     {
         if (cancelAll) CancelAllShaderCompiles = true;
 

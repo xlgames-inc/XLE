@@ -76,7 +76,7 @@ namespace Assets { namespace IntermediateResources
         virtual std::shared_ptr<PendingCompileMarker> PrepareResource(
             uint64 typeCode, const ResChar* initializers[], unsigned initializerCount,
             const Store& destinationStore) = 0;
-        virtual void StallOnPendingOperations(bool cancelAll) const = 0;
+        virtual void StallOnPendingOperations(bool cancelAll) = 0;
         virtual ~IResourceCompiler();
     };
 

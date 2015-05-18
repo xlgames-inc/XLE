@@ -20,7 +20,7 @@ namespace RenderCore { namespace Assets
             const ::Assets::ResChar* initializers[], unsigned initializerCount,
             const ::Assets::IntermediateResources::Store& destinationStore);
 
-        void StallOnPendingOperations(bool cancelAll) const;
+        void StallOnPendingOperations(bool cancelAll);
 
         static const uint64 Type_Model = ConstHash64<'Mode', 'l'>::Value;
         static const uint64 Type_AnimationSet = ConstHash64<'Anim', 'Set'>::Value;
@@ -30,8 +30,7 @@ namespace RenderCore { namespace Assets
         ~ColladaCompiler();
     protected:
         class Pimpl;
-        std::unique_ptr<Pimpl> _pimpl;
-        void AttachLibrary();
+        std::shared_ptr<Pimpl> _pimpl;
     };
 
 }}
