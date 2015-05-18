@@ -15,6 +15,7 @@
 #include "../../Utility/Streams/Data.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/IteratorUtils.h"
+#include "../../Utility/StringUtils.h"
 #include <algorithm>
 
 namespace RenderCore { namespace Techniques

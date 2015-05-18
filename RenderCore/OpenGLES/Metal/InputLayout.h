@@ -9,8 +9,10 @@
 #include "Format.h"
 #include "Shader.h"
 #include "../../../Core/Exceptions.h"
+#include "../../../Core/Types.h"
 #include <algorithm>
 #include <vector>
+#include <memory>
 
 namespace RenderCore { namespace Metal_OpenGLES
 {

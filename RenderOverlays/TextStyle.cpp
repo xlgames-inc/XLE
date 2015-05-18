@@ -7,6 +7,7 @@
 #include "Font.h"
 #include "FontRendering.h"
 #include "../RenderCore/RenderUtils.h"
+#include "../Assets/Assets.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/PtrUtils.h"

@@ -8,7 +8,8 @@
 
 #include "DX11.h"
 #include "IncludeDX11.h"
-#include "../../Utility/IntrusivePtr.h"
+#include "../../../Utility/IntrusivePtr.h"
+#include "../../../Utility/MemoryUtils.h"
 #include <assert.h>
 
 typedef struct _D3D11_SHADER_TYPE_DESC D3D11_SHADER_TYPE_DESC;

@@ -125,6 +125,7 @@ namespace Utility
     XL_UTILITY_API ucs4     XlGetChar(const char* str, size_t* size);
     XL_UTILITY_API void     XlGetChar(char* output, size_t count, const ucs4* uniStr, size_t* size);
 
+#if 0   //  see also UTFUtils.h
             // utf8 <-> ucs4
     XL_UTILITY_API size_t   XlMultiToWide(ucs4* dst, size_t count, const utf8* src);
     XL_UTILITY_API size_t   XlWideToMulti(utf8* dst, size_t size, const ucs4* src);
@@ -145,6 +146,7 @@ namespace Utility
 
     XL_UTILITY_API size_t   XlMultiToCp(unsigned int codePage, char* dst, size_t count, const char* src);
     XL_UTILITY_API size_t   XlCpToMulti(unsigned int codePage, char* dst, size_t count, const char* src);
+#endif
 
             // url encoded -> non encoded
     XL_UTILITY_API size_t   XlDecodeUrl(char* dst, size_t count, const char* encoded);

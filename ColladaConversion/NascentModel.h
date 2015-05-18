@@ -72,7 +72,7 @@ namespace RenderCore { namespace ColladaConversion
     class NascentModel
     {
     public:
-        NascentModel(const ResChar identifier[]);
+        NascentModel(const ::Assets::ResChar identifier[]);
         ~NascentModel();
 
         std::pair<Float3, Float3>   CalculateBoundingBox(const Float4x4* transformsBegin, const Float4x4* transformsEnd) const;
@@ -97,9 +97,9 @@ namespace RenderCore { namespace ColladaConversion
         std::string _name;
     };
 
-    CONVERSION_API std::unique_ptr<NascentModel, Internal::CrossDLLDeletor> CreateModel(const ResChar identifier[]);
+    CONVERSION_API std::unique_ptr<NascentModel, Internal::CrossDLLDeletor> CreateModel(const ::Assets::ResChar identifier[]);
 
-    typedef std::unique_ptr<NascentModel, Internal::CrossDLLDeletor> CreateModelFunction(const ResChar identifier[]);
+    typedef std::unique_ptr<NascentModel, Internal::CrossDLLDeletor> CreateModelFunction(const ::Assets::ResChar identifier[]);
     typedef NascentChunkArray (NascentModel::*ModelSerializeFunction)() const;
     typedef void (NascentModel::*MergeAnimationDataFunction)(const NascentModel& source, const char animationName[]);
 }}

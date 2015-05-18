@@ -17,6 +17,7 @@
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/ShaderResource.h"
+#include "../Utility/StringUtils.h"
 
 #pragma warning(disable:4702)       // warning C4702: unreachable code
 

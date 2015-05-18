@@ -12,6 +12,7 @@
 #include "../../../Core/Exceptions.h"
 #include "IncludeDX11.h"
 #include <deque>
+#include <vector>
 
 namespace RenderCore { namespace Metal_DX11 { namespace GPUProfiler     /// Low level GPU profiler implementation (for DirectX11)
 {

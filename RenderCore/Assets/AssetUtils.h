@@ -8,6 +8,7 @@
 
 #include "../Metal/Forward.h"
 #include "../Metal/InputLayout.h"
+#include "../../Utility/MemoryUtils.h"      // (for ConstHash64)
 
 namespace RenderCore { namespace Techniques { class CameraDesc; class GlobalTransformConstants; } }
 

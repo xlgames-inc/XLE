@@ -10,6 +10,7 @@
 namespace Utility
 {
 
+#if 0
 size_t XlUtf8To16(ucs2* utf16, size_t count, const utf8* utf8)
 {
     return MultiByteToWideChar(CP_UTF8, 0, (LPCCH)utf8, -1, (wchar_t*)utf16, int(count));
@@ -81,6 +82,8 @@ size_t XlAcpToWide2(wchar_t* dst, size_t count, const char* src)
 {
     return MultiByteToWideChar(CP_ACP, 0, src, -1, dst, int(count));
 }
+
+#endif
 
 }
 

@@ -12,6 +12,7 @@
 #include "Resource.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/Threading/Mutex.h"
+#include "../../Utility/MemoryUtils.h"
 
 #include "../IDeviceDX11.h"
 #include "IncludeDX11.h"
@@ -334,8 +335,10 @@ namespace RenderCore { namespace Metal_DX11
         virtual ULONG STDMETHODCALLTYPE AddRef() { return RefCountedObject::AddRef(); }
         virtual ULONG STDMETHODCALLTYPE Release() { return RefCountedObject::Release(); }
         AttachedData() {}
-        virtual ~AttachedData() {}
+        virtual ~AttachedData();
     };
+
+    ObjectFactory::AttachedData::~AttachedData() {}
 
         // {D2192F4A-E4D8-4A33-891A-FDBCEBB83E5D}
     const GUID ObjectFactory::AttachedData::Guid = { 0xd2192f4a, 0xe4d8, 0x4a33, { 0x89, 0x1a, 0xfd, 0xbc, 0xeb, 0xb8, 0x3e, 0x5d } };
@@ -565,13 +568,13 @@ namespace RenderCore { namespace Metal_DX11
     ObjectFactory::ObjectFactory(IDevice* device)
     : _device(ExtractUnderlyingDevice(device))
     {
-        InitAttachedData();
+        _attachedData = InitAttachedData(_device.get());
     }
 
     ObjectFactory::ObjectFactory(ID3D::Device& device)
     : _device(&device)
     {
-        InitAttachedData();
+        _attachedData = InitAttachedData(_device.get());
     }
 
     ObjectFactory::ObjectFactory(ID3D::Resource& resource)
@@ -579,13 +582,13 @@ namespace RenderCore { namespace Metal_DX11
         ID3D::Device* deviceTemp = nullptr;
         resource.GetDevice(&deviceTemp);
         _device = moveptr(deviceTemp);
-        InitAttachedData();
+        _attachedData = InitAttachedData(_device.get());
     }
 
     ObjectFactory::ObjectFactory()
     : _device(GetDefaultUnderlyingDevice())
     {
-        InitAttachedData();
+        _attachedData = InitAttachedData(_device.get());
     }
 
     ObjectFactory::~ObjectFactory() {}
@@ -605,21 +608,33 @@ namespace RenderCore { namespace Metal_DX11
         return *this;
     }
 
-    void ObjectFactory::InitAttachedData()
+    void ObjectFactory::PrepareDevice(ID3D::Device& device)
     {
-        if (_device) {
+        InitAttachedData(&device);
+    }
+
+    void ObjectFactory::ReleaseDevice(ID3D::Device& device)
+    {
+        device.SetPrivateDataInterface(ObjectFactory::AttachedData::Guid, nullptr);
+    }
+
+    auto ObjectFactory::InitAttachedData(ID3D::Device* device) -> intrusive_ptr<AttachedData>
+    {
+        intrusive_ptr<AttachedData> result;
+        if (device) {
             ObjectFactory::AttachedData* tempPtr = nullptr;
             unsigned size = sizeof(tempPtr);
-            auto hresult = _device->GetPrivateData(ObjectFactory::AttachedData::Guid, &size, (void*)&tempPtr);
+            auto hresult = device->GetPrivateData(ObjectFactory::AttachedData::Guid, &size, (void*)&tempPtr);
             if (SUCCEEDED(hresult) && tempPtr && size == sizeof(tempPtr)) {
-                _attachedData = tempPtr;    // we take our own reference here
+                result = tempPtr;    // we take our own reference here
             }
 
-            if (!_attachedData) {
-                _attachedData = make_intrusive<AttachedData>();
-                _device->SetPrivateDataInterface(ObjectFactory::AttachedData::Guid, _attachedData.get());
+            if (!result) {
+                result = make_intrusive<AttachedData>();
+                device->SetPrivateDataInterface(ObjectFactory::AttachedData::Guid, result.get());
             }
         }
+        return std::move(result);
     }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -7,6 +7,7 @@
 #include "ColladaConversion.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/Streams/Stream.h"
+#include "../Utility/StringUtils.h"
 #include "../ConsoleRig/OutputStream.h"
 #include <half.hpp>
 #include <stdarg.h>

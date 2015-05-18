@@ -12,6 +12,7 @@
 #include "../RenderCore/Metal/Buffer.h"
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCOre/DX11/Metal/DX11Utils.h"
+#include <vector>
 
 namespace SceneEngine
 {

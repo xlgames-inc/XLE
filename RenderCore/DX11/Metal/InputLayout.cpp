@@ -11,6 +11,8 @@
 #include "DeviceContext.h"
 #include "DX11Utils.h"
 #include "../../RenderUtils.h"
+#include "../../../Utility/StringUtils.h"
+#include "../../../Utility/MemoryUtils.h"
 #include <D3D11Shader.h>
 
 namespace RenderCore { namespace Metal_DX11

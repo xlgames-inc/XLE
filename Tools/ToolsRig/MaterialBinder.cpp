@@ -19,6 +19,7 @@
 #include "../../Assets/AssetUtils.h"
 #include "../../Math/Transformations.h"
 #include "../../Utility/StringFormat.h"
+#include "../../Utility/StringUtils.h"
 
 #include "../../RenderCore/DX11/Metal/IncludeDX11.h"
 #include "../../RenderCore/DX11/Metal/DX11Utils.h"
@@ -307,7 +308,7 @@ namespace ToolsRig
 
                     if (!str.empty()) {
                         TRY {
-                            ResChar resolvedFile[MaxPath];
+                            ::Assets::ResChar resolvedFile[MaxPath];
                             searchRules.ResolveFile(
                                 resolvedFile, dimof(resolvedFile),
                                 str.c_str());

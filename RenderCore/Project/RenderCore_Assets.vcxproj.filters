@@ -32,6 +32,7 @@
       <Filter>Assets</Filter>
     </ClCompile>
     <ClCompile Include="..\Assets\Services.cpp" />
+    <ClCompile Include="..\Assets\LocalCompiledShaderSource.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Assets\ModelRunTime.h">
@@ -66,5 +67,6 @@
       <Filter>Assets</Filter>
     </ClInclude>
     <ClInclude Include="..\Assets\Services.h" />
+    <ClInclude Include="..\Assets\LocalCompiledShaderSource.h" />
   </ItemGroup>
 </Project>

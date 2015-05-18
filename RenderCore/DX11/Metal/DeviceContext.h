@@ -143,6 +143,9 @@ namespace RenderCore { namespace Metal_DX11
         intrusive_ptr<ID3D::Query> CreateQuery(const D3D11_QUERY_DESC*) const;
         /// @}
 
+        static void PrepareDevice(ID3D::Device&);
+        static void ReleaseDevice(ID3D::Device&);
+
         ObjectFactory(IDevice* device);
         ObjectFactory(ID3D::Device& device);
         ObjectFactory(ID3D::Resource& resource);
@@ -157,7 +160,7 @@ namespace RenderCore { namespace Metal_DX11
         intrusive_ptr<ID3D::Device> _device;
         class AttachedData;
         intrusive_ptr<AttachedData> _attachedData;
-        void InitAttachedData();
+        static intrusive_ptr<AttachedData> InitAttachedData(ID3D::Device* device);
     };
 
     class DeviceContext : noncopyable

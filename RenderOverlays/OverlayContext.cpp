@@ -18,6 +18,7 @@
 #include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../Utility/StringFormat.h"
+#include "../Utility/StringUtils.h"
 
 #include "../RenderCore/DX11/Metal/IncludeDX11.h"
 
@@ -297,9 +298,9 @@ namespace RenderOverlays
                 //  this conversion doesn't really make sense. Either we should
                 //  do the whole thing in ucs2 or ucs4 or just utf8
         
-            XlMultiToWide(unicharBuffer, dimof(unicharBuffer), buffer);
+            utf8_2_ucs4(buffer, XlStringLen(buffer), unicharBuffer, dimof(unicharBuffer));
         } else {
-            XlMultiToWide(unicharBuffer, dimof(unicharBuffer), (const utf8*)text);
+            utf8_2_ucs4((const utf8*)text, XlStringLen((const utf8*)text), unicharBuffer, dimof(unicharBuffer));
         }
 
         if (!textStyle)
@@ -329,9 +330,9 @@ namespace RenderOverlays
                 //  this conversion doesn't really make sense. Either we should
                 //  do the whole thing in ucs2 or ucs4 or just utf8
         
-            XlMultiToWide(unicharBuffer, dimof(unicharBuffer), buffer);
+            utf8_2_ucs4(buffer, XlStringLen(buffer), unicharBuffer, dimof(unicharBuffer));
         } else {
-            XlMultiToWide(unicharBuffer, dimof(unicharBuffer), (const utf8*)text);
+            utf8_2_ucs4((const utf8*)text, XlStringLen((const utf8*)text), unicharBuffer, dimof(unicharBuffer));
         }
 
         if (!textStyle)

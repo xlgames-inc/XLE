@@ -93,6 +93,7 @@ namespace COLLADAFW
 namespace RenderCore { namespace ColladaConversion
 {
     using ::Assets::Exceptions::FormatError;
+    using ::Assets::ResChar;
 
     class ImportConfiguration
     {

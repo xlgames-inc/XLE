@@ -12,6 +12,7 @@
 #include "../../Math/Matrix.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/Mixins.h"
+#include "../../Utility/IteratorUtils.h"
 #include <vector>
 
 namespace RenderCore { namespace Assets

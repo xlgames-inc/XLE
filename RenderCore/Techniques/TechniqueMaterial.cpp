@@ -7,6 +7,8 @@
 #include "TechniqueMaterial.h"
 #include "ParsingContext.h"
 #include "../Metal/InputLayout.h"
+#include "../../Assets/Assets.h"
+#include "../../Utility/StringUtils.h"
 
 namespace RenderCore { namespace Techniques
 {

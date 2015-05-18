@@ -15,6 +15,7 @@
 #include "../RenderCore/RenderUtils.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/ResourceLocator.h"
+#include "../Assets/Assets.h"
 #include "../ConsoleRig/Console.h"
 #include "../ConsoleRig/Log.h"
 #include "../Utility/PtrUtils.h"

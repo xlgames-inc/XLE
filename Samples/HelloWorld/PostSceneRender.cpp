@@ -8,6 +8,7 @@
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Techniques/ResourceBox.h"
 #include "../../RenderCore/IThreadContext.h"
+#include "../../Utility/StringUtils.h"
 
 namespace Sample
 {

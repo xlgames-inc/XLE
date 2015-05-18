@@ -7,11 +7,12 @@
 #pragma once
 
 #include "DX11.h"
-#include "../../Resource.h"
+#include "../../../Assets/AssetsCore.h"
 #include "../../../Utility/Mixins.h"
 #include "../../../Utility/IntrusivePtr.h"
-// #include "ShaderResource.h"
-// #include "DX11.h"
+#include "../../../Core/Types.h"
+#include <memory>
+#include <vector>
 
 #if DX_VERSION == DX_VERSION_11_1
     typedef struct _D3D_SHADER_MACRO D3D_SHADER_MACRO;
@@ -26,7 +27,7 @@ namespace Assets {
     class PendingCompileMarker;
 }
 
-namespace Assets { class DependencyValidation; }
+namespace Assets { class DependencyValidation; class DependentFileState; }
 
 namespace RenderCore { namespace Metal_DX11
 {
@@ -41,46 +42,7 @@ namespace RenderCore { namespace Metal_DX11
         };
     }
 
-    class IncludeHandler;
-
-        ////////////////////////////////////////////////////////////////////////////////////////////////
-
-    class CompiledShaderByteCode : noncopyable
-    {
-    public:
-            //
-            //          Resource interface
-            //
-        explicit CompiledShaderByteCode(const ResChar initializer[], const ResChar definesTable[]=nullptr);
-        CompiledShaderByteCode(const char shaderInMemory[], const char entryPoint[], const char shaderModel[], const ResChar definesTable[]=nullptr);
-        CompiledShaderByteCode(std::shared_ptr<::Assets::PendingCompileMarker>&& marker);
-        ~CompiledShaderByteCode();
-
-        const void*                 GetByteCode() const;
-        size_t                      GetSize() const;
-        ShaderStage::Enum           GetStage() const                { return _stage; }
-        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _validationCallback; }
-
-        intrusive_ptr<ID3D::ShaderReflection>  GetReflection() const;
-        const char*                 Initializer() const;
-
-        static const uint64         CompileProcessType;
-
-        class CompileHelper;
-    private:
-        mutable std::shared_ptr<std::vector<uint8>> _shader;
-
-        ShaderStage::Enum _stage;
-        std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
-        
-        void Resolve() const;
-        mutable std::shared_ptr<CompileHelper> _compileHelper;
-        mutable std::shared_ptr<::Assets::PendingCompileMarker> _marker;
-
-        DEBUG_ONLY(char _initializer[512];)
-
-        void ResolveFromCompileMarker() const;
-    };
+    class CompiledShaderByteCode;
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -90,7 +52,7 @@ namespace RenderCore { namespace Metal_DX11
             //
             //          Resource interface
             //
-        explicit VertexShader(const ResChar initializer[]);
+        explicit VertexShader(const ::Assets::ResChar initializer[]);
         explicit VertexShader(const CompiledShaderByteCode& byteCode);
         VertexShader();
         ~VertexShader();
@@ -110,7 +72,7 @@ namespace RenderCore { namespace Metal_DX11
             //
             //          Resource interface
             //
-        explicit PixelShader(const ResChar initializer[]);
+        explicit PixelShader(const ::Assets::ResChar initializer[]);
         explicit PixelShader(const CompiledShaderByteCode& byteCode);
         PixelShader();
         ~PixelShader();
@@ -152,7 +114,7 @@ namespace RenderCore { namespace Metal_DX11
             //
             //          Resource interface
             //
-        GeometryShader(const ResChar initializer[], const StreamOutputInitializers& soInitializers = GetDefaultStreamOutputInitializers());
+        GeometryShader(const ::Assets::ResChar initializer[], const StreamOutputInitializers& soInitializers = GetDefaultStreamOutputInitializers());
         explicit GeometryShader(const CompiledShaderByteCode& byteCode, const StreamOutputInitializers& soInitializers = GetDefaultStreamOutputInitializers());
         GeometryShader();
         ~GeometryShader();
@@ -175,7 +137,7 @@ namespace RenderCore { namespace Metal_DX11
     class HullShader
     {
     public:
-        explicit HullShader(const ResChar initializer[], const ResChar definesTable[]=nullptr);
+        explicit HullShader(const ::Assets::ResChar initializer[], const ::Assets::ResChar definesTable[]=nullptr);
         explicit HullShader(const CompiledShaderByteCode& byteCode);
         ~HullShader();
 
@@ -194,7 +156,7 @@ namespace RenderCore { namespace Metal_DX11
     class DomainShader
     {
     public:
-        explicit DomainShader(const ResChar initializer[], const ResChar definesTable[]=nullptr);
+        explicit DomainShader(const ::Assets::ResChar initializer[], const ::Assets::ResChar definesTable[]=nullptr);
         explicit DomainShader(const CompiledShaderByteCode& byteCode);
         ~DomainShader();
 
@@ -213,7 +175,7 @@ namespace RenderCore { namespace Metal_DX11
     class ComputeShader
     {
     public:
-        explicit ComputeShader(const ResChar initializer[], const ResChar definesTable[]=nullptr);
+        explicit ComputeShader(const ::Assets::ResChar initializer[], const ::Assets::ResChar definesTable[]=nullptr);
         explicit ComputeShader(const CompiledShaderByteCode& byteCode);
         ~ComputeShader();
 
@@ -275,17 +237,17 @@ namespace RenderCore { namespace Metal_DX11
     class ShaderProgram : noncopyable
     {
     public:
-        ShaderProgram(  const ResChar vertexShaderInitializer[], 
-                        const ResChar fragmentShaderInitializer[]);
+        ShaderProgram(  const ::Assets::ResChar vertexShaderInitializer[], 
+                        const ::Assets::ResChar fragmentShaderInitializer[]);
         
-        ShaderProgram(  const ResChar vertexShaderInitializer[], 
-                        const ResChar fragmentShaderInitializer[],
-                        const ResChar definesTable[]);
+        ShaderProgram(  const ::Assets::ResChar vertexShaderInitializer[], 
+                        const ::Assets::ResChar fragmentShaderInitializer[],
+                        const ::Assets::ResChar definesTable[]);
 
-        ShaderProgram(  const ResChar vertexShaderInitializer[], 
-                        const ResChar geometryShaderInitializer[],
-                        const ResChar fragmentShaderInitializer[],
-                        const ResChar definesTable[]);
+        ShaderProgram(  const ::Assets::ResChar vertexShaderInitializer[], 
+                        const ::Assets::ResChar geometryShaderInitializer[],
+                        const ::Assets::ResChar fragmentShaderInitializer[],
+                        const ::Assets::ResChar definesTable[]);
 
         ShaderProgram(  const CompiledShaderByteCode& compiledVertexShader, 
                         const CompiledShaderByteCode& compiledFragmentShader);
@@ -323,12 +285,12 @@ namespace RenderCore { namespace Metal_DX11
     class DeepShaderProgram : public ShaderProgram
     {
     public:
-        DeepShaderProgram(  const ResChar vertexShaderInitializer[], 
-                            const ResChar geometryShaderInitializer[],
-                            const ResChar fragmentShaderInitializer[],
-                            const ResChar hullShaderInitializer[],
-                            const ResChar domainShaderInitializer[],
-                            const ResChar definesTable[]);
+        DeepShaderProgram(  const ::Assets::ResChar vertexShaderInitializer[], 
+                            const ::Assets::ResChar geometryShaderInitializer[],
+                            const ::Assets::ResChar fragmentShaderInitializer[],
+                            const ::Assets::ResChar hullShaderInitializer[],
+                            const ::Assets::ResChar domainShaderInitializer[],
+                            const ::Assets::ResChar definesTable[]);
         ~DeepShaderProgram();
 
         const HullShader&                   GetHullShader() const               { return _hullShader; }
@@ -346,6 +308,140 @@ namespace RenderCore { namespace Metal_DX11
         DeepShaderProgram& operator=(const DeepShaderProgram&);
     };
 
-    void InitCompileAndAsyncManager();
+        ////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class ShaderService
+    {
+    public:
+        using ResChar = ::Assets::ResChar;
+        
+        class ResId
+        {
+        public:
+            ResChar _filename[MaxPath];
+            ResChar _entryPoint[64];
+            ResChar _shaderModel[32];
+
+            ResId(const ResChar filename[], const ResChar entryPoint[], const ResChar shaderModel[]);
+            ResId();
+
+        protected:
+            ResId(const ResChar initializer[]);
+        };
+
+        class IPendingMarker
+        {
+        public:
+            using Payload = std::shared_ptr<std::vector<uint8>>;
+
+            virtual const Payload& Resolve(
+                const char initializer[],
+                const std::shared_ptr<::Assets::DependencyValidation>& depVal) const = 0; 
+
+            virtual ~IPendingMarker();
+        };
+
+        class IShaderSource
+        {
+        public:
+            virtual std::shared_ptr<IPendingMarker> CompileFromFile(
+                const ResId& resId, 
+                const ::Assets::ResChar definesTable[]) const = 0;
+            
+            virtual std::shared_ptr<IPendingMarker> CompileFromMemory(
+                const char shaderInMemory[], const char entryPoint[], 
+                const char shaderModel[], const ::Assets::ResChar definesTable[]) const = 0;
+
+            virtual ~IShaderSource();
+        };
+
+        class ILowLevelCompiler
+        {
+        public:
+            using Payload = std::shared_ptr<std::vector<uint8>>;
+
+            virtual void AdaptShaderModel(
+                ResChar destination[], 
+                const size_t destinationCount,
+                const ResChar source[]) const = 0;
+
+            virtual bool DoLowLevelCompile(
+                /*out*/ Payload& payload,
+                /*out*/ Payload& errors,
+                /*out*/ std::vector<::Assets::DependentFileState>& dependencies,
+                const void* sourceCode, size_t sourceCodeLength,
+                ResId& shaderPath,
+                const ::Assets::rstring& definesTable) const = 0;
+
+            virtual std::string MakeShaderMetricsString(
+                const void* byteCode, size_t byteCodeSize) const = 0;
+
+            virtual ~ILowLevelCompiler();
+        };
+
+        std::shared_ptr<IPendingMarker> CompileFromFile(
+            const ResId& resId, 
+            const ::Assets::ResChar definesTable[]) const;
+
+        std::shared_ptr<IPendingMarker> CompileFromMemory(
+            const char shaderInMemory[], 
+            const char entryPoint[], const char shaderModel[], 
+            const ::Assets::ResChar definesTable[]) const;
+
+        const ILowLevelCompiler& GetLowLevelCompiler() const { return *_compiler; }
+
+        void AddShaderSource(std::shared_ptr<IShaderSource> shaderSource);
+        void SetLowLevelCompiler(std::shared_ptr<ILowLevelCompiler> compiler);
+
+        ResId MakeResId(const char initializer[]);
+
+        static ShaderService& GetInstance() { return *s_instance; }
+        static void SetInstance(ShaderService*);
+
+        ShaderService();
+        ~ShaderService();
+
+    protected:
+        static ShaderService* s_instance;
+        std::vector<std::shared_ptr<IShaderSource>> _shaderSources;
+        std::shared_ptr<ILowLevelCompiler> _compiler;
+    };
+
+    class CompiledShaderByteCode : noncopyable
+    {
+    public:
+            //
+            //          Resource interface
+            //
+        explicit CompiledShaderByteCode(const ::Assets::ResChar initializer[], const ::Assets::ResChar definesTable[]=nullptr);
+        CompiledShaderByteCode(const char shaderInMemory[], const char entryPoint[], const char shaderModel[], const ::Assets::ResChar definesTable[]=nullptr);
+        CompiledShaderByteCode(std::shared_ptr<::Assets::PendingCompileMarker>&& marker);
+        ~CompiledShaderByteCode();
+
+        const void*                 GetByteCode() const;
+        size_t                      GetSize() const;
+        ShaderStage::Enum           GetStage() const                { return _stage; }
+        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _validationCallback; }
+
+        intrusive_ptr<ID3D::ShaderReflection>  GetReflection() const;
+        const char*                 Initializer() const;
+
+        static const uint64         CompileProcessType;
+    private:
+        mutable std::shared_ptr<std::vector<uint8>> _shader;
+
+        ShaderStage::Enum _stage;
+        std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
+        
+        void Resolve() const;
+        mutable std::shared_ptr<ShaderService::IPendingMarker> _compileHelper;
+        mutable std::shared_ptr<::Assets::PendingCompileMarker> _marker;
+
+        DEBUG_ONLY(char _initializer[512];)
+
+        void ResolveFromCompileMarker() const;
+    };
+
+    std::shared_ptr<ShaderService::ILowLevelCompiler> CreateLowLevelShaderCompiler();
 
 }}

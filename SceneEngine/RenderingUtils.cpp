@@ -11,6 +11,7 @@
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/RenderUtils.h"
+#include "../Assets/Assets.h"
 #include "../Math/Transformations.h"
 
 namespace SceneEngine

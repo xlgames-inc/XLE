@@ -7,6 +7,7 @@
 #include "Buffer.h"
 #include "DeviceContext.h"
 #include "DX11Utils.h"
+#include "../../../Utility/MemoryUtils.h"
 #include "../../../Core/Exceptions.h"
 
 namespace RenderCore { namespace Metal_DX11

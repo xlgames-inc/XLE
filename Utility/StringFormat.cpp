@@ -313,7 +313,7 @@ template<typename T>
                         return 0;
                     }
 
-                    ptrdiff_t fixed_length = XlMultiToWide(tmp, len, val.f_string);
+                    ptrdiff_t fixed_length = utf8_2_ucs4(val.f_string, XlStringLen(val.f_string), tmp, len);
                     nchars += std::max<ptrdiff_t>(fixed_length, width);
 
                     fixed_length = width - fixed_length;

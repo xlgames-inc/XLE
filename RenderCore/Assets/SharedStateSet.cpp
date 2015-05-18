@@ -17,6 +17,7 @@
 #include "../Techniques/ResourceBox.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/ParameterBox.h"
+#include "../../Utility/StringUtils.h"
 #include <vector>
 
 namespace RenderCore { namespace Assets

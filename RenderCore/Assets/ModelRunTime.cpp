@@ -47,6 +47,8 @@
 
 namespace RenderCore { namespace Assets
 {
+    using ::Assets::ResChar;
+
     /// <summary>Internal namespace with utilities for constructing models</summary>
     /// These functions are normally used within the constructor of ModelRenderer
     namespace ModelConstruction

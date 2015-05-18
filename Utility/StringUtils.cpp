@@ -1908,6 +1908,7 @@ bool XlHexStrToBin(const char* x, char* y)
     return true;
 }
 
+#if 0
 size_t XlMultiToWide(ucs4* dst, size_t count, const utf8* src)
 {
     // Assume UTF-8, but check for byte-order-mark
@@ -1979,5 +1980,7 @@ size_t XlWideToMulti(utf8* dst, size_t count, const ucs4* src)
     *p++ = 0;
     return p - dst;
 }
+
+#endif
 
 }

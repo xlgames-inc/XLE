@@ -151,9 +151,9 @@ namespace Assets { namespace IntermediateResources
             auto* dependenciesBlock = data.ChildWithValue("Dependencies");
             if (dependenciesBlock) {
                 for (auto* dependency = dependenciesBlock->child; dependency; dependency = dependency->next) {
-                    auto* depName = dependency->StrAttribute("Name");
-                    auto dateLow = (unsigned)dependency->IntAttribute("ModTimeLow");
-                    auto dateHigh = (unsigned)dependency->IntAttribute("ModTimeHigh");
+                    auto* depName = dependency->value;
+                    auto dateLow = (unsigned)dependency->IntAttribute("ModTimeL");
+                    auto dateHigh = (unsigned)dependency->IntAttribute("ModTimeH");
                     
                     const RetainedFileRecord* record;
                     if (basePath && basePath[0]) {
@@ -220,11 +220,11 @@ namespace Assets { namespace IntermediateResources
 
             ResChar relativePath[MaxPath];
             XlMakeRelPath(relativePath, dimof(relativePath), baseDir, normalizedPath);
-            c->SetAttribute("Name", relativePath);
+            c->SetValue(relativePath);
 
             if (s->_status != DependentFileState::Status::Shadowed) {
-                c->SetAttribute("ModTimeHigh", (int)(s->_timeMarker>>32ull));
-                c->SetAttribute("ModTimeLow", (int)(s->_timeMarker));
+                c->SetAttribute("ModTimeH", (int)(s->_timeMarker>>32ull));
+                c->SetAttribute("ModTimeL", (int)(s->_timeMarker));
             }
             dependenciesBlock->Add(c.release());
             RegisterFileDependency(result, s->_filename.c_str());

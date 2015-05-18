@@ -85,7 +85,6 @@ namespace Sample
 
         auto assetServices = std::make_unique<::Assets::Services>(0);
         RenderCore::Assets::Services renderAssetServices(*renderDevice);
-        RenderCore::Metal::InitCompileAndAsyncManager();
 
             //  Tie in the window handler so we get presentation chain resizes, and give our
             //  window a title

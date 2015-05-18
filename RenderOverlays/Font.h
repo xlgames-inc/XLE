@@ -10,6 +10,7 @@
 #include "../Core/Types.h"
 #include "../Utility/Threading/ThreadingUtils.h"      // (for ReferenceCountedObject)
 #include "../Utility/IntrusivePtr.h"
+#include "../Utility/UTFUtils.h"
 #include "../RenderCore/Metal/DeviceContext.h"      // \todo remove metal dependency
 #include "../BufferUploads/IBufferUploads_Forward.h"
 #include "FontPrimitives.h"

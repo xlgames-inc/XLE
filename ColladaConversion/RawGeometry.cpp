@@ -12,6 +12,9 @@
 #include "../Assets/BlockSerializer.h"
 #include "../RenderCore/RenderUtils.h"
 #include "../Math/Geometry.h"
+#include "../Utility/IteratorUtils.h"
+#include "../Utility/StringUtils.h"
+#include "../Utility/MemoryUtils.h"
 
 
 #pragma warning(push)

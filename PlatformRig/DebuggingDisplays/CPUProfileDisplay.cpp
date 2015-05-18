@@ -9,6 +9,7 @@
 #include "../../RenderCore/Techniques/ResourceBox.h"
 #include "../../Utility/Profiling/CPUProfiler.h"
 #include "../../Utility/StringFormat.h"
+#include "../../Utility/StringUtils.h"
 #include <stack>
 #include <iomanip>
 

@@ -9,6 +9,7 @@
 #include "Metal/Shader.h"
 
 #include "../../Utility/StringFormat.h"
+#include "../../Utility/MemoryUtils.h"
 
 
 namespace RenderCore

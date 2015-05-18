@@ -936,7 +936,7 @@ namespace RenderCore { namespace Assets
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    SkeletonScaffold::SkeletonScaffold(const ResChar filename[])
+    SkeletonScaffold::SkeletonScaffold(const ::Assets::ResChar filename[])
     {
         auto memBlock = Serialization::ChunkFile::RawChunkAsMemoryBlock(filename, ChunkType_Skeleton, 0);
         Serialization::Block_Initialize(memBlock.get());        
@@ -967,7 +967,7 @@ namespace RenderCore { namespace Assets
         _data->~TransformationMachine();
     }
 
-    AnimationSetScaffold::AnimationSetScaffold(const ResChar filename[])
+    AnimationSetScaffold::AnimationSetScaffold(const ::Assets::ResChar filename[])
     {
         auto memBlock = Serialization::ChunkFile::RawChunkAsMemoryBlock(filename, ChunkType_AnimationSet, 0);
         Serialization::Block_Initialize(memBlock.get());        

@@ -7,6 +7,7 @@
 #include "Shader.h"
 #include "../../RenderUtils.h"
 #include "../../../Utility/Streams/FileUtils.h"
+#include "../../../Utility/StringUtils.h"
 #include <GLES2/gl2.h>
 
 #if PLATFORMOS_ACTIVE == PLATFORMOS_WINDOWS
@@ -15,6 +16,57 @@
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
+    using ::Assets::ResChar;
+
+    class ShaderResId
+    {
+    public:
+        ResChar     _filename[MaxPath];
+        ResChar     _entryPoint[64];
+        ResChar     _shaderModel[32];
+        ShaderResId(const ResChar initializer[]);
+        ShaderResId(const ResChar filename[], const ResChar entryPoint[], const ResChar shaderModel[]);
+        ShaderResId();
+    };
+
+    inline ShaderResId::ShaderResId(const ResChar initializer[])
+    {
+            // (convert unicode string -> single width char for entrypoint & shadermodel)
+
+        const ResChar* endFileName = Utility::XlFindChar(initializer, ':');
+        const ResChar* startShaderModel = nullptr;
+        if (!endFileName) {
+            XlCopyString(_filename, initializer);
+            XlCopyString(_entryPoint, "main");
+        } else {
+            XlCopyNString(_filename, initializer, endFileName - initializer);
+            startShaderModel = Utility::XlFindChar(endFileName+1, ':');
+
+            if (!startShaderModel) {
+                XlCopyString(_entryPoint, endFileName+1);
+            } else {
+                XlCopyNString(_entryPoint, endFileName+1, startShaderModel - endFileName - 1);
+                XlCopyString(_shaderModel, startShaderModel+1);
+            }
+        }
+
+        if (!startShaderModel) {
+            XlCopyString(_shaderModel, PS_DefShaderModel);
+        }
+    }
+
+    inline ShaderResId::ShaderResId(const ResChar filename[], const ResChar entryPoint[], const ResChar shaderModel[])
+    {
+        XlCopyString(_filename, filename);
+        XlCopyString(_entryPoint, entryPoint);
+        XlCopyString(_shaderModel, shaderModel);
+    }
+
+    inline ShaderResId::ShaderResId()
+    {
+        _filename[0] = '\0'; _entryPoint[0] = '\0'; _shaderModel[0] = '\0';
+    }
+
     CompiledShaderByteCode::CompiledShaderByteCode(const ResChar initializer[])
     {
         ShaderResId shaderPath(initializer);

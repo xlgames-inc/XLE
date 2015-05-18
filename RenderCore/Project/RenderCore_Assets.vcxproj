@@ -161,6 +161,7 @@
     <ClCompile Include="..\Assets\ModelRunTime.cpp" />
     <ClCompile Include="..\Assets\NascentTransformationMachine.cpp" />
     <ClCompile Include="..\Assets\DelayedDrawCall.cpp" />
+    <ClCompile Include="..\Assets\LocalCompiledShaderSource.cpp" />
     <ClCompile Include="..\Assets\SharedStateSet.cpp" />
     <ClCompile Include="..\Assets\SkinningRunTime.cpp" />
   </ItemGroup>
@@ -177,6 +178,7 @@
     <ClInclude Include="..\Assets\ModelRunTime.h" />
     <ClInclude Include="..\Assets\NascentTransformationMachine.h" />
     <ClInclude Include="..\Assets\DelayedDrawCall.h" />
+    <ClInclude Include="..\Assets\LocalCompiledShaderSource.h" />
     <ClInclude Include="..\Assets\SharedStateSet.h" />
     <ClInclude Include="..\Assets\TransformationCommands.h" />
   </ItemGroup>

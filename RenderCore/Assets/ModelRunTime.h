@@ -11,6 +11,7 @@
 #include "../Metal/Buffer.h"
 #include "../Resource.h"
 
+#include "../../Assets/AssetsCore.h"
 #include "../../Math/Vector.h"
 #include "../../Math/Matrix.h"
 #include "../../Utility/Mixins.h"
@@ -19,7 +20,7 @@
 #include <vector>
 
 namespace RenderCore { namespace Techniques { class ParsingContext; } }
-namespace Assets { class DirectorySearchRules; class PendingCompileMarker; }
+namespace Assets { class DirectorySearchRules; class PendingCompileMarker; class DependencyValidation; }
 
 namespace RenderCore { namespace Assets
 {
@@ -82,7 +83,7 @@ namespace RenderCore { namespace Assets
 
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _validationCallback; }
 
-        ModelScaffold(const ResChar filename[]);
+        ModelScaffold(const ::Assets::ResChar filename[]);
         ModelScaffold(std::shared_ptr<::Assets::PendingCompileMarker>&& marker);
         ModelScaffold(ModelScaffold&& moveFrom);
         ModelScaffold& operator=(ModelScaffold&& moveFrom);
@@ -230,7 +231,7 @@ namespace RenderCore { namespace Assets
         const std::string&              Filename() const                    { return _filename; }
         const TransformationMachine&    GetTransformationMachine() const    { return *_data; };
 
-        SkeletonScaffold(const ResChar filename[]);
+        SkeletonScaffold(const ::Assets::ResChar filename[]);
         SkeletonScaffold(SkeletonScaffold&& moveFrom);
         SkeletonScaffold& operator=(SkeletonScaffold&& moveFrom);
         ~SkeletonScaffold();
@@ -253,7 +254,7 @@ namespace RenderCore { namespace Assets
         const std::string&              Filename() const        { return _filename; }
         const AnimationImmutableData&   ImmutableData() const   { return *_data; };
 
-        AnimationSetScaffold(const ResChar filename[]);
+        AnimationSetScaffold(const ::Assets::ResChar filename[]);
         AnimationSetScaffold(AnimationSetScaffold&& moveFrom);
         AnimationSetScaffold& operator=(AnimationSetScaffold&& moveFrom);
         ~AnimationSetScaffold();

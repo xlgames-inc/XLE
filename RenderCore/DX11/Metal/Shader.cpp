@@ -9,12 +9,15 @@
 #include "InputLayout.h"
 #include "../../RenderUtils.h"
 #include "../../../Assets/IntermediateResources.h"
+#include "../../../Utility/StringUtils.h"
 #include "../../../Core/Exceptions.h"
 
 #include "IncludeDX11.h"
 
 namespace RenderCore { namespace Metal_DX11
 {
+    using ::Assets::ResChar;
+
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
     VertexShader::VertexShader(const ResChar initializer[])

@@ -8,6 +8,7 @@
 
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../IDevice_Forward.h"
+#include "../Metal/Forward.h"
 #include <memory>
 
 namespace BufferUploads { class IManager; }
@@ -30,6 +31,7 @@ namespace RenderCore { namespace Assets
         const Services& operator=(const Services&) = delete;
     protected:
         std::unique_ptr<BufferUploads::IManager> _bufferUploads;
+        std::unique_ptr<Metal::ShaderService> _shaderService;
         static Services* s_instance;
     };
 }}

@@ -14,6 +14,9 @@
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../Assets/BlockSerializer.h"
 #include "../ConsoleRig/OutputStream.h"
+#include "../Utility/MemoryUtils.h"
+#include "../Utility/StringUtils.h"
+#include "../Utility/IteratorUtils.h"
 
 #pragma warning(push)
 #pragma warning(disable:4201)       // nonstandard extension used : nameless struct/union

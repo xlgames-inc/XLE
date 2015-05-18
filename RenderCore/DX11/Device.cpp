@@ -123,6 +123,8 @@ namespace RenderCore
             ThrowException(Exceptions::BasicLabel("Failure in D3D11 device construction. Aborting."));
         }
 
+        Metal_DX11::ObjectFactory::PrepareDevice(*underlying);
+
             //  Once we know there can be no more exceptions thrown, we can commit
             //  locals to the members.
         _underlying = std::move(underlying);
@@ -131,6 +133,8 @@ namespace RenderCore
 
     Device::~Device()
     {
+        Metal_DX11::ObjectFactory::ReleaseDevice(*_underlying);
+
         _immediateThreadContext.reset();
         _immediateContext.reset();
         _underlying.reset();

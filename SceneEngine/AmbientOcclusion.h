@@ -9,6 +9,7 @@
 #include "../RenderCore/Metal/ShaderResource.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/State.h"
+#include "../Utility/PtrUtils.h"
 
 class GFSDK_SSAO_Context_D3D11;
 

@@ -21,6 +21,7 @@
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/DeviceContextImpl.h"
 #include "../RenderCore/DX11/Metal/DX11Utils.h"
+#include "../Assets/Assets.h"
 #include "../ConsoleRig/Console.h"
 #include "../Math/Transformations.h"
 

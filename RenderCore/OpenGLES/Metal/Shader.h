@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../../Resource.h"
+#include "../../../Assets/AssetsCore.h"
 #include "../../../Utility/Mixins.h"
 #include "IndexedGLType.h"
 
@@ -20,7 +21,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             //
             //          Resource interface
             //
-        CompiledShaderByteCode(const ResChar initializer[]);
+        CompiledShaderByteCode(const ::Assets::ResChar initializer[]);
         ~CompiledShaderByteCode();
 
         typedef OpenGL::Shader*    UnderlyingType;
@@ -35,8 +36,8 @@ namespace RenderCore { namespace Metal_OpenGLES
     class ShaderProgram : noncopyable
     {
     public:
-        ShaderProgram(  const ResChar vertexShaderInitializer[], 
-                        const ResChar fragmentShaderInitializer[]);
+        ShaderProgram(  const ::Assets::ResChar vertexShaderInitializer[], 
+                        const ::Assets::ResChar fragmentShaderInitializer[]);
         ~ShaderProgram();
         
         typedef OpenGL::ShaderProgram*    UnderlyingType;

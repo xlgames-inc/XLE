@@ -8,6 +8,8 @@
 #include "ColladaUtils.h"
 #include "../Math/Transformations.h"
 #include "../Utility/StringFormat.h"
+#include "../Utility/StringUtils.h"
+#include "../Utility/MemoryUtils.h"
 
 #pragma warning(push)
 #pragma warning(disable:4201)       // nonstandard extension used : nameless struct/union

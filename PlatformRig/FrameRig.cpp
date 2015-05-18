@@ -17,6 +17,9 @@
 #include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 
+#include "../Assets/CompileAndAsyncManager.h"
+#include "../Assets/AssetServices.h"
+
 #include "../Utility/TimeUtils.h"
 #include "../Utility/IntrusivePtr.h"
 #include "../Utility/StringFormat.h"
