@@ -8,15 +8,19 @@
 
 #include "../Metal/Shader.h"
 #include "../../Assets/IntermediateResources.h"
+#include "../../Utility/Threading/ThreadingUtils.h"
+#include <vector>
+#include <memory>
 
 namespace RenderCore { namespace Assets 
 {
     class ShaderCacheSet;
+    class ShaderCompileMarker;
 
-    class OfflineCompileProcess 
+    class LocalCompiledShaderSource 
         : public ::Assets::IntermediateResources::IResourceCompiler
         , public Metal::ShaderService::IShaderSource
-        , public std::enable_shared_from_this<OfflineCompileProcess>
+        , public std::enable_shared_from_this<LocalCompiledShaderSource>
     {
     public:
         std::shared_ptr<::Assets::PendingCompileMarker> PrepareResource(
@@ -32,12 +36,16 @@ namespace RenderCore { namespace Assets
             const char shaderInMemory[], const char entryPoint[], 
             const char shaderModel[], const ::Assets::ResChar definesTable[]) const;
 
+        void StallOnPendingOperations(bool cancelAll) const;
+
         ShaderCacheSet& GetCacheSet() { return *_shaderCacheSet; }
 
-        OfflineCompileProcess();
-        ~OfflineCompileProcess();
+        LocalCompiledShaderSource();
+        ~LocalCompiledShaderSource();
     protected:
         std::unique_ptr<ShaderCacheSet> _shaderCacheSet;
+        std::vector<std::shared_ptr<ShaderCompileMarker>> _activeCompileOperations;
+        mutable Interlocked::Value _activeCompileCount;
     };
 }}
 

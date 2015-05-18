@@ -36,8 +36,8 @@ namespace Assets
 	class CompileAndAsyncManager::Pimpl
 	{
 	public:
-		std::unique_ptr<IntermediateResources::CompilerSet> _intMan;
 		std::unique_ptr<IntermediateResources::Store> _intStore;
+        std::unique_ptr<IntermediateResources::CompilerSet> _intMan;
 		std::vector<std::shared_ptr<IPollingAsyncProcess>> _pollingProcesses;
 		std::unique_ptr<IThreadPump> _threadPump;
 
@@ -104,7 +104,6 @@ namespace Assets
             //          run an old version of the engine, and we don't want it to
             //          conflict with more recent work, even if there have been
             //          major changes in the meantime.
-        auto intMan = std::make_unique<IntermediateResources::CompilerSet>();
         #if defined(_DEBUG)
             #if TARGET_64BIT
                 const char storeVersionString[] = "0.0.0d64";
@@ -120,6 +119,7 @@ namespace Assets
         #endif
         auto intStore = std::make_unique<IntermediateResources::Store>("Int", storeVersionString);
 
+        auto intMan = std::make_unique<IntermediateResources::CompilerSet>();
 		_pimpl = std::make_unique<Pimpl>();
 
         _pimpl->_intMan = std::move(intMan);
@@ -128,6 +128,11 @@ namespace Assets
 
     CompileAndAsyncManager::~CompileAndAsyncManager()
     {
+            // note -- this order is important. The compiler set
+            // can make use of the IntermediateResources::Store during
+            // it's destructor (eg, when flushing an archive cache to disk). 
+        _pimpl->_intMan.reset();
+        _pimpl->_intStore.reset();
     }
 
 }

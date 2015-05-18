@@ -53,7 +53,8 @@ namespace Assets { namespace IntermediateResources
         std::shared_ptr<DependencyValidation>    MakeDependencyValidation(const ResChar intermediateFileName[]) const;
         std::shared_ptr<DependencyValidation>    WriteDependencies(
             const ResChar intermediateFileName[], const ResChar baseDir[], 
-            const DependentFileState* depsBegin, const DependentFileState* depsEnd) const;
+            const DependentFileState* depsBegin, const DependentFileState* depsEnd,
+            bool makeDepValidation = true) const;
 
         void    MakeIntermediateName(ResChar buffer[], unsigned bufferMaxCount, const ResChar firstInitializer[]) const;
 
@@ -75,6 +76,7 @@ namespace Assets { namespace IntermediateResources
         virtual std::shared_ptr<PendingCompileMarker> PrepareResource(
             uint64 typeCode, const ResChar* initializers[], unsigned initializerCount,
             const Store& destinationStore) = 0;
+        virtual void StallOnPendingOperations(bool cancelAll) const = 0;
         virtual ~IResourceCompiler();
     };
 
@@ -85,6 +87,7 @@ namespace Assets { namespace IntermediateResources
         std::shared_ptr<PendingCompileMarker> PrepareResource(
             uint64 typeCode, const ResChar* initializers[], unsigned initializerCount,
             Store& store);
+        void StallOnPendingOperations(bool cancelAll);
 
         CompilerSet();
         ~CompilerSet();

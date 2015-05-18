@@ -131,7 +131,7 @@ namespace GUILayer
         {
             static const auto nameHash = ParameterBox::MakeParameterNameHash("name");
             auto allSettings = flexGobInterface.FindObjectsOfType(typeSettings);
-            for (auto s : allSettings)
+            for (const auto& s : allSettings)
                 if (!XlCompareStringI(s->_properties.GetString<char>(nameHash).c_str(), envSettings)) {
                     settings = s;
                     break;

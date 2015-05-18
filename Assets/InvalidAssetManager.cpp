@@ -54,7 +54,7 @@ namespace Assets
         if (_pimpl->_active) {
             ScopedLock(_pimpl->_assetsLock);
             result.reserve(_pimpl->_assets.size());
-            for (auto i:_pimpl->_assets)
+            for (const auto& i:_pimpl->_assets)
                 result.push_back(i.second);
         }
         return std::move(result);

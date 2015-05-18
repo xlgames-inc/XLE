@@ -40,7 +40,7 @@ namespace RenderCore { namespace Assets
 
         ////////////////////////////////////////////////////////////
 
-    class CompileHelper : public Metal::ShaderService::IPendingMarker, public ::Assets::AsyncLoadOperation
+    class ShaderCompileMarker : public Metal::ShaderService::IPendingMarker, public ::Assets::AsyncLoadOperation
     {
     public:
         using Payload = std::shared_ptr<std::vector<uint8>>;
@@ -62,11 +62,11 @@ namespace RenderCore { namespace Assets
             const char shaderInMemory[], const char entryPoint[], 
             const char shaderModel[], const ResChar definesTable[]);
 
-        CompileHelper();
-        ~CompileHelper();
+        ShaderCompileMarker();
+        ~ShaderCompileMarker();
 
-        CompileHelper(CompileHelper&) = delete;
-        CompileHelper& operator=(const CompileHelper&) = delete;
+        ShaderCompileMarker(ShaderCompileMarker&) = delete;
+        ShaderCompileMarker& operator=(const ShaderCompileMarker&) = delete;
     protected:
         virtual ::Assets::AssetState Complete(const void* buffer, size_t bufferSize);
         void CommitToArchive();
@@ -79,13 +79,13 @@ namespace RenderCore { namespace Assets
         ResId _shaderPath;
     };
 
-    auto CompileHelper::GetDependencies() const 
+    auto ShaderCompileMarker::GetDependencies() const 
         -> const std::vector<::Assets::DependentFileState>&
     {
         return _deps;
     }
 
-    void CompileHelper::Enqueue(
+    void ShaderCompileMarker::Enqueue(
         const ResId& shaderPath, const ResChar definesTable[], 
         ChainFn chain,
         const std::shared_ptr<::Assets::DependencyValidation>& depVal)
@@ -118,7 +118,7 @@ namespace RenderCore { namespace Assets
         }
     }
 
-    void CompileHelper::Enqueue(
+    void ShaderCompileMarker::Enqueue(
         const char shaderInMemory[], 
         const char entryPoint[], const char shaderModel[], const ResChar definesTable[])
     {
@@ -147,12 +147,19 @@ namespace RenderCore { namespace Assets
         }
     }
 
-    CompileHelper::CompileHelper() {}
-    CompileHelper::~CompileHelper() {}
+    ShaderCompileMarker::ShaderCompileMarker() {}
+    ShaderCompileMarker::~ShaderCompileMarker() {}
 
-    ::Assets::AssetState CompileHelper::Complete(
+    static bool CancelAllShaderCompiles = false;
+
+    ::Assets::AssetState ShaderCompileMarker::Complete(
         const void* buffer, size_t bufferSize)
     {
+        if (CancelAllShaderCompiles) {
+            _chain(::Assets::AssetState::Invalid, nullptr, nullptr, nullptr);
+            return ::Assets::AssetState::Invalid;
+        }
+
         Payload errors;
         _payload.reset();
         _deps.clear();
@@ -165,17 +172,16 @@ namespace RenderCore { namespace Assets
 
             // before we can finish the "complete" step, we need to commit
             // to archive output
-        if (success) {
-            _chain(
-                ::Assets::AssetState::Ready, _payload, 
-                AsPointer(_deps.cbegin()), AsPointer(_deps.cend()));
-            return ::Assets::AssetState::Ready;
-        } else {
-            return ::Assets::AssetState::Invalid;
-        }
+        auto result = success ? ::Assets::AssetState::Ready : ::Assets::AssetState::Invalid;
+        
+            // we need to call "_chain" on either failure or success
+        _chain(
+            result, _payload, 
+            AsPointer(_deps.cbegin()), AsPointer(_deps.cend()));
+        return result;
     }
 
-    auto CompileHelper::Resolve(
+    auto ShaderCompileMarker::Resolve(
         const char initializer[], 
         const std::shared_ptr<::Assets::DependencyValidation>& depVal) const -> const Payload&
     {
@@ -187,7 +193,7 @@ namespace RenderCore { namespace Assets
             ThrowException(::Assets::Exceptions::PendingResource(initializer, ""));
 
         if (depVal)
-            for (auto i:_deps)
+            for (const auto& i:_deps)
                 RegisterFileDependency(depVal, i._filename.c_str());
 
         return _payload;
@@ -351,7 +357,7 @@ namespace RenderCore { namespace Assets
 
         ////////////////////////////////////////////////////////////
     
-    std::shared_ptr<::Assets::PendingCompileMarker> OfflineCompileProcess::PrepareResource(
+    std::shared_ptr<::Assets::PendingCompileMarker> LocalCompiledShaderSource::PrepareResource(
         uint64 typeCode, const ResChar* initializers[], unsigned initializerCount,
         const ::Assets::IntermediateResources::Store& destinationStore)
     {
@@ -381,6 +387,10 @@ namespace RenderCore { namespace Assets
             //  We just have to be careful about multiple threads or multiple processes accessing the
             //  same file at the same time (particularly if one is doing a read, and another is doing
             //  a write that changes the offsets within the file).
+
+        if (CancelAllShaderCompiles) {
+            return nullptr; // can't start a new compile now. Probably we're shutting down
+        }
 
         auto shaderId = Metal::ShaderService::GetInstance().MakeResId(initializers[0]);
 
@@ -434,18 +444,18 @@ namespace RenderCore { namespace Assets
                     int archiveCacheAttachment;
                 #endif
 
-                using Payload = CompileHelper::Payload;
+                using Payload = ShaderCompileMarker::Payload;
 
                 std::string depNameAsString = depName;
-                auto compileHelper = std::make_shared<CompileHelper>();
+                auto compileHelper = std::make_shared<ShaderCompileMarker>();
 
-                static std::vector<std::shared_ptr<CompileHelper>> s_activeCompileOperations;
-                s_activeCompileOperations.push_back(compileHelper);
+                Interlocked::Increment(&_activeCompileCount);
+                _activeCompileOperations.push_back(compileHelper);
                 auto tempPtr = compileHelper.get();
 
                 compileHelper->Enqueue(
                     shaderId, definesTable,
-                    [marker, archiveCacheAttachment, depNameAsString, &destinationStore, tempPtr](
+                    [marker, archiveCacheAttachment, depNameAsString, &destinationStore, tempPtr, this](
                         ::Assets::AssetState newState, const Payload& payload, 
                         const ::Assets::DependentFileState* depsBegin, const ::Assets::DependentFileState* depsEnd)
                     {
@@ -458,30 +468,43 @@ namespace RenderCore { namespace Assets
                                         AsPointer(payload->cbegin()), payload->size());
                             #endif
 
+                            std::vector<::Assets::DependentFileState> deps(depsBegin, depsEnd);
+                            char baseDir[MaxPath];
+                            XlDirname(baseDir, dimof(baseDir), marker->_sourceID0);
+                            std::string baseDirAsString = baseDir;
+
                             marker->_archive->Commit(
                                 marker->_sourceID1, Payload(payload),
                                 #if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
-                                    (archiveCacheAttachment + " [" + metricsString + "]")
+                                    (archiveCacheAttachment + " [" + metricsString + "]"),
                                 #else
-                                    std::string()
+                                    std::string(),
                                 #endif
-                                );
+
+                                        // on flush, we need to write out the dependencies file
+                                        // note that delaying the call to WriteDependencies requires
+                                        // many small annoying allocations! It's much simplier if we
+                                        // can just write them now -- but it causes problems if we a
+                                        // crash or use End Debugging before we flush the archive
+                                [deps, depNameAsString, baseDirAsString, &destinationStore]()
+                                    { destinationStore.WriteDependencies(depNameAsString.c_str(), baseDirAsString.c_str(), AsPointer(deps.cbegin()), AsPointer(deps.cend()), false); });
                             (void)archiveCacheAttachment;
                         }
 
-                            // todo -- we should delay writing the deps file until we flush the cache to disk
-                            //   -- todo -- "destinationStore" can be destroyed before we get here (if we shut down the game)
-                        char baseDir[MaxPath];
-                        XlDirname(baseDir, dimof(baseDir), marker->_sourceID0);
-                        marker->_dependencyValidation = destinationStore.WriteDependencies(depNameAsString.c_str(), baseDir, depsBegin, depsEnd);
+                        marker->_dependencyValidation = std::make_shared<::Assets::DependencyValidation>();
+                        for (auto i=depsBegin; i!=depsEnd; ++i)
+                            RegisterFileDependency(marker->_dependencyValidation, i->_filename.c_str());
 
                             // give the PendingCompileMarker object the same state
                         marker->SetState(newState);
 
                         auto i = std::find_if(
-                            s_activeCompileOperations.begin(), s_activeCompileOperations.end(), 
-                            [tempPtr](std::shared_ptr<CompileHelper>& test) { return test.get() == tempPtr; });
-                        if (i != s_activeCompileOperations.end()) s_activeCompileOperations.erase(i);
+                            this->_activeCompileOperations.begin(), this->_activeCompileOperations.end(), 
+                            [tempPtr](std::shared_ptr<ShaderCompileMarker>& test) { return test.get() == tempPtr; });
+                        if (i != this->_activeCompileOperations.end()) {
+                            this->_activeCompileOperations.erase(i);
+                            Interlocked::Decrement(&this->_activeCompileCount);
+                        }
                     });
             }
 
@@ -491,31 +514,50 @@ namespace RenderCore { namespace Assets
         return std::move(marker);
     }
 
-    auto OfflineCompileProcess::CompileFromFile(
+    auto LocalCompiledShaderSource::CompileFromFile(
         const ResId& resId, 
         const ResChar definesTable[]) const -> std::shared_ptr<IPendingMarker>
     {
-        auto compileHelper = std::make_shared<CompileHelper>();
+        auto compileHelper = std::make_shared<ShaderCompileMarker>();
         compileHelper->Enqueue(resId, definesTable, nullptr);
         return compileHelper;
     }
             
-    auto OfflineCompileProcess::CompileFromMemory(
+    auto LocalCompiledShaderSource::CompileFromMemory(
         const char shaderInMemory[], const char entryPoint[], 
         const char shaderModel[], const ResChar definesTable[]) const -> std::shared_ptr<IPendingMarker>
     {
-        auto compileHelper = std::make_shared<CompileHelper>();
+        auto compileHelper = std::make_shared<ShaderCompileMarker>();
         compileHelper->Enqueue(shaderInMemory, entryPoint, shaderModel, definesTable); 
         return compileHelper;
     }
 
-    OfflineCompileProcess::OfflineCompileProcess()
+    void LocalCompiledShaderSource::StallOnPendingOperations(bool cancelAll) const
     {
-        _shaderCacheSet = std::make_unique<ShaderCacheSet>();
+        if (cancelAll) CancelAllShaderCompiles = true;
+
+            // Stall until all pending operations have finished.
+            // We don't have a safe way to cancel active operations...
+            //  though perhaps we could prevent new operations from starting
+        while (Interlocked::Load(&_activeCompileCount) != 0) {
+            Threading::Pause();
+        }
     }
 
-    OfflineCompileProcess::~OfflineCompileProcess()
-    {}
+    LocalCompiledShaderSource::LocalCompiledShaderSource()
+    {
+        CancelAllShaderCompiles = false;
+        _shaderCacheSet = std::make_unique<ShaderCacheSet>();
+        Interlocked::Exchange(&_activeCompileCount, 0);
+    }
+
+    LocalCompiledShaderSource::~LocalCompiledShaderSource()
+    {
+        if (Interlocked::Load(&_activeCompileCount) != 0) {
+            LogWarning << "Shader compile operations still pending while attempt to shutdown LocalCompiledShaderSource! Stalling until finished";
+            StallOnPendingOperations(true);
+        }
+    }
 
 }}
 

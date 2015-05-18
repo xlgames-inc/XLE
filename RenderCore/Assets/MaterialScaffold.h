@@ -48,6 +48,8 @@ namespace RenderCore { namespace Assets
             const ::Assets::ResChar* initializers[], unsigned initializerCount,
             const ::Assets::IntermediateResources::Store& destinationStore);
 
+        void StallOnPendingOperations(bool cancelAll) const;
+
         MaterialScaffoldCompiler();
         ~MaterialScaffoldCompiler();
     };

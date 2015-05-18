@@ -320,7 +320,7 @@ namespace RenderCore { namespace Metal_DX11
             // expecting this method to be called before any other BindConstantBuffers 
             // operations for this uniformsStream (because we start from a zero index)
         for (unsigned c=0; c<ShaderStage::Max; ++c)
-            for (auto i:_stageBindings[c]._shaderConstantBindings)
+            for (const auto& i:_stageBindings[c]._shaderConstantBindings)
                 assert((i._inputInterfaceSlot>>16) != uniformsStream);
 
         bool result = true;
@@ -334,7 +334,7 @@ namespace RenderCore { namespace Metal_DX11
             // expecting this method to be called before any other BindConstantBuffers 
             // operations for this uniformsStream (because we start from a zero index)
         for (unsigned c=0; c<ShaderStage::Max; ++c)
-            for (auto i:_stageBindings[c]._shaderConstantBindings)
+            for (const auto& i:_stageBindings[c]._shaderConstantBindings)
                 assert((i._inputInterfaceSlot>>16) != uniformsStream);
 
         bool result = true;
@@ -346,7 +346,7 @@ namespace RenderCore { namespace Metal_DX11
     bool BoundUniforms::BindShaderResources(unsigned uniformsStream, std::initializer_list<const char*> res)
     {
         for (unsigned c=0; c<ShaderStage::Max; ++c)
-            for (auto i:_stageBindings[c]._shaderResourceBindings)
+            for (const auto& i:_stageBindings[c]._shaderResourceBindings)
                 assert((i._inputInterfaceSlot>>16) != uniformsStream);
 
         bool result = true;
@@ -358,7 +358,7 @@ namespace RenderCore { namespace Metal_DX11
     bool BoundUniforms::BindShaderResources(unsigned uniformsStream, std::initializer_list<uint64> res)
     {
         for (unsigned c=0; c<ShaderStage::Max; ++c)
-            for (auto i:_stageBindings[c]._shaderResourceBindings)
+            for (const auto& i:_stageBindings[c]._shaderResourceBindings)
                 assert((i._inputInterfaceSlot>>16) != uniformsStream);
 
         bool result = true;

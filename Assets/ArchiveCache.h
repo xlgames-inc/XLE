@@ -21,7 +21,7 @@ namespace Assets
     public:
         typedef std::shared_ptr<std::vector<uint8>> BlockAndSize;
 
-        void            Commit(uint64 id, BlockAndSize&& data, const std::string& attachedString);
+        void            Commit(uint64 id, BlockAndSize&& data, const std::string& attachedString, std::function<void()>&& onFlush);
         BlockAndSize    OpenFromCache(uint64 id);
         bool            HasItem(uint64 id) const;
         void            FlushToDisk();
@@ -55,13 +55,14 @@ namespace Assets
             uint64          _id;
             BlockAndSize    _data;
             unsigned        _pendingCommitPtr;      // (only used during FlushToDisk)
+            std::function<void()> _onFlush;
 
             #if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
                 std::string     _attachedString;    // used for appending debugging/profiling information. user defined format
             #endif
 
             PendingCommit() {}
-            PendingCommit(uint64 id, BlockAndSize&& data, const std::string& attachedString);
+            PendingCommit(uint64 id, BlockAndSize&& data, const std::string& attachedString, std::function<void()>&& onFlush);
             PendingCommit(PendingCommit&& moveFrom);
             PendingCommit& operator=(PendingCommit&& moveFrom);
 

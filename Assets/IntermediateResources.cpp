@@ -200,11 +200,14 @@ namespace Assets { namespace IntermediateResources
 
     std::shared_ptr<DependencyValidation> Store::WriteDependencies(
         const ResChar intermediateFileName[], const ResChar baseDir[], 
-        const DependentFileState* depsBegin, const DependentFileState* depsEnd) const
+        const DependentFileState* depsBegin, const DependentFileState* depsEnd,
+        bool makeDepValidation) const
     {
         Data data;
 
-        auto result = std::make_shared<DependencyValidation>();
+        std::shared_ptr<DependencyValidation> result;
+        if (makeDepValidation)
+            result = std::make_shared<DependencyValidation>();
 
             //  we have to write the base directory to the dependencies file as well
             //  to keep it short, most filenames should be expressed as relative files
@@ -227,7 +230,7 @@ namespace Assets { namespace IntermediateResources
                 c->SetAttribute("ModTimeL", (int)(s->_timeMarker));
             }
             dependenciesBlock->Add(c.release());
-            RegisterFileDependency(result, s->_filename.c_str());
+            if (makeDepValidation) RegisterFileDependency(result, s->_filename.c_str());
         }
         data.Add(dependenciesBlock.release());
 
@@ -376,6 +379,12 @@ namespace Assets { namespace IntermediateResources
         }
 
         return nullptr;
+    }
+
+    void CompilerSet::StallOnPendingOperations(bool cancelAll)
+    {
+        for (auto i=_pimpl->_compilers.cbegin(); i!=_pimpl->_compilers.cend(); ++i)
+            i->second->StallOnPendingOperations(cancelAll);
     }
 
     CompilerSet::CompilerSet()

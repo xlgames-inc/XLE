@@ -252,7 +252,7 @@ namespace GUILayer
 	clix::shared_ptr<ToolsRig::IManipulator> PlacementManipulators::GetManipulator(System::String^ name)
 	{
 		auto nativeName = clix::marshalString<clix::E_UTF8>(name);
-		for (auto i : _pimpl->_manipulators)
+		for (const auto& i : _pimpl->_manipulators)
 			if (i._name == nativeName) return clix::shared_ptr<ToolsRig::IManipulator>(i._manipulator);
 		return clix::shared_ptr<ToolsRig::IManipulator>();
 	}
@@ -260,7 +260,7 @@ namespace GUILayer
 	System::Collections::Generic::IEnumerable<System::String^>^ PlacementManipulators::GetManipulatorNames()
 	{
 		auto result = gcnew System::Collections::Generic::List<System::String^>();
-		for (auto i : _pimpl->_manipulators)
+		for (const auto& i : _pimpl->_manipulators)
 			result->Add(clix::marshalString<clix::E_UTF8>(i._name));
 		return result;
 	}

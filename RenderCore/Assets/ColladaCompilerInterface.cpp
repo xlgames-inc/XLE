@@ -201,6 +201,12 @@ namespace RenderCore { namespace Assets
         return false;   // unknown asset type!
     }
 
+    void ColladaCompiler::StallOnPendingOperations(bool cancelAll) const
+    {
+        // processing occurs in the foreground currently
+        //   .. so nothing to stall on
+    }
+
     ColladaCompiler::ColladaCompiler()
     {
         _pimpl = std::make_unique<Pimpl>();

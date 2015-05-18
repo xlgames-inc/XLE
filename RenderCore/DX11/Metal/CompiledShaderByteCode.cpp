@@ -603,7 +603,7 @@ namespace RenderCore { namespace Metal_DX11
         const ResId& resId, 
         const ::Assets::ResChar definesTable[]) const -> std::shared_ptr<IPendingMarker>
     {
-        for (auto i:_shaderSources) {
+        for (const auto& i:_shaderSources) {
             auto r = i->CompileFromFile(resId, definesTable);
             if (r) return r;
         }
@@ -615,7 +615,7 @@ namespace RenderCore { namespace Metal_DX11
         const char entryPoint[], const char shaderModel[], 
         const ::Assets::ResChar definesTable[]) const -> std::shared_ptr<IPendingMarker>
     {
-        for (auto i:_shaderSources) {
+        for (const auto& i:_shaderSources) {
             auto r = i->CompileFromMemory(shaderInMemory, entryPoint, shaderModel, definesTable);
             if (r) return r;
         }

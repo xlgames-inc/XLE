@@ -155,7 +155,7 @@ namespace GUILayer
                 if (!nativeResults.empty()) {
 
                     auto result = gcnew System::Collections::Generic::List<HitRecord^>();
-                    for (auto i: nativeResults) {
+                    for (const auto& i: nativeResults) {
                         auto record = gcnew HitRecord;
                         record->_document = i._objectGuid.first;
                         record->_object = i._objectGuid.second;

@@ -636,7 +636,7 @@ namespace GUILayer
 
             // get the list of assets from the underlying manager
         auto list = ::Assets::Services::GetInvalidAssetMan().GetAssets();
-        for (auto i : list) {
+        for (const auto& i : list) {
             _assetList->Add(gcnew Tuple<String^, String^>(
                 clix::marshalString<clix::E_UTF8>(i._name),
                 clix::marshalString<clix::E_UTF8>(i._errorString)));

@@ -68,10 +68,10 @@ namespace Sample
     public:
         std::shared_ptr<RenderCore::IDevice> _rDevice;
         std::shared_ptr<RenderCore::IPresentationChain> _presChain;
-        std::unique_ptr<BufferUploads::IManager> _bufferUploads;
         PlatformRig::OverlappedWindow _window;
 
         std::unique_ptr<Assets::Services> _assetServices;
+        std::unique_ptr<RenderCore::Assets::Services> _renderAssetServices;
 
         std::shared_ptr<PlatformRig::GlobalTechniqueContext> _globalTechContext;
 
@@ -83,9 +83,8 @@ namespace Sample
             _presChain = _rDevice->CreatePresentationChain(_window.GetUnderlyingHandle(), 
                     clientRect.second[0] - clientRect.first[0], clientRect.second[1] - clientRect.first[1]);
 
-            RenderCore::Assets::Services renderAssetsServices(*_rDevice);
             _assetServices = std::make_unique<::Assets::Services>(0);
-            RenderCore::Metal::InitCompileAndAsyncManager();
+            _renderAssetServices = std::make_unique<RenderCore::Assets::Services>(*_rDevice);
 
             _window.AddWindowHandler(std::make_shared<PlatformRig::ResizePresentationChain>(_presChain));
             auto v = _rDevice->GetVersionInformation();
@@ -151,15 +150,15 @@ namespace Sample
             // We need to startup some basic objects:
             //      * OverlappedWindow (corresponds to a single basic window on Windows)
             //      * RenderDevice & presentation chain
-            //      * BufferUploads
-            //      * CompileAndAsyncManager
+            //      * ::Assets::Services
+            //      * RenderCore::Assets::Services
         LogInfo << "Building primary managers";
         PrimaryManagers primMan;
 
             // Some secondary initalisation:
         SetupCompilers(primMan._assetServices->GetAsyncMan());
         g_gpuProfiler = RenderCore::Metal::GPUProfiler::CreateProfiler();
-        RenderOverlays::InitFontSystem(primMan._rDevice.get(), primMan._bufferUploads.get());
+        RenderOverlays::InitFontSystem(primMan._rDevice.get(), &RenderCore::Assets::Services::GetBufferUploads());
 
             // main scene
         LogInfo << "Creating main scene";
@@ -265,7 +264,7 @@ namespace Sample
                         frameRig.GetMainOverlaySystem().get()));
 
                     // ------- Update ----------------------------------------
-                primMan._bufferUploads->Update(*context);
+                RenderCore::Assets::Services::GetBufferUploads().Update(*context);
                 mainScene->Update(frameResult._elapsedTime);
                 cameraInputHandler->Commit(frameResult._elapsedTime);   // we need to be careful to update the camera at the right time (relative to character update)
                 g_cpuProfiler.EndFrame();
@@ -279,9 +278,12 @@ namespace Sample
 
         mainScene.reset();
         g_gpuProfiler.reset();
+
+        primMan._assetServices->GetAssetSets().Clear();
         RenderCore::Techniques::ResourceBoxes_Shutdown();
         RenderOverlays::CleanupFontSystem();
-        primMan._assetServices->GetAssetSets().Clear();
+        
+        primMan._renderAssetServices.reset();
         primMan._assetServices.reset();
         TerminateFileSystemMonitoring();
     }

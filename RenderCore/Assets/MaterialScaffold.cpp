@@ -226,6 +226,11 @@ namespace RenderCore { namespace Assets
             ::Assets::AssetState::Ready, outputName, ~0ull, std::move(newDepVal));
     }
 
+    void MaterialScaffoldCompiler::StallOnPendingOperations(bool cancelAll) const
+    {
+        // processing occurs in the foreground. So nothing to stall on
+    }
+
     MaterialScaffoldCompiler::MaterialScaffoldCompiler()
     {}
 

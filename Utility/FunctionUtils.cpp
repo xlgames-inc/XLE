@@ -26,7 +26,7 @@ namespace Utility
             //  If we get an exception from the move operation of the 
             //  std::function<> object, we'll end up in an invalid state.
             //  But does the move operation of std::function<> ever throw?
-        for (auto i:_fns) {
+        for (const auto& i:_fns) {
             auto& f = i.second;
             f._moveConstructor(
                 PtrAdd(AsPointer(newBuffer.begin()), f._offset), 

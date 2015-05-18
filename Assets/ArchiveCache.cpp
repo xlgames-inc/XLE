@@ -69,6 +69,7 @@ namespace Assets
     ArchiveCache::PendingCommit::PendingCommit(PendingCommit&& moveFrom)
         : _id(moveFrom._id)
         , _pendingCommitPtr(moveFrom._pendingCommitPtr)
+        , _onFlush(std::move(moveFrom._onFlush))
     {
         _data = std::move(moveFrom._data);
         #if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
@@ -84,19 +85,21 @@ namespace Assets
         #if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
             _attachedString = std::move(moveFrom._attachedString);
         #endif
+        _onFlush = std::move(moveFrom._onFlush);
         return *this;
     }
 
-    ArchiveCache::PendingCommit::PendingCommit(uint64 id, BlockAndSize&& data, const std::string& attachedString)
+    ArchiveCache::PendingCommit::PendingCommit(uint64 id, BlockAndSize&& data, const std::string& attachedString, std::function<void()>&& onFlush)
         : _id(id)
         #if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
         , _attachedString(attachedString)
         #endif
+        , _onFlush(std::forward<std::function<void()>>(onFlush))
     {
         _data = std::move(data);
     }
 
-    void ArchiveCache::Commit(uint64 id, BlockAndSize&& data, const std::string& attachedString)
+    void ArchiveCache::Commit(uint64 id, BlockAndSize&& data, const std::string& attachedString, std::function<void()>&& onFlush)
     {
             // for for an existing pending commit, and replace it if it exists
         ScopedLock(_pendingBlocksLock);
@@ -106,8 +109,9 @@ namespace Assets
             #if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
                 i->_attachedString = attachedString;
             #endif
+            i->_onFlush = std::forward<std::function<void()>>(onFlush);
         } else {
-            _pendingBlocks.insert(i, PendingCommit(id, std::forward<BlockAndSize>(data), attachedString));
+            _pendingBlocks.insert(i, PendingCommit(id, std::forward<BlockAndSize>(data), attachedString, std::forward<std::function<void()>>(onFlush)));
         }
     }
 
@@ -411,6 +415,9 @@ namespace Assets
                 } CATCH_END
             }
         #endif
+
+        for (const auto& i:_pendingBlocks)
+            i._onFlush();
 
             // clear all pending block (now that they're flushed to disk)
         _pendingBlocks.clear();

@@ -636,7 +636,7 @@ namespace RenderCore { namespace Assets
 
         _validationCallback = std::make_shared<::Assets::DependencyValidation>();
         ::Assets::RegisterAssetDependency(_validationCallback, cbLayout.GetDependencyValidation());
-        for (auto t:boundTextures) if (t) ::Assets::RegisterAssetDependency(_validationCallback, t->GetDependencyValidation());       // rebuild the entire renderer if any texture changes
+        for (const auto& t:boundTextures) if (t) ::Assets::RegisterAssetDependency(_validationCallback, t->GetDependencyValidation());       // rebuild the entire renderer if any texture changes
 
         auto pimpl = std::make_unique<Pimpl>();
 

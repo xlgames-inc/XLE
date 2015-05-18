@@ -32,7 +32,7 @@ namespace GUILayer
         EnvironmentSettings result;
         result._globalLightingDesc = DefaultGlobalLightingDesc();
         result._toneMapSettings = DefaultToneMapSettings();
-        for (auto cid : obj._children) {
+        for (const auto& cid : obj._children) {
             const auto* child = flexGobInterface.GetObject(obj._doc, cid);
             if (!child) continue;
 
@@ -58,7 +58,7 @@ namespace GUILayer
                     auto frustumSettings = PlatformRig::DefaultShadowFrustumSettings();
                     auto fsRef = props.GetString<char>(shadowFrustumSettingsHash);
                     if (!fsRef.empty()) {
-                        for (auto cid2 : obj._children) {
+                        for (const auto& cid2 : obj._children) {
                             const auto* fsSetObj = flexGobInterface.GetObject(obj._doc, cid2);
                             if (!fsSetObj || fsSetObj->_type != shadowFrustumSettings) continue;
                             
@@ -95,7 +95,7 @@ namespace GUILayer
         const auto typeSettings = flexGobInterface.GetTypeId("EnvSettings");
         static const auto nameHash = ParameterBox::MakeParameterNameHash("name");
         auto allSettings = flexGobInterface.FindObjectsOfType(typeSettings);
-        for (auto s : allSettings)
+        for (const auto& s : allSettings)
             result.push_back(std::make_pair(
                 s->_properties.GetString<char>(nameHash),
                 BuildEnvironmentSettings(flexGobInterface, *s)));
