@@ -12,8 +12,8 @@
 #include "../RenderCore/Assets/ModelRunTimeInternal.h"
 #include "../Assets/CompileAndAsyncManager.h"
 #include "../Assets/IntermediateResources.h"
-#include "../RenderCore/Assets/IModelFormat.h"
 #include "../RenderCore/Assets/DelayedDrawCall.h"
+#include "../RenderCore/Assets/ModelCache.h"
 
 #include "../RenderCore/Techniques/ParsingContext.h"
 
@@ -55,6 +55,9 @@ namespace SceneEngine
     using RenderCore::Assets::ModelRenderer;
     using RenderCore::Assets::ModelScaffold;
     using RenderCore::Assets::MaterialScaffold;
+    using RenderCore::Assets::ModelCache;
+    using RenderCore::Assets::DelayedDrawCall;
+    using RenderCore::Assets::DelayedDrawCallSet;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -148,13 +151,13 @@ namespace SceneEngine
             auto starti = i;
             while (i != _objects.cend() && i->_materialFilenameOffset == starti->_materialFilenameOffset && i->_modelFilenameOffset == starti->_modelFilenameOffset) { ++i; }
 
-            auto modelName = (const char*)PtrAdd(AsPointer(_filenamesBuffer.begin()), starti->_modelFilenameOffset + sizeof(uint64));
-            auto materialName = (const char*)PtrAdd(AsPointer(_filenamesBuffer.begin()), starti->_materialFilenameOffset + sizeof(uint64));
+            auto modelName = (const ResChar*)PtrAdd(AsPointer(_filenamesBuffer.begin()), starti->_modelFilenameOffset + sizeof(uint64));
+            auto materialName = (const ResChar*)PtrAdd(AsPointer(_filenamesBuffer.begin()), starti->_materialFilenameOffset + sizeof(uint64));
             LogInfo << "    [" << (i-starti) << "] objects (" << modelName << "), (" << materialName << ")";
         }
     }
 
-    void Placements::ReplaceString(const char oldString[], const char newString[])
+    void Placements::ReplaceString(const ResChar oldString[], const ResChar newString[])
     {
         unsigned replacementStart = 0, preReplacementEnd = 0;
         unsigned postReplacementEnd = 0;
@@ -181,12 +184,12 @@ namespace SceneEngine
                     // the new
 
                 auto length = XlStringLen(newString);
-                std::vector<uint8> replacementContent(sizeof(uint64) + length + 1, 0);
+                std::vector<uint8> replacementContent(sizeof(uint64) + (length + 1) * sizeof(ResChar), 0);
                 *(uint64*)AsPointer(replacementContent.begin()) = newHash;
 
-                XlCopyMemory(
-                    AsPointer(replacementContent.begin() + sizeof(uint64)),
-                    newString, length);
+                XlCopyString(
+                    (ResChar*)AsPointer(replacementContent.begin() + sizeof(uint64)),
+                    length+1, newString);
 
                 replacementStart = (unsigned)std::distance(_filenamesBuffer.begin(), starti);
                 preReplacementEnd = (unsigned)std::distance(_filenamesBuffer.begin(), i);
@@ -282,7 +285,7 @@ namespace SceneEngine
     class PlacementCell
     {
     public:
-        char        _filename[256];
+        ResChar     _filename[256];
         uint64      _filenameHash;
         Float3x4    _cellToWorld;
         Float3      _aabbMin, _aabbMax;
@@ -301,7 +304,7 @@ namespace SceneEngine
             RenderCore::Metal::DeviceContext* context,
             RenderCore::Techniques::ParsingContext& parserContext,
             unsigned techniqueIndex, RenderCore::Assets::DelayStep delayStep);
-        void FilterRenders(const std::function<bool(const RenderCore::Assets::DelayedDrawCall&)>& predicate);
+        void FilterRenders(const std::function<bool(const DelayedDrawCall&)>& predicate);
 
         void Render(
             RenderCore::Metal::DeviceContext* context,
@@ -309,37 +312,15 @@ namespace SceneEngine
             const PlacementCell& cell,
             const uint64* filterStart = nullptr, const uint64* filterEnd = nullptr);
 
-        typedef RenderCore::Assets::DelayedDrawCallSet PreparedState;
-        
-        auto GetCachedModel(const ResChar filename[]) -> const ModelScaffold*;
-        auto GetCachedMaterial(const ResChar model[], const ResChar material[]) -> const MaterialScaffold*;
-        auto GetCachedRenderer(const ResChar modelFilename[], const ResChar materialFilename[], unsigned LOD) -> const ModelRenderer*;
+        ::Assets::AssetState TryGetBoundingBox(
+            Placements::BoundingBox& result, const ResChar modelFilename[], unsigned LOD = 0) const;
+
         auto GetCachedPlacements(uint64 hash, const ResChar filename[]) -> const Placements&;
         void SetOverride(uint64 guid, const Placements* placements);
-        auto GetModelFormat() -> std::shared_ptr<RenderCore::Assets::IModelFormat>& { return _modelFormat; }
         auto GetCachedQuadTree(uint64 cellFilenameHash) const -> const PlacementsQuadTree*;
+        ModelCache& GetModelCache() { return *_cache; }
 
-            //  We keep a single cache of model files for every cell
-            //  This might mean that the SharedStateSet could grow
-            //  very large. However, there is no way to remove states
-            //  from that state, after they've been added.
-        class Cache
-        {
-        public:
-            LRUCache<ModelScaffold>             _modelScaffolds;
-            LRUCache<MaterialScaffold>          _materialScaffolds;
-            LRUCache<ModelRenderer>             _modelRenderers;
-            RenderCore::Assets::SharedStateSet  _sharedStates;
-            PreparedState                       _preparedRenders;
-
-            Cache()
-            : _modelScaffolds(2000)
-            , _materialScaffolds(2000)
-            , _modelRenderers(500)
-            , _preparedRenders(typeid(ModelRenderer).hash_code()) {}
-        };
-
-        PlacementsRenderer(std::shared_ptr<RenderCore::Assets::IModelFormat> modelFormat);
+        PlacementsRenderer(std::shared_ptr<ModelCache> modelCache);
         ~PlacementsRenderer();
     protected:
         class CellRenderInfo
@@ -371,7 +352,8 @@ namespace SceneEngine
 
         std::vector<std::pair<uint64, CellRenderInfo>> _cellOverrides;
         std::vector<std::pair<uint64, CellRenderInfo>> _cells;
-        std::unique_ptr<Cache> _cache;
+        std::shared_ptr<ModelCache> _cache;
+        DelayedDrawCallSet _preparedRenders;
 
         std::shared_ptr<RenderCore::Assets::IModelFormat> _modelFormat;
 
@@ -394,8 +376,8 @@ namespace SceneEngine
 
     void PlacementsRenderer::BeginRender(RenderCore::Metal::DeviceContext* devContext)
     {
-        _cache->_preparedRenders.Reset();
-        _cache->_sharedStates.CaptureState(devContext);
+        _preparedRenders.Reset();
+        _cache->GetSharedStateSet().CaptureState(devContext);
     }
 
     void PlacementsRenderer::EndRender(
@@ -408,12 +390,12 @@ namespace SceneEngine
         {
             ModelRenderer::RenderPrepared(
                 RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
-                _cache->_sharedStates, _cache->_preparedRenders, RenderCore::Assets::DelayStep::OpaqueRender);
+                _cache->GetSharedStateSet(), _preparedRenders, RenderCore::Assets::DelayStep::OpaqueRender);
         }
         CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
         CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
         CATCH_END
-        _cache->_sharedStates.ReleaseState(context);
+        _cache->GetSharedStateSet().ReleaseState(context);
     }
 
     void PlacementsRenderer::CommitTranslucent(
@@ -422,84 +404,38 @@ namespace SceneEngine
         unsigned techniqueIndex, RenderCore::Assets::DelayStep delayStep)
     {
             // draw the translucent parts of models that were previously prepared
-        _cache->_sharedStates.CaptureState(context);
+        _cache->GetSharedStateSet().CaptureState(context);
         TRY
         {
             ModelRenderer::RenderPrepared(
                 RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
-                _cache->_sharedStates, _cache->_preparedRenders, delayStep);
+                _cache->GetSharedStateSet(), _preparedRenders, delayStep);
         }
         CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
         CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
         CATCH_END
-        _cache->_sharedStates.ReleaseState(context);
+        _cache->GetSharedStateSet().ReleaseState(context);
     }
 
     void PlacementsRenderer::FilterRenders(
         const std::function<bool(const RenderCore::Assets::DelayedDrawCall&)>& predicate)
     {
-        _cache->_preparedRenders.Filter(predicate);
+        _preparedRenders.Filter(predicate);
     }
 
-    namespace Internal
+    ::Assets::AssetState PlacementsRenderer::TryGetBoundingBox(
+        Placements::BoundingBox& result, const ResChar modelFilename[], unsigned LOD) const
     {
-        std::shared_ptr<ModelScaffold> CreateModelScaffold(const ResChar filename[], RenderCore::Assets::IModelFormat& modelFormat)
-        {
-            auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
-            auto& store = ::Assets::Services::GetAsyncMan().GetIntermediateStore();
-            auto marker = compilers.PrepareResource(
-                ModelScaffold::CompileProcessType, 
-                (const char**)&filename, 1, store);
-            return std::make_shared<ModelScaffold>(std::move(marker));
-        }
+        auto model = _cache->GetModelScaffold(modelFilename);
+        if (!model) return ::Assets::AssetState::Invalid;
 
-        std::shared_ptr<MaterialScaffold> CreateMaterialScaffold(const ResChar model[], const ResChar material[], RenderCore::Assets::IModelFormat& modelFormat)
-        {
-            auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
-            auto& store = ::Assets::Services::GetAsyncMan().GetIntermediateStore();
-            const ResChar* inits[] = { material, model };
-            auto marker = compilers.PrepareResource(
-                MaterialScaffold::CompileProcessType, 
-                inits, dimof(inits), store);
-            return std::make_shared<MaterialScaffold>(std::move(marker));
-        }
+        auto state = model->TryResolve();
+        if (state != ::Assets::AssetState::Ready) return state;
+
+        result = model->GetStaticBoundingBox(LOD);
+        return ::Assets::AssetState::Ready;
     }
 
-    auto PlacementsRenderer::GetCachedModel(const ResChar filename[]) -> const ModelScaffold*
-    {
-        auto hash = Hash64(filename);
-        auto model = _cache->_modelScaffolds.Get(hash);
-        if (!model) {
-            model = Internal::CreateModelScaffold(filename, *_modelFormat);
-            if (model) {
-                _cache->_modelScaffolds.Insert(hash, model);
-            }
-        }
-        return model.get();
-    }
-
-    auto PlacementsRenderer::GetCachedMaterial(const ResChar model[], const ResChar material[]) -> const MaterialScaffold*
-    {
-        auto hash = HashCombine(Hash64(material), Hash64(model));
-        auto materialScaffold = _cache->_materialScaffolds.Get(hash);
-        if (!materialScaffold) {
-            materialScaffold = Internal::CreateMaterialScaffold(model, material, *_modelFormat);
-            if (materialScaffold) {
-                _cache->_materialScaffolds.Insert(hash, materialScaffold);
-            }
-        }
-        return materialScaffold.get();
-    }
-
-    auto PlacementsRenderer::GetCachedRenderer(const ResChar modelFilename[], const ResChar materialFilename[], unsigned LOD) -> const ModelRenderer*
-    {
-        auto model = GetCachedModel(modelFilename);
-        auto material = GetCachedMaterial(modelFilename, materialFilename);
-        if (!model || !material) return nullptr;
-
-        uint64 hashedRenderer = (uint64(model) << 2ull) | (uint64(material) << 48ull) | uint64(LOD);
-        return _cache->_modelRenderers.Get(hashedRenderer).get();
-    }
 
     auto PlacementsRenderer::GetCachedPlacements(uint64 filenameHash, const ResChar filename[]) -> const Placements&
     {
@@ -623,8 +559,8 @@ namespace SceneEngine
         {
         public:
             void Render(
-                PlacementsRenderer::Cache& cache,
-                RenderCore::Assets::IModelFormat& modelFormat,
+                ModelCache& cache,
+                DelayedDrawCallSet& delayedDrawCalls,
                 const void* filenamesBuffer,
                 const Placements::ObjectReference& obj,
                 const Float3x4& cellToWorld,
@@ -632,21 +568,16 @@ namespace SceneEngine
 
             RendererHelper()
             {
-                _currentModel = _currentMaterial = _currentRenderer = 0ull;
-                _model = nullptr;
-                _material = nullptr;
-                _renderer = nullptr;
+                _currentModel = _currentMaterial = 0ull;
             }
         protected:
-            uint64 _currentModel, _currentMaterial, _currentRenderer;
-            ModelScaffold* _model;
-            MaterialScaffold* _material;
-            ModelRenderer* _renderer;
+            uint64 _currentModel, _currentMaterial;
+            ModelCache::Model _current;
         };
 
         void RendererHelper::Render(
-            PlacementsRenderer::Cache& cache,
-            RenderCore::Assets::IModelFormat& modelFormat,
+            ModelCache& cache,
+            DelayedDrawCallSet& delayedDrawCalls,
             const void* filenamesBuffer,
             const Placements::ObjectReference& obj,
             const Float3x4& cellToWorld,
@@ -666,68 +597,41 @@ namespace SceneEngine
                 //  may be repeated many times. In these cases, we want to minimize the
                 //  workload for every repeat.
             auto modelHash = *(uint64*)PtrAdd(filenamesBuffer, obj._modelFilenameOffset);
-            if (modelHash != _currentModel) {
-                _model = cache._modelScaffolds.Get(modelHash).get();
-                if (!_model || _model->GetDependencyValidation()->GetValidationIndex() > 0) {
-                    auto modelFilename = (const ResChar*)PtrAdd(filenamesBuffer, obj._modelFilenameOffset + sizeof(uint64));
-                    auto newModel = CreateModelScaffold(modelFilename, modelFormat);
-                    _model = newModel.get();
-                    cache._modelScaffolds.Insert(modelHash, std::move(newModel));
-                }
-                _currentModel = modelHash;
-            }
-
             auto materialHash = *(uint64*)PtrAdd(filenamesBuffer, obj._materialFilenameOffset);
             materialHash = HashCombine(materialHash, modelHash);
-            if (materialHash != _currentMaterial) {
-                _material = cache._materialScaffolds.Get(materialHash).get();
-                if (!_material || _material->GetDependencyValidation()->GetValidationIndex() > 0) {
-                    std::shared_ptr<MaterialScaffold> newMaterial;
-                    auto modelFilename = (const ResChar*)PtrAdd(filenamesBuffer, obj._modelFilenameOffset + sizeof(uint64));
-                    auto materialFilename = (const ResChar*)PtrAdd(filenamesBuffer, obj._materialFilenameOffset + sizeof(uint64));
-                    newMaterial = CreateMaterialScaffold(modelFilename, materialFilename, modelFormat);
-                    _material = newMaterial.get();
-                    assert(_material);
-                    cache._materialScaffolds.Insert(materialHash, std::move(newMaterial));
-                }
-                _currentMaterial = materialHash;
-            }
 
                 // Simple LOD calculation based on distanceSq from camera...
                 //      Currently all models have only the single LOD. But this
                 //      may cause problems with models with multiple LOD, because
                 //      it may mean rapidly switching back and forth between 
                 //      renderers (which can be expensive)
-            unsigned LOD = std::min(_model->GetMaxLOD(), unsigned(distanceSq / (150.f*150.f)));
-            uint64 hashedRenderer = (uint64(_model) << 2ull) | (uint64(_material) << 48ull) | uint64(LOD);
+            auto LOD = unsigned(distanceSq / (150.f*150.f));
 
-            if (hashedRenderer != _currentRenderer) {
-                    //  Here we have to choose a shared state set for this object.
-                    //  We could potentially have more than one shared state set for this renderer
-                    //  and separate the objects into their correct state set, as required...
-                _renderer = cache._modelRenderers.Get(hashedRenderer).get();
-                if (!_renderer || _renderer->GetDependencyValidation()->GetValidationIndex() > 0) {
-                    auto modelFilename = (const ResChar*)PtrAdd(filenamesBuffer, obj._modelFilenameOffset + sizeof(uint64));
-                    auto searchRules = ::Assets::DefaultDirectorySearchRules(modelFilename);
-
-                    auto newRenderer = std::make_shared<ModelRenderer>(
-                        std::ref(*_model), std::ref(*_material), std::ref(cache._sharedStates), &searchRules, LOD);
-                    _renderer = newRenderer.get();
-                    cache._modelRenderers.Insert(hashedRenderer, std::move(newRenderer));
-                }
-                _currentRenderer = hashedRenderer;
+            if (    modelHash != _currentModel || materialHash != _currentMaterial 
+                ||  std::min(_current._maxLOD, LOD) != _current._selectedLOD) {
+                _current = cache.GetModel(
+                    (const ResChar*)PtrAdd(filenamesBuffer, obj._modelFilenameOffset + sizeof(uint64)),
+                    (const ResChar*)PtrAdd(filenamesBuffer, obj._materialFilenameOffset + sizeof(uint64)),
+                    LOD);
+                _currentModel = modelHash;
+                _currentMaterial = materialHash;
             }
-
+                
             auto localToWorld = Combine(obj._localToCell, cellToWorld);
 
                 //  if we have internal transforms, we must use them.
                 //  But some models don't have any internal transforms -- in these
                 //  cases, the _defaultTransformCount will be zero
-            if (_model->ImmutableData()._defaultTransformCount) {
-                ModelRenderer::MeshToModel mtm(_model->ImmutableData()._defaultTransforms, (unsigned)_model->ImmutableData()._defaultTransformCount);
-                _renderer->Prepare(cache._preparedRenders, cache._sharedStates, AsFloat4x4(localToWorld), &mtm);
+            if (_current._model->ImmutableData()._defaultTransformCount) {
+                ModelRenderer::MeshToModel mtm(
+                    _current._model->ImmutableData()._defaultTransforms, 
+                    (unsigned)_current._model->ImmutableData()._defaultTransformCount);
+                _current._renderer->Prepare(
+                    delayedDrawCalls, 
+                    cache.GetSharedStateSet(), 
+                    AsFloat4x4(localToWorld), &mtm);
             } else {
-                _renderer->Prepare(cache._preparedRenders, cache._sharedStates, AsFloat4x4(localToWorld));
+                _current._renderer->Prepare(delayedDrawCalls, cache.GetSharedStateSet(), AsFloat4x4(localToWorld));
             }
         }
     }
@@ -812,7 +716,7 @@ namespace SceneEngine
                 }
 
                 helper.Render(
-                    *_cache, *_modelFormat, 
+                    *_cache, _preparedRenders, 
                     filenamesBuffer, obj, cellToWorld, cameraPosition);
             }
 
@@ -834,19 +738,16 @@ namespace SceneEngine
                 }
 
                 helper.Render(
-                    *_cache, *_modelFormat, 
+                    *_cache, _preparedRenders, 
                     filenamesBuffer, obj, cellToWorld, cameraPosition);
             }
         }
     }
 
-    PlacementsRenderer::PlacementsRenderer(std::shared_ptr<RenderCore::Assets::IModelFormat> modelFormat)
-    {
-        // assert(modelFormat);
-        auto cache = std::make_unique<Cache>();
-        _cache = std::move(cache);
-        _modelFormat = std::move(modelFormat);
-    }
+    PlacementsRenderer::PlacementsRenderer(std::shared_ptr<ModelCache> modelCache)
+    : _cache(std::move(modelCache))
+    , _preparedRenders(typeid(ModelRenderer).hash_code())
+    {}
 
     PlacementsRenderer::~PlacementsRenderer() {}
 
@@ -937,7 +838,7 @@ namespace SceneEngine
 
     PlacementsManager::PlacementsManager(
         const WorldPlacementsConfig& cfg,
-        std::shared_ptr<RenderCore::Assets::IModelFormat> modelFormat,
+        std::shared_ptr<ModelCache> modelCache,
         const Float2& worldOffset)
     {
             //  Using the given config file, let's construct the list of 
@@ -964,7 +865,7 @@ namespace SceneEngine
                 pimpl->_cells.push_back(cell);
             }
 
-        pimpl->_renderer = std::make_shared<PlacementsRenderer>(std::move(modelFormat));
+        pimpl->_renderer = std::make_shared<PlacementsRenderer>(std::move(modelCache));
         _pimpl = std::move(pimpl);
     }
 
@@ -1007,18 +908,22 @@ namespace SceneEngine
         unsigned result = ~unsigned(0x0);
         auto stringHash = Hash64(str);
 
-        for (auto i=_filenamesBuffer.begin(); i!=_filenamesBuffer.end() && result == ~unsigned(0x0); ++i) {
+        auto* start = AsPointer(_filenamesBuffer.begin());
+        auto* end = AsPointer(_filenamesBuffer.end());
+        
+        for (auto i=start; i<end && result == ~unsigned(0x0);) {
             auto h = *(uint64*)AsPointer(i);
-            if (h == stringHash) { result = unsigned(std::distance(_filenamesBuffer.begin(), i)); }
+            if (h == stringHash) { result = (unsigned)(ptrdiff_t(i) - ptrdiff_t(start)); }
 
             i += sizeof(uint64);
-            i = std::find(i, _filenamesBuffer.end(), '\0');
+            i = (uint8*)std::find((const ResChar*)i, (const ResChar*)end, ResChar('\0'));
+            i += sizeof(ResChar);
         }
 
         if (result == ~unsigned(0x0)) {
             result = unsigned(_filenamesBuffer.size());
             auto length = XlStringLen(str);
-            _filenamesBuffer.resize(_filenamesBuffer.size() + sizeof(uint64) + length + sizeof(ResChar));
+            _filenamesBuffer.resize(_filenamesBuffer.size() + sizeof(uint64) + (length + 1) * sizeof(ResChar));
             auto* dest = &_filenamesBuffer[result];
             *(uint64*)dest = stringHash;
             XlCopyString((ResChar*)PtrAdd(dest, sizeof(uint64)), length+1, str);
@@ -1093,10 +998,10 @@ namespace SceneEngine
         std::shared_ptr<PlacementsRenderer> _renderer;
         std::shared_ptr<DynamicPlacements> GetDynPlacements(uint64 cellGuid);
         Float3x4 GetCellToWorld(uint64 cellGuid);
-        const char* GetCellName(uint64 cellGuid);
+        const ResChar* GetCellName(uint64 cellGuid);
     };
 
-    const char* PlacementsEditor::Pimpl::GetCellName(uint64 cellGuid)
+    const ResChar* PlacementsEditor::Pimpl::GetCellName(uint64 cellGuid)
     {
         auto p = std::lower_bound(_cells.cbegin(), _cells.cend(), cellGuid, RegisteredCell::CompareHash());
         if (p != _cells.end() && p->_filenameHash == cellGuid) {
@@ -1174,9 +1079,15 @@ namespace SceneEngine
                         continue;
                     }
 
-                    auto& model = *_pimpl->_renderer->GetCachedModel(
-                        (const char*)PtrAdd(p.GetFilenamesBuffer(), obj._modelFilenameOffset + sizeof(uint64)));
-                    const auto& localBoundingBox = model.GetStaticBoundingBox();
+                    Placements::BoundingBox localBoundingBox;
+                    auto assetState = _pimpl->_renderer->TryGetBoundingBox(
+                        localBoundingBox, 
+                        (const ResChar*)PtrAdd(p.GetFilenamesBuffer(), obj._modelFilenameOffset + sizeof(uint64)));
+
+                        // When assets aren't yet ready, we can't perform any intersection tests on them
+                    if (assetState != ::Assets::AssetState::Ready)
+                        continue;
+
                     if (!RayVsAABB( cellSpaceRay, AsFloat4x4(obj._localToCell), 
                                     localBoundingBox.first, localBoundingBox.second)) {
                         continue;
@@ -1232,9 +1143,15 @@ namespace SceneEngine
                         continue;
                     }
 
-                    auto& model = *_pimpl->_renderer->GetCachedModel(
-                        (const char*)PtrAdd(p.GetFilenamesBuffer(), obj._modelFilenameOffset + sizeof(uint64)));
-                    const auto& localBoundingBox = model.GetStaticBoundingBox();
+                    Placements::BoundingBox localBoundingBox;
+                    auto assetState = _pimpl->_renderer->TryGetBoundingBox(
+                        localBoundingBox, 
+                        (const ResChar*)PtrAdd(p.GetFilenamesBuffer(), obj._modelFilenameOffset + sizeof(uint64)));
+
+                        // When assets aren't yet ready, we can't perform any intersection tests on them
+                    if (assetState != ::Assets::AssetState::Ready)
+                        continue;
+
                     if (CullAABB(Combine(AsFloat4x4(obj._localToCell), cellToProjection), localBoundingBox.first, localBoundingBox.second)) {
                         continue;
                     }
@@ -1315,13 +1232,18 @@ namespace SceneEngine
                         ObjIntersectionDef def;
                         def._localToWorld = Combine(obj._localToCell, i->_cellToWorld);
 
-                        auto* model = _pimpl->_renderer->GetCachedModel(
-                            (const char*)PtrAdd(p.GetFilenamesBuffer(), obj._modelFilenameOffset + sizeof(uint64)));
+                        Placements::BoundingBox localBoundingBox;
+                        auto assetState = _pimpl->_renderer->TryGetBoundingBox(
+                            localBoundingBox, 
+                            (const ResChar*)PtrAdd(p.GetFilenamesBuffer(), obj._modelFilenameOffset + sizeof(uint64)));
+
+                            // When assets aren't yet ready, we can't perform any intersection tests on them
+                        if (assetState != ::Assets::AssetState::Ready)
+                            continue;
 
                             // note -- we have access to the cell space bounding box. But the local
                             //          space box would be better.
-                        def._localSpaceBoundingBox = model ? model->GetStaticBoundingBox()
-                            : std::make_pair(Float3(FLT_MAX, FLT_MAX, FLT_MAX), Float3(-FLT_MAX, -FLT_MAX, -FLT_MAX));
+                        def._localSpaceBoundingBox = localBoundingBox;
                         def._model = *(uint64*)PtrAdd(p.GetFilenamesBuffer(), obj._modelFilenameOffset);
                         def._material = *(uint64*)PtrAdd(p.GetFilenamesBuffer(), obj._materialFilenameOffset);
                         
@@ -1391,14 +1313,18 @@ namespace SceneEngine
 
         void PushObj(unsigned index, const ObjTransDef& newState);
 
+        bool GetLocalBoundingBox_Stall(
+            std::pair<Float3, Float3>& result,
+            const ResChar filename[]) const;
+
         enum State { Active, Committed };
         State _state;
     };
 
-    auto    Transaction::GetObject(unsigned index) const -> const ObjTransDef& { return _objects[index]; }
+    auto    Transaction::GetObject(unsigned index) const -> const ObjTransDef&              { return _objects[index]; }
     auto    Transaction::GetObjectOriginalState(unsigned index) const -> const ObjTransDef& { return _originalState[index]; }
-    PlacementGUID   Transaction::GetGuid(unsigned index) const { return _pushedGuids[index]; }
-    PlacementGUID   Transaction::GetOriginalGuid(unsigned index) const { return _originalGuids[index]; }
+    auto    Transaction::GetGuid(unsigned index) const -> PlacementGUID                     { return _pushedGuids[index]; }
+    auto    Transaction::GetOriginalGuid(unsigned index) const -> PlacementGUID             { return _originalGuids[index]; }
 
     unsigned    Transaction::GetObjectCount() const
     {
@@ -1408,10 +1334,26 @@ namespace SceneEngine
         return (unsigned)_originalGuids.size();
     }
 
+    bool Transaction::GetLocalBoundingBox_Stall(std::pair<Float3, Float3>& result, const ResChar filename[]) const
+    {
+            // get the local bounding box for a model
+            // ... but stall waiting for any pending resources
+        auto* model = _editorPimpl->_renderer->GetModelCache().GetModelScaffold(filename);
+        auto state = model->StallAndResolve();
+        if (state != ::Assets::AssetState::Ready) {
+            result = std::make_pair(Float3(FLT_MAX, FLT_MAX, FLT_MAX), Float3(-FLT_MAX, -FLT_MAX, -FLT_MAX));
+            return false;
+        }
+
+        result = model->GetStaticBoundingBox();
+        return true;
+    }
+
     std::pair<Float3, Float3>   Transaction::GetLocalBoundingBox(unsigned index) const
     {
-        auto* model = _editorPimpl->_renderer->GetCachedModel(_objects[index]._model.c_str());
-        return model ? model->GetStaticBoundingBox() : std::make_pair(Float3(FLT_MAX, FLT_MAX, FLT_MAX), Float3(-FLT_MAX, -FLT_MAX, -FLT_MAX));
+        std::pair<Float3, Float3> result;
+        GetLocalBoundingBox_Stall(result, _objects[index]._model.c_str());
+        return result;
     }
 
     std::pair<Float3, Float3>   Transaction::GetWorldBoundingBox(unsigned index) const
@@ -1429,20 +1371,12 @@ namespace SceneEngine
     {
         if (objectIndex >= _objects.size()) return std::string();
 
-        // const unsigned LOD = 0;
-        // const auto* renderer = _editorPimpl->_renderer->GetCachedRenderer(
-        //     _objects[objectIndex]._model.c_str(), 
-        //     _objects[objectIndex]._material.c_str(), LOD);
-        // 
-        // auto binding = renderer->DrawCallToMaterialBinding();
-        // if (drawCallIndex >= binding.size()) return std::string();
-        // 
-        // auto matGuid = binding[drawCallIndex];
+            // attempt to get the 
+        auto scaff = _editorPimpl->_renderer->GetModelCache().GetScaffolds(
+            _objects[objectIndex]._model.c_str(), _objects[objectIndex]._material.c_str());
+        if (!scaff._material) return std::string();
 
-        const auto* material = _editorPimpl->_renderer->GetCachedMaterial(_objects[objectIndex]._model.c_str(), _objects[objectIndex]._material.c_str());
-        if (!material) return std::string();
-            
-        auto res = material->GetMaterialName(materialGuid);
+        auto res = scaff._material->GetMaterialName(materialGuid);
         return res ? std::string(res) : std::string();
     }
 
@@ -1495,8 +1429,14 @@ namespace SceneEngine
         //  Objects that straddle a cell boundary must be placed in only one of those
         //  cells -- so sometimes objects will stick out the side of a cell.
 
-        auto& model = *_editorPimpl->_renderer->GetCachedModel(newState._model.c_str());
-        auto boundingBoxCentre = LinearInterpolate(model.GetStaticBoundingBox().first, model.GetStaticBoundingBox().second, 0.5f);
+        std::pair<Float3, Float3> boundingBox;
+        if (!GetLocalBoundingBox_Stall(boundingBox, newState._model.c_str())) {
+                // if we can't get a bounding box, then we can't really 
+                // create this object. We need to cancel the creation operation
+            return false;
+        }
+
+        auto boundingBoxCentre = LinearInterpolate(boundingBox.first, boundingBox.second, 0.5f);
         auto worldSpaceCenter = TransformPoint(newState._localToWorld, boundingBoxCentre);
 
         std::string materialFilename = newState._material;
@@ -1528,7 +1468,7 @@ namespace SceneEngine
                 }
 
                 dynPlacements->AddPlacement(
-                    localToCell, TransformBoundingBox(localToCell, model.GetStaticBoundingBox()),
+                    localToCell, TransformBoundingBox(localToCell, boundingBox),
                     newState._model.c_str(), materialFilename.c_str(), id);
 
                 guid = PlacementGUID(i->_filenameHash, id);
@@ -1559,8 +1499,14 @@ namespace SceneEngine
 
     bool    Transaction::Create(PlacementGUID guid, const ObjTransDef& newState)
     {
-        auto& model = *_editorPimpl->_renderer->GetCachedModel(newState._model.c_str());
-        auto boundingBoxCentre = LinearInterpolate(model.GetStaticBoundingBox().first, model.GetStaticBoundingBox().second, 0.5f);
+        std::pair<Float3, Float3> boundingBox;
+        if (!GetLocalBoundingBox_Stall(boundingBox, newState._model.c_str())) {
+                // if we can't get a bounding box, then we can't really 
+                // create this object. We need to cancel the creation operation
+            return false;
+        }
+
+        auto boundingBoxCentre = LinearInterpolate(boundingBox.first, boundingBox.second, 0.5f);
         auto worldSpaceCenter = TransformPoint(newState._localToWorld, boundingBoxCentre);
 
         std::string materialFilename = newState._material;
@@ -1581,7 +1527,7 @@ namespace SceneEngine
                 }
 
                 dynPlacements->AddPlacement(
-                    localToCell, TransformBoundingBox(localToCell, model.GetStaticBoundingBox()),
+                    localToCell, TransformBoundingBox(localToCell, boundingBox),
                     newState._model.c_str(), materialFilename.c_str(), id);
 
                 guid.second = id;
@@ -1634,10 +1580,13 @@ namespace SceneEngine
         if (newState._transaction != ObjTransDef::Deleted && newState._transaction != ObjTransDef::Error) {
             localToCell = Combine(newState._localToWorld, InvertOrthonormalTransform(cellToWorld));
 
-            auto* model = _editorPimpl->_renderer->GetCachedModel(newState._model.c_str());
-            cellSpaceBoundary = model
-                ? TransformBoundingBox(localToCell, model->GetStaticBoundingBox())
-                : std::make_pair(Float3(FLT_MAX, FLT_MAX, FLT_MAX), Float3(-FLT_MAX, -FLT_MAX, -FLT_MAX));
+            std::pair<Float3, Float3> boundingBox;
+            if (GetLocalBoundingBox_Stall(boundingBox, newState._model.c_str())) {
+                cellSpaceBoundary = TransformBoundingBox(localToCell, boundingBox);
+            } else {
+                LogWarning << "Cannot get bounding box for model (" << newState._model << ") while updating placement object.";
+                cellSpaceBoundary = std::make_pair(Float3(FLT_MAX, FLT_MAX, FLT_MAX), Float3(-FLT_MAX, -FLT_MAX, -FLT_MAX));
+            }
         }
 
             // todo --  handle the case where an object should move to another cell!
@@ -1753,8 +1702,8 @@ namespace SceneEngine
 
                         ObjTransDef def;
                         def._localToWorld = Combine(pIterator->_localToCell, cellToWorld);
-                        def._model = (const char*)PtrAdd(placements.GetFilenamesBuffer(), sizeof(uint64) + pIterator->_modelFilenameOffset);
-                        def._material = (const char*)PtrAdd(placements.GetFilenamesBuffer(), sizeof(uint64) + pIterator->_materialFilenameOffset);
+                        def._model = (const ResChar*)PtrAdd(placements.GetFilenamesBuffer(), sizeof(uint64) + pIterator->_modelFilenameOffset);
+                        def._material = (const ResChar*)PtrAdd(placements.GetFilenamesBuffer(), sizeof(uint64) + pIterator->_materialFilenameOffset);
                         def._transaction = ObjTransDef::Unchanged;
                         originalState.push_back(def);
                     } else {
@@ -1776,8 +1725,8 @@ namespace SceneEngine
                             // Build a ObjTransDef object from this object, and record it
                         ObjTransDef def;
                         def._localToWorld = Combine(pIterator->_localToCell, cellToWorld);
-                        def._model = (const char*)PtrAdd(placements.GetFilenamesBuffer(), sizeof(uint64) + pIterator->_modelFilenameOffset);
-                        def._material = (const char*)PtrAdd(placements.GetFilenamesBuffer(), sizeof(uint64) + pIterator->_materialFilenameOffset);
+                        def._model = (const ResChar*)PtrAdd(placements.GetFilenamesBuffer(), sizeof(uint64) + pIterator->_modelFilenameOffset);
+                        def._material = (const ResChar*)PtrAdd(placements.GetFilenamesBuffer(), sizeof(uint64) + pIterator->_materialFilenameOffset);
                         def._transaction = ObjTransDef::Unchanged;
                         originalState.push_back(def);
                     } else {
@@ -1971,15 +1920,14 @@ namespace SceneEngine
         _pimpl->_dynPlacements.clear();
     }
 
-    std::shared_ptr<RenderCore::Assets::IModelFormat> PlacementsEditor::GetModelFormat()
-    {
-        return _pimpl->_renderer->GetModelFormat();
-    }
-
     std::pair<Float3, Float3> PlacementsEditor::GetModelBoundingBox(const ResChar modelName[]) const
     {
-        auto* model = _pimpl->_renderer->GetCachedModel(modelName);
-        return model ? model->GetStaticBoundingBox() : std::make_pair(Float3(FLT_MAX, FLT_MAX, FLT_MAX), Float3(-FLT_MAX, -FLT_MAX, -FLT_MAX));
+        Placements::BoundingBox boundingBox;
+        auto assetState = _pimpl->_renderer->TryGetBoundingBox(boundingBox, modelName);
+        if (assetState != ::Assets::AssetState::Ready)
+            return std::make_pair(Float3(FLT_MAX, FLT_MAX, FLT_MAX), Float3(-FLT_MAX, -FLT_MAX, -FLT_MAX));
+
+        return boundingBox;
     }
 
     auto PlacementsEditor::Transaction_Begin(

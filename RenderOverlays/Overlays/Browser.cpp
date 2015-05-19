@@ -441,6 +441,8 @@ namespace Overlays
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+    using RenderCore::Assets::ModelCache;
+
     class ModelBrowser::Pimpl
     {
     public:
@@ -448,13 +450,13 @@ namespace Overlays
         RenderCore::Metal::DepthStencilView     _dsv;
         RenderCore::Metal::ShaderResourceView   _srv;
 
-        std::unique_ptr<ToolsRig::ModelVisCache> _cache;
+        std::unique_ptr<ModelCache> _cache;
         std::vector<std::pair<uint64, std::string>> _modelNames;
     };
 
     static void RenderModel(
         RenderCore::IThreadContext& context, 
-        ToolsRig::ModelVisCache::Model& model)
+        ModelCache::Model& model)
     {
             // Render the given model. Create a minimal version of the full rendering process:
             //      We need to create a LightingParserContext, and ISceneParser as well.
@@ -532,9 +534,7 @@ namespace Overlays
         return Coord2(ModelBrowserItemDimensions, ModelBrowserItemDimensions);
     }
 
-    ModelBrowser::ModelBrowser(
-        const char baseDirectory[], 
-        std::shared_ptr<RenderCore::Assets::IModelFormat> format)
+    ModelBrowser::ModelBrowser(const char baseDirectory[])
     : SharedBrowser(baseDirectory, "Model Browser", ModelBrowserItemDimensions, "*.dae")
     {
         auto pimpl = std::make_unique<Pimpl>();
@@ -557,7 +557,7 @@ namespace Overlays
         pimpl->_dsv = RenderCore::Metal::DepthStencilView(depthResource.get());
         pimpl->_srv = RenderCore::Metal::ShaderResourceView(offscreenResource.get());
 
-        pimpl->_cache = std::make_unique<ToolsRig::ModelVisCache>(std::move(format));
+        pimpl->_cache = std::make_unique<ModelCache>();
 
         _pimpl = std::move(pimpl);
     }

@@ -26,10 +26,8 @@
 #include "../../Utility/HeapUtils.h"
 #include "../../Utility/StringFormat.h"
 
+#include "../../RenderCore/Assets/ModelCache.h"
 #include "../../RenderCore/Assets/ModelRunTime.h"
-#include "../../RenderCore/Assets/MaterialScaffold.h"
-#include "../../Assets/CompileAndAsyncManager.h"
-#include "../../Assets/IntermediateResources.h"
 
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/Shader.h"
@@ -44,127 +42,7 @@ namespace ToolsRig
     using RenderCore::Assets::ModelScaffold;
     using RenderCore::Assets::MaterialScaffold;
     using RenderCore::Assets::SharedStateSet;
-
-    typedef std::pair<Float3, Float3> BoundingBox;
-    
-    class ModelVisCache::Pimpl
-    {
-    public:
-        std::map<uint64, BoundingBox> _boundingBoxes;
-
-        LRUCache<ModelScaffold>     _modelScaffolds;
-        LRUCache<MaterialScaffold>  _materialScaffolds;
-        LRUCache<ModelRenderer>     _modelRenderers;
-
-        std::shared_ptr<RenderCore::Assets::IModelFormat> _format;
-        std::unique_ptr<SharedStateSet> _sharedStateSet;
-
-        Pimpl();
-    };
-        
-    ModelVisCache::Pimpl::Pimpl()
-    : _modelScaffolds(2000)
-    , _materialScaffolds(2000)
-    , _modelRenderers(50)
-    {
-    }
-
-    namespace Internal
-    {
-        std::shared_ptr<ModelScaffold> CreateModelScaffold(const ::Assets::ResChar filename[], RenderCore::Assets::IModelFormat& modelFormat)
-        {
-            auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
-            auto& store = ::Assets::Services::GetAsyncMan().GetIntermediateStore();
-            auto marker = compilers.PrepareResource(
-                ModelScaffold::CompileProcessType, 
-                (const char**)&filename, 1, store);
-            return std::make_shared<ModelScaffold>(std::move(marker));
-        }
-
-        std::shared_ptr<MaterialScaffold> CreateMaterialScaffold(const ::Assets::ResChar model[], const ::Assets::ResChar material[], RenderCore::Assets::IModelFormat& modelFormat)
-        {
-            auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
-            auto& store = ::Assets::Services::GetAsyncMan().GetIntermediateStore();
-            const ::Assets::ResChar* inits[] = { material, model };
-            auto marker = compilers.PrepareResource(
-                MaterialScaffold::CompileProcessType, 
-                inits, dimof(inits), store);
-            return std::make_shared<MaterialScaffold>(std::move(marker));
-        }
-    }
-
-    auto ModelVisCache::GetScaffolds(const Assets::ResChar modelFilename[], const Assets::ResChar materialFilename[]) -> Scaffolds
-    {
-        Scaffolds result;
-
-        result._hashedModelName = Hash64(modelFilename);
-        result._model = _pimpl->_modelScaffolds.Get(result._hashedModelName);
-        if (!result._model || result._model->GetDependencyValidation()->GetValidationIndex() > 0) {
-            result._model = Internal::CreateModelScaffold(modelFilename, *_pimpl->_format);
-            _pimpl->_modelScaffolds.Insert(result._hashedModelName, result._model);
-        }
-
-            // We can't build the material properly until the material scaffold is ready
-            // So don't even try unless we get a successful resolve
-        if (result._model->TryResolve() == ::Assets::AssetState::Ready) {
-            result._hashedMaterialName = HashCombine(Hash64(materialFilename), result._hashedModelName);
-            auto matNamePtr = materialFilename;
-
-            result._material = _pimpl->_materialScaffolds.Get(result._hashedMaterialName);
-            if (!result._material || result._material->GetDependencyValidation()->GetValidationIndex() > 0) {
-                result._material = Internal::CreateMaterialScaffold(modelFilename, matNamePtr, *_pimpl->_format);
-                _pimpl->_materialScaffolds.Insert(result._hashedMaterialName, result._material);
-            }
-        }
-
-        return result;
-    }
-
-    auto ModelVisCache::GetModel(const Assets::ResChar modelFilename[], const Assets::ResChar materialFilename[]) -> Model
-    {
-        auto scaffold = GetScaffolds(modelFilename, materialFilename);
-        if (!scaffold._model || !scaffold._material)
-            ThrowException(::Assets::Exceptions::PendingResource(modelFilename, "Scaffolds still pending in ModelVisCache"));
-
-        uint64 hashedModel = uint64(scaffold._model.get()) | (uint64(scaffold._material.get()) << 48);
-        auto renderer = _pimpl->_modelRenderers.Get(hashedModel);
-        if (!renderer) {
-            auto searchRules = ::Assets::DefaultDirectorySearchRules(modelFilename);
-            searchRules.AddSearchDirectoryFromFilename(materialFilename);
-            renderer = std::make_shared<ModelRenderer>(
-                std::ref(*scaffold._model), std::ref(*scaffold._material), std::ref(*_pimpl->_sharedStateSet), &searchRules, 0);
-
-            _pimpl->_modelRenderers.Insert(hashedModel, renderer);
-        }
-
-            // cache the bounding box, because it's an expensive operation to recalculate
-        BoundingBox boundingBox;
-        auto boundingBoxI = _pimpl->_boundingBoxes.find(scaffold._hashedModelName);
-        if (boundingBoxI== _pimpl->_boundingBoxes.end()) {
-            boundingBox = scaffold._model->GetStaticBoundingBox(0);
-            _pimpl->_boundingBoxes.insert(std::make_pair(scaffold._hashedModelName, boundingBox));
-        } else {
-            boundingBox = boundingBoxI->second;
-        }
-
-        Model result;
-        result._renderer = renderer.get();
-        result._sharedStateSet = _pimpl->_sharedStateSet.get();
-        result._boundingBox = boundingBox;
-        result._hashedModelName = scaffold._hashedModelName;
-        result._hashedMaterialName = scaffold._hashedMaterialName;
-        return result;
-    }
-
-    ModelVisCache::ModelVisCache(std::shared_ptr<RenderCore::Assets::IModelFormat> format)
-    {
-        _pimpl = std::make_unique<Pimpl>();
-        _pimpl->_sharedStateSet = std::make_unique<SharedStateSet>();
-        _pimpl->_format = std::move(format);
-    }
-
-    ModelVisCache::~ModelVisCache()
-    {}
+    using RenderCore::Assets::ModelCache;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -236,7 +114,7 @@ namespace ToolsRig
         const ModelVisSettings* _settings;
     };
 
-    std::unique_ptr<SceneEngine::ISceneParser> CreateModelScene(const ModelVisCache::Model& model)
+    std::unique_ptr<SceneEngine::ISceneParser> CreateModelScene(const ModelCache::Model& model)
     {
         ModelVisSettings settings;
         *settings._camera = AlignCameraToBoundingBox(40.f, model._boundingBox);
@@ -251,7 +129,7 @@ namespace ToolsRig
     class ModelVisLayer::Pimpl
     {
     public:
-        std::shared_ptr<ModelVisCache> _cache;
+        std::shared_ptr<ModelCache> _cache;
         std::shared_ptr<ModelVisSettings> _settings;
         std::shared_ptr<VisEnvSettings> _envSettings;
     };
@@ -302,7 +180,7 @@ namespace ToolsRig
     ModelVisLayer::ModelVisLayer(
         std::shared_ptr<ModelVisSettings> settings,
         std::shared_ptr<VisEnvSettings> envSettings,
-        std::shared_ptr<ModelVisCache> cache) 
+        std::shared_ptr<ModelCache> cache) 
     {
         _pimpl = std::make_unique<Pimpl>();
         _pimpl->_settings = std::move(settings);
@@ -317,7 +195,7 @@ namespace ToolsRig
     class VisualisationOverlay::Pimpl
     {
     public:
-        std::shared_ptr<ModelVisCache> _cache;
+        std::shared_ptr<ModelCache> _cache;
         std::shared_ptr<ModelVisSettings> _settings;
         std::shared_ptr<VisMouseOver> _mouseOver;
     };
@@ -450,7 +328,7 @@ namespace ToolsRig
 
     VisualisationOverlay::VisualisationOverlay(
         std::shared_ptr<ModelVisSettings> settings,
-        std::shared_ptr<ModelVisCache> cache,
+        std::shared_ptr<ModelCache> cache,
         std::shared_ptr<VisMouseOver> mouseOver)
     {
         _pimpl = std::make_unique<Pimpl>();
@@ -477,11 +355,11 @@ namespace ToolsRig
 
         SingleModelIntersectionResolver(
             std::shared_ptr<ModelVisSettings> settings,
-            std::shared_ptr<ModelVisCache> cache);
+            std::shared_ptr<ModelCache> cache);
         ~SingleModelIntersectionResolver();
     protected:
-        std::shared_ptr<ModelVisSettings>   _settings;
-        std::shared_ptr<ModelVisCache>      _cache;
+        std::shared_ptr<ModelVisSettings> _settings;
+        std::shared_ptr<ModelCache> _cache;
     };
 
     auto SingleModelIntersectionResolver::FirstRayIntersection(
@@ -543,7 +421,7 @@ namespace ToolsRig
 
     SingleModelIntersectionResolver::SingleModelIntersectionResolver(
         std::shared_ptr<ModelVisSettings> settings,
-        std::shared_ptr<ModelVisCache> cache)
+        std::shared_ptr<ModelCache> cache)
     : _settings(settings), _cache(cache)
     {}
 
@@ -551,7 +429,7 @@ namespace ToolsRig
     {}
 
     std::shared_ptr<SceneEngine::IntersectionTestScene> CreateModelIntersectionScene(
-        std::shared_ptr<ModelVisSettings> settings, std::shared_ptr<ModelVisCache> cache)
+        std::shared_ptr<ModelVisSettings> settings, std::shared_ptr<ModelCache> cache)
     {
         std::shared_ptr<SceneEngine::IIntersectionTester> resolver = 
             std::make_shared<SingleModelIntersectionResolver>(std::move(settings), std::move(cache));

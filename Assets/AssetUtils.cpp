@@ -360,14 +360,17 @@ namespace Assets
         _state = newState;
     }
 
-    void PendingOperationMarker::StallWhilePending() const
+    AssetState PendingOperationMarker::StallWhilePending() const
     {
             // Stall until the _state variable changes
             // in another thread.
             // there is no semaphore, so we must poll
+            // note -- we should start a progress bar here...
         volatile AssetState* state = const_cast<AssetState*>(&_state);
         while (*state == AssetState::Pending)
             Threading::YieldTimeSlice();
+
+        return *state;
     }
 }
 

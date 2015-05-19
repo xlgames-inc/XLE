@@ -37,7 +37,7 @@ namespace Overlays
     class ModelBrowser : public SharedBrowser
     {
     public:
-        ModelBrowser(const char baseDirectory[], std::shared_ptr<RenderCore::Assets::IModelFormat> format);
+        ModelBrowser(const char baseDirectory[]);
         ~ModelBrowser();
 
         class ProcessInputResult

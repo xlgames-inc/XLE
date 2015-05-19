@@ -1424,7 +1424,7 @@ namespace ToolsRig
         std::shared_ptr<SceneEngine::IntersectionTestContext> intersectionTestContext,
         std::shared_ptr<SceneEngine::IntersectionTestScene> intersectionTestScene)
     {
-        auto browser = std::make_shared<ModelBrowser>("game\\model", editor->GetModelFormat());
+        auto browser = std::make_shared<ModelBrowser>("game\\model");
         _browserActive = false;
         _activeManipulatorIndex = 0;
         _drawSelectedModel = false;

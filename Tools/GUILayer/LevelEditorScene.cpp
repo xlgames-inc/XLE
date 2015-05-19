@@ -53,7 +53,7 @@ namespace GUILayer
     {
         _placementsManager = std::make_shared<SceneEngine::PlacementsManager>(
             SceneEngine::WorldPlacementsConfig(),
-            std::shared_ptr<RenderCore::Assets::IModelFormat>(), Float2(0.f, 0.f));
+            std::make_shared<RenderCore::Assets::ModelCache>(), Float2(0.f, 0.f));
         _placementsEditor = _placementsManager->CreateEditor();
         _placeholders = std::make_shared<ObjectPlaceholders>(std::move(flexObjects));
         _currentTime = 0.f;

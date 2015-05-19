@@ -1623,6 +1623,19 @@ namespace RenderCore { namespace Assets
         return ::Assets::AssetState::Ready;
     }
 
+    ::Assets::AssetState ModelScaffold::StallAndResolve()
+    {
+        if (_marker) {
+            auto markerState = _marker->StallWhilePending();
+            if (markerState != ::Assets::AssetState::Ready) return markerState;
+
+            CompleteFromMarker(*_marker);
+            _marker.reset();
+        }
+
+        return ::Assets::AssetState::Ready;
+    }
+
     void ModelScaffold::CompleteFromMarker(::Assets::PendingCompileMarker& marker)
     {
         std::unique_ptr<uint8[]> rawMemoryBlock;

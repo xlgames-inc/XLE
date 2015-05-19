@@ -85,6 +85,7 @@ namespace RenderCore { namespace Assets
 
         void Resolve() const;
         ::Assets::AssetState TryResolve();
+        ::Assets::AssetState StallAndResolve();
 
         static const auto CompileProcessType = ConstHash64<'Mode', 'l'>::Value;
 

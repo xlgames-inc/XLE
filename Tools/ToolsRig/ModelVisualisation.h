@@ -8,6 +8,7 @@
 
 #include "../../PlatformRig/OverlaySystem.h"
 #include "../../Assets/Assets.h"
+#include "../../RenderCore/Assets/ModelCache.h"
 
 namespace RenderCore { namespace Assets 
 {
@@ -30,41 +31,6 @@ namespace ToolsRig
 {
     class VisCameraSettings;
     class VisEnvSettings;
-
-    class ModelVisCache
-    {
-    public:
-        class Model
-        {
-        public:
-            RenderCore::Assets::ModelRenderer* _renderer;
-            RenderCore::Assets::SharedStateSet* _sharedStateSet;
-            std::pair<Float3, Float3> _boundingBox;
-            uint64 _hashedModelName;
-            uint64 _hashedMaterialName;
-
-            Model() : _renderer(nullptr), _sharedStateSet(nullptr), _hashedModelName(0), _hashedMaterialName(0) {}
-        };
-
-        class Scaffolds
-        {
-        public:
-            std::shared_ptr<RenderCore::Assets::ModelScaffold> _model;
-            std::shared_ptr<RenderCore::Assets::MaterialScaffold> _material;
-            uint64 _hashedModelName;
-            uint64 _hashedMaterialName;
-        };
-
-        Model GetModel(const Assets::ResChar modelFilename[], const Assets::ResChar materialFilename[]);
-        Scaffolds GetScaffolds(const Assets::ResChar modelFilename[], const Assets::ResChar materialFilename[]);
-        std::string HashToModelName(uint64 hash);
-
-        ModelVisCache(std::shared_ptr<RenderCore::Assets::IModelFormat> format);
-        ~ModelVisCache();
-    protected:
-        class Pimpl;
-        std::unique_ptr<Pimpl> _pimpl;
-    };
 
     class ChangeEvent
     {
@@ -136,7 +102,7 @@ namespace ToolsRig
         ModelVisLayer(
             std::shared_ptr<ModelVisSettings> settings,
             std::shared_ptr<VisEnvSettings> envSettings,
-            std::shared_ptr<ModelVisCache> cache);
+            std::shared_ptr<RenderCore::Assets::ModelCache> cache);
         ~ModelVisLayer();
     protected:
         class Pimpl;
@@ -158,7 +124,7 @@ namespace ToolsRig
 
         VisualisationOverlay(
             std::shared_ptr<ModelVisSettings> settings,
-            std::shared_ptr<ModelVisCache> cache,
+            std::shared_ptr<RenderCore::Assets::ModelCache> cache,
             std::shared_ptr<VisMouseOver> mouseOver);
         ~VisualisationOverlay();
     protected:
@@ -191,8 +157,8 @@ namespace ToolsRig
         std::shared_ptr<VisCameraSettings> _camera;
     };
 
-    std::unique_ptr<SceneEngine::ISceneParser> CreateModelScene(const ModelVisCache::Model& model);
+    std::unique_ptr<SceneEngine::ISceneParser> CreateModelScene(const RenderCore::Assets::ModelCache::Model& model);
     std::shared_ptr<SceneEngine::IntersectionTestScene> CreateModelIntersectionScene(
-        std::shared_ptr<ModelVisSettings> settings, std::shared_ptr<ModelVisCache> cache);
+        std::shared_ptr<ModelVisSettings> settings, std::shared_ptr<RenderCore::Assets::ModelCache> cache);
 }
 

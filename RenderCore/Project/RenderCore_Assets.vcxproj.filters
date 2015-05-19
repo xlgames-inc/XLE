@@ -36,6 +36,7 @@
     <ClCompile Include="..\Assets\RawAnimationCurve.cpp">
       <Filter>Assets</Filter>
     </ClCompile>
+    <ClCompile Include="..\Assets\ModelCache.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Assets\ModelRunTime.h">
@@ -74,5 +75,6 @@
     <ClInclude Include="..\Assets\RawAnimationCurve.h">
       <Filter>Assets</Filter>
     </ClInclude>
+    <ClInclude Include="..\Assets\ModelCache.h" />
   </ItemGroup>
 </Project>

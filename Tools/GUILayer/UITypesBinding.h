@@ -245,7 +245,7 @@ namespace GUILayer
         VisMouseOver(
             std::shared_ptr<ToolsRig::VisMouseOver> attached,
             std::shared_ptr<ToolsRig::ModelVisSettings> settings,
-            std::shared_ptr<ToolsRig::ModelVisCache> cache);
+            std::shared_ptr<RenderCore::Assets::ModelCache> cache);
         VisMouseOver();
         ~VisMouseOver();
 
@@ -257,7 +257,7 @@ namespace GUILayer
     protected:
         clix::shared_ptr<ToolsRig::VisMouseOver> _object;
         clix::shared_ptr<ToolsRig::ModelVisSettings> _modelSettings;
-        clix::shared_ptr<ToolsRig::ModelVisCache> _modelCache;
+        clix::shared_ptr<RenderCore::Assets::ModelCache> _modelCache;
     };
 
     template<typename NameType, typename ValueType>

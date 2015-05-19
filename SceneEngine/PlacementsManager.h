@@ -14,7 +14,7 @@
 #include <string>
 #include <functional>
 
-namespace RenderCore { namespace Assets { class IModelFormat; class DelayedDrawCall; } }
+namespace RenderCore { namespace Assets { class ModelCache; class DelayedDrawCall; } }
 namespace RenderCore { namespace Techniques { class ParsingContext; } }
 
 namespace SceneEngine
@@ -62,7 +62,7 @@ namespace SceneEngine
 
         PlacementsManager(
             const WorldPlacementsConfig& cfg,
-            std::shared_ptr<RenderCore::Assets::IModelFormat> modelFormat,
+            std::shared_ptr<RenderCore::Assets::ModelCache> modelCache,
             const Float2& worldOffset);
         ~PlacementsManager();
     protected:
@@ -171,7 +171,6 @@ namespace SceneEngine
 
         void Save();
 
-        std::shared_ptr<RenderCore::Assets::IModelFormat> GetModelFormat();
         std::pair<Float3, Float3> GetModelBoundingBox(const Assets::ResChar modelName[]) const;
 
         PlacementsEditor(std::shared_ptr<PlacementsRenderer> renderer);

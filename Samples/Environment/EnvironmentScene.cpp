@@ -20,7 +20,7 @@
 
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../RenderCore/Metal/State.h"
-#include "../../RenderCore/Assets/ModelFormatPlugins.h"
+#include "../../RenderCore/Assets/ModelCache.h"
 
 #include "../../ConsoleRig/Console.h"
 #include "../../Math/Transformations.h"
@@ -44,7 +44,6 @@ namespace Sample
         std::shared_ptr<SceneEngine::TerrainManager>    _terrainManager;
         std::shared_ptr<SceneEngine::PlacementsManager> _placementsManager;
         std::shared_ptr<RenderCore::Techniques::CameraDesc> _cameraDesc;
-        std::shared_ptr<RenderCore::Assets::IModelFormat>   _modelFormat;
         PlatformRig::EnvironmentSettings _envSettings;
 
         float _time;
@@ -174,11 +173,10 @@ namespace Sample
             MainTerrainCoords = pimpl->_terrainManager->GetCoords();
         #endif
 
-        pimpl->_modelFormat = std::make_shared<RenderCore::Assets::ModelFormat_Plugins>();
-
         pimpl->_placementsManager = std::make_shared<SceneEngine::PlacementsManager>(
             SceneEngine::WorldPlacementsConfig(WorldDirectory),
-            pimpl->_modelFormat, Truncate(worldOffset));
+            std::make_shared<RenderCore::Assets::ModelCache>(), 
+            Truncate(worldOffset));
 
         pimpl->_cameraDesc = std::make_shared<RenderCore::Techniques::CameraDesc>();
         pimpl->_cameraDesc->_cameraToWorld = pimpl->_characters->DefaultCameraToWorld();

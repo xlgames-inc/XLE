@@ -188,7 +188,7 @@ namespace GUILayer
     public ref class VisResources
     {
     public:
-        clix::shared_ptr<ToolsRig::ModelVisCache> _visCache;
+        clix::shared_ptr<RenderCore::Assets::ModelCache> _visCache;
 
         VisResources();
         ~VisResources();
@@ -197,8 +197,7 @@ namespace GUILayer
 
     VisResources::VisResources()
     {
-        _visCache = std::make_shared<ToolsRig::ModelVisCache>(
-                std::shared_ptr<RenderCore::Assets::IModelFormat>());
+        _visCache = std::make_shared<RenderCore::Assets::ModelCache>();
     }
 
     VisResources::~VisResources() {}
