@@ -33,6 +33,9 @@
     </ClCompile>
     <ClCompile Include="..\Assets\Services.cpp" />
     <ClCompile Include="..\Assets\LocalCompiledShaderSource.cpp" />
+    <ClCompile Include="..\Assets\RawAnimationCurve.cpp">
+      <Filter>Assets</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Assets\ModelRunTime.h">
@@ -68,5 +71,8 @@
     </ClInclude>
     <ClInclude Include="..\Assets\Services.h" />
     <ClInclude Include="..\Assets\LocalCompiledShaderSource.h" />
+    <ClInclude Include="..\Assets\RawAnimationCurve.h">
+      <Filter>Assets</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

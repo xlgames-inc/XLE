@@ -57,18 +57,10 @@
       <Filter>DX11</Filter>
     </ClInclude>
     <ClInclude Include="..\IDevice_Forward.h" />
-    <ClInclude Include="..\Resource.h" />
     <ClInclude Include="..\Metal\GPUProfiler.h">
       <Filter>Metal</Filter>
     </ClInclude>
     <ClInclude Include="..\Documentation.h" />
-    <ClInclude Include="..\Assets\TransformationCommands.h">
-      <Filter>Assets</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Assets\RawAnimationCurve.h">
-      <Filter>Assets</Filter>
-    </ClInclude>
-    <ClInclude Include="..\RenderUtils.h" />
     <ClInclude Include="..\FlexForward.h">
       <Filter>Util</Filter>
     </ClInclude>
@@ -83,6 +75,13 @@
     </ClInclude>
     <ClInclude Include="..\IThreadContext.h" />
     <ClInclude Include="..\IThreadContext_Forward.h" />
+    <ClInclude Include="..\RenderUtils.h">
+      <Filter>Util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Resource.h">
+      <Filter>Util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ShaderService.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Util">
@@ -100,9 +99,6 @@
     <Filter Include="Metal\Detail">
       <UniqueIdentifier>{6b339f69-4f39-44fe-9925-0689009f20ed}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Assets">
-      <UniqueIdentifier>{992bd163-d560-4a3d-9a70-99471bcefb24}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\OpenGLES\Device.cpp">
@@ -111,11 +107,13 @@
     <ClCompile Include="..\DX11\Device.cpp">
       <Filter>DX11</Filter>
     </ClCompile>
-    <ClCompile Include="..\Resource.cpp" />
-    <ClCompile Include="..\Assets\RawAnimationCurve.cpp">
-      <Filter>Assets</Filter>
-    </ClCompile>
     <ClCompile Include="..\Version.cpp" />
-    <ClCompile Include="..\RenderUtils.cpp" />
+    <ClCompile Include="..\RenderUtils.cpp">
+      <Filter>Util</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Resource.cpp">
+      <Filter>Util</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ShaderService.cpp" />
   </ItemGroup>
 </Project>

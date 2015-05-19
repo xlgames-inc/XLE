@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "../Metal/Shader.h"
+#include "../ShaderService.h"
 #include "../../Assets/IntermediateResources.h"
 #include "../../Utility/Threading/ThreadingUtils.h"
 #include <vector>
@@ -19,7 +19,7 @@ namespace RenderCore { namespace Assets
 
     class LocalCompiledShaderSource 
         : public ::Assets::IntermediateResources::IResourceCompiler
-        , public Metal::ShaderService::IShaderSource
+        , public ShaderService::IShaderSource
         , public std::enable_shared_from_this<LocalCompiledShaderSource>
     {
     public:
@@ -27,9 +27,9 @@ namespace RenderCore { namespace Assets
             uint64 typeCode, const ::Assets::ResChar* initializers[], unsigned initializerCount,
             const ::Assets::IntermediateResources::Store& destinationStore);
 
-        using IPendingMarker = Metal::ShaderService::IPendingMarker;
+        using IPendingMarker = ShaderService::IPendingMarker;
         std::shared_ptr<IPendingMarker> CompileFromFile(
-            const Metal::ShaderService::ResId& resId, 
+            const ShaderService::ResId& resId, 
             const ::Assets::ResChar definesTable[]) const;
             
         std::shared_ptr<IPendingMarker> CompileFromMemory(

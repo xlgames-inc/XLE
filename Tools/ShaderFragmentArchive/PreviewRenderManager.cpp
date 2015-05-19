@@ -108,9 +108,9 @@ namespace PreviewRender
     class PreviewBuilderPimpl
     {
     public:
-        std::unique_ptr<RenderCore::Metal::CompiledShaderByteCode>      _vertexShader;
-        std::unique_ptr<RenderCore::Metal::CompiledShaderByteCode>      _pixelShader;
-        std::unique_ptr<RenderCore::Metal::ShaderProgram>               _shaderProgram;
+        std::unique_ptr<RenderCore::CompiledShaderByteCode>     _vertexShader;
+        std::unique_ptr<RenderCore::CompiledShaderByteCode>     _pixelShader;
+        std::unique_ptr<RenderCore::Metal::ShaderProgram>       _shaderProgram;
         std::string                                                     _errorString;
 
         RenderCore::Metal::ShaderProgram & GetShaderProgram()
@@ -409,7 +409,7 @@ namespace PreviewRender
 
         std::string nativeShaderText = clix::marshalString<clix::E_UTF8>(shaderText);
         try {
-            using namespace RenderCore::Metal;
+            using namespace RenderCore;
             _pimpl->_vertexShader = std::make_unique<CompiledShaderByteCode>(nativeShaderText.c_str(), "VertexShaderEntry", VS_DefShaderModel, "SHADER_NODE_EDITOR=1");
             _pimpl->_pixelShader = std::make_unique<CompiledShaderByteCode>(nativeShaderText.c_str(), "PixelShaderEntry", PS_DefShaderModel, "SHADER_NODE_EDITOR=1");
         }

@@ -8,7 +8,8 @@
 #include "LocalCompiledShaderSource.h"
 #include "MaterialScaffold.h"
 #include "ColladaCompilerInterface.h"
-#include "../Metal/Shader.h"
+#include "../Metal/Shader.h"            // (for Metal::CreateLowLevelShaderCompiler)
+#include "../ShaderService.h"
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Assets/IntermediateResources.h"
 #include "../../ConsoleRig/AttachableInternal.h"
@@ -20,7 +21,7 @@ namespace RenderCore { namespace Assets
 
     Services::Services(RenderCore::IDevice* device)
     {
-        _shaderService = std::make_unique<Metal::ShaderService>();
+        _shaderService = std::make_unique<ShaderService>();
         _shaderService->SetLowLevelCompiler(Metal::CreateLowLevelShaderCompiler());
 
         auto shaderSource = std::make_shared<LocalCompiledShaderSource>();
@@ -28,7 +29,7 @@ namespace RenderCore { namespace Assets
 
         auto& asyncMan = ::Assets::Services::GetAsyncMan();
         asyncMan.GetIntermediateCompilers().AddCompiler(
-            Metal::CompiledShaderByteCode::CompileProcessType, shaderSource);
+            CompiledShaderByteCode::CompileProcessType, shaderSource);
 
         if (device) {
             BufferUploads::AttachLibrary(ConsoleRig::GlobalServices::GetInstance());
@@ -77,13 +78,13 @@ namespace RenderCore { namespace Assets
     {
         assert(s_instance==nullptr);
         s_instance = this;
-        Metal::ShaderService::SetInstance(_shaderService.get());
+        ShaderService::SetInstance(_shaderService.get());
     }
 
     void Services::DetachCurrentModule()
     {
         assert(s_instance==this);
-        Metal::ShaderService::SetInstance(nullptr);
+        ShaderService::SetInstance(nullptr);
         s_instance = nullptr;
     }
 

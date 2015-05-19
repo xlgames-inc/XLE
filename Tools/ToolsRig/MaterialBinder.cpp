@@ -8,6 +8,7 @@
 #include "../../RenderCore/Metal/InputLayout.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/State.h"
+#include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderCore/Assets/DeferredShaderResource.h"
 #include "../../RenderCore/Techniques/TechniqueMaterial.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
@@ -267,7 +268,7 @@ namespace ToolsRig
             //      default objects.
             //
 
-        const Metal::CompiledShaderByteCode* shaderCode[] = {
+        const CompiledShaderByteCode* shaderCode[] = {
             &shaderProgram.GetCompiledVertexShader(),
             &shaderProgram.GetCompiledPixelShader(),
             shaderProgram.GetCompiledGeometryShader(),
@@ -276,7 +277,7 @@ namespace ToolsRig
         for (unsigned s=0; s<dimof(shaderCode); ++s) {
             if (!shaderCode[s]) continue;
 
-            auto reflection = shaderCode[s]->GetReflection();
+            auto reflection = Metal::CreateReflection(*shaderCode[s]);
             D3D11_SHADER_DESC shaderDesc;
             reflection->GetDesc(&shaderDesc);
 
@@ -354,7 +355,7 @@ namespace ToolsRig
         Metal::ViewportDesc currentViewport(metalContext);
             
         auto materialConstants = BuildMaterialConstants(
-            *shaderProgram.GetCompiledPixelShader().GetReflection(), 
+            *Metal::CreateReflection(shaderProgram.GetCompiledPixelShader()), 
             mat._constants, sysConstants, 
             UInt2(unsigned(currentViewport.Width), unsigned(currentViewport.Height)));
         

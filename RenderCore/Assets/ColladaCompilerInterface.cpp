@@ -127,7 +127,7 @@ namespace RenderCore { namespace Assets
         std::thread _thread;
         XlHandle _events[2];
         volatile bool _workerQuit;
-        LockFree::FixedSizeQueue<std::shared_ptr<QueuedCompileOperation>, 256> _queue;
+        LockFree::FixedSizeQueue<std::weak_ptr<QueuedCompileOperation>, 256> _queue;
 
         ColladaCompiler::Pimpl* _pimpl; // (unprotected because it owns us)
 
@@ -154,9 +154,10 @@ namespace RenderCore { namespace Assets
     void ColladaCompiler::Pimpl::CompilationThread::ThreadFunction()
     {
         while (!_workerQuit) {
-            std::shared_ptr<QueuedCompileOperation>* op;
+            std::weak_ptr<QueuedCompileOperation>* op;
             if (_queue.try_front(op)) {
-                _pimpl->PerformCompile(**op);
+                auto o = op->lock();
+                if (o) _pimpl->PerformCompile(*o);
                 _queue.pop();
             } else {
                 XlWaitForMultipleSyncObjects(

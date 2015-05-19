@@ -11,6 +11,7 @@
 
 #include "../../RenderCore/Metal/State.h"
 #include "../../RenderCore/Metal/InputLayout.h"
+#include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderCore/Assets/SharedStateSet.h"
 #include "../../RenderCore/Assets/IModelFormat.h"
 #include "../../RenderCore/Assets/DeferredShaderResource.h"

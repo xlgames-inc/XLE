@@ -36,11 +36,11 @@ namespace RenderCore { namespace Assets
 {
     static const bool CompileInBackground = true;
     using ::Assets::ResChar;
-    using ResId = Metal::ShaderService::ResId;
+    using ResId = ShaderService::ResId;
 
         ////////////////////////////////////////////////////////////
 
-    class ShaderCompileMarker : public Metal::ShaderService::IPendingMarker, public ::Assets::AsyncLoadOperation
+    class ShaderCompileMarker : public ShaderService::IPendingMarker, public ::Assets::AsyncLoadOperation
     {
     public:
         using Payload = std::shared_ptr<std::vector<uint8>>;
@@ -51,6 +51,11 @@ namespace RenderCore { namespace Assets
         const Payload& Resolve(
             const char initializer[],
             const std::shared_ptr<::Assets::DependencyValidation>& depVal = nullptr) const;
+
+        ::Assets::AssetState TryResolve(
+            Payload& result,
+            const char initializer[], 
+            const std::shared_ptr<::Assets::DependencyValidation>& depVal) const;
 
         const std::vector<::Assets::DependentFileState>& GetDependencies() const;
 
@@ -164,7 +169,7 @@ namespace RenderCore { namespace Assets
         _payload.reset();
         _deps.clear();
 
-        auto& compiler = Metal::ShaderService::GetInstance().GetLowLevelCompiler();
+        auto& compiler = ShaderService::GetInstance().GetLowLevelCompiler();
         auto success = compiler.DoLowLevelCompile(
             _payload, errors, _deps,
             buffer, bufferSize, _shaderPath,
@@ -197,6 +202,23 @@ namespace RenderCore { namespace Assets
                 RegisterFileDependency(depVal, i._filename.c_str());
 
         return _payload;
+    }
+
+    auto ShaderCompileMarker::TryResolve(
+        Payload& result,
+        const char initializer[], 
+        const std::shared_ptr<::Assets::DependencyValidation>& depVal) const -> ::Assets::AssetState
+    {
+        auto state = GetState();
+        if (state != ::Assets::AssetState::Ready)
+            return state;
+
+        if (depVal)
+            for (const auto& i:_deps)
+                RegisterFileDependency(depVal, i._filename.c_str());
+
+        result = _payload;
+        return ::Assets::AssetState::Ready;
     }
 
         ////////////////////////////////////////////////////////////
@@ -392,7 +414,7 @@ namespace RenderCore { namespace Assets
             return nullptr; // can't start a new compile now. Probably we're shutting down
         }
 
-        auto shaderId = Metal::ShaderService::GetInstance().MakeResId(initializers[0]);
+        auto shaderId = ShaderService::GetInstance().MakeResId(initializers[0]);
 
         char archiveName[MaxPath];
         _snprintf_s(archiveName, _TRUNCATE, "%s-%s", shaderId._filename, shaderId._shaderModel);
@@ -464,7 +486,7 @@ namespace RenderCore { namespace Assets
 
                             #if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
                                 auto metricsString = 
-                                    Metal::ShaderService::GetInstance().GetLowLevelCompiler().MakeShaderMetricsString(
+                                    ShaderService::GetInstance().GetLowLevelCompiler().MakeShaderMetricsString(
                                         AsPointer(payload->cbegin()), payload->size());
                             #endif
 

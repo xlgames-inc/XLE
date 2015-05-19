@@ -18,6 +18,7 @@
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/DeviceContextImpl.h"
+#include "../RenderCore/Metal/Shader.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/DataPacket.h"
 #include "../BufferUploads/ResourceLocator.h"

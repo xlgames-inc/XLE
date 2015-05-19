@@ -14,6 +14,7 @@
 #include "../../RenderCore/Techniques/ResourceBox.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/InputLayout.h"
+#include "../../RenderCore/Metal/Shader.h"
 #include "../../Assets/Assets.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../Math/Transformations.h"

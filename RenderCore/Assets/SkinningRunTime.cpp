@@ -72,7 +72,7 @@ namespace RenderCore { namespace Assets
         const Metal::VertexShader*        _skinningVertexShaderP1;
         const Metal::VertexShader*        _skinningVertexShaderP0;
 
-        const Metal::CompiledShaderByteCode* _vbByteCode;
+        const CompiledShaderByteCode* _vbByteCode;
 
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
         std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;

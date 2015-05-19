@@ -155,8 +155,6 @@
     <PreLinkEvent />
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="..\Assets\RawAnimationCurve.h" />
-    <ClInclude Include="..\Assets\TransformationCommands.h" />
     <ClInclude Include="..\Documentation.h" />
     <ClInclude Include="..\DX11\Device.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">true</ExcludedFromBuild>
@@ -221,6 +219,7 @@
     </ClInclude>
     <ClInclude Include="..\RenderUtils.h" />
     <ClInclude Include="..\Resource.h" />
+    <ClInclude Include="..\ShaderService.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Utility\Project\Utility.vcxproj">
@@ -234,7 +233,6 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\Assets\RawAnimationCurve.cpp" />
     <ClCompile Include="..\DX11\Device.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Tegra-Android'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|Tegra-Android'">true</ExcludedFromBuild>
@@ -256,6 +254,7 @@
     </ClCompile>
     <ClCompile Include="..\RenderUtils.cpp" />
     <ClCompile Include="..\Resource.cpp" />
+    <ClCompile Include="..\ShaderService.cpp" />
     <ClCompile Include="..\Version.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

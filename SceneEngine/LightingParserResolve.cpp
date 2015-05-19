@@ -22,6 +22,7 @@
 #include "../RenderCore/Metal/DeviceContextImpl.h"
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/GPUProfiler.h"
+#include "../RenderCore/Metal/Shader.h"
 
 #include "../ConsoleRig/Console.h"
 #include "../Math/Transformations.h"

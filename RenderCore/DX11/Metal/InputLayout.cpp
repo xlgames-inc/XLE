@@ -10,6 +10,7 @@
 #include "ShaderResource.h"
 #include "DeviceContext.h"
 #include "DX11Utils.h"
+#include "Shader.h"
 #include "../../RenderUtils.h"
 #include "../../../Utility/StringUtils.h"
 #include "../../../Utility/MemoryUtils.h"
@@ -34,8 +35,7 @@ namespace RenderCore { namespace Metal_DX11
 
     intrusive_ptr<ID3D::InputLayout>   BoundInputLayout::BuildInputLayout(const InputLayout& layout, const CompiledShaderByteCode& shader)
     {
-        const void* byteCode = shader.GetByteCode();
-        size_t byteCodeSize = shader.GetSize();
+        auto byteCode = shader.GetByteCode();
 
         const unsigned MaxInputLayoutElements = 64;
 
@@ -55,7 +55,7 @@ namespace RenderCore { namespace Metal_DX11
 
         return ObjectFactory().CreateInputLayout(
             nativeLayout, (unsigned)std::min(dimof(nativeLayout), layout.second), 
-            byteCode, byteCodeSize);
+            byteCode.first, byteCode.second);
     }
 
     namespace GlobalInputLayouts
@@ -133,11 +133,11 @@ namespace RenderCore { namespace Metal_DX11
     {
             //  In this case, we must bind with every shader stage 
             //      (since a shader program actually reflects the state of the entire stage pipeline) 
-        _stageBindings[ShaderStage::Vertex]._reflection     = shader.GetCompiledVertexShader().GetReflection();
-        _stageBindings[ShaderStage::Pixel]._reflection      = shader.GetCompiledPixelShader().GetReflection();
+        _stageBindings[ShaderStage::Vertex]._reflection     = CreateReflection(shader.GetCompiledVertexShader());
+        _stageBindings[ShaderStage::Pixel]._reflection      = CreateReflection(shader.GetCompiledPixelShader());
         auto* geoShader = shader.GetCompiledGeometryShader();
         if (geoShader) {
-            _stageBindings[ShaderStage::Geometry]._reflection   = geoShader->GetReflection();
+            _stageBindings[ShaderStage::Geometry]._reflection   = CreateReflection(*geoShader);
         }
     }
 
@@ -145,14 +145,14 @@ namespace RenderCore { namespace Metal_DX11
     {
             //  In this case, we must bind with every shader stage 
             //      (since a shader program actually reflects the state of the entire stage pipeline) 
-        _stageBindings[ShaderStage::Vertex]._reflection     = shader.GetCompiledVertexShader().GetReflection();
-        _stageBindings[ShaderStage::Pixel]._reflection      = shader.GetCompiledPixelShader().GetReflection();
+        _stageBindings[ShaderStage::Vertex]._reflection     = CreateReflection(shader.GetCompiledVertexShader());
+        _stageBindings[ShaderStage::Pixel]._reflection      = CreateReflection(shader.GetCompiledPixelShader());
         auto* geoShader = shader.GetCompiledGeometryShader();
         if (geoShader) {
-            _stageBindings[ShaderStage::Geometry]._reflection   = geoShader->GetReflection();
+            _stageBindings[ShaderStage::Geometry]._reflection   = CreateReflection(*geoShader);
         }
-        _stageBindings[ShaderStage::Hull]._reflection       = shader.GetCompiledHullShader().GetReflection();
-        _stageBindings[ShaderStage::Domain]._reflection     = shader.GetCompiledDomainShader().GetReflection();
+        _stageBindings[ShaderStage::Hull]._reflection       = CreateReflection(shader.GetCompiledHullShader());
+        _stageBindings[ShaderStage::Domain]._reflection     = CreateReflection(shader.GetCompiledDomainShader());
     }
 
 	BoundUniforms::BoundUniforms(const CompiledShaderByteCode& shader)
@@ -160,7 +160,7 @@ namespace RenderCore { namespace Metal_DX11
             //  In this case, we're binding with a single shader stage
         ShaderStage::Enum stage = shader.GetStage();
         if (stage < dimof(_stageBindings)) {
-            _stageBindings[stage]._reflection = shader.GetReflection();
+            _stageBindings[stage]._reflection = CreateReflection(shader);
         }
     }
 

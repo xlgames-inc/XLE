@@ -29,6 +29,7 @@
 #include "../RenderCore/Metal/Buffer.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/DeviceContextImpl.h"
+#include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/RenderUtils.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/DataPacket.h"
@@ -630,7 +631,7 @@ namespace SceneEngine
         ConstantBuffer renderingConstantsBuffer(&renderingConstants, sizeof(renderingConstants));
         const ConstantBuffer* cbs[] = { &renderingConstantsBuffer, &materialConstantBuffer };
 
-        BoundUniforms setupUniforms(::Assets::GetAssetDep<Metal::CompiledShaderByteCode>("game/xleres/Ocean/FFT.csh:Setup:cs_*", "DO_INVERSE=0"));
+        BoundUniforms setupUniforms(::Assets::GetAssetDep<CompiledShaderByteCode>("game/xleres/Ocean/FFT.csh:Setup:cs_*", "DO_INVERSE=0"));
         Techniques::TechniqueContext::BindGlobalUniforms(setupUniforms);
         setupUniforms.BindConstantBuffer(Hash64("OceanRenderingConstants"), 0, 1);
         setupUniforms.BindConstantBuffer(Hash64("OceanMaterialSettings"), 1, 1);
@@ -670,7 +671,7 @@ namespace SceneEngine
 
             //  Generate normals using the displacement textures
         if (!fftBuffer._normalsTextureUAV.empty()) {
-            BoundUniforms buildNormalsUniforms(::Assets::GetAssetDep<Metal::CompiledShaderByteCode>(fftBuffer._useDerivativesMapForNormals ? "game/xleres/Ocean/OceanNormals.csh:BuildDerivatives:cs_*" : "game/xleres/Ocean/OceanNormals.csh:BuildNormals:cs_*"));
+            BoundUniforms buildNormalsUniforms(::Assets::GetAssetDep<CompiledShaderByteCode>(fftBuffer._useDerivativesMapForNormals ? "game/xleres/Ocean/OceanNormals.csh:BuildDerivatives:cs_*" : "game/xleres/Ocean/OceanNormals.csh:BuildNormals:cs_*"));
             Techniques::TechniqueContext::BindGlobalUniforms(buildNormalsUniforms);
             buildNormalsUniforms.BindConstantBuffer(Hash64("OceanRenderingConstants"), 0, 1);
             buildNormalsUniforms.BindConstantBuffer(Hash64("OceanMaterialSettings"), 1, 1);

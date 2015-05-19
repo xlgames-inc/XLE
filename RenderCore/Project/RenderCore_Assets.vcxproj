@@ -152,6 +152,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\Assets\AssetUtils.cpp" />
+    <ClCompile Include="..\Assets\RawAnimationCurve.cpp" />
     <ClCompile Include="..\Assets\Services.cpp" />
     <ClCompile Include="..\Assets\ColladaCompilerInterface.cpp" />
     <ClCompile Include="..\Assets\DeferredShaderResource.cpp" />
@@ -168,6 +169,7 @@
   <ItemGroup>
     <ClInclude Include="..\Assets\AnimationRunTime.h" />
     <ClInclude Include="..\Assets\AssetUtils.h" />
+    <ClInclude Include="..\Assets\RawAnimationCurve.h" />
     <ClInclude Include="..\Assets\Services.h" />
     <ClInclude Include="..\Assets\ColladaCompilerInterface.h" />
     <ClInclude Include="..\Assets\DeferredShaderResource.h" />

@@ -8,9 +8,9 @@
 
 #include "DX11.h"
 #include "Format.h"
-#include "Shader.h"     // (just for ShaderStage enum)
 #include "Buffer.h"
 #include "../../RenderUtils.h"
+#include "../../ShaderService.h"     // (just for ShaderStage enum)
 #include "../../../Utility/IntrusivePtr.h"
 #include "../../../Utility/MiniHeap.h"
 #include <memory>
@@ -70,7 +70,6 @@ namespace RenderCore { namespace Metal_DX11
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class CompiledShaderByteCode;
     class ShaderProgram;
 
     class BoundInputLayout
@@ -127,6 +126,8 @@ namespace RenderCore { namespace Metal_DX11
 
     class DeviceContext;
     class ShaderResourceView;
+    class ShaderProgram;
+    class DeepShaderProgram;
 
     typedef SharedPkt ConstantBufferPacket;
 
