@@ -207,8 +207,7 @@ namespace RenderCore { namespace Assets
             return result;
         }
 
-        static const auto DefaultNormalsTextureBindingHash = Hash64("NormalsTexture");
-        static const auto DefaultParametersTextureBindingHash = Hash64("ParametersTexture");
+        static const auto DefaultNormalsTextureBindingHash = ParameterBox::MakeParameterNameHash("NormalsTexture");
 
         static std::vector<std::pair<MaterialGuid, SubMatResources>> BuildMaterialResources(
             const ModelScaffold& scaffold, const MaterialScaffold& matScaffold,
@@ -260,7 +259,6 @@ namespace RenderCore { namespace Assets
 
                 // configure the texture bind points array & material parameters box
             for (auto i=materialResources.begin(); i!=materialResources.end(); ++i) {
-                ::Assets::rstring boundNormalMapName;
                 ParameterBox materialParamBox;
                 RenderStateSet stateSet;
 
@@ -275,21 +273,17 @@ namespace RenderCore { namespace Assets
                 
                     for (unsigned c=0; c<matData->_bindings.GetParameterCount(); ++c) {
                         auto bindName = matData->_bindings.GetFullNameAtIndex(c);
-                        auto bindNameHash = Hash64(bindName);
-                
                         materialParamBox.SetParameter(
                             (const char*)(StringMeld<64>() << "RES_HAS_" << bindName), 1);
-                        if (bindNameHash == DefaultNormalsTextureBindingHash) {
-                            boundNormalMapName = matData->_bindings.GetString<::Assets::ResChar>(
-                                ParameterBox::MakeParameterNameHash(bindName));
-                        }
                 
+                        auto bindNameHash = Hash64(bindName);
                         auto q = std::lower_bound(textureBindPoints.begin(), textureBindPoints.end(), bindNameHash);
                         if (q != textureBindPoints.end() && *q == bindNameHash) { continue; }
                         textureBindPoints.insert(q, bindNameHash);
                     }
                 }
 
+                auto boundNormalMapName = matData->_bindings.GetString<::Assets::ResChar>(DefaultNormalsTextureBindingHash);
                 if (!boundNormalMapName.empty()) {
                         //  We need to decide whether the normal map is "DXT" 
                         //  format or not. This information isn't in the material
@@ -347,7 +341,7 @@ namespace RenderCore { namespace Assets
                     auto index = std::distance(textureBindPoints.cbegin(), i);
 
                     auto resourceName = matData->_bindings.GetString<::Assets::ResChar>(
-                        ParameterBox::MakeParameterNameHash(bindName));
+                        matData->_bindings.GetParameterAtIndex(c));
                     if (resourceName.empty()) continue;
                 
                     TRY {

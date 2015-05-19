@@ -69,6 +69,9 @@ namespace Sample
         auto skinMarker = compilers.PrepareResource(RenderCore::Assets::ModelScaffold::CompileProcessType, &skin, 1, store);
         auto skelMarker = compilers.PrepareResource(RenderCore::Assets::SkeletonScaffold::CompileProcessType, &skeleton, 1, store);
         auto animMarker = compilers.PrepareResource(RenderCore::Assets::AnimationSetScaffold::CompileProcessType, &animationSet, 1, store);
+        skinMarker->StallWhilePending();
+        skelMarker->StallWhilePending();
+        animMarker->StallWhilePending();
         assert(skinMarker->GetState() == Assets::AssetState::Ready);
         assert(skelMarker->GetState() == Assets::AssetState::Ready);
         assert(animMarker->GetState() == Assets::AssetState::Ready);

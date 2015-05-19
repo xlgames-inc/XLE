@@ -14,8 +14,6 @@ namespace RenderCore { namespace Techniques { class CameraDesc; class GlobalTran
 
 namespace RenderCore { namespace Assets
 {
-    RenderCore::Metal::ConstantBufferPacket DefaultMaterialProperties();
-
     extern Metal::ConstantBufferLayoutElement   GlobalTransform_Elements[];
     extern size_t                               GlobalTransform_ElementsCount;
 

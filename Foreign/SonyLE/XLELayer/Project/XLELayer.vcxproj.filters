@@ -6,11 +6,13 @@
     <ClCompile Include="..\TerrainManipulator.cpp" />
     <ClCompile Include="..\NativeManipulators.cpp" />
     <ClCompile Include="..\PlacementManipulator.cpp" />
+    <ClCompile Include="..\PropertyDescriptorUtils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\ManipulatorOverlay.h" />
     <ClInclude Include="..\XLELayerUtils.h" />
     <ClInclude Include="..\NativeManipulators.h" />
+    <ClInclude Include="..\PropertyDescriptorUtils.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="schemas">

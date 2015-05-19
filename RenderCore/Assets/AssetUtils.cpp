@@ -46,39 +46,6 @@ namespace RenderCore { namespace Assets
 
     size_t GlobalTransform_ElementsCount = dimof(GlobalTransform_Elements);
 
-    struct MaterialProperties
-    {
-    public:
-        float		RefractiveIndex;
-		float		Shininess;
-		float		Rho;
-		float		Ambient;
-		Float4		SpecularColour;
-    };
-
-    Metal::ConstantBufferLayoutElement MaterialProperties_Elements[] = 
-    {
-        { "RefractiveIndex",        Metal::NativeFormat::R32_FLOAT,             offsetof(MaterialProperties, RefractiveIndex), 0 },
-        { "Shininess",              Metal::NativeFormat::R32_FLOAT,             offsetof(MaterialProperties, Shininess), 0 },
-        { "Rho",                    Metal::NativeFormat::R32_FLOAT,             offsetof(MaterialProperties, Rho), 0 },
-        { "Ambient",                Metal::NativeFormat::R32_FLOAT,             offsetof(MaterialProperties, Ambient), 0 },
-        { "SpecularColour",         Metal::NativeFormat::R32G32B32A32_FLOAT,    offsetof(MaterialProperties, SpecularColour), 0 }
-    };
-
-    size_t MaterialProperties_ElementsCount = dimof(MaterialProperties_Elements);
-
-
-    Metal::ConstantBufferPacket DefaultMaterialProperties()
-    {
-        MaterialProperties materialProperties;
-        materialProperties.RefractiveIndex          = Tweakable("RefractiveIndex", 1.4f);
-        materialProperties.Shininess                = Tweakable("Shininess", 32.f);
-        materialProperties.Rho                      = Tweakable("Rho", 4.f);
-        materialProperties.Ambient                  = Tweakable("Ambient", .15f);
-        materialProperties.SpecularColour           = Float4(Tweakable("SpecularColourR", 40.f), Tweakable("SpecularColourG", 40.f), Tweakable("SpecularColourB", 40.f), 1.f);
-        return MakeSharedPkt(materialProperties);
-    }
-
         ////////////////////////////////////////////////////////////
 
     Metal::ConstantBufferLayoutElement Assets::LocalTransform_Elements[] = {

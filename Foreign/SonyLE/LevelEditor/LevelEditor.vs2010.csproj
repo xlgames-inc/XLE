@@ -129,6 +129,8 @@
     <Compile Include="LevelEditorApplication.cs" />
     <Compile Include="Listers\BookmarkLister.cs" />
     <Compile Include="Listers\GameProjectLister.cs" />
+    <Compile Include="NewItemPages\NewItem.cs" />
+    <Compile Include="NewItemPages\NewPlacementsPage.cs" />
     <Compile Include="OSC\OscClient.cs" />
     <Compile Include="PickFilters\GobPickFilter.cs" />
     <Compile Include="PickFilters\SnapFilter.cs" />
@@ -151,7 +153,9 @@
     <Compile Include="XLEControls\XLEManipCtrlWin.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="XLEControls\XLEMaterialInspector.cs" />
+    <Compile Include="XLEControls\XLEMaterialInspector.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Include="XLEControls\XLENativeManipControls.cs">
       <SubType>UserControl</SubType>
     </Compile>

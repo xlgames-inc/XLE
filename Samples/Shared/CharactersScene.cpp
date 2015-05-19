@@ -99,14 +99,6 @@ namespace Sample
         auto& techEnv = parserContext.GetTechniqueContext()._globalEnvironmentState;
         techEnv.SetParameter(StringAutoCotangent.c_str(), 1);
 
-        // auto globalStateBuffer = RenderCore::Assets::SetupGlobalState(context, _camera);
-        // ConstantBuffer globalConstantBuffer(AsPointer(globalStateBuffer->begin()), globalStateBuffer->size());
-        // context->BindVS(RenderCore::MakeResourceList(globalConstantBuffer));
-
-        auto materialPropertiesBuffer = RenderCore::Assets::DefaultMaterialProperties();
-        ConstantBuffer materialConstantBuffer(materialPropertiesBuffer.begin(), materialPropertiesBuffer.size());
-        context->BindPS(RenderCore::MakeResourceList(6, materialConstantBuffer));
-
         _pimpl->_charactersSharedStateSet.CaptureState(context);
 
         RenderCore::Assets::ModelRendererContext modelContext(
@@ -181,18 +173,18 @@ namespace Sample
                 //      on hardware without geometry shader support. Here, we have to render
                 //      without geometry shaders / stream output
                 //
-                //      (no longer working)
+                //      (this will currently render without any animation applied)
                 //
 
-            // for (auto i=_stateCache.begin(); i!=_stateCache.end(); ++i) {
-            //     TRY {
-            //         const auto& model = *i->_model;
-            //         for (auto i2=i->_instances.cbegin(); i2!=i->_instances.cend(); ++i2) {
-            //             model.Render(context, parserContext, techniqueIndex, *i2, i->_time, i->_animation);
-            //         }
-            //     } CATCH(const std::exception&) {
-            //     } CATCH_END
-            // }
+            for (auto i=_pimpl->_stateCache.begin(); i!=_pimpl->_stateCache.end(); ++i) {
+                TRY {
+                    const auto& model = *i->_model;
+                    for (auto i2=i->_instances.cbegin(); i2!=i->_instances.cend(); ++i2) {
+                        model.GetRenderer().Render(modelContext, _pimpl->_charactersSharedStateSet, *i2);
+                    }
+                } CATCH(const std::exception&) {
+                } CATCH_END
+            }
 
         }
 
