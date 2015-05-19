@@ -1187,7 +1187,7 @@ namespace RenderCore { namespace Assets
         DelayedDrawCallSet&         drawCalls,
         DelayStep                   delayStep)
     {
-        if (drawCalls.GetRendererGUID() != __uuidof(ModelRenderer))
+        if (drawCalls.GetRendererGUID() != typeid(ModelRenderer).hash_code())
             ThrowException(::Exceptions::BasicLabel("Delayed draw call set matched with wrong renderer type"));
 
         auto& entries = drawCalls._entries[(unsigned)delayStep];
@@ -1541,56 +1541,36 @@ namespace RenderCore { namespace Assets
         Serialization::Block_Initialize(rawMemoryBlock.get());        
         _data = (const ModelImmutableData*)Serialization::Block_GetFirstObject(rawMemoryBlock.get());
 
-        auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        RegisterFileDependency(validationCallback, filename);
+        _validationCallback = std::make_shared<::Assets::DependencyValidation>();
+        RegisterFileDependency(_validationCallback, filename);
         
         _filename = filename;
         _rawMemoryBlock = std::move(rawMemoryBlock);
         _largeBlocksOffset = largeBlocksOffset;
-        _validationCallback = std::move(validationCallback);
     }
     
     ModelScaffold::ModelScaffold(std::shared_ptr<::Assets::PendingCompileMarker>&& marker)
     {
         _data = nullptr;
         _largeBlocksOffset = 0;
-        std::unique_ptr<uint8[]> rawMemoryBlock;
-        unsigned largeBlocksOffset = 0;
 
-        if (marker) {
-            if (marker->GetState() == ::Assets::AssetState::Invalid) {
-                ThrowException(::Assets::Exceptions::InvalidResource(marker->Initializer(), ""));
-            } else if (marker->GetState() == ::Assets::AssetState::Pending) {
-                    // we need to throw immediately on pending resource
-                    // this object is useless while it's pending.
-                ThrowException(::Assets::Exceptions::PendingResource(marker->Initializer(), ""));
-            }
-
-                // note -- here, we can alternatively go into a background load and enter into a pending state
-            std::tie(rawMemoryBlock, largeBlocksOffset) = LoadRawData(marker->_sourceID0);
-
-            Serialization::Block_Initialize(rawMemoryBlock.get());        
-            _data = (const ModelImmutableData*)Serialization::Block_GetFirstObject(rawMemoryBlock.get());
-
-            _filename = marker->_sourceID0;
-            if (marker->_dependencyValidation) {
-                _validationCallback = marker->_dependencyValidation;
-            }
-        }
-
-        if (!_validationCallback)
+        if (marker->GetState() == ::Assets::AssetState::Ready) {
+            CompleteFromMarker(*marker);
+        } else {
+            _marker = std::forward<std::shared_ptr<::Assets::PendingCompileMarker>>(marker);
             _validationCallback = std::make_shared<::Assets::DependencyValidation>();
-
-        _rawMemoryBlock = std::move(rawMemoryBlock);
-        _largeBlocksOffset = largeBlocksOffset;
+        }
     }
 
     ModelScaffold::ModelScaffold(ModelScaffold&& moveFrom)
     : _rawMemoryBlock(std::move(moveFrom._rawMemoryBlock))
     , _filename(std::move(moveFrom._filename))
+    , _marker(std::move(moveFrom._marker))
+    , _validationCallback(std::move(moveFrom._validationCallback))
     {
         _data = moveFrom._data;
         moveFrom._data = nullptr;
+        _largeBlocksOffset = moveFrom._largeBlocksOffset;
     }
 
     ModelScaffold& ModelScaffold::operator=(ModelScaffold&& moveFrom)
@@ -1598,18 +1578,75 @@ namespace RenderCore { namespace Assets
         _rawMemoryBlock = std::move(moveFrom._rawMemoryBlock);
         _data = moveFrom._data;
         moveFrom._data = nullptr;
+        _largeBlocksOffset = moveFrom._largeBlocksOffset;
         _filename = std::move(moveFrom._filename);
+        _marker = std::move(moveFrom._marker);
+        _validationCallback = std::move(moveFrom._validationCallback);
         return *this;
     }
 
     ModelScaffold::~ModelScaffold()
     {
-        _data->~ModelImmutableData();
+        if (_data)
+            _data->~ModelImmutableData();
     }
 
-    const ModelCommandStream&       ModelScaffold::CommandStream() const        { return _data->_visualScene; }
-    const TransformationMachine&    ModelScaffold::EmbeddedSkeleton() const     { return _data->_embeddedSkeleton; }
-    std::pair<Float3, Float3>       ModelScaffold::GetStaticBoundingBox(unsigned) const { return _data->_boundingBox; }
+    void ModelScaffold::Resolve() const
+    {
+        if (_marker) {
+            if (_marker->GetState() == ::Assets::AssetState::Invalid) {
+                ThrowException(::Assets::Exceptions::InvalidResource(_marker->Initializer(), ""));
+            } else if (_marker->GetState() == ::Assets::AssetState::Pending) {
+                    // we need to throw immediately on pending resource
+                    // this object is useless while it's pending.
+                ThrowException(::Assets::Exceptions::PendingResource(_marker->Initializer(), ""));
+            }
+
+                // hack --  Resolve needs to be called by const methods (like "GetStaticBoundingBox")
+                //          but Resolve() must change all the internal pointers... It's an awkward
+                //          case for const-correctness
+            const_cast<ModelScaffold*>(this)->CompleteFromMarker(*_marker);
+            _marker.reset();
+        }
+    }
+
+    ::Assets::AssetState ModelScaffold::TryResolve()
+    {
+        if (_marker) {
+            auto markerState = _marker->GetState();
+            if (markerState != ::Assets::AssetState::Ready) return markerState;
+
+            CompleteFromMarker(*_marker);
+            _marker.reset();
+        }
+
+        return ::Assets::AssetState::Ready;
+    }
+
+    void ModelScaffold::CompleteFromMarker(::Assets::PendingCompileMarker& marker)
+    {
+        std::unique_ptr<uint8[]> rawMemoryBlock;
+        unsigned largeBlocksOffset = 0;
+
+        std::tie(rawMemoryBlock, largeBlocksOffset) = LoadRawData(marker._sourceID0);
+
+        Serialization::Block_Initialize(rawMemoryBlock.get());        
+        _data = (const ModelImmutableData*)Serialization::Block_GetFirstObject(rawMemoryBlock.get());
+
+        _filename = marker._sourceID0;
+        if (!_validationCallback) {
+            _validationCallback = marker._dependencyValidation;
+        } else 
+            ::Assets::RegisterAssetDependency(_validationCallback, marker._dependencyValidation);
+        _rawMemoryBlock = std::move(rawMemoryBlock);
+        _largeBlocksOffset = largeBlocksOffset;
+    }
+
+    unsigned                        ModelScaffold::LargeBlocksOffset() const            { Resolve(); return _largeBlocksOffset; }
+    const ModelImmutableData&       ModelScaffold::ImmutableData() const                { Resolve(); return *_data; };
+    const ModelCommandStream&       ModelScaffold::CommandStream() const                { Resolve(); return _data->_visualScene; }
+    const TransformationMachine&    ModelScaffold::EmbeddedSkeleton() const             { Resolve(); return _data->_embeddedSkeleton; }
+    std::pair<Float3, Float3>       ModelScaffold::GetStaticBoundingBox(unsigned) const { Resolve(); return _data->_boundingBox; }
 
 }}
 

@@ -12,9 +12,6 @@
 #include <vector>
 #include <functional>
 
-struct _GUID;
-typedef struct _GUID GUID;
-
 namespace RenderCore { namespace Assets
 {
     class DelayedDrawCall
@@ -75,14 +72,14 @@ namespace RenderCore { namespace Assets
 
         using Predicate = std::function<bool(const DelayedDrawCall&)>;
         
-        void            Reset();
-        void            Filter(const Predicate& predicate);
-        const GUID&     GetRendererGUID() const;
+        void        Reset();
+        void        Filter(const Predicate& predicate);
+        size_t      GetRendererGUID() const;
             
-        DelayedDrawCallSet(const GUID& rendererGuid);
+        DelayedDrawCallSet(size_t rendererGuid);
         ~DelayedDrawCallSet();
     protected:
-        uint8 _guid[16];
+        size_t _guid;
     };
 }}
 

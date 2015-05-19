@@ -336,7 +336,7 @@ namespace SceneEngine
             : _modelScaffolds(2000)
             , _materialScaffolds(2000)
             , _modelRenderers(500)
-            , _preparedRenders(__uuidof(ModelRenderer)) {}
+            , _preparedRenders(typeid(ModelRenderer).hash_code()) {}
         };
 
         PlacementsRenderer(std::shared_ptr<RenderCore::Assets::IModelFormat> modelFormat);

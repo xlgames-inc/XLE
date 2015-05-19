@@ -103,14 +103,18 @@ namespace ToolsRig
             result._model = Internal::CreateModelScaffold(modelFilename, *_pimpl->_format);
             _pimpl->_modelScaffolds.Insert(result._hashedModelName, result._model);
         }
-            
-        result._hashedMaterialName = HashCombine(Hash64(materialFilename), result._hashedModelName);
-        auto matNamePtr = materialFilename;
 
-        result._material = _pimpl->_materialScaffolds.Get(result._hashedMaterialName);
-        if (!result._material || result._material->GetDependencyValidation()->GetValidationIndex() > 0) {
-            result._material = Internal::CreateMaterialScaffold(modelFilename, matNamePtr, *_pimpl->_format);
-            _pimpl->_materialScaffolds.Insert(result._hashedMaterialName, result._material);
+            // We can't build the material properly until the material scaffold is ready
+            // So don't even try unless we get a successful resolve
+        if (result._model->TryResolve() == ::Assets::AssetState::Ready) {
+            result._hashedMaterialName = HashCombine(Hash64(materialFilename), result._hashedModelName);
+            auto matNamePtr = materialFilename;
+
+            result._material = _pimpl->_materialScaffolds.Get(result._hashedMaterialName);
+            if (!result._material || result._material->GetDependencyValidation()->GetValidationIndex() > 0) {
+                result._material = Internal::CreateMaterialScaffold(modelFilename, matNamePtr, *_pimpl->_format);
+                _pimpl->_materialScaffolds.Insert(result._hashedMaterialName, result._material);
+            }
         }
 
         return result;
@@ -119,7 +123,8 @@ namespace ToolsRig
     auto ModelVisCache::GetModel(const Assets::ResChar modelFilename[], const Assets::ResChar materialFilename[]) -> Model
     {
         auto scaffold = GetScaffolds(modelFilename, materialFilename);
-        if (!scaffold._model || !scaffold._material) { return Model(); }
+        if (!scaffold._model || !scaffold._material)
+            ThrowException(::Assets::Exceptions::PendingResource(modelFilename, "Scaffolds still pending in ModelVisCache"));
 
         uint64 hashedModel = uint64(scaffold._model.get()) | (uint64(scaffold._material.get()) << 48);
         auto renderer = _pimpl->_modelRenderers.Get(hashedModel);

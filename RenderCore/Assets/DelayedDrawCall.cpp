@@ -10,8 +10,6 @@
 
 namespace RenderCore { namespace Assets
 {
-    
-
     void DelayedDrawCallSet::Reset() 
     {
         for (unsigned c=0; c<dimof(_entries); ++c)
@@ -19,14 +17,14 @@ namespace RenderCore { namespace Assets
         _transforms.erase(_transforms.begin(), _transforms.end());
     }
 
-    const GUID& DelayedDrawCallSet::GetRendererGUID() const
+    size_t DelayedDrawCallSet::GetRendererGUID() const
     {
-        return *(const GUID*)&_guid;
+        return _guid;
     }
 
-    DelayedDrawCallSet::DelayedDrawCallSet(const GUID& rendererGuid) 
+    DelayedDrawCallSet::DelayedDrawCallSet(size_t rendererGuid) 
     {
-        XlCopyMemory(_guid, &rendererGuid, sizeof(_guid));
+        _guid = rendererGuid;
         for (unsigned c=0; c<dimof(_entries); ++c)
             _entries[c].reserve(10*1000);
     }

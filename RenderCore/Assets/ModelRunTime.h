@@ -74,14 +74,17 @@ namespace RenderCore { namespace Assets
     {
     public:
         const std::string&          Filename() const            { return _filename; }
-        unsigned                    LargeBlocksOffset() const   { return _largeBlocksOffset; }
+        unsigned                    LargeBlocksOffset() const;
         const ModelCommandStream&   CommandStream() const;
-        const ModelImmutableData&   ImmutableData() const       { return *_data; };
+        const ModelImmutableData&   ImmutableData() const;
         const TransformationMachine& EmbeddedSkeleton() const;
         std::pair<Float3, Float3>   GetStaticBoundingBox(unsigned lodIndex = 0) const;
         unsigned                    GetMaxLOD() const { return 1; }
 
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _validationCallback; }
+
+        void Resolve() const;
+        ::Assets::AssetState TryResolve();
 
         static const auto CompileProcessType = ConstHash64<'Mode', 'l'>::Value;
 
@@ -96,18 +99,15 @@ namespace RenderCore { namespace Assets
         std::string                 _filename;
         unsigned                    _largeBlocksOffset;
 
-        std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
+        mutable std::shared_ptr<::Assets::PendingCompileMarker>     _marker;
+        std::shared_ptr<::Assets::DependencyValidation>     _validationCallback;
+
+        void CompleteFromMarker(::Assets::PendingCompileMarker& marker);
     };
 
     class AnimationImmutableData;
     class SkeletonBinding;
     class PreparedModelDrawCalls;
-
-    #if COMPILER_ACTIVE == COMPILER_TYPE_MSVC
-        #define ATTACHED_GUID(X) __declspec( uuid(X) )
-    #else
-        #define ATTACHED_GUID(X)
-    #endif
 
     /// <summary>Creates platform resources and renders a model<summary>
     /// ModelRenderer is used to render a model. Though the two classes work together, it is 
@@ -121,7 +121,7 @@ namespace RenderCore { namespace Assets
     ///     </list>
     ///
     /// <seealso cref="ModelScaffold" />
-    class ATTACHED_GUID("{7AC31110-B5B9-4E72-ABE2-A8014C49783E}") ModelRenderer
+    class ModelRenderer
     {
     public:
         class MeshToModel
