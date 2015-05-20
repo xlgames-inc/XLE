@@ -185,17 +185,102 @@ namespace LevelEditor
         {
             ICommandClient cmdclient = (ICommandClient)this;
             
-            if (context == this.TreeView &&
-                (Adapters.Is<IGame>(target) || Adapters.Is<GameReference>(target) || Adapters.Is<IResolveable>(target)))
+            if (context == this.TreeView)
             {
-                foreach (Command command in Enum.GetValues(typeof(Command)))
+                if (Adapters.Is<IGame>(target) || Adapters.Is<GameReference>(target) || Adapters.Is<IResolveable>(target))
                 {
-                    if (cmdclient.CanDoCommand(command))
-                    {                        
-                        yield return command;
+                    foreach (Command command in Enum.GetValues(typeof(Command)))
+                    {
+                        if (cmdclient.CanDoCommand(command))
+                        {
+                            yield return command;
+                        }
                     }
                 }
-            }            
+
+                    // Some nodes can provide extra context menu commands
+                    // Nodes that can will have an adapter derived from 
+                    // IContextMenuCommandProvider
+                var subProvider = target.As<IContextMenuCommandProvider>();
+                if (subProvider != null)
+                {
+                    var subClient = target.Cast<ICommandClient>();
+                    var registeredCommands = GetRegisteredCommands(subProvider);
+                    foreach (var command in registeredCommands.m_commands)
+                        if (subClient.CanDoCommand(command))
+                            yield return command;
+                }
+            }
+        }
+
+        private class RegisteredSubProvider
+        {
+            public IEnumerable<object> m_commands;
+            public RegisteredSubProvider(
+                IContextMenuCommandProvider subProvider, 
+                ICommandService commandService,
+                ICommandClient client)
+            {
+                m_commands = subProvider.GetCommands(null, null);
+                foreach (var c in m_commands)
+                {
+                    var description = GetAnnotatedDescription(c).Localize();
+                    commandService.RegisterCommand(
+                        c,
+                        StandardMenu.File,
+                        CustomCommandGroups.NodeSpecific,
+                        description,
+                        description,
+                        Sce.Atf.Input.Keys.None,
+                        null,
+                        CommandVisibility.ContextMenu,
+                        client);
+                }
+            }
+
+            enum CustomCommandGroups { NodeSpecific }
+
+            private static string GetAnnotatedDescription(object obj)
+            {
+                Type type = obj.GetType();
+                if (!type.IsEnum)
+                    throw new ArgumentException("EnumerationValue must be of Enum type", "enumerationValue");
+
+                    // 
+                    //  Attempt to get a "Description" attribute attached
+                    //  to this enum value
+                    //
+                var memberInfo = type.GetMember(obj.ToString());
+                if (memberInfo != null && memberInfo.Length > 0)
+                {
+                    var attrs = memberInfo[0].GetCustomAttributes(
+                        typeof(System.ComponentModel.DescriptionAttribute), false);
+
+                    if (attrs != null && attrs.Length > 0)
+                        return ((System.ComponentModel.DescriptionAttribute)attrs[0]).Description;
+                }
+
+                return obj.ToString();
+            }
+        }
+        private Dictionary<Type, RegisteredSubProvider> m_subProviders = new Dictionary<Type, RegisteredSubProvider>();
+        private RegisteredSubProvider GetRegisteredCommands(IContextMenuCommandProvider subProvider)
+        {
+                // note that our dictionary uses the type of "subProvider", not the instance
+                // this is really important for 2 reasons:
+                //      * we don't want to hold a reference to the instance of subProvider
+                //      * multiple objects of the same type can share the same subProvider
+                //
+                // But it means that we're expecting subProvider.GetCommands to return the
+                // same results for *any* instance of that type. In other words, that method
+                // should act like a static method.
+            RegisteredSubProvider result;
+            if (m_subProviders.TryGetValue(subProvider.GetType(), out result))
+                return result;
+
+            result = new RegisteredSubProvider(subProvider, CommandService, this);
+            m_subProviders.Add(subProvider.GetType(), result);
+            return result;
         }
 
         #endregion
@@ -204,33 +289,43 @@ namespace LevelEditor
 
         bool ICommandClient.CanDoCommand(object commandTag)
         {
+            var target = TreeControlAdapter.LastHit;
+
+            if (!(commandTag is Command))
+            {
+                var targetClient = target.As<ICommandClient>();
+                if (targetClient != null)
+                    return targetClient.CanDoCommand(commandTag);
+                return false;
+            }
+
             bool cando = false;
             switch ((Command)commandTag)
             {
                 case Command.CreateNewSubGame:
                 case Command.AddSubGame:
                     {
-                        IGame game = TreeControlAdapter.LastHit.As<IGame>();
+                        IGame game = target.As<IGame>();
                         if (game == null)
                         {
-                            GameReference gameRef = TreeControlAdapter.LastHit.As<GameReference>();
+                            GameReference gameRef = target.As<GameReference>();
                             game = (gameRef != null) ? gameRef.Target : null;
                         }
                         cando = game != null;
                     }
                     break;
                 case Command.Exclude:
-                    cando = TreeControlAdapter.LastHit.Is<GameReference>();
+                    cando = target.Is<GameReference>();
                     break;
 
                 case Command.Resolve:
                     {
-                        GameReference gameRef = TreeControlAdapter.LastHit.As<GameReference>();
+                        GameReference gameRef = target.As<GameReference>();
                         cando = gameRef != null && gameRef.Target == null;
 
                         if (!cando)
                         {
-                            var resolveable = TreeControlAdapter.LastHit.As<IResolveable>();
+                            var resolveable = target.As<IResolveable>();
                             cando = resolveable != null && !resolveable.IsResolved();
                         }
                     }                    
@@ -238,12 +333,12 @@ namespace LevelEditor
 
                 case Command.Unresolve:
                     {
-                        GameReference gameRef = TreeControlAdapter.LastHit.As<GameReference>();
+                        GameReference gameRef = target.As<GameReference>();
                         cando = gameRef != null && gameRef.Target != null;
 
                         if (!cando)
                         {
-                            var resolveable = TreeControlAdapter.LastHit.As<IResolveable>();
+                            var resolveable = target.As<IResolveable>();
                             cando = resolveable != null && resolveable.IsResolved();
                         }
                     }                    
@@ -252,7 +347,7 @@ namespace LevelEditor
                 //<<XLE
                 case Command.SetupWorldPlacements:
                     {
-                        IGame game = TreeControlAdapter.LastHit.As<IGame>();
+                        IGame game = target.As<IGame>();
                         cando = game != null;
                     }
                     break;
@@ -263,21 +358,33 @@ namespace LevelEditor
 
         void ICommandClient.DoCommand(object commandTag)
         {
+            var target = TreeControlAdapter.LastHit;
+
+                // If the command isn't one of our immediate commands, it
+                // might belong to one of our sub providers.
+                // Try to cast the targetted node to a command client and
+                // execute from there
+            if (!(commandTag is Command))
+            {
+                var targetClient = target.As<ICommandClient>();
+                if (targetClient != null)
+                    targetClient.DoCommand(commandTag);
+                return;
+            }
+
             IDocument gameDocument = null;
             string filePath = null;
-            IGame game = TreeControlAdapter.LastHit.As<IGame>();
+
+            IGame game = target.As<IGame>();
             if (game == null)
             {
-                GameReference gameRef = TreeControlAdapter.LastHit.As<GameReference>();
+                GameReference gameRef = target.As<GameReference>();
                 if (gameRef != null)
-                {
                     game = gameRef.Target;
-                }
             }
+
             if (game != null)
-            {
                 gameDocument = game.As<IDocument>();
-            }
 
             switch ((Command)commandTag)
             {
@@ -351,7 +458,7 @@ namespace LevelEditor
                     break;
                 case Command.Exclude:
                     {
-                        GameReference gameRef = TreeControlAdapter.LastHit.As<GameReference>();
+                        GameReference gameRef = target.As<GameReference>();
                         if (gameRef == null) { break; }
 
                         gameDocument = gameRef.DomNode.Parent.Cast<IDocument>();
@@ -387,8 +494,7 @@ namespace LevelEditor
                 case Command.Resolve:
                     {
                         bool madeChange = false;
-                        var lastHit = TreeControlAdapter.LastHit;
-                        GameReference gameRef = lastHit.As<GameReference>();
+                        GameReference gameRef = target.As<GameReference>();
                         if (gameRef != null)
                         {
                             gameRef.Resolve();
@@ -396,7 +502,7 @@ namespace LevelEditor
                         }
                         else
                         {
-                            var resolveable = lastHit.As<IResolveable>();
+                            var resolveable = target.As<IResolveable>();
                             if (resolveable != null && !resolveable.IsResolved())
                             {
                                 resolveable.Resolve();
@@ -406,7 +512,7 @@ namespace LevelEditor
 
                         if (madeChange)
                         {
-                            TreeControlAdapter.Refresh(lastHit);
+                            TreeControlAdapter.Refresh(target);
                             RefreshLayerContext();
                         }
                     }
@@ -415,7 +521,7 @@ namespace LevelEditor
                     {
                         try
                         {
-                            GameReference gameRef = TreeControlAdapter.LastHit.As<GameReference>();
+                            GameReference gameRef = target.As<GameReference>();
                             if (gameRef!=null)
                             {
                                 GameDocument subDoc = gameRef.Target.Cast<GameDocument>();
@@ -445,12 +551,12 @@ namespace LevelEditor
                             }
                             else
                             {
-                                var resolveable = TreeControlAdapter.LastHit.As<IResolveable>();
+                                var resolveable = target.As<IResolveable>();
                                 if (resolveable!=null && resolveable.IsResolved())
                                 {
                                     resolveable.Unresolve();
                                     RefreshLayerContext();
-                                    TreeControlAdapter.Refresh(TreeControlAdapter.LastHit);
+                                    TreeControlAdapter.Refresh(target);
                                 }
                             }
                         }
@@ -484,7 +590,15 @@ namespace LevelEditor
 
         void ICommandClient.UpdateCommand(object commandTag, CommandState commandState)
         {
-            
+            var target = TreeControlAdapter.LastHit;
+
+            if (!(commandTag is Command))
+            {
+                var targetClient = target.As<ICommandClient>();
+                if (targetClient != null)
+                    targetClient.UpdateCommand(commandTag, commandState);
+                return;
+            }
         }
 
         #endregion

@@ -8,35 +8,38 @@ using Sce.Atf.Applications;
 using Sce.Atf.Dom;
 using Sce.Atf.VectorMath;
 
+using LevelEditor.DomNodeAdapters.Extensions;
+
 namespace LevelEditor.DomNodeAdapters
 {
+    using TransformableST = Schema.transformObjectType;
+
     public class GenericTransformableObject : DomNodeAdapter, ITransformable
     {
         #region ITransformable Members
 
         public virtual void UpdateTransform()
         {
-            Matrix4F xform = TransformUtils.CalcTransform(this);
-            SetAttribute(Schema.transformObjectType.transformAttribute, xform.ToArray());
+            this.SetMatrix4x4(TransformableST.transformAttribute, TransformUtils.CalcTransform(this));
         }
 
         /// <summary>
         /// Gets and sets the local transformation matrix</summary>
         public virtual Matrix4F Transform
         {
-            get { return new Matrix4F(GetAttribute<float[]>(Schema.transformObjectType.transformAttribute)); }
+            get { return this.GetMatrix4x4(TransformableST.transformAttribute); }
         }
 
         /// <summary>
         /// Gets and sets the node translation</summary>
         public virtual Vec3F Translation
         {
-            get { return DomNodeUtil.GetVector(DomNode, Schema.transformObjectType.translateAttribute); }
+            get { return this.GetVec3(TransformableST.translateAttribute); }
             set
             {
                 if ((TransformationType & TransformationTypes.Translation) == 0)
                     return;
-                DomNodeUtil.SetVector(DomNode, Schema.transformObjectType.translateAttribute, value);
+                this.SetVec3(TransformableST.translateAttribute, value);
             }
         }
 
@@ -44,12 +47,12 @@ namespace LevelEditor.DomNodeAdapters
         /// Gets and sets the node rotation</summary>
         public virtual Vec3F Rotation
         {
-            get { return DomNodeUtil.GetVector(DomNode, Schema.transformObjectType.rotateAttribute); }
+            get { return this.GetVec3(TransformableST.rotateAttribute); }
             set
             {
                 if ((TransformationType & TransformationTypes.Rotation) == 0)
                     return;
-                DomNodeUtil.SetVector(DomNode, Schema.transformObjectType.rotateAttribute, value);
+                this.SetVec3(TransformableST.rotateAttribute, value);
             }
         }
 
@@ -57,14 +60,14 @@ namespace LevelEditor.DomNodeAdapters
         /// Gets and sets the node scale</summary>
         public virtual Vec3F Scale
         {
-            get { return DomNodeUtil.GetVector(DomNode, Schema.transformObjectType.scaleAttribute); }
+            get { return this.GetVec3(TransformableST.scaleAttribute); }
             set
             {
                 if ((TransformationType & TransformationTypes.Scale) == 0
                     && (TransformationType & TransformationTypes.UniformScale) == 0)
                     return;
 
-                DomNodeUtil.SetVector(DomNode, Schema.transformObjectType.scaleAttribute, value);
+                this.SetVec3(TransformableST.scaleAttribute, value);
             }
         }
 
@@ -72,12 +75,12 @@ namespace LevelEditor.DomNodeAdapters
         /// Gets and sets the node scale pivot</summary>
         public virtual Vec3F Pivot
         {
-            get { return DomNodeUtil.GetVector(DomNode, Schema.transformObjectType.pivotAttribute); }
+            get { return this.GetVec3(TransformableST.pivotAttribute); }
             set
             {
                 if ((TransformationType & TransformationTypes.Pivot) == 0)
                     return;
-                DomNodeUtil.SetVector(DomNode, Schema.transformObjectType.pivotAttribute, value);
+                this.SetVec3(TransformableST.pivotAttribute, value);
             }
         }
 
@@ -86,11 +89,11 @@ namespace LevelEditor.DomNodeAdapters
         /// all transformation types are supported.</summary>
         public TransformationTypes TransformationType
         {
-            get { return GetAttribute<TransformationTypes>(Schema.transformObjectType.transformationTypeAttribute); }
+            get { return GetAttribute<TransformationTypes>(TransformableST.transformationTypeAttribute); }
             set
             {
                 int v = (int)value;
-                SetAttribute(Schema.transformObjectType.transformationTypeAttribute, v);
+                SetAttribute(TransformableST.transformationTypeAttribute, v);
             }
         }
 
@@ -130,7 +133,6 @@ namespace LevelEditor.DomNodeAdapters
             set { SetAttribute(Schema.gameObjectType.visibleAttribute, value); }
         }
         #endregion
-
         #region ILockable Members
 
         /// <summary>
@@ -153,7 +155,6 @@ namespace LevelEditor.DomNodeAdapters
         }
 
         #endregion
-
         #region IListable Members
 
         /// <summary>

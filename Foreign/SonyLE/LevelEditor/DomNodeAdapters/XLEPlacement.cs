@@ -13,26 +13,41 @@ using LevelEditorCore;
 
 namespace LevelEditor.DomNodeAdapters
 {
+    using PlcmtST = Schema.placementObjectType;
+
     class XLEPlacementObject : GenericTransformableObject, IGameObject, IReference<IResource>
     {
+        public XLEPlacementObject() { }
+        
+        public string Model
+        {
+            get { return GetAttribute<string>(PlcmtST.modelAttribute); }
+        }
+
+        public string Material
+        {
+            get { return GetAttribute<string>(PlcmtST.materialAttribute); }
+        }
+
+        public static XLEPlacementObject Create()
+        {
+            return new DomNode(PlcmtST.Type).As<XLEPlacementObject>();
+        }
+
         #region IListable Members
         public void GetInfo(ItemInfo info)
         {
             info.ImageIndex = Util.GetTypeImageIndex(DomNode.Type, info.GetImageList());
-            info.Label = "<" + Path.GetFileNameWithoutExtension(Model) + ">";
+            info.Label = Name;
         }
         #endregion
-
-        public XLEPlacementObject() {}
-
         #region INameable Members
         public string Name
         {
-            get { return "Placement"; }
+            get { return "<" + Path.GetFileNameWithoutExtension(Model) + ">"; }
             set { }
         }
         #endregion
-
         #region IVisible Members
         public virtual bool Visible
         {
@@ -40,7 +55,6 @@ namespace LevelEditor.DomNodeAdapters
             set { }
         }
         #endregion
-
         #region ILockable Members
         public virtual bool IsLocked
         {
@@ -48,22 +62,6 @@ namespace LevelEditor.DomNodeAdapters
             set { }
         }
         #endregion
-
-        public string Model
-        {
-            get 
-            {
-                return GetAttribute<string>(Schema.placementObjectType.modelAttribute);
-            }
-        }
-        public string Material
-        {
-            get
-            {
-                return GetAttribute<string>(Schema.placementObjectType.materialAttribute);
-            }
-        }
-
         #region IReference Members
         public bool CanReference(IResource item)
         {
@@ -79,8 +77,8 @@ namespace LevelEditor.DomNodeAdapters
                 var resService = Globals.MEFContainer.GetExportedValue<XLELayer.IXLEAssetService>();
                 var referenceName = resService.StripExtension(resService.AsAssetName(value.Uri));
 
-                SetAttribute(Schema.placementObjectType.modelAttribute, referenceName);
-                SetAttribute(Schema.placementObjectType.materialAttribute, referenceName); 
+                SetAttribute(PlcmtST.modelAttribute, referenceName);
+                SetAttribute(PlcmtST.materialAttribute, referenceName); 
             }
         }
         private static bool CanReference(DomNodeType domtype, IResource resource)
@@ -92,10 +90,5 @@ namespace LevelEditor.DomNodeAdapters
             return false;
         }
         #endregion
-
-        public static XLEPlacementObject Create()
-        {
-            return new DomNode(Schema.placementObjectType.Type).As<XLEPlacementObject>();
-        }
     }
 }
