@@ -128,6 +128,9 @@ namespace LevelEditor
             gridType.visibleAttribute = gridType.Type.GetAttributeInfo("visible");
 
             placementsFolderType.Type = getNodeType("gap", "placementsFolderType");
+            placementsFolderType.basePathAttribute = placementsFolderType.Type.GetAttributeInfo("basePath");
+            placementsFolderType.cellCountAttribute = placementsFolderType.Type.GetAttributeInfo("cellCount");
+            placementsFolderType.cellSizeAttribute = placementsFolderType.Type.GetAttributeInfo("cellSize");
             placementsFolderType.cellChild = placementsFolderType.Type.GetChildInfo("cell");
 
             placementsCellReferenceType.Type = getNodeType("gap", "placementsCellReferenceType");
@@ -181,11 +184,13 @@ namespace LevelEditor
             envMiscType.Type = getNodeType("gap", "envMiscType");
 
             ambientSettingsType.Type = getNodeType("gap", "ambientSettingsType");
-            ambientSettingsType.ambientlightAttribute = ambientSettingsType.Type.GetAttributeInfo("ambientlight");
-            ambientSettingsType.ambientbrightnessAttribute = ambientSettingsType.Type.GetAttributeInfo("ambientbrightness");
-            ambientSettingsType.skytextureAttribute = ambientSettingsType.Type.GetAttributeInfo("skytexture");
-            ambientSettingsType.skyreflectionscaleAttribute = ambientSettingsType.Type.GetAttributeInfo("skyreflectionscale");
-            ambientSettingsType.flagsAttribute = ambientSettingsType.Type.GetAttributeInfo("flags");
+            ambientSettingsType.AmbientLightAttribute = ambientSettingsType.Type.GetAttributeInfo("AmbientLight");
+            ambientSettingsType.AmbientBrightnessAttribute = ambientSettingsType.Type.GetAttributeInfo("AmbientBrightness");
+            ambientSettingsType.SkyTextureAttribute = ambientSettingsType.Type.GetAttributeInfo("SkyTexture");
+            ambientSettingsType.SkyReflectionScaleAttribute = ambientSettingsType.Type.GetAttributeInfo("SkyReflectionScale");
+            ambientSettingsType.SkyReflectionBlurrinessAttribute = ambientSettingsType.Type.GetAttributeInfo("SkyReflectionBlurriness");
+            ambientSettingsType.SkyBrightnessAttribute = ambientSettingsType.Type.GetAttributeInfo("SkyBrightness");
+            ambientSettingsType.FlagsAttribute = ambientSettingsType.Type.GetAttributeInfo("Flags");
 
             toneMapSettingsType.Type = getNodeType("gap", "toneMapSettingsType");
             toneMapSettingsType.BloomScaleAttribute = toneMapSettingsType.Type.GetAttributeInfo("BloomScale");
@@ -212,6 +217,7 @@ namespace LevelEditor
             textureMetadataType.compressionSettingAttribute = textureMetadataType.Type.GetAttributeInfo("compressionSetting");
             textureMetadataType.memoryLayoutAttribute = textureMetadataType.Type.GetAttributeInfo("memoryLayout");
             textureMetadataType.mipMapAttribute = textureMetadataType.Type.GetAttributeInfo("mipMap");
+            textureMetadataType.colorSpaceAttribute = textureMetadataType.Type.GetAttributeInfo("colorSpace");
 
             resourceMetadataType.Type = getNodeType("gap", "resourceMetadataType");
             resourceMetadataType.uriAttribute = resourceMetadataType.Type.GetAttributeInfo("uri");
@@ -244,13 +250,17 @@ namespace LevelEditor
             directionalLightType.nameAttribute = directionalLightType.Type.GetAttributeInfo("name");
             directionalLightType.visibleAttribute = directionalLightType.Type.GetAttributeInfo("visible");
             directionalLightType.lockedAttribute = directionalLightType.Type.GetAttributeInfo("locked");
-            directionalLightType.diffuseAttribute = directionalLightType.Type.GetAttributeInfo("diffuse");
-            directionalLightType.diffusebrightnessAttribute = directionalLightType.Type.GetAttributeInfo("diffusebrightness");
-            directionalLightType.specularAttribute = directionalLightType.Type.GetAttributeInfo("specular");
-            directionalLightType.specularbrightnessAttribute = directionalLightType.Type.GetAttributeInfo("specularbrightness");
-            directionalLightType.specularnonmetalbrightnessAttribute = directionalLightType.Type.GetAttributeInfo("specularnonmetalbrightness");
-            directionalLightType.flagsAttribute = directionalLightType.Type.GetAttributeInfo("flags");
+            directionalLightType.DiffuseAttribute = directionalLightType.Type.GetAttributeInfo("Diffuse");
+            directionalLightType.DiffuseBrightnessAttribute = directionalLightType.Type.GetAttributeInfo("DiffuseBrightness");
+            directionalLightType.DiffuseModelAttribute = directionalLightType.Type.GetAttributeInfo("DiffuseModel");
+            directionalLightType.DiffuseWideningMinAttribute = directionalLightType.Type.GetAttributeInfo("DiffuseWideningMin");
+            directionalLightType.DiffuseWideningMaxAttribute = directionalLightType.Type.GetAttributeInfo("DiffuseWideningMax");
+            directionalLightType.SpecularAttribute = directionalLightType.Type.GetAttributeInfo("Specular");
+            directionalLightType.SpecularBrightnessAttribute = directionalLightType.Type.GetAttributeInfo("SpecularBrightness");
+            directionalLightType.SpecularNonMetalBrightnessAttribute = directionalLightType.Type.GetAttributeInfo("SpecularNonMetalBrightness");
+            directionalLightType.FlagsAttribute = directionalLightType.Type.GetAttributeInfo("Flags");
             directionalLightType.ShadowFrustumSettingsAttribute = directionalLightType.Type.GetAttributeInfo("ShadowFrustumSettings");
+            directionalLightType.ShadowResolveModelAttribute = directionalLightType.Type.GetAttributeInfo("ShadowResolveModel");
 
             shadowFrustumSettings.Type = getNodeType("gap", "shadowFrustumSettings");
             shadowFrustumSettings.NameAttribute = shadowFrustumSettings.Type.GetAttributeInfo("Name");
@@ -263,6 +273,10 @@ namespace LevelEditor
             shadowFrustumSettings.ShadowSlopeScaledBiasAttribute = shadowFrustumSettings.Type.GetAttributeInfo("ShadowSlopeScaledBias");
             shadowFrustumSettings.ShadowDepthBiasClampAttribute = shadowFrustumSettings.Type.GetAttributeInfo("ShadowDepthBiasClamp");
             shadowFrustumSettings.ShadowRasterDepthBiasAttribute = shadowFrustumSettings.Type.GetAttributeInfo("ShadowRasterDepthBias");
+            shadowFrustumSettings.WorldSpaceResolveBiasAttribute = shadowFrustumSettings.Type.GetAttributeInfo("WorldSpaceResolveBias");
+            shadowFrustumSettings.BlurAngleDegreesAttribute = shadowFrustumSettings.Type.GetAttributeInfo("BlurAngleDegrees");
+            shadowFrustumSettings.MinBlurSearchAttribute = shadowFrustumSettings.Type.GetAttributeInfo("MinBlurSearch");
+            shadowFrustumSettings.MaxBlurSearchAttribute = shadowFrustumSettings.Type.GetAttributeInfo("MaxBlurSearch");
 
             gameObjectComponentType.Type = getNodeType("gap", "gameObjectComponentType");
             gameObjectComponentType.nameAttribute = gameObjectComponentType.Type.GetAttributeInfo("name");
@@ -894,6 +908,9 @@ namespace LevelEditor
         public static class placementsFolderType
         {
             public static DomNodeType Type;
+            public static AttributeInfo basePathAttribute;
+            public static AttributeInfo cellCountAttribute;
+            public static AttributeInfo cellSizeAttribute;
             public static ChildInfo cellChild;
         }
 
@@ -974,11 +991,13 @@ namespace LevelEditor
         public static class ambientSettingsType
         {
             public static DomNodeType Type;
-            public static AttributeInfo ambientlightAttribute;
-            public static AttributeInfo ambientbrightnessAttribute;
-            public static AttributeInfo skytextureAttribute;
-            public static AttributeInfo skyreflectionscaleAttribute;
-            public static AttributeInfo flagsAttribute;
+            public static AttributeInfo AmbientLightAttribute;
+            public static AttributeInfo AmbientBrightnessAttribute;
+            public static AttributeInfo SkyTextureAttribute;
+            public static AttributeInfo SkyReflectionScaleAttribute;
+            public static AttributeInfo SkyReflectionBlurrinessAttribute;
+            public static AttributeInfo SkyBrightnessAttribute;
+            public static AttributeInfo FlagsAttribute;
         }
 
         public static class toneMapSettingsType
@@ -1017,6 +1036,7 @@ namespace LevelEditor
             public static AttributeInfo compressionSettingAttribute;
             public static AttributeInfo memoryLayoutAttribute;
             public static AttributeInfo mipMapAttribute;
+            public static AttributeInfo colorSpaceAttribute;
         }
 
         public static class resourceMetadataType
@@ -1061,13 +1081,17 @@ namespace LevelEditor
             public static AttributeInfo nameAttribute;
             public static AttributeInfo visibleAttribute;
             public static AttributeInfo lockedAttribute;
-            public static AttributeInfo diffuseAttribute;
-            public static AttributeInfo diffusebrightnessAttribute;
-            public static AttributeInfo specularAttribute;
-            public static AttributeInfo specularbrightnessAttribute;
-            public static AttributeInfo specularnonmetalbrightnessAttribute;
-            public static AttributeInfo flagsAttribute;
+            public static AttributeInfo DiffuseAttribute;
+            public static AttributeInfo DiffuseBrightnessAttribute;
+            public static AttributeInfo DiffuseModelAttribute;
+            public static AttributeInfo DiffuseWideningMinAttribute;
+            public static AttributeInfo DiffuseWideningMaxAttribute;
+            public static AttributeInfo SpecularAttribute;
+            public static AttributeInfo SpecularBrightnessAttribute;
+            public static AttributeInfo SpecularNonMetalBrightnessAttribute;
+            public static AttributeInfo FlagsAttribute;
             public static AttributeInfo ShadowFrustumSettingsAttribute;
+            public static AttributeInfo ShadowResolveModelAttribute;
         }
 
         public static class shadowFrustumSettings
@@ -1083,6 +1107,10 @@ namespace LevelEditor
             public static AttributeInfo ShadowSlopeScaledBiasAttribute;
             public static AttributeInfo ShadowDepthBiasClampAttribute;
             public static AttributeInfo ShadowRasterDepthBiasAttribute;
+            public static AttributeInfo WorldSpaceResolveBiasAttribute;
+            public static AttributeInfo BlurAngleDegreesAttribute;
+            public static AttributeInfo MinBlurSearchAttribute;
+            public static AttributeInfo MaxBlurSearchAttribute;
         }
 
         public static class gameObjectComponentType

@@ -58,17 +58,4 @@ namespace XLELayer
         ActiveManipulatorContext^ _manipContext;
         bool _pendingBeginDrag;
     };
-
-    public ref class PropertyBridge : Sce::Atf::Applications::IPropertyEditingContext
-    {
-    public:
-        property IEnumerable<Object^>^ Items { virtual IEnumerable<Object^>^ get(); }
-        property IEnumerable<System::ComponentModel::PropertyDescriptor^>^ PropertyDescriptors
-            { virtual IEnumerable<System::ComponentModel::PropertyDescriptor^>^ get(); }
-
-        PropertyBridge(GUILayer::IPropertySource^ source);
-        ~PropertyBridge();
-    private:
-        GUILayer::IPropertySource^ _source;
-    };
 }

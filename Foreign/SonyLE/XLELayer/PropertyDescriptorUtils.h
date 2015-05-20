@@ -21,7 +21,7 @@ namespace XLELayer
     public ref class DataDrivenPropertyContextHelper : public Sce::Atf::Dom::XmlSchemaTypeLoader
     {
     public:
-        IEnumerable<ComponentModel::PropertyDescriptor^>^ GetPropertyDescriptors(String^ type);
+        PropertyDescriptorCollection^ GetPropertyDescriptors(String^ type);
 
     protected:
         void ParseAnnotations(
@@ -96,11 +96,25 @@ namespace XLELayer
 
         BasicPropertyEditingContext(
             Object^ object, 
-            IEnumerable<ComponentModel::PropertyDescriptor^>^ properties);
+            PropertyDescriptorCollection^ properties);
         ~BasicPropertyEditingContext();
     private:
         IEnumerable<ComponentModel::PropertyDescriptor^>^ _properties;
         List<Object^>^ _objects;
+    };
+
+    public ref class PropertyBridge : Sce::Atf::Applications::IPropertyEditingContext
+    {
+    public:
+        property IEnumerable<Object^>^ Items { virtual IEnumerable<Object^>^ get(); }
+        property IEnumerable<System::ComponentModel::PropertyDescriptor^>^ PropertyDescriptors
+            { virtual IEnumerable<System::ComponentModel::PropertyDescriptor^>^ get(); }
+
+        PropertyBridge(GUILayer::IPropertySource^ source);
+        ~PropertyBridge();
+    private:
+        GUILayer::IPropertySource^ _source;
+        IEnumerable<System::ComponentModel::PropertyDescriptor^>^ _propDescs;
     };
 }
 

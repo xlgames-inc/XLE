@@ -78,20 +78,6 @@ namespace LevelEditor
                 CommandVisibility.ContextMenu,
                 this);
 
-            //<<XLE
-            string setupWorldPlacements = "Setup world placements".Localize();
-            CommandService.RegisterCommand(
-               Command.SetupWorldPlacements,
-               StandardMenu.File,
-               StandardCommandGroup.FileNew,
-               setupWorldPlacements,
-               setupWorldPlacements,
-               Keys.None,
-               null,
-               CommandVisibility.ContextMenu,
-               this);
-            //XLE>>
-
             CommandService.RegisterCommand(
                Command.Exclude,
               StandardMenu.File,
@@ -343,15 +329,6 @@ namespace LevelEditor
                         }
                     }                    
                     break;
-
-                //<<XLE
-                case Command.SetupWorldPlacements:
-                    {
-                        IGame game = target.As<IGame>();
-                        cando = game != null;
-                    }
-                    break;
-                //XLE>>
             }
             return cando;
         }
@@ -567,20 +544,6 @@ namespace LevelEditor
                     }
                     break;
 
-                //<<XLE
-                case Command.SetupWorldPlacements:
-                    if (game != null)
-                    {
-                        var newDoc = PlacementsFolder.CreateNew();
-                        IHierarchical parent = game.As<IHierarchical>();
-                        parent.AddChild(newDoc);
-                        // because we performing this operation outside of TransactionContext
-                        // we must set Document Dirty flag.
-                        gameDocument.Dirty = true;
-                    }
-                    break;
-                //XLE>>
-
                 default:
                     throw new ArgumentOutOfRangeException("commandTag");
             }
@@ -725,11 +688,7 @@ namespace LevelEditor
             AddSubGame,  
             Exclude,
             Resolve,
-            Unresolve,
-
-            //<<XLE
-            SetupWorldPlacements
-            //XLE>>
+            Unresolve
         }
     }
 }

@@ -67,7 +67,32 @@ namespace LevelEditor.DomNodeAdapters
 
         public Uri Uri
         {
-            get { return GetAttribute<Uri>(s_refAttribute); }
+            get 
+            {
+                    // Convert the reference string into a uri
+                    // normally our reference string will be a path
+                    // that is relative to path of the containing
+                    // document. Here, we have to assume the top of
+                    // our dom node hierarchy implements IResource
+                    // (so it can give us the base URI)
+                var root = DomNode.GetRoot();
+                var doc = root.As<IDocument>();
+                Uri baseUri;
+                if (doc != null && Globals.MEFContainer.GetExportedValue<IDocumentService>().IsUntitled(doc)) {
+                        // this is an untitled document.
+                        // we should use the resources root as a base, because the document uri
+                        // is unreliable
+                    baseUri = Globals.ResourceRoot;
+                }
+                else
+                    baseUri = root.Cast<IResource>().Uri;
+                return new Uri(baseUri, RawReference);
+            }
+        }
+
+        public string RawReference
+        {
+            get { return GetAttribute<string>(s_refAttribute); }
         }
 
         public T Target
@@ -82,9 +107,10 @@ namespace LevelEditor.DomNodeAdapters
             {
                 try
                 {
-                    Uri ur = Uri;
-                    if (ur == null) { m_error = "ref attribute is null"; }
-                    else if (!File.Exists(ur.LocalPath)) { m_error = "File not found: " + ur.LocalPath; }
+                    var ur = Uri;
+
+                    if (ur == null) { m_error = "Ref attribute is null"; }
+                    else if (!File.Exists(ur.LocalPath)) { m_error = "File not found: " + ur; }
                     else
                     {
                         m_target = Attach(ur);

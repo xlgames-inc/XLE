@@ -94,10 +94,10 @@ namespace LevelEditor
             if (!m_documents.Contains(doc))
                 return;
 
-            foreach (IReference<IGameDocument> gameDocRef in doc.GameDocumentReferences)
-            {
-                Remove(gameDocRef.Target);
-            }
+            var docRefs = doc.GameDocumentReferences;
+            if (docRefs!=null)
+                foreach (IReference<IGameDocument> gameDocRef in docRefs)
+                    Remove(gameDocRef.Target);
             m_documents.Remove(doc);
             doc.DirtyChanged -= OnDocumentDirtyChanged;
             doc.UriChanged -= OnDocumentUriChanged;

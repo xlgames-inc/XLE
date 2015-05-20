@@ -151,6 +151,12 @@
     <Compile Include="Services\SplashForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="XLEControls\PlacementsConfig.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="XLEControls\PlacementsConfig.Designer.cs">
+      <DependentUpon>PlacementsConfig.cs</DependentUpon>
+    </Compile>
     <Compile Include="XLEControls\XLECamera.cs" />
     <Compile Include="XLEControls\XLEManipCtrlWin.cs">
       <SubType>UserControl</SubType>
@@ -171,6 +177,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="schemas\gameobject.xsd">
       <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="XLEControls\PlacementsConfig.resx">
+      <DependentUpon>PlacementsConfig.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="XLEControls\XLENativeManipControls.resx">
       <DependentUpon>XLENativeManipControls.cs</DependentUpon>

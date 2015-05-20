@@ -46,16 +46,14 @@ namespace GUILayer
     public ref class BasicPropertySource : public IPropertySource
     {
     public:
-        using PropertyDescriptorSet = IEnumerable<System::ComponentModel::PropertyDescriptor^>;
-
-        property PropertyDescriptorSet^ PropertyDescriptors { virtual PropertyDescriptorSet^ get() override; }
+        property PropertyDescriptorsType^ PropertyDescriptors { virtual PropertyDescriptorsType^ get() override; }
         property IEnumerable<Object^>^ Items { virtual IEnumerable<Object^>^ get() override; }
 
-        BasicPropertySource(IGetAndSetProperties^ getAndSet, PropertyDescriptorSet^ propertyDescriptors);
+        BasicPropertySource(IGetAndSetProperties^ getAndSet, PropertyDescriptorsType^ propertyDescriptors);
         ~BasicPropertySource();
     protected:
         IGetAndSetProperties^ _helper;
-        PropertyDescriptorSet^ _propertyDescriptors;
+        PropertyDescriptorsType^ _propertyDescriptors;
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -110,7 +108,7 @@ namespace GUILayer
         return result; 
     }
 
-    auto BasicPropertySource::PropertyDescriptors::get() -> PropertyDescriptorSet^
+    auto BasicPropertySource::PropertyDescriptors::get() -> PropertyDescriptorsType^
     {
         return _propertyDescriptors;
     }
@@ -119,7 +117,7 @@ namespace GUILayer
             //          native manipulator stays around for the life-time of 
             //          this object.
     BasicPropertySource::BasicPropertySource(
-        IGetAndSetProperties^ getAndSet, PropertyDescriptorSet^ propertyDescriptors)
+        IGetAndSetProperties^ getAndSet, PropertyDescriptorsType^ propertyDescriptors)
     : _propertyDescriptors(propertyDescriptors)
     {
         _helper = getAndSet;
@@ -135,7 +133,7 @@ namespace GUILayer
     public ref class Manipulator_GetAndSet : public IGetAndSetProperties
     {
     public:
-        static IEnumerable<System::ComponentModel::PropertyDescriptor^>^ 
+        static System::ComponentModel::PropertyDescriptorCollection^ 
             CreatePropertyDescriptors(ToolsRig::IManipulator& manipulators);
 
         virtual bool TryGetMember(System::String^ name, bool caseInsensitive, System::Type^ type, Object^% result) 
@@ -211,7 +209,7 @@ namespace GUILayer
         clix::shared_ptr<ToolsRig::IManipulator> _manipulator;
     };
 
-    IEnumerable<System::ComponentModel::PropertyDescriptor^>^ 
+    System::ComponentModel::PropertyDescriptorCollection^ 
         Manipulator_GetAndSet::CreatePropertyDescriptors(ToolsRig::IManipulator& manipulators)
     {
             // We must convert each property in the manipulator 
@@ -262,7 +260,11 @@ namespace GUILayer
             result->Add(descriptor);
         }
 
-        return result;
+            // The conversion here is expensive, because PropertyDescriptorCollection
+            // goes back to pre-generic C#.
+            // But PropertyDescriptorCollection is also more compatible than just a
+            // IEnumerable<PropertyDescriptor^>
+        return gcnew System::ComponentModel::PropertyDescriptorCollection(result->ToArray());
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

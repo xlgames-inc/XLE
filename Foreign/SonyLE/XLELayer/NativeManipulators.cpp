@@ -156,15 +156,5 @@ namespace XLELayer
 		return set->GetManipulator(active).get();
     }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-    IEnumerable<Object^>^ PropertyBridge::Items::get() { return _source->Items; }
-    IEnumerable<System::ComponentModel::PropertyDescriptor^>^ PropertyBridge::PropertyDescriptors::get()
-    {
-        return _source->PropertyDescriptors;
-    }
-
-    PropertyBridge::PropertyBridge(GUILayer::IPropertySource^ source) : _source(source) {}
-    PropertyBridge::~PropertyBridge() { delete _source; }
 }
 

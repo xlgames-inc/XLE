@@ -3395,8 +3395,8 @@ namespace SceneEngine
 
     TerrainConfig::TerrainConfig(const std::string& baseDir)
     : _baseDir(baseDir), _filenamesMode(XLE)
-    , _cellCount(0,0), _nodeDimsInElements(0)
-    , _cellTreeDepth(0), _elementSpacing(0.f)
+    , _cellCount(0,0), _nodeDimsInElements(32u), _nodeOverlap(2u)
+    , _cellTreeDepth(5u), _elementSpacing(10.f)
     {
         size_t fileSize = 0;
         auto sourceFile = LoadFileAsMemoryBlock(StringMeld<MaxPath>() << baseDir << "\\world.cfg", &fileSize);
@@ -3411,7 +3411,7 @@ namespace SceneEngine
             _nodeDimsInElements = c->IntAttribute("NodeDims", _nodeDimsInElements);
             _cellTreeDepth = c->IntAttribute("CellTreeDepth", _cellTreeDepth);
             _nodeOverlap = c->IntAttribute("NodeOverlap", _nodeOverlap);
-            _elementSpacing = Deserialize(c, "ElementSpacing", 10.f);
+            _elementSpacing = Deserialize(c, "ElementSpacing", _elementSpacing);
 
             _cellCount = Deserialize(c, "CellCount", _cellCount);
 

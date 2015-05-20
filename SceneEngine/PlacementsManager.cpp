@@ -1788,9 +1788,14 @@ namespace SceneEngine
         return newCell._filenameHash;
     }
 
-    void PlacementsEditor::RemoveCell(PlacementsManager& manager, uint64 id)
+    bool PlacementsEditor::RemoveCell(PlacementsManager& manager, uint64 id)
     {
-        assert(0);  // not implemented yet
+        auto i = std::lower_bound(_pimpl->_cells.begin(), _pimpl->_cells.end(), id, Pimpl::RegisteredCell::CompareHash());
+        if (i != _pimpl->_cells.end() && i->_filenameHash == id) {
+            _pimpl->_cells.erase(i);
+            return true;
+        }
+        return false;
     }
 
     uint64 PlacementsEditor::GenerateObjectGUID()

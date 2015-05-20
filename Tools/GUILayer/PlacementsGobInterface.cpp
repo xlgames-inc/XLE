@@ -35,8 +35,7 @@ namespace GUILayer { namespace EditorDynamicInterface
     bool PlacementObjectType::DeleteDocument(EditorScene& scene, DocumentId doc, DocumentTypeId docType) const
     {
         if (docType != DocumentType_Placements) { assert(0); return false; }
-        scene._placementsEditor->RemoveCell(*scene._placementsManager, doc);
-        return true;
+        return scene._placementsEditor->RemoveCell(*scene._placementsManager, doc);
     }
 
     ObjectId PlacementObjectType::AssignObjectId(EditorScene& scene, DocumentId doc, ObjectTypeId type) const

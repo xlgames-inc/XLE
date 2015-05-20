@@ -263,9 +263,14 @@ namespace RenderingInterop
             s_idToDomNode.Remove(Tuple.Create(documentId, instanceId));
         }
 
-        public static ulong CreateDocument(uint typeId)
+        public static ulong CreateDocument(uint docTypeId)
         {
-            return s_underlyingScene.CreateDocument(typeId);
+            return s_underlyingScene.CreateDocument(docTypeId);
+        }
+
+        public static void DeleteDocument(ulong docId, uint docTypeId)
+        {
+            s_underlyingScene.DeleteDocument(docId, docTypeId);
         }
 
         public static void InvokeMemberFn(ulong instanceId, string fn, IntPtr arg, out IntPtr retVal)

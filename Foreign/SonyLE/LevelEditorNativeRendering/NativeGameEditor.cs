@@ -253,50 +253,30 @@ namespace RenderingInterop
             IGameDocument document = e.Item;
             if (document == m_gameDocumentRegistry.MasterDocument)
             {
-                // NativeObjectAdapter gameLevel = document.Cast<NativeObjectAdapter>();
-                // GameEngine.CreateObject(0, gameLevel);
-                // GameEngine.SetGameLevel(gameLevel);
-                // gameLevel.UpdateNativeOjbect();
+                IGame game = document.As<IGame>();
+                if (game != null && game.Grid != null)
+                    game.Grid.Cast<GridRenderer>().CreateVertices();
 
-                //create vertex buffer for grid.
-                IGame game = document.Cast<IGame>();
-                if (game != null)
-                {
-                    IGrid grid = game.Grid;
-                    GridRenderer gridRender = grid.Cast<GridRenderer>();
-                    gridRender.CreateVertices();
-                }
-
-                m_designView.Context = document.Cast<IGameContext>();                
+                var context = document.As<IGameContext>();
+                if (context!=null)
+                    m_designView.Context = context;
             }
-
-            //      XLE -- moved this functionality to NativeDocumentAdapter::OnNodeSet()
-            // DomNode masterNode = m_gameDocumentRegistry.MasterDocument.As<DomNode>();
-            // DomNode rooFolderNode = game.RootGameObjectFolder.Cast<DomNode>();
-            // NativeDocumentAdapter gworld = masterNode.Cast<NativeDocumentAdapter>();
-            // gworld.Insert(masterNode, rooFolderNode, masterNode.Type.GetChildInfo("gameObjectFolder"), -1);            
         }
 
         private void m_gameDocumentRegistry_DocumentRemoved(object sender, ItemRemovedEventArgs<IGameDocument> e)
         {
-            IGameDocument document = e.Item;            
-            IGame game = document.Cast<IGame>();
-            if (document == m_designView.Context.Cast<IGameDocument>())
-            {// master document.
-                IGrid grid = document.As<IGame>().Grid;
-                GridRenderer gridRender = grid.Cast<GridRenderer>();
-                gridRender.DeleteVertexBuffer();
-                m_designView.Context = null;                
-                // GameEngine.DestroyObject(0, game.Cast<NativeObjectAdapter>());
-                // GameEngine.Clear();
-            }
-            else
-            {// sub document.
-                // DomNode masterNode = m_gameDocumentRegistry.MasterDocument.As<DomNode>();
-                // DomNode rooFolderNode = game.RootGameObjectFolder.Cast<DomNode>();
-                // NativeDocumentAdapter gworld = masterNode.Cast<NativeDocumentAdapter>();
-                // gworld.Remove(masterNode, rooFolderNode, masterNode.Type.GetChildInfo("gameObjectFolder"));
-            }
+            IGameDocument document = e.Item;
+            IGame game = e.Item.As<IGame>();
+            if (game != null && game.Grid != null)
+                game.Grid.Cast<GridRenderer>().DeleteVertexBuffer();
+
+            var context = document.As<IGameContext>();
+            if (context == m_designView.Context)
+                m_designView.Context = null;
+
+            var nativeAdapter = document.As<NativeDocumentAdapter>();
+            if (nativeAdapter != null)
+                nativeAdapter.OnDocumentRemoved();
         }
        
 

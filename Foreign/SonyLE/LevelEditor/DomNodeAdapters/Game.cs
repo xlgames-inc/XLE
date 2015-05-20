@@ -1,7 +1,7 @@
 //Copyright © 2014 Sony Computer Entertainment America LLC. See License.txt.
 
-
 using System.Collections.Generic;
+using System.ComponentModel;
 
 using Sce.Atf;
 using Sce.Atf.Adaptation;
@@ -15,7 +15,7 @@ namespace LevelEditor.DomNodeAdapters
    
     /// <summary>
     /// Root node in a LevelEditor Game document</summary>
-    public class Game : DomNodeAdapter, IGame
+    public class Game : DomNodeAdapter, IGame, ICommandClient, IContextMenuCommandProvider
     {        
         #region INameable Members
 
@@ -181,7 +181,7 @@ namespace LevelEditor.DomNodeAdapters
                 var result = GetChild<XLEEnvSettingsFolder>(Schema.gameType.environmentChild);
                 if (result == null)
                 {
-                    result = new DomNode(Schema.envSettingsFolderType.Type).Cast<XLEEnvSettingsFolder>();
+                    result = XLEEnvSettingsFolder.Create().Cast<XLEEnvSettingsFolder>();
                     SetChild(Schema.gameType.environmentChild, result);
                 }
                 return result;
@@ -214,5 +214,81 @@ namespace LevelEditor.DomNodeAdapters
         }
 
         private IReference<IGame> m_parent;
+
+        #region Context Menu Commands
+        bool ICommandClient.CanDoCommand(object commandTag)
+        {
+            if (commandTag is Command)
+            {
+                switch ((Command)commandTag)
+                {
+                    case Command.CreateTerrain:
+                        return DomNode.GetChild(Schema.gameType.terrainChild) == null;
+                    case Command.CreatePlacementsFolder:
+                        return DomNode.GetChild(Schema.gameType.placementsChild) == null;
+                    case Command.CreateEnvironmentSetting:
+                        return true;
+                }
+            }
+            return false;
+        }
+
+        void ICommandClient.DoCommand(object commandTag)
+        {
+            if (!(commandTag is Command)) return;
+
+            switch ((Command)commandTag)
+            {
+                case Command.CreateTerrain:
+                    {
+                        if (DomNode.GetChild(Schema.gameType.terrainChild) == null)
+                        {
+                            DomNode.SetChild(
+                                Schema.gameType.terrainChild,
+                                XLETerrainGob.Create());
+                        }
+                        break;
+                    }
+
+                case Command.CreatePlacementsFolder:
+                    {
+                        if (DomNode.GetChild(Schema.gameType.placementsChild) == null)
+                        {
+                            var newNode = PlacementsFolder.CreateWithConfigure();
+                            if (newNode != null)
+                                DomNode.SetChild(Schema.gameType.placementsChild, newNode);
+                        }
+                        break;
+                    }
+
+                case Command.CreateEnvironmentSetting:
+                    {
+                        var envFolder = EnvSettingsFolder;
+                        envFolder.AddChild(
+                            XLEEnvSettings.Create(envFolder.GetNameForNewChild()));
+                        break;
+                    }
+            }
+        }
+
+        void ICommandClient.UpdateCommand(object commandTag, CommandState commandState)
+        { }
+
+        private enum Command
+        {
+            [Description("Add Terrain")]
+            CreateTerrain,
+            [Description("Add Placements...")]
+            CreatePlacementsFolder,
+            [Description("Add New Environment Settings")]
+            CreateEnvironmentSetting
+        }
+
+        IEnumerable<object> IContextMenuCommandProvider.GetCommands(object context, object target)
+        {
+            foreach (Command command in System.Enum.GetValues(typeof(Command)))
+                yield return command;
+        }
+        #endregion
     }
 }

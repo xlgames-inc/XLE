@@ -73,6 +73,13 @@ namespace LevelEditor.DomNodeAdapters
         {
             get { return GetAttribute<string>(Schema.envSettingsType.nameAttribute); }
         }
+
+        public static DomNode Create(string name)
+        {
+            var result = new DomNode(Schema.envSettingsType.Type);
+            result.SetAttribute(Schema.envSettingsType.nameAttribute, name);
+            return result;
+        }
     }
 
     public class XLEEnvSettingsFolder : DomNodeAdapter, IHierarchical, IListable
@@ -104,6 +111,27 @@ namespace LevelEditor.DomNodeAdapters
             {
                 return GetChildList<XLEEnvSettings>(Schema.envSettingsFolderType.settingsChild);
             }
+        }
+        
+        public string GetNameForNewChild()
+        {
+            var settings = Settings;
+            string result = "environment";
+            if (!settings.Any(s => s.Name.Equals(result)))
+                return result;
+
+            uint postfix = 1;
+            for (; ; ++postfix)
+            {
+                result = String.Format("environment{0}", postfix);
+                if (!settings.Any(s => s.Name.Equals(result)))
+                    return result;
+            }
+        }
+
+        public static DomNode Create()
+        {
+            return new DomNode(Schema.envSettingsFolderType.Type);
         }
     }
 

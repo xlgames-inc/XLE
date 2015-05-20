@@ -18,9 +18,12 @@ namespace GUILayer
     public ref class IPropertySource abstract
     {
     public:
+        using PropertyDescriptorsType = System::ComponentModel::PropertyDescriptorCollection; 
+            // IEnumerable<System::ComponentModel::PropertyDescriptor^>;
+
         property IEnumerable<Object^>^ Items { virtual IEnumerable<Object^>^ get() = 0; }
-        property IEnumerable<System::ComponentModel::PropertyDescriptor^>^ PropertyDescriptors
-            { virtual IEnumerable<System::ComponentModel::PropertyDescriptor^>^ get() = 0; }
+        property PropertyDescriptorsType^ PropertyDescriptors
+            { virtual PropertyDescriptorsType^ get() = 0; }
         virtual ~IPropertySource();
     };
 

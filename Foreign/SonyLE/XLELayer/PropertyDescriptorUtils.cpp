@@ -12,18 +12,22 @@ using namespace Sce::Atf::Dom;
 
 namespace XLELayer
 {
-
-    IEnumerable<ComponentModel::PropertyDescriptor^>^ 
-        DataDrivenPropertyContextHelper::GetPropertyDescriptors(String^ type)
-    {
+    static IEnumerable<ComponentModel::PropertyDescriptor^>^ 
+         AsEnumerable(PropertyDescriptorCollection^ input)
+     {
         List<ComponentModel::PropertyDescriptor^>^ propertyDescriptors = nullptr;
-        auto descriptors = GetNodeType(type)->GetTag<PropertyDescriptorCollection^>();
-        if (descriptors && descriptors->Count > 0) {
-            propertyDescriptors = gcnew List<ComponentModel::PropertyDescriptor^>(descriptors->Count);
-            for each(ComponentModel::PropertyDescriptor^ d in descriptors)
+        if (input && input->Count > 0) {
+            propertyDescriptors = gcnew List<ComponentModel::PropertyDescriptor^>(input->Count);
+            for each(ComponentModel::PropertyDescriptor^ d in input)
                 propertyDescriptors->Add(d);
         }
         return propertyDescriptors;
+     }
+
+    PropertyDescriptorCollection^
+        DataDrivenPropertyContextHelper::GetPropertyDescriptors(String^ type)
+    {
+        return GetNodeType(type)->GetTag<PropertyDescriptorCollection^>();
     }
 
     void DataDrivenPropertyContextHelper::ParseAnnotations(
@@ -104,20 +108,36 @@ namespace XLELayer
         return _objects;
     }
 
-    IEnumerable<System::ComponentModel::PropertyDescriptor^>^ BasicPropertyEditingContext::PropertyDescriptors::get()
+    IEnumerable<System::ComponentModel::PropertyDescriptor^>^ 
+        BasicPropertyEditingContext::PropertyDescriptors::get()
     {
         return _properties;
     }
 
     BasicPropertyEditingContext::BasicPropertyEditingContext(
         Object^ object, 
-        IEnumerable<System::ComponentModel::PropertyDescriptor^>^ properties)
+        PropertyDescriptorCollection^ properties)
     {
         _objects = gcnew List<Object^>();
         _objects->Add(object);
-        _properties = properties;
+        _properties = AsEnumerable(properties);
     }
 
     BasicPropertyEditingContext::~BasicPropertyEditingContext() {}
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    IEnumerable<Object^>^ PropertyBridge::Items::get() { return _source->Items; }
+    IEnumerable<System::ComponentModel::PropertyDescriptor^>^ PropertyBridge::PropertyDescriptors::get()
+    {
+        return _propDescs;
+    }
+
+    PropertyBridge::PropertyBridge(GUILayer::IPropertySource^ source) : _source(source) 
+    {
+            // expensive conversion from the old PropertyDescriptorCollection to 
+            // a generic enumerable type
+        _propDescs = AsEnumerable(_source->PropertyDescriptors);
+    }
+    PropertyBridge::~PropertyBridge() { delete _source; }
 }

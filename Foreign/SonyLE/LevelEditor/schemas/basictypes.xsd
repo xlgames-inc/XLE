@@ -34,6 +34,16 @@
     </xs:restriction>
   </xs:simpleType>
 
+  <xs:simpleType name="intListType">
+    <xs:list itemType="xs:int"></xs:list>
+  </xs:simpleType>
+
+  <xs:simpleType name="int2Type">
+    <xs:restriction base="intListType">
+      <xs:length value="2"></xs:length>
+    </xs:restriction>
+  </xs:simpleType>
+
   <xs:complexType name="resourceReferenceType">
     <xs:annotation>
       <xs:appinfo>

@@ -18,7 +18,7 @@
       </xs:appinfo>
     </xs:annotation>
 
-    <xs:attribute name="ref" type="xs:anyURI" />
+    <xs:attribute name="ref" type="xs:string" />
     <xs:attribute name="name" type="xs:string" />
     <xs:attribute name="mins" type="vector3Type" default="-1000 -1000 -1000"/>
     <xs:attribute name="maxs" type="vector3Type" default="1000 1000 1000"/>
@@ -28,6 +28,9 @@
     <xs:sequence>
       <xs:element name="cell" type="placementsCellReferenceType" minOccurs="0" maxOccurs="unbounded" />
     </xs:sequence>
+    <xs:attribute name="basePath" type="xs:string" default="placements/" />
+    <xs:attribute name="cellCount" type="int2Type" default="0 0" />
+    <xs:attribute name="cellSize" type="xs:float" default="512" />
   </xs:complexType>
 
   <xs:complexType name="abstractPlacementObjectType">

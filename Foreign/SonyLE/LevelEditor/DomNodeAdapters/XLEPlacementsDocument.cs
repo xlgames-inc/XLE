@@ -149,6 +149,7 @@ namespace LevelEditor.DomNodeAdapters
             doc.Dirty = false;
             return doc;
         }
+
         public static void Release(XLEPlacementDocument doc)
         {
             // We can't remove, because a single document can have multiple references upon it
@@ -161,13 +162,7 @@ namespace LevelEditor.DomNodeAdapters
             // It might turn out difficult to catch all of those cases reliably
             var gameDocRegistry = GetDocRegistry();
             if (gameDocRegistry != null)
-            {
                 gameDocRegistry.Remove(doc.As<IGameDocument>());
-            } 
-            else
-            {
-                // doc.Dispose();
-            }
         }
 
         public override string Type { get { return GameEditor.s_placementDocInfo.FileType; } }

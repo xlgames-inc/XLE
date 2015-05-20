@@ -35,6 +35,28 @@ namespace RenderingInterop
             node.ChildRemoved += node_ChildRemoved;
         }
 
+        public void OnDocumentRemoved()
+        {
+                // we need to call OnRemoveFromDocument on all children
+                // NativeObjectAdapter.OnRemoveFromDocument is hierarchical,
+                // so we only need to call on the top level children
+            DomNode node = this.DomNode; 
+            if (node != null)
+            {
+                foreach (var subnode in node.Children)
+                {
+                    NativeObjectAdapter childObject = subnode.As<NativeObjectAdapter>();
+                    if (childObject != null)
+                        childObject.OnRemoveFromDocument(this);
+                }
+            }
+
+                // destroy the document on the native side, as well
+            var tag = node.Type.GetTag(NativeAnnotations.NativeDocumentType);
+            var typeId = (tag != null) ? (uint)tag : 0;
+            GameEngine.DeleteDocument(m_nativeDocId, typeId);
+        }
+        
         void node_ChildInserted(object sender, ChildEventArgs e)
         {
             NativeObjectAdapter childObject = e.Child.As<NativeObjectAdapter>();
@@ -56,15 +78,25 @@ namespace RenderingInterop
 
         void node_ChildRemoved(object sender, ChildEventArgs e)
         {
-            NativeObjectAdapter childObject = e.Child.As<NativeObjectAdapter>();
-            if (childObject != null)
-            {
-                childObject.OnRemoveFromDocument(this);
-
-                childObject.OnSetParent(null, -1);
-            }
+            AttemptRemoveNative(e.Child);
         }
 
+        private void AttemptRemoveNative(DomNode node)
+        {
+            var childObject = node.As<NativeObjectAdapter>();
+            if (childObject != null)
+            {
+                childObject.OnSetParent(null, -1);
+                childObject.OnRemoveFromDocument(this);
+            }
+            else
+            {
+                // it might have native children, so we have to search for them
+                foreach (var child in node.Children)
+                    AttemptRemoveNative(child);
+            }
+        }
+        
         /// <summary>
         /// Gets/Sets whether this adapter  creates native object on child inserted 
         /// and deletes it on child removed.
