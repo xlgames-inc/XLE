@@ -126,9 +126,14 @@ namespace SceneEngine
         hdr._objectRefCount = (unsigned)_objects.size();
         hdr._filenamesBufferSize = unsigned(_filenamesBuffer.size());
         hdr._dummy = 0;
-        fileWriter.Write(&hdr, sizeof(hdr), 1);
-        fileWriter.Write(AsPointer(_objects.begin()), sizeof(ObjectReference), hdr._objectRefCount);
-        fileWriter.Write(AsPointer(_filenamesBuffer.begin()), 1, hdr._filenamesBufferSize);
+        auto writeResult0 = fileWriter.Write(&hdr, sizeof(hdr), 1);
+        auto writeResult1 = fileWriter.Write(AsPointer(_objects.begin()), sizeof(ObjectReference), hdr._objectRefCount);
+        auto writeResult2 = fileWriter.Write(AsPointer(_filenamesBuffer.begin()), 1, hdr._filenamesBufferSize);
+
+        if (    writeResult0 != sizeof(hdr) 
+            ||  writeResult1 != (sizeof(ObjectReference) * hdr._objectRefCount) 
+            ||  writeResult2 != hdr._filenamesBufferSize)
+            ThrowException(::Exceptions::BasicLabel("Failure in file write while writing to file (%s) while saving placements", filename));
     }
 
     void Placements::LogDetails(const char title[]) const
@@ -1896,10 +1901,11 @@ namespace SceneEngine
     static void SavePlacements(const char outputFilename[], Placements& placements)
     {
         placements.Save(outputFilename);
-        ConsoleRig::Console::GetInstance().Print(StringMeld<256>() << "Writing placements to: " << outputFilename << "\n");
+        ConsoleRig::Console::GetInstance().Print(
+            StringMeld<256>() << "Writing placements to: " << outputFilename << "\n");
     }
 
-    void PlacementsEditor::Save()
+    void PlacementsEditor::SaveAllCells()
     {
             //  Save all of the placement files that have changed. 
             //
@@ -1923,6 +1929,24 @@ namespace SceneEngine
         }
 
         _pimpl->_dynPlacements.clear();
+    }
+
+    void PlacementsEditor::SaveCell(uint64 cellId, const ::Assets::ResChar destinationFilename[]) const
+    {
+            // Save a single placement cell file
+            // This function is intended for tools, so we will aggressively throw exceptions on errors
+
+        for (auto i=_pimpl->_dynPlacements.begin(); i!=_pimpl->_dynPlacements.end(); ++i) {
+            if (i->first != cellId)
+                continue;
+
+            auto& placements = *i->second;
+            placements.Save(destinationFilename);
+        }
+
+        ThrowException(
+            ::Exceptions::BasicLabel("Could not find cell with given id (0x%08x%08x). Saving cancelled",
+                uint32(cellId>>32), uint32(cellId)));
     }
 
     std::pair<Float3, Float3> PlacementsEditor::GetModelBoundingBox(const ResChar modelName[]) const

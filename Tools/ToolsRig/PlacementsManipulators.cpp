@@ -1370,7 +1370,7 @@ namespace ToolsRig
             }
 
             if (topMost._id == Id_PlacementsSave) {
-                _editor->Save();
+                _editor->SaveAllCells();
                 return true;
             }
         }

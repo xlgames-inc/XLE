@@ -24,6 +24,11 @@ namespace GUILayer
     EnvSettingsVector BuildEnvironmentSettings(
         const EditorDynamicInterface::FlexObjectType& flexGobInterface);
 
+    void ExportEnvSettings(
+        const EditorDynamicInterface::FlexObjectType& flexGobInterface,
+        EditorDynamicInterface::DocumentId docId,
+        const ::Assets::ResChar destinationFile[]);
+
     ref class EditorSceneManager;
 
     public ref class EnvironmentSettingsSet

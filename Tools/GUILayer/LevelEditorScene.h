@@ -104,8 +104,19 @@ namespace GUILayer
 
         void SetTypeAnnotation(uint typeId, System::String^ annotationName, IEnumerable<PropertyInitializer>^ initializers);
 
-        const EditorDynamicInterface::FlexObjectType& GetFlexObjects();
+            //// //// ////   E X P O R T   I N T E R F A C E   //// //// ////
+        ref class ExportResult
+        {
+        public:
+            System::String^ _messages;
+            bool _success;
+        };
+        ExportResult^ ExportPlacements(DocumentId placementsDoc, System::String^ destinationFile);
+        ExportResult^ ExportEnvironmentSettings(DocumentId docId, System::String^ destinationFile);
+        ExportResult^ ExportTerrainSettings(System::String^ destinationFolder);
 
+            //// //// ////   U T I L I T Y   //// //// ////
+        const EditorDynamicInterface::FlexObjectType& GetFlexObjects();
         void IncrementTime(float increment);
 
             //// //// ////   C O N S T R U C T O R S   //// //// ////

@@ -169,7 +169,8 @@ namespace SceneEngine
         static uint64 GenerateObjectGUID();
 		void PerformGUIDFixup(PlacementGUID* begin, PlacementGUID* end) const;
 
-        void Save();
+        void SaveAllCells();
+        void SaveCell(uint64 cellId, const ::Assets::ResChar destinationFilename[]) const;
 
         std::pair<Float3, Float3> GetModelBoundingBox(const Assets::ResChar modelName[]) const;
 
