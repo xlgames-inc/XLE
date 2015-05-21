@@ -5,14 +5,14 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "LevelEditorScene.h"
-#include "FlexGobInterface.h"
-#include "TerrainGobInterface.h"
 #include "ObjectPlaceholders.h"
 #include "EditorInterfaceUtils.h"
-#include "EnvironmentSettings.h"
 #include "IOverlaySystem.h"
 #include "MarshalString.h"
 #include "ExportedNativeTypes.h"
+
+#include "../EntityInterface/FlexGobInterface.h"
+#include "../EntityInterface/EnvironmentSettings.h"
 
 #include "../ToolsRig/VisualisationUtils.h"     // for AsCameraDesc
 #include "../ToolsRig/ManipulatorsRender.h"

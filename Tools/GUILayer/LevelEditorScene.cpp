@@ -5,17 +5,18 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "LevelEditorScene.h"
-#include "PlacementsGobInterface.h"
-#include "TerrainGobInterface.h"
-#include "FlexGobInterface.h"
 #include "ObjectPlaceholders.h"
 #include "MarshalString.h"
 #include "GUILayerUtil.h"
 #include "IOverlaySystem.h"
 #include "EditorInterfaceUtils.h"
-#include "EnvironmentSettings.h"
+#include "ManipulatorsLayer.h"
 #include "UITypesBinding.h" // for VisCameraSettings
 #include "ExportedNativeTypes.h"
+#include "../EntityInterface/PlacementsGobInterface.h"
+#include "../EntityInterface/TerrainGobInterface.h"
+#include "../EntityInterface/FlexGobInterface.h"
+#include "../EntityInterface/EnvironmentSettings.h"
 #include "../ToolsRig/PlacementsManipulators.h"     // just needed for destructors referenced in PlacementGobInterface.h
 #include "../ToolsRig/VisualisationUtils.h"
 #include "../../SceneEngine/PlacementsManager.h"
@@ -220,8 +221,8 @@ namespace GUILayer
         TRY
         {
             _scene->_placementsEditor->SaveCell(
-                doc, 
-                clix::marshalString<clix::E_UTF8>(destinationFile).c_str());
+                doc, clix::marshalString<clix::E_UTF8>(destinationFile).c_str());
+
             result->_success = true;
             result->_messages = "Success";
             return result;
@@ -263,13 +264,14 @@ namespace GUILayer
         using namespace EditorDynamicInterface;
         auto placementsEditor = std::make_shared<PlacementObjectType>(_scene->_placementsManager, _scene->_placementsEditor);
         auto terrainEditor = std::make_shared<TerrainObjectType>(_scene->_terrainManager);
-        _flexGobInterface = std::make_shared<FlexObjectType>(_scene->_flexObjects);
+        auto flexGobInterface = std::make_shared<FlexObjectType>(_scene->_flexObjects);
 
         _dynInterface = std::make_shared<EditorDynamicInterface::RegisteredTypes>();
         _dynInterface->RegisterType(placementsEditor);
         _dynInterface->RegisterType(terrainEditor);
-        _dynInterface->RegisterType(_flexGobInterface.GetNativePtr());
+        _dynInterface->RegisterType(flexGobInterface);
 
+        _flexGobInterface = flexGobInterface;
         Internal::RegisterTerrainFlexObjects(*_scene->_flexObjects);
     }
 

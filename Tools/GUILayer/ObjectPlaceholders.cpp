@@ -5,8 +5,8 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "ObjectPlaceholders.h"
-#include "FlexGobInterface.h"
 #include "ExportedNativeTypes.h"
+#include "../EntityInterface/FlexGobInterface.h"
 #include "../ToolsRig/VisualisationGeo.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/ResourceBox.h"

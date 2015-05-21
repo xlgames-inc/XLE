@@ -5,19 +5,23 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "EditorInterfaceUtils.h"
-#include "EditorDynamicInterface.h"
 #include "EngineDevice.h"
 #include "NativeEngineDevice.h"
+#include "LevelEditorScene.h"
 #include "GUILayerUtil.h"
 #include "MathLayer.h"
 #include "MarshalString.h"
 #include "ExportedNativeTypes.h"
+#include "../EntityInterface/EditorDynamicInterface.h"
+#include "../EntityInterface/EnvironmentSettings.h"
+#include "../../PlatformRig/BasicSceneParser.h"
 #include "../../SceneEngine/IntersectionTest.h"
 #include "../../SceneEngine/Terrain.h"
 #include "../../SceneEngine/PlacementsManager.h"
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
+#include "../../Utility/StringUtils.h"
 #include "../../Assets/Assets.h"
 #include "../ToolsRig/PlacementsManipulators.h"
 // #include "../../ConsoleRig/Log.h"        (can't include in Win32 managed code)
@@ -264,6 +268,41 @@ namespace GUILayer
             return (unsigned)ImpliedTyping::TypeCat::Void;
         }
     };
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    IEnumerable<String^>^ EnvironmentSettingsSet::Names::get()
+    {
+        auto result = gcnew List<String^>();
+        for (auto i=_settings->cbegin(); i!=_settings->cend(); ++i)
+            result->Add(clix::marshalString<clix::E_UTF8>(i->first));
+        return result;
+    }
+
+    void EnvironmentSettingsSet::AddDefault()
+    {
+        _settings->push_back(
+            std::make_pair(std::string("Default"), PlatformRig::DefaultEnvironmentSettings()));
+    }
+
+    const PlatformRig::EnvironmentSettings& EnvironmentSettingsSet::GetSettings(String^ name)
+    {
+        auto nativeName = clix::marshalString<clix::E_UTF8>(name);
+        for (auto i=_settings->cbegin(); i!=_settings->cend(); ++i)
+            if (!XlCompareStringI(nativeName.c_str(), i->first.c_str()))
+                return i->second;
+        if (!_settings->empty()) return (*_settings)[0].second;
+
+        return *(const PlatformRig::EnvironmentSettings*)nullptr;
+    }
+
+    EnvironmentSettingsSet::EnvironmentSettingsSet(EditorSceneManager^ scene)
+    {
+        _settings.reset(new EnvSettingsVector());
+        *_settings = BuildEnvironmentSettings(scene->GetFlexObjects());
+    }
+
+    EnvironmentSettingsSet::~EnvironmentSettingsSet() {}
 }
 
 

@@ -6,29 +6,14 @@
     <ClCompile Include="..\CustomDataGridEditor.cpp" />
     <ClCompile Include="..\GUILayerUtil.cpp" />
     <ClCompile Include="..\SimpleRenderingContext.cpp" />
-    <ClCompile Include="..\EditorDynamicInterface.cpp">
-      <Filter>DynInterface</Filter>
-    </ClCompile>
     <ClCompile Include="..\LevelEditorScene.cpp">
       <Filter>DynInterface</Filter>
     </ClCompile>
     <ClCompile Include="..\EditorInterfaceUtils.cpp">
       <Filter>DynInterface</Filter>
     </ClCompile>
-    <ClCompile Include="..\TerrainGobInterface.cpp">
-      <Filter>DynInterface</Filter>
-    </ClCompile>
-    <ClCompile Include="..\PlacementsGobInterface.cpp">
-      <Filter>DynInterface</Filter>
-    </ClCompile>
     <ClCompile Include="..\ManipulatorUtils.cpp" />
-    <ClCompile Include="..\FlexGobInterface.cpp">
-      <Filter>DynInterface</Filter>
-    </ClCompile>
     <ClCompile Include="..\EditorSceneParser.cpp">
-      <Filter>DynInterface</Filter>
-    </ClCompile>
-    <ClCompile Include="..\ObjectPlaceholders.cpp">
       <Filter>DynInterface</Filter>
     </ClCompile>
     <ClCompile Include="..\TweakableBridge.cpp" />
@@ -53,34 +38,22 @@
     <ClCompile Include="..\TestControl.cpp">
       <Filter>BasicControls</Filter>
     </ClCompile>
-    <ClCompile Include="..\EnvironmentSettings.cpp">
+    <ClCompile Include="..\ManipulatorsLayer.cpp">
+      <Filter>DynInterface</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ObjectPlaceholders.cpp">
       <Filter>DynInterface</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\EngineDevice.h" />
     <ClInclude Include="..\DivergentAssetList.h" />
-    <ClInclude Include="..\EditorDynamicInterface.h">
-      <Filter>DynInterface</Filter>
-    </ClInclude>
     <ClInclude Include="..\LevelEditorScene.h">
       <Filter>DynInterface</Filter>
     </ClInclude>
     <ClInclude Include="..\GUILayerUtil.h" />
-    <ClInclude Include="..\PlacementsGobInterface.h">
-      <Filter>DynInterface</Filter>
-    </ClInclude>
-    <ClInclude Include="..\TerrainGobInterface.h">
-      <Filter>DynInterface</Filter>
-    </ClInclude>
     <ClInclude Include="..\ManipulatorUtils.h" />
     <ClInclude Include="..\EditorInterfaceUtils.h">
-      <Filter>DynInterface</Filter>
-    </ClInclude>
-    <ClInclude Include="..\FlexGobInterface.h">
-      <Filter>DynInterface</Filter>
-    </ClInclude>
-    <ClInclude Include="..\ObjectPlaceholders.h">
       <Filter>DynInterface</Filter>
     </ClInclude>
     <ClInclude Include="..\EngineControl.h">
@@ -119,7 +92,10 @@
     <ClInclude Include="..\IOverlaySystem.h">
       <Filter>BasicControls</Filter>
     </ClInclude>
-    <ClInclude Include="..\EnvironmentSettings.h">
+    <ClInclude Include="..\ManipulatorsLayer.h">
+      <Filter>DynInterface</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ObjectPlaceholders.h">
       <Filter>DynInterface</Filter>
     </ClInclude>
   </ItemGroup>

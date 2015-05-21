@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "EditorDynamicInterface.h"
+#include "../EntityInterface/EditorDynamicInterface.h"
 #include "CLIXAutoPtr.h"
 #include "../../Assets/Assets.h"    // just for ResChar
 #include <memory>

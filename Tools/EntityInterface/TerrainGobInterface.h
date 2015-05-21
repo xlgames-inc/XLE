@@ -6,9 +6,7 @@
 
 #pragma once
 
-#include "ManipulatorUtils.h"
 #include "EditorDynamicInterface.h"
-#include "CLIXAutoPtr.h"
 #include "../../Assets/Assets.h"
 #include "../../Math/Vector.h"
 #include "../../Utility/UTFUtils.h"
@@ -53,55 +51,6 @@ namespace GUILayer { namespace EditorDynamicInterface
     class FlexObjectScene;
 }}
 
-namespace GUILayer
-{
-    class TerrainGob
-    {
-    public:
-        std::shared_ptr<SceneEngine::TerrainManager> _terrainManager;
-
-        void SetBaseDir(const ucs2 dir[], unsigned length);
-        void SetOffset(const Float3& offset);
-
-        ::Assets::DivergentAsset<SceneEngine::TerrainMaterialScaffold>& GetMaterial();
-
-        TerrainGob();
-        ~TerrainGob();
-
-    protected:
-        Float3 _terrainOffset;
-    };
-
-    class TerrainManipulatorsPimpl
-    {
-    public:
-        class RegisteredManipulator
-		{
-		public:
-			std::string _name;
-			std::shared_ptr<ToolsRig::IManipulator> _manipulator;
-			RegisteredManipulator(
-				const std::string& name,
-				std::shared_ptr<ToolsRig::IManipulator> manipulator)
-				: _name(name), _manipulator(std::move(manipulator))
-			{}
-			RegisteredManipulator() {}
-			~RegisteredManipulator();
-		};
-		std::vector<RegisteredManipulator> _terrainManipulators;
-    };
-
-    ref class TerrainManipulators : public IManipulatorSet
-    {
-    public:
-        virtual clix::shared_ptr<ToolsRig::IManipulator> GetManipulator(System::String^ name) override;
-		virtual System::Collections::Generic::IEnumerable<System::String^>^ GetManipulatorNames() override;
-
-        TerrainManipulators(std::shared_ptr<SceneEngine::TerrainManager> terrain);
-        ~TerrainManipulators();
-    protected:
-        clix::auto_ptr<TerrainManipulatorsPimpl> _pimpl;
-    };
-
+namespace GUILayer { 
     namespace Internal { void RegisterTerrainFlexObjects(EditorDynamicInterface::FlexObjectScene& flexSys); }
 }

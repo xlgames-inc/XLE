@@ -7,7 +7,6 @@
 #pragma once
 
 #include "EditorDynamicInterface.h"
-#include "ManipulatorUtils.h"
 
 namespace SceneEngine
 {
@@ -55,57 +54,3 @@ namespace GUILayer { namespace EditorDynamicInterface
     };
 }}
 
-namespace SceneEngine { class PlacementsEditor; }
-namespace ToolsRig { class IPlacementManipulatorSettings; }
-
-namespace GUILayer
-{
-    class PlacementManipulatorsPimpl
-    {
-    public:
-        class RegisteredManipulator
-		{
-		public:
-			std::string _name;
-			std::shared_ptr<ToolsRig::IManipulator> _manipulator;
-			RegisteredManipulator(
-				const std::string& name,
-				std::shared_ptr<ToolsRig::IManipulator> manipulator)
-				: _name(name), _manipulator(std::move(manipulator))
-			{}
-			RegisteredManipulator() {}
-			~RegisteredManipulator();
-		};
-		std::vector<RegisteredManipulator> _manipulators;
-    };
-
-    ref class PlacementManipulators : public IManipulatorSet
-    {
-    public:
-        virtual clix::shared_ptr<ToolsRig::IManipulator> GetManipulator(System::String^ name) override;
-		virtual System::Collections::Generic::IEnumerable<System::String^>^ GetManipulatorNames() override;
-
-        PlacementManipulators(
-            ToolsRig::IPlacementManipulatorSettings* context,
-            std::shared_ptr<SceneEngine::PlacementsEditor> editor);
-        ~PlacementManipulators();
-    protected:
-        clix::auto_ptr<PlacementManipulatorsPimpl> _pimpl;
-    };
-
-    public ref class IPlacementManipulatorSettingsLayer abstract
-    {
-    public:
-        virtual String^ GetSelectedModel() = 0;
-        virtual void EnableSelectedModelDisplay(bool newState) = 0;
-        virtual void SelectModel(String^ newModelName) = 0;
-        virtual void SwitchToMode(unsigned newMode) = 0;
-
-        ToolsRig::IPlacementManipulatorSettings* GetNative();
-        
-        IPlacementManipulatorSettingsLayer();
-        virtual ~IPlacementManipulatorSettingsLayer();
-    private:
-        clix::auto_ptr<ToolsRig::IPlacementManipulatorSettings> _native;
-    };
-}

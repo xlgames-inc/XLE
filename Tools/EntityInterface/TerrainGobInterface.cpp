@@ -5,55 +5,15 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "TerrainGobInterface.h"
-#include "LevelEditorScene.h"
 #include "FlexGobInterface.h"
-#include "ExportedNativeTypes.h"
-#include "MarshalString.h"
 #include "../../SceneEngine/Terrain.h"
 #include "../../SceneEngine/TerrainMaterial.h"
 #include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../SceneEngine/TerrainFormat.h"
-#include "../../Tools/ToolsRig/TerrainManipulators.h"
-#include "../../Tools/ToolsRig/IManipulator.h"
+
 
 namespace GUILayer
 {
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-    TerrainManipulatorsPimpl::RegisteredManipulator::~RegisteredManipulator() {}
-
-	clix::shared_ptr<ToolsRig::IManipulator> TerrainManipulators::GetManipulator(System::String^ name)
-	{
-		auto nativeName = clix::marshalString<clix::E_UTF8>(name);
-		for (const auto& i : _pimpl->_terrainManipulators)
-			if (i._name == nativeName) return clix::shared_ptr<ToolsRig::IManipulator>(i._manipulator);
-		return clix::shared_ptr<ToolsRig::IManipulator>();
-	}
-
-	System::Collections::Generic::IEnumerable<System::String^>^ TerrainManipulators::GetManipulatorNames()
-	{
-		auto result = gcnew System::Collections::Generic::List<System::String^>();
-		for (const auto& i : _pimpl->_terrainManipulators)
-			result->Add(clix::marshalString<clix::E_UTF8>(i._name));
-		return result;
-	}
-
-    TerrainManipulators::TerrainManipulators(std::shared_ptr<SceneEngine::TerrainManager> terrain)
-    {
-        _pimpl.reset(new TerrainManipulatorsPimpl);
-
-        auto manip = ToolsRig::CreateTerrainManipulators(terrain);
-        for (auto& t : manip) {
-            _pimpl->_terrainManipulators.push_back(
-                TerrainManipulatorsPimpl::RegisteredManipulator(t->GetName(), std::move(t)));
-        }
-    }
-
-    TerrainManipulators::~TerrainManipulators() 
-    {
-        _pimpl.reset();
-    }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

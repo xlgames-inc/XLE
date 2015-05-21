@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "EditorDynamicInterface.h"
+#include "../EntityInterface/EditorDynamicInterface.h"
 #include "../../RenderCore/Metal/Forward.h"
 #include <memory>
 

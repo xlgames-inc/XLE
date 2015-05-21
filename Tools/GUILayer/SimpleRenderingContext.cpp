@@ -15,6 +15,7 @@
 #include "../ToolsRig/ManipulatorsUtil.h"
 #include "../ToolsRig/ManipulatorsRender.h"
 #include "../ToolsRig/HighlightEffects.h"
+#include "../../PlatformRig/BasicSceneParser.h"     // (PlatformRig::EnvironmentSettings destructor)
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Techniques/TechniqueMaterial.h"

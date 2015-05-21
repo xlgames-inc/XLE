@@ -7,8 +7,6 @@
 #pragma warning(disable:4793) // 'Exceptions::BasicLabel::BasicLabel' : function compiled as native :
 
 #include "EnvironmentSettings.h"
-#include "LevelEditorScene.h"
-#include "MarshalString.h"
 #include "../../PlatformRig/BasicSceneParser.h"
 #include "../../Math/Transformations.h"
 #include "../../Utility/StringUtils.h"
@@ -156,40 +154,5 @@ namespace GUILayer
         if (!saveRes)
             ThrowException(::Exceptions::BasicLabel("Error while serializing environment settings"));
     }
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-    IEnumerable<String^>^ EnvironmentSettingsSet::Names::get()
-    {
-        auto result = gcnew List<String^>();
-        for (auto i=_settings->cbegin(); i!=_settings->cend(); ++i)
-            result->Add(clix::marshalString<clix::E_UTF8>(i->first));
-        return result;
-    }
-
-    void EnvironmentSettingsSet::AddDefault()
-    {
-        _settings->push_back(
-            std::make_pair(std::string("Default"), PlatformRig::DefaultEnvironmentSettings()));
-    }
-
-    const PlatformRig::EnvironmentSettings& EnvironmentSettingsSet::GetSettings(String^ name)
-    {
-        auto nativeName = clix::marshalString<clix::E_UTF8>(name);
-        for (auto i=_settings->cbegin(); i!=_settings->cend(); ++i)
-            if (!XlCompareStringI(nativeName.c_str(), i->first.c_str()))
-                return i->second;
-        if (!_settings->empty()) return (*_settings)[0].second;
-
-        return *(const PlatformRig::EnvironmentSettings*)nullptr;
-    }
-
-    EnvironmentSettingsSet::EnvironmentSettingsSet(EditorSceneManager^ scene)
-    {
-        _settings.reset(new EnvSettingsVector());
-        *_settings = BuildEnvironmentSettings(scene->GetFlexObjects());
-    }
-
-    EnvironmentSettingsSet::~EnvironmentSettingsSet() {}
 
 }

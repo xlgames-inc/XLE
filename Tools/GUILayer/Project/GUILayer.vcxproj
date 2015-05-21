@@ -81,22 +81,18 @@
     <ClCompile Include="..\AssemblyInfo.cpp" />
     <ClCompile Include="..\CustomDataGridEditor.cpp" />
     <ClCompile Include="..\DivergentAssetList.cpp" />
-    <ClCompile Include="..\EditorDynamicInterface.cpp" />
     <ClCompile Include="..\EditorInterfaceUtils.cpp" />
     <ClCompile Include="..\EditorSceneParser.cpp" />
     <ClCompile Include="..\EngineDevice.cpp" />
     <ClCompile Include="..\EngineControl.cpp" />
-    <ClCompile Include="..\EnvironmentSettings.cpp" />
-    <ClCompile Include="..\FlexGobInterface.cpp" />
     <ClCompile Include="..\GUILayerUtil.cpp" />
     <ClCompile Include="..\LayerControl.cpp" />
     <ClCompile Include="..\LevelEditorScene.cpp" />
     <ClCompile Include="..\ManipulatorUtils.cpp" />
     <ClCompile Include="..\MaterialVisualisation.cpp" />
     <ClCompile Include="..\ObjectPlaceholders.cpp" />
-    <ClCompile Include="..\PlacementsGobInterface.cpp" />
     <ClCompile Include="..\SimpleRenderingContext.cpp" />
-    <ClCompile Include="..\TerrainGobInterface.cpp" />
+    <ClCompile Include="..\ManipulatorsLayer.cpp" />
     <ClCompile Include="..\TestControl.cpp" />
     <ClCompile Include="..\TweakableBridge.cpp" />
     <ClCompile Include="..\UITypesBinding.cpp" />
@@ -105,13 +101,10 @@
   <ItemGroup>
     <ClInclude Include="..\CLIXAutoPtr.h" />
     <ClInclude Include="..\DivergentAssetList.h" />
-    <ClInclude Include="..\EditorDynamicInterface.h" />
     <ClInclude Include="..\EditorInterfaceUtils.h" />
     <ClInclude Include="..\EngineDevice.h" />
     <ClInclude Include="..\EngineControl.h" />
-    <ClInclude Include="..\EnvironmentSettings.h" />
     <ClInclude Include="..\ExportedNativeTypes.h" />
-    <ClInclude Include="..\FlexGobInterface.h" />
     <ClInclude Include="..\GUILayerUtil.h" />
     <ClInclude Include="..\IOverlaySystem.h" />
     <ClInclude Include="..\IWindowRig.h" />
@@ -120,9 +113,8 @@
     <ClInclude Include="..\ManipulatorUtils.h" />
     <ClInclude Include="..\MarshalString.h" />
     <ClInclude Include="..\MaterialVisualisation.h" />
+    <ClInclude Include="..\ManipulatorsLayer.h" />
     <ClInclude Include="..\ObjectPlaceholders.h" />
-    <ClInclude Include="..\PlacementsGobInterface.h" />
-    <ClInclude Include="..\TerrainGobInterface.h" />
     <ClInclude Include="..\TestControl.h" />
     <ClInclude Include="..\UITypesBinding.h" />
     <ClInclude Include="..\MathLayer.h" />
@@ -175,6 +167,9 @@
     </ProjectReference>
     <ProjectReference Include="..\..\..\Utility\Project\Utility.vcxproj">
       <Project>{6b8011c1-2d1f-1ebb-b0ef-377b2e8e87ae}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\EntityInterface\Project\EntityInterface.vcxproj">
+      <Project>{a3ec21db-3586-490f-b30b-5da403d908b5}</Project>
     </ProjectReference>
     <ProjectReference Include="..\..\ToolsRig\Project\ToolsRig.vcxproj">
       <Project>{f47f1b0a-ae7c-482a-baf8-d47a6b09b817}</Project>
