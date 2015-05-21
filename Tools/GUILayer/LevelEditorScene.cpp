@@ -13,9 +13,9 @@
 #include "ManipulatorsLayer.h"
 #include "UITypesBinding.h" // for VisCameraSettings
 #include "ExportedNativeTypes.h"
-#include "../EntityInterface/PlacementsGobInterface.h"
-#include "../EntityInterface/TerrainGobInterface.h"
-#include "../EntityInterface/FlexGobInterface.h"
+#include "../EntityInterface/PlacementEntities.h"
+#include "../EntityInterface/TerrainEntities.h"
+#include "../EntityInterface/RetainedEntities.h"
 #include "../EntityInterface/EnvironmentSettings.h"
 #include "../ToolsRig/PlacementsManipulators.h"     // just needed for destructors referenced in PlacementGobInterface.h
 #include "../ToolsRig/VisualisationUtils.h"
@@ -60,7 +60,7 @@ namespace GUILayer
             std::make_shared<RenderCore::Assets::ModelCache>(), Float2(0.f, 0.f));
         _placementsEditor = _placementsManager->CreateEditor();
         _terrainManager = std::make_shared<SceneEngine::TerrainManager>(std::make_shared<SceneEngine::TerrainFormat>());
-        _flexObjects = std::make_shared<EditorDynamicInterface::FlexObjectScene>();
+        _flexObjects = std::make_shared<EntityInterface::RetainedEntities>();
         _placeholders = std::make_shared<ObjectPlaceholders>(_flexObjects);
         _currentTime = 0.f;
     }
@@ -70,7 +70,7 @@ namespace GUILayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    using namespace EditorDynamicInterface;
+    using namespace EntityInterface;
 
     DocumentId EditorSceneManager::CreateDocument(DocumentTypeId docType) 
         { return _dynInterface->CreateDocument(docType, ""); }
@@ -80,10 +80,10 @@ namespace GUILayer
     ObjectId EditorSceneManager::AssignObjectId(DocumentId doc, ObjectTypeId type)
         { return _dynInterface->AssignObjectId(doc, type); }
 
-    static std::vector<EditorDynamicInterface::PropertyInitializer> AsNative(
+    static std::vector<EntityInterface::PropertyInitializer> AsNative(
         IEnumerable<EditorSceneManager::PropertyInitializer>^ initializers)
     {
-        using NativeInitializer = EditorDynamicInterface::PropertyInitializer;
+        using NativeInitializer = EntityInterface::PropertyInitializer;
         std::vector<NativeInitializer> native;
         if (initializers) {
             for each(auto i in initializers) {
@@ -101,9 +101,9 @@ namespace GUILayer
     bool EditorSceneManager::CreateObject(DocumentId doc, ObjectId obj, ObjectTypeId objType, IEnumerable<PropertyInitializer>^ initializers)
     {
         auto native = AsNative(initializers);
-        EditorDynamicInterface::Identifier indentifier;
+        EntityInterface::Identifier indentifier;
         auto intrf = _dynInterface->GetInterface(
-            indentifier, EditorDynamicInterface::Identifier(doc, obj, objType));
+            indentifier, EntityInterface::Identifier(doc, obj, objType));
         if (intrf)
             return intrf->CreateObject(indentifier, AsPointer(native.cbegin()), native.size()); 
         return false;
@@ -111,9 +111,9 @@ namespace GUILayer
 
     bool EditorSceneManager::DeleteObject(DocumentId doc, ObjectId obj, ObjectTypeId objType)
     { 
-        EditorDynamicInterface::Identifier indentifier;
+        EntityInterface::Identifier indentifier;
         auto intrf = _dynInterface->GetInterface(
-            indentifier, EditorDynamicInterface::Identifier(doc, obj, objType));
+            indentifier, EntityInterface::Identifier(doc, obj, objType));
         if (intrf)
             return intrf->DeleteObject(indentifier); 
         return false;
@@ -122,9 +122,9 @@ namespace GUILayer
     bool EditorSceneManager::SetProperty(DocumentId doc, ObjectId obj, ObjectTypeId objType, IEnumerable<PropertyInitializer>^ initializers)
     { 
         auto native = AsNative(initializers);
-        EditorDynamicInterface::Identifier indentifier;
+        EntityInterface::Identifier indentifier;
         auto intrf = _dynInterface->GetInterface(
-            indentifier, EditorDynamicInterface::Identifier(doc, obj, objType));
+            indentifier, EntityInterface::Identifier(doc, obj, objType));
         if (intrf)
             return intrf->SetProperty(indentifier, AsPointer(native.cbegin()), native.size()); 
         return false;
@@ -132,9 +132,9 @@ namespace GUILayer
 
     bool EditorSceneManager::GetProperty(DocumentId doc, ObjectId obj, ObjectTypeId objType, PropertyId prop, void* dest, unsigned* destSize)
     { 
-        EditorDynamicInterface::Identifier indentifier;
+        EntityInterface::Identifier indentifier;
         auto intrf = _dynInterface->GetInterface(
-            indentifier, EditorDynamicInterface::Identifier(doc, obj, objType));
+            indentifier, EntityInterface::Identifier(doc, obj, objType));
         if (intrf)
             return intrf->GetProperty(indentifier, prop, dest, destSize); 
         return false;
@@ -156,7 +156,7 @@ namespace GUILayer
         }
     }
 
-    const EditorDynamicInterface::FlexObjectScene& EditorSceneManager::GetFlexObjects()
+    const EntityInterface::RetainedEntities& EditorSceneManager::GetFlexObjects()
     {
         return *_scene->_flexObjects;
     }
@@ -166,11 +166,11 @@ namespace GUILayer
         ObjectId childId, ObjectTypeId childTypeId, 
         ObjectId parentId, ObjectTypeId parentTypeId, int insertionPosition)
     {
-        EditorDynamicInterface::Identifier child, parent;
+        EntityInterface::Identifier child, parent;
         auto intrfChild = _dynInterface->GetInterface(
-            child, EditorDynamicInterface::Identifier(doc, childId, childTypeId));
+            child, EntityInterface::Identifier(doc, childId, childTypeId));
         auto intrfParent = _dynInterface->GetInterface(
-            parent, EditorDynamicInterface::Identifier(doc, parentId, parentTypeId));
+            parent, EntityInterface::Identifier(doc, parentId, parentTypeId));
 
         if (intrfChild && intrfChild == intrfParent)
             return intrfChild->SetParent(child, parent, insertionPosition);
@@ -261,18 +261,18 @@ namespace GUILayer
     {
         _scene = std::make_shared<EditorScene>();
 
-        using namespace EditorDynamicInterface;
-        auto placementsEditor = std::make_shared<PlacementObjectType>(_scene->_placementsManager, _scene->_placementsEditor);
-        auto terrainEditor = std::make_shared<TerrainObjectType>(_scene->_terrainManager);
-        auto flexGobInterface = std::make_shared<FlexObjectType>(_scene->_flexObjects);
+        using namespace EntityInterface;
+        auto placementsEditor = std::make_shared<PlacementEntities>(_scene->_placementsManager, _scene->_placementsEditor);
+        auto terrainEditor = std::make_shared<TerrainEntities>(_scene->_terrainManager);
+        auto flexGobInterface = std::make_shared<RetainedEntityInterface>(_scene->_flexObjects);
 
-        _dynInterface = std::make_shared<EditorDynamicInterface::RegisteredTypes>();
+        _dynInterface = std::make_shared<Switch>();
         _dynInterface->RegisterType(placementsEditor);
         _dynInterface->RegisterType(terrainEditor);
         _dynInterface->RegisterType(flexGobInterface);
 
         _flexGobInterface = flexGobInterface;
-        Internal::RegisterTerrainFlexObjects(*_scene->_flexObjects);
+        RegisterTerrainFlexObjects(*_scene->_flexObjects);
     }
 
     EditorSceneManager::~EditorSceneManager()

@@ -6,17 +6,17 @@
 
 #pragma once
 
-#include "../EntityInterface/EditorDynamicInterface.h"
+#include "../EntityInterface/EntityInterface.h"
 #include "../../RenderCore/Metal/Forward.h"
 #include <memory>
 
 namespace RenderCore { namespace Techniques { class ParsingContext; } }
 namespace SceneEngine { class IIntersectionTester; }
 
+namespace EntityInterface { class RetainedEntities; }
+
 namespace GUILayer
 {
-    namespace EditorDynamicInterface { class FlexObjectScene; }
-
     class ObjectPlaceholders : public std::enable_shared_from_this<ObjectPlaceholders>
     {
     public:
@@ -25,19 +25,19 @@ namespace GUILayer
             RenderCore::Techniques::ParsingContext& parserContext,
             unsigned techniqueIndex);
 
-        void AddAnnotation(EditorDynamicInterface::ObjectTypeId typeId);
+        void AddAnnotation(EntityInterface::ObjectTypeId typeId);
 
         std::shared_ptr<SceneEngine::IIntersectionTester> CreateIntersectionTester();
 
-        ObjectPlaceholders(std::shared_ptr<EditorDynamicInterface::FlexObjectScene> objects);
+        ObjectPlaceholders(std::shared_ptr<EntityInterface::RetainedEntities> objects);
         ~ObjectPlaceholders();
     protected:
-        std::shared_ptr<EditorDynamicInterface::FlexObjectScene> _objects;
+        std::shared_ptr<EntityInterface::RetainedEntities> _objects;
 
         class Annotation
         {
         public:
-            EditorDynamicInterface::ObjectTypeId _typeId;
+            EntityInterface::ObjectTypeId _typeId;
         };
         std::vector<Annotation> _annotations;
 

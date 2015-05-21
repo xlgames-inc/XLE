@@ -4,14 +4,14 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "EditorDynamicInterface.h"
+#include "EntityInterface.h"
 #include "../../Utility/StringUtils.h"
 
-namespace GUILayer { namespace EditorDynamicInterface
+namespace EntityInterface
 {
-    IObjectType::~IObjectType() {}
+    IEntityInterface::~IEntityInterface() {}
 
-    IObjectType* RegisteredTypes::GetInterface(
+    IEntityInterface* Switch::GetInterface(
         Identifier& translatedId, 
         const Identifier& inputId) const
     {
@@ -23,7 +23,7 @@ namespace GUILayer { namespace EditorDynamicInterface
         return nullptr;
     }
 
-    DocumentId RegisteredTypes::CreateDocument(DocumentTypeId docType, const char initializer[]) const
+    DocumentId Switch::CreateDocument(DocumentTypeId docType, const char initializer[]) const
     {
         if (docType > 0 && (docType-1) < _knownDocumentTypes.size()) {
             auto& reg = _knownDocumentTypes[docType-1];
@@ -32,7 +32,7 @@ namespace GUILayer { namespace EditorDynamicInterface
         return 0;
     }
 
-    bool RegisteredTypes::DeleteDocument(DocumentId doc, DocumentTypeId docType) const
+    bool Switch::DeleteDocument(DocumentId doc, DocumentTypeId docType) const
     {
         if (docType > 0 && (docType-1) < _knownDocumentTypes.size()) {
             auto& reg = _knownDocumentTypes[docType-1];
@@ -41,7 +41,7 @@ namespace GUILayer { namespace EditorDynamicInterface
         return false;
     }
             
-    ObjectId RegisteredTypes::AssignObjectId(DocumentId doc, ObjectTypeId objType) const
+    ObjectId Switch::AssignObjectId(DocumentId doc, ObjectTypeId objType) const
     {
         if (objType > 0 && (objType-1) < _knownObjectTypes.size()) {
             auto& reg = _knownObjectTypes[objType-1];
@@ -50,7 +50,7 @@ namespace GUILayer { namespace EditorDynamicInterface
         return 0;
     }
 
-    ObjectTypeId RegisteredTypes::GetTypeId(const char name[]) const
+    ObjectTypeId Switch::GetTypeId(const char name[]) const
     {
         for (auto i=_knownObjectTypes.begin(); i!=_knownObjectTypes.end(); ++i) {
             if (!XlCompareString(i->_name.c_str(), name)) {
@@ -71,7 +71,7 @@ namespace GUILayer { namespace EditorDynamicInterface
         return 0;
     }
 
-    DocumentTypeId RegisteredTypes::GetDocumentTypeId(const char name[]) const
+    DocumentTypeId Switch::GetDocumentTypeId(const char name[]) const
     {
         for (auto i=_knownDocumentTypes.begin(); i!=_knownDocumentTypes.end(); ++i) {
             if (!XlCompareString(i->_name.c_str(), name)) {
@@ -92,7 +92,7 @@ namespace GUILayer { namespace EditorDynamicInterface
         return 0;
     }
 
-    PropertyId RegisteredTypes::GetPropertyId(ObjectTypeId objType, const char name[]) const
+    PropertyId Switch::GetPropertyId(ObjectTypeId objType, const char name[]) const
     {
         if (objType > 0 && (objType-1) < _knownObjectTypes.size()) {
             auto& reg = _knownObjectTypes[objType-1];
@@ -101,7 +101,7 @@ namespace GUILayer { namespace EditorDynamicInterface
         return 0;
     }
 
-    ChildListId RegisteredTypes::GetChildListId(ObjectTypeId objType, const char name[]) const
+    ChildListId Switch::GetChildListId(ObjectTypeId objType, const char name[]) const
     {
         if (objType > 0 && (objType-1) < _knownObjectTypes.size()) {
             auto& reg = _knownObjectTypes[objType-1];
@@ -110,7 +110,7 @@ namespace GUILayer { namespace EditorDynamicInterface
         return 0;
     }
 
-    uint32 RegisteredTypes::MapTypeId(ObjectTypeId objType, const IObjectType& owner)
+    uint32 Switch::MapTypeId(ObjectTypeId objType, const IEntityInterface& owner)
     {
         if (objType > 0 && (objType-1) < _knownObjectTypes.size())
             if (_knownObjectTypes[objType-1]._owner.get() == &owner)
@@ -118,14 +118,15 @@ namespace GUILayer { namespace EditorDynamicInterface
         return 0;
     }
 
-    void RegisteredTypes::RegisterType(std::shared_ptr<IObjectType> type)
+    void Switch::RegisterType(std::shared_ptr<IEntityInterface> type)
     {
         _types.push_back(std::move(type));
     }
 
-    RegisteredTypes::RegisteredTypes() {}
-    RegisteredTypes::~RegisteredTypes() {}
+    Switch::Switch() {}
+    Switch::~Switch() {}
     
 
-}}
+}
+
 

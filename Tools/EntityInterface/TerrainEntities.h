@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "EditorDynamicInterface.h"
+#include "EntityInterface.h"
 #include "../../Assets/Assets.h"
 #include "../../Math/Vector.h"
 #include "../../Utility/UTFUtils.h"
@@ -15,9 +15,9 @@
 namespace Tools { class IManipulator; }
 namespace SceneEngine { class TerrainManager; class TerrainMaterialScaffold; }
 
-namespace GUILayer { namespace EditorDynamicInterface
+namespace EntityInterface
 {
-    class TerrainObjectType : public IObjectType
+    class TerrainEntities : public IEntityInterface
 	{
 	public:
 		DocumentId CreateDocument(DocumentTypeId docType, const char initializer[]) const;
@@ -35,22 +35,14 @@ namespace GUILayer { namespace EditorDynamicInterface
 		PropertyId GetPropertyId(ObjectTypeId type, const char name[]) const;
 		ChildListId GetChildListId(ObjectTypeId type, const char name[]) const;
 
-		TerrainObjectType(std::shared_ptr<SceneEngine::TerrainManager> terrainManager);
-		~TerrainObjectType();
+		TerrainEntities(std::shared_ptr<SceneEngine::TerrainManager> terrainManager);
+		~TerrainEntities();
 
     private:
-		static const ObjectTypeId ObjectType_Terrain = 1;
-		static const PropertyId Property_BaseDir = 200;
-        static const PropertyId Property_Offset = 201;
-
         bool SetTerrainProperty(const PropertyInitializer& prop) const;
-
         std::shared_ptr<SceneEngine::TerrainManager> _terrainManager;
 	};
 
-    class FlexObjectScene;
-}}
-
-namespace GUILayer { 
-    namespace Internal { void RegisterTerrainFlexObjects(EditorDynamicInterface::FlexObjectScene& flexSys); }
+    class RetainedEntities;
+    void RegisterTerrainFlexObjects(RetainedEntities& flexSys);
 }

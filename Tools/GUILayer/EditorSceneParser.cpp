@@ -11,7 +11,7 @@
 #include "MarshalString.h"
 #include "ExportedNativeTypes.h"
 
-#include "../EntityInterface/FlexGobInterface.h"
+#include "../EntityInterface/RetainedEntities.h"
 #include "../EntityInterface/EnvironmentSettings.h"
 
 #include "../ToolsRig/VisualisationUtils.h"     // for AsCameraDesc
@@ -123,14 +123,14 @@ namespace GUILayer
 
     void EditorSceneParser::PrepareEnvironmentalSettings(const char envSettings[])
     {
-        using namespace EditorDynamicInterface;
+        using namespace EntityInterface;
         const auto& objs = *_editorScene->_flexObjects;
-        const FlexObjectScene::Object* settings = nullptr;
+        const RetainedEntity* settings = nullptr;
         const auto typeSettings = objs.GetTypeId("EnvSettings");
 
         {
             static const auto nameHash = ParameterBox::MakeParameterNameHash("name");
-            auto allSettings = objs.FindObjectsOfType(typeSettings);
+            auto allSettings = objs.FindEntitiesOfType(typeSettings);
             for (const auto& s : allSettings)
                 if (!XlCompareStringI(s->_properties.GetString<char>(nameHash).c_str(), envSettings)) {
                     settings = s;

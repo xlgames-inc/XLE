@@ -4,7 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "PlacementsGobInterface.h"
+#include "PlacementEntities.h"
 #include "../../SceneEngine/PlacementsManager.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/ParameterBox.h"
@@ -12,10 +12,19 @@
 #include "../../Utility/StringUtils.h"
 #include "../../Math/Transformations.h"
 
-namespace GUILayer { namespace EditorDynamicInterface
+namespace EntityInterface
 {
+    static const DocumentTypeId DocumentType_Placements = 1;
+    static const ObjectTypeId ObjectType_Placement = 1;
+    static const PropertyId Property_Transform = 100;
+    static const PropertyId Property_Visible = 101;
+    static const PropertyId Property_Model = 102;
+    static const PropertyId Property_Material = 103;
+    static const PropertyId Property_Bounds = 104;
+    static const PropertyId Property_LocalBounds = 105;
 
-    DocumentId PlacementObjectType::CreateDocument(DocumentTypeId docType, const char initializer[]) const
+
+    DocumentId PlacementEntities::CreateDocument(DocumentTypeId docType, const char initializer[]) const
     {
         if (docType != DocumentType_Placements) { assert(0); return 0; }
 
@@ -27,13 +36,13 @@ namespace GUILayer { namespace EditorDynamicInterface
             meld,  Float2(-1000.f, -1000.f), Float2( 1000.f,  1000.f));
     }
 
-    bool PlacementObjectType::DeleteDocument(DocumentId doc, DocumentTypeId docType) const
+    bool PlacementEntities::DeleteDocument(DocumentId doc, DocumentTypeId docType) const
     {
         if (docType != DocumentType_Placements) { assert(0); return false; }
         return _editor->RemoveCell(*_manager, doc);
     }
 
-    ObjectId PlacementObjectType::AssignObjectId(DocumentId doc, ObjectTypeId type) const
+    ObjectId PlacementEntities::AssignObjectId(DocumentId doc, ObjectTypeId type) const
     {
         if (type != ObjectType_Placement) { assert(0); return 0; }
         return _editor->GenerateObjectGUID();
@@ -43,7 +52,7 @@ namespace GUILayer { namespace EditorDynamicInterface
         SceneEngine::PlacementsEditor::ObjTransDef& obj, 
         const PropertyInitializer& prop)
     {
-        if (prop._prop == PlacementObjectType::Property_Transform) {
+        if (prop._prop == Property_Transform) {
                 // note -- putting in a transpose here, because the level editor matrix
                 //          math uses a transposed form
             if (prop._elementType == (unsigned)ImpliedTyping::TypeCat::Float && prop._arrayCount >= 16) {
@@ -51,13 +60,13 @@ namespace GUILayer { namespace EditorDynamicInterface
                 return true;
             }
 
-        } else if (prop._prop == PlacementObjectType::Property_Model || prop._prop == PlacementObjectType::Property_Material) {
+        } else if (prop._prop == Property_Model || prop._prop == Property_Material) {
             Assets::ResChar buffer[MaxPath];
             ucs2_2_utf8(
                 (const ucs2*)prop._src, prop._arrayCount,
                 (utf8*)buffer, dimof(buffer));
 
-            if (prop._prop == PlacementObjectType::Property_Model) {
+            if (prop._prop == Property_Model) {
                 obj._model = buffer;
             } else {
                 obj._material = buffer;
@@ -67,7 +76,7 @@ namespace GUILayer { namespace EditorDynamicInterface
         return false;
     }
 
-    bool PlacementObjectType::CreateObject(
+    bool PlacementEntities::CreateObject(
         const Identifier& id, 
         const PropertyInitializer initializers[], size_t initializerCount) const
     {
@@ -100,7 +109,7 @@ namespace GUILayer { namespace EditorDynamicInterface
         return false;
     }
 
-    bool PlacementObjectType::DeleteObject(const Identifier& id) const
+    bool PlacementEntities::DeleteObject(const Identifier& id) const
     {
         if (id.ObjectType() != ObjectType_Placement) { assert(0); return false; }
 
@@ -117,7 +126,7 @@ namespace GUILayer { namespace EditorDynamicInterface
         return false;
     }
 
-    bool PlacementObjectType::SetProperty(
+    bool PlacementEntities::SetProperty(
         const Identifier& id,
         const PropertyInitializer initializers[], size_t initializerCount) const
     {
@@ -153,7 +162,7 @@ namespace GUILayer { namespace EditorDynamicInterface
         return false;
     }
 
-    bool PlacementObjectType::GetProperty(
+    bool PlacementEntities::GetProperty(
         const Identifier& id, PropertyId prop, 
         void* dest, unsigned* destSize) const
     {
@@ -196,24 +205,24 @@ namespace GUILayer { namespace EditorDynamicInterface
         return false;
     }
 
-    bool PlacementObjectType::SetParent(const Identifier& child, const Identifier& parent, int insertionPosition) const
+    bool PlacementEntities::SetParent(const Identifier& child, const Identifier& parent, int insertionPosition) const
     {
         return false;
     }
 
-    ObjectTypeId PlacementObjectType::GetTypeId(const char name[]) const
+    ObjectTypeId PlacementEntities::GetTypeId(const char name[]) const
     {
         if (!XlCompareString(name, "PlacementObject")) return ObjectType_Placement;
         return 0;
     }
 
-    DocumentTypeId PlacementObjectType::GetDocumentTypeId(const char name[]) const
+    DocumentTypeId PlacementEntities::GetDocumentTypeId(const char name[]) const
     {
         if (!XlCompareString(name, "PlacementsDocument")) return DocumentType_Placements;
         return 0;
     }
 
-    PropertyId PlacementObjectType::GetPropertyId(ObjectTypeId type, const char name[]) const
+    PropertyId PlacementEntities::GetPropertyId(ObjectTypeId type, const char name[]) const
     {
         if (!XlCompareString(name, "transform"))    return Property_Transform;
         if (!XlCompareString(name, "visible"))      return Property_Visible;
@@ -224,17 +233,17 @@ namespace GUILayer { namespace EditorDynamicInterface
         return 0;
     }
 
-    ChildListId PlacementObjectType::GetChildListId(ObjectTypeId type, const char name[]) const
+    ChildListId PlacementEntities::GetChildListId(ObjectTypeId type, const char name[]) const
     {
         return 0;
     }
 
-    PlacementObjectType::PlacementObjectType(
+    PlacementEntities::PlacementEntities(
         std::shared_ptr<SceneEngine::PlacementsManager> manager,
         std::shared_ptr<SceneEngine::PlacementsEditor> editor)
     : _manager(std::move(manager))
     , _editor(std::move(editor)) {}
 
-    PlacementObjectType::~PlacementObjectType() {}
+    PlacementEntities::~PlacementEntities() {}
 
-}}
+}

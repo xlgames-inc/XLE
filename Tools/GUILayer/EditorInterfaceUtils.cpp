@@ -12,7 +12,7 @@
 #include "MathLayer.h"
 #include "MarshalString.h"
 #include "ExportedNativeTypes.h"
-#include "../EntityInterface/EditorDynamicInterface.h"
+#include "../EntityInterface/EntityInterface.h"
 #include "../EntityInterface/EnvironmentSettings.h"
 #include "../../PlatformRig/BasicSceneParser.h"
 #include "../../SceneEngine/IntersectionTest.h"
@@ -35,8 +35,8 @@ namespace GUILayer
     public ref class HitRecord
     {
     public:
-        EditorDynamicInterface::DocumentId _document;
-        EditorDynamicInterface::ObjectId _object;
+        EntityInterface::DocumentId _document;
+        EntityInterface::ObjectId _object;
         Vector3 _worldSpaceCollision;
         float _distance;
         uint64 _materialGuid;

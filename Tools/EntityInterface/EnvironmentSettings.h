@@ -6,24 +6,28 @@
 
 #pragma once
 
-#include "FlexGobInterface.h"
+#include "EntityInterface.h"
+#include "../../Assets/AssetsCore.h"
 
 namespace PlatformRig { class EnvironmentSettings; }
 
-namespace GUILayer
+namespace EntityInterface
 {
+    class RetainedEntities;
+    class RetainedEntity;
+
     PlatformRig::EnvironmentSettings
         BuildEnvironmentSettings(
-            const EditorDynamicInterface::FlexObjectScene& flexGobInterface,
-            const EditorDynamicInterface::FlexObjectScene::Object& obj);
+            const RetainedEntities& flexGobInterface,
+            const RetainedEntity& obj);
 
     using EnvSettingsVector = std::vector<std::pair<std::string, PlatformRig::EnvironmentSettings>>;
     EnvSettingsVector BuildEnvironmentSettings(
-        const EditorDynamicInterface::FlexObjectScene& flexGobInterface);
+        const RetainedEntities& flexGobInterface);
 
     void ExportEnvSettings(
-        const EditorDynamicInterface::FlexObjectScene& flexGobInterface,
-        EditorDynamicInterface::DocumentId docId,
+        const RetainedEntities& flexGobInterface,
+        DocumentId docId,
         const ::Assets::ResChar destinationFile[]);
 }
 

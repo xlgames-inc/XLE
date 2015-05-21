@@ -6,7 +6,7 @@
 
 #include "ObjectPlaceholders.h"
 #include "ExportedNativeTypes.h"
-#include "../EntityInterface/FlexGobInterface.h"
+#include "../EntityInterface/RetainedEntities.h"
 #include "../ToolsRig/VisualisationGeo.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/ResourceBox.h"
@@ -34,7 +34,8 @@ namespace GUILayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    using EditorDynamicInterface::FlexObjectScene;
+    using EntityInterface::RetainedEntities;
+    using EntityInterface::RetainedEntity;
 
     class VisGeoBox
     {
@@ -72,7 +73,7 @@ namespace GUILayer
         Metal::DeviceContext& devContext,
         ParsingContext& parserContext,
         const VisGeoBox& visBox,
-        const ResolvedShader& shader, const FlexObjectScene::Object& obj)
+        const ResolvedShader& shader, const RetainedEntity& obj)
     {
         if (!obj._properties.GetParameter(Parameters::Visible, true)) return;
 
@@ -101,14 +102,14 @@ namespace GUILayer
         if (!shader._shaderProgram) return;
 
         for (auto a=_annotations.cbegin(); a!=_annotations.cend(); ++a) {
-            auto objects = _objects->FindObjectsOfType(a->_typeId);
+            auto objects = _objects->FindEntitiesOfType(a->_typeId);
             for (auto o=objects.cbegin(); o!=objects.cend(); ++o) {
                 DrawObject(metalContext, parserContext, visBox, shader, **o);
             }
         }
     }
 
-    void ObjectPlaceholders::AddAnnotation(EditorDynamicInterface::ObjectTypeId typeId)
+    void ObjectPlaceholders::AddAnnotation(EntityInterface::ObjectTypeId typeId)
     {
         Annotation newAnnotation;
         newAnnotation._typeId = typeId;
@@ -140,7 +141,7 @@ namespace GUILayer
         using namespace SceneEngine;
 
         for (auto a=_placeHolders->_annotations.cbegin(); a!=_placeHolders->_annotations.cend(); ++a) {
-            auto objects = _placeHolders->_objects->FindObjectsOfType(a->_typeId);
+            auto objects = _placeHolders->_objects->FindEntitiesOfType(a->_typeId);
             for (auto o=objects.cbegin(); o!=objects.cend(); ++o) {
 
                 auto transform = Transpose((*o)->_properties.GetParameter(Parameters::Transform, Identity<Float4x4>()));
@@ -177,7 +178,7 @@ namespace GUILayer
         return std::make_shared<IntersectionTester>(shared_from_this());
     }
 
-    ObjectPlaceholders::ObjectPlaceholders(std::shared_ptr<FlexObjectScene> objects)
+    ObjectPlaceholders::ObjectPlaceholders(std::shared_ptr<RetainedEntities> objects)
     : _objects(std::move(objects))
     {}
 

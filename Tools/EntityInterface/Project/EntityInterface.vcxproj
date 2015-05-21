@@ -102,18 +102,18 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\EditorDynamicInterface.cpp" />
+    <ClCompile Include="..\EntityInterface.cpp" />
     <ClCompile Include="..\EnvironmentSettings.cpp" />
-    <ClCompile Include="..\FlexGobInterface.cpp" />
-    <ClCompile Include="..\PlacementsGobInterface.cpp" />
-    <ClCompile Include="..\TerrainGobInterface.cpp" />
+    <ClCompile Include="..\RetainedEntities.cpp" />
+    <ClCompile Include="..\PlacementEntities.cpp" />
+    <ClCompile Include="..\TerrainEntities.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\EditorDynamicInterface.h" />
+    <ClInclude Include="..\EntityInterface.h" />
     <ClInclude Include="..\EnvironmentSettings.h" />
-    <ClInclude Include="..\FlexGobInterface.h" />
-    <ClInclude Include="..\PlacementsGobInterface.h" />
-    <ClInclude Include="..\TerrainGobInterface.h" />
+    <ClInclude Include="..\RetainedEntities.h" />
+    <ClInclude Include="..\PlacementEntities.h" />
+    <ClInclude Include="..\TerrainEntities.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

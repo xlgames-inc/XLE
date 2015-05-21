@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "../EntityInterface/EditorDynamicInterface.h"
+#include "../EntityInterface/EntityInterface.h"
 #include "CLIXAutoPtr.h"
 #include "../../Assets/Assets.h"    // just for ResChar
 #include <memory>
@@ -21,6 +21,8 @@ namespace SceneEngine
 }
 namespace Tools { class IManipulator; }
 
+namespace EntityInterface { class Switch; class RetainedEntities; class RetainedEntityInterface; }
+
 namespace GUILayer
 {
     ref class VisCameraSettings;
@@ -31,15 +33,13 @@ namespace GUILayer
     class TerrainGob;
     class ObjectPlaceholders;
 
-    namespace EditorDynamicInterface { class RegisteredTypes; class FlexObjectScene; class FlexObjectType; }
-
     class EditorScene
     {
     public:
         std::shared_ptr<SceneEngine::PlacementsManager> _placementsManager;
         std::shared_ptr<SceneEngine::PlacementsEditor> _placementsEditor;
         std::shared_ptr<SceneEngine::TerrainManager> _terrainManager;
-        std::shared_ptr<EditorDynamicInterface::FlexObjectScene> _flexObjects;
+        std::shared_ptr<EntityInterface::RetainedEntities> _flexObjects;
         std::shared_ptr<ObjectPlaceholders> _placeholders;
 
         void    IncrementTime(float increment) { _currentTime += increment; }
@@ -71,13 +71,13 @@ namespace GUILayer
         PlacementsEditorWrapper^ GetPlacementsEditor();
 
             //// //// ////   G O B   I N T E R F A C E   //// //// ////
-        using DocumentTypeId = EditorDynamicInterface::DocumentTypeId;
-        using ObjectTypeId = EditorDynamicInterface::ObjectTypeId;
-        using DocumentId = EditorDynamicInterface::DocumentId;
-        using ObjectId = EditorDynamicInterface::ObjectId;
-        using ObjectTypeId = EditorDynamicInterface::ObjectTypeId;
-        using PropertyId = EditorDynamicInterface::PropertyId;
-        using ChildListId = EditorDynamicInterface::ChildListId;
+        using DocumentTypeId = EntityInterface::DocumentTypeId;
+        using ObjectTypeId = EntityInterface::ObjectTypeId;
+        using DocumentId = EntityInterface::DocumentId;
+        using ObjectId = EntityInterface::ObjectId;
+        using ObjectTypeId = EntityInterface::ObjectTypeId;
+        using PropertyId = EntityInterface::PropertyId;
+        using ChildListId = EntityInterface::ChildListId;
 
         DocumentId CreateDocument(DocumentTypeId docType);
         bool DeleteDocument(DocumentId doc, DocumentTypeId docType);
@@ -122,7 +122,7 @@ namespace GUILayer
         ExportResult^ ExportTerrainSettings(System::String^ destinationFolder);
 
             //// //// ////   U T I L I T Y   //// //// ////
-        const EditorDynamicInterface::FlexObjectScene& GetFlexObjects();
+        const EntityInterface::RetainedEntities& GetFlexObjects();
         void IncrementTime(float increment);
 
             //// //// ////   C O N S T R U C T O R S   //// //// ////
@@ -131,8 +131,8 @@ namespace GUILayer
         !EditorSceneManager();
     protected:
         clix::shared_ptr<EditorScene> _scene;
-        clix::shared_ptr<EditorDynamicInterface::RegisteredTypes> _dynInterface;
-        clix::shared_ptr<EditorDynamicInterface::FlexObjectType> _flexGobInterface;
+        clix::shared_ptr<EntityInterface::Switch> _dynInterface;
+        clix::shared_ptr<EntityInterface::RetainedEntityInterface> _flexGobInterface;
     };
 }
 

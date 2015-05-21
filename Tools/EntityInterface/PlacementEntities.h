@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "EditorDynamicInterface.h"
+#include "EntityInterface.h"
 
 namespace SceneEngine
 {
@@ -14,9 +14,9 @@ namespace SceneEngine
     class PlacementsEditor;
 }
 
-namespace GUILayer { namespace EditorDynamicInterface
+namespace EntityInterface
 {
-    class PlacementObjectType : public IObjectType
+    class PlacementEntities : public IEntityInterface
     {
     public:
         DocumentId CreateDocument(DocumentTypeId docType, const char initializer[]) const;
@@ -34,23 +34,14 @@ namespace GUILayer { namespace EditorDynamicInterface
         PropertyId GetPropertyId(ObjectTypeId type, const char name[]) const;
         ChildListId GetChildListId(ObjectTypeId type, const char name[]) const;
 
-        PlacementObjectType(
+        PlacementEntities(
             std::shared_ptr<SceneEngine::PlacementsManager> manager,
             std::shared_ptr<SceneEngine::PlacementsEditor> editor);
-        ~PlacementObjectType();
-
-        static const DocumentTypeId DocumentType_Placements = 1;
-        static const ObjectTypeId ObjectType_Placement = 1;
-        static const PropertyId Property_Transform = 100;
-        static const PropertyId Property_Visible = 101;
-        static const PropertyId Property_Model = 102;
-        static const PropertyId Property_Material = 103;
-        static const PropertyId Property_Bounds = 104;
-        static const PropertyId Property_LocalBounds = 105;
+        ~PlacementEntities();
 
     protected:
         std::shared_ptr<SceneEngine::PlacementsManager> _manager;
         std::shared_ptr<SceneEngine::PlacementsEditor> _editor;
     };
-}}
+}
 

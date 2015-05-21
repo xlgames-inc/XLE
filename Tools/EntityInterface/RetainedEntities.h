@@ -6,37 +6,48 @@
 
 #pragma once
 
-#include "EditorDynamicInterface.h"
+#include "EntityInterface.h"
 #include "../../Utility/ParameterBox.h"
 #include "../../Assets/Assets.h"        // for rstring
 #include <string>
 #include <vector>
 #include <functional>
 
-namespace GUILayer { namespace EditorDynamicInterface
+namespace EntityInterface
 {
-    class FlexObjectScene
+    class RetainedEntity
     {
     public:
-        class Object
-        {
-        public:
-            ObjectId _id;
-            DocumentId _doc;
-            ObjectTypeId _type;
+        ObjectId _id;
+        DocumentId _doc;
+        ObjectTypeId _type;
 
-            ParameterBox _properties;
-            std::vector<ObjectId> _children;
-            ObjectId _parent;
-        };
+        ParameterBox _properties;
+        std::vector<ObjectId> _children;
+        ObjectId _parent;
+    };
 
-        const Object* GetObject(DocumentId doc, ObjectId obj) const;
-        const Object* GetObject(const Identifier&) const;
-        std::vector<const Object*> FindObjectsOfType(ObjectTypeId typeId) const;
+    /// <summary>Stores entity data generically</summary>
+    /// This implemention simply stores all information that comes from IObjectType
+    /// in a generic data structure.
+    ///
+    /// Clients can put callbacks on specific object types to watch for changes.
+    /// This can make it easier to implement lightweight object types. Instead of
+    /// having to implement the IEntityInterface, simply set a callback with
+    /// RegisterCallback().
+    ///
+    /// All of the properties and data related to that object will be available in
+    /// the callback.
+    class RetainedEntities
+    {
+    public:
+        const RetainedEntity* GetEntity(DocumentId doc, ObjectId obj) const;
+        const RetainedEntity* GetEntity(const Identifier&) const;
+        std::vector<const RetainedEntity*> FindEntitiesOfType(ObjectTypeId typeId) const;
 
         using OnChangeDelegate = 
             std::function<
-                void(const FlexObjectScene& flexSys, const Identifier&)
+                void(const RetainedEntities& flexSys, const Identifier&)
             >;
         bool RegisterCallback(ObjectTypeId typeId, OnChangeDelegate onChange);
 
@@ -44,11 +55,11 @@ namespace GUILayer { namespace EditorDynamicInterface
 		PropertyId      GetPropertyId(ObjectTypeId typeId, const char name[]) const;
 		ChildListId     GetChildListId(ObjectTypeId typeId, const char name[]) const;
 
-        FlexObjectScene();
-        ~FlexObjectScene();
+        RetainedEntities();
+        ~RetainedEntities();
     protected:
         mutable ObjectId _nextObjectId;
-        mutable std::vector<Object> _objects;
+        mutable std::vector<RetainedEntity> _objects;
 
         class RegisteredObjectType
         {
@@ -66,16 +77,17 @@ namespace GUILayer { namespace EditorDynamicInterface
         mutable ObjectTypeId _nextObjectTypeId;
 
         RegisteredObjectType* GetObjectType(ObjectTypeId id) const;
-        void InvokeOnChange(RegisteredObjectType& type, Object& obj) const;
+        void InvokeOnChange(RegisteredObjectType& type, RetainedEntity& obj) const;
+        RetainedEntity* GetEntityInt(DocumentId doc, ObjectId obj) const;
+        bool SetSingleProperties(RetainedEntity& dest, const RegisteredObjectType& type, const PropertyInitializer& initializer) const;
 
-        Object* GetObjectInt(DocumentId doc, ObjectId obj) const;
-
-        bool SetSingleProperties(Object& dest, const RegisteredObjectType& type, const PropertyInitializer& initializer) const;
-
-        friend class FlexObjectType;
+        friend class RetainedEntityInterface;
     };
 
-    class FlexObjectType : public IObjectType
+    /// <summary>Implements IEntityInterface for retained entities</summary>
+    /// This implementation will simply accept all incoming data, and store
+    /// it in a generic data structure.
+    class RetainedEntityInterface : public IEntityInterface
     {
     public:
         DocumentId CreateDocument(DocumentTypeId docType, const char initializer[]) const;
@@ -93,12 +105,12 @@ namespace GUILayer { namespace EditorDynamicInterface
 		PropertyId      GetPropertyId(ObjectTypeId typeId, const char name[]) const;
 		ChildListId     GetChildListId(ObjectTypeId typeId, const char name[]) const;
 
-		FlexObjectType(std::shared_ptr<FlexObjectScene> flexObjects);
-		~FlexObjectType();
+		RetainedEntityInterface(std::shared_ptr<RetainedEntities> scene);
+		~RetainedEntityInterface();
     protected:
-        std::shared_ptr<FlexObjectScene> _scene;
+        std::shared_ptr<RetainedEntities> _scene;
     };
-}}
+}
 
 
 

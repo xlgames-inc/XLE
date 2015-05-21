@@ -4,13 +4,13 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "FlexGobInterface.h"
+#include "RetainedEntities.h"
 #include "../../Utility/StringUtils.h"
 
-namespace GUILayer { namespace EditorDynamicInterface
+namespace EntityInterface
 {
-    bool FlexObjectScene::SetSingleProperties(
-        Object& dest, const RegisteredObjectType& type, const PropertyInitializer& prop) const
+    bool RetainedEntities::SetSingleProperties(
+        RetainedEntity& dest, const RegisteredObjectType& type, const PropertyInitializer& prop) const
     {
         if (prop._prop == 0 || prop._prop > type._properties.size()) return false;
         if (!prop._src) return false;
@@ -22,14 +22,14 @@ namespace GUILayer { namespace EditorDynamicInterface
         return true;
     }
 
-    auto FlexObjectScene::GetObjectType(ObjectTypeId id) const -> RegisteredObjectType*
+    auto RetainedEntities::GetObjectType(ObjectTypeId id) const -> RegisteredObjectType*
     {
         for (auto i=_registeredObjectTypes.begin(); i!=_registeredObjectTypes.end(); ++i)
             if (i->first == id) return &i->second;
         return nullptr;
     }
 
-    bool FlexObjectScene::RegisterCallback(ObjectTypeId typeId, OnChangeDelegate onChange)
+    bool RetainedEntities::RegisterCallback(ObjectTypeId typeId, OnChangeDelegate onChange)
     {
         auto type = GetObjectType(typeId);
         if (!type) return false;
@@ -37,7 +37,7 @@ namespace GUILayer { namespace EditorDynamicInterface
         return true;
     }
 
-    void FlexObjectScene::InvokeOnChange(RegisteredObjectType& type, Object& obj) const
+    void RetainedEntities::InvokeOnChange(RegisteredObjectType& type, RetainedEntity& obj) const
     {
         for (auto i=type._onChange.begin(); i!=type._onChange.end(); ++i) {
             (*i)(*this, Identifier(obj._doc, obj._id, obj._type));
@@ -52,7 +52,7 @@ namespace GUILayer { namespace EditorDynamicInterface
                 }
     }
 
-    auto FlexObjectScene::GetObject(DocumentId doc, ObjectId obj) const -> const Object*
+    auto RetainedEntities::GetEntity(DocumentId doc, ObjectId obj) const -> const RetainedEntity*
     {
         for (auto i=_objects.begin(); i!=_objects.end(); ++i)
             if (i->_id == obj && i->_doc == doc) {
@@ -61,7 +61,7 @@ namespace GUILayer { namespace EditorDynamicInterface
         return nullptr;
     }
 
-    auto FlexObjectScene::GetObject(const Identifier& id) const -> const Object*
+    auto RetainedEntities::GetEntity(const Identifier& id) const -> const RetainedEntity*
     {
         for (auto i=_objects.begin(); i!=_objects.end(); ++i)
             if (i->_id == id.Object() && i->_doc == id.Document() && i->_type == id.ObjectType())
@@ -69,7 +69,7 @@ namespace GUILayer { namespace EditorDynamicInterface
         return nullptr;
     }
 
-    auto FlexObjectScene::GetObjectInt(DocumentId doc, ObjectId obj) const -> Object* 
+    auto RetainedEntities::GetEntityInt(DocumentId doc, ObjectId obj) const -> RetainedEntity* 
     {
         for (auto i=_objects.begin(); i!=_objects.end(); ++i)
             if (i->_id == obj && i->_doc == doc) {
@@ -78,9 +78,9 @@ namespace GUILayer { namespace EditorDynamicInterface
         return nullptr;
     }
 
-    auto FlexObjectScene::FindObjectsOfType(ObjectTypeId typeId) const -> std::vector<const Object*>
+    auto RetainedEntities::FindEntitiesOfType(ObjectTypeId typeId) const -> std::vector<const RetainedEntity*>
     {
-        std::vector<const Object*> result;
+        std::vector<const RetainedEntity*> result;
         for (auto i=_objects.begin(); i!=_objects.end(); ++i)
             if (i->_type == typeId) {
                 result.push_back(AsPointer(i));
@@ -88,18 +88,18 @@ namespace GUILayer { namespace EditorDynamicInterface
         return std::move(result);
     }
 
-    ObjectTypeId FlexObjectScene::GetTypeId(const char name[]) const
+    ObjectTypeId RetainedEntities::GetTypeId(const char name[]) const
     {
         for (auto i=_registeredObjectTypes.cbegin(); i!=_registeredObjectTypes.cend(); ++i)
             if (!XlCompareStringI(i->second._name.c_str(), name))
                 return i->first;
         
         _registeredObjectTypes.push_back(
-            std::make_pair(_nextObjectTypeId, FlexObjectScene::RegisteredObjectType(name)));
+            std::make_pair(_nextObjectTypeId, RegisteredObjectType(name)));
         return _nextObjectTypeId++;
     }
 
-	PropertyId FlexObjectScene::GetPropertyId(ObjectTypeId typeId, const char name[]) const
+	PropertyId RetainedEntities::GetPropertyId(ObjectTypeId typeId, const char name[]) const
     {
         auto type = GetObjectType(typeId);
         if (!type) return 0;
@@ -112,7 +112,7 @@ namespace GUILayer { namespace EditorDynamicInterface
         return (PropertyId)type->_properties.size();
     }
 
-	ChildListId FlexObjectScene::GetChildListId(ObjectTypeId typeId, const char name[]) const
+	ChildListId RetainedEntities::GetChildListId(ObjectTypeId typeId, const char name[]) const
     {
         auto type = GetObjectType(typeId);
         if (!type) return 0;
@@ -125,21 +125,21 @@ namespace GUILayer { namespace EditorDynamicInterface
         return (PropertyId)(type->_childLists.size()-1);
     }
 
-    FlexObjectScene::FlexObjectScene()
+    RetainedEntities::RetainedEntities()
     {
         _nextObjectTypeId = 1;
     }
 
-    FlexObjectScene::~FlexObjectScene() {}
+    RetainedEntities::~RetainedEntities() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	ObjectId FlexObjectType::AssignObjectId(DocumentId doc, ObjectTypeId typeId) const
+	ObjectId RetainedEntityInterface::AssignObjectId(DocumentId doc, ObjectTypeId typeId) const
     {
         return _scene->_nextObjectId++;
     }
 
-	bool FlexObjectType::CreateObject(const Identifier& id, 
+	bool RetainedEntityInterface::CreateObject(const Identifier& id, 
         const PropertyInitializer initializers[], size_t initializerCount) const
     {
         auto type = _scene->GetObjectType(id.ObjectType());
@@ -148,7 +148,7 @@ namespace GUILayer { namespace EditorDynamicInterface
         for (auto i=_scene->_objects.cbegin(); i!=_scene->_objects.cend(); ++i)
             if (i->_doc == id.Document() && i->_id == id.Object()) return false;
 
-        FlexObjectScene::Object newObject;
+        RetainedEntity newObject;
         newObject._doc = id.Document();
         newObject._id = id.Object();
         newObject._type = id.ObjectType();
@@ -163,7 +163,7 @@ namespace GUILayer { namespace EditorDynamicInterface
         return true;
     }
 
-	bool FlexObjectType::DeleteObject(const Identifier& id) const
+	bool RetainedEntityInterface::DeleteObject(const Identifier& id) const
     {
         for (auto i=_scene->_objects.cbegin(); i!=_scene->_objects.cend(); ++i)
             if (i->_doc == id.Document() && i->_id == id.Object()) {
@@ -174,7 +174,7 @@ namespace GUILayer { namespace EditorDynamicInterface
         return false;
     }
 
-	bool FlexObjectType::SetProperty(
+	bool RetainedEntityInterface::SetProperty(
         const Identifier& id, 
         const PropertyInitializer initializers[], size_t initializerCount) const
     {
@@ -195,7 +195,7 @@ namespace GUILayer { namespace EditorDynamicInterface
         return false;
     }
 
-	bool FlexObjectType::GetProperty(const Identifier& id, PropertyId prop, void* dest, unsigned* destSize) const
+	bool RetainedEntityInterface::GetProperty(const Identifier& id, PropertyId prop, void* dest, unsigned* destSize) const
     {
         auto type = _scene->GetObjectType(id.ObjectType());
         if (!type) return false;
@@ -215,7 +215,7 @@ namespace GUILayer { namespace EditorDynamicInterface
         return false;
     }
 
-    bool FlexObjectType::SetParent(
+    bool RetainedEntityInterface::SetParent(
         const Identifier& child, const Identifier& parent, int insertionPosition) const
     {
         if (child.Document() != parent.Document())
@@ -224,12 +224,12 @@ namespace GUILayer { namespace EditorDynamicInterface
         auto childType = _scene->GetObjectType(child.ObjectType());
         if (!childType) return false;
 
-        auto* childObj = _scene->GetObjectInt(child.Document(), child.Object());
+        auto* childObj = _scene->GetEntityInt(child.Document(), child.Object());
         if (!childObj || childObj->_type != child.ObjectType())
             return false;
 
         if (childObj->_parent != 0) {
-            auto* oldParent = _scene->GetObjectInt(child.Document(), childObj->_parent);
+            auto* oldParent = _scene->GetEntityInt(child.Document(), childObj->_parent);
             if (oldParent) {
                 auto i = std::find(oldParent->_children.begin(), oldParent->_children.end(), child.Object());
                 oldParent->_children.erase(i);
@@ -242,7 +242,7 @@ namespace GUILayer { namespace EditorDynamicInterface
             // if parent is set to 0, then this is a "remove from parent" operation
         if (!parent.Object()) return true;
 
-        auto* parentObj = _scene->GetObjectInt(parent.Document(), parent.Object());
+        auto* parentObj = _scene->GetEntityInt(parent.Document(), parent.Object());
         if (!parentObj || parentObj->_type != parent.ObjectType()) return false;
 
         auto parentType = _scene->GetObjectType(parent.ObjectType());
@@ -261,42 +261,42 @@ namespace GUILayer { namespace EditorDynamicInterface
         return true;
     }
 
-	ObjectTypeId    FlexObjectType::GetTypeId(const char name[]) const
+	ObjectTypeId    RetainedEntityInterface::GetTypeId(const char name[]) const
     {
         return _scene->GetTypeId(name);
     }
 
-	PropertyId      FlexObjectType::GetPropertyId(ObjectTypeId typeId, const char name[]) const
+	PropertyId      RetainedEntityInterface::GetPropertyId(ObjectTypeId typeId, const char name[]) const
     {
         return _scene->GetPropertyId(typeId, name);
     }
 
-	ChildListId     FlexObjectType::GetChildListId(ObjectTypeId typeId, const char name[]) const
+	ChildListId     RetainedEntityInterface::GetChildListId(ObjectTypeId typeId, const char name[]) const
     {
         return _scene->GetPropertyId(typeId, name);
     }
 
-    DocumentId FlexObjectType::CreateDocument(DocumentTypeId docType, const char initializer[]) const
+    DocumentId RetainedEntityInterface::CreateDocument(DocumentTypeId docType, const char initializer[]) const
     {
         return 0;
     }
 
-	bool FlexObjectType::DeleteDocument(DocumentId doc, DocumentTypeId docType) const
+	bool RetainedEntityInterface::DeleteDocument(DocumentId doc, DocumentTypeId docType) const
     {
         return false;
     }
 
-    DocumentTypeId FlexObjectType::GetDocumentTypeId(const char name[]) const
+    DocumentTypeId RetainedEntityInterface::GetDocumentTypeId(const char name[]) const
     {
         return 0;
     }
 
-	FlexObjectType::FlexObjectType(std::shared_ptr<FlexObjectScene> flexObjects)
+	RetainedEntityInterface::RetainedEntityInterface(std::shared_ptr<RetainedEntities> flexObjects)
     : _scene(std::move(flexObjects))
     {}
 
-	FlexObjectType::~FlexObjectType()
+	RetainedEntityInterface::~RetainedEntityInterface()
     {}
 
-}}
+}
 

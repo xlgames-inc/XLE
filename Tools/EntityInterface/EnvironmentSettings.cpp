@@ -7,21 +7,22 @@
 #pragma warning(disable:4793) // 'Exceptions::BasicLabel::BasicLabel' : function compiled as native :
 
 #include "EnvironmentSettings.h"
+#include "RetainedEntities.h"
 #include "../../PlatformRig/BasicSceneParser.h"
 #include "../../Math/Transformations.h"
 #include "../../Utility/StringUtils.h"
 #include "../../Utility/Streams/Data.h"
 #include <memory>
 
-namespace GUILayer
+namespace EntityInterface
 {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     PlatformRig::EnvironmentSettings
         BuildEnvironmentSettings(
-            const EditorDynamicInterface::FlexObjectScene& flexGobInterface,
-            const EditorDynamicInterface::FlexObjectScene::Object& obj)
+            const RetainedEntities& flexGobInterface,
+            const RetainedEntity& obj)
     {
         using namespace SceneEngine;
         using namespace PlatformRig;
@@ -35,7 +36,7 @@ namespace GUILayer
         result._globalLightingDesc = DefaultGlobalLightingDesc();
         result._toneMapSettings = DefaultToneMapSettings();
         for (const auto& cid : obj._children) {
-            const auto* child = flexGobInterface.GetObject(obj._doc, cid);
+            const auto* child = flexGobInterface.GetEntity(obj._doc, cid);
             if (!child) continue;
 
             if (child->_type == typeAmbient) {
@@ -61,7 +62,7 @@ namespace GUILayer
                     auto fsRef = props.GetString<char>(shadowFrustumSettingsHash);
                     if (!fsRef.empty()) {
                         for (const auto& cid2 : obj._children) {
-                            const auto* fsSetObj = flexGobInterface.GetObject(obj._doc, cid2);
+                            const auto* fsSetObj = flexGobInterface.GetEntity(obj._doc, cid2);
                             if (!fsSetObj || fsSetObj->_type != shadowFrustumSettings) continue;
                             
                             static const auto nameHash = ParameterBox::MakeParameterNameHash("Name");
@@ -90,13 +91,13 @@ namespace GUILayer
     }
 
     EnvSettingsVector BuildEnvironmentSettings(
-        const EditorDynamicInterface::FlexObjectScene& flexGobInterface)
+        const RetainedEntities& flexGobInterface)
     {
         EnvSettingsVector result;
 
         const auto typeSettings = flexGobInterface.GetTypeId("EnvSettings");
         static const auto nameHash = ParameterBox::MakeParameterNameHash("name");
-        auto allSettings = flexGobInterface.FindObjectsOfType(typeSettings);
+        auto allSettings = flexGobInterface.FindEntitiesOfType(typeSettings);
         for (const auto& s : allSettings)
             result.push_back(
                 std::make_pair(
@@ -107,16 +108,16 @@ namespace GUILayer
     }
 
     std::unique_ptr<Utility::Data> BuildData(
-        const EditorDynamicInterface::FlexObjectScene::Object& obj,
-        const EditorDynamicInterface::FlexObjectScene& flexGobInterface)
+        const RetainedEntity& obj,
+        const RetainedEntities& flexGobInterface)
     {
         assert(0);
         return std::make_unique<Utility::Data>();
     }
 
     void ExportEnvSettings(
-        const EditorDynamicInterface::FlexObjectScene& flexGobInterface,
-        EditorDynamicInterface::DocumentId docId,
+        const RetainedEntities& flexGobInterface,
+        DocumentId docId,
         const ::Assets::ResChar destinationFile[])
     {
             // Save out the environment settings in the given document
@@ -133,7 +134,7 @@ namespace GUILayer
             // maintain.
 
         const auto typeSettings = flexGobInterface.GetTypeId("EnvSettings");
-        auto allSettings = flexGobInterface.FindObjectsOfType(typeSettings);
+        auto allSettings = flexGobInterface.FindEntitiesOfType(typeSettings);
 
         auto asData = std::make_unique<Utility::Data>();
 

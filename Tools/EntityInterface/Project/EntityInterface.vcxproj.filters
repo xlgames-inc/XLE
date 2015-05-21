@@ -1,17 +1,45 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="..\EditorDynamicInterface.cpp" />
-    <ClCompile Include="..\FlexGobInterface.cpp" />
-    <ClCompile Include="..\PlacementsGobInterface.cpp" />
-    <ClCompile Include="..\TerrainGobInterface.cpp" />
-    <ClCompile Include="..\EnvironmentSettings.cpp" />
+    <ClCompile Include="..\EnvironmentSettings.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\EntityInterface.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RetainedEntities.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\PlacementEntities.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\TerrainEntities.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\EditorDynamicInterface.h" />
-    <ClInclude Include="..\FlexGobInterface.h" />
-    <ClInclude Include="..\PlacementsGobInterface.h" />
-    <ClInclude Include="..\TerrainGobInterface.h" />
-    <ClInclude Include="..\EnvironmentSettings.h" />
+    <ClInclude Include="..\EnvironmentSettings.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\EntityInterface.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\RetainedEntities.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\PlacementEntities.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\TerrainEntities.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Headers">
+      <UniqueIdentifier>{a1546bd4-bbbe-4674-90f7-55605550b9b7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source">
+      <UniqueIdentifier>{5052915d-0106-4009-b888-e38f308b55db}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
 </Project>
