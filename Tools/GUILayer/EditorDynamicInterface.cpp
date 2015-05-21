@@ -11,83 +11,43 @@ namespace GUILayer { namespace EditorDynamicInterface
 {
     IObjectType::~IObjectType() {}
 
-    DocumentId RegisteredTypes::CreateDocument(EditorScene& scene, DocumentTypeId docType, const char initializer[]) const
+    IObjectType* RegisteredTypes::GetInterface(
+        Identifier& translatedId, 
+        const Identifier& inputId) const
+    {
+        if (inputId.Document() > 0 && (inputId.Document()-1) < _knownDocumentTypes.size()) {
+            auto& reg = _knownDocumentTypes[inputId.Document()-1];
+            translatedId = Identifier(inputId.Document(), inputId.Object(), reg._mappedTypeId);
+            return reg._owner.get();
+        }
+        return nullptr;
+    }
+
+    DocumentId RegisteredTypes::CreateDocument(DocumentTypeId docType, const char initializer[]) const
     {
         if (docType > 0 && (docType-1) < _knownDocumentTypes.size()) {
             auto& reg = _knownDocumentTypes[docType-1];
-            return reg._owner->CreateDocument(scene, reg._mappedTypeId, initializer);
+            return reg._owner->CreateDocument(reg._mappedTypeId, initializer);
         }
         return 0;
     }
 
-    bool RegisteredTypes::DeleteDocument(EditorScene& scene, DocumentId doc, DocumentTypeId docType) const
+    bool RegisteredTypes::DeleteDocument(DocumentId doc, DocumentTypeId docType) const
     {
         if (docType > 0 && (docType-1) < _knownDocumentTypes.size()) {
             auto& reg = _knownDocumentTypes[docType-1];
-            return reg._owner->DeleteDocument(scene, doc, reg._mappedTypeId);
+            return reg._owner->DeleteDocument(doc, reg._mappedTypeId);
         }
         return false;
     }
             
-    ObjectId RegisteredTypes::AssignObjectId(EditorScene& scene, DocumentId doc, ObjectTypeId objType) const
+    ObjectId RegisteredTypes::AssignObjectId(DocumentId doc, ObjectTypeId objType) const
     {
         if (objType > 0 && (objType-1) < _knownObjectTypes.size()) {
             auto& reg = _knownObjectTypes[objType-1];
-            return reg._owner->AssignObjectId(scene, doc, reg._mappedTypeId);
+            return reg._owner->AssignObjectId(doc, reg._mappedTypeId);
         }
         return 0;
-    }
-
-    bool RegisteredTypes::CreateObject(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId objType, const PropertyInitializer initializers[], size_t initializerCount) const
-    {
-        if (objType > 0 && (objType-1) < _knownObjectTypes.size()) {
-            auto& reg = _knownObjectTypes[objType-1];
-            return reg._owner->CreateObject(scene, doc, obj, reg._mappedTypeId, initializers, initializerCount);
-        }
-        return false;
-    }
-
-    bool RegisteredTypes::DeleteObject(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId objType) const
-    {
-        if (objType > 0 && (objType-1) < _knownObjectTypes.size()) {
-            auto& reg = _knownObjectTypes[objType-1];
-            return reg._owner->DeleteObject(scene, doc, obj, reg._mappedTypeId);
-        }
-        return false;
-    }
-
-    bool RegisteredTypes::SetProperty(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId objType, const PropertyInitializer initializers[], size_t initializerCount) const
-    {
-        if (objType > 0 && (objType-1) < _knownObjectTypes.size()) {
-            auto& reg = _knownObjectTypes[objType-1];
-            return reg._owner->SetProperty(scene, doc, obj, reg._mappedTypeId, initializers, initializerCount);
-        }
-        return false;
-    }
-
-    bool RegisteredTypes::GetProperty(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId objType, PropertyId prop, void* dest, unsigned* destSize) const
-    {
-        if (objType > 0 && (objType-1) < _knownObjectTypes.size()) {
-            auto& reg = _knownObjectTypes[objType-1];
-            return reg._owner->GetProperty(scene, doc, obj, reg._mappedTypeId, prop, dest, destSize);
-        }
-        return false;
-    }
-
-    bool RegisteredTypes::SetParent(EditorScene& scene, DocumentId doc, ObjectId child, ObjectTypeId childType, ObjectId parent, ObjectTypeId parentType, int insertionPosition) const
-    {
-        if (    childType > 0 && (childType-1) < _knownObjectTypes.size()
-            &&  parentType > 0 && (parentType-1) < _knownObjectTypes.size()) {
-
-            auto& reg0 = _knownObjectTypes[childType-1];
-            auto& reg1 = _knownObjectTypes[parentType-1];
-
-            if (reg0._owner == reg1._owner) {
-                return reg0._owner->SetParent(scene, doc, child, reg0._mappedTypeId, parent, reg1._mappedTypeId, insertionPosition);
-            }
-        }
-
-        return false;
     }
 
     ObjectTypeId RegisteredTypes::GetTypeId(const char name[]) const

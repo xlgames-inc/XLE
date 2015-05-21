@@ -20,33 +20,33 @@
 namespace GUILayer { namespace EditorDynamicInterface
 {
 
-    DocumentId PlacementObjectType::CreateDocument(EditorScene& scene, DocumentTypeId docType, const char initializer[]) const
+    DocumentId PlacementObjectType::CreateDocument(DocumentTypeId docType, const char initializer[]) const
     {
         if (docType != DocumentType_Placements) { assert(0); return 0; }
 
         StringMeld<MaxPath, ::Assets::ResChar> meld;
         meld << "[dyn] " << initializer;
 
-        return (DocumentId)scene._placementsEditor->CreateCell(
-            *scene._placementsManager,
+        return (DocumentId)_editor->CreateCell(
+            *_manager,
             meld,  Float2(-1000.f, -1000.f), Float2( 1000.f,  1000.f));
     }
 
-    bool PlacementObjectType::DeleteDocument(EditorScene& scene, DocumentId doc, DocumentTypeId docType) const
+    bool PlacementObjectType::DeleteDocument(DocumentId doc, DocumentTypeId docType) const
     {
         if (docType != DocumentType_Placements) { assert(0); return false; }
-        return scene._placementsEditor->RemoveCell(*scene._placementsManager, doc);
+        return _editor->RemoveCell(*_manager, doc);
     }
 
-    ObjectId PlacementObjectType::AssignObjectId(EditorScene& scene, DocumentId doc, ObjectTypeId type) const
+    ObjectId PlacementObjectType::AssignObjectId(DocumentId doc, ObjectTypeId type) const
     {
         if (type != ObjectType_Placement) { assert(0); return 0; }
-        return scene._placementsEditor->GenerateObjectGUID();
+        return _editor->GenerateObjectGUID();
     }
 
     static bool SetObjProperty(
         SceneEngine::PlacementsEditor::ObjTransDef& obj, 
-        const IObjectType::PropertyInitializer& prop)
+        const PropertyInitializer& prop)
     {
         if (prop._prop == PlacementObjectType::Property_Transform) {
                 // note -- putting in a transpose here, because the level editor matrix
@@ -73,19 +73,18 @@ namespace GUILayer { namespace EditorDynamicInterface
     }
 
     bool PlacementObjectType::CreateObject(
-        EditorScene& scene, DocumentId doc, 
-        ObjectId obj, ObjectTypeId type, 
+        const Identifier& id, 
         const PropertyInitializer initializers[], size_t initializerCount) const
     {
-        if (type != ObjectType_Placement) { assert(0); return false; }
+        if (id.ObjectType() != ObjectType_Placement) { assert(0); return false; }
 
         SceneEngine::PlacementsEditor::ObjTransDef newObj;
         newObj._localToWorld = Identity<decltype(newObj._localToWorld)>();
         newObj._model = "game/model/nature/bushtree/BushE";
         newObj._material = "game/model/nature/bushtree/BushE";
 
-        auto guid = SceneEngine::PlacementGUID(doc, obj);
-        auto transaction = scene._placementsEditor->Transaction_Begin(nullptr, nullptr);
+        auto guid = SceneEngine::PlacementGUID(id.Document(), id.Object());
+        auto transaction = _editor->Transaction_Begin(nullptr, nullptr);
         if (transaction->Create(guid, newObj)) {
 
             if (initializerCount) {
@@ -106,14 +105,12 @@ namespace GUILayer { namespace EditorDynamicInterface
         return false;
     }
 
-    bool PlacementObjectType::DeleteObject(
-        EditorScene& scene, DocumentId doc, 
-        ObjectId obj, ObjectTypeId type) const
+    bool PlacementObjectType::DeleteObject(const Identifier& id) const
     {
-        if (type != ObjectType_Placement) { assert(0); return false; }
+        if (id.ObjectType() != ObjectType_Placement) { assert(0); return false; }
 
-        auto guid = SceneEngine::PlacementGUID(doc, obj);
-        auto transaction = scene._placementsEditor->Transaction_Begin(
+        auto guid = SceneEngine::PlacementGUID(id.Document(), id.Object());
+        auto transaction = _editor->Transaction_Begin(
             &guid, &guid+1, 
             SceneEngine::PlacementsEditor::TransactionFlags::IgnoreIdTop32Bits);
         if (transaction->GetObjectCount()==1) {
@@ -126,22 +123,21 @@ namespace GUILayer { namespace EditorDynamicInterface
     }
 
     bool PlacementObjectType::SetProperty(
-        EditorScene& scene, DocumentId doc, ObjectId obj, 
-        ObjectTypeId type, 
+        const Identifier& id,
         const PropertyInitializer initializers[], size_t initializerCount) const
     {
             // find the object, and set the given property (as per the new value specified in the string)
             //  We need to create a transaction, make the change and then commit it back.
             //  If the transaction returns no results, then we must have got a bad object or document id.
-        if (type != ObjectType_Placement) { assert(0); return false; }
+        if (id.ObjectType() != ObjectType_Placement) { assert(0); return false; }
 
             // note --  This object search is quite slow! We might need a better way to
             //          record a handle to the object. Perhaps the "ObjectId" should not
             //          match the actual placements guid. Some short-cut will probably be
             //          necessary given that we could get there several thousand times during
             //          startup for an average scene.
-        auto guid = SceneEngine::PlacementGUID(doc, obj);
-        auto transaction = scene._placementsEditor->Transaction_Begin(
+        auto guid = SceneEngine::PlacementGUID(id.Document(), id.Object());
+        auto transaction = _editor->Transaction_Begin(
             &guid, &guid+1, 
             SceneEngine::PlacementsEditor::TransactionFlags::IgnoreIdTop32Bits);
         if (transaction->GetObjectCount()==1) {
@@ -163,19 +159,18 @@ namespace GUILayer { namespace EditorDynamicInterface
     }
 
     bool PlacementObjectType::GetProperty(
-        EditorScene& scene, DocumentId doc, ObjectId obj, 
-        ObjectTypeId type, PropertyId prop, 
+        const Identifier& id, PropertyId prop, 
         void* dest, unsigned* destSize) const
     {
-        if (type != ObjectType_Placement) { assert(0); return false; }
+        if (id.ObjectType() != ObjectType_Placement) { assert(0); return false; }
         if (prop != Property_Transform && prop != Property_Visible
             && prop != Property_Bounds && prop != Property_LocalBounds) { assert(0); return false; }
         assert(destSize);
 
         typedef std::pair<Float3, Float3> BoundingBox;
 
-        auto guid = SceneEngine::PlacementGUID(doc, obj);
-        auto transaction = scene._placementsEditor->Transaction_Begin(
+        auto guid = SceneEngine::PlacementGUID(id.Document(), id.Object());
+        auto transaction = _editor->Transaction_Begin(
             &guid, &guid+1, 
             SceneEngine::PlacementsEditor::TransactionFlags::IgnoreIdTop32Bits);
         if (transaction->GetObjectCount()==1) {
@@ -206,7 +201,7 @@ namespace GUILayer { namespace EditorDynamicInterface
         return false;
     }
 
-    bool PlacementObjectType::SetParent(EditorScene& scene, DocumentId doc, ObjectId child, ObjectTypeId childType, ObjectId parent, ObjectTypeId parentType, int insertionPosition) const
+    bool PlacementObjectType::SetParent(const Identifier& child, const Identifier& parent, int insertionPosition) const
     {
         return false;
     }
@@ -239,7 +234,12 @@ namespace GUILayer { namespace EditorDynamicInterface
         return 0;
     }
 
-    PlacementObjectType::PlacementObjectType() {}
+    PlacementObjectType::PlacementObjectType(
+        std::shared_ptr<SceneEngine::PlacementsManager> manager,
+        std::shared_ptr<SceneEngine::PlacementsEditor> editor)
+    : _manager(std::move(manager))
+    , _editor(std::move(editor)) {}
+
     PlacementObjectType::~PlacementObjectType() {}
 
 }}

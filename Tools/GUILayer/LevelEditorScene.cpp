@@ -68,17 +68,17 @@ namespace GUILayer
     using namespace EditorDynamicInterface;
 
     DocumentId EditorSceneManager::CreateDocument(DocumentTypeId docType) 
-        { return _dynInterface->CreateDocument(*_scene.get(), docType, ""); }
+        { return _dynInterface->CreateDocument(docType, ""); }
     bool EditorSceneManager::DeleteDocument(DocumentId doc, DocumentTypeId docType)
-        { return _dynInterface->DeleteDocument(*_scene.get(), doc, docType); }
+        { return _dynInterface->DeleteDocument(doc, docType); }
 
     ObjectId EditorSceneManager::AssignObjectId(DocumentId doc, ObjectTypeId type)
-        { return _dynInterface->AssignObjectId(*_scene.get(), doc, type); }
+        { return _dynInterface->AssignObjectId(doc, type); }
 
-    static std::vector<EditorDynamicInterface::IObjectType::PropertyInitializer> AsNative(
+    static std::vector<EditorDynamicInterface::PropertyInitializer> AsNative(
         IEnumerable<EditorSceneManager::PropertyInitializer>^ initializers)
     {
-        using NativeInitializer = EditorDynamicInterface::IObjectType::PropertyInitializer;
+        using NativeInitializer = EditorDynamicInterface::PropertyInitializer;
         std::vector<NativeInitializer> native;
         if (initializers) {
             for each(auto i in initializers) {
@@ -96,20 +96,44 @@ namespace GUILayer
     bool EditorSceneManager::CreateObject(DocumentId doc, ObjectId obj, ObjectTypeId objType, IEnumerable<PropertyInitializer>^ initializers)
     {
         auto native = AsNative(initializers);
-        return _dynInterface->CreateObject(*_scene.get(), doc, obj, objType, AsPointer(native.cbegin()), native.size()); 
+        EditorDynamicInterface::Identifier indentifier;
+        auto intrf = _dynInterface->GetInterface(
+            indentifier, EditorDynamicInterface::Identifier(doc, obj, objType));
+        if (intrf)
+            return intrf->CreateObject(indentifier, AsPointer(native.cbegin()), native.size()); 
+        return false;
     }
 
     bool EditorSceneManager::DeleteObject(DocumentId doc, ObjectId obj, ObjectTypeId objType)
-        { return _dynInterface->DeleteObject(*_scene.get(), doc, obj, objType); }
+    { 
+        EditorDynamicInterface::Identifier indentifier;
+        auto intrf = _dynInterface->GetInterface(
+            indentifier, EditorDynamicInterface::Identifier(doc, obj, objType));
+        if (intrf)
+            return intrf->DeleteObject(indentifier); 
+        return false;
+    }
 
     bool EditorSceneManager::SetProperty(DocumentId doc, ObjectId obj, ObjectTypeId objType, IEnumerable<PropertyInitializer>^ initializers)
     { 
         auto native = AsNative(initializers);
-        return _dynInterface->SetProperty(*_scene.get(), doc, obj, objType, AsPointer(native.cbegin()), native.size()); 
+        EditorDynamicInterface::Identifier indentifier;
+        auto intrf = _dynInterface->GetInterface(
+            indentifier, EditorDynamicInterface::Identifier(doc, obj, objType));
+        if (intrf)
+            return intrf->SetProperty(indentifier, AsPointer(native.cbegin()), native.size()); 
+        return false;
     }
 
     bool EditorSceneManager::GetProperty(DocumentId doc, ObjectId obj, ObjectTypeId objType, PropertyId prop, void* dest, unsigned* destSize)
-        { return _dynInterface->GetProperty(*_scene.get(), doc, obj, objType, prop, dest, destSize); }
+    { 
+        EditorDynamicInterface::Identifier indentifier;
+        auto intrf = _dynInterface->GetInterface(
+            indentifier, EditorDynamicInterface::Identifier(doc, obj, objType));
+        if (intrf)
+            return intrf->GetProperty(indentifier, prop, dest, destSize); 
+        return false;
+    }
 
     DocumentTypeId EditorSceneManager::GetDocumentTypeId(System::String^ name)                  { return _dynInterface->GetDocumentTypeId(clix::marshalString<clix::E_UTF8>(name).c_str()); }
     ObjectTypeId EditorSceneManager::GetTypeId(System::String^ name)                            { return _dynInterface->GetTypeId(clix::marshalString<clix::E_UTF8>(name).c_str()); }
@@ -132,13 +156,20 @@ namespace GUILayer
         return *_flexGobInterface.get();
     }
 
-    bool EditorSceneManager::SetObjectParent(DocumentId doc, 
-            ObjectId childId, ObjectTypeId childTypeId, 
-            ObjectId parentId, ObjectTypeId parentTypeId, int insertionPosition)
+    bool EditorSceneManager::SetObjectParent(
+        DocumentId doc, 
+        ObjectId childId, ObjectTypeId childTypeId, 
+        ObjectId parentId, ObjectTypeId parentTypeId, int insertionPosition)
     {
-        return _dynInterface->SetParent(
-            *_scene.get(), doc, childId, childTypeId,
-            parentId, parentTypeId, insertionPosition);
+        EditorDynamicInterface::Identifier child, parent;
+        auto intrfChild = _dynInterface->GetInterface(
+            child, EditorDynamicInterface::Identifier(doc, childId, childTypeId));
+        auto intrfParent = _dynInterface->GetInterface(
+            parent, EditorDynamicInterface::Identifier(doc, parentId, parentTypeId));
+
+        if (intrfChild && intrfChild == intrfParent)
+            return intrfChild->SetParent(child, parent, insertionPosition);
+        return false;
     }
 
     IManipulatorSet^ EditorSceneManager::CreateTerrainManipulators() 
@@ -227,15 +258,18 @@ namespace GUILayer
 
     EditorSceneManager::EditorSceneManager()
     {
-        _dynInterface = std::make_shared<EditorDynamicInterface::RegisteredTypes>();
-        _dynInterface->RegisterType(std::make_shared<EditorDynamicInterface::PlacementObjectType>());
-        _dynInterface->RegisterType(std::make_shared<EditorDynamicInterface::TerrainObjectType>());
-
-        _flexGobInterface = std::make_shared<EditorDynamicInterface::FlexObjectType>();
-        Internal::RegisterTerrainFlexObjects(*_flexGobInterface.get());
-        _dynInterface->RegisterType(_flexGobInterface.GetNativePtr());
-
+        // _flexGobInterface = std::make_shared<EditorDynamicInterface::FlexObjectType>();
         _scene = std::make_shared<EditorScene>(_flexGobInterface.GetNativePtr());
+
+        auto placementsEditor = std::make_shared<EditorDynamicInterface::PlacementObjectType>(
+            _scene->_placementsManager, _scene->_placementsEditor);
+
+        _dynInterface = std::make_shared<EditorDynamicInterface::RegisteredTypes>();
+        _dynInterface->RegisterType(placementsEditor);
+        // _dynInterface->RegisterType(std::make_shared<EditorDynamicInterface::TerrainObjectType>());
+        // _dynInterface->RegisterType(_flexGobInterface.GetNativePtr());
+
+        Internal::RegisterTerrainFlexObjects(*_flexGobInterface.get());
     }
 
     EditorSceneManager::~EditorSceneManager()
