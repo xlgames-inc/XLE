@@ -1904,10 +1904,11 @@ namespace BufferUploads
                     atLeastOneRealAction  |= t.second;
                 }
 
-                if (!nothingFoundInQueues && !atLeastOneRealAction) {
-                    LogAlwaysWarningF("Warning -- suspected allocation failure; sleeping");
-                    Sleep(5);
-                }
+                //      this can happen when we're pending a file load now
+                // if (!nothingFoundInQueues && !atLeastOneRealAction) {
+                //     LogAlwaysWarningF("Warning -- suspected allocation failure; sleeping");
+                //     Sleep(5);
+                // }
             }
 
             CommandList::ID commandListIdCommitted = ~unsigned(0x0);

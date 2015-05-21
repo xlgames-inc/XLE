@@ -501,6 +501,7 @@ namespace SceneEngine
         Int2 GetHeightsElementSize() const { return _heightMapTileSet->GetTileSize(); }
         const TerrainCoverageId* GetCoverageIdBegin() const { return AsPointer(_coverageIds.cbegin()); }
         const TerrainCoverageId* GetCoverageIdEnd() const { return AsPointer(_coverageIds.cend()); }
+        const TerrainRendererConfig& GetConfig() const { return _cfg; }
 
         TerrainCellRenderer(
             const TerrainRendererConfig& cfg,
@@ -566,6 +567,7 @@ namespace SceneEngine
         std::vector<UploadPair>         _pendingUploads;
 
         std::shared_ptr<ITerrainFormat> _ioFormat;
+        TerrainRendererConfig           _cfg;
 
         friend class TerrainRenderingContext;
         friend class TerrainCollapseContext;
@@ -1886,6 +1888,7 @@ namespace SceneEngine
         const TerrainRendererConfig& cfg,
         std::shared_ptr<ITerrainFormat> ioFormat,
         bool allowShortCircuitModification)
+    : _cfg(cfg)
     {
         auto& bufferUploads = GetBufferUploads();
         _heightMapTileSet = std::make_unique<TextureTileSet>(
@@ -2026,6 +2029,23 @@ namespace SceneEngine
                 CloseHandle((HANDLE)i->_streamingFilePtr);
     }
 
+    static bool IsCompatible(const TerrainRendererConfig::Layer& lhs, const TerrainRendererConfig::Layer& rhs)
+    {
+        return (lhs._tileSize == rhs._tileSize) 
+            && (lhs._cachedTileCount == rhs._cachedTileCount) 
+            && (lhs._format == rhs._format);
+    }
+
+    static bool IsCompatible(const TerrainRendererConfig& lhs, const TerrainRendererConfig& rhs)
+    {
+        if (lhs._coverageLayers.size() != rhs._coverageLayers.size()) return false;
+        if (!IsCompatible(lhs._heights, rhs._heights)) return false;
+        for (unsigned c=0; c<lhs._coverageLayers.size(); ++c)
+            if (    lhs._coverageLayers[c].first != rhs._coverageLayers[c].first
+                || !IsCompatible(lhs._coverageLayers[c].second, rhs._coverageLayers[c].second)) return false;
+        return true;
+    }
+
     //////////////////////////////////////////////////////////////////////////////////////////
     bool TerrainCellRenderer::NodeCoverageInfo::CompleteUpload(BufferUploads::IManager& bufferUploads)
     {
@@ -2101,9 +2121,14 @@ namespace SceneEngine
         virtual Addressing  GetAddress(Float2 minCoord, Float2 maxCoord);
         virtual bool        IsFloatFormat() const;
 
-        TerrainSurfaceHeightsProvider(  std::shared_ptr<TerrainCellRenderer> terrainRenderer, 
-                                        const TerrainConfig& terrainConfig,
-                                        const TerrainCoordinateSystem& coordSystem);
+        void SetCoords(
+            const TerrainConfig& terrainConfig, 
+            const TerrainCoordinateSystem& coordSystem);
+
+        TerrainSurfaceHeightsProvider(  
+            std::shared_ptr<TerrainCellRenderer> terrainRenderer, 
+            const TerrainConfig& terrainConfig,
+            const TerrainCoordinateSystem& coordSystem);
 
     private:
         std::shared_ptr<TerrainCellRenderer> _terrainRenderer;
@@ -2257,6 +2282,12 @@ namespace SceneEngine
         }
 
         return result;
+    }
+
+    void TerrainSurfaceHeightsProvider::SetCoords(const TerrainConfig& terrainConfig, const TerrainCoordinateSystem& coordSystem)
+    {
+        _terrainConfig = terrainConfig;
+        _coordSystem = coordSystem;
     }
 
     TerrainSurfaceHeightsProvider::TerrainSurfaceHeightsProvider(
@@ -2665,6 +2696,9 @@ namespace SceneEngine
         void CullNodes(
             DeviceContext* context, LightingParserContext& parserContext, 
             TerrainRenderingContext& terrainContext);
+
+        void AddCells(const TerrainConfig& cfg, Int2 cellMin, Int2 cellMax);
+        void BuildUberSurface(const TerrainConfig& cfg);
     };
 
     void TerrainConfig::GetCellFilename(
@@ -2676,15 +2710,15 @@ namespace SceneEngine
                 //      This is a related to the terrain format used in Archeage
             switch (fileType) {
             case CoverageId_Heights:
-                _snprintf_s(buffer, bufferCount, _TRUNCATE, "%s/cells/%03i_%03i/client/terrain/heightmap.dat_new", 
+                _snprintf_s(buffer, bufferCount, _TRUNCATE, "%scells/%03i_%03i/client/terrain/heightmap.dat_new", 
                     _baseDir.c_str(), cellIndex[1], cellIndex[0]);
                 break;
             case CoverageId_AngleBasedShadows:
-                _snprintf_s(buffer, bufferCount, _TRUNCATE, "%s/cells/%03i_%03i/client/terrain/shadow.ctc", 
+                _snprintf_s(buffer, bufferCount, _TRUNCATE, "%scells/%03i_%03i/client/terrain/shadow.ctc", 
                     _baseDir.c_str(), cellIndex[1], cellIndex[0]);
                 break;
             case CoverageId_ArchiveHeights:
-                _snprintf_s(buffer, bufferCount, _TRUNCATE, "%s/cells/%03i_%03i/client/terrain/heightmap.dat", 
+                _snprintf_s(buffer, bufferCount, _TRUNCATE, "%scells/%03i_%03i/client/terrain/heightmap.dat", 
                     _baseDir.c_str(), cellIndex[1], cellIndex[0]);
                 break;
             default:
@@ -2702,11 +2736,11 @@ namespace SceneEngine
 
             if (knownName) {
                _snprintf_s(
-                    buffer, bufferCount, _TRUNCATE, "%s/c%02i_%02i/%s.terr", 
+                    buffer, bufferCount, _TRUNCATE, "%sc%02i_%02i/%s.terr", 
                     _baseDir.c_str(), cellIndex[0], cellIndex[1], knownName);
             } else {
                 _snprintf_s(
-                    buffer, bufferCount, _TRUNCATE, "%s/c%02i_%02i/%08x.terr", 
+                    buffer, bufferCount, _TRUNCATE, "%sc%02i_%02i/%08x.terr", 
                     _baseDir.c_str(), cellIndex[0], cellIndex[1], fileType);
             }
         }
@@ -2719,15 +2753,15 @@ namespace SceneEngine
         XlCopyString(buffer, bufferCount, _baseDir.c_str());
         switch (fileType) {
         case CoverageId_Heights:
-            XlCatString(buffer, bufferCount, "/ubersurface.dat");
+            XlCatString(buffer, bufferCount, "ubersurface.dat");
             break;
         case CoverageId_AngleBasedShadows:
-            XlCatString(buffer, bufferCount, "/ubershadowingsurface.dat");
+            XlCatString(buffer, bufferCount, "ubershadowingsurface.dat");
             break;
         default:
             {
                 auto len = XlStringLen(buffer);
-                _snprintf_s(&buffer[len], bufferCount-len, _TRUNCATE, "/uber_%08x.dat", fileType);
+                _snprintf_s(&buffer[len], bufferCount-len, _TRUNCATE, "uber_%08x.dat", fileType);
             }
             break;
         }
@@ -2892,64 +2926,56 @@ namespace SceneEngine
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////
-    TerrainManager::TerrainManager(
-        const TerrainConfig& cfg,
-        std::shared_ptr<ITerrainFormat> ioFormat, 
-        Int2 cellMin, Int2 cellMax, Float3 worldSpaceOrigin)
+    static TerrainRendererConfig CreateRendererConfig(const TerrainConfig& cfg, unsigned overlap)
     {
-        auto pimpl = std::make_unique<Pimpl>();
-        
-            // These are the determining parameters for the terrain:
-            //      cellSize: 
-            //          Size of the a cell (in meters)
-            //          This determines the scaling that is applied to convert to world coords
-            //      cellElementCount: 
-            //          Number of height samples per cell, for width and height (ie, 512 means cells are 512x512)
-            //      cellTreeDepth: 
-            //          The depth of tree of a single cell. Higher numbers allow for more aggressive lodding on distant LODs
-            //      overlap: 
-            //          Overlap elements for each node (eg, 2 means an extra 2 rows and an extra 2 columns is added to each node)
-            //          Overlap rows and columns store the same value as adjacent nodes -- they are required to make sure the edges match
-            //          Eg, if nodes are 32x32 and overlap=2, each node will actually store 34x34 height samples
-            //
-            //      The number of samples per node is determined by "cellElementCount" and "cellTreeDepth"
-            //      In general, we want to balance the number of height samples per node so that is it convenient for 
-            //      the shader (since the shaders always work on a node-by-node basis). The number of samples per
-            //      node should be small enough that the height texture can fit in the GPU cache, and the GPU
-            //      tessellation can apply enough tessellation. But it should also be large enough that the "overlap"
-            //      parts are not excessive.
+        const Int2 heightMapElementSize = cfg.NodeDimensionsInElements() + Int2(overlap, overlap);
+        const unsigned cachedTileCount = 1024;
 
-            //      \todo -- these terrain configuration values should come from the data image
-            //      The "uber-surface" is effectively the "master" data for the terrain. These variables determine
-            //      how we break the uber surface down into separate cells. As a result, the cell data is almost
-            //      just a cached version of the uber surface, with these configuration values.
-        const auto cellSize = cfg.CellDimensionsInNodes()[0] * cfg.NodeDimensionsInElements()[0] * cfg.ElementSpacing();
-        const unsigned overlap = cfg.NodeOverlap();
-        const auto cellNodeSize = cellSize * std::pow(2.f, -float(cfg.CellTreeDepth()-1));      // size, in m, of a single node
-        
-        pimpl->_coords = TerrainCoordinateSystem(worldSpaceOrigin, cellNodeSize, cfg);
+        TerrainRendererConfig rendererCfg;
+        rendererCfg._heights = TerrainRendererConfig::Layer { heightMapElementSize, cachedTileCount, NativeFormat::R16_UINT };
 
-        ////////////////////////////////////////////////////////////////////////////
-            // decide on the list of terrain cells we're going to render
-            //  The caller should be deciding this -- what cells to prepare, and any offset information
+        for (unsigned c=0; c<cfg.GetCoverageLayerCount(); ++c) {
+            const auto& l = cfg.GetCoverageLayer(c);
+            rendererCfg._coverageLayers.push_back(std::make_pair(
+                l._id, 
+                TerrainRendererConfig::Layer { (l._dimensions+UInt2(1,1)), cachedTileCount, NativeFormat::Enum(l._format) } ));
+        }
+        return std::move(rendererCfg);
+    }
+
+    static std::shared_ptr<TerrainCellRenderer> CreateRenderer(
+        const TerrainRendererConfig& cfg, std::shared_ptr<ITerrainFormat> ioFormat,
+        bool allowTerrainModification)
+    {
+        return std::make_shared<TerrainCellRenderer>(cfg, std::move(ioFormat), allowTerrainModification);
+    }
+
+    static float CellSizeWorldSpace(const TerrainConfig& cfg)
+    {
+        return cfg.CellDimensionsInNodes()[0] * cfg.NodeDimensionsInElements()[0] * cfg.ElementSpacing();
+    }
+
+    void TerrainManager::Pimpl::AddCells(const TerrainConfig& cfg, Int2 cellMin, Int2 cellMax)
+    {
+        const auto cellSize = CellSizeWorldSpace(cfg);
         for (int cellY=cellMin[1]; cellY<cellMax[1]; ++cellY) {
             for (int cellX=cellMin[0]; cellX<cellMax[0]; ++cellX) {
                 TerrainCellId cell;
                 cfg.GetCellFilename(cell._heightMapFilename, dimof(cell._heightMapFilename), UInt2(cellX, cellY), CoverageId_Heights);
 
                 auto t = cfg.CellBasedCoordsToTerrainCoords(Float2(float(cellX), float(cellY)));
-                auto cellOrigin = pimpl->_coords.TerrainCoordsToWorldSpace(t);
+                auto cellOrigin = _coords.TerrainCoordsToWorldSpace(t);
                 cell._cellToWorld = Float4x4(
                     cellSize, 0.f, 0.f, cellOrigin[0],
                     0.f, cellSize, 0.f, cellOrigin[1],
-                    0.f, 0.f, 1.f, pimpl->_coords.TerrainOffset()[2],
+                    0.f, 0.f, 1.f, _coords.TerrainOffset()[2],
                     0.f, 0.f, 0.f, 1.f);
 
                     //  Calculate the bounding box. Note that we have to actually read the
                     //  height map file to get this information. Perhaps we can cache this
                     //  somewhere, to avoid having to load the scaffold for every cell on
                     //  startup
-                auto& heights = ioFormat->LoadHeights(cell._heightMapFilename);
+                auto& heights = _ioFormat->LoadHeights(cell._heightMapFilename);
                 float minHeight = FLT_MAX, maxHeight = -FLT_MAX;
                 for (auto i=heights._nodes.cbegin(); i!=heights._nodes.cend(); ++i) {
                     float zScale = (*i)->_localToCell(2, 2);
@@ -2974,84 +3000,139 @@ namespace SceneEngine
                     cell._coverageToUber[c]._maxs = AsUInt2(cfg.CellBasedCoordsToLayerCoords(c, Float2(float(cellX+1), float(cellY+1))));
                 }
 
-                cell._aabbMin = Expand(cellOrigin, minHeight + pimpl->_coords.TerrainOffset()[2]);
-                cell._aabbMax = Expand(Float2(cellOrigin + Float2(cellSize, cellSize)), maxHeight + pimpl->_coords.TerrainOffset()[2]);
-                pimpl->_cells.push_back(cell);
+                cell._aabbMin = Expand(cellOrigin, minHeight + _coords.TerrainOffset()[2]);
+                cell._aabbMax = Expand(Float2(cellOrigin + Float2(cellSize, cellSize)), maxHeight + _coords.TerrainOffset()[2]);
+                _cells.push_back(cell);
             }
         }
-        ////////////////////////////////////////////////////////////////////////////
+    }
 
-        const Int2 heightMapElementSize = cfg.NodeDimensionsInElements() + Int2(overlap, overlap);
-        const unsigned cachedTileCount = 1024;
+    void TerrainManager::Pimpl::BuildUberSurface(const TerrainConfig& cfg)
+    {
+        const bool registerShortCircuit = true;
 
-        TerrainRendererConfig rendererCfg;
-        rendererCfg._heights = TerrainRendererConfig::Layer { heightMapElementSize, cachedTileCount, NativeFormat::R16_UINT };
+        ::Assets::ResChar uberSurfaceFile[MaxPath];
+        {
+            cfg.GetUberSurfaceFilename(uberSurfaceFile, dimof(uberSurfaceFile), CoverageId_Heights);
+
+                // uber-surface is a special-case asset, because we can edit it without a "DivergentAsset". But to do that, we must const_cast here
+            auto& uberSurface = const_cast<TerrainUberHeightsSurface&>(::Assets::GetAsset<TerrainUberHeightsSurface>(uberSurfaceFile));
+            _uberSurfaceInterface = std::make_unique<HeightsUberSurfaceInterface>(std::ref(uberSurface), _ioFormat);
+
+            if (registerShortCircuit) {
+                    //  Register cells for short-circuit update... Do we need to do this for every single cell
+                    //  or just those that are within the limited area we're going to load?
+                for (auto c=_cells.cbegin(); c!=_cells.cend(); ++c) {
+                    _uberSurfaceInterface->RegisterCell(
+                        c->_heightMapFilename, c->_heightsToUber._mins, c->_heightsToUber._maxs, cfg.NodeOverlap(),
+                        std::bind(&DoShortCircuitUpdate, c->BuildHash(), CoverageId_Heights, 
+                        _renderer, c->_heightsToUber, std::placeholders::_1));
+                }
+            }
+        }
 
         for (unsigned c=0; c<cfg.GetCoverageLayerCount(); ++c) {
             const auto& l = cfg.GetCoverageLayer(c);
-            rendererCfg._coverageLayers.push_back(std::make_pair(
-                l._id, 
-                TerrainRendererConfig::Layer { (l._dimensions+UInt2(1,1)), cachedTileCount, NativeFormat::Enum(l._format) } ));
-        }
+            if (l._id == CoverageId_AngleBasedShadows) continue;
+            if (l._format != 62) continue;
 
+            cfg.GetUberSurfaceFilename(uberSurfaceFile, dimof(uberSurfaceFile), l._id);
+
+            Pimpl::CoverageInterface ci;
+            ci._id = l._id;
+                
+            auto& uberSurface = const_cast<TerrainUberSurface<uint8>&>(::Assets::GetAsset<TerrainUberSurface<uint8>>(uberSurfaceFile));
+            ci._interface = std::make_unique<CoverageUberSurfaceInterface>(std::ref(uberSurface), _ioFormat);
+
+            if (registerShortCircuit) {
+                    //  Register cells for short-circuit update... Do we need to do this for every single cell
+                    //  or just those that are within the limited area we're going to load?
+                for (auto cell=_cells.cbegin(); cell!=_cells.cend(); ++cell) {
+                    ci._interface->RegisterCell(
+                        cell->_coverageFilename[c], cell->_coverageToUber[c]._mins, cell->_coverageToUber[c]._maxs, cfg.NodeOverlap(),
+                        std::bind(
+                            &DoShortCircuitUpdate, cell->BuildHash(), l._id, _renderer, 
+                            cell->_coverageToUber[c], std::placeholders::_1));
+                }
+            }
+
+            _coverageInterfaces.push_back(std::move(ci));
+        }
+    }
+
+    void TerrainManager::Reset()
+    {
+        _pimpl->_cells.clear();
+        _pimpl->_uberSurfaceInterface.reset();
+        _pimpl->_coverageInterfaces.clear();
+    }
+
+    //////////////////////////////////////////////////////////////////////////////////////////
+    void TerrainManager::Load(const TerrainConfig& cfg, Int2 cellMin, Int2 cellMax)
+    {
+        Reset();
+
+            // These are the determining parameters for the terrain:
+            //      cellSize: 
+            //          Size of the a cell (in meters)
+            //          This determines the scaling that is applied to convert to world coords
+            //      cellElementCount: 
+            //          Number of height samples per cell, for width and height (ie, 512 means cells are 512x512)
+            //      cellTreeDepth: 
+            //          The depth of tree of a single cell. Higher numbers allow for more aggressive lodding on distant LODs
+            //      overlap: 
+            //          Overlap elements for each node (eg, 2 means an extra 2 rows and an extra 2 columns is added to each node)
+            //          Overlap rows and columns store the same value as adjacent nodes -- they are required to make sure the edges match
+            //          Eg, if nodes are 32x32 and overlap=2, each node will actually store 34x34 height samples
+            //
+            //      The number of samples per node is determined by "cellElementCount" and "cellTreeDepth"
+            //      In general, we want to balance the number of height samples per node so that is it convenient for 
+            //      the shader (since the shaders always work on a node-by-node basis). The number of samples per
+            //      node should be small enough that the height texture can fit in the GPU cache, and the GPU
+            //      tessellation can apply enough tessellation. But it should also be large enough that the "overlap"
+            //      parts are not excessive.
+
+            //      \todo -- these terrain configuration values should come from the data image
+            //      The "uber-surface" is effectively the "master" data for the terrain. These variables determine
+            //      how we break the uber surface down into separate cells. As a result, the cell data is almost
+            //      just a cached version of the uber surface, with these configuration values.
+        const auto nodeSize = CellSizeWorldSpace(cfg) * std::pow(2.f, -float(cfg.CellTreeDepth()-1));      // size, in m, of a single node
+        _pimpl->_coords = TerrainCoordinateSystem(_pimpl->_coords.TerrainOffset(), nodeSize, cfg);
+        _pimpl->_cfg = cfg;
+        auto& coords = _pimpl->_coords;
+        coords.SetConfig(cfg);
+
+        _pimpl->AddCells(cfg, cellMin, cellMax);
+
+        ////////////////////////////////////////////////////////////////////////////
+
+        auto rendererCfg = CreateRendererConfig(cfg, cfg.NodeOverlap());
+        bool reuseRenderer = _pimpl->_renderer && IsCompatible(rendererCfg, _pimpl->_renderer->GetConfig());
+        
         const bool allowTerrainModification = true;
         const bool buildUberInterfaces = allowTerrainModification;
-        const bool registerShortCircuit = allowTerrainModification;
 
-        pimpl->_renderer = std::make_shared<TerrainCellRenderer>(rendererCfg, ioFormat, allowTerrainModification);
-        pimpl->_heightsProvider = std::make_unique<TerrainSurfaceHeightsProvider>(pimpl->_renderer, cfg, pimpl->_coords);
-        pimpl->_ioFormat = std::move(ioFormat);
-        pimpl->_cfg = cfg;
+        if (reuseRenderer) {
+            _pimpl->_heightsProvider->SetCoords(cfg, coords);
+        } else {
+            MainSurfaceHeightsProvider = nullptr;
+            _pimpl->_heightsProvider.reset();
+            _pimpl->_renderer.reset();
+            _pimpl->_textures.reset();
 
-        if (buildUberInterfaces) {
-            ::Assets::ResChar uberSurfaceFile[MaxPath];
-            {
-                cfg.GetUberSurfaceFilename(uberSurfaceFile, dimof(uberSurfaceFile), CoverageId_Heights);
-
-                    // uber-surface is a special-case asset, because we can edit it without a "DivergentAsset". But to do that, we must const_cast here
-                auto& uberSurface = const_cast<TerrainUberHeightsSurface&>(::Assets::GetAsset<TerrainUberHeightsSurface>(uberSurfaceFile));
-                pimpl->_uberSurfaceInterface = std::make_unique<HeightsUberSurfaceInterface>(std::ref(uberSurface), ioFormat);
-
-                if (registerShortCircuit) {
-                        //  Register cells for short-circuit update... Do we need to do this for every single cell
-                        //  or just those that are within the limited area we're going to load?
-                    for (auto c=pimpl->_cells.cbegin(); c!=pimpl->_cells.cend(); ++c) {
-                        pimpl->_uberSurfaceInterface->RegisterCell(
-                            c->_heightMapFilename, c->_heightsToUber._mins, c->_heightsToUber._maxs, overlap,
-                            std::bind(&DoShortCircuitUpdate, c->BuildHash(), CoverageId_Heights, pimpl->_renderer, c->_heightsToUber, std::placeholders::_1));
-                    }
-                }
-            }
-
-            for (unsigned c=0; c<cfg.GetCoverageLayerCount(); ++c) {
-                const auto& l = cfg.GetCoverageLayer(c);
-                if (l._id == CoverageId_AngleBasedShadows) continue;
-                if (l._format != 62) continue;
-
-                cfg.GetUberSurfaceFilename(uberSurfaceFile, dimof(uberSurfaceFile), l._id);
-
-                Pimpl::CoverageInterface ci;
-                ci._id = l._id;
-                
-                auto& uberSurface = const_cast<TerrainUberSurface<uint8>&>(::Assets::GetAsset<TerrainUberSurface<uint8>>(uberSurfaceFile));
-                ci._interface = std::make_unique<CoverageUberSurfaceInterface>(std::ref(uberSurface), ioFormat);
-
-                if (registerShortCircuit) {
-                        //  Register cells for short-circuit update... Do we need to do this for every single cell
-                        //  or just those that are within the limited area we're going to load?
-                    for (auto cell=pimpl->_cells.cbegin(); cell!=pimpl->_cells.cend(); ++cell) {
-                        ci._interface->RegisterCell(
-                            cell->_coverageFilename[c], cell->_coverageToUber[c]._mins, cell->_coverageToUber[c]._maxs, overlap,
-                            std::bind(&DoShortCircuitUpdate, cell->BuildHash(), l._id, pimpl->_renderer, cell->_coverageToUber[c], std::placeholders::_1));
-                    }
-                }
-
-                pimpl->_coverageInterfaces.push_back(std::move(ci));
-            }
+            _pimpl->_renderer = CreateRenderer(rendererCfg, _pimpl->_ioFormat, allowTerrainModification);
+            _pimpl->_heightsProvider = std::make_unique<TerrainSurfaceHeightsProvider>(_pimpl->_renderer, cfg, coords);
+            MainSurfaceHeightsProvider = _pimpl->_heightsProvider.get();
         }
-        
-        MainSurfaceHeightsProvider = pimpl->_heightsProvider.get();
-        _pimpl = std::move(pimpl);
+
+        if (buildUberInterfaces)
+            _pimpl->BuildUberSurface(cfg);
+    }
+
+    TerrainManager::TerrainManager(std::shared_ptr<ITerrainFormat> ioFormat)
+    {
+        _pimpl = std::make_unique<Pimpl>();
+        _pimpl->_ioFormat = std::move(ioFormat);
     }
 
     TerrainManager::~TerrainManager()
@@ -3079,8 +3160,9 @@ namespace SceneEngine
 
     void TerrainManager::Render(DeviceContext* context, LightingParserContext& parserContext, unsigned techniqueIndex)
     {
-        assert(_pimpl && _pimpl->_renderer);
+        assert(_pimpl);
         auto* renderer = _pimpl->_renderer.get();
+        if (!renderer) return;
 
             //  we need to enable the rendering state once, for all cells. The state should be
             //  more or less the same for every cell, so we don't need to do it every time
@@ -3141,6 +3223,9 @@ namespace SceneEngine
         RenderCore::Metal::DeviceContext* context,
         LightingParserContext& parserContext)
     {
+        assert(_pimpl);
+        if (!_pimpl->_renderer) return 0;
+
             // we can only do this on the immediate context (because we need to execute
             // and readback GPU data)
         assert(context->GetUnderlying()->GetType() == D3D11_DEVICE_CONTEXT_IMMEDIATE);
@@ -3334,6 +3419,7 @@ namespace SceneEngine
 
     Float3      TerrainCoordinateSystem::TerrainOffset() const { return _terrainOffset; }
     void        TerrainCoordinateSystem::SetTerrainOffset(const Float3& newOffset) { _terrainOffset = newOffset; }
+    void        TerrainCoordinateSystem::SetConfig(const TerrainConfig& cfg) { _config = cfg; }
 
     Float2 TerrainConfig::TerrainCoordsToCellBasedCoords(const Float2& terrainCoords) const
     {
@@ -3379,11 +3465,29 @@ namespace SceneEngine
         return _coverageLayers[index]; 
     }
 
+    static ::Assets::rstring FormatBaseDir(const ::Assets::ResChar input[])
+    {
+        // format the input directory name
+        //  * all lower case
+        //  * only use '/' separators
+        //  * must end in a slash (unless empty)
+        ::Assets::ResChar buffer[MaxPath];
+        XlNormalizePath(buffer, dimof(buffer), input);
+        auto len = XlStringLen(buffer);
+        std::transform(buffer, &buffer[len], buffer, &std::tolower);
+        if (len && buffer[len-1] != '/' && (len+1) < dimof(buffer)) {
+            buffer[len] = '/';
+            buffer[len+1] = '\0';
+        }
+        return buffer;
+    }
+
     TerrainConfig::TerrainConfig(
-		const ::Assets::rstring& baseDir, UInt2 cellCount,
+		const ::Assets::ResChar baseDir[], UInt2 cellCount,
         Filenames filenamesMode, 
-        unsigned nodeDimsInElements, unsigned cellTreeDepth, unsigned nodeOverlap, float elementSpacing)
-    : _baseDir(baseDir), _cellCount(cellCount), _filenamesMode(filenamesMode)
+        unsigned nodeDimsInElements, unsigned cellTreeDepth, 
+        unsigned nodeOverlap, float elementSpacing)
+    : _baseDir(FormatBaseDir(baseDir)), _cellCount(cellCount), _filenamesMode(filenamesMode)
     , _nodeDimsInElements(nodeDimsInElements), _cellTreeDepth(cellTreeDepth), _nodeOverlap(nodeOverlap) 
     , _elementSpacing(elementSpacing)
     {
@@ -3393,13 +3497,13 @@ namespace SceneEngine
         _textureCfgName = buffer;
     }
 
-    TerrainConfig::TerrainConfig(const std::string& baseDir)
-    : _baseDir(baseDir), _filenamesMode(XLE)
+    TerrainConfig::TerrainConfig(const ::Assets::ResChar baseDir[])
+    : _baseDir(FormatBaseDir(baseDir)), _filenamesMode(XLE)
     , _cellCount(0,0), _nodeDimsInElements(32u), _nodeOverlap(2u)
     , _cellTreeDepth(5u), _elementSpacing(10.f)
     {
         size_t fileSize = 0;
-        auto sourceFile = LoadFileAsMemoryBlock(StringMeld<MaxPath>() << baseDir << "\\world.cfg", &fileSize);
+        auto sourceFile = LoadFileAsMemoryBlock(StringMeld<MaxPath>() << _baseDir << "world.cfg", &fileSize);
 
         Data data;
         data.Load((const char*)sourceFile.get(), int(fileSize));
@@ -3470,7 +3574,7 @@ namespace SceneEngine
 
         auto parentNode = std::make_unique<Data>();
         parentNode->Add(terrainConfig.release());
-        parentNode->Save(StringMeld<MaxPath>() << _baseDir << "\\world.cfg");
+        parentNode->Save(StringMeld<MaxPath>() << _baseDir << "world.cfg");
     }
 
     const TerrainCoordinateSystem&  TerrainManager::GetCoords() const       { return _pimpl->_coords; }

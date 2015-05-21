@@ -210,6 +210,7 @@ namespace SceneEngine
     template <typename Type>
         inline Type TerrainUberSurface<Type>::GetValue(unsigned x, unsigned y) const
     {
+        assert(_mappedFile && _dataStart);
         if (y >= _height || x >= _width)
             return Internal::DummyValue<Type>();
         return _dataStart[y*_width+x];
@@ -218,6 +219,7 @@ namespace SceneEngine
     template <typename Type>
         inline void TerrainUberSurface<Type>::SetValue(unsigned x, unsigned y, Type newValue)
     {
+        assert(_mappedFile && _dataStart);
         if (y < _height && x < _width) {
             _dataStart[y*_width+x] = newValue;
         }
@@ -226,6 +228,7 @@ namespace SceneEngine
     template <typename Type>
         inline Type TerrainUberSurface<Type>::GetValueFast(unsigned x, unsigned y) const
     {
+        assert(_mappedFile && _dataStart);
         assert(y < _height && x < _width);
         return _dataStart[y*_width+x];
     }

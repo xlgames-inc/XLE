@@ -180,9 +180,14 @@ namespace RenderCore { namespace Assets
         auto result = success ? ::Assets::AssetState::Ready : ::Assets::AssetState::Invalid;
         
             // we need to call "_chain" on either failure or success
-        _chain(
-            result, _payload, 
-            AsPointer(_deps.cbegin()), AsPointer(_deps.cend()));
+        TRY 
+        {
+            _chain(
+                result, _payload, 
+                AsPointer(_deps.cbegin()), AsPointer(_deps.cend()));
+        } CATCH (const std::bad_function_call& e) {
+            LogWarning << "Chain function call failed in ShaderCompileMarker::Complete (with bad_function_call: " << e.what() << ")";
+        } CATCH_END
         return result;
     }
 

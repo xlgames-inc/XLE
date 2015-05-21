@@ -49,11 +49,11 @@ namespace SceneEngine
         };
 
         TerrainConfig(
-			const ::Assets::rstring& baseDir, UInt2 cellCount,
+			const ::Assets::ResChar baseDir[], UInt2 cellCount,
             Filenames filenamesMode = XLE, 
             unsigned nodeDimsInElements = 32u, unsigned cellTreeDepth = 5u, unsigned nodeOverlap = 2u,
             float elementSpacing = 10.f);
-		TerrainConfig(const ::Assets::rstring& baseDir = ::Assets::rstring());
+		TerrainConfig(const ::Assets::ResChar baseDir[] = "");
 
         void        GetCellFilename(::Assets::ResChar buffer[], unsigned cnt, UInt2 cellIndex, TerrainCoverageId id) const;
         void        GetUberSurfaceFilename(::Assets::ResChar buffer[], unsigned bufferCount, TerrainCoverageId id) const;
@@ -93,6 +93,7 @@ namespace SceneEngine
 
         Float3      TerrainOffset() const;
         void        SetTerrainOffset(const Float3& newOffset);
+        void        SetConfig(const TerrainConfig& cfg);
 
         TerrainCoordinateSystem(
             Float3 terrainOffset = Float3(0.f, 0.f, 0.f),
@@ -158,10 +159,17 @@ namespace SceneEngine
         const std::shared_ptr<ITerrainFormat>& GetFormat() const;
         void SetWorldSpaceOrigin(const Float3& origin);
 
-        TerrainManager( const TerrainConfig& cfg,
-                        std::shared_ptr<ITerrainFormat> ioFormat, 
-                        Int2 cellMin, Int2 cellMax, // (not inclusive of cellMax)
-                        Float3 worldSpaceOrigin = Float3(0.f, 0.f, -1000.f));
+        /// <summary>Loads a new terrain, removing the old one</summary>
+        /// Note that "cellMax" is non-inclusive. That is,
+        ///   Load(cfg, Int2(0,0), Int2(1,1));
+        /// will only load a single cell (not 4)
+        ///
+        /// The previous terrain (if any) will be removed. However, if
+        /// any cached textures or data can be retained, they will be.
+        void Load(const TerrainConfig& cfg, Int2 cellMin, Int2 cellMax); 
+        void Reset();
+
+        TerrainManager(std::shared_ptr<ITerrainFormat> ioFormat);
         ~TerrainManager();
 
     private:

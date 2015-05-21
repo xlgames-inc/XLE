@@ -30,10 +30,13 @@ namespace GUILayer
 
 		SceneEngine::TerrainConfig cfg(buffer);
         cfg._textureCfgName = "";
-		_terrainManager = std::make_shared<SceneEngine::TerrainManager>(
-			cfg, std::make_unique<SceneEngine::TerrainFormat>(),
-			Int2(0, 0), cfg._cellCount,
-            _terrainOffset);
+
+        if (!_terrainManager)
+		    _terrainManager = std::make_shared<SceneEngine::TerrainManager>(
+                std::make_unique<SceneEngine::TerrainFormat>());
+
+        _terrainManager->SetWorldSpaceOrigin(_terrainOffset);
+        _terrainManager->Load(cfg, Int2(0, 0), cfg._cellCount);
     }
 
     void TerrainGob::SetOffset(const Float3& offset)
