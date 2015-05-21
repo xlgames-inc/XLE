@@ -21,7 +21,7 @@ using LevelEditorCore;
 
 namespace RenderingInterop
 {
-    using PropertyInitializer = GUILayer.EditorSceneManager.PropertyInitializer;
+    using PropertyInitializer = GUILayer.EntityLayer.PropertyInitializer;
 
     /// <summary>
     /// Exposes a minimum set of game-engine functionalities 
@@ -80,6 +80,7 @@ namespace RenderingInterop
         private static GUILayer.EngineDevice s_engineDevice;
         private static GUILayer.SavedRenderResources s_savedRenderResources;
         private static GUILayer.EditorSceneManager s_underlyingScene;
+        private static GUILayer.EntityLayer s_entityInterface;
 
         /// <summary>
         /// init game engine 
@@ -97,6 +98,7 @@ namespace RenderingInterop
                 s_underlyingScene = new GUILayer.EditorSceneManager();
                 Util3D.Init();
                 XLELayer.NativeManipulatorLayer.SceneManager = s_underlyingScene;
+                s_entityInterface = s_underlyingScene.GetEntityInterface();
                 CriticalError = "";
                 s_inist.PopulateEngineInfo(
                     @"<EngineInfo>
@@ -126,6 +128,9 @@ namespace RenderingInterop
         /// </summary>
         public static void Shutdown()
         {
+            foreach (var initializable in Globals.MEFContainer.GetExportedValues<XLELayer.IShutdownWithEngine>())
+                initializable.Shutdown();
+
             foreach (var keyValue in s_idToDomNode)
             {
                 DestroyObject(
@@ -137,12 +142,15 @@ namespace RenderingInterop
 
             Util3D.Shutdown();
             XLELayer.NativeManipulatorLayer.SceneManager = null;
+            s_entityInterface = null;
             s_underlyingScene.Dispose();
             s_underlyingScene = null;
             s_savedRenderResources.Dispose();
             s_savedRenderResources = null;
             s_engineDevice.Dispose();
             s_engineDevice = null;
+            GlobalSelection.Dispose();
+            GlobalSelection = null;
             CriticalError = s_notInitialized;
         }
 
@@ -182,7 +190,7 @@ namespace RenderingInterop
         public static uint GetObjectTypeId(string className)
         {
             if (IsInError) return 0;
-            uint id = s_underlyingScene.GetTypeId(className);
+            uint id = s_entityInterface.GetTypeId(className);
             if (id == 0)
             {
                 System.Diagnostics.Debug.WriteLine(className + " is not defined in runtime");
@@ -193,7 +201,7 @@ namespace RenderingInterop
         public static uint GetDocumentTypeId(string className)
         {
             if (IsInError) return 0;
-            uint id = s_underlyingScene.GetDocumentTypeId(className);
+            uint id = s_entityInterface.GetDocumentTypeId(className);
             if (id == 0)
             {
                 System.Diagnostics.Debug.WriteLine(className + " document type is not defined in runtime");
@@ -204,7 +212,7 @@ namespace RenderingInterop
         public static uint GetObjectPropertyId(uint typeId, string propertyName)
         {
             if (IsInError) return 0;
-            uint propId = s_underlyingScene.GetPropertyId(typeId, propertyName);
+            uint propId = s_entityInterface.GetPropertyId(typeId, propertyName);
             if (propId == 0)
             {
                 System.Diagnostics.Debug.WriteLine(propertyName + " is not defined for typeid " + typeId);
@@ -215,7 +223,7 @@ namespace RenderingInterop
         public static uint GetObjectChildListId(uint typeId, string listName)
         {
             if (IsInError) return 0;
-            uint propId = s_underlyingScene.GetChildListId(typeId, listName);
+            uint propId = s_entityInterface.GetChildListId(typeId, listName);
             if (propId == 0)
             {
                 System.Diagnostics.Debug.WriteLine(listName + " is not defined for typeid " + typeId);
@@ -235,16 +243,16 @@ namespace RenderingInterop
             IEnumerable<PropertyInitializer> initializers)
         {
             if (existingId == 0)
-                existingId = s_underlyingScene.AssignObjectId(documentId, typeId);
+                existingId = s_entityInterface.AssignObjectId(documentId, typeId);
 
-            if (s_underlyingScene.CreateObject(documentId, existingId, typeId, initializers))
+            if (s_entityInterface.CreateObject(documentId, existingId, typeId, initializers))
                 return existingId;
             return 0;
         }
 
         public static void DestroyObject(ulong documentId, ulong instanceId, uint typeId)
         {
-            s_underlyingScene.DeleteObject(documentId, instanceId, typeId);
+            s_entityInterface.DeleteObject(documentId, instanceId, typeId);
         }
 
         public static void SetTypeAnnotation(
@@ -265,12 +273,12 @@ namespace RenderingInterop
 
         public static ulong CreateDocument(uint docTypeId)
         {
-            return s_underlyingScene.CreateDocument(docTypeId);
+            return s_entityInterface.CreateDocument(docTypeId);
         }
 
         public static void DeleteDocument(ulong docId, uint docTypeId)
         {
-            s_underlyingScene.DeleteDocument(docId, docTypeId);
+            s_entityInterface.DeleteDocument(docId, docTypeId);
         }
 
         public static void InvokeMemberFn(ulong instanceId, string fn, IntPtr arg, out IntPtr retVal)
@@ -284,7 +292,7 @@ namespace RenderingInterop
         {
             unsafe
             {
-                s_underlyingScene.SetProperty(
+                s_entityInterface.SetProperty(
                     documentId, instanceId, typeId, initializers);
             }
         }
@@ -294,7 +302,7 @@ namespace RenderingInterop
             ulong parentInstanceId, uint parentTypeId,
             int insertionPosition)
         {
-            s_underlyingScene.SetObjectParent(documentId, 
+            s_entityInterface.SetObjectParent(documentId, 
                 childInstanceId, childTypeId,
                 parentInstanceId, parentTypeId, insertionPosition);
         }
@@ -322,7 +330,7 @@ namespace RenderingInterop
             {
                 uint bufferSize = s_temporaryNativeBufferSize;
                 IntPtr pinnedPtr = s_temporaryNativeBuffer.AddrOfPinnedObject();
-                if (s_underlyingScene.GetProperty(
+                if (s_entityInterface.GetProperty(
                     documentId, instanceId, typeId, propId,
                     pinnedPtr.ToPointer(), &bufferSize))
                 {

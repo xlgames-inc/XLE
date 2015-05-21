@@ -68,8 +68,9 @@ namespace XLELayer
 
     [Export(LevelEditorCore::IManipulator::typeid)]
     [Export(IInitializable::typeid)]
+    [Export(IShutdownWithEngine::typeid)]
     [PartCreationPolicy(CreationPolicy::Shared)]
-    public ref class PlacementManipulator : public LevelEditorCore::IManipulator, public IInitializable
+    public ref class PlacementManipulator : public LevelEditorCore::IManipulator, public IInitializable, public IShutdownWithEngine
     {
     public:
         virtual bool Pick(LevelEditorCore::ViewControl^ vc, Point scrPt)        { return _nativeManip->MouseMove(vc, scrPt); }
@@ -107,9 +108,22 @@ namespace XLELayer
             }
         }
 
+        virtual void Shutdown()
+        {
+            delete _nativeManip; _nativeManip = nullptr;
+            delete _manipContext; _manipContext = nullptr;
+        }
+
         PlacementManipulator()
         {
             _manipContext = gcnew ActiveManipulatorContext();
+            _nativeManip = nullptr;
+        }
+
+        ~PlacementManipulator()
+        {
+            delete _nativeManip;
+            delete _manipContext;
         }
 
     private:

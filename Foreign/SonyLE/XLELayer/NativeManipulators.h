@@ -29,6 +29,7 @@ namespace XLELayer
         event EventHandler^ OnManipulatorSetChange;
 
         ActiveManipulatorContext();
+        ~ActiveManipulatorContext();
     private:
         GUILayer::IManipulatorSet^ _manipulatorSet;
         String^ _activeManipulator;
@@ -46,6 +47,7 @@ namespace XLELayer
         void OnEndDrag(LevelEditorCore::ViewControl^ vc, Point scrPt);
 
         NativeManipulatorLayer(ActiveManipulatorContext^ manipContext);
+        ~NativeManipulatorLayer();
 
     private:
         bool SendInputEvent(

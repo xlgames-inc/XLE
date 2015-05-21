@@ -14,7 +14,7 @@ using System.Collections.Generic;
 
 namespace RenderingInterop
 {
-    using PropertyInitializer = GUILayer.EditorSceneManager.PropertyInitializer;
+    using PropertyInitializer = GUILayer.EntityLayer.PropertyInitializer;
 
     /// <summary>
     /// Adapter for DomNode that have runtime counterpart.

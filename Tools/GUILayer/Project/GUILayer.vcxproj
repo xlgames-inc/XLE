@@ -85,6 +85,7 @@
     <ClCompile Include="..\EditorSceneParser.cpp" />
     <ClCompile Include="..\EngineDevice.cpp" />
     <ClCompile Include="..\EngineControl.cpp" />
+    <ClCompile Include="..\EntityLayer.cpp" />
     <ClCompile Include="..\GUILayerUtil.cpp" />
     <ClCompile Include="..\LayerControl.cpp" />
     <ClCompile Include="..\LevelEditorScene.cpp" />
@@ -104,6 +105,7 @@
     <ClInclude Include="..\EditorInterfaceUtils.h" />
     <ClInclude Include="..\EngineDevice.h" />
     <ClInclude Include="..\EngineControl.h" />
+    <ClInclude Include="..\EntityLayer.h" />
     <ClInclude Include="..\ExportedNativeTypes.h" />
     <ClInclude Include="..\GUILayerUtil.h" />
     <ClInclude Include="..\IOverlaySystem.h" />

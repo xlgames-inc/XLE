@@ -54,7 +54,8 @@ namespace XLELayer
             _renderSettings = gcnew GUILayer::EditorSceneRenderSettings();
             _renderSettings->_selection = selection;
             _sceneManager = sceneManager;
-            _layerControl->AddSystem(sceneManager->CreateOverlaySystem(_cameraSettings, _renderSettings));
+            _mainOverlay = sceneManager->CreateOverlaySystem(_cameraSettings, _renderSettings);
+            _layerControl->AddSystem(_mainOverlay);
             _manipulatorOverlay = gcnew ManipulatorOverlay(designView, this);
             _layerControl->AddSystem(_manipulatorOverlay);
 
@@ -81,6 +82,7 @@ namespace XLELayer
             delete _cameraSettings; _cameraSettings = nullptr; 
             delete _renderSettings; _renderSettings = nullptr; 
             delete _manipulatorOverlay; _manipulatorOverlay = nullptr; 
+            delete _mainOverlay; _mainOverlay = nullptr;
         }
 
         void Render() override
@@ -134,6 +136,7 @@ namespace XLELayer
         GUILayer::VisCameraSettings^ _cameraSettings;
         GUILayer::EditorSceneManager^ _sceneManager;
         GUILayer::EditorSceneRenderSettings^ _renderSettings;
+        GUILayer::IOverlaySystem^ _mainOverlay;
 
     private:
         ManipulatorOverlay^ _manipulatorOverlay;

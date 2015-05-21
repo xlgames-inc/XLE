@@ -82,6 +82,10 @@ namespace XLELayer
         _pendingBeginDrag = false;
     }
 
+    NativeManipulatorLayer::~NativeManipulatorLayer()
+    {
+    }
+
     bool NativeManipulatorLayer::SendInputEvent(
         Drawing::Size viewportSize,
 		Sce::Atf::Rendering::Camera^ camera, 
@@ -121,6 +125,7 @@ namespace XLELayer
     void ActiveManipulatorContext::ManipulatorSet::set(GUILayer::IManipulatorSet^ value)
     {
         if (value != _manipulatorSet) {
+            delete _manipulatorSet;
             _manipulatorSet = value;
             OnManipulatorSetChange(this, nullptr);
         }
@@ -146,6 +151,11 @@ namespace XLELayer
     {
         _manipulatorSet = nullptr;
         _activeManipulator = "";
+    }
+
+    ActiveManipulatorContext::~ActiveManipulatorContext()
+    {
+        delete _manipulatorSet;
     }
 
     ToolsRig::IManipulator* ActiveManipulatorContext::GetNativeManipulator()

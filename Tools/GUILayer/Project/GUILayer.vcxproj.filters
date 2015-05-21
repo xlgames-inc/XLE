@@ -44,6 +44,9 @@
     <ClCompile Include="..\ObjectPlaceholders.cpp">
       <Filter>DynInterface</Filter>
     </ClCompile>
+    <ClCompile Include="..\EntityLayer.cpp">
+      <Filter>DynInterface</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\EngineDevice.h" />
@@ -96,6 +99,9 @@
       <Filter>DynInterface</Filter>
     </ClInclude>
     <ClInclude Include="..\ObjectPlaceholders.h">
+      <Filter>DynInterface</Filter>
+    </ClInclude>
+    <ClInclude Include="..\EntityLayer.h">
       <Filter>DynInterface</Filter>
     </ClInclude>
   </ItemGroup>

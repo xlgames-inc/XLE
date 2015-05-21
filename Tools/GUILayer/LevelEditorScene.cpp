@@ -68,89 +68,14 @@ namespace GUILayer
 	EditorScene::~EditorScene()
 	{}
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-    using namespace EntityInterface;
-
-    DocumentId EditorSceneManager::CreateDocument(DocumentTypeId docType) 
-        { return _dynInterface->CreateDocument(docType, ""); }
-    bool EditorSceneManager::DeleteDocument(DocumentId doc, DocumentTypeId docType)
-        { return _dynInterface->DeleteDocument(doc, docType); }
-
-    ObjectId EditorSceneManager::AssignObjectId(DocumentId doc, ObjectTypeId type)
-        { return _dynInterface->AssignObjectId(doc, type); }
-
-    static std::vector<EntityInterface::PropertyInitializer> AsNative(
-        IEnumerable<EditorSceneManager::PropertyInitializer>^ initializers)
-    {
-        using NativeInitializer = EntityInterface::PropertyInitializer;
-        std::vector<NativeInitializer> native;
-        if (initializers) {
-            for each(auto i in initializers) {
-                NativeInitializer n;
-                n._prop = i._prop;
-                n._src = i._src;
-                n._elementType = i._elementType;
-                n._arrayCount = i._arrayCount;
-                native.push_back(n);
-            }
-        }
-        return std::move(native);
-    }
-
-    bool EditorSceneManager::CreateObject(DocumentId doc, ObjectId obj, ObjectTypeId objType, IEnumerable<PropertyInitializer>^ initializers)
-    {
-        auto native = AsNative(initializers);
-        EntityInterface::Identifier indentifier;
-        auto intrf = _dynInterface->GetInterface(
-            indentifier, EntityInterface::Identifier(doc, obj, objType));
-        if (intrf)
-            return intrf->CreateObject(indentifier, AsPointer(native.cbegin()), native.size()); 
-        return false;
-    }
-
-    bool EditorSceneManager::DeleteObject(DocumentId doc, ObjectId obj, ObjectTypeId objType)
-    { 
-        EntityInterface::Identifier indentifier;
-        auto intrf = _dynInterface->GetInterface(
-            indentifier, EntityInterface::Identifier(doc, obj, objType));
-        if (intrf)
-            return intrf->DeleteObject(indentifier); 
-        return false;
-    }
-
-    bool EditorSceneManager::SetProperty(DocumentId doc, ObjectId obj, ObjectTypeId objType, IEnumerable<PropertyInitializer>^ initializers)
-    { 
-        auto native = AsNative(initializers);
-        EntityInterface::Identifier indentifier;
-        auto intrf = _dynInterface->GetInterface(
-            indentifier, EntityInterface::Identifier(doc, obj, objType));
-        if (intrf)
-            return intrf->SetProperty(indentifier, AsPointer(native.cbegin()), native.size()); 
-        return false;
-    }
-
-    bool EditorSceneManager::GetProperty(DocumentId doc, ObjectId obj, ObjectTypeId objType, PropertyId prop, void* dest, unsigned* destSize)
-    { 
-        EntityInterface::Identifier indentifier;
-        auto intrf = _dynInterface->GetInterface(
-            indentifier, EntityInterface::Identifier(doc, obj, objType));
-        if (intrf)
-            return intrf->GetProperty(indentifier, prop, dest, destSize); 
-        return false;
-    }
-
-    DocumentTypeId EditorSceneManager::GetDocumentTypeId(System::String^ name)                  { return _dynInterface->GetDocumentTypeId(clix::marshalString<clix::E_UTF8>(name).c_str()); }
-    ObjectTypeId EditorSceneManager::GetTypeId(System::String^ name)                            { return _dynInterface->GetTypeId(clix::marshalString<clix::E_UTF8>(name).c_str()); }
-    PropertyId EditorSceneManager::GetPropertyId(ObjectTypeId type, System::String^ name)       { return _dynInterface->GetPropertyId(type, clix::marshalString<clix::E_UTF8>(name).c_str()); }
-    ChildListId EditorSceneManager::GetChildListId(ObjectTypeId type, System::String^ name)     { return _dynInterface->GetChildListId(type, clix::marshalString<clix::E_UTF8>(name).c_str()); }
-
-    void EditorSceneManager::SetTypeAnnotation(uint typeId, String^ annotationName, IEnumerable<PropertyInitializer>^ initializers)
+    void EditorSceneManager::SetTypeAnnotation(
+        uint typeId, String^ annotationName, 
+        IEnumerable<EntityLayer::PropertyInitializer>^ initializers)
     {
         if (!_scene->_placeholders) return ;
 
         if (annotationName == "vis") {
-            auto mappedId = _dynInterface->MapTypeId(typeId, *_flexGobInterface.get());
+            auto mappedId = _entities->GetSwitch().MapTypeId(typeId, *_flexGobInterface.get());
             if (mappedId != 0)
                 _scene->_placeholders->AddAnnotation(mappedId);
         }
@@ -159,22 +84,6 @@ namespace GUILayer
     const EntityInterface::RetainedEntities& EditorSceneManager::GetFlexObjects()
     {
         return *_scene->_flexObjects;
-    }
-
-    bool EditorSceneManager::SetObjectParent(
-        DocumentId doc, 
-        ObjectId childId, ObjectTypeId childTypeId, 
-        ObjectId parentId, ObjectTypeId parentTypeId, int insertionPosition)
-    {
-        EntityInterface::Identifier child, parent;
-        auto intrfChild = _dynInterface->GetInterface(
-            child, EntityInterface::Identifier(doc, childId, childTypeId));
-        auto intrfParent = _dynInterface->GetInterface(
-            parent, EntityInterface::Identifier(doc, parentId, parentTypeId));
-
-        if (intrfChild && intrfChild == intrfParent)
-            return intrfChild->SetParent(child, parent, insertionPosition);
-        return false;
     }
 
     IManipulatorSet^ EditorSceneManager::CreateTerrainManipulators() 
@@ -205,12 +114,17 @@ namespace GUILayer
 		return gcnew PlacementsEditorWrapper(_scene->_placementsEditor);
     }
 
+    EntityLayer^ EditorSceneManager::GetEntityInterface()
+    {
+        return _entities;
+    }
+
     void EditorSceneManager::IncrementTime(float increment)
     {
         _scene->IncrementTime(increment);
     }
 
-    auto EditorSceneManager::ExportPlacements(DocumentId doc, System::String^ destinationFile) -> ExportResult^
+    auto EditorSceneManager::ExportPlacements(EntityInterface::DocumentId doc, System::String^ destinationFile) -> ExportResult^
     {
             //  The document id corresponds directly with the 
             //  id used in the placements editor object. So we can
@@ -234,7 +148,7 @@ namespace GUILayer
         return result;
     }
 
-    auto EditorSceneManager::ExportEnvironmentSettings(DocumentId docId, System::String^ destinationFile) -> ExportResult^
+    auto EditorSceneManager::ExportEnvironmentSettings(EntityInterface::DocumentId docId, System::String^ destinationFile) -> ExportResult^
     {
         auto result = gcnew ExportResult();
         result->_success = false;
@@ -266,10 +180,11 @@ namespace GUILayer
         auto terrainEditor = std::make_shared<TerrainEntities>(_scene->_terrainManager);
         auto flexGobInterface = std::make_shared<RetainedEntityInterface>(_scene->_flexObjects);
 
-        _dynInterface = std::make_shared<Switch>();
-        _dynInterface->RegisterType(placementsEditor);
-        _dynInterface->RegisterType(terrainEditor);
-        _dynInterface->RegisterType(flexGobInterface);
+        auto swtch = std::make_shared<Switch>();
+        swtch->RegisterType(placementsEditor);
+        swtch->RegisterType(terrainEditor);
+        swtch->RegisterType(flexGobInterface);
+        _entities = gcnew EntityLayer(std::move(swtch));
 
         _flexGobInterface = flexGobInterface;
         RegisterTerrainFlexObjects(*_scene->_flexObjects);
@@ -278,14 +193,10 @@ namespace GUILayer
     EditorSceneManager::~EditorSceneManager()
     {
         _scene.reset();
-        _dynInterface.reset();
+        delete _entities;
     }
 
-    EditorSceneManager::!EditorSceneManager()
-    {
-        _scene.reset();
-        _dynInterface.reset();
-    }
+    EditorSceneManager::!EditorSceneManager() {}
 
     namespace Internal
     {

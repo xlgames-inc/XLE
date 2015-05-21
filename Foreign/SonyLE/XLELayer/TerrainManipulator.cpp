@@ -19,8 +19,9 @@ namespace XLELayer
 {
     [Export(LevelEditorCore::IManipulator::typeid)]
     [Export(IInitializable::typeid)]
+    [Export(IShutdownWithEngine::typeid)]
     [PartCreationPolicy(CreationPolicy::Shared)]
-    public ref class TerrainManipulator : public LevelEditorCore::IManipulator, public IInitializable
+    public ref class TerrainManipulator : public LevelEditorCore::IManipulator, public IInitializable, public IShutdownWithEngine
     {
     public:
         virtual bool Pick(LevelEditorCore::ViewControl^ vc, Point scrPt)        { return _nativeManip->MouseMove(vc, scrPt); }
@@ -61,13 +62,26 @@ namespace XLELayer
         {
             _domChangeInspector = gcnew DomChangeInspector(m_contextRegistry);
             _domChangeInspector->OnActiveContextChanged += gcnew DomChangeInspector::OnChangedDelegate(this, &TerrainManipulator::UpdateManipulatorContext);
-            _domChangeInspector->OnDOMObjectChanged += gcnew DomChangeInspector::OnChangedDelegate(this, &TerrainManipulator::OnDOMChange);
+            _manipContext->ManipulatorSet = NativeManipulatorLayer::SceneManager->CreateTerrainManipulators();
             _nativeManip = gcnew NativeManipulatorLayer(_manipContext);
         }
 
-        TerrainManipulator()
+        virtual void Shutdown()
         {
-            _manipContext = gcnew ActiveManipulatorContext();
+            delete _nativeManip; _nativeManip = nullptr;
+            delete _manipContext; _manipContext = nullptr;
+        }
+
+        TerrainManipulator()    
+        { 
+            _manipContext = gcnew ActiveManipulatorContext(); 
+            _nativeManip = nullptr;
+        }
+
+        ~TerrainManipulator()   
+        {
+            delete _nativeManip;
+            delete _manipContext;
         }
 
         property ActiveManipulatorContext^ ManipulatorContext
@@ -76,23 +90,6 @@ namespace XLELayer
         }
 
     private:
-        void OnDOMChange(System::Object^ object)
-        {
-            bool updateManipulators = false;
-            if (!object) {
-                updateManipulators = true;
-            } else {
-                auto node = Sce::Atf::Adaptation::Adapters::As<Sce::Atf::Dom::DomNodeAdapter^>(object);
-                if (node && node->DomNode->Type->Name == "gap:terrainType") {
-                    updateManipulators = true;
-                }
-            }
-
-            if (updateManipulators) {
-                UpdateManipulatorContext(object);
-            }
-        }
-
         void UpdateManipulatorContext(System::Object^ object)
         {
             auto sceneMan = NativeManipulatorLayer::SceneManager;
