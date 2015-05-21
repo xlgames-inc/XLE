@@ -22,22 +22,22 @@ namespace GUILayer { namespace EditorDynamicInterface
     class TerrainObjectType : public IObjectType
 	{
 	public:
-		DocumentId CreateDocument(EditorScene& scene, DocumentTypeId docType, const char initializer[]) const;
-		bool DeleteDocument(EditorScene& scene, DocumentId doc, DocumentTypeId docType) const;
+		DocumentId CreateDocument(DocumentTypeId docType, const char initializer[]) const;
+		bool DeleteDocument(DocumentId doc, DocumentTypeId docType) const;
 
-		ObjectId AssignObjectId(EditorScene& scene, DocumentId doc, ObjectTypeId type) const;
-		bool CreateObject(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId type, const PropertyInitializer initializers[], size_t initializerCount) const;
-		bool DeleteObject(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId objType) const;
-		bool SetProperty(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId type, const PropertyInitializer initializers[], size_t initializerCount) const;
-		bool GetProperty(EditorScene& scene, DocumentId doc, ObjectId obj, ObjectTypeId type, PropertyId prop, void* dest, unsigned* destSize) const;
-        bool SetParent(EditorScene& scene, DocumentId doc, ObjectId child, ObjectTypeId childType, ObjectId parent, ObjectTypeId parentType, int insertionPosition) const;
+		ObjectId AssignObjectId(DocumentId doc, ObjectTypeId type) const;
+		bool CreateObject(const Identifier& id, const PropertyInitializer initializers[], size_t initializerCount) const;
+		bool DeleteObject(const Identifier& id) const;
+		bool SetProperty(const Identifier& id, const PropertyInitializer initializers[], size_t initializerCount) const;
+		bool GetProperty(const Identifier& id, PropertyId prop, void* dest, unsigned* destSize) const;
+        bool SetParent(const Identifier& child, const Identifier& parent, int insertionPosition) const;
 
 		ObjectTypeId GetTypeId(const char name[]) const;
 		DocumentTypeId GetDocumentTypeId(const char name[]) const;
 		PropertyId GetPropertyId(ObjectTypeId type, const char name[]) const;
 		ChildListId GetChildListId(ObjectTypeId type, const char name[]) const;
 
-		TerrainObjectType();
+		TerrainObjectType(std::shared_ptr<SceneEngine::TerrainManager> terrainManager);
 		~TerrainObjectType();
 
     private:
@@ -45,10 +45,12 @@ namespace GUILayer { namespace EditorDynamicInterface
 		static const PropertyId Property_BaseDir = 200;
         static const PropertyId Property_Offset = 201;
 
-        bool SetTerrainProperty(EditorScene& scene, const PropertyInitializer& prop) const;
+        bool SetTerrainProperty(const PropertyInitializer& prop) const;
+
+        std::shared_ptr<SceneEngine::TerrainManager> _terrainManager;
 	};
 
-    class FlexObjectType;
+    class FlexObjectScene;
 }}
 
 namespace GUILayer
@@ -101,5 +103,5 @@ namespace GUILayer
         clix::auto_ptr<TerrainManipulatorsPimpl> _pimpl;
     };
 
-    namespace Internal { void RegisterTerrainFlexObjects(EditorDynamicInterface::FlexObjectType& flexSys); }
+    namespace Internal { void RegisterTerrainFlexObjects(EditorDynamicInterface::FlexObjectScene& flexSys); }
 }

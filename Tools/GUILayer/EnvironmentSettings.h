@@ -17,15 +17,15 @@ namespace GUILayer
 {
     PlatformRig::EnvironmentSettings
         BuildEnvironmentSettings(
-            const EditorDynamicInterface::FlexObjectType& flexGobInterface,
-            const EditorDynamicInterface::FlexObjectType::Object& obj);
+            const EditorDynamicInterface::FlexObjectScene& flexGobInterface,
+            const EditorDynamicInterface::FlexObjectScene::Object& obj);
 
     using EnvSettingsVector = std::vector<std::pair<std::string, PlatformRig::EnvironmentSettings>>;
     EnvSettingsVector BuildEnvironmentSettings(
-        const EditorDynamicInterface::FlexObjectType& flexGobInterface);
+        const EditorDynamicInterface::FlexObjectScene& flexGobInterface);
 
     void ExportEnvSettings(
-        const EditorDynamicInterface::FlexObjectType& flexGobInterface,
+        const EditorDynamicInterface::FlexObjectScene& flexGobInterface,
         EditorDynamicInterface::DocumentId docId,
         const ::Assets::ResChar destinationFile[]);
 

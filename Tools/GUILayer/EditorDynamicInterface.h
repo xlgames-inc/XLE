@@ -39,7 +39,7 @@ namespace GUILayer
             ObjectId Object() const             { return _obj; }
 
             Identifier(DocumentId doc, ObjectId obj, ObjectTypeId objType) : _doc(doc), _obj(obj), _objType(objType) {}
-            Identifier() : _doc(~DocumentId(0)), _obj(~ObjectId(0)), _objType(~ObjectTypeId(0)) {}
+            Identifier() : _doc(DocumentId(0)), _obj(ObjectId(0)), _objType(ObjectTypeId(0)) {}
         protected:
             DocumentId _doc;
             ObjectId _obj;

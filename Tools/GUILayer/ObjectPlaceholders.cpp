@@ -34,7 +34,7 @@ namespace GUILayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    using FlexObjectType = EditorDynamicInterface::FlexObjectType;
+    using EditorDynamicInterface::FlexObjectScene;
 
     class VisGeoBox
     {
@@ -72,7 +72,7 @@ namespace GUILayer
         Metal::DeviceContext& devContext,
         ParsingContext& parserContext,
         const VisGeoBox& visBox,
-        const ResolvedShader& shader, const FlexObjectType::Object& obj)
+        const ResolvedShader& shader, const FlexObjectScene::Object& obj)
     {
         if (!obj._properties.GetParameter(Parameters::Visible, true)) return;
 
@@ -177,7 +177,7 @@ namespace GUILayer
         return std::make_shared<IntersectionTester>(shared_from_this());
     }
 
-    ObjectPlaceholders::ObjectPlaceholders(std::shared_ptr<FlexObjectType> objects)
+    ObjectPlaceholders::ObjectPlaceholders(std::shared_ptr<FlexObjectScene> objects)
     : _objects(std::move(objects))
     {}
 

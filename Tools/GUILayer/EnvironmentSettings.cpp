@@ -22,8 +22,8 @@ namespace GUILayer
 
     PlatformRig::EnvironmentSettings
         BuildEnvironmentSettings(
-            const EditorDynamicInterface::FlexObjectType& flexGobInterface,
-            const EditorDynamicInterface::FlexObjectType::Object& obj)
+            const EditorDynamicInterface::FlexObjectScene& flexGobInterface,
+            const EditorDynamicInterface::FlexObjectScene::Object& obj)
     {
         using namespace SceneEngine;
         using namespace PlatformRig;
@@ -92,7 +92,7 @@ namespace GUILayer
     }
 
     EnvSettingsVector BuildEnvironmentSettings(
-        const EditorDynamicInterface::FlexObjectType& flexGobInterface)
+        const EditorDynamicInterface::FlexObjectScene& flexGobInterface)
     {
         EnvSettingsVector result;
 
@@ -109,15 +109,15 @@ namespace GUILayer
     }
 
     std::unique_ptr<Utility::Data> BuildData(
-        const EditorDynamicInterface::FlexObjectType::Object& obj,
-        const EditorDynamicInterface::FlexObjectType& flexGobInterface)
+        const EditorDynamicInterface::FlexObjectScene::Object& obj,
+        const EditorDynamicInterface::FlexObjectScene& flexGobInterface)
     {
         assert(0);
         return std::make_unique<Utility::Data>();
     }
 
     void ExportEnvSettings(
-        const EditorDynamicInterface::FlexObjectType& flexGobInterface,
+        const EditorDynamicInterface::FlexObjectScene& flexGobInterface,
         EditorDynamicInterface::DocumentId docId,
         const ::Assets::ResChar destinationFile[])
     {

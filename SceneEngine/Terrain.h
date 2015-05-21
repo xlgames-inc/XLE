@@ -7,10 +7,8 @@
 #pragma once
 
 #include "../RenderCore/Metal/Forward.h"
-#include "../BufferUploads/IBufferUploads_Forward.h"
 #include "../Math/Vector.h"
 #include "../Assets/Assets.h"
-#include "../Utility/Mixins.h"
 #include "../Core/Types.h"
 
 namespace RenderCore { namespace Techniques { class CameraDesc; } }
@@ -109,7 +107,7 @@ namespace SceneEngine
         TerrainConfig _config;
     };
 
-    class TerrainManager : public noncopyable
+    class TerrainManager
     {
     public:
         void Render(    RenderCore::Metal::DeviceContext* context, 
@@ -172,6 +170,9 @@ namespace SceneEngine
         TerrainManager(std::shared_ptr<ITerrainFormat> ioFormat);
         ~TerrainManager();
 
+        TerrainManager(const TerrainManager&) = delete;
+        TerrainManager& operator=(const TerrainManager&) = delete;
+
     private:
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
@@ -206,6 +207,7 @@ namespace SceneEngine
         virtual void WriteCell(
             const char destinationFile[], TerrainUberSurface<uint8>& surface, 
             UInt2 cellMins, UInt2 cellMaxs, unsigned treeDepth, unsigned overlapElements) const = 0;
+        virtual ~ITerrainFormat();
     };
 
     void ExecuteTerrainConversion(

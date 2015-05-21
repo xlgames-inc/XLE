@@ -15,8 +15,8 @@ namespace GUILayer { namespace EditorDynamicInterface
         Identifier& translatedId, 
         const Identifier& inputId) const
     {
-        if (inputId.Document() > 0 && (inputId.Document()-1) < _knownDocumentTypes.size()) {
-            auto& reg = _knownDocumentTypes[inputId.Document()-1];
+        if (inputId.ObjectType() > 0 && (inputId.ObjectType()-1) < _knownObjectTypes.size()) {
+            auto& reg = _knownObjectTypes[inputId.ObjectType()-1];
             translatedId = Identifier(inputId.Document(), inputId.Object(), reg._mappedTypeId);
             return reg._owner.get();
         }

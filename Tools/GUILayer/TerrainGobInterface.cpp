@@ -21,50 +21,6 @@ namespace GUILayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    void TerrainGob::SetBaseDir(const ucs2 dir[], unsigned length)
-    {
-        _terrainManager.reset();
-
-        ::Assets::ResChar buffer[MaxPath];
-        ucs2_2_utf8(dir, length, (utf8*)buffer, dimof(buffer));
-
-		SceneEngine::TerrainConfig cfg(buffer);
-        cfg._textureCfgName = "";
-
-        if (!_terrainManager)
-		    _terrainManager = std::make_shared<SceneEngine::TerrainManager>(
-                std::make_unique<SceneEngine::TerrainFormat>());
-
-        _terrainManager->SetWorldSpaceOrigin(_terrainOffset);
-        _terrainManager->Load(cfg, Int2(0, 0), cfg._cellCount);
-    }
-
-    void TerrainGob::SetOffset(const Float3& offset)
-    {
-        _terrainOffset = offset;
-        if (_terrainManager) {
-            _terrainManager->SetWorldSpaceOrigin(offset);
-        }
-    }
-
-    ::Assets::DivergentAsset<SceneEngine::TerrainMaterialScaffold>& TerrainGob::GetMaterial()
-    {
-        return *Assets::GetDivergentAsset<SceneEngine::TerrainMaterialScaffold>();
-    }
-
-    TerrainGob::TerrainGob()
-    {
-            //	We don't actually create the terrain until we set the 
-            //  "basedir" property
-			//	this is just a short-cut to avoid extra work.
-        _terrainOffset = Float3(0.f, 0.f, 0.f);
-    }
-
-    TerrainGob::~TerrainGob()
-    {}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
     TerrainManipulatorsPimpl::RegisteredManipulator::~RegisteredManipulator() {}
 
 	clix::shared_ptr<ToolsRig::IManipulator> TerrainManipulators::GetManipulator(System::String^ name)
@@ -102,8 +58,8 @@ namespace GUILayer
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     static void UpdateTerrainBaseTexture(
-        const EditorDynamicInterface::FlexObjectType& sys,
-        const EditorDynamicInterface::FlexObjectType::Object& obj)
+        const EditorDynamicInterface::FlexObjectScene& sys,
+        const EditorDynamicInterface::FlexObjectScene::Object& obj)
     {
         using namespace EditorDynamicInterface;
         auto& divAsset = *Assets::GetDivergentAsset<SceneEngine::TerrainMaterialScaffold>();
@@ -144,23 +100,20 @@ namespace GUILayer
         }
     }
 
-    static void TerrainBaseTextureCallback(
-        const EditorDynamicInterface::FlexObjectType& flexSys, 
-        EditorDynamicInterface::DocumentId doc, EditorDynamicInterface::ObjectId obj, EditorDynamicInterface::ObjectTypeId type)
-    {
-        auto* object = flexSys.GetObject(doc, obj);
-        if (object) {
-            UpdateTerrainBaseTexture(flexSys, *object);
-        }
-    }
-
     namespace Internal
     {
-        void RegisterTerrainFlexObjects(EditorDynamicInterface::FlexObjectType& flexSys)
+        void RegisterTerrainFlexObjects(EditorDynamicInterface::FlexObjectScene& flexSys)
         {
+            using namespace EditorDynamicInterface;
             flexSys.RegisterCallback(
                 flexSys.GetTypeId("TerrainBaseTexture"),
-                &TerrainBaseTextureCallback);
+                [](const FlexObjectScene& flexSys, const Identifier& obj)
+                {
+                    auto* object = flexSys.GetObject(obj);
+                    if (object)
+                        UpdateTerrainBaseTexture(flexSys, *object);
+                }
+            );
         }
     }
 }
@@ -170,17 +123,17 @@ namespace GUILayer { namespace EditorDynamicInterface
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	DocumentId TerrainObjectType::CreateDocument(EditorScene& scene, DocumentTypeId docType, const char initializer[]) const
+	DocumentId TerrainObjectType::CreateDocument(DocumentTypeId docType, const char initializer[]) const
 	{
 		return 0;
 	}
 
-	bool TerrainObjectType::DeleteDocument(EditorScene& scene, DocumentId doc, DocumentTypeId docType) const
+	bool TerrainObjectType::DeleteDocument(DocumentId doc, DocumentTypeId docType) const
 	{
 		return false;
 	}
 
-	ObjectId TerrainObjectType::AssignObjectId(EditorScene& scene, DocumentId doc, ObjectTypeId type) const
+	ObjectId TerrainObjectType::AssignObjectId(DocumentId doc, ObjectTypeId type) const
 	{
 		if (type == ObjectType_Terrain) {
 		    return 1;
@@ -190,56 +143,65 @@ namespace GUILayer { namespace EditorDynamicInterface
 	}
 
 	bool TerrainObjectType::CreateObject(
-		EditorScene& scene, DocumentId doc,
-		ObjectId obj, ObjectTypeId type,
+		const Identifier& id,
 		const PropertyInitializer initializers[], size_t initializerCount) const
 	{
-		if (type == ObjectType_Terrain) {
-		    scene._terrainGob = std::make_unique<TerrainGob>();
+		if (id.ObjectType() == ObjectType_Terrain) {
+		    _terrainManager->Reset();
+            _terrainManager->SetWorldSpaceOrigin(Float3(0.f, 0.f, 0.f));
             for (size_t c=0; c<initializerCount; ++c)
-                SetTerrainProperty(scene, initializers[c]);
+                SetTerrainProperty(initializers[c]);
 		    return true;
         }
         return false;
 	}
 
 	bool TerrainObjectType::DeleteObject(
-		EditorScene& scene, DocumentId doc,
-		ObjectId obj, ObjectTypeId type) const
+		const Identifier& id) const
 	{
-		if (type == ObjectType_Terrain) {
-		    scene._terrainGob.reset();
+		if (id.ObjectType() == ObjectType_Terrain) {
+		    _terrainManager->Reset();
     		return true;
         }
         return false;
 	}
 
 	bool TerrainObjectType::SetProperty(
-		EditorScene& scene, DocumentId doc, ObjectId obj,
-		ObjectTypeId type,
+		const Identifier& id,
 		const PropertyInitializer initializers[], size_t initializerCount) const
 	{
-		if (type == ObjectType_Terrain) {
+		if (id.ObjectType() == ObjectType_Terrain) {
             for (size_t c=0; c<initializerCount; ++c)
-                SetTerrainProperty(scene, initializers[c]);
+                SetTerrainProperty(initializers[c]);
             return true;
         }
 
 		return false;
 	}
 
-    bool TerrainObjectType::SetTerrainProperty(EditorScene& scene, const PropertyInitializer& prop) const
+    static void SetBaseDir(SceneEngine::TerrainManager& terrain, const ucs2 dir[], unsigned length)
     {
-        if (!scene._terrainGob) {
-            assert(0);
-            return false;
-        }
-		
+        ::Assets::ResChar buffer[MaxPath];
+        ucs2_2_utf8(dir, length, (utf8*)buffer, dimof(buffer));
+
+        TRY
+        {
+		    SceneEngine::TerrainConfig cfg(buffer);
+            cfg._textureCfgName = "";
+
+            terrain.Load(cfg, Int2(0, 0), cfg._cellCount);
+        } CATCH (...) {
+            terrain.Reset();
+        } CATCH_END
+    }
+
+    bool TerrainObjectType::SetTerrainProperty(const PropertyInitializer& prop) const
+    {
         if (prop._prop == Property_BaseDir) {
-            scene._terrainGob->SetBaseDir((const ucs2*)prop._src, prop._arrayCount);
+            SetBaseDir(*_terrainManager, (const ucs2*)prop._src, prop._arrayCount);
             return true;
         } else if (prop._prop == Property_Offset) {
-            scene._terrainGob->SetOffset(*(const Float3*)prop._src);
+            _terrainManager->SetWorldSpaceOrigin(*(const Float3*)prop._src);
             return true;
         }
 
@@ -247,15 +209,14 @@ namespace GUILayer { namespace EditorDynamicInterface
     }
 
 	bool TerrainObjectType::GetProperty(
-		EditorScene& scene, DocumentId doc, ObjectId obj,
-		ObjectTypeId type, PropertyId prop,
+		const Identifier& id, PropertyId prop,
 		void* dest, unsigned* destSize) const
 	{
 		assert(0);		
 		return false;
 	}
 
-    bool TerrainObjectType::SetParent(EditorScene& scene, DocumentId doc, ObjectId child, ObjectTypeId childType, ObjectId parent, ObjectTypeId parentType, int insertionPosition) const
+    bool TerrainObjectType::SetParent(const Identifier& child, const Identifier& parent, int insertionPosition) const
     {
         return false;
     }
@@ -286,7 +247,11 @@ namespace GUILayer { namespace EditorDynamicInterface
 		return 0;
 	}
 
-	TerrainObjectType::TerrainObjectType() {}
+	TerrainObjectType::TerrainObjectType(
+        std::shared_ptr<SceneEngine::TerrainManager> terrainManager) 
+    : _terrainManager(std::move(terrainManager))
+    {}
+
 	TerrainObjectType::~TerrainObjectType() {}
 
 }}

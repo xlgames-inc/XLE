@@ -13,7 +13,12 @@
 
 using namespace System::Collections::Generic;
 
-namespace SceneEngine { class PlacementsManager; class PlacementsEditor; class ISceneParser; class IntersectionTestScene; }
+namespace SceneEngine 
+{
+    class PlacementsManager; class PlacementsEditor; 
+    class TerrainManager;
+    class ISceneParser; class IntersectionTestScene; 
+}
 namespace Tools { class IManipulator; }
 
 namespace GUILayer
@@ -26,20 +31,21 @@ namespace GUILayer
     class TerrainGob;
     class ObjectPlaceholders;
 
-    namespace EditorDynamicInterface { class RegisteredTypes; class FlexObjectType; }
+    namespace EditorDynamicInterface { class RegisteredTypes; class FlexObjectScene; class FlexObjectType; }
 
     class EditorScene
     {
     public:
         std::shared_ptr<SceneEngine::PlacementsManager> _placementsManager;
         std::shared_ptr<SceneEngine::PlacementsEditor> _placementsEditor;
-        std::unique_ptr<TerrainGob> _terrainGob;
+        std::shared_ptr<SceneEngine::TerrainManager> _terrainManager;
+        std::shared_ptr<EditorDynamicInterface::FlexObjectScene> _flexObjects;
         std::shared_ptr<ObjectPlaceholders> _placeholders;
 
         void    IncrementTime(float increment) { _currentTime += increment; }
         float   _currentTime;
 
-        EditorScene(std::shared_ptr<EditorDynamicInterface::FlexObjectType> flexObjects);
+        EditorScene();
 		~EditorScene();
     };
 
@@ -116,7 +122,7 @@ namespace GUILayer
         ExportResult^ ExportTerrainSettings(System::String^ destinationFolder);
 
             //// //// ////   U T I L I T Y   //// //// ////
-        const EditorDynamicInterface::FlexObjectType& GetFlexObjects();
+        const EditorDynamicInterface::FlexObjectScene& GetFlexObjects();
         void IncrementTime(float increment);
 
             //// //// ////   C O N S T R U C T O R S   //// //// ////

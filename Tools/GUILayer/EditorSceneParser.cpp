@@ -52,8 +52,7 @@ namespace GUILayer
             unsigned index, unsigned techniqueIndex) const;
 
         float GetTimeValue() const;
-        void PrepareEnvironmentalSettings(
-            const char envSettings[], EditorDynamicInterface::FlexObjectType& flexGobInterface);
+        void PrepareEnvironmentalSettings(const char envSettings[]);
 
         EditorSceneParser(
             std::shared_ptr<EditorScene> editorScene,
@@ -78,9 +77,9 @@ namespace GUILayer
         if (    parseSettings._batchFilter == SceneParseSettings::BatchFilter::General
             ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::Depth) {
 
-			if (parseSettings._toggles & SceneParseSettings::Toggles::Terrain && _editorScene->_terrainGob && _editorScene->_terrainGob->_terrainManager) {
+			if (parseSettings._toggles & SceneParseSettings::Toggles::Terrain && _editorScene->_terrainManager) {
 				TRY {
-                    _editorScene->_terrainGob->_terrainManager->Render(context, parserContext, techniqueIndex);
+                    _editorScene->_terrainManager->Render(context, parserContext, techniqueIndex);
                 }
                 CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
                 CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
@@ -122,15 +121,16 @@ namespace GUILayer
 
     float EditorSceneParser::GetTimeValue() const { return _editorScene->_currentTime; }
 
-    void EditorSceneParser::PrepareEnvironmentalSettings(const char envSettings[], EditorDynamicInterface::FlexObjectType& flexGobInterface)
+    void EditorSceneParser::PrepareEnvironmentalSettings(const char envSettings[])
     {
         using namespace EditorDynamicInterface;
-        const FlexObjectType::Object* settings = nullptr;
-        const auto typeSettings = flexGobInterface.GetTypeId("EnvSettings");
+        const auto& objs = *_editorScene->_flexObjects;
+        const FlexObjectScene::Object* settings = nullptr;
+        const auto typeSettings = objs.GetTypeId("EnvSettings");
 
         {
             static const auto nameHash = ParameterBox::MakeParameterNameHash("name");
-            auto allSettings = flexGobInterface.FindObjectsOfType(typeSettings);
+            auto allSettings = objs.FindObjectsOfType(typeSettings);
             for (const auto& s : allSettings)
                 if (!XlCompareStringI(s->_properties.GetString<char>(nameHash).c_str(), envSettings)) {
                     settings = s;
@@ -139,7 +139,7 @@ namespace GUILayer
         }
 
         if (settings) {
-            _activeEnvSettings = BuildEnvironmentSettings(flexGobInterface, *settings);
+            _activeEnvSettings = BuildEnvironmentSettings(objs, *settings);
         } else {
             _activeEnvSettings._lights.clear();
             _activeEnvSettings._shadowProj.clear();
@@ -173,13 +173,11 @@ namespace GUILayer
         EditorSceneOverlay(
             std::shared_ptr<EditorSceneParser> sceneParser,
             EditorSceneRenderSettings^ renderSettings,
-            std::shared_ptr<EditorDynamicInterface::FlexObjectType> flexGobInterface,
             std::shared_ptr<SceneEngine::PlacementsEditor> placementsEditor);
         ~EditorSceneOverlay();
     protected:
         clix::shared_ptr<EditorSceneParser> _sceneParser;
         EditorSceneRenderSettings^ _renderSettings;
-        clix::shared_ptr<EditorDynamicInterface::FlexObjectType> _flexGobInterface;
         clix::shared_ptr<SceneEngine::PlacementsEditor> _placementsEditor;
     };
     
@@ -189,8 +187,7 @@ namespace GUILayer
     {
         if (_sceneParser.get()) {
             _sceneParser->PrepareEnvironmentalSettings(
-                clix::marshalString<clix::E_UTF8>(_renderSettings->_activeEnvironmentSettings).c_str(),
-                *_flexGobInterface.GetNativePtr());
+                clix::marshalString<clix::E_UTF8>(_renderSettings->_activeEnvironmentSettings).c_str());
             SceneEngine::LightingParser_ExecuteScene(
                 *threadContext, parserContext, *_sceneParser.get(), 
                 SceneEngine::RenderingQualitySettings(threadContext->GetStateDesc()._viewportDimensions));
@@ -216,13 +213,11 @@ namespace GUILayer
     EditorSceneOverlay::EditorSceneOverlay(
         std::shared_ptr<EditorSceneParser> sceneParser,
         EditorSceneRenderSettings^ renderSettings,
-        std::shared_ptr<EditorDynamicInterface::FlexObjectType> flexGobInterface,
         std::shared_ptr<SceneEngine::PlacementsEditor> placementsEditor)
     {
         _sceneParser = std::move(sceneParser);
         _renderSettings = renderSettings;
-        _placementsEditor = placementsEditor;
-        _flexGobInterface = flexGobInterface;
+        _placementsEditor = std::move(placementsEditor);
     }
     EditorSceneOverlay::~EditorSceneOverlay() {}
 
@@ -231,14 +226,12 @@ namespace GUILayer
     {
         IOverlaySystem^ CreateOverlaySystem(
             std::shared_ptr<EditorScene> scene, 
-            std::shared_ptr<EditorDynamicInterface::FlexObjectType> flexGobInterface,
             std::shared_ptr<ToolsRig::VisCameraSettings> camera, 
             EditorSceneRenderSettings^ renderSettings)
         {
             return gcnew EditorSceneOverlay(
                 std::make_shared<EditorSceneParser>(scene, std::move(camera)), 
-                renderSettings, std::move(flexGobInterface),
-                scene->_placementsEditor);
+                renderSettings, scene->_placementsEditor);
         }
     }
 }

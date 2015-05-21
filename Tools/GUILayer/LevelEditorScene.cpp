@@ -19,6 +19,8 @@
 #include "../ToolsRig/PlacementsManipulators.h"     // just needed for destructors referenced in PlacementGobInterface.h
 #include "../ToolsRig/VisualisationUtils.h"
 #include "../../SceneEngine/PlacementsManager.h"
+#include "../../SceneEngine/Terrain.h"
+#include "../../SceneEngine/TerrainFormat.h"
 #include <memory>
 
 namespace GUILayer
@@ -50,13 +52,15 @@ namespace GUILayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    EditorScene::EditorScene(std::shared_ptr<EditorDynamicInterface::FlexObjectType> flexObjects)
+    EditorScene::EditorScene()
     {
         _placementsManager = std::make_shared<SceneEngine::PlacementsManager>(
             SceneEngine::WorldPlacementsConfig(),
             std::make_shared<RenderCore::Assets::ModelCache>(), Float2(0.f, 0.f));
         _placementsEditor = _placementsManager->CreateEditor();
-        _placeholders = std::make_shared<ObjectPlaceholders>(std::move(flexObjects));
+        _terrainManager = std::make_shared<SceneEngine::TerrainManager>(std::make_shared<SceneEngine::TerrainFormat>());
+        _flexObjects = std::make_shared<EditorDynamicInterface::FlexObjectScene>();
+        _placeholders = std::make_shared<ObjectPlaceholders>(_flexObjects);
         _currentTime = 0.f;
     }
 
@@ -151,9 +155,9 @@ namespace GUILayer
         }
     }
 
-    const EditorDynamicInterface::FlexObjectType& EditorSceneManager::GetFlexObjects()
+    const EditorDynamicInterface::FlexObjectScene& EditorSceneManager::GetFlexObjects()
     {
-        return *_flexGobInterface.get();
+        return *_scene->_flexObjects;
     }
 
     bool EditorSceneManager::SetObjectParent(
@@ -174,11 +178,7 @@ namespace GUILayer
 
     IManipulatorSet^ EditorSceneManager::CreateTerrainManipulators() 
     { 
-        if (_scene->_terrainGob && _scene->_terrainGob->_terrainManager) {
-            return gcnew TerrainManipulators(_scene->_terrainGob->_terrainManager);
-        } else {
-            return nullptr;
-        }
+        return gcnew TerrainManipulators(_scene->_terrainManager);
     }
 
     IManipulatorSet^ EditorSceneManager::CreatePlacementManipulators(
@@ -194,7 +194,7 @@ namespace GUILayer
 	IntersectionTestSceneWrapper^ EditorSceneManager::GetIntersectionScene()
 	{
 		return gcnew IntersectionTestSceneWrapper(
-            (_scene->_terrainGob) ? _scene->_terrainGob->_terrainManager : nullptr,
+            _scene->_terrainManager,
             _scene->_placementsEditor,
             {_scene->_placeholders->CreateIntersectionTester()} );
     }
@@ -241,7 +241,7 @@ namespace GUILayer
         TRY
         {
             ExportEnvSettings(
-                *_flexGobInterface.get(), docId, 
+                *_scene->_flexObjects, docId, 
                 clix::marshalString<clix::E_UTF8>(destinationFile).c_str());
         } CATCH(const std::exception& e) {
             result->_messages = "Error while exporting environment settings: " + clix::marshalString<clix::E_UTF8>(e.what());
@@ -258,18 +258,19 @@ namespace GUILayer
 
     EditorSceneManager::EditorSceneManager()
     {
-        // _flexGobInterface = std::make_shared<EditorDynamicInterface::FlexObjectType>();
-        _scene = std::make_shared<EditorScene>(_flexGobInterface.GetNativePtr());
+        _scene = std::make_shared<EditorScene>();
 
-        auto placementsEditor = std::make_shared<EditorDynamicInterface::PlacementObjectType>(
-            _scene->_placementsManager, _scene->_placementsEditor);
+        using namespace EditorDynamicInterface;
+        auto placementsEditor = std::make_shared<PlacementObjectType>(_scene->_placementsManager, _scene->_placementsEditor);
+        auto terrainEditor = std::make_shared<TerrainObjectType>(_scene->_terrainManager);
+        _flexGobInterface = std::make_shared<FlexObjectType>(_scene->_flexObjects);
 
         _dynInterface = std::make_shared<EditorDynamicInterface::RegisteredTypes>();
         _dynInterface->RegisterType(placementsEditor);
-        // _dynInterface->RegisterType(std::make_shared<EditorDynamicInterface::TerrainObjectType>());
-        // _dynInterface->RegisterType(_flexGobInterface.GetNativePtr());
+        _dynInterface->RegisterType(terrainEditor);
+        _dynInterface->RegisterType(_flexGobInterface.GetNativePtr());
 
-        Internal::RegisterTerrainFlexObjects(*_flexGobInterface.get());
+        Internal::RegisterTerrainFlexObjects(*_scene->_flexObjects);
     }
 
     EditorSceneManager::~EditorSceneManager()
@@ -288,7 +289,6 @@ namespace GUILayer
     {
         IOverlaySystem^ CreateOverlaySystem(
             std::shared_ptr<EditorScene> scene, 
-            std::shared_ptr<EditorDynamicInterface::FlexObjectType> flexGobInterface,
             std::shared_ptr<ToolsRig::VisCameraSettings> camera, 
             EditorSceneRenderSettings^ renderSettings);
     }
@@ -296,7 +296,6 @@ namespace GUILayer
     IOverlaySystem^ EditorSceneManager::CreateOverlaySystem(VisCameraSettings^ camera, EditorSceneRenderSettings^ renderSettings)
     {
         return Internal::CreateOverlaySystem(
-            _scene.GetNativePtr(), _flexGobInterface.GetNativePtr(),
-            camera->GetUnderlying(), renderSettings);
+            _scene.GetNativePtr(), camera->GetUnderlying(), renderSettings);
     }
 }

@@ -7,7 +7,6 @@
 #pragma once
 
 #include "Terrain.h"
-#include "TerrainInternal.h"
 
 namespace SceneEngine
 {

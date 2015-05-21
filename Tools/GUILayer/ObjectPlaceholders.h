@@ -15,7 +15,7 @@ namespace SceneEngine { class IIntersectionTester; }
 
 namespace GUILayer
 {
-    namespace EditorDynamicInterface { class FlexObjectType; }
+    namespace EditorDynamicInterface { class FlexObjectScene; }
 
     class ObjectPlaceholders : public std::enable_shared_from_this<ObjectPlaceholders>
     {
@@ -29,10 +29,10 @@ namespace GUILayer
 
         std::shared_ptr<SceneEngine::IIntersectionTester> CreateIntersectionTester();
 
-        ObjectPlaceholders(std::shared_ptr<EditorDynamicInterface::FlexObjectType> objects);
+        ObjectPlaceholders(std::shared_ptr<EditorDynamicInterface::FlexObjectScene> objects);
         ~ObjectPlaceholders();
     protected:
-        std::shared_ptr<EditorDynamicInterface::FlexObjectType> _objects;
+        std::shared_ptr<EditorDynamicInterface::FlexObjectScene> _objects;
 
         class Annotation
         {

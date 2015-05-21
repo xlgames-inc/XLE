@@ -148,5 +148,7 @@ namespace SceneEngine
 
     TerrainCellTexture::~TerrainCellTexture() {}
 
+
+    ITerrainFormat::~ITerrainFormat() {}
 }
 
