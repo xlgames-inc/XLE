@@ -53,13 +53,12 @@ namespace LevelEditor
 
         #region IResourceConverter Members
 
-        IGameObject IResourceConverter.Convert(IResource resource)
+        IAdaptable IResourceConverter.Convert(IResource resource)
         {
             Prefab prefab = resource as Prefab;
             if (prefab != null)
             {
-                PrefabInstance instance = PrefabInstance.Create(prefab);
-                return instance.As<IGameObject>();              
+                return PrefabInstance.Create(prefab);
             }
             return null;
         }

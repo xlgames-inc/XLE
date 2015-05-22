@@ -1,6 +1,7 @@
 ﻿//Copyright © 2014 Sony Computer Entertainment America LLC. See License.txt.
 
 using Sce.Atf;
+using Sce.Atf.Adaptation;
 
 namespace LevelEditorCore
 {
@@ -14,7 +15,7 @@ namespace LevelEditorCore
         /// </summary>
         /// <param name="resource">resource to be converted</param>
         /// <returns>GameObject or null if convertion failed</returns>
-        IGameObject Convert(IResource resource);
+        IAdaptable Convert(IResource resource);
 
     }
 }

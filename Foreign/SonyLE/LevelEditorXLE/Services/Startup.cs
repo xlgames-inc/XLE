@@ -26,21 +26,11 @@ namespace LevelEditorXLE
         {
             Schema.placementsCellReferenceType.Type.Define(new ExtensionInfo<PlacementsCellRef>());
             Schema.placementsFolderType.Type.Define(new ExtensionInfo<PlacementsFolder>());
-
             Schema.placementsDocumentType.Type.Define(new ExtensionInfo<XLEPlacementDocument>());
-            // Schema.placementsDocumentType.Type.Define(new ExtensionInfo<GameContext>());
-
             Schema.placementObjectType.Type.Define(new ExtensionInfo<XLEPlacementObject>());
-            // Schema.placementObjectType.Type.Define(new ExtensionInfo<GameObjectProperties>());
-            // Schema.placementObjectType.Type.Define(new ExtensionInfo<TransformUpdater>());
-            // Schema.placementObjectType.Type.Define(new ExtensionInfo<TransformObject>());
-
             Schema.terrainType.Type.Define(new ExtensionInfo<XLETerrainGob>());
-
             Schema.envSettingsFolderType.Type.Define(new ExtensionInfo<XLEEnvSettingsFolder>());
             Schema.envSettingsType.Type.Define(new ExtensionInfo<XLEEnvSettings>());
-            // Schema.envObjectType.Type.Define(new ExtensionInfo<GameObject>());
-
             Schema.xleGameType.Type.Define(new ExtensionInfo<GameExtensions>());
         }
 
@@ -53,7 +43,8 @@ namespace LevelEditorXLE
                 typeof(Materials.XLEMaterialInspector),
                 typeof(XLELayer.XLEAssetService),
                 typeof(XLECamera),
-                typeof(XLELayer.MaterialSchemaLoader)
+                typeof(XLELayer.MaterialSchemaLoader),
+                typeof(Placements.ResourceConverter)
                 );
         }
     }

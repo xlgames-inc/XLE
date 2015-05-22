@@ -97,7 +97,6 @@
     <Compile Include="DomNodeAdapters\Bookmark.cs" />
     <Compile Include="DomNodeAdapters\Depricated\ControlPoint.cs" />
     <Compile Include="DomNodeAdapters\Depricated\Curve.cs" />
-    <Compile Include="DomNodeAdapters\AdapterExtensions.cs" />
     <Compile Include="DomNodeAdapters\Depricated\GameObjectReference.cs" />
     <Compile Include="DomNodeAdapters\GameReference.cs" />
     <Compile Include="DomNodeAdapters\Layer.cs" />

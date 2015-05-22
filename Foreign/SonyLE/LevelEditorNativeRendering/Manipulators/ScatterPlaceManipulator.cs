@@ -145,13 +145,18 @@ namespace RenderingInterop
                 var resourceConverter = Globals.MEFContainer.GetExportedValue<ResourceConverterService>();
                 foreach (var s in op._creationPositions)
                 {
-                    IGameObject resGob = resourceConverter.Convert(resource);
+                    var resGob = resourceConverter.Convert(resource);
                     if (resGob != null)
                     {
                         resGob.As<DomNode>().InitializeExtensions();
-                        game.AddChild(resGob);
-                        resGob.Translation = XLELayer.XLELayerUtils.AsVec3F(s);
-                        resGob.Rotation = new Sce.Atf.VectorMath.Vec3F(0.0f, 0.0f, (float)(m_rng.NextDouble()) * 2.0f * 3.14159f);
+
+                        var hierarchical = game.AsAll<IHierarchical>();
+                        foreach (var h in hierarchical)
+                            if (h.AddChild(resGob)) break;
+
+                        var transform = resGob.As<LevelEditorCore.ITransformable>();
+                        transform.Translation = XLELayer.XLELayerUtils.AsVec3F(s);
+                        transform.Rotation = new Sce.Atf.VectorMath.Vec3F(0.0f, 0.0f, (float)(m_rng.NextDouble()) * 2.0f * 3.14159f);
                     }
                 }
             }

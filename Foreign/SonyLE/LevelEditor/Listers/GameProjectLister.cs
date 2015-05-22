@@ -384,8 +384,12 @@ namespace LevelEditor
                                 GameDocument subGame = GameDocument.OpenOrCreate(ur, m_schemaLoader);
                                 subGame.Dirty = true;
                                 GameReference gameRef = GameReference.CreateNew(subGame);
-                                IHierarchical parent = game.As<IHierarchical>();
-                                parent.AddChild(gameRef);
+
+                                    // try all implementation of IHierarchical until one works
+                                var parent = game.AsAll<IHierarchical>();
+                                foreach (var p in parent)
+                                    if (p.AddChild(gameRef)) break;
+
                                 // because we performing this operation outside of TransactionContext
                                 // we must set Document Dirty flag.
                                 gameDocument.Dirty = true;
@@ -419,8 +423,11 @@ namespace LevelEditor
 
                                 GameReference gameRef = GameReference.CreateNew(ur);
                                 gameRef.Resolve();
-                                IHierarchical parent = game.As<IHierarchical>();
-                                parent.AddChild(gameRef);
+
+                                    // try all implementation of IHierarchical until one works
+                                var parent = game.AsAll<IHierarchical>();
+                                foreach (var p in parent)
+                                    if (p.AddChild(gameRef)) break;
 
                                 // because we performing this operation outside of TransactionContext
                                 // we must set Document Dirty flag.

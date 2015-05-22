@@ -89,7 +89,11 @@ namespace LevelEditorXLE.Placements
                 SetAttribute(PlcmtST.materialAttribute, referenceName); 
             }
         }
-        private static bool CanReference(DomNodeType domtype, IResource resource)
+        public static bool CanReferenceStatic(IResource resource)
+        {
+            return CanReference(PlcmtST.Type, resource);
+        }
+        public static bool CanReference(DomNodeType domtype, IResource resource)
         {
             var type = domtype.GetTag(Annotations.ReferenceConstraint.ResourceType) as string;
             if (type != null) {

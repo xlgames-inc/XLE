@@ -66,7 +66,7 @@ namespace RenderingInterop
             if (resourceUri == null) return;
 
             IResource resource = m_resourceService.Load(resourceUri);
-            IGameObject gob = m_resourceConverterService.Convert(resource);
+            var gob = m_resourceConverterService.Convert(resource) as IGameObject;
 
             if (gob != null)
             {

@@ -72,7 +72,9 @@ namespace LevelEditorXLE.Game
                                     && keyPoint.Z >= cellRef.Mins.Z && keyPoint.Z < cellRef.Maxs.Z
                                     && cellRef.Target.CanAddChild(domNode))
                                 {
-                                    return cellRef.Target.AddChild(domNode);
+                                    var hierarchical = cellRef.Target.AsAll<IHierarchical>();
+                                    foreach (var h in hierarchical)
+                                        if (h.AddChild(domNode)) return true;
                                 }
                             }
                         }

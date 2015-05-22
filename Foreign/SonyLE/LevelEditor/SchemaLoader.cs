@@ -18,68 +18,6 @@ using LevelEditorCore;
 using PropertyDescriptor = System.ComponentModel.PropertyDescriptor;
 namespace LevelEditor
 {
-    internal class SpecialUrlResolver : XmlUrlResolver
-    {
-        public SpecialUrlResolver() {}
-
-        public void Add(Assembly assembly, string resourceNamespace)
-        {
-            var assem = new SearchAssembly();
-            assem.m_assembly = assembly;
-            assem.m_namespace = resourceNamespace;
-            assem.m_rootPath = new Uri(Uri.UriSchemeFile + ":///" + resourceNamespace + "/");
-            m_assemblies.Add(assem);
-        }
-
-        public override object GetEntity(Uri absoluteUri, string role, Type returnType)
-        {
-            if (absoluteUri.IsFile)
-            {
-                string newFileName = absoluteUri.AbsolutePath.Replace('/', '.');
-                newFileName = newFileName.Substring(1, newFileName.Length - 1); // remove leading "."
-
-                    // search for the first assembly that contains this object
-                foreach (var a in m_assemblies)
-                {
-                    var info = a.m_assembly.GetManifestResourceInfo(newFileName);
-                    if (info != null)
-                    {
-                        return a.m_assembly.GetManifestResourceStream(newFileName);
-                    }
-                }
-
-                    // could not be found!
-                return null;
-            }
-
-            return base.GetEntity(absoluteUri, role, returnType);
-        }
-
-        public override Uri ResolveUri(Uri baseUri, string relativeUri)
-        {
-            foreach (var a in m_assemblies)
-            {
-                string res = a.m_namespace + "." + relativeUri;
-                var info = a.m_assembly.GetManifestResourceInfo(res);
-                if (info != null)
-                {
-                    return new Uri(a.m_rootPath, relativeUri);
-                }
-            }
-
-                // could not be found, falling back to first assembly
-            return new Uri(m_assemblies[0].m_rootPath, relativeUri);
-        }
-
-        private struct SearchAssembly
-        {
-            internal Assembly m_assembly;
-            internal Uri m_rootPath;
-            internal string m_namespace;
-        }
-        private List<SearchAssembly> m_assemblies = new List<SearchAssembly>();
-    }
-
     /// <summary>
     /// Xml schema loader for the LevelEditor's schemas</summary>
     [Export(typeof(XmlSchemaTypeLoader))]
@@ -93,23 +31,30 @@ namespace LevelEditor
         {
             m_gameEngine = gameEngine;
 
-            var resolver = new SpecialUrlResolver();
-            XmlSchemaSet schemaSet = new XmlSchemaSet { XmlResolver = resolver };
-            XmlReaderSettings xmlReaderSettings = new XmlReaderSettings { XmlResolver = resolver };
+            var resolver = new MultiAssemblyResolver();
+            var schemaSet = new XmlSchemaSet { XmlResolver = resolver };
 
-            resolver.Add(
-                Assembly.GetExecutingAssembly(),
-                "LevelEditor.schemas"); 
-            using (XmlReader xmlReader = XmlReader.Create("level_editor.xsd", xmlReaderSettings))
-                schemaSet.Add(XmlSchema.Read(xmlReader, null));
+            PrepareSchemaResource(schemaSet, resolver, 
+                Assembly.GetExecutingAssembly(), 
+                "LevelEditor.schemas", "level_editor.xsd");
 
-            resolver.Add(
+            var xleSchema = LevelEditorXLE.Patches.GetSchemaResourceName();
+            PrepareSchemaResource(schemaSet, resolver, 
                 Assembly.GetAssembly(typeof(LevelEditorXLE.Patches)),
-                "LevelEditorXLE.Schema"); 
-            using (XmlReader xmlReader = XmlReader.Create("xleroot.xsd", xmlReaderSettings))
-                schemaSet.Add(XmlSchema.Read(xmlReader, null));
+                xleSchema.Item1, xleSchema.Item2);
             
             Load(schemaSet);
+        }
+
+        private void PrepareSchemaResource(
+            XmlSchemaSet schemaSet,
+            MultiAssemblyResolver resolver, 
+            Assembly resourceAssembly, string nameSpace, string resourceName)
+        {
+            resolver.Add(resourceAssembly, nameSpace);
+            XmlReaderSettings xmlReaderSettings = new XmlReaderSettings { XmlResolver = resolver };
+            using (XmlReader xmlReader = XmlReader.Create(resourceName, xmlReaderSettings))
+                schemaSet.Add(XmlSchema.Read(xmlReader, null));
         }
 
         protected override void OnSchemaSetLoaded(XmlSchemaSet schemaSet)
@@ -396,6 +341,22 @@ namespace LevelEditor
                             nodeType.SetTag("OpaqueListable", label);
                         }
                         nodeType.Define(new ExtensionInfo<DomNodeAdapters.OpaqueListable>());
+                    } 
+                    else if (annot.LocalName == "LeGe.GameObjectProperties")
+                    {
+                        nodeType.Define(new ExtensionInfo<DomNodeAdapters.GameObjectProperties>());
+                    }
+                    else if (annot.LocalName == "LeGe.TransformUpdater")
+                    {
+                        nodeType.Define(new ExtensionInfo<DomNodeAdapters.TransformUpdater>());
+                    }
+                    else if (annot.LocalName == "LeGe.TransformObject")
+                    {
+                        nodeType.Define(new ExtensionInfo<DomNodeAdapters.TransformObject>());
+                    }
+                    else if (annot.LocalName == "LeGe.GameContext")
+                    {
+                        nodeType.Define(new ExtensionInfo<GameContext>());
                     }
                 }
             }           
@@ -473,5 +434,65 @@ namespace LevelEditor
         #endregion        
         
         private IGameEngineProxy m_gameEngine;
+    }
+
+    internal class MultiAssemblyResolver : XmlUrlResolver
+    {
+        public void Add(Assembly assembly, string resourceNamespace)
+        {
+            var assem = new SearchAssembly();
+            assem.m_assembly = assembly;
+            assem.m_namespace = resourceNamespace;
+            assem.m_rootPath = new Uri(Uri.UriSchemeFile + ":///" + resourceNamespace + "/");
+            m_assemblies.Add(assem);
+        }
+
+        public override object GetEntity(Uri absoluteUri, string role, Type returnType)
+        {
+            if (absoluteUri.IsFile)
+            {
+                string newFileName = absoluteUri.AbsolutePath.Replace('/', '.');
+                newFileName = newFileName.Substring(1, newFileName.Length - 1); // remove leading "."
+
+                // search for the first assembly that contains this object
+                foreach (var a in m_assemblies)
+                {
+                    var info = a.m_assembly.GetManifestResourceInfo(newFileName);
+                    if (info != null)
+                    {
+                        return a.m_assembly.GetManifestResourceStream(newFileName);
+                    }
+                }
+
+                // could not be found!
+                return null;
+            }
+
+            return base.GetEntity(absoluteUri, role, returnType);
+        }
+
+        public override Uri ResolveUri(Uri baseUri, string relativeUri)
+        {
+            foreach (var a in m_assemblies)
+            {
+                string res = a.m_namespace + "." + relativeUri;
+                var info = a.m_assembly.GetManifestResourceInfo(res);
+                if (info != null)
+                {
+                    return new Uri(a.m_rootPath, relativeUri);
+                }
+            }
+
+            // could not be found, falling back to first assembly
+            return new Uri(m_assemblies[0].m_rootPath, relativeUri);
+        }
+
+        private struct SearchAssembly
+        {
+            internal Assembly m_assembly;
+            internal Uri m_rootPath;
+            internal string m_namespace;
+        }
+        private List<SearchAssembly> m_assemblies = new List<SearchAssembly>();
     }
 }

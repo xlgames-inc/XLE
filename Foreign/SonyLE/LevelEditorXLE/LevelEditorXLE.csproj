@@ -58,6 +58,7 @@
     <Compile Include="Camera\XLECamera.cs" />
     <Compile Include="Environment\XLEEnvAdapter.cs" />
     <Compile Include="Game\GameExtensions.cs" />
+    <Compile Include="Placements\Converter.cs" />
     <Compile Include="Services\Patches.cs" />
     <Compile Include="Services\ResourceConverter.cs" />
     <Compile Include="Services\Startup.cs" />

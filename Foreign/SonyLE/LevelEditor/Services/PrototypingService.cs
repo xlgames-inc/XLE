@@ -132,10 +132,10 @@ namespace LevelEditor
 
         #region IResourceConverter Members
 
-        IGameObject IResourceConverter.Convert(IResource resource)
+        IAdaptable IResourceConverter.Convert(IResource resource)
         {
             IPrototype prototype = resource as IPrototype;
-            return (prototype != null) ? prototype.CreateInstance() : null;
+            return (prototype != null) ? prototype.CreateInstance().As<IAdaptable>() : null;
         }
 
         #endregion

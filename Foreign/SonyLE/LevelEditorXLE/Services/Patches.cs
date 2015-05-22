@@ -11,6 +11,11 @@ using Sce.Atf.Controls.PropertyEditing;
 
 namespace LevelEditorXLE
 {
+    // Theses are functions that are difficult to fit within the 
+    // architecture in a better way. These functions are explicitly
+    // called from the "LevelEditor" project. But ideally we'd have
+    // some better way to attach a library like this, without
+    // having to change the LevelEditor project so much.
     public static class Patches
     {
         public static DomNode GetReferenceTarget(DomNode node)
@@ -59,6 +64,11 @@ namespace LevelEditorXLE
                     // SaveDomDocument(doc.DomNode, cellRef.Uri, schemaLoader);
                 }
             }
+        }
+
+        public static Tuple<string, string> GetSchemaResourceName()
+        {
+            return new Tuple<string, string>("LevelEditorXLE.Schema", "xleroot.xsd");
         }
 
         public static void OnSchemaSetLoaded(

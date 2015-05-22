@@ -2,6 +2,7 @@
 
 using System.ComponentModel.Composition;
 using Sce.Atf;
+using Sce.Atf.Adaptation;
 
 using LevelEditorCore;
 
@@ -13,7 +14,7 @@ namespace LevelEditorXLE
     {
         #region IResourceConverter Members
 
-        IGameObject IResourceConverter.Convert(IResource resource)
+        IAdaptable IResourceConverter.Convert(IResource resource)
         {
             if (resource == null) return null;
             if (resource.Type == ResourceTypes.Model)

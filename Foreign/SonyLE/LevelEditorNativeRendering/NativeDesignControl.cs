@@ -169,20 +169,23 @@ namespace RenderingInterop
                 {                 
                     if (resourceConverter != null)
                     {
-                        IGameObject resGob = resourceConverter.Convert(iterNode as IResource);
+                        var resGob = resourceConverter.Convert(iterNode as IResource);
                         node = resGob.As<DomNode>();                    
                     }                    
                 }
                 
-                IGameObject gob = node.As<IGameObject>();
-                if (gob == null || node.GetRoot().Is<IGame>())
+                if (node == null || node.GetRoot().Is<IGame>())
                     continue;
                 
                 node.InitializeExtensions();
-                if (dragDropTarget.AddChild(gob))
-                {
+
+                var hierarchical = dragDropTarget.AsAll<IHierarchical>();
+                bool wasInserted = false;
+                foreach (var h in hierarchical)
+                    if (h.AddChild(node)) { wasInserted = true; break; }
+
+                if (wasInserted)
                     m_ghosts.Add(node);
-                }
             }
 
             drgevent.Effect = (m_ghosts.Count > 0) ? (DragDropEffects.Move | DragDropEffects.Link) : DragDropEffects.None;
@@ -213,7 +216,7 @@ namespace RenderingInterop
             Vec3F terrainHit;
             if (GetTerrainCollision(out terrainHit, PointToClient(new Point(drgevent.X, drgevent.Y)))) {
                 foreach (var ghost in m_ghosts) {
-                    var gameObject = ghost.As<IGameObject>();
+                    var gameObject = ghost.As<ITransformable>();
                     if (gameObject != null) {
                         gameObject.Translation = terrainHit;
                     }

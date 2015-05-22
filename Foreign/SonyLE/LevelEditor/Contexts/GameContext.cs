@@ -237,8 +237,9 @@ namespace LevelEditor
 
         public bool CanInsert(object parent, object child)
         {
-            IHierarchical hierarchical = parent.As<IHierarchical>();
+            var hierarchical = parent.AsAll<IHierarchical>();
             if (hierarchical == null) return false;
+
             ILockable lockable = parent.As<ILockable>();
             if (lockable != null && lockable.IsLocked) return false;
             
@@ -257,13 +258,16 @@ namespace LevelEditor
                         return false;
                 }
                 IResource res = item as IResource;
-                IGameObject gob = m_resourceConverterService.Convert(res);
-                if (!hierarchical.CanAddChild(item)
-                    && !hierarchical.CanAddChild(gob))
-                    return false;
+                var gob = m_resourceConverterService.Convert(res);
 
-                canInsert = true;
+                foreach (var h in hierarchical)
+                    if (h.CanAddChild(item) || h.CanAddChild(gob))
+                    {
+                        canInsert = true;
+                        break;
+                    }
             }
+
             return canInsert;
         }
 
@@ -285,7 +289,7 @@ namespace LevelEditor
         {
             if (!CanInsert(parent, child)) return;
 
-            IHierarchical hierarchical = parent.As<IHierarchical>();
+            var hierarchical = parent.AsAll<IHierarchical>();
                                    
             // Extract node list from IDataObject
             IEnumerable<object> items = Util.ConvertData(child, true);
@@ -338,7 +342,15 @@ namespace LevelEditor
             foreach (object obj in objectlist)
             {
                 object insertedObj = null;
-                bool inserted = hierarchical.AddChild(obj);
+
+                bool inserted = false;
+                foreach (var h in hierarchical)
+                    if (h.AddChild(obj))
+                    {
+                        inserted = true;
+                        break;
+                    }
+
                 if(inserted)
                 {
                     insertedObj = obj;
@@ -346,8 +358,13 @@ namespace LevelEditor
                 else                
                 {
                     IResource res = obj as IResource;
-                    IGameObject gob = m_resourceConverterService.Convert(res);                    
-                    inserted = hierarchical.AddChild(gob);
+                    var gob = m_resourceConverterService.Convert(res);
+                    foreach (var h in hierarchical)
+                        if (h.AddChild(gob))
+                        {
+                            inserted = true;
+                            break;
+                        }
                     if (inserted) insertedObj = gob;
 
                 }
