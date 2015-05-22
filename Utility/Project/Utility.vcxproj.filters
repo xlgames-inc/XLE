@@ -135,5 +135,8 @@
       <Filter>Threading</Filter>
     </ClCompile>
     <ClCompile Include="..\FunctionUtils.cpp" />
+    <ClCompile Include="..\Streams\DataSerialize.cpp">
+      <Filter>Streams</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

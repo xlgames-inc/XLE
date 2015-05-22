@@ -165,6 +165,7 @@
     <ClCompile Include="..\ParameterBox.cpp" />
     <ClCompile Include="..\Profiling\CPUProfiler.cpp" />
     <ClCompile Include="..\Streams\Data.cpp" />
+    <ClCompile Include="..\Streams\DataSerialize.cpp" />
     <ClCompile Include="..\Streams\FileUtils.cpp" />
     <ClCompile Include="..\Streams\PathUtils.cpp" />
     <ClCompile Include="..\Streams\Stream.cpp" />

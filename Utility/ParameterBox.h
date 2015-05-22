@@ -114,8 +114,9 @@ namespace Utility
         uint64  GetParameterNamesHash() const;
         uint64  CalculateFilteredHashValue(const ParameterBox& source) const;
 
-        void    BuildStringTable(std::vector<std::pair<const char*, std::string>>& defines) const;
-        void    OverrideStringTable(std::vector<std::pair<const char*, std::string>>& defines) const;
+        using StringTable = std::vector<std::pair<const char*, std::string>>;
+        void    BuildStringTable(StringTable& defines) const;
+        void    OverrideStringTable(StringTable& defines) const;
 
         void    MergeIn(const ParameterBox& source);
 

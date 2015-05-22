@@ -179,15 +179,23 @@ namespace RenderCore { namespace Assets
             // to archive output
         auto result = success ? ::Assets::AssetState::Ready : ::Assets::AssetState::Invalid;
         
-            // we need to call "_chain" on either failure or success
-        TRY 
-        {
-            _chain(
-                result, _payload, 
-                AsPointer(_deps.cbegin()), AsPointer(_deps.cend()));
-        } CATCH (const std::bad_function_call& e) {
-            LogWarning << "Chain function call failed in ShaderCompileMarker::Complete (with bad_function_call: " << e.what() << ")";
-        } CATCH_END
+            // We need to call "_chain" on either failure or success
+            // this is important because _chain can hold a reference to this
+            // object. We need to call chain explicitly in order to release
+            // this object (otherwise we end up with a cyclic reference that
+            // doesn't get broken, and a leak)
+        if (_chain) {
+            TRY 
+            {
+                _chain(
+                    result, _payload, 
+                    AsPointer(_deps.cbegin()), AsPointer(_deps.cend()));
+            } CATCH (const std::bad_function_call& e) {
+                LogWarning 
+                    << "Chain function call failed in ShaderCompileMarker::Complete (with bad_function_call: " << e.what() << ")" << std::endl 
+                    << "This may prevent the shader from being flushed to disk in it's compiled form. But the shader should still be useable";
+            } CATCH_END
+        }
         return result;
     }
 

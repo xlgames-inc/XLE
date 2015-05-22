@@ -15,6 +15,7 @@
 #include "../../Utility/Conversion.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/Streams/PathUtils.h"
+#include "../../Utility/Streams/DataSerialize.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/MemoryUtils.h"
 
@@ -434,15 +435,6 @@ namespace RenderCore { namespace Assets
 
     RawMaterial::~RawMaterial() {}
 
-    static std::unique_ptr<Data> WriteStringTable(const char name[], const std::vector<std::pair<const char*, std::string>>& table)
-    {
-        auto result = std::make_unique<Data>(name);
-        for (auto i=table.cbegin(); i!=table.cend(); ++i) {
-            result->SetAttribute(i->first, i->second.c_str());
-        }
-        return std::move(result);
-    }
-
     std::unique_ptr<Data> RawMaterial::SerializeAsData() const
     {
         auto result = std::make_unique<Data>();
@@ -459,19 +451,19 @@ namespace RenderCore { namespace Assets
         std::vector<std::pair<const char*, std::string>> matParamStringTable;
         _matParamBox.BuildStringTable(matParamStringTable);
         if (!matParamStringTable.empty()) {
-            result->Add(WriteStringTable("ShaderParams", matParamStringTable).release());
+            result->Add(SerializeToData("ShaderParams", matParamStringTable).release());
         }
 
         std::vector<std::pair<const char*, std::string>> constantsStringTable;
         _constants.BuildStringTable(constantsStringTable);
         if (!constantsStringTable.empty()) {
-            result->Add(WriteStringTable("Constants", constantsStringTable).release());
+            result->Add(SerializeToData("Constants", constantsStringTable).release());
         }
 
         std::vector<std::pair<const char*, std::string>> resourceBindingsStringTable;
         _resourceBindings.BuildStringTable(resourceBindingsStringTable);
         if (!resourceBindingsStringTable.empty()) {
-            result->Add(WriteStringTable("ResourceBindings", resourceBindingsStringTable).release());
+            result->Add(SerializeToData("ResourceBindings", resourceBindingsStringTable).release());
         }
 
         result->Add(SerializeStateSet("States", _stateSet).release());

@@ -11,7 +11,9 @@
 #include "../../PlatformRig/BasicSceneParser.h"
 #include "../../Math/Transformations.h"
 #include "../../Utility/StringUtils.h"
+#include "../../Utility/StringFormat.h"
 #include "../../Utility/Streams/Data.h"
+#include "../../Utility/Streams/DataSerialize.h"
 #include <memory>
 
 namespace EntityInterface
@@ -107,12 +109,28 @@ namespace EntityInterface
         return std::move(result);
     }
 
-    std::unique_ptr<Utility::Data> BuildData(
+    std::unique_ptr<Utility::Data> SerializeToData(
         const RetainedEntity& obj,
-        const RetainedEntities& flexGobInterface)
+        const RetainedEntities& entities)
     {
-        assert(0);
-        return std::make_unique<Utility::Data>();
+        ParameterBox::StringTable stringTable;
+        obj._properties.BuildStringTable(stringTable);
+
+        static const auto nameHash = ParameterBox::ParameterNameHash("name");
+        char name[256];
+        if (!obj._properties.GetString(nameHash, name, dimof(name)))
+            _snprintf_s(name, _TRUNCATE, "0x%08x%08x", uint32(obj._id>>32), uint32(obj._id));
+
+        auto base = Utility::SerializeToData(name, stringTable);
+
+        for (auto c=obj._children.cbegin(); c!=obj._children.cend(); ++c) {
+            const auto* child = entities.GetEntity(obj._doc, *c);
+            if (child) {
+                base->Add(SerializeToData(*child, entities).release());
+            }
+        }
+
+        return std::move(base);
     }
 
     void ExportEnvSettings(
@@ -142,10 +160,9 @@ namespace EntityInterface
         for (const auto& s : allSettings)
             if (s->_doc == docId)
             {
-                asData->Add(BuildData(*s, flexGobInterface).release());
+                asData->Add(SerializeToData(*s, flexGobInterface).release());
                 foundAtLeastOne = true;
             }
-
         
         if (!foundAtLeastOne)
             ThrowException(::Exceptions::BasicLabel("No environment settings found"));

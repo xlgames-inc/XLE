@@ -9,6 +9,8 @@
 #include "Data.h"
 #include "../Conversion.h"
 #include "../../Math/Vector.h"
+#include <vector>
+#include <string>
 
 namespace Utility
 {
@@ -34,6 +36,10 @@ namespace Utility
             }
             return result;
         }
+
+    std::unique_ptr<Data> SerializeToData(
+        const char name[], 
+        const std::vector<std::pair<const char*, std::string>>& table);
 }
 
 using namespace Utility;

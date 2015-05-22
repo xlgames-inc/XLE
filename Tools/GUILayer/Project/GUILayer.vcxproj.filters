@@ -7,14 +7,14 @@
     <ClCompile Include="..\GUILayerUtil.cpp" />
     <ClCompile Include="..\SimpleRenderingContext.cpp" />
     <ClCompile Include="..\LevelEditorScene.cpp">
-      <Filter>DynInterface</Filter>
+      <Filter>LevelEditor</Filter>
     </ClCompile>
     <ClCompile Include="..\EditorInterfaceUtils.cpp">
-      <Filter>DynInterface</Filter>
+      <Filter>LevelEditor</Filter>
     </ClCompile>
     <ClCompile Include="..\ManipulatorUtils.cpp" />
     <ClCompile Include="..\EditorSceneParser.cpp">
-      <Filter>DynInterface</Filter>
+      <Filter>LevelEditor</Filter>
     </ClCompile>
     <ClCompile Include="..\TweakableBridge.cpp" />
     <ClCompile Include="..\AssemblyInfo.cpp">
@@ -39,25 +39,25 @@
       <Filter>BasicControls</Filter>
     </ClCompile>
     <ClCompile Include="..\ManipulatorsLayer.cpp">
-      <Filter>DynInterface</Filter>
+      <Filter>LevelEditor</Filter>
     </ClCompile>
     <ClCompile Include="..\ObjectPlaceholders.cpp">
-      <Filter>DynInterface</Filter>
+      <Filter>LevelEditor</Filter>
     </ClCompile>
     <ClCompile Include="..\EntityLayer.cpp">
-      <Filter>DynInterface</Filter>
+      <Filter>LevelEditor</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\EngineDevice.h" />
     <ClInclude Include="..\DivergentAssetList.h" />
     <ClInclude Include="..\LevelEditorScene.h">
-      <Filter>DynInterface</Filter>
+      <Filter>LevelEditor</Filter>
     </ClInclude>
     <ClInclude Include="..\GUILayerUtil.h" />
     <ClInclude Include="..\ManipulatorUtils.h" />
     <ClInclude Include="..\EditorInterfaceUtils.h">
-      <Filter>DynInterface</Filter>
+      <Filter>LevelEditor</Filter>
     </ClInclude>
     <ClInclude Include="..\EngineControl.h">
       <Filter>BasicControls</Filter>
@@ -96,19 +96,16 @@
       <Filter>BasicControls</Filter>
     </ClInclude>
     <ClInclude Include="..\ManipulatorsLayer.h">
-      <Filter>DynInterface</Filter>
+      <Filter>LevelEditor</Filter>
     </ClInclude>
     <ClInclude Include="..\ObjectPlaceholders.h">
-      <Filter>DynInterface</Filter>
+      <Filter>LevelEditor</Filter>
     </ClInclude>
     <ClInclude Include="..\EntityLayer.h">
-      <Filter>DynInterface</Filter>
+      <Filter>LevelEditor</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <Filter Include="DynInterface">
-      <UniqueIdentifier>{2e5a400c-56a8-4a39-ac39-d6829928e93f}</UniqueIdentifier>
-    </Filter>
     <Filter Include="BasicControls">
       <UniqueIdentifier>{8e4546f3-2c66-4123-81ff-7db4d9198af7}</UniqueIdentifier>
     </Filter>
@@ -117,6 +114,9 @@
     </Filter>
     <Filter Include="Vis">
       <UniqueIdentifier>{7541df4e-faad-454d-a943-1ae5d710d0ea}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="LevelEditor">
+      <UniqueIdentifier>{2e5a400c-56a8-4a39-ac39-d6829928e93f}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>
