@@ -97,7 +97,7 @@ namespace RenderingInterop
                 s_savedRenderResources = new GUILayer.SavedRenderResources(s_engineDevice);
                 s_underlyingScene = new GUILayer.EditorSceneManager();
                 Util3D.Init();
-                XLELayer.NativeManipulatorLayer.SceneManager = s_underlyingScene;
+                XLEBridgeUtils.NativeManipulatorLayer.SceneManager = s_underlyingScene;
                 s_entityInterface = s_underlyingScene.GetEntityInterface();
                 CriticalError = "";
                 s_inist.PopulateEngineInfo(
@@ -128,7 +128,7 @@ namespace RenderingInterop
         /// </summary>
         public static void Shutdown()
         {
-            foreach (var initializable in Globals.MEFContainer.GetExportedValues<XLELayer.IShutdownWithEngine>())
+            foreach (var initializable in Globals.MEFContainer.GetExportedValues<XLEBridgeUtils.IShutdownWithEngine>())
                 initializable.Shutdown();
 
             foreach (var keyValue in s_idToDomNode)
@@ -141,7 +141,7 @@ namespace RenderingInterop
             s_idToDomNode.Clear();
 
             Util3D.Shutdown();
-            XLELayer.NativeManipulatorLayer.SceneManager = null;
+            XLEBridgeUtils.NativeManipulatorLayer.SceneManager = null;
             s_entityInterface = null;
             s_underlyingScene.Dispose();
             s_underlyingScene = null;
@@ -407,7 +407,7 @@ namespace RenderingInterop
         /// Sets render flags used for basic drawing.</summary>        
         public static void SetRendererFlag(BasicRendererFlags renderFlags)
         {
-            using (var context = XLELayer.NativeDesignControl.CreateSimpleRenderingContext(s_savedRenderResources))
+            using (var context = XLEBridgeUtils.NativeDesignControl.CreateSimpleRenderingContext(s_savedRenderResources))
             {
                 context.InitState(
                     (renderFlags & BasicRendererFlags.DisableDepthTest)==0,
@@ -469,7 +469,7 @@ namespace RenderingInterop
 
         public static GUILayer.SimpleRenderingContext CreateRenderingContext()
         {
-            return XLELayer.NativeDesignControl.CreateSimpleRenderingContext(s_savedRenderResources);
+            return XLEBridgeUtils.NativeDesignControl.CreateSimpleRenderingContext(s_savedRenderResources);
         }
 
         #region private members

@@ -21,7 +21,7 @@ using namespace System::ComponentModel::Composition;
 using namespace System::Xml;
 using namespace System::Xml::Schema;
 
-namespace XLELayer
+namespace XLEBridgeUtils
 {
     [Export(MaterialSchemaLoader::typeid)]
     [PartCreationPolicy(CreationPolicy::Shared)]

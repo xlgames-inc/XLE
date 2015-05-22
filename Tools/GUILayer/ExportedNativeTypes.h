@@ -12,6 +12,7 @@ namespace GUILayer { class NativeEngineDevice; }
 namespace ToolsRig { class IManipulator; class VisCameraSettings; }
 namespace SceneEngine { class LightingParserContext; class IntersectionTestContext; class IntersectionTestScene; class PlacementsEditor; }
 namespace RenderCore { namespace Techniques { class ProjectionDesc; class CameraDesc; } }
+namespace RenderOverlays { namespace DebuggingDisplay { class InputSnapshot; } }
 
 #pragma make_public(GUILayer::NativeEngineDevice)
 #pragma make_public(ToolsRig::IManipulator)
@@ -23,4 +24,5 @@ namespace RenderCore { namespace Techniques { class ProjectionDesc; class Camera
 #pragma make_public(RenderCore::Techniques::ProjectionDesc)
 #pragma make_public(RenderCore::Techniques::CameraDesc)
 #pragma make_public(RenderCore::IThreadContext)
+#pragma make_public(RenderOverlays::DebuggingDisplay::InputSnapshot)
 

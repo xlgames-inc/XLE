@@ -52,5 +52,14 @@ namespace ToolsRig
         const VisEnvSettings* _envSettings;
         virtual const PlatformRig::EnvironmentSettings& GetEnvSettings() const;
     };
+
+    inline VisCameraSettings::VisCameraSettings()
+    {
+        _position = Zero<Float3>();
+        _focus = Zero<Float3>();
+        _verticalFieldOfView = 40.f;
+        _nearClip = 0.1f;
+        _farClip = 1000.f;
+    }
 }
 

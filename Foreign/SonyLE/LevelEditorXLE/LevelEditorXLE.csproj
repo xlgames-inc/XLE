@@ -108,14 +108,6 @@
       <Project>{8eaaa859-349e-4605-a0af-118017881212}</Project>
       <Name>LevelEditorCore.vs2010</Name>
     </ProjectReference>
-    <ProjectReference Include="..\LevelEditorNativeRendering\RenderingInterop.vs2010.csproj">
-      <Project>{8fdebb1d-43b9-4922-ad51-4e58a0d71fbc}</Project>
-      <Name>RenderingInterop.vs2010</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\XLELayer\Project\XLELayer.vcxproj">
-      <Project>{0556e85e-3cbd-4ac0-8842-01e1963312bd}</Project>
-      <Name>XLELayer</Name>
-    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Schema\xleenv.xsd">

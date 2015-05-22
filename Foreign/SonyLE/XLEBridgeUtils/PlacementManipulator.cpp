@@ -13,7 +13,7 @@ using namespace System::ComponentModel;
 using namespace System::ComponentModel::Composition;
 using namespace System::Windows::Forms;
 
-namespace XLELayer
+namespace XLEBridgeUtils
 {
     public interface class IXLEAssetService
     {

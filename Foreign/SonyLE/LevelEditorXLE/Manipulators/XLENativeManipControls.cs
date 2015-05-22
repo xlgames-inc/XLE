@@ -53,7 +53,7 @@ namespace LevelEditorXLE.Manipulators
             }
         }
 
-        public void SetActiveContext(XLELayer.ActiveManipulatorContext context)
+        public void SetActiveContext(XLEBridgeUtils.ActiveManipulatorContext context)
         {
             if (_context != null)
             {
@@ -77,14 +77,14 @@ namespace LevelEditorXLE.Manipulators
             manipulatorProperties.Bind(properties as Sce.Atf.Applications.IPropertyEditingContext);
         }
 
-        private XLELayer.ActiveManipulatorContext _context = null;
+        private XLEBridgeUtils.ActiveManipulatorContext _context = null;
 
         private void OnActiveManipulatorChange(object sender, EventArgs args)
         {
             if (_context != null && _context.ManipulatorSet != null && _context.ActiveManipulator != null)
             {
                 SetFocusProperties(
-                    new XLELayer.PropertyBridge(_context.ManipulatorSet.GetProperties(_context.ActiveManipulator)));
+                    new XLEBridgeUtils.PropertyBridge(_context.ManipulatorSet.GetProperties(_context.ActiveManipulator)));
             }
             else
             {

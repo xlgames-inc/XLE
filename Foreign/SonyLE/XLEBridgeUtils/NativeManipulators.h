@@ -15,7 +15,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
 
 namespace ToolsRig { class IManipulator; }
 
-namespace XLELayer
+namespace XLEBridgeUtils
 {
     public ref class ActiveManipulatorContext
     {
@@ -54,8 +54,6 @@ namespace XLELayer
             Drawing::Size viewportSize,
 			Sce::Atf::Rendering::Camera^ camera, 
 			const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt);
-
-        void SetupModifierKeys(RenderOverlays::DebuggingDisplay::InputSnapshot& evnt);
 
         ActiveManipulatorContext^ _manipContext;
         bool _pendingBeginDrag;

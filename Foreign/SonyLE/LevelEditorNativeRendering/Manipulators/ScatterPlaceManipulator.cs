@@ -115,7 +115,7 @@ namespace RenderingInterop
                     op = GUILayer.EditorInterfaceUtils.CalculateScatterOperation(
                         editor, scene,
                         ManipulatorContext.ModelName,
-                        XLELayer.XLELayerUtils.AsVector3(m_hoverPt),
+                        XLEBridgeUtils.Utils.AsVector3(m_hoverPt),
                         ManipulatorContext.Radius, ManipulatorContext.Density);
                 }
             }
@@ -155,7 +155,7 @@ namespace RenderingInterop
                             if (h.AddChild(resGob)) break;
 
                         var transform = resGob.As<LevelEditorCore.ITransformable>();
-                        transform.Translation = XLELayer.XLELayerUtils.AsVec3F(s);
+                        transform.Translation = XLEBridgeUtils.Utils.AsVec3F(s);
                         transform.Rotation = new Sce.Atf.VectorMath.Vec3F(0.0f, 0.0f, (float)(m_rng.NextDouble()) * 2.0f * 3.14159f);
                     }
                 }
@@ -170,7 +170,7 @@ namespace RenderingInterop
                 using (var context = GameEngine.CreateRenderingContext())
                 {
                     GUILayer.RenderingUtil.RenderCylinderHighlight(
-                        context, XLELayer.XLELayerUtils.AsVector3(m_hoverPt), ManipulatorContext.Radius);
+                        context, XLEBridgeUtils.Utils.AsVector3(m_hoverPt), ManipulatorContext.Radius);
                 }
             }
         }

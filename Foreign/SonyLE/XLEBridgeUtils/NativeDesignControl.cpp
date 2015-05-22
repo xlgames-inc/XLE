@@ -28,7 +28,7 @@ using namespace Sce::Atf::Dom;
 using namespace Sce::Atf::VectorMath;
 using namespace LevelEditorCore;
 
-namespace XLELayer
+namespace XLEBridgeUtils
 {
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

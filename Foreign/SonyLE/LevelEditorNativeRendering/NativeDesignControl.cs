@@ -17,7 +17,7 @@ using ViewTypes = Sce.Atf.Rendering.ViewTypes;
 
 namespace RenderingInterop
 {
-    public class NativeDesignControl : XLELayer.NativeDesignControl
+    public class NativeDesignControl : XLEBridgeUtils.NativeDesignControl
     {
         public NativeDesignControl(DesignView designView, GUILayer.EditorSceneManager sceneManager, GUILayer.ObjectSet selection) :
             base(designView, sceneManager, selection)
@@ -69,7 +69,7 @@ namespace RenderingInterop
             if(multiSelect)
             {// frustum pick                
                 RectangleF rect = MakeRect(FirstMousePoint, CurrentMousePoint);
-                var frustum = XLELayer.XLELayerUtils.MakeFrustumMatrix(Camera, rect, ClientSize);
+                var frustum = XLEBridgeUtils.Utils.MakeFrustumMatrix(Camera, rect, ClientSize);
                 using (var techContext = TechniqueContext)
                 {
                     hits = NativeInterop.Picking.FrustumPick(

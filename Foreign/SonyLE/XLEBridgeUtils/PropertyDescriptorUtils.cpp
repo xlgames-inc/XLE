@@ -10,7 +10,7 @@ using namespace System::Xml;
 using namespace Sce::Atf;
 using namespace Sce::Atf::Dom;
 
-namespace XLELayer
+namespace XLEBridgeUtils
 {
     static IEnumerable<ComponentModel::PropertyDescriptor^>^ 
          AsEnumerable(PropertyDescriptorCollection^ input)

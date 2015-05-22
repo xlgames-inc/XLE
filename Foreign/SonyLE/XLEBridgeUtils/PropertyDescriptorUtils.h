@@ -16,7 +16,7 @@ using Sce::Atf::Dom::NamedMetadata;
 using Sce::Atf::Dom::DomNode;
 using Sce::Atf::Dom::DomNodeType;
 
-namespace XLELayer
+namespace XLEBridgeUtils
 {
     public ref class DataDrivenPropertyContextHelper : public Sce::Atf::Dom::XmlSchemaTypeLoader
     {

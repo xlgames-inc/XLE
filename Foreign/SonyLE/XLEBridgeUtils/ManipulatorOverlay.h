@@ -11,7 +11,7 @@
 namespace RenderCore { namespace Techniques { class ProjectionDesc; class ParsingContext; } }
 namespace SceneEngine { class LightingParserContext; }
 
-namespace XLELayer
+namespace XLEBridgeUtils
 {
     public delegate void RenderCallback(LevelEditorCore::DesignView^ designView, Sce::Atf::Rendering::Camera^ camera);
 

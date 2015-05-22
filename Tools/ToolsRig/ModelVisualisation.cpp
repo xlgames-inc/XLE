@@ -548,15 +548,6 @@ namespace ToolsRig
         _drawNormals = false;
         _drawWireframe = false;
     }
-    
-    VisCameraSettings::VisCameraSettings()
-    {
-        _position = Zero<Float3>();
-        _focus = Zero<Float3>();
-        _verticalFieldOfView = 40.f;
-        _nearClip = 0.1f;
-        _farClip = 1000.f;
-    }
 
 }
 

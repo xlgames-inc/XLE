@@ -15,7 +15,7 @@ using namespace System::Windows::Forms;
 
 namespace SceneEngine { class TerrainManager; }
 
-namespace XLELayer
+namespace XLEBridgeUtils
 {
     [Export(LevelEditorCore::IManipulator::typeid)]
     [Export(IInitializable::typeid)]

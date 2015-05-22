@@ -14,6 +14,7 @@
 #include "ExportedNativeTypes.h"
 #include "../EntityInterface/EntityInterface.h"
 #include "../EntityInterface/EnvironmentSettings.h"
+#include "../ToolsRig/VisualisationUtils.h"
 #include "../../PlatformRig/BasicSceneParser.h"
 #include "../../SceneEngine/IntersectionTest.h"
 #include "../../SceneEngine/Terrain.h"
@@ -21,14 +22,18 @@
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
+#include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../Utility/StringUtils.h"
 #include "../../Assets/Assets.h"
+#include "../../Math/Transformations.h"
 #include "../ToolsRig/PlacementsManipulators.h"
 // #include "../../ConsoleRig/Log.h"        (can't include in Win32 managed code)
 
 using namespace System;
 using namespace System::Collections::Generic;
 using namespace System::Runtime::InteropServices;
+
+extern "C" __declspec(dllimport) short __stdcall GetKeyState(int nVirtKey);
 
 namespace GUILayer
 {
@@ -71,14 +76,38 @@ namespace GUILayer
     }
     ObjectSet::~ObjectSet()    { _nativePlacements.reset(); }
 
+    public ref class CameraDescWrapper
+    {
+    public:
+        CameraDescWrapper(ToolsRig::VisCameraSettings& camSettings)
+        {
+            _native = new RenderCore::Techniques::CameraDesc(
+                ToolsRig::AsCameraDesc(camSettings));
+        }
+        ~CameraDescWrapper() { this->!CameraDescWrapper();}
+        !CameraDescWrapper() { delete _native; }
+
+        RenderCore::Techniques::CameraDesc* _native;
+    };
+
     public ref class EditorInterfaceUtils
     {
     public:
+        static void* CalculateWorldToProjection(
+            CameraDescWrapper^ camera, float viewportAspect)
+        {
+            auto proj = RenderCore::Techniques::PerspectiveProjection(
+                *camera->_native, viewportAspect);
+            auto temp = std::make_unique<Float4x4>(Combine(
+                InvertOrthonormalTransform(camera->_native->_cameraToWorld), proj));
+            return temp.release();
+        }
+
         static IntersectionTestContextWrapper^
             CreateIntersectionTestContext(
                 EngineDevice^ engineDevice,
                 TechniqueContextWrapper^ techniqueContext,
-                const RenderCore::Techniques::CameraDesc& camera,
+                CameraDescWrapper^ camera,
                 unsigned viewportWidth, unsigned viewportHeight)
         {
             std::shared_ptr<RenderCore::Techniques::TechniqueContext> nativeTC;
@@ -90,7 +119,7 @@ namespace GUILayer
             return gcnew IntersectionTestContextWrapper(
                 std::make_shared<SceneEngine::IntersectionTestContext>(
                     engineDevice->GetNative().GetRenderDevice()->GetImmediateContext(),
-                    camera,
+                    *camera->_native,
                     std::make_shared<RenderCore::ViewportContext>(UInt2(viewportWidth, viewportHeight)),
                     nativeTC));
         }
@@ -266,6 +295,19 @@ namespace GUILayer
             else if (type == System::Char::typeid)      { return (unsigned)ImpliedTyping::TypeCat::UInt16; }
 
             return (unsigned)ImpliedTyping::TypeCat::Void;
+        }
+
+        static void SetupModifierKeys(RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
+        {
+            using namespace RenderOverlays::DebuggingDisplay;
+            typedef InputSnapshot::ActiveButton ActiveButton;
+            static auto shift = KeyId_Make("shift");
+            static auto control = KeyId_Make("control");
+            static auto alt = KeyId_Make("alt");
+
+            if (GetKeyState(0x10) < 0) evnt._activeButtons.push_back(ActiveButton(shift, false, true));
+            if (GetKeyState(0x11) < 0) evnt._activeButtons.push_back(ActiveButton(control, false, true));
+            if (GetKeyState(0x12) < 0) evnt._activeButtons.push_back(ActiveButton(alt, false, true));
         }
     };
 

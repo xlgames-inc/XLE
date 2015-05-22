@@ -28,8 +28,8 @@ namespace RenderingInterop.NativeInterop
 
             var sceneManager = GameEngine.GetEditorSceneManager();
 
-            ICollection<GUILayer.HitRecord> results; 
-            using (var context = XLELayer.XLELayerUtils.CreateIntersectionTestContext(
+            ICollection<GUILayer.HitRecord> results;
+            using (var context = XLEBridgeUtils.Utils.CreateIntersectionTestContext(
                 GameEngine.GetEngineDevice(), techniqueContext, camera, 
                 (uint)viewportSize.Width, (uint)viewportSize.Height))
             {
@@ -57,7 +57,7 @@ namespace RenderingInterop.NativeInterop
                 hitRecords[index].instanceId = r._object;
                 hitRecords[index].index = 0;
                 hitRecords[index].distance = r._distance;
-                hitRecords[index].hitPt = XLELayer.XLELayerUtils.AsVec3F(r._worldSpaceCollision);
+                hitRecords[index].hitPt = XLEBridgeUtils.Utils.AsVec3F(r._worldSpaceCollision);
                 hitRecords[index].normal = new Vec3F(0.0f, 0.0f, 0.0f);
                 hitRecords[index].nearestVertex = new Vec3F(0.0f, 0.0f, 0.0f);
                 hitRecords[index].hasNormal = hitRecords[index].hasNearestVert = false;
@@ -82,7 +82,7 @@ namespace RenderingInterop.NativeInterop
 
             ICollection<GUILayer.HitRecord> results; 
             var endPt = ray.Origin + camera.FarZ * ray.Direction;
-            using (var context = XLELayer.XLELayerUtils.CreateIntersectionTestContext(
+            using (var context = XLEBridgeUtils.Utils.CreateIntersectionTestContext(
                 GameEngine.GetEngineDevice(), techniqueContext, camera, (uint)viewportSize.Width, (uint)viewportSize.Height))
             {
                 using (var scene = sceneManager.GetIntersectionScene())
@@ -90,8 +90,8 @@ namespace RenderingInterop.NativeInterop
                     results = GUILayer.EditorInterfaceUtils.RayIntersection(
                         scene,
                         context,
-                        XLELayer.XLELayerUtils.AsVector3(ray.Origin),
-                        XLELayer.XLELayerUtils.AsVector3(endPt), (uint)flags);
+                        XLEBridgeUtils.Utils.AsVector3(ray.Origin),
+                        XLEBridgeUtils.Utils.AsVector3(endPt), (uint)flags);
                 }
             }
 

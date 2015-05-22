@@ -14,9 +14,7 @@
 #include "../../../RenderOverlays/DebuggingDisplay.h"
 #include "../../../RenderCore/IDevice.h"
 
-extern "C" __declspec(dllimport) short __stdcall GetKeyState(int nVirtKey);
-
-namespace XLELayer
+namespace XLEBridgeUtils
 {
 
     bool NativeManipulatorLayer::MouseMove(LevelEditorCore::ViewControl^ vc, Point scrPt)
@@ -58,7 +56,7 @@ namespace XLELayer
 		InputSnapshot evnt(
 			btnState, _pendingBeginDrag ? btnState : 0, 0,
 			Coord2(scrPt.X, scrPt.Y), Coord2(0, 0));
-        SetupModifierKeys(evnt);
+        GUILayer::EditorInterfaceUtils::SetupModifierKeys(evnt);
 
 		SendInputEvent(vc->ClientSize, vc->Camera, evnt);
         _pendingBeginDrag = false;
@@ -72,7 +70,7 @@ namespace XLELayer
 		InputSnapshot evnt(
 			0, btnState, 0,
 			Coord2(scrPt.X, scrPt.Y), Coord2(0, 0));
-        SetupModifierKeys(evnt);
+        GUILayer::EditorInterfaceUtils::SetupModifierKeys(evnt);
         SendInputEvent(vc->ClientSize, vc->Camera, evnt);
 	}
 
@@ -96,7 +94,7 @@ namespace XLELayer
 
 		auto hitTestContext = GUILayer::EditorInterfaceUtils::CreateIntersectionTestContext(
 			GUILayer::EngineDevice::GetInstance(), nullptr,
-			XLELayerUtils::AsCameraDesc(camera),
+			Utils::AsCameraDesc(camera),
             viewportSize.Width, viewportSize.Height);
 		auto hitTestScene = SceneManager->GetIntersectionScene();
 
@@ -105,19 +103,6 @@ namespace XLELayer
 		delete hitTestScene;
 		return true;
 	}
-
-    void NativeManipulatorLayer::SetupModifierKeys(RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
-    {
-        using namespace RenderOverlays::DebuggingDisplay;
-        typedef InputSnapshot::ActiveButton ActiveButton;
-        static auto shift = KeyId_Make("shift");
-        static auto control = KeyId_Make("control");
-        static auto alt = KeyId_Make("alt");
-
-        if (GetKeyState(0x10) < 0) evnt._activeButtons.push_back(ActiveButton(shift, false, true));
-        if (GetKeyState(0x11) < 0) evnt._activeButtons.push_back(ActiveButton(control, false, true));
-        if (GetKeyState(0x12) < 0) evnt._activeButtons.push_back(ActiveButton(alt, false, true));
-    }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -15,7 +15,7 @@ using namespace System;
 using namespace Sce::Atf;
 using namespace Sce::Atf::Applications;
 
-namespace XLELayer
+namespace XLEBridgeUtils
 {
     inline Float3 AsFloat3(Sce::Atf::VectorMath::Vec3F input) { return Float3(input.X, input.Y, input.Z); }
 
@@ -28,13 +28,13 @@ namespace XLELayer
         void Shutdown();
     };
 
-    public ref class XLELayerUtils
+    public ref class Utils
     {
     public:
-        static GUILayer::Vector3 AsVector3(Sce::Atf::VectorMath::Vec3F input) { return XLELayer::AsVector3(input); }
-        static Sce::Atf::VectorMath::Vec3F AsVec3F(GUILayer::Vector3 input)   { return XLELayer::AsVec3F(input); }
+        static GUILayer::Vector3 AsVector3(Sce::Atf::VectorMath::Vec3F input) { return XLEBridgeUtils::AsVector3(input); }
+        static Sce::Atf::VectorMath::Vec3F AsVec3F(GUILayer::Vector3 input)   { return XLEBridgeUtils::AsVec3F(input); }
 
-        static RenderCore::Techniques::CameraDesc AsCameraDesc(Sce::Atf::Rendering::Camera^ camera)
+        static GUILayer::CameraDescWrapper^ AsCameraDesc(Sce::Atf::Rendering::Camera^ camera)
         {
             ToolsRig::VisCameraSettings visCam;
             visCam._position = AsFloat3(camera->WorldEye);
@@ -42,7 +42,7 @@ namespace XLELayer
             visCam._verticalFieldOfView = camera->YFov * 180.f / gPI;
             visCam._nearClip = camera->NearZ;
             visCam._farClip = camera->FarZ;
-            return RenderCore::Techniques::CameraDesc(ToolsRig::AsCameraDesc(visCam));
+            return gcnew GUILayer::CameraDescWrapper(visCam);
         }
 
         static GUILayer::IntersectionTestContextWrapper^
@@ -64,12 +64,6 @@ namespace XLELayer
         {
                 //  Given a camera and rectangle, calculate a
                 //  frustum matrix that will represents that area.
-            auto camDesc = AsCameraDesc(camera);
-            auto proj = RenderCore::Techniques::PerspectiveProjection(
-                camDesc, viewportSize.Width / float(viewportSize.Height));
-            auto worldToProj = Combine(
-                InvertOrthonormalTransform(camDesc._cameraToWorld), proj);
-
             System::Drawing::RectangleF fRect(
                 rectangle.Left / float(viewportSize.Width), rectangle.Top / float(viewportSize.Height),
                 rectangle.Width / float(viewportSize.Width), rectangle.Height / float(viewportSize.Height));
@@ -86,7 +80,11 @@ namespace XLELayer
                 0.f, 0.f, 1.f, 0.f,
                 0.f, 0.f, 0.f, 1.f);
 
-            worldToProj = Combine(worldToProj, rectangleAdj);
+            std::unique_ptr<Float4x4> worldToProjPtr;
+            worldToProjPtr.reset((Float4x4*)GUILayer::EditorInterfaceUtils::CalculateWorldToProjection(
+                AsCameraDesc(camera), viewportSize.Width / float(viewportSize.Height)));
+            
+            auto worldToProj = Combine(*worldToProjPtr, rectangleAdj);
 
                 // note -- forcing a transpose here!
             return gcnew Sce::Atf::VectorMath::Matrix4F(

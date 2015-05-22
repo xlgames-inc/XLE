@@ -44,7 +44,7 @@ namespace RenderingInterop.PropertyEditing
 
         protected virtual string UriToAssetName(Uri uri)
         {
-            var resService = LevelEditorCore.Globals.MEFContainer.GetExportedValue<XLELayer.IXLEAssetService>();
+            var resService = LevelEditorCore.Globals.MEFContainer.GetExportedValue<XLEBridgeUtils.IXLEAssetService>();
             return resService.AsAssetName(uri);
         }
     }
@@ -53,7 +53,7 @@ namespace RenderingInterop.PropertyEditing
     {
         protected virtual string UriToAssetName(Uri uri)
         {
-            var resService = LevelEditorCore.Globals.MEFContainer.GetExportedValue<XLELayer.IXLEAssetService>();
+            var resService = LevelEditorCore.Globals.MEFContainer.GetExportedValue<XLEBridgeUtils.IXLEAssetService>();
             return resService.StripExtension(resService.AsAssetName(uri));
         }
     }
@@ -62,7 +62,7 @@ namespace RenderingInterop.PropertyEditing
     {
         protected override string UriToAssetName(Uri uri)
         {
-            var resService = LevelEditorCore.Globals.MEFContainer.GetExportedValue<XLELayer.IXLEAssetService>();
+            var resService = LevelEditorCore.Globals.MEFContainer.GetExportedValue<XLEBridgeUtils.IXLEAssetService>();
             return resService.GetBaseTextureName(resService.AsAssetName(uri));
         }
     }

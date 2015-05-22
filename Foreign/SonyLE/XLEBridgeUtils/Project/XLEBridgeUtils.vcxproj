@@ -19,8 +19,9 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{0556E85E-3CBD-4AC0-8842-01E1963312BD}</ProjectGuid>
-    <RootNamespace>XLELayer</RootNamespace>
+    <ProjectGuid>{7626C65E-8DF3-42E0-B9CB-414561C50BC5}</ProjectGuid>
+    <RootNamespace>XLEBridgeUtils</RootNamespace>
+    <ProjectName>XLEBridgeUtils</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -53,7 +54,7 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\..\..\..\Solutions\Main.props" />
     <Import Project="..\..\..\..\Foreign\CommonForClients.props" />
-    <Import Project="XLELayer.props" />
+    <Import Project="XLEBridgeUtils.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup />
@@ -98,13 +99,7 @@
       <HintPath>..\..\Atf\lib\Debug\Atf.Core.dll</HintPath>
     </Reference>
     <Reference Include="Atf.Gui">
-      <HintPath>..\..\Atf\lib\Debug\Atf.Gui.dll</HintPath>
-    </Reference>
-    <Reference Include="Atf.Gui.WinForms">
-      <HintPath>..\..\Atf\lib\Debug\Atf.Gui.WinForms.dll</HintPath>
-    </Reference>
-    <Reference Include="Atf.IronPython">
-      <HintPath>..\..\ATF\lib\Debug\Atf.IronPython.dll</HintPath>
+      <HintPath>..\..\ATF\lib\Debug\Atf.Gui.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.Composition" />
@@ -121,47 +116,17 @@
     <ProjectReference Include="..\..\..\..\ConsoleRig\Project\ConsoleRig.vcxproj">
       <Project>{587a5b72-36e9-ff50-36f4-c0e96bbfa841}</Project>
     </ProjectReference>
-    <ProjectReference Include="..\..\..\..\Foreign\FreeType\builds\windows\vc2010\freetype.vcxproj">
-      <Project>{78b079bd-9fc7-4b9e-b4a6-96da0f00248b}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\..\..\..\Foreign\Project\Foreign.vcxproj">
-      <Project>{9f01282b-6297-4f87-a309-287c2c574b76}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\..\..\..\Foreign\TreeViewAdv-1.7.0.0\Aga.Controls\Aga.Controls.csproj">
-      <Project>{e73bb233-d88b-44a7-a98f-d71ee158381d}</Project>
-    </ProjectReference>
     <ProjectReference Include="..\..\..\..\Math\Project\Math.vcxproj">
       <Project>{2e51aa64-7e29-cd4a-fb7f-bac486a3575c}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\..\..\..\PlatformRig\Project\PlatformRig.vcxproj">
-      <Project>{e3be4078-fc62-469c-b9f7-2447c6f88a50}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\..\..\..\RenderCore\Project\RenderCore.vcxproj">
-      <Project>{116fe083-50bc-1393-470f-f834ef6e02ff}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\..\..\..\RenderCore\Project\RenderCore_Assets.vcxproj">
-      <Project>{962ea621-c2a6-d312-53cb-7b545d981b75}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\..\..\..\RenderCore\Project\RenderCore_DX11.vcxproj">
-      <Project>{e43e10b8-7cd4-a5d0-6270-17c50cb74adf}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\..\..\..\RenderCore\Project\RenderCore_Techniques.vcxproj">
-      <Project>{8188bb13-0b12-c110-2a31-515435fd3bb5}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\..\..\..\RenderOverlays\Project\RenderOverlays.vcxproj">
-      <Project>{726e12f1-b69b-188d-390b-3a1e1889126d}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\..\..\..\SceneEngine\Project\SceneEngine.vcxproj">
-      <Project>{0a40e6ed-47cc-a08e-71c5-8a3515d81eaf}</Project>
     </ProjectReference>
     <ProjectReference Include="..\..\..\..\Tools\GUILayer\Project\GUILayer.vcxproj">
       <Project>{e1e9a4c1-97a8-44b7-8279-d287313c5b6b}</Project>
     </ProjectReference>
-    <ProjectReference Include="..\..\..\..\Tools\ToolsRig\Project\ToolsRig.vcxproj">
-      <Project>{f47f1b0a-ae7c-482a-baf8-d47a6b09b817}</Project>
-    </ProjectReference>
     <ProjectReference Include="..\..\..\..\Utility\Project\Utility.vcxproj">
       <Project>{6b8011c1-2d1f-1ebb-b0ef-377b2e8e87ae}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\Project\Foreign.vcxproj">
+      <Project>{9f01282b-6297-4f87-a309-287c2c574b76}</Project>
     </ProjectReference>
     <ProjectReference Include="..\..\LevelEditorCore\LevelEditorCore.vs2010.csproj">
       <Project>{8eaaa859-349e-4605-a0af-118017881212}</Project>
