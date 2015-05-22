@@ -1,5 +1,8 @@
-﻿//Copyright © 2014 Sony Computer Entertainment America LLC. See License.txt.
-
+﻿// Copyright 2015 XLGAMES Inc.
+//
+// Distributed under the MIT License (See
+// accompanying file "LICENSE" or the website
+// http://www.opensource.org/licenses/mit-license.php)
 
 using System;
 using System.ComponentModel.Composition;
@@ -14,15 +17,14 @@ using Sce.Atf.Dom;
 using Sce.Atf.VectorMath;
 
 using LevelEditorCore;
+using LevelEditorCore.GenericAdapters.Extensions;
 
-using LevelEditor.DomNodeAdapters.Extensions;
-
-namespace LevelEditor.DomNodeAdapters
+namespace LevelEditorXLE.Placements
 {
     using CellRefST = Schema.placementsCellReferenceType;
     using FolderST = Schema.placementsFolderType;
 
-    public class PlacementsCellRef : GenericReference<XLEPlacementDocument>, IHierarchical
+    public class PlacementsCellRef : LevelEditorCore.GenericAdapters.GenericReference<XLEPlacementDocument>, IHierarchical
     {
         public Vec3F Mins
         {
@@ -56,7 +58,7 @@ namespace LevelEditor.DomNodeAdapters
         protected override XLEPlacementDocument Attach(Uri uri)
         {
             return XLEPlacementDocument.OpenOrCreate(
-                uri, Globals.MEFContainer.GetExportedValue<SchemaLoader>());
+                uri, Globals.MEFContainer.GetExportedValue<ISchemaLoader>());
         }
 
         protected override void Detach(XLEPlacementDocument target)
@@ -103,7 +105,7 @@ namespace LevelEditor.DomNodeAdapters
             get { return GetChildList<PlacementsCellRef>(FolderST.cellChild); }
         }
 
-        internal void Reconfigure(XLEControls.PlacementsConfig.Config cfg)
+        internal void Reconfigure(PlacementsConfig.Config cfg)
         {
                 // Based on the configuration settings given, remove and attach
                 // cell references. First create a list of all of the references
@@ -183,14 +185,14 @@ namespace LevelEditor.DomNodeAdapters
         internal bool DoModalConfigure()
         {
                 // open the configuration dialog
-            var cfg = new XLEControls.PlacementsConfig.Config();
+            var cfg = new PlacementsConfig.Config();
             cfg.BasePath = BasePath;
             var cellCount = CellCount;
             cfg.CellCountX = (uint)cellCount[0];
             cfg.CellCountY = (uint)cellCount[1];
             cfg.CellSize = GetAttribute<float>(FolderST.cellSizeAttribute);
 
-            using (var dlg = new XLEControls.PlacementsConfig())
+            using (var dlg = new PlacementsConfig())
             {
                 dlg.Value = cfg;
                 var result = dlg.ShowDialog();

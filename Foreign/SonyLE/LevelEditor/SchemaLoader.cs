@@ -18,6 +18,68 @@ using LevelEditorCore;
 using PropertyDescriptor = System.ComponentModel.PropertyDescriptor;
 namespace LevelEditor
 {
+    internal class SpecialUrlResolver : XmlUrlResolver
+    {
+        public SpecialUrlResolver() {}
+
+        public void Add(Assembly assembly, string resourceNamespace)
+        {
+            var assem = new SearchAssembly();
+            assem.m_assembly = assembly;
+            assem.m_namespace = resourceNamespace;
+            assem.m_rootPath = new Uri(Uri.UriSchemeFile + ":///" + resourceNamespace + "/");
+            m_assemblies.Add(assem);
+        }
+
+        public override object GetEntity(Uri absoluteUri, string role, Type returnType)
+        {
+            if (absoluteUri.IsFile)
+            {
+                string newFileName = absoluteUri.AbsolutePath.Replace('/', '.');
+                newFileName = newFileName.Substring(1, newFileName.Length - 1); // remove leading "."
+
+                    // search for the first assembly that contains this object
+                foreach (var a in m_assemblies)
+                {
+                    var info = a.m_assembly.GetManifestResourceInfo(newFileName);
+                    if (info != null)
+                    {
+                        return a.m_assembly.GetManifestResourceStream(newFileName);
+                    }
+                }
+
+                    // could not be found!
+                return null;
+            }
+
+            return base.GetEntity(absoluteUri, role, returnType);
+        }
+
+        public override Uri ResolveUri(Uri baseUri, string relativeUri)
+        {
+            foreach (var a in m_assemblies)
+            {
+                string res = a.m_namespace + "." + relativeUri;
+                var info = a.m_assembly.GetManifestResourceInfo(res);
+                if (info != null)
+                {
+                    return new Uri(a.m_rootPath, relativeUri);
+                }
+            }
+
+                // could not be found, falling back to first assembly
+            return new Uri(m_assemblies[0].m_rootPath, relativeUri);
+        }
+
+        private struct SearchAssembly
+        {
+            internal Assembly m_assembly;
+            internal Uri m_rootPath;
+            internal string m_namespace;
+        }
+        private List<SearchAssembly> m_assemblies = new List<SearchAssembly>();
+    }
+
     /// <summary>
     /// Xml schema loader for the LevelEditor's schemas</summary>
     [Export(typeof(XmlSchemaTypeLoader))]
@@ -30,9 +92,24 @@ namespace LevelEditor
         public SchemaLoader(IGameEngineProxy gameEngine)
         {
             m_gameEngine = gameEngine;
-            // set resolver to locate embedded .xsd file
-            SchemaResolver = new ResourceStreamResolver(Assembly.GetExecutingAssembly(), "LevelEditor.schemas");
-            Load("level_editor.xsd");           
+
+            var resolver = new SpecialUrlResolver();
+            XmlSchemaSet schemaSet = new XmlSchemaSet { XmlResolver = resolver };
+            XmlReaderSettings xmlReaderSettings = new XmlReaderSettings { XmlResolver = resolver };
+
+            resolver.Add(
+                Assembly.GetExecutingAssembly(),
+                "LevelEditor.schemas"); 
+            using (XmlReader xmlReader = XmlReader.Create("level_editor.xsd", xmlReaderSettings))
+                schemaSet.Add(XmlSchema.Read(xmlReader, null));
+
+            resolver.Add(
+                Assembly.GetAssembly(typeof(LevelEditorXLE.Patches)),
+                "LevelEditorXLE.Schema"); 
+            using (XmlReader xmlReader = XmlReader.Create("xleroot.xsd", xmlReaderSettings))
+                schemaSet.Add(XmlSchema.Read(xmlReader, null));
+            
+            Load(schemaSet);
         }
 
         protected override void OnSchemaSetLoaded(XmlSchemaSet schemaSet)
@@ -204,62 +281,7 @@ namespace LevelEditor
                                 collectionEditor)
                                 }));
 
-            {
-                var strataCollectionEditor = new EmbeddedCollectionEditor();
-
-                strataCollectionEditor.GetItemInsertersFunc = (context) =>
-                {
-                    var list = context.GetValue() as IList<DomNode>;
-                    if (list == null) return EmptyArray<EmbeddedCollectionEditor.ItemInserter>.Instance;
-
-                    // create ItemInserter for each component type.
-                    var insertors = new EmbeddedCollectionEditor.ItemInserter[1]
-                    {
-                        new EmbeddedCollectionEditor.ItemInserter("Strata",
-                        delegate
-                        {
-                            DomNode node = new DomNode(Schema.terrainBaseTextureStrataType.Type);
-                            list.Add(node);
-                            return node;
-                        })
-                    };
-                    return insertors;
-                };
-
-                strataCollectionEditor.RemoveItemFunc = (context, item) =>
-                {
-                    var list = context.GetValue() as IList<DomNode>;
-                    if (list != null)
-                        list.Remove(item.Cast<DomNode>());
-                };
-
-                strataCollectionEditor.MoveItemFunc = (context, item, delta) =>
-                {
-                    var list = context.GetValue() as IList<DomNode>;
-                    if (list != null)
-                    {
-                        DomNode node = item.Cast<DomNode>();
-                        int index = list.IndexOf(node);
-                        int insertIndex = index + delta;
-                        if (insertIndex < 0 || insertIndex >= list.Count)
-                            return;
-                        list.RemoveAt(index);
-                        list.Insert(insertIndex, node);
-                    }
-                };
-
-                Schema.terrainBaseTextureType.Type.SetTag(
-                       new PropertyDescriptorCollection(
-                           new PropertyDescriptor[] {
-                            new ChildPropertyDescriptor(
-                                "Strata".Localize(),
-                                Schema.terrainBaseTextureType.strataChild,
-                                null,
-                                "List of texturing stratas".Localize(),
-                                false,
-                                strataCollectionEditor)
-                                }));
-            }
+            LevelEditorXLE.Patches.OnSchemaSetLoaded(schemaSet, GetTypeCollections());
         }
 
         protected override void ParseAnnotations(
@@ -442,13 +464,6 @@ namespace LevelEditor
         {
             get { return Schema.gameObjectFolderType.Type; }
         }
-
-        // <<XLE
-        public DomNodeType PlacementsCellReferenceType
-        {
-            get { return Schema.placementsCellReferenceType.Type; }
-        }
-        // XLE>>
 
         public ChildInfo GameRootElement
         {

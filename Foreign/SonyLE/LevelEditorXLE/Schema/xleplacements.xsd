@@ -5,8 +5,7 @@
   xmlns="gap"
   xmlns:xs="http://www.w3.org/2001/XMLSchema">
 
-  <xs:include schemaLocation="basictypes.xsd"/>
-  <xs:include schemaLocation="transformobject.xsd"/>
+  <xs:include schemaLocation="xlebasic.xsd"/>
 
   <xs:complexType name="placementsCellReferenceType">
     <xs:annotation>
@@ -51,6 +50,7 @@
       <xs:extension base="transformObjectType">
         <xs:attribute name="visible" type="xs:boolean" default="true" />
         <xs:attribute name="locked" type="xs:boolean" default="false" />
+        <xs:attribute name="ID" type="xs:unsignedLong" default="0"/>
       </xs:extension>
     </xs:complexContent>
   </xs:complexType>

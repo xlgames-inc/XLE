@@ -161,19 +161,13 @@ namespace LevelEditor
                 );
 
             // <<XLE
-            TypeCatalog xleExtensionTypes = new TypeCatalog(
-                typeof(XLELayer.TerrainManipulator),
-                typeof(XLELayer.PlacementManipulator),
+            TypeCatalog xleExtensionTypes1 = new TypeCatalog(
                 typeof(RenderingInterop.MoveAcrossTerrainManipulator),
-                typeof(XLEControls.XLEManipCtrlWin),
-                typeof(XLEControls.XLEMaterialInspector),
-                typeof(XLELayer.XLEAssetService),
                 typeof(RenderingInterop.ScatterPlaceManipulator),
                 typeof(RenderingInterop.ActiveMaterialContext),
-                typeof(RenderingInterop.PickMaterialManipulator),
-                typeof(XLEControls.XLECamera),
-                typeof(XLELayer.MaterialSchemaLoader)
+                typeof(RenderingInterop.PickMaterialManipulator)
                 );
+            TypeCatalog xleExtensionTypes2 = LevelEditorXLE.Startup.CreateTypeCatalog();
             // XLE>>
             
             List<ComposablePartCatalog> catalogs = new List<ComposablePartCatalog>();
@@ -181,7 +175,8 @@ namespace LevelEditor
             catalogs.Add(LECoreCatalog);
             catalogs.Add(renderingInteropCatalog);
             catalogs.Add(thisAssemCatalog);
-            catalogs.Add(xleExtensionTypes);
+            catalogs.Add(xleExtensionTypes1);
+            catalogs.Add(xleExtensionTypes2);
             
                         
             // temp solution, look for statemachine plugin by name.

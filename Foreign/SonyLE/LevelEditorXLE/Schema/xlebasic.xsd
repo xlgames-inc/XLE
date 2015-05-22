@@ -1,0 +1,39 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<xs:schema
+  elementFormDefault="qualified"
+  targetNamespace="gap"
+  xmlns="gap"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  
+  <xs:include schemaLocation="basictypes.xsd"/>
+  <xs:include schemaLocation="transformobject.xsd"/>
+
+<!--
+  <xs:complexType name="gameObjectType">
+    <xs:annotation>
+      <xs:appinfo>
+        <LeGe.NativeType nativeName="GameObject"/>
+
+        <LeGe.NativeProperty name="transform" nativeName="Transform" access="set"/>
+        <LeGe.NativeProperty name="name" nativeName="Name" access="set"/>
+        <LeGe.NativeProperty name="visible" nativeName="Visible" access="set,get"/>
+        <LeGe.NativeProperty nativeName="Bounds" nativeType="AABB" access="get"/>
+        <LeGe.NativeProperty nativeName="LocalBounds" nativeType="AABB" access="get"/>
+
+        <scea.dom.editors.attribute name="name" displayName="Name" description="Unique name of Game Object" category="General"/>
+        <scea.dom.editors.attribute name="locked" displayName="Locked" description="Lock this object" category="General" editor="Sce.Atf.Controls.PropertyEditing.BoolEditor,Atf.Gui.WinForms"/>
+        <scea.dom.editors.attribute name="visible" displayName="Visibility" description="Whether item is visible in Design View" category="Display" editor="Sce.Atf.Controls.PropertyEditing.BoolEditor,Atf.Gui.WinForms"/>
+      </xs:appinfo>
+    </xs:annotation>
+    <xs:complexContent>
+      <xs:extension base="transformObjectType">
+        <xs:attribute name="name" type="xs:ID" />
+        <xs:attribute name="visible" type="xs:boolean" default="true" />
+        <xs:attribute name="locked" type="xs:boolean" default="false" />
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+-->
+  
+</xs:schema>
+

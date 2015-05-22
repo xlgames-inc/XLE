@@ -11,6 +11,7 @@ using Sce.Atf.Adaptation;
 
 using LevelEditorCore;
 using LevelEditor.DomNodeAdapters;
+using LevelEditorCore.GenericAdapters;
 using Sce.Atf.Dom;
 
 namespace LevelEditor

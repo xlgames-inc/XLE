@@ -1,4 +1,10 @@
-﻿using System;
+﻿// Copyright 2015 XLGAMES Inc.
+//
+// Distributed under the MIT License (See
+// accompanying file "LICENSE" or the website
+// http://www.opensource.org/licenses/mit-license.php)
+
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.Composition;
 using System.Linq;
@@ -12,7 +18,7 @@ using Sce.Atf.Dom;
 
 using LevelEditorCore;
 
-namespace LevelEditor.DomNodeAdapters
+namespace LevelEditorXLE.Placements
 {
     public class XLEPlacementDocument : DomDocument, IListable, IHierarchical, IGameDocument, IGameObjectFolder
     {
@@ -66,7 +72,12 @@ namespace LevelEditor.DomNodeAdapters
                 ILockable lockable = GetParentAs<ILockable>();
                 return (lockable != null) ? lockable.IsLocked : false;
             }
-            set { SetAttribute(Schema.gameObjectFolderType.lockedAttribute, value); }
+            set 
+            {
+                ILockable lockable = GetParentAs<ILockable>();
+                if (lockable != null)
+                    lockable.IsLocked = value;
+            }
         }
         #endregion
         #region IGameObjectFolder Members
@@ -99,17 +110,17 @@ namespace LevelEditor.DomNodeAdapters
         }
         #endregion
 
-        internal static GameDocumentRegistry GetDocRegistry()
+        internal static IGameDocumentRegistry GetDocRegistry()
         {
                 //  There are some problems related to using a document registry for
                 //  these placement documents. Using a registry allow us to have multiple
                 //  references to the same document... But in the case of placement cells, that
                 //  isn't normal. We may get a better result by just creating and destroying
                 //  the document for every reference
-            return Globals.MEFContainer.GetExportedValue<GameDocumentRegistry>();
+            return Globals.MEFContainer.GetExportedValue<IGameDocumentRegistry>();
         }
 
-        public static XLEPlacementDocument OpenOrCreate(Uri uri, SchemaLoader schemaLoader)
+        public static XLEPlacementDocument OpenOrCreate(Uri uri, ISchemaLoader schemaLoader)
         {
             if (!uri.IsAbsoluteUri)
                 return null;
@@ -129,7 +140,14 @@ namespace LevelEditor.DomNodeAdapters
                 // read existing document using custom dom XML reader
                 using (FileStream stream = File.OpenRead(filePath))
                 {
-                    var reader = new CustomDomXmlReader(Globals.ResourceRoot, schemaLoader);
+                        // Note --  Sony code uses "CustomDomXmlReader" to modify
+                        //          the urls of relative assets in reference types at
+                        //          load time.
+                        //          However, we're going to prefer a method that does this
+                        //          on demand, rather than at load time -- so we should be able
+                        //          to use a standard xml reader.
+                    // var reader = new CustomDomXmlReader(Globals.ResourceRoot, schemaLoader);
+                    var reader = new DomXmlReader(schemaLoader as XmlSchemaTypeLoader);
                     rootNode = reader.Read(stream, uri);
                 }
             }
@@ -165,7 +183,14 @@ namespace LevelEditor.DomNodeAdapters
                 gameDocRegistry.Remove(doc.As<IGameDocument>());
         }
 
-        public override string Type { get { return GameEditor.s_placementDocInfo.FileType; } }
+        public override string Type { get { return s_placementDocInfo.FileType; } }
+
+        public static readonly DocumentClientInfo s_placementDocInfo = new DocumentClientInfo(
+            "PlacementDocument",
+            new string[] { ".plcdoc" },
+            Sce.Atf.Resources.DocumentImage,
+            Sce.Atf.Resources.FolderImage,
+            false);
     }
 }
 

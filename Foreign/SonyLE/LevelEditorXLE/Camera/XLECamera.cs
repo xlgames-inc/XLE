@@ -1,4 +1,8 @@
-﻿//Copyright © 2014 Sony Computer Entertainment America LLC. See License.txt.
+﻿// Copyright 2015 XLGAMES Inc.
+//
+// Distributed under the MIT License (See
+// accompanying file "LICENSE" or the website
+// http://www.opensource.org/licenses/mit-license.php)
 
 using System;
 using System.ComponentModel.Composition;
@@ -14,7 +18,7 @@ using ViewTypes = Sce.Atf.Rendering.ViewTypes;
 
 using LevelEditorCore;
 
-namespace LevelEditor.XLEControls
+namespace LevelEditorXLE
 {
 
     [Export(typeof(CameraController))]
@@ -38,7 +42,8 @@ namespace LevelEditor.XLEControls
         {
             if (InputScheme.ActiveControlScheme.IsControllingCamera(KeysInterop.ToAtf(Control.ModifierKeys), MouseEventArgsInterop.ToAtf(e)))
             {
-                m_lastMousePoint = e.Location;
+                m_lastMousePointX = e.Location.X;
+                m_lastMousePointY = e.Location.Y;
                 m_dragging = true;
                 return true;
             }
@@ -47,6 +52,8 @@ namespace LevelEditor.XLEControls
             {
                 // "control + l click" repositions the "focus" point of the camera
                 // this is critical when we want to be able to rotate around a specific point in the world
+
+                    // note -- have to find a good way to fit this pick operation into the architecture!
                 ViewControl c = sender as ViewControl;
                 if (c != null) {
                     var hit = RenderingInterop.NativeInterop.Picking.RayPick(
@@ -59,6 +66,7 @@ namespace LevelEditor.XLEControls
                         Camera.Set(Camera.Eye, transformedPt, Camera.Up);
                     }
                 }
+
                 return true;
             }
 
@@ -93,8 +101,8 @@ namespace LevelEditor.XLEControls
                 InputScheme.ActiveControlScheme.IsControllingCamera(KeysInterop.ToAtf(Control.ModifierKeys), MouseEventArgsInterop.ToAtf(e)))
             {
                 Control c = sender as Control;
-                float dx = e.X - m_lastMousePoint.X;
-                float dy = e.Y - m_lastMousePoint.Y;
+                float dx = e.X - m_lastMousePointX;
+                float dy = e.Y - m_lastMousePointY;
 
                 if (InputScheme.ActiveControlScheme.IsRotating(KeysInterop.ToAtf(Control.ModifierKeys), MouseEventArgsInterop.ToAtf(e)) &&
                     (Camera.ViewType == ViewTypes.Perspective || LockOrthographic == false))
@@ -133,7 +141,8 @@ namespace LevelEditor.XLEControls
                     Camera.Set(Camera.Eye + translation, lookAtPoint + translation, Camera.Up);
                 }
 
-                m_lastMousePoint = e.Location;
+                m_lastMousePointX = e.Location.X;
+                m_lastMousePointY = e.Location.Y;
                 return true;
             }
 
@@ -173,7 +182,8 @@ namespace LevelEditor.XLEControls
             base.ControllerToCamera(camera);
         }
 
-        private Point m_lastMousePoint;
+        private float m_lastMousePointX;
+        private float m_lastMousePointY;
         private bool m_dragging;
     }
 

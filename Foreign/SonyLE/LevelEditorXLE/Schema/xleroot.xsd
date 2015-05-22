@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<xs:schema
+  elementFormDefault="qualified"
+  targetNamespace="gap"
+  xmlns="gap"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+  <xs:include schemaLocation="xleenv.xsd"/>
+  <xs:include schemaLocation="xlegame.xsd"/>
+  <xs:include schemaLocation="xleplacements.xsd"/>
+  <xs:include schemaLocation="xleterrain.xsd"/>
+  
+</xs:schema>
+

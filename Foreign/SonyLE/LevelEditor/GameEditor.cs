@@ -433,15 +433,6 @@ namespace LevelEditor
             Sce.Atf.Resources.DocumentImage,
             Sce.Atf.Resources.FolderImage,
             false);
-
-        // <<XLE
-        public static readonly DocumentClientInfo s_placementDocInfo = new DocumentClientInfo(
-            "PlacementDocument",
-            new string[] { ".plcdoc" },
-            Sce.Atf.Resources.DocumentImage,
-            Sce.Atf.Resources.FolderImage,
-            false);
-        // XLE>>
     }
 
 }

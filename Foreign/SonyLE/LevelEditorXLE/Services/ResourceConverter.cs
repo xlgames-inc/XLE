@@ -5,9 +5,7 @@ using Sce.Atf;
 
 using LevelEditorCore;
 
-using LevelEditor.DomNodeAdapters;
-
-namespace LevelEditor
+namespace LevelEditorXLE
 {
     [Export(typeof(IResourceConverter))]    
     [PartCreationPolicy(CreationPolicy.Shared)]
@@ -20,11 +18,14 @@ namespace LevelEditor
             if (resource == null) return null;
             if (resource.Type == ResourceTypes.Model)
             {
-                Locator locator = Locator.Create();
-                IReference<IResource> resRef = ResourceReference.Create(resource);                
-                locator.Reference = resRef;
-                locator.DomNode.InitializeExtensions();
-                return locator;
+                var newPlacement = Placements.XLEPlacementObject.Create();
+                if (newPlacement.CanReference(resource))
+                {
+                    newPlacement.Target = resource;
+                    // return newPlacement;
+                    System.Diagnostics.Debug.Assert(false, "incomplete implementation");
+                    return null;
+                }
             }
  
             return null;

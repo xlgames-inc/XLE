@@ -1,4 +1,10 @@
-﻿using System;
+﻿// Copyright 2015 XLGAMES Inc.
+//
+// Distributed under the MIT License (See
+// accompanying file "LICENSE" or the website
+// http://www.opensource.org/licenses/mit-license.php)
+
+using System;
 using System.ComponentModel.Composition;
 using System.Collections.Generic;
 using System.Windows.Forms;
@@ -13,7 +19,7 @@ using LevelEditorCore;
 
 using ControlsLibrary.MaterialEditor;
 
-namespace LevelEditor.XLEControls
+namespace LevelEditorXLE.Materials
 {
     [Export(typeof(IInitializable))]
     [PartCreationPolicy(CreationPolicy.Shared)]

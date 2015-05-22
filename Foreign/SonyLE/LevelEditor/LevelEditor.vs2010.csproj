@@ -65,10 +65,6 @@
     <Reference Include="IronPython.Modules">
       <HintPath>..\ATF\ThirdParty\IronPython\IronPython.Modules.dll</HintPath>
     </Reference>
-    <Reference Include="LevelEditorCore, Version=3.8.1.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\LevelEditorCore\lib\Debug\LevelEditorCore.dll</HintPath>
-    </Reference>
     <Reference Include="Microsoft.Dynamic">
       <HintPath>..\ATF\ThirdParty\IronPython\Microsoft.Dynamic.dll</HintPath>
     </Reference>
@@ -104,7 +100,6 @@
     <Compile Include="DomNodeAdapters\AdapterExtensions.cs" />
     <Compile Include="DomNodeAdapters\Depricated\GameObjectReference.cs" />
     <Compile Include="DomNodeAdapters\GameReference.cs" />
-    <Compile Include="DomNodeAdapters\IResolveable.cs" />
     <Compile Include="DomNodeAdapters\Layer.cs" />
     <Compile Include="DomNodeAdapters\Depricated\Lights.cs" />
     <Compile Include="DomNodeAdapters\OpaqueAdapters.cs" />
@@ -118,12 +113,8 @@
     <Compile Include="DomNodeAdapters\Grid.cs" />
     <Compile Include="DomNodeAdapters\Depricated\Locator.cs" />
     <Compile Include="DomNodeAdapters\Depricated\Slot.cs" />
+    <Compile Include="DomNodeAdapters\TransformObject.cs" />
     <Compile Include="DomNodeAdapters\TransformUpdater.cs" />
-    <Compile Include="DomNodeAdapters\XLEEnvAdapter.cs" />
-    <Compile Include="DomNodeAdapters\XLEPlacement.cs" />
-    <Compile Include="DomNodeAdapters\XLEPlacementsCellRef.cs" />
-    <Compile Include="DomNodeAdapters\XLEPlacementsDocument.cs" />
-    <Compile Include="DomNodeAdapters\XLETerrainGob.cs" />
     <Compile Include="DomSerializers\CustomDomXmlReader.cs" />
     <Compile Include="DomSerializers\CustomDomXmlWriter.cs" />
     <Compile Include="GameAdapters.cs" />
@@ -151,25 +142,6 @@
     <Compile Include="Services\SplashForm.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="XLEControls\PlacementsConfig.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="XLEControls\PlacementsConfig.Designer.cs">
-      <DependentUpon>PlacementsConfig.cs</DependentUpon>
-    </Compile>
-    <Compile Include="XLEControls\XLECamera.cs" />
-    <Compile Include="XLEControls\XLEManipCtrlWin.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="XLEControls\XLEMaterialInspector.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="XLEControls\XLENativeManipControls.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="XLEControls\XLENativeManipControls.Designer.cs">
-      <DependentUpon>XLENativeManipControls.cs</DependentUpon>
-    </Compile>
     <Compile Include="Validators\CustomLockingValidator.cs" />
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
@@ -178,19 +150,10 @@
     <EmbeddedResource Include="schemas\gameobject.xsd">
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="XLEControls\PlacementsConfig.resx">
-      <DependentUpon>PlacementsConfig.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="XLEControls\XLENativeManipControls.resx">
-      <DependentUpon>XLENativeManipControls.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="schemas\basictypes.xsd">
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
     <EmbeddedResource Include="schemas\editorobjects.xsd">
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="schemas\xleenv.xsd">
+    <EmbeddedResource Include="schemas\basictypes.xsd">
       <SubType>Designer</SubType>
     </EmbeddedResource>
     <None Include="schemas\GenSchemaDef.bat" />
@@ -200,12 +163,6 @@
     <Compile Include="SchemaLoader.cs" />
     <Compile Include="schemas\Schema.cs" />
     <EmbeddedResource Include="schemas\prototypes.xsd">
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="schemas\xleplacements.xsd">
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="schemas\xleterrain.xsd">
       <SubType>Designer</SubType>
     </EmbeddedResource>
     <EmbeddedResource Include="schemas\transformobject.xsd">
@@ -221,9 +178,17 @@
       <Project>{e1e9a4c1-97a8-44b7-8279-d287313c5b6b}</Project>
       <Name>GUILayer</Name>
     </ProjectReference>
+    <ProjectReference Include="..\LevelEditorCore\LevelEditorCore.vs2010.csproj">
+      <Project>{8eaaa859-349e-4605-a0af-118017881212}</Project>
+      <Name>LevelEditorCore.vs2010</Name>
+    </ProjectReference>
     <ProjectReference Include="..\LevelEditorNativeRendering\RenderingInterop.vs2010.csproj">
       <Project>{8FDEBB1D-43B9-4922-AD51-4E58A0D71FBC}</Project>
       <Name>RenderingInterop.vs2010</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\LevelEditorXLE\LevelEditorXLE.csproj">
+      <Project>{8333f974-4932-460e-8551-ef88d2b7db79}</Project>
+      <Name>LevelEditorXLE</Name>
     </ProjectReference>
     <ProjectReference Include="..\XLELayer\Project\XLELayer.vcxproj">
       <Project>{0556e85e-3cbd-4ac0-8842-01e1963312bd}</Project>

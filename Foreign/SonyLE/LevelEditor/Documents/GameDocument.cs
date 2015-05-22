@@ -67,18 +67,7 @@ namespace LevelEditor
                 subDoc.Save(subDoc.Uri, schemaLoader);                
             }
 
-            // <<XLE
-                // also save other reference types
-            var placementsFolder = GetChild<PlacementsFolder>(Schema.gameType.placementsChild);
-            if (placementsFolder!=null) {
-                foreach (var cellRef in placementsFolder.Cells)
-                {
-                    XLEPlacementDocument doc = cellRef.Target;
-                    if (doc == null) continue;
-                    SaveDomDocument(doc.DomNode, cellRef.Uri, schemaLoader);
-                }
-            }
-            // XLE>>
+            LevelEditorXLE.Patches.SaveReferencedDocuments(this);
 
             Dirty = false;
         }
@@ -153,7 +142,7 @@ namespace LevelEditor
             else
             {
                 // create new document by creating a Dom node of the root type defined by the schema                 
-                rootNode = new DomNode(Schema.gameType.Type, Schema.gameRootElement);
+                rootNode = new DomNode(LevelEditorXLE.Patches.GetGameType(), Schema.gameRootElement);
                 rootNode.SetAttribute(Schema.gameType.nameAttribute, "Game".Localize());
             }
 
@@ -227,15 +216,7 @@ namespace LevelEditor
                     subGame.Resolve();
                 }
 
-                // <<XLE
-                // resolve other types of document references
-                var placementsFolder = document.GetChild<PlacementsFolder>(Schema.gameType.placementsChild);
-                if (placementsFolder != null) {
-                    foreach (var cell in placementsFolder.Cells) {
-                        cell.Resolve();
-                    }
-                }
-                // XLE>>
+                LevelEditorXLE.Patches.ResolveOnLoad(document);
             }
 
             document.Dirty = false;

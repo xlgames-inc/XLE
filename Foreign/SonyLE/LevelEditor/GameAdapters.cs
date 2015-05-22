@@ -125,25 +125,6 @@ namespace LevelEditor
                             "Grid visibility".Localize(),
                             false)
                     }));
-
-
-            // <<XLE
-            Schema.placementsCellReferenceType.Type.Define(new ExtensionInfo<PlacementsCellRef>());
-            Schema.placementsFolderType.Type.Define(new ExtensionInfo<PlacementsFolder>());
-            
-            Schema.placementsDocumentType.Type.Define(new ExtensionInfo<XLEPlacementDocument>());
-            Schema.placementsDocumentType.Type.Define(new ExtensionInfo<GameContext>());
-
-            Schema.placementObjectType.Type.Define(new ExtensionInfo<XLEPlacementObject>());
-            Schema.placementObjectType.Type.Define(new ExtensionInfo<GameObjectProperties>());
-            Schema.placementObjectType.Type.Define(new ExtensionInfo<TransformUpdater>());
-
-            Schema.terrainType.Type.Define(new ExtensionInfo<XLETerrainGob>());
-
-            Schema.envSettingsFolderType.Type.Define(new ExtensionInfo<XLEEnvSettingsFolder>());
-            Schema.envSettingsType.Type.Define(new ExtensionInfo<XLEEnvSettings>());
-            Schema.envObjectType.Type.Define(new ExtensionInfo<GameObject>());
-            // XLE>>
         }
     }
 }

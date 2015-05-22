@@ -15,7 +15,7 @@ namespace LevelEditor.DomNodeAdapters
    
     /// <summary>
     /// Root node in a LevelEditor Game document</summary>
-    public class Game : DomNodeAdapter, IGame, ICommandClient, IContextMenuCommandProvider
+    public class Game : DomNodeAdapter, IGame
     {        
         #region INameable Members
 
@@ -54,19 +54,6 @@ namespace LevelEditor.DomNodeAdapters
         public bool CanAddChild(object child)
         {
             if (child.Is<GameReference>()) return true;
-
-            // <<XLE
-            var domNode = child as DomNode;
-            if (domNode != null) {
-                foreach (var type in domNode.Type.Lineage) {
-                    if (type == Schema.placementsFolderType.Type) return true;
-                    if (type == Schema.abstractPlacementObjectType.Type) return true;
-                    if (type == Schema.envSettingsFolderType.Type) return true;
-                }
-            }
-            if (EnvSettingsFolder.CanAddChild(child)) return true;
-            // XLE>>
-
             return false;
         }
 
@@ -85,55 +72,6 @@ namespace LevelEditor.DomNodeAdapters
                 grefList.Add(gameref);
                 return true;
             }
-
-            // <<XLE
-            if (EnvSettingsFolder.AddChild(child))
-                return true;
-
-            var domNode = child.As<DomNode>();
-            if (domNode != null)
-            {
-                foreach (var type in domNode.Type.Lineage)
-                {
-                    if (domNode.Type == Schema.placementsFolderType.Type)
-                    {
-                        SetChild(Schema.gameType.placementsChild, domNode);
-                        return true;
-                    }
-
-                    if (type == Schema.abstractPlacementObjectType.Type)
-                    {
-                        // We need to look for the appropriate placement cell to put this placement in...
-                        // If there are no placement cells, or if there isn't a cell that can contain this
-                        // object, then we have to abort
-                        var plc = domNode.As<XLEPlacementObject>();
-                        var keyPoint = (plc != null) ? plc.Translation : new Sce.Atf.VectorMath.Vec3F(0.0f, 0.0f, 0.0f);
-
-                        var placementsFolder = GetChild<PlacementsFolder>(Schema.gameType.placementsChild);
-                        if (placementsFolder != null)
-                        {
-                            foreach (var cellRef in placementsFolder.Cells)
-                            {
-                                if (cellRef.IsResolved()
-                                    && keyPoint.X >= cellRef.Mins.X && keyPoint.X < cellRef.Maxs.X
-                                    && keyPoint.Y >= cellRef.Mins.Y && keyPoint.Y < cellRef.Maxs.Y
-                                    && keyPoint.Z >= cellRef.Mins.Z && keyPoint.Z < cellRef.Maxs.Z
-                                    && cellRef.Target.CanAddChild(domNode))
-                                {
-                                    return cellRef.Target.AddChild(domNode);
-                                }
-                            }
-                        }
-                    }
-
-                    if (domNode.Type == Schema.envSettingsFolderType.Type)
-                    {
-                        SetChild(Schema.gameType.environmentChild, domNode);
-                        return true;
-                    }
-                }
-            }
-            // XLE>>
 
             return false;           
         }
@@ -174,20 +112,6 @@ namespace LevelEditor.DomNodeAdapters
             }
         }
 
-        public XLEEnvSettingsFolder EnvSettingsFolder
-        {
-            get
-            {
-                var result = GetChild<XLEEnvSettingsFolder>(Schema.gameType.environmentChild);
-                if (result == null)
-                {
-                    result = XLEEnvSettingsFolder.Create().Cast<XLEEnvSettingsFolder>();
-                    SetChild(Schema.gameType.environmentChild, result);
-                }
-                return result;
-            }
-        }
-
         public IGameObjectGroup CreateGameObjectGroup()
         {
             GameObjectGroup gobGroup = new DomNode(Schema.gameObjectGroupType.Type).As<GameObjectGroup>();
@@ -214,81 +138,5 @@ namespace LevelEditor.DomNodeAdapters
         }
 
         private IReference<IGame> m_parent;
-
-        #region Context Menu Commands
-        bool ICommandClient.CanDoCommand(object commandTag)
-        {
-            if (commandTag is Command)
-            {
-                switch ((Command)commandTag)
-                {
-                    case Command.CreateTerrain:
-                        return DomNode.GetChild(Schema.gameType.terrainChild) == null;
-                    case Command.CreatePlacementsFolder:
-                        return DomNode.GetChild(Schema.gameType.placementsChild) == null;
-                    case Command.CreateEnvironmentSetting:
-                        return true;
-                }
-            }
-            return false;
-        }
-
-        void ICommandClient.DoCommand(object commandTag)
-        {
-            if (!(commandTag is Command)) return;
-
-            switch ((Command)commandTag)
-            {
-                case Command.CreateTerrain:
-                    {
-                        if (DomNode.GetChild(Schema.gameType.terrainChild) == null)
-                        {
-                            DomNode.SetChild(
-                                Schema.gameType.terrainChild,
-                                XLETerrainGob.Create());
-                        }
-                        break;
-                    }
-
-                case Command.CreatePlacementsFolder:
-                    {
-                        if (DomNode.GetChild(Schema.gameType.placementsChild) == null)
-                        {
-                            var newNode = PlacementsFolder.CreateWithConfigure();
-                            if (newNode != null)
-                                DomNode.SetChild(Schema.gameType.placementsChild, newNode);
-                        }
-                        break;
-                    }
-
-                case Command.CreateEnvironmentSetting:
-                    {
-                        var envFolder = EnvSettingsFolder;
-                        envFolder.AddChild(
-                            XLEEnvSettings.Create(envFolder.GetNameForNewChild()));
-                        break;
-                    }
-            }
-        }
-
-        void ICommandClient.UpdateCommand(object commandTag, CommandState commandState)
-        { }
-
-        private enum Command
-        {
-            [Description("Add Terrain")]
-            CreateTerrain,
-            [Description("Add Placements...")]
-            CreatePlacementsFolder,
-            [Description("Add New Environment Settings")]
-            CreateEnvironmentSetting
-        }
-
-        IEnumerable<object> IContextMenuCommandProvider.GetCommands(object context, object target)
-        {
-            foreach (Command command in System.Enum.GetValues(typeof(Command)))
-                yield return command;
-        }
-        #endregion
     }
 }

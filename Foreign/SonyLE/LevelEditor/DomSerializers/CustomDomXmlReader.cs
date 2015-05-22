@@ -52,7 +52,7 @@ namespace LevelEditor
                         // for converting relative uri to absolute.
                         if (node.Type == Schema.gameReferenceType.Type
                             || node.Type == Schema.gameObjectReferenceType.Type
-                            || node.Type == Schema.placementsCellReferenceType.Type)
+                            || LevelEditorXLE.Patches.IsReferenceType(node.Type))
                         {
                             string urStr = ur.ToString();
                             int fragIndex = urStr.LastIndexOf('#');

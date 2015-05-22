@@ -1,0 +1,26 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<xs:schema
+  elementFormDefault="qualified"
+  targetNamespace="gap"
+  xmlns="gap"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+  <xs:include schemaLocation="xlebasic.xsd"/>
+  <xs:include schemaLocation="xleplacements.xsd"/>
+  <xs:include schemaLocation="xleterrain.xsd"/>
+  <xs:include schemaLocation="xleenv.xsd"/>
+  <xs:include schemaLocation="gameobject.xsd"/>
+
+  <xs:complexType name="xleGameType">
+    <xs:complexContent>
+      <xs:extension base="gameType">
+        <xs:sequence>
+          <xs:element name="placements" type="placementsFolderType" minOccurs="0" maxOccurs="1" />
+          <xs:element name="terrain" type="terrainType" minOccurs="0" maxOccurs="1"/>
+          <xs:element name="environment" type="envSettingsFolderType" minOccurs="0" maxOccurs="1"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+</xs:schema>

@@ -31,8 +31,9 @@ namespace LevelEditor.NewItemPages
 
         public bool CanOperateOn(IAdaptable parent)
         {
-            return parent.Is<DomNodeAdapters.Game>()
-                || parent.Is<DomNodeAdapters.PlacementsFolder>();
+            // return parent.Is<DomNodeAdapters.Game>()
+            //     || parent.Is<DomNodeAdapters.PlacementsFolder>();
+            return false;
         }
 
         private class Config
