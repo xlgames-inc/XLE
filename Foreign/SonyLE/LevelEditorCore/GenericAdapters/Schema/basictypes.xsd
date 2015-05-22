@@ -1,0 +1,48 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<xs:schema
+  elementFormDefault="qualified"
+  targetNamespace="gap"
+	xmlns="gap"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  >
+
+  <xs:simpleType name="floatListType">
+    <xs:list itemType="xs:float"></xs:list>
+  </xs:simpleType>
+
+  <xs:simpleType name="vector2Type">
+    <xs:restriction base="floatListType">
+      <xs:length value="2"></xs:length>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="vector3Type">
+    <xs:restriction base="floatListType">
+      <xs:length value="3"></xs:length>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="vector4Type">
+    <xs:restriction base="floatListType">
+      <xs:length value="4"></xs:length>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="matrixType">
+    <xs:restriction base="floatListType">
+      <xs:length value="16"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="intListType">
+    <xs:list itemType="xs:int"></xs:list>
+  </xs:simpleType>
+
+  <xs:simpleType name="int2Type">
+    <xs:restriction base="intListType">
+      <xs:length value="2"></xs:length>
+    </xs:restriction>
+  </xs:simpleType>
+ 
+</xs:schema>
+

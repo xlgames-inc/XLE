@@ -106,9 +106,6 @@
     <Reference Include="Atf.IronPython">
       <HintPath>..\..\ATF\lib\Debug\Atf.IronPython.dll</HintPath>
     </Reference>
-    <Reference Include="LevelEditorCore">
-      <HintPath>..\..\LevelEditorCore\lib\Debug\LevelEditorCore.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.Composition" />
     <Reference Include="System.Core" />
@@ -165,6 +162,9 @@
     </ProjectReference>
     <ProjectReference Include="..\..\..\..\Utility\Project\Utility.vcxproj">
       <Project>{6b8011c1-2d1f-1ebb-b0ef-377b2e8e87ae}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\LevelEditorCore\LevelEditorCore.vs2010.csproj">
+      <Project>{8eaaa859-349e-4605-a0af-118017881212}</Project>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

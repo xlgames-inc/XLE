@@ -49,9 +49,6 @@
     <Reference Include="Atf.IronPython">
       <HintPath>..\ATF\lib\Debug\Atf.IronPython.dll</HintPath>
     </Reference>
-    <Reference Include="LevelEditorCore">
-      <HintPath>..\LevelEditorCore\lib\Debug\LevelEditorCore.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.Composition" />
     <Reference Include="System.Core" />
@@ -114,6 +111,10 @@
     <ProjectReference Include="..\..\TreeViewAdv-1.7.0.0\Aga.Controls\Aga.Controls.csproj">
       <Project>{e73bb233-d88b-44a7-a98f-d71ee158381d}</Project>
       <Name>Aga.Controls</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\LevelEditorCore\LevelEditorCore.vs2010.csproj">
+      <Project>{8eaaa859-349e-4605-a0af-118017881212}</Project>
+      <Name>LevelEditorCore.vs2010</Name>
     </ProjectReference>
     <ProjectReference Include="..\XLELayer\Project\XLELayer.vcxproj">
       <Project>{0556e85e-3cbd-4ac0-8842-01e1963312bd}</Project>

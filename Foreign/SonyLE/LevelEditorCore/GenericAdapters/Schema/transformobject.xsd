@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<xs:schema
+  elementFormDefault="qualified"
+  targetNamespace="gap"
+  xmlns="gap"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+  <xs:include schemaLocation="basictypes.xsd"/>
+
+  <xs:complexType name="transformObjectType">
+    <xs:attribute name="transform" type="matrixType" default="1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1"/>
+    <xs:attribute name="translate" type="vector3Type" default="0 0 0"/>
+    <xs:attribute name="rotate" type="vector3Type" default="0 0 0"/>
+    <xs:attribute name="scale" type="vector3Type" default="1 1 1"/>
+    <xs:attribute name="pivot" type="vector3Type" default="0 0 0"/>
+
+    <!-- see public enum TransformationTypes in LevelEditorCore -->
+    <xs:attribute name="transformationType" type="xs:integer" default="15"/>
+  </xs:complexType>
+
+</xs:schema>
