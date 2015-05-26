@@ -82,7 +82,7 @@ namespace LevelEditorXLE.Placements
         {
             get { return null; }
             set {
-                var resService = Globals.MEFContainer.GetExportedValue<XLELayer.IXLEAssetService>();
+                var resService = Globals.MEFContainer.GetExportedValue<IXLEAssetService>();
                 var referenceName = resService.StripExtension(resService.AsAssetName(value.Uri));
 
                 SetAttribute(PlcmtST.modelAttribute, referenceName);

@@ -15,7 +15,7 @@ using Sce.Atf.Controls.PropertyEditing;
 using LevelEditorCore;
 using Camera = Sce.Atf.Rendering.Camera;
 
-namespace RenderingInterop
+namespace LevelEditorXLE.Materials
 {
     [Export(typeof(ActiveMaterialContext))]
     [PartCreationPolicy(CreationPolicy.Shared)]
@@ -42,7 +42,7 @@ namespace RenderingInterop
 
     [Export(typeof(IManipulator))]
     [PartCreationPolicy(CreationPolicy.Shared)]
-    public class PickMaterialManipulator : Manipulator
+    public class PickMaterialManipulator : IManipulator
     {
         public PickMaterialManipulator()
         {
@@ -53,7 +53,7 @@ namespace RenderingInterop
                 Keys.None);
         }
 
-        public override bool Pick(ViewControl vc, Point scrPt) 
+        public bool Pick(ViewControl vc, Point scrPt) 
         {
             m_highlightMaterialGUID = ~0ul;
             m_highlight.Clear();
@@ -61,16 +61,20 @@ namespace RenderingInterop
             var ray = vc.GetWorldRay(scrPt);
             var endPt = ray.Origin + vc.Camera.FarZ * ray.Direction;
 
+            var nativeVC = vc as XLEBridgeUtils.NativeDesignControl;
+            if (nativeVC == null) return false;
+
             // do an intersection test here, and find the material under the cursor
             var pick = NativeInterop.Picking.RayPick(
-                null, ray, vc.Camera, vc.ClientSize, NativeInterop.Picking.Flags.Objects);
+                null, ray, vc.Camera, vc.ClientSize,
+                NativeInterop.Picking.Flags.Objects);
 
             if (pick.Length > 0)
             {
                 m_highlightMaterialGUID = pick[0].materialGuid;
                 m_highlight.Add(pick[0].documentId, pick[0].instanceId);
 
-                using (var placements = GameEngine.GetEditorSceneManager().GetPlacementsEditor())
+                using (var placements = nativeVC.SceneManager.GetPlacementsEditor())
                 {
                     m_highlight.DoFixup(placements);
                 }
@@ -79,17 +83,18 @@ namespace RenderingInterop
             return true;
         }
 
-        public override void OnBeginDrag() { }
-        public override void OnDragging(ViewControl vc, Point scrPt) {}
+        public void OnBeginDrag() { }
+        public void OnDragging(ViewControl vc, Point scrPt) {}
 
-        public override void OnEndDrag(ViewControl vc, Point scrPt) 
+        public void OnEndDrag(ViewControl vc, Point scrPt) 
         {
             var ray = vc.GetWorldRay(scrPt);
             var endPt = ray.Origin + vc.Camera.FarZ * ray.Direction;
 
             // do an intersection test here, and find the material under the cursor
             var pick = NativeInterop.Picking.RayPick(
-                null, ray, vc.Camera, vc.ClientSize, NativeInterop.Picking.Flags.Objects);
+                null, ray, vc.Camera, vc.ClientSize, 
+                NativeInterop.Picking.Flags.Objects);
 
             if (pick.Length > 0)
             {
@@ -102,13 +107,16 @@ namespace RenderingInterop
             m_highlight.Clear();
         }
 
-        public override void Render(ViewControl vc)
+        public void Render(ViewControl vc)
         {
             if (m_highlightMaterialGUID == ~0ul) return;
 
-            // render highlight
-            var sceneManager = GameEngine.GetEditorSceneManager();
-            using (var context = GameEngine.CreateRenderingContext())
+            // ---- ---- ---- ---- render highlight ---- ---- ---- ----
+            var nativeVC = vc as XLEBridgeUtils.NativeDesignControl;
+            if (nativeVC == null) return;
+
+            var sceneManager = nativeVC.SceneManager;
+            using (var context = XLEBridgeUtils.NativeDesignControl.CreateSimpleRenderingContext(null))
             {
                 using (var placements = sceneManager.GetPlacementsEditor())
                 {
@@ -119,9 +127,10 @@ namespace RenderingInterop
             }
         }
 
-        protected override Matrix4F GetManipulatorMatrix()
+        public ManipulatorInfo ManipulatorInfo
         {
-            return null;
+            get;
+            protected set;
         }
 
         [Import(AllowDefault = false)] private ActiveMaterialContext Context;

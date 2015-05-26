@@ -46,6 +46,7 @@
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.Composition" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Design" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml.Linq" />
@@ -55,10 +56,15 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AssetMan\AssetProperties.cs" />
     <Compile Include="Camera\XLECamera.cs" />
     <Compile Include="Environment\XLEEnvAdapter.cs" />
     <Compile Include="Game\GameExtensions.cs" />
+    <Compile Include="Materials\PickMaterialManipulator.cs" />
     <Compile Include="Placements\Converter.cs" />
+    <Compile Include="Placements\PlacementManipulator.cs" />
+    <Compile Include="Placements\ScatterPlaceManipulator.cs" />
+    <Compile Include="Services\Commands.cs" />
     <Compile Include="Services\Patches.cs" />
     <Compile Include="Services\ResourceConverter.cs" />
     <Compile Include="Services\Startup.cs" />
@@ -85,6 +91,7 @@
     <Compile Include="Placements\XLEPlacementsDocument.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Schema\Schema.cs" />
+    <Compile Include="Terrain\TerrainManipulator.cs" />
     <Compile Include="Terrain\XLETerrainGob.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -108,6 +115,10 @@
       <Project>{8eaaa859-349e-4605-a0af-118017881212}</Project>
       <Name>LevelEditorCore.vs2010</Name>
     </ProjectReference>
+    <ProjectReference Include="..\XLEBridgeUtils\Project\XLEBridgeUtils.vcxproj">
+      <Project>{7626c65e-8df3-42e0-b9cb-414561c50bc5}</Project>
+      <Name>XLEBridgeUtils</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Schema\xleenv.xsd">
@@ -126,6 +137,9 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Schema\xlegame.xsd">
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Materials\material.xsd">
       <SubType>Designer</SubType>
     </EmbeddedResource>
     <None Include="Schema\GenSchemaDef.bat" />

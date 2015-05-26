@@ -18,6 +18,7 @@ using Sce.Atf.Dom;
 using LevelEditorCore;
 
 using ControlsLibrary.MaterialEditor;
+using System.Reflection;
 
 namespace LevelEditorXLE.Materials
 {
@@ -38,7 +39,9 @@ namespace LevelEditorXLE.Materials
 
         void OnActiveMaterialChange()
         {
-            var env = new GUILayer.EnvironmentSettingsSet(RenderingInterop.GameEngine.GetEditorSceneManager());
+            // RenderingInterop.GameEngine.GetEditorSceneManager()
+            var sceneManager = XLEBridgeUtils.NativeManipulatorLayer.SceneManager;
+            var env = new GUILayer.EnvironmentSettingsSet(sceneManager);
             env.AddDefault();
             m_controls.EnvironmentSet = env;
             m_controls.PreviewModel = Tuple.Create(Context.PreviewModelName, Context.PreviewModelBinding); 
@@ -46,7 +49,7 @@ namespace LevelEditorXLE.Materials
         }
 
         [Import(AllowDefault = false)] private IControlHostService m_controlHostService;
-        [Import(AllowDefault = false)] private RenderingInterop.ActiveMaterialContext Context;
+        [Import(AllowDefault = false)] private ActiveMaterialContext Context;
         HierchicalMaterialControl m_controls;
     }
 
@@ -75,8 +78,7 @@ namespace LevelEditorXLE.Materials
             {
                 if (value != null)
                 {
-                    var schemaLoader = Globals.MEFContainer.GetExportedValue<XLELayer.MaterialSchemaLoader>();
-                    m_child.Bind(schemaLoader.CreatePropertyContext(value));
+                    m_child.Bind(m_materialSchemaLoader.CreatePropertyContext(value));
                 }
                 else
                 {
@@ -86,5 +88,26 @@ namespace LevelEditorXLE.Materials
         }
 
         private Sce.Atf.Controls.PropertyEditing.PropertyGrid m_child;
+        [Import(AllowDefault = false)]
+        private MaterialSchemaLoader m_materialSchemaLoader;
     }
+
+    [Export(typeof(MaterialSchemaLoader))]
+    [PartCreationPolicy(CreationPolicy.Shared)]
+    public class MaterialSchemaLoader : XLEBridgeUtils.DataDrivenPropertyContextHelper
+    {
+        public IPropertyEditingContext CreatePropertyContext(GUILayer.RawMaterial material)
+        {
+            var ps = new GUILayer.BasicPropertySource(
+                new XLEBridgeUtils.RawMaterialShaderConstants_GetAndSet(material),
+                GetPropertyDescriptors("gap:RawMaterial"));
+            return new XLEBridgeUtils.PropertyBridge(ps);
+        }
+
+        public MaterialSchemaLoader()
+        {
+            SchemaResolver = new ResourceStreamResolver(Assembly.GetExecutingAssembly(), ".");
+            Load("material.xsd");
+        }
+    };
 }

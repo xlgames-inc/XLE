@@ -37,14 +37,19 @@ namespace LevelEditorXLE
         public static TypeCatalog CreateTypeCatalog()
         {
             return new TypeCatalog(
-                typeof(XLELayer.TerrainManipulator),
-                typeof(XLELayer.PlacementManipulator),
                 typeof(Manipulators.XLEManipCtrlWin),
-                typeof(Materials.XLEMaterialInspector),
-                typeof(XLELayer.XLEAssetService),
                 typeof(XLECamera),
-                typeof(XLELayer.MaterialSchemaLoader),
-                typeof(Placements.ResourceConverter)
+                typeof(XLEAssetService), 
+
+                typeof(Terrain.TerrainManipulator),
+
+                typeof(Materials.XLEMaterialInspector),
+                typeof(Materials.MaterialSchemaLoader),
+                typeof(Materials.PickMaterialManipulator),
+
+                // typeof(Placements.PlacementManipulator),     (provides access to the native placements manipulators... but not really required)
+                typeof(Placements.ResourceConverter),
+                typeof(Placements.ScatterPlaceManipulator)
                 );
         }
     }

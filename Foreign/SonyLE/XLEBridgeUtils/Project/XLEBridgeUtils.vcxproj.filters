@@ -3,25 +3,14 @@
   <ItemGroup>
     <ClCompile Include="..\NativeDesignControl.cpp" />
     <ClCompile Include="..\MaterialLayer.cpp" />
-    <ClCompile Include="..\TerrainManipulator.cpp" />
     <ClCompile Include="..\NativeManipulators.cpp" />
-    <ClCompile Include="..\PlacementManipulator.cpp" />
     <ClCompile Include="..\PropertyDescriptorUtils.cpp" />
+    <ClCompile Include="..\XLELayerUtils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\ManipulatorOverlay.h" />
     <ClInclude Include="..\XLELayerUtils.h" />
     <ClInclude Include="..\NativeManipulators.h" />
     <ClInclude Include="..\PropertyDescriptorUtils.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <Filter Include="schemas">
-      <UniqueIdentifier>{624269bd-72c1-4ba0-90dd-1058398a53c9}</UniqueIdentifier>
-    </Filter>
-  </ItemGroup>
-  <ItemGroup>
-    <Xsd Include="..\Schemas\material.xsd">
-      <Filter>schemas</Filter>
-    </Xsd>
   </ItemGroup>
 </Project>

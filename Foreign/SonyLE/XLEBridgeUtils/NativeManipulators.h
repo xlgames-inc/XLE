@@ -35,6 +35,9 @@ namespace XLEBridgeUtils
         String^ _activeManipulator;
     };
 
+    /// <summary>Provides a bridge between the SCE level editor types and native manipulators<summary>
+    /// Accesses native IManipulator methods internally, but takes Sce level editor types as
+    /// method parameters.
     public ref class NativeManipulatorLayer
     {
     public:

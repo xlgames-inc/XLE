@@ -30,8 +30,7 @@ namespace LevelEditorXLE.Placements
                 m_config = value;
                 var props = TypeDescriptor.GetProperties(typeof(Config));
                 m_propertyGrid1.Bind(
-                    new XLELayer.BasicPropertyEditingContext(
-                        m_config, props));
+                    new XLEBridgeUtils.BasicPropertyEditingContext(m_config, props));
             }
         }
 

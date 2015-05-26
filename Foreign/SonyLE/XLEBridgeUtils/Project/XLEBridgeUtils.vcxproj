@@ -61,7 +61,6 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Link>
       <AdditionalDependencies>d3dx11.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <EmbedManagedResourceFile>../Schemas/material.xsd;%(EmbedManagedResourceFile)</EmbedManagedResourceFile>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -84,9 +83,8 @@
     <ClCompile Include="..\MaterialLayer.cpp" />
     <ClCompile Include="..\NativeDesignControl.cpp" />
     <ClCompile Include="..\NativeManipulators.cpp" />
-    <ClCompile Include="..\PlacementManipulator.cpp" />
     <ClCompile Include="..\PropertyDescriptorUtils.cpp" />
-    <ClCompile Include="..\TerrainManipulator.cpp" />
+    <ClCompile Include="..\XLELayerUtils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\ManipulatorOverlay.h" />
@@ -131,9 +129,6 @@
     <ProjectReference Include="..\..\LevelEditorCore\LevelEditorCore.vs2010.csproj">
       <Project>{8eaaa859-349e-4605-a0af-118017881212}</Project>
     </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <Xsd Include="..\Schemas\material.xsd" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

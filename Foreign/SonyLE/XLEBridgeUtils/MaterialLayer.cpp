@@ -10,33 +10,23 @@
 #include "../../RenderCore/Assets/Material.h"
 #include "../../Tools/GUILayer/MarshalString.h"
 
-using namespace Sce::Atf;
-using namespace Sce::Atf::Applications;
-using namespace Sce::Atf::Dom;
-using namespace System;
-using namespace System::Collections::Generic;
-using namespace System::Reflection;
-using namespace System::ComponentModel;
-using namespace System::ComponentModel::Composition;
-using namespace System::Xml;
-using namespace System::Xml::Schema;
+// using namespace Sce::Atf;
+// using namespace Sce::Atf::Applications;
+// using namespace Sce::Atf::Dom;
+// using namespace System;
+// using namespace System::Collections::Generic;
+// using namespace System::Reflection;
+// using namespace System::ComponentModel;
+// using namespace System::ComponentModel::Composition;
+// using namespace System::Xml;
+// using namespace System::Xml::Schema;
 
 namespace XLEBridgeUtils
 {
-    [Export(MaterialSchemaLoader::typeid)]
-    [PartCreationPolicy(CreationPolicy::Shared)]
-    public ref class MaterialSchemaLoader : public DataDrivenPropertyContextHelper
-    {
-    public:
-        IPropertyEditingContext^ CreatePropertyContext(GUILayer::RawMaterial^ material);
-
-        MaterialSchemaLoader()
-        {
-            SchemaResolver = gcnew ResourceStreamResolver(Assembly::GetExecutingAssembly(), ".");
-            Load("material.xsd");
-        }
-    };
-
+    /// <summary>Provides a IGetAndSetProperties interface for material objects</summary>
+    /// Used when attaching material objects to PropertyGrid type controls. Provides
+    /// dynamic properties that get stored as string name and typed value pairs.
+    /// Could be moved into GUILayer.dll ...?
     public ref class RawMaterialShaderConstants_GetAndSet : public GUILayer::IGetAndSetProperties
     {
     public:
@@ -124,12 +114,33 @@ namespace XLEBridgeUtils
         GUILayer::RawMaterial^ _material;
     };
 
-    IPropertyEditingContext^ MaterialSchemaLoader::CreatePropertyContext(GUILayer::RawMaterial^ material)
-    {
-        auto ps = gcnew GUILayer::BasicPropertySource(
-            gcnew RawMaterialShaderConstants_GetAndSet(material),
-            GetPropertyDescriptors("gap:RawMaterial"));
-        return gcnew PropertyBridge(ps);
-    }
+    // [Export(ActiveMaterialContext::typeid)]
+    // [PartCreationPolicy(CreationPolicy.Shared)]
+    // public ref class ActiveMaterialContext
+    // {
+    // public:
+    //     property System::String^ MaterialName 
+    //     { 
+    //         System::String^ get() { return m_materialName; }
+    //         void set(System::String^ value) 
+    //         {
+    //             if (value != m_materialName) 
+    //             {
+    //                 m_materialName = value; 
+    //                 OnChange();
+    //             }
+    //         }
+    //     }
+    //     property System::String^ PreviewModelName;
+    //     property uint64 PreviewModelBinding;
+    // 
+    //     delegate void OnChangeDelegate();
+    //     event OnChangeDelegate^ OnChange;
+    // 
+    //     ActiveMaterialContext() : m_materialName(nullptr) {}
+    // private:
+    //     System::String^ m_materialName;
+    // };
+    
 }
 

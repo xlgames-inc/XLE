@@ -162,10 +162,7 @@ namespace LevelEditor
 
             // <<XLE
             TypeCatalog xleExtensionTypes1 = new TypeCatalog(
-                typeof(RenderingInterop.MoveAcrossTerrainManipulator),
-                typeof(RenderingInterop.ScatterPlaceManipulator),
-                typeof(RenderingInterop.ActiveMaterialContext),
-                typeof(RenderingInterop.PickMaterialManipulator)
+                typeof(RenderingInterop.MoveAcrossTerrainManipulator)
                 );
             TypeCatalog xleExtensionTypes2 = LevelEditorXLE.Startup.CreateTypeCatalog();
             // XLE>>

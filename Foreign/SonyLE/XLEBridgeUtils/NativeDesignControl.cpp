@@ -35,7 +35,8 @@ namespace XLEBridgeUtils
     public ref class NativeDesignControl : public DesignViewControl
     {
     public:
-        static GUILayer::SimpleRenderingContext^ CreateSimpleRenderingContext(GUILayer::SavedRenderResources^ savedRes)
+        static GUILayer::SimpleRenderingContext^ CreateSimpleRenderingContext(
+            GUILayer::SavedRenderResources^ savedRes)
         {
             if (!ManipulatorOverlay::s_currentParsingContext) return nullptr;
 
@@ -116,6 +117,7 @@ namespace XLEBridgeUtils
         property GUILayer::EditorSceneManager^ SceneManager {
             GUILayer::EditorSceneManager^ get() { return _sceneManager; }
         }
+
         property GUILayer::TechniqueContextWrapper^ TechniqueContext {
             GUILayer::TechniqueContextWrapper^ get() { return _layerControl->GetTechniqueContext(); }
         }

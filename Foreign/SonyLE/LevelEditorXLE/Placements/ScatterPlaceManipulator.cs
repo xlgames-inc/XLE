@@ -15,11 +15,11 @@ using Sce.Atf.Controls.PropertyEditing;
 using LevelEditorCore;
 using Camera = Sce.Atf.Rendering.Camera;
 
-namespace RenderingInterop
+namespace LevelEditorXLE.Placements
 {
     [Export(typeof(IManipulator))]
     [PartCreationPolicy(CreationPolicy.Shared)]
-    public class ScatterPlaceManipulator : Manipulator
+    public class ScatterPlaceManipulator : IManipulator
     {
         public class ManipulatorSettings : IPropertyEditingContext
         {
@@ -69,7 +69,7 @@ namespace RenderingInterop
                                 "ModelName", "Model Name", category,
                                 "Name of the model to create and destroy",
                                 new Sce.Atf.Controls.PropertyEditing.FileUriEditor(),
-                                new PropertyEditing.AssetNameNoExtConverter()));
+                                new AssetNameNoExtConverter()));
                     }
 
                     return _propertyDescriptors;
@@ -90,24 +90,27 @@ namespace RenderingInterop
                 Keys.None);
         }
 
-        public override bool Pick(ViewControl vc, Point scrPt)
+        public bool Pick(ViewControl vc, Point scrPt)
         {
             m_hasHoverPt = HitTest(out m_hoverPt, scrPt, vc);
             return m_hasHoverPt;
         }
 
-        public override void OnBeginDrag() {}
-        public override void OnDragging(ViewControl vc, Point scrPt)
+        public void OnBeginDrag() {}
+        public void OnDragging(ViewControl vc, Point scrPt)
         {
             m_hasHoverPt = HitTest(out m_hoverPt, scrPt, vc);
             if (!m_hasHoverPt) return;
 
-            var game = (vc as NativeDesignControl).DesignView.Context.As<IGame>();
+            var nativeVC = vc as XLEBridgeUtils.NativeDesignControl;
+            if (nativeVC == null) return;
+
+            var game = nativeVC.DesignView.Context.As<IGame>();
             if (game == null) return;
 
             GUILayer.EditorInterfaceUtils.ScatterPlaceOperation op;
 
-            var sceneManager = GameEngine.GetEditorSceneManager();
+            var sceneManager = nativeVC.SceneManager;
             using (var editor = sceneManager.GetPlacementsEditor())
             {
                 using (var scene = sceneManager.GetIntersectionScene())
@@ -135,7 +138,7 @@ namespace RenderingInterop
             foreach (var d in resourceResolvers)
             {
                 resource = d.Resolve(new Uri(
-                    new Uri(Environment.CurrentDirectory + "\\"),
+                    new Uri(System.Environment.CurrentDirectory + "\\"),
                     ManipulatorContext.ModelName + ".dae"));
                 if (resource != null) break;
             }
@@ -161,13 +164,13 @@ namespace RenderingInterop
                 }
             }
         }
-        public override void OnEndDrag(ViewControl vc, Point scrPt) {}
+        public void OnEndDrag(ViewControl vc, Point scrPt) {}
 
-        public override void Render(ViewControl vc)
+        public void Render(ViewControl vc)
         {
             if (m_hasHoverPt)
             {
-                using (var context = GameEngine.CreateRenderingContext())
+                using (var context = XLEBridgeUtils.NativeDesignControl.CreateSimpleRenderingContext(null))
                 {
                     GUILayer.RenderingUtil.RenderCylinderHighlight(
                         context, XLEBridgeUtils.Utils.AsVector3(m_hoverPt), ManipulatorContext.Radius);
@@ -175,15 +178,16 @@ namespace RenderingInterop
             }
         }
 
-        protected override Matrix4F GetManipulatorMatrix()
-        {
-            return null;
-        }
-
         public ManipulatorSettings ManipulatorContext
         {
             get;
             private set;
+        }
+
+        public ManipulatorInfo ManipulatorInfo
+        {
+            get;
+            protected set;
         }
 
         private Vec3F m_hoverPt;

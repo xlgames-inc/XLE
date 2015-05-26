@@ -25,6 +25,15 @@ namespace ControlsLibrary
             }
         }
 
+        public void BuildAssetList(GUILayer.PendingSaveList pendingAssetList)
+        {
+            // some clients cannot construct "GUILayer.DivergentAssetList"
+            // (because that requires adding a reference to the Aga.Controls library)
+            // So this is provided for convenience to avoid that extra dependancy
+            AssetList = new GUILayer.DivergentAssetList(
+                GUILayer.EngineDevice.GetInstance(), pendingAssetList);
+        }
+
         private void _tree_SelectionChanged(object sender, EventArgs e)
         {
             var selected = _assetList.SelectedNode.Tag as GUILayer.AssetItem;

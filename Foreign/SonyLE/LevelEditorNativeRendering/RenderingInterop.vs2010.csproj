@@ -52,7 +52,6 @@
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.Composition" />
     <Reference Include="System.Core" />
-    <Reference Include="System.Design" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Drawing.Design" />
     <Reference Include="System.Windows.Forms" />
@@ -71,8 +70,6 @@
     <Compile Include="Manipulators\ExtensionManipulator.cs" />
     <Compile Include="Manipulators\Manipulator.cs" />
     <Compile Include="Manipulators\MoveAcrossTerrainManipulator.cs" />
-    <Compile Include="Manipulators\PickMaterialManipulator.cs" />
-    <Compile Include="Manipulators\ScatterPlaceManipulator.cs" />
     <Compile Include="Manipulators\TranslatePivotManipulator.cs" />
     <Compile Include="Manipulators\RotateManipulator.cs" />
     <Compile Include="Manipulators\ScaleManipulator.cs" />
@@ -91,7 +88,6 @@
     <Compile Include="NativeInterop\RenderState.cs" />
     <Compile Include="NativeInterop\Structs.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="PropertyEditing\AssetProperties.cs" />
     <Compile Include="Resolvers\AssetResolver.cs" />
     <Compile Include="Resolvers\ResourcePreview.cs" />
     <Compile Include="Resolvers\TextureThumbnailResolver.cs" />
@@ -103,10 +99,6 @@
     <ProjectReference Include="..\..\..\Tools\GUILayer\Project\GUILayer.vcxproj">
       <Project>{e1e9a4c1-97a8-44b7-8279-d287313c5b6b}</Project>
       <Name>GUILayer</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\TreeViewAdv-1.7.0.0\Aga.Controls\Aga.Controls.csproj">
-      <Project>{e73bb233-d88b-44a7-a98f-d71ee158381d}</Project>
-      <Name>Aga.Controls</Name>
     </ProjectReference>
     <ProjectReference Include="..\LevelEditorCore\LevelEditorCore.vs2010.csproj">
       <Project>{8eaaa859-349e-4605-a0af-118017881212}</Project>

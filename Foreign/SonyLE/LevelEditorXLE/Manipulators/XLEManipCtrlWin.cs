@@ -43,7 +43,7 @@ namespace LevelEditorXLE.Manipulators
                 // way to get the behaviour we want.
             var manipulators = Globals.MEFContainer.GetExportedValues<IManipulator>();
             foreach (var m in manipulators) {
-                var t = m as XLELayer.TerrainManipulator;
+                var t = m as Terrain.TerrainManipulator;
                 if (t!=null) {
                     var terrainCtrls = new XLENativeManipControls();
                     terrainCtrls.SetActiveContext(t.ManipulatorContext);
@@ -54,7 +54,7 @@ namespace LevelEditorXLE.Manipulators
                     m_controls.m_tabControl.TabPages.Add(terrainPage);
                 }
 
-                var s = m as RenderingInterop.ScatterPlaceManipulator;
+                var s = m as Placements.ScatterPlaceManipulator;
                 if (s != null) {
                     var properties = new Sce.Atf.Controls.PropertyEditing.PropertyGrid();
                     properties.Dock = DockStyle.Fill;
