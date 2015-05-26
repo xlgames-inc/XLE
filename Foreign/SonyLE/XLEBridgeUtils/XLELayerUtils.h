@@ -8,7 +8,7 @@
 
 #pragma warning(disable:4564) //  method '.ctor' of class 'Sce::Atf::ItemChangedEventArgs' defines unsupported default parameter 'reloaded'
 
-#include "../../Math/Vector.h"
+#include "../../../Math/Vector.h"
 
 using namespace System;
 

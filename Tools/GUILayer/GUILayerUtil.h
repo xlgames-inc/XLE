@@ -51,6 +51,7 @@ namespace GUILayer
             std::shared_ptr<SceneEngine::PlacementsEditor> placements,
             std::initializer_list<std::shared_ptr<SceneEngine::IIntersectionTester>> extraTesters);
         ~IntersectionTestSceneWrapper();
+        !IntersectionTestSceneWrapper();
 	};
 
     public ref class PlacementsEditorWrapper
@@ -61,5 +62,6 @@ namespace GUILayer
 		SceneEngine::PlacementsEditor& GetNative();
 		PlacementsEditorWrapper(std::shared_ptr<SceneEngine::PlacementsEditor> scene);
         ~PlacementsEditorWrapper();
+        !PlacementsEditorWrapper();
 	};
 }

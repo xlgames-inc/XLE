@@ -69,6 +69,7 @@
     <Compile Include="GameEngineProxy\ResourceInfo.cs" />
     <Compile Include="GenericAdapters\AdapterExtensions.cs" />
     <Compile Include="GenericAdapters\IResolveable.cs" />
+    <Compile Include="Interfaces\INativeIdMapping.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Annotations\Annotations.cs" />
     <Compile Include="Commands\DesignViewCommands.cs" />

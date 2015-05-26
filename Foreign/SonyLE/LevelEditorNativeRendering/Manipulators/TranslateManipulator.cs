@@ -158,7 +158,7 @@ namespace RenderingInterop
                         // find hit record.
                         foreach (var hit in hits)
                         {
-                            if (m_snapFilter.CanSnapTo(node, GameEngine.GetAdapterFromId(hit.documentId, hit.instanceId)))
+                            if (m_snapFilter.CanSnapTo(node, m_nativeIdMapping.GetAdapter(hit.documentId, hit.instanceId)))
                             {
                                 target = hit;
                                 cansnap = true;
@@ -295,6 +295,9 @@ namespace RenderingInterop
         [Import(AllowDefault=false)]
         private ISnapFilter m_snapFilter;
 
+        [Import(AllowDefault = false)]
+        private INativeIdMapping m_nativeIdMapping;
+
         private ManipulatorActiveOperation m_activeOp = null;
         private TranslatorControl m_translatorControl;
         private HitRegion m_hitRegion = HitRegion.None;        
@@ -303,6 +306,6 @@ namespace RenderingInterop
         private Vec3F[] m_originalRotations;                
         private Keys m_snapGridKey = Keys.Control;
         private Keys m_snapGeometryKey = Keys.Shift;
-        private Keys m_duplicateKey = Keys.Control | Keys.Shift;              
-    }    
+        private Keys m_duplicateKey = Keys.Control | Keys.Shift;
+    }
 }

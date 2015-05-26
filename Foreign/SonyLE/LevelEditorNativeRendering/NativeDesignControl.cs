@@ -4,6 +4,7 @@ using System;
 using System.Windows.Forms;
 using System.Drawing;
 using System.Collections.Generic;
+using System.ComponentModel.Composition;
 using LevelEditorCore.VectorMath;
 using Sce.Atf;
 using Sce.Atf.Adaptation;
@@ -17,6 +18,7 @@ using ViewTypes = Sce.Atf.Rendering.ViewTypes;
 
 namespace RenderingInterop
 {
+    [PartCreationPolicy(CreationPolicy.Shared)]
     public class NativeDesignControl : XLEBridgeUtils.NativeDesignControl
     {
         public NativeDesignControl(DesignView designView, GUILayer.EditorSceneManager sceneManager, GUILayer.ObjectSet selection) :
@@ -69,26 +71,20 @@ namespace RenderingInterop
             {// frustum pick                
                 RectangleF rect = MakeRect(FirstMousePoint, CurrentMousePoint);
                 var frustum = XLEBridgeUtils.Utils.MakeFrustumMatrix(Camera, rect, ClientSize);
-                using (var techContext = TechniqueContext)
-                {
-                    hits = XLEBridgeUtils.Picking.FrustumPick(
-                        GameEngine.GetEngineDevice(),
-                        SceneManager, TechniqueContext, 
-                        frustum, Camera, ClientSize, 
-                        XLEBridgeUtils.Picking.Flags.Objects | XLEBridgeUtils.Picking.Flags.Helpers);
-                }
+                hits = XLEBridgeUtils.Picking.FrustumPick(
+                    GameEngine.GetEngineDevice(),
+                    SceneManager, TechniqueContext, 
+                    frustum, Camera, ClientSize, 
+                    XLEBridgeUtils.Picking.Flags.Objects | XLEBridgeUtils.Picking.Flags.Helpers);
             }
             else
             {// ray pick
                 Ray3F rayW = GetWorldRay(CurrentMousePoint);
-                using (var techContext = TechniqueContext)
-                {
-                    hits = XLEBridgeUtils.Picking.RayPick(
-                        GameEngine.GetEngineDevice(),
-                        SceneManager, TechniqueContext, 
-                        rayW, Camera, ClientSize,
-                        XLEBridgeUtils.Picking.Flags.Terrain | XLEBridgeUtils.Picking.Flags.Objects | XLEBridgeUtils.Picking.Flags.Helpers);
-                }
+                hits = XLEBridgeUtils.Picking.RayPick(
+                    GameEngine.GetEngineDevice(),
+                    SceneManager, TechniqueContext, 
+                    rayW, Camera, ClientSize,
+                    XLEBridgeUtils.Picking.Flags.Terrain | XLEBridgeUtils.Picking.Flags.Objects | XLEBridgeUtils.Picking.Flags.Helpers);
             }
 
             if (hits==null) return new List<object>();
@@ -109,7 +105,8 @@ namespace RenderingInterop
             // build 'path' objects for each hit record.
             foreach (var hit in uniqueHits)
             {
-                NativeObjectAdapter nobj = GameEngine.GetAdapterFromId(hit.documentId, hit.instanceId);
+                var nativeIdMapping = Globals.MEFContainer.GetExportedValue<INativeIdMapping>();
+                var nobj = nativeIdMapping.GetAdapter(hit.documentId, hit.instanceId).As<DomNodeAdapter>();
                 if (nobj == null) continue;
 
                 DomNode dom = nobj.DomNode;
@@ -201,7 +198,7 @@ namespace RenderingInterop
                 SceneManager, TechniqueContext,
                 GetWorldRay(clientPt), Camera, ClientSize, XLEBridgeUtils.Picking.Flags.Terrain);
 
-            if (pick.Length > 0)
+            if (pick != null && pick.Length > 0)
             {
                 result = pick[0].hitPt;
                 return true;

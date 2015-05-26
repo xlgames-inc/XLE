@@ -69,7 +69,7 @@ namespace LevelEditorXLE.Terrain
         public void Shutdown()
         {
             if (_nativeManip != null) { _nativeManip.Dispose(); _nativeManip = null; }
-            if (_manipContext != null) { _manipContext.Dispose(); _nativeManip = null; }
+            if (_manipContext != null) { _manipContext.Dispose(); _manipContext = null; }
         }
 
         TerrainManipulator()
@@ -93,7 +93,7 @@ namespace LevelEditorXLE.Terrain
         {
             if (disposing) {
                 if (_nativeManip != null) { _nativeManip.Dispose(); _nativeManip = null; }
-                if (_manipContext != null) { _manipContext.Dispose(); _nativeManip = null; }
+                if (_manipContext != null) { _manipContext.Dispose(); _manipContext = null; }
             }
         }
 

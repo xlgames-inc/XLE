@@ -68,7 +68,7 @@ namespace LevelEditorXLE.Materials
             var pick = XLEBridgeUtils.Picking.RayPick(
                 vc, ray, XLEBridgeUtils.Picking.Flags.Objects);
 
-            if (pick.Length > 0)
+            if (pick != null && pick.Length > 0)
             {
                 m_highlightMaterialGUID = pick[0].materialGuid;
                 m_highlight.Add(pick[0].documentId, pick[0].instanceId);
@@ -94,7 +94,7 @@ namespace LevelEditorXLE.Materials
             var pick = XLEBridgeUtils.Picking.RayPick(
                 vc, ray, XLEBridgeUtils.Picking.Flags.Objects);
 
-            if (pick.Length > 0)
+            if (pick != null && pick.Length > 0)
             {
                 Context.PreviewModelName = pick[0].modelName;
                 Context.PreviewModelBinding = pick[0].materialGuid; 

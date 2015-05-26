@@ -27,9 +27,10 @@ namespace RenderingInterop
     /// Exposes a minimum set of game-engine functionalities 
     /// for LevelEditor purpose.</summary>    
     [Export(typeof(IGameEngineProxy))]
+    [Export(typeof(INativeIdMapping))]
     [PartCreationPolicy(CreationPolicy.Shared)]
     [SuppressUnmanagedCodeSecurity()]
-    public unsafe class GameEngine : DisposableObject, IGameEngineProxy
+    public unsafe class GameEngine : DisposableObject, IGameEngineProxy, INativeIdMapping
     {
         public GameEngine()
         {
@@ -344,12 +345,11 @@ namespace RenderingInterop
             size = sizeof(float) * 6;
         }
 
-        public static NativeObjectAdapter GetAdapterFromId(ulong documentId, ulong instanceId)
+        public IAdaptable GetAdapter(ulong nativeDocId, ulong nativeObjectId)
         {
             NativeObjectAdapter result;
-            if (s_idToDomNode.TryGetValue(Tuple.Create(documentId, instanceId), out result)) {
+            if (s_idToDomNode.TryGetValue(Tuple.Create(nativeDocId, nativeObjectId), out result))
                 return result;
-            }
             return null;
         }
 

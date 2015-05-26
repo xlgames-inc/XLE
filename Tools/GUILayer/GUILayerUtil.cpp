@@ -67,6 +67,11 @@ namespace GUILayer
         _scene.reset();
     }
 
+    IntersectionTestSceneWrapper::!IntersectionTestSceneWrapper()
+    {
+        System::Diagnostics::Debug::Assert(false, "IntersectionTestSceneWrapper finalizer used");
+    }
+
 	SceneEngine::IntersectionTestScene& IntersectionTestSceneWrapper::GetNative()
 	{
 		return *_scene.get();
@@ -81,6 +86,11 @@ namespace GUILayer
     PlacementsEditorWrapper::~PlacementsEditorWrapper()
     {
         _editor.reset();
+    }
+
+    PlacementsEditorWrapper::!PlacementsEditorWrapper()
+    {
+        System::Diagnostics::Debug::Assert(false, "PlacementsEditorWrapper finalizer used");
     }
 
 	SceneEngine::PlacementsEditor& PlacementsEditorWrapper::GetNative()

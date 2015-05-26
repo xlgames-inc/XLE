@@ -77,7 +77,9 @@ namespace RenderingInterop
             sel.Clear();
             foreach (var adapter in nativeObjects)
                 sel.Add(adapter.DocumentId, adapter.InstanceId);
-            sel.DoFixup(GameEngine.GetEditorSceneManager().GetPlacementsEditor());
+
+            using (var placements = GameEngine.GetEditorSceneManager().GetPlacementsEditor())
+                sel.DoFixup(placements);
 
             InvalidateViews();
         }

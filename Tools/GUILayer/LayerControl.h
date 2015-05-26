@@ -40,6 +40,7 @@ namespace GUILayer
         !LayerControl();
     protected:
         clix::auto_ptr<LayerControlPimpl> _pimpl;
+        TechniqueContextWrapper^ _techContextWrapper;
 
         virtual void Render(RenderCore::IThreadContext&, IWindowRig&) override;
     };

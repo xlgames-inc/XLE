@@ -312,7 +312,7 @@ namespace GUILayer
 
     TechniqueContextWrapper^ LayerControl::GetTechniqueContext()
     {
-        return gcnew TechniqueContextWrapper(_pimpl->_globalTechniqueContext);
+        return _techContextWrapper;
     }
 
     LayerControl::LayerControl(Control^ control)
@@ -321,9 +321,14 @@ namespace GUILayer
         _pimpl.reset(new LayerControlPimpl());
         _pimpl->_stdPlugin = std::make_shared<SceneEngine::LightingParserStandardPlugin>();
         _pimpl->_globalTechniqueContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
+        _techContextWrapper = gcnew TechniqueContextWrapper(_pimpl->_globalTechniqueContext);
     }
 
-    LayerControl::~LayerControl() {}
+    LayerControl::~LayerControl() 
+    {
+        delete _techContextWrapper;
+    }
+
     LayerControl::!LayerControl()
     {
         System::Diagnostics::Debug::Assert(false, "Non deterministic delete of LayerControl");

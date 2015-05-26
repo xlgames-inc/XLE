@@ -123,15 +123,14 @@ namespace LevelEditorXLE.Placements
                 }
             }
 
-            System.Diagnostics.Debug.Assert(false, "No way to access GameEngine.GetAdapterFromId from LevelEditorXLE!");
-            // foreach (var d in op._toBeDeleted)
-            // {
-            //     var adapter = GameEngine.GetAdapterFromId(d.Item1, d.Item2);
-            //     if (adapter != null)
-            //     {
-            //         adapter.DomNode.RemoveFromParent();
-            //     }
-            // }
+            foreach (var d in op._toBeDeleted)
+            {
+                var adapter = m_nativeIdMapping.GetAdapter(d.Item1, d.Item2).As<DomNodeAdapter>();
+                if (adapter != null)
+                {
+                    adapter.DomNode.RemoveFromParent();
+                }
+            }
 
             var resourceResolvers = Globals.MEFContainer.GetExportedValues<IResourceResolver>();
             IResource resource = null;
@@ -202,7 +201,7 @@ namespace LevelEditorXLE.Placements
             var pick = XLEBridgeUtils.Picking.RayPick(
                 vc, ray, XLEBridgeUtils.Picking.Flags.Terrain);
 
-            if (pick.Length > 0)
+            if (pick != null && pick.Length > 0)
             {
                 result = pick[0].hitPt;
                 return true;
@@ -211,6 +210,9 @@ namespace LevelEditorXLE.Placements
             result = new Vec3F(0.0f, 0.0f, 0.0f);
             return false;
         }
+
+        [Import(AllowDefault = false)]
+        private INativeIdMapping m_nativeIdMapping;
     }
 }
 

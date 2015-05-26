@@ -46,6 +46,7 @@ namespace LevelEditorXLE
                 typeof(Materials.XLEMaterialInspector),
                 typeof(Materials.MaterialSchemaLoader),
                 typeof(Materials.PickMaterialManipulator),
+                typeof(Materials.ActiveMaterialContext),
 
                 // typeof(Placements.PlacementManipulator),     (provides access to the native placements manipulators... but not really required)
                 typeof(Placements.ResourceConverter),

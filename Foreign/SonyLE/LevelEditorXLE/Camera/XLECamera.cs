@@ -71,7 +71,7 @@ namespace LevelEditorXLE
                         XLEBridgeUtils.Utils.GetTechniqueContext(c),
                         c.GetWorldRay(e.Location), Camera, c.ClientSize,
                         XLEBridgeUtils.Picking.Flags.AllWorldObjects);
-                    if (hit.Length > 0)
+                    if (hit != null && hit.Length > 0)
                     {
                         Vec3F transformedPt;
                         Camera.AxisSystem.Transform(hit[0].hitPt, out transformedPt);

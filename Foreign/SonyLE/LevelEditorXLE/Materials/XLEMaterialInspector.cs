@@ -78,7 +78,8 @@ namespace LevelEditorXLE.Materials
             {
                 if (value != null)
                 {
-                    m_child.Bind(m_materialSchemaLoader.CreatePropertyContext(value));
+                    var schemaLoader = Globals.MEFContainer.GetExportedValue<MaterialSchemaLoader>();
+                    m_child.Bind(schemaLoader.CreatePropertyContext(value));
                 }
                 else
                 {
@@ -88,8 +89,6 @@ namespace LevelEditorXLE.Materials
         }
 
         private Sce.Atf.Controls.PropertyEditing.PropertyGrid m_child;
-        [Import(AllowDefault = false)]
-        private MaterialSchemaLoader m_materialSchemaLoader;
     }
 
     [Export(typeof(MaterialSchemaLoader))]
@@ -106,7 +105,7 @@ namespace LevelEditorXLE.Materials
 
         public MaterialSchemaLoader()
         {
-            SchemaResolver = new ResourceStreamResolver(Assembly.GetExecutingAssembly(), ".");
+            SchemaResolver = new ResourceStreamResolver(Assembly.GetExecutingAssembly(), "LevelEditorXLE.Materials");
             Load("material.xsd");
         }
     };
