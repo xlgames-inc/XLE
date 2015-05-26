@@ -67,7 +67,7 @@ namespace LevelEditor
                 subDoc.Save(subDoc.Uri, schemaLoader);                
             }
 
-            LevelEditorXLE.Patches.SaveReferencedDocuments(this);
+            LevelEditorXLE.Patches.SaveReferencedDocuments(this, schemaLoader);
 
             Dirty = false;
         }

@@ -6,6 +6,7 @@ using System.ComponentModel.Composition;
 using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
+using System.Threading;
 
 using Sce.Atf;
 using Sce.Atf.Applications;
@@ -36,6 +37,7 @@ namespace LevelEditorCore
 
             if (m_watcher == null)
             {
+                m_uiThreadContext = SynchronizationContext.Current;
                 m_watcher = new FileSystemWatcher();
                 m_watcher.SynchronizingObject = m_mainForm;
                 m_watcher.IncludeSubdirectories = true;
@@ -44,6 +46,12 @@ namespace LevelEditorCore
                 m_watcher.Deleted += Watcher_FileChanged;
                 m_watcher.Renamed += Watcher_Renamed;
 
+                    // We need to shut down the watcher before the dispose phase begins
+                    // this is because file events can occur while disposing other MEF objects
+                    // (eg, flushing out a cached file). When this happens, we can get a
+                    // callback that can end up accessing MEF objects that have already
+                    // been disposed.
+                Application.ApplicationExit += ShutdownWatcher;
             }
 
             IFileSystemResourceFolder rootDirectory = rootFolder as IFileSystemResourceFolder;
@@ -79,6 +87,17 @@ namespace LevelEditorCore
 
         private void Watcher_Renamed(object sender, RenamedEventArgs e)
         {
+                // this function interacts with m_treeControlAdapter in way that
+                // might not be thread safe. We can push this functionality into the
+                // ui thread, so we don't get any race conditions while rendering or
+                // shutting down.
+            if (m_uiThreadContext != SynchronizationContext.Current)
+            {
+                m_uiThreadContext.Post(delegate { Watcher_Renamed(sender, e); }, null);
+                return;
+            }
+
+
             var attr = File.GetAttributes(e.FullPath);
             bool isDirectory = (attr & FileAttributes.Directory) == FileAttributes.Directory;            
             IFileSystemResourceFolder folder = m_treeContext.GetLastSelected<IFileSystemResourceFolder>();
@@ -104,7 +123,17 @@ namespace LevelEditorCore
         /// <param name="sender"></param>
         /// <param name="e"></param>
         private void Watcher_FileChanged(object sender, FileSystemEventArgs e)
-        {                       
+        {
+                // this function interacts with m_treeControlAdapter in way that
+                // might not be thread safe. We can push this functionality into the
+                // ui thread, so we don't get any race conditions while rendering or
+                // shutting down.
+            if (m_uiThreadContext != SynchronizationContext.Current)
+            {
+                m_uiThreadContext.Post(delegate { Watcher_FileChanged(sender, e); }, null);
+                return;
+            }
+
             IFileSystemResourceFolder folder = m_treeContext.GetLastSelected<IFileSystemResourceFolder>();
             string selectedFolder = folder == null ? string.Empty : GetNormalizedName(folder.FullPath);
             string parentDirName = Path.GetDirectoryName(e.FullPath);
@@ -144,6 +173,23 @@ namespace LevelEditorCore
                 ? string.Empty : path.ToLower().Replace('\\', '_').Replace('/', '_').TrimEnd('_');            
             return result;
         }
+
+        private void ShutdownWatcher(object sender, EventArgs args)
+        {
+            if (m_watcher != null)
+            {
+                    // If we're going to call Dispose(), there may be no
+                    // point in unbinding the events like this... But just
+                    // for completeness, let's undo the startup operations.
+                m_watcher.Renamed -= Watcher_Renamed;
+                m_watcher.Deleted -= Watcher_FileChanged;
+                m_watcher.Deleted -= Watcher_FileChanged;
+                m_watcher.Dispose();
+                m_watcher = null;
+            }
+            Application.ApplicationExit -= ShutdownWatcher;
+        }
+
         /// <summary>
         /// Gets Uri of last selected or null
         /// </summary>
@@ -688,6 +734,7 @@ namespace LevelEditorCore
         [Import(AllowDefault = false)]
         private ThumbnailService m_thumbnailService;
 
+        private SynchronizationContext m_uiThreadContext;
 
         private FileSystemWatcher m_watcher;
 
