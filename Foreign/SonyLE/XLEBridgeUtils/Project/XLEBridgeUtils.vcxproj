@@ -83,6 +83,7 @@
     <ClCompile Include="..\MaterialLayer.cpp" />
     <ClCompile Include="..\NativeDesignControl.cpp" />
     <ClCompile Include="..\NativeManipulators.cpp" />
+    <ClCompile Include="..\Picking.cpp" />
     <ClCompile Include="..\PropertyDescriptorUtils.cpp" />
     <ClCompile Include="..\XLELayerUtils.cpp" />
   </ItemGroup>

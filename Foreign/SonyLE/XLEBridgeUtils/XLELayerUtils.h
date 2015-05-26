@@ -44,6 +44,9 @@ namespace XLEBridgeUtils
             Sce::Atf::Rendering::Camera^ camera,
             System::Drawing::RectangleF rectangle,
             System::Drawing::Size viewportSize);
+
+        static GUILayer::EditorSceneManager^ GetSceneManager(LevelEditorCore::ViewControl^ vc);
+        static GUILayer::TechniqueContextWrapper^ GetTechniqueContext(LevelEditorCore::ViewControl^ vc);
     };
 
     public ref class DomChangeInspector

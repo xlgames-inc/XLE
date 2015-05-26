@@ -51,14 +51,26 @@ namespace LevelEditorXLE
             if (Control.ModifierKeys.HasFlag(Keys.Control) && e.Button == MouseButtons.Left)
             {
                 // "control + l click" repositions the "focus" point of the camera
-                // this is critical when we want to be able to rotate around a specific point in the world
+                //      -- it's just incredibly useful to be able to manually set the point, because it
+                //          allows the user to specify both the speed of the movement of the camera and
+                //          the orbit of the camera in a natural way
+                // We could expand "ActiveControlScheme" to allow this key binding to be rebound...
+                // but just using fixed binding for now.
 
-                    // note -- have to find a good way to fit this pick operation into the architecture!
                 ViewControl c = sender as ViewControl;
                 if (c != null) {
-                    var hit = RenderingInterop.NativeInterop.Picking.RayPick(
-                        null, c.GetWorldRay(e.Location), Camera, c.ClientSize,
-                        RenderingInterop.NativeInterop.Picking.Flags.AllWorldObjects);
+                        // We can use XLEBridgeUtils to do the ray test. This will
+                        // execute the native code (which in turn performs the intersection
+                        // on the GPU)
+                        // Note that we're using the more complex picking interface because
+                        // we want to use explicitly pass "Camera" (rather than
+                        // getting it from the view control)
+                    var hit = XLEBridgeUtils.Picking.RayPick(
+                        GUILayer.EngineDevice.GetInstance(),
+                        XLEBridgeUtils.Utils.GetSceneManager(c),
+                        XLEBridgeUtils.Utils.GetTechniqueContext(c),
+                        c.GetWorldRay(e.Location), Camera, c.ClientSize,
+                        XLEBridgeUtils.Picking.Flags.AllWorldObjects);
                     if (hit.Length > 0)
                     {
                         Vec3F transformedPt;

@@ -186,5 +186,21 @@ namespace XLEBridgeUtils
     : _designView(designView), _viewControl(viewControl) {}
     ManipulatorOverlay::~ManipulatorOverlay() {}
     ManipulatorOverlay::!ManipulatorOverlay() {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    GUILayer::EditorSceneManager^ Utils::GetSceneManager(LevelEditorCore::ViewControl^ vc)
+    {
+        auto native = dynamic_cast<NativeDesignControl^>(vc);
+        if (!native) return nullptr;
+        return native->SceneManager;
+    }
+
+    GUILayer::TechniqueContextWrapper^ Utils::GetTechniqueContext(LevelEditorCore::ViewControl^ vc)
+    {
+        auto native = dynamic_cast<NativeDesignControl^>(vc);
+        if (!native) return nullptr;
+        return native->TechniqueContext;
+    }
 }
 

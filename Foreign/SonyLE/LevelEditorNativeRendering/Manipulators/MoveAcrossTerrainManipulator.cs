@@ -236,10 +236,8 @@ namespace RenderingInterop
 
         private bool CalculateTerrainIntersection(ViewControl vc, Ray3F ray, GUILayer.IntersectionTestSceneWrapper testScene, out Vec3F result)
         {
-            var pick = NativeInterop.Picking.RayPick(
-                null, ray, vc.Camera, vc.ClientSize, NativeInterop.Picking.Flags.Terrain);
-
-            if (pick.Length > 0)
+            var pick = XLEBridgeUtils.Picking.RayPick(vc, ray, XLEBridgeUtils.Picking.Flags.Terrain);
+            if (pick != null && pick.Length > 0)
             {
                 result = pick[0].hitPt;
                 return true;

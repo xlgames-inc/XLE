@@ -63,8 +63,7 @@ namespace RenderingInterop
             bool multiSelect = DragOverThreshold;
             List<object> paths = new List<object>();
 
-            HitRecord[] hits;
-
+            XLEBridgeUtils.Picking.HitRecord[] hits;
 
             if(multiSelect)
             {// frustum pick                
@@ -72,9 +71,11 @@ namespace RenderingInterop
                 var frustum = XLEBridgeUtils.Utils.MakeFrustumMatrix(Camera, rect, ClientSize);
                 using (var techContext = TechniqueContext)
                 {
-                    hits = NativeInterop.Picking.FrustumPick(
-                        techContext, frustum,
-                        Camera, ClientSize, NativeInterop.Picking.Flags.Objects | NativeInterop.Picking.Flags.Helpers);
+                    hits = XLEBridgeUtils.Picking.FrustumPick(
+                        GameEngine.GetEngineDevice(),
+                        SceneManager, TechniqueContext, 
+                        frustum, Camera, ClientSize, 
+                        XLEBridgeUtils.Picking.Flags.Objects | XLEBridgeUtils.Picking.Flags.Helpers);
                 }
             }
             else
@@ -82,9 +83,11 @@ namespace RenderingInterop
                 Ray3F rayW = GetWorldRay(CurrentMousePoint);
                 using (var techContext = TechniqueContext)
                 {
-                    hits = NativeInterop.Picking.RayPick(
-                        techContext, rayW, Camera, ClientSize,
-                        NativeInterop.Picking.Flags.Terrain | NativeInterop.Picking.Flags.Objects | NativeInterop.Picking.Flags.Helpers);
+                    hits = XLEBridgeUtils.Picking.RayPick(
+                        GameEngine.GetEngineDevice(),
+                        SceneManager, TechniqueContext, 
+                        rayW, Camera, ClientSize,
+                        XLEBridgeUtils.Picking.Flags.Terrain | XLEBridgeUtils.Picking.Flags.Objects | XLEBridgeUtils.Picking.Flags.Helpers);
                 }
             }
 
@@ -92,19 +95,19 @@ namespace RenderingInterop
 
             // create unique list of hits
             HashSet<ulong> instanceSet = new HashSet<ulong>();
-            List<HitRecord> uniqueHits = new List<HitRecord>();
+            var uniqueHits = new List<XLEBridgeUtils.Picking.HitRecord>();
             // build 'path' objects for each hit record.
-            foreach (HitRecord hit in hits)
+            foreach (var hit in hits)
             {
                 bool added = instanceSet.Add(hit.instanceId);
                 if (added) uniqueHits.Add(hit);
             }
 
-            HitRecord firstHit = new HitRecord();
+            var firstHit = new XLEBridgeUtils.Picking.HitRecord();
             
 
             // build 'path' objects for each hit record.
-            foreach (HitRecord hit in uniqueHits)
+            foreach (var hit in uniqueHits)
             {
                 NativeObjectAdapter nobj = GameEngine.GetAdapterFromId(hit.documentId, hit.instanceId);
                 if (nobj == null) continue;
@@ -193,8 +196,10 @@ namespace RenderingInterop
 
         protected bool GetTerrainCollision(out Vec3F result, Point clientPt)
         {
-            var pick = NativeInterop.Picking.RayPick(
-                null, GetWorldRay(clientPt), Camera, ClientSize, NativeInterop.Picking.Flags.Terrain);
+            var pick = XLEBridgeUtils.Picking.RayPick(
+                GameEngine.GetEngineDevice(),
+                SceneManager, TechniqueContext,
+                GetWorldRay(clientPt), Camera, ClientSize, XLEBridgeUtils.Picking.Flags.Terrain);
 
             if (pick.Length > 0)
             {

@@ -123,14 +123,15 @@ namespace LevelEditorXLE.Placements
                 }
             }
 
-            foreach (var d in op._toBeDeleted)
-            {
-                var adapter = GameEngine.GetAdapterFromId(d.Item1, d.Item2);
-                if (adapter != null)
-                {
-                    adapter.DomNode.RemoveFromParent();
-                }
-            }
+            System.Diagnostics.Debug.Assert(false, "No way to access GameEngine.GetAdapterFromId from LevelEditorXLE!");
+            // foreach (var d in op._toBeDeleted)
+            // {
+            //     var adapter = GameEngine.GetAdapterFromId(d.Item1, d.Item2);
+            //     if (adapter != null)
+            //     {
+            //         adapter.DomNode.RemoveFromParent();
+            //     }
+            // }
 
             var resourceResolvers = Globals.MEFContainer.GetExportedValues<IResourceResolver>();
             IResource resource = null;
@@ -198,9 +199,8 @@ namespace LevelEditorXLE.Placements
         private bool HitTest(out Vec3F result, Point pt, ViewControl vc)
         {
             var ray = vc.GetWorldRay(pt);
-            var pick = NativeInterop.Picking.RayPick(
-                null, ray, vc.Camera, vc.ClientSize, 
-                NativeInterop.Picking.Flags.Terrain);
+            var pick = XLEBridgeUtils.Picking.RayPick(
+                vc, ray, XLEBridgeUtils.Picking.Flags.Terrain);
 
             if (pick.Length > 0)
             {

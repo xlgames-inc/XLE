@@ -37,7 +37,7 @@ extern "C" __declspec(dllimport) short __stdcall GetKeyState(int nVirtKey);
 
 namespace GUILayer
 {
-    public ref class HitRecord
+    public value class HitRecord
     {
     public:
         EntityInterface::DocumentId _document;
@@ -124,7 +124,7 @@ namespace GUILayer
                     nativeTC));
         }
 
-        static System::Collections::Generic::ICollection<HitRecord^>^
+        static System::Collections::Generic::ICollection<HitRecord>^
             RayIntersection(
                 IntersectionTestSceneWrapper^ testScene,
                 IntersectionTestContextWrapper^ testContext,
@@ -154,8 +154,8 @@ namespace GUILayer
                         record->_object &= 0x00000000ffffffffull;
                     }
 
-                    auto result = gcnew System::Collections::Generic::List<HitRecord^>();
-                    result->Add(record);
+                    auto result = gcnew System::Collections::Generic::List<HitRecord>();
+                    result->Add(*record);
                     return result;
                 }
             }
@@ -170,7 +170,7 @@ namespace GUILayer
             return nullptr;
         }
 
-        static System::Collections::Generic::ICollection<HitRecord^>^
+        static System::Collections::Generic::ICollection<HitRecord>^
             FrustumIntersection(
                 IntersectionTestSceneWrapper^ testScene,
                 IntersectionTestContextWrapper^ testContext,
@@ -187,7 +187,7 @@ namespace GUILayer
 
                 if (!nativeResults.empty()) {
 
-                    auto result = gcnew System::Collections::Generic::List<HitRecord^>();
+                    auto result = gcnew System::Collections::Generic::List<HitRecord>();
                     for (const auto& i: nativeResults) {
                         auto record = gcnew HitRecord;
                         record->_document = i._objectGuid.first;
@@ -202,7 +202,7 @@ namespace GUILayer
                             record->_object &= 0x00000000ffffffffull;
                         }
                     
-                        result->Add(record);
+                        result->Add(*record);
                     }
 
                     return result;

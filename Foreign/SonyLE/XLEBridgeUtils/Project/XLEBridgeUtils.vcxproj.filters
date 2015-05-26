@@ -6,6 +6,7 @@
     <ClCompile Include="..\NativeManipulators.cpp" />
     <ClCompile Include="..\PropertyDescriptorUtils.cpp" />
     <ClCompile Include="..\XLELayerUtils.cpp" />
+    <ClCompile Include="..\Picking.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\ManipulatorOverlay.h" />

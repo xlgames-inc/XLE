@@ -147,14 +147,13 @@ namespace RenderingInterop
                     parentWorldToLocal.Invert(parentLocalToWorld);
 
                     rayW.MoveToIncludePoint(orgPosW + snapOffset + manipMove);
-                    
-                    HitRecord[] hits = NativeInterop.Picking.RayPick(
-                        null,
-                        rayW, vc.Camera, vc.ClientSize, 
-                        NativeInterop.Picking.Flags.Terrain | NativeInterop.Picking.Flags.Objects | NativeInterop.Picking.Flags.IgnoreSelection);
+
+                    var hits = XLEBridgeUtils.Picking.RayPick(
+                        vc, rayW,
+                        XLEBridgeUtils.Picking.Flags.Terrain | XLEBridgeUtils.Picking.Flags.Objects | XLEBridgeUtils.Picking.Flags.IgnoreSelection);
                     bool cansnap = false;
-                    HitRecord target = new HitRecord();
-                    if (hits.Length > 0)
+                    var target = new XLEBridgeUtils.Picking.HitRecord();
+                    if (hits != null && hits.Length > 0)
                     {
                         // find hit record.
                         foreach (var hit in hits)

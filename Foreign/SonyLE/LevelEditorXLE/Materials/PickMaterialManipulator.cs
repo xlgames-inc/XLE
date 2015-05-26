@@ -65,9 +65,8 @@ namespace LevelEditorXLE.Materials
             if (nativeVC == null) return false;
 
             // do an intersection test here, and find the material under the cursor
-            var pick = NativeInterop.Picking.RayPick(
-                null, ray, vc.Camera, vc.ClientSize,
-                NativeInterop.Picking.Flags.Objects);
+            var pick = XLEBridgeUtils.Picking.RayPick(
+                vc, ray, XLEBridgeUtils.Picking.Flags.Objects);
 
             if (pick.Length > 0)
             {
@@ -92,9 +91,8 @@ namespace LevelEditorXLE.Materials
             var endPt = ray.Origin + vc.Camera.FarZ * ray.Direction;
 
             // do an intersection test here, and find the material under the cursor
-            var pick = NativeInterop.Picking.RayPick(
-                null, ray, vc.Camera, vc.ClientSize, 
-                NativeInterop.Picking.Flags.Objects);
+            var pick = XLEBridgeUtils.Picking.RayPick(
+                vc, ray, XLEBridgeUtils.Picking.Flags.Objects);
 
             if (pick.Length > 0)
             {
