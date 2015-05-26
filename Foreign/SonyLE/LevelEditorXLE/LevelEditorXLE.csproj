@@ -57,6 +57,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssetMan\AssetProperties.cs" />
+    <Compile Include="AssetMan\IExportable.cs" />
     <Compile Include="Camera\XLECamera.cs" />
     <Compile Include="Environment\XLEEnvAdapter.cs" />
     <Compile Include="Game\GameExtensions.cs" />

@@ -643,6 +643,11 @@ namespace GUILayer
         }
     }
 
+    bool InvalidAssetList::HasInvalidAssets()
+    {
+        return ::Assets::Services::GetInvalidAssetMan().HasInvalidAssets();
+    }
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     template PropertyPair<System::String^, unsigned>;

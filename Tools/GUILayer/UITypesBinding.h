@@ -383,6 +383,8 @@ namespace GUILayer
             IEnumerable<Tuple<String^, String^>^>^ get() { return _assetList; }
         }
 
+        static bool HasInvalidAssets();
+
         InvalidAssetList();
     protected:
         List<Tuple<String^, String^>^>^ _assetList;

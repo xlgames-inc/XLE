@@ -93,6 +93,7 @@ namespace LevelEditor
                 m_scriptingService.LoadAssembly(GetType().Assembly);
                 m_scriptingService.LoadAssembly(Assembly.GetAssembly(typeof(LevelEditorCore.IDesignView)));
                 m_scriptingService.LoadAssembly(Assembly.GetAssembly(typeof(RenderingInterop.RenderCommands)));
+                m_scriptingService.LoadAssembly(Assembly.GetAssembly(typeof(LevelEditorXLE.Patches)));
                 m_scriptingService.ImportAllTypes("LevelEditor");
                 m_scriptingService.ImportAllTypes("LevelEditor.DomNodeAdapters");
                 m_scriptingService.ImportAllTypes("LevelEditorCore");

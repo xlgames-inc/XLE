@@ -69,6 +69,12 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="DiffMatchPatch.cs" />
+    <Compile Include="ExportPreviewDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ExportPreviewDialog.Designer.cs">
+      <DependentUpon>ExportPreviewDialog.cs</DependentUpon>
+    </Compile>
     <Compile Include="FileCompare.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -119,6 +125,9 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="ExportPreviewDialog.resx">
+      <DependentUpon>ExportPreviewDialog.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="FileCompare.resx">
       <DependentUpon>FileCompare.cs</DependentUpon>
     </EmbeddedResource>

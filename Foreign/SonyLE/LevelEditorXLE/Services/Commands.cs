@@ -11,11 +11,13 @@ using System.Collections.Generic;
 
 using Sce.Atf;
 using Sce.Atf.Applications;
+using Sce.Atf.Adaptation;
 using Sce.Atf.VectorMath;
+using Sce.Atf.Dom;
 
 using LevelEditorCore;
 
-namespace LevelEditorXLE.Services
+namespace LevelEditorXLE
 {
     [Export(typeof(IInitializable))]
     [Export(typeof(Commands))]
@@ -33,6 +35,9 @@ namespace LevelEditorXLE.Services
                     return GUILayer.PendingSaveList.HasModifiedAssets();
 
                 case Command.ViewInvalidAssets:
+                    return GUILayer.InvalidAssetList.HasInvalidAssets();
+
+                case Command.ExportToGame:
                     return true;
             }
 
@@ -52,6 +57,10 @@ namespace LevelEditorXLE.Services
                     case Command.ViewInvalidAssets:
                         PerformViewInvalidAssets();
                         break;
+
+                    case Command.ExportToGame:
+                        PerformExportToGame();
+                        break;
                 }
             }
         }
@@ -68,6 +77,17 @@ namespace LevelEditorXLE.Services
 
         public virtual void Initialize()
         {
+            m_commandService.RegisterCommand(
+                Command.ExportToGame,
+                StandardMenu.File,
+                "Assets",
+                "Export to Game...".Localize(),
+                "Export all changed files to game format".Localize(),
+                Keys.None,
+                LevelEditorCore.Resources.CubesImage,
+                CommandVisibility.Menu,
+                this);
+
             m_commandService.RegisterCommand(
                 Command.SaveModifiedAssets,
                 StandardMenu.File,
@@ -94,7 +114,8 @@ namespace LevelEditorXLE.Services
         private enum Command
         {
             SaveModifiedAssets,
-            ViewInvalidAssets
+            ViewInvalidAssets,
+            ExportToGame
         }
 
         private void PerformSaveModifiedAssets()
@@ -118,7 +139,49 @@ namespace LevelEditorXLE.Services
             }
         }
 
+        private void PerformExportToGame()
+        {
+            // Export operations are performed on nodes in the dom hierarchy
+            // We need to search through our nodes to find those that implement
+            // IExportable.
+            //
+            // Sometimes these nodes might be able to provide previews of the
+            // export operation (though maybe only when exporting simple text
+            // format files).
+
+                // Awkward to get the root node from here... Technically, the context
+                // should be an IGame. But we can cast that directly to a DomNodeAdapter.
+            var rootNode = m_designView.ActiveView.DesignView.Context as DomNodeAdapter;
+            if (rootNode==null) return;
+
+            var queuedExports = new List<ControlsLibrary.ExportPreviewDialog.QueuedExport>();
+            foreach (var n in rootNode.DomNode.LevelSubtree)
+            {
+                var exportable = n.As<IExportable>();
+                if (exportable == null) continue;
+
+                queuedExports.Add(new ControlsLibrary.ExportPreviewDialog.QueuedExport
+                    {
+                        DoExport = true,
+                        TargetFile = exportable.ExportTarget,
+                        Category = exportable.ExportCategory
+                    });
+            }
+
+            using (var dialog = new ControlsLibrary.ExportPreviewDialog())
+            {
+                dialog.QueuedExports = queuedExports;
+                if (dialog.ShowDialog() == DialogResult.OK)
+                {
+                    // export now..
+                }
+            } 
+        }
+
         [Import(AllowDefault = false)]
         private ICommandService m_commandService;
+
+        [Import(AllowDefault = false)]
+        private IDesignView m_designView = null;
     }
 }

@@ -88,7 +88,7 @@ namespace LevelEditorXLE.Environment
         }
     }
 
-    public class XLEEnvSettingsFolder : DomNodeAdapter, IHierarchical, IListable
+    public class XLEEnvSettingsFolder : DomNodeAdapter, IHierarchical, IListable, IExportable
     {
         public void GetInfo(ItemInfo info)
         {
@@ -119,6 +119,27 @@ namespace LevelEditorXLE.Environment
             }
         }
         
+        #region IExportable
+        public string ExportTarget
+        {
+            get { return GetAttribute<string>(Schema.envSettingsFolderType.exporttargetAttribute); }
+            set { SetAttribute(Schema.envSettingsFolderType.exporttargetAttribute, value); }
+        }
+
+        public string ExportCategory
+        {
+            get { return "Environment Settings"; }
+        }
+
+        public GUILayer.EditorSceneManager.ExportResult PerformExport(string destinationFile)
+        {
+            // This is a bit tricky, here. We need to get both the document id
+            // and a pointer to the EditorSceneManager from the native interop folder
+            var sceneMan = XLEBridgeUtils.NativeManipulatorLayer.SceneManager;
+            return sceneMan.ExportEnvironmentSettings(1, destinationFile);
+        }
+        #endregion
+
         public string GetNameForNewChild()
         {
             var settings = Settings;

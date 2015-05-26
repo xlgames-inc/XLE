@@ -79,9 +79,12 @@ namespace LevelEditorCore.GenericAdapters
                 var doc = root.As<IDocument>();
                 Uri baseUri;
                 if (doc != null && Globals.MEFContainer.GetExportedValue<IDocumentService>().IsUntitled(doc)) {
-                        // this is an untitled document.
-                        // we should use the resources root as a base, because the document uri
-                        // is unreliable
+                        // This is an untitled document.
+                        // We should use the resources root as a base, because the document uri
+                        // is unreliable. It's a bit awkward, because it means this method of
+                        // uri resolution can't work reliably until the root document has been saved.
+                        // (and if the user changes the directory of the root document, does that mean
+                        // they want the resource references to be updated, also?)
                     baseUri = Globals.ResourceRoot;
                 }
                 else

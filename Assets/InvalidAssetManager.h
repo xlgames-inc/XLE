@@ -34,6 +34,7 @@ namespace Assets
 
         void MarkInvalid(const rstring& name, const rstring& errorString);
         void MarkValid(const ResChar name[]);
+        bool HasInvalidAssets() const;
 
         InvalidAssetManager(bool active);
         ~InvalidAssetManager();

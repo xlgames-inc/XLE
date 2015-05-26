@@ -14,13 +14,17 @@
         <scea.dom.editors.attribute name="maxs" displayName="Maxs" description="Maximum point of this cell" category="Bounds" editor="Sce.Atf.Controls.PropertyEditing.NumericTupleEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.FloatArrayConverter"/>
         <scea.dom.editors.attribute name="ref" displayName="Ref" description="Placements document file"/>
         <scea.dom.editors.attribute name="name" displayName="Name" description="Display name"/>
+        <scea.dom.editors.attribute name="exporttarget" displayName="Export Target" category="Export" description="Destination file written to in export operations"/>
+        <scea.dom.editors.attribute name="exportenabled" displayName="Export Enabled" category="Export" description="Enable or disable export of this item"/>
       </xs:appinfo>
     </xs:annotation>
 
     <xs:attribute name="ref" type="xs:string" />
+    <xs:attribute name="exporttarget" type="xs:string" default="finals/placements.plc" />
     <xs:attribute name="name" type="xs:string" />
     <xs:attribute name="mins" type="vector3Type" default="-1000 -1000 -1000"/>
     <xs:attribute name="maxs" type="vector3Type" default="1000 1000 1000"/>
+    <xs:attribute name="exportenabled" type="xs:boolean" default="true"/>
   </xs:complexType>
 
   <xs:complexType name="placementsFolderType">

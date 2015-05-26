@@ -40,6 +40,7 @@ namespace LevelEditorXLE
                 typeof(Manipulators.XLEManipCtrlWin),
                 typeof(XLECamera),
                 typeof(XLEAssetService), 
+                typeof(Commands),
 
                 typeof(Terrain.TerrainManipulator),
 

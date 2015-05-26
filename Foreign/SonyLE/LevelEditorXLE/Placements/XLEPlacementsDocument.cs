@@ -170,14 +170,15 @@ namespace LevelEditorXLE.Placements
 
         public static void Release(XLEPlacementDocument doc)
         {
-            // We can't remove, because a single document can have multiple references upon it
+            // Multiple references to the same document might turn out to be awkward in C#.
             // We need strict reference counting to do this properly. But how do we do that 
-            // in C#? We need to drop references in many cases:
+            // in C#? Perhaps with an extra utility class? We need to drop references in many cases:
             //  * close master document
             //  * delete cell ref
             //  * removal of parent from the tree
             //  * change uri
-            // It might turn out difficult to catch all of those cases reliably
+            // It might turn out difficult to catch all of those cases reliably.
+            // It's simplier just to demand that a given document can only be referenced once.
             var gameDocRegistry = GetDocRegistry();
             if (gameDocRegistry != null)
                 gameDocRegistry.Remove(doc.As<IGameDocument>());

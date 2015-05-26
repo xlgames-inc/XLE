@@ -24,7 +24,9 @@ namespace LevelEditorXLE.Placements
     using CellRefST = Schema.placementsCellReferenceType;
     using FolderST = Schema.placementsFolderType;
 
-    public class PlacementsCellRef : LevelEditorCore.GenericAdapters.GenericReference<XLEPlacementDocument>, IHierarchical
+    public class PlacementsCellRef 
+        : LevelEditorCore.GenericAdapters.GenericReference<XLEPlacementDocument>
+        , IHierarchical, IExportable
     {
         public Vec3F Mins
         {
@@ -42,6 +44,25 @@ namespace LevelEditorXLE.Placements
         {
             get { return GetAttribute<string>(CellRefST.nameAttribute); }
             set { SetAttribute(CellRefST.nameAttribute, value); }
+        }
+
+        public string ExportTarget
+        {
+            get { return GetAttribute<string>(CellRefST.exporttargetAttribute); }
+            set { SetAttribute(CellRefST.exporttargetAttribute, value); }
+        }
+
+        public string ExportCategory
+        {
+            get { return "Placements"; }
+        }
+
+        public GUILayer.EditorSceneManager.ExportResult PerformExport(string destinationFile)
+        {
+            var result = new GUILayer.EditorSceneManager.ExportResult();
+            result._success = false;
+            result._messages = "Export operation is unimplemented for this type";
+            return result;
         }
 
         #region IHierachical Members
@@ -105,6 +126,17 @@ namespace LevelEditorXLE.Placements
             get { return GetChildList<PlacementsCellRef>(FolderST.cellChild); }
         }
 
+        internal string BasePath
+        {
+            get { return GetAttribute<string>(FolderST.basePathAttribute); }
+        }
+
+        internal int[] CellCount
+        {
+            get { return GetAttribute<int[]>(FolderST.cellCountAttribute); }
+        }
+
+        #region Configure Steps
         internal void Reconfigure(PlacementsConfig.Config cfg)
         {
                 // Based on the configuration settings given, remove and attach
@@ -172,16 +204,6 @@ namespace LevelEditorXLE.Placements
                         PlacementsCellRef.Create(newCells[c].Item1, newCells[c].Item2, newCells[c].Item3, newCells[c].Item4));
         }
 
-        internal string BasePath
-        {
-            get { return GetAttribute<string>(FolderST.basePathAttribute); }
-        }
-
-        internal int[] CellCount
-        {
-            get { return GetAttribute<int[]>(FolderST.cellCountAttribute); }
-        }
-
         internal bool DoModalConfigure()
         {
                 // open the configuration dialog
@@ -204,6 +226,7 @@ namespace LevelEditorXLE.Placements
             }
             return false;
         }
+        #endregion
 
         #region ICommandClient Members
         bool ICommandClient.CanDoCommand(object commandTag)

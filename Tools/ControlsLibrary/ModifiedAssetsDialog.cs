@@ -36,7 +36,9 @@ namespace ControlsLibrary
 
         private void _tree_SelectionChanged(object sender, EventArgs e)
         {
-            var selected = _assetList.SelectedNode.Tag as GUILayer.AssetItem;
+            GUILayer.AssetItem selected = null;
+            if (_assetList.SelectedNode != null)
+                selected = _assetList.SelectedNode.Tag as GUILayer.AssetItem;
             if (selected != null && selected._pendingSave != null)
             {
                 _compareWindow.Comparison = new Tuple<object, object>(

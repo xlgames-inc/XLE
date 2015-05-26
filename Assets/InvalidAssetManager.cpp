@@ -60,6 +60,15 @@ namespace Assets
         return std::move(result);
     }
 
+    bool InvalidAssetManager::HasInvalidAssets() const
+    {
+        if (_pimpl->_active) {
+            ScopedLock(_pimpl->_assetsLock);
+            return !_pimpl->_assets.empty();
+        }
+        return false;
+    }
+
     InvalidAssetManager::InvalidAssetManager(bool active)
     {
         _pimpl = std::make_unique<Pimpl>();
