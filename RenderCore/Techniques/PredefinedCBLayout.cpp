@@ -83,7 +83,7 @@ namespace RenderCore { namespace Techniques
             bool a = std::regex_match(lineStart, iterator, match, parseStatement);
             if (a && match.size() >= 3) {
                 Element e;
-                e._name = match[2];
+                e._name = std::basic_string<utf8>((const utf8*)match[2].first, (const utf8*)match[2].second);
                 e._hash = ParameterBox::MakeParameterNameHash(e._name);
                 e._type = HLSLTypeNameAsTypeDesc(match[1].str().c_str());
 

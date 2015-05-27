@@ -48,8 +48,8 @@ namespace LevelEditorXLE.Placements
 
         public string ExportTarget
         {
-            get { return GetAttribute<string>(CellRefST.exporttargetAttribute); }
-            set { SetAttribute(CellRefST.exporttargetAttribute, value); }
+            get { return GetAttribute<string>(CellRefST.ExportTargetAttribute); }
+            set { SetAttribute(CellRefST.ExportTargetAttribute, value); }
         }
 
         public string ExportCategory
@@ -63,6 +63,11 @@ namespace LevelEditorXLE.Placements
             result._success = false;
             result._messages = "Export operation is unimplemented for this type";
             return result;
+        }
+
+        public GUILayer.EditorSceneManager.ExportPreview PreviewExport()
+        {
+            return null;
         }
 
         #region IHierachical Members

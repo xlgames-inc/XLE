@@ -155,17 +155,39 @@ namespace LevelEditorXLE
             if (rootNode==null) return;
 
             var queuedExports = new List<ControlsLibrary.ExportPreviewDialog.QueuedExport>();
+            var exportNodes = new List<IExportable>();
             foreach (var n in rootNode.DomNode.LevelSubtree)
             {
                 var exportable = n.As<IExportable>();
                 if (exportable == null) continue;
 
-                queuedExports.Add(new ControlsLibrary.ExportPreviewDialog.QueuedExport
+                var e = new ControlsLibrary.ExportPreviewDialog.QueuedExport
                     {
                         DoExport = true,
                         TargetFile = exportable.ExportTarget,
                         Category = exportable.ExportCategory
-                    });
+                    };
+
+                var preview = exportable.PreviewExport();
+                if (preview != null)
+                {
+                    if (preview._type == GUILayer.EditorSceneManager.ExportPreview.Type.Text)
+                    {
+                        e.TextPreview = preview._preview;
+                        try
+                        {
+                            e.ExistingText = System.IO.File.ReadAllText(e.TargetFile);
+                        } 
+                        catch
+                        {
+                            e.ExistingText = String.Format("<<Error while reading file {0}>>".Localize(), e.TargetFile);
+                        }
+                    }
+                    e.Messages = preview._messages;
+                }
+
+                queuedExports.Add(e);
+                exportNodes.Add(exportable);
             }
 
             using (var dialog = new ControlsLibrary.ExportPreviewDialog())
@@ -173,7 +195,14 @@ namespace LevelEditorXLE
                 dialog.QueuedExports = queuedExports;
                 if (dialog.ShowDialog() == DialogResult.OK)
                 {
-                    // export now..
+                        // export now..
+                        //  (for long export operations we could pop up a 
+                        //  progress bar, or push this into a background thread)
+                    for (int c = 0; c < queuedExports.Count; ++c)
+                    {
+                        if (queuedExports[c].DoExport)
+                            exportNodes[c].PerformExport(queuedExports[c].TargetFile);
+                    }
                 }
             } 
         }

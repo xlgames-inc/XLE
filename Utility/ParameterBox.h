@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "UTFUtils.h"
 #include "../Assets/BlockSerializer.h"
 #include "../Core/Types.h"
 #include <string>
@@ -72,6 +73,9 @@ namespace Utility
         std::string AsString(const void* data, size_t dataSize, const TypeDesc&);
     }
 
+    class OutputStreamFormatter;
+    class InputStreamFormatter;
+
         //////////////////////////////////////////////////////////////////
             //      P A R A M E T E R   B O X                       //
         //////////////////////////////////////////////////////////////////
@@ -90,14 +94,14 @@ namespace Utility
 
         using TypeDesc = ImpliedTyping::TypeDesc;
 
-        void SetParameter(const char name[], const void* data, const ImpliedTyping::TypeDesc& type);
-        void SetParameter(const char name[], const char data[]);
-        void SetParameter(const char name[], const std::string& data);
-        template<typename Type> void SetParameter(const char name[], Type value);
+        void SetParameter(const utf8 name[], const void* data, const ImpliedTyping::TypeDesc& type);
+        void SetParameter(const utf8 name[], const char data[]);
+        void SetParameter(const utf8 name[], const std::string& data);
+        template<typename Type> void SetParameter(const utf8 name[], Type value);
 
-        template<typename Type> std::pair<bool, Type> GetParameter(const char name[]) const;
+        template<typename Type> std::pair<bool, Type> GetParameter(const utf8 name[]) const;
         template<typename Type> std::pair<bool, Type> GetParameter(ParameterNameHash name) const;
-        template<typename Type> Type GetParameter(const char name[], const Type& def) const;
+        template<typename Type> Type GetParameter(const utf8 name[], const Type& def) const;
         template<typename Type> Type GetParameter(ParameterNameHash name, const Type& def) const;
         bool GetParameter(ParameterNameHash name, void* dest, const ImpliedTyping::TypeDesc& destType) const;
         bool HasParameter(ParameterNameHash name) const;
@@ -108,27 +112,32 @@ namespace Utility
 
         unsigned GetParameterCount() const;
         ParameterNameHash GetParameterAtIndex(unsigned index) const;
-        const char* GetFullNameAtIndex(unsigned index) const;
+        const utf8* GetFullNameAtIndex(unsigned index) const;
 
         uint64  GetHash() const;
         uint64  GetParameterNamesHash() const;
         uint64  CalculateFilteredHashValue(const ParameterBox& source) const;
 
-        using StringTable = std::vector<std::pair<const char*, std::string>>;
+        using StringTable = std::vector<std::pair<const utf8*, std::string>>;
         void    BuildStringTable(StringTable& defines) const;
         void    OverrideStringTable(StringTable& defines) const;
 
         void    MergeIn(const ParameterBox& source);
 
-        static ParameterNameHash    MakeParameterNameHash(const std::string& name);
+        static ParameterNameHash    MakeParameterNameHash(const std::basic_string<utf8>& name);
+        static ParameterNameHash    MakeParameterNameHash(const utf8 name[]);
         static ParameterNameHash    MakeParameterNameHash(const char name[]);
 
         bool    ParameterNamesAreEqual(const ParameterBox& other) const;
 
         void    Serialize(Serialization::NascentBlockSerializer& serializer) const;
+        
+        template<typename CharType>
+            void    Serialize(OutputStreamFormatter& stream) const;
 
         ParameterBox();
-        ParameterBox(std::initializer_list<std::pair<const char*, const char*>>);
+        ParameterBox(std::initializer_list<std::pair<const utf8*, const char*>>);
+        ParameterBox(const InputStreamFormatter& stream, ImpliedTyping::TypeCat streamCharType = ImpliedTyping::TypeCat::UInt8);
         ParameterBox(ParameterBox&& moveFrom);
         ParameterBox& operator=(ParameterBox&& moveFrom);
         ~ParameterBox();
@@ -138,7 +147,7 @@ namespace Utility
 
         Serialization::Vector<ParameterNameHash>            _parameterHashValues;
         Serialization::Vector<std::pair<uint32, uint32>>    _offsets;
-        Serialization::Vector<char>     _names;
+        Serialization::Vector<utf8>     _names;
         Serialization::Vector<uint8>    _values;
         Serialization::Vector<TypeDesc> _types;
 
@@ -150,7 +159,7 @@ namespace Utility
     #pragma pack(pop)
 
     template<typename Type> 
-        Type ParameterBox::GetParameter(const char name[], const Type& def) const
+        Type ParameterBox::GetParameter(const utf8 name[], const Type& def) const
     {
         auto q = GetParameter<Type>(name);
         if (q.first) return q.second;

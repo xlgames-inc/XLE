@@ -45,12 +45,12 @@ namespace ToolsRig
             // binding list
         ParameterBox result = inputMatParameters;
         for (unsigned c=0; c<resBindings.GetParameterCount(); ++c) {
-            result.SetParameter(StringMeld<64>() << "RES_HAS_" << resBindings.GetFullNameAtIndex(c), 1);
+            result.SetParameter(StringMeld<64, utf8>() << "RES_HAS_" << resBindings.GetFullNameAtIndex(c), 1);
             if (resBindings.GetParameterAtIndex(c) == DefaultNormalsTextureBindingHash) {
                 auto resourceName = resBindings.GetString<::Assets::ResChar>(DefaultNormalsTextureBindingHash);
                 ::Assets::ResChar resolvedName[MaxPath];
                 searchRules.ResolveFile(resolvedName, dimof(resolvedName), resourceName.c_str());
-                result.SetParameter("RES_HAS_NormalsTexture_DXT", 
+                result.SetParameter((const utf8*)"RES_HAS_NormalsTexture_DXT", 
                     RenderCore::Assets::IsDXTNormalMap(resolvedName));
             }
         }

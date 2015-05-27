@@ -82,9 +82,21 @@ namespace GUILayer
             System::String^ _messages;
             bool _success;
         };
+
+        ref class ExportPreview
+        {
+        public:
+            enum struct Type { Text, Binary, None };
+            System::String^ _preview;
+            Type _type = Type::None;
+            System::String^ _messages;
+            bool _success = false;
+        };
+
         ExportResult^ ExportPlacements(EntityInterface::DocumentId placementsDoc, System::String^ destinationFile);
         ExportResult^ ExportEnvironmentSettings(EntityInterface::DocumentId docId, System::String^ destinationFile);
         ExportResult^ ExportTerrainSettings(System::String^ destinationFolder);
+        ExportPreview^ PreviewEnvironmentSettings(EntityInterface::DocumentId docId);
 
             //// //// ////   U T I L I T Y   //// //// ////
         const EntityInterface::RetainedEntities& GetFlexObjects();

@@ -19,7 +19,8 @@ namespace ConsoleRig
         void        Execute(const std::string& str);
         auto        AutoComplete(const std::string& input) -> std::vector<std::string>;
 
-        void        Print(const char message[]);
+        void        Print(const char messageStart[]);
+        void        Print(const char* messageStart, const char* messageEnd);
         void        Print(const std::string& message);
         void        Print(const std::u16string& message);
 

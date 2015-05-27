@@ -197,7 +197,7 @@ namespace EntityInterface
     void RegisterTerrainFlexObjects(RetainedEntities& flexSys)
     {
         flexSys.RegisterCallback(
-            flexSys.GetTypeId("TerrainBaseTexture"),
+            flexSys.GetTypeId((const utf8*)"TerrainBaseTexture"),
             [](const RetainedEntities& flexSys, const Identifier& obj)
             {
                 auto* object = flexSys.GetEntity(obj);

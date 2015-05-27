@@ -297,12 +297,12 @@ namespace RenderCore { namespace ColladaConversion
         return false;
 	}
 
-    static const char DefaultDiffuseTextureBinding[] = "DiffuseTexture";
+    static const utf8 DefaultDiffuseTextureBinding[] = "DiffuseTexture";
 
     static void AddBoundTexture( 
         const COLLADAFW::Effect* effect, unsigned commonEffectIndex,
         const TableOfObjects& objects,
-        ParameterBox& bindings, const char bindingName[], COLLADAFW::SamplerID samplerId)
+        ParameterBox& bindings, const utf8 bindingName[], COLLADAFW::SamplerID samplerId)
     {
         auto hash = ParameterBox::MakeParameterNameHash(bindingName);
         if (bindings.HasParameter(hash)) return;
@@ -408,7 +408,7 @@ namespace RenderCore { namespace ColladaConversion
                         diffuse.getTexture().getSamplerId());
                 } else if (diffuse.getType() == ColorOrTexture::COLOR) {
                     matSettings._constants.SetParameter(
-                        "MaterialDiffuse", 
+                        (const utf8*)"MaterialDiffuse", 
                         Float3((float)diffuse.getColor().getRed(), (float)diffuse.getColor().getGreen(), (float)diffuse.getColor().getBlue()));
                 }
             }
@@ -432,7 +432,7 @@ namespace RenderCore { namespace ColladaConversion
                     if (!bindPoint.empty()) {
                         AddBoundTexture(
                             effect, 0, _objects, matSettings._resourceBindings,
-                            bindPoint.c_str(), xt->samplerId);
+                            (const utf8*)bindPoint.c_str(), xt->samplerId);
                     }
                 }
             }

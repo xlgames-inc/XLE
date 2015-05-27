@@ -218,7 +218,7 @@ namespace PreviewRender
                 auto str = dynamic_cast<String^>(i.Value);
                 if (str) {
                     visObject._parameters._bindings.SetParameter(
-                            clix::marshalString<clix::E_UTF8>(i.Key).c_str(),
+                            (const utf8*)clix::marshalString<clix::E_UTF8>(i.Key).c_str(),
                             clix::marshalString<clix::E_UTF8>(str));
                 }
             }

@@ -80,7 +80,7 @@ namespace Sample
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 
-    static const std::string StringAutoCotangent("AUTO_COTANGENT");
+    static const std::basic_string<utf8> StringAutoCotangent((const utf8*)"AUTO_COTANGENT");
 
     void CharactersScene::Render(
         RenderCore::Metal::DeviceContext* context,

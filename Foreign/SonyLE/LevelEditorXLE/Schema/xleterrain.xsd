@@ -20,9 +20,9 @@
         <LeGe.NativeProperty name="mapping2" nativeName="mapping2" nativeType="float" access="set"/>
         <LeGe.NativeProperty name="endheight" nativeName="endheight" nativeType="float" access="set"/>
 
-        <scea.dom.editors.attribute name="texture0" displayName="texture0" description="texture0" category="General" editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" converter="RenderingInterop.PropertyEditing.BaseTextureNameConverter,RenderingInterop"/>
-        <scea.dom.editors.attribute name="texture1" displayName="texture1" description="texture1" category="General" editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" converter="RenderingInterop.PropertyEditing.BaseTextureNameConverter,RenderingInterop"/>
-        <scea.dom.editors.attribute name="texture2" displayName="texture2" description="texture2" category="General" editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" converter="RenderingInterop.PropertyEditing.BaseTextureNameConverter,RenderingInterop"/>
+        <scea.dom.editors.attribute name="texture0" displayName="texture0" description="texture0" category="General" editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" converter="LevelEditorXLE.BaseTextureNameConverter,LevelEditorXLE"/>
+        <scea.dom.editors.attribute name="texture1" displayName="texture1" description="texture1" category="General" editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" converter="LevelEditorXLE.BaseTextureNameConverter,LevelEditorXLE"/>
+        <scea.dom.editors.attribute name="texture2" displayName="texture2" description="texture2" category="General" editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" converter="LevelEditorXLE.BaseTextureNameConverter,LevelEditorXLE"/>
         <scea.dom.editors.attribute name="mapping0" displayName="mapping0" description="mapping0" category="General"/>
         <scea.dom.editors.attribute name="mapping1" displayName="mapping1" description="mapping1" category="General"/>
         <scea.dom.editors.attribute name="mapping2" displayName="mapping2" description="mapping2" category="General"/>

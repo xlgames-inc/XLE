@@ -29,15 +29,6 @@
 
 namespace RenderCore { namespace Assets
 {
-    void Warning(const char format[], ...)
-    {
-        va_list args;
-        va_start(args, format);
-        ConsoleRig::GetWarningStream().WriteString((const utf8*)"{Color:ff7f7f}");
-        PrintFormatV(&ConsoleRig::GetWarningStream(), format, args);
-        va_end(args);
-    }
-
     Metal::ConstantBufferLayoutElement GlobalTransform_Elements[] = {
         { "WorldToClip", Metal::NativeFormat::Matrix4x4, offsetof(Techniques::GlobalTransformConstants, _worldToClip), 0 },
         { "FrustumCorners", Metal::NativeFormat::R32G32B32A32_FLOAT, offsetof(Techniques::GlobalTransformConstants, _frustumCorners), 4 },

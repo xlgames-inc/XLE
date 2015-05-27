@@ -85,6 +85,9 @@
       <Filter>Threading</Filter>
     </ClInclude>
     <ClInclude Include="..\FunctionUtils.h" />
+    <ClInclude Include="..\Streams\StreamFormatter.h">
+      <Filter>Streams</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\StringFormat.cpp" />
@@ -136,6 +139,9 @@
     </ClCompile>
     <ClCompile Include="..\FunctionUtils.cpp" />
     <ClCompile Include="..\Streams\DataSerialize.cpp">
+      <Filter>Streams</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Streams\StreamFormatter.cpp">
       <Filter>Streams</Filter>
     </ClCompile>
   </ItemGroup>

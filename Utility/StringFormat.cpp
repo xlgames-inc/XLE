@@ -319,9 +319,9 @@ template<typename T>
                     fixed_length = width - fixed_length;
 
                     if (fixed_length <= 0) {
-                        stream->WriteString(tmp);
+                        stream->WriteNullTerm(tmp);
                     } else if (left) {
-                        stream->WriteString(tmp);
+                        stream->WriteNullTerm(tmp);
                         while (fixed_length-- > 0) {
                             stream->WriteChar((ucs4)' ');
                         }
@@ -330,7 +330,7 @@ template<typename T>
                         while (fixed_length-- > 0) {
                             stream->WriteChar((ucs4)' ');
                         }
-                        stream->WriteString(tmp);
+                        stream->WriteNullTerm(tmp);
 
                     }
 
@@ -345,9 +345,9 @@ template<typename T>
                         fixed_length = width - fixed_length;
 
                         if (fixed_length <= 0) {
-                            stream->WriteString(tmp);
+                            stream->WriteNullTerm(tmp);
                         } else if (left) {
-                            stream->WriteString(tmp);
+                            stream->WriteNullTerm(tmp);
                             while (fixed_length-- > 0) {
                                 stream->WriteChar((utf8)' ');
                             }
@@ -355,10 +355,10 @@ template<typename T>
                             while (fixed_length-- > 0) {
                                 stream->WriteChar((utf8)' ');
                             }
-                            stream->WriteString(tmp);
+                            stream->WriteNullTerm(tmp);
                         }
                     } else {
-                        stream->WriteString((const utf8*)"<null>");
+                        stream->WriteNullTerm((const utf8*)"<null>");
                         nchars += XlStringLen((const utf8*)"<null>");
                     }
                 }
@@ -379,9 +379,9 @@ template<typename T>
                     len = width - len;
 
                     if (len <= 0) {
-                        stream->WriteString(tmp);
+                        stream->WriteNullTerm(tmp);
                     } else if (left) {
-                        stream->WriteString(tmp);
+                        stream->WriteNullTerm(tmp);
                         while (len-- > 0) {
                             stream->WriteChar((ucs2)L' ');
                         }
@@ -390,7 +390,7 @@ template<typename T>
                         while (len-- > 0) {
                             stream->WriteChar((ucs2)L' ');
                         }
-                        stream->WriteString(tmp);
+                        stream->WriteNullTerm(tmp);
 
                     }
 
@@ -407,9 +407,9 @@ template<typename T>
                         fixed_length = width - fixed_length;
 
                         if (fixed_length <= 0) {
-                            stream->WriteString(tmp);
+                            stream->WriteNullTerm(tmp);
                         } else if (left) {
-                            stream->WriteString(tmp);
+                            stream->WriteNullTerm(tmp);
                             while (fixed_length-- > 0) {
                                 stream->WriteChar((utf8)' ');
                             }
@@ -417,10 +417,10 @@ template<typename T>
                             while (fixed_length-- > 0) {
                                 stream->WriteChar((utf8)' ');
                             }
-                            stream->WriteString(tmp);
+                            stream->WriteNullTerm(tmp);
                         }
                     } else {
-                        stream->WriteString((const utf8*)"<null>");
+                        stream->WriteNullTerm((const utf8*)"<null>");
                         nchars += XlStringLen((const utf8*)"<null>");
                     }
                 }
@@ -431,7 +431,7 @@ template<typename T>
             val.f_ustring = va_arg(args, const ucs4*);
             // TODO support width!
 
-            stream->WriteString(val.f_ustring);
+            stream->WriteNullTerm(val.f_ustring);
             nchars += XlStringLen(val.f_ustring);
 
         } else {
@@ -566,7 +566,7 @@ template<typename T>
                 }
             }
 
-            stream->WriteString(buf);
+            stream->WriteNullTerm(buf);
             nchars += XlStringLen(buf);
         }
         start = fmt;

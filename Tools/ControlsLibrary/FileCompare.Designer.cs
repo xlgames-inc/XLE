@@ -60,6 +60,7 @@
             // 
             // _originalVersion
             // 
+            this._originalVersion.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this._originalVersion.Dock = System.Windows.Forms.DockStyle.Fill;
             this._originalVersion.Location = new System.Drawing.Point(0, 0);
             this._originalVersion.Name = "_originalVersion";
@@ -68,10 +69,10 @@
             this._originalVersion.TabIndex = 0;
             this._originalVersion.Text = "";
             this._originalVersion.WordWrap = false;
-            this._originalVersion.Multiline = true;
             // 
             // _newVersion
             // 
+            this._newVersion.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this._newVersion.Dock = System.Windows.Forms.DockStyle.Fill;
             this._newVersion.Location = new System.Drawing.Point(0, 0);
             this._newVersion.Name = "_newVersion";
@@ -80,12 +81,11 @@
             this._newVersion.TabIndex = 0;
             this._newVersion.Text = "";
             this._newVersion.WordWrap = false;
-            this._newVersion.Multiline = true;
             // 
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(4, 4);
+            this.label1.Location = new System.Drawing.Point(126, 4);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(80, 13);
             this.label1.TabIndex = 1;
@@ -93,9 +93,9 @@
             // 
             // label2
             // 
-            this.label2.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right;
+            this.label2.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(651, 4);
+            this.label2.Location = new System.Drawing.Point(501, 4);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(67, 13);
             this.label2.TabIndex = 2;

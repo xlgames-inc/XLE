@@ -320,6 +320,16 @@ void     XlCopyNString        (utf8* dst, size_t count, const utf8*src, size_t l
     XlCopyNString((char*)dst, count, (const char*)src, length);
 }
 
+int      XlCompareString     (const utf8* x, const utf8* y)
+{
+    return XlCompareString((const char*)x, (const char*)y);
+}
+
+int      XlCompareStringI    (const utf8* x, const utf8* y)
+{
+    return XlCompareStringI((const char*)x, (const char*)y);
+}
+
 #if CLIBRARIES_ACTIVE == CLIBRARIES_MSVC
 
     #pragma warning(disable: 4995)

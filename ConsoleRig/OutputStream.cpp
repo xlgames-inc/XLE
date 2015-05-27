@@ -33,9 +33,9 @@ namespace ConsoleRig
         virtual void    WriteChar(ucs2 ch);
         virtual void    WriteChar(ucs4 ch);
 
-        virtual void    WriteString(const utf8* s);
-        virtual void    WriteString(const ucs2* s);
-        virtual void    WriteString(const ucs4* s);
+        virtual void    WriteString(const utf8* s, const utf8* e);
+        virtual void    WriteString(const ucs2* s, const ucs2* e);
+        virtual void    WriteString(const ucs4* s, const ucs4* e);
 
         virtual void    Flush();
 
@@ -92,9 +92,9 @@ namespace ConsoleRig
     void    BufferedOutputStream::WriteChar(ucs2 ch)             { Write(&ch, sizeof(ch)); }
     void    BufferedOutputStream::WriteChar(ucs4 ch)             { Write(&ch, sizeof(ch)); }
 
-    void    BufferedOutputStream::WriteString(const utf8* s)     { Write(s, int(XlStringLen(s) * sizeof(*s))); }
-    void    BufferedOutputStream::WriteString(const ucs2* s)     { Write(s, int(XlStringLen(s) * sizeof(*s))); }
-    void    BufferedOutputStream::WriteString(const ucs4* s)     { Write(s, int(XlStringLen(s) * sizeof(*s))); }
+    void    BufferedOutputStream::WriteString(const utf8* s, const utf8* e)     { Write(s, (int)(size_t(e) - size_t(s))); }
+    void    BufferedOutputStream::WriteString(const ucs2* s, const ucs2* e)     { Write(s, (int)(size_t(e) - size_t(s))); }
+    void    BufferedOutputStream::WriteString(const ucs4* s, const ucs4* e)     { Write(s, (int)(size_t(e) - size_t(s))); }
 
     void    BufferedOutputStream::Flush()
     {
@@ -126,9 +126,9 @@ namespace ConsoleRig
         virtual void    WriteChar(ucs2 ch);
         virtual void    WriteChar(ucs4 ch);
 
-        virtual void    WriteString(const utf8* s);
-        virtual void    WriteString(const ucs2* s);
-        virtual void    WriteString(const ucs4* s);
+        virtual void    WriteString(const utf8* s, const utf8* e);
+        virtual void    WriteString(const ucs2* s, const ucs2* e);
+        virtual void    WriteString(const ucs4* s, const ucs4* e);
 
         virtual void    Flush();
 
@@ -153,9 +153,9 @@ namespace ConsoleRig
     void    ForkOutputStream::WriteChar(ucs2 ch)             { _first->Write(&ch, sizeof(ch)); _second->Write(&ch, sizeof(ch)); }
     void    ForkOutputStream::WriteChar(ucs4 ch)             { _first->Write(&ch, sizeof(ch)); _second->Write(&ch, sizeof(ch)); }
 
-    void    ForkOutputStream::WriteString(const utf8* s)     { size_t len = XlStringLen(s); _first->Write(s, int(len * sizeof(*s))); _second->Write(s, int(len * sizeof(*s))); }
-    void    ForkOutputStream::WriteString(const ucs2* s)     { size_t len = XlStringLen(s); _first->Write(s, int(len * sizeof(*s))); _second->Write(s, int(len * sizeof(*s))); }
-    void    ForkOutputStream::WriteString(const ucs4* s)     { size_t len = XlStringLen(s); _first->Write(s, int(len * sizeof(*s))); _second->Write(s, int(len * sizeof(*s))); }
+    void    ForkOutputStream::WriteString(const utf8* s, const utf8* e)     { _first->Write(s, (int)(size_t(e) - size_t(s))); _second->Write(s, (int)(size_t(e) - size_t(s))); }
+    void    ForkOutputStream::WriteString(const ucs2* s, const ucs2* e)     { _first->Write(s, (int)(size_t(e) - size_t(s))); _second->Write(s, (int)(size_t(e) - size_t(s))); }
+    void    ForkOutputStream::WriteString(const ucs4* s, const ucs4* e)     { _first->Write(s, (int)(size_t(e) - size_t(s))); _second->Write(s, (int)(size_t(e) - size_t(s))); }
 
     void    ForkOutputStream::Flush()
     {
@@ -183,9 +183,9 @@ namespace ConsoleRig
         virtual void    WriteChar(ucs2 ch);
         virtual void    WriteChar(ucs4 ch);
 
-        virtual void    WriteString(const utf8* s);
-        virtual void    WriteString(const ucs2* s);
-        virtual void    WriteString(const ucs4* s);
+        virtual void    WriteString(const utf8* s, const utf8* e);
+        virtual void    WriteString(const ucs2* s, const ucs2* e);
+        virtual void    WriteString(const ucs4* s, const ucs4* e);
 
         virtual void    Flush();
 
@@ -206,9 +206,9 @@ namespace ConsoleRig
     void    ConsoleOutputStream::WriteChar(ucs2 ch)             { Console::GetInstance().Print(std::u16string((char16_t*)&ch, 1)); }
     void    ConsoleOutputStream::WriteChar(ucs4 ch)             { assert(0); }
 
-    void    ConsoleOutputStream::WriteString(const utf8* s)     { Console::GetInstance().Print((const char*)s); }
-    void    ConsoleOutputStream::WriteString(const ucs2* s)     { Console::GetInstance().Print((char16_t*)s); }
-    void    ConsoleOutputStream::WriteString(const ucs4* s)     { assert(0); }
+    void    ConsoleOutputStream::WriteString(const utf8* s, const utf8* e)     { Console::GetInstance().Print((const char*)s, (const char*)e); }
+    void    ConsoleOutputStream::WriteString(const ucs2* s, const ucs2* e)     { Console::GetInstance().Print(std::u16string((char16_t*)s, (char16_t*)e)); }
+    void    ConsoleOutputStream::WriteString(const ucs4* s, const ucs4* e)     { assert(0); }
 
     void    ConsoleOutputStream::Flush(){}
 
@@ -232,9 +232,9 @@ namespace ConsoleRig
             virtual void    WriteChar(ucs2 ch);
             virtual void    WriteChar(ucs4 ch);
 
-            virtual void    WriteString(const utf8* s);
-            virtual void    WriteString(const ucs2* s);
-            virtual void    WriteString(const ucs4* s);
+            virtual void    WriteString(const utf8* s, const utf8* e);
+            virtual void    WriteString(const ucs2* s, const ucs2* e);
+            virtual void    WriteString(const ucs4* s, const ucs4* e);
 
             virtual void    Flush();
 
@@ -289,17 +289,18 @@ namespace ConsoleRig
             assert(0);
         }
 
-        void    DebuggerConsoleOutput::WriteString(const utf8* s)
+        void    DebuggerConsoleOutput::WriteString(const utf8* s, const utf8* e)
         {
-            OutputDebugStringA((const char*)s);
+                // some extra overhead required to add the null terminator (because some input strings won't have it!)
+            OutputDebugStringA(std::string((const char*)s, (const char*)e).c_str());
         }
 
-        void    DebuggerConsoleOutput::WriteString(const ucs2* s)
+        void    DebuggerConsoleOutput::WriteString(const ucs2* s, const ucs2* e)
         {
-            OutputDebugStringW((const wchar_t*)s);
+            OutputDebugStringW((wchar_t*)std::u16string((const char16_t*)s, (const char16_t*)e).c_str());
         }
 
-        void    DebuggerConsoleOutput::WriteString(const ucs4* s)
+        void    DebuggerConsoleOutput::WriteString(const ucs4* s, const ucs4* e)
         {
             assert(0);
         }
@@ -333,7 +334,7 @@ namespace ConsoleRig
 
     void xleWarning(const char format[], va_list args)
     {
-        ConsoleRig::GetWarningStream().WriteString((utf8*)"{Color:ff7f7f}");
+        ConsoleRig::GetWarningStream().WriteNullTerm((utf8*)"{Color:ff7f7f}");
         PrintFormatV(&ConsoleRig::GetWarningStream(), format, args);
         ConsoleRig::GetDebuggerWarningStream().Flush();
     }

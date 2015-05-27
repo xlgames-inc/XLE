@@ -12,6 +12,8 @@
 // ------------------------------------------------------------------------------------------- //
 #pragma once
 
+#include "../../Utility/PtrUtils.h"         // (needed for AsPointer)
+#include "../../Utility/StringUtils.h"      // (needed for XlStringLen)
 #include <string>
 #include <vcclr.h>
 
@@ -90,18 +92,33 @@ namespace clix {
     // Marshals to .NET from C++ strings
     template<> struct StringMarshaler<NetFromCxx> {
 
-      template<Encoding encoding, typename SourceType>
+        // using SFINAE to make 2 versions of "marshal" method
+        //  1) for std::basic_string<> types
+        //  2) for char* (wchar_t*, etc) types
+      template<Encoding encoding, typename SourceType, typename SourceType::value_type* = nullptr>
       static System::String ^marshal(const SourceType &string) {
-        // Constructs a std::[w]string in case someone gave us a char * to choke on
-        return marshalCxxString<encoding, SourceType>(string);
+        return marshalCxxString<encoding, SourceType::value_type>(AsPointer(string.begin()), AsPointer(string.end()));
       }
 
-      template<Encoding encoding, typename SourceType>
+      template<Encoding encoding, typename SourceType, typename std::enable_if<std::is_integral<typename std::remove_pointer<SourceType>::type>::value>::type* = nullptr>
+      static System::String ^marshal(const SourceType string) {
+        typedef typename std::remove_const<typename std::remove_pointer<SourceType>::type>::type ValueType;
+        return marshalCxxString<encoding, ValueType>(string, &string[XlStringLen(string)]);
+      }
+
+      template<Encoding encoding, typename SourceValueType>
       static System::String ^marshalCxxString(
-        const typename StringTypeSelector<encoding>::Type &cxxString
+        const SourceValueType* cxxStringBegin,
+        const SourceValueType* cxxStringEnd
       ) {
-        typedef typename StringTypeSelector<encoding>::Type SourceStringType;
-        size_t byteCount = cxxString.length() * sizeof(SourceStringType::value_type);
+          // any character type is permitted, so long as the size is correct
+          // this makes it easier to use std::basic_string<utf8> & std::basic_string<ucs2>
+          // directly with marshalling
+        static_assert(
+          sizeof(typename StringTypeSelector<encoding>::Type::value_type) == sizeof(SourceValueType),
+          "Character type mismatch when marshalling string");
+
+        size_t byteCount = size_t(cxxStringEnd) - size_t(cxxStringBegin);
 
         // Empty strings would cause trouble accessing the array below
         if(byteCount == 0) {
@@ -111,7 +128,7 @@ namespace clix {
         // Copy the C++ string contents into a managed array of bytes
         array<unsigned char> ^bytes = gcnew array<unsigned char>(int(byteCount));
         { pin_ptr<unsigned char> pinnedBytes = &bytes[0];
-          memcpy(pinnedBytes, cxxString.c_str(), byteCount);
+          memcpy(pinnedBytes, cxxStringBegin, byteCount);
         }
 
         // Now let one of .NET's encoding classes do the rest

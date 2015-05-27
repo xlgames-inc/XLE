@@ -12,8 +12,7 @@
 #include "../../Math/Transformations.h"
 #include "../../Utility/StringUtils.h"
 #include "../../Utility/StringFormat.h"
-#include "../../Utility/Streams/Data.h"
-#include "../../Utility/Streams/DataSerialize.h"
+#include "../../Utility/Streams/StreamFormatter.h"
 #include <memory>
 
 namespace EntityInterface
@@ -29,10 +28,10 @@ namespace EntityInterface
         using namespace SceneEngine;
         using namespace PlatformRig;
 
-        const auto typeAmbient = flexGobInterface.GetTypeId("AmbientSettings");
-        const auto typeDirectionalLight = flexGobInterface.GetTypeId("DirectionalLight");
-        const auto typeToneMapSettings = flexGobInterface.GetTypeId("ToneMapSettings");
-        const auto shadowFrustumSettings = flexGobInterface.GetTypeId("ShadowFrustumSettings");
+        const auto typeAmbient = flexGobInterface.GetTypeId((const utf8*)"AmbientSettings");
+        const auto typeDirectionalLight = flexGobInterface.GetTypeId((const utf8*)"DirectionalLight");
+        const auto typeToneMapSettings = flexGobInterface.GetTypeId((const utf8*)"ToneMapSettings");
+        const auto shadowFrustumSettings = flexGobInterface.GetTypeId((const utf8*)"ShadowFrustumSettings");
 
         EnvironmentSettings result;
         result._globalLightingDesc = DefaultGlobalLightingDesc();
@@ -97,8 +96,8 @@ namespace EntityInterface
     {
         EnvSettingsVector result;
 
-        const auto typeSettings = flexGobInterface.GetTypeId("EnvSettings");
-        static const auto nameHash = ParameterBox::MakeParameterNameHash("name");
+        const auto typeSettings = flexGobInterface.GetTypeId((const utf8*)"EnvSettings");
+        static const auto nameHash = ParameterBox::MakeParameterNameHash((const utf8*)"Name");
         auto allSettings = flexGobInterface.FindEntitiesOfType(typeSettings);
         for (const auto& s : allSettings)
             result.push_back(
@@ -109,34 +108,34 @@ namespace EntityInterface
         return std::move(result);
     }
 
-    std::unique_ptr<Utility::Data> SerializeToData(
-        const RetainedEntity& obj,
-        const RetainedEntities& entities)
+    template<typename CharType>
+        void Serialize(
+            OutputStreamFormatter& formatter,
+            const RetainedEntity& obj,
+            const RetainedEntities& entities)
     {
-        ParameterBox::StringTable stringTable;
-        obj._properties.BuildStringTable(stringTable);
+        static const auto nameHash = ParameterBox::MakeParameterNameHash((const utf8*)"Name");
+        const auto bufferSize = 256u;
+        StringMeld<bufferSize, CharType> name;
+        if (!obj._properties.GetString(nameHash, const_cast<CharType*>(name.get()), bufferSize))
+            name << obj._id;
 
-        static const auto nameHash = ParameterBox::ParameterNameHash("name");
-        char name[256];
-        if (!obj._properties.GetString(nameHash, name, dimof(name)))
-            _snprintf_s(name, _TRUNCATE, "0x%08x%08x", uint32(obj._id>>32), uint32(obj._id));
-
-        auto base = Utility::SerializeToData(name, stringTable);
+        auto eleId = formatter.BeginElement(name);
+        obj._properties.Serialize<CharType>(formatter);
 
         for (auto c=obj._children.cbegin(); c!=obj._children.cend(); ++c) {
             const auto* child = entities.GetEntity(obj._doc, *c);
-            if (child) {
-                base->Add(SerializeToData(*child, entities).release());
-            }
+            if (child)
+                Serialize<CharType>(formatter, *child, entities);
         }
 
-        return std::move(base);
+        formatter.EndElement(eleId);
     }
 
     void ExportEnvSettings(
+        OutputStreamFormatter& formatter,
         const RetainedEntities& flexGobInterface,
-        DocumentId docId,
-        const ::Assets::ResChar destinationFile[])
+        DocumentId docId)
     {
             // Save out the environment settings in the given document
             // in native format.
@@ -151,26 +150,19 @@ namespace EntityInterface
             // The second way is a lot easier. And it's much more straight-forward to
             // maintain.
 
-        const auto typeSettings = flexGobInterface.GetTypeId("EnvSettings");
+        const auto typeSettings = flexGobInterface.GetTypeId((const utf8*)"EnvSettings");
         auto allSettings = flexGobInterface.FindEntitiesOfType(typeSettings);
-
-        auto asData = std::make_unique<Utility::Data>();
 
         bool foundAtLeastOne = false;
         for (const auto& s : allSettings)
             if (s->_doc == docId)
             {
-                asData->Add(SerializeToData(*s, flexGobInterface).release());
+                Serialize<utf8>(formatter, *s, flexGobInterface);
                 foundAtLeastOne = true;
             }
         
         if (!foundAtLeastOne)
             ThrowException(::Exceptions::BasicLabel("No environment settings found"));
-
-        auto saveRes = asData->Save(destinationFile);
-
-        if (!saveRes)
-            ThrowException(::Exceptions::BasicLabel("Error while serializing environment settings"));
     }
 
 }

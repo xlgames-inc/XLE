@@ -173,7 +173,7 @@ namespace SceneEngine
         _pimpl->_threadContext = threadContext;
 
         _pimpl->_parserContext.GetTechniqueContext()._runtimeState.SetParameter(
-            "INTERSECTION_TEST", unsigned(testType));
+            (const utf8*)"INTERSECTION_TEST", unsigned(testType));
 
         auto metalContext = RenderCore::Metal::DeviceContext::Get(*threadContext);
 

@@ -11,13 +11,47 @@
 #include "IteratorUtils.h"
 #include "StringFormat.h"
 #include "Conversion.h"
+#include "Streams/StreamFormatter.h"
 #include "../ConsoleRig/Log.h"
 #include <algorithm>
 #include <utility>
 #include <regex>
 
+// namespace std
+// {
+//     template<> class regex_traits<utf8> : public regex_traits<char> {};
+//     // template<> class regex_traits<ucs2> : public regex_traits<char16_t> {};
+//     // template<> class regex_traits<ucs4> : public regex_traits<char32_t> {};
+// }
+
 namespace Utility
 {
+    // XL_UTILITY_API bool     XlAtoBool(const utf8* str, const utf8** end_ptr = 0);
+    // XL_UTILITY_API int32    XlAtoI32 (const utf8* str, const utf8** end_ptr = 0, int radix = 10);
+    // XL_UTILITY_API int64    XlAtoI64 (const utf8* str, const utf8** end_ptr = 0, int radix = 10);
+    // XL_UTILITY_API uint32   XlAtoUI32(const utf8* str, const utf8** end_ptr = 0, int radix = 10);
+    // XL_UTILITY_API uint64   XlAtoUI64(const utf8* str, const utf8** end_ptr = 0, int radix = 10);
+    // XL_UTILITY_API f32      XlAtoF32 (const utf8* str, const utf8** end_ptr = 0);
+    // XL_UTILITY_API f64      XlAtoF64 (const utf8* str, const utf8** end_ptr = 0);
+    // 
+    // XL_UTILITY_API bool     XlAtoBool(const ucs2* str, const ucs2** end_ptr = 0);
+    // XL_UTILITY_API int32    XlAtoI32 (const ucs2* str, const ucs2** end_ptr = 0, int radix = 10);
+    // XL_UTILITY_API int64    XlAtoI64 (const ucs2* str, const ucs2** end_ptr = 0, int radix = 10);
+    // XL_UTILITY_API uint32   XlAtoUI32(const ucs2* str, const ucs2** end_ptr = 0, int radix = 10);
+    // XL_UTILITY_API uint64   XlAtoUI64(const ucs2* str, const ucs2** end_ptr = 0, int radix = 10);
+    // XL_UTILITY_API f32      XlAtoF32 (const ucs2* str, const ucs2** end_ptr = 0);
+    // XL_UTILITY_API f64      XlAtoF64 (const ucs2* str, const ucs2** end_ptr = 0);
+    // 
+    // XL_UTILITY_API bool     XlAtoBool(const ucs4* str, const ucs4** end_ptr = 0);
+    // XL_UTILITY_API int32    XlAtoI32 (const ucs4* str, const ucs4** end_ptr = 0, int radix = 10);
+    // XL_UTILITY_API int64    XlAtoI64 (const ucs4* str, const ucs4** end_ptr = 0, int radix = 10);
+    // XL_UTILITY_API uint32   XlAtoUI32(const ucs4* str, const ucs4** end_ptr = 0, int radix = 10);
+    // XL_UTILITY_API uint64   XlAtoUI64(const ucs4* str, const ucs4** end_ptr = 0, int radix = 10);
+    // XL_UTILITY_API f32      XlAtoF32 (const ucs4* str, const ucs4** end_ptr = 0);
+    // XL_UTILITY_API f64      XlAtoF64 (const ucs4* str, const ucs4** end_ptr = 0);
+
+    static const unsigned NativeRepMaxSize = MaxPath * 4;
+
     namespace ImpliedTyping
     {
         uint32 TypeDesc::GetSize() const
@@ -258,8 +292,8 @@ namespace Utility
         {
                 // parse string expression into native types.
                 // We'll write the native object into the buffer and return a type desc
-            static std::basic_regex<CharType> booleanTrue(R"(^(true)|(y)|(yes)|(TRUE)|(Y)|(YES)$)");
-            static std::basic_regex<CharType> booleanFalse(R"(^(false)|(n)|(no)|(FALSE)|(N)|(NO)$)");
+            static std::basic_regex<CharType> booleanTrue((const CharType*)R"(^(true)|(True)|(y)|(Y)|(yes)|(Yes)|(TRUE)|(Y)|(YES)$)");
+            static std::basic_regex<CharType> booleanFalse((const CharType*)R"(^(false)|(False)|(n)|(N)|(no)|(No)|(FALSE)|(N)|(NO)$)");
 
             if (std::regex_match(expressionBegin, expressionEnd, booleanTrue)) {
                 assert(destSize >= sizeof(bool));
@@ -272,7 +306,7 @@ namespace Utility
             }
 
             static std::basic_regex<CharType> unsignedPattern(
-                R"(^\+?(([\d]+)|(0x[\da-fA-F]+))((u)|(ui)|(ul)|(ull)|(U)|(UI)|(UL)|(ULL))?$)");
+                (const CharType*)R"(^\+?(([\d]+)|(0x[\da-fA-F]+))((u)|(ui)|(ul)|(ull)|(U)|(UI)|(UL)|(ULL))?$)");
             if (std::regex_match(expressionBegin, expressionEnd, unsignedPattern)) {
                 assert(destSize >= sizeof(unsigned));
                 auto len = expressionEnd - expressionBegin;
@@ -285,7 +319,7 @@ namespace Utility
                 return TypeDesc(TypeCat::UInt32);
             }
 
-            static std::basic_regex<CharType> signedPattern(R"(^[-\+]?(([\d]+)|(0x[\da-fA-F]+))((i)|(l)|(ll)|(I)|(L)|(LL))?$)");
+            static std::basic_regex<CharType> signedPattern((const CharType*)R"(^[-\+]?(([\d]+)|(0x[\da-fA-F]+))((i)|(l)|(ll)|(I)|(L)|(LL))?$)");
             if (std::regex_match(expressionBegin, expressionEnd, signedPattern)) {
                 assert(destSize >= sizeof(unsigned));
                 auto len = expressionEnd - expressionBegin;
@@ -298,7 +332,7 @@ namespace Utility
                 return TypeDesc(TypeCat::Int32);
             }
 
-            static std::basic_regex<CharType> floatPattern(R"(^[-\+]?(([\d]*\.?[\d]+)|([\d]+\.))([eE][-\+]?[\d]+)?[fF]?$)");
+            static std::basic_regex<CharType> floatPattern((const CharType*)R"(^[-\+]?(([\d]*\.?[\d]+)|([\d]+\.))([eE][-\+]?[\d]+)?[fF]?$)");
             if (std::regex_match(expressionBegin, expressionEnd, floatPattern)) {
                 assert(destSize >= sizeof(float));
                 *(float*)dest = XlAtoF32(expressionBegin);
@@ -309,11 +343,11 @@ namespace Utility
                     // match for float array:
                 // R"(^\{\s*[-\+]?(([\d]*\.?[\d]+)|([\d]+\.))([eE][-\+]?[\d]+)?[fF]\s*(\s*,\s*([-\+]?(([\d]*\.?[\d]+)|([\d]+\.))([eE][-\+]?[\d]+)?[fF]))*\s*\}[vc]?$)"
 
-                static std::basic_regex<CharType> arrayPattern(R"(\{\s*([^,\s]+(?:\s*,\s*[^,\s]+)*)\s*\}([vcVC]?))");
+                static std::basic_regex<CharType> arrayPattern((const CharType*)R"(\{\s*([^,\s]+(?:\s*,\s*[^,\s]+)*)\s*\}([vcVC]?))");
                 // std::match_results<typename std::basic_string<CharType>::const_iterator> cm; 
                 std::match_results<const CharType*> cm; 
                 if (std::regex_match(expressionBegin, expressionEnd, cm, arrayPattern)) {
-                    static std::basic_regex<CharType> arrayElementPattern(R"(\s*([^,\s]+)\s*(?:,|$))");
+                    static std::basic_regex<CharType> arrayElementPattern((const CharType*)R"(\s*([^,\s]+)\s*(?:,|$))");
 
                     const auto& subMatch = cm[1];
                     std::regex_iterator<const CharType*> rit(
@@ -384,7 +418,7 @@ namespace Utility
 
         template <typename Type> std::pair<bool, Type> Parse(const char expression[]) 
         {
-            char buffer[256];
+            char buffer[NativeRepMaxSize];
             auto parseType = Parse(expression, &expression[XlStringLen(expression)], buffer, sizeof(buffer));
             if (parseType == TypeOf<Type>()) {
                 return std::make_pair(true, *(Type*)buffer);
@@ -463,19 +497,24 @@ namespace Utility
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    ParameterBox::ParameterNameHash ParameterBox::MakeParameterNameHash(const std::string& name)
+    ParameterBox::ParameterNameHash ParameterBox::MakeParameterNameHash(const std::basic_string<utf8>& name)
     {
         return Hash32(AsPointer(name.cbegin()), AsPointer(name.cend()));
     }
 
-    ParameterBox::ParameterNameHash    ParameterBox::MakeParameterNameHash(const char name[])
+    ParameterBox::ParameterNameHash    ParameterBox::MakeParameterNameHash(const utf8 name[])
     {
         return Hash32(name, &name[XlStringLen(name)]);
     }
 
-    void ParameterBox::SetParameter(const char name[], const char data[])
+    ParameterBox::ParameterNameHash    ParameterBox::MakeParameterNameHash(const char name[])
     {
-        uint8 buffer[128];
+        return MakeParameterNameHash((const utf8*)name);
+    }
+
+    void ParameterBox::SetParameter(const utf8 name[], const char data[])
+    {
+        uint8 buffer[NativeRepMaxSize];
         auto len = XlStringLen(data);
         auto typeDesc = ImpliedTyping::Parse(data, &data[len], buffer, sizeof(buffer));
         if (typeDesc._type != ImpliedTyping::TypeCat::Void) {
@@ -489,9 +528,9 @@ namespace Utility
         }
     }
 
-    void ParameterBox::SetParameter(const char name[], const std::string& data)
+    void ParameterBox::SetParameter(const utf8 name[], const std::string& data)
     {
-        uint8 buffer[128];
+        uint8 buffer[NativeRepMaxSize];
         auto typeDesc = ImpliedTyping::Parse(AsPointer(data.cbegin()), AsPointer(data.cend()), buffer, sizeof(buffer));
         if (typeDesc._type != ImpliedTyping::TypeCat::Void) {
             SetParameter(name, buffer, typeDesc);
@@ -504,7 +543,7 @@ namespace Utility
     }
 
     template<typename Type>
-        void ParameterBox::SetParameter(const char name[], Type value)
+        void ParameterBox::SetParameter(const utf8 name[], Type value)
     {
         const auto insertType = ImpliedTyping::TypeOf<Type>();
         auto size = insertType.GetSize();
@@ -513,7 +552,7 @@ namespace Utility
     }
 
     void ParameterBox::SetParameter(
-        const char name[], const void* value, 
+        const utf8 name[], const void* value, 
         const ImpliedTyping::TypeDesc& insertType)
     {
         auto hash = MakeParameterNameHash(name);
@@ -625,7 +664,7 @@ namespace Utility
     }
     
     template<typename Type>
-        std::pair<bool, Type> ParameterBox::GetParameter(const char name[]) const
+        std::pair<bool, Type> ParameterBox::GetParameter(const utf8 name[]) const
     {
         return GetParameter<Type>(MakeParameterNameHash(name));
     }
@@ -713,59 +752,59 @@ namespace Utility
         return false;
     }
 
-    template void ParameterBox::SetParameter(const char name[], uint32 value);
-    template std::pair<bool, uint32> ParameterBox::GetParameter(const char name[]) const;
+    template void ParameterBox::SetParameter(const utf8 name[], uint32 value);
+    template std::pair<bool, uint32> ParameterBox::GetParameter(const utf8 name[]) const;
     template std::pair<bool, uint32> ParameterBox::GetParameter(ParameterNameHash name) const;
 
-    template void ParameterBox::SetParameter(const char name[], int32 value);
-    template std::pair<bool, int32> ParameterBox::GetParameter(const char name[]) const;
+    template void ParameterBox::SetParameter(const utf8 name[], int32 value);
+    template std::pair<bool, int32> ParameterBox::GetParameter(const utf8 name[]) const;
     template std::pair<bool, int32> ParameterBox::GetParameter(ParameterNameHash name) const;
 
-    template void ParameterBox::SetParameter(const char name[], bool value);
-    template std::pair<bool, bool> ParameterBox::GetParameter(const char name[]) const;
+    template void ParameterBox::SetParameter(const utf8 name[], bool value);
+    template std::pair<bool, bool> ParameterBox::GetParameter(const utf8 name[]) const;
     template std::pair<bool, bool> ParameterBox::GetParameter(ParameterNameHash name) const;
 
-    template void ParameterBox::SetParameter(const char name[], float value);
-    template std::pair<bool, float> ParameterBox::GetParameter(const char name[]) const;
+    template void ParameterBox::SetParameter(const utf8 name[], float value);
+    template std::pair<bool, float> ParameterBox::GetParameter(const utf8 name[]) const;
     template std::pair<bool, float> ParameterBox::GetParameter(ParameterNameHash name) const;
 
 
-    template void ParameterBox::SetParameter(const char name[], Float2 value);
-    template std::pair<bool, Float2> ParameterBox::GetParameter(const char name[]) const;
+    template void ParameterBox::SetParameter(const utf8 name[], Float2 value);
+    template std::pair<bool, Float2> ParameterBox::GetParameter(const utf8 name[]) const;
     template std::pair<bool, Float2> ParameterBox::GetParameter(ParameterNameHash name) const;
     
-    template void ParameterBox::SetParameter(const char name[], Float3 value);
-    template std::pair<bool, Float3> ParameterBox::GetParameter(const char name[]) const;
+    template void ParameterBox::SetParameter(const utf8 name[], Float3 value);
+    template std::pair<bool, Float3> ParameterBox::GetParameter(const utf8 name[]) const;
     template std::pair<bool, Float3> ParameterBox::GetParameter(ParameterNameHash name) const;
 
-    template void ParameterBox::SetParameter(const char name[], Float4 value);
-    template std::pair<bool, Float4> ParameterBox::GetParameter(const char name[]) const;
+    template void ParameterBox::SetParameter(const utf8 name[], Float4 value);
+    template std::pair<bool, Float4> ParameterBox::GetParameter(const utf8 name[]) const;
     template std::pair<bool, Float4> ParameterBox::GetParameter(ParameterNameHash name) const;
 
 
-    template void ParameterBox::SetParameter(const char name[], Float3x3 value);
-    template std::pair<bool, Float3x3> ParameterBox::GetParameter(const char name[]) const;
+    template void ParameterBox::SetParameter(const utf8 name[], Float3x3 value);
+    template std::pair<bool, Float3x3> ParameterBox::GetParameter(const utf8 name[]) const;
     template std::pair<bool, Float3x3> ParameterBox::GetParameter(ParameterNameHash name) const;
     
-    template void ParameterBox::SetParameter(const char name[], Float3x4 value);
-    template std::pair<bool, Float3x4> ParameterBox::GetParameter(const char name[]) const;
+    template void ParameterBox::SetParameter(const utf8 name[], Float3x4 value);
+    template std::pair<bool, Float3x4> ParameterBox::GetParameter(const utf8 name[]) const;
     template std::pair<bool, Float3x4> ParameterBox::GetParameter(ParameterNameHash name) const;
 
-    template void ParameterBox::SetParameter(const char name[], Float4x4 value);
-    template std::pair<bool, Float4x4> ParameterBox::GetParameter(const char name[]) const;
+    template void ParameterBox::SetParameter(const utf8 name[], Float4x4 value);
+    template std::pair<bool, Float4x4> ParameterBox::GetParameter(const utf8 name[]) const;
     template std::pair<bool, Float4x4> ParameterBox::GetParameter(ParameterNameHash name) const;
 
 
-    template void ParameterBox::SetParameter(const char name[], UInt2 value);
-    template std::pair<bool, UInt2> ParameterBox::GetParameter(const char name[]) const;
+    template void ParameterBox::SetParameter(const utf8 name[], UInt2 value);
+    template std::pair<bool, UInt2> ParameterBox::GetParameter(const utf8 name[]) const;
     template std::pair<bool, UInt2> ParameterBox::GetParameter(ParameterNameHash name) const;
     
-    template void ParameterBox::SetParameter(const char name[], UInt3 value);
-    template std::pair<bool, UInt3> ParameterBox::GetParameter(const char name[]) const;
+    template void ParameterBox::SetParameter(const utf8 name[], UInt3 value);
+    template std::pair<bool, UInt3> ParameterBox::GetParameter(const utf8 name[]) const;
     template std::pair<bool, UInt3> ParameterBox::GetParameter(ParameterNameHash name) const;
 
-    template void ParameterBox::SetParameter(const char name[], UInt4 value);
-    template std::pair<bool, UInt4> ParameterBox::GetParameter(const char name[]) const;
+    template void ParameterBox::SetParameter(const utf8 name[], UInt4 value);
+    template std::pair<bool, UInt4> ParameterBox::GetParameter(const utf8 name[]) const;
     template std::pair<bool, UInt4> ParameterBox::GetParameter(ParameterNameHash name) const;
 
     template std::basic_string<char> ParameterBox::GetString(ParameterNameHash name) const;
@@ -815,7 +854,7 @@ namespace Utility
         return _parameterHashValues[index];
     }
 
-    const char* ParameterBox::GetFullNameAtIndex(unsigned index) const
+    const utf8* ParameterBox::GetFullNameAtIndex(unsigned index) const
     {
         assert(index < _offsets.size());
         return &_names[_offsets[index].first];
@@ -886,23 +925,23 @@ namespace Utility
     class StringTableComparison
     {
     public:
-        bool operator()(const char* lhs, const std::pair<const char*, std::string>& rhs) const 
+        bool operator()(const utf8* lhs, const std::pair<const utf8*, std::string>& rhs) const 
         {
             return XlCompareString(lhs, rhs.first) < 0;
         }
 
-        bool operator()(const std::pair<const char*, std::string>& lhs, const std::pair<const char*, std::string>& rhs) const 
+        bool operator()(const std::pair<const utf8*, std::string>& lhs, const std::pair<const utf8*, std::string>& rhs) const 
         {
             return XlCompareString(lhs.first, rhs.first) < 0;
         }
 
-        bool operator()(const std::pair<const char*, std::string>& lhs, const char* rhs) const 
+        bool operator()(const std::pair<const utf8*, std::string>& lhs, const utf8* rhs) const 
         {
             return XlCompareString(lhs.first, rhs) < 0;
         }
     };
 
-    void ParameterBox::BuildStringTable(std::vector<std::pair<const char*, std::string>>& defines) const
+    void ParameterBox::BuildStringTable(std::vector<std::pair<const utf8*, std::string>>& defines) const
     {
         for (auto i=_offsets.cbegin(); i!=_offsets.cend(); ++i) {
             const auto* name = &_names[i->first];
@@ -920,7 +959,7 @@ namespace Utility
         }
     }
 
-    void ParameterBox::OverrideStringTable(std::vector<std::pair<const char*, std::string>>& defines) const
+    void ParameterBox::OverrideStringTable(std::vector<std::pair<const utf8*, std::string>>& defines) const
     {
         for (auto i=_offsets.cbegin(); i!=_offsets.cend(); ++i) {
             const auto* name = &_names[i->first];
@@ -970,16 +1009,167 @@ namespace Utility
         Serialization::Serialize(serializer, _types);
     }
 
+    template<typename CharType>
+        void    ParameterBox::Serialize(OutputStreamFormatter& stream) const
+    {
+        std::basic_string<CharType> tmpBuffer;
+        std::basic_string<CharType> nameBuffer;
+
+        for (auto i=_offsets.cbegin(); i!=_offsets.cend(); ++i) {
+            const auto* name = &_names[i->first];
+            const void* value = &_values[i->second];
+            const auto& type = _types[std::distance(_offsets.begin(), i)];
+
+            auto nameLen = XlStringLen(name);
+            nameBuffer.resize(nameLen);     // (note; we're assuming this stl implementation won't reallocate when resizing to smaller size)
+            bool result = Conversion::Convert(
+                AsPointer(nameBuffer.begin()), nameBuffer.size(),
+                name, &name[nameLen]);
+               
+            if (!result)
+                ThrowException(::Exceptions::BasicLabel("Error during name conversion for member: %s", name));
+
+                // We need special cases for string types. In these cases we might have to
+                // do some conversion to get the value in the format we want.
+            if (type._type == ImpliedTyping::TypeCat::Int8 || type._type == ImpliedTyping::TypeCat::UInt8) {
+                auto start = (const utf8*)value;
+                tmpBuffer.resize((unsigned)type._arrayCount);
+                bool result = Conversion::Convert(
+                    AsPointer(tmpBuffer.begin()), tmpBuffer.size(),
+                    start, &start[type._arrayCount]);
+                
+                if (!result)
+                    ThrowException(::Exceptions::BasicLabel("Error during string conversion for member: %s", name));
+
+                stream.WriteAttribute(
+                    nameBuffer.c_str(), 
+                    AsPointer(tmpBuffer.begin()), AsPointer(tmpBuffer.end()));
+                continue;
+            }
+
+            if (type._type == ImpliedTyping::TypeCat::Int16 || type._type == ImpliedTyping::TypeCat::UInt16) {
+                auto start = (const ucs2*)value;
+                tmpBuffer.resize((unsigned)type._arrayCount);
+                bool result = Conversion::Convert(
+                    AsPointer(tmpBuffer.begin()), tmpBuffer.size(),
+                    start, &start[type._arrayCount]);
+                
+                if (!result)
+                    ThrowException(::Exceptions::BasicLabel("Error during string conversion for member: %s", name));
+
+                stream.WriteAttribute(
+                    nameBuffer.c_str(),
+                    AsPointer(tmpBuffer.begin()), AsPointer(tmpBuffer.end()));
+                continue;
+            }
+
+            auto stringFormat = ImpliedTyping::AsString(value, _values.size() - i->second, type);
+            auto convertedString = Conversion::Convert<std::basic_string<CharType>>(stringFormat);
+            stream.WriteAttribute(
+                Conversion::Convert<std::basic_string<CharType>>(std::basic_string<utf8>(name)).c_str(), 
+                AsPointer(convertedString.begin()), AsPointer(convertedString.end()));
+        }
+    }
+
     ParameterBox::ParameterBox()
     {
         _cachedHash = _cachedParameterNameHash = 0;
     }
 
     ParameterBox::ParameterBox(
-        std::initializer_list<std::pair<const char*, const char*>> init)
+        std::initializer_list<std::pair<const utf8*, const char*>> init)
     {
         for (auto i=init.begin(); i!=init.end(); ++i) {
             SetParameter(i->first, i->second);
+        }
+    }
+
+    ParameterBox::ParameterBox(
+        const InputStreamFormatter& stream, 
+        ImpliedTyping::TypeCat streamCharType)
+    {
+        using namespace ImpliedTyping;
+
+            // note -- fixed size buffer here bottlenecks max size for native representations
+            // of these values
+        uint8 nativeTypeBuffer[NativeRepMaxSize];
+        std::basic_string<utf8> nameBuffer;
+        std::basic_string<char> valueBuffer;
+
+        auto streamCharSize = TypeDesc(streamCharType).GetSize();
+
+            // attempt to read attributes from a serialized text file
+            // as soon as we hit something that is not another attribute
+            // (it could be a sub-element, or the end of this element)
+            // then we will stop reading and return
+        while (stream.GetNext() == InputStreamFormatter::Blob::Attribute) {
+            InputStreamFormatter::InteriorSection name, value;
+            bool success = stream.TryReadAttribute(name, value);
+            if (!success)
+                throw ::Exceptions::BasicLabel("Parsing exception while reading attribute in parameter box deserialization");
+
+            auto nameLen = (size_t(name._end) - size_t(name._start)) / streamCharSize;
+            nameBuffer.resize(nameLen);
+            bool nameConvResult = false;
+
+            TypeDesc nativeType(TypeCat::Void);
+            if (streamCharType == TypeCat::UInt8 || streamCharType == TypeCat::Int8) {
+                nativeType = Parse(
+                    (const char*)value._start,
+                    (const char*)value._end,
+                    nativeTypeBuffer, sizeof(nativeTypeBuffer));
+
+                nameConvResult = Conversion::Convert(
+                    AsPointer(nameBuffer.begin()), nameBuffer.size(),
+                    (const utf8*)name._start, (const utf8*)name._end);
+            } else if (streamCharType == TypeCat::UInt16 || streamCharType == TypeCat::Int16) {
+
+                valueBuffer.resize((const ucs2*)value._end - (const ucs2*)value._start);
+                bool valueConversion = Conversion::Convert(
+                    AsPointer(valueBuffer.begin()), valueBuffer.size(),
+                    (const ucs2*)value._start, (const ucs2*)value._end);
+                if (!valueConversion)
+                    throw ::Exceptions::BasicLabel("Error converting value string in parameter box deserialization");
+
+                nativeType = Parse(
+                    AsPointer(valueBuffer.begin()),
+                    AsPointer(valueBuffer.end()),
+                    nativeTypeBuffer, sizeof(nativeTypeBuffer));
+
+                nameConvResult = Conversion::Convert(
+                    AsPointer(nameBuffer.begin()), nameBuffer.size(),
+                    (const ucs2*)name._start, (const ucs2*)name._end);
+            } else if (streamCharType == TypeCat::UInt32 || streamCharType == TypeCat::Int32) {
+
+                valueBuffer.resize((const ucs4*)value._end - (const ucs4*)value._start);
+                bool valueConversion = Conversion::Convert(
+                    AsPointer(valueBuffer.begin()), valueBuffer.size(),
+                    (const ucs4*)value._start, (const ucs4*)value._end);
+                if (!valueConversion)
+                    throw ::Exceptions::BasicLabel("Error converting value string in parameter box deserialization");
+
+                nativeType = Parse(
+                    AsPointer(valueBuffer.begin()),
+                    AsPointer(valueBuffer.end()),
+                    nativeTypeBuffer, sizeof(nativeTypeBuffer));
+
+                nameConvResult = Conversion::Convert(
+                    AsPointer(nameBuffer.begin()), nameBuffer.size(),
+                    (const ucs4*)name._start, (const ucs4*)name._end);
+            }
+
+            if (!nameConvResult)
+                throw ::Exceptions::BasicLabel("Error converting string name in parameter box deserialization");
+
+            if (nativeType._type != TypeCat::Void) {
+                SetParameter(nameBuffer.c_str(), nativeTypeBuffer, nativeType);
+            } else {
+                    // this is just a string. We should store it as a string, in whatever character set it came in
+                SetParameter(
+                    nameBuffer.c_str(),
+                    value._start, 
+                    TypeDesc(streamCharType, uint16((size_t(value._end) - size_t(value._start)) / streamCharSize), TypeHint::String));
+            }
         }
     }
 
@@ -1009,6 +1199,10 @@ namespace Utility
     ParameterBox::~ParameterBox()
     {
     }
+
+    template void ParameterBox::Serialize<utf8>(OutputStreamFormatter& stream) const;
+    template void ParameterBox::Serialize<ucs2>(OutputStreamFormatter& stream) const;
+    template void ParameterBox::Serialize<ucs4>(OutputStreamFormatter& stream) const;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

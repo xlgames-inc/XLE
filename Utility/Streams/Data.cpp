@@ -1281,7 +1281,7 @@ bool Data::LoadFromFile(const char* filename, bool* noFile)
 static void PrintIndent(OutputStream& f, int level)
 {
     for (int i = 0; i < level; ++i) {
-        f.WriteString((const utf8*)"    ");
+        f.WriteNullTerm((const utf8*)"    ");
     }
 }
 
@@ -1313,7 +1313,7 @@ static void PrintText(OutputStream& f, const Data* data)
         const char* p = data->value;
         while (*p) {
             if (IsBreakChar(*p)) {
-                f.WriteString((const utf8*)"\r\n");
+                f.WriteNullTerm((const utf8*)"\r\n");
             } else if (*p == '\\') {
                 if (IsEscapeableChar(*(p + 1)))
                     f.WriteChar((utf8)'\\');
@@ -1329,11 +1329,11 @@ static void PrintText(OutputStream& f, const Data* data)
         f.WriteChar((utf8)'\"');
         return;
     } else if (!data->value[0]) {
-        f.WriteString((const utf8*)"\"\"");
+        f.WriteNullTerm((const utf8*)"\"\"");
         return;
     }
 
-    f.WriteString((const utf8*)data->value);
+    f.WriteNullTerm((const utf8*)data->value);
 }
 
 static bool IsSingleLine(const char* p)
@@ -1385,19 +1385,19 @@ static void PrintSingleLine(OutputStream& f, const Data* data)
 
     if (data->child) {
         if (data->child->next)
-            f.WriteString((const utf8*)" ( ");
+            f.WriteNullTerm((const utf8*)" ( ");
         else
             f.WriteChar((utf8)' ');
 
         PrintSingleLine(f, data->child);
 
         for (Data* child = data->child->next; child; child = child->next) {
-            f.WriteString((const utf8*)", ");
+            f.WriteNullTerm((const utf8*)", ");
             PrintSingleLine(f, child);
         }
 
         if (data->child->next)
-            f.WriteString((const utf8*)" )");
+            f.WriteNullTerm((const utf8*)" )");
     }
 }
 
@@ -1405,7 +1405,7 @@ static void PrintComment(OutputStream& f, int level, const char* p)
 {
     while (*p) {
         if (*p == '\n') {
-            f.WriteString((const utf8*)"\r\n");
+            f.WriteNullTerm((const utf8*)"\r\n");
             PrintIndent(f, level);
             ++p;
         } else {
@@ -1420,7 +1420,7 @@ static void PrettyPrint(OutputStream&f, int level, const Data* data, bool includ
     int count = 0;
     if (IsSingleLine(data, count)) {
         PrintSingleLine(f, data);
-        f.WriteString((const utf8*)"\r\n");
+        f.WriteNullTerm((const utf8*)"\r\n");
         return;
     }
 
@@ -1432,10 +1432,10 @@ static void PrettyPrint(OutputStream&f, int level, const Data* data, bool includ
 
     if (data->postComment && includeComment) {
         f.WriteChar((utf8)' ');
-        f.WriteString((const utf8*)data->postComment);
+        f.WriteNullTerm((const utf8*)data->postComment);
     }
 
-    f.WriteString((const utf8*)"\r\n");
+    f.WriteNullTerm((const utf8*)"\r\n");
 
     foreachData(child, data) {
         PrettyPrint(f, level+1, child, includeComment);
@@ -1458,7 +1458,7 @@ void Data::SaveToOutputStream(OutputStream& f, bool includeComment) const
             PrintComment(f, 0, meta->preComment);
 
         PrettyPrint(f, 0, meta, includeComment);
-        f.WriteString((const utf8*)"\r\n\r\n");
+        f.WriteNullTerm((const utf8*)"\r\n\r\n");
     }
 
     if (preComment && includeComment) {

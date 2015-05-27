@@ -158,7 +158,7 @@ namespace RenderCore { namespace Assets
         #if defined(_DEBUG)
             static std::string MakeDescription(const ParameterBox& paramBox)
             {
-                std::vector<std::pair<const char*, std::string>> defines;
+                std::vector<std::pair<const utf8*, std::string>> defines;
                 paramBox.BuildStringTable(defines);
                 std::stringstream dst;
                 for (auto i=defines.cbegin(); i!=defines.cend(); ++i) {
@@ -194,14 +194,14 @@ namespace RenderCore { namespace Assets
         {
                 //  Build a parameter box for this geometry configuration. The input assembly
             ParameterBox geoParameters;
-            if (HasElement(ia, "TEXCOORD"))     { geoParameters.SetParameter("GEO_HAS_TEXCOORD", 1); }
-            if (HasElement(ia, "COLOR"))        { geoParameters.SetParameter("GEO_HAS_COLOUR", 1); }
+            if (HasElement(ia, "TEXCOORD"))     { geoParameters.SetParameter((const utf8*)"GEO_HAS_TEXCOORD", 1); }
+            if (HasElement(ia, "COLOR"))        { geoParameters.SetParameter((const utf8*)"GEO_HAS_COLOUR", 1); }
             if (HasElement(ia, "NORMAL") || normalFromSkinning) 
-                { geoParameters.SetParameter("GEO_HAS_NORMAL", 1); }
-            if (HasElement(ia, "TANGENT"))      { geoParameters.SetParameter("GEO_HAS_TANGENT_FRAME", 1); }
-            if (HasElement(ia, "BITANGENT"))    { geoParameters.SetParameter("GEO_HAS_BITANGENT", 1); }
+                { geoParameters.SetParameter((const utf8*)"GEO_HAS_NORMAL", 1); }
+            if (HasElement(ia, "TANGENT"))      { geoParameters.SetParameter((const utf8*)"GEO_HAS_TANGENT_FRAME", 1); }
+            if (HasElement(ia, "BITANGENT"))    { geoParameters.SetParameter((const utf8*)"GEO_HAS_BITANGENT", 1); }
             if (HasElement(ia, "BONEINDICES") && HasElement(ia, "BONEWEIGHTS"))
-                { geoParameters.SetParameter("GEO_HAS_SKIN_WEIGHTS", 1); }
+                { geoParameters.SetParameter((const utf8*)"GEO_HAS_SKIN_WEIGHTS", 1); }
             auto result = sharedStateSet.InsertParameterBox(geoParameters);
             paramBoxDesc.Add(result, geoParameters);
             return result;
@@ -274,9 +274,9 @@ namespace RenderCore { namespace Assets
                     for (unsigned c=0; c<matData->_bindings.GetParameterCount(); ++c) {
                         auto bindName = matData->_bindings.GetFullNameAtIndex(c);
                         materialParamBox.SetParameter(
-                            (const char*)(StringMeld<64>() << "RES_HAS_" << bindName), 1);
+                            (const utf8*)(StringMeld<64, utf8>() << "RES_HAS_" << bindName), 1);
                 
-                        auto bindNameHash = Hash64(bindName);
+                        auto bindNameHash = Hash64((const char*)bindName);
                         auto q = std::lower_bound(textureBindPoints.begin(), textureBindPoints.end(), bindNameHash);
                         if (q != textureBindPoints.end() && *q == bindNameHash) { continue; }
                         textureBindPoints.insert(q, bindNameHash);
@@ -298,7 +298,7 @@ namespace RenderCore { namespace Assets
                         isDxtNormalMap = IsDXTNormalMap(resolvedPath);
                     } else 
                         isDxtNormalMap = IsDXTNormalMap(boundNormalMapName);
-                    materialParamBox.SetParameter("RES_HAS_NormalsTexture_DXT", isDxtNormalMap);
+                    materialParamBox.SetParameter((const utf8*)"RES_HAS_NormalsTexture_DXT", isDxtNormalMap);
                 }
 
                 i->second._matParams = sharedStateSet.InsertParameterBox(materialParamBox);
@@ -334,7 +334,7 @@ namespace RenderCore { namespace Assets
 
                 for (unsigned c=0; c<matData->_bindings.GetParameterCount(); ++c) {
                     auto bindName = matData->_bindings.GetFullNameAtIndex(c);
-                    auto bindNameHash = Hash64(bindName);
+                    auto bindNameHash = Hash64((const char*)bindName);
 
                     auto i = std::find(textureBindPoints.cbegin(), textureBindPoints.cend(), bindNameHash);
                     assert(i!=textureBindPoints.cend() && *i == bindNameHash);

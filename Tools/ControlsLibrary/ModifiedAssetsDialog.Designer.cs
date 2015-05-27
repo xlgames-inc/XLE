@@ -29,11 +29,11 @@
         private void InitializeComponent()
         {
             this._assetList = new Aga.Controls.Tree.TreeViewAdv();
-            this._compareWindow = new FileCompare();
+            this._nodeCheckBox = new Aga.Controls.Tree.NodeControls.NodeCheckBox();
+            this._label = new Aga.Controls.Tree.NodeControls.NodeTextBox();
+            this._compareWindow = new ControlsLibrary.FileCompare();
             this._saveButton = new System.Windows.Forms.Button();
             this._cancelButton = new System.Windows.Forms.Button();
-            this._label = new Aga.Controls.Tree.NodeControls.NodeTextBox();
-            this._nodeCheckBox = new Aga.Controls.Tree.NodeControls.NodeCheckBox();
             this.SuspendLayout();
             // 
             // _assetList
@@ -56,16 +56,19 @@
             this._assetList.Text = "treeViewAdv1";
             this._assetList.SelectionChanged += new System.EventHandler(this._tree_SelectionChanged);
             // 
+            // _nodeCheckBox
+            // 
+            this._nodeCheckBox.DataPropertyName = "SaveQueuedState";
+            this._nodeCheckBox.EditEnabled = true;
+            this._nodeCheckBox.LeftMargin = 0;
+            this._nodeCheckBox.ParentColumn = null;
+            // 
             // _label
             // 
             this._label.DataPropertyName = "Label";
             this._label.IncrementalSearchEnabled = true;
             this._label.LeftMargin = 3;
-            // 
-            // _nodeCheckBox
-            // 
-            this._nodeCheckBox.DataPropertyName = "SaveQueuedState";
-            this._nodeCheckBox.EditEnabled = true;
+            this._label.ParentColumn = null;
             // 
             // _compareWindow
             // 
@@ -74,16 +77,16 @@
             | System.Windows.Forms.AnchorStyles.Right)));
             this._compareWindow.Location = new System.Drawing.Point(12, 140);
             this._compareWindow.Name = "_compareWindow";
-            this._compareWindow.Size = new System.Drawing.Size(586, 275);
+            this._compareWindow.Size = new System.Drawing.Size(586, 286);
             this._compareWindow.TabIndex = 1;
             // 
             // _saveButton
             // 
             this._saveButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this._saveButton.DialogResult = System.Windows.Forms.DialogResult.OK;
-            this._saveButton.Location = new System.Drawing.Point(463, 421);
+            this._saveButton.Location = new System.Drawing.Point(463, 432);
             this._saveButton.Name = "_saveButton";
-            this._saveButton.Size = new System.Drawing.Size(135, 34);
+            this._saveButton.Size = new System.Drawing.Size(135, 23);
             this._saveButton.TabIndex = 2;
             this._saveButton.Text = "Save";
             this._saveButton.UseVisualStyleBackColor = true;
@@ -93,15 +96,15 @@
             // 
             this._cancelButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this._cancelButton.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this._cancelButton.Location = new System.Drawing.Point(322, 421);
+            this._cancelButton.Location = new System.Drawing.Point(322, 432);
             this._cancelButton.Name = "_cancelButton";
-            this._cancelButton.Size = new System.Drawing.Size(135, 34);
+            this._cancelButton.Size = new System.Drawing.Size(135, 23);
             this._cancelButton.TabIndex = 3;
             this._cancelButton.Text = "Cancel";
             this._cancelButton.UseVisualStyleBackColor = true;
             this._cancelButton.Click += new System.EventHandler(this._cancelButton_Click);
             // 
-            // SaveAssetsDialog
+            // ModifiedAssetsDialog
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
@@ -110,7 +113,7 @@
             this.Controls.Add(this._saveButton);
             this.Controls.Add(this._compareWindow);
             this.Controls.Add(this._assetList);
-            this.Name = "SaveAssetsDialog";
+            this.Name = "ModifiedAssetsDialog";
             this.Text = "Save Modified Assets";
             this.ResumeLayout(false);
 

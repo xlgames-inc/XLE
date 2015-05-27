@@ -16,7 +16,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
     <DebugSymbols>true</DebugSymbols>
     <OutputPath>..\..\..\Finals_Debug64\</OutputPath>
-    <BaseIntermediateOutputPath>..\..\..\Output\LevelEditor\</BaseIntermediateOutputPath>
+    <BaseIntermediateOutputPath>..\..\..\Output\LevelEditorXLE\</BaseIntermediateOutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <DebugType>full</DebugType>
     <PlatformTarget>x64</PlatformTarget>
@@ -25,7 +25,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
     <OutputPath>..\..\..\Finals_Release64\</OutputPath>
-    <BaseIntermediateOutputPath>..\..\..\Output\LevelEditor\</BaseIntermediateOutputPath>
+    <BaseIntermediateOutputPath>..\..\..\Output\LevelEditorXLE\</BaseIntermediateOutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <Optimize>true</Optimize>
     <DebugType>pdbonly</DebugType>

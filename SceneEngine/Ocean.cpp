@@ -1076,12 +1076,12 @@ namespace SceneEngine
             auto& shaderType = ::Assets::GetAssetDep<Techniques::ShaderType>("game/xleres/ocean/oceanmaterial.txt");
 
             ParameterBox materialParameters;
-            materialParameters.SetParameter("MAT_USE_DERIVATIVES_MAP", unsigned(fftBuffer._useDerivativesMapForNormals));
-            materialParameters.SetParameter("MAT_USE_SHALLOW_WATER", shallowWater && unsigned(shallowWater->_simulatingGridsCount!=0));
-            materialParameters.SetParameter("MAT_DO_REFRACTION", refractionsBox!=nullptr);
-            materialParameters.SetParameter("MAT_DYNAMIC_REFLECTION", int(doDynamicReflection));
-            materialParameters.SetParameter("SHALLOW_WATER_TILE_DIMENSION", shallowWater?int(shallowWater->_gridDimension):0);
-            materialParameters.SetParameter("SKY_PROJECTION", skyProjectionType);
+            materialParameters.SetParameter((const utf8*)"MAT_USE_DERIVATIVES_MAP", unsigned(fftBuffer._useDerivativesMapForNormals));
+            materialParameters.SetParameter((const utf8*)"MAT_USE_SHALLOW_WATER", shallowWater && unsigned(shallowWater->_simulatingGridsCount!=0));
+            materialParameters.SetParameter((const utf8*)"MAT_DO_REFRACTION", refractionsBox!=nullptr);
+            materialParameters.SetParameter((const utf8*)"MAT_DYNAMIC_REFLECTION", int(doDynamicReflection));
+            materialParameters.SetParameter((const utf8*)"SHALLOW_WATER_TILE_DIMENSION", shallowWater?int(shallowWater->_gridDimension):0);
+            materialParameters.SetParameter((const utf8*)"SKY_PROJECTION", skyProjectionType);
             ParameterBox dummyBox;
             const ParameterBox* state[] = {
                 &MaterialState_Blank, &parserContext.GetTechniqueContext()._globalEnvironmentState,

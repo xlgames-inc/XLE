@@ -139,6 +139,8 @@ namespace EntityInterface
         };
         mutable std::vector<KnownType> _knownObjectTypes;
         mutable std::vector<KnownType> _knownDocumentTypes;
+
+        mutable ObjectId _nextObjectId;
     };
 }
 

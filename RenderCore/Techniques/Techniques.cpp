@@ -266,7 +266,7 @@ namespace RenderCore { namespace Techniques
                                             const ParameterBox* globalState[ShaderParameters::Source::Max],
                                             const TechniqueInterface& techniqueInterface) const
     {
-        std::vector<std::pair<const char*, std::string>> defines;
+        std::vector<std::pair<const utf8*, std::string>> defines;
         _baseParameters.BuildStringTable(defines);
         for (unsigned c=0; c<ShaderParameters::Source::Max; ++c) {
             globalState[c]->OverrideStringTable(defines);
@@ -275,20 +275,20 @@ namespace RenderCore { namespace Techniques
         std::string combinedStrings;
         size_t size = 0;
         std::for_each(defines.cbegin(), defines.cend(), 
-            [&size](const std::pair<std::string, std::string>& object) { size += 2 + object.first.size() + object.second.size(); });
+            [&size](const std::pair<const utf8*, std::string>& object) { size += 2 + XlStringLen(object.first) + object.second.size(); });
         combinedStrings.reserve(size);
         std::for_each(defines.cbegin(), defines.cend(), 
-            [&combinedStrings](const std::pair<std::string, std::string>& object) 
+            [&combinedStrings](const std::pair<const utf8*, std::string>& object) 
             {
-                combinedStrings.insert(combinedStrings.end(), object.first.cbegin(), object.first.cend()); 
+                combinedStrings.insert(combinedStrings.end(), (const char*)object.first, (const char*)&object.first[XlStringLen(object.first)]); 
                 combinedStrings.push_back('=');
                 combinedStrings.insert(combinedStrings.end(), object.second.cbegin(), object.second.cend()); 
                 combinedStrings.push_back(';');
             });
 
         std::string vsShaderModel, psShaderModel, gsShaderModel;
-        auto vsi = std::lower_bound(defines.cbegin(), defines.cend(), "vs_", CompareFirst<std::string, std::string>());
-        if (vsi != defines.cend() && !XlCompareString(vsi->first, "vs_")) {
+        auto vsi = std::lower_bound(defines.cbegin(), defines.cend(), (const utf8*)"vs_", CompareFirst<const utf8*, std::string>());
+        if (vsi != defines.cend() && !XlCompareString(vsi->first, (const utf8*)"vs_")) {
             char buffer[32];
             int integerValue = Utility::XlAtoI32(vsi->second.c_str());
             sprintf_s(buffer, dimof(buffer), ":vs_%i_%i", integerValue/10, integerValue%10);
@@ -296,8 +296,8 @@ namespace RenderCore { namespace Techniques
         } else {
             vsShaderModel = ":" VS_DefShaderModel;
         }
-        auto psi = std::lower_bound(defines.cbegin(), defines.cend(), "ps_", CompareFirst<std::string, std::string>());
-        if (psi != defines.cend() && !XlCompareString(psi->first, "ps_")) {
+        auto psi = std::lower_bound(defines.cbegin(), defines.cend(), (const utf8*)"ps_", CompareFirst<const utf8*, std::string>());
+        if (psi != defines.cend() && !XlCompareString(psi->first, (const utf8*)"ps_")) {
             char buffer[32];
             int integerValue = Utility::XlAtoI32(psi->second.c_str());
             sprintf_s(buffer, dimof(buffer), ":ps_%i_%i", integerValue/10, integerValue%10);
@@ -305,8 +305,8 @@ namespace RenderCore { namespace Techniques
         } else {
             psShaderModel = ":" PS_DefShaderModel;
         }
-        auto gsi = std::lower_bound(defines.cbegin(), defines.cend(), "gs_", CompareFirst<std::string, std::string>());
-        if (gsi != defines.cend() && !XlCompareString(gsi->first, "gs_")) {
+        auto gsi = std::lower_bound(defines.cbegin(), defines.cend(), (const utf8*)"gs_", CompareFirst<const utf8*, std::string>());
+        if (gsi != defines.cend() && !XlCompareString(gsi->first, (const utf8*)"gs_")) {
             char buffer[32];
             int integerValue = Utility::XlAtoI32(psi->second.c_str());
             sprintf_s(buffer, dimof(buffer), ":gs_%i_%i", integerValue/10, integerValue%10);
@@ -457,7 +457,7 @@ namespace RenderCore { namespace Techniques
                 if (d) {
                     for (auto child = d->child; child; child = child->next) {
                         destinationParameters.SetParameter(
-                            child->StrValue(),
+                            (const utf8*)child->StrValue(),
                             child->ChildAt(0)?child->ChildAt(0)->IntValue():0);
                     }
                 }
@@ -526,8 +526,8 @@ namespace RenderCore { namespace Techniques
             //      values.
             //
         auto& globalParam = _baseParameters._parameters[ShaderParameters::Source::GlobalEnvironment];
-        globalParam.SetParameter("vs_", 50);
-        globalParam.SetParameter("ps_", 50);
+        globalParam.SetParameter((const utf8*)"vs_", 50);
+        globalParam.SetParameter((const utf8*)"ps_", 50);
 
         LoadInteritedParameterBoxes(source, _baseParameters._parameters, searchRules, inherited);
         LoadParameterBoxes(source, _baseParameters._parameters);
@@ -647,7 +647,7 @@ namespace RenderCore { namespace Techniques
         return filteredState;
     }
 
-    void        ShaderParameters::BuildStringTable(std::vector<std::pair<const char*, std::string>>& defines) const
+    void        ShaderParameters::BuildStringTable(std::vector<std::pair<const utf8*, std::string>>& defines) const
     {
         for (unsigned c=0; c<dimof(_parameters); ++c) {
             _parameters[c].BuildStringTable(defines);

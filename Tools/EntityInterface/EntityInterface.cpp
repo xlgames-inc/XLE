@@ -43,11 +43,12 @@ namespace EntityInterface
             
     ObjectId Switch::AssignObjectId(DocumentId doc, ObjectTypeId objType) const
     {
-        if (objType > 0 && (objType-1) < _knownObjectTypes.size()) {
-            auto& reg = _knownObjectTypes[objType-1];
-            return reg._owner->AssignObjectId(doc, reg._mappedTypeId);
-        }
-        return 0;
+            // Our object id is must be unique for all objects of all types.
+            // Each sub-entity interface might have it's own algorithm for generating
+            // ids. But there is no guarantee that we won't get conflicts generated
+            // by 2 different sub-interfaces. So let's avoid calling the sub-interfaces
+            // and just generate an id that is unique for this entire switch.
+        return _nextObjectId++;
     }
 
     ObjectTypeId Switch::GetTypeId(const char name[]) const
@@ -123,7 +124,7 @@ namespace EntityInterface
         _types.push_back(std::move(type));
     }
 
-    Switch::Switch() {}
+    Switch::Switch() : _nextObjectId(1) {}
     Switch::~Switch() {}
     
 

@@ -20,7 +20,7 @@ namespace ShaderSourceParser
     {
         va_list args;
         va_start(args, format);
-        ConsoleRig::GetWarningStream().WriteString((const utf8*)"{Color:ff7f7f}");
+        ConsoleRig::GetWarningStream().WriteNullTerm((const utf8*)"{Color:ff7f7f}");
         PrintFormatV(&ConsoleRig::GetWarningStream(), format, args);
         va_end(args);
     }

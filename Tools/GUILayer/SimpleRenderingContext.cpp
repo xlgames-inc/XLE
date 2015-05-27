@@ -73,11 +73,11 @@ namespace GUILayer
         _vfRecord[6]._inputLayout = GlobalInputLayouts::PNTT;
         _vfRecord[7]._inputLayout = std::make_pair((const InputElementDesc*)nullptr, 0);
 
-        _vfRecord[1]._geoParams = ParameterBox({std::make_pair("GEO_HAS_COLOUR", "1")});
-        _vfRecord[2]._geoParams = ParameterBox({std::make_pair("GEO_HAS_NORMAL", "1")});
-        _vfRecord[3]._geoParams = ParameterBox({std::make_pair("GEO_HAS_TEXCOORD", "1")});
-        _vfRecord[5]._geoParams = ParameterBox({std::make_pair("GEO_HAS_NORMAL", "1"), std::make_pair("GEO_HAS_TEXCOORD", "1")});
-        _vfRecord[6]._geoParams = ParameterBox({std::make_pair("GEO_HAS_NORMAL", "1"), std::make_pair("GEO_HAS_TEXCOORD", "1"), std::make_pair("GEO_HAS_TANGENT_FRAME", "1"), std::make_pair("GEO_HAS_BITANGENT", "1")});
+        _vfRecord[1]._geoParams = ParameterBox({std::make_pair((const utf8*)"GEO_HAS_COLOUR", "1")});
+        _vfRecord[2]._geoParams = ParameterBox({std::make_pair((const utf8*)"GEO_HAS_NORMAL", "1")});
+        _vfRecord[3]._geoParams = ParameterBox({std::make_pair((const utf8*)"GEO_HAS_TEXCOORD", "1")});
+        _vfRecord[5]._geoParams = ParameterBox({std::make_pair((const utf8*)"GEO_HAS_NORMAL", "1"), std::make_pair((const utf8*)"GEO_HAS_TEXCOORD", "1")});
+        _vfRecord[6]._geoParams = ParameterBox({std::make_pair((const utf8*)"GEO_HAS_NORMAL", "1"), std::make_pair((const utf8*)"GEO_HAS_TEXCOORD", "1"), std::make_pair((const utf8*)"GEO_HAS_TANGENT_FRAME", "1"), std::make_pair((const utf8*)"GEO_HAS_BITANGENT", "1")});
 
         _vfRecord[0]._vertexStride = 3*4;
         _vfRecord[1]._vertexStride = 3*4 + 4;
@@ -121,7 +121,7 @@ namespace GUILayer
             using namespace RenderCore;
             const auto techniqueIndex = 0u;
 
-            static ParameterBox materialParameters({std::make_pair("MAT_SKIP_LIGHTING_SCALE", "1")});
+            static ParameterBox materialParameters({std::make_pair((const utf8*)"MAT_SKIP_LIGHTING_SCALE", "1")});
             Techniques::TechniqueMaterial material(
                 vf._inputLayout,
                 {Techniques::ObjectCBs::LocalTransform, Techniques::ObjectCBs::BasicMaterialConstants},
@@ -136,7 +136,7 @@ namespace GUILayer
                 "game/xleres/BasicMaterialConstants.txt");
 
             ParameterBox matConstants;
-            matConstants.SetParameter("MaterialDiffuse", Float3(color[0], color[1], color[2]));
+            matConstants.SetParameter((const utf8*)"MaterialDiffuse", Float3(color[0], color[1], color[2]));
 
             variation.Apply(
                 devContext, parsingContext,

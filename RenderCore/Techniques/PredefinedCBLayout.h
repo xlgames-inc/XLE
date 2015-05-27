@@ -19,7 +19,7 @@ namespace RenderCore { namespace Techniques
         class Element
         {
         public:
-            std::string _name;
+            std::basic_string<utf8> _name;
             ParameterBox::ParameterNameHash _hash;
             ImpliedTyping::TypeDesc _type;
             unsigned _offset;

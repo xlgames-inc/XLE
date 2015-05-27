@@ -176,10 +176,10 @@ namespace ConsoleRig
         return std::u16string(buffer);
     }
 
-    static std::u16string      AsUTF16(const char input[])
+    static std::u16string      AsUTF16(const char input[], size_t len)
     {
         char16_t buffer[1024];
-        utf8_2_ucs2((utf8*)input, XlStringLen(input), buffer, dimof(buffer));
+        utf8_2_ucs2((utf8*)input, len, buffer, dimof(buffer));
         return std::u16string(buffer);
     }
 
@@ -192,7 +192,13 @@ namespace ConsoleRig
     void Console::Print(const char message[])
     {
         if (!this) return;  // hack!
-        Print(AsUTF16(message));
+        Print(AsUTF16(message, XlStringLen(message)));
+    }
+
+    void Console::Print(const char* messageStart, const char* messageEnd)
+    {
+        if (!this) return;  // hack!
+        Print(AsUTF16(messageStart, messageEnd - messageStart));
     }
 
     void            Console::Print(const std::u16string& message)

@@ -18,7 +18,7 @@
         
         <scea.dom.editors.attribute category="Sky" name="SkyTexture" displayName="Sky Texture"
           editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" 
-          converter="RenderingInterop.PropertyEditing.AssetNameConverter,RenderingInterop"/>
+          converter="LevelEditorXLE.AssetNameConverter,LevelEditorXLE"/>
         <scea.dom.editors.attribute category="Sky" name="SkyReflectionScale" displayName="Sky Reflection Scale" description="Scale for the reflection of the static sky image"
           editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,20"/>
         <scea.dom.editors.attribute category="Sky" name="SkyReflectionBlurriness" displayName="Sky Reflection Blurriness" description="Blurriness of the reflection of the sky"
@@ -127,9 +127,9 @@
     <xs:annotation>
       <xs:appinfo>
         <LeGe.NativeType nativeName="EnvSettings"/>
-        <LeGe.NativeProperty name="name" nativeName="name"/>
+        <LeGe.NativeProperty name="Name" nativeName="Name"/>
         
-        <scea.dom.editors.attribute name="name" displayName="Name" description="Name of these settings"/>
+        <scea.dom.editors.attribute name="Name" displayName="Name" description="Name of these settings"/>
         <scea.dom.editors category="Lights" name="EnvSettings" menuText="Lights/EnvSettings" description="Environment settings container"/>
       </xs:appinfo>
     </xs:annotation>
@@ -140,14 +140,14 @@
       <xs:element name="ambient" type="ambientSettingsType" minOccurs="1" maxOccurs="1"/>
       <xs:element name="tonemap" type="toneMapSettingsType" minOccurs="1" maxOccurs="1"/>
     </xs:sequence>
-    <xs:attribute name="name" type="xs:string" default="environment"/>
+    <xs:attribute name="Name" type="xs:string" default="environment"/>
   </xs:complexType>
 
   <xs:complexType name="envSettingsFolderType">
     <xs:annotation>
       <xs:appinfo>
-        <scea.dom.editors.attribute name="exporttarget" displayName="Export Target" category="Export" description="Destination file written to in export operations"/>
-        <scea.dom.editors.attribute name="exportenabled" displayName="Export Enabled" category="Export" description="Enable or disable export of this item"/>
+        <scea.dom.editors.attribute name="ExportTarget" displayName="Export Target" category="Export" description="Destination file written to in export operations"/>
+        <scea.dom.editors.attribute name="ExportEnabled" displayName="Export Enabled" category="Export" description="Enable or disable export of this item"/>
         
         <LeGe.OpaqueListable label="EnvSettingsFolder"/>
       </xs:appinfo>
@@ -156,8 +156,8 @@
     <xs:sequence>
       <xs:element name="settings" type="envSettingsType" minOccurs="0" maxOccurs="unbounded" />
     </xs:sequence>
-    <xs:attribute name="exporttarget" type="xs:string" default="finals/env.txt" />
-    <xs:attribute name="exportenabled" type="xs:boolean" default="true"/>
+    <xs:attribute name="ExportTarget" type="xs:string" default="finals/env.txt" />
+    <xs:attribute name="ExportEnabled" type="xs:boolean" default="true"/>
   </xs:complexType>
 
       <!-- D I R E C T I O N A L   L I G H T -->

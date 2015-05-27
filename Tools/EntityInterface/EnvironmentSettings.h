@@ -10,6 +10,7 @@
 #include "../../Assets/AssetsCore.h"
 
 namespace PlatformRig { class EnvironmentSettings; }
+namespace Utility { class OutputStreamFormatter; }
 
 namespace EntityInterface
 {
@@ -26,8 +27,8 @@ namespace EntityInterface
         const RetainedEntities& flexGobInterface);
 
     void ExportEnvSettings(
+        OutputStreamFormatter& formatter,
         const RetainedEntities& flexGobInterface,
-        DocumentId docId,
-        const ::Assets::ResChar destinationFile[]);
+        DocumentId docId);
 }
 

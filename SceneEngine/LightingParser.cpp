@@ -324,7 +324,7 @@ namespace SceneEngine
                                             unsigned sampleCount)
     {
         auto skyProj = LightingParser_BindLightResolveResources(context, parserContext);
-        parserContext.GetTechniqueContext()._globalEnvironmentState.SetParameter("SKY_PROJECTION", skyProj);
+        parserContext.GetTechniqueContext()._globalEnvironmentState.SetParameter((const utf8*)"SKY_PROJECTION", skyProj);
 
             //  Order independent transparency disabled when
             //  using MSAA modes... Still some problems in related to MSAA buffers
@@ -494,7 +494,7 @@ namespace SceneEngine
                     sampling));
 
             auto& globalState = parserContext.GetTechniqueContext()._globalEnvironmentState;
-            globalState.SetParameter("GBUFFER_TYPE", enableParametersBuffer?1:2);
+            globalState.SetParameter((const utf8*)"GBUFFER_TYPE", enableParametersBuffer?1:2);
 
             TRY {
 
@@ -699,7 +699,7 @@ namespace SceneEngine
             //  we need to set the "shadow cascade mode" settings to the right
             //  mode for this prepare step;
         parserContext.GetTechniqueContext()._runtimeState.SetParameter(
-            StringShadowCascadeMode.c_str(), 
+            (const utf8*)StringShadowCascadeMode.c_str(), 
             preparedResult._mode == ShadowProjectionDesc::Projections::Mode::Ortho?2:1);
 
             /////////////////////////////////////////////
@@ -755,7 +755,7 @@ namespace SceneEngine
         savedTargets.ResetToOldTargets(context);
         context->Bind(Techniques::CommonResources()._defaultRasterizer);
 
-        parserContext.GetTechniqueContext()._runtimeState.SetParameter(StringShadowCascadeMode.c_str(), 0);
+        parserContext.GetTechniqueContext()._runtimeState.SetParameter((const utf8*)StringShadowCascadeMode.c_str(), 0);
 
         return std::move(preparedResult);
     }

@@ -85,6 +85,8 @@ namespace Utility
         ////////////   U T F 8   O V E R R I D E S   ////////////
     XL_UTILITY_API void     XlCopyString        (utf8* dst, size_t size, const utf8* src);
     XL_UTILITY_API void     XlCopyNString       (utf8* dst, size_t count, const utf8*src, size_t length);
+    XL_UTILITY_API int      XlCompareString     (const utf8* x, const utf8* y);
+    XL_UTILITY_API int      XlCompareStringI    (const utf8* x, const utf8* y);
 
         ////////////   U C S 2   O V E R R I D E S   ////////////
     XL_UTILITY_API void     XlCopyString        (ucs2* dst, size_t size, const ucs2* src);

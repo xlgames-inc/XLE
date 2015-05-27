@@ -23,7 +23,7 @@ namespace PlatformRig
 
     void GlobalTechniqueContext::SetInteger(const char name[], uint32 value)
     {
-        _globalEnvironmentState.SetParameter(name, value);
+        _globalEnvironmentState.SetParameter((const utf8*)name, value);
     }
 
     GlobalTechniqueContext::GlobalTechniqueContext()

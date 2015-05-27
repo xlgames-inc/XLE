@@ -77,13 +77,13 @@ namespace LevelEditorXLE.Environment
 
         public string Name
         {
-            get { return GetAttribute<string>(Schema.envSettingsType.nameAttribute); }
+            get { return GetAttribute<string>(Schema.envSettingsType.NameAttribute); }
         }
 
         public static DomNode Create(string name)
         {
             var result = new DomNode(Schema.envSettingsType.Type);
-            result.SetAttribute(Schema.envSettingsType.nameAttribute, name);
+            result.SetAttribute(Schema.envSettingsType.NameAttribute, name);
             return result;
         }
     }
@@ -122,8 +122,8 @@ namespace LevelEditorXLE.Environment
         #region IExportable
         public string ExportTarget
         {
-            get { return GetAttribute<string>(Schema.envSettingsFolderType.exporttargetAttribute); }
-            set { SetAttribute(Schema.envSettingsFolderType.exporttargetAttribute, value); }
+            get { return GetAttribute<string>(Schema.envSettingsFolderType.ExportTargetAttribute); }
+            set { SetAttribute(Schema.envSettingsFolderType.ExportTargetAttribute, value); }
         }
 
         public string ExportCategory
@@ -136,7 +136,13 @@ namespace LevelEditorXLE.Environment
             // This is a bit tricky, here. We need to get both the document id
             // and a pointer to the EditorSceneManager from the native interop folder
             var sceneMan = XLEBridgeUtils.NativeManipulatorLayer.SceneManager;
-            return sceneMan.ExportEnvironmentSettings(1, destinationFile);
+            return sceneMan.ExportEnvironmentSettings(0, destinationFile);
+        }
+
+        public GUILayer.EditorSceneManager.ExportPreview PreviewExport()
+        {
+            var sceneMan = XLEBridgeUtils.NativeManipulatorLayer.SceneManager;
+            return sceneMan.PreviewEnvironmentSettings(0);
         }
         #endregion
 

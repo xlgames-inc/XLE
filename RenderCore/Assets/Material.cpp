@@ -393,7 +393,7 @@ namespace RenderCore { namespace Assets
         if (p) {
             for (auto child=p->child; child; child=child->next) {
                 if (child->ChildAt(0)) {
-                    _matParamBox.SetParameter(child->StrValue(), child->ChildAt(0)->StrValue());
+                    _matParamBox.SetParameter((const utf8*)child->StrValue(), child->ChildAt(0)->StrValue());
                 }
             }
         }
@@ -402,7 +402,7 @@ namespace RenderCore { namespace Assets
         if (c) {
             for (auto child=c->child; child; child=child->next) {
                 if (child->ChildAt(0)) {
-                    _constants.SetParameter(child->StrValue(), child->ChildAt(0)->StrValue());
+                    _constants.SetParameter((const utf8*)child->StrValue(), child->ChildAt(0)->StrValue());
                 }
             }
         }
@@ -411,7 +411,7 @@ namespace RenderCore { namespace Assets
         if (resourceBindings) {
             for (auto child=resourceBindings->child; child; child=child->next) {
                 if (child->ChildAt(0)) {
-                    _resourceBindings.SetParameter(child->StrValue(), child->ChildAt(0)->StrValue());
+                    _resourceBindings.SetParameter((const utf8*)child->StrValue(), child->ChildAt(0)->StrValue());
                 }
             }
         }
@@ -448,19 +448,19 @@ namespace RenderCore { namespace Assets
             result->Add(inheritBlock.release());
         }
 
-        std::vector<std::pair<const char*, std::string>> matParamStringTable;
+        std::vector<std::pair<const utf8*, std::string>> matParamStringTable;
         _matParamBox.BuildStringTable(matParamStringTable);
         if (!matParamStringTable.empty()) {
             result->Add(SerializeToData("ShaderParams", matParamStringTable).release());
         }
 
-        std::vector<std::pair<const char*, std::string>> constantsStringTable;
+        std::vector<std::pair<const utf8*, std::string>> constantsStringTable;
         _constants.BuildStringTable(constantsStringTable);
         if (!constantsStringTable.empty()) {
             result->Add(SerializeToData("Constants", constantsStringTable).release());
         }
 
-        std::vector<std::pair<const char*, std::string>> resourceBindingsStringTable;
+        std::vector<std::pair<const utf8*, std::string>> resourceBindingsStringTable;
         _resourceBindings.BuildStringTable(resourceBindingsStringTable);
         if (!resourceBindingsStringTable.empty()) {
             result->Add(SerializeToData("ResourceBindings", resourceBindingsStringTable).release());

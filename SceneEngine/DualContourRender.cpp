@@ -109,7 +109,7 @@ namespace SceneEngine
         TRY {
             ParameterBox materialParameters;
             ParameterBox geoParameters;
-            geoParameters.SetParameter("GEO_HAS_NORMAL", 1);
+            geoParameters.SetParameter((const utf8*)"GEO_HAS_NORMAL", 1);
             const ParameterBox* state[] = {
                 &geoParameters, &parserContext.GetTechniqueContext()._globalEnvironmentState,
                 &parserContext.GetTechniqueContext()._runtimeState, &materialParameters
@@ -315,7 +315,7 @@ namespace SceneEngine
 
             ParameterBox materialParameters;
             ParameterBox geoParameters;
-            geoParameters.SetParameter("GEO_HAS_NORMAL", 1);
+            geoParameters.SetParameter((const utf8*)"GEO_HAS_NORMAL", 1);
             const ParameterBox* state[] = {
                 &geoParameters, &parserContext.GetTechniqueContext()._globalEnvironmentState,
                 &parserContext.GetTechniqueContext()._runtimeState, &materialParameters

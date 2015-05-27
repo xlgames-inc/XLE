@@ -19,8 +19,11 @@ namespace ControlsLibrary
         {
             public bool DoExport { get; set; }
             public string TargetFile { get; set; }
+            public string ExistingText { get; set; }
             public string TextPreview { get; set; }
             public string Category { get; set; }
+            public string Preview { get; set; }
+            public string Messages { get; set; }
         }
 
         public IEnumerable<QueuedExport> QueuedExports
@@ -28,6 +31,7 @@ namespace ControlsLibrary
             set
             {
                 _assetList.Model = new ExportTreeModel(value);
+                _assetList.AutoSizeColumn(_labelColumn);
             }
         }
 
@@ -35,8 +39,16 @@ namespace ControlsLibrary
         {
             internal class Item
             {
-                public string Label;
-                public CheckState Enabled;
+                public string Label
+                {
+                    get { return Attached.TargetFile; }
+                }
+                public CheckState Enabled
+                {
+                    get { return Attached.DoExport ? CheckState.Checked : CheckState.Unchecked; }
+                    set { Attached.DoExport = value == CheckState.Checked; }
+                }
+                public QueuedExport Attached;
             }
 
             internal class Category
@@ -69,7 +81,7 @@ namespace ControlsLibrary
                             cat = new Category { Label = c.Category, Enabled = CheckState.Checked };
                             categories.Add(cat);
                         }
-                        cat._items.Add(new Item { Label = c.TargetFile, Enabled = CheckState.Checked });
+                        cat._items.Add(new Item { Attached = c });
                     }
                     return categories;
                 }
@@ -105,6 +117,25 @@ namespace ControlsLibrary
             }
 
             private IEnumerable<ExportPreviewDialog.QueuedExport> _queuedExports;
+        }
+
+        private void OnTreeResize(object sender, EventArgs e)
+        {
+            _assetList.AutoSizeColumn(_labelColumn);
+        }
+
+        private void OnSelectionChange(object sender, EventArgs e)
+        {
+            var item = (_assetList.SelectedNode != null) ? (_assetList.SelectedNode.Tag as ExportTreeModel.Item) : null;
+            if (item != null && item.Attached.TextPreview != null)
+            {
+                _compareWindow.Comparison = new Tuple<object, object>(
+                    item.Attached.ExistingText, item.Attached.TextPreview);
+            } 
+            else 
+            {
+                _compareWindow.Comparison = null;
+            }
         }
     }
 }

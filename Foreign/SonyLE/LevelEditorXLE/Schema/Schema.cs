@@ -158,15 +158,15 @@ namespace LevelEditorXLE
             envMiscType.Type = getNodeType("gap", "envMiscType");
 
             envSettingsType.Type = getNodeType("gap", "envSettingsType");
-            envSettingsType.nameAttribute = envSettingsType.Type.GetAttributeInfo("name");
+            envSettingsType.NameAttribute = envSettingsType.Type.GetAttributeInfo("Name");
             envSettingsType.objectsChild = envSettingsType.Type.GetChildInfo("objects");
             envSettingsType.settingsChild = envSettingsType.Type.GetChildInfo("settings");
             envSettingsType.ambientChild = envSettingsType.Type.GetChildInfo("ambient");
             envSettingsType.tonemapChild = envSettingsType.Type.GetChildInfo("tonemap");
 
             envSettingsFolderType.Type = getNodeType("gap", "envSettingsFolderType");
-            envSettingsFolderType.exporttargetAttribute = envSettingsFolderType.Type.GetAttributeInfo("exporttarget");
-            envSettingsFolderType.exportenabledAttribute = envSettingsFolderType.Type.GetAttributeInfo("exportenabled");
+            envSettingsFolderType.ExportTargetAttribute = envSettingsFolderType.Type.GetAttributeInfo("ExportTarget");
+            envSettingsFolderType.ExportEnabledAttribute = envSettingsFolderType.Type.GetAttributeInfo("ExportEnabled");
             envSettingsFolderType.settingsChild = envSettingsFolderType.Type.GetChildInfo("settings");
 
             directionalLightType.Type = getNodeType("gap", "directionalLightType");
@@ -209,11 +209,11 @@ namespace LevelEditorXLE
 
             placementsCellReferenceType.Type = getNodeType("gap", "placementsCellReferenceType");
             placementsCellReferenceType.refAttribute = placementsCellReferenceType.Type.GetAttributeInfo("ref");
-            placementsCellReferenceType.exporttargetAttribute = placementsCellReferenceType.Type.GetAttributeInfo("exporttarget");
+            placementsCellReferenceType.ExportTargetAttribute = placementsCellReferenceType.Type.GetAttributeInfo("ExportTarget");
             placementsCellReferenceType.nameAttribute = placementsCellReferenceType.Type.GetAttributeInfo("name");
             placementsCellReferenceType.minsAttribute = placementsCellReferenceType.Type.GetAttributeInfo("mins");
             placementsCellReferenceType.maxsAttribute = placementsCellReferenceType.Type.GetAttributeInfo("maxs");
-            placementsCellReferenceType.exportenabledAttribute = placementsCellReferenceType.Type.GetAttributeInfo("exportenabled");
+            placementsCellReferenceType.ExportEnabledAttribute = placementsCellReferenceType.Type.GetAttributeInfo("ExportEnabled");
 
             placementsFolderType.Type = getNodeType("gap", "placementsFolderType");
             placementsFolderType.basePathAttribute = placementsFolderType.Type.GetAttributeInfo("basePath");
@@ -497,7 +497,7 @@ namespace LevelEditorXLE
         public static class envSettingsType
         {
             public static DomNodeType Type;
-            public static AttributeInfo nameAttribute;
+            public static AttributeInfo NameAttribute;
             public static ChildInfo objectsChild;
             public static ChildInfo settingsChild;
             public static ChildInfo ambientChild;
@@ -507,8 +507,8 @@ namespace LevelEditorXLE
         public static class envSettingsFolderType
         {
             public static DomNodeType Type;
-            public static AttributeInfo exporttargetAttribute;
-            public static AttributeInfo exportenabledAttribute;
+            public static AttributeInfo ExportTargetAttribute;
+            public static AttributeInfo ExportEnabledAttribute;
             public static ChildInfo settingsChild;
         }
 
@@ -560,11 +560,11 @@ namespace LevelEditorXLE
         {
             public static DomNodeType Type;
             public static AttributeInfo refAttribute;
-            public static AttributeInfo exporttargetAttribute;
+            public static AttributeInfo ExportTargetAttribute;
             public static AttributeInfo nameAttribute;
             public static AttributeInfo minsAttribute;
             public static AttributeInfo maxsAttribute;
-            public static AttributeInfo exportenabledAttribute;
+            public static AttributeInfo ExportEnabledAttribute;
         }
 
         public static class placementsFolderType

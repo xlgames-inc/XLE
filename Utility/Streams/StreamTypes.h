@@ -43,9 +43,9 @@ namespace Utility
         virtual void WriteChar(utf8 ch);
         virtual void WriteChar(ucs2 ch);
         virtual void WriteChar(ucs4 ch);
-        virtual void WriteString(const utf8* s);
-        virtual void WriteString(const ucs2* s);
-        virtual void WriteString(const ucs4* s);
+        virtual void WriteString(const utf8* s, const utf8* e);
+        virtual void WriteString(const ucs2* s, const ucs2* e);
+        virtual void WriteString(const ucs4* s, const ucs4* e);
 
         virtual void Flush();
 

@@ -8,5 +8,6 @@ namespace LevelEditorXLE
         string ExportTarget { get; set; }
         string ExportCategory { get; }
         GUILayer.EditorSceneManager.ExportResult PerformExport(string destinationFile);
+        GUILayer.EditorSceneManager.ExportPreview PreviewExport();
     }
 }

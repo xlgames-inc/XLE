@@ -39,7 +39,7 @@ namespace Utility
 
     std::unique_ptr<Data> SerializeToData(
         const char name[], 
-        const std::vector<std::pair<const char*, std::string>>& table);
+        const std::vector<std::pair<const utf8*, std::string>>& table);
 }
 
 using namespace Utility;

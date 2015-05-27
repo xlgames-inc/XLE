@@ -22,6 +22,11 @@
 #include "../../SceneEngine/PlacementsManager.h"
 #include "../../SceneEngine/Terrain.h"
 #include "../../SceneEngine/TerrainFormat.h"
+#include "../../Utility/Streams/Data.h"
+#include "../../Utility/Streams/StreamTypes.h"
+#include "../../Utility/Streams/PathUtils.h"
+#include "../../Utility/Streams/FileUtils.h"
+#include "../../Utility/Streams/StreamFormatter.h"
 #include <memory>
 
 namespace GUILayer
@@ -139,7 +144,6 @@ namespace GUILayer
 
             result->_success = true;
             result->_messages = "Success";
-            return result;
         } CATCH(const std::exception& e) {
             result->_messages = "Error while exporting placements: " + clix::marshalString<clix::E_UTF8>(e.what());
         } CATCH(...) {
@@ -155,9 +159,47 @@ namespace GUILayer
         
         TRY
         {
-            ExportEnvSettings(
-                *_scene->_flexObjects, docId, 
-                clix::marshalString<clix::E_UTF8>(destinationFile).c_str());
+                // attempt to create the directory, if we need to
+            auto nativeDestFile = clix::marshalString<clix::E_UTF8>(destinationFile);
+            utf8 dirName[MaxPath];
+            XlDirname((char*)dirName, dimof(dirName), nativeDestFile.c_str());
+            CreateDirectoryRecursive((char*)dirName);
+
+            {
+                    // write out to a file stream
+                auto output = OpenFileOutput(nativeDestFile.c_str(), "wb");
+                OutputStreamFormatter formatter(*output);
+                EntityInterface::ExportEnvSettings(
+                    formatter, *_scene->_flexObjects, docId);
+            }
+
+            result->_success = true;
+            result->_messages = "Success";
+        } CATCH(const std::exception& e) {
+            result->_messages = "Error while exporting environment settings: " + clix::marshalString<clix::E_UTF8>(e.what());
+        } CATCH(...) {
+            result->_messages = "Unknown error occurred while exporting environment settings";
+        } CATCH_END
+        return result;
+    }
+
+    auto EditorSceneManager::PreviewEnvironmentSettings(EntityInterface::DocumentId docId) -> ExportPreview^
+    {
+        auto result = gcnew ExportPreview();
+        result->_success = false;
+        
+        TRY
+        {
+            MemoryOutputStream<utf8> stream;
+            {
+                OutputStreamFormatter formatter(stream);
+                EntityInterface::ExportEnvSettings(formatter, *_scene->_flexObjects, docId);
+            }
+
+            result->_preview = clix::marshalString<clix::E_UTF8>(stream.GetBuffer().str());
+            result->_success = true;
+            result->_messages = "Success";
+            result->_type = ExportPreview::Type::Text;
         } CATCH(const std::exception& e) {
             result->_messages = "Error while exporting environment settings: " + clix::marshalString<clix::E_UTF8>(e.what());
         } CATCH(...) {

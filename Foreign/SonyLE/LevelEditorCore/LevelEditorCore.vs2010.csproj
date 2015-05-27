@@ -19,8 +19,8 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>..\lib\Debug\</OutputPath>
-    <IntermediateOutputPath>..\tmp\LevelEditorCore\Debug\</IntermediateOutputPath>
+    <OutputPath>..\..\..\Finals_Debug64\</OutputPath>
+    <BaseIntermediateOutputPath>..\..\..\Output\LevelEditorCore\</BaseIntermediateOutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -30,8 +30,8 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>..\lib\Release\</OutputPath>
-    <IntermediateOutputPath>..\tmp\LevelEditorCore\Release\</IntermediateOutputPath>
+    <OutputPath>..\..\..\Finals_Release64\</OutputPath>
+    <BaseIntermediateOutputPath>..\..\..\Output\LevelEditorCore\</BaseIntermediateOutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>

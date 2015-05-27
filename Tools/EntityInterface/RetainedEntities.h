@@ -51,9 +51,9 @@ namespace EntityInterface
             >;
         bool RegisterCallback(ObjectTypeId typeId, OnChangeDelegate onChange);
 
-        ObjectTypeId    GetTypeId(const char name[]) const;
-		PropertyId      GetPropertyId(ObjectTypeId typeId, const char name[]) const;
-		ChildListId     GetChildListId(ObjectTypeId typeId, const char name[]) const;
+        ObjectTypeId    GetTypeId(const utf8 name[]) const;
+		PropertyId      GetPropertyId(ObjectTypeId typeId, const utf8 name[]) const;
+		ChildListId     GetChildListId(ObjectTypeId typeId, const utf8 name[]) const;
 
         RetainedEntities();
         ~RetainedEntities();
@@ -64,13 +64,13 @@ namespace EntityInterface
         class RegisteredObjectType
         {
         public:
-            std::string _name;
-            std::vector<std::string> _properties;
-            std::vector<std::string> _childLists;
+            std::basic_string<utf8> _name;
+            std::vector<std::basic_string<utf8>> _properties;
+            std::vector<std::basic_string<utf8>> _childLists;
 
             std::vector<OnChangeDelegate> _onChange;
 
-            RegisteredObjectType(const std::string& name) : _name(name) {}
+            RegisteredObjectType(const std::basic_string<utf8>& name) : _name(name) {}
         };
         mutable std::vector<std::pair<ObjectTypeId, RegisteredObjectType>> _registeredObjectTypes;
 

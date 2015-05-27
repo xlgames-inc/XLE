@@ -88,7 +88,7 @@ namespace EntityInterface
         return std::move(result);
     }
 
-    ObjectTypeId RetainedEntities::GetTypeId(const char name[]) const
+    ObjectTypeId RetainedEntities::GetTypeId(const utf8 name[]) const
     {
         for (auto i=_registeredObjectTypes.cbegin(); i!=_registeredObjectTypes.cend(); ++i)
             if (!XlCompareStringI(i->second._name.c_str(), name))
@@ -99,7 +99,7 @@ namespace EntityInterface
         return _nextObjectTypeId++;
     }
 
-	PropertyId RetainedEntities::GetPropertyId(ObjectTypeId typeId, const char name[]) const
+	PropertyId RetainedEntities::GetPropertyId(ObjectTypeId typeId, const utf8 name[]) const
     {
         auto type = GetObjectType(typeId);
         if (!type) return 0;
@@ -112,7 +112,7 @@ namespace EntityInterface
         return (PropertyId)type->_properties.size();
     }
 
-	ChildListId RetainedEntities::GetChildListId(ObjectTypeId typeId, const char name[]) const
+	ChildListId RetainedEntities::GetChildListId(ObjectTypeId typeId, const utf8 name[]) const
     {
         auto type = GetObjectType(typeId);
         if (!type) return 0;
@@ -128,6 +128,7 @@ namespace EntityInterface
     RetainedEntities::RetainedEntities()
     {
         _nextObjectTypeId = 1;
+        _nextObjectId = 1;
     }
 
     RetainedEntities::~RetainedEntities() {}
@@ -263,17 +264,17 @@ namespace EntityInterface
 
 	ObjectTypeId    RetainedEntityInterface::GetTypeId(const char name[]) const
     {
-        return _scene->GetTypeId(name);
+        return _scene->GetTypeId((const utf8*)name);
     }
 
 	PropertyId      RetainedEntityInterface::GetPropertyId(ObjectTypeId typeId, const char name[]) const
     {
-        return _scene->GetPropertyId(typeId, name);
+        return _scene->GetPropertyId(typeId, (const utf8*)name);
     }
 
 	ChildListId     RetainedEntityInterface::GetChildListId(ObjectTypeId typeId, const char name[]) const
     {
-        return _scene->GetPropertyId(typeId, name);
+        return _scene->GetPropertyId(typeId, (const utf8*)name);
     }
 
     DocumentId RetainedEntityInterface::CreateDocument(DocumentTypeId docType, const char initializer[]) const

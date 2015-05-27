@@ -7,9 +7,11 @@
 #pragma once
 
 #include "../../Core/Types.h"
+#include "../StringUtils.h"
 #include "../Detail/API.h"
 #include "../UTFUtils.h"
 #include <memory>
+#include <assert.h>
 
 namespace Utility
 {
@@ -36,21 +38,20 @@ namespace Utility
         virtual void WriteChar(ucs2 ch) = 0;
         virtual void WriteChar(ucs4 ch) = 0;
 
-        virtual void WriteString(const utf8* s) = 0;
-        virtual void WriteString(const ucs2* s) = 0;
-        virtual void WriteString(const ucs4* s) = 0;
+        virtual void WriteString(const utf8* start, const utf8* end) = 0;
+        virtual void WriteString(const ucs2* start, const ucs2* end) = 0;
+        virtual void WriteString(const ucs4* start, const ucs4* end) = 0;
+
+        inline void WriteNullTerm(const utf8* nullTerm) { assert(nullTerm); WriteString(nullTerm, &nullTerm[XlStringLen(nullTerm)]); }
+        inline void WriteNullTerm(const ucs2* nullTerm) { assert(nullTerm); WriteString(nullTerm, &nullTerm[XlStringLen(nullTerm)]); }
+        inline void WriteNullTerm(const ucs4* nullTerm) { assert(nullTerm); WriteString(nullTerm, &nullTerm[XlStringLen(nullTerm)]); }
 
         virtual void Flush() = 0;
 
         virtual ~OutputStream() {}
     };
 
-    std::unique_ptr<InputStream>    OpenFileInput(const char* path, const char* mode);
     std::unique_ptr<OutputStream>   OpenFileOutput(const char* path, const char* mode);
-
-    std::unique_ptr<InputStream>    OpenMemoryInput(const void* s, int len);
-    std::unique_ptr<OutputStream>   OpenFixedMemoryOutput(void* s, int len);
-    std::unique_ptr<OutputStream>   OpenMemoryOutput();
 
 }
 

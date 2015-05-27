@@ -52,11 +52,6 @@ bool FileInputStream::Seek(StreamSeekType type, int64 offset)
     return false;
 }
 
-std::unique_ptr<InputStream> OpenFileInput(const char* path, const char* mode)
-{
-    return std::make_unique<FileInputStream>(path, mode);
-}
-
 // --------------------------------------------------------------------------
 // File Output
 // --------------------------------------------------------------------------
@@ -72,9 +67,9 @@ public:
     virtual void WriteChar(utf8 ch);
     virtual void WriteChar(ucs2 ch);
     virtual void WriteChar(ucs4 ch);
-    virtual void WriteString(const utf8* s);
-    virtual void WriteString(const ucs2* s);
-    virtual void WriteString(const ucs4* s);
+    virtual void WriteString(const utf8* s, const utf8* e);
+    virtual void WriteString(const ucs2* s, const ucs2* e);
+    virtual void WriteString(const ucs4* s, const ucs4* e);
 
 
     virtual void Flush();
@@ -117,19 +112,19 @@ void FileOutputStream::WriteChar(ucs4 ch)
     _file.Write(&ch, sizeof(ch), 1);
 }
 
-void FileOutputStream::WriteString(const utf8* s)
+void FileOutputStream::WriteString(const utf8* s, const utf8* e)
 {
-    _file.Write(s, sizeof(*s), XlStringLen(s));
+    _file.Write(s, sizeof(*s), e-s);
 }
 
-void FileOutputStream::WriteString(const ucs2* s)
+void FileOutputStream::WriteString(const ucs2* s, const ucs2* e)
 {
-    _file.Write(s, sizeof(*s), XlStringLen(s));
+    _file.Write(s, sizeof(*s), e-s);
 }
 
-void FileOutputStream::WriteString(const ucs4* s)
+void FileOutputStream::WriteString(const ucs4* s, const ucs4* e)
 {
-    _file.Write(s, sizeof(*s), XlStringLen(s));
+    _file.Write(s, sizeof(*s), e-s);
 }
 
 void FileOutputStream::Flush()
@@ -228,39 +223,39 @@ template<> struct CompatibleCharTypes<ucs2, wchar_t> { static const bool compati
 template<typename OutChar, typename InChar, typename std::enable_if<CompatibleCharTypes<OutChar, InChar>::compatible>::type* = nullptr>
     void PushString(
         std::basic_streambuf<OutChar>& stream,
-        const InChar input[])
+        const InChar inputStart[], const InChar inputEnd[])
     {
-        stream.sputn((const OutChar*)input, XlStringLen(input));
+        stream.sputn((const OutChar*)inputStart, inputEnd - inputStart);
     }
 
 template<typename OutChar, typename InChar, typename typename std::enable_if<!CompatibleCharTypes<OutChar, InChar>::compatible>::type* = nullptr>
     void PushString(
         std::basic_streambuf<OutChar>& stream,
-        const InChar input[])
+        const InChar inputStart[], const InChar inputEnd[])
     {
             //  String conversion process results in several redundant allocations. It's not perfectly
             //  efficient
         using InputString = std::basic_string<InChar>;
         using OutputString = std::basic_string<OutChar>;
-        auto converted = Conversion::Convert<OutputString>(InputString(input));
+        auto converted = Conversion::Convert<OutputString>(InputString(inputStart, inputEnd));
         stream.sputn(AsPointer(converted.begin()), converted.size());    
     }
 
 template<typename BufferType>
-    void StreamBuf<BufferType>::WriteString(const utf8* s)
+    void StreamBuf<BufferType>::WriteString(const utf8* s, const utf8* e)
 {
-    PushString(_buffer, s);
+    PushString(_buffer, s, e);
 }
 template<typename BufferType>
-    void StreamBuf<BufferType>::WriteString(const ucs2* s)
+    void StreamBuf<BufferType>::WriteString(const ucs2* s, const ucs2* e)
 {
-    PushString(_buffer, s);
+    PushString(_buffer, s, e);
 }
 
 template<typename BufferType>
-    void StreamBuf<BufferType>::WriteString(const ucs4* s)
+    void StreamBuf<BufferType>::WriteString(const ucs4* s, const ucs4* e)
 {
-    PushString(_buffer, s);
+    PushString(_buffer, s, e);
 }
 
 template<typename BufferType>
@@ -282,16 +277,6 @@ template class StreamBuf<Internal::FixedMemoryBuffer2<wchar_t>>;
 template class StreamBuf<Internal::FixedMemoryBuffer2<utf8>>;
 template class StreamBuf<Internal::FixedMemoryBuffer2<ucs2>>;
 template class StreamBuf<Internal::FixedMemoryBuffer2<ucs4>>;
-
-std::unique_ptr<OutputStream> OpenFixedMemoryOutput(void *s, int len)
-{
-    return std::make_unique<StreamBuf<Internal::FixedMemoryBuffer2<char>>>((char*)s, len);
-}
-
-std::unique_ptr<OutputStream> OpenMemoryOutput()
-{
-    return std::make_unique<StreamBuf<std::basic_stringbuf<char>>>();
-}
 
 }
 

@@ -10,11 +10,11 @@ namespace Utility
 {
     std::unique_ptr<Data> SerializeToData(
         const char name[], 
-        const std::vector<std::pair<const char*, std::string>>& table)
+        const std::vector<std::pair<const utf8*, std::string>>& table)
     {
         auto result = std::make_unique<Data>(name);
         for (auto i=table.cbegin(); i!=table.cend(); ++i) {
-            result->SetAttribute(i->first, i->second.c_str());
+            result->SetAttribute((const char*)i->first, i->second.c_str());
         }
         return std::move(result);
     }
