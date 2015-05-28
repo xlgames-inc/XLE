@@ -330,6 +330,16 @@ int      XlCompareStringI    (const utf8* x, const utf8* y)
     return XlCompareStringI((const char*)x, (const char*)y);
 }
 
+int      XlComparePrefix     (const utf8* x, const utf8* y, size_t size)
+{
+    return XlComparePrefix((const char*)x, (const char*)y, size);
+}
+
+int      XlComparePrefixI    (const utf8* x, const utf8* y, size_t size)
+{
+    return XlComparePrefixI((const char*)x, (const char*)y, size);
+}
+
 #if CLIBRARIES_ACTIVE == CLIBRARIES_MSVC
 
     #pragma warning(disable: 4995)

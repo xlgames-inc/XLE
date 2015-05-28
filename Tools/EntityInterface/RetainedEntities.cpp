@@ -125,6 +125,15 @@ namespace EntityInterface
         return (PropertyId)(type->_childLists.size()-1);
     }
 
+    std::basic_string<utf8> RetainedEntities::GetTypeName(ObjectTypeId id) const
+    {
+        auto i = LowerBound(_registeredObjectTypes, id);
+        if (i != _registeredObjectTypes.end() && i->first == id) {
+            return i->second._name;
+        }
+        return std::basic_string<utf8>();
+    }
+
     RetainedEntities::RetainedEntities()
     {
         _nextObjectTypeId = 1;

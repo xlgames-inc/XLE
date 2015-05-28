@@ -207,17 +207,17 @@ namespace Utility
         using Consts = FormatterConstants<CharType>;
         const unsigned tabWidth = 4;
 
-        while (_stream->RemainingBytes() > sizeof(CharType)) {
-            const auto* next = (const CharType*)_stream->ReadPointer();
+        while (_stream.RemainingBytes() > sizeof(CharType)) {
+            const auto* next = (const CharType*)_stream.ReadPointer();
 
             switch (*next)
             {
             case '\t':
-                _stream->MovePointer(sizeof(CharType));
+                _stream.MovePointer(sizeof(CharType));
                 _activeLineSpaces = CeilToMultiple(_activeLineSpaces+1, tabWidth);
                 break;
             case ' ': 
-                _stream->MovePointer(sizeof(CharType));
+                _stream.MovePointer(sizeof(CharType));
                 ++_activeLineSpaces; 
                 break;
 
@@ -230,21 +230,21 @@ namespace Utility
                 ThrowException(Exceptions::FormatException("Unsupported white space character", _lineIndex, CharIndex()));
 
             case '\r':  // (could be an independant new line, or /r/n combo)
-                _stream->MovePointer(sizeof(CharType));
-                if (    _stream->RemainingBytes() > sizeof(CharType)
-                    &&  *(const CharType*)_stream->ReadPointer() == '\n')
-                    _stream->MovePointer(sizeof(CharType));
+                _stream.MovePointer(sizeof(CharType));
+                if (    _stream.RemainingBytes() > sizeof(CharType)
+                    &&  *(const CharType*)_stream.ReadPointer() == '\n')
+                    _stream.MovePointer(sizeof(CharType));
 
                     // don't adjust _expected line spaces here -- we want to be sure 
                     // that lines with just whitespace don't affect _activeLineSpaces
                 _activeLineSpaces = 0;
-                ++_lineIndex; _lineStart = _stream->ReadPointer();
+                ++_lineIndex; _lineStart = _stream.ReadPointer();
                 break;
 
             case '\n':  // (independant new line. A following /r will be treated as another new line)
-                _stream->MovePointer(sizeof(CharType));
+                _stream.MovePointer(sizeof(CharType));
                 _activeLineSpaces = 0;
-                ++_lineIndex; _lineStart = _stream->ReadPointer();
+                ++_lineIndex; _lineStart = _stream.ReadPointer();
                 break;
 
             case '-': // Consts::ElementPrefix[0]:
@@ -261,17 +261,17 @@ namespace Utility
                         // more indented than it's parent will become it's child
                         // let's see if there's a fully formed blob here
                     if (*next == Consts::ElementPrefix[0]) {
-                        Eat(*_stream, Consts::ElementPrefix, _lineIndex, CharIndex());
+                        Eat(_stream, Consts::ElementPrefix, _lineIndex, CharIndex());
                         return _primed = Blob::BeginElement;
                     }
 
                     if (*next == Consts::AttributeNamePrefix[0]) {
-                        Eat(*_stream, Consts::AttributeNamePrefix, _lineIndex, CharIndex());
+                        Eat(_stream, Consts::AttributeNamePrefix, _lineIndex, CharIndex());
                         return _primed = Blob::AttributeName;
                     }
 
                     if (*next == Consts::AttributeValuePrefix[0]) {
-                        Eat(*_stream, Consts::AttributeValuePrefix, _lineIndex, CharIndex());
+                        Eat(_stream, Consts::AttributeValuePrefix, _lineIndex, CharIndex());
                         return _primed = Blob::AttributeValue;
                     }
                 }
@@ -293,8 +293,8 @@ namespace Utility
     {
         if (PeekNext() != Blob::BeginElement) return false;
 
-        name._start = (const CharType*)_stream->ReadPointer();
-        name._end = ReadToDeliminator(*_stream, FormatterConstants<CharType>::ElementPostfix, _lineIndex, CharIndex());
+        name._start = (const CharType*)_stream.ReadPointer();
+        name._end = ReadToDeliminator(_stream, FormatterConstants<CharType>::ElementPostfix, _lineIndex, CharIndex());
 
         // the new "parent base line" should be the indentation level of the line this element started on
         if ((_baseLineStackPtr+1) > dimof(_baseLineStack))
@@ -322,17 +322,51 @@ namespace Utility
     }
 
     template<typename CharType>
+        void InputStreamFormatter<CharType>::SkipElement()
+    {
+        unsigned subtreeEle = 0;
+        InteriorSection dummy0, dummy1;
+        switch(PeekNext()) {
+        case Blob::BeginElement:
+            if (!TryReadBeginElement(dummy0))
+                ThrowException(Exceptions::FormatException(
+                    "Malformed begin element while skipping forward", _lineIndex, CharIndex()));
+            ++subtreeEle;
+            break;
+
+        case Blob::EndElement:
+            if (!subtreeEle) return;    // end now, while the EndElement is primed
+
+            if (!TryReadEndElement())
+                ThrowException(Exceptions::FormatException(
+                    "Malformed end element while skipping forward", _lineIndex, CharIndex()));
+            --subtreeEle;
+            break;
+
+        case Blob::AttributeName:
+            if (!TryReadAttribute(dummy0, dummy1))
+                ThrowException(Exceptions::FormatException(
+                    "Malformed attribute while skipping forward", _lineIndex, CharIndex()));
+            break;
+
+        default:
+            ThrowException(Exceptions::FormatException(
+                "Unexpected blob or end of stream hit while skipping forward", _lineIndex, CharIndex()));
+        }
+    }
+
+    template<typename CharType>
         bool InputStreamFormatter<CharType>::TryReadAttribute(InteriorSection& name, InteriorSection& value)
     {
         if (PeekNext() != Blob::AttributeName) return false;
 
-        name._start = (const CharType*)_stream->ReadPointer();
-        name._end = ReadToDeliminator(*_stream, FormatterConstants<CharType>::AttributeNamePostfix, _lineIndex, CharIndex());
+        name._start = (const CharType*)_stream.ReadPointer();
+        name._end = ReadToDeliminator(_stream, FormatterConstants<CharType>::AttributeNamePostfix, _lineIndex, CharIndex());
         _primed = Blob::None;
 
         if (PeekNext() == Blob::AttributeValue) {
-            value._start = (const CharType*)_stream->ReadPointer();
-            value._end = ReadToDeliminator(*_stream, FormatterConstants<CharType>::AttributeValuePostfix, _lineIndex, CharIndex());
+            value._start = (const CharType*)_stream.ReadPointer();
+            value._end = ReadToDeliminator(_stream, FormatterConstants<CharType>::AttributeValuePostfix, _lineIndex, CharIndex());
         } else {
             value._start = value._end = nullptr;
         }
@@ -344,11 +378,11 @@ namespace Utility
     template<typename CharType>
         unsigned InputStreamFormatter<CharType>::CharIndex() const
     {
-        return unsigned((size_t(_stream->ReadPointer()) - size_t(_lineStart)) / sizeof(CharType));
+        return unsigned((size_t(_stream.ReadPointer()) - size_t(_lineStart)) / sizeof(CharType));
     }
 
     template<typename CharType>
-        InputStreamFormatter<CharType>::InputStreamFormatter(MemoryMappedInputStream& stream) : _stream(&stream)
+        InputStreamFormatter<CharType>::InputStreamFormatter(MemoryMappedInputStream& stream) : _stream(stream)
     {
         _primed = Blob::None;
         _activeLineSpaces = 0;

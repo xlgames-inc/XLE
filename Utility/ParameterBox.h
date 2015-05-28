@@ -70,7 +70,7 @@ namespace Utility
             void* dest, size_t destSize, TypeDesc destType,
             const void* src, TypeDesc srcType);
 
-        std::string AsString(const void* data, size_t dataSize, const TypeDesc&);
+        std::string AsString(const void* data, size_t dataSize, const TypeDesc&, bool stringTyping = false);
     }
 
     class OutputStreamFormatter;

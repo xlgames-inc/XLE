@@ -55,6 +55,8 @@ namespace EntityInterface
 		PropertyId      GetPropertyId(ObjectTypeId typeId, const utf8 name[]) const;
 		ChildListId     GetChildListId(ObjectTypeId typeId, const utf8 name[]) const;
 
+        std::basic_string<utf8> GetTypeName(ObjectTypeId id) const;
+
         RetainedEntities();
         ~RetainedEntities();
     protected:

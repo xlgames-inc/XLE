@@ -85,10 +85,12 @@ namespace Utility
         bool TryReadEndElement();
         bool TryReadAttribute(InteriorSection& name, InteriorSection& value);
 
+        void SkipElement();
+
         InputStreamFormatter(MemoryMappedInputStream& stream);
         ~InputStreamFormatter();
     protected:
-        MemoryMappedInputStream* _stream;
+        MemoryMappedInputStream _stream;
         Blob _primed;
         signed _activeLineSpaces;
         signed _parentBaseLine;

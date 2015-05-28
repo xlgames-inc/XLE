@@ -12,6 +12,7 @@
 #include "../../Math/Transformations.h"
 #include "../../Utility/StringUtils.h"
 #include "../../Utility/StringFormat.h"
+#include "../../Utility/Conversion.h"
 #include "../../Utility/Streams/StreamFormatter.h"
 #include <memory>
 
@@ -19,6 +20,30 @@ namespace EntityInterface
 {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    static void Fixup(SceneEngine::LightDesc& light, const ParameterBox& props)
+    {
+        static const auto transformHash = ParameterBox::MakeParameterNameHash("Transform");
+        auto transform = Transpose(props.GetParameter(transformHash, Identity<Float4x4>()));
+        auto translation = ExtractTranslation(transform);
+        light._negativeLightDirection = (MagnitudeSquared(translation) > 1e-5f) ? Normalize(translation) : Float3(0.f, 0.f, 0.f);
+    }
+
+    namespace EntityTypeName
+    {
+        static const auto* EnvSettings = (const utf8*)"EnvSettings";
+        static const auto* AmbientSettings = (const utf8*)"AmbientSettings";
+        static const auto* DirectionalLight = (const utf8*)"DirectionalLight";
+        static const auto* ToneMapSettings = (const utf8*)"ToneMapSettings";
+        static const auto* ShadowFrustumSettings = (const utf8*)"ShadowFrustumSettings";
+    }
+    
+    namespace Attribute
+    {
+        static const auto Flags = ParameterBox::MakeParameterNameHash("Flags");
+        static const auto ShadowFrustumSettings = ParameterBox::MakeParameterNameHash("ShadowFrustumSettings");
+        static const auto Name = ParameterBox::MakeParameterNameHash("Name");
+    }
 
     PlatformRig::EnvironmentSettings
         BuildEnvironmentSettings(
@@ -28,10 +53,10 @@ namespace EntityInterface
         using namespace SceneEngine;
         using namespace PlatformRig;
 
-        const auto typeAmbient = flexGobInterface.GetTypeId((const utf8*)"AmbientSettings");
-        const auto typeDirectionalLight = flexGobInterface.GetTypeId((const utf8*)"DirectionalLight");
-        const auto typeToneMapSettings = flexGobInterface.GetTypeId((const utf8*)"ToneMapSettings");
-        const auto shadowFrustumSettings = flexGobInterface.GetTypeId((const utf8*)"ShadowFrustumSettings");
+        const auto typeAmbient = flexGobInterface.GetTypeId(EntityTypeName::AmbientSettings);
+        const auto typeDirectionalLight = flexGobInterface.GetTypeId(EntityTypeName::DirectionalLight);
+        const auto typeToneMapSettings = flexGobInterface.GetTypeId(EntityTypeName::ToneMapSettings);
+        const auto shadowFrustumSettings = flexGobInterface.GetTypeId(EntityTypeName::ShadowFrustumSettings);
 
         EnvironmentSettings result;
         result._globalLightingDesc = DefaultGlobalLightingDesc();
@@ -48,26 +73,19 @@ namespace EntityInterface
                 const auto& props = child->_properties;
 
                 LightDesc light(props);
-                static const auto flagsHash = ParameterBox::MakeParameterNameHash("Flags");
-                static const auto transformHash = ParameterBox::MakeParameterNameHash("Transform");
-                static const auto shadowFrustumSettingsHash = ParameterBox::MakeParameterNameHash("ShadowFrustumSettings");
+                Fixup(light, props);
                 
-                auto transform = Transpose(props.GetParameter(transformHash, Identity<Float4x4>()));
-                auto translation = ExtractTranslation(transform);
-                light._negativeLightDirection = (MagnitudeSquared(translation) > 0.01f) ? Normalize(translation) : Float3(0.f, 0.f, 0.f);
-
-                if (props.GetParameter(flagsHash, 0u) & (1<<0)) {
+                if (props.GetParameter(Attribute::Flags, 0u) & (1<<0)) {
 
                         // look for frustum settings that match the "name" parameter
                     auto frustumSettings = PlatformRig::DefaultShadowFrustumSettings();
-                    auto fsRef = props.GetString<char>(shadowFrustumSettingsHash);
+                    auto fsRef = props.GetString<char>(Attribute::ShadowFrustumSettings);
                     if (!fsRef.empty()) {
                         for (const auto& cid2 : obj._children) {
                             const auto* fsSetObj = flexGobInterface.GetEntity(obj._doc, cid2);
                             if (!fsSetObj || fsSetObj->_type != shadowFrustumSettings) continue;
                             
-                            static const auto nameHash = ParameterBox::MakeParameterNameHash("Name");
-                            auto settingsName = fsSetObj->_properties.GetString<char>(nameHash);
+                            auto settingsName = fsSetObj->_properties.GetString<char>(Attribute::Name);
                             if (XlCompareStringI(settingsName.c_str(), fsRef.c_str())!=0) continue;
 
                             frustumSettings = PlatformRig::DefaultShadowFrustumSettings(fsSetObj->_properties);
@@ -96,13 +114,12 @@ namespace EntityInterface
     {
         EnvSettingsVector result;
 
-        const auto typeSettings = flexGobInterface.GetTypeId((const utf8*)"EnvSettings");
-        static const auto nameHash = ParameterBox::MakeParameterNameHash((const utf8*)"Name");
+        const auto typeSettings = flexGobInterface.GetTypeId(EntityTypeName::EnvSettings);
         auto allSettings = flexGobInterface.FindEntitiesOfType(typeSettings);
         for (const auto& s : allSettings)
             result.push_back(
                 std::make_pair(
-                    s->_properties.GetString<char>(nameHash),
+                    s->_properties.GetString<char>(Attribute::Name),
                     BuildEnvironmentSettings(flexGobInterface, *s)));
 
         return std::move(result);
@@ -114,13 +131,14 @@ namespace EntityInterface
             const RetainedEntity& obj,
             const RetainedEntities& entities)
     {
-        static const auto nameHash = ParameterBox::MakeParameterNameHash((const utf8*)"Name");
-        const auto bufferSize = 256u;
-        StringMeld<bufferSize, CharType> name;
-        if (!obj._properties.GetString(nameHash, const_cast<CharType*>(name.get()), bufferSize))
-            name << obj._id;
+        // static const auto nameHash = ParameterBox::MakeParameterNameHash((const utf8*)"Name");
+        // const auto bufferSize = 256u;
+        // StringMeld<bufferSize, CharType> name;
+        // if (!obj._properties.GetString(nameHash, const_cast<CharType*>(name.get()), bufferSize))
+        //     name << obj._id;
 
-        auto eleId = formatter.BeginElement(name);
+        auto eleId = formatter.BeginElement(
+            Conversion::Convert<std::basic_string<CharType>>(entities.GetTypeName(obj._type)).c_str());
         obj._properties.Serialize<CharType>(formatter);
 
         for (auto c=obj._children.cbegin(); c!=obj._children.cend(); ++c) {
@@ -150,7 +168,7 @@ namespace EntityInterface
             // The second way is a lot easier. And it's much more straight-forward to
             // maintain.
 
-        const auto typeSettings = flexGobInterface.GetTypeId((const utf8*)"EnvSettings");
+        const auto typeSettings = flexGobInterface.GetTypeId(EntityTypeName::EnvSettings);
         auto allSettings = flexGobInterface.FindEntitiesOfType(typeSettings);
 
         bool foundAtLeastOne = false;
@@ -166,17 +184,61 @@ namespace EntityInterface
 
     PlatformRig::EnvironmentSettings DeserializeSingleSettings(InputStreamFormatter<utf8>& formatter)
     {
+        using namespace SceneEngine;
+        using namespace PlatformRig;
+
         PlatformRig::EnvironmentSettings result;
-        for (;;) {
+        result._globalLightingDesc = DefaultGlobalLightingDesc();
+        result._toneMapSettings = DefaultToneMapSettings();
+
+        std::vector<std::pair<uint64, DefaultShadowFrustumSettings>> shadowSettings;
+        std::vector<uint64> lightFrustumLink;
+
+        utf8 buffer[256];
+
+        bool exit = false;
+        while (!exit) {
             switch(formatter.PeekNext()) {
             case InputStreamFormatter<utf8>::Blob::BeginElement:
                 {
                     InputStreamFormatter<utf8>::InteriorSection name;
                     if (!formatter.TryReadBeginElement(name)) break;
-                    ParameterBox params(formatter);
-                    if (!formatter.TryReadEndElement()) break;
 
-                    result._lights.push_back(SceneEngine::LightDesc(params));
+                    if (!XlComparePrefix(EntityTypeName::AmbientSettings, name._start, name._end - name._start)) {
+                        result._globalLightingDesc = GlobalLightingDesc(ParameterBox(formatter));
+                    } else if (!XlComparePrefix(EntityTypeName::ToneMapSettings, name._start, name._end - name._start)) {
+                        result._toneMapSettings = ToneMapSettings(ParameterBox(formatter));
+                    } else if (!XlComparePrefix(EntityTypeName::DirectionalLight, name._start, name._end - name._start)) {
+
+                        ParameterBox params(formatter);
+                        SceneEngine::LightDesc lightDesc(params);
+                        Fixup(lightDesc, params);
+
+                        result._lights.push_back(lightDesc);
+
+                        uint64 frustumLink = 0;
+                        if (params.GetParameter(Attribute::Flags, 0u) & (1<<0)) {
+                            if (params.GetString(Attribute::ShadowFrustumSettings, buffer, dimof(buffer)))
+                                frustumLink = Hash64((const char*)buffer);
+                        }
+                        lightFrustumLink.push_back(frustumLink);
+
+                    } else if (!XlComparePrefix(EntityTypeName::ShadowFrustumSettings, name._start, name._end - name._start)) {
+                        ParameterBox params(formatter);
+                        if (params.GetString(Attribute::Name, buffer, dimof(buffer))) {
+                            auto h = Hash64((const char*)buffer);
+                            auto i = LowerBound(shadowSettings, h);
+                            if (i != shadowSettings.end() && i->first == h) {
+                                assert(0); // hash or name conflict
+                            } else {
+                                shadowSettings.insert(
+                                    i, std::make_pair(h, PlatformRig::DefaultShadowFrustumSettings(params)));
+                            }
+                        }
+                    } else
+                        formatter.SkipElement();
+                    
+                    formatter.TryReadEndElement();
                     break;
                 }
 
@@ -188,15 +250,26 @@ namespace EntityInterface
                 }
 
             default:
-                return std::move(result);
+                exit = true; 
+                break;
             }
         }
+
+        for (unsigned c=0; c<lightFrustumLink.size(); ++c) {
+            auto f = LowerBound(shadowSettings, lightFrustumLink[c]);
+            if (f != shadowSettings.end() && f->first == lightFrustumLink[c]) {
+                result._lights[c]._shadowFrustumIndex = (unsigned)result._shadowProj.size();
+                result._shadowProj.push_back(
+                    EnvironmentSettings::ShadowProj { result._lights[c], f->second });
+            }
+        }
+
+        return std::move(result);
     }
 
     EnvSettingsVector DeserializeEnvSettings(InputStreamFormatter<utf8>& formatter)
     {
         EnvSettingsVector result;
-
         for (;;) {
             switch(formatter.PeekNext()) {
             case InputStreamFormatter<utf8>::Blob::BeginElement:

@@ -274,34 +274,72 @@ namespace Utility
                 return TypeDesc(TypeCat::Bool);
             }
 
+            std::match_results<const CharType*> cm; 
+
             static std::basic_regex<CharType> unsignedPattern(
-                (const CharType*)R"(^\+?(([\d]+)|(0x[\da-fA-F]+))((u)|(ui)|(ul)|(ull)|(U)|(UI)|(UL)|(ULL))?$)");
+                (const CharType*)R"(^\+?(([\d]+)|(0x[\da-fA-F]+))(u|U|(u8)|(u16)|(u32)|(U8)|(U16)|(U32))?$)");
             if (std::regex_match(expressionBegin, expressionEnd, unsignedPattern)) {
                 assert(destSize >= sizeof(unsigned));
+
+                unsigned precision = 32;
+                if (cm.size() >= 4 && cm[4].length() > 1)
+                    precision = XlAtoUI32(&cm[2].str()[1]);
+
+                uint32 value;
                 auto len = expressionEnd - expressionBegin;
                 if (len > 2 && (expressionBegin[0] == '0' && expressionBegin[1] == 'x')) {
                         // hex form
-                    *(uint32*)dest = XlAtoUI32(&expressionBegin[2], nullptr, 16);
+                    value = XlAtoUI32(&expressionBegin[2], nullptr, 16);
                 } else {
-                    *(uint32*)dest = XlAtoUI32(expressionBegin);
+                    value = XlAtoUI32(expressionBegin);
                 }
-                return TypeDesc(TypeCat::UInt32);
+
+                if (precision == 8) {
+                    *(uint8*)dest = (uint8)value;
+                    return TypeDesc(TypeCat::UInt8);
+                } else if (precision == 16) {
+                    *(uint16*)dest = (uint16)value;
+                    return TypeDesc(TypeCat::UInt16);
+                } else if (precision == 32) {
+                    *(uint32*)dest = (uint32)value;
+                    return TypeDesc(TypeCat::UInt32);
+                }
+
+                assert(0);
             }
 
-            static std::basic_regex<CharType> signedPattern((const CharType*)R"(^[-\+]?(([\d]+)|(0x[\da-fA-F]+))((i)|(l)|(ll)|(I)|(L)|(LL))?$)");
-            if (std::regex_match(expressionBegin, expressionEnd, signedPattern)) {
+            static std::basic_regex<CharType> signedPattern((const CharType*)R"(^[-\+]?(([\d]+)|(0x[\da-fA-F]+))(i|I|(i8)|(i16)|(i32)|(I8)|(I16)|(I32))?$)");
+            if (std::regex_match(expressionBegin, expressionEnd, cm, signedPattern)) {
                 assert(destSize >= sizeof(unsigned));
+
+                unsigned precision = 32;
+                if (cm.size() >= 4 && cm[4].length() > 1)
+                    precision = XlAtoUI32(&cm[2].str()[1]);
+
+                int32 value;
                 auto len = expressionEnd - expressionBegin;
                 if (len > 2 && (expressionBegin[0] == '0' && expressionBegin[1] == 'x')) {
                         // hex form
-                    *(int32*)dest = XlAtoI32(&expressionBegin[2], nullptr, 16);
+                    value = XlAtoI32(&expressionBegin[2], nullptr, 16);
                 } else {
-                    *(int32*)dest = XlAtoI32(expressionBegin);
+                    value = XlAtoI32(expressionBegin);
                 }
-                return TypeDesc(TypeCat::Int32);
+
+                if (precision == 8) {
+                    *(int8*)dest = (int8)value;
+                    return TypeDesc(TypeCat::Int8);
+                } else if (precision == 16) {
+                    *(int16*)dest = (int16)value;
+                    return TypeDesc(TypeCat::Int16);
+                } else if (precision == 32) {
+                    *(int32*)dest = (int32)value;
+                    return TypeDesc(TypeCat::Int32);
+                }
+
+                assert(0);
             }
 
-            static std::basic_regex<CharType> floatPattern((const CharType*)R"(^[-\+]?(([\d]*\.?[\d]+)|([\d]+\.))([eE][-\+]?[\d]+)?[fF]?$)");
+            static std::basic_regex<CharType> floatPattern((const CharType*)R"(^[-\+]?(([\d]*\.?[\d]+)|([\d]+\.))([eE][-\+]?[\d]+)?(f|F|(f32)|(F32))?$)");
             if (std::regex_match(expressionBegin, expressionEnd, floatPattern)) {
                 assert(destSize >= sizeof(float));
                 *(float*)dest = XlAtoF32(expressionBegin);
@@ -314,7 +352,6 @@ namespace Utility
 
                 static std::basic_regex<CharType> arrayPattern((const CharType*)R"(\{\s*([^,\s]+(?:\s*,\s*[^,\s]+)*)\s*\}([vcVC]?))");
                 // std::match_results<typename std::basic_string<CharType>::const_iterator> cm; 
-                std::match_results<const CharType*> cm; 
                 if (std::regex_match(expressionBegin, expressionEnd, cm, arrayPattern)) {
                     static std::basic_regex<CharType> arrayElementPattern((const CharType*)R"(\s*([^,\s]+)\s*(?:,|$))");
 
@@ -401,7 +438,7 @@ namespace Utility
             return std::make_pair(false, Type());
         }
 
-        std::string AsString(const void* data, size_t dataSize, const TypeDesc& desc)
+        std::string AsString(const void* data, size_t dataSize, const TypeDesc& desc, bool strongTyping)
         {
             if (desc._typeHint == TypeHint::String) {
                 if (desc._type == TypeCat::UInt8 || desc._type == TypeCat::Int8) {
@@ -419,18 +456,33 @@ namespace Utility
 
             for (auto i=0u; i<arrayCount; ++i) {
                 if (i!=0) result << ", ";
-                switch (desc._type) {
-                // case TypeCat::Bool:     if (!*(bool*)data) { result << "true"; } else { result << "true"; }; break;
-                case TypeCat::Bool:     result << *(bool*)data; break;
-                case TypeCat::Int8:     result << (int32)*(int8*)data; break;
-                case TypeCat::UInt8:    result << (uint32)*(uint8*)data; break;
-                case TypeCat::Int16:    result << *(int16*)data; break;
-                case TypeCat::UInt16:   result << *(uint16*)data; break;
-                case TypeCat::Int32:    result << *(int32*)data; break;
-                case TypeCat::UInt32:   result << *(uint32*)data; break;
-                case TypeCat::Float:    result << *(float*)data; break;
-                case TypeCat::Void:     result << "<<void>>"; break;
-                default:                result << "<<error>>"; break;
+
+                if (strongTyping) {
+                    switch (desc._type) {
+                    case TypeCat::Bool:     if (*(bool*)data) { result << "true"; } else { result << "false"; }; break;
+                    case TypeCat::Int8:     result << (int32)*(int8*)data << "i8"; break;
+                    case TypeCat::UInt8:    result << (uint32)*(uint8*)data << "u8"; break;
+                    case TypeCat::Int16:    result << *(int16*)data << "i16"; break;
+                    case TypeCat::UInt16:   result << *(uint16*)data << "u16"; break;
+                    case TypeCat::Int32:    result << *(int32*)data << "i"; break;
+                    case TypeCat::UInt32:   result << *(uint32*)data << "u"; break;
+                    case TypeCat::Float:    result << *(float*)data << "f"; break;
+                    case TypeCat::Void:     result << "<<void>>"; break;
+                    default:                result << "<<error>>"; break;
+                    }
+                } else {
+                    switch (desc._type) {
+                    case TypeCat::Bool:     result << *(bool*)data; break;
+                    case TypeCat::Int8:     result << (int32)*(int8*)data; break;
+                    case TypeCat::UInt8:    result << (uint32)*(uint8*)data; break;
+                    case TypeCat::Int16:    result << *(int16*)data; break;
+                    case TypeCat::UInt16:   result << *(uint16*)data; break;
+                    case TypeCat::Int32:    result << *(int32*)data; break;
+                    case TypeCat::UInt32:   result << *(uint32*)data; break;
+                    case TypeCat::Float:    result << *(float*)data; break;
+                    case TypeCat::Void:     result << "<<void>>"; break;
+                    default:                result << "<<error>>"; break;
+                    }
                 }
 
                     // skip forward one element
@@ -1044,7 +1096,7 @@ namespace Utility
                 continue;
             }
 
-            auto stringFormat = ImpliedTyping::AsString(value, _values.size() - i->second, type);
+            auto stringFormat = ImpliedTyping::AsString(value, _values.size() - i->second, type, true);
             auto convertedString = Conversion::Convert<std::basic_string<CharType>>(stringFormat);
             stream.WriteAttribute(
                 AsPointer(nameBuffer.begin()), AsPointer(nameBuffer.begin()) + finalNameLen,
