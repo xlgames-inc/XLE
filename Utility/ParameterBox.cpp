@@ -1138,6 +1138,9 @@ namespace Utility
             if (!success)
                 throw ::Exceptions::BasicLabel("Parsing exception while reading attribute in parameter box deserialization");
 
+            if (!value._start || !value._end)
+                throw ::Exceptions::BasicLabel("Found attribute without value while deserializing parameter box");
+
             TypeDesc nativeType(TypeCat::Void);
             if (constant_expression<sizeof(CharType) == sizeof(utf8)>::result()) {
 

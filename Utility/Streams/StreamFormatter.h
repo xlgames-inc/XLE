@@ -21,14 +21,14 @@ namespace Utility
     public:
         typedef unsigned ElementId;
 
-        ElementId BeginElement(const utf8* name);
-        ElementId BeginElement(const ucs2* name);
-        ElementId BeginElement(const ucs4* name);
+        template<typename CharType> 
+            ElementId BeginElement(const CharType* nameStart, const CharType* nameEnd);
         void EndElement(ElementId);
-
-        void WriteAttribute(const utf8* nameStart, const utf8* nameEnd, const utf8* valueStart, const utf8* valueEnd);
-        void WriteAttribute(const ucs2* nameStart, const ucs2* nameEnd, const ucs2* valueStart, const ucs2* valueEnd);
-        void WriteAttribute(const ucs4* nameStart, const ucs4* nameEnd, const ucs4* valueStart, const ucs4* valueEnd);
+        
+        template<typename CharType> 
+            void WriteAttribute(
+                const CharType* nameStart, const CharType* nameEnd,
+                const CharType* valueStart, const CharType* valueEnd);
 
         OutputStreamFormatter(OutputStream& stream);
         ~OutputStreamFormatter();
@@ -36,6 +36,8 @@ namespace Utility
         OutputStream*   _stream;
         unsigned        _currentIndentLevel;
         bool            _hotLine;
+        unsigned        _currentLineLength;
+        unsigned        _writingSimpleAttributes;
 
         #if defined(STREAM_FORMATTER_CHECK_ELEMENTS)
             std::vector<ElementId> _elementStack;
@@ -43,10 +45,6 @@ namespace Utility
         #endif
 
         template<typename CharType> void NewLine();
-        template<typename CharType> ElementId BeginElementInt(const CharType* name);
-        template<typename CharType> void WriteAttributeInt(
-            const CharType* nameStart, const CharType* nameEnd,
-            const CharType* valueStart, const CharType* valueEnd);
     };
 
     class MemoryMappedInputStream
@@ -100,6 +98,8 @@ namespace Utility
 
         unsigned _lineIndex;
         const void* _lineStart;
+
+        unsigned _simpleAttributeMode;
 
         unsigned CharIndex() const;
     };

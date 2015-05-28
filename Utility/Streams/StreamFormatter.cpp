@@ -10,6 +10,7 @@
 #include "../PtrUtils.h"
 #include "../../Core/Exceptions.h"
 #include <assert.h>
+#include <algorithm>
 
 //
 //  --(Element)--
@@ -32,6 +33,8 @@
 //          --(Attribute Name)--=--(Attribute Value)--
 //          --(Attribute Name)--=--(Attribute Value)--
 //
+// Shadows < Id=2; Dims={32, 32}; Format=35 >
+// Material < Id=1000; Dims={128, 128}; Format=62 >
 
 namespace Utility
 {
@@ -55,6 +58,8 @@ namespace Utility
 
     MemoryMappedInputStream::~MemoryMappedInputStream() {}
 
+    static const unsigned TabWidth = 4;
+    
     template<typename CharType>
         struct FormatterConstants 
     {
@@ -67,16 +72,28 @@ namespace Utility
         static const CharType AttributeNamePostfix[];
         static const CharType AttributeValuePrefix[];
         static const CharType AttributeValuePostfix[];
+
+        static const CharType SimpleAttributes_Begin[];
+        static const CharType SimpleAttributes_End[];
     };
 
+    template<typename CharType, int Count> 
+        static void WriteConst(OutputStream& stream, const CharType (&cnst)[Count], unsigned& lineLength)
+    {
+        stream.WriteString(cnst, &cnst[Count]);
+        lineLength += Count;
+    }
+
     template<typename CharType>
-        auto OutputStreamFormatter::BeginElementInt(const CharType* name) -> ElementId
+        auto OutputStreamFormatter::BeginElement(const CharType* nameStart, const CharType* nameEnd) -> ElementId
     {
         NewLine<CharType>();
-        _stream->WriteNullTerm(FormatterConstants<CharType>::ElementPrefix);
-        _stream->WriteNullTerm(name);
-        _stream->WriteNullTerm(FormatterConstants<CharType>::ElementPostfix);
+
+        WriteConst(*_stream, FormatterConstants<CharType>::ElementPrefix, _currentLineLength);
+        _stream->WriteString(nameStart, nameEnd);
+        WriteConst(*_stream, FormatterConstants<CharType>::ElementPostfix, _currentLineLength);
         _hotLine = true;
+        _currentLineLength += unsigned(nameEnd - nameStart);
         ++_currentIndentLevel;
 
         #if defined(STREAM_FORMATTER_CHECK_ELEMENTS)
@@ -92,7 +109,12 @@ namespace Utility
         void OutputStreamFormatter::NewLine()
     {
         if (_hotLine) {
-            _stream->WriteNullTerm(FormatterConstants<CharType>::EndLine);
+            if (_writingSimpleAttributes != ~unsigned(0x0)) {
+                WriteConst(*_stream, FormatterConstants<CharType>::SimpleAttributes_End, _currentLineLength);
+                _writingSimpleAttributes = ~unsigned(0x0);
+            }
+
+            WriteConst(*_stream, FormatterConstants<CharType>::EndLine, _currentLineLength);
             
             CharType tabBuffer[64];
             if (_currentIndentLevel > dimof(tabBuffer))
@@ -100,30 +122,61 @@ namespace Utility
             std::fill(tabBuffer, &tabBuffer[_currentIndentLevel], FormatterConstants<CharType>::Tab);
             _stream->WriteString(tabBuffer, &tabBuffer[_currentIndentLevel]);
             _hotLine = false;
+            _currentLineLength = _currentIndentLevel * TabWidth;
         }
     }
 
     template<typename CharType> 
-        void OutputStreamFormatter::WriteAttributeInt(
+        static bool UnsafeForSimpleAttribute(CharType c)
+    {
+        return c==';' || c=='>' || c=='=' || c=='\r' || c=='\n' || c==' ' || c=='\t' || c==0x0B || c==0x0C || c==0x85 || c==0xA0;
+    }
+
+    template<typename CharType> 
+        void OutputStreamFormatter::WriteAttribute(
             const CharType* nameStart, const CharType* nameEnd,
             const CharType* valueStart, const CharType* valueEnd)
     {
+        if (    std::find_if(nameStart, nameEnd, UnsafeForSimpleAttribute<CharType>) == nameEnd
+            &&  std::find_if(valueStart, valueEnd, UnsafeForSimpleAttribute<CharType>) == valueEnd) {
+
+            const unsigned idealLineLength = 100;
+            bool forceNewLine = 
+                    (_writingSimpleAttributes != ~unsigned(0x0) && _writingSimpleAttributes != _currentIndentLevel)
+                ||  (_currentLineLength + (valueEnd - valueStart) + (nameEnd - nameStart) + 3) > idealLineLength;
+
+            if (forceNewLine) NewLine<CharType>();
+
+            if (_writingSimpleAttributes != _currentIndentLevel) {
+                if (_hotLine) { _stream->WriteChar((CharType)' '); ++_currentLineLength; }
+                WriteConst(*_stream, FormatterConstants<CharType>::SimpleAttributes_Begin, _currentLineLength);
+            } else {
+                _stream->WriteChar((CharType)';'); ++_currentLineLength;
+                _stream->WriteChar((CharType)' '); ++_currentLineLength;
+            }
+            _stream->WriteString(nameStart, nameEnd);
+            _stream->WriteChar((CharType)'=');
+            _stream->WriteString(valueStart, valueEnd);
+
+            _writingSimpleAttributes = _currentIndentLevel;
+            _currentLineLength += unsigned((valueEnd - valueStart) + (nameEnd - nameStart) + 1);
+            _hotLine = true;
+            return;
+        }
+        
         NewLine<CharType>();
 
-        _stream->WriteNullTerm(FormatterConstants<CharType>::AttributeNamePrefix);
+        WriteConst(*_stream, FormatterConstants<CharType>::AttributeNamePrefix, _currentLineLength);
         _stream->WriteString(nameStart, nameEnd);
-        _stream->WriteNullTerm(FormatterConstants<CharType>::AttributeNamePostfix);
+        WriteConst(*_stream, FormatterConstants<CharType>::AttributeNamePostfix, _currentLineLength);
 
-        _stream->WriteNullTerm(FormatterConstants<CharType>::AttributeValuePrefix);
+        WriteConst(*_stream, FormatterConstants<CharType>::AttributeValuePrefix, _currentLineLength);
         _stream->WriteString(valueStart, valueEnd);
-        _stream->WriteNullTerm(FormatterConstants<CharType>::AttributeValuePostfix);
+        WriteConst(*_stream, FormatterConstants<CharType>::AttributeValuePostfix, _currentLineLength);
 
+        _currentLineLength += unsigned((valueEnd - valueStart) + (nameEnd - nameStart));
         _hotLine = true;
     }
-
-    auto OutputStreamFormatter::BeginElement(const utf8* name) -> ElementId { return BeginElementInt(name); }
-    auto OutputStreamFormatter::BeginElement(const ucs2* name) -> ElementId { return BeginElementInt(name); }
-    auto OutputStreamFormatter::BeginElement(const ucs4* name) -> ElementId { return BeginElementInt(name); }
 
     void OutputStreamFormatter::EndElement(ElementId id)
     {
@@ -140,19 +193,25 @@ namespace Utility
         --_currentIndentLevel;
     }
 
-    void OutputStreamFormatter::WriteAttribute(const utf8* nameStart, const utf8* nameEnd, const utf8* valueStart, const utf8* valueEnd) { return WriteAttributeInt(nameStart, nameEnd, valueStart, valueEnd); }
-    void OutputStreamFormatter::WriteAttribute(const ucs2* nameStart, const ucs2* nameEnd, const ucs2* valueStart, const ucs2* valueEnd) { return WriteAttributeInt(nameStart, nameEnd, valueStart, valueEnd); }
-    void OutputStreamFormatter::WriteAttribute(const ucs4* nameStart, const ucs4* nameEnd, const ucs4* valueStart, const ucs4* valueEnd) { return WriteAttributeInt(nameStart, nameEnd, valueStart, valueEnd); }
-
     OutputStreamFormatter::OutputStreamFormatter(OutputStream& stream) 
     : _stream(&stream)
     {
         _currentIndentLevel = 0;
         _hotLine = false;
+        _currentLineLength = 0;
+        _writingSimpleAttributes = ~unsigned(0x0);
     }
 
     OutputStreamFormatter::~OutputStreamFormatter()
     {}
+
+    template auto OutputStreamFormatter::BeginElement(const utf8* nameStart, const utf8* nameEnd) -> ElementId;
+    template auto OutputStreamFormatter::BeginElement(const ucs2* nameStart, const ucs2* nameEnd) -> ElementId;
+    template auto OutputStreamFormatter::BeginElement(const ucs4* nameStart, const ucs4* nameEnd) -> ElementId;
+
+    template void OutputStreamFormatter::WriteAttribute(const utf8* nameStart, const utf8* nameEnd, const utf8* valueStart, const utf8* valueEnd);
+    template void OutputStreamFormatter::WriteAttribute(const ucs2* nameStart, const ucs2* nameEnd, const ucs2* valueStart, const ucs2* valueEnd);
+    template void OutputStreamFormatter::WriteAttribute(const ucs4* nameStart, const ucs4* nameEnd, const ucs4* valueStart, const ucs4* valueEnd);
 
     namespace Exceptions
     {
@@ -200,12 +259,23 @@ namespace Utility
     }
 
     template<typename CharType>
+        const CharType* ReadToSimpleAttributeDeliminator(
+            MemoryMappedInputStream& stream,
+            unsigned lineIndex, unsigned charIndex)
+    {
+        const auto* end = (const CharType*)stream.End();
+        const auto* ptr = (const CharType*)stream.ReadPointer();
+        while (ptr < end && (*ptr != ';' && *ptr != '>' && *ptr != '=')) ++ptr;
+        stream.SetPointer(ptr);
+        return ptr;
+    }
+
+    template<typename CharType>
         auto InputStreamFormatter<CharType>::PeekNext() -> Blob
     {
         if (_primed != Blob::None) return _primed;
 
         using Consts = FormatterConstants<CharType>;
-        const unsigned tabWidth = 4;
 
         while (_stream.RemainingBytes() > sizeof(CharType)) {
             const auto* next = (const CharType*)_stream.ReadPointer();
@@ -214,12 +284,12 @@ namespace Utility
             {
             case '\t':
                 _stream.MovePointer(sizeof(CharType));
-                _activeLineSpaces = CeilToMultiple(_activeLineSpaces+1, tabWidth);
-                break;
+                _activeLineSpaces = CeilToMultiple(_activeLineSpaces+1, TabWidth);
+                continue;
             case ' ': 
                 _stream.MovePointer(sizeof(CharType));
                 ++_activeLineSpaces; 
-                break;
+                continue;
 
                 // throw exception when using an extended unicode whitespace character
                 // let's just stick to the ascii whitespace characters for simplicity
@@ -228,57 +298,104 @@ namespace Utility
             case 0x85:  // (next line)
             case 0xA0:  // (no-break space)
                 ThrowException(Exceptions::FormatException("Unsupported white space character", _lineIndex, CharIndex()));
+            }
 
-            case '\r':  // (could be an independant new line, or /r/n combo)
-                _stream.MovePointer(sizeof(CharType));
-                if (    _stream.RemainingBytes() > sizeof(CharType)
-                    &&  *(const CharType*)_stream.ReadPointer() == '\n')
-                    _stream.MovePointer(sizeof(CharType));
+            if (!_simpleAttributeMode) {
 
-                    // don't adjust _expected line spaces here -- we want to be sure 
-                    // that lines with just whitespace don't affect _activeLineSpaces
-                _activeLineSpaces = 0;
-                ++_lineIndex; _lineStart = _stream.ReadPointer();
-                break;
-
-            case '\n':  // (independant new line. A following /r will be treated as another new line)
-                _stream.MovePointer(sizeof(CharType));
-                _activeLineSpaces = 0;
-                ++_lineIndex; _lineStart = _stream.ReadPointer();
-                break;
-
-            case '-': // Consts::ElementPrefix[0]:
-            case '~': // Consts::AttributeNamePrefix[0]:
-            case ':': // Consts::AttributeValuePrefix[0]:
+                switch (*next)
                 {
-                    // first, if our spacing has decreased, then we must consider it an "end element"
-                    // caller must follow with "TryReadEndElement" until _expectedLineSpaces matches _activeLineSpaces
-                    if (_activeLineSpaces <= _parentBaseLine) {
-                        return _primed = Blob::EndElement;
-                    }
+                case '\r':  // (could be an independant new line, or /r/n combo)
+                    _stream.MovePointer(sizeof(CharType));
+                    if (    _stream.RemainingBytes() > sizeof(CharType)
+                        &&  *(const CharType*)_stream.ReadPointer() == '\n')
+                        _stream.MovePointer(sizeof(CharType));
 
-                        // now, _activeLineSpaces must be larger than _parentBaseLine. Anything that is 
-                        // more indented than it's parent will become it's child
-                        // let's see if there's a fully formed blob here
-                    if (*next == Consts::ElementPrefix[0]) {
-                        Eat(_stream, Consts::ElementPrefix, _lineIndex, CharIndex());
-                        return _primed = Blob::BeginElement;
-                    }
+                        // don't adjust _expected line spaces here -- we want to be sure 
+                        // that lines with just whitespace don't affect _activeLineSpaces
+                    _activeLineSpaces = 0;
+                    ++_lineIndex; _lineStart = _stream.ReadPointer();
+                    break;
 
-                    if (*next == Consts::AttributeNamePrefix[0]) {
-                        Eat(_stream, Consts::AttributeNamePrefix, _lineIndex, CharIndex());
-                        return _primed = Blob::AttributeName;
-                    }
+                case '\n':  // (independant new line. A following /r will be treated as another new line)
+                    _stream.MovePointer(sizeof(CharType));
+                    _activeLineSpaces = 0;
+                    ++_lineIndex; _lineStart = _stream.ReadPointer();
+                    break;
 
-                    if (*next == Consts::AttributeValuePrefix[0]) {
-                        Eat(_stream, Consts::AttributeValuePrefix, _lineIndex, CharIndex());
-                        return _primed = Blob::AttributeValue;
+                case '-': // Consts::ElementPrefix[0]:
+                case '~': // Consts::AttributeNamePrefix[0]:
+                case ':': // Consts::AttributeValuePrefix[0]:
+                case '<': // Consts::SimpleAttributes_Begin[0]
+                    {
+                        // first, if our spacing has decreased, then we must consider it an "end element"
+                        // caller must follow with "TryReadEndElement" until _expectedLineSpaces matches _activeLineSpaces
+                        if (_activeLineSpaces <= _parentBaseLine) {
+                            return _primed = Blob::EndElement;
+                        }
+
+                            // now, _activeLineSpaces must be larger than _parentBaseLine. Anything that is 
+                            // more indented than it's parent will become it's child
+                            // let's see if there's a fully formed blob here
+                        if (*next == Consts::ElementPrefix[0]) {
+                            Eat(_stream, Consts::ElementPrefix, _lineIndex, CharIndex());
+                            return _primed = Blob::BeginElement;
+                        }
+
+                        if (*next == Consts::AttributeNamePrefix[0]) {
+                            Eat(_stream, Consts::AttributeNamePrefix, _lineIndex, CharIndex());
+                            return _primed = Blob::AttributeName;
+                        }
+
+                        if (*next == Consts::AttributeValuePrefix[0]) {
+                            Eat(_stream, Consts::AttributeValuePrefix, _lineIndex, CharIndex());
+                            return _primed = Blob::AttributeValue;
+                        }
+
+                        if (*next == Consts::SimpleAttributes_Begin[0]) {
+                            Eat(_stream, Consts::SimpleAttributes_Begin, _lineIndex, CharIndex());
+                            _simpleAttributeMode = 1;
+                            return _primed = Blob::AttributeName;
+                        }
+
+                        assert(0);
                     }
+                    break;
+
+                case '>': // Consts::SimpleAttributes_End[0]
+                    ThrowException(Exceptions::FormatException("Expected '>' outside of simple attribute mode", _lineIndex, CharIndex()));
+                    break;
+
+                default:
+                    ThrowException(Exceptions::FormatException("Expected element or attribute", _lineIndex, CharIndex()));
                 }
-                continue;
 
-            default:
-                ThrowException(Exceptions::FormatException("Expected element or attribute", _lineIndex, CharIndex()));
+            } else {
+
+                switch (*next)
+                {
+                case '\r':
+                case '\n':
+                    ThrowException(Exceptions::FormatException("Newline in simple attribute block", _lineIndex, CharIndex()));
+
+                case '>': // Consts::SimpleAttributes_End[0]
+                    Eat(_stream, Consts::SimpleAttributes_End, _lineIndex, CharIndex());
+                    _simpleAttributeMode = 0;
+                    break;
+
+                case '=':
+                    _simpleAttributeMode = 2;
+                    _stream.MovePointer(sizeof(CharType));
+                    break;
+
+                case ';':
+                    _simpleAttributeMode = 1;
+                    _stream.MovePointer(sizeof(CharType));
+                    break;
+
+                default:
+                    return (_simpleAttributeMode==1)?_primed = Blob::AttributeName:_primed = Blob::AttributeValue;
+                }
+
             }
         }
 
@@ -360,18 +477,37 @@ namespace Utility
     {
         if (PeekNext() != Blob::AttributeName) return false;
 
-        name._start = (const CharType*)_stream.ReadPointer();
-        name._end = ReadToDeliminator(_stream, FormatterConstants<CharType>::AttributeNamePostfix, _lineIndex, CharIndex());
-        _primed = Blob::None;
+        if (_simpleAttributeMode) {
+            name._start = (const CharType*)_stream.ReadPointer();
+            name._end = ReadToSimpleAttributeDeliminator<CharType>(_stream, _lineIndex, CharIndex());
+            _primed = Blob::None;
 
-        if (PeekNext() == Blob::AttributeValue) {
-            value._start = (const CharType*)_stream.ReadPointer();
-            value._end = ReadToDeliminator(_stream, FormatterConstants<CharType>::AttributeValuePostfix, _lineIndex, CharIndex());
+            if (PeekNext() == Blob::AttributeValue) {
+                value._start = (const CharType*)_stream.ReadPointer();
+                value._end = ReadToSimpleAttributeDeliminator<CharType>(_stream, _lineIndex, CharIndex());
+            } else {
+                value._start = value._end = nullptr;
+            }
+            _primed = Blob::None;
+
         } else {
-            value._start = value._end = nullptr;
+            name._start = (const CharType*)_stream.ReadPointer();
+            name._end = ReadToDeliminator(
+                _stream, FormatterConstants<CharType>::AttributeNamePostfix, 
+                _lineIndex, CharIndex());
+            _primed = Blob::None;
+
+            if (PeekNext() == Blob::AttributeValue) {
+                value._start = (const CharType*)_stream.ReadPointer();
+                value._end = ReadToDeliminator(
+                    _stream, FormatterConstants<CharType>::AttributeValuePostfix, 
+                    _lineIndex, CharIndex());
+            } else {
+                value._start = value._end = nullptr;
+            }
+            _primed = Blob::None;
         }
 
-        _primed = Blob::None;
         return true;
     }
 
@@ -390,6 +526,7 @@ namespace Utility
         _baseLineStackPtr = 0;
         _lineIndex = 0;
         _lineStart = stream.ReadPointer();
+        _simpleAttributeMode = 0;
     }
 
     template<typename CharType>
@@ -400,9 +537,9 @@ namespace Utility
     template class InputStreamFormatter<ucs4>;
     template class InputStreamFormatter<ucs2>;
 
-    const utf8 FormatterConstants<utf8>::EndLine[] = { (utf8)'\r', (utf8)'\n', (utf8)'\0' };
-    const ucs2 FormatterConstants<ucs2>::EndLine[] = { (ucs2)'\r', (ucs2)'\n', (ucs2)'\0' };
-    const ucs4 FormatterConstants<ucs4>::EndLine[] = { (ucs4)'\r', (ucs4)'\n', (ucs4)'\0' };
+    const utf8 FormatterConstants<utf8>::EndLine[] = { (utf8)'\r', (utf8)'\n' };
+    const ucs2 FormatterConstants<ucs2>::EndLine[] = { (ucs2)'\r', (ucs2)'\n' };
+    const ucs4 FormatterConstants<ucs4>::EndLine[] = { (ucs4)'\r', (ucs4)'\n' };
 
     const utf8 FormatterConstants<utf8>::ElementPrefix[] = { (utf8)'-', (utf8)'-', (utf8)'(' };
     const ucs2 FormatterConstants<ucs2>::ElementPrefix[] = { (ucs2)'-', (ucs2)'-', (ucs2)'(' };
@@ -427,6 +564,14 @@ namespace Utility
     const utf8 FormatterConstants<utf8>::AttributeValuePostfix[] = { (utf8)')', (utf8)':', (utf8)':' };
     const ucs2 FormatterConstants<ucs2>::AttributeValuePostfix[] = { (ucs2)')', (ucs2)':', (ucs2)':' };
     const ucs4 FormatterConstants<ucs4>::AttributeValuePostfix[] = { (ucs4)')', (ucs4)':', (ucs4)':' };
+
+    const utf8 FormatterConstants<utf8>::SimpleAttributes_Begin[] = { (utf8)'<' };
+    const ucs2 FormatterConstants<ucs2>::SimpleAttributes_Begin[] = { (ucs2)'<' };
+    const ucs4 FormatterConstants<ucs4>::SimpleAttributes_Begin[] = { (ucs4)'<' };
+
+    const utf8 FormatterConstants<utf8>::SimpleAttributes_End[] = { (utf8)'>' };
+    const ucs2 FormatterConstants<ucs2>::SimpleAttributes_End[] = { (ucs2)'>' };
+    const ucs4 FormatterConstants<ucs4>::SimpleAttributes_End[] = { (ucs4)'>' };
 
     const utf8 FormatterConstants<utf8>::Tab = (utf8)'\t';
     const ucs2 FormatterConstants<ucs2>::Tab = (ucs2)'\t';

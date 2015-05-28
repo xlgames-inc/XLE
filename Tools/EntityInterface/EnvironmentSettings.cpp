@@ -137,8 +137,8 @@ namespace EntityInterface
         // if (!obj._properties.GetString(nameHash, const_cast<CharType*>(name.get()), bufferSize))
         //     name << obj._id;
 
-        auto eleId = formatter.BeginElement(
-            Conversion::Convert<std::basic_string<CharType>>(entities.GetTypeName(obj._type)).c_str());
+        auto name = Conversion::Convert<std::basic_string<CharType>>(entities.GetTypeName(obj._type));
+        auto eleId = formatter.BeginElement(AsPointer(name.cbegin()), AsPointer(name.cend()));
         obj._properties.Serialize<CharType>(formatter);
 
         for (auto c=obj._children.cbegin(); c!=obj._children.cend(); ++c) {
