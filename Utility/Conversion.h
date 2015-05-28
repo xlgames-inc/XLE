@@ -22,26 +22,27 @@ namespace Conversion
     template<typename Output> Output Convert(const std::basic_string<ucs4>& input);
 
     template<typename OutputElement, typename InputElement>
-        bool Convert(
+        ptrdiff_t Convert(
             OutputElement output[], size_t outputDim,
             const InputElement* begin, const InputElement* end);
 
     template<typename OutputElement, typename InputElement>
-        bool Convert(
+        ptrdiff_t Convert(
             OutputElement output[], size_t outputDim,
             const std::basic_string<InputElement>& str);
 
     template<typename OutputElement, typename InputElement>
-        bool ConvertNullTerminated(
+        ptrdiff_t ConvertNullTerminated(
             OutputElement output[], size_t outputDim,
             const InputElement* begin);
 
     template<typename OutputElement, typename InputElement>
-        bool ConvertNullTerminated(
+        ptrdiff_t ConvertNullTerminated(
             OutputElement output[], size_t outputDim,
             const InputElement* begin)
         {
             if (outputDim <= 1) return false;
+            inputLen = XlStringLen(begin);
             return Convert(output, outputDim-1, begin, begin+inputLen);
         }
 
@@ -68,7 +69,7 @@ namespace Conversion
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     template<typename OutputElement, typename InputElement>
-        bool Convert(
+        ptrdiff_t Convert(
             OutputElement output[], size_t outputDim,
             const std::basic_string<InputElement>& str)
     {
@@ -76,12 +77,12 @@ namespace Conversion
     }
 
     template<typename Element>
-        bool Convert(
+        ptrdiff_t Convert(
             Element output[], size_t outputDim,
             const Element* begin, const Element* end)
     {
         XlCopyNString(output, outputDim, begin, end-begin);
-        return true;
+        return end - begin;
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

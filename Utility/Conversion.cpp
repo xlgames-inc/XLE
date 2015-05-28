@@ -160,23 +160,33 @@ namespace Conversion
         return std::move(result);
     }
 
+    template<> std::basic_string<char> Convert(const std::basic_string<utf8>& input)
+    {
+        return reinterpret_cast<const std::basic_string<char>&>(input);
+    }
+
+    template<> std::basic_string<wchar_t> Convert(const std::basic_string<ucs2>& input)
+    {
+        return reinterpret_cast<const std::basic_string<wchar_t>&>(input);
+    }
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    template<> bool Convert(
+    template<> ptrdiff_t Convert(
         ucs2 output[], size_t outputDim,
         const utf8* begin, const utf8* end)
     {
-        return utf8_2_ucs2(begin, end-begin, output, outputDim) >= 0;
+        return utf8_2_ucs2(begin, end-begin, output, outputDim);
     }
 
-    template<> bool Convert(
+    template<> ptrdiff_t Convert(
         ucs4 output[], size_t outputDim,
         const utf8* begin, const utf8* end)
     {
-        return utf8_2_ucs4(begin, end-begin, output, outputDim) >= 0;
+        return utf8_2_ucs4(begin, end-begin, output, outputDim);
     }
 
-    template<> bool Convert(
+    template<> ptrdiff_t Convert(
         char output[], size_t outputDim,
         const utf8* begin, const utf8* end)
     {
@@ -184,37 +194,37 @@ namespace Conversion
         return true;
     }
 
-    template<> bool Convert(
+    template<> ptrdiff_t Convert(
         wchar_t output[], size_t outputDim,
         const utf8* begin, const utf8* end)
     {
-        return utf8_2_ucs2(begin, end-begin, (ucs2*)output, outputDim) >= 0;
+        return utf8_2_ucs2(begin, end-begin, (ucs2*)output, outputDim);
     }
 
         //////////      //////////      //////////
 
-    template<> bool Convert(
+    template<> ptrdiff_t Convert(
         utf8 output[], size_t outputDim,
         const ucs2* begin, const ucs2* end)
     {
-        return ucs2_2_utf8(begin, end-begin, output, outputDim) >= 0;
+        return ucs2_2_utf8(begin, end-begin, output, outputDim);
     }
 
-    template<> bool Convert(
+    template<> ptrdiff_t Convert(
         ucs4 output[], size_t outputDim,
         const ucs2* begin, const ucs2* end)
     {
-        return ucs2_2_ucs4(begin, end-begin, output, outputDim) >= 0;
+        return ucs2_2_ucs4(begin, end-begin, output, outputDim);
     }
 
-    template<> bool Convert(
+    template<> ptrdiff_t Convert(
         char output[], size_t outputDim,
         const ucs2* begin, const ucs2* end)
     {
-        return ucs2_2_utf8(begin, end-begin, (utf8*)output, outputDim) >= 0;
+        return ucs2_2_utf8(begin, end-begin, (utf8*)output, outputDim);
     }
 
-    template<> bool Convert(
+    template<> ptrdiff_t Convert(
         wchar_t output[], size_t outputDim,
         const ucs2* begin, const ucs2* end)
     {
@@ -224,58 +234,58 @@ namespace Conversion
 
         //////////      //////////      //////////
 
-    template<> bool Convert(
+    template<> ptrdiff_t Convert(
         utf8 output[], size_t outputDim,
         const ucs4* begin, const ucs4* end)
     {
-        return ucs4_2_utf8(begin, end-begin, output, outputDim) >= 0;
+        return ucs4_2_utf8(begin, end-begin, output, outputDim);
     }
 
-    template<> bool Convert(
+    template<> ptrdiff_t Convert(
         ucs2 output[], size_t outputDim,
         const ucs4* begin, const ucs4* end)
     {
-        return ucs4_2_ucs2(begin, end-begin, output, outputDim) >= 0;
+        return ucs4_2_ucs2(begin, end-begin, output, outputDim);
     }
 
-    template<> bool Convert(
+    template<> ptrdiff_t Convert(
         char output[], size_t outputDim,
         const ucs4* begin, const ucs4* end)
     {
-        return ucs4_2_utf8(begin, end-begin, (utf8*)output, outputDim) >= 0;
+        return ucs4_2_utf8(begin, end-begin, (utf8*)output, outputDim);
     }
 
-    template<> bool Convert(
+    template<> ptrdiff_t Convert(
         wchar_t output[], size_t outputDim,
         const ucs4* begin, const ucs4* end)
     {
-        return ucs4_2_ucs2(begin, end-begin, (ucs2*)output, outputDim) >= 0;
+        return ucs4_2_ucs2(begin, end-begin, (ucs2*)output, outputDim);
     }
 
         //////////      //////////      //////////
 
-    template<> bool Convert(
+    template<> ptrdiff_t Convert(
         utf8 output[], size_t outputDim,
         const char* begin, const char* end)
     {
         return Convert(output, outputDim, (const utf8*)begin, (const utf8*)end);
     }
 
-    template<> bool Convert(
+    template<> ptrdiff_t Convert(
         ucs2 output[], size_t outputDim,
         const char* begin, const char* end)
     {
         return Convert(output, outputDim, (const utf8*)begin, (const utf8*)end);
     }
 
-    template<> bool Convert(
+    template<> ptrdiff_t Convert(
         ucs4 output[], size_t outputDim,
         const char* begin, const char* end)
     {
         return Convert(output, outputDim, (const utf8*)begin, (const utf8*)end);
     }
 
-    template<> bool Convert(
+    template<> ptrdiff_t Convert(
         wchar_t output[], size_t outputDim,
         const char* begin, const char* end)
     {
@@ -284,28 +294,28 @@ namespace Conversion
 
             //////////      //////////      //////////
 
-    template<> bool Convert(
+    template<> ptrdiff_t Convert(
         utf8 output[], size_t outputDim,
         const wchar_t* begin, const wchar_t* end)
     {
         return Convert(output, outputDim, (const ucs2*)begin, (const ucs2*)end);
     }
 
-    template<> bool Convert(
+    template<> ptrdiff_t Convert(
         ucs2 output[], size_t outputDim,
         const wchar_t* begin, const wchar_t* end)
     {
         return Convert(output, outputDim, (const ucs2*)begin, (const ucs2*)end);
     }
 
-    template<> bool Convert(
+    template<> ptrdiff_t Convert(
         ucs4 output[], size_t outputDim,
         const wchar_t* begin, const wchar_t* end)
     {
         return Convert(output, outputDim, (const ucs2*)begin, (const ucs2*)end);
     }
 
-    template<> bool Convert(
+    template<> ptrdiff_t Convert(
         char output[], size_t outputDim,
         const wchar_t* begin, const wchar_t* end)
     {

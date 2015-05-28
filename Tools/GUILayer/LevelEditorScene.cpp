@@ -195,6 +195,13 @@ namespace GUILayer
                 OutputStreamFormatter formatter(stream);
                 EntityInterface::ExportEnvSettings(formatter, *_scene->_flexObjects, docId);
             }
+            // {
+            //     MemoryMappedInputStream inputStream(
+            //         (const utf8*)stream.GetBuffer().Begin(), (const utf8*)stream.GetBuffer().End());
+            //     InputStreamFormatter<utf8> testInput(inputStream);
+            //     auto deserialize = EntityInterface::DeserializeEnvSettings(testInput);
+            //     (void)deserialize;
+            // }
 
             result->_preview = clix::marshalString<clix::E_UTF8>(stream.GetBuffer().str());
             result->_success = true;

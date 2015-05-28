@@ -155,14 +155,68 @@ namespace EntityInterface
 
         bool foundAtLeastOne = false;
         for (const auto& s : allSettings)
-            if (s->_doc == docId)
-            {
+            if (s->_doc == docId) {
                 Serialize<utf8>(formatter, *s, flexGobInterface);
                 foundAtLeastOne = true;
             }
         
         if (!foundAtLeastOne)
             ThrowException(::Exceptions::BasicLabel("No environment settings found"));
+    }
+
+    PlatformRig::EnvironmentSettings DeserializeSingleSettings(InputStreamFormatter<utf8>& formatter)
+    {
+        PlatformRig::EnvironmentSettings result;
+        for (;;) {
+            switch(formatter.PeekNext()) {
+            case InputStreamFormatter<utf8>::Blob::BeginElement:
+                {
+                    InputStreamFormatter<utf8>::InteriorSection name;
+                    if (!formatter.TryReadBeginElement(name)) break;
+                    ParameterBox params(formatter);
+                    if (!formatter.TryReadEndElement()) break;
+
+                    result._lights.push_back(SceneEngine::LightDesc(params));
+                    break;
+                }
+
+            case InputStreamFormatter<utf8>::Blob::AttributeName:
+                {
+                    InputStreamFormatter<utf8>::InteriorSection name, value;
+                    formatter.TryReadAttribute(name, value);
+                    break;
+                }
+
+            default:
+                return std::move(result);
+            }
+        }
+    }
+
+    EnvSettingsVector DeserializeEnvSettings(InputStreamFormatter<utf8>& formatter)
+    {
+        EnvSettingsVector result;
+
+        for (;;) {
+            switch(formatter.PeekNext()) {
+            case InputStreamFormatter<utf8>::Blob::BeginElement:
+                {
+                    InputStreamFormatter<utf8>::InteriorSection name;
+                    if (!formatter.TryReadBeginElement(name)) break;
+                    auto settings = DeserializeSingleSettings(formatter);
+                    if (!formatter.TryReadEndElement()) break;
+
+                    result.emplace_back(
+                        std::make_pair(
+                            std::string((const char*)name._start, (const char*)name._end), 
+                            std::move(settings)));
+                    break;
+                }
+
+            default:
+                return std::move(result);
+            }
+        }
     }
 
 }

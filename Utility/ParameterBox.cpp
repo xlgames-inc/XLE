@@ -17,39 +17,8 @@
 #include <utility>
 #include <regex>
 
-// namespace std
-// {
-//     template<> class regex_traits<utf8> : public regex_traits<char> {};
-//     // template<> class regex_traits<ucs2> : public regex_traits<char16_t> {};
-//     // template<> class regex_traits<ucs4> : public regex_traits<char32_t> {};
-// }
-
 namespace Utility
 {
-    // XL_UTILITY_API bool     XlAtoBool(const utf8* str, const utf8** end_ptr = 0);
-    // XL_UTILITY_API int32    XlAtoI32 (const utf8* str, const utf8** end_ptr = 0, int radix = 10);
-    // XL_UTILITY_API int64    XlAtoI64 (const utf8* str, const utf8** end_ptr = 0, int radix = 10);
-    // XL_UTILITY_API uint32   XlAtoUI32(const utf8* str, const utf8** end_ptr = 0, int radix = 10);
-    // XL_UTILITY_API uint64   XlAtoUI64(const utf8* str, const utf8** end_ptr = 0, int radix = 10);
-    // XL_UTILITY_API f32      XlAtoF32 (const utf8* str, const utf8** end_ptr = 0);
-    // XL_UTILITY_API f64      XlAtoF64 (const utf8* str, const utf8** end_ptr = 0);
-    // 
-    // XL_UTILITY_API bool     XlAtoBool(const ucs2* str, const ucs2** end_ptr = 0);
-    // XL_UTILITY_API int32    XlAtoI32 (const ucs2* str, const ucs2** end_ptr = 0, int radix = 10);
-    // XL_UTILITY_API int64    XlAtoI64 (const ucs2* str, const ucs2** end_ptr = 0, int radix = 10);
-    // XL_UTILITY_API uint32   XlAtoUI32(const ucs2* str, const ucs2** end_ptr = 0, int radix = 10);
-    // XL_UTILITY_API uint64   XlAtoUI64(const ucs2* str, const ucs2** end_ptr = 0, int radix = 10);
-    // XL_UTILITY_API f32      XlAtoF32 (const ucs2* str, const ucs2** end_ptr = 0);
-    // XL_UTILITY_API f64      XlAtoF64 (const ucs2* str, const ucs2** end_ptr = 0);
-    // 
-    // XL_UTILITY_API bool     XlAtoBool(const ucs4* str, const ucs4** end_ptr = 0);
-    // XL_UTILITY_API int32    XlAtoI32 (const ucs4* str, const ucs4** end_ptr = 0, int radix = 10);
-    // XL_UTILITY_API int64    XlAtoI64 (const ucs4* str, const ucs4** end_ptr = 0, int radix = 10);
-    // XL_UTILITY_API uint32   XlAtoUI32(const ucs4* str, const ucs4** end_ptr = 0, int radix = 10);
-    // XL_UTILITY_API uint64   XlAtoUI64(const ucs4* str, const ucs4** end_ptr = 0, int radix = 10);
-    // XL_UTILITY_API f32      XlAtoF32 (const ucs4* str, const ucs4** end_ptr = 0);
-    // XL_UTILITY_API f64      XlAtoF64 (const ucs4* str, const ucs4** end_ptr = 0);
-
     static const unsigned NativeRepMaxSize = MaxPath * 4;
 
     namespace ImpliedTyping
@@ -732,10 +701,12 @@ namespace Utility
             intermediate.resize(std::max(1u, (unsigned)type._arrayCount));
             GetParameter(name, AsPointer(intermediate.begin()), type);
 
-            bool result = Conversion::Convert(dest, destCount-1,
+            auto finalLength = Conversion::Convert(dest, destCount-1,
                 AsPointer(intermediate.begin()), AsPointer(intermediate.end()));
-            dest[std::min(destCount-1, intermediate.size())] = CharType(0);
-            return result;
+            if (finalLength < 0) return false;
+
+            dest[std::min(destCount-1, (size_t)finalLength)] = CharType(0);
+            return true;
         }
 
         if (type._type == ImpliedTyping::TypeCat::Int16 || type._type == ImpliedTyping::TypeCat::UInt16) {
@@ -743,10 +714,12 @@ namespace Utility
             intermediate.resize(std::max(1u, (unsigned)type._arrayCount));
             GetParameter(name, AsPointer(intermediate.begin()), type);
 
-            bool result = Conversion::Convert(dest, destCount-1,
+            auto finalLength = Conversion::Convert(dest, destCount-1,
                 AsPointer(intermediate.begin()), AsPointer(intermediate.end()));
-            dest[std::min(destCount-1, intermediate.size())] = CharType(0);
-            return result;
+            if (finalLength < 0) return false;
+
+            dest[std::min(destCount-1, (size_t)finalLength)] = CharType(0);
+            return true;
         }
 
         return false;
@@ -1010,10 +983,17 @@ namespace Utility
     }
 
     template<typename CharType>
+        std::string AsString(const std::vector<CharType>& buffer, size_t len)
+    {
+        return Conversion::Convert<std::string>(
+            std::basic_string<CharType>(AsPointer(buffer.cbegin()), AsPointer(buffer.cbegin()) + len));
+    }
+
+    template<typename CharType>
         void    ParameterBox::Serialize(OutputStreamFormatter& stream) const
     {
-        std::basic_string<CharType> tmpBuffer;
-        std::basic_string<CharType> nameBuffer;
+        std::vector<CharType> tmpBuffer;
+        std::vector<CharType> nameBuffer;
 
         for (auto i=_offsets.cbegin(); i!=_offsets.cend(); ++i) {
             const auto* name = &_names[i->first];
@@ -1021,52 +1001,53 @@ namespace Utility
             const auto& type = _types[std::distance(_offsets.begin(), i)];
 
             auto nameLen = XlStringLen(name);
-            nameBuffer.resize(nameLen);     // (note; we're assuming this stl implementation won't reallocate when resizing to smaller size)
-            bool result = Conversion::Convert(
+            nameBuffer.resize((nameLen*2)+1);     // (note; we're assuming this stl implementation won't reallocate when resizing to smaller size)
+            auto finalNameLen = Conversion::Convert(
                 AsPointer(nameBuffer.begin()), nameBuffer.size(),
                 name, &name[nameLen]);
                
-            if (!result)
-                ThrowException(::Exceptions::BasicLabel("Error during name conversion for member: %s", name));
+                // attributes with empty name strings will throw an exception here
+            if (finalNameLen <= 0)
+                ThrowException(::Exceptions::BasicLabel("Empty name string or error during name conversion"));
 
                 // We need special cases for string types. In these cases we might have to
                 // do some conversion to get the value in the format we want.
             if (type._type == ImpliedTyping::TypeCat::Int8 || type._type == ImpliedTyping::TypeCat::UInt8) {
                 auto start = (const utf8*)value;
-                tmpBuffer.resize((unsigned)type._arrayCount);
-                bool result = Conversion::Convert(
+                tmpBuffer.resize((type._arrayCount*2)+1);
+                auto valueLen = Conversion::Convert(
                     AsPointer(tmpBuffer.begin()), tmpBuffer.size(),
                     start, &start[type._arrayCount]);
                 
-                if (!result)
-                    ThrowException(::Exceptions::BasicLabel("Error during string conversion for member: %s", name));
+                if (valueLen < 0)
+                    ThrowException(::Exceptions::BasicLabel("Error during string conversion for member: %s", AsString(nameBuffer, finalNameLen).c_str()));
 
                 stream.WriteAttribute(
-                    nameBuffer.c_str(), 
-                    AsPointer(tmpBuffer.begin()), AsPointer(tmpBuffer.end()));
+                    AsPointer(nameBuffer.begin()), AsPointer(nameBuffer.begin()) + finalNameLen,
+                    AsPointer(tmpBuffer.begin()), AsPointer(tmpBuffer.begin()) + valueLen);
                 continue;
             }
 
             if (type._type == ImpliedTyping::TypeCat::Int16 || type._type == ImpliedTyping::TypeCat::UInt16) {
                 auto start = (const ucs2*)value;
-                tmpBuffer.resize((unsigned)type._arrayCount);
-                bool result = Conversion::Convert(
+                tmpBuffer.resize((type._arrayCount*2)+1);
+                auto valueLen = Conversion::Convert(
                     AsPointer(tmpBuffer.begin()), tmpBuffer.size(),
                     start, &start[type._arrayCount]);
                 
-                if (!result)
-                    ThrowException(::Exceptions::BasicLabel("Error during string conversion for member: %s", name));
+                if (valueLen < 0)
+                    ThrowException(::Exceptions::BasicLabel("Error during string conversion for member: %s", AsString(nameBuffer, finalNameLen).c_str()));
 
                 stream.WriteAttribute(
-                    nameBuffer.c_str(),
-                    AsPointer(tmpBuffer.begin()), AsPointer(tmpBuffer.end()));
+                    AsPointer(nameBuffer.begin()), AsPointer(nameBuffer.begin()) + finalNameLen,
+                    AsPointer(tmpBuffer.begin()), AsPointer(tmpBuffer.begin()) + valueLen);
                 continue;
             }
 
             auto stringFormat = ImpliedTyping::AsString(value, _values.size() - i->second, type);
             auto convertedString = Conversion::Convert<std::basic_string<CharType>>(stringFormat);
             stream.WriteAttribute(
-                Conversion::Convert<std::basic_string<CharType>>(std::basic_string<utf8>(name)).c_str(), 
+                AsPointer(nameBuffer.begin()), AsPointer(nameBuffer.begin()) + finalNameLen,
                 AsPointer(convertedString.begin()), AsPointer(convertedString.end()));
         }
     }
@@ -1084,91 +1065,73 @@ namespace Utility
         }
     }
 
-    ParameterBox::ParameterBox(
-        const InputStreamFormatter& stream, 
-        ImpliedTyping::TypeCat streamCharType)
+    template<typename CharType>
+        ParameterBox::ParameterBox(InputStreamFormatter<CharType>& stream)
     {
         using namespace ImpliedTyping;
 
             // note -- fixed size buffer here bottlenecks max size for native representations
             // of these values
         uint8 nativeTypeBuffer[NativeRepMaxSize];
-        std::basic_string<utf8> nameBuffer;
-        std::basic_string<char> valueBuffer;
-
-        auto streamCharSize = TypeDesc(streamCharType).GetSize();
+        std::vector<utf8> nameBuffer;
+        std::vector<char> valueBuffer;
 
             // attempt to read attributes from a serialized text file
             // as soon as we hit something that is not another attribute
             // (it could be a sub-element, or the end of this element)
             // then we will stop reading and return
-        while (stream.GetNext() == InputStreamFormatter::Blob::Attribute) {
-            InputStreamFormatter::InteriorSection name, value;
+        while (stream.PeekNext() == InputStreamFormatter<CharType>::Blob::AttributeName) {
+            InputStreamFormatter<CharType>::InteriorSection name, value;
             bool success = stream.TryReadAttribute(name, value);
             if (!success)
                 throw ::Exceptions::BasicLabel("Parsing exception while reading attribute in parameter box deserialization");
 
-            auto nameLen = (size_t(name._end) - size_t(name._start)) / streamCharSize;
-            nameBuffer.resize(nameLen);
-            bool nameConvResult = false;
-
             TypeDesc nativeType(TypeCat::Void);
-            if (streamCharType == TypeCat::UInt8 || streamCharType == TypeCat::Int8) {
+            if (constant_expression<sizeof(CharType) == sizeof(utf8)>::result()) {
+
                 nativeType = Parse(
                     (const char*)value._start,
                     (const char*)value._end,
                     nativeTypeBuffer, sizeof(nativeTypeBuffer));
 
-                nameConvResult = Conversion::Convert(
-                    AsPointer(nameBuffer.begin()), nameBuffer.size(),
-                    (const utf8*)name._start, (const utf8*)name._end);
-            } else if (streamCharType == TypeCat::UInt16 || streamCharType == TypeCat::Int16) {
+            } else {
 
-                valueBuffer.resize((const ucs2*)value._end - (const ucs2*)value._start);
-                bool valueConversion = Conversion::Convert(
+                valueBuffer.resize((value._end - value._start)*2+1);
+                auto valueLen = Conversion::Convert(
                     AsPointer(valueBuffer.begin()), valueBuffer.size(),
-                    (const ucs2*)value._start, (const ucs2*)value._end);
-                if (!valueConversion)
-                    throw ::Exceptions::BasicLabel("Error converting value string in parameter box deserialization");
+                    value._start, value._end);
 
-                nativeType = Parse(
-                    AsPointer(valueBuffer.begin()),
-                    AsPointer(valueBuffer.end()),
-                    nativeTypeBuffer, sizeof(nativeTypeBuffer));
+                // a failed conversion here is valid, but it means we must treat the value as a string
+                if (valueLen>=0) {
+                    nativeType = Parse(
+                        AsPointer(valueBuffer.begin()), AsPointer(valueBuffer.begin()) + valueLen,
+                        nativeTypeBuffer, sizeof(nativeTypeBuffer));
+                }
 
-                nameConvResult = Conversion::Convert(
-                    AsPointer(nameBuffer.begin()), nameBuffer.size(),
-                    (const ucs2*)name._start, (const ucs2*)name._end);
-            } else if (streamCharType == TypeCat::UInt32 || streamCharType == TypeCat::Int32) {
-
-                valueBuffer.resize((const ucs4*)value._end - (const ucs4*)value._start);
-                bool valueConversion = Conversion::Convert(
-                    AsPointer(valueBuffer.begin()), valueBuffer.size(),
-                    (const ucs4*)value._start, (const ucs4*)value._end);
-                if (!valueConversion)
-                    throw ::Exceptions::BasicLabel("Error converting value string in parameter box deserialization");
-
-                nativeType = Parse(
-                    AsPointer(valueBuffer.begin()),
-                    AsPointer(valueBuffer.end()),
-                    nativeTypeBuffer, sizeof(nativeTypeBuffer));
-
-                nameConvResult = Conversion::Convert(
-                    AsPointer(nameBuffer.begin()), nameBuffer.size(),
-                    (const ucs4*)name._start, (const ucs4*)name._end);
             }
 
-            if (!nameConvResult)
-                throw ::Exceptions::BasicLabel("Error converting string name in parameter box deserialization");
+            {
+                auto nameLen = (size_t(name._end) - size_t(name._start)) / sizeof(CharType);
+                nameBuffer.resize(nameLen*2+1);
+                
+                auto nameConvResult = Conversion::Convert(
+                    AsPointer(nameBuffer.begin()), nameBuffer.size(),
+                    name._start, name._end);
+
+                if (nameConvResult <= 0)
+                    throw ::Exceptions::BasicLabel("Empty name or error converting string name in parameter box deserialization");
+
+                nameBuffer[std::min(nameBuffer.size()-1, (size_t)nameConvResult)] = '\0';
+            }
 
             if (nativeType._type != TypeCat::Void) {
-                SetParameter(nameBuffer.c_str(), nativeTypeBuffer, nativeType);
+                SetParameter(AsPointer(nameBuffer.cbegin()), nativeTypeBuffer, nativeType);
             } else {
                     // this is just a string. We should store it as a string, in whatever character set it came in
                 SetParameter(
-                    nameBuffer.c_str(),
+                    AsPointer(nameBuffer.cbegin()),
                     value._start, 
-                    TypeDesc(streamCharType, uint16((size_t(value._end) - size_t(value._start)) / streamCharSize), TypeHint::String));
+                    TypeDesc(TypeOf<CharType>()._type, uint16(value._end - value._start), TypeHint::String));
             }
         }
     }
@@ -1203,6 +1166,10 @@ namespace Utility
     template void ParameterBox::Serialize<utf8>(OutputStreamFormatter& stream) const;
     template void ParameterBox::Serialize<ucs2>(OutputStreamFormatter& stream) const;
     template void ParameterBox::Serialize<ucs4>(OutputStreamFormatter& stream) const;
+
+    template ParameterBox::ParameterBox(InputStreamFormatter<utf8>& stream);
+    template ParameterBox::ParameterBox(InputStreamFormatter<ucs2>& stream);
+    template ParameterBox::ParameterBox(InputStreamFormatter<ucs4>& stream);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

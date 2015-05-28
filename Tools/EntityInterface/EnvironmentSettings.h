@@ -8,9 +8,15 @@
 
 #include "EntityInterface.h"
 #include "../../Assets/AssetsCore.h"
+#include "../../Utility/UTFUtils.h"
 
 namespace PlatformRig { class EnvironmentSettings; }
-namespace Utility { class OutputStreamFormatter; }
+
+namespace Utility 
+{ 
+    class OutputStreamFormatter; 
+    template<typename CharType> class InputStreamFormatter;
+}
 
 namespace EntityInterface
 {
@@ -22,7 +28,8 @@ namespace EntityInterface
             const RetainedEntities& flexGobInterface,
             const RetainedEntity& obj);
 
-    using EnvSettingsVector = std::vector<std::pair<std::string, PlatformRig::EnvironmentSettings>>;
+    using EnvSettingsVector = 
+        std::vector<std::pair<std::string, PlatformRig::EnvironmentSettings>>;
     EnvSettingsVector BuildEnvironmentSettings(
         const RetainedEntities& flexGobInterface);
 
@@ -30,5 +37,8 @@ namespace EntityInterface
         OutputStreamFormatter& formatter,
         const RetainedEntities& flexGobInterface,
         DocumentId docId);
+
+    EnvSettingsVector DeserializeEnvSettings(
+        InputStreamFormatter<utf8>& formatter);
 }
 

@@ -74,7 +74,7 @@ namespace Utility
     }
 
     class OutputStreamFormatter;
-    class InputStreamFormatter;
+    template<typename CharType> class InputStreamFormatter;
 
         //////////////////////////////////////////////////////////////////
             //      P A R A M E T E R   B O X                       //
@@ -137,7 +137,8 @@ namespace Utility
 
         ParameterBox();
         ParameterBox(std::initializer_list<std::pair<const utf8*, const char*>>);
-        ParameterBox(const InputStreamFormatter& stream, ImpliedTyping::TypeCat streamCharType = ImpliedTyping::TypeCat::UInt8);
+        template<typename CharType>
+            ParameterBox(InputStreamFormatter<CharType>& stream);
         ParameterBox(ParameterBox&& moveFrom);
         ParameterBox& operator=(ParameterBox&& moveFrom);
         ~ParameterBox();
