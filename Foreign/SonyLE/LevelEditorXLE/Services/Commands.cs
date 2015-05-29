@@ -175,13 +175,17 @@ namespace LevelEditorXLE
                         ||  preview._type == GUILayer.EditorSceneManager.ExportPreview.Type.MetricsText)
                     {
                         e.TextPreview = preview._preview;
+                        var comparisonFile = e.TargetFile;
+                        if (preview._type == GUILayer.EditorSceneManager.ExportPreview.Type.MetricsText)
+                            comparisonFile += ".metrics";
+
                         try
                         {
-                            e.ExistingText = System.IO.File.ReadAllText(e.TargetFile);
+                            e.ExistingText = System.IO.File.ReadAllText(comparisonFile);
                         } 
                         catch
                         {
-                            e.ExistingText = String.Format("<<Error while reading file {0}>>".Localize(), e.TargetFile);
+                            e.ExistingText = String.Format("<<Error while reading file {0}>>".Localize(), comparisonFile);
                         }
                     }
                     e.Messages = preview._messages;

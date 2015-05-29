@@ -7,6 +7,7 @@
 #include "ChunkFile.h"
 #include "Assets.h"
 #include "../Utility/Streams/FileUtils.h"
+#include "../Utility/Streams/Stream.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/MemoryUtils.h"
 
@@ -81,70 +82,85 @@ namespace Serialization { namespace ChunkFile
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-    SimpleChunkFileWriter::SimpleChunkFileWriter(
-        unsigned chunkCount, const char filename[], const char openMode[], ShareMode::BitField shareMode,
-        const char buildVersionString[], const char buildDateString[])
-        : BasicFile(filename, openMode, shareMode)
-        , _chunkCount(chunkCount)
+    namespace Internal
     {
-        using namespace Serialization::ChunkFile;
+        SCFW_File::SCFW_File(Initializer init)
+        : BasicFile(std::get<0>(init), std::get<1>(init), std::get<2>(init))
+        {}
 
-        _activeChunkStart = 0;
-        _hasActiveChunk = false;
-        _activeChunkIndex = 0;
+        template<typename Writer>
+            SimpleChunkFileWriterT<Writer>::SimpleChunkFileWriterT(
+                unsigned chunkCount, const char buildVersionString[], const char buildDateString[],
+                typename Writer::Initializer init)
+            : Writer(init)
+            , _chunkCount(chunkCount)
+        {
+            using namespace Serialization::ChunkFile;
 
-        ChunkFileHeader fileHeader;
-        XlZeroMemory(fileHeader);
-        fileHeader._magic = MagicHeader;
-        fileHeader._fileVersionNumber = 0;
-        XlCopyString(fileHeader._buildVersion, dimof(fileHeader._buildVersion), buildVersionString);
-        XlCopyString(fileHeader._buildDate, dimof(fileHeader._buildDate), buildDateString);
-        fileHeader._chunkCount = chunkCount;
-
-        Write(&fileHeader, sizeof(fileHeader), 1);
-        for (unsigned c=0; c<chunkCount; ++c) {
-            ChunkHeader t;
-            Write(&t, sizeof(ChunkHeader), 1);
-        }
-    }
-
-    SimpleChunkFileWriter::~SimpleChunkFileWriter()
-    {
-        if (_hasActiveChunk) {
-            FinishCurrentChunk();
-        }
-        assert(_activeChunkIndex == _chunkCount);
-    }
-
-    void SimpleChunkFileWriter::BeginChunk(   Serialization::ChunkFile::TypeIdentifier type,
-                                        unsigned version, const char name[])
-    {
-        if (_hasActiveChunk) {
-            FinishCurrentChunk();
+            _activeChunkStart = 0;
+            _hasActiveChunk = false;
+            _activeChunkIndex = 0;
+            
+            ChunkFileHeader fileHeader;
+            XlZeroMemory(fileHeader);
+            fileHeader._magic = MagicHeader;
+            fileHeader._fileVersionNumber = 0;
+            XlCopyString(fileHeader._buildVersion, dimof(fileHeader._buildVersion), buildVersionString);
+            XlCopyString(fileHeader._buildDate, dimof(fileHeader._buildDate), buildDateString);
+            fileHeader._chunkCount = chunkCount;
+            
+            Write(&fileHeader, sizeof(fileHeader), 1);
+            for (unsigned c=0; c<chunkCount; ++c) {
+                ChunkHeader t;
+                Write(&t, sizeof(ChunkHeader), 1);
+            }
         }
 
-        _activeChunk._type = type;
-        _activeChunk._chunkVersion = version;
-        XlCopyString(_activeChunk._name, name);
-        _activeChunkStart = TellP();
-        _activeChunk._fileOffset = (ChunkFile::SizeType)_activeChunkStart;
-        _activeChunk._size = 0; // unknown currently
+        template<typename Writer>
+            SimpleChunkFileWriterT<Writer>::~SimpleChunkFileWriterT()
+        {
+            if (_hasActiveChunk) {
+                FinishCurrentChunk();
+            }
+            assert(_activeChunkIndex == _chunkCount);
+        }
 
-        _hasActiveChunk = true;
+        template<typename Writer>
+            void SimpleChunkFileWriterT<Writer>::BeginChunk(   
+                Serialization::ChunkFile::TypeIdentifier type,
+                unsigned version, const char name[])
+        {
+            if (_hasActiveChunk) {
+                FinishCurrentChunk();
+            }
+
+            _activeChunk._type = type;
+            _activeChunk._chunkVersion = version;
+            XlCopyString(_activeChunk._name, name);
+            _activeChunkStart = TellP();
+            _activeChunk._fileOffset = (ChunkFile::SizeType)_activeChunkStart;
+            _activeChunk._size = 0; // unknown currently
+
+            _hasActiveChunk = true;
+        }
+
+        template<typename Writer>
+            void SimpleChunkFileWriterT<Writer>::FinishCurrentChunk()
+        {
+            using namespace Serialization::ChunkFile;
+            auto oldLoc = TellP();
+            auto chunkHeaderLoc = sizeof(ChunkFileHeader) + _activeChunkIndex * sizeof(ChunkHeader);
+            Seek(chunkHeaderLoc, SEEK_SET);
+            _activeChunk._size = (ChunkFile::SizeType)std::max(size_t(0), oldLoc - _activeChunkStart);
+            Write(&_activeChunk, sizeof(ChunkHeader), 1);
+            Seek(oldLoc, SEEK_SET);
+            ++_activeChunkIndex;
+            _hasActiveChunk = false;
+        }
+        
     }
 
-    void SimpleChunkFileWriter::FinishCurrentChunk()
-    {
-        using namespace Serialization::ChunkFile;
-        auto oldLoc = TellP();
-        auto chunkHeaderLoc = sizeof(ChunkFileHeader) + _activeChunkIndex * sizeof(ChunkHeader);
-        Seek(chunkHeaderLoc, SEEK_SET);
-        _activeChunk._size = (ChunkFile::SizeType)std::max(size_t(0), oldLoc - _activeChunkStart);
-        Write(&_activeChunk, sizeof(ChunkHeader), 1);
-        Seek(oldLoc, SEEK_SET);
-        ++_activeChunkIndex;
-        _hasActiveChunk = false;
-    }
+    template SimpleChunkFileWriter;
 
 }}
 

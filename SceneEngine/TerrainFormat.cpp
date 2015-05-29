@@ -408,9 +408,8 @@ namespace SceneEngine
 
             const unsigned chunkCount = 2;
             SimpleChunkFileWriter outputFile(
-                chunkCount, destinationFile, "wb", 
-                SimpleChunkFileWriter::ShareMode::Read,
-                versionInfo.first, versionInfo.second);
+                chunkCount, versionInfo.first, versionInfo.second,
+                std::make_tuple(destinationFile, "wb", SimpleChunkFileWriter::ShareMode::Read));
 
                 //  write an area of the uber surface to our native terrain format
             auto nodeCount = NodeCountFromTreeDepth(treeDepth);

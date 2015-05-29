@@ -391,7 +391,7 @@ namespace Assets
 
                         // write the new debugging file
                 TRY {
-                    SimpleChunkFileWriter debugFile(1, debugFilename, "wb", 0, _buildVersionString, _buildDateString);
+                    SimpleChunkFileWriter debugFile(1, _buildVersionString, _buildDateString, std::make_tuple(debugFilename, "wb", 0));
                     debugFile.BeginChunk(ChunkType_ArchiveAttachments, 0, "ArchiveAttachments");
 
                     AttachedStringChunk hdr;

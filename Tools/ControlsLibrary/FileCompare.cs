@@ -49,7 +49,7 @@ namespace ControlsLibrary
                 rhs.Append(rtfHeader); lhs.Append(Environment.NewLine);
                 foreach (var d in diffs)
                 {
-                    var text = FixLineBreaks(d.text);
+                    var text = MakeSafeForRTF(d.text);
                     if (d.operation == DiffMatchPatch.Operation.EQUAL) 
                     {
                         lhs.Append(text);
@@ -76,6 +76,13 @@ namespace ControlsLibrary
             }
         }
 
-        static string FixLineBreaks(string input) { return Regex.Replace(input, @"\r\n?|\n", @"\par "); }
+        static string MakeSafeForRTF(string input) 
+        {
+            input = Regex.Replace(input, @"\\", @"\\\\"); 
+            input = Regex.Replace(input, @"\r\n?|\n", @"\par ");
+            input = Regex.Replace(input, @"{", @"\{");
+            input = Regex.Replace(input, @"}", @"\}");
+            return input;
+        }
     }
 }

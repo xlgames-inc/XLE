@@ -227,6 +227,7 @@ namespace LevelEditorXLE.Placements
             BaseExportPath = FixPath(cfg.BaseExportPath);
             SetAttribute(FolderST.cellCountAttribute, new int[2] { (int)cfg.CellCountX, (int)cfg.CellCountY } );
             SetAttribute(FolderST.cellSizeAttribute, cfg.CellSize);
+            ExportTarget = BaseExportPath + "placements.cfg";
 
             var newCells = new List<Tuple<string, string, string, Vec3F, Vec3F>>();
             var cellCount = CellCount;

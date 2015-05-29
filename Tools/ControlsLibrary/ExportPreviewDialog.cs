@@ -15,7 +15,7 @@ namespace ControlsLibrary
             InitializeComponent();
         }
 
-        public struct QueuedExport
+        public class QueuedExport
         {
             public bool DoExport { get; set; }
             public string TargetFile { get; set; }

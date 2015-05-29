@@ -85,7 +85,7 @@ namespace SceneEngine
 
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _dependencyValidation; }
 
-        void Save(const ResChar filename[]) const;
+        void Write(const Assets::ResChar destinationFile[]) const;
         void LogDetails(const char title[]) const;
 
         Placements(const ResChar filename[]);
@@ -114,11 +114,12 @@ namespace SceneEngine
         unsigned _dummy;
     };
 
-    void Placements::Save(const ResChar filename[]) const
+    void Placements::Write(const Assets::ResChar destinationFile[]) const
     {
         using namespace Serialization::ChunkFile;
-        SimpleChunkFileWriter fileWriter(1, filename, "wb", 0, 
-            RenderCore::VersionString, RenderCore::BuildDateString);
+        SimpleChunkFileWriter fileWriter(
+            1, RenderCore::VersionString, RenderCore::BuildDateString,
+            std::make_tuple(destinationFile, "wb", 0));
         fileWriter.BeginChunk(ChunkType_Placements, 0, "Placements");
 
         PlacementsHeader hdr;
@@ -130,10 +131,10 @@ namespace SceneEngine
         auto writeResult1 = fileWriter.Write(AsPointer(_objects.begin()), sizeof(ObjectReference), hdr._objectRefCount);
         auto writeResult2 = fileWriter.Write(AsPointer(_filenamesBuffer.begin()), 1, hdr._filenamesBufferSize);
 
-        if (    writeResult0 != sizeof(hdr) 
-            ||  writeResult1 != (sizeof(ObjectReference) * hdr._objectRefCount) 
+        if (    writeResult0 != 1
+            ||  writeResult1 != hdr._objectRefCount
             ||  writeResult2 != hdr._filenamesBufferSize)
-            ThrowException(::Exceptions::BasicLabel("Failure in file write while writing to file (%s) while saving placements", filename));
+            ThrowException(::Exceptions::BasicLabel("Failure in file write while saving placements"));
     }
 
     void Placements::LogDetails(const char title[]) const
@@ -2009,14 +2010,14 @@ namespace SceneEngine
         return result;
     }
     
-    static void SavePlacements(const char outputFilename[], Placements& placements)
+    static void SavePlacements(const ResChar outputFilename[], Placements& placements)
     {
-        placements.Save(outputFilename);
+        placements.Write(outputFilename);
         ConsoleRig::Console::GetInstance().Print(
             StringMeld<256>() << "Writing placements to: " << outputFilename << "\n");
     }
 
-    void PlacementsEditor::SaveAllCells()
+    void PlacementsEditor::WriteAllCells()
     {
             //  Save all of the placement files that have changed. 
             //
@@ -2042,7 +2043,7 @@ namespace SceneEngine
         _pimpl->_dynPlacements.clear();
     }
 
-    void PlacementsEditor::SaveCell(uint64 cellId, const ::Assets::ResChar destinationFilename[]) const
+    void PlacementsEditor::WriteCell(uint64 cellId, const Assets::ResChar destinationFile[]) const
     {
             // Save a single placement cell file
             // This function is intended for tools, so we will aggressively throw exceptions on errors
@@ -2052,7 +2053,8 @@ namespace SceneEngine
                 continue;
 
             auto& placements = *i->second;
-            placements.Save(destinationFilename);
+            placements.Write(destinationFile);
+            return;
         }
 
         ThrowException(

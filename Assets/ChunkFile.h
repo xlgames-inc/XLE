@@ -12,7 +12,7 @@
 #include <algorithm>
 #include <vector>
 
-namespace Utility { class BasicFile; }
+namespace Utility { class BasicFile; class OutputStream; }
 
 namespace Serialization { namespace ChunkFile
 {
@@ -71,26 +71,42 @@ namespace Serialization { namespace ChunkFile
     std::unique_ptr<uint8[]> RawChunkAsMemoryBlock(
         const char filename[], TypeIdentifier chunkType, unsigned expectedVersion);
 
-    class SimpleChunkFileWriter : public Utility::BasicFile
+    namespace Internal
     {
-    public:
-        SimpleChunkFileWriter(
-            unsigned chunkCount, const char filename[], const char openMode[], ShareMode::BitField shareMode,
-            const char buildVersionString[], const char buildDateString[]);
-        ~SimpleChunkFileWriter();
+        class SCFW_File : public BasicFile
+        {
+        public:
+            typedef std::tuple<
+                const char*, const char*, 
+                BasicFile::ShareMode::BitField> Initializer;
+            SCFW_File(Initializer init);
+        };
 
-        void BeginChunk(    
-            Serialization::ChunkFile::TypeIdentifier type,
-            unsigned version, const char name[]);
-        void FinishCurrentChunk();
+        template<typename Writer>
+            class SimpleChunkFileWriterT : public Writer
+        {
+        public:
+            SimpleChunkFileWriterT(
+                unsigned chunkCount, 
+                const char buildVersionString[], const char buildDateString[],
+                typename Writer::Initializer init);
+            ~SimpleChunkFileWriterT();
 
-    protected:
-        Serialization::ChunkFile::ChunkHeader _activeChunk;
-        size_t _activeChunkStart;
-        bool _hasActiveChunk;
-        unsigned _chunkCount;
-        unsigned _activeChunkIndex;
-    };
+            void BeginChunk(    
+                Serialization::ChunkFile::TypeIdentifier type,
+                unsigned version, const char name[]);
+            void FinishCurrentChunk();
+
+        protected:
+            Serialization::ChunkFile::ChunkHeader _activeChunk;
+            size_t _activeChunkStart;
+            bool _hasActiveChunk;
+            unsigned _chunkCount;
+            unsigned _activeChunkIndex;
+        };
+    }
+
+    using SimpleChunkFileWriter = Internal::SimpleChunkFileWriterT<Internal::SCFW_File>;
 
 }}
 

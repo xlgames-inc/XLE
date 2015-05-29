@@ -177,8 +177,8 @@ namespace RenderCore { namespace Assets
             auto block = blockSerializer.AsMemoryBlock();
 
             Serialization::ChunkFile::SimpleChunkFileWriter output(
-                1, destination, "wb", 0,
-                VersionString, BuildDateString);
+                1, VersionString, BuildDateString, 
+                std::make_tuple(destination, "wb", 0));
 
             output.BeginChunk(ChunkType_ResolvedMat, 0, Meld() << sourceModel << "&" << sourceMaterial);
             output.Write(block.get(), 1, blockSize);
