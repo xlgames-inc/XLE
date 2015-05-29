@@ -45,8 +45,11 @@ namespace LevelEditorXLE.Placements
             [Category("Basic")] [Description("Cell Size (in metres)")]
             public float CellSize { get; set; }
 
-            [Category("Basic")] [Description("Base Path")]
-            public string BasePath { get; set; }
+            [Category("Basic")] [Description("Base Level Editor Path")]
+            public string BaseEditorPath { get; set; }
+
+            [Category("Basic")] [Description("Base Export Path")]
+            public string BaseExportPath { get; set; }
 
             internal Config() { CellCountX = 4; CellCountY = 4; CellSize = 512; }
         };

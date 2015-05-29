@@ -205,10 +205,22 @@ namespace Utility
     OutputStreamFormatter::~OutputStreamFormatter()
     {}
 
+    template<> auto OutputStreamFormatter::BeginElement(const char* nameStart, const char* nameEnd) -> ElementId
+    {
+        return BeginElement((const utf8*)nameStart, (const utf8*)nameEnd);
+    }
+
+    template<> void OutputStreamFormatter::WriteAttribute(const char* nameStart, const char* nameEnd, const char* valueStart, const char* valueEnd)
+    {
+        WriteAttribute(
+            (const utf8*)nameStart, (const utf8*)nameEnd,
+            (const utf8*)valueStart, (const utf8*)valueEnd);
+    }
+
     template auto OutputStreamFormatter::BeginElement(const utf8* nameStart, const utf8* nameEnd) -> ElementId;
     template auto OutputStreamFormatter::BeginElement(const ucs2* nameStart, const ucs2* nameEnd) -> ElementId;
     template auto OutputStreamFormatter::BeginElement(const ucs4* nameStart, const ucs4* nameEnd) -> ElementId;
-
+    
     template void OutputStreamFormatter::WriteAttribute(const utf8* nameStart, const utf8* nameEnd, const utf8* valueStart, const utf8* valueEnd);
     template void OutputStreamFormatter::WriteAttribute(const ucs2* nameStart, const ucs2* nameEnd, const ucs2* valueStart, const ucs2* valueEnd);
     template void OutputStreamFormatter::WriteAttribute(const ucs4* nameStart, const ucs4* nameEnd, const ucs4* valueStart, const ucs4* valueEnd);

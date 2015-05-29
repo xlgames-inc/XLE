@@ -129,6 +129,11 @@ namespace GUILayer
         _scene->IncrementTime(increment);
     }
 
+    EditorScene& EditorSceneManager::GetScene()
+    {
+        return *_scene.get();
+    }
+
     auto EditorSceneManager::ExportPlacements(EntityInterface::DocumentId doc, System::String^ destinationFile) -> ExportResult^
     {
             //  The document id corresponds directly with the 
@@ -152,7 +157,28 @@ namespace GUILayer
         return result;
     }
 
-    auto EditorSceneManager::ExportEnvironmentSettings(EntityInterface::DocumentId docId, System::String^ destinationFile) -> ExportResult^
+    auto EditorSceneManager::PreviewExportPlacements(EntityInterface::DocumentId placementsDoc) -> ExportPreview^
+    {
+        auto result = gcnew ExportPreview();
+        result->_success = false;
+
+        TRY
+        {
+            result->_preview = clix::marshalString<clix::E_UTF8>(
+                _scene->_placementsEditor->GetMetricsString(placementsDoc));
+            result->_success = true;
+            result->_messages = "Success";
+            result->_type = ExportPreview::Type::MetricsText;
+        } CATCH(const std::exception& e) {
+            result->_messages = "Error while exporting placements: " + clix::marshalString<clix::E_UTF8>(e.what());
+        } CATCH(...) {
+            result->_messages = "Unknown error occurred while exporting placements";
+        } CATCH_END
+
+        return result;
+    }
+
+    auto EditorSceneManager::ExportEnv(EntityInterface::DocumentId docId, System::String^ destinationFile) -> ExportResult^
     {
         auto result = gcnew ExportResult();
         result->_success = false;
@@ -183,7 +209,7 @@ namespace GUILayer
         return result;
     }
 
-    auto EditorSceneManager::PreviewEnvironmentSettings(EntityInterface::DocumentId docId) -> ExportPreview^
+    auto EditorSceneManager::PreviewExportEnv(EntityInterface::DocumentId docId) -> ExportPreview^
     {
         auto result = gcnew ExportPreview();
         result->_success = false;
@@ -211,6 +237,76 @@ namespace GUILayer
             result->_messages = "Error while exporting environment settings: " + clix::marshalString<clix::E_UTF8>(e.what());
         } CATCH(...) {
             result->_messages = "Unknown error occurred while exporting environment settings";
+        } CATCH_END
+        return result;
+    }
+
+    static void BuildPlacementsCfg(
+        OutputStreamFormatter& formatter,
+        IEnumerable<EditorSceneManager::PlacementCellRef>^ cells,
+        SceneEngine::PlacementsEditor& editor)
+    {
+        for each(auto c in cells) {
+            auto ele = formatter.BeginElement("CellRef");
+            formatter.WriteAttribute("Offset", ImpliedTyping::AsString(AsFloat3(c.Offset)));
+            formatter.WriteAttribute("Mins", ImpliedTyping::AsString(AsFloat3(c.Mins)));
+            formatter.WriteAttribute("Maxs", ImpliedTyping::AsString(AsFloat3(c.Maxs)));
+            formatter.WriteAttribute("NativeFile", clix::marshalString<clix::E_UTF8>(c.NativeFile));
+            formatter.EndElement(ele);
+        }
+    }
+
+    auto EditorSceneManager::PreviewExportPlacementsCfg(IEnumerable<PlacementCellRef>^ cells) -> ExportPreview^
+    {
+        auto result = gcnew ExportPreview();
+        result->_success = false;
+        
+        TRY
+        {
+            MemoryOutputStream<utf8> stream;
+            {
+                OutputStreamFormatter formatter(stream);
+                BuildPlacementsCfg(formatter, cells, *_scene->_placementsEditor.get());
+            }
+
+            result->_preview = clix::marshalString<clix::E_UTF8>(stream.GetBuffer().str());
+            result->_success = true;
+            result->_messages = "Success";
+            result->_type = ExportPreview::Type::Text;
+        } CATCH(const std::exception& e) {
+            result->_messages = "Error while exporting placements settings: " + clix::marshalString<clix::E_UTF8>(e.what());
+        } CATCH(...) {
+            result->_messages = "Unknown error occurred while exporting placements settings";
+        } CATCH_END
+        return result;
+    }
+
+    auto EditorSceneManager::ExportPlacementsCfg(IEnumerable<PlacementCellRef>^ cells, System::String^ destinationFile) -> ExportResult^
+    {
+        auto result = gcnew ExportResult();
+        result->_success = false;
+        
+        TRY
+        {
+            // attempt to create the directory, if we need to
+            auto nativeDestFile = clix::marshalString<clix::E_UTF8>(destinationFile);
+            utf8 dirName[MaxPath];
+            XlDirname((char*)dirName, dimof(dirName), nativeDestFile.c_str());
+            CreateDirectoryRecursive((char*)dirName);
+
+            {
+                    // write out to a file stream
+                auto output = OpenFileOutput(nativeDestFile.c_str(), "wb");
+                OutputStreamFormatter formatter(*output);
+                BuildPlacementsCfg(formatter, cells, *_scene->_placementsEditor.get());
+            }
+
+            result->_success = true;
+            result->_messages = "Success";
+        } CATCH(const std::exception& e) {
+            result->_messages = "Error while exporting placements settings: " + clix::marshalString<clix::E_UTF8>(e.what());
+        } CATCH(...) {
+            result->_messages = "Unknown error occurred while exporting placements settings";
         } CATCH_END
         return result;
     }

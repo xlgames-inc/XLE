@@ -309,6 +309,14 @@ namespace GUILayer
             if (GetKeyState(0x11) < 0) evnt._activeButtons.push_back(ActiveButton(control, false, true));
             if (GetKeyState(0x12) < 0) evnt._activeButtons.push_back(ActiveButton(alt, false, true));
         }
+
+        static Tuple<Vector3, Vector3>^ CalculatePlacementCellBoundary(
+            EditorSceneManager^ sceneMan,
+            EntityInterface::DocumentId doc)
+        {
+            auto boundary = sceneMan->GetScene()._placementsEditor->CalculateCellBoundary(doc);
+            return Tuple::Create(AsVector3(boundary.first), AsVector3(boundary.second));
+        }
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

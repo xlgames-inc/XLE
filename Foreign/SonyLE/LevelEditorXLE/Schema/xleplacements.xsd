@@ -10,8 +10,8 @@
   <xs:complexType name="placementsCellReferenceType">
     <xs:annotation>
       <xs:appinfo>
-        <scea.dom.editors.attribute name="mins" displayName="Mins" description="Minimum point of this cell" category="Bounds" editor="Sce.Atf.Controls.PropertyEditing.NumericTupleEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.FloatArrayConverter"/>
-        <scea.dom.editors.attribute name="maxs" displayName="Maxs" description="Maximum point of this cell" category="Bounds" editor="Sce.Atf.Controls.PropertyEditing.NumericTupleEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.FloatArrayConverter"/>
+        <scea.dom.editors.attribute name="captureMins" displayName="CaptureMins" description="Minimum capture point of this cell" category="Bounds" editor="Sce.Atf.Controls.PropertyEditing.NumericTupleEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.FloatArrayConverter"/>
+        <scea.dom.editors.attribute name="captureMaxs" displayName="CaptureMaxs" description="Maximum capture point of this cell" category="Bounds" editor="Sce.Atf.Controls.PropertyEditing.NumericTupleEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.FloatArrayConverter"/>
         <scea.dom.editors.attribute name="ref" displayName="Ref" description="Placements document file"/>
         <scea.dom.editors.attribute name="name" displayName="Name" description="Display name"/>
         <scea.dom.editors.attribute name="ExportTarget" displayName="Export Target" category="Export" description="Destination file written to in export operations"/>
@@ -22,18 +22,31 @@
     <xs:attribute name="ref" type="xs:string" />
     <xs:attribute name="ExportTarget" type="xs:string" default="finals/placements.plc" />
     <xs:attribute name="name" type="xs:string" />
-    <xs:attribute name="mins" type="vector3Type" default="-1000 -1000 -1000"/>
-    <xs:attribute name="maxs" type="vector3Type" default="1000 1000 1000"/>
+    <xs:attribute name="captureMins" type="vector3Type" default="-1000 -1000 -1000"/>
+    <xs:attribute name="captureMaxs" type="vector3Type" default="1000 1000 1000"/>
+    <xs:attribute name="offset" type="vector3Type" default="0 0 0"/>
     <xs:attribute name="ExportEnabled" type="xs:boolean" default="true"/>
+    <xs:attribute name="cachedCellMins" type="vector3Type" default="0 0 0"/>
+    <xs:attribute name="cachedCellMaxs" type="vector3Type" default="0 0 0 "/>
   </xs:complexType>
 
   <xs:complexType name="placementsFolderType">
+    <xs:annotation>
+      <xs:appinfo>
+        <scea.dom.editors.attribute name="ExportTarget" displayName="Export Target" category="Export" description="Destination file written to in export operations"/>
+        <scea.dom.editors.attribute name="ExportEnabled" displayName="Export Enabled" category="Export" description="Enable or disable export of this item"/>
+      </xs:appinfo>
+    </xs:annotation>
+    
     <xs:sequence>
       <xs:element name="cell" type="placementsCellReferenceType" minOccurs="0" maxOccurs="unbounded" />
     </xs:sequence>
-    <xs:attribute name="basePath" type="xs:string" default="placements/" />
+    <xs:attribute name="baseEditorPath" type="xs:string" default="placements/" />
+    <xs:attribute name="baseExportPath" type="xs:string" default="finals/placements/" />
     <xs:attribute name="cellCount" type="int2Type" default="0 0" />
     <xs:attribute name="cellSize" type="xs:float" default="512" />
+    <xs:attribute name="ExportTarget" type="xs:string" default="finals/placements.cfg" />
+    <xs:attribute name="ExportEnabled" type="xs:boolean" default="true"/>
   </xs:complexType>
 
   <xs:complexType name="abstractPlacementObjectType">

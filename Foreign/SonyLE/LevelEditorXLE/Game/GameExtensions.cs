@@ -67,9 +67,9 @@ namespace LevelEditorXLE.Game
                             foreach (var cellRef in placementsFolder.Cells)
                             {
                                 if (cellRef.IsResolved()
-                                    && keyPoint.X >= cellRef.Mins.X && keyPoint.X < cellRef.Maxs.X
-                                    && keyPoint.Y >= cellRef.Mins.Y && keyPoint.Y < cellRef.Maxs.Y
-                                    && keyPoint.Z >= cellRef.Mins.Z && keyPoint.Z < cellRef.Maxs.Z
+                                    && keyPoint.X >= cellRef.CaptureMins.X && keyPoint.X < cellRef.CaptureMaxs.X
+                                    && keyPoint.Y >= cellRef.CaptureMins.Y && keyPoint.Y < cellRef.CaptureMaxs.Y
+                                    && keyPoint.Z >= cellRef.CaptureMins.Z && keyPoint.Z < cellRef.CaptureMaxs.Z
                                     && cellRef.Target.CanAddChild(domNode))
                                 {
                                     var hierarchical = cellRef.Target.AsAll<IHierarchical>();

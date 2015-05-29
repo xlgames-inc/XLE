@@ -156,7 +156,7 @@ namespace LevelEditorXLE
 
             var queuedExports = new List<ControlsLibrary.ExportPreviewDialog.QueuedExport>();
             var exportNodes = new List<IExportable>();
-            foreach (var n in rootNode.DomNode.LevelSubtree)
+            foreach (var n in rootNode.DomNode.Subtree)     // LevelSubtree has a small bug "foreach (var child in Children)" -> "foreach (var child in node.Children)"
             {
                 var exportable = n.As<IExportable>();
                 if (exportable == null) continue;
@@ -171,7 +171,8 @@ namespace LevelEditorXLE
                 var preview = exportable.PreviewExport();
                 if (preview != null)
                 {
-                    if (preview._type == GUILayer.EditorSceneManager.ExportPreview.Type.Text)
+                    if (    preview._type == GUILayer.EditorSceneManager.ExportPreview.Type.Text
+                        ||  preview._type == GUILayer.EditorSceneManager.ExportPreview.Type.MetricsText)
                     {
                         e.TextPreview = preview._preview;
                         try

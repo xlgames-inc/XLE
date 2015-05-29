@@ -211,14 +211,20 @@ namespace LevelEditorXLE
             placementsCellReferenceType.refAttribute = placementsCellReferenceType.Type.GetAttributeInfo("ref");
             placementsCellReferenceType.ExportTargetAttribute = placementsCellReferenceType.Type.GetAttributeInfo("ExportTarget");
             placementsCellReferenceType.nameAttribute = placementsCellReferenceType.Type.GetAttributeInfo("name");
-            placementsCellReferenceType.minsAttribute = placementsCellReferenceType.Type.GetAttributeInfo("mins");
-            placementsCellReferenceType.maxsAttribute = placementsCellReferenceType.Type.GetAttributeInfo("maxs");
+            placementsCellReferenceType.captureMinsAttribute = placementsCellReferenceType.Type.GetAttributeInfo("captureMins");
+            placementsCellReferenceType.captureMaxsAttribute = placementsCellReferenceType.Type.GetAttributeInfo("captureMaxs");
+            placementsCellReferenceType.offsetAttribute = placementsCellReferenceType.Type.GetAttributeInfo("offset");
             placementsCellReferenceType.ExportEnabledAttribute = placementsCellReferenceType.Type.GetAttributeInfo("ExportEnabled");
+            placementsCellReferenceType.cachedCellMinsAttribute = placementsCellReferenceType.Type.GetAttributeInfo("cachedCellMins");
+            placementsCellReferenceType.cachedCellMaxsAttribute = placementsCellReferenceType.Type.GetAttributeInfo("cachedCellMaxs");
 
             placementsFolderType.Type = getNodeType("gap", "placementsFolderType");
-            placementsFolderType.basePathAttribute = placementsFolderType.Type.GetAttributeInfo("basePath");
+            placementsFolderType.baseEditorPathAttribute = placementsFolderType.Type.GetAttributeInfo("baseEditorPath");
+            placementsFolderType.baseExportPathAttribute = placementsFolderType.Type.GetAttributeInfo("baseExportPath");
             placementsFolderType.cellCountAttribute = placementsFolderType.Type.GetAttributeInfo("cellCount");
             placementsFolderType.cellSizeAttribute = placementsFolderType.Type.GetAttributeInfo("cellSize");
+            placementsFolderType.ExportTargetAttribute = placementsFolderType.Type.GetAttributeInfo("ExportTarget");
+            placementsFolderType.ExportEnabledAttribute = placementsFolderType.Type.GetAttributeInfo("ExportEnabled");
             placementsFolderType.cellChild = placementsFolderType.Type.GetChildInfo("cell");
 
             placementObjectType.Type = getNodeType("gap", "placementObjectType");
@@ -562,17 +568,23 @@ namespace LevelEditorXLE
             public static AttributeInfo refAttribute;
             public static AttributeInfo ExportTargetAttribute;
             public static AttributeInfo nameAttribute;
-            public static AttributeInfo minsAttribute;
-            public static AttributeInfo maxsAttribute;
+            public static AttributeInfo captureMinsAttribute;
+            public static AttributeInfo captureMaxsAttribute;
+            public static AttributeInfo offsetAttribute;
             public static AttributeInfo ExportEnabledAttribute;
+            public static AttributeInfo cachedCellMinsAttribute;
+            public static AttributeInfo cachedCellMaxsAttribute;
         }
 
         public static class placementsFolderType
         {
             public static DomNodeType Type;
-            public static AttributeInfo basePathAttribute;
+            public static AttributeInfo baseEditorPathAttribute;
+            public static AttributeInfo baseExportPathAttribute;
             public static AttributeInfo cellCountAttribute;
             public static AttributeInfo cellSizeAttribute;
+            public static AttributeInfo ExportTargetAttribute;
+            public static AttributeInfo ExportEnabledAttribute;
             public static ChildInfo cellChild;
         }
 

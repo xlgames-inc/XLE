@@ -6,8 +6,9 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "XLELayerUtils.h"
-#include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../Tools/ToolsRig/VisualisationUtils.h"
+#include "../../Tools/EntityInterface/EntityInterface.h"
+#include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../Math/Transformations.h"
 
 using namespace Sce::Atf;
@@ -15,6 +16,12 @@ using namespace Sce::Atf::Applications;
 
 namespace XLEBridgeUtils
 {
+    public interface class INativeDocumentAdapter
+    {
+    public:
+        property EntityInterface::DocumentId NativeDocumentId { EntityInterface::DocumentId get(); }
+    };
+
     GUILayer::CameraDescWrapper^ Utils::AsCameraDesc(Sce::Atf::Rendering::Camera^ camera)
     {
         ToolsRig::VisCameraSettings visCam;

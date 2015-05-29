@@ -7,6 +7,7 @@
 #pragma once
 
 #include "EntityLayer.h"
+#include "MathLayer.h"      // (for Vector3)
 #include "CLIXAutoPtr.h"
 #include "../EntityInterface/EntityInterface.h"
 #include <memory>
@@ -86,21 +87,37 @@ namespace GUILayer
         ref class ExportPreview
         {
         public:
-            enum struct Type { Text, Binary, None };
+            enum struct Type { Text, Binary, MetricsText, None };
             System::String^ _preview;
             Type _type = Type::None;
             System::String^ _messages;
             bool _success = false;
         };
 
-        ExportResult^ ExportPlacements(EntityInterface::DocumentId placementsDoc, System::String^ destinationFile);
-        ExportResult^ ExportEnvironmentSettings(EntityInterface::DocumentId docId, System::String^ destinationFile);
         ExportResult^ ExportTerrainSettings(System::String^ destinationFolder);
-        ExportPreview^ PreviewEnvironmentSettings(EntityInterface::DocumentId docId);
+        
+        ExportResult^ ExportEnv(EntityInterface::DocumentId docId, System::String^ destinationFile);
+        ExportPreview^ PreviewExportEnv(EntityInterface::DocumentId docId);
+
+        ExportResult^ ExportPlacements(EntityInterface::DocumentId placementsDoc, System::String^ destinationFile);
+        ExportPreview^ PreviewExportPlacements(EntityInterface::DocumentId placementsDoc);
+
+        value class PlacementCellRef
+        {
+        public:
+            property System::String^ NativeFile;
+            property Vector3 Offset;
+            property Vector3 Mins;
+            property Vector3 Maxs;
+        };
+        ExportPreview^ PreviewExportPlacementsCfg(IEnumerable<PlacementCellRef>^ cells);
+        ExportResult^ ExportPlacementsCfg(IEnumerable<PlacementCellRef>^ cells, System::String^ destinationFile);
 
             //// //// ////   U T I L I T Y   //// //// ////
         const EntityInterface::RetainedEntities& GetFlexObjects();
         void IncrementTime(float increment);
+
+        EditorScene& GetScene();
 
             //// //// ////   C O N S T R U C T O R S   //// //// ////
         EditorSceneManager();

@@ -74,6 +74,7 @@ namespace SceneEngine
 
     typedef std::pair<uint64, uint64> PlacementGUID;
     class PlacementCell;
+    class PlacementsCache;
 
     class PlacementsEditor
     {
@@ -169,12 +170,18 @@ namespace SceneEngine
         static uint64 GenerateObjectGUID();
 		void PerformGUIDFixup(PlacementGUID* begin, PlacementGUID* end) const;
 
+        std::pair<Float3, Float3> CalculateCellBoundary(uint64 cellId) const;
+
+        std::string GetMetricsString(uint64 cellId) const;
         void SaveAllCells();
         void SaveCell(uint64 cellId, const ::Assets::ResChar destinationFilename[]) const;
 
         std::pair<Float3, Float3> GetModelBoundingBox(const Assets::ResChar modelName[]) const;
 
-        PlacementsEditor(std::shared_ptr<PlacementsRenderer> renderer);
+        PlacementsEditor(
+            std::shared_ptr<PlacementsCache> placementsCache, 
+            std::shared_ptr<RenderCore::Assets::ModelCache> modelCache,
+            std::shared_ptr<PlacementsRenderer> renderer);
         ~PlacementsEditor();
     protected:
         class Pimpl;

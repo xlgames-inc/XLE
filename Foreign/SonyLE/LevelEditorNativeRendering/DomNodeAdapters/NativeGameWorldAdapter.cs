@@ -5,7 +5,7 @@ using Sce.Atf.Adaptation;
 
 namespace RenderingInterop
 {
-    public class NativeDocumentAdapter : DomNodeAdapter
+    public class NativeDocumentAdapter : DomNodeAdapter, XLEBridgeUtils.INativeDocumentAdapter
     {
         protected override void OnNodeSet()
         {

@@ -6,6 +6,8 @@
 
 #include "../Detail/API.h"
 #include "../UTFUtils.h"
+#include "../StringUtils.h"
+#include "../PtrUtils.h"
 #include <vector>
 #include <assert.h>
 
@@ -29,6 +31,28 @@ namespace Utility
             void WriteAttribute(
                 const CharType* nameStart, const CharType* nameEnd,
                 const CharType* valueStart, const CharType* valueEnd);
+
+        template<typename CharType> 
+            ElementId BeginElement(const CharType* nameNullTerm)
+            {
+                return BeginElement(nameNullTerm, &nameNullTerm[XlStringLen(nameNullTerm)]);
+            }
+
+        template<typename CharType> 
+            void WriteAttribute(const CharType* nameNullTerm, const CharType* valueNullTerm)
+            {
+                WriteAttribute(
+                    nameNullTerm, &nameNullTerm[XlStringLen(nameNullTerm)],
+                    valueNullTerm, &valueNullTerm[XlStringLen(valueNullTerm)]);
+            }
+
+        template<typename CharType> 
+            void WriteAttribute(const CharType* nameNullTerm, const std::basic_string<CharType>& value)
+            {
+                WriteAttribute(
+                    nameNullTerm, &nameNullTerm[XlStringLen(nameNullTerm)],
+                    AsPointer(value.cbegin()), AsPointer(value.cend()));
+            }
 
         OutputStreamFormatter(OutputStream& stream);
         ~OutputStreamFormatter();

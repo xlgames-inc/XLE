@@ -136,13 +136,13 @@ namespace LevelEditorXLE.Environment
             // This is a bit tricky, here. We need to get both the document id
             // and a pointer to the EditorSceneManager from the native interop folder
             var sceneMan = XLEBridgeUtils.NativeManipulatorLayer.SceneManager;
-            return sceneMan.ExportEnvironmentSettings(0, destinationFile);
+            return sceneMan.ExportEnv(0, destinationFile);
         }
 
         public GUILayer.EditorSceneManager.ExportPreview PreviewExport()
         {
             var sceneMan = XLEBridgeUtils.NativeManipulatorLayer.SceneManager;
-            return sceneMan.PreviewEnvironmentSettings(0);
+            return sceneMan.PreviewExportEnv(0);
         }
         #endregion
 
