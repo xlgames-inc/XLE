@@ -141,9 +141,9 @@ namespace LevelEditorXLE.Game
                     {
                         if (DomNode.GetChild(Schema.xleGameType.terrainChild) == null)
                         {
-                            DomNode.SetChild(
-                                Schema.xleGameType.terrainChild,
-                                Terrain.XLETerrainGob.Create());
+                            var newNode = Terrain.XLETerrainGob.CreateWithConfigure();
+                            if (newNode != null)
+                                DomNode.SetChild(Schema.xleGameType.terrainChild, newNode);
                         }
                         break;
                     }

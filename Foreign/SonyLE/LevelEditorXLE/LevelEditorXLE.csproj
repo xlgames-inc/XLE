@@ -94,6 +94,12 @@
     <Compile Include="Schema\Schema.cs" />
     <Compile Include="Terrain\TerrainManipulator.cs" />
     <Compile Include="Terrain\XLETerrainGob.cs" />
+    <Compile Include="Terrain\TerrainConfig.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Terrain\TerrainConfig.Designer.cs">
+      <DependentUpon>TerrainConfig.cs</DependentUpon>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Manipulators\XLENativeManipControls.resx">

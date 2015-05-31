@@ -13,6 +13,7 @@
     <ClCompile Include="..\VisualisationGeo.cpp" />
     <ClCompile Include="..\VisualisationUtils.cpp" />
     <ClCompile Include="..\MaterialBinder.cpp" />
+    <ClCompile Include="..\TerrainConversion.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\BasicManipulators.h" />
@@ -29,5 +30,6 @@
     <ClInclude Include="..\ManipulatorsRender.h" />
     <ClInclude Include="..\VisualisationGeo.h" />
     <ClInclude Include="..\MaterialBinder.h" />
+    <ClInclude Include="..\TerrainConversion.h" />
   </ItemGroup>
 </Project>

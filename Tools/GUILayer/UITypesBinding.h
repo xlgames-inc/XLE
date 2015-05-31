@@ -23,7 +23,7 @@ namespace RenderCore { namespace Assets { class RawMaterial; class RenderStateSe
 
 namespace GUILayer
 {
-    private ref class FileNameEditor : UITypeEditor
+    public ref class FileNameEditor : UITypeEditor
     {
     public:
         UITypeEditorEditStyle GetEditStyle(ITypeDescriptorContext^ context) override
@@ -36,7 +36,7 @@ namespace GUILayer
             System::IServiceProvider^ provider, 
             Object^ value) override
         {
-            ofd->FileName = value->ToString();
+            ofd->FileName = value ? value->ToString() : "";
 
             char dirName[MaxPath];
             XlDirname(dirName, dimof(dirName), clix::marshalString<clix::E_UTF8>(ofd->FileName).c_str());

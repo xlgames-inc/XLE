@@ -27,6 +27,7 @@
 #include "../../Assets/Assets.h"
 #include "../../Math/Transformations.h"
 #include "../ToolsRig/PlacementsManipulators.h"
+#include "../ToolsRig/TerrainConversion.h"
 // #include "../../ConsoleRig/Log.h"        (can't include in Win32 managed code)
 
 using namespace System;
@@ -316,6 +317,26 @@ namespace GUILayer
         {
             auto boundary = sceneMan->GetScene()._placementsEditor->CalculateCellBoundary(doc);
             return Tuple::Create(AsVector3(boundary.first), AsVector3(boundary.second));
+        }
+
+        static void GenerateUberSurfaceFromDEM(
+            String^ uberSurfaceDirectory, String^ demFile,
+            unsigned nodeDimensions, unsigned cellTreeDepth)
+        {
+            ToolsRig::ConvertDEMData(
+                clix::marshalString<clix::E_UTF8>(uberSurfaceDirectory).c_str(),
+                clix::marshalString<clix::E_UTF8>(demFile).c_str(),
+                nodeDimensions, cellTreeDepth);
+        }
+
+        static void GenerateStarterCells(
+            String^ cellsDirectory, String^ uberSurfaceDirectory,
+            unsigned nodeDimensions, unsigned cellTreeDepth, unsigned overlap)
+        {
+            ToolsRig::GenerateStarterCells(
+                clix::marshalString<clix::E_UTF8>(cellsDirectory).c_str(),
+                clix::marshalString<clix::E_UTF8>(uberSurfaceDirectory).c_str(),
+                nodeDimensions, cellTreeDepth, overlap);
         }
     };
 
