@@ -54,6 +54,9 @@ namespace Utility
                     AsPointer(value.cbegin()), AsPointer(value.cend()));
             }
 
+        void Flush();
+        void NewLine();
+
         OutputStreamFormatter(OutputStream& stream);
         ~OutputStreamFormatter();
     protected:
@@ -68,7 +71,7 @@ namespace Utility
             unsigned _nextElementId;
         #endif
 
-        template<typename CharType> void NewLine();
+        template<typename CharType> void DoNewLine();
     };
 
     class MemoryMappedInputStream
@@ -124,6 +127,7 @@ namespace Utility
         const void* _lineStart;
 
         unsigned _simpleAttributeMode;
+        unsigned _simpleElementNameMode;
 
         unsigned CharIndex() const;
     };

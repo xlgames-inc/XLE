@@ -84,14 +84,40 @@ namespace Utility
         lineLength += Count;
     }
 
+    template<typename CharType> 
+        static bool UnsafeForSimpleAttribute(CharType c)
+    {
+        return c==';' || c=='>' || c=='=' || c=='\r' || c=='\n' || c == 0x0;
+    }
+
+    template<typename CharType> 
+        static bool UnsafeStarterForSimpleAttribute(CharType c)
+    {
+        return c==' ' || c=='\t' || c==0x0B || c==0x0C || c==0x85 || c==0xA0;
+    }
+
+    template<typename CharType> 
+        static bool UnsafeForSimpleElementName(CharType c)
+    {
+        return c==';' || c=='<' || c=='>' || c=='=' || c=='\r' || c=='\n' || c==' ' || c=='\t' || c==0x0B || c==0x0C || c==0x85 || c==0xA0 || c==0x0;
+    }
+
     template<typename CharType>
         auto OutputStreamFormatter::BeginElement(const CharType* nameStart, const CharType* nameEnd) -> ElementId
     {
-        NewLine<CharType>();
+        DoNewLine<CharType>();
 
-        WriteConst(*_stream, FormatterConstants<CharType>::ElementPrefix, _currentLineLength);
-        _stream->WriteString(nameStart, nameEnd);
-        WriteConst(*_stream, FormatterConstants<CharType>::ElementPostfix, _currentLineLength);
+        assert(nameEnd > nameStart);
+
+            // in simple cases, we just write the name without extra formatting --
+        if (std::find_if(nameStart, nameEnd, UnsafeForSimpleAttribute<CharType>) == nameEnd && *nameStart != '-') {
+            _stream->WriteString(nameStart, nameEnd);
+        } else {
+            WriteConst(*_stream, FormatterConstants<CharType>::ElementPrefix, _currentLineLength);
+            _stream->WriteString(nameStart, nameEnd);
+            WriteConst(*_stream, FormatterConstants<CharType>::ElementPostfix, _currentLineLength);
+        }
+
         _hotLine = true;
         _currentLineLength += unsigned(nameEnd - nameStart);
         ++_currentIndentLevel;
@@ -106,7 +132,7 @@ namespace Utility
     }
 
     template<typename CharType>
-        void OutputStreamFormatter::NewLine()
+        void OutputStreamFormatter::DoNewLine()
     {
         if (_hotLine) {
             if (_writingSimpleAttributes != ~unsigned(0x0)) {
@@ -127,25 +153,21 @@ namespace Utility
     }
 
     template<typename CharType> 
-        static bool UnsafeForSimpleAttribute(CharType c)
-    {
-        return c==';' || c=='>' || c=='=' || c=='\r' || c=='\n' || c==' ' || c=='\t' || c==0x0B || c==0x0C || c==0x85 || c==0xA0;
-    }
-
-    template<typename CharType> 
         void OutputStreamFormatter::WriteAttribute(
             const CharType* nameStart, const CharType* nameEnd,
             const CharType* valueStart, const CharType* valueEnd)
     {
         if (    std::find_if(nameStart, nameEnd, UnsafeForSimpleAttribute<CharType>) == nameEnd
-            &&  std::find_if(valueStart, valueEnd, UnsafeForSimpleAttribute<CharType>) == valueEnd) {
+            &&  std::find_if(valueStart, valueEnd, UnsafeForSimpleAttribute<CharType>) == valueEnd
+            &&  (nameEnd == nameStart) || !UnsafeStarterForSimpleAttribute(*nameStart)
+            &&  (valueEnd == valueStart) || !UnsafeStarterForSimpleAttribute(*valueStart)) {
 
             const unsigned idealLineLength = 100;
             bool forceNewLine = 
                     (_writingSimpleAttributes != ~unsigned(0x0) && _writingSimpleAttributes != _currentIndentLevel)
                 ||  (_currentLineLength + (valueEnd - valueStart) + (nameEnd - nameStart) + 3) > idealLineLength;
 
-            if (forceNewLine) NewLine<CharType>();
+            if (forceNewLine) DoNewLine<CharType>();
 
             if (_writingSimpleAttributes != _currentIndentLevel) {
                 if (_hotLine) { _stream->WriteChar((CharType)' '); ++_currentLineLength; }
@@ -164,7 +186,7 @@ namespace Utility
             return;
         }
         
-        NewLine<CharType>();
+        DoNewLine<CharType>();
 
         WriteConst(*_stream, FormatterConstants<CharType>::AttributeNamePrefix, _currentLineLength);
         _stream->WriteString(nameStart, nameEnd);
@@ -191,6 +213,17 @@ namespace Utility
         #endif
 
         --_currentIndentLevel;
+    }
+
+    void OutputStreamFormatter::Flush()
+    {
+        DoNewLine<utf8>();    // end in a new line to make sure the last ">" gets written
+        assert(_currentIndentLevel == 0);
+    }
+
+    void OutputStreamFormatter::NewLine()
+    {
+        DoNewLine<utf8>();
     }
 
     OutputStreamFormatter::OutputStreamFormatter(OutputStream& stream) 
@@ -350,6 +383,7 @@ namespace Utility
                             // let's see if there's a fully formed blob here
                         if (*next == Consts::ElementPrefix[0]) {
                             Eat(_stream, Consts::ElementPrefix, _lineIndex, CharIndex());
+                            _simpleElementNameMode = 0;
                             return _primed = Blob::BeginElement;
                         }
 
@@ -378,7 +412,15 @@ namespace Utility
                     break;
 
                 default:
-                    ThrowException(Exceptions::FormatException("Expected element or attribute", _lineIndex, CharIndex()));
+                    // ThrowException(Exceptions::FormatException("Expected element or attribute", _lineIndex, CharIndex()));
+
+                        // unexpected characters are treated as the start of a simple element name
+                    if (_activeLineSpaces <= _parentBaseLine) {
+                        return _primed = Blob::EndElement;
+                    }
+
+                    _simpleElementNameMode = 1;
+                    return _primed = Blob::BeginElement;
                 }
 
             } else {
@@ -423,7 +465,15 @@ namespace Utility
         if (PeekNext() != Blob::BeginElement) return false;
 
         name._start = (const CharType*)_stream.ReadPointer();
-        name._end = ReadToDeliminator(_stream, FormatterConstants<CharType>::ElementPostfix, _lineIndex, CharIndex());
+
+        if (_simpleElementNameMode == 0) {
+            name._end = ReadToDeliminator(_stream, FormatterConstants<CharType>::ElementPostfix, _lineIndex, CharIndex());
+        } else {
+            const auto* end = (const CharType*)_stream.End();
+            name._end = (const CharType*)_stream.ReadPointer();
+            while (name._end <= end && !UnsafeForSimpleElementName(*name._end)) ++name._end;
+            _stream.SetPointer(name._end);
+        }
 
         // the new "parent base line" should be the indentation level of the line this element started on
         if ((_baseLineStackPtr+1) > dimof(_baseLineStack))
@@ -433,6 +483,7 @@ namespace Utility
         _baseLineStack[_baseLineStackPtr++] = _activeLineSpaces;
         _parentBaseLine = _activeLineSpaces;
         _primed = Blob::None;
+        _simpleElementNameMode = 0;
         return true;
     }
 
@@ -539,6 +590,7 @@ namespace Utility
         _lineIndex = 0;
         _lineStart = stream.ReadPointer();
         _simpleAttributeMode = 0;
+        _simpleElementNameMode = 0;
     }
 
     template<typename CharType>

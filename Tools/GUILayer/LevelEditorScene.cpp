@@ -213,9 +213,19 @@ namespace GUILayer
 
     auto EditorSceneManager::PreviewExportEnv(EntityInterface::DocumentId docId) -> ExportPreview^
     {
-        return PreviewViaStream(
+        auto result = PreviewViaStream(
             "environment settings",
             std::bind(WriteEnvSettings, _1, docId, _scene->_flexObjects.get()));
+
+        // {
+        //     auto nativeString = clix::marshalString<clix::E_UTF8>(result->_preview);
+        //     MemoryMappedInputStream str(AsPointer(nativeString.cbegin()), AsPointer(nativeString.cend()));
+        //     InputStreamFormatter<utf8> formatter(str);
+        //     auto envTest = EntityInterface::DeserializeEnvSettings(formatter);
+        //     (void)envTest;
+        // }
+
+        return result;
     }
 
     static auto WritePlacementsCfg(
@@ -231,6 +241,7 @@ namespace GUILayer
             formatter.WriteAttribute("NativeFile", clix::marshalString<clix::E_UTF8>(c.NativeFile));
             formatter.EndElement(ele);
         }
+        formatter.Flush();
         return EditorSceneManager::ExportPreview::Type::Text;
     }
 

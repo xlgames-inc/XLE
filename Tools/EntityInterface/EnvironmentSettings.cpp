@@ -139,6 +139,7 @@ namespace EntityInterface
 
         auto name = Conversion::Convert<std::basic_string<CharType>>(entities.GetTypeName(obj._type));
         auto eleId = formatter.BeginElement(AsPointer(name.cbegin()), AsPointer(name.cend()));
+        if (!obj._children.empty()) formatter.NewLine();    // properties can continue on the same line, but only if we don't have children
         obj._properties.Serialize<CharType>(formatter);
 
         for (auto c=obj._children.cbegin(); c!=obj._children.cend(); ++c) {
@@ -180,6 +181,8 @@ namespace EntityInterface
         
         if (!foundAtLeastOne)
             ThrowException(::Exceptions::BasicLabel("No environment settings found"));
+
+        formatter.Flush();
     }
 
     PlatformRig::EnvironmentSettings DeserializeSingleSettings(InputStreamFormatter<utf8>& formatter)
