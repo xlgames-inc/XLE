@@ -219,4 +219,8 @@ namespace SceneEngine
         Utility::OutputStream& stream,
         const TerrainConfig& cfg, 
         ITerrainFormat& format);
+
+    void WriteTerrainMaterialData(
+        Utility::OutputStream& stream,
+        const TerrainConfig& cfg);
 }

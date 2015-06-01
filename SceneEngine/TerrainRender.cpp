@@ -638,7 +638,7 @@ namespace SceneEngine
         RenderCore::Metal::ShaderResourceView _srv[ResourceCount];
         RenderCore::Metal::ConstantBuffer _texturingConstants;
         unsigned _strataCount;
-        
+
         TerrainMaterialTextures();
         TerrainMaterialTextures(const TerrainMaterialScaffold& scaffold);
         ~TerrainMaterialTextures();
@@ -2528,6 +2528,42 @@ namespace SceneEngine
         }
     }
 
+    template<typename Type, int Count>
+        std::unique_ptr<Data> Serialize(const char name[], const cml::vector<Type, cml::fixed<Count>>& vector)
+    {
+        auto cellIndex = std::make_unique<Data>(name);
+        for (unsigned c=0; c<Count; ++c)
+            cellIndex->Add(new Data(StringMeld<32>() << vector[c]));
+        return std::move(cellIndex);
+    }
+
+    void TerrainMaterialScaffold::Write(OutputStream& stream) const
+    {
+        const char * textureNames[] = { "Texture0", "Texture1", "Slopes" };
+
+        auto config = std::make_unique<Data>("Config");
+        config->Add(Serialize("DiffuseDims", _diffuseDims).release());
+        config->Add(Serialize("NormalDims", _normalDims).release());
+        config->Add(Serialize("ParamDims", _paramDims).release());
+
+        auto strataList = std::make_unique<Data>("Strata");
+        unsigned strataIndex = 0;
+        for (auto s=_strata.cbegin(); s!=_strata.cend(); ++s, ++strataIndex) {
+            auto strata = std::make_unique<Data>(StringMeld<64>() << "Strata" << strataIndex);
+            for (unsigned t=0; t<dimof(textureNames); ++t)
+                strata->SetAttribute(textureNames[t], s->_texture[t].c_str());
+
+            strata->SetAttribute("EndHeight", s->_endHeight);
+            strata->Add(Serialize("Mapping", Float4(s->_mappingConstant[0], s->_mappingConstant[1], s->_mappingConstant[2], 1.f)).release());
+            strataList->Add(strata.release());
+        }
+
+        auto root = std::make_unique<Data>();
+        root->Add(config.release());
+        root->Add(strataList.release());
+        root->SaveToOutputStream(stream);
+    }
+
     TerrainMaterialScaffold::TerrainMaterialScaffold()
     {
         _diffuseDims = _normalDims = _paramDims = UInt2(32, 32);
@@ -3181,6 +3217,17 @@ namespace SceneEngine
         ITerrainFormat& format)
     {
         TerrainCachedData(cfg, format).Write(stream);
+    }
+
+    void WriteTerrainMaterialData(Utility::OutputStream& stream, const TerrainConfig& cfg)
+    {
+        if (!cfg._textureCfgName.empty()) {
+            auto& scaffold = ::Assets::GetAssetDep<TerrainMaterialScaffold>(cfg._textureCfgName.c_str());
+            scaffold.Write(stream);
+        } else {
+            auto& scaffold = ::Assets::GetAssetDep<TerrainMaterialScaffold>();
+            scaffold.Write(stream);
+        }
     }
 
     void TerrainManager::Pimpl::AddCells(const TerrainConfig& cfg, UInt2 cellMin, UInt2 cellMax)

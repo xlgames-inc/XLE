@@ -29,6 +29,7 @@ namespace LevelEditorXLE
             Schema.placementsDocumentType.Type.Define(new ExtensionInfo<XLEPlacementDocument>());
             Schema.placementObjectType.Type.Define(new ExtensionInfo<XLEPlacementObject>());
             Schema.terrainType.Type.Define(new ExtensionInfo<XLETerrainGob>());
+            Schema.terrainBaseTextureType.Type.Define(new ExtensionInfo<TerrainMaterial>());
             Schema.envSettingsFolderType.Type.Define(new ExtensionInfo<XLEEnvSettingsFolder>());
             Schema.envSettingsType.Type.Define(new ExtensionInfo<XLEEnvSettings>());
             Schema.xleGameType.Type.Define(new ExtensionInfo<GameExtensions>());

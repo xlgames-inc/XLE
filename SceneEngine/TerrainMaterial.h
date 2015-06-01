@@ -34,6 +34,8 @@ namespace SceneEngine
         mutable uint64 _cachedHashValue;
         uint64 GetHash() const;
 
+        void Write(OutputStream& stream) const;
+
         TerrainMaterialScaffold();
         TerrainMaterialScaffold(const char definitionFile[]);
         ~TerrainMaterialScaffold();
@@ -42,7 +44,7 @@ namespace SceneEngine
 
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
     private:
-        std::shared_ptr<Assets::DependencyValidation>  _validationCallback;
+        std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
     };
 }
 

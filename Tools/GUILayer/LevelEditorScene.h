@@ -105,6 +105,9 @@ namespace GUILayer
         ExportResult^ ExportTerrainCachedData(System::String^ destinationFile);
         ExportPreview^ PreviewExportTerrainCachedData();
 
+        ExportResult^ ExportTerrainMaterialData(System::String^ destinationFile);
+        ExportPreview^ PreviewExportTerrainMaterialData();
+
         value class PlacementCellRef
         {
         public:

@@ -327,27 +327,27 @@ namespace SceneEngine
         PlacementsCache();
         ~PlacementsCache();
     protected:
-        std::vector<std::pair<uint64, Item>> _items;
+        std::vector<std::pair<uint64, std::unique_ptr<Item>>> _items;
     };
 
     auto PlacementsCache::Get(uint64 filenameHash, const ResChar filename[]) -> Item*
     {
         auto i = LowerBound(_items, filenameHash);
         if (i != _items.end() && i->first == filenameHash) {
-            if (i->second._placements->GetDependencyValidation()->GetValidationIndex()!=0)
-                i->second.Reload();
-            return &i->second;
+            if (i->second->_placements->GetDependencyValidation()->GetValidationIndex()!=0)
+                i->second->Reload();
+            return i->second.get();
         } 
 
             // When filename is null, we can only return an object that has been created before. 
             // if it hasn't been created, we will return null
         if (!filename) return nullptr;
 
-        Item newItem;
-        newItem._filename = filename;
-        newItem.Reload();
+        auto newItem = std::make_unique<Item>();
+        newItem->_filename = filename;
+        newItem->Reload();
         i = _items.emplace(i, std::make_pair(filenameHash, std::move(newItem)));
-        return &i->second;
+        return i->second.get();
     }
 
     void PlacementsCache::Item::Reload()
@@ -777,7 +777,8 @@ namespace SceneEngine
     PlacementsRenderer::PlacementsRenderer(
         std::shared_ptr<PlacementsCache> placementsCache, 
         std::shared_ptr<ModelCache> modelCache)
-    : _cache(std::move(modelCache))
+    : _placementsCache(std::move(placementsCache))
+    , _cache(std::move(modelCache))
     , _preparedRenders(typeid(ModelRenderer).hash_code())
     {}
 

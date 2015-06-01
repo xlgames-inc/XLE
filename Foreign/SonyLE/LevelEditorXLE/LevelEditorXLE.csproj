@@ -93,6 +93,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Schema\Schema.cs" />
     <Compile Include="Terrain\TerrainManipulator.cs" />
+    <Compile Include="Terrain\TerrainMaterial.cs" />
     <Compile Include="Terrain\XLETerrainGob.cs" />
     <Compile Include="Terrain\TerrainConfig.cs">
       <SubType>Form</SubType>
