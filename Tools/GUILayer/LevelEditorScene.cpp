@@ -228,6 +228,26 @@ namespace GUILayer
         return result;
     }
 
+    static auto WriteTerrainCachedData(OutputStream& stream, SceneEngine::TerrainManager* terrainMan) -> EditorSceneManager::ExportPreview::Type
+    {
+        SceneEngine::WriteTerrainCachedData(stream, terrainMan->GetConfig(), *terrainMan->GetFormat());
+        return EditorSceneManager::ExportPreview::Type::Text;
+    }
+
+    auto EditorSceneManager::ExportTerrainCachedData(System::String^ destinationFile) -> ExportResult^
+    {
+        return ExportViaStream(
+            "terrain cached data", destinationFile,
+            std::bind(WriteTerrainCachedData, _1, _scene->_terrainManager.get()));
+    }
+
+    auto EditorSceneManager::PreviewExportTerrainCachedData() -> ExportPreview^
+    {
+        return PreviewViaStream(
+            "terrain cached data",
+            std::bind(WriteTerrainCachedData, _1, _scene->_terrainManager.get()));
+    }
+
     static auto WritePlacementsCfg(
         OutputStream& stream, 
         IEnumerable<EditorSceneManager::PlacementCellRef>^ cells) -> EditorSceneManager::ExportPreview::Type

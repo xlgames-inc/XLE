@@ -102,6 +102,9 @@ namespace GUILayer
         ExportResult^ ExportPlacements(EntityInterface::DocumentId placementsDoc, System::String^ destinationFile);
         ExportPreview^ PreviewExportPlacements(EntityInterface::DocumentId placementsDoc);
 
+        ExportResult^ ExportTerrainCachedData(System::String^ destinationFile);
+        ExportPreview^ PreviewExportTerrainCachedData();
+
         value class PlacementCellRef
         {
         public:

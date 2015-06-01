@@ -28,7 +28,7 @@ namespace LevelEditorXLE.Terrain
         }
     }
 
-    class XLETerrainGob : DomNodeAdapter, IListable, ICommandClient, IContextMenuCommandProvider
+    class XLETerrainGob : DomNodeAdapter, IListable, ICommandClient, IContextMenuCommandProvider, IExportable
     {
         public XLETerrainGob() {}
         public void GetInfo(ItemInfo info)
@@ -96,6 +96,31 @@ namespace LevelEditorXLE.Terrain
         {
             return input.Clamp(1u, 16u);
         }
+
+        #region IExportable
+        public string ExportTarget
+        {
+            get { return CellsDirectory + "/cached.dat"; }
+            set { throw new NotImplementedException("XLETerrainGob.ExportTarget.Set"); }
+        }
+
+        public string ExportCategory
+        {
+            get { return "Terrain"; }
+        }
+
+        public GUILayer.EditorSceneManager.ExportResult PerformExport(string destinationFile)
+        {
+            var sceneMan = XLEBridgeUtils.NativeManipulatorLayer.SceneManager;
+            return sceneMan.ExportTerrainCachedData(destinationFile);
+        }
+
+        public GUILayer.EditorSceneManager.ExportPreview PreviewExport()
+        {
+            var sceneMan = XLEBridgeUtils.NativeManipulatorLayer.SceneManager;
+            return sceneMan.PreviewExportTerrainCachedData();
+        }
+        #endregion
 
         #region Configure Steps
         internal void Reconfigure(TerrainConfig.Config cfg)

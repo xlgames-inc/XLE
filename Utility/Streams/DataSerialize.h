@@ -11,6 +11,7 @@
 #include "../../Math/Vector.h"
 #include <vector>
 #include <string>
+#include <utility>
 
 namespace Utility
 {
@@ -33,6 +34,19 @@ namespace Utility
                     if (auto* child = source->ChildAt(c)) { 
                         result[c] = Conversion::Convert<Type>(child->value);
                     }
+            }
+            return result;
+        }
+
+    template<typename FirstType, typename SecondType>
+        std::pair<FirstType, SecondType> Deserialize(const Data* source, const std::pair<FirstType, SecondType>& def)
+        {
+            auto result = def;
+            if (source) {
+                if (auto* child0 = source->ChildAt(0))
+                    result.first = Conversion::Convert<FirstType>(child0->value);
+                if (auto* child1 = source->ChildAt(1))
+                    result.second = Conversion::Convert<SecondType>(child1->value);
             }
             return result;
         }

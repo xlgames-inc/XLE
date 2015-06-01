@@ -3074,15 +3074,90 @@ namespace SceneEngine
         return std::make_pair(minHeight, maxHeight);
     }
 
-    static std::vector<std::pair<Float3, Float3>> CalculateCellBoundingBoxes(
-        const TerrainConfig& cfg, ITerrainFormat& ioFormat)
+    class TerrainCachedData
+    {
+    public:
+        class Cell
+        {
+        public:
+            UInt2 _cellIndex;
+            std::pair<float, float> _heightRange;
+        };
+        
+        std::vector<Cell> _cells;
+
+        void Write(OutputStream& stream) const;
+
+        TerrainCachedData();
+        TerrainCachedData(const ::Assets::ResChar filename[]);
+        TerrainCachedData(const TerrainConfig& cfg, ITerrainFormat& ioFormat);
+        TerrainCachedData(TerrainCachedData&& moveFrom);
+        TerrainCachedData& operator=(TerrainCachedData&& moveFrom);
+    };
+
+    void TerrainCachedData::Write(OutputStream& stream) const
+    {
+        auto outputRoot = std::make_unique<Data>("TerrainCachedData");
+
+        auto heightRangePart = std::make_unique<Data>("CellHeightRange");
+        for (auto l=_cells.cbegin(); l!=_cells.cend(); ++l) {
+            auto element = std::make_unique<Data>();
+
+            auto cellIndex = std::make_unique<Data>("CellIndex");
+            cellIndex->Add(new Data(StringMeld<32>() << l->_cellIndex[0]));
+            cellIndex->Add(new Data(StringMeld<32>() << l->_cellIndex[1]));
+            element->Add(cellIndex.release());
+
+            auto heightRange = std::make_unique<Data>("HeightRange");
+            heightRange->Add(new Data(StringMeld<32>() << l->_heightRange.first));
+            heightRange->Add(new Data(StringMeld<32>() << l->_heightRange.second));
+            element->Add(heightRange.release());
+
+            heightRangePart->Add(element.release());
+        }
+        outputRoot->Add(heightRangePart.release());
+
+        outputRoot->SaveToOutputStream(stream);
+    }
+
+    TerrainCachedData::TerrainCachedData() {}
+    TerrainCachedData::TerrainCachedData(const ::Assets::ResChar filename[])
+    {
+        size_t fileSize = 0;
+        auto sourceFile = LoadFileAsMemoryBlock(filename, &fileSize);
+
+        Data data;
+        data.Load((const char*)sourceFile.get(), int(fileSize));
+
+        auto heightRanges = data.ChildWithValue("CellHeightRange");
+
+        if (heightRanges) {
+            for (auto child=heightRanges->child; child; child=child->next) {
+                _cells.push_back(Cell
+                    {
+                        Deserialize(child, "CellIndex", UInt2(0,0)),
+                        Deserialize(child, "HeightRange", std::make_pair(0.f, 0.f))
+                    });
+            }
+        }
+    }
+
+    TerrainCachedData::TerrainCachedData(TerrainCachedData&& moveFrom)
+    : _cells(std::move(moveFrom._cells)) {}
+
+    TerrainCachedData& TerrainCachedData::operator=(TerrainCachedData&& moveFrom)
+    {
+        _cells = std::move(moveFrom._cells);
+        return *this;
+    }
+
+    TerrainCachedData::TerrainCachedData(const TerrainConfig& cfg, ITerrainFormat& ioFormat)
     {
         const UInt2 cellMin(0, 0);
         const UInt2 cellMax = cfg._cellCount;
         auto cellBasedToTerrain = cfg.CellBasedToCoverage(CoverageId_Heights);
 
-        std::vector<std::pair<Float3, Float3>> result;
-        result.reserve((cellMax[0] - cellMin[0]) * (cellMax[1] - cellMin[1]));
+        _cells.reserve((cellMax[0] - cellMin[0]) * (cellMax[1] - cellMin[1]));
 
         for (unsigned cellY=cellMin[1]; cellY<cellMax[1]; ++cellY) {
             for (unsigned cellX=cellMin[0]; cellX<cellMax[0]; ++cellX) {
@@ -3092,26 +3167,45 @@ namespace SceneEngine
                     heightMapFilename, dimof(heightMapFilename), 
                     UInt2(cellX, cellY), CoverageId_Heights);
 
-                auto heightRange = CalculateMinAndMaxHeights(heightMapFilename, ioFormat);
-                std::pair<Float3, Float3> cellBasedAABB;
-                cellBasedAABB.first = Float3(float(cellX), float(cellY), heightRange.first);
-                cellBasedAABB.second = Float3(float(cellX+1), float(cellY+1), heightRange.second);
-                result.push_back(cellBasedAABB);
+                Cell cell;
+                cell._cellIndex = UInt2(cellX, cellY);
+                cell._heightRange = CalculateMinAndMaxHeights(heightMapFilename, ioFormat);
+                _cells.push_back(cell);
             }
         }
+    }
 
-        return std::move(result);
+    void WriteTerrainCachedData(
+        Utility::OutputStream& stream,
+        const TerrainConfig& cfg, 
+        ITerrainFormat& format)
+    {
+        TerrainCachedData(cfg, format).Write(stream);
     }
 
     void TerrainManager::Pimpl::AddCells(const TerrainConfig& cfg, UInt2 cellMin, UInt2 cellMax)
     {
         auto cells = BuildPrimedCells(cfg);
-        auto cellBasedAABB = CalculateCellBoundingBoxes(cfg, *_ioFormat);
-        assert(cellBasedAABB.size() >= cells.size());
 
+        StringMeld<MaxPath, ::Assets::ResChar> cachedDataFile;
+        cachedDataFile << cfg._baseDir << "/cached.dat";
+        
+        TerrainCachedData cachedData;
+        TRY
+        {
+            cachedData = TerrainCachedData(cachedDataFile);
+        }
+        CATCH(...)
+        {
+            LogWarning << "Got error while loading cached terrain data from file: " << cachedDataFile.get() << ". Regenerating data.";
+        }
+        CATCH_END
+
+        if (cachedData._cells.empty())
+            cachedData = TerrainCachedData(cfg, *_ioFormat);
+        
         auto cellBasedToWorld = _coords.CellBasedToWorld();
-        auto b = cellBasedAABB.cbegin();
-        for (auto c=cells.cbegin(); c<cells.cend(); ++c, ++b) {
+        for (auto c=cells.cbegin(); c<cells.cend(); ++c) {
                 // reject cells that haven't been selected
             if (    c->_cellIndex[0] < cellMin[0] || c->_cellIndex[0] >= cellMax[0]
                 ||  c->_cellIndex[1] < cellMin[1] || c->_cellIndex[1] >= cellMax[1])
@@ -3132,8 +3226,17 @@ namespace SceneEngine
                 cell._coverageToUber[q]._maxs = c->_coverageUber[q].second;
             }
 
-            cell._aabbMin = TransformPoint(cellBasedToWorld, b->first);
-            cell._aabbMax = TransformPoint(cellBasedToWorld, b->second);
+            cell._aabbMin = Float3(FLT_MAX, FLT_MAX, FLT_MAX);
+            cell._aabbMax = Float3(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+
+                // attempt to load the bounding box from our cached data
+            auto i = std::find_if(cachedData._cells.cbegin(), cachedData._cells.cend(),
+                [c](const TerrainCachedData::Cell& cell) { return cell._cellIndex == c->_cellIndex; });
+            if (i != cachedData._cells.cend()) {
+                cell._aabbMin = TransformPoint(cellBasedToWorld, Float3(float(c->_cellIndex[0]), float(c->_cellIndex[1]), i->_heightRange.first));
+                cell._aabbMax = TransformPoint(cellBasedToWorld, Float3(float(c->_cellIndex[0]+1), float(c->_cellIndex[1]+1), i->_heightRange.second));
+            }
+
             _cells.push_back(cell);
         }
     }

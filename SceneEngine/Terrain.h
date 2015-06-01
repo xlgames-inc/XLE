@@ -13,6 +13,7 @@
 #include "../Core/Types.h"
 
 namespace RenderCore { namespace Techniques { class CameraDesc; } }
+namespace Utility { class OutputStream; }
 
 namespace SceneEngine
 {
@@ -66,7 +67,7 @@ namespace SceneEngine
         unsigned    GetCoverageLayerCount() const;
         const CoverageLayer& GetCoverageLayer(unsigned index) const;
 
-        void Save();
+        void        Save();
 
     protected:
         unsigned    _nodeDimsInElements;
@@ -213,4 +214,9 @@ namespace SceneEngine
         const TerrainConfig& outputConfig, 
         std::shared_ptr<ITerrainFormat> outputIOFormat,
         const ::Assets::ResChar uberSurfaceDir[]);
+
+    void WriteTerrainCachedData(
+        Utility::OutputStream& stream,
+        const TerrainConfig& cfg, 
+        ITerrainFormat& format);
 }
