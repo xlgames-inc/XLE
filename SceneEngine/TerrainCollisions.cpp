@@ -123,7 +123,7 @@ namespace SceneEngine
                 //          the cell, so we can find the node index directly (within loading the cell node)
                 //  
 
-            auto worldToCell = InvertOrthonormalTransform(coords.CellBasedCoordsToWorld());
+            auto worldToCell = coords.WorldToCellBased();
             auto cellBasedCoord = Truncate(
                 TransformPoint(worldToCell, Expand(queryPosition, 0.f)));
 

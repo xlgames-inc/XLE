@@ -54,8 +54,8 @@ namespace ToolsRig
     {
         auto& coords = _terrainManager->GetCoords();
         auto& cfg = _terrainManager->GetConfig();
-        auto coverToCell = AsFloat4x4(InvertOrthonormalTransform(Float2x3(cfg.CellBasedCoordsToCoverage(SceneEngine::CoverageId_Heights))));
-        auto cellToWorld = coords.CellBasedCoordsToWorld();
+        auto coverToCell = Inverse(AsFloat4x4(Float2x3(cfg.CellBasedToCoverage(SceneEngine::CoverageId_Heights))));
+        auto cellToWorld = coords.CellBasedToWorld();
         return Truncate(TransformPoint(Combine(coverToCell, cellToWorld), Expand(input, 0.f)));
     }
 
@@ -67,8 +67,8 @@ namespace ToolsRig
             //      Still, even though it's expensive, it's better with the simple interface
         auto& coords = _terrainManager->GetCoords();
         auto& cfg = _terrainManager->GetConfig();
-        auto cellToCover = AsFloat4x4(Float2x3(cfg.CellBasedCoordsToCoverage(layerId)));
-        auto worldToCell = InvertOrthonormalTransform(coords.CellBasedCoordsToWorld());
+        auto cellToCover = AsFloat4x4(Float2x3(cfg.CellBasedToCoverage(layerId)));
+        auto worldToCell = coords.WorldToCellBased();
         return Truncate(TransformPoint(Combine(worldToCell, cellToCover), Expand(input, 0.f)));
     }
 
@@ -78,10 +78,9 @@ namespace ToolsRig
             // but, even still, it should be ok...?
         auto& coords = _terrainManager->GetCoords();
         auto& cfg = _terrainManager->GetConfig();
-        auto cellToCover = AsFloat4x4(Float2x3(cfg.CellBasedCoordsToCoverage(layerId)));
-        auto worldToCell = InvertOrthonormalTransform(coords.CellBasedCoordsToWorld());
-        auto worldToConver = Combine(worldToCell, cellToCover);
-        float scale = .5f * (worldToCell(0,0) + worldToCell(1,1));
+        auto cellToCover = AsFloat4x4(Float2x3(cfg.CellBasedToCoverage(layerId)));
+        auto worldToConver = Combine(coords.WorldToCellBased(), cellToCover);
+        float scale = .5f * (worldToConver(0,0) + worldToConver(1,1));
         return input * scale;
     }
 

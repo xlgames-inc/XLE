@@ -55,7 +55,7 @@ namespace SceneEngine
 		TerrainConfig(const ::Assets::ResChar baseDir[] = "");
 
         void        GetCellFilename(::Assets::ResChar buffer[], unsigned cnt, UInt2 cellIndex, TerrainCoverageId id) const;
-        UInt2x3     CellBasedCoordsToCoverage(TerrainCoverageId coverageId) const;
+        UInt2x3     CellBasedToCoverage(TerrainCoverageId coverageId) const;
 
         UInt2       CellDimensionsInNodes() const;
         UInt2       NodeDimensionsInElements() const;       // (ignoring overlap)
@@ -79,31 +79,21 @@ namespace SceneEngine
     class TerrainCoordinateSystem
     {
     public:
-        // Float2      WorldSpaceToTerrainCoords(const Float2& worldSpacePosition) const;
-        // Float2      TerrainCoordsToWorldSpace(const Float2& terrainCoords) const;
-        // float       WorldSpaceDistanceToTerrainCoords(float distance) const;
-        // 
-        // Float2      WorldSpaceToLayerCoords(unsigned layerIndex, const Float2& worldSpacePosition) const;
-        // float       WorldSpaceDistanceToLayerCoords(unsigned layerIndex, float distance) const;
-
-        Float4x4        CellBasedCoordsToWorld() const;
+        Float4x4    CellBasedToWorld() const;
+        Float4x4    WorldToCellBased() const;
 
         Float3      TerrainOffset() const;
         void        SetTerrainOffset(const Float3& newOffset);
-        void        SetConfig(const TerrainConfig& cfg);
 
         TerrainCoordinateSystem(
             Float3 terrainOffset = Float3(0.f, 0.f, 0.f),
-            float nodeSizeMeters = 0.f,
-            const TerrainConfig& config = TerrainConfig())
+            float cellSizeInMeters = 0.f)
         : _terrainOffset(terrainOffset)
-        , _nodeSizeMeters(nodeSizeMeters)
-        , _config(config) {}
+        , _cellSizeInMeters(cellSizeInMeters) {}
 
     protected:
         Float3 _terrainOffset;
-        float _nodeSizeMeters;
-        TerrainConfig _config;
+        float _cellSizeInMeters;
     };
 
     class TerrainManager
