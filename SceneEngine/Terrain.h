@@ -54,7 +54,6 @@ namespace SceneEngine
 		TerrainConfig(const ::Assets::ResChar baseDir[] = "");
 
         void        GetCellFilename(::Assets::ResChar buffer[], unsigned cnt, UInt2 cellIndex, TerrainCoverageId id) const;
-        void        GetUberSurfaceFilename(::Assets::ResChar buffer[], unsigned bufferCount, TerrainCoverageId id) const;
 
         Float2      TerrainCoordsToCellBasedCoords(const Float2& terrainCoords) const;
         Float2      CellBasedCoordsToTerrainCoords(const Float2& cellBasedCoords) const;
@@ -164,7 +163,8 @@ namespace SceneEngine
         ///
         /// The previous terrain (if any) will be removed. However, if
         /// any cached textures or data can be retained, they will be.
-        void Load(const TerrainConfig& cfg, Int2 cellMin, Int2 cellMax); 
+        void Load(const TerrainConfig& cfg, Int2 cellMin, Int2 cellMax, bool allowModification); 
+        void LoadUberSurface(const ::Assets::ResChar uberSurfaceDir[]);
         void Reset();
 
         TerrainManager(std::shared_ptr<ITerrainFormat> ioFormat);
@@ -211,13 +211,16 @@ namespace SceneEngine
     };
 
     void ExecuteTerrainConversion(
+        const ::Assets::ResChar destinationUberSurfaceDirectory[],
         const TerrainConfig& outputConfig, 
         const TerrainConfig& inputConfig, 
         std::shared_ptr<ITerrainFormat> inputIOFormat);
     void GenerateMissingUberSurfaceFiles(
         const TerrainConfig& outputConfig, 
-        std::shared_ptr<ITerrainFormat> outputIOFormat);
+        std::shared_ptr<ITerrainFormat> outputIOFormat,
+        const ::Assets::ResChar uberSurfaceDir[]);
     void GenerateMissingCellFiles(
         const TerrainConfig& outputConfig, 
-        std::shared_ptr<ITerrainFormat> outputIOFormat);
+        std::shared_ptr<ITerrainFormat> outputIOFormat,
+        const ::Assets::ResChar uberSurfaceDir[]);
 }

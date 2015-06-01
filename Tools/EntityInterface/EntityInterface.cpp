@@ -23,7 +23,7 @@ namespace EntityInterface
         return nullptr;
     }
 
-    DocumentId Switch::CreateDocument(DocumentTypeId docType, const char initializer[]) const
+    DocumentId Switch::CreateDocument(DocumentTypeId docType, const char initializer[])
     {
         if (docType > 0 && (docType-1) < _knownDocumentTypes.size()) {
             auto& reg = _knownDocumentTypes[docType-1];
@@ -32,7 +32,7 @@ namespace EntityInterface
         return 0;
     }
 
-    bool Switch::DeleteDocument(DocumentId doc, DocumentTypeId docType) const
+    bool Switch::DeleteDocument(DocumentId doc, DocumentTypeId docType)
     {
         if (docType > 0 && (docType-1) < _knownDocumentTypes.size()) {
             auto& reg = _knownDocumentTypes[docType-1];

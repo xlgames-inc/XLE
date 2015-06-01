@@ -256,13 +256,13 @@ namespace LevelEditorXLE
             terrainBaseTextureType.strataChild = terrainBaseTextureType.Type.GetChildInfo("strata");
 
             terrainType.Type = getNodeType("gap", "terrainType");
-            terrainType.UberSurfaceDirectoryAttribute = terrainType.Type.GetAttributeInfo("UberSurfaceDirectory");
-            terrainType.CellsDirectoryAttribute = terrainType.Type.GetAttributeInfo("CellsDirectory");
+            terrainType.UberSurfaceDirAttribute = terrainType.Type.GetAttributeInfo("UberSurfaceDir");
+            terrainType.CellsDirAttribute = terrainType.Type.GetAttributeInfo("CellsDir");
             terrainType.NodeDimensionsAttribute = terrainType.Type.GetAttributeInfo("NodeDimensions");
             terrainType.OverlapAttribute = terrainType.Type.GetAttributeInfo("Overlap");
             terrainType.SpacingAttribute = terrainType.Type.GetAttributeInfo("Spacing");
             terrainType.CellTreeDepthAttribute = terrainType.Type.GetAttributeInfo("CellTreeDepth");
-            terrainType.offsetAttribute = terrainType.Type.GetAttributeInfo("offset");
+            terrainType.OffsetAttribute = terrainType.Type.GetAttributeInfo("Offset");
             terrainType.baseTextureChild = terrainType.Type.GetChildInfo("baseTexture");
 
             resourceReferenceType.Type = getNodeType("gap", "resourceReferenceType");
@@ -633,13 +633,13 @@ namespace LevelEditorXLE
         public static class terrainType
         {
             public static DomNodeType Type;
-            public static AttributeInfo UberSurfaceDirectoryAttribute;
-            public static AttributeInfo CellsDirectoryAttribute;
+            public static AttributeInfo UberSurfaceDirAttribute;
+            public static AttributeInfo CellsDirAttribute;
             public static AttributeInfo NodeDimensionsAttribute;
             public static AttributeInfo OverlapAttribute;
             public static AttributeInfo SpacingAttribute;
             public static AttributeInfo CellTreeDepthAttribute;
-            public static AttributeInfo offsetAttribute;
+            public static AttributeInfo OffsetAttribute;
             public static ChildInfo baseTextureChild;
         }
 

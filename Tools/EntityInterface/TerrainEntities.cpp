@@ -14,20 +14,14 @@
 namespace EntityInterface
 {
     static const ObjectTypeId ObjectType_Terrain = 1;
-	static const PropertyId Property_BaseDir = 200;
-    static const PropertyId Property_Offset = 201;
+	static const PropertyId Property_CellsDir = 200;
+    static const PropertyId Property_UberSurfaceDir = 201;
+    static const PropertyId Property_Offset = 202;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	DocumentId TerrainEntities::CreateDocument(DocumentTypeId docType, const char initializer[]) const
-	{
-		return 0;
-	}
-
-	bool TerrainEntities::DeleteDocument(DocumentId doc, DocumentTypeId docType) const
-	{
-		return false;
-	}
+	DocumentId TerrainEntities::CreateDocument(DocumentTypeId docType, const char initializer[]) { return 0; }
+	bool TerrainEntities::DeleteDocument(DocumentId doc, DocumentTypeId docType) { return false; }
 
 	ObjectId TerrainEntities::AssignObjectId(DocumentId doc, ObjectTypeId type) const
 	{
@@ -40,7 +34,7 @@ namespace EntityInterface
 
 	bool TerrainEntities::CreateObject(
 		const Identifier& id,
-		const PropertyInitializer initializers[], size_t initializerCount) const
+		const PropertyInitializer initializers[], size_t initializerCount)
 	{
 		if (id.ObjectType() == ObjectType_Terrain) {
 		    _terrainManager->Reset();
@@ -53,7 +47,7 @@ namespace EntityInterface
 	}
 
 	bool TerrainEntities::DeleteObject(
-		const Identifier& id) const
+		const Identifier& id)
 	{
 		if (id.ObjectType() == ObjectType_Terrain) {
 		    _terrainManager->Reset();
@@ -64,7 +58,7 @@ namespace EntityInterface
 
 	bool TerrainEntities::SetProperty(
 		const Identifier& id,
-		const PropertyInitializer initializers[], size_t initializerCount) const
+		const PropertyInitializer initializers[], size_t initializerCount)
 	{
 		if (id.ObjectType() == ObjectType_Terrain) {
             for (size_t c=0; c<initializerCount; ++c)
@@ -75,27 +69,38 @@ namespace EntityInterface
 		return false;
 	}
 
-    static void SetBaseDir(SceneEngine::TerrainManager& terrain, const ucs2 dir[], unsigned length)
+    bool TerrainEntities::SetTerrainProperty(const PropertyInitializer& prop)
     {
-        ::Assets::ResChar buffer[MaxPath];
-        ucs2_2_utf8(dir, length, (utf8*)buffer, dimof(buffer));
+        if (prop._prop == Property_CellsDir) {
 
-        TRY
-        {
-		    SceneEngine::TerrainConfig cfg(buffer);
-            cfg._textureCfgName = "";
+            ::Assets::ResChar buffer[MaxPath];
+            ucs2_2_utf8((const ucs2*)prop._src, prop._arrayCount, (utf8*)buffer, dimof(buffer));
 
-            terrain.Load(cfg, Int2(0, 0), cfg._cellCount);
-        } CATCH (...) {
-            terrain.Reset();
-        } CATCH_END
-    }
+            TRY
+            {
+		        SceneEngine::TerrainConfig cfg(buffer);
+                cfg._textureCfgName = "";
 
-    bool TerrainEntities::SetTerrainProperty(const PropertyInitializer& prop) const
-    {
-        if (prop._prop == Property_BaseDir) {
-            SetBaseDir(*_terrainManager, (const ucs2*)prop._src, prop._arrayCount);
+                _terrainManager->Load(cfg, Int2(0, 0), cfg._cellCount, true);
+                if (!_uberSurfaceDir.empty())
+                    _terrainManager->LoadUberSurface(_uberSurfaceDir.c_str());
+
+                _cellsLoaded = true;
+            } CATCH (...) {
+                _terrainManager->Reset();
+                _cellsLoaded = false;
+            } CATCH_END
+
             return true;
+        } else if (prop._prop == Property_UberSurfaceDir) {
+
+            ::Assets::ResChar buffer[MaxPath];
+            ucs2_2_utf8((const ucs2*)prop._src, prop._arrayCount, (utf8*)buffer, dimof(buffer));
+            _uberSurfaceDir = buffer;
+
+            if (_cellsLoaded) 
+                _terrainManager->LoadUberSurface(buffer);
+
         } else if (prop._prop == Property_Offset) {
             _terrainManager->SetWorldSpaceOrigin(*(const Float3*)prop._src);
             return true;
@@ -112,7 +117,7 @@ namespace EntityInterface
 		return false;
 	}
 
-    bool TerrainEntities::SetParent(const Identifier& child, const Identifier& parent, int insertionPosition) const
+    bool TerrainEntities::SetParent(const Identifier& child, const Identifier& parent, int insertionPosition)
     {
         return false;
     }
@@ -131,8 +136,9 @@ namespace EntityInterface
 	PropertyId TerrainEntities::GetPropertyId(ObjectTypeId type, const char name[]) const
 	{
         if (type == ObjectType_Terrain) {
-		    if (!XlCompareString(name, "basedir")) return Property_BaseDir;
-            if (!XlCompareString(name, "offset")) return Property_Offset;
+		    if (!XlCompareString(name, "CellsDir"))         return Property_CellsDir;
+            if (!XlCompareString(name, "UberSurfaceDir"))   return Property_UberSurfaceDir;
+            if (!XlCompareString(name, "Offset"))           return Property_Offset;
         }
 
 		return 0;
@@ -146,7 +152,9 @@ namespace EntityInterface
 	TerrainEntities::TerrainEntities(
         std::shared_ptr<SceneEngine::TerrainManager> terrainManager) 
     : _terrainManager(std::move(terrainManager))
-    {}
+    , _cellsLoaded(false)
+    {
+    }
 
 	TerrainEntities::~TerrainEntities() {}
 

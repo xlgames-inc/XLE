@@ -20,6 +20,10 @@ namespace LevelEditorXLE.Terrain
         public TerrainConfig()
         {
             InitializeComponent();
+            m_importType.Enabled = false;
+            m_importSource.Enabled = false;
+            m_importSourceBtn.Enabled = false;
+            m_importType.SelectedIndex = 0;
         }
 
         public Config Value
@@ -28,9 +32,10 @@ namespace LevelEditorXLE.Terrain
             set
             {
                 m_config = value;
-                var props = TypeDescriptor.GetProperties(typeof(Config));
-                m_propertyGrid1.Bind(
-                    new XLEBridgeUtils.BasicPropertyEditingContext(m_config, props));
+                // var props = TypeDescriptor.GetProperties(typeof(Config));
+                // m_propertyGrid1.Bind(
+                //     new XLEBridgeUtils.BasicPropertyEditingContext(m_config, props));
+                m_propertyGrid1.SelectedObject = value;
             }
         }
 
@@ -48,19 +53,49 @@ namespace LevelEditorXLE.Terrain
             [Category("Basic")] [Description("Space between each element (in metres)")]
             public float Spacing { get; set; }
 
-            [Category("Files")] [Description("Source DEM file")]
-            [EditorAttribute(typeof(GUILayer.FileNameEditor), typeof(System.Drawing.Design.UITypeEditor))]
-            public string SourceDEMFile { get; set; }
-
             [Category("Files")] [Description("UberSurface directory")]
+            [EditorAttribute(typeof(System.Windows.Forms.Design.FolderNameEditor), typeof(System.Drawing.Design.UITypeEditor))]
             public string UberSurfaceDirectory { get; set; }
 
             [Category("Files")] [Description("Cells directory")]
+            [EditorAttribute(typeof(System.Windows.Forms.Design.FolderNameEditor), typeof(System.Drawing.Design.UITypeEditor))]
             public string CellsDirectory { get; set; }
 
-            internal Config() { NodeDimensions = 32; Overlap = 2; Spacing = 10; }
+            [Browsable(false)]
+            public string SourceDEMFile { get; set; }
+
+            public enum ImportType { None, DEMFile };
+
+            [Browsable(false)]
+            public ImportType Import { get; set; }
+
+            internal Config() { NodeDimensions = 32; Overlap = 2; Spacing = 10; Import = ImportType.None; }
         };
 
         private Config m_config;
+
+        private void ImportType_SelectedIndexChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void DoImport_CheckedChanged(object sender, EventArgs e)
+        {
+            bool enabled = (m_doImport.CheckState == CheckState.Checked);
+            m_importType.Enabled = enabled;
+            m_importSource.Enabled = enabled;
+            m_importSourceBtn.Enabled = enabled;
+            m_config.Import = enabled ? Config.ImportType.DEMFile : Config.ImportType.None;
+        }
+
+        private void ImportSourceBtn_Click(object sender, EventArgs e)
+        {
+            using (OpenFileDialog dlg = new OpenFileDialog())
+            {
+                dlg.CheckFileExists = true;
+                if (dlg.ShowDialog(this) == DialogResult.OK)
+                    m_importSource.Text = dlg.FileName;
+            }
+        }
     }
 }

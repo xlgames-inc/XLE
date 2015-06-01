@@ -108,6 +108,9 @@
     <EmbeddedResource Include="Placements\PlacementsConfig.resx">
       <DependentUpon>PlacementsConfig.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="Terrain\TerrainConfig.resx">
+      <DependentUpon>TerrainConfig.cs</DependentUpon>
+    </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\Tools\ControlsLibrary\ControlsLibrary.csproj">

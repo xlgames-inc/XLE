@@ -168,7 +168,7 @@ namespace Sample
             MainTerrainConfig = SceneEngine::TerrainConfig(WorldDirectory);
             pimpl->_terrainManager = std::make_shared<SceneEngine::TerrainManager>(MainTerrainFormat);
             pimpl->_terrainManager->SetWorldSpaceOrigin(worldOffset);
-            pimpl->_terrainManager->Load(MainTerrainConfig, Int2(0, 0), MainTerrainConfig._cellCount);
+            pimpl->_terrainManager->Load(MainTerrainConfig, Int2(0, 0), MainTerrainConfig._cellCount, true);
             MainTerrainCoords = pimpl->_terrainManager->GetCoords();
         #endif
 

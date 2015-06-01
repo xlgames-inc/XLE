@@ -503,6 +503,8 @@ namespace SceneEngine
         const TerrainCoverageId* GetCoverageIdEnd() const { return AsPointer(_coverageIds.cend()); }
         const TerrainRendererConfig& GetConfig() const { return _cfg; }
 
+        const bool IsShortCircuitAllowed() const { return _shortCircuitAllowed; }
+
         TerrainCellRenderer(
             const TerrainRendererConfig& cfg,
             std::shared_ptr<ITerrainFormat> ioFormat,
@@ -568,6 +570,8 @@ namespace SceneEngine
 
         std::shared_ptr<ITerrainFormat> _ioFormat;
         TerrainRendererConfig           _cfg;
+
+        bool                            _shortCircuitAllowed;
 
         friend class TerrainRenderingContext;
         friend class TerrainCollapseContext;
@@ -1889,6 +1893,7 @@ namespace SceneEngine
         std::shared_ptr<ITerrainFormat> ioFormat,
         bool allowShortCircuitModification)
     : _cfg(cfg)
+    , _shortCircuitAllowed(allowShortCircuitModification)
     {
         auto& bufferUploads = GetBufferUploads();
         _heightMapTileSet = std::make_unique<TextureTileSet>(
@@ -2698,7 +2703,7 @@ namespace SceneEngine
             TerrainRenderingContext& terrainContext);
 
         void AddCells(const TerrainConfig& cfg, Int2 cellMin, Int2 cellMax);
-        void BuildUberSurface(const TerrainConfig& cfg);
+        void BuildUberSurface(const ::Assets::ResChar uberSurfaceDir[], const TerrainConfig& cfg);
     };
 
     void TerrainConfig::GetCellFilename(
@@ -2746,27 +2751,6 @@ namespace SceneEngine
         }
     }
 
-    void TerrainConfig::GetUberSurfaceFilename(
-        ::Assets::ResChar buffer[], unsigned bufferCount,
-        TerrainCoverageId fileType) const
-    {
-        XlCopyString(buffer, bufferCount, _baseDir.c_str());
-        switch (fileType) {
-        case CoverageId_Heights:
-            XlCatString(buffer, bufferCount, "ubersurface.dat");
-            break;
-        case CoverageId_AngleBasedShadows:
-            XlCatString(buffer, bufferCount, "ubershadowingsurface.dat");
-            break;
-        default:
-            {
-                auto len = XlStringLen(buffer);
-                _snprintf_s(&buffer[len], bufferCount-len, _TRUNCATE, "uber_%08x.dat", fileType);
-            }
-            break;
-        }
-    }
-
     //////////////////////////////////////////////////////////////////////////////////////////
     template<typename Sample>
         static void WriteCellCoverageData(
@@ -2800,29 +2784,28 @@ namespace SceneEngine
 
     //////////////////////////////////////////////////////////////////////////////////////////
     void ExecuteTerrainConversion(
+        const ::Assets::ResChar destinationUberSurfaceDirectory[],
         const TerrainConfig& outputConfig, 
         const TerrainConfig& inputConfig, 
         std::shared_ptr<ITerrainFormat> inputIOFormat)
     {
-        ::Assets::ResChar uberSurfaceFile[MaxPath];
-        outputConfig.GetUberSurfaceFilename(uberSurfaceFile, dimof(uberSurfaceFile), CoverageId_Heights);
-
-        ::Assets::ResChar path[MaxPath];
-        XlDirname(path, dimof(path), uberSurfaceFile);
-        CreateDirectoryRecursive(path);
+        CreateDirectoryRecursive(destinationUberSurfaceDirectory);
 
         //////////////////////////////////////////////////////////////////////////////////////
             // If we don't have an uber surface file, then we should create it
-        if (!DoesFileExist(uberSurfaceFile) && inputIOFormat) {
+        StringMeld<MaxPath, ::Assets::ResChar> heightsFile;
+        heightsFile << destinationUberSurfaceDirectory << "/" << CoverageId_Heights << ".uber";
+        if (!DoesFileExist(heightsFile) && inputIOFormat) {
             BuildUberSurfaceFile(
-                uberSurfaceFile, inputConfig, inputIOFormat.get(), 
+                heightsFile, inputConfig, inputIOFormat.get(), 
                 0, 0, inputConfig._cellCount[0], inputConfig._cellCount[1]);
         }
     }
 
     void GenerateMissingCellFiles(
         const TerrainConfig& outputConfig, 
-        std::shared_ptr<ITerrainFormat> outputIOFormat)
+        std::shared_ptr<ITerrainFormat> outputIOFormat,
+        const ::Assets::ResChar uberSurfaceDir[])
     {
         assert(outputIOFormat);
 
@@ -2831,8 +2814,8 @@ namespace SceneEngine
         for (unsigned l=0; l<outputConfig.GetCoverageLayerCount(); ++l) {
             const auto& layer = outputConfig.GetCoverageLayer(l);
 
-            char layerUberSurface[MaxPath];
-            outputConfig.GetUberSurfaceFilename(layerUberSurface, dimof(layerUberSurface), layer._id);
+            StringMeld<MaxPath, ::Assets::ResChar> layerUberSurface;
+            layerUberSurface << uberSurfaceDir << "/" << layer._id << ".uber";
 
             if (DoesFileExist(layerUberSurface)) {
                     //  open and destroy these coverage uber shadowing surface before we open the uber heights surface
@@ -2850,8 +2833,8 @@ namespace SceneEngine
         //////////////////////////////////////////////////////////////////////////////////////
             //  load the uber height surface, and uber surface interface (but only temporarily
             //  while we initialise the data)
-        ::Assets::ResChar uberSurfaceFile[MaxPath];
-        outputConfig.GetUberSurfaceFilename(uberSurfaceFile, dimof(uberSurfaceFile), CoverageId_Heights);
+        StringMeld<MaxPath, ::Assets::ResChar> uberSurfaceFile;
+        uberSurfaceFile << uberSurfaceDir << "/" << CoverageId_Heights << ".uber";
         TerrainUberHeightsSurface heightsData(uberSurfaceFile);
         HeightsUberSurfaceInterface uberSurfaceInterface(heightsData, outputIOFormat);
 
@@ -2879,7 +2862,8 @@ namespace SceneEngine
 
     void GenerateMissingUberSurfaceFiles(
         const TerrainConfig& cfg, 
-        std::shared_ptr<ITerrainFormat> outputIOFormat)
+        std::shared_ptr<ITerrainFormat> outputIOFormat,
+        const ::Assets::ResChar uberSurfaceDir[])
     {
         for (unsigned l=0; l<cfg.GetCoverageLayerCount(); ++l) {
             const auto& layer = cfg.GetCoverageLayer(l);
@@ -2889,15 +2873,15 @@ namespace SceneEngine
             //     hasShadows |= outputConfig.GetCoverageLayer(c)._id == CoverageId_AngleBasedShadows;
             // if (!hasShadows) return;
 
-            ::Assets::ResChar uberLayer[MaxPath];
-            cfg.GetUberSurfaceFilename(uberLayer, dimof(uberLayer), layer._id);
-            if (DoesFileExist(uberLayer)) continue;
+            StringMeld<MaxPath, ::Assets::ResChar> uberSurfaceFile;
+            uberSurfaceFile << uberSurfaceDir << "/" << layer._id << ".uber";
+            if (DoesFileExist(uberSurfaceFile)) continue;
 
             if (layer._id == CoverageId_AngleBasedShadows) {
 
                     // this is the shadows layer... We need to build the shadows procedurally
-                ::Assets::ResChar uberHeightsFile[MaxPath];
-                cfg.GetUberSurfaceFilename(uberHeightsFile, dimof(uberHeightsFile), CoverageId_Heights);
+                StringMeld<MaxPath, ::Assets::ResChar> uberHeightsFile;
+                uberHeightsFile << uberSurfaceDir << "/" << CoverageId_Heights << ".uber";
 
                 TerrainUberHeightsSurface heightsData(uberHeightsFile);
                 HeightsUberSurfaceInterface uberSurfaceInterface(heightsData, outputIOFormat);
@@ -2913,11 +2897,11 @@ namespace SceneEngine
                 float xyScale = cfg.ElementSpacing();
                 Float2 sunDirectionOfMovement = Normalize(Float2(1.f, 0.33f));
                 uberSurfaceInterface.BuildShadowingSurface(
-                    uberLayer, interestingMins, interestingMaxs, sunDirectionOfMovement, xyScale);
+                    uberSurfaceFile, interestingMins, interestingMaxs, sunDirectionOfMovement, xyScale);
 
             } else {
                 HeightsUberSurfaceInterface::BuildEmptyFile(
-                    uberLayer, 
+                    uberSurfaceFile, 
                     cfg._cellCount[0] * cfg.CellDimensionsInNodes()[0] * (layer._dimensions[0]+1),
                     cfg._cellCount[1] * cfg.CellDimensionsInNodes()[1] * (layer._dimensions[1]+1),
                     BitsPerPixel((NativeFormat::Enum)layer._format));
@@ -3007,16 +2991,16 @@ namespace SceneEngine
         }
     }
 
-    void TerrainManager::Pimpl::BuildUberSurface(const TerrainConfig& cfg)
+    void TerrainManager::Pimpl::BuildUberSurface(const ::Assets::ResChar uberSurfaceDir[], const TerrainConfig& cfg)
     {
         const bool registerShortCircuit = true;
 
-        ::Assets::ResChar uberSurfaceFile[MaxPath];
-        {
-            cfg.GetUberSurfaceFilename(uberSurfaceFile, dimof(uberSurfaceFile), CoverageId_Heights);
+        StringMeld<MaxPath, ::Assets::ResChar> uberSurfaceFile;
+        uberSurfaceFile << uberSurfaceDir << "/" << CoverageId_Heights << ".uber";
 
+        {
                 // uber-surface is a special-case asset, because we can edit it without a "DivergentAsset". But to do that, we must const_cast here
-            auto& uberSurface = const_cast<TerrainUberHeightsSurface&>(::Assets::GetAsset<TerrainUberHeightsSurface>(uberSurfaceFile));
+            auto& uberSurface = const_cast<TerrainUberHeightsSurface&>(::Assets::GetAsset<TerrainUberHeightsSurface>(uberSurfaceFile.get()));
             _uberSurfaceInterface = std::make_unique<HeightsUberSurfaceInterface>(std::ref(uberSurface), _ioFormat);
 
             if (registerShortCircuit) {
@@ -3036,12 +3020,12 @@ namespace SceneEngine
             if (l._id == CoverageId_AngleBasedShadows) continue;
             if (l._format != 62) continue;
 
-            cfg.GetUberSurfaceFilename(uberSurfaceFile, dimof(uberSurfaceFile), l._id);
+            uberSurfaceFile << uberSurfaceDir << "/" << l._id << ".uber";
 
             Pimpl::CoverageInterface ci;
             ci._id = l._id;
                 
-            auto& uberSurface = const_cast<TerrainUberSurface<uint8>&>(::Assets::GetAsset<TerrainUberSurface<uint8>>(uberSurfaceFile));
+            auto& uberSurface = const_cast<TerrainUberSurface<uint8>&>(::Assets::GetAsset<TerrainUberSurface<uint8>>(uberSurfaceFile.get()));
             ci._interface = std::make_unique<CoverageUberSurfaceInterface>(std::ref(uberSurface), _ioFormat);
 
             if (registerShortCircuit) {
@@ -3068,7 +3052,9 @@ namespace SceneEngine
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////
-    void TerrainManager::Load(const TerrainConfig& cfg, Int2 cellMin, Int2 cellMax)
+    void TerrainManager::Load(
+        const TerrainConfig& cfg, 
+        Int2 cellMin, Int2 cellMax, bool allowModification)
     {
         Reset();
 
@@ -3107,11 +3093,12 @@ namespace SceneEngine
         ////////////////////////////////////////////////////////////////////////////
 
         auto rendererCfg = CreateRendererConfig(cfg, cfg.NodeOverlap());
-        bool reuseRenderer = _pimpl->_renderer && IsCompatible(rendererCfg, _pimpl->_renderer->GetConfig());
+        bool reuseRenderer = 
+                _pimpl->_renderer 
+            &&  IsCompatible(rendererCfg, _pimpl->_renderer->GetConfig())
+            && _pimpl->_renderer->IsShortCircuitAllowed() == allowModification;
         
         const bool allowTerrainModification = true;
-        const bool buildUberInterfaces = allowTerrainModification;
-
         if (reuseRenderer) {
             _pimpl->_heightsProvider->SetCoords(cfg, coords);
         } else {
@@ -3124,9 +3111,11 @@ namespace SceneEngine
             _pimpl->_heightsProvider = std::make_unique<TerrainSurfaceHeightsProvider>(_pimpl->_renderer, cfg, coords);
             MainSurfaceHeightsProvider = _pimpl->_heightsProvider.get();
         }
+    }
 
-        if (buildUberInterfaces)
-            _pimpl->BuildUberSurface(cfg);
+    void TerrainManager::LoadUberSurface(const ::Assets::ResChar uberSurfaceDir[])
+    {
+        _pimpl->BuildUberSurface(uberSurfaceDir, _pimpl->_cfg);
     }
 
     TerrainManager::TerrainManager(std::shared_ptr<ITerrainFormat> ioFormat)

@@ -53,14 +53,14 @@ namespace LevelEditorXLE.Terrain
 
         public string UberSurfaceDirectory
         {
-            get { return GetAttribute<string>(TerrainST.UberSurfaceDirectoryAttribute); }
-            set { SetAttribute(TerrainST.UberSurfaceDirectoryAttribute, value); }
+            get { return GetAttribute<string>(TerrainST.UberSurfaceDirAttribute); }
+            set { SetAttribute(TerrainST.UberSurfaceDirAttribute, value); }
         }
 
         public string CellsDirectory
         {
-            get { return GetAttribute<string>(TerrainST.CellsDirectoryAttribute); }
-            set { SetAttribute(TerrainST.CellsDirectoryAttribute, value); }
+            get { return GetAttribute<string>(TerrainST.CellsDirAttribute); }
+            set { SetAttribute(TerrainST.CellsDirAttribute, value); }
         }
 
         public uint NodeDimensions
@@ -108,7 +108,7 @@ namespace LevelEditorXLE.Terrain
 
                 // if there is a source DEM file specified then we should
                 // attempt to build the starter uber surface.
-            if (cfg.SourceDEMFile.Length > 0)
+            if (cfg.Import == TerrainConfig.Config.ImportType.DEMFile && cfg.SourceDEMFile.Length > 0)
             {
                 GUILayer.EditorInterfaceUtils.GenerateUberSurfaceFromDEM(
                     cfg.UberSurfaceDirectory, cfg.SourceDEMFile, 

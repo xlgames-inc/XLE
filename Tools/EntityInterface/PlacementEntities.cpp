@@ -24,7 +24,7 @@ namespace EntityInterface
     static const PropertyId Property_LocalBounds = 105;
 
 
-    DocumentId PlacementEntities::CreateDocument(DocumentTypeId docType, const char initializer[]) const
+    DocumentId PlacementEntities::CreateDocument(DocumentTypeId docType, const char initializer[])
     {
         if (docType != DocumentType_Placements) { assert(0); return 0; }
 
@@ -36,7 +36,7 @@ namespace EntityInterface
             meld,  Float2(-1000.f, -1000.f), Float2( 1000.f,  1000.f));
     }
 
-    bool PlacementEntities::DeleteDocument(DocumentId doc, DocumentTypeId docType) const
+    bool PlacementEntities::DeleteDocument(DocumentId doc, DocumentTypeId docType)
     {
         if (docType != DocumentType_Placements) { assert(0); return false; }
         return _editor->RemoveCell(*_manager, doc);
@@ -78,7 +78,7 @@ namespace EntityInterface
 
     bool PlacementEntities::CreateObject(
         const Identifier& id, 
-        const PropertyInitializer initializers[], size_t initializerCount) const
+        const PropertyInitializer initializers[], size_t initializerCount)
     {
         if (id.ObjectType() != ObjectType_Placement) { assert(0); return false; }
 
@@ -109,7 +109,7 @@ namespace EntityInterface
         return false;
     }
 
-    bool PlacementEntities::DeleteObject(const Identifier& id) const
+    bool PlacementEntities::DeleteObject(const Identifier& id)
     {
         if (id.ObjectType() != ObjectType_Placement) { assert(0); return false; }
 
@@ -128,7 +128,7 @@ namespace EntityInterface
 
     bool PlacementEntities::SetProperty(
         const Identifier& id,
-        const PropertyInitializer initializers[], size_t initializerCount) const
+        const PropertyInitializer initializers[], size_t initializerCount)
     {
             // find the object, and set the given property (as per the new value specified in the string)
             //  We need to create a transaction, make the change and then commit it back.
@@ -205,7 +205,7 @@ namespace EntityInterface
         return false;
     }
 
-    bool PlacementEntities::SetParent(const Identifier& child, const Identifier& parent, int insertionPosition) const
+    bool PlacementEntities::SetParent(const Identifier& child, const Identifier& parent, int insertionPosition)
     {
         return false;
     }

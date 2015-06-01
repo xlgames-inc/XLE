@@ -55,8 +55,8 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
     auto fmt = std::make_shared<TerrainFormat>();
 
     TerrainConfig cfg("game/centralcal");
-    GenerateMissingUberSurfaceFiles(cfg, fmt);
-    GenerateMissingCellFiles(cfg, fmt);
+    GenerateMissingUberSurfaceFiles(cfg, fmt, "game/centralcal");
+    GenerateMissingCellFiles(cfg, fmt, "game/centralcal");
 
     // const unsigned nodeDims = 32;
     // const unsigned cellTreeDepth = 5;

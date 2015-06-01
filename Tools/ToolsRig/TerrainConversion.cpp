@@ -95,7 +95,7 @@ namespace ToolsRig
             + finalDims[0] * finalDims[1] * sizeof(float)
             ;
         StringMeld<MaxPath, ::Assets::ResChar> outputUberFileName; 
-        outputUberFileName << outputDir << "/ubersurface.dat";
+        outputUberFileName << outputDir << "/" << SceneEngine::CoverageId_Heights << ".uber";
         MemoryMappedFile outputUberFile(outputUberFileName, resultSize, MemoryMappedFile::Access::Write);
         if (!outputUberFile.IsValid())
             ThrowException(::Exceptions::BasicLabel("Couldn't open output file (%s)", outputUberFile));
@@ -158,7 +158,7 @@ namespace ToolsRig
         using namespace SceneEngine;
 
         StringMeld<MaxPath, ::Assets::ResChar> uberSurfaceHeights; 
-        uberSurfaceHeights << inputUberSurfaceDirectory << "/ubersurface.dat";
+        uberSurfaceHeights << inputUberSurfaceDirectory << "/" << SceneEngine::CoverageId_Heights << ".uber";
         auto eleCount = GetUberSurfaceDimensions(uberSurfaceHeights);
 
         auto cellDimsInEles = (1 << (destCellTreeDepth - 1)) * destNodeDims;
@@ -174,7 +174,7 @@ namespace ToolsRig
         cfg.Save();
         
         auto fmt = std::make_shared<TerrainFormat>();
-        GenerateMissingUberSurfaceFiles(cfg, fmt);
-        GenerateMissingCellFiles(cfg, fmt);
+        GenerateMissingUberSurfaceFiles(cfg, fmt, inputUberSurfaceDirectory);
+        GenerateMissingCellFiles(cfg, fmt, inputUberSurfaceDirectory);
     }
 }

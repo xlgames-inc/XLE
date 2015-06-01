@@ -81,15 +81,15 @@ namespace EntityInterface
     class IEntityInterface
     {
     public:
-        virtual DocumentId CreateDocument(DocumentTypeId docType, const char initializer[]) const = 0;
-        virtual bool DeleteDocument(DocumentId doc, DocumentTypeId docType) const = 0;
+        virtual DocumentId CreateDocument(DocumentTypeId docType, const char initializer[]) = 0;
+        virtual bool DeleteDocument(DocumentId doc, DocumentTypeId docType) = 0;
 
         virtual ObjectId AssignObjectId(DocumentId doc, ObjectTypeId objType) const = 0;
-        virtual bool CreateObject(const Identifier& id, const PropertyInitializer initializers[], size_t initializerCount) const = 0;
-        virtual bool DeleteObject(const Identifier& id) const = 0;
-        virtual bool SetProperty(const Identifier& id, const PropertyInitializer initializers[], size_t initializerCount) const = 0;
+        virtual bool CreateObject(const Identifier& id, const PropertyInitializer initializers[], size_t initializerCount) = 0;
+        virtual bool DeleteObject(const Identifier& id) = 0;
+        virtual bool SetProperty(const Identifier& id, const PropertyInitializer initializers[], size_t initializerCount) = 0;
         virtual bool GetProperty(const Identifier& id, PropertyId prop, void* dest, unsigned* destSize) const = 0;
-        virtual bool SetParent(const Identifier& child, const Identifier& parent, int insertionPosition) const = 0;
+        virtual bool SetParent(const Identifier& child, const Identifier& parent, int insertionPosition) = 0;
 
         virtual ObjectTypeId GetTypeId(const char name[]) const = 0;
         virtual DocumentTypeId GetDocumentTypeId(const char name[]) const = 0;
@@ -113,8 +113,8 @@ namespace EntityInterface
             Identifier& translatedId, 
             const Identifier& inputId) const;
 
-        DocumentId  CreateDocument(DocumentTypeId docType, const char initializer[]) const;
-        bool        DeleteDocument(DocumentId doc, DocumentTypeId docType) const;
+        DocumentId  CreateDocument(DocumentTypeId docType, const char initializer[]);
+        bool        DeleteDocument(DocumentId doc, DocumentTypeId docType);
         ObjectId    AssignObjectId(DocumentId doc, ObjectTypeId objType) const;
 
         ObjectTypeId    GetTypeId(const char name[]) const;

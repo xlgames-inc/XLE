@@ -150,7 +150,7 @@ namespace EntityInterface
     }
 
 	bool RetainedEntityInterface::CreateObject(const Identifier& id, 
-        const PropertyInitializer initializers[], size_t initializerCount) const
+        const PropertyInitializer initializers[], size_t initializerCount)
     {
         auto type = _scene->GetObjectType(id.ObjectType());
         if (!type) return false;
@@ -173,7 +173,7 @@ namespace EntityInterface
         return true;
     }
 
-	bool RetainedEntityInterface::DeleteObject(const Identifier& id) const
+	bool RetainedEntityInterface::DeleteObject(const Identifier& id)
     {
         for (auto i=_scene->_objects.cbegin(); i!=_scene->_objects.cend(); ++i)
             if (i->_doc == id.Document() && i->_id == id.Object()) {
@@ -186,7 +186,7 @@ namespace EntityInterface
 
 	bool RetainedEntityInterface::SetProperty(
         const Identifier& id, 
-        const PropertyInitializer initializers[], size_t initializerCount) const
+        const PropertyInitializer initializers[], size_t initializerCount)
     {
         auto type = _scene->GetObjectType(id.ObjectType());
         if (!type) return false;
@@ -226,7 +226,7 @@ namespace EntityInterface
     }
 
     bool RetainedEntityInterface::SetParent(
-        const Identifier& child, const Identifier& parent, int insertionPosition) const
+        const Identifier& child, const Identifier& parent, int insertionPosition)
     {
         if (child.Document() != parent.Document())
             return false;
@@ -286,12 +286,12 @@ namespace EntityInterface
         return _scene->GetPropertyId(typeId, (const utf8*)name);
     }
 
-    DocumentId RetainedEntityInterface::CreateDocument(DocumentTypeId docType, const char initializer[]) const
+    DocumentId RetainedEntityInterface::CreateDocument(DocumentTypeId docType, const char initializer[])
     {
         return 0;
     }
 
-	bool RetainedEntityInterface::DeleteDocument(DocumentId doc, DocumentTypeId docType) const
+	bool RetainedEntityInterface::DeleteDocument(DocumentId doc, DocumentTypeId docType)
     {
         return false;
     }
