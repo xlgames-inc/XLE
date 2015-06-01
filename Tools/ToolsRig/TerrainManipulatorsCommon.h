@@ -16,7 +16,20 @@ namespace SceneEngine
 
 namespace ToolsRig
 {
-    class CommonManipulator : public IManipulator
+    class TerrainManipulatorBase : public IManipulator
+    {
+    protected:
+        TerrainManipulatorBase(std::shared_ptr<SceneEngine::TerrainManager> terrainManager);
+        std::shared_ptr<SceneEngine::TerrainManager> _terrainManager;
+
+        Float2 TerrainToWorldSpace(const Float2& input) const;
+        Float2 WorldSpaceToTerrain(const Float2& input) const;
+        float WorldSpaceDistanceToTerrainCoords(float input) const;
+        Float2 WorldSpaceToCoverage(unsigned layerId, const Float2& input) const;
+        float WorldSpaceToCoverageDistance(unsigned layerId, float input) const;
+    };
+
+    class CommonManipulator : public TerrainManipulatorBase
     {
     public:
             // IManipulator interface
@@ -35,7 +48,6 @@ namespace ToolsRig
     protected:
         std::pair<Float3, bool> _currentWorldSpaceTarget;
         std::pair<Float3, bool> _targetOnMouseDown;
-        std::shared_ptr<SceneEngine::TerrainManager> _terrainManager;
         Int2        _mouseCoords;
         float       _strength;
         float       _size;
@@ -43,7 +55,7 @@ namespace ToolsRig
         unsigned    _lastRenderCount0, _lastRenderCount1;
     };
 
-    class RectangleManipulator : public IManipulator
+    class RectangleManipulator : public TerrainManipulatorBase
     {
     public:
             // IManipulator interface
@@ -66,7 +78,6 @@ namespace ToolsRig
         Float3  _firstAnchor;
         bool    _isDragging;
         std::pair<Float3, bool> _secondAnchor;
-        std::shared_ptr<SceneEngine::TerrainManager> _terrainManager;
     };
 }
 

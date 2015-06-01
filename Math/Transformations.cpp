@@ -536,6 +536,17 @@ namespace XLEMath
         return result;
     }
 
+    Float2x3 InvertOrthonormalTransform(const Float2x3& input)
+    {
+        float t[2];
+        t[0] = input(0,0) * -input(0,3) + input(1,0) * -input(1,3);
+        t[1] = input(0,1) * -input(0,3) + input(1,1) * -input(1,3);
+        Float2x3 result;
+        result(0,0) = input(0,0);   result(0,1) = input(1,0);   result(0,2) = t[0];
+        result(1,0) = input(0,1);   result(1,1) = input(1,1);   result(1,2) = t[1];
+        return result;
+    }
+
     Float4x4 Expand(const Float3x3& rotationScalePart, const Float3& translationPart)
     {
         return Float4x4(
@@ -579,6 +590,17 @@ namespace XLEMath
     {
         Float3x3 result;
         cml::matrix_rotation_quaternion(result, input);
+        return result;
+    }
+
+    Float4x4    AsFloat4x4(const ScaleTranslation& input)
+    {
+        Float3 s = input._scale;
+        Float4x4 result(
+            s[0], 0.f, 0.f, input._translation[0],
+            0.f, s[1], 0.f, input._translation[1],
+            0.f, 0.f, s[2], input._translation[2],
+            0.f, 0.f, 0.f, 1.f);
         return result;
     }
 
@@ -674,6 +696,15 @@ namespace XLEMath
             orthonormalTransform(0,0), orthonormalTransform(0,1), orthonormalTransform(0,2), orthonormalTransform(0,3), 
             orthonormalTransform(1,0), orthonormalTransform(1,1), orthonormalTransform(1,2), orthonormalTransform(1,3), 
             orthonormalTransform(2,0), orthonormalTransform(2,1), orthonormalTransform(2,2), orthonormalTransform(2,3));
+    }
+
+    Float4x4    AsFloat4x4(const Float2x3& input)
+    {
+        return Float4x4(
+            input(0,0), input(0,1), 0.f, input(0,2),
+            input(1,0), input(1,1), 0.f, input(1,2),
+            0.f, 0.f, 1.f, 0.f,
+            0.f, 0.f, 0.f, 1.f);
     }
 
     Float4x4 MakeCameraToWorld(const Float3& forward, const Float3& up, const Float3& position)

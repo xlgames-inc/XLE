@@ -8,6 +8,7 @@
 
 #include "../RenderCore/Metal/Forward.h"
 #include "../Math/Vector.h"
+#include "../Math/Matrix.h"
 #include "../Assets/Assets.h"
 #include "../Core/Types.h"
 
@@ -54,10 +55,7 @@ namespace SceneEngine
 		TerrainConfig(const ::Assets::ResChar baseDir[] = "");
 
         void        GetCellFilename(::Assets::ResChar buffer[], unsigned cnt, UInt2 cellIndex, TerrainCoverageId id) const;
-
-        Float2      TerrainCoordsToCellBasedCoords(const Float2& terrainCoords) const;
-        Float2      CellBasedCoordsToTerrainCoords(const Float2& cellBasedCoords) const;
-        Float2      CellBasedCoordsToLayerCoords(unsigned layerIndex, const Float2& cellBasedCoords) const;
+        UInt2x3     CellBasedCoordsToCoverage(TerrainCoverageId coverageId) const;
 
         UInt2       CellDimensionsInNodes() const;
         UInt2       NodeDimensionsInElements() const;       // (ignoring overlap)
@@ -81,12 +79,14 @@ namespace SceneEngine
     class TerrainCoordinateSystem
     {
     public:
-        Float2      WorldSpaceToTerrainCoords(const Float2& worldSpacePosition) const;
-        Float2      TerrainCoordsToWorldSpace(const Float2& terrainCoords) const;
-        float       WorldSpaceDistanceToTerrainCoords(float distance) const;
+        // Float2      WorldSpaceToTerrainCoords(const Float2& worldSpacePosition) const;
+        // Float2      TerrainCoordsToWorldSpace(const Float2& terrainCoords) const;
+        // float       WorldSpaceDistanceToTerrainCoords(float distance) const;
+        // 
+        // Float2      WorldSpaceToLayerCoords(unsigned layerIndex, const Float2& worldSpacePosition) const;
+        // float       WorldSpaceDistanceToLayerCoords(unsigned layerIndex, float distance) const;
 
-        Float2      WorldSpaceToLayerCoords(unsigned layerIndex, const Float2& worldSpacePosition) const;
-        float       WorldSpaceDistanceToLayerCoords(unsigned layerIndex, float distance) const;
+        Float4x4        CellBasedCoordsToWorld() const;
 
         Float3      TerrainOffset() const;
         void        SetTerrainOffset(const Float3& newOffset);
@@ -163,7 +163,7 @@ namespace SceneEngine
         ///
         /// The previous terrain (if any) will be removed. However, if
         /// any cached textures or data can be retained, they will be.
-        void Load(const TerrainConfig& cfg, Int2 cellMin, Int2 cellMax, bool allowModification); 
+        void Load(const TerrainConfig& cfg, UInt2 cellMin, UInt2 cellMax, bool allowModification);
         void LoadUberSurface(const ::Assets::ResChar uberSurfaceDir[]);
         void Reset();
 

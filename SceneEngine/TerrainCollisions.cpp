@@ -6,6 +6,7 @@
 
 #include "Terrain.h"
 #include "TerrainInternal.h"
+#include "../Math/Transformations.h"
 #include "../RenderCore/Resource.h"
 #include "../ConsoleRig/Log.h"
 #include "../Utility/Streams/FileUtils.h"
@@ -122,8 +123,10 @@ namespace SceneEngine
                 //          the cell, so we can find the node index directly (within loading the cell node)
                 //  
 
-            auto terrainPosition = coords.WorldSpaceToTerrainCoords(queryPosition);
-            auto cellBasedCoord = cfg.TerrainCoordsToCellBasedCoords(terrainPosition);
+            auto worldToCell = InvertOrthonormalTransform(coords.CellBasedCoordsToWorld());
+            auto cellBasedCoord = Truncate(
+                TransformPoint(worldToCell, Expand(queryPosition, 0.f)));
+
             Float2 cellIndex(XlFloor(cellBasedCoord[0]), XlFloor(cellBasedCoord[1]));
 
             if (    cellIndex[0] < 0.f || cellIndex[0] >= float(cfg._cellCount[0])

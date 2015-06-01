@@ -121,6 +121,7 @@ namespace LevelEditorXLE.Terrain
             this.m_importSource.Name = "m_importSource";
             this.m_importSource.Size = new System.Drawing.Size(270, 20);
             this.m_importSource.TabIndex = 6;
+            this.m_importSource.TextChanged += new System.EventHandler(this.m_importSource_TextChanged);
             // 
             // m_importSourceBtn
             // 

@@ -1091,19 +1091,20 @@ namespace SceneEngine
         LightingParserContext& parserContext,
         const TerrainCoordinateSystem& coords)
     {
-        if (!Erosion_IsPrepared()) return;
-
-        TRY {
-            ShallowWater_RenderVelocities(
-                context, parserContext,
-                OceanSettings(), ErosionWaterTilePhysicalDimension, 
-                coords.TerrainCoordsToWorldSpace(_pimpl->_erosionSim._gpuCacheOffset + _pimpl->_gpuCacheMins),
-                *_pimpl->_erosionSim._waterSim.get(), 
-                _pimpl->_erosionSim._bufferCount-1, ShallowBorderMode::Surface);
-        } 
-        CATCH (const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
-        CATCH (const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
-        CATCH_END
+        assert(0);
+        // if (!Erosion_IsPrepared()) return;
+        // 
+        // TRY {
+        //     ShallowWater_RenderVelocities(
+        //         context, parserContext,
+        //         OceanSettings(), ErosionWaterTilePhysicalDimension, 
+        //         coords.TerrainCoordsToWorldSpace(_pimpl->_erosionSim._gpuCacheOffset + _pimpl->_gpuCacheMins),
+        //         *_pimpl->_erosionSim._waterSim.get(), 
+        //         _pimpl->_erosionSim._bufferCount-1, ShallowBorderMode::Surface);
+        // } 
+        // CATCH (const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
+        // CATCH (const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
+        // CATCH_END
     }
 
     class ShadowingAngleOperator

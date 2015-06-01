@@ -108,7 +108,7 @@ namespace LevelEditorXLE.Terrain
 
                 // if there is a source DEM file specified then we should
                 // attempt to build the starter uber surface.
-            if (cfg.Import == TerrainConfig.Config.ImportType.DEMFile && cfg.SourceDEMFile.Length > 0)
+            if (cfg.Import == TerrainConfig.Config.ImportType.DEMFile && cfg.SourceDEMFile != null && cfg.SourceDEMFile.Length > 0)
             {
                 GUILayer.EditorInterfaceUtils.GenerateUberSurfaceFromDEM(
                     cfg.UberSurfaceDirectory, cfg.SourceDEMFile, 

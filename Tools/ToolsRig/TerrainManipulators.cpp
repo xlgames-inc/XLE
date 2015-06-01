@@ -68,8 +68,8 @@ namespace ToolsRig
         auto *i = _terrainManager->GetHeightsInterface();
         if (i) {
             i->AdjustHeights(
-                _terrainManager->GetCoords().WorldSpaceToTerrainCoords(Truncate(worldSpacePosition)), 
-                _terrainManager->GetCoords().WorldSpaceDistanceToTerrainCoords(size), 
+                WorldSpaceToTerrain(Truncate(worldSpacePosition)), 
+                WorldSpaceDistanceToTerrainCoords(size), 
                 .05f * strength, _powerValue);
         }
     }
@@ -115,8 +115,8 @@ namespace ToolsRig
         auto *i = _terrainManager->GetHeightsInterface();
         if (i) {
             i->Smooth(
-                _terrainManager->GetCoords().WorldSpaceToTerrainCoords(Truncate(worldSpacePosition)), 
-                _terrainManager->GetCoords().WorldSpaceDistanceToTerrainCoords(size),
+                WorldSpaceToTerrain(Truncate(worldSpacePosition)), 
+                WorldSpaceDistanceToTerrainCoords(size),
                 unsigned(_filterRadius), 
                 _standardDeviation, _strength, _flags);
         }
@@ -172,8 +172,8 @@ namespace ToolsRig
         auto *i = _terrainManager->GetHeightsInterface();
         if (i) {
             i->AddNoise(
-                _terrainManager->GetCoords().WorldSpaceToTerrainCoords(Truncate(worldSpacePosition)), 
-                _terrainManager->GetCoords().WorldSpaceDistanceToTerrainCoords(size), 
+                WorldSpaceToTerrain(Truncate(worldSpacePosition)), 
+                WorldSpaceDistanceToTerrainCoords(size), 
                 .05f * strength);
         }
     }
@@ -215,9 +215,9 @@ namespace ToolsRig
         auto *i = _terrainManager->GetHeightsInterface();
         if (i && _targetOnMouseDown.second) {
             i->CopyHeight(
-                _terrainManager->GetCoords().WorldSpaceToTerrainCoords(Truncate(worldSpacePosition)), 
-                _terrainManager->GetCoords().WorldSpaceToTerrainCoords(Truncate(_targetOnMouseDown.first)), 
-                _terrainManager->GetCoords().WorldSpaceDistanceToTerrainCoords(size), 
+                WorldSpaceToTerrain(Truncate(worldSpacePosition)), 
+                WorldSpaceToTerrain(Truncate(_targetOnMouseDown.first)), 
+                WorldSpaceDistanceToTerrainCoords(size), 
                 strength, _powerValue, _flags);
         }
     }
@@ -272,8 +272,8 @@ namespace ToolsRig
         auto *i = _terrainManager->GetHeightsInterface();
         if (i) {
             i->FillWithNoise(
-                _terrainManager->GetCoords().WorldSpaceToTerrainCoords(Truncate(anchor0)), 
-                _terrainManager->GetCoords().WorldSpaceToTerrainCoords(Truncate(anchor1)), 
+                WorldSpaceToTerrain(Truncate(anchor0)), 
+                WorldSpaceToTerrain(Truncate(anchor1)), 
                 _baseHeight, _noiseHeight, _roughness, _fractalDetail);
         }
     }
@@ -318,21 +318,20 @@ namespace ToolsRig
         unsigned _paintValue;
     };
 
-    unsigned FindLayerIndex(const SceneEngine::TerrainConfig& cfg, SceneEngine::TerrainCoverageId layerId)
-    {
-        for (unsigned c = 0; c<cfg.GetCoverageLayerCount(); ++c)
-            if (cfg.GetCoverageLayer(c)._id == layerId) return c;
-        return ~unsigned(0x0);
-    }
+    // unsigned FindLayerIndex(const SceneEngine::TerrainConfig& cfg, SceneEngine::TerrainCoverageId layerId)
+    // {
+    //     for (unsigned c = 0; c<cfg.GetCoverageLayerCount(); ++c)
+    //         if (cfg.GetCoverageLayer(c)._id == layerId) return c;
+    //     return ~unsigned(0x0);
+    // }
 
     void PaintCoverageManipulator::PerformAction(const Float3& worldSpacePosition, float size, float strength)
     {
         auto* i = _terrainManager->GetCoverageInterface(_coverageLayer);
         if (i) {
-            auto layerIndex = FindLayerIndex(_terrainManager->GetConfig(), _coverageLayer);
             i->Paint(
-                _terrainManager->GetCoords().WorldSpaceToLayerCoords(layerIndex, Truncate(worldSpacePosition)), 
-                _terrainManager->GetCoords().WorldSpaceDistanceToLayerCoords(layerIndex, size),
+                WorldSpaceToCoverage(_coverageLayer, Truncate(worldSpacePosition)), 
+                WorldSpaceToCoverageDistance(_coverageLayer, size),
                 _paintValue);
         }
     }
@@ -395,8 +394,8 @@ namespace ToolsRig
     {
         auto *i = _terrainManager->GetHeightsInterface();
         if (i) {
-            _activeMins = _terrainManager->GetCoords().WorldSpaceToTerrainCoords(Truncate(anchor0));
-            _activeMaxs = _terrainManager->GetCoords().WorldSpaceToTerrainCoords(Truncate(anchor1));
+            _activeMins = WorldSpaceToTerrain(Truncate(anchor0));
+            _activeMaxs = WorldSpaceToTerrain(Truncate(anchor1));
             _flags = _flags & ~(1<<0);    // start inactive
             i->Erosion_End();
         }
@@ -487,8 +486,8 @@ namespace ToolsRig
                 // we can't use the parameters passed into this function (because they've
                 //  been adjusted to the mins/maxs of a rectangular area, and we've lost
                 //  directional information)
-            Float2 rotationOrigin = RoundDownToInteger(_terrainManager->GetCoords().WorldSpaceToTerrainCoords(Truncate(_firstAnchor)));
-            Float2 farPoint = RoundDownToInteger(_terrainManager->GetCoords().WorldSpaceToTerrainCoords(Truncate(_secondAnchor.first)));
+            Float2 rotationOrigin = RoundDownToInteger(WorldSpaceToTerrain(Truncate(_firstAnchor)));
+            Float2 farPoint = RoundDownToInteger(WorldSpaceToTerrain(Truncate(_secondAnchor.first)));
 
             float radius = Magnitude(rotationOrigin - farPoint);
             Float2 A(farPoint[0] - rotationOrigin[0], farPoint[1] - rotationOrigin[1]);

@@ -69,6 +69,17 @@ namespace XLEMath
                 return cml::vector<Type, cml::fixed<2>>(input[0], input[1]);
             }
 
+
+        template <typename ExprType>
+            cml::vector<typename cml::et::VectorXpr<ExprType>::value_type, cml::fixed<cml::et::VectorXpr<ExprType>::array_size+1>>      Expand(
+                const cml::et::VectorXpr<ExprType>& input, 
+                typename cml::et::VectorXpr<ExprType>::value_type extra)
+            {
+                return Expand(
+                    cml::vector<Type, cml::fixed<cml::et::VectorXpr<ExprType>::array_size>>(input),
+                    extra);
+            }
+
                 //      cml takes many different types of objects as input to length, length_squared, etc...
                 //      (it's not just vector classes, but also vector expression classes, and maybe others)
                 //      So, we have to make very general widely matching declarations for these functions

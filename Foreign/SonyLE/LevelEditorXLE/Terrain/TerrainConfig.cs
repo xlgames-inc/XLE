@@ -20,10 +20,6 @@ namespace LevelEditorXLE.Terrain
         public TerrainConfig()
         {
             InitializeComponent();
-            m_importType.Enabled = false;
-            m_importSource.Enabled = false;
-            m_importSourceBtn.Enabled = false;
-            m_importType.SelectedIndex = 0;
         }
 
         public Config Value
@@ -36,6 +32,12 @@ namespace LevelEditorXLE.Terrain
                 // m_propertyGrid1.Bind(
                 //     new XLEBridgeUtils.BasicPropertyEditingContext(m_config, props));
                 m_propertyGrid1.SelectedObject = value;
+
+                m_importType.Enabled = value.Import == Config.ImportType.DEMFile;
+                m_importSource.Enabled = value.Import == Config.ImportType.DEMFile;
+                m_importSourceBtn.Enabled = value.Import == Config.ImportType.DEMFile;
+                m_importType.SelectedIndex = 0;
+                m_importSource.Text = value.SourceDEMFile;
             }
         }
 
@@ -96,6 +98,11 @@ namespace LevelEditorXLE.Terrain
                 if (dlg.ShowDialog(this) == DialogResult.OK)
                     m_importSource.Text = dlg.FileName;
             }
+        }
+
+        private void m_importSource_TextChanged(object sender, EventArgs e)
+        {
+            m_config.SourceDEMFile = m_importSource.Text;
         }
     }
 }

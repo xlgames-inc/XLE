@@ -66,6 +66,14 @@ namespace XLEMath
         explicit RotationScaleTranslation(const Float4x4& copyFrom);
         RotationScaleTranslation(const Quaternion& rotation, Float3 scale, Float3 translation);
     };
+
+    class ScaleTranslation
+    {
+    public:
+        Float3  _scale;
+        Float3  _translation;
+        ScaleTranslation(const Float3& scale, const Float3& translation) : _scale(scale), _translation(translation) {}
+    };
         
         //
         //      "Combine" and "Combine_InPlace" patterns.
@@ -124,6 +132,7 @@ namespace XLEMath
         //
     Float4x4        InvertOrthonormalTransform(const Float4x4& input);
     Float3x4        InvertOrthonormalTransform(const Float3x4& input);
+    Float2x3        InvertOrthonormalTransform(const Float2x3& input);
     bool            IsOrthonormal(const Float3x3& input, float tolerance = 0.01f);
     Float4x4        Expand(const Float3x3& rotationScalePart, const Float3& translationPart);
 
@@ -164,6 +173,7 @@ namespace XLEMath
     RotationScaleTranslation    SphericalInterpolate(const RotationScaleTranslation& lhs, const RotationScaleTranslation& rhs, float alpha);
 
     Float3x3    AsFloat3x3(const Quaternion& input);
+    Float4x4    AsFloat4x4(const ScaleTranslation& input);
     Float4x4    AsFloat4x4(const RotationScaleTranslation& input);
     Float4x4    AsFloat4x4(const UniformScale& input);
     Float4x4    AsFloat4x4(const Float3& translation);
@@ -172,6 +182,8 @@ namespace XLEMath
 	Float4x4    AsFloat4x4(const Quaternion& input);
 	Float4x4    AsFloat4x4(const Float3x4& orthonormalTransform);
     Float3x4    AsFloat3x4(const Float4x4& orthonormalTransform);
+
+    Float4x4    AsFloat4x4(const Float2x3& input);
 
     inline Float4x4     Combine(const Float3x4& firstTransform, const Float4x4& secondTransform)
     {

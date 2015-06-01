@@ -12,6 +12,7 @@
 #include "../../SceneEngine/IntersectionTest.h"
 #include "../../SceneEngine/LightingParserContext.h"
 #include "../../SceneEngine/Terrain.h"
+#include "../../Math/Transformations.h"
 #include "../../Utility/TimeUtils.h"
 
 static unsigned FrameRenderCount;
@@ -32,6 +33,57 @@ namespace ToolsRig
     }
 
     IManipulator::~IManipulator() {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    TerrainManipulatorBase::TerrainManipulatorBase(std::shared_ptr<SceneEngine::TerrainManager> terrainManager)
+        : _terrainManager(terrainManager)
+    {}
+
+    Float2 TerrainManipulatorBase::WorldSpaceToTerrain(const Float2& input) const
+    {
+        return WorldSpaceToCoverage(SceneEngine::CoverageId_Heights, input);
+    }
+
+    float TerrainManipulatorBase::WorldSpaceDistanceToTerrainCoords(float input) const
+    {
+        return WorldSpaceToCoverageDistance(SceneEngine::CoverageId_Heights, input);
+    }
+
+    Float2 TerrainManipulatorBase::TerrainToWorldSpace(const Float2& input) const
+    {
+        auto& coords = _terrainManager->GetCoords();
+        auto& cfg = _terrainManager->GetConfig();
+        auto coverToCell = AsFloat4x4(InvertOrthonormalTransform(Float2x3(cfg.CellBasedCoordsToCoverage(SceneEngine::CoverageId_Heights))));
+        auto cellToWorld = coords.CellBasedCoordsToWorld();
+        return Truncate(TransformPoint(Combine(coverToCell, cellToWorld), Expand(input, 0.f)));
+    }
+
+    Float2 TerrainManipulatorBase::WorldSpaceToCoverage(unsigned layerId, const Float2& input) const
+    {
+            // This should only require a 2D scale and translation
+            //  ... but it's got much more expensive with the new terrain config interface
+            //      there's a lot of redundant maths involved
+            //      Still, even though it's expensive, it's better with the simple interface
+        auto& coords = _terrainManager->GetCoords();
+        auto& cfg = _terrainManager->GetConfig();
+        auto cellToCover = AsFloat4x4(Float2x3(cfg.CellBasedCoordsToCoverage(layerId)));
+        auto worldToCell = InvertOrthonormalTransform(coords.CellBasedCoordsToWorld());
+        return Truncate(TransformPoint(Combine(worldToCell, cellToCover), Expand(input, 0.f)));
+    }
+
+    float TerrainManipulatorBase::WorldSpaceToCoverageDistance(unsigned layerId, float input) const
+    {
+            // huge amount of redundant math involved here; to do just a simple thing
+            // but, even still, it should be ok...?
+        auto& coords = _terrainManager->GetCoords();
+        auto& cfg = _terrainManager->GetConfig();
+        auto cellToCover = AsFloat4x4(Float2x3(cfg.CellBasedCoordsToCoverage(layerId)));
+        auto worldToCell = InvertOrthonormalTransform(coords.CellBasedCoordsToWorld());
+        auto worldToConver = Combine(worldToCell, cellToCover);
+        float scale = .5f * (worldToCell(0,0) + worldToCell(1,1));
+        return input * scale;
+    }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -102,7 +154,7 @@ namespace ToolsRig
     }
 
     CommonManipulator::CommonManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager)
-        : _terrainManager(std::move(terrainManager))
+        : TerrainManipulatorBase(std::move(terrainManager))
     {
         _currentWorldSpaceTarget = std::make_pair(Float3(0,0,0), false);
         _targetOnMouseDown = std::make_pair(Float3(0,0,0), false);
@@ -146,13 +198,12 @@ namespace ToolsRig
 
                 if (_secondAnchor.second) {
 
-                    auto& coords = _terrainManager->GetCoords();
-                    Float2 faTerrain = coords.WorldSpaceToTerrainCoords(Truncate(_firstAnchor));
-                    Float2 fsTerrain = coords.WorldSpaceToTerrainCoords(Truncate(_secondAnchor.first));
+                    Float2 faTerrain = WorldSpaceToTerrain(Truncate(_firstAnchor));
+                    Float2 fsTerrain = WorldSpaceToTerrain(Truncate(_secondAnchor.first));
                     Float2 terrainCoordsMins(std::min(faTerrain[0], fsTerrain[0]), std::min(faTerrain[1], fsTerrain[1]));
                     Float2 terrainCoordsMaxs(std::max(faTerrain[0], fsTerrain[0]), std::max(faTerrain[1], fsTerrain[1]));
-                    Float2 faWorld = coords.TerrainCoordsToWorldSpace(RoundDownToInteger(terrainCoordsMins));
-                    Float2 fsWorld = coords.TerrainCoordsToWorldSpace(RoundUpToInteger(terrainCoordsMaxs));
+                    Float2 faWorld = TerrainToWorldSpace(RoundDownToInteger(terrainCoordsMins));
+                    Float2 fsWorld = TerrainToWorldSpace(RoundUpToInteger(terrainCoordsMaxs));
 
                     TRY {
                         PerformAction(Expand(faWorld, 0.f), Expand(fsWorld, 0.f));
@@ -173,13 +224,12 @@ namespace ToolsRig
         if (_isDragging && _secondAnchor.second) {
 
                 // clamp anchor values to the terrain coords size
-            auto& coords = _terrainManager->GetCoords();
-            Float2 faTerrain = coords.WorldSpaceToTerrainCoords(Truncate(_firstAnchor));
-            Float2 fsTerrain = coords.WorldSpaceToTerrainCoords(Truncate(_secondAnchor.first));
+            Float2 faTerrain = WorldSpaceToTerrain(Truncate(_firstAnchor));
+            Float2 fsTerrain = WorldSpaceToTerrain(Truncate(_secondAnchor.first));
             Float2 terrainCoordsMins(std::min(faTerrain[0], fsTerrain[0]), std::min(faTerrain[1], fsTerrain[1]));
             Float2 terrainCoordsMaxs(std::max(faTerrain[0], fsTerrain[0]), std::max(faTerrain[1], fsTerrain[1]));
-            Float2 faWorld = coords.TerrainCoordsToWorldSpace(RoundDownToInteger(terrainCoordsMins));
-            Float2 fsWorld = coords.TerrainCoordsToWorldSpace(RoundUpToInteger(terrainCoordsMaxs));
+            Float2 faWorld = TerrainToWorldSpace(RoundDownToInteger(terrainCoordsMins));
+            Float2 fsWorld = TerrainToWorldSpace(RoundUpToInteger(terrainCoordsMaxs));
 
             RenderRectangleHighlight(
                 *context, parserContext,
@@ -189,7 +239,7 @@ namespace ToolsRig
     }
 
     RectangleManipulator::RectangleManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager)
-        : _terrainManager(terrainManager)
+        : TerrainManipulatorBase(terrainManager)
     {
         _isDragging = false;
     }

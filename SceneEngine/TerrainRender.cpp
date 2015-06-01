@@ -60,8 +60,6 @@ namespace SceneEngine
     using namespace RenderCore;
     using namespace RenderCore::Metal;
 
-    static UInt2 AsUInt2(Float2 input) { return UInt2(unsigned(input[0]), unsigned(input[1])); }
-
     //////////////////////////////////////////////////////////////////////////////////////////
     class TextureTile
     {
@@ -2110,6 +2108,68 @@ namespace SceneEngine
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////
+    class PrimedCell
+    {
+    public:
+        UInt2 _cellIndex;
+        Float4x4 _cellToTerrainCoords;
+        std::pair<UInt2, UInt2> _heightUber;
+        std::pair<UInt2, UInt2> _coverageUber[TerrainCellId::MaxCoverageCount];
+    };
+
+    static UInt2 TransformPointInt(const UInt2x3& trans, UInt2 input)
+    {
+        auto temp = trans * UInt3(input[0], input[1], 1);
+        return UInt2(temp[0], temp[1]);
+    }
+
+    static std::vector<PrimedCell> BuildPrimedCells(const TerrainConfig& cfg)
+    {
+            // we're going to calculate a list of cells refernced by this terrain config
+            // the final result will be in "terrain coords"
+            //      -- ie one unit per terrain element
+
+        // cellMin[1] = std::min(cellMin[1], cfg._cellCount[1]);
+        // cellMax[1] = std::min(cellMax[1], cfg._cellCount[1]);
+        // cellMin[0] = std::min(cellMin[0], cfg._cellCount[0]);
+        // cellMax[0] = std::min(cellMax[0], cfg._cellCount[0]);
+
+        const UInt2 cellMin(0, 0);
+        const UInt2 cellMax = cfg._cellCount;
+
+        std::vector<PrimedCell> result;
+        result.reserve((cellMax[0] - cellMin[0]) * (cellMax[1] - cellMin[1]));
+
+        auto cellBasedToTerrain = cfg.CellBasedCoordsToCoverage(CoverageId_Heights);
+        UInt2x3 cellBasedToCoverage[TerrainCellId::MaxCoverageCount];
+        for (unsigned c=0; c<cfg.GetCoverageLayerCount(); ++c)
+            cellBasedToCoverage[c] = cfg.CellBasedCoordsToCoverage(cfg.GetCoverageLayer(c)._id);
+
+        for (unsigned cellY=cellMin[1]; cellY<cellMax[1]; ++cellY) {
+            for (unsigned cellX=cellMin[0]; cellX<cellMax[0]; ++cellX) {
+                PrimedCell cell;
+                cell._heightUber.first = TransformPointInt(cellBasedToTerrain, UInt2(cellX, cellY));
+                cell._heightUber.second = TransformPointInt(cellBasedToTerrain, UInt2(cellX+1, cellY+1));
+                
+                cell._cellToTerrainCoords = Float4x4(
+                    float(cell._heightUber.second[0] - cell._heightUber.first[0]), 0.f, 0.f, float(cell._heightUber.first[0]),
+                    0.f, float(cell._heightUber.second[1] - cell._heightUber.first[1]), 0.f, float(cell._heightUber.first[1]),
+                    0.f, 0.f, 1.f, 0.f,
+                    0.f, 0.f, 0.f, 1.f);
+
+                for (unsigned c=0; c<std::min(cfg.GetCoverageLayerCount(), TerrainCellId::MaxCoverageCount); ++c) {
+                    cell._coverageUber[c].first = TransformPointInt(cellBasedToCoverage[c], UInt2(cellX, cellY));
+                    cell._coverageUber[c].second = TransformPointInt(cellBasedToCoverage[c], UInt2(cellX+1, cellY+1));
+                }
+
+                result.push_back(cell);
+            }
+        }
+
+        return std::move(result);
+    }
+
+    //////////////////////////////////////////////////////////////////////////////////////////
     static void DoShortCircuitUpdate(
         uint64 cellHash, TerrainCoverageId layerId, std::shared_ptr<TerrainCellRenderer> renderer,
         TerrainCellId::UberSurfaceAddress uberAddress, const ShortCircuitUpdate& upd)
@@ -2163,13 +2223,12 @@ namespace SceneEngine
             //  We need to find the node that contains this position
             //  and return the coordinates of the height map texture (in the tile set)
             
-        auto terrainCoordsMin = _coordSystem.WorldSpaceToTerrainCoords(minCoord);
-        auto terrainCoordsMax = _coordSystem.WorldSpaceToTerrainCoords(maxCoord);
+        auto worldToCellBased = InvertOrthonormalTransform(_coordSystem.CellBasedCoordsToWorld());
 
             //  we're going to assume that both points are in the same cell.
             //  we can only return a contiguous texture if they both belong to the same cell
-        Float2 cellCoordMin = _terrainConfig.TerrainCoordsToCellBasedCoords(terrainCoordsMin);
-        Float2 cellCoordMax = _terrainConfig.TerrainCoordsToCellBasedCoords(terrainCoordsMax);
+        Float2 cellCoordMin = Truncate(TransformPoint(worldToCellBased, Expand(minCoord, 0.f)));
+        Float2 cellCoordMax = Truncate(TransformPoint(worldToCellBased, Expand(maxCoord, 0.f)));
 
         UInt2 cellIndex = UInt2(unsigned(XlFloor(cellCoordMin[0])), unsigned(XlFloor(cellCoordMin[1])));
         assert(unsigned(XlFloor(cellCoordMax[0])) == cellIndex[0]);
@@ -2180,8 +2239,8 @@ namespace SceneEngine
             //  for those names in the TerrainCellRenderer's cache
             //      -- maybe there's a better way to go directly to a hash value?
         char heightMapFile[MaxPath], coverageFile[MaxPath];
-        _terrainConfig.GetCellFilename(heightMapFile, dimof(heightMapFile), UInt2(cellIndex), CoverageId_Heights);
-        _terrainConfig.GetCellFilename(coverageFile, dimof(coverageFile), UInt2(cellIndex), CoverageId_AngleBasedShadows);
+        _terrainConfig.GetCellFilename(heightMapFile, dimof(heightMapFile), cellIndex, CoverageId_Heights);
+        _terrainConfig.GetCellFilename(coverageFile, dimof(coverageFile), cellIndex, CoverageId_AngleBasedShadows);
 
         auto hash = Hash64(heightMapFile);
         hash = Hash64(coverageFile, &coverageFile[XlStringLen(coverageFile)], hash);
@@ -2702,7 +2761,7 @@ namespace SceneEngine
             DeviceContext* context, LightingParserContext& parserContext, 
             TerrainRenderingContext& terrainContext);
 
-        void AddCells(const TerrainConfig& cfg, Int2 cellMin, Int2 cellMax);
+        void AddCells(const TerrainConfig& cfg, UInt2 cellMin, UInt2 cellMax);
         void BuildUberSurface(const ::Assets::ResChar uberSurfaceDir[], const TerrainConfig& cfg);
     };
 
@@ -2751,6 +2810,44 @@ namespace SceneEngine
         }
     }
 
+    UInt2x3 MakeUInt2x3(
+        unsigned m00, unsigned m01, unsigned m02,
+        unsigned m10, unsigned m11, unsigned m12)
+    {
+        UInt2x3 result;
+        result(0,0) = m00;
+        result(0,1) = m01;
+        result(0,2) = m02;
+        result(1,0) = m10;
+        result(1,1) = m11;
+        result(1,2) = m12;
+        return result;
+    }
+
+    UInt2x3 TerrainConfig::CellBasedCoordsToCoverage(TerrainCoverageId coverageId) const
+    {
+        if (coverageId == CoverageId_Heights) {
+            auto t = NodeDimensionsInElements();
+            auto t2 = CellDimensionsInNodes();
+            return MakeUInt2x3(
+                t[0] * t2[0], 0u, 0u,
+                0u, t[1]*t2[1], 0u);
+        } else {
+            for (auto l=_coverageLayers.cbegin(); l!=_coverageLayers.cend(); ++l)
+                if (l->_id == coverageId) {
+                    auto t = l->_dimensions;
+                    auto t2 = CellDimensionsInNodes();
+                    return MakeUInt2x3(
+                        t[0] * t2[0], 0u, 0u,
+                        0u, t[1]*t2[1], 0u);
+                }
+        }
+
+        return MakeUInt2x3(
+            1u, 0u, 0u,
+            0u, 1u, 0u);
+    }
+
     //////////////////////////////////////////////////////////////////////////////////////////
     template<typename Sample>
         static void WriteCellCoverageData(
@@ -2759,27 +2856,28 @@ namespace SceneEngine
     {
         ::Assets::ResChar path[MaxPath];
 
+        auto cells = BuildPrimedCells(cfg);
         auto layerId = cfg.GetCoverageLayer(layerIndex)._id;
 
         TerrainUberSurface<Sample> uberSurface(uberSurfaceName);
-        for (unsigned y=0; y<cfg._cellCount[1]; ++y)
-            for (unsigned x=0; x<cfg._cellCount[0]; ++x) {
-                char cellFile[MaxPath];
-                cfg.GetCellFilename(cellFile, dimof(cellFile), UInt2(x, y), layerId);
-                if (!DoesFileExist(cellFile)) {
-                    XlDirname(path, dimof(path), cellFile);
-                    CreateDirectoryRecursive(path);
-                    TRY {
-                        auto cellOrigin = cfg.CellBasedCoordsToLayerCoords(layerIndex, Float2(float(x), float(y)));
-                        auto cellMaxs = cfg.CellBasedCoordsToLayerCoords(layerIndex, Float2(float(x+1), float(y+1)));
-                        ioFormat.WriteCell(
-                            cellFile, uberSurface, 
-                            AsUInt2(cellOrigin), AsUInt2(cellMaxs), cfg.CellTreeDepth(), 1);
-                    } CATCH(...) {
-                        LogAlwaysError << "Error while writing cell coverage file to: " << cellFile;
-                    } CATCH_END
-                }
+        for (auto c=cells.cbegin(); c!=cells.cend(); ++c) {
+
+            char cellFile[MaxPath];
+            cfg.GetCellFilename(cellFile, dimof(cellFile), c->_cellIndex, layerId);
+            if (!DoesFileExist(cellFile)) {
+                XlDirname(path, dimof(path), cellFile);
+                CreateDirectoryRecursive(path);
+
+                TRY {
+                    ioFormat.WriteCell(
+                        cellFile, uberSurface, 
+                        c->_coverageUber[layerIndex].first, c->_coverageUber[layerIndex].second, cfg.CellTreeDepth(), 1);
+                } CATCH(...) {
+                    LogAlwaysError << "Error while writing cell coverage file to: " << cellFile;
+                } CATCH_END
             }
+
+        }
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////
@@ -2839,23 +2937,20 @@ namespace SceneEngine
         HeightsUberSurfaceInterface uberSurfaceInterface(heightsData, outputIOFormat);
 
         //////////////////////////////////////////////////////////////////////////////////////
-        for (unsigned y=0; y<outputConfig._cellCount[1]; ++y) {
-            for (unsigned x=0; x<outputConfig._cellCount[0]; ++x) {
-                char heightMapFile[MaxPath];
-                outputConfig.GetCellFilename(heightMapFile, dimof(heightMapFile), UInt2(x, y), CoverageId_Heights);
-                if (!DoesFileExist(heightMapFile)) {
-                    char path[MaxPath];
-                    XlDirname(path, dimof(path), heightMapFile);
-                    CreateDirectoryRecursive(path);
-                    TRY {
-                        auto cellOrigin = outputConfig.CellBasedCoordsToTerrainCoords(Float2(float(x), float(y)));
-                        auto cellMaxs = outputConfig.CellBasedCoordsToTerrainCoords(Float2(float(x+1), float(y+1)));
-                        outputIOFormat->WriteCell(
-                            heightMapFile, *uberSurfaceInterface.GetUberSurface(), 
-                            AsUInt2(cellOrigin), AsUInt2(cellMaxs), outputConfig.CellTreeDepth(), outputConfig.NodeOverlap());
-                    } CATCH(...) { // sometimes throws (eg, if the directory doesn't exist)
-                    } CATCH_END
-                }
+        auto cells = BuildPrimedCells(outputConfig);
+        for (auto c=cells.cbegin(); c!=cells.cend(); ++c) {
+            char heightMapFile[MaxPath];
+            outputConfig.GetCellFilename(heightMapFile, dimof(heightMapFile), c->_cellIndex, CoverageId_Heights);
+            if (!DoesFileExist(heightMapFile)) {
+                char path[MaxPath];
+                XlDirname(path, dimof(path), heightMapFile);
+                CreateDirectoryRecursive(path);
+                TRY {
+                    outputIOFormat->WriteCell(
+                        heightMapFile, *uberSurfaceInterface.GetUberSurface(), 
+                        c->_heightUber.first, c->_heightUber.second, outputConfig.CellTreeDepth(), outputConfig.NodeOverlap());
+                } CATCH(...) { // sometimes throws (eg, if the directory doesn't exist)
+                } CATCH_END
             }
         }
     }
@@ -2889,8 +2984,8 @@ namespace SceneEngine
                 //////////////////////////////////////////////////////////////////////////////////////
                     // build the uber shadowing file, and then write out the shadowing textures for each node
                 // Int2 interestingMins((9-1) * 16 * 32, (19-1) * 16 * 32), interestingMaxs((9+4) * 16 * 32, (19+4) * 16 * 32);
-                Int2 interestingMins(0, 0);
-                Int2 interestingMaxs = UInt2(
+                UInt2 interestingMins(0, 0);
+                UInt2 interestingMaxs = UInt2(
                     cfg._cellCount[0] * cfg.CellDimensionsInNodes()[0] * cfg.NodeDimensionsInElements()[0],
                     cfg._cellCount[1] * cfg.CellDimensionsInNodes()[1] * cfg.NodeDimensionsInElements()[1]);
 
@@ -2939,55 +3034,84 @@ namespace SceneEngine
         return cfg.CellDimensionsInNodes()[0] * cfg.NodeDimensionsInElements()[0] * cfg.ElementSpacing();
     }
 
-    void TerrainManager::Pimpl::AddCells(const TerrainConfig& cfg, Int2 cellMin, Int2 cellMax)
+    std::pair<float, float> CalculateMinAndMaxHeights(const ::Assets::ResChar heightMapFilename[], ITerrainFormat& ioFormat)
     {
-        const auto cellSize = CellSizeWorldSpace(cfg);
-        for (int cellY=cellMin[1]; cellY<cellMax[1]; ++cellY) {
-            for (int cellX=cellMin[0]; cellX<cellMax[0]; ++cellX) {
-                TerrainCellId cell;
-                cfg.GetCellFilename(cell._heightMapFilename, dimof(cell._heightMapFilename), UInt2(cellX, cellY), CoverageId_Heights);
+            //  Calculate the bounding box. Note that we have to actually read the
+            //  height map file to get this information. Perhaps we can cache this
+            //  somewhere, to avoid having to load the scaffold for every cell on
+            //  startup
+        auto& heights = ioFormat.LoadHeights(heightMapFilename);
+        float minHeight = FLT_MAX, maxHeight = -FLT_MAX;
+        for (auto i=heights._nodes.cbegin(); i!=heights._nodes.cend(); ++i) {
+            float zScale = (*i)->_localToCell(2, 2);
+            float zOffset = (*i)->_localToCell(2, 3);
+            minHeight = std::min(minHeight, zOffset);
+            maxHeight = std::max(maxHeight, zOffset + zScale);
+        }
+        return std::make_pair(minHeight, maxHeight);
+    }
 
-                auto t = cfg.CellBasedCoordsToTerrainCoords(Float2(float(cellX), float(cellY)));
-                auto cellOrigin = _coords.TerrainCoordsToWorldSpace(t);
-                cell._cellToWorld = Float4x4(
-                    cellSize, 0.f, 0.f, cellOrigin[0],
-                    0.f, cellSize, 0.f, cellOrigin[1],
-                    0.f, 0.f, 1.f, _coords.TerrainOffset()[2],
-                    0.f, 0.f, 0.f, 1.f);
+    static std::vector<std::pair<Float3, Float3>> CalculateCellBoundingBoxes(
+        const TerrainConfig& cfg, ITerrainFormat& ioFormat)
+    {
+        const UInt2 cellMin(0, 0);
+        const UInt2 cellMax = cfg._cellCount;
+        auto cellBasedToTerrain = cfg.CellBasedCoordsToCoverage(CoverageId_Heights);
 
-                    //  Calculate the bounding box. Note that we have to actually read the
-                    //  height map file to get this information. Perhaps we can cache this
-                    //  somewhere, to avoid having to load the scaffold for every cell on
-                    //  startup
-                auto& heights = _ioFormat->LoadHeights(cell._heightMapFilename);
-                float minHeight = FLT_MAX, maxHeight = -FLT_MAX;
-                for (auto i=heights._nodes.cbegin(); i!=heights._nodes.cend(); ++i) {
-                    float zScale = (*i)->_localToCell(2, 2);
-                    float zOffset = (*i)->_localToCell(2, 3);
-                    minHeight = std::min(minHeight, zOffset);
-                    maxHeight = std::max(maxHeight, zOffset + zScale);
-                }
+        std::vector<std::pair<Float3, Float3>> result;
+        result.reserve((cellMax[0] - cellMin[0]) * (cellMax[1] - cellMin[1]));
 
-                cell._heightsToUber._mins = AsUInt2(t);
-                cell._heightsToUber._maxs = cell._heightsToUber._mins + 
-                    UInt2(  cfg.CellDimensionsInNodes()[0] * cfg.NodeDimensionsInElements()[0], 
-                            cfg.CellDimensionsInNodes()[1] * cfg.NodeDimensionsInElements()[1]);
+        for (unsigned cellY=cellMin[1]; cellY<cellMax[1]; ++cellY) {
+            for (unsigned cellX=cellMin[0]; cellX<cellMax[0]; ++cellX) {
 
-                for (unsigned c=0; c<std::min(cfg.GetCoverageLayerCount(), TerrainCellId::MaxCoverageCount); ++c) {
-                    const auto& l = cfg.GetCoverageLayer(c);
-                    cfg.GetCellFilename(
-                        cell._coverageFilename[c], dimof(cell._coverageFilename[0]), 
-                        UInt2(cellX, cellY), l._id);
-                    cell._coverageIds[c] = l._id;
+                ::Assets::ResChar heightMapFilename[MaxPath];
+                cfg.GetCellFilename(
+                    heightMapFilename, dimof(heightMapFilename), 
+                    UInt2(cellX, cellY), CoverageId_Heights);
 
-                    cell._coverageToUber[c]._mins = AsUInt2(cfg.CellBasedCoordsToLayerCoords(c, Float2(float(cellX), float(cellY))));
-                    cell._coverageToUber[c]._maxs = AsUInt2(cfg.CellBasedCoordsToLayerCoords(c, Float2(float(cellX+1), float(cellY+1))));
-                }
-
-                cell._aabbMin = Expand(cellOrigin, minHeight + _coords.TerrainOffset()[2]);
-                cell._aabbMax = Expand(Float2(cellOrigin + Float2(cellSize, cellSize)), maxHeight + _coords.TerrainOffset()[2]);
-                _cells.push_back(cell);
+                auto heightRange = CalculateMinAndMaxHeights(heightMapFilename, ioFormat);
+                std::pair<Float3, Float3> cellBasedAABB;
+                cellBasedAABB.first = Float3(float(cellX), float(cellY), heightRange.first);
+                cellBasedAABB.second = Float3(float(cellX+1), float(cellY+1), heightRange.second);
+                result.push_back(cellBasedAABB);
             }
+        }
+
+        return std::move(result);
+    }
+
+    void TerrainManager::Pimpl::AddCells(const TerrainConfig& cfg, UInt2 cellMin, UInt2 cellMax)
+    {
+        auto cells = BuildPrimedCells(cfg);
+        auto cellBasedAABB = CalculateCellBoundingBoxes(cfg, *_ioFormat);
+        assert(cellBasedAABB.size() >= cells.size());
+
+        auto cellBasedToWorld = _coords.CellBasedCoordsToWorld();
+        auto b = cellBasedAABB.cbegin();
+        for (auto c=cells.cbegin(); c<cells.cend(); ++c, ++b) {
+                // reject cells that haven't been selected
+            if (    c->_cellIndex[0] < cellMin[0] || c->_cellIndex[0] >= cellMax[0]
+                ||  c->_cellIndex[1] < cellMin[1] || c->_cellIndex[1] >= cellMax[1])
+                continue;
+
+            TerrainCellId cell;
+            cell._cellToWorld = Combine(AsFloat4x4(Float3(float(c->_cellIndex[0]), float(c->_cellIndex[1]), 0.f)), cellBasedToWorld);
+            
+            cfg.GetCellFilename(cell._heightMapFilename, dimof(cell._heightMapFilename), c->_cellIndex, CoverageId_Heights);
+            cell._heightsToUber._mins = c->_heightUber.first;
+            cell._heightsToUber._maxs = c->_heightUber.second;
+
+            for (unsigned q=0; q<std::min(cfg.GetCoverageLayerCount(), TerrainCellId::MaxCoverageCount); ++q) {
+                const auto& l = cfg.GetCoverageLayer(q);
+                cfg.GetCellFilename(cell._coverageFilename[q], dimof(cell._coverageFilename[q]), c->_cellIndex, l._id);
+                cell._coverageIds[q] = l._id;
+                cell._coverageToUber[q]._mins = c->_coverageUber[q].first;
+                cell._coverageToUber[q]._maxs = c->_coverageUber[q].second;
+            }
+
+            cell._aabbMin = TransformPoint(cellBasedToWorld, b->first);
+            cell._aabbMax = TransformPoint(cellBasedToWorld, b->second);
+            _cells.push_back(cell);
         }
     }
 
@@ -3054,7 +3178,7 @@ namespace SceneEngine
     //////////////////////////////////////////////////////////////////////////////////////////
     void TerrainManager::Load(
         const TerrainConfig& cfg, 
-        Int2 cellMin, Int2 cellMax, bool allowModification)
+        UInt2 cellMin, UInt2 cellMax, bool allowModification)
     {
         Reset();
 
@@ -3356,82 +3480,89 @@ namespace SceneEngine
         }
     }
 
-    Float2  TerrainCoordinateSystem::WorldSpaceToTerrainCoords(const Float2& worldSpacePosition) const
+    Float4x4 TerrainCoordinateSystem::CellBasedCoordsToWorld() const
     {
-        return Float2(
-            (worldSpacePosition[0] - _terrainOffset[0]) * float(_config.NodeDimensionsInElements()[0]) / _nodeSizeMeters, 
-            (worldSpacePosition[1] - _terrainOffset[1]) * float(_config.NodeDimensionsInElements()[1]) / _nodeSizeMeters);
+        return AsFloat4x4(
+            ScaleTranslation(
+                Float3(_nodeSizeMeters, _nodeSizeMeters, 1.f), _terrainOffset));
     }
 
-    float TerrainCoordinateSystem::WorldSpaceDistanceToTerrainCoords(float distance) const
-    {
-            //  if the scale factors for X and Y are different, we can only end up with an
-            //  approximation (since we don't know if this distance is the distance along
-            //  a straight line, or around a curve, or what direction it falls... etc)
-        float scale = std::min(
-            float(_config.NodeDimensionsInElements()[0]) / _nodeSizeMeters, 
-            float(_config.NodeDimensionsInElements()[1]) / _nodeSizeMeters);
-
-        return scale * distance;
-    }
-
-    Float2  TerrainCoordinateSystem::TerrainCoordsToWorldSpace(const Float2& terrainCoords) const
-    {
-            //  calculate world space coords (excluding height) that correspond
-            //  to the terrain coords given.
-            //  Note that the returned "Z" is always 0.f
-        return Float2(
-            terrainCoords[0] * _nodeSizeMeters / float(_config.NodeDimensionsInElements()[0]) + _terrainOffset[0], 
-            terrainCoords[1] * _nodeSizeMeters / float(_config.NodeDimensionsInElements()[1]) + _terrainOffset[1]);
-    }
-
-    Float2      TerrainCoordinateSystem::WorldSpaceToLayerCoords(unsigned layerIndex, const Float2& worldSpacePosition) const
-    {
-        assert(layerIndex < _config.GetCoverageLayerCount());
-        auto nodeDims = _config.GetCoverageLayer(layerIndex)._dimensions;
-        return Float2(
-            (worldSpacePosition[0] - _terrainOffset[0]) * float(nodeDims[0]) / _nodeSizeMeters, 
-            (worldSpacePosition[1] - _terrainOffset[1]) * float(nodeDims[1]) / _nodeSizeMeters);
-    }
-
-    float       TerrainCoordinateSystem::WorldSpaceDistanceToLayerCoords(unsigned layerIndex, float distance) const
-    {
-        assert(layerIndex < _config.GetCoverageLayerCount());
-        auto nodeDims = _config.GetCoverageLayer(layerIndex)._dimensions;
-
-        float scale = std::min(
-            float(nodeDims[0]) / _nodeSizeMeters, 
-            float(nodeDims[1]) / _nodeSizeMeters);
-
-        return scale * distance;
-    }
+    // Float2  TerrainCoordinateSystem::WorldSpaceToTerrainCoords(const Float2& worldSpacePosition) const
+    // {
+    //     return Float2(
+    //         (worldSpacePosition[0] - _terrainOffset[0]) * float(_config.NodeDimensionsInElements()[0]) / _nodeSizeMeters, 
+    //         (worldSpacePosition[1] - _terrainOffset[1]) * float(_config.NodeDimensionsInElements()[1]) / _nodeSizeMeters);
+    // }
+    // 
+    // float TerrainCoordinateSystem::WorldSpaceDistanceToTerrainCoords(float distance) const
+    // {
+    //         //  if the scale factors for X and Y are different, we can only end up with an
+    //         //  approximation (since we don't know if this distance is the distance along
+    //         //  a straight line, or around a curve, or what direction it falls... etc)
+    //     float scale = std::min(
+    //         float(_config.NodeDimensionsInElements()[0]) / _nodeSizeMeters, 
+    //         float(_config.NodeDimensionsInElements()[1]) / _nodeSizeMeters);
+    // 
+    //     return scale * distance;
+    // }
+    // 
+    // Float2  TerrainCoordinateSystem::TerrainCoordsToWorldSpace(const Float2& terrainCoords) const
+    // {
+    //         //  calculate world space coords (excluding height) that correspond
+    //         //  to the terrain coords given.
+    //         //  Note that the returned "Z" is always 0.f
+    //     return Float2(
+    //         terrainCoords[0] * _nodeSizeMeters / float(_config.NodeDimensionsInElements()[0]) + _terrainOffset[0], 
+    //         terrainCoords[1] * _nodeSizeMeters / float(_config.NodeDimensionsInElements()[1]) + _terrainOffset[1]);
+    // }
+    // 
+    // Float2      TerrainCoordinateSystem::WorldSpaceToLayerCoords(unsigned layerIndex, const Float2& worldSpacePosition) const
+    // {
+    //     assert(layerIndex < _config.GetCoverageLayerCount());
+    //     auto nodeDims = _config.GetCoverageLayer(layerIndex)._dimensions;
+    //     return Float2(
+    //         (worldSpacePosition[0] - _terrainOffset[0]) * float(nodeDims[0]) / _nodeSizeMeters, 
+    //         (worldSpacePosition[1] - _terrainOffset[1]) * float(nodeDims[1]) / _nodeSizeMeters);
+    // }
+    // 
+    // float       TerrainCoordinateSystem::WorldSpaceDistanceToLayerCoords(unsigned layerIndex, float distance) const
+    // {
+    //     assert(layerIndex < _config.GetCoverageLayerCount());
+    //     auto nodeDims = _config.GetCoverageLayer(layerIndex)._dimensions;
+    // 
+    //     float scale = std::min(
+    //         float(nodeDims[0]) / _nodeSizeMeters, 
+    //         float(nodeDims[1]) / _nodeSizeMeters);
+    // 
+    //     return scale * distance;
+    // }
 
     Float3      TerrainCoordinateSystem::TerrainOffset() const { return _terrainOffset; }
     void        TerrainCoordinateSystem::SetTerrainOffset(const Float3& newOffset) { _terrainOffset = newOffset; }
     void        TerrainCoordinateSystem::SetConfig(const TerrainConfig& cfg) { _config = cfg; }
 
-    Float2 TerrainConfig::TerrainCoordsToCellBasedCoords(const Float2& terrainCoords) const
-    {
-        auto t = NodeDimensionsInElements();
-        auto t2 = CellDimensionsInNodes();
-        return Float2(terrainCoords[0] / float(t[0] * t2[0]), terrainCoords[1] / float(t[1] * t2[1]));
-    }
-
-    Float2 TerrainConfig::CellBasedCoordsToTerrainCoords(const Float2& cellBasedCoords) const
-    {
-        auto t = NodeDimensionsInElements();
-        auto t2 = CellDimensionsInNodes();
-        return Float2(cellBasedCoords[0] * float(t[0]*t2[0]), cellBasedCoords[1] * float(t[1]*t2[1]));
-    }
-
-    Float2 TerrainConfig::CellBasedCoordsToLayerCoords(unsigned layerIndex, const Float2& cellBasedCoords) const
-    {
-        auto t = _coverageLayers[layerIndex]._dimensions;
-        auto t2 = CellDimensionsInNodes();
-        return Float2(
-            cellBasedCoords[0] * float(t[0]*t2[0]), 
-            cellBasedCoords[1] * float(t[1]*t2[1]));
-    }
+    // Float2 TerrainConfig::TerrainCoordsToCellBasedCoords(const Float2& terrainCoords) const
+    // {
+    //     auto t = NodeDimensionsInElements();
+    //     auto t2 = CellDimensionsInNodes();
+    //     return Float2(terrainCoords[0] / float(t[0] * t2[0]), terrainCoords[1] / float(t[1] * t2[1]));
+    // }
+    // 
+    // Float2 TerrainConfig::CellBasedCoordsToTerrainCoords(const Float2& cellBasedCoords) const
+    // {
+    //     auto t = NodeDimensionsInElements();
+    //     auto t2 = CellDimensionsInNodes();
+    //     return Float2(cellBasedCoords[0] * float(t[0]*t2[0]), cellBasedCoords[1] * float(t[1]*t2[1]));
+    // }
+    // 
+    // Float2 TerrainConfig::CellBasedCoordsToLayerCoords(unsigned layerIndex, const Float2& cellBasedCoords) const
+    // {
+    //     auto t = _coverageLayers[layerIndex]._dimensions;
+    //     auto t2 = CellDimensionsInNodes();
+    //     return Float2(
+    //         cellBasedCoords[0] * float(t[0]*t2[0]), 
+    //         cellBasedCoords[1] * float(t[1]*t2[1]));
+    // }
 
     UInt2 TerrainConfig::CellDimensionsInNodes() const
     {

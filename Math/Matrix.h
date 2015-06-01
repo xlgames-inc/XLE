@@ -21,9 +21,15 @@ namespace XLEMath
 {
     #if MATHLIBRARY_ACTIVE == MATHLIBRARY_CML
 
+        using Float2x2 = cml::matrix< float, cml::fixed<2,2>, cml::col_basis>;
+        using Float2x3 = cml::matrix< float, cml::fixed<2,3>, cml::col_basis>;
+        
         using Float3x3 = cml::matrix< float, cml::fixed<3,3>, cml::col_basis>;
         using Float3x4 = cml::matrix< float, cml::fixed<3,4>, cml::col_basis>;
         using Float4x4 = cml::matrix< float, cml::fixed<4,4>, cml::col_basis>;
+
+        using UInt2x2 = cml::matrix< unsigned, cml::fixed<2,2>, cml::col_basis>;
+        using UInt2x3 = cml::matrix< unsigned, cml::fixed<2,3>, cml::col_basis>;
 
         T1(Primitive) using Matrix3x3T = cml::matrix< Primitive, cml::fixed<3,3>, cml::col_basis>;
         T1(Primitive) using Matrix3x4T = cml::matrix< Primitive, cml::fixed<3,4>, cml::col_basis>;
