@@ -70,6 +70,7 @@ namespace Utility
             std::basic_string<CharType> operator[](const CharType name[]) { return Attribute(name); }
 
         operator bool() const { return _index != ~0u; }
+        bool operator!() const { return _index == ~0u; }
     protected:
         Document<CharType>* _doc;
         unsigned _index;
@@ -104,6 +105,45 @@ namespace Utility
         auto temp = Attribute<Type>(name);
         if (temp.first) return std::move(temp.second);
         return def;
+    }
+
+    template<typename Type, typename CharType>
+        inline void Serialize(OutputStreamFormatter& formatter, const CharType name[], const Type& obj)
+    {
+        formatter.WriteAttribute(
+            name, 
+            Conversion::Convert<std::basic_string<CharType>>(ImpliedTyping::AsString(obj, true)));
+    }
+
+    template<typename CharType>
+        inline void Serialize(OutputStreamFormatter& formatter, const CharType name[], const CharType str[])
+    {
+        formatter.WriteAttribute(name, str);
+    }
+
+    template<typename FirstType, typename SecondType, typename CharType>
+        inline void Serialize(OutputStreamFormatter& formatter, const CharType name[], const std::pair<FirstType, SecondType>& obj)
+    {
+        auto ele = formatter.BeginElement(name);
+        Serialize(formatter, u("First"), obj.first);
+        Serialize(formatter, u("Second"), obj.second);
+        formatter.EndElement(ele);
+    }
+
+    template<typename Type, typename CharType>
+        inline Type Deserialize(typename Document<CharType>::ElementHelper& ele, const CharType name[], const Type& obj)
+    {
+        return ele(name, obj);
+    }
+
+    template<typename FirstType, typename SecondType, typename CharType>
+        inline std::pair<FirstType, SecondType> Deserialize(typename Document<CharType>::ElementHelper& ele, const CharType name[], const std::pair<FirstType, SecondType>& def)
+    {
+        auto subEle = ele.Element(name);
+        if (!subEle) return def;
+        return std::make_pair(
+            Deserialize(subEle, u("First"), def.first),
+            Deserialize(subEle, u("Second"), def.second));
     }
 }
 

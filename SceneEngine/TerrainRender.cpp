@@ -17,7 +17,6 @@
 #include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Assets/DeferredShaderResource.h"
-#include "../Utility/Streams/DataSerialize.h"
 #include "../Utility/Streams/Stream.h"
 #include "../Utility/Streams/StreamDOM.h"
 #include "../Utility/StringFormat.h"
@@ -2539,31 +2538,29 @@ namespace SceneEngine
         return std::move(cellIndex);
     }
 
+    static const utf8* TextureNames[] = { u("Texture0"), u("Texture1"), u("Slopes") };
+
     void TerrainMaterialScaffold::Write(OutputStream& stream) const
     {
-        const char * textureNames[] = { "Texture0", "Texture1", "Slopes" };
+        OutputStreamFormatter formatter(stream);
+        auto cfg = formatter.BeginElement(u("Config"));
+        Serialize(formatter, u("DiffuseDims"), _diffuseDims);
+        Serialize(formatter, u("NormalDims"), _normalDims);
+        Serialize(formatter, u("ParamDims"), _paramDims);
 
-        auto config = std::make_unique<Data>("Config");
-        config->Add(Serialize("DiffuseDims", _diffuseDims).release());
-        config->Add(Serialize("NormalDims", _normalDims).release());
-        config->Add(Serialize("ParamDims", _paramDims).release());
-
-        auto strataList = std::make_unique<Data>("Strata");
+        auto strataList = formatter.BeginElement(u("Strata"));
         unsigned strataIndex = 0;
         for (auto s=_strata.cbegin(); s!=_strata.cend(); ++s, ++strataIndex) {
-            auto strata = std::make_unique<Data>(StringMeld<64>() << "Strata" << strataIndex);
-            for (unsigned t=0; t<dimof(textureNames); ++t)
-                strata->SetAttribute(textureNames[t], s->_texture[t].c_str());
+            auto strata = formatter.BeginElement((StringMeld<64, utf8>() << "Strata" << strataIndex).get());
+            for (unsigned t=0; t<dimof(TextureNames); ++t)
+                formatter.WriteAttribute(TextureNames[t], Conversion::Convert<std::basic_string<utf8>>(s->_texture[t]));
 
-            strata->SetAttribute("EndHeight", s->_endHeight);
-            strata->Add(Serialize("Mapping", Float4(s->_mappingConstant[0], s->_mappingConstant[1], s->_mappingConstant[2], 1.f)).release());
-            strataList->Add(strata.release());
+            Serialize(formatter, "EndHeight", s->_endHeight);
+            Serialize(formatter, "Mapping", Float4(s->_mappingConstant[0], s->_mappingConstant[1], s->_mappingConstant[2], 1.f));
+            formatter.EndElement(strata);
         }
-
-        auto root = std::make_unique<Data>();
-        root->Add(config.release());
-        root->Add(strataList.release());
-        root->SaveToOutputStream(stream);
+        formatter.EndElement(strataList);
+        formatter.EndElement(cfg);
     }
 
     TerrainMaterialScaffold::TerrainMaterialScaffold()
@@ -2575,42 +2572,36 @@ namespace SceneEngine
 
     TerrainMaterialScaffold::TerrainMaterialScaffold(const char definitionFile[])
     {
-        const char * textureNames[] = { "Texture0", "Texture1", "Slopes" };
-
         size_t fileSize = 0;
         auto file = LoadFileAsMemoryBlock(definitionFile, &fileSize);
         if (!fileSize)
             ThrowException(::Exceptions::BasicLabel("Parse error while loading terrain texture list"));
 
-        Data data;
-        bool loadResult = data.Load((const char*)file.get(), int(fileSize));
-        if (!loadResult)
-            ThrowException(::Exceptions::BasicLabel("Parse error while loading terrain texture list"));
+        InputStreamFormatter<utf8> formatter(
+            MemoryMappedInputStream(file.get(), PtrAdd(file.get(), fileSize)));
+        Document<utf8> doc(formatter);
 
-        auto* cfg = data.ChildWithValue("Config");
-        _diffuseDims = Deserialize(cfg, "DiffuseDims", UInt2(512, 512));
-        _normalDims = Deserialize(cfg, "NormalDims", UInt2(512, 512));
-        _paramDims = Deserialize(cfg, "ParamDims", UInt2(512, 512));
+        auto cfg = doc.Element(u("Config"));
 
-        auto* strata = data.ChildWithValue("Strata");
+        _diffuseDims = Deserialize(cfg, u("DiffuseDims"), UInt2(512, 512));
+        _normalDims = Deserialize(cfg, u("NormalDims"), UInt2(512, 512));
+        _paramDims = Deserialize(cfg, u("ParamDims"), UInt2(512, 512));
+
+        auto strata = cfg.Element(u("Strata"));
         unsigned strataCount = 0;
-        for (auto* c = strata->child; c; c = c->next) { ++strataCount; }
+        for (auto c = strata.FirstChild(); c; c = c.NextSibling()) { ++strataCount; }
 
         unsigned strataIndex = 0;
-        for (auto* d = strata->child; d; d = d->next, ++strataIndex) {
+        for (auto c = strata.FirstChild(); c; c = c.NextSibling(), ++strataIndex) {
             Strata newStrata;
-            for (unsigned t=0; t<dimof(textureNames); ++t) {
-                auto*tex = d->ChildWithValue(textureNames[t]);
-                if (tex && tex->ChildAt(0)) {
-                    auto* n = tex->ChildAt(0);
-                    if (n->value && _stricmp(n->value, "null")!=0) {
-                        newStrata._texture[t] = n->value;
-                    }
-                }
+            for (unsigned t=0; t<dimof(TextureNames); ++t) {
+                auto tName = c.AttributeOrEmpty(TextureNames[t]);
+                if (XlCompareStringI(tName.c_str(), u("null"))!=0)
+                    newStrata._texture[t] = Conversion::Convert<::Assets::rstring>(tName);
             }
 
-            newStrata._endHeight = Deserialize(d, "EndHeight", 0.f);
-            auto mappingConst = Deserialize(d, "Mapping", Float4(1.f, 1.f, 1.f, 1.f));
+            newStrata._endHeight = Deserialize(c, u("EndHeight"), 0.f);
+            auto mappingConst = Deserialize(c, u("Mapping"), Float4(1.f, 1.f, 1.f, 1.f));
             newStrata._mappingConstant[0] = mappingConst[0];
             newStrata._mappingConstant[1] = mappingConst[1];
             newStrata._mappingConstant[2] = mappingConst[2];
@@ -3136,27 +3127,15 @@ namespace SceneEngine
 
     void TerrainCachedData::Write(OutputStream& stream) const
     {
-        auto outputRoot = std::make_unique<Data>("TerrainCachedData");
-
-        auto heightRangePart = std::make_unique<Data>("CellHeightRange");
+        OutputStreamFormatter formatter(stream);
+        auto heightRange = formatter.BeginElement(u("CellHeightRange"));
         for (auto l=_cells.cbegin(); l!=_cells.cend(); ++l) {
-            auto element = std::make_unique<Data>();
-
-            auto cellIndex = std::make_unique<Data>("CellIndex");
-            cellIndex->Add(new Data(StringMeld<32>() << l->_cellIndex[0]));
-            cellIndex->Add(new Data(StringMeld<32>() << l->_cellIndex[1]));
-            element->Add(cellIndex.release());
-
-            auto heightRange = std::make_unique<Data>("HeightRange");
-            heightRange->Add(new Data(StringMeld<32>() << l->_heightRange.first));
-            heightRange->Add(new Data(StringMeld<32>() << l->_heightRange.second));
-            element->Add(heightRange.release());
-
-            heightRangePart->Add(element.release());
+            auto cell = formatter.BeginElement("Cell");
+            Serialize(formatter, "CellIndex", l->_cellIndex);
+            Serialize(formatter, "HeightRange", l->_heightRange);
+            formatter.EndElement(cell);
         }
-        outputRoot->Add(heightRangePart.release());
-
-        outputRoot->SaveToOutputStream(stream);
+        formatter.EndElement(heightRange);
     }
 
     TerrainCachedData::TerrainCachedData() {}
@@ -3165,17 +3144,17 @@ namespace SceneEngine
         size_t fileSize = 0;
         auto sourceFile = LoadFileAsMemoryBlock(filename, &fileSize);
 
-        Data data;
-        data.Load((const char*)sourceFile.get(), int(fileSize));
+        InputStreamFormatter<utf8> formatter(
+            MemoryMappedInputStream(sourceFile.get(), PtrAdd(sourceFile.get(), fileSize)));
+        Document<utf8> doc(formatter);
 
-        auto heightRanges = data.ChildWithValue("CellHeightRange");
-
+        auto heightRanges = doc.Element(u("CellHeightRange"));
         if (heightRanges) {
-            for (auto child=heightRanges->child; child; child=child->next) {
+            for (auto child = heightRanges.FirstChild(); child; child=child.NextSibling()) {
                 _cells.push_back(Cell
                     {
-                        Deserialize(child, "CellIndex", UInt2(0,0)),
-                        Deserialize(child, "HeightRange", std::make_pair(0.f, 0.f))
+                        Deserialize(child, u("CellIndex"), UInt2(0,0)),
+                        Deserialize(child, u("HeightRange"), std::make_pair(0.f, 0.f))
                     });
             }
         }
@@ -3725,8 +3704,6 @@ namespace SceneEngine
         _textureCfgName = buffer;
     }
 
-    const utf8* u(const char input[]) { return (const utf8*)input; }
-
     TerrainConfig::TerrainConfig(const ::Assets::ResChar baseDir[])
     : _baseDir(FormatBaseDir(baseDir)), _filenamesMode(XLE)
     , _cellCount(0,0), _nodeDimsInElements(32u), _nodeOverlap(2u)
@@ -3769,20 +3746,6 @@ namespace SceneEngine
             XlConcatPath(buffer, dimof(buffer), _baseDir.c_str(), fn, &fn[XlStringLen(fn)]);
             _textureCfgName = buffer;
         }
-    }
-
-    template<typename Type, typename CharType>
-        static void Serialize(OutputStreamFormatter& formatter, const CharType name[], const Type& obj)
-    {
-        formatter.WriteAttribute(
-            name, 
-            Conversion::Convert<std::basic_string<CharType>>(ImpliedTyping::AsString(obj, true)));
-    }
-
-    template<typename CharType>
-        static void Serialize(OutputStreamFormatter& formatter, const CharType name[], const CharType str[])
-    {
-        formatter.WriteAttribute(name, str);
     }
 
     void TerrainConfig::Save()

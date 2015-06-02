@@ -137,6 +137,7 @@ namespace Utility
     XL_UTILITY_API size_t utf8_vprintf(const char* fmt, va_list ap);
     XL_UTILITY_API size_t utf8_printf(const char* fmt, ...);
 
+    inline const utf8* u(const char input[]) { return (const utf8*)input; }
 }
 
 using namespace Utility;
