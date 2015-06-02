@@ -64,7 +64,7 @@ namespace Utility
         unsigned        _currentIndentLevel;
         bool            _hotLine;
         unsigned        _currentLineLength;
-        unsigned        _writingSimpleAttributes;
+        bool            _pendingHeader;
 
         #if defined(STREAM_FORMATTER_CHECK_ELEMENTS)
             std::vector<ElementId> _elementStack;
@@ -77,7 +77,7 @@ namespace Utility
     class MemoryMappedInputStream
     {
     public:
-        const void* ReadPointer() const { assert(_ptr != _end); return _ptr; }
+        const void* ReadPointer() const { return _ptr; }
         ptrdiff_t RemainingBytes() const { return ptrdiff_t(_end) - ptrdiff_t(_ptr); }
         void MovePointer(ptrdiff_t offset);
         void SetPointer(const void* newPtr);
@@ -126,10 +126,14 @@ namespace Utility
         unsigned _lineIndex;
         const void* _lineStart;
 
-        unsigned _simpleAttributeMode;
-        unsigned _simpleElementNameMode;
+        bool _protectedStringMode;
+
+        unsigned _format;
+        unsigned _tabWidth;
+        bool _pendingHeader;
 
         unsigned CharIndex() const;
+        void ReadHeader();
     };
 
 }

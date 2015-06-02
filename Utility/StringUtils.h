@@ -98,8 +98,12 @@ namespace Utility
     XL_UTILITY_API void     XlCatNString        (ucs2* dst, size_t size, const ucs2* src, size_t length);
     XL_UTILITY_API size_t   XlStringSize        (const ucs2* str);
     XL_UTILITY_API size_t   XlStringLen         (const ucs2* str);
+
+    XL_UTILITY_API int      XlComparePrefix     (const ucs2* x, const ucs2* y, size_t len);
+    XL_UTILITY_API int      XlComparePrefixI    (const ucs2* x, const ucs2* y, size_t len);
     XL_UTILITY_API size_t   XlCompareString     (const ucs2* x, const ucs2* y);
     XL_UTILITY_API size_t   XlCompareStringI    (const ucs2* x, const ucs2* y);
+
     XL_UTILITY_API size_t   XlTokenizeString    (ucs2* buf, size_t count, const ucs2* delimiters, ucs2** tokens, size_t numMaxToken);
 
         ////////////   U N I C H A R   O V E R R I D E S   ////////////

@@ -550,6 +550,32 @@ int XlComparePrefixI(const char* s1, const char* s2, size_t size)
     #endif
 }
 
+int XlComparePrefix(const ucs2* x, const ucs2* y, size_t len)
+{
+    if (!len)
+        return 0;
+
+    while (--len && *x && *x == *y) {
+        ++x;
+        ++y;
+    }
+
+    return (int)(*x - *y);
+}
+
+int XlComparePrefixI(const ucs2* x, const ucs2* y, size_t len)
+{
+    if (!len)
+        return 0;
+
+    while (--len && *x && XlToLower(*x) == XlToLower(*y)) {
+        ++x;
+        ++y;
+    }
+
+    return (int)(XlToLower(*x) - XlToLower(*y));
+}
+
 int XlComparePrefix(const ucs4* x, const ucs4* y, size_t len)
 {
     if (!len)

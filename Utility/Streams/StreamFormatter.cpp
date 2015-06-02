@@ -8,33 +8,11 @@
 #include "Stream.h"
 #include "../BitUtils.h"
 #include "../PtrUtils.h"
+#include "../StringFormat.h"
+#include "../Conversion.h"
 #include "../../Core/Exceptions.h"
 #include <assert.h>
 #include <algorithm>
-
-//
-//  --(Element)--
-//      ~~(Attribute Name)~~::(Attribute Value)::~~(Attribute Name)~~::(Attribute Value)::
-//      ~~(Attribute Name)~~::(Attribute Value)::
-//      --(SubElement)--
-//          ~~(Attribute Name)~~::(Attribute Value)::
-//          ~~(Attribute Name)~~::(Attribute Value
-//  second line of attribute value)::
-//      --(SubElement)--
-//  --(Element)--
-//      ~~(Attribute Name)~~::(Attribute Value)::
-//
-///////////////////////////////////////////////////////////////////////////////////////////////////
-//
-//  *--(Element)--
-//      --(Attribute Name)--=--(Attribute Value)--
-//      --(Attribute Name)--=--(Attribute Value)--
-//      *--(SubElement)--
-//          --(Attribute Name)--=--(Attribute Value)--
-//          --(Attribute Name)--=--(Attribute Value)--
-//
-// Shadows < Id=2; Dims={32, 32}; Format=35 >
-// Material < Id=1000; Dims={128, 128}; Format=62 >
 
 namespace Utility
 {
@@ -65,16 +43,13 @@ namespace Utility
     {
         static const CharType EndLine[];
         static const CharType Tab;
+        static const CharType ElementPrefix;
+        
+        static const CharType ProtectedNamePrefix[];
+        static const CharType ProtectedNamePostfix[];
 
-        static const CharType ElementPrefix[];
-        static const CharType ElementPostfix[];
-        static const CharType AttributeNamePrefix[];
-        static const CharType AttributeNamePostfix[];
-        static const CharType AttributeValuePrefix[];
-        static const CharType AttributeValuePostfix[];
-
-        static const CharType SimpleAttributes_Begin[];
-        static const CharType SimpleAttributes_End[];
+        static const CharType CommentPrefix[];
+        static const CharType HeaderPrefix[];
     };
 
     template<typename CharType, int Count> 
@@ -85,21 +60,30 @@ namespace Utility
     }
 
     template<typename CharType> 
-        static bool UnsafeForSimpleAttribute(CharType c)
+        static bool FormattingChar(CharType c)
     {
-        return c==';' || c=='>' || c=='=' || c=='\r' || c=='\n' || c == 0x0;
+        return c=='~' || c==';' || c=='=' || c=='\r' || c=='\n' || c == 0x0;
     }
 
     template<typename CharType> 
-        static bool UnsafeStarterForSimpleAttribute(CharType c)
+        static bool WhitespaceChar(CharType c)  // (excluding new line)
     {
-        return c==' ' || c=='\t' || c==0x0B || c==0x0C || c==0x85 || c==0xA0;
+        return c==' ' || c=='\t' || c==0x0B || c==0x0C || c==0x85 || c==0xA0 || c==0x0;
     }
 
     template<typename CharType> 
-        static bool UnsafeForSimpleElementName(CharType c)
+        static bool IsSimpleString(const CharType* start, const CharType* end)
     {
-        return c==';' || c=='<' || c=='>' || c=='=' || c=='\r' || c=='\n' || c==' ' || c=='\t' || c==0x0B || c==0x0C || c==0x85 || c==0xA0 || c==0x0;
+            // if there are formatting chars anywhere in the string, it's not simple
+        if (std::find_if(start, end, FormattingChar<CharType>) != end) return false;
+
+            // If the string beings or ends with whitespace, it is also not simple.
+            // This is because the parser will strip off leading and trailing whitespace.
+            // (note that this test will also consider an empty string to be "not simple"
+        if (start == end) return false;
+        if (WhitespaceChar(*start) || WhitespaceChar(*(end-1))) return false;
+        if (*start == FormatterConstants<CharType>::ProtectedNamePrefix[0]) return false;
+        return true;
     }
 
     template<typename CharType>
@@ -107,19 +91,24 @@ namespace Utility
     {
         DoNewLine<CharType>();
 
+        _hotLine = true; DoNewLine<CharType>(); // (force extra new line before new element)
+
         assert(nameEnd > nameStart);
 
-            // in simple cases, we just write the name without extra formatting --
-        if (std::find_if(nameStart, nameEnd, UnsafeForSimpleAttribute<CharType>) == nameEnd && *nameStart != '-') {
+        _stream->WriteChar(FormatterConstants<CharType>::ElementPrefix);
+
+            // in simple cases, we just write the name without extra formatting 
+            //  (otherwise we have to write a string prefix and string postfix
+        if (IsSimpleString(nameStart, nameEnd)) {
             _stream->WriteString(nameStart, nameEnd);
         } else {
-            WriteConst(*_stream, FormatterConstants<CharType>::ElementPrefix, _currentLineLength);
+            WriteConst(*_stream, FormatterConstants<CharType>::ProtectedNamePrefix, _currentLineLength);
             _stream->WriteString(nameStart, nameEnd);
-            WriteConst(*_stream, FormatterConstants<CharType>::ElementPostfix, _currentLineLength);
+            WriteConst(*_stream, FormatterConstants<CharType>::ProtectedNamePostfix, _currentLineLength);
         }
 
         _hotLine = true;
-        _currentLineLength += unsigned(nameEnd - nameStart);
+        _currentLineLength += unsigned(nameEnd - nameStart + 1);
         ++_currentIndentLevel;
 
         #if defined(STREAM_FORMATTER_CHECK_ELEMENTS)
@@ -134,12 +123,17 @@ namespace Utility
     template<typename CharType>
         void OutputStreamFormatter::DoNewLine()
     {
-        if (_hotLine) {
-            if (_writingSimpleAttributes != ~unsigned(0x0)) {
-                WriteConst(*_stream, FormatterConstants<CharType>::SimpleAttributes_End, _currentLineLength);
-                _writingSimpleAttributes = ~unsigned(0x0);
-            }
+        if (_pendingHeader) {
+            WriteConst(*_stream, FormatterConstants<CharType>::HeaderPrefix, _currentLineLength);
+            StringMeld<128, CharType> buffer;
+            buffer << "Format=1; Tab=" << TabWidth;
+            _stream->WriteNullTerm(buffer.get());
 
+            _hotLine = true;
+            _pendingHeader = false;
+        }
+
+        if (_hotLine) {
             WriteConst(*_stream, FormatterConstants<CharType>::EndLine, _currentLineLength);
             
             CharType tabBuffer[64];
@@ -157,46 +151,37 @@ namespace Utility
             const CharType* nameStart, const CharType* nameEnd,
             const CharType* valueStart, const CharType* valueEnd)
     {
-        if (    std::find_if(nameStart, nameEnd, UnsafeForSimpleAttribute<CharType>) == nameEnd
-            &&  std::find_if(valueStart, valueEnd, UnsafeForSimpleAttribute<CharType>) == valueEnd
-            &&  (nameEnd == nameStart) || !UnsafeStarterForSimpleAttribute(*nameStart)
-            &&  (valueEnd == valueStart) || !UnsafeStarterForSimpleAttribute(*valueStart)) {
+        const unsigned idealLineLength = 100;
+        bool forceNewLine = 
+            (_currentLineLength + (valueEnd - valueStart) + (nameEnd - nameStart) + 3) > idealLineLength;
 
-            const unsigned idealLineLength = 100;
-            bool forceNewLine = 
-                    (_writingSimpleAttributes != ~unsigned(0x0) && _writingSimpleAttributes != _currentIndentLevel)
-                ||  (_currentLineLength + (valueEnd - valueStart) + (nameEnd - nameStart) + 3) > idealLineLength;
-
-            if (forceNewLine) DoNewLine<CharType>();
-
-            if (_writingSimpleAttributes != _currentIndentLevel) {
-                if (_hotLine) { _stream->WriteChar((CharType)' '); ++_currentLineLength; }
-                WriteConst(*_stream, FormatterConstants<CharType>::SimpleAttributes_Begin, _currentLineLength);
-            } else {
-                _stream->WriteChar((CharType)';'); ++_currentLineLength;
-                _stream->WriteChar((CharType)' '); ++_currentLineLength;
-            }
-            _stream->WriteString(nameStart, nameEnd);
-            _stream->WriteChar((CharType)'=');
-            _stream->WriteString(valueStart, valueEnd);
-
-            _writingSimpleAttributes = _currentIndentLevel;
-            _currentLineLength += unsigned((valueEnd - valueStart) + (nameEnd - nameStart) + 1);
-            _hotLine = true;
-            return;
+        if (forceNewLine) {
+            DoNewLine<CharType>();
+        } else if (_hotLine) {
+            _stream->WriteChar((CharType)';');
+            _stream->WriteChar((CharType)' ');
+            _currentLineLength += 2;
         }
-        
-        DoNewLine<CharType>();
 
-        WriteConst(*_stream, FormatterConstants<CharType>::AttributeNamePrefix, _currentLineLength);
-        _stream->WriteString(nameStart, nameEnd);
-        WriteConst(*_stream, FormatterConstants<CharType>::AttributeNamePostfix, _currentLineLength);
+        if (IsSimpleString(nameStart, nameEnd)) {
+            _stream->WriteString(nameStart, nameEnd);
+        } else {
+            WriteConst(*_stream, FormatterConstants<CharType>::ProtectedNamePrefix, _currentLineLength);
+            _stream->WriteString(nameStart, nameEnd);
+            WriteConst(*_stream, FormatterConstants<CharType>::ProtectedNamePostfix, _currentLineLength);
+        }
 
-        WriteConst(*_stream, FormatterConstants<CharType>::AttributeValuePrefix, _currentLineLength);
-        _stream->WriteString(valueStart, valueEnd);
-        WriteConst(*_stream, FormatterConstants<CharType>::AttributeValuePostfix, _currentLineLength);
+        _stream->WriteChar((CharType)'=');
 
-        _currentLineLength += unsigned((valueEnd - valueStart) + (nameEnd - nameStart));
+        if (IsSimpleString(valueStart, valueEnd)) {
+            _stream->WriteString(valueStart, valueEnd);
+        } else {
+            WriteConst(*_stream, FormatterConstants<CharType>::ProtectedNamePrefix, _currentLineLength);
+            _stream->WriteString(valueStart, valueEnd);
+            WriteConst(*_stream, FormatterConstants<CharType>::ProtectedNamePostfix, _currentLineLength);
+        }
+
+        _currentLineLength += unsigned((valueEnd - valueStart) + (nameEnd - nameStart) + 1);
         _hotLine = true;
     }
 
@@ -217,7 +202,7 @@ namespace Utility
 
     void OutputStreamFormatter::Flush()
     {
-        DoNewLine<utf8>();    // end in a new line to make sure the last ">" gets written
+        DoNewLine<utf8>();  // finish on a new line (just for neatness)
         assert(_currentIndentLevel == 0);
     }
 
@@ -232,7 +217,7 @@ namespace Utility
         _currentIndentLevel = 0;
         _hotLine = false;
         _currentLineLength = 0;
-        _writingSimpleAttributes = ~unsigned(0x0);
+        _pendingHeader = true;
     }
 
     OutputStreamFormatter::~OutputStreamFormatter()
@@ -269,6 +254,21 @@ namespace Utility
     }
 
     template<typename CharType, int Count>
+        bool TryEat(MemoryMappedInputStream& stream, CharType (&pattern)[Count])
+    {
+        if (stream.RemainingBytes() < (sizeof(CharType)*Count))
+            return false;
+
+        const auto* test = (const CharType*)stream.ReadPointer();
+        for (unsigned c=0; c<Count; ++c)
+            if (test[c] != pattern[c])
+                return false;
+        
+        stream.MovePointer(sizeof(CharType)*Count);
+        return true;
+    }
+
+    template<typename CharType, int Count>
         void Eat(MemoryMappedInputStream& stream, CharType (&pattern)[Count], unsigned lineIndex, unsigned charIndex)
     {
         if (stream.RemainingBytes() < (sizeof(CharType)*Count))
@@ -282,37 +282,56 @@ namespace Utility
         stream.MovePointer(sizeof(CharType)*Count);
     }
 
-    template<typename CharType, int Count>
-        const CharType* ReadToDeliminator(
-            MemoryMappedInputStream& stream, CharType (&pattern)[Count], 
+    template<typename CharType>
+        const CharType* ReadToStringEnd(
+            MemoryMappedInputStream& stream, bool protectedStringMode,
             unsigned lineIndex, unsigned charIndex)
     {
-        const auto* end = ((const CharType*)stream.End()) - Count;
-        const auto* ptr = (const CharType*)stream.ReadPointer();
-        while (ptr <= end) {
-            for (unsigned c=0; c<Count; ++c)
-                if (ptr[c] != pattern[c])
-                    goto advptr;
+        const auto pattern = FormatterConstants<CharType>::ProtectedNamePostfix;
+        const auto patternLength = dimof(FormatterConstants<CharType>::ProtectedNamePostfix);
 
-            stream.SetPointer(ptr + Count);
-            return ptr;
-        advptr:
-            ++ptr;
+        if (protectedStringMode) {
+            const auto* end = ((const CharType*)stream.End()) - patternLength;
+            const auto* ptr = (const CharType*)stream.ReadPointer();
+            while (ptr <= end) {
+                for (unsigned c=0; c<patternLength; ++c)
+                    if (ptr[c] != pattern[c])
+                        goto advptr;
+
+                stream.SetPointer(ptr + patternLength);
+                return ptr;
+            advptr:
+                ++ptr;
+            }
+
+            ThrowException(Exceptions::FormatException("String deliminator not found", lineIndex, charIndex));
+        } else {
+                // we must read forward until we hit a formatting character
+                // the end of the string will be the last non-whitespace before that formatting character
+            const auto* end = ((const CharType*)stream.End());
+            const auto* ptr = (const CharType*)stream.ReadPointer();
+            const auto* stringEnd = ptr;
+            for (;;) {
+                    // here, hitting EOF is the same as hitting a formatting char
+                if (ptr == end || FormattingChar(*ptr)) {
+                    stream.SetPointer(ptr);
+                    return stringEnd;
+                } else if (!WhitespaceChar(*ptr)) {
+                    stringEnd = ptr+1;
+                }
+                ++ptr;
+            }
         }
-
-        ThrowException(Exceptions::FormatException("String deliminator not found", lineIndex, charIndex));
     }
 
     template<typename CharType>
-        const CharType* ReadToSimpleAttributeDeliminator(
-            MemoryMappedInputStream& stream,
-            unsigned lineIndex, unsigned charIndex)
+        void EatWhitespace(MemoryMappedInputStream& stream)
     {
-        const auto* end = (const CharType*)stream.End();
+            // eat all whitespace (excluding new line)
+        const auto* end = ((const CharType*)stream.End());
         const auto* ptr = (const CharType*)stream.ReadPointer();
-        while (ptr < end && (*ptr != ';' && *ptr != '>' && *ptr != '=')) ++ptr;
+        while (ptr < end && WhitespaceChar(*ptr)) ++ptr;
         stream.SetPointer(ptr);
-        return ptr;
     }
 
     template<typename CharType>
@@ -321,20 +340,28 @@ namespace Utility
         if (_primed != Blob::None) return _primed;
 
         using Consts = FormatterConstants<CharType>;
+        
+        if (_pendingHeader) {
+                // attempt to read file header
+            if (TryEat(_stream, Consts::HeaderPrefix))
+                ReadHeader();
 
-        while (_stream.RemainingBytes() > sizeof(CharType)) {
+            _pendingHeader = false;
+        }
+
+        while (_stream.RemainingBytes() >= sizeof(CharType)) {
             const auto* next = (const CharType*)_stream.ReadPointer();
 
             switch (*next)
             {
             case '\t':
                 _stream.MovePointer(sizeof(CharType));
-                _activeLineSpaces = CeilToMultiple(_activeLineSpaces+1, TabWidth);
-                continue;
+                _activeLineSpaces = CeilToMultiple(_activeLineSpaces+1, _tabWidth);
+                break;
             case ' ': 
                 _stream.MovePointer(sizeof(CharType));
                 ++_activeLineSpaces; 
-                continue;
+                break;
 
                 // throw exception when using an extended unicode whitespace character
                 // let's just stick to the ascii whitespace characters for simplicity
@@ -343,113 +370,72 @@ namespace Utility
             case 0x85:  // (next line)
             case 0xA0:  // (no-break space)
                 ThrowException(Exceptions::FormatException("Unsupported white space character", _lineIndex, CharIndex()));
-            }
 
-            if (!_simpleAttributeMode) {
-
-                switch (*next)
-                {
-                case '\r':  // (could be an independant new line, or /r/n combo)
+            case '\r':  // (could be an independant new line, or /r/n combo)
+                _stream.MovePointer(sizeof(CharType));
+                if (    _stream.RemainingBytes() > sizeof(CharType)
+                    &&  *(const CharType*)_stream.ReadPointer() == '\n')
                     _stream.MovePointer(sizeof(CharType));
-                    if (    _stream.RemainingBytes() > sizeof(CharType)
-                        &&  *(const CharType*)_stream.ReadPointer() == '\n')
-                        _stream.MovePointer(sizeof(CharType));
 
-                        // don't adjust _expected line spaces here -- we want to be sure 
-                        // that lines with just whitespace don't affect _activeLineSpaces
-                    _activeLineSpaces = 0;
-                    ++_lineIndex; _lineStart = _stream.ReadPointer();
-                    break;
+                    // don't adjust _expected line spaces here -- we want to be sure 
+                    // that lines with just whitespace don't affect _activeLineSpaces
+                _activeLineSpaces = 0;
+                ++_lineIndex; _lineStart = _stream.ReadPointer();
+                break;
 
-                case '\n':  // (independant new line. A following /r will be treated as another new line)
-                    _stream.MovePointer(sizeof(CharType));
-                    _activeLineSpaces = 0;
-                    ++_lineIndex; _lineStart = _stream.ReadPointer();
-                    break;
+            case '\n':  // (independant new line. A following /r will be treated as another new line)
+                _stream.MovePointer(sizeof(CharType));
+                _activeLineSpaces = 0;
+                ++_lineIndex; _lineStart = _stream.ReadPointer();
+                break;
 
-                case '-': // Consts::ElementPrefix[0]:
-                case '~': // Consts::AttributeNamePrefix[0]:
-                case ':': // Consts::AttributeValuePrefix[0]:
-                case '<': // Consts::SimpleAttributes_Begin[0]
+            case ';':
+                    // deliminator is ignored here
+                _stream.MovePointer(sizeof(CharType));
+                break;
+
+            case '=':
+                _stream.MovePointer(sizeof(CharType));
+                EatWhitespace<CharType>(_stream);
+                _protectedStringMode = TryEat(_stream, Consts::ProtectedNamePrefix);
+                return _primed = Blob::AttributeValue;
+
+            case '~':
+                if (TryEat(_stream, Consts::CommentPrefix)) {
+                        // this is a comment... Read forward until the end of the line
+                    _stream.MovePointer(2*sizeof(CharType));
                     {
-                        // first, if our spacing has decreased, then we must consider it an "end element"
-                        // caller must follow with "TryReadEndElement" until _expectedLineSpaces matches _activeLineSpaces
-                        if (_activeLineSpaces <= _parentBaseLine) {
-                            return _primed = Blob::EndElement;
-                        }
-
-                            // now, _activeLineSpaces must be larger than _parentBaseLine. Anything that is 
-                            // more indented than it's parent will become it's child
-                            // let's see if there's a fully formed blob here
-                        if (*next == Consts::ElementPrefix[0]) {
-                            Eat(_stream, Consts::ElementPrefix, _lineIndex, CharIndex());
-                            _simpleElementNameMode = 0;
-                            return _primed = Blob::BeginElement;
-                        }
-
-                        if (*next == Consts::AttributeNamePrefix[0]) {
-                            Eat(_stream, Consts::AttributeNamePrefix, _lineIndex, CharIndex());
-                            return _primed = Blob::AttributeName;
-                        }
-
-                        if (*next == Consts::AttributeValuePrefix[0]) {
-                            Eat(_stream, Consts::AttributeValuePrefix, _lineIndex, CharIndex());
-                            return _primed = Blob::AttributeValue;
-                        }
-
-                        if (*next == Consts::SimpleAttributes_Begin[0]) {
-                            Eat(_stream, Consts::SimpleAttributes_Begin, _lineIndex, CharIndex());
-                            _simpleAttributeMode = 1;
-                            return _primed = Blob::AttributeName;
-                        }
-
-                        assert(0);
+                        const auto* end = ((const CharType*)_stream.End());
+                        const auto* ptr = (const CharType*)_stream.ReadPointer();
+                        while (ptr < end && *ptr!='\r' && *ptr!='\n') ++ptr;
+                        _stream.SetPointer(ptr);
                     }
                     break;
-
-                case '>': // Consts::SimpleAttributes_End[0]
-                    ThrowException(Exceptions::FormatException("Expected '>' outside of simple attribute mode", _lineIndex, CharIndex()));
-                    break;
-
-                default:
-                    // ThrowException(Exceptions::FormatException("Expected element or attribute", _lineIndex, CharIndex()));
-
-                        // unexpected characters are treated as the start of a simple element name
-                    if (_activeLineSpaces <= _parentBaseLine) {
-                        return _primed = Blob::EndElement;
-                    }
-
-                    _simpleElementNameMode = 1;
-                    return _primed = Blob::BeginElement;
                 }
 
-            } else {
-
-                switch (*next)
-                {
-                case '\r':
-                case '\n':
-                    ThrowException(Exceptions::FormatException("Newline in simple attribute block", _lineIndex, CharIndex()));
-
-                case '>': // Consts::SimpleAttributes_End[0]
-                    Eat(_stream, Consts::SimpleAttributes_End, _lineIndex, CharIndex());
-                    _simpleAttributeMode = 0;
-                    break;
-
-                case '=':
-                    _simpleAttributeMode = 2;
-                    _stream.MovePointer(sizeof(CharType));
-                    break;
-
-                case ';':
-                    _simpleAttributeMode = 1;
-                    _stream.MovePointer(sizeof(CharType));
-                    break;
-
-                default:
-                    return (_simpleAttributeMode==1)?_primed = Blob::AttributeName:_primed = Blob::AttributeValue;
+                // else, this is a new element
+                if (_activeLineSpaces <= _parentBaseLine) {
+                    _protectedStringMode = false;
+                    return _primed = Blob::EndElement;
                 }
 
+                _stream.MovePointer(sizeof(CharType));
+                _protectedStringMode = TryEat(_stream, Consts::ProtectedNamePrefix);
+                return _primed = Blob::BeginElement;
+
+            default:
+                // first, if our spacing has decreased, then we must consider it an "end element"
+                // caller must follow with "TryReadEndElement" until _expectedLineSpaces matches _activeLineSpaces
+                if (_activeLineSpaces <= _parentBaseLine) {
+                    _protectedStringMode = false;
+                    return _primed = Blob::EndElement;
+                }
+
+                    // now, _activeLineSpaces must be larger than _parentBaseLine. Anything that is 
+                    // more indented than it's parent will become it's child
+                    // let's see if there's a fully formed blob here
+                _protectedStringMode = TryEat(_stream, Consts::ProtectedNamePrefix);
+                return _primed = Blob::AttributeName;
             }
         }
 
@@ -459,21 +445,76 @@ namespace Utility
         return Blob::None;
     }
 
+    template<typename CharType> int AsInt(const CharType* inputStart, const CharType* inputEnd)
+    {
+        char buffer[32];
+        Conversion::Convert(buffer, dimof(buffer), inputStart, inputEnd);
+        return XlAtoI32(buffer);
+    }
+
+    template<typename CharType>
+        void InputStreamFormatter<CharType>::ReadHeader()
+    {
+        const CharType* aNameStart = nullptr;
+        const CharType* aNameEnd = nullptr;
+
+        while (_stream.RemainingBytes() >= sizeof(CharType)) {
+            const auto* next = (const CharType*)_stream.ReadPointer();
+            switch (*next)
+            {
+            case '\t':
+            case ' ': 
+            case ';':
+                _stream.MovePointer(sizeof(CharType));
+                break;
+
+            case 0x0B: case 0x0C: case 0x85: case 0xA0:
+                ThrowException(Exceptions::FormatException("Unsupported white space character", _lineIndex, CharIndex()));
+
+            case '~':
+                ThrowException(Exceptions::FormatException("Unexpected element in header", _lineIndex, CharIndex()));
+
+            case '\r':  // (could be an independant new line, or /r/n combo)
+            case '\n':  // (independant new line. A following /r will be treated as another new line)
+                return;
+
+            case '=':
+                _stream.MovePointer(sizeof(CharType));
+                EatWhitespace<CharType>(_stream);
+                
+                {
+                    const auto* aValueStart = (const CharType*)_stream.ReadPointer();
+                    const auto* aValueEnd = ReadToStringEnd<CharType>(_stream, false, _lineIndex, CharIndex());
+
+                    char convBuffer[12];
+                    Conversion::Convert(convBuffer, dimof(convBuffer), aNameStart, aNameEnd);
+
+                    if (!XlCompareStringI(convBuffer, "Format")) {
+                        if (AsInt(aValueStart, aValueEnd)!=1)
+                            ThrowException(Exceptions::FormatException("Unsupported format in input stream formatter header", _lineIndex, CharIndex()));
+                    } else if (!XlCompareStringI(convBuffer, "Tab")) {
+                        _tabWidth = AsInt(aValueStart, aValueEnd);
+                        if (_tabWidth==0)
+                            ThrowException(Exceptions::FormatException("Bad tab width in input stream formatter header", _lineIndex, CharIndex()));
+                    }
+                }
+                break;
+
+            default:
+                aNameStart = next;
+                aNameEnd = ReadToStringEnd<CharType>(_stream, false, _lineIndex, CharIndex());
+                break;
+            }
+        }
+    }
+
     template<typename CharType>
         bool InputStreamFormatter<CharType>::TryReadBeginElement(InteriorSection& name)
     {
         if (PeekNext() != Blob::BeginElement) return false;
 
         name._start = (const CharType*)_stream.ReadPointer();
-
-        if (_simpleElementNameMode == 0) {
-            name._end = ReadToDeliminator(_stream, FormatterConstants<CharType>::ElementPostfix, _lineIndex, CharIndex());
-        } else {
-            const auto* end = (const CharType*)_stream.End();
-            name._end = (const CharType*)_stream.ReadPointer();
-            while (name._end <= end && !UnsafeForSimpleElementName(*name._end)) ++name._end;
-            _stream.SetPointer(name._end);
-        }
+        name._end = ReadToStringEnd<CharType>(_stream, _protectedStringMode, _lineIndex, CharIndex());
 
         // the new "parent base line" should be the indentation level of the line this element started on
         if ((_baseLineStackPtr+1) > dimof(_baseLineStack))
@@ -483,7 +524,7 @@ namespace Utility
         _baseLineStack[_baseLineStackPtr++] = _activeLineSpaces;
         _parentBaseLine = _activeLineSpaces;
         _primed = Blob::None;
-        _simpleElementNameMode = 0;
+        _protectedStringMode = false;
         return true;
     }
 
@@ -498,6 +539,7 @@ namespace Utility
         }
 
         _primed = Blob::None;
+        _protectedStringMode = false;
         return true;
     }
 
@@ -540,35 +582,20 @@ namespace Utility
     {
         if (PeekNext() != Blob::AttributeName) return false;
 
-        if (_simpleAttributeMode) {
-            name._start = (const CharType*)_stream.ReadPointer();
-            name._end = ReadToSimpleAttributeDeliminator<CharType>(_stream, _lineIndex, CharIndex());
-            _primed = Blob::None;
+        name._start = (const CharType*)_stream.ReadPointer();
+        name._end = ReadToStringEnd<CharType>(_stream, _protectedStringMode, _lineIndex, CharIndex());
+        EatWhitespace<CharType>(_stream);
 
-            if (PeekNext() == Blob::AttributeValue) {
-                value._start = (const CharType*)_stream.ReadPointer();
-                value._end = ReadToSimpleAttributeDeliminator<CharType>(_stream, _lineIndex, CharIndex());
-            } else {
-                value._start = value._end = nullptr;
-            }
-            _primed = Blob::None;
+        _primed = Blob::None;
+        _protectedStringMode = false;
 
+        if (PeekNext() == Blob::AttributeValue) {
+            value._start = (const CharType*)_stream.ReadPointer();
+            value._end = ReadToStringEnd<CharType>(_stream, _protectedStringMode, _lineIndex, CharIndex());
+            _protectedStringMode = false;
+            _primed = Blob::None;
         } else {
-            name._start = (const CharType*)_stream.ReadPointer();
-            name._end = ReadToDeliminator(
-                _stream, FormatterConstants<CharType>::AttributeNamePostfix, 
-                _lineIndex, CharIndex());
-            _primed = Blob::None;
-
-            if (PeekNext() == Blob::AttributeValue) {
-                value._start = (const CharType*)_stream.ReadPointer();
-                value._end = ReadToDeliminator(
-                    _stream, FormatterConstants<CharType>::AttributeValuePostfix, 
-                    _lineIndex, CharIndex());
-            } else {
-                value._start = value._end = nullptr;
-            }
-            _primed = Blob::None;
+            value._start = value._end = nullptr;
         }
 
         return true;
@@ -581,16 +608,18 @@ namespace Utility
     }
 
     template<typename CharType>
-        InputStreamFormatter<CharType>::InputStreamFormatter(MemoryMappedInputStream& stream) : _stream(stream)
+        InputStreamFormatter<CharType>::InputStreamFormatter(MemoryMappedInputStream& stream) 
+        : _stream(stream)
     {
         _primed = Blob::None;
         _activeLineSpaces = 0;
         _parentBaseLine = -1;
         _baseLineStackPtr = 0;
         _lineIndex = 0;
-        _lineStart = stream.ReadPointer();
-        _simpleAttributeMode = 0;
-        _simpleElementNameMode = 0;
+        _lineStart = _stream.ReadPointer();
+        _protectedStringMode = false;
+        _tabWidth = TabWidth;
+        _pendingHeader = true;
     }
 
     template<typename CharType>
@@ -605,40 +634,28 @@ namespace Utility
     const ucs2 FormatterConstants<ucs2>::EndLine[] = { (ucs2)'\r', (ucs2)'\n' };
     const ucs4 FormatterConstants<ucs4>::EndLine[] = { (ucs4)'\r', (ucs4)'\n' };
 
-    const utf8 FormatterConstants<utf8>::ElementPrefix[] = { (utf8)'-', (utf8)'-', (utf8)'(' };
-    const ucs2 FormatterConstants<ucs2>::ElementPrefix[] = { (ucs2)'-', (ucs2)'-', (ucs2)'(' };
-    const ucs4 FormatterConstants<ucs4>::ElementPrefix[] = { (ucs4)'-', (ucs4)'-', (ucs4)'(' };
+    const utf8 FormatterConstants<utf8>::ProtectedNamePrefix[] = { (utf8)'<', (utf8)':', (utf8)'(' };
+    const ucs2 FormatterConstants<ucs2>::ProtectedNamePrefix[] = { (ucs2)'<', (ucs2)':', (ucs2)'(' };
+    const ucs4 FormatterConstants<ucs4>::ProtectedNamePrefix[] = { (ucs4)'<', (ucs4)':', (ucs4)'(' };
 
-    const utf8 FormatterConstants<utf8>::ElementPostfix[] = { (utf8)')', (utf8)'-', (utf8)'-' };
-    const ucs2 FormatterConstants<ucs2>::ElementPostfix[] = { (ucs2)')', (ucs2)'-', (ucs2)'-' };
-    const ucs4 FormatterConstants<ucs4>::ElementPostfix[] = { (ucs4)')', (ucs4)'-', (ucs4)'-' };
+    const utf8 FormatterConstants<utf8>::ProtectedNamePostfix[] = { (utf8)')', (utf8)':', (utf8)'>' };
+    const ucs2 FormatterConstants<ucs2>::ProtectedNamePostfix[] = { (ucs2)')', (ucs2)':', (ucs2)'>' };
+    const ucs4 FormatterConstants<ucs4>::ProtectedNamePostfix[] = { (ucs4)')', (ucs4)':', (ucs4)'>' };
 
-    const utf8 FormatterConstants<utf8>::AttributeNamePrefix[] = { (utf8)'~', (utf8)'~', (utf8)'(' };
-    const ucs2 FormatterConstants<ucs2>::AttributeNamePrefix[] = { (ucs2)'~', (ucs2)'~', (ucs2)'(' };
-    const ucs4 FormatterConstants<ucs4>::AttributeNamePrefix[] = { (ucs4)'~', (ucs4)'~', (ucs4)'(' };
+    const utf8 FormatterConstants<utf8>::CommentPrefix[] = { (utf8)'~', (utf8)'~' };
+    const ucs2 FormatterConstants<ucs2>::CommentPrefix[] = { (ucs2)'~', (ucs2)'~' };
+    const ucs4 FormatterConstants<ucs4>::CommentPrefix[] = { (ucs4)'~', (ucs4)'~' };
 
-    const utf8 FormatterConstants<utf8>::AttributeNamePostfix[] = { (utf8)')', (utf8)'~', (utf8)'~' };
-    const ucs2 FormatterConstants<ucs2>::AttributeNamePostfix[] = { (ucs2)')', (ucs2)'~', (ucs2)'~' };
-    const ucs4 FormatterConstants<ucs4>::AttributeNamePostfix[] = { (ucs4)')', (ucs4)'~', (ucs4)'~' };
-
-    const utf8 FormatterConstants<utf8>::AttributeValuePrefix[] = { (utf8)':', (utf8)':', (utf8)'(' };
-    const ucs2 FormatterConstants<ucs2>::AttributeValuePrefix[] = { (ucs2)':', (ucs2)':', (ucs2)'(' };
-    const ucs4 FormatterConstants<ucs4>::AttributeValuePrefix[] = { (ucs4)':', (ucs4)':', (ucs4)'(' };
-
-    const utf8 FormatterConstants<utf8>::AttributeValuePostfix[] = { (utf8)')', (utf8)':', (utf8)':' };
-    const ucs2 FormatterConstants<ucs2>::AttributeValuePostfix[] = { (ucs2)')', (ucs2)':', (ucs2)':' };
-    const ucs4 FormatterConstants<ucs4>::AttributeValuePostfix[] = { (ucs4)')', (ucs4)':', (ucs4)':' };
-
-    const utf8 FormatterConstants<utf8>::SimpleAttributes_Begin[] = { (utf8)'<' };
-    const ucs2 FormatterConstants<ucs2>::SimpleAttributes_Begin[] = { (ucs2)'<' };
-    const ucs4 FormatterConstants<ucs4>::SimpleAttributes_Begin[] = { (ucs4)'<' };
-
-    const utf8 FormatterConstants<utf8>::SimpleAttributes_End[] = { (utf8)'>' };
-    const ucs2 FormatterConstants<ucs2>::SimpleAttributes_End[] = { (ucs2)'>' };
-    const ucs4 FormatterConstants<ucs4>::SimpleAttributes_End[] = { (ucs4)'>' };
+    const utf8 FormatterConstants<utf8>::HeaderPrefix[] = { (utf8)'~', (utf8)'~', (utf8)'!' };
+    const ucs2 FormatterConstants<ucs2>::HeaderPrefix[] = { (ucs2)'~', (ucs2)'~', (ucs2)'!' };
+    const ucs4 FormatterConstants<ucs4>::HeaderPrefix[] = { (ucs4)'~', (ucs4)'~', (ucs4)'!' };
 
     const utf8 FormatterConstants<utf8>::Tab = (utf8)'\t';
     const ucs2 FormatterConstants<ucs2>::Tab = (ucs2)'\t';
     const ucs4 FormatterConstants<ucs4>::Tab = (ucs4)'\t';
+
+    const utf8 FormatterConstants<utf8>::ElementPrefix = (utf8)'~';
+    const ucs2 FormatterConstants<ucs2>::ElementPrefix = (ucs2)'~';
+    const ucs4 FormatterConstants<ucs4>::ElementPrefix = (ucs4)'~';
 }
 
