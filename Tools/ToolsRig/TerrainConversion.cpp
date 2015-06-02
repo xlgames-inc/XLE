@@ -159,7 +159,8 @@ namespace ToolsRig
 
     void GenerateStarterCells(
         const ::Assets::ResChar outputDir[], const ::Assets::ResChar inputUberSurfaceDirectory[],
-        unsigned destNodeDims, unsigned destCellTreeDepth, unsigned overlap)
+        unsigned destNodeDims, unsigned destCellTreeDepth, unsigned overlap,
+        ConsoleRig::IProgress* progress)
     {
         using namespace SceneEngine;
 
@@ -182,7 +183,7 @@ namespace ToolsRig
         cfg.Save();
         
         auto fmt = std::make_shared<TerrainFormat>();
-        GenerateMissingUberSurfaceFiles(cfg, fmt, inputUberSurfaceDirectory);
-        GenerateMissingCellFiles(cfg, fmt, inputUberSurfaceDirectory);
+        GenerateMissingUberSurfaceFiles(cfg, fmt, inputUberSurfaceDirectory, progress);
+        GenerateMissingCellFiles(cfg, fmt, inputUberSurfaceDirectory, progress);
     }
 }

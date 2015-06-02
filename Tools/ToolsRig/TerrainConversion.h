@@ -9,6 +9,8 @@
 #include "../../Assets/AssetsCore.h"
 #include "../../Math/Vector.h"
 
+namespace ConsoleRig { class IProgress; }
+
 namespace ToolsRig
 {
     UInt2 ConvertDEMData(
@@ -17,6 +19,7 @@ namespace ToolsRig
 
     void GenerateStarterCells(
         const ::Assets::ResChar outputDir[], const ::Assets::ResChar input[], 
-        unsigned destNodeDims, unsigned destCellTreeDepth, unsigned overlap);
+        unsigned destNodeDims, unsigned destCellTreeDepth, unsigned overlap,
+        ConsoleRig::IProgress* progress);
 
 }

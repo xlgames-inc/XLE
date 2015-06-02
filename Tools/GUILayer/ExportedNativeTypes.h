@@ -13,6 +13,7 @@ namespace ToolsRig { class IManipulator; class VisCameraSettings; }
 namespace SceneEngine { class LightingParserContext; class IntersectionTestContext; class IntersectionTestScene; class PlacementsEditor; }
 namespace RenderCore { namespace Techniques { class ProjectionDesc; class CameraDesc; } }
 namespace RenderOverlays { namespace DebuggingDisplay { class InputSnapshot; } }
+namespace ConsoleRig { class IProgress; }
 
 #pragma make_public(GUILayer::NativeEngineDevice)
 #pragma make_public(ToolsRig::IManipulator)
@@ -25,4 +26,5 @@ namespace RenderOverlays { namespace DebuggingDisplay { class InputSnapshot; } }
 #pragma make_public(RenderCore::Techniques::CameraDesc)
 #pragma make_public(RenderCore::IThreadContext)
 #pragma make_public(RenderOverlays::DebuggingDisplay::InputSnapshot)
+#pragma make_public(ConsoleRig::IProgress)
 

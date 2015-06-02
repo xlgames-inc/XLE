@@ -10,6 +10,7 @@
 #include "TerrainUberSurface.h"
 #include "../RenderCore/Metal/Format.h"     // for BitsPerPixel
 #include "../ConsoleRig/Log.h"
+#include "../ConsoleRig/IProgress.h"
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/Conversion.h"
@@ -71,7 +72,8 @@ namespace SceneEngine
     void GenerateMissingCellFiles(
         const TerrainConfig& outputConfig, 
         std::shared_ptr<ITerrainFormat> outputIOFormat,
-        const ::Assets::ResChar uberSurfaceDir[])
+        const ::Assets::ResChar uberSurfaceDir[],
+        ConsoleRig::IProgress* progress)
     {
         assert(outputIOFormat);
 
@@ -107,6 +109,7 @@ namespace SceneEngine
 
         //////////////////////////////////////////////////////////////////////////////////////
         auto cells = BuildPrimedCells(outputConfig);
+        auto step = progress ? progress->BeginStep("Generate Cell Files", (unsigned)cells.size()) : nullptr;
         for (auto c=cells.cbegin(); c!=cells.cend(); ++c) {
             char heightMapFile[MaxPath];
             outputConfig.GetCellFilename(heightMapFile, dimof(heightMapFile), c->_cellIndex, CoverageId_Heights);
@@ -121,14 +124,18 @@ namespace SceneEngine
                 } CATCH(...) { // sometimes throws (eg, if the directory doesn't exist)
                 } CATCH_END
             }
+
+            if (step) step->Advance();
         }
     }
 
     void GenerateMissingUberSurfaceFiles(
         const TerrainConfig& cfg, 
         std::shared_ptr<ITerrainFormat> outputIOFormat,
-        const ::Assets::ResChar uberSurfaceDir[])
+        const ::Assets::ResChar uberSurfaceDir[],
+        ConsoleRig::IProgress* progress)
     {
+        auto step = progress ? progress->BeginStep("Generate UberSurface Files", (unsigned)cfg.GetCoverageLayerCount()) : nullptr;
         for (unsigned l=0; l<cfg.GetCoverageLayerCount(); ++l) {
             const auto& layer = cfg.GetCoverageLayer(l);
 
@@ -170,6 +177,8 @@ namespace SceneEngine
                     cfg._cellCount[1] * cfg.CellDimensionsInNodes()[1] * (layer._dimensions[1]+1),
                     RenderCore::Metal::BitsPerPixel((RenderCore::Metal::NativeFormat::Enum)layer._format));
             }
+
+            if (step) step->Advance();
         }
     }
 

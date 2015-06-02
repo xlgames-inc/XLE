@@ -331,12 +331,22 @@ namespace GUILayer
 
         static void GenerateStarterCells(
             String^ cellsDirectory, String^ uberSurfaceDirectory,
-            unsigned nodeDimensions, unsigned cellTreeDepth, unsigned overlap)
+            unsigned nodeDimensions, unsigned cellTreeDepth, unsigned overlap,
+            IProgress^ progress)
         {
-            ToolsRig::GenerateStarterCells(
-                clix::marshalString<clix::E_UTF8>(cellsDirectory).c_str(),
-                clix::marshalString<clix::E_UTF8>(uberSurfaceDirectory).c_str(),
-                nodeDimensions, cellTreeDepth, overlap);
+            auto nativeProgress = progress ? IProgress::CreateNative(progress) : nullptr;
+            try
+            {
+                ToolsRig::GenerateStarterCells(
+                    clix::marshalString<clix::E_UTF8>(cellsDirectory).c_str(),
+                    clix::marshalString<clix::E_UTF8>(uberSurfaceDirectory).c_str(),
+                    nodeDimensions, cellTreeDepth, overlap, nativeProgress);
+            }
+            finally
+            {
+                if (nativeProgress)
+                    IProgress::DeleteNative(nativeProgress);
+            }
         }
     };
 

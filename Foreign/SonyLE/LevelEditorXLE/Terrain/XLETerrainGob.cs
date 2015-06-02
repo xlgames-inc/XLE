@@ -143,7 +143,8 @@ namespace LevelEditorXLE.Terrain
                 // fill in the cells directory with starter cells (if they don't already exist)
             GUILayer.EditorInterfaceUtils.GenerateStarterCells(
                 cfg.CellsDirectory, cfg.UberSurfaceDirectory,
-                nodeDimensions, cellTreeDepth, overlap);
+                nodeDimensions, cellTreeDepth, overlap,
+                null);
 
                 // if the above completed without throwing an exception, we can commit the values
             NodeDimensions = nodeDimensions;

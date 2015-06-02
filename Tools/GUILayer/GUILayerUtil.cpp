@@ -8,6 +8,7 @@
 #include "MarshalString.h"
 #include "ExportedNativeTypes.h"
 #include "../../SceneEngine/IntersectionTest.h"
+#include "../../ConsoleRig/IProgress.h"
 #include "../../Utility/MemoryUtils.h"
 
 namespace GUILayer
@@ -97,5 +98,73 @@ namespace GUILayer
 	{
 		return *_editor.get();
 	}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class StepAdapter : public ConsoleRig::IStep
+    {
+    public:
+        void SetProgress(unsigned progress);
+        void Advance();
+        bool IsCancelled() const;
+
+        StepAdapter(GUILayer::IStep^ adapted);
+        ~StepAdapter();
+    protected:
+        gcroot<GUILayer::IStep^> _adapted;
+    };
+
+    void StepAdapter::SetProgress(unsigned progress)
+    {
+        _adapted->SetProgress(progress);
+    }
+
+    void StepAdapter::Advance()
+    {
+        _adapted->Advance();
+    }
+
+    bool StepAdapter::IsCancelled() const
+    {
+        return _adapted->IsCancelled();
+    }
+
+    StepAdapter::StepAdapter(GUILayer::IStep^ adapted)
+    : _adapted(adapted) {}
+
+    StepAdapter::~StepAdapter() {}
+
+    class ProgressAdapter : public ConsoleRig::IProgress
+    {
+    public:
+        virtual std::shared_ptr<ConsoleRig::IStep> BeginStep(const char name[], unsigned progressMax);
+
+        ProgressAdapter(GUILayer::IProgress^ adapted);
+        ~ProgressAdapter();
+    protected:
+        gcroot<GUILayer::IProgress^> _adapted;
+    };
+
+    std::shared_ptr<ConsoleRig::IStep> ProgressAdapter::BeginStep(const char name[], unsigned progressMax)
+    {
+        return std::shared_ptr<StepAdapter>(new StepAdapter(_adapted->BeginStep(name, progressMax)));
+    }
+
+    ProgressAdapter::ProgressAdapter(GUILayer::IProgress^ adapted)
+    : _adapted(adapted) {}
+
+    ProgressAdapter::~ProgressAdapter() {}
+
+
+    ConsoleRig::IProgress* IProgress::CreateNative(IProgress^ managed)
+    {
+        return new ProgressAdapter(managed);
+    }
+
+    void IProgress::DeleteNative(ConsoleRig::IProgress* native)
+    {
+        delete native;
+    }
+
 }
 

@@ -18,6 +18,8 @@ namespace SceneEngine
     class IIntersectionTester;
 }
 
+namespace ConsoleRig { class IProgress; }
+
 namespace GUILayer
 {
     public ref class TechniqueContextWrapper
@@ -64,4 +66,21 @@ namespace GUILayer
         ~PlacementsEditorWrapper();
         !PlacementsEditorWrapper();
 	};
+
+
+    public interface class IStep
+    {
+        virtual void SetProgress(unsigned progress);
+        virtual void Advance();
+        virtual bool IsCancelled();
+    };
+
+    public interface class IProgress
+    {
+    public:
+        virtual IStep^ BeginStep(const char name[], unsigned progressMax);
+
+        static ConsoleRig::IProgress* CreateNative(IProgress^ managed);
+        static void DeleteNative(ConsoleRig::IProgress* native);
+    };
 }

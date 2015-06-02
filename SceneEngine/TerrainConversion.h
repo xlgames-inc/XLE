@@ -10,6 +10,7 @@
 #include <memory>
 
 namespace Utility { class OutputStream; }
+namespace ConsoleRig { class IProgress; }
 
 namespace SceneEngine
 {
@@ -25,10 +26,12 @@ namespace SceneEngine
     void GenerateMissingUberSurfaceFiles(
         const TerrainConfig& outputConfig, 
         std::shared_ptr<ITerrainFormat> outputIOFormat,
-        const ::Assets::ResChar uberSurfaceDir[]);
+        const ::Assets::ResChar uberSurfaceDir[],
+        ConsoleRig::IProgress* progress = nullptr);
 
     void GenerateMissingCellFiles(
         const TerrainConfig& outputConfig, 
         std::shared_ptr<ITerrainFormat> outputIOFormat,
-        const ::Assets::ResChar uberSurfaceDir[]);
+        const ::Assets::ResChar uberSurfaceDir[],
+        ConsoleRig::IProgress* progress = nullptr);
 }

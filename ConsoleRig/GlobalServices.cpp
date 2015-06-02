@@ -8,6 +8,7 @@
 #include "AttachableInternal.h"
 #include "Log.h"
 #include "Console.h"
+#include "IProgress.h"
 #include "../Utility/Threading/CompletionThreadPool.h"
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/Streams/PathUtils.h"
@@ -160,4 +161,7 @@ namespace ConsoleRig
         return _crossModule.Attach<GlobalServices>();
     }
 
+
+    IStep::~IStep() {}
+    IProgress::~IProgress() {}
 }
