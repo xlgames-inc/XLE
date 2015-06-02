@@ -22,6 +22,7 @@
 #include "../../SceneEngine/PlacementsManager.h"
 #include "../../SceneEngine/Terrain.h"
 #include "../../SceneEngine/TerrainFormat.h"
+#include "../../SceneEngine/TerrainConfig.h"
 #include "../../Utility/Streams/Data.h"
 #include "../../Utility/Streams/StreamTypes.h"
 #include "../../Utility/Streams/PathUtils.h"

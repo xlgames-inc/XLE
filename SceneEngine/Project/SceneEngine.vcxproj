@@ -232,6 +232,7 @@
     <ClCompile Include="..\TerrainMaterial.cpp" />
     <ClCompile Include="..\TerrainMaterialTextures.cpp" />
     <ClCompile Include="..\TerrainRender.cpp" />
+    <ClCompile Include="..\TerrainShortCircuit.cpp" />
     <ClCompile Include="..\TerrainUberSurface.cpp" />
     <ClCompile Include="..\TextureTileSet.cpp" />
     <ClCompile Include="..\TiledLighting.cpp" />
@@ -270,6 +271,7 @@
     <ClInclude Include="..\SurfaceHeightsProvider.h" />
     <ClInclude Include="..\Terrain.h" />
     <ClInclude Include="..\TerrainConfig.h" />
+    <ClInclude Include="..\TerrainConversion.h" />
     <ClInclude Include="..\TerrainCoverageId.h" />
     <ClInclude Include="..\TerrainFormat.h" />
     <ClInclude Include="..\TerrainRender.h" />

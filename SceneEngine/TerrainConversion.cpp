@@ -4,6 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#include "TerrainConversion.h"
 #include "Terrain.h"
 #include "TerrainConfig.h"
 #include "TerrainUberSurface.h"

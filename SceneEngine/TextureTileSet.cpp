@@ -280,6 +280,8 @@ namespace SceneEngine
         _format = format;
     }
 
+    TextureTileSet::~TextureTileSet() {}
+
     TextureTileSet::ArraySlice::ArraySlice(int count)
     {
         _allocationFlags.Reserve(count);

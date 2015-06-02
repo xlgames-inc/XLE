@@ -5,6 +5,8 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "TerrainMaterial.h"
+#include "../Assets/AssetServices.h"
+#include "../Assets/InvalidAssetManager.h"
 #include "../Utility/Streams/Stream.h"
 #include "../Utility/Streams/StreamFormatter.h"
 #include "../Utility/Streams/StreamDOM.h"
@@ -56,37 +58,48 @@ namespace SceneEngine
         if (!fileSize)
             ThrowException(::Exceptions::BasicLabel("Parse error while loading terrain texture list"));
 
-        InputStreamFormatter<utf8> formatter(
-            MemoryMappedInputStream(file.get(), PtrAdd(file.get(), fileSize)));
-        Document<utf8> doc(formatter);
+        TRY
+        {
+            InputStreamFormatter<utf8> formatter(
+                MemoryMappedInputStream(file.get(), PtrAdd(file.get(), fileSize)));
+            Document<utf8> doc(formatter);
 
-        auto cfg = doc.Element(u("Config"));
+            auto cfg = doc.Element(u("Config"));
 
-        _diffuseDims = Deserialize(cfg, u("DiffuseDims"), UInt2(512, 512));
-        _normalDims = Deserialize(cfg, u("NormalDims"), UInt2(512, 512));
-        _paramDims = Deserialize(cfg, u("ParamDims"), UInt2(512, 512));
+            _diffuseDims = Deserialize(cfg, u("DiffuseDims"), UInt2(512, 512));
+            _normalDims = Deserialize(cfg, u("NormalDims"), UInt2(512, 512));
+            _paramDims = Deserialize(cfg, u("ParamDims"), UInt2(512, 512));
 
-        auto strata = cfg.Element(u("Strata"));
-        unsigned strataCount = 0;
-        for (auto c = strata.FirstChild(); c; c = c.NextSibling()) { ++strataCount; }
+            auto strata = cfg.Element(u("Strata"));
+            unsigned strataCount = 0;
+            for (auto c = strata.FirstChild(); c; c = c.NextSibling()) { ++strataCount; }
 
-        unsigned strataIndex = 0;
-        for (auto c = strata.FirstChild(); c; c = c.NextSibling(), ++strataIndex) {
-            Strata newStrata;
-            for (unsigned t=0; t<dimof(TextureNames); ++t) {
-                auto tName = c.AttributeOrEmpty(TextureNames[t]);
-                if (XlCompareStringI(tName.c_str(), u("null"))!=0)
-                    newStrata._texture[t] = Conversion::Convert<::Assets::rstring>(tName);
+            unsigned strataIndex = 0;
+            for (auto c = strata.FirstChild(); c; c = c.NextSibling(), ++strataIndex) {
+                Strata newStrata;
+                for (unsigned t=0; t<dimof(TextureNames); ++t) {
+                    auto tName = c.AttributeOrEmpty(TextureNames[t]);
+                    if (XlCompareStringI(tName.c_str(), u("null"))!=0)
+                        newStrata._texture[t] = Conversion::Convert<::Assets::rstring>(tName);
+                }
+
+                newStrata._endHeight = Deserialize(c, u("EndHeight"), 0.f);
+                auto mappingConst = Deserialize(c, u("Mapping"), Float4(1.f, 1.f, 1.f, 1.f));
+                newStrata._mappingConstant[0] = mappingConst[0];
+                newStrata._mappingConstant[1] = mappingConst[1];
+                newStrata._mappingConstant[2] = mappingConst[2];
+
+                _strata.push_back(newStrata);
             }
 
-            newStrata._endHeight = Deserialize(c, u("EndHeight"), 0.f);
-            auto mappingConst = Deserialize(c, u("Mapping"), Float4(1.f, 1.f, 1.f, 1.f));
-            newStrata._mappingConstant[0] = mappingConst[0];
-            newStrata._mappingConstant[1] = mappingConst[1];
-            newStrata._mappingConstant[2] = mappingConst[2];
-
-            _strata.push_back(newStrata);
-        }
+            ::Assets::Services::GetInvalidAssetMan().MarkValid(definitionFile);
+        } CATCH (const std::exception& e) {
+            ::Assets::Services::GetInvalidAssetMan().MarkInvalid(definitionFile, e.what());
+            throw;
+        } CATCH(...) {
+            ::Assets::Services::GetInvalidAssetMan().MarkInvalid(definitionFile, "Unknown error");
+            throw;
+        } CATCH_END
 
         _searchRules = ::Assets::DefaultDirectorySearchRules(definitionFile);
         _cachedHashValue = 0ull;

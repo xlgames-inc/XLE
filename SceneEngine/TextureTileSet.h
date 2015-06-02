@@ -30,17 +30,18 @@ namespace SceneEngine
 
         bool    IsValid(const TextureTile& tile) const;
 
-        BufferUploads::IManager&    GetBufferUploads() { return *_bufferUploads; }
-        RenderCore::Metal::ShaderResourceView&         GetShaderResource() { return _shaderResource; }
-        RenderCore::Metal::UnorderedAccessView&        GetUnorderedAccessView() { assert(_uav.GetUnderlying()); return _uav; }
+        auto    GetBufferUploads() -> BufferUploads::IManager&                      { return *_bufferUploads; }
+        auto    GetShaderResource() -> RenderCore::Metal::ShaderResourceView&       { return _shaderResource; }
+        auto    GetUnorderedAccessView() -> RenderCore::Metal::UnorderedAccessView& { assert(_uav.GetUnderlying()); return _uav; }
 
-        Int2      GetTileSize() const { return _elementSize; }
-        RenderCore::Metal::NativeFormat::Enum GetFormat() const { return _format; }
+        Int2    GetTileSize() const { return _elementSize; }
+        auto    GetFormat() const -> RenderCore::Metal::NativeFormat::Enum { return _format; }
         
         TextureTileSet( BufferUploads::IManager& bufferUploads,
                         Int2 elementSize, unsigned elementCount,
                         RenderCore::Metal::NativeFormat::Enum format,
                         bool allowModification);
+        ~TextureTileSet();
 
     private:
         class ArraySlice

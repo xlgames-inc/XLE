@@ -87,13 +87,12 @@ namespace SceneEngine
         void QueueUploads(TerrainRenderingContext& terrainContext);
         void Render(RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, TerrainRenderingContext& terrainContext);
 
-        void ShortCircuit(uint64 cellHash, TerrainCoverageId layerId, UInt2 cellOrigin, UInt2 cellMax, const ShortCircuitUpdate& upd);
-
         Int2 GetHeightsElementSize() const { return _heightMapTileSet->GetTileSize(); }
         const TerrainCoverageId* GetCoverageIdBegin() const { return AsPointer(_coverageIds.cbegin()); }
         const TerrainCoverageId* GetCoverageIdEnd() const { return AsPointer(_coverageIds.cend()); }
         const TerrainRendererConfig& GetConfig() const { return _cfg; }
 
+        void ShortCircuit(uint64 cellHash, TerrainCoverageId layerId, UInt2 cellOrigin, UInt2 cellMax, const ShortCircuitUpdate& upd);
         const bool IsShortCircuitAllowed() const { return _shortCircuitAllowed; }
 
         TerrainCellRenderer(
@@ -296,5 +295,9 @@ namespace SceneEngine
         void    EnterState(RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, const TerrainMaterialTextures& materials, UInt2 elementSize, Mode mode = Mode_Normal);
         void    ExitState(RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext);
     };
+
+    void DoShortCircuitUpdate(
+        uint64 cellHash, TerrainCoverageId layerId, std::weak_ptr<TerrainCellRenderer> renderer,
+        TerrainCellId::UberSurfaceAddress uberAddress, const ShortCircuitUpdate& upd);
 }
 

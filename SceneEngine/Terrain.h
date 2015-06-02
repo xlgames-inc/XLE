@@ -25,27 +25,11 @@ namespace SceneEngine
     class ISurfaceHeightsProvider;
     
     class TerrainConfig;
+    class TerrainCoordinateSystem;
 
-    class TerrainCoordinateSystem
-    {
-    public:
-        Float4x4    CellBasedToWorld() const;
-        Float4x4    WorldToCellBased() const;
-
-        Float3      TerrainOffset() const;
-        void        SetTerrainOffset(const Float3& newOffset);
-
-        TerrainCoordinateSystem(
-            Float3 terrainOffset = Float3(0.f, 0.f, 0.f),
-            float cellSizeInMeters = 0.f)
-        : _terrainOffset(terrainOffset)
-        , _cellSizeInMeters(cellSizeInMeters) {}
-
-    protected:
-        Float3 _terrainOffset;
-        float _cellSizeInMeters;
-    };
-
+    /// <summary>Top-level manager for terrain assets</summary>
+    /// Internally, the manager coordinates many class that perform the rendering,
+    /// streaming, intersection tests and so forth.
     class TerrainManager
     {
     public:
@@ -105,6 +89,12 @@ namespace SceneEngine
         /// any cached textures or data can be retained, they will be.
         void Load(const TerrainConfig& cfg, UInt2 cellMin, UInt2 cellMax, bool allowModification);
         void LoadUberSurface(const ::Assets::ResChar uberSurfaceDir[]);
+
+        /// <summary>Unloads all terrain</summary>
+        /// Removes all cells and removes the terrain from the world.
+        /// Note that the rendering resources are not released immediately. They can be
+        /// reused if another compatible terrain is loaded (using the Load method).
+        /// To release all resources, destroy the TerrainManager object.
         void Reset();
 
         TerrainManager(std::shared_ptr<ITerrainFormat> ioFormat);
@@ -118,7 +108,20 @@ namespace SceneEngine
         std::unique_ptr<Pimpl> _pimpl;
     };
 
-    float   GetTerrainHeight(ITerrainFormat& ioFormat, const TerrainConfig& cfg, const TerrainCoordinateSystem& coords, Float2 queryPosition);
+    /// <summary>Gets the height of the terrain at a position, without using the GPU</summary>
+    /// There are 2 forms of intersection testing supported by the system.
+    /// TerrainManager::CalculateIntersections uses the GPU, and calculates an intersection against
+    /// post-LOD geometry. It is intended for tools that want match mouse clicks against rendered
+    /// geometry.
+    /// In constrast, GetTerrainHeight does not use the GPU and only tests against the top LOD.
+    /// This is used by simple physical simulations (such as sliding a character across the terrain
+    /// surface).
+    /// Note that this requires loading some terrain height data into main memory (whereas rendering 
+    /// only requires height data in GPU memory). So, this can require reading height data from disk
+    /// a second time.
+    float GetTerrainHeight(
+        ITerrainFormat& ioFormat, const TerrainConfig& cfg, 
+        const TerrainCoordinateSystem& coords, Float2 queryPosition);
 
     class TerrainCell;
     class TerrainCellTexture;
@@ -149,27 +152,4 @@ namespace SceneEngine
             UInt2 cellMins, UInt2 cellMaxs, unsigned treeDepth, unsigned overlapElements) const = 0;
         virtual ~ITerrainFormat();
     };
-
-    void ExecuteTerrainConversion(
-        const ::Assets::ResChar destinationUberSurfaceDirectory[],
-        const TerrainConfig& outputConfig, 
-        const TerrainConfig& inputConfig, 
-        std::shared_ptr<ITerrainFormat> inputIOFormat);
-    void GenerateMissingUberSurfaceFiles(
-        const TerrainConfig& outputConfig, 
-        std::shared_ptr<ITerrainFormat> outputIOFormat,
-        const ::Assets::ResChar uberSurfaceDir[]);
-    void GenerateMissingCellFiles(
-        const TerrainConfig& outputConfig, 
-        std::shared_ptr<ITerrainFormat> outputIOFormat,
-        const ::Assets::ResChar uberSurfaceDir[]);
-
-    void WriteTerrainCachedData(
-        Utility::OutputStream& stream,
-        const TerrainConfig& cfg, 
-        ITerrainFormat& format);
-
-    void WriteTerrainMaterialData(
-        Utility::OutputStream& stream,
-        const TerrainConfig& cfg);
 }

@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "StreamDOM.h"
+#include "../StringFormat.h"
 
 namespace Utility
 {
@@ -62,7 +63,8 @@ namespace Utility
                 break;
             } else {
                 ThrowException(FormatException(
-                    "Expected blob type while parsing element in StreamDOM", formatter.GetLocation()));
+                    StringMeld<128>() << "Got unexpected blob type (" << unsigned(next) << ") while parsing element in StreamDOM",
+                    formatter.GetLocation()));
             }
         }
 

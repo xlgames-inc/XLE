@@ -631,7 +631,9 @@ namespace SceneEngine
         CATCH_END
     }
 
-    void    GenericUberSurfaceInterface::DoShortCircuitUpdate(RenderCore::Metal::DeviceContext* context, UInt2 adjMins, UInt2 adjMaxs)
+    void    GenericUberSurfaceInterface::DoShortCircuitUpdate(
+        RenderCore::Metal::DeviceContext* context, 
+        UInt2 adjMins, UInt2 adjMaxs)
     {
         TRY 
         {

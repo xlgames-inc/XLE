@@ -232,20 +232,24 @@ namespace SceneEngine
     public:
         std::shared_ptr<TerrainCellRenderer> _renderer;
         std::unique_ptr<TerrainSurfaceHeightsProvider> _heightsProvider;
-        std::unique_ptr<HeightsUberSurfaceInterface> _uberSurfaceInterface;
         std::shared_ptr<ITerrainFormat> _ioFormat;
+
+        std::unique_ptr<TerrainUberHeightsSurface> _uberSurface;
+        std::unique_ptr<HeightsUberSurfaceInterface> _uberSurfaceInterface;
 
         class CoverageInterface
         {
         public:
             TerrainCoverageId _id;
+            std::unique_ptr<TerrainUberSurface<uint8>> _uberSurface;
             std::unique_ptr<CoverageUberSurfaceInterface> _interface;
 
             CoverageInterface() {}
-            CoverageInterface(CoverageInterface&& moveFrom) : _id(moveFrom._id), _interface(std::move(moveFrom._interface)) {}
+            CoverageInterface(CoverageInterface&& moveFrom) : _id(moveFrom._id), _uberSurface(std::move(moveFrom._uberSurface)), _interface(std::move(moveFrom._interface)) {}
             CoverageInterface& operator=(CoverageInterface&& moveFrom) 
             {
                 _id = moveFrom._id;
+                _uberSurface = std::move(moveFrom._uberSurface);
                 _interface = std::move(moveFrom._interface);
                 return *this;
             }
@@ -290,11 +294,6 @@ namespace SceneEngine
         bool allowTerrainModification)
     {
         return std::make_shared<TerrainCellRenderer>(cfg, std::move(ioFormat), allowTerrainModification);
-    }
-
-    static float CellSizeWorldSpace(const TerrainConfig& cfg)
-    {
-        return cfg.CellDimensionsInNodes()[0] * cfg.NodeDimensionsInElements()[0] * cfg.ElementSpacing();
     }
 
     void TerrainManager::Pimpl::AddCells(const TerrainConfig& cfg, UInt2 cellMin, UInt2 cellMax)
@@ -355,13 +354,6 @@ namespace SceneEngine
         }
     }
 
-    static void DoShortCircuitUpdate(
-        uint64 cellHash, TerrainCoverageId layerId, std::shared_ptr<TerrainCellRenderer> renderer,
-        TerrainCellId::UberSurfaceAddress uberAddress, const ShortCircuitUpdate& upd)
-    {
-        renderer->ShortCircuit(cellHash, layerId, uberAddress._mins, uberAddress._maxs, upd);
-    }
-
     void TerrainManager::Pimpl::BuildUberSurface(const ::Assets::ResChar uberSurfaceDir[], const TerrainConfig& cfg)
     {
         const bool registerShortCircuit = true;
@@ -370,9 +362,8 @@ namespace SceneEngine
             ::Assets::ResChar uberSurfaceFile[MaxPath];
             TerrainConfig::GetUberSurfaceFilename(uberSurfaceFile, dimof(uberSurfaceFile), uberSurfaceDir, CoverageId_Heights);
 
-                // uber-surface is a special-case asset, because we can edit it without a "DivergentAsset". But to do that, we must const_cast here
-            auto& uberSurface = const_cast<TerrainUberHeightsSurface&>(::Assets::GetAsset<TerrainUberHeightsSurface>(uberSurfaceFile));
-            _uberSurfaceInterface = std::make_unique<HeightsUberSurfaceInterface>(std::ref(uberSurface), _ioFormat);
+            _uberSurface = std::make_unique<TerrainUberHeightsSurface>(uberSurfaceFile);
+            _uberSurfaceInterface = std::make_unique<HeightsUberSurfaceInterface>(std::ref(*_uberSurface), _ioFormat);
 
             if (constant_expression<registerShortCircuit>::result()) {
                     //  Register cells for short-circuit update... Do we need to do this for every single cell
@@ -397,8 +388,8 @@ namespace SceneEngine
             Pimpl::CoverageInterface ci;
             ci._id = l._id;
                 
-            auto& uberSurface = const_cast<TerrainUberSurface<uint8>&>(::Assets::GetAsset<TerrainUberSurface<uint8>>(uberSurfaceFile));
-            ci._interface = std::make_unique<CoverageUberSurfaceInterface>(std::ref(uberSurface), _ioFormat);
+            ci._uberSurface = std::make_unique<TerrainUberSurface<uint8>>(uberSurfaceFile);
+            ci._interface = std::make_unique<CoverageUberSurfaceInterface>(std::ref(*ci._uberSurface), _ioFormat);
 
             if (constant_expression<registerShortCircuit>::result()) {
                     //  Register cells for short-circuit update... Do we need to do this for every single cell
@@ -421,6 +412,11 @@ namespace SceneEngine
         _pimpl->_cells.clear();
         _pimpl->_uberSurfaceInterface.reset();
         _pimpl->_coverageInterfaces.clear();
+    }
+
+    static float CellSizeWorldSpace(const TerrainConfig& cfg)
+    {
+        return cfg.CellDimensionsInNodes()[0] * cfg.NodeDimensionsInElements()[0] * cfg.ElementSpacing();
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////
@@ -737,13 +733,7 @@ namespace SceneEngine
         return nullptr;
     }
 
-    const TerrainConfig& TerrainManager::GetConfig() const
-    {
-        return _pimpl->_cfg;
-    }
-    const std::shared_ptr<ITerrainFormat>& TerrainManager::GetFormat() const
-    {
-        return _pimpl->_ioFormat;
-    }
+    const TerrainConfig& TerrainManager::GetConfig() const                      { return _pimpl->_cfg; }
+    const std::shared_ptr<ITerrainFormat>& TerrainManager::GetFormat() const    { return _pimpl->_ioFormat; }
 }
 

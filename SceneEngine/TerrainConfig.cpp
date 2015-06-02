@@ -9,6 +9,8 @@
 #include "TerrainMaterial.h"
 #include "TerrainScaffold.h"
 #include "../Assets/Assets.h"
+#include "../Assets/AssetServices.h"
+#include "../Assets/InvalidAssetManager.h"
 #include "../Math/Transformations.h"
 #include "../Utility/Streams/StreamFormatter.h"
 #include "../Utility/Streams/StreamDOM.h"
@@ -148,42 +150,54 @@ namespace SceneEngine
     , _cellTreeDepth(5u), _elementSpacing(10.f)
     {
         size_t fileSize = 0;
-        auto sourceFile = LoadFileAsMemoryBlock(StringMeld<MaxPath>() << _baseDir << "world.cfg", &fileSize);
+        StringMeld<MaxPath> fn; fn << _baseDir << "world.cfg";
+        auto sourceFile = LoadFileAsMemoryBlock(fn, &fileSize);
         
-        InputStreamFormatter<utf8> formatter(
-            MemoryMappedInputStream(sourceFile.get(), PtrAdd(sourceFile.get(), fileSize)));
-        Document<utf8> doc(formatter);
+        TRY
+        {
+            InputStreamFormatter<utf8> formatter(
+                MemoryMappedInputStream(sourceFile.get(), PtrAdd(sourceFile.get(), fileSize)));
+            Document<utf8> doc(formatter);
 
-        auto c = doc.Element(u("TerrainConfig"));
-        if (c) {
-            auto filenames = c.AttributeOrEmpty(u("Filenames"));
-            if (!XlCompareStringI(filenames.c_str(), u("Legacy"))) { _filenamesMode = Legacy; }
+            auto c = doc.Element(u("TerrainConfig"));
+            if (c) {
+                auto filenames = c.AttributeOrEmpty(u("Filenames"));
+                if (!XlCompareStringI(filenames.c_str(), u("Legacy"))) { _filenamesMode = Legacy; }
 
-            _nodeDimsInElements = c(u("NodeDims"), _nodeDimsInElements);
-            _cellTreeDepth      = c(u("CellTreeDepth"), _cellTreeDepth);
-            _nodeOverlap        = c(u("NodeOverlap"), _nodeOverlap);
-            _elementSpacing     = c(u("ElementSpacing"), _elementSpacing);
-            _cellCount          = c(u("CellCount"), _cellCount);
+                _nodeDimsInElements = c(u("NodeDims"), _nodeDimsInElements);
+                _cellTreeDepth      = c(u("CellTreeDepth"), _cellTreeDepth);
+                _nodeOverlap        = c(u("NodeOverlap"), _nodeOverlap);
+                _elementSpacing     = c(u("ElementSpacing"), _elementSpacing);
+                _cellCount          = c(u("CellCount"), _cellCount);
 
-            auto coverage = c.Element(u("Coverage"));
-            if (coverage) {
-                for (auto l = coverage.FirstChild(); l; l=l.NextSibling()) {
-                    CoverageLayer layer;
-                    layer._name         = l.Name();
-                    layer._id           = l(u("Id"), 0);
-                    layer._dimensions   = l(u("Dims"), UInt2(0, 0));
-                    layer._format       = l(u("Format"), 35);
-                    _coverageLayers.push_back(layer);
+                auto coverage = c.Element(u("Coverage"));
+                if (coverage) {
+                    for (auto l = coverage.FirstChild(); l; l=l.NextSibling()) {
+                        CoverageLayer layer;
+                        layer._name         = l.Name();
+                        layer._id           = l(u("Id"), 0);
+                        layer._dimensions   = l(u("Dims"), UInt2(0, 0));
+                        layer._format       = l(u("Format"), 35);
+                        _coverageLayers.push_back(layer);
+                    }
                 }
             }
-        }
 
-        {
-            ::Assets::ResChar buffer[MaxPath];
-            const auto* fn = "terraintextures/textures.txt";
-            XlConcatPath(buffer, dimof(buffer), _baseDir.c_str(), fn, &fn[XlStringLen(fn)]);
-            _textureCfgName = buffer;
-        }
+            {
+                ::Assets::ResChar buffer[MaxPath];
+                const auto* fn = "terraintextures/textures.txt";
+                XlConcatPath(buffer, dimof(buffer), _baseDir.c_str(), fn, &fn[XlStringLen(fn)]);
+                _textureCfgName = buffer;
+            }
+
+            ::Assets::Services::GetInvalidAssetMan().MarkValid(fn.get());
+        } CATCH (const std::exception& e) {
+            ::Assets::Services::GetInvalidAssetMan().MarkInvalid(fn.get(), e.what());
+            throw;
+        } CATCH(...) {
+            ::Assets::Services::GetInvalidAssetMan().MarkInvalid(fn.get(), "Unknown error");
+            throw;
+        } CATCH_END
     }
 
     void TerrainConfig::Save()
