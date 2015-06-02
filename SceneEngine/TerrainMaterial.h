@@ -12,6 +12,8 @@
 #include "../Core/Types.h"
 #include <vector>
 
+namespace Utility { class OutputStream; }
+
 namespace SceneEngine
 {
     class TerrainMaterialScaffold
@@ -34,7 +36,7 @@ namespace SceneEngine
         mutable uint64 _cachedHashValue;
         uint64 GetHash() const;
 
-        void Write(OutputStream& stream) const;
+        void Write(Utility::OutputStream& stream) const;
 
         TerrainMaterialScaffold();
         TerrainMaterialScaffold(const char definitionFile[]);

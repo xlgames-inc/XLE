@@ -9,6 +9,7 @@
 #include "TerrainConversion.h"
 #include "../../SceneEngine/Terrain.h"
 #include "../../SceneEngine/TerrainFormat.h"
+#include "../../SceneEngine/TerrainConfig.h"
 #include "../../Math/Vector.h"
 #include "../../Utility/StringUtils.h"
 #include "../../Utility/StringFormat.h"

@@ -225,9 +225,15 @@
     <ClCompile Include="..\Sky.cpp" />
     <ClCompile Include="..\Terrain.cpp" />
     <ClCompile Include="..\TerrainCollisions.cpp" />
+    <ClCompile Include="..\TerrainConfig.cpp" />
+    <ClCompile Include="..\TerrainConversion.cpp" />
     <ClCompile Include="..\TerrainFormat.cpp" />
+    <ClCompile Include="..\TerrainManager.cpp" />
+    <ClCompile Include="..\TerrainMaterial.cpp" />
+    <ClCompile Include="..\TerrainMaterialTextures.cpp" />
     <ClCompile Include="..\TerrainRender.cpp" />
     <ClCompile Include="..\TerrainUberSurface.cpp" />
+    <ClCompile Include="..\TextureTileSet.cpp" />
     <ClCompile Include="..\TiledLighting.cpp" />
     <ClCompile Include="..\Tonemap.cpp" />
   </ItemGroup>
@@ -263,10 +269,15 @@
     <ClInclude Include="..\Sky.h" />
     <ClInclude Include="..\SurfaceHeightsProvider.h" />
     <ClInclude Include="..\Terrain.h" />
+    <ClInclude Include="..\TerrainConfig.h" />
+    <ClInclude Include="..\TerrainCoverageId.h" />
     <ClInclude Include="..\TerrainFormat.h" />
-    <ClInclude Include="..\TerrainInternal.h" />
+    <ClInclude Include="..\TerrainRender.h" />
+    <ClInclude Include="..\TerrainScaffold.h" />
     <ClInclude Include="..\TerrainMaterial.h" />
+    <ClInclude Include="..\TerrainMaterialTextures.h" />
     <ClInclude Include="..\TerrainUberSurface.h" />
+    <ClInclude Include="..\TextureTileSet.h" />
     <ClInclude Include="..\TiledLighting.h" />
     <ClInclude Include="..\Tonemap.h" />
     <ClInclude Include="..\VegetationSpawn.h" />

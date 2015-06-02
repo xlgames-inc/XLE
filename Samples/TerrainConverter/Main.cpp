@@ -9,6 +9,7 @@
 #include "../../Tools/ToolsRig/TerrainConversion.h"
 #include "../../SceneEngine/Terrain.h"
 #include "../../SceneEngine/TerrainFormat.h"
+#include "../../SceneEngine/TerrainConfig.h"
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../ConsoleRig/GlobalServices.h"

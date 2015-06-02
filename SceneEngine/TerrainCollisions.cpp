@@ -5,7 +5,8 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Terrain.h"
-#include "TerrainInternal.h"
+#include "TerrainScaffold.h"
+#include "TerrainConfig.h"
 #include "../Math/Transformations.h"
 #include "../RenderCore/Resource.h"
 #include "../ConsoleRig/Log.h"

@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "../Assets/Assets.h"
 #include "../Core/Types.h"
 #include "../Math/Matrix.h"
 #include <vector>
@@ -65,7 +66,7 @@ namespace SceneEngine
         std::string                         _sourceFileName;
         std::string                         _secondaryCacheName;
 
-        std::shared_ptr<Assets::DependencyValidation>  _validationCallback;
+        std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
         std::vector<uint8>      BuildHeightMapData(unsigned nodeIndex, Utility::BasicFile& sourceFile, Utility::BasicFile& secondaryCache);
 
     private:
@@ -89,7 +90,7 @@ namespace SceneEngine
         unsigned                _fieldCount;
         std::string             _sourceFileName;
 
-        std::shared_ptr<Assets::DependencyValidation>  _validationCallback;
+        std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
 
         friend class TerrainCellRenderer;
     };

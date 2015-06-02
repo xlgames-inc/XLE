@@ -94,6 +94,24 @@
     <ClCompile Include="..\TerrainFormat.cpp">
       <Filter>Objects\Terrain</Filter>
     </ClCompile>
+    <ClCompile Include="..\TerrainMaterial.cpp">
+      <Filter>Objects\Terrain</Filter>
+    </ClCompile>
+    <ClCompile Include="..\TextureTileSet.cpp">
+      <Filter>Objects\Terrain</Filter>
+    </ClCompile>
+    <ClCompile Include="..\TerrainMaterialTextures.cpp">
+      <Filter>Objects\Terrain</Filter>
+    </ClCompile>
+    <ClCompile Include="..\TerrainConfig.cpp">
+      <Filter>Objects\Terrain</Filter>
+    </ClCompile>
+    <ClCompile Include="..\TerrainConversion.cpp">
+      <Filter>Objects\Terrain</Filter>
+    </ClCompile>
+    <ClCompile Include="..\TerrainManager.cpp">
+      <Filter>Objects\Terrain</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\AmbientOcclusion.h">
@@ -154,9 +172,6 @@
     <ClInclude Include="..\TerrainUberSurface.h">
       <Filter>Objects\Terrain</Filter>
     </ClInclude>
-    <ClInclude Include="..\TerrainInternal.h">
-      <Filter>Objects\Terrain</Filter>
-    </ClInclude>
     <ClInclude Include="..\Sky.h">
       <Filter>Objects</Filter>
     </ClInclude>
@@ -199,8 +214,28 @@
     <ClInclude Include="..\LightInternal.h">
       <Filter>Lighting And Processing</Filter>
     </ClInclude>
-    <ClInclude Include="..\TerrainMaterial.h" />
     <ClInclude Include="..\TerrainFormat.h">
+      <Filter>Objects\Terrain</Filter>
+    </ClInclude>
+    <ClInclude Include="..\TerrainMaterial.h">
+      <Filter>Objects\Terrain</Filter>
+    </ClInclude>
+    <ClInclude Include="..\TextureTileSet.h">
+      <Filter>Objects\Terrain</Filter>
+    </ClInclude>
+    <ClInclude Include="..\TerrainMaterialTextures.h">
+      <Filter>Objects\Terrain</Filter>
+    </ClInclude>
+    <ClInclude Include="..\TerrainConfig.h">
+      <Filter>Objects\Terrain</Filter>
+    </ClInclude>
+    <ClInclude Include="..\TerrainScaffold.h">
+      <Filter>Objects\Terrain</Filter>
+    </ClInclude>
+    <ClInclude Include="..\TerrainRender.h">
+      <Filter>Objects\Terrain</Filter>
+    </ClInclude>
+    <ClInclude Include="..\TerrainCoverageId.h">
       <Filter>Objects\Terrain</Filter>
     </ClInclude>
   </ItemGroup>

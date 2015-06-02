@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Terrain.h"
-#include "TerrainInternal.h"
+#include "TerrainScaffold.h"
 #include "TerrainUberSurface.h"
 
 #include "../Utility/Streams/FileUtils.h"

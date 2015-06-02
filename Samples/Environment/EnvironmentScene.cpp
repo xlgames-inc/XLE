@@ -17,6 +17,7 @@
 #include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../SceneEngine/Tonemap.h"
 #include "../../SceneEngine/TerrainFormat.h"
+#include "../../SceneEngine/TerrainConfig.h"
 
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../RenderCore/Metal/State.h"

@@ -5,8 +5,9 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "TerrainUberSurface.h"
-#include "TerrainInternal.h"
+#include "TerrainScaffold.h"
 #include "Terrain.h"
+#include "TerrainConfig.h"
 #include "SceneEngineUtils.h"
 #include "LightingParserContext.h"
 #include "Noise.h"

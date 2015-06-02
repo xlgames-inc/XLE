@@ -7,6 +7,7 @@
 #include "TerrainEntities.h"
 #include "RetainedEntities.h"
 #include "../../SceneEngine/Terrain.h"
+#include "../../SceneEngine/TerrainConfig.h"
 #include "../../SceneEngine/TerrainMaterial.h"
 #include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../SceneEngine/TerrainFormat.h"

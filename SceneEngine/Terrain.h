@@ -6,12 +6,11 @@
 
 #pragma once
 
+#include "TerrainCoverageId.h"
 #include "../RenderCore/Metal/Forward.h"
 #include "../Math/Vector.h"
 #include "../Math/Matrix.h"
 #include "../Assets/Assets.h"
-#include "../Utility/UTFUtils.h"
-#include "../Core/Types.h"
 
 namespace RenderCore { namespace Techniques { class CameraDesc; } }
 namespace Utility { class OutputStream; }
@@ -25,63 +24,7 @@ namespace SceneEngine
     class ITerrainFormat;
     class ISurfaceHeightsProvider;
     
-    using TerrainCoverageId = uint32;
-    static const TerrainCoverageId CoverageId_Heights = 1;
-    static const TerrainCoverageId CoverageId_AngleBasedShadows = 2;
-    static const TerrainCoverageId CoverageId_ArchiveHeights = 100;
-
-    class TerrainConfig
-    {
-    public:
-        enum Filenames { XLE, Legacy };
-
-        ::Assets::rstring _baseDir;
-        ::Assets::rstring _textureCfgName;
-        UInt2       _cellCount;
-        Filenames   _filenamesMode;
-
-        class CoverageLayer
-        {
-        public:
-            std::basic_string<utf8> _name;
-            TerrainCoverageId _id;
-            UInt2 _dimensions;
-            unsigned _format;
-        };
-
-        TerrainConfig(
-			const ::Assets::ResChar baseDir[], UInt2 cellCount,
-            Filenames filenamesMode = XLE, 
-            unsigned nodeDimsInElements = 32u, unsigned cellTreeDepth = 5u, unsigned nodeOverlap = 2u,
-            float elementSpacing = 10.f);
-		TerrainConfig(const ::Assets::ResChar baseDir[] = "");
-
-        void        GetCellFilename(::Assets::ResChar buffer[], unsigned cnt, UInt2 cellIndex, TerrainCoverageId id) const;
-        UInt2x3     CellBasedToCoverage(TerrainCoverageId coverageId) const;
-
-        static void GetUberSurfaceFilename(
-            ::Assets::ResChar buffer[], unsigned bufferCount,
-            const ::Assets::ResChar directory[],
-            TerrainCoverageId fileType);
-
-        UInt2       CellDimensionsInNodes() const;
-        UInt2       NodeDimensionsInElements() const;       // (ignoring overlap)
-        unsigned    CellTreeDepth() const { return _cellTreeDepth; }
-        unsigned    NodeOverlap() const { return _nodeOverlap; }
-        float       ElementSpacing() const { return _elementSpacing; }
-
-        unsigned    GetCoverageLayerCount() const;
-        const CoverageLayer& GetCoverageLayer(unsigned index) const;
-
-        void        Save();
-
-    protected:
-        unsigned    _nodeDimsInElements;
-        unsigned    _cellTreeDepth;
-        unsigned    _nodeOverlap;
-        float       _elementSpacing;
-        std::vector<CoverageLayer> _coverageLayers;
-    };
+    class TerrainConfig;
 
     class TerrainCoordinateSystem
     {

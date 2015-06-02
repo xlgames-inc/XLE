@@ -6,7 +6,7 @@
 
 #include "TerrainFormat.h"
 #include "TerrainUberSurface.h"
-#include "TerrainInternal.h"
+#include "TerrainScaffold.h"
 #include "../RenderCore/Resource.h"
 #include "../RenderCore/Metal/Format.h"
 #include "../Assets/ChunkFile.h"

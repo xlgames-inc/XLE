@@ -12,6 +12,7 @@
 #include "../../SceneEngine/IntersectionTest.h"
 #include "../../SceneEngine/LightingParserContext.h"
 #include "../../SceneEngine/Terrain.h"
+#include "../../SceneEngine/TerrainConfig.h"
 #include "../../Math/Transformations.h"
 #include "../../Utility/TimeUtils.h"
 
