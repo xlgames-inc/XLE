@@ -138,6 +138,7 @@
     <ClInclude Include="..\Streams\FileUtils.h" />
     <ClInclude Include="..\Streams\PathUtils.h" />
     <ClInclude Include="..\Streams\Stream.h" />
+    <ClInclude Include="..\Streams\StreamDOM.h" />
     <ClInclude Include="..\Streams\StreamFormatter.h" />
     <ClInclude Include="..\Streams\StreamTypes.h" />
     <ClInclude Include="..\StringFormat.h" />
@@ -170,6 +171,7 @@
     <ClCompile Include="..\Streams\FileUtils.cpp" />
     <ClCompile Include="..\Streams\PathUtils.cpp" />
     <ClCompile Include="..\Streams\Stream.cpp" />
+    <ClCompile Include="..\Streams\StreamDOM.cpp" />
     <ClCompile Include="..\Streams\StreamFormatter.cpp" />
     <ClCompile Include="..\Streams\WinAPI\FileSystemMonitor_WinAPI.cpp" />
     <ClCompile Include="..\Streams\WinAPI\FileUtils_WinAPI.cpp" />

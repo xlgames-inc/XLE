@@ -41,29 +41,29 @@ namespace UnitTests
         {
             ParameterBox test(
                 {
-                    std::make_pair("SomeParam", "1ul"),
-                    std::make_pair("SomeParam1", ".4f"),
-                    std::make_pair("SomeParam2", "344.f"),
-                    std::make_pair("SomeParam3", ".56f"),
-                    std::make_pair("VectorParam", "{4.5f, 7.5f, 9.5f}v"),
-                    std::make_pair("ColorParam", "{.5f, .5f, .5f}c")
+                    std::make_pair((const utf8*)"SomeParam", "1ul"),
+                    std::make_pair((const utf8*)"SomeParam1", ".4f"),
+                    std::make_pair((const utf8*)"SomeParam2", "344.f"),
+                    std::make_pair((const utf8*)"SomeParam3", ".56f"),
+                    std::make_pair((const utf8*)"VectorParam", "{4.5f, 7.5f, 9.5f}v"),
+                    std::make_pair((const utf8*)"ColorParam", "{.5f, .5f, .5f}c")
                 });
 
-            Assert::AreEqual(test.GetParameter<unsigned>("SomeParam").second, 1u, L"String parsing and constructor");
-            Assert::AreEqual(test.GetParameter<float>("SomeParam1").second, .4f, L"String parsing and constructor");
-            Assert::AreEqual(test.GetParameter<float>("SomeParam2").second, 344.f, 0.001f, L"String parsing and constructor");
-            Assert::AreEqual(test.GetParameter<float>("SomeParam3").second, .56f, 0.001f, L"String parsing and constructor");
+            Assert::AreEqual(test.GetParameter<unsigned>((const utf8*)"SomeParam").second, 1u, L"String parsing and constructor");
+            Assert::AreEqual(test.GetParameter<float>((const utf8*)"SomeParam1").second, .4f, L"String parsing and constructor");
+            Assert::AreEqual(test.GetParameter<float>((const utf8*)"SomeParam2").second, 344.f, 0.001f, L"String parsing and constructor");
+            Assert::AreEqual(test.GetParameter<float>((const utf8*)"SomeParam3").second, .56f, 0.001f, L"String parsing and constructor");
 
-            test.SetParameter("AParam", false);
-            test.SetParameter("AParam", 5);
-            test.SetParameter("AParam", 5.f);
-            test.SetParameter("AParam", 500.f);
-            Assert::AreEqual(test.GetParameter<float>("AParam").second, 500.f, 0.001f, L"Changing parameter types");
+            test.SetParameter((const utf8*)"AParam", false);
+            test.SetParameter((const utf8*)"AParam", 5);
+            test.SetParameter((const utf8*)"AParam", 5.f);
+            test.SetParameter((const utf8*)"AParam", 500.f);
+            Assert::AreEqual(test.GetParameter<float>((const utf8*)"AParam").second, 500.f, 0.001f, L"Changing parameter types");
 
-            test.SetParameter("ShouldBeTrue", true);
-            Assert::AreEqual(test.GetParameter<bool>("ShouldBeTrue").second, true, L"Store/retrieve boolean");
+            test.SetParameter((const utf8*)"ShouldBeTrue", true);
+            Assert::AreEqual(test.GetParameter<bool>((const utf8*)"ShouldBeTrue").second, true, L"Store/retrieve boolean");
 
-            std::vector<std::pair<const char*, std::string>> stringTable;
+            std::vector<std::pair<const utf8*, std::string>> stringTable;
             test.BuildStringTable(stringTable);
 
             for (auto i=stringTable.begin(); i!=stringTable.end(); ++i) {
@@ -97,8 +97,8 @@ namespace UnitTests
             {
                 stream.WriteChar((utf8)'B');
                 stream.WriteChar((ucs2)L'D');
-                stream.WriteString((const utf8*)"<<StringB>>");
-                stream.WriteString((const ucs2*)L"<<StringD>>");
+                stream.WriteNullTerm((const utf8*)"<<StringB>>");
+                stream.WriteNullTerm((const ucs2*)L"<<StringD>>");
             }
 
         TEST_METHOD(MemoryStreamTest)

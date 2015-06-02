@@ -4,10 +4,13 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#pragma once
+
 #include "../Detail/API.h"
 #include "../UTFUtils.h"
 #include "../StringUtils.h"
 #include "../PtrUtils.h"
+#include "../../Core/Exceptions.h"
 #include <vector>
 #include <assert.h>
 
@@ -92,6 +95,13 @@ namespace Utility
         const void* _ptr;
     };
 
+    class StreamLocation { public: unsigned _charIndex, _lineIndex; };
+    class FormatException : public ::Exceptions::BasicLabel
+    {
+    public:
+        FormatException(const char message[], StreamLocation location);
+    };
+
     template<typename CharType>
         class XL_UTILITY_API InputStreamFormatter
     {
@@ -111,6 +121,8 @@ namespace Utility
         bool TryReadAttribute(InteriorSection& name, InteriorSection& value);
 
         void SkipElement();
+
+        StreamLocation GetLocation() const;
 
         InputStreamFormatter(MemoryMappedInputStream& stream);
         ~InputStreamFormatter();
@@ -132,7 +144,6 @@ namespace Utility
         unsigned _tabWidth;
         bool _pendingHeader;
 
-        unsigned CharIndex() const;
         void ReadHeader();
     };
 

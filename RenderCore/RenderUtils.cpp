@@ -8,6 +8,7 @@
 #include "Resource.h"
 #include "Metal/Shader.h"
 
+#include "../../ConsoleRig/GlobalServices.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/MemoryUtils.h"
 
@@ -64,11 +65,23 @@ namespace RenderCore
 
     MiniHeap& SharedPkt::GetHeap()
     {
-            // \todo -- this has to be done in a DLL safe way.
-            //          There should be a single heap like this
-            //          that is used by the whole system
-        static MiniHeap MainHeap;
-        return MainHeap;
+        static MiniHeap* MainHeap = nullptr;
+        if (!MainHeap) {
+                // initialize our global from the global services
+                // this will ensure that the same object will be used across multiple DLLs
+            static auto Fn_GetStorage = ConstHash64<'gets', 'hare', 'dpkt', 'heap'>::Value;
+            auto& services = ConsoleRig::GlobalServices::GetCrossModule()._services;
+            if (!services.Has<MiniHeap*()>(Fn_GetStorage)) {
+                auto newMiniHeap = std::make_shared<MiniHeap>();
+                services.Add(Fn_GetStorage,
+                    [newMiniHeap]() { return newMiniHeap.get(); });
+                MainHeap = newMiniHeap.get();
+            } else {
+                MainHeap = services.Call<MiniHeap*>(Fn_GetStorage);
+            }
+        }
+
+        return *MainHeap;
     }
 
 }

@@ -243,15 +243,9 @@ namespace Utility
     template void OutputStreamFormatter::WriteAttribute(const ucs2* nameStart, const ucs2* nameEnd, const ucs2* valueStart, const ucs2* valueEnd);
     template void OutputStreamFormatter::WriteAttribute(const ucs4* nameStart, const ucs4* nameEnd, const ucs4* valueStart, const ucs4* valueEnd);
 
-    namespace Exceptions
-    {
-        class FormatException : public ::Exceptions::BasicLabel
-        {
-        public:
-            FormatException(const char label[], unsigned lineIndex, unsigned charIndex)
-                : ::Exceptions::BasicLabel("Format Exception: (%s) at line (%i), (%i)", label, lineIndex, charIndex) {}
-        };
-    }
+    
+    FormatException::FormatException(const char label[], StreamLocation location)
+        : ::Exceptions::BasicLabel("Format Exception: (%s) at line (%i), char (%i)", label, location._lineIndex, location._charIndex) {}
 
     template<typename CharType, int Count>
         bool TryEat(MemoryMappedInputStream& stream, CharType (&pattern)[Count])
@@ -269,15 +263,15 @@ namespace Utility
     }
 
     template<typename CharType, int Count>
-        void Eat(MemoryMappedInputStream& stream, CharType (&pattern)[Count], unsigned lineIndex, unsigned charIndex)
+        void Eat(MemoryMappedInputStream& stream, CharType (&pattern)[Count], StreamLocation location)
     {
         if (stream.RemainingBytes() < (sizeof(CharType)*Count))
-            ThrowException(Exceptions::FormatException("Blob prefix clipped", lineIndex, charIndex));
+            ThrowException(FormatException("Blob prefix clipped", lineIndex, charIndex));
 
         const auto* test = (const CharType*)stream.ReadPointer();
         for (unsigned c=0; c<Count; ++c)
             if (test[c] != pattern[c])
-                ThrowException(Exceptions::FormatException("Malformed blob prefix", lineIndex, charIndex));
+                ThrowException(FormatException("Malformed blob prefix", location));
         
         stream.MovePointer(sizeof(CharType)*Count);
     }
@@ -285,7 +279,7 @@ namespace Utility
     template<typename CharType>
         const CharType* ReadToStringEnd(
             MemoryMappedInputStream& stream, bool protectedStringMode,
-            unsigned lineIndex, unsigned charIndex)
+            StreamLocation location)
     {
         const auto pattern = FormatterConstants<CharType>::ProtectedNamePostfix;
         const auto patternLength = dimof(FormatterConstants<CharType>::ProtectedNamePostfix);
@@ -304,7 +298,7 @@ namespace Utility
                 ++ptr;
             }
 
-            ThrowException(Exceptions::FormatException("String deliminator not found", lineIndex, charIndex));
+            ThrowException(FormatException("String deliminator not found", location));
         } else {
                 // we must read forward until we hit a formatting character
                 // the end of the string will be the last non-whitespace before that formatting character
@@ -369,7 +363,7 @@ namespace Utility
             case 0x0C:  // (form feed)
             case 0x85:  // (next line)
             case 0xA0:  // (no-break space)
-                ThrowException(Exceptions::FormatException("Unsupported white space character", _lineIndex, CharIndex()));
+                ThrowException(FormatException("Unsupported white space character", GetLocation()));
 
             case '\r':  // (could be an independant new line, or /r/n combo)
                 _stream.MovePointer(sizeof(CharType));
@@ -469,10 +463,10 @@ namespace Utility
                 break;
 
             case 0x0B: case 0x0C: case 0x85: case 0xA0:
-                ThrowException(Exceptions::FormatException("Unsupported white space character", _lineIndex, CharIndex()));
+                ThrowException(FormatException("Unsupported white space character", GetLocation()));
 
             case '~':
-                ThrowException(Exceptions::FormatException("Unexpected element in header", _lineIndex, CharIndex()));
+                ThrowException(FormatException("Unexpected element in header", GetLocation()));
 
             case '\r':  // (could be an independant new line, or /r/n combo)
             case '\n':  // (independant new line. A following /r will be treated as another new line)
@@ -484,25 +478,25 @@ namespace Utility
                 
                 {
                     const auto* aValueStart = (const CharType*)_stream.ReadPointer();
-                    const auto* aValueEnd = ReadToStringEnd<CharType>(_stream, false, _lineIndex, CharIndex());
+                    const auto* aValueEnd = ReadToStringEnd<CharType>(_stream, false, GetLocation());
 
                     char convBuffer[12];
                     Conversion::Convert(convBuffer, dimof(convBuffer), aNameStart, aNameEnd);
 
                     if (!XlCompareStringI(convBuffer, "Format")) {
                         if (AsInt(aValueStart, aValueEnd)!=1)
-                            ThrowException(Exceptions::FormatException("Unsupported format in input stream formatter header", _lineIndex, CharIndex()));
+                            ThrowException(FormatException("Unsupported format in input stream formatter header", GetLocation()));
                     } else if (!XlCompareStringI(convBuffer, "Tab")) {
                         _tabWidth = AsInt(aValueStart, aValueEnd);
                         if (_tabWidth==0)
-                            ThrowException(Exceptions::FormatException("Bad tab width in input stream formatter header", _lineIndex, CharIndex()));
+                            ThrowException(FormatException("Bad tab width in input stream formatter header", GetLocation()));
                     }
                 }
                 break;
 
             default:
                 aNameStart = next;
-                aNameEnd = ReadToStringEnd<CharType>(_stream, false, _lineIndex, CharIndex());
+                aNameEnd = ReadToStringEnd<CharType>(_stream, false, GetLocation());
                 break;
             }
         }
@@ -514,12 +508,12 @@ namespace Utility
         if (PeekNext() != Blob::BeginElement) return false;
 
         name._start = (const CharType*)_stream.ReadPointer();
-        name._end = ReadToStringEnd<CharType>(_stream, _protectedStringMode, _lineIndex, CharIndex());
+        name._end = ReadToStringEnd<CharType>(_stream, _protectedStringMode, GetLocation());
 
         // the new "parent base line" should be the indentation level of the line this element started on
         if ((_baseLineStackPtr+1) > dimof(_baseLineStack))
-            ThrowException(Exceptions::FormatException(
-                "Excessive indentation format in input stream formatter", _lineIndex, CharIndex()));
+            ThrowException(FormatException(
+                "Excessive indentation format in input stream formatter", GetLocation()));
 
         _baseLineStack[_baseLineStackPtr++] = _activeLineSpaces;
         _parentBaseLine = _activeLineSpaces;
@@ -551,8 +545,8 @@ namespace Utility
         switch(PeekNext()) {
         case Blob::BeginElement:
             if (!TryReadBeginElement(dummy0))
-                ThrowException(Exceptions::FormatException(
-                    "Malformed begin element while skipping forward", _lineIndex, CharIndex()));
+                ThrowException(FormatException(
+                    "Malformed begin element while skipping forward", GetLocation()));
             ++subtreeEle;
             break;
 
@@ -560,20 +554,20 @@ namespace Utility
             if (!subtreeEle) return;    // end now, while the EndElement is primed
 
             if (!TryReadEndElement())
-                ThrowException(Exceptions::FormatException(
-                    "Malformed end element while skipping forward", _lineIndex, CharIndex()));
+                ThrowException(FormatException(
+                    "Malformed end element while skipping forward", GetLocation()));
             --subtreeEle;
             break;
 
         case Blob::AttributeName:
             if (!TryReadAttribute(dummy0, dummy1))
-                ThrowException(Exceptions::FormatException(
-                    "Malformed attribute while skipping forward", _lineIndex, CharIndex()));
+                ThrowException(FormatException(
+                    "Malformed attribute while skipping forward", GetLocation()));
             break;
 
         default:
-            ThrowException(Exceptions::FormatException(
-                "Unexpected blob or end of stream hit while skipping forward", _lineIndex, CharIndex()));
+            ThrowException(FormatException(
+                "Unexpected blob or end of stream hit while skipping forward", GetLocation()));
         }
     }
 
@@ -583,7 +577,7 @@ namespace Utility
         if (PeekNext() != Blob::AttributeName) return false;
 
         name._start = (const CharType*)_stream.ReadPointer();
-        name._end = ReadToStringEnd<CharType>(_stream, _protectedStringMode, _lineIndex, CharIndex());
+        name._end = ReadToStringEnd<CharType>(_stream, _protectedStringMode, GetLocation());
         EatWhitespace<CharType>(_stream);
 
         _primed = Blob::None;
@@ -591,7 +585,7 @@ namespace Utility
 
         if (PeekNext() == Blob::AttributeValue) {
             value._start = (const CharType*)_stream.ReadPointer();
-            value._end = ReadToStringEnd<CharType>(_stream, _protectedStringMode, _lineIndex, CharIndex());
+            value._end = ReadToStringEnd<CharType>(_stream, _protectedStringMode, GetLocation());
             _protectedStringMode = false;
             _primed = Blob::None;
         } else {
@@ -602,9 +596,12 @@ namespace Utility
     }
 
     template<typename CharType>
-        unsigned InputStreamFormatter<CharType>::CharIndex() const
+        StreamLocation InputStreamFormatter<CharType>::GetLocation() const
     {
-        return unsigned((size_t(_stream.ReadPointer()) - size_t(_lineStart)) / sizeof(CharType));
+        StreamLocation result;
+        result._charIndex = 1 + unsigned((size_t(_stream.ReadPointer()) - size_t(_lineStart)) / sizeof(CharType));
+        result._lineIndex = 1 + _lineIndex;
+        return result;
     }
 
     template<typename CharType>

@@ -7,6 +7,7 @@
     <ClCompile Include="..\DLLBinding.cpp" />
     <ClCompile Include="..\Utilities.cpp" />
     <ClCompile Include="..\Threading.cpp" />
+    <ClCompile Include="..\StreamFormatter.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\UnitTestHelper.h" />
