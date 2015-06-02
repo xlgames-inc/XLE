@@ -42,6 +42,12 @@ namespace Utility
             }
 
         template<typename CharType> 
+            ElementId BeginElement(const std::basic_string<CharType>& name)
+            {
+                return BeginElement(AsPointer(name.cbegin()), AsPointer(name.cend()));
+            }
+
+        template<typename CharType> 
             void WriteAttribute(const CharType* nameNullTerm, const CharType* valueNullTerm)
             {
                 WriteAttribute(
@@ -124,7 +130,7 @@ namespace Utility
 
         StreamLocation GetLocation() const;
 
-        InputStreamFormatter(MemoryMappedInputStream& stream);
+        InputStreamFormatter(const MemoryMappedInputStream& stream);
         ~InputStreamFormatter();
     protected:
         MemoryMappedInputStream _stream;

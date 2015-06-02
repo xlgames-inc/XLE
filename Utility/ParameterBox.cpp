@@ -80,6 +80,7 @@ namespace Utility
         template<> TypeDesc TypeOf<UInt3>()         { return TypeDesc(TypeCat::UInt32, 3, TypeHint::Vector); }
         template<> TypeDesc TypeOf<UInt4>()         { return TypeDesc(TypeCat::UInt32, 4, TypeHint::Vector); }
         template<> TypeDesc TypeOf<const char*>()   { return TypeDesc(TypeCat::UInt8, (uint16)~uint16(0), TypeHint::String); }
+        template<> TypeDesc TypeOf<const utf8*>()   { return TypeDesc(TypeCat::UInt8, (uint16)~uint16(0), TypeHint::String); }
 
         TypeDesc TypeOf(const char expression[]) 
         {
@@ -422,10 +423,10 @@ namespace Utility
             return TypeDesc(TypeCat::Void);
         }
 
-        template <typename Type> std::pair<bool, Type> Parse(const char expression[]) 
+        template <typename Type> std::pair<bool, Type> Parse(const char* expressionBegin, const char* expressionEnd) 
         {
             char buffer[NativeRepMaxSize];
-            auto parseType = Parse(expression, &expression[XlStringLen(expression)], buffer, sizeof(buffer));
+            auto parseType = Parse(expressionBegin, expressionEnd, buffer, sizeof(buffer));
             if (parseType == TypeOf<Type>()) {
                 return std::make_pair(true, *(Type*)buffer);
             } else {
@@ -436,6 +437,17 @@ namespace Utility
                 }
             }
             return std::make_pair(false, Type());
+        }
+
+        template <typename Type> std::pair<bool, Type> Parse(const char expression[]) 
+        {
+            return Parse<Type>(expression, &expression[XlStringLen(expression)]);
+        }
+
+        template <typename Type>
+            std::pair<bool, Type> Parse(const utf8* expressionBegin, const utf8* expressionEnd)
+        {
+            return Parse<Type>((const char*)expressionBegin, (const char*)expressionEnd);
         }
 
         std::string AsString(const void* data, size_t dataSize, const TypeDesc& desc, bool strongTyping)
@@ -500,19 +512,33 @@ namespace Utility
             return result.str();
         }
 
-        template std::pair<bool, bool> Parse(const char expression[]);
-        template std::pair<bool, unsigned> Parse(const char expression[]);
-        template std::pair<bool, signed> Parse(const char expression[]);
-        template std::pair<bool, float> Parse(const char expression[]);
-        template std::pair<bool, Float2> Parse(const char expression[]);
-        template std::pair<bool, Float3> Parse(const char expression[]);
-        template std::pair<bool, Float4> Parse(const char expression[]);
-        template std::pair<bool, Float3x3> Parse(const char expression[]);
-        template std::pair<bool, Float3x4> Parse(const char expression[]);
-        template std::pair<bool, Float4x4> Parse(const char expression[]);
-        template std::pair<bool, UInt2> Parse(const char expression[]);
-        template std::pair<bool, UInt3> Parse(const char expression[]);
-        template std::pair<bool, UInt4> Parse(const char expression[]);
+        template std::pair<bool, bool> Parse(const char[]);
+        template std::pair<bool, unsigned> Parse(const char[]);
+        template std::pair<bool, signed> Parse(const char[]);
+        template std::pair<bool, float> Parse(const char[]);
+        template std::pair<bool, Float2> Parse(const char[]);
+        template std::pair<bool, Float3> Parse(const char[]);
+        template std::pair<bool, Float4> Parse(const char[]);
+        template std::pair<bool, Float3x3> Parse(const char[]);
+        template std::pair<bool, Float3x4> Parse(const char[]);
+        template std::pair<bool, Float4x4> Parse(const char[]);
+        template std::pair<bool, UInt2> Parse(const char[]);
+        template std::pair<bool, UInt3> Parse(const char[]);
+        template std::pair<bool, UInt4> Parse(const char[]);
+
+        template std::pair<bool, bool> Parse(const utf8*, const utf8*);
+        template std::pair<bool, unsigned> Parse(const utf8*, const utf8*);
+        template std::pair<bool, signed> Parse(const utf8*, const utf8*);
+        template std::pair<bool, float> Parse(const utf8*, const utf8*);
+        template std::pair<bool, Float2> Parse(const utf8*, const utf8*);
+        template std::pair<bool, Float3> Parse(const utf8*, const utf8*);
+        template std::pair<bool, Float4> Parse(const utf8*, const utf8*);
+        template std::pair<bool, Float3x3> Parse(const utf8*, const utf8*);
+        template std::pair<bool, Float3x4> Parse(const utf8*, const utf8*);
+        template std::pair<bool, Float4x4> Parse(const utf8*, const utf8*);
+        template std::pair<bool, UInt2> Parse(const utf8*, const utf8*);
+        template std::pair<bool, UInt3> Parse(const utf8*, const utf8*);
+        template std::pair<bool, UInt4> Parse(const utf8*, const utf8*);
 
     }
 

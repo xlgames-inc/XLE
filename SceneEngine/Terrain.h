@@ -10,6 +10,7 @@
 #include "../Math/Vector.h"
 #include "../Math/Matrix.h"
 #include "../Assets/Assets.h"
+#include "../Utility/UTFUtils.h"
 #include "../Core/Types.h"
 
 namespace RenderCore { namespace Techniques { class CameraDesc; } }
@@ -42,7 +43,7 @@ namespace SceneEngine
         class CoverageLayer
         {
         public:
-            std::string _name;
+            std::basic_string<utf8> _name;
             TerrainCoverageId _id;
             UInt2 _dimensions;
             unsigned _format;
@@ -57,6 +58,11 @@ namespace SceneEngine
 
         void        GetCellFilename(::Assets::ResChar buffer[], unsigned cnt, UInt2 cellIndex, TerrainCoverageId id) const;
         UInt2x3     CellBasedToCoverage(TerrainCoverageId coverageId) const;
+
+        static void GetUberSurfaceFilename(
+            ::Assets::ResChar buffer[], unsigned bufferCount,
+            const ::Assets::ResChar directory[],
+            TerrainCoverageId fileType);
 
         UInt2       CellDimensionsInNodes() const;
         UInt2       NodeDimensionsInElements() const;       // (ignoring overlap)

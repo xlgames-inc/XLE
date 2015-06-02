@@ -18,6 +18,8 @@
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Assets/DeferredShaderResource.h"
 #include "../Utility/Streams/DataSerialize.h"
+#include "../Utility/Streams/Stream.h"
+#include "../Utility/Streams/StreamDOM.h"
 #include "../Utility/StringFormat.h"
 
 #include "../BufferUploads/IBufferUploads.h"
@@ -2852,7 +2854,7 @@ namespace SceneEngine
         }
     }
 
-    static void GetUberSurfaceFilename(
+    void TerrainConfig::GetUberSurfaceFilename(
         ::Assets::ResChar buffer[], unsigned bufferCount,
         const ::Assets::ResChar directory[],
         TerrainCoverageId fileType)
@@ -2951,7 +2953,7 @@ namespace SceneEngine
         //////////////////////////////////////////////////////////////////////////////////////
             // If we don't have an uber surface file, then we should create it
         ::Assets::ResChar heightsFile[MaxPath];
-        GetUberSurfaceFilename(heightsFile, dimof(heightsFile), destinationUberSurfaceDirectory, CoverageId_Heights);
+        TerrainConfig::GetUberSurfaceFilename(heightsFile, dimof(heightsFile), destinationUberSurfaceDirectory, CoverageId_Heights);
         if (!DoesFileExist(heightsFile) && inputIOFormat) {
             BuildUberSurfaceFile(
                 heightsFile, inputConfig, inputIOFormat.get(), 
@@ -2972,7 +2974,7 @@ namespace SceneEngine
             const auto& layer = outputConfig.GetCoverageLayer(l);
 
             ::Assets::ResChar layerUberSurface[MaxPath];
-            GetUberSurfaceFilename(layerUberSurface, dimof(layerUberSurface), uberSurfaceDir, layer._id);
+            TerrainConfig::GetUberSurfaceFilename(layerUberSurface, dimof(layerUberSurface), uberSurfaceDir, layer._id);
 
             if (DoesFileExist(layerUberSurface)) {
                     //  open and destroy these coverage uber shadowing surface before we open the uber heights surface
@@ -2982,7 +2984,8 @@ namespace SceneEngine
                 } else if (layer._format == 62) {
                     WriteCellCoverageData<uint8>(outputConfig, *outputIOFormat, layerUberSurface, l);
                 } else {
-                    LogAlwaysError << "Unknown format (" << layer._format << ") for terrain coverage file for layer: " << layer._name;
+                    LogAlwaysError << "Unknown format (" << layer._format << ") for terrain coverage file for layer: " << 
+                        Conversion::Convert<std::string>(layer._name);
                 }
             }
         }
@@ -2991,7 +2994,7 @@ namespace SceneEngine
             //  load the uber height surface, and uber surface interface (but only temporarily
             //  while we initialise the data)
         ::Assets::ResChar uberSurfaceFile[MaxPath];
-        GetUberSurfaceFilename(uberSurfaceFile, dimof(uberSurfaceFile), uberSurfaceDir, CoverageId_Heights);
+        TerrainConfig::GetUberSurfaceFilename(uberSurfaceFile, dimof(uberSurfaceFile), uberSurfaceDir, CoverageId_Heights);
         TerrainUberHeightsSurface heightsData(uberSurfaceFile);
         HeightsUberSurfaceInterface uberSurfaceInterface(heightsData, outputIOFormat);
 
@@ -3028,14 +3031,14 @@ namespace SceneEngine
             // if (!hasShadows) return;
 
             ::Assets::ResChar uberSurfaceFile[MaxPath];
-            GetUberSurfaceFilename(uberSurfaceFile, dimof(uberSurfaceFile), uberSurfaceDir, layer._id);
+            TerrainConfig::GetUberSurfaceFilename(uberSurfaceFile, dimof(uberSurfaceFile), uberSurfaceDir, layer._id);
             if (DoesFileExist(uberSurfaceFile)) continue;
 
             if (layer._id == CoverageId_AngleBasedShadows) {
 
                     // this is the shadows layer... We need to build the shadows procedurally
                 ::Assets::ResChar uberHeightsFile[MaxPath];
-                GetUberSurfaceFilename(uberHeightsFile, dimof(uberHeightsFile), uberSurfaceDir, CoverageId_Heights);
+                TerrainConfig::GetUberSurfaceFilename(uberHeightsFile, dimof(uberHeightsFile), uberSurfaceDir, CoverageId_Heights);
 
                 TerrainUberHeightsSurface heightsData(uberHeightsFile);
                 HeightsUberSurfaceInterface uberSurfaceInterface(heightsData, outputIOFormat);
@@ -3294,7 +3297,7 @@ namespace SceneEngine
 
         {
             ::Assets::ResChar uberSurfaceFile[MaxPath];
-            GetUberSurfaceFilename(uberSurfaceFile, dimof(uberSurfaceFile), uberSurfaceDir, CoverageId_Heights);
+            TerrainConfig::GetUberSurfaceFilename(uberSurfaceFile, dimof(uberSurfaceFile), uberSurfaceDir, CoverageId_Heights);
 
                 // uber-surface is a special-case asset, because we can edit it without a "DivergentAsset". But to do that, we must const_cast here
             auto& uberSurface = const_cast<TerrainUberHeightsSurface&>(::Assets::GetAsset<TerrainUberHeightsSurface>(uberSurfaceFile));
@@ -3318,7 +3321,7 @@ namespace SceneEngine
             if (l._format != 62) continue;
 
             ::Assets::ResChar uberSurfaceFile[MaxPath];
-            GetUberSurfaceFilename(uberSurfaceFile, dimof(uberSurfaceFile), uberSurfaceDir, l._id);
+            TerrainConfig::GetUberSurfaceFilename(uberSurfaceFile, dimof(uberSurfaceFile), uberSurfaceDir, l._id);
 
             Pimpl::CoverageInterface ci;
             ci._id = l._id;
@@ -3722,6 +3725,8 @@ namespace SceneEngine
         _textureCfgName = buffer;
     }
 
+    const utf8* u(const char input[]) { return (const utf8*)input; }
+
     TerrainConfig::TerrainConfig(const ::Assets::ResChar baseDir[])
     : _baseDir(FormatBaseDir(baseDir)), _filenamesMode(XLE)
     , _cellCount(0,0), _nodeDimsInElements(32u), _nodeOverlap(2u)
@@ -3729,29 +3734,30 @@ namespace SceneEngine
     {
         size_t fileSize = 0;
         auto sourceFile = LoadFileAsMemoryBlock(StringMeld<MaxPath>() << _baseDir << "world.cfg", &fileSize);
+        
+        InputStreamFormatter<utf8> formatter(
+            MemoryMappedInputStream(sourceFile.get(), PtrAdd(sourceFile.get(), fileSize)));
+        Document<utf8> doc(formatter);
 
-        Data data;
-        data.Load((const char*)sourceFile.get(), int(fileSize));
-        auto* c = data.ChildWithValue("TerrainConfig");
+        auto c = doc.Element(u("TerrainConfig"));
         if (c) {
-            auto* filenames = c->StrAttribute("Filenames");
-            if (!XlCompareStringI(filenames, "Legacy")) { _filenamesMode = Legacy; }
+            auto filenames = c.AttributeOrEmpty(u("Filenames"));
+            if (!XlCompareStringI(filenames.c_str(), u("Legacy"))) { _filenamesMode = Legacy; }
 
-            _nodeDimsInElements = c->IntAttribute("NodeDims", _nodeDimsInElements);
-            _cellTreeDepth = c->IntAttribute("CellTreeDepth", _cellTreeDepth);
-            _nodeOverlap = c->IntAttribute("NodeOverlap", _nodeOverlap);
-            _elementSpacing = Deserialize(c, "ElementSpacing", _elementSpacing);
+            _nodeDimsInElements = c(u("NodeDims"), _nodeDimsInElements);
+            _cellTreeDepth      = c(u("CellTreeDepth"), _cellTreeDepth);
+            _nodeOverlap        = c(u("NodeOverlap"), _nodeOverlap);
+            _elementSpacing     = c(u("ElementSpacing"), _elementSpacing);
+            _cellCount          = c(u("CellCount"), _cellCount);
 
-            _cellCount = Deserialize(c, "CellCount", _cellCount);
-
-            auto* coverage = c->ChildWithValue("Coverage");
+            auto coverage = c.Element(u("Coverage"));
             if (coverage) {
-                for (auto*l = coverage->child; l; l=l->next) {
+                for (auto l = coverage.FirstChild(); l; l=l.NextSibling()) {
                     CoverageLayer layer;
-                    layer._name = l->value ? l->value : "<<unnamed>>";
-                    layer._id = Deserialize(l, "Id", 0);
-                    layer._dimensions = Deserialize(l, "Dims", UInt2(0, 0));
-                    layer._format = Deserialize(l, "Format", 35);
+                    layer._name         = l.Name();
+                    layer._id           = l(u("Id"), 0);
+                    layer._dimensions   = l(u("Dims"), UInt2(0, 0));
+                    layer._format       = l(u("Format"), 35);
                     _coverageLayers.push_back(layer);
                 }
             }
@@ -3765,41 +3771,48 @@ namespace SceneEngine
         }
     }
 
+    template<typename Type, typename CharType>
+        static void Serialize(OutputStreamFormatter& formatter, const CharType name[], const Type& obj)
+    {
+        formatter.WriteAttribute(
+            name, 
+            Conversion::Convert<std::basic_string<CharType>>(ImpliedTyping::AsString(obj, true)));
+    }
+
+    template<typename CharType>
+        static void Serialize(OutputStreamFormatter& formatter, const CharType name[], const CharType str[])
+    {
+        formatter.WriteAttribute(name, str);
+    }
+
     void TerrainConfig::Save()
     {
             // write this configuration file out to disk
             //  simple serialisation via the "Data" class
-        auto terrainConfig = std::make_unique<Data>("TerrainConfig");
-        if (_filenamesMode == Legacy)   { terrainConfig->SetAttribute("Filenames", "Legacy"); }
-        else                            { terrainConfig->SetAttribute("Filenames", "XLE"); }
-        terrainConfig->SetAttribute("NodeDims", _nodeDimsInElements);
-        terrainConfig->SetAttribute("CellTreeDepth", _cellTreeDepth);
-        terrainConfig->SetAttribute("NodeOverlap", _nodeOverlap);
-        terrainConfig->SetAttribute("ElementSpacing", _elementSpacing);
+        
+        auto output = OpenFileOutput(StringMeld<MaxPath>() << _baseDir << "world.cfg", "wb");
+        OutputStreamFormatter formatter(*output);
 
-        auto cellCount = std::make_unique<Data>("CellCount");
-        cellCount->Add(new Data(StringMeld<32>() << _cellCount[0]));
-        cellCount->Add(new Data(StringMeld<32>() << _cellCount[1]));
-        terrainConfig->Add(cellCount.release());
+        auto cfgEle = formatter.BeginElement(u("TerrainConfig"));
+        if (_filenamesMode == Legacy)   { Serialize(formatter, u("Filenames"), u("Legacy")); }
+        else                            { Serialize(formatter, u("Filenames"), u("XLE")); }
 
-        auto coveragePart = std::make_unique<Data>("Coverage");
+        Serialize(formatter, u("NodeDims"), _nodeDimsInElements);
+        Serialize(formatter, u("CellTreeDepth"), _cellTreeDepth);
+        Serialize(formatter, u("NodeOverlap"), _nodeOverlap);
+        Serialize(formatter, u("ElementSpacing"), _elementSpacing);
+        Serialize(formatter, u("CellCount"), _cellCount);
+
+        auto covEle = formatter.BeginElement(u("Coverage"));
         for (auto l=_coverageLayers.cbegin(); l!=_coverageLayers.cend(); ++l) {
-            auto element = std::make_unique<Data>(l->_name.c_str());
-            element->SetAttribute("Id", l->_id);
-
-            auto dims = std::make_unique<Data>("Dims");
-            dims->Add(new Data(StringMeld<32>() << l->_dimensions[0]));
-            dims->Add(new Data(StringMeld<32>() << l->_dimensions[1]));
-            element->Add(dims.release());
-
-            element->SetAttribute("Format", l->_format);
-            coveragePart->Add(element.release());
+            auto ele = formatter.BeginElement(l->_name);
+            Serialize(formatter, u("Id"), l->_id);
+            Serialize(formatter, u("Dims"), l->_dimensions);
+            Serialize(formatter, u("Format"), l->_format);
+            formatter.EndElement(ele);
         }
-        terrainConfig->Add(coveragePart.release());
-
-        auto parentNode = std::make_unique<Data>();
-        parentNode->Add(terrainConfig.release());
-        parentNode->Save(StringMeld<MaxPath>() << _baseDir << "world.cfg");
+        formatter.EndElement(covEle);
+        formatter.EndElement(cfgEle);
     }
 
     const TerrainCoordinateSystem&  TerrainManager::GetCoords() const       { return _pimpl->_coords; }

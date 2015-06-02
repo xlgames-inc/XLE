@@ -605,7 +605,7 @@ namespace Utility
     }
 
     template<typename CharType>
-        InputStreamFormatter<CharType>::InputStreamFormatter(MemoryMappedInputStream& stream) 
+        InputStreamFormatter<CharType>::InputStreamFormatter(const MemoryMappedInputStream& stream) 
         : _stream(stream)
     {
         _primed = Blob::None;
