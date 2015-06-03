@@ -15,7 +15,8 @@ namespace ToolsRig
 {
     UInt2 ConvertDEMData(
         const ::Assets::ResChar outputDir[], const ::Assets::ResChar input[], 
-        unsigned destNodeDims, unsigned destCellTreeDepth);
+        unsigned destNodeDims, unsigned destCellTreeDepth,
+        ConsoleRig::IProgress* progress);
 
     void GenerateStarterCells(
         const ::Assets::ResChar outputDir[], const ::Assets::ResChar input[], 

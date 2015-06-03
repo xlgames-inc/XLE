@@ -321,12 +321,14 @@ namespace GUILayer
 
         static void GenerateUberSurfaceFromDEM(
             String^ uberSurfaceDirectory, String^ demFile,
-            unsigned nodeDimensions, unsigned cellTreeDepth)
+            unsigned nodeDimensions, unsigned cellTreeDepth,
+            IProgress^ progress)
         {
+            auto nativeProgress = progress ? IProgress::CreateNative(progress) : nullptr;
             ToolsRig::ConvertDEMData(
                 clix::marshalString<clix::E_UTF8>(uberSurfaceDirectory).c_str(),
                 clix::marshalString<clix::E_UTF8>(demFile).c_str(),
-                nodeDimensions, cellTreeDepth);
+                nodeDimensions, cellTreeDepth, nativeProgress.get());
         }
 
         static void GenerateStarterCells(
@@ -335,18 +337,10 @@ namespace GUILayer
             IProgress^ progress)
         {
             auto nativeProgress = progress ? IProgress::CreateNative(progress) : nullptr;
-            try
-            {
-                ToolsRig::GenerateStarterCells(
-                    clix::marshalString<clix::E_UTF8>(cellsDirectory).c_str(),
-                    clix::marshalString<clix::E_UTF8>(uberSurfaceDirectory).c_str(),
-                    nodeDimensions, cellTreeDepth, overlap, nativeProgress);
-            }
-            finally
-            {
-                if (nativeProgress)
-                    IProgress::DeleteNative(nativeProgress);
-            }
+            ToolsRig::GenerateStarterCells(
+                clix::marshalString<clix::E_UTF8>(cellsDirectory).c_str(),
+                clix::marshalString<clix::E_UTF8>(uberSurfaceDirectory).c_str(),
+                nodeDimensions, cellTreeDepth, overlap, nativeProgress.get());
         }
     };
 

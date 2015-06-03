@@ -109,7 +109,7 @@ namespace SceneEngine
 
         //////////////////////////////////////////////////////////////////////////////////////
         auto cells = BuildPrimedCells(outputConfig);
-        auto step = progress ? progress->BeginStep("Generate Cell Files", (unsigned)cells.size()) : nullptr;
+        auto step = progress ? progress->BeginStep("Generate Cell Files", (unsigned)cells.size(), true) : nullptr;
         for (auto c=cells.cbegin(); c!=cells.cend(); ++c) {
             char heightMapFile[MaxPath];
             outputConfig.GetCellFilename(heightMapFile, dimof(heightMapFile), c->_cellIndex, CoverageId_Heights);
@@ -125,7 +125,10 @@ namespace SceneEngine
                 } CATCH_END
             }
 
-            if (step) step->Advance();
+            if (step) {
+                if (step->IsCancelled()) break;
+                step->Advance();
+            }
         }
     }
 
@@ -135,7 +138,7 @@ namespace SceneEngine
         const ::Assets::ResChar uberSurfaceDir[],
         ConsoleRig::IProgress* progress)
     {
-        auto step = progress ? progress->BeginStep("Generate UberSurface Files", (unsigned)cfg.GetCoverageLayerCount()) : nullptr;
+        auto step = progress ? progress->BeginStep("Generate UberSurface Files", (unsigned)cfg.GetCoverageLayerCount(), true) : nullptr;
         for (unsigned l=0; l<cfg.GetCoverageLayerCount(); ++l) {
             const auto& layer = cfg.GetCoverageLayer(l);
 
@@ -178,7 +181,10 @@ namespace SceneEngine
                     RenderCore::Metal::BitsPerPixel((RenderCore::Metal::NativeFormat::Enum)layer._format));
             }
 
-            if (step) step->Advance();
+            if (step) {
+                if (step->IsCancelled()) break;
+                step->Advance();
+            }
         }
     }
 

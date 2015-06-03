@@ -132,12 +132,15 @@ namespace GUILayer
     StepAdapter::StepAdapter(GUILayer::IStep^ adapted)
     : _adapted(adapted) {}
 
-    StepAdapter::~StepAdapter() {}
+    StepAdapter::~StepAdapter() 
+    {
+        _adapted->EndStep();
+    }
 
     class ProgressAdapter : public ConsoleRig::IProgress
     {
     public:
-        virtual std::shared_ptr<ConsoleRig::IStep> BeginStep(const char name[], unsigned progressMax);
+        virtual std::shared_ptr<ConsoleRig::IStep> BeginStep(const char name[], unsigned progressMax, bool cancellable);
 
         ProgressAdapter(GUILayer::IProgress^ adapted);
         ~ProgressAdapter();
@@ -145,9 +148,10 @@ namespace GUILayer
         gcroot<GUILayer::IProgress^> _adapted;
     };
 
-    std::shared_ptr<ConsoleRig::IStep> ProgressAdapter::BeginStep(const char name[], unsigned progressMax)
+    std::shared_ptr<ConsoleRig::IStep> ProgressAdapter::BeginStep(const char name[], unsigned progressMax, bool cancellable)
     {
-        return std::shared_ptr<StepAdapter>(new StepAdapter(_adapted->BeginStep(name, progressMax)));
+        auto n = clix::marshalString<clix::E_UTF8>(name);
+        return std::shared_ptr<StepAdapter>(new StepAdapter(_adapted->BeginStep(n, progressMax, cancellable)));
     }
 
     ProgressAdapter::ProgressAdapter(GUILayer::IProgress^ adapted)
@@ -156,9 +160,9 @@ namespace GUILayer
     ProgressAdapter::~ProgressAdapter() {}
 
 
-    ConsoleRig::IProgress* IProgress::CreateNative(IProgress^ managed)
+    auto IProgress::CreateNative(IProgress^ managed) -> ProgressPtr
     {
-        return new ProgressAdapter(managed);
+        return ProgressPtr(new ProgressAdapter(managed), IProgress::DeleteNative);
     }
 
     void IProgress::DeleteNative(ConsoleRig::IProgress* native)

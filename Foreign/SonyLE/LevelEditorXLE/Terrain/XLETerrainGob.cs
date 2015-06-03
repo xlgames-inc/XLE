@@ -131,20 +131,24 @@ namespace LevelEditorXLE.Terrain
             var overlap = cfg.Overlap;
             var cellTreeDepth = ClampCellTreeDepth(cfg.CellTreeDepth);
 
+            using (var progress = new ControlsLibrary.ProgressDialog.ProgressInterface())
+            {
                 // if there is a source DEM file specified then we should
                 // attempt to build the starter uber surface.
-            if (cfg.Import == TerrainConfig.Config.ImportType.DEMFile && cfg.SourceDEMFile != null && cfg.SourceDEMFile.Length > 0)
-            {
-                GUILayer.EditorInterfaceUtils.GenerateUberSurfaceFromDEM(
-                    cfg.UberSurfaceDirectory, cfg.SourceDEMFile, 
-                    nodeDimensions, cellTreeDepth);
-            }
+                if (cfg.Import == TerrainConfig.Config.ImportType.DEMFile && cfg.SourceDEMFile != null && cfg.SourceDEMFile.Length > 0)
+                {
+                    GUILayer.EditorInterfaceUtils.GenerateUberSurfaceFromDEM(
+                        cfg.UberSurfaceDirectory, cfg.SourceDEMFile,
+                        nodeDimensions, cellTreeDepth,
+                        progress);
+                }
 
                 // fill in the cells directory with starter cells (if they don't already exist)
-            GUILayer.EditorInterfaceUtils.GenerateStarterCells(
-                cfg.CellsDirectory, cfg.UberSurfaceDirectory,
-                nodeDimensions, cellTreeDepth, overlap,
-                null);
+                GUILayer.EditorInterfaceUtils.GenerateStarterCells(
+                    cfg.CellsDirectory, cfg.UberSurfaceDirectory,
+                    nodeDimensions, cellTreeDepth, overlap,
+                    progress);
+            }
 
                 // if the above completed without throwing an exception, we can commit the values
             NodeDimensions = nodeDimensions;

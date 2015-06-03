@@ -12,6 +12,7 @@
 #include "../../SceneEngine/TerrainConfig.h"
 #include "../../SceneEngine/TerrainConversion.h"
 #include "../../Math/Vector.h"
+#include "../../ConsoleRig/IProgress.h"
 #include "../../Utility/StringUtils.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/Streams/FileUtils.h"
@@ -68,8 +69,11 @@ namespace ToolsRig
 
     UInt2 ConvertDEMData(
         const ::Assets::ResChar outputDir[], const ::Assets::ResChar input[], 
-        unsigned destNodeDims, unsigned destCellTreeDepth)
+        unsigned destNodeDims, unsigned destCellTreeDepth,
+        ConsoleRig::IProgress* progress)
     {
+        auto initStep = progress ? progress->BeginStep("Load source data", 1, false) : nullptr;
+
         ::Assets::ResChar inputFile[MaxPath];
         XlCopyString(inputFile, input);
         XlChopExtension(inputFile);
@@ -118,14 +122,40 @@ namespace ToolsRig
         if (!inputFileData.IsValid())
             ThrowException(::Exceptions::BasicLabel("Couldn't open input file (%s)", inputFile));
 
+        if (initStep) {
+            initStep->Advance();
+            initStep.reset();
+        }
+
+        auto copyRows = std::min(finalDims[1], inCfg._dims[1]);
+        const unsigned progressStep = 16;
+        auto copyStep = progress ? progress->BeginStep("Create uber surface data", copyRows / progressStep, true) : nullptr;
+
         float* outputArray = (float*)PtrAdd(outputUberFile.GetData(), sizeof(TerrainUberHeader));
         auto inputArray = (const float*)inputFileData.GetData();
 
-        for (unsigned y=0; y<std::min(finalDims[1], inCfg._dims[1]); ++y) {
+        unsigned y2=0;
+        for (; (y2+progressStep)<=copyRows; y2+=progressStep) {
+            for (unsigned y=0; y<progressStep; ++y) {
+                std::copy(
+                    &inputArray[(y2+y) * inCfg._dims[0]],
+                    &inputArray[(y2+y) * inCfg._dims[0] + std::min(inCfg._dims[0], finalDims[0])],
+                    &outputArray[(y2+y) * finalDims[0]]);
+            }
+
+            if (copyStep) {
+                if (copyStep->IsCancelled())
+                    ThrowException(::Exceptions::BasicLabel("User cancelled"));
+                copyStep->Advance();
+            }
+        }
+
+            // remainder rows left over after dividing by progressStep
+        for (; y2<copyRows; ++y2) {
             std::copy(
-                &inputArray[y * inCfg._dims[0]],
-                &inputArray[y * inCfg._dims[0] + std::min(inCfg._dims[0], finalDims[0])],
-                &outputArray[y * finalDims[0]]);
+                &inputArray[y2 * inCfg._dims[0]],
+                &inputArray[y2 * inCfg._dims[0] + std::min(inCfg._dims[0], finalDims[0])],
+                &outputArray[y2 * finalDims[0]]);
         }
 
             // fill in the extra space caused by rounding up

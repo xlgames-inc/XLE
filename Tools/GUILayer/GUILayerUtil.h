@@ -7,6 +7,7 @@
 #pragma once
 
 #include "CLIXAutoPtr.h"
+#include <functional>
 
 namespace RenderCore { namespace Techniques { class TechniqueContext; } }
 namespace SceneEngine 
@@ -73,14 +74,16 @@ namespace GUILayer
         virtual void SetProgress(unsigned progress);
         virtual void Advance();
         virtual bool IsCancelled();
+        virtual void EndStep();
     };
 
     public interface class IProgress
     {
     public:
-        virtual IStep^ BeginStep(const char name[], unsigned progressMax);
+        virtual IStep^ BeginStep(System::String^ name, unsigned progressMax, bool cancellable);
 
-        static ConsoleRig::IProgress* CreateNative(IProgress^ managed);
+        typedef std::unique_ptr<ConsoleRig::IProgress, std::function<void(ConsoleRig::IProgress*)>> ProgressPtr;
+        static ProgressPtr CreateNative(IProgress^ managed);
         static void DeleteNative(ConsoleRig::IProgress* native);
     };
 }
