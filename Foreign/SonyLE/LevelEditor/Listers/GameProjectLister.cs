@@ -57,21 +57,21 @@ namespace LevelEditor
             
             string addNewSubGame = "Add new SubGame".Localize();
             CommandService.RegisterCommand(
-               Command.CreateNewSubGame,
-               StandardMenu.File,
-               StandardCommandGroup.FileNew,
-               addNewSubGame,
-               addNewSubGame,
-               Keys.None,
-               null,
-               CommandVisibility.ContextMenu,
-               this);
+                Command.CreateNewSubGame,
+                StandardMenu.File,
+                StandardCommandGroup.FileNew,
+                addNewSubGame,
+                addNewSubGame,
+                Keys.None,
+                null,
+                CommandVisibility.ContextMenu,
+                this);
 
             string addExistingEubGame = "Add existing SubGame".Localize();
             CommandService.RegisterCommand(
                 Command.AddSubGame,
-               StandardMenu.File,
-               StandardCommandGroup.FileNew,
+                StandardMenu.File,
+                StandardCommandGroup.FileNew,
                 addExistingEubGame,
                 addExistingEubGame,
                 Keys.None,
@@ -80,41 +80,66 @@ namespace LevelEditor
                 this);
 
             CommandService.RegisterCommand(
-               Command.Exclude,
-              StandardMenu.File,
-              StandardCommandGroup.FileNew,
-               "Exclude SubGame".Localize(),
-               "Exlude from master level".Localize(),
-               Keys.None,
-               null,
-               CommandVisibility.ContextMenu,
-               this);
+                Command.Exclude,
+                StandardMenu.File,
+                StandardCommandGroup.FileNew,
+                "Exclude SubGame".Localize(),
+                "Exlude from master level".Localize(),
+                Keys.None,
+                null,
+                CommandVisibility.ContextMenu,
+                this);
 
 
             string resolveSubGame = "Resolve SubGame".Localize();
             CommandService.RegisterCommand(
-               Command.Resolve,
-              StandardMenu.File,
-              StandardCommandGroup.FileNew,
-               resolveSubGame,
-               resolveSubGame,
-               Keys.None,
-               null,
-               CommandVisibility.ContextMenu,
-               this);
+                Command.Resolve,
+                StandardMenu.File,
+                StandardCommandGroup.FileNew,
+                resolveSubGame,
+                resolveSubGame,
+                Keys.None,
+                null,
+                CommandVisibility.ContextMenu,
+                this);
 
 
             string unresolveSubGame = "Unresolve SubGame".Localize();
             CommandService.RegisterCommand(
-               Command.Unresolve,
-              StandardMenu.File,
-              StandardCommandGroup.FileNew,
-               unresolveSubGame,
-               unresolveSubGame,
-               Keys.None,
-               null,
-               CommandVisibility.ContextMenu,
-               this);
+                Command.Unresolve,
+                StandardMenu.File,
+                StandardCommandGroup.FileNew,
+                unresolveSubGame,
+                unresolveSubGame,
+                Keys.None,
+                null,
+                CommandVisibility.ContextMenu,
+                this);
+
+
+            string createAndResolve = "Create and Resolve".Localize();
+            CommandService.RegisterCommand(
+                Command.CreateNewResolveable,
+                StandardMenu.File,
+                StandardCommandGroup.FileNew,
+                createAndResolve,
+                createAndResolve,
+                Keys.None,
+                null,
+                CommandVisibility.ContextMenu,
+                this);
+
+            string saveSubDoc = "Save SubDocument".Localize();
+            CommandService.RegisterCommand(
+                Command.SaveSubDoc,
+                StandardMenu.File,
+                StandardCommandGroup.FileNew,
+                saveSubDoc,
+                saveSubDoc,
+                Keys.None,
+                null,
+                CommandVisibility.ContextMenu,
+                this);
 
                     
             // on initialization, register our tree control with the hosting service
@@ -330,6 +355,20 @@ namespace LevelEditor
                         }
                     }                    
                     break;
+
+                case Command.CreateNewResolveable:
+                    {
+                        var resolveable = target.As<IResolveable>();
+                        cando = resolveable != null && (!resolveable.IsResolved()) && resolveable.CanCreateNew();
+                    }
+                    break;
+
+                case Command.SaveSubDoc:
+                    {
+                        var resolveable = target.As<IResolveable>();
+                        cando = resolveable != null && resolveable.IsResolved() && resolveable.CanSave();
+                    }
+                    break;
             }
             return cando;
         }
@@ -447,7 +486,7 @@ namespace LevelEditor
                         if (gameRef == null) { break; }
 
                         gameDocument = gameRef.DomNode.Parent.Cast<IDocument>();
-                        GameDocument subDoc = gameRef.Target.Cast<GameDocument>();
+                        IGameDocument subDoc = gameRef.Target.Cast<IGameDocument>();
                         
                         bool exclue = true;
                         bool save = false;
@@ -509,7 +548,7 @@ namespace LevelEditor
                             GameReference gameRef = target.As<GameReference>();
                             if (gameRef!=null)
                             {
-                                GameDocument subDoc = gameRef.Target.Cast<GameDocument>();
+                                IGameDocument subDoc = gameRef.Target.Cast<IGameDocument>();
                                 bool unresolve = true;
                                 bool save = false;
                                 if (subDoc.Dirty)
@@ -549,6 +588,40 @@ namespace LevelEditor
                         {
                             MessageBox.Show(m_mainWindow.DialogOwner, ex.Message);
                         }                             
+                    }
+                    break;
+
+                case Command.CreateNewResolveable:
+                    {
+                        try
+                        {
+                            var resolveable = target.As<IResolveable>();
+                            if (resolveable != null && !resolveable.IsResolved() && resolveable.CanCreateNew())
+                            {
+                                resolveable.CreateAndResolve();
+                                RefreshLayerContext();
+                                TreeControlAdapter.Refresh(target);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            MessageBox.Show(m_mainWindow.DialogOwner, ex.Message);
+                        }
+                    }
+                    break;
+
+                case Command.SaveSubDoc:
+                    {
+                        try
+                        {
+                            var resolveable = target.As<IResolveable>();
+                            if (resolveable != null && resolveable.CanSave())
+                                resolveable.Save(m_schemaLoader);
+                        }
+                        catch (Exception ex)
+                        {
+                            MessageBox.Show(m_mainWindow.DialogOwner, ex.Message);
+                        }
                     }
                     break;
 
@@ -696,7 +769,9 @@ namespace LevelEditor
             AddSubGame,  
             Exclude,
             Resolve,
-            Unresolve
+            Unresolve,
+            CreateNewResolveable, 
+            SaveSubDoc
         }
     }
 }

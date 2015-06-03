@@ -16,6 +16,10 @@ namespace LevelEditorCore.GenericAdapters
         void Resolve();
         void Unresolve();
         bool IsResolved();
+        bool CanCreateNew();
+        void CreateAndResolve();
+        bool CanSave();
+        void Save(ISchemaLoader loader);
     }
 
     public abstract class GenericReference<T> : DomNodeAdapter, IReference<T>, IListable, IResolveable
@@ -134,6 +138,12 @@ namespace LevelEditorCore.GenericAdapters
         }
 
         public virtual bool IsResolved() { return m_target != null; }
+
+        public virtual bool CanCreateNew() { return false; }
+        public virtual void CreateAndResolve() { }
+
+        public virtual bool CanSave() { return false; }
+        public virtual void Save(ISchemaLoader loader) {}
         #endregion
 
         protected string m_error = string.Empty;

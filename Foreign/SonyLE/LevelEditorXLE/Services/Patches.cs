@@ -69,22 +69,8 @@ namespace LevelEditorXLE
                 {
                     var doc = cellRef.Target;
                     if (doc == null) continue;
-                    SaveDomDocument(doc.DomNode, cellRef.Uri, schemaLoader);
+                    doc.Save(cellRef.Uri, schemaLoader);
                 }
-            }
-        }
-
-        private static void SaveDomDocument(DomNode node, Uri uri, ISchemaLoader schemaLoader)
-        {
-            string filePath = uri.LocalPath;
-            FileMode fileMode = File.Exists(filePath) ? FileMode.Truncate : FileMode.OpenOrCreate;
-            using (FileStream stream = new FileStream(filePath, fileMode))
-            {
-                // note --  "LevelEditor" project has a ComstDomXmlWriter object that contains some
-                //          special case code for certain node types. We're just using the default
-                //          DomXmlWriter, so we won't benefit from that special behaviour.
-                var writer = new Sce.Atf.Dom.DomXmlWriter(schemaLoader.TypeCollection);
-                writer.Write(node, stream, uri);
             }
         }
 

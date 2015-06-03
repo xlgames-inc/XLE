@@ -144,7 +144,28 @@ namespace LevelEditorXLE.Placements
             XLEPlacementDocument.Release(target);
         }
         #endregion
-    
+
+        #region IResolveable
+        public override bool CanCreateNew() { return true; }
+        public override void CreateAndResolve()
+        {
+                // Create a new placements document on the place we're we are expecting
+                // it, and then attempt to resolve it. We just need to force an attach,
+                // this will end up calling XLEPlacementDocument.OpenOrCreate()
+            try
+            {
+                m_target = Attach(Uri);
+            }
+            catch (Exception e) { m_error = "While attempting to create new file: " + e.Message; }
+        }
+
+        public override bool CanSave() { return IsResolved() && Target.Dirty; }
+        public override void Save(ISchemaLoader schemaLoader)
+        {
+            Target.Save(Uri, schemaLoader);
+        }
+        #endregion
+
         public static DomNode Create(string reference, string exportTarget, string name, Vec3F mins, Vec3F maxs)
         {
             var result = new DomNode(CellRefST.Type);

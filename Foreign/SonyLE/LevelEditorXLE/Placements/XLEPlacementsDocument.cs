@@ -108,6 +108,32 @@ namespace LevelEditorXLE.Placements
         {
             EditableResourceOwnerDirtyChanged(this, new ItemChangedEventArgs<IEditableResourceOwner>(resOwner));
         }
+
+        public static void SaveDomDocument(DomNode node, Uri uri, ISchemaLoader schemaLoader)
+        {
+            string filePath = uri.LocalPath;
+            Directory.CreateDirectory(new FileInfo(filePath).Directory.FullName);       // (make sure the directory exists)
+            FileMode fileMode = File.Exists(filePath) ? FileMode.Truncate : FileMode.OpenOrCreate;
+            using (FileStream stream = new FileStream(filePath, fileMode))
+            {
+                // note --  "LevelEditor" project has a ComstDomXmlWriter object that contains some
+                //          special case code for certain node types. We're just using the default
+                //          DomXmlWriter, so we won't benefit from that special behaviour.
+                var writer = new Sce.Atf.Dom.DomXmlWriter(schemaLoader.TypeCollection);
+                writer.Write(node, stream, uri);
+            }
+        }
+
+        public virtual void Save(Uri uri, ISchemaLoader schemaLoader)
+        {
+            if (Dirty || m_uriChanged)
+            {
+                SaveDomDocument(DomNode, uri, schemaLoader);
+                m_uriChanged = false;
+            }
+
+            Dirty = false;
+        }
         #endregion
 
         internal static IGameDocumentRegistry GetDocRegistry()
@@ -134,6 +160,7 @@ namespace LevelEditorXLE.Placements
 
             string filePath = uri.LocalPath;
 
+            bool createdNewFile = false;
             DomNode rootNode = null;
             if (File.Exists(filePath))
             {
@@ -155,6 +182,7 @@ namespace LevelEditorXLE.Placements
             {
                 // create new document by creating a Dom node of the root type defined by the schema                 
                 rootNode = new DomNode(Schema.placementsDocumentType.Type, Schema.placementsDocumentRootElement);
+                createdNewFile = true;
             }
 
             var doc = rootNode.As<XLEPlacementDocument>();
@@ -164,7 +192,7 @@ namespace LevelEditorXLE.Placements
             rootNode.InitializeExtensions();
 
             if (docRegistry!=null) docRegistry.Add(doc);
-            doc.Dirty = false;
+            doc.Dirty = createdNewFile;
             return doc;
         }
 
@@ -192,6 +220,14 @@ namespace LevelEditorXLE.Placements
             Sce.Atf.Resources.DocumentImage,
             Sce.Atf.Resources.FolderImage,
             false);
+
+        protected override void OnNodeSet()
+        {
+            base.OnNodeSet();
+            UriChanged += delegate { m_uriChanged = true; };
+        }
+
+        private bool m_uriChanged;
     }
 }
 

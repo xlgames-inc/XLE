@@ -40,9 +40,10 @@ namespace LevelEditor
             get { return GameEditor.s_info.FileType; }
         }
 
-        private static void SaveDomDocument(DomNode node, Uri uri, SchemaLoader schemaLoader)
+        private static void SaveDomDocument(DomNode node, Uri uri, ISchemaLoader schemaLoader)
         {
             string filePath = uri.LocalPath;
+            Directory.CreateDirectory(new FileInfo(filePath).Directory.FullName);
             FileMode fileMode = File.Exists(filePath) ? FileMode.Truncate : FileMode.OpenOrCreate;
             using (FileStream stream = new FileStream(filePath, fileMode))
             {
@@ -51,7 +52,7 @@ namespace LevelEditor
             }
         }
         
-        public void Save(Uri uri, SchemaLoader schemaLoader)
+        public virtual void Save(Uri uri, ISchemaLoader schemaLoader)
         {
             if (Dirty || m_uriChanged)
             {

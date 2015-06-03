@@ -37,5 +37,7 @@ namespace LevelEditorCore
         /// child of type IEditableResourceOwner changes</summary>
         event EventHandler<ItemChangedEventArgs<IEditableResourceOwner>> EditableResourceOwnerDirtyChanged;
 
+
+        void Save(Uri uri, ISchemaLoader schemaLoader);
     }
 }
