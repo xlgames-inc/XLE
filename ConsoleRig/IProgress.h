@@ -14,7 +14,7 @@ namespace ConsoleRig
     class IProgress
     {
     public:
-        virtual std::shared_ptr<IStep> BeginStep(const char name[], unsigned progressMax) = 0;
+        virtual std::shared_ptr<IStep> BeginStep(const char name[], unsigned progressMax, bool cancellable) = 0;
         virtual ~IProgress();
     };
 
