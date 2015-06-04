@@ -359,6 +359,17 @@ namespace GUILayer
         return nullptr;
     }
 
+    void EditorSceneManager::UnloadTerrain()
+    {
+        _terrainInterface->UnloadTerrain();
+    }
+
+    void EditorSceneManager::ReloadTerrain()
+    {
+        _terrainInterface->ReloadTerrain();
+        EntityInterface::ReloadTerrainFlexObjects(*_scene->_flexObjects);
+    }
+
     EditorSceneManager::EditorSceneManager()
     {
         _scene = std::make_shared<EditorScene>();
@@ -375,6 +386,7 @@ namespace GUILayer
         _entities = gcnew EntityLayer(std::move(swtch));
 
         _flexGobInterface = flexGobInterface;
+        _terrainInterface = terrainEditor;
         RegisterTerrainFlexObjects(*_scene->_flexObjects);
     }
 

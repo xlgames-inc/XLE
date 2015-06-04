@@ -135,7 +135,7 @@ namespace SceneEngine
             sizeof(TerrainUberHeader)
             + cellCount * nodesPerCell * heightsPerNode * sizeof(float)
             ;
-        MemoryMappedFile mappedFile(filename, resultSize, MemoryMappedFile::Access::Write);
+        MemoryMappedFile mappedFile(filename, resultSize, MemoryMappedFile::Access::Write, BasicFile::ShareMode::Read);
         if (!mappedFile.IsValid())
             return false;
 
@@ -242,7 +242,7 @@ namespace SceneEngine
             //  Load the file as a Win32 "mapped file"
             //  the format is very simple.. it's just a basic header, and then
             //  a huge 2D array of height values
-        auto mappedFile = std::make_unique<MemoryMappedFile>(filename, 0, MemoryMappedFile::Access::Read|MemoryMappedFile::Access::Write);
+        auto mappedFile = std::make_unique<MemoryMappedFile>(filename, 0, MemoryMappedFile::Access::Read|MemoryMappedFile::Access::Write, BasicFile::ShareMode::Read);
         if (!mappedFile->IsValid())
             ThrowException(::Assets::Exceptions::InvalidResource(filename, "Failed while openning uber surface file"));
         

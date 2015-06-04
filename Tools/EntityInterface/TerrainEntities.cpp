@@ -52,6 +52,8 @@ namespace EntityInterface
 	{
 		if (id.ObjectType() == ObjectType_Terrain) {
 		    _terrainManager->Reset();
+            _uberSurfaceDir = ::Assets::rstring();
+            _cellsDir = ::Assets::rstring();
     		return true;
         }
         return false;
@@ -76,31 +78,21 @@ namespace EntityInterface
 
             ::Assets::ResChar buffer[MaxPath];
             ucs2_2_utf8((const ucs2*)prop._src, prop._arrayCount, (utf8*)buffer, dimof(buffer));
-
-            TRY
-            {
-		        SceneEngine::TerrainConfig cfg(buffer);
-                cfg._textureCfgName = "";
-
-                _terrainManager->Load(cfg, Int2(0, 0), cfg._cellCount, true);
-                if (!_uberSurfaceDir.empty())
-                    _terrainManager->LoadUberSurface(_uberSurfaceDir.c_str());
-
-                _cellsLoaded = true;
-            } CATCH (...) {
-                _terrainManager->Reset();
-                _cellsLoaded = false;
-            } CATCH_END
+            _cellsDir = buffer;
+            
+            ReloadTerrain();
 
             return true;
+
         } else if (prop._prop == Property_UberSurfaceDir) {
 
             ::Assets::ResChar buffer[MaxPath];
             ucs2_2_utf8((const ucs2*)prop._src, prop._arrayCount, (utf8*)buffer, dimof(buffer));
             _uberSurfaceDir = buffer;
 
-            if (_cellsLoaded) 
+            if (!_uberSurfaceDir.empty())
                 _terrainManager->LoadUberSurface(buffer);
+            return true;
 
         } else if (prop._prop == Property_Offset) {
             _terrainManager->SetWorldSpaceOrigin(*(const Float3*)prop._src);
@@ -150,10 +142,30 @@ namespace EntityInterface
 		return 0;
 	}
 
+    void TerrainEntities::UnloadTerrain()
+    {
+        _terrainManager->Reset();
+    }
+
+    void TerrainEntities::ReloadTerrain()
+    {
+        TRY
+        {
+		    SceneEngine::TerrainConfig cfg(_cellsDir.c_str());
+            cfg._textureCfgName = "";
+
+            _terrainManager->Load(cfg, Int2(0, 0), cfg._cellCount, true);
+            if (!_uberSurfaceDir.empty())
+                _terrainManager->LoadUberSurface(_uberSurfaceDir.c_str());
+        } CATCH (...) {
+            _terrainManager->Reset();
+            _cellsDir = ::Assets::rstring();
+        } CATCH_END
+    }
+
 	TerrainEntities::TerrainEntities(
         std::shared_ptr<SceneEngine::TerrainManager> terrainManager) 
     : _terrainManager(std::move(terrainManager))
-    , _cellsLoaded(false)
     {
     }
 
@@ -214,5 +226,12 @@ namespace EntityInterface
                     UpdateTerrainBaseTexture(flexSys, *object);
             }
         );
+    }
+
+    void ReloadTerrainFlexObjects(RetainedEntities& flexSys)
+    {
+        auto objs = flexSys.FindEntitiesOfType(flexSys.GetTypeId((const utf8*)"TerrainBaseTexture"));
+        for (auto i=objs.cbegin(); i!=objs.cend(); ++i)
+            UpdateTerrainBaseTexture(flexSys, **i);
     }
 }

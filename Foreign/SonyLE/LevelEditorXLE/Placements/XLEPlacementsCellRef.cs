@@ -219,7 +219,12 @@ namespace LevelEditorXLE.Placements
 
         internal int[] CellCount
         {
-            get { return GetAttribute<int[]>(FolderST.cellCountAttribute); }
+            get { return GetAttribute<int[]>(FolderST.CellCountAttribute); }
+        }
+
+        internal float[] CellsOrigin
+        {
+            get { return GetAttribute<float[]>(FolderST.CellsOriginAttribute); }
         }
 
         static private string FixPath(string input)
@@ -246,8 +251,9 @@ namespace LevelEditorXLE.Placements
 
             BaseEditorPath = FixPath(cfg.BaseEditorPath);
             BaseExportPath = FixPath(cfg.BaseExportPath);
-            SetAttribute(FolderST.cellCountAttribute, new int[2] { (int)cfg.CellCountX, (int)cfg.CellCountY } );
-            SetAttribute(FolderST.cellSizeAttribute, cfg.CellSize);
+            SetAttribute(FolderST.CellCountAttribute, new int[2] { (int)cfg.CellCountX, (int)cfg.CellCountY } );
+            SetAttribute(FolderST.CellSizeAttribute, cfg.CellSize);
+            SetAttribute(FolderST.CellsOriginAttribute, new float[2] { cfg.CellsOriginX, cfg.CellsOriginY } );
             ExportTarget = BaseExportPath + "placements.cfg";
 
             var newCells = new List<Tuple<string, string, string, Vec3F, Vec3F>>();
@@ -261,8 +267,8 @@ namespace LevelEditorXLE.Placements
                         "{0}p{1,3:D3}_{2,3:D3}.plc",
                         BaseExportPath, x, y);
                     var name = String.Format("{0,2:D2}-{1,2:D2}", x, y);
-                    var mins = new Vec3F(x * cfg.CellSize, y * cfg.CellSize, -5000.0f);
-                    var maxs = new Vec3F((x+1) * cfg.CellSize, (y+1) * cfg.CellSize, 5000.0f);
+                    var mins = new Vec3F(x * cfg.CellSize + cfg.CellsOriginX, y * cfg.CellSize + cfg.CellsOriginY, -5000.0f);
+                    var maxs = new Vec3F((x+1) * cfg.CellSize + cfg.CellsOriginX, (y+1) * cfg.CellSize + cfg.CellsOriginY, 5000.0f);
                     newCells.Add(Tuple.Create(rf, ex, name, mins, maxs));
                 }
 
@@ -299,7 +305,7 @@ namespace LevelEditorXLE.Placements
                     childList.Add(
                         PlacementsCellRef.Create(
                             newCells[c].Item1, newCells[c].Item2, newCells[c].Item3, 
-                            newCells[c].Item4, newCells[c].Item4));
+                            newCells[c].Item4, newCells[c].Item5));
         }
 
         internal bool DoModalConfigure()
@@ -311,7 +317,10 @@ namespace LevelEditorXLE.Placements
             var cellCount = CellCount;
             cfg.CellCountX = (uint)cellCount[0];
             cfg.CellCountY = (uint)cellCount[1];
-            cfg.CellSize = GetAttribute<float>(FolderST.cellSizeAttribute);
+            var cellsOrigin = CellsOrigin;
+            cfg.CellsOriginX = cellsOrigin[0];
+            cfg.CellsOriginY = cellsOrigin[1];
+            cfg.CellSize = GetAttribute<float>(FolderST.CellSizeAttribute);
 
             using (var dlg = new PlacementsConfig())
             {

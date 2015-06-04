@@ -112,6 +112,11 @@ namespace SceneEngine
         return _coverageLayers[index]; 
     }
 
+    void TerrainConfig::AddCoverageLayer(const CoverageLayer& layer)
+    {
+        _coverageLayers.push_back(layer);
+    }
+
     static ::Assets::rstring FormatBaseDir(const ::Assets::ResChar input[])
     {
         // format the input directory name
@@ -174,10 +179,11 @@ namespace SceneEngine
                 if (coverage) {
                     for (auto l = coverage.FirstChild(); l; l=l.NextSibling()) {
                         CoverageLayer layer;
-                        layer._name         = l.Name();
-                        layer._id           = l(u("Id"), 0);
-                        layer._dimensions   = l(u("Dims"), UInt2(0, 0));
-                        layer._format       = l(u("Format"), 35);
+                        layer._name             = l.Name();
+                        layer._id               = l(u("Id"), 0);
+                        layer._nodeDimensions   = l(u("Dims"), UInt2(32, 32));
+                        layer._overlap          = l(u("Overlap"), 1);
+                        layer._format           = l(u("Format"), 35);
                         _coverageLayers.push_back(layer);
                     }
                 }
@@ -222,7 +228,8 @@ namespace SceneEngine
         for (auto l=_coverageLayers.cbegin(); l!=_coverageLayers.cend(); ++l) {
             auto ele = formatter.BeginElement(l->_name);
             Serialize(formatter, u("Id"), l->_id);
-            Serialize(formatter, u("Dims"), l->_dimensions);
+            Serialize(formatter, u("Dims"), l->_nodeDimensions);
+            Serialize(formatter, u("Overlap"), l->_overlap);
             Serialize(formatter, u("Format"), l->_format);
             formatter.EndElement(ele);
         }
@@ -276,7 +283,7 @@ namespace SceneEngine
         } else {
             for (auto l=_coverageLayers.cbegin(); l!=_coverageLayers.cend(); ++l)
                 if (l->_id == coverageId) {
-                    auto t = l->_dimensions;
+                    auto t = l->_nodeDimensions;
                     auto t2 = CellDimensionsInNodes();
                     return MakeUInt2x3(
                         t[0] * t2[0], 0u, 0u,

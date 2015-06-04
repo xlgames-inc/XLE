@@ -22,7 +22,7 @@ namespace SceneEngine
 }
 namespace Tools { class IManipulator; }
 
-namespace EntityInterface { class Switch; class RetainedEntities; class RetainedEntityInterface; }
+namespace EntityInterface { class Switch; class RetainedEntities; class RetainedEntityInterface; class TerrainEntities; }
 
 namespace GUILayer
 {
@@ -123,6 +123,9 @@ namespace GUILayer
         const EntityInterface::RetainedEntities& GetFlexObjects();
         void IncrementTime(float increment);
 
+        void UnloadTerrain();
+        void ReloadTerrain();
+
         EditorScene& GetScene();
 
             //// //// ////   C O N S T R U C T O R S   //// //// ////
@@ -132,6 +135,7 @@ namespace GUILayer
     protected:
         clix::shared_ptr<EditorScene> _scene;
         clix::shared_ptr<::EntityInterface::RetainedEntityInterface> _flexGobInterface;
+        clix::shared_ptr<::EntityInterface::TerrainEntities> _terrainInterface;
         EntityLayer^ _entities;
     };
 }

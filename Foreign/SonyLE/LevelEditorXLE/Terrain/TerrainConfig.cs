@@ -63,6 +63,12 @@ namespace LevelEditorXLE.Terrain
             [EditorAttribute(typeof(System.Windows.Forms.Design.FolderNameEditor), typeof(System.Drawing.Design.UITypeEditor))]
             public string CellsDirectory { get; set; }
 
+            [Category("Coverage")] [Description("Has a layer for the base material selection")]
+            public bool HasBaseMaterialCoverage { get; set; }
+
+            [Category("Coverage")] [Description("Has a layer for the decoration selection")]
+            public bool HasDecorationCoverage { get; set; }
+
             [Browsable(false)]
             public string SourceDEMFile { get; set; }
 

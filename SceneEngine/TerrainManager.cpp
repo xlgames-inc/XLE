@@ -284,7 +284,7 @@ namespace SceneEngine
             const auto& l = cfg.GetCoverageLayer(c);
             rendererCfg._coverageLayers.push_back(std::make_pair(
                 l._id, 
-                TerrainRendererConfig::Layer { (l._dimensions+UInt2(1,1)), cachedTileCount, Metal::NativeFormat::Enum(l._format) } ));
+                TerrainRendererConfig::Layer { (l._nodeDimensions+UInt2(l._overlap, l._overlap)), cachedTileCount, Metal::NativeFormat::Enum(l._format) } ));
         }
         return std::move(rendererCfg);
     }
@@ -411,6 +411,7 @@ namespace SceneEngine
     {
         _pimpl->_cells.clear();
         _pimpl->_uberSurfaceInterface.reset();
+        _pimpl->_uberSurface.reset();
         _pimpl->_coverageInterfaces.clear();
     }
 

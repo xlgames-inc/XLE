@@ -43,8 +43,9 @@
     </xs:sequence>
     <xs:attribute name="baseEditorPath" type="xs:string" default="placements/" />
     <xs:attribute name="baseExportPath" type="xs:string" default="finals/placements/" />
-    <xs:attribute name="cellCount" type="int2Type" default="0 0" />
-    <xs:attribute name="cellSize" type="xs:float" default="512" />
+    <xs:attribute name="CellCount" type="int2Type" default="0 0" />
+    <xs:attribute name="CellsOrigin" type="vector2Type" default="0 0" />
+    <xs:attribute name="CellSize" type="xs:float" default="512" />
     <xs:attribute name="ExportTarget" type="xs:string" default="finals/placements.cfg" />
     <xs:attribute name="ExportEnabled" type="xs:boolean" default="true"/>
   </xs:complexType>

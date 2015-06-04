@@ -489,8 +489,8 @@ struct ProceduralTextureOutput
 	{
 		ProceduralTextureOutput result;
 		result.diffuseAlbedo = 1.0.xxx;
-		result.tangentSpaceNormal = 0.0.xxx;
-		result.specularity = 0.0.xxx;
+		result.tangentSpaceNormal = float3(0.5,0.5,1);
+		result.specularity = 1.0.xxx;
 		return result;
 	}
 #else
@@ -522,33 +522,40 @@ struct ProceduralTextureOutput
 		return SRGBLuminance(StrataSpecularity.Sample(MaybeAnisotropicSampler, AsStackCoord(tc, strata, textureType)).rgb);
 	}
 
+	static const bool UseStrataNormals = false;
+	static const bool UseStrataSpecular = false;
+
 	ProceduralTextureOutput GetTextureForStrata(uint strataIndex, float3 worldPosition, float slopeFactor, float2 textureCoord, float noiseValue0)
 	{
 		float2 tc0 = worldPosition.xy * TextureFrequency[strataIndex].xx;
 		float2 tc1 = worldPosition.xy * TextureFrequency[strataIndex].yy;
 
-		float3 A = StrataDiffuseSample(tc0, strataIndex, 0);
-		float3 An = StrataNormals.Sample(MaybeAnisotropicSampler, float3(tc0, strataIndex*3+0)).rgb;
-		float As = StrataSpecularSample(tc0, strataIndex, 0);
-
-		float3 B = StrataDiffuseSample(tc0, strataIndex, 1);
-		float3 Bn = StrataNormals.Sample(MaybeAnisotropicSampler, float3(tc1, strataIndex*3+1)).rgb;
-		float Bs = StrataSpecularSample(tc0, strataIndex, 1);
-
 		float alpha = saturate(.5f + .7f * noiseValue0);
 		// alpha = min(1.f, exp(32.f * (alpha-.5f)));
 		// alpha = lerp(.25f, 0.75f, alpha);
 
-		float3 X = lerp(A, B, alpha);
-		float3 Xn = lerp(An, Bn, alpha);
-		float Xs = lerp(As, Bs, alpha);
-
 		ProceduralTextureOutput result;
-		result.diffuseAlbedo = X;
-		result.tangentSpaceNormal = Xn;
-		result.specularity = Xs;
+		float3 A = StrataDiffuseSample(tc0, strataIndex, 0);
+		float3 B = StrataDiffuseSample(tc0, strataIndex, 1);
+		result.diffuseAlbedo = lerp(A, B, alpha);
 
-		const float slopeStart = .35f;
+		if (UseStrataNormals) {
+			float3 An = StrataNormals.Sample(MaybeAnisotropicSampler, float3(tc0, strataIndex*3+0)).rgb;
+			float3 Bn = StrataNormals.Sample(MaybeAnisotropicSampler, float3(tc1, strataIndex*3+1)).rgb;
+			result.tangentSpaceNormal = lerp(An, Bn, alpha);
+		} else {
+			result.tangentSpaceNormal = float3(0.5,0.5,1);
+		}
+
+		if (UseStrataSpecular) {
+			float As = StrataSpecularSample(tc0, strataIndex, 0);
+			float Bs = StrataSpecularSample(tc0, strataIndex, 1);
+			result.specularity = lerp(As, Bs, alpha);
+		} else {
+			result.specularity = 1;
+		}
+
+		const float slopeStart = .55f;
 		const float slopeSoftness = 3.f;
 		const float slopeDarkness = 1.f; // .75f;
 
@@ -582,8 +589,11 @@ struct ProceduralTextureOutput
 			Ss = Ss * A + Ss2 * B;
 
 			result.diffuseAlbedo = lerp(result.diffuseAlbedo, slopeDarkness * S, slopeAlpha);
-			result.tangentSpaceNormal = lerp(result.tangentSpaceNormal, Sn, slopeAlpha);
-			result.specularity = lerp(result.specularity, Ss, slopeAlpha);
+			if (UseStrataNormals)
+				result.tangentSpaceNormal = lerp(result.tangentSpaceNormal, Sn, slopeAlpha);
+
+			if (UseStrataSpecular)
+				result.specularity = lerp(result.specularity, Ss, slopeAlpha);
 		}
 
 		return result;
@@ -630,7 +640,6 @@ ProceduralTextureOutput BuildProceduralTextureValue(float3 worldPosition, float 
 	result.specularity = lerp(value0.specularity, value1.specularity, strataAlpha);
 
 	float2 nxy = 2.f * result.tangentSpaceNormal.xy - 1.0.xx;
-	// nxy *= 0.5f;	// reduce normal map slightly -- make things slightly softer and cleaner
 	result.tangentSpaceNormal = float3(nxy, sqrt(saturate(1.f + dot(nxy, -nxy))));
 
 	return result;
@@ -659,7 +668,7 @@ TerrainPixel CalculateTerrain(SW_GStoPS geo)
 {
 	float4 result = 1.0.xxxx;
 	float2 finalTexCoord = 0.0.xx;
-	float shadowing = 0.f;
+	float shadowing = 1.f;
 
 	#if (OUTPUT_TEXCOORD==1) && (SOLIDWIREFRAME_TEXCOORD==1)
 

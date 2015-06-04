@@ -29,7 +29,7 @@ namespace EntityInterface
         if (docType != DocumentType_Placements) { assert(0); return 0; }
 
         StringMeld<MaxPath, ::Assets::ResChar> meld;
-        meld << "[dyn] " << initializer;
+        meld << "[dyn] " << initializer << (_cellCounter++);
 
         return (DocumentId)_editor->CreateCell(
             *_manager,
@@ -242,7 +242,9 @@ namespace EntityInterface
         std::shared_ptr<SceneEngine::PlacementsManager> manager,
         std::shared_ptr<SceneEngine::PlacementsEditor> editor)
     : _manager(std::move(manager))
-    , _editor(std::move(editor)) {}
+    , _editor(std::move(editor))
+    , _cellCounter(0) 
+    {}
 
     PlacementEntities::~PlacementEntities() {}
 

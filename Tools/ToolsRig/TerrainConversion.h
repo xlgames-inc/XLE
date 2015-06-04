@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "../../SceneEngine/TerrainCoverageId.h"
 #include "../../Assets/AssetsCore.h"
 #include "../../Math/Vector.h"
 
@@ -20,7 +21,8 @@ namespace ToolsRig
 
     void GenerateStarterCells(
         const ::Assets::ResChar outputDir[], const ::Assets::ResChar input[], 
-        unsigned destNodeDims, unsigned destCellTreeDepth, unsigned overlap,
+        unsigned destNodeDims, unsigned destCellTreeDepth, unsigned overlap, float spacing,
+        const std::pair<SceneEngine::TerrainCoverageId, unsigned> layers[], unsigned layerCount,
         ConsoleRig::IProgress* progress);
 
 }

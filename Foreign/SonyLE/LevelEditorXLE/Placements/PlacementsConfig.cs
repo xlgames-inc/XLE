@@ -42,6 +42,12 @@ namespace LevelEditorXLE.Placements
             [Category("Basic")] [Description("Cell Count (Y)")]
             public uint CellCountY { get; set; }
 
+            [Category("Basic")] [Description("Cells Origin (X) in metres")]
+            public float CellsOriginX { get; set; }
+
+            [Category("Basic")] [Description("Cellx Origin (Y) in metres")]
+            public float CellsOriginY { get; set; }
+
             [Category("Basic")] [Description("Cell Size (in metres)")]
             public float CellSize { get; set; }
 

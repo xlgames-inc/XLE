@@ -35,16 +35,20 @@ namespace EntityInterface
 		PropertyId GetPropertyId(ObjectTypeId type, const char name[]) const;
 		ChildListId GetChildListId(ObjectTypeId type, const char name[]) const;
 
+        void UnloadTerrain();
+        void ReloadTerrain();
+
 		TerrainEntities(std::shared_ptr<SceneEngine::TerrainManager> terrainManager);
 		~TerrainEntities();
 
     private:
         bool SetTerrainProperty(const PropertyInitializer& prop);
         std::shared_ptr<SceneEngine::TerrainManager> _terrainManager;
-        bool _cellsLoaded;
         ::Assets::rstring _uberSurfaceDir;
+        ::Assets::rstring _cellsDir;
 	};
 
     class RetainedEntities;
     void RegisterTerrainFlexObjects(RetainedEntities& flexSys);
+    void ReloadTerrainFlexObjects(RetainedEntities& flexSys);
 }

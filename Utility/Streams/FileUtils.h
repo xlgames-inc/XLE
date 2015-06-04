@@ -71,7 +71,10 @@ namespace Utility
         const void*     GetData() const     { return _mappedData; }
         bool            IsValid()           { return _mappedData != 0; }
 
-        MemoryMappedFile(const char filename[], uint64 size, Access::BitField access);
+        MemoryMappedFile(
+            const char filename[], uint64 size, 
+            Access::BitField access,
+            BasicFile::ShareMode::BitField shareMode = 0);
         ~MemoryMappedFile();
 
     private:

@@ -13,6 +13,13 @@
 
 namespace Utility 
 {
+    static unsigned AsUnderlyingShareMode(BasicFile::ShareMode::BitField shareMode)
+    {
+        unsigned underlyingShareMode = 0;
+        if (shareMode & BasicFile::ShareMode::Write)   { underlyingShareMode |= FILE_SHARE_WRITE; }
+        if (shareMode & BasicFile::ShareMode::Read)    { underlyingShareMode |= FILE_SHARE_READ; }
+        return underlyingShareMode;
+    }
 
     BasicFile::BasicFile(   const char filename[], const char openMode[], 
                             ShareMode::BitField shareMode)
@@ -21,12 +28,10 @@ namespace Utility
         assert(openMode);
 
         unsigned underlyingAccessMode = 0;
-        unsigned underlyingShareMode = 0;
         unsigned creationDisposition = 0;
         unsigned underlyingFlags = 0;
 
-        if (shareMode & ShareMode::Write)   { underlyingShareMode |= FILE_SHARE_WRITE; }
-        if (shareMode & ShareMode::Read)    { underlyingShareMode |= FILE_SHARE_READ; }
+        auto underlyingShareMode = AsUnderlyingShareMode(shareMode);
 
         if (XlFindString(openMode, "w+")) {
             underlyingAccessMode = FILE_GENERIC_WRITE | FILE_GENERIC_READ;
@@ -248,7 +253,9 @@ namespace Utility
         return std::move(result);
     }
 
-    MemoryMappedFile::MemoryMappedFile(const char filename[], uint64 size, Access::BitField access)
+    MemoryMappedFile::MemoryMappedFile(
+        const char filename[], uint64 size, Access::BitField access, 
+        BasicFile::ShareMode::BitField shareMode)
     {
         _mapping = INVALID_HANDLE_VALUE;
         _fileHandle = INVALID_HANDLE_VALUE;
@@ -258,6 +265,8 @@ namespace Utility
         if (access & Access::Read)  underlyingAccess |= GENERIC_READ;
         if (access & Access::Write) underlyingAccess |= GENERIC_WRITE|GENERIC_READ;
 
+        auto underlyingShareMode = AsUnderlyingShareMode(shareMode);
+
         unsigned creationDisposition = OPEN_EXISTING;
         if (access & Access::Write && (!(access & Access::Read))) {
             creationDisposition = CREATE_ALWAYS;
@@ -266,7 +275,7 @@ namespace Utility
         }
 
         auto fileHandle = CreateFile(
-            filename, underlyingAccess, 0, nullptr, creationDisposition, FILE_ATTRIBUTE_NORMAL, nullptr);
+            filename, underlyingAccess, underlyingShareMode, nullptr, creationDisposition, FILE_ATTRIBUTE_NORMAL, nullptr);
         if (fileHandle == INVALID_HANDLE_VALUE) {
             return;
         }

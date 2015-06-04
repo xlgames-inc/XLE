@@ -21,18 +21,21 @@ namespace SceneEngine
     template<typename Sample>
         static void WriteCellCoverageData(
             const TerrainConfig& cfg, ITerrainFormat& ioFormat, 
-            const ::Assets::ResChar uberSurfaceName[], unsigned layerIndex)
+            const ::Assets::ResChar uberSurfaceName[], unsigned layerIndex,
+            ConsoleRig::IProgress* progress)
     {
         ::Assets::ResChar path[MaxPath];
 
         auto cells = BuildPrimedCells(cfg);
-        auto layerId = cfg.GetCoverageLayer(layerIndex)._id;
+        auto& layer = cfg.GetCoverageLayer(layerIndex);
+
+        auto step = progress ? progress->BeginStep("Write coverage cells", (unsigned)cells.size(), true) : nullptr;
 
         TerrainUberSurface<Sample> uberSurface(uberSurfaceName);
         for (auto c=cells.cbegin(); c!=cells.cend(); ++c) {
 
             char cellFile[MaxPath];
-            cfg.GetCellFilename(cellFile, dimof(cellFile), c->_cellIndex, layerId);
+            cfg.GetCellFilename(cellFile, dimof(cellFile), c->_cellIndex, layer._id);
             if (!DoesFileExist(cellFile)) {
                 XlDirname(path, dimof(path), cellFile);
                 CreateDirectoryRecursive(path);
@@ -40,10 +43,16 @@ namespace SceneEngine
                 TRY {
                     ioFormat.WriteCell(
                         cellFile, uberSurface, 
-                        c->_coverageUber[layerIndex].first, c->_coverageUber[layerIndex].second, cfg.CellTreeDepth(), 1);
+                        c->_coverageUber[layerIndex].first, c->_coverageUber[layerIndex].second, 
+                        cfg.CellTreeDepth(), layer._overlap);
                 } CATCH(...) {
                     LogAlwaysError << "Error while writing cell coverage file to: " << cellFile;
                 } CATCH_END
+            }
+
+            if (step) {
+                if (step->IsCancelled()) break;
+                step->Advance();
             }
 
         }
@@ -89,9 +98,9 @@ namespace SceneEngine
                     //  open and destroy these coverage uber shadowing surface before we open the uber heights surface
                     //  (opening them both at the same time requires too much memory)
                 if (layer._format == 35) {
-                    WriteCellCoverageData<ShadowSample>(outputConfig, *outputIOFormat, layerUberSurface, l);
+                    WriteCellCoverageData<ShadowSample>(outputConfig, *outputIOFormat, layerUberSurface, l, progress);
                 } else if (layer._format == 62) {
-                    WriteCellCoverageData<uint8>(outputConfig, *outputIOFormat, layerUberSurface, l);
+                    WriteCellCoverageData<uint8>(outputConfig, *outputIOFormat, layerUberSurface, l, progress);
                 } else {
                     LogAlwaysError << "Unknown format (" << layer._format << ") for terrain coverage file for layer: " << 
                         Conversion::Convert<std::string>(layer._name);
@@ -155,7 +164,9 @@ namespace SceneEngine
 
                     // this is the shadows layer... We need to build the shadows procedurally
                 ::Assets::ResChar uberHeightsFile[MaxPath];
-                TerrainConfig::GetUberSurfaceFilename(uberHeightsFile, dimof(uberHeightsFile), uberSurfaceDir, CoverageId_Heights);
+                TerrainConfig::GetUberSurfaceFilename(
+                    uberHeightsFile, dimof(uberHeightsFile), 
+                    uberSurfaceDir, CoverageId_Heights);
 
                 TerrainUberHeightsSurface heightsData(uberHeightsFile);
                 HeightsUberSurfaceInterface uberSurfaceInterface(heightsData, outputIOFormat);
@@ -174,11 +185,13 @@ namespace SceneEngine
                     uberSurfaceFile, interestingMins, interestingMaxs, sunDirectionOfMovement, xyScale);
 
             } else {
+
                 HeightsUberSurfaceInterface::BuildEmptyFile(
                     uberSurfaceFile, 
-                    cfg._cellCount[0] * cfg.CellDimensionsInNodes()[0] * (layer._dimensions[0]+1),
-                    cfg._cellCount[1] * cfg.CellDimensionsInNodes()[1] * (layer._dimensions[1]+1),
+                    cfg._cellCount[0] * cfg.CellDimensionsInNodes()[0] * layer._nodeDimensions[0],
+                    cfg._cellCount[1] * cfg.CellDimensionsInNodes()[1] * layer._nodeDimensions[1],
                     RenderCore::Metal::BitsPerPixel((RenderCore::Metal::NativeFormat::Enum)layer._format));
+
             }
 
             if (step) {

@@ -87,6 +87,18 @@ namespace LevelEditorXLE.Terrain
             set { SetAttribute(TerrainST.CellTreeDepthAttribute, ClampCellTreeDepth(value)); }
         }
 
+        public bool HasBaseMaterialCoverage
+        {
+            get { return GetAttribute<bool>(TerrainST.HasBaseMaterialCoverageAttribute); }
+            set { SetAttribute(TerrainST.HasBaseMaterialCoverageAttribute, value); }
+        }
+
+        public bool HasDecorationCoverage
+        {
+            get { return GetAttribute<bool>(TerrainST.HasDecorationCoverageAttribute); }
+            set { SetAttribute(TerrainST.HasDecorationCoverageAttribute, value); }
+        }
+
         private static uint ClampNodeDimensions(uint input)
         {
             return input.Clamp(1u, 1024u);
@@ -131,24 +143,35 @@ namespace LevelEditorXLE.Terrain
             var overlap = cfg.Overlap;
             var cellTreeDepth = ClampCellTreeDepth(cfg.CellTreeDepth);
 
-            using (var progress = new ControlsLibrary.ProgressDialog.ProgressInterface())
-            {
-                // if there is a source DEM file specified then we should
-                // attempt to build the starter uber surface.
-                if (cfg.Import == TerrainConfig.Config.ImportType.DEMFile && cfg.SourceDEMFile != null && cfg.SourceDEMFile.Length > 0)
-                {
-                    GUILayer.EditorInterfaceUtils.GenerateUberSurfaceFromDEM(
-                        cfg.UberSurfaceDirectory, cfg.SourceDEMFile,
-                        nodeDimensions, cellTreeDepth,
-                        progress);
-                }
+            sceneMan.UnloadTerrain();
 
-                // fill in the cells directory with starter cells (if they don't already exist)
-                GUILayer.EditorInterfaceUtils.GenerateStarterCells(
-                    cfg.CellsDirectory, cfg.UberSurfaceDirectory,
-                    nodeDimensions, cellTreeDepth, overlap,
-                    progress);
+            try
+            {
+                using (var progress = new ControlsLibrary.ProgressDialog.ProgressInterface())
+                {
+                    // if there is a source DEM file specified then we should
+                    // attempt to build the starter uber surface.
+                    if (cfg.Import == TerrainConfig.Config.ImportType.DEMFile
+                        && cfg.SourceDEMFile != null && cfg.SourceDEMFile.Length > 0)
+                    {
+                        GUILayer.EditorInterfaceUtils.GenerateUberSurfaceFromDEM(
+                            cfg.UberSurfaceDirectory, cfg.SourceDEMFile,
+                            nodeDimensions, cellTreeDepth,
+                            progress);
+                    }
+
+                    var coverageLayers = new List<uint>();
+                    if (cfg.HasBaseMaterialCoverage) coverageLayers.Add(1000);
+                    if (cfg.HasDecorationCoverage) coverageLayers.Add(1001);
+
+                    // fill in the cells directory with starter cells (if they don't already exist)
+                    GUILayer.EditorInterfaceUtils.GenerateStarterCells(
+                        cfg.CellsDirectory, cfg.UberSurfaceDirectory,
+                        nodeDimensions, cellTreeDepth, overlap,
+                        cfg.Spacing, coverageLayers, progress);
+                }
             }
+            catch { }
 
                 // if the above completed without throwing an exception, we can commit the values
             NodeDimensions = nodeDimensions;
@@ -157,6 +180,10 @@ namespace LevelEditorXLE.Terrain
             Spacing = cfg.Spacing;
             UberSurfaceDirectory = cfg.UberSurfaceDirectory;
             CellsDirectory = cfg.CellsDirectory;
+            HasDecorationCoverage = cfg.HasDecorationCoverage;
+            HasBaseMaterialCoverage = cfg.HasBaseMaterialCoverage;
+
+            sceneMan.ReloadTerrain();
         }
 
         internal bool DoModalConfigure()
@@ -169,6 +196,8 @@ namespace LevelEditorXLE.Terrain
             cfg.CellTreeDepth = CellTreeDepth;
             cfg.UberSurfaceDirectory = UberSurfaceDirectory;
             cfg.CellsDirectory = CellsDirectory;
+            cfg.HasBaseMaterialCoverage = HasBaseMaterialCoverage;
+            cfg.HasDecorationCoverage = HasDecorationCoverage;
 
             using (var dlg = new TerrainConfig())
             {
@@ -193,6 +222,8 @@ namespace LevelEditorXLE.Terrain
                 {
                     case Command.CreateBaseTexture:
                         return DomNode.GetChild(TerrainST.baseTextureChild) == null;
+                    case Command.Configure:
+                        return true;
                 }
             }
             return false;
@@ -214,6 +245,12 @@ namespace LevelEditorXLE.Terrain
                         }
                         break;
                     }
+
+                case Command.Configure:
+                    {
+                        DoModalConfigure();
+                        break;
+                    }
             }
         }
 
@@ -224,7 +261,9 @@ namespace LevelEditorXLE.Terrain
         private enum Command
         {
             [Description("Create Base Texture")]
-            CreateBaseTexture
+            CreateBaseTexture,
+            [Description("Configure Terrain...")]
+            Configure
         }
 
         IEnumerable<object> IContextMenuCommandProvider.GetCommands(object context, object target)

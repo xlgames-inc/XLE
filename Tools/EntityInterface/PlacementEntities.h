@@ -42,6 +42,8 @@ namespace EntityInterface
     protected:
         std::shared_ptr<SceneEngine::PlacementsManager> _manager;
         std::shared_ptr<SceneEngine::PlacementsEditor> _editor;
+
+        unsigned _cellCounter;
     };
 }
 

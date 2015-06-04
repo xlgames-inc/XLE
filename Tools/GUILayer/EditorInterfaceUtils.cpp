@@ -334,14 +334,21 @@ namespace GUILayer
         static void GenerateStarterCells(
             String^ cellsDirectory, String^ uberSurfaceDirectory,
             unsigned nodeDimensions, unsigned cellTreeDepth, unsigned overlap,
-            IProgress^ progress)
+            float spacing, IEnumerable<unsigned>^ layers, IProgress^ progress)
         {
             auto nativeProgress = progress ? IProgress::CreateNative(progress) : nullptr;
+            std::vector<std::pair<SceneEngine::TerrainCoverageId, unsigned>> nativeLayers;
+            for each(auto l in layers)
+                nativeLayers.push_back(std::make_pair(l, 62));
+
             ToolsRig::GenerateStarterCells(
                 clix::marshalString<clix::E_UTF8>(cellsDirectory).c_str(),
                 clix::marshalString<clix::E_UTF8>(uberSurfaceDirectory).c_str(),
-                nodeDimensions, cellTreeDepth, overlap, nativeProgress.get());
+                nodeDimensions, cellTreeDepth, overlap, spacing, 
+                AsPointer(nativeLayers.cbegin()), (unsigned)nativeLayers.size(),
+                nativeProgress.get());
         }
+
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

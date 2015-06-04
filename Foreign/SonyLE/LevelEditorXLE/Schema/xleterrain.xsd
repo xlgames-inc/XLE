@@ -87,6 +87,8 @@
     <xs:attribute name="Spacing" type="xs:float" default="10" />
     <xs:attribute name="CellTreeDepth" type="xs:unsignedInt" default="5" />
     <xs:attribute name="Offset" type="vector3Type" default="0 0 0"/>
+    <xs:attribute name="HasBaseMaterialCoverage" type="xs:boolean" default="false" />
+    <xs:attribute name="HasDecorationCoverage" type="xs:boolean" default="false" />
   </xs:complexType>
   
 </xs:schema>

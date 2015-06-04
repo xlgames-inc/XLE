@@ -221,8 +221,9 @@ namespace LevelEditorXLE
             placementsFolderType.Type = getNodeType("gap", "placementsFolderType");
             placementsFolderType.baseEditorPathAttribute = placementsFolderType.Type.GetAttributeInfo("baseEditorPath");
             placementsFolderType.baseExportPathAttribute = placementsFolderType.Type.GetAttributeInfo("baseExportPath");
-            placementsFolderType.cellCountAttribute = placementsFolderType.Type.GetAttributeInfo("cellCount");
-            placementsFolderType.cellSizeAttribute = placementsFolderType.Type.GetAttributeInfo("cellSize");
+            placementsFolderType.CellCountAttribute = placementsFolderType.Type.GetAttributeInfo("CellCount");
+            placementsFolderType.CellsOriginAttribute = placementsFolderType.Type.GetAttributeInfo("CellsOrigin");
+            placementsFolderType.CellSizeAttribute = placementsFolderType.Type.GetAttributeInfo("CellSize");
             placementsFolderType.ExportTargetAttribute = placementsFolderType.Type.GetAttributeInfo("ExportTarget");
             placementsFolderType.ExportEnabledAttribute = placementsFolderType.Type.GetAttributeInfo("ExportEnabled");
             placementsFolderType.cellChild = placementsFolderType.Type.GetChildInfo("cell");
@@ -263,6 +264,8 @@ namespace LevelEditorXLE
             terrainType.SpacingAttribute = terrainType.Type.GetAttributeInfo("Spacing");
             terrainType.CellTreeDepthAttribute = terrainType.Type.GetAttributeInfo("CellTreeDepth");
             terrainType.OffsetAttribute = terrainType.Type.GetAttributeInfo("Offset");
+            terrainType.HasBaseMaterialCoverageAttribute = terrainType.Type.GetAttributeInfo("HasBaseMaterialCoverage");
+            terrainType.HasDecorationCoverageAttribute = terrainType.Type.GetAttributeInfo("HasDecorationCoverage");
             terrainType.baseTextureChild = terrainType.Type.GetChildInfo("baseTexture");
 
             resourceReferenceType.Type = getNodeType("gap", "resourceReferenceType");
@@ -586,8 +589,9 @@ namespace LevelEditorXLE
             public static DomNodeType Type;
             public static AttributeInfo baseEditorPathAttribute;
             public static AttributeInfo baseExportPathAttribute;
-            public static AttributeInfo cellCountAttribute;
-            public static AttributeInfo cellSizeAttribute;
+            public static AttributeInfo CellCountAttribute;
+            public static AttributeInfo CellsOriginAttribute;
+            public static AttributeInfo CellSizeAttribute;
             public static AttributeInfo ExportTargetAttribute;
             public static AttributeInfo ExportEnabledAttribute;
             public static ChildInfo cellChild;
@@ -640,6 +644,8 @@ namespace LevelEditorXLE
             public static AttributeInfo SpacingAttribute;
             public static AttributeInfo CellTreeDepthAttribute;
             public static AttributeInfo OffsetAttribute;
+            public static AttributeInfo HasBaseMaterialCoverageAttribute;
+            public static AttributeInfo HasDecorationCoverageAttribute;
             public static ChildInfo baseTextureChild;
         }
 

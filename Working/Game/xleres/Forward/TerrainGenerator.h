@@ -27,10 +27,10 @@ cbuffer TileBuffer : register(b7)
 	int4	CoverageOrigin[MaxCoverageLayers];
 }
 
-Texture2DArray CoverageTileSet0 : register(t0);
+Texture2DArray<uint> CoverageTileSet0 : register(t0);
 Texture2DArray<uint> CoverageTileSet1 : register(t1);
-Texture2DArray CoverageTileSet2 : register(t2);
-Texture2DArray CoverageTileSet3 : register(t3);
-Texture2DArray CoverageTileSet4 : register(t4);
+Texture2DArray<uint> CoverageTileSet2 : register(t2);
+Texture2DArray<uint> CoverageTileSet3 : register(t3);
+Texture2DArray<uint> CoverageTileSet4 : register(t4);
 
 #endif

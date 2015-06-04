@@ -37,16 +37,17 @@ namespace SceneEngine
         public:
             std::basic_string<utf8> _name;
             TerrainCoverageId _id;
-            UInt2 _dimensions;
+            UInt2 _nodeDimensions;
+            unsigned _overlap;
             unsigned _format;
         };
 
         TerrainConfig(
-			const ::Assets::ResChar baseDir[], UInt2 cellCount,
+            const ::Assets::ResChar baseDir[], UInt2 cellCount,
             Filenames filenamesMode = XLE, 
             unsigned nodeDimsInElements = 32u, unsigned cellTreeDepth = 5u, unsigned nodeOverlap = 2u,
             float elementSpacing = 10.f);
-		TerrainConfig(const ::Assets::ResChar baseDir[] = "");
+        TerrainConfig(const ::Assets::ResChar baseDir[] = "");
 
         void        GetCellFilename(::Assets::ResChar buffer[], unsigned cnt, UInt2 cellIndex, TerrainCoverageId id) const;
         UInt2x3     CellBasedToCoverage(TerrainCoverageId coverageId) const;
@@ -64,6 +65,7 @@ namespace SceneEngine
 
         unsigned    GetCoverageLayerCount() const;
         const CoverageLayer& GetCoverageLayer(unsigned index) const;
+        void        AddCoverageLayer(const CoverageLayer& layer);
 
         void        Save();
 
