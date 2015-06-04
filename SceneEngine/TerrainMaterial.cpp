@@ -29,18 +29,24 @@ namespace SceneEngine
         Serialize(formatter, u("NormalDims"), _normalDims);
         Serialize(formatter, u("ParamDims"), _paramDims);
 
-        auto strataList = formatter.BeginElement(u("Strata"));
-        unsigned strataIndex = 0;
-        for (auto s=_strata.cbegin(); s!=_strata.cend(); ++s, ++strataIndex) {
-            auto strata = formatter.BeginElement((StringMeld<64, utf8>() << "Strata" << strataIndex).get());
-            for (unsigned t=0; t<dimof(TextureNames); ++t)
-                formatter.WriteAttribute(TextureNames[t], Conversion::Convert<std::basic_string<utf8>>(s->_texture[t]));
+        for (auto mat = _materials.cbegin(); mat != _materials.cend(); ++mat) {
+            formatter.BeginElement(u("StrataMaterial"));
+            Serialize(formatter, "MaterialId", mat->_id);
 
-            Serialize(formatter, "EndHeight", s->_endHeight);
-            Serialize(formatter, "Mapping", Float4(s->_mappingConstant[0], s->_mappingConstant[1], s->_mappingConstant[2], 1.f));
-            formatter.EndElement(strata);
+            auto strataList = formatter.BeginElement(u("Strata"));
+            unsigned strataIndex = 0;
+            for (auto s=mat->_strata.cbegin(); s!=mat->_strata.cend(); ++s, ++strataIndex) {
+                auto strata = formatter.BeginElement((StringMeld<64, utf8>() << "Strata" << strataIndex).get());
+                for (unsigned t=0; t<dimof(TextureNames); ++t)
+                    formatter.WriteAttribute(TextureNames[t], Conversion::Convert<std::basic_string<utf8>>(s->_texture[t]));
+
+                Serialize(formatter, "EndHeight", s->_endHeight);
+                Serialize(formatter, "Mapping", Float4(s->_mappingConstant[0], s->_mappingConstant[1], s->_mappingConstant[2], 1.f));
+                formatter.EndElement(strata);
+            }
+            formatter.EndElement(strataList);
         }
-        formatter.EndElement(strataList);
+
         formatter.EndElement(cfg);
     }
 
@@ -70,26 +76,34 @@ namespace SceneEngine
             _normalDims = Deserialize(cfg, u("NormalDims"), UInt2(512, 512));
             _paramDims = Deserialize(cfg, u("ParamDims"), UInt2(512, 512));
 
-            auto strata = cfg.Element(u("Strata"));
-            unsigned strataCount = 0;
-            for (auto c = strata.FirstChild(); c; c = c.NextSibling()) { ++strataCount; }
+            for (auto matCfg=cfg.FirstChild(); matCfg; matCfg=matCfg.NextSibling()) {
+                StrataMaterial mat;
 
-            unsigned strataIndex = 0;
-            for (auto c = strata.FirstChild(); c; c = c.NextSibling(), ++strataIndex) {
-                Strata newStrata;
-                for (unsigned t=0; t<dimof(TextureNames); ++t) {
-                    auto tName = c.AttributeOrEmpty(TextureNames[t]);
-                    if (XlCompareStringI(tName.c_str(), u("null"))!=0)
-                        newStrata._texture[t] = Conversion::Convert<::Assets::rstring>(tName);
+                mat._id = Deserialize(matCfg, u("MaterialId"), 0u);
+
+                auto strata = matCfg.Element(u("Strata"));
+                unsigned strataCount = 0;
+                for (auto c = strata.FirstChild(); c; c = c.NextSibling()) { ++strataCount; }
+
+                unsigned strataIndex = 0;
+                for (auto c = strata.FirstChild(); c; c = c.NextSibling(), ++strataIndex) {
+                    StrataMaterial::Strata newStrata;
+                    for (unsigned t=0; t<dimof(TextureNames); ++t) {
+                        auto tName = c.AttributeOrEmpty(TextureNames[t]);
+                        if (XlCompareStringI(tName.c_str(), u("null"))!=0)
+                            newStrata._texture[t] = Conversion::Convert<::Assets::rstring>(tName);
+                    }
+
+                    newStrata._endHeight = Deserialize(c, u("EndHeight"), 0.f);
+                    auto mappingConst = Deserialize(c, u("Mapping"), Float4(1.f, 1.f, 1.f, 1.f));
+                    newStrata._mappingConstant[0] = mappingConst[0];
+                    newStrata._mappingConstant[1] = mappingConst[1];
+                    newStrata._mappingConstant[2] = mappingConst[2];
+
+                    mat._strata.push_back(newStrata);
                 }
 
-                newStrata._endHeight = Deserialize(c, u("EndHeight"), 0.f);
-                auto mappingConst = Deserialize(c, u("Mapping"), Float4(1.f, 1.f, 1.f, 1.f));
-                newStrata._mappingConstant[0] = mappingConst[0];
-                newStrata._mappingConstant[1] = mappingConst[1];
-                newStrata._mappingConstant[2] = mappingConst[2];
-
-                _strata.push_back(newStrata);
+                _materials.push_back(std::move(mat));
             }
 
             ::Assets::Services::GetInvalidAssetMan().MarkValid(definitionFile);

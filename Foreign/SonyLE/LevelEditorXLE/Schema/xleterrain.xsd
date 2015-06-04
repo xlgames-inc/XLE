@@ -8,6 +8,41 @@
 
   <xs:include schemaLocation="xlebasic.xsd"/>
 
+  <!-- ......................................................................... -->
+  
+  <xs:complexType name="abstractTerrainMaterialDescType">
+    <xs:annotation>
+      <xs:appinfo>
+        <LeGe.NativeProperty name="MaterialId" nativeName="MaterialId"/>
+        <scea.dom.editors.attribute name="MaterialId" displayName="Material Id" description="Material to attach to (zero based index)" category="General"/>
+      </xs:appinfo>
+    </xs:annotation>
+    
+    <xs:attribute name="MaterialId" type="xs:int" default="0"/>
+  </xs:complexType>
+    
+  <xs:complexType name="terrainBaseTextureType">
+    <xs:annotation>
+      <xs:appinfo>
+        <LeGe.NativeType nativeName="TerrainBaseTexture"/>
+        <LeGe.NativeProperty name="diffusedims" nativeName="diffusedims" nativeType="Float2" access="set"/>
+        <LeGe.NativeProperty name="normaldims" nativeName="normaldims" nativeType="Float2" access="set"/>
+        <LeGe.NativeProperty name="paramdims" nativeName="paramdims" nativeType="Float2" access="set"/>
+
+        <LeGe.OpaqueListable label="Texturing"/>
+        <scea.dom.editors.attribute name="diffusedims" displayName="Diffuse Dims" description="Diffuse texture dimensions" category="General" editor="Sce.Atf.Controls.PropertyEditing.NumericTupleEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.FloatArrayConverter"/>
+        <scea.dom.editors.attribute name="normaldims" displayName="Normal Dims" description="Normal texture dimensions" category="General" editor="Sce.Atf.Controls.PropertyEditing.NumericTupleEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.FloatArrayConverter"/>
+        <scea.dom.editors.attribute name="paramdims" displayName="Parameter Dims" description="Parameter texture dimensions" category="General" editor="Sce.Atf.Controls.PropertyEditing.NumericTupleEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.FloatArrayConverter"/>
+      </xs:appinfo>
+    </xs:annotation>
+
+    <xs:attribute name="diffusedims" type="vector3Type" default="512 512 1"/>
+    <xs:attribute name="normaldims" type="vector3Type" default="512 512 1"/>
+    <xs:attribute name="paramdims" type="vector3Type" default="512 512 1"/>
+  </xs:complexType>
+
+  <!-- ......................................................................... -->
+
   <xs:complexType name="terrainBaseTextureStrataType">
     <xs:annotation>
       <xs:appinfo>
@@ -38,31 +73,26 @@
     <xs:attribute name="mapping2" type="xs:float" default="10.0"/>
     <xs:attribute name="endheight" type="xs:float" default="1000.0"/>
   </xs:complexType>
-
-  <xs:complexType name="terrainBaseTextureType">
+  
+  <xs:complexType name="terrainStrataMaterialType">
     <xs:annotation>
       <xs:appinfo>
-        <LeGe.NativeType nativeName="TerrainBaseTexture"/>
-        <LeGe.NativeProperty name="diffusedims" nativeName="diffusedims" nativeType="Float2" access="set"/>
-        <LeGe.NativeProperty name="normaldims" nativeName="normaldims" nativeType="Float2" access="set"/>
-        <LeGe.NativeProperty name="paramdims" nativeName="paramdims" nativeType="Float2" access="set"/>
-
-        <LeGe.OpaqueListable label="basetexture"/>
-        <scea.dom.editors.attribute name="diffusedims" displayName="Diffuse Dims" description="Diffuse texture dimensions" category="General" editor="Sce.Atf.Controls.PropertyEditing.NumericTupleEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.FloatArrayConverter"/>
-        <scea.dom.editors.attribute name="normaldims" displayName="Normal Dims" description="Normal texture dimensions" category="General" editor="Sce.Atf.Controls.PropertyEditing.NumericTupleEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.FloatArrayConverter"/>
-        <scea.dom.editors.attribute name="paramdims" displayName="Parameter Dims" description="Parameter texture dimensions" category="General" editor="Sce.Atf.Controls.PropertyEditing.NumericTupleEditor,Atf.Gui.WinForms" converter="Sce.Atf.Controls.PropertyEditing.FloatArrayConverter"/>
+        <LeGe.NativeType nativeName="TerrainStrataMaterial"/>
+        <LeGe.OpaqueListable label="Strata Material"/>
       </xs:appinfo>
     </xs:annotation>
 
-    <xs:sequence>
-      <xs:element name="strata" type="terrainBaseTextureStrataType" minOccurs="0" maxOccurs="6" />
-    </xs:sequence>
-
-    <xs:attribute name="diffusedims" type="vector3Type" default="512 512 1"/>
-    <xs:attribute name="normaldims" type="vector3Type" default="512 512 1"/>
-    <xs:attribute name="paramdims" type="vector3Type" default="512 512 1"/>
+    <xs:complexContent>
+      <xs:extension base="abstractTerrainMaterialDescType">
+        <xs:sequence>
+          <xs:element name="strata" type="terrainBaseTextureStrataType" minOccurs="0" maxOccurs="6" />
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
   </xs:complexType>
 
+  <!-- ......................................................................... -->
+  
   <xs:complexType name="terrainType">
     <xs:annotation>
       <xs:appinfo>
@@ -79,6 +109,7 @@
 
     <xs:sequence>
       <xs:element name="baseTexture" type="terrainBaseTextureType" minOccurs="1" maxOccurs="1" />
+      <xs:element name="material" type="abstractTerrainMaterialDescType" minOccurs="0" maxOccurs="unbounded" />
     </xs:sequence>
     <xs:attribute name="UberSurfaceDir" type="xs:string" />
     <xs:attribute name="CellsDir" type="xs:string" />

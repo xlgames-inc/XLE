@@ -133,12 +133,12 @@ namespace LevelEditorXLE
                 }
             };
 
-            Schema.terrainBaseTextureType.Type.SetTag(
+            Schema.terrainStrataMaterialType.Type.SetTag(
                    new PropertyDescriptorCollection(
                        new System.ComponentModel.PropertyDescriptor[] {
                             new ChildPropertyDescriptor(
                                 "Strata".Localize(),
-                                Schema.terrainBaseTextureType.strataChild,
+                                Schema.terrainStrataMaterialType.strataChild,
                                 null,
                                 "List of texturing stratas".Localize(),
                                 false,

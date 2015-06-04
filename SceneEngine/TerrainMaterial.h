@@ -19,17 +19,24 @@ namespace SceneEngine
     class TerrainMaterialScaffold
     {
     public:
-        class Strata
+        class StrataMaterial
         {
         public:
-            ::Assets::rstring _texture[3];
-            float _mappingConstant[3];
-            float _endHeight;
+            class Strata
+            {
+            public:
+                ::Assets::rstring _texture[3];
+                float _mappingConstant[3];
+                float _endHeight;
+            };
+            std::vector<Strata> _strata;
+            unsigned _id;
         };
-        std::vector<Strata> _strata;
+
         UInt2 _diffuseDims;
         UInt2 _normalDims;
         UInt2 _paramDims;
+        std::vector<StrataMaterial> _materials;
 
         ::Assets::DirectorySearchRules _searchRules;
 

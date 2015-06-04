@@ -241,6 +241,14 @@ namespace LevelEditorXLE
             placementObjectType.modelAttribute = placementObjectType.Type.GetAttributeInfo("model");
             placementObjectType.materialAttribute = placementObjectType.Type.GetAttributeInfo("material");
 
+            abstractTerrainMaterialDescType.Type = getNodeType("gap", "abstractTerrainMaterialDescType");
+            abstractTerrainMaterialDescType.MaterialIdAttribute = abstractTerrainMaterialDescType.Type.GetAttributeInfo("MaterialId");
+
+            terrainBaseTextureType.Type = getNodeType("gap", "terrainBaseTextureType");
+            terrainBaseTextureType.diffusedimsAttribute = terrainBaseTextureType.Type.GetAttributeInfo("diffusedims");
+            terrainBaseTextureType.normaldimsAttribute = terrainBaseTextureType.Type.GetAttributeInfo("normaldims");
+            terrainBaseTextureType.paramdimsAttribute = terrainBaseTextureType.Type.GetAttributeInfo("paramdims");
+
             terrainBaseTextureStrataType.Type = getNodeType("gap", "terrainBaseTextureStrataType");
             terrainBaseTextureStrataType.texture0Attribute = terrainBaseTextureStrataType.Type.GetAttributeInfo("texture0");
             terrainBaseTextureStrataType.texture1Attribute = terrainBaseTextureStrataType.Type.GetAttributeInfo("texture1");
@@ -250,11 +258,9 @@ namespace LevelEditorXLE
             terrainBaseTextureStrataType.mapping2Attribute = terrainBaseTextureStrataType.Type.GetAttributeInfo("mapping2");
             terrainBaseTextureStrataType.endheightAttribute = terrainBaseTextureStrataType.Type.GetAttributeInfo("endheight");
 
-            terrainBaseTextureType.Type = getNodeType("gap", "terrainBaseTextureType");
-            terrainBaseTextureType.diffusedimsAttribute = terrainBaseTextureType.Type.GetAttributeInfo("diffusedims");
-            terrainBaseTextureType.normaldimsAttribute = terrainBaseTextureType.Type.GetAttributeInfo("normaldims");
-            terrainBaseTextureType.paramdimsAttribute = terrainBaseTextureType.Type.GetAttributeInfo("paramdims");
-            terrainBaseTextureType.strataChild = terrainBaseTextureType.Type.GetChildInfo("strata");
+            terrainStrataMaterialType.Type = getNodeType("gap", "terrainStrataMaterialType");
+            terrainStrataMaterialType.MaterialIdAttribute = terrainStrataMaterialType.Type.GetAttributeInfo("MaterialId");
+            terrainStrataMaterialType.strataChild = terrainStrataMaterialType.Type.GetChildInfo("strata");
 
             terrainType.Type = getNodeType("gap", "terrainType");
             terrainType.UberSurfaceDirAttribute = terrainType.Type.GetAttributeInfo("UberSurfaceDir");
@@ -267,6 +273,7 @@ namespace LevelEditorXLE
             terrainType.HasBaseMaterialCoverageAttribute = terrainType.Type.GetAttributeInfo("HasBaseMaterialCoverage");
             terrainType.HasDecorationCoverageAttribute = terrainType.Type.GetAttributeInfo("HasDecorationCoverage");
             terrainType.baseTextureChild = terrainType.Type.GetChildInfo("baseTexture");
+            terrainType.materialChild = terrainType.Type.GetChildInfo("material");
 
             resourceReferenceType.Type = getNodeType("gap", "resourceReferenceType");
             resourceReferenceType.uriAttribute = resourceReferenceType.Type.GetAttributeInfo("uri");
@@ -613,6 +620,20 @@ namespace LevelEditorXLE
             public static AttributeInfo materialAttribute;
         }
 
+        public static class abstractTerrainMaterialDescType
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo MaterialIdAttribute;
+        }
+
+        public static class terrainBaseTextureType
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo diffusedimsAttribute;
+            public static AttributeInfo normaldimsAttribute;
+            public static AttributeInfo paramdimsAttribute;
+        }
+
         public static class terrainBaseTextureStrataType
         {
             public static DomNodeType Type;
@@ -625,12 +646,10 @@ namespace LevelEditorXLE
             public static AttributeInfo endheightAttribute;
         }
 
-        public static class terrainBaseTextureType
+        public static class terrainStrataMaterialType
         {
             public static DomNodeType Type;
-            public static AttributeInfo diffusedimsAttribute;
-            public static AttributeInfo normaldimsAttribute;
-            public static AttributeInfo paramdimsAttribute;
+            public static AttributeInfo MaterialIdAttribute;
             public static ChildInfo strataChild;
         }
 
@@ -647,6 +666,7 @@ namespace LevelEditorXLE
             public static AttributeInfo HasBaseMaterialCoverageAttribute;
             public static AttributeInfo HasDecorationCoverageAttribute;
             public static ChildInfo baseTextureChild;
+            public static ChildInfo materialChild;
         }
 
         public static class resourceReferenceType

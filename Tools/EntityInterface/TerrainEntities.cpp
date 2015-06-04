@@ -177,12 +177,21 @@ namespace EntityInterface
         const RetainedEntities& sys,
         const RetainedEntity& obj)
     {
-        auto& divAsset = *Assets::GetDivergentAsset<SceneEngine::TerrainMaterialScaffold>();
-        auto trans = divAsset.Transaction_Begin("UpdateTextureProperties");
+        using namespace SceneEngine;
+
+        auto& divAsset = *Assets::GetDivergentAsset<TerrainMaterialScaffold>();
+        auto trans = divAsset.Transaction_Begin("UpdateTerrainBaseTexture");
         if (trans) {
             static auto diffusedims = ParameterBox::MakeParameterNameHash("diffusedims");
             static auto normaldims = ParameterBox::MakeParameterNameHash("normaldims");
             static auto paramdims = ParameterBox::MakeParameterNameHash("paramdims");
+
+            auto& asset = trans->GetAsset();
+            asset._diffuseDims = obj._properties.GetParameter<UInt2>(diffusedims, UInt2(512, 512));
+            asset._normalDims = obj._properties.GetParameter<UInt2>(normaldims, UInt2(512, 512));
+            asset._paramDims = obj._properties.GetParameter<UInt2>(paramdims, UInt2(512, 512));
+
+            static auto materialId = ParameterBox::MakeParameterNameHash("MaterialId");
             static auto texture0 = ParameterBox::MakeParameterNameHash("texture0");
             static auto texture1 = ParameterBox::MakeParameterNameHash("texture1");
             static auto texture2 = ParameterBox::MakeParameterNameHash("texture2");
@@ -191,24 +200,34 @@ namespace EntityInterface
             static auto mapping2 = ParameterBox::MakeParameterNameHash("mapping2");
             static auto endheight = ParameterBox::MakeParameterNameHash("endheight");
 
-            auto& asset = trans->GetAsset();
-            asset._diffuseDims = obj._properties.GetParameter<UInt2>(diffusedims, UInt2(512, 512));
-            asset._normalDims = obj._properties.GetParameter<UInt2>(normaldims, UInt2(512, 512));
-            asset._paramDims = obj._properties.GetParameter<UInt2>(paramdims, UInt2(512, 512));
-            asset._strata.clear();
-            for (auto c=obj._children.begin(); c!=obj._children.end(); ++c) {
-                auto* strataObj = sys.GetEntity(obj._doc, *c);
-                if (!strataObj) continue;
+                // rebuild all of the material binding information as well
+            asset._materials.clear();
 
-                SceneEngine::TerrainMaterialScaffold::Strata newStrata;
-                newStrata._texture[0] = strataObj->_properties.GetString<::Assets::ResChar>(texture0);
-                newStrata._texture[1] = strataObj->_properties.GetString<::Assets::ResChar>(texture1);
-                newStrata._texture[2] = strataObj->_properties.GetString<::Assets::ResChar>(texture2);
-                newStrata._mappingConstant[0] = strataObj->_properties.GetParameter<float>(mapping0, 10.f);
-                newStrata._mappingConstant[1] = strataObj->_properties.GetParameter<float>(mapping1, 10.f);
-                newStrata._mappingConstant[2] = strataObj->_properties.GetParameter<float>(mapping2, 10.f);
-                newStrata._endHeight = strataObj->_properties.GetParameter<float>(endheight, 1000.f);
-                asset._strata.push_back(newStrata);
+            auto matType = sys.GetTypeId((const utf8*)"TerrainStrataMaterial");
+            
+            for (auto c=obj._children.cbegin(); c!=obj._children.end(); ++c) {
+                auto* mat = sys.GetEntity(obj._doc, *c);
+                if (!mat || mat->_type != matType) continue;
+
+                TerrainMaterialScaffold::StrataMaterial nativeMat;
+                nativeMat._id = mat->_properties.GetParameter<unsigned>(materialId, 0);
+
+                for (auto c=mat->_children.begin(); c!=mat->_children.end(); ++c) {
+                    auto* strataObj = sys.GetEntity(mat->_doc, *c);
+                    if (!strataObj) continue;
+
+                    TerrainMaterialScaffold::StrataMaterial::Strata newStrata;
+                    newStrata._texture[0] = strataObj->_properties.GetString<::Assets::ResChar>(texture0);
+                    newStrata._texture[1] = strataObj->_properties.GetString<::Assets::ResChar>(texture1);
+                    newStrata._texture[2] = strataObj->_properties.GetString<::Assets::ResChar>(texture2);
+                    newStrata._mappingConstant[0] = strataObj->_properties.GetParameter<float>(mapping0, 10.f);
+                    newStrata._mappingConstant[1] = strataObj->_properties.GetParameter<float>(mapping1, 10.f);
+                    newStrata._mappingConstant[2] = strataObj->_properties.GetParameter<float>(mapping2, 10.f);
+                    newStrata._endHeight = strataObj->_properties.GetParameter<float>(endheight, 1000.f);
+                    nativeMat._strata.push_back(newStrata);
+                }
+
+                asset._materials.push_back(std::move(nativeMat));
             }
 
             trans->Commit();
@@ -224,6 +243,19 @@ namespace EntityInterface
                 auto* object = flexSys.GetEntity(obj);
                 if (object)
                     UpdateTerrainBaseTexture(flexSys, *object);
+            }
+        );
+
+        flexSys.RegisterCallback(
+            flexSys.GetTypeId((const utf8*)"TerrainStrataMaterial"),
+            [](const RetainedEntities& flexSys, const Identifier& obj)
+            {
+                auto* object = flexSys.GetEntity(obj);
+                if (object) {
+                    auto* parent = flexSys.GetEntity(object->_doc, object->_parent);
+                    if (parent && parent->_type == flexSys.GetTypeId((const utf8*)"TerrainBaseTexture"))
+                        UpdateTerrainBaseTexture(flexSys, *parent);
+                }
             }
         );
     }
