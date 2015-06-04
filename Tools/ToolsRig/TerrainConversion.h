@@ -11,6 +11,7 @@
 #include "../../Math/Vector.h"
 
 namespace ConsoleRig { class IProgress; }
+namespace SceneEngine { class TerrainConfig; class ITerrainFormat; }
 
 namespace ToolsRig
 {
@@ -25,4 +26,15 @@ namespace ToolsRig
         const std::pair<SceneEngine::TerrainCoverageId, unsigned> layers[], unsigned layerCount,
         ConsoleRig::IProgress* progress);
 
+    void GenerateMissingUberSurfaceFiles(
+        const SceneEngine::TerrainConfig& outputConfig, 
+        std::shared_ptr<SceneEngine::ITerrainFormat> outputIOFormat,
+        const ::Assets::ResChar uberSurfaceDir[],
+        ConsoleRig::IProgress* progress = nullptr);
+
+    void GenerateMissingCellFiles(
+        const SceneEngine::TerrainConfig& outputConfig, 
+        std::shared_ptr<SceneEngine::ITerrainFormat> outputIOFormat,
+        const ::Assets::ResChar uberSurfaceDir[],
+        ConsoleRig::IProgress* progress = nullptr);
 }

@@ -226,7 +226,6 @@
     <ClCompile Include="..\Terrain.cpp" />
     <ClCompile Include="..\TerrainCollisions.cpp" />
     <ClCompile Include="..\TerrainConfig.cpp" />
-    <ClCompile Include="..\TerrainConversion.cpp" />
     <ClCompile Include="..\TerrainFormat.cpp" />
     <ClCompile Include="..\TerrainManager.cpp" />
     <ClCompile Include="..\TerrainMaterial.cpp" />
@@ -271,7 +270,6 @@
     <ClInclude Include="..\SurfaceHeightsProvider.h" />
     <ClInclude Include="..\Terrain.h" />
     <ClInclude Include="..\TerrainConfig.h" />
-    <ClInclude Include="..\TerrainConversion.h" />
     <ClInclude Include="..\TerrainCoverageId.h" />
     <ClInclude Include="..\TerrainFormat.h" />
     <ClInclude Include="..\TerrainRender.h" />

@@ -106,9 +106,6 @@
     <ClCompile Include="..\TerrainConfig.cpp">
       <Filter>Objects\Terrain</Filter>
     </ClCompile>
-    <ClCompile Include="..\TerrainConversion.cpp">
-      <Filter>Objects\Terrain</Filter>
-    </ClCompile>
     <ClCompile Include="..\TerrainManager.cpp">
       <Filter>Objects\Terrain</Filter>
     </ClCompile>
@@ -239,9 +236,6 @@
       <Filter>Objects\Terrain</Filter>
     </ClInclude>
     <ClInclude Include="..\TerrainCoverageId.h">
-      <Filter>Objects\Terrain</Filter>
-    </ClInclude>
-    <ClInclude Include="..\TerrainConversion.h">
       <Filter>Objects\Terrain</Filter>
     </ClInclude>
   </ItemGroup>

@@ -15,6 +15,7 @@
 #include "../EntityInterface/EntityInterface.h"
 #include "../EntityInterface/EnvironmentSettings.h"
 #include "../ToolsRig/VisualisationUtils.h"
+#include "../ToolsRig/TerrainConversion.h"
 #include "../../PlatformRig/BasicSceneParser.h"
 #include "../../SceneEngine/IntersectionTest.h"
 #include "../../SceneEngine/Terrain.h"
@@ -27,7 +28,6 @@
 #include "../../Assets/Assets.h"
 #include "../../Math/Transformations.h"
 #include "../ToolsRig/PlacementsManipulators.h"
-#include "../ToolsRig/TerrainConversion.h"
 // #include "../../ConsoleRig/Log.h"        (can't include in Win32 managed code)
 
 using namespace System;

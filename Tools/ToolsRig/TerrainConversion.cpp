@@ -10,7 +10,9 @@
 #include "../../SceneEngine/Terrain.h"
 #include "../../SceneEngine/TerrainFormat.h"
 #include "../../SceneEngine/TerrainConfig.h"
-#include "../../SceneEngine/TerrainConversion.h"
+#include "../../SceneEngine/TerrainUberSurface.h"
+#include "../../SceneEngine/TerrainScaffold.h"
+#include "../../RenderCore/Metal/Format.h"      // (for BitsPerPixel)
 #include "../../Math/Vector.h"
 #include "../../ConsoleRig/IProgress.h"
 #include "../../ConsoleRig/Log.h"
@@ -18,6 +20,7 @@
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/Streams/PathUtils.h"
+#include "../../Utility/Conversion.h"
 #include <vector>
 #include <regex>
 
@@ -26,7 +29,198 @@
 
 namespace ToolsRig
 {
+    using namespace SceneEngine;
+
+    static bool BuildUberSurfaceFile(
+        const char filename[], const TerrainConfig& config, 
+        ITerrainFormat* ioFormat,
+        unsigned xStart, unsigned yStart, unsigned xDims, unsigned yDims);
+
+    //////////////////////////////////////////////////////////////////////////////////////////
+    template<typename Sample>
+        static void WriteCellCoverageData(
+            const TerrainConfig& cfg, ITerrainFormat& ioFormat, 
+            const ::Assets::ResChar uberSurfaceName[], unsigned layerIndex,
+            ConsoleRig::IProgress* progress)
+    {
+        ::Assets::ResChar path[MaxPath];
+
+        auto cells = BuildPrimedCells(cfg);
+        auto& layer = cfg.GetCoverageLayer(layerIndex);
+
+        auto step = progress ? progress->BeginStep("Write coverage cells", (unsigned)cells.size(), true) : nullptr;
+
+        TerrainUberSurface<Sample> uberSurface(uberSurfaceName);
+        for (auto c=cells.cbegin(); c!=cells.cend(); ++c) {
+
+            char cellFile[MaxPath];
+            cfg.GetCellFilename(cellFile, dimof(cellFile), c->_cellIndex, layer._id);
+            if (!DoesFileExist(cellFile)) {
+                XlDirname(path, dimof(path), cellFile);
+                CreateDirectoryRecursive(path);
+
+                TRY {
+                    ioFormat.WriteCell(
+                        cellFile, uberSurface, 
+                        c->_coverageUber[layerIndex].first, c->_coverageUber[layerIndex].second, 
+                        cfg.CellTreeDepth(), layer._overlap);
+                } CATCH(...) {
+                    LogAlwaysError << "Error while writing cell coverage file to: " << cellFile;
+                } CATCH_END
+            }
+
+            if (step) {
+                if (step->IsCancelled()) break;
+                step->Advance();
+            }
+
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////////////////
+    void ExecuteTerrainConversion(
+        const ::Assets::ResChar destinationUberSurfaceDirectory[],
+        const TerrainConfig& outputConfig, 
+        const TerrainConfig& inputConfig, 
+        std::shared_ptr<ITerrainFormat> inputIOFormat)
+    {
+        CreateDirectoryRecursive(destinationUberSurfaceDirectory);
+
+        //////////////////////////////////////////////////////////////////////////////////////
+            // If we don't have an uber surface file, then we should create it
+        ::Assets::ResChar heightsFile[MaxPath];
+        TerrainConfig::GetUberSurfaceFilename(heightsFile, dimof(heightsFile), destinationUberSurfaceDirectory, CoverageId_Heights);
+        if (!DoesFileExist(heightsFile) && inputIOFormat) {
+            BuildUberSurfaceFile(
+                heightsFile, inputConfig, inputIOFormat.get(), 
+                0, 0, inputConfig._cellCount[0], inputConfig._cellCount[1]);
+        }
+    }
+
+    void GenerateMissingCellFiles(
+        const TerrainConfig& outputConfig, 
+        std::shared_ptr<ITerrainFormat> outputIOFormat,
+        const ::Assets::ResChar uberSurfaceDir[],
+        ConsoleRig::IProgress* progress)
+    {
+        assert(outputIOFormat);
+
+        //////////////////////////////////////////////////////////////////////////////////////
+            // for each coverage layer, we must write all of the component parts
+        for (unsigned l=0; l<outputConfig.GetCoverageLayerCount(); ++l) {
+            const auto& layer = outputConfig.GetCoverageLayer(l);
+
+            ::Assets::ResChar layerUberSurface[MaxPath];
+            TerrainConfig::GetUberSurfaceFilename(layerUberSurface, dimof(layerUberSurface), uberSurfaceDir, layer._id);
+
+            if (DoesFileExist(layerUberSurface)) {
+                    //  open and destroy these coverage uber shadowing surface before we open the uber heights surface
+                    //  (opening them both at the same time requires too much memory)
+                if (layer._format == 35) {
+                    WriteCellCoverageData<ShadowSample>(outputConfig, *outputIOFormat, layerUberSurface, l, progress);
+                } else if (layer._format == 62) {
+                    WriteCellCoverageData<uint8>(outputConfig, *outputIOFormat, layerUberSurface, l, progress);
+                } else {
+                    LogAlwaysError << "Unknown format (" << layer._format << ") for terrain coverage file for layer: " << 
+                        Conversion::Convert<std::string>(layer._name);
+                }
+            }
+        }
+
+        //////////////////////////////////////////////////////////////////////////////////////
+            //  load the uber height surface, and uber surface interface (but only temporarily
+            //  while we initialise the data)
+        ::Assets::ResChar uberSurfaceFile[MaxPath];
+        TerrainConfig::GetUberSurfaceFilename(uberSurfaceFile, dimof(uberSurfaceFile), uberSurfaceDir, CoverageId_Heights);
+        TerrainUberHeightsSurface heightsData(uberSurfaceFile);
+        HeightsUberSurfaceInterface uberSurfaceInterface(heightsData, outputIOFormat);
+
+        //////////////////////////////////////////////////////////////////////////////////////
+        auto cells = BuildPrimedCells(outputConfig);
+        auto step = progress ? progress->BeginStep("Generate Cell Files", (unsigned)cells.size(), true) : nullptr;
+        for (auto c=cells.cbegin(); c!=cells.cend(); ++c) {
+            char heightMapFile[MaxPath];
+            outputConfig.GetCellFilename(heightMapFile, dimof(heightMapFile), c->_cellIndex, CoverageId_Heights);
+            if (!DoesFileExist(heightMapFile)) {
+                char path[MaxPath];
+                XlDirname(path, dimof(path), heightMapFile);
+                CreateDirectoryRecursive(path);
+                TRY {
+                    outputIOFormat->WriteCell(
+                        heightMapFile, *uberSurfaceInterface.GetUberSurface(), 
+                        c->_heightUber.first, c->_heightUber.second, outputConfig.CellTreeDepth(), outputConfig.NodeOverlap());
+                } CATCH(...) { // sometimes throws (eg, if the directory doesn't exist)
+                } CATCH_END
+            }
+
+            if (step) {
+                if (step->IsCancelled()) break;
+                step->Advance();
+            }
+        }
+    }
+
+    void GenerateMissingUberSurfaceFiles(
+        const TerrainConfig& cfg, 
+        std::shared_ptr<ITerrainFormat> outputIOFormat,
+        const ::Assets::ResChar uberSurfaceDir[],
+        ConsoleRig::IProgress* progress)
+    {
+        auto step = progress ? progress->BeginStep("Generate UberSurface Files", (unsigned)cfg.GetCoverageLayerCount(), true) : nullptr;
+        for (unsigned l=0; l<cfg.GetCoverageLayerCount(); ++l) {
+            const auto& layer = cfg.GetCoverageLayer(l);
+
+            // bool hasShadows = false;
+            // for (unsigned c=0; c<outputConfig.GetCoverageLayerCount(); ++c)
+            //     hasShadows |= outputConfig.GetCoverageLayer(c)._id == CoverageId_AngleBasedShadows;
+            // if (!hasShadows) return;
+
+            ::Assets::ResChar uberSurfaceFile[MaxPath];
+            TerrainConfig::GetUberSurfaceFilename(uberSurfaceFile, dimof(uberSurfaceFile), uberSurfaceDir, layer._id);
+            if (DoesFileExist(uberSurfaceFile)) continue;
+
+            if (layer._id == CoverageId_AngleBasedShadows) {
+
+                    // this is the shadows layer... We need to build the shadows procedurally
+                ::Assets::ResChar uberHeightsFile[MaxPath];
+                TerrainConfig::GetUberSurfaceFilename(
+                    uberHeightsFile, dimof(uberHeightsFile), 
+                    uberSurfaceDir, CoverageId_Heights);
+
+                TerrainUberHeightsSurface heightsData(uberHeightsFile);
+                HeightsUberSurfaceInterface uberSurfaceInterface(heightsData, outputIOFormat);
+
+                //////////////////////////////////////////////////////////////////////////////////////
+                    // build the uber shadowing file, and then write out the shadowing textures for each node
+                // Int2 interestingMins((9-1) * 16 * 32, (19-1) * 16 * 32), interestingMaxs((9+4) * 16 * 32, (19+4) * 16 * 32);
+                UInt2 interestingMins(0, 0);
+                UInt2 interestingMaxs = UInt2(
+                    cfg._cellCount[0] * cfg.CellDimensionsInNodes()[0] * cfg.NodeDimensionsInElements()[0],
+                    cfg._cellCount[1] * cfg.CellDimensionsInNodes()[1] * cfg.NodeDimensionsInElements()[1]);
+
+                float xyScale = cfg.ElementSpacing();
+                Float2 sunDirectionOfMovement = Normalize(Float2(1.f, 0.33f));
+                uberSurfaceInterface.BuildShadowingSurface(
+                    uberSurfaceFile, interestingMins, interestingMaxs, sunDirectionOfMovement, xyScale);
+
+            } else {
+
+                HeightsUberSurfaceInterface::BuildEmptyFile(
+                    uberSurfaceFile, 
+                    cfg._cellCount[0] * cfg.CellDimensionsInNodes()[0] * layer._nodeDimensions[0],
+                    cfg._cellCount[1] * cfg.CellDimensionsInNodes()[1] * layer._nodeDimensions[1],
+                    RenderCore::Metal::BitsPerPixel((RenderCore::Metal::NativeFormat::Enum)layer._format));
+
+            }
+
+            if (step) {
+                if (step->IsCancelled()) break;
+                step->Advance();
+            }
+        }
+    }
     
+    //////////////////////////////////////////////////////////////////////////////////////////
     class DEMConfig
     {
     public:
@@ -295,5 +489,153 @@ namespace ToolsRig
         auto fmt = std::make_shared<TerrainFormat>();
         GenerateMissingUberSurfaceFiles(cfg, fmt, inputUberSurfaceDirectory, progress);
         GenerateMissingCellFiles(cfg, fmt, inputUberSurfaceDirectory, progress);
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    static void WriteNode(  
+        float destination[], TerrainCell::Node& node, 
+        const char sourceFileName[], const char secondaryCacheName[], 
+        size_t stride, signed downsample)
+    {
+            // load the raw data either from the source file, or the cache file
+        std::unique_ptr<uint16[]> rawData;
+        
+        const unsigned expectedCount = node._widthInElements*node._widthInElements;
+
+            // todo -- check for incomplete nodes (ie, with holes)
+        if (node._heightMapFileSize) {
+            auto count = node._heightMapFileSize/sizeof(uint16);
+            if (count == expectedCount) {
+                BasicFile file(sourceFileName, "rb");
+                rawData = std::make_unique<uint16[]>(count);
+                file.Seek(node._heightMapFileOffset, SEEK_SET);
+                file.Read(rawData.get(), sizeof(uint16), count);
+            }
+        } else if (node._secondaryCacheSize) {
+            auto count = node._secondaryCacheSize/sizeof(uint16);
+            if (count == expectedCount) {
+                BasicFile file(secondaryCacheName, "rb");
+                rawData = std::make_unique<uint16[]>(count);
+                file.Seek(node._secondaryCacheOffset, SEEK_SET);
+                file.Read(rawData.get(), sizeof(uint16), count);
+            }
+        }
+
+        const unsigned dimsNoOverlay = node._widthInElements - node.GetOverlapWidth();
+
+        for (unsigned y=0; y<dimsNoOverlay; ++y)
+            for (unsigned x=0; x<dimsNoOverlay; ++x) {
+                assert(((y*node._widthInElements)+x) < expectedCount);
+                auto inputValue = rawData ? rawData[(y*node._widthInElements)+x] : uint16(0);
+
+                float cellSpaceHeight = node._localToCell(2,2) * float(inputValue) + node._localToCell(2,3);
+                
+                assert(downsample==0);
+                *PtrAdd(destination, y*stride + x*sizeof(float)) = cellSpaceHeight;
+            }
+    }
+
+    static void WriteBlankNode(float destination[], size_t stride, signed downsample, const UInt2 elementDims)
+    {
+        assert(downsample==0);
+        for (unsigned y=0; y<elementDims[1]; ++y)
+            for (unsigned x=0; x<elementDims[0]; ++x) {
+                *PtrAdd(destination, y*stride + x*sizeof(float)) = 0.f;
+            }
+    }
+
+    static bool BuildUberSurfaceFile(
+        const char filename[], const TerrainConfig& config, 
+        ITerrainFormat* ioFormat,
+        unsigned xStart, unsigned yStart, unsigned xDims, unsigned yDims)
+    {
+            //
+            //  Read in the existing terrain data, and generate a uber surface file
+            //        --  this uber surface file should contain the height values for the
+            //            entire "world", at the highest resolution
+            //  The "uber" surface file is initialized from the source crytek terrain files, 
+            //  but becomes our new authoritative source for terrain data.
+            //
+        
+        const unsigned cellCount        = xDims * yDims;
+        const auto cellDimsInNodes      = config.CellDimensionsInNodes();
+        const auto nodeDimsInElements   = config.NodeDimensionsInElements();
+        const unsigned nodesPerCell     = cellDimsInNodes[0] * cellDimsInNodes[1];
+        const unsigned heightsPerNode   = nodeDimsInElements[0] * nodeDimsInElements[1];
+
+        size_t stride = nodeDimsInElements[0] * cellDimsInNodes[0] * xDims * sizeof(float);
+
+        uint64 resultSize = 
+            sizeof(TerrainUberHeader)
+            + cellCount * nodesPerCell * heightsPerNode * sizeof(float)
+            ;
+        MemoryMappedFile mappedFile(filename, resultSize, MemoryMappedFile::Access::Write, BasicFile::ShareMode::Read);
+        if (!mappedFile.IsValid())
+            return false;
+
+        auto& hdr   = *(TerrainUberHeader*)mappedFile.GetData();
+        hdr._magic  = TerrainUberHeader::Magic;
+        hdr._width  = nodeDimsInElements[0] * cellDimsInNodes[0] * xDims;
+        hdr._height = nodeDimsInElements[1] * cellDimsInNodes[1] * yDims;
+        hdr._dummy  = 0;
+
+        void* heightArrayStart = PtrAdd(mappedFile.GetData(), sizeof(TerrainUberHeader));
+
+        TRY
+        {
+                // fill in the "uber" surface file with all of the terrain information
+            for (unsigned cy=0; cy<yDims; ++cy)
+                for (unsigned cx=0; cx<xDims; ++cx) {
+
+                    char buffer[MaxPath];
+                    config.GetCellFilename(buffer, dimof(buffer), UInt2(cx, cy),
+                        CoverageId_Heights);
+                    auto& cell = ioFormat->LoadHeights(buffer);
+
+                        //  the last "field" in the input data should be the resolution that we want
+                        //  however, if we don't have enough fields, we may have to upsample from
+                        //  the lower resolution ones
+
+                    if (cell._nodeFields.size() >= 5) {
+
+                        auto& field = cell._nodeFields[4];
+                        assert(field._widthInNodes == cellDimsInNodes[0]);
+                        assert(field._heightInNodes == cellDimsInNodes[1]);
+                        for (auto n=field._nodeBegin; n!=field._nodeEnd; ++n) {
+                            auto& node = *cell._nodes[n];
+                            unsigned nx = (unsigned)std::floor(node._localToCell(0, 3) / 64.f + 0.5f);
+                            unsigned ny = (unsigned)std::floor(node._localToCell(1, 3) / 64.f + 0.5f);
+
+                            auto* nodeDataStart = (float*)PtrAdd(
+                                heightArrayStart, 
+                                    (cy * cellDimsInNodes[1] + ny) * nodeDimsInElements[1] * stride 
+                                +   (cx * cellDimsInNodes[0] + nx) * nodeDimsInElements[0] * sizeof(float));
+
+                            WriteNode(
+                                nodeDataStart, node, 
+                                cell.SourceFile().c_str(), cell.SecondaryCacheFile().c_str(), 
+                                stride, 0);
+                        }
+
+                    } else {
+
+                        for (unsigned y=0; y<cellDimsInNodes[1]; ++y)
+                            for (unsigned x=0; x<cellDimsInNodes[0]; ++x) {
+                                auto* nodeDataStart = (float*)PtrAdd(
+                                    heightArrayStart, 
+                                        (cy * cellDimsInNodes[1] + y) * nodeDimsInElements[1] * stride 
+                                    +   (cx * cellDimsInNodes[0] + x) * nodeDimsInElements[0] * sizeof(float));
+                                WriteBlankNode(nodeDataStart, stride, 0, nodeDimsInElements);
+                            }
+
+                    }
+
+                }
+        }
+        CATCH(...) { return false; } 
+        CATCH_END
+
+        return true;
     }
 }

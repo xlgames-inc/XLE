@@ -28,11 +28,6 @@ namespace SceneEngine
     class TerrainConfig;
     class TerrainCoordinateSystem;
 
-    bool BuildUberSurfaceFile(
-        const char filename[], const TerrainConfig& config, 
-        ITerrainFormat* ioFormat,
-        unsigned xStart, unsigned yStart, unsigned xDims, unsigned yDims);
-
     class ITerrainUberSurface
     {
     public:
