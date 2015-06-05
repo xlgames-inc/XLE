@@ -69,6 +69,13 @@ struct ProceduralTextureOutput
     float specularity;
 };
 
+interface IProceduralTexture
+{
+    ProceduralTextureOutput Calculate(float3 worldPosition, float slopeFacor, float2 texCoord);
+};
+
+IProceduralTexture MainProceduralTexture;
+
 #if STRATA_COUNT==0
     ProceduralTextureOutput GetTextureForStrata(uint strataIndex, float3 worldPosition, float slopeFactor, float2 textureCoord, float noiseValue0)
     {
@@ -160,12 +167,12 @@ struct ProceduralTextureOutput
             float arrayIdx = strataIndex*3+2;
             float3 S = StrataDiffuseSample(tcS0, strataIndex, 2);
             float3 Sn = StrataNormals.Sample(MaybeAnisotropicSampler, float3(tcS0, arrayIdx)).rgb;
-            float3 Ss = StrataSpecularSample(tcS0, strataIndex, 2);
+            float Ss = StrataSpecularSample(tcS0, strataIndex, 2);
 
             tcS0.x = worldPosition.y * TextureFrequency[strataIndex].z;
             float3 S2 = StrataDiffuseSample(tcS0, strataIndex, 2);
             float3 Sn2 = StrataNormals.Sample(MaybeAnisotropicSampler, float3(tcS0, arrayIdx)).rgb;
-            float3 Ss2 = StrataSpecularSample(tcS0, strataIndex, 2);
+            float Ss2 = StrataSpecularSample(tcS0, strataIndex, 2);
 
             float A = a / (a+b);
             float B = b / (a+b);
@@ -185,7 +192,12 @@ struct ProceduralTextureOutput
     }
 #endif
 
-ProceduralTextureOutput BuildProceduralTextureValue(float3 worldPosition, float slopeFactor, float2 textureCoord)
+class StrataMaterial : IProceduralTexture
+{
+    ProceduralTextureOutput Calculate(float3 worldPosition, float slopeFactor, float2 textureCoord);
+};
+
+ProceduralTextureOutput StrataMaterial::Calculate(float3 worldPosition, float slopeFactor, float2 textureCoord)
 {
         //	Build a texturing value by blending together multiple input textures
         //	Select the input textures from some of the input parameters, like slope and height
@@ -247,7 +259,7 @@ uint GetEdgeIndex(float2 texCoord)
 
 #define MakeCoverageTileSet(index) CoverageTileSet ## index
 
-TerrainPixel CalculateTerrain(PSInput geo)
+TerrainPixel CalculateTexturing(PSInput geo)
 {
     float4 result = 1.0.xxxx;
     float2 finalTexCoord = 0.0.xx;
@@ -275,11 +287,11 @@ TerrainPixel CalculateTerrain(PSInput geo)
     #if SOLIDWIREFRAME_WORLDPOSITION==1
         worldPosition = geo.worldPosition;
     #endif
-    ProceduralTextureOutput procTexture = BuildProceduralTextureValue(worldPosition, slopeFactor, finalTexCoord);
+    ProceduralTextureOutput procTexture = MainProceduralTexture.Calculate(worldPosition, slopeFactor, finalTexCoord);
     result.rgb = procTexture.diffuseAlbedo.rgb;
 
     #if DRAW_WIREFRAME==1
-        float patchEdge = 1.0f - edgeFactor2(frac(geo.texCoord), 5.f).xxx;
+        float patchEdge = 1.0f - edgeFactor2(frac(geo.texCoord), 5.f);
         uint edgeIndex = GetEdgeIndex(geo.texCoord);
         float3 lineColour = lerp(1.0.xxx, (NeighbourLodDiffs[edgeIndex]==0?float3(0,1,0):float3(1,0,0)), patchEdge);
         result.rgb = lerp(lineColour, result.rgb, edgeFactor(geo.barycentricCoords));
@@ -300,7 +312,7 @@ TerrainPixel CalculateTerrain(PSInput geo)
     float emulatedAmbientOcclusion = 1.f; // lerp(0.5f, 1.f, SRGBLuminance(result.rgb));
 
     TerrainPixel output;
-    output.diffuseAlbedo = result;
+    output.diffuseAlbedo = result.rgb;
     output.worldSpaceNormal = deformedNormal;
     output.specularity = .25f * procTexture.specularity;
     output.cookedAmbientOcclusion = shadowing * emulatedAmbientOcclusion;
@@ -317,7 +329,7 @@ TerrainPixel CalculateTerrain(PSInput geo)
 [earlydepthstencil]
 GBufferEncoded ps_main(PSInput geo)
 {
-    TerrainPixel p = CalculateTerrain(geo);
+    TerrainPixel p = CalculateTexturing(geo);
     GBufferValues output = GBufferValues_Default();
     output.diffuseAlbedo = p.diffuseAlbedo;
     output.worldSpaceNormal = p.worldSpaceNormal;
@@ -331,6 +343,6 @@ GBufferEncoded ps_main(PSInput geo)
 [earlydepthstencil]
 float4 ps_main_forward(PSInput geo) : SV_Target0
 {
-    TerrainPixel p = CalculateTerrain(geo);
+    TerrainPixel p = CalculateTexturing(geo);
     return float4(LightingScale * p.diffuseAlbedo * p.cookedAmbientOcclusion, 1.f);
 }

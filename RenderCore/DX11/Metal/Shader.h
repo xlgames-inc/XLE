@@ -20,6 +20,22 @@ namespace Assets { class DependencyValidation; }
 namespace RenderCore { namespace Metal_DX11
 {
 
+    class DynamicShaderLinkage
+    {
+    public:
+        void Bind(uint64 hashName, unsigned slotIndex, const char instance[]);
+
+        DynamicShaderLinkage(
+            ID3D::ShaderReflection* refl,
+            ID3D::ClassLinkage* linkage);
+        ~DynamicShaderLinkage();
+    
+        std::vector<intrusive_ptr<ID3D::ClassInstance>> _classInstanceArray;
+    protected:
+        intrusive_ptr<ID3D::ShaderReflection> _reflection;
+        intrusive_ptr<ID3D::ClassLinkage> _linkage;
+    };
+
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
     class VertexShader
@@ -34,7 +50,7 @@ namespace RenderCore { namespace Metal_DX11
         ~VertexShader();
 
         typedef ID3D::VertexShader* UnderlyingType;
-        UnderlyingType              GetUnderlying() const { return _underlying.get(); }
+        UnderlyingType  GetUnderlying() const { return _underlying.get(); }
         
     private:
         intrusive_ptr<ID3D::VertexShader>      _underlying;
@@ -49,15 +65,19 @@ namespace RenderCore { namespace Metal_DX11
             //          Resource interface
             //
         explicit PixelShader(const ::Assets::ResChar initializer[]);
-        explicit PixelShader(const CompiledShaderByteCode& byteCode);
+        explicit PixelShader(
+            const CompiledShaderByteCode& byteCode, 
+            const bool dynLinking = true);
         PixelShader();
         ~PixelShader();
 
         typedef ID3D::PixelShader*  UnderlyingType;
-        UnderlyingType              GetUnderlying() const { return _underlying.get(); }
+        UnderlyingType      GetUnderlying() const { return _underlying.get(); }
+        ID3D::ClassLinkage* GetClassLinkage() const { return _classLinkage.get(); }
         
     private:
-        intrusive_ptr<ID3D::PixelShader>      _underlying;
+        intrusive_ptr<ID3D::PixelShader>    _underlying;
+        intrusive_ptr<ID3D::ClassLinkage>   _classLinkage;
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -289,5 +309,7 @@ namespace RenderCore { namespace Metal_DX11
     std::shared_ptr<ShaderService::ILowLevelCompiler> CreateLowLevelShaderCompiler();
 
     intrusive_ptr<ID3D::ShaderReflection>  CreateReflection(const CompiledShaderByteCode& shaderCode);
+
+    extern template intrusive_ptr<ID3D::ShaderReflection>;
 
 }}

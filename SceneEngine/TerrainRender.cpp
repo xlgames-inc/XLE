@@ -150,6 +150,7 @@ namespace SceneEngine
 
         const DeepShaderProgram* _shaderProgram;
         RenderCore::Metal::BoundUniforms _boundUniforms;
+        std::unique_ptr<Metal::DynamicShaderLinkage> _psLinking;
 
         TerrainRenderingResources(const Desc& desc);
 
@@ -222,6 +223,13 @@ namespace SceneEngine
         BoundUniforms boundUniforms(*shaderProgram);
         Techniques::TechniqueContext::BindGlobalUniforms(boundUniforms);
 
+        if (shaderProgram->GetCompiledPixelShader().GetStage() != ShaderStage::Null) {
+            _psLinking = std::make_unique<Metal::DynamicShaderLinkage>(
+                CreateReflection(shaderProgram->GetCompiledPixelShader()).get(),
+                shaderProgram->GetPixelShader().GetClassLinkage());
+            _psLinking->Bind(Hash64("MainProceduralTexture"), 0, "StrataMaterial");
+        }
+
         auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
         ::Assets::RegisterAssetDependency(validationCallback, shaderProgram->GetDependencyValidation());
 
@@ -244,7 +252,11 @@ namespace SceneEngine
                 doExtraSmoothing, noisyTerrain, drawWireframe, texturing._strataCount,
                 visLayer);
 
-            context->Bind(*box._shaderProgram);
+            if (box._psLinking) {
+                context->Bind(*box._shaderProgram, *box._psLinking);
+            } else {
+                context->Bind(*box._shaderProgram);
+            }
             context->Bind(Topology::PatchList4);
             box._boundUniforms.Apply(*context, parserContext.GetGlobalUniformsStream(), UniformsStream());
 

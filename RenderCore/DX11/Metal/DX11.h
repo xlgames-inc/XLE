@@ -45,6 +45,7 @@ struct ID3D11ShaderReflectionConstantBuffer;
 struct ID3D11ShaderReflectionVariable;
 struct ID3D11UnorderedAccessView;
 struct ID3D11ClassLinkage;
+struct ID3D11ClassInstance;
 struct IUnknown;
 
 struct ID3D11Resource1;
@@ -116,6 +117,7 @@ namespace ID3D
     typedef ID3D11ShaderReflectionVariable          ShaderReflectionVariable;
     typedef ID3D11UnorderedAccessView               UnorderedAccessView;
     typedef ID3D11ClassLinkage                      ClassLinkage;
+    typedef ID3D11ClassInstance                     ClassInstance;
 
     #if DX_VERSION == DX_VERSION_11_1
         typedef ID3D11DeviceContext1                DeviceContext1;

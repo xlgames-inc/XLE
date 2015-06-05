@@ -52,28 +52,12 @@ struct HS_ConstantOutput
 
 #if DO_EXTRA_SMOOTHING==1
     static const int InterpolationQuality = 2;
+    #define MaxTessellation 2*32
 #else
     static const int InterpolationQuality = 1;
+    #define MaxTessellation 32
 #endif
-#define MaxTessellation 32
 #define MinTessellation 4
-
-float CalculateScreenSpaceEdgeLength(float3 e0, float3 e1)
-{
-    float4 p0 = mul(WorldToClip, float4(e0, 1));
-    float4 p1 = mul(WorldToClip, float4(e1, 1));
-
-    float2 viewportDims = float2(1280.f, 720.f);
-    float2 s0 = (p0.xy / p0.w) * .5f * viewportDims.xy;
-    float2 s1 = (p1.xy / p1.w) * .5f * viewportDims.xy;
-    return length(s0 - s1);
-}
-
-float CalculateDoubleScreenSpaceEdgeLength(float3 e0, float3 e1)
-{
-    return CalculateScreenSpaceEdgeLength(e0, lerp(e0, e1, 2.f));
-    // return CalculateScreenSpaceEdgeLength(lerp(e1, e0, 2.f), e1);
-}
 
 uint RemapEdgeIndex(uint hsEdgeIndex)
 {
@@ -136,9 +120,7 @@ HS_ConstantOutput PatchConstantFunction(
             //	distant geometry should be the same quality, but we can add extra
             //	vertices in near geometry when we need it.
         float screenSpaceLength = length(startS - endS);
-        output.Edges[c] = clamp(
-            screenSpaceLength * mult,
-            MinTessellation, (InterpolationQuality==2)?(2*MaxTessellation):MaxTessellation);
+        output.Edges[c] = clamp(screenSpaceLength * mult, MinTessellation, MaxTessellation);
 
             // On the LOD interface boundaries, we need to lock the tessellation
             // amounts to something predictable

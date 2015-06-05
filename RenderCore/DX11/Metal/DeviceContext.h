@@ -38,6 +38,7 @@ namespace RenderCore { namespace Metal_DX11
     class DepthStencilView;
     class RenderTargetView;
     class ViewportDesc;
+    class DynamicShaderLinkage;
 
     namespace NativeFormat { enum Enum; }
 
@@ -135,6 +136,11 @@ namespace RenderCore { namespace Metal_DX11
         /// @}
 
         /// @{
+        /// Shader dynamic linking
+        intrusive_ptr<ID3D::ClassLinkage> ObjectFactory::CreateClassLinkage() const;
+        /// @}
+
+        /// @{
         /// Misc
         intrusive_ptr<ID3D::DeviceContext> CreateDeferredContext() const;
         intrusive_ptr<ID3D::InputLayout> CreateInputLayout(
@@ -210,6 +216,8 @@ namespace RenderCore { namespace Metal_DX11
         void        Bind(const BlendState& blender);
         void        Bind(const DepthStencilState& depthStencilState, unsigned stencilRef = 0x0);
         void        Bind(const ViewportDesc& viewport);
+
+        void        Bind(const DeepShaderProgram& deepShaderProgram, const DynamicShaderLinkage& psLinkage);
 
         template<typename Type> void  UnbindVS(unsigned startSlot, unsigned count);
         template<typename Type> void  UnbindGS(unsigned startSlot, unsigned count);

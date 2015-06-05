@@ -90,6 +90,17 @@ namespace RenderCore { namespace Metal_DX11
         _underlying->DSSetShader(shaderProgram.GetDomainShader().GetUnderlying(), nullptr, 0);
     }
 
+    void DeviceContext::Bind(const DeepShaderProgram& shaderProgram, const DynamicShaderLinkage& psLinkage)
+    {
+        _underlying->VSSetShader(shaderProgram.GetVertexShader().GetUnderlying(), nullptr, 0);
+        _underlying->GSSetShader(shaderProgram.GetGeometryShader().GetUnderlying(), nullptr, 0);
+        _underlying->PSSetShader(shaderProgram.GetPixelShader().GetUnderlying(), 
+            (ID3D::ClassInstance*const*)AsPointer(psLinkage._classInstanceArray.begin()), 
+            (unsigned)psLinkage._classInstanceArray.size());
+        _underlying->HSSetShader(shaderProgram.GetHullShader().GetUnderlying(), nullptr, 0);
+        _underlying->DSSetShader(shaderProgram.GetDomainShader().GetUnderlying(), nullptr, 0);
+    }
+
     void DeviceContext::Bind(const RasterizerState& rasterizer)
     {
         _underlying->RSSetState(rasterizer.GetUnderlying());
@@ -534,6 +545,18 @@ namespace RenderCore { namespace Metal_DX11
     {
         ScopedLock(_attachedData->_creationLock);
         return D3DDeviceCreate<ID3D::HullShader>(_device.get(), &ID3D::Device::CreateHullShader, data, size, linkage);
+    }
+        /// @}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /// @{
+        /// Shader dynamic linking
+    intrusive_ptr<ID3D::ClassLinkage> ObjectFactory::CreateClassLinkage() const
+    {
+        ScopedLock(_attachedData->_creationLock);
+        ID3D::ClassLinkage* tempPtr = 0;
+        auto hresult = _device->CreateClassLinkage(&tempPtr);
+        return D3DDevice_FinalizeCreate(tempPtr, hresult, nullptr);
     }
         /// @}
 

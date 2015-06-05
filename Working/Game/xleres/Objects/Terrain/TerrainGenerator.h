@@ -40,7 +40,7 @@ Texture2DArray<uint> HeightsTileSet : register(t0);
 float3 AddNoise(float3 worldPosition)
 {
 	#if (DO_ADD_NOISE==1)
-		worldPosition.z += 33.f * fbmNoise2D(worldPosition.xy, 75.f, .5f, 2.1042, 6);
+		worldPosition.z += 6.f * fbmNoise2D(worldPosition.xy, 50.f, .5f, 2.1042, 6);
 	#endif
 	return worldPosition;
 }
