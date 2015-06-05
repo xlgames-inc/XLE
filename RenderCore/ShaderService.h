@@ -39,12 +39,21 @@ namespace RenderCore
             ResChar _filename[MaxPath];
             ResChar _entryPoint[64];
             ResChar _shaderModel[32];
+            bool _dynamicLinkageEnabled;
 
             ResId(const ResChar filename[], const ResChar entryPoint[], const ResChar shaderModel[]);
             ResId();
 
         protected:
             ResId(const ResChar initializer[]);
+        };
+        
+        class ShaderHeader
+        {
+        public:
+            static const auto Version = 0u;
+            unsigned _version;
+            unsigned _dynamicLinkageEnabled;
         };
 
         class IPendingMarker
@@ -166,7 +175,8 @@ namespace RenderCore
         std::pair<const void*, size_t>  GetByteCode() const;
         ::Assets::AssetState            TryGetByteCode(void const*& byteCode, size_t& size);
         
-        ShaderStage::Enum   GetStage() const        { return _stage; }
+        ShaderStage::Enum   GetStage() const                { return _stage; }
+        bool                DynamicLinkingEnabled() const;
 
         explicit CompiledShaderByteCode(
             const ::Assets::ResChar initializer[], 

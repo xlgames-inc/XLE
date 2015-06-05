@@ -206,6 +206,39 @@ namespace RenderCore { namespace Metal_DX11
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
+    class BoundClassInterfaces
+    {
+    public:
+        void Bind(uint64 hashName, unsigned bindingArrayIndex, const char instance[]);
+
+        const std::vector<intrusive_ptr<ID3D::ClassInstance>>& GetClassInstances(ShaderStage::Enum stage) const;
+
+        BoundClassInterfaces(const ShaderProgram& shader);
+        BoundClassInterfaces(const DeepShaderProgram& shader);
+        BoundClassInterfaces();
+        ~BoundClassInterfaces();
+
+        BoundClassInterfaces(BoundClassInterfaces&& moveFrom);
+        BoundClassInterfaces& operator=(BoundClassInterfaces&& moveFrom);
+    private:
+        class StageBinding
+        {
+        public:
+            intrusive_ptr<ID3D::ShaderReflection>   _reflection;
+            intrusive_ptr<ID3D::ClassLinkage>       _linkage;
+            std::vector<intrusive_ptr<ID3D::ClassInstance>> _classInstanceArray;
+
+            StageBinding();
+            ~StageBinding();
+            StageBinding(StageBinding&& moveFrom);
+            StageBinding& operator=(StageBinding&& moveFrom);
+        };
+
+        StageBinding    _stageBindings[ShaderStage::Max];
+    };
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////
+
     inline InputElementDesc::InputElementDesc() {}
     inline InputElementDesc::InputElementDesc(  const std::string& name, unsigned semanticIndex, 
                                                 NativeFormat::Enum nativeFormat, unsigned inputSlot, 

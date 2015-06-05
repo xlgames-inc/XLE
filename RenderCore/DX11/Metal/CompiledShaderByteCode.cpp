@@ -394,9 +394,13 @@ namespace RenderCore { namespace Metal_DX11
             // a shared_ptr<vector> so we can pass to it our clients
         payload.reset();
         if (codeResult && codeResult->GetBufferPointer() && codeResult->GetBufferSize()) {
-            payload = std::make_shared<std::vector<uint8>>(
-                (uint8*)codeResult->GetBufferPointer(), 
-                PtrAdd((uint8*)codeResult->GetBufferPointer(), codeResult->GetBufferSize()));
+            payload = std::make_shared<std::vector<uint8>>(codeResult->GetBufferSize() + sizeof(ShaderService::ShaderHeader));
+            auto* hdr = (ShaderService::ShaderHeader*)AsPointer(payload->begin());
+            hdr->_version = ShaderService::ShaderHeader::Version;
+            hdr->_dynamicLinkageEnabled = shaderPath._dynamicLinkageEnabled;
+            XlCopyMemory(
+                PtrAdd(AsPointer(payload->begin()), sizeof(ShaderService::ShaderHeader)),
+                (uint8*)codeResult->GetBufferPointer(), codeResult->GetBufferSize());
         }
 
         errors.reset();

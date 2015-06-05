@@ -21,70 +21,6 @@ namespace RenderCore { namespace Metal_DX11
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    void DynamicShaderLinkage::Bind(uint64 hashName, unsigned slotIndex, const char instance[])
-    {
-        D3D11_SHADER_DESC shaderDesc;
-        auto hresult = _reflection->GetDesc(&shaderDesc);
-        if (SUCCEEDED(hresult)) {
-            for (unsigned c=0; c<shaderDesc.ConstantBuffers; ++c) {
-				auto cb = _reflection->GetConstantBufferByIndex(c);
-				if (cb) {
-                    D3D11_SHADER_BUFFER_DESC cbDesc;
-                    auto hresult = cb->GetDesc(&cbDesc);
-                    if (SUCCEEDED(hresult)) {
-                        for (unsigned q=0; q<cbDesc.Variables; ++q) {
-                            auto var = cb->GetVariableByIndex(q);
-                            if (!var) continue;
-
-                            auto type = var->GetType();
-                            if (!type) continue;
-
-                            D3D11_SHADER_TYPE_DESC typeDesc;
-                            hresult = type->GetDesc(&typeDesc);
-                            if (!SUCCEEDED(hresult)) continue;
-
-                            if (typeDesc.Class != D3D11_SVC_INTERFACE_POINTER) continue;
-
-                            D3D11_SHADER_VARIABLE_DESC varDesc;
-                            hresult  = var->GetDesc(&varDesc);
-                            if (!SUCCEEDED(hresult)) continue;
-
-                            const uint64 hash = Hash64(varDesc.Name, &varDesc.Name[XlStringLen(varDesc.Name)]);
-					        if (hash != hashName) continue;
-
-                            auto finalSlot = var->GetInterfaceSlot(slotIndex);
-                            assert(finalSlot < _classInstanceArray.size());
-
-                            ID3D::ClassInstance* classInstance = nullptr;
-                            hresult = _linkage->CreateClassInstance(
-                                instance, 
-                                0, 0, 0, 0, 
-                                &classInstance);
-
-                            if (!SUCCEEDED(hresult)) continue;
-                            _classInstanceArray[finalSlot] = moveptr(classInstance);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    DynamicShaderLinkage::DynamicShaderLinkage(
-        ID3D::ShaderReflection* refl,
-        ID3D::ClassLinkage* linkage)
-    : _reflection(refl)
-    , _linkage(linkage)
-    {
-        _classInstanceArray.resize(refl->GetNumInterfaceSlots(), nullptr);
-    }
-
-    DynamicShaderLinkage::~DynamicShaderLinkage()
-    {
-    }
-
-        ////////////////////////////////////////////////////////////////////////////////////////////////
-
     VertexShader::VertexShader(const ResChar initializer[])
     {
             //
@@ -140,10 +76,10 @@ namespace RenderCore { namespace Metal_DX11
         _underlying = ObjectFactory().CreatePixelShader(byteCode.first, byteCode.second);
     }
 
-    PixelShader::PixelShader(const CompiledShaderByteCode& compiledShader, bool dynLinking)
+    PixelShader::PixelShader(const CompiledShaderByteCode& compiledShader)
     {
         ObjectFactory objFactory;
-        if (dynLinking)
+        if (compiledShader.DynamicLinkingEnabled())
             _classLinkage = objFactory.CreateClassLinkage();
 
         if (compiledShader.GetStage() != ShaderStage::Null) {
@@ -430,7 +366,7 @@ namespace RenderCore { namespace Metal_DX11
     :   _compiledVertexShader(::Assets::GetAssetComp<CompiledShaderByteCode>(vertexShaderInitializer, definesTable)) // (odd..?)
     ,   _compiledPixelShader(::Assets::GetAssetComp<CompiledShaderByteCode>(fragmentShaderInitializer, definesTable)) // (odd..?)
     ,   _vertexShader(_compiledVertexShader)
-    ,   _pixelShader(_compiledPixelShader, true)        // HACK -- always enabling dynamic linking here
+    ,   _pixelShader(_compiledPixelShader)
     ,   _compiledGeometryShader(nullptr)
     {
         if (geometryShaderInitializer && geometryShaderInitializer[0]) {
@@ -490,6 +426,10 @@ namespace RenderCore { namespace Metal_DX11
 
     DeepShaderProgram::~DeepShaderProgram() {}
 
+    bool DeepShaderProgram::DynamicLinkingEnabled() const
+    {
+        return _compiledVertexShader.DynamicLinkingEnabled() || _compiledPixelShader.DynamicLinkingEnabled();
+    }
 
     template intrusive_ptr<ID3D::ShaderReflection>;
 }}

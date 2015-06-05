@@ -150,7 +150,7 @@ namespace SceneEngine
 
         const DeepShaderProgram* _shaderProgram;
         RenderCore::Metal::BoundUniforms _boundUniforms;
-        std::unique_ptr<Metal::DynamicShaderLinkage> _psLinking;
+        BoundClassInterfaces _dynLinkage;
 
         TerrainRenderingResources(const Desc& desc);
 
@@ -178,11 +178,11 @@ namespace SceneEngine
                     definesBuffer << ";VISUALIZE_COVERAGE=" << c;
             }
 
-        const char* ps = isTextured ? "game/xleres/objects/terrain/TerrainTexturing.sh:ps_main:ps_*" : "game/xleres/solidwireframe.psh:main:ps_*";
+        const char* ps = isTextured ? "game/xleres/objects/terrain/TerrainTexturing.sh:ps_main:!ps_*" : "game/xleres/solidwireframe.psh:main:ps_*";
 
         if (Tweakable("LightingModel", 0) == 1 && isTextured) {
                 // manually switch to the forward shading pixel shader depending on the lighting model
-            ps = "game/xleres/objects/terrain/TerrainTexturing.sh:ps_main_forward:ps_*";
+            ps = "game/xleres/objects/terrain/TerrainTexturing.sh:ps_main_forward:!ps_*";
         }
 
         InputElementDesc eles[] = {
@@ -223,11 +223,9 @@ namespace SceneEngine
         BoundUniforms boundUniforms(*shaderProgram);
         Techniques::TechniqueContext::BindGlobalUniforms(boundUniforms);
 
-        if (shaderProgram->GetCompiledPixelShader().GetStage() != ShaderStage::Null) {
-            _psLinking = std::make_unique<Metal::DynamicShaderLinkage>(
-                CreateReflection(shaderProgram->GetCompiledPixelShader()).get(),
-                shaderProgram->GetPixelShader().GetClassLinkage());
-            _psLinking->Bind(Hash64("MainProceduralTexture"), 0, "StrataMaterial");
+        if (shaderProgram->DynamicLinkingEnabled()) {
+            _dynLinkage = BoundClassInterfaces(*shaderProgram);
+            _dynLinkage.Bind(Hash64("MainProceduralTexture"), 0, "StrataMaterial");
         }
 
         auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
@@ -252,8 +250,8 @@ namespace SceneEngine
                 doExtraSmoothing, noisyTerrain, drawWireframe, texturing._strataCount,
                 visLayer);
 
-            if (box._psLinking) {
-                context->Bind(*box._shaderProgram, *box._psLinking);
+            if (box._shaderProgram->DynamicLinkingEnabled()) {
+                context->Bind(*box._shaderProgram, box._dynLinkage);
             } else {
                 context->Bind(*box._shaderProgram);
             }

@@ -642,5 +642,146 @@ namespace RenderCore { namespace Metal_DX11
         return ~0u;
     }
 
+
+
+
+
+    void BoundClassInterfaces::Bind(uint64 hashName, unsigned bindingArrayIndex, const char instance[])
+    {
+        for (auto s=0; s<ShaderStage::Max; ++s) {
+            if (!_stageBindings[s]._linkage) continue;
+
+            bool gotoNextStage = false;
+            D3D11_SHADER_DESC shaderDesc;
+            auto hresult = _stageBindings[s]._reflection->GetDesc(&shaderDesc);
+            if (SUCCEEDED(hresult)) {
+                for (unsigned c=0; c<shaderDesc.ConstantBuffers && !gotoNextStage; ++c) {
+				    auto cb = _stageBindings[s]._reflection->GetConstantBufferByIndex(c);
+				    if (cb) {
+                        D3D11_SHADER_BUFFER_DESC cbDesc;
+                        auto hresult = cb->GetDesc(&cbDesc);
+                        if (SUCCEEDED(hresult)) {
+                            for (unsigned q=0; q<cbDesc.Variables; ++q) {
+                                auto var = cb->GetVariableByIndex(q);
+                                if (!var) continue;
+
+                                auto type = var->GetType();
+                                if (!type) continue;
+
+                                D3D11_SHADER_TYPE_DESC typeDesc;
+                                hresult = type->GetDesc(&typeDesc);
+                                if (!SUCCEEDED(hresult)) continue;
+
+                                if (typeDesc.Class != D3D11_SVC_INTERFACE_POINTER) continue;
+
+                                D3D11_SHADER_VARIABLE_DESC varDesc;
+                                hresult  = var->GetDesc(&varDesc);
+                                if (!SUCCEEDED(hresult)) continue;
+
+                                const uint64 hash = Hash64(varDesc.Name, &varDesc.Name[XlStringLen(varDesc.Name)]);
+					            if (hash != hashName) continue;
+
+                                auto finalSlot = var->GetInterfaceSlot(bindingArrayIndex);
+                                assert(finalSlot < _stageBindings[s]._classInstanceArray.size());
+
+                                ID3D::ClassInstance* classInstance = nullptr;
+                                hresult = _stageBindings[s]._linkage->CreateClassInstance(
+                                    instance, 
+                                    0, 0, 0, 0, 
+                                    &classInstance);
+
+                                if (!SUCCEEDED(hresult)) continue;
+                                _stageBindings[s]._classInstanceArray[finalSlot] = moveptr(classInstance);
+
+                                gotoNextStage = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    const std::vector<intrusive_ptr<ID3D::ClassInstance>>& BoundClassInterfaces::GetClassInstances(ShaderStage::Enum stage) const
+    {
+        return _stageBindings[unsigned(stage)]._classInstanceArray;
+    }
+
+    BoundClassInterfaces::BoundClassInterfaces(const ShaderProgram& shader)
+    {
+            // only implemented for a few shader stages currently
+        if (shader.GetCompiledVertexShader().DynamicLinkingEnabled()) {
+            _stageBindings[ShaderStage::Vertex]._reflection 
+                = CreateReflection(shader.GetCompiledVertexShader());
+            _stageBindings[ShaderStage::Vertex]._linkage = shader.GetVertexShader().GetClassLinkage();
+            _stageBindings[ShaderStage::Vertex]._classInstanceArray.resize(
+                _stageBindings[ShaderStage::Vertex]._reflection->GetNumInterfaceSlots(), nullptr);
+        }
+        
+        if (shader.GetCompiledPixelShader().DynamicLinkingEnabled()) {
+            _stageBindings[ShaderStage::Pixel]._reflection 
+                = CreateReflection(shader.GetCompiledPixelShader());
+            _stageBindings[ShaderStage::Pixel]._linkage = shader.GetPixelShader().GetClassLinkage();
+            _stageBindings[ShaderStage::Pixel]._classInstanceArray.resize(
+                _stageBindings[ShaderStage::Pixel]._reflection->GetNumInterfaceSlots(), nullptr);
+        }
+    }
+
+    BoundClassInterfaces::BoundClassInterfaces(const DeepShaderProgram& shader)
+    {
+            // only implemented for a few shader stages currently
+        if (shader.GetCompiledVertexShader().DynamicLinkingEnabled()) {
+            _stageBindings[ShaderStage::Vertex]._reflection 
+                = CreateReflection(shader.GetCompiledVertexShader());
+            _stageBindings[ShaderStage::Vertex]._linkage = shader.GetVertexShader().GetClassLinkage();
+            _stageBindings[ShaderStage::Vertex]._classInstanceArray.resize(
+                _stageBindings[ShaderStage::Vertex]._reflection->GetNumInterfaceSlots(), nullptr);
+        }
+        
+        if (shader.GetCompiledPixelShader().DynamicLinkingEnabled()) {
+            _stageBindings[ShaderStage::Pixel]._reflection 
+                = CreateReflection(shader.GetCompiledPixelShader());
+            _stageBindings[ShaderStage::Pixel]._linkage = shader.GetPixelShader().GetClassLinkage();
+            _stageBindings[ShaderStage::Pixel]._classInstanceArray.resize(
+                _stageBindings[ShaderStage::Pixel]._reflection->GetNumInterfaceSlots(), nullptr);
+        }
+    }
+
+    BoundClassInterfaces::BoundClassInterfaces() {}
+    BoundClassInterfaces::~BoundClassInterfaces() {}
+
+    BoundClassInterfaces::BoundClassInterfaces(BoundClassInterfaces&& moveFrom)
+    {
+        for (unsigned c=0; c<dimof(_stageBindings); ++c)
+            _stageBindings[c] = std::move(moveFrom._stageBindings[c]);
+    }
+
+    BoundClassInterfaces& BoundClassInterfaces::operator=(BoundClassInterfaces&& moveFrom)
+    {
+        for (unsigned c=0; c<dimof(_stageBindings); ++c)
+            _stageBindings[c] = std::move(moveFrom._stageBindings[c]);
+        return *this;
+    }
+
+
+
+    BoundClassInterfaces::StageBinding::StageBinding() {}
+    BoundClassInterfaces::StageBinding::~StageBinding() {}
+
+    BoundClassInterfaces::StageBinding::StageBinding(StageBinding&& moveFrom)
+    : _reflection(std::move(moveFrom._reflection))
+    , _linkage(std::move(moveFrom._linkage))
+    , _classInstanceArray(std::move(moveFrom._classInstanceArray))
+    {}
+
+    auto BoundClassInterfaces::StageBinding::operator=(StageBinding&& moveFrom) -> StageBinding&
+    {
+        _reflection = std::move(moveFrom._reflection);
+        _linkage = std::move(moveFrom._linkage);
+        _classInstanceArray = std::move(moveFrom._classInstanceArray);
+        return *this;
+    }
+
 }}
 

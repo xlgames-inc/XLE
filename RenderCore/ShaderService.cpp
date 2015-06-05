@@ -147,15 +147,17 @@ namespace RenderCore
     std::pair<const void*, size_t> CompiledShaderByteCode::GetByteCode() const
     {
         Resolve();
-        return std::make_pair(AsPointer(_shader->begin()), _shader->size());
+        return std::make_pair(
+            PtrAdd(AsPointer(_shader->begin()), sizeof(ShaderService::ShaderHeader)),
+            _shader->size() - sizeof(ShaderService::ShaderHeader));
     }
 
     ::Assets::AssetState CompiledShaderByteCode::TryGetByteCode(
         void const*& byteCode, size_t& size)
     {
         if (_shader) {
-            byteCode = AsPointer(_shader->begin());
-            size = _shader->size();
+            byteCode = PtrAdd(AsPointer(_shader->begin()), sizeof(ShaderService::ShaderHeader));
+            size = _shader->size() - sizeof(ShaderService::ShaderHeader);
             return ::Assets::AssetState::Ready;
         }
 
@@ -178,9 +180,20 @@ namespace RenderCore
             return ::Assets::AssetState::Invalid;
         }
 
-        byteCode = AsPointer(_shader->begin());
-        size = _shader->size();
+        byteCode = PtrAdd(AsPointer(_shader->begin()), sizeof(ShaderService::ShaderHeader));
+        size = _shader->size() - sizeof(ShaderService::ShaderHeader);
         return ::Assets::AssetState::Ready;
+    }
+
+    bool CompiledShaderByteCode::DynamicLinkingEnabled() const
+    {
+        if (_stage == ShaderStage::Null) return false;
+
+        Resolve();
+        if (_shader->size() < sizeof(ShaderService::ShaderHeader)) return false;
+        auto* hdr = (const ShaderService::ShaderHeader*)AsPointer(_shader->begin());
+        assert(hdr->_version == ShaderService::ShaderHeader::Version);
+        return hdr->_dynamicLinkageEnabled != 0;
     }
 
     const char* CompiledShaderByteCode::Initializer() const
@@ -221,12 +234,16 @@ namespace RenderCore
     {
         XlCopyString(_filename, filename);
         XlCopyString(_entryPoint, entryPoint);
+
+        _dynamicLinkageEnabled = shaderModel[0] == '!';
+        if (_dynamicLinkageEnabled) ++shaderModel;
         XlCopyString(_shaderModel, shaderModel);
     }
 
     ShaderService::ResId::ResId()
     {
         _filename[0] = '\0'; _entryPoint[0] = '\0'; _shaderModel[0] = '\0';
+        _dynamicLinkageEnabled = false;
     }
 
 
@@ -249,6 +266,10 @@ namespace RenderCore
                 XlCopyString(shaderId._entryPoint, endFileName+1);
             } else {
                 XlCopyNString(shaderId._entryPoint, endFileName+1, startShaderModel - endFileName - 1);
+                if (*(startShaderModel+1) == '!') {
+                    shaderId._dynamicLinkageEnabled = true;
+                    ++startShaderModel;
+                }
                 XlCopyString(shaderId._shaderModel, startShaderModel+1);
             }
         }
