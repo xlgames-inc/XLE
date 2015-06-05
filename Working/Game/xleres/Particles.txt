@@ -1,93 +1,67 @@
-Illum
-    Parameters
-        Geometry
+~Illum
+    ~Parameters
+        ~Geometry
             GEO_HAS_COLOUR
             GEO_HAS_TEXCOORD
-            GEO_HAS_PARTICLE_INPUTS
-                1
-        Material
+            GEO_HAS_PARTICLE_INPUTS=1
+        ~Material
             MAT_ALPHA_TEST
-            MAT_MODULATE_VERTEX_ALPHA
-                1
-            MAT_DO_PARTICLE_LIGHTING
-                1
-            MAT_BLEND_FOG
-                0
+            MAT_MODULATE_VERTEX_ALPHA=1
+            MAT_DO_PARTICLE_LIGHTING=1
+            MAT_BLEND_FOG=0
             RES_HAS_NormalsTexture
             RES_HAS_ParametersTexture
             RES_HAS_NormalsTexture_DXT
             RES_HAS_CUSTOM_MAP
             RES_HAS_OPACITY_MAP
-    VertexShader
-        game/xleres/particles/Particle.vsh:nogs
-    GeometryShader
-        game/xleres/particles/sprite.gsh:autoquads
-    PixelShader
-        game/xleres/forward/illum.psh:main
-DepthOnly
-    Parameters
-        Geometry
+    VertexShader=game/xleres/particles/Particle.vsh:nogs
+    GeometryShader=game/xleres/particles/sprite.gsh:autoquads
+    PixelShader=game/xleres/forward/illum.psh:main
+~DepthOnly
+    ~Parameters
+        ~Geometry
             GEO_HAS_TEXCOORD
-        Material
+        ~Material
             MAT_ALPHA_TEST
-    VertexShader
-        game/xleres/particles/Particle.vsh:nogs
-    GeometryShader
-        game/xleres/particles/sprite.gsh:autoquads
-    PixelShader
-        game/xleres/forward/depthonly.psh:main
-Deferred
-    Parameters
-        Geometry
+    VertexShader=game/xleres/particles/Particle.vsh:nogs
+    GeometryShader=game/xleres/particles/sprite.gsh:autoquads
+    PixelShader=game/xleres/forward/depthonly.psh:main
+~Deferred
+    ~Parameters
+        ~Geometry
             GEO_HAS_COLOUR
             GEO_HAS_TEXCOORD
-            GEO_HAS_PARTICLE_INPUTS
-                1
-        GlobalEnvironment
-            GBUFFER_TYPE
-                1
-        Material
+            GEO_HAS_PARTICLE_INPUTS=1
+        ~GlobalEnvironment
+            GBUFFER_TYPE=1
+        ~Material
             MAT_ALPHA_TEST
-            MAT_REFLECTIVENESS
-                1
-            MAT_MODULATE_VERTEX_ALPHA
-                1
+            MAT_REFLECTIVENESS=1
+            MAT_MODULATE_VERTEX_ALPHA=1
             RES_HAS_NormalsTexture
             RES_HAS_ParametersTexture
             RES_HAS_NormalsTexture_DXT
-    VertexShader
-        game/xleres/particles/Particle.vsh:nogs
-    GeometryShader
-        game/xleres/particles/sprite.gsh:autoquads
-    PixelShader
-        game/xleres/deferred/basic.psh:main
-ShadowGen
-OrderIndependentTransparency
-    Parameters
-        Geometry
+    VertexShader=game/xleres/particles/Particle.vsh:nogs
+    GeometryShader=game/xleres/particles/sprite.gsh:autoquads
+    PixelShader=game/xleres/deferred/basic.psh:main
+~ShadowGen
+~OrderIndependentTransparency
+    ~Parameters
+        ~Geometry
             GEO_HAS_COLOUR
             GEO_HAS_TEXCOORD
-            OUTPUT_LOCAL_NORMAL
-                1
-            OUTPUT_LOCAL_VIEW_VECTOR
-                1
-            OUTPUT_WORLD_VIEW_VECTOR
-                1
-            OUTPUT_WORLD_POSITION
-                1
-            GEO_HAS_PARTICLE_INPUTS
-                1
-        Material
+            OUTPUT_LOCAL_NORMAL=1
+            OUTPUT_LOCAL_VIEW_VECTOR=1
+            OUTPUT_WORLD_VIEW_VECTOR=1
+            OUTPUT_WORLD_POSITION=1
+            GEO_HAS_PARTICLE_INPUTS=1
+        ~Material
             MAT_ALPHA_TEST
             MAT_PREMULTIPLIED_ALPHA
-            MAT_MODULATE_VERTEX_ALPHA
-                1
+            MAT_MODULATE_VERTEX_ALPHA=1
             RES_HAS_NormalsTexture
             RES_HAS_ParametersTexture
             RES_HAS_NormalsTexture_DXT
-    VertexShader
-        game/xleres/particles/Particle.vsh:nogs
-    GeometryShader
-        game/xleres/particles/sprite.gsh:autoquads
-    PixelShader
-        game/xleres/forward/transparency/illum.psh:main
+    VertexShader=game/xleres/particles/Particle.vsh:nogs
+    GeometryShader=game/xleres/particles/sprite.gsh:autoquads
+    PixelShader=game/xleres/forward/transparency/illum.psh:main

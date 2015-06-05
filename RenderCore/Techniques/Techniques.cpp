@@ -10,12 +10,16 @@
 #include "../Metal/InputLayout.h"
 #include "../Metal/DeviceContext.h"
 #include "../../Assets/AssetUtils.h"
+#include "../../Assets/AssetServices.h"
+#include "../../Assets/InvalidAssetManager.h"
 #include "../../Math/Vector.h"
 #include "../../Math/Matrix.h"
-#include "../../Utility/Streams/Data.h"
+#include "../../ConsoleRig/Log.h"
+#include "../../Utility/Streams/StreamFormatter.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/IteratorUtils.h"
 #include "../../Utility/StringUtils.h"
+#include "../../Utility/Conversion.h"
 #include <algorithm>
 
 namespace RenderCore { namespace Techniques
@@ -378,6 +382,10 @@ namespace RenderCore { namespace Techniques
             Setting();
             Setting(Setting&& moveFrom);
             Setting& operator=(Setting&& moveFrom);
+            Setting(
+                InputStreamFormatter<utf8>& source,
+                ::Assets::DirectorySearchRules& searchRules,
+                std::vector<const std::shared_ptr<::Assets::DependencyValidation>>& inherited);
         };
         std::vector<std::pair<uint64,Setting>> _settings;
 
@@ -406,68 +414,128 @@ namespace RenderCore { namespace Techniques
         return *this;
     }
 
-    static void LoadInteritedParameterBoxes(
-        Data& source, ParameterBox dst[4],
+    using Formatter = InputStreamFormatter<utf8>;
+
+    static bool Is(const char name[], Utility::InputStreamFormatter<utf8>::InteriorSection section)
+    {
+        return !XlComparePrefixI(section._start, (const utf8*)name, section._end - section._start);
+    }
+
+    static std::basic_string<Formatter::value_type> AsString(Formatter::InteriorSection& input)
+    {
+        return std::basic_string<Formatter::value_type>(input._start, input._end);
+    }
+
+    static void LoadInheritedParameterBoxes(
+        Formatter& source, ParameterBox dst[4],
         ::Assets::DirectorySearchRules* searchRules,
         std::vector<const std::shared_ptr<::Assets::DependencyValidation>>* inherited)
     {
-            //  Find the child called "Inherit". This will provide a list of 
+            //  We will serialize in a list of 
             //  shareable settings that we can inherit from
             //  Inherit lists should take the form "FileName:Setting"
             //  FileName should have no extension -- we'll append .txt. 
             //  The "setting" should be a top-level item in the file
-        auto* inheritList = source.ChildWithValue("Inherit");
-        if (inheritList) {
-            for (auto i=inheritList->child; i; i=i->next) {
-                auto* colon = XlFindCharReverse(i->value, ':');
-                if (colon) {
-                    ::Assets::ResChar resolvedFile[MaxPath];
-                    XlCopyNString(resolvedFile, i->value, colon-i->value);
-                    XlCatString(resolvedFile, dimof(resolvedFile), ".txt");
-                    if (searchRules) {
-                        searchRules->ResolveFile(
-                            resolvedFile, dimof(resolvedFile), resolvedFile);
-                    }
 
-                    auto& settingsTable = ::Assets::GetAssetDep<ParameterBoxTable>(resolvedFile);
-                    auto settingHash = Hash64(colon+1);
+        for (;;) {
+
+            auto next = source.PeekNext();
+            if (next == Formatter::Blob::EndElement) return;
+            if (next != Formatter::Blob::AttributeName)
+                ThrowException(FormatException("Unexpected blob when serializing inheritted list", source.GetLocation()));
+            
+            Formatter::InteriorSection name, value;
+            if (!source.TryReadAttribute(name, value))
+                ThrowException(FormatException("Bad attribute in inheritted list", source.GetLocation()));
+        
+            auto colon = std::find(name._start, name._end, ':');
+            if (colon == name._end) 
+                ThrowException(FormatException("Inheritted object missing a colon", source.GetLocation()));
+
+            ::Assets::ResChar resolvedFile[MaxPath];
+            XlCopyNString(resolvedFile, (const ::Assets::ResChar*)name._start, colon-name._start);
+            XlCatString(resolvedFile, dimof(resolvedFile), ".txt");
+            if (searchRules) {
+                searchRules->ResolveFile(
+                    resolvedFile, dimof(resolvedFile), resolvedFile);
+            }
+
+            auto& settingsTable = ::Assets::GetAssetDep<ParameterBoxTable>(resolvedFile);
+            auto settingHash = Hash64(colon+1, name._end);
                     
-                    auto s = LowerBound(settingsTable._settings, settingHash);
-                    if (s != settingsTable._settings.end() && s->first == settingHash) {
-                        for (unsigned c=0; c<dimof(s_parameterBoxNames); ++c) {
-                            dst[c].MergeIn(s->second._boxes[c]);
-                        }
-                    }
-
-                    if (inherited && std::find(inherited->begin(), inherited->end(), settingsTable.GetDependencyValidation()) == inherited->end()) {
-                        inherited->push_back(settingsTable.GetDependencyValidation());
-                    }
+            bool foundAtLeastOne = false;
+            auto s = LowerBound(settingsTable._settings, settingHash);
+            if (s != settingsTable._settings.end() && s->first == settingHash) {
+                for (unsigned c=0; c<dimof(s_parameterBoxNames); ++c) {
+                    dst[c].MergeIn(s->second._boxes[c]);
+                    foundAtLeastOne = true;
                 }
+            }
+
+            if (!foundAtLeastOne)
+                ThrowException(FormatException("Inheritted object not found", source.GetLocation()));
+
+            if (inherited && std::find(inherited->begin(), inherited->end(), settingsTable.GetDependencyValidation()) == inherited->end()) {
+                inherited->push_back(settingsTable.GetDependencyValidation());
             }
         }
     }
 
-    static void LoadParameterBoxes(Data& source, ParameterBox dst[4])
+    static void LoadParameterBoxes(Formatter& source, ParameterBox dst[4])
     {
-        auto* p = source.ChildWithValue("Parameters");
-        if (p) {
-            for (unsigned q=0; q<dimof(s_parameterBoxNames); ++q) {
-                auto* d = p->ChildWithValue(s_parameterBoxNames[q]);
-                auto& destinationParameters = dst[q];
-                if (d) {
-                    for (auto child = d->child; child; child = child->next) {
-                        destinationParameters.SetParameter(
-                            (const utf8*)child->StrValue(),
-                            child->ChildAt(0)?child->ChildAt(0)->IntValue():0);
-                    }
+        for (;;) {
+            auto next = source.PeekNext();
+            if (next == Formatter::Blob::EndElement) return;
+            if (next != Formatter::Blob::BeginElement)
+                ThrowException(FormatException("Unexpected blob when serializing parameter box list", source.GetLocation()));
+
+            Formatter::InteriorSection eleName;
+            if (!source.TryReadBeginElement(eleName))
+                ThrowException(FormatException("Bad begin element in parameter box list", source.GetLocation()));
+
+            bool matched = false;
+            for (unsigned q=0; q<dimof(s_parameterBoxNames); ++q)
+                if (Is(s_parameterBoxNames[q], eleName)) {
+                    dst[q] = ParameterBox(source);
+                    matched = true;
                 }
-            }
+
+            if (!matched)
+                ThrowException(FormatException("Unknown parameter box name", source.GetLocation()));
+
+            if (!source.TryReadEndElement())
+                ThrowException(FormatException("Bad end element in parameter box list", source.GetLocation()));
+        }
+    }
+
+    ParameterBoxTable::Setting::Setting(
+        Formatter& formatter,
+        ::Assets::DirectorySearchRules& searchRules,
+        std::vector<const std::shared_ptr<::Assets::DependencyValidation>>& inherited)
+    {
+        for (;;) {
+            auto next = formatter.PeekNext();
+            if (next == Formatter::Blob::EndElement) break;
+            if (next != Formatter::Blob::BeginElement)
+                ThrowException(FormatException("Unexpected blob in parameter box table setting", formatter.GetLocation()));
+
+            Formatter::InteriorSection eleName;
+            if (!formatter.TryReadBeginElement(eleName)) 
+                ThrowException(FormatException("Bad begin element", formatter.GetLocation()));
+
+            if (Is("Inherit", eleName)) {
+                LoadInheritedParameterBoxes(formatter, _boxes, &searchRules, &inherited);
+            } else if (Is("Parameters", eleName)) {
+                LoadParameterBoxes(formatter, _boxes);
+            } else break;
+
+            if (!formatter.TryReadEndElement()) 
+                ThrowException(FormatException("Bad end element", formatter.GetLocation()));
         }
     }
 
     ParameterBoxTable::ParameterBoxTable(const ::Assets::ResChar filename[])
     {
-        Data data;
         size_t sourceFileSize = 0;
         auto sourceFile = LoadFileAsMemoryBlock(filename, &sourceFileSize);
 
@@ -478,20 +546,50 @@ namespace RenderCore { namespace Techniques
             auto searchRules = ::Assets::DefaultDirectorySearchRules(filename);
             std::vector<const std::shared_ptr<::Assets::DependencyValidation>> inherited;
 
-            data.Load((const char*)sourceFile.get(), (int)sourceFileSize);
+            TRY
+            {
+                Formatter formatter(MemoryMappedInputStream(sourceFile.get(), PtrAdd(sourceFile.get(), sourceFileSize)));
             
-                //  each top-level entry is a "Setting", which can contain parameter
-                //  boxes (and possibly inherit statements and shaders)
+                    //  each top-level entry is a "Setting", which can contain parameter
+                    //  boxes (and possibly inherit statements and shaders)
 
-            for (auto c=data.child; c; c=c->next) {
-                Setting newSetting;
-                LoadInteritedParameterBoxes(*c, newSetting._boxes, &searchRules, &inherited);
-                LoadParameterBoxes(*c, newSetting._boxes);
+                for (;;) {
+                    bool cleanQuit = false;
+                    switch (formatter.PeekNext()) {
+                    case Formatter::Blob::BeginElement:
+                        {
+                            Formatter::InteriorSection settingName;
+                            if (!formatter.TryReadBeginElement(settingName)) break;
 
-                auto hash = Hash64(c->value);
-                auto i = LowerBound(_settings, hash);
-                _settings.insert(i, std::make_pair(hash, std::move(newSetting)));
+                            auto hash = Hash64(settingName._start, settingName._end);
+                            auto i = LowerBound(_settings, hash);
+                            _settings.insert(i, std::make_pair(hash, Setting(formatter, searchRules, inherited)));
+
+                            if (!formatter.TryReadEndElement()) break;
+                        }
+                        continue;
+
+                    case Formatter::Blob::None:
+                        cleanQuit = true;
+                        break;
+
+                    default:
+                        break;
+                    }
+
+                    if (!cleanQuit)
+                        ThrowException(FormatException("Unexpected blob while reading stream", formatter.GetLocation()));
+                    break;
+                }
+
+                ::Assets::Services::GetInvalidAssetMan().MarkValid(filename);
             }
+            CATCH (const FormatException& e)
+            {
+                ::Assets::Services::GetInvalidAssetMan().MarkInvalid(filename, e.what());
+                ThrowException(::Assets::Exceptions::InvalidResource(filename, e.what()));
+            }
+            CATCH_END
 
             for (auto i=inherited.begin(); i!=inherited.end(); ++i) {
                 ::Assets::RegisterAssetDependency(_depVal, *i);
@@ -516,7 +614,8 @@ namespace RenderCore { namespace Techniques
     }
 
     Technique::Technique(
-        Data& source, 
+        Formatter& formatter, 
+        const std::string& name,
         ::Assets::DirectorySearchRules* searchRules,
         std::vector<const std::shared_ptr<::Assets::DependencyValidation>>* inherited)
     {
@@ -529,13 +628,50 @@ namespace RenderCore { namespace Techniques
         globalParam.SetParameter((const utf8*)"vs_", 50);
         globalParam.SetParameter((const utf8*)"ps_", 50);
 
-        LoadInteritedParameterBoxes(source, _baseParameters._parameters, searchRules, inherited);
-        LoadParameterBoxes(source, _baseParameters._parameters);
+        using ParsingString = std::basic_string<Formatter::value_type>;
 
-        _name = source.StrValue();
-        _vertexShaderName = source.StrAttribute("VertexShader");
-        _pixelShaderName = source.StrAttribute("PixelShader");
-        _geometryShaderName = source.StrAttribute("GeometryShader");
+        for (;;) {
+            bool cleanQuit = false;
+            switch (formatter.PeekNext())
+            {
+            case Formatter::Blob::BeginElement:
+                Formatter::InteriorSection eleName;
+                if (!formatter.TryReadBeginElement(eleName)) break;
+
+                if (Is("Inherit", eleName)) {
+                    LoadInheritedParameterBoxes(formatter, _baseParameters._parameters, searchRules, inherited);
+                } else if (Is("Parameters", eleName)) {
+                    LoadParameterBoxes(formatter, _baseParameters._parameters);
+                } else break;
+
+                if (!formatter.TryReadEndElement()) break;
+                continue;
+
+            case Formatter::Blob::AttributeName:
+                Formatter::InteriorSection name, value;
+                if (!formatter.TryReadAttribute(name, value)) break;
+                if (Is("VertexShader", name)) {
+                    _vertexShaderName = Conversion::Convert<decltype(_vertexShaderName)>(AsString(value));
+                } else if (Is("PixelShader", name)) {
+                    _pixelShaderName = Conversion::Convert<decltype(_pixelShaderName)>(AsString(value));
+                } else if (Is("GeometryShader", name)) {
+                    _geometryShaderName = Conversion::Convert<decltype(_geometryShaderName)>(AsString(value));
+                }
+                continue;
+
+            case Formatter::Blob::EndElement:
+                cleanQuit = true;
+                break;
+
+            default: break;
+            }
+
+            if (!cleanQuit)
+                ThrowException(FormatException("Unexpected blob while reading technique", formatter.GetLocation()));
+            break;
+        }
+
+        _name = name;
     }
 
     Technique::Technique(Technique&& moveFrom)
@@ -590,7 +726,6 @@ namespace RenderCore { namespace Techniques
 
     ShaderType::ShaderType(const char resourceName[])
     {
-        Data data;
         size_t sourceFileSize = 0;
         auto sourceFile = LoadFileAsMemoryBlock(resourceName, &sourceFileSize);
 
@@ -601,13 +736,47 @@ namespace RenderCore { namespace Techniques
             auto searchRules = ::Assets::DefaultDirectorySearchRules(resourceName);
             std::vector<const std::shared_ptr<::Assets::DependencyValidation>> inheritedAssets;
 
-            data.Load((const char*)sourceFile.get(), (int)sourceFileSize);
-            for (int c=0; c<data.Size(); ++c) {
-                auto child = data.ChildAt(c);
-                if (child) {
-                    _technique.push_back(Technique(*child, &searchRules, &inheritedAssets));
+            TRY
+            {
+                Formatter formatter(MemoryMappedInputStream(sourceFile.get(), PtrAdd(sourceFile.get(), sourceFileSize)));
+                for (;;) {
+                    bool cleanQuit = false;
+                    switch (formatter.PeekNext()) {
+                    case Formatter::Blob::BeginElement:
+                        {
+                            Formatter::InteriorSection eleName;
+                            if (!formatter.TryReadBeginElement(eleName)) break;
+
+                            _technique.push_back(
+                                Technique(
+                                    formatter, 
+                                    Conversion::Convert<std::string>(AsString(eleName)),
+                                    &searchRules, &inheritedAssets));
+                            if (!formatter.TryReadEndElement()) break;
+                        }
+                        continue;
+
+                    case Formatter::Blob::None:
+                        cleanQuit = true;
+                        break;
+
+                    default:
+                        break;
+                    }
+
+                    if (!cleanQuit)
+                        ThrowException(FormatException("Unexpected blob while reading stream", formatter.GetLocation()));
+                    break;
                 }
+
+                ::Assets::Services::GetInvalidAssetMan().MarkValid(resourceName);
             }
+            CATCH (const FormatException& e)
+            {
+                ::Assets::Services::GetInvalidAssetMan().MarkInvalid(resourceName, e.what());
+                ThrowException(::Assets::Exceptions::InvalidResource(resourceName, e.what()));
+            }
+            CATCH_END
 
             for (auto i=inheritedAssets.begin(); i!=inheritedAssets.end(); ++i) {
                 ::Assets::RegisterAssetDependency(_validationCallback, *i);

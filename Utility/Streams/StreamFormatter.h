@@ -130,6 +130,8 @@ namespace Utility
 
         StreamLocation GetLocation() const;
 
+        using value_type = CharType;
+
         InputStreamFormatter(const MemoryMappedInputStream& stream);
         ~InputStreamFormatter();
     protected:

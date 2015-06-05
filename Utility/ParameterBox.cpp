@@ -1164,8 +1164,26 @@ namespace Utility
             if (!success)
                 throw ::Exceptions::BasicLabel("Parsing exception while reading attribute in parameter box deserialization");
 
-            if (!value._start || !value._end)
-                throw ::Exceptions::BasicLabel("Found attribute without value while deserializing parameter box");
+            {
+                auto nameLen = (size_t(name._end) - size_t(name._start)) / sizeof(CharType);
+                nameBuffer.resize(nameLen*2+1);
+                
+                auto nameConvResult = Conversion::Convert(
+                    AsPointer(nameBuffer.begin()), nameBuffer.size(),
+                    name._start, name._end);
+
+                if (nameConvResult <= 0)
+                    throw ::Exceptions::BasicLabel("Empty name or error converting string name in parameter box deserialization");
+
+                nameBuffer[std::min(nameBuffer.size()-1, (size_t)nameConvResult)] = '\0';
+            }
+
+            if (!value._start || !value._end) {
+                    // if there is no valid attached, we default to just "0u"
+                unsigned zero = 0;
+                SetParameter(AsPointer(nameBuffer.cbegin()), &zero, TypeOf<unsigned>());
+                continue;
+            }
 
             TypeDesc nativeType(TypeCat::Void);
             if (constant_expression<sizeof(CharType) == sizeof(utf8)>::result()) {
@@ -1189,20 +1207,6 @@ namespace Utility
                         nativeTypeBuffer, sizeof(nativeTypeBuffer));
                 }
 
-            }
-
-            {
-                auto nameLen = (size_t(name._end) - size_t(name._start)) / sizeof(CharType);
-                nameBuffer.resize(nameLen*2+1);
-                
-                auto nameConvResult = Conversion::Convert(
-                    AsPointer(nameBuffer.begin()), nameBuffer.size(),
-                    name._start, name._end);
-
-                if (nameConvResult <= 0)
-                    throw ::Exceptions::BasicLabel("Empty name or error converting string name in parameter box deserialization");
-
-                nameBuffer[std::min(nameBuffer.size()-1, (size_t)nameConvResult)] = '\0';
             }
 
             if (nativeType._type != TypeCat::Void) {

@@ -7,13 +7,14 @@
 #pragma once
 
 #include "../Metal/Forward.h"
+#include "../../Assets/AssetsCore.h"
 #include "../../Utility/ParameterBox.h"
 #include "../../Core/Prefix.h"
 #include "../../Core/Types.h"
 #include <string>
 #include <vector>
 
-namespace Utility { class Data; }
+namespace Utility { template<typename CharType> class InputStreamFormatter; }
 using namespace Utility;
 namespace Assets { class DependencyValidation; class DirectorySearchRules; }
 
@@ -121,7 +122,11 @@ namespace RenderCore { namespace Techniques
 
         bool                IsValid() const { return !_vertexShaderName.empty(); }
 
-        Technique(Utility::Data& source, ::Assets::DirectorySearchRules* searchRules = nullptr, std::vector<const std::shared_ptr<::Assets::DependencyValidation>>* inherited = nullptr);
+        Technique(
+            Utility::InputStreamFormatter<utf8>& formatter, 
+            const std::string& name,
+            ::Assets::DirectorySearchRules* searchRules = nullptr, 
+            std::vector<const std::shared_ptr<::Assets::DependencyValidation>>* inherited = nullptr);
         Technique(Technique&& moveFrom);
         Technique& operator=(Technique&& moveFrom);
     protected:
@@ -129,9 +134,9 @@ namespace RenderCore { namespace Techniques
         ShaderParameters    _baseParameters;
         mutable std::vector<std::pair<uint64, ResolvedShader>>  _filteredToResolved;
         mutable std::vector<std::pair<uint64, ResolvedShader>>  _globalToResolved;
-        std::string         _vertexShaderName;
-        std::string         _pixelShaderName;
-        std::string         _geometryShaderName;
+        ::Assets::rstring   _vertexShaderName;
+        ::Assets::rstring   _pixelShaderName;
+        ::Assets::rstring   _geometryShaderName;
 
         #if defined(CHECK_TECHNIQUE_HASH_CONFLICTS)
             class HashConflictTest

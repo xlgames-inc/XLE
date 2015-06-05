@@ -1,6 +1,6 @@
-CommonMaterial
-    Parameters
-        Material
+~CommonMaterial
+    ~Parameters
+        ~Material
             MAT_ALPHA_TEST
             MAT_PREMULTIPLIED_ALPHA
             MAT_REFLECTIVENESS
@@ -12,27 +12,26 @@ CommonMaterial
             MAT_VCOLOR_IS_ANIM_PARAM
             MAT_DOUBLE_SIDED_LIGHTING
             MAT_AO_IN_NORMAL_BLUE
-        GlobalEnvironment
+        ~GlobalEnvironment
             VIS_ANIM_PARAM
-Skinnable
-    Parameters
-        Geometry
+~Skinnable
+    ~Parameters
+        ~Geometry
             GEO_HAS_SKIN_WEIGHTS
-        GlobalEnvironment
-            SKIN_TRANSFORMS
-                0
-VegetationSpawn
-    Parameters
-        Runtime
+        ~GlobalEnvironment
+            SKIN_TRANSFORMS=0
+~VegetationSpawn
+    ~Parameters
+        ~Runtime
             SPAWNED_INSTANCE
-System
-    Parameters
-        GlobalEnvironment
+~System
+    ~Parameters
+        ~GlobalEnvironment
             AUTO_COTANGENT
-            PREFER_ANISOTROPIC 1
-            TANGENT_PROCESS_IN_PS 0
+            PREFER_ANISOTROPIC=1
+            TANGENT_PROCESS_IN_PS=0
             LOCAL_TO_WORLD_HAS_FLIP
-Deferred
-    Parameters
-        GlobalEnvironment
-            GBUFFER_TYPE 1
+~Deferred
+    ~Parameters
+        ~GlobalEnvironment
+            GBUFFER_TYPE=1
