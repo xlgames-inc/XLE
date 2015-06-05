@@ -188,7 +188,7 @@ namespace SceneEngine
             InputElementDesc("INTERSECTION", 0, NativeFormat::R32G32B32A32_FLOAT)
         };
 
-        const char* gs;
+        const char* gs = "";
         if (desc._mode == TerrainRenderingContext::Mode_RayTest) {
             ps = "";
             unsigned strides = sizeof(float)*4;
@@ -198,7 +198,7 @@ namespace SceneEngine
         } else if (desc._mode == TerrainRenderingContext::Mode_VegetationPrepare) {
             ps = "";
             gs = "game/xleres/Vegetation/InstanceSpawn.gsh:main:gs_*";
-        } else {
+        } else if (desc._drawWireframe) {
             gs = "game/xleres/solidwireframe.gsh:main:gs_*";
         }
 
@@ -254,17 +254,17 @@ namespace SceneEngine
             const ShaderProgram* shaderProgram;
             if (mode == Mode_Normal) {
                 shaderProgram = &::Assets::GetAssetDep<ShaderProgram>(
-                    "game/xleres/forward/terrain_generator.sh:vs_main:vs_*", 
+                    "game/xleres/forward/terrain_generator.sh:vs_basic:vs_*", 
                     "game/xleres/solidwireframe.gsh:main:gs_*", 
                     "game/xleres/solidwireframe.psh:main:ps_*", "");
             } else if (mode == Mode_VegetationPrepare) {
                 shaderProgram = &::Assets::GetAssetDep<ShaderProgram>(
-                    "game/xleres/forward/terrain_generator.sh:vs_main:vs_*", 
+                    "game/xleres/forward/terrain_generator.sh:vs_basic:vs_*", 
                     "game/xleres/Vegetation/InstanceSpawn.gsh:main:gs_*", 
                     "", "OUTPUT_WORLD_POSITION=1");
             } else {
                 shaderProgram = &::Assets::GetAssetDep<ShaderProgram>(
-                    "game/xleres/forward/terrain_generator.sh:vs_main:vs_*", 
+                    "game/xleres/forward/terrain_generator.sh:vs_basic:vs_*", 
                     "game/xleres/forward/terrain_generator.sh:gs_intersectiontest:gs_*", 
                     "", "OUTPUT_WORLD_POSITION=1");
             }

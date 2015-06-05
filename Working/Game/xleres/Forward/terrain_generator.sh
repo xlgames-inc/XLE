@@ -35,7 +35,7 @@ float3 AddNoise(float3 worldPosition)
 	return worldPosition;
 }
 
-VSOutput main(uint vertexIndex : SV_VertexId)
+VSOutput vs_basic(uint vertexIndex : SV_VertexId)
 {
 	VSOutput output;
 
@@ -434,15 +434,18 @@ float CustomSample(float2 UV, int interpolationQuality)
 
 ///////////////////////////////////////////////////////////////////////////
 
-struct SW_GStoPS
+struct PSInput
 {
-	float4 position				 : SV_Position;
-	float3 barycentricCoords	 : BARYCENTRIC;
-	#if SOLIDWIREFRAME_TEXCOORD==1
-		float2 texCoord : TEXCOORD0;
-		float2 dhdxy : DHDXY;
+	float4 position : SV_Position;
+
+	#if (DRAW_WIREFRAME==1)
+		float3 barycentricCoords : BARYCENTRIC;
 	#endif
-	#if SOLIDWIREFRAME_WORLDPOSITION==1
+
+	float2 texCoord : TEXCOORD0;
+	float2 dhdxy : DHDXY;
+
+	#if (OUTPUT_WORLD_POSITION==1)
 		float3 worldPosition : WORLDPOSITION;
 	#endif
 };
@@ -662,9 +665,7 @@ uint GetEdgeIndex(float2 texCoord)
 
 #define MakeCoverageTileSet(index) CoverageTileSet ## index
 
-// #define VISUALIZE_COVERAGE 1
-
-TerrainPixel CalculateTerrain(SW_GStoPS geo)
+TerrainPixel CalculateTerrain(PSInput geo)
 {
 	float4 result = 1.0.xxxx;
 	float2 finalTexCoord = 0.0.xx;
@@ -732,7 +733,7 @@ TerrainPixel CalculateTerrain(SW_GStoPS geo)
 }
 
 [earlydepthstencil]
-GBufferEncoded ps_main(SW_GStoPS geo)
+GBufferEncoded ps_main(PSInput geo)
 {
 	TerrainPixel p = CalculateTerrain(geo);
 	GBufferValues output = GBufferValues_Default();
@@ -746,7 +747,7 @@ GBufferEncoded ps_main(SW_GStoPS geo)
 }
 
 [earlydepthstencil]
-float4 ps_main_forward(SW_GStoPS geo) : SV_Target0
+float4 ps_main_forward(PSInput geo) : SV_Target0
 {
 	TerrainPixel p = CalculateTerrain(geo);
 	return float4(LightingScale * p.diffuseAlbedo * p.cookedAmbientOcclusion, 1.f);

@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "../MainGeometry.h"
-#include "../IllumShader/PerPixel.h"
+#include "../Objects/IllumShader/PerPixel.h"
 
 #include "../Lighting/LightDesc.h"
 #include "../Lighting/DirectionalResolve.h"

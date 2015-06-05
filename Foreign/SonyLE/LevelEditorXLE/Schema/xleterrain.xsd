@@ -36,6 +36,9 @@
       </xs:appinfo>
     </xs:annotation>
 
+    <xs:sequence>
+      <xs:element name="material" type="abstractTerrainMaterialDescType" minOccurs="0" maxOccurs="unbounded" />
+    </xs:sequence>
     <xs:attribute name="diffusedims" type="vector3Type" default="512 512 1"/>
     <xs:attribute name="normaldims" type="vector3Type" default="512 512 1"/>
     <xs:attribute name="paramdims" type="vector3Type" default="512 512 1"/>
@@ -109,7 +112,6 @@
 
     <xs:sequence>
       <xs:element name="baseTexture" type="terrainBaseTextureType" minOccurs="1" maxOccurs="1" />
-      <xs:element name="material" type="abstractTerrainMaterialDescType" minOccurs="0" maxOccurs="unbounded" />
     </xs:sequence>
     <xs:attribute name="UberSurfaceDir" type="xs:string" />
     <xs:attribute name="CellsDir" type="xs:string" />
