@@ -7,6 +7,8 @@
 #if !defined(TERRAIN_GENERATOR_H)
 #define TERRAIN_GENERATOR_H
 
+#include "../../Utility/perlinnoise.h"
+
 cbuffer TerrainLighting : register(b6)
 {
 	float SunAngle;				// should be a value between -1.f and 1.f representing angles between -.5 * pi and .5 * pi
@@ -32,5 +34,15 @@ Texture2DArray<uint> CoverageTileSet1 : register(t1);
 Texture2DArray<uint> CoverageTileSet2 : register(t2);
 Texture2DArray<uint> CoverageTileSet3 : register(t3);
 Texture2DArray<uint> CoverageTileSet4 : register(t4);
+
+Texture2DArray<uint> HeightsTileSet : register(t0);
+
+float3 AddNoise(float3 worldPosition)
+{
+	#if (DO_ADD_NOISE==1)
+		worldPosition.z += 33.f * fbmNoise2D(worldPosition.xy, 75.f, .5f, 2.1042, 6);
+	#endif
+	return worldPosition;
+}
 
 #endif

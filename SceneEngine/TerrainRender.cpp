@@ -177,11 +177,11 @@ namespace SceneEngine
                     definesBuffer << ";VISUALIZE_COVERAGE=" << c;
             }
 
-        const char* ps = isTextured ? "game/xleres/forward/terrain_generator.sh:ps_main:ps_*" : "game/xleres/solidwireframe.psh:main:ps_*";
+        const char* ps = isTextured ? "game/xleres/objects/terrain/TerrainTexturing.sh:ps_main:ps_*" : "game/xleres/solidwireframe.psh:main:ps_*";
 
         if (Tweakable("LightingModel", 0) == 1 && isTextured) {
                 // manually switch to the forward shading pixel shader depending on the lighting model
-            ps = "game/xleres/forward/terrain_generator.sh:ps_main_forward:ps_*";
+            ps = "game/xleres/objects/terrain/TerrainTexturing.sh:ps_main_forward:ps_*";
         }
 
         InputElementDesc eles[] = {
@@ -194,7 +194,7 @@ namespace SceneEngine
             unsigned strides = sizeof(float)*4;
             GeometryShader::SetDefaultStreamOutputInitializers(
                 GeometryShader::StreamOutputInitializers(eles, dimof(eles), &strides, 1));
-            gs = "game/xleres/forward/terrain_generator.sh:gs_intersectiontest:gs_*";
+            gs = "game/xleres/objects/terrain/TerrainIntersection.sh:gs_intersectiontest:gs_*";
         } else if (desc._mode == TerrainRenderingContext::Mode_VegetationPrepare) {
             ps = "";
             gs = "game/xleres/Vegetation/InstanceSpawn.gsh:main:gs_*";
@@ -205,10 +205,10 @@ namespace SceneEngine
         const DeepShaderProgram* shaderProgram;
         TRY {
             shaderProgram = &::Assets::GetAssetDep<DeepShaderProgram>(
-                "game/xleres/forward/terrain_generator.sh:vs_dyntess_main:vs_*", 
+                "game/xleres/objects/terrain/GeoGenerator.sh:vs_dyntess_main:vs_*", 
                 gs, ps, 
-                "game/xleres/forward/terrain_generator.sh:hs_main:hs_*",
-                "game/xleres/forward/terrain_generator.sh:ds_main:ds_*",
+                "game/xleres/objects/terrain/GeoGenerator.sh:hs_main:hs_*",
+                "game/xleres/objects/terrain/GeoGenerator.sh:ds_main:ds_*",
                 definesBuffer.get());
         } CATCH (...) {
             GeometryShader::SetDefaultStreamOutputInitializers(GeometryShader::StreamOutputInitializers());
@@ -254,18 +254,18 @@ namespace SceneEngine
             const ShaderProgram* shaderProgram;
             if (mode == Mode_Normal) {
                 shaderProgram = &::Assets::GetAssetDep<ShaderProgram>(
-                    "game/xleres/forward/terrain_generator.sh:vs_basic:vs_*", 
+                    "game/xleres/objects/terrain/Basic.sh:vs_basic:vs_*", 
                     "game/xleres/solidwireframe.gsh:main:gs_*", 
                     "game/xleres/solidwireframe.psh:main:ps_*", "");
             } else if (mode == Mode_VegetationPrepare) {
                 shaderProgram = &::Assets::GetAssetDep<ShaderProgram>(
-                    "game/xleres/forward/terrain_generator.sh:vs_basic:vs_*", 
+                    "game/xleres/objects/terrain/Basic.sh:vs_basic:vs_*", 
                     "game/xleres/Vegetation/InstanceSpawn.gsh:main:gs_*", 
                     "", "OUTPUT_WORLD_POSITION=1");
             } else {
                 shaderProgram = &::Assets::GetAssetDep<ShaderProgram>(
-                    "game/xleres/forward/terrain_generator.sh:vs_basic:vs_*", 
-                    "game/xleres/forward/terrain_generator.sh:gs_intersectiontest:gs_*", 
+                    "game/xleres/objects/terrain/Basic.sh:vs_basic:vs_*", 
+                    "game/xleres/objects/terrain/TerrainIntersection.sh:gs_intersectiontest:gs_*", 
                     "", "OUTPUT_WORLD_POSITION=1");
             }
 
