@@ -88,7 +88,7 @@ namespace Utility
     public:
         const void* ReadPointer() const { return _ptr; }
         ptrdiff_t RemainingBytes() const { return ptrdiff_t(_end) - ptrdiff_t(_ptr); }
-        void MovePointer(ptrdiff_t offset);
+        void AdvancePointer(ptrdiff_t offset);
         void SetPointer(const void* newPtr);
         const void* Start() const { return _start; }
         const void* End() const { return _end; }
@@ -155,6 +155,18 @@ namespace Utility
         void ReadHeader();
     };
 
+
+    inline void MemoryMappedInputStream::AdvancePointer(ptrdiff_t offset) 
+    { 
+        assert(PtrAdd(_ptr, offset) <= _end && PtrAdd(_ptr, offset) >= _start);
+        _ptr = PtrAdd(_ptr, offset);
+    }
+
+    inline void MemoryMappedInputStream::SetPointer(const void* newPtr)
+    {
+        assert(newPtr <= _end && newPtr >= _start);
+        _ptr = newPtr;
+    }
 }
 
 using namespace Utility;

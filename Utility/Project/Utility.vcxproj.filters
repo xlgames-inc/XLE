@@ -91,6 +91,9 @@
     <ClInclude Include="..\Streams\StreamDOM.h">
       <Filter>Streams</Filter>
     </ClInclude>
+    <ClInclude Include="..\Streams\XmlStreamFormatter.h">
+      <Filter>Streams</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\StringFormat.cpp" />
@@ -148,6 +151,9 @@
       <Filter>Streams</Filter>
     </ClCompile>
     <ClCompile Include="..\Streams\StreamDOM.cpp">
+      <Filter>Streams</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Streams\XmlStreamFormatter.cpp">
       <Filter>Streams</Filter>
     </ClCompile>
   </ItemGroup>

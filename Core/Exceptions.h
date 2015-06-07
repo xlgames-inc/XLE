@@ -80,9 +80,16 @@ namespace Exceptions
 namespace Utility
 {
     #if FEATURE_EXCEPTIONS
-        template <class E> inline void ThrowException(const E& e)      { throw e; }
+        template <class E> inline void ThrowException(const E& e)   { throw e; }
+        template <class E> inline void Throw(const E& e)            { throw e; }
     #else
         template <class E> inline void ThrowException(const E& e)
+        {
+            // OutputDebugString("Suppressed thrown exception");
+            exit(-1);
+        }
+
+        template <class E> inline void Throw(const E& e)
         {
             // OutputDebugString("Suppressed thrown exception");
             exit(-1);

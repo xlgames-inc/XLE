@@ -16,18 +16,6 @@
 
 namespace Utility
 {
-    void MemoryMappedInputStream::MovePointer(ptrdiff_t offset) 
-    { 
-        assert(PtrAdd(_ptr, offset) <= _end && PtrAdd(_ptr, offset) >= _start);
-        _ptr = PtrAdd(_ptr, offset);
-    }
-
-    void MemoryMappedInputStream::SetPointer(const void* newPtr)
-    {
-        assert(newPtr <= _end && newPtr >= _start);
-        _ptr = newPtr;
-    }
-
     MemoryMappedInputStream::MemoryMappedInputStream(const void* start, const void* end) 
     {
         _start = _ptr = start;
@@ -258,7 +246,7 @@ namespace Utility
             if (test[c] != pattern[c])
                 return false;
         
-        stream.MovePointer(sizeof(CharType)*Count);
+        stream.AdvancePointer(sizeof(CharType)*Count);
         return true;
     }
 
@@ -273,7 +261,7 @@ namespace Utility
             if (test[c] != pattern[c])
                 ThrowException(FormatException("Malformed blob prefix", location));
         
-        stream.MovePointer(sizeof(CharType)*Count);
+        stream.AdvancePointer(sizeof(CharType)*Count);
     }
 
     template<typename CharType>
@@ -349,11 +337,11 @@ namespace Utility
             switch (*next)
             {
             case '\t':
-                _stream.MovePointer(sizeof(CharType));
+                _stream.AdvancePointer(sizeof(CharType));
                 _activeLineSpaces = CeilToMultiple(_activeLineSpaces+1, _tabWidth);
                 break;
             case ' ': 
-                _stream.MovePointer(sizeof(CharType));
+                _stream.AdvancePointer(sizeof(CharType));
                 ++_activeLineSpaces; 
                 break;
 
@@ -366,10 +354,10 @@ namespace Utility
                 ThrowException(FormatException("Unsupported white space character", GetLocation()));
 
             case '\r':  // (could be an independant new line, or /r/n combo)
-                _stream.MovePointer(sizeof(CharType));
+                _stream.AdvancePointer(sizeof(CharType));
                 if (    _stream.RemainingBytes() > sizeof(CharType)
                     &&  *(const CharType*)_stream.ReadPointer() == '\n')
-                    _stream.MovePointer(sizeof(CharType));
+                    _stream.AdvancePointer(sizeof(CharType));
 
                     // don't adjust _expected line spaces here -- we want to be sure 
                     // that lines with just whitespace don't affect _activeLineSpaces
@@ -378,18 +366,18 @@ namespace Utility
                 break;
 
             case '\n':  // (independant new line. A following /r will be treated as another new line)
-                _stream.MovePointer(sizeof(CharType));
+                _stream.AdvancePointer(sizeof(CharType));
                 _activeLineSpaces = 0;
                 ++_lineIndex; _lineStart = _stream.ReadPointer();
                 break;
 
             case ';':
                     // deliminator is ignored here
-                _stream.MovePointer(sizeof(CharType));
+                _stream.AdvancePointer(sizeof(CharType));
                 break;
 
             case '=':
-                _stream.MovePointer(sizeof(CharType));
+                _stream.AdvancePointer(sizeof(CharType));
                 EatWhitespace<CharType>(_stream);
                 _protectedStringMode = TryEat(_stream, Consts::ProtectedNamePrefix);
                 return _primed = Blob::AttributeValue;
@@ -397,7 +385,7 @@ namespace Utility
             case '~':
                 if (TryEat(_stream, Consts::CommentPrefix)) {
                         // this is a comment... Read forward until the end of the line
-                    _stream.MovePointer(2*sizeof(CharType));
+                    _stream.AdvancePointer(2*sizeof(CharType));
                     {
                         const auto* end = ((const CharType*)_stream.End());
                         const auto* ptr = (const CharType*)_stream.ReadPointer();
@@ -413,7 +401,7 @@ namespace Utility
                     return _primed = Blob::EndElement;
                 }
 
-                _stream.MovePointer(sizeof(CharType));
+                _stream.AdvancePointer(sizeof(CharType));
                 _protectedStringMode = TryEat(_stream, Consts::ProtectedNamePrefix);
                 return _primed = Blob::BeginElement;
 
@@ -459,7 +447,7 @@ namespace Utility
             case '\t':
             case ' ': 
             case ';':
-                _stream.MovePointer(sizeof(CharType));
+                _stream.AdvancePointer(sizeof(CharType));
                 break;
 
             case 0x0B: case 0x0C: case 0x85: case 0xA0:
@@ -473,7 +461,7 @@ namespace Utility
                 return;
 
             case '=':
-                _stream.MovePointer(sizeof(CharType));
+                _stream.AdvancePointer(sizeof(CharType));
                 EatWhitespace<CharType>(_stream);
                 
                 {
