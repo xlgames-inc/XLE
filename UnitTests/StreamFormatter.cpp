@@ -58,7 +58,7 @@ namespace UnitTests
         MemoryMappedInputStream stream(AsPointer(converted.cbegin()), AsPointer(converted.cend()));
         InputStreamFormatter<CharType> formatter(stream);
 
-        Document<CharType> doc(formatter);
+        Document<InputStreamFormatter<CharType>> doc(formatter);
 
         int t = 0;
         (void)t;

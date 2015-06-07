@@ -6,22 +6,26 @@
 
 #pragma once
 
-#include "StreamFormatter.h"
 #include <vector>
 #include <string>
 
 namespace Utility
 {
-    template <typename CharType>
+    class OutputStreamFormatter;
+
+    template<typename Formatter>
+        class DocElementHelper;
+
+    template <typename Formatter>
         class Document
     {
     public:
-        using Section = typename InputStreamFormatter<CharType>::InteriorSection;
+        using value_type = typename Formatter::value_type;
+        using Section = typename Formatter::InteriorSection;
 
-        class ElementHelper;
-        ElementHelper Element(const CharType name[]);
+        DocElementHelper<Formatter> Element(const value_type name[]);
 
-        Document(InputStreamFormatter<CharType>& formatter);
+        Document(Formatter& formatter);
         ~Document();
     protected:
         class AttributeDesc
@@ -43,53 +47,57 @@ namespace Utility
         std::vector<ElementDesc>    _elements;
         std::vector<AttributeDesc>  _attributes;
 
-        unsigned ParseElement(InputStreamFormatter<CharType>& formatter);
+        unsigned ParseElement(Formatter& formatter);
+
+        friend class DocElementHelper<Formatter>;
     };
 
-    template<typename CharType>
-        class Document<CharType>::ElementHelper
+    template<typename Formatter>
+        class DocElementHelper
     {
     public:
-        template<typename Type>
-            std::pair<bool, Type> Attribute(const CharType name[]);
+        using value_type = typename Formatter::value_type;
 
         template<typename Type>
-            Type Attribute(const CharType name[], const Type& def);
-
-        ElementHelper Element(const CharType name[]);
-        ElementHelper FirstChild();
-        ElementHelper NextSibling();
-
-        std::basic_string<CharType> Name() const;
-        std::basic_string<CharType> AttributeOrEmpty(const CharType name[]);
+            std::pair<bool, Type> Attribute(const value_type name[]);
 
         template<typename Type>
-            Type operator()(const CharType name[], const Type& def) { return Attribute(name, def); }
+            Type Attribute(const value_type name[], const Type& def);
+
+        DocElementHelper Element(const value_type name[]);
+        DocElementHelper FirstChild();
+        DocElementHelper NextSibling();
+
+        std::basic_string<value_type> Name() const;
+        std::basic_string<value_type> AttributeOrEmpty(const value_type name[]);
 
         template<typename Type>
-            std::basic_string<CharType> operator[](const CharType name[]) { return Attribute(name); }
+            Type operator()(const value_type name[], const Type& def) { return Attribute(name, def); }
+
+        template<typename Type>
+            std::basic_string<value_type> operator[](const value_type name[]) { return Attribute(name); }
 
         operator bool() const { return _index != ~0u; }
         bool operator!() const { return _index == ~0u; }
     protected:
-        Document<CharType>* _doc;
+        Document<Formatter>* _doc;
         unsigned _index;
 
-        ElementHelper(unsigned elementIndex, Document<CharType>& doc);
-        ElementHelper();
+        DocElementHelper(unsigned elementIndex, Document<Formatter>& doc);
+        DocElementHelper();
 
-        unsigned FindAttribute(const CharType* nameStart, const CharType* nameEnd);
+        unsigned FindAttribute(const value_type* nameStart, const value_type* nameEnd);
 
-        friend class Document<CharType>;
+        friend class Document<Formatter>;
     };
 
     template<typename Type> Type Default() { return Type(); }
     template<typename Type, typename std::enable_if<std::is_pointer<Type>::value>::type* = nullptr>
         Type* Default() { return nullptr; }
 
-    template<typename CharType>
+    template<typename Formatter>
         template<typename Type>
-            std::pair<bool, Type> Document<CharType>::ElementHelper::Attribute(const CharType name[])
+            std::pair<bool, Type> DocElementHelper<Formatter>::Attribute(const value_type name[])
     {
         if (_index == ~0u) std::make_pair(false, Default<Type>());
         auto a = FindAttribute(name, &name[XlStringLen(name)]);
@@ -98,9 +106,9 @@ namespace Utility
         return ImpliedTyping::Parse<Type>(attrib._value._start, attrib._value._end);
     }
 
-    template<typename CharType>
+    template<typename Formatter>
         template<typename Type>
-            Type Document<CharType>::ElementHelper::Attribute(const CharType name[], const Type& def)
+            Type DocElementHelper<Formatter>::Attribute(const value_type name[], const Type& def)
     {
         auto temp = Attribute<Type>(name);
         if (temp.first) return std::move(temp.second);
@@ -130,14 +138,14 @@ namespace Utility
         formatter.EndElement(ele);
     }
 
-    template<typename Type, typename CharType>
-        inline Type Deserialize(typename Document<CharType>::ElementHelper& ele, const CharType name[], const Type& obj)
+    template<typename Type, typename Formatter>
+        inline Type Deserialize(DocElementHelper<Formatter>& ele, const typename Formatter::value_type name[], const Type& obj)
     {
         return ele(name, obj);
     }
 
-    template<typename FirstType, typename SecondType, typename CharType>
-        inline std::pair<FirstType, SecondType> Deserialize(typename Document<CharType>::ElementHelper& ele, const CharType name[], const std::pair<FirstType, SecondType>& def)
+    template<typename FirstType, typename SecondType, typename Formatter>
+        inline std::pair<FirstType, SecondType> Deserialize(DocElementHelper<Formatter>& ele, const typename Formatter::value_type name[], const std::pair<FirstType, SecondType>& def)
     {
         auto subEle = ele.Element(name);
         if (!subEle) return def;

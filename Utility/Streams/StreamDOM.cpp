@@ -5,15 +5,17 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "StreamDOM.h"
+#include "StreamFormatter.h"
+#include "XmlStreamFormatter.h"
 #include "../StringFormat.h"
 
 namespace Utility
 {
 
-    template <typename CharType>
-        unsigned Document<CharType>::ParseElement(InputStreamFormatter<CharType>& formatter)
+    template <typename Formatter>
+        unsigned Document<Formatter>::ParseElement(Formatter& formatter)
     {
-        InputStreamFormatter<CharType>::InteriorSection section;
+        Formatter::InteriorSection section;
         if (!formatter.TryReadBeginElement(section))
             return ~0u;
 
@@ -32,7 +34,7 @@ namespace Utility
         auto lastAttribute = ~0u;
         for (;;) {
             auto next = formatter.PeekNext();
-            if (next == InputStreamFormatter<CharType>::Blob::BeginElement) {
+            if (next == Formatter::Blob::BeginElement) {
                 auto newElement = ParseElement(formatter);
                 if (lastChild == ~0u) {
                     _elements[e]._firstChild = newElement;
@@ -40,11 +42,11 @@ namespace Utility
                     _elements[lastChild]._nextSibling = newElement;
                 }
                 lastChild = newElement;
-            } else if (next == InputStreamFormatter<CharType>::Blob::AttributeName) {
-                InputStreamFormatter<CharType>::InteriorSection name;
-                InputStreamFormatter<CharType>::InteriorSection value;
+            } else if (next == Formatter::Blob::AttributeName) {
+                Formatter::InteriorSection name;
+                Formatter::InteriorSection value;
                 if (!formatter.TryReadAttribute(name, value))
-                    ThrowException(FormatException(
+                    Throw(FormatException(
                         "Error while reading attribute in StreamDOM", formatter.GetLocation()));
 
                 AttributeDesc attrib;
@@ -59,44 +61,44 @@ namespace Utility
                     _attributes[lastAttribute]._nextSibling = a;
                 }
                 lastAttribute = a;
-            } else if (next == InputStreamFormatter<CharType>::Blob::EndElement) {
+            } else if (next == Formatter::Blob::EndElement) {
                 break;
             } else {
-                ThrowException(FormatException(
+                Throw(FormatException(
                     StringMeld<128>() << "Got unexpected blob type (" << unsigned(next) << ") while parsing element in StreamDOM",
                     formatter.GetLocation()));
             }
         }
 
         if (!formatter.TryReadEndElement()) 
-            ThrowException(FormatException(
+            Throw(FormatException(
                 "Expected end element in StreamDOM", formatter.GetLocation()));
 
         return e;
     }
 
-    template <typename CharType>
-        auto Document<CharType>::Element(const CharType name[]) -> ElementHelper
+    template <typename Formatter>
+        auto Document<Formatter>::Element(const value_type name[]) -> DocElementHelper<Formatter>
     {
             // look for top-level element with a name that matches the given name
             // exactly.
-        if (!_elements.size()) return ElementHelper();
+        if (!_elements.size()) return DocElementHelper<Formatter>();
 
         auto expectedNameLen = (ptrdiff_t)XlStringLen(name);
         for (unsigned e=0; e!=~0u;) {
             const auto& ele = _elements[e];
             auto nameLen = ele._name._end - ele._name._start;
             if (nameLen == expectedNameLen && !XlComparePrefix(ele._name._start, name, nameLen))
-                return ElementHelper(e, *this);
+                return DocElementHelper<Formatter>(e, *this);
 
             e=ele._nextSibling;
         }
 
-        return ElementHelper();
+        return DocElementHelper<Formatter>();
     }
 
-    template <typename CharType>
-        Document<CharType>::Document(InputStreamFormatter<CharType>& formatter)
+    template <typename Formatter>
+        Document<Formatter>::Document(Formatter& formatter)
     {
         _elements.reserve(32);
         _attributes.reserve(64);
@@ -112,21 +114,21 @@ namespace Utility
             lastEle = newEle;
         }
         
-        if (formatter.PeekNext() != InputStreamFormatter<CharType>::Blob::None)
-            ThrowException(FormatException(
+        if (formatter.PeekNext() != Formatter::Blob::None)
+            Throw(FormatException(
                 "Unexpected trailing characters in StreamDOM", formatter.GetLocation()));
     }
 
-    template <typename CharType>
-        Document<CharType>::~Document()
+    template <typename Formatter>
+        Document<Formatter>::~Document()
     {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    template<typename CharType>
-        auto Document<CharType>::ElementHelper::Element(const CharType name[]) -> ElementHelper
+    template<typename Formatter>
+        auto DocElementHelper<Formatter>::Element(const value_type name[]) -> DocElementHelper<Formatter>
     {
-        if (_index == ~0u) return ElementHelper();
+        if (_index == ~0u) return DocElementHelper<Formatter>();
         auto& ele = _doc->_elements[_index];
 
         auto expectedNameLen = (ptrdiff_t)XlStringLen(name);
@@ -134,50 +136,50 @@ namespace Utility
             const auto& ele = _doc->_elements[e];
             auto nameLen = ele._name._end - ele._name._start;
             if (nameLen == expectedNameLen && !XlComparePrefix(ele._name._start, name, nameLen))
-                return ElementHelper(e, *_doc);
+                return DocElementHelper<Formatter>(e, *_doc);
 
             e=ele._nextSibling;
         }
 
-        return ElementHelper();
+        return DocElementHelper<Formatter>();
     }
 
-    template<typename CharType>
-        auto Document<CharType>::ElementHelper::FirstChild() -> ElementHelper
+    template<typename Formatter>
+        auto DocElementHelper<Formatter>::FirstChild() -> DocElementHelper<Formatter>
     {
-        if (_index == ~0u) return ElementHelper();
+        if (_index == ~0u) return DocElementHelper<Formatter>();
         auto& ele = _doc->_elements[_index];
-        return ElementHelper(ele._firstChild, *_doc);
+        return DocElementHelper<Formatter>(ele._firstChild, *_doc);
     }
 
-    template<typename CharType>
-        auto Document<CharType>::ElementHelper::NextSibling() -> ElementHelper
+    template<typename Formatter>
+        auto DocElementHelper<Formatter>::NextSibling() -> DocElementHelper<Formatter>
     {
-        if (_index == ~0u) return ElementHelper();
+        if (_index == ~0u) return DocElementHelper<Formatter>();
         auto& ele = _doc->_elements[_index];
-        return ElementHelper(ele._nextSibling, *_doc);
+        return DocElementHelper<Formatter>(ele._nextSibling, *_doc);
     }
 
-    template<typename CharType>
-        std::basic_string<CharType> Document<CharType>::ElementHelper::Name() const
+    template<typename Formatter>
+        auto DocElementHelper<Formatter>::Name() const -> std::basic_string<value_type>
     {
-        if (_index == ~0u) return std::basic_string<CharType>();
+        if (_index == ~0u) return std::basic_string<value_type>();
         auto& ele = _doc->_elements[_index];
-        return std::basic_string<CharType>(ele._name._start, ele._name._end);
+        return std::basic_string<value_type>(ele._name._start, ele._name._end);
     }
 
-    template<typename CharType>
-        std::basic_string<CharType> Document<CharType>::ElementHelper::AttributeOrEmpty(const CharType name[])
+    template<typename Formatter>
+        auto DocElementHelper<Formatter>::AttributeOrEmpty(const value_type name[]) -> std::basic_string<value_type>
     {
-        if (_index == ~0u) return std::basic_string<CharType>();
+        if (_index == ~0u) return std::basic_string<value_type>();
         auto a = FindAttribute(name, &name[XlStringLen(name)]);
-        if (a == ~0u) return std::basic_string<CharType>();
+        if (a == ~0u) return std::basic_string<value_type>();
         const auto& attrib = _doc->_attributes[a];
-        return std::basic_string<CharType>(attrib._value._start, attrib._value._end);
+        return std::basic_string<value_type>(attrib._value._start, attrib._value._end);
     }
 
-    template<typename CharType>
-        unsigned Document<CharType>::ElementHelper::FindAttribute(const CharType* nameStart, const CharType* nameEnd)
+    template<typename Formatter>
+        unsigned DocElementHelper<Formatter>::FindAttribute(const value_type* nameStart, const value_type* nameEnd)
     {
         assert(_index != ~0u);
         auto& ele = _doc->_elements[_index];
@@ -195,15 +197,15 @@ namespace Utility
         return ~0u;
     }
 
-    template<typename CharType>
-        Document<CharType>::ElementHelper::ElementHelper(unsigned elementIndex, Document<CharType>& doc)
+    template<typename Formatter>
+        DocElementHelper<Formatter>::DocElementHelper(unsigned elementIndex, Document<Formatter>& doc)
     {
         _doc = &doc;
         _index = elementIndex;
     }
 
-    template<typename CharType>
-        Document<CharType>::ElementHelper::ElementHelper()
+    template<typename Formatter>
+        DocElementHelper<Formatter>::DocElementHelper()
     {
         _index = ~0u;
         _doc = nullptr;
@@ -211,7 +213,14 @@ namespace Utility
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    template class Document<utf8>;
-    template class Document<ucs2>;
-    template class Document<ucs4>;
+    template class Document<InputStreamFormatter<utf8>>;
+    template class Document<InputStreamFormatter<ucs2>>;
+    template class Document<InputStreamFormatter<ucs4>>;
+    template class Document<XmlInputStreamFormatter<utf8>>;
+
+    template class DocElementHelper<InputStreamFormatter<utf8>>;
+    template class DocElementHelper<InputStreamFormatter<ucs2>>;
+    template class DocElementHelper<InputStreamFormatter<ucs4>>;
+    template class DocElementHelper<XmlInputStreamFormatter<utf8>>;
+
 }

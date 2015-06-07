@@ -162,7 +162,7 @@ namespace SceneEngine
         {
             InputStreamFormatter<utf8> formatter(
                 MemoryMappedInputStream(sourceFile.get(), PtrAdd(sourceFile.get(), fileSize)));
-            Document<utf8> doc(formatter);
+            Document<InputStreamFormatter<utf8>> doc(formatter);
 
             auto c = doc.Element(u("TerrainConfig"));
             if (c) {
@@ -335,7 +335,7 @@ namespace SceneEngine
 
         InputStreamFormatter<utf8> formatter(
             MemoryMappedInputStream(sourceFile.get(), PtrAdd(sourceFile.get(), fileSize)));
-        Document<utf8> doc(formatter);
+        Document<InputStreamFormatter<utf8>> doc(formatter);
 
         auto heightRanges = doc.Element(u("CellHeightRange"));
         if (heightRanges) {

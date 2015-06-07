@@ -68,7 +68,7 @@ namespace SceneEngine
         {
             InputStreamFormatter<utf8> formatter(
                 MemoryMappedInputStream(file.get(), PtrAdd(file.get(), fileSize)));
-            Document<utf8> doc(formatter);
+            Document<InputStreamFormatter<utf8>> doc(formatter);
 
             auto cfg = doc.Element(u("Config"));
 
