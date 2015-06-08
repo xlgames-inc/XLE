@@ -12,7 +12,7 @@
 #include "../Utility/ParameterBox.h"
 #include "../ConsoleRig/Log.h"
 
-namespace std
+namespace std   // adding these to std is awkward, but it's the only way to make sure easylogging++ can see them
 {
     inline MAKE_LOGGABLE(StreamLocation, loc, os) 
     {
@@ -20,7 +20,8 @@ namespace std
         return os;
     }
 
-    inline MAKE_LOGGABLE(XmlInputStreamFormatter<utf8>::InteriorSection, section, os) 
+    // inline MAKE_LOGGABLE(XmlInputStreamFormatter<utf8>::InteriorSection, section, os) 
+    inline std::ostream& operator<<(std::ostream& os, XmlInputStreamFormatter<utf8>::InteriorSection section)
     {
         os << Conversion::Convert<std::basic_string<char>>(
             std::basic_string<utf8>(section._start, section._end));
@@ -129,8 +130,10 @@ namespace ColladaConversion
                     Formatter::InteriorSection eleName;
                     formatter.TryBeginElement(eleName);
                     if (Is(eleName, u("unit"))) {
-                        Utility::Document<Formatter> doc(formatter);
-                        _metersPerUnit = doc(u("meter"), _metersPerUnit);
+                        // Utility::Document<Formatter> doc(formatter);
+                        // _metersPerUnit = doc(u("meter"), _metersPerUnit);
+                        auto meter = ExtractSingleAttribute(formatter, u("meter"));
+                        _metersPerUnit = Parse(meter, _metersPerUnit);
                     } else if (Is(eleName, u("up_axis"))) {
                         if (formatter.TryCharacterData(eleName)) {
                             if ((eleName._end - eleName._start) >= 1) {
@@ -266,8 +269,8 @@ namespace ColladaConversion
 
         ParameterSet();
         ~ParameterSet();
-        ParameterSet(ParameterSet&& moveFrom);
-        ParameterSet& operator=(ParameterSet&&);
+        ParameterSet(ParameterSet&& moveFrom) never_throws;
+        ParameterSet& operator=(ParameterSet&&) never_throws;
     };
 
     ParameterSet::SamplerParameter::SamplerParameter()
@@ -505,8 +508,8 @@ namespace ColladaConversion
             SubDoc _techniqueExtra;
 
             Profile(Formatter& formatter, String profileType);
-            Profile(Profile&& moveFrom);
-            Profile& operator=(Profile&& moveFrom);
+            Profile(Profile&& moveFrom) never_throws;
+            Profile& operator=(Profile&& moveFrom) never_throws;
 
         protected:
             void ParseTechnique(Formatter& formatter);
@@ -518,8 +521,8 @@ namespace ColladaConversion
         SubDoc _extra;
 
         Effect(Formatter& formatter);
-        Effect(Effect&& moveFrom);
-        Effect& operator=(Effect&& moveFrom);
+        Effect(Effect&& moveFrom) never_throws;
+        Effect& operator=(Effect&& moveFrom) never_throws;
     };
 
     Effect::Profile::Profile(Formatter& formatter, String profileType)
@@ -953,9 +956,193 @@ namespace ColladaConversion
         }
     }
 
+    class Source
+    {
+    public:
+        Section _id;
+        Section _arrayData;
+        Section _arrayType;
+        Section _arrayId;
+        unsigned _arrayCount;
+
+        Source(Formatter& formatter);
+    };
+
+    class Geometry
+    {
+    public:
+
+        
+        std::vector<Source> _sources;
+
+        Geometry(Formatter& formatter);
+
+        Geometry();
+        Geometry(Geometry&& moveFrom) never_throws;
+        Geometry& operator=(Geometry&& moveFrom) never_throws;
+
+    protected:
+        void ParseMesh(Formatter& formatter);
+    };
+
+    #define ON_ELEMENT                                              \
+        for (;;) {                                                  \
+            switch (formatter.PeekNext()) {                         \
+            case Formatter::Blob::BeginElement:                     \
+                {                                                   \
+                    Formatter::InteriorSection eleName;             \
+                    formatter.TryBeginElement(eleName);             \
+        /**/
+
+    #define ON_ATTRIBUTE                                            \
+                    if (!formatter.TryEndElement())                 \
+                        Throw(FormatException("Expecting end element", formatter.GetLocation()));       \
+                    continue;                                       \
+                }                                                   \
+                                                                    \
+            case Formatter::Blob::AttributeName:                    \
+                {                                                   \
+                    Formatter::InteriorSection name, value;         \
+                    formatter.TryAttribute(name, value);            \
+        /**/
+
+    #define PARSE_END                                               \
+                    continue;                                       \
+                }                                                   \
+            }                                                       \
+                                                                    \
+            break;                                                  \
+        }                                                           \
+        /**/
+
+
+    Source::Source(Formatter& formatter)
+    {
+        ON_ELEMENT
+            if (EndsWith(eleName, "_array")) {
+
+                    // This is an array of elements, typically with an id and count
+                    // we should have only a single array in each source. But it can
+                    // be one of many different types.
+                    // Most large data in Collada should appear in blocks like this. 
+                    // We don't attempt to parse it here, just record it's location in
+                    // the file for later;
+                
+                _arrayType = Section(eleName._start, eleName._end-6);
+                
+                    // this element should have no sub-elements. But it has important
+                    // attributes. Given that the source is XML, the attributes
+                    // will always come first.
+                {
+                    while (formatter.PeekNext(true) == Formatter::Blob::AttributeName) {
+                        Section name, value;
+                        formatter.TryAttribute(name, value);
+
+                        if (Is(name, u("count"))) {
+                            _arrayCount = Parse(value, 0u);
+                        } else if (Is(name, u("id"))) {
+                            _arrayId = value;
+                        } // "name also valid
+                    }
+                }
+
+                Section cdata;
+                if (formatter.TryCharacterData(cdata)) {
+                    _arrayData = cdata;
+                } else {
+                    LogWarning << "Data source contains no data! At: " << formatter.GetLocation();
+                }
+
+            } else if (Is(eleName, "technique")) {
+
+                // this can contain special case non-standard information
+                // But it's not clear what this would be used for
+                formatter.SkipElement();
+
+            } else if (Is(eleName, "technique_common")) {
+
+                // This specifies the way we interpret the information in the array.
+                // It should occur after the array object. So we can resolve the reference
+                // in the accessor -- but only assuming that the reference in the accessor
+                // refers to an array in this document. That would be logical and typical.
+                // But the standard suggests the accessor can actually refer to a data array
+                // anywhere (including in other files)
+                // Anyway, it looks like we should have only a single accessor per technique
+
+            } else {
+                    // "asset" also valid
+                formatter.SkipElement();
+            }
+
+        ON_ATTRIBUTE
+            if (Is(name, u("id"))) {
+                _id = value;
+            } // "name" is also valid
+        PARSE_END
+    }
+
+    void Geometry::ParseMesh(Formatter& formatter)
+    {
+        ON_ELEMENT
+            if (Is(eleName, u("source"))) {
+                _sources.push_back(Source(formatter));
+            }
+
+        ON_ATTRIBUTE
+        PARSE_END
+    }
+
+    Geometry::Geometry(Formatter& formatter)
+    {
+        ON_ELEMENT
+            if (Is(eleName, u("mesh"))) {
+
+                ParseMesh(formatter);
+
+            } else if (Is(eleName, u("convex_mesh")) || Is(eleName, u("spline")) || Is(eleName, u("brep"))) {
+                LogWarning << "convex_mesh, spline and brep geometries are not supported. At: " << formatter.GetLocation();
+                formatter.SkipElement();
+            } else {
+                    // "asset" and "extra" are also valid, but it's unlikely that they would be present here
+                formatter.SkipElement();
+            }
+
+        ON_ATTRIBUTE
+        PARSE_END
+    }
+
     void ColladaDocument::Parse_LibraryGeometries(XmlInputStreamFormatter<utf8>& formatter)
     {
-        formatter.SkipElement();
+        for (;;) {
+            switch (formatter.PeekNext()) {
+            case Formatter::Blob::BeginElement:
+                {
+                    Formatter::InteriorSection eleName;
+                    formatter.TryBeginElement(eleName);
+
+                    if (Is(eleName, u("geometry"))) {
+                        _geometries.push_back(Geometry(formatter));
+                    } else {
+                            // "asset" and "extra" are also valid, but uninteresting
+                        formatter.SkipElement();
+                    }
+
+                    if (!formatter.TryEndElement())
+                        Throw(FormatException("Expecting end element", formatter.GetLocation()));
+                    continue;
+                }
+
+            case Formatter::Blob::AttributeName:
+                {
+                    Formatter::InteriorSection name, value;
+                    formatter.TryAttribute(name, value);
+                    // name and id. Not interesting if we have only a single library
+                    continue;
+                }
+            }
+
+            break;
+        }
     }
 
     ColladaDocument::ColladaDocument() {}
