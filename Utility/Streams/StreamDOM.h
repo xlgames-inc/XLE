@@ -23,10 +23,23 @@ namespace Utility
         using value_type = typename Formatter::value_type;
         using Section = typename Formatter::InteriorSection;
 
+        template<typename Type>
+            std::pair<bool, Type> Attribute(const value_type name[]);
+
+        template<typename Type>
+            Type Attribute(const value_type name[], const Type& def);
+
+        template<typename Type>
+            Type operator()(const value_type name[], const Type& def) { return Attribute(name, def); }
+
         DocElementHelper<Formatter> Element(const value_type name[]);
 
+        Document();
         Document(Formatter& formatter);
         ~Document();
+
+        Document(Document&& moveFrom);
+        Document& operator=(Document&& moveFrom);
     protected:
         class AttributeDesc
         {
@@ -48,6 +61,8 @@ namespace Utility
         std::vector<AttributeDesc>  _attributes;
 
         unsigned ParseElement(Formatter& formatter);
+
+        unsigned FindAttribute(const value_type* nameStart, const value_type* nameEnd);
 
         friend class DocElementHelper<Formatter>;
     };
@@ -94,6 +109,29 @@ namespace Utility
     template<typename Type> Type Default() { return Type(); }
     template<typename Type, typename std::enable_if<std::is_pointer<Type>::value>::type* = nullptr>
         Type* Default() { return nullptr; }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    template<typename Formatter>
+        template<typename Type>
+            std::pair<bool, Type> Document<Formatter>::Attribute(const value_type name[])
+    {
+        auto a = FindAttribute(name, &name[XlStringLen(name)]);
+        if (a == ~0u) return std::make_pair(false, Default<Type>());
+        const auto& attrib = _attributes[a];
+        return ImpliedTyping::Parse<Type>(attrib._value._start, attrib._value._end);
+    }
+
+    template<typename Formatter>
+        template<typename Type>
+            Type Document<Formatter>::Attribute(const value_type name[], const Type& def)
+    {
+        auto temp = Attribute<Type>(name);
+        if (temp.first) return std::move(temp.second);
+        return def;
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     template<typename Formatter>
         template<typename Type>

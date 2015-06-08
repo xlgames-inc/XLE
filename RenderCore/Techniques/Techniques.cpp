@@ -445,7 +445,7 @@ namespace RenderCore { namespace Techniques
                 ThrowException(FormatException("Unexpected blob when serializing inheritted list", source.GetLocation()));
             
             Formatter::InteriorSection name, value;
-            if (!source.TryReadAttribute(name, value))
+            if (!source.TryAttribute(name, value))
                 ThrowException(FormatException("Bad attribute in inheritted list", source.GetLocation()));
         
             auto colon = std::find(name._start, name._end, ':');
@@ -490,7 +490,7 @@ namespace RenderCore { namespace Techniques
                 ThrowException(FormatException("Unexpected blob when serializing parameter box list", source.GetLocation()));
 
             Formatter::InteriorSection eleName;
-            if (!source.TryReadBeginElement(eleName))
+            if (!source.TryBeginElement(eleName))
                 ThrowException(FormatException("Bad begin element in parameter box list", source.GetLocation()));
 
             bool matched = false;
@@ -503,7 +503,7 @@ namespace RenderCore { namespace Techniques
             if (!matched)
                 ThrowException(FormatException("Unknown parameter box name", source.GetLocation()));
 
-            if (!source.TryReadEndElement())
+            if (!source.TryEndElement())
                 ThrowException(FormatException("Bad end element in parameter box list", source.GetLocation()));
         }
     }
@@ -520,7 +520,7 @@ namespace RenderCore { namespace Techniques
                 ThrowException(FormatException("Unexpected blob in parameter box table setting", formatter.GetLocation()));
 
             Formatter::InteriorSection eleName;
-            if (!formatter.TryReadBeginElement(eleName)) 
+            if (!formatter.TryBeginElement(eleName)) 
                 ThrowException(FormatException("Bad begin element", formatter.GetLocation()));
 
             if (Is("Inherit", eleName)) {
@@ -529,7 +529,7 @@ namespace RenderCore { namespace Techniques
                 LoadParameterBoxes(formatter, _boxes);
             } else break;
 
-            if (!formatter.TryReadEndElement()) 
+            if (!formatter.TryEndElement()) 
                 ThrowException(FormatException("Bad end element", formatter.GetLocation()));
         }
     }
@@ -559,13 +559,13 @@ namespace RenderCore { namespace Techniques
                     case Formatter::Blob::BeginElement:
                         {
                             Formatter::InteriorSection settingName;
-                            if (!formatter.TryReadBeginElement(settingName)) break;
+                            if (!formatter.TryBeginElement(settingName)) break;
 
                             auto hash = Hash64(settingName._start, settingName._end);
                             auto i = LowerBound(_settings, hash);
                             _settings.insert(i, std::make_pair(hash, Setting(formatter, searchRules, inherited)));
 
-                            if (!formatter.TryReadEndElement()) break;
+                            if (!formatter.TryEndElement()) break;
                         }
                         continue;
 
@@ -636,7 +636,7 @@ namespace RenderCore { namespace Techniques
             {
             case Formatter::Blob::BeginElement:
                 Formatter::InteriorSection eleName;
-                if (!formatter.TryReadBeginElement(eleName)) break;
+                if (!formatter.TryBeginElement(eleName)) break;
 
                 if (Is("Inherit", eleName)) {
                     LoadInheritedParameterBoxes(formatter, _baseParameters._parameters, searchRules, inherited);
@@ -644,12 +644,12 @@ namespace RenderCore { namespace Techniques
                     LoadParameterBoxes(formatter, _baseParameters._parameters);
                 } else break;
 
-                if (!formatter.TryReadEndElement()) break;
+                if (!formatter.TryEndElement()) break;
                 continue;
 
             case Formatter::Blob::AttributeName:
                 Formatter::InteriorSection name, value;
-                if (!formatter.TryReadAttribute(name, value)) break;
+                if (!formatter.TryAttribute(name, value)) break;
                 if (Is("VertexShader", name)) {
                     _vertexShaderName = Conversion::Convert<decltype(_vertexShaderName)>(AsString(value));
                 } else if (Is("PixelShader", name)) {
@@ -745,14 +745,14 @@ namespace RenderCore { namespace Techniques
                     case Formatter::Blob::BeginElement:
                         {
                             Formatter::InteriorSection eleName;
-                            if (!formatter.TryReadBeginElement(eleName)) break;
+                            if (!formatter.TryBeginElement(eleName)) break;
 
                             _technique.push_back(
                                 Technique(
                                     formatter, 
                                     Conversion::Convert<std::string>(AsString(eleName)),
                                     &searchRules, &inheritedAssets));
-                            if (!formatter.TryReadEndElement()) break;
+                            if (!formatter.TryEndElement()) break;
                         }
                         continue;
 

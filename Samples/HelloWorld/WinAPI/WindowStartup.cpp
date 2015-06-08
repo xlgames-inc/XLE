@@ -26,6 +26,7 @@ namespace Sample
 #include "../../../Utility/Streams/FileUtils.h"
 #include "../../../Utility/Streams/StreamDom.h"
 #include "../../../Utility/Conversion.h"
+#include "../../../ConsoleRig/AttachableLibrary.h"
 #include <string>
 
 static std::string Ident(unsigned count)
@@ -39,6 +40,14 @@ template<typename Section>
     using CharType = std::remove_const<std::remove_reference<decltype(*section._start)>::type>::type;
     return Conversion::Convert<std::string>(
         std::basic_string<CharType>(section._start, section._end));
+}
+
+static void TestParser2()
+{
+    ConsoleRig::AttachableLibrary library("ColladaConversion.dll");
+    library.TryAttach();
+    auto fn = library.GetFunction<void(*)()>("TestParser");
+    fn();
 }
 
 static void TestParser()
@@ -61,23 +70,29 @@ static void TestParser()
         for (;;) {
             switch (formatter.PeekNext()) {
             case Formatter::Blob::BeginElement:
-                Formatter::InteriorSection eleName;
-                formatter.TryReadBeginElement(eleName);
-                LogInfo << Ident(il) << "Begin element: " << AsString(eleName);
-                il += 2;
-                break;
+                {
+                    Formatter::InteriorSection eleName;
+                    formatter.TryBeginElement(eleName);
+                    LogInfo << Ident(il) << "Begin element: " << AsString(eleName);
+                    il += 2;
+                    break;
+                }
 
             case Formatter::Blob::EndElement:
-                formatter.TryReadEndElement();
-                il -= 2;
-                LogInfo << Ident(il) << "End element";
-                break;
+                {
+                    formatter.TryEndElement();
+                    il -= 2;
+                    LogInfo << Ident(il) << "End element";
+                    break;
+                }
 
             case Formatter::Blob::AttributeName:
-                Formatter::InteriorSection name, value;
-                formatter.TryReadAttribute(name, value);
-                LogInfo << Ident(il) << AsString(name) << " = " << AsString(value);
-                break;
+                {
+                    Formatter::InteriorSection name, value;
+                    formatter.TryAttribute(name, value);
+                    LogInfo << Ident(il) << AsString(name) << " = " << AsString(value);
+                    break;
+                }
 
             case Formatter::Blob::None:
                 assert(il == 0);
@@ -115,6 +130,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
     ConsoleRig::GlobalServices services;
     LogInfo << "------------------------------------------------------------------------------------------";
 
+    TestParser2();
     TestParser();
 
     TRY {

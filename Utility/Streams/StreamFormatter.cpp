@@ -407,7 +407,7 @@ namespace Utility
 
             default:
                 // first, if our spacing has decreased, then we must consider it an "end element"
-                // caller must follow with "TryReadEndElement" until _expectedLineSpaces matches _activeLineSpaces
+                // caller must follow with "TryEndElement" until _expectedLineSpaces matches _activeLineSpaces
                 if (_activeLineSpaces <= _parentBaseLine) {
                     _protectedStringMode = false;
                     return _primed = Blob::EndElement;
@@ -491,7 +491,7 @@ namespace Utility
     }
 
     template<typename CharType>
-        bool InputStreamFormatter<CharType>::TryReadBeginElement(InteriorSection& name)
+        bool InputStreamFormatter<CharType>::TryBeginElement(InteriorSection& name)
     {
         if (PeekNext() != Blob::BeginElement) return false;
 
@@ -511,7 +511,7 @@ namespace Utility
     }
 
     template<typename CharType>
-        bool InputStreamFormatter<CharType>::TryReadEndElement()
+        bool InputStreamFormatter<CharType>::TryEndElement()
     {
         if (PeekNext() != Blob::EndElement) return false;
 
@@ -530,37 +530,39 @@ namespace Utility
     {
         unsigned subtreeEle = 0;
         InteriorSection dummy0, dummy1;
-        switch(PeekNext()) {
-        case Blob::BeginElement:
-            if (!TryReadBeginElement(dummy0))
+        for (;;) {
+            switch(PeekNext()) {
+            case Blob::BeginElement:
+                if (!TryBeginElement(dummy0))
+                    ThrowException(FormatException(
+                        "Malformed begin element while skipping forward", GetLocation()));
+                ++subtreeEle;
+                break;
+
+            case Blob::EndElement:
+                if (!subtreeEle) return;    // end now, while the EndElement is primed
+
+                if (!TryEndElement())
+                    ThrowException(FormatException(
+                        "Malformed end element while skipping forward", GetLocation()));
+                --subtreeEle;
+                break;
+
+            case Blob::AttributeName:
+                if (!TryAttribute(dummy0, dummy1))
+                    ThrowException(FormatException(
+                        "Malformed attribute while skipping forward", GetLocation()));
+                break;
+
+            default:
                 ThrowException(FormatException(
-                    "Malformed begin element while skipping forward", GetLocation()));
-            ++subtreeEle;
-            break;
-
-        case Blob::EndElement:
-            if (!subtreeEle) return;    // end now, while the EndElement is primed
-
-            if (!TryReadEndElement())
-                ThrowException(FormatException(
-                    "Malformed end element while skipping forward", GetLocation()));
-            --subtreeEle;
-            break;
-
-        case Blob::AttributeName:
-            if (!TryReadAttribute(dummy0, dummy1))
-                ThrowException(FormatException(
-                    "Malformed attribute while skipping forward", GetLocation()));
-            break;
-
-        default:
-            ThrowException(FormatException(
-                "Unexpected blob or end of stream hit while skipping forward", GetLocation()));
+                    "Unexpected blob or end of stream hit while skipping forward", GetLocation()));
+            }
         }
     }
 
     template<typename CharType>
-        bool InputStreamFormatter<CharType>::TryReadAttribute(InteriorSection& name, InteriorSection& value)
+        bool InputStreamFormatter<CharType>::TryAttribute(InteriorSection& name, InteriorSection& value)
     {
         if (PeekNext() != Blob::AttributeName) return false;
 

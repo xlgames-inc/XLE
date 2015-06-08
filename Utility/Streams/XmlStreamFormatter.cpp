@@ -173,7 +173,7 @@ namespace Utility
     }
 
     template<typename CharType>
-        auto XmlInputStreamFormatter<CharType>::PeekNext() -> Blob
+        auto XmlInputStreamFormatter<CharType>::PeekNext(bool allowCharacterData) -> Blob
     {
         if (_primed != Blob::None) return _primed;
 
@@ -211,6 +211,10 @@ namespace Utility
         auto scopeType = _scopeStack.top()._type;
         if (scopeType == Scope::Type::None || scopeType == Scope::Type::Element) {
 
+            if (allowCharacterData && mark.Remaining() >= 1 && *mark != '<') {
+                return _primed = Blob::CharacterData;
+            }
+            
             for (;;) {
 
                 CharType testChar;
@@ -251,7 +255,8 @@ namespace Utility
                         ScanToClosing(Const::CommentEnd, mark, "Unexpected end of file in comment", blobStart);
                     } else if (TryEat(Const::CDataPrefix, mark) == Match) {
                             // "cdata" is special, because it can contain '>' within it. We need to look for the
-                            // special deliminator
+                            // special deliminator.
+                            // Note -- this cdata form won't result in a CharacterData type blob!
                         ScanToClosing(Const::CDataEnd, mark, "Unexpected end of file in cdata", blobStart);
                     } else {
                             // some other special blob should end in '>'
@@ -285,7 +290,7 @@ namespace Utility
                 ++mark;
                 _marker = mark;
                 _scopeStack.top()._type = Scope::Type::Element;
-                return PeekNext();
+                return PeekNext(allowCharacterData);
             } else {
                 Throw(FormatException("Bad character in attribute list", mark.GetLocation()));
             }
@@ -298,7 +303,7 @@ namespace Utility
     }
 
     template<typename CharType>
-        bool XmlInputStreamFormatter<CharType>::TryReadBeginElement(InteriorSection& name)
+        bool XmlInputStreamFormatter<CharType>::TryBeginElement(InteriorSection& name)
         {
             if (PeekNext() != Blob::BeginElement) return false;
 
@@ -343,7 +348,7 @@ namespace Utility
         }
 
     template<typename CharType>
-        bool XmlInputStreamFormatter<CharType>::TryReadEndElement() 
+        bool XmlInputStreamFormatter<CharType>::TryEndElement() 
     {
         if (PeekNext() != Blob::EndElement) return false;
 
@@ -388,7 +393,7 @@ namespace Utility
     }
 
     template<typename CharType>
-        bool XmlInputStreamFormatter<CharType>::TryReadAttribute(InteriorSection& name, InteriorSection& value)
+        bool XmlInputStreamFormatter<CharType>::TryAttribute(InteriorSection& name, InteriorSection& value)
     {
         if (PeekNext() != Blob::AttributeName) return false;
 
@@ -423,36 +428,63 @@ namespace Utility
     }
 
     template<typename CharType>
+        bool XmlInputStreamFormatter<CharType>::TryCharacterData(InteriorSection& cdata)
+    {
+        if (PeekNext(true) != Blob::CharacterData) return false;
+
+        cdata._start = _marker.Pointer();
+
+        for (;;) {
+            if (_marker.Remaining() < 1) { 
+                    // reached end of tile
+                if (_scopeStack.top()._type != Scope::Type::None) {
+                    Throw(FormatException("Unexpected end of file in element", _marker.GetLocation()));
+                    break;
+                }
+            }
+            if (*_marker == '<') break;
+            _marker.AdvanceCheckNewLine();
+        }
+
+        cdata._end = _marker.Pointer();
+
+        _primed = Blob::None;
+        return true;
+    }
+
+    template<typename CharType>
         void XmlInputStreamFormatter<CharType>::SkipElement() 
     {
         unsigned subtreeEle = 0;
         InteriorSection dummy0, dummy1;
-        switch(PeekNext()) {
-        case Blob::BeginElement:
-            if (!TryReadBeginElement(dummy0))
+        for (;;) {
+            switch(PeekNext()) {
+            case Blob::BeginElement:
+                if (!TryBeginElement(dummy0))
+                    ThrowException(FormatException(
+                        "Malformed begin element while skipping forward", GetLocation()));
+                ++subtreeEle;
+                break;
+
+            case Blob::EndElement:
+                if (!subtreeEle) return;    // end now, while the EndElement is primed
+
+                if (!TryEndElement())
+                    ThrowException(FormatException(
+                        "Malformed end element while skipping forward", GetLocation()));
+                --subtreeEle;
+                break;
+
+            case Blob::AttributeName:
+                if (!TryAttribute(dummy0, dummy1))
+                    ThrowException(FormatException(
+                        "Malformed attribute while skipping forward", GetLocation()));
+                break;
+
+            default:
                 ThrowException(FormatException(
-                    "Malformed begin element while skipping forward", GetLocation()));
-            ++subtreeEle;
-            break;
-
-        case Blob::EndElement:
-            if (!subtreeEle) return;    // end now, while the EndElement is primed
-
-            if (!TryReadEndElement())
-                ThrowException(FormatException(
-                    "Malformed end element while skipping forward", GetLocation()));
-            --subtreeEle;
-            break;
-
-        case Blob::AttributeName:
-            if (!TryReadAttribute(dummy0, dummy1))
-                ThrowException(FormatException(
-                    "Malformed attribute while skipping forward", GetLocation()));
-            break;
-
-        default:
-            ThrowException(FormatException(
-                "Unexpected blob or end of stream hit while skipping forward", GetLocation()));
+                    "Unexpected blob or end of stream hit while skipping forward", GetLocation()));
+            }
         }
     }
 
@@ -468,7 +500,7 @@ namespace Utility
     {
         _primed = Blob::None;
         _pendingHeader = true;
-        _scopeStack.push(Scope{Scope::Type::None, InteriorSection{nullptr, nullptr}});
+        _scopeStack.push(Scope{Scope::Type::None, InteriorSection()});
     }
 
     template<typename CharType>

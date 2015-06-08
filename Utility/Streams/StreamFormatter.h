@@ -122,9 +122,9 @@ namespace Utility
             const CharType* _end;
         };
 
-        bool TryReadBeginElement(InteriorSection& name);
-        bool TryReadEndElement();
-        bool TryReadAttribute(InteriorSection& name, InteriorSection& value);
+        bool TryBeginElement(InteriorSection& name);
+        bool TryEndElement();
+        bool TryAttribute(InteriorSection& name, InteriorSection& value);
 
         void SkipElement();
 

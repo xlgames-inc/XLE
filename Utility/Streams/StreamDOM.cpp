@@ -16,7 +16,7 @@ namespace Utility
         unsigned Document<Formatter>::ParseElement(Formatter& formatter)
     {
         Formatter::InteriorSection section;
-        if (!formatter.TryReadBeginElement(section))
+        if (!formatter.TryBeginElement(section))
             return ~0u;
 
         unsigned e = ~0u;
@@ -45,7 +45,7 @@ namespace Utility
             } else if (next == Formatter::Blob::AttributeName) {
                 Formatter::InteriorSection name;
                 Formatter::InteriorSection value;
-                if (!formatter.TryReadAttribute(name, value))
+                if (!formatter.TryAttribute(name, value))
                     Throw(FormatException(
                         "Error while reading attribute in StreamDOM", formatter.GetLocation()));
 
@@ -70,7 +70,7 @@ namespace Utility
             }
         }
 
-        if (!formatter.TryReadEndElement()) 
+        if (!formatter.TryEndElement()) 
             Throw(FormatException(
                 "Expected end element in StreamDOM", formatter.GetLocation()));
 
@@ -97,6 +97,24 @@ namespace Utility
         return DocElementHelper<Formatter>();
     }
 
+    template<typename Formatter>
+        unsigned Document<Formatter>::FindAttribute(const value_type* nameStart, const value_type* nameEnd)
+    {
+        if (_attributes.empty()) return ~0u;
+
+        auto expectedNameLen = nameEnd - nameStart;
+        for (unsigned a=0; a!=~0u;) {
+            const auto& attrib = _attributes[a];
+            auto nameLen = attrib._name._end - attrib._name._start;
+            if (nameLen == expectedNameLen && !XlComparePrefix(attrib._name._start, nameStart, nameLen))
+                return a;
+
+            a=attrib._nextSibling;
+        }
+
+        return ~0u;
+    }
+
     template <typename Formatter>
         Document<Formatter>::Document(Formatter& formatter)
     {
@@ -107,21 +125,66 @@ namespace Utility
             // of elements and a list of attributes.
             // We can start with several top-level elements
         unsigned lastEle = ~0u;
+        unsigned lastAttrib = ~0u;
         for (;;) {
-            auto newEle = ParseElement(formatter);
-            if (newEle == ~0u) break;
-            if (lastEle != ~0u) _elements[lastEle]._nextSibling = newEle;
-            lastEle = newEle;
+            switch (formatter.PeekNext()) {
+            case Formatter::Blob::AttributeName:
+                {
+                    Formatter::InteriorSection name, value;
+                    if (formatter.TryAttribute(name, value)) {
+                        _attributes.push_back(AttributeDesc{name, value, ~0u});
+                        if (lastAttrib != ~0u)
+                            _attributes[lastAttrib]._nextSibling = unsigned(_attributes.size()-1);
+                        lastAttrib = unsigned(_attributes.size()-1);
+                    }
+                }
+                continue;
+
+            case Formatter::Blob::BeginElement:
+                {
+                    auto newEle = ParseElement(formatter);
+                    if (newEle == ~0u) break;
+                    if (lastEle != ~0u) _elements[lastEle]._nextSibling = newEle;
+                    lastEle = newEle;
+                }
+                continue;
+
+            default:
+                break;
+            }
+
+            break;
         }
         
-        if (formatter.PeekNext() != Formatter::Blob::None)
-            Throw(FormatException(
-                "Unexpected trailing characters in StreamDOM", formatter.GetLocation()));
+        //      Sometimes we serialize in some elements as a "Document"
+        //      In these cases, there may be more data in the file...
+        // if (formatter.PeekNext() != Formatter::Blob::None)
+        //     Throw(FormatException(
+        //         "Unexpected trailing characters in StreamDOM", formatter.GetLocation()));
     }
+
+    template <typename Formatter>
+        Document<Formatter>::Document() 
+    {}
 
     template <typename Formatter>
         Document<Formatter>::~Document()
     {}
+
+    template <typename Formatter>
+        Document<Formatter>::Document(Document&& moveFrom)
+    {
+        _elements = std::move(_elements);
+        _attributes = std::move(_attributes);
+    }
+
+    template <typename Formatter>
+        auto Document<Formatter>::operator=(Document&& moveFrom) -> Document&
+    {
+        _elements = std::move(_elements);
+        _attributes = std::move(_attributes);
+        return *this;
+    }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -205,7 +205,7 @@ namespace EntityInterface
             case InputStreamFormatter<utf8>::Blob::BeginElement:
                 {
                     InputStreamFormatter<utf8>::InteriorSection name;
-                    if (!formatter.TryReadBeginElement(name)) break;
+                    if (!formatter.TryBeginElement(name)) break;
 
                     if (!XlComparePrefix(EntityTypeName::AmbientSettings, name._start, name._end - name._start)) {
                         result._globalLightingDesc = GlobalLightingDesc(ParameterBox(formatter));
@@ -241,14 +241,14 @@ namespace EntityInterface
                     } else
                         formatter.SkipElement();
                     
-                    formatter.TryReadEndElement();
+                    formatter.TryEndElement();
                     break;
                 }
 
             case InputStreamFormatter<utf8>::Blob::AttributeName:
                 {
                     InputStreamFormatter<utf8>::InteriorSection name, value;
-                    formatter.TryReadAttribute(name, value);
+                    formatter.TryAttribute(name, value);
                     break;
                 }
 
@@ -278,9 +278,9 @@ namespace EntityInterface
             case InputStreamFormatter<utf8>::Blob::BeginElement:
                 {
                     InputStreamFormatter<utf8>::InteriorSection name;
-                    if (!formatter.TryReadBeginElement(name)) break;
+                    if (!formatter.TryBeginElement(name)) break;
                     auto settings = DeserializeSingleSettings(formatter);
-                    if (!formatter.TryReadEndElement()) break;
+                    if (!formatter.TryEndElement()) break;
 
                     result.emplace_back(
                         std::make_pair(

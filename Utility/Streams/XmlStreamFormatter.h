@@ -44,26 +44,30 @@ namespace Utility
     /// well even for large files.
     ///
     /// Note that this is a subset of true xml. Many XML features (like processing
-    /// instructions, references and character data) aren't supported. But it will
+    /// instructions, references and character data) aren't fully supported. But it will
     /// read elements and attributes -- handy for applications of XML that use only 
-    /// these things.
+    /// these things. There is some support for reading character data. But it is limited
+    /// and intended for simple tasks.
     template<typename CharType>
         class XL_UTILITY_API XmlInputStreamFormatter
     {
     public:
-        enum class Blob { BeginElement, EndElement, AttributeName, AttributeValue, None };
-        Blob PeekNext();
+        enum class Blob { BeginElement, EndElement, AttributeName, AttributeValue, CharacterData, None };
+        Blob PeekNext(bool allowCharacterData=false);
 
         class InteriorSection
         {
         public:
             const CharType* _start;
             const CharType* _end;
+
+            InteriorSection() : _start(nullptr), _end(nullptr) {}
         };
 
-        bool TryReadBeginElement(InteriorSection& name);
-        bool TryReadEndElement();
-        bool TryReadAttribute(InteriorSection& name, InteriorSection& value);
+        bool TryBeginElement(InteriorSection& name);
+        bool TryEndElement();
+        bool TryAttribute(InteriorSection& name, InteriorSection& value);
+        bool TryCharacterData(InteriorSection& cdata);
 
         void SkipElement();
 

@@ -108,3 +108,4 @@ extern "C" CONVERSION_API ConsoleRig::LibVersionDesc GetVersionInformation();
 extern "C" CONVERSION_API void AttachLibrary(ConsoleRig::GlobalServices&);
 extern "C" CONVERSION_API void DetachLibrary();
 
+extern "C" CONVERSION_API void TestParser();
