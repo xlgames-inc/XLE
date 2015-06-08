@@ -62,6 +62,7 @@ namespace Utility
             const CharType* _end;
 
             InteriorSection() : _start(nullptr), _end(nullptr) {}
+            InteriorSection(const CharType* start, const CharType* end) : _start(start), _end(end) {}
         };
 
         bool TryBeginElement(InteriorSection& name);

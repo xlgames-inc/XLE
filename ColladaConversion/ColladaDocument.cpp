@@ -4,6 +4,8 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#define _SCL_SECURE_NO_WARNINGS
+
 #include "../Math/Vector.h"
 #include "../Utility/Streams/XmlStreamFormatter.h"
 #include "../Utility/Streams/StreamDom.h"
@@ -11,6 +13,17 @@
 #include "../Utility/Conversion.h"
 #include "../Utility/ParameterBox.h"
 #include "../ConsoleRig/Log.h"
+
+namespace ColladaConversion
+{
+    template<typename Section>
+        static std::string AsString(const Section& section)
+    {
+        using CharType = std::remove_const<std::remove_reference<decltype(*section._start)>::type>::type;
+        return Conversion::Convert<std::string>(
+            std::basic_string<CharType>(section._start, section._end));
+    }
+}
 
 namespace std   // adding these to std is awkward, but it's the only way to make sure easylogging++ can see them
 {
@@ -23,8 +36,7 @@ namespace std   // adding these to std is awkward, but it's the only way to make
     // inline MAKE_LOGGABLE(XmlInputStreamFormatter<utf8>::InteriorSection, section, os) 
     inline std::ostream& operator<<(std::ostream& os, XmlInputStreamFormatter<utf8>::InteriorSection section)
     {
-        os << Conversion::Convert<std::basic_string<char>>(
-            std::basic_string<utf8>(section._start, section._end));
+        os << ColladaConversion::AsString(section);
         return os;
     }
 }
@@ -35,22 +47,6 @@ namespace ColladaConversion
     using Section = Formatter::InteriorSection;
     using SubDoc = Utility::Document<Formatter>;
     using String = std::basic_string<Formatter::value_type>;
-
-    template <typename Type, int Count>
-        cml::vector<Type, cml::fixed<Count>> ParseValueType(
-            Formatter& formatter, const cml::vector<Type, cml::fixed<Count>>& def);
-
-    template <typename Type>
-        Type ParseValueType(Formatter& formatter, Type& def);
-
-    template<typename Section>
-        static std::string AsString(const Section& section)
-    {
-        using CharType = std::remove_const<std::remove_reference<decltype(*section._start)>::type>::type;
-        return Conversion::Convert<std::string>(
-            std::basic_string<CharType>(section._start, section._end));
-    }
-
 
     class AssetDesc
     {
@@ -64,6 +60,7 @@ namespace ColladaConversion
     };
 
     class Effect;
+    class Geometry;
 
     class ColladaDocument
     {
@@ -80,18 +77,108 @@ namespace ColladaConversion
         AssetDesc _rootAsset;
 
         std::vector<Effect> _effects;
+        std::vector<Geometry> _geometries;
     };
 
-    bool Is(XmlInputStreamFormatter<utf8>::InteriorSection& section, const utf8 match[])
+    static bool Is(const XmlInputStreamFormatter<utf8>::InteriorSection& section, const utf8 match[])
     {
         return !XlComparePrefix(match, section._start, section._end - section._start);
     }
 
-    bool StartsWith(XmlInputStreamFormatter<utf8>::InteriorSection& section, const utf8 match[])
+    static bool StartsWith(const XmlInputStreamFormatter<utf8>::InteriorSection& section, const utf8 match[])
     {
         auto matchLen = XlStringLen(match);
         if ((section._end - section._start) < ptrdiff_t(matchLen)) return false;
         return !XlComparePrefix(section._start, match, matchLen);
+    }
+
+    static bool EndsWith(const XmlInputStreamFormatter<utf8>::InteriorSection& section, const utf8 match[])
+    {
+        auto matchLen = XlStringLen(match);
+        if ((section._end - section._start) < ptrdiff_t(matchLen)) return false;
+        return !XlComparePrefix(section._end - matchLen, match, matchLen);
+    }
+
+    template<typename Type>
+        static Type Parse(const XmlInputStreamFormatter<utf8>::InteriorSection& section, const Type& def)
+    {
+            // ImpliedType::Parse is actually a fairly expensing parsing operation...
+            // maybe we could get a faster result by just calling the standard library
+            // type functions.
+        auto d = ImpliedTyping::Parse<Type>(section._start, section._end);
+        if (!d.first) return def;
+        return d.second;
+    }
+
+    template <typename Type, int Count>
+        cml::vector<Type, cml::fixed<Count>> ReadCDataAsList(
+            Formatter& formatter, // Formatter::InteriorSection storedType,
+            const cml::vector<Type, cml::fixed<Count>>& def)
+    {
+        Formatter::InteriorSection cdata;
+
+        // auto type = HLSLTypeNameAsTypeDesc(
+        //     Conversion::Convert<std::string>(String(storedType._start, storedType._end)).c_str());
+        // if (type._type == ImpliedTyping::TypeCat::Void) {
+        //     type._type = ImpliedTyping::TypeCat::Float;
+        //     type._arrayCount = 1;
+        // }
+
+        if (formatter.TryCharacterData(cdata)) {
+
+            cml::vector<Type, cml::fixed<Count>> result;
+            unsigned elementsRead = ParseXMLList(&result[0], Count, cdata);
+            for (unsigned c=elementsRead; c<Count; ++c)
+                result[c] = def[c];
+            return result;
+
+        } else {
+            LogWarning << "Expecting vector data at " << formatter.GetLocation();
+            return def;
+        }
+    }
+
+    template <typename Type>
+        Type ReadCDataAsValue(Formatter& formatter, Type& def)
+    {
+        Formatter::InteriorSection cdata;
+        if (formatter.TryCharacterData(cdata)) {
+            return Parse<Type>(cdata, def);
+        } else {
+            LogWarning << "Expecting scalar data at " << formatter.GetLocation();
+            return def;
+        }
+    }
+
+    static Section ExtractSingleAttribute(Formatter& formatter, const Formatter::value_type attribName[])
+    {
+        Section result;
+
+        for (;;) {
+            switch (formatter.PeekNext()) {
+            case Formatter::Blob::BeginElement:
+                {
+                    Formatter::InteriorSection eleName;
+                    formatter.TryBeginElement(eleName);
+                    formatter.SkipElement();
+                    if (!formatter.TryEndElement())
+                        Throw(FormatException("Expecting end element", formatter.GetLocation()));
+                    continue;
+                }
+
+            case Formatter::Blob::AttributeName:
+                {
+                    Formatter::InteriorSection name, value;
+                    formatter.TryAttribute(name, value);
+                    if (Is(name, attribName)) result = value;
+                    continue;
+                }
+            }
+
+            break;
+        }
+
+        return result;
     }
 
     using RootElementParser = void (ColladaDocument::*)(XmlInputStreamFormatter<utf8>&);
@@ -285,37 +372,6 @@ namespace ColladaConversion
         _maxAnisotrophy = 1;
     }
 
-    static Section ExtractSingleAttribute(Formatter& formatter, const Formatter::value_type attribName[])
-    {
-        Section result;
-
-        for (;;) {
-            switch (formatter.PeekNext()) {
-            case Formatter::Blob::BeginElement:
-                {
-                    Formatter::InteriorSection eleName;
-                    formatter.TryBeginElement(eleName);
-                    formatter.SkipElement();
-                    if (!formatter.TryEndElement())
-                        Throw(FormatException("Expecting end element", formatter.GetLocation()));
-                    continue;
-                }
-
-            case Formatter::Blob::AttributeName:
-                {
-                    Formatter::InteriorSection name, value;
-                    formatter.TryAttribute(name, value);
-                    if (Is(name, attribName)) result = value;
-                    continue;
-                }
-            }
-
-            break;
-        }
-
-        return result;
-    }
-
     std::pair<SamplerAddress, const utf8*> s_SamplerAddressNames[] = 
     {
         std::make_pair(SamplerAddress::Wrap, u("WRAP")),
@@ -338,16 +394,22 @@ namespace ColladaConversion
     };
 
     template <typename Enum, unsigned Count>
-        static Enum ParseEnum(Formatter& formatter, const std::pair<Enum, const utf8*> (&table)[Count])
+        static Enum ParseEnum(const Section& section, const std::pair<Enum, const utf8*> (&table)[Count])
     {
-        Formatter::InteriorSection section;
-        if (!formatter.TryCharacterData(section)) return table[0].first;
-
+        static_assert(Count > 0, "Enum names table must have at least entry");
         for (unsigned c=0; c<Count; ++c)
             if (!Is(section, table[c].second))
                 return table[c].first;
 
         return table[0].first;  // first one is the default
+    }
+
+    template <typename Enum, unsigned Count>
+        static Enum ReadCDataAsEnum(Formatter& formatter, const std::pair<Enum, const utf8*> (&table)[Count])
+    {
+        Formatter::InteriorSection section;
+        if (!formatter.TryCharacterData(section)) return table[0].first;
+        return ParseEnum(section, table);
     }
 
     ParameterSet::SamplerParameter::SamplerParameter(Formatter& formatter)
@@ -367,27 +429,27 @@ namespace ColladaConversion
                         // collada 1.4 uses "source" (which cannot have extra data attached)
                         formatter.TryCharacterData(_image);
                     } else if (Is(eleName, u("wrap_s"))) {
-                        _addressS = ParseEnum(formatter, s_SamplerAddressNames);
+                        _addressS = ReadCDataAsEnum(formatter, s_SamplerAddressNames);
                     } else if (Is(eleName, u("wrap_t"))) {
-                        _addressT = ParseEnum(formatter, s_SamplerAddressNames);
+                        _addressT = ReadCDataAsEnum(formatter, s_SamplerAddressNames);
                     } else if (Is(eleName, u("wrap_p"))) {
-                        _addressQ = ParseEnum(formatter, s_SamplerAddressNames);
+                        _addressQ = ReadCDataAsEnum(formatter, s_SamplerAddressNames);
                     } else if (Is(eleName, u("minfilter"))) {
-                        _minFilter = ParseEnum(formatter, s_SamplerFilterNames);
+                        _minFilter = ReadCDataAsEnum(formatter, s_SamplerFilterNames);
                     } else if (Is(eleName, u("magfilter"))) {
-                        _maxFilter = ParseEnum(formatter, s_SamplerFilterNames);
+                        _maxFilter = ReadCDataAsEnum(formatter, s_SamplerFilterNames);
                     } else if (Is(eleName, u("mipfilter"))) {
-                        _mipFilter = ParseEnum(formatter, s_SamplerFilterNames);
+                        _mipFilter = ReadCDataAsEnum(formatter, s_SamplerFilterNames);
                     } else if (Is(eleName, u("border_color"))) {
-                        _borderColor = ParseValueType(formatter, _borderColor);
+                        _borderColor = ReadCDataAsList(formatter, _borderColor);
                     } else if (Is(eleName, u("mip_max_level"))) {
-                        _maxMipLevel = ParseValueType(formatter, _maxMipLevel);
+                        _maxMipLevel = ReadCDataAsValue(formatter, _maxMipLevel);
                     } else if (Is(eleName, u("mip_min_level"))) {
-                        _minMipLevel = ParseValueType(formatter, _minMipLevel);
+                        _minMipLevel = ReadCDataAsValue(formatter, _minMipLevel);
                     } else if (Is(eleName, u("mip_bias"))) {
-                        _mipMapBias = ParseValueType(formatter, _mipMapBias);
+                        _mipMapBias = ReadCDataAsValue(formatter, _mipMapBias);
                     } else if (Is(eleName, u("max_anisotropy"))) {
-                        _maxAnisotrophy = ParseValueType(formatter, _maxAnisotrophy);
+                        _maxAnisotrophy = ReadCDataAsValue(formatter, _maxAnisotrophy);
                     } else if (Is(eleName, u("extra"))) {
                         _extra = SubDoc(formatter);
                     } else {
@@ -714,50 +776,6 @@ namespace ColladaConversion
         }
     }
 
-    template <typename Type, int Count>
-        cml::vector<Type, cml::fixed<Count>> ParseValueType(
-            Formatter& formatter, // Formatter::InteriorSection storedType,
-            const cml::vector<Type, cml::fixed<Count>>& def)
-    {
-        Formatter::InteriorSection cdata;
-
-        // auto type = HLSLTypeNameAsTypeDesc(
-        //     Conversion::Convert<std::string>(String(storedType._start, storedType._end)).c_str());
-        // if (type._type == ImpliedTyping::TypeCat::Void) {
-        //     type._type = ImpliedTyping::TypeCat::Float;
-        //     type._arrayCount = 1;
-        // }
-
-        if (formatter.TryCharacterData(cdata)) {
-
-            cml::vector<Type, cml::fixed<Count>> result;
-            unsigned elementsRead = ParseXMLList(&result[0], Count, cdata);
-            for (unsigned c=elementsRead; c<Count; ++c)
-                result[c] = def[c];
-            return result;
-
-        } else {
-            LogWarning << "Expecting vector data at " << formatter.GetLocation();
-            return def;
-        }
-    }
-
-    template <typename Type>
-        Type ParseValueType(Formatter& formatter, Type& def)
-    {
-        Formatter::InteriorSection cdata;
-        if (formatter.TryCharacterData(cdata)) {
-
-            auto p = ImpliedTyping::Parse<Type>(cdata._start, cdata._end);
-            if (!p.first) return def;
-            return p.second;
-
-        } else {
-            LogWarning << "Expecting scalar data at " << formatter.GetLocation();
-            return def;
-        }
-    }
-
     TechniqueValue::TechniqueValue(Formatter& formatter)
     {
         _type = Type::None;
@@ -784,7 +802,7 @@ namespace ColladaConversion
 
         if (Is(eleName, u("float"))) {
 
-            _value = ParseValueType(formatter, _value);
+            _value[0] = ReadCDataAsValue(formatter, _value[0]);
             _type = Type::Float;
 
         } else if (Is(eleName, u("color"))) {
@@ -956,35 +974,6 @@ namespace ColladaConversion
         }
     }
 
-    class Source
-    {
-    public:
-        Section _id;
-        Section _arrayData;
-        Section _arrayType;
-        Section _arrayId;
-        unsigned _arrayCount;
-
-        Source(Formatter& formatter);
-    };
-
-    class Geometry
-    {
-    public:
-
-        
-        std::vector<Source> _sources;
-
-        Geometry(Formatter& formatter);
-
-        Geometry();
-        Geometry(Geometry&& moveFrom) never_throws;
-        Geometry& operator=(Geometry&& moveFrom) never_throws;
-
-    protected:
-        void ParseMesh(Formatter& formatter);
-    };
-
     #define ON_ELEMENT                                              \
         for (;;) {                                                  \
             switch (formatter.PeekNext()) {                         \
@@ -1015,77 +1004,412 @@ namespace ColladaConversion
         }                                                           \
         /**/
 
-
-    Source::Source(Formatter& formatter)
+    namespace DataFlow
     {
-        ON_ELEMENT
-            if (EndsWith(eleName, "_array")) {
+        /// <summary>Data type for a collada array</summary>
+        /// Collada only supports a limited number of different types within
+        /// "source" arrays. These store the most of the "big" information within
+        /// Collada files (like vertex data, animation curves, etc).
+        enum class ArrayType
+        {
+            Unspecified, Int, Float, Name, Bool, IdRef, SidRef
+        };
 
-                    // This is an array of elements, typically with an id and count
-                    // we should have only a single array in each source. But it can
-                    // be one of many different types.
-                    // Most large data in Collada should appear in blocks like this. 
-                    // We don't attempt to parse it here, just record it's location in
-                    // the file for later;
-                
-                _arrayType = Section(eleName._start, eleName._end-6);
-                
-                    // this element should have no sub-elements. But it has important
-                    // attributes. Given that the source is XML, the attributes
-                    // will always come first.
-                {
-                    while (formatter.PeekNext(true) == Formatter::Blob::AttributeName) {
-                        Section name, value;
-                        formatter.TryAttribute(name, value);
+        std::pair<ArrayType, const utf8*> s_ArrayTypeNames[] = 
+        {
+            std::make_pair(ArrayType::Unspecified, u("")),
+            std::make_pair(ArrayType::Int, u("int")),
+            std::make_pair(ArrayType::Float, u("float")),
+            std::make_pair(ArrayType::Name, u("Name")),
+            std::make_pair(ArrayType::Bool, u("bool")),
+            std::make_pair(ArrayType::IdRef, u("IDREF")),
+            std::make_pair(ArrayType::SidRef, u("SIDREF"))
+        };
 
-                        if (Is(name, u("count"))) {
-                            _arrayCount = Parse(value, 0u);
-                        } else if (Is(name, u("id"))) {
-                            _arrayId = value;
-                        } // "name also valid
+        class Source
+        {
+        public:
+            Section _id;
+            Section _arrayId;
+            Section _arrayData;
+            ArrayType _type;
+            unsigned _arrayCount;
+
+            Source() : _type(ArrayType::Unspecified), _arrayCount(0) {}
+            Source(Formatter& formatter);
+        };
+
+        Source::Source(Formatter& formatter)
+            : Source()
+        {
+            ON_ELEMENT
+                if (EndsWith(eleName, u("_array"))) {
+
+                        // This is an array of elements, typically with an id and count
+                        // we should have only a single array in each source. But it can
+                        // be one of many different types.
+                        // Most large data in Collada should appear in blocks like this. 
+                        // We don't attempt to parse it here, just record it's location in
+                        // the file for later;
+                
+                    _type = ParseEnum(Section(eleName._start, eleName._end-6), s_ArrayTypeNames);
+                
+                        // this element should have no sub-elements. But it has important
+                        // attributes. Given that the source is XML, the attributes
+                        // will always come first.
+                    {
+                        while (formatter.PeekNext(true) == Formatter::Blob::AttributeName) {
+                            Section name, value;
+                            formatter.TryAttribute(name, value);
+
+                            if (Is(name, u("count"))) {
+                                _arrayCount = Parse(value, 0u);
+                            } else if (Is(name, u("id"))) {
+                                _arrayId = value;
+                            } // "name also valid
+                        }
                     }
-                }
 
-                Section cdata;
-                if (formatter.TryCharacterData(cdata)) {
-                    _arrayData = cdata;
+                    Section cdata;
+                    if (formatter.TryCharacterData(cdata)) {
+                        _arrayData = cdata;
+                    } else {
+                        LogWarning << "Data source contains no data! At: " << formatter.GetLocation();
+                    }
+
+                } else if (Is(eleName, u("technique"))) {
+
+                    // this can contain special case non-standard information
+                    // But it's not clear what this would be used for
+                    formatter.SkipElement();
+
+                } else if (Is(eleName, u("technique_common"))) {
+
+                    // This specifies the way we interpret the information in the array.
+                    // It should occur after the array object. So we can resolve the reference
+                    // in the accessor -- but only assuming that the reference in the accessor
+                    // refers to an array in this document. That would be logical and typical.
+                    // But the standard suggests the accessor can actually refer to a data array
+                    // anywhere (including in other files)
+                    // Anyway, it looks like we should have only a single accessor per technique
+                    formatter.SkipElement();
+
                 } else {
-                    LogWarning << "Data source contains no data! At: " << formatter.GetLocation();
+                        // "asset" also valid
+                    formatter.SkipElement();
                 }
 
-            } else if (Is(eleName, "technique")) {
+            ON_ATTRIBUTE
+                if (Is(name, u("id"))) {
+                    _id = value;
+                } // "name" is also valid
+            PARSE_END
+        }
 
-                // this can contain special case non-standard information
-                // But it's not clear what this would be used for
-                formatter.SkipElement();
+        class Accessor
+        {
+        public:
+            Section _source;
+            unsigned _count;
+            unsigned _stride;
+            unsigned _offset;
 
-            } else if (Is(eleName, "technique_common")) {
+            class Param
+            {
+            public:
+                Section _name;
+                ArrayType _type;
+                unsigned _offset;
+                Section _semantic;
+                Param() : _offset(~unsigned(0)), _type(ArrayType::Float) {}
+            };
 
-                // This specifies the way we interpret the information in the array.
-                // It should occur after the array object. So we can resolve the reference
-                // in the accessor -- but only assuming that the reference in the accessor
-                // refers to an array in this document. That would be logical and typical.
-                // But the standard suggests the accessor can actually refer to a data array
-                // anywhere (including in other files)
-                // Anyway, it looks like we should have only a single accessor per technique
+            Param _params[4];
+            std::vector<Param> _paramsOverflow;
+            unsigned _paramCount;
+
+            Accessor();
+            Accessor(Formatter& formatter);
+            Accessor(Accessor&& moveFrom) never_throws;
+            Accessor& operator=(Accessor&&moveFrom) never_throws;
+        };
+
+
+        Accessor::Accessor()
+        : _count(0), _stride(0), _offset(0), _paramCount(0)
+        {}
+
+        Accessor::Accessor(Formatter& formatter)
+        : Accessor()
+        {
+            unsigned workingParamOffset = 0;
+
+            ON_ELEMENT
+                if (Is(eleName, u("param"))) {
+                        // <param> should have only attributes.
+                    Param newParam;
+                    newParam._offset = workingParamOffset++;
+
+                    Formatter::InteriorSection name, value;
+                    while (formatter.TryAttribute(name, value)) {
+                        if (Is(name, u("name"))) {
+                            newParam._name = value;
+                        } else if (Is(name, u("type"))) {
+                            newParam._type = ParseEnum(value, s_ArrayTypeNames);
+                        } else if (Is(name, u("semantic"))) {
+                            newParam._semantic = value;
+                        }
+                    }
+
+                    if (newParam._name._start > newParam._name._end) {
+                        if (_paramCount < dimof(_params)) {
+                            _params[_paramCount] = newParam;
+                        } else
+                            _paramsOverflow.push_back(newParam);
+                        ++_paramCount;
+                    }
+
+                } else {
+                    formatter.SkipElement();
+                }
+
+            ON_ATTRIBUTE
+                if (Is(name, u("count"))) {
+                    _count = Parse(value, _count);
+                } else if (Is(name, u("stride"))) {
+                    _stride = Parse(value, _stride);
+                } else if (Is(name, u("source"))) {
+                    _source = value;
+                } else if (Is(name, u("offset"))) {
+                    _offset = Parse(value, _offset);
+                }
+
+            PARSE_END
+        }
+
+        Accessor::Accessor(Accessor&& moveFrom)
+        : _paramsOverflow(std::move(_paramsOverflow))
+        {
+            _source = moveFrom._source;
+            _count = moveFrom._count;
+            _stride = moveFrom._stride;
+            std::copy(moveFrom._params, &moveFrom._params[dimof(moveFrom._params)], _params);
+            _paramCount = moveFrom._paramCount;
+        }
+
+        Accessor& Accessor::operator=(Accessor&& moveFrom)
+        {
+            _source = moveFrom._source;
+            _count = moveFrom._count;
+            _stride = moveFrom._stride;
+            std::copy(moveFrom._params, &moveFrom._params[dimof(moveFrom._params)], _params);
+            _paramsOverflow = std::move(_paramsOverflow);
+            _paramCount = moveFrom._paramCount;
+            return *this;
+        }
+
+
+        class Input
+        {
+        public:
+            unsigned _indexInPrimitive; // this is the index into the <p> or <v> in the parent
+            Section _semantic;
+            Section _source;            // urifragment_type
+            unsigned _semanticIndex;
+
+            Input();
+            Input(Formatter& formatter);
+        };
+
+        Input::Input() : _indexInPrimitive(0), _semanticIndex(0) {}
+
+        Input::Input(Formatter& formatter)
+        {
+                // inputs should have only attributes
+            Formatter::InteriorSection name, value;
+            while (formatter.TryAttribute(name, value)) {
+                if (Is(name, u("offset"))) {
+                    _indexInPrimitive = Parse(value, _indexInPrimitive);
+                } else if (Is(name, u("semantic"))) {
+                    _semantic = value;
+                } else if (Is(name, u("source"))) {
+                    _source = value;
+                } else if (Is(name, u("set"))) {
+                    _semanticIndex = Parse(value, _semanticIndex);
+                }
+            }
+        }
+
+        class InputUnshared
+        {
+        public:
+            Section _semantic;
+            Section _source;        // urifragment_type
+
+            InputUnshared();
+            InputUnshared(Formatter& formatter);
+        };
+
+        InputUnshared::InputUnshared(Formatter& formatter)
+        {
+                // inputs should have only attributes
+            Formatter::InteriorSection name, value;
+            while (formatter.TryAttribute(name, value)) {
+                if (Is(name, u("semantic"))) {
+                    _semantic = value;
+                } else if (Is(name, u("source"))) {
+                    _source = value;
+                }
+            }
+        }
+
+    }
+
+    class GeometryPrimitives
+    {
+    public:
+        Section _type;
+
+        DataFlow::Input _inputs[6];
+        std::vector<DataFlow::Input> _inputsOverflow;
+        unsigned _inputCount;
+
+            // in most cases, there is only one "_primitiveData" element
+            // but for trianglestrip, there may be multiple
+        Section _primitiveData[1];
+        std::vector<Section> _primitiveDataOverflow;
+        unsigned _primitiveDataCount;
+
+        Section _vcount;
+
+        GeometryPrimitives(Formatter& formatter, Section type);
+
+        GeometryPrimitives();
+        GeometryPrimitives(GeometryPrimitives&& moveFrom) never_throws;
+        GeometryPrimitives& operator=(GeometryPrimitives&& moveFrom) never_throws;
+    };
+
+    GeometryPrimitives::GeometryPrimitives(Formatter& formatter, Section type)
+        : GeometryPrimitives()
+    {
+        _type = type;
+
+        ON_ELEMENT
+            if (Is(eleName, u("input"))) {
+
+                if (_inputCount < dimof(_inputs)) {
+                    _inputs[_inputCount] = DataFlow::Input(formatter);
+                } else {
+                    _inputsOverflow.push_back(DataFlow::Input(formatter));
+                }
+                ++_inputCount;
+
+            } else if (Is(eleName, u("p"))) {
+
+                    // a p element should have only character data, and nothing else
+                    // the meaning of this type is defined by the type of geometry
+                    // primitive element, and the <input> sub elements
+                Formatter::InteriorSection cdata;
+                if (formatter.TryCharacterData(cdata)) {
+                    if (_primitiveDataCount < dimof(_inputs)) {
+                        _primitiveData[_primitiveDataCount] = cdata;
+                    } else {
+                        _primitiveDataOverflow.push_back(cdata);
+                    }
+                    ++_primitiveDataCount;
+                }
+
+            } else if (Is(eleName, u("vcount"))) {
+
+                Formatter::InteriorSection cdata;
+                if (formatter.TryCharacterData(cdata)) {
+                    _vcount = cdata;
+                }
 
             } else {
-                    // "asset" also valid
+                    // ph and extra (and maybe others) are possible
                 formatter.SkipElement();
             }
 
         ON_ATTRIBUTE
-            if (Is(name, u("id"))) {
-                _id = value;
-            } // "name" is also valid
         PARSE_END
     }
+
+    GeometryPrimitives::GeometryPrimitives()
+    : _inputCount(0), _primitiveDataCount(0)
+    {}
+
+    GeometryPrimitives::GeometryPrimitives(GeometryPrimitives&& moveFrom) never_throws
+    : _inputsOverflow(std::move(moveFrom._inputsOverflow))
+    , _primitiveDataOverflow(std::move(moveFrom._primitiveDataOverflow))
+    {
+        _type = moveFrom._type;
+        std::copy(moveFrom._inputs, &moveFrom._inputs[dimof(moveFrom._inputs)], _inputs);
+        _inputCount = moveFrom._inputCount;
+        std::copy(moveFrom._primitiveData, &moveFrom._primitiveData[dimof(moveFrom._primitiveData)], _primitiveData);
+        _primitiveDataCount = moveFrom._primitiveDataCount;
+        _vcount = moveFrom._vcount;
+    }
+
+    GeometryPrimitives& GeometryPrimitives::operator=(GeometryPrimitives&& moveFrom) never_throws
+    {
+        _type = moveFrom._type;
+        std::copy(moveFrom._inputs, &moveFrom._inputs[dimof(moveFrom._inputs)], _inputs);
+        _inputsOverflow = std::move(moveFrom._inputsOverflow);
+        _inputCount = moveFrom._inputCount;
+        std::copy(moveFrom._primitiveData, &moveFrom._primitiveData[dimof(moveFrom._primitiveData)], _primitiveData);
+        _primitiveDataOverflow = std::move(moveFrom._primitiveDataOverflow);
+        _primitiveDataCount = moveFrom._primitiveDataCount;
+        _vcount = moveFrom._vcount;
+        return *this;
+    }
+
+    class Geometry
+    {
+    public:
+        std::vector<DataFlow::Source> _sources;
+        std::vector<DataFlow::InputUnshared> _inputs;
+        std::vector<GeometryPrimitives> _geoPrimitives;
+        SubDoc _extra;
+
+        Geometry(Formatter& formatter);
+
+        Geometry();
+        Geometry(Geometry&& moveFrom) never_throws;
+        Geometry& operator=(Geometry&& moveFrom) never_throws;
+
+    protected:
+        void ParseMesh(Formatter& formatter);
+        void ParseVertices(Formatter& formatter);
+    };
 
     void Geometry::ParseMesh(Formatter& formatter)
     {
         ON_ELEMENT
             if (Is(eleName, u("source"))) {
-                _sources.push_back(Source(formatter));
+                _sources.push_back(DataFlow::Source(formatter));
+            } else if (Is(eleName, u("vertices"))) {
+                // must have exactly one <vertices>
+                ParseVertices(formatter);
+            } else if (Is(eleName, u("extra"))) {
+                _extra = SubDoc(formatter);
+            } else {
+                    // anything else must be geometry list (such as polylist, triangles)
+                _geoPrimitives.push_back(GeometryPrimitives(formatter, eleName));
+            }
+
+        ON_ATTRIBUTE
+        PARSE_END
+    }
+
+    void Geometry::ParseVertices(Formatter& formatter)
+    {
+        ON_ELEMENT
+            if (Is(eleName, u("input"))) {
+                _inputs.push_back(DataFlow::InputUnshared(formatter));
+            } else {
+                    // extra is possible
+                formatter.SkipElement();
             }
 
         ON_ATTRIBUTE
@@ -1109,6 +1433,27 @@ namespace ColladaConversion
 
         ON_ATTRIBUTE
         PARSE_END
+    }
+
+    Geometry::Geometry()
+    {
+
+    }
+
+    Geometry::Geometry(Geometry&& moveFrom) never_throws
+    : _sources(std::move(moveFrom._sources))
+    , _inputs(std::move(moveFrom._inputs))
+    , _geoPrimitives(std::move(moveFrom._geoPrimitives))
+    , _extra(std::move(moveFrom._extra))
+    {}
+
+    Geometry& Geometry::operator=(Geometry&& moveFrom) never_throws
+    {
+        _sources = std::move(moveFrom._sources);
+        _inputs = std::move(moveFrom._inputs);
+        _geoPrimitives = std::move(moveFrom._geoPrimitives);
+        _extra = std::move(moveFrom._extra);
+        return *this;
     }
 
     void ColladaDocument::Parse_LibraryGeometries(XmlInputStreamFormatter<utf8>& formatter)
