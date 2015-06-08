@@ -89,6 +89,7 @@
   <ItemGroup>
     <ClCompile Include="..\AnimationConversion.cpp" />
     <ClCompile Include="..\ColladaConversion.cpp" />
+    <ClCompile Include="..\ColladaDocument.cpp" />
     <ClCompile Include="..\ConversionObjects.cpp" />
     <ClCompile Include="..\ModelCommandStream.cpp" />
     <ClCompile Include="..\NascentModel.cpp" />
