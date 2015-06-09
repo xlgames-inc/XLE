@@ -65,6 +65,7 @@ namespace ColladaConversion
     class Geometry;
     class VisualScene;
     class SkinController;
+    class Material;
 
     class ColladaDocument
     {
@@ -75,6 +76,7 @@ namespace ColladaConversion
         void Parse_LibraryGeometries(Formatter& formatter);
         void Parse_LibraryVisualScenes(Formatter& formatter);
         void Parse_LibraryControllers(Formatter& formatter);
+        void Parse_LibraryMaterials(Formatter& formatter);
         void Parse_Scene(Formatter& formatter);
 
         ColladaDocument();
@@ -87,6 +89,7 @@ namespace ColladaConversion
         std::vector<Geometry> _geometries;
         std::vector<VisualScene> _visualScenes;
         std::vector<SkinController> _skinControllers;
+        std::vector<Material> _materials;
 
         Section _visualScene;
         Section _physicsScene;
@@ -246,6 +249,7 @@ namespace ColladaConversion
         std::make_pair(u("library_geometries"), &ColladaDocument::Parse_LibraryGeometries),
         std::make_pair(u("library_visual_scenes"), &ColladaDocument::Parse_LibraryVisualScenes),
         std::make_pair(u("library_controllers"), &ColladaDocument::Parse_LibraryControllers),
+        std::make_pair(u("library_materials"), &ColladaDocument::Parse_LibraryMaterials),
         std::make_pair(u("scene"), &ColladaDocument::Parse_Scene)
     };
 
@@ -622,6 +626,7 @@ namespace ColladaConversion
 
             SubDoc _extra;
             SubDoc _techniqueExtra;
+            Section _techniqueSid;
 
             Profile(Formatter& formatter, String profileType);
             Profile(Profile&& moveFrom) never_throws;
@@ -668,6 +673,7 @@ namespace ColladaConversion
     , _values(std::move(moveFrom._values))
     , _extra(std::move(moveFrom._extra))
     , _techniqueExtra(std::move(moveFrom._techniqueExtra))
+    , _techniqueSid(moveFrom._techniqueSid)
     {
     }
 
@@ -679,6 +685,7 @@ namespace ColladaConversion
         _values = std::move(moveFrom._values);
         _extra = std::move(moveFrom._extra);
         _techniqueExtra = std::move(moveFrom._techniqueExtra);
+        _techniqueSid = moveFrom._techniqueSid;
         return *this;
     }
 
@@ -704,6 +711,8 @@ namespace ColladaConversion
             }
 
         ON_ATTRIBUTE
+            if (Is(name, u("sid"))) _techniqueSid = value;
+
         PARSE_END
     }
 
@@ -1125,14 +1134,9 @@ namespace ColladaConversion
                         LogWarning << "Data source contains no data! At: " << formatter.GetLocation();
                     }
 
-                } else if (Is(eleName, u("technique"))) {
+                } else if (BeginsWith(eleName, u("technique"))) {
 
-                    ParseTechnique(formatter, Section());
-
-                } else if (Is(eleName, u("technique_common"))) {
-
-                        // use "common" as the profile name
-                    ParseTechnique(formatter, Section(eleName._start + 10, eleName._end));
+                    ParseTechnique(formatter, eleName);
 
                 } else {
                         // "asset" also valid
@@ -1664,6 +1668,69 @@ namespace ColladaConversion
         }
     }
 
+    class Material
+    {
+    public:
+        Section _id;
+        Section _name;
+        Section _effectReference;   // uri
+        SubDoc _extra;
+
+        Material() {}
+        Material(Formatter& formatter);
+
+    protected:
+        void ParseInstanceEffect(Formatter& formatter);
+    };
+
+    Material::Material(Formatter& formatter)
+    {
+        ON_ELEMENT
+            if (Is(eleName, u("instance_effect"))) {
+                ParseInstanceEffect(formatter);
+            } else {
+                LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                formatter.SkipElement();        // <asset> and <extra> is possible
+            }
+
+        ON_ATTRIBUTE
+            if (Is(name, u("id"))) _id = value;
+            else if (Is(name, u("name"))) _name = value;
+        PARSE_END
+    }
+
+    void Material::ParseInstanceEffect(Formatter& formatter)
+    {
+        ON_ELEMENT
+            if (Is(eleName, u("setparam")) || Is(eleName, u("technique_hint"))) {
+                LogWarning << "<setparam> and/or <technique_hint> not supported in <instance_effect>. At: " << formatter.GetLocation();
+                formatter.SkipElement();
+            } else {
+                LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                formatter.SkipElement();        // <asset> and <extra> is possible
+            }
+
+        ON_ATTRIBUTE
+            if (Is(name, u("url"))) _effectReference = value;
+                // sid & name possible
+        PARSE_END
+    }
+
+    void ColladaDocument::Parse_LibraryMaterials(Formatter& formatter)
+    {
+        ON_ELEMENT
+            if (Is(eleName, u("material"))) {
+                _materials.push_back(Material(formatter));
+            } else {
+                LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                formatter.SkipElement();        // <asset> and <extra> is possible
+            }
+
+        ON_ATTRIBUTE
+            // id & name possible -- but not interesting
+        PARSE_END
+    }
+
     class TransformationSet
     {
     public:
@@ -1862,7 +1929,7 @@ namespace ColladaConversion
 
     protected:
         void ParseBindMaterial(Formatter& formatter);
-        void ParseTechnique(Formatter& formatter, Section techniqueName);
+        void ParseTechnique(Formatter& formatter, Section techniqueProfile);
     };
 
     InstanceGeometry::InstanceGeometry(Formatter& formatter)
@@ -1904,18 +1971,18 @@ namespace ColladaConversion
         PARSE_END
     }
 
-    void InstanceGeometry::ParseTechnique(Formatter& formatter, Section techniqueName)
+    void InstanceGeometry::ParseTechnique(Formatter& formatter, Section techniqueProfile)
     {
         ON_ELEMENT
-            if (BeginsWith(eleName, u("instance_material"))) {
-                _matBindings.push_back(MaterialBinding(formatter, techniqueName));
+            if (Is(eleName, u("instance_material"))) {
+                _matBindings.push_back(MaterialBinding(formatter, techniqueProfile));
             } else {
                 LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
                 formatter.SkipElement();
             }
 
         ON_ATTRIBUTE
-            // should be no attributes in <technique...>
+            if (Is(name, u("profile"))) techniqueProfile = value;
 
         PARSE_END
     }
@@ -2121,8 +2188,7 @@ namespace ColladaConversion
                             auto& node = _nodes[workingNodes.top()];
                             node._extra = SubDoc(formatter);
                         } else {
-                            LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
-                            formatter.SkipElement();
+                            _extra = SubDoc(formatter);
                         }
                     
                     } else {
@@ -2262,8 +2328,8 @@ namespace ColladaConversion
 void TestParser()
 {
     size_t size;
-    // auto block = LoadFileAsMemoryBlock("game/testmodels/nyra/Nyra_pose.dae", &size);
-    auto block = LoadFileAsMemoryBlock("Game/chr/nu_f/skin/dragon003.dae", &size);
+    auto block = LoadFileAsMemoryBlock("game/testmodels/nyra/Nyra_pose.dae", &size);
+    // auto block = LoadFileAsMemoryBlock("Game/chr/nu_f/skin/dragon003.dae", &size);
     XmlInputStreamFormatter<utf8> formatter(MemoryMappedInputStream(block.get(), PtrAdd(block.get(), size)));
     ColladaConversion::ColladaDocument doc;
     doc.Parse(formatter);
