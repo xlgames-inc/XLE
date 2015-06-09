@@ -1,0 +1,92 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+
+  <Type Name="std::basic_string&lt;unsigned char,*&gt;">
+    <DisplayString Condition="_Myres &lt; _BUF_SIZE">{_Bx._Buf,s8b}</DisplayString>
+    <DisplayString Condition="_Myres &gt;= _BUF_SIZE">{_Bx._Ptr,s8b}</DisplayString>
+    <StringView Condition="_Myres &lt; _BUF_SIZE">_Bx._Buf,s8b</StringView>
+    <StringView Condition="_Myres &gt;= _BUF_SIZE">_Bx._Ptr,s8b</StringView>
+    <Expand>
+      <Item Name="[size]">_Mysize</Item>
+      <Item Name="[capacity]">_Myres</Item>
+      <ArrayItems>
+        <Size>_Mysize</Size>
+        <ValuePointer Condition="_Myres &lt; _BUF_SIZE">_Bx._Buf</ValuePointer>
+        <ValuePointer Condition="_Myres &gt;= _BUF_SIZE">_Bx._Ptr</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+  
+  <Type Name="cml::vector&lt;*, cml::fixed&lt;2,*&gt;&gt;">
+    <DisplayString>{m_data[0]}, {m_data[1]}</DisplayString>
+  </Type>
+  <Type Name="cml::vector&lt;*, cml::fixed&lt;3,*&gt;&gt;">
+    <DisplayString>{m_data[0]}, {m_data[1]}, {m_data[2]}</DisplayString>
+  </Type>
+  <Type Name="cml::vector&lt;*, cml::fixed&lt;4,*&gt;&gt;">
+    <DisplayString>{m_data[0]}, {m_data[1]}, {m_data[2]}, {m_data[3]}</DisplayString>
+  </Type>
+
+  <Type Name="cml::matrix&lt;*, cml::fixed&lt;4,4&gt;, *, *&gt;">
+    <DisplayString>diag: {m_data[0][0]}, {m_data[1][1]}, {m_data[2][2]}, {m_data[3][3]}</DisplayString>
+    <Expand>
+      <Synthetic Name="Row1">
+        <DisplayString>{m_data[0][0]}, {m_data[0][1]}, {m_data[0][2]}, {m_data[0][3]}</DisplayString>
+      </Synthetic>
+      <Synthetic Name="Row2">
+        <DisplayString>{m_data[1][0]}, {m_data[1][1]}, {m_data[1][2]}, {m_data[1][3]}</DisplayString>
+      </Synthetic>
+      <Synthetic Name="Row3">
+        <DisplayString>{m_data[2][0]}, {m_data[2][1]}, {m_data[2][2]}, {m_data[2][3]}</DisplayString>
+      </Synthetic>
+      <Synthetic Name="Row4">
+        <DisplayString>{m_data[3][0]}, {m_data[3][1]}, {m_data[3][2]}, {m_data[3][3]}</DisplayString>
+      </Synthetic>
+    </Expand>
+  </Type>
+
+  <Type Name="Utility::XmlInputStreamFormatter&lt;unsigned char&gt;::InteriorSection">
+    <DisplayString>{_start,[_end-_start]s8b}</DisplayString>
+  </Type>
+  
+  <Type Name="ColladaConversion::ColladaDocument">
+    <DisplayString>mpu = {_rootAsset._metersPerUnit}, up = {_rootAsset._upAxis}</DisplayString>
+  </Type>
+
+  <Type Name="ColladaConversion::TransformationSet::Operation">
+    <DisplayString Condition="_type == 2">[{_sid._start,[_sid._end-_sid._start]s8b}] Matrix</DisplayString>
+    <DisplayString Condition="_type == 3">[{_sid._start,[_sid._end-_sid._start]s8b}] Rotate</DisplayString>
+    <DisplayString Condition="_type == 4">[{_sid._start,[_sid._end-_sid._start]s8b}] Scale ({((float*)_buffer)[0]}, {((float*)_buffer)[1]}, {((float*)_buffer)[2]})</DisplayString>
+    <DisplayString Condition="_type == 6">[{_sid._start,[_sid._end-_sid._start]s8b}] Translate ({((float*)_buffer)[0]}, {((float*)_buffer)[1]}, {((float*)_buffer)[2]})</DisplayString>
+    <DisplayString Condition="_type == 5">[{_sid._start,[_sid._end-_sid._start]s8b}] Skew</DisplayString>
+    <DisplayString Condition="_type == 1">[{_sid._start,[_sid._end-_sid._start]s8b}] LookAt</DisplayString>
+    
+    <Expand>
+        <!-- matrix -->
+      <ExpandedItem Condition="_type == 2">(Float4*)_buffer,4</ExpandedItem>
+
+        <!-- rotate -->
+      <Item Name="Angle" Condition="_type == 3">*(float*)(_buffer+12) / 3.14159f * 180.0f</Item>
+      <Item Name="Axis" Condition="_type == 3">*(Float3*)_buffer</Item>
+
+        <!-- skew -->
+      <Item Name="Angle" Condition="_type == 5">*(float*)_buffer / 3.14159f * 180.0f</Item>
+      <Item Name="AxisA" Condition="_type == 5">*(Float3*)(_buffer+4)</Item>
+      <Item Name="AxisB" Condition="_type == 5">*(Float3*)(_buffer+16)</Item>
+
+        <!-- lookat -->
+      <Item Name="Origin" Condition="_type == 1">*(Float3*)(_buffer+0)</Item>
+      <Item Name="Focus" Condition="_type == 1">*(Float3*)(_buffer+12)</Item>
+      <Item Name="Up" Condition="_type == 1">*(Float3*)(_buffer+24)</Item>
+
+    </Expand>
+  </Type>
+
+  <Type Name="ColladaConversion::TechniqueValue">
+    <DisplayString Condition="_type == 0">Color = {_value}</DisplayString>
+    <DisplayString Condition="_type == 1">Texture = {_reference} (tex coords: {_texCoord})</DisplayString>
+    <DisplayString Condition="_type == 2">Float = {_value.m_data[0]}</DisplayString>
+    <DisplayString Condition="_type == 3">Param = {_reference}</DisplayString>
+  </Type>
+
+</AutoVisualizer>
