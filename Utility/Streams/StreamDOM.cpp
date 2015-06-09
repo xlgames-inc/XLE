@@ -174,15 +174,15 @@ namespace Utility
     template <typename Formatter>
         Document<Formatter>::Document(Document&& moveFrom)
     {
-        _elements = std::move(_elements);
-        _attributes = std::move(_attributes);
+        _elements = std::move(moveFrom._elements);
+        _attributes = std::move(moveFrom._attributes);
     }
 
     template <typename Formatter>
         auto Document<Formatter>::operator=(Document&& moveFrom) -> Document&
     {
-        _elements = std::move(_elements);
-        _attributes = std::move(_attributes);
+        _elements = std::move(moveFrom._elements);
+        _attributes = std::move(moveFrom._attributes);
         return *this;
     }
 

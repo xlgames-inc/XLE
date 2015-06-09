@@ -30,6 +30,31 @@ namespace XLEMath
     class RotationY         { public: float _angle;     explicit RotationY(float angle) : _angle(angle) {} };
     class RotationZ         { public: float _angle;     explicit RotationZ(float angle) : _angle(angle) {} };
 
+    class ArbitraryRotation
+    {
+    public:
+        Float3 _axis;
+        float _angle;
+        ArbitraryRotation() {}
+        ArbitraryRotation(Float3 axis, float angle) : _axis(axis), _angle(angle) {}
+    };
+
+    class LookAt
+    {
+    public:
+        Float3 _origin;
+        Float3 _focusPosition;
+        Float3 _upDirection;
+    };
+
+    class Skew
+    {
+    public:
+        float _angle;
+        Float3 _axisA;
+        Float3 _axisB;
+    };
+
     #if MATHLIBRARY_ACTIVE == MATHLIBRARY_CML
 		inline Float3x3   MakeRotationMatrix(Float3 axis, Float3::value_type angle)
         {

@@ -7,11 +7,13 @@
 #define _SCL_SECURE_NO_WARNINGS
 
 #include "../Math/Vector.h"
+#include "../Math/Transformations.h"
 #include "../Utility/Streams/XmlStreamFormatter.h"
 #include "../Utility/Streams/StreamDom.h"
 #include "../Utility/UTFUtils.h"
 #include "../Utility/Conversion.h"
 #include "../Utility/ParameterBox.h"
+#include "../Utility/MemoryUtils.h"
 #include "../ConsoleRig/Log.h"
 
 namespace ColladaConversion
@@ -56,19 +58,21 @@ namespace ColladaConversion
         UpAxis _upAxis;
 
         AssetDesc();
-        AssetDesc(XmlInputStreamFormatter<utf8>& formatter);
+        AssetDesc(Formatter& formatter);
     };
 
     class Effect;
     class Geometry;
+    class VisualScene;
 
     class ColladaDocument
     {
     public:
-        void Parse(XmlInputStreamFormatter<utf8>& formatter);
+        void Parse(Formatter& formatter);
 
-        void Parse_LibraryEffects(XmlInputStreamFormatter<utf8>& formatter);
-        void Parse_LibraryGeometries(XmlInputStreamFormatter<utf8>& formatter);
+        void Parse_LibraryEffects(Formatter& formatter);
+        void Parse_LibraryGeometries(Formatter& formatter);
+        void Parse_LibraryVisualScenes(Formatter& formatter);
 
         ColladaDocument();
         ~ColladaDocument();
@@ -78,6 +82,7 @@ namespace ColladaConversion
 
         std::vector<Effect> _effects;
         std::vector<Geometry> _geometries;
+        std::vector<VisualScene> _visualScenes;
     };
 
     static bool Is(const XmlInputStreamFormatter<utf8>::InteriorSection& section, const utf8 match[])
@@ -85,7 +90,7 @@ namespace ColladaConversion
         return !XlComparePrefix(match, section._start, section._end - section._start);
     }
 
-    static bool StartsWith(const XmlInputStreamFormatter<utf8>::InteriorSection& section, const utf8 match[])
+    static bool BeginsWith(const XmlInputStreamFormatter<utf8>::InteriorSection& section, const utf8 match[])
     {
         auto matchLen = XlStringLen(match);
         if ((section._end - section._start) < ptrdiff_t(matchLen)) return false;
@@ -126,10 +131,8 @@ namespace ColladaConversion
 
         if (formatter.TryCharacterData(cdata)) {
 
-            cml::vector<Type, cml::fixed<Count>> result;
-            unsigned elementsRead = ParseXMLList(&result[0], Count, cdata);
-            for (unsigned c=elementsRead; c<Count; ++c)
-                result[c] = def[c];
+            cml::vector<Type, cml::fixed<Count>> result = def;
+            ParseXMLList(&result[0], Count, cdata);
             return result;
 
         } else {
@@ -147,6 +150,14 @@ namespace ColladaConversion
         } else {
             LogWarning << "Expecting scalar data at " << formatter.GetLocation();
             return def;
+        }
+    }
+
+    static void SkipAllAttributes(Formatter& formatter)
+    {
+        while (formatter.PeekNext(true) == Formatter::Blob::AttributeName) {
+            Formatter::InteriorSection name, value;
+            formatter.TryAttribute(name, value);
         }
     }
 
@@ -183,10 +194,41 @@ namespace ColladaConversion
 
     using RootElementParser = void (ColladaDocument::*)(XmlInputStreamFormatter<utf8>&);
 
+    #define ON_ELEMENT                                              \
+        for (;;) {                                                  \
+            switch (formatter.PeekNext()) {                         \
+            case Formatter::Blob::BeginElement:                     \
+                {                                                   \
+                    Formatter::InteriorSection eleName;             \
+                    formatter.TryBeginElement(eleName);             \
+        /**/
+
+    #define ON_ATTRIBUTE                                            \
+                    if (!formatter.TryEndElement())                 \
+                        Throw(FormatException("Expecting end element", formatter.GetLocation()));       \
+                    continue;                                       \
+                }                                                   \
+                                                                    \
+            case Formatter::Blob::AttributeName:                    \
+                {                                                   \
+                    Formatter::InteriorSection name, value;         \
+                    formatter.TryAttribute(name, value);            \
+        /**/
+
+    #define PARSE_END                                               \
+                    continue;                                       \
+                }                                                   \
+            }                                                       \
+                                                                    \
+            break;                                                  \
+        }                                                           \
+        /**/
+
     static std::pair<const utf8*, RootElementParser> s_rootElements[] = 
     {
         std::make_pair(u("library_effects"), &ColladaDocument::Parse_LibraryEffects),
-        std::make_pair(u("library_geometries"), &ColladaDocument::Parse_LibraryGeometries)
+        std::make_pair(u("library_geometries"), &ColladaDocument::Parse_LibraryGeometries),
+        std::make_pair(u("library_visual_scenes"), &ColladaDocument::Parse_LibraryVisualScenes)
     };
 
 
@@ -198,61 +240,36 @@ namespace ColladaConversion
         _upAxis = UpAxis::Z;
     }
 
-    AssetDesc::AssetDesc(XmlInputStreamFormatter<utf8>& formatter)
+    AssetDesc::AssetDesc(Formatter& formatter)
         : AssetDesc()
     {
-        using Formatter = XmlInputStreamFormatter<utf8>;
-
-        for (;;) {
-            switch (formatter.PeekNext()) {
-            case Formatter::Blob::AttributeName:
-                {
-                    Formatter::InteriorSection name, value;
-                    formatter.TryAttribute(name, value);
-                    continue;
-                }
-
-            case Formatter::Blob::BeginElement:
-                {
-                    Formatter::InteriorSection eleName;
-                    formatter.TryBeginElement(eleName);
-                    if (Is(eleName, u("unit"))) {
-                        // Utility::Document<Formatter> doc(formatter);
-                        // _metersPerUnit = doc(u("meter"), _metersPerUnit);
-                        auto meter = ExtractSingleAttribute(formatter, u("meter"));
-                        _metersPerUnit = Parse(meter, _metersPerUnit);
-                    } else if (Is(eleName, u("up_axis"))) {
-                        if (formatter.TryCharacterData(eleName)) {
-                            if ((eleName._end - eleName._start) >= 1) {
-                                switch (std::tolower(*eleName._start)) {
-                                case 'x': _upAxis = UpAxis::X; break;
-                                case 'y': _upAxis = UpAxis::Y; break;
-                                case 'z': _upAxis = UpAxis::Z; break;
-                                }
-                            }
+        ON_ELEMENT
+            if (Is(eleName, u("unit"))) {
+                // Utility::Document<Formatter> doc(formatter);
+                // _metersPerUnit = doc(u("meter"), _metersPerUnit);
+                auto meter = ExtractSingleAttribute(formatter, u("meter"));
+                _metersPerUnit = Parse(meter, _metersPerUnit);
+            } else if (Is(eleName, u("up_axis"))) {
+                if (formatter.TryCharacterData(eleName)) {
+                    if ((eleName._end - eleName._start) >= 1) {
+                        switch (std::tolower(*eleName._start)) {
+                        case 'x': _upAxis = UpAxis::X; break;
+                        case 'y': _upAxis = UpAxis::Y; break;
+                        case 'z': _upAxis = UpAxis::Z; break;
                         }
-                    } else
-                        formatter.SkipElement();
-
-                    if (!formatter.TryEndElement())
-                        Throw(FormatException("Expecting end element", formatter.GetLocation()));
-
-                    continue;
+                    }
                 }
+            } else
+                formatter.SkipElement();
 
-            default:
-                break;
-            }
-
-            break;
-        }
+        ON_ATTRIBUTE
+        PARSE_END
     }
     
 
 
-    void ColladaDocument::Parse(XmlInputStreamFormatter<utf8>& formatter)
+    void ColladaDocument::Parse(Formatter& formatter)
     {
-        using Formatter = XmlInputStreamFormatter<utf8>;
         Formatter::InteriorSection rootEle;
         if (!formatter.TryBeginElement(rootEle) || !Is(rootEle, u("COLLADA")))
             Throw(FormatException("Expecting root COLLADA element", formatter.GetLocation()));
@@ -347,10 +364,22 @@ namespace ColladaConversion
             SubDoc _extra;
 
             SamplerParameter();
-            SamplerParameter(Formatter& formatter);
+            SamplerParameter(Formatter& formatter, Section sid, Section eleName);
             ~SamplerParameter();
         };
         std::vector<SamplerParameter> _samplerParameters;
+
+        class SurfaceParameter
+        {
+        public:
+            Section _sid;
+            Section _type;
+            Section _initFrom;
+
+            SurfaceParameter() {}
+            SurfaceParameter(Formatter& formatter, Section sid, Section eleName);
+        };
+        std::vector<SurfaceParameter> _surfaceParameters;
 
         void ParseParam(Formatter& formatter);
 
@@ -412,114 +441,117 @@ namespace ColladaConversion
         return ParseEnum(section, table);
     }
 
-    ParameterSet::SamplerParameter::SamplerParameter(Formatter& formatter)
+    ParameterSet::SamplerParameter::SamplerParameter(Formatter& formatter, Section sid, Section eleName)
         : SamplerParameter()
     {
-        for (;;) {
-            switch (formatter.PeekNext()) {
-            case Formatter::Blob::BeginElement:
-                {
-                    Formatter::InteriorSection eleName;
-                    formatter.TryBeginElement(eleName);
+        _sid = sid;
+        _type = eleName;
 
-                    if (Is(eleName, u("instance_image"))) {
-                        // collada 1.5 uses "instance_image" (Collada 1.4 equivalent is <source>)
-                        _image = ExtractSingleAttribute(formatter, u("url"));
-                    } else if (Is(eleName, u("source"))) {
-                        // collada 1.4 uses "source" (which cannot have extra data attached)
-                        formatter.TryCharacterData(_image);
-                    } else if (Is(eleName, u("wrap_s"))) {
-                        _addressS = ReadCDataAsEnum(formatter, s_SamplerAddressNames);
-                    } else if (Is(eleName, u("wrap_t"))) {
-                        _addressT = ReadCDataAsEnum(formatter, s_SamplerAddressNames);
-                    } else if (Is(eleName, u("wrap_p"))) {
-                        _addressQ = ReadCDataAsEnum(formatter, s_SamplerAddressNames);
-                    } else if (Is(eleName, u("minfilter"))) {
-                        _minFilter = ReadCDataAsEnum(formatter, s_SamplerFilterNames);
-                    } else if (Is(eleName, u("magfilter"))) {
-                        _maxFilter = ReadCDataAsEnum(formatter, s_SamplerFilterNames);
-                    } else if (Is(eleName, u("mipfilter"))) {
-                        _mipFilter = ReadCDataAsEnum(formatter, s_SamplerFilterNames);
-                    } else if (Is(eleName, u("border_color"))) {
-                        _borderColor = ReadCDataAsList(formatter, _borderColor);
-                    } else if (Is(eleName, u("mip_max_level"))) {
-                        _maxMipLevel = ReadCDataAsValue(formatter, _maxMipLevel);
-                    } else if (Is(eleName, u("mip_min_level"))) {
-                        _minMipLevel = ReadCDataAsValue(formatter, _minMipLevel);
-                    } else if (Is(eleName, u("mip_bias"))) {
-                        _mipMapBias = ReadCDataAsValue(formatter, _mipMapBias);
-                    } else if (Is(eleName, u("max_anisotropy"))) {
-                        _maxAnisotrophy = ReadCDataAsValue(formatter, _maxAnisotrophy);
-                    } else if (Is(eleName, u("extra"))) {
-                        _extra = SubDoc(formatter);
-                    } else {
-                        formatter.SkipElement();
-                    }
-
-                    if (!formatter.TryEndElement())
-                        Throw(FormatException("Expecting end element", formatter.GetLocation()));
-                    continue;
-                }
-
-            case Formatter::Blob::AttributeName:
-                {
-                    Formatter::InteriorSection name, value;
-                    formatter.TryAttribute(name, value);
-                    LogWarning << "Sampler objects should not have any attributes. At " << formatter.GetLocation();
-                    continue;
-                }
+        ON_ELEMENT
+            if (Is(eleName, u("instance_image"))) {
+                // collada 1.5 uses "instance_image" (Collada 1.4 equivalent is <source>)
+                _image = ExtractSingleAttribute(formatter, u("url"));
+            } else if (Is(eleName, u("source"))) {
+                // collada 1.4 uses "source" (which cannot have extra data attached)
+                formatter.TryCharacterData(_image);
+            } else if (Is(eleName, u("wrap_s"))) {
+                _addressS = ReadCDataAsEnum(formatter, s_SamplerAddressNames);
+            } else if (Is(eleName, u("wrap_t"))) {
+                _addressT = ReadCDataAsEnum(formatter, s_SamplerAddressNames);
+            } else if (Is(eleName, u("wrap_p"))) {
+                _addressQ = ReadCDataAsEnum(formatter, s_SamplerAddressNames);
+            } else if (Is(eleName, u("minfilter"))) {
+                _minFilter = ReadCDataAsEnum(formatter, s_SamplerFilterNames);
+            } else if (Is(eleName, u("magfilter"))) {
+                _maxFilter = ReadCDataAsEnum(formatter, s_SamplerFilterNames);
+            } else if (Is(eleName, u("mipfilter"))) {
+                _mipFilter = ReadCDataAsEnum(formatter, s_SamplerFilterNames);
+            } else if (Is(eleName, u("border_color"))) {
+                _borderColor = ReadCDataAsList(formatter, _borderColor);
+            } else if (Is(eleName, u("mip_max_level"))) {
+                _maxMipLevel = ReadCDataAsValue(formatter, _maxMipLevel);
+            } else if (Is(eleName, u("mip_min_level"))) {
+                _minMipLevel = ReadCDataAsValue(formatter, _minMipLevel);
+            } else if (Is(eleName, u("mip_bias"))) {
+                _mipMapBias = ReadCDataAsValue(formatter, _mipMapBias);
+            } else if (Is(eleName, u("max_anisotropy"))) {
+                _maxAnisotrophy = ReadCDataAsValue(formatter, _maxAnisotrophy);
+            } else if (Is(eleName, u("extra"))) {
+                _extra = SubDoc(formatter);
+            } else {
+                formatter.SkipElement();
             }
 
-            break;
-        }
+        ON_ATTRIBUTE
+            LogWarning << "<sampler> elements should not have any attributes. At " << formatter.GetLocation();
+        PARSE_END
     }
 
     ParameterSet::SamplerParameter::~SamplerParameter() {}
+
+    ParameterSet::SurfaceParameter::SurfaceParameter(Formatter& formatter, Section sid, Section eleName)
+    {
+        _sid = sid;
+        _type = eleName;
+
+            // <surface> is an important Collada 1.4.1 element. But it's depricated in Collada 1.5, 
+            // and merged into other functionality.
+            // We only want to support the init_from sub-element
+            // There are other subelements for specifying format, mipmap generation flags,
+            // other surfaces (etc). But it's this is not the best place for this information
+            // for us.
+
+        ON_ELEMENT
+            if (Is(eleName, u("init_from"))) {
+                SkipAllAttributes(formatter);
+                formatter.TryCharacterData(_initFrom);
+            } else {
+                formatter.SkipElement();
+            }
+
+        ON_ATTRIBUTE
+            // only "type" is value
+        PARSE_END
+    }
 
     void ParameterSet::ParseParam(Formatter& formatter)
     {
         Formatter::InteriorSection sid;
 
-        for (;;) {
-            switch (formatter.PeekNext()) {
-            case Formatter::Blob::BeginElement:
-                {
-                    Formatter::InteriorSection eleName;
-                    formatter.TryBeginElement(eleName);
+        ON_ELEMENT
+            if (Is(eleName, u("annotate")) || Is(eleName, u("semantic")) || Is(eleName, u("modifier"))) {
+                formatter.SkipElement();
+            } else {
+                if (BeginsWith(eleName, u("sampler"))) {
+                    _samplerParameters.push_back(SamplerParameter(formatter, sid, eleName));
+                } else if (Is(eleName, u("surface"))) {
 
-                    if (Is(eleName, u("annotate")) || Is(eleName, u("semantic")) || Is(eleName, u("modifier"))) {
-                        formatter.SkipElement();
+                        // "surface" is depreciated in collada 1.5. But it's a very import
+                        // param in Collada 1.4.1, because it's a critical link between a
+                        // "sampler" and a "image"
+                    _surfaceParameters.push_back(SurfaceParameter(formatter, sid, eleName));
+
+                } else if (Is(eleName, u("array")) || Is(eleName, u("usertype")) || Is(eleName, u("string")) || Is(eleName, u("enum"))) {
+                    LogWarning << "<array>, <usertype>, <string> and <enum> params not supported (depreciated in Collada 1.5). At: " << formatter.GetLocation();
+                    formatter.SkipElement();
+                } else {
+                        // this is a basic parameter, typically a scalar, vector or matrix
+                        // we don't need to parse it fully now; just get the location of the 
+                        // data and store it as a new parameter
+                    Formatter::InteriorSection cdata;
+                    if (formatter.TryCharacterData(cdata)) {
+                        _parameters.push_back(BasicParameter{sid, eleName, cdata});
                     } else {
-                        if (!Is(eleName, u("sampler"))) {
-                            _samplerParameters.push_back(SamplerParameter(formatter));
-                        } else {
-                                // this is a basic parameter, typically a scalar, vector or matrix
-                                // we don't need to parse it fully now; just get the location of the 
-                                // data and store it as a new parameter
-                            Formatter::InteriorSection cdata;
-                            if (formatter.TryCharacterData(cdata)) {
-                                _parameters.push_back(BasicParameter{sid, eleName, cdata});
-                            } else 
-                                LogWarning << "Expecting element with parameter data " << formatter.GetLocation();
-                        }
+                        LogWarning << "Expecting element with parameter data at: " << formatter.GetLocation();
+                        formatter.SkipElement();
                     }
-
-                    if (!formatter.TryEndElement())
-                        Throw(FormatException("Expecting end element", formatter.GetLocation()));
-                    continue;
-                }
-
-            case Formatter::Blob::AttributeName:
-                {
-                    Formatter::InteriorSection name, value;
-                    formatter.TryAttribute(name, value);
-                    if (Is(name, u("sid"))) sid = value;
-                    continue;
                 }
             }
 
-            break;
-        }
+        ON_ATTRIBUTE
+            if (Is(name, u("sid"))) sid = value;
+                continue;
+        PARSE_END
     }
 
     ParameterSet::ParameterSet() {}
@@ -527,13 +559,14 @@ namespace ColladaConversion
     ParameterSet::ParameterSet(ParameterSet&& moveFrom)
     :   _parameters(std::move(moveFrom._parameters))
     ,   _samplerParameters(std::move(moveFrom._samplerParameters))
-    {
-    }
+    ,   _surfaceParameters(std::move(moveFrom._surfaceParameters))
+    {}
 
     ParameterSet& ParameterSet::operator=(ParameterSet&& moveFrom)
     {
         _parameters = std::move(moveFrom._parameters);
         _samplerParameters = std::move(moveFrom._samplerParameters);
+        _surfaceParameters = std::move(moveFrom._surfaceParameters);
         return *this;
     }
 
@@ -564,7 +597,7 @@ namespace ColladaConversion
             ParameterSet _params;
             String _profileType;
             String _shaderName;        // (phong, blinn, etc)
-            std::vector<std::pair<String, TechniqueValue>> _values;
+            std::vector<std::pair<Section, TechniqueValue>> _values;
 
             SubDoc _extra;
             SubDoc _techniqueExtra;
@@ -590,39 +623,20 @@ namespace ColladaConversion
     Effect::Profile::Profile(Formatter& formatter, String profileType)
     : _profileType(profileType)
     {
-        for (;;) {
-            switch (formatter.PeekNext()) {
-            case Formatter::Blob::BeginElement:
-                {
-                    Formatter::InteriorSection eleName;
-                    formatter.TryBeginElement(eleName);
-
-                    if (Is(eleName, u("newparam"))) {
-                        _params.ParseParam(formatter);
-                    } else if (Is(eleName, u("extra"))) {
-                        _extra = SubDoc(formatter);
-                    } else if (Is(eleName, u("technique"))) {
-                        ParseTechnique(formatter);
-                    } else {
-                        // asset
-                        formatter.SkipElement();
-                    }
-
-                    if (!formatter.TryEndElement())
-                        Throw(FormatException("Expecting end element", formatter.GetLocation()));
-                    continue;
-                }
-
-            case Formatter::Blob::AttributeName:
-                {
-                    Formatter::InteriorSection name, value;
-                    formatter.TryAttribute(name, value);
-                    continue;
-                }
+        ON_ELEMENT
+            if (Is(eleName, u("newparam"))) {
+                _params.ParseParam(formatter);
+            } else if (Is(eleName, u("extra"))) {
+                _extra = SubDoc(formatter);
+            } else if (Is(eleName, u("technique"))) {
+                ParseTechnique(formatter);
+            } else {
+                // asset
+                formatter.SkipElement();
             }
 
-            break;
-        }
+        ON_ATTRIBUTE
+        PARSE_END
     }
 
     Effect::Profile::Profile(Profile&& moveFrom)
@@ -648,45 +662,26 @@ namespace ColladaConversion
 
     void Effect::Profile::ParseTechnique(Formatter& formatter)
     {
-        for (;;) {
-            switch (formatter.PeekNext()) {
-            case Formatter::Blob::BeginElement:
-                {
-                    Formatter::InteriorSection eleName;
-                    formatter.TryBeginElement(eleName);
+        ON_ELEMENT
+            // Note that we skip a lot of the content in techniques
+            // importantly, we skip "pass" elements. "pass" is too tightly
+            // bound to the structure of Collada FX. It makes it difficult
+            // to extract the particular properties we want, and transform
+            // them into something practical.
 
-                    // Note that we skip a lot of the content in techniques
-                    // importantly, we skip "pass" elements. "pass" is too tightly
-                    // bound to the structure of Collada FX. It makes it difficult
-                    // to extract the particular properties we want, and transform
-                    // them into something practical.
-
-                    if (Is(eleName, u("extra"))) {
-                        _extra = SubDoc(formatter);
-                    } else if (Is(eleName, u("asset")) || Is(eleName, u("annotate")) || Is(eleName, u("pass"))) {
-                        formatter.SkipElement();
-                    } else {
-                        // Any other elements are seen as a shader definition
-                        // There should be exactly 1.
-                        _shaderName = String(eleName._start, eleName._end);
-                        ParseShaderType(formatter);
-                    }
-
-                    if (!formatter.TryEndElement())
-                        Throw(FormatException("Expecting end element", formatter.GetLocation()));
-                    continue;
-                }
-
-            case Formatter::Blob::AttributeName:
-                {
-                    Formatter::InteriorSection name, value;
-                    formatter.TryAttribute(name, value);
-                    continue;
-                }
+            if (Is(eleName, u("extra"))) {
+                _extra = SubDoc(formatter);
+            } else if (Is(eleName, u("asset")) || Is(eleName, u("annotate")) || Is(eleName, u("pass"))) {
+                formatter.SkipElement();
+            } else {
+                // Any other elements are seen as a shader definition
+                // There should be exactly 1.
+                _shaderName = String(eleName._start, eleName._end);
+                ParseShaderType(formatter);
             }
 
-            break;
-        }
+        ON_ATTRIBUTE
+        PARSE_END
     }
 
     template<typename CharType>
@@ -757,7 +752,7 @@ namespace ColladaConversion
     }
 
     template<typename Type>
-        static unsigned ParseXMLList(Type dest[], unsigned destCount, Section section)
+        static decltype(Section::_start) ParseXMLList(Type dest[], unsigned destCount, Section section)
     {
         assert(destCount > 0);
 
@@ -769,9 +764,9 @@ namespace ColladaConversion
 
             auto* eleEnd = FastParseElement(dest[elementCount], eleStart, section._end);
 
-            if (eleStart == eleEnd) return elementCount;
+            if (eleStart == eleEnd) return eleEnd;
             ++elementCount;
-            if (elementCount >= destCount) return elementCount;
+            if (elementCount >= destCount) return eleEnd;
             eleStart = eleEnd;
         }
     }
@@ -792,20 +787,18 @@ namespace ColladaConversion
         if (!formatter.TryBeginElement(eleName))
             Throw(FormatException("Expecting element for technique value", formatter.GetLocation()));
         
-        {
-                // skip all attributes (sometimes get "sid" tags)
-            while (formatter.PeekNext(true) == Formatter::Blob::AttributeName) {
-                Formatter::InteriorSection name, value;
-                formatter.TryAttribute(name, value);
-            }
-        }
-
         if (Is(eleName, u("float"))) {
+
+                // skip all attributes (sometimes get "sid" tags)
+            SkipAllAttributes(formatter);
 
             _value[0] = ReadCDataAsValue(formatter, _value[0]);
             _type = Type::Float;
 
         } else if (Is(eleName, u("color"))) {
+
+                // skip all attributes (sometimes get "sid" tags)
+            SkipAllAttributes(formatter);
 
             Formatter::InteriorSection cdata; 
             if (formatter.TryCharacterData(cdata)) {
@@ -854,72 +847,33 @@ namespace ColladaConversion
         // Also, there's are special cases for <transparent> and <transparency>
         //      -- they seem a little strange, actually
 
-        for (;;) {
-            switch (formatter.PeekNext()) {
-            case Formatter::Blob::BeginElement:
-                {
-                    Formatter::InteriorSection eleName;
-                    formatter.TryBeginElement(eleName);
+        ON_ELEMENT
+            _values.push_back(
+                std::make_pair(eleName, TechniqueValue(formatter)));
 
-                    _values.push_back(
-                        std::make_pair(
-                            String(eleName._start, eleName._end),
-                            TechniqueValue(formatter)));
-
-                    if (!formatter.TryEndElement())
-                        Throw(FormatException("Expecting end element", formatter.GetLocation()));
-                    continue;
-                }
-
-            case Formatter::Blob::AttributeName:
-                {
-                    Formatter::InteriorSection name, value;
-                    formatter.TryAttribute(name, value);
-                    continue;
-                }
-            }
-
-            break;
-        }
+        ON_ATTRIBUTE
+        PARSE_END
     }
 
     Effect::Effect(Formatter& formatter)
     {
-        for (;;) {
-            switch (formatter.PeekNext()) {
-            case Formatter::Blob::BeginElement:
-                {
-                    Formatter::InteriorSection eleName;
-                    formatter.TryBeginElement(eleName);
-
-                    if (Is(eleName, u("newparam"))) {
-                        _params.ParseParam(formatter);
-                    } else if (StartsWith(eleName, u("profile_"))) {
-                        _profiles.push_back(Profile(formatter, String(eleName._start+8, eleName._end)));
-                    } else if (Is(eleName, u("extra"))) {
-                        _extra = SubDoc(formatter);
-                    } else {
-                        // asset, annotate
-                        formatter.SkipElement();
-                    }
-
-                    if (!formatter.TryEndElement())
-                        Throw(FormatException("Expecting end element", formatter.GetLocation()));
-                    continue;
-                }
-
-            case Formatter::Blob::AttributeName:
-                {
-                    Formatter::InteriorSection name, value;
-                    formatter.TryAttribute(name, value);
-                    if (Is(name, u("name"))) _name = value;
-                    else if (Is(name, u("id"))) _id = value;
-                    continue;
-                }
+        ON_ELEMENT
+            if (Is(eleName, u("newparam"))) {
+                _params.ParseParam(formatter);
+            } else if (BeginsWith(eleName, u("profile_"))) {
+                _profiles.push_back(Profile(formatter, String(eleName._start+8, eleName._end)));
+            } else if (Is(eleName, u("extra"))) {
+                _extra = SubDoc(formatter);
+            } else {
+                // asset, annotate
+                formatter.SkipElement();
             }
 
-            break;
-        }
+        ON_ATTRIBUTE
+            if (Is(name, u("name"))) _name = value;
+            else if (Is(name, u("id"))) _id = value;
+
+        PARSE_END
     }
 
     Effect::Effect(Effect&& moveFrom)
@@ -940,69 +894,19 @@ namespace ColladaConversion
         return *this;
     }
 
-    void ColladaDocument::Parse_LibraryEffects(XmlInputStreamFormatter<utf8>& formatter)
+    void ColladaDocument::Parse_LibraryEffects(Formatter& formatter)
     {
-        using Formatter = XmlInputStreamFormatter<utf8>;
-        for (;;) {
-            switch (formatter.PeekNext()) {
-            case Formatter::Blob::BeginElement:
-                {
-                    Formatter::InteriorSection eleName;
-                    formatter.TryBeginElement(eleName);
-
-                    if (Is(eleName, u("effect"))) {
-                        _effects.push_back(Effect(formatter));
-                    } else {
-                            // "annotate", "asset" and "extra" are also valid
-                        formatter.SkipElement();
-                    }
-
-                    if (!formatter.TryEndElement())
-                        Throw(FormatException("Expecting end element", formatter.GetLocation()));
-                    continue;
-                }
-
-            case Formatter::Blob::AttributeName:
-                {
-                    Formatter::InteriorSection name, value;
-                    formatter.TryAttribute(name, value);
-                    continue;
-                }
+        ON_ELEMENT
+            if (Is(eleName, u("effect"))) {
+                _effects.push_back(Effect(formatter));
+            } else {
+                    // "annotate", "asset" and "extra" are also valid
+                formatter.SkipElement();
             }
 
-            break;
-        }
+        ON_ATTRIBUTE
+        PARSE_END
     }
-
-    #define ON_ELEMENT                                              \
-        for (;;) {                                                  \
-            switch (formatter.PeekNext()) {                         \
-            case Formatter::Blob::BeginElement:                     \
-                {                                                   \
-                    Formatter::InteriorSection eleName;             \
-                    formatter.TryBeginElement(eleName);             \
-        /**/
-
-    #define ON_ATTRIBUTE                                            \
-                    if (!formatter.TryEndElement())                 \
-                        Throw(FormatException("Expecting end element", formatter.GetLocation()));       \
-                    continue;                                       \
-                }                                                   \
-                                                                    \
-            case Formatter::Blob::AttributeName:                    \
-                {                                                   \
-                    Formatter::InteriorSection name, value;         \
-                    formatter.TryAttribute(name, value);            \
-        /**/
-
-    #define PARSE_END                                               \
-                    continue;                                       \
-                }                                                   \
-            }                                                       \
-                                                                    \
-            break;                                                  \
-        }                                                           \
-        /**/
 
     namespace DataFlow
     {
@@ -1417,6 +1321,7 @@ namespace ColladaConversion
     }
 
     Geometry::Geometry(Formatter& formatter)
+    : Geometry()
     {
         ON_ELEMENT
             if (Is(eleName, u("mesh"))) {
@@ -1435,10 +1340,7 @@ namespace ColladaConversion
         PARSE_END
     }
 
-    Geometry::Geometry()
-    {
-
-    }
+    Geometry::Geometry() {}
 
     Geometry::Geometry(Geometry&& moveFrom) never_throws
     : _sources(std::move(moveFrom._sources))
@@ -1456,8 +1358,345 @@ namespace ColladaConversion
         return *this;
     }
 
-    void ColladaDocument::Parse_LibraryGeometries(XmlInputStreamFormatter<utf8>& formatter)
+    void ColladaDocument::Parse_LibraryGeometries(Formatter& formatter)
     {
+        ON_ELEMENT
+            if (Is(eleName, u("geometry"))) {
+                _geometries.push_back(Geometry(formatter));
+            } else {
+                    // "asset" and "extra" are also valid, but uninteresting
+                formatter.SkipElement();
+            }
+
+        ON_ATTRIBUTE
+            // name and id. Not interesting if we have only a single library
+        PARSE_END
+    }
+
+    class TransformationSet
+    {
+    public:
+        class Operation
+        {
+        public:
+            enum class Type 
+            {
+                None,
+                LookAt, Matrix4x4, Rotate, 
+                Scale, Skew, Translate 
+            };
+
+            Type _type;
+            uint8 _buffer[sizeof(Float4x4)];
+            Section _sid;
+            unsigned _next;
+
+            Operation();
+            Operation(const Operation& copyFrom) never_throws;
+            Operation& operator=(const Operation& copyFrom) never_throws;
+            ~Operation();
+        };
+
+        std::vector<Operation> _operations;
+
+        static bool IsTransform(Section section);
+        unsigned ParseTransform(
+            Formatter& formatter, Section elementName, 
+            unsigned previousSibling = ~unsigned(0));
+
+        TransformationSet();
+        TransformationSet(TransformationSet&& moveFrom) never_throws;
+        TransformationSet& operator=(TransformationSet&& moveFrom) never_throws;
+        ~TransformationSet();
+    };
+
+    static float ConvertAngle(float input)
+    {
+        // In collada, angles are specified in degrees. But that
+        // is a little confusion when working with XLE functions,
+        // because XLE always uses radians. So we need to do a conversion...
+        return input * gPI / 180.f;
+    }
+
+    unsigned TransformationSet::ParseTransform(
+        Formatter& formatter, Section elementName, 
+        unsigned chainStart)
+    {
+        // Read a transformation element, which exists as part of a chain
+        // of transformations;
+        // There are a finite number of difference transformation operations
+        // supported:
+        //      LookAt
+        //      Matrix (4x4)
+        //      Rotate
+        //      Scale
+        //      Skew
+        //      Translate
+        // These parameters are animatable. So this stage, we can't perform
+        // optimisations to convert arbitrary scales into uniform scales or
+        // matrices into orthonormal transforms
+
+        Operation newOp;
+
+        while (formatter.PeekNext(true) == Formatter::Blob::AttributeName) {
+            Section attribName, attribValue;
+            formatter.TryAttribute(attribName, attribValue);
+            if (Is(attribName, u("sid"))) newOp._sid = attribValue;
+        }
+
+        Section cdata;
+        if (!formatter.TryCharacterData(cdata))
+            return chainStart;
+
+            // Note that there can be problems here if there are comments
+            // in the middle of the cdata. We can only properly parse
+            // a continuous block of cdata... Anything that is interrupted
+            // by comments or <CDATA[ type blocks will not work correctly.
+
+        if (Is(elementName, u("lookat"))) {
+            newOp._type = Operation::Type::LookAt;
+            auto& dst = *(LookAt*)newOp._buffer;
+            cdata._start = ParseXMLList(&dst._origin[0], 3, cdata);
+            cdata._start = ParseXMLList(&dst._focusPosition[0], 3, cdata);
+            cdata._start = ParseXMLList(&dst._upDirection[0], 3, cdata);
+        } else if (Is(elementName, u("matrix"))) {
+            newOp._type = Operation::Type::Matrix4x4;
+            auto& dst = *(Float4x4*)newOp._buffer;
+            cdata._start = ParseXMLList(&dst(0,0), 16, cdata);
+        } else if (Is(elementName, u("rotate"))) {
+            newOp._type = Operation::Type::Rotate;
+            auto& dst = *(ArbitraryRotation*)newOp._buffer;
+            cdata._start = ParseXMLList(&dst._axis[0], 3, cdata);
+            cdata._start = ParseXMLList(&dst._angle, 1, cdata);
+            dst._angle = ConvertAngle(dst._angle);
+        } else if (Is(elementName, u("scale"))) {
+            newOp._type = Operation::Type::Scale;
+            auto& dst = *(ArbitraryScale*)newOp._buffer;
+            cdata._start = ParseXMLList(&dst._scale[0], 3, cdata);
+        } else if (Is(elementName, u("skew"))) {
+            newOp._type = Operation::Type::Skew;
+            auto& dst = *(Skew*)newOp._buffer;
+            cdata._start = ParseXMLList(&dst._angle, 1, cdata);
+            cdata._start = ParseXMLList(&dst._axisA[0], 3, cdata);
+            cdata._start = ParseXMLList(&dst._axisB[0], 3, cdata);
+            dst._angle = ConvertAngle(dst._angle);
+        } else if (Is(elementName, u("translate"))) {
+            newOp._type = Operation::Type::Translate;
+            auto& dst = *(Float3*)newOp._buffer;
+            cdata._start = ParseXMLList(&dst[0], 3, cdata);
+        } else {
+            return chainStart;
+        }
+
+        if (chainStart != ~unsigned(0)) {
+            unsigned tail = chainStart;
+            for (;;) {
+                if (_operations[tail]._next == ~unsigned(0)) break;
+                tail = _operations[tail]._next;
+            }
+            _operations[tail]._next = unsigned(_operations.size());
+        } else {
+            chainStart = unsigned(_operations.size());
+        }
+
+        _operations.push_back(newOp);
+        return chainStart;
+    }
+
+    bool TransformationSet::IsTransform(Section section)
+    {
+        return  Is(section, u("lookat")) || Is(section, u("matrix"))
+            ||  Is(section, u("rotate")) || Is(section, u("scale"))
+            ||  Is(section, u("skew")) || Is(section, u("translate"));
+    }
+
+    TransformationSet::TransformationSet() {}
+    TransformationSet::TransformationSet(TransformationSet&& moveFrom)
+    : _operations(std::move(moveFrom._operations))
+    {}
+
+    TransformationSet& TransformationSet::operator=(TransformationSet&& moveFrom)
+    {
+        _operations = std::move(moveFrom._operations);
+        return *this;
+    }
+
+    TransformationSet::~TransformationSet() {}
+
+    TransformationSet::Operation::Operation()
+    : _type(Type::None), _next(~unsigned(0))
+    {
+        XlZeroMemory(_buffer);
+    }
+
+    TransformationSet::Operation::Operation(const Operation& copyFrom) never_throws
+    {
+        _type = copyFrom._type;
+        _next = copyFrom._next;
+        _sid = copyFrom._sid;
+        XlCopyMemory(_buffer, copyFrom._buffer, sizeof(_buffer));
+    }
+
+    auto TransformationSet::Operation::operator=(const Operation& copyFrom) never_throws -> Operation&
+    {
+        _type = copyFrom._type;
+        _next = copyFrom._next;
+        _sid = copyFrom._sid;
+        XlCopyMemory(_buffer, copyFrom._buffer, sizeof(_buffer));
+        return *this;
+    }
+
+    TransformationSet::Operation::~Operation() {}
+
+    class InstanceGeometry
+    {
+    public:
+        class MaterialBinding
+        {
+        public:
+            Section _technique;
+            Section _reference;
+            Section _bindingSymbol;
+
+            MaterialBinding(Formatter& formatter, Section technique);
+        };
+
+        Section _reference;
+        std::vector<MaterialBinding> _matBindings;
+
+        InstanceGeometry(Formatter& formatter);
+        InstanceGeometry();
+        InstanceGeometry(InstanceGeometry&& moveFrom) never_throws;
+        InstanceGeometry& operator=(InstanceGeometry&& moveFrom) never_throws;
+
+    protected:
+        void ParseBindMaterial(Formatter& formatter);
+        void ParseTechnique(Formatter& formatter, Section techniqueName);
+    };
+
+    InstanceGeometry::InstanceGeometry(Formatter& formatter)
+    {
+        ON_ELEMENT
+            if (Is(eleName, u("bind_material"))) {
+                ParseBindMaterial(formatter);
+            }
+
+        ON_ATTRIBUTE
+            if (Is(name, u("url"))) _reference = value;
+
+        PARSE_END
+    }
+
+    void InstanceGeometry::ParseBindMaterial(Formatter& formatter)
+    {
+        ON_ELEMENT
+            if (BeginsWith(eleName, u("technique"))) {
+                ParseTechnique(formatter, eleName);
+            } else {
+                if (Is(eleName, u("param")))
+                    LogWarning << "Element " << eleName << " is not currently supported in <instance_geometry>";
+
+                // <extra> and <param> also possible
+                // support for <param> might be useful for animating material parameters
+                formatter.SkipElement();
+            }
+
+        ON_ATTRIBUTE
+            // should be no attributes in <bind_material>
+
+        PARSE_END
+    }
+
+    void InstanceGeometry::ParseTechnique(Formatter& formatter, Section techniqueName)
+    {
+        ON_ELEMENT
+            if (BeginsWith(eleName, u("instance_material"))) {
+                _matBindings.push_back(MaterialBinding(formatter, techniqueName));
+            } else {
+                formatter.SkipElement();
+            }
+
+        ON_ATTRIBUTE
+            // should be no attributes in <technique...>
+
+        PARSE_END
+    }
+
+    InstanceGeometry::MaterialBinding::MaterialBinding(Formatter& formatter, Section technique)
+    : _technique(technique)
+    {
+        ON_ELEMENT
+                // <bind> and <bind_vertex_input> are supported... These can override the shader
+                // inputs for this material instance. It's an interesting feature, but not supported
+                // currently.
+                // also, <extra> is possible
+            if (Is(eleName, u("bind")) || Is(eleName, u("bind_vertex_input")))
+                LogWarning << "Element " << eleName << " is not currently supported in <instance_material>";
+            formatter.SkipElement();
+
+        ON_ATTRIBUTE
+            if (Is(name, u("target"))) _reference = value;
+            else if (Is(name, u("symbol"))) _bindingSymbol = value;
+
+        PARSE_END
+    }
+
+    InstanceGeometry::InstanceGeometry() {}
+    InstanceGeometry::InstanceGeometry(InstanceGeometry&& moveFrom) never_throws
+    : _matBindings(std::move(moveFrom._matBindings))
+    {
+        _reference = moveFrom._reference;
+    }
+
+    InstanceGeometry& InstanceGeometry::operator=(InstanceGeometry&& moveFrom) never_throws
+    {
+        _reference = moveFrom._reference;
+        _matBindings = std::move(moveFrom._matBindings);
+        return *this;
+    }
+
+    class VisualScene
+    {
+    public:
+        SubDoc _extra;
+
+        VisualScene(Formatter& formatter);
+        VisualScene();
+        VisualScene(VisualScene&& moveFrom) never_throws;
+        VisualScene& operator=(VisualScene&& moveFrom) never_throws;
+
+    protected:
+        using IndexIntoNodes = unsigned;
+        using TransformationSetIndex = unsigned;
+        static const IndexIntoNodes IndexIntoNodes_Invalid = ~IndexIntoNodes(0);
+        static const TransformationSetIndex TransformationSetIndex_Invalid = ~TransformationSetIndex(0);
+
+        class Node
+        {
+        public:
+            Section _id;
+            Section _sid;
+            Section _name;
+
+            IndexIntoNodes _parent;
+            IndexIntoNodes _nextSibling;
+            IndexIntoNodes _firstChild;
+
+            TransformationSetIndex _transformChain;
+
+            Node() 
+            : _parent(IndexIntoNodes_Invalid), _nextSibling(IndexIntoNodes_Invalid), _firstChild(IndexIntoNodes_Invalid)
+            , _transformChain(TransformationSetIndex_Invalid) {}
+        };
+
+        std::vector<Node> _nodes;
+        std::vector<std::pair<IndexIntoNodes, InstanceGeometry>> _geoInstances;
+        TransformationSet _transformSet;
+    };
+
+    VisualScene::VisualScene(Formatter& formatter)
+    {
+        std::stack<IndexIntoNodes> workingNodes;
         for (;;) {
             switch (formatter.PeekNext()) {
             case Formatter::Blob::BeginElement:
@@ -1465,29 +1704,135 @@ namespace ColladaConversion
                     Formatter::InteriorSection eleName;
                     formatter.TryBeginElement(eleName);
 
-                    if (Is(eleName, u("geometry"))) {
-                        _geometries.push_back(Geometry(formatter));
+                    bool eatEndElement = true;
+                    if (Is(eleName, u("node"))) {
+
+                            // create a new node, and add it to 
+                            // our working tree...
+
+                        Node newNode;
+                        auto newNodeIndex = IndexIntoNodes(_nodes.size());
+                        if (!workingNodes.empty()) {
+
+                            newNode._parent = workingNodes.top();
+                            auto lastChildOfParent = _nodes[workingNodes.top()]._firstChild;
+                            if (lastChildOfParent != IndexIntoNodes_Invalid) {
+
+                                for (;;) {
+                                    auto& sib = _nodes[lastChildOfParent];
+                                    if (sib._nextSibling == IndexIntoNodes_Invalid) {
+                                        sib._nextSibling = newNodeIndex;
+                                        break;
+                                    }
+                                    lastChildOfParent = sib._nextSibling;
+                                }
+
+                            } else {
+                                _nodes[workingNodes.top()]._firstChild = newNodeIndex;
+                            }
+
+                        }
+
+                        workingNodes.push(newNodeIndex);
+                        _nodes.push_back(newNode);
+                        eatEndElement = false;
+
+                    } else if (Is(eleName, u("instance_geometry"))) {
+
+                            // <instance_geometry> should contain a reference to the particular geometry
+                            // as well as material binding information.
+                            // each <instance_geometry> belongs inside of a 
+                        auto node = IndexIntoNodes_Invalid;
+                        if (!workingNodes.empty()) node = workingNodes.top();
+                        _geoInstances.push_back(std::make_pair(node, InstanceGeometry(formatter)));
+
+                    } else if (TransformationSet::IsTransform(eleName)) {
+
+                        if (!workingNodes.empty()) {
+                            auto& node = _nodes[workingNodes.top()];
+                            node._transformChain = _transformSet.ParseTransform(
+                                formatter, eleName, node._transformChain);
+                        } else {
+                            formatter.SkipElement();    // wierd -- transform in the root node
+                        }
+                    
                     } else {
-                            // "asset" and "extra" are also valid, but uninteresting
-                        formatter.SkipElement();
+                        if (workingNodes.empty() && Is(eleName, u("extra"))) {
+                            _extra = SubDoc(formatter);
+                        } else {
+                                // "asset" and "evaluate_scene" are also valid, but uninteresting
+                            formatter.SkipElement();
+                        }
                     }
 
-                    if (!formatter.TryEndElement())
+                    if (eatEndElement && !formatter.TryEndElement())
                         Throw(FormatException("Expecting end element", formatter.GetLocation()));
+
                     continue;
                 }
+
+            case Formatter::Blob::EndElement:
+                if (workingNodes.empty()) break;
+                formatter.TryEndElement();
+                workingNodes.pop();
+                continue;
 
             case Formatter::Blob::AttributeName:
                 {
                     Formatter::InteriorSection name, value;
                     formatter.TryAttribute(name, value);
-                    // name and id. Not interesting if we have only a single library
+
+                    if (!workingNodes.empty()) {
+
+                            // this is actually an attribute inside of a node item
+                        auto& node = _nodes[workingNodes.top()];
+                        if (Is(name, u("id"))) node._id = value;
+                        else if (Is(name, u("sid"))) node._sid = value;
+                        else if (Is(name, u("name"))) node._name = value;
+
+                    } else {
+                        // visual_scene can have "id" and "name"
+                    }
+
                     continue;
                 }
             }
 
             break;
         }
+    }
+
+    VisualScene::VisualScene() {}
+    VisualScene::VisualScene(VisualScene&& moveFrom) never_throws 
+    : _extra(std::move(moveFrom._extra))
+    , _nodes(std::move(moveFrom._nodes))
+    , _geoInstances(std::move(moveFrom._geoInstances))
+    , _transformSet(std::move(moveFrom._transformSet))
+    {
+    }
+
+    VisualScene& VisualScene::operator=(VisualScene&& moveFrom) never_throws 
+    {
+        _extra = std::move(moveFrom._extra);
+        _nodes = std::move(moveFrom._nodes);
+        _geoInstances = std::move(moveFrom._geoInstances);
+        _transformSet = std::move(moveFrom._transformSet);
+        return *this;
+    }
+
+    void ColladaDocument::Parse_LibraryVisualScenes(Formatter& formatter)
+    {
+        ON_ELEMENT
+            if (Is(eleName, u("visual_scene"))) {
+                _visualScenes.push_back(VisualScene(formatter));
+            } else {
+                    // "asset" and "extra" are also valid, but uninteresting
+                formatter.SkipElement();
+            }
+
+        ON_ATTRIBUTE
+            // name and id. Not interesting if we have only a single library
+        PARSE_END
     }
 
     ColladaDocument::ColladaDocument() {}
@@ -1501,12 +1846,14 @@ namespace ColladaConversion
 void TestParser()
 {
     size_t size;
-    auto block = LoadFileAsMemoryBlock("game/testmodels/nyra/Nyra_pose.dae", &size);
-    using Formatter = XmlInputStreamFormatter<utf8>;
-    Formatter formatter(MemoryMappedInputStream(block.get(), PtrAdd(block.get(), size)));
+    // auto block = LoadFileAsMemoryBlock("game/testmodels/nyra/Nyra_pose.dae", &size);
+    auto block = LoadFileAsMemoryBlock("Game/chr/nu_f/skin/dragon003.dae", &size);
+    XmlInputStreamFormatter<utf8> formatter(MemoryMappedInputStream(block.get(), PtrAdd(block.get(), size)));
     ColladaConversion::ColladaDocument doc;
     doc.Parse(formatter);
 
+    Float4 t2;
+    Float4x4 temp;
     int t = 0;
     (void)t;
 }
