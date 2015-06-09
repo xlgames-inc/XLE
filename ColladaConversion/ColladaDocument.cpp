@@ -955,88 +955,6 @@ namespace ColladaConversion
             std::make_pair(ArrayType::SidRef, u("SIDREF"))
         };
 
-        class Source
-        {
-        public:
-            Section _id;
-            Section _arrayId;
-            Section _arrayData;
-            ArrayType _type;
-            unsigned _arrayCount;
-
-            Source() : _type(ArrayType::Unspecified), _arrayCount(0) {}
-            Source(Formatter& formatter);
-        };
-
-        Source::Source(Formatter& formatter)
-            : Source()
-        {
-            ON_ELEMENT
-                if (EndsWith(eleName, u("_array"))) {
-
-                        // This is an array of elements, typically with an id and count
-                        // we should have only a single array in each source. But it can
-                        // be one of many different types.
-                        // Most large data in Collada should appear in blocks like this. 
-                        // We don't attempt to parse it here, just record it's location in
-                        // the file for later;
-                
-                    _type = ParseEnum(Section(eleName._start, eleName._end-6), s_ArrayTypeNames);
-                
-                        // this element should have no sub-elements. But it has important
-                        // attributes. Given that the source is XML, the attributes
-                        // will always come first.
-                    {
-                        while (formatter.PeekNext(true) == Formatter::Blob::AttributeName) {
-                            Section name, value;
-                            formatter.TryAttribute(name, value);
-
-                            if (Is(name, u("count"))) {
-                                _arrayCount = Parse(value, 0u);
-                            } else if (Is(name, u("id"))) {
-                                _arrayId = value;
-                            } // "name also valid
-                        }
-                    }
-
-                    Section cdata;
-                    if (formatter.TryCharacterData(cdata)) {
-                        _arrayData = cdata;
-                    } else {
-                        LogWarning << "Data source contains no data! At: " << formatter.GetLocation();
-                    }
-
-                } else if (Is(eleName, u("technique"))) {
-
-                    // this can contain special case non-standard information
-                    // But it's not clear what this would be used for
-                    LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
-                    formatter.SkipElement();
-
-                } else if (Is(eleName, u("technique_common"))) {
-
-                    // This specifies the way we interpret the information in the array.
-                    // It should occur after the array object. So we can resolve the reference
-                    // in the accessor -- but only assuming that the reference in the accessor
-                    // refers to an array in this document. That would be logical and typical.
-                    // But the standard suggests the accessor can actually refer to a data array
-                    // anywhere (including in other files)
-                    // Anyway, it looks like we should have only a single accessor per technique
-                    LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
-                    formatter.SkipElement();
-
-                } else {
-                        // "asset" also valid
-                    LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
-                    formatter.SkipElement();
-                }
-
-            ON_ATTRIBUTE
-                if (Is(name, u("id"))) {
-                    _id = value;
-                } // "name" is also valid
-            PARSE_END
-        }
 
         class Accessor
         {
@@ -1064,6 +982,7 @@ namespace ColladaConversion
             Accessor(Formatter& formatter);
             Accessor(Accessor&& moveFrom) never_throws;
             Accessor& operator=(Accessor&&moveFrom) never_throws;
+            ~Accessor();
         };
 
 
@@ -1093,7 +1012,8 @@ namespace ColladaConversion
                         }
                     }
 
-                    if (newParam._name._start > newParam._name._end) {
+                        // do not record <param>s without names -- those are only used to skip over a slot
+                    if (newParam._name._end > newParam._name._start) {
                         if (_paramCount < dimof(_params)) {
                             _params[_paramCount] = newParam;
                         } else
@@ -1140,6 +1060,146 @@ namespace ColladaConversion
             _paramCount = moveFrom._paramCount;
             return *this;
         }
+
+        Accessor::~Accessor() {}
+
+        class Source
+        {
+        public:
+            Section _id;
+            Section _arrayId;
+            Section _arrayData;
+            ArrayType _type;
+            unsigned _arrayCount;
+
+                // accessors, and the technique profile that applies to them
+            std::pair<Accessor, Section> _accessors[1];
+            std::vector<std::pair<Accessor, Section>> _accessorsOverflow;
+            unsigned _accessorsCount;
+
+            Source() : _type(ArrayType::Unspecified), _arrayCount(0), _accessorsCount(0) {}
+            Source(Formatter& formatter);
+            Source(Source&& moveFrom) never_throws;
+            Source& operator=(Source&& moveFrom) never_throws;
+            ~Source();
+
+        protected:
+            void ParseTechnique(Formatter& formatter, Section techniqueProfile);
+        };
+
+        Source::Source(Formatter& formatter)
+            : Source()
+        {
+            ON_ELEMENT
+                if (EndsWith(eleName, u("_array"))) {
+
+                        // This is an array of elements, typically with an id and count
+                        // we should have only a single array in each source. But it can
+                        // be one of many different types.
+                        // Most large data in Collada should appear in blocks like this. 
+                        // We don't attempt to parse it here, just record it's location in
+                        // the file for later;
+                
+                    _type = ParseEnum(Section(eleName._start, eleName._end-6), s_ArrayTypeNames);
+                
+                        // this element should have no sub-elements. But it has important
+                        // attributes. Given that the source is XML, the attributes
+                        // will always come first.
+                    {
+                        while (formatter.PeekNext(true) == Formatter::Blob::AttributeName) {
+                            Section name, value;
+                            formatter.TryAttribute(name, value);
+
+                            if (Is(name, u("count"))) {
+                                _arrayCount = Parse(value, 0u);
+                            } else if (Is(name, u("id"))) {
+                                _arrayId = value;
+                            } // "name also valid
+                        }
+                    }
+
+                    Section cdata;
+                    if (formatter.TryCharacterData(cdata)) {
+                        _arrayData = cdata;
+                    } else {
+                        LogWarning << "Data source contains no data! At: " << formatter.GetLocation();
+                    }
+
+                } else if (Is(eleName, u("technique"))) {
+
+                    ParseTechnique(formatter, Section());
+
+                } else if (Is(eleName, u("technique_common"))) {
+
+                        // use "common" as the profile name
+                    ParseTechnique(formatter, Section(eleName._start + 10, eleName._end));
+
+                } else {
+                        // "asset" also valid
+                    LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                    formatter.SkipElement();
+                }
+
+            ON_ATTRIBUTE
+                if (Is(name, u("id"))) {
+                    _id = value;
+                } // "name" is also valid
+            PARSE_END
+        }
+
+        void Source::ParseTechnique(Formatter& formatter, Section techniqueProfile)
+        {
+            ON_ELEMENT
+                if (Is(eleName, u("accessor"))) {
+                    if (_accessorsCount < dimof(_accessors)) {
+                        _accessors[_accessorsCount] = std::make_pair(Accessor(formatter), techniqueProfile);
+                    } else {
+                        _accessorsOverflow.push_back(std::make_pair(Accessor(formatter), techniqueProfile));
+                    }
+                    ++_accessorsCount;
+                } else {
+                        // documentation doesn't clearly specify what is valid here
+                    LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                    formatter.SkipElement();
+                }
+
+            ON_ATTRIBUTE
+                if (Is(name, u("profile"))) techniqueProfile = value;
+
+            PARSE_END
+        }
+
+        Source::Source(Source&& moveFrom) never_throws
+        : _accessorsOverflow(std::move(moveFrom._accessorsOverflow))
+        {
+            _id = moveFrom._id;
+            _arrayId = moveFrom._arrayId;
+            _arrayData = moveFrom._arrayData;
+            _type = moveFrom._type;
+            _arrayCount = moveFrom._arrayCount;
+            _accessorsCount = moveFrom._accessorsCount;
+            for (unsigned c=0; c<dimof(_accessors); ++c)
+                _accessors[c] = std::move(moveFrom._accessors[c]);
+        }
+
+        Source& Source::operator=(Source&& moveFrom) never_throws
+        {
+            _id = moveFrom._id;
+            _arrayId = moveFrom._arrayId;
+            _arrayData = moveFrom._arrayData;
+            _type = moveFrom._type;
+            _arrayCount = moveFrom._arrayCount;
+
+            _accessorsCount = moveFrom._accessorsCount;
+            for (unsigned c=0; c<dimof(_accessors); ++c)
+                _accessors[c] = std::move(moveFrom._accessors[c]);
+
+            _accessorsOverflow = std::move(moveFrom._accessorsOverflow);
+            return *this;
+        }
+
+        Source::~Source() {}
+
 
 
         class Input
@@ -1810,6 +1870,9 @@ namespace ColladaConversion
         ON_ELEMENT
             if (Is(eleName, u("bind_material"))) {
                 ParseBindMaterial(formatter);
+            } else {
+                LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                formatter.SkipElement();
             }
 
         ON_ATTRIBUTE
@@ -1894,6 +1957,47 @@ namespace ColladaConversion
         return *this;
     }
 
+    class InstanceController : public InstanceGeometry
+    {
+    public:
+        Section _skeleton;
+
+        InstanceController(Formatter& formatter);
+        InstanceController(InstanceController&& moveFrom) never_throws;
+        InstanceController& operator=(InstanceController&& moveFrom) never_throws;
+    };
+
+    InstanceController::InstanceController(Formatter& formatter) 
+    {
+        ON_ELEMENT
+            if (Is(eleName, u("bind_material"))) {
+                ParseBindMaterial(formatter);
+            } else if (eleName, u("skeleton")) {
+                SkipAllAttributes(formatter);
+                formatter.TryCharacterData(_skeleton);
+            } else {
+                LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                formatter.SkipElement();
+            }
+
+        ON_ATTRIBUTE
+            if (Is(name, u("url"))) _reference = value;
+
+        PARSE_END
+    }
+
+    InstanceController::InstanceController(InstanceController&& moveFrom) never_throws
+    : InstanceGeometry(std::forward<InstanceController&>(moveFrom))
+    {
+        _skeleton = moveFrom._skeleton;
+    }
+
+    InstanceController& InstanceController::operator=(InstanceController&& moveFrom) never_throws
+    {
+        _skeleton = moveFrom._skeleton;
+        return *this;
+    }
+
     class VisualScene
     {
     public:
@@ -1936,6 +2040,7 @@ namespace ColladaConversion
 
         std::vector<Node> _nodes;
         std::vector<std::pair<IndexIntoNodes, InstanceGeometry>> _geoInstances;
+        std::vector<std::pair<IndexIntoNodes, InstanceController>> _controllerInstances;
         TransformationSet _transformSet;
     };
 
@@ -1990,6 +2095,15 @@ namespace ColladaConversion
                         auto node = IndexIntoNodes_Invalid;
                         if (!workingNodes.empty()) node = workingNodes.top();
                         _geoInstances.push_back(std::make_pair(node, InstanceGeometry(formatter)));
+
+                    } else if (Is(eleName, u("instance_controller"))) {
+
+                            // <instance_geometry> should contain a reference to the particular geometry
+                            // as well as material binding information.
+                            // each <instance_geometry> belongs inside of a 
+                        auto node = IndexIntoNodes_Invalid;
+                        if (!workingNodes.empty()) node = workingNodes.top();
+                        _controllerInstances.push_back(std::make_pair(node, InstanceController(formatter)));
 
                     } else if (TransformationSet::IsTransform(eleName)) {
 
@@ -2063,6 +2177,7 @@ namespace ColladaConversion
     : _extra(std::move(moveFrom._extra))
     , _nodes(std::move(moveFrom._nodes))
     , _geoInstances(std::move(moveFrom._geoInstances))
+    , _controllerInstances(std::move(moveFrom._controllerInstances))
     , _transformSet(std::move(moveFrom._transformSet))
     {
     }
@@ -2072,6 +2187,7 @@ namespace ColladaConversion
         _extra = std::move(moveFrom._extra);
         _nodes = std::move(moveFrom._nodes);
         _geoInstances = std::move(moveFrom._geoInstances);
+        _controllerInstances = std::move(moveFrom._controllerInstances);
         _transformSet = std::move(moveFrom._transformSet);
         return *this;
     }
