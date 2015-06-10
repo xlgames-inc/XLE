@@ -97,26 +97,28 @@ namespace RenderCore { namespace ColladaConversion
     class RawVertexSourceDataAdapter : public IVertexSourceData
     {
     public:
-        std::vector<uint8>          _rawData;
-        Metal::NativeFormat::Enum   _fmt;
+        std::vector<uint8>              _rawData;
+        Metal::NativeFormat::Enum       _fmt;
 
-        const void* GetData() const { return AsPointer(_rawData.cbegin()); }
-        size_t GetDataSize() const { return _rawData.size(); }
-        RenderCore::Metal::NativeFormat::Enum GetFormat() const { return _fmt; }
-        size_t GetStride() const { return RenderCore::Metal::BitsPerPixel(_fmt) / 8; }
-        size_t GetCount() const { return GetDataSize() / GetStride(); }
-        ProcessingFlags::BitField GetProcessingFlags() const { return 0; }
+        const void* GetData() const     { return AsPointer(_rawData.cbegin()); }
+        size_t GetDataSize() const      { return _rawData.size(); }
+        size_t GetStride() const        { return RenderCore::Metal::BitsPerPixel(_fmt) / 8; }
+        size_t GetCount() const         { return GetDataSize() / GetStride(); }
 
-        RawVertexSourceDataAdapter() { _fmt = Metal::NativeFormat::Unknown; }
+        RenderCore::Metal::NativeFormat::Enum GetFormat() const     { return _fmt; }
+        ProcessingFlags::BitField GetProcessingFlags() const        { return 0; }
+
+        RawVertexSourceDataAdapter()    { _fmt = Metal::NativeFormat::Unknown; }
         RawVertexSourceDataAdapter(const void* start, const void* end, Metal::NativeFormat::Enum fmt)
         : _fmt(fmt), _rawData((const uint8*)start, (const uint8*)end) {}
     };
 
     IVertexSourceData::~IVertexSourceData() {}
 
-    std::shared_ptr<IVertexSourceData> CreateRawDataSource(
-        const void* dataBegin, const void* dataEnd, 
-        Metal::NativeFormat::Enum srcFormat)
+    std::shared_ptr<IVertexSourceData>
+        CreateRawDataSource(
+            const void* dataBegin, const void* dataEnd, 
+            Metal::NativeFormat::Enum srcFormat)
     {
         return std::make_shared<RawVertexSourceDataAdapter>(dataBegin, dataEnd, srcFormat);
     }

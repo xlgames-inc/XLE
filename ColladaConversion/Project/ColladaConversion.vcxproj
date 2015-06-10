@@ -94,7 +94,9 @@
     <ClCompile Include="..\ModelCommandStream.cpp" />
     <ClCompile Include="..\NascentModel.cpp" />
     <ClCompile Include="..\OpenCollada\OCRawGeometry.cpp" />
+    <ClCompile Include="..\ParsingUtil.cpp" />
     <ClCompile Include="..\RawGeometry.cpp" />
+    <ClCompile Include="..\SRawGeometry.cpp" />
     <ClCompile Include="..\TableOfObjects.cpp" />
     <ClCompile Include="..\TransformationMachine.cpp" />
     <ClCompile Include="..\Version.cpp" />
@@ -104,8 +106,11 @@
     <ClInclude Include="..\ConversionObjects.h" />
     <ClInclude Include="..\ModelCommandStream.h" />
     <ClInclude Include="..\NascentModel.h" />
+    <ClInclude Include="..\ParsingUtil.h" />
     <ClInclude Include="..\ProcessingUtil.h" />
     <ClInclude Include="..\RawGeometry.h" />
+    <ClInclude Include="..\Scaffold.h" />
+    <ClInclude Include="..\ScaffoldDataFlow.h" />
     <ClInclude Include="..\TableOfObjects.h" />
     <ClInclude Include="..\TransformationMachine.h" />
   </ItemGroup>

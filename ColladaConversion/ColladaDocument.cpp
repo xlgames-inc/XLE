@@ -6,26 +6,17 @@
 
 #define _SCL_SECURE_NO_WARNINGS
 
+#include "Scaffold.h"
+#include "ScaffoldDataFlow.h"
+#include "ParsingUtil.h"
 #include "../Math/Vector.h"
 #include "../Math/Transformations.h"
-#include "../Utility/Streams/XmlStreamFormatter.h"
-#include "../Utility/Streams/StreamDom.h"
 #include "../Utility/UTFUtils.h"
 #include "../Utility/Conversion.h"
 #include "../Utility/ParameterBox.h"
 #include "../Utility/MemoryUtils.h"
+#include "../Utility/IteratorUtils.h"
 #include "../ConsoleRig/Log.h"
-
-namespace ColladaConversion
-{
-    template<typename Section>
-        static std::string AsString(const Section& section)
-    {
-        using CharType = std::remove_const<std::remove_reference<decltype(*section._start)>::type>::type;
-        return Conversion::Convert<std::string>(
-            std::basic_string<CharType>(section._start, section._end));
-    }
-}
 
 namespace std   // adding these to std is awkward, but it's the only way to make sure easylogging++ can see them
 {
@@ -45,109 +36,12 @@ namespace std   // adding these to std is awkward, but it's the only way to make
 
 namespace ColladaConversion
 {
-    using Formatter = XmlInputStreamFormatter<utf8>;
-    using Section = Formatter::InteriorSection;
-    using SubDoc = Utility::Document<Formatter>;
-    using String = std::basic_string<Formatter::value_type>;
-
-    class AssetDesc
-    {
-    public:
-        float _metersPerUnit;
-        enum class UpAxis { X, Y, Z };
-        UpAxis _upAxis;
-
-        AssetDesc();
-        AssetDesc(Formatter& formatter);
-    };
-
-    class Effect;
-    class Geometry;
-    class VisualScene;
-    class SkinController;
-    class Material;
-
-    class ColladaDocument
-    {
-    public:
-        void Parse(Formatter& formatter);
-
-        void Parse_LibraryEffects(Formatter& formatter);
-        void Parse_LibraryGeometries(Formatter& formatter);
-        void Parse_LibraryVisualScenes(Formatter& formatter);
-        void Parse_LibraryControllers(Formatter& formatter);
-        void Parse_LibraryMaterials(Formatter& formatter);
-        void Parse_Scene(Formatter& formatter);
-
-        ColladaDocument();
-        ~ColladaDocument();
-
-    protected:
-        AssetDesc _rootAsset;
-
-        std::vector<Effect> _effects;
-        std::vector<Geometry> _geometries;
-        std::vector<VisualScene> _visualScenes;
-        std::vector<SkinController> _skinControllers;
-        std::vector<Material> _materials;
-
-        Section _visualScene;
-        Section _physicsScene;
-        Section _kinematicsScene;
-    };
-
-    static bool Is(const XmlInputStreamFormatter<utf8>::InteriorSection& section, const utf8 match[])
-    {
-        const auto* a = section._start;
-        const auto* b = match;
-        for (;;) {
-            if (a == section._end)
-                return !(*b);   // success if both strings have terminated at the same time
-            if (*b != *a) return false;
-            assert(*b); // potentially hit this assert if there are null characters in "section"... that isn't supported
-            ++b; ++a;
-        }
-    }
-
-    static bool BeginsWith(const XmlInputStreamFormatter<utf8>::InteriorSection& section, const utf8 match[])
-    {
-        auto matchLen = XlStringLen(match);
-        if ((section._end - section._start) < ptrdiff_t(matchLen)) return false;
-        return Is(Section(section._start, section._start + matchLen), match);
-    }
-
-    static bool EndsWith(const XmlInputStreamFormatter<utf8>::InteriorSection& section, const utf8 match[])
-    {
-        auto matchLen = XlStringLen(match);
-        if ((section._end - section._start) < ptrdiff_t(matchLen)) return false;
-        return Is(Section(section._end - matchLen, section._end), match);
-    }
-
-    template<typename Type>
-        static Type Parse(const XmlInputStreamFormatter<utf8>::InteriorSection& section, const Type& def)
-    {
-            // ImpliedType::Parse is actually a fairly expensing parsing operation...
-            // maybe we could get a faster result by just calling the standard library
-            // type functions.
-        auto d = ImpliedTyping::Parse<Type>(section._start, section._end);
-        if (!d.first) return def;
-        return d.second;
-    }
-
     template <typename Type, int Count>
         cml::vector<Type, cml::fixed<Count>> ReadCDataAsList(
             Formatter& formatter, // Formatter::InteriorSection storedType,
             const cml::vector<Type, cml::fixed<Count>>& def)
     {
         Formatter::InteriorSection cdata;
-
-        // auto type = HLSLTypeNameAsTypeDesc(
-        //     Conversion::Convert<std::string>(String(storedType._start, storedType._end)).c_str());
-        // if (type._type == ImpliedTyping::TypeCat::Void) {
-        //     type._type = ImpliedTyping::TypeCat::Float;
-        //     type._arrayCount = 1;
-        // }
-
         if (formatter.TryCharacterData(cdata)) {
 
             cml::vector<Type, cml::fixed<Count>> result = def;
@@ -211,7 +105,7 @@ namespace ColladaConversion
         return result;
     }
 
-    using RootElementParser = void (ColladaDocument::*)(XmlInputStreamFormatter<utf8>&);
+    using RootElementParser = void (DocumentScaffold::*)(XmlInputStreamFormatter<utf8>&);
 
     #define ON_ELEMENT                                              \
         for (;;) {                                                  \
@@ -245,12 +139,12 @@ namespace ColladaConversion
 
     static std::pair<const utf8*, RootElementParser> s_rootElements[] = 
     {
-        std::make_pair(u("library_effects"), &ColladaDocument::Parse_LibraryEffects),
-        std::make_pair(u("library_geometries"), &ColladaDocument::Parse_LibraryGeometries),
-        std::make_pair(u("library_visual_scenes"), &ColladaDocument::Parse_LibraryVisualScenes),
-        std::make_pair(u("library_controllers"), &ColladaDocument::Parse_LibraryControllers),
-        std::make_pair(u("library_materials"), &ColladaDocument::Parse_LibraryMaterials),
-        std::make_pair(u("scene"), &ColladaDocument::Parse_Scene)
+        std::make_pair(u("library_effects"), &DocumentScaffold::Parse_LibraryEffects),
+        std::make_pair(u("library_geometries"), &DocumentScaffold::Parse_LibraryGeometries),
+        std::make_pair(u("library_visual_scenes"), &DocumentScaffold::Parse_LibraryVisualScenes),
+        std::make_pair(u("library_controllers"), &DocumentScaffold::Parse_LibraryControllers),
+        std::make_pair(u("library_materials"), &DocumentScaffold::Parse_LibraryMaterials),
+        std::make_pair(u("scene"), &DocumentScaffold::Parse_Scene)
     };
 
 
@@ -290,7 +184,7 @@ namespace ColladaConversion
     
 
 
-    void ColladaDocument::Parse(Formatter& formatter)
+    void DocumentScaffold::Parse(Formatter& formatter)
     {
         Formatter::InteriorSection rootEle;
         if (!formatter.TryBeginElement(rootEle) || !Is(rootEle, u("COLLADA")))
@@ -345,72 +239,6 @@ namespace ColladaConversion
         }
     }
 
-    enum class SamplerAddress
-    {
-        Wrap, Mirror, Clamp, Border, MirrorOnce
-    };
-
-    enum class SamplerFilter { Point, Linear, Anisotropic };
-    enum class SamplerDimensionality { T2D, T3D, Cube };
-    
-    class ParameterSet
-    {
-    public:
-        class BasicParameter
-        {
-        public:
-            Section _sid;
-            Section _type;
-            Section _value;
-        };
-        std::vector<BasicParameter> _parameters;
-
-        class SamplerParameter
-        {
-        public:
-            Section _sid;
-            Section _type;
-            Section _image;
-            SamplerDimensionality _dimensionality;
-            SamplerAddress _addressS;
-            SamplerAddress _addressT;
-            SamplerAddress _addressQ;
-            SamplerFilter _minFilter;
-            SamplerFilter _maxFilter;
-            SamplerFilter _mipFilter;
-            Float4 _borderColor;
-            unsigned _minMipLevel;
-            unsigned _maxMipLevel;
-            float _mipMapBias;
-            unsigned _maxAnisotrophy;
-            SubDoc _extra;
-
-            SamplerParameter();
-            SamplerParameter(Formatter& formatter, Section sid, Section eleName);
-            ~SamplerParameter();
-        };
-        std::vector<SamplerParameter> _samplerParameters;
-
-        class SurfaceParameter
-        {
-        public:
-            Section _sid;
-            Section _type;
-            Section _initFrom;
-
-            SurfaceParameter() {}
-            SurfaceParameter(Formatter& formatter, Section sid, Section eleName);
-        };
-        std::vector<SurfaceParameter> _surfaceParameters;
-
-        void ParseParam(Formatter& formatter);
-
-        ParameterSet();
-        ~ParameterSet();
-        ParameterSet(ParameterSet&& moveFrom) never_throws;
-        ParameterSet& operator=(ParameterSet&&) never_throws;
-    };
-
     ParameterSet::SamplerParameter::SamplerParameter()
     {
         _dimensionality = SamplerDimensionality::T2D;
@@ -443,17 +271,6 @@ namespace ColladaConversion
         std::make_pair(SamplerFilter::Linear, u("LINEAR")),
         std::make_pair(SamplerFilter::Anisotropic, u("ANISOTROPIC"))
     };
-
-    template <typename Enum, unsigned Count>
-        static Enum ParseEnum(const Section& section, const std::pair<Enum, const utf8*> (&table)[Count])
-    {
-        static_assert(Count > 0, "Enum names table must have at least entry");
-        for (unsigned c=0; c<Count; ++c)
-            if (!Is(section, table[c].second))
-                return table[c].first;
-
-        return table[0].first;  // first one is the default
-    }
 
     template <typename Enum, unsigned Count>
         static Enum ReadCDataAsEnum(Formatter& formatter, const std::pair<Enum, const utf8*> (&table)[Count])
@@ -716,93 +533,6 @@ namespace ColladaConversion
         PARSE_END
     }
 
-    template<typename CharType>
-        bool IsWhitespace(CharType chr)
-    {
-        return chr == 0x20 || chr == 0x9 || chr == 0xD || chr == 0xA;
-    }
-
-    template<typename CharType>
-        static const CharType* FastParseElement(int64& dst, const CharType* start, const CharType* end)
-    {
-        bool positive = true;
-        dst = 0;
-
-        if (start >= end) return start;
-        if (*start == '-') { positive = false; ++start; }
-        else if (*start == '+') ++start;
-
-        uint64 result = 0;
-        for (;;) {
-            if (start >= end) break;
-            if (*start < '0' || *start > '9') break;
-
-            result = (result * 10ull) + uint64((*start) - '0');
-        }
-        return positive ? result : -result;
-    }
-
-    template<typename CharType>
-        static const CharType* FastParseElement(uint64& dst, const CharType* start, const CharType* end)
-    {
-        uint64 result = 0;
-        for (;;) {
-            if (start >= end) break;
-            if (*start < '0' || *start > '9') break;
-
-            result = (result * 10ull) + uint64((*start) - '0');
-        }
-        return result;
-    }
-
-    template<typename CharType>
-        static const CharType* FastParseElement(float& dst, const CharType* start, const CharType* end)
-    {
-        // this code found on stack exchange...
-        //      (http://stackoverflow.com/questions/98586/where-can-i-find-the-worlds-fastest-atof-implementation)
-        // But there are some problems!
-        // Most importantly:
-        //      Sub-normal numbers are not handled properly. Subnormal numbers happen when the exponent
-        //      is the smallest is can be. In this case, values in the mantissa are evenly spaced around
-        //      zero. 
-        //
-        // It does other things right. But I don't think it's reliable enough to use. It's a pity because
-        // the standard library functions require null terminated strings, and seems that it may be possible
-        // to get a big performance improvement loss of few features.
-
-            // to avoid making a copy, we're going do a hack and 
-            // We're assuming that "end" is writable memory. This will be the case when parsing
-            // values from XML. But in other cases, it may not be reliable.
-            // Also, consider that there might be threading implications in some cases!
-        CharType replaced = *end;
-        *const_cast<CharType*>(end) = '\0';
-        char* newEnd = nullptr;
-        dst = std::strtof((const char*)start, &newEnd);
-        *const_cast<CharType*>(end) = replaced;
-
-        return (const CharType*)newEnd;
-    }
-
-    template<typename Type>
-        static decltype(Section::_start) ParseXMLList(Type dest[], unsigned destCount, Section section)
-    {
-        assert(destCount > 0);
-
-        // in xml, lists are deliminated by white space
-        unsigned elementCount = 0;
-        auto* eleStart = section._start;
-        for (;;) {
-            while (eleStart < section._end && IsWhitespace(*eleStart)) ++eleStart;
-
-            auto* eleEnd = FastParseElement(dest[elementCount], eleStart, section._end);
-
-            if (eleStart == eleEnd) return eleEnd;
-            ++elementCount;
-            if (elementCount >= destCount) return eleEnd;
-            eleStart = eleEnd;
-        }
-    }
-
     TechniqueValue::TechniqueValue(Formatter& formatter)
     {
         _type = Type::None;
@@ -927,7 +657,7 @@ namespace ColladaConversion
         return *this;
     }
 
-    void ColladaDocument::Parse_LibraryEffects(Formatter& formatter)
+    void DocumentScaffold::Parse_LibraryEffects(Formatter& formatter)
     {
         ON_ELEMENT
             if (Is(eleName, u("effect"))) {
@@ -944,15 +674,6 @@ namespace ColladaConversion
 
     namespace DataFlow
     {
-        /// <summary>Data type for a collada array</summary>
-        /// Collada only supports a limited number of different types within
-        /// "source" arrays. These store the most of the "big" information within
-        /// Collada files (like vertex data, animation curves, etc).
-        enum class ArrayType
-        {
-            Unspecified, Int, Float, Name, Bool, IdRef, SidRef
-        };
-
         std::pair<ArrayType, const utf8*> s_ArrayTypeNames[] = 
         {
             std::make_pair(ArrayType::Unspecified, u("")),
@@ -965,35 +686,7 @@ namespace ColladaConversion
         };
 
 
-        class Accessor
-        {
-        public:
-            Section _source;
-            unsigned _count;
-            unsigned _stride;
-            unsigned _offset;
-
-            class Param
-            {
-            public:
-                Section _name;
-                ArrayType _type;
-                unsigned _offset;
-                Section _semantic;
-                Param() : _offset(~unsigned(0)), _type(ArrayType::Float) {}
-            };
-
-            Param _params[4];
-            std::vector<Param> _paramsOverflow;
-            unsigned _paramCount;
-
-            Accessor();
-            Accessor(Formatter& formatter);
-            Accessor(Accessor&& moveFrom) never_throws;
-            Accessor& operator=(Accessor&&moveFrom) never_throws;
-            ~Accessor();
-        };
-
+        
 
         Accessor::Accessor()
         : _count(0), _stride(0), _offset(0), _paramCount(0)
@@ -1072,33 +765,26 @@ namespace ColladaConversion
 
         Accessor::~Accessor() {}
 
-        class Source
+        
+
+        const Accessor* Source::FindAccessorForTechnique(const utf8 techniqueProfile[]) const
         {
-        public:
-            Section _id;
-            Section _arrayId;
-            Section _arrayData;
-            ArrayType _type;
-            unsigned _arrayCount;
+            for (unsigned c=0; c<std::min(unsigned(dimof(_accessors)), _accessorsCount); ++c)
+                if (Is(_accessors[c].second, techniqueProfile))
+                    return &_accessors[c].first;
 
-                // accessors, and the technique profile that applies to them
-            std::pair<Accessor, Section> _accessors[1];
-            std::vector<std::pair<Accessor, Section>> _accessorsOverflow;
-            unsigned _accessorsCount;
+            for (auto i=_accessorsOverflow.cbegin(); i!=_accessorsOverflow.cend(); ++i)
+                if (Is(i->second, techniqueProfile))
+                    return &i->first;
 
-            Source() : _type(ArrayType::Unspecified), _arrayCount(0), _accessorsCount(0) {}
-            Source(Formatter& formatter);
-            Source(Source&& moveFrom) never_throws;
-            Source& operator=(Source&& moveFrom) never_throws;
-            ~Source();
-
-        protected:
-            void ParseTechnique(Formatter& formatter, Section techniqueProfile);
-        };
+            return nullptr;
+        }
 
         Source::Source(Formatter& formatter)
             : Source()
         {
+            _location = formatter.GetLocation();
+
             ON_ELEMENT
                 if (EndsWith(eleName, u("_array"))) {
 
@@ -1184,6 +870,7 @@ namespace ColladaConversion
             _accessorsCount = moveFrom._accessorsCount;
             for (unsigned c=0; c<dimof(_accessors); ++c)
                 _accessors[c] = std::move(moveFrom._accessors[c]);
+            _location = moveFrom._location;
         }
 
         Source& Source::operator=(Source&& moveFrom) never_throws
@@ -1199,6 +886,7 @@ namespace ColladaConversion
                 _accessors[c] = std::move(moveFrom._accessors[c]);
 
             _accessorsOverflow = std::move(moveFrom._accessorsOverflow);
+            _location = moveFrom._location;
             return *this;
         }
 
@@ -1206,21 +894,12 @@ namespace ColladaConversion
 
 
 
-        class Input
-        {
-        public:
-            unsigned _indexInPrimitive; // this is the index into the <p> or <v> in the parent
-            Section _semantic;
-            Section _source;            // urifragment_type
-            unsigned _semanticIndex;
-
-            Input();
-            Input(Formatter& formatter);
-        };
+        
 
         Input::Input() : _indexInPrimitive(0), _semanticIndex(0) {}
 
         Input::Input(Formatter& formatter)
+            : Input()
         {
                 // inputs should have only attributes
             Formatter::InteriorSection name, value;
@@ -1237,15 +916,7 @@ namespace ColladaConversion
             }
         }
 
-        class InputUnshared
-        {
-        public:
-            Section _semantic;
-            Section _source;        // urifragment_type
-
-            InputUnshared();
-            InputUnshared(Formatter& formatter);
-        };
+        
 
         InputUnshared::InputUnshared(Formatter& formatter)
         {
@@ -1262,34 +933,13 @@ namespace ColladaConversion
 
     }
 
-    class GeometryPrimitives
-    {
-    public:
-        Section _type;
-
-        DataFlow::Input _inputs[6];
-        std::vector<DataFlow::Input> _inputsOverflow;
-        unsigned _inputCount;
-
-            // in most cases, there is only one "_primitiveData" element
-            // but for trianglestrip, there may be multiple
-        Section _primitiveData[1];
-        std::vector<Section> _primitiveDataOverflow;
-        unsigned _primitiveDataCount;
-
-        Section _vcount;
-
-        GeometryPrimitives(Formatter& formatter, Section type);
-
-        GeometryPrimitives();
-        GeometryPrimitives(GeometryPrimitives&& moveFrom) never_throws;
-        GeometryPrimitives& operator=(GeometryPrimitives&& moveFrom) never_throws;
-    };
+    
 
     GeometryPrimitives::GeometryPrimitives(Formatter& formatter, Section type)
         : GeometryPrimitives()
     {
         _type = type;
+        _location = formatter.GetLocation();
 
         ON_ELEMENT
             if (Is(eleName, u("input"))) {
@@ -1330,6 +980,9 @@ namespace ColladaConversion
             }
 
         ON_ATTRIBUTE
+            if (Is(name, u("count"))) _primitiveCount = Parse(value, _primitiveCount);
+            else if (Is(name, u("material"))) _materialBinding = value;
+
         PARSE_END
     }
 
@@ -1347,6 +1000,8 @@ namespace ColladaConversion
         std::copy(moveFrom._primitiveData, &moveFrom._primitiveData[dimof(moveFrom._primitiveData)], _primitiveData);
         _primitiveDataCount = moveFrom._primitiveDataCount;
         _vcount = moveFrom._vcount;
+        _primitiveCount = moveFrom._primitiveCount;
+        _location = moveFrom._location;
     }
 
     GeometryPrimitives& GeometryPrimitives::operator=(GeometryPrimitives&& moveFrom) never_throws
@@ -1359,36 +1014,22 @@ namespace ColladaConversion
         _primitiveDataOverflow = std::move(moveFrom._primitiveDataOverflow);
         _primitiveDataCount = moveFrom._primitiveDataCount;
         _vcount = moveFrom._vcount;
+        _primitiveCount = moveFrom._primitiveCount;
+        _location = moveFrom._location;
         return *this;
     }
 
-    class Geometry
-    {
-    public:
-        std::vector<DataFlow::Source> _sources;
-        std::vector<DataFlow::InputUnshared> _inputs;
-        std::vector<GeometryPrimitives> _geoPrimitives;
-        SubDoc _extra;
+    
 
-        Geometry(Formatter& formatter);
-
-        Geometry();
-        Geometry(Geometry&& moveFrom) never_throws;
-        Geometry& operator=(Geometry&& moveFrom) never_throws;
-
-    protected:
-        void ParseMesh(Formatter& formatter);
-        void ParseVertices(Formatter& formatter);
-    };
-
-    void Geometry::ParseMesh(Formatter& formatter)
+    void MeshGeometry::ParseMesh(Formatter& formatter, PublishedElements& pub)
     {
         ON_ELEMENT
             if (Is(eleName, u("source"))) {
-                _sources.push_back(DataFlow::Source(formatter));
+                // _sources.push_back(DataFlow::Source(formatter));
+                pub.Add(DataFlow::Source(formatter));
             } else if (Is(eleName, u("vertices"))) {
                 // must have exactly one <vertices>
-                ParseVertices(formatter);
+                pub.Add(VertexInputs(formatter));
             } else if (Is(eleName, u("extra"))) {
                 _extra = SubDoc(formatter);
             } else {
@@ -1400,28 +1041,13 @@ namespace ColladaConversion
         PARSE_END
     }
 
-    void Geometry::ParseVertices(Formatter& formatter)
-    {
-        ON_ELEMENT
-            if (Is(eleName, u("input"))) {
-                _inputs.push_back(DataFlow::InputUnshared(formatter));
-            } else {
-                    // extra is possible
-                LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
-                formatter.SkipElement();
-            }
-
-        ON_ATTRIBUTE
-        PARSE_END
-    }
-
-    Geometry::Geometry(Formatter& formatter)
-    : Geometry()
+    MeshGeometry::MeshGeometry(Formatter& formatter, PublishedElements& pub)
+    : MeshGeometry()
     {
         ON_ELEMENT
             if (Is(eleName, u("mesh"))) {
 
-                ParseMesh(formatter);
+                ParseMesh(formatter, pub);
 
             } else if (Is(eleName, u("convex_mesh")) || Is(eleName, u("spline")) || Is(eleName, u("brep"))) {
                 LogWarning << "convex_mesh, spline and brep geometries are not supported. At: " << formatter.GetLocation();
@@ -1436,29 +1062,59 @@ namespace ColladaConversion
         PARSE_END
     }
 
-    Geometry::Geometry() {}
+    MeshGeometry::MeshGeometry() {}
 
-    Geometry::Geometry(Geometry&& moveFrom) never_throws
+    MeshGeometry::MeshGeometry(MeshGeometry&& moveFrom) never_throws
     : _sources(std::move(moveFrom._sources))
-    , _inputs(std::move(moveFrom._inputs))
     , _geoPrimitives(std::move(moveFrom._geoPrimitives))
     , _extra(std::move(moveFrom._extra))
     {}
 
-    Geometry& Geometry::operator=(Geometry&& moveFrom) never_throws
+    MeshGeometry& MeshGeometry::operator=(MeshGeometry&& moveFrom) never_throws
     {
         _sources = std::move(moveFrom._sources);
-        _inputs = std::move(moveFrom._inputs);
         _geoPrimitives = std::move(moveFrom._geoPrimitives);
         _extra = std::move(moveFrom._extra);
         return *this;
     }
 
-    void ColladaDocument::Parse_LibraryGeometries(Formatter& formatter)
+    VertexInputs::VertexInputs(Formatter& formatter)
+    {
+        ON_ELEMENT
+            if (Is(eleName, u("input"))) {
+                _vertexInputs.push_back(DataFlow::InputUnshared(formatter));
+            } else {
+                    // extra is possible
+                LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                formatter.SkipElement();
+            }
+
+        ON_ATTRIBUTE
+            if (Is(name, u("id"))) _id = value;
+
+        PARSE_END
+    }
+
+    VertexInputs::VertexInputs()
+    {}
+
+    VertexInputs::VertexInputs(VertexInputs&& moveFrom) never_throws
+    : _vertexInputs(std::move(moveFrom._vertexInputs))
+    , _id(moveFrom._id)
+    {}
+
+    VertexInputs& VertexInputs::operator=(VertexInputs&& moveFrom) never_throws
+    {
+        _vertexInputs = std::move(moveFrom._vertexInputs);
+        _id = moveFrom._id;
+        return *this;
+    }
+
+    void DocumentScaffold::Parse_LibraryGeometries(Formatter& formatter)
     {
         ON_ELEMENT
             if (Is(eleName, u("geometry"))) {
-                _geometries.push_back(Geometry(formatter));
+                _geometries.push_back(MeshGeometry(formatter, *_published));
             } else {
                     // "asset" and "extra" are also valid, but uninteresting
                 LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
@@ -1470,33 +1126,7 @@ namespace ColladaConversion
         PARSE_END
     }
 
-    class SkinController
-    {
-    public:
-        Section _baseMesh;
-        Section _id;
-        Section _name;
-        SubDoc _extra;
-
-        Float4x4 _bindShapeMatrix;
-        unsigned _weightCount;
-        Section _influenceCountPerVertex;   // (this the <vcount> element)
-        Section _influences;                // (this is the <v> element)
-        std::vector<DataFlow::Input> _influenceInputs;
-
-        std::vector<DataFlow::Source> _sources;
-        std::vector<DataFlow::InputUnshared> _jointInputs;
-
-        SkinController(Formatter& formatter, Section id, Section name);
-        SkinController(SkinController&& moveFrom) never_throws;
-        SkinController& operator=(SkinController&& moveFrom) never_throws;
-        SkinController();
-        ~SkinController();
-
-    protected:
-        void ParseJoints(Formatter& formatter);
-        void ParseVertexWeights(Formatter& formatter);
-    };
+    
 
     SkinController::SkinController(Formatter& formatter, Section id, Section name)
         : SkinController()
@@ -1603,7 +1233,7 @@ namespace ColladaConversion
 
     SkinController::~SkinController() {}
 
-    void ColladaDocument::Parse_LibraryControllers(Formatter& formatter)
+    void DocumentScaffold::Parse_LibraryControllers(Formatter& formatter)
     {
         Section controllerName;
         Section controllerId;
@@ -1668,20 +1298,7 @@ namespace ColladaConversion
         }
     }
 
-    class Material
-    {
-    public:
-        Section _id;
-        Section _name;
-        Section _effectReference;   // uri
-        SubDoc _extra;
-
-        Material() {}
-        Material(Formatter& formatter);
-
-    protected:
-        void ParseInstanceEffect(Formatter& formatter);
-    };
+    
 
     Material::Material(Formatter& formatter)
     {
@@ -1716,7 +1333,7 @@ namespace ColladaConversion
         PARSE_END
     }
 
-    void ColladaDocument::Parse_LibraryMaterials(Formatter& formatter)
+    void DocumentScaffold::Parse_LibraryMaterials(Formatter& formatter)
     {
         ON_ELEMENT
             if (Is(eleName, u("material"))) {
@@ -2283,7 +1900,7 @@ namespace ColladaConversion
         return *this;
     }
 
-    void ColladaDocument::Parse_LibraryVisualScenes(Formatter& formatter)
+    void DocumentScaffold::Parse_LibraryVisualScenes(Formatter& formatter)
     {
         ON_ELEMENT
             if (Is(eleName, u("visual_scene"))) {
@@ -2299,7 +1916,7 @@ namespace ColladaConversion
         PARSE_END
     }
 
-    void ColladaDocument::Parse_Scene(Formatter& formatter)
+    void DocumentScaffold::Parse_Scene(Formatter& formatter)
     {
         ON_ELEMENT
             if (Is(eleName, u("instance_physics_scene"))) {
@@ -2317,13 +1934,98 @@ namespace ColladaConversion
         PARSE_END
     }
 
-    ColladaDocument::ColladaDocument() {}
-    ColladaDocument::~ColladaDocument() {}
+    DocumentScaffold::DocumentScaffold() 
+    {
+        _published = std::make_shared<PublishedElements>();
+    }
 
+    DocumentScaffold::~DocumentScaffold() {}
+
+
+
+
+    const DataFlow::Source* PublishedElements::FindSource(uint64 id) const
+    {
+        auto i = LowerBound(_sources, id);
+        if (i!=_sources.cend() && i->first == id) 
+            return &i->second;
+        return nullptr;
+    }
+
+    const VertexInputs* PublishedElements::FindVertexInputs(uint64 id) const
+    {
+        auto i = LowerBound(_vertexInputs, id);
+        if (i!=_vertexInputs.cend() && i->first == id) 
+            return &i->second;
+        return nullptr;
+    }
+
+    void PublishedElements::Add(DataFlow::Source&& element)
+    {
+        auto hashedId = Hash64(element.GetId()._start, element.GetId()._end);
+        auto i = LowerBound(_sources, hashedId);
+        if (i != _sources.end() && i->first == hashedId)
+            Throw(::Exceptions::BasicLabel("Duplicated id when publishing <source> element"));
+
+        _sources.insert(i, std::make_pair(hashedId, std::move(element)));
+    }
+
+    void PublishedElements::Add(VertexInputs&& vertexInputs)
+    {
+        auto hashedId = Hash64(vertexInputs.GetId()._start, vertexInputs.GetId()._end);
+        auto i = LowerBound(_vertexInputs, hashedId);
+        if (i != _vertexInputs.end() && i->first == hashedId)
+            Throw(::Exceptions::BasicLabel("Duplicated id when publishing <vertices> element"));
+
+        _vertexInputs.insert(i, std::make_pair(hashedId, std::move(vertexInputs)));
+    }
+
+    PublishedElements::PublishedElements() {}
+    PublishedElements::~PublishedElements() {}
+
+
+    ElementGuid::ElementGuid(Section uri)
+    {
+        _fileHash = _id = 0;
+
+            // Parse the section, and extract a hashed id for the name of the file
+            // and the id of the element
+            // currently, we'll only support references in to the local file
+            // (which take the form of "#..."
+        if (uri._end > uri._start && *uri._start == '#') {
+            _fileHash = 0;
+            _id = Hash64(uri._start+1, uri._end);
+        }
+    }
+
+    const PublishedElements* URIResolveContext::FindFile(uint64 fileId) const
+    {
+        if (!fileId) {
+                // local file is always the first
+            if (!_files.empty()) return _files[0].second.get();
+            return nullptr;
+        } else {
+            auto i = LowerBound(_files, fileId);
+            if (i != _files.end() && i->first == fileId)
+                return i->second.get();
+            return nullptr;
+        }
+    }
+
+    URIResolveContext::URIResolveContext(std::shared_ptr<PublishedElements> localDoc)
+    {
+        _files.push_back(std::make_pair(0, std::move(localDoc)));
+    }
 }
 
 #include "../Utility/Streams/FileUtils.h"
 #include "NascentModel.h"
+
+namespace ColladaConversion 
+{ 
+    RenderCore::ColladaConversion::NascentRawGeometry 
+        Convert(const MeshGeometry& mesh, const URIResolveContext& pubEles); 
+}
 
 void TestParser()
 {
@@ -2331,8 +2033,12 @@ void TestParser()
     auto block = LoadFileAsMemoryBlock("game/testmodels/nyra/Nyra_pose.dae", &size);
     // auto block = LoadFileAsMemoryBlock("Game/chr/nu_f/skin/dragon003.dae", &size);
     XmlInputStreamFormatter<utf8> formatter(MemoryMappedInputStream(block.get(), PtrAdd(block.get(), size)));
-    ColladaConversion::ColladaDocument doc;
+    ColladaConversion::DocumentScaffold doc;
     doc.Parse(formatter);
+
+    auto geo = ColladaConversion::Convert(
+        doc._geometries[0], 
+        ColladaConversion::URIResolveContext(doc._published));
 
     Float4 t2;
     Float4x4 temp;

@@ -49,17 +49,20 @@ namespace RenderCore { namespace ColladaConversion
     class NascentRawGeometry
     {
     public:
-        NascentRawGeometry(     DynamicArray<uint8>&& vb, DynamicArray<uint8>&& ib,
-                                GeometryInputAssembly&&             mainDrawInputAssembly,
-                                Metal::NativeFormat::Enum           indexFormat,
-                                std::vector<NascentDrawCallDesc>&&  mainDrawCalls,
-                                DynamicArray<uint32>&&              unifiedVertexIndexToPositionIndex,
-                                std::vector<uint64>&&               materials);
+        void Serialize(
+            Serialization::NascentBlockSerializer& outputSerializer, 
+            std::vector<uint8>& largeResourcesBlock) const;
+
+        NascentRawGeometry(     
+            DynamicArray<uint8>&& vb, DynamicArray<uint8>&& ib,
+            GeometryInputAssembly&&             mainDrawInputAssembly,
+            Metal::NativeFormat::Enum           indexFormat,
+            std::vector<NascentDrawCallDesc>&&  mainDrawCalls,
+            DynamicArray<uint32>&&              unifiedVertexIndexToPositionIndex,
+            std::vector<uint64>&&               materials);
         NascentRawGeometry(NascentRawGeometry&& moveFrom);
         NascentRawGeometry& operator=(NascentRawGeometry&& moveFrom);
         NascentRawGeometry();
-
-        void    Serialize(Serialization::NascentBlockSerializer& outputSerializer, std::vector<uint8>& largeResourcesBlock) const;
 
         DynamicArray<uint8>     _vertices;
         DynamicArray<uint8>     _indices;
@@ -72,8 +75,8 @@ namespace RenderCore { namespace ColladaConversion
             //  Only required during processing
         DynamicArray<uint32>    _unifiedVertexIndexToPositionIndex;
 
-    private:
-        NascentRawGeometry(NascentRawGeometry&);
+        NascentRawGeometry(NascentRawGeometry&) = delete;
+        NascentRawGeometry& operator=(const NascentRawGeometry&) = delete;
     };
 
         ////////////////////////////////////////////////////////

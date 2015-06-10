@@ -117,6 +117,7 @@ static void TestParser()
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/Threading/ThreadingUtils.h"
 
+#pragma warning(disable:4505)   //  unreferenced local function has been removed
 static void TestParser3()
 {
     auto aservices = std::make_shared<::Assets::Services>(0);
@@ -173,7 +174,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
     ConsoleRig::GlobalServices services;
     LogInfo << "------------------------------------------------------------------------------------------";
 
-    TestParser3();
+    // TestParser3();
     TestParser2();
     TestParser();
 
