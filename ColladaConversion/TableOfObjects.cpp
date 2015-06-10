@@ -7,116 +7,113 @@
 #include "TableOfObjects.h"
 #include "RawGeometry.h"
 #include "ConversionObjects.h"
+#include "ModelCommandStream.h"
 #include "../RenderCore/Assets/RawAnimationCurve.h"
 #include "../RenderCore/Assets/Material.h"
-#include "ModelCommandStream.h"
 #include "../Assets/BlockSerializer.h"
 #include "../ConsoleRig/Log.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/Streams/Data.h"
 
-#pragma warning(push)
-#pragma warning(disable:4201)       // nonstandard extension used : nameless struct/union
-#pragma warning(disable:4245)       // conversion from 'int' to 'const COLLADAFW::SamplerID', signed/unsigned mismatch
-#pragma warning(disable:4512)       // assignment operator could not be generated
-    #include <COLLADAFWUniqueId.h>
-#pragma warning(pop)
+// #pragma warning(push)
+// #pragma warning(disable:4201)       // nonstandard extension used : nameless struct/union
+// #pragma warning(disable:4245)       // conversion from 'int' to 'const COLLADAFW::SamplerID', signed/unsigned mismatch
+// #pragma warning(disable:4512)       // assignment operator could not be generated
+//     #include <COLLADAFWUniqueId.h>
+// #pragma warning(pop)
 
 namespace RenderCore { namespace ColladaConversion
 {
     using ::Assets::Exceptions::FormatError;
 
-    template <typename Type>
-        ObjectId    TableOfObjects::GetObjectId(const COLLADAFW::UniqueId& id) const
+    ObjectGuid GetGuid(const ObjectGuid& obj) { return obj; }
+    template<typename Type> ObjectGuid GetGuid(const Type& t) { return t._id; }
+
+    struct CompareGuid
     {
-        auto& set = GetSet<Type>();
-        for (auto i=set.cbegin(); i!=set.cend(); ++i)
-            if (i->_hashId == id)
-                return (ObjectId)std::distance(set.cbegin(), i);
-        return ObjectId_Invalid;
+        template <typename Lhs, typename Rhs>
+            bool operator()(const Lhs& lhs, const Rhs& rhs) { return GetGuid(lhs) < GetGuid(rhs); }
+    };
+
+    template <typename Type>
+        bool        TableOfObjects::Has(ObjectGuid id) const
+    {
+        auto& set = GetCollection<Type>();
+        auto i = std::lower_bound(set.cbegin(), set.cend(), id, CompareGuid());
+        return i != set.cend() && i->_id == id;
     }
 
     template <typename Type>
-        bool        TableOfObjects::Has(const COLLADAFW::UniqueId& id) const
+        const Type*        TableOfObjects::Get(ObjectGuid id) const never_throws
     {
-        auto& set = GetSet<Type>();
-        for (auto i=set.begin(); i!=set.end(); ++i)
-            if (i->_hashId == id)
-                return true;
-        return false;
-    }
-
-    template <typename Type>
-        const Type*        TableOfObjects::GetFromObjectId(ObjectId id) const never_throws
-    {
-        auto& set = GetSet<Type>();
-        if (id < set.size()) {
-            return &set[id]._internalType;
-        }
+        auto& set = GetCollection<Type>();
+        auto i = std::lower_bound(set.cbegin(), set.cend(), id, CompareGuid());
+        if (i != set.cend() && i->_id == id) return &i->_internalType;
         return nullptr;
     }
 
-    template <> auto     TableOfObjects::GetSet<NascentRawGeometry>() const -> const std::vector<Object<NascentRawGeometry>>& { return _geos; }
-    template <> auto     TableOfObjects::GetSet<NascentRawGeometry>() -> std::vector<Object<NascentRawGeometry>>&             { return _geos; }
+    template <> auto     TableOfObjects::GetCollection<NascentRawGeometry>() const -> const std::vector<Object<NascentRawGeometry>>& { return _geos; }
+    template <> auto     TableOfObjects::GetCollection<NascentRawGeometry>() -> std::vector<Object<NascentRawGeometry>>&             { return _geos; }
 
-    template <> auto     TableOfObjects::GetSet<NascentModelCommandStream>() const -> const std::vector<Object<NascentModelCommandStream>>& { return _models; }
-    template <> auto     TableOfObjects::GetSet<NascentModelCommandStream>() -> std::vector<Object<NascentModelCommandStream>>&             { return _models; }
+    template <> auto     TableOfObjects::GetCollection<NascentModelCommandStream>() const -> const std::vector<Object<NascentModelCommandStream>>& { return _models; }
+    template <> auto     TableOfObjects::GetCollection<NascentModelCommandStream>() -> std::vector<Object<NascentModelCommandStream>>&             { return _models; }
         
-    template <> auto     TableOfObjects::GetSet<UnboundSkinController>() const -> const std::vector<Object<UnboundSkinController>>&         { return _skinControllers; }
-    template <> auto     TableOfObjects::GetSet<UnboundSkinController>() -> std::vector<Object<UnboundSkinController>>&                     { return _skinControllers; }
+    template <> auto     TableOfObjects::GetCollection<UnboundSkinController>() const -> const std::vector<Object<UnboundSkinController>>&         { return _skinControllers; }
+    template <> auto     TableOfObjects::GetCollection<UnboundSkinController>() -> std::vector<Object<UnboundSkinController>>&                     { return _skinControllers; }
 
-    template <> auto     TableOfObjects::GetSet<UnboundSkinControllerAndAttachedSkeleton>() const -> const std::vector<Object<UnboundSkinControllerAndAttachedSkeleton>>&         { return _skinControllersAndSkeletons; }
-    template <> auto     TableOfObjects::GetSet<UnboundSkinControllerAndAttachedSkeleton>() -> std::vector<Object<UnboundSkinControllerAndAttachedSkeleton>>&                     { return _skinControllersAndSkeletons; }
+    template <> auto     TableOfObjects::GetCollection<UnboundSkinControllerAndAttachedSkeleton>() const -> const std::vector<Object<UnboundSkinControllerAndAttachedSkeleton>>&         { return _skinControllersAndSkeletons; }
+    template <> auto     TableOfObjects::GetCollection<UnboundSkinControllerAndAttachedSkeleton>() -> std::vector<Object<UnboundSkinControllerAndAttachedSkeleton>>&                     { return _skinControllersAndSkeletons; }
 
-    template <> auto     TableOfObjects::GetSet<UnboundMorphController>() const -> const std::vector<Object<UnboundMorphController>>&         { return _morphControllers; }
-    template <> auto     TableOfObjects::GetSet<UnboundMorphController>() -> std::vector<Object<UnboundMorphController>>&                     { return _morphControllers; }
+    template <> auto     TableOfObjects::GetCollection<UnboundMorphController>() const -> const std::vector<Object<UnboundMorphController>>&         { return _morphControllers; }
+    template <> auto     TableOfObjects::GetCollection<UnboundMorphController>() -> std::vector<Object<UnboundMorphController>>&                     { return _morphControllers; }
 
-    template <> auto     TableOfObjects::GetSet<NascentBoundSkinnedGeometry>() const -> const std::vector<Object<NascentBoundSkinnedGeometry>>&         { return _boundSkinnedGeometry; }
-    template <> auto     TableOfObjects::GetSet<NascentBoundSkinnedGeometry>() -> std::vector<Object<NascentBoundSkinnedGeometry>>&                     { return _boundSkinnedGeometry; }
+    template <> auto     TableOfObjects::GetCollection<NascentBoundSkinnedGeometry>() const -> const std::vector<Object<NascentBoundSkinnedGeometry>>&         { return _boundSkinnedGeometry; }
+    template <> auto     TableOfObjects::GetCollection<NascentBoundSkinnedGeometry>() -> std::vector<Object<NascentBoundSkinnedGeometry>>&                     { return _boundSkinnedGeometry; }
 
-    template <> auto     TableOfObjects::GetSet<Assets::RawAnimationCurve>() const -> const std::vector<Object<Assets::RawAnimationCurve>>&         { return _animationCurves; }
-    template <> auto     TableOfObjects::GetSet<Assets::RawAnimationCurve>() -> std::vector<Object<Assets::RawAnimationCurve>>&                     { return _animationCurves; }
+    template <> auto     TableOfObjects::GetCollection<Assets::RawAnimationCurve>() const -> const std::vector<Object<Assets::RawAnimationCurve>>&         { return _animationCurves; }
+    template <> auto     TableOfObjects::GetCollection<Assets::RawAnimationCurve>() -> std::vector<Object<Assets::RawAnimationCurve>>&                     { return _animationCurves; }
 
-    template <> auto     TableOfObjects::GetSet<Assets::RawMaterial>() const -> const std::vector<Object<Assets::RawMaterial>>&         { return _materials; }
-    template <> auto     TableOfObjects::GetSet<Assets::RawMaterial>() -> std::vector<Object<Assets::RawMaterial>>&                     { return _materials; }
+    template <> auto     TableOfObjects::GetCollection<Assets::RawMaterial>() const -> const std::vector<Object<Assets::RawMaterial>>&         { return _materials; }
+    template <> auto     TableOfObjects::GetCollection<Assets::RawMaterial>() -> std::vector<Object<Assets::RawMaterial>>&                     { return _materials; }
 
-    template <> auto     TableOfObjects::GetSet<ReferencedTexture>() const -> const std::vector<Object<ReferencedTexture>>&         { return _referencedTextures; }
-    template <> auto     TableOfObjects::GetSet<ReferencedTexture>() -> std::vector<Object<ReferencedTexture>>&                     { return _referencedTextures; }
+    template <> auto     TableOfObjects::GetCollection<ReferencedTexture>() const -> const std::vector<Object<ReferencedTexture>>&         { return _referencedTextures; }
+    template <> auto     TableOfObjects::GetCollection<ReferencedTexture>() -> std::vector<Object<ReferencedTexture>>&                     { return _referencedTextures; }
 
-    template <> auto     TableOfObjects::GetSet<ReferencedMaterial>() const -> const std::vector<Object<ReferencedMaterial>>&         { return _referencedMaterials; }
-    template <> auto     TableOfObjects::GetSet<ReferencedMaterial>() -> std::vector<Object<ReferencedMaterial>>&                     { return _referencedMaterials; }
+    template <> auto     TableOfObjects::GetCollection<ReferencedMaterial>() const -> const std::vector<Object<ReferencedMaterial>>&         { return _referencedMaterials; }
+    template <> auto     TableOfObjects::GetCollection<ReferencedMaterial>() -> std::vector<Object<ReferencedMaterial>>&                     { return _referencedMaterials; }
 
     template <typename Type>
-        ObjectId        TableOfObjects::Add(    const std::string& idString, 
-                                                const std::string& name,
-                                                const COLLADAFW::UniqueId& id,
-                                                Type&& object)
+        void TableOfObjects::Add(
+            ObjectGuid          id, 
+            const std::string&  name,
+            const std::string&  idString,
+            Type&&              object)
     {
-        auto& set = GetSet<Type>();
-        for (auto i=set.begin(); i!=set.end(); ++i)
-            if (i->_hashId == id)
-                ThrowException(FormatError("Duplicate object ids found while building table of local objects! (%s)", idString.c_str()));
+        auto& c = GetCollection<Type>();
 
-        Object<Type> newObject(idString, name, id, std::forward<Type>(object));
-        set.push_back(std::move(newObject));
-        return ObjectId(set.size()-1);
+        auto i = std::lower_bound(c.cbegin(), c.cend(), id, CompareGuid());
+        if (i != c.cend() && i->_id == id)
+            ThrowException(FormatError("Duplicate object ids found while building table of local objects! (%s)", idString.c_str()));
+
+        c.push_back(Object<Type>(id, name, idString, std::forward<Type>(object)));
     }
 
     template <typename Type>
-        std::tuple<std::string, std::string, COLLADAFW::UniqueId> 
-            TableOfObjects::GetDesc(ObjectId id) const never_throws
+        std::tuple<std::string, std::string> 
+            TableOfObjects::GetDesc(ObjectGuid id) const never_throws
     {
-        auto& set = GetSet<Type>();
-        if (id < set.size()) {
-            return std::make_tuple(set[id]._idString, set[id]._name, set[id]._hashId);
-        }
-        return std::tuple<std::string, std::string, COLLADAFW::UniqueId>();
+        auto& c = GetCollection<Type>();
+        auto i = std::lower_bound(c.cbegin(), c.cend(), id, CompareGuid());
+        if (i != c.cend() && i->_id == id)
+            return std::make_tuple(i->_name, i->_idString);
+        return std::tuple<std::string, std::string>();
     }
 
     template<typename Type>
-        TableOfObjects::Object<Type>::Object(const std::string& idString, const std::string& name, const COLLADAFW::UniqueId& hashId, Type&& internalType)
-        :   _idString(idString), _name(name), _hashId(hashId), _internalType(std::forward<Type>(internalType))
+        TableOfObjects::Object<Type>::Object(ObjectGuid id, const std::string& name, const std::string& idString, Type&& internalType)
+        :   _idString(idString), _name(name), _id(id), _internalType(std::forward<Type>(internalType))
         {}
+
     template<typename Type>
         TableOfObjects::Object<Type>::~Object() {}
 
@@ -125,7 +122,7 @@ namespace RenderCore { namespace ColladaConversion
         :   _idString(std::move(moveFrom._idString))
         ,   _name(std::move(moveFrom._name))
         ,   _internalType(std::move(moveFrom._internalType))
-        ,   _hashId(moveFrom._hashId)
+        ,   _id(moveFrom._id)
         {}
 
     template<typename Type>
@@ -134,7 +131,7 @@ namespace RenderCore { namespace ColladaConversion
         _idString = std::move(moveFrom._idString);
         _name = std::move(moveFrom._name);
         _internalType = std::move(moveFrom._internalType);
-        _hashId = moveFrom._hashId;
+        _id = moveFrom._id;
         return *this;
     }
 
@@ -192,17 +189,11 @@ namespace RenderCore { namespace ColladaConversion
 
         std::vector<std::unique_ptr<Data>> result;
         for (auto i=_referencedMaterials.cbegin(); i!=_referencedMaterials.cend(); ++i) {
-
-            auto objectId = GetObjectId<Assets::RawMaterial>(
-                i->_internalType._effectId.AsColladaId());
-
-            if (objectId != ObjectId_Invalid) {
-                const auto* obj = GetFromObjectId<Assets::RawMaterial>(objectId);
-                if (obj) {
-                    auto newBlock = obj->SerializeAsData();
-                    newBlock->SetValue(i->_name.c_str());
-                    result.push_back(std::move(newBlock));
-                }
+            const auto* obj = Get<Assets::RawMaterial>(i->_internalType._effectId);
+            if (obj) {
+                auto newBlock = obj->SerializeAsData();
+                newBlock->SetValue(i->_name.c_str());
+                result.push_back(std::move(newBlock));
             }
         }
 
@@ -243,12 +234,11 @@ namespace RenderCore { namespace ColladaConversion
     template <typename Type>
         void Instantiator()
     {
-        auto i0 = &TableOfObjects::GetObjectId<Type>;
+        auto i0 = &TableOfObjects::Get<Type>;
         auto i1 = &TableOfObjects::Has<Type>;
         auto i2 = &TableOfObjects::Add<Type>;
         auto i3 = &TableOfObjects::GetDesc<Type>;
-        auto i4 = &TableOfObjects::GetFromObjectId<Type>;
-        (void)i0; (void)i1; (void)i2; (void)i3; (void)i4;
+        (void)i0; (void)i1; (void)i2; (void)i3;
     }
 
     template void Instantiator<NascentRawGeometry>();
@@ -262,17 +252,6 @@ namespace RenderCore { namespace ColladaConversion
     template void Instantiator<ReferencedTexture>();
     template void Instantiator<ReferencedMaterial>();
 
-
-    void Warning(const char format[], ...)
-    {
-        char buffer[4096];
-        va_list args;
-        va_start(args, format);
-        _vsnprintf_s(buffer, dimof(buffer), format, args);
-        va_end(args);
-
-        LogWarning << buffer;
-    }
 
 }}
 

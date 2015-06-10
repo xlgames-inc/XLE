@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "ConversionObjects.h"
 #include "ColladaConversion.h"
 #include "../../../Utility/Mixins.h"
 
@@ -28,24 +29,13 @@ namespace RenderCore { namespace ColladaConversion
     class TableOfObjects : noncopyable
     {
     public:
-        template <typename Type>
-            ObjectId    GetObjectId(const COLLADAFW::UniqueId&      id) const;
+        template <typename Type> bool Has(ObjectGuid id) const never_throws;
+        template <typename Type> const Type* Get(ObjectGuid id) const never_throws;
+        template <typename Type> void Add(ObjectGuid id, const std::string& name, const std::string& idString, Type&& object);
 
         template <typename Type>
-            bool        Has(const COLLADAFW::UniqueId&      id) const;
-
-        template <typename Type>
-            ObjectId    Add(    const std::string&          idString, 
-                                const std::string&          name,
-                                const COLLADAFW::UniqueId&  id,
-                                Type&&                      object);
-
-        template <typename Type>
-            const Type* GetFromObjectId(ObjectId id) const never_throws;
-
-        template <typename Type>
-            std::tuple<std::string, std::string, COLLADAFW::UniqueId> 
-                GetDesc(ObjectId id) const never_throws;
+            std::tuple<std::string, std::string> 
+                GetDesc(ObjectGuid id) const never_throws;
 
         void    SerializeSkin(Serialization::NascentBlockSerializer& outputSerializer, std::vector<uint8>& largeResourcesBlock) const;
         void    SerializeAnimationSet(Serialization::NascentBlockSerializer& outputSerializer) const;
@@ -59,19 +49,21 @@ namespace RenderCore { namespace ColladaConversion
         template<typename Type> class Object
         {
         public:
-            std::string             _idString, _name;
-            COLLADAFW::UniqueId     _hashId;
-            Type                    _internalType;
+            ObjectGuid      _id;
+            std::string     _name;
+            std::string     _idString;
+            Type            _internalType;
 
-            Object(const std::string& idString, const std::string& name, const COLLADAFW::UniqueId& hashId, Type&& internalType);
+            Object(ObjectGuid id, const std::string& name, const std::string& idString, Type&& internalType);
             ~Object();
-            Object(Object&& cloneFrom) never_throws;
-            Object<Type>& operator=(Object&& cloneFrom) never_throws;
+            Object(Object&& moveFrom) never_throws;
+            Object& operator=(Object&& moveFrom) never_throws;
 
             void    Serialize(Serialization::NascentBlockSerializer& outputSerializer) const;
 
         private:
-            Object<Type>& operator=(const Object& cloneFrom);
+            Object(const Object& cloneFrom) = delete;
+            Object& operator=(const Object& cloneFrom) = delete;
         };
 
         std::vector<Object<NascentRawGeometry>>                         _geos;
@@ -85,8 +77,8 @@ namespace RenderCore { namespace ColladaConversion
         std::vector<Object<ReferencedTexture>>                          _referencedTextures;
         std::vector<Object<ReferencedMaterial>>                         _referencedMaterials;
 
-        template <typename Type> const std::vector<Object<Type>>&   GetSet() const;
-        template <typename Type> std::vector<Object<Type>>&         GetSet();
+        template <typename Type> const std::vector<Object<Type>>&   GetCollection() const;
+        template <typename Type> std::vector<Object<Type>>&         GetCollection();
     };
 
 }}

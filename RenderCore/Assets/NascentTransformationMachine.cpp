@@ -17,17 +17,17 @@ namespace RenderCore { namespace Assets
     class NascentTransformationMachine::Joint
     {
     public:
-        ParameterNameId   _colladaId;
-        std::string       _name;
-        uint32            _outputMatrixIndex;
-        Float4x4          _inverseBindMatrix;
+        AnimationParameterId    _colladaId;
+        std::string             _name;
+        uint32                  _outputMatrixIndex;
+        Float4x4                _inverseBindMatrix;
 
         class CompareColladaId
         {
         public:
             bool operator()(const Joint& lhs, const Joint& rhs) { return lhs._colladaId < rhs._colladaId; }
-            bool operator()(const Joint& lhs, ParameterNameId rhs) { return lhs._colladaId < rhs; }
-            bool operator()(ParameterNameId lhs, const Joint& rhs) { return lhs < rhs._colladaId; }
+            bool operator()(const Joint& lhs, AnimationParameterId rhs) { return lhs._colladaId < rhs; }
+            bool operator()(AnimationParameterId lhs, const Joint& rhs) { return lhs < rhs._colladaId; }
         };
     };
 
@@ -71,7 +71,7 @@ namespace RenderCore { namespace Assets
         #pragma pack(pop)
 
         std::vector<Param> runTimeInputInterface;
-        typedef std::vector<std::pair<ParameterNameId, uint32>> T;
+        typedef std::vector<std::pair<AnimationParameterId, uint32>> T;
         std::pair<const T*, Assets::TransformationParameterSet::Type::Enum> tables[] = {
             std::make_pair(&_float1ParameterNames,      Assets::TransformationParameterSet::Type::Float1),
             std::make_pair(&_float3ParameterNames,      Assets::TransformationParameterSet::Type::Float3),
@@ -154,22 +154,22 @@ namespace RenderCore { namespace Assets
         return *this;
     }
 
-    template<> auto NascentTransformationMachine::GetTables<float>() -> std::pair<std::vector<std::pair<ParameterNameId, uint32>>&,std::vector<float, Serialization::BlockSerializerAllocator<float>>&>
+    template<> auto NascentTransformationMachine::GetTables<float>() -> std::pair<std::vector<std::pair<AnimationParameterId, uint32>>&,std::vector<float, Serialization::BlockSerializerAllocator<float>>&>
     {
         return std::make_pair(std::ref(_float1ParameterNames), std::ref(_defaultParameters.GetFloat1ParametersVector()));
     }
 
-    template<> auto NascentTransformationMachine::GetTables<Float3>() -> std::pair<std::vector<std::pair<ParameterNameId, uint32>>&,std::vector<Float3, Serialization::BlockSerializerAllocator<Float3>>&>
+    template<> auto NascentTransformationMachine::GetTables<Float3>() -> std::pair<std::vector<std::pair<AnimationParameterId, uint32>>&,std::vector<Float3, Serialization::BlockSerializerAllocator<Float3>>&>
     {
         return std::make_pair(std::ref(_float3ParameterNames), std::ref(_defaultParameters.GetFloat3ParametersVector()));
     }
 
-    template<> auto NascentTransformationMachine::GetTables<Float4>() -> std::pair<std::vector<std::pair<ParameterNameId, uint32>>&,std::vector<Float4, Serialization::BlockSerializerAllocator<Float4>>&>
+    template<> auto NascentTransformationMachine::GetTables<Float4>() -> std::pair<std::vector<std::pair<AnimationParameterId, uint32>>&,std::vector<Float4, Serialization::BlockSerializerAllocator<Float4>>&>
     {
         return std::make_pair(std::ref(_float4ParameterNames), std::ref(_defaultParameters.GetFloat4ParametersVector()));
     }
 
-    template<> auto NascentTransformationMachine::GetTables<Float4x4>() -> std::pair<std::vector<std::pair<ParameterNameId, uint32>>&,std::vector<Float4x4, Serialization::BlockSerializerAllocator<Float4x4>>&>
+    template<> auto NascentTransformationMachine::GetTables<Float4x4>() -> std::pair<std::vector<std::pair<AnimationParameterId, uint32>>&,std::vector<Float4x4, Serialization::BlockSerializerAllocator<Float4x4>>&>
     {
         return std::make_pair(std::ref(_float4x4ParameterNames), std::ref(_defaultParameters.GetFloat4x4ParametersVector())); //(note, ref is needed to make sure we get the right type of pair)
     }
@@ -187,12 +187,12 @@ namespace RenderCore { namespace Assets
         return result;
     }
 
-    auto NascentTransformationMachine::GetParameterIndex(ParameterNameId parameterName) const -> std::pair<Assets::TransformationParameterSet::Type::Enum, uint32>
+    auto NascentTransformationMachine::GetParameterIndex(AnimationParameterId parameterName) const -> std::pair<Assets::TransformationParameterSet::Type::Enum, uint32>
     {
         {
             auto i = std::lower_bound(
                 _float1ParameterNames.begin(), _float1ParameterNames.end(), 
-                parameterName, CompareFirst<ParameterNameId, uint32>());
+                parameterName, CompareFirst<AnimationParameterId, uint32>());
             if (i!=_float1ParameterNames.end() && i->first == parameterName) {
                 return std::make_pair(Assets::TransformationParameterSet::Type::Float1, i->second);
             }
@@ -200,7 +200,7 @@ namespace RenderCore { namespace Assets
         {
             auto i = std::lower_bound(
                 _float3ParameterNames.begin(), _float3ParameterNames.end(), 
-                parameterName, CompareFirst<ParameterNameId, uint32>());
+                parameterName, CompareFirst<AnimationParameterId, uint32>());
             if (i!=_float3ParameterNames.end() && i->first == parameterName) {
                 return std::make_pair(Assets::TransformationParameterSet::Type::Float3, i->second);
             }
@@ -208,7 +208,7 @@ namespace RenderCore { namespace Assets
         {
             auto i = std::lower_bound(
                 _float4ParameterNames.begin(), _float4ParameterNames.end(), 
-                parameterName, CompareFirst<ParameterNameId, uint32>());
+                parameterName, CompareFirst<AnimationParameterId, uint32>());
             if (i!=_float4ParameterNames.end() && i->first == parameterName) {
                 return std::make_pair(Assets::TransformationParameterSet::Type::Float4, i->second);
             }
@@ -216,7 +216,7 @@ namespace RenderCore { namespace Assets
         {
             auto i = std::lower_bound(
                 _float4x4ParameterNames.begin(), _float4x4ParameterNames.end(), 
-                parameterName, CompareFirst<ParameterNameId, uint32>());
+                parameterName, CompareFirst<AnimationParameterId, uint32>());
             if (i!=_float4x4ParameterNames.end() && i->first == parameterName) {
                 return std::make_pair(Assets::TransformationParameterSet::Type::Float4x4, i->second);
             }
@@ -225,9 +225,9 @@ namespace RenderCore { namespace Assets
         return std::make_pair(Assets::TransformationParameterSet::Type::Float1, ~uint32(0x0));
     }
 
-    auto   NascentTransformationMachine::GetParameterName(AnimSamplerType type, uint32 index) const -> ParameterNameId
+    auto   NascentTransformationMachine::GetParameterName(AnimSamplerType type, uint32 index) const -> AnimationParameterId
     {
-        typedef std::pair<ParameterNameId, uint32> P;
+        typedef std::pair<AnimationParameterId, uint32> P;
         if (type == Assets::TransformationParameterSet::Type::Float4x4) {
             auto i = std::find_if(_float4x4ParameterNames.begin(), _float4x4ParameterNames.end(), [=](const P&p) { return p.second == index; });
             if (i!=_float4x4ParameterNames.end()) {
@@ -252,10 +252,10 @@ namespace RenderCore { namespace Assets
                 return i->first;
             }
         }
-        return ~ParameterNameId(0x0);
+        return ~AnimationParameterId(0x0);
     }
 
-    std::string                 NascentTransformationMachine::HashedIdToStringId     (ParameterNameId colladaId) const
+    std::string                 NascentTransformationMachine::HashedIdToStringId     (AnimationParameterId colladaId) const
     {
         for (auto i=_stringNameMapping.cbegin(); i!=_stringNameMapping.end(); ++i)
             if (i->second == colladaId)
@@ -263,16 +263,16 @@ namespace RenderCore { namespace Assets
         return std::string();
     }
 
-    auto       NascentTransformationMachine::StringIdToHashedId     (const std::string& stringId) const -> ParameterNameId
+    auto       NascentTransformationMachine::StringIdToHashedId     (const std::string& stringId) const -> AnimationParameterId
     {
         for (auto i=_stringNameMapping.cbegin(); i!=_stringNameMapping.end(); ++i)
             if (i->first == stringId)
                 return i->second;
-        return ~ParameterNameId(0x0);
+        return ~AnimationParameterId(0x0);
     }
 
     void                        NascentTransformationMachine::RegisterJointName(
-        ParameterNameId colladaId, const std::string& name, 
+        AnimationParameterId colladaId, const std::string& name, 
         const Float4x4& inverseBindMatrix, unsigned outputMatrixIndex)
     {
         auto insertionPoint = std::lower_bound( _jointTags.begin(), _jointTags.end(), 

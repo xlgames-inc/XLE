@@ -366,12 +366,14 @@ namespace RenderCore { namespace ColladaConversion
         return (*attribute)[indexIntoPrimitive];
     }
 
-        VertexSourceDataAdapter::VertexSourceDataAdapter()
+    VertexSourceDataAdapter::VertexSourceDataAdapter()
     {
         _vertexData = nullptr;
         _start = _end = _stride = 0;
         _processingFlags = 0;
     }
+
+    VertexSourceDataAdapter::~VertexSourceDataAdapter() {}
 
     Metal::NativeFormat::Enum VertexSourceDataAdapter::AsNativeFormat(const VertexSourceDataAdapter::Param parameters[], size_t parameterCount)
     {

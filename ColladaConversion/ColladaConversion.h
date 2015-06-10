@@ -13,11 +13,6 @@
 #include "../Utility/Mixins.h"
 #include "../RenderCore/Metal/InputLayout.h"
 
-namespace COLLADAFW
-{
-    class UniqueId;
-}
-
 namespace COLLADABU
 {
     namespace Math 
@@ -33,24 +28,10 @@ namespace RenderCore { namespace Assets { class RawAnimationCurve; } }
 
 namespace RenderCore { namespace ColladaConversion
 {
-    typedef uint32 HashedColladaUniqueId;
-
-    HashedColladaUniqueId AsHashedColladaUniqueId(const COLLADAFW::UniqueId& uniqueId);
-
-    typedef uint32          ObjectId;
-    static const ObjectId   ObjectId_Invalid = ~ObjectId(0x0);
-
     unsigned int    FloatBits(float input);
     unsigned int    FloatBits(double input);
     unsigned short  AsFloat16(float input);
     float           Float16AsFloat32(unsigned short input);
-
-    #if MATHLIBRARY_ACTIVE == MATHLIBRARY_CML
-
-        Float4x4    AsFloat4x4  (const COLLADABU::Math::Matrix4& matrix);
-        Float3      AsFloat3    (const COLLADABU::Math::Vector3& vector);
-
-    #endif
 
     extern bool ImportCameras;
 
@@ -60,11 +41,13 @@ namespace RenderCore { namespace ColladaConversion
                             const void* vertexData, size_t vertexStride, size_t vertexCount,
                             const Metal::InputElementDesc& elementDesc, 
                             const Float4x4& localToWorld);
-    std::pair<Float3, Float3>       InvalidBoundingBox();
+    std::pair<Float3, Float3>   InvalidBoundingBox();
 
-    Metal::InputElementDesc         FindPositionElement(const Metal::InputElementDesc elements[], size_t elementCount);
+    Metal::InputElementDesc     FindPositionElement(const Metal::InputElementDesc elements[], size_t elementCount);
 
-    Assets::RawAnimationCurve      Convert(const COLLADAFW::Animation& animation);
+    Float4x4    AsFloat4x4  (const COLLADABU::Math::Matrix4& matrix);
+    Float3      AsFloat3    (const COLLADABU::Math::Vector3& vector);
+    Assets::RawAnimationCurve   Convert(const COLLADAFW::Animation& animation);
 
 }}
 

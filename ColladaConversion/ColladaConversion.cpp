@@ -16,17 +16,12 @@
 #pragma warning(disable:4201)       // nonstandard extension used : nameless struct/union
 #pragma warning(disable:4245)       // conversion from 'int' to 'const COLLADAFW::SamplerID', signed/unsigned mismatch
 #pragma warning(disable:4512)       // assignment operator could not be generated
-    #include <COLLADAFWUniqueId.h>
+    #include <COLLADAFWUniqueId.h>  // (actually only need matrix and vector)
 #pragma warning(pop)
 
 namespace RenderCore { namespace ColladaConversion
 {
     bool ImportCameras = true;
-
-    HashedColladaUniqueId AsHashedColladaUniqueId(const COLLADAFW::UniqueId& uniqueId)
-    {
-        return uint32(uniqueId.getObjectId()) ^ uint32(uniqueId.getObjectId() >> 32);
-    }
 
     unsigned int FloatBits(float input)
     {

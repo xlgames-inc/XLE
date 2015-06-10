@@ -19,11 +19,11 @@ namespace RenderCore { namespace Assets
 {
     typedef Assets::TransformationParameterSet::Type::Enum AnimSamplerType;
 
+    using AnimationParameterId = uint32;
+
     class NascentTransformationMachine : noncopyable
     {
     public:
-        typedef uint32 ParameterNameId;
-
         unsigned        PushTransformation(const Float4x4& localToParent, const char nodeName[]);
         void            Pop                     (   unsigned popCount);
         unsigned        GetOutputMatrixMarker   ();
@@ -32,13 +32,13 @@ namespace RenderCore { namespace Assets
 
         const Assets::TransformationParameterSet&       GetDefaultParameters() const { return _defaultParameters; }
 
-        std::pair<AnimSamplerType, uint32>  GetParameterIndex(ParameterNameId parameterName) const;
-        ParameterNameId                     GetParameterName(AnimSamplerType type, uint32 index) const;
+        std::pair<AnimSamplerType, uint32>  GetParameterIndex(AnimationParameterId parameterName) const;
+        AnimationParameterId                GetParameterName(AnimSamplerType type, uint32 index) const;
 
-        void                        RegisterJointName(ParameterNameId colladaId, const std::string& name, const Float4x4& inverseBindMatrix, unsigned outputMatrixIndex);
+        void                        RegisterJointName(AnimationParameterId colladaId, const std::string& name, const Float4x4& inverseBindMatrix, unsigned outputMatrixIndex);
         
-        std::string                 HashedIdToStringId     (ParameterNameId colladaId) const;
-        ParameterNameId             StringIdToHashedId     (const std::string& stringId) const;
+        std::string                 HashedIdToStringId     (AnimationParameterId colladaId) const;
+        AnimationParameterId        StringIdToHashedId     (const std::string& stringId) const;
 
         void    Serialize(Serialization::NascentBlockSerializer& outputSerializer) const;
 
@@ -58,22 +58,22 @@ namespace RenderCore { namespace Assets
         Assets::TransformationParameterSet      _defaultParameters;
 
             // ... parameters required only during construction ... 
-        std::vector<std::pair<ParameterNameId, uint32>>     _float1ParameterNames;
-        std::vector<std::pair<ParameterNameId, uint32>>     _float3ParameterNames;
-        std::vector<std::pair<ParameterNameId, uint32>>     _float4ParameterNames;
-        std::vector<std::pair<ParameterNameId, uint32>>     _float4x4ParameterNames;
-        int                                                 _pendingPops;
+        std::vector<std::pair<AnimationParameterId, uint32>>    _float1ParameterNames;
+        std::vector<std::pair<AnimationParameterId, uint32>>    _float3ParameterNames;
+        std::vector<std::pair<AnimationParameterId, uint32>>    _float4ParameterNames;
+        std::vector<std::pair<AnimationParameterId, uint32>>    _float4x4ParameterNames;
+        int                                                     _pendingPops;
 
-        std::vector<std::pair<std::string, ParameterNameId>>  _stringNameMapping;
+        std::vector<std::pair<std::string, AnimationParameterId>>  _stringNameMapping;
 
         class Joint;
         std::vector<Joint> _jointTags;
 
         template<typename Type>
-            uint32      AddParameter(Type defaultValue, ParameterNameId HashedColladaUniqueId, const char nodeName[]);
+            uint32      AddParameter(Type defaultValue, AnimationParameterId HashedColladaUniqueId, const char nodeName[]);
         template<typename Type>
             std::pair<
-                std::vector<std::pair<ParameterNameId, uint32>>&,
+                std::vector<std::pair<AnimationParameterId, uint32>>&,
                 std::vector<Type, Serialization::BlockSerializerAllocator<Type>>& >    
                 GetTables();
     };
@@ -82,13 +82,14 @@ namespace RenderCore { namespace Assets
         ////////////////// template implementation //////////////////
 
     template<typename Type>
-        uint32      NascentTransformationMachine::AddParameter( Type            defaultValue, 
-                                                                ParameterNameId parameterHash, 
-                                                                const char      nodeName[])
+        uint32      NascentTransformationMachine::AddParameter( 
+            Type defaultValue, 
+            AnimationParameterId parameterHash, 
+            const char nodeName[])
     {
         auto tables = GetTables<Type>();
         auto i      = std::lower_bound( tables.first.begin(), tables.first.end(), 
-                                        parameterHash, CompareFirst<ParameterNameId, uint32>());
+                                        parameterHash, CompareFirst<AnimationParameterId, uint32>());
         if (i!=tables.first.end() && i->first == parameterHash) {
             ThrowException(::Assets::Exceptions::FormatError("Non-unique parameter hash found for animatable property in node (%s)", nodeName));
         }

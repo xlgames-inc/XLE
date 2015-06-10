@@ -5,7 +5,8 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "TransformationMachine.h"
-#include "ColladaUtils.h"
+#include "ConversionObjects.h"
+#include "../ConsoleRig/Log.h"
 #include "../Math/Transformations.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/StringUtils.h"
@@ -118,7 +119,7 @@ namespace RenderCore { namespace ColladaConversion
                 parameterType = ParameterType_Embedded; // un-animatable embedded constant
             } else if (transformations[c]->getAnimationList() != UniqueId::INVALID) {
                 parameterType = ParameterType_Animated;
-                parameterHash = AsHashedColladaUniqueId(transformations[c]->getAnimationList());
+                parameterHash = BuildAnimParameterId(transformations[c]->getAnimationList());
             } else {
 
                     //
@@ -306,7 +307,7 @@ namespace RenderCore { namespace ColladaConversion
 
             } else {
 
-                Warning("Warning -- unsupported transformation type found in node (%s) -- type (%s)\n", nodeName, AsString(type));
+                LogAlwaysWarningF("Warning -- unsupported transformation type found in node (%s) -- type (%s)\n", nodeName, AsString(type));
 
             }
         }

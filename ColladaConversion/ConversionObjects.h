@@ -15,6 +15,8 @@
 
 namespace COLLADAFW { class UniqueId; class Image; class SkinControllerData; }
 
+namespace RenderCore { namespace Assets { using AnimationParameterId = uint32; }}
+
 namespace RenderCore { namespace ColladaConversion
 {
 
@@ -107,24 +109,25 @@ namespace RenderCore { namespace ColladaConversion
 
         ////////////////////////////////////////////////////////
 
-    class FullColladaId
+    class ObjectGuid
     {
     public:
-        unsigned        _classId;
-        uint64          _objectId;
-        unsigned        _fileId;
+        uint64  _objectId;
+        uint64  _fileId;
 
-        COLLADAFW::UniqueId     AsColladaId() const;
-        FullColladaId(const COLLADAFW::UniqueId& input);
-        FullColladaId();
+        ObjectGuid() : _objectId(~0ull), _fileId(~0ull) {}
+        ObjectGuid(uint64 objectId, uint64 fileId) : _objectId(objectId), _fileId(fileId) {}
     };
+
+    inline bool operator==(const ObjectGuid& lhs, const ObjectGuid& rhs)   { return (lhs._objectId == rhs._objectId) && (lhs._fileId == rhs._fileId); }
+    inline bool operator<(const ObjectGuid& lhs, const ObjectGuid& rhs)    { if (lhs._fileId < rhs._fileId) return true; return lhs._objectId < rhs._objectId; }
 
         ////////////////////////////////////////////////////////
 
     class UnboundMorphController
     {
     public:
-        FullColladaId   _source;
+        ObjectGuid   _source;
 
         UnboundMorphController();
         UnboundMorphController(UnboundMorphController&& moveFrom);
@@ -138,9 +141,9 @@ namespace RenderCore { namespace ColladaConversion
     class UnboundSkinControllerAndAttachedSkeleton
     {
     public:
-        ObjectId        _unboundControllerId;
-        FullColladaId   _source;
-        std::vector<HashedColladaUniqueId>  _jointIds;
+        ObjectGuid                  _unboundControllerId;
+        ObjectGuid                  _source;
+        std::vector<ObjectGuid>     _jointIds;
     };
 
         ////////////////////////////////////////////////////////
@@ -150,12 +153,12 @@ namespace RenderCore { namespace ColladaConversion
     public: 
         struct Reference
         {
-            HashedColladaUniqueId   _joint;
-            Float4x4                _inverseBindMatrix;
+            ObjectGuid      _joint;
+            Float4x4        _inverseBindMatrix;
         };
         std::vector<Reference>      _references;
 
-        bool HasJoint(HashedColladaUniqueId joint) const;
+        bool HasJoint(ObjectGuid joint) const;
     };
 
         ////////////////////////////////////////////////////////
@@ -171,17 +174,20 @@ namespace RenderCore { namespace ColladaConversion
     {
     public:
         typedef uint64 Guid;
-        FullColladaId   _effectId;
+        ObjectGuid   _effectId;
         Guid            _guid;
         std::string     _descriptiveName;
-        ReferencedMaterial(const FullColladaId& effectId, const Guid& guid, const std::string& descriptiveName) 
+        ReferencedMaterial(const ObjectGuid& effectId, const Guid& guid, const std::string& descriptiveName) 
             : _effectId(effectId), _guid(guid), _descriptiveName(descriptiveName) {}
     };
 
         ////////////////////////////////////////////////////////
 
+    ObjectGuid              Convert(const COLLADAFW::UniqueId& input);
     ReferencedTexture       Convert(const COLLADAFW::Image* image);
     UnboundSkinController   Convert(const COLLADAFW::SkinControllerData* input);
+
+    RenderCore::Assets::AnimationParameterId BuildAnimParameterId(const COLLADAFW::UniqueId& input);
 
 }}
 

@@ -94,23 +94,34 @@ namespace RenderCore { namespace ColladaConversion
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    
-
     class RawVertexSourceDataAdapter : public IVertexSourceData
     {
     public:
         std::vector<uint8>          _rawData;
         Metal::NativeFormat::Enum   _fmt;
-        Metal::NativeFormat::Enum   _dstFmt;
 
-        bool IsValid() const { return !_rawData.empty(); }
+        const void* GetData() const { return AsPointer(_rawData.cbegin()); }
+        size_t GetDataSize() const { return _rawData.size(); }
+        RenderCore::Metal::NativeFormat::Enum GetFormat() const { return _fmt; }
+        size_t GetStride() const { return RenderCore::Metal::BitsPerPixel(_fmt) / 8; }
+        size_t GetCount() const { return GetDataSize() / GetStride(); }
+        ProcessingFlags::BitField GetProcessingFlags() const { return 0; }
 
         RawVertexSourceDataAdapter() { _fmt = Metal::NativeFormat::Unknown; }
-        RawVertexSourceDataAdapter(const void* start, const void* end, Metal::NativeFormat::Enum fmt, Metal::NativeFormat::Enum dstFmt)
-        : _fmt(fmt), _dstFmt(dstFmt), _rawData((const uint8*)start, (const uint8*)end) {}
+        RawVertexSourceDataAdapter(const void* start, const void* end, Metal::NativeFormat::Enum fmt)
+        : _fmt(fmt), _rawData((const uint8*)start, (const uint8*)end) {}
     };
 
-    
+    IVertexSourceData::~IVertexSourceData() {}
+
+    std::shared_ptr<IVertexSourceData> CreateRawDataSource(
+        const void* dataBegin, const void* dataEnd, 
+        Metal::NativeFormat::Enum srcFormat)
+    {
+        return std::make_shared<RawVertexSourceDataAdapter>(dataBegin, dataEnd, srcFormat);
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     unsigned    MeshDatabaseAdapter::HasElement(const char name[]) const
     {
@@ -284,11 +295,10 @@ namespace RenderCore { namespace ColladaConversion
     {
         const auto& sourceData = *stream._sourceData;
         auto stride = sourceData.GetStride();
-        assert((stride * _unifiedVertexCount) == sourceData.GetDataSize());
         CopyVertexData(
             dst, dstFormat, dstStride,
             sourceData.GetData(), sourceData.GetFormat(), stride,
-            stream._vertexMap, (unsigned)_unifiedVertexCount, 0);
+            stream._vertexMap, (unsigned)_unifiedVertexCount, sourceData.GetProcessingFlags());
     }
 
     std::unique_ptr<uint8[]>  MeshDatabaseAdapter::BuildNativeVertexBuffer(NativeVBLayout& outputLayout) const

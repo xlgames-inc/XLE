@@ -7,7 +7,6 @@
 #define _SCL_SECURE_NO_WARNINGS   // warning C4996: 'std::_Copy_impl': Function call with parameters that may be unsafe
 #pragma warning(disable:4244) // 4244: '=' : conversion from 'const double' to 'float', possible loss of data
 
-#include "ColladaUtils.h"
 #include "../RenderCore/Assets/RawAnimationCurve.h"
 #include "../RenderCore/RenderUtils.h"
 

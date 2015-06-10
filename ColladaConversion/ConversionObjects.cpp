@@ -8,11 +8,11 @@
 
 #include "ConversionObjects.h"
 #include "ColladaConversion.h"
-#include "ColladaUtils.h"
 #include "../RenderCore/RenderUtils.h"
 #include "../Assets/BlockSerializer.h"
 #include "../Math/Transformations.h"
 #include "../Utility/MemoryUtils.h"
+#include "../ConsoleRig/Log.h"
 
 #pragma warning(push)
 #pragma warning(disable:4201)       // nonstandard extension used : nameless struct/union
@@ -487,20 +487,20 @@ namespace RenderCore { namespace ColladaConversion
 
             if (jointCount >= 3) {
                 if (jointCount > 4) {
-                    Warning(    "Warning -- Exceeded maximum number of joints affecting a single vertex in skinning controller " 
+                    LogAlwaysWarningF(    "Warning -- Exceeded maximum number of joints affecting a single vertex in skinning controller " 
                                 "(%s). Only 4 joints can affect any given single vertex.\n",
                                 input->getName().c_str());
                         // (When this happens, only use the first 4, and ignore the others)
-                    Warning("Original weights:\n");
+                    LogAlwaysWarningF("Original weights:\n");
                     for (size_t c=0; c<basicJointCount; ++c) {
                         int weightIndex = input->getWeightIndices()[indexIterator+c];
                         int jointIndex = input->getJointIndices()[indexIterator+c];
                         float weight = input->getWeights().getType() == FloatOrDoubleArray::DATA_TYPE_FLOAT ? (*input->getWeights().getFloatValues())[weightIndex] : float((*input->getWeights().getDoubleValues())[weightIndex]);
-                        Warning("  [%i] Weight: %f Joint: %i\n", c, weight, jointIndex);
+                        LogAlwaysWarningF("  [%i] Weight: %f Joint: %i\n", c, weight, jointIndex);
                     }
-                    Warning("After filtering:\n");
+                    LogAlwaysWarningF("After filtering:\n");
                     for (size_t c=0; c<jointCount; ++c) {
-                        Warning("  [%i] Weight: %i Joint: %i\n", c, normalizedWeights[c], jointIndices[c]);
+                        LogAlwaysWarningF("  [%i] Weight: %i Joint: %i\n", c, normalizedWeights[c], jointIndices[c]);
                     }
                 }
 
@@ -569,24 +569,20 @@ namespace RenderCore { namespace ColladaConversion
 
 
 
-    COLLADAFW::UniqueId     FullColladaId::AsColladaId() const 
-    { 
-        return COLLADAFW::UniqueId(
-            (COLLADAFW::ClassId)_classId, (COLLADAFW::ObjectId)_objectId, (COLLADAFW::FileId)_fileId
-            );
-    }
-
-    FullColladaId::FullColladaId(const COLLADAFW::UniqueId& input)
-    : _classId(input.getClassId()), _objectId(input.getObjectId()), _fileId(input.getFileId())
-    {}
-
-    FullColladaId::FullColladaId()
-    : _classId(0), _objectId(0), _fileId(0)
-    {}
-
-    bool JointReferences::HasJoint(HashedColladaUniqueId joint) const
+    bool JointReferences::HasJoint(ObjectGuid joint) const
     {
         return std::find_if(_references.begin(), _references.end(), [=](const Reference& ref) { return ref._joint == joint; }) != _references.end();
+    }
+
+
+    ObjectGuid Convert(const COLLADAFW::UniqueId& input)
+    {
+        return ObjectGuid(input.getObjectId(), input.getFileId());
+    }
+
+    RenderCore::Assets::AnimationParameterId BuildAnimParameterId(const COLLADAFW::UniqueId& input)
+    {
+        return (RenderCore::Assets::AnimationParameterId)input.getObjectId();
     }
 
 }}

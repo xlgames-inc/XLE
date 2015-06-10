@@ -17,7 +17,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\ColladaConversion.h" />
-    <ClInclude Include="..\ColladaUtils.h" />
     <ClInclude Include="..\ConversionObjects.h" />
     <ClInclude Include="..\ModelCommandStream.h" />
     <ClInclude Include="..\NascentModel.h" />

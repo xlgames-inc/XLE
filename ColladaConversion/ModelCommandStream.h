@@ -42,13 +42,13 @@ namespace RenderCore { namespace ColladaConversion
         class AnimationDriver
         {
         public:
-            ObjectId            _curveId;
+            ObjectGuid            _curveId;
             unsigned            _parameterIndex;
             unsigned            _samplerOffset;
             AnimSamplerType     _samplerType;
 
             AnimationDriver(
-                ObjectId            curveId, 
+                ObjectGuid            curveId, 
                 unsigned            parameterIndex, 
                 AnimSamplerType     samplerType, 
                 unsigned            samplerOffset)
@@ -83,7 +83,7 @@ namespace RenderCore { namespace ColladaConversion
         };
 
         void    AddAnimationDriver( const std::string&  parameterName, 
-                                    ObjectId            curveId, 
+                                    ObjectGuid            curveId, 
                                     AnimSamplerType     samplerType, 
                                     unsigned            samplerOffset);
 
@@ -165,11 +165,11 @@ namespace RenderCore { namespace ColladaConversion
         class GeometryInstance
         {
         public:
-            ObjectId                    _id;
+            ObjectGuid                    _id;
             unsigned                    _localToWorldId;
             std::vector<MaterialGuid>   _materials;
             unsigned                    _levelOfDetail;
-            GeometryInstance(ObjectId id, unsigned localToWorldId, std::vector<MaterialGuid>&& materials, unsigned levelOfDetail) 
+            GeometryInstance(ObjectGuid id, unsigned localToWorldId, std::vector<MaterialGuid>&& materials, unsigned levelOfDetail) 
             :   _id(id), _localToWorldId(localToWorldId)
             ,   _materials(std::forward<std::vector<MaterialGuid>>(materials))
             ,   _levelOfDetail(levelOfDetail) {}
@@ -181,20 +181,20 @@ namespace RenderCore { namespace ColladaConversion
         class ModelInstance
         {
         public:
-            ObjectId    _id;
+            ObjectGuid    _id;
             unsigned    _localToWorldId;
-            ModelInstance(ObjectId id, unsigned localToWorldId) : _id(id), _localToWorldId(localToWorldId) {}
+            ModelInstance(ObjectGuid id, unsigned localToWorldId) : _id(id), _localToWorldId(localToWorldId) {}
         };
 
             /////   S K I N   C O N T R O L L E R   I N S T A N C E   /////
         class SkinControllerInstance
         {
         public:
-            ObjectId                    _id;
+            ObjectGuid                    _id;
             unsigned                    _localToWorldId;
             std::vector<MaterialGuid>   _materials;
             unsigned                    _levelOfDetail;
-            SkinControllerInstance(ObjectId id, unsigned localToWorldId, std::vector<MaterialGuid>&& materials, unsigned levelOfDetail)
+            SkinControllerInstance(ObjectGuid id, unsigned localToWorldId, std::vector<MaterialGuid>&& materials, unsigned levelOfDetail)
             :   _id(id), _localToWorldId(localToWorldId), _materials(std::forward<std::vector<MaterialGuid>>(materials))
             ,   _levelOfDetail(levelOfDetail) {}
 
@@ -237,7 +237,7 @@ namespace RenderCore { namespace ColladaConversion
         class TransformationMachineOutput;
         std::vector<TransformationMachineOutput>    _transformationMachineOutputs;
 
-        unsigned    FindTransformationMachineOutput(HashedColladaUniqueId nodeId) const;
+        unsigned    FindTransformationMachineOutput(ObjectGuid nodeId) const;
 
         NascentModelCommandStream& operator=(const NascentModelCommandStream& copyFrom) never_throws;
         NascentModelCommandStream(const NascentModelCommandStream& copyFrom);

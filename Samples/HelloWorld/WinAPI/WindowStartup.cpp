@@ -109,6 +109,49 @@ static void TestParser()
     } CATCH_END
 }
 
+#include "../../RenderCore/Assets/ModelRunTime.h"
+#include "../../RenderCore/Assets/ModelRunTimeInternal.h"
+#include "../../RenderCore/Assets/Services.h"
+#include "../../Assets/IntermediateResources.h"
+#include "../../Assets/Assets.h"
+#include "../../Utility/StringFormat.h"
+#include "../../Utility/Threading/ThreadingUtils.h"
+
+static void TestParser3()
+{
+    auto aservices = std::make_shared<::Assets::Services>(0);
+	auto& asyncMan = aservices->GetAsyncMan();
+    auto raservices = std::make_shared<RenderCore::Assets::Services>(nullptr);
+    raservices->InitColladaCompilers();
+
+	const char sampleAsset[] = "game/model/galleon/galleon.dae";
+	using RenderCore::Assets::ModelScaffold;
+
+	{
+		using ::Assets::ResChar;
+		ResChar intermediateFile[256];
+		asyncMan.GetIntermediateStore().MakeIntermediateName(
+			intermediateFile, dimof(intermediateFile),
+			StringMeld<256, ResChar>() << sampleAsset << "-skin");
+		XlDeleteFile((utf8*)intermediateFile);
+	}
+
+	auto& scaffold = Assets::GetAssetComp<ModelScaffold>(sampleAsset);
+    for (;;) {
+		TRY {
+            scaffold.GetStaticBoundingBox();
+			break;
+		} CATCH(Assets::Exceptions::PendingResource&) {}
+		CATCH_END
+
+		Threading::YieldTimeSlice();
+		asyncMan.Update();
+	}
+
+    int t = 0;
+    (void)t;
+}
+
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
     #if CLIBRARIES_ACTIVE == CLIBRARIES_MSVC && defined(_DEBUG)
@@ -130,6 +173,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
     ConsoleRig::GlobalServices services;
     LogInfo << "------------------------------------------------------------------------------------------";
 
+    TestParser3();
     TestParser2();
     TestParser();
 

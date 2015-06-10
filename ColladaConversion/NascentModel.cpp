@@ -15,8 +15,6 @@
 #include "TableOfObjects.h"
 #include "RawGeometry.h"
 #include "ConversionObjects.h"
-#include "ColladaUtils.h"
-// #include "MaterialSettingsFile.h"
 
 #include "../RenderCore/Assets/ModelRunTime.h"
 #include "../RenderCore/Assets/RawAnimationCurve.h"
@@ -38,6 +36,7 @@
 #include "../ConsoleRig/Console.h"
 #include "../ConsoleRig/OutputStream.h"
 #include "../ConsoleRig/GlobalServices.h"
+#include "../ConsoleRig/Log.h"
 
 #include "../Utility/Streams/FileUtils.h"        // (for materials stuff)
 #include "../Utility/Streams/Data.h"             // (for materials stuff)
@@ -229,14 +228,14 @@ namespace RenderCore { namespace ColladaConversion
         class AnimationLink
         {
         public:
-            ColladaConversion::HashedColladaUniqueId    _animationListName;
-            COLLADAFW::UniqueId                         _animationId;
+            RenderCore::Assets::AnimationParameterId    _animationListName;
+            COLLADAFW::UniqueId     _animationId;
 
             unsigned        _samplerWidth;
             unsigned        _samplerOffset;
 
-            AnimationLink(  
-                ColladaConversion::HashedColladaUniqueId animationListName, 
+            AnimationLink(
+                RenderCore::Assets::AnimationParameterId animationListName, 
                 const COLLADAFW::UniqueId& animationId, 
                 unsigned samplerWidth, unsigned samplerOffset)
             : _animationListName(animationListName), _animationId(animationId)
@@ -261,18 +260,19 @@ namespace RenderCore { namespace ColladaConversion
 
     void Writer::HandleFormatError(const FormatError& error)
     {
-        Warning("Supressing format error on Collada import. See description below:\n");
-        Warning("%s\n", error.what());
+        LogAlwaysWarningF("Supressing format error on Collada import. See description below:\n");
+        LogAlwaysWarningF("%s\n", error.what());
     }
 
     bool Writer::writeImage(const COLLADAFW::Image* image)
     {
         TRY {
             ColladaConversion::ReferencedTexture texture = ColladaConversion::Convert(image);
-            _objects.Add(   image->getOriginalId(),
-                            image->getName(),
-                            image->getUniqueId(),
-                            std::move(texture));
+            _objects.Add(   
+                ColladaConversion::Convert(image->getUniqueId()),
+                image->getName(),
+                image->getOriginalId(),
+                std::move(texture));
             return true;
         } CATCH(const FormatError& error) {
             HandleFormatError(error);
@@ -285,10 +285,11 @@ namespace RenderCore { namespace ColladaConversion
 	{
         TRY {
             ColladaConversion::NascentRawGeometry geo = ColladaConversion::Convert(geometry);
-            _objects.Add(   geometry->getOriginalId(),
-                            geometry->getName(),
-                            geometry->getUniqueId(),
-                            std::move(geo));
+            _objects.Add(
+                ColladaConversion::Convert(geometry->getUniqueId()),
+                geometry->getName(),
+                geometry->getOriginalId(),
+                std::move(geo));
             return true;
         } CATCH(const FormatError& error) {
             HandleFormatError(error);
@@ -326,14 +327,11 @@ namespace RenderCore { namespace ColladaConversion
             &&  ec.getSamplerPointerArray()[samplerId]) {
 
             const auto& sampler = *ec.getSamplerPointerArray()[samplerId];
-            const ReferencedTexture* refTexture = nullptr;
-            ObjectId tableId = objects.GetObjectId<ReferencedTexture>(sampler.getSourceImage());
-            if (tableId != ObjectId_Invalid) {
-                refTexture = objects.GetFromObjectId<ReferencedTexture>(tableId);
-            }
-            if (refTexture) {
+            const auto* refTexture = objects.Get<ReferencedTexture>(
+                ColladaConversion::Convert(sampler.getSourceImage()));
+            if (refTexture)
                 bindings.SetParameter(bindingName, refTexture->_resourceName);
-            }
+
         }
     }
 
@@ -438,9 +436,9 @@ namespace RenderCore { namespace ColladaConversion
             }
 
             _objects.Add(
-                effect->getOriginalId(),
+                ColladaConversion::Convert(effect->getUniqueId()),
                 effect->getName(),
-                effect->getUniqueId(),
+                effect->getOriginalId(),
                 std::move(matSettings));
             return true;
 
@@ -468,8 +466,12 @@ namespace RenderCore { namespace ColladaConversion
 
             const UniqueId& effect = material->getInstantiatedEffect();
             _objects.Add(
-                material->getOriginalId(), material->getName(), material->getUniqueId(),
-                ReferencedMaterial(effect, RenderCore::Assets::MakeMaterialGuid(material->getName().c_str()), material->getName()));
+                ColladaConversion::Convert(material->getUniqueId()),
+                material->getName(), 
+                material->getOriginalId(),
+                ReferencedMaterial(
+                    ColladaConversion::Convert(effect), 
+                    RenderCore::Assets::MakeMaterialGuid(material->getName().c_str()), material->getName()));
             
             return true;
 
@@ -503,7 +505,7 @@ namespace RenderCore { namespace ColladaConversion
         };
         for (size_t t=0; t<dimof(parameterTypes); ++t) {
             for (size_t c=0; c<parameterTypes[t].count; ++c) {
-                HashedColladaUniqueId name  = _skeleton.GetTransformationMachine().GetParameterName(parameterTypes[t].samplerType, (uint32)c);
+                auto name  = _skeleton.GetTransformationMachine().GetParameterName(parameterTypes[t].samplerType, (uint32)c);
                 std::string stringName      = _skeleton.GetTransformationMachine().HashedIdToStringId(name);
                 if (!_animationSet.HasAnimationDriver(stringName)) {
                     _animationSet.AddConstantDriver(
@@ -553,12 +555,10 @@ namespace RenderCore { namespace ColladaConversion
                 //      Now, read the animation links and add "AnimationDriver" objects as required
                 //
             for (auto i=_animationLinks.begin(); i!=_animationLinks.end(); ++i) {
-                ColladaConversion::ObjectId tableId = _objects.GetObjectId<Assets::RawAnimationCurve>(i->_animationId);
-                if (tableId != ColladaConversion::ObjectId_Invalid) {
-                    _animationSet.AddAnimationDriver(
-                        _skeleton.GetTransformationMachine().HashedIdToStringId(i->_animationListName),
-                        tableId, SamplerWidthToType(i->_samplerWidth), i->_samplerOffset);
-                }
+                _animationSet.AddAnimationDriver(
+                    _skeleton.GetTransformationMachine().HashedIdToStringId(i->_animationListName),
+                    ColladaConversion::Convert(i->_animationId), 
+                    SamplerWidthToType(i->_samplerWidth), i->_samplerOffset);
             }
 
             if (!commandStream.IsEmpty()) {
@@ -594,10 +594,11 @@ namespace RenderCore { namespace ColladaConversion
                     ColladaConversion::NascentModelCommandStream    commandStream;
                     commandStream.PushNode(*node, _objects, instancedSkinControllers);
 
-                    _objects.Add(   node->getOriginalId(),
-                                    node->getName(),
-                                    node->getUniqueId(),
-                                    std::move(commandStream));
+                    _objects.Add(   
+                        ColladaConversion::Convert(node->getUniqueId()),
+                        node->getName(),
+                        node->getOriginalId(),
+                        std::move(commandStream));
                 }
             }
 
@@ -615,10 +616,11 @@ namespace RenderCore { namespace ColladaConversion
             ColladaConversion::UnboundSkinController unboundController = 
                 ColladaConversion::Convert(skinControllerData);
 
-            _objects.Add(   skinControllerData->getOriginalId(),
-                            skinControllerData->getName(),
-                            skinControllerData->getUniqueId(),
-                            std::move(unboundController));
+            _objects.Add(   
+                ColladaConversion::Convert(skinControllerData->getUniqueId()),
+                skinControllerData->getName(),
+                skinControllerData->getOriginalId(),
+                std::move(unboundController));
 
             return true;
 
@@ -655,14 +657,10 @@ namespace RenderCore { namespace ColladaConversion
                 COLLADAFW::UniqueId id = skinController->getSkinControllerData();
 
                     //  Find this id within our table of objects
-                ColladaConversion::ObjectId tableId = _objects.GetObjectId<ColladaConversion::UnboundSkinController>(id);
-                const ColladaConversion::UnboundSkinController* obj = nullptr;
-                if (tableId != ColladaConversion::ObjectId_Invalid) {
-                    obj = _objects.GetFromObjectId<ColladaConversion::UnboundSkinController>(tableId);
-                }
-
+                const auto* obj = _objects.Get<ColladaConversion::UnboundSkinController>(
+                    ColladaConversion::Convert(id));
                 if (obj==nullptr) {
-                    Warning("Missing skin controller data for skin controller. There must have been a failure while processing this object!\n");
+                    LogAlwaysWarningF("Missing skin controller data for skin controller. There must have been a failure while processing this object!\n");
                     return false;
                 }
 
@@ -679,13 +677,16 @@ namespace RenderCore { namespace ColladaConversion
                     //
                 using namespace ColladaConversion;
                 UnboundSkinControllerAndAttachedSkeleton result;
-                result._unboundControllerId = tableId;
+                result._unboundControllerId = ColladaConversion::Convert(id);
                 result._jointIds.reserve(skinController->getJoints().getCount());
-                result._source = skinController->getSource();
+                result._source = ColladaConversion::Convert(skinController->getSource());
                 for (size_t c=0; c<skinController->getJoints().getCount(); ++c)
-                    result._jointIds.push_back(AsHashedColladaUniqueId(skinController->getJoints()[c]));
+                    result._jointIds.push_back(ColladaConversion::Convert(skinController->getJoints()[c]));
 
-                _objects.Add("UnnamedSkinController", "UnnamedSkinController", skinController->getUniqueId(), std::move(result));
+                _objects.Add(
+                    ColladaConversion::Convert(skinController->getUniqueId()),
+                    "UnnamedSkinController", "UnnamedSkinController", 
+                    std::move(result));
                 return true;
 
             } else if (controller->getControllerType() == Controller::CONTROLLER_TYPE_MORPH) {
@@ -697,8 +698,12 @@ namespace RenderCore { namespace ColladaConversion
                 const COLLADAFW::MorphController* morphController = objectSafeCast<const COLLADAFW::MorphController>(controller);
                 if (morphController->getMorphTargets().getCount() > 0) {
                     UnboundMorphController newController;
-                    newController._source = morphController->getMorphTargets()[0];
-                    _objects.Add("UnnamedMorphController", "UnnamedMorphController", morphController->getUniqueId(), std::move(newController));
+                    newController._source = ColladaConversion::Convert(morphController->getMorphTargets()[0]);
+                    _objects.Add(
+                        ColladaConversion::Convert(morphController->getUniqueId()),
+                        "UnnamedMorphController", 
+                        "UnnamedMorphController", 
+                        std::move(newController));
                     return true;
                 }
 
@@ -722,9 +727,9 @@ namespace RenderCore { namespace ColladaConversion
 
             using namespace ColladaConversion;
             Assets::RawAnimationCurve convertedCurve = Convert(*animation);
-            _objects.Add(   animation->getOriginalId(),
+            _objects.Add(   ColladaConversion::Convert(animation->getUniqueId()),
                             animation->getName(),
-                            animation->getUniqueId(),
+                            animation->getOriginalId(),
                             std::move(convertedCurve));
             return true;
 
@@ -782,23 +787,21 @@ namespace RenderCore { namespace ColladaConversion
                 const COLLADAFW::AnimationList::AnimationBinding& sourceBinding = animationList->getAnimationBindings()[c];
                 auto interpolatorType = AsInterpolatorType(sourceBinding.animationClass);
                 AnimationLink animationLink(
-                    ColladaConversion::AsHashedColladaUniqueId(animationList->getUniqueId()),
+                    BuildAnimParameterId(animationList->getUniqueId()),
                     sourceBinding.animation, 
                     interpolatorType.first, interpolatorType.second);
 
                         //      If we've build the visual scene already, hook up the animation driver
-                ColladaConversion::ObjectId tableId = _objects.GetObjectId<Assets::RawAnimationCurve>(animationLink._animationId);
-                if (tableId != ColladaConversion::ObjectId_Invalid) {
-                    std::string stringId = _skeleton.GetTransformationMachine().HashedIdToStringId(animationLink._animationListName);
-                    if (stringId.empty()) {
-                        Warning("Couldn't bind animation driver. Sometimes this happens when there is an unsupported animation type (eg, animated material parameters)\n");
-                    } else {
-                        if (XlFindStringI(stringId.c_str(), "rope")) {
-                            continue;   // ignore everything applying to "rope" nodes
-                        }
-                        _animationSet.AddAnimationDriver(
-                            stringId, tableId, SamplerWidthToType(animationLink._samplerWidth), animationLink._samplerOffset);
+                std::string stringId = _skeleton.GetTransformationMachine().HashedIdToStringId(animationLink._animationListName);
+                if (stringId.empty()) {
+                    LogAlwaysWarningF("Couldn't bind animation driver. Sometimes this happens when there is an unsupported animation type (eg, animated material parameters)\n");
+                } else {
+                    if (XlFindStringI(stringId.c_str(), "rope")) {
+                        continue;   // ignore everything applying to "rope" nodes
                     }
+                    _animationSet.AddAnimationDriver(
+                        stringId, Convert(animationLink._animationId), 
+                        SamplerWidthToType(animationLink._samplerWidth), animationLink._samplerOffset);
                 }
 
                 _animationLinks.push_back(animationLink);
@@ -884,13 +887,13 @@ namespace RenderCore { namespace ColladaConversion
 			    mFileNotFound = true;
 		    }
 
-		    Warning("Schema validation error: (%s)\n", parserError.getErrorMessage().c_str());
+		    LogAlwaysWarningF("Schema validation error: (%s)\n", parserError.getErrorMessage().c_str());
 		    mHasHandledSaxParserError = true;
 	    }
 	    else if ( error->getErrorClass() == COLLADASaxFWL::IError::ERROR_SAXFWL )
 	    {
 		    COLLADASaxFWL::SaxFWLError* saxFWLError = (COLLADASaxFWL::SaxFWLError*) error;
-		    Warning("Sax FWL Error: (%s)\n", saxFWLError->getErrorMessage().c_str());
+		    LogAlwaysWarningF("Sax FWL Error: (%s)\n", saxFWLError->getErrorMessage().c_str());
 		    mHasHandledSaxFWLError = true;
 	    }
 	    return false;
@@ -1125,7 +1128,7 @@ namespace RenderCore { namespace ColladaConversion
         for (auto i=_visualScene._geometryInstances.cbegin(); i!=_visualScene._geometryInstances.cend(); ++i) {
             const NascentModelCommandStream::GeometryInstance& inst = *i;
 
-            const NascentRawGeometry*  geo = _objects.GetFromObjectId<NascentRawGeometry>(inst._id);
+            const NascentRawGeometry*  geo = _objects.Get<NascentRawGeometry>(inst._id);
             if (!geo) continue;
 
             Float4x4 localToWorld = Identity<Float4x4>();
@@ -1155,7 +1158,7 @@ namespace RenderCore { namespace ColladaConversion
         for (auto i=_visualScene._skinControllerInstances.cbegin(); i!=_visualScene._skinControllerInstances.cend(); ++i) {
             const NascentModelCommandStream::SkinControllerInstance& inst = *i;
 
-            const NascentBoundSkinnedGeometry* controller = _objects.GetFromObjectId<NascentBoundSkinnedGeometry>(inst._id);
+            const NascentBoundSkinnedGeometry* controller = _objects.Get<NascentBoundSkinnedGeometry>(inst._id);
             if (!controller) continue;
 
             Float4x4 localToWorld = Identity<Float4x4>();
