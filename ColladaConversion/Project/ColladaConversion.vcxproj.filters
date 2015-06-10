@@ -1,0 +1,34 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="..\AnimationConversion.cpp" />
+    <ClCompile Include="..\ColladaConversion.cpp" />
+    <ClCompile Include="..\ColladaDocument.cpp" />
+    <ClCompile Include="..\ConversionObjects.cpp" />
+    <ClCompile Include="..\ModelCommandStream.cpp" />
+    <ClCompile Include="..\NascentModel.cpp" />
+    <ClCompile Include="..\RawGeometry.cpp" />
+    <ClCompile Include="..\TableOfObjects.cpp" />
+    <ClCompile Include="..\TransformationMachine.cpp" />
+    <ClCompile Include="..\Version.cpp" />
+    <ClCompile Include="..\OpenCollada\OCRawGeometry.cpp">
+      <Filter>OpenCollada</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\ColladaConversion.h" />
+    <ClInclude Include="..\ColladaUtils.h" />
+    <ClInclude Include="..\ConversionObjects.h" />
+    <ClInclude Include="..\ModelCommandStream.h" />
+    <ClInclude Include="..\NascentModel.h" />
+    <ClInclude Include="..\RawGeometry.h" />
+    <ClInclude Include="..\TableOfObjects.h" />
+    <ClInclude Include="..\TransformationMachine.h" />
+    <ClInclude Include="..\ProcessingUtil.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="OpenCollada">
+      <UniqueIdentifier>{d8edab2d-628d-452d-a0a1-7fe39b13a6fa}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
