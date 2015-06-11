@@ -140,12 +140,20 @@ namespace RenderCore { namespace ColladaConversion
         {
             return AsNativeFormat(AsPointer(_params.cbegin()), _params.size());
         }
-        size_t GetStride() const    { return _stride * sizeof(float); }
-        size_t GetCount() const     { return std::min(_vertexData->getFloatValues()->getCount(), _end) - _start; }
-        ProcessingFlags::BitField GetProcessingFlags() const { return _processingFlags; }
+        size_t                      GetStride() const    { return _stride * sizeof(float); }
+        size_t                      GetCount() const     { return std::min(_vertexData->getFloatValues()->getCount(), _end) - _start; }
+        ProcessingFlags::BitField   GetProcessingFlags() const { return _processingFlags; }
+        FormatHint::BitField        GetFormatHint() const;
 
         static Metal::NativeFormat::Enum AsNativeFormat(const VertexSourceDataAdapter::Param parameters[], size_t parameterCount);
     };
+
+    FormatHint::BitField VertexSourceDataAdapter::GetFormatHint() const
+    {
+        if (_params.size() > 0 && tolower(_params[0]._name[0]) == 'r')
+            return FormatHint::IsColor;
+        return 0;
+    }
 
     static std::vector<VertexSourceDataAdapter::Param>   DefaultPosition     (const COLLADAFW::MeshVertexData& vd, size_t stride);
     static std::vector<VertexSourceDataAdapter::Param>   DefaultNormal       (const COLLADAFW::MeshVertexData& vd, size_t stride);
@@ -399,67 +407,6 @@ namespace RenderCore { namespace ColladaConversion
         }
     }
 
-    static Metal::NativeFormat::Enum AsFinalVBFormat(const VertexSourceDataAdapter::Param parameters[], size_t parameterCount)
-    {
-        if (parameterCount == 0 || !parameters) {
-            return Metal::NativeFormat::Unknown;
-        }
-
-            //
-            //      Calculate a native format that matches this source data.
-            //      Actually, there are a limited number of relevant native formats.
-            //      So, it's easy to find one that works.
-            //
-            //      We don't support doubles in vertex buffers. So we can only choose from
-            //
-            //          R32G32B32A32_FLOAT
-            //          R32G32B32_FLOAT
-            //          R32G32_FLOAT
-            //          R32_FLOAT
-            //
-            //          (assuming R9G9B9E5_SHAREDEXP, etc, not valid for vertex buffers)
-            //          R10G10B10A2_UNORM   (ok for DX 11.1 -- but DX11??)
-            //          R10G10B10A2_UINT    (ok for DX 11.1 -- but DX11??)
-            //          R11G11B10_FLOAT     (ok for DX 11.1 -- but DX11??)
-            //
-            //          R8G8B8A8_UNORM      (SRGB can't be used)
-            //          R8G8_UNORM
-            //          R8_UNORM
-            //          B8G8R8A8_UNORM
-            //          B8G8R8X8_UNORM
-            //
-            //          B5G6R5_UNORM        (on some hardware)
-            //          B5G5R5A1_UNORM      (on some hardware)
-            //          B4G4R4A4_UNORM      (on some hardware)
-            //
-            //          R16G16B16A16_FLOAT
-            //          R16G16_FLOAT
-            //          R16_FLOAT
-            //
-            //          (or UINT, SINT, UNORM, SNORM versions of the same thing)
-            //
-
-        if (parameters[0]._name == "R") {
-                //  (assume this is vertex colour. Choose an 8 bit type)
-                //  only supporting R, G, B, A order (not B, G, R, A order)
-            if (parameterCount == 1)        return Metal::NativeFormat::R8_UNORM;
-            else if (parameterCount == 2)   return Metal::NativeFormat::R8G8_UNORM;
-            else                            return Metal::NativeFormat::R8G8B8A8_UNORM;
-        }
-            
-           
-        if (constant_expression<Use16BitFloats>::result()) {
-            if (parameterCount == 1)        return Metal::NativeFormat::R16_FLOAT;
-            else if (parameterCount == 2)   return Metal::NativeFormat::R16G16_FLOAT;
-            else                            return Metal::NativeFormat::R16G16B16A16_FLOAT;
-        } else {
-            if (parameterCount == 1)        return Metal::NativeFormat::R32_FLOAT;
-            else if (parameterCount == 2)   return Metal::NativeFormat::R32G32_FLOAT;
-            else if (parameterCount == 3)   return Metal::NativeFormat::R32G32B32_FLOAT;
-            else                            return Metal::NativeFormat::R32G32B32A32_FLOAT;
-        }
-    }
-
     std::shared_ptr<MeshDatabaseAdapter> BuildMeshDatabaseAdapter(
         const COLLADAFW::Mesh& mesh, 
         std::vector<unsigned>* vertexMapBegin, std::vector<unsigned>* vertexMapEnd,
@@ -487,8 +434,7 @@ namespace RenderCore { namespace ColladaConversion
 
             result->AddStream(
                 vd, std::move(*(vertexMapBegin+index)),
-                i->_semanticName.c_str(), i->_index,
-                AsFinalVBFormat(AsPointer(vd->_params.begin()), vd->_params.size()));
+                i->_semanticName.c_str(), i->_index);
         }
 
         return std::move(result);
@@ -984,7 +930,7 @@ namespace RenderCore { namespace ColladaConversion
                 finalIndexBuffer.get(), finalIndexCount, indexFormat);
         }
 
-        NativeVBLayout vbLayout;
+        NativeVBLayout vbLayout = BuildDefaultLayout(*database);
         auto nativeVB = database->BuildNativeVertexBuffer(vbLayout);
         auto unifiedVertexIndexToPositionIndex = database->BuildUnifiedVertexIndexToPositionIndex();
 

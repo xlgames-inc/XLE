@@ -107,6 +107,7 @@ namespace RenderCore { namespace ColladaConversion
 
         RenderCore::Metal::NativeFormat::Enum GetFormat() const     { return _fmt; }
         ProcessingFlags::BitField GetProcessingFlags() const        { return 0; }
+        FormatHint::BitField GetFormatHint() const                  { return 0; }
 
         RawVertexSourceDataAdapter()    { _fmt = Metal::NativeFormat::Unknown; }
         RawVertexSourceDataAdapter(const void* start, const void* end, Metal::NativeFormat::Enum fmt)
@@ -303,10 +304,8 @@ namespace RenderCore { namespace ColladaConversion
             stream._vertexMap, (unsigned)_unifiedVertexCount, sourceData.GetProcessingFlags());
     }
 
-    std::unique_ptr<uint8[]>  MeshDatabaseAdapter::BuildNativeVertexBuffer(NativeVBLayout& outputLayout) const
+    std::unique_ptr<uint8[]>  MeshDatabaseAdapter::BuildNativeVertexBuffer(const NativeVBLayout& outputLayout) const
     {
-        outputLayout = BuildDefaultLayout();
-
             //
             //      Write the data into the vertex buffer
             //
@@ -484,8 +483,7 @@ namespace RenderCore { namespace ColladaConversion
                     AsPointer(normals.cbegin()), AsPointer(normals.cend()),
                     Metal::NativeFormat::R32G32B32_FLOAT),
                 std::vector<unsigned>(),
-                "NORMAL", 0,
-                Use16BitFloats ? Metal::NativeFormat::R16G16B16A16_FLOAT : Metal::NativeFormat::R32G32B32_FLOAT);
+                "NORMAL", 0);
         }
 
         if (!hasTangents) {
@@ -521,8 +519,7 @@ namespace RenderCore { namespace ColladaConversion
                 CreateRawDataSource(
                     AsPointer(tangents.begin()), AsPointer(tangents.cend()), Metal::NativeFormat::R32G32B32A32_FLOAT),
                 std::vector<unsigned>(),
-                "TANGENT", 0,
-                Use16BitFloats ? Metal::NativeFormat::R16G16B16A16_FLOAT : Metal::NativeFormat::R32G32B32A32_FLOAT);
+                "TANGENT", 0);
 
         }
 
@@ -556,16 +553,74 @@ namespace RenderCore { namespace ColladaConversion
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    NativeVBLayout MeshDatabaseAdapter::BuildDefaultLayout() const
+    static RenderCore::Metal::NativeFormat::Enum CalculateFinalVBFormat(const IVertexSourceData& source)
+    {
+            //
+            //      Calculate a native format that matches this source data.
+            //      Actually, there are a limited number of relevant native formats.
+            //      So, it's easy to find one that works.
+            //
+            //      We don't support doubles in vertex buffers. So we can only choose from
+            //
+            //          R32G32B32A32_FLOAT
+            //          R32G32B32_FLOAT
+            //          R32G32_FLOAT
+            //          R32_FLOAT
+            //
+            //          (assuming R9G9B9E5_SHAREDEXP, etc, not valid for vertex buffers)
+            //          R10G10B10A2_UNORM   (ok for DX 11.1 -- but DX11??)
+            //          R10G10B10A2_UINT    (ok for DX 11.1 -- but DX11??)
+            //          R11G11B10_FLOAT     (ok for DX 11.1 -- but DX11??)
+            //
+            //          R8G8B8A8_UNORM      (SRGB can't be used)
+            //          R8G8_UNORM
+            //          R8_UNORM
+            //          B8G8R8A8_UNORM
+            //          B8G8R8X8_UNORM
+            //
+            //          B5G6R5_UNORM        (on some hardware)
+            //          B5G5R5A1_UNORM      (on some hardware)
+            //          B4G4R4A4_UNORM      (on some hardware)
+            //
+            //          R16G16B16A16_FLOAT
+            //          R16G16_FLOAT
+            //          R16_FLOAT
+            //
+            //          (or UINT, SINT, UNORM, SNORM versions of the same thing)
+            //
+
+        auto parameterCount = RenderCore::Metal::GetComponentCount(
+            RenderCore::Metal::GetComponents(source.GetFormat()));
+        if (!parameterCount) return Metal::NativeFormat::Unknown;
+
+        if (source.GetFormatHint() & FormatHint::IsColor) {
+            if (parameterCount == 1)        return Metal::NativeFormat::R8_UNORM;
+            else if (parameterCount == 2)   return Metal::NativeFormat::R8G8_UNORM;
+            else                            return Metal::NativeFormat::R8G8B8A8_UNORM;
+        }
+
+        if (constant_expression<Use16BitFloats>::result()) {
+            if (parameterCount == 1)        return Metal::NativeFormat::R16_FLOAT;
+            else if (parameterCount == 2)   return Metal::NativeFormat::R16G16_FLOAT;
+            else                            return Metal::NativeFormat::R16G16B16A16_FLOAT;
+        } else {
+            if (parameterCount == 1)        return Metal::NativeFormat::R32_FLOAT;
+            else if (parameterCount == 2)   return Metal::NativeFormat::R32G32_FLOAT;
+            else if (parameterCount == 3)   return Metal::NativeFormat::R32G32B32_FLOAT;
+            else                            return Metal::NativeFormat::R32G32B32A32_FLOAT;
+        }
+    }
+
+    NativeVBLayout BuildDefaultLayout(MeshDatabaseAdapter& mesh)
     {
         unsigned accumulatingOffset = 0;
 
         NativeVBLayout result;
-        result._elements.resize(_streams.size());
+        result._elements.resize(mesh._streams.size());
 
-        for (size_t c = 0; c<_streams.size(); ++c) {
+        for (size_t c = 0; c<mesh._streams.size(); ++c) {
             auto& nativeElement = result._elements[c];
-            auto& stream = _streams[c];
+            auto& stream = mesh._streams[c];
             nativeElement._semanticName         = stream._semanticName;
             nativeElement._semanticIndex        = stream._semanticIndex;
 
@@ -576,7 +631,7 @@ namespace RenderCore { namespace ColladaConversion
                 //          is used, and how this vertex element is bound to materials. But in this function
                 //          call we only have access to the "Geometry" object, without any context information.
                 //          We don't yet know how it will be bound to materials.
-            nativeElement._nativeFormat = stream._finalVBFormat;
+            nativeElement._nativeFormat         = CalculateFinalVBFormat(*stream._sourceData);
             nativeElement._inputSlot            = 0;
             nativeElement._alignedByteOffset    = accumulatingOffset;
             nativeElement._inputSlotClass       = Metal::InputClassification::PerVertex;
@@ -592,8 +647,7 @@ namespace RenderCore { namespace ColladaConversion
     void    MeshDatabaseAdapter::AddStream(
         std::shared_ptr<IVertexSourceData> dataSource,
         std::vector<unsigned>&& vertexMap,
-        const char semantic[], unsigned semanticIndex,
-        Metal::NativeFormat::Enum finalVBFormat)
+        const char semantic[], unsigned semanticIndex)
     {
         auto count = vertexMap.size() ? vertexMap.size() : dataSource->GetCount();
         assert(count > 0);
@@ -601,7 +655,7 @@ namespace RenderCore { namespace ColladaConversion
         else _unifiedVertexCount = std::min(_unifiedVertexCount, count);
 
         _streams.push_back(
-            Stream{std::move(dataSource), std::move(vertexMap), semantic, semanticIndex, finalVBFormat});
+            Stream{std::move(dataSource), std::move(vertexMap), semantic, semanticIndex});
     }
 
     MeshDatabaseAdapter::MeshDatabaseAdapter()

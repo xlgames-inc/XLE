@@ -11,7 +11,6 @@
 #include "../RenderCore/Metal/DeviceContext.h"  // for topology
 #include <vector>
 
-namespace COLLADAFW { class Geometry; }
 namespace Serialization { class NascentBlockSerializer; }
 
 namespace RenderCore { namespace ColladaConversion
@@ -78,9 +77,5 @@ namespace RenderCore { namespace ColladaConversion
         NascentRawGeometry(NascentRawGeometry&) = delete;
         NascentRawGeometry& operator=(const NascentRawGeometry&) = delete;
     };
-
-        ////////////////////////////////////////////////////////
-
-    NascentRawGeometry Convert(const COLLADAFW::Geometry* geometry);
 
 }}

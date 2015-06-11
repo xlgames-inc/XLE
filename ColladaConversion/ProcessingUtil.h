@@ -13,8 +13,19 @@ namespace RenderCore { namespace ColladaConversion
 {
 
     namespace ProcessingFlags 
-    { 
-        enum Enum { TexCoordFlip = 1<<0, TangentHandinessFlip = 1<<1, BitangentFlip = 1<<2, Renormalize = 1<<3 };
+    {
+        enum Enum { 
+            TexCoordFlip = 1<<0, 
+            TangentHandinessFlip = 1<<1, 
+            BitangentFlip = 1<<2, 
+            Renormalize = 1<<3 
+        };
+        typedef unsigned BitField;
+    }
+
+    namespace FormatHint
+    {
+        enum Enum { IsColor = 1<<0 };
         typedef unsigned BitField;
     }
 
@@ -29,9 +40,11 @@ namespace RenderCore { namespace ColladaConversion
         virtual const void* GetData() const = 0;
         virtual size_t GetDataSize() const = 0;
         virtual RenderCore::Metal::NativeFormat::Enum GetFormat() const = 0;
+
         virtual size_t GetStride() const = 0;
         virtual size_t GetCount() const = 0;
         virtual ProcessingFlags::BitField GetProcessingFlags() const = 0;
+        virtual FormatHint::BitField GetFormatHint() const = 0;
 
         virtual ~IVertexSourceData();
     };
@@ -59,7 +72,6 @@ namespace RenderCore { namespace ColladaConversion
             std::vector<unsigned>       _vertexMap;
             std::string                 _semanticName;
             unsigned                    _semanticIndex;
-            Metal::NativeFormat::Enum   _finalVBFormat;
         };
         std::vector<Stream> _streams;
 
@@ -70,22 +82,21 @@ namespace RenderCore { namespace ColladaConversion
         template<typename OutputType>
             OutputType GetUnifiedElement(size_t vertexIndex, unsigned elementIndex) const;
 
-        auto    BuildNativeVertexBuffer(NativeVBLayout& outputLayout) const -> std::unique_ptr<uint8[]>;
+        auto    BuildNativeVertexBuffer(const NativeVBLayout& outputLayout) const -> std::unique_ptr<uint8[]>;
         auto    BuildUnifiedVertexIndexToPositionIndex() const -> std::unique_ptr<uint32[]>;
 
         void    AddStream(  std::shared_ptr<IVertexSourceData> dataSource,
                             std::vector<unsigned>&& vertexMap,
-                            const char semantic[], unsigned semanticIndex,
-                            Metal::NativeFormat::Enum finalVBFormat);
+                            const char semantic[], unsigned semanticIndex);
 
         MeshDatabaseAdapter();
         ~MeshDatabaseAdapter();
 
     protected:
-        NativeVBLayout BuildDefaultLayout() const;
-
         void WriteStream(const Stream& stream, const void* dst, Metal::NativeFormat::Enum dstFormat, size_t dstStride) const;
     };
+
+    NativeVBLayout BuildDefaultLayout(MeshDatabaseAdapter& mesh);
 
     void GenerateNormalsAndTangents( 
         MeshDatabaseAdapter& mesh, 
@@ -94,4 +105,17 @@ namespace RenderCore { namespace ColladaConversion
 
     static const bool Use16BitFloats = true;
 
+
+
+    void CopyVertexElements(
+        void* destinationBuffer,            size_t destinationVertexStride,
+        const void* sourceBuffer,           size_t sourceVertexStride,
+        const Metal::InputElementDesc* destinationLayoutBegin,  const Metal::InputElementDesc* destinationLayoutEnd,
+        const Metal::InputElementDesc* sourceLayoutBegin,       const Metal::InputElementDesc* sourceLayoutEnd,
+        const uint16* reorderingBegin,      const uint16* reorderingEnd );
+
+    unsigned CalculateVertexSize(
+        const Metal::InputElementDesc* layoutBegin,  
+        const Metal::InputElementDesc* layoutEnd);
 }}
+

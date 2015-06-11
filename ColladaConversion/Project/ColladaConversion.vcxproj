@@ -93,6 +93,7 @@
     <ClCompile Include="..\ConversionObjects.cpp" />
     <ClCompile Include="..\ModelCommandStream.cpp" />
     <ClCompile Include="..\NascentModel.cpp" />
+    <ClCompile Include="..\OpenCollada\OCModelCommandStream.cpp" />
     <ClCompile Include="..\OpenCollada\OCRawGeometry.cpp" />
     <ClCompile Include="..\ParsingUtil.cpp" />
     <ClCompile Include="..\RawGeometry.cpp" />
@@ -106,6 +107,7 @@
     <ClInclude Include="..\ConversionObjects.h" />
     <ClInclude Include="..\ModelCommandStream.h" />
     <ClInclude Include="..\NascentModel.h" />
+    <ClInclude Include="..\OpenCollada\OCInterface.h" />
     <ClInclude Include="..\ParsingUtil.h" />
     <ClInclude Include="..\ProcessingUtil.h" />
     <ClInclude Include="..\RawGeometry.h" />

@@ -12,15 +12,6 @@
 #include "../../../Utility/Mixins.h"
 #include <vector>
 
-namespace COLLADAFW
-{
-    class Node;
-
-    template<class T> class Array;
-    class MaterialBinding;
-    typedef Array<MaterialBinding> MaterialBindingArray;
-}
-
 namespace Serialization { class NascentBlockSerializer; }
 
 namespace RenderCore { namespace ColladaConversion
@@ -137,8 +128,6 @@ namespace RenderCore { namespace ColladaConversion
         NascentTransformationMachine_Collada&           GetTransformationMachine()          { return _transformationMachine; }
         const NascentTransformationMachine_Collada&     GetTransformationMachine() const    { return _transformationMachine; }
 
-        void        PushNode(   const COLLADAFW::Node& node, const TableOfObjects& accessableObjects,
-                                const JointReferences& skeletonReferences);
         void        Serialize(Serialization::NascentBlockSerializer& serializer) const;
 
         NascentSkeleton();
@@ -220,34 +209,22 @@ namespace RenderCore { namespace ColladaConversion
         NascentModelCommandStream(NascentModelCommandStream&& moveFrom);
         NascentModelCommandStream& operator=(NascentModelCommandStream&& moveFrom);
 
-        void    PushNode(   const COLLADAFW::Node& node, const TableOfObjects& accessableObjects,
-                            const JointReferences& skeletonReferences);
-        void    InstantiateControllers  (const COLLADAFW::Node& node, const TableOfObjects& accessableObjects, TableOfObjects& destinationForNewObjects);
+        bool IsEmpty() const { return _geometryInstances.empty() && _modelInstances.empty() && _cameraInstances.empty() && _skinControllerInstances.empty(); }
+        void Serialize(Serialization::NascentBlockSerializer& serializer) const;
 
-        bool    IsEmpty() const                 { return _geometryInstances.empty() && _modelInstances.empty() && _cameraInstances.empty() && _skinControllerInstances.empty(); }
-
-        void                                    Serialize(Serialization::NascentBlockSerializer& serializer) const;
+        unsigned RegisterTransformationMachineOutput(const std::string& bindingName, ObjectGuid id);
+        unsigned FindTransformationMachineOutput(ObjectGuid nodeId) const;
 
     private:
-        std::vector<MaterialGuid>
-            BuildMaterialTable( const COLLADAFW::MaterialBindingArray&  bindingArray, 
-                                const std::vector<uint64>&              geometryMaterialOrdering, 
-                                const TableOfObjects&                   accessableObjects);
-
         class TransformationMachineOutput;
         std::vector<TransformationMachineOutput>    _transformationMachineOutputs;
-
-        unsigned    FindTransformationMachineOutput(ObjectGuid nodeId) const;
 
         NascentModelCommandStream& operator=(const NascentModelCommandStream& copyFrom) never_throws;
         NascentModelCommandStream(const NascentModelCommandStream& copyFrom);
     };
 
-    bool IsUseful(  const COLLADAFW::Node& node, const TableOfObjects& objects,
-                    const JointReferences& skeletonReferences);
-
-    void FindInstancedSkinControllers(  const COLLADAFW::Node& node, const TableOfObjects& objects,
-                                        JointReferences& results);
+    
+    
 }}
 
 

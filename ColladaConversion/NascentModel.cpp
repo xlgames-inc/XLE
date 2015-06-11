@@ -15,6 +15,7 @@
 #include "TableOfObjects.h"
 #include "RawGeometry.h"
 #include "ConversionObjects.h"
+#include "OpenCollada\OCInterface.h"
 
 #include "../RenderCore/Assets/ModelRunTime.h"
 #include "../RenderCore/Assets/RawAnimationCurve.h"
@@ -538,8 +539,8 @@ namespace RenderCore { namespace ColladaConversion
             for (size_t c=0; c<rootNodeCount; ++c) {
                 const Node* node = visualScene->getRootNodes()[c];
                 if (ColladaConversion::IsUseful(*node, _objects, jointRefs)) {
-                    _skeleton.PushNode(*node, _objects, jointRefs);
-                    commandStream.PushNode(*node, _objects, jointRefs);
+                    PushNode(_skeleton, *node, _objects, jointRefs);
+                    PushNode(commandStream, *node, _objects, jointRefs);
                 }
             }
 
@@ -548,7 +549,7 @@ namespace RenderCore { namespace ColladaConversion
                 //
             for (size_t c=0; c<rootNodeCount; ++c) {
                 const Node* node = visualScene->getRootNodes()[c];
-                commandStream.InstantiateControllers(*node, _objects, _objects);
+                InstantiateControllers(commandStream, *node, _objects, _objects);
             }
 
                 //
@@ -592,7 +593,7 @@ namespace RenderCore { namespace ColladaConversion
                 const Node* node = libraryNodes->getNodes()[c];
                 if (IsUseful(*node, _objects, instancedSkinControllers)) {
                     ColladaConversion::NascentModelCommandStream    commandStream;
-                    commandStream.PushNode(*node, _objects, instancedSkinControllers);
+                    PushNode(commandStream, *node, _objects, instancedSkinControllers);
 
                     _objects.Add(   
                         ColladaConversion::Convert(node->getUniqueId()),

@@ -16,6 +16,9 @@
     </ClCompile>
     <ClCompile Include="..\SRawGeometry.cpp" />
     <ClCompile Include="..\ParsingUtil.cpp" />
+    <ClCompile Include="..\OpenCollada\OCModelCommandStream.cpp">
+      <Filter>OpenCollada</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\ColladaConversion.h" />
@@ -29,6 +32,9 @@
     <ClInclude Include="..\Scaffold.h" />
     <ClInclude Include="..\ScaffoldDataFlow.h" />
     <ClInclude Include="..\ParsingUtil.h" />
+    <ClInclude Include="..\OpenCollada\OCInterface.h">
+      <Filter>OpenCollada</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="OpenCollada">

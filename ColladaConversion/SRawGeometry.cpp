@@ -31,6 +31,7 @@ namespace ColladaConversion
         size_t GetStride() const { return _stride; }
         size_t GetCount() const { return _count; }
         ProcessingFlags::BitField GetProcessingFlags() const { return 0; }
+        FormatHint::BitField GetFormatHint() const { return _formatHint; }
 
         VertexSourceData(const DataFlow::Source& source);
         ~VertexSourceData();
@@ -40,6 +41,7 @@ namespace ColladaConversion
         size_t _stride;
         size_t _offset;
         size_t _count;
+        FormatHint::BitField _formatHint;
 
         std::shared_ptr<std::vector<uint8>> _rawData;
     };
@@ -103,6 +105,13 @@ namespace ColladaConversion
         _stride = accessor->GetStride() * parsedTypeSize;
         _count = source.GetCount();
         _dataFormat = finalFormat;
+        _formatHint = 0;
+
+            // if the first param is called 'r', we assume it is a color
+            // (only supporting R, G, B order)
+        auto p0Name = accessor->GetParam(0)._name;
+        if ((p0Name._end > p0Name._start) && tolower(*(const char*)p0Name._start) == 'r')
+            _formatHint |= FormatHint::IsColor;
 
         _rawData = std::make_shared<std::vector<uint8>>(source.GetCount() * parsedTypeSize);
         if (sourceType == DataFlow::ArrayType::Int) {
@@ -227,11 +236,9 @@ namespace ColladaConversion
             for (unsigned v=0; v<unifiedVertCount; ++v)
                 vertexMap[v] = (unsigned)unifiedVerts._unifiedToAttributeIndex[v*attribCount + index];
 
-            auto finalVBFormat = i->_sourceData->GetFormat();
             result->AddStream(
                 i->_sourceData, std::move(vertexMap),
-                AsString(i->_semantic).c_str(), i->_semanticIndex,
-                finalVBFormat);
+                AsString(i->_semantic).c_str(), i->_semanticIndex);
         }
 
         return std::move(result);
@@ -565,7 +572,7 @@ namespace ColladaConversion
                 finalIndexBuffer.get(), finalIndexCount, indexFormat);
         }
 
-        NativeVBLayout vbLayout;
+        NativeVBLayout vbLayout = BuildDefaultLayout(*database);
         auto nativeVB = database->BuildNativeVertexBuffer(vbLayout);
 
             // note -- this should actually be the mapping onto the input with the semantic "VERTEX" in the primitives' input array
