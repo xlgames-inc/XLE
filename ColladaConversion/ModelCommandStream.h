@@ -122,7 +122,7 @@ namespace RenderCore { namespace ColladaConversion
         //      matrices of the transformation machine to joints.
         //
 
-    class TransformReferences;
+    class NodeReferences;
 
     class NascentSkeleton : noncopyable
     {
@@ -158,7 +158,7 @@ namespace RenderCore { namespace ColladaConversion
         class GeometryInstance
         {
         public:
-            ObjectGuid                    _id;
+            ObjectGuid                  _id;
             unsigned                    _localToWorldId;
             std::vector<MaterialGuid>   _materials;
             unsigned                    _levelOfDetail;

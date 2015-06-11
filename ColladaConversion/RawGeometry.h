@@ -34,13 +34,13 @@ namespace RenderCore { namespace ColladaConversion
     public:
         unsigned    _firstIndex, _indexCount;
         unsigned    _firstVertex;
-        unsigned    _subMaterialIndex;
+        unsigned    _boundMaterialIndex;    // index into the array of materials in the GeometryInstance
         Metal::Topology::Enum   _topology;
 
         void    Serialize(Serialization::NascentBlockSerializer& outputSerializer) const;
 
-        NascentDrawCallDesc(unsigned firstIndex, unsigned indexCount, unsigned firstVertex, unsigned subMaterialIndex, Metal::Topology::Enum topology) 
-        : _firstIndex(firstIndex), _indexCount(indexCount), _firstVertex(firstVertex), _subMaterialIndex(subMaterialIndex), _topology(topology) {}
+        NascentDrawCallDesc(unsigned firstIndex, unsigned indexCount, unsigned firstVertex, unsigned boundMaterialIndex, Metal::Topology::Enum topology) 
+        : _firstIndex(firstIndex), _indexCount(indexCount), _firstVertex(firstVertex), _boundMaterialIndex(boundMaterialIndex), _topology(topology) {}
     };
 
         ////////////////////////////////////////////////////////
@@ -58,7 +58,7 @@ namespace RenderCore { namespace ColladaConversion
             Metal::NativeFormat::Enum           indexFormat,
             std::vector<NascentDrawCallDesc>&&  mainDrawCalls,
             DynamicArray<uint32>&&              unifiedVertexIndexToPositionIndex,
-            std::vector<uint64>&&               materials);
+            std::vector<uint64>&&               matBindingSymbols);
         NascentRawGeometry(NascentRawGeometry&& moveFrom);
         NascentRawGeometry& operator=(NascentRawGeometry&& moveFrom);
         NascentRawGeometry();
@@ -69,7 +69,7 @@ namespace RenderCore { namespace ColladaConversion
         GeometryInputAssembly               _mainDrawInputAssembly;
         Metal::NativeFormat::Enum           _indexFormat;
         std::vector<NascentDrawCallDesc>    _mainDrawCalls;
-        std::vector<uint64>                 _materials;
+        std::vector<uint64>                 _matBindingSymbols;
 
             //  Only required during processing
         DynamicArray<uint32>    _unifiedVertexIndexToPositionIndex;

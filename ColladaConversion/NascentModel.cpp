@@ -529,7 +529,7 @@ namespace RenderCore { namespace ColladaConversion
             ColladaConversion::NascentModelCommandStream    commandStream;
 
             size_t rootNodeCount = visualScene->getRootNodes().getCount();
-            TransformReferences jointRefs;
+            NodeReferences jointRefs;
             for (size_t c=0; c<rootNodeCount; ++c) {
                     //      are we really going to instantiate every skin controller we find?)
                     //      If we decide we don't need all of them, we can filter out some here.
@@ -582,7 +582,7 @@ namespace RenderCore { namespace ColladaConversion
 
             size_t rootNodeCount = libraryNodes->getNodes().getCount();
 
-            TransformReferences instancedSkinControllers;
+            NodeReferences instancedSkinControllers;
             for (size_t c=0; c<rootNodeCount; ++c) {
                     //      are we really going to instantiate every skin controller we find?)
                     //      If we decide we don't need all of them, we can filter out some here.

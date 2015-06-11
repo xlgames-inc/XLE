@@ -133,7 +133,7 @@ namespace ColladaConversion
             Section _semantic;
             unsigned _semanticIndex;
             std::shared_ptr<IVertexSourceData> _sourceData;
-            Section _sourceId;
+            uint64 _sourceId;
         };
         std::vector<Element> _finalVertexElements;
 
@@ -142,14 +142,14 @@ namespace ColladaConversion
                 // We need to find something matching this in _finalVertexElements
             size_t existing = ~size_t(0x0);
             for (size_t c=0; c<_finalVertexElements.size(); ++c)
-                if (    Equivalent(_finalVertexElements[c]._sourceId, source.GetId())
+                if (    _finalVertexElements[c]._sourceId == source.GetId().GetHash()
                     &&  Equivalent(_finalVertexElements[c]._semantic, semantic)
                     &&  _finalVertexElements[c]._semanticIndex == semanticIndex)
                     existing = c;
 
             if (existing == ~size_t(0x0)) {
                 Element newEle;
-                newEle._sourceId = source.GetId();
+                newEle._sourceId = source.GetId().GetHash();
                 newEle._semantic = semantic;
                 newEle._semanticIndex = semanticIndex;
                 newEle._sourceData = std::make_shared<VertexSourceData>(source);
@@ -377,14 +377,15 @@ namespace ColladaConversion
                     // the "source" can be either a DataFlow::Source, or
                     // it can be a VertexInputs
 
-                ElementGuid ref(input._source);
+                GuidReference ref(input._source);
                 const auto* file = pubEles.FindFile(ref._fileHash);
                 if (!file) continue;
 
                 const auto* source = file->FindSource(ref._id);
                 if (source) {
 
-                    workingPrim._inputs.push_back(WorkingPrimitive::EleRef
+                    workingPrim._inputs.push_back(
+                        WorkingPrimitive::EleRef
                         {
                             composingVertex.FindOrCreateElement(*source, input._semantic, input._semanticIndex),
                             input._indexInPrimitive
@@ -400,14 +401,15 @@ namespace ColladaConversion
                                 // find the true source by looking up the reference
                                 // provided within the <vertex> elemenet
                             const DataFlow::Source* source = nullptr;
-                            ElementGuid secondRef(refInput._source);
+                            GuidReference secondRef(refInput._source);
                             const auto* file = pubEles.FindFile(secondRef._fileHash);
                             if (file) source = file->FindSource(secondRef._id);
                             if (!source) continue;
 
                                 // push back with the semantic name from the <vertex> element
                                 // but the semantic index from the <input> element
-                            workingPrim._inputs.push_back(WorkingPrimitive::EleRef
+                            workingPrim._inputs.push_back(
+                                WorkingPrimitive::EleRef
                                 {
                                     composingVertex.FindOrCreateElement(*source, refInput._semantic, input._semanticIndex),
                                     input._indexInPrimitive
@@ -509,9 +511,9 @@ namespace ColladaConversion
         std::vector<NascentDrawCallDesc> finalDrawOperations;
         finalDrawOperations.reserve(drawOperations.size());
 
-        std::set<uint64> materialIds;
+        std::set<uint64> matBindingSymbols;
         for (auto i=drawOperations.cbegin(); i!=drawOperations.cend(); ++i)
-            materialIds.insert(i->_materialBinding);
+            matBindingSymbols.insert(i->_materialBinding);
 
         size_t finalIndexCount = 0;
         for (auto i=drawOperations.cbegin(); i!=drawOperations.cend(); ++i) {
@@ -519,7 +521,7 @@ namespace ColladaConversion
             finalDrawOperations.push_back(
                 NascentDrawCallDesc(
                     (unsigned)finalIndexCount, (unsigned)i->_indexBuffer.size(), 0, 
-                    (unsigned)std::distance(materialIds.begin(), materialIds.find(i->_materialBinding)),
+                    (unsigned)std::distance(matBindingSymbols.begin(), matBindingSymbols.find(i->_materialBinding)),
                     i->_topology));
             finalIndexCount += i->_indexBuffer.size();
         }
@@ -596,7 +598,7 @@ namespace ColladaConversion
             indexFormat,
             std::move(finalDrawOperations),
             DynamicArray<uint32>(std::move(unifiedVertexIndexToPositionIndex), database->_unifiedVertexCount),
-            std::vector<uint64>(materialIds.cbegin(), materialIds.cend()));
+            std::vector<uint64>(matBindingSymbols.cbegin(), matBindingSymbols.cend()));
     }
 
 }

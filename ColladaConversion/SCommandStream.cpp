@@ -8,6 +8,8 @@
 #include "Scaffold.h"
 #include "ModelCommandStream.h"
 #include "STransformationMachine.h"
+#include "SRawGeometry.h"
+#include "ParsingUtil.h"
 #include "../Utility/Conversion.h"
 #include "../Utility/MemoryUtils.h"
 
@@ -18,13 +20,14 @@ namespace RenderCore { namespace ColladaConversion
     static std::string SkeletonBindingName(const Node& node);
     static ObjectGuid AsObjectGuid(const Node& node);
 
-    static bool IsUseful(const Node& node, const TransformReferences& skeletonReferences);
+    static bool IsUseful(const Node& node, const NodeReferences& skeletonReferences);
 
-    void PushNode(
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    void BuildSkeleton(
         NascentSkeleton& skeleton,
         const Node& node,
-        const TableOfObjects& accessableObjects,
-        const TransformReferences& skeletonReferences)
+        NodeReferences& skeletonReferences)
     {
         using namespace COLLADAFW;
 
@@ -40,16 +43,17 @@ namespace RenderCore { namespace ColladaConversion
             //      got all the downstream skinning data). So, let's just assume it's needed.
             //
         auto nodeId = AsObjectGuid(node);
-        bool isReferenced = skeletonReferences.HasNode(nodeId);
+        bool isReferenced = skeletonReferences.IsImportant(nodeId);
 
             // DavidJ -- hack! -- When writing a "skeleton" we need to include all nodes, even those that aren't
             //              referenced within the same file. This is because the node might become an output-interface
             //              node... Maybe there is a better way to do this. Perhaps we could identify which nodes are
             //              output interface transforms / bones... Or maybe we could just include everything when
             //              compiling a skeleton...?
-        isReferenced = true;
+        // isReferenced = true;
         if (isReferenced) {
             unsigned thisOutputMatrix = skeleton.GetTransformationMachine().GetOutputMatrixMarker();
+            skeletonReferences.SetOutputMatrix(nodeId, thisOutputMatrix);
 
                 //
                 //      (We can't instantiate the skin controllers yet, because we can't be sure
@@ -70,15 +74,121 @@ namespace RenderCore { namespace ColladaConversion
             }
         }
 
+            // note -- also consider instance_nodes?
+
         auto child = node.GetFirstChild();
         while (child) {
-            PushNode(skeleton, child, accessableObjects, skeletonReferences);
+            BuildSkeleton(skeleton, child, skeletonReferences);
             child = child.GetNextSibling();
         }
 
         skeleton.GetTransformationMachine().Pop(pushCount);
     }
 
+    static auto BuildMaterialTable(
+        const InstanceGeometry::MaterialBinding* bindingStart, 
+        const InstanceGeometry::MaterialBinding* bindingEnd,
+        const std::vector<uint64>& rawGeoBindingSymbols,
+        const TableOfObjects& accessableObjects)
+
+        -> std::vector<NascentModelCommandStream::MaterialGuid>
+    {
+
+            //
+            //  For each material referenced in the raw geometry, try to 
+            //  match it with a material we've built during collada processing
+            //      We have to map it via the binding table in the InstanceGeometry
+            //
+                        
+        using MaterialGuid = NascentModelCommandStream::MaterialGuid;
+        auto invalidGuid = NascentModelCommandStream::s_materialGuid_Invalid;
+
+        std::vector<MaterialGuid> materialGuids;
+        materialGuids.resize(rawGeoBindingSymbols.size(), invalidGuid);
+
+        for (auto b=bindingStart; b<bindingEnd; ++b) {
+            auto hashedSymbol = Hash64(b->_bindingSymbol._start, b->_bindingSymbol._end);
+
+            for (auto i=rawGeoBindingSymbols.cbegin(); i!=rawGeoBindingSymbols.cend(); ++i) {
+                if (*i != hashedSymbol) continue;
+            
+                auto index = std::distance(rawGeoBindingSymbols.cbegin(), i);
+                assert(materialGuids[index] == invalidGuid);
+
+                GuidReference refGuid(b->_reference);
+                if (refGuid._fileHash!=0)
+                    Throw(::Assets::Exceptions::FormatError("Material references across files not supported (%s)", AsString(b->_reference).c_str()));
+
+                const auto* matRef = accessableObjects.Get<ReferencedMaterial>(refGuid._id);
+                if (matRef)
+                    materialGuids[index] = matRef->_guid;
+                break;
+            }
+        }
+
+        return std::move(materialGuids);
+    }
+
+    static const NascentRawGeometry* 
+        FindOrCreateGeometry(
+            GuidReference ref,
+            const URIResolveContext& resolveContext, 
+            TableOfObjects& accessableObjects)
+    {
+        const auto* geo = accessableObjects.Get<NascentRawGeometry>(ref._id);
+        if (geo) return geo;
+
+        auto* file = resolveContext.FindFile(ref._fileHash);
+        if (!file) return nullptr;
+
+        auto* mesh = file->FindMeshGeometry(ref._id);
+        if (!mesh) return nullptr;
+
+        accessableObjects.Add(
+            ref._id,
+            AsString(mesh->GetName()), AsString(mesh->GetId().GetOriginal()),
+            ::ColladaConversion::Convert(*mesh, resolveContext));
+
+            return accessableObjects.Get<NascentRawGeometry>(ref._id);
+    }
+
+    void InstantiateGeometry(
+        NascentModelCommandStream& stream,
+        const VisualScene& scene, unsigned instanceGeoIndex,
+        const URIResolveContext& resolveContext,
+        TableOfObjects& accessableObjects,
+        const NodeReferences& nodeRefs)
+    {
+        auto attachedNode = scene.GetInstanceGeometry_Attach(instanceGeoIndex);
+
+        auto instGeo = scene.GetInstanceGeometry(instanceGeoIndex);
+        GuidReference refGuid(instGeo._reference);
+        auto* geo = FindOrCreateGeometry(refGuid, resolveContext, accessableObjects);
+        if (!geo)
+            Throw(::Assets::Exceptions::FormatError("Could not found geometry object to instantiate (%s)",
+                AsString(instGeo._reference).c_str()));
+
+        auto materials = BuildMaterialTable(
+            AsPointer(instGeo._matBindings.cbegin()), AsPointer(instGeo._matBindings.cend()),
+            geo->_matBindingSymbols, accessableObjects);
+
+        stream._geometryInstances.push_back(
+            NascentModelCommandStream::GeometryInstance(
+                refGuid._id, (unsigned)nodeRefs.GetOutputMatrixIndex(attachedNode.GetId().GetHash()), 
+                std::move(materials), 0));
+    }
+
+    void FindImportantNodes(
+        NodeReferences& skeletonReferences,
+        VisualScene& scene)
+    {
+        for (unsigned c=0; c<scene.GetInstanceGeometryCount(); ++c)
+            skeletonReferences.MarkImportant(AsObjectGuid(scene.GetInstanceGeometry_Attach(c)));
+        for (unsigned c=0; c<scene.GetInstanceControllerCount(); ++c)
+            skeletonReferences.MarkImportant(AsObjectGuid(scene.GetInstanceController_Attach(c)));
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     static std::string SkeletonBindingName(const Node& node)
     {
@@ -88,12 +198,13 @@ namespace RenderCore { namespace ColladaConversion
 
     static ObjectGuid AsObjectGuid(const Node& node)
     {
-        return ObjectGuid(Hash64(node.GetId()._start, node.GetId()._end));
+        return node.GetId().GetHash();
     }
 
-    static bool IsUseful(const Node& node, const TransformReferences& skeletonReferences)
+    static bool IsUseful(const Node& node, const NodeReferences& skeletonReferences)
     {
-        if (skeletonReferences.HasNode(AsObjectGuid(node))) return true;
+        if (skeletonReferences.IsImportant(AsObjectGuid(node))) return true;
+
         auto child = node.GetFirstChild();
         while (child) {
             if (IsUseful(child, skeletonReferences)) return true;

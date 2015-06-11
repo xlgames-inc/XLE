@@ -27,7 +27,7 @@ namespace ColladaConversion
     class SkinController;
     class Material;
     class VertexInputs;
-    class PublishedElements;
+    class DocumentScaffold;
 
     class AssetDesc
     {
@@ -115,7 +115,7 @@ namespace ColladaConversion
     class Material
     {
     public:
-        Section _id;
+        DocScopeId _id;
         Section _name;
         Section _effectReference;   // uri
         SubDoc _extra;
@@ -188,21 +188,25 @@ namespace ColladaConversion
         auto GetPrimitives(size_t index) const -> const GeometryPrimitives& { return _geoPrimitives[index]; }
 
         Section GetBaseVertexInputs() const { return _baseVertexInputs; }
+        DocScopeId GetId() const { return _id; }
+        Section GetName() const { return _name; }
 
-        MeshGeometry(Formatter& formatter, PublishedElements& pub);
+        MeshGeometry(Formatter& formatter, DocumentScaffold& pub);
 
         MeshGeometry();
         MeshGeometry(MeshGeometry&& moveFrom) never_throws;
         MeshGeometry& operator=(MeshGeometry&& moveFrom) never_throws;
 
     protected:
-        void ParseMesh(Formatter& formatter, PublishedElements& pub);
+        void ParseMesh(Formatter& formatter, DocumentScaffold& pub);
 
         std::vector<DataFlow::Source> _sources;
         std::vector<GeometryPrimitives> _geoPrimitives;
         SubDoc _extra;
 
         Section _baseVertexInputs;
+        DocScopeId _id;
+        Section _name;
     };
 
     class VertexInputs
@@ -211,7 +215,7 @@ namespace ColladaConversion
         size_t GetCount() const { return _vertexInputs.size(); }
         auto GetInput(size_t index) const -> const DataFlow::InputUnshared& { return _vertexInputs[index]; }
 
-        Section GetId() const { return _id; }
+        DocScopeId GetId() const { return _id; }
 
         VertexInputs(Formatter& formatter);
         VertexInputs();
@@ -219,7 +223,7 @@ namespace ColladaConversion
         VertexInputs& operator=(VertexInputs&& moveFrom) never_throws;
     protected:
         std::vector<DataFlow::InputUnshared> _vertexInputs;
-        Section _id;
+        DocScopeId _id;
     };
 
     class SkinController
@@ -237,7 +241,7 @@ namespace ColladaConversion
         void ParseVertexWeights(Formatter& formatter);
 
         Section _baseMesh;
-        Section _id;
+        DocScopeId _id;
         Section _name;
         SubDoc _extra;
 
@@ -305,6 +309,46 @@ namespace ColladaConversion
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+        //      I N S T A N T I A T E
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class InstanceGeometry
+    {
+    public:
+        class MaterialBinding
+        {
+        public:
+            Section _technique;
+            Section _reference;
+            Section _bindingSymbol;
+
+            MaterialBinding(Formatter& formatter, Section technique);
+        };
+
+        Section _reference;
+        std::vector<MaterialBinding> _matBindings;
+
+        InstanceGeometry(Formatter& formatter);
+        InstanceGeometry();
+        InstanceGeometry(InstanceGeometry&& moveFrom) never_throws;
+        InstanceGeometry& operator=(InstanceGeometry&& moveFrom) never_throws;
+
+    protected:
+        void ParseBindMaterial(Formatter& formatter);
+        void ParseTechnique(Formatter& formatter, Section techniqueProfile);
+    };
+
+    class InstanceController : public InstanceGeometry
+    {
+    public:
+        Section _skeleton;
+
+        InstanceController(Formatter& formatter);
+        InstanceController(InstanceController&& moveFrom) never_throws;
+        InstanceController& operator=(InstanceController&& moveFrom) never_throws;
+    };
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
         //      V I S U A L   S C E N E   S E C T I O N
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -318,6 +362,14 @@ namespace ColladaConversion
         SubDoc _extra;
 
         Node GetRootNode() const;
+
+        const InstanceGeometry& GetInstanceGeometry(unsigned index) const;
+        Node GetInstanceGeometry_Attach(unsigned index) const;
+        unsigned GetInstanceGeometryCount() const;
+
+        const InstanceGeometry& GetInstanceController(unsigned index) const;
+        Node GetInstanceController_Attach(unsigned index) const;
+        unsigned GetInstanceControllerCount() const;
 
         VisualScene(Formatter& formatter);
         VisualScene();
@@ -347,7 +399,7 @@ namespace ColladaConversion
         Node GetParent() const;
         Transformation GetFirstTransform() const;
         Section GetName() const;
-        Section GetId() const;
+        DocScopeId GetId() const;
         
         operator bool() const;
         bool operator!() const;
@@ -364,42 +416,36 @@ namespace ColladaConversion
         //      D O C U M E N T   R E L A T E D
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class PublishedElements
+    class IDocScopeIdResolver
     {
     public:
-        const DataFlow::Source* FindSource(uint64 id) const;
-        const VertexInputs* FindVertexInputs(uint64 id) const;
-
-        void Add(DataFlow::Source&& element);
-        void Add(VertexInputs&& vertexInputs);
-
-        PublishedElements();
-        ~PublishedElements();
-    protected:
-        std::vector<std::pair<uint64, DataFlow::Source>> _sources;
-        std::vector<std::pair<uint64, VertexInputs>> _vertexInputs;
+        virtual const DataFlow::Source* FindSource(uint64 guid) const = 0;
+        virtual const VertexInputs*     FindVertexInputs(uint64 guid) const = 0;
+        virtual const MeshGeometry*     FindMeshGeometry(uint64 guid) const = 0;
+        virtual ~IDocScopeIdResolver();
     };
 
-    class ElementGuid
+    class GuidReference
     {
     public:
         uint64 _fileHash;
         uint64 _id;
 
-        ElementGuid(Section uri);
+        GuidReference(Section uri);
     };
 
     class URIResolveContext
     {
     public:
-        const PublishedElements* FindFile(uint64) const;
+        const IDocScopeIdResolver* FindFile(uint64) const;
 
-        URIResolveContext(std::shared_ptr<PublishedElements> localDoc);
+        URIResolveContext(std::shared_ptr<IDocScopeIdResolver> localDoc);
+        ~URIResolveContext();
     protected:
-        std::vector<std::pair<uint64, std::shared_ptr<PublishedElements>>> _files;
+        std::vector<std::pair<uint64, std::shared_ptr<IDocScopeIdResolver>>> _files;
     };
 
-    class DocumentScaffold
+    class DocumentScaffold : public IDocScopeIdResolver
     {
     public:
         void Parse(Formatter& formatter);
@@ -414,6 +460,13 @@ namespace ColladaConversion
         DocumentScaffold();
         ~DocumentScaffold();
 
+        void Add(DataFlow::Source&& element);
+        void Add(VertexInputs&& vertexInputs);
+
+        const DataFlow::Source* FindSource(uint64 guid) const;
+        const VertexInputs* FindVertexInputs(uint64 guid) const;
+        const MeshGeometry* FindMeshGeometry(uint64 guid) const;
+
     // protected:
         AssetDesc _rootAsset;
 
@@ -423,11 +476,12 @@ namespace ColladaConversion
         std::vector<SkinController> _skinControllers;
         std::vector<Material> _materials;
 
-        std::shared_ptr<PublishedElements> _published;
-
         Section _visualScene;
         Section _physicsScene;
         Section _kinematicsScene;
+
+        std::vector<std::pair<uint64, DataFlow::Source>> _sources;
+        std::vector<std::pair<uint64, VertexInputs>> _vertexInputs;
     };
     
 }

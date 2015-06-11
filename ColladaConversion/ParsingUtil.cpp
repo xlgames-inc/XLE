@@ -43,7 +43,7 @@ namespace ColladaConversion
         if (lhs._start == rhs._start) return true;
 
         const auto* a = lhs._start;
-        const auto* b = rhs._end;
+        const auto* b = rhs._start;
         for (;;) {
             if (a == lhs._end) return true;
             if (*b != *a) return false;

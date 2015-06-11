@@ -39,7 +39,7 @@ namespace RenderCore { namespace ColladaConversion
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     static std::tuple<bool,bool> NeedOutputMatrix(  const COLLADAFW::Node& node, const TableOfObjects& accessableObjects,
-                                                    const TransformReferences& skeletonReferences)
+                                                    const NodeReferences& skeletonReferences)
     {
         using namespace COLLADAFW;
         bool needAnOutputMatrix = false;
@@ -86,7 +86,7 @@ namespace RenderCore { namespace ColladaConversion
             //
 
         bool isReferencedJoint = false;
-        if (skeletonReferences.HasNode(Convert(node.getUniqueId()))) {
+        if (skeletonReferences.IsImportant(Convert(node.getUniqueId()))) {
             isReferencedJoint = needAnOutputMatrix = true;
         }
 
@@ -96,7 +96,7 @@ namespace RenderCore { namespace ColladaConversion
     void PushNode(
         NascentSkeleton& skeleton,
         const COLLADAFW::Node& node, const TableOfObjects& accessableObjects,
-        const TransformReferences& skeletonReferences)
+        const NodeReferences& skeletonReferences)
     {
         using namespace COLLADAFW;
         COLLADABU::Math::Matrix4 matrix;
@@ -131,13 +131,9 @@ namespace RenderCore { namespace ColladaConversion
             if (isReferencedJoint || node.getInstanceControllers().getCount() || node.getInstanceGeometries().getCount()) {
                 auto id = Convert(node.getUniqueId());
                 Float4x4 inverseBindMatrix = Identity<Float4x4>();
-                for (auto i=skeletonReferences._jointReferences.begin(); i!=skeletonReferences._jointReferences.end(); ++i) {
-                    if (i->_joint == id) {
-                            // note -- it could be bound multiple times!
-                        inverseBindMatrix = i->_inverseBindMatrix;
-                        break;
-                    }
-                }
+
+                auto* t = skeletonReferences.GetInverseBindMatrix(id);
+                if (t) inverseBindMatrix = *t;
 
                     // note -- there may be problems here, because the "name" of the node isn't necessarily
                     //          unique. There are unique ids in collada, however. We some some unique identifier
@@ -197,7 +193,7 @@ namespace RenderCore { namespace ColladaConversion
     void PushNode(   
         NascentModelCommandStream& stream,
         const COLLADAFW::Node& node, const TableOfObjects& accessableObjects,
-        const TransformReferences& skeletonReferences)
+        const NodeReferences& skeletonReferences)
     {
         if (!IsUseful(node, accessableObjects, skeletonReferences)) {
             return;
@@ -222,7 +218,7 @@ namespace RenderCore { namespace ColladaConversion
                 const auto* inputGeometry = accessableObjects.Get<NascentRawGeometry>(Convert(id));
                 if (inputGeometry) {
                     auto materials = BuildMaterialTable(
-                        instanceGeo.getMaterialBindings(), inputGeometry->_materials, accessableObjects);
+                        instanceGeo.getMaterialBindings(), inputGeometry->_matBindingSymbols, accessableObjects);
                     stream._geometryInstances.push_back(
                         NascentModelCommandStream::GeometryInstance(Convert(id), (unsigned)thisOutputMatrix, std::move(materials), 0));
                 }
@@ -661,7 +657,7 @@ namespace RenderCore { namespace ColladaConversion
                             //  Have to build the material bindings, as well..
                             //
                         auto materials = BuildMaterialTable(
-                            node.getInstanceControllers()[instanceController]->getMaterialBindings(), source->_materials, accessableObjects);
+                            node.getInstanceControllers()[instanceController]->getMaterialBindings(), source->_matBindingSymbols, accessableObjects);
 
                         NascentModelCommandStream::SkinControllerInstance newInstance(
                             controllerAndSkeleton->_unboundControllerId, 
@@ -687,7 +683,7 @@ namespace RenderCore { namespace ColladaConversion
 
 
     bool IsUseful(  const COLLADAFW::Node& node, const TableOfObjects& objects,
-                    const TransformReferences& skeletonReferences)
+                    const NodeReferences& skeletonReferences)
     {
             //
             //      Traverse all of the nodes in the hierarchy
@@ -736,7 +732,7 @@ namespace RenderCore { namespace ColladaConversion
             return true;
 
             // if this node is part of any of the skeletons we need, then it's "useful"
-        if (skeletonReferences.HasNode(Convert(node.getUniqueId())))
+        if (skeletonReferences.IsImportant(Convert(node.getUniqueId())))
             return true;
 
         const NodePointerArray& childNodes = node.getChildNodes();
@@ -748,7 +744,7 @@ namespace RenderCore { namespace ColladaConversion
     }
 
     void FindInstancedSkinControllers(  const COLLADAFW::Node& node, const TableOfObjects& objects,
-                                        TransformReferences& results)
+                                        NodeReferences& results)
     {
         using namespace COLLADAFW;
         const InstanceControllerPointerArray& instanceControllers = node.getInstanceControllers();
@@ -761,9 +757,7 @@ namespace RenderCore { namespace ColladaConversion
                     objects.Get<UnboundSkinController>(controller->_unboundControllerId);
 
                 for (size_t c=0; c<controller->_jointIds.size(); ++c) {
-                    TransformReferences::JointReference ref;
-                    ref._joint = controller->_jointIds[c];
-                    ref._inverseBindMatrix = Identity<Float4x4>();
+                    auto inverseBindMatrix = Identity<Float4x4>();
 
                         //
                         //      look for an inverse bind matrix associated with this joint
@@ -772,10 +766,11 @@ namespace RenderCore { namespace ColladaConversion
                         //      and animation data from different exports
                         //
                     if (c<skinController->_inverseBindMatrices.size()) {
-                        ref._inverseBindMatrix = skinController->_inverseBindMatrices[(unsigned)c];
+                        inverseBindMatrix = skinController->_inverseBindMatrices[(unsigned)c];
                     }
 
-                    results._jointReferences.push_back(ref);
+                    results.AttachInverseBindMatrix(controller->_jointIds[c], inverseBindMatrix);
+                    results.MarkImportant(controller->_jointIds[c]);
                 }
 
             } else {

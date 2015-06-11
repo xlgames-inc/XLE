@@ -352,15 +352,15 @@ namespace RenderCore { namespace ColladaConversion
 
             // testing -- remove existing tangents & normals
         // mesh.RemoveStream(mesh.FindElement("NORMAL"));
-        // mesh.RemoveStream(mesh.FindElement("TANGENT"));
-        // mesh.RemoveStream(mesh.FindElement("BITANGENT"));
+        // mesh.RemoveStream(mesh.FindElement("TEXTANGENT"));
+        // mesh.RemoveStream(mesh.FindElement("TEXBITANGENT"));
 
         auto tcElement = mesh.FindElement("TEXCOORD", normalMapTextureCoordinateSemanticIndex);
         if (tcElement == ~0u) return;   // if there are no texture coordinates, we could generate normals, but we can't generate tangents
 
         bool hasNormals = !!(mesh.HasElement("NORMAL") & 0x1);
-        bool hasTangents = !!(mesh.HasElement("TANGENT") & 0x1);
-        bool hasBitangents = !!(mesh.HasElement("BITANGENT") & 0x1);
+        bool hasTangents = !!(mesh.HasElement("TEXTANGENT") & 0x1);
+        bool hasBitangents = !!(mesh.HasElement("TEXBITANGENT") & 0x1);
         if ((hasNormals && hasTangents) || (hasTangents && hasBitangents)) return;
 
         auto posElement = mesh.FindElement("POSITION");
@@ -519,7 +519,7 @@ namespace RenderCore { namespace ColladaConversion
                 CreateRawDataSource(
                     AsPointer(tangents.begin()), AsPointer(tangents.cend()), Metal::NativeFormat::R32G32B32A32_FLOAT),
                 std::vector<unsigned>(),
-                "TANGENT", 0);
+                "TEXTANGENT", 0);
 
         }
 
@@ -546,7 +546,7 @@ namespace RenderCore { namespace ColladaConversion
         //     mesh.AddStream(
         //         AsPointer(bitangents.begin()), AsPointer(bitangents.cend()), Metal::NativeFormat::R32G32B32_FLOAT,
         //         Use16BitFloats ? Metal::NativeFormat::R16G16B16A16_FLOAT : Metal::NativeFormat::R32G32B32_FLOAT,
-        //         "BITANGENT", 0);
+        //         "TEXBITANGENT", 0);
         // 
         // }
 	}
@@ -712,14 +712,14 @@ namespace RenderCore { namespace ColladaConversion
                                 Metal::NativeFormat::Enum           indexFormat,
                                 std::vector<NascentDrawCallDesc>&&  mainDrawCalls,
                                 DynamicArray<uint32>&&              unifiedVertexIndexToPositionIndex,
-                                std::vector<uint64>&&               materials)
+                                std::vector<uint64>&&               matBindingSymbols)
     :       _vertices(std::forward<DynamicArray<uint8>>(vb))
     ,       _indices(std::forward<DynamicArray<uint8>>(ib))
     ,       _mainDrawCalls(std::forward<std::vector<NascentDrawCallDesc>>(mainDrawCalls))
     ,       _mainDrawInputAssembly(std::forward<GeometryInputAssembly>(mainDrawInputAssembly))
     ,       _indexFormat(indexFormat)
     ,       _unifiedVertexIndexToPositionIndex(std::forward<DynamicArray<uint32>>(unifiedVertexIndexToPositionIndex))
-    ,       _materials(std::forward<std::vector<uint64>>(materials))
+    ,       _matBindingSymbols(std::forward<std::vector<uint64>>(matBindingSymbols))
     {
     }
 
@@ -730,7 +730,7 @@ namespace RenderCore { namespace ColladaConversion
     ,       _indexFormat(moveFrom._indexFormat)
     ,       _mainDrawCalls(std::move(moveFrom._mainDrawCalls))
     ,       _unifiedVertexIndexToPositionIndex(std::move(moveFrom._unifiedVertexIndexToPositionIndex))
-    ,       _materials(std::move(moveFrom._materials))
+    ,       _matBindingSymbols(std::move(moveFrom._matBindingSymbols))
     {
     }
 
@@ -742,7 +742,7 @@ namespace RenderCore { namespace ColladaConversion
         _indexFormat = moveFrom._indexFormat;
         _mainDrawCalls = std::move(moveFrom._mainDrawCalls);
         _unifiedVertexIndexToPositionIndex = std::move(moveFrom._unifiedVertexIndexToPositionIndex);
-        _materials = std::move(moveFrom._materials);
+        _matBindingSymbols = std::move(moveFrom._matBindingSymbols);
         return *this;
     }
 
@@ -787,7 +787,7 @@ namespace RenderCore { namespace ColladaConversion
         outputSerializer.SerializeValue(_firstIndex);
         outputSerializer.SerializeValue(_indexCount);
         outputSerializer.SerializeValue(_firstVertex);
-        outputSerializer.SerializeValue(_subMaterialIndex);
+        outputSerializer.SerializeValue(_boundMaterialIndex);
         outputSerializer.SerializeValue(unsigned(_topology));
     }
 

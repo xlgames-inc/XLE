@@ -39,6 +39,7 @@
       <Filter>OpenCollada</Filter>
     </ClInclude>
     <ClInclude Include="..\STransformationMachine.h" />
+    <ClInclude Include="..\SRawGeometry.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="OpenCollada">

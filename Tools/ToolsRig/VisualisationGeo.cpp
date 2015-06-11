@@ -21,8 +21,8 @@ namespace ToolsRig
             RenderCore::Metal::InputElementDesc( "POSITION", 0, RenderCore::Metal::NativeFormat::R32G32B32_FLOAT ),
             RenderCore::Metal::InputElementDesc(   "NORMAL", 0, RenderCore::Metal::NativeFormat::R32G32B32_FLOAT ),
             RenderCore::Metal::InputElementDesc( "TEXCOORD", 0, RenderCore::Metal::NativeFormat::R32G32_FLOAT ),
-            RenderCore::Metal::InputElementDesc( "TANGENT", 0, RenderCore::Metal::NativeFormat::R32G32B32A32_FLOAT )//,
-            //RenderCore::Metal::InputElementDesc( "BITANGENT", 0, RenderCore::Metal::NativeFormat::R32G32B32_FLOAT )
+            RenderCore::Metal::InputElementDesc( "TEXTANGENT", 0, RenderCore::Metal::NativeFormat::R32G32B32A32_FLOAT )//,
+            //RenderCore::Metal::InputElementDesc( "TEXBITANGENT", 0, RenderCore::Metal::NativeFormat::R32G32B32_FLOAT )
         };
     }
 

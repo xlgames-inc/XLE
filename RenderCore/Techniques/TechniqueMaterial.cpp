@@ -42,11 +42,11 @@ namespace RenderCore { namespace Techniques
     : _materialParameters(std::move(materialParameters))
     , _techniqueInterface(MakeTechInterface(inputLayout, objectCBs))
     {
-        if (HasElement(inputLayout, "NORMAL"))      _geometryParameters.SetParameter((const utf8*)"GEO_HAS_NORMAL", 1);
-        if (HasElement(inputLayout, "TEXCOORD"))    _geometryParameters.SetParameter((const utf8*)"GEO_HAS_TEXCOORD", 1);
-        if (HasElement(inputLayout, "TANGENT"))     _geometryParameters.SetParameter((const utf8*)"GEO_HAS_TANGENT_FRAME", 1);
-        if (HasElement(inputLayout, "BITANGENT"))   _geometryParameters.SetParameter((const utf8*)"GEO_HAS_BITANGENT", 1);
-        if (HasElement(inputLayout, "COLOR"))       _geometryParameters.SetParameter((const utf8*)"GEO_HAS_COLOUR", 1);
+        if (HasElement(inputLayout, "NORMAL"))          _geometryParameters.SetParameter((const utf8*)"GEO_HAS_NORMAL", 1);
+        if (HasElement(inputLayout, "TEXCOORD"))        _geometryParameters.SetParameter((const utf8*)"GEO_HAS_TEXCOORD", 1);
+        if (HasElement(inputLayout, "TEXTANGENT"))      _geometryParameters.SetParameter((const utf8*)"GEO_HAS_TANGENT_FRAME", 1);
+        if (HasElement(inputLayout, "TEXBITANGENT"))    _geometryParameters.SetParameter((const utf8*)"GEO_HAS_BITANGENT", 1);
+        if (HasElement(inputLayout, "COLOR"))           _geometryParameters.SetParameter((const utf8*)"GEO_HAS_COLOUR", 1);
     }
 
     TechniqueMaterial::~TechniqueMaterial() {}

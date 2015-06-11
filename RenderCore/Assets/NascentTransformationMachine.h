@@ -77,6 +77,8 @@ namespace RenderCore { namespace Assets
         class Joint;
         std::vector<Joint> _jointTags;
 
+        unsigned _lastReturnedOutputMatrixMarker;
+
         template<typename Type>
             std::pair<
                 std::vector<std::pair<AnimationParameterId, uint32>>&,

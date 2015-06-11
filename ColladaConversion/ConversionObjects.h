@@ -148,19 +148,25 @@ namespace RenderCore { namespace ColladaConversion
 
         ////////////////////////////////////////////////////////
 
-    class TransformReferences
+    class NodeReferences
     {
     public:
-        std::vector<ObjectGuid> _plainNodeReference;
-        struct JointReference
-        {
-            ObjectGuid  _joint;
-            Float4x4    _inverseBindMatrix;
-        };
-        std::vector<JointReference> _jointReferences;
+        bool IsImportant(ObjectGuid node) const;
+        const Float4x4* GetInverseBindMatrix(ObjectGuid node) const;
+        unsigned GetOutputMatrixIndex(ObjectGuid node) const;
 
-        bool HasNode(ObjectGuid joint) const;
-        const Float4x4* GetInverseBindMatrix(ObjectGuid joint) const;
+        void MarkImportant(ObjectGuid node);
+        void AttachInverseBindMatrix(ObjectGuid node, Float4x4 inverseBind);
+        void SetOutputMatrix(ObjectGuid node, unsigned outputMatrixIndex);
+
+        NodeReferences();
+        ~NodeReferences();
+    protected:
+        using OutputMatrixIndex = unsigned;
+        static const OutputMatrixIndex OutputMatrixIndex_UnSet = ~unsigned(0);
+
+        std::vector<std::pair<ObjectGuid, OutputMatrixIndex>> _nodeReferences;
+        std::vector<std::pair<ObjectGuid, Float4x4>> _inverseBindMatrics;
     };
 
         ////////////////////////////////////////////////////////
@@ -176,11 +182,15 @@ namespace RenderCore { namespace ColladaConversion
     {
     public:
         typedef uint64 Guid;
-        ObjectGuid   _effectId;
+        ObjectGuid      _effectId;
         Guid            _guid;
         std::string     _descriptiveName;
-        ReferencedMaterial(const ObjectGuid& effectId, const Guid& guid, const std::string& descriptiveName) 
-            : _effectId(effectId), _guid(guid), _descriptiveName(descriptiveName) {}
+
+        ReferencedMaterial(
+            const ObjectGuid& effectId,
+            const Guid& guid,
+            const std::string& descriptiveName)
+        : _effectId(effectId), _guid(guid), _descriptiveName(descriptiveName) {}
     };
 
         ////////////////////////////////////////////////////////

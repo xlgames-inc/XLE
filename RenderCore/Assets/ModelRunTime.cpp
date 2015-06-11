@@ -198,8 +198,8 @@ namespace RenderCore { namespace Assets
             if (HasElement(ia, "COLOR"))        { geoParameters.SetParameter((const utf8*)"GEO_HAS_COLOUR", 1); }
             if (HasElement(ia, "NORMAL") || normalFromSkinning) 
                 { geoParameters.SetParameter((const utf8*)"GEO_HAS_NORMAL", 1); }
-            if (HasElement(ia, "TANGENT"))      { geoParameters.SetParameter((const utf8*)"GEO_HAS_TANGENT_FRAME", 1); }
-            if (HasElement(ia, "BITANGENT"))    { geoParameters.SetParameter((const utf8*)"GEO_HAS_BITANGENT", 1); }
+            if (HasElement(ia, "TEXTANGENT"))      { geoParameters.SetParameter((const utf8*)"GEO_HAS_TANGENT_FRAME", 1); }
+            if (HasElement(ia, "TEXBITANGENT"))    { geoParameters.SetParameter((const utf8*)"GEO_HAS_BITANGENT", 1); }
             if (HasElement(ia, "BONEINDICES") && HasElement(ia, "BONEWEIGHTS"))
                 { geoParameters.SetParameter((const utf8*)"GEO_HAS_SKIN_WEIGHTS", 1); }
             auto result = sharedStateSet.InsertParameterBox(geoParameters);

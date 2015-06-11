@@ -112,8 +112,8 @@ namespace RenderCore { namespace Metal_DX11
                 InputElementDesc( "POSITION",   0, NativeFormat::R32G32B32_FLOAT),
                 InputElementDesc( "NORMAL",   0, NativeFormat::R32G32B32_FLOAT ),
                 InputElementDesc( "TEXCOORD",   0, NativeFormat::R32G32_FLOAT ),
-                InputElementDesc( "TANGENT",   0, NativeFormat::R32G32B32_FLOAT ),
-                InputElementDesc( "BITANGENT",   0, NativeFormat::R32G32B32_FLOAT )
+                InputElementDesc( "TEXTANGENT",   0, NativeFormat::R32G32B32_FLOAT ),
+                InputElementDesc( "TEXBITANGENT",   0, NativeFormat::R32G32B32_FLOAT )
             };
         }
 

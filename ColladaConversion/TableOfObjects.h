@@ -37,9 +37,9 @@ namespace RenderCore { namespace ColladaConversion
             std::tuple<std::string, std::string> 
                 GetDesc(ObjectGuid id) const never_throws;
 
-        void    SerializeSkin(Serialization::NascentBlockSerializer& outputSerializer, std::vector<uint8>& largeResourcesBlock) const;
-        void    SerializeAnimationSet(Serialization::NascentBlockSerializer& outputSerializer) const;
-        std::vector<std::unique_ptr<Data>>  SerializeMaterial(const std::string& matSettingsFile) const;
+        void SerializeSkin(Serialization::NascentBlockSerializer& outputSerializer, std::vector<uint8>& largeResourcesBlock) const;
+        void SerializeAnimationSet(Serialization::NascentBlockSerializer& outputSerializer) const;
+        std::vector<std::unique_ptr<Data>> SerializeMaterial(const std::string& matSettingsFile) const;
 
         TableOfObjects();
         ~TableOfObjects();

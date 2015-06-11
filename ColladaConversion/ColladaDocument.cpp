@@ -1021,7 +1021,7 @@ namespace ColladaConversion
 
     
 
-    void MeshGeometry::ParseMesh(Formatter& formatter, PublishedElements& pub)
+    void MeshGeometry::ParseMesh(Formatter& formatter, DocumentScaffold& pub)
     {
         ON_ELEMENT
             if (Is(eleName, u("source"))) {
@@ -1041,7 +1041,7 @@ namespace ColladaConversion
         PARSE_END
     }
 
-    MeshGeometry::MeshGeometry(Formatter& formatter, PublishedElements& pub)
+    MeshGeometry::MeshGeometry(Formatter& formatter, DocumentScaffold& pub)
     : MeshGeometry()
     {
         ON_ELEMENT
@@ -1059,6 +1059,9 @@ namespace ColladaConversion
             }
 
         ON_ATTRIBUTE
+            if (Is(name, u("id"))) _id = value;
+            else if (Is(name, u("name"))) _name = value;
+
         PARSE_END
     }
 
@@ -1068,6 +1071,8 @@ namespace ColladaConversion
     : _sources(std::move(moveFrom._sources))
     , _geoPrimitives(std::move(moveFrom._geoPrimitives))
     , _extra(std::move(moveFrom._extra))
+    , _id(moveFrom._id)
+    , _name(moveFrom._name)
     {}
 
     MeshGeometry& MeshGeometry::operator=(MeshGeometry&& moveFrom) never_throws
@@ -1075,6 +1080,8 @@ namespace ColladaConversion
         _sources = std::move(moveFrom._sources);
         _geoPrimitives = std::move(moveFrom._geoPrimitives);
         _extra = std::move(moveFrom._extra);
+        _id = moveFrom._id;
+        _name =moveFrom._name;
         return *this;
     }
 
@@ -1114,7 +1121,7 @@ namespace ColladaConversion
     {
         ON_ELEMENT
             if (Is(eleName, u("geometry"))) {
-                _geometries.push_back(MeshGeometry(formatter, *_published));
+                _geometries.push_back(MeshGeometry(formatter, *this));
             } else {
                     // "asset" and "extra" are also valid, but uninteresting
                 LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
@@ -1532,38 +1539,12 @@ namespace ColladaConversion
 
     bool Transformation::operator!() const
     {
-        return _index != ~unsigned(0);
+        return _index == ~unsigned(0);
     }
 
     Transformation::Transformation(const TransformationSet& set, unsigned index)
     : _set(&set), _index(index)
     {}
-
-    class InstanceGeometry
-    {
-    public:
-        class MaterialBinding
-        {
-        public:
-            Section _technique;
-            Section _reference;
-            Section _bindingSymbol;
-
-            MaterialBinding(Formatter& formatter, Section technique);
-        };
-
-        Section _reference;
-        std::vector<MaterialBinding> _matBindings;
-
-        InstanceGeometry(Formatter& formatter);
-        InstanceGeometry();
-        InstanceGeometry(InstanceGeometry&& moveFrom) never_throws;
-        InstanceGeometry& operator=(InstanceGeometry&& moveFrom) never_throws;
-
-    protected:
-        void ParseBindMaterial(Formatter& formatter);
-        void ParseTechnique(Formatter& formatter, Section techniqueProfile);
-    };
 
     InstanceGeometry::InstanceGeometry(Formatter& formatter)
     {
@@ -1657,15 +1638,6 @@ namespace ColladaConversion
         return *this;
     }
 
-    class InstanceController : public InstanceGeometry
-    {
-    public:
-        Section _skeleton;
-
-        InstanceController(Formatter& formatter);
-        InstanceController(InstanceController&& moveFrom) never_throws;
-        InstanceController& operator=(InstanceController&& moveFrom) never_throws;
-    };
 
     InstanceController::InstanceController(Formatter& formatter) 
     {
@@ -1724,7 +1696,12 @@ namespace ColladaConversion
 
     VisualScene::VisualScene(Formatter& formatter)
     {
+            // Collada can have multiple nodes in the root of the visual scene
+            // So let's make a virtual root node to make them all siblings
         std::stack<IndexIntoNodes> workingNodes;
+        workingNodes.push(0);
+        _nodes.push_back(RawNode());
+
         for (;;) {
             switch (formatter.PeekNext()) {
             case Formatter::Blob::BeginElement:
@@ -1740,25 +1717,23 @@ namespace ColladaConversion
 
                         RawNode newNode;
                         auto newNodeIndex = IndexIntoNodes(_nodes.size());
-                        if (!workingNodes.empty()) {
+                        assert(!workingNodes.empty());
 
-                            newNode._parent = workingNodes.top();
-                            auto lastChildOfParent = _nodes[workingNodes.top()]._firstChild;
-                            if (lastChildOfParent != IndexIntoNodes_Invalid) {
+                        newNode._parent = workingNodes.top();
+                        auto lastChildOfParent = _nodes[workingNodes.top()]._firstChild;
+                        if (lastChildOfParent != IndexIntoNodes_Invalid) {
 
-                                for (;;) {
-                                    auto& sib = _nodes[lastChildOfParent];
-                                    if (sib._nextSibling == IndexIntoNodes_Invalid) {
-                                        sib._nextSibling = newNodeIndex;
-                                        break;
-                                    }
-                                    lastChildOfParent = sib._nextSibling;
+                            for (;;) {
+                                auto& sib = _nodes[lastChildOfParent];
+                                if (sib._nextSibling == IndexIntoNodes_Invalid) {
+                                    sib._nextSibling = newNodeIndex;
+                                    break;
                                 }
-
-                            } else {
-                                _nodes[workingNodes.top()]._firstChild = newNodeIndex;
+                                lastChildOfParent = sib._nextSibling;
                             }
 
+                        } else {
+                            _nodes[workingNodes.top()]._firstChild = newNodeIndex;
                         }
 
                         workingNodes.push(newNodeIndex);
@@ -1770,32 +1745,28 @@ namespace ColladaConversion
                             // <instance_geometry> should contain a reference to the particular geometry
                             // as well as material binding information.
                             // each <instance_geometry> belongs inside of a 
-                        auto node = IndexIntoNodes_Invalid;
-                        if (!workingNodes.empty()) node = workingNodes.top();
-                        _geoInstances.push_back(std::make_pair(node, InstanceGeometry(formatter)));
+                        assert(!workingNodes.empty());
+                        _geoInstances.push_back(std::make_pair(workingNodes.top(), InstanceGeometry(formatter)));
 
                     } else if (Is(eleName, u("instance_controller"))) {
 
                             // <instance_geometry> should contain a reference to the particular geometry
                             // as well as material binding information.
                             // each <instance_geometry> belongs inside of a 
-                        auto node = IndexIntoNodes_Invalid;
-                        if (!workingNodes.empty()) node = workingNodes.top();
-                        _controllerInstances.push_back(std::make_pair(node, InstanceController(formatter)));
+                        assert(!workingNodes.empty());
+                        _controllerInstances.push_back(std::make_pair(workingNodes.top(), InstanceController(formatter)));
 
                     } else if (TransformationSet::IsTransform(eleName)) {
 
-                        if (!workingNodes.empty()) {
-                            auto& node = _nodes[workingNodes.top()];
-                            node._transformChain = _transformSet.ParseTransform(
-                                formatter, eleName, node._transformChain);
-                        } else {
-                            formatter.SkipElement();    // wierd -- transform in the root node
-                        }
+                        assert(!workingNodes.empty());
+                        auto& node = _nodes[workingNodes.top()];
+                        node._transformChain = _transformSet.ParseTransform(
+                            formatter, eleName, node._transformChain);
 
                     } else if (Is(eleName, u("extra"))) {
 
-                        if (!workingNodes.empty()) {
+                        assert(!workingNodes.empty());
+                        if (workingNodes.size() > 1) {
                             auto& node = _nodes[workingNodes.top()];
                             node._extra = SubDoc(formatter);
                         } else {
@@ -1803,13 +1774,11 @@ namespace ColladaConversion
                         }
                     
                     } else {
-                        if (workingNodes.empty() && Is(eleName, u("extra"))) {
-                            _extra = SubDoc(formatter);
-                        } else {
-                                // "asset" and "evaluate_scene" are also valid, but uninteresting
-                            LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
-                            formatter.SkipElement();
-                        }
+
+                            // "asset" and "evaluate_scene" are also valid, but uninteresting
+                        LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                        formatter.SkipElement();
+
                     }
 
                     if (eatEndElement && !formatter.TryEndElement())
@@ -1819,7 +1788,8 @@ namespace ColladaConversion
                 }
 
             case Formatter::Blob::EndElement:
-                if (workingNodes.empty()) break;
+                    // size 1 means only the "virtual" root node is there
+                if (workingNodes.size() == 1) break;
                 formatter.TryEndElement();
                 workingNodes.pop();
                 continue;
@@ -1829,7 +1799,7 @@ namespace ColladaConversion
                     Formatter::InteriorSection name, value;
                     formatter.TryAttribute(name, value);
 
-                    if (!workingNodes.empty()) {
+                    if (workingNodes.size() > 1) {
 
                             // this is actually an attribute inside of a node item
                         auto& node = _nodes[workingNodes.top()];
@@ -1900,6 +1870,36 @@ namespace ColladaConversion
         return Node(*this, 0);
     }
 
+    const InstanceGeometry& VisualScene::GetInstanceGeometry(unsigned index) const
+    {
+        return _geoInstances[index].second;
+    }
+
+    Node VisualScene::GetInstanceGeometry_Attach(unsigned index) const
+    {
+        return Node(*this, _geoInstances[index].first);
+    }
+
+    unsigned VisualScene::GetInstanceGeometryCount() const
+    {
+        return (unsigned)_geoInstances.size();
+    }
+
+    const InstanceGeometry& VisualScene::GetInstanceController(unsigned index) const
+    {
+        return _controllerInstances[index].second;
+    }
+
+    Node VisualScene::GetInstanceController_Attach(unsigned index) const
+    {
+        return Node(*this, _controllerInstances[index].first);
+    }
+
+    unsigned VisualScene::GetInstanceControllerCount() const
+    {
+        return (unsigned)_controllerInstances.size();
+    }
+
     void DocumentScaffold::Parse_LibraryVisualScenes(Formatter& formatter)
     {
         ON_ELEMENT
@@ -1934,35 +1934,9 @@ namespace ColladaConversion
         PARSE_END
     }
 
-    DocumentScaffold::DocumentScaffold() 
+    void DocumentScaffold::Add(DataFlow::Source&& element)
     {
-        _published = std::make_shared<PublishedElements>();
-    }
-
-    DocumentScaffold::~DocumentScaffold() {}
-
-
-
-
-    const DataFlow::Source* PublishedElements::FindSource(uint64 id) const
-    {
-        auto i = LowerBound(_sources, id);
-        if (i!=_sources.cend() && i->first == id) 
-            return &i->second;
-        return nullptr;
-    }
-
-    const VertexInputs* PublishedElements::FindVertexInputs(uint64 id) const
-    {
-        auto i = LowerBound(_vertexInputs, id);
-        if (i!=_vertexInputs.cend() && i->first == id) 
-            return &i->second;
-        return nullptr;
-    }
-
-    void PublishedElements::Add(DataFlow::Source&& element)
-    {
-        auto hashedId = Hash64(element.GetId()._start, element.GetId()._end);
+        auto hashedId = element.GetId().GetHash();
         auto i = LowerBound(_sources, hashedId);
         if (i != _sources.end() && i->first == hashedId)
             Throw(::Exceptions::BasicLabel("Duplicated id when publishing <source> element"));
@@ -1970,9 +1944,9 @@ namespace ColladaConversion
         _sources.insert(i, std::make_pair(hashedId, std::move(element)));
     }
 
-    void PublishedElements::Add(VertexInputs&& vertexInputs)
+    void DocumentScaffold::Add(VertexInputs&& vertexInputs)
     {
-        auto hashedId = Hash64(vertexInputs.GetId()._start, vertexInputs.GetId()._end);
+        auto hashedId = vertexInputs.GetId().GetHash();
         auto i = LowerBound(_vertexInputs, hashedId);
         if (i != _vertexInputs.end() && i->first == hashedId)
             Throw(::Exceptions::BasicLabel("Duplicated id when publishing <vertices> element"));
@@ -1980,11 +1954,47 @@ namespace ColladaConversion
         _vertexInputs.insert(i, std::make_pair(hashedId, std::move(vertexInputs)));
     }
 
-    PublishedElements::PublishedElements() {}
-    PublishedElements::~PublishedElements() {}
+    const DataFlow::Source* DocumentScaffold::FindSource(uint64 id) const
+    {
+        auto i = LowerBound(_sources, id);
+        if (i!=_sources.cend() && i->first == id) 
+            return &i->second;
+        return nullptr;
+    }
+
+    const VertexInputs* DocumentScaffold::FindVertexInputs(uint64 id) const
+    {
+        auto i = LowerBound(_vertexInputs, id);
+        if (i!=_vertexInputs.cend() && i->first == id) 
+            return &i->second;
+        return nullptr;
+    }
+
+    const MeshGeometry* DocumentScaffold::FindMeshGeometry(uint64 guid) const
+    {
+        for (const auto& m:_geometries)
+            if (m.GetId().GetHash() == guid)
+                return &m;
+        return nullptr;
+    }
+
+    DocumentScaffold::DocumentScaffold() 
+    {}
+
+    DocumentScaffold::~DocumentScaffold() {}
 
 
-    ElementGuid::ElementGuid(Section uri)
+    
+
+
+
+    DocScopeId::DocScopeId(Section section)
+    : _section(section)
+    {
+        _hash = Hash64(_section._start, _section._end);
+    }
+
+    GuidReference::GuidReference(Section uri)
     {
         _fileHash = _id = 0;
 
@@ -1998,7 +2008,9 @@ namespace ColladaConversion
         }
     }
 
-    const PublishedElements* URIResolveContext::FindFile(uint64 fileId) const
+    IDocScopeIdResolver::~IDocScopeIdResolver() {}
+
+    const IDocScopeIdResolver* URIResolveContext::FindFile(uint64 fileId) const
     {
         if (!fileId) {
                 // local file is always the first
@@ -2012,10 +2024,12 @@ namespace ColladaConversion
         }
     }
 
-    URIResolveContext::URIResolveContext(std::shared_ptr<PublishedElements> localDoc)
+    URIResolveContext::URIResolveContext(std::shared_ptr<IDocScopeIdResolver> localDoc)
     {
         _files.push_back(std::make_pair(0, std::move(localDoc)));
     }
+
+    URIResolveContext::~URIResolveContext() {}
 
 
     Node Node::GetNextSibling() const 
@@ -2048,7 +2062,7 @@ namespace ColladaConversion
         return _scene->_nodes[_index]._name;
     }
 
-    Section Node::GetId() const
+    DocScopeId Node::GetId() const
     {
         assert(_index != VisualScene::IndexIntoNodes_Invalid);
         return _scene->_nodes[_index]._id;
@@ -2061,7 +2075,7 @@ namespace ColladaConversion
 
     bool Node::operator!() const
     {
-        return _index != VisualScene::IndexIntoNodes_Invalid;
+        return _index == VisualScene::IndexIntoNodes_Invalid;
     }
 
     Node::Node(const VisualScene& scene, VisualScene::IndexIntoNodes index)
@@ -2082,11 +2096,21 @@ namespace ColladaConversion
 
 namespace RenderCore { namespace ColladaConversion
 {
-    void PushNode(
+    void BuildSkeleton(
         NascentSkeleton& skeleton,
         const ::ColladaConversion::Node& node,
-        const TableOfObjects& accessableObjects,
-        const TransformReferences& skeletonReferences);
+        NodeReferences& skeletonReferences);
+
+    void FindImportantNodes(
+        NodeReferences& skeletonReferences,
+        ::ColladaConversion::VisualScene& scene);
+
+    void InstantiateGeometry(
+        NascentModelCommandStream& stream,
+        const ::ColladaConversion::VisualScene& scene, unsigned instanceGeoIndex,
+        const ::ColladaConversion::URIResolveContext& resolveContext,
+        TableOfObjects& accessableObjects,
+        const NodeReferences& nodeRefs);
 }}
 
 void TestParser()
@@ -2094,19 +2118,32 @@ void TestParser()
     size_t size;
     auto block = LoadFileAsMemoryBlock("game/testmodels/nyra/Nyra_pose.dae", &size);
     // auto block = LoadFileAsMemoryBlock("Game/chr/nu_f/skin/dragon003.dae", &size);
+    // auto block = LoadFileAsMemoryBlock("Game/Model/Galleon/Galleon.dae", &size);
     XmlInputStreamFormatter<utf8> formatter(MemoryMappedInputStream(block.get(), PtrAdd(block.get(), size)));
-    ColladaConversion::DocumentScaffold doc;
-    doc.Parse(formatter);
+    auto doc = std::make_shared<ColladaConversion::DocumentScaffold>();
+    doc->Parse(formatter);
 
     auto geo = ColladaConversion::Convert(
-        doc._geometries[0], 
-        ColladaConversion::URIResolveContext(doc._published));
+        doc->_geometries[0], 
+        ColladaConversion::URIResolveContext(doc));
 
     RenderCore::ColladaConversion::NascentSkeleton skeleton;
     RenderCore::ColladaConversion::TableOfObjects objects;
-    RenderCore::ColladaConversion::TransformReferences jointRefs;
-    RenderCore::ColladaConversion::PushNode(skeleton, 
-        doc._visualScenes[0].GetRootNode(), objects, jointRefs);
+    RenderCore::ColladaConversion::NodeReferences jointRefs;
+
+    RenderCore::ColladaConversion::FindImportantNodes(
+        jointRefs, doc->_visualScenes[0]);
+
+    RenderCore::ColladaConversion::BuildSkeleton(
+        skeleton, 
+        doc->_visualScenes[0].GetRootNode(), jointRefs);
+
+    RenderCore::ColladaConversion::NascentModelCommandStream cmdStream;
+    for (unsigned c=0; c<doc->_visualScenes[0].GetInstanceGeometryCount(); ++c)
+        RenderCore::ColladaConversion::InstantiateGeometry(
+            cmdStream, doc->_visualScenes[0], c,
+            ColladaConversion::URIResolveContext(doc),
+            objects, jointRefs);
 
     Float4 t2;
     Float4x4 temp;

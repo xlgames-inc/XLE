@@ -119,7 +119,8 @@ namespace RenderCore { namespace Assets
     }
 
     NascentTransformationMachine::NascentTransformationMachine()
-    : _pendingPops(0), _outputMatrixCount(0), _defaultParameters() {}
+    : _pendingPops(0), _outputMatrixCount(0), _defaultParameters()
+    , _lastReturnedOutputMatrixMarker(~unsigned(0)) {}
 
     NascentTransformationMachine::~NascentTransformationMachine()
     {}
@@ -135,6 +136,7 @@ namespace RenderCore { namespace Assets
     ,       _pendingPops(               moveFrom._pendingPops)
     ,       _stringNameMapping(         std::move(moveFrom._stringNameMapping))
     ,       _jointTags(                 std::move(moveFrom._jointTags))
+    ,       _lastReturnedOutputMatrixMarker(moveFrom._lastReturnedOutputMatrixMarker)
     {
     }
 
@@ -150,6 +152,7 @@ namespace RenderCore { namespace Assets
         _pendingPops                 = moveFrom._pendingPops;
         _stringNameMapping           = std::move(moveFrom._stringNameMapping);
         _jointTags                   = std::move(moveFrom._jointTags);
+        _lastReturnedOutputMatrixMarker = moveFrom._lastReturnedOutputMatrixMarker;
         return *this;
     }
 
@@ -180,9 +183,13 @@ namespace RenderCore { namespace Assets
 
     unsigned        NascentTransformationMachine::GetOutputMatrixMarker()
     {
+        if (_lastReturnedOutputMatrixMarker != ~unsigned(0))
+            return _lastReturnedOutputMatrixMarker;
+
         unsigned result = _outputMatrixCount++;
         _commandStream.push_back(Assets::TransformStackCommand::WriteOutputMatrix);
         _commandStream.push_back(result);
+        _lastReturnedOutputMatrixMarker = result;
         return result;
     }
 
@@ -344,18 +351,21 @@ namespace RenderCore { namespace Assets
         _commandStream.push_back(FloatBits(localToParent(3, 2)));
         _commandStream.push_back(FloatBits(localToParent(3, 3)));
 
+        _lastReturnedOutputMatrixMarker = ~unsigned(0);
         return 1;
     }
 
     void NascentTransformationMachine::PushCommand(uint32 cmd)
     {
         _commandStream.push_back(cmd);
+        _lastReturnedOutputMatrixMarker = ~unsigned(0);
     }
 
     void NascentTransformationMachine::PushCommand(const void* ptr, size_t size)
     {
         assert((size % sizeof(uint32)) == 0);
         _commandStream.insert(_commandStream.end(), (const uint32*)ptr, (const uint32*)PtrAdd(ptr, size));
+        _lastReturnedOutputMatrixMarker = ~unsigned(0);
     }
 
     void NascentTransformationMachine::ResolvePendingPops()
@@ -364,6 +374,7 @@ namespace RenderCore { namespace Assets
             _commandStream.push_back(Assets::TransformStackCommand::PopLocalToWorld);
             _commandStream.push_back(_pendingPops);
             _pendingPops = 0;
+            _lastReturnedOutputMatrixMarker = ~unsigned(0);
         }
     }
 

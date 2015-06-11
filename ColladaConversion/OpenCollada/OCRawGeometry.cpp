@@ -96,10 +96,10 @@ namespace RenderCore { namespace ColladaConversion
             result.push_back(VertexAttribute(COLLADASaxFWL::InputSemantic::NORMAL, 0, "NORMAL", "Source-Normals"));
         }
         if (primitive.hasTangentIndices()) {
-            result.push_back(VertexAttribute(COLLADASaxFWL::InputSemantic::TANGENT, 0, "TANGENT", "Source-Tangents", ProcessingFlags::Renormalize));
+            result.push_back(VertexAttribute(COLLADASaxFWL::InputSemantic::TANGENT, 0, "TEXTANGENT", "Source-Tangents", ProcessingFlags::Renormalize));
         }
         if (primitive.hasBinormalIndices()) {
-            result.push_back(VertexAttribute(COLLADASaxFWL::InputSemantic::BINORMAL, 0, "BITANGENT", "Source-Bitangents", ProcessingFlags::Renormalize));
+            result.push_back(VertexAttribute(COLLADASaxFWL::InputSemantic::BINORMAL, 0, "TEXBITANGENT", "Source-Bitangents", ProcessingFlags::Renormalize));
         }
         for (unsigned c=0; c<primitive.getColorIndicesArray().getCount(); c++) {
             assert(primitive.getColorIndices(c));

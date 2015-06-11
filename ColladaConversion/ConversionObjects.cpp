@@ -12,6 +12,7 @@
 #include "../Assets/BlockSerializer.h"
 #include "../Math/Transformations.h"
 #include "../Utility/MemoryUtils.h"
+#include "../Utility/IteratorUtils.h"
 #include "../ConsoleRig/Log.h"
 
 #pragma warning(push)
@@ -568,23 +569,60 @@ namespace RenderCore { namespace ColladaConversion
 
 
 
-
-    bool TransformReferences::HasNode(ObjectGuid joint) const
+    bool NodeReferences::IsImportant(ObjectGuid node) const
     {
-        return 
-            (std::find(_plainNodeReference.begin(), _plainNodeReference.end(), joint) != _plainNodeReference.end())
-            || (
-                std::find_if(_jointReferences.begin(), _jointReferences.end(), [=](const JointReference& ref) 
-                    { return ref._joint == joint; }) != _jointReferences.end()
-            );
+        auto i = LowerBound(_nodeReferences, node);
+        return i != _nodeReferences.end() && i->first == node;
     }
 
-    const Float4x4* TransformReferences::GetInverseBindMatrix(ObjectGuid joint) const
+    const Float4x4* NodeReferences::GetInverseBindMatrix(ObjectGuid node) const
     {
-        for (const auto& j:_jointReferences)
-            if (j._joint == joint) return &j._inverseBindMatrix;
+        auto i = LowerBound(_inverseBindMatrics, node);
+        if (i != _inverseBindMatrics.end() && i->first == node)
+            return &i->second;
         return nullptr;
     }
+
+    unsigned NodeReferences::GetOutputMatrixIndex(ObjectGuid node) const
+    {
+        auto i = LowerBound(_nodeReferences, node);
+        if (i != _nodeReferences.end() && i->first == node)
+            return i->second;
+        return ~unsigned(0);
+    }
+
+    void NodeReferences::MarkImportant(ObjectGuid node)
+    {
+        auto i = LowerBound(_nodeReferences, node);
+        if (i != _nodeReferences.end() && i->first == node) {
+        } else {
+            _nodeReferences.insert(i, std::make_pair(node, ~unsigned(0)));
+        }
+    }
+
+    void NodeReferences::AttachInverseBindMatrix(ObjectGuid node, Float4x4 inverseBind)
+    {
+        auto i = LowerBound(_inverseBindMatrics, node);
+        if (i != _inverseBindMatrics.end() && i->first == node) {
+            i->second = inverseBind;
+        } else {
+            _inverseBindMatrics.insert(i, std::make_pair(node, inverseBind));
+        }
+    }
+
+    void NodeReferences::SetOutputMatrix(ObjectGuid node, unsigned outputMatrixIndex)
+    {
+        auto i = LowerBound(_nodeReferences, node);
+        if (i != _nodeReferences.end() && i->first == node) {
+            i->second = outputMatrixIndex;
+        } else {
+            _nodeReferences.insert(i, std::make_pair(node, outputMatrixIndex));
+        }
+    }
+
+    NodeReferences::NodeReferences() {}
+    NodeReferences::~NodeReferences() {}
+
 
 
     ObjectGuid Convert(const COLLADAFW::UniqueId& input)

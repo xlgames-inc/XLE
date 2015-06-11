@@ -115,6 +115,7 @@
     <ClInclude Include="..\RawGeometry.h" />
     <ClInclude Include="..\Scaffold.h" />
     <ClInclude Include="..\ScaffoldDataFlow.h" />
+    <ClInclude Include="..\SRawGeometry.h" />
     <ClInclude Include="..\TableOfObjects.h" />
     <ClInclude Include="..\STransformationMachine.h" />
   </ItemGroup>

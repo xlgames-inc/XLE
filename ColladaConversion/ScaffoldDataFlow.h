@@ -10,11 +10,30 @@
 #include "../Utility/Streams/StreamDom.h"
 #include <vector>
 
-namespace ColladaConversion { namespace DataFlow
+namespace ColladaConversion 
 {
     using Formatter = XmlInputStreamFormatter<utf8>;
     using Section = Formatter::InteriorSection;
 
+    class DocScopeId
+    {
+    public:
+        uint64 GetHash() const          { return _hash; }
+        Section GetOriginal() const     { return _section; }
+
+        DocScopeId(Section section);
+        DocScopeId() : _hash(0) {}
+    protected:
+        uint64 _hash;
+        Section _section;
+    };
+}
+
+namespace ColladaConversion { namespace DataFlow
+{
+    using Formatter = XmlInputStreamFormatter<utf8>;
+    using Section = Formatter::InteriorSection;
+    
     /// <summary>Data type for a collada array</summary>
     /// Collada only supports a limited number of different types within
     /// "source" arrays. These store the most of the "big" information within
@@ -75,7 +94,7 @@ namespace ColladaConversion { namespace DataFlow
         size_t GetCount() const         { return _arrayCount; }
         ArrayType GetType() const       { return _type; }
 
-        Section GetId() const           { return _id; }
+        DocScopeId GetId() const        { return _id; }
         Section GetArrayId() const      { return _arrayId; }
 
         size_t GetAccessorCount() const { return _accessorsCount; }
@@ -108,7 +127,7 @@ namespace ColladaConversion { namespace DataFlow
     protected:
         void ParseTechnique(Formatter& formatter, Section techniqueProfile);
 
-        Section _id;
+        DocScopeId _id;
         Section _arrayId;
         Section _arrayData;
         ArrayType _type;
