@@ -1673,7 +1673,7 @@ namespace ColladaConversion
     class VisualScene::RawNode
     {
     public:
-        Section _id;
+        DocScopeId _id;
         Section _sid;
         Section _name;
 
@@ -1978,6 +1978,14 @@ namespace ColladaConversion
         return nullptr;
     }
 
+    const Material* DocumentScaffold::FindMaterial(uint64 guid) const
+    {
+        for (const auto& m:_materials)
+            if (m.GetId().GetHash() == guid)
+                return &m;
+        return nullptr;
+    }
+
     DocumentScaffold::DocumentScaffold() 
     {}
 
@@ -2062,7 +2070,7 @@ namespace ColladaConversion
         return _scene->_nodes[_index]._name;
     }
 
-    DocScopeId Node::GetId() const
+    const DocScopeId& Node::GetId() const
     {
         assert(_index != VisualScene::IndexIntoNodes_Invalid);
         return _scene->_nodes[_index]._id;

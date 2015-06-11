@@ -472,7 +472,9 @@ namespace RenderCore { namespace ColladaConversion
                 material->getOriginalId(),
                 ReferencedMaterial(
                     ColladaConversion::Convert(effect), 
-                    RenderCore::Assets::MakeMaterialGuid(material->getName().c_str()), material->getName()));
+                    RenderCore::Assets::MakeMaterialGuid(
+                        AsPointer(material->getName().cbegin()), AsPointer(material->getName().cend())),
+                    material->getName()));
             
             return true;
 

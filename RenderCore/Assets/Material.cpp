@@ -322,13 +322,13 @@ namespace RenderCore { namespace Assets
         XlSimplifyPath(resolvedFile, resolvedFileCount, resolvedFile, "\\/");
     }
 
-    uint64 MakeMaterialGuid(const char name[])
+    uint64 MakeMaterialGuid(const char* nameStart, const char* nameEnd)
     {
             //  If the material name is just a number, then we will use that
             //  as the guid. Otherwise we hash the name.
         const char* parseEnd = nullptr;
-        uint64 hashId = XlAtoI64(name, &parseEnd, 16);
-        if (!parseEnd || *parseEnd != '\0' ) { hashId = Hash64(name); }
+        uint64 hashId = XlAtoI64(nameStart, &parseEnd, 16);
+        if (!parseEnd || parseEnd != nameEnd) { hashId = Hash64(nameStart, nameEnd); }
         return hashId;
     }
 

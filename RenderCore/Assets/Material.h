@@ -229,7 +229,7 @@ namespace RenderCore { namespace Assets
     void ResolveMaterialFilename(
         ::Assets::ResChar resolvedFile[], unsigned resolvedFileCount,
         const ::Assets::DirectorySearchRules& searchRules, const char baseMatName[]);
-    uint64 MakeMaterialGuid(const char name[]);
+    uint64 MakeMaterialGuid(const char* nameStart, const char* nameEnd);
 
 }}
 

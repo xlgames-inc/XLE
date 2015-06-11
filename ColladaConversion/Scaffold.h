@@ -120,6 +120,8 @@ namespace ColladaConversion
         Section _effectReference;   // uri
         SubDoc _extra;
 
+        const DocScopeId& GetId() const { return _id; }
+
         Material() {}
         Material(Formatter& formatter);
 
@@ -188,7 +190,7 @@ namespace ColladaConversion
         auto GetPrimitives(size_t index) const -> const GeometryPrimitives& { return _geoPrimitives[index]; }
 
         Section GetBaseVertexInputs() const { return _baseVertexInputs; }
-        DocScopeId GetId() const { return _id; }
+        const DocScopeId& GetId() const { return _id; }
         Section GetName() const { return _name; }
 
         MeshGeometry(Formatter& formatter, DocumentScaffold& pub);
@@ -215,7 +217,7 @@ namespace ColladaConversion
         size_t GetCount() const { return _vertexInputs.size(); }
         auto GetInput(size_t index) const -> const DataFlow::InputUnshared& { return _vertexInputs[index]; }
 
-        DocScopeId GetId() const { return _id; }
+        const DocScopeId& GetId() const { return _id; }
 
         VertexInputs(Formatter& formatter);
         VertexInputs();
@@ -399,7 +401,7 @@ namespace ColladaConversion
         Node GetParent() const;
         Transformation GetFirstTransform() const;
         Section GetName() const;
-        DocScopeId GetId() const;
+        const DocScopeId& GetId() const;
         
         operator bool() const;
         bool operator!() const;
@@ -422,6 +424,7 @@ namespace ColladaConversion
         virtual const DataFlow::Source* FindSource(uint64 guid) const = 0;
         virtual const VertexInputs*     FindVertexInputs(uint64 guid) const = 0;
         virtual const MeshGeometry*     FindMeshGeometry(uint64 guid) const = 0;
+        virtual const Material*         FindMaterial(uint64 guid) const = 0;
         virtual ~IDocScopeIdResolver();
     };
 
@@ -464,8 +467,9 @@ namespace ColladaConversion
         void Add(VertexInputs&& vertexInputs);
 
         const DataFlow::Source* FindSource(uint64 guid) const;
-        const VertexInputs* FindVertexInputs(uint64 guid) const;
-        const MeshGeometry* FindMeshGeometry(uint64 guid) const;
+        const VertexInputs*     FindVertexInputs(uint64 guid) const;
+        const MeshGeometry*     FindMeshGeometry(uint64 guid) const;
+        const Material*         FindMaterial(uint64 guid) const;
 
     // protected:
         AssetDesc _rootAsset;

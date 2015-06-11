@@ -109,7 +109,7 @@ namespace RenderCore { namespace Assets
 
             ResolvedMaterial resMat;
             std::basic_stringstream<::Assets::ResChar> resName;
-            auto guid = MakeMaterialGuid(i->c_str());
+            auto guid = MakeMaterialGuid(AsPointer(i->cbegin()), AsPointer(i->cend()));
 
                 // Our resolved material comes from 3 separate inputs:
                 //  1) model:configuration

@@ -10,6 +10,7 @@
 #include "STransformationMachine.h"
 #include "SRawGeometry.h"
 #include "ParsingUtil.h"
+#include "../RenderCore/Assets/Material.h"
 #include "../Utility/Conversion.h"
 #include "../Utility/MemoryUtils.h"
 
@@ -89,7 +90,7 @@ namespace RenderCore { namespace ColladaConversion
         const InstanceGeometry::MaterialBinding* bindingStart, 
         const InstanceGeometry::MaterialBinding* bindingEnd,
         const std::vector<uint64>& rawGeoBindingSymbols,
-        const TableOfObjects& accessableObjects)
+        const URIResolveContext& resolveContext)
 
         -> std::vector<NascentModelCommandStream::MaterialGuid>
     {
@@ -115,14 +116,16 @@ namespace RenderCore { namespace ColladaConversion
                 auto index = std::distance(rawGeoBindingSymbols.cbegin(), i);
                 assert(materialGuids[index] == invalidGuid);
 
-                GuidReference refGuid(b->_reference);
-                if (refGuid._fileHash!=0)
-                    Throw(::Assets::Exceptions::FormatError("Material references across files not supported (%s)", AsString(b->_reference).c_str()));
-
-                const auto* matRef = accessableObjects.Get<ReferencedMaterial>(refGuid._id);
-                if (matRef)
-                    materialGuids[index] = matRef->_guid;
-                break;
+                GuidReference ref(b->_reference);
+                auto* file = resolveContext.FindFile(ref._fileHash);
+                if (file) {
+                    const auto* mat = file->FindMaterial(ref._id);
+                    if (mat) {
+                        materialGuids[index] = 
+                            RenderCore::Assets::MakeMaterialGuid(
+                                (const char*)mat->_name._start, (const char*)mat->_name._end);
+                    }
+                }
             }
         }
 
@@ -170,7 +173,7 @@ namespace RenderCore { namespace ColladaConversion
 
         auto materials = BuildMaterialTable(
             AsPointer(instGeo._matBindings.cbegin()), AsPointer(instGeo._matBindings.cend()),
-            geo->_matBindingSymbols, accessableObjects);
+            geo->_matBindingSymbols, resolveContext);
 
         stream._geometryInstances.push_back(
             NascentModelCommandStream::GeometryInstance(
