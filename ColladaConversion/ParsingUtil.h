@@ -37,20 +37,11 @@ namespace ColladaConversion
         return table[0].first;  // first one is the default
     }
 
-    template<typename CharType>
-        bool IsWhitespace(CharType chr);
-
-    template<typename CharType>
-        const CharType* FastParseElement(uint32& dst, const CharType* start, const CharType* end);
-        
-    template<typename CharType>
-        const CharType* FastParseElement(int64& dst, const CharType* start, const CharType* end);
-
-    template<typename CharType>
-        const CharType* FastParseElement(uint64& dst, const CharType* start, const CharType* end);
-
-    template<typename CharType>
-        const CharType* FastParseElement(float& dst, const CharType* start, const CharType* end);
+    template<typename CharType> bool IsWhitespace(CharType chr);
+    template<typename CharType> const CharType* FastParseElement(uint32& dst, const CharType* start, const CharType* end);
+    template<typename CharType> const CharType* FastParseElement(int64& dst, const CharType* start, const CharType* end);
+    template<typename CharType> const CharType* FastParseElement(uint64& dst, const CharType* start, const CharType* end);
+    template<typename CharType> const CharType* FastParseElement(float& dst, const CharType* start, const CharType* end);
 
     template<typename Type>
         auto ParseXMLList(Type dest[], unsigned destCount, XmlInputStreamFormatter<utf8>::InteriorSection section) 

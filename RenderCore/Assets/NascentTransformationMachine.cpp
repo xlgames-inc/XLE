@@ -17,17 +17,16 @@ namespace RenderCore { namespace Assets
     class NascentTransformationMachine::Joint
     {
     public:
-        AnimationParameterId    _colladaId;
-        std::string             _name;
-        uint32                  _outputMatrixIndex;
-        Float4x4                _inverseBindMatrix;
+        std::string     _name;
+        uint32          _outputMatrixIndex;
+        Float4x4        _inverseBindMatrix;
 
         class CompareColladaId
         {
         public:
-            bool operator()(const Joint& lhs, const Joint& rhs) { return lhs._colladaId < rhs._colladaId; }
-            bool operator()(const Joint& lhs, AnimationParameterId rhs) { return lhs._colladaId < rhs; }
-            bool operator()(AnimationParameterId lhs, const Joint& rhs) { return lhs < rhs._colladaId; }
+            bool operator()(const Joint& lhs, const Joint& rhs) { return lhs._name < rhs._name; }
+            bool operator()(const Joint& lhs, const std::string& rhs) { return lhs._name < rhs; }
+            bool operator()(const std::string& lhs, const Joint& rhs) { return lhs < rhs._name; }
         };
     };
 
@@ -271,22 +270,19 @@ namespace RenderCore { namespace Assets
         return ~AnimationParameterId(0x0);
     }
 
-    void                        NascentTransformationMachine::RegisterJointName(
-        AnimationParameterId colladaId, const std::string& name, 
-        const Float4x4& inverseBindMatrix, unsigned outputMatrixIndex)
+    void        NascentTransformationMachine::RegisterJointName(
+        const std::string& name, const Float4x4& inverseBindMatrix, unsigned outputMatrixIndex)
     {
-        auto insertionPoint = std::lower_bound( _jointTags.begin(), _jointTags.end(), 
-                                                colladaId, Joint::CompareColladaId());
-        if (insertionPoint != _jointTags.end() && insertionPoint->_colladaId==colladaId) {
-            ThrowException(::Assets::Exceptions::FormatError(
-                "Hash collision when inserting joint tag in node (%s)", name.c_str()));
+        auto insertionPoint = std::lower_bound(
+            _jointTags.begin(), _jointTags.end(), 
+            name, Joint::CompareColladaId());
+        if (insertionPoint != _jointTags.end() && insertionPoint->_name==name) {
+            ThrowException(
+                ::Assets::Exceptions::FormatError(
+                    "Duplicate when inserting joint tag in node (%s)", name.c_str()));
         }
-        Joint newJoint;
-        newJoint._colladaId = colladaId;
-        newJoint._name = name;
-        newJoint._outputMatrixIndex = outputMatrixIndex;
-        newJoint._inverseBindMatrix = inverseBindMatrix;
-        _jointTags.insert(insertionPoint, newJoint);
+
+        _jointTags.insert(insertionPoint, Joint{name, outputMatrixIndex, inverseBindMatrix});
     }
 
 //     template <typename Iterator>
@@ -321,11 +317,7 @@ namespace RenderCore { namespace Assets
 
     unsigned    NascentTransformationMachine::PushTransformation(const Float4x4& localToParent, const char nodeName[])
     {
-        if (_pendingPops) {
-            _commandStream.push_back(Assets::TransformStackCommand::PopLocalToWorld);
-            _commandStream.push_back(_pendingPops);
-            _pendingPops = 0;
-        }
+        ResolvePendingPops();
 
             // push a basic, unanimatable transform
             //  see also NascentTransformationMachine_Collada::PushTransformations for a complex
@@ -353,6 +345,26 @@ namespace RenderCore { namespace Assets
         _commandStream.push_back(FloatBits(localToParent(3, 3)));
 
         return 1;
+    }
+
+    void NascentTransformationMachine::PushCommand(uint32 cmd)
+    {
+        _commandStream.push_back(cmd);
+    }
+
+    void NascentTransformationMachine::PushCommand(const void* ptr, size_t size)
+    {
+        assert((size % sizeof(uint32)) == 0);
+        _commandStream.insert(_commandStream.end(), (const uint32*)ptr, (const uint32*)PtrAdd(ptr, size));
+    }
+
+    void NascentTransformationMachine::ResolvePendingPops()
+    {
+        if (_pendingPops) {
+            _commandStream.push_back(Assets::TransformStackCommand::PopLocalToWorld);
+            _commandStream.push_back(_pendingPops);
+            _pendingPops = 0;
+        }
     }
 
 }}

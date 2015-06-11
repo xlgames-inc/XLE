@@ -27,6 +27,7 @@ namespace ColladaConversion
     class SkinController;
     class Material;
     class VertexInputs;
+    class PublishedElements;
 
     class AssetDesc
     {
@@ -39,72 +40,9 @@ namespace ColladaConversion
         AssetDesc(Formatter& formatter);
     };
 
-    class PublishedElements
-    {
-    public:
-        const DataFlow::Source* FindSource(uint64 id) const;
-        const VertexInputs* FindVertexInputs(uint64 id) const;
-
-        void Add(DataFlow::Source&& element);
-        void Add(VertexInputs&& vertexInputs);
-
-        PublishedElements();
-        ~PublishedElements();
-    protected:
-        std::vector<std::pair<uint64, DataFlow::Source>> _sources;
-        std::vector<std::pair<uint64, VertexInputs>> _vertexInputs;
-    };
-
-    class ElementGuid
-    {
-    public:
-        uint64 _fileHash;
-        uint64 _id;
-
-        ElementGuid(Section uri);
-    };
-
-    class URIResolveContext
-    {
-    public:
-        const PublishedElements* FindFile(uint64) const;
-
-        URIResolveContext(std::shared_ptr<PublishedElements> localDoc);
-    protected:
-        std::vector<std::pair<uint64, std::shared_ptr<PublishedElements>>> _files;
-    };
-
-    class DocumentScaffold
-    {
-    public:
-        void Parse(Formatter& formatter);
-
-        void Parse_LibraryEffects(Formatter& formatter);
-        void Parse_LibraryGeometries(Formatter& formatter);
-        void Parse_LibraryVisualScenes(Formatter& formatter);
-        void Parse_LibraryControllers(Formatter& formatter);
-        void Parse_LibraryMaterials(Formatter& formatter);
-        void Parse_Scene(Formatter& formatter);
-
-        DocumentScaffold();
-        ~DocumentScaffold();
-
-    // protected:
-        AssetDesc _rootAsset;
-
-        std::vector<Effect> _effects;
-        std::vector<MeshGeometry> _geometries;
-        std::vector<VisualScene> _visualScenes;
-        std::vector<SkinController> _skinControllers;
-        std::vector<Material> _materials;
-
-        std::shared_ptr<PublishedElements> _published;
-
-        Section _visualScene;
-        Section _physicsScene;
-        Section _kinematicsScene;
-    };
-
+///////////////////////////////////////////////////////////////////////////////////////////////////
+        //      E F F E C T S   A N D   M A T E R I A L S
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     enum class SamplerAddress
     {
@@ -174,6 +112,25 @@ namespace ColladaConversion
         std::vector<SurfaceParameter> _surfaceParameters;
     };
 
+    class Material
+    {
+    public:
+        Section _id;
+        Section _name;
+        Section _effectReference;   // uri
+        SubDoc _extra;
+
+        Material() {}
+        Material(Formatter& formatter);
+
+    protected:
+        void ParseInstanceEffect(Formatter& formatter);
+    };
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+        //      G E O M E T R Y
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
     class GeometryPrimitives
     {
     public:
@@ -223,7 +180,6 @@ namespace ColladaConversion
         unsigned _primitiveCount;
         StreamLocation _location;
     };
-
 
     class MeshGeometry
     {
@@ -295,20 +251,184 @@ namespace ColladaConversion
         std::vector<DataFlow::InputUnshared> _jointInputs;
     };
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+        //      T R A N S F O R M A T I O N S
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class Material
+    class Transformation;
+
+    class TransformationSet
     {
     public:
-        Section _id;
-        Section _name;
-        Section _effectReference;   // uri
-        SubDoc _extra;
+        enum class Type 
+        {
+            None,
+            LookAt, Matrix4x4, Rotate, 
+            Scale, Skew, Translate 
+        };
 
-        Material() {}
-        Material(Formatter& formatter);
+        static bool IsTransform(Section section);
+        unsigned ParseTransform(
+            Formatter& formatter, Section elementName, 
+            unsigned previousSibling = ~unsigned(0));
+
+        Transformation Get(unsigned index) const;
+
+        TransformationSet();
+        TransformationSet(TransformationSet&& moveFrom) never_throws;
+        TransformationSet& operator=(TransformationSet&& moveFrom) never_throws;
+        ~TransformationSet();
 
     protected:
-        void ParseInstanceEffect(Formatter& formatter);
+        class RawOperation;
+        std::vector<RawOperation> _operations;
+
+        friend class Transformation;
     };
+
+    class Transformation
+    {
+    public:
+        TransformationSet::Type GetType() const;
+        Transformation GetNext() const;
+        const void* GetUnionData() const;
+
+        operator bool() const;
+        bool operator!() const;
+
+    protected:
+        unsigned _index;
+        const TransformationSet* _set;
+
+        Transformation(const TransformationSet& set, unsigned index);
+        friend class TransformationSet;
+    };
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+        //      V I S U A L   S C E N E   S E C T I O N
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class Node;
+    class InstanceGeometry;
+    class InstanceController;
+
+    class VisualScene
+    {
+    public:
+        SubDoc _extra;
+
+        Node GetRootNode() const;
+
+        VisualScene(Formatter& formatter);
+        VisualScene();
+        VisualScene(VisualScene&& moveFrom) never_throws;
+        VisualScene& operator=(VisualScene&& moveFrom) never_throws;
+
+    protected:
+        using IndexIntoNodes = unsigned;
+        using TransformationSetIndex = unsigned;
+        static const IndexIntoNodes IndexIntoNodes_Invalid = ~IndexIntoNodes(0);
+        static const TransformationSetIndex TransformationSetIndex_Invalid = ~TransformationSetIndex(0);
+
+        class RawNode;
+        std::vector<RawNode> _nodes;
+        std::vector<std::pair<IndexIntoNodes, InstanceGeometry>> _geoInstances;
+        std::vector<std::pair<IndexIntoNodes, InstanceController>> _controllerInstances;
+        TransformationSet _transformSet;
+
+        friend class Node;
+    };
+
+    class Node
+    {
+    public:
+        Node GetNextSibling() const;
+        Node GetFirstChild() const;
+        Node GetParent() const;
+        Transformation GetFirstTransform() const;
+        Section GetName() const;
+        Section GetId() const;
+        
+        operator bool() const;
+        bool operator!() const;
+
+    protected:
+        VisualScene::IndexIntoNodes _index;
+        const VisualScene* _scene;
+
+        Node(const VisualScene& scene, VisualScene::IndexIntoNodes index);
+        friend class VisualScene;
+    };
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+        //      D O C U M E N T   R E L A T E D
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class PublishedElements
+    {
+    public:
+        const DataFlow::Source* FindSource(uint64 id) const;
+        const VertexInputs* FindVertexInputs(uint64 id) const;
+
+        void Add(DataFlow::Source&& element);
+        void Add(VertexInputs&& vertexInputs);
+
+        PublishedElements();
+        ~PublishedElements();
+    protected:
+        std::vector<std::pair<uint64, DataFlow::Source>> _sources;
+        std::vector<std::pair<uint64, VertexInputs>> _vertexInputs;
+    };
+
+    class ElementGuid
+    {
+    public:
+        uint64 _fileHash;
+        uint64 _id;
+
+        ElementGuid(Section uri);
+    };
+
+    class URIResolveContext
+    {
+    public:
+        const PublishedElements* FindFile(uint64) const;
+
+        URIResolveContext(std::shared_ptr<PublishedElements> localDoc);
+    protected:
+        std::vector<std::pair<uint64, std::shared_ptr<PublishedElements>>> _files;
+    };
+
+    class DocumentScaffold
+    {
+    public:
+        void Parse(Formatter& formatter);
+
+        void Parse_LibraryEffects(Formatter& formatter);
+        void Parse_LibraryGeometries(Formatter& formatter);
+        void Parse_LibraryVisualScenes(Formatter& formatter);
+        void Parse_LibraryControllers(Formatter& formatter);
+        void Parse_LibraryMaterials(Formatter& formatter);
+        void Parse_Scene(Formatter& formatter);
+
+        DocumentScaffold();
+        ~DocumentScaffold();
+
+    // protected:
+        AssetDesc _rootAsset;
+
+        std::vector<Effect> _effects;
+        std::vector<MeshGeometry> _geometries;
+        std::vector<VisualScene> _visualScenes;
+        std::vector<SkinController> _skinControllers;
+        std::vector<Material> _materials;
+
+        std::shared_ptr<PublishedElements> _published;
+
+        Section _visualScene;
+        Section _physicsScene;
+        Section _kinematicsScene;
+    };
+    
 }
 

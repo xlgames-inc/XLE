@@ -35,6 +35,13 @@ namespace XLEMath
     public:
         Float3 _axis;
         float _angle;
+
+            // IsRotation... returns 1, 0 or -1 
+            //      (-1 means a rotation around the negative axis direction)
+        signed IsRotationX() const;
+        signed IsRotationY() const;
+        signed IsRotationZ() const;
+
         ArbitraryRotation() {}
         ArbitraryRotation(Float3 axis, float angle) : _axis(axis), _angle(angle) {}
     };

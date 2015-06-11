@@ -8,11 +8,13 @@
 
 #include "ColladaConversion.h"
 #include "TableOfObjects.h"
-#include "TransformationMachine.h"
-#include "../../../Utility/Mixins.h"
+#include "../RenderCore/Assets/TransformationCommands.h"
+#include "../RenderCore/Assets/NascentTransformationMachine.h"
+#include "../Utility/Mixins.h"
 #include <vector>
 
 namespace Serialization { class NascentBlockSerializer; }
+namespace RenderCore { namespace Assets { class NascentTransformationMachine; }}
 
 namespace RenderCore { namespace ColladaConversion
 {
@@ -39,7 +41,7 @@ namespace RenderCore { namespace ColladaConversion
             AnimSamplerType     _samplerType;
 
             AnimationDriver(
-                ObjectGuid            curveId, 
+                ObjectGuid          curveId, 
                 unsigned            parameterIndex, 
                 AnimSamplerType     samplerType, 
                 unsigned            samplerOffset)
@@ -120,13 +122,15 @@ namespace RenderCore { namespace ColladaConversion
         //      matrices of the transformation machine to joints.
         //
 
-    class JointReferences;
+    class TransformReferences;
 
     class NascentSkeleton : noncopyable
     {
     public:
-        NascentTransformationMachine_Collada&           GetTransformationMachine()          { return _transformationMachine; }
-        const NascentTransformationMachine_Collada&     GetTransformationMachine() const    { return _transformationMachine; }
+        using NascentTransformationMachine = RenderCore::Assets::NascentTransformationMachine;
+
+        NascentTransformationMachine&           GetTransformationMachine()          { return _transformationMachine; }
+        const NascentTransformationMachine&     GetTransformationMachine() const    { return _transformationMachine; }
 
         void        Serialize(Serialization::NascentBlockSerializer& serializer) const;
 
@@ -135,7 +139,7 @@ namespace RenderCore { namespace ColladaConversion
         NascentSkeleton(NascentSkeleton&& moveFrom);
         NascentSkeleton& operator=(NascentSkeleton&& moveFrom);
     private:
-        NascentTransformationMachine_Collada    _transformationMachine;
+        NascentTransformationMachine    _transformationMachine;
     };
 
         //
@@ -158,7 +162,9 @@ namespace RenderCore { namespace ColladaConversion
             unsigned                    _localToWorldId;
             std::vector<MaterialGuid>   _materials;
             unsigned                    _levelOfDetail;
-            GeometryInstance(ObjectGuid id, unsigned localToWorldId, std::vector<MaterialGuid>&& materials, unsigned levelOfDetail) 
+            GeometryInstance(
+                ObjectGuid id, unsigned localToWorldId, 
+                std::vector<MaterialGuid>&& materials, unsigned levelOfDetail) 
             :   _id(id), _localToWorldId(localToWorldId)
             ,   _materials(std::forward<std::vector<MaterialGuid>>(materials))
             ,   _levelOfDetail(levelOfDetail) {}
@@ -183,7 +189,9 @@ namespace RenderCore { namespace ColladaConversion
             unsigned                    _localToWorldId;
             std::vector<MaterialGuid>   _materials;
             unsigned                    _levelOfDetail;
-            SkinControllerInstance(ObjectGuid id, unsigned localToWorldId, std::vector<MaterialGuid>&& materials, unsigned levelOfDetail)
+            SkinControllerInstance(
+                ObjectGuid id, unsigned localToWorldId, 
+                std::vector<MaterialGuid>&& materials, unsigned levelOfDetail)
             :   _id(id), _localToWorldId(localToWorldId), _materials(std::forward<std::vector<MaterialGuid>>(materials))
             ,   _levelOfDetail(levelOfDetail) {}
 

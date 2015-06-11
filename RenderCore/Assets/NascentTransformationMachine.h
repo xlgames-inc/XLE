@@ -7,12 +7,13 @@
 #pragma once
 
 #include "TransformationCommands.h"
-#include "../../Core/Types.h"
+#include "../../Assets/AssetsCore.h"
 #include "../../Math/Vector.h"
 #include "../../Math/Matrix.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/Mixins.h"
 #include "../../Utility/IteratorUtils.h"
+#include "../../Core/Types.h"
 #include <vector>
 
 namespace RenderCore { namespace Assets
@@ -35,7 +36,7 @@ namespace RenderCore { namespace Assets
         std::pair<AnimSamplerType, uint32>  GetParameterIndex(AnimationParameterId parameterName) const;
         AnimationParameterId                GetParameterName(AnimSamplerType type, uint32 index) const;
 
-        void                        RegisterJointName(AnimationParameterId colladaId, const std::string& name, const Float4x4& inverseBindMatrix, unsigned outputMatrixIndex);
+        void    RegisterJointName(const std::string& name, const Float4x4& inverseBindMatrix, unsigned outputMatrixIndex);
         
         std::string                 HashedIdToStringId     (AnimationParameterId colladaId) const;
         AnimationParameterId        StringIdToHashedId     (const std::string& stringId) const;
@@ -46,6 +47,13 @@ namespace RenderCore { namespace Assets
             GenerateOutputTransforms(const Assets::TransformationParameterSet&   parameterSet) const;
 
         const std::vector<uint32>&  GetCommandStream() const { return _commandStream; }
+
+        template<typename Type>
+            uint32      AddParameter(Type defaultValue, AnimationParameterId HashedColladaUniqueId, const char nodeName[]);
+
+        void    PushCommand(uint32 cmd);
+        void    PushCommand(const void* ptr, size_t size);
+        void    ResolvePendingPops();
 
         NascentTransformationMachine();
         NascentTransformationMachine(NascentTransformationMachine&& machine);
@@ -69,8 +77,6 @@ namespace RenderCore { namespace Assets
         class Joint;
         std::vector<Joint> _jointTags;
 
-        template<typename Type>
-            uint32      AddParameter(Type defaultValue, AnimationParameterId HashedColladaUniqueId, const char nodeName[]);
         template<typename Type>
             std::pair<
                 std::vector<std::pair<AnimationParameterId, uint32>>&,

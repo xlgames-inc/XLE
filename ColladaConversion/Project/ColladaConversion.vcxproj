@@ -95,11 +95,13 @@
     <ClCompile Include="..\NascentModel.cpp" />
     <ClCompile Include="..\OpenCollada\OCModelCommandStream.cpp" />
     <ClCompile Include="..\OpenCollada\OCRawGeometry.cpp" />
+    <ClCompile Include="..\OpenCollada\OCTransformationMachine.cpp" />
     <ClCompile Include="..\ParsingUtil.cpp" />
     <ClCompile Include="..\RawGeometry.cpp" />
+    <ClCompile Include="..\SCommandStream.cpp" />
     <ClCompile Include="..\SRawGeometry.cpp" />
     <ClCompile Include="..\TableOfObjects.cpp" />
-    <ClCompile Include="..\TransformationMachine.cpp" />
+    <ClCompile Include="..\STransformationMachine.cpp" />
     <ClCompile Include="..\Version.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -114,7 +116,7 @@
     <ClInclude Include="..\Scaffold.h" />
     <ClInclude Include="..\ScaffoldDataFlow.h" />
     <ClInclude Include="..\TableOfObjects.h" />
-    <ClInclude Include="..\TransformationMachine.h" />
+    <ClInclude Include="..\STransformationMachine.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Assets\Project\Assets.vcxproj">

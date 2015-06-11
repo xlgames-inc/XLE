@@ -39,7 +39,7 @@ namespace RenderCore { namespace ColladaConversion
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     static std::tuple<bool,bool> NeedOutputMatrix(  const COLLADAFW::Node& node, const TableOfObjects& accessableObjects,
-                                                    const JointReferences& skeletonReferences)
+                                                    const TransformReferences& skeletonReferences)
     {
         using namespace COLLADAFW;
         bool needAnOutputMatrix = false;
@@ -86,7 +86,7 @@ namespace RenderCore { namespace ColladaConversion
             //
 
         bool isReferencedJoint = false;
-        if (skeletonReferences.HasJoint(Convert(node.getUniqueId()))) {
+        if (skeletonReferences.HasNode(Convert(node.getUniqueId()))) {
             isReferencedJoint = needAnOutputMatrix = true;
         }
 
@@ -96,12 +96,14 @@ namespace RenderCore { namespace ColladaConversion
     void PushNode(
         NascentSkeleton& skeleton,
         const COLLADAFW::Node& node, const TableOfObjects& accessableObjects,
-        const JointReferences& skeletonReferences)
+        const TransformReferences& skeletonReferences)
     {
         using namespace COLLADAFW;
         COLLADABU::Math::Matrix4 matrix;
         node.getTransformationMatrix(matrix);
-        unsigned pushCount = skeleton.GetTransformationMachine().PushTransformations(node.getTransformations(), GetNodeStringID(node).c_str());
+        unsigned pushCount = PushTransformations(
+            skeleton.GetTransformationMachine(),
+            node.getTransformations(), GetNodeStringID(node).c_str());
 
             //
             //      We have to assume we need an output matrix. We don't really know
@@ -129,7 +131,7 @@ namespace RenderCore { namespace ColladaConversion
             if (isReferencedJoint || node.getInstanceControllers().getCount() || node.getInstanceGeometries().getCount()) {
                 auto id = Convert(node.getUniqueId());
                 Float4x4 inverseBindMatrix = Identity<Float4x4>();
-                for (auto i=skeletonReferences._references.begin(); i!=skeletonReferences._references.end(); ++i) {
+                for (auto i=skeletonReferences._jointReferences.begin(); i!=skeletonReferences._jointReferences.end(); ++i) {
                     if (i->_joint == id) {
                             // note -- it could be bound multiple times!
                         inverseBindMatrix = i->_inverseBindMatrix;
@@ -141,7 +143,8 @@ namespace RenderCore { namespace ColladaConversion
                     //          unique. There are unique ids in collada, however. We some some unique identifier
                     //          can can be seen in Max, and can be used to associate different files with shared
                     //          references (eg, animations, skeletons and skins in separate files)
-                skeleton.GetTransformationMachine().RegisterJointName(BuildAnimParameterId(node.getUniqueId()), GetNodeStringID(node), inverseBindMatrix, thisOutputMatrix);
+                skeleton.GetTransformationMachine().RegisterJointName(
+                    GetNodeStringID(node), inverseBindMatrix, thisOutputMatrix);
             }
         }
 
@@ -194,7 +197,7 @@ namespace RenderCore { namespace ColladaConversion
     void PushNode(   
         NascentModelCommandStream& stream,
         const COLLADAFW::Node& node, const TableOfObjects& accessableObjects,
-        const JointReferences& skeletonReferences)
+        const TransformReferences& skeletonReferences)
     {
         if (!IsUseful(node, accessableObjects, skeletonReferences)) {
             return;
@@ -684,7 +687,7 @@ namespace RenderCore { namespace ColladaConversion
 
 
     bool IsUseful(  const COLLADAFW::Node& node, const TableOfObjects& objects,
-                    const JointReferences& skeletonReferences)
+                    const TransformReferences& skeletonReferences)
     {
             //
             //      Traverse all of the nodes in the hierarchy
@@ -733,7 +736,7 @@ namespace RenderCore { namespace ColladaConversion
             return true;
 
             // if this node is part of any of the skeletons we need, then it's "useful"
-        if (skeletonReferences.HasJoint(Convert(node.getUniqueId())))
+        if (skeletonReferences.HasNode(Convert(node.getUniqueId())))
             return true;
 
         const NodePointerArray& childNodes = node.getChildNodes();
@@ -745,7 +748,7 @@ namespace RenderCore { namespace ColladaConversion
     }
 
     void FindInstancedSkinControllers(  const COLLADAFW::Node& node, const TableOfObjects& objects,
-                                        JointReferences& results)
+                                        TransformReferences& results)
     {
         using namespace COLLADAFW;
         const InstanceControllerPointerArray& instanceControllers = node.getInstanceControllers();
@@ -758,7 +761,7 @@ namespace RenderCore { namespace ColladaConversion
                     objects.Get<UnboundSkinController>(controller->_unboundControllerId);
 
                 for (size_t c=0; c<controller->_jointIds.size(); ++c) {
-                    JointReferences::Reference ref;
+                    TransformReferences::JointReference ref;
                     ref._joint = controller->_jointIds[c];
                     ref._inverseBindMatrix = Identity<Float4x4>();
 
@@ -772,7 +775,7 @@ namespace RenderCore { namespace ColladaConversion
                         ref._inverseBindMatrix = skinController->_inverseBindMatrices[(unsigned)c];
                     }
 
-                    results._references.push_back(ref);
+                    results._jointReferences.push_back(ref);
                 }
 
             } else {
@@ -785,4 +788,24 @@ namespace RenderCore { namespace ColladaConversion
             FindInstancedSkinControllers(*childNodes[c], objects, results);
     }
 
+
+
+    #if MATHLIBRARY_ACTIVE == MATHLIBRARY_CML
+
+        Float4x4 AsFloat4x4(const COLLADABU::Math::Matrix4& matrix)
+        {
+                // (Float4x4 constructor doesn't take 16 elements...?)
+            Float4x4 result;
+            for (unsigned i=0; i<4; i++)
+                for (unsigned j=0; j<4; j++)
+                    result(i,j) = Float4x4::value_type(matrix[i][j]);
+            return result;
+        }
+
+        Float3 AsFloat3(const COLLADABU::Math::Vector3& vector)
+        {
+            return Float3(Float3::value_type(vector.x), Float3::value_type(vector.y), Float3::value_type(vector.z));
+        }
+
+    #endif
 }}

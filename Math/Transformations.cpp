@@ -720,4 +720,45 @@ namespace XLEMath
             0.f, 0.f, 0.f, 1.f);
     }
 
+
+    signed ArbitraryRotation::IsRotationX() const
+    {
+            // This math only works correctly if the axis is of a reasonable
+            // length (we're expecting unit length in most case)
+            // If y and z are very close to zero, and the vector magnitude
+            // is reasonable, then it must lay on the cardinal x axis somewhere.
+        assert(MagnitudeSquared(_axis) > 0.25f);
+
+        const float epsilon = 1e-5f;
+        if (    !Equivalent(_axis[1], 0.f, epsilon)
+            ||  !Equivalent(_axis[2], 0.f, epsilon))
+            return 0;
+
+        return std::signbit(_axis[0]) ? -1 : 1;
+    }
+
+    signed ArbitraryRotation::IsRotationY() const
+    {
+        assert(MagnitudeSquared(_axis) > 0.25f);
+
+        const float epsilon = 1e-5f;
+        if (    !Equivalent(_axis[0], 0.f, epsilon)
+            ||  !Equivalent(_axis[2], 0.f, epsilon))
+            return 0;
+
+        return std::signbit(_axis[1]) ? -1 : 1;
+    }
+
+    signed ArbitraryRotation::IsRotationZ() const
+    {
+        assert(MagnitudeSquared(_axis) > 0.25f);
+
+        const float epsilon = 1e-5f;
+        if (    !Equivalent(_axis[0], 0.f, epsilon)
+            ||  !Equivalent(_axis[1], 0.f, epsilon))
+            return 0;
+
+        return std::signbit(_axis[2]) ? -1 : 1;
+    }
+
 }

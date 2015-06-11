@@ -9,7 +9,6 @@
     <ClCompile Include="..\NascentModel.cpp" />
     <ClCompile Include="..\RawGeometry.cpp" />
     <ClCompile Include="..\TableOfObjects.cpp" />
-    <ClCompile Include="..\TransformationMachine.cpp" />
     <ClCompile Include="..\Version.cpp" />
     <ClCompile Include="..\OpenCollada\OCRawGeometry.cpp">
       <Filter>OpenCollada</Filter>
@@ -19,6 +18,11 @@
     <ClCompile Include="..\OpenCollada\OCModelCommandStream.cpp">
       <Filter>OpenCollada</Filter>
     </ClCompile>
+    <ClCompile Include="..\SCommandStream.cpp" />
+    <ClCompile Include="..\OpenCollada\OCTransformationMachine.cpp">
+      <Filter>OpenCollada</Filter>
+    </ClCompile>
+    <ClCompile Include="..\STransformationMachine.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\ColladaConversion.h" />
@@ -27,7 +31,6 @@
     <ClInclude Include="..\NascentModel.h" />
     <ClInclude Include="..\RawGeometry.h" />
     <ClInclude Include="..\TableOfObjects.h" />
-    <ClInclude Include="..\TransformationMachine.h" />
     <ClInclude Include="..\ProcessingUtil.h" />
     <ClInclude Include="..\Scaffold.h" />
     <ClInclude Include="..\ScaffoldDataFlow.h" />
@@ -35,6 +38,7 @@
     <ClInclude Include="..\OpenCollada\OCInterface.h">
       <Filter>OpenCollada</Filter>
     </ClInclude>
+    <ClInclude Include="..\STransformationMachine.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="OpenCollada">

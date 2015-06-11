@@ -4,13 +4,13 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "TransformationMachine.h"
-#include "ConversionObjects.h"
-#include "../ConsoleRig/Log.h"
-#include "../Math/Transformations.h"
-#include "../Utility/StringFormat.h"
-#include "../Utility/StringUtils.h"
-#include "../Utility/MemoryUtils.h"
+#include "../ConversionObjects.h"
+#include "../../RenderCore/Assets/NascentTransformationMachine.h"
+#include "../../ConsoleRig/Log.h"
+#include "../../Math/Transformations.h"
+#include "../../Utility/StringFormat.h"
+#include "../../Utility/StringUtils.h"
+#include "../../Utility/MemoryUtils.h"
 
 #pragma warning(push)
 #pragma warning(disable:4201)       // nonstandard extension used : nameless struct/union
@@ -56,15 +56,12 @@ namespace RenderCore { namespace ColladaConversion
         }
     }*/
 
-    unsigned    NascentTransformationMachine_Collada::PushTransformations(
-                        const COLLADAFW::TransformationPointerArray& transformations,
-                        const char nodeName[])
+    unsigned    PushTransformations(
+        RenderCore::Assets::NascentTransformationMachine& dst,
+        const COLLADAFW::TransformationPointerArray& transformations,
+        const char nodeName[])
     {
-        if (_pendingPops) {
-            _commandStream.push_back(Assets::TransformStackCommand::PopLocalToWorld);
-            _commandStream.push_back(_pendingPops);
-            _pendingPops = 0;
-        }
+        dst.ResolvePendingPops();
 
         if (transformations.empty())
             return 0;
@@ -74,7 +71,7 @@ namespace RenderCore { namespace ColladaConversion
             //
 
         using namespace COLLADAFW;
-        _commandStream.push_back(Assets::TransformStackCommand::PushLocalToWorld);
+        dst.PushCommand(Assets::TransformStackCommand::PushLocalToWorld);
         const unsigned pushCount = 1;
 
         unsigned typesOfEachTransform[6] = {0,0,0,0,0,0};
@@ -151,29 +148,29 @@ namespace RenderCore { namespace ColladaConversion
                     //      Do we need 128 bit alignment for this matrix?
                     //
                 if (parameterType == ParameterType_Embedded) {
-                    _commandStream.push_back(Assets::TransformStackCommand::TransformFloat4x4_Static);
-                    _commandStream.push_back(FloatBits(matrixTransform->getMatrix()[0][0]));
-                    _commandStream.push_back(FloatBits(matrixTransform->getMatrix()[0][1]));
-                    _commandStream.push_back(FloatBits(matrixTransform->getMatrix()[0][2]));
-                    _commandStream.push_back(FloatBits(matrixTransform->getMatrix()[0][3]));
+                    dst.PushCommand(Assets::TransformStackCommand::TransformFloat4x4_Static);
+                    dst.PushCommand(FloatBits(matrixTransform->getMatrix()[0][0]));
+                    dst.PushCommand(FloatBits(matrixTransform->getMatrix()[0][1]));
+                    dst.PushCommand(FloatBits(matrixTransform->getMatrix()[0][2]));
+                    dst.PushCommand(FloatBits(matrixTransform->getMatrix()[0][3]));
 
-                    _commandStream.push_back(FloatBits(matrixTransform->getMatrix()[1][0]));
-                    _commandStream.push_back(FloatBits(matrixTransform->getMatrix()[1][1]));
-                    _commandStream.push_back(FloatBits(matrixTransform->getMatrix()[1][2]));
-                    _commandStream.push_back(FloatBits(matrixTransform->getMatrix()[1][3]));
+                    dst.PushCommand(FloatBits(matrixTransform->getMatrix()[1][0]));
+                    dst.PushCommand(FloatBits(matrixTransform->getMatrix()[1][1]));
+                    dst.PushCommand(FloatBits(matrixTransform->getMatrix()[1][2]));
+                    dst.PushCommand(FloatBits(matrixTransform->getMatrix()[1][3]));
 
-                    _commandStream.push_back(FloatBits(matrixTransform->getMatrix()[2][0]));
-                    _commandStream.push_back(FloatBits(matrixTransform->getMatrix()[2][1]));
-                    _commandStream.push_back(FloatBits(matrixTransform->getMatrix()[2][2]));
-                    _commandStream.push_back(FloatBits(matrixTransform->getMatrix()[2][3]));
+                    dst.PushCommand(FloatBits(matrixTransform->getMatrix()[2][0]));
+                    dst.PushCommand(FloatBits(matrixTransform->getMatrix()[2][1]));
+                    dst.PushCommand(FloatBits(matrixTransform->getMatrix()[2][2]));
+                    dst.PushCommand(FloatBits(matrixTransform->getMatrix()[2][3]));
 
-                    _commandStream.push_back(FloatBits(matrixTransform->getMatrix()[3][0]));
-                    _commandStream.push_back(FloatBits(matrixTransform->getMatrix()[3][1]));
-                    _commandStream.push_back(FloatBits(matrixTransform->getMatrix()[3][2]));
-                    _commandStream.push_back(FloatBits(matrixTransform->getMatrix()[3][3]));
+                    dst.PushCommand(FloatBits(matrixTransform->getMatrix()[3][0]));
+                    dst.PushCommand(FloatBits(matrixTransform->getMatrix()[3][1]));
+                    dst.PushCommand(FloatBits(matrixTransform->getMatrix()[3][2]));
+                    dst.PushCommand(FloatBits(matrixTransform->getMatrix()[3][3]));
                 } else {
-                    _commandStream.push_back(Assets::TransformStackCommand::TransformFloat4x4_Parameter);
-                    _commandStream.push_back(AddParameter(AsFloat4x4(matrixTransform->getMatrix()), parameterHash, nodeName));
+                    dst.PushCommand(Assets::TransformStackCommand::TransformFloat4x4_Parameter);
+                    dst.PushCommand(dst.AddParameter(AsFloat4x4(matrixTransform->getMatrix()), parameterHash, nodeName));
                 }
 
             } else if (type == Transformation::TRANSLATE) {
@@ -185,13 +182,13 @@ namespace RenderCore { namespace ColladaConversion
                 }
 
                 if (parameterType == ParameterType_Embedded) {
-                    _commandStream.push_back(Assets::TransformStackCommand::Translate_Static);
-                    _commandStream.push_back(FloatBits(translation->getTranslation().x));
-                    _commandStream.push_back(FloatBits(translation->getTranslation().y));
-                    _commandStream.push_back(FloatBits(translation->getTranslation().z));
+                    dst.PushCommand(Assets::TransformStackCommand::Translate_Static);
+                    dst.PushCommand(FloatBits(translation->getTranslation().x));
+                    dst.PushCommand(FloatBits(translation->getTranslation().y));
+                    dst.PushCommand(FloatBits(translation->getTranslation().z));
                 } else {
-                    _commandStream.push_back(Assets::TransformStackCommand::Translate_Parameter);
-                    _commandStream.push_back(AddParameter(AsFloat3(translation->getTranslation()), parameterHash, nodeName));
+                    dst.PushCommand(Assets::TransformStackCommand::Translate_Parameter);
+                    dst.PushCommand(dst.AddParameter(AsFloat3(translation->getTranslation()), parameterHash, nodeName));
                 }
 
             } else if (type == Transformation::ROTATE) {
@@ -216,29 +213,29 @@ namespace RenderCore { namespace ColladaConversion
                     //
                 if (parameterType == ParameterType_Embedded) {
                     if (rotation->getRotationAxis() == COLLADABU::Math::Vector3(1.f, 0.f, 0.f)) {
-                        _commandStream.push_back(Assets::TransformStackCommand::RotateX_Static);
-                        _commandStream.push_back(FloatBits(rotation->getRotationAngle()));
+                        dst.PushCommand(Assets::TransformStackCommand::RotateX_Static);
+                        dst.PushCommand(FloatBits(rotation->getRotationAngle()));
                     } else if (rotation->getRotationAxis() == COLLADABU::Math::Vector3(-1.f, 0.f, 0.f)) {
-                        _commandStream.push_back(Assets::TransformStackCommand::RotateX_Static);
-                        _commandStream.push_back(FloatBits(-rotation->getRotationAngle()));
+                        dst.PushCommand(Assets::TransformStackCommand::RotateX_Static);
+                        dst.PushCommand(FloatBits(-rotation->getRotationAngle()));
                     } else if (rotation->getRotationAxis() == COLLADABU::Math::Vector3(0.f, 1.f, 0.f)) {
-                        _commandStream.push_back(Assets::TransformStackCommand::RotateY_Static);
-                        _commandStream.push_back(FloatBits(rotation->getRotationAngle()));
+                        dst.PushCommand(Assets::TransformStackCommand::RotateY_Static);
+                        dst.PushCommand(FloatBits(rotation->getRotationAngle()));
                     } else if (rotation->getRotationAxis() == COLLADABU::Math::Vector3(0.f, -1.f, 0.f)) {
-                        _commandStream.push_back(Assets::TransformStackCommand::RotateY_Static);
-                        _commandStream.push_back(FloatBits(-rotation->getRotationAngle()));
+                        dst.PushCommand(Assets::TransformStackCommand::RotateY_Static);
+                        dst.PushCommand(FloatBits(-rotation->getRotationAngle()));
                     } else if (rotation->getRotationAxis() == COLLADABU::Math::Vector3(0.f, 0.f, 1.f)) {
-                        _commandStream.push_back(Assets::TransformStackCommand::RotateZ_Static);
-                        _commandStream.push_back(FloatBits(rotation->getRotationAngle()));
+                        dst.PushCommand(Assets::TransformStackCommand::RotateZ_Static);
+                        dst.PushCommand(FloatBits(rotation->getRotationAngle()));
                     } else if (rotation->getRotationAxis() == COLLADABU::Math::Vector3(0.f, 0.f, -1.f)) {
-                        _commandStream.push_back(Assets::TransformStackCommand::RotateZ_Static);
-                        _commandStream.push_back(FloatBits(-rotation->getRotationAngle()));
+                        dst.PushCommand(Assets::TransformStackCommand::RotateZ_Static);
+                        dst.PushCommand(FloatBits(-rotation->getRotationAngle()));
                     } else {
-                        _commandStream.push_back(Assets::TransformStackCommand::Rotate_Static);
-                        _commandStream.push_back(FloatBits(rotation->getRotationAxis().x));
-                        _commandStream.push_back(FloatBits(rotation->getRotationAxis().y));
-                        _commandStream.push_back(FloatBits(rotation->getRotationAxis().z));
-                        _commandStream.push_back(FloatBits(rotation->getRotationAngle()));
+                        dst.PushCommand(Assets::TransformStackCommand::Rotate_Static);
+                        dst.PushCommand(FloatBits(rotation->getRotationAxis().x));
+                        dst.PushCommand(FloatBits(rotation->getRotationAxis().y));
+                        dst.PushCommand(FloatBits(rotation->getRotationAxis().z));
+                        dst.PushCommand(FloatBits(rotation->getRotationAngle()));
                     }
                 } else {
 
@@ -257,12 +254,12 @@ namespace RenderCore { namespace ColladaConversion
                         type = Assets::TransformStackCommand::RotateZ_Parameter;
                     }
 
-                    _commandStream.push_back(type);
+                    dst.PushCommand(type);
                     if (type == Assets::TransformStackCommand::Rotate_Parameter) {
                         const Float4 rotationAxisAndAngle = Expand(AsFloat3(rotation->getRotationAxis()), (float)rotation->getRotationAngle());
-                        _commandStream.push_back(AddParameter(rotationAxisAndAngle, parameterHash, nodeName));
+                        dst.PushCommand(dst.AddParameter(rotationAxisAndAngle, parameterHash, nodeName));
                     } else {
-                        _commandStream.push_back(AddParameter(float(rotation->getRotationAngle()), parameterHash, nodeName));
+                        dst.PushCommand(dst.AddParameter(float(rotation->getRotationAngle()), parameterHash, nodeName));
                     }
                 }
                         
@@ -286,22 +283,22 @@ namespace RenderCore { namespace ColladaConversion
                 if (parameterType == ParameterType_Embedded) {
                     if (    Equivalent(scale->getScale().x, scale->getScale().y, COLLADABU::Math::Real(0.001))
                         &&  Equivalent(scale->getScale().x, scale->getScale().z, COLLADABU::Math::Real(0.001))) {
-                        _commandStream.push_back(Assets::TransformStackCommand::UniformScale_Static);
-                        _commandStream.push_back(FloatBits(scale->getScale().x));
+                        dst.PushCommand(Assets::TransformStackCommand::UniformScale_Static);
+                        dst.PushCommand(FloatBits(scale->getScale().x));
                     } else {
-                        _commandStream.push_back(Assets::TransformStackCommand::ArbitraryScale_Static);
-                        _commandStream.push_back(FloatBits(scale->getScale().x));
-                        _commandStream.push_back(FloatBits(scale->getScale().y));
-                        _commandStream.push_back(FloatBits(scale->getScale().z));
+                        dst.PushCommand(Assets::TransformStackCommand::ArbitraryScale_Static);
+                        dst.PushCommand(FloatBits(scale->getScale().x));
+                        dst.PushCommand(FloatBits(scale->getScale().y));
+                        dst.PushCommand(FloatBits(scale->getScale().z));
                     }
                 } else {
                     if (    Equivalent(scale->getScale().x, scale->getScale().y, COLLADABU::Math::Real(0.001))
                         &&  Equivalent(scale->getScale().x, scale->getScale().z, COLLADABU::Math::Real(0.001))) {
-                        _commandStream.push_back(Assets::TransformStackCommand::UniformScale_Parameter);
-                        _commandStream.push_back(AddParameter(float(scale->getScale().x), parameterHash, nodeName));
+                        dst.PushCommand(Assets::TransformStackCommand::UniformScale_Parameter);
+                        dst.PushCommand(dst.AddParameter(float(scale->getScale().x), parameterHash, nodeName));
                     } else {
-                        _commandStream.push_back(Assets::TransformStackCommand::ArbitraryScale_Parameter);
-                        _commandStream.push_back(AddParameter(AsFloat3(scale->getScale()), parameterHash, nodeName));
+                        dst.PushCommand(Assets::TransformStackCommand::ArbitraryScale_Parameter);
+                        dst.PushCommand(dst.AddParameter(AsFloat3(scale->getScale()), parameterHash, nodeName));
                     }
                 }
 
@@ -315,23 +312,6 @@ namespace RenderCore { namespace ColladaConversion
         return pushCount;
     }
 
-
-    NascentTransformationMachine_Collada::NascentTransformationMachine_Collada()
-    {}
-
-    NascentTransformationMachine_Collada::NascentTransformationMachine_Collada(NascentTransformationMachine_Collada&& machine)
-    :   NascentTransformationMachine(std::forward<NascentTransformationMachine>(machine))
-    {
-    }
-    
-    NascentTransformationMachine_Collada& NascentTransformationMachine_Collada::operator=(NascentTransformationMachine_Collada&& moveFrom)
-    {
-        NascentTransformationMachine::operator=(NascentTransformationMachine(std::forward<NascentTransformationMachine>(moveFrom)));
-        return *this;
-    }
-
-    NascentTransformationMachine_Collada::~NascentTransformationMachine_Collada()
-    {}
 
 
 

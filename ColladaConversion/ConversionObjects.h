@@ -116,7 +116,7 @@ namespace RenderCore { namespace ColladaConversion
         uint64  _fileId;
 
         ObjectGuid() : _objectId(~0ull), _fileId(~0ull) {}
-        ObjectGuid(uint64 objectId, uint64 fileId) : _objectId(objectId), _fileId(fileId) {}
+        ObjectGuid(uint64 objectId, uint64 fileId = 0) : _objectId(objectId), _fileId(fileId) {}
     };
 
     inline bool operator==(const ObjectGuid& lhs, const ObjectGuid& rhs)   { return (lhs._objectId == rhs._objectId) && (lhs._fileId == rhs._fileId); }
@@ -148,17 +148,19 @@ namespace RenderCore { namespace ColladaConversion
 
         ////////////////////////////////////////////////////////
 
-    class JointReferences
+    class TransformReferences
     {
-    public: 
-        struct Reference
+    public:
+        std::vector<ObjectGuid> _plainNodeReference;
+        struct JointReference
         {
-            ObjectGuid      _joint;
-            Float4x4        _inverseBindMatrix;
+            ObjectGuid  _joint;
+            Float4x4    _inverseBindMatrix;
         };
-        std::vector<Reference>      _references;
+        std::vector<JointReference> _jointReferences;
 
-        bool HasJoint(ObjectGuid joint) const;
+        bool HasNode(ObjectGuid joint) const;
+        const Float4x4* GetInverseBindMatrix(ObjectGuid joint) const;
     };
 
         ////////////////////////////////////////////////////////

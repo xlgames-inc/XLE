@@ -569,9 +569,21 @@ namespace RenderCore { namespace ColladaConversion
 
 
 
-    bool JointReferences::HasJoint(ObjectGuid joint) const
+    bool TransformReferences::HasNode(ObjectGuid joint) const
     {
-        return std::find_if(_references.begin(), _references.end(), [=](const Reference& ref) { return ref._joint == joint; }) != _references.end();
+        return 
+            (std::find(_plainNodeReference.begin(), _plainNodeReference.end(), joint) != _plainNodeReference.end())
+            || (
+                std::find_if(_jointReferences.begin(), _jointReferences.end(), [=](const JointReference& ref) 
+                    { return ref._joint == joint; }) != _jointReferences.end()
+            );
+    }
+
+    const Float4x4* TransformReferences::GetInverseBindMatrix(ObjectGuid joint) const
+    {
+        for (const auto& j:_jointReferences)
+            if (j._joint == joint) return &j._inverseBindMatrix;
+        return nullptr;
     }
 
 

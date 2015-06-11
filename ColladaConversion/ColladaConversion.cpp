@@ -12,13 +12,6 @@
 #include <half.hpp>
 #include <stdarg.h>
 
-#pragma warning(push)
-#pragma warning(disable:4201)       // nonstandard extension used : nameless struct/union
-#pragma warning(disable:4245)       // conversion from 'int' to 'const COLLADAFW::SamplerID', signed/unsigned mismatch
-#pragma warning(disable:4512)       // assignment operator could not be generated
-    #include <COLLADAFWUniqueId.h>  // (actually only need matrix and vector)
-#pragma warning(pop)
-
 namespace RenderCore { namespace ColladaConversion
 {
     bool ImportCameras = true;
@@ -80,25 +73,6 @@ namespace RenderCore { namespace ColladaConversion
     // 
     //     return fltInt16;
     // }
-
-    #if MATHLIBRARY_ACTIVE == MATHLIBRARY_CML
-
-        Float4x4 AsFloat4x4(const COLLADABU::Math::Matrix4& matrix)
-        {
-                // (Float4x4 constructor doesn't take 16 elements...?)
-            Float4x4 result;
-            for (unsigned i=0; i<4; i++)
-                for (unsigned j=0; j<4; j++)
-                    result(i,j) = Float4x4::value_type(matrix[i][j]);
-            return result;
-        }
-
-        Float3 AsFloat3(const COLLADABU::Math::Vector3& vector)
-        {
-            return Float3(Float3::value_type(vector.x), Float3::value_type(vector.y), Float3::value_type(vector.z));
-        }
-
-    #endif
 
 
     void AddToBoundingBox(  std::pair<Float3, Float3>& boundingBox,

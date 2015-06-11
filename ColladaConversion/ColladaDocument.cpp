@@ -1348,41 +1348,18 @@ namespace ColladaConversion
         PARSE_END
     }
 
-    class TransformationSet
+    class TransformationSet::RawOperation
     {
     public:
-        class Operation
-        {
-        public:
-            enum class Type 
-            {
-                None,
-                LookAt, Matrix4x4, Rotate, 
-                Scale, Skew, Translate 
-            };
+        Type _type;
+        uint8 _buffer[sizeof(Float4x4)];
+        Section _sid;
+        unsigned _next;
 
-            Type _type;
-            uint8 _buffer[sizeof(Float4x4)];
-            Section _sid;
-            unsigned _next;
-
-            Operation();
-            Operation(const Operation& copyFrom) never_throws;
-            Operation& operator=(const Operation& copyFrom) never_throws;
-            ~Operation();
-        };
-
-        std::vector<Operation> _operations;
-
-        static bool IsTransform(Section section);
-        unsigned ParseTransform(
-            Formatter& formatter, Section elementName, 
-            unsigned previousSibling = ~unsigned(0));
-
-        TransformationSet();
-        TransformationSet(TransformationSet&& moveFrom) never_throws;
-        TransformationSet& operator=(TransformationSet&& moveFrom) never_throws;
-        ~TransformationSet();
+        RawOperation();
+        RawOperation(const RawOperation& copyFrom) never_throws;
+        RawOperation& operator=(const RawOperation& copyFrom) never_throws;
+        ~RawOperation();
     };
 
     static float ConvertAngle(float input)
@@ -1411,7 +1388,7 @@ namespace ColladaConversion
         // optimisations to convert arbitrary scales into uniform scales or
         // matrices into orthonormal transforms
 
-        Operation newOp;
+        RawOperation newOp;
 
         while (formatter.PeekNext(true) == Formatter::Blob::AttributeName) {
             Section attribName, attribValue;
@@ -1429,34 +1406,34 @@ namespace ColladaConversion
             // by comments or <CDATA[ type blocks will not work correctly.
 
         if (Is(elementName, u("lookat"))) {
-            newOp._type = Operation::Type::LookAt;
+            newOp._type = Type::LookAt;
             auto& dst = *(LookAt*)newOp._buffer;
             cdata._start = ParseXMLList(&dst._origin[0], 3, cdata);
             cdata._start = ParseXMLList(&dst._focusPosition[0], 3, cdata);
             cdata._start = ParseXMLList(&dst._upDirection[0], 3, cdata);
         } else if (Is(elementName, u("matrix"))) {
-            newOp._type = Operation::Type::Matrix4x4;
+            newOp._type = Type::Matrix4x4;
             auto& dst = *(Float4x4*)newOp._buffer;
             cdata._start = ParseXMLList(&dst(0,0), 16, cdata);
         } else if (Is(elementName, u("rotate"))) {
-            newOp._type = Operation::Type::Rotate;
+            newOp._type = Type::Rotate;
             auto& dst = *(ArbitraryRotation*)newOp._buffer;
             cdata._start = ParseXMLList(&dst._axis[0], 3, cdata);
             cdata._start = ParseXMLList(&dst._angle, 1, cdata);
             dst._angle = ConvertAngle(dst._angle);
         } else if (Is(elementName, u("scale"))) {
-            newOp._type = Operation::Type::Scale;
+            newOp._type = Type::Scale;
             auto& dst = *(ArbitraryScale*)newOp._buffer;
             cdata._start = ParseXMLList(&dst._scale[0], 3, cdata);
         } else if (Is(elementName, u("skew"))) {
-            newOp._type = Operation::Type::Skew;
+            newOp._type = Type::Skew;
             auto& dst = *(Skew*)newOp._buffer;
             cdata._start = ParseXMLList(&dst._angle, 1, cdata);
             cdata._start = ParseXMLList(&dst._axisA[0], 3, cdata);
             cdata._start = ParseXMLList(&dst._axisB[0], 3, cdata);
             dst._angle = ConvertAngle(dst._angle);
         } else if (Is(elementName, u("translate"))) {
-            newOp._type = Operation::Type::Translate;
+            newOp._type = Type::Translate;
             auto& dst = *(Float3*)newOp._buffer;
             cdata._start = ParseXMLList(&dst[0], 3, cdata);
         } else {
@@ -1485,6 +1462,11 @@ namespace ColladaConversion
             ||  Is(section, u("skew")) || Is(section, u("translate"));
     }
 
+    Transformation TransformationSet::Get(unsigned index) const
+    {
+        return Transformation(*this, index);
+    }
+
     TransformationSet::TransformationSet() {}
     TransformationSet::TransformationSet(TransformationSet&& moveFrom)
     : _operations(std::move(moveFrom._operations))
@@ -1498,13 +1480,13 @@ namespace ColladaConversion
 
     TransformationSet::~TransformationSet() {}
 
-    TransformationSet::Operation::Operation()
+    TransformationSet::RawOperation::RawOperation()
     : _type(Type::None), _next(~unsigned(0))
     {
         XlZeroMemory(_buffer);
     }
 
-    TransformationSet::Operation::Operation(const Operation& copyFrom) never_throws
+    TransformationSet::RawOperation::RawOperation(const RawOperation& copyFrom) never_throws
     {
         _type = copyFrom._type;
         _next = copyFrom._next;
@@ -1512,7 +1494,7 @@ namespace ColladaConversion
         XlCopyMemory(_buffer, copyFrom._buffer, sizeof(_buffer));
     }
 
-    auto TransformationSet::Operation::operator=(const Operation& copyFrom) never_throws -> Operation&
+    auto TransformationSet::RawOperation::operator=(const RawOperation& copyFrom) never_throws -> RawOperation&
     {
         _type = copyFrom._type;
         _next = copyFrom._next;
@@ -1521,7 +1503,41 @@ namespace ColladaConversion
         return *this;
     }
 
-    TransformationSet::Operation::~Operation() {}
+    TransformationSet::RawOperation::~RawOperation() {}
+
+
+
+    TransformationSet::Type Transformation::GetType() const
+    {
+        assert(_index != ~unsigned(0));
+        return _set->_operations[_index]._type;
+    }
+
+    Transformation Transformation::GetNext() const
+    {
+        assert(_index != ~unsigned(0));
+        return Transformation(*_set, _set->_operations[_index]._next);
+    }
+
+    const void* Transformation::GetUnionData() const
+    {
+        assert(_index != ~unsigned(0));
+        return _set->_operations[_index]._buffer;
+    }
+
+    Transformation::operator bool() const
+    {
+        return _index != ~unsigned(0);
+    }
+
+    bool Transformation::operator!() const
+    {
+        return _index != ~unsigned(0);
+    }
+
+    Transformation::Transformation(const TransformationSet& set, unsigned index)
+    : _set(&set), _index(index)
+    {}
 
     class InstanceGeometry
     {
@@ -1682,50 +1698,28 @@ namespace ColladaConversion
         return *this;
     }
 
-    class VisualScene
+    class VisualScene::RawNode
     {
     public:
+        Section _id;
+        Section _sid;
+        Section _name;
+
+        IndexIntoNodes _parent;
+        IndexIntoNodes _nextSibling;
+        IndexIntoNodes _firstChild;
+
+        TransformationSetIndex _transformChain;
+
         SubDoc _extra;
 
-        VisualScene(Formatter& formatter);
-        VisualScene();
-        VisualScene(VisualScene&& moveFrom) never_throws;
-        VisualScene& operator=(VisualScene&& moveFrom) never_throws;
+        RawNode() 
+        : _parent(IndexIntoNodes_Invalid), _nextSibling(IndexIntoNodes_Invalid), _firstChild(IndexIntoNodes_Invalid)
+        , _transformChain(TransformationSetIndex_Invalid) {}
+        ~RawNode();
 
-    protected:
-        using IndexIntoNodes = unsigned;
-        using TransformationSetIndex = unsigned;
-        static const IndexIntoNodes IndexIntoNodes_Invalid = ~IndexIntoNodes(0);
-        static const TransformationSetIndex TransformationSetIndex_Invalid = ~TransformationSetIndex(0);
-
-        class Node
-        {
-        public:
-            Section _id;
-            Section _sid;
-            Section _name;
-
-            IndexIntoNodes _parent;
-            IndexIntoNodes _nextSibling;
-            IndexIntoNodes _firstChild;
-
-            TransformationSetIndex _transformChain;
-
-            SubDoc _extra;
-
-            Node() 
-            : _parent(IndexIntoNodes_Invalid), _nextSibling(IndexIntoNodes_Invalid), _firstChild(IndexIntoNodes_Invalid)
-            , _transformChain(TransformationSetIndex_Invalid) {}
-            ~Node();
-
-            Node(Node&& moveFrom) never_throws;
-            Node& operator=(Node&& moveFrom) never_throws;
-        };
-
-        std::vector<Node> _nodes;
-        std::vector<std::pair<IndexIntoNodes, InstanceGeometry>> _geoInstances;
-        std::vector<std::pair<IndexIntoNodes, InstanceController>> _controllerInstances;
-        TransformationSet _transformSet;
+        RawNode(RawNode&& moveFrom) never_throws;
+        RawNode& operator=(RawNode&& moveFrom) never_throws;
     };
 
     VisualScene::VisualScene(Formatter& formatter)
@@ -1744,7 +1738,7 @@ namespace ColladaConversion
                             // create a new node, and add it to 
                             // our working tree...
 
-                        Node newNode;
+                        RawNode newNode;
                         auto newNodeIndex = IndexIntoNodes(_nodes.size());
                         if (!workingNodes.empty()) {
 
@@ -1875,8 +1869,8 @@ namespace ColladaConversion
         return *this;
     }
 
-    VisualScene::Node::~Node() {}
-    VisualScene::Node::Node(Node&& moveFrom) never_throws
+    VisualScene::RawNode::~RawNode() {}
+    VisualScene::RawNode::RawNode(RawNode&& moveFrom) never_throws
     : _id(moveFrom._id)
     , _sid(moveFrom._sid)
     , _name(moveFrom._name)
@@ -1887,7 +1881,7 @@ namespace ColladaConversion
     , _extra(std::move(moveFrom._extra))
     {}
 
-    auto VisualScene::Node::operator=(Node&& moveFrom) never_throws -> Node&
+    auto VisualScene::RawNode::operator=(RawNode&& moveFrom) never_throws -> RawNode&
     {
         _id = moveFrom._id;
         _sid = moveFrom._sid;
@@ -1898,6 +1892,12 @@ namespace ColladaConversion
         _transformChain = moveFrom._transformChain;
         _extra = std::move(moveFrom._extra);
         return *this;
+    }
+
+    Node VisualScene::GetRootNode() const 
+    {
+        if (_nodes.empty()) return Node(*this, IndexIntoNodes_Invalid);
+        return Node(*this, 0);
     }
 
     void DocumentScaffold::Parse_LibraryVisualScenes(Formatter& formatter)
@@ -2016,6 +2016,59 @@ namespace ColladaConversion
     {
         _files.push_back(std::make_pair(0, std::move(localDoc)));
     }
+
+
+    Node Node::GetNextSibling() const 
+    {
+        assert(_index != VisualScene::IndexIntoNodes_Invalid);
+        return Node(*_scene, _scene->_nodes[_index]._nextSibling);
+    }
+
+    Node Node::GetFirstChild() const
+    {
+        assert(_index != VisualScene::IndexIntoNodes_Invalid);
+        return Node(*_scene, _scene->_nodes[_index]._firstChild);
+    }
+
+    Node Node::GetParent() const
+    {
+        assert(_index != VisualScene::IndexIntoNodes_Invalid);
+        return Node(*_scene, _scene->_nodes[_index]._parent);
+    }
+
+    Transformation Node::GetFirstTransform() const
+    {
+        assert(_index != VisualScene::IndexIntoNodes_Invalid);
+        return _scene->_transformSet.Get(_scene->_nodes[_index]._transformChain);
+    }
+
+    Section Node::GetName() const
+    {
+        assert(_index != VisualScene::IndexIntoNodes_Invalid);
+        return _scene->_nodes[_index]._name;
+    }
+
+    Section Node::GetId() const
+    {
+        assert(_index != VisualScene::IndexIntoNodes_Invalid);
+        return _scene->_nodes[_index]._id;
+    }
+        
+    Node::operator bool() const
+    {
+        return _index != VisualScene::IndexIntoNodes_Invalid;
+    }
+
+    bool Node::operator!() const
+    {
+        return _index != VisualScene::IndexIntoNodes_Invalid;
+    }
+
+    Node::Node(const VisualScene& scene, VisualScene::IndexIntoNodes index)
+    : _scene(&scene), _index(index)
+    {
+    }
+
 }
 
 #include "../Utility/Streams/FileUtils.h"
@@ -2026,6 +2079,15 @@ namespace ColladaConversion
     RenderCore::ColladaConversion::NascentRawGeometry 
         Convert(const MeshGeometry& mesh, const URIResolveContext& pubEles); 
 }
+
+namespace RenderCore { namespace ColladaConversion
+{
+    void PushNode(
+        NascentSkeleton& skeleton,
+        const ::ColladaConversion::Node& node,
+        const TableOfObjects& accessableObjects,
+        const TransformReferences& skeletonReferences);
+}}
 
 void TestParser()
 {
@@ -2039,6 +2101,12 @@ void TestParser()
     auto geo = ColladaConversion::Convert(
         doc._geometries[0], 
         ColladaConversion::URIResolveContext(doc._published));
+
+    RenderCore::ColladaConversion::NascentSkeleton skeleton;
+    RenderCore::ColladaConversion::TableOfObjects objects;
+    RenderCore::ColladaConversion::TransformReferences jointRefs;
+    RenderCore::ColladaConversion::PushNode(skeleton, 
+        doc._visualScenes[0].GetRootNode(), objects, jointRefs);
 
     Float4 t2;
     Float4x4 temp;
