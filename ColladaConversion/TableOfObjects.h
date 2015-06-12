@@ -33,13 +33,15 @@ namespace RenderCore { namespace ColladaConversion
         template <typename Type> const Type* Get(ObjectGuid id) const never_throws;
         template <typename Type> void Add(ObjectGuid id, const std::string& name, const std::string& idString, Type&& object);
 
+        template <typename Type> unsigned GetIndex(ObjectGuid id) const;
+
         template <typename Type>
             std::tuple<std::string, std::string> 
                 GetDesc(ObjectGuid id) const never_throws;
 
         void SerializeSkin(Serialization::NascentBlockSerializer& outputSerializer, std::vector<uint8>& largeResourcesBlock) const;
         void SerializeAnimationSet(Serialization::NascentBlockSerializer& outputSerializer) const;
-        std::vector<std::unique_ptr<Data>> SerializeMaterial(const std::string& matSettingsFile) const;
+        std::vector<std::unique_ptr<Data>> SerializeMaterial() const;
 
         TableOfObjects();
         ~TableOfObjects();

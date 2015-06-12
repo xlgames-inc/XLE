@@ -1768,6 +1768,8 @@ namespace ColladaConversion
 
                     } else {
                         // visual_scene can have "id" and "name"
+                        if (Is(name, u("id"))) _id = value;
+                        if (Is(name, u("name"))) _name = value;
                     }
 
                     continue;
@@ -1785,6 +1787,8 @@ namespace ColladaConversion
     , _geoInstances(std::move(moveFrom._geoInstances))
     , _controllerInstances(std::move(moveFrom._controllerInstances))
     , _transformSet(std::move(moveFrom._transformSet))
+    , _id(moveFrom._id)
+    , _name(moveFrom._name)
     {
     }
 
@@ -1795,6 +1799,8 @@ namespace ColladaConversion
         _geoInstances = std::move(moveFrom._geoInstances);
         _controllerInstances = std::move(moveFrom._controllerInstances);
         _transformSet = std::move(moveFrom._transformSet);
+        _id = moveFrom._id;
+        _name = moveFrom._name;
         return *this;
     }
 
@@ -1945,6 +1951,14 @@ namespace ColladaConversion
         return nullptr;
     }
 
+    const VisualScene* DocumentScaffold::FindVisualScene(uint64 guid) const
+    {
+        for (const auto& s:_visualScenes)
+            if (s.GetId().GetHash() == guid)
+                return &s;
+        return nullptr;
+    }
+
     DocumentScaffold::DocumentScaffold() 
     {}
 
@@ -2056,6 +2070,7 @@ namespace ColladaConversion
 #include "NascentModel.h"
 
 #include "SEffect.h"
+#include "SCommandStream.h"
 #include "../RenderCore/Assets/Material.h"
 
 namespace ColladaConversion 
@@ -2063,25 +2078,6 @@ namespace ColladaConversion
     RenderCore::ColladaConversion::NascentRawGeometry 
         Convert(const MeshGeometry& mesh, const URIResolveContext& pubEles); 
 }
-
-namespace RenderCore { namespace ColladaConversion
-{
-    void BuildSkeleton(
-        NascentSkeleton& skeleton,
-        const ::ColladaConversion::Node& node,
-        NodeReferences& skeletonReferences);
-
-    void FindImportantNodes(
-        NodeReferences& skeletonReferences,
-        ::ColladaConversion::VisualScene& scene);
-
-    void InstantiateGeometry(
-        NascentModelCommandStream& stream,
-        const ::ColladaConversion::VisualScene& scene, unsigned instanceGeoIndex,
-        const ::ColladaConversion::URIResolveContext& resolveContext,
-        TableOfObjects& accessableObjects,
-        const NodeReferences& nodeRefs);
-}}
 
 void TestParser()
 {
@@ -2108,16 +2104,18 @@ void TestParser()
         skeleton, 
         doc->_visualScenes[0].GetRootNode(), jointRefs);
 
-    RenderCore::ColladaConversion::NascentModelCommandStream cmdStream;
-    for (unsigned c=0; c<doc->_visualScenes[0].GetInstanceGeometryCount(); ++c)
-        RenderCore::ColladaConversion::InstantiateGeometry(
-            cmdStream, doc->_visualScenes[0], c,
-            ColladaConversion::URIResolveContext(doc),
-            objects, jointRefs);
-
-    auto effect = RenderCore::ColladaConversion::Convert(
-        doc->_effects[1],
-        ColladaConversion::URIResolveContext(doc));
+    // RenderCore::ColladaConversion::NascentModelCommandStream cmdStream;
+    // for (unsigned c=0; c<doc->_visualScenes[0].GetInstanceGeometryCount(); ++c)
+    //     RenderCore::ColladaConversion::InstantiateGeometry(
+    //         cmdStream, 
+    //         doc->_visualScenes[0].GetInstanceGeometry(0),
+    //         doc->_visualScenes[0].GetInstanceGeometry_Attach(0),
+    //         ColladaConversion::URIResolveContext(doc),
+    //         objects, jointRefs);
+    // 
+    // auto effect = RenderCore::ColladaConversion::Convert(
+    //     doc->_effects[1],
+    //     ColladaConversion::URIResolveContext(doc));
 
     Float4 t2;
     Float4x4 temp;

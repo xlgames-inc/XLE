@@ -281,24 +281,24 @@ namespace RenderCore { namespace Assets
                         if (q != textureBindPoints.end() && *q == bindNameHash) { continue; }
                         textureBindPoints.insert(q, bindNameHash);
                     }
-                }
 
-                auto boundNormalMapName = matData->_bindings.GetString<::Assets::ResChar>(DefaultNormalsTextureBindingHash);
-                if (!boundNormalMapName.empty()) {
-                        //  We need to decide whether the normal map is "DXT" 
-                        //  format or not. This information isn't in the material
-                        //  itself; we actually need to look at the texture file
-                        //  to see what format it is. Unfortunately that means
-                        //  opening the texture file to read it's header. However
-                        //  we can accelerate it a bit by caching the result
-                    bool isDxtNormalMap = false;
-                    if (searchRules) {
-                        ::Assets::ResChar resolvedPath[MaxPath];
-                        searchRules->ResolveFile(resolvedPath, dimof(resolvedPath), boundNormalMapName.c_str());
-                        isDxtNormalMap = IsDXTNormalMap(resolvedPath);
-                    } else 
-                        isDxtNormalMap = IsDXTNormalMap(boundNormalMapName);
-                    materialParamBox.SetParameter((const utf8*)"RES_HAS_NormalsTexture_DXT", isDxtNormalMap);
+                    auto boundNormalMapName = matData->_bindings.GetString<::Assets::ResChar>(DefaultNormalsTextureBindingHash);
+                    if (!boundNormalMapName.empty()) {
+                            //  We need to decide whether the normal map is "DXT" 
+                            //  format or not. This information isn't in the material
+                            //  itself; we actually need to look at the texture file
+                            //  to see what format it is. Unfortunately that means
+                            //  opening the texture file to read it's header. However
+                            //  we can accelerate it a bit by caching the result
+                        bool isDxtNormalMap = false;
+                        if (searchRules) {
+                            ::Assets::ResChar resolvedPath[MaxPath];
+                            searchRules->ResolveFile(resolvedPath, dimof(resolvedPath), boundNormalMapName.c_str());
+                            isDxtNormalMap = IsDXTNormalMap(resolvedPath);
+                        } else 
+                            isDxtNormalMap = IsDXTNormalMap(boundNormalMapName);
+                        materialParamBox.SetParameter((const utf8*)"RES_HAS_NormalsTexture_DXT", isDxtNormalMap);
+                    }
                 }
 
                 i->second._matParams = sharedStateSet.InsertParameterBox(materialParamBox);

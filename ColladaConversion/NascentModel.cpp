@@ -1362,7 +1362,7 @@ namespace RenderCore { namespace ColladaConversion
             matSettingsFile = settingsName;
         }
 
-        auto table = _objects.SerializeMaterial(matSettingsFile);
+        auto table = _objects.SerializeMaterial();
 
         MemoryOutputStream<uint8> strm;
         auto root = std::make_unique<Data>();

@@ -220,14 +220,19 @@ namespace RenderCore { namespace ColladaConversion
                     auto materials = BuildMaterialTable(
                         instanceGeo.getMaterialBindings(), inputGeometry->_matBindingSymbols, accessableObjects);
                     stream._geometryInstances.push_back(
-                        NascentModelCommandStream::GeometryInstance(Convert(id), (unsigned)thisOutputMatrix, std::move(materials), 0));
+                        NascentModelCommandStream::GeometryInstance(
+                            accessableObjects.GetIndex<NascentRawGeometry>(Convert(id)), 
+                            (unsigned)thisOutputMatrix, std::move(materials), 0));
                 }
             }
 
-            for (size_t c=0; c<node.getInstanceNodes().getCount(); ++c) {
-                const UniqueId& id  = node.getInstanceNodes()[c]->getInstanciatedObjectId();
-                stream._modelInstances.push_back(NascentModelCommandStream::ModelInstance(Convert(id), (unsigned)thisOutputMatrix));
-            }
+            // for (size_t c=0; c<node.getInstanceNodes().getCount(); ++c) {
+            //     const UniqueId& id  = node.getInstanceNodes()[c]->getInstanciatedObjectId();
+            //     stream._modelInstances.push_back(
+            //         NascentModelCommandStream::ModelInstance(
+            //             Convert(id), 
+            //             (unsigned)thisOutputMatrix));
+            // }
 
             for (size_t c=0; c<node.getInstanceCameras().getCount(); ++c) {
 
@@ -660,7 +665,7 @@ namespace RenderCore { namespace ColladaConversion
                             node.getInstanceControllers()[instanceController]->getMaterialBindings(), source->_matBindingSymbols, accessableObjects);
 
                         NascentModelCommandStream::SkinControllerInstance newInstance(
-                            controllerAndSkeleton->_unboundControllerId, 
+                            destinationForNewObjects.GetIndex<UnboundSkinController>(controllerAndSkeleton->_unboundControllerId), 
                             stream.FindTransformationMachineOutput(Convert(node.getUniqueId())), std::move(materials), 0);
                         stream._skinControllerInstances.push_back(newInstance);
 

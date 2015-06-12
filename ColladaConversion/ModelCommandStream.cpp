@@ -432,7 +432,7 @@ namespace RenderCore { namespace ColladaConversion
     NascentModelCommandStream::NascentModelCommandStream(NascentModelCommandStream&& moveFrom)
     :       _transformationMachineOutputs(std::move(moveFrom._transformationMachineOutputs))
     ,       _geometryInstances(std::move(moveFrom._geometryInstances))
-    ,       _modelInstances(std::move(moveFrom._modelInstances))
+    // ,       _modelInstances(std::move(moveFrom._modelInstances))
     ,       _cameraInstances(std::move(moveFrom._cameraInstances))
     ,       _skinControllerInstances(std::move(moveFrom._skinControllerInstances))
     {
@@ -442,7 +442,7 @@ namespace RenderCore { namespace ColladaConversion
     {
         _transformationMachineOutputs = std::move(moveFrom._transformationMachineOutputs);
         _geometryInstances = std::move(moveFrom._geometryInstances);
-        _modelInstances = std::move(moveFrom._modelInstances);
+        // _modelInstances = std::move(moveFrom._modelInstances);
         _cameraInstances = std::move(moveFrom._cameraInstances);
         _skinControllerInstances = std::move(moveFrom._skinControllerInstances);
         return *this;
@@ -450,7 +450,7 @@ namespace RenderCore { namespace ColladaConversion
 
     void NascentModelCommandStream::GeometryInstance::Serialize(Serialization::NascentBlockSerializer& serializer) const
     {
-        Serialization::Serialize(serializer, _id._objectId);
+        Serialization::Serialize(serializer, _id);
         Serialization::Serialize(serializer, _localToWorldId);
         serializer.SerializeSubBlock(AsPointer(_materials.begin()), AsPointer(_materials.end()));
         Serialization::Serialize(serializer, _materials.size());
@@ -459,7 +459,7 @@ namespace RenderCore { namespace ColladaConversion
 
     void NascentModelCommandStream::SkinControllerInstance::Serialize(Serialization::NascentBlockSerializer& serializer) const
     {
-        Serialization::Serialize(serializer, _id._objectId);
+        Serialization::Serialize(serializer, _id);
         Serialization::Serialize(serializer, _localToWorldId);
         serializer.SerializeSubBlock(AsPointer(_materials.begin()), AsPointer(_materials.end()));
         Serialization::Serialize(serializer, _materials.size());

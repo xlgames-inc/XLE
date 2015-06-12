@@ -44,6 +44,16 @@ namespace RenderCore { namespace ColladaConversion
     }
 
     template <typename Type>
+        unsigned TableOfObjects::GetIndex(ObjectGuid id) const
+    {
+        auto& set = GetCollection<Type>();
+        auto i = std::lower_bound(set.cbegin(), set.cend(), id, CompareGuid());
+        if (i != set.cend() && i->_id == id)
+            return (unsigned)std::distance(set.cbegin(), i);
+        return ~unsigned(0x0);
+    }
+
+    template <typename Type>
         const Type*        TableOfObjects::Get(ObjectGuid id) const never_throws
     {
         auto& set = GetCollection<Type>();
@@ -177,7 +187,7 @@ namespace RenderCore { namespace ColladaConversion
         outputSerializer.SerializeValue(_animationCurves.size());
     }
 
-    std::vector<std::unique_ptr<Data>>  TableOfObjects::SerializeMaterial(const std::string& matSettingsFile) const
+    std::vector<std::unique_ptr<Data>>  TableOfObjects::SerializeMaterial() const
     {
         // We're going to write a text file chunk containing all
         // of the raw material settings. We need to do this for every ReferencedMaterial
@@ -238,7 +248,8 @@ namespace RenderCore { namespace ColladaConversion
         auto i1 = &TableOfObjects::Has<Type>;
         auto i2 = &TableOfObjects::Add<Type>;
         auto i3 = &TableOfObjects::GetDesc<Type>;
-        (void)i0; (void)i1; (void)i2; (void)i3;
+        auto i4 = &TableOfObjects::GetIndex<Type>;
+        (void)i0; (void)i1; (void)i2; (void)i3; (void)i4;
     }
 
     template void Instantiator<NascentRawGeometry>();

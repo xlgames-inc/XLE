@@ -145,7 +145,7 @@ static void TestParser3()
 		} CATCH(Assets::Exceptions::PendingResource&) {}
 		CATCH_END
 
-		Threading::YieldTimeSlice();
+		Threading::Sleep(64);
 		asyncMan.Update();
 	}
 
@@ -174,7 +174,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
     ConsoleRig::GlobalServices services;
     LogInfo << "------------------------------------------------------------------------------------------";
 
-    // TestParser3();
+    TestParser3();
     TestParser2();
     TestParser();
 

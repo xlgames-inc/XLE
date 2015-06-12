@@ -131,7 +131,7 @@ namespace ColladaConversion
     {
     public:
         Section GetName() const { return _name; }
-        Section GetId() const { return _id; }
+        DocScopeId GetId() const { return _id; }
         const ParameterSet& GetParams() const { return _params; }
 
         class Profile
@@ -170,7 +170,7 @@ namespace ColladaConversion
 
     protected:
         Section _name;
-        Section _id;
+        DocScopeId _id;
         ParameterSet _params;
 
         std::vector<Profile> _profiles;
@@ -437,6 +437,9 @@ namespace ColladaConversion
         Node GetInstanceController_Attach(unsigned index) const;
         unsigned GetInstanceControllerCount() const;
 
+        const DocScopeId& GetId() const     { return _id; }
+        Section GetName() const             { return _name; }
+
         VisualScene(Formatter& formatter);
         VisualScene();
         VisualScene(VisualScene&& moveFrom) never_throws;
@@ -453,6 +456,9 @@ namespace ColladaConversion
         std::vector<std::pair<IndexIntoNodes, InstanceGeometry>> _geoInstances;
         std::vector<std::pair<IndexIntoNodes, InstanceController>> _controllerInstances;
         TransformationSet _transformSet;
+
+        DocScopeId _id;
+        Section _name;
 
         friend class Node;
     };
@@ -489,14 +495,15 @@ namespace ColladaConversion
         virtual const VertexInputs*     FindVertexInputs(uint64 guid) const = 0;
         virtual const MeshGeometry*     FindMeshGeometry(uint64 guid) const = 0;
         virtual const Material*         FindMaterial(uint64 guid) const = 0;
+        virtual const VisualScene*      FindVisualScene(uint64 guid) const = 0;
         virtual ~IDocScopeIdResolver();
     };
 
     class GuidReference
     {
     public:
-        uint64 _fileHash;
         uint64 _id;
+        uint64 _fileHash;
 
         GuidReference(Section uri);
     };
@@ -534,6 +541,9 @@ namespace ColladaConversion
         const VertexInputs*     FindVertexInputs(uint64 guid) const;
         const MeshGeometry*     FindMeshGeometry(uint64 guid) const;
         const Material*         FindMaterial(uint64 guid) const;
+        const VisualScene*      FindVisualScene(uint64 guid) const;
+
+        Section GetMainVisualScene() const { return _visualScene; }
 
     // protected:
         AssetDesc _rootAsset;

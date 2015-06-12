@@ -132,41 +132,40 @@ namespace RenderCore { namespace ColladaConversion
         return std::move(materialGuids);
     }
 
-    static const NascentRawGeometry* 
-        FindOrCreateGeometry(
-            GuidReference ref,
-            const URIResolveContext& resolveContext, 
-            TableOfObjects& accessableObjects)
-    {
-        const auto* geo = accessableObjects.Get<NascentRawGeometry>(ref._id);
-        if (geo) return geo;
-
-        auto* file = resolveContext.FindFile(ref._fileHash);
-        if (!file) return nullptr;
-
-        auto* mesh = file->FindMeshGeometry(ref._id);
-        if (!mesh) return nullptr;
-
-        accessableObjects.Add(
-            ref._id,
-            AsString(mesh->GetName()), AsString(mesh->GetId().GetOriginal()),
-            ::ColladaConversion::Convert(*mesh, resolveContext));
-
-            return accessableObjects.Get<NascentRawGeometry>(ref._id);
-    }
+    // static const NascentRawGeometry* 
+    //     FindOrCreateGeometry(
+    //         GuidReference ref,
+    //         const URIResolveContext& resolveContext, 
+    //         TableOfObjects& accessableObjects)
+    // {
+    //     const auto* geo = accessableObjects.Get<NascentRawGeometry>(ref._id);
+    //     if (geo) return geo;
+    // 
+    //     auto* file = resolveContext.FindFile(ref._fileHash);
+    //     if (!file) return nullptr;
+    // 
+    //     auto* mesh = file->FindMeshGeometry(ref._id);
+    //     if (!mesh) return nullptr;
+    // 
+    //     accessableObjects.Add(
+    //         ref._id,
+    //         AsString(mesh->GetName()), AsString(mesh->GetId().GetOriginal()),
+    //         ::ColladaConversion::Convert(*mesh, resolveContext));
+    // 
+    //     return accessableObjects.Get<NascentRawGeometry>(ref._id);
+    // }
 
     void InstantiateGeometry(
         NascentModelCommandStream& stream,
-        const VisualScene& scene, unsigned instanceGeoIndex,
+        const ::ColladaConversion::InstanceGeometry& instGeo,
+        const ::ColladaConversion::Node& attachedNode,
         const URIResolveContext& resolveContext,
         TableOfObjects& accessableObjects,
         const NodeReferences& nodeRefs)
     {
-        auto attachedNode = scene.GetInstanceGeometry_Attach(instanceGeoIndex);
-
-        auto instGeo = scene.GetInstanceGeometry(instanceGeoIndex);
         GuidReference refGuid(instGeo._reference);
-        auto* geo = FindOrCreateGeometry(refGuid, resolveContext, accessableObjects);
+        // auto* geo = FindOrCreateGeometry(refGuid, resolveContext, accessableObjects);
+        auto* geo = accessableObjects.Get<NascentRawGeometry>(ObjectGuid(refGuid._id, refGuid._fileHash));
         if (!geo)
             Throw(::Assets::Exceptions::FormatError("Could not found geometry object to instantiate (%s)",
                 AsString(instGeo._reference).c_str()));
@@ -177,13 +176,14 @@ namespace RenderCore { namespace ColladaConversion
 
         stream._geometryInstances.push_back(
             NascentModelCommandStream::GeometryInstance(
-                refGuid._id, (unsigned)nodeRefs.GetOutputMatrixIndex(attachedNode.GetId().GetHash()), 
+                accessableObjects.GetIndex<NascentRawGeometry>(ObjectGuid(refGuid._id, refGuid._fileHash)), 
+                (unsigned)nodeRefs.GetOutputMatrixIndex(attachedNode.GetId().GetHash()), 
                 std::move(materials), 0));
     }
 
     void FindImportantNodes(
         NodeReferences& skeletonReferences,
-        VisualScene& scene)
+        const VisualScene& scene)
     {
         for (unsigned c=0; c<scene.GetInstanceGeometryCount(); ++c)
             skeletonReferences.MarkImportant(AsObjectGuid(scene.GetInstanceGeometry_Attach(c)));
