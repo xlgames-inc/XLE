@@ -91,6 +91,7 @@
     <ClCompile Include="..\ColladaConversion.cpp" />
     <ClCompile Include="..\ColladaDocument.cpp" />
     <ClCompile Include="..\ConversionObjects.cpp" />
+    <ClCompile Include="..\ConversionUtil.cpp" />
     <ClCompile Include="..\ModelCommandStream.cpp" />
     <ClCompile Include="..\NascentModel.cpp" />
     <ClCompile Include="..\NascentModel2.cpp" />
@@ -109,6 +110,7 @@
   <ItemGroup>
     <ClInclude Include="..\ColladaConversion.h" />
     <ClInclude Include="..\ConversionObjects.h" />
+    <ClInclude Include="..\ConversionUtil.h" />
     <ClInclude Include="..\ModelCommandStream.h" />
     <ClInclude Include="..\NascentModel.h" />
     <ClInclude Include="..\NascentModel2.h" />

@@ -166,8 +166,8 @@ namespace SceneEngine
 
             auto c = doc.Element(u("TerrainConfig"));
             if (c) {
-                auto filenames = c.AttributeOrEmpty(u("Filenames"));
-                if (!XlCompareStringI(filenames.c_str(), u("Legacy"))) { _filenamesMode = Legacy; }
+                if (!XlCompareStringI(c.Attribute(u("Filenames")).Value().c_str(), u("Legacy"))) 
+                    _filenamesMode = Legacy;
 
                 _nodeDimsInElements = c(u("NodeDims"), _nodeDimsInElements);
                 _cellTreeDepth      = c(u("CellTreeDepth"), _cellTreeDepth);

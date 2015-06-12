@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Scaffold.h"
+#include "ConversionUtil.h"
 #include "ParsingUtil.h"
 #include "../RenderCore/Assets/Material.h"
 #include "../ConsoleRig/Log.h"
@@ -35,26 +36,47 @@ namespace RenderCore { namespace ColladaConversion
 
     void AddSamplerBinding(
         RenderCore::Assets::RawMaterial& dest,
-        const ParameterSet& paramSet, const utf8 bindingName[], const utf8* samplerRefStart, const utf8* samplerRefEnd)
+        const ParameterSet& paramSet, const utf8 bindingName[], 
+        const utf8* samplerRefStart, const utf8* samplerRefEnd,
+        const URIResolveContext& resolveContext)
     {
         auto* samplerParam = FindSamplerParameter(paramSet, Section(samplerRefStart, samplerRefEnd));
         if (samplerParam) {
-            auto surfaceRef = samplerParam->_image;
-            auto* surfaceParam = FindSurfaceParameter(paramSet, surfaceRef);
-            if (surfaceParam) {
-                dest._resourceBindings.SetParameter(
-                    bindingName,
-                    AsString(surfaceParam->_initFrom).c_str());
-            } else {
-                LogWarning << "Could not resolve surface reference (" << AsString(surfaceParam->_initFrom) << ")";
+
+                // the "init_from" member of <surface> seems to reference
+                // an image in the <library_images> section.
+                // in Collada 1.5, there should be an instance_image into the sampler
+                // object, skipping the "surface" param.
+            Section imageRef = samplerParam->_instanceImage;
+            if (imageRef._end == imageRef._start) {
+                auto* surfaceParam = FindSurfaceParameter(paramSet, samplerParam->_source);
+                if (surfaceParam) {
+                    imageRef = surfaceParam->_initFrom;                    
+                }
             }
+
+            if (imageRef._end != imageRef._start) {
+                GuidReference ref(imageRef);
+                auto* file = resolveContext.FindFile(ref._fileHash);
+                if (file) {
+                    auto* image = file->FindImage(ref._id);
+                    if (image) {
+                        dest._resourceBindings.SetParameter(
+                            bindingName,
+                            AsString(image->GetInitFrom()).c_str());
+                    }
+                }
+            }
+    
+            LogWarning << "Could not resolve surface reference (" << AsString(imageRef) << ")";
         } else {
             LogWarning << "Could not resolve sampler reference (" << AsString(Section(samplerRefStart, samplerRefEnd)) << ")";
         }
     }
 
     RenderCore::Assets::RawMaterial Convert(
-        const Effect& effect, const URIResolveContext& pubEles)
+        const Effect& effect, const URIResolveContext& pubEles,
+        const ImportConfiguration& cfg)
     {
         RenderCore::Assets::RawMaterial matSettings;
 
@@ -72,20 +94,25 @@ namespace RenderCore { namespace ColladaConversion
 
         for (const auto& t:profile->_values) {
             auto& value = t.second;
+            if (cfg.IsSuppressed(t.first._start, t.first._end)) continue;
+                
+            auto binding = cfg.AsNativeBinding(t.first._start, t.first._end);
             switch (value._type) {
             case TechniqueValue::Type::Color:
-                matSettings._constants.SetParameter(std::basic_string<utf8>(t.first._start, t.first._end).c_str(), value._value);
+                matSettings._constants.SetParameter(
+                    binding.c_str(), value._value);
                 break;
 
             case TechniqueValue::Type::Float:
-                matSettings._constants.SetParameter(std::basic_string<utf8>(t.first._start, t.first._end).c_str(), value._value[0]);
+                matSettings._constants.SetParameter(binding.c_str(), value._value[0]);
                 break;
 
             case TechniqueValue::Type::Texture:
                 AddSamplerBinding(
                     matSettings, profile->GetParams(), 
-                    std::basic_string<utf8>(t.first._start, t.first._end).c_str(),
-                    value._reference._start, value._reference._end);
+                    binding.c_str(),
+                    value._reference._start, value._reference._end,
+                    pubEles);
                 break;
 
             default:
@@ -102,14 +129,20 @@ namespace RenderCore { namespace ColladaConversion
         if (extraValues) {
             auto techValue = extraValues.FirstChild();
             for (;techValue; techValue=techValue.NextSibling()) {
+                auto n = techValue.Name();
+                if (cfg.IsSuppressed(AsPointer(n.cbegin()), AsPointer(n.cend()))) continue;
+
                 auto texture = techValue.Element(u("texture"));
                 if (texture) {
-                    auto samplerRef = texture.RawAttribute(u("texture"));
-                    if (samplerRef._end > samplerRef._start)
+                    auto samplerRef = texture.Attribute(u("texture")).Value();
+                    if (!samplerRef.empty()) {
+                        auto binding = cfg.AsNativeBinding(AsPointer(n.cbegin()), AsPointer(n.cend()));
                         AddSamplerBinding(
                             matSettings, profile->GetParams(), 
-                            techValue.Name().c_str(),
-                            samplerRef._start, samplerRef._end);
+                            binding.c_str(), 
+                            AsPointer(samplerRef.cbegin()), AsPointer(samplerRef.cend()),
+                            pubEles);
+                    }
                 } else if (techValue.Element(u("color")) || techValue.Element(u("float")) || techValue.Element(u("param"))) {
                     LogWarning << "Color, float and param type technique values not supported in <extra> part in effect (" << AsString(effect.GetName()) << ")";
                 }

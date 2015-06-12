@@ -15,6 +15,7 @@
 #include "TableOfObjects.h"
 #include "RawGeometry.h"
 #include "ConversionObjects.h"
+#include "ConversionUtil.h"
 #include "OpenCollada\OCInterface.h"
 
 #include "../RenderCore/Assets/ModelRunTime.h"
@@ -94,19 +95,6 @@ namespace RenderCore { namespace ColladaConversion
 {
     using ::Assets::Exceptions::FormatError;
     using ::Assets::ResChar;
-
-    class ImportConfiguration
-    {
-    public:
-        std::string AsNativeBinding(const std::string& input) const;
-        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _depVal; }
-
-        ImportConfiguration(const ResChar filename[]);
-        ~ImportConfiguration();
-    private:
-        std::vector<std::pair<std::string, std::string>> _exportNameToBinding;
-        std::shared_ptr<::Assets::DependencyValidation> _depVal;
-    };
 
     class Writer : public COLLADAFW::IWriter
     {
@@ -336,48 +324,6 @@ namespace RenderCore { namespace ColladaConversion
         }
     }
 
-    ImportConfiguration::ImportConfiguration(const ResChar filename[])
-    {
-        Data data;
-        size_t sourceFileSize = 0;
-        auto sourceFile = LoadFileAsMemoryBlock(filename, &sourceFileSize);
-
-        _depVal = std::make_shared<::Assets::DependencyValidation>();
-        RegisterFileDependency(_depVal, filename);
-        
-        if (sourceFile && sourceFileSize) {
-            Data data;
-            data.Load((const char*)sourceFile.get(), (int)sourceFileSize);
-            auto* bindingRenames = data.ChildWithValue("BindingRenames");
-            if (bindingRenames) {
-                auto* child = bindingRenames->child;
-                for (; child; child = child->next) {
-                    if (child->child) {
-                        std::string exportName = child->StrValue();
-                        _exportNameToBinding.push_back(std::make_pair(exportName, child->child->StrValue()));
-                    }
-                }
-            }
-        }
-    }
-
-    ImportConfiguration::~ImportConfiguration()
-    {}
-
-    std::string ImportConfiguration::AsNativeBinding(const std::string& input) const
-    {
-            //  we need to define a mapping between the names used by the max exporter
-            //  and the native XLE shader names. The meaning might not match perfectly
-            //  but let's try to get as close as possible
-        auto i = std::find_if(
-            _exportNameToBinding.cbegin(), _exportNameToBinding.cend(),
-            [=](const std::pair<std::string, std::string>& e) { return e.first == input; });
-        if (i == _exportNameToBinding.cend()) {
-            return 0;
-        }
-        return i->second;
-    }
-
 ////////////////////////////////////////////////////////////////////////
 
     bool Writer::writeEffect( const COLLADAFW::Effect* effect )
@@ -427,7 +373,7 @@ namespace RenderCore { namespace ColladaConversion
                 std::smatch match;
                 auto r = std::regex_match(xt->texCoord, match, decode);
                 if (r && match.size() >= 2) {
-                    auto bindPoint = _importConfig.AsNativeBinding(match[2]);
+                    auto bindPoint = _importConfig.AsNativeBinding((const utf8*)AsPointer(match[2].first), (const utf8*)AsPointer(match[2].second));
                     if (!bindPoint.empty()) {
                         AddBoundTexture(
                             effect, 0, _objects, matSettings._resourceBindings,
@@ -1110,88 +1056,6 @@ namespace RenderCore { namespace ColladaConversion
     {
     }
 
-    std::pair<Float3, Float3> NascentModel::CalculateBoundingBox
-        (
-            const Float4x4* transformsBegin, 
-            const Float4x4* transformsEnd
-        ) const
-    {
-            //
-            //      For all the parts of the model, calculate the bounding box.
-            //      We just have to go through each vertex in the model, and
-            //      transform it into model space, and calculate the min and max values
-            //      found;
-            //
-        using namespace ColladaConversion;
-        auto result = InvalidBoundingBox();
-        // const auto finalMatrices = 
-        //     _skeleton.GetTransformationMachine().GenerateOutputTransforms(
-        //         _animationSet.BuildTransformationParameterSet(0.f, nullptr, _skeleton, _objects));
-
-            //
-            //      Do the unskinned geometry first
-            //
-
-        for (auto i=_visualScene._geometryInstances.cbegin(); i!=_visualScene._geometryInstances.cend(); ++i) {
-            const NascentModelCommandStream::GeometryInstance& inst = *i;
-
-            const NascentRawGeometry*  geo = _objects.Get<NascentRawGeometry>(inst._id);
-            if (!geo) continue;
-
-            Float4x4 localToWorld = Identity<Float4x4>();
-            if ((transformsBegin + inst._localToWorldId) < transformsEnd)
-                localToWorld = *(transformsBegin + inst._localToWorldId);
-
-            const void*         vertexBuffer = geo->_vertices.get();
-            const unsigned      vertexStride = geo->_mainDrawInputAssembly._vertexStride;
-
-            Metal::InputElementDesc positionDesc = FindPositionElement(
-                AsPointer(geo->_mainDrawInputAssembly._vertexInputLayout.begin()),
-                geo->_mainDrawInputAssembly._vertexInputLayout.size());
-
-            if (positionDesc._nativeFormat != Metal::NativeFormat::Unknown && vertexStride) {
-                AddToBoundingBox(
-                    result, vertexBuffer, vertexStride, 
-                    geo->_vertices.size() / vertexStride, positionDesc, localToWorld);
-            }
-        }
-
-            //
-            //      Now also do the skinned geometry. But use the default pose for
-            //      skinned geometry (ie, don't apply the skinning transforms to the bones).
-            //      Obvious this won't give the correct result post-animation.
-            //
-
-        for (auto i=_visualScene._skinControllerInstances.cbegin(); i!=_visualScene._skinControllerInstances.cend(); ++i) {
-            const NascentModelCommandStream::SkinControllerInstance& inst = *i;
-
-            const NascentBoundSkinnedGeometry* controller = _objects.Get<NascentBoundSkinnedGeometry>(inst._id);
-            if (!controller) continue;
-
-            Float4x4 localToWorld = Identity<Float4x4>();
-            if ((transformsBegin + inst._localToWorldId) < transformsEnd)
-                localToWorld = *(transformsBegin + inst._localToWorldId);
-
-                //  We can't get the vertex position data directly from the vertex buffer, because
-                //  the "bound" object is already using an opaque hardware object. However, we can
-                //  transform the local space bounding box and use that.
-
-            const unsigned indices[][3] = 
-            {
-                {0,0,0}, {0,1,0}, {1,0,0}, {1,1,0},
-                {0,0,1}, {0,1,1}, {1,0,1}, {1,1,1}
-            };
-
-            const Float3* A = (const Float3*)&controller->_localBoundingBox.first;
-            for (unsigned c=0; c<dimof(indices); ++c) {
-                Float3 position(A[indices[c][0]][0], A[indices[c][1]][1], A[indices[c][2]][2]);
-                AddToBoundingBox(result, position, localToWorld);
-            }
-        }
-
-        return result;
-    }
-
     unsigned    NascentModel::CameraCount() const
     {
         return (unsigned)_visualScene._cameraInstances.size();
@@ -1282,7 +1146,9 @@ namespace RenderCore { namespace ColladaConversion
             serializer.SerializeSubBlock(reordered.get(), &reordered[finalMatrixCount]);
             serializer.SerializeValue(finalMatrixCount);
 
-            auto boundingBox = CalculateBoundingBox(reordered.get(), &reordered[finalMatrixCount]);
+            auto boundingBox = CalculateBoundingBox(
+                _visualScene, _objects,
+                reordered.get(), &reordered[finalMatrixCount]);
             Serialization::Serialize(serializer, boundingBox.first);
             Serialization::Serialize(serializer, boundingBox.second);
             

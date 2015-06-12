@@ -25,6 +25,7 @@
     <ClCompile Include="..\STransformationMachine.cpp" />
     <ClCompile Include="..\SEffect.cpp" />
     <ClCompile Include="..\NascentModel2.cpp" />
+    <ClCompile Include="..\ConversionUtil.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\ColladaConversion.h" />
@@ -45,6 +46,7 @@
     <ClInclude Include="..\SEffect.h" />
     <ClInclude Include="..\NascentModel2.h" />
     <ClInclude Include="..\SCommandStream.h" />
+    <ClInclude Include="..\ConversionUtil.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="OpenCollada">

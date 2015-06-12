@@ -115,6 +115,12 @@ namespace Utility
         return ~0u;
     }
 
+    template<typename Formatter>
+        DocAttributeHelper<Formatter> Document<Formatter>::Attribute(const value_type name[]) const
+    {
+        return DocAttributeHelper<Formatter>(FindAttribute(name, &name[XlStringLen(name)]), *this);
+    }
+
     template <typename Formatter>
         Document<Formatter>::Document(Formatter& formatter)
     {
@@ -208,6 +214,13 @@ namespace Utility
     }
 
     template<typename Formatter>
+        DocAttributeHelper<Formatter> DocElementHelper<Formatter>::Attribute(const value_type name[]) const
+    {
+        if (_index == ~0u) DocAttributeHelper<Formatter>();
+        return DocAttributeHelper<Formatter>(FindAttribute(name, &name[XlStringLen(name)]), *_doc);
+    }
+
+    template<typename Formatter>
         auto DocElementHelper<Formatter>::FirstChild() const -> DocElementHelper<Formatter>
     {
         if (_index == ~0u) return DocElementHelper<Formatter>();
@@ -232,16 +245,6 @@ namespace Utility
     }
 
     template<typename Formatter>
-        auto DocElementHelper<Formatter>::AttributeOrEmpty(const value_type name[]) const -> std::basic_string<value_type>
-    {
-        if (_index == ~0u) return std::basic_string<value_type>();
-        auto a = FindAttribute(name, &name[XlStringLen(name)]);
-        if (a == ~0u) return std::basic_string<value_type>();
-        const auto& attrib = _doc->_attributes[a];
-        return std::basic_string<value_type>(attrib._value._start, attrib._value._end);
-    }
-
-    template<typename Formatter>
         unsigned DocElementHelper<Formatter>::FindAttribute(const value_type* nameStart, const value_type* nameEnd) const
     {
         assert(_index != ~0u);
@@ -261,15 +264,11 @@ namespace Utility
     }
 
     template<typename Formatter>
-        typename Formatter::InteriorSection DocElementHelper<Formatter>::RawAttribute(const value_type name[]) const
+        DocAttributeHelper<Formatter> DocElementHelper<Formatter>::FirstAttribute() const
     {
-        if (_index == ~0u) return Formatter::InteriorSection();
-
-        auto a = FindAttribute(name, &name[XlStringLen(name)]);
-        if (a == ~0u) return Formatter::InteriorSection();
-
-        const auto& attrib = _doc->_attributes[a];
-        return attrib._value;
+        if (_index == ~0u) return DocAttributeHelper<Formatter>();
+        const auto& e = _doc->_elements[_index];
+        return DocAttributeHelper<Formatter>(e._firstAttribute, *_doc);
     }
 
     template<typename Formatter>
@@ -288,6 +287,44 @@ namespace Utility
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    template<typename Formatter>
+        auto DocAttributeHelper<Formatter>::Name() const -> std::basic_string<value_type>
+    {
+        if (_index == ~unsigned(0)) return std::basic_string<value_type>();
+        return std::basic_string<value_type>(
+            _doc->_attributes[_index]._name._start,
+            _doc->_attributes[_index]._name._end);
+    }
+
+    template<typename Formatter>
+        auto DocAttributeHelper<Formatter>::Value() const -> std::basic_string<value_type>
+    {
+        if (_index == ~unsigned(0)) return std::basic_string<value_type>();
+        return std::basic_string<value_type>(
+            _doc->_attributes[_index]._value._start,
+            _doc->_attributes[_index]._value._end);
+    }
+
+    template<typename Formatter>
+        DocAttributeHelper<Formatter> DocAttributeHelper<Formatter>::Next() const
+    {
+        if (_index == ~0u) return DocAttributeHelper<Formatter>();
+        const auto& a = _doc->_attributes[_index];
+        return DocAttributeHelper<Formatter>(a._nextSibling, *_doc);
+    }
+
+    template<typename Formatter>
+        DocAttributeHelper<Formatter>::DocAttributeHelper(
+            unsigned attributeIndex, 
+            const Document<Formatter>& doc)
+    : _doc(&doc), _index(attributeIndex)
+    {}
+
+    template<typename Formatter>
+        DocAttributeHelper<Formatter>::DocAttributeHelper() {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
     template class Document<InputStreamFormatter<utf8>>;
     template class Document<InputStreamFormatter<ucs2>>;
     template class Document<InputStreamFormatter<ucs4>>;
@@ -297,5 +334,10 @@ namespace Utility
     template class DocElementHelper<InputStreamFormatter<ucs2>>;
     template class DocElementHelper<InputStreamFormatter<ucs4>>;
     template class DocElementHelper<XmlInputStreamFormatter<utf8>>;
+
+    template class DocAttributeHelper<InputStreamFormatter<utf8>>;
+    template class DocAttributeHelper<InputStreamFormatter<ucs2>>;
+    template class DocAttributeHelper<InputStreamFormatter<ucs4>>;
+    template class DocAttributeHelper<XmlInputStreamFormatter<utf8>>;
 
 }

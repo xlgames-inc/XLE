@@ -89,7 +89,7 @@ namespace SceneEngine
                 for (auto c = strata.FirstChild(); c; c = c.NextSibling(), ++strataIndex) {
                     StrataMaterial::Strata newStrata;
                     for (unsigned t=0; t<dimof(TextureNames); ++t) {
-                        auto tName = c.AttributeOrEmpty(TextureNames[t]);
+                        auto tName = c.Attribute(TextureNames[t]).Value();
                         if (XlCompareStringI(tName.c_str(), u("null"))!=0)
                             newStrata._texture[t] = Conversion::Convert<::Assets::rstring>(tName);
                     }

@@ -62,6 +62,14 @@ namespace RenderCore { namespace ColladaConversion
         return nullptr;
     }
 
+    template <typename Type> 
+        const Type* TableOfObjects::GetByIndex(unsigned index) const never_throws
+    {
+        auto& set = GetCollection<Type>();
+        if (index >= set.size()) return nullptr;
+        return &set[index]._internalType;
+    }
+
     template <> auto     TableOfObjects::GetCollection<NascentRawGeometry>() const -> const std::vector<Object<NascentRawGeometry>>& { return _geos; }
     template <> auto     TableOfObjects::GetCollection<NascentRawGeometry>() -> std::vector<Object<NascentRawGeometry>>&             { return _geos; }
 
@@ -249,7 +257,8 @@ namespace RenderCore { namespace ColladaConversion
         auto i2 = &TableOfObjects::Add<Type>;
         auto i3 = &TableOfObjects::GetDesc<Type>;
         auto i4 = &TableOfObjects::GetIndex<Type>;
-        (void)i0; (void)i1; (void)i2; (void)i3; (void)i4;
+        auto i5 = &TableOfObjects::GetByIndex<Type>;
+        (void)i0; (void)i1; (void)i2; (void)i3; (void)i4; (void)i5;
     }
 
     template void Instantiator<NascentRawGeometry>();

@@ -144,6 +144,7 @@ namespace ColladaConversion
         std::make_pair(u("library_visual_scenes"), &DocumentScaffold::Parse_LibraryVisualScenes),
         std::make_pair(u("library_controllers"), &DocumentScaffold::Parse_LibraryControllers),
         std::make_pair(u("library_materials"), &DocumentScaffold::Parse_LibraryMaterials),
+        std::make_pair(u("library_images"), &DocumentScaffold::Parse_LibraryImages),
         std::make_pair(u("scene"), &DocumentScaffold::Parse_Scene)
     };
 
@@ -289,10 +290,10 @@ namespace ColladaConversion
         ON_ELEMENT
             if (Is(eleName, u("instance_image"))) {
                 // collada 1.5 uses "instance_image" (Collada 1.4 equivalent is <source>)
-                _image = ExtractSingleAttribute(formatter, u("url"));
+                _instanceImage = ExtractSingleAttribute(formatter, u("url"));
             } else if (Is(eleName, u("source"))) {
                 // collada 1.4 uses "source" (which cannot have extra data attached)
-                formatter.TryCharacterData(_image);
+                formatter.TryCharacterData(_source);
             } else if (Is(eleName, u("wrap_s"))) {
                 _addressS = ReadCDataAsEnum(formatter, s_SamplerAddressNames);
             } else if (Is(eleName, u("wrap_t"))) {
@@ -961,6 +962,7 @@ namespace ColladaConversion
         _vcount = moveFrom._vcount;
         _primitiveCount = moveFrom._primitiveCount;
         _location = moveFrom._location;
+        _materialBinding = moveFrom._materialBinding;
     }
 
     GeometryPrimitives& GeometryPrimitives::operator=(GeometryPrimitives&& moveFrom) never_throws
@@ -975,6 +977,7 @@ namespace ColladaConversion
         _vcount = moveFrom._vcount;
         _primitiveCount = moveFrom._primitiveCount;
         _location = moveFrom._location;
+        _materialBinding = moveFrom._materialBinding;
         return *this;
     }
 
@@ -1311,6 +1314,58 @@ namespace ColladaConversion
 
         ON_ATTRIBUTE
             // id & name possible -- but not interesting
+        PARSE_END
+    }
+
+    Image::Image() {}
+    Image::Image(Formatter& formatter)
+    {
+        ON_ELEMENT
+            if (Is(eleName, u("init_from"))) {
+                SkipAllAttributes(formatter);
+                formatter.TryCharacterData(_initFrom);
+            } else {
+                LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                formatter.SkipElement(); // many elements possible
+            }
+
+        ON_ATTRIBUTE
+            if (Is(name, u("id"))) _id = value;
+            else if (Is(name, u("name"))) _name = value;
+
+        PARSE_END
+    }
+
+    Image::Image(Image&& moveFrom) never_throws
+    : _extra(moveFrom._extra)
+    {
+        _id = moveFrom._id;
+        _name = moveFrom._name;
+        _initFrom = moveFrom._initFrom;
+    }
+
+    Image& Image::operator=(Image&& moveFrom) never_throws
+    {
+        _id = moveFrom._id;
+        _name = moveFrom._name;
+        _initFrom = moveFrom._initFrom;
+        _extra = moveFrom._extra;
+        return *this;
+    }
+
+    void DocumentScaffold::Parse_LibraryImages(Formatter& formatter)
+    {
+        ON_ELEMENT
+            if (Is(eleName, u("image"))) {
+                _images.push_back(Image(formatter));
+            } else {
+                LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                formatter.SkipElement();
+            }
+
+        ON_ATTRIBUTE
+            // id and name possible
+
         PARSE_END
     }
 
@@ -1959,6 +2014,14 @@ namespace ColladaConversion
         return nullptr;
     }
 
+    const Image* DocumentScaffold::FindImage(uint64 guid) const
+    {
+        for (const auto& i:_images)
+            if (i.GetId().GetHash() == guid)
+                return &i;
+        return nullptr;
+    }
+
     DocumentScaffold::DocumentScaffold() 
     {}
 
@@ -1986,6 +2049,10 @@ namespace ColladaConversion
         if (uri._end > uri._start && *uri._start == '#') {
             _fileHash = 0;
             _id = Hash64(uri._start+1, uri._end);
+        } else {
+            // some references don't have the preceeding "#" -- but still
+            // match the "id" field of other elements. 
+            _id = Hash64(uri._start, uri._end);
         }
     }
 

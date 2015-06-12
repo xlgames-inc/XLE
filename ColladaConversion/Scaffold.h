@@ -28,6 +28,7 @@ namespace ColladaConversion
     class Material;
     class VertexInputs;
     class DocumentScaffold;
+    class Image;
 
     class AssetDesc
     {
@@ -68,7 +69,8 @@ namespace ColladaConversion
         public:
             Section _sid;
             Section _type;
-            Section _image;
+            Section _instanceImage;     // (collada 1.5)
+            Section _source;            // (collada 1.4.1)
             SamplerDimensionality _dimensionality;
             SamplerAddress _addressS, _addressT, _addressQ;
             SamplerFilter _minFilter, _maxFilter, _mipFilter;
@@ -191,6 +193,25 @@ namespace ColladaConversion
 
     protected:
         void ParseInstanceEffect(Formatter& formatter);
+    };
+
+    class Image
+    {
+    public:
+        SubDoc _extra;
+
+        const DocScopeId& GetId() const { return _id; }
+        Section GetName() const         { return _name; }
+        Section GetInitFrom() const     { return _initFrom; }
+
+        Image();
+        Image(Formatter& formatter);
+        Image(Image&& moveFrom) never_throws;
+        Image& operator=(Image&& moveFrom) never_throws;
+    protected:
+        DocScopeId _id;
+        Section _name;
+        Section _initFrom;
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -496,6 +517,7 @@ namespace ColladaConversion
         virtual const MeshGeometry*     FindMeshGeometry(uint64 guid) const = 0;
         virtual const Material*         FindMaterial(uint64 guid) const = 0;
         virtual const VisualScene*      FindVisualScene(uint64 guid) const = 0;
+        virtual const Image*            FindImage(uint64 guid) const = 0;
         virtual ~IDocScopeIdResolver();
     };
 
@@ -529,6 +551,7 @@ namespace ColladaConversion
         void Parse_LibraryVisualScenes(Formatter& formatter);
         void Parse_LibraryControllers(Formatter& formatter);
         void Parse_LibraryMaterials(Formatter& formatter);
+        void Parse_LibraryImages(Formatter& formatter);
         void Parse_Scene(Formatter& formatter);
 
         DocumentScaffold();
@@ -542,6 +565,7 @@ namespace ColladaConversion
         const MeshGeometry*     FindMeshGeometry(uint64 guid) const;
         const Material*         FindMaterial(uint64 guid) const;
         const VisualScene*      FindVisualScene(uint64 guid) const;
+        const Image*            FindImage(uint64 guid) const;
 
         Section GetMainVisualScene() const { return _visualScene; }
 
@@ -553,6 +577,7 @@ namespace ColladaConversion
         std::vector<VisualScene> _visualScenes;
         std::vector<SkinController> _skinControllers;
         std::vector<Material> _materials;
+        std::vector<Image> _images;
 
         Section _visualScene;
         Section _physicsScene;

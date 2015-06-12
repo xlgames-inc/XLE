@@ -908,14 +908,14 @@ namespace RenderCore { namespace Assets
         _shaderName = _geoParamBox = _materialParamBox = 0;
         _textureSet = _constantBuffer = _renderStateSet = 0;
         _delayStep = DelayStep::OpaqueRender;
-        _materialBindingIndex = 0;
+        _materialBindingGuid = 0;
     }
 
     ModelRenderer::Pimpl::DrawCallResources::DrawCallResources(
         unsigned shaderName,
         unsigned geoParamBox, unsigned matParamBox,
         unsigned textureSet, unsigned constantBuffer,
-        unsigned renderStateSet, DelayStep delayStep, MaterialGuid materialBindingIndex)
+        unsigned renderStateSet, DelayStep delayStep, MaterialGuid materialBindingGuid)
     {
         _shaderName = shaderName;
         _geoParamBox = geoParamBox;
@@ -924,7 +924,7 @@ namespace RenderCore { namespace Assets
         _constantBuffer = constantBuffer;
         _renderStateSet = renderStateSet;
         _delayStep = delayStep;
-        _materialBindingIndex = materialBindingIndex;
+        _materialBindingGuid = materialBindingGuid;
     }
 
     void    ModelRenderer::Render(
@@ -1256,7 +1256,7 @@ namespace RenderCore { namespace Assets
                     localTransformBuffer.GetUnderlying(), 0, D3D11_MAP_WRITE_DISCARD, 0, &result);
                 assert(SUCCEEDED(hresult) && result.pData); (void)hresult;
                 WriteLocalTransform<WLTFlags::LocalToWorld|WLTFlags::MaterialGuid>(
-                    result.pData, context, drawCalls._transforms[d->_meshToWorld], drawCallRes._materialBindingIndex);
+                    result.pData, context, drawCalls._transforms[d->_meshToWorld], drawCallRes._materialBindingGuid);
                 context._context->GetUnderlying()->Unmap(localTransformBuffer.GetUnderlying(), 0);
             }
             
@@ -1384,7 +1384,7 @@ namespace RenderCore { namespace Assets
         std::vector<MaterialGuid> result;
         result.reserve(_pimpl->_drawCallRes.size());
         for (auto i=_pimpl->_drawCallRes.begin(); i!=_pimpl->_drawCallRes.end(); ++i) {
-            result.push_back(i->_materialBindingIndex);
+            result.push_back(i->_materialBindingGuid);
         }
         return std::move(result);
     }
@@ -1392,7 +1392,7 @@ namespace RenderCore { namespace Assets
     MaterialGuid ModelRenderer::GetMaterialBindingForDrawCall(unsigned drawCallIndex) const
     {
         if (drawCallIndex < _pimpl->_drawCallRes.size())
-            return _pimpl->_drawCallRes[drawCallIndex]._materialBindingIndex;
+            return _pimpl->_drawCallRes[drawCallIndex]._materialBindingGuid;
         return ~0ull;
     }
 

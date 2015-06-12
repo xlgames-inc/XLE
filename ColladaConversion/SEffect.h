@@ -16,7 +16,10 @@ namespace ColladaConversion
 
 namespace RenderCore { namespace ColladaConversion
 {
+    class ImportConfiguration;
+
     RenderCore::Assets::RawMaterial Convert(
         const ::ColladaConversion::Effect& effect, 
-        const ::ColladaConversion::URIResolveContext& pubEles);
+        const ::ColladaConversion::URIResolveContext& pubEles,
+        const ImportConfiguration& cfg);
 }}

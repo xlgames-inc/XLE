@@ -354,7 +354,7 @@ namespace RenderCore { namespace Assets
             unsigned _renderStateSet;
 
             DelayStep _delayStep;
-            MaterialGuid _materialBindingIndex;
+            MaterialGuid _materialBindingGuid;
 
             DrawCallResources();
             DrawCallResources(
