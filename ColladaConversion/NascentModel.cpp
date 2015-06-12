@@ -1110,7 +1110,11 @@ namespace RenderCore { namespace ColladaConversion
     {
     }
 
-    std::pair<Float3, Float3>       NascentModel::CalculateBoundingBox(const Float4x4* transformsBegin, const Float4x4* transformsEnd) const
+    std::pair<Float3, Float3> NascentModel::CalculateBoundingBox
+        (
+            const Float4x4* transformsBegin, 
+            const Float4x4* transformsEnd
+        ) const
     {
             //
             //      For all the parts of the model, calculate the bounding box.
@@ -1219,7 +1223,9 @@ namespace RenderCore { namespace ColladaConversion
         std::vector<uint8> largeResourcesBlock;
 
         auto i = _skeleton.GetTransformationMachine().GetCommandStream();
-        Assets::TraceTransformationMachine(ConsoleRig::GetWarningStream(), AsPointer(i.begin()), AsPointer(i.end()));
+        Assets::TraceTransformationMachine(
+            ConsoleRig::GetWarningStream(), 
+            AsPointer(i.begin()), AsPointer(i.end()));
         ConsoleRig::GetWarningStream().Flush();
 
         Serialization::Serialize(serializer, _visualScene);

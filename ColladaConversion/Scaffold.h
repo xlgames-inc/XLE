@@ -70,15 +70,10 @@ namespace ColladaConversion
             Section _type;
             Section _image;
             SamplerDimensionality _dimensionality;
-            SamplerAddress _addressS;
-            SamplerAddress _addressT;
-            SamplerAddress _addressQ;
-            SamplerFilter _minFilter;
-            SamplerFilter _maxFilter;
-            SamplerFilter _mipFilter;
+            SamplerAddress _addressS, _addressT, _addressQ;
+            SamplerFilter _minFilter, _maxFilter, _mipFilter;
             Float4 _borderColor;
-            unsigned _minMipLevel;
-            unsigned _maxMipLevel;
+            unsigned _minMipLevel, _maxMipLevel;
             float _mipMapBias;
             unsigned _maxAnisotrophy;
             SubDoc _extra;
@@ -99,6 +94,14 @@ namespace ColladaConversion
             SurfaceParameter(Formatter& formatter, Section sid, Section eleName);
         };
 
+        unsigned GetBasicParameterCount() const     { return (unsigned)_parameters.size(); }
+        unsigned GetSamplerParameterCount() const   { return (unsigned)_samplerParameters.size(); }
+        unsigned GetSurfaceParameterCount() const   { return (unsigned)_surfaceParameters.size(); }
+
+        const BasicParameter& GetBasicParameter(unsigned index) const       { return _parameters[index]; }
+        const SamplerParameter& GetSamplerParameter(unsigned index) const   { return _samplerParameters[index]; }
+        const SurfaceParameter& GetSurfaceParameter(unsigned index) const   { return _surfaceParameters[index]; }
+
         void ParseParam(Formatter& formatter);
         
         ParameterSet();
@@ -110,6 +113,67 @@ namespace ColladaConversion
         std::vector<BasicParameter> _parameters;
         std::vector<SamplerParameter> _samplerParameters;
         std::vector<SurfaceParameter> _surfaceParameters;
+    };
+
+    class TechniqueValue
+    {
+    public:
+        enum class Type { Color, Texture, Float, Param, None };
+        Type _type;
+        Section _reference; // texture or parameter reference
+        Section _texCoord;
+        Float4 _value;
+
+        TechniqueValue(Formatter& formatter);
+    };
+
+    class Effect
+    {
+    public:
+        Section GetName() const { return _name; }
+        Section GetId() const { return _id; }
+        const ParameterSet& GetParams() const { return _params; }
+
+        class Profile
+        {
+        public:
+            ParameterSet _params;
+            String _profileType;
+            String _shaderName;        // (phong, blinn, etc)
+            std::vector<std::pair<Section, TechniqueValue>> _values;
+
+            SubDoc _extra;
+            SubDoc _techniqueExtra;
+            Section _techniqueSid;
+
+            const ParameterSet& GetParams() const { return _params; }
+
+            Profile(Formatter& formatter, String profileType);
+            Profile(Profile&& moveFrom) never_throws;
+            Profile& operator=(Profile&& moveFrom) never_throws;
+
+        protected:
+            void ParseTechnique(Formatter& formatter);
+            void ParseShaderType(Formatter& formatter);
+
+        };
+
+        unsigned GetProfileCount() const { return (unsigned)_profiles.size(); }
+        const Profile& GetProfile(unsigned index) const { return _profiles[index]; }
+        const Profile* FindProfile(const utf8 name[]) const;
+
+        SubDoc _extra;
+
+        Effect(Formatter& formatter);
+        Effect(Effect&& moveFrom) never_throws;
+        Effect& operator=(Effect&& moveFrom) never_throws;
+
+    protected:
+        Section _name;
+        Section _id;
+        ParameterSet _params;
+
+        std::vector<Profile> _profiles;
     };
 
     class Material

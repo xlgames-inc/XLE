@@ -24,15 +24,15 @@ namespace Utility
         using Section = typename Formatter::InteriorSection;
 
         template<typename Type>
-            std::pair<bool, Type> Attribute(const value_type name[]);
+            std::pair<bool, Type> Attribute(const value_type name[]) const;
 
         template<typename Type>
-            Type Attribute(const value_type name[], const Type& def);
+            Type Attribute(const value_type name[], const Type& def) const;
 
         template<typename Type>
-            Type operator()(const value_type name[], const Type& def) { return Attribute(name, def); }
+            Type operator()(const value_type name[], const Type& def) const { return Attribute(name, def); }
 
-        DocElementHelper<Formatter> Element(const value_type name[]);
+        DocElementHelper<Formatter> Element(const value_type name[]) const;
 
         Document();
         Document(Formatter& formatter);
@@ -62,7 +62,7 @@ namespace Utility
 
         unsigned ParseElement(Formatter& formatter);
 
-        unsigned FindAttribute(const value_type* nameStart, const value_type* nameEnd);
+        unsigned FindAttribute(const value_type* nameStart, const value_type* nameEnd) const;
 
         friend class DocElementHelper<Formatter>;
     };
@@ -74,34 +74,33 @@ namespace Utility
         using value_type = typename Formatter::value_type;
 
         template<typename Type>
-            std::pair<bool, Type> Attribute(const value_type name[]);
+            std::pair<bool, Type> Attribute(const value_type name[]) const;
 
         template<typename Type>
-            Type Attribute(const value_type name[], const Type& def);
+            Type Attribute(const value_type name[], const Type& def) const;
 
-        DocElementHelper Element(const value_type name[]);
-        DocElementHelper FirstChild();
-        DocElementHelper NextSibling();
+        DocElementHelper Element(const value_type name[]) const;
+        DocElementHelper FirstChild() const;
+        DocElementHelper NextSibling() const;
 
         std::basic_string<value_type> Name() const;
-        std::basic_string<value_type> AttributeOrEmpty(const value_type name[]);
+        std::basic_string<value_type> AttributeOrEmpty(const value_type name[]) const;
 
         template<typename Type>
-            Type operator()(const value_type name[], const Type& def) { return Attribute(name, def); }
+            Type operator()(const value_type name[], const Type& def) const { return Attribute(name, def); }
 
-        template<typename Type>
-            std::basic_string<value_type> operator[](const value_type name[]) { return Attribute(name); }
+        typename Formatter::InteriorSection RawAttribute(const value_type name[]) const;
 
         operator bool() const { return _index != ~0u; }
         bool operator!() const { return _index == ~0u; }
     protected:
-        Document<Formatter>* _doc;
+        const Document<Formatter>* _doc;
         unsigned _index;
 
-        DocElementHelper(unsigned elementIndex, Document<Formatter>& doc);
+        DocElementHelper(unsigned elementIndex, const Document<Formatter>& doc);
         DocElementHelper();
 
-        unsigned FindAttribute(const value_type* nameStart, const value_type* nameEnd);
+        unsigned FindAttribute(const value_type* nameStart, const value_type* nameEnd) const;
 
         friend class Document<Formatter>;
     };
@@ -114,7 +113,7 @@ namespace Utility
 
     template<typename Formatter>
         template<typename Type>
-            std::pair<bool, Type> Document<Formatter>::Attribute(const value_type name[])
+            std::pair<bool, Type> Document<Formatter>::Attribute(const value_type name[]) const
     {
         auto a = FindAttribute(name, &name[XlStringLen(name)]);
         if (a == ~0u) return std::make_pair(false, Default<Type>());
@@ -124,7 +123,7 @@ namespace Utility
 
     template<typename Formatter>
         template<typename Type>
-            Type Document<Formatter>::Attribute(const value_type name[], const Type& def)
+            Type Document<Formatter>::Attribute(const value_type name[], const Type& def) const
     {
         auto temp = Attribute<Type>(name);
         if (temp.first) return std::move(temp.second);
@@ -135,7 +134,7 @@ namespace Utility
 
     template<typename Formatter>
         template<typename Type>
-            std::pair<bool, Type> DocElementHelper<Formatter>::Attribute(const value_type name[])
+            std::pair<bool, Type> DocElementHelper<Formatter>::Attribute(const value_type name[]) const
     {
         if (_index == ~0u) std::make_pair(false, Default<Type>());
         auto a = FindAttribute(name, &name[XlStringLen(name)]);
@@ -146,7 +145,7 @@ namespace Utility
 
     template<typename Formatter>
         template<typename Type>
-            Type DocElementHelper<Formatter>::Attribute(const value_type name[], const Type& def)
+            Type DocElementHelper<Formatter>::Attribute(const value_type name[], const Type& def) const
     {
         auto temp = Attribute<Type>(name);
         if (temp.first) return std::move(temp.second);

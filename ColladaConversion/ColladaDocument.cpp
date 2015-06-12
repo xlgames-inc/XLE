@@ -414,55 +414,6 @@ namespace ColladaConversion
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class TechniqueValue
-    {
-    public:
-        enum class Type { Color, Texture, Float, Param, None };
-        Type _type;
-        Section _reference; // texture or parameter reference
-        Section _texCoord;
-        Float4 _value;
-
-        TechniqueValue(Formatter& formatter);
-    };
-
-    class Effect
-    {
-    public:
-        Section _name;
-        Section _id;
-        ParameterSet _params;
-
-        class Profile
-        {
-        public:
-            ParameterSet _params;
-            String _profileType;
-            String _shaderName;        // (phong, blinn, etc)
-            std::vector<std::pair<Section, TechniqueValue>> _values;
-
-            SubDoc _extra;
-            SubDoc _techniqueExtra;
-            Section _techniqueSid;
-
-            Profile(Formatter& formatter, String profileType);
-            Profile(Profile&& moveFrom) never_throws;
-            Profile& operator=(Profile&& moveFrom) never_throws;
-
-        protected:
-            void ParseTechnique(Formatter& formatter);
-            void ParseShaderType(Formatter& formatter);
-
-        };
-        std::vector<Profile> _profiles;
-
-        SubDoc _extra;
-
-        Effect(Formatter& formatter);
-        Effect(Effect&& moveFrom) never_throws;
-        Effect& operator=(Effect&& moveFrom) never_throws;
-    };
-
     Effect::Profile::Profile(Formatter& formatter, String profileType)
     : _profileType(profileType)
     {
@@ -615,6 +566,14 @@ namespace ColladaConversion
 
         ON_ATTRIBUTE
         PARSE_END
+    }
+
+    const Effect::Profile* Effect::FindProfile(const utf8 name[]) const
+    {
+        for (const auto& p:_profiles)
+            if (!XlCompareString(p._profileType.c_str(), name))
+                return &p;
+        return nullptr;
     }
 
     Effect::Effect(Formatter& formatter)
@@ -2096,6 +2055,9 @@ namespace ColladaConversion
 #include "../Utility/Streams/FileUtils.h"
 #include "NascentModel.h"
 
+#include "SEffect.h"
+#include "../RenderCore/Assets/Material.h"
+
 namespace ColladaConversion 
 { 
     RenderCore::ColladaConversion::NascentRawGeometry 
@@ -2124,9 +2086,9 @@ namespace RenderCore { namespace ColladaConversion
 void TestParser()
 {
     size_t size;
-    auto block = LoadFileAsMemoryBlock("game/testmodels/nyra/Nyra_pose.dae", &size);
+    // auto block = LoadFileAsMemoryBlock("game/testmodels/nyra/Nyra_pose.dae", &size);
     // auto block = LoadFileAsMemoryBlock("Game/chr/nu_f/skin/dragon003.dae", &size);
-    // auto block = LoadFileAsMemoryBlock("Game/Model/Galleon/Galleon.dae", &size);
+    auto block = LoadFileAsMemoryBlock("Game/Model/Galleon/Galleon.dae", &size);
     XmlInputStreamFormatter<utf8> formatter(MemoryMappedInputStream(block.get(), PtrAdd(block.get(), size)));
     auto doc = std::make_shared<ColladaConversion::DocumentScaffold>();
     doc->Parse(formatter);
@@ -2152,6 +2114,10 @@ void TestParser()
             cmdStream, doc->_visualScenes[0], c,
             ColladaConversion::URIResolveContext(doc),
             objects, jointRefs);
+
+    auto effect = RenderCore::ColladaConversion::Convert(
+        doc->_effects[1],
+        ColladaConversion::URIResolveContext(doc));
 
     Float4 t2;
     Float4x4 temp;

@@ -78,7 +78,7 @@ namespace Utility
     }
 
     template <typename Formatter>
-        auto Document<Formatter>::Element(const value_type name[]) -> DocElementHelper<Formatter>
+        auto Document<Formatter>::Element(const value_type name[]) const -> DocElementHelper<Formatter>
     {
             // look for top-level element with a name that matches the given name
             // exactly.
@@ -98,7 +98,7 @@ namespace Utility
     }
 
     template<typename Formatter>
-        unsigned Document<Formatter>::FindAttribute(const value_type* nameStart, const value_type* nameEnd)
+        unsigned Document<Formatter>::FindAttribute(const value_type* nameStart, const value_type* nameEnd) const
     {
         if (_attributes.empty()) return ~0u;
 
@@ -189,7 +189,7 @@ namespace Utility
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     template<typename Formatter>
-        auto DocElementHelper<Formatter>::Element(const value_type name[]) -> DocElementHelper<Formatter>
+        auto DocElementHelper<Formatter>::Element(const value_type name[]) const -> DocElementHelper<Formatter>
     {
         if (_index == ~0u) return DocElementHelper<Formatter>();
         auto& ele = _doc->_elements[_index];
@@ -208,7 +208,7 @@ namespace Utility
     }
 
     template<typename Formatter>
-        auto DocElementHelper<Formatter>::FirstChild() -> DocElementHelper<Formatter>
+        auto DocElementHelper<Formatter>::FirstChild() const -> DocElementHelper<Formatter>
     {
         if (_index == ~0u) return DocElementHelper<Formatter>();
         auto& ele = _doc->_elements[_index];
@@ -216,7 +216,7 @@ namespace Utility
     }
 
     template<typename Formatter>
-        auto DocElementHelper<Formatter>::NextSibling() -> DocElementHelper<Formatter>
+        auto DocElementHelper<Formatter>::NextSibling() const -> DocElementHelper<Formatter>
     {
         if (_index == ~0u) return DocElementHelper<Formatter>();
         auto& ele = _doc->_elements[_index];
@@ -232,7 +232,7 @@ namespace Utility
     }
 
     template<typename Formatter>
-        auto DocElementHelper<Formatter>::AttributeOrEmpty(const value_type name[]) -> std::basic_string<value_type>
+        auto DocElementHelper<Formatter>::AttributeOrEmpty(const value_type name[]) const -> std::basic_string<value_type>
     {
         if (_index == ~0u) return std::basic_string<value_type>();
         auto a = FindAttribute(name, &name[XlStringLen(name)]);
@@ -242,7 +242,7 @@ namespace Utility
     }
 
     template<typename Formatter>
-        unsigned DocElementHelper<Formatter>::FindAttribute(const value_type* nameStart, const value_type* nameEnd)
+        unsigned DocElementHelper<Formatter>::FindAttribute(const value_type* nameStart, const value_type* nameEnd) const
     {
         assert(_index != ~0u);
         auto& ele = _doc->_elements[_index];
@@ -261,7 +261,19 @@ namespace Utility
     }
 
     template<typename Formatter>
-        DocElementHelper<Formatter>::DocElementHelper(unsigned elementIndex, Document<Formatter>& doc)
+        typename Formatter::InteriorSection DocElementHelper<Formatter>::RawAttribute(const value_type name[]) const
+    {
+        if (_index == ~0u) return Formatter::InteriorSection();
+
+        auto a = FindAttribute(name, &name[XlStringLen(name)]);
+        if (a == ~0u) return Formatter::InteriorSection();
+
+        const auto& attrib = _doc->_attributes[a];
+        return attrib._value;
+    }
+
+    template<typename Formatter>
+        DocElementHelper<Formatter>::DocElementHelper(unsigned elementIndex, const Document<Formatter>& doc)
     {
         _doc = &doc;
         _index = elementIndex;
