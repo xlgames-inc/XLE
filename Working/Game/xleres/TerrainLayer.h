@@ -24,8 +24,8 @@ struct TerrainLayerVSOutput /////////////////////////////////////////
     #endif
 	
 	#if OUTPUT_TANGENT_FRAME==1
-		float3 tangent : TANGENT;
-		float3 bitangent : BITANGENT;
+		float3 tangent : TEXTANGENT;
+		float3 bitangent : TEXBITANGENT;
 	#endif
 
     #if (OUTPUT_FOG_COLOR==1)

@@ -46,7 +46,7 @@ struct VSInput //////////////////////////////////////////////////////
     #endif
 
     #if GEO_HAS_TANGENT_FRAME==1
-        float4 tangent : TANGENT;
+        float4 tangent : TEXTANGENT;
         #if TANGENT_PROCESS_IN_PS==1
             #if !defined(OUTPUT_LOCAL_TANGENT_FRAME)
                 #define OUTPUT_LOCAL_TANGENT_FRAME 1
@@ -59,7 +59,7 @@ struct VSInput //////////////////////////////////////////////////////
     #endif
 
     #if GEO_HAS_BITANGENT==1
-        float3 bitangent : BITANGENT;
+        float3 bitangent : TEXBITANGENT;
     #endif
 
     #if GEO_HAS_NORMAL==1
@@ -144,8 +144,8 @@ struct VSOutput /////////////////////////////////////////////////////
     #endif
 
     #if OUTPUT_TANGENT_FRAME==1
-        float3 tangent : TANGENT;
-        float3 bitangent : BITANGENT;
+        float3 tangent : TEXTANGENT;
+        float3 bitangent : TEXBITANGENT;
     #endif
 
     #if OUTPUT_LOCAL_TANGENT_FRAME==1
