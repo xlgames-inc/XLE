@@ -214,7 +214,26 @@ namespace RenderCore { namespace ColladaConversion
         return std::move(result);
     }
 
-    NascentChunkArray2 SerializeSkeleton2(const NascentModel2& model)   { return NascentChunkArray2(); }
+    NascentChunkArray2 SerializeSkeleton2(const NascentModel2& model)
+    {
+        Serialization::NascentBlockSerializer serializer;
+
+        Serialization::Serialize(serializer, model._skeleton);
+        ConsoleRig::GetWarningStream().Flush();
+
+        auto block = serializer.AsMemoryBlock();
+        size_t size = Serialization::Block_GetSize(block.get());
+
+        Serialization::ChunkFile::ChunkHeader scaffoldChunk(
+            RenderCore::Assets::ChunkType_Skeleton, 0, model._name.c_str(), unsigned(size));
+
+        NascentChunkArray2 result(
+            std::unique_ptr<NascentChunk2[], Internal::CrossDLLDeletor2>(
+                new NascentChunk2[1], Internal::CrossDLLDeletor2(&DestroyChunkArray)),
+            1);
+        result.first[0] = NascentChunk2(scaffoldChunk, std::vector<uint8>(block.get(), PtrAdd(block.get(), size)));
+        return std::move(result);
+    }
 
     NascentChunkArray2 SerializeMaterials2(const NascentModel2& model)  
     { 
@@ -266,6 +285,11 @@ namespace RenderCore { namespace ColladaConversion
             scaffoldChunk, 
             std::vector<uint8>(strm.GetBuffer().Begin(), strm.GetBuffer().End()));
         return std::move(result);
+    }
+
+    void         MergeAnimationData(NascentModel2& dest, const NascentModel2& source, const char animationName[])
+    {
+        // dest._animationSet.MergeAnimation(source._animationSet, animationName, source._objects, dest._objects);
     }
 }}
 

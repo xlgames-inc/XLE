@@ -66,6 +66,7 @@ namespace RenderCore { namespace ColladaConversion
     CONVERSION_API NascentChunkArray2 SerializeSkin2(const NascentModel2& model);
     CONVERSION_API NascentChunkArray2 SerializeSkeleton2(const NascentModel2& model);
     CONVERSION_API NascentChunkArray2 SerializeMaterials2(const NascentModel2& model);
+    CONVERSION_API void MergeAnimationData(NascentModel2& dest, const NascentModel2& source, const char animationName[]);
 
     typedef std::unique_ptr<NascentModel2, Internal::CrossDLLDeletor2> CreateModel2Function(const ::Assets::ResChar identifier[]);
     typedef NascentChunkArray2 Model2SerializeFunction(const NascentModel2&);

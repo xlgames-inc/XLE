@@ -26,6 +26,13 @@
     <ClCompile Include="..\SEffect.cpp" />
     <ClCompile Include="..\NascentModel2.cpp" />
     <ClCompile Include="..\ConversionUtil.cpp" />
+    <ClCompile Include="..\OpenCollada\OCSkinController.cpp">
+      <Filter>OpenCollada</Filter>
+    </ClCompile>
+    <ClCompile Include="..\OpenCollada\OCMisc.cpp">
+      <Filter>OpenCollada</Filter>
+    </ClCompile>
+    <ClCompile Include="..\SkinController.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\ColladaConversion.h" />

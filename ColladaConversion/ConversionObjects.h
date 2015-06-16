@@ -201,5 +201,14 @@ namespace RenderCore { namespace ColladaConversion
 
     RenderCore::Assets::AnimationParameterId BuildAnimParameterId(const COLLADAFW::UniqueId& input);
 
+    class TableOfObjects;
+
+    NascentBoundSkinnedGeometry InstantiateSkinnedController(
+        const NascentRawGeometry& sourceGeo,
+        const UnboundSkinController& controller,
+        const TableOfObjects& accessableObjects, 
+        TableOfObjects& destinationForNewObjects,
+        DynamicArray<uint16>&& jointMatrices,
+        const char nodeName[]);
 }}
 
