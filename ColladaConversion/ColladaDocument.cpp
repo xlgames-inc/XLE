@@ -1904,6 +1904,102 @@ namespace ColladaConversion
         return (unsigned)_controllerInstances.size();
     }
 
+    std::pair<Sampler::Behaviour, const utf8*> s_SamplerBehaviourNames[] = 
+    {
+        std::make_pair(Sampler::Behaviour::Unspecified, u("UNDEFINED")),
+        std::make_pair(Sampler::Behaviour::Constant, u("CONSTANT")),
+        std::make_pair(Sampler::Behaviour::Gradient, u("GRADIENT")),
+        std::make_pair(Sampler::Behaviour::Cycle, u("CYCLE")),
+        std::make_pair(Sampler::Behaviour::Oscillate, u("OSCILLATE")),
+        std::make_pair(Sampler::Behaviour::CycleRelative, u("CYCLE_RELATIVE"))
+    };
+
+    Sampler::Sampler(Formatter& formatter)
+    {
+        ON_ELEMENT
+            if (Is(eleName, u("input"))) {
+                _inputs.Add(DataFlow::InputUnshared(formatter));
+            } else {
+                LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                formatter.SkipElement();
+            }
+
+        ON_ATTRIBUTE
+            if (Is(name, u("id"))) _id = value;
+            else if (Is(name, u("pre_behaviour"))) _prebehaviour = ParseEnum(value, s_SamplerBehaviourNames);
+            else if (Is(name, u("post_behaviour"))) _postbehaviour = ParseEnum(value, s_SamplerBehaviourNames);
+        PARSE_END
+    }
+
+    Sampler::Sampler() 
+    {
+        _prebehaviour = _postbehaviour = Behaviour::Unspecified;
+    }
+
+    Sampler::Sampler(Sampler&& moveFrom) never_throws
+    : _inputs(std::move(moveFrom._inputs))
+    {
+        _id = moveFrom._id;
+        _prebehaviour = moveFrom._prebehaviour;
+        _postbehaviour = moveFrom._postbehaviour;
+    }
+
+    Sampler& Sampler::operator=(Sampler&& moveFrom) never_throws
+    {
+        _id = moveFrom._id;
+        _prebehaviour = moveFrom._prebehaviour;
+        _postbehaviour = moveFrom._postbehaviour;
+        _inputs = std::move(moveFrom._inputs);
+        return *this;
+    }
+
+    Animation::Animation(Formatter& formatter, DocumentScaffold& pub)
+    {
+        ON_ELEMENT
+            if (Is(eleName, u("animation"))) {
+                _subAnimations.emplace_back(Animation(formatter, pub));
+            } else if (Is(eleName, u("source"))) {
+                pub.Add(DataFlow::Source(formatter));
+            } else if (Is(eleName, u("sampler"))) {
+                _samplers.emplace_back(Sampler(formatter));
+            } else if (Is(eleName, u("channel"))) {
+                _channels.emplace_back(Channel(formatter));
+            } else if (Is(eleName, u("extra"))) {
+                _extra = SubDoc(formatter);
+            } else {
+                // asset also possible
+                LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                formatter.SkipElement();
+            }
+
+        ON_ATTRIBUTE
+            if (Is(name, u("id"))) _id = value;
+            else if (Is(name, u("name"))) _name = value;
+        PARSE_END
+    }
+
+    Animation::Animation() {}
+    Animation::Animation(Animation&& moveFrom) never_throws
+    : _channels(std::move(moveFrom._channels))
+    , _samplers(std::move(moveFrom._samplers))
+    , _subAnimations(std::move(moveFrom._subAnimations))
+    , _id(moveFrom._id)
+    , _name(moveFrom._name)
+    , _extra(std::move(moveFrom._extra))
+    {
+    }
+
+    Animation& Animation::operator=(Animation&& moveFrom) never_throws
+    {
+        _channels = std::move(moveFrom._channels);
+        _samplers = std::move(moveFrom._samplers);
+        _subAnimations = std::move(moveFrom._subAnimations);
+        _id = moveFrom._id;
+        _name = moveFrom._name;
+        _extra = std::move(moveFrom._extra);
+        return *this;
+    }
+
     void DocumentScaffold::Parse_LibraryVisualScenes(Formatter& formatter)
     {
         ON_ELEMENT

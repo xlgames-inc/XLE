@@ -302,6 +302,8 @@ namespace ColladaConversion
 
         const DocScopeId& GetId() const { return _id; }
 
+        void Add(const DataFlow::InputUnshared& newItem) { _vertexInputs.push_back(newItem); }
+
         InputsCollection(Formatter& formatter);
         InputsCollection();
         InputsCollection(InputsCollection&& moveFrom) never_throws;
@@ -525,6 +527,69 @@ namespace ColladaConversion
 
         Node(const VisualScene& scene, VisualScene::IndexIntoNodes index);
         friend class VisualScene;
+    };
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+        //      A N I M A T I O N   S E C T I O N
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class Channel
+    {
+    public:
+
+        Channel(Formatter& formatter);
+        Channel();
+        Channel(Channel&& moveFrom) never_throws;
+        Channel& operator=(Channel&& moveFrom) never_throws;
+    };
+
+    class Sampler
+    {
+    public:
+        enum class Behaviour
+        {
+            Unspecified,
+            Constant,
+            Gradient,
+            Cycle,
+            Oscillate,
+            CycleRelative
+        };
+
+        DocScopeId GetId() const { return _id; }
+        Behaviour GetPrebehaviour() const { return _prebehaviour; }
+        Behaviour GetPostbehaviour() const { return _postbehaviour; }
+        const InputsCollection& GetInputsCollection() const { return _inputs; }
+
+        Sampler(Formatter& formatter);
+        Sampler();
+        Sampler(Sampler&& moveFrom) never_throws;
+        Sampler& operator=(Sampler&& moveFrom) never_throws;
+
+    protected:
+        DocScopeId _id;
+        Behaviour _prebehaviour;
+        Behaviour _postbehaviour;
+
+        InputsCollection _inputs;
+    };
+
+    class Animation
+    {
+    public:
+
+        Animation(Formatter& formatter, DocumentScaffold& pub);
+        Animation();
+        Animation(Animation&& moveFrom) never_throws;
+        Animation& operator=(Animation&& moveFrom) never_throws;
+    protected:
+        std::vector<Channel> _channels;
+        std::vector<Sampler> _samplers;
+        std::vector<Animation> _subAnimations;
+
+        DocScopeId _id;
+        Section _name;
+        SubDoc _extra;
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
