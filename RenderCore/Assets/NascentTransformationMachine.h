@@ -28,6 +28,7 @@ namespace RenderCore { namespace Assets
         unsigned        PushTransformation(const Float4x4& localToParent, const char nodeName[]);
         void            Pop                     (   unsigned popCount);
         unsigned        GetOutputMatrixMarker   ();
+        void            MakeOutputMatrixMarker  (unsigned marker);
         unsigned        GetOutputMatrixCount    () const        { return _outputMatrixCount; }
         bool            IsEmpty                 () const        { return _commandStream.empty(); }
 

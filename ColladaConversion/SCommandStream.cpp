@@ -53,8 +53,11 @@ namespace RenderCore { namespace ColladaConversion
             //              compiling a skeleton...?
         // isReferenced = true;
         if (isReferenced) {
-            unsigned thisOutputMatrix = skeleton.GetTransformationMachine().GetOutputMatrixMarker();
-            skeletonReferences.SetOutputMatrix(nodeId, thisOutputMatrix);
+            // unsigned thisOutputMatrix = skeleton.GetTransformationMachine().GetOutputMatrixMarker();
+            // skeletonReferences.SetOutputMatrix(nodeId, thisOutputMatrix);
+
+            auto thisOutputMatrix = skeletonReferences.GetOutputMatrixIndex(nodeId);
+            skeleton.GetTransformationMachine().MakeOutputMatrixMarker(thisOutputMatrix);
 
                 //
                 //      (We can't instantiate the skin controllers yet, because we can't be sure
@@ -161,7 +164,7 @@ namespace RenderCore { namespace ColladaConversion
         const ::ColladaConversion::Node& attachedNode,
         const URIResolveContext& resolveContext,
         TableOfObjects& accessableObjects,
-        const NodeReferences& nodeRefs)
+        NodeReferences& nodeRefs)
     {
         GuidReference refGuid(instGeo._reference);
         // auto* geo = FindOrCreateGeometry(refGuid, resolveContext, accessableObjects);
@@ -177,18 +180,101 @@ namespace RenderCore { namespace ColladaConversion
         stream._geometryInstances.push_back(
             NascentModelCommandStream::GeometryInstance(
                 accessableObjects.GetIndex<NascentRawGeometry>(ObjectGuid(refGuid._id, refGuid._fileHash)), 
-                (unsigned)nodeRefs.GetOutputMatrixIndex(attachedNode.GetId().GetHash()), 
+                (unsigned)nodeRefs.GetOutputMatrixIndex(AsObjectGuid(attachedNode)), 
                 std::move(materials), 0));
+    }
+
+    DynamicArray<uint16> BuildJointArray(
+        const GuidReference skeletonRef,
+        const UnboundSkinController& unboundController,
+        const URIResolveContext& resolveContext,
+        NodeReferences& nodeRefs)
+    {
+            // Build the joints array for the given controller instantiation
+            // the <instance_controller> references a skeleton, which contains
+            // nodes that map on to the joints array in the <controller>
+            // We want to find the node guids for each of those objects, can then
+            // build transformation machine output indices for each of them.
+        auto skeleton = FindElement(skeletonRef, resolveContext, &IDocScopeIdResolver::FindNode);
+        if (!skeleton) return DynamicArray<uint16>();
+
+        const auto& invBindMats = unboundController._inverseBindMatrices;
+
+            // data is stored in xml list format, with whitespace deliminated elements
+            // there should be an <accessor> that describes how to read this list
+            // But we're going to assume it just contains a single entry like:
+            //      <param name="JOINT" type="name"/>
+        const auto& jointNames = unboundController._jointNames;
+        auto count = unboundController._jointNames.size();
+        DynamicArray<uint16> result(std::make_unique<uint16[]>(count), count);
+        for (unsigned c=0; c<count; ++c) {
+            Node node = skeleton.FindBySid(AsPointer(jointNames[c].cbegin()), AsPointer(jointNames[c].cend()));
+            if (node) {
+                result[c] = (uint16)nodeRefs.GetOutputMatrixIndex(AsObjectGuid(node));
+            } else {
+                result[c] = (uint16)~uint16(0);
+            }
+
+            if (c < invBindMats.size())
+                nodeRefs.AttachInverseBindMatrix(
+                    AsObjectGuid(node), invBindMats[c]);
+        }
+
+        return std::move(result);
+    }
+
+    void InstantiateController(
+        NascentModelCommandStream& stream,
+        const ::ColladaConversion::InstanceController& instGeo,
+        const ::ColladaConversion::Node& attachedNode,
+        const URIResolveContext& resolveContext,
+        TableOfObjects& accessableObjects,
+        NodeReferences& nodeRefs)
+    {
+        GuidReference controllerRef(instGeo._reference);
+        ObjectGuid controllerId(controllerRef._id, controllerRef._fileHash);
+        auto* controller = accessableObjects.Get<UnboundSkinController>(controllerId);
+        if (!controller)
+            Throw(::Assets::Exceptions::FormatError("Could not find controller object to instantiate (%s)",
+                AsString(instGeo._reference).c_str()));
+
+        auto* source = accessableObjects.Get<NascentRawGeometry>(controller->_sourceRef);
+        if (!source)
+            Throw(::Assets::Exceptions::FormatError("Could not find geometry object to instantiate (%s)",
+                AsString(instGeo._reference).c_str()));
+
+        auto jointMatrices = BuildJointArray(instGeo.GetSkeleton(), *controller, resolveContext, nodeRefs);
+
+        auto materials = BuildMaterialTable(
+            AsPointer(instGeo._matBindings.cbegin()), AsPointer(instGeo._matBindings.cend()),
+            source->_matBindingSymbols, resolveContext);
+
+        auto result = InstantiateSkinnedController(
+            *source, *controller, accessableObjects, accessableObjects,
+            std::move(jointMatrices),
+            AsString(instGeo._reference).c_str());
+
+        auto desc = accessableObjects.GetDesc<UnboundSkinController>(controllerId);
+        accessableObjects.Add(
+            controllerId,
+            std::get<0>(desc), std::get<1>(desc),
+            std::move(result));
+
+        NascentModelCommandStream::SkinControllerInstance newInstance(
+            accessableObjects.GetIndex<NascentBoundSkinnedGeometry>(controllerId), 
+            (unsigned)nodeRefs.GetOutputMatrixIndex(AsObjectGuid(attachedNode)), 
+            std::move(materials), 0);
+        stream._skinControllerInstances.push_back(newInstance);
     }
 
     void FindImportantNodes(
         NodeReferences& skeletonReferences,
         const VisualScene& scene)
     {
-        for (unsigned c=0; c<scene.GetInstanceGeometryCount(); ++c)
-            skeletonReferences.MarkImportant(AsObjectGuid(scene.GetInstanceGeometry_Attach(c)));
-        for (unsigned c=0; c<scene.GetInstanceControllerCount(); ++c)
-            skeletonReferences.MarkImportant(AsObjectGuid(scene.GetInstanceController_Attach(c)));
+        // for (unsigned c=0; c<scene.GetInstanceGeometryCount(); ++c)
+        //     skeletonReferences.MarkImportant(AsObjectGuid(scene.GetInstanceGeometry_Attach(c)));
+        // for (unsigned c=0; c<scene.GetInstanceControllerCount(); ++c)
+        //     skeletonReferences.MarkImportant(AsObjectGuid(scene.GetInstanceController_Attach(c)));
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

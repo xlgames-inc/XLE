@@ -94,17 +94,25 @@ namespace RenderCore { namespace ColladaConversion
             } CATCH_END
         }
 
+        const auto& controllers = result->_doc->_skinControllers;
+        for (auto i=controllers.cbegin(); i!=controllers.cend(); ++i) {
+            TRY
+            {
+                auto obj = Convert(*i, resolveContext);
+                result->_objects.Add(
+                    i->GetId().GetHash(),
+                    AsString(i->GetName()), AsString(i->GetId().GetOriginal()),
+                    std::move(obj));
+            } CATCH (...) {
+            } CATCH_END
+        }
+
         const auto* scene = result->_doc->FindVisualScene(
             GuidReference(result->_doc->_visualScene)._id);
         if (!scene)
             Throw(::Assets::Exceptions::FormatError("No visual scene found"));
 
-        FindImportantNodes(result->_jointRefs, *scene);
-
-        RenderCore::ColladaConversion::BuildSkeleton(
-            result->_skeleton, 
-            scene->GetRootNode(), 
-            result->_jointRefs);
+        // FindImportantNodes(result->_jointRefs, *scene);
 
         for (unsigned c=0; c<scene->GetInstanceGeometryCount(); ++c)
             RenderCore::ColladaConversion::InstantiateGeometry(
@@ -113,6 +121,19 @@ namespace RenderCore { namespace ColladaConversion
                 scene->GetInstanceGeometry_Attach(c),
                 resolveContext,
                 result->_objects, result->_jointRefs);
+
+        for (unsigned c=0; c<scene->GetInstanceControllerCount(); ++c)
+            RenderCore::ColladaConversion::InstantiateController(
+                result->_visualScene,
+                scene->GetInstanceController(c),
+                scene->GetInstanceController_Attach(c),
+                resolveContext,
+                result->_objects, result->_jointRefs);
+
+        RenderCore::ColladaConversion::BuildSkeleton(
+            result->_skeleton, 
+            scene->GetRootNode(), 
+            result->_jointRefs);
         
         return std::move(result);
     }

@@ -193,6 +193,14 @@ namespace RenderCore { namespace Assets
         return result;
     }
 
+    void            NascentTransformationMachine::MakeOutputMatrixMarker(unsigned marker)
+    {
+        _commandStream.push_back(Assets::TransformStackCommand::WriteOutputMatrix);
+        _commandStream.push_back(marker);
+        _lastReturnedOutputMatrixMarker = marker;
+        _outputMatrixCount = std::max(_outputMatrixCount, marker+1);
+    }
+
     auto NascentTransformationMachine::GetParameterIndex(AnimationParameterId parameterName) const -> std::pair<Assets::TransformationParameterSet::Type::Enum, uint32>
     {
         {

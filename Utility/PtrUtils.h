@@ -284,6 +284,15 @@ namespace Utility
 
             ////////////////////////////////////////////////////////
 
+    /// <summary>Wrapper for std::unique_ptr<Type[]> </summary>
+    /// This is a just a basic wrapper for a heap-allocated array and a count value,
+    /// with a STL container like interface.
+    /// The only real advantage over using a std::vector<> is if the array
+    /// has already been allocated through some other means (for example, by using
+    /// the array form of std::make_unique). For other cases, std::vector<> should
+    /// be sufficient.
+    /// One advantage is the copy operations are disabled (except if explicitly using
+    /// DynamicArray::Copy). This prevent accidental copies where a move is intended.
     template<typename Type, typename Deletor = std::default_delete<Type[]>> class DynamicArray
     {
     public:
@@ -302,12 +311,13 @@ namespace Utility
         const Type*     get() const never_throws                        { return _elements.get(); }
         std::unique_ptr<Type[]> release() never_throws                  { _count = 0; return std::move(_elements); }
 
-        DynamicArray(std::unique_ptr<Type[], Deletor>&& elements, size_t count);
+        DynamicArray(std::unique_ptr<Type[], Deletor>&& elements, size_t count) never_throws;
+        DynamicArray() never_throws;
         
         template<typename OtherDeletor>
-            DynamicArray(DynamicArray<Type, OtherDeletor>&& moveFrom);
+            DynamicArray(DynamicArray<Type, OtherDeletor>&& moveFrom) never_throws;
         template<typename OtherDeletor>
-            DynamicArray& operator=(DynamicArray<Type, OtherDeletor>&& moveFrom);
+            DynamicArray& operator=(DynamicArray<Type, OtherDeletor>&& moveFrom) never_throws;
 
         static DynamicArray<Type, Deletor> Copy(const DynamicArray<Type, Deletor>& copyFrom);
 
@@ -322,21 +332,26 @@ namespace Utility
             ///////////////////////////
 
     template<typename Type, typename Deletor>
-        DynamicArray<Type, Deletor>::DynamicArray(std::unique_ptr<Type[], Deletor>&& elements, size_t count)
+        DynamicArray<Type, Deletor>::DynamicArray(std::unique_ptr<Type[], Deletor>&& elements, size_t count) never_throws
         : _elements(std::forward<std::unique_ptr<Type[], Deletor>>(elements))
         , _count(count)
     {}
 
     template<typename Type, typename Deletor>
+        DynamicArray<Type, Deletor>::DynamicArray() never_throws
+        : _count(0)
+    {}
+
+    template<typename Type, typename Deletor>
         template<typename OtherDeletor>
-            DynamicArray<Type, Deletor>::DynamicArray(DynamicArray<Type, OtherDeletor>&& moveFrom)
+            DynamicArray<Type, Deletor>::DynamicArray(DynamicArray<Type, OtherDeletor>&& moveFrom) never_throws
             : _elements(std::move(moveFrom._elements))
             , _count(moveFrom._count)
     {}
 
     template<typename Type, typename Deletor>
         template<typename OtherDeletor>
-            DynamicArray<Type, Deletor>& DynamicArray<Type, Deletor>::operator=(DynamicArray<Type, OtherDeletor>&& moveFrom)
+            DynamicArray<Type, Deletor>& DynamicArray<Type, Deletor>::operator=(DynamicArray<Type, OtherDeletor>&& moveFrom) never_throws
     {
         _elements = std::move(moveFrom._elements);
         _count = moveFrom._count;

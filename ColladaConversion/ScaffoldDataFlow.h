@@ -55,10 +55,10 @@ namespace ColladaConversion { namespace DataFlow
         {
         public:
             Section _name;
-            ArrayType _type;
+            Section _type;
             unsigned _offset;
             Section _semantic;
-            Param() : _offset(~unsigned(0)), _type(ArrayType::Float) {}
+            Param() : _offset(~unsigned(0)), _type() {}
         };
 
         size_t GetParamCount() const { return _paramCount; }

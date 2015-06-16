@@ -12,6 +12,7 @@
 #include "../RenderCore/Metal/Buffer.h"
 #include "../Math/Matrix.h"
 #include "../Math/Vector.h"
+#include "../Utility/UTFUtils.h"
 
 namespace COLLADAFW { class UniqueId; class Image; class SkinControllerData; }
 
@@ -69,6 +70,21 @@ namespace RenderCore { namespace ColladaConversion
 
         ////////////////////////////////////////////////////////
 
+    class ObjectGuid
+    {
+    public:
+        uint64  _objectId;
+        uint64  _fileId;
+
+        ObjectGuid() : _objectId(~0ull), _fileId(~0ull) {}
+        ObjectGuid(uint64 objectId, uint64 fileId = 0) : _objectId(objectId), _fileId(fileId) {}
+    };
+
+    inline bool operator==(const ObjectGuid& lhs, const ObjectGuid& rhs)   { return (lhs._objectId == rhs._objectId) && (lhs._fileId == rhs._fileId); }
+    inline bool operator<(const ObjectGuid& lhs, const ObjectGuid& rhs)    { if (lhs._fileId < rhs._fileId) return true; return lhs._objectId < rhs._objectId; }
+
+        ////////////////////////////////////////////////////////
+
     class UnboundSkinController 
     {
     public:
@@ -84,43 +100,35 @@ namespace RenderCore { namespace ColladaConversion
             std::vector<uint16>                     _vertexBindings;
 
             Bucket();
-            Bucket(Bucket&& moveFrom);
+            Bucket(Bucket&& moveFrom) never_throws;
             Bucket& operator=(Bucket&& moveFrom) never_throws;
 
         private:
             Bucket& operator=(const Bucket& copyFrom);
         };
 
-        DynamicArray<Float4x4>  _inverseBindMatrices;
         Float4x4                _bindShapeMatrix;
 
         Bucket                  _bucket[4];      // 4, 2, 1, 0
         std::vector<uint32>     _positionIndexToBucketIndex;
 
-        UnboundSkinController(  Bucket&& bucket4, Bucket&& bucket2, Bucket&& bucket1, Bucket&& bucket0, 
-                                DynamicArray<Float4x4>&& inverseBindMatrices, const Float4x4& bindShapeMatrix,
-                                std::vector<uint32>&& vertexPositionToBucketIndex);
-        UnboundSkinController(UnboundSkinController&& moveFrom);
+        std::vector<std::basic_string<utf8>> _jointNames;
+        DynamicArray<Float4x4>  _inverseBindMatrices;
+
+        ObjectGuid _sourceRef;
+
+        UnboundSkinController(  
+            Bucket&& bucket4, Bucket&& bucket2, Bucket&& bucket1, Bucket&& bucket0, 
+            DynamicArray<Float4x4>&& inverseBindMatrices, const Float4x4& bindShapeMatrix,
+            std::vector<std::basic_string<utf8>>&& jointNames,
+            ObjectGuid sourceRef,
+            std::vector<uint32>&& vertexPositionToBucketIndex);
+        UnboundSkinController(UnboundSkinController&& moveFrom) never_throws;
         UnboundSkinController& operator=(UnboundSkinController&& moveFrom) never_throws;
 
     private:
         UnboundSkinController& operator=(const UnboundSkinController& copyFrom);
     };
-
-        ////////////////////////////////////////////////////////
-
-    class ObjectGuid
-    {
-    public:
-        uint64  _objectId;
-        uint64  _fileId;
-
-        ObjectGuid() : _objectId(~0ull), _fileId(~0ull) {}
-        ObjectGuid(uint64 objectId, uint64 fileId = 0) : _objectId(objectId), _fileId(fileId) {}
-    };
-
-    inline bool operator==(const ObjectGuid& lhs, const ObjectGuid& rhs)   { return (lhs._objectId == rhs._objectId) && (lhs._fileId == rhs._fileId); }
-    inline bool operator<(const ObjectGuid& lhs, const ObjectGuid& rhs)    { if (lhs._fileId < rhs._fileId) return true; return lhs._objectId < rhs._objectId; }
 
         ////////////////////////////////////////////////////////
 
@@ -151,13 +159,11 @@ namespace RenderCore { namespace ColladaConversion
     class NodeReferences
     {
     public:
-        bool IsImportant(ObjectGuid node) const;
-        const Float4x4* GetInverseBindMatrix(ObjectGuid node) const;
-        unsigned GetOutputMatrixIndex(ObjectGuid node) const;
+        bool        IsImportant(ObjectGuid node) const;
+        unsigned    GetOutputMatrixIndex(ObjectGuid node);
 
-        void MarkImportant(ObjectGuid node);
-        void AttachInverseBindMatrix(ObjectGuid node, Float4x4 inverseBind);
-        void SetOutputMatrix(ObjectGuid node, unsigned outputMatrixIndex);
+        const Float4x4* GetInverseBindMatrix(ObjectGuid node) const;
+        void AttachInverseBindMatrix(ObjectGuid node, const Float4x4& inverseBind);
 
         NodeReferences();
         ~NodeReferences();
@@ -167,6 +173,8 @@ namespace RenderCore { namespace ColladaConversion
 
         std::vector<std::pair<ObjectGuid, OutputMatrixIndex>> _nodeReferences;
         std::vector<std::pair<ObjectGuid, Float4x4>> _inverseBindMatrics;
+
+        OutputMatrixIndex _nextOutputIndex;
     };
 
         ////////////////////////////////////////////////////////

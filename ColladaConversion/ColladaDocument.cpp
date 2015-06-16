@@ -17,22 +17,7 @@
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/IteratorUtils.h"
 #include "../ConsoleRig/Log.h"
-
-namespace std   // adding these to std is awkward, but it's the only way to make sure easylogging++ can see them
-{
-    inline MAKE_LOGGABLE(StreamLocation, loc, os) 
-    {
-        os << "Line: " << loc._lineIndex << ", Char: " << loc._charIndex;
-        return os;
-    }
-
-    // inline MAKE_LOGGABLE(XmlInputStreamFormatter<utf8>::InteriorSection, section, os) 
-    inline std::ostream& operator<<(std::ostream& os, XmlInputStreamFormatter<utf8>::InteriorSection section)
-    {
-        os << ColladaConversion::AsString(section);
-        return os;
-    }
-}
+#include <queue>
 
 namespace ColladaConversion
 {
@@ -668,7 +653,7 @@ namespace ColladaConversion
                         if (Is(name, u("name"))) {
                             newParam._name = value;
                         } else if (Is(name, u("type"))) {
-                            newParam._type = ParseEnum(value, s_ArrayTypeNames);
+                            newParam._type = value;
                         } else if (Is(name, u("semantic"))) {
                             newParam._semantic = value;
                         }
@@ -990,8 +975,11 @@ namespace ColladaConversion
                 // _sources.push_back(DataFlow::Source(formatter));
                 pub.Add(DataFlow::Source(formatter));
             } else if (Is(eleName, u("vertices"))) {
-                // must have exactly one <vertices>
-                pub.Add(VertexInputs(formatter));
+                // must have exactly one <vertices>. But we only refernce it by
+                // it's global "id" value. That means it's position within the element
+                // hierarchy is irrelevant. And it's only by convention that the <vertices>
+                // element appears within the <mesh> element that is it associated with.
+                pub.Add(InputsCollection(formatter));
             } else if (Is(eleName, u("extra"))) {
                 _extra = SubDoc(formatter);
             } else {
@@ -1030,8 +1018,7 @@ namespace ColladaConversion
     MeshGeometry::MeshGeometry() {}
 
     MeshGeometry::MeshGeometry(MeshGeometry&& moveFrom) never_throws
-    : _sources(std::move(moveFrom._sources))
-    , _geoPrimitives(std::move(moveFrom._geoPrimitives))
+    : _geoPrimitives(std::move(moveFrom._geoPrimitives))
     , _extra(std::move(moveFrom._extra))
     , _id(moveFrom._id)
     , _name(moveFrom._name)
@@ -1039,7 +1026,6 @@ namespace ColladaConversion
 
     MeshGeometry& MeshGeometry::operator=(MeshGeometry&& moveFrom) never_throws
     {
-        _sources = std::move(moveFrom._sources);
         _geoPrimitives = std::move(moveFrom._geoPrimitives);
         _extra = std::move(moveFrom._extra);
         _id = moveFrom._id;
@@ -1047,7 +1033,7 @@ namespace ColladaConversion
         return *this;
     }
 
-    VertexInputs::VertexInputs(Formatter& formatter)
+    InputsCollection::InputsCollection(Formatter& formatter)
     {
         ON_ELEMENT
             if (Is(eleName, u("input"))) {
@@ -1064,19 +1050,27 @@ namespace ColladaConversion
         PARSE_END
     }
 
-    VertexInputs::VertexInputs()
+    InputsCollection::InputsCollection()
     {}
 
-    VertexInputs::VertexInputs(VertexInputs&& moveFrom) never_throws
+    InputsCollection::InputsCollection(InputsCollection&& moveFrom) never_throws
     : _vertexInputs(std::move(moveFrom._vertexInputs))
     , _id(moveFrom._id)
     {}
 
-    VertexInputs& VertexInputs::operator=(VertexInputs&& moveFrom) never_throws
+    InputsCollection& InputsCollection::operator=(InputsCollection&& moveFrom) never_throws
     {
         _vertexInputs = std::move(moveFrom._vertexInputs);
         _id = moveFrom._id;
         return *this;
+    }
+
+    auto InputsCollection::FindInputBySemantic(const utf8 semantic[]) const -> const DataFlow::InputUnshared*
+    {
+        for (const auto& i:_vertexInputs)
+            if (Is(i._semantic, semantic))
+                return &i;
+        return nullptr;
     }
 
     void DocumentScaffold::Parse_LibraryGeometries(Formatter& formatter)
@@ -1097,22 +1091,21 @@ namespace ColladaConversion
 
     
 
-    SkinController::SkinController(Formatter& formatter, Section id, Section name)
+    SkinController::SkinController(Formatter& formatter, Section id, Section name, DocumentScaffold& pub)
         : SkinController()
     {
         _id = id;
         _name = name;
+        _location = formatter.GetLocation();
 
         ON_ELEMENT
             if (Is(eleName, u("bind_shape_matrix"))) {
                 SkipAllAttributes(formatter);
-                Section cdata;
-                if (formatter.TryCharacterData(cdata))
-                    ParseXMLList(&_bindShapeMatrix(0,0), 16, cdata);
+                formatter.TryCharacterData(_bindShapeMatrix);
             } else if (Is(eleName, u("source"))) {
-                _sources.push_back(DataFlow::Source(formatter));
+                pub.Add(DataFlow::Source(formatter));
             } else if (Is(eleName, u("joints"))) {
-                ParseJoints(formatter);
+                _jointInputs = InputsCollection(formatter);     // should be exactly one in each skin controller
             } else if (Is(eleName, u("vertex_weights"))) {
                 ParseVertexWeights(formatter);
             } else if (Is(eleName, u("extra"))) {
@@ -1124,20 +1117,6 @@ namespace ColladaConversion
 
         ON_ATTRIBUTE
             if (Is(name, u("source"))) _baseMesh = value;
-        PARSE_END
-    }
-
-    void SkinController::ParseJoints(Formatter& formatter)
-    {
-        ON_ELEMENT
-            if (Is(eleName, u("input"))) {
-                _jointInputs.push_back(DataFlow::InputUnshared(formatter));
-            } else {
-                LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
-                formatter.SkipElement();        // <extra> is possible
-            }
-
-        ON_ATTRIBUTE
         PARSE_END
     }
 
@@ -1159,27 +1138,33 @@ namespace ColladaConversion
 
         ON_ATTRIBUTE
             if (Is(name, u("count")))
-                _weightCount = Parse(value, _weightCount);
+                _verticesWithWeightsCount = Parse(value, _verticesWithWeightsCount);
 
         PARSE_END
     }
 
+    const DataFlow::Input* SkinController::GetInfluenceInputBySemantic(const utf8 semantic[]) const
+    {
+        for (const auto& i:_influenceInputs)
+            if (Is(i._semantic, semantic))
+                return &i;
+        return nullptr;
+    }
+
     SkinController::SkinController()
-    : _bindShapeMatrix(Identity<Float4x4>())
-    , _weightCount(0)
+    : _verticesWithWeightsCount(0)
     {}
 
     SkinController::SkinController(SkinController&& moveFrom)
     : _extra(std::move(moveFrom._extra))
     , _influenceInputs(std::move(moveFrom._influenceInputs))
-    , _sources(std::move(moveFrom._sources))
     , _jointInputs(std::move(moveFrom._jointInputs))
     {
         _baseMesh = moveFrom._baseMesh;
         _id = moveFrom._id;
         _name = moveFrom._name;
         _bindShapeMatrix = moveFrom._bindShapeMatrix;
-        _weightCount = moveFrom._weightCount;
+        _verticesWithWeightsCount = moveFrom._verticesWithWeightsCount;
         _influenceCountPerVertex = moveFrom._influenceCountPerVertex;
         _influences = moveFrom._influences;
     }
@@ -1191,11 +1176,10 @@ namespace ColladaConversion
         _name = moveFrom._name;
         _extra = std::move(moveFrom._extra);
         _bindShapeMatrix = moveFrom._bindShapeMatrix;
-        _weightCount = moveFrom._weightCount;
+        _verticesWithWeightsCount = moveFrom._verticesWithWeightsCount;
         _influenceCountPerVertex = moveFrom._influenceCountPerVertex;
         _influences = moveFrom._influences;
         _influenceInputs = std::move(moveFrom._influenceInputs);
-        _sources = std::move(moveFrom._sources);
         _jointInputs = std::move(moveFrom._jointInputs);
         return *this;
     }
@@ -1227,7 +1211,7 @@ namespace ColladaConversion
                         }
                     } else {
                         if (Is(eleName, u("skin"))) {
-                            _skinControllers.push_back(SkinController(formatter, controllerId, controllerName));
+                            _skinControllers.push_back(SkinController(formatter, controllerId, controllerName, *this));
                         } else if (Is(eleName, u("morph"))) {
                             LogWarning << "<morph> controllers not supported";
                             formatter.SkipElement();
@@ -1905,7 +1889,7 @@ namespace ColladaConversion
         return (unsigned)_geoInstances.size();
     }
 
-    const InstanceGeometry& VisualScene::GetInstanceController(unsigned index) const
+    const InstanceController& VisualScene::GetInstanceController(unsigned index) const
     {
         return _controllerInstances[index].second;
     }
@@ -1964,7 +1948,7 @@ namespace ColladaConversion
         _sources.insert(i, std::make_pair(hashedId, std::move(element)));
     }
 
-    void DocumentScaffold::Add(VertexInputs&& vertexInputs)
+    void DocumentScaffold::Add(InputsCollection&& vertexInputs)
     {
         auto hashedId = vertexInputs.GetId().GetHash();
         auto i = LowerBound(_vertexInputs, hashedId);
@@ -1982,7 +1966,7 @@ namespace ColladaConversion
         return nullptr;
     }
 
-    const VertexInputs* DocumentScaffold::FindVertexInputs(uint64 id) const
+    const InputsCollection* DocumentScaffold::FindVertexInputs(uint64 id) const
     {
         auto i = LowerBound(_vertexInputs, id);
         if (i!=_vertexInputs.cend() && i->first == id) 
@@ -2020,6 +2004,38 @@ namespace ColladaConversion
             if (i.GetId().GetHash() == guid)
                 return &i;
         return nullptr;
+    }
+
+    const SkinController*   DocumentScaffold::FindSkinController(uint64 guid) const
+    {
+        for (const auto& i:_skinControllers)
+            if (i.GetId().GetHash() == guid)
+                return &i;
+        return nullptr;
+    }
+
+    static Node SearchForNode(Node n, uint64 guid)
+    {
+        if (n.GetId().GetHash() == guid) return n;
+
+        for (auto child = n.GetFirstChild(); child; child = child.GetNextSibling()) {
+            auto r = SearchForNode(child, guid);
+            if (r) return r;
+        }
+
+        return Node();
+    }
+
+    Node                    DocumentScaffold::FindNode(uint64 guid) const
+    {
+            // We need to look in every visual scene to find the node with
+            // the given id. Unfortunately we don't have a global map of
+            // nodes and ids. So we need to look through the hierarchy
+        for (const auto& vs:_visualScenes) {
+            auto r = SearchForNode(vs.GetRootNode(), guid);
+            if (r) return r;
+        }
+        return Node();
     }
 
     DocumentScaffold::DocumentScaffold() 
@@ -2115,6 +2131,37 @@ namespace ColladaConversion
         assert(_index != VisualScene::IndexIntoNodes_Invalid);
         return _scene->_nodes[_index]._id;
     }
+
+    Section Node::GetSid() const
+    {
+        assert(_index != VisualScene::IndexIntoNodes_Invalid);
+        return _scene->_nodes[_index]._sid;
+    }
+
+    Node Node::FindBySid(const utf8* sidStart, const utf8* sidEnd)
+    {
+        // Search through the child nodes to look for a node with a 
+        // "sid" that matches the given.
+        // Due to the way these work, it may not be an immediate child
+        // But we want to return the one with the least depth.
+        // So we should do a breadth first check.
+
+        std::queue<VisualScene::IndexIntoNodes> workingQueue;
+        workingQueue.push(_index);
+
+        while (!workingQueue.empty()) {
+            Node front(*_scene, workingQueue.front());
+            workingQueue.pop();
+
+            if (Equivalent(front.GetSid(), Section(sidStart, sidEnd)))
+                return front;
+
+            for (auto child = front.GetFirstChild(); child; child = child.GetNextSibling())
+                workingQueue.push(child._index);
+        }
+
+        return Node();
+    }
         
     Node::operator bool() const
     {
@@ -2130,6 +2177,9 @@ namespace ColladaConversion
     : _scene(&scene), _index(index)
     {
     }
+
+    Node::Node() : _scene(nullptr), _index(VisualScene::IndexIntoNodes_Invalid) {}
+    Node::Node(nullptr_t) : _scene(nullptr), _index(VisualScene::IndexIntoNodes_Invalid) {}
 
 }
 

@@ -145,3 +145,18 @@ namespace ColladaConversion
     template const utf8* FastParseElement(float& dst, const utf8* start, const utf8* end);
 }
 
+
+namespace std   // adding these to std is awkward, but it's the only way to make sure easylogging++ can see them
+{
+    std::ostream& operator<<(std::ostream& os, const StreamLocation& loc) 
+    {
+        os << "Line: " << loc._lineIndex << ", Char: " << loc._charIndex;
+        return os;
+    }
+
+    std::ostream& operator<<(std::ostream& os, XmlInputStreamFormatter<utf8>::InteriorSection section)
+    {
+        os << ColladaConversion::AsString(section);
+        return os;
+    }
+}

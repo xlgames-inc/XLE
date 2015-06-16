@@ -278,9 +278,10 @@ namespace RenderCore { namespace ColladaConversion
 
             if (jointCount >= 3) {
                 if (jointCount > 4) {
-                    LogAlwaysWarningF(    "Warning -- Exceeded maximum number of joints affecting a single vertex in skinning controller " 
-                                "(%s). Only 4 joints can affect any given single vertex.\n",
-                                input->getName().c_str());
+                    LogAlwaysWarningF(
+                        "Warning -- Exceeded maximum number of joints affecting a single vertex in skinning controller " 
+                        "(%s). Only 4 joints can affect any given single vertex.\n",
+                        input->getName().c_str());
                         // (When this happens, only use the first 4, and ignore the others)
                     LogAlwaysWarningF("Original weights:\n");
                     for (size_t c=0; c<basicJointCount; ++c) {
@@ -354,7 +355,9 @@ namespace RenderCore { namespace ColladaConversion
 
         return UnboundSkinController(
             std::move(b4), std::move(b2), std::move(b1), std::move(b0),
-            DynamicArray<Float4x4>(std::move(inverseBindMatrices), input->getJointsCount()), bindShapeMatrix, std::move(vertexPositionToBucketIndex));
+            DynamicArray<Float4x4>(std::move(inverseBindMatrices), input->getJointsCount()), bindShapeMatrix, 
+            std::vector<std::basic_string<utf8>>(), ObjectGuid(),
+            std::move(vertexPositionToBucketIndex));
     }
 
 }}

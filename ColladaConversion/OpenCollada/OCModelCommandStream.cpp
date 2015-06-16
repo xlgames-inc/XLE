@@ -439,7 +439,7 @@ namespace RenderCore { namespace ColladaConversion
                     }
 
                     results.AttachInverseBindMatrix(controller->_jointIds[c], inverseBindMatrix);
-                    results.MarkImportant(controller->_jointIds[c]);
+                    results.GetOutputMatrixIndex(controller->_jointIds[c]);
                 }
 
             } else {

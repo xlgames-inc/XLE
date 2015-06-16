@@ -28,5 +28,13 @@ namespace RenderCore { namespace ColladaConversion
         const ::ColladaConversion::Node& attachedNode,
         const ::ColladaConversion::URIResolveContext& resolveContext,
         TableOfObjects& accessableObjects,
-        const NodeReferences& nodeRefs);
+        NodeReferences& nodeRefs);
+
+    void InstantiateController(
+        NascentModelCommandStream& stream,
+        const ::ColladaConversion::InstanceController& instGeo,
+        const ::ColladaConversion::Node& attachedNode,
+        const ::ColladaConversion::URIResolveContext& resolveContext,
+        TableOfObjects& accessableObjects,
+        NodeReferences& nodeRefs);
 }}

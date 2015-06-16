@@ -77,3 +77,8 @@ namespace ColladaConversion
         const XmlInputStreamFormatter<utf8>::InteriorSection& rhs);
 }
 
+namespace std   // adding these to std is awkward, but it's the only way to make sure easylogging++ can see them
+{
+    std::ostream& operator<<(std::ostream& os, const StreamLocation& loc);
+    std::ostream& operator<<(std::ostream& os, XmlInputStreamFormatter<utf8>::InteriorSection section);
+}

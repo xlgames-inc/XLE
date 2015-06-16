@@ -9,7 +9,9 @@
 #include "Scaffold.h"
 #include "RawGeometry.h"
 #include "ProcessingUtil.h"
+#include "ConversionObjects.h"
 #include "ParsingUtil.h"
+#include "../ConsoleRig/Log.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/IteratorUtils.h"
 #include <map>
@@ -19,6 +21,11 @@ namespace ColladaConversion
 {
     using namespace RenderCore;
     using namespace RenderCore::ColladaConversion;
+
+    static const std::string DefaultSemantic_Weights         = "WEIGHTS";
+    static const std::string DefaultSemantic_JointIndices    = "JOINTINDICES";
+
+    static const unsigned AbsoluteMaxJointInfluenceCount = 256;
 
     std::shared_ptr<std::vector<uint8>> GetParseDataSource();
 
@@ -75,9 +82,9 @@ namespace ColladaConversion
         for (size_t c=0; c<paramCount; ++c)
             if (accessor->GetParam(c)._offset != c) {
                 Throw(FormatException("Accessor params appear out-of-order, or not sequential", source.GetLocation()));
-            } else if (accessor->GetParam(c)._type != sourceType) {
+            } /*else if (accessor->GetParam(c)._type != sourceType) {
                 Throw(FormatException("Accessor params type doesn't match source array type", source.GetLocation()));
-            }
+            }*/
 
         using namespace Metal::NativeFormat;
         unsigned parsedTypeSize;
@@ -599,6 +606,521 @@ namespace ColladaConversion
             std::move(finalDrawOperations),
             DynamicArray<uint32>(std::move(unifiedVertexIndexToPositionIndex), database->_unifiedVertexCount),
             std::vector<uint64>(matBindingSymbols.cbegin(), matBindingSymbols.cend()));
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    DynamicArray<Float4x4> GetInverseBindMatrices(
+        const SkinController& skinController,
+        const URIResolveContext& resolveContext)
+    {
+        auto invBindInput = skinController.GetJointInputs().FindInputBySemantic(u("INV_BIND_MATRIX"));
+        if (!invBindInput) return DynamicArray<Float4x4>();
+
+        auto* invBindSource = FindElement(
+            GuidReference(invBindInput->_source), resolveContext, 
+            &IDocScopeIdResolver::FindSource);
+        if (!invBindSource) return DynamicArray<Float4x4>();
+
+        if (invBindSource->GetType() != DataFlow::ArrayType::Float)
+            return DynamicArray<Float4x4>();
+
+        auto* commonAccessor = invBindSource->FindAccessorForTechnique();
+        if (!commonAccessor) return DynamicArray<Float4x4>();
+
+        if (    commonAccessor->GetParamCount() != 1
+            || !Is(commonAccessor->GetParam(0)._type, u("float4x4"))) {
+            LogWarning << "Expecting inverse bind matrices expressed as float4x4 elements. These inverse bind elements will be ignored. In <source> at " << invBindSource->GetLocation();
+            return DynamicArray<Float4x4>();
+        }
+
+        auto count = commonAccessor->GetCount();
+        DynamicArray<Float4x4> result(std::make_unique<Float4x4[]>(count), count);
+
+            // parse in the array of raw floats
+        auto rawFloatCount = invBindSource->GetCount();
+        auto rawFloats = std::make_unique<float[]>(rawFloatCount);
+        ParseXMLList(rawFloats.get(), (unsigned)rawFloatCount, invBindSource->GetArrayData());
+
+        for (unsigned c=0; c<count; ++c) {
+            auto r = c * commonAccessor->GetStride();
+            if ((r + 16) <= rawFloatCount) {
+                result[c] = MakeFloat4x4(
+                    rawFloats[r+ 0], rawFloats[r+ 1], rawFloats[r+ 2], rawFloats[r+ 3],
+                    rawFloats[r+ 4], rawFloats[r+ 5], rawFloats[r+ 6], rawFloats[r+ 7],
+                    rawFloats[r+ 8], rawFloats[r+ 9], rawFloats[r+10], rawFloats[r+11],
+                    rawFloats[r+12], rawFloats[r+13], rawFloats[r+14], rawFloats[r+15]);
+            } else
+                result[c] = Identity<Float4x4>();
+        }
+
+        return std::move(result);
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    static std::vector<std::basic_string<utf8>> GetJointNames(
+        const SkinController& controller,
+        const URIResolveContext& resolveContext)
+    {
+        std::vector<std::basic_string<utf8>> result;
+
+            // we're expecting an input called "JOINT" that contains the names of joints
+            // These names should match the "sid" of nodes within the hierachy of nodes
+            // beneath our "skeleton"
+        auto jointInput = controller.GetJointInputs().FindInputBySemantic(u("JOINT"));
+        if (!jointInput) return std::vector<std::basic_string<utf8>>();
+
+        auto* jointSource = FindElement(
+            GuidReference(jointInput->_source), resolveContext, 
+            &IDocScopeIdResolver::FindSource);
+        if (!jointSource) return std::vector<std::basic_string<utf8>>();
+
+        if (    jointSource->GetType() != DataFlow::ArrayType::Name
+            ||  jointSource->GetType() != DataFlow::ArrayType::SidRef)
+            return std::vector<std::basic_string<utf8>>();
+
+        auto count = jointSource->GetCount();
+        auto arrayData = jointSource->GetArrayData();
+
+            // data is stored in xml list format, with whitespace deliminated elements
+            // there should be an <accessor> that describes how to read this list
+            // But we're going to assume it just contains a single entry like:
+            //      <param name="JOINT" type="name"/>
+        result.reserve(count);
+        unsigned elementIndex = 0;
+        auto* i = arrayData._start;
+        for (;;) {
+            while (i < arrayData._end && IsWhitespace(*i)) ++i;
+            if (i == arrayData._end) break;
+
+            auto* elementStart = i;
+            while (i < arrayData._end && !IsWhitespace(*i)) ++i;
+            if (i == arrayData._end || elementIndex == count) break;
+
+            result.push_back(std::basic_string<utf8>(elementStart, i));
+        }
+
+        return std::move(result);
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    template<typename Type>
+        DynamicArray<Type> AsScalarArray(const DataFlow::Source& source, const utf8 paramName[])
+    {
+        auto* accessor = source.FindAccessorForTechnique();
+        if (!accessor) {
+            LogWarning << "Expecting common access in <source> at " << source.GetLocation();
+            return DynamicArray<Type>();
+        }
+
+        const DataFlow::Accessor::Param* param = nullptr;
+        for (unsigned c=0; c<accessor->GetParamCount(); ++c)
+            if (Is(accessor->GetParam(c)._name, paramName)) {
+                param = &accessor->GetParam(c);
+                break;
+            }
+        if (!param) {
+            LogWarning << "Expecting parameter with name " << paramName << " in <source> at " << source.GetLocation();
+            return DynamicArray<Type>();
+        }
+
+        auto offset = accessor->GetOffset() + param->_offset;
+        auto stride = accessor->GetStride();
+        auto count = accessor->GetCount();
+        if ((offset + (count-1) * stride + 1) > source.GetCount()) {
+            LogWarning << "Source array is too short for accessor in <source> at " << source.GetLocation();
+            return DynamicArray<Type>();
+        }
+
+        DynamicArray<Type> result(std::make_unique<Type[]>(count), count);
+        unsigned elementIndex = 0;
+        unsigned lastWrittenPlusOne = 0;
+
+        const auto* start = source.GetArrayData()._start;
+        const auto* end = source.GetArrayData()._end;
+        const auto* i = start;
+        for (;;) {
+            while (i < end && IsWhitespace(*i)) ++i;
+            if (i == end) break;
+
+            auto* elementStart = i;
+            while (i < end && !IsWhitespace(*i)) ++i;
+
+                // we only actually need to parse the floating point number if
+                // it's one we're interested in...
+            if (elementIndex >= offset && (elementIndex-offset)%stride == 0) {
+                FastParseElement(result[(elementIndex - offset) / stride], elementStart, i);
+                lastWrittenPlusOne = ((elementIndex - offset) / stride)+1;
+            }
+
+            ++elementIndex;
+        }
+
+        for (unsigned c=lastWrittenPlusOne; c<count; ++c)
+            result[c] = Type(0);
+
+        return std::move(result);
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class ControllerVertexIterator
+    {
+    public:
+        unsigned GetNextInfluenceCount() const;
+        void GetNextInfluences(
+            unsigned influencesPerVertex,
+            unsigned jointIndices[],
+            float weights[]) const;
+
+        ControllerVertexIterator(
+            const SkinController& controller,
+            const URIResolveContext& resolveContext);
+        ~ControllerVertexIterator();
+
+    protected:
+        Section _vcount;
+        Section _v;
+
+        mutable utf8 const* _vcountI;
+        mutable utf8 const* _vI;
+
+        DynamicArray<float> _rawWeights;
+
+        unsigned _jointIndexOffset;
+        unsigned _weightIndexOffset;
+        unsigned _bindStride;
+
+        unsigned GetNextIndex() const;
+    };
+
+    unsigned ControllerVertexIterator::GetNextInfluenceCount() const
+    {
+        while (_vcountI < _vcount._end && IsWhitespace(*_vcountI)) ++_vcountI;
+        if (_vcountI == _vcount._end) return 0;
+
+        auto* elementStart = _vcountI;
+        while (_vcountI < _vcount._end && !IsWhitespace(*_vcountI)) ++_vcountI;
+
+        unsigned result = 0u;
+        FastParseElement(result, elementStart, _vcountI);
+        return result;
+    }
+
+    inline unsigned ControllerVertexIterator::GetNextIndex() const
+    {
+        while (_vI < _v._end && IsWhitespace(*_vI)) ++_vI;
+        if (_vI == _v._end) return 0;
+
+        auto* elementStart = _vI;
+        while (_vI < _v._end && !IsWhitespace(*_vI)) ++_vI;
+
+        unsigned result = 0u;
+        FastParseElement(result, elementStart, _vI);
+        return result;
+    }
+
+    void ControllerVertexIterator::GetNextInfluences(
+        unsigned influencesPerVertex,
+        unsigned jointIndices[], float weights[]) const
+    {
+        unsigned temp[AbsoluteMaxJointInfluenceCount * 4];
+        assert((influencesPerVertex * _bindStride) < dimof(temp));
+        for (unsigned c=0; c<influencesPerVertex * _bindStride; ++c)
+            temp[c] = GetNextIndex();
+
+        if (_jointIndexOffset != ~0u) {
+            for (unsigned v=0; v<influencesPerVertex; ++v)
+                jointIndices[v] = temp[v*_bindStride + _jointIndexOffset];
+        } else {
+            for (unsigned v=0; v<influencesPerVertex; ++v)
+                jointIndices[v] = ~0u;
+        }
+
+        if (_weightIndexOffset != ~0u) {
+            for (unsigned v=0; v<influencesPerVertex; ++v) {
+                auto weightIndex = temp[v*_bindStride + _weightIndexOffset];
+                assert(weightIndex < _rawWeights.size());
+                weights[v] = _rawWeights[weightIndex];
+            }
+        } else {
+            for (unsigned v=0; v<influencesPerVertex; ++v)
+                weights[v] = 0.f;
+        }
+    }
+
+    ControllerVertexIterator::ControllerVertexIterator(
+        const SkinController& controller,
+        const URIResolveContext& resolveContext)
+    {
+        _weightIndexOffset = ~0u;
+        _jointIndexOffset = ~0u;
+
+        auto weightInput = controller.GetInfluenceInputBySemantic(u("WEIGHT"));
+        if (weightInput) {
+            _weightIndexOffset = weightInput->_indexInPrimitive;
+            auto weightSource = FindElement(
+                GuidReference(weightInput->_source), resolveContext, 
+                &IDocScopeIdResolver::FindSource);
+            if (weightSource)
+                _rawWeights = AsScalarArray<float>(*weightSource, u("WEIGHT"));
+        }
+
+        auto jointInput = controller.GetInfluenceInputBySemantic(u("JOINT"));
+        if (jointInput)
+            _jointIndexOffset = jointInput->_indexInPrimitive;
+
+        _bindStride = 0;
+        for (unsigned c=0; c<controller.GetInfluenceInputCount(); ++c)
+            _bindStride = std::max(_bindStride, controller.GetInfluenceInput(c)._indexInPrimitive+1);
+
+            // we have a fixed size array in GetNextInfluences(), so we need to limit the
+            // value of _bindStride to something sensible. In normal cases, it should be 2.
+            // But maybe some unusual exporters will add extra elements.
+        if (_bindStride > 4)
+            Throw(FormatException("Too many <input> elements within <vertex_weights> in controller", controller.GetLocation()));
+
+        _vcount = controller.GetInfluenceCountPerVertexArray();
+        _v = controller.GetInfluencesArray();
+
+        _vcountI = _vcount._start;
+        _vI = _v._start;
+    }
+
+    ControllerVertexIterator::~ControllerVertexIterator() {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    template <int WeightCount>
+        class VertexWeightAttachment
+    {
+    public:
+        uint8       _weights[WeightCount];            // go straight to compressed 8 bit value
+        uint8       _jointIndex[WeightCount];
+    };
+
+    template <>
+        class VertexWeightAttachment<0>
+    {
+    };
+
+    template <int WeightCount>
+        class VertexWeightAttachmentBucket
+    {
+    public:
+        std::vector<uint16>                                 _vertexBindings;
+        std::vector<VertexWeightAttachment<WeightCount>>    _weightAttachments;
+    };
+
+    template<unsigned WeightCount> 
+        VertexWeightAttachment<WeightCount> BuildWeightAttachment(const uint8 weights[], const unsigned joints[], unsigned jointCount)
+    {
+        VertexWeightAttachment<WeightCount> attachment;
+        std::fill(attachment._weights, &attachment._weights[dimof(attachment._weights)], 0);
+        std::fill(attachment._jointIndex, &attachment._jointIndex[dimof(attachment._jointIndex)], 0);
+        std::copy(weights, &weights[std::min(WeightCount,jointCount)], attachment._weights);
+        std::copy(joints, &joints[std::min(WeightCount,jointCount)], attachment._jointIndex);
+        return attachment;
+    }
+
+    template<> VertexWeightAttachment<0> BuildWeightAttachment(const uint8 weights[], const unsigned joints[], unsigned jointCount)
+    {
+        return VertexWeightAttachment<0>();
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    auto Convert(   const SkinController& controller, 
+                    const URIResolveContext& resolveContext)
+        -> RenderCore::ColladaConversion::UnboundSkinController
+    {
+        auto bindShapeMatrix = Identity<Float4x4>();
+        ParseXMLList(&bindShapeMatrix(0,0), 16, controller.GetBindShapeMatrix());
+
+            //
+            //      If we have a mesh where there are many vertices with only 1 or 2
+            //      weights, but others with 4, we could potentially split the
+            //      skinning operation up into multiple parts.
+            //
+            //      This could be done in 2 ways:
+            //          1. split the geometry into multiple meshes, with extra draw calls
+            //          2. do skinning in a preprocessing step before Draw
+            //                  Ie; multiple skin -> to vertex buffer steps
+            //                  then a single draw call...
+            //              That would be efficient if writing to a GPU vertex buffer was
+            //              very fast (it would also help reduce shader explosion).
+            //
+            //      If we were using type 2, it might be best to separate the animated parts
+            //      of the vertex from the main vertex buffer. So texture coordinates and vertex
+            //      colors will be static, so left in a separate buffer. But positions (and possibly
+            //      normals and tangent frames) might be animated. So they could be held separately.
+            //
+            //      It might be handy to have a vertex buffer with just the positions. This could
+            //      be used for pre-depth passes, etc.
+            //
+            //      Option 2 would be an efficient mode in multiple-pass rendering (because we
+            //      apply the skinning only once, even if the object is rendered multiple times).
+            //      But we need lots of temporary buffer space. Apparently in D3D11.1, we can 
+            //      output to a buffer as a side-effect of vertex transformations, also. So a 
+            //      first pass vertex shader could do depth-prepass and generate skinned
+            //      positions for the second pass. (but there are some complications... might be
+            //      worth experimenting with...)
+            //
+            //
+            //      Let's create a number of buckets based on the number of weights attached
+            //      to that vertex. Ideally we want a lot of vertices in the smaller buckets, 
+            //      and few in the high buckets.
+            //
+
+        VertexWeightAttachmentBucket<4> bucket4;
+        VertexWeightAttachmentBucket<2> bucket2;
+        VertexWeightAttachmentBucket<1> bucket1;
+        VertexWeightAttachmentBucket<0> bucket0;
+
+        size_t vertexCount = controller.GetVerticesWithWeightsCount();
+        if (vertexCount >= std::numeric_limits<uint16>::max()) {
+            Throw(FormatException(
+                "Exceeded maximum number of vertices supported by skinning controller", controller.GetLocation()));
+        }
+        
+        ControllerVertexIterator vIterator(controller, resolveContext);
+
+        std::vector<uint32> vertexPositionToBucketIndex;
+        vertexPositionToBucketIndex.reserve(vertexCount);
+
+        for (size_t vertex=0; vertex<vertexCount; ++vertex) {
+
+            auto influenceCount = vIterator.GetNextInfluenceCount();
+            if (influenceCount > AbsoluteMaxJointInfluenceCount)
+                Throw(FormatException(
+                    "Too many influences per vertex in skinning controller", controller.GetLocation()));
+
+                //
+                //      Sometimes the input data has joints attached at very low weight
+                //      values. In these cases it's better to just ignore the influence.
+                //
+                //      So we need to calculate the normalized weights for all of the
+                //      influences, first -- and then strip out the unimportant ones.
+                //
+            float weights[AbsoluteMaxJointInfluenceCount];
+            unsigned jointIndices[AbsoluteMaxJointInfluenceCount];
+            vIterator.GetNextInfluences(influenceCount, jointIndices, weights);
+
+            const float minWeightThreshold = 8.f / 255.f;
+            float totalWeightValue = 0.f;
+            for (size_t c=0; c<influenceCount;) {
+                if (weights[c] < minWeightThreshold) {
+                    std::move(&weights[c+1],        &weights[influenceCount],       &weights[c]);
+                    std::move(&jointIndices[c+1],   &jointIndices[influenceCount],  &jointIndices[c]);
+                    --influenceCount;
+                } else {
+                    totalWeightValue += weights[c];
+                    ++c;
+                }
+            }
+
+            uint8 normalizedWeights[AbsoluteMaxJointInfluenceCount];
+            for (size_t c=0; c<influenceCount; ++c) {
+                normalizedWeights[c] = (uint8)(Clamp(weights[c] / totalWeightValue, 0.f, 1.f) * 255.f + .5f);
+            }
+
+                //
+                // \todo -- should we sort influcences by the strength of the influence, or by the joint
+                //          index?
+                //
+                //          Sorting by weight could allow us to decrease the number of influences
+                //          calculated smoothly.
+                //
+                //          Sorting by joint index might mean that adjacent vertices are more frequently
+                //          calculating the same joint.
+                //
+
+            #if defined(_DEBUG)     // double check to make sure no joint is referenced twice!
+                for (size_t c=1; c<influenceCount; ++c) {
+                    assert(std::find(jointIndices, &jointIndices[c], jointIndices[c]) == &jointIndices[c]);
+                }
+            #endif
+
+            if (influenceCount >= 3) {
+                if (influenceCount > 4) {
+                    LogAlwaysWarning 
+                        << "Warning -- Exceeded maximum number of joints affecting a single vertex in skinning controller " 
+                        << controller.GetLocation() 
+                        << "Only 4 joints can affect any given single vertex.";
+
+                        // (When this happens, only use the first 4, and ignore the others)
+                    LogAlwaysWarningF("After filtering:\n");
+                    for (size_t c=0; c<influenceCount; ++c) {
+                        LogAlwaysWarningF("  [%i] Weight: %i Joint: %i", c, normalizedWeights[c], jointIndices[c]);
+                    }
+                }
+
+                    // (we could do a separate bucket for 3, if it was useful)
+                vertexPositionToBucketIndex.push_back((0<<16) | (uint32(bucket4._vertexBindings.size())&0xffff));
+                bucket4._vertexBindings.push_back(uint16(vertex));
+                bucket4._weightAttachments.push_back(BuildWeightAttachment<4>(normalizedWeights, jointIndices, (unsigned)influenceCount));
+            } else if (influenceCount == 2) {
+                vertexPositionToBucketIndex.push_back((1<<16) | (uint32(bucket2._vertexBindings.size())&0xffff));
+                bucket2._vertexBindings.push_back(uint16(vertex));
+                bucket2._weightAttachments.push_back(BuildWeightAttachment<2>(normalizedWeights, jointIndices, (unsigned)influenceCount));
+            } else if (influenceCount == 1) {
+                vertexPositionToBucketIndex.push_back((2<<16) | (uint32(bucket1._vertexBindings.size())&0xffff));
+                bucket1._vertexBindings.push_back(uint16(vertex));
+                bucket1._weightAttachments.push_back(BuildWeightAttachment<1>(normalizedWeights, jointIndices, (unsigned)influenceCount));
+            } else {
+                vertexPositionToBucketIndex.push_back((3<<16) | (uint32(bucket0._vertexBindings.size())&0xffff));
+                bucket0._vertexBindings.push_back(uint16(vertex));
+                bucket0._weightAttachments.push_back(BuildWeightAttachment<0>(normalizedWeights, jointIndices, (unsigned)influenceCount));
+            }
+        }
+            
+        UnboundSkinController::Bucket b4;
+        b4._vertexBindings = std::move(bucket4._vertexBindings);
+        b4._weightCount = 4;
+        b4._vertexBufferSize = bucket4._weightAttachments.size() * sizeof(VertexWeightAttachment<4>);
+        b4._vertexBufferData = std::make_unique<uint8[]>(b4._vertexBufferSize);
+        XlCopyMemory(b4._vertexBufferData.get(), AsPointer(bucket4._weightAttachments.begin()), b4._vertexBufferSize);
+        b4._vertexInputLayout.push_back(Metal::InputElementDesc(DefaultSemantic_Weights, 0, Metal::NativeFormat::R8G8B8A8_UNORM, 1, 0));
+        b4._vertexInputLayout.push_back(Metal::InputElementDesc(DefaultSemantic_JointIndices, 0, Metal::NativeFormat::R8G8B8A8_UINT, 1, 4));
+
+        UnboundSkinController::Bucket b2;
+        b2._vertexBindings = std::move(bucket2._vertexBindings);
+        b2._weightCount = 2;
+        b2._vertexBufferSize = bucket2._weightAttachments.size() * sizeof(VertexWeightAttachment<2>);
+        b2._vertexBufferData = std::make_unique<uint8[]>(b2._vertexBufferSize);
+        XlCopyMemory(b2._vertexBufferData.get(), AsPointer(bucket2._weightAttachments.begin()), b2._vertexBufferSize);
+        b2._vertexInputLayout.push_back(Metal::InputElementDesc(DefaultSemantic_Weights, 0, Metal::NativeFormat::R8G8_UNORM, 1, 0));
+        b2._vertexInputLayout.push_back(Metal::InputElementDesc(DefaultSemantic_JointIndices, 0, Metal::NativeFormat::R8G8_UINT, 1, 2));
+
+        UnboundSkinController::Bucket b1;
+        b1._vertexBindings = std::move(bucket1._vertexBindings);
+        b1._weightCount = 1;
+        b1._vertexBufferSize = bucket1._weightAttachments.size() * sizeof(VertexWeightAttachment<1>);
+        b1._vertexBufferData = std::make_unique<uint8[]>(b1._vertexBufferSize);
+        XlCopyMemory(b1._vertexBufferData.get(), AsPointer(bucket1._weightAttachments.begin()), b1._vertexBufferSize);
+        b1._vertexInputLayout.push_back(Metal::InputElementDesc(DefaultSemantic_Weights, 0, Metal::NativeFormat::R8_UNORM, 1, 0));
+        b1._vertexInputLayout.push_back(Metal::InputElementDesc(DefaultSemantic_JointIndices, 0, Metal::NativeFormat::R8_UINT, 1, 1));
+
+        UnboundSkinController::Bucket b0;
+        b0._vertexBindings = std::move(bucket0._vertexBindings);
+        b0._weightCount = 0;
+        b0._vertexBufferSize = bucket0._weightAttachments.size() * sizeof(VertexWeightAttachment<0>);
+        if (b0._vertexBufferSize) {
+            b0._vertexBufferData = std::make_unique<uint8[]>(b0._vertexBufferSize);
+            XlCopyMemory(b1._vertexBufferData.get(), AsPointer(bucket0._weightAttachments.begin()), b0._vertexBufferSize);
+        }
+
+        auto inverseBindMatrices = GetInverseBindMatrices(controller, resolveContext);
+        auto jointNames = GetJointNames(controller, resolveContext);
+        GuidReference ref(controller.GetBaseMesh());
+        return UnboundSkinController(
+            std::move(b4), std::move(b2), std::move(b1), std::move(b0),
+            std::move(inverseBindMatrices), bindShapeMatrix, 
+            std::move(jointNames), 
+            ObjectGuid(ref._id, ref._fileHash),
+            std::move(vertexPositionToBucketIndex));
     }
 
 }

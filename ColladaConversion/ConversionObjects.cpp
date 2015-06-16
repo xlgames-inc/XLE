@@ -165,12 +165,17 @@ namespace RenderCore { namespace ColladaConversion
         return *this;
     }
 
-    UnboundSkinController::UnboundSkinController(   Bucket&& bucket4, Bucket&& bucket2, Bucket&& bucket1, Bucket&& bucket0,
-                                                    DynamicArray<Float4x4>&& inverseBindMatrices, const Float4x4& bindShapeMatrix,
-                                                    std::vector<uint32>&& vertexPositionToBucketIndex)
+    UnboundSkinController::UnboundSkinController(   
+        Bucket&& bucket4, Bucket&& bucket2, Bucket&& bucket1, Bucket&& bucket0,
+        DynamicArray<Float4x4>&& inverseBindMatrices, const Float4x4& bindShapeMatrix,
+        std::vector<std::basic_string<utf8>>&& jointNames,
+        ObjectGuid sourceRef,
+        std::vector<uint32>&& vertexPositionToBucketIndex)
     :       _inverseBindMatrices(std::forward<DynamicArray<Float4x4>>(inverseBindMatrices))
     ,       _bindShapeMatrix(bindShapeMatrix)
     ,       _positionIndexToBucketIndex(vertexPositionToBucketIndex)
+    ,       _jointNames(jointNames)
+    ,       _sourceRef(sourceRef)
     {
         _bucket[0] = std::forward<Bucket>(bucket4);
         _bucket[1] = std::forward<Bucket>(bucket2);
@@ -182,18 +187,22 @@ namespace RenderCore { namespace ColladaConversion
     :       _inverseBindMatrices(std::move(moveFrom._inverseBindMatrices))
     ,       _bindShapeMatrix(moveFrom._bindShapeMatrix)
     ,       _positionIndexToBucketIndex(std::move(moveFrom._positionIndexToBucketIndex))
+    ,       _jointNames(moveFrom._jointNames)
+    ,       _sourceRef(moveFrom._sourceRef)
     {
         for (unsigned c=0; c<dimof(_bucket); ++c)
             _bucket[c] = std::move(moveFrom._bucket[c]);
     }
 
-    UnboundSkinController& UnboundSkinController::operator=(UnboundSkinController&& moveFrom)
+    UnboundSkinController& UnboundSkinController::operator=(UnboundSkinController&& moveFrom) never_throws
     {
         for (unsigned c=0; c<dimof(_bucket); ++c)
             _bucket[c] = std::move(moveFrom._bucket[c]);
         _inverseBindMatrices = std::move(moveFrom._inverseBindMatrices);
         _bindShapeMatrix = moveFrom._bindShapeMatrix;
         _positionIndexToBucketIndex = std::move(moveFrom._positionIndexToBucketIndex);
+        _jointNames = std::move(moveFrom._jointNames);
+        _sourceRef = moveFrom._sourceRef;
         return *this;
     }
 
@@ -226,24 +235,17 @@ namespace RenderCore { namespace ColladaConversion
         return nullptr;
     }
 
-    unsigned NodeReferences::GetOutputMatrixIndex(ObjectGuid node) const
+    unsigned NodeReferences::GetOutputMatrixIndex(ObjectGuid node)
     {
         auto i = LowerBound(_nodeReferences, node);
         if (i != _nodeReferences.end() && i->first == node)
             return i->second;
-        return ~unsigned(0);
+        auto result = _nextOutputIndex++;
+        _nodeReferences.insert(i, std::make_pair(node, result));
+        return result;
     }
 
-    void NodeReferences::MarkImportant(ObjectGuid node)
-    {
-        auto i = LowerBound(_nodeReferences, node);
-        if (i != _nodeReferences.end() && i->first == node) {
-        } else {
-            _nodeReferences.insert(i, std::make_pair(node, ~unsigned(0)));
-        }
-    }
-
-    void NodeReferences::AttachInverseBindMatrix(ObjectGuid node, Float4x4 inverseBind)
+    void NodeReferences::AttachInverseBindMatrix(ObjectGuid node, const Float4x4& inverseBind)
     {
         auto i = LowerBound(_inverseBindMatrics, node);
         if (i != _inverseBindMatrics.end() && i->first == node) {
@@ -253,17 +255,7 @@ namespace RenderCore { namespace ColladaConversion
         }
     }
 
-    void NodeReferences::SetOutputMatrix(ObjectGuid node, unsigned outputMatrixIndex)
-    {
-        auto i = LowerBound(_nodeReferences, node);
-        if (i != _nodeReferences.end() && i->first == node) {
-            i->second = outputMatrixIndex;
-        } else {
-            _nodeReferences.insert(i, std::make_pair(node, outputMatrixIndex));
-        }
-    }
-
-    NodeReferences::NodeReferences() {}
+    NodeReferences::NodeReferences() : _nextOutputIndex(0) {}
     NodeReferences::~NodeReferences() {}
 
 }}

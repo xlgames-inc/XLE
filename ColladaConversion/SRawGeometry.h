@@ -6,7 +6,11 @@
 
 #pragma once
 
-#include "RawGeometry.h"
+namespace RenderCore { namespace ColladaConversion
+{
+    class NascentRawGeometry;
+    class UnboundSkinController;
+}}
 
 namespace ColladaConversion
 {
@@ -15,5 +19,8 @@ namespace ColladaConversion
 
     auto Convert(const MeshGeometry& mesh, const URIResolveContext& pubEles)
         -> RenderCore::ColladaConversion::NascentRawGeometry;
+
+    auto Convert(const SkinController& controller, const URIResolveContext& pubEles)
+        -> RenderCore::ColladaConversion::UnboundSkinController;
 }
 

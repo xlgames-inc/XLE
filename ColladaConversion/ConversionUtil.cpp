@@ -143,7 +143,7 @@ namespace RenderCore { namespace ColladaConversion
         for (auto i=scene._skinControllerInstances.cbegin(); i!=scene._skinControllerInstances.cend(); ++i) {
             const NascentModelCommandStream::SkinControllerInstance& inst = *i;
 
-            const NascentBoundSkinnedGeometry* controller = objects.Get<NascentBoundSkinnedGeometry>(inst._id);
+            const NascentBoundSkinnedGeometry* controller = objects.GetByIndex<NascentBoundSkinnedGeometry>(inst._id);
             if (!controller) continue;
 
             Float4x4 localToWorld = Identity<Float4x4>();
