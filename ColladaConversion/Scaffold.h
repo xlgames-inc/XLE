@@ -539,8 +539,10 @@ namespace ColladaConversion
 
         Channel(Formatter& formatter);
         Channel();
-        Channel(Channel&& moveFrom) never_throws;
-        Channel& operator=(Channel&& moveFrom) never_throws;
+
+    protected:
+        Section _source;    // urifragment_type
+        Section _target;    // sidref_type
     };
 
     class Sampler
@@ -584,7 +586,6 @@ namespace ColladaConversion
         Animation& operator=(Animation&& moveFrom) never_throws;
     protected:
         std::vector<Channel> _channels;
-        std::vector<Sampler> _samplers;
         std::vector<Animation> _subAnimations;
 
         DocScopeId _id;
@@ -607,6 +608,7 @@ namespace ColladaConversion
         virtual const Image*            FindImage(uint64 guid) const = 0;
         virtual const SkinController*   FindSkinController(uint64 guid) const = 0;
         virtual Node                    FindNode(uint64 guid) const = 0;
+        virtual const Sampler*          FindSampler(uint64 guid) const = 0;
         virtual ~IDocScopeIdResolver();
     };
 
@@ -641,6 +643,7 @@ namespace ColladaConversion
         void Parse_LibraryControllers(Formatter& formatter);
         void Parse_LibraryMaterials(Formatter& formatter);
         void Parse_LibraryImages(Formatter& formatter);
+        void Parse_LibraryAnimations(Formatter& formatter);
         void Parse_Scene(Formatter& formatter);
 
         DocumentScaffold();
@@ -648,6 +651,7 @@ namespace ColladaConversion
 
         void Add(DataFlow::Source&& element);
         void Add(InputsCollection&& vertexInputs);
+        void Add(Sampler&& sampler);
 
         const DataFlow::Source* FindSource(uint64 guid) const;
         const InputsCollection* FindVertexInputs(uint64 guid) const;
@@ -657,6 +661,7 @@ namespace ColladaConversion
         const Image*            FindImage(uint64 guid) const;
         const SkinController*   FindSkinController(uint64 guid) const;
         Node                    FindNode(uint64 guid) const;
+        const Sampler*          FindSampler(uint64 guid) const;
 
         Section GetMainVisualScene() const { return _visualScene; }
 
@@ -669,6 +674,7 @@ namespace ColladaConversion
         std::vector<SkinController> _skinControllers;
         std::vector<Material> _materials;
         std::vector<Image> _images;
+        std::vector<Animation> _animations;
 
         Section _visualScene;
         Section _physicsScene;
@@ -676,6 +682,7 @@ namespace ColladaConversion
 
         std::vector<std::pair<uint64, DataFlow::Source>> _sources;
         std::vector<std::pair<uint64, InputsCollection>> _vertexInputs;
+        std::vector<std::pair<uint64, Sampler>> _samplers;
     };
     
 

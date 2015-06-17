@@ -130,6 +130,7 @@ namespace ColladaConversion
         std::make_pair(u("library_controllers"), &DocumentScaffold::Parse_LibraryControllers),
         std::make_pair(u("library_materials"), &DocumentScaffold::Parse_LibraryMaterials),
         std::make_pair(u("library_images"), &DocumentScaffold::Parse_LibraryImages),
+        std::make_pair(u("library_animations"), &DocumentScaffold::Parse_LibraryAnimations),
         std::make_pair(u("scene"), &DocumentScaffold::Parse_Scene)
     };
 
@@ -609,6 +610,21 @@ namespace ColladaConversion
                 _effects.push_back(Effect(formatter));
             } else {
                     // "annotate", "asset" and "extra" are also valid
+                LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+                formatter.SkipElement();
+            }
+
+        ON_ATTRIBUTE
+        PARSE_END
+    }
+
+    void DocumentScaffold::Parse_LibraryAnimations(Formatter& formatter)
+    {
+        ON_ELEMENT
+            if (Is(eleName, u("animation"))) {
+                _animations.push_back(Animation(formatter, *this));
+            } else {
+                    // "asset" and "extra" are also valid
                 LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
                 formatter.SkipElement();
             }
@@ -1904,6 +1920,20 @@ namespace ColladaConversion
         return (unsigned)_controllerInstances.size();
     }
 
+
+    Channel::Channel(Formatter& formatter)
+    {
+        ON_ELEMENT
+            LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
+            formatter.SkipElement();
+        ON_ATTRIBUTE
+            if (Is(name, u("source"))) _source = value;
+            else if (Is(name, u("target"))) _target = value;
+        PARSE_END
+    }
+
+    Channel::Channel() {}
+
     std::pair<Sampler::Behaviour, const utf8*> s_SamplerBehaviourNames[] = 
     {
         std::make_pair(Sampler::Behaviour::Unspecified, u("UNDEFINED")),
@@ -1915,6 +1945,7 @@ namespace ColladaConversion
     };
 
     Sampler::Sampler(Formatter& formatter)
+        : Sampler()
     {
         ON_ELEMENT
             if (Is(eleName, u("input"))) {
@@ -1961,7 +1992,7 @@ namespace ColladaConversion
             } else if (Is(eleName, u("source"))) {
                 pub.Add(DataFlow::Source(formatter));
             } else if (Is(eleName, u("sampler"))) {
-                _samplers.emplace_back(Sampler(formatter));
+                pub.Add(Sampler(formatter));
             } else if (Is(eleName, u("channel"))) {
                 _channels.emplace_back(Channel(formatter));
             } else if (Is(eleName, u("extra"))) {
@@ -1981,7 +2012,6 @@ namespace ColladaConversion
     Animation::Animation() {}
     Animation::Animation(Animation&& moveFrom) never_throws
     : _channels(std::move(moveFrom._channels))
-    , _samplers(std::move(moveFrom._samplers))
     , _subAnimations(std::move(moveFrom._subAnimations))
     , _id(moveFrom._id)
     , _name(moveFrom._name)
@@ -1992,7 +2022,6 @@ namespace ColladaConversion
     Animation& Animation::operator=(Animation&& moveFrom) never_throws
     {
         _channels = std::move(moveFrom._channels);
-        _samplers = std::move(moveFrom._samplers);
         _subAnimations = std::move(moveFrom._subAnimations);
         _id = moveFrom._id;
         _name = moveFrom._name;
@@ -2052,6 +2081,16 @@ namespace ColladaConversion
             Throw(::Exceptions::BasicLabel("Duplicated id when publishing <vertices> element"));
 
         _vertexInputs.insert(i, std::make_pair(hashedId, std::move(vertexInputs)));
+    }
+
+    void DocumentScaffold::Add(Sampler&& sampler)
+    {
+        auto hashedId = sampler.GetId().GetHash();
+        auto i = LowerBound(_samplers, hashedId);
+        if (i != _samplers.end() && i->first == hashedId)
+            Throw(::Exceptions::BasicLabel("Duplicated id when publishing <sampler> element"));
+
+        _samplers.insert(i, std::make_pair(hashedId, std::move(sampler)));
     }
 
     const DataFlow::Source* DocumentScaffold::FindSource(uint64 id) const
@@ -2132,6 +2171,14 @@ namespace ColladaConversion
             if (r) return r;
         }
         return Node();
+    }
+
+    const Sampler*          DocumentScaffold::FindSampler(uint64 guid) const
+    {
+        auto i = LowerBound(_samplers, guid);
+        if (i!=_samplers.cend() && i->first == guid) 
+            return &i->second;
+        return nullptr;
     }
 
     DocumentScaffold::DocumentScaffold() 
@@ -2297,7 +2344,8 @@ void TestParser()
     size_t size;
     // auto block = LoadFileAsMemoryBlock("game/testmodels/nyra/Nyra_pose.dae", &size);
     // auto block = LoadFileAsMemoryBlock("Game/chr/nu_f/skin/dragon003.dae", &size);
-    auto block = LoadFileAsMemoryBlock("Game/Model/Galleon/Galleon.dae", &size);
+    // auto block = LoadFileAsMemoryBlock("Game/Model/Galleon/Galleon.dae", &size);
+    auto block = LoadFileAsMemoryBlock("Game/chr/nu_f/animation/onehand_ba_combat_idle.dae", &size);
     XmlInputStreamFormatter<utf8> formatter(MemoryMappedInputStream(block.get(), PtrAdd(block.get(), size)));
     auto doc = std::make_shared<ColladaConversion::DocumentScaffold>();
     doc->Parse(formatter);
