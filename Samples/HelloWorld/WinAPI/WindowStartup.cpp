@@ -174,9 +174,9 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
     ConsoleRig::GlobalServices services;
     LogInfo << "------------------------------------------------------------------------------------------";
 
-    TestParser3();
+    // TestParser3();
     TestParser2();
-    TestParser();
+    // TestParser();
 
     TRY {
         Sample::ExecuteSample();

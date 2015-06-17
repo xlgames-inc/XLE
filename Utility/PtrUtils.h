@@ -284,7 +284,7 @@ namespace Utility
 
             ////////////////////////////////////////////////////////
 
-    /// <summary>Wrapper for std::unique_ptr<Type[]> </summary>
+    /// <summary> Wrapper for std::unique_ptr&lt;Type[]&gt; </summary>
     /// This is a just a basic wrapper for a heap-allocated array and a count value,
     /// with a STL container like interface.
     /// The only real advantage over using a std::vector<> is if the array

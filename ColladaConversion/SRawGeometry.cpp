@@ -635,6 +635,9 @@ namespace ColladaConversion
         }
 
         auto count = commonAccessor->GetCount();
+        if (!count)
+            return DynamicArray<Float4x4>(nullptr, 0);
+
         DynamicArray<Float4x4> result(std::make_unique<Float4x4[]>(count), count);
 
             // parse in the array of raw floats

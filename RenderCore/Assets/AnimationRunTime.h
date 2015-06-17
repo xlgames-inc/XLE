@@ -55,11 +55,11 @@ namespace RenderCore { namespace Assets
         };
 
         TransformationParameterSet  BuildTransformationParameterSet(
-                const AnimationState&           animState,
-                const TransformationMachine&    transformationMachine,
-                const AnimationSetBinding&      binding,
-                const RawAnimationCurve*        curves,
-                size_t                          curvesCount) const;
+            const AnimationState&           animState,
+            const TransformationMachine&    transformationMachine,
+            const AnimationSetBinding&      binding,
+            const RawAnimationCurve*        curves,
+            size_t                          curvesCount) const;
 
         const AnimationDriver&  GetAnimationDriver(size_t index) const;
         size_t                  GetAnimationDriverCount() const;

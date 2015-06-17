@@ -149,6 +149,16 @@ namespace SceneEngine
         _textureCfgName = buffer;
     }
 
+    TerrainConfig::TerrainConfig()
+    {
+        _cellCount = UInt2(0,0);
+        _filenamesMode = XLE;
+        _nodeDimsInElements = 0;
+        _cellTreeDepth = 0;
+        _nodeOverlap = 0;
+        _elementSpacing = 0.f;
+    }
+
     TerrainConfig::TerrainConfig(const ::Assets::ResChar baseDir[])
     : _baseDir(FormatBaseDir(baseDir)), _filenamesMode(XLE)
     , _cellCount(0,0), _nodeDimsInElements(32u), _nodeOverlap(2u)

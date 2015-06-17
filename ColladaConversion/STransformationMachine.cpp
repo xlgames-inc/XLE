@@ -6,6 +6,8 @@
 
 #include "STransformationMachine.h"
 #include "Scaffold.h"
+#include "ConversionObjects.h"      // just for NodeReferences
+#include "ParsingUtil.h"            // just for AsString
 #include "../../RenderCore/Assets/NascentTransformationMachine.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Math/Transformations.h"
@@ -18,27 +20,28 @@ namespace RenderCore { namespace ColladaConversion
 {
     using namespace ::ColladaConversion;
 
-    #pragma warning(disable:4505) // 'RenderCore::ColladaConversion::FloatBits' : unreferenced local function has been removed)
-    static unsigned int FloatBits(float input)
-    {
-            // (or just use a reinterpret cast)
-        union Converter { float f; unsigned int i; };
-        Converter c; c.f = float(input); 
-        return c.i;
-    }
-    
-    static unsigned int FloatBits(double input)
-    {
-            // (or just use a reinterpret cast)
-        union Converter { float f; unsigned int i; };
-        Converter c; c.f = float(input); 
-        return c.i;
-    }
+    //#pragma warning(disable:4505) // 'RenderCore::ColladaConversion::FloatBits' : unreferenced local function has been removed)
+    //static unsigned int FloatBits(float input)
+    //{
+    //        // (or just use a reinterpret cast)
+    //    union Converter { float f; unsigned int i; };
+    //    Converter c; c.f = float(input); 
+    //    return c.i;
+    //}
+    //
+    //static unsigned int FloatBits(double input)
+    //{
+    //        // (or just use a reinterpret cast)
+    //    union Converter { float f; unsigned int i; };
+    //    Converter c; c.f = float(input); 
+    //    return c.i;
+    //}
 
     unsigned PushTransformations(
         RenderCore::Assets::NascentTransformationMachine& dst,
         const Transformation& transformations,
-        const char nodeName[])
+        const char nodeName[],
+        const NodeReferences& nodeRefs)
     {
         dst.ResolvePendingPops();
 
@@ -93,8 +96,10 @@ namespace RenderCore { namespace ColladaConversion
                 ParameterType_Animated
             } parameterType;
 
-            parameterType = ParameterType_Embedded;
-            RenderCore::Assets::AnimationParameterId parameterName = 0;
+            auto paramName = std::string(nodeName) + "/" + AsString(trans.GetSid());
+            const bool isAnimated = nodeRefs.IsAnimated(paramName);
+            parameterType = isAnimated ? ParameterType_Animated : ParameterType_Embedded;
+            auto parameterId = Hash32(AsPointer(paramName.cbegin()), AsPointer(paramName.cend()));
 
             if  (type == TransformationSet::Type::Matrix4x4) {
 
@@ -108,7 +113,7 @@ namespace RenderCore { namespace ColladaConversion
                     dst.PushCommand(trans.GetUnionData(), sizeof(Float4x4));
                 } else {
                     dst.PushCommand(Assets::TransformStackCommand::TransformFloat4x4_Parameter);
-                    dst.PushCommand(dst.AddParameter(*(const Float4x4*)trans.GetUnionData(), parameterName, nodeName));
+                    dst.PushCommand(dst.AddParameter(*(const Float4x4*)trans.GetUnionData(), parameterId, paramName.c_str()));
                 }
 
             } else if (type == TransformationSet::Type::Translate) {
@@ -118,7 +123,7 @@ namespace RenderCore { namespace ColladaConversion
                     dst.PushCommand(trans.GetUnionData(), sizeof(Float3));
                 } else {
                     dst.PushCommand(Assets::TransformStackCommand::Translate_Parameter);
-                    dst.PushCommand(dst.AddParameter(*(const Float3*)trans.GetUnionData(), parameterName, nodeName));
+                    dst.PushCommand(dst.AddParameter(*(const Float3*)trans.GetUnionData(), parameterId, paramName.c_str()));
                 }
 
             } else if (type == TransformationSet::Type::Rotate) {
@@ -158,7 +163,7 @@ namespace RenderCore { namespace ColladaConversion
                         // we can't perform an optimisation to squish it to rotation around
                         // one of the cardinal axes
                     dst.PushCommand(Assets::TransformStackCommand::Rotate_Parameter);
-                    dst.PushCommand(dst.AddParameter(*(const Float4*)&rot, parameterName, nodeName));
+                    dst.PushCommand(dst.AddParameter(*(const Float4*)&rot, parameterId, paramName.c_str()));
 
                 }
                         
@@ -186,10 +191,10 @@ namespace RenderCore { namespace ColladaConversion
                 } else {
                     if (isUniform) {
                         dst.PushCommand(Assets::TransformStackCommand::UniformScale_Parameter);
-                        dst.PushCommand(dst.AddParameter(scale[0], parameterName, nodeName));
+                        dst.PushCommand(dst.AddParameter(scale[0], parameterId, paramName.c_str()));
                     } else {
                         dst.PushCommand(Assets::TransformStackCommand::ArbitraryScale_Parameter);
-                        dst.PushCommand(dst.AddParameter(scale, parameterName, nodeName));
+                        dst.PushCommand(dst.AddParameter(scale, parameterId, paramName.c_str()));
                     }
                 }
 

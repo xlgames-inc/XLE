@@ -1546,6 +1546,12 @@ namespace ColladaConversion
         return _set->_operations[_index]._buffer;
     }
 
+    Section Transformation::GetSid() const
+    {
+        assert(_index != ~unsigned(0));
+        return _set->_operations[_index]._sid;
+    }
+
     Transformation::operator bool() const
     {
         return _index != ~unsigned(0);

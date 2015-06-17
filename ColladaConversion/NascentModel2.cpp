@@ -10,6 +10,7 @@
 #include "SRawGeometry.h"
 #include "SEffect.h"
 #include "SCommandStream.h"
+#include "SAnimation.h"
 #include "ConversionUtil.h"
 #include "ParsingUtil.h"    // for AsString
 #include "../RenderCore/Assets/TransformationCommands.h"
@@ -45,6 +46,8 @@ namespace RenderCore { namespace ColladaConversion
 
         ImportConfiguration _cfg;
         std::unique_ptr<uint8[]> _fileData;
+
+        NascentAnimationSet _animationSet;
     };
 
     static void DestroyModel(const void* model) { delete (NascentModel2*)model; }
@@ -56,6 +59,8 @@ namespace RenderCore { namespace ColladaConversion
             Internal::CrossDLLDeletor2(&DestroyModel));
 
         result->_cfg = ImportConfiguration("colladaimport.cfg");
+
+        if (!identifier) return std::move(result);
 
         size_t size;
         result->_fileData = LoadFileAsMemoryBlock(identifier, &size);
@@ -107,6 +112,33 @@ namespace RenderCore { namespace ColladaConversion
             } CATCH_END
         }
 
+        {
+            std::vector<UnboundAnimation> anims;
+            const auto& animations = result->_doc->_animations;
+            for (auto i=animations.cbegin(); i!=animations.cend(); ++i) {
+                TRY {
+                    anims.push_back(Convert(*i, resolveContext, result->_jointRefs)); 
+                } CATCH (...) {
+                } CATCH_END
+            }
+
+            ObjectGuid animCurveId = 1;
+            for (auto i=anims.begin(); i!=anims.end(); ++i) {
+                for (auto c=i->_curves.begin(); c!=i->_curves.end(); ++c) {
+                    result->_objects.Add(
+                        animCurveId,
+                        std::string(), std::string(),
+                        std::move(c->_curve));
+
+                    result->_animationSet.AddAnimationDriver(
+                        c->_parameterName,
+                        animCurveId,
+                        c->_samplerType, c->_samplerOffset);
+                    ++animCurveId._objectId;
+                }
+            }
+        }
+
         const auto* scene = result->_doc->FindVisualScene(
             GuidReference(result->_doc->_visualScene)._id);
         if (!scene)
@@ -114,21 +146,29 @@ namespace RenderCore { namespace ColladaConversion
 
         // FindImportantNodes(result->_jointRefs, *scene);
 
-        for (unsigned c=0; c<scene->GetInstanceGeometryCount(); ++c)
-            RenderCore::ColladaConversion::InstantiateGeometry(
-                result->_visualScene,
-                scene->GetInstanceGeometry(c),
-                scene->GetInstanceGeometry_Attach(c),
-                resolveContext,
-                result->_objects, result->_jointRefs);
+        for (unsigned c=0; c<scene->GetInstanceGeometryCount(); ++c) {
+            TRY {
+                RenderCore::ColladaConversion::InstantiateGeometry(
+                    result->_visualScene,
+                    scene->GetInstanceGeometry(c),
+                    scene->GetInstanceGeometry_Attach(c),
+                    resolveContext,
+                    result->_objects, result->_jointRefs);
+            } CATCH(...) {
+            } CATCH_END
+        }
 
-        for (unsigned c=0; c<scene->GetInstanceControllerCount(); ++c)
-            RenderCore::ColladaConversion::InstantiateController(
-                result->_visualScene,
-                scene->GetInstanceController(c),
-                scene->GetInstanceController_Attach(c),
-                resolveContext,
-                result->_objects, result->_jointRefs);
+        for (unsigned c=0; c<scene->GetInstanceControllerCount(); ++c) {
+            TRY {
+                RenderCore::ColladaConversion::InstantiateController(
+                    result->_visualScene,
+                    scene->GetInstanceController(c),
+                    scene->GetInstanceController_Attach(c),
+                    resolveContext,
+                    result->_objects, result->_jointRefs);
+            } CATCH(...) {
+            } CATCH_END
+        }
 
         RenderCore::ColladaConversion::BuildSkeleton(
             result->_skeleton, 
@@ -308,9 +348,31 @@ namespace RenderCore { namespace ColladaConversion
         return std::move(result);
     }
 
+    NascentChunkArray2 SerializeAnimationSet2(const NascentModel2& model)
+    {
+        Serialization::NascentBlockSerializer serializer;
+
+        Serialization::Serialize(serializer, model._animationSet);
+        model._objects.SerializeAnimationSet(serializer);
+        ConsoleRig::GetWarningStream().Flush();
+
+        auto block = serializer.AsMemoryBlock();
+        size_t size = Serialization::Block_GetSize(block.get());
+
+        Serialization::ChunkFile::ChunkHeader scaffoldChunk(
+            RenderCore::Assets::ChunkType_AnimationSet, 0, model._name.c_str(), unsigned(size));
+
+        NascentChunkArray2 result(
+            std::unique_ptr<NascentChunk2[], Internal::CrossDLLDeletor2>(
+                new NascentChunk2[1], Internal::CrossDLLDeletor2(&DestroyChunkArray)),
+            1);
+        result.first[0] = NascentChunk2(scaffoldChunk, std::vector<uint8>(block.get(), PtrAdd(block.get(), size)));
+        return std::move(result);
+    }
+
     void         MergeAnimationData(NascentModel2& dest, const NascentModel2& source, const char animationName[])
     {
-        // dest._animationSet.MergeAnimation(source._animationSet, animationName, source._objects, dest._objects);
+        dest._animationSet.MergeAnimation(source._animationSet, animationName, source._objects, dest._objects);
     }
 }}
 

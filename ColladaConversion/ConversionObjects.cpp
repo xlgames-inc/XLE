@@ -255,6 +255,19 @@ namespace RenderCore { namespace ColladaConversion
         }
     }
 
+    void    NodeReferences::MarkParameterAnimated(const std::string& paramName)
+    {
+        auto i = std::lower_bound(_markParameterAnimated.cbegin(), _markParameterAnimated.cend(), paramName);
+        if (i != _markParameterAnimated.cend() && (*i) == paramName) return;
+        _markParameterAnimated.insert(i, paramName);
+    }
+
+    bool    NodeReferences::IsAnimated(const std::string& paramName) const
+    {
+        auto i = std::lower_bound(_markParameterAnimated.cbegin(), _markParameterAnimated.cend(), paramName);
+        return i != _markParameterAnimated.cend() && (*i) == paramName;
+    }
+
     NodeReferences::NodeReferences() : _nextOutputIndex(0) {}
     NodeReferences::~NodeReferences() {}
 

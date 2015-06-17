@@ -159,7 +159,7 @@ namespace Utility
         template<typename Type>
             std::pair<bool, Type> DocAttributeHelper<Formatter>::As() const
     {
-        if (_index != ~unsigned(0)) return std::make_pair(false, Default<Type>());
+        if (_index == ~unsigned(0)) return std::make_pair(false, Default<Type>());
         const auto& attrib = _doc->_attributes[_index];
         return ImpliedTyping::Parse<Type>(attrib._value._start, attrib._value._end);
     }

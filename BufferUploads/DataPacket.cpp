@@ -368,6 +368,12 @@ namespace BufferUploads
             {
                 using namespace DirectX;
 
+                    // the DirectXTex library is expecting us to call CoInitializeEx.
+                    // We need to call this in every thread that uses the DirectXTex library.
+                    //  ... it should be ok to call it multiple times in the same thread, so
+                    //      let's just call it every time.
+                CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+
                     // We want to release the reference in this->_returnPointer at the
                     // end of this function, no matter what happens (successful return,
                     // failure return, or exception). Let's move the reference into a 

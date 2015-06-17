@@ -163,7 +163,10 @@ namespace RenderCore { namespace ColladaConversion
         unsigned    GetOutputMatrixIndex(ObjectGuid node);
 
         const Float4x4* GetInverseBindMatrix(ObjectGuid node) const;
-        void AttachInverseBindMatrix(ObjectGuid node, const Float4x4& inverseBind);
+        void    AttachInverseBindMatrix(ObjectGuid node, const Float4x4& inverseBind);
+
+        void    MarkParameterAnimated(const std::string& paramName);
+        bool    IsAnimated(const std::string& paramName) const;
 
         NodeReferences();
         ~NodeReferences();
@@ -173,6 +176,7 @@ namespace RenderCore { namespace ColladaConversion
 
         std::vector<std::pair<ObjectGuid, OutputMatrixIndex>> _nodeReferences;
         std::vector<std::pair<ObjectGuid, Float4x4>> _inverseBindMatrics;
+        std::vector<std::string> _markParameterAnimated;
 
         OutputMatrixIndex _nextOutputIndex;
     };

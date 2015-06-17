@@ -227,10 +227,12 @@ namespace RenderCore { namespace ColladaConversion
             }
         }
 
-        unsigned alignedDestinationWeightVertexStride = (unsigned)std::max(destinationWeightVertexStride, size_t(4));
-        if (alignedDestinationWeightVertexStride != destinationWeightVertexStride) {
-            LogAlwaysWarningF("LogAlwaysWarningF -- vertex buffer had to be expanded for vertex alignment restrictions in node (%s). This will leave some wasted space in the vertex buffer. This can be caused when using skinning when only 1 weight is really required.\n", nodeName);
-            destinationWeightVertexStride = alignedDestinationWeightVertexStride;
+        if (destinationWeightVertexStride) {
+            unsigned alignedDestinationWeightVertexStride = (unsigned)std::max(destinationWeightVertexStride, size_t(4));
+            if (alignedDestinationWeightVertexStride != destinationWeightVertexStride) {
+                LogAlwaysWarningF("LogAlwaysWarningF -- vertex buffer had to be expanded for vertex alignment restrictions in node (%s). This will leave some wasted space in the vertex buffer. This can be caused when using skinning when only 1 weight is really required.\n", nodeName);
+                destinationWeightVertexStride = alignedDestinationWeightVertexStride;
+            }
         }
 
         std::unique_ptr<uint8[]> skeletonBindingVertices;

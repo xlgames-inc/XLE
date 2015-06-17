@@ -47,7 +47,8 @@ namespace SceneEngine
             Filenames filenamesMode = XLE, 
             unsigned nodeDimsInElements = 32u, unsigned cellTreeDepth = 5u, unsigned nodeOverlap = 2u,
             float elementSpacing = 10.f);
-        TerrainConfig(const ::Assets::ResChar baseDir[] = "");
+        TerrainConfig(const ::Assets::ResChar baseDir[]);
+        TerrainConfig();
 
         void        GetCellFilename(::Assets::ResChar buffer[], unsigned cnt, UInt2 cellIndex, TerrainCoverageId id) const;
         UInt2x3     CellBasedToCoverage(TerrainCoverageId coverageId) const;

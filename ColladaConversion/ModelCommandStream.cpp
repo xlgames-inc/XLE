@@ -190,9 +190,10 @@ namespace RenderCore { namespace ColladaConversion
             ConstantDriver(dataOffset, (unsigned)parameterIndex, samplerType, samplerOffset));
     }
 
-    void    NascentAnimationSet::AddAnimationDriver( const std::string& parameterName, 
-                                    ObjectGuid curveId, 
-                                    AnimSamplerType samplerType, unsigned samplerOffset)
+    void    NascentAnimationSet::AddAnimationDriver( 
+        const std::string& parameterName, 
+        ObjectGuid curveId, 
+        AnimSamplerType samplerType, unsigned samplerOffset)
     {
         size_t parameterIndex = _parameterInterfaceDefinition.size();
         auto i = std::find( _parameterInterfaceDefinition.cbegin(), 
@@ -272,7 +273,6 @@ namespace RenderCore { namespace ColladaConversion
 
     void NascentAnimationSet::AnimationDriver::Serialize(Serialization::NascentBlockSerializer& serializer) const
     {
-        assert(0 && "problem with curve id serialization");
         Serialization::Serialize(serializer, unsigned(_curveId._objectId));
         Serialization::Serialize(serializer, _parameterIndex);
         Serialization::Serialize(serializer, _samplerOffset);

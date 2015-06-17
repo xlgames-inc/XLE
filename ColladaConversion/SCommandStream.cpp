@@ -36,7 +36,8 @@ namespace RenderCore { namespace ColladaConversion
 
         unsigned pushCount = PushTransformations(
             skeleton.GetTransformationMachine(),
-            node.GetFirstTransform(), SkeletonBindingName(node).c_str());
+            node.GetFirstTransform(), SkeletonBindingName(node).c_str(),
+            skeletonReferences);
 
             //
             //      We have to assume we need an output matrix. We don't really know

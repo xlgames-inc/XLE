@@ -400,6 +400,8 @@ namespace ColladaConversion
         Transformation GetNext() const;
         const void* GetUnionData() const;
 
+        Section GetSid() const;
+
         operator bool() const;
         bool operator!() const;
 
@@ -536,6 +538,8 @@ namespace ColladaConversion
     class Channel
     {
     public:
+        Section GetSource() const { return _source; }
+        Section GetTarget() const { return _target; }
 
         Channel(Formatter& formatter);
         Channel();
@@ -579,6 +583,8 @@ namespace ColladaConversion
     class Animation
     {
     public:
+        unsigned GetChannelCount() const { return (unsigned)_channels.size(); }
+        const Channel& GetChannel(unsigned index) const { return _channels[index]; }
 
         Animation(Formatter& formatter, DocumentScaffold& pub);
         Animation();

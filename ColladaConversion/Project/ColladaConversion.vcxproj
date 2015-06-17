@@ -87,7 +87,6 @@
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\AnimationConversion.cpp" />
     <ClCompile Include="..\ColladaConversion.cpp" />
     <ClCompile Include="..\ColladaDocument.cpp" />
     <ClCompile Include="..\ConversionObjects.cpp" />
@@ -95,6 +94,7 @@
     <ClCompile Include="..\ModelCommandStream.cpp" />
     <ClCompile Include="..\NascentModel.cpp" />
     <ClCompile Include="..\NascentModel2.cpp" />
+    <ClCompile Include="..\OpenCollada\OCAnimationConversion.cpp" />
     <ClCompile Include="..\OpenCollada\OCMisc.cpp" />
     <ClCompile Include="..\OpenCollada\OCSkinController.cpp" />
     <ClCompile Include="..\OpenCollada\OCModelCommandStream.cpp" />
@@ -102,6 +102,7 @@
     <ClCompile Include="..\OpenCollada\OCTransformationMachine.cpp" />
     <ClCompile Include="..\ParsingUtil.cpp" />
     <ClCompile Include="..\RawGeometry.cpp" />
+    <ClCompile Include="..\SAnimation.cpp" />
     <ClCompile Include="..\SCommandStream.cpp" />
     <ClCompile Include="..\SEffect.cpp" />
     <ClCompile Include="..\SkinController.cpp" />
@@ -121,6 +122,7 @@
     <ClInclude Include="..\ParsingUtil.h" />
     <ClInclude Include="..\ProcessingUtil.h" />
     <ClInclude Include="..\RawGeometry.h" />
+    <ClInclude Include="..\SAnimation.h" />
     <ClInclude Include="..\Scaffold.h" />
     <ClInclude Include="..\ScaffoldDataFlow.h" />
     <ClInclude Include="..\SCommandStream.h" />

@@ -39,7 +39,10 @@ namespace RenderCore { namespace Assets
 
         ColladaConversion::CreateModel2Function* _createModel2;
         ColladaConversion::Model2SerializeFunction* _serializeSkinFunction2;
+        ColladaConversion::Model2SerializeFunction* _serializeAnimationFunction2;
+        ColladaConversion::Model2SerializeFunction* _serializeSkeletonFunction2;
         ColladaConversion::Model2SerializeFunction* _serializeMaterialsFunction2;
+        ColladaConversion::MergeAnimationDataFunction2* _mergeAnimationDataFunction2;
 
         ConsoleRig::AttachableLibrary _library;
         bool _isAttached;
@@ -64,50 +67,53 @@ namespace RenderCore { namespace Assets
 
             _createModel2 = nullptr;
             _serializeSkinFunction2 = nullptr;
+            _serializeAnimationFunction2 = nullptr;
+            _serializeSkeletonFunction2 = nullptr;
             _serializeMaterialsFunction2 = nullptr;
+            _mergeAnimationDataFunction2 = nullptr;
         }
     };
 
-    static void SerializeToFile(
-        RenderCore::ColladaConversion::NascentModel& model, 
-        RenderCore::ColladaConversion::ModelSerializeFunction fn,
-        const char destinationFilename[],
-        const ConsoleRig::LibVersionDesc& versionInfo)
-    {
-        auto chunks = (model.*fn)();
-
-            // (create the directory if we need to)
-        char dirName[MaxPath];
-        XlDirname(dirName, dimof(dirName), destinationFilename);
-        CreateDirectoryRecursive(dirName);
-
-        using namespace Serialization::ChunkFile;
-        ChunkFileHeader header;
-
-        XlZeroMemory(header);
-        header._magic = MagicHeader;
-        header._fileVersionNumber = 0;
-        XlCopyString(header._buildVersion, dimof(header._buildVersion), versionInfo._versionString);
-        XlCopyString(header._buildDate, dimof(header._buildDate), versionInfo._buildDateString);
-        header._chunkCount = chunks.second;
-            
-        BasicFile outputFile(destinationFilename, "wb");
-        outputFile.Write(&header, sizeof(header), 1);
-
-        unsigned trackingOffset = unsigned(outputFile.TellP() + sizeof(ChunkHeader) * chunks.second);
-        for (unsigned i=0; i<chunks.second; ++i) {
-            auto& c = chunks.first[i];
-            auto hdr = c._hdr;
-            hdr._fileOffset = trackingOffset;
-            outputFile.Write(&hdr, sizeof(c._hdr), 1);
-            trackingOffset += hdr._size;
-        }
-
-        for (unsigned i=0; i<chunks.second; ++i) {
-            auto& c = chunks.first[i];
-            outputFile.Write(AsPointer(c._data.begin()), c._data.size(), 1);
-        }
-    }
+    // static void SerializeToFile(
+    //     RenderCore::ColladaConversion::NascentModel& model, 
+    //     RenderCore::ColladaConversion::ModelSerializeFunction fn,
+    //     const char destinationFilename[],
+    //     const ConsoleRig::LibVersionDesc& versionInfo)
+    // {
+    //     auto chunks = (model.*fn)();
+    // 
+    //         // (create the directory if we need to)
+    //     char dirName[MaxPath];
+    //     XlDirname(dirName, dimof(dirName), destinationFilename);
+    //     CreateDirectoryRecursive(dirName);
+    // 
+    //     using namespace Serialization::ChunkFile;
+    //     ChunkFileHeader header;
+    // 
+    //     XlZeroMemory(header);
+    //     header._magic = MagicHeader;
+    //     header._fileVersionNumber = 0;
+    //     XlCopyString(header._buildVersion, dimof(header._buildVersion), versionInfo._versionString);
+    //     XlCopyString(header._buildDate, dimof(header._buildDate), versionInfo._buildDateString);
+    //     header._chunkCount = chunks.second;
+    //         
+    //     BasicFile outputFile(destinationFilename, "wb");
+    //     outputFile.Write(&header, sizeof(header), 1);
+    // 
+    //     unsigned trackingOffset = unsigned(outputFile.TellP() + sizeof(ChunkHeader) * chunks.second);
+    //     for (unsigned i=0; i<chunks.second; ++i) {
+    //         auto& c = chunks.first[i];
+    //         auto hdr = c._hdr;
+    //         hdr._fileOffset = trackingOffset;
+    //         outputFile.Write(&hdr, sizeof(c._hdr), 1);
+    //         trackingOffset += hdr._size;
+    //     }
+    // 
+    //     for (unsigned i=0; i<chunks.second; ++i) {
+    //         auto& c = chunks.first[i];
+    //         outputFile.Write(AsPointer(c._data.begin()), c._data.size(), 1);
+    //     }
+    // }
 
     static void SerializeToFile(
         const RenderCore::ColladaConversion::NascentModel2& model, 
@@ -280,8 +286,8 @@ namespace RenderCore { namespace Assets
                     XlCatString(matName, dimof(matName), "-rawmat");
                     SerializeToFileJustChunk(*model2, _serializeMaterialsFunction2, matName, libVersionDesc);
                 } else {
-                    auto model = (*_createModel)(colladaFile);
-                    SerializeToFile(*model, _serializeSkeletonFunction, op._sourceID0, libVersionDesc);
+                    auto model = (*_createModel2)(colladaFile);
+                    SerializeToFile(*model, _serializeSkeletonFunction2, op._sourceID0, libVersionDesc);
                 }
 
                     // write new dependencies
@@ -298,7 +304,7 @@ namespace RenderCore { namespace Assets
                 auto sourceFiles = FindFiles(std::string(op._initializer) + "/*.dae");
                 std::vector<::Assets::DependentFileState> deps;
 
-                auto mergedAnimationSet = (*_createModel)(nullptr);
+                auto mergedAnimationSet = (*_createModel2)(nullptr);
                 for (auto i=sourceFiles.begin(); i!=sourceFiles.end(); ++i) {
                     char baseName[MaxPath]; // get the base name of the file (without the extension)
                     XlBasename(baseName, dimof(baseName), i->c_str());
@@ -310,11 +316,12 @@ namespace RenderCore { namespace Assets
                             //          note that this will do geometry processing; etc -- but all that geometry
                             //          information will be ignored.
                             //
-                        auto model = (*_createModel)(i->c_str());
+                        auto model = (*_createModel2)(i->c_str());
 
                             //
                             //      Now, merge the animation data into 
-                        (mergedAnimationSet.get()->*_mergeAnimationDataFunction)(*model.get(), baseName);
+                        // (mergedAnimationSet.get()->*_mergeAnimationDataFunction2)(*model.get(), baseName);
+                        (*_mergeAnimationDataFunction2)(*mergedAnimationSet.get(), *model.get(), baseName);
                     } CATCH (const std::exception& e) {
                             // on exception, ignore this animation file and move on to the next
                         LogAlwaysError << "Exception while processing animation: (" << baseName << "). Exception is: (" << e.what() << ")";
@@ -323,7 +330,7 @@ namespace RenderCore { namespace Assets
                     deps.push_back(op._destinationStore->GetDependentFileState(i->c_str()));
                 }
 
-                SerializeToFile(*mergedAnimationSet, _serializeAnimationFunction, op._sourceID0, libVersionDesc);
+                SerializeToFile(*mergedAnimationSet, _serializeAnimationFunction2, op._sourceID0, libVersionDesc);
                 op._dependencyValidation = op._destinationStore->WriteDependencies(op._sourceID0, baseDir, AsPointer(deps.cbegin()), AsPointer(deps.cend()));
 
                 op.SetState(::Assets::AssetState::Ready);
@@ -425,9 +432,12 @@ namespace RenderCore { namespace Assets
                     const char ModelSerializeMaterialsName[]    = "?SerializeMaterials@NascentModel@ColladaConversion@RenderCore@@QEBA?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk@ColladaConversion@RenderCore@@VCrossDLLDeletor@Internal@23@@std@@I@std@@XZ";
                     const char ModelMergeAnimationDataName[]    = "?MergeAnimationData@NascentModel@ColladaConversion@RenderCore@@QEAAXAEBV123@QEBD@Z";
 
-                    const char CreateModel2Name[] = "?CreateModel2@ColladaConversion@RenderCore@@YA?AV?$unique_ptr@VNascentModel2@ColladaConversion@RenderCore@@VCrossDLLDeletor2@Internal@23@@std@@QEBD@Z";
-                    const char Model2SerializeSkinName[] = "?SerializeSkin2@ColladaConversion@RenderCore@@YA?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk2@ColladaConversion@RenderCore@@VCrossDLLDeletor2@Internal@23@@std@@I@std@@AEBVNascentModel2@12@@Z";
-                    const char Model2SerializeMaterialsName[] = "?SerializeMaterials2@ColladaConversion@RenderCore@@YA?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk2@ColladaConversion@RenderCore@@VCrossDLLDeletor2@Internal@23@@std@@I@std@@AEBVNascentModel2@12@@Z";
+                    const char CreateModel2Name[]                = "?CreateModel2@ColladaConversion@RenderCore@@YA?AV?$unique_ptr@VNascentModel2@ColladaConversion@RenderCore@@VCrossDLLDeletor2@Internal@23@@std@@QEBD@Z";
+                    const char Model2SerializeSkinName[]         = "?SerializeSkin2@ColladaConversion@RenderCore@@YA?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk2@ColladaConversion@RenderCore@@VCrossDLLDeletor2@Internal@23@@std@@I@std@@AEBVNascentModel2@12@@Z";
+                    const char Model2SerializeAnimationName[]    = "?SerializeAnimationSet2@ColladaConversion@RenderCore@@YA?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk2@ColladaConversion@RenderCore@@VCrossDLLDeletor2@Internal@23@@std@@I@std@@AEBVNascentModel2@12@@Z";
+                    const char Model2SerializeSkeletonName[]     = "?SerializeSkeleton2@ColladaConversion@RenderCore@@YA?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk2@ColladaConversion@RenderCore@@VCrossDLLDeletor2@Internal@23@@std@@I@std@@AEBVNascentModel2@12@@Z";
+                    const char Model2SerializeMaterialsName[]    = "?SerializeMaterials2@ColladaConversion@RenderCore@@YA?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk2@ColladaConversion@RenderCore@@VCrossDLLDeletor2@Internal@23@@std@@I@std@@AEBVNascentModel2@12@@Z";
+                    const char Model2MergeAnimationDataName[]    = "?MergeAnimationData@ColladaConversion@RenderCore@@YAXAEAVNascentModel2@12@AEBV312@QEBD@Z";
                 #endif
                 
                 auto& lib = _library;
@@ -440,7 +450,10 @@ namespace RenderCore { namespace Assets
 
                 _createModel2 = lib.GetFunction<decltype(_createModel2)>(CreateModel2Name);
                 _serializeSkinFunction2 = lib.GetFunction<decltype(_serializeSkinFunction2)>(Model2SerializeSkinName);
+                _serializeAnimationFunction2 = lib.GetFunction<decltype(_serializeAnimationFunction2)>(Model2SerializeAnimationName);
+                _serializeSkeletonFunction2 = lib.GetFunction<decltype(_serializeSkeletonFunction2)>(Model2SerializeSkeletonName);
                 _serializeMaterialsFunction2 = lib.GetFunction<decltype(_serializeMaterialsFunction2)>(Model2SerializeMaterialsName);
+                _mergeAnimationDataFunction2 = lib.GetFunction<decltype(_mergeAnimationDataFunction2)>(Model2MergeAnimationDataName);
             }
         }
 

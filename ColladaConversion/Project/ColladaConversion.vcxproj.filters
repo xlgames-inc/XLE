@@ -1,7 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="..\AnimationConversion.cpp" />
     <ClCompile Include="..\ColladaConversion.cpp" />
     <ClCompile Include="..\ColladaDocument.cpp" />
     <ClCompile Include="..\ConversionObjects.cpp" />
@@ -33,6 +32,10 @@
       <Filter>OpenCollada</Filter>
     </ClCompile>
     <ClCompile Include="..\SkinController.cpp" />
+    <ClCompile Include="..\SAnimation.cpp" />
+    <ClCompile Include="..\OpenCollada\OCAnimationConversion.cpp">
+      <Filter>OpenCollada</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\ColladaConversion.h" />
@@ -54,6 +57,7 @@
     <ClInclude Include="..\NascentModel2.h" />
     <ClInclude Include="..\SCommandStream.h" />
     <ClInclude Include="..\ConversionUtil.h" />
+    <ClInclude Include="..\SAnimation.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="OpenCollada">

@@ -7,10 +7,10 @@
 #define _SCL_SECURE_NO_WARNINGS   // warning C4996: 'std::_Copy_impl': Function call with parameters that may be unsafe
 #pragma warning(disable:4244) // 4244: '=' : conversion from 'const double' to 'float', possible loss of data
 
-#include "../RenderCore/Assets/RawAnimationCurve.h"
-#include "../RenderCore/RenderUtils.h"
+#include "../../RenderCore/Assets/RawAnimationCurve.h"
+#include "../../RenderCore/RenderUtils.h"
 
-#include "ColladaConversion.h"
+#include "../ColladaConversion.h"
 #pragma warning(push)
 #pragma warning(disable:4201)       // nonstandard extension used : nameless struct/union
 #pragma warning(disable:4245)       // conversion from 'int' to 'const COLLADAFW::SamplerID', signed/unsigned mismatch

@@ -35,7 +35,7 @@ namespace RenderCore { namespace ColladaConversion
         class AnimationDriver
         {
         public:
-            ObjectGuid            _curveId;
+            ObjectGuid          _curveId;
             unsigned            _parameterIndex;
             unsigned            _samplerOffset;
             AnimSamplerType     _samplerType;
@@ -75,21 +75,23 @@ namespace RenderCore { namespace ColladaConversion
             void Serialize(Serialization::NascentBlockSerializer& serializer) const;
         };
 
-        void    AddAnimationDriver( const std::string&  parameterName, 
-                                    ObjectGuid            curveId, 
-                                    AnimSamplerType     samplerType, 
-                                    unsigned            samplerOffset);
+        void    AddAnimationDriver( 
+            const std::string&  parameterName, 
+            ObjectGuid          curveId, 
+            AnimSamplerType     samplerType, 
+            unsigned            samplerOffset);
 
-        void    AddConstantDriver(  const std::string&  parameterName, 
-                                    const void*         constantValue, 
-                                    AnimSamplerType     samplerType, 
-                                    unsigned            samplerOffset);
+        void    AddConstantDriver(  
+            const std::string&  parameterName, 
+            const void*         constantValue, 
+            AnimSamplerType     samplerType, 
+            unsigned            samplerOffset);
 
         bool    HasAnimationDriver(const std::string&  parameterName) const;
 
         void    MergeAnimation(
-                    const NascentAnimationSet& animation, const char name[],
-                    const TableOfObjects& sourceObjects, TableOfObjects& destinationObjects);
+            const NascentAnimationSet& animation, const char name[],
+            const TableOfObjects& sourceObjects, TableOfObjects& destinationObjects);
 
         NascentAnimationSet();
         ~NascentAnimationSet();

@@ -7,12 +7,14 @@
 #pragma once
 
 namespace RenderCore { namespace Assets { class NascentTransformationMachine; }}
-namespace ColladaConversion { class  Transformation; }
+namespace ColladaConversion { class Transformation; }
 
 namespace RenderCore { namespace ColladaConversion
 {
+    class NodeReferences;
     unsigned PushTransformations(
         RenderCore::Assets::NascentTransformationMachine& dst,
         const ::ColladaConversion::Transformation& transformations,
-        const char nodeName[]);
+        const char nodeName[],
+        const NodeReferences& nodeRefs);
 }}
