@@ -36,6 +36,8 @@ namespace RenderCore { namespace ColladaConversion
         template <typename Type> const Type* GetByIndex(unsigned index) const never_throws;
         template <typename Type> unsigned GetIndex(ObjectGuid id) const never_throws;
 
+        template <typename Type> ObjectGuid GetUniqueId() const never_throws;
+
         template <typename Type>
             std::tuple<std::string, std::string> 
                 GetDesc(ObjectGuid id) const never_throws;

@@ -300,6 +300,19 @@ namespace RenderCore { namespace Assets
         _jointTags.insert(insertionPoint, Joint{name, outputMatrixIndex, inverseBindMatrix});
     }
 
+    bool    NascentTransformationMachine::TryRegisterJointName(
+        const std::string& name, const Float4x4& inverseBindMatrix, unsigned outputMatrixIndex)
+    {
+        auto insertionPoint = std::lower_bound(
+            _jointTags.begin(), _jointTags.end(), 
+            name, Joint::CompareColladaId());
+        if (insertionPoint != _jointTags.end() && insertionPoint->_name==name)
+            return false;
+
+        _jointTags.insert(insertionPoint, Joint{name, outputMatrixIndex, inverseBindMatrix});
+        return true;
+    }
+
 //     template <typename Iterator>
 //         inline Iterator AdvanceTo16ByteAlignment(Iterator input)
 //         {

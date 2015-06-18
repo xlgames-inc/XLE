@@ -312,14 +312,14 @@ namespace RenderCore { namespace ColladaConversion
             if (firstChannel._inTangentsSource) inTangentFormat = positionFormat;
             if (firstChannel._outTangentsSource) outTangentFormat = positionFormat;
 
-            const auto positionSize = Metal::BitsPerPixel(positionFormat)/8;
-            const auto inTangentSize = Metal::BitsPerPixel(inTangentFormat)/8;
-            const auto elementSize = positionSize + inTangentSize + Metal::BitsPerPixel(outTangentFormat)/8;
+            const auto positionBytes = Metal::BitsPerPixel(positionFormat)/8;
+            const auto inTangentBytes = Metal::BitsPerPixel(inTangentFormat)/8;
+            const auto elementBytes = positionBytes + inTangentBytes+ Metal::BitsPerPixel(outTangentFormat)/8;
 
             auto keyBlock = std::unique_ptr<uint8[], Serialization::BlockSerializerDeleter<uint8[]>>(
-                new uint8[sizeof(float) * elementSize * keyCount]);
-            unsigned inTangentsOffset = positionSize;
-            unsigned outTangentsOffset = inTangentsOffset + inTangentSize;
+                new uint8[elementBytes * keyCount]);
+            auto inTangentsOffsetBytes = positionBytes;
+            auto outTangentsOffsetBytes = inTangentsOffsetBytes + inTangentBytes;
 
                 //  There's a problem with max exports that have rotations around cardinal axes
                 //  This can result in skeleton transforms like <rotation>0 1 0 angle</rotation>
@@ -351,8 +351,8 @@ namespace RenderCore { namespace ColladaConversion
 
                 LoadSource(
                     (float*)PtrAdd(keyBlock.get(), sizeof(float) * fieldOffset),
-                    elementSize, keyCount, fieldCount, 
-                    ch._inputSource);
+                    (unsigned)(elementBytes/sizeof(float)), keyCount, fieldCount, 
+                    ch._outputSource);
 
                 // Note that we're expecting the tangents to be in the same format and dimensions
                 // as the positions.
@@ -365,9 +365,9 @@ namespace RenderCore { namespace ColladaConversion
                         LogWarning << "Tangents expressed in XY format in animation curve. Ignoring Y part.";
 
                     LoadSource(
-                        (float*)PtrAdd(keyBlock.get(), sizeof(float) * fieldOffset + inTangentsOffset),
-                        elementSize, keyCount, fieldCount, 
-                        ch._inTangentsSource, ch._inTangentsSource->FindAccessorForTechnique()->GetCount()-1);
+                        (float*)PtrAdd(keyBlock.get(), sizeof(float) * fieldOffset + inTangentsOffsetBytes),
+                        (unsigned)(elementBytes/sizeof(float)), keyCount, fieldCount, 
+                        ch._inTangentsSource, ch._inTangentsSource->FindAccessorForTechnique()->GetStride()-1);
                 }
 
                 if (ch._outTangentsSource) {
@@ -375,9 +375,9 @@ namespace RenderCore { namespace ColladaConversion
                         LogWarning << "Tangents expressed in XY format in animation curve. Ignoring Y part.";
 
                     LoadSource(
-                        (float*)PtrAdd(keyBlock.get(), sizeof(float) * fieldOffset + outTangentsOffset),
-                        elementSize, keyCount, fieldCount, 
-                        ch._outTangentsSource, ch._outTangentsSource->FindAccessorForTechnique()->GetCount()-1);
+                        (float*)PtrAdd(keyBlock.get(), sizeof(float) * fieldOffset + outTangentsOffsetBytes),
+                        (unsigned)(elementBytes/sizeof(float)), keyCount, fieldCount, 
+                        ch._outTangentsSource, ch._outTangentsSource->FindAccessorForTechnique()->GetStride()-1);
                 }
             }
 
@@ -390,15 +390,15 @@ namespace RenderCore { namespace ColladaConversion
                 inputTimeBlock.get(),
                 1, keyCount, 1, 
                 firstChannel._inputSource, 
-                firstChannel._inputSource->FindAccessorForTechnique()->GetCount()-1);
+                firstChannel._inputSource->FindAccessorForTechnique()->GetStride()-1);
 
                 // todo -- we need to find the correct animation curve type
 
             Assets::RawAnimationCurve curve(
                 (size_t)keyCount, std::move(inputTimeBlock),
                 DynamicArray<uint8, Serialization::BlockSerializerDeleter<uint8[]>>(
-                    std::move(keyBlock), sizeof(float) * elementSize * keyCount),
-                elementSize, Assets::RawAnimationCurve::Linear,
+                    std::move(keyBlock), elementBytes * keyCount),
+                elementBytes, Assets::RawAnimationCurve::Linear,
                 positionFormat, inTangentFormat, outTangentFormat);
             result._curves.emplace_back(UnboundAnimation::Curve(
                 i->first, std::move(curve), samplerType, 0));

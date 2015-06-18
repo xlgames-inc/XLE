@@ -65,14 +65,14 @@ namespace RenderCore { namespace ColladaConversion
             auto colladaId      = skeleton.GetTransformationMachine().StringIdToHashedId(_parameterInterfaceDefinition[i->_parameterIndex]);
             auto typeAndIndex   = skeleton.GetTransformationMachine().GetParameterIndex(colladaId);
             if (i->_samplerType == Assets::TransformationParameterSet::Type::Float4x4) {
-                const Assets::RawAnimationCurve* curve = accessableObjects.Get<Assets::RawAnimationCurve>(i->_curveId);
+                const Assets::RawAnimationCurve* curve = accessableObjects.GetByIndex<Assets::RawAnimationCurve>(i->_curveIndex);
                 if (curve) {
                     assert(typeAndIndex.first == Assets::TransformationParameterSet::Type::Float4x4);
                     // assert(i->_index < float4x4s.size());
                     float4x4s[typeAndIndex.second] = curve->Calculate<Float4x4>(time);
                 }
             } else if (i->_samplerType == Assets::TransformationParameterSet::Type::Float4) {
-                const Assets::RawAnimationCurve* curve = accessableObjects.Get<Assets::RawAnimationCurve>(i->_curveId);
+                const Assets::RawAnimationCurve* curve = accessableObjects.GetByIndex<Assets::RawAnimationCurve>(i->_curveIndex);
                 if (curve) {
                     if (typeAndIndex.first == Assets::TransformationParameterSet::Type::Float4) {
                         float4s[typeAndIndex.second] = curve->Calculate<Float4>(time);
@@ -81,14 +81,14 @@ namespace RenderCore { namespace ColladaConversion
                     }
                 }
             } else if (i->_samplerType == Assets::TransformationParameterSet::Type::Float3) {
-                const Assets::RawAnimationCurve* curve = accessableObjects.Get<Assets::RawAnimationCurve>(i->_curveId);
+                const Assets::RawAnimationCurve* curve = accessableObjects.GetByIndex<Assets::RawAnimationCurve>(i->_curveIndex);
                 if (curve) {
                     assert(typeAndIndex.first == Assets::TransformationParameterSet::Type::Float3);
                     // assert(i->_index < float3s.size());
                     float3s[typeAndIndex.second] = curve->Calculate<Float3>(time);
                 }
             } else if (i->_samplerType == Assets::TransformationParameterSet::Type::Float1) {
-                const Assets::RawAnimationCurve* curve = accessableObjects.Get<Assets::RawAnimationCurve>(i->_curveId);
+                const Assets::RawAnimationCurve* curve = accessableObjects.GetByIndex<Assets::RawAnimationCurve>(i->_curveIndex);
                 if (curve) {
                     float result = curve->Calculate<float>(time);
                     if (typeAndIndex.first == Assets::TransformationParameterSet::Type::Float1) {
@@ -192,7 +192,7 @@ namespace RenderCore { namespace ColladaConversion
 
     void    NascentAnimationSet::AddAnimationDriver( 
         const std::string& parameterName, 
-        ObjectGuid curveId, 
+        unsigned curveId, 
         AnimSamplerType samplerType, unsigned samplerOffset)
     {
         size_t parameterIndex = _parameterInterfaceDefinition.size();
@@ -241,22 +241,26 @@ namespace RenderCore { namespace ColladaConversion
         size_t startIndex = _animationDrivers.size();
         size_t constantStartIndex = _constantDrivers.size();
         for (auto i=animation._animationDrivers.cbegin(); i!=animation._animationDrivers.end(); ++i) {
-            const Assets::RawAnimationCurve* animCurve = sourceObjects.Get<Assets::RawAnimationCurve>(i->_curveId);
+            const Assets::RawAnimationCurve* animCurve = sourceObjects.GetByIndex<Assets::RawAnimationCurve>(i->_curveIndex);
             if (animCurve) {
                 float curveStart = animCurve->StartTime();
                 float curveEnd = animCurve->EndTime();
                 minTime = std::min(minTime, curveStart);
                 maxTime = std::max(maxTime, curveEnd);
 
-                auto desc = sourceObjects.GetDesc<Assets::RawAnimationCurve>(i->_curveId);
+                // auto desc = sourceObjects.GetDesc<Assets::RawAnimationCurve>(i->_curveIndex);
                 
                 const std::string& name = animation._parameterInterfaceDefinition[i->_parameterIndex];
+                auto newId = destinationObjects.GetUniqueId<Assets::RawAnimationCurve>();
                 Assets::RawAnimationCurve duplicate(*animCurve);
                 destinationObjects.Add(
-                    i->_curveId,
-                    std::get<0>(desc), std::get<1>(desc), 
+                    newId,
+                    // std::get<0>(desc), std::get<1>(desc), 
+                    std::string(), std::string(),
                     std::move(duplicate));
-                AddAnimationDriver(name, i->_curveId, i->_samplerType, i->_samplerOffset);
+                AddAnimationDriver(name, 
+                    destinationObjects.GetIndex<Assets::RawAnimationCurve>(newId), 
+                    i->_samplerType, i->_samplerOffset);
             }
         }
 
@@ -273,7 +277,7 @@ namespace RenderCore { namespace ColladaConversion
 
     void NascentAnimationSet::AnimationDriver::Serialize(Serialization::NascentBlockSerializer& serializer) const
     {
-        Serialization::Serialize(serializer, unsigned(_curveId._objectId));
+        Serialization::Serialize(serializer, unsigned(_curveIndex));
         Serialization::Serialize(serializer, _parameterIndex);
         Serialization::Serialize(serializer, _samplerOffset);
         Serialization::Serialize(serializer, unsigned(_samplerType));

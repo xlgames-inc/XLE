@@ -680,7 +680,7 @@ namespace ColladaConversion
         if (!jointSource) return std::vector<std::basic_string<utf8>>();
 
         if (    jointSource->GetType() != DataFlow::ArrayType::Name
-            ||  jointSource->GetType() != DataFlow::ArrayType::SidRef)
+            &&  jointSource->GetType() != DataFlow::ArrayType::SidRef)
             return std::vector<std::basic_string<utf8>>();
 
         auto count = jointSource->GetCount();
@@ -699,9 +699,9 @@ namespace ColladaConversion
 
             auto* elementStart = i;
             while (i < arrayData._end && !IsWhitespace(*i)) ++i;
-            if (i == arrayData._end || elementIndex == count) break;
 
             result.push_back(std::basic_string<utf8>(elementStart, i));
+            if (i == arrayData._end || elementIndex == count) break;
         }
 
         return std::move(result);
@@ -749,13 +749,14 @@ namespace ColladaConversion
             if (i == end) break;
 
             auto* elementStart = i;
-            while (i < end && !IsWhitespace(*i)) ++i;
 
                 // we only actually need to parse the floating point number if
                 // it's one we're interested in...
             if (elementIndex >= offset && (elementIndex-offset)%stride == 0) {
-                FastParseElement(result[(elementIndex - offset) / stride], elementStart, i);
+                i = FastParseElement(result[(elementIndex - offset) / stride], elementStart, end);
                 lastWrittenPlusOne = ((elementIndex - offset) / stride)+1;
+            } else {
+                while (i < end && !IsWhitespace(*i)) ++i;
             }
 
             ++elementIndex;
@@ -799,16 +800,13 @@ namespace ColladaConversion
         unsigned GetNextIndex() const;
     };
 
-    unsigned ControllerVertexIterator::GetNextInfluenceCount() const
+    inline unsigned ControllerVertexIterator::GetNextInfluenceCount() const
     {
         while (_vcountI < _vcount._end && IsWhitespace(*_vcountI)) ++_vcountI;
         if (_vcountI == _vcount._end) return 0;
 
-        auto* elementStart = _vcountI;
-        while (_vcountI < _vcount._end && !IsWhitespace(*_vcountI)) ++_vcountI;
-
         unsigned result = 0u;
-        FastParseElement(result, elementStart, _vcountI);
+        _vcountI = FastParseElement(result, _vcountI, _vcount._end);
         return result;
     }
 
@@ -817,11 +815,8 @@ namespace ColladaConversion
         while (_vI < _v._end && IsWhitespace(*_vI)) ++_vI;
         if (_vI == _v._end) return 0;
 
-        auto* elementStart = _vI;
-        while (_vI < _v._end && !IsWhitespace(*_vI)) ++_vI;
-
         unsigned result = 0u;
-        FastParseElement(result, elementStart, _vI);
+        _vI = FastParseElement(result, _vI, _v._end);
         return result;
     }
 

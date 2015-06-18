@@ -196,7 +196,7 @@ namespace Sample
             //      when playing the animation back! Calculate the movement by finding the start and
             //      end points of the right animation driver, and taking the overall translation.
             //
-        uint64 rootNodeHash = Hash64("Bip01");
+        uint64 rootNodeHash = Hash64("Bip01/matrix"); // Hash64("Bip01");
         uint32 parameter = animSet._animationSet.FindParameter(rootNodeHash);
 
         auto anim = animSet._animationSet.FindAnimation(animation);

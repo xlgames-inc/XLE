@@ -245,6 +245,14 @@ namespace RenderCore { namespace ColladaConversion
         return result;
     }
 
+    void NodeReferences::SetOutputMatrixIndex(ObjectGuid node, unsigned index)
+    {
+            // hack!
+        auto i = LowerBound(_nodeReferences, node);
+        _nodeReferences.insert(i, std::make_pair(node, index));
+        _nextOutputIndex = index+1;
+    }
+
     void NodeReferences::AttachInverseBindMatrix(ObjectGuid node, const Float4x4& inverseBind)
     {
         auto i = LowerBound(_inverseBindMatrics, node);

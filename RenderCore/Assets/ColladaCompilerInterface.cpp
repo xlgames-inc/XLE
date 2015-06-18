@@ -14,6 +14,10 @@
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
 
+#define NEW_COLLADA_PATH
+
+#pragma warning(disable:4505)       // warning C4505: 'RenderCore::Assets::SerializeToFile' : unreferenced local function has been removed
+
 namespace RenderCore { namespace Assets 
 {
     static const auto* ColladaLibraryName = "ColladaConversion.dll";
@@ -74,46 +78,46 @@ namespace RenderCore { namespace Assets
         }
     };
 
-    // static void SerializeToFile(
-    //     RenderCore::ColladaConversion::NascentModel& model, 
-    //     RenderCore::ColladaConversion::ModelSerializeFunction fn,
-    //     const char destinationFilename[],
-    //     const ConsoleRig::LibVersionDesc& versionInfo)
-    // {
-    //     auto chunks = (model.*fn)();
-    // 
-    //         // (create the directory if we need to)
-    //     char dirName[MaxPath];
-    //     XlDirname(dirName, dimof(dirName), destinationFilename);
-    //     CreateDirectoryRecursive(dirName);
-    // 
-    //     using namespace Serialization::ChunkFile;
-    //     ChunkFileHeader header;
-    // 
-    //     XlZeroMemory(header);
-    //     header._magic = MagicHeader;
-    //     header._fileVersionNumber = 0;
-    //     XlCopyString(header._buildVersion, dimof(header._buildVersion), versionInfo._versionString);
-    //     XlCopyString(header._buildDate, dimof(header._buildDate), versionInfo._buildDateString);
-    //     header._chunkCount = chunks.second;
-    //         
-    //     BasicFile outputFile(destinationFilename, "wb");
-    //     outputFile.Write(&header, sizeof(header), 1);
-    // 
-    //     unsigned trackingOffset = unsigned(outputFile.TellP() + sizeof(ChunkHeader) * chunks.second);
-    //     for (unsigned i=0; i<chunks.second; ++i) {
-    //         auto& c = chunks.first[i];
-    //         auto hdr = c._hdr;
-    //         hdr._fileOffset = trackingOffset;
-    //         outputFile.Write(&hdr, sizeof(c._hdr), 1);
-    //         trackingOffset += hdr._size;
-    //     }
-    // 
-    //     for (unsigned i=0; i<chunks.second; ++i) {
-    //         auto& c = chunks.first[i];
-    //         outputFile.Write(AsPointer(c._data.begin()), c._data.size(), 1);
-    //     }
-    // }
+    static void SerializeToFile(
+        RenderCore::ColladaConversion::NascentModel& model, 
+        RenderCore::ColladaConversion::ModelSerializeFunction fn,
+        const char destinationFilename[],
+        const ConsoleRig::LibVersionDesc& versionInfo)
+    {
+        auto chunks = (model.*fn)();
+    
+            // (create the directory if we need to)
+        char dirName[MaxPath];
+        XlDirname(dirName, dimof(dirName), destinationFilename);
+        CreateDirectoryRecursive(dirName);
+    
+        using namespace Serialization::ChunkFile;
+        ChunkFileHeader header;
+    
+        XlZeroMemory(header);
+        header._magic = MagicHeader;
+        header._fileVersionNumber = 0;
+        XlCopyString(header._buildVersion, dimof(header._buildVersion), versionInfo._versionString);
+        XlCopyString(header._buildDate, dimof(header._buildDate), versionInfo._buildDateString);
+        header._chunkCount = chunks.second;
+            
+        BasicFile outputFile(destinationFilename, "wb");
+        outputFile.Write(&header, sizeof(header), 1);
+    
+        unsigned trackingOffset = unsigned(outputFile.TellP() + sizeof(ChunkHeader) * chunks.second);
+        for (unsigned i=0; i<chunks.second; ++i) {
+            auto& c = chunks.first[i];
+            auto hdr = c._hdr;
+            hdr._fileOffset = trackingOffset;
+            outputFile.Write(&hdr, sizeof(c._hdr), 1);
+            trackingOffset += hdr._size;
+        }
+    
+        for (unsigned i=0; i<chunks.second; ++i) {
+            auto& c = chunks.first[i];
+            outputFile.Write(AsPointer(c._data.begin()), c._data.size(), 1);
+        }
+    }
 
     static void SerializeToFile(
         const RenderCore::ColladaConversion::NascentModel2& model, 
@@ -156,20 +160,20 @@ namespace RenderCore { namespace Assets
         }
     }
 
-    // static void SerializeToFileJustChunk(
-    //     RenderCore::ColladaConversion::NascentModel& model, 
-    //     RenderCore::ColladaConversion::ModelSerializeFunction fn,
-    //     const char destinationFilename[],
-    //     const ConsoleRig::LibVersionDesc& versionInfo)
-    // {
-    //     auto chunks = (model.*fn)();
-    // 
-    //     BasicFile outputFile(destinationFilename, "wb");
-    //     for (unsigned i=0; i<chunks.second; ++i) {
-    //         auto& c = chunks.first[i];
-    //         outputFile.Write(AsPointer(c._data.begin()), c._data.size(), 1);
-    //     }
-    // }
+    static void SerializeToFileJustChunk(
+        RenderCore::ColladaConversion::NascentModel& model, 
+        RenderCore::ColladaConversion::ModelSerializeFunction fn,
+        const char destinationFilename[],
+        const ConsoleRig::LibVersionDesc& versionInfo)
+    {
+        auto chunks = (model.*fn)();
+    
+        BasicFile outputFile(destinationFilename, "wb");
+        for (unsigned i=0; i<chunks.second; ++i) {
+            auto& c = chunks.first[i];
+            outputFile.Write(AsPointer(c._data.begin()), c._data.size(), 1);
+        }
+    }
 
     static void SerializeToFileJustChunk(
         RenderCore::ColladaConversion::NascentModel2& model, 
@@ -276,19 +280,35 @@ namespace RenderCore { namespace Assets
                     XlCatString(colladaFile, dimof(colladaFile), ".dae");
                 }
 
-                if (op._typeCode == Type_Model) {
-                    auto model2 = (*_createModel2)(colladaFile);
-                    SerializeToFile(*model2, _serializeSkinFunction2, op._sourceID0, libVersionDesc);
+                #if defined(NEW_COLLADA_PATH)
+                    if (op._typeCode == Type_Model) {
+                        auto model2 = (*_createModel2)(colladaFile);
+                        SerializeToFile(*model2, _serializeSkinFunction2, op._sourceID0, libVersionDesc);
 
-                    char matName[MaxPath];
-                    op._destinationStore->MakeIntermediateName(matName, dimof(matName), op._initializer);
-                    XlChopExtension(matName);
-                    XlCatString(matName, dimof(matName), "-rawmat");
-                    SerializeToFileJustChunk(*model2, _serializeMaterialsFunction2, matName, libVersionDesc);
-                } else {
-                    auto model = (*_createModel2)(colladaFile);
-                    SerializeToFile(*model, _serializeSkeletonFunction2, op._sourceID0, libVersionDesc);
-                }
+                        char matName[MaxPath];
+                        op._destinationStore->MakeIntermediateName(matName, dimof(matName), op._initializer);
+                        XlChopExtension(matName);
+                        XlCatString(matName, dimof(matName), "-rawmat");
+                        SerializeToFileJustChunk(*model2, _serializeMaterialsFunction2, matName, libVersionDesc);
+                    } else {
+                        auto model = (*_createModel2)(colladaFile);
+                        SerializeToFile(*model, _serializeSkeletonFunction2, op._sourceID0, libVersionDesc);
+                    }
+                #else
+                    if (op._typeCode == Type_Model) {
+                        auto model = (*_createModel)(colladaFile);
+                        SerializeToFile(*model, _serializeSkinFunction, op._sourceID0, libVersionDesc);
+
+                        char matName[MaxPath];
+                        op._destinationStore->MakeIntermediateName(matName, dimof(matName), op._initializer);
+                        XlChopExtension(matName);
+                        XlCatString(matName, dimof(matName), "-rawmat");
+                        SerializeToFileJustChunk(*model, _serializeMaterialsFunction, matName, libVersionDesc);
+                    } else {
+                        auto model = (*_createModel)(colladaFile);
+                        SerializeToFile(*model, _serializeSkeletonFunction, op._sourceID0, libVersionDesc);
+                    }
+                #endif
 
                     // write new dependencies
                 std::vector<::Assets::DependentFileState> deps;
@@ -304,7 +324,11 @@ namespace RenderCore { namespace Assets
                 auto sourceFiles = FindFiles(std::string(op._initializer) + "/*.dae");
                 std::vector<::Assets::DependentFileState> deps;
 
-                auto mergedAnimationSet = (*_createModel2)(nullptr);
+                #if defined(NEW_COLLADA_PATH)
+                    auto mergedAnimationSet = (*_createModel2)(nullptr);
+                #else
+                    auto mergedAnimationSet = (*_createModel)(nullptr);
+                #endif
                 for (auto i=sourceFiles.begin(); i!=sourceFiles.end(); ++i) {
                     char baseName[MaxPath]; // get the base name of the file (without the extension)
                     XlBasename(baseName, dimof(baseName), i->c_str());
@@ -316,12 +340,16 @@ namespace RenderCore { namespace Assets
                             //          note that this will do geometry processing; etc -- but all that geometry
                             //          information will be ignored.
                             //
-                        auto model = (*_createModel2)(i->c_str());
+                        #if defined(NEW_COLLADA_PATH)
+                            auto model = (*_createModel2)(i->c_str());
 
-                            //
-                            //      Now, merge the animation data into 
-                        // (mergedAnimationSet.get()->*_mergeAnimationDataFunction2)(*model.get(), baseName);
-                        (*_mergeAnimationDataFunction2)(*mergedAnimationSet.get(), *model.get(), baseName);
+                                //
+                                //      Now, merge the animation data into 
+                            (*_mergeAnimationDataFunction2)(*mergedAnimationSet.get(), *model.get(), baseName);
+                        #else
+                            auto model = (*_createModel)(i->c_str());
+                            (mergedAnimationSet.get()->*_mergeAnimationDataFunction)(*model.get(), baseName);
+                        #endif
                     } CATCH (const std::exception& e) {
                             // on exception, ignore this animation file and move on to the next
                         LogAlwaysError << "Exception while processing animation: (" << baseName << "). Exception is: (" << e.what() << ")";
@@ -330,7 +358,11 @@ namespace RenderCore { namespace Assets
                     deps.push_back(op._destinationStore->GetDependentFileState(i->c_str()));
                 }
 
-                SerializeToFile(*mergedAnimationSet, _serializeAnimationFunction2, op._sourceID0, libVersionDesc);
+                #if defined(NEW_COLLADA_PATH)
+                    SerializeToFile(*mergedAnimationSet, _serializeAnimationFunction2, op._sourceID0, libVersionDesc);
+                #else
+                    SerializeToFile(*mergedAnimationSet, _serializeAnimationFunction, op._sourceID0, libVersionDesc);
+                #endif
                 op._dependencyValidation = op._destinationStore->WriteDependencies(op._sourceID0, baseDir, AsPointer(deps.cbegin()), AsPointer(deps.cend()));
 
                 op.SetState(::Assets::AssetState::Ready);
@@ -460,8 +492,13 @@ namespace RenderCore { namespace Assets
             // check for problems (missing functions or bad version number)
         if (!_isAttached)
             ThrowException(::Exceptions::BasicLabel("Error while linking collada conversion DLL. Could not find DLL (%s)", ColladaLibraryName));
-        if (!_createModel || !_serializeSkinFunction || !_serializeAnimationFunction || !_serializeSkeletonFunction || !_mergeAnimationDataFunction)
-            ThrowException(::Exceptions::BasicLabel("Error while linking collada conversion DLL. Some interface functions are missing"));
+        #if defined(NEW_COLLADA_PATH)
+            if (!_createModel2 || !_serializeSkinFunction2 || !_serializeAnimationFunction2 || !_serializeSkeletonFunction2 || !_mergeAnimationDataFunction2)
+                ThrowException(::Exceptions::BasicLabel("Error while linking collada conversion DLL. Some interface functions are missing"));
+        #else
+            if (!_createModel || !_serializeSkinFunction || !_serializeAnimationFunction || !_serializeSkeletonFunction || !_mergeAnimationDataFunction)
+                ThrowException(::Exceptions::BasicLabel("Error while linking collada conversion DLL. Some interface functions are missing"));
+        #endif
     }
 
 }}

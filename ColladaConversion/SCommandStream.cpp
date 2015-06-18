@@ -32,7 +32,7 @@ namespace RenderCore { namespace ColladaConversion
     {
         using namespace COLLADAFW;
 
-        if (!IsUseful(node, skeletonReferences)) return;
+        // if (!IsUseful(node, skeletonReferences)) return;
 
         unsigned pushCount = PushTransformations(
             skeleton.GetTransformationMachine(),
@@ -52,7 +52,7 @@ namespace RenderCore { namespace ColladaConversion
             //              node... Maybe there is a better way to do this. Perhaps we could identify which nodes are
             //              output interface transforms / bones... Or maybe we could just include everything when
             //              compiling a skeleton...?
-        // isReferenced = true;
+        isReferenced = true;
         if (isReferenced) {
             // unsigned thisOutputMatrix = skeleton.GetTransformationMachine().GetOutputMatrixMarker();
             // skeletonReferences.SetOutputMatrix(nodeId, thisOutputMatrix);
@@ -67,15 +67,21 @@ namespace RenderCore { namespace ColladaConversion
                 //          (we also need a tag for all nodes with instance controllers in them)
                 //
 
-            auto* inverseBind = skeletonReferences.GetInverseBindMatrix(nodeId);
-            if (inverseBind) {
-                    // note -- there may be problems here, because the "name" of the node isn't necessarily
-                    //          unique. There are unique ids in collada, however. We some some unique identifier
-                    //          can can be seen in Max, and can be used to associate different files with shared
-                    //          references (eg, animations, skeletons and skins in separate files)
-                skeleton.GetTransformationMachine().RegisterJointName(
-                    SkeletonBindingName(node), 
-                    *inverseBind, thisOutputMatrix);
+            Float4x4 inverseBind;
+            auto* inverseBindP = skeletonReferences.GetInverseBindMatrix(nodeId);
+            if (inverseBindP) inverseBind = *inverseBindP;
+            else inverseBind = Identity<Float4x4>();
+
+                // note -- there may be problems here, because the "name" of the node isn't necessarily
+                //          unique. There are unique ids in collada, however. We some some unique identifier
+                //          can can be seen in Max, and can be used to associate different files with shared
+                //          references (eg, animations, skeletons and skins in separate files)
+            auto bindingName = SkeletonBindingName(node);
+            if (!bindingName.empty() || inverseBindP) {
+                bool success = skeleton.GetTransformationMachine().TryRegisterJointName(
+                    bindingName, inverseBind, thisOutputMatrix);
+                if (!success)
+                    LogWarning << "Found possible duplicate joint name in transformation machine: " << bindingName;
             }
         }
 
@@ -178,10 +184,15 @@ namespace RenderCore { namespace ColladaConversion
             AsPointer(instGeo._matBindings.cbegin()), AsPointer(instGeo._matBindings.cend()),
             geo->_matBindingSymbols, resolveContext);
 
+        auto bindingMatIndex = stream.RegisterTransformationMachineOutput(
+            SkeletonBindingName(attachedNode),
+            AsObjectGuid(attachedNode));
+        nodeRefs.SetOutputMatrixIndex(AsObjectGuid(attachedNode), bindingMatIndex);
+
         stream._geometryInstances.push_back(
             NascentModelCommandStream::GeometryInstance(
                 accessableObjects.GetIndex<NascentRawGeometry>(ObjectGuid(refGuid._id, refGuid._fileHash)), 
-                (unsigned)nodeRefs.GetOutputMatrixIndex(AsObjectGuid(attachedNode)), 
+                bindingMatIndex, 
                 std::move(materials), 0));
     }
 
@@ -189,6 +200,7 @@ namespace RenderCore { namespace ColladaConversion
         const GuidReference skeletonRef,
         const UnboundSkinController& unboundController,
         const URIResolveContext& resolveContext,
+        NascentModelCommandStream& stream,
         NodeReferences& nodeRefs)
     {
             // Build the joints array for the given controller instantiation
@@ -211,7 +223,12 @@ namespace RenderCore { namespace ColladaConversion
         for (unsigned c=0; c<count; ++c) {
             Node node = skeleton.FindBySid(AsPointer(jointNames[c].cbegin()), AsPointer(jointNames[c].cend()));
             if (node) {
-                result[c] = (uint16)nodeRefs.GetOutputMatrixIndex(AsObjectGuid(node));
+                auto bindingMatIndex = stream.RegisterTransformationMachineOutput(
+                    SkeletonBindingName(node),
+                    AsObjectGuid(node));
+                nodeRefs.SetOutputMatrixIndex(AsObjectGuid(node), bindingMatIndex);
+
+                result[c] = (uint16)bindingMatIndex;
             } else {
                 result[c] = (uint16)~uint16(0);
             }
@@ -244,7 +261,7 @@ namespace RenderCore { namespace ColladaConversion
             Throw(::Assets::Exceptions::FormatError("Could not find geometry object to instantiate (%s)",
                 AsString(instGeo._reference).c_str()));
 
-        auto jointMatrices = BuildJointArray(instGeo.GetSkeleton(), *controller, resolveContext, nodeRefs);
+        auto jointMatrices = BuildJointArray(instGeo.GetSkeleton(), *controller, resolveContext, stream, nodeRefs);
 
         auto materials = BuildMaterialTable(
             AsPointer(instGeo._matBindings.cbegin()), AsPointer(instGeo._matBindings.cend()),
@@ -261,9 +278,14 @@ namespace RenderCore { namespace ColladaConversion
             std::get<0>(desc), std::get<1>(desc),
             std::move(result));
 
+        auto bindingMatIndex = stream.RegisterTransformationMachineOutput(
+            SkeletonBindingName(attachedNode),
+            AsObjectGuid(attachedNode));
+        nodeRefs.SetOutputMatrixIndex(AsObjectGuid(attachedNode), bindingMatIndex);
+
         NascentModelCommandStream::SkinControllerInstance newInstance(
             accessableObjects.GetIndex<NascentBoundSkinnedGeometry>(controllerId), 
-            (unsigned)nodeRefs.GetOutputMatrixIndex(AsObjectGuid(attachedNode)), 
+            bindingMatIndex, 
             std::move(materials), 0);
         stream._skinControllerInstances.push_back(newInstance);
     }

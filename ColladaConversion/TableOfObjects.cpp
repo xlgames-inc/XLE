@@ -70,6 +70,16 @@ namespace RenderCore { namespace ColladaConversion
         return &set[index]._internalType;
     }
 
+    template <typename Type> 
+        ObjectGuid TableOfObjects::GetUniqueId() const never_throws
+    {
+        auto& set = GetCollection<Type>();
+        uint64 currentMax = 0ull;
+        for (const auto& i:set)
+            currentMax = std::max(currentMax, i._id._objectId);
+        return ObjectGuid(currentMax+1, 0);
+    }
+
     template <> auto     TableOfObjects::GetCollection<NascentRawGeometry>() const -> const std::vector<Object<NascentRawGeometry>>& { return _geos; }
     template <> auto     TableOfObjects::GetCollection<NascentRawGeometry>() -> std::vector<Object<NascentRawGeometry>>&             { return _geos; }
 
@@ -258,7 +268,8 @@ namespace RenderCore { namespace ColladaConversion
         auto i3 = &TableOfObjects::GetDesc<Type>;
         auto i4 = &TableOfObjects::GetIndex<Type>;
         auto i5 = &TableOfObjects::GetByIndex<Type>;
-        (void)i0; (void)i1; (void)i2; (void)i3; (void)i4; (void)i5;
+        auto i6 = &TableOfObjects::GetUniqueId<Type>;
+        (void)i0; (void)i1; (void)i2; (void)i3; (void)i4; (void)i5; (void)i6;
     }
 
     template void Instantiator<NascentRawGeometry>();

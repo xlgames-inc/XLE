@@ -38,6 +38,7 @@ namespace RenderCore { namespace Assets
         AnimationParameterId                GetParameterName(AnimSamplerType type, uint32 index) const;
 
         void    RegisterJointName(const std::string& name, const Float4x4& inverseBindMatrix, unsigned outputMatrixIndex);
+        bool    TryRegisterJointName(const std::string& name, const Float4x4& inverseBindMatrix, unsigned outputMatrixIndex);
         
         std::string                 HashedIdToStringId     (AnimationParameterId colladaId) const;
         AnimationParameterId        StringIdToHashedId     (const std::string& stringId) const;

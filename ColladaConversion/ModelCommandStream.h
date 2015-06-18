@@ -35,17 +35,17 @@ namespace RenderCore { namespace ColladaConversion
         class AnimationDriver
         {
         public:
-            ObjectGuid          _curveId;
+            unsigned            _curveIndex;
             unsigned            _parameterIndex;
             unsigned            _samplerOffset;
             AnimSamplerType     _samplerType;
 
             AnimationDriver(
-                ObjectGuid          curveId, 
+                unsigned            curveIndex, 
                 unsigned            parameterIndex, 
                 AnimSamplerType     samplerType, 
                 unsigned            samplerOffset)
-            : _curveId(curveId)
+            : _curveIndex(curveIndex)
             , _parameterIndex(parameterIndex)
             , _samplerType(samplerType)
             , _samplerOffset(samplerOffset) {}
@@ -75,9 +75,9 @@ namespace RenderCore { namespace ColladaConversion
             void Serialize(Serialization::NascentBlockSerializer& serializer) const;
         };
 
-        void    AddAnimationDriver( 
+        void    AddAnimationDriver(
             const std::string&  parameterName, 
-            ObjectGuid          curveId, 
+            unsigned            curveId, 
             AnimSamplerType     samplerType, 
             unsigned            samplerOffset);
 
@@ -212,7 +212,7 @@ namespace RenderCore { namespace ColladaConversion
         // std::vector<ModelInstance>              _modelInstances;
         std::vector<CameraInstance>             _cameraInstances;
         std::vector<SkinControllerInstance>     _skinControllerInstances;
-        std::vector<std::string>                _inputMatrixNames;
+        // std::vector<std::string>                _inputMatrixNames;
 
         NascentModelCommandStream();
         ~NascentModelCommandStream();

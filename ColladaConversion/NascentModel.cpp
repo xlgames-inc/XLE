@@ -506,7 +506,7 @@ namespace RenderCore { namespace ColladaConversion
             for (auto i=_animationLinks.begin(); i!=_animationLinks.end(); ++i) {
                 _animationSet.AddAnimationDriver(
                     _skeleton.GetTransformationMachine().HashedIdToStringId(i->_animationListName),
-                    ColladaConversion::Convert(i->_animationId), 
+                    _objects.GetIndex<Assets::RawAnimationCurve>(ColladaConversion::Convert(i->_animationId)), 
                     SamplerWidthToType(i->_samplerWidth), i->_samplerOffset);
             }
 
@@ -749,7 +749,8 @@ namespace RenderCore { namespace ColladaConversion
                         continue;   // ignore everything applying to "rope" nodes
                     }
                     _animationSet.AddAnimationDriver(
-                        stringId, Convert(animationLink._animationId), 
+                        stringId, 
+                        _objects.GetIndex<Assets::RawAnimationCurve>(Convert(animationLink._animationId)), 
                         SamplerWidthToType(animationLink._samplerWidth), animationLink._samplerOffset);
                 }
 

@@ -161,6 +161,7 @@ namespace RenderCore { namespace ColladaConversion
     public:
         bool        IsImportant(ObjectGuid node) const;
         unsigned    GetOutputMatrixIndex(ObjectGuid node);
+        void        SetOutputMatrixIndex(ObjectGuid node, unsigned index);
 
         const Float4x4* GetInverseBindMatrix(ObjectGuid node) const;
         void    AttachInverseBindMatrix(ObjectGuid node, const Float4x4& inverseBind);

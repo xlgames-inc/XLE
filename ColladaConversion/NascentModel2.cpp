@@ -132,7 +132,7 @@ namespace RenderCore { namespace ColladaConversion
 
                     result->_animationSet.AddAnimationDriver(
                         c->_parameterName,
-                        animCurveId,
+                        result->_objects.GetIndex<Assets::RawAnimationCurve>(animCurveId),
                         c->_samplerType, c->_samplerOffset);
                     ++animCurveId._objectId;
                 }

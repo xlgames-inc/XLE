@@ -311,7 +311,7 @@ namespace RenderCore { namespace ColladaConversion
                     sourceIndex = index; 
                     break;
                 }
-                sourceOffset += vertexData.getInputInfosArray()[index]->mLength;
+                // sourceOffset += vertexData.getInputInfosArray()[index]->mLength;
             }
             if (sourceIndex == ~size_t(0x0)) {
                 assert(0);      // mismatch! couldn't connect primitive input to source data
@@ -337,7 +337,7 @@ namespace RenderCore { namespace ColladaConversion
                 if (COLLADABU::Utils::equals(attribute._sourceName, vertexData.getName(index))) {
                     sourceIndex = index; break;
                 }
-                sourceOffset += vertexData.getInputInfosArray()[index]->mLength;
+                // sourceOffset += vertexData.getInputInfosArray()[index]->mLength;
             }
             if (sourceIndex == ~size_t(0x0)) {
                 assert(0);      // mismatch! couldn't connect primitive input to source data
