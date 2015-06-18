@@ -4,7 +4,9 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "../ConversionObjects.h"
+#include "OCMisc.h"
+#include "../ConversionUtil.h"
+// #include "../NascentAnimController.h"
 #include "../../RenderCore/Assets/NascentTransformationMachine.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Math/Transformations.h"

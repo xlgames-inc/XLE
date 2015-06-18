@@ -5,9 +5,9 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "STransformationMachine.h"
+#include "SkeletonRegistry.h"
 #include "Scaffold.h"
-#include "ConversionObjects.h"      // just for NodeReferences
-#include "ParsingUtil.h"            // just for AsString
+#include "ScaffoldParsingUtil.h"            // just for AsString
 #include "../../RenderCore/Assets/NascentTransformationMachine.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Math/Transformations.h"
@@ -21,13 +21,13 @@ namespace RenderCore { namespace ColladaConversion
     using namespace ::ColladaConversion;
 
     //#pragma warning(disable:4505) // 'RenderCore::ColladaConversion::FloatBits' : unreferenced local function has been removed)
-    //static unsigned int FloatBits(float input)
-    //{
-    //        // (or just use a reinterpret cast)
-    //    union Converter { float f; unsigned int i; };
-    //    Converter c; c.f = float(input); 
-    //    return c.i;
-    //}
+    static unsigned int FloatBits(float input)
+    {
+            // (or just use a reinterpret cast)
+        union Converter { float f; unsigned int i; };
+        Converter c; c.f = float(input); 
+        return c.i;
+    }
     //
     //static unsigned int FloatBits(double input)
     //{
@@ -41,7 +41,7 @@ namespace RenderCore { namespace ColladaConversion
         RenderCore::Assets::NascentTransformationMachine& dst,
         const Transformation& transformations,
         const char nodeName[],
-        const NodeReferences& nodeRefs)
+        const SkeletonRegistry& nodeRefs)
     {
         dst.ResolvePendingPops();
 

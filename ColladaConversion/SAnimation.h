@@ -54,11 +54,11 @@ namespace RenderCore { namespace ColladaConversion
         std::vector<Curve> _curves;
     };
 
-    class NodeReferences;
+    class SkeletonRegistry;
 
     UnboundAnimation Convert(
         const ::ColladaConversion::Animation& animation,
         const ::ColladaConversion::URIResolveContext& resolveContext,
-        NodeReferences& nodeRefs);
+        SkeletonRegistry& nodeRefs);
 }}
 

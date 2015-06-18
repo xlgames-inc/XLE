@@ -7,7 +7,7 @@
 #pragma once
 
 #include "TableOfObjects.h"
-#include "ModelCommandStream.h"
+#include "NascentCommandStream.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/Buffer.h"

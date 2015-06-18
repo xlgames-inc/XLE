@@ -6,9 +6,12 @@
 
 #pragma once
 
-#include "ConversionObjects.h"
-#include "ColladaConversion.h"
+#include "ConversionCore.h"
 #include "../../../Utility/Mixins.h"
+#include <string>
+#include <utility>
+#include <vector>
+#include <memory>
 
 namespace Serialization { class NascentBlockSerializer; }
 

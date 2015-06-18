@@ -7,8 +7,12 @@
 #define _SCL_SECURE_NO_WARNINGS   // warning C4996: 'std::_Copy_impl': Function call with parameters that may be unsafe
 
 #include "OCInterface.h"
-#include "../ModelCommandStream.h"
-#include "../ProcessingUtil.h"
+#include "OCMisc.h"
+#include "../NascentCommandStream.h"
+#include "../NascentAnimController.h"
+#include "../NascentMaterial.h"
+#include "../SkeletonRegistry.h"
+#include "../ConversionUtil.h"
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/StringUtils.h"
 
@@ -39,7 +43,7 @@ namespace RenderCore { namespace ColladaConversion
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     static std::tuple<bool,bool> NeedOutputMatrix(  const COLLADAFW::Node& node, const TableOfObjects& accessableObjects,
-                                                    const NodeReferences& skeletonReferences)
+                                                    const SkeletonRegistry& skeletonReferences)
     {
         using namespace COLLADAFW;
         bool needAnOutputMatrix = false;
@@ -96,7 +100,7 @@ namespace RenderCore { namespace ColladaConversion
     void PushNode(
         NascentSkeleton& skeleton,
         const COLLADAFW::Node& node, const TableOfObjects& accessableObjects,
-        const NodeReferences& skeletonReferences)
+        const SkeletonRegistry& skeletonReferences)
     {
         using namespace COLLADAFW;
         COLLADABU::Math::Matrix4 matrix;
@@ -193,7 +197,7 @@ namespace RenderCore { namespace ColladaConversion
     void PushNode(   
         NascentModelCommandStream& stream,
         const COLLADAFW::Node& node, const TableOfObjects& accessableObjects,
-        const NodeReferences& skeletonReferences)
+        const SkeletonRegistry& skeletonReferences)
     {
         if (!IsUseful(node, accessableObjects, skeletonReferences)) {
             return;
@@ -313,7 +317,7 @@ namespace RenderCore { namespace ColladaConversion
                                 (uint16)stream.FindTransformationMachineOutput(*i);
                         }
 
-                        auto result = InstantiateSkinnedController(
+                        auto result = BindController(
                             *source, *controller, accessableObjects, destinationForNewObjects,
                             DynamicArray<uint16>(std::move(jointMatrices), jointCount),
                             GetNodeStringID(node).c_str());
@@ -352,7 +356,7 @@ namespace RenderCore { namespace ColladaConversion
 
 
     bool IsUseful(  const COLLADAFW::Node& node, const TableOfObjects& objects,
-                    const NodeReferences& skeletonReferences)
+                    const SkeletonRegistry& skeletonReferences)
     {
             //
             //      Traverse all of the nodes in the hierarchy
@@ -413,7 +417,7 @@ namespace RenderCore { namespace ColladaConversion
     }
 
     void FindInstancedSkinControllers(  const COLLADAFW::Node& node, const TableOfObjects& objects,
-                                        NodeReferences& results)
+                                        SkeletonRegistry& results)
     {
         using namespace COLLADAFW;
         const InstanceControllerPointerArray& instanceControllers = node.getInstanceControllers();

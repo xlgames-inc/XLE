@@ -35,17 +35,17 @@ namespace RenderCore { namespace ColladaConversion
     class NascentRawGeometry;
     class NascentModelCommandStream;
     class TableOfObjects;
-    class NodeReferences;
+    class SkeletonRegistry;
     class NascentSkeleton;
 
     NascentRawGeometry Convert(const COLLADAFW::Geometry* geometry);
 
     bool IsUseful(  const COLLADAFW::Node& node, const TableOfObjects& objects,
-                    const NodeReferences& skeletonReferences);
+                    const SkeletonRegistry& skeletonReferences);
 
     void FindInstancedSkinControllers(   
         const COLLADAFW::Node& node, const TableOfObjects& objects,
-        NodeReferences& results);
+        SkeletonRegistry& results);
 
     void InstantiateControllers(
         NascentModelCommandStream& stream, 
@@ -56,12 +56,12 @@ namespace RenderCore { namespace ColladaConversion
     void PushNode(
         NascentSkeleton& skeleton,
         const COLLADAFW::Node& node, const TableOfObjects& accessableObjects,
-        const NodeReferences& skeletonReferences);
+        const SkeletonRegistry& skeletonReferences);
 
     void PushNode(   
         NascentModelCommandStream& stream,
         const COLLADAFW::Node& node, const TableOfObjects& accessableObjects,
-        const NodeReferences& skeletonReferences);
+        const SkeletonRegistry& skeletonReferences);
 
     Float4x4 AsFloat4x4(const COLLADABU::Math::Matrix4& matrix);
     Float3 AsFloat3(const COLLADABU::Math::Vector3& vector);

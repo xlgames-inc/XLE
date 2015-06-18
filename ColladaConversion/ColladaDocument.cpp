@@ -8,7 +8,7 @@
 
 #include "Scaffold.h"
 #include "ScaffoldDataFlow.h"
-#include "ParsingUtil.h"
+#include "ScaffoldParsingUtil.h"
 #include "../Math/Vector.h"
 #include "../Math/Transformations.h"
 #include "../Utility/UTFUtils.h"
@@ -2334,6 +2334,8 @@ namespace ColladaConversion
 
 #include "../Utility/Streams/FileUtils.h"
 #include "NascentModel.h"
+#include "NascentRawGeometry.h"
+#include "SkeletonRegistry.h"
 
 #include "SEffect.h"
 #include "SCommandStream.h"
@@ -2362,10 +2364,10 @@ void TestParser()
 
     RenderCore::ColladaConversion::NascentSkeleton skeleton;
     RenderCore::ColladaConversion::TableOfObjects objects;
-    RenderCore::ColladaConversion::NodeReferences jointRefs;
+    RenderCore::ColladaConversion::SkeletonRegistry jointRefs;
 
-    RenderCore::ColladaConversion::FindImportantNodes(
-        jointRefs, doc->_visualScenes[0]);
+    // RenderCore::ColladaConversion::FindImportantNodes(
+    //     jointRefs, doc->_visualScenes[0]);
 
     RenderCore::ColladaConversion::BuildSkeleton(
         skeleton, 

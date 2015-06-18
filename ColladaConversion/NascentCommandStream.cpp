@@ -4,13 +4,8 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "ModelCommandStream.h"
-#include "RawGeometry.h"
-#include "ConversionObjects.h"
-
+#include "NascentCommandStream.h"
 #include "../RenderCore/Assets/RawAnimationCurve.h"
-#include "../RenderCore/Metal/InputLayout.h"
-
 #include "../Assets/BlockSerializer.h"
 #include "../ConsoleRig/OutputStream.h"
 #include "../ConsoleRig/Log.h"
@@ -492,79 +487,7 @@ namespace RenderCore { namespace ColladaConversion
         serializer.SerializeValue(_transformationMachineOutputs.size());
     }
 
-    
 
-
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-    void CopyVertexElements(     
-        void* destinationBuffer,            size_t destinationVertexStride,
-        const void* sourceBuffer,           size_t sourceVertexStride,
-        const Metal::InputElementDesc* destinationLayoutBegin,  const Metal::InputElementDesc* destinationLayoutEnd,
-        const Metal::InputElementDesc* sourceLayoutBegin,       const Metal::InputElementDesc* sourceLayoutEnd,
-        const uint16* reorderingBegin,      const uint16* reorderingEnd )
-    {
-        uint32      elementReordering[32];
-        signed      maxSourceLayout = -1;
-        for (auto source=sourceLayoutBegin; source!=sourceLayoutEnd; ++source) {
-                //      look for the same element in the destination layout (or put ~uint16(0x0) if it's not there)
-            elementReordering[source-sourceLayoutBegin] = ~uint32(0x0);
-            for (auto destination=destinationLayoutBegin; destination!=destinationLayoutEnd; ++destination) {
-                if (    destination->_semanticName   == source->_semanticName 
-                    &&  destination->_semanticIndex  == source->_semanticIndex
-                    &&  destination->_nativeFormat   == source->_nativeFormat) {
-
-                    elementReordering[source-sourceLayoutBegin] = uint32(destination-destinationLayoutBegin);
-                    maxSourceLayout = std::max(maxSourceLayout, signed(source-sourceLayoutBegin));
-                    break;
-                }
-            }
-        }
-
-        if (maxSourceLayout<0) return;
-
-        size_t vertexCount = reorderingEnd - reorderingBegin; (void)vertexCount;
-
-        #if defined(_DEBUG)
-                    //  fill in some dummy values
-            std::fill((uint8*)destinationBuffer, (uint8*)PtrAdd(destinationBuffer, vertexCount*destinationVertexStride), 0xaf);
-        #endif
-
-            ////////////////     copy each vertex (slowly) piece by piece       ////////////////
-        for (auto reordering = reorderingBegin; reordering!=reorderingEnd; ++reordering) {
-            size_t sourceIndex               = reordering-reorderingBegin, destinationIndex = *reordering;
-            void* destinationVertexStart     = PtrAdd(destinationBuffer, destinationIndex*destinationVertexStride);
-            const void* sourceVertexStart    = PtrAdd(sourceBuffer, sourceIndex*sourceVertexStride);
-            for (unsigned c=0; c<=(unsigned)maxSourceLayout; ++c) {
-                if (elementReordering[c] != ~uint16(0x0)) {
-                    const Metal::InputElementDesc& destinationElement = destinationLayoutBegin[elementReordering[c]]; assert(&destinationElement < destinationLayoutEnd);
-                    const Metal::InputElementDesc& sourceElement = sourceLayoutBegin[c]; assert(&sourceElement < sourceLayoutEnd);
-                    size_t elementSize = Metal::BitsPerPixel(destinationElement._nativeFormat)/8;
-                    assert(elementSize == Metal::BitsPerPixel(sourceElement._nativeFormat)/8);
-                    assert(destinationElement._alignedByteOffset + elementSize <= destinationVertexStride);
-                    assert(sourceElement._alignedByteOffset + elementSize <= sourceVertexStride);
-                    assert(PtrAdd(destinationVertexStart, destinationElement._alignedByteOffset+elementSize) <= PtrAdd(destinationVertexStart, vertexCount*destinationVertexStride));
-                    assert(PtrAdd(sourceVertexStart, sourceElement._alignedByteOffset+elementSize) <= PtrAdd(sourceVertexStart, vertexCount*sourceVertexStride));
-
-                    XlCopyMemory(
-                        PtrAdd(destinationVertexStart, destinationElement._alignedByteOffset),
-                        PtrAdd(sourceVertexStart, sourceElement._alignedByteOffset),
-                        elementSize);
-                }
-            }
-        }
-    }
-
-    unsigned CalculateVertexSize(
-        const Metal::InputElementDesc* layoutBegin,  
-        const Metal::InputElementDesc* layoutEnd)
-    {
-        unsigned result = 0;
-        for (auto l=layoutBegin; l!=layoutEnd; ++l)
-            result += Metal::BitsPerPixel(l->_nativeFormat);
-        return result/8;
-    }
 
 }}
 

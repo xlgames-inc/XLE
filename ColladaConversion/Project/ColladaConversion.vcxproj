@@ -87,11 +87,12 @@
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\ColladaConversion.cpp" />
     <ClCompile Include="..\ColladaDocument.cpp" />
-    <ClCompile Include="..\ConversionObjects.cpp" />
     <ClCompile Include="..\ConversionUtil.cpp" />
-    <ClCompile Include="..\ModelCommandStream.cpp" />
+    <ClCompile Include="..\GeometryAlgorithm.cpp" />
+    <ClCompile Include="..\MeshDatabaseAdapter.cpp" />
+    <ClCompile Include="..\NascentAnimController.cpp" />
+    <ClCompile Include="..\NascentCommandStream.cpp" />
     <ClCompile Include="..\NascentModel.cpp" />
     <ClCompile Include="..\NascentModel2.cpp" />
     <ClCompile Include="..\OpenCollada\OCAnimationConversion.cpp" />
@@ -100,33 +101,37 @@
     <ClCompile Include="..\OpenCollada\OCModelCommandStream.cpp" />
     <ClCompile Include="..\OpenCollada\OCRawGeometry.cpp" />
     <ClCompile Include="..\OpenCollada\OCTransformationMachine.cpp" />
-    <ClCompile Include="..\ParsingUtil.cpp" />
-    <ClCompile Include="..\RawGeometry.cpp" />
+    <ClCompile Include="..\ScaffoldParsingUtil.cpp" />
+    <ClCompile Include="..\NascentRawGeometry.cpp" />
     <ClCompile Include="..\SAnimation.cpp" />
     <ClCompile Include="..\SCommandStream.cpp" />
     <ClCompile Include="..\SEffect.cpp" />
-    <ClCompile Include="..\SkinController.cpp" />
+    <ClCompile Include="..\SkeletonRegistry.cpp" />
     <ClCompile Include="..\SRawGeometry.cpp" />
     <ClCompile Include="..\TableOfObjects.cpp" />
     <ClCompile Include="..\STransformationMachine.cpp" />
     <ClCompile Include="..\Version.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\ColladaConversion.h" />
-    <ClInclude Include="..\ConversionObjects.h" />
+    <ClInclude Include="..\ConversionCore.h" />
+    <ClInclude Include="..\NascentAnimController.h" />
     <ClInclude Include="..\ConversionUtil.h" />
-    <ClInclude Include="..\ModelCommandStream.h" />
+    <ClInclude Include="..\GeometryAlgorithm.h" />
+    <ClInclude Include="..\NascentCommandStream.h" />
+    <ClInclude Include="..\NascentMaterial.h" />
     <ClInclude Include="..\NascentModel.h" />
     <ClInclude Include="..\NascentModel2.h" />
     <ClInclude Include="..\OpenCollada\OCInterface.h" />
-    <ClInclude Include="..\ParsingUtil.h" />
-    <ClInclude Include="..\ProcessingUtil.h" />
-    <ClInclude Include="..\RawGeometry.h" />
+    <ClInclude Include="..\OpenCollada\OCMisc.h" />
+    <ClInclude Include="..\ScaffoldParsingUtil.h" />
+    <ClInclude Include="..\MeshDatabaseAdapter.h" />
+    <ClInclude Include="..\NascentRawGeometry.h" />
     <ClInclude Include="..\SAnimation.h" />
     <ClInclude Include="..\Scaffold.h" />
     <ClInclude Include="..\ScaffoldDataFlow.h" />
     <ClInclude Include="..\SCommandStream.h" />
     <ClInclude Include="..\SEffect.h" />
+    <ClInclude Include="..\SkeletonRegistry.h" />
     <ClInclude Include="..\SRawGeometry.h" />
     <ClInclude Include="..\TableOfObjects.h" />
     <ClInclude Include="..\STransformationMachine.h" />

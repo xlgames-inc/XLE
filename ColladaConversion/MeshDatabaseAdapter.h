@@ -7,7 +7,11 @@
 #pragma once
 
 #include "../RenderCore/Metal/Format.h"
+#include "../RenderCore/Metal/InputLayout.h"
 #include <utility>
+#include <memory>
+#include <vector>
+#include <string>
 
 namespace RenderCore { namespace ColladaConversion
 {
@@ -30,9 +34,6 @@ namespace RenderCore { namespace ColladaConversion
     }
 
     size_t CreateTriangleWindingFromPolygon(size_t polygonVertexCount, unsigned buffer[], size_t bufferCount);
-
-    enum class ComponentType { Float32, Float16, UNorm8 };
-    std::pair<ComponentType, unsigned> BreakdownFormat(Metal::NativeFormat::Enum fmt);
 
     class IVertexSourceData
     {
@@ -98,24 +99,12 @@ namespace RenderCore { namespace ColladaConversion
 
     NativeVBLayout BuildDefaultLayout(MeshDatabaseAdapter& mesh);
 
-    void GenerateNormalsAndTangents( 
-        MeshDatabaseAdapter& mesh, 
-        unsigned normalMapTextureCoordinateSemanticIndex,
-        const void* rawIb, size_t indexCount, Metal::NativeFormat::Enum ibFormat);
-
     static const bool Use16BitFloats = true;
 
+    std::shared_ptr<IVertexSourceData>
+        CreateRawDataSource(
+            const void* dataBegin, const void* dataEnd, 
+            Metal::NativeFormat::Enum srcFormat);
 
-
-    void CopyVertexElements(
-        void* destinationBuffer,            size_t destinationVertexStride,
-        const void* sourceBuffer,           size_t sourceVertexStride,
-        const Metal::InputElementDesc* destinationLayoutBegin,  const Metal::InputElementDesc* destinationLayoutEnd,
-        const Metal::InputElementDesc* sourceLayoutBegin,       const Metal::InputElementDesc* sourceLayoutEnd,
-        const uint16* reorderingBegin,      const uint16* reorderingEnd );
-
-    unsigned CalculateVertexSize(
-        const Metal::InputElementDesc* layoutBegin,  
-        const Metal::InputElementDesc* layoutEnd);
 }}
 

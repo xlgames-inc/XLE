@@ -4,37 +4,32 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-namespace ColladaConversion { class Node; class VisualScene; class URIResolveContext; }
+#include "NascentCommandStream.h"
+
+namespace ColladaConversion { class Node; class VisualScene; class URIResolveContext; class InstanceGeometry; class InstanceController; }
 
 namespace RenderCore { namespace ColladaConversion
 {
     class NascentSkeleton;
-    class NodeReferences;
-    class NascentModelCommandStream;
+    class SkeletonRegistry;
     class TableOfObjects;
 
     void BuildSkeleton(
         NascentSkeleton& skeleton,
         const ::ColladaConversion::Node& node,
-        NodeReferences& skeletonReferences);
+        SkeletonRegistry& skeletonReferences);
 
-    void FindImportantNodes(
-        NodeReferences& skeletonReferences,
-        const ::ColladaConversion::VisualScene& scene);
-
-    void InstantiateGeometry(
-        NascentModelCommandStream& stream,
+    NascentModelCommandStream::GeometryInstance InstantiateGeometry(
         const ::ColladaConversion::InstanceGeometry& instGeo,
         const ::ColladaConversion::Node& attachedNode,
         const ::ColladaConversion::URIResolveContext& resolveContext,
         TableOfObjects& accessableObjects,
-        NodeReferences& nodeRefs);
+        SkeletonRegistry& nodeRefs);
 
-    void InstantiateController(
-        NascentModelCommandStream& stream,
+    NascentModelCommandStream::SkinControllerInstance InstantiateController(
         const ::ColladaConversion::InstanceController& instGeo,
         const ::ColladaConversion::Node& attachedNode,
         const ::ColladaConversion::URIResolveContext& resolveContext,
         TableOfObjects& accessableObjects,
-        NodeReferences& nodeRefs);
+        SkeletonRegistry& nodeRefs);
 }}

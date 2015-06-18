@@ -5,22 +5,16 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "TableOfObjects.h"
-#include "RawGeometry.h"
-#include "ConversionObjects.h"
-#include "ModelCommandStream.h"
+#include "NascentRawGeometry.h"
+#include "NascentAnimController.h"
+#include "NascentCommandStream.h"
+#include "NascentMaterial.h"
 #include "../RenderCore/Assets/RawAnimationCurve.h"
 #include "../RenderCore/Assets/Material.h"
 #include "../Assets/BlockSerializer.h"
 #include "../ConsoleRig/Log.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/Streams/Data.h"
-
-// #pragma warning(push)
-// #pragma warning(disable:4201)       // nonstandard extension used : nameless struct/union
-// #pragma warning(disable:4245)       // conversion from 'int' to 'const COLLADAFW::SamplerID', signed/unsigned mismatch
-// #pragma warning(disable:4512)       // assignment operator could not be generated
-//     #include <COLLADAFWUniqueId.h>
-// #pragma warning(pop)
 
 namespace RenderCore { namespace ColladaConversion
 {

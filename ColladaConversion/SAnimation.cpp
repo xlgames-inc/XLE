@@ -5,13 +5,10 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "SAnimation.h"
-#include "ConversionObjects.h"
+#include "SkeletonRegistry.h"
 #include "Scaffold.h"
-#include "ParsingUtil.h"
-#include "../RenderCore/Assets/RawAnimationCurve.h"
+#include "ScaffoldParsingUtil.h"
 #include "../Assets/Assets.h"
-#include "../ConsoleRig/Log.h"
-#include "../Utility/ParameterBox.h"
 #include "../Utility/IteratorUtils.h"
 
 namespace RenderCore { namespace ColladaConversion
@@ -285,7 +282,7 @@ namespace RenderCore { namespace ColladaConversion
     UnboundAnimation Convert(
         const Animation& animation, 
         const URIResolveContext& resolveContext, 
-        NodeReferences& nodeRefs)
+        SkeletonRegistry& nodeRefs)
     {
         UnboundAnimation result;
 

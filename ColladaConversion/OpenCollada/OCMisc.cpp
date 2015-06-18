@@ -4,7 +4,9 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "../ConversionObjects.h"
+#include "OCMisc.h"
+#include "../NascentMaterial.h"
+#include "../../Assets/Assets.h"
 
 #pragma warning(push)
 #pragma warning(disable:4201)       // nonstandard extension used : nameless struct/union

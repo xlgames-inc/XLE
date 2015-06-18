@@ -7,10 +7,11 @@
 #define _SCL_SECURE_NO_WARNINGS
 
 #include "Scaffold.h"
-#include "RawGeometry.h"
-#include "ProcessingUtil.h"
-#include "ConversionObjects.h"
-#include "ParsingUtil.h"
+#include "ScaffoldParsingUtil.h"
+#include "NascentRawGeometry.h"
+#include "NascentAnimController.h"
+#include "MeshDatabaseAdapter.h"
+#include "GeometryAlgorithm.h"
 #include "../ConsoleRig/Log.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/IteratorUtils.h"

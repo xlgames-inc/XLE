@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "../RenderCore/Metal/InputLayout.h"
 #include "../Assets/AssetsCore.h"
 #include "../Math/Vector.h"
 #include "../Math/Matrix.h"
@@ -46,4 +47,19 @@ namespace RenderCore { namespace ColladaConversion
             const Float4x4* transformsBegin, 
             const Float4x4* transformsEnd
         );
+
+    unsigned int    FloatBits(float input);
+    unsigned int    FloatBits(double input);
+
+    extern bool ImportCameras;
+
+    void AddToBoundingBox(  std::pair<Float3, Float3>& boundingBox,
+                            const Float3& localPosition, const Float4x4& localToWorld);
+    void AddToBoundingBox(  std::pair<Float3, Float3>& boundingBox,
+                            const void* vertexData, size_t vertexStride, size_t vertexCount,
+                            const Metal::InputElementDesc& elementDesc, 
+                            const Float4x4& localToWorld);
+    std::pair<Float3, Float3>   InvalidBoundingBox();
+
+    Metal::InputElementDesc     FindPositionElement(const Metal::InputElementDesc elements[], size_t elementCount);
 }}

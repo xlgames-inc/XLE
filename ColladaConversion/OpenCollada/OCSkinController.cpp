@@ -6,7 +6,8 @@
 
 #define _SCL_SECURE_NO_WARNINGS   // warning C4996: 'std::_Copy_impl': Function call with parameters that may be unsafe
 
-#include "../ConversionObjects.h"
+#include "OCMisc.h"
+#include "../NascentAnimController.h"
 #include "../../Assets/AssetsCore.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/MemoryUtils.h"

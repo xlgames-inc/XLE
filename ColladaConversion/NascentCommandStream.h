@@ -124,8 +124,6 @@ namespace RenderCore { namespace ColladaConversion
         //      matrices of the transformation machine to joints.
         //
 
-    class NodeReferences;
-
     class NascentSkeleton : noncopyable
     {
     public:
@@ -174,15 +172,6 @@ namespace RenderCore { namespace ColladaConversion
             void Serialize(Serialization::NascentBlockSerializer& serializer) const;
         };
 
-            /////   M O D E L   I N S T A N C E   /////
-        // class ModelInstance
-        // {
-        // public:
-        //     ObjectGuid    _id;
-        //     unsigned    _localToWorldId;
-        //     ModelInstance(ObjectGuid id, unsigned localToWorldId) : _id(id), _localToWorldId(localToWorldId) {}
-        // };
-
             /////   S K I N   C O N T R O L L E R   I N S T A N C E   /////
         class SkinControllerInstance
         {
@@ -209,10 +198,8 @@ namespace RenderCore { namespace ColladaConversion
         };
 
         std::vector<GeometryInstance>           _geometryInstances;
-        // std::vector<ModelInstance>              _modelInstances;
         std::vector<CameraInstance>             _cameraInstances;
         std::vector<SkinControllerInstance>     _skinControllerInstances;
-        // std::vector<std::string>                _inputMatrixNames;
 
         NascentModelCommandStream();
         ~NascentModelCommandStream();

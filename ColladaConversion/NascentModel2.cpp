@@ -6,13 +6,16 @@
 
 #include "NascentModel2.h"
 #include "Scaffold.h"
-#include "ModelCommandStream.h"
+#include "ScaffoldParsingUtil.h"    // for AsString
+#include "NascentCommandStream.h"
+#include "NascentRawGeometry.h"
+#include "NascentAnimController.h"
+#include "SkeletonRegistry.h"
 #include "SRawGeometry.h"
 #include "SEffect.h"
 #include "SCommandStream.h"
 #include "SAnimation.h"
 #include "ConversionUtil.h"
-#include "ParsingUtil.h"    // for AsString
 #include "../RenderCore/Assets/TransformationCommands.h"
 #include "../RenderCore/Assets/ModelRunTime.h"
 #include "../RenderCore/Assets/ModelRunTimeInternal.h"
@@ -41,7 +44,7 @@ namespace RenderCore { namespace ColladaConversion
         NascentSkeleton _skeleton;
         NascentModelCommandStream _visualScene;
 
-        NodeReferences _jointRefs;
+        SkeletonRegistry _jointRefs;
         std::string _name;
 
         ImportConfiguration _cfg;
@@ -148,24 +151,22 @@ namespace RenderCore { namespace ColladaConversion
 
         for (unsigned c=0; c<scene->GetInstanceGeometryCount(); ++c) {
             TRY {
-                RenderCore::ColladaConversion::InstantiateGeometry(
-                    result->_visualScene,
-                    scene->GetInstanceGeometry(c),
-                    scene->GetInstanceGeometry_Attach(c),
-                    resolveContext,
-                    result->_objects, result->_jointRefs);
+                result->_visualScene._geometryInstances.push_back(
+                    RenderCore::ColladaConversion::InstantiateGeometry(
+                        scene->GetInstanceGeometry(c),
+                        scene->GetInstanceGeometry_Attach(c),
+                        resolveContext, result->_objects, result->_jointRefs));
             } CATCH(...) {
             } CATCH_END
         }
 
         for (unsigned c=0; c<scene->GetInstanceControllerCount(); ++c) {
             TRY {
-                RenderCore::ColladaConversion::InstantiateController(
-                    result->_visualScene,
-                    scene->GetInstanceController(c),
-                    scene->GetInstanceController_Attach(c),
-                    resolveContext,
-                    result->_objects, result->_jointRefs);
+                result->_visualScene._skinControllerInstances.push_back(
+                    RenderCore::ColladaConversion::InstantiateController(
+                        scene->GetInstanceController(c),
+                        scene->GetInstanceController_Attach(c),
+                        resolveContext, result->_objects, result->_jointRefs));
             } CATCH(...) {
             } CATCH_END
         }

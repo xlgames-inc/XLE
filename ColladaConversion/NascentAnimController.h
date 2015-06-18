@@ -6,17 +6,14 @@
 
 #pragma once
 
-#include "ColladaConversion.h"
-#include "RawGeometry.h"
-#include "../RenderCore/Metal/InputLayout.h"
-#include "../RenderCore/Metal/Buffer.h"
+#include "NascentRawGeometry.h"
+#include "SkeletonRegistry.h"
+#include "../RenderCore/Metal/Format.h"
 #include "../Math/Matrix.h"
 #include "../Math/Vector.h"
 #include "../Utility/UTFUtils.h"
-
-namespace COLLADAFW { class UniqueId; class Image; class SkinControllerData; }
-
-namespace RenderCore { namespace Assets { using AnimationParameterId = uint32; }}
+#include "../Utility/PtrUtils.h"
+#include <vector>
 
 namespace RenderCore { namespace ColladaConversion
 {
@@ -67,21 +64,6 @@ namespace RenderCore { namespace ColladaConversion
     class NascentBoundSkinnedGeometry;
     class ReferencedTexture;
     class ReferencedMaterial;
-
-        ////////////////////////////////////////////////////////
-
-    class ObjectGuid
-    {
-    public:
-        uint64  _objectId;
-        uint64  _fileId;
-
-        ObjectGuid() : _objectId(~0ull), _fileId(~0ull) {}
-        ObjectGuid(uint64 objectId, uint64 fileId = 0) : _objectId(objectId), _fileId(fileId) {}
-    };
-
-    inline bool operator==(const ObjectGuid& lhs, const ObjectGuid& rhs)   { return (lhs._objectId == rhs._objectId) && (lhs._fileId == rhs._fileId); }
-    inline bool operator<(const ObjectGuid& lhs, const ObjectGuid& rhs)    { if (lhs._fileId < rhs._fileId) return true; return lhs._objectId < rhs._objectId; }
 
         ////////////////////////////////////////////////////////
 
@@ -154,69 +136,12 @@ namespace RenderCore { namespace ColladaConversion
         std::vector<ObjectGuid>     _jointIds;
     };
 
-        ////////////////////////////////////////////////////////
-
-    class NodeReferences
-    {
-    public:
-        bool        IsImportant(ObjectGuid node) const;
-        unsigned    GetOutputMatrixIndex(ObjectGuid node);
-        void        SetOutputMatrixIndex(ObjectGuid node, unsigned index);
-
-        const Float4x4* GetInverseBindMatrix(ObjectGuid node) const;
-        void    AttachInverseBindMatrix(ObjectGuid node, const Float4x4& inverseBind);
-
-        void    MarkParameterAnimated(const std::string& paramName);
-        bool    IsAnimated(const std::string& paramName) const;
-
-        NodeReferences();
-        ~NodeReferences();
-    protected:
-        using OutputMatrixIndex = unsigned;
-        static const OutputMatrixIndex OutputMatrixIndex_UnSet = ~unsigned(0);
-
-        std::vector<std::pair<ObjectGuid, OutputMatrixIndex>> _nodeReferences;
-        std::vector<std::pair<ObjectGuid, Float4x4>> _inverseBindMatrics;
-        std::vector<std::string> _markParameterAnimated;
-
-        OutputMatrixIndex _nextOutputIndex;
-    };
 
         ////////////////////////////////////////////////////////
-
-    class ReferencedTexture
-    {
-    public:
-        std::string     _resourceName;
-        ReferencedTexture(const std::string& resourceName) : _resourceName(resourceName) {}
-    };
-
-    class ReferencedMaterial
-    {
-    public:
-        typedef uint64 Guid;
-        ObjectGuid      _effectId;
-        Guid            _guid;
-        std::string     _descriptiveName;
-
-        ReferencedMaterial(
-            const ObjectGuid& effectId,
-            const Guid& guid,
-            const std::string& descriptiveName)
-        : _effectId(effectId), _guid(guid), _descriptiveName(descriptiveName) {}
-    };
-
-        ////////////////////////////////////////////////////////
-
-    ObjectGuid              Convert(const COLLADAFW::UniqueId& input);
-    ReferencedTexture       Convert(const COLLADAFW::Image* image);
-    UnboundSkinController   Convert(const COLLADAFW::SkinControllerData* input);
-
-    RenderCore::Assets::AnimationParameterId BuildAnimParameterId(const COLLADAFW::UniqueId& input);
 
     class TableOfObjects;
 
-    NascentBoundSkinnedGeometry InstantiateSkinnedController(
+    NascentBoundSkinnedGeometry BindController(
         const NascentRawGeometry& sourceGeo,
         const UnboundSkinController& controller,
         const TableOfObjects& accessableObjects, 

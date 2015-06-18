@@ -6,8 +6,9 @@
 
 #define _SCL_SECURE_NO_WARNINGS   // warning C4996: 'std::_Copy_impl': Function call with parameters that may be unsafe
 
-#include "../RawGeometry.h"
-#include "../ProcessingUtil.h"
+#include "../NascentRawGeometry.h"
+#include "../MeshDatabaseAdapter.h"
+#include "../GeometryAlgorithm.h"
 #include "../../Utility/IteratorUtils.h"
 #include "../../Utility/StringUtils.h"
 

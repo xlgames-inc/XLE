@@ -6,7 +6,7 @@
 
 #include "Scaffold.h"
 #include "ConversionUtil.h"
-#include "ParsingUtil.h"
+#include "ScaffoldParsingUtil.h"
 #include "../RenderCore/Assets/Material.h"
 #include "../ConsoleRig/Log.h"
 #include "../Utility/Conversion.h"

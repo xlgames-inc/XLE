@@ -11,10 +11,10 @@ namespace ColladaConversion { class Transformation; }
 
 namespace RenderCore { namespace ColladaConversion
 {
-    class NodeReferences;
+    class SkeletonRegistry;
     unsigned PushTransformations(
         RenderCore::Assets::NascentTransformationMachine& dst,
         const ::ColladaConversion::Transformation& transformations,
         const char nodeName[],
-        const NodeReferences& nodeRefs);
+        const SkeletonRegistry& nodeRefs);
 }}

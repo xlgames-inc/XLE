@@ -4,15 +4,18 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "TableOfObjects.h"
-#include "Scaffold.h"
-#include "ModelCommandStream.h"
+#include "SCommandStream.h"
 #include "STransformationMachine.h"
-#include "SRawGeometry.h"
-#include "ParsingUtil.h"
-#include "../RenderCore/Assets/Material.h"
-#include "../Utility/Conversion.h"
+#include "NascentCommandStream.h"
+#include "NascentRawGeometry.h"
+#include "NascentAnimController.h"
+#include "SkeletonRegistry.h"
+#include "Scaffold.h"
+#include "ScaffoldParsingUtil.h"    // for AsString
+#include "../RenderCore/Assets/Material.h"  // for MakeMaterialGuid
 #include "../Utility/MemoryUtils.h"
+#include "ConversionCore.h"
+#include <string>
 
 namespace RenderCore { namespace ColladaConversion
 {
@@ -21,22 +24,24 @@ namespace RenderCore { namespace ColladaConversion
     static std::string SkeletonBindingName(const Node& node);
     static ObjectGuid AsObjectGuid(const Node& node);
 
-    static bool IsUseful(const Node& node, const NodeReferences& skeletonReferences);
+    static bool IsUseful(const Node& node, const SkeletonRegistry& skeletonReferences);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     void BuildSkeleton(
         NascentSkeleton& skeleton,
         const Node& node,
-        NodeReferences& skeletonReferences)
+        SkeletonRegistry& skeletonReferences)
     {
-        using namespace COLLADAFW;
-
         // if (!IsUseful(node, skeletonReferences)) return;
+
+        auto nodeId = AsObjectGuid(node);
+        auto bindingName = skeletonReferences.GetBindingName(nodeId);
+        if (bindingName.empty()) bindingName = SkeletonBindingName(node);
 
         unsigned pushCount = PushTransformations(
             skeleton.GetTransformationMachine(),
-            node.GetFirstTransform(), SkeletonBindingName(node).c_str(),
+            node.GetFirstTransform(), bindingName.c_str(),
             skeletonReferences);
 
             //
@@ -44,7 +49,6 @@ namespace RenderCore { namespace ColladaConversion
             //      which nodes need output matrices at this point (because we haven't 
             //      got all the downstream skinning data). So, let's just assume it's needed.
             //
-        auto nodeId = AsObjectGuid(node);
         bool isReferenced = skeletonReferences.IsImportant(nodeId);
 
             // DavidJ -- hack! -- When writing a "skeleton" we need to include all nodes, even those that aren't
@@ -76,7 +80,6 @@ namespace RenderCore { namespace ColladaConversion
                 //          unique. There are unique ids in collada, however. We some some unique identifier
                 //          can can be seen in Max, and can be used to associate different files with shared
                 //          references (eg, animations, skeletons and skins in separate files)
-            auto bindingName = SkeletonBindingName(node);
             if (!bindingName.empty() || inverseBindP) {
                 bool success = skeleton.GetTransformationMachine().TryRegisterJointName(
                     bindingName, inverseBind, thisOutputMatrix);
@@ -142,39 +145,14 @@ namespace RenderCore { namespace ColladaConversion
         return std::move(materialGuids);
     }
 
-    // static const NascentRawGeometry* 
-    //     FindOrCreateGeometry(
-    //         GuidReference ref,
-    //         const URIResolveContext& resolveContext, 
-    //         TableOfObjects& accessableObjects)
-    // {
-    //     const auto* geo = accessableObjects.Get<NascentRawGeometry>(ref._id);
-    //     if (geo) return geo;
-    // 
-    //     auto* file = resolveContext.FindFile(ref._fileHash);
-    //     if (!file) return nullptr;
-    // 
-    //     auto* mesh = file->FindMeshGeometry(ref._id);
-    //     if (!mesh) return nullptr;
-    // 
-    //     accessableObjects.Add(
-    //         ref._id,
-    //         AsString(mesh->GetName()), AsString(mesh->GetId().GetOriginal()),
-    //         ::ColladaConversion::Convert(*mesh, resolveContext));
-    // 
-    //     return accessableObjects.Get<NascentRawGeometry>(ref._id);
-    // }
-
-    void InstantiateGeometry(
-        NascentModelCommandStream& stream,
+    NascentModelCommandStream::GeometryInstance InstantiateGeometry(
         const ::ColladaConversion::InstanceGeometry& instGeo,
         const ::ColladaConversion::Node& attachedNode,
         const URIResolveContext& resolveContext,
         TableOfObjects& accessableObjects,
-        NodeReferences& nodeRefs)
+        SkeletonRegistry& nodeRefs)
     {
         GuidReference refGuid(instGeo._reference);
-        // auto* geo = FindOrCreateGeometry(refGuid, resolveContext, accessableObjects);
         auto* geo = accessableObjects.Get<NascentRawGeometry>(ObjectGuid(refGuid._id, refGuid._fileHash));
         if (!geo)
             Throw(::Assets::Exceptions::FormatError("Could not found geometry object to instantiate (%s)",
@@ -184,24 +162,23 @@ namespace RenderCore { namespace ColladaConversion
             AsPointer(instGeo._matBindings.cbegin()), AsPointer(instGeo._matBindings.cend()),
             geo->_matBindingSymbols, resolveContext);
 
-        auto bindingMatIndex = stream.RegisterTransformationMachineOutput(
-            SkeletonBindingName(attachedNode),
-            AsObjectGuid(attachedNode));
-        nodeRefs.SetOutputMatrixIndex(AsObjectGuid(attachedNode), bindingMatIndex);
+        auto bindingMatIndex = nodeRefs.GetOutputMatrixIndex(AsObjectGuid(attachedNode));
+        nodeRefs.TryRegisterNode(AsObjectGuid(attachedNode), SkeletonBindingName(attachedNode).c_str());
 
-        stream._geometryInstances.push_back(
-            NascentModelCommandStream::GeometryInstance(
-                accessableObjects.GetIndex<NascentRawGeometry>(ObjectGuid(refGuid._id, refGuid._fileHash)), 
-                bindingMatIndex, 
-                std::move(materials), 0));
+        // auto bindingMatIndex = stream.RegisterTransformationMachineOutput(
+        //     SkeletonBindingName(attachedNode),
+        //     AsObjectGuid(attachedNode));
+
+        return NascentModelCommandStream::GeometryInstance(
+            accessableObjects.GetIndex<NascentRawGeometry>(ObjectGuid(refGuid._id, refGuid._fileHash)), 
+            bindingMatIndex, std::move(materials), 0);
     }
 
     DynamicArray<uint16> BuildJointArray(
         const GuidReference skeletonRef,
         const UnboundSkinController& unboundController,
         const URIResolveContext& resolveContext,
-        NascentModelCommandStream& stream,
-        NodeReferences& nodeRefs)
+        SkeletonRegistry& nodeRefs)
     {
             // Build the joints array for the given controller instantiation
             // the <instance_controller> references a skeleton, which contains
@@ -223,10 +200,11 @@ namespace RenderCore { namespace ColladaConversion
         for (unsigned c=0; c<count; ++c) {
             Node node = skeleton.FindBySid(AsPointer(jointNames[c].cbegin()), AsPointer(jointNames[c].cend()));
             if (node) {
-                auto bindingMatIndex = stream.RegisterTransformationMachineOutput(
-                    SkeletonBindingName(node),
-                    AsObjectGuid(node));
-                nodeRefs.SetOutputMatrixIndex(AsObjectGuid(node), bindingMatIndex);
+                // auto bindingMatIndex = stream.RegisterTransformationMachineOutput(
+                //     SkeletonBindingName(node),
+                //     AsObjectGuid(node));
+                auto bindingMatIndex = nodeRefs.GetOutputMatrixIndex(AsObjectGuid(node));
+                nodeRefs.TryRegisterNode(AsObjectGuid(node), SkeletonBindingName(node).c_str());
 
                 result[c] = (uint16)bindingMatIndex;
             } else {
@@ -241,13 +219,12 @@ namespace RenderCore { namespace ColladaConversion
         return std::move(result);
     }
 
-    void InstantiateController(
-        NascentModelCommandStream& stream,
+    NascentModelCommandStream::SkinControllerInstance InstantiateController(
         const ::ColladaConversion::InstanceController& instGeo,
         const ::ColladaConversion::Node& attachedNode,
         const URIResolveContext& resolveContext,
         TableOfObjects& accessableObjects,
-        NodeReferences& nodeRefs)
+        SkeletonRegistry& nodeRefs)
     {
         GuidReference controllerRef(instGeo._reference);
         ObjectGuid controllerId(controllerRef._id, controllerRef._fileHash);
@@ -261,13 +238,13 @@ namespace RenderCore { namespace ColladaConversion
             Throw(::Assets::Exceptions::FormatError("Could not find geometry object to instantiate (%s)",
                 AsString(instGeo._reference).c_str()));
 
-        auto jointMatrices = BuildJointArray(instGeo.GetSkeleton(), *controller, resolveContext, stream, nodeRefs);
+        auto jointMatrices = BuildJointArray(instGeo.GetSkeleton(), *controller, resolveContext, nodeRefs);
 
         auto materials = BuildMaterialTable(
             AsPointer(instGeo._matBindings.cbegin()), AsPointer(instGeo._matBindings.cend()),
             source->_matBindingSymbols, resolveContext);
 
-        auto result = InstantiateSkinnedController(
+        auto result = BindController(
             *source, *controller, accessableObjects, accessableObjects,
             std::move(jointMatrices),
             AsString(instGeo._reference).c_str());
@@ -278,34 +255,24 @@ namespace RenderCore { namespace ColladaConversion
             std::get<0>(desc), std::get<1>(desc),
             std::move(result));
 
-        auto bindingMatIndex = stream.RegisterTransformationMachineOutput(
-            SkeletonBindingName(attachedNode),
-            AsObjectGuid(attachedNode));
-        nodeRefs.SetOutputMatrixIndex(AsObjectGuid(attachedNode), bindingMatIndex);
+        // auto bindingMatIndex = stream.RegisterTransformationMachineOutput(
+        //     SkeletonBindingName(attachedNode),
+        //     AsObjectGuid(attachedNode));
+        // nodeRefs.SetOutputMatrixIndex(AsObjectGuid(attachedNode), bindingMatIndex);
 
-        NascentModelCommandStream::SkinControllerInstance newInstance(
+        auto bindingMatIndex = nodeRefs.GetOutputMatrixIndex(AsObjectGuid(attachedNode));
+        nodeRefs.TryRegisterNode(AsObjectGuid(attachedNode), SkeletonBindingName(attachedNode).c_str());
+
+        return NascentModelCommandStream::SkinControllerInstance(
             accessableObjects.GetIndex<NascentBoundSkinnedGeometry>(controllerId), 
-            bindingMatIndex, 
-            std::move(materials), 0);
-        stream._skinControllerInstances.push_back(newInstance);
-    }
-
-    void FindImportantNodes(
-        NodeReferences& skeletonReferences,
-        const VisualScene& scene)
-    {
-        // for (unsigned c=0; c<scene.GetInstanceGeometryCount(); ++c)
-        //     skeletonReferences.MarkImportant(AsObjectGuid(scene.GetInstanceGeometry_Attach(c)));
-        // for (unsigned c=0; c<scene.GetInstanceControllerCount(); ++c)
-        //     skeletonReferences.MarkImportant(AsObjectGuid(scene.GetInstanceController_Attach(c)));
+            bindingMatIndex, std::move(materials), 0);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     static std::string SkeletonBindingName(const Node& node)
     {
-        return Conversion::Convert<std::string>(
-            std::basic_string<utf8>(node.GetName()._start, node.GetName()._end));
+        return AsString(node.GetName());
     }
 
     static ObjectGuid AsObjectGuid(const Node& node)
@@ -313,7 +280,7 @@ namespace RenderCore { namespace ColladaConversion
         return node.GetId().GetHash();
     }
 
-    static bool IsUseful(const Node& node, const NodeReferences& skeletonReferences)
+    static bool IsUseful(const Node& node, const SkeletonRegistry& skeletonReferences)
     {
         if (skeletonReferences.IsImportant(AsObjectGuid(node))) return true;
 

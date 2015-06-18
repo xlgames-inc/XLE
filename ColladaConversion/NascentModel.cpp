@@ -13,10 +13,13 @@
 
 #include "NascentModel.h"
 #include "TableOfObjects.h"
-#include "RawGeometry.h"
-#include "ConversionObjects.h"
+#include "NascentRawGeometry.h"
+#include "NascentMaterial.h"
+#include "NascentAnimController.h"
 #include "ConversionUtil.h"
+#include "SkeletonRegistry.h"
 #include "OpenCollada\OCInterface.h"
+#include "OpenCollada\OCMisc.h"
 
 #include "../RenderCore/Assets/ModelRunTime.h"
 #include "../RenderCore/Assets/RawAnimationCurve.h"
@@ -477,7 +480,7 @@ namespace RenderCore { namespace ColladaConversion
             ColladaConversion::NascentModelCommandStream    commandStream;
 
             size_t rootNodeCount = visualScene->getRootNodes().getCount();
-            NodeReferences jointRefs;
+            SkeletonRegistry jointRefs;
             for (size_t c=0; c<rootNodeCount; ++c) {
                     //      are we really going to instantiate every skin controller we find?)
                     //      If we decide we don't need all of them, we can filter out some here.
@@ -530,7 +533,7 @@ namespace RenderCore { namespace ColladaConversion
 
             size_t rootNodeCount = libraryNodes->getNodes().getCount();
 
-            NodeReferences instancedSkinControllers;
+            SkeletonRegistry instancedSkinControllers;
             for (size_t c=0; c<rootNodeCount; ++c) {
                     //      are we really going to instantiate every skin controller we find?)
                     //      If we decide we don't need all of them, we can filter out some here.
