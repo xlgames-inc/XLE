@@ -109,8 +109,12 @@ namespace RenderCore { namespace ColladaConversion
                     //      Do we need 128 bit alignment for this matrix?
                     //
                 if (parameterType == ParameterType_Embedded) {
-                    dst.PushCommand(Assets::TransformStackCommand::TransformFloat4x4_Static);
-                    dst.PushCommand(trans.GetUnionData(), sizeof(Float4x4));
+                    if (Equivalent(*(Float4x4*)trans.GetUnionData(), Identity<Float4x4>(), 1e-5f)) {
+                        // ignore transform by identity
+                    } else {
+                        dst.PushCommand(Assets::TransformStackCommand::TransformFloat4x4_Static);
+                        dst.PushCommand(trans.GetUnionData(), sizeof(Float4x4));
+                    }
                 } else {
                     dst.PushCommand(Assets::TransformStackCommand::TransformFloat4x4_Parameter);
                     dst.PushCommand(dst.AddParameter(*(const Float4x4*)trans.GetUnionData(), parameterId, paramName.c_str()));
@@ -119,8 +123,12 @@ namespace RenderCore { namespace ColladaConversion
             } else if (type == TransformationSet::Type::Translate) {
 
                 if (parameterType == ParameterType_Embedded) {
-                    dst.PushCommand(Assets::TransformStackCommand::Translate_Static);
-                    dst.PushCommand(trans.GetUnionData(), sizeof(Float3));
+                    if (Equivalent(*(Float3*)trans.GetUnionData(), Float3(0.f, 0.f, 0.f), 1e-5f)) {
+                        // ignore translate by zero
+                    } else {
+                        dst.PushCommand(Assets::TransformStackCommand::Translate_Static);
+                        dst.PushCommand(trans.GetUnionData(), sizeof(Float3));
+                    }
                 } else {
                     dst.PushCommand(Assets::TransformStackCommand::Translate_Parameter);
                     dst.PushCommand(dst.AddParameter(*(const Float3*)trans.GetUnionData(), parameterId, paramName.c_str()));
@@ -143,7 +151,9 @@ namespace RenderCore { namespace ColladaConversion
                 const auto& rot = *(const ArbitraryRotation*)trans.GetUnionData();
                 if (parameterType == ParameterType_Embedded) {
 
-                    if (signed x = rot.IsRotationX()) {
+                    if (Equivalent(rot._angle, 0.f, 1e-5f)) {
+                        // the angle is too small -- just ignore it
+                    } else if (signed x = rot.IsRotationX()) {
                         dst.PushCommand(Assets::TransformStackCommand::RotateX_Static);
                         dst.PushCommand(FloatBits(float(x) * rot._angle));
                     } else if (signed y = rot.IsRotationY()) {
@@ -181,7 +191,9 @@ namespace RenderCore { namespace ColladaConversion
                 auto scale = *(const Float3*)trans.GetUnionData();
                 bool isUniform = Equivalent(scale[0], scale[1], 0.001f) && Equivalent(scale[0], scale[2], 0.001f);
                 if (parameterType == ParameterType_Embedded) {
-                    if (isUniform) {
+                    if (Equivalent(scale, Float3(1.f, 1.f, 1.f), 1e-5f)) {
+                        // scaling by 1 -- just ignore
+                    } else if (isUniform) {
                         dst.PushCommand(Assets::TransformStackCommand::UniformScale_Static);
                         dst.PushCommand(FloatBits(scale[0]));
                     } else {

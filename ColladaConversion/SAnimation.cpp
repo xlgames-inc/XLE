@@ -85,6 +85,7 @@ namespace RenderCore { namespace ColladaConversion
         const DataFlow::Source* _inputSource;
         const DataFlow::Source* _inTangentsSource;
         const DataFlow::Source* _outTangentsSource;
+        const DataFlow::Source* _interpolationSource;
         bool _valid;
 
         SimpleChannel(const Channel& channel, const URIResolveContext& resolveContext);
@@ -96,48 +97,49 @@ namespace RenderCore { namespace ColladaConversion
         _sampler = nullptr;
         _outputSource = _inputSource = nullptr;
         _inTangentsSource = _outTangentsSource = nullptr;
+        _interpolationSource = nullptr;
 
         _target = SidBreakdown(channel.GetTarget());
 
         _sampler = FindElement(channel.GetSource(), resolveContext, &IDocScopeIdResolver::FindSampler);
         if (!_sampler) {
-            LogWarning << "Found animation channel with no sampler. Ignoring";
+            LogWarning << "Found animation channel with no sampler. Ignoring channel.";
             return;
         }
 
         //////////////////
         const auto* output = _sampler->GetInputsCollection().FindInputBySemantic(u("OUTPUT"));
         if (!output) {
-            LogWarning << "Found animation sampler with no output field. Ignoring";
+            LogWarning << "Found animation sampler with no output field. Ignoring channel.";
             return;
         }
 
         _outputSource = FindElement(output->_source, resolveContext, &IDocScopeIdResolver::FindSource);
         if (!_outputSource) {
-            LogWarning << "Could not find <source> for output of animation sampler. Ignoring";
+            LogWarning << "Could not find <source> for output of animation sampler. Ignoring channel.";
             return;
         }
 
         if (!_outputSource->FindAccessorForTechnique()) {
-            LogWarning << "<source> for output of animation sampler does not contain a sampler for common profile. Ignoring";
+            LogWarning << "<source> for output of animation sampler does not contain a sampler for common profile. Ignoring channel.";
             return;
         }
 
         //////////////////
         const auto* input = _sampler->GetInputsCollection().FindInputBySemantic(u("INPUT"));
         if (!input) {
-            LogWarning << "Found animation sampler with no output field. Ignoring";
+            LogWarning << "Found animation sampler with no output field. Ignoring channel.";
             return;
         }
 
         _inputSource = FindElement(input->_source, resolveContext, &IDocScopeIdResolver::FindSource);
         if (!_inputSource) {
-            LogWarning << "Could not find <source> for input of animation sampler. Ignoring";
+            LogWarning << "Could not find <source> for input of animation sampler. Ignoring channel.";
             return;
         }
 
         if (!_inputSource->FindAccessorForTechnique()) {
-            LogWarning << "<source> for input of animation sampler does not contain a sampler for common profile. Ignoring";
+            LogWarning << "<source> for input of animation sampler does not contain a sampler for common profile. Ignoring channel.";
             return;
         }
 
@@ -146,13 +148,10 @@ namespace RenderCore { namespace ColladaConversion
         if (inTangent) {
             _inTangentsSource = FindElement(inTangent->_source, resolveContext, &IDocScopeIdResolver::FindSource);
             if (!_inTangentsSource) {
-                LogWarning << "Could not find <source> for input tangent of animation sampler. Ignoring";
-                return;
-            }
-
-            if (!_inTangentsSource->FindAccessorForTechnique()) {
-                LogWarning << "<source> for input tangent of animation sampler does not contain a sampler for common profile. Ignoring";
-                return;
+                LogWarning << "Could not find <source> for input tangent of animation sampler. Will fall back to linear interpolation.";
+            } else if (!_inTangentsSource->FindAccessorForTechnique()) {
+                LogWarning << "<source> for input tangent of animation sampler does not contain a sampler for common profile. linear interpolation.";
+                _inTangentsSource = nullptr;
             }
         }
 
@@ -161,13 +160,22 @@ namespace RenderCore { namespace ColladaConversion
         if (outTangent) {
             _outTangentsSource = FindElement(outTangent->_source, resolveContext, &IDocScopeIdResolver::FindSource);
             if (!_outTangentsSource) {
-                LogWarning << "Could not find <source> for output tangent of animation sampler. Ignoring";
-                return;
+                LogWarning << "Could not find <source> for output tangent of animation sampler. Will fall back to linear interpolation.";
+            } else if (!_outTangentsSource->FindAccessorForTechnique()) {
+                LogWarning << "<source> for output tangent of animation sampler does not contain a sampler for common profile. Will fall back to linear interpolation.";
+                _outTangentsSource = nullptr;
             }
+        }
 
-            if (!_outTangentsSource->FindAccessorForTechnique()) {
-                LogWarning << "<source> for output tangent of animation sampler does not contain a sampler for common profile. Ignoring";
-                return;
+        //////////////////
+        const auto* interpolation = _sampler->GetInputsCollection().FindInputBySemantic(u("INTERPOLATION"));
+        if (interpolation) {
+            _interpolationSource = FindElement(interpolation->_source, resolveContext, &IDocScopeIdResolver::FindSource);
+            if (!_interpolationSource) {
+                LogWarning << "Could not find <source> for interpolation of animation sampler. Will fall back to linear interpolation.";
+            } else if (!_interpolationSource->FindAccessorForTechnique()) {
+                LogWarning << "<source> for interpolation of animation sampler does not contain a sampler for common profile. Will fall back to linear interpolation.";
+                _interpolationSource = nullptr;
             }
         }
 
@@ -232,6 +240,48 @@ namespace RenderCore { namespace ColladaConversion
             dest[c*outputStride] = 0.f;
     }
 
+    static Assets::RawAnimationCurve::InterpolationType AsInterpolationType(const DataFlow::Source& src)
+    {
+            // Let's make sure the format of the source is exactly what we expect. 
+            // If there is anything strange or unexpected, we must fail.
+            // Note that the collada standard is very flexible about these things -- 
+            // but we are going to refuse any incoming data that is unusual.
+        if (!src.FindAccessorForTechnique()
+            || src.FindAccessorForTechnique()->GetStride() != 1
+            || src.FindAccessorForTechnique()->GetParamCount() != 1
+            || src.FindAccessorForTechnique()->GetParam(0)._offset != 0
+            || !Is(src.FindAccessorForTechnique()->GetParam(0)._name, u("INTERPOLATION"))
+            || !Is(src.FindAccessorForTechnique()->GetParam(0)._type, u("name"))
+            || src.GetType() != DataFlow::ArrayType::Name) {
+
+            Throw(FormatException("Cannot understand interpolation source for animation sampler. Expecting simple list of names (such as BEZIER, LINEAR, etc)", src.GetLocation()));
+        }
+
+        const auto* end = src.GetArrayData()._end;
+        const auto* i = src.GetArrayData()._start;
+        Section type;
+        for (;;) {
+            while (i < end && IsWhitespace(*i)) ++i;
+            if (i == end) break;
+
+            auto start = i;
+            while (i < end && !IsWhitespace(*i)) ++i;
+            Section newSection(start, i);
+
+            if (type._end > type._start && !Equivalent(type, newSection))
+                Throw(FormatException("Found animation sampler with inconsistant interpolation types", src.GetLocation()));
+            type = newSection;
+        }
+
+        if (Is(type, u("BEZIER"))) return Assets::RawAnimationCurve::Bezier;
+        if (Is(type, u("HERMITE"))) return Assets::RawAnimationCurve::Hermite;
+        if (Is(type, u("LINEAR"))) return Assets::RawAnimationCurve::Linear;
+
+        // "BSPLINE" is also part of the "common profile" of collada -- but not supported
+        LogWarning << "Interpolation type for animation sampler not understood. Falling back to linear interpolation. At: " << src.GetLocation();
+        return Assets::RawAnimationCurve::Linear;
+    }
+
     UnboundAnimation Convert(
         const Animation& animation, 
         const URIResolveContext& resolveContext, 
@@ -285,6 +335,10 @@ namespace RenderCore { namespace ColladaConversion
                     outDimension = std::max(outDimension, ch._outputSource->FindAccessorForTechnique()->GetStride());
                 }
             }
+
+            // Skip anything with "rope" in the target parameter. 
+            // These channels cause problems with some Archeage data.
+            if (i->first.find("rope") != std::string::npos) { i = i2; continue; }
 
                 // We need to combine all of these curves into a single one.
                 // We're going to require that the input curves are "time" and
@@ -393,12 +447,15 @@ namespace RenderCore { namespace ColladaConversion
                 firstChannel._inputSource->FindAccessorForTechnique()->GetStride()-1);
 
                 // todo -- we need to find the correct animation curve type
+            auto interpolationType = Assets::RawAnimationCurve::Linear;
+            if (firstChannel._interpolationSource)
+                interpolationType = AsInterpolationType(*firstChannel._interpolationSource);
 
             Assets::RawAnimationCurve curve(
                 (size_t)keyCount, std::move(inputTimeBlock),
                 DynamicArray<uint8, Serialization::BlockSerializerDeleter<uint8[]>>(
                     std::move(keyBlock), elementBytes * keyCount),
-                elementBytes, Assets::RawAnimationCurve::Linear,
+                elementBytes, interpolationType,
                 positionFormat, inTangentFormat, outTangentFormat);
             result._curves.emplace_back(UnboundAnimation::Curve(
                 i->first, std::move(curve), samplerType, 0));
