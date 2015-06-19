@@ -16,5 +16,5 @@ namespace RenderCore { namespace ColladaConversion
         RenderCore::Assets::NascentTransformationMachine& dst,
         const ::ColladaConversion::Transformation& transformations,
         const char nodeName[],
-        const SkeletonRegistry& nodeRefs);
+        const SkeletonRegistry& nodeRefs, bool assumeEverythingAnimated = false);
 }}

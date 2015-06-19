@@ -29,110 +29,6 @@ namespace RenderCore { namespace ColladaConversion
             : _name(name), _begin(begin), _end(end), _constantBegin(constantBegin), _constantEnd(constantEnd), _startTime(startTime), _endTime(endTime) {}
     };
 
-    Assets::TransformationParameterSet      NascentAnimationSet::BuildTransformationParameterSet(
-        float time, 
-        const char animationName[],
-        const NascentSkeleton& skeleton,
-        const TableOfObjects& accessableObjects) const
-    {
-        Assets::TransformationParameterSet result(skeleton.GetTransformationMachine().GetDefaultParameters());
-        float* float1s      = result.GetFloat1Parameters();
-        Float3* float3s     = result.GetFloat3Parameters();
-        Float4* float4s     = result.GetFloat4Parameters();
-        Float4x4* float4x4s = result.GetFloat4x4Parameters();
-
-        size_t driverStartIndex = 0, driverEndIndex = _animationDrivers.size();
-        size_t constantDriverStartIndex = 0, constantDriverEndIndex = _constantDrivers.size();
-        if (animationName) {
-            for (auto i=_animations.begin(); i!=_animations.end(); ++i) {
-                if (i->_name == animationName) {
-                    driverStartIndex = i->_begin;
-                    driverEndIndex = i->_end;
-                    constantDriverStartIndex = i->_constantBegin;
-                    constantDriverEndIndex = i->_constantEnd;
-                    time += i->_startTime;
-                }
-            }
-        }
-
-        for (   auto i=_animationDrivers.begin() + driverStartIndex;
-                i!=_animationDrivers.begin() + driverEndIndex; ++i) {
-            auto colladaId      = skeleton.GetTransformationMachine().StringIdToHashedId(_parameterInterfaceDefinition[i->_parameterIndex]);
-            auto typeAndIndex   = skeleton.GetTransformationMachine().GetParameterIndex(colladaId);
-            if (i->_samplerType == Assets::TransformationParameterSet::Type::Float4x4) {
-                const Assets::RawAnimationCurve* curve = accessableObjects.GetByIndex<Assets::RawAnimationCurve>(i->_curveIndex);
-                if (curve) {
-                    assert(typeAndIndex.first == Assets::TransformationParameterSet::Type::Float4x4);
-                    // assert(i->_index < float4x4s.size());
-                    float4x4s[typeAndIndex.second] = curve->Calculate<Float4x4>(time);
-                }
-            } else if (i->_samplerType == Assets::TransformationParameterSet::Type::Float4) {
-                const Assets::RawAnimationCurve* curve = accessableObjects.GetByIndex<Assets::RawAnimationCurve>(i->_curveIndex);
-                if (curve) {
-                    if (typeAndIndex.first == Assets::TransformationParameterSet::Type::Float4) {
-                        float4s[typeAndIndex.second] = curve->Calculate<Float4>(time);
-                    } else if (typeAndIndex.first == Assets::TransformationParameterSet::Type::Float3) {
-                        float3s[typeAndIndex.second] = Truncate(curve->Calculate<Float4>(time));
-                    }
-                }
-            } else if (i->_samplerType == Assets::TransformationParameterSet::Type::Float3) {
-                const Assets::RawAnimationCurve* curve = accessableObjects.GetByIndex<Assets::RawAnimationCurve>(i->_curveIndex);
-                if (curve) {
-                    assert(typeAndIndex.first == Assets::TransformationParameterSet::Type::Float3);
-                    // assert(i->_index < float3s.size());
-                    float3s[typeAndIndex.second] = curve->Calculate<Float3>(time);
-                }
-            } else if (i->_samplerType == Assets::TransformationParameterSet::Type::Float1) {
-                const Assets::RawAnimationCurve* curve = accessableObjects.GetByIndex<Assets::RawAnimationCurve>(i->_curveIndex);
-                if (curve) {
-                    float result = curve->Calculate<float>(time);
-                    if (typeAndIndex.first == Assets::TransformationParameterSet::Type::Float1) {
-                        // assert(i->_index < float1s.size());
-                        float1s[typeAndIndex.second] = result;
-                    } else if (typeAndIndex.first == Assets::TransformationParameterSet::Type::Float3) {
-                        assert(i->_samplerOffset < 3);
-                        float3s[typeAndIndex.second][i->_samplerOffset] = result;
-                    } else if (typeAndIndex.first == Assets::TransformationParameterSet::Type::Float4) {
-                        assert(i->_samplerOffset < 4);
-                        float4s[typeAndIndex.second][i->_samplerOffset] = result;
-                    }
-                }
-            }
-        }
-
-        for (   auto i=_constantDrivers.begin() + constantDriverStartIndex;
-                i!=_constantDrivers.begin() + constantDriverEndIndex; ++i) {
-            auto colladaId      = skeleton.GetTransformationMachine().StringIdToHashedId(_parameterInterfaceDefinition[i->_parameterIndex]);
-            auto typeAndIndex   = skeleton.GetTransformationMachine().GetParameterIndex(colladaId);
-            const void* data    = PtrAdd(AsPointer(_constantData.begin()), i->_dataOffset);
-            if (i->_samplerType == Assets::TransformationParameterSet::Type::Float4x4) {
-                assert(typeAndIndex.first == Assets::TransformationParameterSet::Type::Float4x4);
-                float4x4s[typeAndIndex.second] = *(const Float4x4*)data;
-            } else if (i->_samplerType == Assets::TransformationParameterSet::Type::Float4) {
-                if (typeAndIndex.first == Assets::TransformationParameterSet::Type::Float4) {
-                    float4s[typeAndIndex.second] = *(const Float4*)data;
-                } else if (typeAndIndex.first == Assets::TransformationParameterSet::Type::Float3) {
-                    float3s[typeAndIndex.second] = Truncate(*(const Float4*)data);
-                }
-            } else if (i->_samplerType == Assets::TransformationParameterSet::Type::Float3) {
-                assert(typeAndIndex.first == Assets::TransformationParameterSet::Type::Float3);
-                float3s[typeAndIndex.second] = *(Float3*)data;
-            } else if (i->_samplerType == Assets::TransformationParameterSet::Type::Float1) {
-                if (typeAndIndex.first == Assets::TransformationParameterSet::Type::Float1) {
-                    float1s[typeAndIndex.second] = *(float*)data;
-                } else if (typeAndIndex.first == Assets::TransformationParameterSet::Type::Float3) {
-                    assert(i->_samplerOffset < 3);
-                    float3s[typeAndIndex.second][i->_samplerOffset] = *(const float*)data;
-                } else if (typeAndIndex.first == Assets::TransformationParameterSet::Type::Float4) {
-                    assert(i->_samplerOffset < 4);
-                    float4s[typeAndIndex.second][i->_samplerOffset] = *(const float*)data;
-                }
-            }
-        }
-
-        return result;
-    }
-
     AnimSamplerType      SamplerWidthToType(unsigned samplerWidth)
     {
         Assets::TransformationParameterSet::Type::Enum samplerType = Assets::TransformationParameterSet::Type::Float1;
@@ -225,8 +121,9 @@ namespace RenderCore { namespace ColladaConversion
     }
 
     void    NascentAnimationSet::MergeAnimation(
-                const NascentAnimationSet& animation, const char name[],
-                const TableOfObjects& sourceObjects, TableOfObjects& destinationObjects)
+        const NascentAnimationSet& animation, const char name[],
+        const std::vector<Assets::RawAnimationCurve>& sourceCurves, 
+        std::vector<Assets::RawAnimationCurve>& destinationCurves)
     {
             //
             //      Merge the animation drivers in the given input animation, and give 
@@ -236,25 +133,18 @@ namespace RenderCore { namespace ColladaConversion
         size_t startIndex = _animationDrivers.size();
         size_t constantStartIndex = _constantDrivers.size();
         for (auto i=animation._animationDrivers.cbegin(); i!=animation._animationDrivers.end(); ++i) {
-            const Assets::RawAnimationCurve* animCurve = sourceObjects.GetByIndex<Assets::RawAnimationCurve>(i->_curveIndex);
+            if (i->_curveIndex >= sourceCurves.size()) continue;
+            const auto* animCurve = &sourceCurves[i->_curveIndex];
             if (animCurve) {
                 float curveStart = animCurve->StartTime();
                 float curveEnd = animCurve->EndTime();
                 minTime = std::min(minTime, curveStart);
                 maxTime = std::max(maxTime, curveEnd);
 
-                // auto desc = sourceObjects.GetDesc<Assets::RawAnimationCurve>(i->_curveIndex);
-                
                 const std::string& name = animation._parameterInterfaceDefinition[i->_parameterIndex];
-                auto newId = destinationObjects.GetUniqueId<Assets::RawAnimationCurve>();
-                Assets::RawAnimationCurve duplicate(*animCurve);
-                destinationObjects.Add(
-                    newId,
-                    // std::get<0>(desc), std::get<1>(desc), 
-                    std::string(), std::string(),
-                    std::move(duplicate));
-                AddAnimationDriver(name, 
-                    destinationObjects.GetIndex<Assets::RawAnimationCurve>(newId), 
+                destinationCurves.push_back(Assets::RawAnimationCurve(*animCurve));
+                AddAnimationDriver(
+                    name, unsigned(destinationCurves.size()-1), 
                     i->_samplerType, i->_samplerOffset);
             }
         }
@@ -422,6 +312,21 @@ namespace RenderCore { namespace ColladaConversion
         return ~unsigned(0x0);
     }
 
+    void NascentModelCommandStream::Add(GeometryInstance&& geoInstance)
+    {
+        _geometryInstances.emplace_back(std::move(geoInstance));
+    }
+
+    void NascentModelCommandStream::Add(CameraInstance&& camInstance)
+    {
+        _cameraInstances.emplace_back(std::move(camInstance));
+    }
+
+    void NascentModelCommandStream::Add(SkinControllerInstance&& skinControllerInstance)
+    {
+        _skinControllerInstances.emplace_back(std::move(skinControllerInstance));
+    }
+
     NascentModelCommandStream::NascentModelCommandStream()
     {
     }
@@ -480,16 +385,28 @@ namespace RenderCore { namespace ColladaConversion
             //      run-time input interface definition...
             //
         ConsoleRig::DebuggerOnlyWarning("Command stream input interface:\n");
-        auto inputInterface = std::make_unique<uint64[]>(_transformationMachineOutputs.size());
-        unsigned c=0;
-        for (auto i=_transformationMachineOutputs.begin(); i!=_transformationMachineOutputs.end(); ++i, ++c) {
-            ConsoleRig::DebuggerOnlyWarning("  [%i] %s\n", std::distance(_transformationMachineOutputs.begin(), i), i->_name.c_str());
-            inputInterface[c] = Hash64(AsPointer(i->_name.begin()), AsPointer(i->_name.end()));
-        }
-        serializer.SerializeSubBlock(inputInterface.get(), &inputInterface[_transformationMachineOutputs.size()]);
+        auto inputInterface = GetInputInterface();
+        serializer.SerializeSubBlock(AsPointer(inputInterface.cbegin()), AsPointer(inputInterface.cend()));
         serializer.SerializeValue(_transformationMachineOutputs.size());
     }
 
+    std::vector<uint64> NascentModelCommandStream::GetInputInterface() const
+    {
+        std::vector<uint64> inputInterface(_transformationMachineOutputs.size());
+        unsigned c=0;
+        for (auto i=_transformationMachineOutputs.begin(); i!=_transformationMachineOutputs.end(); ++i, ++c)
+            inputInterface[c] = Hash64(AsPointer(i->_name.begin()), AsPointer(i->_name.end()));
+        return std::move(inputInterface);
+    }
+
+    std::ostream& operator<<(std::ostream& stream, const NascentModelCommandStream& cmdStream)
+    {
+        stream << "Command stream input interface:" << std::endl;
+        unsigned c=0;
+        for (auto i=cmdStream._transformationMachineOutputs.begin(); i!=cmdStream._transformationMachineOutputs.end(); ++i, ++c)
+            stream << "  [" << c << "] " << i->_name << std::endl;
+        return stream;
+    }
 
 
 }}

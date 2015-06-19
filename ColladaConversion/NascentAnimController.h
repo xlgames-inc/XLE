@@ -144,8 +144,6 @@ namespace RenderCore { namespace ColladaConversion
     NascentBoundSkinnedGeometry BindController(
         const NascentRawGeometry& sourceGeo,
         const UnboundSkinController& controller,
-        const TableOfObjects& accessableObjects, 
-        TableOfObjects& destinationForNewObjects,
         DynamicArray<uint16>&& jointMatrices,
         const char nodeName[]);
 }}

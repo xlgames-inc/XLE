@@ -94,7 +94,7 @@
     <ClCompile Include="..\NascentAnimController.cpp" />
     <ClCompile Include="..\NascentCommandStream.cpp" />
     <ClCompile Include="..\NascentModel.cpp" />
-    <ClCompile Include="..\NascentModel2.cpp" />
+    <ClCompile Include="..\DLLInterface.cpp" />
     <ClCompile Include="..\OpenCollada\OCAnimationConversion.cpp" />
     <ClCompile Include="..\OpenCollada\OCMisc.cpp" />
     <ClCompile Include="..\OpenCollada\OCSkinController.cpp" />
@@ -120,7 +120,7 @@
     <ClInclude Include="..\NascentCommandStream.h" />
     <ClInclude Include="..\NascentMaterial.h" />
     <ClInclude Include="..\NascentModel.h" />
-    <ClInclude Include="..\NascentModel2.h" />
+    <ClInclude Include="..\DLLInterface.h" />
     <ClInclude Include="..\OpenCollada\OCInterface.h" />
     <ClInclude Include="..\OpenCollada\OCMisc.h" />
     <ClInclude Include="..\ScaffoldParsingUtil.h" />

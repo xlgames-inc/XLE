@@ -182,15 +182,6 @@ namespace RenderCore { namespace ColladaConversion
             outputSerializer.SerializeSubBlock(tempBlock);
             Serialization::Serialize(outputSerializer, _boundSkinnedGeometry.size());
         }
-
-        {
-            Serialization::NascentBlockSerializer tempBlock;
-            for (auto i=_referencedMaterials.cbegin(); i!=_referencedMaterials.cend(); ++i) {
-                Serialization::Serialize(tempBlock, i->_internalType._guid);
-            }
-            outputSerializer.SerializeSubBlock(tempBlock);
-            Serialization::Serialize(outputSerializer, _referencedMaterials.size());
-        }
     }
 
     void    TableOfObjects::SerializeAnimationSet(Serialization::NascentBlockSerializer& outputSerializer) const

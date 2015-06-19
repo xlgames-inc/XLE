@@ -1,74 +1,165 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="..\ColladaDocument.cpp" />
-    <ClCompile Include="..\NascentModel.cpp" />
-    <ClCompile Include="..\TableOfObjects.cpp" />
-    <ClCompile Include="..\Version.cpp" />
     <ClCompile Include="..\OpenCollada\OCRawGeometry.cpp">
       <Filter>OpenCollada</Filter>
     </ClCompile>
-    <ClCompile Include="..\SRawGeometry.cpp" />
     <ClCompile Include="..\OpenCollada\OCModelCommandStream.cpp">
       <Filter>OpenCollada</Filter>
     </ClCompile>
-    <ClCompile Include="..\SCommandStream.cpp" />
     <ClCompile Include="..\OpenCollada\OCTransformationMachine.cpp">
       <Filter>OpenCollada</Filter>
     </ClCompile>
-    <ClCompile Include="..\STransformationMachine.cpp" />
-    <ClCompile Include="..\SEffect.cpp" />
-    <ClCompile Include="..\NascentModel2.cpp" />
-    <ClCompile Include="..\ConversionUtil.cpp" />
     <ClCompile Include="..\OpenCollada\OCSkinController.cpp">
       <Filter>OpenCollada</Filter>
     </ClCompile>
     <ClCompile Include="..\OpenCollada\OCMisc.cpp">
       <Filter>OpenCollada</Filter>
     </ClCompile>
-    <ClCompile Include="..\SAnimation.cpp" />
     <ClCompile Include="..\OpenCollada\OCAnimationConversion.cpp">
       <Filter>OpenCollada</Filter>
     </ClCompile>
-    <ClCompile Include="..\SkeletonRegistry.cpp" />
-    <ClCompile Include="..\NascentCommandStream.cpp" />
-    <ClCompile Include="..\MeshDatabaseAdapter.cpp" />
-    <ClCompile Include="..\GeometryAlgorithm.cpp" />
-    <ClCompile Include="..\ScaffoldParsingUtil.cpp" />
-    <ClCompile Include="..\NascentAnimController.cpp" />
-    <ClCompile Include="..\NascentRawGeometry.cpp" />
+    <ClCompile Include="..\NascentAnimController.cpp">
+      <Filter>NascentObjects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\NascentCommandStream.cpp">
+      <Filter>NascentObjects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\NascentModel.cpp">
+      <Filter>NascentObjects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\NascentRawGeometry.cpp">
+      <Filter>NascentObjects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\GeometryAlgorithm.cpp">
+      <Filter>GeoProcessing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\MeshDatabaseAdapter.cpp">
+      <Filter>GeoProcessing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\SkeletonRegistry.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ColladaDocument.cpp">
+      <Filter>Scaffold</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ScaffoldParsingUtil.cpp">
+      <Filter>Scaffold</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ConversionUtil.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\SAnimation.cpp">
+      <Filter>NewPath</Filter>
+    </ClCompile>
+    <ClCompile Include="..\SCommandStream.cpp">
+      <Filter>NewPath</Filter>
+    </ClCompile>
+    <ClCompile Include="..\SEffect.cpp">
+      <Filter>NewPath</Filter>
+    </ClCompile>
+    <ClCompile Include="..\SRawGeometry.cpp">
+      <Filter>NewPath</Filter>
+    </ClCompile>
+    <ClCompile Include="..\STransformationMachine.cpp">
+      <Filter>NewPath</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Version.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\DLLInterface.cpp">
+      <Filter>NascentObjects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\TableOfObjects.cpp">
+      <Filter>OpenCollada</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\NascentModel.h" />
-    <ClInclude Include="..\TableOfObjects.h" />
-    <ClInclude Include="..\Scaffold.h" />
-    <ClInclude Include="..\ScaffoldDataFlow.h" />
     <ClInclude Include="..\OpenCollada\OCInterface.h">
       <Filter>OpenCollada</Filter>
     </ClInclude>
-    <ClInclude Include="..\STransformationMachine.h" />
-    <ClInclude Include="..\SRawGeometry.h" />
-    <ClInclude Include="..\SEffect.h" />
-    <ClInclude Include="..\NascentModel2.h" />
-    <ClInclude Include="..\SCommandStream.h" />
-    <ClInclude Include="..\ConversionUtil.h" />
-    <ClInclude Include="..\SAnimation.h" />
-    <ClInclude Include="..\SkeletonRegistry.h" />
-    <ClInclude Include="..\ConversionCore.h" />
     <ClInclude Include="..\OpenCollada\OCMisc.h">
       <Filter>OpenCollada</Filter>
     </ClInclude>
-    <ClInclude Include="..\NascentCommandStream.h" />
-    <ClInclude Include="..\MeshDatabaseAdapter.h" />
-    <ClInclude Include="..\GeometryAlgorithm.h" />
-    <ClInclude Include="..\ScaffoldParsingUtil.h" />
-    <ClInclude Include="..\NascentAnimController.h" />
-    <ClInclude Include="..\NascentMaterial.h" />
-    <ClInclude Include="..\NascentRawGeometry.h" />
+    <ClInclude Include="..\NascentAnimController.h">
+      <Filter>NascentObjects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\NascentCommandStream.h">
+      <Filter>NascentObjects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\NascentMaterial.h">
+      <Filter>NascentObjects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\NascentModel.h">
+      <Filter>NascentObjects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\NascentRawGeometry.h">
+      <Filter>NascentObjects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\GeometryAlgorithm.h">
+      <Filter>GeoProcessing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\MeshDatabaseAdapter.h">
+      <Filter>GeoProcessing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\SkeletonRegistry.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Scaffold.h">
+      <Filter>Scaffold</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ScaffoldDataFlow.h">
+      <Filter>Scaffold</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ScaffoldParsingUtil.h">
+      <Filter>Scaffold</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ConversionCore.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ConversionUtil.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\SAnimation.h">
+      <Filter>NewPath</Filter>
+    </ClInclude>
+    <ClInclude Include="..\SCommandStream.h">
+      <Filter>NewPath</Filter>
+    </ClInclude>
+    <ClInclude Include="..\SEffect.h">
+      <Filter>NewPath</Filter>
+    </ClInclude>
+    <ClInclude Include="..\SRawGeometry.h">
+      <Filter>NewPath</Filter>
+    </ClInclude>
+    <ClInclude Include="..\STransformationMachine.h">
+      <Filter>NewPath</Filter>
+    </ClInclude>
+    <ClInclude Include="..\DLLInterface.h">
+      <Filter>NascentObjects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\TableOfObjects.h">
+      <Filter>OpenCollada</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="OpenCollada">
       <UniqueIdentifier>{d8edab2d-628d-452d-a0a1-7fe39b13a6fa}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NascentObjects">
+      <UniqueIdentifier>{35f687f2-2bad-4a49-9c33-76eff5137c2c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="GeoProcessing">
+      <UniqueIdentifier>{ca2c07df-1116-43ba-839b-0f5c43bef04a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Core">
+      <UniqueIdentifier>{ef61231f-e47d-42c5-a1e1-00e9cd6dac20}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Scaffold">
+      <UniqueIdentifier>{ae0dea89-e831-4095-b423-ce740deeef94}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NewPath">
+      <UniqueIdentifier>{d1b61ed1-da25-4266-895b-47256f02c4bf}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

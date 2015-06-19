@@ -242,8 +242,6 @@ namespace RenderCore { namespace Assets
         size_t                      _geoCount;
         BoundSkinnedGeometry*       _boundSkinnedControllers;
         size_t                      _boundSkinnedControllerCount;
-        MaterialGuid*               _materialReferences;
-        size_t                      _materialReferencesCount;
 
         TransformationMachine       _embeddedSkeleton;
         Float4x4*                   _defaultTransforms;

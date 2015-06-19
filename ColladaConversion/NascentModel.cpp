@@ -1260,7 +1260,7 @@ namespace RenderCore { namespace ColladaConversion
 
     CONVERSION_API void         NascentModel::MergeAnimationData(const NascentModel& source, const char animationName[])
     {
-        _animationSet.MergeAnimation(source._animationSet, animationName, source._objects, _objects);
+        // _animationSet.MergeAnimation(source._animationSet, animationName, source._objects, _objects);
     }
 
     static void DestroyModel(const void* model) { delete (NascentModel*)model; }

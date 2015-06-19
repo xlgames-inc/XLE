@@ -6,12 +6,17 @@
 
 #include "SCommandStream.h"
 #include "STransformationMachine.h"
+#include "SRawGeometry.h"
+#include "SAnimation.h"
+
 #include "NascentCommandStream.h"
 #include "NascentRawGeometry.h"
 #include "NascentAnimController.h"
+
 #include "SkeletonRegistry.h"
 #include "Scaffold.h"
 #include "ScaffoldParsingUtil.h"    // for AsString
+#include "ConversionUtil.h"
 #include "../RenderCore/Assets/Material.h"  // for MakeMaterialGuid
 #include "../Utility/MemoryUtils.h"
 #include "ConversionCore.h"
@@ -28,12 +33,47 @@ namespace RenderCore { namespace ColladaConversion
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    void BuildSkeleton(
+    void BuildFullSkeleton(
         NascentSkeleton& skeleton,
         const Node& node,
         SkeletonRegistry& skeletonReferences)
     {
-        // if (!IsUseful(node, skeletonReferences)) return;
+        auto nodeId = AsObjectGuid(node);
+        auto bindingName = skeletonReferences.GetNode(nodeId)._bindingName;
+        if (bindingName.empty()) bindingName = SkeletonBindingName(node);
+
+        unsigned pushCount = PushTransformations(
+            skeleton.GetTransformationMachine(),
+            node.GetFirstTransform(), bindingName.c_str(),
+            skeletonReferences, true);
+
+            // DavidJ -- hack! -- 
+            //      When writing a "skeleton" file we need to include all nodes, even those that aren't
+            //      referenced within the same file. This is because the node might become an output-interface
+            //      node... Maybe there is a better way to do this. Perhaps we could identify which nodes are
+            //      output interface transforms / bones... Or maybe we could just include everything when
+            //      compiling a skeleton...?
+        auto thisOutputMatrix = skeletonReferences.GetOutputMatrixIndex(nodeId);
+        skeleton.GetTransformationMachine().MakeOutputMatrixMarker(thisOutputMatrix);
+        skeletonReferences.TryRegisterNode(nodeId, bindingName.c_str());
+
+            // note -- also consider instance_nodes?
+
+        auto child = node.GetFirstChild();
+        while (child) {
+            BuildFullSkeleton(skeleton, child, skeletonReferences);
+            child = child.GetNextSibling();
+        }
+
+        skeleton.GetTransformationMachine().Pop(pushCount);
+    }
+
+    void BuildMinimalSkeleton(
+        NascentSkeleton& skeleton,
+        const Node& node,
+        SkeletonRegistry& skeletonReferences)
+    {
+        if (!IsUseful(node, skeletonReferences)) return;
 
         auto nodeId = AsObjectGuid(node);
         auto bindingName = skeletonReferences.GetNode(nodeId)._bindingName;
@@ -44,19 +84,7 @@ namespace RenderCore { namespace ColladaConversion
             node.GetFirstTransform(), bindingName.c_str(),
             skeletonReferences);
 
-            //
-            //      We have to assume we need an output matrix. We don't really know
-            //      which nodes need output matrices at this point (because we haven't 
-            //      got all the downstream skinning data). So, let's just assume it's needed.
-            //
         bool isReferenced = skeletonReferences.IsImportant(nodeId);
-
-            // DavidJ -- hack! -- When writing a "skeleton" we need to include all nodes, even those that aren't
-            //              referenced within the same file. This is because the node might become an output-interface
-            //              node... Maybe there is a better way to do this. Perhaps we could identify which nodes are
-            //              output interface transforms / bones... Or maybe we could just include everything when
-            //              compiling a skeleton...?
-        isReferenced = true;
         if (isReferenced) {
             auto thisOutputMatrix = skeletonReferences.GetOutputMatrixIndex(nodeId);
             skeleton.GetTransformationMachine().MakeOutputMatrixMarker(thisOutputMatrix);
@@ -67,7 +95,7 @@ namespace RenderCore { namespace ColladaConversion
 
         auto child = node.GetFirstChild();
         while (child) {
-            BuildSkeleton(skeleton, child, skeletonReferences);
+            BuildMinimalSkeleton(skeleton, child, skeletonReferences);
             child = child.GetNextSibling();
         }
 
@@ -150,29 +178,30 @@ namespace RenderCore { namespace ColladaConversion
         const ::ColladaConversion::InstanceGeometry& instGeo,
         const ::ColladaConversion::Node& attachedNode,
         const URIResolveContext& resolveContext,
-        TableOfObjects& accessableObjects,
+        NascentGeometryObjects& objects,
         SkeletonRegistry& nodeRefs)
     {
         GuidReference refGuid(instGeo._reference);
-        auto* geo = accessableObjects.Get<NascentRawGeometry>(ObjectGuid(refGuid._id, refGuid._fileHash));
-        if (!geo)
-            Throw(::Assets::Exceptions::FormatError("Could not found geometry object to instantiate (%s)",
-                AsString(instGeo._reference).c_str()));
+        ObjectGuid geoId(refGuid._id, refGuid._fileHash);
+        auto geo = objects.GetGeo(geoId);
+        if (geo == ~unsigned(0x0)) {
+            auto* scaffoldGeo = FindElement(refGuid, resolveContext, &IDocScopeIdResolver::FindMeshGeometry);
+            if (!scaffoldGeo)
+                Throw(::Assets::Exceptions::FormatError("Could not found geometry object to instantiate (%s)",
+                    AsString(instGeo._reference).c_str()));
+            objects._rawGeos.push_back(std::make_pair(geoId, Convert(*scaffoldGeo, resolveContext)));
+            geo = (unsigned)(objects._rawGeos.size()-1);
+        }
 
         auto materials = BuildMaterialTable(
             AsPointer(instGeo._matBindings.cbegin()), AsPointer(instGeo._matBindings.cend()),
-            geo->_matBindingSymbols, resolveContext);
+            objects._rawGeos[geo].second._matBindingSymbols, resolveContext);
 
         auto bindingMatIndex = nodeRefs.GetOutputMatrixIndex(AsObjectGuid(attachedNode));
         nodeRefs.TryRegisterNode(AsObjectGuid(attachedNode), SkeletonBindingName(attachedNode).c_str());
 
-        // auto bindingMatIndex = stream.RegisterTransformationMachineOutput(
-        //     SkeletonBindingName(attachedNode),
-        //     AsObjectGuid(attachedNode));
-
         return NascentModelCommandStream::GeometryInstance(
-            accessableObjects.GetIndex<NascentRawGeometry>(ObjectGuid(refGuid._id, refGuid._fileHash)), 
-            bindingMatIndex, std::move(materials), 0);
+            geo, bindingMatIndex, std::move(materials), 0);
     }
 
     DynamicArray<uint16> BuildJointArray(
@@ -201,9 +230,6 @@ namespace RenderCore { namespace ColladaConversion
         for (unsigned c=0; c<count; ++c) {
             Node node = skeleton.FindBySid(AsPointer(jointNames[c].cbegin()), AsPointer(jointNames[c].cend()));
             if (node) {
-                // auto bindingMatIndex = stream.RegisterTransformationMachineOutput(
-                //     SkeletonBindingName(node),
-                //     AsObjectGuid(node));
                 auto bindingMatIndex = nodeRefs.GetOutputMatrixIndex(AsObjectGuid(node));
                 nodeRefs.TryRegisterNode(AsObjectGuid(node), SkeletonBindingName(node).c_str());
 
@@ -224,62 +250,164 @@ namespace RenderCore { namespace ColladaConversion
         const ::ColladaConversion::InstanceController& instGeo,
         const ::ColladaConversion::Node& attachedNode,
         const URIResolveContext& resolveContext,
-        TableOfObjects& accessableObjects,
+        NascentGeometryObjects& objects,
         SkeletonRegistry& nodeRefs)
     {
         GuidReference controllerRef(instGeo._reference);
         ObjectGuid controllerId(controllerRef._id, controllerRef._fileHash);
-        auto* controller = accessableObjects.Get<UnboundSkinController>(controllerId);
-        if (!controller)
+        auto* scaffoldController = FindElement(controllerRef, resolveContext, &IDocScopeIdResolver::FindSkinController);
+        if (!scaffoldController)
             Throw(::Assets::Exceptions::FormatError("Could not find controller object to instantiate (%s)",
                 AsString(instGeo._reference).c_str()));
 
-        auto* source = accessableObjects.Get<NascentRawGeometry>(controller->_sourceRef);
-        if (!source)
-            Throw(::Assets::Exceptions::FormatError("Could not find geometry object to instantiate (%s)",
-                AsString(instGeo._reference).c_str()));
+        auto controller = Convert(*scaffoldController, resolveContext);
 
-        auto jointMatrices = BuildJointArray(instGeo.GetSkeleton(), *controller, resolveContext, nodeRefs);
+            // If the the raw geometry object is already converted, then we should use it. Otherwise
+            // we need to do the conversion (but store it only in a temporary -- we don't need to
+            // write it to disk)
+        NascentRawGeometry* source = nullptr;
+        NascentRawGeometry tempBuffer;
+        {
+            auto geo = objects.GetGeo(controller._sourceRef);
+            if (geo == ~unsigned(0x0)) {
+                auto* scaffoldGeo = FindElement(
+                    GuidReference(controller._sourceRef._objectId, controller._sourceRef._fileId),
+                    resolveContext, &IDocScopeIdResolver::FindMeshGeometry);
+                if (!scaffoldGeo)
+                    Throw(::Assets::Exceptions::FormatError("Could not find geometry object to instantiate (%s)",
+                        AsString(instGeo._reference).c_str()));
+                tempBuffer = Convert(*scaffoldGeo, resolveContext);
+                source = &tempBuffer;
+            } else {
+                source = &objects._rawGeos[geo].second;
+            }
+        }
+
+        auto jointMatrices = BuildJointArray(instGeo.GetSkeleton(), controller, resolveContext, nodeRefs);
 
         auto materials = BuildMaterialTable(
             AsPointer(instGeo._matBindings.cbegin()), AsPointer(instGeo._matBindings.cend()),
             source->_matBindingSymbols, resolveContext);
 
-        auto result = BindController(
-            *source, *controller, accessableObjects, accessableObjects,
-            std::move(jointMatrices),
-            AsString(instGeo._reference).c_str());
-
-        auto desc = accessableObjects.GetDesc<UnboundSkinController>(controllerId);
-        accessableObjects.Add(
-            controllerId,
-            std::get<0>(desc), std::get<1>(desc),
-            std::move(result));
-
-        // auto bindingMatIndex = stream.RegisterTransformationMachineOutput(
-        //     SkeletonBindingName(attachedNode),
-        //     AsObjectGuid(attachedNode));
-        // nodeRefs.SetOutputMatrixIndex(AsObjectGuid(attachedNode), bindingMatIndex);
+        objects._skinnedGeos.push_back(
+            std::make_pair(
+                controllerId,
+                BindController(
+                    *source, controller, std::move(jointMatrices),
+                    AsString(instGeo._reference).c_str())));
 
         auto bindingMatIndex = nodeRefs.GetOutputMatrixIndex(AsObjectGuid(attachedNode));
         nodeRefs.TryRegisterNode(AsObjectGuid(attachedNode), SkeletonBindingName(attachedNode).c_str());
 
         return NascentModelCommandStream::SkinControllerInstance(
-            accessableObjects.GetIndex<NascentBoundSkinnedGeometry>(controllerId), 
+            (unsigned)(objects._skinnedGeos.size()-1), 
             bindingMatIndex, std::move(materials), 0);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static std::string SkeletonBindingName(const Node& node)
+    unsigned NascentGeometryObjects::GetGeo(ObjectGuid id)
     {
-        return AsString(node.GetName());
+        for (const auto& i:_rawGeos)
+            if (i.first == id) return unsigned(&i - AsPointer(_rawGeos.cbegin()));
+        return ~0u;
     }
 
-    static ObjectGuid AsObjectGuid(const Node& node)
+   unsigned NascentGeometryObjects::GetSkinnedGeo(ObjectGuid id)
     {
-        return node.GetId().GetHash();
+        for (const auto& i:_skinnedGeos)
+            if (i.first == id) return unsigned(&i - AsPointer(_skinnedGeos.cbegin()));
+        return ~0u;
     }
+
+    std::pair<Float3, Float3> NascentGeometryObjects::CalculateBoundingBox
+        (
+            const NascentModelCommandStream& scene,
+            const Float4x4* transformsBegin, 
+            const Float4x4* transformsEnd
+        )
+    {
+            //
+            //      For all the parts of the model, calculate the bounding box.
+            //      We just have to go through each vertex in the model, and
+            //      transform it into model space, and calculate the min and max values
+            //      found;
+            //
+        using namespace ColladaConversion;
+        auto result = InvalidBoundingBox();
+        // const auto finalMatrices = 
+        //     _skeleton.GetTransformationMachine().GenerateOutputTransforms(
+        //         _animationSet.BuildTransformationParameterSet(0.f, nullptr, _skeleton, _objects));
+
+            //
+            //      Do the unskinned geometry first
+            //
+
+        for (auto i=scene._geometryInstances.cbegin(); i!=scene._geometryInstances.cend(); ++i) {
+            const NascentModelCommandStream::GeometryInstance& inst = *i;
+
+            if (inst._id >= _rawGeos.size()) continue;
+            const auto* geo = &_rawGeos[inst._id].second;
+
+            Float4x4 localToWorld = Identity<Float4x4>();
+            if ((transformsBegin + inst._localToWorldId) < transformsEnd)
+                localToWorld = *(transformsBegin + inst._localToWorldId);
+
+            const void*         vertexBuffer = geo->_vertices.get();
+            const unsigned      vertexStride = geo->_mainDrawInputAssembly._vertexStride;
+
+            Metal::InputElementDesc positionDesc = FindPositionElement(
+                AsPointer(geo->_mainDrawInputAssembly._vertexInputLayout.begin()),
+                geo->_mainDrawInputAssembly._vertexInputLayout.size());
+
+            if (positionDesc._nativeFormat != Metal::NativeFormat::Unknown && vertexStride) {
+                AddToBoundingBox(
+                    result, vertexBuffer, vertexStride, 
+                    geo->_vertices.size() / vertexStride, positionDesc, localToWorld);
+            }
+        }
+
+            //
+            //      Now also do the skinned geometry. But use the default pose for
+            //      skinned geometry (ie, don't apply the skinning transforms to the bones).
+            //      Obvious this won't give the correct result post-animation.
+            //
+
+        for (auto i=scene._skinControllerInstances.cbegin(); i!=scene._skinControllerInstances.cend(); ++i) {
+            const NascentModelCommandStream::SkinControllerInstance& inst = *i;
+
+            if (inst._id >= _skinnedGeos.size()) continue;
+            const auto* controller = &_skinnedGeos[inst._id].second;
+            if (!controller) continue;
+
+            Float4x4 localToWorld = Identity<Float4x4>();
+            if ((transformsBegin + inst._localToWorldId) < transformsEnd)
+                localToWorld = *(transformsBegin + inst._localToWorldId);
+
+                //  We can't get the vertex position data directly from the vertex buffer, because
+                //  the "bound" object is already using an opaque hardware object. However, we can
+                //  transform the local space bounding box and use that.
+
+            const unsigned indices[][3] = 
+            {
+                {0,0,0}, {0,1,0}, {1,0,0}, {1,1,0},
+                {0,0,1}, {0,1,1}, {1,0,1}, {1,1,1}
+            };
+
+            const Float3* A = (const Float3*)&controller->_localBoundingBox.first;
+            for (unsigned c=0; c<dimof(indices); ++c) {
+                Float3 position(A[indices[c][0]][0], A[indices[c][1]][1], A[indices[c][2]][2]);
+                AddToBoundingBox(result, position, localToWorld);
+            }
+        }
+
+        return result;
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    static std::string SkeletonBindingName(const Node& node)    { return AsString(node.GetName()); }
+    static ObjectGuid AsObjectGuid(const Node& node)            { return node.GetId().GetHash(); }
 
     static bool IsUseful(const Node& node, const SkeletonRegistry& skeletonReferences)
     {

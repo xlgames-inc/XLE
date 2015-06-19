@@ -41,7 +41,7 @@ namespace RenderCore { namespace ColladaConversion
         RenderCore::Assets::NascentTransformationMachine& dst,
         const Transformation& transformations,
         const char nodeName[],
-        const SkeletonRegistry& nodeRefs)
+        const SkeletonRegistry& nodeRefs, bool assumeEverythingAnimated)
     {
         dst.ResolvePendingPops();
 
@@ -97,59 +97,61 @@ namespace RenderCore { namespace ColladaConversion
             } parameterType;
 
             auto paramName = std::string(nodeName) + "/" + AsString(trans.GetSid());
-            const bool isAnimated = nodeRefs.IsAnimated(paramName);
+            const bool isAnimated = assumeEverythingAnimated || nodeRefs.IsAnimated(paramName);
             parameterType = isAnimated ? ParameterType_Animated : ParameterType_Embedded;
             auto parameterId = Hash32(AsPointer(paramName.cbegin()), AsPointer(paramName.cend()));
 
             if  (type == TransformationSet::Type::Matrix4x4) {
 
-                
-
                     //
                     //      Do we need 128 bit alignment for this matrix?
                     //
-                if (parameterType == ParameterType_Embedded) {
+                uint32 paramIndex = ~0u;
+                if (    parameterType != ParameterType_Embedded
+                    &&  dst.TryAddParameter(paramIndex, *(const Float4x4*)trans.GetUnionData(), parameterId, paramName.c_str())) {
+
+                    dst.PushCommand(Assets::TransformStackCommand::TransformFloat4x4_Parameter);
+                    dst.PushCommand(paramIndex);
+                } else {
                     if (Equivalent(*(Float4x4*)trans.GetUnionData(), Identity<Float4x4>(), 1e-5f)) {
                         // ignore transform by identity
                     } else {
                         dst.PushCommand(Assets::TransformStackCommand::TransformFloat4x4_Static);
                         dst.PushCommand(trans.GetUnionData(), sizeof(Float4x4));
                     }
-                } else {
-                    dst.PushCommand(Assets::TransformStackCommand::TransformFloat4x4_Parameter);
-                    dst.PushCommand(dst.AddParameter(*(const Float4x4*)trans.GetUnionData(), parameterId, paramName.c_str()));
                 }
 
             } else if (type == TransformationSet::Type::Translate) {
 
-                if (parameterType == ParameterType_Embedded) {
+                uint32 paramIndex = ~0u;
+                if (    parameterType != ParameterType_Embedded
+                    &&  dst.TryAddParameter(paramIndex, *(const Float3*)trans.GetUnionData(), parameterId, paramName.c_str())) {
+
+                    dst.PushCommand(Assets::TransformStackCommand::Translate_Parameter);
+                    dst.PushCommand(paramIndex);
+                } else {
                     if (Equivalent(*(Float3*)trans.GetUnionData(), Float3(0.f, 0.f, 0.f), 1e-5f)) {
                         // ignore translate by zero
                     } else {
                         dst.PushCommand(Assets::TransformStackCommand::Translate_Static);
                         dst.PushCommand(trans.GetUnionData(), sizeof(Float3));
                     }
-                } else {
-                    dst.PushCommand(Assets::TransformStackCommand::Translate_Parameter);
-                    dst.PushCommand(dst.AddParameter(*(const Float3*)trans.GetUnionData(), parameterId, paramName.c_str()));
                 }
 
             } else if (type == TransformationSet::Type::Rotate) {
 
-                    //
-                    //      Note -- bitwise comparison for rotation axis
-                    //              Given that we're only comparing with 0.f and 1.f,
-                    //              the bitwise check should be fairly reliable. But we
-                    //              do risk missing axes that are very close to the basic
-                    //              axes, but not quite.
-                    //
-                    //              Assuming that our rotation rules are the same as
-                    //              the Collada standard.
-                    //
-                    //          Assuming that the "axis" won't change under animation
-                    //
                 const auto& rot = *(const ArbitraryRotation*)trans.GetUnionData();
-                if (parameterType == ParameterType_Embedded) {
+                uint32 paramIndex = ~0u;
+                if (    parameterType != ParameterType_Embedded
+                    &&  dst.TryAddParameter(paramIndex, *(const Float4*)&rot, parameterId, paramName.c_str())) {
+
+                        // Post animation, this may become a rotation around any axis. So
+                        // we can't perform an optimisation to squish it to rotation around
+                        // one of the cardinal axes
+                    dst.PushCommand(Assets::TransformStackCommand::Rotate_Parameter);
+                    dst.PushCommand(paramIndex);
+
+                } else {
 
                     if (Equivalent(rot._angle, 0.f, 1e-5f)) {
                         // the angle is too small -- just ignore it
@@ -167,14 +169,6 @@ namespace RenderCore { namespace ColladaConversion
                         dst.PushCommand(&rot, sizeof(rot));
                     }
 
-                } else {
-
-                        // Post animation, this may become a rotation around any axis. So
-                        // we can't perform an optimisation to squish it to rotation around
-                        // one of the cardinal axes
-                    dst.PushCommand(Assets::TransformStackCommand::Rotate_Parameter);
-                    dst.PushCommand(dst.AddParameter(*(const Float4*)&rot, parameterId, paramName.c_str()));
-
                 }
                         
             } else if (type == TransformationSet::Type::Scale) {
@@ -190,7 +184,26 @@ namespace RenderCore { namespace ColladaConversion
                     //
                 auto scale = *(const Float3*)trans.GetUnionData();
                 bool isUniform = Equivalent(scale[0], scale[1], 0.001f) && Equivalent(scale[0], scale[2], 0.001f);
-                if (parameterType == ParameterType_Embedded) {
+                bool writeEmbedded = true;
+
+                if (parameterType != ParameterType_Embedded) {
+                    uint32 paramIndex = ~0u;
+                    if (isUniform) {
+                        if (dst.TryAddParameter(paramIndex, scale[0], parameterId, paramName.c_str())) {
+                            dst.PushCommand(Assets::TransformStackCommand::UniformScale_Parameter);
+                            dst.PushCommand(paramIndex);
+                            writeEmbedded = false;
+                        }
+                    } else {
+                        if (dst.TryAddParameter(paramIndex, scale, parameterId, paramName.c_str())) {
+                            dst.PushCommand(Assets::TransformStackCommand::ArbitraryScale_Parameter);
+                            dst.PushCommand(paramIndex);
+                            writeEmbedded = false;
+                        }
+                    }
+                }
+
+                if (writeEmbedded) {
                     if (Equivalent(scale, Float3(1.f, 1.f, 1.f), 1e-5f)) {
                         // scaling by 1 -- just ignore
                     } else if (isUniform) {
@@ -199,14 +212,6 @@ namespace RenderCore { namespace ColladaConversion
                     } else {
                         dst.PushCommand(Assets::TransformStackCommand::ArbitraryScale_Static);
                         dst.PushCommand(&scale, sizeof(scale));
-                    }
-                } else {
-                    if (isUniform) {
-                        dst.PushCommand(Assets::TransformStackCommand::UniformScale_Parameter);
-                        dst.PushCommand(dst.AddParameter(scale[0], parameterId, paramName.c_str()));
-                    } else {
-                        dst.PushCommand(Assets::TransformStackCommand::ArbitraryScale_Parameter);
-                        dst.PushCommand(dst.AddParameter(scale, parameterId, paramName.c_str()));
                     }
                 }
 

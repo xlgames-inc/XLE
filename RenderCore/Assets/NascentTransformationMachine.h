@@ -10,6 +10,7 @@
 #include "../../Assets/AssetsCore.h"
 #include "../../Math/Vector.h"
 #include "../../Math/Matrix.h"
+#include "../../ConsoleRig/Log.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/Mixins.h"
 #include "../../Utility/IteratorUtils.h"
@@ -49,9 +50,12 @@ namespace RenderCore { namespace Assets
             GenerateOutputTransforms(const Assets::TransformationParameterSet&   parameterSet) const;
 
         const std::vector<uint32>&  GetCommandStream() const { return _commandStream; }
+        std::pair<std::vector<uint64>, std::vector<Float4x4>> GetOutputInterface() const;
 
-        template<typename Type>
-            uint32      AddParameter(Type defaultValue, AnimationParameterId HashedColladaUniqueId, const char nodeName[]);
+        friend std::ostream& operator<<(std::ostream& stream, const NascentTransformationMachine& transMachine);
+
+        template<typename Type> uint32 AddParameter(Type defaultValue, AnimationParameterId HashedColladaUniqueId, const char nodeName[]);
+        template<typename Type> bool TryAddParameter(uint32& paramIndex, Type defaultValue, AnimationParameterId HashedColladaUniqueId, const char nodeName[]);
 
         void    PushCommand(uint32 cmd);
         void    PushCommand(const void* ptr, size_t size);
@@ -98,18 +102,40 @@ namespace RenderCore { namespace Assets
             const char nodeName[])
     {
         auto tables = GetTables<Type>();
-        auto i      = std::lower_bound( tables.first.begin(), tables.first.end(), 
-                                        parameterHash, CompareFirst<AnimationParameterId, uint32>());
-        if (i!=tables.first.end() && i->first == parameterHash) {
+        auto i = std::lower_bound(
+            tables.first.begin(), tables.first.end(), 
+            parameterHash, CompareFirst<AnimationParameterId, uint32>());
+        if (i!=tables.first.end() && i->first == parameterHash)
             ThrowException(::Assets::Exceptions::FormatError("Non-unique parameter hash found for animatable property in node (%s)", nodeName));
-        }
 
         _stringNameMapping.push_back(std::make_pair(std::string(nodeName), parameterHash));
-
         size_t parameterIndex = tables.second.size();
         tables.second.push_back(defaultValue);
         tables.first.insert(i, std::make_pair(parameterHash, (uint32)parameterIndex));
         return (uint32)parameterIndex;
+    }
+
+    template<typename Type>
+        bool NascentTransformationMachine::TryAddParameter( 
+            uint32& paramIndex,
+            Type defaultValue, 
+            AnimationParameterId parameterHash, 
+            const char nodeName[])
+    {
+        auto tables = GetTables<Type>();
+        auto i = std::lower_bound(
+            tables.first.begin(), tables.first.end(), 
+            parameterHash, CompareFirst<AnimationParameterId, uint32>());
+        if (i!=tables.first.end() && i->first == parameterHash) {
+            LogWarning << "Duplicate animation parameter name in node " << nodeName << ". Only the first will work. The rest will be static.";
+            return false;
+        }
+
+        _stringNameMapping.push_back(std::make_pair(std::string(nodeName), parameterHash));
+        paramIndex = (uint32)tables.second.size();
+        tables.second.push_back(defaultValue);
+        tables.first.insert(i, std::make_pair(parameterHash, paramIndex));
+        return true;
     }
 }}
 

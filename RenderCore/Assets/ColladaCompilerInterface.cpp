@@ -6,7 +6,7 @@
 
 #include "ColladaCompilerInterface.h"
 #include "../../ColladaConversion/NascentModel.h"
-#include "../../ColladaConversion/NascentModel2.h"
+#include "../../ColladaConversion/DLLInterface.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../ConsoleRig/AttachableLibrary.h"
 #include "../../Utility/Threading/LockFree.h"
@@ -41,12 +41,14 @@ namespace RenderCore { namespace Assets
         ColladaConversion::MergeAnimationDataFunction _mergeAnimationDataFunction;
         ColladaConversion::CreateModelFunction* _createModel;
 
-        ColladaConversion::CreateModel2Function* _createModel2;
-        ColladaConversion::Model2SerializeFunction* _serializeSkinFunction2;
-        ColladaConversion::Model2SerializeFunction* _serializeAnimationFunction2;
-        ColladaConversion::Model2SerializeFunction* _serializeSkeletonFunction2;
-        ColladaConversion::Model2SerializeFunction* _serializeMaterialsFunction2;
-        ColladaConversion::MergeAnimationDataFunction2* _mergeAnimationDataFunction2;
+        ColladaConversion::CreateColladaScaffoldFn* _createModel2;
+        ColladaConversion::Model2SerializeFn* _serializeSkinFunction2;
+        ColladaConversion::Model2SerializeFn* _serializeSkeletonFunction2;
+        ColladaConversion::Model2SerializeFn* _serializeMaterialsFunction2;
+
+        ColladaConversion::CreateAnimationSetFn* _createAnimationSetFn;
+        ColladaConversion::ExtractAnimationsFn* _extractAnimationsFn;
+        ColladaConversion::SerializeAnimationSet2Fn* _serializeAnimationSetFn;
 
         ConsoleRig::AttachableLibrary _library;
         bool _isAttached;
@@ -71,10 +73,11 @@ namespace RenderCore { namespace Assets
 
             _createModel2 = nullptr;
             _serializeSkinFunction2 = nullptr;
-            _serializeAnimationFunction2 = nullptr;
             _serializeSkeletonFunction2 = nullptr;
             _serializeMaterialsFunction2 = nullptr;
-            _mergeAnimationDataFunction2 = nullptr;
+            _createAnimationSetFn = nullptr;
+            _extractAnimationsFn = nullptr;
+            _serializeAnimationSetFn = nullptr;
         }
     };
 
@@ -119,11 +122,12 @@ namespace RenderCore { namespace Assets
         }
     }
 
-    static void SerializeToFile(
-        const RenderCore::ColladaConversion::NascentModel2& model, 
-        RenderCore::ColladaConversion::Model2SerializeFunction fn,
-        const char destinationFilename[],
-        const ConsoleRig::LibVersionDesc& versionInfo)
+    template<typename Type>
+        static void SerializeToFile(
+            const Type& model, 
+            ColladaConversion::NascentChunkArray2 (*fn)(const Type&),
+            const char destinationFilename[],
+            const ConsoleRig::LibVersionDesc& versionInfo)
     {
         auto chunks = (*fn)(model);
 
@@ -176,8 +180,8 @@ namespace RenderCore { namespace Assets
     }
 
     static void SerializeToFileJustChunk(
-        RenderCore::ColladaConversion::NascentModel2& model, 
-        RenderCore::ColladaConversion::Model2SerializeFunction fn,
+        RenderCore::ColladaConversion::ColladaScaffold& model, 
+        RenderCore::ColladaConversion::Model2SerializeFn fn,
         const char destinationFilename[],
         const ConsoleRig::LibVersionDesc& versionInfo)
     {
@@ -325,7 +329,7 @@ namespace RenderCore { namespace Assets
                 std::vector<::Assets::DependentFileState> deps;
 
                 #if defined(NEW_COLLADA_PATH)
-                    auto mergedAnimationSet = (*_createModel2)(nullptr);
+                    auto mergedAnimationSet = (*_createAnimationSetFn)();
                 #else
                     auto mergedAnimationSet = (*_createModel)(nullptr);
                 #endif
@@ -345,7 +349,7 @@ namespace RenderCore { namespace Assets
 
                                 //
                                 //      Now, merge the animation data into 
-                            (*_mergeAnimationDataFunction2)(*mergedAnimationSet.get(), *model.get(), baseName);
+                            (*_extractAnimationsFn)(*mergedAnimationSet.get(), *model.get(), baseName);
                         #else
                             auto model = (*_createModel)(i->c_str());
                             (mergedAnimationSet.get()->*_mergeAnimationDataFunction)(*model.get(), baseName);
@@ -359,7 +363,7 @@ namespace RenderCore { namespace Assets
                 }
 
                 #if defined(NEW_COLLADA_PATH)
-                    SerializeToFile(*mergedAnimationSet, _serializeAnimationFunction2, op._sourceID0, libVersionDesc);
+                    SerializeToFile(*mergedAnimationSet, _serializeAnimationSetFn, op._sourceID0, libVersionDesc);
                 #else
                     SerializeToFile(*mergedAnimationSet, _serializeAnimationFunction, op._sourceID0, libVersionDesc);
                 #endif
@@ -464,12 +468,15 @@ namespace RenderCore { namespace Assets
                     const char ModelSerializeMaterialsName[]    = "?SerializeMaterials@NascentModel@ColladaConversion@RenderCore@@QEBA?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk@ColladaConversion@RenderCore@@VCrossDLLDeletor@Internal@23@@std@@I@std@@XZ";
                     const char ModelMergeAnimationDataName[]    = "?MergeAnimationData@NascentModel@ColladaConversion@RenderCore@@QEAAXAEBV123@QEBD@Z";
 
-                    const char CreateModel2Name[]                = "?CreateModel2@ColladaConversion@RenderCore@@YA?AV?$unique_ptr@VNascentModel2@ColladaConversion@RenderCore@@VCrossDLLDeletor2@Internal@23@@std@@QEBD@Z";
-                    const char Model2SerializeSkinName[]         = "?SerializeSkin2@ColladaConversion@RenderCore@@YA?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk2@ColladaConversion@RenderCore@@VCrossDLLDeletor2@Internal@23@@std@@I@std@@AEBVNascentModel2@12@@Z";
-                    const char Model2SerializeAnimationName[]    = "?SerializeAnimationSet2@ColladaConversion@RenderCore@@YA?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk2@ColladaConversion@RenderCore@@VCrossDLLDeletor2@Internal@23@@std@@I@std@@AEBVNascentModel2@12@@Z";
-                    const char Model2SerializeSkeletonName[]     = "?SerializeSkeleton2@ColladaConversion@RenderCore@@YA?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk2@ColladaConversion@RenderCore@@VCrossDLLDeletor2@Internal@23@@std@@I@std@@AEBVNascentModel2@12@@Z";
-                    const char Model2SerializeMaterialsName[]    = "?SerializeMaterials2@ColladaConversion@RenderCore@@YA?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk2@ColladaConversion@RenderCore@@VCrossDLLDeletor2@Internal@23@@std@@I@std@@AEBVNascentModel2@12@@Z";
-                    const char Model2MergeAnimationDataName[]    = "?MergeAnimationData@ColladaConversion@RenderCore@@YAXAEAVNascentModel2@12@AEBV312@QEBD@Z";
+                    const char CreateModel2Name[]                = "?CreateColladaScaffold@ColladaConversion@RenderCore@@YA?AV?$unique_ptr@VColladaScaffold@ColladaConversion@RenderCore@@VCrossDLLDeletor2@Internal@23@@std@@QEBD@Z";
+                    const char Model2SerializeSkinName[]         = "?SerializeSkin2@ColladaConversion@RenderCore@@YA?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk2@ColladaConversion@RenderCore@@VCrossDLLDeletor2@Internal@23@@std@@I@std@@AEBVColladaScaffold@12@@Z";
+                    const char Model2SerializeSkeletonName[]     = "?SerializeSkeleton2@ColladaConversion@RenderCore@@YA?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk2@ColladaConversion@RenderCore@@VCrossDLLDeletor2@Internal@23@@std@@I@std@@AEBVColladaScaffold@12@@Z";
+                    const char Model2SerializeMaterialsName[]    = "?SerializeMaterials2@ColladaConversion@RenderCore@@YA?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk2@ColladaConversion@RenderCore@@VCrossDLLDeletor2@Internal@23@@std@@I@std@@AEBVColladaScaffold@12@@Z";
+
+                    const char CreateAnimationSetName[]          = "?CreateAnimationSet@ColladaConversion@RenderCore@@YA?AV?$unique_ptr@VWorkingAnimationSet@ColladaConversion@RenderCore@@VCrossDLLDeletor2@Internal@23@@std@@QEBD@Z";
+                    const char ExtractAnimationsName[]           = "?ExtractAnimations@ColladaConversion@RenderCore@@YAXAEAVWorkingAnimationSet@12@AEBVColladaScaffold@12@QEBD@Z";
+                    const char SerializeAnimationSetName[]       = "?SerializeAnimationSet2@ColladaConversion@RenderCore@@YA?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk2@ColladaConversion@RenderCore@@VCrossDLLDeletor2@Internal@23@@std@@I@std@@AEBVWorkingAnimationSet@12@@Z";
+                    
                 #endif
                 
                 auto& lib = _library;
@@ -482,10 +489,11 @@ namespace RenderCore { namespace Assets
 
                 _createModel2 = lib.GetFunction<decltype(_createModel2)>(CreateModel2Name);
                 _serializeSkinFunction2 = lib.GetFunction<decltype(_serializeSkinFunction2)>(Model2SerializeSkinName);
-                _serializeAnimationFunction2 = lib.GetFunction<decltype(_serializeAnimationFunction2)>(Model2SerializeAnimationName);
                 _serializeSkeletonFunction2 = lib.GetFunction<decltype(_serializeSkeletonFunction2)>(Model2SerializeSkeletonName);
                 _serializeMaterialsFunction2 = lib.GetFunction<decltype(_serializeMaterialsFunction2)>(Model2SerializeMaterialsName);
-                _mergeAnimationDataFunction2 = lib.GetFunction<decltype(_mergeAnimationDataFunction2)>(Model2MergeAnimationDataName);
+                _createAnimationSetFn = lib.GetFunction<decltype(_createAnimationSetFn)>(CreateAnimationSetName);
+                _extractAnimationsFn = lib.GetFunction<decltype(_extractAnimationsFn)>(ExtractAnimationsName);
+                _serializeAnimationSetFn = lib.GetFunction<decltype(_serializeAnimationSetFn)>(SerializeAnimationSetName);
             }
         }
 
@@ -493,7 +501,7 @@ namespace RenderCore { namespace Assets
         if (!_isAttached)
             ThrowException(::Exceptions::BasicLabel("Error while linking collada conversion DLL. Could not find DLL (%s)", ColladaLibraryName));
         #if defined(NEW_COLLADA_PATH)
-            if (!_createModel2 || !_serializeSkinFunction2 || !_serializeAnimationFunction2 || !_serializeSkeletonFunction2 || !_mergeAnimationDataFunction2)
+            if (!_createModel2 || !_serializeSkinFunction2 || !_serializeSkeletonFunction2 || !_serializeMaterialsFunction2 || !_createAnimationSetFn || !_extractAnimationsFn || !_serializeAnimationSetFn)
                 ThrowException(::Exceptions::BasicLabel("Error while linking collada conversion DLL. Some interface functions are missing"));
         #else
             if (!_createModel || !_serializeSkinFunction || !_serializeAnimationFunction || !_serializeSkeletonFunction || !_mergeAnimationDataFunction)

@@ -625,6 +625,7 @@ namespace ColladaConversion
         uint64 _fileHash;
 
         GuidReference(Section uri);
+        GuidReference(uint64 id, uint64 fileHash) : _id(id), _fileHash(fileHash) {}
     };
 
     class URIResolveContext
@@ -633,6 +634,7 @@ namespace ColladaConversion
         const IDocScopeIdResolver* FindFile(uint64) const;
 
         URIResolveContext(std::shared_ptr<IDocScopeIdResolver> localDoc);
+        URIResolveContext();
         ~URIResolveContext();
     protected:
         std::vector<std::pair<uint64, std::shared_ptr<IDocScopeIdResolver>>> _files;

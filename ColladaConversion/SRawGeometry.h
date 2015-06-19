@@ -15,6 +15,7 @@ namespace RenderCore { namespace ColladaConversion
 namespace ColladaConversion
 {
     class MeshGeometry;
+    class SkinController;
     class URIResolveContext;
 
     auto Convert(const MeshGeometry& mesh, const URIResolveContext& pubEles)

@@ -14,23 +14,45 @@ namespace RenderCore { namespace ColladaConversion
     class SkeletonRegistry;
     class TableOfObjects;
 
-    void BuildSkeleton(
+    void BuildFullSkeleton(
         NascentSkeleton& skeleton,
         const ::ColladaConversion::Node& node,
         SkeletonRegistry& skeletonReferences);
+
+    void BuildMinimalSkeleton(
+        NascentSkeleton& skeleton,
+        const ::ColladaConversion::Node& node,
+        SkeletonRegistry& skeletonReferences);
+
+    class NascentGeometryObjects
+    {
+    public:
+        std::vector<std::pair<ObjectGuid, NascentRawGeometry>> _rawGeos;
+        std::vector<std::pair<ObjectGuid, NascentBoundSkinnedGeometry>> _skinnedGeos;
+
+        unsigned GetGeo(ObjectGuid id);
+        unsigned GetSkinnedGeo(ObjectGuid id);
+
+        std::pair<Float3, Float3> CalculateBoundingBox
+            (
+                const NascentModelCommandStream& scene,
+                const Float4x4* transformsBegin, 
+                const Float4x4* transformsEnd
+            );
+    };
 
     NascentModelCommandStream::GeometryInstance InstantiateGeometry(
         const ::ColladaConversion::InstanceGeometry& instGeo,
         const ::ColladaConversion::Node& attachedNode,
         const ::ColladaConversion::URIResolveContext& resolveContext,
-        TableOfObjects& accessableObjects,
+        NascentGeometryObjects& objects,
         SkeletonRegistry& nodeRefs);
 
     NascentModelCommandStream::SkinControllerInstance InstantiateController(
         const ::ColladaConversion::InstanceController& instGeo,
         const ::ColladaConversion::Node& attachedNode,
         const ::ColladaConversion::URIResolveContext& resolveContext,
-        TableOfObjects& accessableObjects,
+        NascentGeometryObjects& objects,
         SkeletonRegistry& nodeRefs);
 
     void RegisterNodeBindingNames(NascentSkeleton& skeleton, const SkeletonRegistry& registry);

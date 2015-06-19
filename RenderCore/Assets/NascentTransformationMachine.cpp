@@ -99,23 +99,41 @@ namespace RenderCore { namespace Assets
             //
             //      Now, output interface...
             //
+        std::vector<uint64> jointHashNames;
+        std::vector<Float4x4> jointInverseBindMatrices;
+        std::tie(jointHashNames, jointInverseBindMatrices) = GetOutputInterface();
+        outputSerializer.SerializeSubBlock(AsPointer(jointHashNames.cbegin()), AsPointer(jointHashNames.cend()));
+        outputSerializer.SerializeSubBlock(AsPointer(jointInverseBindMatrices.cbegin()), AsPointer(jointInverseBindMatrices.cend()));
+        outputSerializer.SerializeValue(size_t(_outputMatrixCount));
+    }
+
+    std::pair<std::vector<uint64>, std::vector<Float4x4>> NascentTransformationMachine::GetOutputInterface() const
+    {
         ConsoleRig::DebuggerOnlyWarning("Transformation Machine output interface:\n");
-        auto jointHashNames             = std::make_unique<uint64[]>(size_t(_outputMatrixCount));
-        auto jointInverseBindMatrices   = std::make_unique<Float4x4[]>(size_t(_outputMatrixCount));
-        std::fill(jointHashNames.get(), &jointHashNames[_outputMatrixCount], 0ull);
-        std::fill(jointInverseBindMatrices.get(), &jointInverseBindMatrices[_outputMatrixCount], Identity<Float4x4>());
+        std::vector<uint64> jointHashNames(_outputMatrixCount, 0ull);
+        std::vector<Float4x4> jointInverseBindMatrices(_outputMatrixCount, Identity<Float4x4>());
+
         for (auto i=_jointTags.begin(); i!=_jointTags.end(); ++i) {
             if (i->_outputMatrixIndex < _outputMatrixCount) {
                 ConsoleRig::DebuggerOnlyWarning("  [%i] %s\n", std::distance(_jointTags.begin(), i), i->_name.c_str());
+
                 assert(jointHashNames[i->_outputMatrixIndex] == 0ull);
                 jointHashNames[i->_outputMatrixIndex] = 
                     Hash64(AsPointer(i->_name.begin()), AsPointer(i->_name.end()));
                 jointInverseBindMatrices[i->_outputMatrixIndex] = i->_inverseBindMatrix;
             }
         }
-        outputSerializer.SerializeSubBlock(jointHashNames.get(), &jointHashNames[_outputMatrixCount]);
-        outputSerializer.SerializeSubBlock(jointInverseBindMatrices.get(), &jointInverseBindMatrices[_outputMatrixCount]);
-        outputSerializer.SerializeValue(size_t(_outputMatrixCount));
+
+        return std::make_pair(std::move(jointHashNames), std::move(jointInverseBindMatrices));
+    }
+
+    std::ostream& operator<<(std::ostream& stream, const NascentTransformationMachine& transMachine)
+    {
+        stream << "Transformation Machine output interface:" << std::endl;
+        for (auto i=transMachine._jointTags.begin(); i!=transMachine._jointTags.end(); ++i)
+            if (i->_outputMatrixIndex < transMachine._outputMatrixCount)
+                stream << "  [" << std::distance(transMachine._jointTags.begin(), i) << "] " << i->_name << std::endl;
+        return stream;
     }
 
     NascentTransformationMachine::NascentTransformationMachine()

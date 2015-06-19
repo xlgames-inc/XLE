@@ -2242,6 +2242,8 @@ namespace ColladaConversion
         _files.push_back(std::make_pair(0, std::move(localDoc)));
     }
 
+    URIResolveContext::URIResolveContext() {}
+
     URIResolveContext::~URIResolveContext() {}
 
 
@@ -2369,7 +2371,7 @@ void TestParser()
     // RenderCore::ColladaConversion::FindImportantNodes(
     //     jointRefs, doc->_visualScenes[0]);
 
-    RenderCore::ColladaConversion::BuildSkeleton(
+    RenderCore::ColladaConversion::BuildFullSkeleton(
         skeleton, 
         doc->_visualScenes[0].GetRootNode(), jointRefs);
 

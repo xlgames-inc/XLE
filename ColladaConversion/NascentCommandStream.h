@@ -91,18 +91,13 @@ namespace RenderCore { namespace ColladaConversion
 
         void    MergeAnimation(
             const NascentAnimationSet& animation, const char name[],
-            const TableOfObjects& sourceObjects, TableOfObjects& destinationObjects);
+            const std::vector<Assets::RawAnimationCurve>& sourceCurves, 
+            std::vector<Assets::RawAnimationCurve>& destinationCurves);
 
         NascentAnimationSet();
         ~NascentAnimationSet();
         NascentAnimationSet(NascentAnimationSet&& moveFrom);
         NascentAnimationSet& operator=(NascentAnimationSet&& moveFrom);
-
-        Assets::TransformationParameterSet      BuildTransformationParameterSet(
-            float time, 
-            const char animationName[],
-            const NascentSkeleton&  skeleton, 
-            const TableOfObjects&   accessableObjects) const;
 
         void            Serialize(Serialization::NascentBlockSerializer& serializer) const;
     private:
@@ -197,20 +192,28 @@ namespace RenderCore { namespace ColladaConversion
             CameraInstance(unsigned localToWorldId) : _localToWorldId(localToWorldId) {}
         };
 
-        std::vector<GeometryInstance>           _geometryInstances;
-        std::vector<CameraInstance>             _cameraInstances;
-        std::vector<SkinControllerInstance>     _skinControllerInstances;
+        void Add(GeometryInstance&& geoInstance);
+        void Add(CameraInstance&& geoInstance);
+        void Add(SkinControllerInstance&& geoInstance);
+
+        bool IsEmpty() const { return _geometryInstances.empty() && _cameraInstances.empty() && _skinControllerInstances.empty(); }
+        void Serialize(Serialization::NascentBlockSerializer& serializer) const;
+
+        void RegisterTransformationMachineOutput(const std::string& bindingName, ObjectGuid id, unsigned transformMarker);
+        unsigned FindTransformationMachineOutput(ObjectGuid nodeId) const;
+
+        std::vector<uint64> GetInputInterface() const;
 
         NascentModelCommandStream();
         ~NascentModelCommandStream();
         NascentModelCommandStream(NascentModelCommandStream&& moveFrom);
         NascentModelCommandStream& operator=(NascentModelCommandStream&& moveFrom);
 
-        bool IsEmpty() const { return _geometryInstances.empty() && /*_modelInstances.empty() &&*/ _cameraInstances.empty() && _skinControllerInstances.empty(); }
-        void Serialize(Serialization::NascentBlockSerializer& serializer) const;
+        std::vector<GeometryInstance>               _geometryInstances;
+        std::vector<CameraInstance>                 _cameraInstances;
+        std::vector<SkinControllerInstance>         _skinControllerInstances;
 
-        void RegisterTransformationMachineOutput(const std::string& bindingName, ObjectGuid id, unsigned transformMarker);
-        unsigned FindTransformationMachineOutput(ObjectGuid nodeId) const;
+        friend std::ostream& operator<<(std::ostream&, const NascentModelCommandStream&);
 
     private:
         class TransformationMachineOutput;

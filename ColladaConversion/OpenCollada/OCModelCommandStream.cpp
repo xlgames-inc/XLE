@@ -221,7 +221,7 @@ namespace RenderCore { namespace ColladaConversion
                 if (inputGeometry) {
                     auto materials = BuildMaterialTable(
                         instanceGeo.getMaterialBindings(), inputGeometry->_matBindingSymbols, accessableObjects);
-                    stream._geometryInstances.push_back(
+                    stream.Add(
                         NascentModelCommandStream::GeometryInstance(
                             accessableObjects.GetIndex<NascentRawGeometry>(Convert(id)), 
                             (unsigned)thisOutputMatrix, std::move(materials), 0));
@@ -243,7 +243,7 @@ namespace RenderCore { namespace ColladaConversion
                     //          (they should come from another node in the <library_cameras> part
                     //  
 
-                stream._cameraInstances.push_back(NascentModelCommandStream::CameraInstance((unsigned)thisOutputMatrix));
+                stream.Add(NascentModelCommandStream::CameraInstance((unsigned)thisOutputMatrix));
             }
         }
 
@@ -316,7 +316,7 @@ namespace RenderCore { namespace ColladaConversion
                         }
 
                         auto result = BindController(
-                            *source, *controller, accessableObjects, destinationForNewObjects,
+                            *source, *controller,
                             DynamicArray<uint16>(std::move(jointMatrices), jointCount),
                             GetNodeStringID(node).c_str());
 
@@ -333,7 +333,7 @@ namespace RenderCore { namespace ColladaConversion
                         NascentModelCommandStream::SkinControllerInstance newInstance(
                             destinationForNewObjects.GetIndex<UnboundSkinController>(controllerAndSkeleton->_unboundControllerId), 
                             stream.FindTransformationMachineOutput(Convert(node.getUniqueId())), std::move(materials), 0);
-                        stream._skinControllerInstances.push_back(newInstance);
+                        stream.Add(std::move(newInstance));
 
                     } else {
                         LogAlwaysWarningF("LogAlwaysWarningF -- skin controller attached to bad source object in node (%s). Note that skin controllers must be attached directly to geometry. We don't support cascading controllers.\n", GetNodeStringID(node).c_str());

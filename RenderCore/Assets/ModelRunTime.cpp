@@ -1302,7 +1302,6 @@ namespace RenderCore { namespace Assets
     {
         DestroyArray(_geos, &_geos[_geoCount]);
         DestroyArray(_boundSkinnedControllers, &_boundSkinnedControllers[_boundSkinnedControllerCount]);
-        DestroyArray(_materialReferences, &_materialReferences[_materialReferencesCount]);
     }
 
         ////////////////////////////////////////////////////////////

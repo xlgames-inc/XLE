@@ -55,21 +55,27 @@ namespace RenderCore { namespace ColladaConversion
         };
     }
 
-    class NascentModel2;
+    class ColladaScaffold;
+    class WorkingAnimationSet;
 
     template <typename Type>
         using CrossDLLPtr = std::unique_ptr<Type, Internal::CrossDLLDeletor2>;
 
     typedef std::pair<CrossDLLPtr<NascentChunk2[]>, unsigned> NascentChunkArray2;
 
-    CONVERSION_API CrossDLLPtr<NascentModel2> CreateModel2(const ::Assets::ResChar identifier[]);
-    CONVERSION_API NascentChunkArray2 SerializeSkin2(const NascentModel2& model);
-    CONVERSION_API NascentChunkArray2 SerializeSkeleton2(const NascentModel2& model);
-    CONVERSION_API NascentChunkArray2 SerializeMaterials2(const NascentModel2& model);
-    CONVERSION_API NascentChunkArray2 SerializeAnimationSet2(const NascentModel2& model);
-    CONVERSION_API void MergeAnimationData(NascentModel2& dest, const NascentModel2& source, const char animationName[]);
+    CONVERSION_API CrossDLLPtr<ColladaScaffold> CreateColladaScaffold(const ::Assets::ResChar identifier[]);
+    CONVERSION_API NascentChunkArray2 SerializeSkin2(const ColladaScaffold& model);
+    CONVERSION_API NascentChunkArray2 SerializeSkeleton2(const ColladaScaffold& model);
+    CONVERSION_API NascentChunkArray2 SerializeMaterials2(const ColladaScaffold& model);
 
-    typedef std::unique_ptr<NascentModel2, Internal::CrossDLLDeletor2> CreateModel2Function(const ::Assets::ResChar identifier[]);
-    typedef NascentChunkArray2 Model2SerializeFunction(const NascentModel2&);
-    typedef void MergeAnimationDataFunction2(NascentModel2&, const NascentModel2&, const char[]);
+    CONVERSION_API CrossDLLPtr<WorkingAnimationSet> CreateAnimationSet(const char name[]);
+    CONVERSION_API void ExtractAnimations(WorkingAnimationSet& dest, const ColladaScaffold& model, const char animName[]);
+    CONVERSION_API NascentChunkArray2 SerializeAnimationSet2(const WorkingAnimationSet& animset);
+
+    typedef CrossDLLPtr<ColladaScaffold> CreateColladaScaffoldFn(const ::Assets::ResChar identifier[]);
+    typedef NascentChunkArray2 Model2SerializeFn(const ColladaScaffold&);
+
+    typedef CrossDLLPtr<WorkingAnimationSet> CreateAnimationSetFn();
+    typedef void ExtractAnimationsFn(WorkingAnimationSet&, const ColladaScaffold&, const char[]);
+    typedef NascentChunkArray2 SerializeAnimationSet2Fn(const WorkingAnimationSet&);
 }}
