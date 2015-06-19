@@ -496,7 +496,7 @@ namespace RenderCore { namespace Techniques
             bool matched = false;
             for (unsigned q=0; q<dimof(s_parameterBoxNames); ++q)
                 if (Is(s_parameterBoxNames[q], eleName)) {
-                    dst[q] = ParameterBox(source);
+                    dst[q].MergeIn(ParameterBox(source));
                     matched = true;
                 }
 

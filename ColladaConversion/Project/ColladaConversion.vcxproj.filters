@@ -25,9 +25,6 @@
     <ClCompile Include="..\NascentCommandStream.cpp">
       <Filter>NascentObjects</Filter>
     </ClCompile>
-    <ClCompile Include="..\NascentModel.cpp">
-      <Filter>NascentObjects</Filter>
-    </ClCompile>
     <ClCompile Include="..\NascentRawGeometry.cpp">
       <Filter>NascentObjects</Filter>
     </ClCompile>
@@ -73,6 +70,9 @@
     <ClCompile Include="..\TableOfObjects.cpp">
       <Filter>OpenCollada</Filter>
     </ClCompile>
+    <ClCompile Include="..\NascentModel.cpp">
+      <Filter>OpenCollada</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\OpenCollada\OCInterface.h">
@@ -88,9 +88,6 @@
       <Filter>NascentObjects</Filter>
     </ClInclude>
     <ClInclude Include="..\NascentMaterial.h">
-      <Filter>NascentObjects</Filter>
-    </ClInclude>
-    <ClInclude Include="..\NascentModel.h">
       <Filter>NascentObjects</Filter>
     </ClInclude>
     <ClInclude Include="..\NascentRawGeometry.h">
@@ -139,6 +136,9 @@
       <Filter>NascentObjects</Filter>
     </ClInclude>
     <ClInclude Include="..\TableOfObjects.h">
+      <Filter>OpenCollada</Filter>
+    </ClInclude>
+    <ClInclude Include="..\NascentModel.h">
       <Filter>OpenCollada</Filter>
     </ClInclude>
   </ItemGroup>

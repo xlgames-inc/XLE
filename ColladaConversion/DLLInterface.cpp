@@ -19,9 +19,7 @@
 
 #include "ConversionUtil.h"
 
-// #include "../RenderCore/Assets/TransformationCommands.h"
-// #include "../RenderCore/Assets/ModelRunTime.h"
-#include "../RenderCore/Assets/ModelRunTimeInternal.h"
+#include "../RenderCore/Assets/ModelRunTimeInternal.h"      // just for RenderCore::Assets::SkeletonBinding
 #include "../RenderCore/Assets/AssetUtils.h"
 
 #include "../Utility/Streams/FileUtils.h"
@@ -104,7 +102,8 @@ namespace RenderCore { namespace ColladaConversion
                     RenderCore::ColladaConversion::InstantiateGeometry(
                         scene->GetInstanceGeometry(c),
                         scene->GetInstanceGeometry_Attach(c),
-                        input._resolveContext, _geoObjects, jointRefs));
+                        input._resolveContext, _geoObjects, jointRefs,
+                        input._cfg));
             } CATCH(...) {
             } CATCH_END
         }
@@ -115,7 +114,8 @@ namespace RenderCore { namespace ColladaConversion
                     RenderCore::ColladaConversion::InstantiateController(
                         scene->GetInstanceController(c),
                         scene->GetInstanceController_Attach(c),
-                        input._resolveContext, _geoObjects, jointRefs));
+                        input._resolveContext, _geoObjects, jointRefs,
+                        input._cfg));
             } CATCH(...) {
             } CATCH_END
         }
@@ -174,18 +174,7 @@ namespace RenderCore { namespace ColladaConversion
             // And that requires a bit of hack to get pointers to those 
             // run-time types
         {
-            // auto tempBlock = serializer.AsMemoryBlock();
-            // using namespace RenderCore::Assets;
-            // 
-            // Serialization::Block_Initialize(tempBlock.get());
-            // auto* immData = (const ModelImmutableData*)Serialization::Block_GetFirstObject(tempBlock.get());
-
-            const auto& transMachine = skinFile._skeleton.GetTransformationMachine(); // immData->_embeddedSkeleton;
-            // auto defTransformCount = transMachine.GetOutputMatrixCount();
-            // auto skeletonOutput = std::make_unique<Float4x4[]>(defTransformCount);
-            // transMachine.GenerateOutputTransforms(
-            //     skeletonOutput.get(), defTransformCount,
-            //     &transMachine.GetDefaultParameters());
+            const auto& transMachine = skinFile._skeleton.GetTransformationMachine();
             auto skeletonOutput = transMachine.GenerateOutputTransforms(
                 transMachine.GetDefaultParameters());
 
@@ -196,10 +185,6 @@ namespace RenderCore { namespace ColladaConversion
                     {AsPointer(skelOutputInterface.first.begin()), AsPointer(skelOutputInterface.second.begin()), skelOutputInterface.first.size()},
                 RenderCore::Assets::ModelCommandStream::InputInterface
                     {AsPointer(streamInputInterface.begin()), streamInputInterface.size()});
-
-            // RenderCore::Assets::SkeletonBinding skelBinding(
-            //     transMachine.GetOutputInterface(), 
-            //     immData->_visualScene.GetInputInterface());
 
             auto finalMatrixCount = streamInputInterface.size(); // immData->_visualScene.GetInputInterface()._jointCount;
             auto reordered = std::make_unique<Float4x4[]>(finalMatrixCount);

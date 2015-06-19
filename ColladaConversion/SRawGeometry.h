@@ -10,6 +10,7 @@ namespace RenderCore { namespace ColladaConversion
 {
     class NascentRawGeometry;
     class UnboundSkinController;
+    class ImportConfiguration;
 }}
 
 namespace ColladaConversion
@@ -18,10 +19,10 @@ namespace ColladaConversion
     class SkinController;
     class URIResolveContext;
 
-    auto Convert(const MeshGeometry& mesh, const URIResolveContext& pubEles)
+    auto Convert(const MeshGeometry& mesh, const URIResolveContext& pubEles, const RenderCore::ColladaConversion::ImportConfiguration& cfg)
         -> RenderCore::ColladaConversion::NascentRawGeometry;
 
-    auto Convert(const SkinController& controller, const URIResolveContext& pubEles)
+    auto Convert(const SkinController& controller, const URIResolveContext& pubEles, const RenderCore::ColladaConversion::ImportConfiguration& cfg)
         -> RenderCore::ColladaConversion::UnboundSkinController;
 }
 

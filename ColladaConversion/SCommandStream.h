@@ -13,6 +13,7 @@ namespace RenderCore { namespace ColladaConversion
     class NascentSkeleton;
     class SkeletonRegistry;
     class TableOfObjects;
+    class ImportConfiguration;
 
     void BuildFullSkeleton(
         NascentSkeleton& skeleton,
@@ -46,14 +47,16 @@ namespace RenderCore { namespace ColladaConversion
         const ::ColladaConversion::Node& attachedNode,
         const ::ColladaConversion::URIResolveContext& resolveContext,
         NascentGeometryObjects& objects,
-        SkeletonRegistry& nodeRefs);
+        SkeletonRegistry& nodeRefs,
+        const ImportConfiguration& cfg);
 
     NascentModelCommandStream::SkinControllerInstance InstantiateController(
         const ::ColladaConversion::InstanceController& instGeo,
         const ::ColladaConversion::Node& attachedNode,
         const ::ColladaConversion::URIResolveContext& resolveContext,
         NascentGeometryObjects& objects,
-        SkeletonRegistry& nodeRefs);
+        SkeletonRegistry& nodeRefs,
+        const ImportConfiguration& cfg);
 
     void RegisterNodeBindingNames(NascentSkeleton& skeleton, const SkeletonRegistry& registry);
     void RegisterNodeBindingNames(NascentModelCommandStream& stream, const SkeletonRegistry& registry);

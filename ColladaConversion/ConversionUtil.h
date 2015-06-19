@@ -24,7 +24,9 @@ namespace RenderCore { namespace ColladaConversion
     public:
         using String = std::basic_string<utf8>;
         String AsNativeBinding(const utf8* inputStart, const utf8* inputEnd) const;
-        bool IsSuppressed(const utf8* inputStart, const utf8* inputEnd) const;
+        bool IsBindingSuppressed(const utf8* inputStart, const utf8* inputEnd) const;
+        String AsNativeVertexSemantic(const utf8* inputStart, const utf8* inputEnd) const;
+        bool IsVertexSemanticSuppressed(const utf8* inputStart, const utf8* inputEnd) const;
 
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _depVal; }
 
@@ -33,7 +35,11 @@ namespace RenderCore { namespace ColladaConversion
         ~ImportConfiguration();
     private:
         std::vector<std::pair<String, String>> _exportNameToBinding;
-        std::vector<String> _suppressed;
+        std::vector<String> _bindingSuppressed;
+
+        std::vector<std::pair<String, String>> _vertexSemanticRename;
+        std::vector<String> _vertexSemanticSuppressed;
+
         std::shared_ptr<::Assets::DependencyValidation> _depVal;
     };
 

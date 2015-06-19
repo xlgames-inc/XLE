@@ -94,7 +94,7 @@ namespace RenderCore { namespace ColladaConversion
 
         for (const auto& t:profile->_values) {
             auto& value = t.second;
-            if (cfg.IsSuppressed(t.first._start, t.first._end)) continue;
+            if (cfg.IsBindingSuppressed(t.first._start, t.first._end)) continue;
                 
             auto binding = cfg.AsNativeBinding(t.first._start, t.first._end);
             switch (value._type) {
@@ -130,7 +130,7 @@ namespace RenderCore { namespace ColladaConversion
             auto techValue = extraValues.FirstChild();
             for (;techValue; techValue=techValue.NextSibling()) {
                 auto n = techValue.Name();
-                if (cfg.IsSuppressed(AsPointer(n.cbegin()), AsPointer(n.cend()))) continue;
+                if (cfg.IsBindingSuppressed(AsPointer(n.cbegin()), AsPointer(n.cend()))) continue;
 
                 auto texture = techValue.Element(u("texture"));
                 if (texture) {

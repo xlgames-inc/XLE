@@ -179,7 +179,8 @@ namespace RenderCore { namespace ColladaConversion
         const ::ColladaConversion::Node& attachedNode,
         const URIResolveContext& resolveContext,
         NascentGeometryObjects& objects,
-        SkeletonRegistry& nodeRefs)
+        SkeletonRegistry& nodeRefs,
+        const ImportConfiguration& cfg)
     {
         GuidReference refGuid(instGeo._reference);
         ObjectGuid geoId(refGuid._id, refGuid._fileHash);
@@ -189,7 +190,7 @@ namespace RenderCore { namespace ColladaConversion
             if (!scaffoldGeo)
                 Throw(::Assets::Exceptions::FormatError("Could not found geometry object to instantiate (%s)",
                     AsString(instGeo._reference).c_str()));
-            objects._rawGeos.push_back(std::make_pair(geoId, Convert(*scaffoldGeo, resolveContext)));
+            objects._rawGeos.push_back(std::make_pair(geoId, Convert(*scaffoldGeo, resolveContext, cfg)));
             geo = (unsigned)(objects._rawGeos.size()-1);
         }
 
@@ -251,7 +252,8 @@ namespace RenderCore { namespace ColladaConversion
         const ::ColladaConversion::Node& attachedNode,
         const URIResolveContext& resolveContext,
         NascentGeometryObjects& objects,
-        SkeletonRegistry& nodeRefs)
+        SkeletonRegistry& nodeRefs,
+        const ImportConfiguration& cfg)
     {
         GuidReference controllerRef(instGeo._reference);
         ObjectGuid controllerId(controllerRef._id, controllerRef._fileHash);
@@ -260,7 +262,7 @@ namespace RenderCore { namespace ColladaConversion
             Throw(::Assets::Exceptions::FormatError("Could not find controller object to instantiate (%s)",
                 AsString(instGeo._reference).c_str()));
 
-        auto controller = Convert(*scaffoldController, resolveContext);
+        auto controller = Convert(*scaffoldController, resolveContext, cfg);
 
             // If the the raw geometry object is already converted, then we should use it. Otherwise
             // we need to do the conversion (but store it only in a temporary -- we don't need to
@@ -276,7 +278,7 @@ namespace RenderCore { namespace ColladaConversion
                 if (!scaffoldGeo)
                     Throw(::Assets::Exceptions::FormatError("Could not find geometry object to instantiate (%s)",
                         AsString(instGeo._reference).c_str()));
-                tempBuffer = Convert(*scaffoldGeo, resolveContext);
+                tempBuffer = Convert(*scaffoldGeo, resolveContext, cfg);
                 source = &tempBuffer;
             } else {
                 source = &objects._rawGeos[geo].second;

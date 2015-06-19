@@ -6,12 +6,14 @@
 
 #define _SCL_SECURE_NO_WARNINGS
 
+#include "SRawGeometry.h"
 #include "Scaffold.h"
 #include "ScaffoldParsingUtil.h"
 #include "NascentRawGeometry.h"
 #include "NascentAnimController.h"
 #include "MeshDatabaseAdapter.h"
 #include "GeometryAlgorithm.h"
+#include "ConversionUtil.h"
 #include "../ConsoleRig/Log.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/IteratorUtils.h"
@@ -38,10 +40,10 @@ namespace ColladaConversion
         RenderCore::Metal::NativeFormat::Enum GetFormat() const { return _dataFormat; }
         size_t GetStride() const { return _stride; }
         size_t GetCount() const { return _count; }
-        ProcessingFlags::BitField GetProcessingFlags() const { return 0; }
+        ProcessingFlags::BitField GetProcessingFlags() const { return _processingFlags; }
         FormatHint::BitField GetFormatHint() const { return _formatHint; }
 
-        VertexSourceData(const DataFlow::Source& source);
+        VertexSourceData(const DataFlow::Source& source, ProcessingFlags::BitField processingFlags);
         ~VertexSourceData();
 
     protected:
@@ -50,6 +52,7 @@ namespace ColladaConversion
         size_t _offset;
         size_t _count;
         FormatHint::BitField _formatHint;
+        ProcessingFlags::BitField _processingFlags;
 
         std::shared_ptr<std::vector<uint8>> _rawData;
     };
@@ -65,7 +68,8 @@ namespace ColladaConversion
     }
 
 
-    VertexSourceData::VertexSourceData(const DataFlow::Source& source)
+    VertexSourceData::VertexSourceData(const DataFlow::Source& source, ProcessingFlags::BitField processingFlags)
+        : _processingFlags(processingFlags)
     {
         auto accessor = source.FindAccessorForTechnique();
         if (!accessor)
@@ -131,6 +135,19 @@ namespace ColladaConversion
 
     VertexSourceData::~VertexSourceData() {}
 
+    static ProcessingFlags::BitField GetProcessingFlags(const std::basic_string<utf8>& semantic)
+    {
+        if (semantic.find(u("TEXCOORD")) || semantic.find(u("texcoord"))) {
+            return ProcessingFlags::TexCoordFlip;
+        } else if (semantic.find(u("TEXTANGENT")) || semantic.find(u("textangent"))) {
+            return ProcessingFlags::Renormalize;
+        } else if (semantic.find(u("TEXBITANGENT")) || semantic.find(u("texbitangent"))) {
+            return ProcessingFlags::Renormalize;
+        } /*else if (semantic.find(u("NORMAL")) || semantic.find(u("normal"))) {
+            return ProcessingFlags::Renormalize;
+        }*/
+        return 0;
+    }
     
     class ComposingVertex
     {
@@ -138,35 +155,68 @@ namespace ColladaConversion
         class Element
         {
         public:
-            Section _semantic;
+            std::basic_string<utf8> _semantic;
             unsigned _semanticIndex;
             std::shared_ptr<IVertexSourceData> _sourceData;
             uint64 _sourceId;
         };
         std::vector<Element> _finalVertexElements;
+        const ImportConfiguration* _cfg;
 
         size_t FindOrCreateElement(const DataFlow::Source& source, Section semantic, unsigned semanticIndex)
         {
+            std::basic_string<utf8> semanticStr;
+            if (_cfg) {
+                if (_cfg->IsVertexSemanticSuppressed(semantic._start, semantic._end))
+                    return ~size_t(0);
+                semanticStr = _cfg->AsNativeVertexSemantic(semantic._start, semantic._end);
+            } else {
+                semanticStr = std::basic_string<utf8>(semantic._start, semantic._end);
+            }
+
                 // We need to find something matching this in _finalVertexElements
             size_t existing = ~size_t(0x0);
             for (size_t c=0; c<_finalVertexElements.size(); ++c)
                 if (    _finalVertexElements[c]._sourceId == source.GetId().GetHash()
-                    &&  Equivalent(_finalVertexElements[c]._semantic, semantic)
+                    &&  _finalVertexElements[c]._semantic == semanticStr
                     &&  _finalVertexElements[c]._semanticIndex == semanticIndex)
                     existing = c;
 
             if (existing == ~size_t(0x0)) {
                 Element newEle;
                 newEle._sourceId = source.GetId().GetHash();
-                newEle._semantic = semantic;
+                newEle._semantic = semanticStr;
                 newEle._semanticIndex = semanticIndex;
-                newEle._sourceData = std::make_shared<VertexSourceData>(source);
+                newEle._sourceData = std::make_shared<VertexSourceData>(source, GetProcessingFlags(semanticStr));
                 _finalVertexElements.push_back(newEle);
                 existing = _finalVertexElements.size()-1;
             }
 
             return existing;
         }
+
+        void FixBadSemanticIndicies()
+        {
+            // there seems to be a problem in the max exporter whereby tangents and
+            // bitangents are assigned to the incorrect semantic index. We should
+            // shift them down to rational values, as a work-around for this wierdness!
+            unsigned minTangentIndex = ~0u, minBitangentIndex = ~0u;
+            for (size_t c=0; c<_finalVertexElements.size(); ++c) {
+                if (_finalVertexElements[c]._semantic == u("TEXTANGENT"))
+                    minTangentIndex = std::min(minTangentIndex, _finalVertexElements[c]._semanticIndex);
+                if (_finalVertexElements[c]._semantic == u("TEXBITANGENT"))
+                    minBitangentIndex = std::min(minBitangentIndex, _finalVertexElements[c]._semanticIndex);
+            }
+
+            for (size_t c=0; c<_finalVertexElements.size(); ++c) {
+                if (_finalVertexElements[c]._semantic == u("TEXTANGENT"))
+                    _finalVertexElements[c]._semanticIndex -= minTangentIndex;
+                if (_finalVertexElements[c]._semantic == u("TEXBITANGENT"))
+                    _finalVertexElements[c]._semanticIndex -= minBitangentIndex;
+            }
+        }
+
+        ComposingVertex() : _cfg(nullptr) {}
     };
 
     #define UNIFIED_VERTS_USE_MAP
@@ -246,16 +296,13 @@ namespace ColladaConversion
 
             result->AddStream(
                 i->_sourceData, std::move(vertexMap),
-                AsString(i->_semantic).c_str(), i->_semanticIndex);
+                Conversion::Convert<std::string>(i->_semantic).c_str(), i->_semanticIndex);
         }
 
         return std::move(result);
     }
 
-    enum class PrimitiveTopology
-    {
-        Unknown, Triangles, TriangleStrips
-    };
+    enum class PrimitiveTopology { Unknown, Triangles, TriangleStrips };
 
     std::pair<PrimitiveTopology, const utf8*> s_PrimitiveTopologyNames[] = 
     {
@@ -295,7 +342,10 @@ namespace ColladaConversion
         WorkingDrawOperation& operator=(const WorkingDrawOperation&) = delete;
     };
 
-    NascentRawGeometry Convert(const MeshGeometry& mesh, const URIResolveContext& pubEles)
+    NascentRawGeometry Convert(
+        const MeshGeometry& mesh, 
+        const URIResolveContext& pubEles, 
+        const ImportConfiguration& cfg)
     {
             // some exports can have empty meshes -- ideally, we just want to ignore them
         if (!mesh.GetPrimitivesCount()) return NascentRawGeometry();
@@ -339,6 +389,7 @@ namespace ColladaConversion
 
         std::vector<WorkingDrawOperation>  drawOperations;
         ComposingVertex composingVertex;
+        composingVertex._cfg = &cfg;
 
         class WorkingPrimitive
         {
@@ -419,7 +470,8 @@ namespace ColladaConversion
                             workingPrim._inputs.push_back(
                                 WorkingPrimitive::EleRef
                                 {
-                                    composingVertex.FindOrCreateElement(*source, refInput._semantic, input._semanticIndex),
+                                    composingVertex.FindOrCreateElement(
+                                        *source, refInput._semantic, input._semanticIndex),
                                     input._indexInPrimitive
                                 });
                         }
@@ -433,6 +485,8 @@ namespace ColladaConversion
 
             workingPrims.push_back(workingPrim);
         }
+
+        composingVertex.FixBadSemanticIndicies();
 
             //
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -932,7 +986,8 @@ namespace ColladaConversion
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     auto Convert(   const SkinController& controller, 
-                    const URIResolveContext& resolveContext)
+                    const URIResolveContext& resolveContext,
+                    const ImportConfiguration& cfg)
         -> RenderCore::ColladaConversion::UnboundSkinController
     {
         auto bindShapeMatrix = Identity<Float4x4>();
