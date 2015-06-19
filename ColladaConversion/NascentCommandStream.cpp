@@ -397,15 +397,18 @@ namespace RenderCore { namespace ColladaConversion
         std::string _name;
     };
 
-    unsigned NascentModelCommandStream::RegisterTransformationMachineOutput(const std::string& bindingName, ObjectGuid id)
+    void NascentModelCommandStream::RegisterTransformationMachineOutput(const std::string& bindingName, ObjectGuid id, unsigned transformMarker)
     {
-        auto existing = FindTransformationMachineOutput(id);
-        if (existing != ~unsigned(0)) return existing;
-
-        auto result = (unsigned)_transformationMachineOutputs.size();
-        _transformationMachineOutputs.push_back(
-            TransformationMachineOutput{id, bindingName});
-        return result;
+        // auto existing = FindTransformationMachineOutput(id);
+        // if (existing != ~unsigned(0)) return existing;
+        // 
+        // auto result = (unsigned)_transformationMachineOutputs.size();
+        // _transformationMachineOutputs.push_back(
+        //     TransformationMachineOutput{id, bindingName});
+        // return result;
+        if (_transformationMachineOutputs.size() < transformMarker+1)
+            _transformationMachineOutputs.resize(transformMarker+1);
+        _transformationMachineOutputs[transformMarker] = TransformationMachineOutput{id, bindingName};
     }
 
     unsigned    NascentModelCommandStream::FindTransformationMachineOutput(ObjectGuid nodeId) const

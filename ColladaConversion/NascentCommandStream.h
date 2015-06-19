@@ -209,7 +209,7 @@ namespace RenderCore { namespace ColladaConversion
         bool IsEmpty() const { return _geometryInstances.empty() && /*_modelInstances.empty() &&*/ _cameraInstances.empty() && _skinControllerInstances.empty(); }
         void Serialize(Serialization::NascentBlockSerializer& serializer) const;
 
-        unsigned RegisterTransformationMachineOutput(const std::string& bindingName, ObjectGuid id);
+        void RegisterTransformationMachineOutput(const std::string& bindingName, ObjectGuid id, unsigned transformMarker);
         unsigned FindTransformationMachineOutput(ObjectGuid nodeId) const;
 
     private:

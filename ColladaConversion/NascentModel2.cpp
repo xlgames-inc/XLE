@@ -175,6 +175,9 @@ namespace RenderCore { namespace ColladaConversion
             result->_skeleton, 
             scene->GetRootNode(), 
             result->_jointRefs);
+
+        RenderCore::ColladaConversion::RegisterNodeBindingNames(result->_skeleton, result->_jointRefs);
+        RenderCore::ColladaConversion::RegisterNodeBindingNames(result->_visualScene, result->_jointRefs);
         
         return std::move(result);
     }

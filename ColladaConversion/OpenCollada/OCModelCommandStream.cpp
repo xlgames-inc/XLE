@@ -100,7 +100,7 @@ namespace RenderCore { namespace ColladaConversion
     void PushNode(
         NascentSkeleton& skeleton,
         const COLLADAFW::Node& node, const TableOfObjects& accessableObjects,
-        const SkeletonRegistry& skeletonReferences)
+        SkeletonRegistry& skeletonReferences)
     {
         using namespace COLLADAFW;
         COLLADABU::Math::Matrix4 matrix;
@@ -134,17 +134,14 @@ namespace RenderCore { namespace ColladaConversion
 
             if (isReferencedJoint || node.getInstanceControllers().getCount() || node.getInstanceGeometries().getCount()) {
                 auto id = Convert(node.getUniqueId());
-                Float4x4 inverseBindMatrix = Identity<Float4x4>();
-
-                auto* t = skeletonReferences.GetInverseBindMatrix(id);
-                if (t) inverseBindMatrix = *t;
+                auto inverseBind = skeletonReferences.GetNode(id)._inverseBind;
 
                     // note -- there may be problems here, because the "name" of the node isn't necessarily
                     //          unique. There are unique ids in collada, however. We some some unique identifier
                     //          can can be seen in Max, and can be used to associate different files with shared
                     //          references (eg, animations, skeletons and skins in separate files)
                 skeleton.GetTransformationMachine().RegisterJointName(
-                    GetNodeStringID(node), inverseBindMatrix, thisOutputMatrix);
+                    GetNodeStringID(node), inverseBind, thisOutputMatrix);
             }
         }
 
@@ -197,7 +194,7 @@ namespace RenderCore { namespace ColladaConversion
     void PushNode(   
         NascentModelCommandStream& stream,
         const COLLADAFW::Node& node, const TableOfObjects& accessableObjects,
-        const SkeletonRegistry& skeletonReferences)
+        SkeletonRegistry& skeletonReferences)
     {
         if (!IsUseful(node, accessableObjects, skeletonReferences)) {
             return;
@@ -213,8 +210,9 @@ namespace RenderCore { namespace ColladaConversion
         bool needAnOutputMatrix, isReferencedJoint;
         std::tie(needAnOutputMatrix, isReferencedJoint) = NeedOutputMatrix(node, accessableObjects, skeletonReferences);
         if (needAnOutputMatrix) {
-            const auto thisOutputMatrix = stream.RegisterTransformationMachineOutput(
-                GetNodeStringID(node), Convert(node.getUniqueId()));
+            auto nodeId = Convert(node.getUniqueId());
+            const auto thisOutputMatrix = skeletonReferences.GetOutputMatrixIndex(nodeId);
+            stream.RegisterTransformationMachineOutput(GetNodeStringID(node), nodeId, thisOutputMatrix);
             
             for (size_t c=0; c<node.getInstanceGeometries().getCount(); ++c) {
                 const InstanceGeometry& instanceGeo = *node.getInstanceGeometries()[c];

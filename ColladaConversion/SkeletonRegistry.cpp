@@ -9,62 +9,82 @@
 
 namespace RenderCore { namespace ColladaConversion
 {
+    class CompareId
+    {
+    public:
+        bool operator()(const SkeletonRegistry::ImportantNode& lhs, ObjectGuid rhs) const   { return lhs._id < rhs; }
+        bool operator()(ObjectGuid lhs, const SkeletonRegistry::ImportantNode& rhs) const   { return lhs < rhs._id; }
+        bool operator()(ObjectGuid lhs, ObjectGuid rhs) const                               { return lhs < rhs; }
+    };
 
     bool SkeletonRegistry::IsImportant(ObjectGuid node) const
     {
-        auto i = LowerBound(_outputMatrixIndicies, node);
-        return i != _outputMatrixIndicies.end() && i->first == node;
-    }
-
-    const Float4x4* SkeletonRegistry::GetInverseBindMatrix(ObjectGuid node) const
-    {
-        auto i = LowerBound(_inverseBindMatrics, node);
-        if (i != _inverseBindMatrics.end() && i->first == node)
-            return &i->second;
-        return nullptr;
+        auto i = std::lower_bound(_importantNodes.begin(), _importantNodes.end(), node, CompareId());
+        return i != _importantNodes.end() && i->_id == node;
     }
 
     unsigned SkeletonRegistry::GetOutputMatrixIndex(ObjectGuid node)
     {
-        auto i = LowerBound(_outputMatrixIndicies, node);
-        if (i != _outputMatrixIndicies.end() && i->first == node)
-            return i->second;
-        auto result = _nextOutputIndex++;
-        _outputMatrixIndicies.insert(i, std::make_pair(node, result));
-        return result;
-    }
+        auto i = std::lower_bound(_importantNodes.begin(), _importantNodes.end(), node, CompareId());
+        if (i != _importantNodes.end() && i->_id == node) {
+            if (i->_transformMarker == TransformMarker_UnSet)
+                i->_transformMarker = _nextOutputIndex++;
+            return i->_transformMarker;
+        }
 
-    std::string SkeletonRegistry::GetBindingName(ObjectGuid node) const
-    {
-        auto i = LowerBound(_outputMatrixBindingNames, node);
-        if (i != _outputMatrixBindingNames.end() && i->first == node)
-            return i->second;
-        return std::string();
+        auto result = _nextOutputIndex++;
+        _importantNodes.insert(i, ImportantNode(node, std::string(), result, Identity<Float4x4>(), false));
+        return result;
     }
 
     bool SkeletonRegistry::TryRegisterNode(ObjectGuid node, const char bindingName[])
     {
-        auto i = LowerBound(_outputMatrixBindingNames, node);
-        if (i != _outputMatrixBindingNames.end() && i->first == node)
-            return i->second == bindingName;    // return true only if it matches the previously registered name
-
         // look for other nodes bound to the same name
-        for(const auto&i:_outputMatrixBindingNames)
-            if (i.second == bindingName)
-                return false;   // duplicate binding name applied to some other node
+        for(const auto&i:_importantNodes)
+            if (i._bindingName == bindingName)
+                return i._id == node;   // duplicate binding name applied to some other node
 
-        _outputMatrixBindingNames.insert(i, std::make_pair(node, bindingName));
+        auto i = std::lower_bound(_importantNodes.begin(), _importantNodes.end(), node, CompareId());
+        if (i != _importantNodes.end() && i->_id == node) {
+            if (i->_bindingName.empty()) {
+                i->_bindingName = bindingName;
+                return true;
+            }
+            return i->_bindingName == bindingName;    // return true only if it matches the previously registered name
+        }
+
+        _importantNodes.insert(i, ImportantNode(node, bindingName, TransformMarker_UnSet, Identity<Float4x4>(), false));
         return true;
     }
 
     void SkeletonRegistry::AttachInverseBindMatrix(ObjectGuid node, const Float4x4& inverseBind)
     {
-        auto i = LowerBound(_inverseBindMatrics, node);
-        if (i != _inverseBindMatrics.end() && i->first == node) {
-            i->second = inverseBind;
+        auto i = std::lower_bound(_importantNodes.begin(), _importantNodes.end(), node, CompareId());
+        if (i != _importantNodes.end() && i->_id == node) {
+            i->_inverseBind = inverseBind;
+            i->_hasInverseBind = true;
         } else {
-            _inverseBindMatrics.insert(i, std::make_pair(node, inverseBind));
+            _importantNodes.insert(i, ImportantNode(node, std::string(), TransformMarker_UnSet, inverseBind, true));
         }
+    }
+
+    unsigned        SkeletonRegistry::GetImportantNodesCount() const
+    {
+        return (unsigned)_importantNodes.size();
+    }
+
+    auto SkeletonRegistry::GetImportantNode(unsigned index) const -> ImportantNode
+    {
+        if (index < _importantNodes.size()) return _importantNodes[index];
+        return ImportantNode();
+    }
+
+    auto SkeletonRegistry::GetNode(ObjectGuid node) const -> ImportantNode
+    {
+        auto i = std::lower_bound(_importantNodes.begin(), _importantNodes.end(), node, CompareId());
+        if (i != _importantNodes.end() && i->_id == node)
+            return *i;
+        return ImportantNode();
     }
 
     void    SkeletonRegistry::MarkParameterAnimated(const std::string& paramName)

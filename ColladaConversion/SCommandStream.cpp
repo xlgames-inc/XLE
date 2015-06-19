@@ -36,7 +36,7 @@ namespace RenderCore { namespace ColladaConversion
         // if (!IsUseful(node, skeletonReferences)) return;
 
         auto nodeId = AsObjectGuid(node);
-        auto bindingName = skeletonReferences.GetBindingName(nodeId);
+        auto bindingName = skeletonReferences.GetNode(nodeId)._bindingName;
         if (bindingName.empty()) bindingName = SkeletonBindingName(node);
 
         unsigned pushCount = PushTransformations(
@@ -58,34 +58,9 @@ namespace RenderCore { namespace ColladaConversion
             //              compiling a skeleton...?
         isReferenced = true;
         if (isReferenced) {
-            // unsigned thisOutputMatrix = skeleton.GetTransformationMachine().GetOutputMatrixMarker();
-            // skeletonReferences.SetOutputMatrix(nodeId, thisOutputMatrix);
-
             auto thisOutputMatrix = skeletonReferences.GetOutputMatrixIndex(nodeId);
             skeleton.GetTransformationMachine().MakeOutputMatrixMarker(thisOutputMatrix);
-
-                //
-                //      (We can't instantiate the skin controllers yet, because we can't be sure
-                //          we've already parsed the skeleton nodes)
-                //      But we can write a tag to find the output matrix later
-                //          (we also need a tag for all nodes with instance controllers in them)
-                //
-
-            Float4x4 inverseBind;
-            auto* inverseBindP = skeletonReferences.GetInverseBindMatrix(nodeId);
-            if (inverseBindP) inverseBind = *inverseBindP;
-            else inverseBind = Identity<Float4x4>();
-
-                // note -- there may be problems here, because the "name" of the node isn't necessarily
-                //          unique. There are unique ids in collada, however. We some some unique identifier
-                //          can can be seen in Max, and can be used to associate different files with shared
-                //          references (eg, animations, skeletons and skins in separate files)
-            if (!bindingName.empty() || inverseBindP) {
-                bool success = skeleton.GetTransformationMachine().TryRegisterJointName(
-                    bindingName, inverseBind, thisOutputMatrix);
-                if (!success)
-                    LogWarning << "Found possible duplicate joint name in transformation machine: " << bindingName;
-            }
+            skeletonReferences.TryRegisterNode(nodeId, bindingName.c_str());
         }
 
             // note -- also consider instance_nodes?
@@ -97,6 +72,32 @@ namespace RenderCore { namespace ColladaConversion
         }
 
         skeleton.GetTransformationMachine().Pop(pushCount);
+    }
+
+    void RegisterNodeBindingNames(
+        NascentSkeleton& skeleton,
+        const SkeletonRegistry& registry)
+    {
+        auto importantNodesCount = registry.GetImportantNodesCount();
+        for (unsigned c=0; c<importantNodesCount; ++c) {
+            auto nodeDesc = registry.GetImportantNode(c);
+            auto success = skeleton.GetTransformationMachine().TryRegisterJointName(
+                nodeDesc._bindingName, nodeDesc._inverseBind, nodeDesc._transformMarker);
+            if (!success)
+                LogWarning << "Found possible duplicate joint name in transformation machine: " << nodeDesc._bindingName;
+        }
+    }
+
+    void RegisterNodeBindingNames(
+        NascentModelCommandStream& stream,
+        const SkeletonRegistry& registry)
+    {
+        auto importantNodesCount = registry.GetImportantNodesCount();
+        for (unsigned c=0; c<importantNodesCount; ++c) {
+            auto nodeDesc = registry.GetImportantNode(c);
+            stream.RegisterTransformationMachineOutput(
+                nodeDesc._bindingName, nodeDesc._id, nodeDesc._transformMarker);
+        }
     }
 
     static auto BuildMaterialTable(

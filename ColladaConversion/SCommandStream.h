@@ -32,4 +32,7 @@ namespace RenderCore { namespace ColladaConversion
         const ::ColladaConversion::URIResolveContext& resolveContext,
         TableOfObjects& accessableObjects,
         SkeletonRegistry& nodeRefs);
+
+    void RegisterNodeBindingNames(NascentSkeleton& skeleton, const SkeletonRegistry& registry);
+    void RegisterNodeBindingNames(NascentModelCommandStream& stream, const SkeletonRegistry& registry);
 }}

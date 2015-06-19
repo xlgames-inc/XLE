@@ -56,12 +56,12 @@ namespace RenderCore { namespace ColladaConversion
     void PushNode(
         NascentSkeleton& skeleton,
         const COLLADAFW::Node& node, const TableOfObjects& accessableObjects,
-        const SkeletonRegistry& skeletonReferences);
+        SkeletonRegistry& skeletonReferences);
 
     void PushNode(   
         NascentModelCommandStream& stream,
         const COLLADAFW::Node& node, const TableOfObjects& accessableObjects,
-        const SkeletonRegistry& skeletonReferences);
+        SkeletonRegistry& skeletonReferences);
 
     Float4x4 AsFloat4x4(const COLLADABU::Math::Matrix4& matrix);
     Float3 AsFloat3(const COLLADABU::Math::Vector3& vector);
