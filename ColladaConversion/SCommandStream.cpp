@@ -156,18 +156,29 @@ namespace RenderCore { namespace ColladaConversion
                 if (*i != hashedSymbol) continue;
             
                 auto index = std::distance(rawGeoBindingSymbols.cbegin(), i);
-                assert(materialGuids[index] == invalidGuid);
+
+                auto newMaterialGuid = invalidGuid;
 
                 GuidReference ref(b->_reference);
                 auto* file = resolveContext.FindFile(ref._fileHash);
                 if (file) {
                     const auto* mat = file->FindMaterial(ref._id);
                     if (mat) {
-                        materialGuids[index] = 
+                        newMaterialGuid = 
                             RenderCore::Assets::MakeMaterialGuid(
                                 (const char*)mat->_name._start, (const char*)mat->_name._end);
                     }
                 }
+
+
+                if (materialGuids[index] != invalidGuid && materialGuids[index] != newMaterialGuid) {
+                        // Some collada files can actually have multiple instance_material elements for
+                        // the same binding symbol. Let's throw an exception in this case (but only
+                        // if the bindings don't agree)
+                    Throw(::Assets::Exceptions::FormatError("Single material binding symbol is bound to multiple different materials in geometry instantiation"));
+                }
+
+                materialGuids[index] = newMaterialGuid;
             }
         }
 
@@ -408,7 +419,14 @@ namespace RenderCore { namespace ColladaConversion
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static std::string SkeletonBindingName(const Node& node)    { return AsString(node.GetName()); }
+    static std::string SkeletonBindingName(const Node& node)    
+    {
+            // Both "name" and "id" are optional. Let's prioritize "name"
+            //  -- if it exists. If there is no name, we'll fall back to "id"
+        if (node.GetName()._end > node.GetName()._start)
+            return AsString(node.GetName()); 
+        return AsString(node.GetId().GetOriginal());
+    }
     static ObjectGuid AsObjectGuid(const Node& node)            { return node.GetId().GetHash(); }
 
     static bool IsUseful(const Node& node, const SkeletonRegistry& skeletonReferences)

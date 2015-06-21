@@ -247,6 +247,9 @@ namespace ToolsRig
         auto skinMarker = compilers.PrepareResource(RenderCore::Assets::ModelScaffold::CompileProcessType, &modelFile, 1, store);
         auto skelMarker = compilers.PrepareResource(RenderCore::Assets::SkeletonScaffold::CompileProcessType, &modelFile, 1, store);
 
+        skinMarker->StallWhilePending();
+        skelMarker->StallWhilePending();
+
         const auto& model = ::Assets::GetAsset<ModelScaffold>(skinMarker->_sourceID0);
         const auto& skeleton = ::Assets::GetAsset<SkeletonScaffold>(skelMarker->_sourceID0);
 

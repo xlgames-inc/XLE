@@ -20,7 +20,7 @@ namespace RenderCore { namespace ColladaConversion
         const ParameterSet& paramSet, Section sid)
     {
         for (unsigned c=0; c<paramSet.GetSamplerParameterCount(); ++c)
-            if (!Equivalent(paramSet.GetSamplerParameter(c)._sid, sid))
+            if (Equivalent(paramSet.GetSamplerParameter(c)._sid, sid))
                 return &paramSet.GetSamplerParameter(c);
         return nullptr;
     }
@@ -29,7 +29,7 @@ namespace RenderCore { namespace ColladaConversion
         const ParameterSet& paramSet, Section sid)
     {
         for (unsigned c=0; c<paramSet.GetSurfaceParameterCount(); ++c)
-            if (!Equivalent(paramSet.GetSurfaceParameter(c)._sid, sid))
+            if (Equivalent(paramSet.GetSurfaceParameter(c)._sid, sid))
                 return &paramSet.GetSurfaceParameter(c);
         return nullptr;
     }

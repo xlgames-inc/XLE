@@ -699,20 +699,18 @@ namespace RenderCore { namespace Assets
             const ModelRendererContext& context,
             Metal::ConstantBuffer&      localTransformBuffer,
             const MeshToModel*          transforms,
-            Float4x4                    modelToWorld,
+            const Float4x4&             modelToWorld,
             unsigned                    geoCallIndex) const -> TechniqueInterface
     {
         auto& cmdStream = _scaffold->CommandStream();
         auto& geoCall = cmdStream.GetGeoCall(geoCallIndex);
 
-        Techniques::LocalTransformConstants trans;
         if (transforms) {
             auto localToModel = transforms->GetMeshToModel(geoCall._transformMarker);
+            Techniques::LocalTransformConstants trans;
             trans = Techniques::MakeLocalTransform(Combine(localToModel, modelToWorld), ExtractTranslation(context._parserContext->GetProjectionDesc()._cameraToWorld));
-        } else {
-            trans = Techniques::MakeLocalTransform(modelToWorld, ExtractTranslation(context._parserContext->GetProjectionDesc()._cameraToWorld));
+            localTransformBuffer.Update(*context._context, &trans, sizeof(trans));
         }
-        localTransformBuffer.Update(*context._context, &trans, sizeof(trans));
 
             // todo -- should be possible to avoid this search
         auto mesh = FindIf(_meshes, [=](const Pimpl::Mesh& mesh) { return mesh._id == geoCall._geoId; });
@@ -729,7 +727,7 @@ namespace RenderCore { namespace Assets
         const ModelRendererContext& context,
         Metal::ConstantBuffer&      localTransformBuffer,
         const MeshToModel*          transforms,
-        Float4x4                    modelToWorld,
+        const Float4x4&             modelToWorld,
         unsigned                    geoCallIndex,
         PreparedAnimation*          preparedAnimation) const -> TechniqueInterface
     {
@@ -741,11 +739,10 @@ namespace RenderCore { namespace Assets
             //  (otherwise that information gets burned into the 
             //   prepared vertex positions)
         if (!preparedAnimation && transforms) {
-            modelToWorld = Combine(transforms->GetMeshToModel(geoCall._transformMarker), modelToWorld);
+            auto meshToWorld = Combine(transforms->GetMeshToModel(geoCall._transformMarker), modelToWorld);
+            auto trans = Techniques::MakeLocalTransform(modelToWorld, ExtractTranslation(context._parserContext->GetProjectionDesc()._cameraToWorld));
+            localTransformBuffer.Update(*context._context, &trans, sizeof(trans));
         }
-
-        auto trans = Techniques::MakeLocalTransform(modelToWorld, ExtractTranslation(context._parserContext->GetProjectionDesc()._cameraToWorld));
-        localTransformBuffer.Update(*context._context, &trans, sizeof(trans));
 
         auto cm = FindIf(_skinnedMeshes, [=](const Pimpl::SkinnedMesh& mesh) { return mesh._id == geoCall._geoId; });
         assert(cm != _skinnedMeshes.end());
@@ -943,6 +940,12 @@ namespace RenderCore { namespace Assets
         auto& devContext = *context._context;
         auto& scaffold = *_pimpl->_scaffold;
         auto& cmdStream = scaffold.CommandStream();
+
+        if (!transforms) {
+            Techniques::LocalTransformConstants trans;
+            trans = Techniques::MakeLocalTransform(modelToWorld, ExtractTranslation(context._parserContext->GetProjectionDesc()._cameraToWorld));
+            box._localTransformBuffer.Update(*context._context, &trans, sizeof(trans));
+        }
 
         if (Tweakable("SkinnedAsStatic", false)) { preparedAnimation = nullptr; }
 

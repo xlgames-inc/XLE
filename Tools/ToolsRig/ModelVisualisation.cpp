@@ -46,8 +46,16 @@ namespace ToolsRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    VisCameraSettings AlignCameraToBoundingBox(float verticalFieldOfView, const std::pair<Float3, Float3>& box)
+    VisCameraSettings AlignCameraToBoundingBox(float verticalFieldOfView, const std::pair<Float3, Float3>& boxIn)
     {
+        auto box = boxIn;
+
+            // convert empty/inverted boxes into something rational...
+        if (box.first[0] >= box.second[0] || box.first[1] >= box.second[1] || box.first[1] >= box.second[1]) {
+            box.first = Float3(-10.f, -10.f, -10.f);
+            box.second = Float3( 10.f,  10.f,  10.f);
+        }
+
         const float border = 0.0f;
         Float3 position = .5f * (box.first + box.second);
 

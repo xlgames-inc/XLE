@@ -137,13 +137,14 @@ namespace ColladaConversion
 
     static ProcessingFlags::BitField GetProcessingFlags(const std::basic_string<utf8>& semantic)
     {
-        if (semantic.find(u("TEXCOORD")) || semantic.find(u("texcoord"))) {
+        const auto npos = std::basic_string<utf8>::npos;
+        if (semantic.find(u("TEXCOORD")) != npos || semantic.find(u("texcoord")) != npos) {
             return ProcessingFlags::TexCoordFlip;
-        } else if (semantic.find(u("TEXTANGENT")) || semantic.find(u("textangent"))) {
+        } else if (semantic.find(u("TEXTANGENT")) != npos || semantic.find(u("textangent")) != npos) {
             return ProcessingFlags::Renormalize;
-        } else if (semantic.find(u("TEXBITANGENT")) || semantic.find(u("texbitangent"))) {
+        } else if (semantic.find(u("TEXBITANGENT")) != npos || semantic.find(u("texbitangent")) != npos) {
             return ProcessingFlags::Renormalize;
-        } /*else if (semantic.find(u("NORMAL")) || semantic.find(u("normal"))) {
+        } /*else if (semantic.find(u("NORMAL")) != npos || semantic.find(u("normal")) != npos) {
             return ProcessingFlags::Renormalize;
         }*/
         return 0;
@@ -302,13 +303,15 @@ namespace ColladaConversion
         return std::move(result);
     }
 
-    enum class PrimitiveTopology { Unknown, Triangles, TriangleStrips };
+    enum class PrimitiveTopology { Unknown, Triangles, TriangleStrips, PolyList, Polygons };
 
     std::pair<PrimitiveTopology, const utf8*> s_PrimitiveTopologyNames[] = 
     {
         std::make_pair(PrimitiveTopology::Unknown, u("unknown")),
         std::make_pair(PrimitiveTopology::Triangles, u("triangles")),
-        std::make_pair(PrimitiveTopology::TriangleStrips, u("tristrips"))
+        std::make_pair(PrimitiveTopology::TriangleStrips, u("tristrips")),
+        std::make_pair(PrimitiveTopology::PolyList, u("polylist")),
+        std::make_pair(PrimitiveTopology::Polygons, u("polygons"))
     };
 
     static PrimitiveTopology AsPrimitiveTopology(Section section)
@@ -524,6 +527,75 @@ namespace ColladaConversion
                         vertexTemp[e._mappedInput] = rawI[e._indexInPrimitive];
 
                     finalIndices[i] = (unsigned)composingUnified.BuildUnifiedVertex(AsPointer(vertexTemp.begin()));
+                }
+
+                WorkingDrawOperation drawCall;
+                drawCall._indexBuffer = std::move(finalIndices);
+                drawCall._materialBinding = Hash64(geoPrim.GetMaterialBinding()._start, geoPrim.GetMaterialBinding()._end);
+                drawCall._topology = RenderCore::Metal::Topology::TriangleList;
+                drawOperations.push_back(std::move(drawCall));
+
+            } else if (type == PrimitiveTopology::PolyList) {
+
+                    // We should have a single <vcount> element that contains the number of vertices
+                    // in each polygon. There should also be a single <p> element with the 
+                    // actual vertex indices.
+                    // Note that this is very similar to <polygons> (polygons requires one <p>
+                    // element per polygon, and also supports holes in polygons)
+
+                if (geoPrim.GetPrimitiveDataCount() != 1)
+                    Throw(FormatException("Expecting only a single <p> element", geoPrim.GetLocation()));
+
+                auto vcountSrc = geoPrim.GetVCountArray();
+                if (!(vcountSrc._end > vcountSrc._start))
+                    Throw(FormatException("Expecting a single <vcount> element", geoPrim.GetLocation()));
+
+                std::vector<unsigned> vcount(geoPrim.GetPrimitiveCount());
+                ParseXMLList(AsPointer(vcount.begin()), (unsigned)vcount.size(), vcountSrc);
+                std::vector<unsigned> finalIndices;
+                finalIndices.reserve(vcount.size()*6);
+                
+                auto pIterator = geoPrim.GetPrimitiveData(0);
+
+                    // we're going to convert each polygon into triangles using
+                    // primitive triangulation...
+
+                std::vector<unsigned> rawIndices(32 * workingPrim._primitiveStride);
+                std::vector<unsigned> unifiedVertexIndices(32);
+                std::vector<unsigned> windingRemap(32*2);
+                for (auto v : vcount) {
+                    auto indiciesToLoad = v * workingPrim._primitiveStride;
+                    if (rawIndices.size() < indiciesToLoad)
+                        rawIndices.resize(indiciesToLoad);
+
+                    if (windingRemap.size() < (v*2))
+                        windingRemap.resize(v*2);
+
+                    pIterator._start = ParseXMLList(AsPointer(rawIndices.begin()), indiciesToLoad, pIterator);
+
+                        // build "unified" vertices from the list of vertices provided here
+                    for (auto q=0u; q<v; ++q) {
+                        const auto* rawI = &rawIndices[q*workingPrim._primitiveStride];
+
+                        std::fill(vertexTemp.begin(), vertexTemp.end(), 0);
+                        for (const auto& e:workingPrim._inputs)
+                            vertexTemp[e._mappedInput] = rawI[e._indexInPrimitive];
+
+                        unifiedVertexIndices[q] = (unsigned)composingUnified.BuildUnifiedVertex(AsPointer(vertexTemp.begin()));
+                    }
+
+                    size_t triangleCount = CreateTriangleWindingFromPolygon(
+                        v, AsPointer(windingRemap.begin()), windingRemap.size());
+
+                        // Remap from arbitrary polygon order into triange list order
+                        // note that we aren't careful about how we divide a polygon
+                        // up into triangles! If the polygon vertices are not coplanear
+                        // then the way we triangulate it will affect the final shape.
+                        // Also, if the polygon is not convex, strange things could happen.
+                    for (auto q=0u; q<triangleCount*3; ++q) {
+                        assert(windingRemap[q] < v);
+                        finalIndices.push_back((unsigned)unifiedVertexIndices[windingRemap[q]]);
+                    }
                 }
 
                 WorkingDrawOperation drawCall;

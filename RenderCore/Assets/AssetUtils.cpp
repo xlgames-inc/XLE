@@ -85,8 +85,11 @@ namespace RenderCore { namespace Assets
                 break;
 
             case TransformStackCommand::TransformFloat4x4_Static:
-                PrintFormat(&outputStream, "%sTransformFloat4x4_Static\n");
-                i += 16;
+                {
+                    auto trans = *reinterpret_cast<const Float4x4*>(AsPointer(i));
+                    PrintFormat(&outputStream, "%sTransformFloat4x4_Static (diag: %f, %f, %f, %f)\n", indentBuffer, trans(0,0), trans(1,1), trans(2,2), trans(3,3));
+                    i += 16;
+                }
                 break;
 
             case TransformStackCommand::Translate_Static:

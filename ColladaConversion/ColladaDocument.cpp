@@ -919,7 +919,7 @@ namespace ColladaConversion
                     // primitive element, and the <input> sub elements
                 Formatter::InteriorSection cdata;
                 if (formatter.TryCharacterData(cdata)) {
-                    if (_primitiveDataCount < dimof(_inputs)) {
+                    if (_primitiveDataCount < dimof(_primitiveData)) {
                         _primitiveData[_primitiveDataCount] = cdata;
                     } else {
                         _primitiveDataOverflow.push_back(cdata);
