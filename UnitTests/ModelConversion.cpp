@@ -9,11 +9,13 @@
 #include "../RenderCore/Assets/ModelRunTime.h"
 #include "../RenderCore/Assets/ModelRunTimeInternal.h"
 #include "../RenderCore/Assets/Services.h"
+#include "../ColladaConversion/DLLInterface.h"
 #include "../Assets/IntermediateResources.h"
 #include "../Assets/Assets.h"
 #include "../ConsoleRig/Console.h"
 #include "../ConsoleRig/Log.h"
 #include "../ConsoleRig/GlobalServices.h"
+#include "../ConsoleRig/AttachableLibrary.h"
 #include "../Utility/SystemUtils.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/TimeUtils.h"
@@ -83,6 +85,44 @@ namespace UnitTests
 				}
 			}
 		}
+
+
+        TEST_METHOD(ColladaScaffold)
+		{
+            UnitTest_SetWorkingDirectory();
+            ConsoleRig::GlobalServices services(GetStartupConfig());
+
+            // Load all of the .dae files from a hierarchy of folders, look for errors
+            // and exceptions from the scaffold parsing. This is intended to be used with
+            // large test suites of .dae files (like the collada implementor's test kit)
+            auto inputFiles = FindFilesHierarchical("../../work/ColladaImplementors/StandardDataSets", "*.dae", FindFilesFilter::File);
+
+            {
+                #if defined(_DEBUG)
+                    ConsoleRig::AttachableLibrary lib("../Finals_Debug32/ColladaConversion.dll");
+                #else
+                    ConsoleRig::AttachableLibrary lib("../Finals_Profile32/ColladaConversion.dll");
+                #endif
+                lib.TryAttach();
+                auto createScaffold = lib.GetFunction<RenderCore::ColladaConversion::CreateColladaScaffoldFn*>(
+                    "?CreateColladaScaffold@ColladaConversion@RenderCore@@YA?AV?$shared_ptr@VColladaScaffold@ColladaConversion@RenderCore@@@std@@QBD@Z");
+                
+                std::vector<std::string> filesWithErrors;
+                for (const auto&f:inputFiles) {
+                    TRY
+                    {
+                        (*createScaffold)(f.c_str());
+                    }
+                    CATCH(...) {
+                        filesWithErrors.push_back(f);
+                    } CATCH_END
+                }
+
+                for (const auto&f:filesWithErrors)
+                    LogAlwaysError << "Failure in file: " << f << std::endl;
+            }
+            
+        }
 
 	};
 }

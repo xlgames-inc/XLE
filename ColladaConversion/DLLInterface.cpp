@@ -51,11 +51,9 @@ namespace RenderCore { namespace ColladaConversion
     static void DestroyModel(const void* model) { delete (ColladaScaffold*)model; }
     static void DestroyChunkArray(const void* chunkArray) { delete[] (const NascentChunk2*)chunkArray; }
 
-    CrossDLLPtr<ColladaScaffold> CreateColladaScaffold(const ::Assets::ResChar identifier[])
+    std::shared_ptr<ColladaScaffold> CreateColladaScaffold(const ::Assets::ResChar identifier[])
     {
-        CrossDLLPtr<ColladaScaffold> result(
-            new ColladaScaffold,
-            Internal::CrossDLLDeletor2(&DestroyModel));
+        std::shared_ptr<ColladaScaffold> result(new ColladaScaffold, &DestroyModel);
 
         result->_cfg = ImportConfiguration("colladaimport.cfg");
 
@@ -250,12 +248,9 @@ namespace RenderCore { namespace ColladaConversion
         Serialization::ChunkFile::ChunkHeader largeBlockChunk(
             RenderCore::Assets::ChunkType_ModelScaffoldLargeBlocks, 0, model._name.c_str(), (unsigned)largeResourcesBlock.size());
 
-        NascentChunkArray2 result(
-            std::unique_ptr<NascentChunk2[], Internal::CrossDLLDeletor2>(
-                new NascentChunk2[2], Internal::CrossDLLDeletor2(&DestroyChunkArray)),
-            2);        
-        result.first[0] = NascentChunk2(scaffoldChunk, std::vector<uint8>(block.get(), PtrAdd(block.get(), size)));
-        result.first[1] = NascentChunk2(largeBlockChunk, std::move(largeResourcesBlock));
+        NascentChunkArray2 result(new std::vector<NascentChunk2>, &DestroyChunkArray);
+        result->push_back(NascentChunk2(scaffoldChunk, std::vector<uint8>(block.get(), PtrAdd(block.get(), size))));
+        result->push_back(NascentChunk2(largeBlockChunk, std::move(largeResourcesBlock)));
 
         return std::move(result);
     }
@@ -300,11 +295,8 @@ namespace RenderCore { namespace ColladaConversion
             RenderCore::Assets::ChunkType_Skeleton, 0, 
             model._name.c_str(), unsigned(size));
 
-        NascentChunkArray2 result(
-            std::unique_ptr<NascentChunk2[], Internal::CrossDLLDeletor2>(
-                new NascentChunk2[1], Internal::CrossDLLDeletor2(&DestroyChunkArray)),
-            1);
-        result.first[0] = NascentChunk2(scaffoldChunk, std::vector<uint8>(block.get(), PtrAdd(block.get(), size)));
+        NascentChunkArray2 result(new std::vector<NascentChunk2>, &DestroyChunkArray);
+        result->push_back(NascentChunk2(scaffoldChunk, std::vector<uint8>(block.get(), PtrAdd(block.get(), size))));
         return std::move(result);
     }
 
@@ -374,13 +366,10 @@ namespace RenderCore { namespace ColladaConversion
             RenderCore::Assets::ChunkType_RawMat, 0, 
             model._name.c_str(), Serialization::ChunkFile::SizeType(finalSize));
 
-        NascentChunkArray2 result(
-            std::unique_ptr<NascentChunk2[], Internal::CrossDLLDeletor2>(
-                new NascentChunk2[1], Internal::CrossDLLDeletor2(&DestroyChunkArray)),
-            1);
-        result.first[0] = NascentChunk2(
+        NascentChunkArray2 result(new std::vector<NascentChunk2>(), &DestroyChunkArray);
+        result->push_back(NascentChunk2(
             scaffoldChunk, 
-            std::vector<uint8>(strm.GetBuffer().Begin(), strm.GetBuffer().End()));
+            std::vector<uint8>(strm.GetBuffer().Begin(), strm.GetBuffer().End())));
         return std::move(result);
     }
 
@@ -428,11 +417,11 @@ namespace RenderCore { namespace ColladaConversion
 
     static void DestroyWorkingAnimSet(const void* model) { delete (WorkingAnimationSet*)model; }
 
-    CrossDLLPtr<WorkingAnimationSet> CreateAnimationSet(const char name[])
+    std::shared_ptr<WorkingAnimationSet> CreateAnimationSet(const char name[])
     {
-        return CrossDLLPtr<WorkingAnimationSet>(
+        return std::shared_ptr<WorkingAnimationSet>(
             new WorkingAnimationSet(name),
-            Internal::CrossDLLDeletor2(&DestroyWorkingAnimSet));
+            &DestroyWorkingAnimSet);
     }
 
     NascentChunkArray2 SerializeAnimationSet2(const WorkingAnimationSet& animSet)
@@ -451,11 +440,8 @@ namespace RenderCore { namespace ColladaConversion
         Serialization::ChunkFile::ChunkHeader scaffoldChunk(
             RenderCore::Assets::ChunkType_AnimationSet, 0, animSet._name.c_str(), unsigned(size));
 
-        NascentChunkArray2 result(
-            std::unique_ptr<NascentChunk2[], Internal::CrossDLLDeletor2>(
-                new NascentChunk2[1], Internal::CrossDLLDeletor2(&DestroyChunkArray)),
-            1);
-        result.first[0] = NascentChunk2(scaffoldChunk, std::vector<uint8>(block.get(), PtrAdd(block.get(), size)));
+        NascentChunkArray2 result(new std::vector<NascentChunk2>(), &DestroyChunkArray);
+        result->push_back(NascentChunk2(scaffoldChunk, std::vector<uint8>(block.get(), PtrAdd(block.get(), size))));
         return std::move(result);
     }
 

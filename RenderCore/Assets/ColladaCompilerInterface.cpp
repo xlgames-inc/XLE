@@ -144,22 +144,22 @@ namespace RenderCore { namespace Assets
         header._fileVersionNumber = 0;
         XlCopyString(header._buildVersion, dimof(header._buildVersion), versionInfo._versionString);
         XlCopyString(header._buildDate, dimof(header._buildDate), versionInfo._buildDateString);
-        header._chunkCount = chunks.second;
+        header._chunkCount = (unsigned)chunks->size();
             
         BasicFile outputFile(destinationFilename, "wb");
         outputFile.Write(&header, sizeof(header), 1);
 
-        unsigned trackingOffset = unsigned(outputFile.TellP() + sizeof(ChunkHeader) * chunks.second);
-        for (unsigned i=0; i<chunks.second; ++i) {
-            auto& c = chunks.first[i];
+        unsigned trackingOffset = unsigned(outputFile.TellP() + sizeof(ChunkHeader) * chunks->size());
+        for (unsigned i=0; i<(unsigned)chunks->size(); ++i) {
+            auto& c = (*chunks)[i];
             auto hdr = c._hdr;
             hdr._fileOffset = trackingOffset;
             outputFile.Write(&hdr, sizeof(c._hdr), 1);
             trackingOffset += hdr._size;
         }
 
-        for (unsigned i=0; i<chunks.second; ++i) {
-            auto& c = chunks.first[i];
+        for (unsigned i=0; i<(unsigned)chunks->size(); ++i) {
+            auto& c = (*chunks)[i];
             outputFile.Write(AsPointer(c._data.begin()), c._data.size(), 1);
         }
     }
@@ -188,8 +188,8 @@ namespace RenderCore { namespace Assets
         auto chunks = fn(model);
 
         BasicFile outputFile(destinationFilename, "wb");
-        for (unsigned i=0; i<chunks.second; ++i) {
-            auto& c = chunks.first[i];
+        for (unsigned i=0; i<chunks->size(); ++i) {
+            auto& c = (*chunks)[i];
             outputFile.Write(AsPointer(c._data.begin()), c._data.size(), 1);
         }
     }
@@ -454,13 +454,25 @@ namespace RenderCore { namespace Assets
                     //      ... we could consider a better method for doing this... Maybe the DLL should just
                     //          export a single method, and just query function addresses with some fixed guids...? 
                 #if !TARGET_64BIT
+
                     const char CreateModelName[]                = "?CreateModel@ColladaConversion@RenderCore@@YA?AV?$unique_ptr@VNascentModel@ColladaConversion@RenderCore@@VCrossDLLDeletor@Internal@23@@std@@QBD@Z";
                     const char ModelSerializeSkinName[]         = "?SerializeSkin@NascentModel@ColladaConversion@RenderCore@@QBE?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk@ColladaConversion@RenderCore@@VCrossDLLDeletor@Internal@23@@std@@I@std@@XZ";
                     const char ModelSerializeAnimationName[]    = "?SerializeAnimationSet@NascentModel@ColladaConversion@RenderCore@@QBE?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk@ColladaConversion@RenderCore@@VCrossDLLDeletor@Internal@23@@std@@I@std@@XZ";
                     const char ModelSerializeSkeletonName[]     = "?SerializeSkeleton@NascentModel@ColladaConversion@RenderCore@@QBE?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk@ColladaConversion@RenderCore@@VCrossDLLDeletor@Internal@23@@std@@I@std@@XZ";
                     const char ModelSerializeMaterialsName[]    = "?SerializeMaterials@NascentModel@ColladaConversion@RenderCore@@QBE?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk@ColladaConversion@RenderCore@@VCrossDLLDeletor@Internal@23@@std@@I@std@@XZ";
                     const char ModelMergeAnimationDataName[]    = "?MergeAnimationData@NascentModel@ColladaConversion@RenderCore@@QAEXABV123@QBD@Z";
+
+                    const char CreateModel2Name[]                = "?CreateColladaScaffold@ColladaConversion@RenderCore@@YA?AV?$shared_ptr@VColladaScaffold@ColladaConversion@RenderCore@@@std@@QBD@Z";
+                    const char Model2SerializeSkinName[]         = "?SerializeSkin2@ColladaConversion@RenderCore@@YA?AV?$shared_ptr@V?$vector@VNascentChunk2@ColladaConversion@RenderCore@@V?$allocator@VNascentChunk2@ColladaConversion@RenderCore@@@std@@@std@@@std@@ABVColladaScaffold@12@@Z";
+                    const char Model2SerializeSkeletonName[]     = "?SerializeSkeleton2@ColladaConversion@RenderCore@@YA?AV?$shared_ptr@V?$vector@VNascentChunk2@ColladaConversion@RenderCore@@V?$allocator@VNascentChunk2@ColladaConversion@RenderCore@@@std@@@std@@@std@@ABVColladaScaffold@12@@Z";
+                    const char Model2SerializeMaterialsName[]    = "?SerializeMaterials2@ColladaConversion@RenderCore@@YA?AV?$shared_ptr@V?$vector@VNascentChunk2@ColladaConversion@RenderCore@@V?$allocator@VNascentChunk2@ColladaConversion@RenderCore@@@std@@@std@@@std@@ABVColladaScaffold@12@@Z";
+
+                    const char CreateAnimationSetName[]          = "?SerializeAnimationSet2@ColladaConversion@RenderCore@@YA?AV?$shared_ptr@V?$vector@VNascentChunk2@ColladaConversion@RenderCore@@V?$allocator@VNascentChunk2@ColladaConversion@RenderCore@@@std@@@std@@@std@@ABVWorkingAnimationSet@12@@Z";
+                    const char ExtractAnimationsName[]           = "?ExtractAnimations@ColladaConversion@RenderCore@@YAXAAVWorkingAnimationSet@12@ABVColladaScaffold@12@QBD@Z";
+                    const char SerializeAnimationSetName[]       = "?SerializeAnimationSet2@ColladaConversion@RenderCore@@YA?AV?$shared_ptr@V?$vector@VNascentChunk2@ColladaConversion@RenderCore@@V?$allocator@VNascentChunk2@ColladaConversion@RenderCore@@@std@@@std@@@std@@ABVWorkingAnimationSet@12@@Z";
+
                 #else
+
                     const char CreateModelName[]                = "?CreateModel@ColladaConversion@RenderCore@@YA?AV?$unique_ptr@VNascentModel@ColladaConversion@RenderCore@@VCrossDLLDeletor@Internal@23@@std@@QEBD@Z";
                     const char ModelSerializeSkinName[]         = "?SerializeSkin@NascentModel@ColladaConversion@RenderCore@@QEBA?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk@ColladaConversion@RenderCore@@VCrossDLLDeletor@Internal@23@@std@@I@std@@XZ";
                     const char ModelSerializeAnimationName[]    = "?SerializeAnimationSet@NascentModel@ColladaConversion@RenderCore@@QEBA?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk@ColladaConversion@RenderCore@@VCrossDLLDeletor@Internal@23@@std@@I@std@@XZ";
@@ -468,14 +480,14 @@ namespace RenderCore { namespace Assets
                     const char ModelSerializeMaterialsName[]    = "?SerializeMaterials@NascentModel@ColladaConversion@RenderCore@@QEBA?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk@ColladaConversion@RenderCore@@VCrossDLLDeletor@Internal@23@@std@@I@std@@XZ";
                     const char ModelMergeAnimationDataName[]    = "?MergeAnimationData@NascentModel@ColladaConversion@RenderCore@@QEAAXAEBV123@QEBD@Z";
 
-                    const char CreateModel2Name[]                = "?CreateColladaScaffold@ColladaConversion@RenderCore@@YA?AV?$unique_ptr@VColladaScaffold@ColladaConversion@RenderCore@@VCrossDLLDeletor2@Internal@23@@std@@QEBD@Z";
-                    const char Model2SerializeSkinName[]         = "?SerializeSkin2@ColladaConversion@RenderCore@@YA?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk2@ColladaConversion@RenderCore@@VCrossDLLDeletor2@Internal@23@@std@@I@std@@AEBVColladaScaffold@12@@Z";
-                    const char Model2SerializeSkeletonName[]     = "?SerializeSkeleton2@ColladaConversion@RenderCore@@YA?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk2@ColladaConversion@RenderCore@@VCrossDLLDeletor2@Internal@23@@std@@I@std@@AEBVColladaScaffold@12@@Z";
-                    const char Model2SerializeMaterialsName[]    = "?SerializeMaterials2@ColladaConversion@RenderCore@@YA?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk2@ColladaConversion@RenderCore@@VCrossDLLDeletor2@Internal@23@@std@@I@std@@AEBVColladaScaffold@12@@Z";
+                    const char CreateModel2Name[]                = "?CreateColladaScaffold@ColladaConversion@RenderCore@@YA?AV?$shared_ptr@VColladaScaffold@ColladaConversion@RenderCore@@@std@@QEBD@Z";
+                    const char Model2SerializeSkinName[]         = "?SerializeSkin2@ColladaConversion@RenderCore@@YA?AV?$shared_ptr@V?$vector@VNascentChunk2@ColladaConversion@RenderCore@@V?$allocator@VNascentChunk2@ColladaConversion@RenderCore@@@std@@@std@@@std@@AEBVColladaScaffold@12@@Z";
+                    const char Model2SerializeSkeletonName[]     = "?SerializeSkeleton2@ColladaConversion@RenderCore@@YA?AV?$shared_ptr@V?$vector@VNascentChunk2@ColladaConversion@RenderCore@@V?$allocator@VNascentChunk2@ColladaConversion@RenderCore@@@std@@@std@@@std@@AEBVColladaScaffold@12@@Z";
+                    const char Model2SerializeMaterialsName[]    = "?SerializeMaterials2@ColladaConversion@RenderCore@@YA?AV?$shared_ptr@V?$vector@VNascentChunk2@ColladaConversion@RenderCore@@V?$allocator@VNascentChunk2@ColladaConversion@RenderCore@@@std@@@std@@@std@@AEBVColladaScaffold@12@@Z";
 
-                    const char CreateAnimationSetName[]          = "?CreateAnimationSet@ColladaConversion@RenderCore@@YA?AV?$unique_ptr@VWorkingAnimationSet@ColladaConversion@RenderCore@@VCrossDLLDeletor2@Internal@23@@std@@QEBD@Z";
+                    const char CreateAnimationSetName[]          = "?SerializeAnimationSet2@ColladaConversion@RenderCore@@YA?AV?$shared_ptr@V?$vector@VNascentChunk2@ColladaConversion@RenderCore@@V?$allocator@VNascentChunk2@ColladaConversion@RenderCore@@@std@@@std@@@std@@AEBVWorkingAnimationSet@12@@Z";
                     const char ExtractAnimationsName[]           = "?ExtractAnimations@ColladaConversion@RenderCore@@YAXAEAVWorkingAnimationSet@12@AEBVColladaScaffold@12@QEBD@Z";
-                    const char SerializeAnimationSetName[]       = "?SerializeAnimationSet2@ColladaConversion@RenderCore@@YA?AU?$pair@V?$unique_ptr@$$BY0A@VNascentChunk2@ColladaConversion@RenderCore@@VCrossDLLDeletor2@Internal@23@@std@@I@std@@AEBVWorkingAnimationSet@12@@Z";
+                    const char SerializeAnimationSetName[]       = "?SerializeAnimationSet2@ColladaConversion@RenderCore@@YA?AV?$shared_ptr@V?$vector@VNascentChunk2@ColladaConversion@RenderCore@@V?$allocator@VNascentChunk2@ColladaConversion@RenderCore@@@std@@@std@@@std@@AEBVWorkingAnimationSet@12@@Z";
                     
                 #endif
                 

@@ -458,6 +458,12 @@ namespace ColladaConversion
             } else if (Is(eleName, u("asset")) || Is(eleName, u("annotate")) || Is(eleName, u("pass"))) {
                 LogWarning << "Skipping element " << eleName << " at " << formatter.GetLocation();
                 formatter.SkipElement();
+            } else if (Is(eleName, u("newparam"))) {
+                    // the Collada 1.5 docs don't mention <newparam> inside of <technique>. But some of the
+                    // files in the Collada test kit have it. We must skip it, so that it's not interpreted
+                    // as a shader type
+                LogWarning << "<newparam> is not supported within <technique>. Ignoring.";
+                formatter.SkipElement();
             } else {
                 // Any other elements are seen as a shader definition
                 // There should be exactly 1.

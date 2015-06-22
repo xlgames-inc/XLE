@@ -100,6 +100,8 @@ namespace Utility
         typedef unsigned BitField;
     }
     XL_UTILITY_API std::vector<std::string> FindFiles(const std::string& searchPath, FindFilesFilter::BitField filter = FindFilesFilter::All);
+    XL_UTILITY_API std::vector<std::string> FindFilesHierarchical(const std::string& rootDirectory, const std::string& filePattern, FindFilesFilter::BitField filter = FindFilesFilter::All);
+
 
     namespace Exceptions
     {
