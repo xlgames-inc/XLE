@@ -17,16 +17,36 @@
 
 namespace Assets { class DependencyValidation; }
 
+namespace Utility
+{
+    template<typename Type> class DocElementHelper;
+    template<typename Type> class InputStreamFormatter;
+}
+
 namespace RenderCore { namespace ColladaConversion
 {
-    class ImportConfiguration
+    class BindingConfig
     {
     public:
         using String = std::basic_string<utf8>;
-        String AsNativeBinding(const utf8* inputStart, const utf8* inputEnd) const;
-        bool IsBindingSuppressed(const utf8* inputStart, const utf8* inputEnd) const;
-        String AsNativeVertexSemantic(const utf8* inputStart, const utf8* inputEnd) const;
-        bool IsVertexSemanticSuppressed(const utf8* inputStart, const utf8* inputEnd) const;
+        
+        String AsNative(const utf8* inputStart, const utf8* inputEnd) const;
+        bool IsSuppressed(const utf8* inputStart, const utf8* inputEnd) const;
+
+        BindingConfig(const DocElementHelper<InputStreamFormatter<utf8>>& source);
+        BindingConfig();
+        ~BindingConfig();
+    private:
+        std::vector<std::pair<String, String>> _exportNameToBinding;
+        std::vector<String> _bindingSuppressed;
+    };
+
+    class ImportConfiguration
+    {
+    public:
+        const BindingConfig& GetResourceBindings() const { return _resourceBindings; }
+        const BindingConfig& GetConstantBindings() const { return _constantsBindings; }
+        const BindingConfig& GetVertexSemanticBindings() const { return _vertexSemanticBindings; }
 
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _depVal; }
 
@@ -34,11 +54,9 @@ namespace RenderCore { namespace ColladaConversion
         ImportConfiguration();
         ~ImportConfiguration();
     private:
-        std::vector<std::pair<String, String>> _exportNameToBinding;
-        std::vector<String> _bindingSuppressed;
-
-        std::vector<std::pair<String, String>> _vertexSemanticRename;
-        std::vector<String> _vertexSemanticSuppressed;
+        BindingConfig _resourceBindings;
+        BindingConfig _constantsBindings;
+        BindingConfig _vertexSemanticBindings;
 
         std::shared_ptr<::Assets::DependencyValidation> _depVal;
     };

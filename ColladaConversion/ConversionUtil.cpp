@@ -33,45 +33,9 @@ namespace RenderCore { namespace ColladaConversion
                 MemoryMappedInputStream(sourceFile.get(), PtrAdd(sourceFile.get(), fileSize)));
             Document<InputStreamFormatter<utf8>> doc(formatter);
 
-            {
-                auto bindingRenames = doc.Element(u("BindingRenames"));
-                if (bindingRenames) {
-                    auto child = bindingRenames.FirstAttribute();
-                    for (; child; child = child.Next())
-                        if (child)
-                            _exportNameToBinding.push_back(
-                                std::make_pair(child.Name(), child.Value()));
-                }
-            }
-
-            {
-                auto bindingSuppress = doc.Element(u("BindingSuppress"));
-                if (bindingSuppress) {
-                    auto child = bindingSuppress.FirstAttribute();
-                    for (; child; child = child.Next())
-                        _bindingSuppressed.push_back(child.Name());
-                }
-            }
-
-            {
-                auto bindingRenames = doc.Element(u("VertexSemanticRename"));
-                if (bindingRenames) {
-                    auto child = bindingRenames.FirstAttribute();
-                    for (; child; child = child.Next())
-                        if (child)
-                            _vertexSemanticRename.push_back(
-                                std::make_pair(child.Name(), child.Value()));
-                }
-            }
-
-            {
-                auto bindingSuppress = doc.Element(u("VertexSemanticSuppress"));
-                if (bindingSuppress) {
-                    auto child = bindingSuppress.FirstAttribute();
-                    for (; child; child = child.Next())
-                        _vertexSemanticSuppressed.push_back(child.Name());
-                }
-            }
+            _resourceBindings = BindingConfig(doc.Element(u("Resources")));
+            _constantsBindings = BindingConfig(doc.Element(u("Constants")));
+            _vertexSemanticBindings = BindingConfig(doc.Element(u("VertexSemantics")));
 
         } CATCH(...) {
             LogWarning << "Problem while loading configuration file (" << filename << "). Using defaults.";
@@ -84,7 +48,29 @@ namespace RenderCore { namespace ColladaConversion
     ImportConfiguration::~ImportConfiguration()
     {}
 
-    std::basic_string<utf8> ImportConfiguration::AsNativeBinding(const utf8* inputStart, const utf8* inputEnd) const
+    BindingConfig::BindingConfig(const DocElementHelper<InputStreamFormatter<utf8>>& source)
+    {
+        auto bindingRenames = source.Element(u("Rename"));
+        if (bindingRenames) {
+            auto child = bindingRenames.FirstAttribute();
+            for (; child; child = child.Next())
+                if (child)
+                    _exportNameToBinding.push_back(
+                        std::make_pair(child.Name(), child.Value()));
+        }
+
+        auto bindingSuppress = source.Element(u("Suppress"));
+        if (bindingSuppress) {
+            auto child = bindingSuppress.FirstAttribute();
+            for (; child; child = child.Next())
+                _bindingSuppressed.push_back(child.Name());
+        }
+    }
+
+    BindingConfig::BindingConfig() {}
+    BindingConfig::~BindingConfig() {}
+
+    std::basic_string<utf8> BindingConfig::AsNative(const utf8* inputStart, const utf8* inputEnd) const
     {
             //  we need to define a mapping between the names used by the max exporter
             //  and the native XLE shader names. The meaning might not match perfectly
@@ -102,7 +88,7 @@ namespace RenderCore { namespace ColladaConversion
         return std::basic_string<utf8>(inputStart, inputEnd);
     }
 
-    bool ImportConfiguration::IsBindingSuppressed(const utf8* inputStart, const utf8* inputEnd) const
+    bool BindingConfig::IsSuppressed(const utf8* inputStart, const utf8* inputEnd) const
     {
         auto i = std::find_if(
             _bindingSuppressed.cbegin(), _bindingSuppressed.cend(),
@@ -113,37 +99,6 @@ namespace RenderCore { namespace ColladaConversion
             });
 
         return (i != _bindingSuppressed.cend());
-    }
-
-    std::basic_string<utf8> ImportConfiguration::AsNativeVertexSemantic(const utf8* inputStart, const utf8* inputEnd) const
-    {
-            //  we need to define a mapping between the names used by the max exporter
-            //  and the native XLE shader names. The meaning might not match perfectly
-            //  but let's try to get as close as possible
-        auto i = std::find_if(
-            _vertexSemanticRename.cbegin(), _vertexSemanticRename.cend(),
-            [=](const std::pair<String, String>& e) 
-            {
-                return  ptrdiff_t(e.first.size()) == (inputEnd - inputStart)
-                    &&  std::equal(e.first.cbegin(), e.first.cend(), inputStart);
-            });
-
-        if (i != _vertexSemanticRename.cend()) 
-            return i->second;
-        return std::basic_string<utf8>(inputStart, inputEnd);
-    }
-
-    bool ImportConfiguration::IsVertexSemanticSuppressed(const utf8* inputStart, const utf8* inputEnd) const
-    {
-        auto i = std::find_if(
-            _vertexSemanticSuppressed.cbegin(), _vertexSemanticSuppressed.cend(),
-            [=](const String& e) 
-            {
-                return  ptrdiff_t(e.size()) == (inputEnd - inputStart)
-                    &&  std::equal(e.cbegin(), e.cend(), inputStart);
-            });
-
-        return (i != _vertexSemanticSuppressed.cend());
     }
 
 

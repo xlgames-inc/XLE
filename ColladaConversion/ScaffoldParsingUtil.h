@@ -44,24 +44,45 @@ namespace ColladaConversion
     template<typename CharType> const CharType* FastParseElement(float& dst, const CharType* start, const CharType* end);
 
     template<typename Type>
-        auto ParseXMLList(Type dest[], unsigned destCount, XmlInputStreamFormatter<utf8>::InteriorSection section) 
+        auto ParseXMLList(Type dest[], unsigned destCount, XmlInputStreamFormatter<utf8>::InteriorSection section, unsigned* outEleCount = nullptr) 
             -> decltype(XmlInputStreamFormatter<utf8>::InteriorSection::_start)
     {
         assert(destCount > 0);
 
-        // in xml, lists are deliminated by white space
+        // in xml, lists are deliminated by white space.
         unsigned elementCount = 0;
         auto* eleStart = section._start;
-        for (;;) {
+        while (elementCount < destCount) {
             while (eleStart < section._end && IsWhitespace(*eleStart)) ++eleStart;
 
             auto* eleEnd = FastParseElement(dest[elementCount], eleStart, section._end);
-
-            if (eleStart == eleEnd) return eleEnd;
+            if (eleStart == eleEnd) {
+                if (outEleCount) *outEleCount = elementCount;
+                return eleEnd;
+            }
             ++elementCount;
-            if (elementCount >= destCount) return eleEnd;
             eleStart = eleEnd;
         }
+
+        // skip forward over any trailing whitespace (which should bring us right to the end if the array ends in whitespace)
+        while (eleStart < section._end && IsWhitespace(*eleStart)) ++eleStart;
+
+        if (outEleCount) {
+            // while there are remaining elements, we must count them...
+            // we will return the correct number of elements, even if they don't
+            // all fit in the destination array
+            auto countingIterator = eleStart;
+            Type temp;
+            while (elementCount < destCount) {
+                while (countingIterator < section._end && IsWhitespace(*countingIterator)) ++countingIterator;
+                auto* eleEnd = FastParseElement(temp, countingIterator, section._end);
+                if (countingIterator == eleEnd) break;
+                ++elementCount;
+                countingIterator = eleEnd;
+            }
+            *outEleCount = elementCount;
+        }
+        return eleStart;
     }
 
     template<typename Section>

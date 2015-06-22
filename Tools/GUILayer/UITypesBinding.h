@@ -100,6 +100,7 @@ namespace GUILayer
                 auto nativeName = clix::marshalString<clix::E_UTF8>(value);
                 char directory[MaxPath];
                 XlGetCurrentDirectory(dimof(directory), directory);
+                XlCatString(directory, dimof(directory), "/");
                 XlMakeRelPath(directory, dimof(directory), directory, nativeName.c_str());
                 _object->_modelName = directory;
 

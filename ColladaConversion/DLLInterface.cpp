@@ -109,6 +109,7 @@ namespace RenderCore { namespace ColladaConversion
         }
 
         for (unsigned c=0; c<scene->GetInstanceControllerCount(); ++c) {
+            bool skinSuccessful = false;
             TRY {
                 _cmdStream.Add(
                     RenderCore::ColladaConversion::InstantiateController(
@@ -116,8 +117,27 @@ namespace RenderCore { namespace ColladaConversion
                         scene->GetInstanceController_Attach(c),
                         input._resolveContext, _geoObjects, jointRefs,
                         input._cfg));
+                skinSuccessful = true;
             } CATCH(...) {
             } CATCH_END
+
+            if (!skinSuccessful) {
+                    // if we failed to instantiate this object as a skinned controller,
+                    // we can try to fall back to a static geometry object. This fallback
+                    // can be required for some controller objects that use rigid animation
+                    //  -- they can have a skin controller with no joints (meaning at the 
+                    //      only transform that can affect them is the parent node -- or maybe the skeleton root?)
+                LogWarning << "Could not instantiate controller as a skinned object. Falling back to rigid object." << std::endl;
+                TRY {
+                    _cmdStream.Add(
+                        RenderCore::ColladaConversion::InstantiateGeometry(
+                            scene->GetInstanceController(c),
+                            scene->GetInstanceController_Attach(c),
+                            input._resolveContext, _geoObjects, jointRefs,
+                            input._cfg));
+                } CATCH(...) {
+                } CATCH_END
+            }
         }
 
         using namespace RenderCore::ColladaConversion;

@@ -168,9 +168,9 @@ namespace ColladaConversion
         {
             std::basic_string<utf8> semanticStr;
             if (_cfg) {
-                if (_cfg->IsVertexSemanticSuppressed(semantic._start, semantic._end))
+                if (_cfg->GetVertexSemanticBindings().IsSuppressed(semantic._start, semantic._end))
                     return ~size_t(0);
-                semanticStr = _cfg->AsNativeVertexSemantic(semantic._start, semantic._end);
+                semanticStr = _cfg->GetVertexSemanticBindings().AsNative(semantic._start, semantic._end);
             } else {
                 semanticStr = std::basic_string<utf8>(semantic._start, semantic._end);
             }
@@ -198,22 +198,24 @@ namespace ColladaConversion
 
         void FixBadSemanticIndicies()
         {
-            // there seems to be a problem in the max exporter whereby tangents and
-            // bitangents are assigned to the incorrect semantic index. We should
-            // shift them down to rational values, as a work-around for this wierdness!
-            unsigned minTangentIndex = ~0u, minBitangentIndex = ~0u;
-            for (size_t c=0; c<_finalVertexElements.size(); ++c) {
-                if (_finalVertexElements[c]._semantic == u("TEXTANGENT"))
-                    minTangentIndex = std::min(minTangentIndex, _finalVertexElements[c]._semanticIndex);
-                if (_finalVertexElements[c]._semantic == u("TEXBITANGENT"))
-                    minBitangentIndex = std::min(minBitangentIndex, _finalVertexElements[c]._semanticIndex);
-            }
+            // There seems to be a problem in the max exporter whereby some vertex inputs
+            // are assigned to the incorrect semantic index. They appear to be starting from
+            // "1" (instead of "0"). DirectX defaults to starting from 0 -- so we have to 
+            // shift the indices down to adjust for this!
 
-            for (size_t c=0; c<_finalVertexElements.size(); ++c) {
-                if (_finalVertexElements[c]._semantic == u("TEXTANGENT"))
-                    _finalVertexElements[c]._semanticIndex -= minTangentIndex;
-                if (_finalVertexElements[c]._semantic == u("TEXBITANGENT"))
-                    _finalVertexElements[c]._semanticIndex -= minBitangentIndex;
+            std::set<std::basic_string<utf8>> semanticNames;
+            for (const auto&i:_finalVertexElements)
+                semanticNames.insert(i._semantic);
+
+            for (const auto&s:semanticNames) {
+                unsigned minIndex = ~0u;
+                for (size_t c=0; c<_finalVertexElements.size(); ++c)
+                    if (_finalVertexElements[c]._semantic == s)
+                        minIndex = std::min(minIndex, _finalVertexElements[c]._semanticIndex);
+
+                for (size_t c=0; c<_finalVertexElements.size(); ++c)
+                    if (_finalVertexElements[c]._semantic == s)
+                        _finalVertexElements[c]._semanticIndex -= minIndex;
             }
         }
 
@@ -345,6 +347,197 @@ namespace ColladaConversion
         WorkingDrawOperation& operator=(const WorkingDrawOperation&) = delete;
     };
 
+    class WorkingPrimitive
+    {
+    public:
+        class EleRef
+        {
+        public:
+            size_t _mappedInput;
+            unsigned _indexInPrimitive;
+        };
+        std::vector<EleRef> _inputs;
+        unsigned _primitiveStride;
+
+        std::vector<unsigned> _unifiedVertices;
+    };
+
+    static WorkingDrawOperation LoadTriangles(
+        const GeometryPrimitives& geoPrim,
+        const WorkingPrimitive& workingPrim,
+        std::vector<size_t>& vertexTemp,
+        ComposingUnifiedVertices& composingUnified)
+    {
+        if (geoPrim.GetPrimitiveDataCount() != 1)
+            Throw(FormatException("Expecting only a single <p> element", geoPrim.GetLocation()));
+
+            // Simpliest arrangement. We should have a single <p> element with
+            // just a single of indices. Parse in those value, and we will use
+            // them to generate unified vertices.
+
+        auto indexCount = geoPrim.GetPrimitiveCount() * 3;
+        auto valueCount = indexCount * workingPrim._primitiveStride;
+        auto rawIndices = std::make_unique<unsigned[]>(valueCount);
+        ParseXMLList(AsPointer(rawIndices.get()), valueCount, geoPrim.GetPrimitiveData(0));
+
+        std::vector<unsigned> finalIndices(indexCount);
+        for (size_t i=0; i<indexCount; ++i) {
+                // note that when an element is not specified, it ends up with zero
+            const auto* rawI = &rawIndices[i*workingPrim._primitiveStride];
+            for (const auto& e:workingPrim._inputs)
+                vertexTemp[e._mappedInput] = rawI[e._indexInPrimitive];
+
+            finalIndices[i] = (unsigned)composingUnified.BuildUnifiedVertex(AsPointer(vertexTemp.begin()));
+        }
+
+        WorkingDrawOperation drawCall;
+        drawCall._indexBuffer = std::move(finalIndices);
+        drawCall._materialBinding = Hash64(geoPrim.GetMaterialBinding()._start, geoPrim.GetMaterialBinding()._end);
+        drawCall._topology = RenderCore::Metal::Topology::TriangleList;
+        return std::move(drawCall);
+    }
+
+    static WorkingDrawOperation LoadPolyList(
+        const GeometryPrimitives& geoPrim,
+        const WorkingPrimitive& workingPrim,
+        std::vector<size_t>& vertexTemp,
+        ComposingUnifiedVertices& composingUnified)
+    {
+            // We should have a single <vcount> element that contains the number of vertices
+            // in each polygon. There should also be a single <p> element with the 
+            // actual vertex indices.
+            // Note that this is very similar to <polygons> (polygons requires one <p>
+            // element per polygon, and also supports holes in polygons)
+
+        if (geoPrim.GetPrimitiveDataCount() != 1)
+            Throw(FormatException("Expecting only a single <p> element", geoPrim.GetLocation()));
+
+        auto vcountSrc = geoPrim.GetVCountArray();
+        if (!(vcountSrc._end > vcountSrc._start))
+            Throw(FormatException("Expecting a single <vcount> element", geoPrim.GetLocation()));
+
+        std::vector<unsigned> vcount(geoPrim.GetPrimitiveCount());
+        ParseXMLList(AsPointer(vcount.begin()), (unsigned)vcount.size(), vcountSrc);
+        std::vector<unsigned> finalIndices;
+        finalIndices.reserve(vcount.size()*6);
+                
+        auto pIterator = geoPrim.GetPrimitiveData(0);
+
+            // we're going to convert each polygon into triangles using
+            // primitive triangulation...
+
+        std::vector<unsigned> rawIndices(32 * workingPrim._primitiveStride);
+        std::vector<unsigned> unifiedVertexIndices(32);
+        std::vector<unsigned> windingRemap(32*2);
+        for (auto v : vcount) {
+            auto indiciesToLoad = v * workingPrim._primitiveStride;
+
+            if (rawIndices.size() < indiciesToLoad) rawIndices.resize(indiciesToLoad);
+            if (windingRemap.size() < (v*3))        windingRemap.resize(v*3);
+            if (unifiedVertexIndices.size() < v)    unifiedVertexIndices.resize(v);
+
+            pIterator._start = ParseXMLList(AsPointer(rawIndices.begin()), indiciesToLoad, pIterator);
+
+                // build "unified" vertices from the list of vertices provided here
+            for (auto q=0u; q<v; ++q) {
+                const auto* rawI = &rawIndices[q*workingPrim._primitiveStride];
+                for (const auto& e:workingPrim._inputs)
+                    vertexTemp[e._mappedInput] = rawI[e._indexInPrimitive];
+
+                unifiedVertexIndices[q] = (unsigned)composingUnified.BuildUnifiedVertex(AsPointer(vertexTemp.begin()));
+            }
+
+            size_t triangleCount = CreateTriangleWindingFromPolygon(
+                v, AsPointer(windingRemap.begin()), windingRemap.size());
+            assert((triangleCount*3) <= windingRemap.size());
+
+                // Remap from arbitrary polygon order into triange list order
+                // note that we aren't careful about how we divide a polygon
+                // up into triangles! If the polygon vertices are not coplanear
+                // then the way we triangulate it will affect the final shape.
+                // Also, if the polygon is not convex, strange things could happen.
+            for (auto q=0u; q<triangleCount*3; ++q) {
+                assert(windingRemap[q] < v);
+                finalIndices.push_back((unsigned)unifiedVertexIndices[windingRemap[q]]);
+            }
+        }
+
+        WorkingDrawOperation drawCall;
+        drawCall._indexBuffer = std::move(finalIndices);
+        drawCall._materialBinding = Hash64(geoPrim.GetMaterialBinding()._start, geoPrim.GetMaterialBinding()._end);
+        drawCall._topology = RenderCore::Metal::Topology::TriangleList;
+        return std::move(drawCall);
+    }
+
+    static WorkingDrawOperation LoadPolygons(
+        const GeometryPrimitives& geoPrim,
+        const WorkingPrimitive& workingPrim,
+        std::vector<size_t>& vertexTemp,
+        ComposingUnifiedVertices& composingUnified)
+    {
+            // We should have many <p> elements, each containing a single
+            // (possibly non-convex, non-coplanear) polygon.
+            // There can also be <ph> element for holes -- but we will ignore them.
+
+        std::vector<unsigned> finalIndices;
+                
+        auto pIterator = geoPrim.GetPrimitiveData(0);
+
+            // we're going to convert each polygon into triangles using
+            // primitive triangulation...
+
+        std::vector<unsigned> rawIndices(32 * workingPrim._primitiveStride);
+        std::vector<unsigned> unifiedVertexIndices(32);
+        std::vector<unsigned> windingRemap(32*2);
+        for (unsigned p=0; p<geoPrim.GetPrimitiveCount(); ++p) {
+
+            unsigned polygonIndices = 0;
+            for (;;) {
+                auto section = geoPrim.GetPrimitiveData(p);
+                ParseXMLList(AsPointer(rawIndices.begin()), (unsigned)rawIndices.size(), section, &polygonIndices);
+                
+                // if we didn't parse the entire list, we need to increase our buffer and try again
+                if (polygonIndices > rawIndices.size()) {
+                    rawIndices.resize(polygonIndices);
+                    continue;
+                }
+
+                // otherwise, we can break out of the loop
+                break;
+            }
+
+            assert((polygonIndices % workingPrim._primitiveStride) == 0);
+            auto polyVerts = polygonIndices / workingPrim._primitiveStride;
+            
+            if (windingRemap.size() < (polyVerts*3))        windingRemap.resize(polyVerts*3);
+            if (unifiedVertexIndices.size() < polyVerts)    unifiedVertexIndices.resize(polyVerts);
+
+                // build "unified" vertices from the list of vertices provided here
+            for (auto q=0u; q<polyVerts; ++q) {
+                const auto* rawI = &rawIndices[q*workingPrim._primitiveStride];
+                for (const auto& e:workingPrim._inputs)
+                    vertexTemp[e._mappedInput] = rawI[e._indexInPrimitive];
+
+                unifiedVertexIndices[q] = (unsigned)composingUnified.BuildUnifiedVertex(AsPointer(vertexTemp.begin()));
+            }
+
+            size_t triangleCount = CreateTriangleWindingFromPolygon(
+                polyVerts, AsPointer(windingRemap.begin()), windingRemap.size());
+            assert((triangleCount*3) <= windingRemap.size());
+
+            for (auto q=0u; q<triangleCount*3; ++q) {
+                assert(windingRemap[q] < polyVerts);
+                finalIndices.push_back((unsigned)unifiedVertexIndices[windingRemap[q]]);
+            }
+        }
+
+        WorkingDrawOperation drawCall;
+        drawCall._indexBuffer = std::move(finalIndices);
+        drawCall._materialBinding = Hash64(geoPrim.GetMaterialBinding()._start, geoPrim.GetMaterialBinding()._end);
+        drawCall._topology = RenderCore::Metal::Topology::TriangleList;
+        return std::move(drawCall);
+    }
+
     NascentRawGeometry Convert(
         const MeshGeometry& mesh, 
         const URIResolveContext& pubEles, 
@@ -393,21 +586,6 @@ namespace ColladaConversion
         std::vector<WorkingDrawOperation>  drawOperations;
         ComposingVertex composingVertex;
         composingVertex._cfg = &cfg;
-
-        class WorkingPrimitive
-        {
-        public:
-            class EleRef
-            {
-            public:
-                size_t _mappedInput;
-                unsigned _indexInPrimitive;
-            };
-            std::vector<EleRef> _inputs;
-            unsigned _primitiveStride;
-
-            std::vector<unsigned> _unifiedVertices;
-        };
 
         std::vector<WorkingPrimitive> workingPrims;
 
@@ -495,7 +673,7 @@ namespace ColladaConversion
 ///////////////////////////////////////////////////////////////////////////////////////////////////
             //
 
-        std::vector<size_t> vertexTemp(composingVertex._finalVertexElements.size());
+        std::vector<size_t> vertexTemp(composingVertex._finalVertexElements.size(), 0u);
         ComposingUnifiedVertices composingUnified(composingVertex._finalVertexElements.size());
 
         for (size_t c=0; c<mesh.GetPrimitivesCount(); ++c) {
@@ -504,106 +682,11 @@ namespace ColladaConversion
 
             auto type = AsPrimitiveTopology(geoPrim.GetType());
             if (type == PrimitiveTopology::Triangles) {
-
-                if (geoPrim.GetPrimitiveDataCount() != 1)
-                    Throw(FormatException("Expecting only a single <p> element", geoPrim.GetLocation()));
-
-                    // Simpliest arrangement. We should have a single <p> element with
-                    // just a single of indices. Parse in those value, and we will use
-                    // them to generate unified vertices.
-
-                auto indexCount = geoPrim.GetPrimitiveCount() * 3;
-                auto valueCount = indexCount * workingPrim._primitiveStride;
-                auto rawIndices = std::make_unique<unsigned[]>(valueCount);
-                ParseXMLList(AsPointer(rawIndices.get()), valueCount, geoPrim.GetPrimitiveData(0));
-
-                std::vector<unsigned> finalIndices(indexCount);
-                for (size_t i=0; i<indexCount; ++i) {
-                        // note that when an element is not specified, it ends up with zero
-                    std::fill(vertexTemp.begin(), vertexTemp.end(), 0);
-                    const auto* rawI = &rawIndices[i*workingPrim._primitiveStride];
-
-                    for (const auto& e:workingPrim._inputs)
-                        vertexTemp[e._mappedInput] = rawI[e._indexInPrimitive];
-
-                    finalIndices[i] = (unsigned)composingUnified.BuildUnifiedVertex(AsPointer(vertexTemp.begin()));
-                }
-
-                WorkingDrawOperation drawCall;
-                drawCall._indexBuffer = std::move(finalIndices);
-                drawCall._materialBinding = Hash64(geoPrim.GetMaterialBinding()._start, geoPrim.GetMaterialBinding()._end);
-                drawCall._topology = RenderCore::Metal::Topology::TriangleList;
-                drawOperations.push_back(std::move(drawCall));
-
+                drawOperations.push_back(LoadTriangles(geoPrim, workingPrim, vertexTemp, composingUnified));
             } else if (type == PrimitiveTopology::PolyList) {
-
-                    // We should have a single <vcount> element that contains the number of vertices
-                    // in each polygon. There should also be a single <p> element with the 
-                    // actual vertex indices.
-                    // Note that this is very similar to <polygons> (polygons requires one <p>
-                    // element per polygon, and also supports holes in polygons)
-
-                if (geoPrim.GetPrimitiveDataCount() != 1)
-                    Throw(FormatException("Expecting only a single <p> element", geoPrim.GetLocation()));
-
-                auto vcountSrc = geoPrim.GetVCountArray();
-                if (!(vcountSrc._end > vcountSrc._start))
-                    Throw(FormatException("Expecting a single <vcount> element", geoPrim.GetLocation()));
-
-                std::vector<unsigned> vcount(geoPrim.GetPrimitiveCount());
-                ParseXMLList(AsPointer(vcount.begin()), (unsigned)vcount.size(), vcountSrc);
-                std::vector<unsigned> finalIndices;
-                finalIndices.reserve(vcount.size()*6);
-                
-                auto pIterator = geoPrim.GetPrimitiveData(0);
-
-                    // we're going to convert each polygon into triangles using
-                    // primitive triangulation...
-
-                std::vector<unsigned> rawIndices(32 * workingPrim._primitiveStride);
-                std::vector<unsigned> unifiedVertexIndices(32);
-                std::vector<unsigned> windingRemap(32*2);
-                for (auto v : vcount) {
-                    auto indiciesToLoad = v * workingPrim._primitiveStride;
-                    if (rawIndices.size() < indiciesToLoad)
-                        rawIndices.resize(indiciesToLoad);
-
-                    if (windingRemap.size() < (v*2))
-                        windingRemap.resize(v*2);
-
-                    pIterator._start = ParseXMLList(AsPointer(rawIndices.begin()), indiciesToLoad, pIterator);
-
-                        // build "unified" vertices from the list of vertices provided here
-                    for (auto q=0u; q<v; ++q) {
-                        const auto* rawI = &rawIndices[q*workingPrim._primitiveStride];
-
-                        std::fill(vertexTemp.begin(), vertexTemp.end(), 0);
-                        for (const auto& e:workingPrim._inputs)
-                            vertexTemp[e._mappedInput] = rawI[e._indexInPrimitive];
-
-                        unifiedVertexIndices[q] = (unsigned)composingUnified.BuildUnifiedVertex(AsPointer(vertexTemp.begin()));
-                    }
-
-                    size_t triangleCount = CreateTriangleWindingFromPolygon(
-                        v, AsPointer(windingRemap.begin()), windingRemap.size());
-
-                        // Remap from arbitrary polygon order into triange list order
-                        // note that we aren't careful about how we divide a polygon
-                        // up into triangles! If the polygon vertices are not coplanear
-                        // then the way we triangulate it will affect the final shape.
-                        // Also, if the polygon is not convex, strange things could happen.
-                    for (auto q=0u; q<triangleCount*3; ++q) {
-                        assert(windingRemap[q] < v);
-                        finalIndices.push_back((unsigned)unifiedVertexIndices[windingRemap[q]]);
-                    }
-                }
-
-                WorkingDrawOperation drawCall;
-                drawCall._indexBuffer = std::move(finalIndices);
-                drawCall._materialBinding = Hash64(geoPrim.GetMaterialBinding()._start, geoPrim.GetMaterialBinding()._end);
-                drawCall._topology = RenderCore::Metal::Topology::TriangleList;
-                drawOperations.push_back(std::move(drawCall));
-
+                drawOperations.push_back(LoadPolyList(geoPrim, workingPrim, vertexTemp, composingUnified));
+            } else if (type == PrimitiveTopology::Polygons) {
+                drawOperations.push_back(LoadPolygons(geoPrim, workingPrim, vertexTemp, composingUnified));
             } else 
                 Throw(FormatException("Unsupported primitive type found", geoPrim.GetLocation()));
         }
@@ -723,7 +806,6 @@ namespace ColladaConversion
             //
             //      Create the final RawGeometry object with all this stuff
             //
-
 
         return NascentRawGeometry(
             DynamicArray<uint8>(std::move(nativeVB), vbLayout._vertexStride * database->_unifiedVertexCount), 
@@ -1235,7 +1317,7 @@ namespace ColladaConversion
         b0._vertexBufferSize = bucket0._weightAttachments.size() * sizeof(VertexWeightAttachment<0>);
         if (b0._vertexBufferSize) {
             b0._vertexBufferData = std::make_unique<uint8[]>(b0._vertexBufferSize);
-            XlCopyMemory(b1._vertexBufferData.get(), AsPointer(bucket0._weightAttachments.begin()), b0._vertexBufferSize);
+            XlCopyMemory(b0._vertexBufferData.get(), AsPointer(bucket0._weightAttachments.begin()), b0._vertexBufferSize);
         }
 
         auto inverseBindMatrices = GetInverseBindMatrices(controller, resolveContext);

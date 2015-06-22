@@ -94,26 +94,35 @@ namespace RenderCore { namespace ColladaConversion
 
         for (const auto& t:profile->_values) {
             auto& value = t.second;
-            if (cfg.IsBindingSuppressed(t.first._start, t.first._end)) continue;
-                
-            auto binding = cfg.AsNativeBinding(t.first._start, t.first._end);
+            
             switch (value._type) {
             case TechniqueValue::Type::Color:
-                matSettings._constants.SetParameter(
-                    binding.c_str(), value._value);
-                break;
-
             case TechniqueValue::Type::Float:
-                matSettings._constants.SetParameter(binding.c_str(), value._value[0]);
-                break;
+                {
+                    if (cfg.GetConstantBindings().IsSuppressed(t.first._start, t.first._end)) continue;
+                    auto binding = cfg.GetConstantBindings().AsNative(t.first._start, t.first._end);
+
+                    if (value._type == TechniqueValue::Type::Color) {
+                        matSettings._constants.SetParameter(
+                            binding.c_str(), value._value);
+                    } else {
+                        matSettings._constants.SetParameter(binding.c_str(), value._value[0]);
+                    }
+                    break;
+                }
 
             case TechniqueValue::Type::Texture:
-                AddSamplerBinding(
-                    matSettings, profile->GetParams(), 
-                    binding.c_str(),
-                    value._reference._start, value._reference._end,
-                    pubEles);
-                break;
+                {
+                    if (cfg.GetResourceBindings().IsSuppressed(t.first._start, t.first._end)) continue;
+                    auto binding = cfg.GetResourceBindings().AsNative(t.first._start, t.first._end);
+
+                    AddSamplerBinding(
+                        matSettings, profile->GetParams(), 
+                        binding.c_str(),
+                        value._reference._start, value._reference._end,
+                        pubEles);
+                    break;
+                }
 
             default:
             case TechniqueValue::Type::Param:
@@ -130,13 +139,13 @@ namespace RenderCore { namespace ColladaConversion
             auto techValue = extraValues.FirstChild();
             for (;techValue; techValue=techValue.NextSibling()) {
                 auto n = techValue.Name();
-                if (cfg.IsBindingSuppressed(AsPointer(n.cbegin()), AsPointer(n.cend()))) continue;
+                if (cfg.GetResourceBindings().IsSuppressed(AsPointer(n.cbegin()), AsPointer(n.cend()))) continue;
 
                 auto texture = techValue.Element(u("texture"));
                 if (texture) {
                     auto samplerRef = texture.Attribute(u("texture")).Value();
                     if (!samplerRef.empty()) {
-                        auto binding = cfg.AsNativeBinding(AsPointer(n.cbegin()), AsPointer(n.cend()));
+                        auto binding = cfg.GetResourceBindings().AsNative(AsPointer(n.cbegin()), AsPointer(n.cend()));
                         AddSamplerBinding(
                             matSettings, profile->GetParams(), 
                             binding.c_str(), 

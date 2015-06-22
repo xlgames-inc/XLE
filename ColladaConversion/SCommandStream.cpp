@@ -275,6 +275,11 @@ namespace RenderCore { namespace ColladaConversion
 
         auto controller = Convert(*scaffoldController, resolveContext, cfg);
 
+        auto jointMatrices = BuildJointArray(instGeo.GetSkeleton(), controller, resolveContext, nodeRefs);
+        if (!jointMatrices.size() || !jointMatrices.get())
+            Throw(::Assets::Exceptions::FormatError("Skin controller object has no joints. Cannot instantiate as skinned object. (%s)",
+                AsString(instGeo._reference).c_str()));
+
             // If the the raw geometry object is already converted, then we should use it. Otherwise
             // we need to do the conversion (but store it only in a temporary -- we don't need to
             // write it to disk)
@@ -295,8 +300,6 @@ namespace RenderCore { namespace ColladaConversion
                 source = &objects._rawGeos[geo].second;
             }
         }
-
-        auto jointMatrices = BuildJointArray(instGeo.GetSkeleton(), controller, resolveContext, nodeRefs);
 
         auto materials = BuildMaterialTable(
             AsPointer(instGeo._matBindings.cbegin()), AsPointer(instGeo._matBindings.cend()),

@@ -509,12 +509,34 @@ namespace ColladaConversion
 
         } else if (Is(eleName, u("texture"))) {
 
+                // <texture> can contain <extra> -- so we need
+                // to do a full parse
             for (;;) {
-                Formatter::InteriorSection name, value; 
-                if (!formatter.TryAttribute(name, value)) break;
-                if (Is(name, u("texture"))) _reference = value;
-                else if (Is(name, u("texcoord"))) _texCoord = value;
-                else LogWarning << "Unknown attribute for texture (" << name << ") at " << formatter.GetLocation();
+                auto next = formatter.PeekNext();
+                switch (next) {
+                case Formatter::Blob::BeginElement:
+                    {
+                        Formatter::InteriorSection name;
+                        formatter.TryBeginElement(name);
+                        LogWarning << "Skipping (" << name << ") in technique <texture> at " << formatter.GetLocation();
+                        formatter.SkipElement();
+                        formatter.TryEndElement();
+                        continue;
+                    }
+
+                case Formatter::Blob::AttributeName:
+                    {
+                        Formatter::InteriorSection name, value; 
+                        formatter.TryAttribute(name, value);
+                        if (Is(name, u("texture"))) _reference = value;
+                        else if (Is(name, u("texcoord"))) _texCoord = value;
+                        else LogWarning << "Unknown attribute for texture (" << name << ") at " << formatter.GetLocation();
+                        continue;
+                    }
+
+                default: break;
+                }
+                break;
             }
             _type = Type::Texture;
 

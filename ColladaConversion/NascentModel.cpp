@@ -376,7 +376,7 @@ namespace RenderCore { namespace ColladaConversion
                 std::smatch match;
                 auto r = std::regex_match(xt->texCoord, match, decode);
                 if (r && match.size() >= 2) {
-                    auto bindPoint = _importConfig.AsNativeBinding((const utf8*)AsPointer(match[2].first), (const utf8*)AsPointer(match[2].second));
+                    auto bindPoint = _importConfig.GetResourceBindings().AsNative((const utf8*)AsPointer(match[2].first), (const utf8*)AsPointer(match[2].second));
                     if (!bindPoint.empty()) {
                         AddBoundTexture(
                             effect, 0, _objects, matSettings._resourceBindings,

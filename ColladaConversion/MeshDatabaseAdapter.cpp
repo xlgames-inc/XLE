@@ -382,6 +382,7 @@ namespace RenderCore { namespace ColladaConversion
             }
             v2 = unsigned(polygonVertexCount - 1 - triangleCount/2);
                 ////////        ////////
+            assert((outputIterator+3) <= bufferCount);
             buffer[outputIterator++] = v0;
             buffer[outputIterator++] = v1;
             buffer[outputIterator++] = v2;
