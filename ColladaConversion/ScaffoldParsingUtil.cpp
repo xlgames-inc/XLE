@@ -143,7 +143,7 @@ namespace ColladaConversion
             ++iterator;
             auto t = iterator;
             iterator = FastParseElement(afterPoint, iterator, end);
-            afterPointPrec = iterator - t;
+            afterPointPrec = unsigned(iterator - t);
         } else {
             afterPoint = 0;
             afterPointPrec = 0;

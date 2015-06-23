@@ -78,7 +78,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{962EA621-C2A6-D312-53CB-7B545D981B75}</ProjectGuid>
+    <ProjectGuid>{EBF600B7-B82E-483C-B0CE-C74BBC60DC9A}</ProjectGuid>
     <RootNamespace>RenderCore_Assets</RootNamespace>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />

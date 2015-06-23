@@ -202,7 +202,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
     // TestParser2();
     // TestParser();
 
-    ParserPerformanceTest();
+    // ParserPerformanceTest();
 
     TRY {
         Sample::ExecuteSample();

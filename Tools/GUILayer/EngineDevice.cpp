@@ -108,6 +108,11 @@ namespace GUILayer
         return &_renderAssetsServices->GetBufferUploads();
     }
 
+    RenderCore::IThreadContext* NativeEngineDevice::GetImmediateContext()
+    {
+        return _renderDevice->GetImmediateContext().get();
+    }
+
     NativeEngineDevice::NativeEngineDevice()
     {
         ConsoleRig::StartupConfig cfg;
@@ -136,6 +141,11 @@ namespace GUILayer
     void EngineDevice::AttachDefaultCompilers()
     {
         _pimpl->AttachDefaultCompilers();
+    }
+
+    RenderCore::IThreadContext* EngineDevice::GetNativeImmediateContext()
+    {
+        return _pimpl->GetImmediateContext();
     }
     
     EngineDevice::EngineDevice()

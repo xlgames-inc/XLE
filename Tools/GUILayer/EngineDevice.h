@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "../../RenderCore/IThreadContext_Forward.h"
 #include "CLIXAutoPtr.h"
 #include <memory>
 
@@ -29,6 +30,8 @@ namespace GUILayer
         static EngineDevice^ GetInstance() { return s_instance; }
         static void SetDefaultWorkingDirectory();
         NativeEngineDevice& GetNative() { return *_pimpl; }
+
+        RenderCore::IThreadContext* GetNativeImmediateContext();
 
         void AttachDefaultCompilers();
 

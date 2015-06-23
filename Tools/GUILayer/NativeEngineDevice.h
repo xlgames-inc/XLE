@@ -24,6 +24,7 @@ namespace GUILayer
         ::Assets::Services*         GetAssetServices() { return _assetServices.get(); }
         std::unique_ptr<IWindowRig> CreateWindowRig(const void* nativeWindowHandle);
         void                        AttachDefaultCompilers();
+        RenderCore::IThreadContext* GetImmediateContext();
 
         NativeEngineDevice();
         ~NativeEngineDevice();
