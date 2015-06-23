@@ -120,20 +120,26 @@ namespace ConsoleRig
             // suppress logging statements in the log when disabled
         namespace Internal
         {
-            class DummyStream {};
+            class DummyStream 
+            {
+            public:
+                template <typename T> 
+                    friend inline const Internal::DummyStream& operator<<(const Internal::DummyStream& stream, T&&) 
+                        { return stream; }
+
+                template <typename T> 
+                    friend inline const Internal::DummyStream& operator<<(const Internal::DummyStream& stream, const T&) 
+                        { return stream; }
+            };
         }
 
-        template <typename T> 
-            inline Internal::DummyStream operator<<(Internal::DummyStream stream, T) 
-                { return stream; }
+        #define LogVerbose(L)   ::ConsoleRig::Internal::DummyStream()
+        #define LogInfo         ::ConsoleRig::Internal::DummyStream()
+        #define LogWarning      ::ConsoleRig::Internal::DummyStream()
 
-        #define LogVerbose(L)   LVERBOSE(L)
-        #define LogInfo         LINFO
-        #define LogWarning      LWARNING
-
-        #define LogVerboseEveryN(L)   LVERBOSE_EVERY_N(L)
-        #define LogInfoEveryN         LINFO_EVERY_N
-        #define LogWarningEveryN      LWARNING_EVERY_N
+        #define LogVerboseEveryN(L)   ::ConsoleRig::Internal::DummyStream()
+        #define LogInfoEveryN         ::ConsoleRig::Internal::DummyStream()
+        #define LogWarningEveryN      ::ConsoleRig::Internal::DummyStream()
 
     #endif
 

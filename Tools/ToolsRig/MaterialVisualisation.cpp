@@ -136,7 +136,7 @@ namespace ToolsRig
                     } else if (geoType == MaterialVisSettings::GeometryType::Cube) {
                         metalContext.Bind(MakeResourceList(cachedGeo._cubeBuffer), sizeof(Internal::Vertex3D), 0);    
                         count = cachedGeo._cubeVCount;
-                    }
+                    } else return;
                 
                     metalContext.Bind(Metal::Topology::TriangleList);
                     metalContext.Draw(count);

@@ -10,6 +10,7 @@
 #include "../RenderCore/Assets/ModelRunTimeInternal.h"
 #include "../RenderCore/Assets/Services.h"
 #include "../ColladaConversion/DLLInterface.h"
+#include "../ColladaConversion/NascentModel.h"
 #include "../Assets/IntermediateResources.h"
 #include "../Assets/Assets.h"
 #include "../ConsoleRig/Console.h"
@@ -20,6 +21,7 @@
 #include "../Utility/StringFormat.h"
 #include "../Utility/TimeUtils.h"
 #include "../Utility/Threading/ThreadingUtils.h"
+#include "../Core/SelectConfiguration.h"
 #include <CppUnitTest.h>
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
@@ -122,6 +124,59 @@ namespace UnitTests
                     LogAlwaysError << "Failure in file: " << f << std::endl;
             }
             
+        }
+
+        TEST_METHOD(ColladaConversionPerformance)
+		{
+            UnitTest_SetWorkingDirectory();
+            ConsoleRig::GlobalServices services(GetStartupConfig());
+
+            // profile the performance of the collada model compiler
+            // in particular, compare the new path to the old (OpenCollada-based path)
+            
+            {
+                #if defined(_DEBUG)
+                    ConsoleRig::AttachableLibrary lib("../Finals_Debug32/ColladaConversion.dll");
+                #else
+                    ConsoleRig::AttachableLibrary lib("../Finals_Profile32/ColladaConversion.dll");
+                #endif
+                lib.TryAttach();
+
+                #if !TARGET_64BIT
+                    auto newCreateScaffold = lib.GetFunction<RenderCore::ColladaConversion::CreateColladaScaffoldFn*>(
+                        "?CreateColladaScaffold@ColladaConversion@RenderCore@@YA?AV?$shared_ptr@VColladaScaffold@ColladaConversion@RenderCore@@@std@@QBD@Z");
+                    auto newSerializeSkin = lib.GetFunction<RenderCore::ColladaConversion::ModelSerializeFn*>(
+                        "?SerializeSkin@ColladaConversion@RenderCore@@YA?AV?$shared_ptr@V?$vector@VNascentChunk@ColladaConversion@RenderCore@@V?$allocator@VNascentChunk@ColladaConversion@RenderCore@@@std@@@std@@@std@@ABVColladaScaffold@12@@Z");
+
+                    auto oldCreateModel = lib.GetFunction<RenderCore::ColladaConversion::OCCreateModelFunction*>(
+                        "?OCCreateModel@ColladaConversion@RenderCore@@YA?AV?$unique_ptr@VNascentModel@ColladaConversion@RenderCore@@VCrossDLLDeletor@Internal@23@@std@@QBD@Z");
+                    auto oldSerializeSkinFunction = lib.GetFunction<RenderCore::ColladaConversion::OCModelSerializeFunction>(
+                        "?SerializeSkin@NascentModel@ColladaConversion@RenderCore@@QBE?AV?$shared_ptr@V?$vector@VNascentChunk@ColladaConversion@RenderCore@@V?$allocator@VNascentChunk@ColladaConversion@RenderCore@@@std@@@std@@@std@@XZ");
+
+                    // const ::Assets::ResChar testFile[] = "game/testmodels/ironman/ironman.dae";
+                    const ::Assets::ResChar testFile[] = "game/model/galleon/galleon.dae";
+                    const unsigned iterations = 100;
+
+                    auto newPathStart = GetPerformanceCounter();
+                    for (unsigned c=0; c<iterations; ++c) {
+                        auto scaffold = (*newCreateScaffold)(testFile);
+                        auto chunks = (*newSerializeSkin)(*scaffold);
+                    }
+                    auto newPathEnd = GetPerformanceCounter();
+
+                    for (unsigned c=0; c<iterations; ++c) {
+                        auto scaffold = (*oldCreateModel)(testFile);
+                        auto chunks = (scaffold.get()->*oldSerializeSkinFunction)();
+                    }
+                    auto oldPathEnd = GetPerformanceCounter();
+
+                    auto freq = GetPerformanceCounterFrequency();
+
+                    LogAlwaysWarning << "New path: " << (newPathEnd-newPathStart) / float(freq/100) << "ms";
+                    LogAlwaysWarning << "Old path: " << (oldPathEnd-newPathEnd) / float(freq/100) << "ms";
+
+                #endif
+            }
         }
 
 	};

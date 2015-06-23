@@ -153,6 +153,30 @@ static void TestParser3()
     (void)t;
 }
 
+#include "../../ColladaConversion/DLLInterface.h"
+
+static void ParserPerformanceTest()
+{
+    ConsoleRig::AttachableLibrary lib("ColladaConversion.dll");
+    lib.TryAttach();
+
+    #if !TARGET_64BIT
+        auto newCreateScaffold = lib.GetFunction<RenderCore::ColladaConversion::CreateColladaScaffoldFn*>(
+            "?CreateColladaScaffold@ColladaConversion@RenderCore@@YA?AV?$shared_ptr@VColladaScaffold@ColladaConversion@RenderCore@@@std@@QBD@Z");
+        auto newSerializeSkin = lib.GetFunction<RenderCore::ColladaConversion::ModelSerializeFn*>(
+            "?SerializeSkin@ColladaConversion@RenderCore@@YA?AV?$shared_ptr@V?$vector@VNascentChunk@ColladaConversion@RenderCore@@V?$allocator@VNascentChunk@ColladaConversion@RenderCore@@@std@@@std@@@std@@ABVColladaScaffold@12@@Z");
+
+        // const ::Assets::ResChar testFile[] = "game/testmodels/ironman/ironman.dae";
+        const ::Assets::ResChar testFile[] = "game/model/galleon/galleon.dae";
+
+        for (;;) {
+            auto scaffold = (*newCreateScaffold)(testFile);
+            auto chunks = (*newSerializeSkin)(*scaffold);
+        }
+
+    #endif
+}
+
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
     #if CLIBRARIES_ACTIVE == CLIBRARIES_MSVC && defined(_DEBUG)
@@ -175,8 +199,10 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
     LogInfo << "------------------------------------------------------------------------------------------";
 
     // TestParser3();
-    TestParser2();
+    // TestParser2();
     // TestParser();
+
+    ParserPerformanceTest();
 
     TRY {
         Sample::ExecuteSample();

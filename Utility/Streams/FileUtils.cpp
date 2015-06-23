@@ -101,7 +101,7 @@ namespace Utility
             size_t size = file.TellP();
             file.Seek(0, SEEK_SET);
 
-            auto result = std::make_unique<uint8[]>(size+1);
+            std::unique_ptr<uint8[]> result(new uint8[size+1]);
             file.Read(result.get(), 1, size);
             result[size] = '\0';
             if (sizeResult) {

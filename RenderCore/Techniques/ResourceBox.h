@@ -7,7 +7,7 @@
 #pragma once
 
 #include "../../Core/Types.h"
-#include "../../ConsoleRig/OutputStream.h"     // for xleWarning
+// #include "../../ConsoleRig/OutputStream.h"     // for xleWarning
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/IteratorUtils.h"
@@ -51,9 +51,9 @@ namespace RenderCore { namespace Techniques
         }
 
         auto ptr = std::make_unique<Box>(desc);
-        ConsoleRig::xleWarningDebugOnly(
-            "Created cached box for type (%s) -- first time. HashValue:(0x%08x%08x)\n", 
-            typeid(Box).name(), uint32(hashValue>>32), uint32(hashValue));
+        // ConsoleRig::xleWarningDebugOnly(
+        //     "Created cached box for type (%s) -- first time. HashValue:(0x%08x%08x)\n", 
+        //     typeid(Box).name(), uint32(hashValue>>32), uint32(hashValue));
         auto i2 = boxTable.insert(i, std::make_pair(hashValue, std::move(ptr)));
         return *i2->second;
     }
@@ -76,17 +76,17 @@ namespace RenderCore { namespace Techniques
         if (i!=boxTable.end() && i->first==hashValue) {
             if (i->second->GetDependencyValidation()->GetValidationIndex()!=0) {
                 i->second = std::make_unique<Box>(desc);
-                ConsoleRig::xleWarningDebugOnly(
-                    "Created cached box for type (%s) -- rebuilding due to validation failure. HashValue:(0x%08x%08x)\n", 
-                    typeid(Box).name(), uint32(hashValue>>32), uint32(hashValue));
+                // ConsoleRig::xleWarningDebugOnly(
+                //     "Created cached box for type (%s) -- rebuilding due to validation failure. HashValue:(0x%08x%08x)\n", 
+                //     typeid(Box).name(), uint32(hashValue>>32), uint32(hashValue));
             }
             return *i->second;
         }
 
         auto ptr = std::make_unique<Box>(desc);
-        ConsoleRig::xleWarningDebugOnly(    
-            "Created cached box for type (%s) -- first time. HashValue:(0x%08x%08x)\n", 
-            typeid(Box).name(), uint32(hashValue>>32), uint32(hashValue));
+        // ConsoleRig::xleWarningDebugOnly(    
+        //     "Created cached box for type (%s) -- first time. HashValue:(0x%08x%08x)\n", 
+        //     typeid(Box).name(), uint32(hashValue>>32), uint32(hashValue));
         auto i2 = boxTable.insert(i, std::make_pair(hashValue, std::move(ptr)));
         return *i2->second;
     }

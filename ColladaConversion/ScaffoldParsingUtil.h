@@ -15,17 +15,6 @@ namespace ColladaConversion
     bool BeginsWith(const XmlInputStreamFormatter<utf8>::InteriorSection& section, const utf8 match[]);
     bool EndsWith(const XmlInputStreamFormatter<utf8>::InteriorSection& section, const utf8 match[]);
 
-    template<typename Type>
-        static Type Parse(const XmlInputStreamFormatter<utf8>::InteriorSection& section, const Type& def)
-    {
-            // ImpliedType::Parse is actually a fairly expensing parsing operation...
-            // maybe we could get a faster result by just calling the standard library
-            // type functions.
-        auto d = ImpliedTyping::Parse<Type>(section._start, section._end);
-        if (!d.first) return def;
-        return d.second;
-    }
-
     template <typename Enum, unsigned Count>
         static Enum ParseEnum(const XmlInputStreamFormatter<utf8>::InteriorSection& section, const std::pair<Enum, const utf8*> (&table)[Count])
     {
@@ -96,6 +85,22 @@ namespace ColladaConversion
     bool Equivalent(
         const XmlInputStreamFormatter<utf8>::InteriorSection& lhs, 
         const XmlInputStreamFormatter<utf8>::InteriorSection& rhs);
+
+    template<typename Type>
+        static Type Parse(const XmlInputStreamFormatter<utf8>::InteriorSection& section, const Type& def)
+    {
+            // ImpliedType::Parse is actually a fairly expensing parsing operation...
+            // maybe we could get a faster result by just calling the standard library
+            // type functions.
+        // auto d = ImpliedTyping::Parse<Type>(section._start, section._end);
+        // if (!d.first) return def;
+        // return d.second;
+
+        Type result;
+        auto temp = FastParseElement(result, section._start, section._end);
+        if (temp > section._start) return result;
+        return def;
+    }
 }
 
 namespace std   // adding these to std is awkward, but it's the only way to make sure easylogging++ can see them

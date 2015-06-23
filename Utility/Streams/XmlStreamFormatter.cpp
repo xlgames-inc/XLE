@@ -18,22 +18,18 @@ namespace Utility
     }
 
     template<typename CharType>
-        void TextStreamMarker<CharType>::AdvanceCheckNewLine()
+        inline void TextStreamMarker<CharType>::AdvanceCheckNewLine()
     {
         assert(Remaining() >= 1);
 
             // as per xml spec, 0xd0xa, 0xa or 0xd are all considered single new lines
-        bool isNewLine = false;
-        if (*_ptr == 0xd) {
-            if (Remaining()>=2 && *(_ptr+1)==0xa) ++_ptr;
-            isNewLine = true;
-        } else if (*_ptr == 0xa) isNewLine = true;
-                    
-        ++_ptr;
-        if (isNewLine) {
-            _lineStart = _ptr;
+        if (*_ptr == 0xd || *_ptr == 0xa) {
+            if (Remaining()>=2 && *_ptr == 0xd && *(_ptr+1)==0xa) ++_ptr;
+            _lineStart = _ptr+1;
             ++_lineIndex;
         }
+                    
+        ++_ptr;
     }
 
     template<typename CharType>
@@ -434,16 +430,26 @@ namespace Utility
 
         cdata._start = _marker.Pointer();
 
-        for (;;) {
-            if (_marker.Remaining() < 1) { 
-                    // reached end of tile
-                if (_scopeStack.top()._type != Scope::Type::None) {
-                    Throw(FormatException("Unexpected end of file in element", _marker.GetLocation()));
-                    break;
-                }
+        bool gotEnd = false;
+        while (_marker.Remaining() >= 64 && !gotEnd) {
+            for (unsigned c=0; c<64; ++c) {
+                if (*_marker == '<') { gotEnd = true; break; }
+                _marker.AdvanceCheckNewLine();
             }
-            if (*_marker == '<') break;
-            _marker.AdvanceCheckNewLine();
+        }
+
+        if (!gotEnd) {
+            for (;;) {
+                if (_marker.Remaining() < 1) { 
+                        // reached end of tile
+                    if (_scopeStack.top()._type != Scope::Type::None) {
+                        Throw(FormatException("Unexpected end of file in element", _marker.GetLocation()));
+                        break;
+                    }
+                }
+                if (*_marker == '<') break;
+                _marker.AdvanceCheckNewLine();
+            }
         }
 
         cdata._end = _marker.Pointer();

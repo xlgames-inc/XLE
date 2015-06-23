@@ -4,8 +4,6 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#define _SCL_SECURE_NO_WARNINGS
-
 #include "Scaffold.h"
 #include "ScaffoldDataFlow.h"
 #include "ScaffoldParsingUtil.h"

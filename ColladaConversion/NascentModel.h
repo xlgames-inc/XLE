@@ -8,50 +8,21 @@
 
 #include "TableOfObjects.h"
 #include "NascentCommandStream.h"
+#include "DLLInterface.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/Buffer.h"
 #include "../RenderCore/IDevice_Forward.h"
 #include "../Assets/ChunkFile.h"
 #include "../Assets/BlockSerializer.h"
-#include "../ConsoleRig/AttachableLibrary.h"
 #include "../Utility/Mixins.h"
 #include "../Math/Transformations.h"
 #include <tuple>
 
 namespace RenderCore { namespace Techniques { class CameraDesc; }}
 
-#if defined(PROJECT_COLLADA_CONVERSION)
-    #define CONVERSION_API dll_export
-#else
-    #define CONVERSION_API dll_import
-#endif
-
 namespace RenderCore { namespace ColladaConversion
 {
-    class NascentChunk
-    {
-    public:
-        Serialization::ChunkFile::ChunkHeader _hdr;
-        std::vector<uint8> _data;
-
-        NascentChunk(
-            const Serialization::ChunkFile::ChunkHeader& hdr, 
-            std::vector<uint8>&& data)
-            : _hdr(hdr), _data(std::forward<std::vector<uint8>>(data)) {}
-        NascentChunk(NascentChunk&& moveFrom)
-        : _hdr(moveFrom._hdr)
-        , _data(std::move(moveFrom._data))
-        {}
-        NascentChunk() {}
-        NascentChunk& operator=(NascentChunk&& moveFrom)
-        {
-            _hdr = moveFrom._hdr;
-            _data = std::move(moveFrom._data);
-            return *this;
-        }
-    };
-
     class ExtraDataCallback;
 
     namespace Internal
@@ -67,14 +38,9 @@ namespace RenderCore { namespace ColladaConversion
         };
     }
 
-    typedef std::pair<std::unique_ptr<NascentChunk[], Internal::CrossDLLDeletor>, unsigned> NascentChunkArray;
-
     class NascentModel
     {
     public:
-        NascentModel(const ::Assets::ResChar identifier[]);
-        ~NascentModel();
-
         unsigned                    CameraCount() const;
         Techniques::CameraDesc      Camera(unsigned index) const;
 
@@ -83,7 +49,10 @@ namespace RenderCore { namespace ColladaConversion
         CONVERSION_API NascentChunkArray    SerializeSkeleton() const;
         CONVERSION_API NascentChunkArray    SerializeMaterials() const;
 
-        CONVERSION_API void         MergeAnimationData(const NascentModel& source, const char animationName[]);
+        CONVERSION_API void     MergeAnimationData(const NascentModel& source, const char animationName[]);
+
+        NascentModel(const ::Assets::ResChar identifier[]);
+        ~NascentModel();
 
     protected:
         TableOfObjects               _objects;
@@ -96,15 +65,10 @@ namespace RenderCore { namespace ColladaConversion
         std::string _name;
     };
 
-    CONVERSION_API std::unique_ptr<NascentModel, Internal::CrossDLLDeletor> CreateModel(const ::Assets::ResChar identifier[]);
+    CONVERSION_API std::unique_ptr<NascentModel, Internal::CrossDLLDeletor> OCCreateModel(const ::Assets::ResChar identifier[]);
 
-    typedef std::unique_ptr<NascentModel, Internal::CrossDLLDeletor> CreateModelFunction(const ::Assets::ResChar identifier[]);
-    typedef NascentChunkArray (NascentModel::*ModelSerializeFunction)() const;
-    typedef void (NascentModel::*MergeAnimationDataFunction)(const NascentModel& source, const char animationName[]);
+    typedef std::unique_ptr<NascentModel, Internal::CrossDLLDeletor> OCCreateModelFunction(const ::Assets::ResChar identifier[]);
+    typedef NascentChunkArray (NascentModel::*OCModelSerializeFunction)() const;
+    typedef void (NascentModel::*OCMergeAnimationDataFunction)(const NascentModel& source, const char animationName[]);
 }}
 
-extern "C" CONVERSION_API ConsoleRig::LibVersionDesc GetVersionInformation();
-extern "C" CONVERSION_API void AttachLibrary(ConsoleRig::GlobalServices&);
-extern "C" CONVERSION_API void DetachLibrary();
-
-extern "C" CONVERSION_API void TestParser();

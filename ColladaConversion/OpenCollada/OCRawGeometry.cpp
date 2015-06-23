@@ -413,8 +413,10 @@ namespace RenderCore { namespace ColladaConversion
         std::vector<unsigned>* vertexMapBegin, std::vector<unsigned>* vertexMapEnd,
         const VertexAttribute* vertexSemanticsBegin, const VertexAttribute* vertexSemanticsEnd)
     {
-        auto elementCount = vertexSemanticsEnd - vertexSemanticsBegin;
-        assert(elementCount == (vertexMapEnd - vertexMapBegin));
+        #if defined(_DEBUG)
+            auto elementCount = vertexSemanticsEnd - vertexSemanticsBegin;
+            assert(elementCount == (vertexMapEnd - vertexMapBegin));
+        #endif
 
         // _streams.resize(elementCount);
 

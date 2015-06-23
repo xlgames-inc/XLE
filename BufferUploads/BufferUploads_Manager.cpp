@@ -2642,7 +2642,7 @@ namespace BufferUploads
         {
             assert(&globalServices == &ConsoleRig::GlobalServices::GetInstance());
         }
-        void DetachLibrary(ConsoleRig::GlobalServices&) {}
+        void DetachLibrary() {}
     #endif
 }
 

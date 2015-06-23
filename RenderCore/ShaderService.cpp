@@ -212,7 +212,9 @@ namespace RenderCore
     , _compileHelper(std::move(moveFrom._compileHelper))
     , _marker(std::move(moveFrom._marker))
     {
-        XlCopyString(_initializer, moveFrom._initializer);
+        #if defined(_DEBUG)
+            XlCopyString(_initializer, moveFrom._initializer);
+        #endif
     }
 
     CompiledShaderByteCode& CompiledShaderByteCode::operator=(CompiledShaderByteCode&& moveFrom)
@@ -222,7 +224,9 @@ namespace RenderCore
         _validationCallback = std::move(moveFrom._validationCallback);
         _compileHelper = std::move(moveFrom._compileHelper);
         _marker = std::move(moveFrom._marker);
-        XlCopyString(_initializer, moveFrom._initializer);
+        #if defined(_DEBUG)
+            XlCopyString(_initializer, moveFrom._initializer);
+        #endif
         return *this;
     }
 

@@ -70,11 +70,15 @@ namespace Utility
         void*           GetData()           { return _mappedData; }
         const void*     GetData() const     { return _mappedData; }
         bool            IsValid()           { return _mappedData != 0; }
+        size_t          GetSize() const;
 
         MemoryMappedFile(
             const char filename[], uint64 size, 
             Access::BitField access,
             BasicFile::ShareMode::BitField shareMode = 0);
+        MemoryMappedFile();
+        MemoryMappedFile(MemoryMappedFile&& moveFrom) never_throws;
+        MemoryMappedFile& operator=(MemoryMappedFile&& moveFrom) never_throws;
         ~MemoryMappedFile();
 
     private:

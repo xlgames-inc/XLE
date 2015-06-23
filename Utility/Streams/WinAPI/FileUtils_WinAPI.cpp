@@ -348,5 +348,46 @@ namespace Utility
         CloseHandle(_mapping);
         CloseHandle(_fileHandle);
     }
+
+    MemoryMappedFile::MemoryMappedFile()
+    {
+        _mapping = INVALID_HANDLE_VALUE;
+        _fileHandle = INVALID_HANDLE_VALUE;
+        _mappedData = nullptr;
+    }
+
+    MemoryMappedFile::MemoryMappedFile(MemoryMappedFile&& moveFrom) never_throws
+    {
+        _mapping = moveFrom._mapping;
+        _fileHandle = moveFrom._fileHandle;
+        _mappedData = moveFrom._mappedData;
+        moveFrom._mapping = INVALID_HANDLE_VALUE;
+        moveFrom._fileHandle = INVALID_HANDLE_VALUE;
+        moveFrom._mappedData = nullptr;
+    }
+
+    MemoryMappedFile& MemoryMappedFile::operator=(MemoryMappedFile&& moveFrom) never_throws
+    {
+        if (_mappedData != nullptr) {
+            UnmapViewOfFile(_mappedData);
+        }
+        CloseHandle(_mapping);
+        CloseHandle(_fileHandle);
+
+        _mapping = moveFrom._mapping;
+        _fileHandle = moveFrom._fileHandle;
+        _mappedData = moveFrom._mappedData;
+        moveFrom._mapping = INVALID_HANDLE_VALUE;
+        moveFrom._fileHandle = INVALID_HANDLE_VALUE;
+        moveFrom._mappedData = nullptr;
+        return *this;
+    }
+
+    size_t MemoryMappedFile::GetSize() const
+    {
+        LARGE_INTEGER fileSize;
+        GetFileSizeEx(_fileHandle, &fileSize);
+        return (size_t)fileSize.QuadPart;
+    }
 }
 

@@ -1083,9 +1083,9 @@ namespace RenderCore { namespace ColladaConversion
         return result;
     }
 
-    static void DestroyChunkArray(const void* chunkArray) { delete[] (const NascentChunk*)chunkArray; }
+    static void DestroyChunkArray(const void* chunkArray) { delete (std::vector<NascentChunk>*)chunkArray; }
 
-    CONVERSION_API NascentChunkArray NascentModel::SerializeSkin() const
+    NascentChunkArray NascentModel::SerializeSkin() const
     {
         Serialization::NascentBlockSerializer serializer;
         std::vector<uint8> largeResourcesBlock;
@@ -1169,16 +1169,13 @@ namespace RenderCore { namespace ColladaConversion
         Serialization::ChunkFile::ChunkHeader largeBlockChunk(
             RenderCore::Assets::ChunkType_ModelScaffoldLargeBlocks, 0, _name.c_str(), (unsigned)largeResourcesBlock.size());
 
-        NascentChunkArray result(
-            std::unique_ptr<NascentChunk[], Internal::CrossDLLDeletor>(
-                new NascentChunk[2], Internal::CrossDLLDeletor(&DestroyChunkArray)),
-            2);        
-        result.first[0] = NascentChunk(scaffoldChunk, std::vector<uint8>(block.get(), PtrAdd(block.get(), size)));
-        result.first[1] = NascentChunk(largeBlockChunk, std::move(largeResourcesBlock));
+        NascentChunkArray result(new std::vector<NascentChunk>(), &DestroyChunkArray);
+        result->push_back(NascentChunk(scaffoldChunk, std::vector<uint8>(block.get(), PtrAdd(block.get(), size))));
+        result->push_back(NascentChunk(largeBlockChunk, std::move(largeResourcesBlock)));
         return std::move(result);
     }
 
-    CONVERSION_API NascentChunkArray NascentModel::SerializeAnimationSet() const
+    NascentChunkArray NascentModel::SerializeAnimationSet() const
     {
         Serialization::NascentBlockSerializer serializer;
 
@@ -1192,15 +1189,12 @@ namespace RenderCore { namespace ColladaConversion
         Serialization::ChunkFile::ChunkHeader scaffoldChunk(
             RenderCore::Assets::ChunkType_AnimationSet, 0, _name.c_str(), unsigned(size));
 
-        NascentChunkArray result(
-            std::unique_ptr<NascentChunk[], Internal::CrossDLLDeletor>(
-                new NascentChunk[1], Internal::CrossDLLDeletor(&DestroyChunkArray)),
-            1);
-        result.first[0] = NascentChunk(scaffoldChunk, std::vector<uint8>(block.get(), PtrAdd(block.get(), size)));
+        NascentChunkArray result(new std::vector<NascentChunk>(), &DestroyChunkArray);
+        result->push_back(NascentChunk(scaffoldChunk, std::vector<uint8>(block.get(), PtrAdd(block.get(), size))));
         return std::move(result);
     }
 
-    CONVERSION_API NascentChunkArray NascentModel::SerializeSkeleton() const
+    NascentChunkArray NascentModel::SerializeSkeleton() const
     {
         Serialization::NascentBlockSerializer serializer;
 
@@ -1213,15 +1207,12 @@ namespace RenderCore { namespace ColladaConversion
         Serialization::ChunkFile::ChunkHeader scaffoldChunk(
             RenderCore::Assets::ChunkType_Skeleton, 0, _name.c_str(), unsigned(size));
 
-        NascentChunkArray result(
-            std::unique_ptr<NascentChunk[], Internal::CrossDLLDeletor>(
-                new NascentChunk[1], Internal::CrossDLLDeletor(&DestroyChunkArray)),
-            1);
-        result.first[0] = NascentChunk(scaffoldChunk, std::vector<uint8>(block.get(), PtrAdd(block.get(), size)));
+        NascentChunkArray result(new std::vector<NascentChunk>(), &DestroyChunkArray);
+        result->push_back(NascentChunk(scaffoldChunk, std::vector<uint8>(block.get(), PtrAdd(block.get(), size))));
         return std::move(result);
     }
 
-    CONVERSION_API NascentChunkArray NascentModel::SerializeMaterials() const
+    NascentChunkArray NascentModel::SerializeMaterials() const
     {
         std::string matSettingsFile;
         {
@@ -1248,24 +1239,21 @@ namespace RenderCore { namespace ColladaConversion
         Serialization::ChunkFile::ChunkHeader scaffoldChunk(
             RenderCore::Assets::ChunkType_RawMat, 0, _name.c_str(), Serialization::ChunkFile::SizeType(finalSize));
 
-        NascentChunkArray result(
-            std::unique_ptr<NascentChunk[], Internal::CrossDLLDeletor>(
-                new NascentChunk[1], Internal::CrossDLLDeletor(&DestroyChunkArray)),
-            1);
-        result.first[0] = NascentChunk(
+        NascentChunkArray result(new std::vector<NascentChunk>(), &DestroyChunkArray);
+        result->push_back(NascentChunk(
             scaffoldChunk, 
-            std::vector<uint8>(strm.GetBuffer().Begin(), strm.GetBuffer().End()));
+            std::vector<uint8>(strm.GetBuffer().Begin(), strm.GetBuffer().End())));
         return std::move(result);
     }
 
-    CONVERSION_API void         NascentModel::MergeAnimationData(const NascentModel& source, const char animationName[])
+    void         NascentModel::MergeAnimationData(const NascentModel& source, const char animationName[])
     {
         // _animationSet.MergeAnimation(source._animationSet, animationName, source._objects, _objects);
     }
 
     static void DestroyModel(const void* model) { delete (NascentModel*)model; }
 
-    CONVERSION_API std::unique_ptr<NascentModel, Internal::CrossDLLDeletor>    CreateModel(const ResChar identifier[])
+    std::unique_ptr<NascentModel, Internal::CrossDLLDeletor>    OCCreateModel(const ResChar identifier[])
     {
         return std::unique_ptr<NascentModel, Internal::CrossDLLDeletor>(
             std::make_unique<NascentModel>(identifier).release(), 
@@ -1273,30 +1261,3 @@ namespace RenderCore { namespace ColladaConversion
     }
 }}
 
-namespace RenderCore { namespace ColladaConversion
-{
-    extern char VersionString[];
-    extern char BuildDateString[];
-}}
-
-ConsoleRig::LibVersionDesc GetVersionInformation()
-{
-    ConsoleRig::LibVersionDesc result;
-    result._versionString = RenderCore::ColladaConversion::VersionString;
-    result._buildDateString = RenderCore::ColladaConversion::BuildDateString;
-    return result;
-}
-
-static ConsoleRig::AttachRef<ConsoleRig::GlobalServices> s_attachRef;
-
-void AttachLibrary(ConsoleRig::GlobalServices& services)
-{
-    s_attachRef = services.Attach();
-    LogInfo << "Attached Collada Compiler DLL: {" << RenderCore::ColladaConversion::VersionString << "} -- {" << RenderCore::ColladaConversion::BuildDateString << "}";
-}
-
-void DetachLibrary()
-{
-    s_attachRef.Detach();
-    TerminateFileSystemMonitoring();
-}

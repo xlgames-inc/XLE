@@ -9,6 +9,8 @@
 #include "../Assets/AssetsCore.h"
 #include "../Assets/ChunkFile.h"
 #include "../Assets/BlockSerializer.h"
+#include "../ConsoleRig/AttachableLibrary.h"
+#include "../ConsoleRig/GlobalServices.h"
 #include <vector>
 #include <memory>
 
@@ -20,22 +22,22 @@
 
 namespace RenderCore { namespace ColladaConversion
 {
-    class NascentChunk2
+    class NascentChunk
     {
     public:
         Serialization::ChunkFile::ChunkHeader _hdr;
         std::vector<uint8> _data;
 
-        NascentChunk2(
+        NascentChunk(
             const Serialization::ChunkFile::ChunkHeader& hdr, 
             std::vector<uint8>&& data)
             : _hdr(hdr), _data(std::forward<std::vector<uint8>>(data)) {}
-        NascentChunk2(NascentChunk2&& moveFrom)
+        NascentChunk(NascentChunk&& moveFrom)
         : _hdr(moveFrom._hdr)
         , _data(std::move(moveFrom._data))
         {}
-        NascentChunk2() {}
-        NascentChunk2& operator=(NascentChunk2&& moveFrom)
+        NascentChunk() {}
+        NascentChunk& operator=(NascentChunk&& moveFrom)
         {
             _hdr = moveFrom._hdr;
             _data = std::move(moveFrom._data);
@@ -46,21 +48,25 @@ namespace RenderCore { namespace ColladaConversion
     class ColladaScaffold;
     class WorkingAnimationSet;
 
-    using NascentChunkArray2 = std::shared_ptr<std::vector<NascentChunk2>>;
+    using NascentChunkArray = std::shared_ptr<std::vector<NascentChunk>>;
 
     CONVERSION_API std::shared_ptr<ColladaScaffold> CreateColladaScaffold(const ::Assets::ResChar identifier[]);
-    CONVERSION_API NascentChunkArray2 SerializeSkin2(const ColladaScaffold& model);
-    CONVERSION_API NascentChunkArray2 SerializeSkeleton2(const ColladaScaffold& model);
-    CONVERSION_API NascentChunkArray2 SerializeMaterials2(const ColladaScaffold& model);
+    CONVERSION_API NascentChunkArray SerializeSkin(const ColladaScaffold& model);
+    CONVERSION_API NascentChunkArray SerializeSkeleton(const ColladaScaffold& model);
+    CONVERSION_API NascentChunkArray SerializeMaterials(const ColladaScaffold& model);
 
     CONVERSION_API std::shared_ptr<WorkingAnimationSet> CreateAnimationSet(const char name[]);
     CONVERSION_API void ExtractAnimations(WorkingAnimationSet& dest, const ColladaScaffold& model, const char animName[]);
-    CONVERSION_API NascentChunkArray2 SerializeAnimationSet2(const WorkingAnimationSet& animset);
+    CONVERSION_API NascentChunkArray SerializeAnimationSet(const WorkingAnimationSet& animset);
 
     typedef std::shared_ptr<ColladaScaffold> CreateColladaScaffoldFn(const ::Assets::ResChar identifier[]);
-    typedef NascentChunkArray2 Model2SerializeFn(const ColladaScaffold&);
+    typedef NascentChunkArray ModelSerializeFn(const ColladaScaffold&);
 
     typedef std::shared_ptr<WorkingAnimationSet> CreateAnimationSetFn();
     typedef void ExtractAnimationsFn(WorkingAnimationSet&, const ColladaScaffold&, const char[]);
-    typedef NascentChunkArray2 SerializeAnimationSet2Fn(const WorkingAnimationSet&);
+    typedef NascentChunkArray SerializeAnimationSetFn(const WorkingAnimationSet&);
 }}
+
+extern "C" CONVERSION_API ConsoleRig::LibVersionDesc GetVersionInformation();
+extern "C" CONVERSION_API void AttachLibrary(ConsoleRig::GlobalServices&);
+extern "C" CONVERSION_API void DetachLibrary();

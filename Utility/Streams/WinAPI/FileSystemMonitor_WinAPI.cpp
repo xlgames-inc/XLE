@@ -149,8 +149,8 @@ namespace Utility
                 _Dist_type(_callbacks.begin()));
         #else
             auto range = std::equal_range(
-                _callbacks.cbegin(), _callbacks.cend(), 
-                hash, CompareFirst<uint64, std::shared_ptr<OnChangeCallback>>());
+                _callbacks.begin(), _callbacks.end(), 
+                hash, CompareFirst<uint64, std::weak_ptr<OnChangeCallback>>());
         #endif
 
         bool foundExpired = false;

@@ -8,9 +8,9 @@
 
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../IDevice_Forward.h"
+#include "../../BufferUploads/IBufferUploads_Forward.h"
 #include <memory>
 
-namespace BufferUploads { class IManager; }
 namespace RenderCore { class ShaderService; }
 
 namespace RenderCore { namespace Assets

@@ -43,26 +43,27 @@ namespace RenderCore { namespace ColladaConversion
     public:
         std::string _name;
         ImportConfiguration _cfg;
-        std::unique_ptr<uint8[]> _fileData;
+        MemoryMappedFile _fileData;
         std::shared_ptr<DocumentScaffold> _doc;
         ::ColladaConversion::URIResolveContext _resolveContext;
     };
 
     static void DestroyModel(const void* model) { delete (ColladaScaffold*)model; }
-    static void DestroyChunkArray(const void* chunkArray) { delete[] (const NascentChunk2*)chunkArray; }
+    static void DestroyChunkArray(const void* chunkArray) { delete (std::vector<NascentChunk>*)chunkArray; }
 
     std::shared_ptr<ColladaScaffold> CreateColladaScaffold(const ::Assets::ResChar identifier[])
     {
         std::shared_ptr<ColladaScaffold> result(new ColladaScaffold, &DestroyModel);
 
         result->_cfg = ImportConfiguration("colladaimport.cfg");
+        result->_fileData = MemoryMappedFile(identifier, 0, MemoryMappedFile::Access::Read, BasicFile::ShareMode::Read);
+        if (!result->_fileData.IsValid())
+            Throw(::Exceptions::BasicLabel("Error opening file for read (%s)", identifier));
 
-        if (!identifier) return std::move(result);
-
-        size_t size;
-        result->_fileData = LoadFileAsMemoryBlock(identifier, &size);
         XmlInputStreamFormatter<utf8> formatter(
-            MemoryMappedInputStream(result->_fileData.get(), PtrAdd(result->_fileData.get(), size)));
+            MemoryMappedInputStream(
+                result->_fileData.GetData(), 
+                PtrAdd(result->_fileData.GetData(), result->_fileData.GetSize())));
 
         result->_name = identifier;
         result->_doc = std::make_shared<ColladaConversion::DocumentScaffold>();
@@ -125,7 +126,7 @@ namespace RenderCore { namespace ColladaConversion
                     // can be required for some controller objects that use rigid animation
                     //  -- they can have a skin controller with no joints (meaning at the 
                     //      only transform that can affect them is the parent node -- or maybe the skeleton root?)
-                LogWarning << "Could not instantiate controller as a skinned object. Falling back to rigid object." << std::endl;
+                LogWarning << "Could not instantiate controller as a skinned object. Falling back to rigid object.";
                 TRY {
                     _cmdStream.Add(
                         RenderCore::ColladaConversion::InstantiateGeometry(
@@ -168,7 +169,7 @@ namespace RenderCore { namespace ColladaConversion
         }
     }
   
-    NascentChunkArray2 SerializeSkin2(const ColladaScaffold& model)
+    NascentChunkArray SerializeSkin(const ColladaScaffold& model)
     {
         Serialization::NascentBlockSerializer serializer;
         std::vector<uint8> largeResourcesBlock;
@@ -248,9 +249,9 @@ namespace RenderCore { namespace ColladaConversion
         Serialization::ChunkFile::ChunkHeader largeBlockChunk(
             RenderCore::Assets::ChunkType_ModelScaffoldLargeBlocks, 0, model._name.c_str(), (unsigned)largeResourcesBlock.size());
 
-        NascentChunkArray2 result(new std::vector<NascentChunk2>, &DestroyChunkArray);
-        result->push_back(NascentChunk2(scaffoldChunk, std::vector<uint8>(block.get(), PtrAdd(block.get(), size))));
-        result->push_back(NascentChunk2(largeBlockChunk, std::move(largeResourcesBlock)));
+        NascentChunkArray result(new std::vector<NascentChunk>, &DestroyChunkArray);
+        result->push_back(NascentChunk(scaffoldChunk, std::vector<uint8>(block.get(), PtrAdd(block.get(), size))));
+        result->push_back(NascentChunk(largeBlockChunk, std::move(largeResourcesBlock)));
 
         return std::move(result);
     }
@@ -279,7 +280,7 @@ namespace RenderCore { namespace ColladaConversion
         RegisterNodeBindingNames(_skeleton, jointRefs);
     }
 
-    NascentChunkArray2 SerializeSkeleton2(const ColladaScaffold& model)
+    NascentChunkArray SerializeSkeleton(const ColladaScaffold& model)
     {
         Serialization::NascentBlockSerializer serializer;
 
@@ -295,8 +296,8 @@ namespace RenderCore { namespace ColladaConversion
             RenderCore::Assets::ChunkType_Skeleton, 0, 
             model._name.c_str(), unsigned(size));
 
-        NascentChunkArray2 result(new std::vector<NascentChunk2>, &DestroyChunkArray);
-        result->push_back(NascentChunk2(scaffoldChunk, std::vector<uint8>(block.get(), PtrAdd(block.get(), size))));
+        NascentChunkArray result(new std::vector<NascentChunk>, &DestroyChunkArray);
+        result->push_back(NascentChunk(scaffoldChunk, std::vector<uint8>(block.get(), PtrAdd(block.get(), size))));
         return std::move(result);
     }
 
@@ -339,7 +340,7 @@ namespace RenderCore { namespace ColladaConversion
         }
     }
 
-    NascentChunkArray2 SerializeMaterials2(const ColladaScaffold& model)  
+    NascentChunkArray SerializeMaterials(const ColladaScaffold& model)  
     { 
         std::string matSettingsFile;
         {
@@ -366,8 +367,8 @@ namespace RenderCore { namespace ColladaConversion
             RenderCore::Assets::ChunkType_RawMat, 0, 
             model._name.c_str(), Serialization::ChunkFile::SizeType(finalSize));
 
-        NascentChunkArray2 result(new std::vector<NascentChunk2>(), &DestroyChunkArray);
-        result->push_back(NascentChunk2(
+        NascentChunkArray result(new std::vector<NascentChunk>(), &DestroyChunkArray);
+        result->push_back(NascentChunk(
             scaffoldChunk, 
             std::vector<uint8>(strm.GetBuffer().Begin(), strm.GetBuffer().End())));
         return std::move(result);
@@ -424,7 +425,7 @@ namespace RenderCore { namespace ColladaConversion
             &DestroyWorkingAnimSet);
     }
 
-    NascentChunkArray2 SerializeAnimationSet2(const WorkingAnimationSet& animSet)
+    NascentChunkArray SerializeAnimationSet(const WorkingAnimationSet& animSet)
     {
         Serialization::NascentBlockSerializer serializer;
 
@@ -440,8 +441,8 @@ namespace RenderCore { namespace ColladaConversion
         Serialization::ChunkFile::ChunkHeader scaffoldChunk(
             RenderCore::Assets::ChunkType_AnimationSet, 0, animSet._name.c_str(), unsigned(size));
 
-        NascentChunkArray2 result(new std::vector<NascentChunk2>(), &DestroyChunkArray);
-        result->push_back(NascentChunk2(scaffoldChunk, std::vector<uint8>(block.get(), PtrAdd(block.get(), size))));
+        NascentChunkArray result(new std::vector<NascentChunk>(), &DestroyChunkArray);
+        result->push_back(NascentChunk(scaffoldChunk, std::vector<uint8>(block.get(), PtrAdd(block.get(), size))));
         return std::move(result);
     }
 
@@ -453,4 +454,32 @@ namespace RenderCore { namespace ColladaConversion
             animFile._curves, dest._curves);
     }
 }}
+
+namespace RenderCore { namespace ColladaConversion
+{
+    extern char VersionString[];
+    extern char BuildDateString[];
+}}
+
+ConsoleRig::LibVersionDesc GetVersionInformation()
+{
+    ConsoleRig::LibVersionDesc result;
+    result._versionString = RenderCore::ColladaConversion::VersionString;
+    result._buildDateString = RenderCore::ColladaConversion::BuildDateString;
+    return result;
+}
+
+static ConsoleRig::AttachRef<ConsoleRig::GlobalServices> s_attachRef;
+
+void AttachLibrary(ConsoleRig::GlobalServices& services)
+{
+    s_attachRef = services.Attach();
+    LogInfo << "Attached Collada Compiler DLL: {" << RenderCore::ColladaConversion::VersionString << "} -- {" << RenderCore::ColladaConversion::BuildDateString << "}";
+}
+
+void DetachLibrary()
+{
+    s_attachRef.Detach();
+    TerminateFileSystemMonitoring();
+}
 
