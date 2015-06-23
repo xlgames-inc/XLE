@@ -1573,11 +1573,15 @@ HRESULT LoadFromDDSFile( LPCWSTR szFile, DWORD flags, TexMetadata* metadata, Scr
     }
     else
     {
-        if ( remaining > image.GetPixelsSize() )
-        {
-            image.Release();
-            return E_FAIL;
-        }
+        //  DavidJ --   This fails for DDS files that have extra data after the main texture data.
+        //              Some exporters put extra data into this space. It's safer to fail to load
+        //              these textures, because it prevents people from hiding unwanted extra data 
+        //              in that spot... but it causes problems with some legacy files.
+        // if ( remaining > image.GetPixelsSize() )
+        // {
+        //     image.Release();
+        //     return E_FAIL;
+        // }
 
         if ( !ReadFile( hFile.get(), image.GetPixels(), static_cast<DWORD>( image.GetPixelsSize() ), &bytesRead, 0 ) )
         {
