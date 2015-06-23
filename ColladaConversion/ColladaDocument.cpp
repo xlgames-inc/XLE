@@ -800,6 +800,24 @@ namespace ColladaConversion
                         }
                     }
 
+                    // note --  when we call TryCharacterData here, the formatter
+                    //          will scan through the file to find the end of the 
+                    //          character data section. In most practical collada
+                    //          files, most of the file should be dedicated to character
+                    //          data in <source> elements. That mean that this scanning
+                    //          process can take some time.
+                    //          At some later point, we will probably need to parse
+                    //          the contents of the character data. That will require
+                    //          scanning through it again (doing string to float conversion
+                    //          and other conversion). That means we parse over that 
+                    //          data twice: one just to find the end of it, and one to
+                    //          build an actual list of data.
+                    //          We could potentially get a speed-up by parsing the list
+                    //          here, also. That will mean just a single pass over that data.
+                    //          But the disadvantage is will would need to store the parsed
+                    //          data somewhere. With the 2 pass model, we are more likely
+                    //          to parse the data, use it, and then release the memory in
+                    //          quick succession.
                     Section cdata;
                     if (formatter.TryCharacterData(cdata)) {
                         _arrayData = cdata;
