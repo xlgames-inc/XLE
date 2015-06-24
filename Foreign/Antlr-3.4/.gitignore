@@ -9,9 +9,8 @@
 *.bsc
 *.lastbuildstate
 *.manifest
+*.pdb
 libantlr3c-3.4/Template/*
 libantlr3c-3.4/x64/Template/*
-Debug/
 DebugDLL/
-Release/
 ReleaseDLL/

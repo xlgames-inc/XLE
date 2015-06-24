@@ -2,8 +2,10 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros">
-    <AntlrConfiguration Condition="$(Configuration.Contains('Debug'))">Debug</AntlrConfiguration>
-    <AntlrConfiguration Condition="!$(Configuration.Contains('Debug'))">Release</AntlrConfiguration>
+    <AntlrConfiguration Condition="$(Configuration.Contains('Debug')) and $(Platform) != 'x64'">Debug</AntlrConfiguration>
+    <AntlrConfiguration Condition="!$(Configuration.Contains('Debug')) and $(Platform) != 'x64'">Release</AntlrConfiguration>
+    <AntlrConfiguration Condition="$(Configuration.Contains('Debug')) and $(Platform) == 'x64'">x64\Debug</AntlrConfiguration>
+    <AntlrConfiguration Condition="!$(Configuration.Contains('Debug')) and $(Platform) == 'x64'">x64\Release</AntlrConfiguration>
 	<AntlrLib Condition="$(Configuration.Contains('Debug'))">antlr3cd</AntlrLib>
     <AntlrLib Condition="!$(Configuration.Contains('Debug'))">antlr3c</AntlrLib>
   </PropertyGroup>
