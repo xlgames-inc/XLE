@@ -31,9 +31,11 @@ cbuffer InstanceSpawn : register(b5)
 	row_major float4x4 WorldToCullFrustum;
 	float GridSpacing;
 	float ObjectTypeCount;
-	float ShiftAmount[8];
-	float MaxDrawDistanceSq[8];
+	float4 TypeOptions[8];		// jitter amount / maxDrawDistanceSq
 }
+
+float GetJitterAmount(uint type) 		{ return TypeOptions[type].x; }
+float GetMaxDrawDistanceSq(uint type) 	{ return TypeOptions[type].y; }
 
 static const uint MaxOutputVertices = 112;
 
@@ -45,20 +47,43 @@ void Swap(inout float3 A, inout float3 B)
 }
 
 void WriteInstance(	float3 instancePosition, float2 tc, float rotationValue,
+					float dhdxy,
 					inout uint outputVertices, uint outputStreamIndex, inout PointStream<GSOutput> outputStream)
 {
 	if ((outputVertices+1)<=MaxOutputVertices) {
 		GSOutput output;
 
-		float noiseValue = fbmNoise2D(instancePosition.xy, 9.632f, .85f, 2.0192f, 3);
+		const float hgrid = 9.632f;
+		const float gain = .85f;
+		const float lacunarity = 2.0192f;
+
+		const float noiseScaleForType = 8.f;
+
+			// currently both x and y jitter are generated from the same noise value!
+			// it maybe not ok... perhaps a second noise look-up is required
+		const float noiseScaleX = 4.5f;
+		const float noiseScaleY = -3.3f;
+
+		float noiseValue = fbmNoise2D(instancePosition.xy, hgrid, gain, lacunarity, 3);
 		uint instanceType = uint(ObjectTypeCount*frac(8.f * abs(noiseValue)));
+
+		// float noiseValue2 = fbmNoise2D(instancePosition.xy, .77f * hgrid, .92f * gain, lacunarity, 3);
+
+		#if defined(COVERAGE_1001)	// 1001 is the decoration coverage layer
+			// uint2 decorTexCoord = lerp(CoverageCoordMins[COVERAGE_1001].xy, CoverageCoordMaxs[COVERAGE_1001].xy, tc.xy);
+			// instanceType = MakeCoverageTileSet(COVERAGE_1001).Load(uint4(decorTexCoord, CoverageOrigin[COVERAGE_1001].z, 0)).r;
+		#endif
 
 		float3 camOffset = instancePosition - WorldSpaceView;
 		float distSq = dot(camOffset, camOffset);
-		if (distSq < MaxDrawDistanceSq[instanceType]) {
-			const float shiftAmount = ShiftAmount[instanceType];
-			instancePosition.x += shiftAmount * frac(noiseValue * 4.5f);
-			instancePosition.y += shiftAmount * frac(noiseValue * -3.3f);
+		if (distSq < GetMaxDrawDistanceSq(instanceType)) {
+			float shiftAmount = GetJitterAmount(instanceType);
+			// shiftAmount *= fbmNoise2D(instancePosition.xy, 3.351f * hgrid, .92f * gain, lacunarity, 1);
+			float3 shift;
+			shift.x = shiftAmount * frac(noiseValue * noiseScaleX);
+			shift.y = shiftAmount * frac(noiseValue * noiseScaleY);
+			shift.z = dot(shift.xy, dhdxy);	// (try to follow the surface of the triangle)
+			instancePosition += shift;
 			output.position = float4(instancePosition, rotationValue);
 
 				//	using the texture coordinate value, we can look up
@@ -67,9 +92,13 @@ void WriteInstance(	float3 instancePosition, float2 tc, float rotationValue,
 				//	accurate for large objects (particularlly tall plants, etc). But it should
 				//	work well for grass and small things. And it should be much more efficient
 				//	than doing extra shadowing work per-vertex or per-pixel.
-			float2 finalTexCoord = lerp(CoverageCoordMins[COVERAGE_1001].xy, CoverageCoordMaxs[COVERAGE_1001].xy, tc.xy);
-			float2 shadowSample = MakeCoverageTileSet(COVERAGE_1001).Load(uint4(finalTexCoord, CoverageOrigin[COVERAGE_1001].z, 0)).r;
-			float shadowing = saturate(ShadowSoftness * (SunAngle + shadowSample.r)) * saturate(ShadowSoftness * (shadowSample.g - SunAngle));
+			#if defined(COVERAGE_2)
+				uint2 shadowTexCoord = lerp(CoverageCoordMins[COVERAGE_2].xy, CoverageCoordMaxs[COVERAGE_2].xy, tc.xy);
+				float2 shadowSample = MakeCoverageTileSet(COVERAGE_2).Load(uint4(shadowTexCoord, CoverageOrigin[COVERAGE_2].z, 0)).r;
+				float shadowing = saturate(ShadowSoftness * (SunAngle + shadowSample.r)) * saturate(ShadowSoftness * (shadowSample.g - SunAngle));
+			#else
+				float shadowing = 1.f;
+			#endif
 
 			output.instanceParam = ((instanceType+1) & 0xffff) | ((uint(float(0xffff) * shadowing)) << 16);
 
@@ -81,6 +110,7 @@ void WriteInstance(	float3 instancePosition, float2 tc, float rotationValue,
 
 void RasterizeBetweenEdges(	float3 e00, float3 e01, float3 e10, float3 e11,
 							float2 tc00, float2 tc01, float2 tc10, float2 tc11,
+							float dhdxy,
 							inout uint outputVertices, float spacing,
 							inout PointStream<GSOutput> outputStream)
 {
@@ -111,9 +141,9 @@ void RasterizeBetweenEdges(	float3 e00, float3 e01, float3 e10, float3 e11,
 			float2 tc = lerp(spantc0, spantc1, ax);
 
 			WriteInstance(
-				float3(x, y, z), tc,
-				rotationValue, outputVertices,
-				outputStreamIndex, outputStream);
+				float3(x, y, z), tc, rotationValue,
+				dhdxy,
+				outputVertices, outputStreamIndex, outputStream);
 
 		}
 	}
@@ -180,6 +210,15 @@ bool CullTriangle(WorkingTriangle tri)
 	}
 }
 
+float2 CalculateTrangleDHDXY(float3 c0, float3 c1, float3 c2)
+{
+	float3 e1 = c1 - c0;
+	float3 e2 = c2 - c0;
+	float dhdx = (e1.z - (e1.y * e2.z) / e2.y) / (e1.x - e2.x * e1.y);
+	float dhdy = (e2.z / e2.y) - dhdx * e2.x;
+	return float2(dhdx, dhdy);
+}
+
 [maxvertexcount(112)]
 	void main(triangle VSOutput input[3], inout PointStream<GSOutput> outputStream)
 {
@@ -243,9 +282,11 @@ bool CullTriangle(WorkingTriangle tri)
 			//		Edges always point down, and go from top to
 			//		bottom
 
+		float2 dhdxy = CalculateTrangleDHDXY(tri.pts[0], tri.pts[1], tri.pts[2]);
+
 		uint outputVertices = 0;
-		RasterizeBetweenEdges(tri.pts[0], tri.pts[1], tri.pts[0], tri.pts[2], tc0, tc1, tc0, tc2, outputVertices, gridSpacing, outputStream);
-		RasterizeBetweenEdges(tri.pts[1], tri.pts[2], tri.pts[0], tri.pts[2], tc1, tc2, tc0, tc2, outputVertices, gridSpacing, outputStream);
+		RasterizeBetweenEdges(tri.pts[0], tri.pts[1], tri.pts[0], tri.pts[2], tc0, tc1, tc0, tc2, dhdxy, outputVertices, gridSpacing, outputStream);
+		RasterizeBetweenEdges(tri.pts[1], tri.pts[2], tri.pts[0], tri.pts[2], tc1, tc2, tc0, tc2, dhdxy, outputVertices, gridSpacing, outputStream);
 
 	}
 }

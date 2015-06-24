@@ -23,6 +23,7 @@ namespace SceneEngine
             ::Assets::rstring _modelName, _materialName;
             float _jitterAmount;
             float _maxDrawDistance;
+            Bucket();
         };
         std::vector<Bucket> _buckets;
         float _baseGridSpacing;

@@ -190,18 +190,16 @@ namespace SceneEngine
                 Float4x4    _worldToCullFrustum;
                 float       _gridSpacing, _objectTypeCount;
                 unsigned    _dummy[2];
-                Float4       _jitterAmount[8];
-                Float4       _maxDrawDistanceSq[8];
+                Float4      _typeSettings[8];
             } instanceSpawnConstants = {
                 parserContext.GetProjectionDesc()._worldToProjection,
                 cfg._baseGridSpacing, float(objectTypeCount), 0, 0,
-                { Zero<Float4>(), Zero<Float4>(), Zero<Float4>(), Zero<Float4>(), Zero<Float4>(), Zero<Float4>(), Zero<Float4>(), Zero<Float4>() },
                 { Zero<Float4>(), Zero<Float4>(), Zero<Float4>(), Zero<Float4>(), Zero<Float4>(), Zero<Float4>(), Zero<Float4>(), Zero<Float4>() }
             };
 
-            for (unsigned c=0; c<(unsigned)std::min(dimof(instanceSpawnConstants._jitterAmount), cfg._buckets.size()); ++c) {
-                instanceSpawnConstants._jitterAmount[c][0] = cfg._buckets[c]._jitterAmount;
-                instanceSpawnConstants._maxDrawDistanceSq[c][0] = cfg._buckets[c]._maxDrawDistance * cfg._buckets[c]._maxDrawDistance;
+            for (unsigned c=0; c<(unsigned)std::min(dimof(instanceSpawnConstants._typeSettings), cfg._buckets.size()); ++c) {
+                instanceSpawnConstants._typeSettings[c][0] = cfg._buckets[c]._jitterAmount;
+                instanceSpawnConstants._typeSettings[c][1] = cfg._buckets[c]._maxDrawDistance * cfg._buckets[c]._maxDrawDistance;
             }
 
             context->BindGS(RenderCore::MakeResourceList(5, ConstantBuffer(&instanceSpawnConstants, sizeof(InstanceSpawnConstants))));
@@ -555,12 +553,21 @@ namespace SceneEngine
 
     VegetationSpawnManager::~VegetationSpawnManager() {}
 
-
     VegetationSpawnConfig::VegetationSpawnConfig(const ::Assets::ResChar src[])
     {
     }
-    VegetationSpawnConfig::VegetationSpawnConfig() {}
+
+    VegetationSpawnConfig::VegetationSpawnConfig() 
+    {
+        _baseGridSpacing = 1.f;
+    }
     VegetationSpawnConfig::~VegetationSpawnConfig() {}
+
+    VegetationSpawnConfig::Bucket::Bucket()
+    {
+        _jitterAmount = 1.f;
+        _maxDrawDistance = 100.f;
+    }
 
 }
 
