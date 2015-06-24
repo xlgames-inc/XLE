@@ -24,18 +24,6 @@
       <Configuration>Debug</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Dummy1|x64">
-      <Configuration>Dummy1</Configuration>
-      <Platform>x64</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Dummy2|x64">
-      <Configuration>Dummy2</Configuration>
-      <Platform>x64</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Dummy3|x64">
-      <Configuration>Dummy3</Configuration>
-      <Platform>x64</Platform>
-    </ProjectConfiguration>
     <ProjectConfiguration Include="Profile-DX11|x64">
       <Configuration>Profile-DX11</Configuration>
       <Platform>x64</Platform>
@@ -50,10 +38,6 @@
     </ProjectConfiguration>
     <ProjectConfiguration Include="Profile-OpenGL|x64">
       <Configuration>Profile-OpenGL</Configuration>
-      <Platform>x64</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Profile|x64">
-      <Configuration>Profile</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
     <ProjectConfiguration Include="Release-DX11|x64">
@@ -95,10 +79,6 @@
     <ProjectConfiguration Include="Dummy3|Tegra-Android">
       <Configuration>Dummy3</Configuration>
       <Platform>Tegra-Android</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Release|x64">
-      <Configuration>Release</Configuration>
-      <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
