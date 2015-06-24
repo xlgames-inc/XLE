@@ -152,11 +152,15 @@ namespace RenderCore { namespace Assets
             const SharedStateSet& sharedStateSet, 
             const Float4x4& modelToWorld,
             const MeshToModel* transforms = nullptr);
+
         static void RenderPrepared(
-            const ModelRendererContext& context,
-            const SharedStateSet& sharedStateSet,
-            DelayedDrawCallSet& drawCalls,
-            DelayStep delayStep);
+            const ModelRendererContext& context, const SharedStateSet& sharedStateSet,
+            DelayedDrawCallSet& drawCalls, DelayStep delayStep);
+
+        static void RenderPrepared(
+            const ModelRendererContext& context, const SharedStateSet& sharedStateSet,
+            DelayedDrawCallSet& drawCalls, DelayStep delayStep,
+            const std::function<void(unsigned, unsigned, unsigned)>& callback);
 
             ////////////////////////////////////////////////////////////
         class PreparedAnimation
@@ -200,6 +204,12 @@ namespace RenderCore { namespace Assets
         std::unique_ptr<Pimpl> _pimpl;
 
         std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
+
+        template<bool HasCallback>
+            static void RenderPreparedInternal(
+                const ModelRendererContext&, const SharedStateSet&,
+                DelayedDrawCallSet&, DelayStep, 
+                const std::function<void(unsigned, unsigned, unsigned)>*);
     };
 
 ////////////////////////////////////////////////////////////////////////////////////////////

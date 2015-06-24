@@ -41,9 +41,7 @@ AppendStructuredBuffer<float4> OutputBuffer0;
 		asfloat(InstancePositions.Load(dispatchThreadId.x*16+ 0)),
 		asfloat(InstancePositions.Load(dispatchThreadId.x*16+ 4)),
 		asfloat(InstancePositions.Load(dispatchThreadId.x*16+ 8)),
-		asfloat(InstancePositions.Load(dispatchThreadId.x*16+12)));
-
-	position.w = sh0 / float(0xffff);
+		sh0 / float(0xffff));
 
 	if (type==1) { OutputBuffer0.Append(position); }
 	#if INSTANCE_BIN_COUNT >= 2
@@ -68,4 +66,3 @@ AppendStructuredBuffer<float4> OutputBuffer0;
 		else if (type==8) { OutputBuffer7.Append(position); }
 	#endif
 }
-

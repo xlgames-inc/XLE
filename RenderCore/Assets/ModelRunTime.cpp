@@ -1178,11 +1178,11 @@ namespace RenderCore { namespace Assets
         }
     }
 
-    void ModelRenderer::RenderPrepared(
-        const ModelRendererContext& context,
-        const SharedStateSet&       sharedStateSet,
-        DelayedDrawCallSet&         drawCalls,
-        DelayStep                   delayStep)
+    template<bool HasCallback>
+        void ModelRenderer::RenderPreparedInternal(
+            const ModelRendererContext& context, const SharedStateSet& sharedStateSet,
+            DelayedDrawCallSet& drawCalls, DelayStep delayStep,
+            const std::function<void(unsigned, unsigned, unsigned)>* callback)
     {
         if (drawCalls.GetRendererGUID() != typeid(ModelRenderer).hash_code())
             ThrowException(::Exceptions::BasicLabel("Delayed draw call set matched with wrong renderer type"));
@@ -1278,8 +1278,27 @@ namespace RenderCore { namespace Assets
             }
 
             context._context->Bind((Metal::Topology::Enum)(d->_topology & 0xff));
-            context._context->DrawIndexed(d->_indexCount, d->_firstIndex, d->_firstVertex);
+            if (constant_expression<HasCallback>::result()) {
+                (*callback)(d->_indexCount, d->_firstIndex, d->_firstVertex);
+            } else
+                context._context->DrawIndexed(d->_indexCount, d->_firstIndex, d->_firstVertex);
         }
+    }
+
+    void ModelRenderer::RenderPrepared(
+        const ModelRendererContext& context, const SharedStateSet& sharedStateSet,
+        DelayedDrawCallSet& drawCalls, DelayStep delayStep)
+    {
+        RenderPreparedInternal<false>(context, sharedStateSet, drawCalls, delayStep, nullptr);
+    }
+
+    void ModelRenderer::RenderPrepared(
+        const ModelRendererContext& context, const SharedStateSet& sharedStateSet,
+        DelayedDrawCallSet& drawCalls, DelayStep delayStep,
+        const std::function<void(unsigned, unsigned, unsigned)>& callback)
+    {
+        assert(callback);
+        RenderPreparedInternal<true>(context, sharedStateSet, drawCalls, delayStep, &callback);
     }
 
 ////////////////////////////////////////////////////////////////////////////////

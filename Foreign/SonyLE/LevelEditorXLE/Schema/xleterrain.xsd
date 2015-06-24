@@ -95,6 +95,47 @@
   </xs:complexType>
 
   <!-- ......................................................................... -->
+
+  <xs:complexType name="vegetationSpawnObjectType">
+    <xs:annotation>
+      <xs:appinfo>
+        <LeGe.NativeType nativeName="VegetationSpawnObjectType"/>
+        <LeGe.NativeProperty name="JitterAmount" nativeName="JitterAmount"/>
+        <LeGe.NativeProperty name="MaxDrawDistance" nativeName="MaxDrawDistance"/>
+        <LeGe.NativeProperty name="Model" nativeName="Model"/>
+        <LeGe.NativeProperty name="Material" nativeName="Material"/>
+
+        <scea.dom.editors.attribute name="Model" displayName="Model" description="Model" category="General" editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" converter="LevelEditorXLE.AssetNameNoExtConverter,LevelEditorXLE"/>
+        <scea.dom.editors.attribute name="Material" displayName="Material" description="Material" category="General" editor="Sce.Atf.Controls.PropertyEditing.FileUriEditor,Atf.Gui.WinForms" converter="LevelEditorXLE.AssetNameNoExtConverter,LevelEditorXLE"/>
+        <scea.dom.editors.attribute name="JitterAmount" displayName="JitterAmount" description="Randomness " category="General"/>
+        <scea.dom.editors.attribute name="MaxDrawDistance" displayName="MaxDrawDistance" description="mapping1" category="General"/>
+      </xs:appinfo>
+    </xs:annotation>
+
+    <xs:attribute name="JitterAmount" type="xs:float" default="1"/>
+    <xs:attribute name="MaxDrawDistance" type="xs:float" default="100"/>
+    <xs:attribute name="Model" type="xs:string" default=""/>
+    <xs:attribute name="Material" type="xs:string" default=""/>
+  </xs:complexType>
+  
+  <xs:complexType name="vegetationSpawnConfigType">
+    <xs:annotation>
+      <xs:appinfo>
+        <LeGe.NativeType nativeName="VegetationSpawnConfig"/>
+        <LeGe.NativeProperty name="BaseGridSpacing" nativeName="BaseGridSpacing"/>
+        <scea.dom.editors.attribute name="BaseGridSpacing" displayName="Base Grid Spacing" description="Spacing between objects (before position jittering)" category="General"/>
+
+        <scea.dom.editors name="VegetationSpawnConfig" category="Level Tools" image="LevelEditorCore.Resources.gameObject.png" menuText="VegetationSpawnConfig" description="VegetationSpawnConfig"/>
+        <LeGe.OpaqueListable label="VegetationSpawnConfig"/>
+      </xs:appinfo>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="ObjectTypes" type="vegetationSpawnObjectType" minOccurs="0" maxOccurs="8" />
+    </xs:sequence>
+    <xs:attribute name="BaseGridSpacing" type="xs:float" default="1"/>
+  </xs:complexType>
+  
+  <!-- ......................................................................... -->
   
   <xs:complexType name="terrainType">
     <xs:annotation>
@@ -112,6 +153,7 @@
 
     <xs:sequence>
       <xs:element name="baseTexture" type="terrainBaseTextureType" minOccurs="1" maxOccurs="1" />
+      <xs:element name="VegetationSpawn" type="vegetationSpawnConfigType" minOccurs="0" maxOccurs="1" />
     </xs:sequence>
     <xs:attribute name="UberSurfaceDir" type="xs:string" />
     <xs:attribute name="CellsDir" type="xs:string" />

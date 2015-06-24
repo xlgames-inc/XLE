@@ -178,7 +178,9 @@ namespace SceneEngine
                     definesBuffer << ";VISUALIZE_COVERAGE=" << c;
             }
 
-        const char* ps = isTextured ? "game/xleres/objects/terrain/TerrainTexturing.sh:ps_main:!ps_*" : "game/xleres/solidwireframe.psh:main:ps_*";
+        const char* ps = isTextured 
+            ? "game/xleres/objects/terrain/TerrainTexturing.sh:ps_main:!ps_*" 
+            : "game/xleres/solidwireframe.psh:main:ps_*";
 
         if (Tweakable("LightingModel", 0) == 1 && isTextured) {
                 // manually switch to the forward shading pixel shader depending on the lighting model
@@ -225,7 +227,7 @@ namespace SceneEngine
 
         if (shaderProgram->DynamicLinkingEnabled()) {
             _dynLinkage = BoundClassInterfaces(*shaderProgram);
-            _dynLinkage.Bind(Hash64("MainProceduralTexture"), 0, "StrataMaterial");
+            _dynLinkage.Bind(Hash64("ProceduralTextures"), 0, "StrataMaterial");
         }
 
         auto validationCallback = std::make_shared<::Assets::DependencyValidation>();

@@ -79,20 +79,10 @@ namespace LevelEditorXLE
             return new Tuple<string, string>("LevelEditorXLE.Schema", "xleroot.xsd");
         }
 
-        public static void OnSchemaSetLoaded(
-            XmlSchemaSet schemaSet, 
-            IEnumerable<XmlSchemaTypeCollection> typeCollections)
+        private static EmbeddedCollectionEditor SetupEmbeddedCollectionEditor(DomNodeType containedType, string objectName)
         {
-            foreach (XmlSchemaTypeCollection typeCollection in typeCollections)
-            {
-                Schema.Initialize(typeCollection);
-                Startup.InitializeAdapters();
-                break;
-            }
-
-            var strataCollectionEditor = new EmbeddedCollectionEditor();
-
-            strataCollectionEditor.GetItemInsertersFunc = (context) =>
+            var result = new EmbeddedCollectionEditor();
+            result.GetItemInsertersFunc = (context) =>
             {
                 var list = context.GetValue() as IList<DomNode>;
                 if (list == null) return EmptyArray<EmbeddedCollectionEditor.ItemInserter>.Instance;
@@ -100,10 +90,10 @@ namespace LevelEditorXLE
                 // create ItemInserter for each component type.
                 var insertors = new EmbeddedCollectionEditor.ItemInserter[1]
                     {
-                        new EmbeddedCollectionEditor.ItemInserter("Strata",
+                        new EmbeddedCollectionEditor.ItemInserter(objectName,
                         delegate
                         {
-                            DomNode node = new DomNode(Schema.terrainBaseTextureStrataType.Type);
+                            DomNode node = new DomNode(containedType);
                             list.Add(node);
                             return node;
                         })
@@ -111,14 +101,14 @@ namespace LevelEditorXLE
                 return insertors;
             };
 
-            strataCollectionEditor.RemoveItemFunc = (context, item) =>
+            result.RemoveItemFunc = (context, item) =>
             {
                 var list = context.GetValue() as IList<DomNode>;
                 if (list != null)
                     list.Remove(item.Cast<DomNode>());
             };
 
-            strataCollectionEditor.MoveItemFunc = (context, item, delta) =>
+            result.MoveItemFunc = (context, item, delta) =>
             {
                 var list = context.GetValue() as IList<DomNode>;
                 if (list != null)
@@ -133,17 +123,43 @@ namespace LevelEditorXLE
                 }
             };
 
+            return result;
+        }
+
+        public static void OnSchemaSetLoaded(
+            XmlSchemaSet schemaSet, 
+            IEnumerable<XmlSchemaTypeCollection> typeCollections)
+        {
+            foreach (XmlSchemaTypeCollection typeCollection in typeCollections)
+            {
+                Schema.Initialize(typeCollection);
+                Startup.InitializeAdapters();
+                break;
+            }
+
             Schema.terrainStrataMaterialType.Type.SetTag(
-                   new PropertyDescriptorCollection(
-                       new System.ComponentModel.PropertyDescriptor[] {
-                            new ChildPropertyDescriptor(
-                                "Strata".Localize(),
-                                Schema.terrainStrataMaterialType.strataChild,
-                                null,
-                                "List of texturing stratas".Localize(),
-                                false,
-                                strataCollectionEditor)
-                                }));
+                new PropertyDescriptorCollection(
+                    new System.ComponentModel.PropertyDescriptor[] {
+                        new ChildPropertyDescriptor(
+                            "Strata".Localize(),
+                            Schema.terrainStrataMaterialType.strataChild,
+                            null,
+                            "List of texturing stratas".Localize(),
+                            false,
+                            SetupEmbeddedCollectionEditor(Schema.terrainBaseTextureStrataType.Type, "Strata"))
+                            }));
+
+            Schema.vegetationSpawnConfigType.Type.SetTag(
+                new PropertyDescriptorCollection(
+                    new System.ComponentModel.PropertyDescriptor[] {
+                        new ChildPropertyDescriptor(
+                            "Object Type".Localize(),
+                            Schema.vegetationSpawnConfigType.ObjectTypesChild,
+                            null,
+                            "List of spawned objects".Localize(),
+                            false,
+                            SetupEmbeddedCollectionEditor(Schema.vegetationSpawnObjectType.Type, "Object Type"))
+                            }));
         }
 
         public static DomNodeType GetGameType() { return Schema.xleGameType.Type; }

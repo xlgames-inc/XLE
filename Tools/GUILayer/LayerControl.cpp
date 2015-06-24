@@ -28,6 +28,7 @@
 #include "../../SceneEngine/LightingParserStandardPlugin.h"
 #include "../../SceneEngine/LightingParserContext.h"
 #include "../../SceneEngine/IntersectionTest.h"
+#include "../../SceneEngine/VegetationSpawn.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../Utility/PtrUtils.h"

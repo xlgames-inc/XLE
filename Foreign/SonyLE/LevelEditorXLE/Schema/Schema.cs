@@ -248,6 +248,7 @@ namespace LevelEditorXLE
             terrainBaseTextureType.diffusedimsAttribute = terrainBaseTextureType.Type.GetAttributeInfo("diffusedims");
             terrainBaseTextureType.normaldimsAttribute = terrainBaseTextureType.Type.GetAttributeInfo("normaldims");
             terrainBaseTextureType.paramdimsAttribute = terrainBaseTextureType.Type.GetAttributeInfo("paramdims");
+            terrainBaseTextureType.materialChild = terrainBaseTextureType.Type.GetChildInfo("material");
 
             terrainBaseTextureStrataType.Type = getNodeType("gap", "terrainBaseTextureStrataType");
             terrainBaseTextureStrataType.texture0Attribute = terrainBaseTextureStrataType.Type.GetAttributeInfo("texture0");
@@ -262,6 +263,16 @@ namespace LevelEditorXLE
             terrainStrataMaterialType.MaterialIdAttribute = terrainStrataMaterialType.Type.GetAttributeInfo("MaterialId");
             terrainStrataMaterialType.strataChild = terrainStrataMaterialType.Type.GetChildInfo("strata");
 
+            vegetationSpawnObjectType.Type = getNodeType("gap", "vegetationSpawnObjectType");
+            vegetationSpawnObjectType.JitterAmountAttribute = vegetationSpawnObjectType.Type.GetAttributeInfo("JitterAmount");
+            vegetationSpawnObjectType.MaxDrawDistanceAttribute = vegetationSpawnObjectType.Type.GetAttributeInfo("MaxDrawDistance");
+            vegetationSpawnObjectType.ModelAttribute = vegetationSpawnObjectType.Type.GetAttributeInfo("Model");
+            vegetationSpawnObjectType.MaterialAttribute = vegetationSpawnObjectType.Type.GetAttributeInfo("Material");
+
+            vegetationSpawnConfigType.Type = getNodeType("gap", "vegetationSpawnConfigType");
+            vegetationSpawnConfigType.BaseGridSpacingAttribute = vegetationSpawnConfigType.Type.GetAttributeInfo("BaseGridSpacing");
+            vegetationSpawnConfigType.ObjectTypesChild = vegetationSpawnConfigType.Type.GetChildInfo("ObjectTypes");
+
             terrainType.Type = getNodeType("gap", "terrainType");
             terrainType.UberSurfaceDirAttribute = terrainType.Type.GetAttributeInfo("UberSurfaceDir");
             terrainType.CellsDirAttribute = terrainType.Type.GetAttributeInfo("CellsDir");
@@ -273,7 +284,7 @@ namespace LevelEditorXLE
             terrainType.HasBaseMaterialCoverageAttribute = terrainType.Type.GetAttributeInfo("HasBaseMaterialCoverage");
             terrainType.HasDecorationCoverageAttribute = terrainType.Type.GetAttributeInfo("HasDecorationCoverage");
             terrainType.baseTextureChild = terrainType.Type.GetChildInfo("baseTexture");
-            terrainType.materialChild = terrainType.Type.GetChildInfo("material");
+            terrainType.VegetationSpawnChild = terrainType.Type.GetChildInfo("VegetationSpawn");
 
             resourceReferenceType.Type = getNodeType("gap", "resourceReferenceType");
             resourceReferenceType.uriAttribute = resourceReferenceType.Type.GetAttributeInfo("uri");
@@ -632,6 +643,7 @@ namespace LevelEditorXLE
             public static AttributeInfo diffusedimsAttribute;
             public static AttributeInfo normaldimsAttribute;
             public static AttributeInfo paramdimsAttribute;
+            public static ChildInfo materialChild;
         }
 
         public static class terrainBaseTextureStrataType
@@ -653,6 +665,22 @@ namespace LevelEditorXLE
             public static ChildInfo strataChild;
         }
 
+        public static class vegetationSpawnObjectType
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo JitterAmountAttribute;
+            public static AttributeInfo MaxDrawDistanceAttribute;
+            public static AttributeInfo ModelAttribute;
+            public static AttributeInfo MaterialAttribute;
+        }
+
+        public static class vegetationSpawnConfigType
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo BaseGridSpacingAttribute;
+            public static ChildInfo ObjectTypesChild;
+        }
+
         public static class terrainType
         {
             public static DomNodeType Type;
@@ -666,7 +694,7 @@ namespace LevelEditorXLE
             public static AttributeInfo HasBaseMaterialCoverageAttribute;
             public static AttributeInfo HasDecorationCoverageAttribute;
             public static ChildInfo baseTextureChild;
-            public static ChildInfo materialChild;
+            public static ChildInfo VegetationSpawnChild;
         }
 
         public static class resourceReferenceType

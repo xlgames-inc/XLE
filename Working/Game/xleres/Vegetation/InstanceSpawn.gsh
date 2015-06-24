@@ -13,7 +13,7 @@
 
 #include "../Terrain.h"
 #include "../Utility/perlinnoise.h"
-#include "../Forward/TerrainGenerator.h"
+#include "../Objects/Terrain/TerrainGenerator.h"
 
 struct WorkingTriangle
 {
@@ -29,7 +29,10 @@ struct GSOutput
 cbuffer InstanceSpawn : register(b5)
 {
 	row_major float4x4 WorldToCullFrustum;
-	float GridSpacing;	// 0.75
+	float GridSpacing;
+	float ObjectTypeCount;
+	float ShiftAmount[8];
+	float MaxDrawDistanceSq[8];
 }
 
 static const uint MaxOutputVertices = 112;
@@ -41,26 +44,14 @@ void Swap(inout float3 A, inout float3 B)
 	B = x;
 }
 
-static const float ShiftAmount[6] = 
-{
-	3.f, 3.f, .0f, .5f, 3.f, 3.f
-};
-
-static const float MaxDrawDistanceSq[6] = 
-{
-	75.f * 75.f, 100.f * 100.f, 
-	20.f * 20.f, 40.f * 40.f, 
-	50.f * 50.f, 60.f * 60.f
-};
-
-void WriteInstance(	float3 instancePosition, float2 tc, float rotationValue, 
+void WriteInstance(	float3 instancePosition, float2 tc, float rotationValue,
 					inout uint outputVertices, uint outputStreamIndex, inout PointStream<GSOutput> outputStream)
 {
 	if ((outputVertices+1)<=MaxOutputVertices) {
 		GSOutput output;
 
 		float noiseValue = fbmNoise2D(instancePosition.xy, 9.632f, .85f, 2.0192f, 3);
-		uint instanceType = uint(6*frac(8.f * abs(noiseValue)));
+		uint instanceType = uint(ObjectTypeCount*frac(8.f * abs(noiseValue)));
 
 		float3 camOffset = instancePosition - WorldSpaceView;
 		float distSq = dot(camOffset, camOffset);
@@ -76,8 +67,8 @@ void WriteInstance(	float3 instancePosition, float2 tc, float rotationValue,
 				//	accurate for large objects (particularlly tall plants, etc). But it should
 				//	work well for grass and small things. And it should be much more efficient
 				//	than doing extra shadowing work per-vertex or per-pixel.
-			float2 finalTexCoord = lerp(TexCoordMins.xy, TexCoordMaxs.xy, tc.xy);
-			float2 shadowSample = CoverageTileSet.SampleLevel(DefaultSampler, float3(finalTexCoord.xy, CoverageOrigin.z), 0).rg;
+			float2 finalTexCoord = lerp(CoverageCoordMins[COVERAGE_1001].xy, CoverageCoordMaxs[COVERAGE_1001].xy, tc.xy);
+			float2 shadowSample = MakeCoverageTileSet(COVERAGE_1001).Load(uint4(finalTexCoord, CoverageOrigin[COVERAGE_1001].z, 0)).r;
 			float shadowing = saturate(ShadowSoftness * (SunAngle + shadowSample.r)) * saturate(ShadowSoftness * (shadowSample.g - SunAngle));
 
 			output.instanceParam = ((instanceType+1) & 0xffff) | ((uint(float(0xffff) * shadowing)) << 16);
@@ -88,7 +79,7 @@ void WriteInstance(	float3 instancePosition, float2 tc, float rotationValue,
 	}
 }
 
-void RasterizeBetweenEdges(	float3 e00, float3 e01, float3 e10, float3 e11, 
+void RasterizeBetweenEdges(	float3 e00, float3 e01, float3 e10, float3 e11,
 							float2 tc00, float2 tc01, float2 tc10, float2 tc11,
 							inout uint outputVertices, float spacing,
 							inout PointStream<GSOutput> outputStream)
@@ -121,7 +112,7 @@ void RasterizeBetweenEdges(	float3 e00, float3 e01, float3 e10, float3 e11,
 
 			WriteInstance(
 				float3(x, y, z), tc,
-				rotationValue, outputVertices, 
+				rotationValue, outputVertices,
 				outputStreamIndex, outputStream);
 
 		}
@@ -273,7 +264,7 @@ struct GSOutputWire
 	float2 texCoord : TEXCOORD0;
 };
 
-void RasterizeLineBetweenEdges(	float3 e00, float3 e01, float3 e10, float3 e11, 
+void RasterizeLineBetweenEdges(	float3 e00, float3 e01, float3 e10, float3 e11,
 								inout uint outputVertices,
 								float spacing,
 								inout LineStream<GSOutputWire> outputStream)
@@ -313,13 +304,13 @@ void RasterizeLineBetweenEdges(	float3 e00, float3 e01, float3 e10, float3 e11,
 	GSOutputWire output;
 	output.color = 1.0.xxx;
 	output.texCoord = 0.0.xx;
-	
+
 	output.position = mul(WorldToClip, float4(input[0].position.xyz,1));
 	outputStream.Append(output);
-	
+
 	output.position = mul(WorldToClip, float4(input[1].position.xyz,1));
 	outputStream.Append(output);
-	
+
 	output.position = mul(WorldToClip, float4(input[2].position.xyz,1));
 	outputStream.Append(output);
 	outputStream.RestartStrip();
@@ -352,4 +343,3 @@ void RasterizeLineBetweenEdges(	float3 e00, float3 e01, float3 e10, float3 e11,
 	RasterizeLineBetweenEdges(tri.pts[0], tri.pts[1], tri.pts[0], tri.pts[2], outputVertices, gridSpacing, outputStream);
 	RasterizeLineBetweenEdges(tri.pts[1], tri.pts[2], tri.pts[0], tri.pts[2], outputVertices, gridSpacing, outputStream);
 }
-

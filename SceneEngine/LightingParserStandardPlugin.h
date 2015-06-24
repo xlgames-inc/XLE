@@ -19,7 +19,7 @@ namespace SceneEngine
             RenderCore::Metal::DeviceContext* context, 
             LightingParserContext& parserContext,
             LightingResolveContext& resolveContext) const;
-        void OnPostSceneRender(
+        virtual void OnPostSceneRender(
             RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, 
             const SceneParseSettings& parseSettings, unsigned techniqueIndex) const;
     };

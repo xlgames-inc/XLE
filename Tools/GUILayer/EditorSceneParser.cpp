@@ -22,6 +22,7 @@
 #include "../../SceneEngine/LightingParserContext.h"
 #include "../../SceneEngine/Terrain.h"
 #include "../../SceneEngine/PlacementsManager.h"
+#include "../../SceneEngine/VegetationSpawn.h"
 
 #include "../../RenderCore/IThreadContext.h"
 #include "../../Utility/StringUtils.h"
@@ -53,6 +54,7 @@ namespace GUILayer
 
         float GetTimeValue() const;
         void PrepareEnvironmentalSettings(const char envSettings[]);
+        void AddLightingPlugins(LightingParserContext& parserContext);
 
         EditorSceneParser(
             std::shared_ptr<EditorScene> editorScene,
@@ -97,6 +99,8 @@ namespace GUILayer
                 CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
                 CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
                 CATCH_END
+
+                _editorScene->_vegetationSpawnManager->Render(context, parserContext, techniqueIndex);
             }
         }
         else 
@@ -147,6 +151,11 @@ namespace GUILayer
         }
     }
 
+    void EditorSceneParser::AddLightingPlugins(LightingParserContext& parserContext)
+    {
+        parserContext._plugins.push_back(_editorScene->_vegetationSpawnManager->GetParserPlugin());
+    }
+
     EditorSceneParser::EditorSceneParser(
         std::shared_ptr<EditorScene> editorScene,
         std::shared_ptr<ToolsRig::VisCameraSettings> camera)
@@ -188,6 +197,7 @@ namespace GUILayer
         if (_sceneParser.get()) {
             _sceneParser->PrepareEnvironmentalSettings(
                 clix::marshalString<clix::E_UTF8>(_renderSettings->_activeEnvironmentSettings).c_str());
+            _sceneParser->AddLightingPlugins(parserContext);
             SceneEngine::LightingParser_ExecuteScene(
                 *threadContext, parserContext, *_sceneParser.get(), 
                 SceneEngine::RenderingQualitySettings(threadContext->GetStateDesc()._viewportDimensions));

@@ -7,6 +7,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 
 using Sce.Atf.Adaptation;
 using Sce.Atf.Applications;
@@ -28,7 +29,7 @@ namespace LevelEditorXLE.Terrain
         }
     }
 
-    class XLETerrainGob : DomNodeAdapter, IListable, ICommandClient, IContextMenuCommandProvider, IExportable
+    class XLETerrainGob : DomNodeAdapter, IListable, ICommandClient, IContextMenuCommandProvider, IExportable, IHierarchical
     {
         public XLETerrainGob() {}
         public void GetInfo(ItemInfo info)
@@ -107,6 +108,26 @@ namespace LevelEditorXLE.Terrain
         private static uint ClampCellTreeDepth(uint input)
         {
             return input.Clamp(1u, 16u);
+        }
+
+        public bool CanAddChild(object child)
+        {
+            var domNode = child.As<DomNode>();
+            if (domNode == null) return false;
+
+            return domNode.Type.Lineage.FirstOrDefault(t => t == Schema.vegetationSpawnConfigType.Type) != null;
+        }
+
+        public bool AddChild(object child)
+        {
+            var domNode = child.As<DomNode>();
+            if (domNode != null && domNode.Type.Lineage.FirstOrDefault(t => t == Schema.vegetationSpawnConfigType.Type) != null)
+            {
+                SetChild(Schema.terrainType.VegetationSpawnChild, domNode);
+                return true;
+            }
+
+            return false;
         }
 
         #region IExportable

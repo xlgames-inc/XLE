@@ -7,7 +7,6 @@
 #include "LightingParserStandardPlugin.h"
 #include "SceneParser.h"
 
-#include "VegetationSpawn.h"
 #include "LightingTargets.h"
 #include "AmbientOcclusion.h"
 #include "TiledLighting.h"
@@ -28,10 +27,6 @@ namespace SceneEngine
     void LightingParserStandardPlugin::OnPreScenePrepare(
             RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext) const
     {
-        if (Tweakable("DoVegetationSpawn", false) && parserContext.GetSceneParser()->GetGlobalLightingDesc()._doVegetationSpawn) {
-            GPUProfiler::DebugAnnotation anno(*context, L"VegetationSpawn");
-            VegetationSpawn_Prepare(context, parserContext); 
-        }
     }
 
             ////////////////////////////////////////////////////////////////////////

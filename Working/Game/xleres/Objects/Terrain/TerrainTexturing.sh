@@ -74,10 +74,21 @@ interface IProceduralTexture
     ProceduralTextureOutput Calculate(float3 worldPosition, float slopeFacor, float2 texCoord);
 };
 
-IProceduralTexture MainProceduralTexture;
+#if !defined(COVERAGE_1000)
+    #undef PROCEDURAL_TEXTURE_COUNT
+    #define PROCEDURAL_TEXTURE_COUNT 1
+#else
+    #if !defined(PROCEDURAL_TEXTURE_COUNT)
+        #define PROCEDURAL_TEXTURE_COUNT 1
+    #endif
+#endif
+
+IProceduralTexture ProceduralTextures[PROCEDURAL_TEXTURE_COUNT];
 
 #if STRATA_COUNT==0
-    ProceduralTextureOutput GetTextureForStrata(uint strataIndex, float3 worldPosition, float slopeFactor, float2 textureCoord, float noiseValue0)
+    ProceduralTextureOutput GetTextureForStrata(
+        uint strataIndex, float3 worldPosition,
+        float slopeFactor, float2 textureCoord, float noiseValue0)
     {
         ProceduralTextureOutput result;
         result.diffuseAlbedo = 1.0.xxx;
@@ -117,7 +128,9 @@ IProceduralTexture MainProceduralTexture;
     static const bool UseStrataNormals = false;
     static const bool UseStrataSpecular = false;
 
-    ProceduralTextureOutput GetTextureForStrata(uint strataIndex, float3 worldPosition, float slopeFactor, float2 textureCoord, float noiseValue0)
+    ProceduralTextureOutput GetTextureForStrata(
+        uint strataIndex, float3 worldPosition,
+        float slopeFactor, float2 textureCoord, float noiseValue0)
     {
         float2 tc0 = worldPosition.xy * TextureFrequency[strataIndex].xx;
         float2 tc1 = worldPosition.xy * TextureFrequency[strataIndex].yy;
@@ -242,6 +255,20 @@ ProceduralTextureOutput StrataMaterial::Calculate(float3 worldPosition, float sl
     return result;
 }
 
+class DummyMaterial : IProceduralTexture
+{
+    ProceduralTextureOutput Calculate(float3 worldPosition, float slopeFactor, float2 textureCoord);
+};
+
+ProceduralTextureOutput DummyMaterial::Calculate(float3 worldPosition, float slopeFactor, float2 textureCoord)
+{
+    ProceduralTextureOutput result;
+    result.diffuseAlbedo = 1.0.xxx;
+    result.tangentSpaceNormal = float3(0, 0, 1);
+    result.specularity = 1.f;
+    return result;
+}
+
 struct TerrainPixel
 {
     float3 diffuseAlbedo;
@@ -256,8 +283,6 @@ uint GetEdgeIndex(float2 texCoord)
     if (abs(t.x) > abs(t.y))	{ return (t.x < 0.f) ? 3 : 1; }
     else						{ return (t.y < 0.f) ? 0 : 2; }
 }
-
-#define MakeCoverageTileSet(index) CoverageTileSet ## index
 
 TerrainPixel CalculateTexturing(PSInput geo)
 {
@@ -287,7 +312,19 @@ TerrainPixel CalculateTexturing(PSInput geo)
     #if SOLIDWIREFRAME_WORLDPOSITION==1
         worldPosition = geo.worldPosition;
     #endif
-    ProceduralTextureOutput procTexture = MainProceduralTexture.Calculate(worldPosition, slopeFactor, finalTexCoord);
+
+    uint procTextureIndex = 0;
+
+    #if defined(COVERAGE_1000)
+        {
+            uint2 finalTexCoord = lerp(CoverageCoordMins[COVERAGE_1000].xy, CoverageCoordMaxs[COVERAGE_1000].xy, geo.texCoord.xy);
+            procTextureIndex = MakeCoverageTileSet(COVERAGE_1000).Load(uint4(finalTexCoord, CoverageOrigin[COVERAGE_1000].z, 0)).r;
+        }
+    #endif
+
+    procTextureIndex = min(procTextureIndex, PROCEDURAL_TEXTURE_COUNT);
+    ProceduralTextureOutput procTexture;
+    procTexture = ProceduralTextures[0].Calculate(worldPosition, slopeFactor, geo.texCoord);
     result.rgb = procTexture.diffuseAlbedo.rgb;
 
     #if DRAW_WIREFRAME==1
@@ -326,8 +363,7 @@ TerrainPixel CalculateTexturing(PSInput geo)
     return output;
 }
 
-[earlydepthstencil]
-GBufferEncoded ps_main(PSInput geo)
+[earlydepthstencil] GBufferEncoded ps_main(PSInput geo)
 {
     TerrainPixel p = CalculateTexturing(geo);
     GBufferValues output = GBufferValues_Default();
@@ -340,8 +376,7 @@ GBufferEncoded ps_main(PSInput geo)
     return Encode(output);
 }
 
-[earlydepthstencil]
-float4 ps_main_forward(PSInput geo) : SV_Target0
+[earlydepthstencil] float4 ps_main_forward(PSInput geo) : SV_Target0
 {
     TerrainPixel p = CalculateTexturing(geo);
     return float4(LightingScale * p.diffuseAlbedo * p.cookedAmbientOcclusion, 1.f);

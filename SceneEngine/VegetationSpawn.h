@@ -6,15 +6,67 @@
 
 #pragma once
 
-#include "..\RenderCore\Metal\Forward.h"
+#include "LightingParser.h"
+#include "../RenderCore/Metal/Forward.h"
+#include "../Assets/AssetsCore.h"
+
+namespace RenderCore { namespace Assets { class ModelCache; }}
 
 namespace SceneEngine
 {
+    class VegetationSpawnConfig
+    {
+    public:
+        class Bucket
+        {
+        public:
+            ::Assets::rstring _modelName, _materialName;
+            float _jitterAmount;
+            float _maxDrawDistance;
+        };
+        std::vector<Bucket> _buckets;
+        float _baseGridSpacing;
+
+        VegetationSpawnConfig(const ::Assets::ResChar src[]);
+        VegetationSpawnConfig();
+        ~VegetationSpawnConfig();
+    };
+
     class LightingParserContext;
-    void VegetationSpawn_Prepare(RenderCore::Metal::DeviceContext* context, LightingParserContext& lightingParserContext);
+    class VegetationSpawnResources;
+
+    void VegetationSpawn_Prepare(
+        RenderCore::Metal::DeviceContext* context, 
+        LightingParserContext& lightingParserContext,
+        const VegetationSpawnConfig& cfg,
+        VegetationSpawnResources& resources);
 
     bool VegetationSpawn_DrawInstances(
-            RenderCore::Metal::DeviceContext* context,
-            unsigned instanceId, unsigned indexCount, unsigned startIndexLocation, unsigned baseVertexLocation);
+        RenderCore::Metal::DeviceContext* context,
+        VegetationSpawnResources& resources,
+        unsigned instanceId, unsigned indexCount, 
+        unsigned startIndexLocation, unsigned baseVertexLocation);
+
+    class VegetationSpawnManager
+    {
+    public:
+        void Render(
+            RenderCore::Metal::DeviceContext* context, 
+            LightingParserContext& lightingParserContext,
+            unsigned techniqueIndex);
+
+        std::shared_ptr<ILightingParserPlugin> GetParserPlugin();
+
+        void Load(const VegetationSpawnConfig& cfg);
+        void Reset();
+
+        VegetationSpawnManager(
+            std::shared_ptr<RenderCore::Assets::ModelCache> modelCache);
+        ~VegetationSpawnManager();
+    protected:
+        class Pimpl;
+        std::unique_ptr<Pimpl> _pimpl;
+        friend class VegetationSpawnPlugin;
+    };
 }
 

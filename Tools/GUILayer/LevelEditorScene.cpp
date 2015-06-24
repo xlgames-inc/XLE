@@ -17,12 +17,14 @@
 #include "../EntityInterface/TerrainEntities.h"
 #include "../EntityInterface/RetainedEntities.h"
 #include "../EntityInterface/EnvironmentSettings.h"
+#include "../EntityInterface/VegetationSpawnEntities.h"
 #include "../ToolsRig/PlacementsManipulators.h"     // just needed for destructors referenced in PlacementGobInterface.h
 #include "../ToolsRig/VisualisationUtils.h"
 #include "../../SceneEngine/PlacementsManager.h"
 #include "../../SceneEngine/Terrain.h"
 #include "../../SceneEngine/TerrainFormat.h"
 #include "../../SceneEngine/TerrainConfig.h"
+#include "../../SceneEngine/VegetationSpawn.h"
 #include "../../Utility/Streams/Data.h"
 #include "../../Utility/Streams/StreamTypes.h"
 #include "../../Utility/Streams/PathUtils.h"
@@ -63,11 +65,12 @@ namespace GUILayer
 
     EditorScene::EditorScene()
     {
+        auto modelCache = std::make_shared<RenderCore::Assets::ModelCache>();
         _placementsManager = std::make_shared<SceneEngine::PlacementsManager>(
-            SceneEngine::WorldPlacementsConfig(),
-            std::make_shared<RenderCore::Assets::ModelCache>(), Float2(0.f, 0.f));
+            SceneEngine::WorldPlacementsConfig(), modelCache, Float2(0.f, 0.f));
         _placementsEditor = _placementsManager->CreateEditor();
         _terrainManager = std::make_shared<SceneEngine::TerrainManager>(std::make_shared<SceneEngine::TerrainFormat>());
+        _vegetationSpawnManager = std::make_shared<SceneEngine::VegetationSpawnManager>(modelCache);
         _flexObjects = std::make_shared<EntityInterface::RetainedEntities>();
         _placeholders = std::make_shared<ObjectPlaceholders>(_flexObjects);
         _currentTime = 0.f;
@@ -388,6 +391,7 @@ namespace GUILayer
         _flexGobInterface = flexGobInterface;
         _terrainInterface = terrainEditor;
         RegisterTerrainFlexObjects(*_scene->_flexObjects);
+        RegisterVegetationSpawnFlexObjects(*_scene->_flexObjects, _scene->_vegetationSpawnManager);
     }
 
     EditorSceneManager::~EditorSceneManager()

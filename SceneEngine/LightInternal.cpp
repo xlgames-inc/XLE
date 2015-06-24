@@ -146,7 +146,7 @@ namespace SceneEngine
 
     GlobalLightingDesc::GlobalLightingDesc() 
     : _ambientLight(0.f, 0.f, 0.f), _skyReflectionScale(1.0f), _skyReflectionBlurriness(2.f), _skyBrightness(1.f)
-    , _doAtmosphereBlur(false), _doOcean(false), _doVegetationSpawn(false) 
+    , _doAtmosphereBlur(false), _doOcean(false)
     {
         _skyTexture[0] = '\0';
     }

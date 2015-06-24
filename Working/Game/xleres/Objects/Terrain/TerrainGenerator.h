@@ -45,4 +45,6 @@ float3 AddNoise(float3 worldPosition)
 	return worldPosition;
 }
 
+#define MakeCoverageTileSet(index) CoverageTileSet ## index
+
 #endif

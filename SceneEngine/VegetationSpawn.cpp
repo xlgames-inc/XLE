@@ -16,12 +16,25 @@
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/DeviceContextImpl.h"
+#include "../RenderCore/Metal/GPUProfiler.h"
 #include "../RenderCore/RenderUtils.h"
 
-#include "../RenderCore/DX11/Metal/DX11Utils.h"
+#include "../RenderCore/Assets/ModelCache.h"
+
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/DataPacket.h"
 #include "../BufferUploads/ResourceLocator.h"
+
+#include "../ConsoleRig/Console.h"
+#include "../Utility/StringFormat.h"
+
+#include "../RenderCore/DX11/Metal/DX11Utils.h"
+
+#include "../RenderCore/Assets/ModelRunTime.h"
+#include "../RenderCore/Assets/DelayedDrawCall.h"
+#include "../RenderCore/Assets/SharedStateSet.h"
+#include "../RenderCore/Assets/ModelCache.h"
+#include "../RenderCore/Techniques/Techniques.h"
 
 #pragma warning(disable:4127)       // warning C4127: conditional expression is constant
 
@@ -51,6 +64,7 @@ namespace SceneEngine
         std::vector<RenderCore::Metal::ShaderResourceView> _instanceBufferSRVs;
 
         bool _isPrepared;
+        unsigned _objectTypeCount;
 
         VegetationSpawnResources(const Desc&);
     };
@@ -131,12 +145,14 @@ namespace SceneEngine
         _streamOutputCountsQuery = std::move(streamOutputCountsQuery);
         _instanceBufferUAVs = std::move(instanceBufferUAVs);
         _instanceBufferSRVs = std::move(instanceBufferSRVs);
+        _objectTypeCount = desc._bufferCount;
     }
 
-    static const unsigned TotalBufferCount = 8;
-
-    void VegetationSpawn_Prepare(   RenderCore::Metal::DeviceContext* context,
-                                    LightingParserContext& parserContext)
+    void VegetationSpawn_Prepare(
+        RenderCore::Metal::DeviceContext* context,
+        LightingParserContext& parserContext,
+        const VegetationSpawnConfig& cfg,
+        VegetationSpawnResources& res)
     {
             //  Prepare the scene for vegetation spawn
             //  This means binding our output buffers to the stream output slots,
@@ -161,26 +177,32 @@ namespace SceneEngine
             context->BindGS(RenderCore::MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
             context->BindGS(RenderCore::MakeResourceList(RenderCore::Metal::SamplerState()));
 
-            auto& res = Techniques::FindCachedBox<VegetationSpawnResources>(VegetationSpawnResources::Desc(TotalBufferCount));
-            class InstanceSpawnConstants
-            {
-            public:
-                Float4x4    _worldToCullFrustum;
-                float       _gridSpacing;
-                unsigned    _dummy[3];
-            } instanceSpawnConstants = {
-                parserContext.GetProjectionDesc()._worldToProjection,
-                // 0.75f, 
-                1.f, 
-                // 4.f, 
-                0, 0, 0
-            };
-
                 //  we have to clear vertex input "3", because this is the instancing input slot -- and 
                 //  we're going to be writing to buffers that will be used for instancing.
             // ID3D::Buffer* nullBuffer = nullptr; unsigned zero = 0;
             // context->GetUnderlying()->IASetVertexBuffers(3, 1, &nullBuffer, &zero, &zero);
             context->UnbindVS<ShaderResourceView>(15, 1);
+
+            unsigned objectTypeCount = (unsigned)cfg._buckets.size();
+            class InstanceSpawnConstants
+            {
+            public:
+                Float4x4    _worldToCullFrustum;
+                float       _gridSpacing, _objectTypeCount;
+                unsigned    _dummy[2];
+                Float4       _jitterAmount[8];
+                Float4       _maxDrawDistanceSq[8];
+            } instanceSpawnConstants = {
+                parserContext.GetProjectionDesc()._worldToProjection,
+                cfg._baseGridSpacing, float(objectTypeCount), 0, 0,
+                { Zero<Float4>(), Zero<Float4>(), Zero<Float4>(), Zero<Float4>(), Zero<Float4>(), Zero<Float4>(), Zero<Float4>(), Zero<Float4>() },
+                { Zero<Float4>(), Zero<Float4>(), Zero<Float4>(), Zero<Float4>(), Zero<Float4>(), Zero<Float4>(), Zero<Float4>(), Zero<Float4>() }
+            };
+
+            for (unsigned c=0; c<(unsigned)std::min(dimof(instanceSpawnConstants._jitterAmount), cfg._buckets.size()); ++c) {
+                instanceSpawnConstants._jitterAmount[c][0] = cfg._buckets[c]._jitterAmount;
+                instanceSpawnConstants._maxDrawDistanceSq[c][0] = cfg._buckets[c]._maxDrawDistance * cfg._buckets[c]._maxDrawDistance;
+            }
 
             context->BindGS(RenderCore::MakeResourceList(5, ConstantBuffer(&instanceSpawnConstants, sizeof(InstanceSpawnConstants))));
 
@@ -217,9 +239,13 @@ namespace SceneEngine
 
             SceneParseSettings parseSettings(
                 SceneParseSettings::BatchFilter::General,
-                SceneParseSettings::Toggles::Terrain|SceneParseSettings::Toggles::Opaque);
+                SceneParseSettings::Toggles::Terrain);
 
-                // adjust the far clip so that it's very close...
+                // Adjust the far clip so that it's very close...
+                // We might want to widen the field of view slightly
+                // by moving the camera back a bit. This could help make
+                // sure that objects near the camera and on the edge of the screen
+                // get included
             auto cameraDesc = oldCamera;
             cameraDesc._farClip = 100.f;
 
@@ -242,22 +268,22 @@ namespace SceneEngine
             UINT initialCounts[8];
             std::fill(outputBins, &outputBins[dimof(outputBins)], nullptr);
             std::fill(initialCounts, &initialCounts[dimof(initialCounts)], 0);
-            for (unsigned c=0; c<std::min(TotalBufferCount, (unsigned)dimof(outputBins)); ++c) {
+            for (unsigned c=0; c<std::min(objectTypeCount, (unsigned)dimof(outputBins)); ++c) {
                 outputBins[c] = res._instanceBufferUAVs[c].GetUnderlying();
 
                 unsigned clearValues[] = { 0, 0, 0, 0 };
                 context->Clear(res._instanceBufferUAVs[c], clearValues);
             }
             context->BindCS(RenderCore::MakeResourceList(res._streamOutputSRV[0], res._streamOutputSRV[1]));
-            context->GetUnderlying()->CSSetUnorderedAccessViews(0, std::min(TotalBufferCount, (unsigned)dimof(outputBins)), outputBins, initialCounts);
+            context->GetUnderlying()->CSSetUnorderedAccessViews(0, std::min(objectTypeCount, (unsigned)dimof(outputBins)), outputBins, initialCounts);
 
-            char buffer[64];
-            _snprintf_s(buffer, _TRUNCATE, "INSTANCE_BIN_COUNT=%i", TotalBufferCount);
-            context->Bind(Assets::GetAsset<ComputeShader>("game/xleres/Vegetation/InstanceSpawnSeparate.csh:main:cs_*", buffer));
+            context->Bind(::Assets::GetAssetDep<ComputeShader>(
+                "game/xleres/Vegetation/InstanceSpawnSeparate.csh:main:cs_*", 
+                (StringMeld<64>() << "INSTANCE_BIN_COUNT=" << objectTypeCount).get()));
             context->Dispatch(StreamOutputMaxCount / 256);
 
                 // clear all of the UAVs again
-            context->UnbindCS<UnorderedAccessView>(0, std::min(TotalBufferCount, (unsigned)dimof(outputBins)));
+            context->UnbindCS<UnorderedAccessView>(0, std::min(objectTypeCount, (unsigned)dimof(outputBins)));
             context->UnbindCS<ShaderResourceView>(0, 2);
 
             res._isPrepared = true;
@@ -291,12 +317,10 @@ namespace SceneEngine
     }
 
     bool VegetationSpawn_DrawInstances(
-            RenderCore::Metal::DeviceContext* context,
-            unsigned instanceId, unsigned indexCount, unsigned startIndexLocation, unsigned baseVertexLocation)
+        RenderCore::Metal::DeviceContext* context,
+        VegetationSpawnResources& res,
+        unsigned instanceId, unsigned indexCount, unsigned startIndexLocation, unsigned baseVertexLocation)
     {
-        if (instanceId==0 || (instanceId-1) > TotalBufferCount)
-            return false;
-
             //  We must draw the currently queued geometry using instance information 
             //  we calculated in the prepare phase.
             //  We have to write the following structure into the indirect args buffer:
@@ -307,11 +331,7 @@ namespace SceneEngine
             //          INT BaseVertexLocation;
             //          UINT StartInstanceLocation;
             //      }
-        auto& res = Techniques::FindCachedBox<VegetationSpawnResources>(VegetationSpawnResources::Desc(TotalBufferCount));
-        if ((instanceId-1) > res._instanceBuffers.size())
-            return false;
-
-        if (!res._isPrepared)
+        if (!res._isPrepared || instanceId > res._instanceBuffers.size())
             return false;
 
         D3D11_MAPPED_SUBRESOURCE mappedSub;
@@ -398,7 +418,7 @@ namespace SceneEngine
         if (primitiveCountMethod == FromUAV) {
                 // copy the "structure count" from the UAV into the indirect args buffer
             context->GetUnderlying()->CopyStructureCount(
-                res._indirectArgsBuffer.get(), unsigned(&((DrawIndexedInstancedIndirectArgs*)nullptr)->InstanceCount), res._instanceBufferUAVs[instanceId-1].GetUnderlying());
+                res._indirectArgsBuffer.get(), unsigned(&((DrawIndexedInstancedIndirectArgs*)nullptr)->InstanceCount), res._instanceBufferUAVs[instanceId].GetUnderlying());
         }
 
             // bind the instancing buffer as an input vertex buffer
@@ -407,7 +427,7 @@ namespace SceneEngine
         // auto* buffer = res._instanceBuffers[instanceId].get();
         // const unsigned slotForVertexInput = 3;
         // context->GetUnderlying()->IASetVertexBuffers(slotForVertexInput, 1, &buffer, &stride, &offset);
-        context->BindVS(RenderCore::MakeResourceList(15, res._instanceBufferSRVs[instanceId-1]));
+        context->BindVS(RenderCore::MakeResourceList(15, res._instanceBufferSRVs[instanceId]));
 
             // finally -- draw
         context->GetUnderlying()->DrawIndexedInstancedIndirect(res._indirectArgsBuffer.get(), 0);
@@ -415,4 +435,132 @@ namespace SceneEngine
         return true;
     }
 
+    class VegetationSpawnManager::Pimpl
+    {
+    public:
+        std::shared_ptr<RenderCore::Assets::ModelCache> _modelCache;
+        std::shared_ptr<VegetationSpawnPlugin> _parserPlugin;
+        std::unique_ptr<VegetationSpawnResources> _resources;
+        VegetationSpawnConfig _cfg;
+    };
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class VegetationSpawnPlugin : public ILightingParserPlugin
+    {
+    public:
+        virtual void OnPreScenePrepare(
+            RenderCore::Metal::DeviceContext* context, LightingParserContext&) const;
+        virtual void OnLightingResolvePrepare(
+            RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext,
+            LightingResolveContext& resolveContext) const;
+        virtual void OnPostSceneRender(
+            RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, 
+            const SceneParseSettings& parseSettings, unsigned techniqueIndex) const;
+
+        VegetationSpawnPlugin(VegetationSpawnManager::Pimpl& pimpl);
+        ~VegetationSpawnPlugin();
+
+    protected:
+        VegetationSpawnManager::Pimpl* _pimpl; // (must be unprotected to avoid cyclic dependency)
+    };
+
+    void VegetationSpawnPlugin::OnPreScenePrepare(
+        RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext) const
+    {
+        if (_pimpl->_cfg._buckets.empty()) return;
+
+        Metal::GPUProfiler::DebugAnnotation anno(*context, L"VegetationSpawn");
+        VegetationSpawn_Prepare(context, parserContext, _pimpl->_cfg, *_pimpl->_resources.get()); 
+    }
+
+    void VegetationSpawnPlugin::OnLightingResolvePrepare(
+        RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext,
+        LightingResolveContext& resolveContext) const {}
+
+    void VegetationSpawnPlugin::OnPostSceneRender(
+        RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, 
+        const SceneParseSettings& parseSettings, unsigned techniqueIndex) const {}
+
+    VegetationSpawnPlugin::VegetationSpawnPlugin(VegetationSpawnManager::Pimpl& pimpl)
+    : _pimpl(&pimpl) {}
+    VegetationSpawnPlugin::~VegetationSpawnPlugin() {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    void VegetationSpawnManager::Render(
+        RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext,
+        unsigned techniqueIndex)
+    {
+        if (_pimpl->_cfg._buckets.empty()) return;
+
+        using namespace RenderCore;
+        using namespace RenderCore::Assets;
+        auto& cache = *_pimpl->_modelCache;
+        
+        auto& sharedStates = cache.GetSharedStateSet();
+        sharedStates.CaptureState(context);
+        parserContext.GetTechniqueContext()._runtimeState.SetParameter((const utf8*)"SPAWNED_INSTANCE", 1);
+        
+        auto* resources = _pimpl->_resources.get();
+
+        DelayedDrawCallSet preparedDrawCalls(typeid(ModelRenderer).hash_code());
+        for (unsigned b=0; b<unsigned(_pimpl->_cfg._buckets.size()); ++b) {
+            TRY {
+                const auto& bkt = _pimpl->_cfg._buckets[b];
+                auto model = cache.GetModel(bkt._modelName.c_str(), bkt._materialName.c_str());
+                preparedDrawCalls.Reset();
+                model._renderer->Prepare(preparedDrawCalls, sharedStates, Identity<Float4x4>());
+                ModelRenderer::RenderPrepared(
+                    ModelRendererContext(context, parserContext, techniqueIndex),
+                    sharedStates, preparedDrawCalls, DelayStep::OpaqueRender,
+                    [context, b, resources](uint32 indexCount, uint32 startIndexLoc, uint32 baseVertexLoc)
+                    {
+                        VegetationSpawn_DrawInstances(
+                            context, *resources, b, 
+                            indexCount, startIndexLoc, baseVertexLoc);
+                    });
+            } CATCH(...) {
+            } CATCH_END
+        }
+
+        parserContext.GetTechniqueContext()._runtimeState.SetParameter((const utf8*)"SPAWNED_INSTANCE", 0);
+        sharedStates.ReleaseState(context);
+    }
+
+    void VegetationSpawnManager::Load(const VegetationSpawnConfig& cfg)
+    {
+        _pimpl->_cfg = cfg;
+        _pimpl->_resources = std::make_unique<VegetationSpawnResources>(
+            VegetationSpawnResources::Desc((unsigned)cfg._buckets.size()));
+    }
+
+    void VegetationSpawnManager::Reset()
+    {
+        _pimpl->_cfg = VegetationSpawnConfig();
+        _pimpl->_resources.reset();
+    }
+
+    std::shared_ptr<ILightingParserPlugin> VegetationSpawnManager::GetParserPlugin()
+    {
+        return _pimpl->_parserPlugin;
+    }
+
+    VegetationSpawnManager::VegetationSpawnManager(std::shared_ptr<RenderCore::Assets::ModelCache> modelCache)
+    {
+        _pimpl = std::make_unique<Pimpl>();
+        _pimpl->_modelCache = std::move(modelCache);
+        _pimpl->_parserPlugin = std::make_shared<VegetationSpawnPlugin>(*_pimpl);
+    }
+
+    VegetationSpawnManager::~VegetationSpawnManager() {}
+
+
+    VegetationSpawnConfig::VegetationSpawnConfig(const ::Assets::ResChar src[])
+    {
+    }
+    VegetationSpawnConfig::VegetationSpawnConfig() {}
+    VegetationSpawnConfig::~VegetationSpawnConfig() {}
+
 }
+

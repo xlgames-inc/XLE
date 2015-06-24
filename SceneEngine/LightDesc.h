@@ -156,7 +156,6 @@ namespace SceneEngine
 
         bool    _doAtmosphereBlur;
         bool    _doOcean;
-        bool    _doVegetationSpawn;
 
         GlobalLightingDesc();
         GlobalLightingDesc(const Utility::ParameterBox& paramBox);

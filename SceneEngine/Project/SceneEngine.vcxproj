@@ -175,6 +175,9 @@
     <ProjectReference Include="..\..\Foreign\Project\Foreign.vcxproj">
       <Project>{9f01282b-6297-4f87-a309-287c2c574b76}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\..\RenderCore\Project\RenderCore_Assets.vcxproj">
+      <Project>{ebf600b7-b82e-483c-b0ce-c74bbc60dc9a}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\..\RenderCore\Project\RenderCore_DX11.vcxproj">
       <Project>{e43e10b8-7cd4-a5d0-6270-17c50cb74adf}</Project>
       <Private>true</Private>

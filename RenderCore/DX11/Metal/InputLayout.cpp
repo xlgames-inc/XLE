@@ -690,7 +690,7 @@ namespace RenderCore { namespace Metal_DX11
 					            if (hash != hashName) continue;
 
                                 auto finalSlot = var->GetInterfaceSlot(bindingArrayIndex);
-                                assert(finalSlot < _stageBindings[s]._classInstanceArray.size());
+                                if (finalSlot >= _stageBindings[s]._classInstanceArray.size()) continue;
 
                                 ID3D::ClassInstance* classInstance = nullptr;
                                 hresult = _stageBindings[s]._linkage->CreateClassInstance(

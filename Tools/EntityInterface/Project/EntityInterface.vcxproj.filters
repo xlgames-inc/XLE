@@ -16,6 +16,9 @@
     <ClCompile Include="..\TerrainEntities.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="..\VegetationSpawnEntities.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\EnvironmentSettings.h">
@@ -31,6 +34,9 @@
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="..\TerrainEntities.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\VegetationSpawnEntities.h">
       <Filter>Headers</Filter>
     </ClInclude>
   </ItemGroup>

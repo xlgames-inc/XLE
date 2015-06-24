@@ -16,11 +16,11 @@
 VSOutput main(VSInput input)
 {
 	VSOutput output;
-	float3 localPosition	= GetLocalPosition(input);
+	float3 localPosition = GetLocalPosition(input);
 
 	#if GEO_HAS_INSTANCE_ID==1
-		float3 worldPosition = InstanceOffsets[input.instanceId] + localPosition;
 		float3 objectCentreWorld = InstanceOffsets[input.instanceId];
+		float3 worldPosition = objectCentreWorld + localPosition;
 	#else
 		float3 worldPosition = mul(LocalToWorld, float4(localPosition,1)).xyz;
 		float3 objectCentreWorld = float3(LocalToWorld[0][3], LocalToWorld[1][3], LocalToWorld[2][3]);

@@ -107,6 +107,7 @@
     <ClCompile Include="..\RetainedEntities.cpp" />
     <ClCompile Include="..\PlacementEntities.cpp" />
     <ClCompile Include="..\TerrainEntities.cpp" />
+    <ClCompile Include="..\VegetationSpawnEntities.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\EntityInterface.h" />
@@ -114,6 +115,7 @@
     <ClInclude Include="..\RetainedEntities.h" />
     <ClInclude Include="..\PlacementEntities.h" />
     <ClInclude Include="..\TerrainEntities.h" />
+    <ClInclude Include="..\VegetationSpawnEntities.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
