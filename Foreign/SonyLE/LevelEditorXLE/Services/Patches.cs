@@ -149,12 +149,12 @@ namespace LevelEditorXLE
                             SetupEmbeddedCollectionEditor(Schema.terrainBaseTextureStrataType.Type, "Strata"))
                             }));
 
-            Schema.vegetationSpawnConfigType.Type.SetTag(
+            Schema.vegetationSpawnMaterialType.Type.SetTag(
                 new PropertyDescriptorCollection(
                     new System.ComponentModel.PropertyDescriptor[] {
                         new ChildPropertyDescriptor(
                             "Object Type".Localize(),
-                            Schema.vegetationSpawnConfigType.ObjectTypesChild,
+                            Schema.vegetationSpawnMaterialType.objectChild,
                             null,
                             "List of spawned objects".Localize(),
                             false,

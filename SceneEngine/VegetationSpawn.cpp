@@ -185,20 +185,34 @@ namespace SceneEngine
             context->UnbindVS<Metal::ShaderResourceView>(15, 1);
 
             float maxDrawDistance = 0.f;
-            for (const auto& b:cfg._buckets) maxDrawDistance = std::max(b._maxDrawDistance, maxDrawDistance);
+            for (const auto& m:cfg._materials)
+                for (const auto& b:m._buckets) 
+                        maxDrawDistance = std::max(b._maxDrawDistance, maxDrawDistance);
 
-            unsigned objectTypeCount = (unsigned)cfg._buckets.size();
             class InstanceSpawnConstants
             {
             public:
                 Float4x4    _worldToCullFrustum;
-                float       _gridSpacing, _objectTypeCount;
-                float       _baseDrawDistanceSq, _jitterAmount;
+                float       _gridSpacing, _baseDrawDistanceSq, _jitterAmount;
+                unsigned    _dummy;
+                Float4      _materialParams[8];
+                Float4      _suppressionNoiseParams[8];
             } instanceSpawnConstants = {
                 parserContext.GetProjectionDesc()._worldToProjection,
-                cfg._baseGridSpacing, float(objectTypeCount),
-                maxDrawDistance*maxDrawDistance, cfg._jitterAmount
+                cfg._baseGridSpacing, maxDrawDistance*maxDrawDistance, cfg._jitterAmount, 0,
+                {   Zero<Float4>(), Zero<Float4>(), Zero<Float4>(), Zero<Float4>(), 
+                    Zero<Float4>(), Zero<Float4>(), Zero<Float4>(), Zero<Float4>() },
+                {   Zero<Float4>(), Zero<Float4>(), Zero<Float4>(), Zero<Float4>(), 
+                    Zero<Float4>(), Zero<Float4>(), Zero<Float4>(), Zero<Float4>() }
             };
+
+            for (unsigned mi=0; mi<std::min(cfg._materials.size(), dimof(instanceSpawnConstants._materialParams)); ++mi) {
+                instanceSpawnConstants._materialParams[mi][0] = cfg._materials[mi]._suppressionThreshold;
+
+                instanceSpawnConstants._suppressionNoiseParams[mi][0] = cfg._materials[mi]._suppressionNoise;
+                instanceSpawnConstants._suppressionNoiseParams[mi][1] = cfg._materials[mi]._suppressionGain;
+                instanceSpawnConstants._suppressionNoiseParams[mi][2] = cfg._materials[mi]._suppressionLacunarity;
+            }
 
             context->BindGS(RenderCore::MakeResourceList(5, Metal::ConstantBuffer(&instanceSpawnConstants, sizeof(InstanceSpawnConstants))));
 
@@ -243,7 +257,7 @@ namespace SceneEngine
                 // sure that objects near the camera and on the edge of the screen
                 // get included
             auto cameraDesc = oldCamera;
-            cameraDesc._farClip = 100.f;
+            cameraDesc._farClip = maxDrawDistance;
 
                 //  We have to call "SetGlobalTransform" to force the camera changes to have effect.
                 //  Ideally there would be a cleaner way to automatically update the constants
@@ -260,36 +274,54 @@ namespace SceneEngine
 
                 //  After the scene execute, we need to use a compute shader to separate the 
                 //  stream output data into it's bins.
-            ID3D::UnorderedAccessView* outputBins[8];
-            UINT initialCounts[8];
+            static const unsigned MaxOutputBinCount = 8;
+            ID3D::UnorderedAccessView* outputBins[MaxOutputBinCount];
+            UINT initialCounts[MaxOutputBinCount];
             std::fill(outputBins, &outputBins[dimof(outputBins)], nullptr);
             std::fill(initialCounts, &initialCounts[dimof(initialCounts)], 0);
-            for (unsigned c=0; c<std::min(objectTypeCount, (unsigned)dimof(outputBins)); ++c) {
-                outputBins[c] = res._instanceBufferUAVs[c].GetUnderlying();
 
+            auto outputBinCount = std::min((unsigned)cfg._objectTypes.size(), (unsigned)res._instanceBufferUAVs.size());
+            for (unsigned c=0; c<outputBinCount; ++c) {
                 unsigned clearValues[] = { 0, 0, 0, 0 };
                 context->Clear(res._instanceBufferUAVs[c], clearValues);
+                outputBins[c] = res._instanceBufferUAVs[c].GetUnderlying();
             }
+
             context->BindCS(RenderCore::MakeResourceList(res._streamOutputSRV[0], res._streamOutputSRV[1]));
-            context->GetUnderlying()->CSSetUnorderedAccessViews(0, std::min(objectTypeCount, (unsigned)dimof(outputBins)), outputBins, initialCounts);
+            context->GetUnderlying()->CSSetUnorderedAccessViews(0, outputBinCount, outputBins, initialCounts);
 
             class InstanceSeparateConstants
             {
             public:
-                UInt4 _binThresholds[8];
-                Float4 _drawDistanceSq[8];
-            } instanceSeparateConstants = {
-                { Zero<UInt4>(), Zero<UInt4>(), Zero<UInt4>(), Zero<UInt4>(), Zero<UInt4>(), Zero<UInt4>(), Zero<UInt4>(), Zero<UInt4>() },
-                { Zero<Float4>(), Zero<Float4>(), Zero<Float4>(), Zero<Float4>(), Zero<Float4>(), Zero<Float4>(), Zero<Float4>(), Zero<Float4>() }
-            };
-            float combinedWeight = cfg._noSpawnWeight;
-            for (const auto& b:cfg._buckets) combinedWeight += b._frequencyWeight;
-            unsigned weightIterator = 0;
-            for (unsigned c=0; c<std::min(dimof(instanceSeparateConstants._binThresholds), cfg._buckets.size()); ++c) {
-                weightIterator += unsigned(65535.f * cfg._buckets[c]._frequencyWeight / combinedWeight);
-                instanceSeparateConstants._binThresholds[c][0] = weightIterator;
-                instanceSeparateConstants._drawDistanceSq[c][0] = cfg._buckets[c]._maxDrawDistance * cfg._buckets[c]._maxDrawDistance;
+                UInt4 _binThresholds[16];
+                Float4 _drawDistanceSq[16];
+            } instanceSeparateConstants;
+            XlZeroMemory(instanceSeparateConstants);
+
+            StringMeld<1024> shaderParams;
+
+            unsigned premapBinCount = 0;
+            for (unsigned mi=0; mi<cfg._materials.size(); ++mi) {
+                const auto& m = cfg._materials[mi];
+                float combinedWeight = 0.f; // m._noSpawnWeight;
+                for (const auto& b:m._buckets) combinedWeight += b._frequencyWeight;
+
+                unsigned weightIterator = 0;
+                for (unsigned c=0; c<std::min(dimof(instanceSeparateConstants._binThresholds), m._buckets.size()); ++c) {
+                    weightIterator += unsigned(4095.f * m._buckets[c]._frequencyWeight / combinedWeight);
+
+                    instanceSeparateConstants._binThresholds[premapBinCount][0] = (mi<<12) | weightIterator;
+                    instanceSeparateConstants._drawDistanceSq[premapBinCount][0] 
+                        = m._buckets[c]._maxDrawDistance * m._buckets[c]._maxDrawDistance;
+
+                    shaderParams << "OUTPUT_BUFFER_MAP" << premapBinCount << "=" << m._buckets[c]._objectType << ";";
+                    ++premapBinCount;
+                }
             }
+            for (unsigned c=premapBinCount; c<dimof(instanceSeparateConstants._binThresholds); ++c)
+                shaderParams << "OUTPUT_BUFFER_MAP" << c << "=0;";
+
+            shaderParams << "INSTANCE_BIN_COUNT=" << premapBinCount;
 
             context->BindCS(MakeResourceList(
                 parserContext.GetGlobalTransformCB(),
@@ -297,11 +329,11 @@ namespace SceneEngine
 
             context->Bind(::Assets::GetAssetDep<Metal::ComputeShader>(
                 "game/xleres/Vegetation/InstanceSpawnSeparate.csh:main:cs_*", 
-                (StringMeld<64>() << "INSTANCE_BIN_COUNT=" << objectTypeCount).get()));
+                shaderParams.get()));
             context->Dispatch(StreamOutputMaxCount / 256);
 
                 // clear all of the UAVs again
-            context->UnbindCS<Metal::UnorderedAccessView>(0, std::min(objectTypeCount, (unsigned)dimof(outputBins)));
+            context->UnbindCS<Metal::UnorderedAccessView>(0, outputBinCount);
             context->UnbindCS<Metal::ShaderResourceView>(0, 2);
 
             res._isPrepared = true;
@@ -486,7 +518,7 @@ namespace SceneEngine
     void VegetationSpawnPlugin::OnPreScenePrepare(
         RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext) const
     {
-        if (_pimpl->_cfg._buckets.empty()) return;
+        if (_pimpl->_cfg._objectTypes.empty()) return;
 
         Metal::GPUProfiler::DebugAnnotation anno(*context, L"VegetationSpawn");
         VegetationSpawn_Prepare(context, parserContext, _pimpl->_cfg, *_pimpl->_resources.get()); 
@@ -510,7 +542,7 @@ namespace SceneEngine
         RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext,
         unsigned techniqueIndex)
     {
-        if (_pimpl->_cfg._buckets.empty()) return;
+        if (_pimpl->_cfg._objectTypes.empty()) return;
 
         using namespace RenderCore;
         using namespace RenderCore::Assets;
@@ -523,9 +555,9 @@ namespace SceneEngine
         auto* resources = _pimpl->_resources.get();
 
         DelayedDrawCallSet preparedDrawCalls(typeid(ModelRenderer).hash_code());
-        for (unsigned b=0; b<unsigned(_pimpl->_cfg._buckets.size()); ++b) {
+        for (unsigned b=0; b<unsigned(_pimpl->_cfg._objectTypes.size()); ++b) {
             TRY {
-                const auto& bkt = _pimpl->_cfg._buckets[b];
+                const auto& bkt = _pimpl->_cfg._objectTypes[b];
                 auto model = cache.GetModel(bkt._modelName.c_str(), bkt._materialName.c_str());
                 preparedDrawCalls.Reset();
                 model._renderer->Prepare(preparedDrawCalls, sharedStates, Identity<Float4x4>());
@@ -550,7 +582,7 @@ namespace SceneEngine
     {
         _pimpl->_cfg = cfg;
         _pimpl->_resources = std::make_unique<VegetationSpawnResources>(
-            VegetationSpawnResources::Desc((unsigned)cfg._buckets.size()));
+            VegetationSpawnResources::Desc((unsigned)cfg._objectTypes.size()));
     }
 
     void VegetationSpawnManager::Reset()
@@ -580,7 +612,6 @@ namespace SceneEngine
     VegetationSpawnConfig::VegetationSpawnConfig() 
     {
         _baseGridSpacing = 1.f;
-        _noSpawnWeight = 0.f;
         _jitterAmount = 1.f;
     }
 
@@ -589,6 +620,17 @@ namespace SceneEngine
     VegetationSpawnConfig::Bucket::Bucket()
     {
         _maxDrawDistance = 100.f;
+        _frequencyWeight = 1.f;
+        _objectType = 0;
+    }
+
+    VegetationSpawnConfig::Material::Material()
+    {
+        _noSpawnWeight = 0.f;
+        _suppressionThreshold = -1.f;
+        _suppressionNoise = 0.85f * 9.632f;
+        _suppressionGain = 1.1f * .85f;
+        _suppressionLacunarity = 2.0192f;
     }
 
 }

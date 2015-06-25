@@ -266,12 +266,19 @@ namespace LevelEditorXLE
             vegetationSpawnObjectType.Type = getNodeType("gap", "vegetationSpawnObjectType");
             vegetationSpawnObjectType.JitterAmountAttribute = vegetationSpawnObjectType.Type.GetAttributeInfo("JitterAmount");
             vegetationSpawnObjectType.MaxDrawDistanceAttribute = vegetationSpawnObjectType.Type.GetAttributeInfo("MaxDrawDistance");
+            vegetationSpawnObjectType.FrequencyWeightAttribute = vegetationSpawnObjectType.Type.GetAttributeInfo("FrequencyWeight");
             vegetationSpawnObjectType.ModelAttribute = vegetationSpawnObjectType.Type.GetAttributeInfo("Model");
             vegetationSpawnObjectType.MaterialAttribute = vegetationSpawnObjectType.Type.GetAttributeInfo("Material");
 
+            vegetationSpawnMaterialType.Type = getNodeType("gap", "vegetationSpawnMaterialType");
+            vegetationSpawnMaterialType.NoSpawnWeightAttribute = vegetationSpawnMaterialType.Type.GetAttributeInfo("NoSpawnWeight");
+            vegetationSpawnMaterialType.SuppressionThresholdAttribute = vegetationSpawnMaterialType.Type.GetAttributeInfo("SuppressionThreshold");
+            vegetationSpawnMaterialType.MaterialIdAttribute = vegetationSpawnMaterialType.Type.GetAttributeInfo("MaterialId");
+            vegetationSpawnMaterialType.objectChild = vegetationSpawnMaterialType.Type.GetChildInfo("object");
+
             vegetationSpawnConfigType.Type = getNodeType("gap", "vegetationSpawnConfigType");
             vegetationSpawnConfigType.BaseGridSpacingAttribute = vegetationSpawnConfigType.Type.GetAttributeInfo("BaseGridSpacing");
-            vegetationSpawnConfigType.ObjectTypesChild = vegetationSpawnConfigType.Type.GetChildInfo("ObjectTypes");
+            vegetationSpawnConfigType.materialChild = vegetationSpawnConfigType.Type.GetChildInfo("material");
 
             terrainType.Type = getNodeType("gap", "terrainType");
             terrainType.UberSurfaceDirAttribute = terrainType.Type.GetAttributeInfo("UberSurfaceDir");
@@ -670,15 +677,25 @@ namespace LevelEditorXLE
             public static DomNodeType Type;
             public static AttributeInfo JitterAmountAttribute;
             public static AttributeInfo MaxDrawDistanceAttribute;
+            public static AttributeInfo FrequencyWeightAttribute;
             public static AttributeInfo ModelAttribute;
             public static AttributeInfo MaterialAttribute;
+        }
+
+        public static class vegetationSpawnMaterialType
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo NoSpawnWeightAttribute;
+            public static AttributeInfo SuppressionThresholdAttribute;
+            public static AttributeInfo MaterialIdAttribute;
+            public static ChildInfo objectChild;
         }
 
         public static class vegetationSpawnConfigType
         {
             public static DomNodeType Type;
             public static AttributeInfo BaseGridSpacingAttribute;
-            public static ChildInfo ObjectTypesChild;
+            public static ChildInfo materialChild;
         }
 
         public static class terrainType

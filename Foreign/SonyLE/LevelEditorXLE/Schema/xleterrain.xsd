@@ -120,26 +120,57 @@
     <xs:attribute name="Model" type="xs:string" default=""/>
     <xs:attribute name="Material" type="xs:string" default=""/>
   </xs:complexType>
+
+  <xs:complexType name="vegetationSpawnMaterialType">
+    <xs:annotation>
+      <xs:appinfo>
+        <LeGe.NativeType nativeName="VegetationSpawnMaterial"/>
+        <LeGe.NativeProperty name="NoSpawnWeight" nativeName="NoSpawnWeight"/>
+        <LeGe.NativeProperty name="SuppressionThreshold" nativeName="SuppressionThreshold"/>
+        <LeGe.NativeProperty name="SuppressionNoise" nativeName="SuppressionNoise"/>
+        <LeGe.NativeProperty name="SuppressionGain" nativeName="SuppressionGain"/>
+        <LeGe.NativeProperty name="SuppressionLacunarity" nativeName="SuppressionLacunarity"/>
+        <LeGe.NativeProperty name="MaterialId" nativeName="MaterialId"/>
+
+        <scea.dom.editors.attribute name="NoSpawnWeight" displayName="NoSpawnWeight" description="Higher numbers mean places where objects would normally be spawned are left blank" category="General"/>
+        <scea.dom.editors.attribute name="SuppressionThreshold" displayName="SuppressionThreshold" description="Suppresses object spawning in a noise pattern" category="General"/>
+        <scea.dom.editors.attribute name="SuppressionNoise" displayName="SuppressionNoise" description="Frequency value for noise pattern for suppression" category="General"/>
+        <scea.dom.editors.attribute name="SuppressionGain" displayName="SuppressionGain" description="Gain value for noise pattern for suppression" category="General"/>
+        <scea.dom.editors.attribute name="SuppressionLacunarity" displayName="SuppressionLacunarity" description="Lacunarity value for noise pattern for suppression" category="General"/>
+        <scea.dom.editors.attribute name="MaterialId" displayName="MaterialId" description="Id for this material (must be unique and contiguous)" category="General"/>
+
+        <scea.dom.editors name="VegetationSpawnMaterial" category="Level Tools" image="LevelEditorCore.Resources.gameObject.png" menuText="VegetationSpawnMaterial" description="VegetationSpawnMaterial"/>
+        <LeGe.OpaqueListable label="Material"/>
+      </xs:appinfo>
+    </xs:annotation>
+    
+    <xs:sequence>
+      <xs:element name="object" type="vegetationSpawnObjectType" minOccurs="0" maxOccurs="8" />
+    </xs:sequence>
+    <xs:attribute name="NoSpawnWeight" type="xs:float" default="0"/>
+    <xs:attribute name="SuppressionThreshold" type="xs:float" default="-1"/>
+    <xs:attribute name="SuppressionNoise" type="xs:float" default="8.1872"/>
+    <xs:attribute name="SuppressionGain" type="xs:float" default="0.935"/>
+    <xs:attribute name="SuppressionLacunarity" type="xs:float" default="2.0192"/>
+    <xs:attribute name="MaterialId" type="xs:unsignedInt" default="0"/>
+  </xs:complexType>
   
   <xs:complexType name="vegetationSpawnConfigType">
     <xs:annotation>
       <xs:appinfo>
         <LeGe.NativeType nativeName="VegetationSpawnConfig"/>
         <LeGe.NativeProperty name="BaseGridSpacing" nativeName="BaseGridSpacing"/>
-        <LeGe.NativeProperty name="NoSpawnWeight" nativeName="NoSpawnWeight"/>
         
         <scea.dom.editors.attribute name="BaseGridSpacing" displayName="Base Grid Spacing" description="Spacing between objects (before position jittering)" category="General"/>
-        <scea.dom.editors.attribute name="NoSpawnWeight" displayName="NoSpawnWeight" description="Higher numbers mean places where objects would normally be spawned are left blank" category="General"/>
 
         <scea.dom.editors name="VegetationSpawnConfig" category="Level Tools" image="LevelEditorCore.Resources.gameObject.png" menuText="VegetationSpawnConfig" description="VegetationSpawnConfig"/>
         <LeGe.OpaqueListable label="VegetationSpawnConfig"/>
       </xs:appinfo>
     </xs:annotation>
     <xs:sequence>
-      <xs:element name="ObjectTypes" type="vegetationSpawnObjectType" minOccurs="0" maxOccurs="8" />
+      <xs:element name="material" type="vegetationSpawnMaterialType" minOccurs="0" maxOccurs="8" />
     </xs:sequence>
     <xs:attribute name="BaseGridSpacing" type="xs:float" default="1"/>
-    <xs:attribute name="NoSpawnWeight" type="xs:float" default="0"/>
   </xs:complexType>
   
   <!-- ......................................................................... -->

@@ -17,18 +17,37 @@ namespace SceneEngine
     class VegetationSpawnConfig
     {
     public:
-        class Bucket
+        class ObjectType
         {
         public:
             ::Assets::rstring _modelName, _materialName;
+        };
+
+        class Bucket
+        {
+        public:
+            unsigned _objectType;
             float _maxDrawDistance;
             float _frequencyWeight;
             Bucket();
         };
-        std::vector<Bucket> _buckets;
+
+        class Material
+        {
+        public:
+            std::vector<Bucket> _buckets;
+            float _noSpawnWeight;
+            float _suppressionThreshold;
+            float _suppressionNoise;
+            float _suppressionGain;
+            float _suppressionLacunarity;
+            Material();
+        };
+
         float _baseGridSpacing;
-        float _noSpawnWeight;
         float _jitterAmount;
+        std::vector<Material> _materials;
+        std::vector<ObjectType> _objectTypes;
 
         VegetationSpawnConfig(const ::Assets::ResChar src[]);
         VegetationSpawnConfig();

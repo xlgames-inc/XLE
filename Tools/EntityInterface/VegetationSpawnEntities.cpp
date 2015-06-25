@@ -20,25 +20,62 @@ namespace EntityInterface
         static const auto MaxDrawDistance = ParameterBox::MakeParameterNameHash("MaxDrawDistance");
         static const auto FrequencyWeight = ParameterBox::MakeParameterNameHash("FrequencyWeight");
         static const auto NoSpawnWeight = ParameterBox::MakeParameterNameHash("NoSpawnWeight");
+        static const auto SuppressionThreshold = ParameterBox::MakeParameterNameHash("SuppressionThreshold");
+        static const auto SuppressionNoise = ParameterBox::MakeParameterNameHash("SuppressionNoise");
+        static const auto SuppressionGain = ParameterBox::MakeParameterNameHash("SuppressionGain");
+        static const auto SuppressionLacunarity = ParameterBox::MakeParameterNameHash("SuppressionLacunarity");
         static const auto Model = ParameterBox::MakeParameterNameHash("Model");
         static const auto Material = ParameterBox::MakeParameterNameHash("Material");
 
         VegetationSpawnConfig cfg;
         cfg._baseGridSpacing = obj._properties.GetParameter(BaseGridSpacing, cfg._baseGridSpacing);
-        cfg._noSpawnWeight = obj._properties.GetParameter(NoSpawnWeight, cfg._noSpawnWeight);
         cfg._jitterAmount = obj._properties.GetParameter(JitterAmount, cfg._jitterAmount);
 
         for (auto cid:obj._children) {
             const auto* child = sys.GetEntity(obj._doc, cid);
             if (!child) continue;
 
-            VegetationSpawnConfig::Bucket bucket;
-            bucket._maxDrawDistance = child->_properties.GetParameter(MaxDrawDistance, bucket._maxDrawDistance);
-            bucket._frequencyWeight = child->_properties.GetParameter(FrequencyWeight, bucket._frequencyWeight);
-            bucket._modelName = child->_properties.GetString<::Assets::ResChar>(Model);
-            bucket._materialName = child->_properties.GetString<::Assets::ResChar>(Material);
-            if (!bucket._modelName.empty() && !bucket._materialName.empty())
-                cfg._buckets.push_back(bucket);
+            VegetationSpawnConfig::Material material;
+            material._noSpawnWeight = child->_properties.GetParameter(NoSpawnWeight, material._noSpawnWeight);
+            material._suppressionThreshold = child->_properties.GetParameter(SuppressionThreshold, material._suppressionThreshold);
+            material._suppressionNoise = child->_properties.GetParameter(SuppressionNoise, material._suppressionNoise);
+            material._suppressionGain = child->_properties.GetParameter(SuppressionGain, material._suppressionGain);
+            material._suppressionLacunarity = child->_properties.GetParameter(SuppressionLacunarity, material._suppressionLacunarity);
+
+            for (auto cid:child->_children) {
+                const auto* objType = sys.GetEntity(obj._doc, cid);
+                if (!objType) continue;
+
+                VegetationSpawnConfig::ObjectType objTypeBucket;
+                objTypeBucket._modelName = objType->_properties.GetString<::Assets::ResChar>(Model);
+                objTypeBucket._materialName = objType->_properties.GetString<::Assets::ResChar>(Material);
+
+                if (objTypeBucket._modelName.empty() || objTypeBucket._materialName.empty())
+                    continue;
+
+                unsigned objectTypeIndex = ~0u;
+                for (unsigned c=0; c<cfg._objectTypes.size(); ++c)
+                    if (    cfg._objectTypes[c]._modelName == objTypeBucket._modelName
+                        &&  cfg._objectTypes[c]._materialName == objTypeBucket._materialName) {
+                        objectTypeIndex = c;
+                        break;
+                    }
+
+                if (objectTypeIndex == ~0u) {
+                    objectTypeIndex = (unsigned)cfg._objectTypes.size();
+                    cfg._objectTypes.push_back(objTypeBucket);
+                }
+
+                VegetationSpawnConfig::Bucket bucket;
+                bucket._maxDrawDistance = objType->_properties.GetParameter(MaxDrawDistance, bucket._maxDrawDistance);
+                bucket._frequencyWeight = objType->_properties.GetParameter(FrequencyWeight, bucket._frequencyWeight);
+                bucket._objectType = objectTypeIndex;
+                
+                material._buckets.push_back(bucket);
+            }
+
+            if (!material._buckets.empty())
+                cfg._materials.push_back(material);
         }
 
         mgr.Load(cfg);

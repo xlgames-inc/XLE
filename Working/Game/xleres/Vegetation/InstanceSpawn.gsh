@@ -30,88 +30,89 @@ cbuffer InstanceSpawn : register(b5)
 {
 	row_major float4x4 WorldToCullFrustum;
 	float GridSpacing;
-	float ObjectTypeCount;
 	float BaseDrawDistanceSq;
 	float JitterAmount;
+
+	float4 MaterialParams[8];
+	float4 SuppressionNoiseParams[8];
 }
 
-float GetJitterAmount(uint type) 			{ return JitterAmount; };
-float GetMaxDrawDistanceSq(uint type) 		{ return BaseDrawDistanceSq; }
+float GetSuppressionThreshold(uint matIndex) 	{ return MaterialParams[matIndex].x; }
 
 static const uint MaxOutputVertices = 112;
 
-void Swap(inout float3 A, inout float3 B)
+void Swap(inout float3 A, inout float3 B) 		{ float3 x = A; A = B; B = x; }
+
+void WriteInstance(
+	float3 instancePosition, float2 tc, float dhdxy,
+	inout uint outputVertices, inout PointStream<GSOutput> outputStream)
 {
-	float3 x = A;
-	A = B;
-	B = x;
-}
+	if ((outputVertices+1)>MaxOutputVertices)
+		return;
 
-void WriteInstance(	float3 instancePosition, float2 tc,
-					float dhdxy,
-					inout uint outputVertices, inout PointStream<GSOutput> outputStream)
-{
-	if ((outputVertices+1)<=MaxOutputVertices) {
-		GSOutput output;
+	float3 camOffset = instancePosition - WorldSpaceView;
+	float distSq = dot(camOffset, camOffset);
+	if (distSq > BaseDrawDistanceSq)
+		return;
 
-			// core parameters for the noise field
-		const float hgrid = 9.632f;
-		const float gain = .85f;
-		const float lacunarity = 2.0192f;
-		const uint octaves = 3;
+	uint materialIndex = 0;
+	#if defined(COVERAGE_1001)	// 1001 is the decoration coverage layer
+		uint2 decorTexCoord = lerp(CoverageCoordMins[COVERAGE_1001].xy, CoverageCoordMaxs[COVERAGE_1001].xy, tc.xy);
+		materialIndex = MakeCoverageTileSet(COVERAGE_1001).Load(uint4(decorTexCoord, CoverageOrigin[COVERAGE_1001].z, 0)).r;
+	#endif
 
-		const float noiseScaleForType = 16.f;
+		// core parameters for the noise field
+	const uint octaves = 3;
+	float4 noiseParam = SuppressionNoiseParams[materialIndex];
+	float noiseValue2 = fbmNoise2D(instancePosition.xy, noiseParam.x, noiseParam.y, noiseParam.z, octaves);
 
-			// currently both x and y jitter are generated from the same noise value!
-			// it maybe not ok... perhaps a second noise look-up is required
-		const float noiseScaleX = 4.5f;
-		const float noiseScaleY = -3.3f;
+		// suppress points according to the noise pattern
+	if (noiseValue2 < GetSuppressionThreshold(materialIndex)) return;
 
-		float noiseValue = fbmNoise2D(instancePosition.xy, hgrid, gain, lacunarity, octaves);
-		uint instanceType = uint(65536.f*frac(noiseScaleForType * abs(noiseValue)));
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
-		// float noiseValue2 = fbmNoise2D(instancePosition.xy, .77f * hgrid, .92f * gain, lacunarity, 3);
+	const float hgrid = 9.632f, gain = .85f, lacunarity = 2.0192f;
+	float noiseValue = fbmNoise2D(instancePosition.xy, hgrid, gain, lacunarity, octaves);
 
-		#if defined(COVERAGE_1001)	// 1001 is the decoration coverage layer
-			// uint2 decorTexCoord = lerp(CoverageCoordMins[COVERAGE_1001].xy, CoverageCoordMaxs[COVERAGE_1001].xy, tc.xy);
-			// instanceType = MakeCoverageTileSet(COVERAGE_1001).Load(uint4(decorTexCoord, CoverageOrigin[COVERAGE_1001].z, 0)).r;
-		#endif
+	const float noiseScaleForType = 16.f;
+	uint instanceType = (materialIndex << 12) | uint(4096.0f * frac(noiseScaleForType * abs(noiseValue)));
 
-		float3 camOffset = instancePosition - WorldSpaceView;
-		float distSq = dot(camOffset, camOffset);
-		if (distSq < GetMaxDrawDistanceSq(instanceType)) {
-			float shiftAmount = GetJitterAmount(instanceType);
-			// shiftAmount *= fbmNoise2D(instancePosition.xy, 3.351f * hgrid, .92f * gain, lacunarity, 1);
-			float3 shift;
-			shift.x = shiftAmount * frac(noiseValue * noiseScaleX);
-			shift.y = shiftAmount * frac(noiseValue * noiseScaleY);
-			shift.z = dot(shift.xy, dhdxy);	// (try to follow the surface of the triangle)
-			instancePosition += shift;
+		// Currently both x and y jitter are generated from the same noise value!
+		// It maybe not ok... perhaps a second noise look-up is required
+	const float noiseScaleX =  4.5f;
+	const float noiseScaleY = -3.3f;
 
-			float rotationValue = 2.f * 3.14159f * frac(noiseValue * 18.43f);
+	float3 shift;
+	shift.x = JitterAmount * frac(noiseValue  * noiseScaleX);
+	shift.y = JitterAmount * frac(noiseValue2 * noiseScaleY);
+	shift.z = dot(shift.xy, dhdxy);	// (try to follow the surface of the triangle)
+	instancePosition += shift;
 
-			output.position = float4(instancePosition, rotationValue);
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
-				//	using the texture coordinate value, we can look up
-				//	the shadowing in the terrain shadowing map
-				//	This produces a single shadow sample per object. It's not perfectly
-				//	accurate for large objects (particularlly tall plants, etc). But it should
-				//	work well for grass and small things. And it should be much more efficient
-				//	than doing extra shadowing work per-vertex or per-pixel.
-			#if defined(COVERAGE_2)
-				uint2 shadowTexCoord = lerp(CoverageCoordMins[COVERAGE_2].xy, CoverageCoordMaxs[COVERAGE_2].xy, tc.xy);
-				float2 shadowSample = MakeCoverageTileSet(COVERAGE_2).Load(uint4(shadowTexCoord, CoverageOrigin[COVERAGE_2].z, 0)).r;
-				float shadowing = saturate(ShadowSoftness * (SunAngle + shadowSample.r)) * saturate(ShadowSoftness * (shadowSample.g - SunAngle));
-			#else
-				float shadowing = 1.f;
-			#endif
+	float rotationValue = 2.f * 3.14159f * frac(noiseValue * 18.43f);
 
-			output.instanceParam = (instanceType & 0xffff) | ((uint(float(0xffff) * shadowing)) << 16);
+	GSOutput output;
+	output.position = float4(instancePosition, rotationValue);
 
-			outputStream.Append(output);
-			++outputVertices;
-		}
-	}
+		//	using the texture coordinate value, we can look up
+		//	the shadowing in the terrain shadowing map
+		//	This produces a single shadow sample per object. It's not perfectly
+		//	accurate for large objects (particularlly tall plants, etc). But it should
+		//	work well for grass and small things. And it should be much more efficient
+		//	than doing extra shadowing work per-vertex or per-pixel.
+	#if defined(COVERAGE_2)
+		uint2 shadowTexCoord = lerp(CoverageCoordMins[COVERAGE_2].xy, CoverageCoordMaxs[COVERAGE_2].xy, tc.xy);
+		float2 shadowSample = MakeCoverageTileSet(COVERAGE_2).Load(uint4(shadowTexCoord, CoverageOrigin[COVERAGE_2].z, 0)).r;
+		float shadowing = saturate(ShadowSoftness * (SunAngle + shadowSample.r)) * saturate(ShadowSoftness * (shadowSample.g - SunAngle));
+	#else
+		float shadowing = 1.f;
+	#endif
+
+	output.instanceParam = (instanceType) | ((uint(float(0xffff) * shadowing)) << 16);
+
+	outputStream.Append(output);
+	++outputVertices;
 }
 
 void RasterizeBetweenEdges(	float3 e00, float3 e01, float3 e10, float3 e11,
@@ -206,7 +207,7 @@ bool CullTriangle(WorkingTriangle tri)
 
 	const bool accurateClip = true;
 	if (!accurateClip) {
-		// not exactly correct for large triangles -- each point could be outside, but part of the triangles could still be inside
+			// not exactly correct for large triangles -- each point could be outside, but part of the triangles could still be inside
 		bool3 inFrustum = bool3(PtInFrustum(p0), PtInFrustum(p1), PtInFrustum(p2));
 		return dot(inFrustum, bool3(true,true,true))!=0;
 	} else {
@@ -221,6 +222,14 @@ float2 CalculateTrangleDHDXY(float3 c0, float3 c1, float3 c2)
 	float dhdx = (e1.z - (e1.y * e2.z) / e2.y) / (e1.x - (e2.x * e1.y) / e2.y);
 	float dhdy = (e2.z / e2.y) - dhdx * e2.x;
 	return float2(dhdx, dhdy);
+}
+
+float MinDistanceSq(float3 pt0, float3 pt1, float3 pt2)
+{
+	float3 e0 = pt0 - WorldSpaceView;
+	float3 e1 = pt1 - WorldSpaceView;
+	float3 e2 = pt2 - WorldSpaceView;
+	return min(min(dot(e0, e0), dot(e1, e1)), dot(e2, e2));
 }
 
 [maxvertexcount(112)]
@@ -279,8 +288,8 @@ float2 CalculateTrangleDHDXY(float3 c0, float3 c1, float3 c2)
 		uint ptCount		= EstimatePointCount(tri, gridSpacing);
 		uint maxPtCount		= MaxOutputVertices/4;
 
-		float distanceToCamera = dot(tri.pts[0] - WorldSpaceView, tri.pts[0] - WorldSpaceView);
-		maxPtCount /= (distanceToCamera * .0015f);	// fall off a bit with distance
+		float distanceToCameraSq = MinDistanceSq(tri.pts[0], tri.pts[1], tri.pts[2]);
+		maxPtCount /= (distanceToCameraSq * .0015f);	// fall off a bit with distance
 		while (ptCount > maxPtCount) {
 			gridSpacing *= 2.f;
 			ptCount /= 4.f;
