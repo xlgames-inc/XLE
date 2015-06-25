@@ -21,10 +21,11 @@
 #include "../Surface.h"
 #include "../gbuffer.h"
 #include "../Lighting/LightingAlgorithm.h"
-#include "../Lighting/Atmosphere.h"
+#include "../Lighting/BasicLightingEnvironment.h"
 #include "../TransformAlgorithm.h"
 #include "../TextureAlgorithm.h"
 #include "../Colour.h"
+#include "../Effects/Sky.psh"
 #include "Ocean.h"
 #include "OceanShallow.h"
 #include "../Utility/perlinnoise.h"
@@ -45,7 +46,7 @@ Texture2D_MaybeMS<float>	DepthBuffer : register(t10);
 Texture2D					SkyReflectionTexture[3] : register(t6);
 Texture2D					DynamicReflectionTexture;
 
-Texture2D					SurfaceSpecularity;
+Texture2D<float>			SurfaceSpecularity;
 
 static const bool			DoFresnel = true;
 
@@ -54,7 +55,7 @@ static const bool			Specular_UseHalfVector = true;
 static const float			Specular_JitterNormalStrength = .115f; // 0.075f;
 static const uint			Specular_JitterNormalCount = 3;
 
-static const float3			MaxDistanceToSimulate = 100.f;
+static const float			MaxDistanceToSimulate = 100.f;
 
 // #define USE_ACCURATE_NORMAL_DECOMPRESSION 1
 
@@ -319,9 +320,9 @@ float CalculateFresnel(float3 worldSpaceNormal, float3 worldViewVector)
 		dynamicReflectionTexCoord, geo.specularityTC, distanceToViewerSq);
 	result.diffuseAlbedo = lerp(0.0.xxx/*oceanSurface.diffuseAlbedo*/, oceanSurface.foamAlbedo, oceanSurface.foamQuantity);
 
-	if (DoFresnel) {
-		result.reflectivity = CalculateFresnel(oceanSurface.worldSpaceNormal, geo.worldViewVector);
-	}
+//	if (DoFresnel) {
+//		result.reflectivity = CalculateFresnel(oceanSurface.worldSpaceNormal, geo.worldViewVector);
+//	}
 
 	result.normalMapAccuracy = oceanSurface.normalMapAccuracy;
 	return Encode(result);
@@ -337,7 +338,7 @@ float PhysicalBlinnPhong(float3 normal, float3 viewDirection, float3 negativeInc
 
 			// (it seems a little awkward to calculate both the half vector and reflected vector. Couldn't
 			//	this be done better?)
-	const float3 halfVector			 = normalize(negativeIncidentLightDirection + viewDirection);
+	const float3 halfVector	 = normalize(negativeIncidentLightDirection + viewDirection);
 	// const float3 outgoingDirection	 = normalize(reflect(negativeIncidentLightDirection, normal));
 
 	const float f0 = Square((1.f - refractiveIndex) / (1.f + refractiveIndex));	// (also part of the SchlickFresnel equation)
@@ -358,15 +359,15 @@ float DoSingleSpecular(float3 worldSpaceNormal, float3 worldViewDirection, float
 		if (usePhysicalBlinnPhong) {
 			return PhysicalBlinnPhong(
 				worldSpaceNormal, worldViewDirection,
-				NegativeDominantLightDirection, shininess, 1.f,
+				BasicLight[0].NegativeDirection, shininess, 1.f,
 				specularFresnel, RefractiveIndex, 1.f);
 		} else {
-			float3 halfVector = normalize(NegativeDominantLightDirection + worldViewDirection);
+			float3 halfVector = normalize(BasicLight[0].NegativeDirection + worldViewDirection);
 			return specularFresnel * pow(saturate(dot(halfVector, worldSpaceNormal)), shininess);
 		}
 	} else {
 		float3 reflectionVector = reflect(-worldViewDirection, worldSpaceNormal);
-		return specularFresnel * pow(saturate(dot(NegativeDominantLightDirection, reflectionVector)), shininess);
+		return specularFresnel * pow(saturate(dot(BasicLight[0].NegativeDirection, reflectionVector)), shininess);
 	}
 }
 
@@ -562,7 +563,7 @@ void CalculateUpwelling(inout OceanLightingParts parts,
 void CalculateFoam(	inout OceanLightingParts parts,
 					OceanSurfaceSample oceanSurface)
 {
-	float diffuseAmount = saturate(dot(oceanSurface.worldSpaceNormal, NegativeDominantLightDirection));
+	float diffuseAmount = saturate(dot(oceanSurface.worldSpaceNormal, BasicLight[0].NegativeDirection));
 	parts.foamAlbedo = ((0.5f + diffuseAmount) * FoamBrightness) * oceanSurface.foamAlbedo;
 	parts.foamQuantity = oceanSurface.foamQuantity;
 }
@@ -610,6 +611,7 @@ void CalculateSkyReflection(inout OceanLightingParts parts,
 
 #else
 
+#if 0
 	uint2 reflectionTextureDims;
 	SkyReflectionTexture[0].GetDimensions(
 		reflectionTextureDims.x,
@@ -627,6 +629,8 @@ void CalculateSkyReflection(inout OceanLightingParts parts,
 	#else
 		parts.skyReflection = 0.0.xxx;
 	#endif
+#endif
+	parts.skyReflection = CalculateBaseSkyColor(0.0.xx, reflectionVector);
 
 #endif
 
@@ -729,8 +733,8 @@ void CalculateSpecular(	inout OceanLightingParts parts,
 		//		We only need world space position for the fog calculation... So just
 		//		calculate based on "geo.worldViewVector" (we could also use OceanBaseHeight
 		//		as a close approximation)
-	float4 fogResult = CalculateFog(WorldSpaceView.z - geo.worldViewVector.z, geo.worldViewVector, NegativeDominantLightDirection);
-	colour = lerp(fogResult.rgb, colour, fogResult.a);
+	// float4 fogResult = CalculateFog(WorldSpaceView.z - geo.worldViewVector.z, geo.worldViewVector, BasicLight[0].NegativeDirection);
+	// colour = lerp(fogResult.rgb, colour, fogResult.a);
 
 	return float4(LightingScale * colour, 1.f);
 }

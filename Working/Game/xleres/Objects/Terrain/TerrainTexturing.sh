@@ -162,8 +162,8 @@ IProceduralTexture ProceduralTextures[PROCEDURAL_TEXTURE_COUNT];
             result.specularity = 1;
         }
 
-        const float slopeStart = .55f;
-        const float slopeSoftness = 3.f;
+        const float slopeStart = .7f; // .55f;
+        const float slopeSoftness = 7.f; // 3.f;
         const float slopeDarkness = 1.f; // .75f;
 
         float a = fwidth(worldPosition.x);

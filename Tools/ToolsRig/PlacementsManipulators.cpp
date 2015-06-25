@@ -1031,7 +1031,7 @@ namespace ToolsRig
             // Simple "relax" step to just to reduce excessive clumping. Keep it
             // subtle, because we want to keep some randomness in the placement
             // -- a very strong relax would eventually result in evenly spaced objects
-        static float relaxStrength = 0.001f;
+        static float relaxStrength = 0.002f;
         
         std::vector<Float2> adjustment;
         adjustment.resize(workingSet.size(), Zero<Float2>());

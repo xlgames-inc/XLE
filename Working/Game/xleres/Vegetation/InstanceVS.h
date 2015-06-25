@@ -21,9 +21,10 @@
         objectCentreWorld = InstanceOffsets[input.instanceId].posAndShadowing.xyz;
         float2 sc = InstanceOffsets[input.instanceId].sinCosTheta;
         float2x2 rotMat = float2x2(float2(sc.y, -sc.x), float2(sc.x, sc.y));
+        float scale = .75f + .25f * sc.x;       // add cheap scale component (directly related to rotation)
         return float3(
-            objectCentreWorld.xy + mul(rotMat, localPosition.xy),
-            objectCentreWorld.z + localPosition.z);
+            objectCentreWorld.xy + scale * mul(rotMat, localPosition.xy),
+            objectCentreWorld.z +  scale * localPosition.z);
     }
 
     float GetInstanceShadowing(VSInput input)

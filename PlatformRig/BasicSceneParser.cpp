@@ -65,7 +65,6 @@ namespace PlatformRig
         result._skyReflectionBlurriness = 2.f;
         result._skyBrightness = 0.33f;
         result._doAtmosphereBlur = false;
-        result._doOcean = false;
         return result;
     }
 

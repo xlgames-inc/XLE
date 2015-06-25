@@ -102,7 +102,7 @@ namespace RenderCore { namespace Metal_DX11
                 assert(0);
             }
 
-            srv = ObjectFactory(*resource).CreateShaderResourceView(resource);
+            srv = ObjectFactory(*resource).CreateShaderResourceView(resource, &viewDesc);
         }
         _underlying = std::move(srv);
     }

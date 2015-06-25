@@ -1104,7 +1104,7 @@ namespace SceneEngine
                     context->Bind(*variation._boundLayout);
                 }
 
-                auto& surfaceSpecularity = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres_cry/water_gloss.dds");
+                auto& surfaceSpecularity = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/defaultresources/waternoise.png");
 
                 const ConstantBuffer* prebuiltBuffers[]                = { &oceanMaterialConstants, &oceanGridConstants, &oceanRenderingConstants, &oceanLightingConstants };
                 const ShaderResourceView* srvs[]                       = { &OceanReflectionResource, &surfaceSpecularity.GetShaderResource() };
@@ -1140,7 +1140,7 @@ namespace SceneEngine
         context->BindPS(MakeResourceList(1, fftBuffer._normalsTextureShaderResource));
         context->BindPS(MakeResourceList(3, 
             fftBuffer._foamQuantitySRV[OceanBufferCounter&1], 
-            ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres_cry/waterfoam.dds").GetShaderResource()));
+            ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/defaultresources/waternoise.png").GetShaderResource()));
         if (shallowWater) {
             ShallowWater_BindForOceanRender(context, *shallowWater, OceanBufferCounter);
         }

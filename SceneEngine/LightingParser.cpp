@@ -249,7 +249,7 @@ namespace SceneEngine
 
             // note --  these things can be executed by the scene parser? Are they better
             //          off handled by the scene parser, or the lighting parser?
-        if (Tweakable("OceanDoSimulation", false) && parserContext.GetSceneParser()->GetGlobalLightingDesc()._doOcean) {
+        if (Tweakable("OceanDoSimulation", false)) {
             Ocean_Execute(context, parserContext, depthsSRV);
         }
 

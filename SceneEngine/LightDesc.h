@@ -155,7 +155,6 @@ namespace SceneEngine
         float   _skyReflectionBlurriness;
 
         bool    _doAtmosphereBlur;
-        bool    _doOcean;
 
         GlobalLightingDesc();
         GlobalLightingDesc(const Utility::ParameterBox& paramBox);
