@@ -947,7 +947,7 @@ namespace ToolsRig
         return true;
     }
 
-    std::vector<Float2> GenerateBlueNoisePlacements(float radius, unsigned count)
+    void GenerateBlueNoisePlacements(std::vector<Float2>& workingSet, float radius, unsigned count)
     {
             //  Create new placements arranged in a equally spaced pattern
             //  around the circle.
@@ -971,14 +971,18 @@ namespace ToolsRig
         const float dRSq = 4*littleCircleRadius*littleCircleRadius;
 
         const unsigned k = 30;
-        std::vector<Float2> workingSet;
         workingSet.reserve(count);
-        workingSet.push_back(
-            Radial2Cart2D(
-                rand() * (2.f * gPI / float(RAND_MAX)),
-                LinearInterpolate(.125f * radius, .25f * radius, rand() / float(RAND_MAX))));
+        if (workingSet.empty())
+            workingSet.push_back(
+                Radial2Cart2D(
+                    rand() * (2.f * gPI / float(RAND_MAX)),
+                    LinearInterpolate(.125f * radius, .25f * radius, rand() / float(RAND_MAX))));
 
-        const unsigned iterationCount = 2 * count - 1;
+            // erase random objects to reduce the number
+        while (workingSet.size() > count)
+            workingSet.erase(workingSet.begin() + (rand() % workingSet.size()));
+
+        const unsigned iterationCount = count; // 2 * count - 1;
         for (unsigned c=0; c<iterationCount && workingSet.size() < count; ++c) {
             assert(!workingSet.empty());
             unsigned index = rand() % unsigned(workingSet.size());
@@ -1020,18 +1024,32 @@ namespace ToolsRig
             }
         }
 
-            // if we didn't get enough, we just have to insert randoms
-        while (workingSet.size() < count) {
-            auto rndpt = Radial2Cart2D(
-                rand() * (2.f * gPI / float(RAND_MAX)),
-                rand() * radius / float(RAND_MAX));
-            workingSet.push_back(rndpt);
+            // if we didn't get enough, it's ok
+            // we'll probably add more in the next iteration (since most
+            // of the time, this is applied many times in rapid succession)
+
+            // Simple "relax" step to just to reduce excessive clumping. Keep it
+            // subtle, because we want to keep some randomness in the placement
+            // -- a very strong relax would eventually result in evenly spaced objects
+        static float relaxStrength = 0.001f;
+        
+        std::vector<Float2> adjustment;
+        adjustment.resize(workingSet.size(), Zero<Float2>());
+        for (auto bi=workingSet.begin(); bi!=workingSet.end(); ++bi) {
+            float s = 1.0f / float(workingSet.size());
+            float A = (Magnitude(*bi) / radius);
+            s *= 1.f - A * A * A;    // (objects near the edges should relax less, otherwise they get moved out of the circle
+
+            for (auto oi=workingSet.begin(); oi!=workingSet.end(); ++oi) {
+                if (bi == oi) continue;
+
+                Float2 diff = (*bi) - (*oi);
+                adjustment[bi-workingSet.begin()] += diff * (s * relaxStrength * std::log(MagnitudeSquared(diff)));
+            }
         }
 
-            // todo --  this could benefit from a "relax" phase that would just shift
-            //          things into a more evenly spaced arrangement
-
-        return std::move(workingSet);
+        for (auto bi=workingSet.begin(); bi!=workingSet.end(); ++bi)
+            *bi += adjustment[bi-workingSet.begin()];
     }
 
     void CalculateScatterOperation(
@@ -1054,10 +1072,12 @@ namespace ToolsRig
             // This way items will usually get scattered around in a good distribution
             // But it's very random. So the artist has only limited control.
 
+        std::vector<Float2> noisyPts;
+
         _toBeDeleted = editor.Find_BoxIntersection(
             centre - Float3(radius, radius, radius),
             centre + Float3(radius, radius, radius),
-            [=](const SceneEngine::PlacementsEditor::ObjIntersectionDef& objectDef) -> bool
+            [radius, centre, modelGuid, &noisyPts](const SceneEngine::PlacementsEditor::ObjIntersectionDef& objectDef) -> bool
             {
                 if (objectDef._model == modelGuid) {
                         // Make sure the object bounding box intersects with a cylinder around "centre"
@@ -1067,7 +1087,10 @@ namespace ToolsRig
                         // This won't produce the same result as cylinder vs box for the caps of the cylinder
                         //      -- but we don't really care in this case.
                     auto localToCircle = Combine(objectDef._localToWorld, AsFloat3x4(-centre));
-                    return AABBVsCircleInXY(radius, objectDef._localSpaceBoundingBox, localToCircle);
+                    if (AABBVsCircleInXY(radius, objectDef._localSpaceBoundingBox, localToCircle)) {
+                        noisyPts.push_back(Truncate(ExtractTranslation(localToCircle)));
+                        return true;
+                    }
                 }
 
                 return false;
@@ -1082,8 +1105,12 @@ namespace ToolsRig
               (modelBoundingBox.second[0] - modelBoundingBox.first[0]) 
             * (modelBoundingBox.second[1] - modelBoundingBox.first[1]);
 
+            // randomly remove one existing object
+        if (!noisyPts.empty())
+            noisyPts.erase(noisyPts.begin() + (rand() % noisyPts.size()));
+
         float bigCircleArea = gPI * radius * radius;
-        auto noisyPts = GenerateBlueNoisePlacements(radius, unsigned(bigCircleArea*density/crossSectionArea));
+        GenerateBlueNoisePlacements(noisyPts, radius, unsigned(bigCircleArea*density/crossSectionArea));
 
             //  Now add new placements for all of these pts.
             //  We need to clamp them to the terrain surface as we do this
