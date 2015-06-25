@@ -31,11 +31,12 @@ cbuffer InstanceSpawn : register(b5)
 	row_major float4x4 WorldToCullFrustum;
 	float GridSpacing;
 	float ObjectTypeCount;
-	float4 TypeOptions[8];		// jitter amount / maxDrawDistanceSq
+	float BaseDrawDistanceSq;
+	float JitterAmount;
 }
 
-float GetJitterAmount(uint type) 		{ return TypeOptions[type].x; }
-float GetMaxDrawDistanceSq(uint type) 	{ return TypeOptions[type].y; }
+float GetJitterAmount(uint type) 			{ return JitterAmount; };
+float GetMaxDrawDistanceSq(uint type) 		{ return BaseDrawDistanceSq; }
 
 static const uint MaxOutputVertices = 112;
 
@@ -46,26 +47,28 @@ void Swap(inout float3 A, inout float3 B)
 	B = x;
 }
 
-void WriteInstance(	float3 instancePosition, float2 tc, float rotationValue,
+void WriteInstance(	float3 instancePosition, float2 tc,
 					float dhdxy,
-					inout uint outputVertices, uint outputStreamIndex, inout PointStream<GSOutput> outputStream)
+					inout uint outputVertices, inout PointStream<GSOutput> outputStream)
 {
 	if ((outputVertices+1)<=MaxOutputVertices) {
 		GSOutput output;
 
+			// core parameters for the noise field
 		const float hgrid = 9.632f;
 		const float gain = .85f;
 		const float lacunarity = 2.0192f;
+		const uint octaves = 3;
 
-		const float noiseScaleForType = 8.f;
+		const float noiseScaleForType = 16.f;
 
 			// currently both x and y jitter are generated from the same noise value!
 			// it maybe not ok... perhaps a second noise look-up is required
 		const float noiseScaleX = 4.5f;
 		const float noiseScaleY = -3.3f;
 
-		float noiseValue = fbmNoise2D(instancePosition.xy, hgrid, gain, lacunarity, 3);
-		uint instanceType = uint(ObjectTypeCount*frac(8.f * abs(noiseValue)));
+		float noiseValue = fbmNoise2D(instancePosition.xy, hgrid, gain, lacunarity, octaves);
+		uint instanceType = uint(65536.f*frac(noiseScaleForType * abs(noiseValue)));
 
 		// float noiseValue2 = fbmNoise2D(instancePosition.xy, .77f * hgrid, .92f * gain, lacunarity, 3);
 
@@ -84,6 +87,9 @@ void WriteInstance(	float3 instancePosition, float2 tc, float rotationValue,
 			shift.y = shiftAmount * frac(noiseValue * noiseScaleY);
 			shift.z = dot(shift.xy, dhdxy);	// (try to follow the surface of the triangle)
 			instancePosition += shift;
+
+			float rotationValue = 2.f * 3.14159f * frac(noiseValue * 18.43f);
+
 			output.position = float4(instancePosition, rotationValue);
 
 				//	using the texture coordinate value, we can look up
@@ -100,7 +106,7 @@ void WriteInstance(	float3 instancePosition, float2 tc, float rotationValue,
 				float shadowing = 1.f;
 			#endif
 
-			output.instanceParam = ((instanceType+1) & 0xffff) | ((uint(float(0xffff) * shadowing)) << 16);
+			output.instanceParam = (instanceType & 0xffff) | ((uint(float(0xffff) * shadowing)) << 16);
 
 			outputStream.Append(output);
 			++outputVertices;
@@ -135,15 +141,13 @@ void RasterizeBetweenEdges(	float3 e00, float3 e01, float3 e10, float3 e11,
 
 			float ax = (x - spanx0) / (spanx1 - spanx0);
 			float  z = lerp(spanz0, spanz1, ax);
-			const float rotationValue	 = 0.f;
-			const uint outputStreamIndex = 0;	// based on type
 
 			float2 tc = lerp(spantc0, spantc1, ax);
 
 			WriteInstance(
-				float3(x, y, z), tc, rotationValue,
+				float3(x, y, z), tc,
 				dhdxy,
-				outputVertices, outputStreamIndex, outputStream);
+				outputVertices, outputStream);
 
 		}
 	}
@@ -274,6 +278,9 @@ float2 CalculateTrangleDHDXY(float3 c0, float3 c1, float3 c2)
 		float gridSpacing	= GridSpacing;
 		uint ptCount		= EstimatePointCount(tri, gridSpacing);
 		uint maxPtCount		= MaxOutputVertices/4;
+
+		float distanceToCamera = dot(tri.pts[0] - WorldSpaceView, tri.pts[0] - WorldSpaceView);
+		maxPtCount /= (distanceToCamera * .0015f);	// fall off a bit with distance
 		while (ptCount > maxPtCount) {
 			gridSpacing *= 2.f;
 			ptCount /= 4.f;

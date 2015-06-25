@@ -21,12 +21,14 @@ namespace SceneEngine
         {
         public:
             ::Assets::rstring _modelName, _materialName;
-            float _jitterAmount;
             float _maxDrawDistance;
+            float _frequencyWeight;
             Bucket();
         };
         std::vector<Bucket> _buckets;
         float _baseGridSpacing;
+        float _noSpawnWeight;
+        float _jitterAmount;
 
         VegetationSpawnConfig(const ::Assets::ResChar src[]);
         VegetationSpawnConfig();

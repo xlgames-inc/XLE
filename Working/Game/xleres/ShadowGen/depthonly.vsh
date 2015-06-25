@@ -11,18 +11,15 @@
 #include "../Surface.h"
 #include "../ShadowProjection.h"
 #include "../Vegetation/WindAnim.h"
-
-#if GEO_HAS_INSTANCE_ID==1
-	StructuredBuffer<float4> InstanceOffsets : register(t15);
-#endif
+#include "../Vegetation/InstanceVS.h"
 
 VSShadowOutput main(VSInput input)
 {
 	float3 localPosition = GetLocalPosition(input);
 
 	#if GEO_HAS_INSTANCE_ID==1
-		float3 objectCentreWorld = InstanceOffsets[input.instanceId];
-		float3 worldPosition = objectCentreWorld+ localPosition;
+		float3 objectCentreWorld;
+		float3 worldPosition = InstanceWorldPosition(input, objectCentreWorld);
 	#else
 		float3 worldPosition = mul(LocalToWorld, float4(localPosition,1)).xyz;
 		float3 objectCentreWorld = float3(LocalToWorld[0][3], LocalToWorld[1][3], LocalToWorld[2][3]);

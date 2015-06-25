@@ -7,6 +7,8 @@
 #define OUTPUT_TEXCOORD 1
 #define VSOUTPUT_EXTRA float2 dhdxy : DHDXY;
 
+#define GBUFFER_TYPE 1	// hack -- (not being set by the client code currently)
+
 #include "TerrainGenerator.h"
 #include "../../CommonResources.h"
 #include "../../Utility/perlinnoise.h"
@@ -14,7 +16,7 @@
 #include "../../gbuffer.h"
 #include "../../Colour.h"
 
-#define GBUFFER_TYPE 1	// hack -- (not being set by the client code currently)
+#define DO_DEFORM_NORMAL 1
 
 struct PSInput
 {
@@ -341,10 +343,14 @@ TerrainPixel CalculateTexturing(PSInput geo)
     float3 vaxis = float3(0.0f, 1.f, geo.dhdxy.y);
     float3 normal = normalize(cross(uaxis, vaxis));	// because of all of the constant values, this cross product should be simplified in the optimiser
 
-    float3 deformedNormal = normalize(
-          procTexture.tangentSpaceNormal.x * uaxis
-        + procTexture.tangentSpaceNormal.y * vaxis
-        + procTexture.tangentSpaceNormal.z * normal);
+    #if DO_DEFORM_NORMAL==1
+        float3 deformedNormal = normalize(
+             procTexture.tangentSpaceNormal.x * uaxis
+           + procTexture.tangentSpaceNormal.y * vaxis
+           + procTexture.tangentSpaceNormal.z * normal);
+    #else
+        float3 deformedNormal = normal;
+    #endif
 
     float emulatedAmbientOcclusion = 1.f; // lerp(0.5f, 1.f, SRGBLuminance(result.rgb));
 

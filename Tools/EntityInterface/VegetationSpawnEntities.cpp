@@ -18,19 +18,23 @@ namespace EntityInterface
         static const auto BaseGridSpacing = ParameterBox::MakeParameterNameHash("BaseGridSpacing");
         static const auto JitterAmount = ParameterBox::MakeParameterNameHash("JitterAmount");
         static const auto MaxDrawDistance = ParameterBox::MakeParameterNameHash("MaxDrawDistance");
+        static const auto FrequencyWeight = ParameterBox::MakeParameterNameHash("FrequencyWeight");
+        static const auto NoSpawnWeight = ParameterBox::MakeParameterNameHash("NoSpawnWeight");
         static const auto Model = ParameterBox::MakeParameterNameHash("Model");
         static const auto Material = ParameterBox::MakeParameterNameHash("Material");
 
         VegetationSpawnConfig cfg;
         cfg._baseGridSpacing = obj._properties.GetParameter(BaseGridSpacing, cfg._baseGridSpacing);
+        cfg._noSpawnWeight = obj._properties.GetParameter(NoSpawnWeight, cfg._noSpawnWeight);
+        cfg._jitterAmount = obj._properties.GetParameter(JitterAmount, cfg._jitterAmount);
 
         for (auto cid:obj._children) {
             const auto* child = sys.GetEntity(obj._doc, cid);
             if (!child) continue;
 
             VegetationSpawnConfig::Bucket bucket;
-            bucket._jitterAmount = child->_properties.GetParameter(JitterAmount, bucket._jitterAmount);
             bucket._maxDrawDistance = child->_properties.GetParameter(MaxDrawDistance, bucket._maxDrawDistance);
+            bucket._frequencyWeight = child->_properties.GetParameter(FrequencyWeight, bucket._frequencyWeight);
             bucket._modelName = child->_properties.GetString<::Assets::ResChar>(Model);
             bucket._materialName = child->_properties.GetString<::Assets::ResChar>(Material);
             if (!bucket._modelName.empty() && !bucket._materialName.empty())

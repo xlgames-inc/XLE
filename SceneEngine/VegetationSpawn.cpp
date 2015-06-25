@@ -108,8 +108,9 @@ namespace SceneEngine
             //      Note that it might be ideal if these were vertex buffers! But we can't make a buffer that is both a vertex buffer and structured buffer
             //      We want to write to an append structure buffer. So let's make it a shader resource, and read from it using Load int the vertex shader
         bufferDesc._bindFlags = BindFlag::UnorderedAccess | BindFlag::StructuredBuffer | BindFlag::ShaderResource;
-        bufferDesc._linearBufferDesc._sizeInBytes = 4*4*InstanceBufferMaxCount;
-        bufferDesc._linearBufferDesc._structureByteSize = 4*4;
+        bufferDesc._linearBufferDesc._structureByteSize = 4*4+2*4;
+        bufferDesc._linearBufferDesc._sizeInBytes = bufferDesc._linearBufferDesc._structureByteSize*InstanceBufferMaxCount;
+        
 
         std::vector<intrusive_ptr<ID3D::Buffer>> instanceBuffers; instanceBuffers.reserve(desc._bufferCount);
         std::vector<RenderCore::Metal::UnorderedAccessView> instanceBufferUAVs; instanceBufferUAVs.reserve(desc._bufferCount);
@@ -163,13 +164,13 @@ namespace SceneEngine
             //  geometry shaders will be created as stream-output shaders.
             //
 
-        using namespace RenderCore::Metal;
-        auto oldSO = GeometryShader::GetDefaultStreamOutputInitializers();
+        using namespace RenderCore;
+        auto oldSO = Metal::GeometryShader::GetDefaultStreamOutputInitializers();
         // SavedTargets oldTargets(context);
         ID3D::Query* begunQuery = nullptr;
 
         auto oldCamera = parserContext.GetSceneParser()->GetCameraDesc();
-        ViewportDesc viewport(*context);
+        Metal::ViewportDesc viewport(*context);
 
         TRY 
         {
@@ -181,7 +182,10 @@ namespace SceneEngine
                 //  we're going to be writing to buffers that will be used for instancing.
             // ID3D::Buffer* nullBuffer = nullptr; unsigned zero = 0;
             // context->GetUnderlying()->IASetVertexBuffers(3, 1, &nullBuffer, &zero, &zero);
-            context->UnbindVS<ShaderResourceView>(15, 1);
+            context->UnbindVS<Metal::ShaderResourceView>(15, 1);
+
+            float maxDrawDistance = 0.f;
+            for (const auto& b:cfg._buckets) maxDrawDistance = std::max(b._maxDrawDistance, maxDrawDistance);
 
             unsigned objectTypeCount = (unsigned)cfg._buckets.size();
             class InstanceSpawnConstants
@@ -189,20 +193,14 @@ namespace SceneEngine
             public:
                 Float4x4    _worldToCullFrustum;
                 float       _gridSpacing, _objectTypeCount;
-                unsigned    _dummy[2];
-                Float4      _typeSettings[8];
+                float       _baseDrawDistanceSq, _jitterAmount;
             } instanceSpawnConstants = {
                 parserContext.GetProjectionDesc()._worldToProjection,
-                cfg._baseGridSpacing, float(objectTypeCount), 0, 0,
-                { Zero<Float4>(), Zero<Float4>(), Zero<Float4>(), Zero<Float4>(), Zero<Float4>(), Zero<Float4>(), Zero<Float4>(), Zero<Float4>() }
+                cfg._baseGridSpacing, float(objectTypeCount),
+                maxDrawDistance*maxDrawDistance, cfg._jitterAmount
             };
 
-            for (unsigned c=0; c<(unsigned)std::min(dimof(instanceSpawnConstants._typeSettings), cfg._buckets.size()); ++c) {
-                instanceSpawnConstants._typeSettings[c][0] = cfg._buckets[c]._jitterAmount;
-                instanceSpawnConstants._typeSettings[c][1] = cfg._buckets[c]._maxDrawDistance * cfg._buckets[c]._maxDrawDistance;
-            }
-
-            context->BindGS(RenderCore::MakeResourceList(5, ConstantBuffer(&instanceSpawnConstants, sizeof(InstanceSpawnConstants))));
+            context->BindGS(RenderCore::MakeResourceList(5, Metal::ConstantBuffer(&instanceSpawnConstants, sizeof(InstanceSpawnConstants))));
 
             const bool needQuery = false;
             if (needQuery) {
@@ -210,7 +208,7 @@ namespace SceneEngine
                 context->GetUnderlying()->Begin(begunQuery);
             }
 
-            static const InputElementDesc eles[] = {
+            static const Metal::InputElementDesc eles[] = {
 
                     //  Our instance format is very simple. It's just a position and 
                     //  rotation value (in 32 bit floats)
@@ -221,9 +219,9 @@ namespace SceneEngine
                     //  buffer as small as possible, because we have to clear it 
                     //  before hand
 
-                InputElementDesc("INSTANCEPOS", 0, NativeFormat::R32G32B32A32_FLOAT),
+                Metal::InputElementDesc("INSTANCEPOS", 0, Metal::NativeFormat::R32G32B32A32_FLOAT),
                     // vertex in slot 1 must have a vertex stride that is a multiple of 4
-                InputElementDesc("INSTANCEPARAM", 0, NativeFormat::R32_UINT, 1)
+                Metal::InputElementDesc("INSTANCEPARAM", 0, Metal::NativeFormat::R32_UINT, 1)
             };
 
                 //  How do we clear an SO buffer? We can't make it an unorderedaccess view or render target.
@@ -232,8 +230,8 @@ namespace SceneEngine
 
             unsigned strides[2] = { 4*4, 4 };
             unsigned offsets[2] = { 0, 0 };
-            GeometryShader::SetDefaultStreamOutputInitializers(
-                GeometryShader::StreamOutputInitializers(eles, dimof(eles), strides, 2));
+            Metal::GeometryShader::SetDefaultStreamOutputInitializers(
+                Metal::GeometryShader::StreamOutputInitializers(eles, dimof(eles), strides, 2));
 
             SceneParseSettings parseSettings(
                 SceneParseSettings::BatchFilter::General,
@@ -275,14 +273,36 @@ namespace SceneEngine
             context->BindCS(RenderCore::MakeResourceList(res._streamOutputSRV[0], res._streamOutputSRV[1]));
             context->GetUnderlying()->CSSetUnorderedAccessViews(0, std::min(objectTypeCount, (unsigned)dimof(outputBins)), outputBins, initialCounts);
 
-            context->Bind(::Assets::GetAssetDep<ComputeShader>(
+            class InstanceSeparateConstants
+            {
+            public:
+                UInt4 _binThresholds[8];
+                Float4 _drawDistanceSq[8];
+            } instanceSeparateConstants = {
+                { Zero<UInt4>(), Zero<UInt4>(), Zero<UInt4>(), Zero<UInt4>(), Zero<UInt4>(), Zero<UInt4>(), Zero<UInt4>(), Zero<UInt4>() },
+                { Zero<Float4>(), Zero<Float4>(), Zero<Float4>(), Zero<Float4>(), Zero<Float4>(), Zero<Float4>(), Zero<Float4>(), Zero<Float4>() }
+            };
+            float combinedWeight = cfg._noSpawnWeight;
+            for (const auto& b:cfg._buckets) combinedWeight += b._frequencyWeight;
+            unsigned weightIterator = 0;
+            for (unsigned c=0; c<std::min(dimof(instanceSeparateConstants._binThresholds), cfg._buckets.size()); ++c) {
+                weightIterator += unsigned(65535.f * cfg._buckets[c]._frequencyWeight / combinedWeight);
+                instanceSeparateConstants._binThresholds[c][0] = weightIterator;
+                instanceSeparateConstants._drawDistanceSq[c][0] = cfg._buckets[c]._maxDrawDistance * cfg._buckets[c]._maxDrawDistance;
+            }
+
+            context->BindCS(MakeResourceList(
+                parserContext.GetGlobalTransformCB(),
+                Metal::ConstantBuffer(&instanceSeparateConstants, sizeof(instanceSeparateConstants))));
+
+            context->Bind(::Assets::GetAssetDep<Metal::ComputeShader>(
                 "game/xleres/Vegetation/InstanceSpawnSeparate.csh:main:cs_*", 
                 (StringMeld<64>() << "INSTANCE_BIN_COUNT=" << objectTypeCount).get()));
             context->Dispatch(StreamOutputMaxCount / 256);
 
                 // clear all of the UAVs again
-            context->UnbindCS<UnorderedAccessView>(0, std::min(objectTypeCount, (unsigned)dimof(outputBins)));
-            context->UnbindCS<ShaderResourceView>(0, 2);
+            context->UnbindCS<Metal::UnorderedAccessView>(0, std::min(objectTypeCount, (unsigned)dimof(outputBins)));
+            context->UnbindCS<Metal::ShaderResourceView>(0, 2);
 
             res._isPrepared = true;
 
@@ -301,7 +321,7 @@ namespace SceneEngine
             unsigned(viewport.Width), unsigned(viewport.Height));
 
         context->GetUnderlying()->SOSetTargets(0, nullptr, nullptr);
-        GeometryShader::SetDefaultStreamOutputInitializers(oldSO);
+        Metal::GeometryShader::SetDefaultStreamOutputInitializers(oldSO);
         // oldTargets.ResetToOldTargets(context);
     }
 
@@ -554,18 +574,20 @@ namespace SceneEngine
     VegetationSpawnManager::~VegetationSpawnManager() {}
 
     VegetationSpawnConfig::VegetationSpawnConfig(const ::Assets::ResChar src[])
-    {
-    }
+        : VegetationSpawnConfig()
+    {}
 
     VegetationSpawnConfig::VegetationSpawnConfig() 
     {
         _baseGridSpacing = 1.f;
+        _noSpawnWeight = 0.f;
+        _jitterAmount = 1.f;
     }
+
     VegetationSpawnConfig::~VegetationSpawnConfig() {}
 
     VegetationSpawnConfig::Bucket::Bucket()
     {
-        _jitterAmount = 1.f;
         _maxDrawDistance = 100.f;
     }
 

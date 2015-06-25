@@ -9,14 +9,11 @@
 #include "../Surface.h"
 #include "../TransformAlgorithm.h"
 #include "../Vegetation/WindAnim.h"
+#include "../Vegetation/InstanceVS.h"
 
 	// HACK -- disabling this fog functionality for the time being
 #if OUTPUT_FOG_COLOR == 1
 	// #include "../../xleres_cry/Lighting/Atmosphere.h"
-#endif
-
-#if GEO_HAS_INSTANCE_ID==1
-	StructuredBuffer<float4> InstanceOffsets : register(t15);
 #endif
 
 VSOutput main(VSInput input)
@@ -25,8 +22,8 @@ VSOutput main(VSInput input)
 	float3 localPosition	= GetLocalPosition(input);
 
 	#if GEO_HAS_INSTANCE_ID==1
-		float3 worldPosition = InstanceOffsets[input.instanceId] + localPosition;
-		float3 objectCentreWorld = InstanceOffsets[input.instanceId];
+		float3 objectCentreWorld;
+		float3 worldPosition = InstanceWorldPosition(input, objectCentreWorld);
 	#else
 		float3 worldPosition = mul(LocalToWorld, float4(localPosition,1)).xyz;
 		float3 objectCentreWorld = float3(LocalToWorld[0][3], LocalToWorld[1][3], LocalToWorld[2][3]);
@@ -89,7 +86,7 @@ VSOutput main(VSInput input)
 	#endif
 
 	#if (OUTPUT_PER_VERTEX_AO==1) && (GEO_HAS_INSTANCE_ID==1)
-		output.ambientOcclusion = InstanceOffsets[input.instanceId].w;
+		output.ambientOcclusion = GetInstanceShadowing(input);
 	#endif
 
 	#if (OUTPUT_INSTANCE_ID==1) && (GEO_HAS_INSTANCE_ID==1)

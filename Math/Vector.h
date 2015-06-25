@@ -176,6 +176,48 @@ namespace XLEMath
         static Double4 result(zero, zero, zero, zero);
         return result;
     }
+
+    template<> inline const UInt2& Zero<UInt2>()
+    {
+        const UInt2::value_type zero = UInt2::value_type(0);
+        static UInt2 result(zero, zero);
+        return result;
+    }
+    
+    template<> inline const UInt3& Zero<UInt3>()
+    {
+        const UInt3::value_type zero = UInt3::value_type(0);
+        static UInt3 result(zero, zero, zero);
+        return result;
+    }
+
+    template<> inline const UInt4& Zero<UInt4>()
+    {
+        const UInt4::value_type zero = UInt4::value_type(0);
+        static UInt4 result(zero, zero, zero, zero);
+        return result;
+    }
+
+    template<> inline const Int2& Zero<Int2>()
+    {
+        const Int2::value_type zero = Int2::value_type(0);
+        static Int2 result(zero, zero);
+        return result;
+    }
+    
+    template<> inline const Int3& Zero<Int3>()
+    {
+        const Int3::value_type zero = Int3::value_type(0);
+        static Int3 result(zero, zero, zero);
+        return result;
+    }
+
+    template<> inline const Int4& Zero<Int4>()
+    {
+        const Int4::value_type zero = Int4::value_type(0);
+        static Int4 result(zero, zero, zero, zero);
+        return result;
+    }
     
 
 }
