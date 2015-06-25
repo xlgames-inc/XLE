@@ -214,7 +214,7 @@ float2 CalculateTrangleDHDXY(float3 c0, float3 c1, float3 c2)
 {
 	float3 e1 = c1 - c0;
 	float3 e2 = c2 - c0;
-	float dhdx = (e1.z - (e1.y * e2.z) / e2.y) / (e1.x - e2.x * e1.y);
+	float dhdx = (e1.z - (e1.y * e2.z) / e2.y) / (e1.x - (e2.x * e1.y) / e2.y);
 	float dhdy = (e2.z / e2.y) - dhdx * e2.x;
 	return float2(dhdx, dhdy);
 }
