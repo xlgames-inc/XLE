@@ -460,5 +460,4 @@ float4 ResolvePointLight(	float4 position : SV_Position,
 	return float4((attenuation*radiusDropOff*shadow)*sample.diffuseAlbedo.rgb*light, 1.f);
 }
 
-
 #endif

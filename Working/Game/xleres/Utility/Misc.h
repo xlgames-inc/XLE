@@ -21,4 +21,3 @@ float DitherPatternValue(uint2 pixelCoords)
 }
 
 #endif
-

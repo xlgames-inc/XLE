@@ -94,7 +94,7 @@ namespace XLEMath
 
     static float dot(Grad g, float x, float y) { return g.x*x + g.y*y; }
     static float dot(Grad g, float x, float y, float z) { return g.x*x + g.y*y + g.z*z; }
-    // static float dot(Grad g, float x, float y, float z, float w) { return g.x*x + g.y*y + g.z*z + g.w*w; }
+    static float dot(Grad g, float x, float y, float z, float w) { return g.x*x + g.y*y + g.z*z + g.w*w; }
 
     // 2D simplex noise
     float SimplexNoise(Float2 input)
@@ -252,9 +252,11 @@ namespace XLEMath
     }
 
 
-#if 0
+#if 1
   // 4D simplex noise, better simplex rank ordering method 2012-03-09
-  public static float noise(float x, float y, float z, float w) {
+  float SimplexNoise(Float4 input) 
+  {
+      float x = input[0], y = input[1], z = input[2], w = input[3];
 
       InitPerm();
 
@@ -316,18 +318,18 @@ namespace XLEMath
     float y1 = y0 - j1 + G4;
     float z1 = z0 - k1 + G4;
     float w1 = w0 - l1 + G4;
-    float x2 = x0 - i2 + 2.0*G4; // Offsets for third corner in (x,y,z,w) coords
-    float y2 = y0 - j2 + 2.0*G4;
-    float z2 = z0 - k2 + 2.0*G4;
-    float w2 = w0 - l2 + 2.0*G4;
-    float x3 = x0 - i3 + 3.0*G4; // Offsets for fourth corner in (x,y,z,w) coords
-    float y3 = y0 - j3 + 3.0*G4;
-    float z3 = z0 - k3 + 3.0*G4;
-    float w3 = w0 - l3 + 3.0*G4;
-    float x4 = x0 - 1.0 + 4.0*G4; // Offsets for last corner in (x,y,z,w) coords
-    float y4 = y0 - 1.0 + 4.0*G4;
-    float z4 = z0 - 1.0 + 4.0*G4;
-    float w4 = w0 - 1.0 + 4.0*G4;
+    float x2 = x0 - i2 + 2.0f*G4; // Offsets for third corner in (x,y,z,w) coords
+    float y2 = y0 - j2 + 2.0f*G4;
+    float z2 = z0 - k2 + 2.0f*G4;
+    float w2 = w0 - l2 + 2.0f*G4;
+    float x3 = x0 - i3 + 3.0f*G4; // Offsets for fourth corner in (x,y,z,w) coords
+    float y3 = y0 - j3 + 3.0f*G4;
+    float z3 = z0 - k3 + 3.0f*G4;
+    float w3 = w0 - l3 + 3.0f*G4;
+    float x4 = x0 - 1.0f + 4.0f*G4; // Offsets for last corner in (x,y,z,w) coords
+    float y4 = y0 - 1.0f + 4.0f*G4;
+    float z4 = z0 - 1.0f + 4.0f*G4;
+    float w4 = w0 - 1.0f + 4.0f*G4;
     // Work out the hashed gradient indices of the five simplex corners
     int ii = i & 255;
     int jj = j & 255;
@@ -339,38 +341,38 @@ namespace XLEMath
     int gi3 = perm[ii+i3+perm[jj+j3+perm[kk+k3+perm[ll+l3]]]] % 32;
     int gi4 = perm[ii+1+perm[jj+1+perm[kk+1+perm[ll+1]]]] % 32;
     // Calculate the contribution from the five corners
-    float t0 = 0.6 - x0*x0 - y0*y0 - z0*z0 - w0*w0;
-    if(t0<0) n0 = 0.0;
+    float t0 = 0.6f - x0*x0 - y0*y0 - z0*z0 - w0*w0;
+    if(t0<0) n0 = 0.0f;
     else {
       t0 *= t0;
       n0 = t0 * t0 * dot(grad4[gi0], x0, y0, z0, w0);
     }
-   float t1 = 0.6 - x1*x1 - y1*y1 - z1*z1 - w1*w1;
-    if(t1<0) n1 = 0.0;
+   float t1 = 0.6f - x1*x1 - y1*y1 - z1*z1 - w1*w1;
+    if(t1<0) n1 = 0.0f;
     else {
       t1 *= t1;
       n1 = t1 * t1 * dot(grad4[gi1], x1, y1, z1, w1);
     }
-   float t2 = 0.6 - x2*x2 - y2*y2 - z2*z2 - w2*w2;
-    if(t2<0) n2 = 0.0;
+   float t2 = 0.6f - x2*x2 - y2*y2 - z2*z2 - w2*w2;
+    if(t2<0) n2 = 0.0f;
     else {
       t2 *= t2;
       n2 = t2 * t2 * dot(grad4[gi2], x2, y2, z2, w2);
     }
-   float t3 = 0.6 - x3*x3 - y3*y3 - z3*z3 - w3*w3;
-    if(t3<0) n3 = 0.0;
+   float t3 = 0.6f - x3*x3 - y3*y3 - z3*z3 - w3*w3;
+    if(t3<0) n3 = 0.0f;
     else {
       t3 *= t3;
       n3 = t3 * t3 * dot(grad4[gi3], x3, y3, z3, w3);
     }
-   float t4 = 0.6 - x4*x4 - y4*y4 - z4*z4 - w4*w4;
-    if(t4<0) n4 = 0.0;
+   float t4 = 0.6f - x4*x4 - y4*y4 - z4*z4 - w4*w4;
+    if(t4<0) n4 = 0.0f;
     else {
       t4 *= t4;
       n4 = t4 * t4 * dot(grad4[gi4], x4, y4, z4, w4);
     }
     // Sum up and scale the result to cover the range [-1,1]
-    return 27.0 * (n0 + n1 + n2 + n3 + n4);
+    return 27.0f * (n0 + n1 + n2 + n3 + n4);
   }
 #endif
 

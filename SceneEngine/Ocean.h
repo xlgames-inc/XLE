@@ -43,6 +43,10 @@ namespace SceneEngine
         float       _gridShiftSpeed;
         float       _baseHeight;
 
+        float _foamThreshold, _foamIncreaseSpeed;
+        float _foamIncreaseClamp;
+        unsigned _foamDecrease;
+
         OceanSettings();
     };
 
@@ -53,13 +57,18 @@ namespace SceneEngine
         float       _foamBrightness;
         Float3      _opticalThickness;
         float       _skyReflectionBrightness;
+
         float       _specularPower;
         float       _upwellingScale;
         float       _refractiveIndex;
         float       _reflectionBumpScale;
+
         float       _detailNormalFrequency;
         float       _specularityFrequency;
-        float       _dummy[2];
+        float       _matSpecularMin, _matSpecularMax;
+
+        float       _matRoughness;
+        unsigned    _dummy[3];
 
         OceanLightingSettings();
     };
@@ -75,8 +84,13 @@ namespace SceneEngine
             float _physicalWidth, _physicalHeight;
             float _strengthConstantXY;
             float _strengthConstantZ;
+
             float _shallowGridPhysicalDimension;
             float _baseHeight;
+            float _foamThreshold, _foamIncreaseSpeed;
+
+            float _foamIncreaseClamp;
+            unsigned _foamDecrease;
             float _dummy[2];
         };
 

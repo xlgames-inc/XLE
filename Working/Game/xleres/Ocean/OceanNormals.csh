@@ -28,11 +28,11 @@ float3 BuildWorldSpaceDisplacement(uint2 gridCoords)
 	if (((gridCoords.x + gridCoords.y)&1)==1) powNeg1 = -1.f;
 	displacement *= powNeg1;
 
-		//		
+		//
 		//		DavidJ -- Note
 		//			 *	ignoring StrengthConstantXYZ here! Instead, we multiply
 		//				by these values in the final pixel shader
-		//				Doing it this way means the math isn't really perfectly 
+		//				Doing it this way means the math isn't really perfectly
 		//				accurate! But the problem is, sometimes StrengthConstantXYZ
 		//				can be close to 0, but DetailNormalsStrength can be high.
 		//				In those cases, the derivatives have been scaled down too
@@ -121,7 +121,7 @@ Texture2D<uint4>	SourceNormalsTexture;
 
 		float3 averageNormal = .25f * ( sourceNormal00 + sourceNormal01 + sourceNormal10 + sourceNormal11 );
 		float accuracyFactor = dot(averageNormal, averageNormal);
-		
+
 		averageNormal /= sqrt(accuracyFactor); // averageNormal = normalize(averageNormal);
 		#if USE_ENCODED_NORMALS==1
 			averageNormal = GBuffer_CalculateBestFitNormal(averageNormal);
@@ -142,7 +142,7 @@ float Sq(float x) { return x*x; }
 {
 		//
 		//		Rather than writing normals to a texture, let's write out
-		//		the derivatives. This should work better with mipmaps and 
+		//		the derivatives. This should work better with mipmaps and
 		//		linear interpolation (it should also be naturally more accurate
 		//		at low bit depths).
 		//
@@ -180,7 +180,7 @@ float Sq(float x) { return x*x; }
 		//
 		//		Following Tessendorf's paper, we can look at the eigen
 		//		values and eigenvectors of a small 2x2 matrix of
-		//		the 3d  displacements.
+		//		the 3d displacements.
 		//
 		//		todo -- each thread should calculate a small grid of
 		//				normals/foam quantities (instead of a single
@@ -189,8 +189,8 @@ float Sq(float x) { return x*x; }
 		//
 #if 1
 	{
-			//	DavidJ -- note --	have to multiply by StrengthConstantXY here, 
-			//						because it's been removed from BuildWorldSpaceDisplacement(). 
+			//	DavidJ -- note --	have to multiply by StrengthConstantXY here,
+			//						because it's been removed from BuildWorldSpaceDisplacement().
 		float2 positionSpacing = float2(PhysicalWidth, PhysicalHeight) / float2(GridWidth, GridHeight);
 		float ddxdx = StrengthConstantXY * lerp((disp10.x - disp00.x), (disp11.x - disp01.x), 0.5f) / positionSpacing.x;
 		float ddydy = StrengthConstantXY * lerp((disp01.y - disp00.y), (disp11.y - disp10.y), 0.5f) / positionSpacing.y;
@@ -204,25 +204,24 @@ float Sq(float x) { return x*x; }
 
 		float A = 0.5f * (Jxx + Jyy);
 		float B = 0.5f * sqrt(Sq(Jxx - Jyy) + 4.f * Jxy * Jxy);
-		
+
 			//	Based on the sign of J-, we need to either add to
 			//	the quantity of foam, or remove it. Foam should slowly
 			//	build up in areas that are compressed, or disapate
 			//	in areas that are more relaxed
 		// if (B > 0.25f*A) {
 		float ratio = B/A;
-		const float threshold = .3f; // .25f;
 		const float jacobian = Jxx * Jyy - Jxy * Jyx;
 		uint result;
-		if (ratio > threshold) {
+		if (ratio > FoamThreshold) {
 		// if ((A - B) < 0.f) {
 		// if (jacobian < 0.f) {
 				//	when B is smaller than A, J- is less than zero -- then trigger this
 				//	case
-			uint scale = saturate((ratio - threshold) / .33f) * 8;
+			uint scale = uint(min((ratio - FoamThreshold) * FoamIncreaseSpeed, FoamIncreaseClamp));
 			result = min(FoamQuantityLastFrame[coords00] + scale, 255u);
 		} else {
-			result = uint(max(int(FoamQuantityLastFrame[coords00]) - 1, 0));
+			result = uint(max(int(FoamQuantityLastFrame[coords00]) - FoamDecrease, 0));
 		}
 		FoamQuantityTexture[coords00] = result;
 	}
@@ -250,6 +249,3 @@ Texture2D<uint2>	SourceDerivativesTexture;
 		OutputNormalsTexture[destinationCoords] = uint4(result, 0, 0);
 	}
 }
-
-
-

@@ -115,16 +115,16 @@ struct PerPixelMaterialParam
 struct GBufferValues
 {
         // Basic geometry parameters
-    float3  diffuseAlbedo;      //  (expressed here in RGB format)
-    float3  worldSpaceNormal;   //  (here, in full 3D format)
+    float3 diffuseAlbedo;      //  (expressed here in RGB format)
+    float3 worldSpaceNormal;   //  (here, in full 3D format)
 
         // Per-pixel material parameters
     PerPixelMaterialParam material;
 
         // Special case parameters used by some shaders
-    float   blendingAlpha;
-    float   normalMapAccuracy;
-    float   cookedAmbientOcclusion;
+    float blendingAlpha;
+    float normalMapAccuracy;
+    float cookedAmbientOcclusion;
 };
 
 PerPixelMaterialParam PerPixelMaterialParam_Default()

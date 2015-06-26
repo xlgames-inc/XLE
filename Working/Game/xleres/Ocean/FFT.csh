@@ -26,7 +26,7 @@ Complex ComplexMultiply(Complex lhs, Complex rhs)
 {
 	float realPart		= lhs.x * rhs.x - lhs.y * rhs.y;
 	float imaginaryPart = lhs.y * rhs.x + lhs.x * rhs.y;
-	return Complex(realPart, imaginaryPart);		
+	return Complex(realPart, imaginaryPart);
 }
 
 Complex ComplexExponential(Real real)
@@ -38,10 +38,7 @@ Complex ComplexExponential(Real real)
 	return Complex(sinecosine.y, sinecosine.x);
 }
 
-Complex ComplexConjugate(Complex input)
-{
-	return Complex(input.x, -input.y);
-}
+Complex ComplexConjugate(Complex input) { return Complex(input.x, -input.y); }
 
 Complex Get(uint2 coord)
 {
@@ -56,10 +53,7 @@ void Set(uint2 coord, Complex newValue)
 	WorkingTextureImaginaryPart[coord]	 = asuint(float(newValue.y));
 }
 
-void Scale(uint2 coord, float scaleValue)
-{
-	Set(coord, Get(coord)*scaleValue);
-}
+void Scale(uint2 coord, float scaleValue) { Set(coord, Get(coord)*scaleValue); }
 
 void Innerloop(uint2 pairCoord, uint2 matchCoord, Complex factor)
 {
@@ -107,7 +101,7 @@ void FFT_Row(uint rowIndex, uint N, bool inverse)
 			}
 			j += k;
 		}
-	}	
+	}
 
 #if !defined(AVOID_TRIG)
 
@@ -123,10 +117,10 @@ void FFT_Row(uint rowIndex, uint N, bool inverse)
 
 			//
 			//   Iteration through groups of different transform factor
-			//				
+			//
 		for (uint group = 0; group < step; ++group) {
 
-				//   Iteration within group 
+				//   Iteration within group
 			for (uint pair = group; pair < N; pair += jump) {
 				uint2 pairCoord = uint2(pair, rowIndex);
 				uint2 matchCoord = uint2(pair + step, rowIndex);
@@ -141,13 +135,13 @@ void FFT_Row(uint rowIndex, uint N, bool inverse)
 
 #else
 
-	Real c1 = Real(-1.0); 
+	Real c1 = Real(-1.0);
 	Real c2 = Real(0.0);
 	uint l2 = 1;
 	[flatten] for (uint step = 1; step < N; step <<= 1) {
 		uint l1 = l2;
 		l2 <<= 1;
-		Real u1 = Real(1.0); 
+		Real u1 = Real(1.0);
 		Real u2 = Real(0.0);
 		[flatten] for (uint j=0;j<l1;j++) {
 			[flatten] for (uint i=j;i<N;i+=l2) {
@@ -160,14 +154,19 @@ void FFT_Row(uint rowIndex, uint N, bool inverse)
 			u1 = z;
 		}
 		c2 = sqrt((Real(1.0) - c1) * Real(0.5));
-		if (!inverse) 
+		if (!inverse)
 			c2 = -c2;
 		c1 = sqrt((Real(1.0) + c1) * Real(0.5));
 	}
 
 #endif
 
-	[branch] if (!inverse) {
+	// note -- 	There was a problem here for awhile. The scale factor
+	//			was applied when not performing the inverse. But it
+	//			appears to be correct to apply this scale only when doing
+	//			the inverse. Otherwise the values are wierdly proportional
+	//			to the size of the grid.
+	[branch] if (inverse) {
 		const float multiplier = 1.f/float(N);
 		for (uint i=0; i<N; i++) {
 			Scale(uint2(i, rowIndex), multiplier);
@@ -202,7 +201,7 @@ void FFT_Column(uint columnIndex, uint N, bool inverse)
 			}
 			j += k;
 		}
-	}	
+	}
 
 #if !defined(AVOID_TRIG)
 
@@ -218,10 +217,10 @@ void FFT_Column(uint columnIndex, uint N, bool inverse)
 
 			//
 			//   Iteration through groups of different transform factor
-			//				
+			//
 		for (uint group = 0; group < step; ++group) {
 
-				//   Iteration within group 
+				//   Iteration within group
 			for (uint pair = group; pair < N; pair += jump) {
 				uint2 pairCoord = uint2(columnIndex, pair);
 				uint2 matchCoord = uint2(columnIndex, pair + step);
@@ -236,13 +235,13 @@ void FFT_Column(uint columnIndex, uint N, bool inverse)
 
 #else
 
-	Real c1 = Real(-1.0); 
+	Real c1 = Real(-1.0);
 	Real c2 = Real(0.0);
 	uint l2 = 1;
 	[flatten] for (uint step = 1; step < N; step <<= 1) {
 		uint l1 = l2;
 		l2 <<= 1;
-		Real u1 = Real(1.0); 
+		Real u1 = Real(1.0);
 		Real u2 = Real(0.0);
 		[flatten] for (uint j=0;j<l1;j++) {
 			[flatten] for (uint i=j;i<N;i+=l2) {
@@ -255,14 +254,19 @@ void FFT_Column(uint columnIndex, uint N, bool inverse)
 			u1 = z;
 		}
 		c2 = sqrt((Real(1.0) - c1) * Real(0.5));
-		if (!inverse) 
+		if (!inverse)
 			c2 = -c2;
 		c1 = sqrt((Real(1.0) + c1) * Real(0.5));
 	}
 
 #endif
 
-	[branch] if (!inverse) {
+	// note -- 	There was a problem here for awhile. The scale factor
+	//			was applied when not performing the inverse. But it
+	//			appears to be correct to apply this scale only when doing
+	//			the inverse. Otherwise the values are wierdly proportional
+	//			to the size of the grid.
+	[branch] if (inverse) {
 		const float multiplier = 1.f/float(N);
 		for (uint i=0; i<N; i++) {
 			Scale(uint2(columnIndex, i), multiplier);
@@ -293,7 +297,7 @@ bool DoInverseTransform()
 		//		See also dimensional FFT here:
 		//			http://paulbourke.net/miscellaneous/dft/
 		//
-		//		This is using the standard Cooley–Tukey algorithm
+		//		This is using the standard Cooleyï¿½Tukey algorithm
 		//
 		//		2D FFT transforms each row by a 1D FFT,
 		//		and then transforms each column by a 1D FFT.
@@ -354,8 +358,8 @@ Complex LoadH0(uint2 kCoords)
 {
 		// use "SpectrumFade" to fade between to "H0" fields
 	return Complex(
-		lerp(asfloat(SetupTexture0RealPart[kCoords.xy]),			asfloat(SetupTexture1RealPart[kCoords.xy]),			SpectrumFade),
-		lerp(asfloat(SetupTexture0ImaginaryPart[kCoords.xy]),		asfloat(SetupTexture1ImaginaryPart[kCoords.xy]),	SpectrumFade));
+		lerp(asfloat(SetupTexture0RealPart[kCoords.xy]), asfloat(SetupTexture1RealPart[kCoords.xy]),			SpectrumFade),
+		lerp(asfloat(SetupTexture0ImaginaryPart[kCoords.xy]), asfloat(SetupTexture1ImaginaryPart[kCoords.xy]),	SpectrumFade));
 }
 
 [numthreads(32, 32, 1)]
@@ -402,8 +406,8 @@ Complex LoadH0(uint2 kCoords)
 
 		//	Note that half of the grid should end up being the conjugate of the other half
 		//		.. so we can actually write the results into 2 grid places here
-	Complex result0 = 
-		  ComplexMultiply(h0k,						ComplexExponential( w*Time))
+	Complex result0
+		= ComplexMultiply(h0k,						ComplexExponential( w*Time))
 		+ ComplexMultiply(ComplexConjugate(h0Negk), ComplexExponential(-w*Time))
 		;
 	WriteSetupResult(result0, kCoords, k, magK);
@@ -413,5 +417,3 @@ Complex LoadH0(uint2 kCoords)
 		WriteSetupResult(result1, negKCoords, float2(-k.x, k.y), magK);
 	#endif
 }
-
-

@@ -305,6 +305,14 @@ namespace EntityInterface
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    static Float3 AsFloat3Color(unsigned packedColor)
+    {
+        return Float3(
+            (float)((packedColor >> 16) & 0xff) / 255.f,
+            (float)((packedColor >>  8) & 0xff) / 255.f,
+            (float)(packedColor & 0xff) / 255.f);
+    }
+
     static SceneEngine::OceanSettings BuildOceanSettings(const RetainedEntities& sys, const RetainedEntity& obj)
     {
         #define ParamName(x) static auto x = ParameterBox::MakeParameterNameHash(#x);
@@ -321,6 +329,10 @@ namespace EntityInterface
         ParamName(SuppressionFactor);
         ParamName(GridShiftSpeed);
         ParamName(BaseHeight);
+        ParamName(FoamThreshold);
+        ParamName(FoamIncreaseSpeed);
+        ParamName(FoamIncreaseClamp);
+        ParamName(FoamDecrease);
 
         SceneEngine::OceanSettings result;
         result._enable = obj._properties.GetParameter(Enable, result._enable);
@@ -336,6 +348,10 @@ namespace EntityInterface
         result._suppressionFactor[0] = obj._properties.GetParameter(SuppressionFactor, result._suppressionFactor[0]);
         result._gridShiftSpeed = obj._properties.GetParameter(GridShiftSpeed, result._gridShiftSpeed);
         result._baseHeight = obj._properties.GetParameter(BaseHeight, result._baseHeight);
+        result._foamThreshold = obj._properties.GetParameter(FoamThreshold, result._foamThreshold);
+        result._foamIncreaseSpeed = obj._properties.GetParameter(FoamIncreaseSpeed, result._foamIncreaseSpeed);
+        result._foamIncreaseClamp = obj._properties.GetParameter(FoamIncreaseClamp, result._foamIncreaseClamp);
+        result._foamDecrease = obj._properties.GetParameter(FoamDecrease, result._foamDecrease);
         return result;
     }
 
@@ -344,7 +360,8 @@ namespace EntityInterface
         #define ParamName(x) static auto x = ParameterBox::MakeParameterNameHash(#x);
         ParamName(SpecularReflectionBrightness);
         ParamName(FoamBrightness);
-        ParamName(OpticalThickness);
+        ParamName(OpticalThicknessScalar);
+        ParamName(OpticalThicknessColor);
         ParamName(SkyReflectionBrightness);
         ParamName(SpecularPower);
         ParamName(UpwellingScale);
@@ -352,11 +369,20 @@ namespace EntityInterface
         ParamName(ReflectionBumpScale);
         ParamName(DetailNormalFrequency);
         ParamName(SpecularityFrequency);
+        ParamName(MatSpecularMin);
+        ParamName(MatSpecularMax);
+        ParamName(MatRoughness);
 
         SceneEngine::OceanLightingSettings result;
         result._specularReflectionBrightness = obj._properties.GetParameter(SpecularReflectionBrightness, result._specularReflectionBrightness);
         result._foamBrightness = obj._properties.GetParameter(FoamBrightness, result._foamBrightness);
-        result._opticalThickness = obj._properties.GetParameter(OpticalThickness, result._opticalThickness);
+
+        auto otColor = obj._properties.GetParameter<unsigned>(OpticalThicknessColor);
+        auto otScalar = obj._properties.GetParameter<float>(OpticalThicknessScalar);
+        if (otColor.first && otScalar.first) {
+            result._opticalThickness = AsFloat3Color(otColor.second) * otScalar.second;
+        }
+
         result._skyReflectionBrightness = obj._properties.GetParameter(SkyReflectionBrightness, result._skyReflectionBrightness);
         result._specularPower = obj._properties.GetParameter(SpecularPower, result._specularPower);
         result._upwellingScale = obj._properties.GetParameter(UpwellingScale, result._upwellingScale);
@@ -364,6 +390,9 @@ namespace EntityInterface
         result._reflectionBumpScale = obj._properties.GetParameter(ReflectionBumpScale, result._reflectionBumpScale);
         result._detailNormalFrequency = obj._properties.GetParameter(DetailNormalFrequency, result._detailNormalFrequency);
         result._specularityFrequency = obj._properties.GetParameter(SpecularityFrequency, result._specularityFrequency);
+        result._matSpecularMin = obj._properties.GetParameter(MatSpecularMin, result._matSpecularMin);
+        result._matSpecularMax = obj._properties.GetParameter(MatSpecularMax, result._matSpecularMax);
+        result._matRoughness = obj._properties.GetParameter(MatRoughness, result._matRoughness);
         return result;
     }
 

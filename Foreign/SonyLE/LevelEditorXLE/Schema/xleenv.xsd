@@ -320,6 +320,10 @@
         <LeGe.NativeProperty name="SuppressionFactor" nativeName="SuppressionFactor"/>
         <LeGe.NativeProperty name="GridShiftSpeed" nativeName="GridShiftSpeed"/>
         <LeGe.NativeProperty name="BaseHeight" nativeName="BaseHeight"/>
+        <LeGe.NativeProperty name="FoamThreshold" nativeName="FoamThreshold"/>
+        <LeGe.NativeProperty name="FoamIncreaseSpeed" nativeName="FoamIncreaseSpeed"/>
+        <LeGe.NativeProperty name="FoamIncreaseClamp" nativeName="FoamIncreaseClamp"/>
+        <LeGe.NativeProperty name="FoamDecrease" nativeName="FoamDecrease"/>
 
         <scea.dom.editors.attribute category="Enable" name="Enable" displayName="Enable" description="Enable or disable ocean rendering"/>
         
@@ -352,6 +356,11 @@
 
         <scea.dom.editors.attribute category="General" name="BaseHeight" displayName="Base Height" description="Z position for the surface of the ocean"/>
 
+        <scea.dom.editors.attribute category="General" name="FoamThreshold" displayName="Foam Threshold" description=""/>
+        <scea.dom.editors.attribute category="General" name="FoamIncreaseSpeed" displayName="Foam Increase Speed" description=""/>
+        <scea.dom.editors.attribute category="General" name="FoamIncreaseClamp" displayName="Foam Increase Clamp" description=""/>
+        <scea.dom.editors.attribute category="General" name="FoamDecrease" displayName="Foam Decrease" description=""/>
+
         <scea.dom.editors category="Ocean" name="OceanSettings" menuText="Ocean/OceanSettings" description="Settings for the ocean rendering"/>
         <LeGe.OpaqueListable label="OceanSettings"/>
       </xs:appinfo>
@@ -372,6 +381,11 @@
         <xs:attribute name="SuppressionFactor" type="xs:float" default=".06"/>
         <xs:attribute name="GridShiftSpeed" type="xs:float" default=".062"/>
         <xs:attribute name="BaseHeight" type="xs:float" default="100"/>
+
+        <xs:attribute name="FoamThreshold" type="xs:float" default=".3"/>
+        <xs:attribute name="FoamIncreaseSpeed" type="xs:float" default="24"/>
+        <xs:attribute name="FoamIncreaseClamp" type="xs:float" default="8"/>
+        <xs:attribute name="FoamDecrease" type="xs:unsignedInt" default="1"/>
       </xs:extension>
     </xs:complexContent>
   </xs:complexType>
@@ -383,15 +397,23 @@
       <xs:appinfo>
         <LeGe.NativeType nativeName="OceanLightingSettings"/>
         <LeGe.NativeProperty name="FoamBrightness" nativeName="FoamBrightness"/>
-        <LeGe.NativeProperty name="OpticalThickness" nativeName="OpticalThickness"/>
+        <LeGe.NativeProperty name="OpticalThicknessScalar" nativeName="OpticalThicknessScalar"/>
+        <LeGe.NativeProperty name="OpticalThicknessColor" nativeName="OpticalThicknessColor"/>
         <LeGe.NativeProperty name="SkyReflectionBrightness" nativeName="SkyReflectionBrightness"/>
         <LeGe.NativeProperty name="UpwellingScale" nativeName="UpwellingScale"/>
         <LeGe.NativeProperty name="RefractiveIndex" nativeName="RefractiveIndex"/>
         <LeGe.NativeProperty name="ReflectionBumpScale" nativeName="ReflectionBumpScale"/>
         <LeGe.NativeProperty name="DetailNormalFrequency" nativeName="DetailNormalFrequency"/>
         <LeGe.NativeProperty name="SpecularityFrequency" nativeName="SpecularityFrequency"/>
+        <LeGe.NativeProperty name="MatSpecularMin" nativeName="MatSpecularMin"/>
+        <LeGe.NativeProperty name="MatSpecularMax" nativeName="MatSpecularMax"/>
+        <LeGe.NativeProperty name="MatRoughness" nativeName="MatRoughness"/>
         
-        <scea.dom.editors.attribute category="General" name="OpticalThickness" displayName="Optical Thickness" description="Optical thickness"/>
+        <scea.dom.editors.attribute category="General" name="OpticalThicknessScalar" displayName="Optical Thickness Scale" description="Optical thickness"
+                                    editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
+        <scea.dom.editors.attribute category="General" name="OpticalThicknessColor" displayName="Optical Thickness" description="Optical thickness"
+                                    editor="Sce.Atf.Controls.PropertyEditing.ColorPickerEditor,Atf.Gui.WinForms"
+                                    converter="Sce.Atf.Controls.PropertyEditing.IntColorConverter"/>
 
         <scea.dom.editors.attribute category="General" name="FoamBrightness" displayName="Foam Brightness" description="Brightness of the foam on the surface of the ocean"
           editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
@@ -407,6 +429,13 @@
         <scea.dom.editors.attribute category="General" name="SpecularityFrequency" displayName="Specularity Frequency" description="Mapping constant for the specularity texture"
           editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,20"/>
 
+        <scea.dom.editors.attribute category="General" name="MatSpecularMin" displayName="Specular Minimum" description="Specular constant minimum"
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
+        <scea.dom.editors.attribute category="General" name="MatSpecularMax" displayName="Specular Maximum" description="Specular constant maximum"
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
+        <scea.dom.editors.attribute category="General" name="MatRoughness" displayName="Roughness" description="Roughness constant"
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
+
         <scea.dom.editors category="Ocean" name="OceanLightingSettings" menuText="Ocean/OceanLightingSettings" description="Settings for lighting of the ocean surface"/>
         <LeGe.OpaqueListable label="OceanLightingSettings"/>
       </xs:appinfo>
@@ -415,13 +444,17 @@
     <xs:complexContent>
       <xs:extension base="envMiscType">
         <xs:attribute name="FoamBrightness" type="xs:float" default="0.08"/>
-        <xs:attribute name="OpticalThickness" type="vector3Type" default="0.05 0.042 0.038"/>
+        <xs:attribute name="OpticalThicknessScalar" type="xs:float" default="0.05"/>
+        <xs:attribute name="OpticalThicknessColor" type="xs:int" default="-1"/>
         <xs:attribute name="SkyReflectionBrightness" type="xs:float" default="1.355"/>
         <xs:attribute name="UpwellingScale" type="xs:float" default="0.075"/>
         <xs:attribute name="RefractiveIndex" type="xs:float" default="1.333"/>
         <xs:attribute name="ReflectionBumpScale" type="xs:float" default=".1"/>
         <xs:attribute name="DetailNormalFrequency" type="xs:float" default="6.727"/>
         <xs:attribute name="SpecularityFrequency" type="xs:float" default="7.1"/>
+        <xs:attribute name="MatSpecularMin" type="xs:float" default=".3"/>
+        <xs:attribute name="MatSpecularMax" type="xs:float" default=".6"/>
+        <xs:attribute name="MatRoughness" type="xs:float" default=".15"/>
       </xs:extension>
     </xs:complexContent>
   </xs:complexType>

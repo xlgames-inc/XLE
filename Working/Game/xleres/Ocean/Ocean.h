@@ -26,6 +26,11 @@ cbuffer OceanMaterialSettings
     float StrengthConstantZ;
     float ShallowGridPhysicalDimension;
     float WaterBaseHeight;
+
+	float FoamThreshold = .3f;
+	float FoamIncreaseSpeed = 8.f / .33f;
+	float FoamIncreaseClamp = 8.f;
+	int FoamDecrease = 1;
 }
 
 cbuffer OceanLightingSettings
@@ -40,13 +45,16 @@ cbuffer OceanLightingSettings
 	float		ReflectionBumpScale				= 0.1f;
 	float		DetailNormalFrequency			= 6.727f;
 	float		SpecularityFrequency			= 1.f;
+	float		MatSpecularMin					= .3f;
+	float		MatSpecularMax					= .6f;
+	float		MatRoughness					= .15f;
 }
 
-#define DO_FREQ_BOOST 1
+// #define DO_FREQ_BOOST 1
 #if DO_FREQ_BOOST==1
-    static const float StrengthConstantMultiplier = 4.f * 256.f / 2.f;
+    static const float StrengthConstantMultiplier = 4.f * 1.0f / 512.f; //256.f / 2.f;
 #else
-    static const float StrengthConstantMultiplier = 256.f / 2.f;
+    static const float StrengthConstantMultiplier = 1.0f / 512.f; // 256.f / 2.f;
 #endif
 
 float OceanTextureCustomInterpolate(Texture2D<float> inputTex, uint2 texDimensions, float2 textureCoords)
@@ -90,4 +98,3 @@ float OceanTextureCustomInterpolate(Texture2D<float> inputTex, uint2 texDimensio
 }
 
 #endif
-

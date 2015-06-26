@@ -37,6 +37,7 @@
 #include "../Math/Transformations.h"
 #include "../Math/ProjectionMath.h"
 #include "../Math/Geometry.h"
+#include "../Math/Noise.h"
 #include "../ConsoleRig/Console.h"
 #include "../Utility/BitUtils.h"
 
@@ -362,7 +363,7 @@ namespace SceneEngine
         const float l = desc._suppressionFactor;
         const float A = 1.f;
 
-        #define DO_FREQ_BOOST 1
+        // #define DO_FREQ_BOOST 1
         #if (DO_FREQ_BOOST==1)
             const float freqBoost = 2.f;
         #else
@@ -378,8 +379,7 @@ namespace SceneEngine
                     //  (because n is a value between -.5f and 5.f). That's what freqBoost is
                     //  for. Even if freqBoost isn't physically accurate, it might help us get
                     //  more high frequency waves.
-                Float2 kVector( freqBoost * 2.f * gPI * n / Lx, 
-                                freqBoost * 2.f * gPI * m / Ly);
+                Float2 kVector = (freqBoost * 2.f * gPI) * Float2(n / Lx, m / Ly);
                 float k = Magnitude(kVector);
 
                 float directionalPart = 1.f;
@@ -416,13 +416,23 @@ namespace SceneEngine
         auto bufferUploadsDesc = BuildRenderTargetDesc(
             BindFlag::ShaderResource, BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, NativeFormat::R32_UINT),
             "FFTWorking");
-        auto inputReal = uploads.Transaction_Immediate(
-            bufferUploadsDesc, 
-            BufferUploads::CreateBasicPacket(desc._width*desc._height*sizeof(float), realValues.get(), TexturePitches(unsigned(desc._width*sizeof(float)), unsigned(desc._width*desc._height*sizeof(float)))).get()
+        auto inputReal = 
+            uploads.Transaction_Immediate(
+                bufferUploadsDesc, 
+                BufferUploads::CreateBasicPacket(
+                    desc._width*desc._height*sizeof(float), realValues.get(), 
+                    TexturePitches(
+                        unsigned(desc._width*sizeof(float)), 
+                        unsigned(desc._width*desc._height*sizeof(float)))).get()
             )->AdoptUnderlying();
-        auto inputImaginary = uploads.Transaction_Immediate(
-            bufferUploadsDesc, 
-            BufferUploads::CreateBasicPacket(desc._width*desc._height*sizeof(float), imaginaryValues.get(), TexturePitches(unsigned(desc._width*sizeof(float)), unsigned(desc._width*desc._height*sizeof(float)))).get()
+        auto inputImaginary = 
+            uploads.Transaction_Immediate(
+                bufferUploadsDesc, 
+                BufferUploads::CreateBasicPacket(
+                    desc._width*desc._height*sizeof(float), imaginaryValues.get(), 
+                    TexturePitches(
+                        unsigned(desc._width*sizeof(float)), 
+                        unsigned(desc._width*desc._height*sizeof(float)))).get()
             )->AdoptUnderlying();
 
         RenderCore::Metal::ShaderResourceView inputRealShaderResource(inputReal.get());
@@ -525,7 +535,12 @@ namespace SceneEngine
             OceanMaterialConstants result = {
                 physicalDimensions[0], physicalDimensions[1], 
                 oceanSettings._strengthConstantXY, oceanSettings._strengthConstantZ,
-                shallowGridPhysicalDimension, oceanSettings._baseHeight, 0, 0
+                shallowGridPhysicalDimension, oceanSettings._baseHeight, 
+                
+                oceanSettings._foamThreshold, oceanSettings._foamIncreaseSpeed,
+                oceanSettings._foamIncreaseClamp, oceanSettings._foamDecrease,
+
+                0, 0
             };
             return result;
         }
@@ -582,8 +597,8 @@ namespace SceneEngine
         auto& fft2 = ::Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/Ocean/FFT.csh:FFT2D_2:cs_*");
         auto& setup = ::Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/Ocean/FFT.csh:Setup:cs_*", fftDefines);
 
-        auto& buildNormals          = ::Assets::GetAssetDep<Metal::ComputeShader>(fftBuffer._useDerivativesMapForNormals ? "game/xleres/Ocean/OceanNormals.csh:BuildDerivatives:cs_*" : "game/xleres/Ocean/OceanNormals.csh:BuildNormals:cs_*");
-        auto& buildNormalsMipmaps   = ::Assets::GetAssetDep<Metal::ComputeShader>(fftBuffer._useDerivativesMapForNormals ? "game/xleres/Ocean/OceanNormals.csh:BuildDerivativesMipmap:cs_*" : "game/xleres/Ocean/OceanNormals.csh:BuildNormalsMipmap:cs_*");
+        auto& buildNormals = ::Assets::GetAssetDep<Metal::ComputeShader>(fftBuffer._useDerivativesMapForNormals ? "game/xleres/Ocean/OceanNormals.csh:BuildDerivatives:cs_*" : "game/xleres/Ocean/OceanNormals.csh:BuildNormals:cs_*");
+        auto& buildNormalsMipmaps = ::Assets::GetAssetDep<Metal::ComputeShader>(fftBuffer._useDerivativesMapForNormals ? "game/xleres/Ocean/OceanNormals.csh:BuildDerivativesMipmap:cs_*" : "game/xleres/Ocean/OceanNormals.csh:BuildNormalsMipmap:cs_*");
     
         const float shallowGridPhysicalDimension = Tweakable("OceanShallowPhysicalDimension", 256.f);
         const float currentTime = parserContext.GetSceneParser()->GetTimeValue();
@@ -647,10 +662,11 @@ namespace SceneEngine
                 parserContext.GetGlobalUniformsStream(),
                 UniformsStream(nullptr, cbs, dimof(cbs)));
 
-            context->BindCS(MakeResourceList(   fftBuffer._workingTextureRealShaderResource, 
-                                                fftBuffer._workingTextureXRealShaderResource, 
-                                                fftBuffer._workingTextureYRealShaderResource,
-                                                fftBuffer._foamQuantitySRV2[(OceanBufferCounter+1)&1]));
+            context->BindCS(MakeResourceList(
+                fftBuffer._workingTextureRealShaderResource, 
+                fftBuffer._workingTextureXRealShaderResource, 
+                fftBuffer._workingTextureYRealShaderResource,
+                fftBuffer._foamQuantitySRV2[(OceanBufferCounter+1)&1]));
             context->BindCS(MakeResourceList(fftBuffer._normalsTextureUAV[0], fftBuffer._foamQuantityUAV[OceanBufferCounter&1]));
             context->Bind(buildNormals); context->Dispatch((dimensions + (32-1))/32, (dimensions + (32-1))/32);
             context->UnbindCS<UnorderedAccessView>(0, 2);
@@ -956,6 +972,98 @@ namespace SceneEngine
         }
     }
 
+    class WaterNoiseTexture
+    {
+    public:
+        class Desc
+        {
+        public:
+            float _hgrid, _gain, _lacunarity;
+            unsigned _octaves;
+            Desc(float hgrid, float gain, float lacunarity, unsigned octaves);
+            Desc();
+        };
+
+        Metal::ShaderResourceView _srv;
+
+        WaterNoiseTexture(const Desc& desc);
+    };
+
+    WaterNoiseTexture::Desc::Desc(float hgrid, float gain, float lacunarity, unsigned octaves)
+    {
+        _hgrid = hgrid;
+        _gain = gain;
+        _lacunarity = lacunarity;
+        _octaves = octaves;
+    }
+
+    WaterNoiseTexture::Desc::Desc() 
+    {
+        _hgrid = Tweakable("WaterNoiseHGrid", 5.f);
+        _gain = Tweakable("WaterNoiseGain", .75f);
+        _lacunarity = Tweakable("WaterNoiseLacunarity", 2.1042f);
+        _octaves = Tweakable("WaterNoiseOctaves", 7);
+    }
+
+    static float fbm(Float4 pos, float hgrid, float gain, float lacunarity, int octaves)
+    {
+	    float total = 0.0f;
+	    float frequency = 1.0f/(float)hgrid;
+	    float amplitude = 1.f;
+	    for (int i = 0; i < octaves; ++i) {
+		    total += SimplexNoise(Float4(pos * frequency)) * amplitude;
+		    frequency *= lacunarity;
+		    amplitude *= gain;
+	    }
+
+	    return total;
+    }
+
+    WaterNoiseTexture::WaterNoiseTexture(const Desc& desc)
+    {
+        using namespace BufferUploads;
+        const unsigned width = 512, height = 512;
+        auto tDesc = CreateDesc(
+            BindFlag::ShaderResource, 0, GPUAccess::Read,
+            BufferUploads::TextureDesc::Plain2D(width, height, Metal::NativeFormat::R8G8_UNORM),
+            "WaterNoise");
+
+        static float scale0 = 10.f;
+        static float scale1 = 10.f;
+        static float offset1 = 15.f;
+
+            // Here is an interesting way to create a wrapping noise texture...
+            // We're going to build the texture is 4D. The two coordinates in
+            // the final 2D output texture are each tied to 2 coordinates in 4D
+            // space. As we travel linearly in a cardinal direction in 2D space,
+            // we will travel around in a circle in 4D space. The circle will
+            // eventually wrap back around into itself -- and so in the output
+            // texture it will wrap at that point! We have one circle for X, and 
+            // another for Y -- and so the final texture wraps in all directions.
+        auto pkt = CreateEmptyPacket(tDesc);
+        auto data = (const uint8*)pkt->GetData(0);
+        for (unsigned y=0; y<height; ++y)
+            for (unsigned x=0; x<width; ++x) {
+                auto* d = PtrAdd(data, (x + (y*width)) * 2);
+                float a0 = x / float(width) * 2.f * 3.14159f;
+                float a1 = y / float(height) * 2.f * 3.14159f;
+
+                float noiseValue0 = fbm(
+                    Float4(scale0 * XlCos(a0), scale0 * XlSin(a0), scale0 * XlCos(a1), scale0 * XlSin(a1)),
+                    desc._hgrid, desc._gain, desc._lacunarity, desc._octaves);
+
+                float noiseValue1 = fbm(
+                    Float4(scale1 * XlCos(a0) + offset1, scale1 * XlSin(a0) + offset1, scale1 * XlCos(a1) + offset1, scale1 * XlSin(a1) + offset1),
+                    desc._hgrid, desc._gain, desc._lacunarity, desc._octaves);
+
+                ((uint8*)d)[0] = uint8(255.f * Clamp(.5f + 0.5f * noiseValue0, 0.f, 1.f));
+                ((uint8*)d)[1] = uint8(255.f * Clamp(.5f + 0.5f * noiseValue1, 0.f, 1.f));
+            }
+
+        auto texture = GetBufferUploads().Transaction_Immediate(tDesc, pkt.get());
+        _srv = Metal::ShaderResourceView(texture->GetUnderlying());
+    }
+
         //   ================================================================================   //
                 //////////////////////////////////////////////////////////////////////////
 
@@ -1072,9 +1180,10 @@ namespace SceneEngine
                     context->Bind(*variation._boundLayout);
                 }
 
-                auto& surfaceSpecularity = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/defaultresources/waternoise.png");
+                //auto& surfaceSpecularity = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/defaultresources/waternoise.png");
+                auto& surfaceSpecularity = Techniques::FindCachedBox2<WaterNoiseTexture>();
                 const ConstantBuffer* prebuiltBuffers[] = { &oceanMaterialConstants, &oceanGridConstants, &oceanRenderingConstants, &oceanLightingConstants };
-                const ShaderResourceView* srvs[]        = { &OceanReflectionResource, &surfaceSpecularity.GetShaderResource() };
+                const ShaderResourceView* srvs[]        = { &OceanReflectionResource, &surfaceSpecularity._srv };
                 variation._boundUniforms->Apply(
                     *context, 
                     parserContext.GetGlobalUniformsStream(),
@@ -1107,7 +1216,8 @@ namespace SceneEngine
         context->BindPS(MakeResourceList(1, fftBuffer._normalsTextureShaderResource));
         context->BindPS(MakeResourceList(3, 
             fftBuffer._foamQuantitySRV[OceanBufferCounter&1], 
-            ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/defaultresources/waternoise.png").GetShaderResource()));
+            // ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/defaultresources/waternoise.png").GetShaderResource()
+            Techniques::FindCachedBox2<WaterNoiseTexture>()._srv));
         if (shallowWater) {
             ShallowWater_BindForOceanRender(context, *shallowWater, OceanBufferCounter);
         }
@@ -1247,6 +1357,10 @@ namespace SceneEngine
         _suppressionFactor[1] = 0.06f;
         _gridShiftSpeed = 0.062f;
         _baseHeight = 0.f;
+        _foamThreshold = 0.3f;
+        _foamIncreaseSpeed = 8.f / .33f;
+        _foamIncreaseClamp = 8.f;
+        _foamDecrease = 1;
     }
 
     OceanLightingSettings::OceanLightingSettings()
@@ -1255,13 +1369,18 @@ namespace SceneEngine
         _foamBrightness = 0.08f;
         _opticalThickness = Float3(0.05f, 0.042f, 0.038f);
         _skyReflectionBrightness = 1.355f;
+
         _specularPower = 128.f;
         _upwellingScale = .075f;
         _refractiveIndex = 1.333f;
         _reflectionBumpScale = 0.1f;
+
         _detailNormalFrequency = 6.727f;
         _specularityFrequency = 7.1f;
-        _dummy[0] = _dummy[1] = 0.f;
+        _matSpecularMin = .3f; _matSpecularMax = .6f;
+
+        _matRoughness = .15f;
+        _dummy[0] = _dummy[1] = _dummy[2] = 0;
     }
 
 }

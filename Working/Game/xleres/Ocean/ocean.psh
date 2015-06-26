@@ -22,6 +22,8 @@
 #include "../gbuffer.h"
 #include "../Lighting/LightingAlgorithm.h"
 #include "../Lighting/BasicLightingEnvironment.h"
+#include "../Lighting/DirectionalResolve.h"
+#include "../Lighting/AmbientResolve.h"
 #include "../TransformAlgorithm.h"
 #include "../TextureAlgorithm.h"
 #include "../Colour.h"
@@ -43,15 +45,13 @@ Texture2D					Foam_Diffuse : register(t4);
 Texture2D					RefractionsTexture : register(t9);
 Texture2D_MaybeMS<float>	DepthBuffer : register(t10);
 
-Texture2D					SkyReflectionTexture[3] : register(t6);
 Texture2D					DynamicReflectionTexture;
 
 Texture2D<float>			SurfaceSpecularity;
 
 static const bool			DoFresnel = true;
 
-static const bool			Specular_JitterNormal = true;
-static const bool			Specular_UseHalfVector = true;
+static const bool			Specular_JitterNormal = false;
 static const float			Specular_JitterNormalStrength = .115f; // 0.075f;
 static const uint			Specular_JitterNormalCount = 3;
 
@@ -243,6 +243,7 @@ float CalculateFoamFromFoamQuantity(float2 texCoord, float foamQuantity)
 	if (foamQuantity > 0.f) {
 
 		#if 0
+
 				// 3 taps of the foam texture gives a detailed and interesting result
 				//		todo -- foam should fade off with distance, because the tiling becomes too obvious
 			float texAmount;
@@ -262,20 +263,21 @@ float CalculateFoamFromFoamQuantity(float2 texCoord, float foamQuantity)
 			else							{ texAmount += foamDiffuse.b * foamQuantity/.333f; }
 
 			return foamQuantity*foamQuantity*min(1, texAmount);
+
 		#else
 
 				//	simplier, but nicer method.
 				//	first tap is used as texture coordinate offset for
 				//	second tap
 
-			float4 foamFirstTap = Foam_Diffuse.Sample(DefaultSampler, 2.5f*texCoord + Time * float2(0.01f, 0.005f));
-			float4 foamSecondTap = Foam_Diffuse.Sample(DefaultSampler,
+			float4 foamFirstTap = Foam_Diffuse.Sample(DefaultSampler, 1.33f*texCoord + Time * float2(0.0078f, 0.0046f));
+			// return foamFirstTap.x;
+			float foamSecondTap = Foam_Diffuse.Sample(DefaultSampler,
 				23.7f*-texCoord
-				+ 0.007f * (-1.0.xx + 2.f * foamFirstTap.xy)
-				+ Time * float2(0.023f, -0.015f)).r;
+				+ 0.027f * (-1.0.xx + 2.f * foamFirstTap.xy)
+				+ Time * float2(0.023f, -0.015f));
 
-			return smoothstep(0.f, foamSecondTap.r, foamQuantity);
-			// return foamSecondTap.r * foamQuantity;
+			return smoothstep(0.f, foamSecondTap, foamQuantity);
 
 		#endif
 
@@ -328,88 +330,21 @@ float CalculateFresnel(float3 worldSpaceNormal, float3 worldViewVector)
 	return Encode(result);
 }
 
-float PhysicalBlinnPhong(float3 normal, float3 viewDirection, float3 negativeIncidentLightDirection, float shininess, float diffuseBrightness, float specularFresnel, float refractiveIndex, float specularScale)
+GBufferValues BuildSample(float3 worldSpaceNormal, float specularity)
 {
-		//
-		//		Physically based energy conserving version of Blinn-Phong.
-		//			Also taken from http://blog.selfshadow.com/publications/s2012-shading-course/gotanda/s2012_pbs_beyond_blinn_notes_v3.pdf
-		//			and http://research.tri-ace.com/Data/course_note_practical_implementation_at_triace.pdf
-		//
+	GBufferValues sample = GBufferValues_Default();
+	sample.diffuseAlbedo = 0.0.xxx;
+	sample.material.metal = 1.f;
 
-			// (it seems a little awkward to calculate both the half vector and reflected vector. Couldn't
-			//	this be done better?)
-	const float3 halfVector	 = normalize(negativeIncidentLightDirection + viewDirection);
-	// const float3 outgoingDirection	 = normalize(reflect(negativeIncidentLightDirection, normal));
-
-	const float f0 = Square((1.f - refractiveIndex) / (1.f + refractiveIndex));	// (also part of the SchlickFresnel equation)
-
-	const float NE = dot(normal, viewDirection);
-	const float NL = dot(normal, negativeIncidentLightDirection);
-	const float A = pow(saturate(dot(normal, halfVector)), shininess);
-	const float B = specularFresnel * A / max(NE, NL);
-	const float C = (0.0397436f * shininess + 0.0856832) * B;
-	const float D = /*(diffuseBrightness / pi) * (1.f - f0) +*/ C;
-	return D * specularScale;
+	sample.worldSpaceNormal = worldSpaceNormal;
+	sample.material.specular = lerp(MatSpecularMin, MatSpecularMax, specularity);
+	sample.material.roughness = MatRoughness;
+	return sample;
 }
 
-float DoSingleSpecular(float3 worldSpaceNormal, float3 worldViewDirection, float shininess, float specularFresnel, bool useHalfVector = false)
+float3 DoSingleSpecular(float3 worldSpaceNormal, float3 worldViewDirection, float specularity)
 {
-	if (useHalfVector) {
-		const bool usePhysicalBlinnPhong = true;
-		if (usePhysicalBlinnPhong) {
-			return PhysicalBlinnPhong(
-				worldSpaceNormal, worldViewDirection,
-				BasicLight[0].NegativeDirection, shininess, 1.f,
-				specularFresnel, RefractiveIndex, 1.f);
-		} else {
-			float3 halfVector = normalize(BasicLight[0].NegativeDirection + worldViewDirection);
-			return specularFresnel * pow(saturate(dot(halfVector, worldSpaceNormal)), shininess);
-		}
-	} else {
-		float3 reflectionVector = reflect(-worldViewDirection, worldSpaceNormal);
-		return specularFresnel * pow(saturate(dot(BasicLight[0].NegativeDirection, reflectionVector)), shininess);
-	}
-}
-
-float DoSpecular(float3 worldSpaceNormal, float3 worldViewDirection, float shininess, uint2 pixelCoords, float specularFresnel)
-{
-		//
-		//			Here in an interesting hack for ocean specular...
-		//			let's jitter the normal a bit. This has a different
-		//			affect on the shape of the highlight than changing
-		//			the specular power -- and can make the highlight feel
-		//			longer when the sun is low. If the jittering is too
-		//			much, however -- it will break apart into a U shape.
-		//
-		// todo --	maybe only do the normal jittering around the specular
-		//			highlight
-	float baseSpecular = DoSingleSpecular(worldSpaceNormal, worldViewDirection, shininess, specularFresnel, Specular_UseHalfVector);
-	if (Specular_JitterNormal) {
-		float dither = DitherPatternValue(pixelCoords);
-
-		float result = 0.f;
-		const float scale = 2.f * pi / float(Specular_JitterNormalCount);
-		for (uint c=0; c<Specular_JitterNormalCount; ++c) {
-			float angle = (float(c)+dither) * scale;
-			float2 sinecosine;
-			sincos(angle, sinecosine.x, sinecosine.y);
-
-			float3 jitteredNormal =
-				worldSpaceNormal + float3(Specular_JitterNormalStrength * sinecosine.yx, 0.f);
-			const bool doNormalize = true;
-			if (doNormalize) {
-				jitteredNormal = normalize(jitteredNormal);
-			} else {
-					// rough approximation of normalize (it seems too inaccurate, and makes the strangely result unbalanced)
-				jitteredNormal *= 1.f/(1.f + .075f*Specular_JitterNormalStrength);
-			}
-
-			result += DoSingleSpecular(jitteredNormal, worldViewDirection, shininess, specularFresnel, Specular_UseHalfVector);
-		}
-		return (2.f*baseSpecular + result) * (1.f/float(2+Specular_JitterNormalCount));
-	} else {
-		return baseSpecular;
-	}
+	return LightResolve_Specular(BuildSample(worldSpaceNormal, specularity), worldViewDirection, BasicLight[0]);
 }
 
 struct OceanLightingParts
@@ -598,53 +533,69 @@ void CalculateSkyReflection(inout OceanLightingParts parts,
 {
 	float3 reflectionVector = reflect(-parameters.worldViewDirection, oceanSurface.worldSpaceNormal);
 
-#if MAT_DYNAMIC_REFLECTION == 1
+	#if MAT_DYNAMIC_REFLECTION == 1
 
-	#if DO_REFLECTION_IN_VS==1
-		float2 reflTC = oceanSurface.dynamicReflectionTexCoord.xy / oceanSurface.dynamicReflectionTexCoord.w;
-		reflTC += oceanSurface.worldSpaceNormal.xy * ReflectionBumpScale;
-		parts.skyReflection = DynamicReflectionTexture.Sample(
-			ClampingSampler, reflTC);
+		#if DO_REFLECTION_IN_VS==1
+			float2 reflTC = oceanSurface.dynamicReflectionTexCoord.xy / oceanSurface.dynamicReflectionTexCoord.w;
+			reflTC += oceanSurface.worldSpaceNormal.xy * ReflectionBumpScale;
+			parts.skyReflection = DynamicReflectionTexture.Sample(
+				ClampingSampler, reflTC);
+		#else
+		#endif
+		parts.skyReflection /= LightingScale;
+
 	#else
+
+		parts.skyReflection = LightResolve_Ambient(
+			BuildSample(oceanSurface.worldSpaceNormal, oceanSurface.specularity),
+			parameters.worldViewDirection, BasicAmbient, parameters.pixelPosition.xy, 0);
+
 	#endif
-	parts.skyReflection /= LightingScale;
 
-#else
-
-#if 0
-	uint2 reflectionTextureDims;
-	SkyReflectionTexture[0].GetDimensions(
-		reflectionTextureDims.x,
-		reflectionTextureDims.y);
-
-	#if SKY_PROJECTION == 1
-		parts.skyReflection = ReadReflectionHemiBox(
-			reflectionVector,
-			SkyReflectionTexture[0], SkyReflectionTexture[1], SkyReflectionTexture[2],
-			reflectionTextureDims, 2);
-	#elif SKY_PROJECTION == 3
-		float2 skyReflectionCoord = HemisphericalMappingCoord(reflectionVector);
-		parts.skyReflection = SkyReflectionTexture[0].Load(
-			int3(skyReflectionCoord.xy * float2(reflectionTextureDims.xy), 0)).rgb;
-	#else
-		parts.skyReflection = 0.0.xxx;
-	#endif
-#endif
-	parts.skyReflection = CalculateBaseSkyColor(0.0.xx, reflectionVector);
-
-#endif
-
-	parts.skyReflection *= SkyReflectionBrightness;
 }
 
 void CalculateSpecular(	inout OceanLightingParts parts,
 						OceanSurfaceSample oceanSurface,
 						OceanParameters parameters)
 {
-	float specular = DoSpecular(
-		oceanSurface.worldSpaceNormal, parameters.worldViewDirection, SpecularPower, parameters.pixelPosition.xy,
-		parts.reflectivity);
-	parts.specular = SpecularReflectionBrightness * specular;
+		//
+		//			Here in an interesting hack for ocean specular...
+		//			let's jitter the normal a bit. This has a different
+		//			affect on the shape of the highlight than changing
+		//			the specular power -- and can make the highlight feel
+		//			longer when the sun is low. If the jittering is too
+		//			much, however -- it will break apart into a U shape.
+		//
+		// todo --	maybe only do the normal jittering around the specular
+		//			highlight
+	float3 baseSpecular = DoSingleSpecular(oceanSurface.worldSpaceNormal, parameters.worldViewDirection, oceanSurface.specularity);
+
+	if (Specular_JitterNormal) {
+		float dither = DitherPatternValue(parameters.pixelPosition.xy);
+
+		float3 result = 0.0.xxx;
+		const float scale = 2.f * pi / float(Specular_JitterNormalCount);
+		for (uint c=0; c<Specular_JitterNormalCount; ++c) {
+			float angle = (float(c)+dither) * scale;
+			float2 sinecosine;
+			sincos(angle, sinecosine.x, sinecosine.y);
+
+			float3 jitteredNormal =
+				oceanSurface.worldSpaceNormal + float3(Specular_JitterNormalStrength * sinecosine.yx, 0.f);
+			const bool doNormalize = true;
+			if (doNormalize) {
+				jitteredNormal = normalize(jitteredNormal);
+			} else {
+					// rough approximation of normalize (it seems too inaccurate, and makes the strangely result unbalanced)
+				jitteredNormal *= 1.f/(1.f + .075f*Specular_JitterNormalStrength);
+			}
+
+			result += DoSingleSpecular(jitteredNormal, parameters.worldViewDirection, oceanSurface.specularity);
+		}
+		parts.specular = (2.f*baseSpecular + result) * (1.f/float(2+Specular_JitterNormalCount));
+	} else {
+		parts.specular = baseSpecular;
+	}
 }
 
 [earlydepthstencil]
@@ -685,9 +636,7 @@ void CalculateSpecular(	inout OceanLightingParts parts,
 
 	CalculateReflectivityAndTransmission2(parts, oceanSurface, parameters);
 	CalculateFoam(parts, oceanSurface);
-	CalculateRefractionValue(
-		parts, geo.position.z,
-		parameters, oceanSurface);
+	CalculateRefractionValue(parts, geo.position.z, parameters, oceanSurface);
 	CalculateUpwelling(parts, parameters);
 	CalculateSkyReflection(parts, oceanSurface, parameters);
 	CalculateSpecular(parts, oceanSurface, parameters);
@@ -695,7 +644,7 @@ void CalculateSpecular(	inout OceanLightingParts parts,
 	parts.foamQuantity += 1.f-saturate(parts.forwardDistanceThroughWater*.2f);
 	float foamTex = CalculateFoamFromFoamQuantity(geo.texCoord, parts.foamQuantity);
 
-	float3 refractedAttenuation = exp(-OpticalThickness * min(MaxDistanceToSimulate,parts.refractionAttenuationDepth));
+	float3 refractedAttenuation = exp(-OpticalThickness * min(MaxDistanceToSimulate, parts.refractionAttenuationDepth));
 
 	#if OCEAN_SEPARATE == 1
 		return float4(LightingScale * 0.05f * parts.refractionAttenuationDepth.xxx, 1.f);
@@ -724,12 +673,11 @@ void CalculateSpecular(	inout OceanLightingParts parts,
 	float3 colour =
 		  parts.transmission * refractedAttenuation * parts.refracted
 		+ parts.transmission * parts.upwelling
-		+ ((1.f-parts.foamQuantity)*parts.reflectivity) * parts.skyReflection
-		+ (1.f-parts.foamQuantity)*parts.specular	// (fresnel already incorporated)
+		+ (1.f-parts.foamQuantity) * (parts.specular + parts.skyReflection)
 		+ (foamTex * parts.foamAlbedo)
 		;
 
-		//	integrate atmosphere attenuation
+		//	Integrate atmosphere attenuation
 		//		We only need world space position for the fog calculation... So just
 		//		calculate based on "geo.worldViewVector" (we could also use OceanBaseHeight
 		//		as a close approximation)

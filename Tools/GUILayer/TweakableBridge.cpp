@@ -56,6 +56,7 @@ namespace GUILayer
             if (tweakable1 && dynamic_cast<bool^>(value)) { *tweakable1 = *dynamic_cast<bool^>(value); return true; }
             auto tweakable2 = ConsoleRig::Detail::FindTweakable<float>(nativeName.c_str());
             if (tweakable2 && dynamic_cast<float^>(value)) { *tweakable2 = *dynamic_cast<float^>(value); return true; }
+            if (tweakable2 && dynamic_cast<System::Double^>(value)) { *tweakable2 = (float)*dynamic_cast<System::Double^>(value); return true; }
 
             auto tweakable3 = ConsoleRig::Detail::FindTweakable<std::string>(nativeName.c_str());
             if (tweakable3 && dynamic_cast<System::String^>(value)) { 
