@@ -19,6 +19,7 @@
 #include "RefractionsBuffer.h"
 #include "OrderIndependentTransparency.h"
 #include "Sky.h"
+#include "SunFlare.h"
 #include "Rain.h"
 #include "Noise.h"
 
@@ -268,6 +269,10 @@ namespace SceneEngine
             // Rain_Render(context, parserContext);
             // Rain_RenderSimParticles(context, parserContext, depthsSRV, normalsSRV);
             SparkParticleTest_RenderSimParticles(context, parserContext, depthsSRV, normalsSRV);
+        }
+
+        if (Tweakable("DoSun", false)) {
+            SunFlare_Execute(context, parserContext, depthsSRV);
         }
     }
 

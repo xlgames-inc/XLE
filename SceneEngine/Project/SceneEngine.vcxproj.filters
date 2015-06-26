@@ -112,6 +112,9 @@
     <ClCompile Include="..\TerrainShortCircuit.cpp">
       <Filter>Objects\Terrain</Filter>
     </ClCompile>
+    <ClCompile Include="..\SunFlare.cpp">
+      <Filter>Objects</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\AmbientOcclusion.h">
@@ -237,6 +240,9 @@
     </ClInclude>
     <ClInclude Include="..\TerrainCoverageId.h">
       <Filter>Objects\Terrain</Filter>
+    </ClInclude>
+    <ClInclude Include="..\SunFlare.h">
+      <Filter>Objects</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -271,7 +271,6 @@ float CalculateFoamFromFoamQuantity(float2 texCoord, float foamQuantity)
 				//	second tap
 
 			float4 foamFirstTap = Foam_Diffuse.Sample(DefaultSampler, 1.33f*texCoord + Time * float2(0.0078f, 0.0046f));
-			// return foamFirstTap.x;
 			float foamSecondTap = Foam_Diffuse.Sample(DefaultSampler,
 				23.7f*-texCoord
 				+ 0.027f * (-1.0.xx + 2.f * foamFirstTap.xy)
