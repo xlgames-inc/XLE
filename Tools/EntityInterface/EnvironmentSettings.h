@@ -38,7 +38,7 @@ namespace EntityInterface
         const RetainedEntities& flexGobInterface,
         DocumentId docId);
 
-    EnvSettingsVector DeserializeEnvSettings(
-        InputStreamFormatter<utf8>& formatter);
+    EnvSettingsVector DeserializeEnvSettings(InputStreamFormatter<utf8>& formatter);
+    void RegisterEnvironmentFlexObjects(RetainedEntities& flexSys);
 }
 

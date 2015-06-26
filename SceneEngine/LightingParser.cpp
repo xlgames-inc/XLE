@@ -39,6 +39,9 @@ namespace SceneEngine
     using namespace RenderCore;
     using namespace RenderCore::Metal;
 
+    OceanSettings GlobalOceanSettings; 
+    OceanLightingSettings GlobalOceanLightingSettings; 
+
     void LightingParser_ResolveGBuffer( 
         DeviceContext* context,
         LightingParserContext& parserContext,
@@ -250,7 +253,7 @@ namespace SceneEngine
             // note --  these things can be executed by the scene parser? Are they better
             //          off handled by the scene parser, or the lighting parser?
         if (Tweakable("OceanDoSimulation", false)) {
-            Ocean_Execute(context, parserContext, depthsSRV);
+            Ocean_Execute(context, parserContext, GlobalOceanSettings, GlobalOceanLightingSettings, depthsSRV);
         }
 
         if (Tweakable("DoSky", true)) {

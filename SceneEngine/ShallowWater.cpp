@@ -353,7 +353,7 @@ namespace SceneEngine
         unsigned prevFrameBuffer     = (bufferCounter+2) % shallowBox._simulationGrid->_rotatingBufferCount;     // (ie, -1 then +3)
         unsigned prevPrevFrameBuffer = (bufferCounter+1) % shallowBox._simulationGrid->_rotatingBufferCount;
 
-        auto materialConstants = BuildOceanMaterialConstants(oceanSettings, gridPhysicalDimension);
+        auto materialConstants = Internal::BuildOceanMaterialConstants(oceanSettings, gridPhysicalDimension);
         ConstantBuffer globalOceanMaterialConstantBuffer(&materialConstants, sizeof(materialConstants));
 
         char shaderDefines[256]; 
@@ -565,7 +565,7 @@ namespace SceneEngine
         auto& cshader = Assets::GetAssetDep<ComputeShader>(
             usePipeModel?"game/xleres/Ocean/InitSimGrid.csh:InitPipeModel:cs_*":"game/xleres/Ocean/InitSimGrid.csh:main:cs_*", shaderDefines);
 
-        auto materialConstants = BuildOceanMaterialConstants(oceanSettings, gridPhysicalDimension);
+        auto materialConstants = Internal::BuildOceanMaterialConstants(oceanSettings, gridPhysicalDimension);
         ConstantBuffer globalOceanMaterialConstantBuffer(&materialConstants, sizeof(materialConstants));
         context->BindCS(MakeResourceList(globalOceanMaterialConstantBuffer));
         context->Bind(cshader);
@@ -641,7 +641,7 @@ namespace SceneEngine
         const auto shallowWaterBorderMode = (ShallowBorderMode::Enum)Tweakable("OceanShallowBorder", 1);
         const float baseHeight = oceanSettings._baseHeight;
 
-        auto materialConstants = BuildOceanMaterialConstants(oceanSettings, gridPhysicalDimension);
+        auto materialConstants = Internal::BuildOceanMaterialConstants(oceanSettings, gridPhysicalDimension);
         ConstantBuffer globalOceanMaterialConstantBuffer(&materialConstants, sizeof(materialConstants));
 
             // unbind resources that were bound in ShallowWater_BindForOceanRender
@@ -887,7 +887,7 @@ namespace SceneEngine
         const OceanSettings& oceanSettings, float gridPhysicalDimension, Float2 offset,
         ShallowWaterSim& shallowBox, unsigned bufferCounter, ShallowBorderMode::Enum borderMode)
     {
-        auto materialConstants = BuildOceanMaterialConstants(oceanSettings, gridPhysicalDimension);
+        auto materialConstants = Internal::BuildOceanMaterialConstants(oceanSettings, gridPhysicalDimension);
         ConstantBuffer globalOceanMaterialConstantBuffer(&materialConstants, sizeof(materialConstants));
 
         char shaderDefines[256]; 
@@ -943,7 +943,7 @@ namespace SceneEngine
         const OceanSettings& oceanSettings, float gridPhysicalDimension, Float2 offset,
         ShallowWaterSim& shallowBox, unsigned bufferCounter, ShallowBorderMode::Enum borderMode)
     {
-        auto materialConstants = BuildOceanMaterialConstants(oceanSettings, gridPhysicalDimension);
+        auto materialConstants = Internal::BuildOceanMaterialConstants(oceanSettings, gridPhysicalDimension);
         ConstantBuffer globalOceanMaterialConstantBuffer(&materialConstants, sizeof(materialConstants));
 
         char shaderDefines[256]; 

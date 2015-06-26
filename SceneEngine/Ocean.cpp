@@ -52,50 +52,10 @@ namespace SceneEngine
 
     RenderCore::Metal::ShaderResourceView OceanReflectionResource;
     Float4x4 OceanWorldToReflection = Identity<Float4x4>();
-
+    ISurfaceHeightsProvider* MainSurfaceHeightsProvider = nullptr;
     static ParameterBox MaterialState_Blank;
 
-    OceanSettings GlobalOceanSettings; 
-    OceanLightingSettings GlobalOceanLightingSettings; 
-
-    ISurfaceHeightsProvider* MainSurfaceHeightsProvider = nullptr;
-
-    OceanSettings::OceanSettings()
-    {
-        _windAngle[0] = 0.734f * 2.f * gPI;
-        _windAngle[1] = 0.41f * 2.f * gPI;
-        _windVelocity[0] = 48.f;
-        _windVelocity[1] = 50.f;
-        _physicalDimensions = 256.f;
-        _gridDimensions = 256;
-        _strengthConstantXY = 1.f;
-        _strengthConstantZ = 0.61f;
-        _detailNormalsStrength = 0.65f;
-        _spectrumFade = 0.f;
-        _scaleAgainstWind[0] = 0.25f;
-        _scaleAgainstWind[1] = 0.25f;
-        _suppressionFactor[0] = 0.06f;
-        _suppressionFactor[1] = 0.06f;
-        _gridShiftSpeed = 0.062f;
-        _baseHeight = 100.f;
-    }
-
-    OceanLightingSettings::OceanLightingSettings()
-    {
-        _specularReflectionBrightness = Float3(2.8f, 2.4f, 2.1f);
-        _foamBrightness = 0.08f;
-        _opticalThickness = Float3(0.05f, 0.042f, 0.038f);
-        _skyReflectionBrightness = 1.355f;
-        _specularPower = 128.f;
-        _upwellingScale = .075f;
-        _refractiveIndex = 1.333f;
-        _reflectionBumpScale = 0.1f;
-        _detailNormalFrequency = 6.727f;
-        _specularityFrequency = 7.1f;
-        _dummy[0] = _dummy[1] = 0.f;
-    }
-
-        ////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     class FFTBufferBox
     {
@@ -111,43 +71,43 @@ namespace SceneEngine
         FFTBufferBox(const Desc& desc);
         ~FFTBufferBox();
 
-        intrusive_ptr<ID3D::Resource>                  _workingTextureReal;
+        intrusive_ptr<ID3D::Resource>               _workingTextureReal;
         RenderCore::Metal::UnorderedAccessView      _workingTextureRealUVA;
         RenderCore::Metal::RenderTargetView         _workingTextureRealTarget;
         RenderCore::Metal::ShaderResourceView       _workingTextureRealShaderResource;
 
-        intrusive_ptr<ID3D::Resource>                  _workingTextureImaginary;
+        intrusive_ptr<ID3D::Resource>               _workingTextureImaginary;
         RenderCore::Metal::UnorderedAccessView      _workingTextureImaginaryUVA;
         RenderCore::Metal::RenderTargetView         _workingTextureImaginaryTarget;
         RenderCore::Metal::ShaderResourceView       _workingTextureImaginaryShaderResource;
 
-        intrusive_ptr<ID3D::Resource>                  _workingTextureXReal;
+        intrusive_ptr<ID3D::Resource>               _workingTextureXReal;
         RenderCore::Metal::UnorderedAccessView      _workingTextureXRealUVA;
         RenderCore::Metal::ShaderResourceView       _workingTextureXRealShaderResource;
 
-        intrusive_ptr<ID3D::Resource>                  _workingTextureXImaginary;
+        intrusive_ptr<ID3D::Resource>               _workingTextureXImaginary;
         RenderCore::Metal::UnorderedAccessView      _workingTextureXImaginaryUVA;
         RenderCore::Metal::ShaderResourceView       _workingTextureXImaginaryShaderResource;
 
-        intrusive_ptr<ID3D::Resource>                  _workingTextureYReal;
+        intrusive_ptr<ID3D::Resource>               _workingTextureYReal;
         RenderCore::Metal::UnorderedAccessView      _workingTextureYRealUVA;
         RenderCore::Metal::ShaderResourceView       _workingTextureYRealShaderResource;
 
-        intrusive_ptr<ID3D::Resource>                  _workingTextureYImaginary;
+        intrusive_ptr<ID3D::Resource>               _workingTextureYImaginary;
         RenderCore::Metal::UnorderedAccessView      _workingTextureYImaginaryUVA;
         RenderCore::Metal::ShaderResourceView       _workingTextureYImaginaryShaderResource;
 
-        intrusive_ptr<ID3D::Resource>                  _normalsTexture;
-        std::vector<RenderCore::Metal::UnorderedAccessView>     _normalsTextureUAV;
-        std::vector<RenderCore::Metal::ShaderResourceView>      _normalsSingleMipSRV;
-        RenderCore::Metal::ShaderResourceView       _normalsTextureShaderResource;
+        intrusive_ptr<ID3D::Resource>                       _normalsTexture;
+        std::vector<RenderCore::Metal::UnorderedAccessView> _normalsTextureUAV;
+        std::vector<RenderCore::Metal::ShaderResourceView>  _normalsSingleMipSRV;
+        RenderCore::Metal::ShaderResourceView               _normalsTextureShaderResource;
 
-        intrusive_ptr<ID3D::Resource>                  _foamQuantity[2];
+        intrusive_ptr<ID3D::Resource>               _foamQuantity[2];
         RenderCore::Metal::UnorderedAccessView      _foamQuantityUAV[2];
         RenderCore::Metal::ShaderResourceView       _foamQuantitySRV[2];
         RenderCore::Metal::ShaderResourceView       _foamQuantitySRV2[2];
 
-        bool        _useDerivativesMapForNormals;
+        bool _useDerivativesMapForNormals;
     };
 
     FFTBufferBox::Desc::Desc(unsigned width, unsigned height, bool useDerivativesMapForNormals) : _width(width), _height(height), _useDerivativesMapForNormals(useDerivativesMapForNormals) {}
@@ -557,16 +517,18 @@ namespace SceneEngine
         Float4x4 _oceanToReflection;
     };
 
-    OceanMaterialConstants BuildOceanMaterialConstants(
-        const OceanSettings& oceanSettings, float shallowGridPhysicalDimension)
+    namespace Internal
     {
-        const Float2 physicalDimensions = Float2(oceanSettings._physicalDimensions, oceanSettings._physicalDimensions);
-        OceanMaterialConstants result = {
-            physicalDimensions[0], physicalDimensions[1], 
-            oceanSettings._strengthConstantXY, oceanSettings._strengthConstantZ,
-            shallowGridPhysicalDimension, oceanSettings._baseHeight, 0, 0
-        };
-        return result;
+        OceanMaterialConstants BuildOceanMaterialConstants(const OceanSettings& oceanSettings, float shallowGridPhysicalDimension)
+        {
+            const Float2 physicalDimensions = Float2(oceanSettings._physicalDimensions, oceanSettings._physicalDimensions);
+            OceanMaterialConstants result = {
+                physicalDimensions[0], physicalDimensions[1], 
+                oceanSettings._strengthConstantXY, oceanSettings._strengthConstantZ,
+                shallowGridPhysicalDimension, oceanSettings._baseHeight, 0, 0
+            };
+            return result;
+        }
     }
 
     static OceanRenderingConstants BuildOceanRenderingConstants(
@@ -598,7 +560,7 @@ namespace SceneEngine
 
     static unsigned OceanBufferCounter = 0;
 
-    static void UpdateOceanSurface(RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, OceanSettings& oceanSettings, FFTBufferBox& fftBuffer)
+    static void UpdateOceanSurface(RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, const OceanSettings& oceanSettings, FFTBufferBox& fftBuffer)
     {
         const unsigned dimensions = oceanSettings._gridDimensions;
         const Float2 physicalDimensions = Float2(oceanSettings._physicalDimensions, oceanSettings._physicalDimensions);
@@ -625,7 +587,7 @@ namespace SceneEngine
     
         const float shallowGridPhysicalDimension = Tweakable("OceanShallowPhysicalDimension", 256.f);
         const float currentTime = parserContext.GetSceneParser()->GetTimeValue();
-        auto materialConstants = BuildOceanMaterialConstants(oceanSettings, shallowGridPhysicalDimension);
+        auto materialConstants = Internal::BuildOceanMaterialConstants(oceanSettings, shallowGridPhysicalDimension);
         ConstantBuffer materialConstantBuffer(&materialConstants, sizeof(materialConstants));
         auto renderingConstants = BuildOceanRenderingConstants(oceanSettings, OceanWorldToReflection, currentTime);
         ConstantBuffer renderingConstantsBuffer(&renderingConstants, sizeof(renderingConstants));
@@ -639,11 +601,13 @@ namespace SceneEngine
             parserContext.GetGlobalUniformsStream(),
             UniformsStream(nullptr, cbs, dimof(cbs)));
 
-        context->BindCS(MakeResourceList(   fftBuffer._workingTextureRealUVA, fftBuffer._workingTextureImaginaryUVA,
-                                            fftBuffer._workingTextureXRealUVA, fftBuffer._workingTextureXImaginaryUVA,
-                                            fftBuffer._workingTextureYRealUVA, fftBuffer._workingTextureYImaginaryUVA));
-        context->BindCS(MakeResourceList(   calmSpectrum._inputRealShaderResource, calmSpectrum._inputImaginaryShaderResource,
-                                            strongSpectrum._inputRealShaderResource, strongSpectrum._inputImaginaryShaderResource));
+        context->BindCS(MakeResourceList(
+            fftBuffer._workingTextureRealUVA, fftBuffer._workingTextureImaginaryUVA,
+            fftBuffer._workingTextureXRealUVA, fftBuffer._workingTextureXImaginaryUVA,
+            fftBuffer._workingTextureYRealUVA, fftBuffer._workingTextureYImaginaryUVA));
+        context->BindCS(MakeResourceList(
+            calmSpectrum._inputRealShaderResource, calmSpectrum._inputImaginaryShaderResource,
+            strongSpectrum._inputRealShaderResource, strongSpectrum._inputImaginaryShaderResource));
         context->Bind(setup);
         if (useMirrorOptimisation) {
                     // only do half in X direction. The shader will write two outputs at a time
@@ -671,7 +635,11 @@ namespace SceneEngine
 
             //  Generate normals using the displacement textures
         if (!fftBuffer._normalsTextureUAV.empty()) {
-            BoundUniforms buildNormalsUniforms(::Assets::GetAssetDep<CompiledShaderByteCode>(fftBuffer._useDerivativesMapForNormals ? "game/xleres/Ocean/OceanNormals.csh:BuildDerivatives:cs_*" : "game/xleres/Ocean/OceanNormals.csh:BuildNormals:cs_*"));
+            BoundUniforms buildNormalsUniforms(
+                ::Assets::GetAssetDep<CompiledShaderByteCode>(
+                    fftBuffer._useDerivativesMapForNormals 
+                    ? "game/xleres/Ocean/OceanNormals.csh:BuildDerivatives:cs_*" 
+                    : "game/xleres/Ocean/OceanNormals.csh:BuildNormals:cs_*"));
             Techniques::TechniqueContext::BindGlobalUniforms(buildNormalsUniforms);
             buildNormalsUniforms.BindConstantBuffer(Hash64("OceanRenderingConstants"), 0, 1);
             buildNormalsUniforms.BindConstantBuffer(Hash64("OceanMaterialSettings"), 1, 1);
@@ -1012,7 +980,7 @@ namespace SceneEngine
         const unsigned dimensions = oceanSettings._gridDimensions;
         const Float2 physicalDimensions = Float2(oceanSettings._physicalDimensions, oceanSettings._physicalDimensions);
         const float currentTime = parserContext.GetSceneParser()->GetTimeValue();
-        auto materialConstants = BuildOceanMaterialConstants(oceanSettings, shallowGridPhysicalDimension);
+        auto materialConstants = Internal::BuildOceanMaterialConstants(oceanSettings, shallowGridPhysicalDimension);
         auto renderingConstants = BuildOceanRenderingConstants(oceanSettings, OceanWorldToReflection, currentTime);
 
         //////////////////////////////////////////////////////////////////////////////
@@ -1105,9 +1073,8 @@ namespace SceneEngine
                 }
 
                 auto& surfaceSpecularity = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/defaultresources/waternoise.png");
-
-                const ConstantBuffer* prebuiltBuffers[]                = { &oceanMaterialConstants, &oceanGridConstants, &oceanRenderingConstants, &oceanLightingConstants };
-                const ShaderResourceView* srvs[]                       = { &OceanReflectionResource, &surfaceSpecularity.GetShaderResource() };
+                const ConstantBuffer* prebuiltBuffers[] = { &oceanMaterialConstants, &oceanGridConstants, &oceanRenderingConstants, &oceanLightingConstants };
+                const ShaderResourceView* srvs[]        = { &OceanReflectionResource, &surfaceSpecularity.GetShaderResource() };
                 variation._boundUniforms->Apply(
                     *context, 
                     parserContext.GetGlobalUniformsStream(),
@@ -1192,17 +1159,22 @@ namespace SceneEngine
         context->Bind(Techniques::CommonResources()._blendStraightAlpha);
         context->Bind(::Assets::GetAssetDep<ShaderProgram>(
             "game/xleres/basic2D.vsh:fullscreen:vs_*", "game/xleres/Ocean/FFTDebugging.psh:main:ps_*"));
-        context->BindPS(MakeResourceList(   fftBuffer._workingTextureRealShaderResource, fftBuffer._workingTextureImaginaryShaderResource,
-                                            calmSpectrum._inputRealShaderResource, calmSpectrum._inputImaginaryShaderResource,
-                                            strongSpectrum._inputRealShaderResource, strongSpectrum._inputImaginaryShaderResource));
+        context->BindPS(MakeResourceList(
+            fftBuffer._workingTextureRealShaderResource, fftBuffer._workingTextureImaginaryShaderResource,
+            calmSpectrum._inputRealShaderResource, calmSpectrum._inputImaginaryShaderResource,
+            strongSpectrum._inputRealShaderResource, strongSpectrum._inputImaginaryShaderResource));
         context->Draw(4);
     }
 
         ////////////////////////////////
 
     void Ocean_Execute( DeviceContext* context, LightingParserContext& parserContext,
+                        const OceanSettings& settings,
+                        const OceanLightingSettings& lightingSettings,
                         ShaderResourceView& depthBufferSRV)
     {
+        if (!settings._enable) return;
+
         TRY {
 
                 //      We need to take a copy of the back buffer for refractions
@@ -1226,21 +1198,21 @@ namespace SceneEngine
             const bool doShallowWater = Tweakable("OceanDoShallowWater", false);
             const bool usePipeModel = Tweakable("OceanShallowPipeModel", false);
             auto& fftBuffer = Techniques::FindCachedBox<FFTBufferBox>(FFTBufferBox::Desc(
-                GlobalOceanSettings._gridDimensions, GlobalOceanSettings._gridDimensions, useDerivativesMap));
+                settings._gridDimensions, settings._gridDimensions, useDerivativesMap));
             ShallowWaterSim* shallowWaterBox = nullptr;
 
             context->Bind(Techniques::CommonResources()._dssReadOnly);   // write disabled
-            UpdateOceanSurface(context, parserContext, GlobalOceanSettings, fftBuffer);
+            UpdateOceanSurface(context, parserContext, settings, fftBuffer);
             if (doShallowWater && MainSurfaceHeightsProvider) {
                 shallowWaterBox = &Techniques::FindCachedBox<ShallowWaterSim>(
                     ShallowWaterSim::Desc(shallowGridDimension, simulatingGridsCount, usePipeModel, false));
                 ShallowWater_DoSim(
-                    context, parserContext, GlobalOceanSettings, shallowGridPhysicalDimension,
+                    context, parserContext, settings, shallowGridPhysicalDimension,
                     &fftBuffer._workingTextureRealShaderResource,
                     MainSurfaceHeightsProvider, *shallowWaterBox, OceanBufferCounter);
             }
             RenderOceanSurface(
-                context, parserContext, GlobalOceanSettings, GlobalOceanLightingSettings, fftBuffer, shallowWaterBox, 
+                context, parserContext, settings, lightingSettings, fftBuffer, shallowWaterBox, 
                 &refractionBox, 
                 //mainTargets._msaaDepthBufferSRV,
                 secondaryDepthBufferSRV,
@@ -1252,6 +1224,44 @@ namespace SceneEngine
         CATCH(const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
         CATCH(const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
         CATCH_END
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    OceanSettings::OceanSettings()
+    {
+        _enable = false;
+        _windAngle[0] = 0.734f * 2.f * gPI;
+        _windAngle[1] = 0.41f * 2.f * gPI;
+        _windVelocity[0] = 48.f;
+        _windVelocity[1] = 50.f;
+        _physicalDimensions = 256.f;
+        _gridDimensions = 256;
+        _strengthConstantXY = 1.f;
+        _strengthConstantZ = 0.61f;
+        _detailNormalsStrength = 0.65f;
+        _spectrumFade = 0.f;
+        _scaleAgainstWind[0] = 0.25f;
+        _scaleAgainstWind[1] = 0.25f;
+        _suppressionFactor[0] = 0.06f;
+        _suppressionFactor[1] = 0.06f;
+        _gridShiftSpeed = 0.062f;
+        _baseHeight = 0.f;
+    }
+
+    OceanLightingSettings::OceanLightingSettings()
+    {
+        _specularReflectionBrightness = Float3(2.8f, 2.4f, 2.1f);
+        _foamBrightness = 0.08f;
+        _opticalThickness = Float3(0.05f, 0.042f, 0.038f);
+        _skyReflectionBrightness = 1.355f;
+        _specularPower = 128.f;
+        _upwellingScale = .075f;
+        _refractiveIndex = 1.333f;
+        _reflectionBumpScale = 0.1f;
+        _detailNormalFrequency = 6.727f;
+        _specularityFrequency = 7.1f;
+        _dummy[0] = _dummy[1] = 0.f;
     }
 
 }

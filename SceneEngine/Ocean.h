@@ -6,20 +6,30 @@
 
 #pragma once
 
-#include "../RenderCOre/Metal/DeviceContext.h"
+#include "../RenderCore/Metal/DeviceContext.h"
 #include "../Math/Matrix.h"
 
 namespace SceneEngine
 {
     class LightingParserContext;
-    void Ocean_Execute( RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, 
-                        RenderCore::Metal::ShaderResourceView& depthBufferSRV);
+    class OceanSettings;
+    class OceanLightingSettings;
+
+    /// Entry point for ocean rendering
+    /// Draws the surface of the ocean, according to the given settings.
+    void Ocean_Execute(
+        RenderCore::Metal::DeviceContext* context,
+        LightingParserContext& parserContext,
+        const OceanSettings& settings,
+        const OceanLightingSettings& lightingSettings,
+        RenderCore::Metal::ShaderResourceView& depthBufferSRV);
 
     void FFT_DoDebugging(RenderCore::Metal::DeviceContext* context);
 
     class OceanSettings
     {
     public:
+        bool        _enable;
         float       _windAngle[2];
         float       _windVelocity[2];
         float       _physicalDimensions;
@@ -54,24 +64,24 @@ namespace SceneEngine
         OceanLightingSettings();
     };
 
-    extern OceanSettings GlobalOceanSettings;
-    extern OceanLightingSettings GlobalOceanLightingSettings;
-
     extern RenderCore::Metal::ShaderResourceView OceanReflectionResource;
     extern Float4x4 OceanWorldToReflection;
 
-    class OceanMaterialConstants
+    namespace Internal
     {
-    public:
-        float _physicalWidth, _physicalHeight;
-        float _strengthConstantXY;
-        float _strengthConstantZ;
-        float _shallowGridPhysicalDimension;
-        float _baseHeight;
-        float _dummy[2];
-    };
+        class OceanMaterialConstants
+        {
+        public:
+            float _physicalWidth, _physicalHeight;
+            float _strengthConstantXY;
+            float _strengthConstantZ;
+            float _shallowGridPhysicalDimension;
+            float _baseHeight;
+            float _dummy[2];
+        };
 
-    OceanMaterialConstants BuildOceanMaterialConstants(
-        const OceanSettings& oceanSettings, float shallowGridPhysicalDimension);
+        OceanMaterialConstants BuildOceanMaterialConstants(
+            const OceanSettings& oceanSettings, float shallowGridPhysicalDimension);
+    }
 }
 

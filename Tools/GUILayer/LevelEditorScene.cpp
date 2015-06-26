@@ -392,6 +392,7 @@ namespace GUILayer
         _terrainInterface = terrainEditor;
         RegisterTerrainFlexObjects(*_scene->_flexObjects);
         RegisterVegetationSpawnFlexObjects(*_scene->_flexObjects, _scene->_vegetationSpawnManager);
+        RegisterEnvironmentFlexObjects(*_scene->_flexObjects);
     }
 
     EditorSceneManager::~EditorSceneManager()

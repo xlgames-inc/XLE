@@ -24,6 +24,12 @@
 
 #include "../ConsoleRig/Console.h"
 
+namespace SceneEngine
+{
+    extern OceanSettings GlobalOceanSettings;
+    extern OceanLightingSettings GlobalOceanLightingSettings;
+}
+
 namespace PlatformRig
 {
 

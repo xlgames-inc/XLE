@@ -8,6 +8,7 @@
 
 #include "EnvironmentSettings.h"
 #include "RetainedEntities.h"
+#include "../../SceneEngine/Ocean.h"
 #include "../../PlatformRig/BasicSceneParser.h"
 #include "../../Math/Transformations.h"
 #include "../../Utility/StringUtils.h"
@@ -15,6 +16,12 @@
 #include "../../Utility/Conversion.h"
 #include "../../Utility/Streams/StreamFormatter.h"
 #include <memory>
+
+namespace SceneEngine 
+{
+    extern OceanSettings GlobalOceanSettings; 
+    extern OceanLightingSettings GlobalOceanLightingSettings;
+}
 
 namespace EntityInterface
 {
@@ -293,6 +300,94 @@ namespace EntityInterface
                 return std::move(result);
             }
         }
+    }
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    static SceneEngine::OceanSettings BuildOceanSettings(const RetainedEntities& sys, const RetainedEntity& obj)
+    {
+        #define ParamName(x) static auto x = ParameterBox::MakeParameterNameHash(#x);
+        ParamName(Enable);
+        ParamName(WindAngle);
+        ParamName(WindVelocity);
+        ParamName(PhysicalDimensions);
+        ParamName(GridDimensions);
+        ParamName(StrengthConstantXY);
+        ParamName(StrengthConstantZ);
+        ParamName(DetailNormalsStrength);
+        ParamName(SpectrumFade);
+        ParamName(ScaleAgainstWind);
+        ParamName(SuppressionFactor);
+        ParamName(GridShiftSpeed);
+        ParamName(BaseHeight);
+
+        SceneEngine::OceanSettings result;
+        result._enable = obj._properties.GetParameter(Enable, result._enable);
+        result._windAngle[0] = obj._properties.GetParameter(WindAngle, result._windAngle[0] * (180.f / gPI)) * (gPI / 180.f);
+        result._windVelocity[0] = obj._properties.GetParameter(WindVelocity, result._windVelocity[0]);
+        result._physicalDimensions = obj._properties.GetParameter(PhysicalDimensions, result._physicalDimensions);
+        result._gridDimensions = obj._properties.GetParameter(GridDimensions, result._gridDimensions);
+        result._strengthConstantXY = obj._properties.GetParameter(StrengthConstantXY, result._strengthConstantXY);
+        result._strengthConstantZ = obj._properties.GetParameter(StrengthConstantZ, result._strengthConstantZ);
+        result._detailNormalsStrength = obj._properties.GetParameter(DetailNormalsStrength, result._detailNormalsStrength);
+        result._spectrumFade = obj._properties.GetParameter(SpectrumFade, result._spectrumFade);
+        result._scaleAgainstWind[0] = obj._properties.GetParameter(ScaleAgainstWind, result._scaleAgainstWind[0]);
+        result._suppressionFactor[0] = obj._properties.GetParameter(SuppressionFactor, result._suppressionFactor[0]);
+        result._gridShiftSpeed = obj._properties.GetParameter(GridShiftSpeed, result._gridShiftSpeed);
+        result._baseHeight = obj._properties.GetParameter(BaseHeight, result._baseHeight);
+        return result;
+    }
+
+    static SceneEngine::OceanLightingSettings BuildOceanLightingSettings(const RetainedEntities& sys, const RetainedEntity& obj)
+    {
+        #define ParamName(x) static auto x = ParameterBox::MakeParameterNameHash(#x);
+        ParamName(SpecularReflectionBrightness);
+        ParamName(FoamBrightness);
+        ParamName(OpticalThickness);
+        ParamName(SkyReflectionBrightness);
+        ParamName(SpecularPower);
+        ParamName(UpwellingScale);
+        ParamName(RefractiveIndex);
+        ParamName(ReflectionBumpScale);
+        ParamName(DetailNormalFrequency);
+        ParamName(SpecularityFrequency);
+
+        SceneEngine::OceanLightingSettings result;
+        result._specularReflectionBrightness = obj._properties.GetParameter(SpecularReflectionBrightness, result._specularReflectionBrightness);
+        result._foamBrightness = obj._properties.GetParameter(FoamBrightness, result._foamBrightness);
+        result._opticalThickness = obj._properties.GetParameter(OpticalThickness, result._opticalThickness);
+        result._skyReflectionBrightness = obj._properties.GetParameter(SkyReflectionBrightness, result._skyReflectionBrightness);
+        result._specularPower = obj._properties.GetParameter(SpecularPower, result._specularPower);
+        result._upwellingScale = obj._properties.GetParameter(UpwellingScale, result._upwellingScale);
+        result._refractiveIndex = obj._properties.GetParameter(RefractiveIndex, result._refractiveIndex);
+        result._reflectionBumpScale = obj._properties.GetParameter(ReflectionBumpScale, result._reflectionBumpScale);
+        result._detailNormalFrequency = obj._properties.GetParameter(DetailNormalFrequency, result._detailNormalFrequency);
+        result._specularityFrequency = obj._properties.GetParameter(SpecularityFrequency, result._specularityFrequency);
+        return result;
+    }
+
+    void RegisterEnvironmentFlexObjects(RetainedEntities& flexSys)
+    {
+        flexSys.RegisterCallback(
+            flexSys.GetTypeId((const utf8*)"OceanSettings"),
+            [](const RetainedEntities& flexSys, const Identifier& obj)
+            {
+                auto* object = flexSys.GetEntity(obj);
+                if (object)
+                    SceneEngine::GlobalOceanSettings = BuildOceanSettings(flexSys, *object);
+            }
+        );
+
+        flexSys.RegisterCallback(
+            flexSys.GetTypeId((const utf8*)"OceanLightingSettings"),
+            [](const RetainedEntities& flexSys, const Identifier& obj)
+            {
+                auto* object = flexSys.GetEntity(obj);
+                if (object)
+                    SceneEngine::GlobalOceanLightingSettings = BuildOceanLightingSettings(flexSys, *object);
+            }
+        );
     }
 
 }

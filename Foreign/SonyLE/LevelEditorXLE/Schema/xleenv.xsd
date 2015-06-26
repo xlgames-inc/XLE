@@ -300,6 +300,131 @@
       </xs:extension>
     </xs:complexContent>
   </xs:complexType>
+
+
+      <!-- O C E A N   S E T T I N G S -->
+  <xs:complexType name="oceanSettings">
+    <xs:annotation>
+      <xs:appinfo>
+        <LeGe.NativeType nativeName="OceanSettings"/>
+        <LeGe.NativeProperty name="Enable" nativeName="Enable"/>
+        <LeGe.NativeProperty name="WindAngle" nativeName="WindAngle"/>
+        <LeGe.NativeProperty name="WindVelocity" nativeName="WindVelocity"/>
+        <LeGe.NativeProperty name="PhysicalDimensions" nativeName="PhysicalDimensions"/>
+        <LeGe.NativeProperty name="GridDimensions" nativeName="GridDimensions"/>
+        <LeGe.NativeProperty name="StrengthConstantXY" nativeName="StrengthConstantXY"/>
+        <LeGe.NativeProperty name="StrengthConstantZ" nativeName="StrengthConstantZ"/>
+        <LeGe.NativeProperty name="DetailNormalsStrength" nativeName="DetailNormalsStrength"/>
+        <LeGe.NativeProperty name="SpectrumFade" nativeName="SpectrumFade"/>
+        <LeGe.NativeProperty name="ScaleAgainstWind" nativeName="ScaleAgainstWind"/>
+        <LeGe.NativeProperty name="SuppressionFactor" nativeName="SuppressionFactor"/>
+        <LeGe.NativeProperty name="GridShiftSpeed" nativeName="GridShiftSpeed"/>
+        <LeGe.NativeProperty name="BaseHeight" nativeName="BaseHeight"/>
+
+        <scea.dom.editors.attribute category="Enable" name="Enable" displayName="Enable" description="Enable or disable ocean rendering"/>
+        
+        <scea.dom.editors.attribute category="General" name="WindAngle" displayName="Wind Angle" description="Angle of the wind (this controls the movement of waves)"
+                                    editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,6.28318"/>
+        <scea.dom.editors.attribute category="General" name="WindVelocity" displayName="Wind Velocity" description="The speed of the wind (in m/s). Higher numbers create more turbulent waves."
+                                    editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,100"/>
+        
+        <scea.dom.editors.attribute category="General" name="PhysicalDimensions" displayName="Size" description="Size of the repeating area of the ocean, in metres"
+                                    editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1024"/>
+        <scea.dom.editors.attribute category="General" name="GridDimensions" displayName="Grid Detail" description="Size of the grid that is used for simulating the ocean"/>
+
+        <scea.dom.editors.attribute category="General" name="StrengthConstantXY" displayName="XY Scale Factor" description="Scales the amount of movement in XY direction"
+                                    editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,2"/>
+        <scea.dom.editors.attribute category="General" name="StrengthConstantZ" displayName="Z Scale Factor" description="Scales the amount of movement in Z direction"
+                                    editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,2"/>
+
+        <scea.dom.editors.attribute category="General" name="DetailNormalsStrength" displayName="Detail normals strength" description="The strength of the detail normals (higher numbers make them more visible)"
+                                    editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,2"/>
+
+        <scea.dom.editors.attribute category="General" name="SpectrumFade" displayName="Spectrum Fade" description="Alpha value for fading between the 2 wind settings"
+                                    editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
+
+        <scea.dom.editors.attribute category="General" name="ScaleAgainstWind" displayName="Scale Against Wind" description="Affects the movement of the waves that travel in the opposite direction to the wind"
+                                    editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
+        <scea.dom.editors.attribute category="General" name="SuppressionFactor" displayName="Suppression Factor" description=""/>
+
+        <scea.dom.editors.attribute category="General" name="GridShiftFactor" displayName="Grid Shift Factor" description="Animates the entire ocean, moving in the direction of the wind"
+                                    editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,.2"/>
+
+        <scea.dom.editors.attribute category="General" name="BaseHeight" displayName="Base Height" description="Z position for the surface of the ocean"/>
+
+        <scea.dom.editors category="Ocean" name="OceanSettings" menuText="Ocean/OceanSettings" description="Settings for the ocean rendering"/>
+        <LeGe.OpaqueListable label="OceanSettings"/>
+      </xs:appinfo>
+    </xs:annotation>
+
+    <xs:complexContent>
+      <xs:extension base="envMiscType">
+        <xs:attribute name="Enable" type="xs:boolean" default="false"/>
+        <xs:attribute name="WindAngle" type="xs:float" default="0"/>
+        <xs:attribute name="WindVelocity" type="xs:float" default="48"/>
+        <xs:attribute name="PhysicalDimensions" type="xs:float" default="256"/>
+        <xs:attribute name="GridDimensions" type="xs:unsignedInt" default="256"/>
+        <xs:attribute name="StrengthConstantXY" type="xs:float" default="1"/>
+        <xs:attribute name="StrengthConstantZ" type="xs:float" default=".61"/>
+        <xs:attribute name="DetailNormalsStrength" type="xs:float" default=".65"/>
+        <xs:attribute name="SpectrumFade" type="xs:float" default="0"/>
+        <xs:attribute name="ScaleAgainstWind" type="xs:float" default=".25"/>
+        <xs:attribute name="SuppressionFactor" type="xs:float" default=".06"/>
+        <xs:attribute name="GridShiftSpeed" type="xs:float" default=".062"/>
+        <xs:attribute name="BaseHeight" type="xs:float" default="100"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+
+      <!-- O C E A N   L I G H T I N G   S E T T I N G S -->
+  <xs:complexType name="oceanLightingSettings">
+    <xs:annotation>
+      <xs:appinfo>
+        <LeGe.NativeType nativeName="OceanLightingSettings"/>
+        <LeGe.NativeProperty name="FoamBrightness" nativeName="FoamBrightness"/>
+        <LeGe.NativeProperty name="OpticalThickness" nativeName="OpticalThickness"/>
+        <LeGe.NativeProperty name="SkyReflectionBrightness" nativeName="SkyReflectionBrightness"/>
+        <LeGe.NativeProperty name="UpwellingScale" nativeName="UpwellingScale"/>
+        <LeGe.NativeProperty name="RefractiveIndex" nativeName="RefractiveIndex"/>
+        <LeGe.NativeProperty name="ReflectionBumpScale" nativeName="ReflectionBumpScale"/>
+        <LeGe.NativeProperty name="DetailNormalFrequency" nativeName="DetailNormalFrequency"/>
+        <LeGe.NativeProperty name="SpecularityFrequency" nativeName="SpecularityFrequency"/>
+        
+        <scea.dom.editors.attribute category="General" name="OpticalThickness" displayName="Optical Thickness" description="Optical thickness"/>
+
+        <scea.dom.editors.attribute category="General" name="FoamBrightness" displayName="Foam Brightness" description="Brightness of the foam on the surface of the ocean"
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
+        <scea.dom.editors.attribute category="General" name="SkyReflectionBrightness" displayName="Sky Reflection Brightness" description="Brightness of the reflection of the sky"
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,3"/>
+        <scea.dom.editors.attribute category="General" name="UpwellingScale" displayName="Upwelling scale" description="Brightness of the upwelling light. This is light that bounces into and them out of the ocean."
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
+
+        <scea.dom.editors.attribute category="General" name="ReflectionBumpScale" displayName="Reflection Bump Scale" description=""
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,1"/>
+        <scea.dom.editors.attribute category="General" name="DetailNormalFrequency" displayName="Detail Normal Frequency" description="Size of the detail normals (higher numbers give finer detail)"
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,20"/>
+        <scea.dom.editors.attribute category="General" name="SpecularityFrequency" displayName="Specularity Frequency" description="Mapping constant for the specularity texture"
+          editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:0,20"/>
+
+        <scea.dom.editors category="Ocean" name="OceanLightingSettings" menuText="Ocean/OceanLightingSettings" description="Settings for lighting of the ocean surface"/>
+        <LeGe.OpaqueListable label="OceanLightingSettings"/>
+      </xs:appinfo>
+    </xs:annotation>
+
+    <xs:complexContent>
+      <xs:extension base="envMiscType">
+        <xs:attribute name="FoamBrightness" type="xs:float" default="0.08"/>
+        <xs:attribute name="OpticalThickness" type="vector3Type" default="0.05 0.042 0.038"/>
+        <xs:attribute name="SkyReflectionBrightness" type="xs:float" default="1.355"/>
+        <xs:attribute name="UpwellingScale" type="xs:float" default="0.075"/>
+        <xs:attribute name="RefractiveIndex" type="xs:float" default="1.333"/>
+        <xs:attribute name="ReflectionBumpScale" type="xs:float" default=".1"/>
+        <xs:attribute name="DetailNormalFrequency" type="xs:float" default="6.727"/>
+        <xs:attribute name="SpecularityFrequency" type="xs:float" default="7.1"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
   
 </xs:schema>
 
