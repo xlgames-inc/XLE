@@ -8,8 +8,15 @@
 #include "../Transform.h"
 #include "../TextureAlgorithm.h"
 #include "../Utility/MathConstants.h"
+#include "../Utility/Misc.h"
 
 Texture2D<float> InputTexture;
+Texture1D<float> InputRowsTexture;
+
+#if !defined(OUTPUT_ROWS)
+    #define OUTPUT_ROWS 32
+#endif
+// #define ROWS_OPTIMISATION 1
 
 cbuffer Settings
 {
@@ -47,6 +54,12 @@ float4 ps_sunflare_directblur(float4 pos : SV_Position, float2 projPos : PROJPOS
     return 0.0.xxxx;
 }
 
+float ComparisonFn(float d, float row)
+{
+    if (d < row) return 0.f;
+    return 1.0f - saturate((d - row) / 0.6f);
+}
+
 float4 ps_sunflare(float4 pos : SV_Position, float2 projPos : PROJPOS) : SV_Target0
 {
     float2 off = projPos.xy - ProjSpaceSunPosition;
@@ -56,7 +69,26 @@ float4 ps_sunflare(float4 pos : SV_Position, float2 projPos : PROJPOS) : SV_Targ
     if (d > 1.f) discard;
 
     float a = atan2(off.y, off.x);
-    return float4(10.0.xxx, (1.f - d) * InputTexture.SampleLevel(WrapUSampler, float2(a / (2.f * pi), d), 0));
+    #if (ROWS_OPTIMISATION == 0)
+        return float4(10.0.xxx, (1.f - d) * InputTexture.SampleLevel(WrapUSampler, float2(a / (2.f * pi), d), 0));
+    #else
+        uint inputDims;
+        InputRowsTexture.GetDimensions(inputDims);
+
+        float2 rowsResult;
+        float tcx = a / (2.f * pi) * inputDims;
+        float alpha = frac(tcx);
+        rowsResult.x = InputRowsTexture.Load(int2(int(tcx) % inputDims, 0));
+        rowsResult.y = InputRowsTexture.Load(int2((int(tcx) + 1) % inputDims, 0));
+
+        // float A = dot(d > rowsResult.xy, 1.0.xx) / 2.f;
+        // A = saturate(A * (1+d));
+
+        float D = min(d + 0.075f * DitherPatternValue(pos.xy), 1.f);
+        float A = lerp(ComparisonFn(D, rowsResult.x), ComparisonFn(D, rowsResult.y), alpha);
+        //float A = ComparisonFn(D, lerp(rowsResult.x, rowsResult.y, alpha));
+        return float4(10.0.xxx, (1.f - d) * A);
+    #endif
 }
 
 void vs_sunflare(uint vertexId : SV_VertexID, out float4 oPosition : SV_Position, out float2 oProjSpace : PROJPOS)
@@ -84,10 +116,41 @@ float ps_toradial(float4 pos : SV_Position, float2 projPos : PROJPOS) : SV_Targe
     return dot(depths == 1.f, 1.0.xxxx) / 4.f;
 }
 
+float ps_blur2(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
+{
+    float2 recipOutputDims = float2(texCoord.x / position.x, 1.0f / float(OUTPUT_ROWS));
+    float result = 1.f;
+
+    [unroll] for (uint c=0; c<OUTPUT_ROWS; c++) {
+
+        uint2 p;
+        p.x = position.x;
+        p.y = c;
+
+        #if (SINGLE_PASS==0)
+            float texSample = LoadFloat1(InputTexture, p, 0);
+        #else
+            float4 depths = InputTexture.Gather(PointClampSampler, ToCartesianTC(p * recipOutputDims));
+            float texSample = dot(depths == 1.f, 1.0.xxxx) / 4.f;
+        #endif
+
+        //if (texSample > 0.99f)
+        //    result = min(result, c / float(OUTPUT_ROWS));
+
+        result = min(result, (c / float(OUTPUT_ROWS)) + 200.f * saturate(1.f - texSample));
+    }
+
+    return result;
+}
+
 float ps_blur(float4 position : SV_Position, float2 texCoord : TEXCOORD0) : SV_Target0
 {
+    #if (ROWS_OPTIMISATION!=0)
+        return ps_blur2(position, texCoord);
+    #endif
+
     float result = 0.f;
-    uint baseY = 0; // uint(position.x)%4;
+    uint baseY = 0; // uint(position.x)%2;
     const uint sampleCount = 16;
 
     float2 recipOutputDims = texCoord.xy / position.xy;

@@ -35,10 +35,14 @@ namespace SceneEngine
         {
         public:
             bool _singlePass;
-            Desc(bool singlePass)
+            bool _rowsOptimisation;
+            UInt2 _res;
+            Desc(bool singlePass, bool rowsOptimisation, UInt2 res)
             {
                 XlZeroMemory(*this);
                 _singlePass = singlePass;
+                _rowsOptimisation = rowsOptimisation;
+                _res = res;
             }
         };
 
@@ -53,6 +57,9 @@ namespace SceneEngine
 
         const RenderCore::Metal::ShaderProgram* _directBlurShader;
         RenderCore::Metal::BoundUniforms _directBlurUniforms;
+
+        RenderCore::Metal::RenderTargetView _tempRTV[2];
+        RenderCore::Metal::ShaderResourceView _tempSRV[2];
 
         SunFlareRes(const Desc& desc);
 
@@ -71,19 +78,23 @@ namespace SceneEngine
 
         _commitShader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
             "game/xleres/effects/occludingsunflare.sh:vs_sunflare:vs_*",
-            "game/xleres/effects/occludingsunflare.sh:ps_sunflare:ps_*");
+            "game/xleres/effects/occludingsunflare.sh:ps_sunflare:ps_*",
+            (StringMeld<64>() << "ROWS_OPTIMISATION=" << int(desc._rowsOptimisation)).get());
 
         _commitUniforms = Metal::BoundUniforms(*_commitShader);
         Techniques::TechniqueContext::BindGlobalUniforms(_commitUniforms);
         _commitUniforms.BindConstantBuffers(1, {"Settings"});
-        _commitUniforms.BindShaderResources(1, {"InputTexture"});
+        _commitUniforms.BindShaderResources(1, {desc._rowsOptimisation ? "InputRowsTexture" : "InputTexture"});
 
         ////////////////////////////////////////////////////////////////////////
 
         _blurShader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
             "game/xleres/basic2d.vsh:fullscreen:vs_*",
             "game/xleres/effects/occludingsunflare.sh:ps_blur:ps_*",
-            (StringMeld<64>() << "SINGLE_PASS=" << int(desc._singlePass)).get());
+            (StringMeld<128>() 
+                << "SINGLE_PASS=" << int(desc._singlePass)
+                << ";ROWS_OPTIMISATION=" << int(desc._rowsOptimisation)
+                << ";OUTPUT_ROWS=" << int(desc._res[1])).get());
 
         _blurUniforms = Metal::BoundUniforms(*_blurShader);
         Techniques::TechniqueContext::BindGlobalUniforms(_blurUniforms);
@@ -114,10 +125,42 @@ namespace SceneEngine
 
         ////////////////////////////////////////////////////////////////////////
 
+        {
+            using namespace BufferUploads;
+
+            auto desc2D = CreateDesc(
+                BindFlag::ShaderResource | BindFlag::RenderTarget, 0, GPUAccess::Read | GPUAccess::Write,
+                TextureDesc::Plain2D(desc._res[0], desc._res[1], Metal::NativeFormat::R8_UNORM),
+                "SunFlareTemp");
+
+            if (desc._rowsOptimisation) {
+                auto descRows = CreateDesc(
+                        BindFlag::ShaderResource | BindFlag::RenderTarget, 0, GPUAccess::Read | GPUAccess::Write,
+                        TextureDesc::Plain1D(desc._res[0], Metal::NativeFormat::R8_UNORM),
+                        "SunFlareTemp");
+                auto offscreen = GetBufferUploads().Transaction_Immediate(descRows);
+                _tempSRV[0] = Metal::ShaderResourceView(offscreen->GetUnderlying());
+                _tempRTV[0] = Metal::RenderTargetView(offscreen->GetUnderlying());
+            } else {
+                auto offscreen = GetBufferUploads().Transaction_Immediate(desc2D);
+                _tempSRV[0] = Metal::ShaderResourceView(offscreen->GetUnderlying());
+                _tempRTV[0] = Metal::RenderTargetView(offscreen->GetUnderlying());
+            }
+
+            if (!desc._singlePass) {
+                auto offscreen = GetBufferUploads().Transaction_Immediate(desc2D);
+                _tempSRV[1] = Metal::ShaderResourceView(offscreen->GetUnderlying());
+                _tempRTV[1] = Metal::RenderTargetView(offscreen->GetUnderlying());
+            }
+        }
+
+        ////////////////////////////////////////////////////////////////////////
+
         _validationCallback = std::make_shared<::Assets::DependencyValidation>();
         ::Assets::RegisterAssetDependency(_validationCallback, _commitShader->GetDependencyValidation());
         ::Assets::RegisterAssetDependency(_validationCallback, _blurShader->GetDependencyValidation());
         ::Assets::RegisterAssetDependency(_validationCallback, _toRadialShader->GetDependencyValidation());
+        ::Assets::RegisterAssetDependency(_validationCallback, _directBlurShader->GetDependencyValidation());
     }
 
     void SunFlare_Execute(
@@ -168,32 +211,17 @@ namespace SceneEngine
 
             const bool doDirectBlur = Tweakable("SunFlareDirectBlur", false);
             const bool singlePass = Tweakable("SunFlareSinglePass", false);
+            const bool rowsOptimisation = Tweakable("SunFlareRowsOptimisation", false);
+            const unsigned resX = Tweakable("SunFlareResX", 128);
+            const unsigned resY = Tweakable("SunFlareResY", 32);
 
-            const auto& res = Techniques::FindCachedBoxDep2<SunFlareRes>(singlePass);
+            const auto& res = Techniques::FindCachedBoxDep2<SunFlareRes>(singlePass, rowsOptimisation, UInt2(resX, resY));
             if (!doDirectBlur) {
-                Metal::RenderTargetView tempRTV[2];
-                Metal::ShaderResourceView tempSRV[2];
-
-                const unsigned resX = Tweakable("SunFlareResX", 128);
-                const unsigned resY = Tweakable("SunFlareResY", 32);
-                {
-                    using namespace BufferUploads;
-                    auto desc = CreateDesc(
-                        BindFlag::ShaderResource | BindFlag::RenderTarget, 0, GPUAccess::Read | GPUAccess::Write,
-                        TextureDesc::Plain2D(resX, resY, Metal::NativeFormat::R8_UNORM),
-                        "SunFlareTemp");
-                    for (unsigned c=0; c<(singlePass?1u:2u); ++c) {
-                        auto offscreen = GetBufferUploads().Transaction_Immediate(desc);
-                        tempSRV[c] = Metal::ShaderResourceView(offscreen->GetUnderlying());
-                        tempRTV[c] = Metal::RenderTargetView(offscreen->GetUnderlying());
-                    }
-                }
-
                 context->Bind(Techniques::CommonResources()._blendOpaque);
                 context->Bind(Metal::ViewportDesc(0.f, 0.f, float(resX), float(resY), 0.f, 1.f));
 
                 if (!singlePass) {
-                    context->Bind(MakeResourceList(tempRTV[1]), nullptr);
+                    context->Bind(MakeResourceList(res._tempRTV[1]), nullptr);
                     Metal::ConstantBufferPacket constants[] = { settingsPkt };
                     const Metal::ShaderResourceView* srvs[] = { &depthsSRV };
                     res._toRadialUniforms.Apply(
@@ -206,10 +234,13 @@ namespace SceneEngine
                     context->UnbindPS<Metal::ShaderResourceView>(3, 1);
                 }
 
+                if (rowsOptimisation)
+                    context->Bind(Metal::ViewportDesc(0.f, 0.f, float(resX), float(1), 0.f, 1.f));
+
                 {
-                    context->Bind(MakeResourceList(tempRTV[0]), nullptr);
+                    context->Bind(MakeResourceList(res._tempRTV[0]), nullptr);
                     Metal::ConstantBufferPacket constants[] = { settingsPkt };
-                    const Metal::ShaderResourceView* srvs[] = { singlePass ? &depthsSRV : &tempSRV[1] };
+                    const Metal::ShaderResourceView* srvs[] = { singlePass ? &depthsSRV : &res._tempSRV[1] };
                     res._blurUniforms.Apply(
                         *context, 
                         parserContext.GetGlobalUniformsStream(),
@@ -221,7 +252,6 @@ namespace SceneEngine
                 }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-
                 
                 context->GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr);
                 context->Bind(savedViewport);
@@ -229,7 +259,7 @@ namespace SceneEngine
 
                 {
                     Metal::ConstantBufferPacket constants[] = { settingsPkt };
-                    const Metal::ShaderResourceView* srvs[] = { &tempSRV[0] };
+                    const Metal::ShaderResourceView* srvs[] = { &res._tempSRV[0] };
                     res._commitUniforms.Apply(
                         *context, 
                         parserContext.GetGlobalUniformsStream(),
