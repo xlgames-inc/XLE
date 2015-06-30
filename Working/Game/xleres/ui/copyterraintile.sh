@@ -31,8 +31,8 @@ struct TileCoords
 #endif
 
 
-Texture2D<ValueType>			Input : register(t0);
-RWTexture2D<ValueType>			MidwayOutput : register(u1);
+Texture2D<ValueType>	Input : register(t0);
+RWTexture2D<ValueType>	MidwayOutput : register(u1);
 
 #if defined(QUANTIZE_HEIGHTS)
 		// (used for height map updates)
@@ -94,12 +94,12 @@ uint HeightValueToUInt(float height)
 		//			point numbers (actually the IEEE standards ensure it
 		//			will work)... But there are problems with negative numbers
 		//			So, make sure the result is always positive
-	return asuint(max(0, height));	// ideally we'd add some value here (eg + 5000.f... but it's not working)
+	return asuint(max(0.f, height + 5000.f));
 }
 
 float UIntToHeightValue(uint input)
 {
-	return asfloat(input);
+	return asfloat(input) - 5000.f;
 }
 
 [numthreads(6, 6, 1)]
@@ -163,7 +163,6 @@ RWTexture2DArray<uint>			Destination : register(u0);
 	if (	dispatchThreadId.x < TileSize.x && dispatchThreadId.y < TileSize.y
 		&&	(int)dispatchThreadId.x * SampleArea >= UpdateMin.x && (int)dispatchThreadId.x * SampleArea <= UpdateMax.x
 		&& 	(int)dispatchThreadId.y * SampleArea >= UpdateMin.y && (int)dispatchThreadId.y * SampleArea <= UpdateMax.y) {
-//	) {
 
 		ValueType newValue = CalculateNewValue(dispatchThreadId);
 		Destination[DstTileAddress + uint3(dispatchThreadId.xy, 0)] = newValue;

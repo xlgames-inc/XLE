@@ -82,11 +82,12 @@ namespace SceneEngine
             auto& cs1 = ::Assets::GetAssetDep<Metal::ComputeShader>(secondPassShader, defines.get());
             auto& cs2 = ::Assets::GetAssetDep<Metal::ComputeShader>("game/xleres/ui/copyterraintile.sh:DirectToFinal:cs_*", defines.get());
 
+            float temp = FLT_MAX;
             struct TileCoords
             {
                 float minHeight, heightScale;
                 unsigned workingMinHeight, workingMaxHeight;
-            } tileCoords = { localToCell(2, 3), localToCell(2, 2), 0xffffffffu, 0x0u };
+            } tileCoords = { localToCell(2, 3), localToCell(2, 2), *reinterpret_cast<unsigned*>(&temp), 0x0u };
 
             auto& uploads = tileSet->GetBufferUploads();
             auto tileCoordsBuffer = uploads.Transaction_Immediate(
@@ -144,7 +145,8 @@ namespace SceneEngine
                 auto readback = uploads.Resource_ReadBack(BufferUploads::ResourceLocator(tileCoordsBuffer.get()));
                 float* readbackData = (float*)readback->GetData();
                 if (readbackData) {
-                    float newHeightOffset = readbackData[2];
+                    const float hackConstant = 5000.f;      // (height values are shifted by this constant in the shader to get around issues with negative heights
+                    float newHeightOffset = readbackData[2] - hackConstant;
                     float newHeightScale = (readbackData[3] - readbackData[2]) / float(0xffff);
                     localToCell(2,2) = newHeightScale;
                     localToCell(2,3) = newHeightOffset;
