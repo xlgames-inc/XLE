@@ -228,13 +228,14 @@ namespace SceneEngine
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
             context->Bind(Metal::Topology::TriangleStrip);
+            context->Bind(Techniques::CommonResources()._dssDisable);
             context->Unbind<Metal::VertexBuffer>();
             context->Unbind<Metal::BoundInputLayout>();
 
             const bool doDirectBlur = Tweakable("SunFlareDirectBlur", false);
             const bool singlePass = Tweakable("SunFlareSinglePass", false);
             const bool rowsOptimisation = Tweakable("SunFlareRowsOptimisation", false);
-            const unsigned resX = Tweakable("SunFlareResX", 128);
+            const unsigned resX = Tweakable("SunFlareResX", 64);
             const unsigned resY = Tweakable("SunFlareResY", 32);
 
             const auto& res = Techniques::FindCachedBoxDep2<SunFlareRes>(singlePass, rowsOptimisation, UInt2(resX, resY));
@@ -277,7 +278,7 @@ namespace SceneEngine
                 
                 context->GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr);
                 context->Bind(savedViewport);
-                context->Bind(Techniques::CommonResources()._blendStraightAlpha);
+                context->Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
 
                 {
                     Metal::ConstantBufferPacket constants[] = { settingsPkt };
@@ -288,7 +289,8 @@ namespace SceneEngine
                         Metal::UniformsStream(constants, srvs));
 
                     context->Bind(*res._commitShader);
-                    context->Draw(4);
+                    context->Bind(Metal::Topology::TriangleList);
+                    context->Draw(64*3);
                     context->UnbindPS<Metal::ShaderResourceView>(3, 1);
                 }
 
@@ -296,7 +298,7 @@ namespace SceneEngine
 
                 context->GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr);
                 context->Bind(savedViewport);
-                context->Bind(Techniques::CommonResources()._blendStraightAlpha);
+                context->Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
 
                 {
                     Metal::ConstantBufferPacket constants[] = { settingsPkt };
@@ -307,7 +309,8 @@ namespace SceneEngine
                         Metal::UniformsStream(constants, srvs));
 
                     context->Bind(*res._directBlurShader);
-                    context->Draw(4);
+                    context->Bind(Metal::Topology::TriangleList);
+                    context->Draw(64*3);
                     context->UnbindPS<Metal::ShaderResourceView>(3, 1);
                 }
                 
@@ -318,6 +321,7 @@ namespace SceneEngine
         CATCH_END
 
         context->Bind(Metal::Topology::TriangleList);
+        context->Bind(Techniques::CommonResources()._dssReadWrite);
         savedTargets.ResetToOldTargets(context);
         context->Bind(savedViewport);
     }
