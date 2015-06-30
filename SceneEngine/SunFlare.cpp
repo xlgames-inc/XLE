@@ -104,7 +104,7 @@ namespace SceneEngine
         ////////////////////////////////////////////////////////////////////////
 
         _toRadialShader = &::Assets::GetAssetDep<Metal::ShaderProgram>(
-            "game/xleres/effects/occludingsunflare.sh:vs_sunflare:vs_*",
+            "game/xleres/effects/occludingsunflare.sh:vs_sunflare_full:vs_*",
             "game/xleres/effects/occludingsunflare.sh:ps_toradial:ps_*");
 
         _toRadialUniforms = Metal::BoundUniforms(*_toRadialShader);
@@ -168,27 +168,49 @@ namespace SceneEngine
         LightingParserContext& parserContext,
         RenderCore::Metal::ShaderResourceView& depthsSRV)
     {
+        using namespace RenderCore;
+
         if (!parserContext.GetSceneParser() || !parserContext.GetSceneParser()->GetLightCount())
             return;
 
-        using namespace RenderCore;
+            // avoid completely if we're facing away
+        const auto& sunDesc = parserContext.GetSceneParser()->GetLightDesc(0);
+        const auto& projDesc = parserContext.GetProjectionDesc();
+        if (Dot(ExtractForward_Cam(projDesc._cameraToWorld), sunDesc._negativeLightDirection) < 0.f)
+            return;
+
+        const auto cameraPos = ExtractTranslation(projDesc._cameraToWorld);
+        const auto transConstants = BuildGlobalTransformConstants(projDesc);
+            
+        const auto worldToView = InvertOrthonormalTransform(projDesc._cameraToWorld);
+        Float3 sunWorld(cameraPos + 10000.f * sunDesc._negativeLightDirection);
+        Float4 sunPos = projDesc._worldToProjection * Expand(sunWorld, 1.f);
+        float aspect = projDesc._aspectRatio;
+        float flareAngle = Tweakable("SunFlareAngle", 20.f) * .5f * gPI / 180.f;
+
+        Float3 sunView = TransformPoint(worldToView, sunWorld);
+        if (sunView[2] >= 0.f) return;
+
+        float hAngle = XlATan2(sunView[0], -sunView[2]);
+        float vAngle = XlATan2(sunView[1], -sunView[2]);
+
+            // Cull the sunflare when it's off screen
+            // It's not perfectly accurate, because the projection of the sprite is a little primitive -- but it works ok.
+        float horizFov = projDesc._verticalFov * aspect;
+        if (    (hAngle + flareAngle) < -.5f * horizFov
+            ||  (hAngle - flareAngle) >  .5f * horizFov
+            ||  (vAngle + flareAngle) < -.5f * projDesc._verticalFov
+            ||  (vAngle - flareAngle) >  .5f * projDesc._verticalFov)
+            return;
+
         SavedTargets savedTargets(context);
         Metal::ViewportDesc savedViewport(*context);
         
         TRY 
         {
-            const auto& sunDesc = parserContext.GetSceneParser()->GetLightDesc(0);
-            const auto cameraPos = ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld);
-            const auto transConstants = BuildGlobalTransformConstants(parserContext.GetProjectionDesc());
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-            const auto worldToView = InvertOrthonormalTransform(parserContext.GetProjectionDesc()._cameraToWorld);
-            Float4 sunPos = 
-                parserContext.GetProjectionDesc()._worldToProjection 
-                * Expand(Float3(cameraPos + 10000.f * sunDesc._negativeLightDirection), 1.f);
-            float aspect = savedViewport.Height / savedViewport.Width;
-            float sunFlareDist = Tweakable("SunFlareDist", .5f);
+            Float2 aspectCompen(flareAngle / (0.5f * horizFov), flareAngle / (0.5f * projDesc._verticalFov));
 
             struct Settings
             {
@@ -198,7 +220,7 @@ namespace SceneEngine
             settings = 
             {
                 Float2(sunPos[0] / sunPos[3], sunPos[1] / sunPos[3]),
-                Float2(2.f * sunFlareDist * aspect, 2.f * sunFlareDist)
+                aspectCompen
             };
 
             auto settingsPkt = MakeSharedPkt(settings);

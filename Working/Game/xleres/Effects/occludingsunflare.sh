@@ -94,9 +94,25 @@ float4 ps_sunflare(float4 pos : SV_Position, float2 projPos : PROJPOS) : SV_Targ
 void vs_sunflare(uint vertexId : SV_VertexID, out float4 oPosition : SV_Position, out float2 oProjSpace : PROJPOS)
 {
     float2 coord = float2((float)(vertexId / 2), (float)(vertexId % 2));
-    oPosition = float4(2.f * coord.x - 1.f, -2.f * coord.y + 1.f, 0.f, 1.f);
+    float2 baseProj = float2(2.f * coord.x - 1.f, -2.f * coord.y + 1.f);
+
+    float2 mins = ProjSpaceSunPosition - AspectCompensation;
+    float2 maxs = ProjSpaceSunPosition + AspectCompensation;
+    oPosition = float4(
+        lerp(mins.x, maxs.x, coord.x),
+        lerp(maxs.y, mins.y, coord.y),
+        0.f, 1.f);
     oProjSpace = oPosition.xy;
 }
+
+void vs_sunflare_full(uint vertexId : SV_VertexID, out float4 oPosition : SV_Position, out float2 oProjSpace : PROJPOS)
+{
+    float2 coord = float2((float)(vertexId / 2), (float)(vertexId % 2));
+    float2 baseProj = float2(2.f * coord.x - 1.f, -2.f * coord.y + 1.f);
+    oPosition = float4(baseProj, 0.f, 1.f);
+    oProjSpace = oPosition.xy;
+}
+
 
 float2 ToCartesianTC(float2 radialTC)
 {
