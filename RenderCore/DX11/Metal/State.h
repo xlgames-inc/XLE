@@ -107,6 +107,11 @@ namespace RenderCore { namespace Metal_DX11
                         Comparison::Enum comparison = Comparison::Never);
         ~SamplerState();
 
+        SamplerState(SamplerState&& moveFrom);
+        SamplerState& operator=(SamplerState&& moveFrom);
+        SamplerState(const SamplerState& copyFrom);
+        SamplerState& operator=(const SamplerState& copyFrom);
+
         typedef ID3D::SamplerState* UnderlyingType;
         UnderlyingType              GetUnderlying() const  { return _underlying.get(); }
 

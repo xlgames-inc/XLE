@@ -434,6 +434,45 @@ namespace ToolsRig
         return UInt2(finalDims[0] / clampingDim, finalDims[1] / clampingDim);
     }
 
+    void GenerateBlankUberSurface(
+        const ::Assets::ResChar outputDir[], 
+        unsigned cellCountX, unsigned cellCountY,
+        unsigned destNodeDims, unsigned destCellTreeDepth,
+        ConsoleRig::IProgress* progress)
+    {
+        CreateDirectoryRecursive(outputDir);
+
+        UInt2 finalDims(
+            cellCountX * destNodeDims * (1<<(destCellTreeDepth-1)),
+            cellCountY * destNodeDims * (1<<(destCellTreeDepth-1)));
+
+        uint64 resultSize = 
+            sizeof(TerrainUberHeader)
+            + finalDims[0] * finalDims[1] * sizeof(float)
+            ;
+
+        ::Assets::ResChar outputUberFileName[MaxPath]; 
+        SceneEngine::TerrainConfig::GetUberSurfaceFilename(
+            outputUberFileName, dimof(outputUberFileName),
+            outputDir, SceneEngine::CoverageId_Heights);
+
+        MemoryMappedFile outputUberFile(outputUberFileName, resultSize, MemoryMappedFile::Access::Write);
+        if (!outputUberFile.IsValid())
+            ThrowException(::Exceptions::BasicLabel("Couldn't open output file (%s)", outputUberFile));
+
+        auto& hdr   = *(TerrainUberHeader*)outputUberFile.GetData();
+        hdr._magic  = TerrainUberHeader::Magic;
+        hdr._width  = finalDims[0];
+        hdr._height = finalDims[1];
+        hdr._dummy  = 0;
+
+        float* outputArray = (float*)PtrAdd(outputUberFile.GetData(), sizeof(TerrainUberHeader));
+        std::fill(
+            outputArray,
+            &outputArray[finalDims[0] * finalDims[1]],
+            0.f);
+    }
+
     static UInt2 GetUberSurfaceDimensions(const ::Assets::ResChar fn[])
     {
         BasicFile file(fn, "rb", BasicFile::ShareMode::Read|BasicFile::ShareMode::Write);

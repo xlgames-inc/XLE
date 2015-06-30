@@ -599,7 +599,16 @@ namespace SceneEngine
         for (auto i=state._queuedNodes.begin(); i!=state._queuedNodes.end();) {
             auto sourceNode = i->_cell->_sourceCell->_nodes[i->_absNodeIndex].get();
             auto localToWorld = Combine(sourceNode->_localToCell, i->_cellToWorld);
-            auto result = RayVsAABB(ray, localToWorld, Float3(0.f, 0.f, 0.f), Float3(1.f, 1.f, float(0xffff)));
+            auto result = true;
+            if (Equivalent(localToWorld(2,2), 0.f, 1e-7f)) {
+                    // If all of the heights in the terrain are equal, we end up with a zero-volume
+                    // bounding box. We need a special case RayVsAABB for this... But let's just assume
+                    // it is an intersection
+                result = true; 
+            } else {
+                result = RayVsAABB(ray, localToWorld, Float3(0.f, 0.f, 0.f), Float3(1.f, 1.f, float(0xffff)));
+            }
+
             if (!result) {
                 i = state._queuedNodes.erase(i);
             } else {

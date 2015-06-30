@@ -165,6 +165,7 @@ namespace SceneEngine
         unsigned _bufferCount;
 
         UInt2 _gpuCacheOffset, _simSize;
+        float _elementSpacing;
     };
 
     class GenericUberSurfaceInterface::Pimpl
@@ -185,7 +186,6 @@ namespace SceneEngine
         UInt2                           _gpuCacheMins, _gpuCacheMaxs;
         intrusive_ptr<ID3D::Resource>   _gpucache[2];
         ErosionSimulation               _erosionSim;
-        TerrainCoordinateSystem         _coords;
         std::shared_ptr<ITerrainFormat> _ioFormat;
 
         Pimpl() : _uberSurface(nullptr) {}
@@ -255,39 +255,48 @@ namespace SceneEngine
         {
         public:
             virtual SRV         GetSRV();
-            virtual Addressing  GetAddress(Float2 minCoord, Float2 maxCoord);
+            virtual Addressing  GetAddress(Float2 minCoordWorld, Float2 maxCoordWorld);
             virtual bool        IsFloatFormat() const;
 
-            SurfaceHeightsProvider(UInt2 gpuCacheOffset, UInt2 cacheSize, float coordScale, intrusive_ptr<ID3D::Resource> gpuCache);
+            SurfaceHeightsProvider(Float2 worldSpaceCacheMin, Float2 worldSpaceCacheMax, UInt2 cacheDims, intrusive_ptr<ID3D::Resource> gpuCache);
+            ~SurfaceHeightsProvider();
         private:
-            UInt2 _cacheSize;
-            UInt2 _gpuCacheOffset;
+            Float2 _worldSpaceCacheMin, _worldSpaceCacheMax;
+            UInt2 _cacheDims;
             intrusive_ptr<ID3D::Resource> _gpuCache;
             SRV _srv;
-            float _coordScale;
         };
 
-        SurfaceHeightsProvider::SurfaceHeightsProvider(UInt2 gpuCacheOffset, UInt2 cacheSize, float coordScale, intrusive_ptr<ID3D::Resource> gpuCache)
-        : _cacheSize(cacheSize), _gpuCache(std::move(gpuCache))
-        , _srv(_gpuCache.get()), _gpuCacheOffset(gpuCacheOffset)
-        , _coordScale(coordScale)
+        SurfaceHeightsProvider::SurfaceHeightsProvider(Float2 worldSpaceCacheMin, Float2 worldSpaceCacheMax, UInt2 cacheDims, intrusive_ptr<ID3D::Resource> gpuCache)
+        : _worldSpaceCacheMin(worldSpaceCacheMin), _worldSpaceCacheMax(worldSpaceCacheMax)
+        , _cacheDims(cacheDims), _gpuCache(std::move(gpuCache)), _srv(_gpuCache.get())
         {}
 
+        SurfaceHeightsProvider::~SurfaceHeightsProvider() {}
+
         auto SurfaceHeightsProvider::GetSRV() -> SRV { return _srv; }
-        auto SurfaceHeightsProvider::GetAddress(Float2 minCoord, Float2 maxCoord) -> Addressing
+        auto SurfaceHeightsProvider::GetAddress(Float2 minCoordWorld, Float2 maxCoordWorld) -> Addressing
         {
             Addressing result;
             result._baseCoordinate = Int3(0,0,0);
             result._heightScale = 1.f;
             result._heightOffset = 0.f;
-            if (maxCoord[0] <= _cacheSize[0] && maxCoord[1] <= _cacheSize[1]) {
-                result._minCoordOffset = _gpuCacheOffset + Int2(signed(minCoord[0]*_coordScale), signed(minCoord[1]*_coordScale));
-                result._maxCoordOffset = _gpuCacheOffset + Int2(signed(maxCoord[0]*_coordScale), signed(maxCoord[1]*_coordScale));
+
+            if (    minCoordWorld[0] >= _worldSpaceCacheMin[0] &&  maxCoordWorld[0] <= _worldSpaceCacheMax[0]
+                &&  minCoordWorld[1] >= _worldSpaceCacheMin[1] &&  maxCoordWorld[1] <= _worldSpaceCacheMax[1]) {
+
+                result._minCoordOffset[0] = (int)XlFloor(float(_cacheDims[0]) * (minCoordWorld[0] - _worldSpaceCacheMin[0]) / (_worldSpaceCacheMax[0] - _worldSpaceCacheMin[0]));
+                result._minCoordOffset[1] = (int)XlFloor(float(_cacheDims[1]) * (minCoordWorld[1] - _worldSpaceCacheMin[1]) / (_worldSpaceCacheMax[1] - _worldSpaceCacheMin[1]));
+
+                result._maxCoordOffset[0] = (int)XlFloor(float(_cacheDims[0]) * (maxCoordWorld[0] - _worldSpaceCacheMin[0]) / (_worldSpaceCacheMax[0] - _worldSpaceCacheMin[0]));
+                result._maxCoordOffset[1] = (int)XlFloor(float(_cacheDims[1]) * (maxCoordWorld[1] - _worldSpaceCacheMin[1]) / (_worldSpaceCacheMax[1] - _worldSpaceCacheMin[1]));
+
                 result._valid = true;
             } else {
                 result._minCoordOffset = result._maxCoordOffset = UInt2(0,0);
                 result._valid = false;
             }
+
             return result;
         }
 
@@ -768,10 +777,10 @@ namespace SceneEngine
 
     static const unsigned ErosionWaterTileDimension = 256;
     static const unsigned ErosionWaterTileScale = 1;            // scale relative to the terrain surface resolution. Eg, 4 means each terrain grid becomes 4x4 grid elements in the water simulation
-    static const float TerrainScale = 2.f;
-    static const float ErosionWaterTilePhysicalDimension = TerrainScale * ErosionWaterTileDimension / ErosionWaterTileScale;   // the physical dimension is important for getting correct water movement. It should be in meters
 
-    void    HeightsUberSurfaceInterface::Erosion_Begin(Float2 mins, Float2 maxs)
+    void    HeightsUberSurfaceInterface::Erosion_Begin(
+        RenderCore::IThreadContext* context,
+        Float2 mins, Float2 maxs, const TerrainConfig& cfg)
     {
             //  We're going to do an erosion simulation over the given points
             //  First we need to allocate the buffers we need:
@@ -779,49 +788,62 @@ namespace SceneEngine
             //      * ShallowWaterSim object
             //      * ShallowWaterSim::ActiveElement elements
 
-        Float2 center(  XlFloor((mins[0] + maxs[0])/2.f), 
-                        XlFloor((mins[1] + maxs[1])/2.f));
-        Float2 size = maxs - mins;
         unsigned tileSizeTerr = ErosionWaterTileDimension/ErosionWaterTileScale;
-        size[0] = XlCeil(size[0]/tileSizeTerr) * tileSizeTerr;
-        size[1] = XlCeil(size[1]/tileSizeTerr) * tileSizeTerr;
+        unsigned gridsX = (unsigned)XlCeil((maxs[0] - mins[0])/tileSizeTerr);
+        unsigned gridsY = (unsigned)XlCeil((maxs[1] - mins[1])/tileSizeTerr);
 
+        Float2 center(XlFloor((mins[0] + maxs[0])/2.f), XlFloor((mins[1] + maxs[1])/2.f));
+        UInt2 size(gridsX * tileSizeTerr, gridsY * tileSizeTerr);
+
+            // adjust "mins" and "maxs"
             // (size should be even now, so this is safe)
-        mins = center - 0.5f * size;
-        maxs = center + 0.5f * size;
-        PrepareCache(UInt2(unsigned(mins[0]), unsigned(mins[1])), UInt2(unsigned(maxs[0]), unsigned(maxs[1])));
+        mins = center - 0.5f * Float2(size);
+        maxs = center + 0.5f * Float2(size);
+            // but we need to shift the grid if we end up straddling zero
+        if (mins[0] < 0.f) { maxs[0] -= mins[0]; mins[0] = 0.f; }
+        if (mins[1] < 0.f) { maxs[1] -= mins[1]; mins[1] = 0.f; }
+        assert(mins[0] >= 0 && mins[1] >= 0);
 
-        unsigned gridsX = unsigned(size[0]/(ErosionWaterTileDimension/ErosionWaterTileScale));
-        unsigned gridsY = unsigned(size[1]/(ErosionWaterTileDimension/ErosionWaterTileScale));
-        auto newShallowWater = std::make_unique<ShallowWaterSim>(
-            ShallowWaterSim::Desc(unsigned(ErosionWaterTileDimension), gridsX * gridsY, false, true));
+            // prepare our new GPU cache
+        UInt2 finalCacheMin = UInt2(unsigned(mins[0]), unsigned(mins[1]));
+        UInt2 finalCacheMax = UInt2(unsigned(maxs[0]), unsigned(maxs[1]));
+        PrepareCache(finalCacheMin, finalCacheMax);
 
         Int2 gpuCacheOffset = UInt2(unsigned(mins[0]), unsigned(mins[1])) - _pimpl->_gpuCacheMins;
 
+            // Build a SurfaceHeightsProvider that can map from world space coordinates
+            // into the coordinates of the GPU cache. In the coordinate system of the 
+            // water simulation, the origin is the minimum point of the first tile we're
+            // simulating. In other words, there is a offset between the water sim world
+            // coords and the real world coords
+        float terrainScale = cfg.ElementSpacing();
         auto surfaceHeightsProvider = std::make_unique<Internal::SurfaceHeightsProvider>(
-            UInt2(gpuCacheOffset[0], gpuCacheOffset[1]),
+            (Float2(_pimpl->_gpuCacheMins) - Float2(finalCacheMin)) * terrainScale, (Float2(_pimpl->_gpuCacheMaxs) - Float2(finalCacheMin)) * terrainScale,
             _pimpl->_gpuCacheMaxs - _pimpl->_gpuCacheMins + UInt2(1,1), 
-            1.f / TerrainScale,   // physical coords to terrain grid coords
             _pimpl->_gpucache[0]);
 
+            // Create the "box" that will contain resources required while performing the
+            // erosion simulation
+        const bool usePipeModel = false;
+        auto newShallowWater = std::make_unique<ShallowWaterSim>(
+            ShallowWaterSim::Desc(unsigned(ErosionWaterTileDimension), gridsX * gridsY, usePipeModel, true));
+        
         std::vector<ShallowWaterSim::ActiveElement> newElements;
         for (unsigned y=0; y<gridsY; ++y)
-            for (unsigned x=0; x<gridsX; ++x) {
+            for (unsigned x=0; x<gridsX; ++x)
                 newElements.push_back(ShallowWaterSim::ActiveElement(x, y));
-            }
 
-        auto context = GetImmediateContext();
-
+        auto metalContext = RenderCore::Metal::DeviceContext::Get(*context);
         ShallowWater_NewElements(
-            &context, *newShallowWater, 
-            *surfaceHeightsProvider, OceanSettings(), ErosionWaterTilePhysicalDimension, nullptr,
+            metalContext.get(), *newShallowWater, 
+            *surfaceHeightsProvider, OceanSettings(), terrainScale * ErosionWaterTileDimension / ErosionWaterTileScale, nullptr,
             ShallowBorderMode::Surface,
             AsPointer(newElements.cbegin()), AsPointer(newElements.cend()));
 
         /////////////////////////////////////////////////////////////////////////////////////
 
         auto& bufferUploads = GetBufferUploads();
-        auto desc = Internal::BuildCacheDesc(UInt2(unsigned(size[0]), unsigned(size[1])), (RenderCore::Metal::NativeFormat::Enum)_pimpl->_uberSurface->Format());
+        auto desc = Internal::BuildCacheDesc(size, (RenderCore::Metal::NativeFormat::Enum)_pimpl->_uberSurface->Format());
         auto hardMaterials = bufferUploads.Transaction_Immediate(desc)->AdoptUnderlying();
         auto softMaterials = bufferUploads.Transaction_Immediate(desc)->AdoptUnderlying();
         auto softMaterialsCopy = bufferUploads.Transaction_Immediate(desc)->AdoptUnderlying();
@@ -830,15 +852,14 @@ namespace SceneEngine
         RenderCore::Metal::UnorderedAccessView softMaterialsUAV(softMaterials.get());
         RenderCore::Metal::ShaderResourceView softMaterialsCopySRV(softMaterialsCopy.get());
 
+            //  The simulating area may actually only a small part of the cached area.
             //  "hard materials" should be initialised with a copy of the heights texture. But "soft materials" should be
             //  cleared to zero;
         {
             float clearValues[4] = { 0.f, 0.f, 0.f, 0.f };
-            context.Clear(softMaterialsUAV, clearValues);
+            metalContext->Clear(softMaterialsUAV, clearValues);
             // context.GetUnderlying()->CopyResource(hardMaterials.get(), _pimpl->_gpucache[0].get());
 
-                //  The simulating area is actually only a small part of the cached area.
-                //  
             D3D11_BOX srcBox;
             srcBox.left = gpuCacheOffset[0];
             srcBox.top = gpuCacheOffset[1];
@@ -846,7 +867,7 @@ namespace SceneEngine
             srcBox.right = unsigned(gpuCacheOffset[0] + size[0]);
             srcBox.bottom = unsigned(gpuCacheOffset[1] + size[1]);
             srcBox.back = 1;
-            context.GetUnderlying()->CopySubresourceRegion(
+            metalContext->GetUnderlying()->CopySubresourceRegion(
                 hardMaterials.get(), 0, 0, 0, 0, _pimpl->_gpucache[0].get(), 0, &srcBox);
         }
 
@@ -861,19 +882,24 @@ namespace SceneEngine
         _pimpl->_erosionSim._softMaterialsCopySRV = std::move(softMaterialsCopySRV);
         _pimpl->_erosionSim._gpuCacheOffset = gpuCacheOffset;
         _pimpl->_erosionSim._simSize = UInt2(unsigned(size[0]), unsigned(size[1]));
+        _pimpl->_erosionSim._elementSpacing = terrainScale;
     }
 
-    void    HeightsUberSurfaceInterface::Erosion_Tick(const ErosionParameters& params)
+    void    HeightsUberSurfaceInterface::Erosion_Tick(
+        RenderCore::IThreadContext* context,
+        const ErosionParameters& params)
     {
             //      Update the shallow water simulation
         if (!Erosion_IsPrepared()) {
             return;     // no active sim
         }
 
-        auto context = GetImmediateContext();
+        float terrainScale = _pimpl->_erosionSim._elementSpacing;
+
+        auto metalContext = RenderCore::Metal::DeviceContext::Get(*context);
         float compressionConstants[4] = { 0.f, 0.f, 1000.f, 1.f };
         ShallowWater_ExecuteInternalSimulation(
-            &context, OceanSettings(), ErosionWaterTilePhysicalDimension, 
+            metalContext.get(), OceanSettings(), terrainScale * ErosionWaterTileDimension / ErosionWaterTileScale, 
             nullptr, _pimpl->_erosionSim._surfaceHeightsProvider.get(),
             *_pimpl->_erosionSim._waterSim.get(), _pimpl->_erosionSim._bufferCount, compressionConstants,
             params._rainQuantityPerFrame, ShallowBorderMode::Surface);
@@ -887,13 +913,17 @@ namespace SceneEngine
             //      be a strong flow, but the height is staying the same).
 
         auto& erosionSim = _pimpl->_erosionSim;
-        ShallowWater_BindForErosionSimulation(&context, *erosionSim._waterSim.get(), erosionSim._bufferCount);
+        ShallowWater_BindForErosionSimulation(metalContext.get(), *erosionSim._waterSim.get(), erosionSim._bufferCount);
         
-        context.GetUnderlying()->CopyResource(erosionSim._softMaterialsCopy.get(), erosionSim._softMaterials.get());
+        metalContext->GetUnderlying()->CopyResource(erosionSim._softMaterialsCopy.get(), erosionSim._softMaterials.get());
+
+        metalContext->GetUnderlying()->CopyResource(_pimpl->_gpucache[1].get(), _pimpl->_gpucache[0].get());
+        Metal::ShaderResourceView terrainHeightsCopySRV(_pimpl->_gpucache[1].get());
+
         using namespace RenderCore::Metal;
         UnorderedAccessView uav(_pimpl->_gpucache[0].get());
-        context.BindCS(RenderCore::MakeResourceList(uav, erosionSim._hardMaterialsUAV, erosionSim._softMaterialsUAV));
-        context.BindCS(RenderCore::MakeResourceList(erosionSim._softMaterialsCopySRV));
+        metalContext->BindCS(RenderCore::MakeResourceList(uav, erosionSim._hardMaterialsUAV, erosionSim._softMaterialsUAV));
+        metalContext->BindCS(RenderCore::MakeResourceList(terrainHeightsCopySRV, erosionSim._softMaterialsCopySRV));
 
         struct TickErosionSimConstats
         { 
@@ -907,18 +937,24 @@ namespace SceneEngine
             params._changeToSoftConstant, params._softFlowConstant,
             params._softChangeBackConstant
         };
-        context.BindCS(RenderCore::MakeResourceList(5, ConstantBuffer(&constants, sizeof(constants))));
+        metalContext->BindCS(RenderCore::MakeResourceList(5, ConstantBuffer(&constants, sizeof(constants))));
+        metalContext->BindCS(RenderCore::MakeResourceList(Techniques::CommonResources()._linearClampSampler));
 
         char defines[256];
-        _snprintf_s(defines, _TRUNCATE, "SHALLOW_WATER_TILE_DIMENSION=%i", erosionSim._waterSim->_gridDimension);
+        _snprintf_s(defines, _TRUNCATE, 
+            "SHALLOW_WATER_TILE_DIMENSION=%i;SURFACE_HEIGHTS_FLOAT=%i", 
+            erosionSim._waterSim->_gridDimension,
+            _pimpl->_erosionSim._surfaceHeightsProvider->IsFloatFormat());
         auto& updateShader = Assets::GetAssetDep<ComputeShader>("game/xleres/ocean/tickerosion.csh:main:cs_*", defines);
-        context.Bind(updateShader);
-        context.Dispatch(erosionSim._simSize[0]/16, erosionSim._simSize[1]/16, 1);
-        context.UnbindCS<UnorderedAccessView>(0, 8);
+        metalContext->Bind(updateShader);
+        metalContext->Dispatch(erosionSim._simSize[0]/16, erosionSim._simSize[1]/16, 1);
+        metalContext->UnbindCS<UnorderedAccessView>(0, 8);
 
             //  Update the mesh with the changes
-        DoShortCircuitUpdate(&context,  _pimpl->_gpuCacheMins + erosionSim._gpuCacheOffset, 
-                                        _pimpl->_gpuCacheMins + erosionSim._gpuCacheOffset + erosionSim._simSize);
+        DoShortCircuitUpdate(
+            metalContext.get(),
+            _pimpl->_gpuCacheMins + erosionSim._gpuCacheOffset, 
+            _pimpl->_gpuCacheMins + erosionSim._gpuCacheOffset + erosionSim._simSize);
         ++_pimpl->_erosionSim._bufferCount;
     }
 
@@ -945,24 +981,32 @@ namespace SceneEngine
     }
 
     void    HeightsUberSurfaceInterface::Erosion_RenderDebugging(
-        RenderCore::Metal::DeviceContext* context, 
+        RenderCore::IThreadContext* context,
         LightingParserContext& parserContext,
         const TerrainCoordinateSystem& coords)
     {
-        assert(0);
-        // if (!Erosion_IsPrepared()) return;
-        // 
-        // TRY {
-        //     ShallowWater_RenderVelocities(
-        //         context, parserContext,
-        //         OceanSettings(), ErosionWaterTilePhysicalDimension, 
-        //         coords.TerrainCoordsToWorldSpace(_pimpl->_erosionSim._gpuCacheOffset + _pimpl->_gpuCacheMins),
-        //         *_pimpl->_erosionSim._waterSim.get(), 
-        //         _pimpl->_erosionSim._bufferCount-1, ShallowBorderMode::Surface);
-        // } 
-        // CATCH (const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
-        // CATCH (const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
-        // CATCH_END
+        if (!Erosion_IsPrepared()) return;
+
+        TRY {
+            const float terrainScale = _pimpl->_erosionSim._elementSpacing;
+
+                // we need to add an offset to transform from the water simulation coords
+                // into true world space (though scales remain the same)
+            auto worldSpaceOffset = 
+                    terrainScale * Float2(_pimpl->_erosionSim._gpuCacheOffset + _pimpl->_gpuCacheMins)
+                +   Truncate(coords.TerrainOffset());
+
+            auto metalContext = RenderCore::Metal::DeviceContext::Get(*context);
+            ShallowWater_RenderVelocities(
+                metalContext.get(), parserContext,
+                OceanSettings(), terrainScale * ErosionWaterTileDimension / ErosionWaterTileScale, 
+                worldSpaceOffset,
+                *_pimpl->_erosionSim._waterSim.get(), 
+                _pimpl->_erosionSim._bufferCount-1, ShallowBorderMode::Surface);
+        } 
+        CATCH (const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
+        CATCH (const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }
+        CATCH_END
     }
 
     class ShadowingAngleOperator

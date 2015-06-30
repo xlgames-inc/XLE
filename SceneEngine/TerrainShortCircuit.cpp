@@ -219,9 +219,9 @@ namespace SceneEngine
                     (unsigned)LinearInterpolate(float(cellOrigin[0]), float(cellMax[0]), nodeMaxInCell[0]),
                     (unsigned)LinearInterpolate(float(cellOrigin[1]), float(cellMax[1]), nodeMaxInCell[1]));
 
-                const unsigned overlap = 1;
-                if (    (nodeMin[0]-overlap) <= upd._updateAreaMaxs[0] && (nodeMax[0]+overlap) >= upd._updateAreaMins[0]
-                    &&  (nodeMin[1]-overlap) <= upd._updateAreaMaxs[1] && (nodeMax[1]+overlap) >= upd._updateAreaMins[1]) {
+                const int overlap = 1;
+                if (    (int(nodeMin[0])-overlap) <= int(upd._updateAreaMaxs[0]) && (int(nodeMax[0])+overlap) >= int(upd._updateAreaMins[0])
+                    &&  (int(nodeMin[1])-overlap) <= int(upd._updateAreaMaxs[1]) && (int(nodeMax[1])+overlap) >= int(upd._updateAreaMins[1])) {
 
                         // downsampling required depends on which field we're in.
                     auto fi = std::find_if(sourceCell._nodeFields.cbegin(), sourceCell._nodeFields.cend(),

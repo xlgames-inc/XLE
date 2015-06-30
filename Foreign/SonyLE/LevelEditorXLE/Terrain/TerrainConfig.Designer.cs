@@ -42,6 +42,10 @@ namespace LevelEditorXLE.Terrain
             this.m_label1 = new System.Windows.Forms.Label();
             this.m_importSource = new System.Windows.Forms.TextBox();
             this.m_importSourceBtn = new System.Windows.Forms.Button();
+            this.m_createBlankTerrainCheck = new System.Windows.Forms.CheckBox();
+            this.m_createCellsX = new System.Windows.Forms.TextBox();
+            this.m_createCellsY = new System.Windows.Forms.TextBox();
+            this.label1 = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
             // m_propertyGrid1
@@ -52,7 +56,7 @@ namespace LevelEditorXLE.Terrain
             this.m_propertyGrid1.CategoryForeColor = System.Drawing.SystemColors.InactiveCaptionText;
             this.m_propertyGrid1.Location = new System.Drawing.Point(12, 12);
             this.m_propertyGrid1.Name = "m_propertyGrid1";
-            this.m_propertyGrid1.Size = new System.Drawing.Size(556, 224);
+            this.m_propertyGrid1.Size = new System.Drawing.Size(489, 200);
             this.m_propertyGrid1.TabIndex = 0;
             this.m_propertyGrid1.ToolbarVisible = false;
             // 
@@ -60,7 +64,7 @@ namespace LevelEditorXLE.Terrain
             // 
             this.m_okButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.m_okButton.DialogResult = System.Windows.Forms.DialogResult.OK;
-            this.m_okButton.Location = new System.Drawing.Point(448, 274);
+            this.m_okButton.Location = new System.Drawing.Point(381, 281);
             this.m_okButton.Name = "m_okButton";
             this.m_okButton.Size = new System.Drawing.Size(119, 23);
             this.m_okButton.TabIndex = 1;
@@ -71,7 +75,7 @@ namespace LevelEditorXLE.Terrain
             // 
             this.m_cancelButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.m_cancelButton.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this.m_cancelButton.Location = new System.Drawing.Point(323, 274);
+            this.m_cancelButton.Location = new System.Drawing.Point(256, 281);
             this.m_cancelButton.Name = "m_cancelButton";
             this.m_cancelButton.Size = new System.Drawing.Size(119, 23);
             this.m_cancelButton.TabIndex = 2;
@@ -82,11 +86,11 @@ namespace LevelEditorXLE.Terrain
             // 
             this.m_doImport.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.m_doImport.AutoSize = true;
-            this.m_doImport.Location = new System.Drawing.Point(13, 244);
+            this.m_doImport.Location = new System.Drawing.Point(13, 220);
             this.m_doImport.Name = "m_doImport";
-            this.m_doImport.Size = new System.Drawing.Size(110, 17);
+            this.m_doImport.Size = new System.Drawing.Size(116, 17);
             this.m_doImport.TabIndex = 3;
-            this.m_doImport.Text = "Import new terrain";
+            this.m_doImport.Text = "Import New Terrain";
             this.m_doImport.UseVisualStyleBackColor = true;
             this.m_doImport.CheckedChanged += new System.EventHandler(this.DoImport_CheckedChanged);
             // 
@@ -97,7 +101,7 @@ namespace LevelEditorXLE.Terrain
             this.m_importType.FormattingEnabled = true;
             this.m_importType.Items.AddRange(new object[] {
             "DEM file"});
-            this.m_importType.Location = new System.Drawing.Point(129, 242);
+            this.m_importType.Location = new System.Drawing.Point(129, 218);
             this.m_importType.Name = "m_importType";
             this.m_importType.Size = new System.Drawing.Size(83, 21);
             this.m_importType.TabIndex = 4;
@@ -107,7 +111,7 @@ namespace LevelEditorXLE.Terrain
             // 
             this.m_label1.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.m_label1.AutoSize = true;
-            this.m_label1.Location = new System.Drawing.Point(218, 245);
+            this.m_label1.Location = new System.Drawing.Point(218, 221);
             this.m_label1.Name = "m_label1";
             this.m_label1.Size = new System.Drawing.Size(44, 13);
             this.m_label1.TabIndex = 5;
@@ -117,16 +121,16 @@ namespace LevelEditorXLE.Terrain
             // 
             this.m_importSource.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.m_importSource.Location = new System.Drawing.Point(268, 242);
+            this.m_importSource.Location = new System.Drawing.Point(268, 218);
             this.m_importSource.Name = "m_importSource";
-            this.m_importSource.Size = new System.Drawing.Size(270, 20);
+            this.m_importSource.Size = new System.Drawing.Size(203, 20);
             this.m_importSource.TabIndex = 6;
             this.m_importSource.TextChanged += new System.EventHandler(this.m_importSource_TextChanged);
             // 
             // m_importSourceBtn
             // 
             this.m_importSourceBtn.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.m_importSourceBtn.Location = new System.Drawing.Point(544, 243);
+            this.m_importSourceBtn.Location = new System.Drawing.Point(477, 219);
             this.m_importSourceBtn.Name = "m_importSourceBtn";
             this.m_importSourceBtn.Size = new System.Drawing.Size(23, 18);
             this.m_importSourceBtn.TabIndex = 7;
@@ -134,15 +138,58 @@ namespace LevelEditorXLE.Terrain
             this.m_importSourceBtn.UseVisualStyleBackColor = true;
             this.m_importSourceBtn.Click += new System.EventHandler(this.ImportSourceBtn_Click);
             // 
+            // m_createBlankTerrainCheck
+            // 
+            this.m_createBlankTerrainCheck.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+            this.m_createBlankTerrainCheck.AutoSize = true;
+            this.m_createBlankTerrainCheck.Location = new System.Drawing.Point(12, 246);
+            this.m_createBlankTerrainCheck.Name = "m_createBlankTerrainCheck";
+            this.m_createBlankTerrainCheck.Size = new System.Drawing.Size(123, 17);
+            this.m_createBlankTerrainCheck.TabIndex = 3;
+            this.m_createBlankTerrainCheck.Text = "Create Blank Terrain";
+            this.m_createBlankTerrainCheck.UseVisualStyleBackColor = true;
+            this.m_createBlankTerrainCheck.CheckedChanged += new System.EventHandler(this.DoCreateBlank_CheckedChanged);
+            // 
+            // m_createCellsX
+            // 
+            this.m_createCellsX.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.m_createCellsX.Location = new System.Drawing.Point(317, 243);
+            this.m_createCellsX.Name = "m_createCellsX";
+            this.m_createCellsX.Size = new System.Drawing.Size(79, 20);
+            this.m_createCellsX.TabIndex = 8;
+            this.m_createCellsX.TextChanged += new System.EventHandler(this.m_createCellsX_TextChanged);
+            // 
+            // m_createCellsY
+            // 
+            this.m_createCellsY.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.m_createCellsY.Location = new System.Drawing.Point(421, 243);
+            this.m_createCellsY.Name = "m_createCellsY";
+            this.m_createCellsY.Size = new System.Drawing.Size(79, 20);
+            this.m_createCellsY.TabIndex = 9;
+            // 
+            // label1
+            // 
+            this.label1.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.label1.AutoSize = true;
+            this.label1.Location = new System.Drawing.Point(403, 249);
+            this.label1.Name = "label1";
+            this.label1.Size = new System.Drawing.Size(12, 13);
+            this.label1.TabIndex = 10;
+            this.label1.Text = "x";
+            // 
             // TerrainConfig
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(580, 309);
+            this.ClientSize = new System.Drawing.Size(513, 316);
+            this.Controls.Add(this.label1);
+            this.Controls.Add(this.m_createCellsY);
+            this.Controls.Add(this.m_createCellsX);
             this.Controls.Add(this.m_importSourceBtn);
             this.Controls.Add(this.m_importSource);
             this.Controls.Add(this.m_label1);
             this.Controls.Add(this.m_importType);
+            this.Controls.Add(this.m_createBlankTerrainCheck);
             this.Controls.Add(this.m_doImport);
             this.Controls.Add(this.m_cancelButton);
             this.Controls.Add(this.m_okButton);
@@ -165,5 +212,9 @@ namespace LevelEditorXLE.Terrain
         private System.Windows.Forms.Label m_label1;
         private System.Windows.Forms.TextBox m_importSource;
         private System.Windows.Forms.Button m_importSourceBtn;
+        private System.Windows.Forms.CheckBox m_createBlankTerrainCheck;
+        private System.Windows.Forms.TextBox m_createCellsX;
+        private System.Windows.Forms.TextBox m_createCellsY;
+        private System.Windows.Forms.Label label1;
     }
 }

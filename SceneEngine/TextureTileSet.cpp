@@ -218,10 +218,10 @@ namespace SceneEngine
         _creationTransaction = ~BufferUploads::TransactionID(0x0);
         _allowModification = allowModification;
 
-            //  keep pages of around 2048x2048... just add enough array elements
+            //  keep pages of around 1024x1024... just add enough array elements
             //  to have as many elements as requested. Normally powers-of-two
             //  are best for element size and element count.
-        const unsigned defaultPageSize = 2048;
+        const unsigned defaultPageSize = 1024;
         const int elementsH = defaultPageSize / elementSize[0];
         const int elementsV = defaultPageSize / elementSize[1];
         const int elementsPerPage = elementsH * elementsV;
@@ -233,6 +233,12 @@ namespace SceneEngine
         for (int c=0; c<pageCount; ++c) {
             slices.push_back(ArraySlice(elementsPerPage));
         }
+
+            // note -- there's currently a problem if the page count is 1
+            // The system will create a non-array texture, which will cause
+            // problems when attempting to bind this to shaders that are
+            // expecting an array texture.
+        assert(pageCount > 1);
 
         using namespace BufferUploads;
         BufferDesc desc;

@@ -331,6 +331,19 @@ namespace GUILayer
                 nodeDimensions, cellTreeDepth, nativeProgress.get());
         }
 
+        static void GenerateBlankUberSurface(
+            String^ uberSurfaceDirectory, 
+            unsigned newCellCountX, unsigned newCellCountY,
+            unsigned nodeDimensions, unsigned cellTreeDepth,
+            IProgress^ progress)
+        {
+            auto nativeProgress = progress ? IProgress::CreateNative(progress) : nullptr;
+            ToolsRig::GenerateBlankUberSurface(
+                clix::marshalString<clix::E_UTF8>(uberSurfaceDirectory).c_str(),
+                newCellCountX, newCellCountY,
+                nodeDimensions, cellTreeDepth, nativeProgress.get());
+        }
+
         static void GenerateStarterCells(
             String^ cellsDirectory, String^ uberSurfaceDirectory,
             unsigned nodeDimensions, unsigned cellTreeDepth, unsigned overlap,

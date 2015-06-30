@@ -47,6 +47,27 @@ namespace RenderCore { namespace Metal_DX11
 
     SamplerState::~SamplerState() {}
 
+    SamplerState::SamplerState(SamplerState&& moveFrom)
+    : _underlying(std::move(moveFrom._underlying))
+    {}
+
+    SamplerState& SamplerState::operator=(SamplerState&& moveFrom)
+    {
+        _underlying = std::move(moveFrom._underlying);
+        return *this;
+    }
+
+    SamplerState::SamplerState(const SamplerState& copyFrom)
+    : _underlying(copyFrom._underlying)
+    {}
+
+    SamplerState& SamplerState::operator=(const SamplerState& copyFrom)
+    {
+        _underlying = copyFrom._underlying;
+        return *this;
+    }
+
+
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
     RasterizerState::RasterizerState(RasterizerState&& moveFrom)

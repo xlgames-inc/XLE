@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../RenderCore/Metal/Forward.h"
+#include "../RenderCore/IThreadContext_Forward.h"
 #include "../Assets/Assets.h"
 #include "../Math/Vector.h"
 #include "../Core/Types.h"
@@ -159,11 +160,14 @@ namespace SceneEngine
             , _softFlowConstant(softFlowConstant), _softChangeBackConstant(softChangeBackConstant) {}
         };
 
-        void    Erosion_Begin(Float2 mins, Float2 maxs);
-        void    Erosion_Tick(const ErosionParameters& params);
+        void    Erosion_Begin(RenderCore::IThreadContext* context, Float2 mins, Float2 maxs, const TerrainConfig& cfg);
+        void    Erosion_Tick(RenderCore::IThreadContext* context, const ErosionParameters& params);
         void    Erosion_End();
         bool    Erosion_IsPrepared() const;
-        void    Erosion_RenderDebugging(RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, const TerrainCoordinateSystem& coords);
+        void    Erosion_RenderDebugging(
+            RenderCore::IThreadContext* context,
+            LightingParserContext& parserContext,
+            const TerrainCoordinateSystem& coords);
 
         void    BuildShadowingSurface(const char destinationFile[], Int2 interestingMins, Int2 interestingMaxs, Float2 sunDirectionOfMovement, float xyScale);
 

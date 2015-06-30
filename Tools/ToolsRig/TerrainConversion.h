@@ -37,4 +37,10 @@ namespace ToolsRig
         std::shared_ptr<SceneEngine::ITerrainFormat> outputIOFormat,
         const ::Assets::ResChar uberSurfaceDir[],
         ConsoleRig::IProgress* progress = nullptr);
+
+    void GenerateBlankUberSurface(
+        const ::Assets::ResChar outputDir[], 
+        unsigned cellCountX, unsigned cellCountY,
+        unsigned destNodeDims, unsigned destCellTreeDepth,
+        ConsoleRig::IProgress* progress = nullptr);
 }

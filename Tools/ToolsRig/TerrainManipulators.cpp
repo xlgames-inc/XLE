@@ -410,22 +410,22 @@ namespace ToolsRig
         if (_flags & (1<<0)) {
             auto *i = _terrainManager->GetHeightsInterface();
             if (i) {
-                if (!i->Erosion_IsPrepared()) {
-                    i->Erosion_Begin(_activeMins, _activeMaxs);
-                }
+                if (_activeMaxs[0] > _activeMins[0] && _activeMaxs[1] > _activeMins[1]) {
+                    if (!i->Erosion_IsPrepared()) {
+                        i->Erosion_Begin(context, _activeMins, _activeMaxs, _terrainManager->GetConfig());
+                    }
 
-                SceneEngine::HeightsUberSurfaceInterface::ErosionParameters params(
-                    _rainQuantityPerFrame, _changeToSoftConstant, _softFlowConstant, _softChangeBackConstant);
-                i->Erosion_Tick(params);
+                    SceneEngine::HeightsUberSurfaceInterface::ErosionParameters params(
+                        _rainQuantityPerFrame, _changeToSoftConstant, _softFlowConstant, _softChangeBackConstant);
+                    i->Erosion_Tick(context, params);
+                }
             }
         }
 
         if (_flags & (1<<1)) {
             auto *i = _terrainManager->GetHeightsInterface();
             if (i && i->Erosion_IsPrepared()) {
-                i->Erosion_RenderDebugging(
-                    RenderCore::Metal::DeviceContext::Get(*context).get(), 
-                    parserContext, _terrainManager->GetCoords());
+                i->Erosion_RenderDebugging(context, parserContext, _terrainManager->GetCoords());
             }
         }
     }
@@ -460,6 +460,7 @@ namespace ToolsRig
         _softFlowConstant = 0.05f;
         _softChangeBackConstant = 0.9f;
         _flags = 0;
+        _activeMins = _activeMaxs = Float2(0.f, 0.f);
     }
 
 

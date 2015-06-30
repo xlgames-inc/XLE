@@ -9,7 +9,7 @@
 
 	//
 	//		Inspired by "Dynamic Simulation of Splashing Fluids"
-	//			James F. O’Brien and Jessica K. Hodgins	//	//		This is actually a really simple simulation of the water	//		surface (more or less ignoring the bottom of the water	//		volume). It uses the difference in heights of adjacent	//		to cells calculate a pressure differential, which becomes	//		an acceleration value. We maintain velocity values from	//		frame to frame, and update iteratively. It's very cheap!	//	//		But interaction with the shore line might not be correct,	//		because the term that takes into account the water depth	//		seems a bit rough.	//
+	//			James F. Oï¿½Brien and Jessica K. Hodgins	//	//		This is actually a really simple simulation of the water	//		surface (more or less ignoring the bottom of the water	//		volume). It uses the difference in heights of adjacent	//		to cells calculate a pressure differential, which becomes	//		an acceleration value. We maintain velocity values from	//		frame to frame, and update iteratively. It's very cheap!	//	//		But interaction with the shore line might not be correct,	//		because the term that takes into account the water depth	//		seems a bit rough.	//
 
 RWTexture2DArray<float>		WaterHeights	: register(u0);		// final result will be written here
 RWTexture2DArray<float>		Velocities0		: register(u1);
@@ -20,13 +20,13 @@ Texture2D<uint>				LookupTable		: register(t3);
 
 cbuffer Constants : register(b2)
 {
-	int2	SimulatingIndex; 
+	int2	SimulatingIndex;
 	uint	ArrayIndex;
 	int		buffer;
 }
 
 static const float g = 9.8f;
-static const float waterDensity = 999.97;		// (kg/m³)
+static const float waterDensity = 999.97;		// (kg/mï¿½)
 static const float DeltaTime = 1.f / 60.f;
 static const float VelResistance = .97f;
 
@@ -42,7 +42,7 @@ cbuffer CompressionConstants
 
 float2 WorldPositionFromGridIndex(int2 gridIndex)
 {
-	float2 worldPosition = 
+	float2 worldPosition =
 		float2(	(SimulatingIndex.x + float(gridIndex.x) / float(SHALLOW_WATER_TILE_DIMENSION)) * ShallowGridPhysicalDimension,
 				(SimulatingIndex.y + float(gridIndex.y) / float(SHALLOW_WATER_TILE_DIMENSION)) * ShallowGridPhysicalDimension);
 	return worldPosition;
@@ -83,14 +83,14 @@ groupshared float CachedHeights[2][SHALLOW_WATER_TILE_DIMENSION+2];
 float4 CalculateDeltaVelocities(uint cellIndex, float surfaceHeight, float2 worldPosition)
 {
 		//
-		//		This method attempts to find the velocity of water moving 
+		//		This method attempts to find the velocity of water moving
 		//		through points based on changes in heights. But actually it
 		//		doesn't work very well. The get the results I want, this needs
 		//		to be replaced with a much better method.
 		//
 		//		For a given sample point, we should update the velocities
 		//		We only need to calculate half of the velocities (because
-		//		adjacent cells will calculate the remainder... No need to 
+		//		adjacent cells will calculate the remainder... No need to
 		//		double-up)
 		//
 		//			Velocity storage:
@@ -102,12 +102,12 @@ float4 CalculateDeltaVelocities(uint cellIndex, float surfaceHeight, float2 worl
 		//		We need to find the pressure differentials between this cell
 		//		and adjacent cells.
 		//
-		//		We've already cached the height values for a 2 full rows. 
+		//		We've already cached the height values for a 2 full rows.
 		//		So we can easily find the heights of adjacent cells.
 		//
 		//		In this calculation, we're going to consider the height values
 		//		in the textures to be the heights in the center of each cell.
-		//		It may not be rendered that way, but it makes sense from a 
+		//		It may not be rendered that way, but it makes sense from a
 		//		processing point of view.
 		//
 
@@ -133,13 +133,14 @@ float4 CalculateDeltaVelocities(uint cellIndex, float surfaceHeight, float2 worl
 	float a2 = AccelerationFromPressure(cellHeight, cellHeight2, waterDepth, ep, ep2);
 	float a3 = AccelerationFromPressure(cellHeight, cellHeight3, waterDepth, ep, ep3);
 
-		// note -- if there's a barrier, we can simulate it by setting the velocity to zero
-		//			here, the cell heights are set to very low numbers for boundaries
+		// note -- 	if there's a barrier, we can simulate it by setting the
+		//			velocity to zero here, the cell heights are set to very
+		//			low numbers for boundaries
 	if (cellHeight0<-1000.f) a0 = 0.f;
 	if (cellHeight1<-1000.f) a1 = 0.f;
 	if (cellHeight2<-1000.f) a2 = 0.f;
 	if (cellHeight3<-1000.f) a3 = 0.f;
-		
+
 	return DeltaTime * float4(a0, a1, a2, a3);
 }
 
@@ -212,7 +213,7 @@ void StoreVelocities(uint3 coord, float4 vel)
 		}
 	}
 
-	float centerSurfaceHeight = LoadSurfaceHeight(baseCoord);
+	float centerSurfaceHeight = LoadSurfaceHeight(baseCoord.xy);
 	float2 worldPosition = WorldPositionFromGridIndex(baseCoord.xy);
 
 	GroupMemoryBarrierWithGroupSync();
@@ -346,10 +347,8 @@ float4 CalculateBottomRightVelocity(int2 address)
 		//	Ignoring surface height here... Possible to end up with water below the ground surface
 	float deltaHeight = DeltaTime * (vel00 + vel10 + vel20 + vel01 + vel21 + vel02 + vel12 + vel22);
 
-	float centerSurfaceHeight = LoadSurfaceHeight(baseCoord);
-
+	// float centerSurfaceHeight = LoadSurfaceHeight(baseCoord.xy);
 	// WaterHeights[baseCoord] = max(centerSurfaceHeight, WaterHeights[baseCoord] + deltaHeight);
+
 	WaterHeights[baseCoord] += deltaHeight;
 }
-
-

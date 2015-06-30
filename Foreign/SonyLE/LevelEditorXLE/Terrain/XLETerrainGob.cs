@@ -179,6 +179,13 @@ namespace LevelEditorXLE.Terrain
                             cfg.UberSurfaceDirectory, cfg.SourceDEMFile,
                             nodeDimensions, cellTreeDepth,
                             progress);
+                    } else if (cfg.Import == TerrainConfig.Config.ImportType.NewBlankTerrain
+                        && cfg.NewCellCountX != 0 && cfg.NewCellCountY != 0)
+                    {
+                        GUILayer.EditorInterfaceUtils.GenerateBlankUberSurface(
+                            cfg.UberSurfaceDirectory, cfg.NewCellCountX, cfg.NewCellCountY,
+                            nodeDimensions, cellTreeDepth,
+                            progress);
                     }
 
                     var coverageLayers = new List<uint>();

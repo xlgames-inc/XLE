@@ -32,6 +32,7 @@ namespace RenderCore { namespace Techniques
         Metal::RasterizerState _cullReverse;
 
         Metal::SamplerState _defaultSampler;
+        Metal::SamplerState _linearClampSampler;
 
         Metal::ConstantBuffer _localTransformBuffer;
 

@@ -34,9 +34,9 @@ uint CalculateShallowWaterArrayIndex(Texture2D<uint> lookupTable, int2 gridCoord
 }
 
 #if SURFACE_HEIGHTS_FLOAT==1
-    Texture2DArray<float>		SurfaceHeightsTexture : register(t0);
+    Texture2D<float>		   SurfaceHeightsTexture : register(t0);
 #else
-    Texture2DArray<uint>		SurfaceHeightsTexture : register(t0);
+    Texture2DArray<uint>	   SurfaceHeightsTexture : register(t0);
 #endif
 
 cbuffer SurfaceHeightAddressing : register(b1)
@@ -47,11 +47,7 @@ cbuffer SurfaceHeightAddressing : register(b1)
 	float	SurfaceHeightScale, SurfaceHeightOffset;
 }
 
-#if SURFACE_HEIGHTS_FLOAT==1
-    float ManualInterpolateSurfaceHeight_Exploded(Texture2DArray<float> tex, float2 exploded, uint arrayIndex)
-#else
-    float ManualInterpolateSurfaceHeight_Exploded(Texture2DArray<uint> tex, float2 exploded, uint arrayIndex)
-#endif
+float ManualInterpolateSurfaceHeight_Exploded(Texture2DArray<uint> tex, float2 exploded, uint arrayIndex)
 {
 		// note that wrapping/borders aren't handled
 		//	.. it means there can be problems if we try to read from
@@ -69,7 +65,9 @@ cbuffer SurfaceHeightAddressing : register(b1)
 	    ;
 }
 
-float LoadSurfaceHeight(int3 coord)
+SamplerState LinearClampingSampler : register(s0);
+
+float LoadSurfaceHeight(int2 coord)
 {
 		//	the coordinate system for the water may not exactly match the coordinates
 		//	for the surface height texture. We need to convert coordinate systems, and
@@ -85,11 +83,19 @@ float LoadSurfaceHeight(int3 coord)
 
 			// "surfaceHeightCoord" is the "exploded" coordinates on this texture
 			//		-- that is integer values correspond with pixel top-left corners
-		float rawHeight = ManualInterpolateSurfaceHeight_Exploded(
-            SurfaceHeightsTexture, float2(SurfaceHeightBaseCoord.xy) + surfaceHeightCoord, SurfaceHeightBaseCoord.z);
+        #if SURFACE_HEIGHTS_FLOAT==1
+            int2 dims;
+            SurfaceHeightsTexture.GetDimensions(dims.x, dims.y);
+            float rawHeight =
+                SurfaceHeightsTexture.SampleLevel(
+                    LinearClampingSampler,
+                    (float2(SurfaceHeightBaseCoord.xy) + surfaceHeightCoord) / float2(dims), 0);
+        #else
+            float rawHeight = ManualInterpolateSurfaceHeight_Exploded(
+                SurfaceHeightsTexture, float2(SurfaceHeightBaseCoord.xy) + surfaceHeightCoord, SurfaceHeightBaseCoord.z);
+        #endif
 		return SurfaceHeightOffset + rawHeight * SurfaceHeightScale;
 	}
 }
 
 #endif
-

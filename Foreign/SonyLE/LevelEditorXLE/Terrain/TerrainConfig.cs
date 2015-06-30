@@ -38,6 +38,11 @@ namespace LevelEditorXLE.Terrain
                 m_importSourceBtn.Enabled = value.Import == Config.ImportType.DEMFile;
                 m_importType.SelectedIndex = 0;
                 m_importSource.Text = value.SourceDEMFile;
+
+                m_createCellsX.Text = value.NewCellCountX.ToString();
+                m_createCellsY.Text = value.NewCellCountY.ToString();
+                m_createCellsX.Enabled = value.Import == Config.ImportType.NewBlankTerrain;
+                m_createCellsY.Enabled = value.Import == Config.ImportType.NewBlankTerrain;
             }
         }
 
@@ -69,15 +74,16 @@ namespace LevelEditorXLE.Terrain
             [Category("Coverage")] [Description("Has a layer for the decoration selection")]
             public bool HasDecorationCoverage { get; set; }
 
-            [Browsable(false)]
-            public string SourceDEMFile { get; set; }
+            [Browsable(false)] public string SourceDEMFile { get; set; }
+            [Browsable(false)] public uint NewCellCountX { get; set; }
+            [Browsable(false)] public uint NewCellCountY { get; set; }
 
-            public enum ImportType { None, DEMFile };
+            public enum ImportType { None, DEMFile, NewBlankTerrain };
 
             [Browsable(false)]
             public ImportType Import { get; set; }
 
-            internal Config() { NodeDimensions = 32; Overlap = 2; Spacing = 10; Import = ImportType.None; }
+            internal Config() { NodeDimensions = 32; Overlap = 2; Spacing = 10; Import = ImportType.None; NewCellCountX = NewCellCountY = 1; }
         };
 
         private Config m_config;
@@ -93,7 +99,18 @@ namespace LevelEditorXLE.Terrain
             m_importType.Enabled = enabled;
             m_importSource.Enabled = enabled;
             m_importSourceBtn.Enabled = enabled;
-            m_config.Import = enabled ? Config.ImportType.DEMFile : Config.ImportType.None;
+
+            if (enabled)
+            {
+                m_createBlankTerrainCheck.CheckState = CheckState.Unchecked;
+                m_config.Import = Config.ImportType.DEMFile;
+            } 
+            else
+            {
+                m_config.Import = 
+                    (m_createBlankTerrainCheck.CheckState == CheckState.Checked) 
+                    ? Config.ImportType.NewBlankTerrain : Config.ImportType.None;
+            }
         }
 
         private void ImportSourceBtn_Click(object sender, EventArgs e)
@@ -109,6 +126,39 @@ namespace LevelEditorXLE.Terrain
         private void m_importSource_TextChanged(object sender, EventArgs e)
         {
             m_config.SourceDEMFile = m_importSource.Text;
+        }
+
+        private void DoCreateBlank_CheckedChanged(object sender, EventArgs e)
+        {
+            bool enabled = (m_createBlankTerrainCheck.CheckState == CheckState.Checked);
+            m_createCellsX.Enabled = enabled;
+            m_createCellsY.Enabled = enabled;
+
+            if (enabled)
+            {
+                m_doImport.CheckState = CheckState.Unchecked;
+                m_config.Import = Config.ImportType.NewBlankTerrain;
+            }
+            else
+            {
+                m_config.Import =
+                    (m_doImport.CheckState == CheckState.Checked)
+                    ? Config.ImportType.DEMFile : Config.ImportType.None;
+            }
+        }
+
+        private void m_createCellsX_TextChanged(object sender, EventArgs e)
+        {
+            uint newCellCount = 0;
+            if (!uint.TryParse(m_createCellsX.Text, out newCellCount)) newCellCount = 0;
+            m_config.NewCellCountX = newCellCount;
+        }
+
+        private void m_createCellsY_TextChanged(object sender, EventArgs e)
+        {
+            uint newCellCount = 0;
+            if (!uint.TryParse(m_createCellsY.Text, out newCellCount)) newCellCount = 0;
+            m_config.NewCellCountY = newCellCount;
         }
     }
 }

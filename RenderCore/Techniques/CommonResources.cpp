@@ -33,6 +33,8 @@ namespace RenderCore { namespace Techniques
         _cullDisable = CullMode::None;
         _cullReverse = RasterizerState(CullMode::Back, false);
 
+        _linearClampSampler = SamplerState(FilterMode::Trilinear, AddressMode::Clamp, AddressMode::Clamp);
+
         _localTransformBuffer = ConstantBuffer(nullptr, sizeof(LocalTransformConstants));
     }
 
