@@ -326,9 +326,10 @@ namespace SceneEngine
         ////////////////////////////////
 
     static ShallowWaterSim::SurfaceHeightsAddressingConstants
-        CalculateAddressing(    const ShallowWaterSim::ActiveElement& e, 
-                                ISurfaceHeightsProvider* surfaceHeightsProvider, 
-                                float gridPhysicalDimension)
+        CalculateAddressing(
+            const ShallowWaterSim::ActiveElement& e, 
+            ISurfaceHeightsProvider* surfaceHeightsProvider, 
+            float gridPhysicalDimension)
     {
             //  Even though we have a cached heights addressing, we should recalculate height addressing to 
             //  match new uploads, etc...
@@ -344,6 +345,60 @@ namespace SceneEngine
         newHeightsAddressing._scale = surfaceAddressing._heightScale;
         newHeightsAddressing._offset = surfaceAddressing._heightOffset;
         return newHeightsAddressing;
+    }
+
+    static void SetAddressingConstants(RenderCore::Metal::DeviceContext* context, ConstantBuffer& cb, 
+        const ShallowWaterSim::ActiveElement& e, 
+        ISurfaceHeightsProvider* surfaceHeightsProvider, 
+        float gridPhysicalDimension)
+    {
+        auto newHeightsAddressing = CalculateAddressing(e, surfaceHeightsProvider, gridPhysicalDimension);
+        cb.Update(*context, &newHeightsAddressing, sizeof(newHeightsAddressing));
+    }
+
+    struct SimulatingConstants
+    {
+        Int2	    _simulatingIndex; 
+	    unsigned    _arrayIndex;
+	    float       _rainQuantityPerFrame;
+        Float2      _worldSpaceOffset;
+        unsigned    _dummy[2];
+    };
+
+    static void SetSimulatingConstants(RenderCore::Metal::DeviceContext* context, ConstantBuffer& cb, const ShallowWaterSim::ActiveElement& ele, float rainQuantityPerFrame, Float2 offset = Float2(0,0))
+    {
+        SimulatingConstants constants = { 
+            Int2(ele._gridX, ele._gridY), ele._arrayIndex, 
+            rainQuantityPerFrame, 
+            offset, {0,0} 
+        };
+
+        cb.Update(*context, &constants, sizeof(SimulatingConstants));
+    }
+
+    static void DispatchEachElement(
+        RenderCore::Metal::DeviceContext* context,
+        const std::vector<ShallowWaterSim::ActiveElement>& elements,
+        ConstantBuffer& basicConstantsBuffer, ConstantBuffer& surfaceHeightsConstantsBuffer,
+        ISurfaceHeightsProvider* surfaceHeightsProvider, 
+        float gridPhysicalDimension, float rainQuantityPerFrame, 
+        unsigned elementDimension)
+    {
+        for (auto i=elements.cbegin(); i!=elements.cend(); ++i) {
+            if (i->_arrayIndex < 128) {
+                SetSimulatingConstants(context, basicConstantsBuffer, *i, rainQuantityPerFrame);
+                SetAddressingConstants(context, surfaceHeightsConstantsBuffer, *i, surfaceHeightsProvider, gridPhysicalDimension);
+                context->Dispatch(1, elementDimension, 1);
+            }
+        }
+    }
+
+    template<int Count>
+        static void BuildShaderDefines(char (&result)[Count], unsigned gridDimension, ISurfaceHeightsProvider* surfaceHeightsProvider = nullptr, ShallowBorderMode::Enum borderMode = ShallowBorderMode::BaseHeight)
+    {
+        _snprintf_s(result, Count, 
+            "SHALLOW_WATER_TILE_DIMENSION=%i;SHALLOW_WATER_BOUNDARY=%i;SURFACE_HEIGHTS_FLOAT=%i", 
+            gridDimension, unsigned(borderMode), surfaceHeightsProvider ? int(surfaceHeightsProvider->IsFloatFormat()) : 0);
     }
 
     void ShallowWater_ExecuteInternalSimulation(
@@ -362,17 +417,7 @@ namespace SceneEngine
         ConstantBuffer globalOceanMaterialConstantBuffer(&materialConstants, sizeof(materialConstants));
 
         char shaderDefines[256]; 
-        _snprintf_s(shaderDefines, dimof(shaderDefines), 
-            "SHALLOW_WATER_TILE_DIMENSION=%i;SHALLOW_WATER_BOUNDARY=%i;SURFACE_HEIGHTS_FLOAT=%i", 
-            shallowBox._gridDimension, unsigned(borderMode),
-            int(surfaceHeightsProvider->IsFloatFormat()));
-
-        context->BindCS(MakeResourceList(
-            shallowBox._simulationGrid->_waterHeightsUAV[thisFrameBuffer],
-            shallowBox._simulationGrid->_waterVelocitiesUAV[0],
-            shallowBox._simulationGrid->_waterVelocitiesUAV[1],
-            shallowBox._simulationGrid->_waterVelocitiesUAV[2],
-            shallowBox._simulationGrid->_waterVelocitiesUAV[3]));
+        BuildShaderDefines(shaderDefines, shallowBox._gridDimension, surfaceHeightsProvider, borderMode);
 
         if (prevFrameBuffer!=thisFrameBuffer) {
             context->BindCS(MakeResourceList(
@@ -393,18 +438,18 @@ namespace SceneEngine
 
         context->BindCS(MakeResourceList(0, globalOceanMaterialConstantBuffer));
 
-        struct SimulatingConstants
-        {
-            Int2	    _simulatingIndex; 
-	        unsigned    _arrayIndex;
-	        float       _rainQuantityPerFrame;
-        } constants = { Int2(0,0), 0, rainQuantityPerFrame };
-
         ConstantBuffer surfaceHeightsConstantsBuffer(nullptr, sizeof(ShallowWaterSim::SurfaceHeightsAddressingConstants));
         ConstantBuffer basicConstantsBuffer(nullptr, sizeof(SimulatingConstants));
         context->BindCS(MakeResourceList(1, surfaceHeightsConstantsBuffer, basicConstantsBuffer, ConstantBuffer(compressionConstants, 4*sizeof(float))));
 
         if (!shallowBox._usePipeModel) {
+
+            context->BindCS(MakeResourceList(
+                shallowBox._simulationGrid->_waterHeightsUAV[thisFrameBuffer],
+                shallowBox._simulationGrid->_waterVelocitiesUAV[0],
+                shallowBox._simulationGrid->_waterVelocitiesUAV[1],
+                shallowBox._simulationGrid->_waterVelocitiesUAV[2],
+                shallowBox._simulationGrid->_waterVelocitiesUAV[3]));
 
             auto& cshaderH = Assets::GetAssetDep<ComputeShader>("game/xleres/Ocean/ShallowWaterSim.csh:RunSimulationH:cs_*", shaderDefines);
             auto& cshaderV = Assets::GetAssetDep<ComputeShader>("game/xleres/Ocean/ShallowWaterSim.csh:RunSimulationV:cs_*", shaderDefines);
@@ -412,32 +457,14 @@ namespace SceneEngine
             for (unsigned p=0; p<2; ++p) {
                     // flip forward and reverse iteration through "box._activeSimulationElements" every frame
                     //  (and every pass)
-                if ((bufferCounter + p)&1) {
-                    for (auto i = shallowBox._activeSimulationElements.cbegin(); i!=shallowBox._activeSimulationElements.cend(); ++i) {
-                        if (i->_arrayIndex < 128) {
-                            constants._simulatingIndex = Int2(i->_gridX, i->_gridY);
-                            constants._arrayIndex = i->_arrayIndex;
-                            auto newHeightsAddressing = CalculateAddressing(*i, surfaceHeightsProvider, gridPhysicalDimension);
-                            basicConstantsBuffer.Update(*context, &constants, sizeof(SimulatingConstants));
-                            surfaceHeightsConstantsBuffer.Update(*context, &newHeightsAddressing, sizeof(newHeightsAddressing));
+                for (auto i = shallowBox._activeSimulationElements.cbegin(); i!=shallowBox._activeSimulationElements.cend(); ++i) {
+                    if (i->_arrayIndex < 128) {
+                        SetSimulatingConstants(context, basicConstantsBuffer, *i, rainQuantityPerFrame);
+                        SetAddressingConstants(context, surfaceHeightsConstantsBuffer, *i, surfaceHeightsProvider, gridPhysicalDimension);
 
-                                // checkerboard pattern flip horizontal/vertical
-                            int flip = (i->_gridX + i->_gridY + bufferCounter + p)&1;
-                            context->Bind((flip)?cshaderH:cshaderV); context->Dispatch(1, shallowBox._gridDimension, 1);
-                        }
-                    }
-                } else {
-                    for (auto i = shallowBox._activeSimulationElements.crbegin(); i!=shallowBox._activeSimulationElements.crend(); ++i) {
-                        if (i->_arrayIndex < 128) {
-                            constants._simulatingIndex = Int2(i->_gridX, i->_gridY);
-                            constants._arrayIndex = i->_arrayIndex;
-                            auto newHeightsAddressing = CalculateAddressing(*i, surfaceHeightsProvider, gridPhysicalDimension);
-                            basicConstantsBuffer.Update(*context, &constants, sizeof(SimulatingConstants));
-                            surfaceHeightsConstantsBuffer.Update(*context, &newHeightsAddressing, sizeof(newHeightsAddressing));
-
-                            int flip = (i->_gridX + i->_gridY + bufferCounter + p)&1;
-                            context->Bind((flip)?cshaderH:cshaderV); context->Dispatch(1, shallowBox._gridDimension, 1);
-                        }
+                            // checkerboard pattern flip horizontal/vertical
+                        int flip = (i->_gridX + i->_gridY + bufferCounter + p)&1;
+                        context->Bind((flip)?cshaderH:cshaderV); context->Dispatch(1, shallowBox._gridDimension, 1);
                     }
                 }
             }
@@ -448,16 +475,9 @@ namespace SceneEngine
                 auto& cshaderVel = Assets::GetAssetDep<ComputeShader>(
                     "game/xleres/Ocean/PipeModelShallowWaterSim.csh:UpdateVelocities:cs_*", shaderDefines);
                 context->Bind(cshaderVel);
-                for (auto i=shallowBox._activeSimulationElements.cbegin(); i!=shallowBox._activeSimulationElements.cend(); ++i) {
-                    if (i->_arrayIndex < 128) {
-                        constants._simulatingIndex = Int2(i->_gridX, i->_gridY);
-                        constants._arrayIndex = i->_arrayIndex;
-                        auto newHeightsAddressing = CalculateAddressing(*i, surfaceHeightsProvider, gridPhysicalDimension);
-                        basicConstantsBuffer.Update(*context, &constants, sizeof(SimulatingConstants));
-                        surfaceHeightsConstantsBuffer.Update(*context, &newHeightsAddressing, sizeof(newHeightsAddressing));
-                        context->Dispatch(1, shallowBox._gridDimension, 1);
-                    }
-                }
+                DispatchEachElement(
+                    context, shallowBox._activeSimulationElements, basicConstantsBuffer, surfaceHeightsConstantsBuffer, 
+                    surfaceHeightsProvider, gridPhysicalDimension, rainQuantityPerFrame, shallowBox._gridDimension);
             } else {
 
                     //      Second method for calculating velocity
@@ -468,38 +488,25 @@ namespace SceneEngine
                     shallowBox._simulationGrid->_slopesBufferUAV[1]));
 
                 context->Bind(Assets::GetAssetDep<ComputeShader>("game/xleres/Ocean/ShallowWaterSim.csh:UpdateVelocities0:cs_*", shaderDefines));
-                for (auto i=shallowBox._activeSimulationElements.cbegin(); i!=shallowBox._activeSimulationElements.cend(); ++i) {
-                    if (i->_arrayIndex < 128) {
-                        constants._simulatingIndex = Int2(i->_gridX, i->_gridY);
-                        constants._arrayIndex = i->_arrayIndex;
-                        auto newHeightsAddressing = CalculateAddressing(*i, surfaceHeightsProvider, gridPhysicalDimension);
-                        basicConstantsBuffer.Update(*context, &constants, sizeof(SimulatingConstants));
-                        surfaceHeightsConstantsBuffer.Update(*context, &newHeightsAddressing, sizeof(newHeightsAddressing));
-                        context->Dispatch(1, shallowBox._gridDimension, 1);
-                    }
-                }
+                DispatchEachElement(
+                    context, shallowBox._activeSimulationElements, basicConstantsBuffer, surfaceHeightsConstantsBuffer, 
+                    surfaceHeightsProvider, gridPhysicalDimension, rainQuantityPerFrame, shallowBox._gridDimension);
+
 
                 context->Bind(Assets::GetAssetDep<ComputeShader>("game/xleres/Ocean/ShallowWaterSim.csh:UpdateVelocities1:cs_*", shaderDefines));
-                for (auto i=shallowBox._activeSimulationElements.cbegin(); i!=shallowBox._activeSimulationElements.cend(); ++i) {
-                    if (i->_arrayIndex < 128) {
-                        constants._simulatingIndex = Int2(i->_gridX, i->_gridY);
-                        constants._arrayIndex = i->_arrayIndex;
-                        auto newHeightsAddressing = CalculateAddressing(*i, surfaceHeightsProvider, gridPhysicalDimension);
-                        basicConstantsBuffer.Update(*context, &constants, sizeof(SimulatingConstants));
-                        surfaceHeightsConstantsBuffer.Update(*context, &newHeightsAddressing, sizeof(newHeightsAddressing));
-                        context->Dispatch(1, shallowBox._gridDimension, 1);
-                    }
-                }
+                DispatchEachElement(
+                    context, shallowBox._activeSimulationElements, basicConstantsBuffer, surfaceHeightsConstantsBuffer, 
+                    surfaceHeightsProvider, gridPhysicalDimension, rainQuantityPerFrame, shallowBox._gridDimension);
             }
 
         } else {
 
                 // have to run all of the "update velocities" first and then update heights
             auto& cshader0 = Assets::GetAssetDep<ComputeShader>(
-                "game/xleres/Ocean/PipeModelShallowWaterSim.csh:UpdateVelocities:cs_*", shaderDefines);
+                "game/xleres/Ocean/PipeModelShallowWaterSim.csh:UpdateVelocities:cs_*", 
+                (StringMeld<256>() << shaderDefines << ";WRITING_VELOCITIES=1").get());
             auto& cshader1 = Assets::GetAssetDep<ComputeShader>(
-                "game/xleres/Ocean/PipeModelShallowWaterSim.csh:UpdateHeights:cs_*", 
-                (StringMeld<256>() << shaderDefines << ";WRITING_HEIGHTS=1").get());
+                "game/xleres/Ocean/PipeModelShallowWaterSim.csh:UpdateHeights:cs_*", shaderDefines);
 
                 // order is important... We must start in the bottom right corner and work to the top left
             auto sortedElements = shallowBox._activeSimulationElements;
@@ -542,16 +549,9 @@ namespace SceneEngine
                         shallowBox._simulationGrid->_waterHeightsUAV[thisFrameBuffer]));
                 }
 
-                for (auto i=sortedElements.cbegin(); i!=sortedElements.cend(); ++i) {
-                    if (i->_arrayIndex < 128) {
-                        constants._simulatingIndex = Int2(i->_gridX, i->_gridY);
-                        constants._arrayIndex = i->_arrayIndex;
-                        auto newHeightsAddressing = CalculateAddressing(*i, surfaceHeightsProvider, gridPhysicalDimension);
-                        basicConstantsBuffer.Update(*context, &constants, sizeof(SimulatingConstants));
-                        surfaceHeightsConstantsBuffer.Update(*context, &newHeightsAddressing, sizeof(newHeightsAddressing));
-                        context->Dispatch(1, shallowBox._gridDimension, 1);
-                    }
-                }
+                DispatchEachElement(
+                    context, sortedElements, basicConstantsBuffer, surfaceHeightsConstantsBuffer, 
+                    surfaceHeightsProvider, gridPhysicalDimension, rainQuantityPerFrame, shallowBox._gridDimension);
 
                 context->UnbindCS<RenderCore::Metal::UnorderedAccessView>(0, 8);
             }
@@ -597,10 +597,7 @@ namespace SceneEngine
         }
 
         char shaderDefines[256]; 
-        _snprintf_s(shaderDefines, dimof(shaderDefines), 
-            "SHALLOW_WATER_TILE_DIMENSION=%i;SHALLOW_WATER_BOUNDARY=%i;SURFACE_HEIGHTS_FLOAT=%i", 
-            shallowBox._gridDimension, unsigned(borderMode),
-            int(surfaceHeightsProvider.IsFloatFormat()));
+        BuildShaderDefines(shaderDefines, shallowBox._gridDimension, &surfaceHeightsProvider, borderMode);
 
         auto& cshader = Assets::GetAssetDep<ComputeShader>(
             usePipeModel?"game/xleres/Ocean/InitSimGrid.csh:InitPipeModel:cs_*":"game/xleres/Ocean/InitSimGrid.csh:main:cs_*", shaderDefines);
@@ -639,9 +636,8 @@ namespace SceneEngine
                     Int2 _lookableTableCoords;
                     unsigned _simulatingGridIndex;
                     unsigned _dummy;
-                } initCellConstants = {
-                    Int2(i->_gridX, i->_gridY), assignmentIndex, 0
-                };
+                } initCellConstants = { Int2(i->_gridX, i->_gridY), assignmentIndex, 0 };
+
                 newElement._heightsAddressing._baseCoord = surfaceAddressing._baseCoordinate;
                 newElement._heightsAddressing._textureMin = surfaceAddressing._minCoordOffset;
                 newElement._heightsAddressing._textureMax = surfaceAddressing._maxCoordOffset;
@@ -847,8 +843,8 @@ namespace SceneEngine
 
         }
 
-        char shaderDefines[256]; 
-        _snprintf_s(shaderDefines, dimof(shaderDefines), "SHALLOW_WATER_TILE_DIMENSION=%i", shallowBox._gridDimension);
+        char shaderDefines[256];
+        BuildShaderDefines(shaderDefines, shallowBox._gridDimension);
 
                 //  Generate normals using the displacement textures
                 //  Note, this will generate the normals for every array slice, even
@@ -932,11 +928,9 @@ namespace SceneEngine
         ConstantBuffer globalOceanMaterialConstantBuffer(&materialConstants, sizeof(materialConstants));
 
         char shaderDefines[256]; 
-        _snprintf_s(shaderDefines, dimof(shaderDefines), 
-            "SHALLOW_WATER_TILE_DIMENSION=%i;SHALLOW_WATER_BOUNDARY=%i", 
-            shallowBox._gridDimension, unsigned(borderMode));
-        unsigned thisFrameBuffer = (bufferCounter+0) % shallowBox._simulationGrid->_rotatingBufferCount;
+        BuildShaderDefines(shaderDefines, shallowBox._gridDimension, nullptr, borderMode);
 
+        unsigned thisFrameBuffer = (bufferCounter+0) % shallowBox._simulationGrid->_rotatingBufferCount;
         auto& patchRender = Assets::GetAssetDep<Metal::ShaderProgram>(
             "game/xleres/Ocean/OceanPatch.vsh:ShallowWater:vs_*",
             "game/xleres/solidwireframe.gsh:main:gs_*",
@@ -945,7 +939,7 @@ namespace SceneEngine
         BoundUniforms boundUniforms(patchRender);
         Techniques::TechniqueContext::BindGlobalUniforms(boundUniforms);
         boundUniforms.BindConstantBuffer(Hash64("OceanMaterialSettings"), 0, 1);
-        boundUniforms.BindConstantBuffer(Hash64("ShallowWaterGridConstants"), 1, 1);
+        boundUniforms.BindConstantBuffer(Hash64("ShallowWaterUpdateConstants"), 1, 1);
 
         context->Bind(patchRender);
 
@@ -957,21 +951,17 @@ namespace SceneEngine
         auto& simplePatchBox = Techniques::FindCachedBox<SimplePatchBox>(SimplePatchBox::Desc(shallowBox._gridDimension, shallowBox._gridDimension, true));
         context->Bind(simplePatchBox._simplePatchIndexBuffer, NativeFormat::R32_UINT);
 
+        ConstantBuffer simulatingCB(nullptr, sizeof(SimulatingConstants));
+
+        const ConstantBuffer* prebuiltBuffers[] = { &globalOceanMaterialConstantBuffer, &simulatingCB };
+        boundUniforms.Apply(
+            *context, 
+            parserContext.GetGlobalUniformsStream(),
+            UniformsStream(nullptr, prebuiltBuffers, dimof(prebuiltBuffers)));
+
         for (auto i=shallowBox._activeSimulationElements.cbegin(); i!=shallowBox._activeSimulationElements.cend(); ++i) {
             if (i->_arrayIndex < 128) {
-                struct Constants {
-                    Int2	_gridIndex;
-	                unsigned _arrayIndex, _pad0;
-	                Float2	_offset;
-                    unsigned _pad1[2];
-                } constants = { Int2(i->_gridX, i->_gridY), i->_arrayIndex, 0, offset };
-                ConstantBuffer shallowWaterGridConstants(&constants, sizeof(constants));
-                const ConstantBuffer* prebuiltBuffers[] = { &globalOceanMaterialConstantBuffer, &shallowWaterGridConstants };
-                boundUniforms.Apply(
-                    *context, 
-                    parserContext.GetGlobalUniformsStream(),
-                    UniformsStream(nullptr, prebuiltBuffers, dimof(prebuiltBuffers)));
-
+                SetSimulatingConstants(context, simulatingCB, *i, 0.f, offset);
                 context->DrawIndexed(simplePatchBox._simplePatchIndexCount);
             }
         }
@@ -988,19 +978,18 @@ namespace SceneEngine
         ConstantBuffer globalOceanMaterialConstantBuffer(&materialConstants, sizeof(materialConstants));
 
         char shaderDefines[256]; 
-        _snprintf_s(shaderDefines, dimof(shaderDefines), 
-            "SHALLOW_WATER_TILE_DIMENSION=%i;SHALLOW_WATER_BOUNDARY=%i", 
-            shallowBox._gridDimension, unsigned(borderMode));
-        unsigned thisFrameBuffer = (bufferCounter+0) % shallowBox._simulationGrid->_rotatingBufferCount;
+        BuildShaderDefines(shaderDefines, shallowBox._gridDimension, nullptr, borderMode);
 
+        unsigned thisFrameBuffer = (bufferCounter+0) % shallowBox._simulationGrid->_rotatingBufferCount;
         auto& patchRender = Assets::GetAssetDep<Metal::ShaderProgram>(
             "game/xleres/Ocean/OceanVelocitiesDebugging.sh:vs_main:vs_*",
             "game/xleres/Ocean/OceanVelocitiesDebugging.sh:ps_main:ps_*",
             shaderDefines);
+
         BoundUniforms boundUniforms(patchRender);
         Techniques::TechniqueContext::BindGlobalUniforms(boundUniforms);
         boundUniforms.BindConstantBuffer(Hash64("OceanMaterialSettings"), 0, 1);
-        boundUniforms.BindConstantBuffer(Hash64("ShallowWaterGridConstants"), 1, 1);
+        boundUniforms.BindConstantBuffer(Hash64("ShallowWaterUpdateConstants"), 1, 1);
 
         context->Bind(patchRender);
 
@@ -1024,21 +1013,16 @@ namespace SceneEngine
         auto& simplePatchBox = Techniques::FindCachedBox<SimplePatchBox>(SimplePatchBox::Desc(shallowBox._gridDimension, shallowBox._gridDimension, true));
         context->Bind(simplePatchBox._simplePatchIndexBuffer, NativeFormat::R32_UINT);
 
+        ConstantBuffer simulatingCB(nullptr, sizeof(SimulatingConstants));
+        const ConstantBuffer* prebuiltBuffers[] = { &globalOceanMaterialConstantBuffer, &simulatingCB };
+        boundUniforms.Apply(
+            *context, 
+            parserContext.GetGlobalUniformsStream(),
+            UniformsStream(nullptr, prebuiltBuffers, dimof(prebuiltBuffers)));
+
         for (auto i=shallowBox._activeSimulationElements.cbegin(); i!=shallowBox._activeSimulationElements.cend(); ++i) {
             if (i->_arrayIndex < 128) {
-                struct Constants {
-                    Int2	    _gridIndex;
-	                unsigned    _arrayIndex, _pad0;
-	                Float2	    _offset;
-                    unsigned    _pad1[2];
-                } constants = { Int2(i->_gridX, i->_gridY), i->_arrayIndex, 0, offset };
-                ConstantBuffer shallowWaterGridConstants(&constants, sizeof(constants));
-                const ConstantBuffer* prebuiltBuffers[] = { &globalOceanMaterialConstantBuffer, &shallowWaterGridConstants };
-                boundUniforms.Apply(
-                    *context, 
-                    parserContext.GetGlobalUniformsStream(),
-                    UniformsStream(nullptr, prebuiltBuffers, dimof(prebuiltBuffers)));
-
+                SetSimulatingConstants(context, simulatingCB, *i, 0.f, offset);
                 context->DrawIndexed(simplePatchBox._simplePatchIndexCount);
             }
         }

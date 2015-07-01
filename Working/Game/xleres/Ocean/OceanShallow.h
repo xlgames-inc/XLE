@@ -19,14 +19,24 @@
     #define SHALLOW_WATER_TILE_DIMENSION 128
 #endif
 
-uint CalculateShallowWaterArrayIndex(Texture2D<uint> lookupTable, int2 gridCoord)
+Texture2D<uint> CellIndexLookupTable : register(t4);
+
+cbuffer ShallowWaterUpdateConstants : register(b2)
+{
+    int2	SimulatingIndex;
+    uint	ArrayIndex;
+    float	RainQuantityPerFrame;		// 0.001f
+    float2  WorldSpaceOffset;
+}
+
+uint CalculateShallowWaterArrayIndex(Texture2D<uint> CellIndexLookupTable, int2 gridCoord)
 {
 	uint2 dims;
-	lookupTable.GetDimensions(dims.x, dims.y);
+	CellIndexLookupTable.GetDimensions(dims.x, dims.y);
 	uint result;
 	uint2 a = gridCoord + int2(256,256);
     if (a.x < dims.x && a.y < dims.y) {
-		result = lookupTable.Load(uint3(a, 0));
+		result = CellIndexLookupTable.Load(uint3(a, 0));
 	} else {
 		result = 0xffffffff;
 	}
@@ -34,9 +44,9 @@ uint CalculateShallowWaterArrayIndex(Texture2D<uint> lookupTable, int2 gridCoord
 }
 
 #if SURFACE_HEIGHTS_FLOAT==1
-    Texture2D<float>		   SurfaceHeightsTexture : register(t0);
+    Texture2D<float>        SurfaceHeightsTexture : register(t0);
 #else
-    Texture2DArray<uint>	   SurfaceHeightsTexture : register(t0);
+    Texture2DArray<uint>    SurfaceHeightsTexture : register(t0);
 #endif
 
 cbuffer SurfaceHeightAddressing : register(b1)
@@ -75,7 +85,7 @@ float LoadSurfaceHeight(int2 coord)
 
 	const bool oneToOne = false;
 	if (oneToOne) {
-		float rawHeight = (float)SurfaceHeightsTexture.Load(int4(SurfaceHeightBaseCoord + int3(coord.xy, 0), 0));
+		float rawHeight = (float)SurfaceHeightsTexture.Load(int4(SurfaceHeightBaseCoord + int3(coord.xy, 0), 0)).r;
 		return SurfaceHeightOffset + rawHeight * SurfaceHeightScale;
 	} else {
 		float2 tcInput = coord.xy / float2(SHALLOW_WATER_TILE_DIMENSION, SHALLOW_WATER_TILE_DIMENSION);
@@ -96,6 +106,44 @@ float LoadSurfaceHeight(int2 coord)
         #endif
 		return SurfaceHeightOffset + rawHeight * SurfaceHeightScale;
 	}
+}
+
+int3 NormalizeGridCoord(int2 coord)
+{
+    int2 tile = coord.xy / SHALLOW_WATER_TILE_DIMENSION;
+    uint gridIndex = CalculateShallowWaterArrayIndex(CellIndexLookupTable, tile);
+    if (gridIndex < 128) {
+        return int3(coord.xy - tile * SHALLOW_WATER_TILE_DIMENSION, gridIndex);
+    }
+
+    return int3(0,0,-1);	// off the edge of the simulation area
+}
+
+    ///////////////////////////////////////////////////
+        //   c o m p r e s s i o n   //
+    ///////////////////////////////////////////////////
+
+cbuffer CompressionConstants
+{
+    float3 CompressionMidPoint;
+    float CompressionRadius;
+}
+
+float2 WorldPositionFromElementIndex(int2 eleIndex)
+{
+    return WorldSpaceOffset + float2(SimulatingIndex + eleIndex / float(SHALLOW_WATER_TILE_DIMENSION)) * ShallowGridPhysicalDimension;
+}
+
+float CalculateExternalPressure(float2 worldPosition)
+{
+    float2 off = worldPosition - CompressionMidPoint.xy;
+    float distance2DSq = dot(off, off);
+    float radiusSq = 100.f * CompressionRadius * CompressionRadius;
+    if (distance2DSq < radiusSq) {
+        return 1e11f * (1.0f - (distance2DSq / radiusSq));
+    }
+
+    return 0.f;
 }
 
 #endif

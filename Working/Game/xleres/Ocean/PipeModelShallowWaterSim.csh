@@ -6,131 +6,49 @@
 
 #include "Ocean.h"
 #include "OceanShallow.h"
-
-#define DUPLEX_VEL
+#include "ShallowFlux.h"
 
 	//
 	//		Inspired by "Dynamic Simulation of Splashing Fluids"
 	//			James F. O'Brien and Jessica K. Hodgins	//	//		This is actually a really simple simulation of the water	//		surface (more or less ignoring the bottom of the water	//		volume). It uses the difference in heights of adjacent	//		to cells calculate a pressure differential, which becomes	//		an acceleration value. We maintain velocity values from	//		frame to frame, and update iteratively. It's very cheap!	//	//		But interaction with the shore line might not be correct,	//		because the term that takes into account the water depth	//		seems a bit rough.	//
 
-#if defined(WRITING_HEIGHTS) /////////////////////////////
-
+#if !defined(WRITING_VELOCITIES) //////////////////////////
 	RWTexture2DArray<float>	WaterHeights : register(u0);
-
-	Texture2DArray<float>	Velocities0	 : register(t5);
-	Texture2DArray<float>	Velocities1	 : register(t6);
-	Texture2DArray<float>	Velocities2	 : register(t7);
-	Texture2DArray<float>	Velocities3	 : register(t8);
-
-	#if defined(DUPLEX_VEL)
-		Texture2DArray<float>	Velocities4	 : register(t9);
-		Texture2DArray<float>	Velocities5	 : register(t10);
-		Texture2DArray<float>	Velocities6	 : register(t11);
-		Texture2DArray<float>	Velocities7  : register(t12);
-	#endif
-
 #else /////////////////////////////////////////////////////
-
 	Texture2DArray<float>	WaterHeights : register(t5);
-
-	RWTexture2DArray<float>	Velocities0	 : register(u0);
-	RWTexture2DArray<float>	Velocities1	 : register(u1);
-	RWTexture2DArray<float>	Velocities2	 : register(u2);
-	RWTexture2DArray<float>	Velocities3	 : register(u3);
-
-	#if defined(DUPLEX_VEL)
-		RWTexture2DArray<float>	Velocities4	 : register(u4);
-		RWTexture2DArray<float>	Velocities5	 : register(u5);
-		RWTexture2DArray<float>	Velocities6	 : register(u6);
-		RWTexture2DArray<float>	Velocities7  : register(u7);
-	#endif
-
 #endif ////////////////////////////////////////////////////
 
-
-Texture2D<uint>				LookupTable	 : register(t3);
-
-cbuffer Constants : register(b2)
-{
-	int2	SimulatingIndex;
-	uint	ArrayIndex;
-}
-
-static const float g = 9.8f;
-static const float WaterDensity = 999.97;		// (kg/m^2)
-static const float DeltaTime = 1.f / 60.f;
+static const float g 			 = 9.8f;
+static const float WaterDensity  = 999.97;		// (kg/m^2) (important for dynamic compression)
+static const float DeltaTime     = 1.f / 60.f;
 static const float VelResistance = .97f;
 static const float4 EdgeVelocity = 0.0.xxxx;
+static const float EdgeHeight 	 = -10000.f;	// WaterBaseHeight
 
-///////////////////////////////////////////////////
-	//   c o m p r e s s i o n   //
-///////////////////////////////////////////////////
+	//		Here, "PressureScalar" is particularly important for this model
+	//		it determines the rate of movement of the water. The size of
+	//		the water grid can be factored in by scaling this value.
+static const float PressureScalar = 1000.f;
 
-cbuffer CompressionConstants
-{
-	float3 CompressionMidPoint;
-	float CompressionRadius;
-}
-
-float2 WorldPositionFromElementIndex(int2 eleIndex)
-{
-	return float2(SimulatingIndex + eleIndex / float(SHALLOW_WATER_TILE_DIMENSION)) * ShallowGridPhysicalDimension;
-}
-
-float CalculateExternalPressure(float2 worldPosition)
-{
-	float2 off = worldPosition - CompressionMidPoint.xy;
-	float distance2DSq = dot(off, off);
-	float radiusSq = 100.f * CompressionRadius * CompressionRadius;
-	if (distance2DSq < radiusSq) {
-		return 1e11f * (1.0f - (distance2DSq / radiusSq));
-	}
-
-	return 0.f;
-}
-
-///////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
 	//   m a i n   s i m u l a t i o n   //
-///////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
 float AccelerationFromPressure(float h0, float h1, float waterDepth, float ep0, float ep1)
 {
-		//	here we imagine the volume volume as a lot columns (or pipes)
-		//	that are applying pressure on each other. The pressure applied
-		//	depends on the surface area between the pipes (hense the water
-		//	depth term). Just be eye, however, it looks like water depth
-		//	might have too large an effect at small depths?
+		//		Here we imagine the volume volume as a lot columns (or pipes)
+		//		that are applying pressure on each other. The pressure applied
+		//		depends on the surface area between the pipes (hense the water
+		//		depth term). Just be eye, however, it looks like water depth
+		//		might have too large an effect at small depths?
 	const float externalPressure0 = ep0, externalPressure1 = ep1;
 
 		// we can factor out "WaterDensity" if there is no external pressure
-	const float pressureScalar = 1000.f;
-	return max(0, ((g * pressureScalar * (h0 - h1)) / waterDepth + (externalPressure1 - externalPressure0) / (WaterDensity * waterDepth)));
+	return max(0, ((g * PressureScalar * (h0 - h1)) / waterDepth + (externalPressure1 - externalPressure0) / (WaterDensity * waterDepth)));
 }
 
 #if defined(DUPLEX_VEL)
 	groupshared float CachedHeights[3][SHALLOW_WATER_TILE_DIMENSION+2];
-
-		//
-		//	Cells:
-		//		0     1     2
-		//		3   center  4
-		//		5     6     7
-		//
-	static const uint AdjCellCount = 8;
-
-	static const int2 AdjCellDir[] =
-	{
-		int2(-1, -1), int2( 0, -1), int2(+1, -1),
-		int2(-1,  0), 				int2(+1,  0),
-		int2(-1, +1), int2( 0, +1), int2(+1, +1)
-	};
-
-	static const uint AdjCellComplement[] =
-	{
-		7, 6, 5,
-		4,    3,
-		2, 1, 0
-	};
 #else
 	groupshared float CachedHeights[2][SHALLOW_WATER_TILE_DIMENSION+2];
 #endif
@@ -201,42 +119,13 @@ void CalculateAcceleration(
 	}
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////
-	//   a d j a c e n t   g r i d s   //
-////////////////////////////////////////////////////////////////////////////////////////////////
-
-static const float EdgeHeight = -10000.f;	// WaterBaseHeight
-
-float CalculateBoundingWaterHeight(int2 address, int2 offset)
-{
-	uint adjacentSimulatingGrid = CalculateShallowWaterArrayIndex(LookupTable, SimulatingIndex + sign(offset));
-	if (adjacentSimulatingGrid < 128) {
-		int2 dims = int2(SHALLOW_WATER_TILE_DIMENSION, SHALLOW_WATER_TILE_DIMENSION);
-		int3 coords = int3((address.xy + offset.xy + dims) % dims, adjacentSimulatingGrid);
-		return WaterHeights[coords];
-	}
-
-	return EdgeHeight;
-}
-
-void LoadVelocities(out float velocities[AdjCellCount], uint3 coord)
-{
-	velocities[0] = Velocities0[coord];
-	velocities[1] = Velocities1[coord];
-	velocities[2] = Velocities2[coord];
-	velocities[3] = Velocities3[coord];
-
-	#if defined(DUPLEX_VEL)
-		velocities[4] = Velocities4[coord];
-		velocities[5] = Velocities5[coord];
-		velocities[6] = Velocities6[coord];
-		velocities[7] = Velocities7[coord];
-	#endif
-}
+///////////////////////////////////////////////////////////////////////////////////////////////////
+	//   l o a d   a n d   s t o r e   //
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
 void StoreVelocities(float velocities[AdjCellCount], uint3 coord)
 {
-#if !defined(WRITING_HEIGHTS)
+#if defined(WRITING_VELOCITIES)
 	Velocities0[coord] = velocities[0];
 	Velocities1[coord] = velocities[1];
 	Velocities2[coord] = velocities[2];
@@ -251,23 +140,29 @@ void StoreVelocities(float velocities[AdjCellCount], uint3 coord)
 #endif
 }
 
-void LoadVelocitiesBoundaryCheck(out float velocities[AdjCellCount], int3 coord)
+void LoadVelocities_BoundaryCheck(out float velocities[AdjCellCount], int3 coord)
 {
 	if (coord.x >= 0 && coord.y >= 0
 		&& coord.x < SHALLOW_WATER_TILE_DIMENSION && coord.y < SHALLOW_WATER_TILE_DIMENSION) {
 		LoadVelocities(velocities, coord);
 	} else {
-		int2 absolute = SimulatingIndex * SHALLOW_WATER_TILE_DIMENSION + coord.xy;
-		int2 gridIndex = absolute / SHALLOW_WATER_TILE_DIMENSION;
-		uint arrayIndex = CalculateShallowWaterArrayIndex(LookupTable, gridIndex);
-		if (arrayIndex < 128) {
-			uint3 newCoord = uint3(absolute % SHALLOW_WATER_TILE_DIMENSION, arrayIndex);
-			LoadVelocities(velocities, newCoord);
+		int3 normalized = NormalizeGridCoord(SimulatingIndex * SHALLOW_WATER_TILE_DIMENSION + coord.xy);
+		if (normalized.z >= 0) {
+			LoadVelocities(velocities, normalized);
 		} else {
-			for (uint c=0; c<AdjCellCount; ++c)
+			[unroll] for (uint c=0; c<AdjCellCount; ++c)
 				velocities[c] = EdgeVelocity;
 		}
 	}
+}
+
+float LoadWaterHeight_BoundaryCheck(int2 absPosition)
+{
+	int3 normalized = NormalizeGridCoord(absPosition);
+	if (normalized.z >= 0)
+		return EdgeHeight;
+
+	return WaterHeights[normalized];
 }
 
 float GetWaterDepth(float waterHeight, float surfaceHeight)
@@ -275,65 +170,66 @@ float GetWaterDepth(float waterHeight, float surfaceHeight)
 	return max(1e-2f, waterHeight - surfaceHeight);
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////
+float InitCachedHeights(int3 baseCoord)
+{
+
+		//		In each thread, we're going to calculate the the new height value for a single
+		//		cell. First thing we need to load is build the cached heights. We can distribute
+		//		this across the thread group easily...
+		//
+		//		Each tile is updated one after the other. We need to read from some adjacent tiles,
+		//		but we can only read from tiles that haven't been updated this frame yet. This means
+		//		we can only read top and left (and we need to make sure the tiles are updated in
+		//		the right order)
+
+	const uint tileDim = SHALLOW_WATER_TILE_DIMENSION;
+	uint x = baseCoord.x;
+	float centerWaterHeight = WaterHeights[baseCoord];
+	CachedHeights[1][1+x] = centerWaterHeight;
+
+		// We must also write a cache from immediately above. Except for the first row, it's easy
+	if (baseCoord.y==0) {
+		CachedHeights[0][1+x] = LoadWaterHeight_BoundaryCheck(baseCoord.xy + int2(0,-1));
+	} else {
+		CachedHeights[0][1+x] = WaterHeights[baseCoord+int3(0,-1,0)];
+	}
+
+	#if defined(DUPLEX_VEL)
+			// Also need to cache the height immediately below
+		if (baseCoord.y==(tileDim-1)) {
+			CachedHeights[2][1+x] = LoadWaterHeight_BoundaryCheck(baseCoord.xy + int2(0,1));
+		} else {
+			CachedHeights[2][1+x] = WaterHeights[baseCoord+int3(0,1,0)];
+		}
+	#endif
+
+		// special work in thread zero -- here we load the extreme left and right parts
+		// other threads will probably be idle in this part
+	if (x==0) {
+		CachedHeights[1][0] = LoadWaterHeight_BoundaryCheck(baseCoord.xy + int2(-1,0));
+		CachedHeights[1][tileDim+1] = LoadWaterHeight_BoundaryCheck(baseCoord.xy + int2(tileDim,0));
+
+		CachedHeights[0][0] = LoadWaterHeight_BoundaryCheck(baseCoord.xy + int2(-1,-1));
+		CachedHeights[0][tileDim+1] = LoadWaterHeight_BoundaryCheck(baseCoord.xy + int2(tileDim,-1));
+
+		#if defined(DUPLEX_VEL)
+			CachedHeights[2][0] = LoadWaterHeight_BoundaryCheck(baseCoord.xy+int2(-1,1));
+			CachedHeights[2][tileDim+1] = LoadWaterHeight_BoundaryCheck(baseCoord.xy+int2(tileDim,1));
+		#endif
+	}
+
+	return centerWaterHeight;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 	//   e n t r y   p o i n t s   //
-////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
 [numthreads(SHALLOW_WATER_TILE_DIMENSION, 1, 1)]
 	void		UpdateVelocities(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
 	int3 baseCoord = int3(dispatchThreadId.xy, ArrayIndex);
-
-		//	In each thread, we're going to calculate the the new height value for a single
-		//	cell. First thing we need to load is build the cached heights. We can distribute
-		//	this across the thread group easily...
-
-		//	Each tile is updated one after the other. We need to read from some adjacent tiles,
-		//	but we can only read from tiles that haven't been updated this frame yet. This means
-		//	we can only read top and left (and we need to make sure the tiles are updated in
-		//	the right order)
-
-	uint x = dispatchThreadId.x;
-	float centerWaterHeight = WaterHeights[baseCoord];
-	CachedHeights[1][1+x] = centerWaterHeight;
-	if (x==0) {
-		CachedHeights[1][0] = CalculateBoundingWaterHeight(baseCoord.xy, int2(-1,0));
-		CachedHeights[1][SHALLOW_WATER_TILE_DIMENSION+1] = CalculateBoundingWaterHeight(baseCoord.xy, int2(SHALLOW_WATER_TILE_DIMENSION,0));
-	}
-
-		// We must also write a cache from immediately above. Except for the first row, it's easy
-	if (dispatchThreadId.y==0) {
-		CachedHeights[0][1+x] = CalculateBoundingWaterHeight(baseCoord.xy, int2(0,-1));
-		if (x==0) {
-			CachedHeights[0][0] = CalculateBoundingWaterHeight(baseCoord.xy, int2(-1,-1));
-			CachedHeights[0][SHALLOW_WATER_TILE_DIMENSION+1] = CalculateBoundingWaterHeight(baseCoord.xy, int2(SHALLOW_WATER_TILE_DIMENSION,-1));
-		}
-	} else {
-		CachedHeights[0][1+x] = WaterHeights[baseCoord+int3(0,-1,0)];
-		if (x==0) {
-			CachedHeights[0][0] = CalculateBoundingWaterHeight(baseCoord.xy+int2(0,-1), int2(-1,0));
-			CachedHeights[0][SHALLOW_WATER_TILE_DIMENSION+1] = CalculateBoundingWaterHeight(baseCoord.xy+int2(0,-1), int2(SHALLOW_WATER_TILE_DIMENSION,0));
-		}
-	}
-
-	#if defined(DUPLEX_VEL)
-
-			// Also need to cache the height immediately below
-		if (dispatchThreadId.y==(SHALLOW_WATER_TILE_DIMENSION-1)) {
-			CachedHeights[2][1+x] = CalculateBoundingWaterHeight(baseCoord.xy, int2(0,1));
-			if (x==0) {
-				CachedHeights[2][0] = CalculateBoundingWaterHeight(baseCoord.xy, int2(-1,1));
-				CachedHeights[2][SHALLOW_WATER_TILE_DIMENSION+1] = CalculateBoundingWaterHeight(baseCoord.xy, int2(SHALLOW_WATER_TILE_DIMENSION,1));
-			}
-		} else {
-			CachedHeights[2][1+x] = WaterHeights[baseCoord+int3(0,1,0)];
-			if (x==0) {
-				CachedHeights[2][0] = CalculateBoundingWaterHeight(baseCoord.xy+int2(0,1), int2(-1,0));
-				CachedHeights[2][SHALLOW_WATER_TILE_DIMENSION+1] = CalculateBoundingWaterHeight(baseCoord.xy+int2(0,1), int2(SHALLOW_WATER_TILE_DIMENSION,0));
-			}
-		}
-
-	#endif
-
+	float centerWaterHeight = InitCachedHeights(baseCoord);
 	float centerSurfaceHeight = LoadSurfaceHeight(baseCoord.xy);
 	float2 worldPosition = WorldPositionFromElementIndex(baseCoord.xy);
 	float waterDepth = GetWaterDepth(centerWaterHeight, centerSurfaceHeight);
@@ -341,7 +237,7 @@ float GetWaterDepth(float waterHeight, float surfaceHeight)
 	GroupMemoryBarrierWithGroupSync();
 
 	float acceleration[AdjCellCount], velocities[AdjCellCount];
-	CalculateAcceleration(acceleration, x, waterDepth, worldPosition);
+	CalculateAcceleration(acceleration, baseCoord.x, waterDepth, worldPosition);
 	LoadVelocities(velocities, baseCoord);
 
 	float velSum = 0.f;
@@ -361,7 +257,7 @@ float GetWaterDepth(float waterHeight, float surfaceHeight)
 	StoreVelocities(velocities, baseCoord);
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
 float4 LoadVelocities4D(uint3 coord)
 {
@@ -372,7 +268,7 @@ float4 LoadVelocities4D(uint3 coord)
 
 float4 GetRightVelocity(int2 address)
 {
-	uint rightSimulatingGrid = CalculateShallowWaterArrayIndex(LookupTable, SimulatingIndex + int2(1, 0));
+	uint rightSimulatingGrid = CalculateShallowWaterArrayIndex(CellIndexLookupTable, SimulatingIndex + int2(1, 0));
 	if (rightSimulatingGrid < 128) {
 		uint3 coords = uint3(0, address.y, rightSimulatingGrid);
 		return LoadVelocities4D(coords);
@@ -383,7 +279,7 @@ float4 GetRightVelocity(int2 address)
 
 float4 GetLeftVelocity(int2 address)
 {
-	uint leftSimulatingGrid = CalculateShallowWaterArrayIndex(LookupTable, SimulatingIndex + int2(-1, 0));
+	uint leftSimulatingGrid = CalculateShallowWaterArrayIndex(CellIndexLookupTable, SimulatingIndex + int2(-1, 0));
 	if (leftSimulatingGrid < 128) {
 		uint3 coords = uint3(SHALLOW_WATER_TILE_DIMENSION-1, address.y, leftSimulatingGrid);
 		return LoadVelocities4D(coords);
@@ -394,7 +290,7 @@ float4 GetLeftVelocity(int2 address)
 
 float4 GetBottomVelocity(int2 address)
 {
-	uint bottomSimulatingGrid = CalculateShallowWaterArrayIndex(LookupTable, SimulatingIndex + int2(0, 1));
+	uint bottomSimulatingGrid = CalculateShallowWaterArrayIndex(CellIndexLookupTable, SimulatingIndex + int2(0, 1));
 	if (bottomSimulatingGrid < 128) {
 		uint3 coords = uint3(address.x, 0, bottomSimulatingGrid);
 		return LoadVelocities4D(coords);
@@ -405,7 +301,7 @@ float4 GetBottomVelocity(int2 address)
 
 float4 GetBottomLeftVelocity(int2 address)
 {
-	uint bottomLeftSimulatingGrid = CalculateShallowWaterArrayIndex(LookupTable, SimulatingIndex + int2(-1, 1));
+	uint bottomLeftSimulatingGrid = CalculateShallowWaterArrayIndex(CellIndexLookupTable, SimulatingIndex + int2(-1, 1));
 	if (bottomLeftSimulatingGrid < 128) {
 		uint3 coords = uint3(SHALLOW_WATER_TILE_DIMENSION-1, 0, bottomLeftSimulatingGrid);
 		return LoadVelocities4D(coords);
@@ -416,7 +312,7 @@ float4 GetBottomLeftVelocity(int2 address)
 
 float4 GetBottomRightVelocity(int2 address)
 {
-	uint bottomRightSimulatingGrid = CalculateShallowWaterArrayIndex(LookupTable, SimulatingIndex + int2(1, 1));
+	uint bottomRightSimulatingGrid = CalculateShallowWaterArrayIndex(CellIndexLookupTable, SimulatingIndex + int2(1, 1));
 	if (bottomRightSimulatingGrid < 128) {
 		uint3 coords = uint3(0, 0, bottomRightSimulatingGrid);
 		return LoadVelocities4D(coords);
@@ -425,7 +321,7 @@ float4 GetBottomRightVelocity(int2 address)
 	return EdgeVelocity;
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
 [numthreads(SHALLOW_WATER_TILE_DIMENSION, 1, 1)]
 	void		UpdateHeights(uint3 dispatchThreadId : SV_DispatchThreadID)
@@ -448,9 +344,9 @@ float4 GetBottomRightVelocity(int2 address)
 	float centerVel[AdjCellCount];
 	LoadVelocities(centerVel, baseCoord);
 
-	for (uint c=0; c<AdjCellCount; ++c) {
+	[unroll] for (uint c=0; c<AdjCellCount; ++c) {
 		float temp[AdjCellCount];
-		LoadVelocitiesBoundaryCheck(temp, int3(baseCoord) +int3(AdjCellDir[c],0));
+		LoadVelocities_BoundaryCheck(temp, int3(baseCoord) +int3(AdjCellDir[c],0));
 		centerVel[c] = centerVel[c] - temp[AdjCellComplement[c]];
 	}
 
@@ -465,12 +361,12 @@ float4 GetBottomRightVelocity(int2 address)
 
 #else
 
-		// In the "simplex" model, we store a velocity/flux value in only one
-		// direction. This only works correctly if the calculation for the
-		// flux is calculated identically for both cells (in both direction).
-		// In the common pipe model, this isn't true. But we can make some
-		// simplifications to make it true. In this simplex model, we store
-		// less temporary data, and reduce the shader calculations quite a bit.
+		//		In the "simplex" model, we store a velocity/flux value in only one
+		//		direction. This only works correctly if the calculation for the
+		//		flux is calculated identically for both cells (in both direction).
+		//		In the common pipe model, this isn't true. But we can make some
+		//		simplifications to make it true. In this simplex model, we store
+		//		less temporary data, and reduce the shader calculations quite a bit.
 
 	float4 centerVelocity = LoadVelocities4D(baseCoord);
 	float4 rightVelocity, bottomVelocity, bottomRightVelocity, bottomLeftVelocity;
@@ -518,15 +414,13 @@ float4 GetBottomRightVelocity(int2 address)
 
 #endif
 
-		//	If the velocities along the edges, we should get close to volume conservation (ignoring floating point creep).
-		//	Ignoring surface height here... Possible to end up with water below the ground surface
+		//		If the velocities along the edges, we should get close to volume conservation (ignoring floating point creep).
+		//		Ignoring surface height here... Possible to end up with water below the ground surface
 	float deltaHeight = DeltaTime * (vel00 + vel10 + vel20 + vel01 + vel21 + vel02 + vel12 + vel22);
 
-	#if defined(WRITING_HEIGHTS)
-		const float RainRate = 1.f;
-
+	#if !defined(WRITING_VELOCITIES)
 		float centerSurfaceHeight = LoadSurfaceHeight(baseCoord.xy);
-		WaterHeights[baseCoord] = max(centerSurfaceHeight, WaterHeights[baseCoord] + deltaHeight + RainRate * DeltaTime);
+		WaterHeights[baseCoord] = max(centerSurfaceHeight, WaterHeights[baseCoord] + deltaHeight + RainQuantityPerFrame);
 
 		// WaterHeights[baseCoord] += deltaHeight;
 	#endif

@@ -42,25 +42,12 @@ static const float	ThresholdAboveSurface		 = 0.f; // 0.00001f;	// "ThresholdAbov
 static const float	MultiplierForVolumeCalc		 = 10000.f;				//		"MultiplierForVolumeCalc" should be large for when there are small amounts of rain moving over the surface
 static const int	JacobiIterationCount		 = 26;					// good values: 6, 13, 26
 
-cbuffer Constants : register(b2)
-{
-	int2	SimulatingIndex;
-	uint	ArrayIndex;
-	float	RainQuantityPerFrame;		// 0.001f
-}
-
 static const float g		 = 9.8f;
 static const float DeltaTime = 1.f / 60.f;
 
 ///////////////////////////////////////////////////
 	//   c o m p r e s s i o n   //
 ///////////////////////////////////////////////////
-
-cbuffer CompressionConstants
-{
-	float3 CompressionMidPoint;
-	float CompressionRadius;
-}
 
 float CalculateCompression(uint x, int3 c0)
 {
