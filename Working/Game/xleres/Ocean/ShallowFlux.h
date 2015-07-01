@@ -62,15 +62,28 @@
 
 void LoadVelocities(out float velocities[AdjCellCount], uint3 coord)
 {
-    velocities[0] = Velocities0[coord];
-    velocities[1] = Velocities1[coord];
-    velocities[2] = Velocities2[coord];
-    velocities[3] = Velocities3[coord];
+    if (coord.z < 0) {
+        velocities[0] = 0.f;
+        velocities[1] = 0.f;
+        velocities[2] = 0.f;
+        velocities[3] = 0.f;
+        #if defined(DUPLEX_VEL)
+            velocities[4] = 0.f;
+            velocities[5] = 0.f;
+            velocities[6] = 0.f;
+            velocities[7] = 0.f;
+        #endif
+    } else {
+        velocities[0] = Velocities0[coord];
+        velocities[1] = Velocities1[coord];
+        velocities[2] = Velocities2[coord];
+        velocities[3] = Velocities3[coord];
 
-    #if defined(DUPLEX_VEL)
-        velocities[4] = Velocities4[coord];
-        velocities[5] = Velocities5[coord];
-        velocities[6] = Velocities6[coord];
-        velocities[7] = Velocities7[coord];
-    #endif
+        #if defined(DUPLEX_VEL)
+            velocities[4] = Velocities4[coord];
+            velocities[5] = Velocities5[coord];
+            velocities[6] = Velocities6[coord];
+            velocities[7] = Velocities7[coord];
+        #endif
+    }
 }

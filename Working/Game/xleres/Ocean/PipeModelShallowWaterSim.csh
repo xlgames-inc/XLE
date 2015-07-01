@@ -21,14 +21,14 @@
 static const float g 			 = 9.8f;
 static const float WaterDensity  = 999.97;		// (kg/m^2) (important for dynamic compression)
 static const float DeltaTime     = 1.f / 60.f;
-static const float VelResistance = .97f;
+static const float VelResistance = 1.f; // .97f;
 static const float4 EdgeVelocity = 0.0.xxxx;
 static const float EdgeHeight 	 = -10000.f;	// WaterBaseHeight
 
 	//		Here, "PressureScalar" is particularly important for this model
 	//		it determines the rate of movement of the water. The size of
 	//		the water grid can be factored in by scaling this value.
-static const float PressureScalar = 1000.f;
+static const float PressureScalar = 500.f;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 	//   m a i n   s i m u l a t i o n   //

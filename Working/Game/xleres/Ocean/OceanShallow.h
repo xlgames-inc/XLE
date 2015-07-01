@@ -85,7 +85,7 @@ float LoadSurfaceHeight(int2 coord)
 
 	const bool oneToOne = false;
 	if (oneToOne) {
-		float rawHeight = (float)SurfaceHeightsTexture.Load(int4(SurfaceHeightBaseCoord + int3(coord.xy, 0), 0)).r;
+		float rawHeight = (float)SurfaceHeightsTexture.Load(int4(SurfaceHeightBaseCoord + int3(coord.xy, 0), 0));
 		return SurfaceHeightOffset + rawHeight * SurfaceHeightScale;
 	} else {
 		float2 tcInput = coord.xy / float2(SHALLOW_WATER_TILE_DIMENSION, SHALLOW_WATER_TILE_DIMENSION);
@@ -110,7 +110,7 @@ float LoadSurfaceHeight(int2 coord)
 
 int3 NormalizeGridCoord(int2 coord)
 {
-    int2 tile = coord.xy / SHALLOW_WATER_TILE_DIMENSION;
+    int2 tile = float2(coord.xy) / float(SHALLOW_WATER_TILE_DIMENSION);
     uint gridIndex = CalculateShallowWaterArrayIndex(CellIndexLookupTable, tile);
     if (gridIndex < 128) {
         return int3(coord.xy - tile * SHALLOW_WATER_TILE_DIMENSION, gridIndex);
@@ -131,7 +131,9 @@ cbuffer CompressionConstants
 
 float2 WorldPositionFromElementIndex(int2 eleIndex)
 {
-    return WorldSpaceOffset + float2(SimulatingIndex + eleIndex / float(SHALLOW_WATER_TILE_DIMENSION)) * ShallowGridPhysicalDimension;
+        // shifting half an element back seems to match the terrain rendering
+        // much better -- but it's not clear why
+    return WorldSpaceOffset + float2(SimulatingIndex + (eleIndex - 0.5.xx) / float(SHALLOW_WATER_TILE_DIMENSION)) * ShallowGridPhysicalDimension;
 }
 
 float CalculateExternalPressure(float2 worldPosition)

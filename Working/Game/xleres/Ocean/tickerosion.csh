@@ -6,6 +6,8 @@
 
 #include "Ocean.h"
 #include "OceanShallow.h"
+#include "ShallowFlux.h"
+#include "../Utility/MathConstants.h"
 
 RWTexture2D<float>		OutputSurface		: register(u0);
 RWTexture2D<float>		HardMaterials		: register(u1);
@@ -13,13 +15,7 @@ RWTexture2D<float>		SoftMaterials		: register(u2);
 
 Texture2D<float>		InputSoftMaterials	: register(t1);
 
-Texture2DArray<float>	WaterHeights		: register(t3);		// final result will be written here
-Texture2D<uint>			LookupTable			: register(t4);
-
-Texture2DArray<float>	Velocities0			: register(t5);
-Texture2DArray<float>	Velocities1			: register(t6);
-Texture2DArray<float>	Velocities2			: register(t7);
-Texture2DArray<float>	Velocities3			: register(t8);
+Texture2DArray<float>	WaterHeights		: register(t3);
 
 cbuffer TickErosionSimConstants : register(b5)
 {
@@ -33,47 +29,11 @@ cbuffer TickErosionSimConstants : register(b5)
 
 static const int CoordRatio = 1;		// ratio of surface coordinate grid elements to water sim grid elements (in 1 dimension)
 
-float4 LoadVelocitiesFromTileCoord(uint3 coord)
-{
-		//	We're doing to use a simple box filter for downsampling
-		//	from the water sim velocities to terrain coordinate velocities
-		//	In some ways, this might be wierd... The velocity values actually
-		//	represent the movement of water from one cell to the next. So, we
-		//	could just use the cells on the boundary for this calculation. But
-		//	we're using an average of a group of cells.
-	float4 result = 0.0.xxxx;
-	for (uint y=0; y<uint(CoordRatio); ++y)
-		for (uint x=0; x<uint(CoordRatio); ++x) {
-			result += float4(
-				Velocities0[coord + uint3(x,y,0)], Velocities1[coord + uint3(x,y,0)],
-				Velocities2[coord + uint3(x,y,0)], Velocities3[coord + uint3(x,y,0)]);
-		}
-
-	return result / float(CoordRatio*CoordRatio);
-}
-
-float4 LoadVelocities(int2 pt)
-{
-	pt *= CoordRatio;
-	int2 tileCoord = pt / SHALLOW_WATER_TILE_DIMENSION;
-	uint ti = CalculateShallowWaterArrayIndex(LookupTable, tileCoord);
-	if (ti < 128) {
-		return LoadVelocitiesFromTileCoord(int3(pt - tileCoord * SHALLOW_WATER_TILE_DIMENSION, ti));
-	}
-
-	return 0.0.xxxx;
-}
-
 float LoadWaterHeight(int2 pt)
 {
-	pt *= CoordRatio;
-	int2 tileCoord = pt / SHALLOW_WATER_TILE_DIMENSION;
-	uint ti = CalculateShallowWaterArrayIndex(LookupTable, tileCoord);
-	if (ti < 128) {
-		return WaterHeights[int3(pt - tileCoord * SHALLOW_WATER_TILE_DIMENSION, ti)];
-	}
-
-	return 0.f;
+	int3 coord = NormalizeGridCoord(pt * CoordRatio);
+	if (coord.z < 0) return 0.f;
+	return WaterHeights[coord];
 }
 
 float LoadInterpolatedSoftMaterials(float2 coord)
@@ -81,13 +41,15 @@ float LoadInterpolatedSoftMaterials(float2 coord)
 	int2 dims;
 	InputSoftMaterials.GetDimensions(dims.x, dims.y);
 
-		// clamp to the edge of the texture
-	coord.x = min(max(coord.x, 0), dims.x);
-	coord.y = min(max(coord.y, 0), dims.y);
-
 	float2 floored = floor(coord);
 	float2 alpha = coord - floored;
 	float2 ceiled = floored + 1.0.xx;
+
+		// clamp to the edge of the texture
+	floored.x = min(max(floored.x, 0.f), dims.x-1);
+	floored.y = min(max(floored.y, 0.f), dims.y-1);
+	ceiled.x = min(max(ceiled.x, 0.f), dims.x-1);
+	ceiled.y = min(max(ceiled.y, 0.f), dims.y-1);
 
 		// A B
 		// C D
@@ -108,7 +70,8 @@ float LoadInterpolatedSoftMaterials(float2 coord)
 	void		main(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
 	int2 baseCoord = dispatchThreadId.xy;
-	if (baseCoord.x >= simulationSize.x || baseCoord.y >= simulationSize.y) {
+	if (	baseCoord.x == 0 || baseCoord.y == 0
+		|| 	baseCoord.x >= (simulationSize.x-1) || baseCoord.y >= (simulationSize.y-1)) {
 		return;
 	}
 
@@ -129,12 +92,6 @@ float LoadInterpolatedSoftMaterials(float2 coord)
 		//		01          21
 		//      02    12    22
 
-	float4 centerVelocity		= LoadVelocities(baseCoord);
-	float4 rightVelocity		= LoadVelocities(baseCoord + int2( 1, 0));
-	float4 bottomVelocity		= LoadVelocities(baseCoord + int2( 0, 1));
-	float4 bottomLeftVelocity	= LoadVelocities(baseCoord + int2(-1, 1));
-	float4 bottomRightVelocity	= LoadVelocities(baseCoord + int2( 1, 1));
-
 	float centerWaterHeight = LoadWaterHeight(baseCoord);
 	float rightWaterHeight = LoadWaterHeight(baseCoord + int2(1,0));
 	float leftWaterHeight = LoadWaterHeight(baseCoord + int2(0,1));
@@ -142,17 +99,47 @@ float LoadInterpolatedSoftMaterials(float2 coord)
 	float centerTerrainHeight = LoadSurfaceHeight(baseCoord);
 	float rightTerrainHeight = LoadSurfaceHeight(baseCoord + int2(1,0));
 	float bottomTerrainHeight = LoadSurfaceHeight(baseCoord + int2(0,1));
-	float terrainEleDist = 3.f; // ??
+	float terrainEleDist = 10.f; // spacing between terrain elements
 
-	float3 terrainTangentX = normalize(float3(terrainEleDist, 0.f, rightTerrainHeight-centerTerrainHeight));
-	float3 terrainTangentY = normalize(float3(0.f, terrainEleDist, bottomTerrainHeight-centerTerrainHeight));
-	float3 terrainNormal = cross(terrainTangentX, terrainTangentY);
+	float3 terrainTangentXDir = float3(terrainEleDist, 0.f, rightTerrainHeight-centerTerrainHeight);
+	float3 terrainTangentYDir = float3(0.f, terrainEleDist, bottomTerrainHeight-centerTerrainHeight);
+	float3 terrainNormal = normalize(cross(terrainTangentXDir, terrainTangentYDir));
 
-	float3 waterSurfaceTangentX = normalize(float3(1.f, 0.f, rightWaterHeight-centerWaterHeight));
-	float3 waterSurfaceTangentY = normalize(float3(1.f, 0.f, bottomTerrainHeight-centerWaterHeight));
+	float3 waterSurfaceTangentX = normalize(float3(1.f, 0.f, 0.f)); 	// rightWaterHeight-centerWaterHeight));
+	float3 waterSurfaceTangentY = normalize(float3(0.f, 1.f, 0.f)); 	// bottomTerrainHeight-centerWaterHeight));
 
 		// velXX values are water flowing in
 	float vel[9];
+
+#if defined(DUPLEX_VEL)
+
+	float centerVel[AdjCellCount];
+	LoadVelocities(centerVel, NormalizeGridCoord(baseCoord));
+
+	for (uint c=0; c<AdjCellCount; ++c) {
+		float temp[AdjCellCount];
+		LoadVelocities(temp, NormalizeGridCoord(int2(baseCoord.xy) + AdjCellDir[c]));
+		centerVel[c] = centerVel[c] - temp[AdjCellComplement[c]];
+	}
+
+	vel[0] = -centerVel[0];
+	vel[1] = -centerVel[1];
+	vel[2] = -centerVel[2];
+	vel[3] = -centerVel[3];
+	vel[4] = 0;
+	vel[5] = -centerVel[4];
+	vel[6] = -centerVel[5];
+	vel[7] = -centerVel[6];
+	vel[8] = -centerVel[7];
+
+#else
+
+	float4 centerVelocity		= LoadVelocities(baseCoord);
+	float4 rightVelocity		= LoadVelocities(baseCoord + int2( 1, 0));
+	float4 bottomVelocity		= LoadVelocities(baseCoord + int2( 0, 1));
+	float4 bottomLeftVelocity 	= LoadVelocities(baseCoord + int2(-1, 1));
+	float4 bottomRightVelocity 	= LoadVelocities(baseCoord + int2( 1, 1));
+
 	vel[0] = -centerVelocity.x;
 	vel[1] = -centerVelocity.y;
 	vel[2] = -centerVelocity.z;
@@ -163,15 +150,20 @@ float LoadInterpolatedSoftMaterials(float2 coord)
 	vel[7] = bottomVelocity.y;
 	vel[8] = bottomRightVelocity.x;
 
+#endif
+
 		// Calculate the velocities in each direction
 		//		0  1  2
 		//		3  4  5
 		//		6  7  8
 
-	float2 vel2d = float2(vel[3] - vel[5], vel[1] - vel[7]);
+	float2 vel2d = 0.0.xx;
+	vel2d.x += 1.f/6.f * (vel[3] - vel[5]);
+	vel2d.y += 1.f/6.f * (vel[1] - vel[7]);
+	vel2d.x += 1.f/6.f * sqrtHalf * (vel[0] + vel[2] - vel[6] - vel[8]);
+	vel2d.y += 1.f/6.f * sqrtHalf * (vel[0] + vel[6] - vel[2] - vel[8]);
 	float magv = length(vel2d);
 	float3 V = waterSurfaceTangentX * vel2d.x + waterSurfaceTangentY * vel2d.y;
-
 
 		// float initialTransportedSediment = InputSoftMaterials[baseCoord.xy];
 
@@ -194,44 +186,42 @@ float LoadInterpolatedSoftMaterials(float2 coord)
 		// calculating the velocity vector in both passes). It's a small optimisation,
 		// hopefully it shouldn't have a significant negative effect on the result.
 
-	float initialTransportedSediment = LoadInterpolatedSoftMaterials(baseCoord + vel2d);
+	const float velScale = .5f / length(vel2d);
+	float initialSediment = LoadInterpolatedSoftMaterials(baseCoord - velScale * vel2d);
+	// initialSediment = max(0.f, initialSediment);  (if the sediment level becomes negative, it will cause the simulation to explode)
 	float initialHard = HardMaterials[baseCoord.xy];
 
 		// Calculate the "hard to soft" factor. This is the rate of
 		// change of rock and hard material into soil and softer material
 		// that can be transported along the grid.
-	const float Kc = 1.;
-	const float depthMax = 100.f;
+	const float Kc = 1.f; // 1e-1;
+	const float depthMax = 50.f;
 	float depth = centerWaterHeight - centerTerrainHeight;
 	float C = Kc * dot(-terrainNormal, V) * magv * saturate(1.f - (depth / depthMax));
 
 	const float R = 1.f;		// (variable hardness)
-	const float Ks = 1.f;		// hard to soft rate
-	const float Kd = 1.f;		// soft to hard rate (deposition / settling)
+	const float Ks = 0.25f;		// hard to soft rate
+	const float Kd = 0.5f;		// soft to hard rate (deposition / settling)
 
+	const float deltaTime = 1.f / 30.f;
 	float hardToSoft;
-	if (initialTransportedSediment < C) {
-		hardToSoft = R * Ks * (C - initialTransportedSediment);
+	if (initialSediment < C) {
+		hardToSoft = R * Ks * (C - initialSediment);
 	} else {
-		hardToSoft = Kd * (C - initialTransportedSediment);
+		hardToSoft = max(-initialSediment/deltaTime, Kd * (C - initialSediment));
 	}
 
 		////////////////////////////////////////////
 
-	const float deltaTime = 1.f;
-	float newSediment = initialTransportedSediment + deltaTime * hardToSoft;
+	float newSediment = initialSediment + deltaTime * hardToSoft;
 	float newHard = initialHard - deltaTime * hardToSoft;
-#if 0
+
 	SoftMaterials[baseCoord.xy] = newSediment;
 	HardMaterials[baseCoord.xy] = newHard;
 
-	OutputSurface[gpuCacheOffset + baseCoord.xy] = newHard + newSediment;
-#else
-	OutputSurface[gpuCacheOffset + baseCoord.xy] = SoftMaterials[baseCoord.xy] + initialHard;
-#endif
+	OutputSurface[gpuCacheOffset + baseCoord.xy] = max(-1000.f, newHard + newSediment);
 
 #if 0
-
 		//	We want to know quickly water is moving in the system. Lets
 		//	use the sum of the absolute velocities to get an approximation
 		//	of movement ferocity.
