@@ -75,7 +75,7 @@ float LoadSurfaceHeight(int2 coord)
 
 	const bool oneToOne = false;
 	if (oneToOne) {
-		float rawHeight = float(SurfaceHeightsTexture.Load(int4(SurfaceHeightBaseCoord + int3(coord.xy, 0), 0)));
+		float rawHeight = (float)SurfaceHeightsTexture.Load(int4(SurfaceHeightBaseCoord + int3(coord.xy, 0), 0));
 		return SurfaceHeightOffset + rawHeight * SurfaceHeightScale;
 	} else {
 		float2 tcInput = coord.xy / float2(SHALLOW_WATER_TILE_DIMENSION, SHALLOW_WATER_TILE_DIMENSION);

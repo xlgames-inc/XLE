@@ -29,8 +29,8 @@ cbuffer Consts : register(b2)
 {
 		//	setup initial values -- height values are relative to the base
 		//	water height
-	
-	float surfaceHeight = -100.f; // LoadSurfaceHeight(uint3(dispatchThreadId.xy, SimulatingGridIndex));
+
+	float surfaceHeight = LoadSurfaceHeight(uint3(dispatchThreadId.xy, SimulatingGridIndex));
 
 	#if SHALLOW_WATER_BOUNDARY == SWB_SURFACE
 		float initHeight = surfaceHeight + 0.5f;
@@ -38,7 +38,7 @@ cbuffer Consts : register(b2)
 		uint2 texDim;
 		GlobalWavesHeightsTexture.GetDimensions(texDim.x, texDim.y);
 		float2 worldCoords = (LookupTableCoords.xy + float2(dispatchThreadId.xy) / float(SHALLOW_WATER_TILE_DIMENSION)) * ShallowGridPhysicalDimension;
-		float globalWavesHeight = WaterBaseHeight + StrengthConstantZ * StrengthConstantMultiplier * 
+		float globalWavesHeight = WaterBaseHeight + StrengthConstantZ * StrengthConstantMultiplier *
 			OceanTextureCustomInterpolate(GlobalWavesHeightsTexture, texDim, worldCoords / float2(PhysicalWidth, PhysicalHeight));
 
 		float initHeight = globalWavesHeight;
@@ -49,7 +49,7 @@ cbuffer Consts : register(b2)
 	WaterHeights	[uint3(dispatchThreadId.xy, SimulatingGridIndex)] = max(initHeight, surfaceHeight);
 	WaterHeightsN1	[uint3(dispatchThreadId.xy, SimulatingGridIndex)] = max(initHeight, surfaceHeight);
 	WaterHeightsN2	[uint3(dispatchThreadId.xy, SimulatingGridIndex)] = max(initHeight, surfaceHeight);
-	
+
 	if (dispatchThreadId.x == 0 && dispatchThreadId.y == 0) {
 		LookupTable[int2(256,256)+LookupTableCoords] = SimulatingGridIndex;
 	}
@@ -59,7 +59,7 @@ cbuffer Consts : register(b2)
 	void		InitPipeModel(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
 		//	setup initial values -- for the pipe model simulation
-	
+
 	float surfaceHeight = LoadSurfaceHeight(uint3(dispatchThreadId.xy, SimulatingGridIndex));
 
 	#if SHALLOW_WATER_BOUNDARY == SWB_SURFACE
@@ -68,7 +68,7 @@ cbuffer Consts : register(b2)
 		uint2 texDim;
 		GlobalWavesHeightsTexture.GetDimensions(texDim.x, texDim.y);
 		float2 worldCoords = (LookupTableCoords.xy + float2(dispatchThreadId.xy) / float(SHALLOW_WATER_TILE_DIMENSION)) * ShallowGridPhysicalDimension;
-		float globalWavesHeight = WaterBaseHeight + StrengthConstantZ * StrengthConstantMultiplier * 
+		float globalWavesHeight = WaterBaseHeight + StrengthConstantZ * StrengthConstantMultiplier *
 			OceanTextureCustomInterpolate(GlobalWavesHeightsTexture, texDim, worldCoords / float2(PhysicalWidth, PhysicalHeight));
 
 		float initHeight = globalWavesHeight;
@@ -81,7 +81,7 @@ cbuffer Consts : register(b2)
 	WaterVelocities1	[uint3(dispatchThreadId.xy, SimulatingGridIndex)] = 0.f;		// (always begin with zero velocity)
 	WaterVelocities2	[uint3(dispatchThreadId.xy, SimulatingGridIndex)] = 0.f;		// (always begin with zero velocity)
 	WaterVelocities3	[uint3(dispatchThreadId.xy, SimulatingGridIndex)] = 0.f;		// (always begin with zero velocity)
-	
+
 	if (dispatchThreadId.x == 0 && dispatchThreadId.y == 0) {
 		LookupTable[int2(256,256)+LookupTableCoords] = SimulatingGridIndex;
 	}
@@ -106,4 +106,3 @@ cbuffer ClearGridsConstants
 	}
 
 }
-

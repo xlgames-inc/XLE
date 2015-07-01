@@ -221,10 +221,14 @@ float LoadInterpolatedSoftMaterials(float2 coord)
 	const float deltaTime = 1.f;
 	float newSediment = initialTransportedSediment + deltaTime * hardToSoft;
 	float newHard = initialHard - deltaTime * hardToSoft;
+#if 0
 	SoftMaterials[baseCoord.xy] = newSediment;
 	HardMaterials[baseCoord.xy] = newHard;
 
 	OutputSurface[gpuCacheOffset + baseCoord.xy] = newHard + newSediment;
+#else
+	OutputSurface[gpuCacheOffset + baseCoord.xy] = SoftMaterials[baseCoord.xy] + initialHard;
+#endif
 
 #if 0
 

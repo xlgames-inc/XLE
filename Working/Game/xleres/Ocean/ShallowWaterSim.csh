@@ -38,13 +38,13 @@ groupshared int		FinalTotalVolume			 = 0;
 groupshared int		TotalVolumeForDistribution	 = 0;
 groupshared int		ElementCountAboveSurface	 = 0;
 
-static const float	ThresholdAboveSurface		 = 0.f; // 0.00001f;	// "ThresholdAboveSurface" should be small, and 
+static const float	ThresholdAboveSurface		 = 0.f; // 0.00001f;	// "ThresholdAboveSurface" should be small, and
 static const float	MultiplierForVolumeCalc		 = 10000.f;				//		"MultiplierForVolumeCalc" should be large for when there are small amounts of rain moving over the surface
 static const int	JacobiIterationCount		 = 26;					// good values: 6, 13, 26
 
 cbuffer Constants : register(b2)
 {
-	int2	SimulatingIndex; 
+	int2	SimulatingIndex;
 	uint	ArrayIndex;
 	float	RainQuantityPerFrame;		// 0.001f
 }
@@ -64,7 +64,7 @@ cbuffer CompressionConstants
 
 float CalculateCompression(uint x, int3 c0)
 {
-	float2 worldPosition = 
+	float2 worldPosition =
 		float2(	(float(SimulatingIndex.x) + float(c0.x) / float(SHALLOW_WATER_TILE_DIMENSION)) * ShallowGridPhysicalDimension,
 				(float(SimulatingIndex.y) + float(c0.y) / float(SHALLOW_WATER_TILE_DIMENSION)) * ShallowGridPhysicalDimension);
 	float2 off = worldPosition - CompressionMidPoint.xy;
@@ -116,7 +116,7 @@ float SimulateCompression(uint x, int3 cm1, int3 c0, int3 cp1, inout float worki
 			//	add the displaced amount to nearby displaced water sincs
 		InterlockedAdd(DisplacedWater, int(-diff0 * 1000.f));
 	}
-	
+
 	GroupMemoryBarrierWithGroupSync();
 
 	if (recievesDisplacedWater) {
@@ -145,8 +145,8 @@ float4 BuildCoefficients(uint x, int3 cm1, int3 c0, int3 cp1, float centerSurfac
 	float d0  = WorkingHeights[0][1+x]   - centerSurfaceHeight;
 	float dm1 = WorkingHeights[0][1+x-1] - LoadSurfaceHeight(cm1);
 	float dp1 = WorkingHeights[0][1+x+1] - LoadSurfaceHeight(cp1);
-	dm1 = max(dm1, .0f); 
-	d0  = max(d0,  .0f); 
+	dm1 = max(dm1, .0f);
+	d0  = max(d0,  .0f);
 	dp1 = max(dp1, .0f);
 
 	float e0  = 1.f + commonFactor * (dm1 + 2.f * d0 + dp1);
@@ -155,7 +155,7 @@ float4 BuildCoefficients(uint x, int3 cm1, int3 c0, int3 cp1, float centerSurfac
 
 	float hn1 = max(WaterHeightsN1[c0], centerSurfaceHeight);
 	float hn2 = max(WaterHeightsN2[c0], centerSurfaceHeight);
-	float rhs = 2.f * hn1 - hn2 /*+ RainQuantityPerFrame*/;	// we need to pretend that the rain was there in previous frames, also... otherwise the simulation doesn't react well
+	float rhs = 2.f * hn1 - hn2 + RainQuantityPerFrame;	// we need to pretend that the rain was there in previous frames, also... otherwise the simulation doesn't react well
 	return float4(fm1, e0, f0, rhs);
 }
 
@@ -170,9 +170,9 @@ void		RunSimulation(uint x, int3 cm1, int3 c0, int3 cp1)
 	float initialWorkingHeight = WaterHeightsN1[c0];
 
 		//		Deal with displacement / compression pattern
-		//		Water must be constrained to the height given by the 
+		//		Water must be constrained to the height given by the
 		//		compression pattern. We prevent the water from rising
-		//		above this height. In some places, extra water must be 
+		//		above this height. In some places, extra water must be
 		//		displaced to adjacent points. Any removed water will be
 		//		equally divided amongst the points on the edge of
 		//		the compression
@@ -182,14 +182,14 @@ void		RunSimulation(uint x, int3 cm1, int3 c0, int3 cp1)
 	#endif
 
 	float centerSurfaceHeight = LoadSurfaceHeight(c0);
-	
+
 	initialWorkingHeight += RainQuantityPerFrame;
 
 	WorkingHeights[0][1+x] = initialWorkingHeight;
 	InterlockedAdd(InitialTotalVolume, int((max(0, initialWorkingHeight - centerSurfaceHeight)) * MultiplierForVolumeCalc));
 
 	// WorkingHeights[0][1+x] += RainQuantityPerFrame;		// (add after InitialTotalVolume -- so the total volume will readjust)
-	
+
 	GroupMemoryBarrierWithGroupSync();
 
 	float4 coefficients = BuildCoefficients(x, cm1, c0, cp1, centerSurfaceHeight);
@@ -222,7 +222,7 @@ void		RunSimulation(uint x, int3 cm1, int3 c0, int3 cp1)
 	} else {
 		const int readBufferIndex = 0;
 		const int writeBufferIndex = 1;
-		WorkingHeights[writeBufferIndex][1+x] = 
+		WorkingHeights[writeBufferIndex][1+x] =
 			.333f * (WorkingHeights[readBufferIndex][1+x-1] + WorkingHeights[readBufferIndex][1+x] + WorkingHeights[readBufferIndex][1+x+1]);
 		finalReadBufferIndex = writeBufferIndex;
 	}
@@ -233,11 +233,11 @@ void		RunSimulation(uint x, int3 cm1, int3 c0, int3 cp1)
 		//		water volume, and correct as needed
 
 	float finalHeight = max(WorkingHeights[finalReadBufferIndex][1+x], centerSurfaceHeight);
-	
+
 	#if COMPRESS_BEFORE_SIMULATION == 0
 		float compressionX = SimulateCompression(x, cm1, c0, cp1, finalHeight, finalReadBufferIndex);
 	#endif
-	
+
 	float finalHeightAboveSurface = finalHeight - centerSurfaceHeight;
 
 #if 1
@@ -294,7 +294,7 @@ float LookupGlobalWaves(float2 worldCoords)
 		//	because of the XY movement of the global water grid,
 		//	we can't know exactly the water height at given world
 		//	coords... but we can know an estimate...
-	
+
 	uint2 texDim;
 	GlobalWavesHeightsTexture.GetDimensions(texDim.x, texDim.y);
 
@@ -348,12 +348,12 @@ float CalculateBoundingWaterHeight(int2 address, int2 direction)
 {
 	int3 baseCoord = int3(dispatchThreadId.x, dispatchThreadId.y, ArrayIndex);
 
-	if (dispatchThreadId.x==0) { 
+	if (dispatchThreadId.x==0) {
 		WorkingHeights[1][0] = WorkingHeights[0][0] = CalculateBoundingWaterHeight(baseCoord.xy, int2(-1, 0));
 	}
 
 	if (dispatchThreadId.x==SHALLOW_WATER_TILE_DIMENSION-1) {
-		WorkingHeights[1][1+SHALLOW_WATER_TILE_DIMENSION] = WorkingHeights[0][1+SHALLOW_WATER_TILE_DIMENSION] = 
+		WorkingHeights[1][1+SHALLOW_WATER_TILE_DIMENSION] = WorkingHeights[0][1+SHALLOW_WATER_TILE_DIMENSION] =
 			CalculateBoundingWaterHeight(baseCoord.xy, int2(1,0));
 	}
 
@@ -365,12 +365,12 @@ float CalculateBoundingWaterHeight(int2 address, int2 direction)
 {
 	int3 baseCoord = int3(dispatchThreadId.y, dispatchThreadId.x, ArrayIndex);
 
-	if (dispatchThreadId.x==0) { 
+	if (dispatchThreadId.x==0) {
 		WorkingHeights[1][0] = WorkingHeights[0][0] = CalculateBoundingWaterHeight(baseCoord.xy, int2(0, -1));
 	}
 
 	if (dispatchThreadId.x==SHALLOW_WATER_TILE_DIMENSION-1) {
-		WorkingHeights[1][1+SHALLOW_WATER_TILE_DIMENSION] = WorkingHeights[0][1+SHALLOW_WATER_TILE_DIMENSION] = 
+		WorkingHeights[1][1+SHALLOW_WATER_TILE_DIMENSION] = WorkingHeights[0][1+SHALLOW_WATER_TILE_DIMENSION] =
 			CalculateBoundingWaterHeight(baseCoord.xy, int2(0, 1));
 	}
 
@@ -394,7 +394,7 @@ int3 NormalizeGridCoord(int3 coord)
 {
 	int3 dims;
 	WaterHeights.GetDimensions(dims.x, dims.y, dims.z);
-	if (	coord.x >= 0		&& coord.y >= 0 
+	if (	coord.x >= 0		&& coord.y >= 0
 		&&	coord.x < dims.x	&& coord.y < dims.y) {
 		return coord;
 	}
@@ -541,7 +541,7 @@ void StoreVelocities(uint3 coord, float vel[4])
 		//	about the direction water is flowing in. We can use this an as estimate
 		//	of the velocity.
 		//
-		//	But what we really want to know is the amount of water that is 
+		//	But what we really want to know is the amount of water that is
 		//	transfered from one grid element to another. We can use the dot product
 		//	with the velocity to get this. Perhaps we should use the velocities in both
 		//	grid elements to calculate this movement of water.
@@ -564,5 +564,3 @@ void StoreVelocities(uint3 coord, float vel[4])
 
 	StoreVelocities(baseCoord, result);
 }
-
-

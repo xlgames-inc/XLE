@@ -19,13 +19,16 @@
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/DeviceContextImpl.h"
 #include "../RenderCore/Metal/Shader.h"
+
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/DataPacket.h"
 #include "../BufferUploads/ResourceLocator.h"
+
 #include "../Math/ProjectionMath.h"
 #include "../Math/Transformations.h"
 #include "../ConsoleRig/Console.h"
 #include "../Utility/BitUtils.h"
+#include "../Utility/StringFormat.h"
 
 #include "../Core/WinAPI/IncludeWindows.h"
 
@@ -36,37 +39,40 @@ namespace SceneEngine
     using namespace RenderCore;
     using namespace RenderCore::Metal;
 
-            ////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
     class ShallowWaterGrid
     {
     public:
-        intrusive_ptr<ID3D::Resource>                  _waterHeightsTextures[3];
-        RenderCore::Metal::ShaderResourceView       _waterHeightsSRV[3];
-        RenderCore::Metal::UnorderedAccessView      _waterHeightsUAV[3];
+        intrusive_ptr<ID3D::Resource>           _waterHeightsTextures[3];
+        RenderCore::Metal::ShaderResourceView   _waterHeightsSRV[3];
+        RenderCore::Metal::UnorderedAccessView  _waterHeightsUAV[3];
 
-        intrusive_ptr<ID3D::Resource>                  _waterVelocitiesTexture[4];
-        RenderCore::Metal::ShaderResourceView       _waterVelocitiesSRV[4];
-        RenderCore::Metal::UnorderedAccessView      _waterVelocitiesUAV[4];
+        static const unsigned VelTextures = 8;
+        intrusive_ptr<ID3D::Resource>           _waterVelocitiesTexture[VelTextures];
+        RenderCore::Metal::ShaderResourceView   _waterVelocitiesSRV[VelTextures];
+        RenderCore::Metal::UnorderedAccessView  _waterVelocitiesUAV[VelTextures];
 
-        intrusive_ptr<ID3D::Resource>                  _slopesBuffer[2];
-        RenderCore::Metal::UnorderedAccessView      _slopesBufferUAV[2];
+        intrusive_ptr<ID3D::Resource>           _slopesBuffer[2];
+        RenderCore::Metal::UnorderedAccessView  _slopesBufferUAV[2];
 
-        intrusive_ptr<ID3D::Resource>                  _normalsTexture;
-        std::vector<RenderCore::Metal::UnorderedAccessView>     _normalsTextureUAV;
-        std::vector<RenderCore::Metal::ShaderResourceView>      _normalsSingleMipSRV;
-        RenderCore::Metal::ShaderResourceView       _normalsTextureShaderResource;
+        intrusive_ptr<ID3D::Resource>                       _normalsTexture;
+        std::vector<RenderCore::Metal::UnorderedAccessView> _normalsTextureUAV;
+        std::vector<RenderCore::Metal::ShaderResourceView>  _normalsSingleMipSRV;
+        RenderCore::Metal::ShaderResourceView               _normalsTextureShaderResource;
 
-        intrusive_ptr<ID3D::Resource>                  _foamQuantity[2];
-        RenderCore::Metal::UnorderedAccessView      _foamQuantityUAV[2];
-        RenderCore::Metal::ShaderResourceView       _foamQuantitySRV[2];
-        RenderCore::Metal::ShaderResourceView       _foamQuantitySRV2[2];
+        intrusive_ptr<ID3D::Resource>           _foamQuantity[2];
+        RenderCore::Metal::UnorderedAccessView  _foamQuantityUAV[2];
+        RenderCore::Metal::ShaderResourceView   _foamQuantitySRV[2];
+        RenderCore::Metal::ShaderResourceView   _foamQuantitySRV2[2];
 
-        unsigned        _rotatingBufferCount;
+        unsigned    _rotatingBufferCount;
 
         ShallowWaterGrid();
         ShallowWaterGrid(unsigned width, unsigned height, unsigned maxSimulationGrids, bool pipeModel, bool calculateVelocities);
         ~ShallowWaterGrid();
     };
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     ShallowWaterGrid::ShallowWaterGrid() {}
     ShallowWaterGrid::ShallowWaterGrid(unsigned width, unsigned height, unsigned maxSimulationGrids, bool pipeModel, bool calculateVelocities)
@@ -92,9 +98,9 @@ namespace SceneEngine
         UnorderedAccessView waterHeightsUAV[3];
         ShaderResourceView waterHeightsSRV[3];
 
-        intrusive_ptr<ID3D::Resource> waterVelocitiesTexture[4];
-        UnorderedAccessView waterVelocitiesUAV[4];
-        ShaderResourceView waterVelocitiesSRV[4];
+        intrusive_ptr<ID3D::Resource> waterVelocitiesTexture[VelTextures];
+        UnorderedAccessView waterVelocitiesUAV[VelTextures];
+        ShaderResourceView waterVelocitiesSRV[VelTextures];
 
         intrusive_ptr<ID3D::Resource> slopesBuffer[2];
         UnorderedAccessView slopesBufferUAV[2];
@@ -115,7 +121,7 @@ namespace SceneEngine
             targetDesc._textureDesc._nativePixelFormat = NativeFormat::R32_TYPELESS;
             auto velBuffer = BufferUploads::CreateBasicPacket(sizeof(float)*width*height, nullptr, BufferUploads::TexturePitches(width*4, width*height*4));
             std::fill((float*)velBuffer->GetData(), (float*)PtrAdd(velBuffer->GetData(), width*height*sizeof(float)), 0.f);
-            for (unsigned c=0; c<4; ++c) {
+            for (unsigned c=0; c<VelTextures; ++c) {
                 waterVelocitiesTexture[c] = uploads.Transaction_Immediate(targetDesc, velBuffer.get())->AdoptUnderlying();
                 waterVelocitiesUAV[c] = UnorderedAccessView(waterVelocitiesTexture[c].get(), NativeFormat::R32_FLOAT, 0, false, true);
                 waterVelocitiesSRV[c] = ShaderResourceView(waterVelocitiesTexture[c].get(), NativeFormat::R32_FLOAT, maxSimulationGrids);
@@ -171,7 +177,7 @@ namespace SceneEngine
             _waterHeightsUAV[c] = std::move(waterHeightsUAV[c]);
         }
 
-        for (unsigned c=0; c<4; ++c) {
+        for (unsigned c=0; c<VelTextures; ++c) {
             _waterVelocitiesTexture[c] = std::move(waterVelocitiesTexture[c]);
             _waterVelocitiesUAV[c] = std::move(waterVelocitiesUAV[c]);
             _waterVelocitiesSRV[c] = std::move(waterVelocitiesSRV[c]);
@@ -250,8 +256,7 @@ namespace SceneEngine
 
     ShallowWaterSim::~ShallowWaterSim() {}
 
-
-            ////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     template<typename First, typename Second>
         static bool SortCells(const std::pair<First,Second>& lhs, const std::pair<First,Second>& rhs) 
@@ -283,7 +288,7 @@ namespace SceneEngine
     static bool SortByPriority(const PrioritisedActiveElement& lhs, const PrioritisedActiveElement& rhs)        { return lhs._priority < rhs._priority; }
     static bool SortByGridIndex(const PrioritisedActiveElement& lhs, const PrioritisedActiveElement& rhs)       { return SortOceanGridElement(lhs._e, rhs._e); }
 
-        ////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     static Int2 GetCursorPos()
     {
@@ -490,22 +495,53 @@ namespace SceneEngine
         } else {
 
                 // have to run all of the "update velocities" first and then update heights
-            auto& cshader0 = Assets::GetAssetDep<ComputeShader>("game/xleres/Ocean/PipeModelShallowWaterSim.csh:UpdateVelocities:cs_*", shaderDefines);
-            auto& cshader1 = Assets::GetAssetDep<ComputeShader>("game/xleres/Ocean/PipeModelShallowWaterSim.csh:UpdateHeights:cs_*", shaderDefines);
+            auto& cshader0 = Assets::GetAssetDep<ComputeShader>(
+                "game/xleres/Ocean/PipeModelShallowWaterSim.csh:UpdateVelocities:cs_*", shaderDefines);
+            auto& cshader1 = Assets::GetAssetDep<ComputeShader>(
+                "game/xleres/Ocean/PipeModelShallowWaterSim.csh:UpdateHeights:cs_*", 
+                (StringMeld<256>() << shaderDefines << ";WRITING_HEIGHTS=1").get());
 
                 // order is important... We must start in the bottom right corner and work to the top left
             auto sortedElements = shallowBox._activeSimulationElements;
             std::sort(sortedElements.begin(), sortedElements.end(),
                 [](const ShallowWaterSim::ActiveElement& lhs, const ShallowWaterSim::ActiveElement& rhs) -> bool
                 {
-                    if (lhs._gridY == rhs._gridY) {
-                        return lhs._gridX > rhs._gridX;
-                    }
+                    if (lhs._gridY == rhs._gridY) return lhs._gridX > rhs._gridX;
                     return lhs._gridY > rhs._gridY;
                 });
 
             for (unsigned pass=0; pass<2; ++pass) {
                 context->Bind((pass==0)?cshader0:cshader1);
+
+                    // limit of 8 UAV slots means that we can't bind 8 velocity UAVs 
+                    // and a heights UAV at the same time
+                if (pass == 0) {
+                    context->BindCS(MakeResourceList(
+                        shallowBox._simulationGrid->_waterVelocitiesUAV[0],
+                        shallowBox._simulationGrid->_waterVelocitiesUAV[1],
+                        shallowBox._simulationGrid->_waterVelocitiesUAV[2],
+                        shallowBox._simulationGrid->_waterVelocitiesUAV[3],
+                        shallowBox._simulationGrid->_waterVelocitiesUAV[4],
+                        shallowBox._simulationGrid->_waterVelocitiesUAV[5],
+                        shallowBox._simulationGrid->_waterVelocitiesUAV[6],
+                        shallowBox._simulationGrid->_waterVelocitiesUAV[7]));
+                    context->BindCS(MakeResourceList(
+                        5, shallowBox._simulationGrid->_waterHeightsSRV[thisFrameBuffer]));
+                } else {
+                    context->BindCS(MakeResourceList(
+                        5,
+                        shallowBox._simulationGrid->_waterVelocitiesSRV[0],
+                        shallowBox._simulationGrid->_waterVelocitiesSRV[1],
+                        shallowBox._simulationGrid->_waterVelocitiesSRV[2],
+                        shallowBox._simulationGrid->_waterVelocitiesSRV[3],
+                        shallowBox._simulationGrid->_waterVelocitiesSRV[4],
+                        shallowBox._simulationGrid->_waterVelocitiesSRV[5],
+                        shallowBox._simulationGrid->_waterVelocitiesSRV[6],
+                        shallowBox._simulationGrid->_waterVelocitiesSRV[7]));
+                    context->BindCS(MakeResourceList(
+                        shallowBox._simulationGrid->_waterHeightsUAV[thisFrameBuffer]));
+                }
+
                 for (auto i=sortedElements.cbegin(); i!=sortedElements.cend(); ++i) {
                     if (i->_arrayIndex < 128) {
                         constants._simulatingIndex = Int2(i->_gridX, i->_gridY);
@@ -516,6 +552,8 @@ namespace SceneEngine
                         context->Dispatch(1, shallowBox._gridDimension, 1);
                     }
                 }
+
+                context->UnbindCS<RenderCore::Metal::UnorderedAccessView>(0, 8);
             }
 
         }
@@ -559,8 +597,10 @@ namespace SceneEngine
         }
 
         char shaderDefines[256]; 
-        _snprintf_s(shaderDefines, dimof(shaderDefines), "SHALLOW_WATER_TILE_DIMENSION=%i;SHALLOW_WATER_BOUNDARY=%i", 
-            shallowBox._gridDimension, unsigned(borderMode));
+        _snprintf_s(shaderDefines, dimof(shaderDefines), 
+            "SHALLOW_WATER_TILE_DIMENSION=%i;SHALLOW_WATER_BOUNDARY=%i;SURFACE_HEIGHTS_FLOAT=%i", 
+            shallowBox._gridDimension, unsigned(borderMode),
+            int(surfaceHeightsProvider.IsFloatFormat()));
 
         auto& cshader = Assets::GetAssetDep<ComputeShader>(
             usePipeModel?"game/xleres/Ocean/InitSimGrid.csh:InitPipeModel:cs_*":"game/xleres/Ocean/InitSimGrid.csh:main:cs_*", shaderDefines);
@@ -626,7 +666,6 @@ namespace SceneEngine
         shallowBox._activeSimulationElements = std::move(newElements);
     }
 
-
         ////////////////////////////////
 
     void ShallowWater_DoSim(
@@ -645,12 +684,12 @@ namespace SceneEngine
         ConstantBuffer globalOceanMaterialConstantBuffer(&materialConstants, sizeof(materialConstants));
 
             // unbind resources that were bound in ShallowWater_BindForOceanRender
-        context->UnbindVS<ShaderResourceView>(3, 2);
-        context->UnbindPS<ShaderResourceView>(5, 1);
+        context->UnbindVS<ShaderResourceView>( 3, 2);
+        context->UnbindPS<ShaderResourceView>( 5, 1);
         context->UnbindPS<ShaderResourceView>(11, 1);
         context->UnbindPS<ShaderResourceView>(15, 1);
 
-        unsigned thisFrameBuffer     = (bufferCounter+0)%shallowBox._simulationGrid->_rotatingBufferCount;
+        unsigned thisFrameBuffer = (bufferCounter+0)%shallowBox._simulationGrid->_rotatingBufferCount;
 
             //  Calculate what grids we need for the current frame. If those grids aren't currently
             //  simulated, we need to set up the simulation (calculate depths and initialise the 
@@ -667,11 +706,9 @@ namespace SceneEngine
                 signed testGridY = baseGridY + y - 2;
                 auto visibility = GridIsVisible(parserContext, testGridX, testGridY, gridPhysicalDimension, baseHeight);
                 if (visibility) {
-
                         // calculate priority
                     Float2 gridCentrePosition = Float2(float(testGridX) + 0.5f, float(testGridY) + 0.5f) * gridPhysicalDimension;
                     float gridDistance = Magnitude(gridCentrePosition - Float2(cameraPosition[0], cameraPosition[1]));
-
                     float priority = gridDistance;
                     // if (visibility != CULL_INCLUSION) {
                     //     priority += 512.f;   // give priority penalty for grids on the edge of the screen (but maybe exclude the grid the camera is immediately over?)
@@ -706,7 +743,6 @@ namespace SceneEngine
 
             // add the old grids into the list of grids to prioritize
         for (auto i=shallowBox._activeSimulationElements.cbegin(); i!=shallowBox._activeSimulationElements.cend(); ++i) {
-
             Float2 gridCentrePosition(
                 (float(i->_gridX) + 0.5f) * gridPhysicalDimension, 
                 (float(i->_gridY) + 0.5f) * gridPhysicalDimension);
@@ -716,7 +752,6 @@ namespace SceneEngine
                 //  screen for a number of frames.
             float priority = gridDistance;  
             gridsToPrioritise.push_back(PrioritisedActiveElement(*i, priority));
-
         }
 
         std::vector<Int4> gridsDestroyedThisFrame;
@@ -750,10 +785,12 @@ namespace SceneEngine
         }
 
         if (!gridsDestroyedThisFrame.empty()) {
+
                 //  if there are any grids that were removed this frame, we have to clear their
                 //  entry in "shallowBox._lookupTableUAV" (otherwise they cause lots of trouble)
                 //  There isn't a really convenient way to do this with a compute shader. But
                 //  we can execute a simple shader with a (1,1,1) thread count...
+
             struct ClearGridsConstants
             {
                 unsigned _indexCount;
@@ -767,6 +804,7 @@ namespace SceneEngine
             context->Bind(Assets::GetAssetDep<ComputeShader>("game/xleres/Ocean/InitSimGrid.csh:ClearGrids:cs_*"));
             context->BindCS(MakeResourceList(0, ConstantBuffer(&clearGridsConstants, sizeof(clearGridsConstants))));
             context->Dispatch(unsigned(gridsDestroyedThisFrame.size()));
+
         }
 
         context->UnbindCS<UnorderedAccessView>(1, 8);
@@ -776,14 +814,15 @@ namespace SceneEngine
             //  alternate the order.
 
         if (!shallowBox._activeSimulationElements.empty()) {
+
             auto cursorPos = GetCursorPos();
             ViewportDesc vpd(*context);
             float compressionConstants[4] = { 0.f, 0.f, 1000.f, 1.f };
 
             static unsigned framesMouseDown = 0;
             if (GetKeyState(VK_MBUTTON)<0) {
-                    //  find the mouse over ray, and find the intersection point with
-                    //  the ocean water plane
+                    //  Find the mouse over ray, and find the intersection
+                    //  point with the ocean water plane
                 auto mouseOverRay = CalculateMouseOverRay(context, parserContext);
                 float a = mouseOverRay.first[2] - baseHeight;
                 float b = mouseOverRay.second[2] - mouseOverRay.first[2];
@@ -805,6 +844,7 @@ namespace SceneEngine
                 globalOceanWorkingHeights, surfaceHeightsProvider, 
                 shallowBox, bufferCounter, compressionConstants,
                 rainQuantity, shallowWaterBorderMode);
+
         }
 
         char shaderDefines[256]; 
@@ -814,6 +854,7 @@ namespace SceneEngine
                 //  Note, this will generate the normals for every array slice, even
                 //  for slices that aren't actually used.
         if (!shallowBox._simulationGrid->_normalsTextureUAV.empty()) {
+
             auto& buildNormals = Assets::GetAssetDep<ComputeShader>("game/xleres/Ocean/OceanNormalsShallow.csh:BuildDerivatives:cs_*", shaderDefines);
             auto& buildNormalsMipmaps = Assets::GetAssetDep<ComputeShader>("game/xleres/Ocean/OceanNormalsShallow.csh:BuildDerivativesMipmap:cs_*", shaderDefines);
 
@@ -972,7 +1013,11 @@ namespace SceneEngine
             shallowBox._simulationGrid->_waterVelocitiesSRV[0],
             shallowBox._simulationGrid->_waterVelocitiesSRV[1],
             shallowBox._simulationGrid->_waterVelocitiesSRV[2],
-            shallowBox._simulationGrid->_waterVelocitiesSRV[3]));
+            shallowBox._simulationGrid->_waterVelocitiesSRV[3],
+            shallowBox._simulationGrid->_waterVelocitiesSRV[4],
+            shallowBox._simulationGrid->_waterVelocitiesSRV[5],
+            shallowBox._simulationGrid->_waterVelocitiesSRV[6],
+            shallowBox._simulationGrid->_waterVelocitiesSRV[7]));
         context->Bind(Topology::TriangleList);
         context->Bind(Techniques::CommonResources()._dssReadWrite);
 

@@ -158,6 +158,9 @@ namespace RenderCore
         ResourceList<Type,7> MakeResourceList(const Type& zero, const Type& one, const Type& two, const Type& three, const Type& four, const Type& five, const Type& six) { return ResourceList<Type, 7>(std::make_tuple(std::ref(zero), std::ref(one), std::ref(two), std::ref(three), std::ref(four), std::ref(five), std::ref(six))); }
 
     template <typename Type>
+        ResourceList<Type,8> MakeResourceList(const Type& zero, const Type& one, const Type& two, const Type& three, const Type& four, const Type& five, const Type& six, const Type& seven) { return ResourceList<Type, 8>(std::make_tuple(std::ref(zero), std::ref(one), std::ref(two), std::ref(three), std::ref(four), std::ref(five), std::ref(six), std::ref(seven))); }
+
+    template <typename Type>
         ResourceList<Type,1> MakeResourceList(unsigned offset, const Type& zero) { return ResourceList<Type, 1>(offset, std::make_tuple(std::ref(zero))); }
 
     template <typename Type>
@@ -174,6 +177,15 @@ namespace RenderCore
 
     template <typename Type>
         ResourceList<Type,6> MakeResourceList(unsigned offset, const Type& zero, const Type& one, const Type& two, const Type& three, const Type& four, const Type& five) { return ResourceList<Type, 6>(offset, std::make_tuple(std::ref(zero), std::ref(one), std::ref(two), std::ref(three), std::ref(four), std::ref(five))); }
+
+    template <typename Type>
+        ResourceList<Type,7> MakeResourceList(unsigned offset, const Type& zero, const Type& one, const Type& two, const Type& three, const Type& four, const Type& five, const Type& six) { return ResourceList<Type, 7>(offset, std::make_tuple(std::ref(zero), std::ref(one), std::ref(two), std::ref(three), std::ref(four), std::ref(five), std::ref(six))); }
+
+    template <typename Type>
+        ResourceList<Type,8> MakeResourceList(unsigned offset, const Type& zero, const Type& one, const Type& two, const Type& three, const Type& four, const Type& five, const Type& six, const Type& seven) { return ResourceList<Type, 8>(offset, std::make_tuple(std::ref(zero), std::ref(one), std::ref(two), std::ref(three), std::ref(four), std::ref(five), std::ref(six), std::ref(seven))); }
+
+    template <typename Type>
+        ResourceList<Type,9> MakeResourceList(unsigned offset, const Type& zero, const Type& one, const Type& two, const Type& three, const Type& four, const Type& five, const Type& six, const Type& seven, const Type& eight) { return ResourceList<Type, 9>(offset, std::make_tuple(std::ref(zero), std::ref(one), std::ref(two), std::ref(three), std::ref(four), std::ref(five), std::ref(six), std::ref(seven), std::ref(eight))); }
 
 
     #pragma warning(pop)

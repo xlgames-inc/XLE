@@ -824,7 +824,7 @@ namespace SceneEngine
 
             // Create the "box" that will contain resources required while performing the
             // erosion simulation
-        const bool usePipeModel = false;
+        static bool usePipeModel = true;
         auto newShallowWater = std::make_unique<ShallowWaterSim>(
             ShallowWaterSim::Desc(unsigned(ErosionWaterTileDimension), gridsX * gridsY, usePipeModel, true));
         
