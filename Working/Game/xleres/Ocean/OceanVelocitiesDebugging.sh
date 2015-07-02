@@ -10,7 +10,12 @@
 #include "../Transform.h"
 #include "../Utility/MathConstants.h"
 
-Texture2DArray<float>	ShallowWaterHeights	: register(t3);
+Texture2DArray<float>	ShallowWaterHeights	: register(t1);
+
+#if defined(SHOW_EROSION)
+	Texture2D<float>	HardMaterials : register(t2);
+	Texture2D<float>	SoftMaterials : register(t3);
+#endif
 
 class VSOutput
 {
@@ -33,7 +38,7 @@ VSOutput vs_main(uint vertexId : SV_VertexId)
 	return output;
 }
 
-float4 LoadVelocities4D(uint3 coord)
+float4 LoadVelocities4D(int3 coord)
 {
 	if (coord.z < 0.f) { return 0.0.xxxx; }
 	return float4(Velocities0[coord], Velocities1[coord], Velocities2[coord], Velocities3[coord]);
@@ -110,6 +115,15 @@ float4 ps_main(VSOutput input) : SV_Target0
 
 #if 1
 
+	#if defined(SHOW_EROSION)
+		float softMaterials = SoftMaterials[int2(baseCoord)];
+		if (softMaterials < 0.f) return float4(1, 0, 0, 1); // negative soft materials is an error
+
+		float brightness = saturate(softMaterials / 1.f);
+	#else
+		float brightness = 1.f;
+	#endif
+
 	// 0 1 2
 	// 3 4 5
 	// 6 7 8
@@ -120,7 +134,7 @@ float4 ps_main(VSOutput input) : SV_Target0
 	vel2d.y += 1.f/6.f * sqrtHalf * (vel[0] + vel[2] - vel[6] - vel[8]);
 
 	float vlen = length(vel2d);
-	if (vlen < 1e-3f) return float4(0.0.xxx, 1.f);
+	if (vlen < 1e-3f) return float4(0.0.xxx, brightness);
 
 	float2 v = vel2d / vlen;
 
@@ -129,7 +143,7 @@ float4 ps_main(VSOutput input) : SV_Target0
 		v.x, v.y,
 		v.y, -v.x);
 	float2 adjustedGridCoords = mul(rotationMatrix, frac(input.gridCoords) - 0.5.xx) + 0.5.xx;
-	return float4(1.0.xxx * ArrowStencil(adjustedGridCoords), 1.f);
+	return float4(1.0.xxx * ArrowStencil(adjustedGridCoords), brightness);
 
 #else
 

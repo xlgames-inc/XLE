@@ -22,9 +22,9 @@ cbuffer TickErosionSimConstants : register(b5)
 	int2 gpuCacheOffset;
 	int2 simulationSize;
 
-	float ChangeToSoftConstant;			// = 0.0001f;
-	float SoftFlowConstant;				// = 0.05f;
-	float SoftChangeBackConstant;		// = 0.9f;
+	float ChangeToSoftConstant;		// = 0.0001f;
+	float SoftFlowConstant;			// = 0.05f;
+	float SoftChangeBackConstant;	// = 0.9f;
 }
 
 static const int CoordRatio = 1;		// ratio of surface coordinate grid elements to water sim grid elements (in 1 dimension)
@@ -103,7 +103,7 @@ float LoadInterpolatedSoftMaterials(float2 coord)
 
 	float3 terrainTangentXDir = float3(terrainEleDist, 0.f, rightTerrainHeight-centerTerrainHeight);
 	float3 terrainTangentYDir = float3(0.f, terrainEleDist, bottomTerrainHeight-centerTerrainHeight);
-	float3 terrainNormal = normalize(cross(terrainTangentXDir, terrainTangentYDir));
+	float3 terrainNormal = normalize(cross(terrainTangentYDir, terrainTangentXDir));
 
 	float3 waterSurfaceTangentX = normalize(float3(1.f, 0.f, 0.f)); 	// rightWaterHeight-centerWaterHeight));
 	float3 waterSurfaceTangentY = normalize(float3(0.f, 1.f, 0.f)); 	// bottomTerrainHeight-centerWaterHeight));
@@ -163,7 +163,10 @@ float LoadInterpolatedSoftMaterials(float2 coord)
 	vel2d.x += 1.f/6.f * sqrtHalf * (vel[0] + vel[6] - vel[2] - vel[8]);
 	vel2d.y += 1.f/6.f * sqrtHalf * (vel[0] + vel[2] - vel[6] - vel[8]);
 	float magv = length(vel2d);
-	float3 V = waterSurfaceTangentX * vel2d.x + waterSurfaceTangentY * vel2d.y;
+	float3 Vdir;
+	if (magv > 1e-5f) {
+		Vdir = waterSurfaceTangentX * (vel2d.x / magv) + waterSurfaceTangentY * (vel2d.y/magv);
+	} else Vdir = 0.0.xxx;
 
 		// float initialTransportedSediment = InputSoftMaterials[baseCoord.xy];
 
@@ -186,35 +189,36 @@ float LoadInterpolatedSoftMaterials(float2 coord)
 		// calculating the velocity vector in both passes). It's a small optimisation,
 		// hopefully it shouldn't have a significant negative effect on the result.
 
-	const float velScale = .75f / length(vel2d);
+	const float velScale = 0.75f / length(vel2d);
+	// float initialSediment = SoftMaterials[baseCoord.xy];
 	float initialSediment = LoadInterpolatedSoftMaterials(baseCoord + 0.5.xx - velScale * vel2d);
-	// initialSediment = max(0.f, initialSediment);  (if the sediment level becomes negative, it will cause the simulation to explode)
+	initialSediment = max(0.f, initialSediment);  // (if the sediment level becomes negative, it will cause the simulation to explode)
 	float initialHard = HardMaterials[baseCoord.xy];
 
 		// Calculate the "hard to soft" factor. This is the rate of
 		// change of rock and hard material into soil and softer material
 		// that can be transported along the grid.
-	const float Kc = 1e-1f;
-	const float depthMax = 50.f;
+	const float Kc = 1.f; // 1e-1f;
+	const float depthMax = 10.f;
 	float depth = centerWaterHeight - centerTerrainHeight;
-	float C = Kc * dot(-terrainNormal, V) * magv * saturate(1.f - (depth / depthMax));
+	float C = Kc * dot(-terrainNormal, Vdir) * magv * saturate(1.f - (depth / depthMax));
 
 	const float R = 1.f;		// (variable hardness)
-	const float Ks = 0.1f;		// hard to soft rate
-	const float Kd = 0.01f; // 0.5f;		// soft to hard rate (deposition / settling)
+	const float Ks = 0.2f;		// hard to soft rate
+	const float Kd = 1.f; // 0.1f; // 0.5f;		// soft to hard rate (deposition / settling)
 
 	const float deltaTime = 1.f / 30.f;
 	float hardToSoft;
 	if (initialSediment < C) {
-		hardToSoft = R * Ks * (C - initialSediment);
+		hardToSoft = R * Ks * (C - initialSediment) * deltaTime;
 	} else {
-		hardToSoft = max(-initialSediment/deltaTime, Kd * (C - initialSediment));
+		hardToSoft = max(-initialSediment, Kd * (C - initialSediment) * deltaTime);
 	}
 
 		////////////////////////////////////////////
 
-	float newSediment = initialSediment + deltaTime * hardToSoft;
-	float newHard = initialHard - deltaTime * hardToSoft;
+	float newSediment = initialSediment + hardToSoft;
+	float newHard = initialHard - hardToSoft;
 
 #if 1
 	SoftMaterials[baseCoord.xy] = newSediment;

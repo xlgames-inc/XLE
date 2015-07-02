@@ -123,6 +123,7 @@ namespace SceneEngine
     void ShallowWater_RenderVelocities(
         RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, 
         const OceanSettings& oceanSettings, float gridPhysicalDimension, Float2 offset,
-        ShallowWaterSim& shallowBox, unsigned bufferCounter, ShallowBorderMode::Enum borderMode);
+        ShallowWaterSim& shallowBox, unsigned bufferCounter, ShallowBorderMode::Enum borderMode,
+        bool showErosion);
 }
 

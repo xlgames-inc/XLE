@@ -156,9 +156,11 @@ namespace SceneEngine
     public:
         intrusive_ptr<ID3D::Resource> _hardMaterials, _softMaterials, _softMaterialsCopy;
 
-        RenderCore::Metal::UnorderedAccessView _hardMaterialsUAV;
-        RenderCore::Metal::UnorderedAccessView _softMaterialsUAV;
-        RenderCore::Metal::ShaderResourceView _softMaterialsCopySRV;
+        Metal::UnorderedAccessView _hardMaterialsUAV;
+        Metal::UnorderedAccessView _softMaterialsUAV;
+        Metal::ShaderResourceView _softMaterialsCopySRV;
+        Metal::ShaderResourceView _hardMaterialsSRV;
+        Metal::ShaderResourceView _softMaterialsSRV;
 
         std::unique_ptr<ShallowWaterSim> _waterSim;
         std::unique_ptr<Internal::SurfaceHeightsProvider> _surfaceHeightsProvider;
@@ -850,6 +852,8 @@ namespace SceneEngine
 
         RenderCore::Metal::UnorderedAccessView hardMaterialsUAV(hardMaterials.get());
         RenderCore::Metal::UnorderedAccessView softMaterialsUAV(softMaterials.get());
+        RenderCore::Metal::ShaderResourceView hardMaterialsSRV(hardMaterials.get());
+        RenderCore::Metal::ShaderResourceView softMaterialsSRV(softMaterials.get());
         RenderCore::Metal::ShaderResourceView softMaterialsCopySRV(softMaterialsCopy.get());
 
             //  The simulating area may actually only a small part of the cached area.
@@ -879,6 +883,8 @@ namespace SceneEngine
         _pimpl->_erosionSim._softMaterialsCopy = std::move(softMaterialsCopy);
         _pimpl->_erosionSim._hardMaterialsUAV = std::move(hardMaterialsUAV);
         _pimpl->_erosionSim._softMaterialsUAV = std::move(softMaterialsUAV);
+        _pimpl->_erosionSim._hardMaterialsSRV = std::move(hardMaterialsSRV);
+        _pimpl->_erosionSim._softMaterialsSRV = std::move(softMaterialsSRV);
         _pimpl->_erosionSim._softMaterialsCopySRV = std::move(softMaterialsCopySRV);
         _pimpl->_erosionSim._gpuCacheOffset = gpuCacheOffset;
         _pimpl->_erosionSim._simSize = UInt2(unsigned(size[0]), unsigned(size[1]));
@@ -970,6 +976,8 @@ namespace SceneEngine
         _pimpl->_erosionSim._softMaterialsCopy.reset();
         _pimpl->_erosionSim._hardMaterialsUAV = RenderCore::Metal::UnorderedAccessView();
         _pimpl->_erosionSim._softMaterialsUAV = RenderCore::Metal::UnorderedAccessView();
+        _pimpl->_erosionSim._hardMaterialsSRV = RenderCore::Metal::ShaderResourceView();
+        _pimpl->_erosionSim._softMaterialsSRV = RenderCore::Metal::ShaderResourceView();
         _pimpl->_erosionSim._softMaterialsCopySRV = RenderCore::Metal::ShaderResourceView();
         _pimpl->_erosionSim._gpuCacheOffset = UInt2(0,0);
         _pimpl->_erosionSim._simSize = UInt2(0,0);
@@ -997,12 +1005,13 @@ namespace SceneEngine
                 +   Truncate(coords.TerrainOffset());
 
             auto metalContext = RenderCore::Metal::DeviceContext::Get(*context);
+            metalContext->BindPS(RenderCore::MakeResourceList(2, _pimpl->_erosionSim._hardMaterialsSRV, _pimpl->_erosionSim._softMaterialsSRV));
             ShallowWater_RenderVelocities(
                 metalContext.get(), parserContext,
                 OceanSettings(), terrainScale * ErosionWaterTileDimension / ErosionWaterTileScale, 
                 worldSpaceOffset,
                 *_pimpl->_erosionSim._waterSim.get(), 
-                _pimpl->_erosionSim._bufferCount-1, ShallowBorderMode::Surface);
+                _pimpl->_erosionSim._bufferCount-1, ShallowBorderMode::Surface, true);
         } 
         CATCH (const ::Assets::Exceptions::PendingResource& e) { parserContext.Process(e); }
         CATCH (const ::Assets::Exceptions::InvalidResource& e) { parserContext.Process(e); }

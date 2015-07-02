@@ -11,10 +11,6 @@ RWTexture2DArray<float>		WaterHeights : register(u0);
 RWTexture2DArray<float>		WaterHeightsN1 : register(u1);
 RWTexture2DArray<float>		WaterHeightsN2 : register(u2);
 RWTexture2D<uint>			LookupTable : register(u3);
-RWTexture2DArray<float>		WaterVelocities0 : register(u4);
-RWTexture2DArray<float>		WaterVelocities1 : register(u5);
-RWTexture2DArray<float>		WaterVelocities2 : register(u6);
-RWTexture2DArray<float>		WaterVelocities3 : register(u7);
 
 Texture2D<float>			GlobalWavesHeightsTexture : register(t4);
 
@@ -77,16 +73,11 @@ cbuffer Consts : register(b2)
 	#endif
 
 	WaterHeights		[uint3(dispatchThreadId.xy, SimulatingGridIndex)] = max(initHeight, surfaceHeight);
-	WaterVelocities0	[uint3(dispatchThreadId.xy, SimulatingGridIndex)] = 0.f;		// (always begin with zero velocity)
-	WaterVelocities1	[uint3(dispatchThreadId.xy, SimulatingGridIndex)] = 0.f;		// (always begin with zero velocity)
-	WaterVelocities2	[uint3(dispatchThreadId.xy, SimulatingGridIndex)] = 0.f;		// (always begin with zero velocity)
-	WaterVelocities3	[uint3(dispatchThreadId.xy, SimulatingGridIndex)] = 0.f;		// (always begin with zero velocity)
 
 	if (dispatchThreadId.x == 0 && dispatchThreadId.y == 0) {
 		LookupTable[int2(256,256)+LookupTableCoords] = SimulatingGridIndex;
 	}
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 	//   c l e a r   g r i d s   //

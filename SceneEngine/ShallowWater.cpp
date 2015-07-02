@@ -325,12 +325,11 @@ namespace SceneEngine
 
         ////////////////////////////////
 
-    static bool
-        CalculateAddressing(
-            ShallowWaterSim::SurfaceHeightsAddressingConstants& dest,
-            const ShallowWaterSim::ActiveElement& e, 
-            ISurfaceHeightsProvider* surfaceHeightsProvider, 
-            float gridPhysicalDimension)
+    static bool CalculateAddressing(
+        ShallowWaterSim::SurfaceHeightsAddressingConstants& dest,
+        const ShallowWaterSim::ActiveElement& e, 
+        ISurfaceHeightsProvider* surfaceHeightsProvider, 
+        float gridPhysicalDimension)
     {
             //  Even though we have a cached heights addressing, we should recalculate height addressing to 
             //  match new uploads, etc...
@@ -399,7 +398,10 @@ namespace SceneEngine
     }
 
     template<int Count>
-        static void BuildShaderDefines(char (&result)[Count], unsigned gridDimension, ISurfaceHeightsProvider* surfaceHeightsProvider = nullptr, ShallowBorderMode::Enum borderMode = ShallowBorderMode::BaseHeight)
+        static void BuildShaderDefines(
+            char (&result)[Count], unsigned gridDimension, 
+            ISurfaceHeightsProvider* surfaceHeightsProvider = nullptr, 
+            ShallowBorderMode::Enum borderMode = ShallowBorderMode::BaseHeight)
     {
         _snprintf_s(result, Count, 
             "SHALLOW_WATER_TILE_DIMENSION=%i;SHALLOW_WATER_BOUNDARY=%i;SURFACE_HEIGHTS_FLOAT=%i", 
@@ -584,7 +586,7 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-        if (!shallowBox._usePipeModel) {
+        if (!usePipeModel) {
             context->BindCS(MakeResourceList(
                 shallowBox._simulationGrid->_waterHeightsUAV[0],
                 shallowBox._simulationGrid->_waterHeightsUAV[1], 
@@ -623,6 +625,8 @@ namespace SceneEngine
         ConstantBuffer initCellConstantsBuffer(nullptr, sizeof(SimulatingConstants));
         ConstantBuffer surfaceHeightsAddressingBuffer(nullptr, sizeof(ShallowWaterSim::SurfaceHeightsAddressingConstants));
         context->BindCS(MakeResourceList(1, surfaceHeightsAddressingBuffer, initCellConstantsBuffer));
+
+        std::vector<ShallowWaterSim::ActiveElement> gridsForSecondInitPhase;
             
         for (auto i = newElementsBegin; i!=newElementsEnd; i=PtrAdd(i, stride)) {
             if (i->_arrayIndex == ~unsigned(0x0)) {
@@ -646,6 +650,8 @@ namespace SceneEngine
                 auto insertPoint = std::lower_bound(newElements.begin(), newElements.end(), newElement, SortOceanGridElement);
                 newElements.insert(insertPoint, newElement);
 
+                gridsForSecondInitPhase.push_back(newElement);
+
                 SetSimulatingConstants(context, initCellConstantsBuffer, newElement);
                 context->Dispatch(1, shallowBox._gridDimension, 1);
 
@@ -654,6 +660,18 @@ namespace SceneEngine
                 auto insertPoint = std::lower_bound(newElements.begin(), newElements.end(), *i, SortOceanGridElement);
                 newElements.insert(insertPoint, *i);
 
+            }
+        }
+
+        if (usePipeModel) {
+            auto& cshader = Assets::GetAssetDep<ComputeShader>(
+                "game/xleres/Ocean/InitSimGrid2.csh:InitPipeModel2:cs_*", shaderDefines);
+            context->Bind(cshader);
+            for (auto i = gridsForSecondInitPhase.cbegin(); i!=gridsForSecondInitPhase.cend(); ++i) {
+                if (i->_arrayIndex == ~unsigned(0x0)) {
+                    SetSimulatingConstants(context, initCellConstantsBuffer, *i);
+                    context->Dispatch(1, shallowBox._gridDimension, 1);
+                }
             }
         }
 
@@ -970,13 +988,16 @@ namespace SceneEngine
     void ShallowWater_RenderVelocities(
         RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, 
         const OceanSettings& oceanSettings, float gridPhysicalDimension, Float2 offset,
-        ShallowWaterSim& shallowBox, unsigned bufferCounter, ShallowBorderMode::Enum borderMode)
+        ShallowWaterSim& shallowBox, unsigned bufferCounter, ShallowBorderMode::Enum borderMode,
+        bool showErosion)
     {
         auto materialConstants = Internal::BuildOceanMaterialConstants(oceanSettings, gridPhysicalDimension);
         ConstantBuffer globalOceanMaterialConstantBuffer(&materialConstants, sizeof(materialConstants));
 
         char shaderDefines[256]; 
         BuildShaderDefines(shaderDefines, shallowBox._gridDimension, nullptr, borderMode);
+        if (showErosion)
+            XlCatString(shaderDefines, dimof(shaderDefines), ";SHOW_EROSION=1");
 
         unsigned thisFrameBuffer = (bufferCounter+0) % shallowBox._simulationGrid->_rotatingBufferCount;
         auto& patchRender = Assets::GetAssetDep<Metal::ShaderProgram>(
@@ -992,7 +1013,7 @@ namespace SceneEngine
         context->Bind(patchRender);
 
         SetupVertexGeneratorShader(context);
-        context->BindVS(MakeResourceList(3, 
+        context->BindVS(MakeResourceList(1, 
             shallowBox._simulationGrid->_waterHeightsSRV[thisFrameBuffer]));
 
         context->BindPS(MakeResourceList(4, 
