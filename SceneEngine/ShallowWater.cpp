@@ -325,8 +325,9 @@ namespace SceneEngine
 
         ////////////////////////////////
 
-    static ShallowWaterSim::SurfaceHeightsAddressingConstants
+    static bool
         CalculateAddressing(
+            ShallowWaterSim::SurfaceHeightsAddressingConstants& dest,
             const ShallowWaterSim::ActiveElement& e, 
             ISurfaceHeightsProvider* surfaceHeightsProvider, 
             float gridPhysicalDimension)
@@ -337,23 +338,26 @@ namespace SceneEngine
         Float2 gridMins(float(e._gridX) * gridPhysicalDimension, float(e._gridY) * gridPhysicalDimension);
         Float2 gridMaxs(float(e._gridX+1) * gridPhysicalDimension, float(e._gridY+1) * gridPhysicalDimension);
         auto surfaceAddressing = surfaceHeightsProvider->GetAddress(gridMins, gridMaxs);
-        assert(surfaceAddressing._valid);
-        auto newHeightsAddressing = e._heightsAddressing;
-        newHeightsAddressing._baseCoord = surfaceAddressing._baseCoordinate;
-        newHeightsAddressing._textureMin = surfaceAddressing._minCoordOffset;
-        newHeightsAddressing._textureMax = surfaceAddressing._maxCoordOffset;
-        newHeightsAddressing._scale = surfaceAddressing._heightScale;
-        newHeightsAddressing._offset = surfaceAddressing._heightOffset;
-        return newHeightsAddressing;
+        if (!surfaceAddressing._valid) return false;
+
+        dest._baseCoord = surfaceAddressing._baseCoordinate;
+        dest._textureMin = surfaceAddressing._minCoordOffset;
+        dest._textureMax = surfaceAddressing._maxCoordOffset;
+        dest._scale = surfaceAddressing._heightScale;
+        dest._offset = surfaceAddressing._heightOffset;
+        return true;
     }
 
-    static void SetAddressingConstants(RenderCore::Metal::DeviceContext* context, ConstantBuffer& cb, 
+    static bool SetAddressingConstants(RenderCore::Metal::DeviceContext* context, ConstantBuffer& cb, 
         const ShallowWaterSim::ActiveElement& e, 
         ISurfaceHeightsProvider* surfaceHeightsProvider, 
         float gridPhysicalDimension)
     {
-        auto newHeightsAddressing = CalculateAddressing(e, surfaceHeightsProvider, gridPhysicalDimension);
+        ShallowWaterSim::SurfaceHeightsAddressingConstants newHeightsAddressing;
+        if (!CalculateAddressing(newHeightsAddressing, e, surfaceHeightsProvider, gridPhysicalDimension))
+            return false;
         cb.Update(*context, &newHeightsAddressing, sizeof(newHeightsAddressing));
+        return true;
     }
 
     struct SimulatingConstants
@@ -365,7 +369,7 @@ namespace SceneEngine
         unsigned    _dummy[2];
     };
 
-    static void SetSimulatingConstants(RenderCore::Metal::DeviceContext* context, ConstantBuffer& cb, const ShallowWaterSim::ActiveElement& ele, float rainQuantityPerFrame, Float2 offset = Float2(0,0))
+    static void SetSimulatingConstants(RenderCore::Metal::DeviceContext* context, ConstantBuffer& cb, const ShallowWaterSim::ActiveElement& ele, float rainQuantityPerFrame = 0.f, Float2 offset = Float2(0,0))
     {
         SimulatingConstants constants = { 
             Int2(ele._gridX, ele._gridY), ele._arrayIndex, 
@@ -386,8 +390,9 @@ namespace SceneEngine
     {
         for (auto i=elements.cbegin(); i!=elements.cend(); ++i) {
             if (i->_arrayIndex < 128) {
+                if (!SetAddressingConstants(context, surfaceHeightsConstantsBuffer, *i, surfaceHeightsProvider, gridPhysicalDimension))
+                    continue;
                 SetSimulatingConstants(context, basicConstantsBuffer, *i, rainQuantityPerFrame);
-                SetAddressingConstants(context, surfaceHeightsConstantsBuffer, *i, surfaceHeightsProvider, gridPhysicalDimension);
                 context->Dispatch(1, elementDimension, 1);
             }
         }
@@ -460,7 +465,8 @@ namespace SceneEngine
                 for (auto i = shallowBox._activeSimulationElements.cbegin(); i!=shallowBox._activeSimulationElements.cend(); ++i) {
                     if (i->_arrayIndex < 128) {
                         SetSimulatingConstants(context, basicConstantsBuffer, *i, rainQuantityPerFrame);
-                        SetAddressingConstants(context, surfaceHeightsConstantsBuffer, *i, surfaceHeightsProvider, gridPhysicalDimension);
+                        if (!SetAddressingConstants(context, surfaceHeightsConstantsBuffer, *i, surfaceHeightsProvider, gridPhysicalDimension))
+                            continue;
 
                             // checkerboard pattern flip horizontal/vertical
                         int flip = (i->_gridX + i->_gridY + bufferCounter + p)&1;
@@ -576,6 +582,8 @@ namespace SceneEngine
         const bool usePipeModel = shallowBox._usePipeModel;
         std::vector<ShallowWaterSim::ActiveElement> newElements;
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
         if (!shallowBox._usePipeModel) {
             context->BindCS(MakeResourceList(
                 shallowBox._simulationGrid->_waterHeightsUAV[0],
@@ -596,6 +604,8 @@ namespace SceneEngine
             context->BindCS(MakeResourceList(4, *globalOceanWorkingHeights));
         }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
         char shaderDefines[256]; 
         BuildShaderDefines(shaderDefines, shallowBox._gridDimension, &surfaceHeightsProvider, borderMode);
 
@@ -606,8 +616,13 @@ namespace SceneEngine
         ConstantBuffer globalOceanMaterialConstantBuffer(&materialConstants, sizeof(materialConstants));
         context->BindCS(MakeResourceList(globalOceanMaterialConstantBuffer));
         context->Bind(cshader);
-
         context->BindCS(MakeResourceList(surfaceHeightsProvider.GetSRV()));
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ConstantBuffer initCellConstantsBuffer(nullptr, sizeof(SimulatingConstants));
+        ConstantBuffer surfaceHeightsAddressingBuffer(nullptr, sizeof(ShallowWaterSim::SurfaceHeightsAddressingConstants));
+        context->BindCS(MakeResourceList(1, surfaceHeightsAddressingBuffer, initCellConstantsBuffer));
             
         for (auto i = newElementsBegin; i!=newElementsEnd; i=PtrAdd(i, stride)) {
             if (i->_arrayIndex == ~unsigned(0x0)) {
@@ -617,39 +632,22 @@ namespace SceneEngine
                     //  Check the surface heights provider, to get the surface heights
                     //  if this fails, we can't render this grid element
                     //      todo -- we need to not only "get", but "lock" this data, so it's not swapped out
-                Float2 gridMins(float(i->_gridX) * gridPhysicalDimension, float(i->_gridY) * gridPhysicalDimension);
-                Float2 gridMaxs(float(i->_gridX+1) * gridPhysicalDimension, float(i->_gridY+1) * gridPhysicalDimension);
-                auto surfaceAddressing = surfaceHeightsProvider.GetAddress(gridMins, gridMaxs);
-                if (!surfaceAddressing._valid)
-                    continue;       // we can't render it just now ... (maybe after the surface heights load in)
+                if (!SetAddressingConstants(context, surfaceHeightsAddressingBuffer, *i, &surfaceHeightsProvider, gridPhysicalDimension))
+                    continue;
 
-                    //  assign one of the free grids (or destroy the least recently used one)
+                    //  Assign one of the free grids (or destroy the least recently used one)
                     //  call a compute shader to fill out the simulation grids with the new values
                     //  (this will also set the simulation grid value into the lookup table)
                 unsigned assignmentIndex = *(shallowBox._poolOfUnallocatedArrayIndices.cend()-1);
-                shallowBox._poolOfUnallocatedArrayIndices.erase(shallowBox._poolOfUnallocatedArrayIndices.cend()-1);
+                shallowBox._poolOfUnallocatedArrayIndices.erase(
+                    shallowBox._poolOfUnallocatedArrayIndices.cend()-1);
 
                 ShallowWaterSim::ActiveElement newElement(i->_gridX, i->_gridY, assignmentIndex);
-
-                struct InitCellConstants
-                {
-                    Int2 _lookableTableCoords;
-                    unsigned _simulatingGridIndex;
-                    unsigned _dummy;
-                } initCellConstants = { Int2(i->_gridX, i->_gridY), assignmentIndex, 0 };
-
-                newElement._heightsAddressing._baseCoord = surfaceAddressing._baseCoordinate;
-                newElement._heightsAddressing._textureMin = surfaceAddressing._minCoordOffset;
-                newElement._heightsAddressing._textureMax = surfaceAddressing._maxCoordOffset;
-                newElement._heightsAddressing._scale = surfaceAddressing._heightScale;
-                newElement._heightsAddressing._offset = surfaceAddressing._heightOffset;
-                ConstantBuffer initCellConstantsBuffer(&initCellConstants, sizeof(initCellConstants));
-                ConstantBuffer surfaceHeightsAddressingBuffer(&newElement._heightsAddressing, sizeof(newElement._heightsAddressing));
-                context->BindCS(MakeResourceList(1, surfaceHeightsAddressingBuffer, initCellConstantsBuffer));
-                context->Dispatch(1, shallowBox._gridDimension, 1);
-                    
                 auto insertPoint = std::lower_bound(newElements.begin(), newElements.end(), newElement, SortOceanGridElement);
                 newElements.insert(insertPoint, newElement);
+
+                SetSimulatingConstants(context, initCellConstantsBuffer, newElement);
+                context->Dispatch(1, shallowBox._gridDimension, 1);
 
             } else {
 
@@ -892,15 +890,15 @@ namespace SceneEngine
         }
 
             // Draw some debugging information displaying the current heights of the liquid
-    //    {
-    //        SetupVertexGeneratorShader(context);
-    //        context->Bind(Assets::GetAssetDep<Metal::ShaderProgram>(
-    //            "game/xleres/basic2D.vsh:fullscreen:vs_*", 
-    //            "game/xleres/Ocean/FFTDebugging.psh:ShallowWaterDebugging:ps_*"));
-    //        context->BindPS(MakeResourceList(   4, box._simulationGrid->_waterHeightsSRV[thisFrameBuffer],
-    //                                            box._simulationGrid->_surfaceHeightsSRV));
-    //        context->Draw(4);
-    //    }
+            // {
+            //  SetupVertexGeneratorShader(context);
+            //  context->Bind(Assets::GetAssetDep<Metal::ShaderProgram>(
+            //      "game/xleres/basic2D.vsh:fullscreen:vs_*", 
+            //      "game/xleres/Ocean/FFTDebugging.psh:ShallowWaterDebugging:ps_*"));
+            //  context->BindPS(MakeResourceList(   4, box._simulationGrid->_waterHeightsSRV[thisFrameBuffer],
+            //                                      box._simulationGrid->_surfaceHeightsSRV));
+            //  context->Draw(4);
+            // }
 
         if (Tweakable("OceanShallowDrawWireframe", false)) {
             ShallowWater_RenderWireframe(context, parserContext, oceanSettings, gridPhysicalDimension, Float2(0.f, 0.f), shallowBox, bufferCounter, shallowWaterBorderMode);

@@ -8,6 +8,7 @@
 #include "OceanShallow.h"
 #include "ShallowFlux.h"
 #include "../Transform.h"
+#include "../Utility/MathConstants.h"
 
 Texture2DArray<float>	ShallowWaterHeights	: register(t3);
 
@@ -24,6 +25,8 @@ VSOutput vs_main(uint vertexId : SV_VertexId)
 	float waterHeight = ShallowWaterHeights.Load(uint4(gridCoords, ArrayIndex, 0));
 	float3 worldPosition = float3(WorldPositionFromElementIndex(gridCoords), waterHeight);
 
+	worldPosition.z += 2.f;
+
 	VSOutput output;
 	output.position = mul(WorldToClip, float4(worldPosition,1));
 	output.gridCoords = SimulatingIndex * TileDimension + gridCoords;
@@ -34,6 +37,22 @@ float4 LoadVelocities4D(uint3 coord)
 {
 	if (coord.z < 0.f) { return 0.0.xxxx; }
 	return float4(Velocities0[coord], Velocities1[coord], Velocities2[coord], Velocities3[coord]);
+}
+
+bool ArrowStencil(float2 tc)
+{
+		// Draws an array in the +X direction in texture coordinate space
+
+	float x = min(tc.x, 1.f-tc.x);
+	if (x < 0.1f) return false;
+	x = (tc.x - .5f) * (.5f/.4f) + .5f;
+
+	float y = min(tc.y, 1.f-tc.y);
+	if (x > .5f) {
+		x = (1.f - x) / .5f;
+		return (2.f * (.5f - y)) < x;
+	}
+	return y > .3f;
 }
 
 float4 ps_main(VSOutput input) : SV_Target0
@@ -58,7 +77,7 @@ float4 ps_main(VSOutput input) : SV_Target0
 		for (uint c=0; c<AdjCellCount; ++c) {
 			float temp[AdjCellCount];
 			LoadVelocities(temp, NormalizeGridCoord(int2(baseCoord.xy) + AdjCellDir[c]));
-			centerVel[c] = centerVel[c] - temp[AdjCellComplement[c]];
+			// centerVel[c] = centerVel[c] - temp[AdjCellComplement[c]];
 		}
 
 		vel[0] = -centerVel[0];
@@ -88,6 +107,31 @@ float4 ps_main(VSOutput input) : SV_Target0
 		vel[7] = bottomVelocity.y;
 		vel[8] = bottomRightVelocity.x;
 	#endif
+
+#if 1
+
+	// 0 1 2
+	// 3 4 5
+	// 6 7 8
+	float2 vel2d = 0.0.xx;
+	vel2d.x += 1.f/6.f * (vel[3] - vel[5]);
+	vel2d.y += 1.f/6.f * (vel[1] - vel[7]);
+	vel2d.x += 1.f/6.f * sqrtHalf * (vel[0] + vel[6] - vel[2] - vel[8]);
+	vel2d.y += 1.f/6.f * sqrtHalf * (vel[0] + vel[2] - vel[6] - vel[8]);
+
+	float vlen = length(vel2d);
+	if (vlen < 1e-3f) return float4(0.0.xxx, 1.f);
+
+	float2 v = vel2d / vlen;
+
+	// rotate grid coords
+	float2x2 rotationMatrix = float2x2(
+		v.x, v.y,
+		v.y, -v.x);
+	float2 adjustedGridCoords = mul(rotationMatrix, frac(input.gridCoords) - 0.5.xx) + 0.5.xx;
+	return float4(1.0.xxx * ArrowStencil(adjustedGridCoords), 1.f);
+
+#else
 
 		// what part of the grid are we in?
 	float2 f = frac(input.gridCoords) - .5.xx;
@@ -131,4 +175,5 @@ float4 ps_main(VSOutput input) : SV_Target0
 	else if (vel[segment] < 0.f)	{ return float4(1, 0, 0, 1); }
 
 	return float4(0, 0, 1, 1);
+#endif
 }

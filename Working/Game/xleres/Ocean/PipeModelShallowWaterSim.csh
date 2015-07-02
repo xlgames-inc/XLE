@@ -21,7 +21,7 @@
 static const float g 			 = 9.8f;
 static const float WaterDensity  = 999.97;		// (kg/m^2) (important for dynamic compression)
 static const float DeltaTime     = 1.f / 60.f;
-static const float VelResistance = 1.f; // .97f;
+static const float VelResistance = .98f; // .97f;
 static const float4 EdgeVelocity = 0.0.xxxx;
 static const float EdgeHeight 	 = -10000.f;	// WaterBaseHeight
 
@@ -45,6 +45,7 @@ float AccelerationFromPressure(float h0, float h1, float waterDepth, float ep0, 
 
 		// we can factor out "WaterDensity" if there is no external pressure
 	return max(0, ((g * PressureScalar * (h0 - h1)) / waterDepth + (externalPressure1 - externalPressure0) / (WaterDensity * waterDepth)));
+	// return max(0, h0 - h1);
 }
 
 #if defined(DUPLEX_VEL)
@@ -95,7 +96,7 @@ void CalculateAcceleration(
 	cellHeight[3] = CachedHeights[1][cellIndex];		// cell (-1,  0)
 
 	#if defined(DUPLEX_VEL)
-		cellHeight[4] = CachedHeights[1][1 + cellIndex];	// cell (+1,  0)
+		cellHeight[4] = CachedHeights[1][2 + cellIndex];	// cell (+1,  0)
 		cellHeight[5] = CachedHeights[2][cellIndex];		// cell (-1, +1)
 		cellHeight[6] = CachedHeights[2][1 + cellIndex];	// cell ( 0, +1)
 		cellHeight[7] = CachedHeights[2][2 + cellIndex];	// cell (+1, +1)
@@ -103,7 +104,7 @@ void CalculateAcceleration(
 
 		// external pressure from objects pressing on the water (eg, ships, etc)
 	const float wsScale = ShallowGridPhysicalDimension / float(SHALLOW_WATER_TILE_DIMENSION);
-	float centerEp  = CalculateExternalPressure(worldPosition);
+	float centerEp = CalculateExternalPressure(worldPosition);
 
 	float ep[AdjCellCount];
 	for (uint c=0; c<AdjCellCount; ++c)
@@ -142,8 +143,7 @@ void StoreVelocities(float velocities[AdjCellCount], uint3 coord)
 
 void LoadVelocities_BoundaryCheck(out float velocities[AdjCellCount], int3 coord)
 {
-	if (coord.x >= 0 && coord.y >= 0
-		&& coord.x < SHALLOW_WATER_TILE_DIMENSION && coord.y < SHALLOW_WATER_TILE_DIMENSION) {
+	if (coord.x >= 0 && coord.y >= 0 && coord.x < SHALLOW_WATER_TILE_DIMENSION && coord.y < SHALLOW_WATER_TILE_DIMENSION) {
 		LoadVelocities(velocities, coord);
 	} else {
 		int3 normalized = NormalizeGridCoord(SimulatingIndex * SHALLOW_WATER_TILE_DIMENSION + coord.xy);
@@ -158,8 +158,8 @@ void LoadVelocities_BoundaryCheck(out float velocities[AdjCellCount], int3 coord
 
 float LoadWaterHeight_BoundaryCheck(int2 absPosition)
 {
-	int3 normalized = NormalizeGridCoord(absPosition);
-	if (normalized.z >= 0)
+	int3 normalized = NormalizeGridCoord(absPosition + SimulatingIndex * SHALLOW_WATER_TILE_DIMENSION);
+	if (normalized.z < 0)
 		return EdgeHeight;
 
 	return WaterHeights[normalized];
@@ -167,7 +167,7 @@ float LoadWaterHeight_BoundaryCheck(int2 absPosition)
 
 float GetWaterDepth(float waterHeight, float surfaceHeight)
 {
-	return max(1e-2f, waterHeight - surfaceHeight);
+	return max(1e-1f, waterHeight - surfaceHeight);
 }
 
 float InitCachedHeights(int3 baseCoord)
@@ -346,7 +346,7 @@ float4 GetBottomRightVelocity(int2 address)
 
 	[unroll] for (uint c=0; c<AdjCellCount; ++c) {
 		float temp[AdjCellCount];
-		LoadVelocities_BoundaryCheck(temp, int3(baseCoord) +int3(AdjCellDir[c],0));
+		LoadVelocities_BoundaryCheck(temp, int3(baseCoord) + int3(AdjCellDir[c],0));
 		centerVel[c] = centerVel[c] - temp[AdjCellComplement[c]];
 	}
 

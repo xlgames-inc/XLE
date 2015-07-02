@@ -66,7 +66,6 @@ namespace SceneEngine
         {
             signed      _gridX, _gridY;
             unsigned    _arrayIndex;
-            SurfaceHeightsAddressingConstants _heightsAddressing;
 
             ActiveElement() {}
             ActiveElement(signed gridX, signed gridY, unsigned arrayIndex = ~unsigned(0x0))
