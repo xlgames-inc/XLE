@@ -28,7 +28,7 @@ static const float EdgeHeight 	 = -10000.f;	// WaterBaseHeight
 	//		Here, "PressureScalar" is particularly important for this model
 	//		it determines the rate of movement of the water. The size of
 	//		the water grid can be factored in by scaling this value.
-static const float PressureScalar = 1000.f;
+static const float PressureScalar = 500.f;		// high pressure values add a lot of noise to the simulation! We get ripples that are too small to be simulated well
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 	//   m a i n   s i m u l a t i o n   //
@@ -156,13 +156,18 @@ void LoadVelocities_BoundaryCheck(out float velocities[AdjCellCount], int3 coord
 	}
 }
 
+float LoadWaterHeight(int3 pos)
+{
+	return WaterHeights[pos] + RainQuantityPerFrame;
+}
+
 float LoadWaterHeight_BoundaryCheck(int2 absPosition)
 {
 	int3 normalized = NormalizeGridCoord(absPosition + SimulatingIndex * SHALLOW_WATER_TILE_DIMENSION);
 	if (normalized.z < 0)
 		return EdgeHeight;
 
-	return WaterHeights[normalized];
+	return LoadWaterHeight(normalized);
 }
 
 float GetWaterDepth(float waterHeight, float surfaceHeight)
@@ -184,14 +189,14 @@ float InitCachedHeights(int3 baseCoord)
 
 	const uint tileDim = SHALLOW_WATER_TILE_DIMENSION;
 	uint x = baseCoord.x;
-	float centerWaterHeight = WaterHeights[baseCoord];
+	float centerWaterHeight = LoadWaterHeight(baseCoord);
 	CachedHeights[1][1+x] = centerWaterHeight;
 
 		// We must also write a cache from immediately above. Except for the first row, it's easy
 	if (baseCoord.y==0) {
 		CachedHeights[0][1+x] = LoadWaterHeight_BoundaryCheck(baseCoord.xy + int2(0,-1));
 	} else {
-		CachedHeights[0][1+x] = WaterHeights[baseCoord+int3(0,-1,0)];
+		CachedHeights[0][1+x] = LoadWaterHeight(baseCoord+int3(0,-1,0));
 	}
 
 	#if defined(DUPLEX_VEL)
@@ -199,7 +204,7 @@ float InitCachedHeights(int3 baseCoord)
 		if (baseCoord.y==(tileDim-1)) {
 			CachedHeights[2][1+x] = LoadWaterHeight_BoundaryCheck(baseCoord.xy + int2(0,1));
 		} else {
-			CachedHeights[2][1+x] = WaterHeights[baseCoord+int3(0,1,0)];
+			CachedHeights[2][1+x] = LoadWaterHeight(baseCoord+int3(0,1,0));
 		}
 	#endif
 
@@ -420,8 +425,8 @@ float4 GetBottomRightVelocity(int2 address)
 
 	#if !defined(WRITING_VELOCITIES)
 		float centerSurfaceHeight = LoadSurfaceHeight(baseCoord.xy);
-		WaterHeights[baseCoord] = max(centerSurfaceHeight, WaterHeights[baseCoord] + deltaHeight + RainQuantityPerFrame);
-
-		// WaterHeights[baseCoord] += deltaHeight;
+		float depth = max(0, LoadWaterHeight(baseCoord) + deltaHeight - centerSurfaceHeight);
+		depth *= 0.985f; // evaporation
+		WaterHeights[baseCoord] = centerSurfaceHeight + depth;
 	#endif
 }

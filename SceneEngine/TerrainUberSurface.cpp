@@ -921,15 +921,13 @@ namespace SceneEngine
         auto& erosionSim = _pimpl->_erosionSim;
         ShallowWater_BindForErosionSimulation(metalContext.get(), *erosionSim._waterSim.get(), erosionSim._bufferCount);
         
-        metalContext->GetUnderlying()->CopyResource(erosionSim._softMaterialsCopy.get(), erosionSim._softMaterials.get());
-
         metalContext->GetUnderlying()->CopyResource(_pimpl->_gpucache[1].get(), _pimpl->_gpucache[0].get());
         Metal::ShaderResourceView terrainHeightsCopySRV(_pimpl->_gpucache[1].get());
 
         using namespace RenderCore::Metal;
         UnorderedAccessView uav(_pimpl->_gpucache[0].get());
         metalContext->BindCS(RenderCore::MakeResourceList(uav, erosionSim._hardMaterialsUAV, erosionSim._softMaterialsUAV));
-        metalContext->BindCS(RenderCore::MakeResourceList(terrainHeightsCopySRV, erosionSim._softMaterialsCopySRV));
+        metalContext->BindCS(RenderCore::MakeResourceList(terrainHeightsCopySRV));
 
         struct TickErosionSimConstats
         { 
@@ -951,9 +949,20 @@ namespace SceneEngine
             "SHALLOW_WATER_TILE_DIMENSION=%i;SURFACE_HEIGHTS_FLOAT=%i", 
             erosionSim._waterSim->_gridDimension,
             _pimpl->_erosionSim._surfaceHeightsProvider->IsFloatFormat());
-        auto& updateShader = Assets::GetAssetDep<ComputeShader>("game/xleres/ocean/tickerosion.csh:main:cs_*", defines);
+
+            // update sediment
+        auto& updateShader = Assets::GetAssetDep<ComputeShader>("game/xleres/ocean/tickerosion.csh:UpdateSediment:cs_*", defines);
         metalContext->Bind(updateShader);
         metalContext->Dispatch(erosionSim._simSize[0]/16, erosionSim._simSize[1]/16, 1);
+
+            // shift sediment
+        metalContext->GetUnderlying()->CopyResource(erosionSim._softMaterialsCopy.get(), erosionSim._softMaterials.get());
+        metalContext->BindCS(RenderCore::MakeResourceList(1, erosionSim._softMaterialsCopySRV));
+
+        auto& shiftShader = Assets::GetAssetDep<ComputeShader>("game/xleres/ocean/tickerosion.csh:ShiftSediment:cs_*", defines);
+        metalContext->Bind(shiftShader);
+        metalContext->Dispatch(erosionSim._simSize[0]/16, erosionSim._simSize[1]/16, 1);
+
         metalContext->UnbindCS<UnorderedAccessView>(0, 8);
 
             //  Update the mesh with the changes
