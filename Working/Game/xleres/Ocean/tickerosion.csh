@@ -189,13 +189,18 @@ float2 CalculateVel2D(int2 baseCoord)
 		// Calculate the "hard to soft" factor. This is the rate of
 		// change of rock and hard material into soil and softer material
 		// that can be transported along the grid.
+		//
+		// This calculation very closely matches
+		//		Fast Hydraulic and Thermal Erosion on the GPU, Bal´azs J´ak´o
+		//
 
-	const float Kc = 5.f; 		// 1e-1f;		(max sediment that can be moved in one second)
+	const float Kc = 2.f; 		// 1e-1f;		(effectively, max sediment that can be moved in one second)
 	const float R = 1.f;		// (variable hardness)
 	const float Ks = 0.03f;		// hard to soft rate
-	const float Kd = 0.05f; 	// soft to hard rate (deposition / settling)
+	const float Kd = 0.1f; 		// soft to hard rate (deposition / settling)
+	const float maxSediment = 2.f;	// max sediment per cell (ie, max value in the soft materials array)
 
-	const float depthMax = 10.f;
+	const float depthMax = 50.f;
 	float depth = centerWaterHeight - centerTerrainHeight;
 	float C = Kc * max(0, dot(-terrainNormal, Vdir)) * magv * saturate(1.f - (depth / depthMax));
 
@@ -203,6 +208,7 @@ float2 CalculateVel2D(int2 baseCoord)
 	float hardToSoft;
 	if (initialSediment < C) {
 		hardToSoft = R * Ks * (C - initialSediment) * deltaTime;
+		hardToSoft = min(hardToSoft, maxSediment-initialSediment);
 	} else {
 		hardToSoft = max(-initialSediment, Kd * (C - initialSediment) * deltaTime);
 	}
@@ -262,12 +268,12 @@ float CalculateFlowIn(int2 baseCoord)
 		//		2) query the linearly interpolated sediment value at
 		//			the grid position plus the velocity value
 		// Both methods have integration and accuracy problems. They should
-		// show different results for movement of sediment.
+		// show different results for movement of sediment. We could try to
+		// do a more accurate integration method; but it's probably not worth it.
 
 	float2 vel2d = CalculateVel2D(baseCoord);
 
 	float newSediment;
-
 	const uint flowType = 1;
 	if (flowType == 0) {
 		const float velScale = 1.f;
@@ -280,80 +286,62 @@ float CalculateFlowIn(int2 baseCoord)
 
 	float initialHard = HardMaterials[baseCoord.xy];
 	SoftMaterials[baseCoord.xy] = newSediment;
-	OutputSurface[gpuCacheOffset + baseCoord.xy] = initialHard + newSediment;
+	OutputSurface[gpuCacheOffset + baseCoord.xy] = initialHard; // + newSediment;
 }
 
-#if 0
-		//	We want to know quickly water is moving in the system. Lets
-		//	use the sum of the absolute velocities to get an approximation
-		//	of movement ferocity.
-	float absoluteMovement = 0.f;
-	for (uint q=0; q<9; ++q) {
-		absoluteMovement += abs(vel[q]);
-		vel[q] = sign(vel[q]);
+
+[numthreads(16, 16, 1)]
+	void		ThermalErosion(uint3 dispatchThreadId : SV_DispatchThreadID)
+{
+	int2 baseCoord = dispatchThreadId.xy;
+	if (	baseCoord.x == 0 || baseCoord.y == 0
+		|| 	baseCoord.x >= (simulationSize.x-1) || baseCoord.y >= (simulationSize.y-1)) {
+		return;
 	}
 
-		//	this "absolute movement" can be used to turn hard materials (packed dirt, stone)
-		//	into soft materials that will shift with the flow
+	// This simulates the movement of material that is knocked loose from other means
+	// (often just called "thermal erosion"). Material will fall down a slope until the
+	// slope reaches a certain angle, called the "talus" angle, which differs from material
+	// to material. We shift a small amount of material for every neighbour that exceeds this
+	// angle.
+	//
+	// Note that "InputSoftMaterials" is actually hard materials here!
+	//
+	// We should not move material out of an area that is under water using this method.
 
-	float initialSoft = InputSoftMaterials[baseCoord.xy];
-	float initialHard = HardMaterials[baseCoord.xy];
+	float localInitial = InputSoftMaterials[baseCoord.xy];
+	float localWaterHeight = LoadWaterHeight(baseCoord);
 
-		// the depth scalar value here really helps to reduce spikes!
-		//	-- but it's a little wierd from a physical point of view
-	float depth  = centerWaterHeight - (initialSoft + initialHard);
-	float depthScalar = 1.f; // exp(-max(0, .125f * depth));
-
-		// slow down change-to-soft if we already have soft material building up
-	float alreadySoftScalar = exp(-max(0.f, .5f * initialSoft));
-
-	float changeToSoft = alreadySoftScalar * depthScalar * ChangeToSoftConstant * absoluteMovement;
-
-	// if (absoluteMovement > 0.01f) {
+	const float slopeAngle = 50.f * pi / 180.f;
+	const float tanSlopeAngle = tan(slopeAngle);
+	const float elementSpacing = 10.f;
+	float spacingMul[AdjCellCount] =
 	{
-		changeToSoft = 100.f * alreadySoftScalar * ChangeToSoftConstant;
-	}
-	changeToSoft -= initialSoft * SoftChangeBackConstant;	/// soft back to hard slowly
-	changeToSoft = min(changeToSoft, initialHard);
-
-	float newHard = initialHard - changeToSoft;
-
-		//	Allow the soft materials from neighbouring cells to flow into this one
-	int2 offsets[9] = {
-		int2(-1, -1), int2( 0, -1), int2( 1, -1),
-		int2(-1,  0), int2( 0,  0), int2( 1,  0),
-		int2(-1,  1), int2( 0,  1), int2( 1,  1)
+		sqrt2, 1, sqrt2,
+		1,        1,
+		sqrt2, 1, sqrt2
 	};
 
-	const float flowClamp = (1.f / 9.f) / 1.f;
-	float softFlow = 0.f;
-	for (uint c=0; c<9; ++c) {
-		int2 p = baseCoord + offsets[c];
-		if (p.x >= 0 && p.y >= 0 && p.x < simulationSize.x && p.y < simulationSize.y) {
-			if (vel[c] > 0.f) {
-					//	this is water flowing into this cell. Add a percentage
-					//	of the soft material from our neighbour.
-				softFlow += min(flowClamp, 1e2f * SoftFlowConstant * vel[c]) * InputSoftMaterials[p];
-			} else {
-					//	this is water flowing out of this cell. Remove a percentage
-					//	of the soft material in this cell
-				softFlow -= min(flowClamp, 1e2f * SoftFlowConstant * -vel[c]) * initialSoft;
-			}
+	const float waterThreshold = 1e-2f;
+	const float flowAmount = 0.05f;
+	float flowAmountOut = flowAmount;
+	if (localInitial < (localWaterHeight - waterThreshold)) flowAmountOut = 0.f;
+
+	float flow = 0.f;
+	[unroll] for (uint c=0; c<AdjCellCount; ++c) {
+		float neighbour = InputSoftMaterials[baseCoord.xy + AdjCellDir[c]];	// (actually hard materials)
+		float diff = neighbour - localInitial;
+
+		float flowThreshold = elementSpacing * spacingMul[c] * tanSlopeAngle;
+		if (diff > flowThreshold) {
+			float neighbourWaterHeight = LoadWaterHeight(baseCoord.xy + AdjCellDir[c]);
+			if (neighbour >= (neighbourWaterHeight - waterThreshold))
+				flow += flowAmount;
+		} else if (diff < -flowThreshold) {
+			flow -= flowAmountOut;
 		}
 	}
 
-		//	clamp at zero... We can't have an excessive amount flowing up
-		//	Note that this clamp can create material... because the adjacent
-		//	cells will still get material.
-	float newSoft = initialSoft + changeToSoft + softFlow;
-	if (newSoft < 0.f) {
-		newHard += newSoft;
-		newSoft = 0.f;
-	}
-
-	SoftMaterials[baseCoord.xy] = newSoft;
-	HardMaterials[baseCoord.xy] = newHard;
-
-	OutputSurface[gpuCacheOffset + baseCoord.xy] = newHard + newSoft;
+	HardMaterials[baseCoord.xy] = localInitial + flow;
+	OutputSurface[gpuCacheOffset + baseCoord.xy] = localInitial + flow;
 }
-#endif

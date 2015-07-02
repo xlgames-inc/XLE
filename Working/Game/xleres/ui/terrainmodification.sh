@@ -64,11 +64,11 @@ float CalculateSmoothedHeight(uint2 surfaceSpaceCoord)
 {
 		//
 		//		We need to blur on the surface around the given area.
-		//		Performance is not a concern, so we can just implement it in a 
+		//		Performance is not a concern, so we can just implement it in a
 		//		brute force manner
 		//			-- we don't have to worry about separability, or anything like that
 		//
-		
+
 	float accum = 0.f;
 	int filterHalf = min(FilterSize, 33)/2;
 	for (int y=-filterHalf; y<=filterHalf; ++y) {
@@ -93,7 +93,7 @@ float CalculateSmoothedHeight(uint2 surfaceSpaceCoord)
 		float smoothed = CalculateSmoothedHeight(surfaceSpaceCoord);
 
 			//
-			//		Effect of the blur fades off linearly with 
+			//		Effect of the blur fades off linearly with
 			//		distance from the center...
 			//
 		float strength = Adjustment * saturate(1.0f - sqrt(rsq)/Radius);
@@ -122,7 +122,7 @@ float CalculateSmoothedHeight(uint2 surfaceSpaceCoord)
 	if (surfaceSpaceCoord.x <= SurfaceMaxs.x && surfaceSpaceCoord.y <= SurfaceMaxs.y && rsq < (Radius*Radius)) {
 
 		float noisyHeight = fbmNoise2D(
-		 	float2(surfaceSpaceCoord.xy), 50.0f, 0.5f, 2.1042, 30);
+		 	float2(surfaceSpaceCoord.xy), 50.0f, 0.5f, 2.1042, 10);
 
 		float A = 1.0f - sqrt(rsq)/Radius;
 		A = pow(A, 1.f/8.f);
@@ -145,12 +145,12 @@ cbuffer FillWithNoiseParameters
 	void FillWithNoise(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
 	uint2 surfaceSpaceCoord = DispatchOffset + dispatchThreadId.xy;
-	if (surfaceSpaceCoord.x <= SurfaceMaxs.x && surfaceSpaceCoord.y <= SurfaceMaxs.y 
+	if (surfaceSpaceCoord.x <= SurfaceMaxs.x && surfaceSpaceCoord.y <= SurfaceMaxs.y
 		&& surfaceSpaceCoord.x >= uint(RectMins.x) && surfaceSpaceCoord.y >= uint(RectMins.y)
 		&& surfaceSpaceCoord.x <= uint(RectMaxs.x) && surfaceSpaceCoord.y <= uint(RectMaxs.y)) {
 
 		float noisyHeight = fbmNoise2D(
-		 	float2(surfaceSpaceCoord.xy), Roughness, FractalDetail, 2.1042, 30);
+		 	float2(surfaceSpaceCoord.xy), Roughness, FractalDetail, 2.1042, 10);
 		OutputSurface[surfaceSpaceCoord - SurfaceMins] = BaseHeight + NoiseHeight * noisyHeight;
 
 	}
@@ -171,7 +171,7 @@ cbuffer CopyHeightParameters
 	if (surfaceSpaceCoord.x <= SurfaceMaxs.x && surfaceSpaceCoord.y <= SurfaceMaxs.y && rsq < (Radius*Radius)) {
 
 		float sourceHeight = OutputSurface[SourceCoordinate - SurfaceMins];
-		
+
 		float oldHeight = OutputSurface[surfaceSpaceCoord - SurfaceMins];
 
 			// flags tell us if it's ok to raise up or down
@@ -229,7 +229,7 @@ float3x3 RotationMatrix(float3 axis, float angle)
 
 	return float3x3(
 		float3(xxomc + cosine, xyomc + zs, zxomc - ys),
-		float3(xyomc - zs, yyomc + cosine, yzomc + xs), 
+		float3(xyomc - zs, yyomc + cosine, yzomc + xs),
 		float3(zxomc + ys, yzomc - xs, zzomc + cosine));
 }
 
@@ -242,7 +242,7 @@ float3x3 RotationMatrix(float3 axis, float angle)
 
 			//	imagine that we've taken a column of land, and rotated it
 			//	We can find the new height by walking along a vector perpendicular
-			//		to the rotation axis, and checking the height values of the 
+			//		to the rotation axis, and checking the height values of the
 			//		rotated elements as we go.
 
 		float rotationOriginHeight = InputSurface[Center - SurfaceMins];
@@ -257,10 +257,10 @@ float3x3 RotationMatrix(float3 axis, float angle)
 
 		float3x3 rotationMatrix = RotationMatrix(float3(RotationAxis, 0.f), RotationAngle);
 
-			//	walk along "walkingVector", rotating the position every time, and looking for points that intersect 
+			//	walk along "walkingVector", rotating the position every time, and looking for points that intersect
 			//	with this cell in post rotated space.
 			// we actually need to do a bresenham's line style iteration here...
-	
+
 		float newHeight = InputSurface[surfaceSpaceCoord - SurfaceMins] - 50.f;
 		float3 samplingPoint = float3(surfaceSpaceCoord, InputSurface[surfaceSpaceCoord - SurfaceMins]);
 		bool gotIntersection = false;
@@ -289,7 +289,7 @@ float3x3 RotationMatrix(float3 axis, float angle)
 				swap(longest, shortest);
 				// if (h<0) { dy2 = -1; } else if (h>0) { dy2 = 1; }
 				dy2 = sign(h);
-				dx2 = 0;            
+				dx2 = 0;
 			}
 
 			float3 startPoint = 0.0.xxxx;
@@ -314,7 +314,7 @@ float3x3 RotationMatrix(float3 axis, float angle)
 					//	sometimes our sample point can end up outside of the valid
 					//	cached area. In these cases, we have to avoid attempting to sample
 					//	this point
-				bool currentPointValid = 
+				bool currentPointValid =
 						currentPoint.x >= SurfaceMins.x && currentPoint.y >= SurfaceMins.y
 					&&	currentPoint.x <= SurfaceMaxs.x && currentPoint.y <= SurfaceMaxs.y;
 
@@ -384,4 +384,3 @@ float4 GpuCacheDebugging(float4 position : SV_Position, float2 texCoord : TEXCOO
 
 	return result;
 }
-

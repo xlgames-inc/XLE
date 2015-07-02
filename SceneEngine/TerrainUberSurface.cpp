@@ -963,6 +963,13 @@ namespace SceneEngine
         metalContext->Bind(shiftShader);
         metalContext->Dispatch(erosionSim._simSize[0]/16, erosionSim._simSize[1]/16, 1);
 
+            // "thermal" erosion
+        metalContext->GetUnderlying()->CopyResource(erosionSim._softMaterialsCopy.get(), erosionSim._hardMaterials.get());
+
+        auto& thermalShader = Assets::GetAssetDep<ComputeShader>("game/xleres/ocean/tickerosion.csh:ThermalErosion:cs_*", defines);
+        metalContext->Bind(thermalShader);
+        metalContext->Dispatch(erosionSim._simSize[0]/16, erosionSim._simSize[1]/16, 1);
+        
         metalContext->UnbindCS<UnorderedAccessView>(0, 8);
 
             //  Update the mesh with the changes

@@ -9,6 +9,6 @@
 
 static const float pi = 3.141592653589f;
 static const float sqrtHalf = 0.70710678f;
+static const float sqrt2 = 1.414213562373f;
 
 #endif
-
