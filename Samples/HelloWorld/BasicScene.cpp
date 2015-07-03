@@ -21,10 +21,10 @@
 #include "../../Math/Transformations.h"
 #include "../../Utility/Streams/PathUtils.h"
 
-namespace SceneEngine { extern float SunDirectionAngle; }
-
 namespace Sample
 {
+    const float SunDirectionAngle = .33f;
+
     class BasicSceneParser::Model
     {
     public:
@@ -151,7 +151,7 @@ namespace Sample
         Float2 sunRotationAxis(-sunDirectionOfMovement[1], sunDirectionOfMovement[0]);
         dummy._negativeLightDirection = 
             Normalize(TransformDirectionVector(
-                MakeRotationMatrix(Expand(sunRotationAxis, 0.f), SceneEngine::SunDirectionAngle), Float3(0.f, 0.f, 1.f)));
+                MakeRotationMatrix(Expand(sunRotationAxis, 0.f), SunDirectionAngle), Float3(0.f, 0.f, 1.f)));
 
         return dummy;
     }

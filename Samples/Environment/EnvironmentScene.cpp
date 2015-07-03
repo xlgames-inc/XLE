@@ -28,8 +28,6 @@
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Profiling/CPUProfiler.h"
 
-namespace SceneEngine { extern float SunDirectionAngle; }
-
 namespace Sample
 {
     static const char* WorldDirectory = "game/demworld";

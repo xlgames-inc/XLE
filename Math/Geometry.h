@@ -73,11 +73,13 @@ namespace XLEMath
         /// <summary>Iterator through a grid, finding that edges that intersect with a line segment</summary>
         /// The callback "opr" will be called for each grid edge that intersects with given line segment.
         /// Here, the grid is assumed to be made up of 1x1 elements on integer boundaries.
+        /// The ray must start and end on integer boundaries. All of the math is done using integer math,
+        /// with an algorithm similiar to Bresenham's 
     template<typename Operator>
-        void GridEdgeIterator(Float2 start, Float2 end, Operator& opr)
+        void GridEdgeIterator(Int2 start, Int2 end, Operator& opr)
         {
-            Int2 s = Int2(int(XlFloor(start[0])), int(XlFloor(start[1])));
-            Int2 e = Int2(int(XlFloor(end[0])), int(XlFloor(end[1])));
+            Int2 s = start;
+            Int2 e = end;
 
 		    int w = e[0] - s[0];
 		    int h = e[1] - s[1];
@@ -166,6 +168,72 @@ namespace XLEMath
 
                     opr(e0, e1, edgeAlpha);
                     errorprev = error; 
+                }
+            }
+        }
+
+        /// <summary>Iterator through a grid, finding that edges that intersect with a line segment</summary>
+        /// This is a floating point version of GridEdgeIterator. In this version, start and end can be 
+        /// non integers (but edges are still found in integer values).
+        /// "GridEdgeIterator" uses integer-only math. 
+    template<typename Operator>
+        void GridEdgeIterator2(Float2 start, Float2 end, Operator& opr)
+        {
+            float dx = end[0] - start[0];
+            float dy = end[1] - start[1];
+
+            float xsign = (dx < 0.f) ? -1.f : 1.f;
+            float ysign = (dy < 0.f) ? -1.f : 1.f;
+                
+            dx = XlAbs(dx); dy = XlAbs(dy);
+            float x = xsign * start[0], y = ysign * start[1];
+
+            const float epsilon = 1e-2f;    // hack! ceil(x) will sometimes return x... We need to prevent this!
+            if (dx >= dy) {
+                float r = dy / dx;
+                float endx = xsign * end[0];
+                for (;;) {
+                    float ceilx = XlCeil(x + epsilon), ceily = XlCeil(y + epsilon);
+                    float sx = ceilx - x;
+                    float sy = ceily - y;
+                    if (sy < sx * r) {
+                        x += sy / r;
+                        y += sy;
+                        if (x > endx) break;
+                        opr(    Int2(int(xsign*(ceilx - 1.f)), int(ysign*y)), 
+                                Int2(int(xsign*ceilx), int(ysign*y)), 
+                                x - (ceilx - 1.f));
+                    } else {
+                        x += sx;
+                        y += sx * r;
+                        if (x > endx) break;
+                        opr(    Int2(int(xsign*x), int(ysign*(ceily - 1.f))), 
+                                Int2(int(xsign*x), int(ysign*ceily)), 
+                                y - (ceily - 1.f));
+                    }
+                }
+            } else {
+                float r = dx / dy;
+                float endy = ysign * end[1];
+                for (;;) {
+                    float ceilx = XlCeil(x + epsilon), ceily = XlCeil(y + epsilon);
+                    float sx = ceilx - x;
+                    float sy = ceily - y;
+                    if (sx < sy * r) {
+                        x += sx;
+                        y += sx / r;
+                        if (y > endy) break;
+                        opr(    Int2(int(xsign*x), int(ysign*(ceily - 1.f))), 
+                                Int2(int(xsign*x), int(ysign*ceily)), 
+                                y - (ceily - 1.f));
+                    } else {
+                        x += sy * r;
+                        y += sy;
+                        if (y > endy) break;
+                        opr(    Int2(int(xsign*(ceilx - 1.f)), int(ysign*y)), 
+                                Int2(int(xsign*ceilx), int(ysign*y)), 
+                                x - (ceilx - 1.f));
+                    }
                 }
             }
         }

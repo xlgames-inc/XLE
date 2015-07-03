@@ -207,6 +207,39 @@ namespace LevelEditorXLE
             shadowFrustumSettings.MinBlurSearchAttribute = shadowFrustumSettings.Type.GetAttributeInfo("MinBlurSearch");
             shadowFrustumSettings.MaxBlurSearchAttribute = shadowFrustumSettings.Type.GetAttributeInfo("MaxBlurSearch");
 
+            oceanSettings.Type = getNodeType("gap", "oceanSettings");
+            oceanSettings.EnableAttribute = oceanSettings.Type.GetAttributeInfo("Enable");
+            oceanSettings.WindAngleAttribute = oceanSettings.Type.GetAttributeInfo("WindAngle");
+            oceanSettings.WindVelocityAttribute = oceanSettings.Type.GetAttributeInfo("WindVelocity");
+            oceanSettings.PhysicalDimensionsAttribute = oceanSettings.Type.GetAttributeInfo("PhysicalDimensions");
+            oceanSettings.GridDimensionsAttribute = oceanSettings.Type.GetAttributeInfo("GridDimensions");
+            oceanSettings.StrengthConstantXYAttribute = oceanSettings.Type.GetAttributeInfo("StrengthConstantXY");
+            oceanSettings.StrengthConstantZAttribute = oceanSettings.Type.GetAttributeInfo("StrengthConstantZ");
+            oceanSettings.DetailNormalsStrengthAttribute = oceanSettings.Type.GetAttributeInfo("DetailNormalsStrength");
+            oceanSettings.SpectrumFadeAttribute = oceanSettings.Type.GetAttributeInfo("SpectrumFade");
+            oceanSettings.ScaleAgainstWindAttribute = oceanSettings.Type.GetAttributeInfo("ScaleAgainstWind");
+            oceanSettings.SuppressionFactorAttribute = oceanSettings.Type.GetAttributeInfo("SuppressionFactor");
+            oceanSettings.GridShiftSpeedAttribute = oceanSettings.Type.GetAttributeInfo("GridShiftSpeed");
+            oceanSettings.BaseHeightAttribute = oceanSettings.Type.GetAttributeInfo("BaseHeight");
+            oceanSettings.FoamThresholdAttribute = oceanSettings.Type.GetAttributeInfo("FoamThreshold");
+            oceanSettings.FoamIncreaseSpeedAttribute = oceanSettings.Type.GetAttributeInfo("FoamIncreaseSpeed");
+            oceanSettings.FoamIncreaseClampAttribute = oceanSettings.Type.GetAttributeInfo("FoamIncreaseClamp");
+            oceanSettings.FoamDecreaseAttribute = oceanSettings.Type.GetAttributeInfo("FoamDecrease");
+
+            oceanLightingSettings.Type = getNodeType("gap", "oceanLightingSettings");
+            oceanLightingSettings.FoamBrightnessAttribute = oceanLightingSettings.Type.GetAttributeInfo("FoamBrightness");
+            oceanLightingSettings.OpticalThicknessScalarAttribute = oceanLightingSettings.Type.GetAttributeInfo("OpticalThicknessScalar");
+            oceanLightingSettings.OpticalThicknessColorAttribute = oceanLightingSettings.Type.GetAttributeInfo("OpticalThicknessColor");
+            oceanLightingSettings.SkyReflectionBrightnessAttribute = oceanLightingSettings.Type.GetAttributeInfo("SkyReflectionBrightness");
+            oceanLightingSettings.UpwellingScaleAttribute = oceanLightingSettings.Type.GetAttributeInfo("UpwellingScale");
+            oceanLightingSettings.RefractiveIndexAttribute = oceanLightingSettings.Type.GetAttributeInfo("RefractiveIndex");
+            oceanLightingSettings.ReflectionBumpScaleAttribute = oceanLightingSettings.Type.GetAttributeInfo("ReflectionBumpScale");
+            oceanLightingSettings.DetailNormalFrequencyAttribute = oceanLightingSettings.Type.GetAttributeInfo("DetailNormalFrequency");
+            oceanLightingSettings.SpecularityFrequencyAttribute = oceanLightingSettings.Type.GetAttributeInfo("SpecularityFrequency");
+            oceanLightingSettings.MatSpecularMinAttribute = oceanLightingSettings.Type.GetAttributeInfo("MatSpecularMin");
+            oceanLightingSettings.MatSpecularMaxAttribute = oceanLightingSettings.Type.GetAttributeInfo("MatSpecularMax");
+            oceanLightingSettings.MatRoughnessAttribute = oceanLightingSettings.Type.GetAttributeInfo("MatRoughness");
+
             placementsCellReferenceType.Type = getNodeType("gap", "placementsCellReferenceType");
             placementsCellReferenceType.refAttribute = placementsCellReferenceType.Type.GetAttributeInfo("ref");
             placementsCellReferenceType.ExportTargetAttribute = placementsCellReferenceType.Type.GetAttributeInfo("ExportTarget");
@@ -273,6 +306,9 @@ namespace LevelEditorXLE
             vegetationSpawnMaterialType.Type = getNodeType("gap", "vegetationSpawnMaterialType");
             vegetationSpawnMaterialType.NoSpawnWeightAttribute = vegetationSpawnMaterialType.Type.GetAttributeInfo("NoSpawnWeight");
             vegetationSpawnMaterialType.SuppressionThresholdAttribute = vegetationSpawnMaterialType.Type.GetAttributeInfo("SuppressionThreshold");
+            vegetationSpawnMaterialType.SuppressionNoiseAttribute = vegetationSpawnMaterialType.Type.GetAttributeInfo("SuppressionNoise");
+            vegetationSpawnMaterialType.SuppressionGainAttribute = vegetationSpawnMaterialType.Type.GetAttributeInfo("SuppressionGain");
+            vegetationSpawnMaterialType.SuppressionLacunarityAttribute = vegetationSpawnMaterialType.Type.GetAttributeInfo("SuppressionLacunarity");
             vegetationSpawnMaterialType.MaterialIdAttribute = vegetationSpawnMaterialType.Type.GetAttributeInfo("MaterialId");
             vegetationSpawnMaterialType.objectChild = vegetationSpawnMaterialType.Type.GetChildInfo("object");
 
@@ -288,8 +324,10 @@ namespace LevelEditorXLE
             terrainType.SpacingAttribute = terrainType.Type.GetAttributeInfo("Spacing");
             terrainType.CellTreeDepthAttribute = terrainType.Type.GetAttributeInfo("CellTreeDepth");
             terrainType.OffsetAttribute = terrainType.Type.GetAttributeInfo("Offset");
+            terrainType.SunPathAngleAttribute = terrainType.Type.GetAttributeInfo("SunPathAngle");
             terrainType.HasBaseMaterialCoverageAttribute = terrainType.Type.GetAttributeInfo("HasBaseMaterialCoverage");
             terrainType.HasDecorationCoverageAttribute = terrainType.Type.GetAttributeInfo("HasDecorationCoverage");
+            terrainType.HasShadowsConverageAttribute = terrainType.Type.GetAttributeInfo("HasShadowsConverage");
             terrainType.baseTextureChild = terrainType.Type.GetChildInfo("baseTexture");
             terrainType.VegetationSpawnChild = terrainType.Type.GetChildInfo("VegetationSpawn");
 
@@ -595,6 +633,45 @@ namespace LevelEditorXLE
             public static AttributeInfo MaxBlurSearchAttribute;
         }
 
+        public static class oceanSettings
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo EnableAttribute;
+            public static AttributeInfo WindAngleAttribute;
+            public static AttributeInfo WindVelocityAttribute;
+            public static AttributeInfo PhysicalDimensionsAttribute;
+            public static AttributeInfo GridDimensionsAttribute;
+            public static AttributeInfo StrengthConstantXYAttribute;
+            public static AttributeInfo StrengthConstantZAttribute;
+            public static AttributeInfo DetailNormalsStrengthAttribute;
+            public static AttributeInfo SpectrumFadeAttribute;
+            public static AttributeInfo ScaleAgainstWindAttribute;
+            public static AttributeInfo SuppressionFactorAttribute;
+            public static AttributeInfo GridShiftSpeedAttribute;
+            public static AttributeInfo BaseHeightAttribute;
+            public static AttributeInfo FoamThresholdAttribute;
+            public static AttributeInfo FoamIncreaseSpeedAttribute;
+            public static AttributeInfo FoamIncreaseClampAttribute;
+            public static AttributeInfo FoamDecreaseAttribute;
+        }
+
+        public static class oceanLightingSettings
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo FoamBrightnessAttribute;
+            public static AttributeInfo OpticalThicknessScalarAttribute;
+            public static AttributeInfo OpticalThicknessColorAttribute;
+            public static AttributeInfo SkyReflectionBrightnessAttribute;
+            public static AttributeInfo UpwellingScaleAttribute;
+            public static AttributeInfo RefractiveIndexAttribute;
+            public static AttributeInfo ReflectionBumpScaleAttribute;
+            public static AttributeInfo DetailNormalFrequencyAttribute;
+            public static AttributeInfo SpecularityFrequencyAttribute;
+            public static AttributeInfo MatSpecularMinAttribute;
+            public static AttributeInfo MatSpecularMaxAttribute;
+            public static AttributeInfo MatRoughnessAttribute;
+        }
+
         public static class placementsCellReferenceType
         {
             public static DomNodeType Type;
@@ -687,6 +764,9 @@ namespace LevelEditorXLE
             public static DomNodeType Type;
             public static AttributeInfo NoSpawnWeightAttribute;
             public static AttributeInfo SuppressionThresholdAttribute;
+            public static AttributeInfo SuppressionNoiseAttribute;
+            public static AttributeInfo SuppressionGainAttribute;
+            public static AttributeInfo SuppressionLacunarityAttribute;
             public static AttributeInfo MaterialIdAttribute;
             public static ChildInfo objectChild;
         }
@@ -708,8 +788,10 @@ namespace LevelEditorXLE
             public static AttributeInfo SpacingAttribute;
             public static AttributeInfo CellTreeDepthAttribute;
             public static AttributeInfo OffsetAttribute;
+            public static AttributeInfo SunPathAngleAttribute;
             public static AttributeInfo HasBaseMaterialCoverageAttribute;
             public static AttributeInfo HasDecorationCoverageAttribute;
+            public static AttributeInfo HasShadowsConverageAttribute;
             public static ChildInfo baseTextureChild;
             public static ChildInfo VegetationSpawnChild;
         }

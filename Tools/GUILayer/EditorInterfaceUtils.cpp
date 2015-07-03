@@ -20,6 +20,7 @@
 #include "../../SceneEngine/IntersectionTest.h"
 #include "../../SceneEngine/Terrain.h"
 #include "../../SceneEngine/PlacementsManager.h"
+#include "../../SceneEngine/TerrainConfig.h"
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
@@ -347,18 +348,34 @@ namespace GUILayer
         static void GenerateStarterCells(
             String^ cellsDirectory, String^ uberSurfaceDirectory,
             unsigned nodeDimensions, unsigned cellTreeDepth, unsigned overlap,
-            float spacing, IEnumerable<unsigned>^ layers, IProgress^ progress)
+            float spacing, float sunPathAngle, 
+            IEnumerable<unsigned>^ layers, IProgress^ progress)
         {
             auto nativeProgress = progress ? IProgress::CreateNative(progress) : nullptr;
             std::vector<std::pair<SceneEngine::TerrainCoverageId, unsigned>> nativeLayers;
-            for each(auto l in layers)
-                nativeLayers.push_back(std::make_pair(l, 62));
+            for each(auto l in layers) {
+                unsigned fmt = 62;
+                if (l == 2) fmt = 35;
+                nativeLayers.push_back(std::make_pair(l, 35));
+            }
 
             ToolsRig::GenerateStarterCells(
                 clix::marshalString<clix::E_UTF8>(cellsDirectory).c_str(),
                 clix::marshalString<clix::E_UTF8>(uberSurfaceDirectory).c_str(),
-                nodeDimensions, cellTreeDepth, overlap, spacing, 
+                nodeDimensions, cellTreeDepth, overlap, spacing, sunPathAngle,
                 AsPointer(nativeLayers.cbegin()), (unsigned)nativeLayers.size(),
+                nativeProgress.get());
+        }
+
+        static void GenerateShadowsSurface(
+            String^ cellsDirectory, String^ uberSurfaceDir,
+            IProgress^ progress)
+        {
+            SceneEngine::TerrainConfig cfg(
+                clix::marshalString<clix::E_UTF8>(cellsDirectory).c_str());
+            auto nativeProgress = progress ? IProgress::CreateNative(progress) : nullptr;
+            ToolsRig::GenerateShadowsSurface(
+                cfg, clix::marshalString<clix::E_UTF8>(uberSurfaceDir).c_str(),
                 nativeProgress.get());
         }
 

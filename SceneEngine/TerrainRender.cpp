@@ -35,8 +35,6 @@
 
 namespace SceneEngine
 {
-    float SunDirectionAngle = .33f; // 1.0821046f;
-
     using namespace RenderCore;
     using namespace RenderCore::Metal;
 
@@ -96,7 +94,10 @@ namespace SceneEngine
 
     std::vector<TerrainRenderingContext::QueuedNode> TerrainRenderingContext::_queuedNodes;        // HACK -- static to avoid allocation!
 
-    TerrainRenderingContext::TerrainRenderingContext(const TerrainCoverageId* coverageLayerBegin, const TerrainCoverageId* coverageLayerEnd)
+    TerrainRenderingContext::TerrainRenderingContext(
+        const TerrainCoverageId* coverageLayers, 
+        const CoverageFormat* coverageFmts, 
+        unsigned coverageLayerCount)
     : _currentViewport(0.f, 0.f, 0.f, 0.f, 0.f, 0.f)
     {
         _indexDrawCount = 0;
@@ -104,9 +105,11 @@ namespace SceneEngine
         // _elementSize = elementSize;
         _dynamicTessellation = false;
 
-        _coverageLayerCount = std::min(unsigned(coverageLayerEnd-coverageLayerBegin), TerrainCellId::MaxCoverageCount);
-        for (unsigned c=0; c<_coverageLayerCount; ++c)
-            _coverageLayerIds[c] = coverageLayerBegin[c];
+        _coverageLayerCount = std::min(coverageLayerCount, TerrainCellId::MaxCoverageCount);
+        for (unsigned c=0; c<_coverageLayerCount; ++c) {
+            _coverageLayerIds[c] = coverageLayers[c];
+            _coverageFmts[c] = coverageFmts[c];
+        }
 
         ConstantBuffer tileConstantsBuffer(nullptr, sizeof(TileConstants));
         ConstantBuffer localTransformConstantsBuffer(nullptr, sizeof(Techniques::LocalTransformConstants));
@@ -128,9 +131,11 @@ namespace SceneEngine
             TerrainCoverageId _visLayer;
 
             TerrainCoverageId _coverageIds[TerrainCellId::MaxCoverageCount];
+            CoverageFormat _coverageFmts[TerrainCellId::MaxCoverageCount];
 
             Desc(   TerrainRenderingContext::Mode mode,
                     const TerrainCoverageId* coverageIdsBegin, const TerrainCoverageId* coverageIdsEnd,
+                    const CoverageFormat* coverageFmtsBegin, const CoverageFormat* coverageFmtsEnd,
                     bool doExtraSmoothing, bool noisyTerrain,
                     bool drawWireframe, unsigned strataCount,
                     TerrainCoverageId visLayer)
@@ -145,6 +150,9 @@ namespace SceneEngine
 
                 for (unsigned c=0; c<std::min(unsigned(coverageIdsEnd-coverageIdsBegin), TerrainCellId::MaxCoverageCount); ++c)
                     _coverageIds[c] = coverageIdsBegin[c];
+
+                for (unsigned c=0; c<std::min(unsigned(coverageFmtsEnd-coverageFmtsBegin), TerrainCellId::MaxCoverageCount); ++c)
+                    _coverageFmts[c] = coverageFmtsBegin[c];
             }
         };
 
@@ -158,6 +166,14 @@ namespace SceneEngine
     private:
         std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
     };
+
+    const char* AsShaderFormat(CoverageFormat fmt)
+    {
+        switch (fmt) {
+        case RenderCore::Metal::NativeFormat::R16G16_UNORM: return "float2";
+        default: return "uint";
+        }
+    }
 
     TerrainRenderingResources::TerrainRenderingResources(const Desc& desc)
     {
@@ -176,6 +192,7 @@ namespace SceneEngine
                 definesBuffer << ";COVERAGE_" << desc._coverageIds[c] << "=" << c;
                 if (desc._coverageIds[c] == desc._visLayer)
                     definesBuffer << ";VISUALIZE_COVERAGE=" << c;
+                definesBuffer << ";COVERAGE_FMT_" << c << "=" << AsShaderFormat(desc._coverageFmts[c]);
             }
 
         const char* ps = isTextured 
@@ -248,7 +265,9 @@ namespace SceneEngine
             const auto visLayer = Tweakable("TerrainVisCoverage", 0);
 
             auto& box = Techniques::FindCachedBoxDep2<TerrainRenderingResources>(
-                mode, _coverageLayerIds, &_coverageLayerIds[_coverageLayerCount],
+                mode, 
+                _coverageLayerIds, &_coverageLayerIds[_coverageLayerCount],
+                _coverageFmts, &_coverageFmts[_coverageLayerCount],
                 doExtraSmoothing, noisyTerrain, drawWireframe, texturing._strataCount,
                 visLayer);
 
@@ -718,7 +737,8 @@ namespace SceneEngine
         return flags;
     }
 
-    void TerrainCellRenderer::WriteQueuedNodes(TerrainRenderingContext& renderingContext, TerrainCollapseContext& collapseContext)
+    void TerrainCellRenderer::WriteQueuedNodes(
+        TerrainRenderingContext& renderingContext, TerrainCollapseContext& collapseContext)
     {
         // After calculating the correct LOD level and neighbours for each cell, we need to do 2 final things
         //      * queue texture updates
@@ -945,8 +965,9 @@ namespace SceneEngine
         }
     }
 
-    void        TerrainCellRenderer::Render(    DeviceContext* context, LightingParserContext& parserContext, 
-                                                TerrainRenderingContext& terrainContext)
+    void TerrainCellRenderer::Render(    
+        DeviceContext* context, LightingParserContext& parserContext, 
+        TerrainRenderingContext& terrainContext)
     {
         context->BindVS(MakeResourceList(_heightMapTileSet->GetShaderResource()));
         context->BindDS(MakeResourceList(_heightMapTileSet->GetShaderResource()));
@@ -980,11 +1001,12 @@ namespace SceneEngine
         } CATCH_END
     }
 
-    void        TerrainCellRenderer::RenderNode(    DeviceContext* context,
-                                                    LightingParserContext& parserContext,
-                                                    TerrainRenderingContext& terrainContext,
-                                                    CellRenderInfo& cellRenderInfo, unsigned absNodeIndex,
-                                                    int8 neighbourLodDiffs[4])
+    void TerrainCellRenderer::RenderNode(    
+        DeviceContext* context,
+        LightingParserContext& parserContext,
+        TerrainRenderingContext& terrainContext,
+        CellRenderInfo& cellRenderInfo, unsigned absNodeIndex,
+        int8 neighbourLodDiffs[4])
     {
         auto& sourceCell = *cellRenderInfo._sourceCell;
         auto& sourceNode = sourceCell._nodes[absNodeIndex];
@@ -1047,7 +1069,8 @@ namespace SceneEngine
             const auto& layer = cfg._coverageLayers[c];
             _coverageTileSet.push_back(std::make_unique<TextureTileSet>(
                 bufferUploads, layer.second._tileSize, layer.second._cachedTileCount, layer.second._format, allowShortCircuitModification));
-            _coverageIds.push_back(cfg._coverageLayers[c].first);
+            _coverageIds.push_back(layer.first);
+            _coverageFmts.push_back(layer.second._format);
         }
 
         _renderInfos.reserve(64);

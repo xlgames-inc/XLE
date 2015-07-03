@@ -11,8 +11,6 @@
 #include "../../Math/Transformations.h"
 #include "../../Utility/PtrUtils.h"
 
-namespace SceneEngine { extern float SunDirectionAngle; }
-
 namespace Sample
 {
     bool SampleInputHandler::OnInputEvent(
@@ -22,7 +20,7 @@ namespace Sample
             //  on left button release; if we ctrl-clicked the terrain
             //  then let's moved the player character to that location
         static KeyId ctrl = KeyId_Make("control");
-        const KeyId shift = KeyId_Make("shift");
+        // const KeyId shift = KeyId_Make("shift");
 
         if (evnt.IsRelease_LButton() && evnt.IsHeld(ctrl)) {
             SceneEngine::IntersectionTestScene intersectionTestScene(_terrain);
@@ -34,12 +32,12 @@ namespace Sample
             }
         }
 
-        if (evnt.IsHeld(shift) && evnt.IsHeld_MButton()) {
-            auto deltaMouse = evnt._mouseDelta;
-            SceneEngine::SunDirectionAngle = Clamp(
-                SceneEngine::SunDirectionAngle + deltaMouse[0] * 1.0f * gPI / 180.f, 
-                -.5f * gPI, .5f * gPI);
-        }
+        // if (evnt.IsHeld(shift) && evnt.IsHeld_MButton()) {
+        //     auto deltaMouse = evnt._mouseDelta;
+        //     SceneEngine::SunDirectionAngle = Clamp(
+        //         SceneEngine::SunDirectionAngle + deltaMouse[0] * 1.0f * gPI / 180.f, 
+        //         -.5f * gPI, .5f * gPI);
+        // }
 
         return false;
     }

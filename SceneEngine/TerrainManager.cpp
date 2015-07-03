@@ -30,12 +30,14 @@
 #include <stack>
 #include <utility>
 
+#include "LightingParserContext.h"  // for getting sun direction
+#include "LightDesc.h"              // for getting sun direction
+#include "SceneParser.h"            // for getting sun direction
+
 #include "../../RenderCore/DX11/Metal/DX11Utils.h"
 
 namespace SceneEngine
 {
-    extern float SunDirectionAngle;
-
     using namespace RenderCore;
 
     //////////////////////////////////////////////////////////////////////////////////////////
@@ -522,7 +524,7 @@ namespace SceneEngine
 
             //  we need to enable the rendering state once, for all cells. The state should be
             //  more or less the same for every cell, so we don't need to do it every time
-        TerrainRenderingContext state(renderer->GetCoverageIdBegin(), renderer->GetCoverageIdEnd());
+        TerrainRenderingContext state(renderer->GetCoverageIds(), renderer->GetCoverageFmts(), renderer->GetCoverageLayersCount());
         state._queuedNodes.erase(state._queuedNodes.begin(), state._queuedNodes.end());
         state._queuedNodes.reserve(2048);
         state._currentViewport = Metal::ViewportDesc(*context);
@@ -553,8 +555,25 @@ namespace SceneEngine
             ? TerrainRenderingContext::Mode_VegetationPrepare
             : TerrainRenderingContext::Mode_Normal;
 
+        Float3 sunDirection(0.f, 0.f, 1.f);
+        if (parserContext.GetSceneParser() && parserContext.GetSceneParser()->GetLightCount() > 0) {
+            sunDirection = parserContext.GetSceneParser()->GetLightDesc(0)._negativeLightDirection;
+        }
+
+            // We want to project the sun direction onto the plane for the precalculated sun movement.
+            // Then find the appropriate angle for on that plane.
+        float sunDirectionAngle;
+        {
+            float pathCos, pathSin;
+            std::tie(pathCos, pathSin) = XlSinCos(_pimpl->_cfg.SunPathAngle());
+            Float2 pathNormal(pathSin, -pathCos);
+            Float2 dirXY = Truncate(sunDirection);
+            Float2 projXY = dirXY - dirXY * Dot(dirXY, pathNormal);
+            sunDirectionAngle = XlATan2(sunDirection[2], Magnitude(projXY));
+        }
+
         auto shadowSoftness = Tweakable("ShadowSoftness", 15.f);
-        float terrainLightingConstants[] = { SunDirectionAngle / float(.5f * M_PI), shadowSoftness, 0.f, 0.f };
+        float terrainLightingConstants[] = { sunDirectionAngle / float(.5f * M_PI), shadowSoftness, 0.f, 0.f };
         Metal::ConstantBuffer lightingConstantsBuffer(terrainLightingConstants, sizeof(terrainLightingConstants));
         context->BindPS(MakeResourceList(5, _pimpl->_textures->_texturingConstants, lightingConstantsBuffer));
         if (mode == TerrainRenderingContext::Mode_VegetationPrepare) {
@@ -589,7 +608,10 @@ namespace SceneEngine
             //  we can use the same culling as the rendering part. But ideally we want to cull nodes
             //  that are outside of the camera frustum, or that don't intersect the ray
             //      first pass -- normal culling
-        TerrainRenderingContext state(_pimpl->_renderer->GetCoverageIdBegin(), _pimpl->_renderer->GetCoverageIdEnd());
+        TerrainRenderingContext state(
+            _pimpl->_renderer->GetCoverageIds(), 
+            _pimpl->_renderer->GetCoverageFmts(),
+            _pimpl->_renderer->GetCoverageLayersCount());
         state._queuedNodes.erase(state._queuedNodes.begin(), state._queuedNodes.end());
         state._queuedNodes.reserve(2048);
         state._currentViewport = Metal::ViewportDesc(*context);        // (accurate viewport is required to get the lodding right)
@@ -670,7 +692,8 @@ namespace SceneEngine
         } rayTestBuffer = { ray.first, 0.f, ray.second, 0.f };
         context->BindGS(MakeResourceList(2, Metal::ConstantBuffer(&rayTestBuffer, sizeof(rayTestBuffer))));
 
-        state.EnterState(context, parserContext, TerrainMaterialTextures(), _pimpl->_renderer->GetHeightsElementSize(), TerrainRenderingContext::Mode_RayTest);
+        state.EnterState(context, parserContext, 
+            TerrainMaterialTextures(), _pimpl->_renderer->GetHeightsElementSize(), TerrainRenderingContext::Mode_RayTest);
         _pimpl->_renderer->Render(context, parserContext, state);
         state.ExitState(context, parserContext);
 

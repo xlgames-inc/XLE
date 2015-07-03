@@ -286,6 +286,23 @@ uint GetEdgeIndex(float2 texCoord)
     else						{ return (t.y < 0.f) ? 0 : 2; }
 }
 
+float2 LoadInterpolatedShadows(Texture2DArray<float2> tex, float2 texCoord, int arrayIndex)
+{
+    float2 floored = floor(texCoord);
+    float2 ceiled = floored + 1.0.xx;
+    float2 alpha = texCoord - floored;
+    float2 A = tex.Load(int4(floored.x, floored.y, arrayIndex, 0));
+    float2 B = tex.Load(int4(ceiled.x, floored.y, arrayIndex, 0));
+    float2 C = tex.Load(int4(floored.x, ceiled.y, arrayIndex, 0));
+    float2 D = tex.Load(int4(ceiled.x, ceiled.y, arrayIndex, 0));
+    return
+          (1.f - alpha.x) * (1.f - alpha.y) * A
+        + (alpha.x) * (1.f - alpha.y) * B
+        + (1.f - alpha.x) * (alpha.y) * C
+        + (alpha.x) * (alpha.y) * D
+        ;
+}
+
 TerrainPixel CalculateTexturing(PSInput geo)
 {
     float4 result = 1.0.xxxx;
@@ -299,11 +316,12 @@ TerrainPixel CalculateTexturing(PSInput geo)
         #if defined(COVERAGE_2)
                 // todo -- we need special interpolation to avoid wrapping into neighbour coverage tiles
             finalTexCoord = lerp(CoverageCoordMins[COVERAGE_2].xy, CoverageCoordMaxs[COVERAGE_2].xy, geo.texCoord.xy);
+            float2 shadowSample = LoadInterpolatedShadows(MakeCoverageTileSet(COVERAGE_2), finalTexCoord, CoverageOrigin[COVERAGE_2].z);
 
-            uint3 dims;
-            MakeCoverageTileSet(COVERAGE_2).GetDimensions(dims.x, dims.y, dims.z);
+            // uint3 dims;
+            // MakeCoverageTileSet(COVERAGE_2).GetDimensions(dims.x, dims.y, dims.z);
+            // float2 shadowSample = MakeCoverageTileSet(COVERAGE_2).SampleLevel(DefaultSampler, float3(finalTexCoord.xy / float2(dims.xy), CoverageOrigin[COVERAGE_2].z), 0).rg;
 
-            float2 shadowSample = MakeCoverageTileSet(COVERAGE_2).SampleLevel(DefaultSampler, float3(finalTexCoord.xy / float2(dims.xy), CoverageOrigin[COVERAGE_2].z), 0).rg;
             shadowing = saturate(ShadowSoftness * (SunAngle + shadowSample.r)) * saturate(ShadowSoftness * (shadowSample.g - SunAngle));
         #endif
 

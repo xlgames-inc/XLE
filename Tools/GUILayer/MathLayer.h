@@ -10,6 +10,14 @@
 
 namespace GUILayer
 {
+    public value struct Vector2 sealed
+    {
+        property float X;
+        property float Y;
+
+        Vector2(float x, float y) { X = x; Y = y; }
+    };
+    
     public value struct Vector3 sealed
     {
         property float X;
@@ -29,6 +37,9 @@ namespace GUILayer
         Vector4(float x, float y, float z, float w) { X = x; Y = y; Z = z; W = w; }
     };
 
+    inline Float2 AsFloat2(Vector2 input) { return Float2(input.X, input.Y); }
+    inline Vector2 AsVector2(Float2 input) { return Vector2(input[0], input[1]); }
+    
     inline Float3 AsFloat3(Vector3 input) { return Float3(input.X, input.Y, input.Z); }
     inline Vector3 AsVector3(Float3 input) { return Vector3(input[0], input[1], input[2]); }
 

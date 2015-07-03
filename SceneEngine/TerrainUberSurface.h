@@ -16,6 +16,7 @@
 #include <assert.h>
 
 namespace Utility { class MemoryMappedFile; }
+namespace ConsoleRig { class IProgress; }
 
 namespace SceneEngine
 {
@@ -122,7 +123,9 @@ namespace SceneEngine
                     std::function<void(const ShortCircuitUpdate&)> shortCircuitUpdate);
         void    RenderDebugging(RenderCore::Metal::DeviceContext* devContext, SceneEngine::LightingParserContext& context);
 
-        GenericUberSurfaceInterface(ITerrainUberSurface& uberSurface, std::shared_ptr<ITerrainFormat> ioFormat);
+        GenericUberSurfaceInterface(
+            ITerrainUberSurface& uberSurface, 
+            std::shared_ptr<ITerrainFormat> ioFormat = nullptr);
         virtual ~GenericUberSurfaceInterface();
     protected:
         class Pimpl;
@@ -169,16 +172,21 @@ namespace SceneEngine
             LightingParserContext& parserContext,
             const TerrainCoordinateSystem& coords);
 
-        void    BuildShadowingSurface(const char destinationFile[], Int2 interestingMins, Int2 interestingMaxs, Float2 sunDirectionOfMovement, float xyScale);
+        void    BuildShadowingSurface(
+            const char destinationFile[], 
+            Int2 interestingMins, Int2 interestingMaxs, 
+            Float2 sunDirectionOfMovement, 
+            float xyScale, float shadowToHeightsScale, ConsoleRig
+            ::IProgress* progress);
 
         TerrainUberHeightsSurface* GetUberSurface();
 
         HeightsUberSurfaceInterface(
             TerrainUberHeightsSurface& uberSurface,
-            std::shared_ptr<ITerrainFormat> ioFormat);
+            std::shared_ptr<ITerrainFormat> ioFormat = nullptr);
         ~HeightsUberSurfaceInterface();
     private:
-        float   CalculateShadowingAngle(Float2 samplePt, float sampleHeight, Float2 sunDirectionOfMovement, float xyScale);
+        float   CalculateShadowingAngle(Float2 samplePt, Float2 sunDirectionOfMovement, float xyScale);
         void    CancelActiveOperations();
 
         TerrainUberHeightsSurface*      _uberSurface;

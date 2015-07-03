@@ -62,12 +62,10 @@ namespace PlatformRig { namespace Overlays
         Float2 start = Float2(float(gridArea._bottomRight[0] - gridArea._topLeft[0]), float(gridArea._bottomRight[1] - gridArea._topLeft[1])) / float(elementDim) / 2.f;
         Float2 end = Float2(float(_currentMousePosition[0] - gridArea._topLeft[0]), float(_currentMousePosition[1] - gridArea._topLeft[1])) / float(elementDim);
 
-        // end = Float2(22.f, 12.f);
-
-        start[0] = XlFloor(start[0]);
-        start[1] = XlFloor(start[1]);
-        end[0] = XlFloor(end[0]);
-        end[1] = XlFloor(end[1]);
+        // start[0] = XlFloor(start[0]);
+        // start[1] = XlFloor(start[1]);
+        // end[0] = XlFloor(end[0]);
+        // end[1] = XlFloor(end[1]);
 
         Coord2 testLine[] = 
         {
@@ -78,7 +76,8 @@ namespace PlatformRig { namespace Overlays
         DrawLines(context, testLine, testLineCol, 1);
 
         CollectIntersectionPts intersections;
-        GridEdgeIterator(start, end, intersections);
+        // GridEdgeIterator(Int2(start), Int2(end), intersections);
+        GridEdgeIterator2(start, end, intersections);
 
         for (auto i=intersections._intr.cbegin(); i!=intersections._intr.cend(); ++i) {
             Coord2 centre(int((*i)[0] * elementDim) + gridArea._topLeft[0], int((*i)[1] * elementDim) + gridArea._topLeft[1]);

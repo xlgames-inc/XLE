@@ -138,10 +138,10 @@ namespace SceneEngine
 		const ::Assets::ResChar baseDir[], UInt2 cellCount,
         Filenames filenamesMode, 
         unsigned nodeDimsInElements, unsigned cellTreeDepth, 
-        unsigned nodeOverlap, float elementSpacing)
+        unsigned nodeOverlap, float elementSpacing, float sunPathAngle)
     : _baseDir(FormatBaseDir(baseDir)), _cellCount(cellCount), _filenamesMode(filenamesMode)
     , _nodeDimsInElements(nodeDimsInElements), _cellTreeDepth(cellTreeDepth), _nodeOverlap(nodeOverlap) 
-    , _elementSpacing(elementSpacing)
+    , _elementSpacing(elementSpacing), _sunPathAngle(sunPathAngle)
     {
         ::Assets::ResChar buffer[MaxPath];
         const auto* fn = "terraintextures/textures.txt";
@@ -157,12 +157,13 @@ namespace SceneEngine
         _cellTreeDepth = 0;
         _nodeOverlap = 0;
         _elementSpacing = 0.f;
+        _sunPathAngle = 0.f;
     }
 
     TerrainConfig::TerrainConfig(const ::Assets::ResChar baseDir[])
     : _baseDir(FormatBaseDir(baseDir)), _filenamesMode(XLE)
     , _cellCount(0,0), _nodeDimsInElements(32u), _nodeOverlap(2u)
-    , _cellTreeDepth(5u), _elementSpacing(10.f)
+    , _cellTreeDepth(5u), _elementSpacing(10.f), _sunPathAngle(0.f)
     {
         size_t fileSize = 0;
         StringMeld<MaxPath> fn; fn << _baseDir << "world.cfg";
@@ -184,6 +185,7 @@ namespace SceneEngine
                 _nodeOverlap        = c(u("NodeOverlap"), _nodeOverlap);
                 _elementSpacing     = c(u("ElementSpacing"), _elementSpacing);
                 _cellCount          = c(u("CellCount"), _cellCount);
+                _sunPathAngle       = c(u("SunPathAngle"), _sunPathAngle);
 
                 auto coverage = c.Element(u("Coverage"));
                 if (coverage) {
@@ -233,6 +235,7 @@ namespace SceneEngine
         Serialize(formatter, u("NodeOverlap"), _nodeOverlap);
         Serialize(formatter, u("ElementSpacing"), _elementSpacing);
         Serialize(formatter, u("CellCount"), _cellCount);
+        Serialize(formatter, u("SunPathAngle"), _sunPathAngle);
 
         auto covEle = formatter.BeginElement(u("Coverage"));
         for (auto l=_coverageLayers.cbegin(); l!=_coverageLayers.cend(); ++l) {

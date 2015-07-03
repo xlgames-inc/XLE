@@ -18,6 +18,7 @@ namespace SceneEngine
 {
     class LightingParserContext;
     class ITerrainFormat;
+    using CoverageFormat = RenderCore::Metal::NativeFormat::Enum;
 
     class TerrainCellId
     {
@@ -66,7 +67,7 @@ namespace SceneEngine
         public:
             Int2 _tileSize;
             unsigned _cachedTileCount;
-            RenderCore::Metal::NativeFormat::Enum _format;
+            CoverageFormat _format;
         };
         Layer _heights;
         std::vector<std::pair<TerrainCoverageId, Layer>> _coverageLayers;
@@ -87,10 +88,11 @@ namespace SceneEngine
         void QueueUploads(TerrainRenderingContext& terrainContext);
         void Render(RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, TerrainRenderingContext& terrainContext);
 
-        Int2 GetHeightsElementSize() const { return _heightMapTileSet->GetTileSize(); }
-        const TerrainCoverageId* GetCoverageIdBegin() const { return AsPointer(_coverageIds.cbegin()); }
-        const TerrainCoverageId* GetCoverageIdEnd() const { return AsPointer(_coverageIds.cend()); }
-        const TerrainRendererConfig& GetConfig() const { return _cfg; }
+        Int2 GetHeightsElementSize() const                  { return _heightMapTileSet->GetTileSize(); }
+        const TerrainCoverageId* GetCoverageIds() const     { return AsPointer(_coverageIds.cbegin()); }
+        const CoverageFormat* GetCoverageFmts() const       { return AsPointer(_coverageFmts.cbegin()); }
+        unsigned GetCoverageLayersCount() const             { return (unsigned)_coverageIds.size(); }
+        const TerrainRendererConfig& GetConfig() const      { return _cfg; }
 
         void ShortCircuit(uint64 cellHash, TerrainCoverageId layerId, UInt2 cellOrigin, UInt2 cellMax, const ShortCircuitUpdate& upd);
         const bool IsShortCircuitAllowed() const { return _shortCircuitAllowed; }
@@ -153,6 +155,7 @@ namespace SceneEngine
         std::unique_ptr<TextureTileSet> _heightMapTileSet;
         std::vector<std::unique_ptr<TextureTileSet>> _coverageTileSet;
         std::vector<TerrainCoverageId>  _coverageIds;
+        std::vector<CoverageFormat>     _coverageFmts;
         std::vector<CRIPair>            _renderInfos;
 
         typedef std::pair<CellRenderInfo*, uint32> UploadPair;
@@ -266,6 +269,7 @@ namespace SceneEngine
         bool            _dynamicTessellation;
 
         TerrainCoverageId   _coverageLayerIds[TerrainCellId::MaxCoverageCount];
+        CoverageFormat      _coverageFmts[TerrainCellId::MaxCoverageCount];
         unsigned            _coverageLayerCount;
         
         struct QueuedNode
@@ -288,7 +292,10 @@ namespace SceneEngine
         };
         static std::vector<QueuedNode> _queuedNodes;        // HACK -- static to avoid allocation!
 
-        TerrainRenderingContext(const TerrainCoverageId* coverageLayerBegin, const TerrainCoverageId* coverageLayerEnd);
+        TerrainRenderingContext(
+            const TerrainCoverageId* coverageLayers, 
+            const CoverageFormat* coverageFmts, 
+            unsigned coverageLayerCount);
 
         enum Mode { Mode_Normal, Mode_RayTest, Mode_VegetationPrepare };
 

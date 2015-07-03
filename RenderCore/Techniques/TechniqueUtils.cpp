@@ -263,9 +263,12 @@ namespace RenderCore { namespace Techniques
             ;
         direction = Normalize(direction);
 
+            // Getting some problems with the intersection ray finishing slightly before
+            // the far clip plane... Let's push the ray length slightly beyond, just to catch this.
+        const float farBias = 1.1f;
         return std::make_pair(
             cameraPosition + nearClip * direction,
-            cameraPosition + farClip * direction);
+            cameraPosition + (farBias * farClip) * direction);
     }
 
     std::pair<Float3, Float3> BuildRayUnderCursor(

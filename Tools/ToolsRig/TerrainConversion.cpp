@@ -41,6 +41,7 @@ namespace ToolsRig
         static void WriteCellCoverageData(
             const TerrainConfig& cfg, ITerrainFormat& ioFormat, 
             const ::Assets::ResChar uberSurfaceName[], unsigned layerIndex,
+            bool overwriteExisting,
             ConsoleRig::IProgress* progress)
     {
         ::Assets::ResChar path[MaxPath];
@@ -55,7 +56,7 @@ namespace ToolsRig
 
             char cellFile[MaxPath];
             cfg.GetCellFilename(cellFile, dimof(cellFile), c->_cellIndex, layer._id);
-            if (!DoesFileExist(cellFile)) {
+            if (!DoesFileExist(cellFile) || overwriteExisting) {
                 XlDirname(path, dimof(path), cellFile);
                 CreateDirectoryRecursive(path);
 
@@ -112,17 +113,17 @@ namespace ToolsRig
 
             ::Assets::ResChar layerUberSurface[MaxPath];
             TerrainConfig::GetUberSurfaceFilename(layerUberSurface, dimof(layerUberSurface), uberSurfaceDir, layer._id);
-
             if (DoesFileExist(layerUberSurface)) {
                     //  open and destroy these coverage uber shadowing surface before we open the uber heights surface
                     //  (opening them both at the same time requires too much memory)
                 if (layer._format == 35) {
-                    WriteCellCoverageData<ShadowSample>(outputConfig, *outputIOFormat, layerUberSurface, l, progress);
+                    WriteCellCoverageData<ShadowSample>(outputConfig, *outputIOFormat, layerUberSurface, l, false, progress);
                 } else if (layer._format == 62) {
-                    WriteCellCoverageData<uint8>(outputConfig, *outputIOFormat, layerUberSurface, l, progress);
+                    WriteCellCoverageData<uint8>(outputConfig, *outputIOFormat, layerUberSurface, l, false, progress);
                 } else {
-                    LogAlwaysError << "Unknown format (" << layer._format << ") for terrain coverage file for layer: " << 
-                        Conversion::Convert<std::string>(layer._name);
+                    LogAlwaysError 
+                        << "Unknown format (" << layer._format 
+                        << ") for terrain coverage file for layer: " << Conversion::Convert<std::string>(layer._name);
                 }
             }
         }
@@ -160,6 +161,57 @@ namespace ToolsRig
         }
     }
 
+    void GenerateShadowsSurface(
+        const TerrainConfig& cfg, 
+        const ::Assets::ResChar uberSurfaceDir[],
+        ConsoleRig::IProgress* progress)
+    {
+        unsigned shadowLayerIndex = ~0u;
+        for (unsigned l=0; l<cfg.GetCoverageLayerCount(); ++l)
+            if (cfg.GetCoverageLayer(l)._id == CoverageId_AngleBasedShadows) {
+                shadowLayerIndex = l;
+                break;
+            }
+        if (shadowLayerIndex == ~0u) return;
+
+        ::Assets::ResChar shadowUberFn[MaxPath];
+        TerrainConfig::GetUberSurfaceFilename(shadowUberFn, dimof(shadowUberFn), uberSurfaceDir, CoverageId_AngleBasedShadows);
+
+        Float2 sunAxisOfMovement(XlCos(cfg.SunPathAngle()), XlSin(cfg.SunPathAngle()));
+
+        {
+            //////////////////////////////////////////////////////////////////////////////////////
+                // this is the shadows layer... We need to build the shadows procedurally
+            ::Assets::ResChar uberHeightsFile[MaxPath];
+            TerrainConfig::GetUberSurfaceFilename(uberHeightsFile, dimof(uberHeightsFile), uberSurfaceDir, CoverageId_Heights);
+            TerrainUberHeightsSurface heightsData(uberHeightsFile);
+            HeightsUberSurfaceInterface uberSurfaceInterface(heightsData);
+
+            //////////////////////////////////////////////////////////////////////////////////////
+                // build the uber shadowing file, and then write out the shadowing textures for each node
+            // Int2 interestingMins((9-1) * 16 * 32, (19-1) * 16 * 32), interestingMaxs((9+4) * 16 * 32, (19+4) * 16 * 32);
+            float shadowToHeightsScale = 
+                cfg.NodeDimensionsInElements()[0] 
+                / float(cfg.GetCoverageLayer(shadowLayerIndex)._nodeDimensions[0]);
+            
+            UInt2 interestingMins(0, 0);
+            UInt2 interestingMaxs = UInt2(
+                unsigned((cfg._cellCount[0] * cfg.CellDimensionsInNodes()[0] * cfg.NodeDimensionsInElements()[0]) / shadowToHeightsScale),
+                unsigned((cfg._cellCount[1] * cfg.CellDimensionsInNodes()[1] * cfg.NodeDimensionsInElements()[1]) / shadowToHeightsScale));
+
+            //////////////////////////////////////////////////////////////////////////////////////
+            uberSurfaceInterface.BuildShadowingSurface(
+                shadowUberFn, interestingMins, interestingMaxs, 
+                sunAxisOfMovement, cfg.ElementSpacing(), 
+                shadowToHeightsScale, progress);
+        }
+
+        //////////////////////////////////////////////////////////////////////////////////////
+            // write cell files
+        auto fmt = std::make_shared<TerrainFormat>();
+        WriteCellCoverageData<ShadowSample>(cfg, *fmt, shadowUberFn, shadowLayerIndex, true, progress);
+    }
+
     void GenerateMissingUberSurfaceFiles(
         const TerrainConfig& cfg, 
         std::shared_ptr<ITerrainFormat> outputIOFormat,
@@ -181,27 +233,7 @@ namespace ToolsRig
 
             if (layer._id == CoverageId_AngleBasedShadows) {
 
-                    // this is the shadows layer... We need to build the shadows procedurally
-                ::Assets::ResChar uberHeightsFile[MaxPath];
-                TerrainConfig::GetUberSurfaceFilename(
-                    uberHeightsFile, dimof(uberHeightsFile), 
-                    uberSurfaceDir, CoverageId_Heights);
-
-                TerrainUberHeightsSurface heightsData(uberHeightsFile);
-                HeightsUberSurfaceInterface uberSurfaceInterface(heightsData, outputIOFormat);
-
-                //////////////////////////////////////////////////////////////////////////////////////
-                    // build the uber shadowing file, and then write out the shadowing textures for each node
-                // Int2 interestingMins((9-1) * 16 * 32, (19-1) * 16 * 32), interestingMaxs((9+4) * 16 * 32, (19+4) * 16 * 32);
-                UInt2 interestingMins(0, 0);
-                UInt2 interestingMaxs = UInt2(
-                    cfg._cellCount[0] * cfg.CellDimensionsInNodes()[0] * cfg.NodeDimensionsInElements()[0],
-                    cfg._cellCount[1] * cfg.CellDimensionsInNodes()[1] * cfg.NodeDimensionsInElements()[1]);
-
-                float xyScale = cfg.ElementSpacing();
-                Float2 sunDirectionOfMovement = Normalize(Float2(1.f, 0.33f));
-                uberSurfaceInterface.BuildShadowingSurface(
-                    uberSurfaceFile, interestingMins, interestingMaxs, sunDirectionOfMovement, xyScale);
+                break;      // (skip, we'll get this later in GenerateShadowsSurface)
 
             } else {
 
@@ -218,6 +250,8 @@ namespace ToolsRig
                 step->Advance();
             }
         }
+
+        GenerateShadowsSurface(cfg, uberSurfaceDir, progress);
     }
     
     //////////////////////////////////////////////////////////////////////////////////////////
@@ -486,7 +520,7 @@ namespace ToolsRig
 
     void GenerateStarterCells(
         const ::Assets::ResChar outputDir[], const ::Assets::ResChar inputUberSurfaceDirectory[],
-        unsigned destNodeDims, unsigned destCellTreeDepth, unsigned overlap, float spacing,
+        unsigned destNodeDims, unsigned destCellTreeDepth, unsigned overlap, float spacing, float sunPathAngle,
         const std::pair<SceneEngine::TerrainCoverageId, unsigned> layers[], unsigned layerCount,
         ConsoleRig::IProgress* progress)
     {
@@ -507,7 +541,7 @@ namespace ToolsRig
 
         TerrainConfig cfg(
             outputDir, eleCount / cellDimsInEles, 
-            TerrainConfig::XLE, destNodeDims, destCellTreeDepth, overlap, spacing);
+            TerrainConfig::XLE, destNodeDims, destCellTreeDepth, overlap, spacing, sunPathAngle);
 
         for (unsigned l=0; l<layerCount; ++l) {
             ::Assets::ResChar uberSurfaceFN[MaxPath]; 

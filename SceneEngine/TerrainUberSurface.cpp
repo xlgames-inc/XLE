@@ -29,6 +29,7 @@
 #include "..\BufferUploads\DataPacket.h"
 
 #include "..\Math\Geometry.h"
+#include "..\ConsoleRig\IProgress.h"
 
 #include "..\Utility\Streams\FileUtils.h"
 #include "..\Utility\PtrUtils.h"
@@ -1039,10 +1040,22 @@ namespace SceneEngine
     public:
         void operator()(Int2 s0, Int2 s1, float edgeAlpha)
         {
-            assert(s0[0] >= 0 && s0[0] < int(_surface->GetWidth()));
-            assert(s0[1] >= 0 && s0[1] < int(_surface->GetHeight()));
-            assert(s1[0] >= 0 && s1[0] < int(_surface->GetWidth()));
-            assert(s1[0] >= 0 && s1[0] < int(_surface->GetHeight()));
+            assert(s0[0] >= 0 && s0[0] <= int(_surface->GetWidth()));
+            assert(s0[1] >= 0 && s0[1] <= int(_surface->GetHeight()));
+            assert(s1[0] >= 0 && s1[0] <= int(_surface->GetWidth()));
+            assert(s1[1] >= 0 && s1[1] <= int(_surface->GetHeight()));
+
+                // we need to clamp against the upper bound, because
+                // interpolation ends up querying along the extreme
+                // edges
+            s0[0] = std::min(s0[0], (int)_surface->GetWidth()-1);
+            s0[1] = std::min(s0[1], (int)_surface->GetHeight()-1);
+            s1[0] = std::min(s1[0], (int)_surface->GetWidth()-1);
+            s1[1] = std::min(s1[1], (int)_surface->GetHeight()-1);
+            s0[0] = std::max(s0[0], 0);
+            s0[1] = std::max(s0[1], 0);
+            s1[0] = std::max(s1[0], 0);
+            s1[1] = std::max(s1[1], 0);
 
             // we need to find the height of the edge at the point we pass through it
             float h0 = _surface->GetValueFast(s0[0], s0[1]);
@@ -1065,13 +1078,32 @@ namespace SceneEngine
         float _xyScale;
     };
 
-    float HeightsUberSurfaceInterface::CalculateShadowingAngle(Float2 samplePt, float sampleHeight, Float2 sunDirectionOfMovement, float xyScale)
+    float GetInterpolatedValue(TerrainUberHeightsSurface& surface, Float2 pt)
+    {
+        Float2 floored(XlFloor(pt[0]), XlFloor(pt[1]));
+        Float2 ceiled = floored + Float2(1.f, 1.f);
+        Float2 alpha = pt - floored;
+        float A = surface.GetValue((unsigned)floored[0], (unsigned)floored[1]);
+        float B = surface.GetValue((unsigned) ceiled[0], (unsigned)floored[1]);
+        float C = surface.GetValue((unsigned)floored[0], (unsigned) ceiled[1]);
+        float D = surface.GetValue((unsigned) ceiled[0], (unsigned) ceiled[1]);
+        return 
+              A * (1.f - alpha[0]) * (1.f - alpha[1])
+            + B * (      alpha[0]) * (1.f - alpha[1])
+            + C * (1.f - alpha[0]) * (      alpha[1])
+            + D * (      alpha[0]) * (      alpha[1])
+            ;
+    }
+
+    float HeightsUberSurfaceInterface::CalculateShadowingAngle(Float2 samplePt, Float2 sunDirectionOfMovement, float xyScale)
     {
             //  Travel forward along the sunDirectionOfMovement and find the shadowing angle.
             //  It's important here that integer coordinates are on corners of the "pixels"
             //      -- ie, not the centers. This will keep the height map correctly aligned
             //  with the shadowing samples
         auto& surface = *_uberSurface;
+
+        float sampleHeight = GetInterpolatedValue(*_uberSurface, samplePt);
 
             //  limit the maximum shadow distance (for efficiency while calculating the angles)
             //  As we get further away from the sample point, we're less likely to find the shadow
@@ -1104,12 +1136,15 @@ namespace SceneEngine
         assert(fe[1] >= 0.f && fe[1] < surface._height);
 
         ShadowingAngleOperator opr(&surface, Expand(samplePt, sampleHeight), xyScale);
-        GridEdgeIterator(samplePt, fe, opr);
+        GridEdgeIterator2(samplePt, fe, opr);
         float shadowingAngle = XlATan(opr._smallestTanTheta);
         return shadowingAngle;
     }
 
-    void    HeightsUberSurfaceInterface::BuildShadowingSurface(const char destinationFile[], Int2 interestingMins, Int2 interestingMaxs, Float2 sunDirectionOfMovement, float xyScale)
+    void    HeightsUberSurfaceInterface::BuildShadowingSurface(
+        const char destinationFile[], Int2 interestingMins, Int2 interestingMaxs, 
+        Float2 sunDirectionOfMovement, float xyScale, float shadowToHeightsScale,
+        ConsoleRig::IProgress* progress)
     {
             //      There are some limitations on the way the sun can move.
             //      It must move in a perfect circle arc, and pass through a
@@ -1148,8 +1183,8 @@ namespace SceneEngine
             //  mean that samples that are close to each other in physical space are more likely to
             //  be close in the file.
 
-        auto width = _pimpl->_uberSurface->GetWidth();
-        auto height = _pimpl->_uberSurface->GetHeight();
+        auto width = unsigned(_pimpl->_uberSurface->GetWidth() / shadowToHeightsScale);
+        auto height = unsigned(_pimpl->_uberSurface->GetHeight() / shadowToHeightsScale);
 
         BasicFile outputFile(destinationFile, "wb");
 
@@ -1162,16 +1197,19 @@ namespace SceneEngine
 
         const float conversionConstant = float(0xffff) / (.5f * float(M_PI));
 
+        auto step = progress ? progress->BeginStep("Generate Terrain Shadowing", height, true) : nullptr;
+
         auto lineOfSamples = std::make_unique<ShadowSample[]>(width);
         std::fill(lineOfSamples.get(), &lineOfSamples[width], ShadowSample(0xffff, 0xffff));
-        for (int y=0; y<int(height); ++y) {
+        int y=0;
+        for (; y<int(height); ++y) {
             if (y >= interestingMins[1] && y < interestingMaxs[1]) {
                 for (int x=interestingMins[0]; x<std::min(interestingMaxs[0], int(width)); ++x) {
 
                         //  first values is in the opposite direction of the sun movement. This will be a negative number
                         //  (but we'll store it as a positive value to increase precision)
-                    float a0 =  CalculateShadowingAngle(Float2(float(x), float(y)), _uberSurface->GetValue(x, y), -sunDirectionOfMovement, xyScale);
-                    float a1 =  CalculateShadowingAngle(Float2(float(x), float(y)), _uberSurface->GetValue(x, y),  sunDirectionOfMovement, xyScale);
+                    float a0 = CalculateShadowingAngle(Float2(float(x), float(y)) * shadowToHeightsScale, -sunDirectionOfMovement, xyScale);
+                    float a1 = CalculateShadowingAngle(Float2(float(x), float(y)) * shadowToHeightsScale,  sunDirectionOfMovement, xyScale);
 
                         // Both a0 and a1 should be positive. But we'll negate a0 before we use it for a comparison
                     assert(a0 > 0.f && a1 > 0.f);
@@ -1185,6 +1223,17 @@ namespace SceneEngine
             }
 
             outputFile.Write(lineOfSamples.get(), sizeof(ShadowSample), width);
+
+            if (step) {
+                step->Advance();
+                if (step->IsCancelled()) break;
+            }
+        }
+
+            // if we get cancelled, fill the remainder in with blanks.
+        for (; y<int(height); ++y) {
+            std::fill(&lineOfSamples[interestingMins[0]], &lineOfSamples[std::min(interestingMaxs[0]+1, int(width))], ShadowSample(0xffff, 0xffff));
+            outputFile.Write(lineOfSamples.get(), sizeof(ShadowSample), width);
         }
     }
 
@@ -1196,8 +1245,9 @@ namespace SceneEngine
 
     TerrainUberHeightsSurface* HeightsUberSurfaceInterface::GetUberSurface() { return _uberSurface; }
 
-    HeightsUberSurfaceInterface::HeightsUberSurfaceInterface(TerrainUberHeightsSurface& uberSurface, std::shared_ptr<ITerrainFormat> ioFormat)
-        : GenericUberSurfaceInterface(uberSurface, std::move(ioFormat))
+    HeightsUberSurfaceInterface::HeightsUberSurfaceInterface(
+        TerrainUberHeightsSurface& uberSurface, std::shared_ptr<ITerrainFormat> ioFormat)
+    : GenericUberSurfaceInterface(uberSurface, std::move(ioFormat))
     {
         _uberSurface = &uberSurface;
     }

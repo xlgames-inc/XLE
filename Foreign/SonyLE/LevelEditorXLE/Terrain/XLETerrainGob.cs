@@ -100,6 +100,18 @@ namespace LevelEditorXLE.Terrain
             set { SetAttribute(TerrainST.HasDecorationCoverageAttribute, value); }
         }
 
+        public bool HasShadowsCoverage
+        {
+            get { return GetAttribute<bool>(TerrainST.HasShadowsConverageAttribute); }
+            set { SetAttribute(TerrainST.HasShadowsConverageAttribute, value); }
+        }
+
+        public float SunPathAngle
+        {
+            get { return GetAttribute<float>(TerrainST.SunPathAngleAttribute); }
+            set { SetAttribute(TerrainST.SunPathAngleAttribute, value); }
+        }
+
         private static uint ClampNodeDimensions(uint input)
         {
             return input.Clamp(1u, 1024u);
@@ -191,12 +203,14 @@ namespace LevelEditorXLE.Terrain
                     var coverageLayers = new List<uint>();
                     if (cfg.HasBaseMaterialCoverage) coverageLayers.Add(1000);
                     if (cfg.HasDecorationCoverage) coverageLayers.Add(1001);
+                    if (cfg.HasShadowsCoverage) coverageLayers.Add(2);
 
                     // fill in the cells directory with starter cells (if they don't already exist)
                     GUILayer.EditorInterfaceUtils.GenerateStarterCells(
                         cfg.CellsDirectory, cfg.UberSurfaceDirectory,
                         nodeDimensions, cellTreeDepth, overlap,
-                        cfg.Spacing, coverageLayers, progress);
+                        cfg.Spacing, (float)(cfg.SunPathAngle * Math.PI / 180.0f),
+                        coverageLayers, progress);
                 }
             }
             catch { }
@@ -210,6 +224,8 @@ namespace LevelEditorXLE.Terrain
             CellsDirectory = cfg.CellsDirectory;
             HasDecorationCoverage = cfg.HasDecorationCoverage;
             HasBaseMaterialCoverage = cfg.HasBaseMaterialCoverage;
+            HasShadowsCoverage = cfg.HasShadowsCoverage;
+            SunPathAngle = cfg.SunPathAngle;
 
             sceneMan.ReloadTerrain();
         }
@@ -226,6 +242,8 @@ namespace LevelEditorXLE.Terrain
             cfg.CellsDirectory = CellsDirectory;
             cfg.HasBaseMaterialCoverage = HasBaseMaterialCoverage;
             cfg.HasDecorationCoverage = HasDecorationCoverage;
+            cfg.HasShadowsCoverage = HasShadowsCoverage;
+            cfg.SunPathAngle = SunPathAngle;
 
             using (var dlg = new TerrainConfig())
             {
@@ -241,6 +259,25 @@ namespace LevelEditorXLE.Terrain
         }
         #endregion
 
+        void DoGenerateShadows()
+        {
+            var sceneMan = XLEBridgeUtils.NativeManipulatorLayer.SceneManager;
+            sceneMan.UnloadTerrain();
+
+            try
+            {
+                using (var progress = new ControlsLibrary.ProgressDialog.ProgressInterface())
+                {
+                    float t = 1.0f / (float)Math.Sqrt(1.0f + .33f * .33f);
+                    GUILayer.Vector2 sunDirectionOfMovement = new GUILayer.Vector2(1.0f * t, .33f * t);
+                    GUILayer.EditorInterfaceUtils.GenerateShadowsSurface(CellsDirectory, UberSurfaceDirectory, progress);
+                }
+            }
+            catch { }
+
+            sceneMan.ReloadTerrain();
+        }
+
         #region ICommandClient Members
         bool ICommandClient.CanDoCommand(object commandTag)
         {
@@ -251,6 +288,8 @@ namespace LevelEditorXLE.Terrain
                     case Command.CreateBaseTexture:
                         return DomNode.GetChild(TerrainST.baseTextureChild) == null;
                     case Command.Configure:
+                        return true;
+                    case Command.GenerateShadows:
                         return true;
                 }
             }
@@ -279,6 +318,12 @@ namespace LevelEditorXLE.Terrain
                         DoModalConfigure();
                         break;
                     }
+
+                case Command.GenerateShadows:
+                    {
+                        DoGenerateShadows();
+                        break;
+                    }
             }
         }
 
@@ -291,7 +336,9 @@ namespace LevelEditorXLE.Terrain
             [Description("Create Base Texture")]
             CreateBaseTexture,
             [Description("Configure Terrain...")]
-            Configure
+            Configure,
+            [Description("Generate Shadows")]
+            GenerateShadows
         }
 
         IEnumerable<object> IContextMenuCommandProvider.GetCommands(object context, object target)

@@ -74,6 +74,12 @@ namespace LevelEditorXLE.Terrain
             [Category("Coverage")] [Description("Has a layer for the decoration selection")]
             public bool HasDecorationCoverage { get; set; }
 
+            [Category("Coverage")] [Description("Has a layer for precalculated terrain shadows")]
+            public bool HasShadowsCoverage { get; set; }
+
+            [Category("Coverage")] [Description("Sun Path Angle (in degrees)")]
+            public float SunPathAngle { get; set; }
+
             [Browsable(false)] public string SourceDEMFile { get; set; }
             [Browsable(false)] public uint NewCellCountX { get; set; }
             [Browsable(false)] public uint NewCellCountY { get; set; }
@@ -83,7 +89,13 @@ namespace LevelEditorXLE.Terrain
             [Browsable(false)]
             public ImportType Import { get; set; }
 
-            internal Config() { NodeDimensions = 32; Overlap = 2; Spacing = 10; Import = ImportType.None; NewCellCountX = NewCellCountY = 1; }
+            internal Config() 
+            { 
+                NodeDimensions = 32; Overlap = 2; Spacing = 10; Import = ImportType.None; 
+                NewCellCountX = NewCellCountY = 1;
+                HasBaseMaterialCoverage = HasDecorationCoverage = HasShadowsCoverage = false;
+                SunPathAngle = 0.0f;
+            }
         };
 
         private Config m_config;

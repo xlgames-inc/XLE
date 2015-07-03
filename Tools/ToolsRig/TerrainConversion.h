@@ -22,7 +22,7 @@ namespace ToolsRig
 
     void GenerateStarterCells(
         const ::Assets::ResChar outputDir[], const ::Assets::ResChar input[], 
-        unsigned destNodeDims, unsigned destCellTreeDepth, unsigned overlap, float spacing,
+        unsigned destNodeDims, unsigned destCellTreeDepth, unsigned overlap, float spacing, float sunPathAngle,
         const std::pair<SceneEngine::TerrainCoverageId, unsigned> layers[], unsigned layerCount,
         ConsoleRig::IProgress* progress);
 
@@ -42,5 +42,10 @@ namespace ToolsRig
         const ::Assets::ResChar outputDir[], 
         unsigned cellCountX, unsigned cellCountY,
         unsigned destNodeDims, unsigned destCellTreeDepth,
+        ConsoleRig::IProgress* progress = nullptr);
+
+    void GenerateShadowsSurface(
+        const SceneEngine::TerrainConfig& cfg, 
+        const ::Assets::ResChar uberSurfaceDir[],
         ConsoleRig::IProgress* progress = nullptr);
 }
