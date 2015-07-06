@@ -172,6 +172,16 @@ namespace XLEMath
             }
         }
 
+    inline float GridEdgeCeil(float input)
+    {
+            // The input number is always positive (and never nan/infinite and never
+            // near the limit of floating point precision)
+            // std::trunc may have a simplier implementation than std::ceil,
+            // meaning that using trunc may give us better performance
+        assert(input >= 0.f);
+        return std::trunc(input) + 1.f;
+    }
+
         /// <summary>Iterator through a grid, finding that edges that intersect with a line segment</summary>
         /// This is a floating point version of GridEdgeIterator. In this version, start and end can be 
         /// non integers (but edges are still found in integer values).
@@ -186,52 +196,55 @@ namespace XLEMath
             float ysign = (dy < 0.f) ? -1.f : 1.f;
                 
             dx = XlAbs(dx); dy = XlAbs(dy);
-            float x = xsign * start[0], y = ysign * start[1];
+            const float xoffset = 10000.f, yoffset = 10000.f;
+            float x = xsign * start[0] + xoffset, y = ysign * start[1] + yoffset;
 
-            const float epsilon = 1e-2f;    // hack! ceil(x) will sometimes return x... We need to prevent this!
+            // const float epsilon = 1e-2f;    // hack! ceil(x) will sometimes return x... We need to prevent this!
             if (dx >= dy) {
                 float r = dy / dx;
-                float endx = xsign * end[0];
+                float endx = xsign * end[0] + xoffset;
                 for (;;) {
-                    float ceilx = XlCeil(x + epsilon), ceily = XlCeil(y + epsilon);
+                    // float ceilx = XlCeil(x + epsilon), ceily = XlCeil(y + epsilon);
+                    float ceilx = GridEdgeCeil(x), ceily = GridEdgeCeil(y);
                     float sx = ceilx - x;
                     float sy = ceily - y;
                     if (sy < sx * r) {
                         x += sy / r;
                         y += sy;
                         if (x > endx) break;
-                        opr(    Int2(int(xsign*(ceilx - 1.f)), int(ysign*y)), 
-                                Int2(int(xsign*ceilx), int(ysign*y)), 
+                        opr(    Float2(xsign*((ceilx - 1.f) - xoffset), ysign*(y - yoffset)), 
+                                Float2(xsign*(ceilx - xoffset),         ysign*(y - yoffset)), 
                                 x - (ceilx - 1.f));
                     } else {
                         x += sx;
                         y += sx * r;
                         if (x > endx) break;
-                        opr(    Int2(int(xsign*x), int(ysign*(ceily - 1.f))), 
-                                Int2(int(xsign*x), int(ysign*ceily)), 
+                        opr(    Float2(xsign*(x - xoffset),             ysign*((ceily - 1.f) - yoffset)), 
+                                Float2(xsign*(x - xoffset),             ysign*(ceily - yoffset)), 
                                 y - (ceily - 1.f));
                     }
                 }
             } else {
                 float r = dx / dy;
-                float endy = ysign * end[1];
+                float endy = ysign * end[1] + yoffset;
                 for (;;) {
-                    float ceilx = XlCeil(x + epsilon), ceily = XlCeil(y + epsilon);
+                    // float ceilx = XlCeil(x + epsilon), ceily = XlCeil(y + epsilon);
+                    float ceilx = GridEdgeCeil(x), ceily = GridEdgeCeil(y);
                     float sx = ceilx - x;
                     float sy = ceily - y;
                     if (sx < sy * r) {
                         x += sx;
                         y += sx / r;
                         if (y > endy) break;
-                        opr(    Int2(int(xsign*x), int(ysign*(ceily - 1.f))), 
-                                Int2(int(xsign*x), int(ysign*ceily)), 
+                        opr(    Float2(xsign*(x - xoffset),             ysign*((ceily - 1.f) - yoffset)), 
+                                Float2(xsign*(x - xoffset),             ysign*(ceily - yoffset)), 
                                 y - (ceily - 1.f));
                     } else {
                         x += sy * r;
                         y += sy;
                         if (y > endy) break;
-                        opr(    Int2(int(xsign*(ceilx - 1.f)), int(ysign*y)), 
-                                Int2(int(xsign*ceilx), int(ysign*y)), 
+                        opr(    Float2(xsign*((ceilx - 1.f) - xoffset), ysign*(y - yoffset)), 
+                                Float2(xsign*(ceilx - xoffset),         ysign*(y - yoffset)), 
                                 x - (ceilx - 1.f));
                     }
                 }

@@ -1038,30 +1038,31 @@ namespace SceneEngine
     class ShadowingAngleOperator
     {
     public:
-        void operator()(Int2 s0, Int2 s1, float edgeAlpha)
+        void operator()(Float2 s0, Float2 s1, float edgeAlpha)
         {
-            assert(s0[0] >= 0 && s0[0] <= int(_surface->GetWidth()));
-            assert(s0[1] >= 0 && s0[1] <= int(_surface->GetHeight()));
-            assert(s1[0] >= 0 && s1[0] <= int(_surface->GetWidth()));
-            assert(s1[1] >= 0 && s1[1] <= int(_surface->GetHeight()));
+            Int2 is0 = Int2(int(s0[0]), int(s0[1])), is1 = Int2(int(s1[0]), int(s1[1]));
+            assert(is0[0] >= 0 && is0[0] <= int(_surface->GetWidth()));
+            assert(is0[1] >= 0 && is0[1] <= int(_surface->GetHeight()));
+            assert(is1[0] >= 0 && is1[0] <= int(_surface->GetWidth()));
+            assert(is1[1] >= 0 && is1[1] <= int(_surface->GetHeight()));
 
                 // we need to clamp against the upper bound, because
                 // interpolation ends up querying along the extreme
                 // edges
-            s0[0] = std::min(s0[0], (int)_surface->GetWidth()-1);
-            s0[1] = std::min(s0[1], (int)_surface->GetHeight()-1);
-            s1[0] = std::min(s1[0], (int)_surface->GetWidth()-1);
-            s1[1] = std::min(s1[1], (int)_surface->GetHeight()-1);
-            s0[0] = std::max(s0[0], 0);
-            s0[1] = std::max(s0[1], 0);
-            s1[0] = std::max(s1[0], 0);
-            s1[1] = std::max(s1[1], 0);
+            // s0[0] = std::min(s0[0], (int)_surface->GetWidth()-1);
+            // s0[1] = std::min(s0[1], (int)_surface->GetHeight()-1);
+            // s1[0] = std::min(s1[0], (int)_surface->GetWidth()-1);
+            // s1[1] = std::min(s1[1], (int)_surface->GetHeight()-1);
+            // s0[0] = std::max(s0[0], 0);
+            // s0[1] = std::max(s0[1], 0);
+            // s1[0] = std::max(s1[0], 0);
+            // s1[1] = std::max(s1[1], 0);
 
             // we need to find the height of the edge at the point we pass through it
-            float h0 = _surface->GetValueFast(s0[0], s0[1]);
-            float h1 = _surface->GetValueFast(s1[0], s1[1]);
+            float h0 = _surface->GetValueFast(is0[0], is0[1]);
+            float h1 = _surface->GetValueFast(is1[0], is1[1]);
             float finalHeight = LinearInterpolate(h0, h1, edgeAlpha);
-            Float2 finalPos = LinearInterpolate(Float2(float(s0[0]), float(s0[1])), Float2(float(s1[0]), float(s1[1])), edgeAlpha);
+            Float2 finalPos = LinearInterpolate(s0, s1, edgeAlpha);
             
                 // this defines an angle. We can do "smaller than" comparisons on tanTheta to find the smallest theta
             float distance = Magnitude(finalPos - Truncate(_samplePt)) * _xyScale;
@@ -1199,17 +1200,19 @@ namespace SceneEngine
 
         auto step = progress ? progress->BeginStep("Generate Terrain Shadowing", height, true) : nullptr;
 
+        const int border = int(1.f / shadowToHeightsScale);
+
         auto lineOfSamples = std::make_unique<ShadowSample[]>(width);
         std::fill(lineOfSamples.get(), &lineOfSamples[width], ShadowSample(0xffff, 0xffff));
         int y=0;
-        for (; y<int(height); ++y) {
+        for (; y<int(height)-border; ++y) {
             if (y >= interestingMins[1] && y < interestingMaxs[1]) {
-                for (int x=interestingMins[0]; x<std::min(interestingMaxs[0], int(width)); ++x) {
+                for (int x=interestingMins[0]; x<std::min(interestingMaxs[0], int(width)-border); ++x) {
 
                         //  first values is in the opposite direction of the sun movement. This will be a negative number
                         //  (but we'll store it as a positive value to increase precision)
-                    float a0 = CalculateShadowingAngle(Float2(float(x), float(y)) * shadowToHeightsScale, -sunDirectionOfMovement, xyScale);
-                    float a1 = CalculateShadowingAngle(Float2(float(x), float(y)) * shadowToHeightsScale,  sunDirectionOfMovement, xyScale);
+                    float a0 = CalculateShadowingAngle(Float2(float(x) + 0.5f, float(y) + 0.5f) * shadowToHeightsScale, -sunDirectionOfMovement, xyScale);
+                    float a1 = CalculateShadowingAngle(Float2(float(x) + 0.5f, float(y) + 0.5f) * shadowToHeightsScale,  sunDirectionOfMovement, xyScale);
 
                         // Both a0 and a1 should be positive. But we'll negate a0 before we use it for a comparison
                     assert(a0 > 0.f && a1 > 0.f);

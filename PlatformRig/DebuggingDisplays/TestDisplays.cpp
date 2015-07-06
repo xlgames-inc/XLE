@@ -29,6 +29,11 @@ namespace PlatformRig { namespace Overlays
         {
             _intr.push_back(LinearInterpolate(Float2(s0), Float2(s1), edgeAlpha));
         }
+
+        void operator()(XLEMath::Float2 s0, XLEMath::Float2 s1, float edgeAlpha)
+        {
+            _intr.push_back(LinearInterpolate(s0, s1, edgeAlpha));
+        }
     };
 
     void    GridIteratorDisplay::Render(IOverlayContext* context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState)

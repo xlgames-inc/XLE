@@ -379,6 +379,14 @@ namespace GUILayer
                 nativeProgress.get());
         }
 
+        static float GetSunPathAngle(EditorSceneManager^ sceneMan)
+        {
+            auto terr = sceneMan->GetScene()._terrainManager;
+            if (!terr) return 0.f;
+
+            return terr->GetConfig().SunPathAngle();
+        }
+
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

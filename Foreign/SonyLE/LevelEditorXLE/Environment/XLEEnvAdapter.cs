@@ -69,6 +69,18 @@ namespace LevelEditorXLE.Environment
             return false;
         }
 
+        public DomNode FindObjectByName(string name)
+        {
+            var objects = GetChildList<DomNode>(Schema.envSettingsType.objectsChild);
+            foreach (var o in objects)
+            {
+                var oName = o.GetAttribute(Schema.gameObjectType.nameAttribute) as string;
+                if (oName != null && oName.Equals(name))
+                    return o;
+            }
+            return null;
+        }
+
         public void GetInfo(ItemInfo info)
         {
             info.ImageIndex = Util.GetTypeImageIndex(DomNode.Type, info.GetImageList());

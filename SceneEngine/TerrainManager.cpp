@@ -564,12 +564,10 @@ namespace SceneEngine
             // Then find the appropriate angle for on that plane.
         float sunDirectionAngle;
         {
-            float pathCos, pathSin;
-            std::tie(pathCos, pathSin) = XlSinCos(_pimpl->_cfg.SunPathAngle());
-            Float2 pathNormal(pathSin, -pathCos);
-            Float2 dirXY = Truncate(sunDirection);
-            Float2 projXY = dirXY - dirXY * Dot(dirXY, pathNormal);
-            sunDirectionAngle = XlATan2(sunDirection[2], Magnitude(projXY));
+            auto trans = Identity<Float4x4>();
+            Combine_InPlace(trans, RotationZ(-_pimpl->_cfg.SunPathAngle()));
+            auto transDirection = TransformDirectionVector(trans, sunDirection);
+            sunDirectionAngle = XlATan2(transDirection[0], transDirection[2]);
         }
 
         auto shadowSoftness = Tweakable("ShadowSoftness", 15.f);

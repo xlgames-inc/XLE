@@ -33,6 +33,7 @@ namespace LevelEditorXLE
             Schema.envSettingsFolderType.Type.Define(new ExtensionInfo<XLEEnvSettingsFolder>());
             Schema.envSettingsType.Type.Define(new ExtensionInfo<XLEEnvSettings>());
             Schema.xleGameType.Type.Define(new ExtensionInfo<GameExtensions>());
+            Schema.envUtilityType.Type.Define(new ExtensionInfo<EnvUtility>());
         }
 
         public static TypeCatalog CreateTypeCatalog()

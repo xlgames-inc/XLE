@@ -240,6 +240,10 @@ namespace LevelEditorXLE
             oceanLightingSettings.MatSpecularMaxAttribute = oceanLightingSettings.Type.GetAttributeInfo("MatSpecularMax");
             oceanLightingSettings.MatRoughnessAttribute = oceanLightingSettings.Type.GetAttributeInfo("MatRoughness");
 
+            envUtilityType.Type = getNodeType("gap", "envUtilityType");
+            envUtilityType.SunAngleAttribute = envUtilityType.Type.GetAttributeInfo("SunAngle");
+            envUtilityType.SunNameAttribute = envUtilityType.Type.GetAttributeInfo("SunName");
+
             placementsCellReferenceType.Type = getNodeType("gap", "placementsCellReferenceType");
             placementsCellReferenceType.refAttribute = placementsCellReferenceType.Type.GetAttributeInfo("ref");
             placementsCellReferenceType.ExportTargetAttribute = placementsCellReferenceType.Type.GetAttributeInfo("ExportTarget");
@@ -670,6 +674,13 @@ namespace LevelEditorXLE
             public static AttributeInfo MatSpecularMinAttribute;
             public static AttributeInfo MatSpecularMaxAttribute;
             public static AttributeInfo MatRoughnessAttribute;
+        }
+
+        public static class envUtilityType
+        {
+            public static DomNodeType Type;
+            public static AttributeInfo SunAngleAttribute;
+            public static AttributeInfo SunNameAttribute;
         }
 
         public static class placementsCellReferenceType

@@ -458,6 +458,27 @@
       </xs:extension>
     </xs:complexContent>
   </xs:complexType>
+
+
+      <!-- E N V   U T I L I T Y -->
+  <xs:complexType name="envUtilityType">
+    <xs:annotation>
+      <xs:appinfo>
+        <scea.dom.editors.attribute category="General" name="SunAngle" displayName="Sun Angle" description="Direction of the sun, along the path set by terrain shadows"
+                                    editor="Sce.Atf.Controls.PropertyEditing.BoundedFloatEditor,Atf.Gui.WinForms:-90,90"/>
+        <scea.dom.editors.attribute category="General" name="SunName" displayName="Sun Name" description="Name of the light that represents the sun (typically just 'Sun')"/>
+
+        <scea.dom.editors category="Lights" name="EnvUtility" menuText="Lights/EnvUtility" description="Utilities and general parameters for the global environment"/>
+      </xs:appinfo>
+    </xs:annotation>
+
+    <xs:complexContent>
+      <xs:extension base="envMiscType">
+        <xs:attribute name="SunAngle" type="xs:float" default="0"/>
+        <xs:attribute name="SunName" type="xs:string" default="Sun"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
   
 </xs:schema>
 
