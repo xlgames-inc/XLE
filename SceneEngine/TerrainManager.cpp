@@ -173,8 +173,6 @@ namespace SceneEngine
                             
                         const unsigned textureDims = sourceNode->_widthInElements;
                         const unsigned overlapWidth = sourceNode->GetOverlapWidth();
-                            // -1 is for the 1 pixel border (overlapping neighbouring grids)
-                            //      .. if we increase the border size, we need to change this!
                         result._minCoordOffset = UInt2(unsigned(nodeLocalMin[0] * float(textureDims-overlapWidth)), unsigned(nodeLocalMin[1] * float(textureDims-overlapWidth)));
                         result._maxCoordOffset = UInt2(unsigned(nodeLocalMax[0] * float(textureDims-overlapWidth)), unsigned(nodeLocalMax[1] * float(textureDims-overlapWidth)));
 
@@ -504,7 +502,7 @@ namespace SceneEngine
     {
         TerrainCollapseContext collapseContext;
         collapseContext._startLod = Tweakable("TerrainMinLOD", 1);
-        collapseContext._screenSpaceEdgeThreshold = Tweakable("TerrainEdgeThreshold", 384.f);
+        collapseContext._screenSpaceEdgeThreshold = Tweakable("TerrainEdgeThreshold", 256.f);
         for (auto i=_cells.begin(); i!=_cells.end(); i++) {
             _renderer->CullNodes(context, parserContext, terrainContext, collapseContext, *i);
         }
@@ -571,7 +569,8 @@ namespace SceneEngine
         }
 
         auto shadowSoftness = Tweakable("ShadowSoftness", 15.f);
-        float terrainLightingConstants[] = { sunDirectionAngle / float(.5f * M_PI), shadowSoftness, 0.f, 0.f };
+        const float expansionConstant = 1.5f;
+        float terrainLightingConstants[] = { sunDirectionAngle / float(.5f * expansionConstant * M_PI), shadowSoftness, 0.f, 0.f };
         Metal::ConstantBuffer lightingConstantsBuffer(terrainLightingConstants, sizeof(terrainLightingConstants));
         context->BindPS(MakeResourceList(5, _pimpl->_textures->_texturingConstants, lightingConstantsBuffer));
         if (mode == TerrainRenderingContext::Mode_VegetationPrepare) {

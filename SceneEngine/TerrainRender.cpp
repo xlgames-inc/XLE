@@ -1027,10 +1027,10 @@ namespace SceneEngine
             if (covTile._width == ~unsigned(0x0) || covTile._height == ~unsigned(0x0)) continue;
             
             const unsigned overlap = 1;
-            tileConstants._coverageCoordMins[covIndex][1]  = (float)covTile._y; //(.5f / 2048.f) + covTile._y / 2048.f;
-            tileConstants._coverageCoordMins[covIndex][0]  = (float)covTile._x; //(.5f / 2048.f) + covTile._x / 2048.f;
-            tileConstants._coverageCoordMaxs[covIndex][0]  = (float)(covTile._x + (covTile._width-overlap)); // (.5f / 2048.f) + (covTile._x + (covTile._width-overlap)) / 2048.f;
-            tileConstants._coverageCoordMaxs[covIndex][1]  = (float)(covTile._y + (covTile._height-overlap)); // (.5f / 2048.f) + (covTile._y + (covTile._height-overlap)) / 2048.f;
+            tileConstants._coverageCoordMins[covIndex][1]  = (float)covTile._y;
+            tileConstants._coverageCoordMins[covIndex][0]  = (float)covTile._x;
+            tileConstants._coverageCoordMaxs[covIndex][0]  = (float)(covTile._x + (covTile._width-overlap));
+            tileConstants._coverageCoordMaxs[covIndex][1]  = (float)(covTile._y + (covTile._height-overlap));
             tileConstants._coverageOrigin[covIndex] = Int4(covTile._x, covTile._y, covTile._arrayIndex, 0);
         }
 

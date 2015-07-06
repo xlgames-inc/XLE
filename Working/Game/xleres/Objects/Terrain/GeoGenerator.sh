@@ -67,6 +67,13 @@ uint RemapEdgeIndex(uint hsEdgeIndex)
     return 2;
 }
 
+float Area(float2 A, float2 B, float2 C, float2 D)
+{
+    return abs((C.x - A.x) * (D.y - B.y) - (D.x - B.x) * (C.y - A.y));
+}
+
+float LengthSq(float2 A) { return dot(A, A); }
+
     //
     //		PatchConstantFunction
     //      ----------------------------------------------------
@@ -80,13 +87,19 @@ HS_ConstantOutput PatchConstantFunction(
     HS_ConstantOutput output;
 
     float2 halfViewport = float2(512, 400);
-    const float edgeThreshold = 384.f;
+    // const float edgeThreshold = 384.f;
+    const float edgeThreshold = 256.f;
     float mult = MaxTessellation / edgeThreshold;
 
-    float2 screenPts[4];
+    float2 screenPtsMax[4];
+    float2 screenPtsMin[4];
+    float3 bias = float3(0,0,20);       // note -- this would ideally be set to some real value based on the data!
     for (uint c2=0; c2<4; ++c2) {
-        float4 clip = mul(WorldToClip, float4(ip[c2].worldPosition, 1));
-        screenPts[c2] = clip.xy / clip.w * halfViewport;
+        float4 clipMax = mul(WorldToClip, float4(ip[c2].worldPosition+bias, 1));
+        screenPtsMax[c2] = clipMax.xy / clipMax.w * halfViewport;
+
+        float4 clipMin = mul(WorldToClip, float4(ip[c2].worldPosition-bias, 1));
+        screenPtsMin[c2] = clipMin.xy / clipMin.w * halfViewport;
     }
 
         // Edges:
@@ -112,6 +125,7 @@ HS_ConstantOutput PatchConstantFunction(
             //	Note that this method is currently producing the wrong results for
             //	tiles that straddle the near clip plane! This can make geometry near
             //	the camera swim around a bit.
+#if 0
         float2 startS	= screenPts[edgeStartPts[c]];
         float2 endS		= screenPts[edgeEndPts[c]];
 
@@ -121,9 +135,19 @@ HS_ConstantOutput PatchConstantFunction(
             //	vertices in near geometry when we need it.
         float screenSpaceLength = length(startS - endS);
         output.Edges[c] = clamp(screenSpaceLength * mult, MinTessellation, MaxTessellation);
+#else
+            // this calculation helps protect against bad collapses near the camera
+            //      (which are really annoying!)
+        float screenSpaceLength = LengthSq(screenPtsMax[edgeStartPts[c]] - screenPtsMax[edgeEndPts[c]]);
+        screenSpaceLength = max(LengthSq(screenPtsMax[edgeEndPts[c]] - screenPtsMin[edgeEndPts[c]]), screenSpaceLength);
+        screenSpaceLength = max(LengthSq(screenPtsMin[edgeEndPts[c]] - screenPtsMin[edgeStartPts[c]]), screenSpaceLength);
+        screenSpaceLength = max(LengthSq(screenPtsMin[edgeStartPts[c]] - screenPtsMax[edgeStartPts[c]]), screenSpaceLength);
+        screenSpaceLength = sqrt(screenSpaceLength);
+        output.Edges[c] = clamp(screenSpaceLength * mult, MinTessellation, MaxTessellation);
+#endif
 
-            // On the LOD interface boundaries, we need to lock the tessellation
-            // amounts to something predictable
+        // On the LOD interface boundaries, we need to lock the tessellation
+        // amounts to something predictable
         const float lodBoundaryTess = MaxTessellation;
         if (NeighbourLodDiffs[RemapEdgeIndex(c)] > 0) {
             output.Edges[c] = lodBoundaryTess;
@@ -136,11 +160,16 @@ HS_ConstantOutput PatchConstantFunction(
         //	Note that when there are large variations between edge tessellation and
         //	inside tessellation, it can cause some wierd artefacts. We need to be
         //	careful about that.
-    // output.Inside[0] = min(output.Edges[1], output.Edges[3]);	// v==0 && v==1 edges
-    // output.Inside[1] = min(output.Edges[0], output.Edges[2]);	// u==0 && u==1 edges
+        //
+        // Anything other than max is causing some wierd shuddering near the
+        // camera currently. Actually, "max" should be the most stable. Average or
+        // min will react more strongly to lod changes (particularly if only one
+        // edge is changing a lot)
+    output.Inside[0] = max(output.Edges[1], output.Edges[3]);	// v==0 && v==1 edges
+    output.Inside[1] = max(output.Edges[0], output.Edges[2]);	// u==0 && u==1 edges
 
-    output.Inside[0] = lerp(output.Edges[1], output.Edges[3], 0.5f);	// v==0 && v==1 edges
-    output.Inside[1] = lerp(output.Edges[0], output.Edges[2], 0.5f);	// u==0 && u==1 edges
+    // output.Inside[0] = lerp(output.Edges[1], output.Edges[3], 0.5f);	// v==0 && v==1 edges
+    // output.Inside[1] = lerp(output.Edges[0], output.Edges[2], 0.5f);	// u==0 && u==1 edges
 
     return output;
 }
@@ -154,6 +183,7 @@ struct PatchOutputControlPoint
 
 [domain("quad")]
 [partitioning("fractional_even")]
+// [partitioning("integer")]
 [outputtopology("triangle_cw")]
 [patchconstantfunc("PatchConstantFunction")]
 [outputcontrolpoints(4)]
@@ -180,6 +210,11 @@ PatchOutputControlPoint hs_main(
         //	calculate the positions of the final points. That means finding the
         //	correct location on the patch surface, and reading the height values from
         //	the texture. Let's just go back to patch local coords again.
+
+    // int temp2 = int(UV.y * TileDimensionsInVertices)&1;
+    // if (temp2 == 1) {
+        //     UV.x += .5f / TileDimensionsInVertices;
+        // }
 
     float rawHeightValue = CustomSample(UV.xy, InterpolationQuality);
 

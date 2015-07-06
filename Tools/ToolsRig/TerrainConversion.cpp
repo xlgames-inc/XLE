@@ -517,6 +517,21 @@ namespace ToolsRig
     }
 
 
+    static unsigned GetResolutionForLayer(SceneEngine::TerrainCoverageId layerId)
+    {
+        switch (layerId) {
+        case CoverageId_AngleBasedShadows: return 1;
+        default: return 4;
+        }
+    }
+
+    static unsigned GetOverlapForLayer(SceneEngine::TerrainCoverageId layerId)
+    {
+        switch (layerId) {
+        case CoverageId_AngleBasedShadows: return 1;
+        default: return 1;
+        }
+    }
 
     void GenerateStarterCells(
         const ::Assets::ResChar outputDir[], const ::Assets::ResChar inputUberSurfaceDirectory[],
@@ -549,11 +564,12 @@ namespace ToolsRig
                 uberSurfaceFN, dimof(uberSurfaceFN),
                 inputUberSurfaceDirectory, layers[l].first);
 
-            const unsigned layerRes = 4;
+            const auto layerRes = GetResolutionForLayer(layers[l].first);
+            const auto overlap = GetOverlapForLayer(layers[l].first);
             cfg.AddCoverageLayer(TerrainConfig::CoverageLayer
                 {
                     (const utf8*)uberSurfaceFN, layers[l].first,
-                    UInt2(layerRes*destNodeDims, layerRes*destNodeDims), 1, layers[l].second
+                    UInt2(layerRes*destNodeDims, layerRes*destNodeDims), overlap, layers[l].second
                 });
         }
 

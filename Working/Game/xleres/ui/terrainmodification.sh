@@ -84,6 +84,47 @@ float CalculateSmoothedHeight(uint2 surfaceSpaceCoord)
 	return accum;
 }
 
+static const float SharrConstant = 1.f/60.f;
+
+static const float SharrHoriz5x5[5][5] =
+{
+	{ -1.f * SharrConstant, -1.f * SharrConstant,  0.f,  1.f * SharrConstant,  1.f * SharrConstant },
+	{ -2.f * SharrConstant, -2.f * SharrConstant,  0.f,  2.f * SharrConstant,  2.f * SharrConstant },
+	{ -3.f * SharrConstant, -6.f * SharrConstant,  0.f,  6.f * SharrConstant,  3.f * SharrConstant },
+	{ -2.f * SharrConstant, -2.f * SharrConstant,  0.f,  2.f * SharrConstant,  2.f * SharrConstant },
+	{ -1.f * SharrConstant, -1.f * SharrConstant,  0.f,  1.f * SharrConstant,  1.f * SharrConstant }
+};
+
+static const float SharrVert5x5[5][5] =
+{
+	{ -1.f * SharrConstant, -2.f * SharrConstant, -3.f * SharrConstant, -2.f * SharrConstant, -1.f * SharrConstant },
+	{ -1.f * SharrConstant, -2.f * SharrConstant, -6.f * SharrConstant, -2.f * SharrConstant, -1.f * SharrConstant },
+	{  0.f * SharrConstant,  0.f * SharrConstant,  0.f * SharrConstant,  0.f * SharrConstant,  0.f * SharrConstant },
+	{  1.f * SharrConstant,  2.f * SharrConstant,  6.f * SharrConstant,  2.f * SharrConstant,  1.f * SharrConstant },
+	{  1.f * SharrConstant,  2.f * SharrConstant,  3.f * SharrConstant,  2.f * SharrConstant,  1.f * SharrConstant }
+};
+
+float2 CalculateDHDXY(uint2 surfaceSpaceCoord)
+{
+	float centerHeight = InputSurface[surfaceSpaceCoord - SurfaceMins];
+
+	float2 dhdp = 0.0.xx;
+	for (uint y=0; y<5; ++y) {
+		for (uint x=0; x<5; ++x) {
+
+			int2 coords = int2(surfaceSpaceCoord + int2(x,y) - int2(2,2));
+			if (	coords.x >= int(SurfaceMins.x) && coords.x <= int(SurfaceMaxs.x)
+				&&	coords.y >= int(SurfaceMins.y) && coords.y <= int(SurfaceMaxs.y)) {
+
+				float heightDiff = InputSurface[coords - SurfaceMins] - centerHeight;
+				dhdp.x += SharrHoriz5x5[x][y] * heightDiff;
+				dhdp.y += SharrVert5x5[x][y] * heightDiff;
+			}
+		}
+	}
+	return dhdp;
+}
+
 [numthreads(16, 16, 1)]
 	void Smooth(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
@@ -106,11 +147,16 @@ float CalculateSmoothedHeight(uint2 surfaceSpaceCoord)
 			ok = (SmoothFlags&2)!=0;
 		}
 
+		// We can try to bias the smoothing to apply more smoothly to (mostly)
+		// flat areas... we want to be able to create smooth surfaces sometimes,
+		// without change the shape of the major terrain features around it.
+		// float2 dhdxy = CalculateDHDXY(surfaceSpaceCoord);
+		// strength *= lerp(0.05f, 1.f, 1.0f - saturate(1.f * abs(dhdxy.x)));
+		// strength *= lerp(0.05f, 1.f, 1.0f - saturate(1.f * abs(dhdxy.y)));
+
 		if (ok) {
 			OutputSurface[surfaceSpaceCoord - SurfaceMins] = lerp(oldHeight, smoothed, strength);
 		}
-
-		// OutputSurface[surfaceSpaceCoord - SurfaceMins] += strength * (oldHeight-smoothed);
 	}
 }
 
@@ -368,6 +414,8 @@ float3x3 RotationMatrix(float3 axis, float angle)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+#if 0
+
 #include "../Utility/DebuggingShapes.h"
 #include "../Utility/DebuggingPanels.h"
 
@@ -384,3 +432,5 @@ float4 GpuCacheDebugging(float4 position : SV_Position, float2 texCoord : TEXCOO
 
 	return result;
 }
+
+#endif

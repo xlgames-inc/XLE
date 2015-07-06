@@ -1040,23 +1040,14 @@ namespace SceneEngine
     public:
         void operator()(Float2 s0, Float2 s1, float edgeAlpha)
         {
+                // for performance reasons, we don't do any boundary checking
+                // on the input values. The input algorithm must guarantee that
+                // we get reasonable results.
             Int2 is0 = Int2(int(s0[0]), int(s0[1])), is1 = Int2(int(s1[0]), int(s1[1]));
             assert(is0[0] >= 0 && is0[0] <= int(_surface->GetWidth()));
             assert(is0[1] >= 0 && is0[1] <= int(_surface->GetHeight()));
             assert(is1[0] >= 0 && is1[0] <= int(_surface->GetWidth()));
             assert(is1[1] >= 0 && is1[1] <= int(_surface->GetHeight()));
-
-                // we need to clamp against the upper bound, because
-                // interpolation ends up querying along the extreme
-                // edges
-            // s0[0] = std::min(s0[0], (int)_surface->GetWidth()-1);
-            // s0[1] = std::min(s0[1], (int)_surface->GetHeight()-1);
-            // s1[0] = std::min(s1[0], (int)_surface->GetWidth()-1);
-            // s1[1] = std::min(s1[1], (int)_surface->GetHeight()-1);
-            // s0[0] = std::max(s0[0], 0);
-            // s0[1] = std::max(s0[1], 0);
-            // s1[0] = std::max(s1[0], 0);
-            // s1[1] = std::max(s1[1], 0);
 
             // we need to find the height of the edge at the point we pass through it
             float h0 = _surface->GetValueFast(is0[0], is0[1]);
@@ -1066,13 +1057,14 @@ namespace SceneEngine
             
                 // this defines an angle. We can do "smaller than" comparisons on tanTheta to find the smallest theta
             float distance = Magnitude(finalPos - Truncate(_samplePt)) * _xyScale;
-            float tanTheta = distance / BranchlessMax(0.00001f, finalHeight - _samplePt[2]);
-            _smallestTanTheta = BranchlessMin(tanTheta, _smallestTanTheta);
+            assert(distance > 0.f);
+            float grad = (finalHeight - _samplePt[2]) / distance;
+            _bestResult = BranchlessMax(grad, _bestResult);
         }
 
-        ShadowingAngleOperator(TerrainUberHeightsSurface* surface, Float3 samplePt, float xyScale) { _smallestTanTheta = FLT_MAX; _surface = surface; _samplePt = samplePt; _xyScale = xyScale; }
+        ShadowingAngleOperator(TerrainUberHeightsSurface* surface, Float3 samplePt, float xyScale) { _bestResult = -FLT_MAX; _surface = surface; _samplePt = samplePt; _xyScale = xyScale; }
 
-        float _smallestTanTheta;
+        float _bestResult;
     protected:
         TerrainUberHeightsSurface* _surface;
         Float3 _samplePt;
@@ -1138,7 +1130,7 @@ namespace SceneEngine
 
         ShadowingAngleOperator opr(&surface, Expand(samplePt, sampleHeight), xyScale);
         GridEdgeIterator2(samplePt, fe, opr);
-        float shadowingAngle = XlATan(opr._smallestTanTheta);
+        float shadowingAngle = XlATan2(1.f, opr._bestResult);
         return shadowingAngle;
     }
 
@@ -1196,7 +1188,14 @@ namespace SceneEngine
         hdr._dummy = 0;
         outputFile.Write(&hdr, sizeof(hdr), 1);
 
-        const float conversionConstant = float(0xffff) / (.5f * float(M_PI));
+            // The "expansion constant" helps prevent shadows creaping up on peaks.
+            // Peaks (especially sharp peaks) shouldn't receive shadows until the sun is >90 degrees, or <-90 degrees.
+            // But if we clamp the direction at +-90, shadow will start to the creep
+            // up on the peak when the sun gets near 90 degrees. We want to prevent the
+            // shadow from behaving like this -- which we can do by clamping the angle
+            // beyond 90.
+        const float expansionConstant = 1.5f;
+        const float conversionConstant = float(0xffff) / (.5f * expansionConstant * float(M_PI));
 
         auto step = progress ? progress->BeginStep("Generate Terrain Shadowing", height, true) : nullptr;
 
@@ -1204,15 +1203,19 @@ namespace SceneEngine
 
         auto lineOfSamples = std::make_unique<ShadowSample[]>(width);
         std::fill(lineOfSamples.get(), &lineOfSamples[width], ShadowSample(0xffff, 0xffff));
-        int y=0;
+
+        outputFile.Write(lineOfSamples.get(), sizeof(ShadowSample), width); // first line is a dummy
+
+        int y=1;
         for (; y<int(height)-border; ++y) {
             if (y >= interestingMins[1] && y < interestingMaxs[1]) {
-                for (int x=interestingMins[0]; x<std::min(interestingMaxs[0], int(width)-border); ++x) {
+                for (int x=std::max(interestingMins[0], 1); x<std::min(interestingMaxs[0], int(width)-border); ++x) {
 
-                        //  first values is in the opposite direction of the sun movement. This will be a negative number
+                        //  First values is in the opposite direction of the sun movement. This will be a negative number
                         //  (but we'll store it as a positive value to increase precision)
-                    float a0 = CalculateShadowingAngle(Float2(float(x) + 0.5f, float(y) + 0.5f) * shadowToHeightsScale, -sunDirectionOfMovement, xyScale);
-                    float a1 = CalculateShadowingAngle(Float2(float(x) + 0.5f, float(y) + 0.5f) * shadowToHeightsScale,  sunDirectionOfMovement, xyScale);
+                    const float sampleOffset = 0.f;
+                    float a0 = CalculateShadowingAngle(Float2(float(x) + sampleOffset, float(y) + sampleOffset) * shadowToHeightsScale, -sunDirectionOfMovement, xyScale);
+                    float a1 = CalculateShadowingAngle(Float2(float(x) + sampleOffset, float(y) + sampleOffset) * shadowToHeightsScale,  sunDirectionOfMovement, xyScale);
 
                         // Both a0 and a1 should be positive. But we'll negate a0 before we use it for a comparison
                     assert(a0 > 0.f && a1 > 0.f);
