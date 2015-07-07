@@ -138,10 +138,10 @@ namespace SceneEngine
 		const ::Assets::ResChar baseDir[], UInt2 cellCount,
         Filenames filenamesMode, 
         unsigned nodeDimsInElements, unsigned cellTreeDepth, 
-        unsigned nodeOverlap, float elementSpacing, float sunPathAngle)
+        unsigned nodeOverlap, float elementSpacing, float sunPathAngle, bool encodedGradientFlags)
     : _baseDir(FormatBaseDir(baseDir)), _cellCount(cellCount), _filenamesMode(filenamesMode)
     , _nodeDimsInElements(nodeDimsInElements), _cellTreeDepth(cellTreeDepth), _nodeOverlap(nodeOverlap) 
-    , _elementSpacing(elementSpacing), _sunPathAngle(sunPathAngle)
+    , _elementSpacing(elementSpacing), _sunPathAngle(sunPathAngle), _encodedGradientFlags(encodedGradientFlags)
     {
         ::Assets::ResChar buffer[MaxPath];
         const auto* fn = "terraintextures/textures.txt";
@@ -158,12 +158,14 @@ namespace SceneEngine
         _nodeOverlap = 0;
         _elementSpacing = 0.f;
         _sunPathAngle = 0.f;
+        _encodedGradientFlags = false;
     }
 
     TerrainConfig::TerrainConfig(const ::Assets::ResChar baseDir[])
     : _baseDir(FormatBaseDir(baseDir)), _filenamesMode(XLE)
     , _cellCount(0,0), _nodeDimsInElements(32u), _nodeOverlap(2u)
     , _cellTreeDepth(5u), _elementSpacing(10.f), _sunPathAngle(0.f)
+    , _encodedGradientFlags(false)
     {
         size_t fileSize = 0;
         StringMeld<MaxPath> fn; fn << _baseDir << "world.cfg";
@@ -180,12 +182,13 @@ namespace SceneEngine
                 if (!XlCompareStringI(c.Attribute(u("Filenames")).Value().c_str(), u("Legacy"))) 
                     _filenamesMode = Legacy;
 
-                _nodeDimsInElements = c(u("NodeDims"), _nodeDimsInElements);
-                _cellTreeDepth      = c(u("CellTreeDepth"), _cellTreeDepth);
-                _nodeOverlap        = c(u("NodeOverlap"), _nodeOverlap);
-                _elementSpacing     = c(u("ElementSpacing"), _elementSpacing);
-                _cellCount          = c(u("CellCount"), _cellCount);
-                _sunPathAngle       = c(u("SunPathAngle"), _sunPathAngle);
+                _nodeDimsInElements     = c(u("NodeDims"), _nodeDimsInElements);
+                _cellTreeDepth          = c(u("CellTreeDepth"), _cellTreeDepth);
+                _nodeOverlap            = c(u("NodeOverlap"), _nodeOverlap);
+                _elementSpacing         = c(u("ElementSpacing"), _elementSpacing);
+                _cellCount              = c(u("CellCount"), _cellCount);
+                _sunPathAngle           = c(u("SunPathAngle"), _sunPathAngle);
+                _encodedGradientFlags   = c(u("EncodedGradientFlags"), _encodedGradientFlags);
 
                 auto coverage = c.Element(u("Coverage"));
                 if (coverage) {
@@ -236,6 +239,7 @@ namespace SceneEngine
         Serialize(formatter, u("ElementSpacing"), _elementSpacing);
         Serialize(formatter, u("CellCount"), _cellCount);
         Serialize(formatter, u("SunPathAngle"), _sunPathAngle);
+        Serialize(formatter, u("EncodedGradientFlags"), _encodedGradientFlags);
 
         auto covEle = formatter.BeginElement(u("Coverage"));
         for (auto l=_coverageLayers.cbegin(); l!=_coverageLayers.cend(); ++l) {

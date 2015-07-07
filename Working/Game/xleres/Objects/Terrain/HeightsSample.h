@@ -9,6 +9,12 @@
 
 static const uint HeightsOverlap = 2;
 
+#if defined(ENCODED_GRADIENT_FLAGS)
+    static const uint RawHeightMask = 0x3fff;
+#else
+    static const uint RawHeightMask = 0xffff;
+#endif
+
 int2  T0(int2 input) { return int2(max(input.x-1, HeightMapOrigin.x),								max(input.y-1, HeightMapOrigin.y)); }
 int2  T1(int2 input) { return int2(    input.x+0,													max(input.y-1, HeightMapOrigin.y)); }
 int2  T2(int2 input) { return int2(    input.x+1,													max(input.y-1, HeightMapOrigin.y)); }
@@ -40,6 +46,24 @@ float EvaluateCubicCurve(float pm0, float p0, float p1, float p2, float t)
         + m1 * (-t2 + t3);
 }
 
+uint LoadRawHeightValue(int3 coord)
+{
+    uint result = HeightsTileSet.Load(int4(coord, 0));
+    if (RawHeightMask != 0xffff)    // (constant expression condition to remove mask when not needed)
+        result &= RawHeightMask;
+    return result;
+}
+
+uint LoadEncodedGradientFlags(int3 coord)
+{
+    #if defined(ENCODED_GRADIENT_FLAGS)
+        uint result = HeightsTileSet.Load(int4(coord, 0));
+        return result >> 14;
+    #else
+        return 0;
+    #endif
+}
+
 float CustomSample(float2 UV, int interpolationQuality)
 {
         // todo -- consider doing height interpolation in world space (rather than in
@@ -60,10 +84,10 @@ float CustomSample(float2 UV, int interpolationQuality)
         int2 minTexelCorner = int2(texelCoords); // round down
         float2 filter = texelCoords - minTexelCorner;
 
-        int A = HeightsTileSet.Load(int4(minTexelCorner + int2(0,0), HeightMapOrigin.z, 0));
-        int B = HeightsTileSet.Load(int4(minTexelCorner + int2(1,0), HeightMapOrigin.z, 0));
-        int C = HeightsTileSet.Load(int4(minTexelCorner + int2(0,1), HeightMapOrigin.z, 0));
-        int D = HeightsTileSet.Load(int4(minTexelCorner + int2(1,1), HeightMapOrigin.z, 0));
+        int A = LoadRawHeightValue(int3(minTexelCorner + int2(0,0), HeightMapOrigin.z));
+        int B = LoadRawHeightValue(int3(minTexelCorner + int2(1,0), HeightMapOrigin.z));
+        int C = LoadRawHeightValue(int3(minTexelCorner + int2(0,1), HeightMapOrigin.z));
+        int D = LoadRawHeightValue(int3(minTexelCorner + int2(1,1), HeightMapOrigin.z));
 
         float w0 = (1.0f - filter.x) * (1.0f - filter.y);
         float w1 = (       filter.x) * (1.0f - filter.y);
@@ -92,23 +116,23 @@ float CustomSample(float2 UV, int interpolationQuality)
             //		- make a new vertical curve along those control points
             //		evaluate that curve at the UV.y position
 
-        float A   = (float)HeightsTileSet.Load(int4(minTexelCorner + int2(0,0), HeightMapOrigin.z, 0));
-        float B   = (float)HeightsTileSet.Load(int4(minTexelCorner + int2(1,0), HeightMapOrigin.z, 0));
-        float C   = (float)HeightsTileSet.Load(int4(minTexelCorner + int2(0,1), HeightMapOrigin.z, 0));
-        float D   = (float)HeightsTileSet.Load(int4(minTexelCorner + int2(1,1), HeightMapOrigin.z, 0));
+        float A   = (float)LoadRawHeightValue(int3(minTexelCorner + int2(0,0), HeightMapOrigin.z));
+        float B   = (float)LoadRawHeightValue(int3(minTexelCorner + int2(1,0), HeightMapOrigin.z));
+        float C   = (float)LoadRawHeightValue(int3(minTexelCorner + int2(0,1), HeightMapOrigin.z));
+        float D   = (float)LoadRawHeightValue(int3(minTexelCorner + int2(1,1), HeightMapOrigin.z));
 
-        float t0  = (float)HeightsTileSet.Load(int4( T0(minTexelCorner), HeightMapOrigin.z, 0));
-        float t1  = (float)HeightsTileSet.Load(int4( T1(minTexelCorner), HeightMapOrigin.z, 0));
-        float t2  = (float)HeightsTileSet.Load(int4( T2(minTexelCorner), HeightMapOrigin.z, 0));
-        float t3  = (float)HeightsTileSet.Load(int4( T3(minTexelCorner), HeightMapOrigin.z, 0));
-        float t4  = (float)HeightsTileSet.Load(int4( T4(minTexelCorner), HeightMapOrigin.z, 0));
-        float t5  = (float)HeightsTileSet.Load(int4( T5(minTexelCorner), HeightMapOrigin.z, 0));
-        float t6  = (float)HeightsTileSet.Load(int4( T6(minTexelCorner), HeightMapOrigin.z, 0));
-        float t7  = (float)HeightsTileSet.Load(int4( T7(minTexelCorner), HeightMapOrigin.z, 0));
-        float t8  = (float)HeightsTileSet.Load(int4( T8(minTexelCorner), HeightMapOrigin.z, 0));
-        float t9  = (float)HeightsTileSet.Load(int4( T9(minTexelCorner), HeightMapOrigin.z, 0));
-        float t10 = (float)HeightsTileSet.Load(int4(T10(minTexelCorner), HeightMapOrigin.z, 0));
-        float t11 = (float)HeightsTileSet.Load(int4(T11(minTexelCorner), HeightMapOrigin.z, 0));
+        float t0  = (float)LoadRawHeightValue(int3( T0(minTexelCorner), HeightMapOrigin.z));
+        float t1  = (float)LoadRawHeightValue(int3( T1(minTexelCorner), HeightMapOrigin.z));
+        float t2  = (float)LoadRawHeightValue(int3( T2(minTexelCorner), HeightMapOrigin.z));
+        float t3  = (float)LoadRawHeightValue(int3( T3(minTexelCorner), HeightMapOrigin.z));
+        float t4  = (float)LoadRawHeightValue(int3( T4(minTexelCorner), HeightMapOrigin.z));
+        float t5  = (float)LoadRawHeightValue(int3( T5(minTexelCorner), HeightMapOrigin.z));
+        float t6  = (float)LoadRawHeightValue(int3( T6(minTexelCorner), HeightMapOrigin.z));
+        float t7  = (float)LoadRawHeightValue(int3( T7(minTexelCorner), HeightMapOrigin.z));
+        float t8  = (float)LoadRawHeightValue(int3( T8(minTexelCorner), HeightMapOrigin.z));
+        float t9  = (float)LoadRawHeightValue(int3( T9(minTexelCorner), HeightMapOrigin.z));
+        float t10 = (float)LoadRawHeightValue(int3(T10(minTexelCorner), HeightMapOrigin.z));
+        float t11 = (float)LoadRawHeightValue(int3(T11(minTexelCorner), HeightMapOrigin.z));
 
         float q0  = EvaluateCubicCurve(t0, t1, t2, t3, filter.x);
         float q1  = EvaluateCubicCurve(t4,  A,  B, t5, filter.x);
@@ -125,7 +149,7 @@ float CustomSample(float2 UV, int interpolationQuality)
 
         float2 texelCoords = HeightMapOrigin.xy + UV * float(TileDimensionsInVertices-HeightsOverlap);
         int2 minTexelCorner = int2(floor(texelCoords)); // round down
-        return (float)HeightsTileSet.Load(int4(minTexelCorner + int2(0,0), HeightMapOrigin.z, 0));
+        return (float)LoadRawHeightValue(int3(minTexelCorner + int2(0,0), HeightMapOrigin.z));
 
     }
 }

@@ -16,8 +16,7 @@ VSOutput vs_basic(uint vertexIndex : SV_VertexId)
 
     int x = vertexIndex % TileDimensionsInVertices;
     int y = vertexIndex / TileDimensionsInVertices;
-    uint rawHeightValue = HeightsTileSet.Load(
-        int4(HeightMapOrigin.xy + int2(x,y), HeightMapOrigin.z, 0));
+    uint rawHeightValue = LoadRawHeightValue(int3(HeightMapOrigin.xy + int2(x,y), HeightMapOrigin.z));
 
     float3 localPosition;
     localPosition.x		 = float(x) / float(TileDimensionsInVertices-1);

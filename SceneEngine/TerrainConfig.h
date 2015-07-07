@@ -46,7 +46,7 @@ namespace SceneEngine
             const ::Assets::ResChar baseDir[], UInt2 cellCount,
             Filenames filenamesMode = XLE, 
             unsigned nodeDimsInElements = 32u, unsigned cellTreeDepth = 5u, unsigned nodeOverlap = 2u,
-            float elementSpacing = 10.f, float sunPathAngle = 0.f);
+            float elementSpacing = 10.f, float sunPathAngle = 0.f, bool encodedGradientFlags = false);
         TerrainConfig(const ::Assets::ResChar baseDir[]);
         TerrainConfig();
 
@@ -60,10 +60,11 @@ namespace SceneEngine
 
         UInt2       CellDimensionsInNodes() const;
         UInt2       NodeDimensionsInElements() const;       // (ignoring overlap)
-        unsigned    CellTreeDepth() const { return _cellTreeDepth; }
-        unsigned    NodeOverlap() const { return _nodeOverlap; }
-        float       ElementSpacing() const { return _elementSpacing; }
-        float       SunPathAngle() const { return _sunPathAngle; }
+        unsigned    CellTreeDepth() const           { return _cellTreeDepth; }
+        unsigned    NodeOverlap() const             { return _nodeOverlap; }
+        float       ElementSpacing() const          { return _elementSpacing; }
+        float       SunPathAngle() const            { return _sunPathAngle; }
+        bool        EncodedGradientFlags() const    { return _encodedGradientFlags; }
 
         unsigned    GetCoverageLayerCount() const;
         const CoverageLayer& GetCoverageLayer(unsigned index) const;
@@ -77,6 +78,7 @@ namespace SceneEngine
         unsigned    _nodeOverlap;
         float       _elementSpacing;
         float       _sunPathAngle;
+        bool        _encodedGradientFlags;
         std::vector<CoverageLayer> _coverageLayers;
     };
 

@@ -71,6 +71,7 @@ namespace SceneEngine
         };
         Layer _heights;
         std::vector<std::pair<TerrainCoverageId, Layer>> _coverageLayers;
+        bool _encodedGradientFlags;
     };
 
     bool IsCompatible(const TerrainRendererConfig& lhs, const TerrainRendererConfig& rhs);
@@ -267,6 +268,7 @@ namespace SceneEngine
 
         // Int2            _elementSize;
         bool            _dynamicTessellation;
+        bool            _encodedGradientFlags;
 
         TerrainCoverageId   _coverageLayerIds[TerrainCellId::MaxCoverageCount];
         CoverageFormat      _coverageFmts[TerrainCellId::MaxCoverageCount];
@@ -293,6 +295,7 @@ namespace SceneEngine
         static std::vector<QueuedNode> _queuedNodes;        // HACK -- static to avoid allocation!
 
         TerrainRenderingContext(
+            const TerrainRendererConfig& cfg,
             const TerrainCoverageId* coverageLayers, 
             const CoverageFormat* coverageFmts, 
             unsigned coverageLayerCount);

@@ -77,6 +77,9 @@ namespace LevelEditorXLE.Terrain
             [Category("Coverage")] [Description("Has a layer for precalculated terrain shadows")]
             public bool HasShadowsCoverage { get; set; }
 
+            [Category("Coverage")] [Description("Has encoded gradient flags")]
+            public bool HasEncodedGradientFlags { get; set; }
+
             [Category("Coverage")] [Description("Sun Path Angle (in degrees)")]
             public float SunPathAngle { get; set; }
 
@@ -93,7 +96,7 @@ namespace LevelEditorXLE.Terrain
             { 
                 NodeDimensions = 32; Overlap = 2; Spacing = 10; Import = ImportType.None; 
                 NewCellCountX = NewCellCountY = 1;
-                HasBaseMaterialCoverage = HasDecorationCoverage = HasShadowsCoverage = false;
+                HasBaseMaterialCoverage = HasDecorationCoverage = HasShadowsCoverage = HasEncodedGradientFlags = false;
                 SunPathAngle = 0.0f;
             }
         };

@@ -348,7 +348,7 @@ namespace GUILayer
         static void GenerateStarterCells(
             String^ cellsDirectory, String^ uberSurfaceDirectory,
             unsigned nodeDimensions, unsigned cellTreeDepth, unsigned overlap,
-            float spacing, float sunPathAngle, 
+            float spacing, float sunPathAngle, bool hasEncodedGradientFlags,
             IEnumerable<unsigned>^ layers, IProgress^ progress)
         {
             auto nativeProgress = progress ? IProgress::CreateNative(progress) : nullptr;
@@ -362,7 +362,7 @@ namespace GUILayer
             ToolsRig::GenerateStarterCells(
                 clix::marshalString<clix::E_UTF8>(cellsDirectory).c_str(),
                 clix::marshalString<clix::E_UTF8>(uberSurfaceDirectory).c_str(),
-                nodeDimensions, cellTreeDepth, overlap, spacing, sunPathAngle,
+                nodeDimensions, cellTreeDepth, overlap, spacing, sunPathAngle, hasEncodedGradientFlags,
                 AsPointer(nativeLayers.cbegin()), (unsigned)nativeLayers.size(),
                 nativeProgress.get());
         }

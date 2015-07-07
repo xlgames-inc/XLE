@@ -16,7 +16,7 @@ class TestMaterial : IProceduralTexture
 
 float GetHeight(int2 coord)
 {
-    uint rawHeightValue = HeightsTileSet.Load(int4(HeightMapOrigin.xy + coord, HeightMapOrigin.z, 0));
+    uint rawHeightValue = LoadRawHeightValue(int3(HeightMapOrigin.xy + coord, HeightMapOrigin.z));
     return float(rawHeightValue) * LocalToCell[2][2] + LocalToCell[2][3];
 }
 
@@ -56,6 +56,8 @@ static const int2 Offsets[9] =
 
 int CalculateCenterType(int2 baseTC)
 {
+    return LoadEncodedGradientFlags(int3(HeightMapOrigin.xy + baseTC, HeightMapOrigin.z));
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
         //  0  1  2
@@ -140,17 +142,6 @@ ProceduralTextureOutput TestMaterial::Calculate(
     result.tangentSpaceNormal = float3(0,0,1);
     result.specularity = 1.f;
 
-    float3 colors[6] =
-    {
-        float3(0,0,1),
-        float3(1,1,1),
-        float3(1,0,0),
-
-        float3(0,0,.5),
-        float3(.5,.5,.5),
-        float3(.5,0,0)
-    };
-
     int blendType = centerType;
     if (blockRegion != 4) {
         int connectType = CalculateCenterType(baseTC + Offsets[blockRegion]);
@@ -163,21 +154,39 @@ ProceduralTextureOutput TestMaterial::Calculate(
 
     // result.diffuseAlbedo = colors[centerType];
 
-    const uint strataIndex = 1;
-    float2 tcTex0 = worldPosition.xy * TextureFrequency[strataIndex][centerType];
-    float3 sample0 = StrataDiffuseSample(tcTex0, strataIndex, centerType);
+    #if STRATA_COUNT!=0
 
-    if (blendType != centerType) {
-        float2 tcTex1 = worldPosition.xy * TextureFrequency[0][blendType];
-        float3 sample1 = StrataDiffuseSample(tcTex1, 0, blendType);
+        const uint strataIndex = 1;
+        float2 tcTex0 = worldPosition.xy * TextureFrequency[strataIndex][centerType];
+        float3 sample0 = StrataDiffuseSample(tcTex0, strataIndex, centerType);
 
-        result.diffuseAlbedo = lerp(sample1, sample0, blendAlpha);
-    } else {
-        result.diffuseAlbedo = sample0;
-    }
+        if (blendType != centerType) {
+            float2 tcTex1 = worldPosition.xy * TextureFrequency[0][blendType];
+            float3 sample1 = StrataDiffuseSample(tcTex1, 0, blendType);
+
+            result.diffuseAlbedo = lerp(sample1, sample0, blendAlpha);
+        } else {
+            result.diffuseAlbedo = sample0;
+        }
+
+    #else
+
+        float3 colors[6] =
+        {
+            float3(0,0,1),
+            float3(1,1,1),
+            float3(1,0,0),
+
+            float3(0,0,.5),
+            float3(.5,.5,.5),
+            float3(.5,0,0)
+        };
+
+        result.diffuseAlbedo = (blockRegion != 4) ? colors[3+blendType] : colors[centerType];
+        
+    #endif
 
     // result.diffuseAlbedo = 0.5.xxx + blendAlpha.xxx;
-    // result.diffuseAlbedo = (blockRegion != 4) ? colors[3+blendType] : colors[centerType];
 
     return result;
 }

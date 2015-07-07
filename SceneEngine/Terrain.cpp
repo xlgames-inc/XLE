@@ -15,7 +15,6 @@
 
 namespace SceneEngine
 {
-
     TerrainCell::TerrainCell() {}
     TerrainCell::~TerrainCell() {}
 
@@ -117,10 +116,10 @@ namespace SceneEngine
         for (unsigned y=0; y<nodeDim; ++y)
             for (unsigned x=0; x<nodeDim; ++x) {
                 float a = (finalHeights[y*nodeDim + x] - finalMin) / (finalMax - finalMin);
-                ((uint16*)AsPointer(result.begin()))[y*nodeDim + x] = uint16(a * float(0xffff));
+                ((uint16*)AsPointer(result.begin()))[y*nodeDim + x] = uint16(a * float(CompressedHeightMask));
             }
 
-        _nodes[nodeIndex]->_localToCell(2,2) = (finalMax - finalMin) / float(0xffff);
+        _nodes[nodeIndex]->_localToCell(2,2) = (finalMax - finalMin) / float(CompressedHeightMask);
         _nodes[nodeIndex]->_localToCell(2,3) = finalMin;
         return std::move(result);
     }

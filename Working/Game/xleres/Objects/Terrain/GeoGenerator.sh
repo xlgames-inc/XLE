@@ -23,8 +23,8 @@ PatchInputControlPoint vs_dyntess_main(uint vertexIndex : SV_VertexId)
 {
     int x = vertexIndex % 2;
     int y = vertexIndex / 2;
-    uint rawHeightValue = HeightsTileSet.Load(
-        int4(HeightMapOrigin.xy + int2(x,y) * (TileDimensionsInVertices-HeightsOverlap), HeightMapOrigin.z, 0));
+    uint rawHeightValue = LoadRawHeightValue(
+        int3(HeightMapOrigin.xy + int2(x,y) * (TileDimensionsInVertices-HeightsOverlap), HeightMapOrigin.z));
 
     float3 localPosition;
     localPosition.x		 = float(x);

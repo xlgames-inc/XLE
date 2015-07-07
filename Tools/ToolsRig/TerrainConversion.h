@@ -23,6 +23,7 @@ namespace ToolsRig
     void GenerateStarterCells(
         const ::Assets::ResChar outputDir[], const ::Assets::ResChar input[], 
         unsigned destNodeDims, unsigned destCellTreeDepth, unsigned overlap, float spacing, float sunPathAngle,
+        bool hasEncodedGradientFlags,
         const std::pair<SceneEngine::TerrainCoverageId, unsigned> layers[], unsigned layerCount,
         ConsoleRig::IProgress* progress);
 

@@ -536,6 +536,7 @@ namespace ToolsRig
     void GenerateStarterCells(
         const ::Assets::ResChar outputDir[], const ::Assets::ResChar inputUberSurfaceDirectory[],
         unsigned destNodeDims, unsigned destCellTreeDepth, unsigned overlap, float spacing, float sunPathAngle,
+        bool hasEncodedGradientFlags,
         const std::pair<SceneEngine::TerrainCoverageId, unsigned> layers[], unsigned layerCount,
         ConsoleRig::IProgress* progress)
     {
@@ -556,7 +557,7 @@ namespace ToolsRig
 
         TerrainConfig cfg(
             outputDir, eleCount / cellDimsInEles, 
-            TerrainConfig::XLE, destNodeDims, destCellTreeDepth, overlap, spacing, sunPathAngle);
+            TerrainConfig::XLE, destNodeDims, destCellTreeDepth, overlap, spacing, sunPathAngle, hasEncodedGradientFlags);
 
         for (unsigned l=0; l<layerCount; ++l) {
             ::Assets::ResChar uberSurfaceFN[MaxPath]; 

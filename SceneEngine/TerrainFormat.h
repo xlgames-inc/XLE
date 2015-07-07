@@ -29,6 +29,12 @@ namespace SceneEngine
         virtual void WriteCell(
             const char destinationFile[], TerrainUberSurface<uint8>& surface, 
             UInt2 cellMins, UInt2 cellMaxs, unsigned treeDepth, unsigned overlapElements) const;
+
+        TerrainFormat(bool encodedGradientFlags);
+        ~TerrainFormat();
+
+    protected:
+        bool _encodedGradientFlags;
     };
 }
 

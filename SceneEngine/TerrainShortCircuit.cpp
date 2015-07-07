@@ -76,7 +76,11 @@ namespace SceneEngine
 
             const ::Assets::ResChar firstPassShader[] = "game/xleres/ui/copyterraintile.sh:WriteToMidway:cs_*";
             const ::Assets::ResChar secondPassShader[] = "game/xleres/ui/copyterraintile.sh:CommitToFinal:cs_*";
-            StringMeld<64, char> defines; defines << "VALUE_FORMAT=" << format << ";FILTER_TYPE=" << filterType;
+            StringMeld<64, char> defines; 
+            defines << "VALUE_FORMAT=" << format << ";FILTER_TYPE=" << filterType;
+            if (_cfg._encodedGradientFlags) defines << ";ENCODED_GRADIENT_FLAGS";
+            const unsigned compressedHeightMask = _cfg._encodedGradientFlags ? 0x3fffu : 0xffffu;
+
             auto& byteCode = ::Assets::GetAssetDep<CompiledShaderByteCode>(firstPassShader, defines.get());
             auto& cs0 = ::Assets::GetAssetDep<Metal::ComputeShader>(firstPassShader, defines.get());
             auto& cs1 = ::Assets::GetAssetDep<Metal::ComputeShader>(secondPassShader, defines.get());
@@ -126,7 +130,11 @@ namespace SceneEngine
                     RWTexture2DDesc(tile._width, tile._height, Metal::NativeFormat::R32_FLOAT))->AdoptUnderlying();
                 Metal::UnorderedAccessView midwayBufferUAV(midwayBuffer.get());
 
-                context.BindCS(MakeResourceList(1, midwayBufferUAV, tileCoordsUAV));
+                auto midwayGradFlagsBuffer = uploads.Transaction_Immediate(
+                    RWTexture2DDesc(tile._width, tile._height, Metal::NativeFormat::R32_UINT))->AdoptUnderlying();
+                Metal::UnorderedAccessView midwayGradFlagsBufferUAV(midwayGradFlagsBuffer.get());
+
+                context.BindCS(MakeResourceList(1, midwayBufferUAV, midwayGradFlagsBufferUAV, tileCoordsUAV));
 
                 context.Bind(cs0);
                 context.Dispatch(   unsigned(XlCeil(tile._width /float(threadGroupWidth))), 
@@ -147,7 +155,7 @@ namespace SceneEngine
                 if (readbackData) {
                     const float hackConstant = 5000.f;      // (height values are shifted by this constant in the shader to get around issues with negative heights
                     float newHeightOffset = readbackData[2] - hackConstant;
-                    float newHeightScale = (readbackData[3] - readbackData[2]) / float(0xffff);
+                    float newHeightScale = (readbackData[3] - readbackData[2]) / float(compressedHeightMask);
                     localToCell(2,2) = newHeightScale;
                     localToCell(2,3) = newHeightOffset;
                 }
@@ -210,9 +218,10 @@ namespace SceneEngine
                     //  the uber-surface coordinate system. If there's an overlap
                     //  between the node coords and the update box, we need to do
                     //  a copy.
+                const unsigned compressedHeightMask = _cfg._encodedGradientFlags ? 0x3fffu : 0xffffu;
 
                 Float3 nodeMinInCell = TransformPoint(sourceNode->_localToCell, Float3(0.f, 0.f, 0.f));
-                Float3 nodeMaxInCell = TransformPoint(sourceNode->_localToCell, Float3(1.f, 1.f, float(0xffff)));
+                Float3 nodeMaxInCell = TransformPoint(sourceNode->_localToCell, Float3(1.f, 1.f, float(compressedHeightMask)));
 
                 UInt2 nodeMin(
                     (unsigned)LinearInterpolate(float(cellOrigin[0]), float(cellMax[0]), nodeMinInCell[0]),

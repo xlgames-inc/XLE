@@ -33,11 +33,20 @@ struct TileCoords
 
 Texture2D<ValueType>	Input : register(t0);
 RWTexture2D<ValueType>	MidwayOutput : register(u1);
+RWTexture2D<uint> 		MidwayMaterialFlags : register(u2);
+
+#if defined(ENCODED_GRADIENT_FLAGS)
+	static const uint 		RawHeightMask = 0x3fff;
+	static const uint		MaterialFlagsShift = 14;
+#else
+	static const uint 		RawHeightMask = 0xffff;
+	static const uint		MaterialFlagsShift = 16;
+#endif
 
 #if defined(QUANTIZE_HEIGHTS)
 		// (used for height map updates)
 	Texture2DArray<uint>			OldHeights : register(t1);
-	RWStructuredBuffer<TileCoords>	TileCoordsBuffer : register(u2);
+	RWStructuredBuffer<TileCoords>	TileCoordsBuffer : register(u3);
 #endif
 
 #if !defined(FILTER_TYPE)
@@ -79,8 +88,41 @@ ValueType CalculateNewValue(uint3 dispatchThreadId)
 			//	that means we need to do 2 steps:
 			//		first step --	read from old heights as a SRV
 			//		second step --	write to output UAV
-		uint compressedHeight = OldHeights[DstTileAddress + uint3(dispatchThreadId.xy, 0)];
+		uint compressedHeight = OldHeights[DstTileAddress + uint3(dispatchThreadId.xy, 0)] & RawHeightMask;
 		return TileCoordsBuffer[0].MinHeight + float(compressedHeight) * TileCoordsBuffer[0].HeightScale;
+	#else
+		return 0;
+	#endif
+}
+
+uint CalculateMaterialFlags_TopLOD(int2 baseCoord);
+
+uint CalculateMaterialFlags(uint2 dispatchThreadId)
+{
+	int2 origin = SampleArea * dispatchThreadId.xy;
+
+		// SourceMins / SourceMaxs defines the area that we can read from
+		// The system should ensure that the source area is much bigger than
+		// the "update area" with borders on all sides. We need area around
+		// the update area to do downsampling and filtering
+		// We need to make sure we don't attempt to read outside of this region.
+
+	if (	origin.x >= SourceMin.x && (origin.x + SampleArea - 1) <= SourceMax.x
+		&&	origin.y >= SourceMin.y && (origin.y + SampleArea - 1) <= SourceMax.y) {
+
+			//	simple box filter for downsampling to the correct LOD
+			//	we could also try min or max filter for these!
+		uint sampleTotal = 0;
+		for (int y=0; y<SampleArea; ++y)
+			for (int x=0; x<SampleArea; ++x)
+				sampleTotal += CalculateMaterialFlags_TopLOD(origin + int2(x,y));
+		sampleTotal /= SampleArea * SampleArea;
+
+		return sampleTotal;
+	}
+
+	#if defined(QUANTIZE_HEIGHTS)
+		return OldHeights[DstTileAddress + uint3(dispatchThreadId.xy, 0)] >> MaterialFlagsShift;
 	#else
 		return 0;
 	#endif
@@ -122,10 +164,14 @@ float UIntToHeightValue(uint input)
 	MidwayOutput.GetDimensions(midwayDims.x, midwayDims.y);
 	if (dispatchThreadId.x < midwayDims.x && dispatchThreadId.y < midwayDims.y) {
 		MidwayOutput[dispatchThreadId.xy] = newHeight;
+
+		#if defined(QUANTIZE_HEIGHTS)
+			MidwayMaterialFlags[dispatchThreadId.xy] = CalculateMaterialFlags(dispatchThreadId.xy);
+		#endif
 	}
 }
 
-RWTexture2DArray<uint>			Destination : register(u0);
+RWTexture2DArray<uint> Destination : register(u0);
 
 [numthreads(6, 6, 1)]
 	void CommitToFinal(uint3 dispatchThreadId : SV_DispatchThreadID)
@@ -138,20 +184,30 @@ RWTexture2DArray<uint>			Destination : register(u0);
 			// this is because the min/max values will have changed. That means every
 			// height value needs to adapter to the new min/max values.
 		#if defined(QUANTIZE_HEIGHTS)
+
 					// finally calculate the new compressed height & write to the buffer
 			float minHeight = UIntToHeightValue(TileCoordsBuffer[0].WorkingMinHeight);
 			float maxHeight = UIntToHeightValue(TileCoordsBuffer[0].WorkingMaxHeight);
 
 				// we have to write everything -- because min/max height may have changed!
-			uint finalCompressedHeight = uint(clamp((newHeight - minHeight) * float(0xffff) / (maxHeight - minHeight), 0, float(0xffff)));
+			uint finalCompressedHeight = uint(
+				clamp((newHeight - minHeight) * float(RawHeightMask) / (maxHeight - minHeight),
+				0, float(RawHeightMask)));
+
+			#if defined(ENCODED_GRADIENT_FLAGS)
+				finalCompressedHeight |= (MidwayMaterialFlags[dispatchThreadId.xy] & 3) << MaterialFlagsShift;
+			#endif
 
 			Destination[DstTileAddress + uint3(dispatchThreadId.xy, 0)] = finalCompressedHeight;
+
 		#else
+
 			if (	(int)dispatchThreadId.x >= UpdateMin.x && (int)dispatchThreadId.x <= UpdateMax.x
 				&& 	(int)dispatchThreadId.y >= UpdateMin.y && (int)dispatchThreadId.y <= UpdateMax.y) {
 
 				Destination[DstTileAddress + uint3(dispatchThreadId.xy, 0)] = newHeight;
 			}
+
 		#endif
 
 	}
@@ -167,4 +223,94 @@ RWTexture2DArray<uint>			Destination : register(u0);
 		ValueType newValue = CalculateNewValue(dispatchThreadId);
 		Destination[DstTileAddress + uint3(dispatchThreadId.xy, 0)] = newValue;
 	}
+}
+
+
+#include "../Utility/EdgeDetection.h"
+
+bool CoordIsValid(int2 coord)
+{
+	return coord.x >= SourceMin.x && coord.x <= SourceMax.x && coord.y >= SourceMin.y && coord.y <= SourceMax.y;
+}
+
+float GetHeight(int2 coord)
+{
+	if (CoordIsValid(coord)) {
+		return Input[coord - SourceMin];
+	}
+	return 0.f;
+}
+
+float2 CalculateDHDXY(int2 coord)
+{
+	float centerHeight = GetHeight(coord);
+	float2 dhdp = 0.0.xx;
+	#if 0
+		for (uint y=0; y<5; ++y) {
+			for (uint x=0; x<5; ++x) {
+				int2 c = coord + int2(x,y) - int2(2,2);
+				if (CoordIsValid(c)) {
+					float heightDiff = GetHeight(c) - centerHeight;
+					dhdp.x += SharrHoriz5x5[x][y] * heightDiff;
+					dhdp.y += SharrVert5x5[x][y] * heightDiff;
+				}
+			}
+		}
+	#else
+		for (uint y=0; y<3; ++y) {
+			for (uint x=0; x<3; ++x) {
+				int2 c = coord + int2(x,y) - int2(1,1);
+				if (CoordIsValid(c)) {
+					float heightDiff = GetHeight(c) - centerHeight;
+					dhdp.x += SharrHoriz3x3[x][y] * heightDiff;
+					dhdp.y += SharrVert3x3[x][y] * heightDiff;
+				}
+			}
+		}
+	#endif
+	return dhdp;
+}
+
+uint CalculateMaterialFlags_TopLOD(int2 baseCoord)
+{
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+		//  0  1  2
+		//  3  4  5
+		//  6  7  8
+	const int2 Offsets[9] =
+	{
+		int2(-1, -1), int2( 0, -1), int2( 1, -1),
+		int2(-1,  0), int2( 0,  0), int2( 1,  0),
+		int2(-1,  1), int2( 0,  1), int2( 1,  1)
+	};
+
+	float heights[9];
+	float2 dhdxy[9];
+	float heightDiff[9];
+	for (uint c=0; c<9; c++) {
+		heights[c] = GetHeight(baseCoord + Offsets[c]);
+		dhdxy[c] = CalculateDHDXY(baseCoord + Offsets[c]);
+	}
+	for (uint c2=0; c2<9; c2++) {
+		heightDiff[c2] = heights[c2] - heights[4];
+	}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	float slopeThreshold = 1.5f;
+	bool centerIsSlope = max(abs(dhdxy[4].x), abs(dhdxy[4].y)) > slopeThreshold;
+	float3 b = float3( 0.f, -2.f, heightDiff[1]);
+	float3 t = float3( 0.f,  2.f, heightDiff[8]);
+	float3 l = float3(-2.f,  0.f, heightDiff[3]);
+	float3 r = float3( 2.f,  0.f, heightDiff[5]);
+	bool topBottomTrans = dot(normalize(b), -normalize(t)) < .4f;
+	bool leftRightTrans = dot(normalize(l), -normalize(r)) < .4f;
+
+	// good for finding flat places:
+	// dot(dhdxy[1], dhdxy[8]) >= 1.f;
+	// dot(dhdxy[3], dhdxy[5]) >= 1.f;
+
+	if (topBottomTrans || leftRightTrans) return 2;
+	return int(centerIsSlope);
 }

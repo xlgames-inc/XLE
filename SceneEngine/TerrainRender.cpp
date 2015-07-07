@@ -95,6 +95,7 @@ namespace SceneEngine
     std::vector<TerrainRenderingContext::QueuedNode> TerrainRenderingContext::_queuedNodes;        // HACK -- static to avoid allocation!
 
     TerrainRenderingContext::TerrainRenderingContext(
+        const TerrainRendererConfig& cfg,
         const TerrainCoverageId* coverageLayers, 
         const CoverageFormat* coverageFmts, 
         unsigned coverageLayerCount)
@@ -104,6 +105,7 @@ namespace SceneEngine
         // _isTextured = isTextured;
         // _elementSize = elementSize;
         _dynamicTessellation = false;
+        _encodedGradientFlags = cfg._encodedGradientFlags;
 
         _coverageLayerCount = std::min(coverageLayerCount, TerrainCellId::MaxCoverageCount);
         for (unsigned c=0; c<_coverageLayerCount; ++c) {
@@ -127,6 +129,7 @@ namespace SceneEngine
             TerrainRenderingContext::Mode _mode;
             bool _doExtraSmoothing, _noisyTerrain;
             bool _drawWireframe;
+            bool _encodedGradientFlags;
             unsigned _strataCount;
             TerrainCoverageId _visLayer;
 
@@ -136,7 +139,7 @@ namespace SceneEngine
             Desc(   TerrainRenderingContext::Mode mode,
                     const TerrainCoverageId* coverageIdsBegin, const TerrainCoverageId* coverageIdsEnd,
                     const CoverageFormat* coverageFmtsBegin, const CoverageFormat* coverageFmtsEnd,
-                    bool doExtraSmoothing, bool noisyTerrain,
+                    bool doExtraSmoothing, bool noisyTerrain, bool encodedGradientFlags,
                     bool drawWireframe, unsigned strataCount,
                     TerrainCoverageId visLayer)
             {
@@ -144,6 +147,7 @@ namespace SceneEngine
                 _mode = mode;
                 _doExtraSmoothing = doExtraSmoothing;
                 _noisyTerrain = noisyTerrain;
+                _encodedGradientFlags = encodedGradientFlags;
                 _drawWireframe = drawWireframe;
                 _strataCount = strataCount;
                 _visLayer = visLayer;
@@ -186,6 +190,8 @@ namespace SceneEngine
         definesBuffer << ";OUTPUT_WORLD_POSITION=1;SOLIDWIREFRAME_WORLDPOSITION=1";
         definesBuffer << ";DRAW_WIREFRAME=" << int(desc._drawWireframe);
         definesBuffer << ";STRATA_COUNT=" << desc._strataCount;
+        if (desc._encodedGradientFlags)
+            definesBuffer << ";ENCODED_GRADIENT_FLAGS";
 
         for (unsigned c=0; c<dimof(desc._coverageIds); ++c)
             if (desc._coverageIds[c]) {
@@ -270,7 +276,7 @@ namespace SceneEngine
                 mode, 
                 _coverageLayerIds, &_coverageLayerIds[_coverageLayerCount],
                 _coverageFmts, &_coverageFmts[_coverageLayerCount],
-                doExtraSmoothing, noisyTerrain, drawWireframe, texturing._strataCount,
+                doExtraSmoothing, noisyTerrain, _encodedGradientFlags, drawWireframe, texturing._strataCount,
                 visLayer);
 
             if (box._shaderProgram->DynamicLinkingEnabled()) {
@@ -554,6 +560,9 @@ namespace SceneEngine
             //  Every time we shift nodes, we have to update the neighbour
             //  references.
 
+        const unsigned compressedHeightMask = 
+            renderingContext._encodedGradientFlags ? 0x3fffu : 0xffffu;
+
         std::vector<Node> collapsedField;
         for (auto n=_activeNodes[startLod].begin(); n!=_activeNodes[startLod].end(); ++n) {
 
@@ -610,7 +619,7 @@ namespace SceneEngine
 
                             // once a parent node is entirely within the frustum, so to must be all children
                         if (n->_entirelyWithinFrustum) {
-                            auto aabbTest = TestAABB_Aligned(AsFloatArray(localToProjection), Float3(0.f, 0.f, 0.f), Float3(1.f, 1.f, float(0xffff)));
+                            auto aabbTest = TestAABB_Aligned(AsFloatArray(localToProjection), Float3(0.f, 0.f, 0.f), Float3(1.f, 1.f, float(compressedHeightMask)));
                             if (aabbTest == AABBIntersection::Culled) { 
                                 newNodes[c]._id._nodeId = ~unsigned(0x0);
                                 continue; 
@@ -822,6 +831,8 @@ namespace SceneEngine
         cullResults.resize(field._nodeEnd - field._nodeBegin);
         screenSpaceEdgeLengths.resize(field._nodeEnd - field._nodeBegin, FLT_MAX);
 
+        const unsigned compressedHeightMask = _cfg._encodedGradientFlags ? 0x3fffu : 0xffffu;
+
         for (unsigned n=field._nodeBegin; n<field._nodeEnd; ++n) {
             auto& sourceNode = sourceCell._nodes[n];
 
@@ -831,7 +842,7 @@ namespace SceneEngine
                 cullResults[n - field._nodeBegin] = AABBIntersection::Culled;
             } else {
                 __declspec(align(16)) auto localToProjection = Combine(sourceNode->_localToCell, cellToProjection);
-                cullResults[n - field._nodeBegin] = TestAABB_Aligned(AsFloatArray(localToProjection), Float3(0.f, 0.f, 0.f), Float3(1.f, 1.f, float(0xffff)));
+                cullResults[n - field._nodeBegin] = TestAABB_Aligned(AsFloatArray(localToProjection), Float3(0.f, 0.f, 0.f), Float3(1.f, 1.f, float(compressedHeightMask)));
                 if (cullResults[n - field._nodeBegin] != AABBIntersection::Culled) {
                     screenSpaceEdgeLengths[n - field._nodeBegin] = CalculateScreenSpaceEdgeLength(
                         localToProjection, terrainContext._currentViewport.Width, terrainContext._currentViewport.Height);
@@ -907,6 +918,8 @@ namespace SceneEngine
         for (unsigned n=0; n<field._nodeEnd - field._nodeBegin; ++n)
             pendingNodes.push(std::make_pair(startLod, n));
 
+        const unsigned compressedHeightMask = _cfg._encodedGradientFlags ? 0x3fffu : 0xffffu;
+
         while (!pendingNodes.empty()) {
             auto nodeRef = pendingNodes.top(); pendingNodes.pop();
             auto& field = sourceCell._nodeFields[nodeRef.first];
@@ -917,7 +930,7 @@ namespace SceneEngine
                 //  do a culling step first... If the node is completely outside
                 //  of the frustum, let's cull it quickly
             const __declspec(align(16)) auto localToProjection = Combine(sourceNode->_localToCell, cellToProjection);
-            if (CullAABB_Aligned(AsFloatArray(localToProjection), Float3(0.f, 0.f, 0.f), Float3(1.f, 1.f, float(0xffff)))) {
+            if (CullAABB_Aligned(AsFloatArray(localToProjection), Float3(0.f, 0.f, 0.f), Float3(1.f, 1.f, float(compressedHeightMask)))) {
                 continue;
             }
 
@@ -1214,6 +1227,7 @@ namespace SceneEngine
     {
         if (lhs._coverageLayers.size() != rhs._coverageLayers.size()) return false;
         if (!IsCompatible(lhs._heights, rhs._heights)) return false;
+        if (lhs._encodedGradientFlags != rhs._encodedGradientFlags) return false;
         for (unsigned c=0; c<lhs._coverageLayers.size(); ++c)
             if (    lhs._coverageLayers[c].first != rhs._coverageLayers[c].first
                 || !IsCompatible(lhs._coverageLayers[c].second, rhs._coverageLayers[c].second)) return false;

@@ -106,6 +106,12 @@ namespace LevelEditorXLE.Terrain
             set { SetAttribute(TerrainST.HasShadowsConverageAttribute, value); }
         }
 
+        public bool HasEncodedGradientFlags
+        {
+            get { return GetAttribute<bool>(TerrainST.HasEncodedGradientFlagsAttribute); }
+            set { SetAttribute(TerrainST.HasEncodedGradientFlagsAttribute, value); }
+        }
+
         public float SunPathAngle
         {
             get { return GetAttribute<float>(TerrainST.SunPathAngleAttribute); }
@@ -210,7 +216,7 @@ namespace LevelEditorXLE.Terrain
                         cfg.CellsDirectory, cfg.UberSurfaceDirectory,
                         nodeDimensions, cellTreeDepth, overlap,
                         cfg.Spacing, (float)(cfg.SunPathAngle * Math.PI / 180.0f),
-                        coverageLayers, progress);
+                        cfg.HasEncodedGradientFlags, coverageLayers, progress);
                 }
             }
             catch { }
@@ -225,6 +231,7 @@ namespace LevelEditorXLE.Terrain
             HasDecorationCoverage = cfg.HasDecorationCoverage;
             HasBaseMaterialCoverage = cfg.HasBaseMaterialCoverage;
             HasShadowsCoverage = cfg.HasShadowsCoverage;
+            HasEncodedGradientFlags = cfg.HasEncodedGradientFlags; 
             SunPathAngle = cfg.SunPathAngle;
 
             sceneMan.ReloadTerrain();
@@ -243,6 +250,7 @@ namespace LevelEditorXLE.Terrain
             cfg.HasBaseMaterialCoverage = HasBaseMaterialCoverage;
             cfg.HasDecorationCoverage = HasDecorationCoverage;
             cfg.HasShadowsCoverage = HasShadowsCoverage;
+            cfg.HasEncodedGradientFlags = HasEncodedGradientFlags;
             cfg.SunPathAngle = SunPathAngle;
 
             using (var dlg = new TerrainConfig())

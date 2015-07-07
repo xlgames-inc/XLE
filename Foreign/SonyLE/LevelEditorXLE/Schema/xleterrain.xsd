@@ -204,6 +204,7 @@
     <xs:attribute name="HasBaseMaterialCoverage" type="xs:boolean" default="false" />
     <xs:attribute name="HasDecorationCoverage" type="xs:boolean" default="false" />
     <xs:attribute name="HasShadowsConverage" type="xs:boolean" default="false" />
+    <xs:attribute name="HasEncodedGradientFlags" type="xs:boolean" default="true" />
   </xs:complexType>
   
 </xs:schema>
